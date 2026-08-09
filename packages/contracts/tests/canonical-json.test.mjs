@@ -6,7 +6,9 @@ import {
   canonicalizeJson,
   canonicalizeJsonToUtf8,
   JsonCanonicalizationError,
+  parseJsonStrict,
   sha256CanonicalJson,
+  StrictJsonParseError,
 } from "../dist/src/index.js";
 
 // Authoritative vectors: https://www.rfc-editor.org/rfc/rfc8785 (section 3.2 and appendix B).
@@ -28,6 +30,23 @@ test("matches the RFC 8785 section 3.2 canonicalization and UTF-8 vector", () =>
     [...canonicalizeJsonToUtf8(rfc8785Input)],
     [...Buffer.from(rfc8785Canonical, "utf8")],
   );
+});
+
+test("strict JSON parsing preserves valid values while rejecting duplicate names", () => {
+  assert.deepEqual(parseJsonStrict('{"outer":[{"first":1,"second":2}],"ok":true}'), {
+    outer: [{ first: 1, second: 2 }],
+    ok: true,
+  });
+  for (const text of [
+    '{"same":1,"same":2}',
+    '{"same":1,"\\u0073ame":2}',
+    '{"outer":{"same":1,"same":2}}',
+  ]) {
+    assert.throws(
+      () => parseJsonStrict(text),
+      (error) => error instanceof StrictJsonParseError && error.code === "DUPLICATE_PROPERTY",
+    );
+  }
 });
 
 test("matches the RFC 8785 UTF-16 property sorting vector", () => {
