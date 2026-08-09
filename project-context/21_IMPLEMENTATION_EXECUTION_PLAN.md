@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: approved execution sequence; Phase 0C implementation is integrated through VF-0C-07 and VF-0C-08 acceptance is active
+Status: approved execution sequence; Phase 0C implementation and VF-0C-08 through exact Chrome download are complete, with one manual downloaded-file replay still required
 Read when: starting a new implementation chat, selecting the next task, assigning parallel ownership, or integrating a completed task.
 
 ## Authority and purpose
@@ -18,13 +18,14 @@ The following is already implemented and must be preserved:
 - Phase 0A/0C contract foundation: sixteen canonical contracts, Ajv/Zod/Pydantic entry-point parity, generated structural TypeScript types, TypeScript RFC 8785 JCS, worker-job and orchestration-state boundaries, local media job/result boundaries, fixture profiles, CI, secret scan, and stable root commands.
 - Phase 0B fixture shell: approved medium-scale UI, app-native in-flow controls, reusable Avatar/Image Style Hubs, access fixtures, semantic preflight, immutable pins, mutation concurrency, review approval binding, responsive layouts, and real-Chrome acceptance.
 - Phase 0C through VF-0C-07: owned local narration, real whisper.cpp timing, deterministic scheduling, exact accepted-asset resolution, real FFmpeg render/probe, bounded local API lifecycle, and truthful playback/download UI.
+- VF-0C-08 through download: real Chrome created the project, observed the pipeline, played and sought the real MP4, approved the exact candidate, and downloaded bytes matching the reviewed SHA-256. Only manual replay of the downloaded filesystem path remains.
 - `GATE_UI_001` is closed. Do not redesign the visual system, change its medium scale, or alter dock resting geometry unless the user explicitly asks or a later feature exposes a verified regression.
 - Fixture mode remains the default, makes no provider call, and authorizes `$0` external spend.
 - The stable development URL remains `http://localhost:4173`; visible work must reuse it and retain the approved routes.
 
 Known unfinished boundaries are not hidden:
 
-- The real local MP4 exists and passes automated API/media checks, but Phase 0C remains open until the required real-Chrome play/seek/approve/download/replay checkpoint is recorded.
+- The real local MP4 passes automated API/media checks and real-Chrome create/play/seek/approve/download. Phase 0C remains open only because the controlled Chrome surface blocks direct `file://` navigation; manual downloaded-file replay is recorded as the final checkpoint rather than silently waived.
 - Python intentionally does not derive RFC 8785 hashes. TypeScript is the sole JCS authority; Python validates schemas and exact input/media bytes and treats canonical document hashes as opaque.
 - Local transcription and render workers exist. Provider-backed prompt, image, and avatar generation workers do not; all corresponding gates remain open.
 - Fixture state is bounded in memory. Production authentication, Postgres, R2, Workflows, callbacks, and provider transports do not exist.
@@ -219,6 +220,14 @@ May begin in parallel with `VF-0C-06` only after its response schema is committe
 - Keep technical manifests behind disclosure and preserve the minimal glance layer.
 
 ### `VF-0C-08` — local-slice acceptance
+
+Checkpoint on 2026-08-10: steps 1–3 and the play/seek/approve/download parts of step 4 passed in
+installed Chrome at commit `eca15bdd539a273c7e59d110729eea54c69685b8`. The downloaded
+2,289,067-byte MP4 exactly matches the reviewed output SHA-256
+`177edc7755ff822f306827256bf7a28bcc2d588da9fc78f04fd034a73e0c7285`. The installed-Chrome
+control policy blocks direct `file://` navigation and forbids an alternate-browser workaround, so
+the gate remains open for the user to open that downloaded path in Chrome, play, and seek once.
+Evidence: `evidence/acceptance/VF-0C-08/2026-08-10-local-chrome`.
 
 Serial checkpoint:
 

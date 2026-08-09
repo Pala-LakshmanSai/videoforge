@@ -2,7 +2,7 @@
 
 Status: see `CURRENT_STATE.yaml` (currently `implementation_in_progress`)
 Context schema: `1.5`  
-Last updated: `2026-08-09`
+Last updated: `2026-08-10`
 
 This folder is the durable project brain for new AI chats. It records what is approved, what is prohibited, what must still be benchmarked, and how to develop the product. Do not load every file blindly; use the read profiles in `MANIFEST.yaml`.
 
@@ -121,7 +121,7 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 
 ## First implementation rule
 
-Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve the accepted fixture shell, prove the local short-video walking slice, establish minimal durable orchestration, and run only explicitly authorized capped viability spikes. Do not wait until the end to integrate.
+Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve the accepted fixture shell, close the one remaining manual downloaded-file replay checkpoint for the local short-video slice, establish minimal durable orchestration, and run only explicitly authorized capped viability spikes. Do not wait until the end to integrate.
 
 ## Context navigation
 

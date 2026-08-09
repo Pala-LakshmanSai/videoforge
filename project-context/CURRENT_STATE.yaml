@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-09T17:36:44Z"
+updated_at: "2026-08-09T18:38:16Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: true
 current_milestone: phase_0c_local_walking_slice_acceptance
-current_task: VF-UI-SURFACE-001
+current_task: VF-0C-08
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -17,15 +17,15 @@ repository:
   base_commit: "1ac161dbf6b8fbc08568dc0456a5c6f6ee8d8992"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
-  verified_implementation_commit: "3ec957c9ecd2c06cd12ad50c5d183f56d907c8e3"
-  last_good_commit: "3ec957c9ecd2c06cd12ad50c5d183f56d907c8e3"
+  verified_implementation_commit: "eca15bdd539a273c7e59d110729eea54c69685b8"
+  last_good_commit: "eca15bdd539a273c7e59d110729eea54c69685b8"
   dependency_policy:
     ajv: "8.20.0"
     note: "Security override of the original 8.17.1 pin: 8.17.1 is affected by a moderate ReDoS advisory."
 
 live_development:
   expected_url: "http://localhost:4173"
-  lan_url: "http://192.168.1.36:4173"
+  lan_url: null
   public_review_url: null
   tunnel:
     state: stopped
@@ -33,11 +33,11 @@ live_development:
     pid: null
     lifetime: null
   server_state: running
-  dev_server_pid: 65282
-  owner_task_id: VF-UI-SURFACE-001
-  health_checked_at: "2026-08-09T17:36:44Z"
-  health_commit: "709e45d"
-  chrome_route: "http://localhost:4173/usage?fixture=happy_generating"
+  dev_server_pid: 81134
+  owner_task_id: VF-0C-08
+  health_checked_at: "2026-08-09T18:38:16Z"
+  health_commit: "eca15bd"
+  chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
   provider_calls_authorized: false
@@ -66,72 +66,56 @@ live_development:
       - DEC_UX_004
 
 active_ownership:
-  - task_id: VF-UI-SURFACE-001
-    owner: root_ui_lane
+  - task_id: VF-0C-08
+    owner: root_verification_lane
     paths:
-      - apps/web/src/screens/UsageScreen.tsx
-      - apps/web/src/styles/tokens-base.css
-      - apps/web/src/styles/shell.css
-      - apps/web/src/styles/components.css
-      - apps/web/src/styles/features/queue.css
-      - apps/web/src/styles/features/project-review.css
-      - apps/web/src/styles/features/preset-hubs.css
-      - apps/web/src/styles/features/library-usage-settings.css
-      - apps/web/src/styles/responsive.css
-      - apps/web/tests/e2e/shell.spec.ts
       - project-context/**
 
 recommended_next_task:
   task_id: VF-0C-08
   milestone: phase_0c_local_walking_slice_acceptance
   read_profile: implementation_sequence
-  goal: "Complete the real-Chrome local-slice checkpoint: create from the owned narration, observe the real local pipeline, play and seek the 1080p30 MP4, approve it, download it, and replay the exact downloaded bytes."
+  goal: "Close the one remaining manual checkpoint by opening the already downloaded, hash-verified MP4 in Chrome, playing it, and seeking once; then advance to VF-1-01."
   dependencies:
     - "GATE_UI_001 closed"
-    - "provider-free local pipeline and API integration commit f635604075d9ff768e98a28200fcb732ee6c4083"
-    - "user review of dock refinement commit 277e18f5c370d445ec9c69c7447ddcad3287629e and surface-separation refinement commit 709e45df46a4276541334ef9dcbdf12b5863ffee"
+    - "provider-free local implementation and forced verification commit eca15bdd539a273c7e59d110729eea54c69685b8"
+    - "real Chrome create/pipeline/play/seek/approve/download checkpoint recorded in evidence/acceptance/VF-0C-08/2026-08-10-local-chrome"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
-  live_route: "http://localhost:4173"
+  live_route: "file:///Users/lakshmansai/Downloads/videoforge-local-owned-slice.mp4"
   fixture_scenario: local_owned_short_slice
   required_handoff:
-    - "real Chrome playback and seek proof"
-    - "approval bound to exact candidate ID, ETag, and SHA-256"
-    - "queryless download with exact filename and body SHA-256"
-    - "provider calls remain off and authorized spend remains $0"
-    - "record tool/model versions, input/output hashes, console/network result, and evidence path"
+    - "manual confirmation that the downloaded filesystem path itself plays and seeks in Chrome"
+    - "update CURRENT_STATE to Phase 1 only after that confirmation"
 
 last_green:
   commands:
-    - "pnpm verify"
-    - "pnpm --filter @videoforge/web test"
-    - "pnpm --filter @videoforge/web typecheck"
-    - "pnpm --filter @videoforge/web lint"
-    - "pnpm --filter @videoforge/web build"
-    - "pnpm --filter @videoforge/web test:chrome"
-    - "Real Chrome 2544x1161 multi-route surface geometry, console, and visual audit"
-  checked_at: "2026-08-09T17:36:44Z"
+    - "pnpm test:local-slice"
+    - "TURBO_FORCE=true pnpm verify"
+    - "Real Chrome create, pipeline observation, playback, seek, approve, and exact download"
+    - "shasum -a 256 /Users/lakshmansai/Downloads/videoforge-local-owned-slice.mp4"
+    - "ffprobe downloaded MP4"
+  checked_at: "2026-08-09T18:38:16Z"
   result: pass
-  evidence: "evidence/gates/GATE_UI_001/2026-08-09-surface-separation-refinement"
+  evidence: "evidence/acceptance/VF-0C-08/2026-08-10-local-chrome"
   counts:
-    web_server_component_tests: 118
+    web_server_component_tests: 132
     dock_motion_unit_tests: 7
     typescript_contract_jcs_tests: 50
     python_contract_tests: 39
     fixture_registry_and_local_slice_tests: 12
     configuration_tests: 4
     pipeline_tests: 19
-    isolated_worker_tests: 37
+    isolated_worker_tests: 43
+    root_script_tests: 6
     synchronized_contract_files: 47
-    focused_shell_chrome_journeys: 22
-    playwright_chrome_journeys: 28
+    playwright_chrome_journeys: 30
   notes:
-    - "The final pnpm verify passes formatting, TypeScript and Python linting, typechecking, every listed test suite, canonical contract synchronization, context validation, tracked-file secret scanning, production build, the 28-journey Chrome matrix, and dependency audit."
-    - "Every audited leaf screen now uses a 24 px desktop / 20 px compact top-level rhythm. Usage's two metric groups measure 24 px apart; Library declares a 20 px output gap; notices and their following content measure 24 px apart."
-    - "Structural borders use dedicated 0.22/0.30/0.48 alpha tiers with dark depth shadows and restrained cobalt/violet halos. Project stage rows measure 6 px apart, media lanes 12 px apart, and Settings cards 18 px apart."
-    - "Real Chrome visually reviewed Usage, Queue, Project, Review, Avatar Hub, Image Styles with a blocker notice, Library, Settings, and New Avatar. All measured routes had zero horizontal overflow and no console errors or warnings; automated journeys also found no failed or external requests."
-    - "The scale-only dock remains fixed-bottom with the accepted 48x44 resting icon, 1.75x peak, neutral mobile/reduced-motion modes, and no lift/shift/backing transform."
-    - "The development server reports commit 709e45d, fixture mode, synthetic data, provider calls unauthorized, and $0 authorized spend."
+    - "The forced verify executed every Turbo task with zero cache hits and passed formatting, TypeScript/Python/root-script linting, typechecking, all listed suites, contract synchronization, context validation, secret scanning, production build, route-tree stability, and 30 branded-Chrome journeys."
+    - "Real Chrome created the local project, observed the real pipeline, played and sought the 1920x1080p30 MP4, checked avatar-full/image-full/split/hard-cut/zoom output, approved the exact candidate, and downloaded the exact queryless MP4 with zero console warnings or errors."
+    - "The reviewed and downloaded files are the same 2,289,067 bytes with SHA-256 177edc7755ff822f306827256bf7a28bcc2d588da9fc78f04fd034a73e0c7285."
+    - "Direct file-URL replay is the only open acceptance item because the installed-Chrome control policy blocks file:// navigation and forbids a workaround; the manual path is recorded in the evidence."
+    - "The development server is restored to loopback-only fixture mode at commit eca15bd with provider calls unauthorized and $0 authorized spend."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -146,19 +130,19 @@ blocking_gates_for_production:
   - GATE_COST_001
 
 next_tasks:
-  - "VF-0C-08: complete human playback, seek, approve, exact download, and replay acceptance in the user's real Chrome"
+  - "VF-0C-08: manually open the exact downloaded MP4 in Chrome, play, and seek once; no code change is required"
+  - "VF-1-01: after the manual replay confirmation, lock the additive relational schema and repository contracts"
   - "VF-0D: capped provider viability preparation may overlap after local contracts lock; real calls require one explicit authorization envelope"
-  - "Phase 1: durable auth/Postgres/R2/task-attempt-outbox/workflow slice after Phase 0C"
   - "Phase 2 onward: timing, prompt/image, avatar, custom-style, render, fallback, fault, and production waves exactly as ordered in the execution plan"
 
 notes:
   - "This is a replace-in-place snapshot, not a progress log."
   - "The user accepted the Phase 0B UI on 2026-08-09. GATE_UI_001 is closed; later tasks preserve this baseline unless the user explicitly changes it or a verified regression is repaired."
-  - "The application-wide surface-separation refinement requested on 2026-08-09 is technically verified at commit 709e45d and remains pending the user's visual review; DEC_UX_004 records the new normative spacing and boundary treatment."
+  - "The application-wide surface-separation and scale-only dock refinements requested on 2026-08-09 are implemented and technically verified; DEC_UX_004 records the normative spacing and boundary treatment."
   - "21_IMPLEMENTATION_EXECUTION_PLAN.md owns remaining sequencing, task IDs, safe parallel ownership, integration order, checkpoints, and authorization boundaries."
   - "The Phase 0A fixture-contract foundation is implemented. Complex non-Create Zod/Pydantic validators are intentionally schema-backed entry points rather than independent hand models."
   - "DEC_CONTRACT_001 is locked: TypeScript is the sole JCS authority; Python validates canonical schemas and exact byte hashes while treating canonical JSON hashes as opaque."
-  - "A bounded provider-free real local media slice now exists and the API-level acceptance harness is green. VF-0C-08 remains open until the exact MP4 is played, sought, approved, downloaded, and replayed in the user's real Chrome."
+  - "A bounded provider-free real local media slice exists and the API-level harness plus real-Chrome create/play/seek/approve/download path are green. VF-0C-08 remains open only for manual replay of the already hash-verified downloaded path."
   - "Durable database/object storage, production authentication, and provider transport do not exist yet. Fixture and bounded local state are not production persistence claims."
   - "The user authorized future RunPod use and credential retrieval from their signed-in Chrome profile, but no exact provider-task spend envelope is active. No key has been fetched, no endpoint selected, no RunPod resource changed, and the next task authorizes $0/provider-off work only."
-  - "No public tunnel is active. The LAN URL works only for devices on the same network; localhost remains the authoritative development URL."
+  - "No public tunnel or LAN listener is active. The development server binds only to loopback and localhost remains the authoritative URL."

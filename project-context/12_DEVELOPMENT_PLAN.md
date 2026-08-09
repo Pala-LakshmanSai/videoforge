@@ -1,6 +1,6 @@
 # Development plan
 
-Status: implementation underway; Phase 0A, user-approved Phase 0B, and Phase 0C implementation through VF-0C-07 are complete; VF-0C-08 real-Chrome acceptance is active
+Status: implementation underway; Phase 0A, user-approved Phase 0B, and Phase 0C implementation are complete; VF-0C-08 passed through exact download and awaits one manual downloaded-file replay in Chrome
 Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
 
 ## Delivery strategy
@@ -72,11 +72,13 @@ Exit: user approves the core visual direction and can play through success/failu
 
 ## Phase 0C: local walking vertical slice
 
-Current (2026-08-09): the provider-free adapter, whisper.cpp transcription, deterministic
+Current (2026-08-10): the provider-free adapter, whisper.cpp transcription, deterministic
 scheduler, FFmpeg render/probe, API, playback/download UI, and automated acceptance are
-implemented. State is process-local and the bridge direct; durable outbox/envelope recovery belongs
-to Phase 1. Phase 0C closes after VF-0C-08 proves play, seek, approval, exact download/hash, and
-downloaded-file replay in the user's real Chrome.
+implemented. Real Chrome has created the project, observed the pipeline, played and sought every
+legal layout, approved the exact candidate, and downloaded an independently hash-verified MP4.
+State is process-local and the bridge direct; durable outbox/envelope recovery belongs to Phase 1.
+Phase 0C remains open only until the downloaded filesystem path is manually replayed in Chrome;
+the agent-controlled Chrome surface blocks direct `file://` navigation and no workaround is allowed.
 
 - Use 30–120 seconds of owned/synthetic English audio.
 - Use one owned synthetic ready Avatar Profile fixture, then run local `whisper.cpp base.en`, deterministic phrase/timeline scheduling, `timeline-plan/v1`, fixture image/avatar slots, `resolved-render-manifest/v1`, real FFmpeg zoom/crops/hard cuts/audio, and technical QA.
