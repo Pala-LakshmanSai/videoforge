@@ -36,6 +36,8 @@ Every row below is `APPROVED` by the user and recorded in this planning session 
 | `DEC_QUEUE_001` | Postgres is authoritative; RunPod is execution transport | Durable multi-user recovery and audit |
 | `DEC_RUNPOD_001` | Scale-to-zero endpoints first; all operations via API | Simple, no console, no idle GPU |
 | `DEC_UX_001` | Fixture-first UI visible in real Chrome throughout development | User can identify breakage and guide UX live |
+| `DEC_UX_002` | Use a large-scale minimal production-console UI with an active-project command strip, oversized project/progress hierarchy, strong vertical pipeline, live artifact panel, and floating navigation dock | User rejected the first shell as too small/zoomed-out, dense, and explanatory, then explicitly approved the hierarchy inspired by `assets/ui/swipecut-ui-reference.jpg` on 2026-08-09 |
+| `DEC_UX_003` | Avatar and Image Style surfaces are visual-first; real authorized thumbnails/covers and version-bound reference/example galleries are visible on demand while dense technical detail stays progressively disclosed | User explicitly required seeing every avatar preset and every style's imagery without clutter on 2026-08-09; custom uploaded references must remain distinct from built-in owned/generated examples |
 
 ## User-approved avatar router
 
@@ -64,7 +66,7 @@ In MVP, deterministic media checks can auto-pass technical validity, but the use
 | `GATE_GPU_001` | Benchmark tested model/GPU allowlists | Advanced UI cannot expose untested cards |
 | `GATE_RUNPOD_001` | Prove API repair after RunPod's idle max-worker reduction/config drift, timeout/TTL/result reconciliation, ambiguous dispatch handling, worker execution claims, and duplicate-cost visibility | Required before live RunPod dispatch is enabled |
 | `GATE_COST_001` | Full cold/warm 30-minute measurement on new RunPod account | Replace planning estimates/SLO confidence |
-| `GATE_UI_001` | User approves live Chrome shell and creation/progress/review flows | Lock visual tokens/layout |
+| `GATE_UI_001` | User approves the redesigned large/minimal live Chrome shell, visual preset galleries, and creation/progress/review flows at desktop and mobile widths | Lock visual tokens, scale, hierarchy, navigation, and progressive-disclosure behavior |
 
 ## Proposed values awaiting evidence/user sign-off
 

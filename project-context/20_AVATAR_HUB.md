@@ -7,7 +7,7 @@ Read when: implementing reusable avatars, avatar source upload/validation, proje
 
 VideoForge has a workspace-scoped **Avatar Hub**. A user creates a named avatar once, approves its private source, and reuses it from a searchable selector for later videos. Optional standard test clips can add confidence but are not required to save or select it. Ordinary Create Project never asks for a fresh avatar upload.
 
-Primary sidebar navigation uses the explicit labels **Avatar Hub** and **Image Styles Hub**. These are sibling preset libraries, but they solve different problems:
+Primary floating navigation uses the explicit labels **Avatar Hub** and **Image Styles**. These are sibling preset libraries, but they solve different problems:
 
 - an Avatar Profile stores one presenter identity/source and model-compatibility evidence;
 - an Image Style stores reusable visual-treatment guidance for generated images.

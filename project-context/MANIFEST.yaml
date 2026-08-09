@@ -145,6 +145,10 @@ hard_rules:
   - no_style_vision_call_during_ordinary_video_production
   - project_requires_ready_stored_avatar_profile_no_inline_avatar_upload
   - avatar_profile_version_and_runtime_source_pinned_per_project_revision
+  - large_minimal_ui_with_progressive_disclosure
+  - visual_avatar_and_image_style_presets
+  - custom_style_references_distinct_from_builtin_generated_examples
+  - floating_navigation_keyboard_reachable_at_1024
 
 approved_decisions:
   DEC_SCOPE_001: image_only_broll_mvp
@@ -174,6 +178,8 @@ approved_decisions:
   DEC_QUEUE_001: postgres_authoritative_runpod_execution_transport
   DEC_RUNPOD_001: scale_to_zero_api_only_endpoints_first
   DEC_UX_001: fixture_first_live_chrome_hot_reload
+  DEC_UX_002: large_minimal_reference_inspired_production_console
+  DEC_UX_003: visual_presets_with_on_demand_reference_and_audit_details
 
 open_gates:
   GATE_AVATAR_001: avatarforcing_exact_avatar_4090_fit_speed_quality
@@ -187,7 +193,7 @@ open_gates:
   GATE_GPU_001: produce_tested_compatible_gpu_allowlists
   GATE_RUNPOD_001: verify_endpoint_config_reconciliation_dispatch_ambiguity_timeout_and_result_lifecycle
   GATE_COST_001: replace_planning_ranges_with_new_account_measurements
-  GATE_UI_001: user_approves_live_chrome_shell_and_core_flows
+  GATE_UI_001: user_approves_large_minimal_live_chrome_shell_visual_preset_galleries_and_core_flows
 
 deferred:
   - ai_broll_video

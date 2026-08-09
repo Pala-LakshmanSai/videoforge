@@ -237,13 +237,13 @@ The compiler uses one versioned, documented separator and normalization rule. Ha
 
 ### Hub
 
-Add **Image Styles Hub** to the primary sidebar. Each card shows:
+Add **Image Styles** to primary navigation. Each card shows:
 
 - Consented retained low-resolution thumbnail, accepted original Mage cover, or deterministic palette/medium placeholder.
 - Name and one-line summary.
 - Default/system badge where applicable.
 - Style lifecycle (`Active` or `Archived`), active published version, and any separate draft-version state (`Draft`, `Analyzing`, `Needs review`, or `Failed`).
-- Reference count, active version, and last updated.
+- Uploaded-reference count or truthful owned/generated-example count, active version, and last updated. Every authorized image for the exact version is available through the card's focused details sheet and keyboard lightbox.
 - Use, view, create new version, duplicate, test, and archive actions as permitted.
 
 The built-in default can be viewed, tested, used, and duplicated; it cannot be edited, deleted, or archived.

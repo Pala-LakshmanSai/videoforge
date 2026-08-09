@@ -91,7 +91,7 @@ The app exposes a development-only scenario selector and deterministic IDs:
 
 Fixtures use owned/synthetic assets only. The selected scenario is visible in development UI and addressable by a stable route/query in Playwright; refresh and `dev:open` reproduce it. It never ships enabled in production.
 
-In local/fixture mode, a small development-only status ribbon shows provider mode, commit, fixture ID, API health, and whether the viewed state is synthetic. It is tree-shaken or hard-disabled in production builds. Hot reload must preserve the current project draft, selected preset versions, active route, and fixture ID unless the edited contract makes that state invalid; if invalidated, show the reason instead of silently resetting.
+In local/fixture mode, a compact development-only `Fixture`/health control exposes provider mode, commit, fixture ID, API health, synthetic-data status, and `$0` authorization on demand without consuming a persistent full-width ribbon. It is tree-shaken or hard-disabled in production builds. Hot reload must preserve the current project draft, selected preset versions, active route, and fixture ID unless the edited contract makes that state invalid; if invalidated, show the reason instead of silently resetting.
 
 ## Walking vertical checkpoints
 

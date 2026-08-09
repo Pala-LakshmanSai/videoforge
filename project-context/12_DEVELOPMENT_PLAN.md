@@ -50,13 +50,13 @@ Exit: TypeScript and Python validate identical fixtures; root commands work; a p
 
 ## Phase 0B: fixture UI shell in live Chrome
 
-- Implement tokens, persistent/collapsible sidebar, queue, Create Project, Avatar Hub, Image Styles Hub/wizard, progress, review, usage, settings, and library against deterministic fixtures.
+- Implement tokens, the active-project command strip and floating navigation dock, queue, Create Project, Avatar Hub, Image Styles Hub/wizard, progress, review, usage, settings, and library against deterministic fixtures.
 - Implement every scenario ID from `19_IMPLEMENTATION_PLAYBOOK.md`, including preset draft preservation/version drift, extra-keyword off/conflict behavior, empty/invalid/ready/archived avatar states, cold start, style analysis, partial failure, fallback approval, budget block, ambiguous dispatch, reconciliation, cancellation, ready-for-review, and approved.
 - Keep `http://localhost:4173` running/reused in the user's actual Chrome; inspect workflows as a human and capture approved feedback in `05_UI_UX_SPEC.md`.
 - `+ New style` must preserve the entire project draft and return/select after publish.
 - `+ New avatar` must preserve the entire project draft and return/select after approval; Create Project never offers an inline avatar upload.
 
-Exit: user approves the core visual direction and can play through success/failure flows without real provider spend; hot reload preserves the active draft/fixture, and the fixture-only status ribbon makes mode/health/commit unmistakable.
+Exit: user approves the core visual direction and can play through success/failure flows without real provider spend; hot reload preserves the active draft/fixture, and the compact fixture/health disclosure makes mode, health, commit, synthetic data, and `$0` authorization unmistakable on demand.
 
 ## Phase 0C: local walking vertical slice
 

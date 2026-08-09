@@ -253,26 +253,49 @@ Pass: no duplicate accepted asset or corrupt state, any duplicate dispatch/charg
 - Analyzer sees only server-created short-lived URLs; reference pixels/visible instructions cannot alter system behavior.
 - Rate limits on mutation, signing, and callbacks.
 
+## UI shell presentation gate
+
+Automated fixture/browser checks and the user's real-Chrome review must jointly verify the approved large-scale minimal direction. Screenshots can support comparison but never replace interaction, console, request, focus, and responsive checks.
+
+- Direct page titles, one dominant action, and a calm glance layer replace slogans, repeated implementation rationale, and walls of persistent success messages.
+- Base/secondary text, controls, hit targets, media, panels, and spacing meet the scale ranges in `05_UI_UX_SPEC.md`; no CSS `zoom` or viewport trick simulates a larger interface.
+- The active-project track, oversized project title, large factual progress hero, metric cards, vertical pipeline, and latest-artifact panel preserve authoritative counts/states without fabricating smooth work.
+- Floating navigation reports the active route, is fully keyboard reachable, and exposes Queue, New Project, active Progress, Avatar Hub, Image Styles, Library, Usage, and Settings at 1024 px. Any narrow-mobile `More` surface remains explicit and discoverable.
+- Every returned Avatar Hub preset renders its authorized thumbnail with a useful accessible name; a missing/failed thumbnail has a truthful labelled fallback and never silently becomes the normal initials-only design.
+- Every style card renders its allowed cover or labelled placeholder. A custom style's `References (N)` remains closed initially, opens exactly the version-bound authorized images, and never leaks another workspace's asset.
+- The manually seeded built-in style reports zero uploaded references. Owned/generated gallery media is labelled `Examples (N)`, never references; no Ranga research frame or other third-party research asset ships in the web bundle.
+- Reference/example mosaics load without broken requests. Opening an item provides a larger lightbox and its on-demand alias/dimensions/version/evidence/rights/retention data where applicable.
+- Avatar and Image Style creation preserve the selected/uploaded imagery needed by the fixture round trip; returning to Create Project shows the new preset image and exact selected version without losing the verified voiceover handle or other draft fields.
+- Visual Avatar and Image Style selectors support search plus arrow/Enter/Escape operation, expose image/name/version/status, and persist the exact version ID. A native text-only select is not accepted as the finished selector.
+- Details are closed by default. Side sheets/accordions/lightboxes expose complete inspect/audit data, trap/manage focus correctly, close with Escape, restore focus, and do not depend on hover.
+- Pending actions immediately disable duplicates and show concise progress/next-check state. Active blockers, charges, consent, spend caps, budget approvals, and destructive controls remain in the primary layer even when technical details are collapsed.
+- At 1920, 1440, 1280, and 1024 CSS-pixel desktop widths plus representative 430 and 390 CSS-pixel mobile widths, the page has no horizontal overflow, controls remain legible, reference galleries remain usable, and the floating dock does not cover Generate, Approve, Cancel, or budget controls.
+- Status is conveyed with text/icon as well as color; focus contrast meets WCAG AA; reduced-motion mode retains complete status meaning.
+- Fixture verification makes no unexpected provider request, all visual fixture assets are owned/synthetic and same-origin, and the compact development control truthfully exposes fixture ID, commit, API health, synthetic mode, and `$0` authorization on demand.
+
 ## Chrome acceptance journey
 
 In the user's real Chrome:
 
 1. Sign in.
-2. Open Avatar Hub from the sidebar, create a named private avatar once, leave/resume if needed, approve it, and see its image/name in the searchable project selector.
-3. Create a private Image Style from references, leave/resume analysis, review/edit it, optionally test, and publish it.
-4. Create a project with real audio, select the stored avatar and new style, and verify no avatar upload control/request runs.
-5. Enter extra image keywords, verify off means `Not applied`, enable the toggle, and inspect effective settings.
-6. See immediate preflight/pending state.
-7. Observe queue/cold-start/model progress and confirm no style analyzer or Avatar Hub onboarding test runs during the project.
-8. Open another user/session and verify ownership/fair queue plus avatar/style isolation.
-9. Review full/split preview from the same clip and style-aware image prompts.
-10. Force/recover one image failure and one avatar fallback path; verify the fallback used the pinned source.
-11. Cancel a separate test project.
-12. Render, seek, play audio, download, and verify pinned avatar/style/keyword components in the manifest.
-13. Confirm the automatic result says `Ready for review`; use the contact sheet, flag/regenerate a visible defect, then explicitly approve the final revision.
-14. Confirm video cost, separate one-time style/optional avatar-test costs, and retention.
-15. From an in-progress project draft, open `+ New avatar`, save or cancel, and return with title/voiceover/style/script/settings intact; the new ready avatar is selected without re-upload.
-16. Repeat the draft-preserving round trip for `+ New style` and retain the avatar selection plus all execution-profile overrides.
+2. Use the floating navigation dock with keyboard and pointer; verify its active route, 1024 px layout, and narrow-mobile safe area without hidden critical controls.
+3. Open Avatar Hub, verify every preset has a large authorized image, then create a named private avatar once, leave/resume if needed, approve it, and see its image/name/version in the searchable project selector.
+4. Open Image Styles, inspect the built-in owned/generated examples without calling them uploaded references, then open every reference image for a custom style and exercise the keyboard lightbox/details sheet.
+5. Create a private Image Style from references, keep the uploaded mosaic visible through analysis/review, leave/resume analysis, review/edit it, optionally test, and publish it.
+6. Create a project with real audio, select the stored avatar and new style through visual pickers, and verify no avatar upload control/request runs.
+7. Enter extra image keywords, verify off means `Not applied`, enable the toggle, and inspect effective settings.
+8. See immediate preflight/pending state without duplicate submission or persistent non-actionable explanation panels.
+9. Observe the large authoritative progress hero, parallel lanes, pipeline, queue/cold-start/model progress, and latest artifact; confirm no style analyzer or Avatar Hub onboarding test runs during the project.
+10. Expand and collapse project technical details, then verify the primary layer remains concise while IDs, pinned inputs, worker evidence, and costs remain reachable.
+11. Open another user/session and verify ownership/fair queue plus avatar/style isolation.
+12. Review full/split preview from the same clip and style-aware image prompts.
+13. Force/recover one image failure and one avatar fallback path; verify the actionable blocker remains visible and the fallback used the pinned source.
+14. Cancel a separate test project.
+15. Render, seek, play audio, download, and verify pinned avatar/style/keyword components in the manifest.
+16. Confirm the automatic result says `Ready for review`; use the contact sheet, flag/regenerate a visible defect, then explicitly approve the final revision.
+17. Confirm video cost, separate one-time style/optional avatar-test costs, and retention.
+18. From an in-progress project draft, open `+ New avatar`, save or cancel, and return with title/voiceover/style/script/settings intact; the new ready avatar image is visible and selected without re-upload.
+19. Repeat the draft-preserving round trip for `+ New style`, verify the new cover/reference gallery, and retain the avatar selection plus all execution-profile overrides.
 
 No milestone is accepted solely from screenshots.
 

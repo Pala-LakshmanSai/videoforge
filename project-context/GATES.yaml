@@ -72,6 +72,6 @@ gates:
   GATE_UI_001:
     status: open
     blocks: visual_system_lock
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#chrome-acceptance-journey"
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#ui-shell-presentation-gate"
     owner: user
     last_run: null
