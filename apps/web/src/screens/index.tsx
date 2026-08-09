@@ -989,10 +989,10 @@ export function CreateProjectScreen() {
                         <strong>{mode.replace("_", " ")}</strong>
                         <span>
                           {mode === "LOWEST_COST"
-                            ? "Cheapest tested profiles"
+                            ? "Minimize eligible cost"
                             : mode === "BALANCED"
-                              ? "Recommended cost and speed"
-                              : "Faster tested endpoint priority"}
+                              ? "Balance cost and speed"
+                              : "Prioritize eligible speed"}
                         </span>
                       </button>
                     ))}
