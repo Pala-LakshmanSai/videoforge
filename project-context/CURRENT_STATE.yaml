@@ -1,67 +1,72 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-09"
+updated_at: "2026-08-09T06:45:09Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: true
-current_milestone: phase_0a_private_repo_and_contract_skeleton
-current_task: VF-0A
+current_milestone: phase_0b_fixture_chrome_shell_awaiting_ui_approval
+current_task: GATE_UI_001
 
 repository:
   initialized: true
   expected_visibility: private
   branch: main
-  base_commit: null
-  last_good_commit: null
+  base_commit: "a8439d28cf8d2403630260770f0e29d87c3a6c8f"
+  last_good_commit: "3b3d9165a31d8c99c331a2958152f4155edb9bd0"
 
 live_development:
   expected_url: "http://localhost:4173"
-  server_state: stopped
-  dev_server_pid: null
-  owner_task_id: VF-0A
-  health_checked_at: null
-  chrome_route: null
-  fixture_scenario: null
+  lan_url: "http://192.168.1.36:4173"
+  public_review_url: "https://enclosure-insert-theatre-wellington.trycloudflare.com"
+  tunnel:
+    state: running
+    kind: cloudflare_quick_tunnel
+    pid: 77968
+    lifetime: until_local_process_stops
+  server_state: running
+  dev_server_pid: 77941
+  owner_task_id: GATE_UI_001
+  health_checked_at: "2026-08-09T06:45:09Z"
+  chrome_route: "https://enclosure-insert-theatre-wellington.trycloudflare.com/projects/project_fixture_001/review?fixture=project_ready_for_review"
+  fixture_scenario: project_ready_for_review
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
   last_user_checkpoint:
-    result: not_started
-    commit: null
-    route: null
-    scenario: null
-    checked_at: null
+    result: awaiting_user_approval
+    commit: "3b3d9165a31d8c99c331a2958152f4155edb9bd0"
+    route: "https://enclosure-insert-theatre-wellington.trycloudflare.com/projects/project_fixture_001/review?fixture=project_ready_for_review"
+    scenario: project_ready_for_review
+    checked_at: "2026-08-09T06:45:09Z"
     feedback_refs: []
 
-active_ownership:
-  - task_id: VF-0A
-    owner: root
-    scope: "Repository bootstrap, shared contracts, stable commands, and fixture shell integration"
+active_ownership: []
 
 recommended_next_task:
-  task_id: VF-0A
-  milestone: phase_0a_private_repo_and_contract_skeleton
-  read_profile: repo_bootstrap
-  goal: "Initialize the private repository and contract-first monorepo, implement the stable no-spend developer commands, and commit a green cross-language contract skeleton."
+  task_id: GATE_UI_001
+  milestone: phase_0b_fixture_chrome_shell
+  read_profile: ui_shell
+  goal: "Review the live fixture shell on desktop or mobile, approve the core visual direction, or provide bounded UI feedback before Phase 0C begins."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
-  live_route: null
-  fixture_scenario: null
+  live_route: "https://enclosure-insert-theatre-wellington.trycloudflare.com/projects/project_fixture_001/review?fixture=project_ready_for_review"
+  fixture_scenario: project_ready_for_review
 
 last_green:
   commands:
-    - "project-context/scripts/validate-context.sh"
-    - "project-context/scripts/validate-schemas.sh"
-    - "bash -n project-context/scripts/validate-context.sh project-context/scripts/validate-schemas.sh && node --check project-context/scripts/validate-schemas.cjs"
-    - "AJV draft-2020 validation of Create Project, Avatar Profile, project revision, timeline plan, resolved render, production manifest, and default Image Style fixtures"
-    - "AJV rejection of legacy inline-avatar upload, over-budget request, Avatar compatibility state/evidence mismatch, and renderer-profile/crop mismatch fixtures; Image Style analyzer schema compile"
-  checked_at: "2026-08-09"
+    - "pnpm verify"
+    - "pnpm doctor"
+    - "pnpm dev:status"
+    - "curl -fsS --max-time 15 https://enclosure-insert-theatre-wellington.trycloudflare.com/api/health?fixture=project_ready_for_review"
+    - "Real Chrome: queue, preset and keyword round trips, cold start, exact retry, ambiguous dispatch blocker, cancellation, review, API-backed approval, compact layout, and keyboard focus"
+  checked_at: "2026-08-09T06:45:09Z"
   result: pass
   notes:
-    - "Context validator: 21 JSON files, 20 focused read profiles, 27 decisions, and 12 gates; zero warnings or errors."
-    - "All positive machine fixtures validate; the removed IMAGE_ASSET/project-local avatar shape, a cap above $2.00, mismatched Avatar compatibility provenance, and a SkyReels-profile/AvatarForcing-crop mismatch are rejected as intended."
-    - "The live-development profile locks doctor/status/open/verify commands, strict port reuse, fixture-only status visibility, draft-preserving hot reload, and baseline/after-change Chrome console/network checks."
-    - "Schema evidence is reproducible through the committed pinned-Ajv validator; no ad-hoc command reconstruction is required."
+    - "pnpm verify passed formatting, linting, typechecking, 39 web/server tests, 14 Ajv/Zod contract tests, 15 Pydantic tests, 6 scenario tests, 2 config tests, 4 isolated Python worker tests, 19-file contract sync, context validation, production build, and 8 Playwright Chrome journeys."
+    - "The automated Create Project journey attaches synthetic audio, pins the exact Avatar Profile and default published style, runs preflight/create through the fixture API, and transitions to the generating fixture with zero unexpected external requests."
+    - "Committed-source Chrome reload at the public review route showed API ok, commit 3b3d916, no console warnings/errors, locked composition grammar, duplicate-submit locks, and no horizontal overflow at the 1024 CSS-pixel breakpoint."
+    - "The public tunnel health response reports fixture mode, synthetic data, provider calls unauthorized, and $0 authorized spend."
+    - "The user's Chrome extension still needs Allow access to file URLs before a local WAV can be attached through that controlled Chrome session; automated Chrome completed the same submission path."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -77,11 +82,13 @@ blocking_gates_for_production:
   - GATE_UI_001
 
 next_tasks:
-  - "0A: initialize a private Git repository and the contract-first monorepo, including project-revision v2 Avatar Profile bindings"
-  - "0B: launch the fixture-backed UI with Avatar Hub, Image Styles Hub, and project selectors at the stable Chrome URL"
+  - "GATE_UI_001: user reviews and approves the live fixture shell or provides bounded UI feedback"
   - "0C: complete the local short-video walking skeleton"
   - "0D: run only explicitly authorized capped provider/model spikes"
 
 notes:
   - "This is a replace-in-place snapshot, not a progress log."
   - "Update it at every implementation handoff and after each accepted milestone."
+  - "VF-0A and the VF-0B implementation are complete; Phase 0B remains open only for the user's visual-direction approval."
+  - "The user authorized future RunPod use and credential retrieval from their existing signed-in Chrome session. No task-specific model/endpoint spend cap exists yet, so no key was fetched and this checkpoint made no provider call."
+  - "The Cloudflare quick-tunnel URL is temporary, fixture-only, and has no uptime guarantee; it ends when the local tunnel process stops."

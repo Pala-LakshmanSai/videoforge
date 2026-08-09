@@ -1,6 +1,6 @@
 # Development plan
 
-Status: ready for explicit user authorization; application implementation has not started  
+Status: implementation underway; Phase 0A and the Phase 0B fixture shell are complete, with `GATE_UI_001` awaiting user approval
 Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
 
 ## Delivery strategy
