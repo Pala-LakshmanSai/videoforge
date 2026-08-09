@@ -2,7 +2,6 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import {
-  createProjectRequestSchema,
   sha256CanonicalJson,
   validateOutputRuleKeywords,
   type CreateProjectRequest,
@@ -24,7 +23,6 @@ import {
   type AvatarProfileResponse,
   type FixtureBootstrapResponse,
   type FixtureProblem,
-  type FixtureProjectDetailResponse,
   type FixtureScenario,
   type FixtureScenarioId,
   type ImageStyleResponse,
@@ -33,25 +31,39 @@ import {
 import { Hono, type Context } from "hono";
 import { z } from "zod";
 
+import type {
+  FixtureSessionState,
+  RegisteredVoiceover,
+  RuntimeProjectDetail,
+  RuntimeProjectSummary,
+  RuntimeProjects,
+} from "./domain/models";
 import { fixtureFromRequest, resolveFixture, safeCommit, type FixtureResolution } from "./fixture";
+import {
+  FIXTURE_SESSION_HEADER,
+  FixtureSessionStore,
+  MAX_CREATED_AVATARS_PER_SESSION,
+  MAX_CREATED_STYLES_PER_SESSION,
+  MAX_REGISTERED_VOICEOVERS_PER_SESSION,
+} from "./fixture-session";
+import {
+  SHA256,
+  canonicalJson,
+  idempotentMutation,
+  projectVersionError,
+  readCreateProjectRequest,
+  readFallbackApprovalRequest,
+  readFinalApprovalRequest,
+  readProjectMutationRequest,
+  readStrictMetadata,
+} from "./mutation";
 import { apiProblem, problemResponse } from "./problem";
 
 const FIXTURE_ESTIMATED_COST_USD = 0.88;
-const FIXTURE_FALLBACK_INCREMENT_USD = 0.18;
 const VERIFIED_FIXTURE_VOICEOVER_HANDLE = /^fixture_voiceover_sha256_[a-f0-9]{64}$/u;
-const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const AVATAR_FIXTURE_PATH = /^\/fixtures\/avatar\/[a-z0-9][a-z0-9._-]*\.svg$/u;
 const STYLE_FIXTURE_PATH = /^\/fixtures\/styles\/[a-z0-9][a-z0-9._-]*\.svg$/u;
 const VOICEOVER_FILENAME = /^[^/\\\0]{1,255}\.(?:aac|flac|m4a|mp3|wav)$/iu;
-const FIXTURE_SESSION_HEADER = "x-videoforge-fixture-session";
-const DEFAULT_FIXTURE_SESSION_ID = "default";
-const MAX_FIXTURE_SESSION_ID_LENGTH = 96;
-const MAX_FIXTURE_SESSION_NAMESPACES = 256;
-const MAX_IDEMPOTENCY_RECORDS_PER_SESSION = 512;
-const MAX_REGISTERED_VOICEOVERS_PER_SESSION = 128;
-const MAX_CREATED_AVATARS_PER_SESSION = 64;
-const MAX_CREATED_STYLES_PER_SESSION = 64;
-const FIXTURE_SESSION_ID = /^[A-Za-z0-9](?:[A-Za-z0-9._:-]{0,95})$/u;
 const FIXTURE_PREVIEW_FILE = resolve(process.cwd(), "public/fixtures/media/watermelon-market.svg");
 
 type FixtureMutationOperation = "PROJECT_CREATE" | "PROJECT_PREFLIGHT";
@@ -64,71 +76,6 @@ const PROJECT_INPUT_PROBLEM_CODES: ReadonlySet<string> = new Set([
   "EXTRA_KEYWORDS_FORBIDDEN_OUTPUT",
   "BUDGET_CAP_EXCEEDED",
 ]);
-
-interface IdempotencyRecord {
-  readonly fingerprint: string;
-  response: Response | null;
-  pending: Promise<Response> | null;
-}
-
-type IdempotencyLedger = Map<string, IdempotencyRecord>;
-
-interface ProjectPins {
-  avatarProfileVersionId: string | null;
-  imageStyleVersionId: string;
-}
-
-type RuntimeProjectSummary = ProjectSummaryResponse & {
-  revisionId: string;
-  versionToken: string;
-  pins: ProjectPins;
-};
-
-type RuntimeProjectDetail = Omit<FixtureProjectDetailResponse, "project"> & {
-  project: RuntimeProjectSummary;
-};
-
-type RuntimeProjects = Map<FixtureScenarioId, Map<string, RuntimeProjectDetail>>;
-
-interface RegisteredVoiceover {
-  assetId: string;
-  checksum: string;
-  filename: string;
-  durationSeconds: number;
-  sampleRate: number;
-  channels: number;
-  verificationState: "VERIFIED";
-  persistedBytes: false;
-  providerCallsAuthorized: false;
-}
-
-interface FixtureSessionState {
-  readonly idempotencyLedger: IdempotencyLedger;
-  readonly runtimeProjects: RuntimeProjects;
-  readonly registeredVoiceovers: Map<string, RegisteredVoiceover>;
-  readonly createdAvatars: AvatarProfileResponse[];
-  readonly createdStyles: ImageStyleResponse[];
-  createdProjectRequest: CreateProjectRequest | null;
-  avatarSequence: number;
-  styleSequence: number;
-}
-
-type FixtureSessionResolution =
-  | { ok: true; id: string; state: FixtureSessionState }
-  | { ok: false; response: Response };
-
-function createFixtureSessionState(): FixtureSessionState {
-  return {
-    idempotencyLedger: new Map(),
-    runtimeProjects: new Map(),
-    registeredVoiceovers: new Map(),
-    createdAvatars: [],
-    createdStyles: [],
-    createdProjectRequest: null,
-    avatarSequence: 0,
-    styleSequence: 0,
-  };
-}
 
 const voiceoverRegistrationSchema = z
   .object({
@@ -360,380 +307,6 @@ function imageStyleCatalog(
   return mergeByVersionId(scenario.snapshot.imageStyles.styles.map(toImageStyleResponse), added);
 }
 
-type CreateProjectRequestResolution =
-  | { ok: true; data: CreateProjectRequest }
-  | { ok: false; response: Response };
-
-function parseJsonBody(
-  rawBody: string,
-): { ok: true; data: unknown } | { ok: false; response: Response } {
-  let payload: unknown;
-  try {
-    payload = JSON.parse(rawBody) as unknown;
-  } catch {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "INVALID_JSON",
-          400,
-          "Request body is not valid JSON",
-          "Send one JSON object as the request body.",
-          false,
-        ),
-      ),
-    };
-  }
-  return { ok: true, data: payload };
-}
-
-function readStrictMetadata<T>(
-  rawBody: string,
-  schema: z.ZodType<T>,
-  code: string,
-  title: string,
-  detail: string,
-): { ok: true; data: T } | { ok: false; response: Response } {
-  const payload = parseJsonBody(rawBody);
-  if (!payload.ok) return payload;
-  const result = schema.safeParse(payload.data);
-  if (!result.success) {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(code, 422, title, detail, false),
-        result.error.issues.map((issue) => ({
-          path: issue.path.join("."),
-          message: issue.message,
-          code: issue.code,
-        })),
-      ),
-    };
-  }
-  return { ok: true, data: result.data };
-}
-
-function readCreateProjectRequest(rawBody: string): CreateProjectRequestResolution {
-  const payload = parseJsonBody(rawBody);
-  if (!payload.ok) return payload;
-  const result = createProjectRequestSchema.safeParse(payload.data);
-  if (!result.success) {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "INVALID_CREATE_PROJECT_REQUEST",
-          422,
-          "Create Project request is invalid",
-          "The request does not satisfy create-project-request/v2.",
-          false,
-        ),
-        result.error.issues.map((issue) => ({
-          path: issue.path.join("."),
-          message: issue.message,
-          code: issue.code,
-        })),
-      ),
-    };
-  }
-  return { ok: true, data: result.data };
-}
-
-function mutationHeadersError(c: Context, requireVersion = false): Response | null {
-  const idempotencyKey = c.req.header("idempotency-key")?.trim();
-  if (!idempotencyKey) {
-    return problemResponse(
-      apiProblem(
-        "IDEMPOTENCY_KEY_REQUIRED",
-        400,
-        "Idempotency-Key header is required",
-        "Fixture mutations require a stable Idempotency-Key so duplicate clicks remain safe.",
-        false,
-      ),
-    );
-  }
-  if (requireVersion && !c.req.header("if-match")) {
-    return problemResponse(
-      apiProblem(
-        "IF_MATCH_REQUIRED",
-        428,
-        "If-Match header is required",
-        "This fixture mutation requires the exact current candidate/version token.",
-        false,
-      ),
-    );
-  }
-  return null;
-}
-
-function projectVersionError(c: Context, currentVersionToken: string): Response | null {
-  if (c.req.header("if-match") !== currentVersionToken) {
-    return problemResponse(
-      apiProblem(
-        "REVISION_CONFLICT",
-        412,
-        "The project version has changed",
-        "Refresh the authoritative project state and retry with its current version token.",
-        false,
-      ),
-    );
-  }
-  return null;
-}
-
-function canonicalJson(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    const serialized = JSON.stringify(value);
-    if (serialized === undefined) throw new Error("Value is not valid JSON.");
-    return serialized;
-  }
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
-  return `{${Object.keys(value)
-    .sort()
-    .map(
-      (key) => `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`,
-    )
-    .join(",")}}`;
-}
-
-function normalizedBodyFingerprint(rawBody: string): string {
-  try {
-    return canonicalJson(JSON.parse(rawBody) as unknown);
-  } catch {
-    return rawBody;
-  }
-}
-
-function idempotencyFingerprint(c: Context, rawBody: string): string {
-  const url = new URL(c.req.url);
-  return [
-    c.req.method.toUpperCase(),
-    url.pathname,
-    url.searchParams.get("fixture") ?? "",
-    normalizedBodyFingerprint(rawBody),
-  ].join("\n");
-}
-
-async function idempotentMutation(
-  c: Context,
-  ledger: IdempotencyLedger,
-  requireVersion: boolean,
-  handle: (rawBody: string) => Response | Promise<Response>,
-): Promise<Response> {
-  const headersError = mutationHeadersError(c, requireVersion);
-  if (headersError) return headersError;
-
-  const idempotencyKey = c.req.header("idempotency-key")?.trim();
-  if (!idempotencyKey) {
-    throw new Error("Idempotency-Key was validated but is unavailable.");
-  }
-  const rawBody = await c.req.text();
-  const fingerprint = idempotencyFingerprint(c, rawBody);
-  const existing = ledger.get(idempotencyKey);
-  if (existing) {
-    if (existing.fingerprint !== fingerprint) {
-      return problemResponse(
-        apiProblem(
-          "IDEMPOTENCY_KEY_REUSED",
-          409,
-          "Idempotency key was reused for a different request",
-          "Use the original request body to replay this operation or send a new Idempotency-Key.",
-          false,
-        ),
-      );
-    }
-    if (existing.pending) await existing.pending;
-    if (!existing.response) {
-      throw new Error("Idempotent mutation completed without a replayable response.");
-    }
-    const replay = existing.response.clone();
-    replay.headers.set("x-videoforge-idempotent-replay", "true");
-    return replay;
-  }
-
-  const record: IdempotencyRecord = { fingerprint, response: null, pending: null };
-  if (ledger.size >= MAX_IDEMPOTENCY_RECORDS_PER_SESSION) {
-    const settledKey = [...ledger].find(([, value]) => value.pending === null)?.[0];
-    if (settledKey) ledger.delete(settledKey);
-  }
-  if (ledger.size >= MAX_IDEMPOTENCY_RECORDS_PER_SESSION) {
-    return problemResponse(
-      apiProblem(
-        "IDEMPOTENCY_CAPACITY_EXCEEDED",
-        429,
-        "Too many fixture mutations are still pending",
-        "Wait for an in-flight fixture mutation to settle, then retry with the same key.",
-        true,
-      ),
-    );
-  }
-  const pending = Promise.resolve()
-    .then(() => handle(rawBody))
-    .then((response) => {
-      record.response = response.clone();
-      record.pending = null;
-      return response;
-    })
-    .catch((error: unknown) => {
-      ledger.delete(idempotencyKey);
-      throw error;
-    });
-  record.pending = pending;
-  ledger.set(idempotencyKey, record);
-  return pending;
-}
-
-type ProjectMutationRequestResolution =
-  | { ok: true; projectId: string }
-  | { ok: false; response: Response };
-
-function readProjectMutationRequest(
-  rawBody: string,
-  pathProjectId: string,
-): ProjectMutationRequestResolution {
-  const payload = parseJsonBody(rawBody);
-  if (!payload.ok) return payload;
-  if (
-    payload.data === null ||
-    typeof payload.data !== "object" ||
-    Array.isArray(payload.data) ||
-    !("project_id" in payload.data) ||
-    typeof payload.data.project_id !== "string" ||
-    payload.data.project_id.length === 0 ||
-    payload.data.project_id.length > 160
-  ) {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "INVALID_PROJECT_MUTATION_REQUEST",
-          422,
-          "Project mutation request is invalid",
-          "Send a non-empty project_id matching the project in the route.",
-          false,
-        ),
-      ),
-    };
-  }
-  if (payload.data.project_id !== pathProjectId) {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "PROJECT_ID_MISMATCH",
-          409,
-          "Project ID does not match the route",
-          `Body project_id '${payload.data.project_id}' does not match route project '${pathProjectId}'.`,
-          false,
-        ),
-      ),
-    };
-  }
-  return { ok: true, projectId: payload.data.project_id };
-}
-
-type FinalApprovalRequestResolution =
-  | { ok: true; projectId: string; candidateId: string; candidateSha256: string }
-  | { ok: false; response: Response };
-
-function readFinalApprovalRequest(
-  rawBody: string,
-  pathProjectId: string,
-): FinalApprovalRequestResolution {
-  const payload = parseJsonBody(rawBody);
-  if (!payload.ok) return payload;
-  if (
-    payload.data === null ||
-    typeof payload.data !== "object" ||
-    Array.isArray(payload.data) ||
-    Object.keys(payload.data).length !== 3 ||
-    !("project_id" in payload.data) ||
-    !("candidate_id" in payload.data) ||
-    !("candidate_sha256" in payload.data) ||
-    typeof payload.data.project_id !== "string" ||
-    payload.data.project_id.length === 0 ||
-    payload.data.project_id.length > 160 ||
-    typeof payload.data.candidate_id !== "string" ||
-    payload.data.candidate_id.length === 0 ||
-    payload.data.candidate_id.length > 160 ||
-    typeof payload.data.candidate_sha256 !== "string" ||
-    !SHA256.test(payload.data.candidate_sha256)
-  ) {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "INVALID_FINAL_APPROVAL_REQUEST",
-          422,
-          "Final approval request is invalid",
-          "Send exactly project_id, the current candidate_id, and its SHA-256 checksum.",
-          false,
-        ),
-      ),
-    };
-  }
-  if (payload.data.project_id !== pathProjectId) {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "PROJECT_ID_MISMATCH",
-          409,
-          "Project ID does not match the route",
-          `Body project_id '${payload.data.project_id}' does not match route project '${pathProjectId}'.`,
-          false,
-        ),
-      ),
-    };
-  }
-  return {
-    ok: true,
-    projectId: payload.data.project_id,
-    candidateId: payload.data.candidate_id,
-    candidateSha256: payload.data.candidate_sha256,
-  };
-}
-
-type FallbackApprovalRequestResolution =
-  | { ok: true; projectId: string; approvedIncrementUsd: number }
-  | { ok: false; response: Response };
-
-function readFallbackApprovalRequest(
-  rawBody: string,
-  pathProjectId: string,
-): FallbackApprovalRequestResolution {
-  const projectRequest = readProjectMutationRequest(rawBody, pathProjectId);
-  if (!projectRequest.ok) return projectRequest;
-  const payload = parseJsonBody(rawBody);
-  if (!payload.ok) return payload;
-  if (
-    payload.data === null ||
-    typeof payload.data !== "object" ||
-    Array.isArray(payload.data) ||
-    Object.keys(payload.data).length !== 2 ||
-    !("approved_increment_usd" in payload.data) ||
-    payload.data.approved_increment_usd !== FIXTURE_FALLBACK_INCREMENT_USD
-  ) {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "INVALID_FALLBACK_APPROVAL_AMOUNT",
-          422,
-          "Fallback approval amount is invalid",
-          `Fixture fallback approval requires the exact capped increment of $${FIXTURE_FALLBACK_INCREMENT_USD.toFixed(2)}.`,
-          false,
-        ),
-      ),
-    };
-  }
-  return {
-    ok: true,
-    projectId: projectRequest.projectId,
-    approvedIncrementUsd: FIXTURE_FALLBACK_INCREMENT_USD,
-  };
-}
-
 type SemanticPreflightResolution =
   | {
       ok: true;
@@ -963,75 +536,8 @@ export function createApiApp(
   const app = new Hono();
   const commit = safeCommit(options.commit ?? process.env.VIDEOFORGE_COMMIT);
   const environment = options.environment ?? process.env.NODE_ENV ?? "development";
-  const fixtureSessions = new Map<string, FixtureSessionState>();
-  const requestFixtureSessions = new WeakMap<
-    Request,
-    Extract<FixtureSessionResolution, { ok: true }>
-  >();
-
-  function resolveFixtureSession(c: Context): FixtureSessionResolution {
-    const cached = requestFixtureSessions.get(c.req.raw);
-    if (cached) return cached;
-
-    const requestedId = c.req.header(FIXTURE_SESSION_HEADER);
-    if (environment === "production" && requestedId !== undefined) {
-      return {
-        ok: false,
-        response: problemResponse(
-          apiProblem(
-            "FIXTURE_SESSION_NOT_AVAILABLE",
-            400,
-            "Fixture sessions are unavailable",
-            "The fixture-session header is accepted only by development and test servers.",
-            false,
-          ),
-        ),
-      };
-    }
-
-    const sessionId = requestedId ?? DEFAULT_FIXTURE_SESSION_ID;
-    if (
-      sessionId.length === 0 ||
-      sessionId.length > MAX_FIXTURE_SESSION_ID_LENGTH ||
-      !FIXTURE_SESSION_ID.test(sessionId)
-    ) {
-      return {
-        ok: false,
-        response: problemResponse(
-          apiProblem(
-            "INVALID_FIXTURE_SESSION",
-            400,
-            "Fixture session is invalid",
-            `Use 1-${MAX_FIXTURE_SESSION_ID_LENGTH} ASCII letters, numbers, dots, underscores, colons, or hyphens; the first character must be alphanumeric.`,
-            false,
-          ),
-        ),
-      };
-    }
-
-    let state = fixtureSessions.get(sessionId);
-    if (!state) {
-      if (fixtureSessions.size >= MAX_FIXTURE_SESSION_NAMESPACES) {
-        return {
-          ok: false,
-          response: problemResponse(
-            apiProblem(
-              "FIXTURE_SESSION_CAPACITY_EXCEEDED",
-              429,
-              "Fixture session capacity is full",
-              "Restart the local fixture server to clear completed isolated test sessions.",
-              true,
-            ),
-          ),
-        };
-      }
-      state = createFixtureSessionState();
-      fixtureSessions.set(sessionId, state);
-    }
-    const resolution = { ok: true as const, id: sessionId, state };
-    requestFixtureSessions.set(c.req.raw, resolution);
-    return resolution;
-  }
+  const fixtureSessions = new FixtureSessionStore(environment);
+  const resolveFixtureSession = (c: Context) => fixtureSessions.resolve(c);
 
   function fixtureMutation(
     c: Context,
@@ -1166,7 +672,7 @@ export function createApiApp(
     app.post("/api/dev/fixture-session/reset", (c) => {
       const session = resolveFixtureSession(c);
       if (!session.ok) return session.response;
-      fixtureSessions.set(session.id, createFixtureSessionState());
+      fixtureSessions.reset(session.id);
       return c.json({ ok: true as const, sessionId: session.id, providerCallsAuthorized: false });
     });
   }
