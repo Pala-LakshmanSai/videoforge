@@ -1,0 +1,57 @@
+schema_version: "1.0"
+gate_id: GATE_UI_001
+run_id: 2026-08-09-scale-only-dock-refinement
+recorded_at: "2026-08-09T17:07:12Z"
+owner: implementation
+decision: PASS
+reason: "Scale-only dock criteria passed automated and real-Chrome technical verification; final user visual review remains pending."
+approved_at: null
+approval_record: "Pending user review of the implemented refinement"
+
+implementation:
+  commit: "277e18f5c370d445ec9c69c7447ddcad3287629e"
+  branch: main
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  public_url: null
+  primary_route: "http://localhost:4173/styles?fixture=avatar_lip_failure"
+
+automated_acceptance:
+  full_command: "pnpm verify"
+  full_result: pass
+  web_tests: 118
+  dock_motion_tests: 7
+  typescript_contract_tests: 50
+  python_contract_tests: 39
+  fixture_registry_and_local_slice_tests: 12
+  config_tests: 4
+  pipeline_tests: 19
+  worker_tests: 37
+  synchronized_contract_files: 47
+  chrome_journeys: 26
+  focused_chrome_journeys: 20
+  web_typecheck: pass
+  web_lint: pass
+  prettier: pass
+  diff_check: pass
+
+real_chrome_acceptance:
+  result: technical_pass_pending_user_review
+  viewport_css_px: "2544x1105"
+  console_errors_or_warnings: 0
+  dock:
+    resting_icon_css_px: "48x44"
+    glyph_css_px: 30
+    hovered_icon_css_px: "84x77"
+    hovered_scale: 1.75
+    fixed_bottom_css_px: 1034
+    item_box_css_px: "y=981..1074"
+    item_layout_changed_on_hover: false
+    active_backing_transform: none
+    translation_channels_present: false
+    far_scale: 1
+    compact_layout: "4x2-neutral"
+
+remaining_gate_condition:
+  - "User visual review of the refinement"

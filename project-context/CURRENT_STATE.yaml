@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-09T15:05:22Z"
+updated_at: "2026-08-09T17:10:01Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: true
-current_milestone: phase_0c_local_walking_slice_preparation
-current_task: VF-W1
+current_milestone: phase_0c_local_walking_slice_acceptance
+current_task: VF-UI-DOCK-001
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -14,11 +14,11 @@ repository:
   remote: null
   published: false
   branch: main
-  base_commit: "5d18bd5e37016d576b9cafee6b802ad75ba3d840"
+  base_commit: "f635604075d9ff768e98a28200fcb732ee6c4083"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
-  verified_implementation_commit: "5ee979e9a9c17195f7478f4b49ce7ac4c0efb996"
-  last_good_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
+  verified_implementation_commit: "277e18f5c370d445ec9c69c7447ddcad3287629e"
+  last_good_commit: "277e18f5c370d445ec9c69c7447ddcad3287629e"
   dependency_policy:
     ajv: "8.20.0"
     note: "Security override of the original 8.17.1 pin: 8.17.1 is affected by a moderate ReDoS advisory."
@@ -33,12 +33,12 @@ live_development:
     pid: null
     lifetime: null
   server_state: running
-  dev_server_pid: 30717
-  owner_task_id: VF-W1
-  health_checked_at: "2026-08-09T14:13:10Z"
-  health_commit: "5ee979e"
-  chrome_route: "http://localhost:4173/projects/project_fixture_001?fixture=happy_generating"
-  fixture_scenario: happy_generating
+  dev_server_pid: 61570
+  owner_task_id: VF-UI-DOCK-001
+  health_checked_at: "2026-08-09T17:05:30Z"
+  health_commit: "277e18f"
+  chrome_route: "http://localhost:4173/styles?fixture=avatar_lip_failure"
+  fixture_scenario: avatar_lip_failure
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
@@ -54,70 +54,77 @@ live_development:
     feedback_refs:
       - DEC_UX_002
       - DEC_UX_003
+  latest_user_directed_ui_change:
+    status: implemented_and_verified_pending_user_review
+    task_id: VF-UI-DOCK-001
+    commit: "277e18f5c370d445ec9c69c7447ddcad3287629e"
+    route: "http://localhost:4173/styles?fixture=avatar_lip_failure"
+    checked_at: "2026-08-09T17:05:30Z"
+    evidence: "evidence/gates/GATE_UI_001/2026-08-09-scale-only-dock-refinement"
+    user_direction: "Match the macOS dock with larger resting icons and stronger scale-only proximity magnification; remove lift, bottom padding movement, neighbor translation, and backing-tile expansion."
+    feedback_refs:
+      - DEC_UX_002
 
 active_ownership:
-  - task_id: VF-W1-BE
-    owner: server_lane
+  - task_id: VF-UI-DOCK-001
+    owner: root_ui_lane
     paths:
-      - apps/web/src/server/**
-  - task_id: VF-W1-FE
-    owner: frontend_lane
-    paths:
-      - apps/web/src/screens/**
-      - apps/web/src/features/**
-      - apps/web/src/styles.css
-      - apps/web/src/styles/**
-  - task_id: VF-W1-PIPE
-    owner: pipeline_lane
-    paths:
-      - packages/pipeline/**
+      - apps/web/src/components/AppShell.tsx
+      - apps/web/src/lib/dock-motion.ts
+      - apps/web/src/lib/dock-motion.test.ts
+      - apps/web/src/styles/shell.css
+      - apps/web/tests/e2e/shell.spec.ts
+      - project-context/**
 
 recommended_next_task:
-  task_id: VF-W1
-  milestone: phase_0c_local_walking_slice_preparation
+  task_id: VF-0C-08
+  milestone: phase_0c_local_walking_slice_acceptance
   read_profile: implementation_sequence
-  goal: "Run the behavior-preserving Wave 1 seam extraction with disjoint server, frontend, and pure-pipeline lanes, then integrate serially and prove the accepted fixture app is unchanged."
+  goal: "Complete the real-Chrome local-slice checkpoint: create from the owned narration, observe the real local pipeline, play and seek the 1080p30 MP4, approve it, download it, and replay the exact downloaded bytes."
   dependencies:
     - "GATE_UI_001 closed"
-    - "verified implementation commit 5ee979e9a9c17195f7478f4b49ce7ac4c0efb996"
-  parallel_children:
-    - VF-W1-BE
-    - VF-W1-FE
-    - VF-W1-PIPE
+    - "provider-free local pipeline and API integration commit f635604075d9ff768e98a28200fcb732ee6c4083"
+    - "user review of dock refinement commit 277e18f5c370d445ec9c69c7447ddcad3287629e"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
-  live_route: "http://localhost:4173/projects/project_fixture_001?fixture=happy_generating"
-  fixture_scenario: happy_generating
+  live_route: "http://localhost:4173"
+  fixture_scenario: local_owned_short_slice
   required_handoff:
-    - "small mechanical commits with disjoint ownership"
-    - "targeted tests per lane"
-    - "pnpm verify after serial integration"
-    - "real-Chrome visual/interaction regression check"
+    - "real Chrome playback and seek proof"
+    - "approval bound to exact candidate ID, ETag, and SHA-256"
+    - "queryless download with exact filename and body SHA-256"
+    - "provider calls remain off and authorized spend remains $0"
+    - "record tool/model versions, input/output hashes, console/network result, and evidence path"
 
 last_green:
   commands:
     - "pnpm verify"
-    - "pnpm doctor"
-    - "pnpm dev:status"
-    - "Real Chrome desktop audit: Create, Progress, Review, Avatar Hub, and Image Styles"
-    - "Real Chrome 430x932 responsive audit with the desktop viewport restored afterward"
-  checked_at: "2026-08-09T14:13:10Z"
+    - "pnpm --filter @videoforge/web test"
+    - "pnpm --filter @videoforge/web typecheck"
+    - "pnpm --filter @videoforge/web lint"
+    - "pnpm --filter @videoforge/web test:chrome -- tests/e2e/shell.spec.ts"
+    - "Real Chrome 2544x1105 scale-only dock geometry and visual audit"
+  checked_at: "2026-08-09T17:10:01Z"
   result: pass
-  evidence: "evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit"
+  evidence: "evidence/gates/GATE_UI_001/2026-08-09-scale-only-dock-refinement"
   counts:
-    web_server_component_tests: 106
-    typescript_contract_jcs_tests: 30
-    python_contract_tests: 19
-    fixture_registry_tests: 8
+    web_server_component_tests: 118
+    dock_motion_unit_tests: 7
+    typescript_contract_jcs_tests: 50
+    python_contract_tests: 39
+    fixture_registry_and_local_slice_tests: 12
     configuration_tests: 4
-    isolated_worker_tests: 4
-    synchronized_contract_files: 25
+    pipeline_tests: 19
+    isolated_worker_tests: 37
+    synchronized_contract_files: 47
+    focused_shell_chrome_journeys: 20
     playwright_chrome_journeys: 26
   notes:
-    - "The final pnpm verify passes formatting, linting, typechecking, all listed test suites, canonical contract synchronization, context validation, tracked-file secret scanning, production build, the Chrome matrix, and dependency audit with no known vulnerability."
-    - "The fixed dock resting layout is unchanged. Real Chrome measured a 1.879x hovered peak, -31.97 px lift, 1.334x backing-tile expansion including the active route, progressive neighbors, and no link layout-box movement."
-    - "Project mutations rotate exact revision versions; If-Match and idempotency are request-bound; review approval binds candidate ID plus SHA-256; fixture session namespaces prevent cross-test state leakage."
-    - "The development server reports commit 5ee979e, fixture mode, synthetic data, provider calls unauthorized, and $0 authorized spend."
+    - "The final pnpm verify passes formatting, TypeScript and Python linting, typechecking, every listed test suite, canonical contract synchronization, context validation, tracked-file secret scanning, production build, the 26-journey Chrome matrix, and dependency audit."
+    - "Desktop icon tiles now rest at 48x44 px with 30 px glyphs. Real Chrome measured a 1.75x hovered peak, 1.4907x/1.5150x immediate neighbors at the observed pointer position, smaller second neighbors, and exactly 1x far icons."
+    - "Every measured icon bottom stayed at 1034 CSS px and every item box stayed fixed at y=981..1074 while magnifying. Lift, shift, and surface-scale properties were absent; the active ::before transform stayed none."
+    - "Fine-pointer magnification is disabled at 680 px or below and for reduced motion; the labelled mobile 4x2 dock remains neutral."
+    - "The development server reports commit 277e18f, fixture mode, synthetic data, provider calls unauthorized, and $0 authorized spend."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -132,8 +139,7 @@ blocking_gates_for_production:
   - GATE_COST_001
 
 next_tasks:
-  - "VF-W1: behavior-preserving server/frontend/pipeline seam extraction"
-  - "VF-0C-01 through VF-0C-08: real local audio to deterministic timeline, FFmpeg MP4, and downloaded playback in real Chrome"
+  - "VF-0C-08: complete human playback, seek, approve, exact download, and replay acceptance in the user's real Chrome"
   - "VF-0D: capped provider viability preparation may overlap after local contracts lock; real calls require one explicit authorization envelope"
   - "Phase 1: durable auth/Postgres/R2/task-attempt-outbox/workflow slice after Phase 0C"
   - "Phase 2 onward: timing, prompt/image, avatar, custom-style, render, fallback, fault, and production waves exactly as ordered in the execution plan"
@@ -144,6 +150,7 @@ notes:
   - "21_IMPLEMENTATION_EXECUTION_PLAN.md owns remaining sequencing, task IDs, safe parallel ownership, integration order, checkpoints, and authorization boundaries."
   - "The Phase 0A fixture-contract foundation is implemented. Complex non-Create Zod/Pydantic validators are intentionally schema-backed entry points rather than independent hand models."
   - "DEC_CONTRACT_001 is locked: TypeScript is the sole JCS authority; Python validates canonical schemas and exact byte hashes while treating canonical JSON hashes as opaque."
-  - "No real media-generation walking slice, durable database/object storage, production authentication, or provider transport exists yet. Fixture state is not a production persistence claim."
+  - "A bounded provider-free real local media slice now exists and the API-level acceptance harness is green. VF-0C-08 remains open until the exact MP4 is played, sought, approved, downloaded, and replayed in the user's real Chrome."
+  - "Durable database/object storage, production authentication, and provider transport do not exist yet. Fixture and bounded local state are not production persistence claims."
   - "The user authorized future RunPod use and credential retrieval from their signed-in Chrome profile, but no exact provider-task spend envelope is active. No key has been fetched, no endpoint selected, no RunPod resource changed, and the next task authorizes $0/provider-off work only."
   - "No public tunnel is active. The LAN URL works only for devices on the same network; localhost remains the authoritative development URL."

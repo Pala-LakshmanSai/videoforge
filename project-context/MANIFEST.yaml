@@ -186,7 +186,7 @@ approved_decisions:
   DEC_QUEUE_001: postgres_authoritative_runpod_execution_transport
   DEC_RUNPOD_001: scale_to_zero_api_only_endpoints_first
   DEC_UX_001: fixture_first_live_chrome_hot_reload
-  DEC_UX_002: medium_minimal_reference_inspired_production_console_fixed_base_dock_with_magnifying_glass_tile
+  DEC_UX_002: medium_minimal_production_console_fixed_base_scale_only_macos_like_dock
   DEC_UX_003: visual_presets_with_on_demand_reference_and_audit_details
 
 open_gates:
