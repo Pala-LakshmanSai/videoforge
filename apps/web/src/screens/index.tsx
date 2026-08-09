@@ -69,6 +69,11 @@ function formatShortDate(value: string): string {
   );
 }
 
+function humanize(value: string): string {
+  const normalized = value.replaceAll("_", " ").toLowerCase();
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -355,7 +360,7 @@ export function QueueScreen() {
                     <Badge tone={statusTone(project.status)}>
                       {project.status.replaceAll("_", " ")}
                     </Badge>
-                    <span>{project.stage}</span>
+                    <span>{humanize(project.stage)}</span>
                   </div>
                   <div className="queue-card__progress">
                     <strong>{percent}%</strong>
@@ -1054,7 +1059,7 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
           <div className="progress-hero-heading">
             <div>
               <p className="eyebrow">Current action</p>
-              <h2>{project.stage}</h2>
+              <h2>{humanize(project.stage)}</h2>
             </div>
             <Badge tone={statusTone(project.status)}>{project.status.replaceAll("_", " ")}</Badge>
           </div>
