@@ -129,6 +129,8 @@ read_profiles:
     - evidence/fixtures/README.md
   engineering_practices:
     - 13_ENGINEERING_BEST_PRACTICES.md
+  implementation_sequence:
+    - 21_IMPLEMENTATION_EXECUTION_PLAN.md
   context_update:
     - 15_DECISIONS_AND_OPEN_GATES.md
     - 16_CONTEXT_MAINTENANCE.md
@@ -198,7 +200,9 @@ open_gates:
   GATE_GPU_001: produce_tested_compatible_gpu_allowlists
   GATE_RUNPOD_001: verify_endpoint_config_reconciliation_dispatch_ambiguity_timeout_and_result_lifecycle
   GATE_COST_001: replace_planning_ranges_with_new_account_measurements
-  GATE_UI_001: user_approves_medium_minimal_live_chrome_shell_fixed_base_proximity_dock_integrated_app_native_controls_preset_galleries_and_core_flows
+
+closed_gates:
+  GATE_UI_001: user_approved_medium_minimal_live_chrome_shell_on_2026_08_09
 
 deferred:
   - ai_broll_video
@@ -221,5 +225,6 @@ current_state: CURRENT_STATE.yaml
 gate_registry: GATES.yaml
 glossary: GLOSSARY.md
 implementation_playbook: 19_IMPLEMENTATION_PLAYBOOK.md
+execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 context_validator: scripts/validate-context.sh
 schema_validator: scripts/validate-schemas.sh

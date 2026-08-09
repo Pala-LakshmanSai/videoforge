@@ -1,6 +1,6 @@
-# Decisions and open gates
+# Decisions and gates
 
-Status: authoritative human decisions and unresolved evidence  
+Status: authoritative human decisions and gate state
 Read when: a requirement seems ambiguous or a model/architecture change is proposed.
 
 ## Approved decisions
@@ -66,7 +66,12 @@ In MVP, deterministic media checks can auto-pass technical validity, but the use
 | `GATE_GPU_001` | Benchmark tested model/GPU allowlists | The UI may show planned candidates disabled, but no untested image/media or primary-avatar execution profile can become selectable |
 | `GATE_RUNPOD_001` | Prove API repair after RunPod's idle max-worker reduction/config drift, timeout/TTL/result reconciliation, ambiguous dispatch handling, worker execution claims, and duplicate-cost visibility | Required before live RunPod dispatch is enabled |
 | `GATE_COST_001` | Full cold/warm 30-minute measurement on new RunPod account | Replace planning estimates/SLO confidence |
-| `GATE_UI_001` | User approves the redesigned medium/minimal live Chrome shell, fixed-base macOS-like proximity dock, integrated app-native preset/compute dropdowns, full-width command bar, matched two-column preset Hubs, galleries, and creation/progress/review flows at desktop and mobile widths | Lock visual tokens, scale, hierarchy, navigation, and progressive-disclosure behavior |
+
+## Closed gates
+
+| ID | Result | Evidence |
+|---|---|---|
+| `GATE_UI_001` | **PASS** — the user explicitly accepted the final medium/minimal fixture shell on 2026-08-09; the approved visual system is frozen unless later user feedback or a verified regression reopens it | `evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit/` |
 
 ## Proposed values awaiting evidence/user sign-off
 

@@ -7,6 +7,8 @@ Read when: starting/resuming coding, handing work between chats/agents, running 
 
 Development must feel continuous and inspectable: the user can keep one stable Chrome tab open, see each working increment through hot reload, and report breakage while it is introduced. Backend/model uncertainty is isolated behind fixtures and adapters rather than blocking the visible app.
 
+`21_IMPLEMENTATION_EXECUTION_PLAN.md` owns task order and safe parallelism. `CURRENT_STATE.yaml` selects the next wave.
+
 ## First-session order
 
 Implementation starts only when the user authorizes it.

@@ -1,6 +1,6 @@
 # Development plan
 
-Status: implementation underway; the Phase 0A fixture-contract foundation is implemented and the Phase 0B shell awaits `GATE_UI_001`
+Status: implementation underway; Phase 0A foundation and user-approved Phase 0B shell are complete, with Phase 0C next
 Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
 
 ## Delivery strategy
@@ -37,12 +37,11 @@ flowchart LR
 
 ## Phase 0A: private repository and contract skeleton
 
-Current (2026-08-09): repo/commands, ten contracts, validator entry points, and TypeScript JCS
-exist. `worker-job-envelope/v1` and `orchestration-state/v1` lock claim-bound dispatch and
-task/attempt/outbox/event state before provider transport. Complex documents use canonical JSON
-Schema through parity-tested Zod/Pydantic entry points; Create Project remains independently typed.
-The fixture contract foundation is complete. Python JCS must precede canonical hashes from Python
-workers; durable database orchestration belongs to Phase 1.
+Current (2026-08-09): repo commands, ten contracts, parity-tested validator entry points, and
+TypeScript JCS are complete. Worker-job and orchestration schemas lock dispatch plus
+task/attempt/outbox/event state. Create Project remains independently typed; complex documents use
+canonical-schema entry points. Python JCS must precede worker canonical hashes. Durable database
+orchestration belongs to Phase 1.
 
 - Initialize private Git; exclude research, private references, outputs, secrets, weights, and screenshots.
 - Create the monorepo shape in `19_IMPLEMENTATION_PLAYBOOK.md`: web, shared packages, and four worker lanes.
@@ -58,6 +57,8 @@ workers; durable database orchestration belongs to Phase 1.
 Exit: TypeScript and Python validate identical fixtures; root commands work; a private initial commit exists.
 
 ## Phase 0B: fixture UI shell in live Chrome
+
+Current (2026-08-09): accepted; `GATE_UI_001` is closed. Preserve it while adding capabilities.
 
 - Implement medium tokens, the full-width command bar, fixed-base dock, fixture routes, and matched preset Hubs/wizards.
 - Create Project uses integrated app-native visual preset dropdowns, minimal voiceover copy with strict validation, no script field, a confirmation-free keyword opt-in, and truthful app-native `image_media`/`avatar_primary` profile selectors; planned candidates stay disabled until `GATE_GPU_001`.

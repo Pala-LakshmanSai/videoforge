@@ -257,7 +257,9 @@ Pass: no duplicate accepted asset or corrupt state, any duplicate dispatch/charg
 
 Automated fixture/browser checks and the user's real-Chrome review must jointly verify the approved medium-scale minimal direction. Screenshots can support comparison but never replace interaction, console, request, focus, and responsive checks.
 
-- Direct page titles, one dominant action, and a calm glance layer replace slogans, repeated implementation rationale, and walls of persistent success messages.
+Result: **PASS**, user-approved 2026-08-09; evidence: `evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit/`. Reopen only for revision or regression.
+
+- Direct titles, one dominant action, and a calm glance layer replace slogans, repeated rationale, and walls of success messages.
 - The root computes to 18 px on desktop and mobile, ordinary reading text remains 16–18 CSS px, 14.4–16 px microtype is restricted to secondary status/provenance labels, normal controls are 52 px or larger, compact actions remain at least 44 px, and no CSS `zoom` simulates scale.
 - The active-project command bar spans the viewport with deliberate page-edge padding while its project/progress track is inset internally; it does not become a narrow centered island. Its compact mobile form, medium project title and factual progress hero, metric cards, vertical pipeline, and latest-artifact panel preserve authoritative counts/states without fabricating smooth work.
 - The keyboard-reachable dock exposes the active route and every destination at 1024 px. Approved base geometry stays fixed. Fine-pointer hover peaks the icon and backing tile, scales and shifts neighbors progressively, keeps layout fixed, and resets on leave; the active-route background expands with its item. Reduced-motion/coarse-pointer modes stay neutral. Mobile is a labelled 4×2 dock with safe content padding.

@@ -2,7 +2,7 @@
 
 Copy, fill the task, and send in a new coding chat:
 
-If the user simply says to begin development without a narrower task, use `CURRENT_STATE.yaml.recommended_next_task` exactly; do not reopen architecture decisions or skip its dependencies.
+If the user simply says to begin development without a narrower task, use `CURRENT_STATE.yaml.recommended_next_task` exactly and follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`; do not reopen the accepted UI/architecture decisions or skip dependencies.
 
 ```text
 Work in /Users/lakshmansai/Documents/videoforge.

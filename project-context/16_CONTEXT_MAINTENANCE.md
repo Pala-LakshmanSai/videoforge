@@ -25,7 +25,7 @@ Precedence is:
 2. Read `AGENTS.md` or `CLAUDE.md`.
 3. Read `project-context/00_START_HERE.md`, `MANIFEST.yaml`, and `CURRENT_STATE.yaml`.
 4. Load only the task read profile.
-5. Treat approved decisions as fixed and open gates in `GATES.yaml` as unverified.
+5. Treat approved decisions and closed gates as fixed; open gates in `GATES.yaml` remain unverified.
 6. Do not start implementation unless the current user request authorizes it.
 
 Use `templates/NEW_CHAT_BOOTSTRAP.md` for a paste-ready prompt.
@@ -65,6 +65,7 @@ Do not paste the same large explanation into multiple files. One file owns detai
 | Price/benchmark | `11_COST_SPEED_BUDGET.md` | decisions/gates, source index |
 | Mutable implementation phase/handoff | `CURRENT_STATE.yaml` | root loaders, playbook; replace snapshot rather than append logs |
 | Development experience/commands | `19_IMPLEMENTATION_PLAYBOOK.md` | plan, task template, Chrome tests |
+| Cross-phase task order/parallel ownership | `21_IMPLEMENTATION_EXECUTION_PLAN.md` | development plan, playbook, current state |
 
 ## Closing a benchmark gate
 
@@ -83,6 +84,8 @@ Record:
 Then replace planning language with measured language. Never silently change a range into a fact.
 
 Write gate evidence under `evidence/gates/{GATE_ID}/{run_id}/` using `templates/GATE_EVIDENCE.md`, then update `GATES.yaml`, the decision ledger, and affected planning numbers. A gate cannot close from chat prose or a screenshot alone.
+
+`MANIFEST.yaml` lists unresolved IDs under `open_gates` and accepted IDs under `closed_gates`; their union must equal the decision ledger and `GATES.yaml`. A user-owned presentation gate may close from reproducible technical evidence plus explicit user approval. It does not require irrelevant GPU/model fields, but its evidence must retain the verified commit, routes, interaction/Chrome results, approval date, and exact user decision.
 
 ## Source freshness
 

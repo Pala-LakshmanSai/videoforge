@@ -121,7 +121,7 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 
 ## First implementation rule
 
-Follow `12_DEVELOPMENT_PLAN.md` and `19_IMPLEMENTATION_PLAYBOOK.md`: initialize private Git/contracts, launch the fixture-backed shell in real Chrome, prove a local short-video walking slice, establish minimal durable orchestration, and run only explicitly authorized capped viability spikes. Do not wait until the end to integrate.
+Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve the accepted fixture shell, prove the local short-video walking slice, establish minimal durable orchestration, and run only explicitly authorized capped viability spikes. Do not wait until the end to integrate.
 
 ## Context navigation
 
@@ -147,5 +147,6 @@ Follow `12_DEVELOPMENT_PLAN.md` and `19_IMPLEMENTATION_PLAYBOOK.md`: initialize 
 - Keeping this pack current: `16_CONTEXT_MAINTENANCE.md`
 - Official and local evidence: `17_SOURCE_INDEX.md`
 - Live-development protocol: `19_IMPLEMENTATION_PLAYBOOK.md`
+- Exact remaining task order and safe parallelism: `21_IMPLEMENTATION_EXECUTION_PLAN.md`
 - Gate status/evidence paths: `GATES.yaml`
 - Reproducible context/schema validation: `scripts/validate-context.sh` and `scripts/validate-schemas.sh`

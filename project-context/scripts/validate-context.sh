@@ -242,14 +242,31 @@ ledger = File.read(root.join("15_DECISIONS_AND_OPEN_GATES.md"))
 ledger_decisions = ledger.scan(/\`(DEC_[A-Z0-9_]+)\`/).flatten.uniq.sort
 ledger_gates = ledger.scan(/\`(GATE_[A-Z0-9_]+)\`/).flatten.uniq.sort
 manifest_decisions = (manifest["approved_decisions"] || {}).keys.sort
-manifest_gates = (manifest["open_gates"] || {}).keys.sort
+manifest_open_gates = (manifest["open_gates"] || {}).keys.sort
+manifest_closed_gates = (manifest["closed_gates"] || {}).keys.sort
+manifest_gates = (manifest_open_gates + manifest_closed_gates).uniq.sort
 registry_gates = (gates["gates"] || {}).keys.sort
+registry_open_gates = (gates["gates"] || {}).select { |_id, record| record["status"] == "open" }.keys.sort
+registry_closed_gates = (gates["gates"] || {}).select { |_id, record| record["status"] == "closed" }.keys.sort
 
 errors << "decision IDs differ between MANIFEST and decision ledger" unless manifest_decisions == ledger_decisions
 errors << "gate IDs differ between MANIFEST and decision ledger" unless manifest_gates == ledger_gates
 errors << "gate IDs differ between MANIFEST and GATES.yaml" unless manifest_gates == registry_gates
+errors << "gate ID appears in both MANIFEST open_gates and closed_gates" unless (manifest_open_gates & manifest_closed_gates).empty?
+errors << "open gate IDs differ between MANIFEST and GATES.yaml" unless manifest_open_gates == registry_open_gates
+errors << "closed gate IDs differ between MANIFEST and GATES.yaml" unless manifest_closed_gates == registry_closed_gates
 
 (gates["gates"] || {}).each do |gate_id, record|
+  status = record["status"].to_s
+  errors << "#{gate_id}: invalid status #{status.inspect}" unless %w[open closed].include?(status)
+
+  last_run = record["last_run"].to_s
+  errors << "#{gate_id}: closed gate requires last_run evidence" if status == "closed" && last_run.empty?
+  unless last_run.empty?
+    evidence_path = root.join(last_run)
+    errors << "#{gate_id}: last_run evidence missing: #{last_run}" unless evidence_path.exist?
+  end
+
   acceptance = record["acceptance"].to_s
   file, anchor = acceptance.split("#", 2)
   errors << "#{gate_id}: acceptance file missing: #{file}" if file.empty? || !root.join(file).exist?
@@ -272,6 +289,8 @@ end
 state_gates = Array(state["blocking_gates_for_production"])
 unknown_state_gates = state_gates - registry_gates
 errors << "CURRENT_STATE contains unknown blocking gates: #{unknown_state_gates.join(", ")}" unless unknown_state_gates.empty?
+closed_state_gates = state_gates & registry_closed_gates
+errors << "CURRENT_STATE lists closed gates as blocking: #{closed_state_gates.join(", ")}" unless closed_state_gates.empty?
 
 link_pattern = /!?\[[^\]]*\]\(([^)]+)\)/
 Dir[root.join("**/*.md").to_s].sort.each do |path|

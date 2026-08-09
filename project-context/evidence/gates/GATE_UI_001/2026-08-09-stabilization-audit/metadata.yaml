@@ -3,8 +3,10 @@ gate_id: GATE_UI_001
 run_id: 2026-08-09-stabilization-audit
 recorded_at: "2026-08-09T13:55:06Z"
 owner: user
-decision: NEEDS_MORE_EVIDENCE
-reason: "Automated and real-Chrome acceptance passed; explicit user approval of this final iteration is still required."
+decision: PASS
+reason: "Automated and real-Chrome acceptance passed, and the user explicitly accepted the final iteration."
+approved_at: "2026-08-09T14:06:18Z"
+approval_record: "User: ok this is good enough"
 
 implementation:
   commit: "5ee979e9a9c17195f7478f4b49ce7ac4c0efb996"
@@ -30,7 +32,7 @@ automated_acceptance:
   tracked_secret_scan: clean
 
 real_chrome_acceptance:
-  result: pass_pending_user_approval
+  result: pass
   desktop_viewport_css_px: "2544x1161"
   compact_viewport_css_px: "430x932"
   compact_override_restored: true
@@ -56,5 +58,4 @@ real_chrome_acceptance:
     healthy_avatar_glance_copy: "Amish Farm Host; Details"
     exceptional_avatar_copy: "Test cancelled"
 
-remaining_gate_condition:
-  - "User approves this final visual and interaction iteration."
+remaining_gate_condition: []

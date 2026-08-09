@@ -1,6 +1,6 @@
 # UI and UX specification
 
-Status: implemented medium-scale minimal direction; `GATE_UI_001` awaits user approval
+Status: implemented and user-accepted medium-scale minimal direction; `GATE_UI_001` closed 2026-08-09
 Read when: designing or implementing any user-visible flow.
 
 ## Design objective

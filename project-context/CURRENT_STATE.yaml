@@ -1,11 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-09T13:55:06Z"
+updated_at: "2026-08-09T14:13:10Z"
 
 phase: implementation_in_progress
-implementation_authorized_in_current_task: true
-current_milestone: phase_0b_fixture_shell_stabilized_awaiting_final_ui_approval
-current_task: GATE_UI_001
+implementation_authorized_in_current_task: false
+current_milestone: phase_0c_local_walking_slice_preparation
+current_task: VF-W1
+execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
   initialized: true
@@ -14,8 +15,9 @@ repository:
   published: false
   branch: main
   base_commit: "879c3f20d405910b2efcb9b33c0d302e8b73aaa7"
+  planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   verified_implementation_commit: "5ee979e9a9c17195f7478f4b49ce7ac4c0efb996"
-  last_good_commit: "5ee979e9a9c17195f7478f4b49ce7ac4c0efb996"
+  last_good_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   dependency_policy:
     ajv: "8.20.0"
     note: "Security override of the original 8.17.1 pin: 8.17.1 is affected by a moderate ReDoS advisory."
@@ -31,8 +33,8 @@ live_development:
     lifetime: null
   server_state: running
   dev_server_pid: 30717
-  owner_task_id: GATE_UI_001
-  health_checked_at: "2026-08-09T13:55:06Z"
+  owner_task_id: null
+  health_checked_at: "2026-08-09T14:13:10Z"
   health_commit: "5ee979e"
   chrome_route: "http://localhost:4173/projects/project_fixture_001?fixture=happy_generating"
   fixture_scenario: happy_generating
@@ -40,12 +42,14 @@ live_development:
   provider_calls_authorized: false
   authorized_spend_usd: 0
   last_user_checkpoint:
-    result: technically_verified_awaiting_explicit_approval
+    result: accepted
+    gate: GATE_UI_001
     commit: "5ee979e9a9c17195f7478f4b49ce7ac4c0efb996"
     route: "http://localhost:4173/projects/project_fixture_001?fixture=happy_generating"
     scenario: happy_generating
-    checked_at: "2026-08-09T13:55:06Z"
+    checked_at: "2026-08-09T14:06:18Z"
     evidence: "evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit"
+    user_decision: "ok this is good enough"
     feedback_refs:
       - DEC_UX_002
       - DEC_UX_003
@@ -53,14 +57,26 @@ live_development:
 active_ownership: []
 
 recommended_next_task:
-  task_id: GATE_UI_001
-  milestone: phase_0b_fixture_shell
-  read_profile: ui_shell
-  goal: "Review the fully audited local fixture shell and explicitly approve the final UI direction or provide one bounded feedback list before Phase 0C begins."
+  task_id: VF-W1
+  milestone: phase_0c_local_walking_slice_preparation
+  read_profile: implementation_sequence
+  goal: "Run the behavior-preserving Wave 1 seam extraction with disjoint server, frontend, and pure-pipeline lanes, then integrate serially and prove the accepted fixture app is unchanged."
+  dependencies:
+    - "GATE_UI_001 closed"
+    - "verified implementation commit 5ee979e9a9c17195f7478f4b49ce7ac4c0efb996"
+  parallel_children:
+    - VF-W1-BE
+    - VF-W1-FE
+    - VF-W1-PIPE
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   live_route: "http://localhost:4173/projects/project_fixture_001?fixture=happy_generating"
   fixture_scenario: happy_generating
+  required_handoff:
+    - "small mechanical commits with disjoint ownership"
+    - "targeted tests per lane"
+    - "pnpm verify after serial integration"
+    - "real-Chrome visual/interaction regression check"
 
 last_green:
   commands:
@@ -69,7 +85,7 @@ last_green:
     - "pnpm dev:status"
     - "Real Chrome desktop audit: Create, Progress, Review, Avatar Hub, and Image Styles"
     - "Real Chrome 430x932 responsive audit with the desktop viewport restored afterward"
-  checked_at: "2026-08-09T13:55:06Z"
+  checked_at: "2026-08-09T14:13:10Z"
   result: pass
   evidence: "evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit"
   counts:
@@ -83,12 +99,9 @@ last_green:
     playwright_chrome_journeys: 26
   notes:
     - "The final pnpm verify passes formatting, linting, typechecking, all listed test suites, canonical contract synchronization, context validation, tracked-file secret scanning, production build, the Chrome matrix, and dependency audit with no known vulnerability."
-    - "Chrome coverage includes invite sign-in/access denial, decoded preset imagery, matched two-column Hubs, integrated app-native preset/compute menus, keyboard/focus-managed disclosures, new-preset cancel/save draft round trips, strict audio registration, immutable pins, semantic preflight, progress recovery, review approval, action eligibility, concurrent mutation conflicts, and 1024/430 layouts without unexpected provider requests."
-    - "Real Chrome confirmed an 18 px root, 52 px normal controls, no native select elements, in-flow preset/keyword disclosures with no overlap, equal Hub geometry, no horizontal overflow at desktop or 430x932, decoded fixture imagery, and zero console warnings/errors."
-    - "The fixed dock resting layout is unchanged. Real Chrome measured a 1.879x hovered peak, -31.97 px lift, 1.334x backing-tile expansion including the active route, progressive neighbors, and no link layout-box movement. Compact mode remains a labelled 4x2 dock."
+    - "The fixed dock resting layout is unchanged. Real Chrome measured a 1.879x hovered peak, -31.97 px lift, 1.334x backing-tile expansion including the active route, progressive neighbors, and no link layout-box movement."
     - "Project mutations rotate exact revision versions; If-Match and idempotency are request-bound; review approval binds candidate ID plus SHA-256; fixture session namespaces prevent cross-test state leakage."
     - "The development server reports commit 5ee979e, fixture mode, synthetic data, provider calls unauthorized, and $0 authorized spend."
-    - "Ajv 8.20.0 intentionally replaces the requested 8.17.1 pin because the older version has a known moderate ReDoS advisory."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -101,23 +114,20 @@ blocking_gates_for_production:
   - GATE_GPU_001
   - GATE_RUNPOD_001
   - GATE_COST_001
-  - GATE_UI_001
 
 next_tasks:
-  - "GATE_UI_001: user reviews and explicitly approves this technically verified local fixture shell, or supplies one bounded feedback list"
-  - "0C after UI approval: owned 30-120 second audio to deterministic local timeline, fixture assets, real FFmpeg 1080p30 MP4, and real-Chrome playback"
-  - "Pre-provider foundation: decide Python RFC 8785 JCS parity before Python workers emit canonical hashes; benchmark the server-side byte-validation/metadata-stripping path for persisted avatar/style uploads"
-  - "Maintainability: split the 3152-line screen module, 2060-line server module, and 4493-line stylesheet along tested feature boundaries before Phase 1 expansion"
-  - "Phase 1 after the walking slice: production authentication plus durable Postgres/R2/task-attempt-outbox orchestration"
-  - "0D only after separate authorization: capped RunPod/provider/model viability tests and GPU benchmarking"
+  - "VF-W1: behavior-preserving server/frontend/pipeline seam extraction"
+  - "VF-0C-01 through VF-0C-08: real local audio to deterministic timeline, FFmpeg MP4, and downloaded playback in real Chrome"
+  - "VF-0D: capped provider viability preparation may overlap after local contracts lock; real calls require one explicit authorization envelope"
+  - "Phase 1: durable auth/Postgres/R2/task-attempt-outbox/workflow slice after Phase 0C"
+  - "Phase 2 onward: timing, prompt/image, avatar, custom-style, render, fallback, fault, and production waves exactly as ordered in the execution plan"
 
 notes:
   - "This is a replace-in-place snapshot, not a progress log."
-  - "Update it at every implementation handoff and after each accepted milestone."
-  - "The Phase 0A fixture-contract foundation is implemented: ten canonical contracts include worker-job and orchestration-state boundaries, valid/invalid fixtures pass every Ajv/Zod/Pydantic entry point, and TypeScript RFC 8785 JCS is verified. Complex non-Create Zod/Pydantic validators are intentionally schema-backed entry points rather than independent hand models."
-  - "Python JCS parity remains an explicit pre-provider decision; Python workers must not claim canonical JSON hashes until that boundary is implemented and tested."
-  - "VF-0B is implemented and technically stabilized in fixture mode, but GATE_UI_001 remains open until the user explicitly approves this final iteration."
-  - "No real media-generation walking slice, durable database/object storage, production authentication, or provider transport exists yet. The current state machine is bounded in-memory fixture behavior, not a production persistence claim."
-  - "The user authorized future RunPod use and credential retrieval from their signed-in Chrome profile, but no task-specific endpoint/model spend cap was supplied. No key was fetched, no endpoint was selected, no RunPod resource was changed, and this checkpoint made no provider call."
-  - "No public tunnel is active. The LAN URL works only for devices on the same network; localhost remains the authoritative review URL."
-  - "CI actions are immutable-SHA pinned; verification scans tracked files for secrets, and the repository has no remote."
+  - "The user accepted the Phase 0B UI on 2026-08-09. GATE_UI_001 is closed; later tasks preserve this baseline unless the user explicitly changes it or a verified regression is repaired."
+  - "21_IMPLEMENTATION_EXECUTION_PLAN.md owns remaining sequencing, task IDs, safe parallel ownership, integration order, checkpoints, and authorization boundaries."
+  - "The Phase 0A fixture-contract foundation is implemented. Complex non-Create Zod/Pydantic validators are intentionally schema-backed entry points rather than independent hand models."
+  - "Python JCS parity remains a required Phase 0C decision before Python workers emit or verify canonical JSON hashes."
+  - "No real media-generation walking slice, durable database/object storage, production authentication, or provider transport exists yet. Fixture state is not a production persistence claim."
+  - "The user authorized future RunPod use and credential retrieval from their signed-in Chrome profile, but no exact provider-task spend envelope is active. No key has been fetched, no endpoint selected, no RunPod resource changed, and the next task authorizes $0/provider-off work only."
+  - "No public tunnel is active. The LAN URL works only for devices on the same network; localhost remains the authoritative development URL."

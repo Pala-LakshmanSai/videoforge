@@ -6,7 +6,8 @@
 - Run: `2026-08-09-stabilization-audit`
 - Implementation commit: `5ee979e9a9c17195f7478f4b49ce7ac4c0efb996`
 - Mode: local fixture data, no provider calls, `$0` authorized spend
-- Decision: `NEEDS_MORE_EVIDENCE` only because the gate requires explicit user approval
+- Decision: `PASS`
+- User approval: “ok this is good enough” on 2026-08-09
 
 ## Procedure
 
@@ -37,6 +38,6 @@ Usage, Settings, access gates, recovery, approval, and compact behavior.
 
 ## Decision
 
-The implementation satisfies the technical presentation gate criteria. `GATE_UI_001` remains open
-until the user explicitly approves this final iteration; no screenshot or automated result closes a
-user-owned visual gate.
+The implementation satisfies the technical presentation gate criteria and the user explicitly
+accepted the final iteration on 2026-08-09. `GATE_UI_001` is closed. Later implementation preserves
+this visual baseline unless the user requests a change or a verified regression requires repair.
