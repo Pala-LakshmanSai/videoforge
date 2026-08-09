@@ -3,7 +3,6 @@ import {
   DEFAULT_FIXTURE_SCENARIO_ID,
   FIXTURE_SCENARIO_IDS,
   listFixtureScenarios,
-  toUsageSummaryResponse,
 } from "@videoforge/test-fixtures";
 import type { Hono } from "hono";
 
@@ -61,11 +60,5 @@ export function registerSystemRoutes(app: Hono, runtime: FixtureRuntime): void {
     const resolved = fixtureFromRequest(c.req.raw);
     if (!resolved.ok) return resolved.response;
     return c.json(executionProfileCatalog);
-  });
-
-  app.get("/api/v1/usage", (c) => {
-    const resolved = fixtureFromRequest(c.req.raw);
-    if (!resolved.ok) return resolved.response;
-    return c.json(toUsageSummaryResponse(resolved.scenario));
   });
 }

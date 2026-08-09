@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
+import { toUsageSummaryResponse } from "@videoforge/test-fixtures";
 import type { Hono } from "hono";
 
 import {
@@ -94,6 +95,12 @@ export function registerProjectRoutes(app: Hono, runtime: FixtureRuntime): void 
     c.header("content-disposition", 'attachment; filename="videoforge-fixture-preview.svg"');
     c.header("x-videoforge-artifact-kind", "synthetic-preview");
     return c.body(preview);
+  });
+
+  app.get("/api/v1/usage", (c) => {
+    const resolved = fixtureFromRequest(c.req.raw);
+    if (!resolved.ok) return resolved.response;
+    return c.json(toUsageSummaryResponse(resolved.scenario));
   });
 
   app.post("/api/v1/projects/preflight", (c) =>
