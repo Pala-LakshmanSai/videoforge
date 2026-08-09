@@ -59,14 +59,56 @@
     {
       "source": "project-context/evidence/worker_job_envelope.schema.json",
       "destination": "generated/schemas/worker_job_envelope.schema.json",
-      "bytes": 3397,
-      "sha256": "sha256:f17b88da6a05b2b731a7ce1974d53e8e61767d75db167e6989b6ec453dd5d0cb"
+      "bytes": 4517,
+      "sha256": "sha256:1ae8373e5a29d06c6a076fb17e16c5c5d0d59d0b07f6c3ecfd308b6e7f63b7e8"
+    },
+    {
+      "source": "project-context/evidence/transcript_timing.schema.json",
+      "destination": "generated/schemas/transcript_timing.schema.json",
+      "bytes": 3536,
+      "sha256": "sha256:3079895ccea24d6ccd715b0025daf6a9d61fea4cbfb00ec15bd36156f92a49f9"
+    },
+    {
+      "source": "project-context/evidence/asr_job_input.schema.json",
+      "destination": "generated/schemas/asr_job_input.schema.json",
+      "bytes": 2649,
+      "sha256": "sha256:1541efabb273b56592343fe574ecb2353410f29658e7d518f4798aa4eb3b259c"
+    },
+    {
+      "source": "project-context/evidence/asr_job_result.schema.json",
+      "destination": "generated/schemas/asr_job_result.schema.json",
+      "bytes": 4116,
+      "sha256": "sha256:ed1e5c1c07c45a39cfffb10aa7dd889ffcbdd2a9871b9b9db3f740505e929c8a"
+    },
+    {
+      "source": "project-context/evidence/render_job_input.schema.json",
+      "destination": "generated/schemas/render_job_input.schema.json",
+      "bytes": 2811,
+      "sha256": "sha256:8a594699960f7cd7a1c66cb6279d02205edd602ab86a3ec3f06c0ab5cd22d971"
+    },
+    {
+      "source": "project-context/evidence/technical_probe.schema.json",
+      "destination": "generated/schemas/technical_probe.schema.json",
+      "bytes": 3527,
+      "sha256": "sha256:ce21d00d984fa7cc5303462796a88bb041e642f57af6c6b7aa5bf415d32db9a9"
+    },
+    {
+      "source": "project-context/evidence/render_job_result.schema.json",
+      "destination": "generated/schemas/render_job_result.schema.json",
+      "bytes": 3672,
+      "sha256": "sha256:6d0097b02139fc8a6d54a89ebf174506c895f5c09952b5d7f43d632f0168e113"
     },
     {
       "source": "project-context/evidence/fixtures/avatar_profile_version.valid.json",
       "destination": "generated/fixtures/avatar_profile_version.valid.json",
       "bytes": 1320,
       "sha256": "sha256:bc79077f7121ef45e31a2fc2546402a3b65cf90bf5cf2c37b6816b6788a573f8"
+    },
+    {
+      "source": "project-context/evidence/fixtures/create_project_request.valid.json",
+      "destination": "generated/fixtures/create_project_request.valid.json",
+      "bytes": 481,
+      "sha256": "sha256:71d8327be2dc8f1b84d753199ec405fb031d0b889cab197b7ff930b290548096"
     },
     {
       "source": "project-context/evidence/fixtures/create_project_request.invalid.inline_avatar.json",
@@ -81,16 +123,10 @@
       "sha256": "sha256:63f9cbb6d572694b1b560573a060919bd5ca9cc27ca76ca8f57320412578c7c3"
     },
     {
-      "source": "project-context/evidence/fixtures/create_project_request.valid.json",
-      "destination": "generated/fixtures/create_project_request.valid.json",
-      "bytes": 481,
-      "sha256": "sha256:71d8327be2dc8f1b84d753199ec405fb031d0b889cab197b7ff930b290548096"
-    },
-    {
-      "source": "project-context/evidence/fixtures/orchestration_state.invalid.unhashed_outbox.json",
-      "destination": "generated/fixtures/orchestration_state.invalid.unhashed_outbox.json",
-      "bytes": 1436,
-      "sha256": "sha256:816834efbed4dcbfc940590eda6b6de1d3b2a0ee0f7b6769786a680105a36c67"
+      "source": "project-context/evidence/default_image_style_v1.json",
+      "destination": "generated/fixtures/default_image_style_v1.json",
+      "bytes": 6303,
+      "sha256": "sha256:d5567b63a9b6bccc4bec20959fbbd01e77ac3461a343f109f23940f8eb658412"
     },
     {
       "source": "project-context/evidence/fixtures/orchestration_state.valid.json",
@@ -99,16 +135,10 @@
       "sha256": "sha256:5f6f4930e373a1a80ff6572c54fa72123f9096352d9b902b55e9b56d8282a35f"
     },
     {
-      "source": "project-context/evidence/fixtures/production_manifest.valid.json",
-      "destination": "generated/fixtures/production_manifest.valid.json",
-      "bytes": 4506,
-      "sha256": "sha256:680a1a5c5205360ddd6a7819af27d2486dc21100b4a65ab47ccfab16d0d98e99"
-    },
-    {
-      "source": "project-context/evidence/fixtures/project_revision_config.invalid.compatibility_mismatch.json",
-      "destination": "generated/fixtures/project_revision_config.invalid.compatibility_mismatch.json",
-      "bytes": 2126,
-      "sha256": "sha256:4141e5eda3d03c2d4df1cd0d1f4978310e43810c26c6aa3630d5a7bb49ecfae4"
+      "source": "project-context/evidence/fixtures/orchestration_state.invalid.unhashed_outbox.json",
+      "destination": "generated/fixtures/orchestration_state.invalid.unhashed_outbox.json",
+      "bytes": 1436,
+      "sha256": "sha256:816834efbed4dcbfc940590eda6b6de1d3b2a0ee0f7b6769786a680105a36c67"
     },
     {
       "source": "project-context/evidence/fixtures/project_revision_config.valid.json",
@@ -117,16 +147,10 @@
       "sha256": "sha256:c9ccb7d1dbd2d52a2b40f88d05f329e9307e9612e53a22f34e36a3ca36a22174"
     },
     {
-      "source": "project-context/evidence/fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json",
-      "destination": "generated/fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json",
-      "bytes": 1398,
-      "sha256": "sha256:aff92da1d73fa76be855a69f0b9fea3b5fc8b270684c91d41adbe7626153a7d2"
-    },
-    {
-      "source": "project-context/evidence/fixtures/resolved_render_manifest.valid.json",
-      "destination": "generated/fixtures/resolved_render_manifest.valid.json",
-      "bytes": 2693,
-      "sha256": "sha256:d37e835940d98aef5f3341c4ed68789e955565aedb8281cd1b46e98c11706ae9"
+      "source": "project-context/evidence/fixtures/project_revision_config.invalid.compatibility_mismatch.json",
+      "destination": "generated/fixtures/project_revision_config.invalid.compatibility_mismatch.json",
+      "bytes": 2126,
+      "sha256": "sha256:4141e5eda3d03c2d4df1cd0d1f4978310e43810c26c6aa3630d5a7bb49ecfae4"
     },
     {
       "source": "project-context/evidence/fixtures/timeline_plan.valid.json",
@@ -135,10 +159,22 @@
       "sha256": "sha256:6ad4858e61cb5cc0483261e78334e82437f158f075b7edd0f7472354a737ef87"
     },
     {
-      "source": "project-context/evidence/fixtures/worker_job_envelope.invalid.shell_args.json",
-      "destination": "generated/fixtures/worker_job_envelope.invalid.shell_args.json",
-      "bytes": 1526,
-      "sha256": "sha256:bf3099c9ce5abda2e35b32752cc22ac862593adbe74e16680e4ee44056b61d62"
+      "source": "project-context/evidence/fixtures/resolved_render_manifest.valid.json",
+      "destination": "generated/fixtures/resolved_render_manifest.valid.json",
+      "bytes": 2693,
+      "sha256": "sha256:d37e835940d98aef5f3341c4ed68789e955565aedb8281cd1b46e98c11706ae9"
+    },
+    {
+      "source": "project-context/evidence/fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json",
+      "destination": "generated/fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json",
+      "bytes": 1398,
+      "sha256": "sha256:aff92da1d73fa76be855a69f0b9fea3b5fc8b270684c91d41adbe7626153a7d2"
+    },
+    {
+      "source": "project-context/evidence/fixtures/production_manifest.valid.json",
+      "destination": "generated/fixtures/production_manifest.valid.json",
+      "bytes": 4506,
+      "sha256": "sha256:680a1a5c5205360ddd6a7819af27d2486dc21100b4a65ab47ccfab16d0d98e99"
     },
     {
       "source": "project-context/evidence/fixtures/worker_job_envelope.valid.json",
@@ -147,10 +183,100 @@
       "sha256": "sha256:4daa33299fea062081c05e7643c0217700230dab651782726c3d859429f454c0"
     },
     {
-      "source": "project-context/evidence/default_image_style_v1.json",
-      "destination": "generated/fixtures/default_image_style_v1.json",
-      "bytes": 6303,
-      "sha256": "sha256:d5567b63a9b6bccc4bec20959fbbd01e77ac3461a343f109f23940f8eb658412"
+      "source": "project-context/evidence/fixtures/worker_job_envelope.invalid.shell_args.json",
+      "destination": "generated/fixtures/worker_job_envelope.invalid.shell_args.json",
+      "bytes": 1526,
+      "sha256": "sha256:bf3099c9ce5abda2e35b32752cc22ac862593adbe74e16680e4ee44056b61d62"
+    },
+    {
+      "source": "project-context/evidence/fixtures/worker_job_envelope.local.valid.json",
+      "destination": "generated/fixtures/worker_job_envelope.local.valid.json",
+      "bytes": 1210,
+      "sha256": "sha256:0f90e0d3102de917d431417370fab5e83b868a5468849abec9413341c532ca6c"
+    },
+    {
+      "source": "project-context/evidence/fixtures/worker_job_envelope.local.invalid.callback.json",
+      "destination": "generated/fixtures/worker_job_envelope.local.invalid.callback.json",
+      "bytes": 1386,
+      "sha256": "sha256:7eb4d4830f5a2d2afe8fa334bc83e78f241d3a3a76dca6464a6af8cfbe380fac"
+    },
+    {
+      "source": "project-context/evidence/fixtures/transcript_timing.valid.json",
+      "destination": "generated/fixtures/transcript_timing.valid.json",
+      "bytes": 2000,
+      "sha256": "sha256:0cd48253043d4ed4a6a1e37281c7173b8c32ebdd43950c9331adaa7c8800ba23"
+    },
+    {
+      "source": "project-context/evidence/fixtures/transcript_timing.invalid.word_bounds.json",
+      "destination": "generated/fixtures/transcript_timing.invalid.word_bounds.json",
+      "bytes": 900,
+      "sha256": "sha256:a7b585d0c45d30ba09f18909527b397fc59a8eeb8f8c8d6df99565828c65097e"
+    },
+    {
+      "source": "project-context/evidence/fixtures/asr_job_input.valid.json",
+      "destination": "generated/fixtures/asr_job_input.valid.json",
+      "bytes": 950,
+      "sha256": "sha256:3d91c88f7e0e8f64db775b46975a8735d4dae2747d35f0aee6cfc488774d9ea9"
+    },
+    {
+      "source": "project-context/evidence/fixtures/asr_job_input.invalid.artifact_uri.json",
+      "destination": "generated/fixtures/asr_job_input.invalid.artifact_uri.json",
+      "bytes": 898,
+      "sha256": "sha256:e0eaad85687c13f514867555657ccb53e3f703867e32b0625d0f6f68157e0ed2"
+    },
+    {
+      "source": "project-context/evidence/fixtures/asr_job_result.valid.json",
+      "destination": "generated/fixtures/asr_job_result.valid.json",
+      "bytes": 2560,
+      "sha256": "sha256:4e719475de136b0942cbb04aeab275ef63cab4e2f53ac7ab42a80aa23a0d6ebd"
+    },
+    {
+      "source": "project-context/evidence/fixtures/asr_job_result.invalid.success_shape.json",
+      "destination": "generated/fixtures/asr_job_result.invalid.success_shape.json",
+      "bytes": 493,
+      "sha256": "sha256:afccf2d003564a9556ff92da69eea99e4ee8bb0c20430aa8199466a0d2225822"
+    },
+    {
+      "source": "project-context/evidence/fixtures/render_job_input.valid.json",
+      "destination": "generated/fixtures/render_job_input.valid.json",
+      "bytes": 1668,
+      "sha256": "sha256:f955d9cfac82d88feaf91df9b88ab35d64caaf18193e3c8b014b5302e55d782c"
+    },
+    {
+      "source": "project-context/evidence/fixtures/render_job_input.invalid.asset_binding.json",
+      "destination": "generated/fixtures/render_job_input.invalid.asset_binding.json",
+      "bytes": 1346,
+      "sha256": "sha256:f939f009b002eedaf77a4163d0490ca023c73bd307403276a1856e2fe444846b"
+    },
+    {
+      "source": "project-context/evidence/fixtures/technical_probe.valid.json",
+      "destination": "generated/fixtures/technical_probe.valid.json",
+      "bytes": 1050,
+      "sha256": "sha256:8bad8a6fbd3c99ba129af7bd43dae23318a9a02b0b3a865da3c382724fce099a"
+    },
+    {
+      "source": "project-context/evidence/fixtures/technical_probe.invalid.output_profile.json",
+      "destination": "generated/fixtures/technical_probe.invalid.output_profile.json",
+      "bytes": 1049,
+      "sha256": "sha256:49e6adf8182a7c2b311edf3590b3a2133e4eb3fcf1f68d3e7fdd28e6c1999d59"
+    },
+    {
+      "source": "project-context/evidence/fixtures/render_job_result.valid.json",
+      "destination": "generated/fixtures/render_job_result.valid.json",
+      "bytes": 1616,
+      "sha256": "sha256:f3f776b491e52022d676e6a908f7d8dfbecedf435831a42dbe1adcb55a98a70b"
+    },
+    {
+      "source": "project-context/evidence/fixtures/render_job_result.invalid.success_shape.json",
+      "destination": "generated/fixtures/render_job_result.invalid.success_shape.json",
+      "bytes": 294,
+      "sha256": "sha256:942fd5a4fc081fddeb6b49bf30f3f0132987027d5be8c61af1e31207b6231b75"
+    },
+    {
+      "source": "project-context/evidence/contract-index.v1.json",
+      "destination": "generated/contract-index.v1.json",
+      "bytes": 4562,
+      "sha256": "sha256:c98a3fc0cf606cb882e072dfb7b3272b589de0c1b13823d34cd2f073c2febf94"
     }
   ]
 }

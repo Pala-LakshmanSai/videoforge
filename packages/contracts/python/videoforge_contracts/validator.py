@@ -19,6 +19,12 @@ ContractName = Literal[
     "resolvedRenderManifest",
     "productionManifest",
     "workerJobEnvelope",
+    "transcriptTiming",
+    "asrJobInput",
+    "asrJobResult",
+    "renderJobInput",
+    "technicalProbe",
+    "renderJobResult",
 ]
 
 CONTRACT_NAMES: tuple[ContractName, ...] = (
@@ -32,6 +38,12 @@ CONTRACT_NAMES: tuple[ContractName, ...] = (
     "resolvedRenderManifest",
     "productionManifest",
     "workerJobEnvelope",
+    "transcriptTiming",
+    "asrJobInput",
+    "asrJobResult",
+    "renderJobInput",
+    "technicalProbe",
+    "renderJobResult",
 )
 
 

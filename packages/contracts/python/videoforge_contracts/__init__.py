@@ -1,6 +1,8 @@
 from .models import (
     CONTRACT_MODELS,
     AvatarProfileVersionDocument,
+    AsrJobInputDocument,
+    AsrJobResultDocument,
     CanonicalContractDocument,
     CreateProjectRequest,
     ExecutionProfileOverrides,
@@ -11,7 +13,11 @@ from .models import (
     ProductionManifestDocument,
     ProjectRevisionConfigDocument,
     ResolvedRenderManifestDocument,
+    RenderJobInputDocument,
+    RenderJobResultDocument,
+    TechnicalProbeDocument,
     TimelinePlanDocument,
+    TranscriptTimingDocument,
     WorkerJobEnvelopeDocument,
 )
 from .validator import (
@@ -25,6 +31,8 @@ from .validator import (
 
 __all__ = [
     "AvatarProfileVersionDocument",
+    "AsrJobInputDocument",
+    "AsrJobResultDocument",
     "CONTRACT_MODELS",
     "CONTRACT_NAMES",
     "CONTRACT_VALIDATORS",
@@ -41,7 +49,11 @@ __all__ = [
     "ProductionManifestDocument",
     "ProjectRevisionConfigDocument",
     "ResolvedRenderManifestDocument",
+    "RenderJobInputDocument",
+    "RenderJobResultDocument",
+    "TechnicalProbeDocument",
     "TimelinePlanDocument",
+    "TranscriptTimingDocument",
     "WorkerJobEnvelopeDocument",
     "validate_contract",
 ]

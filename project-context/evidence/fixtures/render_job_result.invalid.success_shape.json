@@ -1,0 +1,12 @@
+{
+  "schema_version": "render-job-result/v1",
+  "attempt_id": "attempt_render_local_001",
+  "status": "SUCCEEDED",
+  "output": null,
+  "probe": null,
+  "error": {
+    "code": "RENDER_PROCESS_FAILED",
+    "message": "A success result cannot carry a render failure.",
+    "retryable": true
+  }
+}

@@ -153,7 +153,7 @@ Sequential shared task after Wave 1.
 
 - Audit the existing ten schemas and add only the missing versioned documents required by a real local job, expected to include canonical transcript/word timing, job-specific input/result manifests, and technical-probe output.
 - Run every new valid/invalid fixture through Ajv, Zod, JSON Schema, and Pydantic entry points.
-- Implement Python RFC 8785 parity with the official vectors before any Python worker emits or verifies a canonical JSON hash; otherwise keep canonicalization solely in the TypeScript control plane and make Python treat that hash as opaque. Record one explicit choice—never mixed behavior.
+- Keep canonicalization solely in the TypeScript control plane. Python workers validate parsed documents and exact byte hashes but treat canonical JSON hashes as opaque; they never reserialize JSON for JCS. This is the recorded `DEC_CONTRACT_001` choice, not mixed behavior.
 - Lock one Python 3.12 dependency workflow with reproducible transitive versions/hashes before adding worker dependencies. Do not mix installers between workers.
 - Add provider-free commands such as `pnpm local:doctor` and `pnpm test:local-slice`; keep them separate from the fast default until stable, then include their deterministic subset in `pnpm verify`.
 - Lock the local artifact root, content-addressed filenames, cleanup policy, and fixture/local mode separation.

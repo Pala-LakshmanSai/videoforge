@@ -1,0 +1,14 @@
+{
+  "schema_version": "asr-job-result/v1",
+  "attempt_id": "attempt_asr_local_001",
+  "status": "SUCCEEDED",
+  "source_voiceover_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "model_sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "transcript": null,
+  "diagnostics": null,
+  "error": {
+    "code": "ASR_PROCESS_FAILED",
+    "message": "A success result cannot carry a process failure.",
+    "retryable": true
+  }
+}

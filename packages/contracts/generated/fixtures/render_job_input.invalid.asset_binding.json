@@ -1,0 +1,32 @@
+{
+  "schema_version": "render-job-input/v1",
+  "project_revision_id": "revision_local_001",
+  "attempt_id": "attempt_render_local_001",
+  "resolved_render_manifest": {
+    "asset_id": "asset_render_manifest_local_001",
+    "sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "artifact_uri": "vf-local://objects/sha256/cc/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.json"
+  },
+  "assets": [
+    {
+      "asset_id": "asset_voiceover_local_001",
+      "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "artifact_uri": "vf-local://objects/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.wav",
+      "kind": "VOICEOVER"
+    },
+    {
+      "asset_id": "asset_image_local_001",
+      "sha256": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "artifact_uri": "vf-local://objects/sha256/ee/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.png"
+    }
+  ],
+  "output": {
+    "result_uri": "vf-local-run://revision_local_001/attempt_render_local_001/videoforge-local-short-slice.mp4",
+    "filename": "videoforge-local-short-slice.mp4"
+  },
+  "tools": {
+    "ffmpeg_version": "8.1.1",
+    "ffprobe_version": "8.1.1"
+  },
+  "cancel_token": "local-render-cancel-token-0000000000001"
+}

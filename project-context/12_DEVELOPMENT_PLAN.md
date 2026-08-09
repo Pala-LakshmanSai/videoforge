@@ -37,11 +37,12 @@ flowchart LR
 
 ## Phase 0A: private repository and contract skeleton
 
-Current (2026-08-09): repo commands, ten contracts, parity-tested validator entry points, and
-TypeScript JCS are complete. Worker-job and orchestration schemas lock dispatch plus
-task/attempt/outbox/event state. Create Project remains independently typed; complex documents use
-canonical-schema entry points. Python JCS must precede worker canonical hashes. Durable database
-orchestration belongs to Phase 1.
+Current (2026-08-09): repo commands, sixteen contracts, parity-tested validator entry points,
+generated structural TypeScript types, and TypeScript JCS are complete. Worker-job and
+orchestration schemas lock dispatch plus task/attempt/outbox/event state; Phase 0C adds transcript,
+ASR, render, and technical-probe boundaries. TypeScript is the sole JCS authority; Python verifies
+exact byte hashes and treats canonical document hashes as opaque. Durable database orchestration
+belongs to Phase 1.
 
 - Initialize private Git; exclude research, private references, outputs, secrets, weights, and screenshots.
 - Create the monorepo shape in `19_IMPLEMENTATION_PLAYBOOK.md`: web, shared packages, and four worker lanes.

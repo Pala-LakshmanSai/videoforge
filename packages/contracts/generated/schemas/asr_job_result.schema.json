@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/asr-job-result-v1.json",
+  "title": "VideoForge ASR Job Result v1",
+  "description": "Worker facts returned to the TypeScript control plane. No Python-produced canonical document hash is accepted.",
+  "oneOf": [
+    {"$ref": "#/$defs/succeeded"},
+    {"$ref": "#/$defs/failed"},
+    {"$ref": "#/$defs/cancelled"}
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool_version", "source_duration_ms", "decode_duration_ms"],
+      "properties": {
+        "tool_version": {"type": "string", "minLength": 1, "maxLength": 80},
+        "source_duration_ms": {"type": "integer", "minimum": 1, "maximum": 3600000},
+        "decode_duration_ms": {"type": "integer", "minimum": 0, "maximum": 86400000}
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": {
+          "enum": [
+            "ASR_INPUT_INVALID",
+            "ASR_SOURCE_HASH_MISMATCH",
+            "ASR_SOURCE_DECODE_FAILED",
+            "ASR_TOOL_MISSING",
+            "ASR_MODEL_MISSING",
+            "ASR_MODEL_HASH_MISMATCH",
+            "ASR_PROCESS_FAILED",
+            "ASR_OUTPUT_INVALID",
+            "ASR_CANCELLED"
+          ]
+        },
+        "message": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "retryable": {"type": "boolean"}
+      }
+    },
+    "succeeded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "attempt_id",
+        "status",
+        "source_voiceover_sha256",
+        "model_sha256",
+        "transcript",
+        "diagnostics",
+        "error"
+      ],
+      "properties": {
+        "schema_version": {"const": "asr-job-result/v1"},
+        "attempt_id": {"$ref": "#/$defs/id"},
+        "status": {"const": "SUCCEEDED"},
+        "source_voiceover_sha256": {"$ref": "#/$defs/sha256"},
+        "model_sha256": {"$ref": "#/$defs/sha256"},
+        "transcript": {
+          "$ref": "https://videoforge.local/schemas/transcript-timing-v1.json"
+        },
+        "diagnostics": {"$ref": "#/$defs/diagnostics"},
+        "error": {"type": "null"}
+      }
+    },
+    "failed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "attempt_id",
+        "status",
+        "source_voiceover_sha256",
+        "model_sha256",
+        "transcript",
+        "diagnostics",
+        "error"
+      ],
+      "properties": {
+        "schema_version": {"const": "asr-job-result/v1"},
+        "attempt_id": {"$ref": "#/$defs/id"},
+        "status": {"const": "FAILED"},
+        "source_voiceover_sha256": {"$ref": "#/$defs/sha256"},
+        "model_sha256": {"$ref": "#/$defs/sha256"},
+        "transcript": {"type": "null"},
+        "diagnostics": {"type": "null"},
+        "error": {"$ref": "#/$defs/error"}
+      }
+    },
+    "cancelled": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "attempt_id",
+        "status",
+        "source_voiceover_sha256",
+        "model_sha256",
+        "transcript",
+        "diagnostics",
+        "error"
+      ],
+      "properties": {
+        "schema_version": {"const": "asr-job-result/v1"},
+        "attempt_id": {"$ref": "#/$defs/id"},
+        "status": {"const": "CANCELLED"},
+        "source_voiceover_sha256": {"$ref": "#/$defs/sha256"},
+        "model_sha256": {"$ref": "#/$defs/sha256"},
+        "transcript": {"type": "null"},
+        "diagnostics": {"type": "null"},
+        "error": {
+          "allOf": [
+            {"$ref": "#/$defs/error"},
+            {"type": "object", "properties": {"code": {"const": "ASR_CANCELLED"}}}
+          ]
+        }
+      }
+    }
+  }
+}

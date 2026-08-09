@@ -1,0 +1,30 @@
+{
+  "schema_version": "worker-job-envelope/v1",
+  "job_type": "ASR",
+  "dispatch_target": "LOCAL",
+  "idempotency_key": "revision_local_001:asr:attempt_001",
+  "workspace_id": "workspace_local_001",
+  "project_id": "project_local_001",
+  "revision_id": "revision_local_001",
+  "task_id": "task_asr_local_001",
+  "attempt_id": "attempt_asr_local_001",
+  "execution_profile_id": "local-whisper-base-en-v1",
+  "execution_claim_token": "local-single-use-claim-token-0000000000000001",
+  "revision_config": {
+    "asset_id": "asset_revision_config_local_001",
+    "sha256": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "input_manifest": {
+    "asset_id": "asset_asr_input_manifest_local_001",
+    "sha256": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "artifact_uri": "vf-local://objects/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.json"
+  },
+  "output_prefix": "workspace/workspace_local_001/project/project_local_001/revision/revision_local_001/transcript/attempt_asr_local_001/",
+  "callback": {
+    "url": "https://api.videoforge.invalid/v1/worker-callbacks/asr",
+    "token": "fake-local-callback-token-000000000000000001",
+    "expires_at": "2026-08-09T11:30:00.000Z"
+  },
+  "cancel_token": "local-cancel-token-000000000000000000000001",
+  "deadline_at": "2026-08-09T11:20:00.000Z"
+}

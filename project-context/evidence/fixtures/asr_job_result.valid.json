@@ -1,0 +1,65 @@
+{
+  "schema_version": "asr-job-result/v1",
+  "attempt_id": "attempt_asr_local_001",
+  "status": "SUCCEEDED",
+  "source_voiceover_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "model_sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "transcript": {
+    "schema_version": "transcript-timing/v1",
+    "project_revision_id": "revision_local_001",
+    "source": {
+      "asset_id": "asset_voiceover_local_001",
+      "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "duration_ms": 12000
+    },
+    "engine": {
+      "name": "whisper.cpp",
+      "version": "1.8.4",
+      "model_name": "base.en",
+      "model_sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "language": "en"
+    },
+    "text": "Fresh watermelons reveal their quality through simple careful checks.",
+    "words": [
+      {"index": 0, "text": "Fresh", "start_ms": 0, "end_ms": 700, "confidence": 0.98},
+      {"index": 1, "text": "watermelons", "start_ms": 700, "end_ms": 2100, "confidence": 0.97},
+      {"index": 2, "text": "reveal", "start_ms": 2100, "end_ms": 3000, "confidence": 0.99},
+      {"index": 3, "text": "their", "start_ms": 3000, "end_ms": 3500, "confidence": 0.99},
+      {"index": 4, "text": "quality", "start_ms": 3500, "end_ms": 4700, "confidence": 0.98},
+      {"index": 5, "text": "through", "start_ms": 4700, "end_ms": 5600, "confidence": 0.97},
+      {"index": 6, "text": "simple", "start_ms": 5600, "end_ms": 6600, "confidence": 0.99},
+      {"index": 7, "text": "careful", "start_ms": 6600, "end_ms": 7600, "confidence": 0.98},
+      {"index": 8, "text": "checks.", "start_ms": 7600, "end_ms": 9000, "confidence": 0.99}
+    ],
+    "phrases": [
+      {
+        "phrase_id": "phrase_0001",
+        "sentence_id": "sentence_0001",
+        "word_start": 0,
+        "word_end_exclusive": 5,
+        "start_ms": 0,
+        "end_ms": 4700,
+        "pause_before_ms": 0,
+        "pause_after_ms": 0,
+        "text": "Fresh watermelons reveal their quality"
+      },
+      {
+        "phrase_id": "phrase_0002",
+        "sentence_id": "sentence_0001",
+        "word_start": 5,
+        "word_end_exclusive": 9,
+        "start_ms": 4700,
+        "end_ms": 9000,
+        "pause_before_ms": 0,
+        "pause_after_ms": 3000,
+        "text": "through simple careful checks."
+      }
+    ]
+  },
+  "diagnostics": {
+    "tool_version": "1.8.4",
+    "source_duration_ms": 12000,
+    "decode_duration_ms": 1430
+  },
+  "error": null
+}

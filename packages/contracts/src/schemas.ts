@@ -1,31 +1,19 @@
+import { canonicalContractRegistry } from "../generated/contract-registry.js";
 import { canonicalSchemaDocuments } from "../generated/schema-documents.js";
+import type { ContractDocumentMap } from "../generated/contract-types.js";
 
-export const contractNames = [
-  "avatarProfileVersion",
-  "createProjectRequest",
-  "imageStyleProfile",
-  "imageStyleAnalyzerOutput",
-  "orchestrationState",
-  "projectRevisionConfig",
-  "timelinePlan",
-  "resolvedRenderManifest",
-  "productionManifest",
-  "workerJobEnvelope",
-] as const;
+export type ContractName = keyof ContractDocumentMap;
+export type ContractDocument<Name extends ContractName> = ContractDocumentMap[Name];
 
-export type ContractName = (typeof contractNames)[number];
+export const contractNames = Object.freeze(
+  canonicalContractRegistry.contracts.map(({ name }) => name),
+) as readonly ContractName[];
 
-export { canonicalSchemaDocuments };
+export { canonicalContractRegistry, canonicalSchemaDocuments };
+export type * from "../generated/contract-types.js";
 
-export const contractSchemaIds = {
-  avatarProfileVersion: canonicalSchemaDocuments.avatarProfileVersion.$id,
-  createProjectRequest: canonicalSchemaDocuments.createProjectRequest.$id,
-  imageStyleProfile: canonicalSchemaDocuments.imageStyleProfile.$id,
-  imageStyleAnalyzerOutput: canonicalSchemaDocuments.imageStyleAnalyzerOutput.$id,
-  orchestrationState: canonicalSchemaDocuments.orchestrationState.$id,
-  projectRevisionConfig: canonicalSchemaDocuments.projectRevisionConfig.$id,
-  timelinePlan: canonicalSchemaDocuments.timelinePlan.$id,
-  resolvedRenderManifest: canonicalSchemaDocuments.resolvedRenderManifest.$id,
-  productionManifest: canonicalSchemaDocuments.productionManifest.$id,
-  workerJobEnvelope: canonicalSchemaDocuments.workerJobEnvelope.$id,
-} as const satisfies Record<ContractName, string>;
+export const contractSchemaIds = Object.freeze(
+  Object.fromEntries(
+    contractNames.map((contractName) => [contractName, canonicalSchemaDocuments[contractName].$id]),
+  ),
+) as Readonly<Record<ContractName, string>>;

@@ -88,6 +88,30 @@ class WorkerJobEnvelopeDocument(CanonicalContractDocument):
     contract_name = "workerJobEnvelope"
 
 
+class TranscriptTimingDocument(CanonicalContractDocument):
+    contract_name = "transcriptTiming"
+
+
+class AsrJobInputDocument(CanonicalContractDocument):
+    contract_name = "asrJobInput"
+
+
+class AsrJobResultDocument(CanonicalContractDocument):
+    contract_name = "asrJobResult"
+
+
+class RenderJobInputDocument(CanonicalContractDocument):
+    contract_name = "renderJobInput"
+
+
+class TechnicalProbeDocument(CanonicalContractDocument):
+    contract_name = "technicalProbe"
+
+
+class RenderJobResultDocument(CanonicalContractDocument):
+    contract_name = "renderJobResult"
+
+
 CONTRACT_MODELS: dict[ContractName, type[BaseModel]] = {
     "avatarProfileVersion": AvatarProfileVersionDocument,
     "createProjectRequest": CreateProjectRequest,
@@ -99,4 +123,10 @@ CONTRACT_MODELS: dict[ContractName, type[BaseModel]] = {
     "resolvedRenderManifest": ResolvedRenderManifestDocument,
     "productionManifest": ProductionManifestDocument,
     "workerJobEnvelope": WorkerJobEnvelopeDocument,
+    "transcriptTiming": TranscriptTimingDocument,
+    "asrJobInput": AsrJobInputDocument,
+    "asrJobResult": AsrJobResultDocument,
+    "renderJobInput": RenderJobInputDocument,
+    "technicalProbe": TechnicalProbeDocument,
+    "renderJobResult": RenderJobResultDocument,
 }

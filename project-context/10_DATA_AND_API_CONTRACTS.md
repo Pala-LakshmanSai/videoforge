@@ -62,6 +62,14 @@ AvatarForcing crop, 30 fps conversion, and right-image zoom profile.
 
 Unless a field explicitly hashes raw provider bytes, every JSON contract hash uses `SHA-256(RFC 8785 JCS(payload))` and includes the `sha256:` prefix. Never hash pretty-printed JSON or a mutable database projection. The golden chain contains real content-derived revision, timeline, render, and default-style hashes.
 
+TypeScript is the sole RFC 8785 authority for Phase 0C. A Python worker verifies the SHA-256 of
+the exact canonical input bytes it receives and of binary media bytes it produces, validates parsed
+documents through the canonical JSON Schema/Pydantic entry point, and treats any
+`canonical_document_hash` as opaque. It must not reserialize JSON to derive or verify JCS. The
+TypeScript control plane validates returned facts, canonicalizes and stores result-manifest bytes,
+and assigns their canonical hash. Future callback HMACs sign raw bytes; local worker envelopes use
+the explicit local artifact pointer and a null callback instead of a fake HTTPS callback.
+
 The machine contracts are `evidence/timeline_plan.schema.json` and `evidence/resolved_render_manifest.schema.json`. Their segment definitions are discriminated unions:
 
 - `AVATAR_FULL` requires exactly an avatar slot/asset.

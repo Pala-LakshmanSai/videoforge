@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/asr-job-input-v1.json",
+  "title": "VideoForge ASR Job Input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_revision_id",
+    "attempt_id",
+    "voiceover",
+    "model",
+    "options",
+    "output",
+    "cancel_token"
+  ],
+  "properties": {
+    "schema_version": {"const": "asr-job-input/v1"},
+    "project_revision_id": {"$ref": "#/$defs/id"},
+    "attempt_id": {"$ref": "#/$defs/id"},
+    "voiceover": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_id", "sha256", "artifact_uri", "media_type", "duration_ms"],
+      "properties": {
+        "asset_id": {"$ref": "#/$defs/id"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "artifact_uri": {"$ref": "#/$defs/objectUri"},
+        "media_type": {"enum": ["audio/wav", "audio/flac", "audio/mpeg", "audio/mp4"]},
+        "duration_ms": {"type": "integer", "minimum": 10000, "maximum": 3600000}
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "name", "sha256", "language"],
+      "properties": {
+        "engine": {"const": "whisper.cpp"},
+        "name": {"const": "base.en"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "language": {"const": "en"}
+      }
+    },
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["threads", "processors", "flash_attention", "greedy", "split_on_word"],
+      "properties": {
+        "threads": {"type": "integer", "minimum": 1, "maximum": 64},
+        "processors": {"const": 1},
+        "flash_attention": {"type": "boolean"},
+        "greedy": {"const": true},
+        "split_on_word": {"const": true}
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result_uri"],
+      "properties": {"result_uri": {"$ref": "#/$defs/runUri"}}
+    },
+    "cancel_token": {"type": "string", "minLength": 32, "maxLength": 512}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "objectUri": {
+      "type": "string",
+      "pattern": "^vf-local://objects/sha256/[0-9a-f]{2}/[0-9a-f]{64}\\.[a-z0-9]{1,10}$"
+    },
+    "runUri": {
+      "type": "string",
+      "pattern": "^vf-local-run://[A-Za-z0-9][A-Za-z0-9._:-]*/[A-Za-z0-9][A-Za-z0-9._:-]*/[A-Za-z0-9][A-Za-z0-9._-]{0,159}\\.json$"
+    }
+  }
+}

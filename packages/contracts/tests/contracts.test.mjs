@@ -7,11 +7,13 @@ import { fileURLToPath } from "node:url";
 import {
   assertContract,
   canonicalContractZodSchemas,
+  canonicalContractRegistry,
   ContractValidationError,
   contractNames,
   contractSchemaIds,
   contractValidators,
   createProjectRequestSchema,
+  validateAndHashContractDocument,
   validateOutputRuleKeywords,
   validateContract,
 } from "../dist/src/index.js";
@@ -19,29 +21,15 @@ import {
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixtureRoot = path.join(packageRoot, "generated/fixtures");
 
-const fixtureCases = [
-  ["avatarProfileVersion", "avatar_profile_version.valid.json", true],
-  ["createProjectRequest", "create_project_request.valid.json", true],
-  ["createProjectRequest", "create_project_request.invalid.inline_avatar.json", false],
-  ["createProjectRequest", "create_project_request.invalid.over_budget.json", false],
-  ["orchestrationState", "orchestration_state.valid.json", true],
-  ["orchestrationState", "orchestration_state.invalid.unhashed_outbox.json", false],
-  ["projectRevisionConfig", "project_revision_config.valid.json", true],
-  ["projectRevisionConfig", "project_revision_config.invalid.compatibility_mismatch.json", false],
-  ["timelinePlan", "timeline_plan.valid.json", true],
-  ["resolvedRenderManifest", "resolved_render_manifest.valid.json", true],
-  ["resolvedRenderManifest", "resolved_render_manifest.invalid.avatar_profile_crop.json", false],
-  ["productionManifest", "production_manifest.valid.json", true],
-  ["imageStyleProfile", "default_image_style_v1.json", true],
-  ["workerJobEnvelope", "worker_job_envelope.valid.json", true],
-  ["workerJobEnvelope", "worker_job_envelope.invalid.shell_args.json", false],
-];
+const fixtureCases = canonicalContractRegistry.contracts.flatMap(({ name, fixtures }) =>
+  fixtures.map(({ path: fixturePath, expected }) => [name, path.basename(fixturePath), expected]),
+);
 
 const loadFixture = async (filename) =>
   JSON.parse(await readFile(path.join(fixtureRoot, filename), "utf8"));
 
 test("all canonical schemas compile and expose stable IDs", () => {
-  assert.equal(contractNames.length, 10);
+  assert.equal(contractNames.length, 16);
   for (const contractName of contractNames) {
     assert.match(contractSchemaIds[contractName], /^https:\/\/videoforge\.local\/schemas\//);
     assert.equal(typeof contractValidators[contractName], "function");
@@ -87,6 +75,21 @@ test("typed Create Project validation enforces conditional keywords", async () =
   };
   assert.equal(validateContract("createProjectRequest", invalid).success, false);
   assert.equal(createProjectRequestSchema.safeParse(invalid).success, false);
+});
+
+test("validated documents are schema-checked and hashed by the TypeScript JCS authority", async () => {
+  const fixture = await loadFixture("transcript_timing.valid.json");
+  const validated = await validateAndHashContractDocument("transcriptTiming", fixture);
+
+  assert.equal(validated.contractName, "transcriptTiming");
+  assert.equal(validated.value, fixture);
+  assert.match(validated.sha256, /^sha256:[0-9a-f]{64}$/);
+  assert.equal(Object.isFrozen(validated), true);
+
+  await assert.rejects(
+    validateAndHashContractDocument("transcriptTiming", { ...fixture, duration_ms: 1 }),
+    ContractValidationError,
+  );
 });
 
 test("output-rule keywords accept explicit negative constraints", () => {

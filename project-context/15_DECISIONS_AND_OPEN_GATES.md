@@ -28,6 +28,7 @@ Every row below is `APPROVED` by the user and recorded in this planning session 
 | `DEC_AVATAR_004` | Same centered avatar clip serves both layouts | Saves inference; deterministic crop is sufficient |
 | `DEC_AVATAR_005` | Workspace Avatar Hub is the only ordinary source of project avatars; projects select and pin an exact ready version, with no inline avatar upload | User explicitly requested create-once reuse, image/name dropdown selection, and sibling Avatar/Image Style hubs on 2026-08-09; exact version pinning prevents later source changes from altering a project |
 | `DEC_TIMING_001` | Free local `whisper.cpp base.en` | Proven local path; paid ASR unnecessary |
+| `DEC_CONTRACT_001` | TypeScript is the sole RFC 8785/JCS authority; Python workers validate schemas and exact byte hashes but treat canonical JSON hashes as opaque | Avoids cross-language number-serialization drift while keeping one deterministic canonical hash authority; recorded for Phase 0C on 2026-08-09 |
 | `DEC_SCHEDULER_001` | Seeded deterministic bounded variation | Fast, cheap, reproducible; no AI layout calls |
 | `DEC_SCHEDULER_002` | Target ~22% avatar, half full/half split, 2–6 sec appearances | Derived from both audited references |
 | `DEC_RENDER_001` | Direct FFmpeg | Leanest correct renderer for simple grammar |

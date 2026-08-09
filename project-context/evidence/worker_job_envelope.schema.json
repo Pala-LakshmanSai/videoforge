@@ -46,7 +46,12 @@
     "execution_profile_id": {"$ref": "#/$defs/id"},
     "execution_claim_token": {"type": "string", "minLength": 32, "maxLength": 512},
     "revision_config": {"$ref": "#/$defs/assetPointer"},
-    "input_manifest": {"$ref": "#/$defs/signedAssetPointer"},
+    "input_manifest": {
+      "oneOf": [
+        {"$ref": "#/$defs/signedAssetPointer"},
+        {"$ref": "#/$defs/localAssetPointer"}
+      ]
+    },
     "output_prefix": {
       "type": "string",
       "minLength": 1,
@@ -54,18 +59,31 @@
       "pattern": "^(?!.*(?:^|/)\\.\\.(?:/|$))workspace/[A-Za-z0-9._/-]+/$"
     },
     "callback": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["url", "token", "expires_at"],
-      "properties": {
-        "url": {"type": "string", "pattern": "^https://", "maxLength": 2000},
-        "token": {"type": "string", "minLength": 32, "maxLength": 512},
-        "expires_at": {"$ref": "#/$defs/timestamp"}
-      }
+      "oneOf": [{"$ref": "#/$defs/callback"}, {"type": "null"}]
     },
     "cancel_token": {"type": "string", "minLength": 32, "maxLength": 512},
     "deadline_at": {"$ref": "#/$defs/timestamp"}
   },
+  "allOf": [
+    {
+      "if": {"properties": {"dispatch_target": {"const": "RUNPOD"}}},
+      "then": {
+        "properties": {
+          "input_manifest": {"$ref": "#/$defs/signedAssetPointer"},
+          "callback": {"$ref": "#/$defs/callback"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"dispatch_target": {"const": "LOCAL"}}},
+      "then": {
+        "properties": {
+          "input_manifest": {"$ref": "#/$defs/localAssetPointer"},
+          "callback": {"type": "null"}
+        }
+      }
+    }
+  ],
   "$defs": {
     "id": {
       "type": "string",
@@ -95,6 +113,29 @@
         "asset_id": {"$ref": "#/$defs/id"},
         "sha256": {"$ref": "#/$defs/sha256"},
         "signed_url": {"type": "string", "pattern": "^https://", "maxLength": 2000},
+        "expires_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "localAssetPointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_id", "sha256", "artifact_uri"],
+      "properties": {
+        "asset_id": {"$ref": "#/$defs/id"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "artifact_uri": {
+          "type": "string",
+          "pattern": "^vf-local://objects/sha256/[0-9a-f]{2}/[0-9a-f]{64}\\.json$"
+        }
+      }
+    },
+    "callback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "token", "expires_at"],
+      "properties": {
+        "url": {"type": "string", "pattern": "^https://", "maxLength": 2000},
+        "token": {"type": "string", "minLength": 32, "maxLength": 512},
         "expires_at": {"$ref": "#/$defs/timestamp"}
       }
     }

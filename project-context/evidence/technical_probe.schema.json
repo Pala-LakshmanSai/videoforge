@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/technical-probe-v1.json",
+  "title": "VideoForge Technical Probe v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "asset_id",
+    "sha256",
+    "bytes",
+    "container",
+    "duration_ms",
+    "total_frames",
+    "video",
+    "audio",
+    "stream_counts",
+    "av_drift_ms",
+    "decode_ok",
+    "loudness",
+    "tools"
+  ],
+  "properties": {
+    "schema_version": {"const": "technical-probe/v1"},
+    "asset_id": {"$ref": "#/$defs/id"},
+    "sha256": {"$ref": "#/$defs/sha256"},
+    "bytes": {"type": "integer", "minimum": 1},
+    "container": {"const": "mp4"},
+    "duration_ms": {"type": "integer", "minimum": 10000, "maximum": 3600034},
+    "total_frames": {"type": "integer", "minimum": 300},
+    "video": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["codec", "pixel_format", "width", "height", "fps_num", "fps_den", "start_ms"],
+      "properties": {
+        "codec": {"const": "h264"},
+        "pixel_format": {"const": "yuv420p"},
+        "width": {"const": 1920},
+        "height": {"const": 1080},
+        "fps_num": {"const": 30},
+        "fps_den": {"const": 1},
+        "start_ms": {"type": "integer", "minimum": 0, "maximum": 34}
+      }
+    },
+    "audio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["codec", "sample_rate_hz", "channels", "start_ms"],
+      "properties": {
+        "codec": {"const": "aac"},
+        "sample_rate_hz": {"const": 48000},
+        "channels": {"enum": [1, 2]},
+        "start_ms": {"type": "integer", "minimum": 0, "maximum": 34}
+      }
+    },
+    "stream_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["video", "audio", "subtitle", "data"],
+      "properties": {
+        "video": {"const": 1},
+        "audio": {"const": 1},
+        "subtitle": {"const": 0},
+        "data": {"const": 0}
+      }
+    },
+    "av_drift_ms": {"type": "integer", "minimum": -34, "maximum": 34},
+    "decode_ok": {"const": true},
+    "loudness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "normalized",
+        "input_integrated_lufs",
+        "input_true_peak_dbtp",
+        "output_integrated_lufs",
+        "output_true_peak_dbtp"
+      ],
+      "properties": {
+        "profile": {"const": "voiceover-minus16lufs-v1"},
+        "normalized": {"type": "boolean"},
+        "input_integrated_lufs": {"type": "number", "minimum": -100, "maximum": 0},
+        "input_true_peak_dbtp": {"type": "number", "minimum": -100, "maximum": 0},
+        "output_integrated_lufs": {"type": "number", "minimum": -17, "maximum": -15},
+        "output_true_peak_dbtp": {"type": "number", "minimum": -100, "maximum": -1.5}
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ffmpeg_version", "ffprobe_version", "filtergraph_sha256"],
+      "properties": {
+        "ffmpeg_version": {"type": "string", "minLength": 1, "maxLength": 80},
+        "ffprobe_version": {"type": "string", "minLength": 1, "maxLength": 80},
+        "filtergraph_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

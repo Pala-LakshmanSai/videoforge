@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { validateContract } from "./ajv.js";
 import { createProjectRequestSchema } from "./create-project.js";
-import type { ContractName } from "./schemas.js";
+import { contractNames, type ContractDocument, type ContractName } from "./schemas.js";
 
 export function canonicalContractZodSchema<T = unknown>(contractName: ContractName): z.ZodType<T> {
   return z.custom<T>((value) => validateContract(contractName, value).success, {
@@ -10,15 +10,9 @@ export function canonicalContractZodSchema<T = unknown>(contractName: ContractNa
   });
 }
 
-export const canonicalContractZodSchemas = {
-  avatarProfileVersion: canonicalContractZodSchema("avatarProfileVersion"),
+export const canonicalContractZodSchemas = Object.freeze({
+  ...Object.fromEntries(
+    contractNames.map((contractName) => [contractName, canonicalContractZodSchema(contractName)]),
+  ),
   createProjectRequest: createProjectRequestSchema,
-  imageStyleProfile: canonicalContractZodSchema("imageStyleProfile"),
-  imageStyleAnalyzerOutput: canonicalContractZodSchema("imageStyleAnalyzerOutput"),
-  orchestrationState: canonicalContractZodSchema("orchestrationState"),
-  projectRevisionConfig: canonicalContractZodSchema("projectRevisionConfig"),
-  timelinePlan: canonicalContractZodSchema("timelinePlan"),
-  resolvedRenderManifest: canonicalContractZodSchema("resolvedRenderManifest"),
-  productionManifest: canonicalContractZodSchema("productionManifest"),
-  workerJobEnvelope: canonicalContractZodSchema("workerJobEnvelope"),
-} as const;
+}) as unknown as { readonly [Name in ContractName]: z.ZodType<ContractDocument<Name>> };

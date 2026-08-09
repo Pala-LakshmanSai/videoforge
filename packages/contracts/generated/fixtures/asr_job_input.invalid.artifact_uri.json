@@ -1,0 +1,29 @@
+{
+  "schema_version": "asr-job-input/v1",
+  "project_revision_id": "revision_local_001",
+  "attempt_id": "attempt_asr_local_001",
+  "voiceover": {
+    "asset_id": "asset_voiceover_local_001",
+    "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "artifact_uri": "vf-local://objects/sha256/aa/../voiceover.wav",
+    "media_type": "audio/wav",
+    "duration_ms": 12000
+  },
+  "model": {
+    "engine": "whisper.cpp",
+    "name": "base.en",
+    "sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "language": "en"
+  },
+  "options": {
+    "threads": 4,
+    "processors": 1,
+    "flash_attention": true,
+    "greedy": true,
+    "split_on_word": true
+  },
+  "output": {
+    "result_uri": "vf-local-run://revision_local_001/attempt_asr_local_001/asr-result.json"
+  },
+  "cancel_token": "local-asr-cancel-token-0000000000000001"
+}

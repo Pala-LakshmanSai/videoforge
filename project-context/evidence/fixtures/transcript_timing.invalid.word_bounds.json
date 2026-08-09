@@ -1,0 +1,33 @@
+{
+  "schema_version": "transcript-timing/v1",
+  "project_revision_id": "revision_local_001",
+  "source": {
+    "asset_id": "asset_voiceover_local_001",
+    "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "duration_ms": 12000
+  },
+  "engine": {
+    "name": "whisper.cpp",
+    "version": "1.8.4",
+    "model_name": "base.en",
+    "model_sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "language": "en"
+  },
+  "text": "Invalid timing",
+  "words": [
+    {"index": 0, "text": "Invalid", "start_ms": 0, "end_ms": 0, "confidence": 0.5}
+  ],
+  "phrases": [
+    {
+      "phrase_id": "phrase_0001",
+      "sentence_id": "sentence_0001",
+      "word_start": 0,
+      "word_end_exclusive": 1,
+      "start_ms": 0,
+      "end_ms": 1,
+      "pause_before_ms": 0,
+      "pause_after_ms": 0,
+      "text": "Invalid timing"
+    }
+  ]
+}

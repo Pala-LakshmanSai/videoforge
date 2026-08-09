@@ -2953,7 +2953,14 @@ export const canonicalSchemaDocuments = {
         "$ref": "#/$defs/assetPointer"
       },
       "input_manifest": {
-        "$ref": "#/$defs/signedAssetPointer"
+        "oneOf": [
+          {
+            "$ref": "#/$defs/signedAssetPointer"
+          },
+          {
+            "$ref": "#/$defs/localAssetPointer"
+          }
+        ]
       },
       "output_prefix": {
         "type": "string",
@@ -2962,28 +2969,14 @@ export const canonicalSchemaDocuments = {
         "pattern": "^(?!.*(?:^|/)\\.\\.(?:/|$))workspace/[A-Za-z0-9._/-]+/$"
       },
       "callback": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "url",
-          "token",
-          "expires_at"
-        ],
-        "properties": {
-          "url": {
-            "type": "string",
-            "pattern": "^https://",
-            "maxLength": 2000
+        "oneOf": [
+          {
+            "$ref": "#/$defs/callback"
           },
-          "token": {
-            "type": "string",
-            "minLength": 32,
-            "maxLength": 512
-          },
-          "expires_at": {
-            "$ref": "#/$defs/timestamp"
+          {
+            "type": "null"
           }
-        }
+        ]
       },
       "cancel_token": {
         "type": "string",
@@ -2994,6 +2987,46 @@ export const canonicalSchemaDocuments = {
         "$ref": "#/$defs/timestamp"
       }
     },
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "dispatch_target": {
+              "const": "RUNPOD"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "input_manifest": {
+              "$ref": "#/$defs/signedAssetPointer"
+            },
+            "callback": {
+              "$ref": "#/$defs/callback"
+            }
+          }
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "dispatch_target": {
+              "const": "LOCAL"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "input_manifest": {
+              "$ref": "#/$defs/localAssetPointer"
+            },
+            "callback": {
+              "type": "null"
+            }
+          }
+        }
+      }
+    ],
     "$defs": {
       "id": {
         "type": "string",
@@ -3048,6 +3081,1203 @@ export const canonicalSchemaDocuments = {
           },
           "expires_at": {
             "$ref": "#/$defs/timestamp"
+          }
+        }
+      },
+      "localAssetPointer": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asset_id",
+          "sha256",
+          "artifact_uri"
+        ],
+        "properties": {
+          "asset_id": {
+            "$ref": "#/$defs/id"
+          },
+          "sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "artifact_uri": {
+            "type": "string",
+            "pattern": "^vf-local://objects/sha256/[0-9a-f]{2}/[0-9a-f]{64}\\.json$"
+          }
+        }
+      },
+      "callback": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "url",
+          "token",
+          "expires_at"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "pattern": "^https://",
+            "maxLength": 2000
+          },
+          "token": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 512
+          },
+          "expires_at": {
+            "$ref": "#/$defs/timestamp"
+          }
+        }
+      }
+    }
+  },
+  "transcriptTiming": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/transcript-timing-v1.json",
+    "title": "VideoForge Transcript Timing v1",
+    "description": "Canonical English word and phrase timing facts. TypeScript assigns the RFC 8785 document hash after validation; Python never supplies one.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "project_revision_id",
+      "source",
+      "engine",
+      "text",
+      "words",
+      "phrases"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "transcript-timing/v1"
+      },
+      "project_revision_id": {
+        "$ref": "#/$defs/id"
+      },
+      "source": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asset_id",
+          "sha256",
+          "duration_ms"
+        ],
+        "properties": {
+          "asset_id": {
+            "$ref": "#/$defs/id"
+          },
+          "sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 10000,
+            "maximum": 3600000
+          }
+        }
+      },
+      "engine": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "version",
+          "model_name",
+          "model_sha256",
+          "language"
+        ],
+        "properties": {
+          "name": {
+            "const": "whisper.cpp"
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "model_name": {
+            "const": "base.en"
+          },
+          "model_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "language": {
+            "const": "en"
+          }
+        }
+      },
+      "text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200000,
+        "pattern": "\\S"
+      },
+      "words": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 100000,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "index",
+            "text",
+            "start_ms",
+            "end_ms",
+            "confidence"
+          ],
+          "properties": {
+            "index": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240,
+              "pattern": "\\S"
+            },
+            "start_ms": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3600000
+            },
+            "end_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3600000
+            },
+            "confidence": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        }
+      },
+      "phrases": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 20000,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "phrase_id",
+            "sentence_id",
+            "word_start",
+            "word_end_exclusive",
+            "start_ms",
+            "end_ms",
+            "pause_before_ms",
+            "pause_after_ms",
+            "text"
+          ],
+          "properties": {
+            "phrase_id": {
+              "$ref": "#/$defs/id"
+            },
+            "sentence_id": {
+              "$ref": "#/$defs/id"
+            },
+            "word_start": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "word_end_exclusive": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "start_ms": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3600000
+            },
+            "end_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3600000
+            },
+            "pause_before_ms": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60000
+            },
+            "pause_after_ms": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60000
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000,
+              "pattern": "\\S"
+            }
+          }
+        }
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      }
+    }
+  },
+  "asrJobInput": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/asr-job-input-v1.json",
+    "title": "VideoForge ASR Job Input v1",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "project_revision_id",
+      "attempt_id",
+      "voiceover",
+      "model",
+      "options",
+      "output",
+      "cancel_token"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "asr-job-input/v1"
+      },
+      "project_revision_id": {
+        "$ref": "#/$defs/id"
+      },
+      "attempt_id": {
+        "$ref": "#/$defs/id"
+      },
+      "voiceover": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asset_id",
+          "sha256",
+          "artifact_uri",
+          "media_type",
+          "duration_ms"
+        ],
+        "properties": {
+          "asset_id": {
+            "$ref": "#/$defs/id"
+          },
+          "sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "artifact_uri": {
+            "$ref": "#/$defs/objectUri"
+          },
+          "media_type": {
+            "enum": [
+              "audio/wav",
+              "audio/flac",
+              "audio/mpeg",
+              "audio/mp4"
+            ]
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 10000,
+            "maximum": 3600000
+          }
+        }
+      },
+      "model": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "engine",
+          "name",
+          "sha256",
+          "language"
+        ],
+        "properties": {
+          "engine": {
+            "const": "whisper.cpp"
+          },
+          "name": {
+            "const": "base.en"
+          },
+          "sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "language": {
+            "const": "en"
+          }
+        }
+      },
+      "options": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "threads",
+          "processors",
+          "flash_attention",
+          "greedy",
+          "split_on_word"
+        ],
+        "properties": {
+          "threads": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 64
+          },
+          "processors": {
+            "const": 1
+          },
+          "flash_attention": {
+            "type": "boolean"
+          },
+          "greedy": {
+            "const": true
+          },
+          "split_on_word": {
+            "const": true
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "result_uri"
+        ],
+        "properties": {
+          "result_uri": {
+            "$ref": "#/$defs/runUri"
+          }
+        }
+      },
+      "cancel_token": {
+        "type": "string",
+        "minLength": 32,
+        "maxLength": 512
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "objectUri": {
+        "type": "string",
+        "pattern": "^vf-local://objects/sha256/[0-9a-f]{2}/[0-9a-f]{64}\\.[a-z0-9]{1,10}$"
+      },
+      "runUri": {
+        "type": "string",
+        "pattern": "^vf-local-run://[A-Za-z0-9][A-Za-z0-9._:-]*/[A-Za-z0-9][A-Za-z0-9._:-]*/[A-Za-z0-9][A-Za-z0-9._-]{0,159}\\.json$"
+      }
+    }
+  },
+  "asrJobResult": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/asr-job-result-v1.json",
+    "title": "VideoForge ASR Job Result v1",
+    "description": "Worker facts returned to the TypeScript control plane. No Python-produced canonical document hash is accepted.",
+    "oneOf": [
+      {
+        "$ref": "#/$defs/succeeded"
+      },
+      {
+        "$ref": "#/$defs/failed"
+      },
+      {
+        "$ref": "#/$defs/cancelled"
+      }
+    ],
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "diagnostics": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tool_version",
+          "source_duration_ms",
+          "decode_duration_ms"
+        ],
+        "properties": {
+          "tool_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "source_duration_ms": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3600000
+          },
+          "decode_duration_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          }
+        }
+      },
+      "error": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ],
+        "properties": {
+          "code": {
+            "enum": [
+              "ASR_INPUT_INVALID",
+              "ASR_SOURCE_HASH_MISMATCH",
+              "ASR_SOURCE_DECODE_FAILED",
+              "ASR_TOOL_MISSING",
+              "ASR_MODEL_MISSING",
+              "ASR_MODEL_HASH_MISMATCH",
+              "ASR_PROCESS_FAILED",
+              "ASR_OUTPUT_INVALID",
+              "ASR_CANCELLED"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "succeeded": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "attempt_id",
+          "status",
+          "source_voiceover_sha256",
+          "model_sha256",
+          "transcript",
+          "diagnostics",
+          "error"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "asr-job-result/v1"
+          },
+          "attempt_id": {
+            "$ref": "#/$defs/id"
+          },
+          "status": {
+            "const": "SUCCEEDED"
+          },
+          "source_voiceover_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "model_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "transcript": {
+            "$ref": "https://videoforge.local/schemas/transcript-timing-v1.json"
+          },
+          "diagnostics": {
+            "$ref": "#/$defs/diagnostics"
+          },
+          "error": {
+            "type": "null"
+          }
+        }
+      },
+      "failed": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "attempt_id",
+          "status",
+          "source_voiceover_sha256",
+          "model_sha256",
+          "transcript",
+          "diagnostics",
+          "error"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "asr-job-result/v1"
+          },
+          "attempt_id": {
+            "$ref": "#/$defs/id"
+          },
+          "status": {
+            "const": "FAILED"
+          },
+          "source_voiceover_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "model_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "transcript": {
+            "type": "null"
+          },
+          "diagnostics": {
+            "type": "null"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          }
+        }
+      },
+      "cancelled": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "attempt_id",
+          "status",
+          "source_voiceover_sha256",
+          "model_sha256",
+          "transcript",
+          "diagnostics",
+          "error"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "asr-job-result/v1"
+          },
+          "attempt_id": {
+            "$ref": "#/$defs/id"
+          },
+          "status": {
+            "const": "CANCELLED"
+          },
+          "source_voiceover_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "model_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "transcript": {
+            "type": "null"
+          },
+          "diagnostics": {
+            "type": "null"
+          },
+          "error": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/error"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "ASR_CANCELLED"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "renderJobInput": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/render-job-input-v1.json",
+    "title": "VideoForge Render Job Input v1",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "project_revision_id",
+      "attempt_id",
+      "resolved_render_manifest",
+      "assets",
+      "output",
+      "tools",
+      "cancel_token"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "render-job-input/v1"
+      },
+      "project_revision_id": {
+        "$ref": "#/$defs/id"
+      },
+      "attempt_id": {
+        "$ref": "#/$defs/id"
+      },
+      "resolved_render_manifest": {
+        "$ref": "#/$defs/documentPointer"
+      },
+      "assets": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 20000,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "asset_id",
+            "sha256",
+            "artifact_uri",
+            "kind"
+          ],
+          "properties": {
+            "asset_id": {
+              "$ref": "#/$defs/id"
+            },
+            "sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "artifact_uri": {
+              "$ref": "#/$defs/objectUri"
+            },
+            "kind": {
+              "enum": [
+                "VOICEOVER",
+                "AVATAR_CLIP",
+                "IMAGE"
+              ]
+            }
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "result_uri",
+          "filename"
+        ],
+        "properties": {
+          "result_uri": {
+            "$ref": "#/$defs/runMp4Uri"
+          },
+          "filename": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*\\.mp4$"
+          }
+        }
+      },
+      "tools": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ffmpeg_version",
+          "ffprobe_version"
+        ],
+        "properties": {
+          "ffmpeg_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "ffprobe_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        }
+      },
+      "cancel_token": {
+        "type": "string",
+        "minLength": 32,
+        "maxLength": 512
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "objectUri": {
+        "type": "string",
+        "pattern": "^vf-local://objects/sha256/[0-9a-f]{2}/[0-9a-f]{64}\\.[a-z0-9]{1,10}$"
+      },
+      "runMp4Uri": {
+        "type": "string",
+        "pattern": "^vf-local-run://[A-Za-z0-9][A-Za-z0-9._:-]*/[A-Za-z0-9][A-Za-z0-9._:-]*/[A-Za-z0-9][A-Za-z0-9._-]{0,159}\\.mp4$"
+      },
+      "documentPointer": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asset_id",
+          "sha256",
+          "artifact_uri"
+        ],
+        "properties": {
+          "asset_id": {
+            "$ref": "#/$defs/id"
+          },
+          "sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "artifact_uri": {
+            "$ref": "#/$defs/objectUri"
+          }
+        }
+      }
+    }
+  },
+  "technicalProbe": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/technical-probe-v1.json",
+    "title": "VideoForge Technical Probe v1",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "asset_id",
+      "sha256",
+      "bytes",
+      "container",
+      "duration_ms",
+      "total_frames",
+      "video",
+      "audio",
+      "stream_counts",
+      "av_drift_ms",
+      "decode_ok",
+      "loudness",
+      "tools"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "technical-probe/v1"
+      },
+      "asset_id": {
+        "$ref": "#/$defs/id"
+      },
+      "sha256": {
+        "$ref": "#/$defs/sha256"
+      },
+      "bytes": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "container": {
+        "const": "mp4"
+      },
+      "duration_ms": {
+        "type": "integer",
+        "minimum": 10000,
+        "maximum": 3600034
+      },
+      "total_frames": {
+        "type": "integer",
+        "minimum": 300
+      },
+      "video": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "codec",
+          "pixel_format",
+          "width",
+          "height",
+          "fps_num",
+          "fps_den",
+          "start_ms"
+        ],
+        "properties": {
+          "codec": {
+            "const": "h264"
+          },
+          "pixel_format": {
+            "const": "yuv420p"
+          },
+          "width": {
+            "const": 1920
+          },
+          "height": {
+            "const": 1080
+          },
+          "fps_num": {
+            "const": 30
+          },
+          "fps_den": {
+            "const": 1
+          },
+          "start_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 34
+          }
+        }
+      },
+      "audio": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "codec",
+          "sample_rate_hz",
+          "channels",
+          "start_ms"
+        ],
+        "properties": {
+          "codec": {
+            "const": "aac"
+          },
+          "sample_rate_hz": {
+            "const": 48000
+          },
+          "channels": {
+            "enum": [
+              1,
+              2
+            ]
+          },
+          "start_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 34
+          }
+        }
+      },
+      "stream_counts": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "video",
+          "audio",
+          "subtitle",
+          "data"
+        ],
+        "properties": {
+          "video": {
+            "const": 1
+          },
+          "audio": {
+            "const": 1
+          },
+          "subtitle": {
+            "const": 0
+          },
+          "data": {
+            "const": 0
+          }
+        }
+      },
+      "av_drift_ms": {
+        "type": "integer",
+        "minimum": -34,
+        "maximum": 34
+      },
+      "decode_ok": {
+        "const": true
+      },
+      "loudness": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "profile",
+          "normalized",
+          "input_integrated_lufs",
+          "input_true_peak_dbtp",
+          "output_integrated_lufs",
+          "output_true_peak_dbtp"
+        ],
+        "properties": {
+          "profile": {
+            "const": "voiceover-minus16lufs-v1"
+          },
+          "normalized": {
+            "type": "boolean"
+          },
+          "input_integrated_lufs": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 0
+          },
+          "input_true_peak_dbtp": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 0
+          },
+          "output_integrated_lufs": {
+            "type": "number",
+            "minimum": -17,
+            "maximum": -15
+          },
+          "output_true_peak_dbtp": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": -1.5
+          }
+        }
+      },
+      "tools": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ffmpeg_version",
+          "ffprobe_version",
+          "filtergraph_sha256"
+        ],
+        "properties": {
+          "ffmpeg_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "ffprobe_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "filtergraph_sha256": {
+            "$ref": "#/$defs/sha256"
+          }
+        }
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      }
+    }
+  },
+  "renderJobResult": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/render-job-result-v1.json",
+    "title": "VideoForge Render Job Result v1",
+    "description": "Renderer facts and binary hashes. TypeScript validates and assigns the canonical result-manifest hash.",
+    "oneOf": [
+      {
+        "$ref": "#/$defs/succeeded"
+      },
+      {
+        "$ref": "#/$defs/failed"
+      },
+      {
+        "$ref": "#/$defs/cancelled"
+      }
+    ],
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "objectUri": {
+        "type": "string",
+        "pattern": "^vf-local://objects/sha256/[0-9a-f]{2}/[0-9a-f]{64}\\.mp4$"
+      },
+      "error": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ],
+        "properties": {
+          "code": {
+            "enum": [
+              "RENDER_INPUT_INVALID",
+              "RENDER_MANIFEST_HASH_MISMATCH",
+              "RENDER_ASSET_MISSING",
+              "RENDER_ASSET_HASH_MISMATCH",
+              "RENDER_PATH_REJECTED",
+              "RENDER_TOOL_MISSING",
+              "RENDER_PROCESS_FAILED",
+              "RENDER_PROBE_FAILED",
+              "RENDER_OUTPUT_INVALID",
+              "RENDER_CANCELLED"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "succeeded": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "attempt_id",
+          "status",
+          "output",
+          "probe",
+          "error"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "render-job-result/v1"
+          },
+          "attempt_id": {
+            "$ref": "#/$defs/id"
+          },
+          "status": {
+            "const": "SUCCEEDED"
+          },
+          "output": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "asset_id",
+              "sha256",
+              "bytes",
+              "artifact_uri",
+              "filename"
+            ],
+            "properties": {
+              "asset_id": {
+                "$ref": "#/$defs/id"
+              },
+              "sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "artifact_uri": {
+                "$ref": "#/$defs/objectUri"
+              },
+              "filename": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 160,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*\\.mp4$"
+              }
+            }
+          },
+          "probe": {
+            "$ref": "https://videoforge.local/schemas/technical-probe-v1.json"
+          },
+          "error": {
+            "type": "null"
+          }
+        }
+      },
+      "failed": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "attempt_id",
+          "status",
+          "output",
+          "probe",
+          "error"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "render-job-result/v1"
+          },
+          "attempt_id": {
+            "$ref": "#/$defs/id"
+          },
+          "status": {
+            "const": "FAILED"
+          },
+          "output": {
+            "type": "null"
+          },
+          "probe": {
+            "type": "null"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          }
+        }
+      },
+      "cancelled": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "attempt_id",
+          "status",
+          "output",
+          "probe",
+          "error"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "render-job-result/v1"
+          },
+          "attempt_id": {
+            "$ref": "#/$defs/id"
+          },
+          "status": {
+            "const": "CANCELLED"
+          },
+          "output": {
+            "type": "null"
+          },
+          "probe": {
+            "type": "null"
+          },
+          "error": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/error"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "RENDER_CANCELLED"
+                  }
+                }
+              }
+            ]
           }
         }
       }

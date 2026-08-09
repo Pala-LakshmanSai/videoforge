@@ -177,6 +177,7 @@ approved_decisions:
   DEC_AVATAR_004: one_clip_two_deterministic_crops
   DEC_AVATAR_005: reusable_avatar_hub_required_exact_ready_version_no_inline_upload
   DEC_TIMING_001: local_whisper_cpp_base_en
+  DEC_CONTRACT_001: typescript_only_jcs_python_exact_bytes_and_schema_validation
   DEC_SCHEDULER_001: seeded_deterministic_bounded_variation
   DEC_SCHEDULER_002: target_22_percent_avatar_half_full_half_split
   DEC_RENDER_001: direct_ffmpeg_no_remotion_or_hyperframes

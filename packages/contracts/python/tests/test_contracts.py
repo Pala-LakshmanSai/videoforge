@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from pydantic import ValidationError
@@ -20,46 +20,17 @@ from videoforge_contracts import (
 CONTRACT_ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_ROOT = CONTRACT_ROOT / "generated" / "fixtures"
 
-FIXTURE_CASES: tuple[tuple[ContractName, str, bool], ...] = (
-    ("avatarProfileVersion", "avatar_profile_version.valid.json", True),
-    ("createProjectRequest", "create_project_request.valid.json", True),
+CONTRACT_INDEX = json.loads(
+    (CONTRACT_ROOT / "generated" / "contract-index.v1.json").read_text(encoding="utf-8")
+)
+FIXTURE_CASES: tuple[tuple[ContractName, str, bool], ...] = tuple(
     (
-        "createProjectRequest",
-        "create_project_request.invalid.inline_avatar.json",
-        False,
-    ),
-    ("orchestrationState", "orchestration_state.valid.json", True),
-    (
-        "orchestrationState",
-        "orchestration_state.invalid.unhashed_outbox.json",
-        False,
-    ),
-    (
-        "createProjectRequest",
-        "create_project_request.invalid.over_budget.json",
-        False,
-    ),
-    ("projectRevisionConfig", "project_revision_config.valid.json", True),
-    (
-        "projectRevisionConfig",
-        "project_revision_config.invalid.compatibility_mismatch.json",
-        False,
-    ),
-    ("timelinePlan", "timeline_plan.valid.json", True),
-    ("resolvedRenderManifest", "resolved_render_manifest.valid.json", True),
-    (
-        "resolvedRenderManifest",
-        "resolved_render_manifest.invalid.avatar_profile_crop.json",
-        False,
-    ),
-    ("productionManifest", "production_manifest.valid.json", True),
-    ("imageStyleProfile", "default_image_style_v1.json", True),
-    ("workerJobEnvelope", "worker_job_envelope.valid.json", True),
-    (
-        "workerJobEnvelope",
-        "worker_job_envelope.invalid.shell_args.json",
-        False,
-    ),
+        cast(ContractName, contract["name"]),
+        Path(fixture["path"]).name,
+        fixture["expected"],
+    )
+    for contract in CONTRACT_INDEX["contracts"]
+    for fixture in contract["fixtures"]
 )
 
 
@@ -69,7 +40,7 @@ def load_fixture(filename: str) -> Any:
 
 def test_all_canonical_schemas_compile() -> None:
     assert set(CONTRACT_NAMES) == set(CONTRACT_VALIDATORS)
-    assert len(CONTRACT_NAMES) == 10
+    assert len(CONTRACT_NAMES) == 16
 
 
 def test_fixture_matrix_covers_every_synchronized_fixture() -> None:

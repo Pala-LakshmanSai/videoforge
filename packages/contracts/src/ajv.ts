@@ -1,11 +1,11 @@
 import Ajv2020 from "ajv/dist/2020.js";
 import type { AnySchemaObject, ErrorObject, ValidateFunction } from "ajv";
 
-import type { CreateProjectRequest } from "./create-project.js";
 import {
   canonicalSchemaDocuments,
   contractNames,
   contractSchemaIds,
+  type ContractDocument,
   type ContractName,
 } from "./schemas.js";
 
@@ -74,25 +74,26 @@ const normalizeIssues = (
     params: error.params as Readonly<Record<string, unknown>>,
   }));
 
+export function validateContract<Name extends ContractName>(
+  contractName: Name,
+  value: unknown,
+): ContractValidationResult<ContractDocument<Name>>;
 export function validateContract(
-  contractName: "createProjectRequest",
-  value: unknown,
-): ContractValidationResult<CreateProjectRequest>;
-export function validateContract<T = unknown>(
   contractName: ContractName,
   value: unknown,
-): ContractValidationResult<T>;
-export function validateContract<T = unknown>(
-  contractName: ContractName,
-  value: unknown,
-): ContractValidationResult<T> {
+): ContractValidationResult<ContractDocument<ContractName>> {
   const validator = contractValidators[contractName];
-  if (validator(value)) return { success: true, data: value as T };
+  if (validator(value)) {
+    return { success: true, data: value as ContractDocument<ContractName> };
+  }
   return { success: false, issues: normalizeIssues(validator.errors) };
 }
 
-export function assertContract<T = unknown>(contractName: ContractName, value: unknown): T {
-  const result = validateContract<T>(contractName, value);
+export function assertContract<Name extends ContractName>(
+  contractName: Name,
+  value: unknown,
+): ContractDocument<Name> {
+  const result = validateContract(contractName, value);
   if (!result.success) throw new ContractValidationError(contractName, result.issues);
   return result.data;
 }
