@@ -155,6 +155,22 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
+  packages/pipeline:
+    dependencies:
+      '@videoforge/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      '@types/node':
+        specifier: 22.18.0
+        version: 22.18.0
+      eslint:
+        specifier: 9.35.0
+        version: 9.35.0(jiti@1.21.7)
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+
   packages/test-fixtures:
     devDependencies:
       '@types/node':
