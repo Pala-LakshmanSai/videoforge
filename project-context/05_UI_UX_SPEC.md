@@ -42,8 +42,8 @@ Initial design tokens:
 | Control radius | about 18 px |
 | Panel radius | about 28–30 px |
 | Base text | 18 px desktop and compact/mobile; ordinary reading text 16–18 px |
-| Secondary text | at least 16 px |
-| Micro labels | at least 16 CSS px; short labels/status only |
+| Secondary text | normally at least 16 px; the user-accepted fixture shell retains compact developer-only metadata down to 14.4 px |
+| Micro labels | normally at least 16 CSS px; the user-accepted fixture shell retains short developer-only status labels down to 14.4 px |
 | Control height | normally 52 px; at least 44 px for compact actionable controls |
 | Minimum touch target | 44×44 px |
 | Page title | roughly 48–72 px desktop |
@@ -56,7 +56,7 @@ Initial design tokens:
 - Glow and gradient must never reduce readability.
 - Major panels normally use 28–42 px padding and 24–32 px inter-section gaps.
 - Do not simulate scale with CSS `zoom`; components themselves must use readable type, controls, media, spacing, and hit targets.
-- Do not render user-facing text below 16 CSS px. Short stage/status metadata may be visually quieter through color, weight, and letter spacing—not a tiny font.
+- Do not render ordinary user-facing text below 16 CSS px. The user-accepted fixture baseline may retain its existing 14.4–15.3 px developer-only health, fixture, and terse technical metadata; do not expand that exception to normal product copy.
 
 ## Information density and content voice
 

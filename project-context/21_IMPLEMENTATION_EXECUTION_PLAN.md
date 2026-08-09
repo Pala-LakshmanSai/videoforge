@@ -119,7 +119,7 @@ Run these children in parallel after one integration owner records path ownershi
 ### `VF-W1-BE` — server seam extraction
 
 - Own: `apps/web/src/server/**` and server-only tests.
-- Keep `createApp` and every existing route/response/error unchanged.
+- Keep `createApiApp` and every existing route/response/error unchanged.
 - Extract thin route registration, project/preset domain services, fixture session store, mutation/idempotency helpers, and access middleware from the monolithic `app.ts`.
 - Define ports for project state, artifact metadata, worker transport, clock, and ID generation without implementing production storage.
 - Keep fixture state and its session-isolation behavior behind a fixture adapter.
