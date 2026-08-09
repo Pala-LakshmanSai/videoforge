@@ -140,6 +140,10 @@ export const canonicalContractRegistry = {
         {
           "path": "fixtures/transcript_timing.invalid.word_bounds.json",
           "expected": false
+        },
+        {
+          "path": "fixtures/transcript_timing.invalid.unicode_whitespace.json",
+          "expected": false
         }
       ]
     },

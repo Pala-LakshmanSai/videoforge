@@ -13,6 +13,7 @@ import {
   contractSchemaIds,
   contractValidators,
   createProjectRequestSchema,
+  sha256CanonicalJson,
   validateAndHashContractDocument,
   validateOutputRuleKeywords,
   validateContract,
@@ -82,14 +83,43 @@ test("validated documents are schema-checked and hashed by the TypeScript JCS au
   const validated = await validateAndHashContractDocument("transcriptTiming", fixture);
 
   assert.equal(validated.contractName, "transcriptTiming");
-  assert.equal(validated.value, fixture);
+  assert.notEqual(validated.value, fixture);
+  assert.deepEqual(validated.value, fixture);
   assert.match(validated.sha256, /^sha256:[0-9a-f]{64}$/);
   assert.equal(Object.isFrozen(validated), true);
+  assert.equal(Object.isFrozen(validated.value), true);
+  assert.equal(Object.isFrozen(validated.value.words), true);
+  assert.equal(Object.isFrozen(validated.value.words[0]), true);
+  assert.throws(() => {
+    validated.value.words[0].text = "mutated";
+  }, TypeError);
+  assert.equal(await sha256CanonicalJson(validated.value), validated.sha256);
 
   await assert.rejects(
     validateAndHashContractDocument("transcriptTiming", { ...fixture, duration_ms: 1 }),
     ContractValidationError,
   );
+});
+
+test("Ajv rejects non-finite values at canonical contract boundaries", async () => {
+  const fixture = await loadFixture("technical_probe.valid.json");
+  fixture.loudness.input_integrated_lufs = Number.NaN;
+  assert.equal(validateContract("technicalProbe", fixture).success, false);
+});
+
+test("semantic validation rejects contradictory media facts", async () => {
+  const transcript = await loadFixture("transcript_timing.valid.json");
+  transcript.words[0].start_ms = transcript.words[0].end_ms;
+  assert.equal(validateContract("transcriptTiming", transcript).success, false);
+
+  const asrResult = await loadFixture("asr_job_result.valid.json");
+  asrResult.source_voiceover_sha256 =
+    "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+  assert.equal(validateContract("asrJobResult", asrResult).success, false);
+
+  const renderResult = await loadFixture("render_job_result.valid.json");
+  renderResult.output.bytes += 1;
+  assert.equal(validateContract("renderJobResult", renderResult).success, false);
 });
 
 test("output-rule keywords accept explicit negative constraints", () => {

@@ -163,6 +163,68 @@ function schemaType(schema, rootSchema, resolving = new Set()) {
   }
 
   if (schema.type === "object" || schema.properties) {
+    const conditionalBranches = (schema.allOf ?? []).filter(
+      (entry) => entry?.if?.properties && entry?.then?.properties,
+    );
+    const discriminators = new Set(
+      conditionalBranches.flatMap((entry) => Object.keys(entry.if.properties)),
+    );
+    if (conditionalBranches.length > 0 && discriminators.size === 1) {
+      const [discriminator] = discriminators;
+      const discriminatorSchema = schema.properties?.[discriminator];
+      if (Array.isArray(discriminatorSchema?.enum)) {
+        const conditionedProperties = new Set([
+          discriminator,
+          ...conditionalBranches.flatMap((entry) => Object.keys(entry.then.properties)),
+        ]);
+        const commonProperties = Object.fromEntries(
+          Object.entries(schema.properties ?? {}).filter(
+            ([name]) => !conditionedProperties.has(name),
+          ),
+        );
+        const commonRequired = (schema.required ?? []).filter(
+          (name) => !conditionedProperties.has(name),
+        );
+        const commonType = schemaType(
+          {
+            ...schema,
+            allOf: undefined,
+            properties: commonProperties,
+            required: commonRequired,
+          },
+          rootSchema,
+          resolving,
+        );
+        const variants = discriminatorSchema.enum.map((discriminatorValue) => {
+          const matchingBranch = conditionalBranches.find(
+            (entry) => entry.if.properties[discriminator]?.const === discriminatorValue,
+          );
+          const variantProperties = Object.fromEntries(
+            [...conditionedProperties].map((name) => [
+              name,
+              name === discriminator
+                ? { const: discriminatorValue }
+                : (matchingBranch?.then.properties[name] ?? schema.properties[name]),
+            ]),
+          );
+          const variantRequired = (schema.required ?? []).filter((name) =>
+            conditionedProperties.has(name),
+          );
+          return schemaType(
+            {
+              type: "object",
+              additionalProperties: false,
+              properties: variantProperties,
+              required: variantRequired,
+            },
+            rootSchema,
+            resolving,
+          );
+        });
+        return `(${commonType}) & (${variants.map((variant) => `(${variant})`).join(" | ")})`;
+      }
+    }
+
     const required = new Set(schema.required ?? []);
     const fields = Object.entries(schema.properties ?? {}).map(
       ([name, propertySchema]) =>

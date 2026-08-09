@@ -65,8 +65,8 @@
     {
       "source": "project-context/evidence/transcript_timing.schema.json",
       "destination": "generated/schemas/transcript_timing.schema.json",
-      "bytes": 3536,
-      "sha256": "sha256:3079895ccea24d6ccd715b0025daf6a9d61fea4cbfb00ec15bd36156f92a49f9"
+      "bytes": 3965,
+      "sha256": "sha256:88b4a5ad06ee08ba0ff2ad4752f50f4f80e0642cae464286ccccd82fa8cd6e28"
     },
     {
       "source": "project-context/evidence/asr_job_input.schema.json",
@@ -213,6 +213,12 @@
       "sha256": "sha256:a7b585d0c45d30ba09f18909527b397fc59a8eeb8f8c8d6df99565828c65097e"
     },
     {
+      "source": "project-context/evidence/fixtures/transcript_timing.invalid.unicode_whitespace.json",
+      "destination": "generated/fixtures/transcript_timing.invalid.unicode_whitespace.json",
+      "bytes": 891,
+      "sha256": "sha256:17e8c23db1d58b9752e696e0468e4b9d592c2bf54c8a0c53e920c3cf49554865"
+    },
+    {
       "source": "project-context/evidence/fixtures/asr_job_input.valid.json",
       "destination": "generated/fixtures/asr_job_input.valid.json",
       "bytes": 950,
@@ -275,8 +281,8 @@
     {
       "source": "project-context/evidence/contract-index.v1.json",
       "destination": "generated/contract-index.v1.json",
-      "bytes": 4562,
-      "sha256": "sha256:c98a3fc0cf606cb882e072dfb7b3272b589de0c1b13823d34cd2f073c2febf94"
+      "bytes": 4661,
+      "sha256": "sha256:7cfeab83f3eb2ada25f547f49625d418f167103c76d63bbdf11c76c277db6011"
     }
   ]
 }

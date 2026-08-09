@@ -3210,7 +3210,7 @@ export const canonicalSchemaDocuments = {
         "type": "string",
         "minLength": 1,
         "maxLength": 200000,
-        "pattern": "\\S"
+        "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]"
       },
       "words": {
         "type": "array",
@@ -3235,7 +3235,7 @@ export const canonicalSchemaDocuments = {
               "type": "string",
               "minLength": 1,
               "maxLength": 240,
-              "pattern": "\\S"
+              "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]"
             },
             "start_ms": {
               "type": "integer",
@@ -3315,7 +3315,7 @@ export const canonicalSchemaDocuments = {
               "type": "string",
               "minLength": 1,
               "maxLength": 4000,
-              "pattern": "\\S"
+              "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]"
             }
           }
         }

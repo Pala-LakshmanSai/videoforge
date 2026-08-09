@@ -143,7 +143,7 @@ notes:
   - "The user accepted the Phase 0B UI on 2026-08-09. GATE_UI_001 is closed; later tasks preserve this baseline unless the user explicitly changes it or a verified regression is repaired."
   - "21_IMPLEMENTATION_EXECUTION_PLAN.md owns remaining sequencing, task IDs, safe parallel ownership, integration order, checkpoints, and authorization boundaries."
   - "The Phase 0A fixture-contract foundation is implemented. Complex non-Create Zod/Pydantic validators are intentionally schema-backed entry points rather than independent hand models."
-  - "Python JCS parity remains a required Phase 0C decision before Python workers emit or verify canonical JSON hashes."
+  - "DEC_CONTRACT_001 is locked: TypeScript is the sole JCS authority; Python validates canonical schemas and exact byte hashes while treating canonical JSON hashes as opaque."
   - "No real media-generation walking slice, durable database/object storage, production authentication, or provider transport exists yet. Fixture state is not a production persistence claim."
   - "The user authorized future RunPod use and credential retrieval from their signed-in Chrome profile, but no exact provider-task spend envelope is active. No key has been fetched, no endpoint selected, no RunPod resource changed, and the next task authorizes $0/provider-off work only."
   - "No public tunnel is active. The LAN URL works only for devices on the same network; localhost remains the authoritative development URL."

@@ -6,7 +6,6 @@ from typing import Any, cast
 
 import pytest
 from pydantic import ValidationError
-
 from videoforge_contracts import (
     CONTRACT_MODELS,
     CONTRACT_NAMES,
@@ -86,3 +85,51 @@ def test_typed_create_project_model_enforces_conditional_keywords() -> None:
     }
     with pytest.raises(ValidationError):
         CreateProjectRequest.model_validate(invalid)
+
+
+def test_python_rejects_non_finite_numbers_like_ajv() -> None:
+    invalid = load_fixture("technical_probe.valid.json")
+    invalid["loudness"]["input_integrated_lufs"] = float("nan")
+
+    with pytest.raises(ContractValidationError) as error:
+        validate_contract("technicalProbe", invalid)
+
+    assert error.value.issues[0].validator == "finite"
+    with pytest.raises(ValidationError):
+        CONTRACT_MODELS["technicalProbe"].model_validate(invalid)
+
+
+@pytest.mark.parametrize(
+    ("contract_name", "filename", "mutate"),
+    [
+        (
+            "transcriptTiming",
+            "transcript_timing.valid.json",
+            lambda value: value["words"][0].update(start_ms=value["words"][0]["end_ms"]),
+        ),
+        (
+            "asrJobResult",
+            "asr_job_result.valid.json",
+            lambda value: value.update(source_voiceover_sha256="sha256:" + "f" * 64),
+        ),
+        (
+            "renderJobResult",
+            "render_job_result.valid.json",
+            lambda value: value["output"].update(bytes=value["output"]["bytes"] + 1),
+        ),
+    ],
+)
+def test_semantic_validation_rejects_contradictory_media_facts(
+    contract_name: ContractName,
+    filename: str,
+    mutate: Any,
+) -> None:
+    invalid = load_fixture(filename)
+    mutate(invalid)
+
+    with pytest.raises(ContractValidationError) as error:
+        validate_contract(contract_name, invalid)
+
+    assert any(issue.validator == "semantic" for issue in error.value.issues)
+    with pytest.raises(ValidationError):
+        CONTRACT_MODELS[contract_name].model_validate(invalid)
