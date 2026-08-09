@@ -8,6 +8,7 @@ require "yaml"
 require "json"
 require "csv"
 require "digest"
+require "open3"
 require "pathname"
 
 root = Pathname.new(ARGV.fetch(0)).realpath
@@ -44,6 +45,60 @@ gates_path = root.join("GATES.yaml")
 manifest = load_yaml(manifest_path, errors)
 state = load_yaml(state_path, errors)
 gates = load_yaml(gates_path, errors)
+repository_root = root.parent
+
+def git_result(repository_root, *arguments)
+  output, status = Open3.capture2e("git", "-C", repository_root.to_s, *arguments)
+  [output.strip, status.success?]
+end
+
+recorded_repository = state["repository"] || {}
+recorded_branch = recorded_repository["branch"]
+actual_branch, branch_known = git_result(repository_root, "symbolic-ref", "--short", "-q", "HEAD")
+if branch_known
+  errors << "CURRENT_STATE repository branch #{recorded_branch.inspect} differs from checked-out branch #{actual_branch.inspect}" unless recorded_branch == actual_branch
+else
+  warnings << "Git checkout is detached; CURRENT_STATE branch could not be compared"
+end
+
+%w[base_commit planning_base_commit planning_handoff_commit verified_implementation_commit last_good_commit].each do |field|
+  commit = recorded_repository[field]
+  next if commit.nil?
+  unless commit.is_a?(String) && commit.match?(/\A[0-9a-f]{7,40}\z/)
+    errors << "CURRENT_STATE repository.#{field} is not a Git commit hash"
+    next
+  end
+  _output, exists = git_result(repository_root, "cat-file", "-e", "#{commit}^{commit}")
+  unless exists
+    errors << "CURRENT_STATE repository.#{field} does not exist in this checkout: #{commit}"
+    next
+  end
+  _output, ancestor = git_result(repository_root, "merge-base", "--is-ancestor", commit, "HEAD")
+  errors << "CURRENT_STATE repository.#{field} is not an ancestor of HEAD: #{commit}" unless ancestor
+end
+
+active_task_ids = Array(state["active_ownership"]).map { |entry| entry["task_id"] }.compact
+current_task = state["current_task"]
+if active_task_ids.any? && !active_task_ids.include?(current_task)
+  errors << "CURRENT_STATE current_task #{current_task.inspect} is absent from active_ownership #{active_task_ids.inspect}"
+end
+
+recommended_milestone = state.dig("recommended_next_task", "milestone")
+if recommended_milestone && state["current_milestone"] != recommended_milestone
+  errors << "CURRENT_STATE current_milestone and recommended_next_task.milestone differ"
+end
+
+execution_plan_path = root.join(state.fetch("execution_plan", "21_IMPLEMENTATION_EXECUTION_PLAN.md"))
+if execution_plan_path.exist?
+  execution_plan = File.read(execution_plan_path)
+  {
+    "There is no real local MP4 walking slice yet" => "execution plan still denies the implemented local MP4",
+    "Worker packages expose health boundaries only" => "execution plan still denies the implemented ASR/render workers",
+    "Python does not yet produce or verify RFC 8785 canonical JSON hashes" => "execution plan still treats the approved TypeScript-only JCS boundary as unfinished"
+  }.each do |stale_text, message|
+    errors << message if execution_plan.include?(stale_text)
+  end
+end
 
 if manifest["schema_version"] != state["context_schema_version"]
   errors << "MANIFEST schema_version and CURRENT_STATE context_schema_version differ"

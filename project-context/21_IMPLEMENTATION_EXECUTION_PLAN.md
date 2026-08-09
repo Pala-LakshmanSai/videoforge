@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: approved execution sequence after the Phase 0B UI checkpoint
+Status: approved execution sequence; Phase 0C implementation is integrated through VF-0C-07 and VF-0C-08 acceptance is active
 Read when: starting a new implementation chat, selecting the next task, assigning parallel ownership, or integrating a completed task.
 
 ## Authority and purpose
@@ -15,18 +15,18 @@ The user's future instruction “UI is good for now; implement the next tasks ac
 
 The following is already implemented and must be preserved:
 
-- Phase 0A fixture-contract foundation: ten canonical contracts, Ajv/Zod/Pydantic entry-point parity, TypeScript RFC 8785 JCS, worker-job and orchestration-state boundaries, fixture profiles, CI, secret scan, and stable root commands.
+- Phase 0A/0C contract foundation: sixteen canonical contracts, Ajv/Zod/Pydantic entry-point parity, generated structural TypeScript types, TypeScript RFC 8785 JCS, worker-job and orchestration-state boundaries, local media job/result boundaries, fixture profiles, CI, secret scan, and stable root commands.
 - Phase 0B fixture shell: approved medium-scale UI, app-native in-flow controls, reusable Avatar/Image Style Hubs, access fixtures, semantic preflight, immutable pins, mutation concurrency, review approval binding, responsive layouts, and real-Chrome acceptance.
+- Phase 0C through VF-0C-07: owned local narration, real whisper.cpp timing, deterministic scheduling, exact accepted-asset resolution, real FFmpeg render/probe, bounded local API lifecycle, and truthful playback/download UI.
 - `GATE_UI_001` is closed. Do not redesign the visual system, change its medium scale, or alter dock resting geometry unless the user explicitly asks or a later feature exposes a verified regression.
 - Fixture mode remains the default, makes no provider call, and authorizes `$0` external spend.
 - The stable development URL remains `http://localhost:4173`; visible work must reuse it and retain the approved routes.
 
 Known unfinished boundaries are not hidden:
 
-- There is no real local MP4 walking slice yet.
-- `apps/web/src/screens/index.tsx`, `apps/web/src/server/app.ts`, and `apps/web/src/styles.css` are large collision surfaces.
-- Python does not yet produce or verify RFC 8785 canonical JSON hashes.
-- Worker packages expose health boundaries only; no transcription, generation, avatar, or render implementation exists.
+- The real local MP4 exists and passes automated API/media checks, but Phase 0C remains open until the required real-Chrome play/seek/approve/download/replay checkpoint is recorded.
+- Python intentionally does not derive RFC 8785 hashes. TypeScript is the sole JCS authority; Python validates schemas and exact input/media bytes and treats canonical document hashes as opaque.
+- Local transcription and render workers exist. Provider-backed prompt, image, and avatar generation workers do not; all corresponding gates remain open.
 - Fixture state is bounded in memory. Production authentication, Postgres, R2, Workflows, callbacks, and provider transports do not exist.
 - No production GPU profile is selectable; all provider/model/cost gates remain open.
 
@@ -151,7 +151,7 @@ The first functional goal is one owned 30–120 second narration producing a rea
 
 Sequential shared task after Wave 1.
 
-- Audit the existing ten schemas and add only the missing versioned documents required by a real local job, expected to include canonical transcript/word timing, job-specific input/result manifests, and technical-probe output.
+- Audited the original ten schemas and added exactly six versioned documents required by the local job: transcript timing, ASR input/result, render input/result, and technical probe.
 - Run every new valid/invalid fixture through Ajv, Zod, JSON Schema, and Pydantic entry points.
 - Keep canonicalization solely in the TypeScript control plane. Python workers validate parsed documents and exact byte hashes but treat canonical JSON hashes as opaque; they never reserialize JSON for JCS. This is the recorded `DEC_CONTRACT_001` choice, not mixed behavior.
 - Use the repository-wide Python 3.12 workspace with exactly `uv 0.8.13` and the committed `uv.lock`; all contracts/workers share it and tests run locked/no-sync. Do not mix installers between workers.
@@ -198,10 +198,16 @@ After `VF-0C-01/02`, run the next three tasks in parallel with disjoint subdirec
 Sequential convergence task after `VF-0C-03/04/05`.
 
 - Implement a local-filesystem artifact adapter and local worker transport through the ports from Wave 1.
-- Drive the same project revision, task, attempt, outbox, event, idempotency, cancellation, and accepted-result vocabulary used by fixture/future production modes.
+- Drive the bounded local slice through the same browser project/revision, idempotency, cancellation, event, job input/result, and accepted-result contracts. The direct local bridge must validate and content-bind every job/result, but it does not claim durable outbox/envelope dispatch or restart recovery.
 - Keep browser APIs under `/api/v1`; do not add a one-off “render now” bypass.
 - Materialize submitted title, exact preset pins, transcript, timeline, events, manifest, preview, cost `$0`, and download state.
 - Make restart/reconciliation behavior explicit even if local state is initially bounded; never report durable recovery that is not implemented.
+
+Phase 0C scope decision: `orchestration-state/v1` and `worker-job-envelope/v1` remain the
+normative durable production vocabulary, but their persisted task/attempt/outbox transport is not
+simulated inside the bounded local process. `VF-1-01`, `VF-1-05`, and `VF-1-06` own that durable
+implementation and recovery proof. This prevents the local checkpoint from creating a second
+temporary orchestration system or overstating restart guarantees.
 
 ### `VF-0C-07` — local playback and download UI
 

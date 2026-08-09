@@ -1,6 +1,6 @@
 # Development plan
 
-Status: implementation underway; Phase 0A foundation and user-approved Phase 0B shell are complete, with Phase 0C next
+Status: implementation underway; Phase 0A, user-approved Phase 0B, and Phase 0C implementation through VF-0C-07 are complete; VF-0C-08 real-Chrome acceptance is active
 Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
 
 ## Delivery strategy
@@ -39,7 +39,7 @@ flowchart LR
 
 Current (2026-08-09): repo commands, sixteen contracts, parity-tested validator entry points,
 generated structural TypeScript types, and TypeScript JCS are complete. Worker-job and
-orchestration schemas lock dispatch plus task/attempt/outbox/event state; Phase 0C adds transcript,
+orchestration schemas lock dispatch plus task/attempt/outbox/event state; Phase 0C added transcript,
 ASR, render, and technical-probe boundaries. TypeScript is the sole JCS authority; Python verifies
 exact byte hashes and treats canonical document hashes as opaque. Durable database orchestration
 belongs to Phase 1.
@@ -71,6 +71,12 @@ Current (2026-08-09): accepted; `GATE_UI_001` is closed. Preserve it while addin
 Exit: user approves the core visual direction and can play through success/failure flows without real provider spend; hot reload preserves the active draft/fixture, and the compact fixture/health disclosure makes mode, health, commit, synthetic data, and `$0` authorization unmistakable on demand.
 
 ## Phase 0C: local walking vertical slice
+
+Current (2026-08-09): the provider-free adapter, whisper.cpp transcription, deterministic
+scheduler, FFmpeg render/probe, API, playback/download UI, and automated acceptance are
+implemented. State is process-local and the bridge direct; durable outbox/envelope recovery belongs
+to Phase 1. Phase 0C closes after VF-0C-08 proves play, seek, approval, exact download/hash, and
+downloaded-file replay in the user's real Chrome.
 
 - Use 30–120 seconds of owned/synthetic English audio.
 - Use one owned synthetic ready Avatar Profile fixture, then run local `whisper.cpp base.en`, deterministic phrase/timeline scheduling, `timeline-plan/v1`, fixture image/avatar slots, `resolved-render-manifest/v1`, real FFmpeg zoom/crops/hard cuts/audio, and technical QA.
