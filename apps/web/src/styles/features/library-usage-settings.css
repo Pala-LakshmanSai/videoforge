@@ -1,0 +1,31 @@
+/* Minimal creation, library, and settings surfaces. */
+
+.library-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 920px);
+}
+
+.library-output .entity-card-footer {
+  margin-top: 20px;
+}
+
+.library-details {
+  margin-top: 20px;
+}
+
+.settings-grid .panel {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.settings-grid .panel-header {
+  margin-bottom: 0;
+}
+
+.settings-summary {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  gap: 12px;
+}

@@ -1,0 +1,181 @@
+.queue-overview .metric {
+  min-height: 108px;
+}
+
+.table-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: minmax(210px, 1.4fr) repeat(5, minmax(90px, 0.6fr));
+  align-items: center;
+  gap: 14px;
+  padding: 16px 4px;
+  border-bottom: 1px solid rgba(167, 155, 220, 0.1);
+}
+
+.table-row.table-head {
+  padding-top: 0;
+  color: #75798e;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.table-row:last-child {
+  border-bottom: 0;
+}
+
+.project-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.project-icon {
+  display: grid;
+  width: 39px;
+  height: 39px;
+  flex: 0 0 39px;
+  place-items: center;
+  border-radius: 13px;
+  color: #ffa4af;
+  background: rgba(255, 63, 87, 0.12);
+}
+
+.project-title div {
+  min-width: 0;
+}
+
+.project-title strong,
+.project-title small {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.project-title small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.71rem;
+}
+
+.table-cell {
+  color: #bdbecc;
+  font-size: 0.78rem;
+}
+
+.queue-overview {
+  margin-bottom: 24px;
+}
+
+.queue-list {
+  display: grid;
+  gap: 13px;
+}
+
+.queue-card {
+  display: grid;
+  min-height: 112px;
+  grid-template-columns: minmax(260px, 1.25fr) minmax(190px, 0.7fr) minmax(210px, 0.8fr) auto;
+  align-items: center;
+  gap: 22px;
+  padding: 18px 20px;
+  border: 1px solid rgba(183, 178, 230, 0.14);
+  border-radius: 22px;
+  background: rgba(7, 9, 22, 0.42);
+  transition:
+    border-color 150ms ease,
+    transform 150ms ease,
+    background 150ms ease;
+}
+
+.queue-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 94, 115, 0.35);
+  background: rgba(21, 21, 42, 0.68);
+}
+
+.queue-card__identity,
+.queue-card__status,
+.queue-card__facts {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 14px;
+}
+
+.queue-card__identity > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.queue-card__identity strong {
+  overflow: hidden;
+  font-size: 1.06rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-card__identity small,
+.queue-card__status > span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.project-icon {
+  width: 50px;
+  height: 50px;
+  flex-basis: 50px;
+  border-radius: 16px;
+}
+
+.queue-card__status {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.queue-card__progress {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.queue-card__progress > strong {
+  font-size: 1.2rem;
+}
+
+.queue-card__facts {
+  justify-content: flex-end;
+}
+
+.queue-card__facts > span {
+  display: flex;
+  min-width: 70px;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.queue-card__facts small {
+  color: var(--muted);
+  font:
+    700 max(0.8rem, 16px) ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.queue-card__facts strong {
+  font-size: 0.9rem;
+}
