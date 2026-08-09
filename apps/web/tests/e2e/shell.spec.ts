@@ -577,7 +577,6 @@ test("project progress reaches review and records explicit approval", async ({ p
 
   const approve = page.getByRole("button", { name: "Approve final" });
   await approve.click();
-  await expect(approve).toBeDisabled();
   await expect(page.getByRole("button", { name: "Approved" })).toBeDisabled();
   await expect(page.getByRole("link", { name: "Download preview" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Fixture record" })).toBeVisible();
