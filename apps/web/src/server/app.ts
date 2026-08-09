@@ -1,53 +1,48 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import {
-  sha256CanonicalJson,
-  validateOutputRuleKeywords,
-  type CreateProjectRequest,
-} from "@videoforge/contracts";
-import {
-  executionProfileCatalog,
-  getFixtureExecutionProfile,
-  resolveFixtureExecutionProfiles,
-} from "@videoforge/config";
+import { executionProfileCatalog } from "@videoforge/config";
 import {
   DEFAULT_FIXTURE_SCENARIO_ID,
   FIXTURE_SCENARIO_IDS,
   listFixtureScenarios,
-  toAvatarProfileResponse,
   toBootstrapResponse,
-  toImageStyleResponse,
-  toProjectDetailResponse,
   toUsageSummaryResponse,
   type AvatarProfileResponse,
   type FixtureBootstrapResponse,
-  type FixtureProblem,
   type FixtureScenario,
-  type FixtureScenarioId,
   type ImageStyleResponse,
-  type ProjectSummaryResponse,
 } from "@videoforge/test-fixtures";
 import { Hono, type Context } from "hono";
-import { z } from "zod";
 
-import type {
-  FixtureSessionState,
-  RegisteredVoiceover,
-  RuntimeProjectDetail,
-  RuntimeProjectSummary,
-  RuntimeProjects,
-} from "./domain/models";
+import { registerAccessMiddleware } from "./access-middleware";
+import type { FixtureSessionState } from "./domain/models";
+import {
+  baseProjectDetail,
+  projectDetailsForScenario,
+  putRuntimeProject,
+  resolveProjectDetail,
+  rotateProjectVersion,
+  scenarioMutationProblemFor,
+  semanticProjectPreflight,
+} from "./domain/project-service";
+import {
+  avatarCatalog,
+  avatarProfileMetadataSchema,
+  hashAvatarProfileMetadata,
+  hashImageStyleMetadata,
+  imageStyleCatalog,
+  imageStyleMetadataSchema,
+} from "./domain/preset-service";
+import { registeredVoiceoverFrom, voiceoverRegistrationSchema } from "./domain/voiceover-service";
 import { fixtureFromRequest, resolveFixture, safeCommit, type FixtureResolution } from "./fixture";
 import {
-  FIXTURE_SESSION_HEADER,
   FixtureSessionStore,
   MAX_CREATED_AVATARS_PER_SESSION,
   MAX_CREATED_STYLES_PER_SESSION,
   MAX_REGISTERED_VOICEOVERS_PER_SESSION,
 } from "./fixture-session";
 import {
-  SHA256,
   canonicalJson,
   idempotentMutation,
   projectVersionError,
@@ -59,475 +54,10 @@ import {
 } from "./mutation";
 import { apiProblem, problemResponse } from "./problem";
 
-const FIXTURE_ESTIMATED_COST_USD = 0.88;
-const VERIFIED_FIXTURE_VOICEOVER_HANDLE = /^fixture_voiceover_sha256_[a-f0-9]{64}$/u;
-const AVATAR_FIXTURE_PATH = /^\/fixtures\/avatar\/[a-z0-9][a-z0-9._-]*\.svg$/u;
-const STYLE_FIXTURE_PATH = /^\/fixtures\/styles\/[a-z0-9][a-z0-9._-]*\.svg$/u;
-const VOICEOVER_FILENAME = /^[^/\\\0]{1,255}\.(?:aac|flac|m4a|mp3|wav)$/iu;
 const FIXTURE_PREVIEW_FILE = resolve(process.cwd(), "public/fixtures/media/watermelon-market.svg");
-
-type FixtureMutationOperation = "PROJECT_CREATE" | "PROJECT_PREFLIGHT";
-
-const PROJECT_INPUT_PROBLEM_CODES: ReadonlySet<string> = new Set([
-  "AVATAR_PROFILE_REQUIRED",
-  "AVATAR_PROFILE_NOT_READY",
-  "AVATAR_SOURCE_INVALID",
-  "AVATAR_PROFILE_ARCHIVED",
-  "EXTRA_KEYWORDS_FORBIDDEN_OUTPUT",
-  "BUDGET_CAP_EXCEEDED",
-]);
-
-const voiceoverRegistrationSchema = z
-  .object({
-    asset_id: z.string().regex(VERIFIED_FIXTURE_VOICEOVER_HANDLE),
-    checksum: z.string().regex(SHA256),
-    filename: z.string().regex(VOICEOVER_FILENAME),
-    duration_seconds: z.number().min(10).max(3_600),
-    sample_rate: z.number().int().min(8_000).max(192_000),
-    channels: z.union([z.literal(1), z.literal(2)]),
-  })
-  .strict();
-
-const avatarProfileMetadataSchema = z
-  .object({
-    name: z.string().trim().min(1).max(120),
-    thumbnail_url: z.string().regex(AVATAR_FIXTURE_PATH),
-    source_dimensions: z
-      .object({
-        width: z.number().int().min(512).max(16_384),
-        height: z.number().int().min(512).max(16_384),
-      })
-      .strict(),
-    preparation_profile: z.string().trim().min(1).max(120),
-    validation_profile: z.string().trim().min(1).max(120),
-    compatibility: z.enum(["UNTESTED", "RUNNING", "PASSED", "FAILED", "CANCELLED", "STALE"]),
-    lifecycle: z.literal("ACTIVE"),
-    version_state: z.literal("READY"),
-    uploaded_bytes_persisted: z.literal(false),
-    attestations: z
-      .object({
-        image_use_rights: z.literal(true),
-        likeness_animation_consent: z.literal(true),
-      })
-      .strict(),
-  })
-  .strict();
-
-const imageStyleMetadataSchema = z
-  .object({
-    name: z.string().trim().min(1).max(120),
-    summary: z.string().trim().min(1).max(500),
-    cover_url: z.string().regex(STYLE_FIXTURE_PATH),
-    reference_urls: z.array(z.string().regex(STYLE_FIXTURE_PATH)).max(8),
-    example_urls: z.array(z.string().regex(STYLE_FIXTURE_PATH)).max(8),
-    medium: z.string().trim().min(1).max(160),
-    lighting: z.string().trim().min(1).max(160),
-    color: z.string().trim().min(1).max(160),
-    texture: z.string().trim().min(1).max(160),
-    retention_summary: z.string().trim().min(1).max(300),
-    lifecycle: z.literal("ACTIVE"),
-    version_state: z.literal("PUBLISHED"),
-    uploaded_bytes_persisted: z.literal(false),
-    attestations: z
-      .object({
-        reference_rights: z.literal(true),
-        processing_disclosure_acknowledged: z.literal(true),
-      })
-      .strict(),
-  })
-  .strict()
-  .refine((value) => value.reference_urls.length + value.example_urls.length > 0, {
-    message: "At least one owned same-origin fixture reference or example is required.",
-    path: ["example_urls"],
-  });
-
-type AvatarProfileMetadata = z.infer<typeof avatarProfileMetadataSchema>;
-type ImageStyleMetadata = z.infer<typeof imageStyleMetadataSchema>;
-
-function avatarProfileHashPayload(metadata: AvatarProfileMetadata): Record<string, unknown> {
-  return {
-    schema_version: "fixture-avatar-profile-version/v1",
-    thumbnail_url: metadata.thumbnail_url,
-    source_dimensions: metadata.source_dimensions,
-    preparation_profile: metadata.preparation_profile,
-    validation_profile: metadata.validation_profile,
-    compatibility: metadata.compatibility,
-    lifecycle: metadata.lifecycle,
-    version_state: metadata.version_state,
-    uploaded_bytes_persisted: metadata.uploaded_bytes_persisted,
-    attestations: metadata.attestations,
-  };
-}
-
-function imageStyleHashPayload(metadata: ImageStyleMetadata): Record<string, unknown> {
-  return {
-    schema_version: "fixture-image-style-version/v1",
-    summary: metadata.summary,
-    cover_url: metadata.cover_url,
-    reference_urls: metadata.reference_urls,
-    example_urls: metadata.example_urls,
-    medium: metadata.medium,
-    lighting: metadata.lighting,
-    color: metadata.color,
-    texture: metadata.texture,
-    retention_summary: metadata.retention_summary,
-    lifecycle: metadata.lifecycle,
-    version_state: metadata.version_state,
-    uploaded_bytes_persisted: metadata.uploaded_bytes_persisted,
-    attestations: metadata.attestations,
-  };
-}
 
 function resolveContextFixture(c: Context): FixtureResolution {
   return fixtureFromRequest(c.req.raw);
-}
-
-type ProjectDetailResolution =
-  | { ok: true; detail: RuntimeProjectDetail }
-  | { ok: false; response: Response };
-
-function projectVersionToken(projectId: string, revisionId: string, version: number): string {
-  return `"vf-${projectId}-${revisionId}-v${version}"`;
-}
-
-function nextProjectVersionToken(current: string): string {
-  const match = /-v([1-9][0-9]*)"$/u.exec(current);
-  if (!match) throw new Error("Runtime project has an invalid version token.");
-  return current.replace(/-v[1-9][0-9]*"$/u, `-v${Number(match[1]) + 1}"`);
-}
-
-function rotateProjectVersion(detail: RuntimeProjectDetail): string {
-  const next = nextProjectVersionToken(detail.project.versionToken);
-  detail.project.versionToken = next;
-  return next;
-}
-
-function enrichProjectSummary(
-  scenario: FixtureScenario,
-  project: ProjectSummaryResponse,
-): RuntimeProjectSummary {
-  const revisionId = scenario.snapshot.project?.revisionId ?? "revision_fixture_unknown";
-  return {
-    ...structuredClone(project),
-    revisionId,
-    versionToken: projectVersionToken(project.id, revisionId, 1),
-    pins: {
-      avatarProfileVersionId: scenario.snapshot.draft.avatarProfileVersionId,
-      imageStyleVersionId: scenario.snapshot.draft.imageStyleVersionId,
-    },
-  };
-}
-
-function baseProjectDetail(scenario: FixtureScenario): RuntimeProjectDetail | null {
-  const detail = toProjectDetailResponse(scenario);
-  if (!detail) return null;
-  return {
-    ...structuredClone(detail),
-    project: enrichProjectSummary(scenario, detail.project),
-  };
-}
-
-function getRuntimeProject(
-  projects: RuntimeProjects,
-  scenarioId: FixtureScenarioId,
-  projectId: string,
-): RuntimeProjectDetail | null {
-  const project = projects.get(scenarioId)?.get(projectId);
-  return project ? structuredClone(project) : null;
-}
-
-function putRuntimeProject(
-  projects: RuntimeProjects,
-  scenarioId: FixtureScenarioId,
-  detail: RuntimeProjectDetail,
-): void {
-  let scenarioProjects = projects.get(scenarioId);
-  if (!scenarioProjects) {
-    scenarioProjects = new Map();
-    projects.set(scenarioId, scenarioProjects);
-  }
-  scenarioProjects.set(detail.project.id, structuredClone(detail));
-}
-
-function projectDetailsForScenario(
-  projects: RuntimeProjects,
-  scenario: FixtureScenario,
-): RuntimeProjectDetail[] {
-  const base = baseProjectDetail(scenario);
-  const merged = new Map<string, RuntimeProjectDetail>();
-  if (base) merged.set(base.project.id, base);
-  for (const [projectId, detail] of projects.get(scenario.id) ?? []) {
-    merged.set(projectId, structuredClone(detail));
-  }
-  return [...merged.values()];
-}
-
-function resolveProjectDetail(
-  scenario: FixtureScenario,
-  projectId: string,
-  projects?: RuntimeProjects,
-): ProjectDetailResolution {
-  const detail = projects
-    ? (getRuntimeProject(projects, scenario.id, projectId) ?? baseProjectDetail(scenario))
-    : baseProjectDetail(scenario);
-  if (detail === null || detail.project.id !== projectId) {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "PROJECT_NOT_FOUND",
-          404,
-          "Project not found",
-          `Project '${projectId}' is not present in fixture '${scenario.id}'.`,
-          false,
-        ),
-      ),
-    };
-  }
-  return { ok: true, detail };
-}
-
-function mergeByVersionId<T extends { versionId: string }>(base: T[], added: T[]): T[] {
-  const merged = new Map(base.map((item) => [item.versionId, structuredClone(item)]));
-  for (const item of added) merged.set(item.versionId, structuredClone(item));
-  return [...merged.values()];
-}
-
-function avatarCatalog(
-  scenario: FixtureScenario,
-  added: AvatarProfileResponse[],
-): AvatarProfileResponse[] {
-  return mergeByVersionId(scenario.snapshot.avatarHub.profiles.map(toAvatarProfileResponse), added);
-}
-
-function imageStyleCatalog(
-  scenario: FixtureScenario,
-  added: ImageStyleResponse[],
-): ImageStyleResponse[] {
-  return mergeByVersionId(scenario.snapshot.imageStyles.styles.map(toImageStyleResponse), added);
-}
-
-type SemanticPreflightResolution =
-  | {
-      ok: true;
-      estimatedCostUsd: number;
-    }
-  | { ok: false; response: Response };
-
-function semanticProjectPreflight(
-  scenario: FixtureScenario,
-  request: CreateProjectRequest,
-  registeredVoiceovers: ReadonlyMap<string, RegisteredVoiceover>,
-  addedAvatars: AvatarProfileResponse[],
-  addedStyles: ImageStyleResponse[],
-): SemanticPreflightResolution {
-  const fixtureVoiceover = scenario.snapshot.draft.voiceover;
-  const matchesScenarioVoiceover = fixtureVoiceover.assetId === request.voiceover_asset_id;
-  const matchesVerifiedLocalHandle = registeredVoiceovers.has(request.voiceover_asset_id);
-  if (!matchesScenarioVoiceover && !matchesVerifiedLocalHandle) {
-    const looksLikeLocalHandle = VERIFIED_FIXTURE_VOICEOVER_HANDLE.test(request.voiceover_asset_id);
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          looksLikeLocalHandle ? "VOICEOVER_ASSET_NOT_REGISTERED" : "VOICEOVER_ASSET_NOT_FOUND",
-          looksLikeLocalHandle ? 409 : 422,
-          looksLikeLocalHandle
-            ? "Browser-verified voiceover is not registered"
-            : "Verified voiceover was not found",
-          looksLikeLocalHandle
-            ? "Register the browser-validated metadata before project preflight; audio bytes remain local."
-            : "Select a fixture voiceover that completed local verification before preflight.",
-          false,
-        ),
-      ),
-    };
-  }
-  if (matchesScenarioVoiceover && fixtureVoiceover.uploadState !== "VERIFIED") {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "VOICEOVER_ASSET_NOT_VERIFIED",
-          409,
-          "Voiceover is not verified",
-          "Wait for voiceover verification to finish or select another verified asset.",
-          true,
-        ),
-      ),
-    };
-  }
-
-  const avatar = avatarCatalog(scenario, addedAvatars).find(
-    (profile) => profile.versionId === request.avatar_profile_version_id,
-  );
-  if (!avatar) {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "AVATAR_PROFILE_NOT_FOUND",
-          422,
-          "Avatar Profile version was not found",
-          "Choose an exact workspace-visible Avatar Profile version from the Avatar Hub.",
-          false,
-        ),
-      ),
-    };
-  }
-  if (avatar.status === "ARCHIVED") {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "AVATAR_PROFILE_ARCHIVED",
-          409,
-          "Selected avatar is archived",
-          "Choose another active Avatar Profile version before creating a revision.",
-          false,
-        ),
-      ),
-    };
-  }
-  if (avatar.status !== "READY") {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "AVATAR_PROFILE_NOT_READY",
-          409,
-          "Selected avatar is not ready",
-          "Wait for source validation and explicit approval before selecting this version.",
-          avatar.status === "VALIDATING",
-        ),
-      ),
-    };
-  }
-
-  const style = imageStyleCatalog(scenario, addedStyles).find(
-    (candidate) => candidate.versionId === request.image_style_version_id,
-  );
-  if (!style) {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "IMAGE_STYLE_VERSION_NOT_FOUND",
-          422,
-          "Image Style version was not found",
-          "Choose an exact workspace-visible published Image Style version.",
-          false,
-        ),
-      ),
-    };
-  }
-  if (style.status !== "PUBLISHED" || style.activeVersion < 1) {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "STYLE_NOT_READY",
-          409,
-          "Selected Image Style is not published",
-          "Choose an active published style version. A draft or analyzing version cannot be pinned.",
-          style.status === "ANALYZING",
-        ),
-      ),
-    };
-  }
-
-  const defaultProfiles = resolveFixtureExecutionProfiles(request.generation_mode);
-  const overrideEntries = [
-    ["image_media_profile_id", "image_media"],
-    ["avatar_primary_profile_id", "avatar_primary"],
-    ["avatar_repair_profile_id", "avatar_repair"],
-    ["avatar_quality_profile_id", "avatar_quality"],
-  ] as const;
-  for (const [field, lane] of overrideEntries) {
-    const profileId =
-      request.execution_profile_overrides?.[field] ?? defaultProfiles[lane].profile_id;
-    try {
-      const profile = getFixtureExecutionProfile(profileId);
-      if (profile.lane !== lane) throw new Error("lane mismatch");
-    } catch {
-      return {
-        ok: false,
-        response: problemResponse(
-          apiProblem(
-            "EXECUTION_PROFILE_NOT_AVAILABLE",
-            409,
-            "Selected compute profile is not available",
-            `Choose a tested ${lane.replaceAll("_", " ")} execution profile. Planned GPUs remain unavailable until GATE_GPU_001 passes.`,
-            false,
-          ),
-        ),
-      };
-    }
-  }
-
-  if (request.apply_extra_prompt_keywords) {
-    const keywordValidation = validateOutputRuleKeywords(request.extra_prompt_keywords ?? "");
-    if (!keywordValidation.valid) {
-      return {
-        ok: false,
-        response: problemResponse(
-          apiProblem(
-            "EXTRA_KEYWORDS_FORBIDDEN_OUTPUT",
-            422,
-            "Extra keywords conflict with output rules",
-            "Enabled keywords cannot request prohibited text, graphics, borders, watermarks, or decorative transitions.",
-            false,
-          ),
-          keywordValidation.conflicts,
-        ),
-      };
-    }
-  }
-
-  if (FIXTURE_ESTIMATED_COST_USD > request.spend_cap_usd) {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "BUDGET_CAP_EXCEEDED",
-          409,
-          "Project is blocked by its spend cap",
-          `The fixture estimate is $${FIXTURE_ESTIMATED_COST_USD.toFixed(2)} and the configured cap is $${request.spend_cap_usd.toFixed(2)}.`,
-          false,
-        ),
-      ),
-    };
-  }
-
-  return { ok: true, estimatedCostUsd: FIXTURE_ESTIMATED_COST_USD };
-}
-
-function scenarioMutationProblemFor(
-  scenario: FixtureScenario,
-  operation: FixtureMutationOperation,
-  request: CreateProjectRequest,
-): FixtureProblem | null {
-  const problem = scenario.snapshot.mutationProblem;
-  if (!problem) return null;
-  if (
-    problem.code.startsWith("AVATAR_") &&
-    request.avatar_profile_version_id !== scenario.snapshot.draft.avatarProfileVersionId
-  ) {
-    return null;
-  }
-  if (
-    problem.code.startsWith("STYLE_") &&
-    request.image_style_version_id !== scenario.snapshot.draft.imageStyleVersionId
-  ) {
-    return null;
-  }
-  if (
-    (operation === "PROJECT_CREATE" || operation === "PROJECT_PREFLIGHT") &&
-    PROJECT_INPUT_PROBLEM_CODES.has(problem.code)
-  ) {
-    return problem;
-  }
-  return null;
 }
 
 export function createApiApp(
@@ -591,53 +121,7 @@ export function createApiApp(
     return response;
   }
 
-  app.use("/api/*", async (c, next) => {
-    if (environment === "production") {
-      return problemResponse(
-        apiProblem(
-          "API_ROUTE_NOT_FOUND",
-          404,
-          "API route not found",
-          "No production API is registered by this local fixture server.",
-          false,
-        ),
-      );
-    }
-    await next();
-  });
-
-  app.use("/api/*", async (c, next) => {
-    const session = resolveFixtureSession(c);
-    if (!session.ok) return session.response;
-    await next();
-    c.header("cache-control", "no-store");
-    c.header("x-videoforge-provider-mode", "fixture");
-    c.header("x-videoforge-synthetic", "true");
-    c.header(FIXTURE_SESSION_HEADER, session.id);
-  });
-
-  app.use("/api/v1/*", async (c, next) => {
-    const resolved = resolveContextFixture(c);
-    if (!resolved.ok) return resolved.response;
-    if (c.req.path === "/api/v1/bootstrap") {
-      await next();
-      return;
-    }
-    if (resolved.scenario.snapshot.access.state !== "AUTHORIZED") {
-      return problemResponse(
-        apiProblem(
-          "WORKSPACE_ACCESS_REQUIRED",
-          403,
-          "Workspace access is required",
-          resolved.scenario.snapshot.access.state === "DENIED"
-            ? "This account is not invited to the selected workspace. Try another invited account."
-            : "Continue with an invited account before requesting workspace data or actions.",
-          false,
-        ),
-      );
-    }
-    await next();
-  });
+  registerAccessMiddleware(app, environment, fixtureSessions);
 
   app.get("/api/health", (c) => {
     const resolved = resolveContextFixture(c);
@@ -738,7 +222,7 @@ export function createApiApp(
       }
       state.avatarSequence += 1;
       const suffix = String(state.avatarSequence).padStart(3, "0");
-      const profileHash = await sha256CanonicalJson(avatarProfileHashPayload(metadata.data));
+      const profileHash = await hashAvatarProfileMetadata(metadata.data);
       const profile: AvatarProfileResponse = {
         id: `avatar_profile_fixture_created_${suffix}`,
         versionId: `avatar_profile_version_fixture_created_${suffix}`,
@@ -828,7 +312,7 @@ export function createApiApp(
       }
       state.styleSequence += 1;
       const suffix = String(state.styleSequence).padStart(3, "0");
-      const profileHash = await sha256CanonicalJson(imageStyleHashPayload(metadata.data));
+      const profileHash = await hashImageStyleMetadata(metadata.data);
       const style: ImageStyleResponse = {
         id: `image_style_fixture_created_${suffix}`,
         versionId: `image_style_version_fixture_created_${suffix}`,
@@ -895,17 +379,7 @@ export function createApiApp(
           ),
         );
       }
-      const voiceover: RegisteredVoiceover = {
-        assetId: metadata.data.asset_id,
-        checksum: metadata.data.checksum,
-        filename: metadata.data.filename,
-        durationSeconds: metadata.data.duration_seconds,
-        sampleRate: metadata.data.sample_rate,
-        channels: metadata.data.channels,
-        verificationState: "VERIFIED",
-        persistedBytes: false,
-        providerCallsAuthorized: false,
-      };
+      const voiceover = registeredVoiceoverFrom(metadata.data);
       const existing = state.registeredVoiceovers.get(voiceover.assetId);
       if (existing && canonicalJson(existing) !== canonicalJson(voiceover)) {
         return problemResponse(
