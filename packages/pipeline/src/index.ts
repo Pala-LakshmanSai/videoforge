@@ -2,6 +2,7 @@ export * from "./assets/ports.js";
 export * from "./determinism.js";
 export * from "./documents.js";
 export * from "./errors.js";
+export * from "./local/artifact-store.js";
 export * from "./render/ports.js";
 export * from "./scheduler/ports.js";
 export * from "./transcript/types.js";
