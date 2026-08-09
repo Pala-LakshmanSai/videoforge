@@ -541,15 +541,20 @@ class TranscriptionJobTest(unittest.TestCase):
             all(phrase["end_ms"] - phrase["start_ms"] <= 4500 for phrase in transcript["phrases"])
         )
 
-    def test_real_whisper_zero_duration_blank_preamble_is_ignored(self) -> None:
+    def test_real_whisper_blank_nonspeech_spans_are_ignored(self) -> None:
         raw_document = _whisper_output()
         raw_document["transcription"].insert(
             0,
-            {"text": "", "offsets": {"from": 0, "to": 0}},
+            {"text": "", "offsets": {"from": 0, "to": 10}},
+        )
+        raw_document["transcription"].insert(
+            6,
+            {"text": "  ", "offsets": {"from": 4700, "to": 4710}},
         )
         result, _, _, _ = self._run(process=FakeProcessRunner(raw_document=raw_document))
         self.assertEqual(result["status"], "SUCCEEDED")
         self.assertEqual(result["transcript"]["words"][0]["text"], "Fresh")
+        self.assertEqual(len(result["transcript"]["words"]), 9)
 
     def test_preflight_cancellation_never_invokes_process(self) -> None:
         result, process, _, _ = self._run(cancellation=FakeCancellation(cancelled=True))

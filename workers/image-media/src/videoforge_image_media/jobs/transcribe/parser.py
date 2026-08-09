@@ -56,9 +56,9 @@ def _words_from_segment(segment: dict[str, Any], segment_index: int) -> list[_Wo
     normalized = " ".join(raw_text.split())
     if not normalized:
         start_ms, end_ms = _offsets(segment.get("offsets"), f"segment {segment_index}")
-        if start_ms == end_ms:
+        if start_ms >= 0 and end_ms >= start_ms:
             return []
-        raise WhisperOutputError(f"segment {segment_index} text is empty")
+        raise WhisperOutputError(f"segment {segment_index} has invalid blank-span timestamps")
     text = _normalize_text(raw_text, f"segment {segment_index}")
     if any(character.isspace() for character in text):
         raise WhisperOutputError(
