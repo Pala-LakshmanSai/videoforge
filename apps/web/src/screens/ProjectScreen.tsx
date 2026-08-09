@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle, ArrowRight, RefreshCw, X } from "lucide-react";
 import { useState } from "react";
 import { CompositionPreview } from "../components/CompositionPreview";
+import { MediaArtifactPreview } from "../components/MediaArtifactPreview";
 import { PageHeader } from "../components/PageHeader";
 import {
   Badge,
@@ -220,13 +221,18 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
               {project.latestArtifact?.kind === "IMAGE" ? (
                 <img src={project.latestArtifact.url} alt={project.latestArtifact.label} />
               ) : project.latestArtifact?.kind === "VIDEO" ? (
-                <div
-                  className="video-artifact-placeholder"
-                  aria-label={project.latestArtifact.label}
-                >
-                  <CompositionPreview type="AVATAR_SPLIT_IMAGE" />
-                  <Badge tone="info">SYNTHETIC CANDIDATE</Badge>
-                </div>
+                <MediaArtifactPreview
+                  artifact={project.latestArtifact}
+                  fixtureFallback={
+                    <div
+                      className="video-artifact-placeholder"
+                      aria-label={project.latestArtifact.label}
+                    >
+                      <CompositionPreview type="AVATAR_SPLIT_IMAGE" />
+                      <Badge tone="info">SYNTHETIC CANDIDATE</Badge>
+                    </div>
+                  }
+                />
               ) : (
                 <CompositionPreview type="IMAGE_FULL" />
               )}

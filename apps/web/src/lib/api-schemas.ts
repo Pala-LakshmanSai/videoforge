@@ -19,9 +19,13 @@ const PROJECT_VERSION_TOKEN = /^"vf-[A-Za-z0-9._:-]+-v[1-9][0-9]*"$/u;
 const AVATAR_FIXTURE_PATH = /^\/fixtures\/avatar\/[a-z0-9][a-z0-9._-]*\.svg$/u;
 const STYLE_FIXTURE_PATH = /^\/fixtures\/styles\/[a-z0-9][a-z0-9._-]*\.svg$/u;
 const MEDIA_FIXTURE_PATH = /^\/fixtures\/media\/[a-z0-9][a-z0-9._-]*\.(?:mp4|svg)$/u;
-const DOWNLOAD_PATH = /^\/api\/v1\/projects\/[A-Za-z0-9._:-]+\/download\?fixture=[a-z0-9_]+$/u;
+const MEDIA_PREVIEW_PATH = /^\/api\/v1\/projects\/[A-Za-z0-9._:-]+\/preview$/u;
+const FIXTURE_DOWNLOAD_PATH =
+  /^\/api\/v1\/projects\/[A-Za-z0-9._:-]+\/download\?fixture=[a-z0-9_]+$/u;
+const LOCAL_DOWNLOAD_PATH = /^\/api\/v1\/projects\/[A-Za-z0-9._:-]+\/download$/u;
 const FIXTURE_VOICEOVER_ASSET = /^fixture_voiceover_sha256_([a-f0-9]{64})$/u;
 const VOICEOVER_FILENAME = /^[^/\\\0]+\.(?:aac|flac|m4a|mp3|wav)$/iu;
+const ARTIFACT_FILENAME = /^[^/\\\0]+$/u;
 
 const scenarioSchema = z.enum(scenarioIds);
 const noticeSchema = z
@@ -162,8 +166,11 @@ const projectSummarySchema = z
     latestArtifact: z
       .object({
         kind: z.enum(["IMAGE", "AVATAR_CLIP", "VIDEO"]),
-        url: z.string().regex(MEDIA_FIXTURE_PATH),
+        url: z.union([z.string().regex(MEDIA_FIXTURE_PATH), z.string().regex(MEDIA_PREVIEW_PATH)]),
         label: z.string(),
+        sha256: z.string().regex(SHA256).optional(),
+        bytes: z.number().int().positive().optional(),
+        filename: z.string().min(1).max(240).regex(ARTIFACT_FILENAME).optional(),
       })
       .strict()
       .nullable(),
@@ -174,7 +181,9 @@ const projectSummarySchema = z
         state: z.enum(["NOT_READY", "READY_FOR_REVIEW", "CHANGES_REQUESTED", "APPROVED"]),
         flaggedDefect: z.enum(["LIP_SYNC_ONLY", "WHOLE_FRAME", "IMAGE_QUALITY"]).nullable(),
         selectedAvatarClipId: z.string().nullable(),
-        downloadUrl: z.string().regex(DOWNLOAD_PATH).nullable(),
+        downloadUrl: z
+          .union([z.string().regex(FIXTURE_DOWNLOAD_PATH), z.string().regex(LOCAL_DOWNLOAD_PATH)])
+          .nullable(),
       })
       .strict(),
     allowedActions: z.array(
@@ -278,18 +287,19 @@ const projectDetailSchema = z
   })
   .strict();
 
-const healthSchema = z
-  .object({
-    app: z.literal("videoforge"),
-    status: z.literal("ok"),
-    mode: z.literal("fixture"),
-    commit: z.string(),
-    fixture_id: scenarioSchema,
-    synthetic: z.literal(true),
-    provider_calls_authorized: z.literal(false),
-    authorized_spend_usd: z.literal(0),
-  })
-  .strict();
+const healthFields = {
+  app: z.literal("videoforge"),
+  status: z.literal("ok"),
+  commit: z.string(),
+  synthetic: z.literal(true),
+  provider_calls_authorized: z.literal(false),
+  authorized_spend_usd: z.literal(0),
+};
+
+const healthSchema = z.discriminatedUnion("mode", [
+  z.object({ ...healthFields, mode: z.literal("fixture"), fixture_id: scenarioSchema }).strict(),
+  z.object({ ...healthFields, mode: z.literal("local"), fixture_id: z.null() }).strict(),
+]);
 
 const registeredVoiceoverSchema = z
   .object({
@@ -300,7 +310,7 @@ const registeredVoiceoverSchema = z
     sampleRate: z.number().int().min(8_000).max(192_000),
     channels: z.union([z.literal(1), z.literal(2)]),
     verificationState: z.literal("VERIFIED"),
-    persistedBytes: z.literal(false),
+    persistedBytes: z.boolean(),
     providerCallsAuthorized: z.literal(false),
   })
   .strict()

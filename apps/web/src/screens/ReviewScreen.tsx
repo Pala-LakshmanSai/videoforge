@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Download, FileJson, RefreshCw, ShieldCheck, Video } from "lucide-react";
 import { useState } from "react";
 import { CompositionPreview } from "../components/CompositionPreview";
+import { isLocalVideoArtifact, MediaArtifactPreview } from "../components/MediaArtifactPreview";
 import { PageHeader } from "../components/PageHeader";
 import { Badge, Button, Disclosure, EmptyState, Panel } from "../components/ui";
 import { ActionToast, NoticeBanner } from "../features/shared/FixtureFeedback";
@@ -25,6 +26,8 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
   const [approvalError, setApprovalError] = useState<string | null>(null);
   const [reviewActionNotice, setReviewActionNotice] = useState<string | null>(null);
   const project = query.data?.project;
+  const artifact = project?.latestArtifact ?? null;
+  const localVideo = isLocalVideoArtifact(artifact);
   const approved = approvalRecorded || project?.review.state === "APPROVED";
   const shots = [
     {
@@ -196,7 +199,9 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
           <strong>{busy === "approve" ? "Approving…" : "Approval recorded."}</strong>{" "}
           {busy === "approve"
             ? "Candidate and checksum are being verified."
-            : "Synthetic preview ready. Real MP4 rendering remains in Phase 0C."}
+            : localVideo
+              ? "The verified local MP4 is ready to download."
+              : "Synthetic preview ready. Real MP4 rendering remains in Phase 0C."}
         </div>
       ) : null}
       {reviewActionNotice ? (
@@ -206,57 +211,66 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
       ) : null}
       <Panel className="review-player" eyebrow="Final output" heading="Preview">
         <div className="review-player-frame">
-          <CompositionPreview type={sameClipMode} />
+          <MediaArtifactPreview
+            artifact={artifact}
+            fixtureFallback={<CompositionPreview type={sameClipMode} />}
+          />
         </div>
         <div className="review-player-meta">
-          <span>1920×1080 · 30 fps · synthetic preview</span>
+          <span>
+            {localVideo
+              ? `${artifact.filename ?? artifact.label} · local MP4`
+              : "1920×1080 · 30 fps · synthetic preview"}
+          </span>
           <Badge tone={approved ? "success" : "warning"}>
             {approved ? "Approved" : "Review needed"}
           </Badge>
         </div>
       </Panel>
-      <Panel
-        className="review-segments"
-        eyebrow="Review strip"
-        heading="Segments"
-        action={
-          <div className="cluster">
-            <Button
-              variant={sameClipMode === "AVATAR_FULL" ? "primary" : "secondary"}
-              aria-pressed={sameClipMode === "AVATAR_FULL"}
-              onClick={() => setSameClipMode("AVATAR_FULL")}
-            >
-              Full
-            </Button>
-            <Button
-              variant={sameClipMode === "AVATAR_SPLIT_IMAGE" ? "primary" : "secondary"}
-              aria-pressed={sameClipMode === "AVATAR_SPLIT_IMAGE"}
-              onClick={() => setSameClipMode("AVATAR_SPLIT_IMAGE")}
-            >
-              Split
-            </Button>
+      {!localVideo ? (
+        <Panel
+          className="review-segments"
+          eyebrow="Review strip"
+          heading="Segments"
+          action={
+            <div className="cluster">
+              <Button
+                variant={sameClipMode === "AVATAR_FULL" ? "primary" : "secondary"}
+                aria-pressed={sameClipMode === "AVATAR_FULL"}
+                onClick={() => setSameClipMode("AVATAR_FULL")}
+              >
+                Full
+              </Button>
+              <Button
+                variant={sameClipMode === "AVATAR_SPLIT_IMAGE" ? "primary" : "secondary"}
+                aria-pressed={sameClipMode === "AVATAR_SPLIT_IMAGE"}
+                onClick={() => setSameClipMode("AVATAR_SPLIT_IMAGE")}
+              >
+                Split
+              </Button>
+            </div>
+          }
+        >
+          <div className="review-grid">
+            {shots.map((shot) => (
+              <article className="review-card" key={shot.id}>
+                <CompositionPreview type={shot.type} />
+                <div className="review-meta">
+                  <strong>{shot.time}</strong>
+                  <Badge tone={shot.status === "FLAGGED" ? "warning" : "success"}>
+                    {shot.status}
+                  </Badge>
+                </div>
+                <small className="review-segment-state">
+                  {shot.status === "FLAGGED"
+                    ? "Repair is controlled by the project action above."
+                    : "Read-only fixture contact sheet"}
+                </small>
+              </article>
+            ))}
           </div>
-        }
-      >
-        <div className="review-grid">
-          {shots.map((shot) => (
-            <article className="review-card" key={shot.id}>
-              <CompositionPreview type={shot.type} />
-              <div className="review-meta">
-                <strong>{shot.time}</strong>
-                <Badge tone={shot.status === "FLAGGED" ? "warning" : "success"}>
-                  {shot.status}
-                </Badge>
-              </div>
-              <small className="review-segment-state">
-                {shot.status === "FLAGGED"
-                  ? "Repair is controlled by the project action above."
-                  : "Read-only fixture contact sheet"}
-              </small>
-            </article>
-          ))}
-        </div>
-      </Panel>
+        </Panel>
+      ) : null}
       <div className="review-footer">
         <Disclosure
           className="project-details"
@@ -270,11 +284,17 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
           <div className="detail-facts">
             <span>
               <small>Output</small>
-              <strong>Synthetic contact sheet</strong>
+              <strong>
+                {localVideo ? (artifact.filename ?? "Local MP4") : "Synthetic contact sheet"}
+              </strong>
             </span>
             <span>
               <small>Layouts</small>
-              <strong>Full avatar · Full image · Split</strong>
+              <strong>
+                {localVideo
+                  ? "Rendered timeline · 1920×1080 at 30 fps"
+                  : "Full avatar · Full image · Split"}
+              </strong>
             </span>
             <span>
               <small>Transitions</small>
@@ -286,8 +306,18 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
             </span>
             <span>
               <small>Checksum</small>
-              <strong>{project.review.candidateSha256 ?? "Unavailable"}</strong>
+              <strong>
+                {localVideo
+                  ? (artifact.sha256 ?? project.review.candidateSha256 ?? "Unavailable")
+                  : (project.review.candidateSha256 ?? "Unavailable")}
+              </strong>
             </span>
+            {localVideo ? (
+              <span>
+                <small>Bytes</small>
+                <strong>{artifact.bytes?.toLocaleString() ?? "Unavailable"}</strong>
+              </span>
+            ) : null}
           </div>
         </Disclosure>
         {approved && project.review.downloadUrl ? (
@@ -295,18 +325,26 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
             <a
               className="button button-secondary"
               href={project.review.downloadUrl}
-              download="videoforge-fixture-preview.svg"
+              download={localVideo ? (artifact.filename ?? true) : "videoforge-fixture-preview.svg"}
             >
               <Download size={18} />
-              Download preview
+              {localVideo ? "Download MP4" : "Download preview"}
             </a>
             <a
               className="button button-secondary"
-              href={`/api/v1/projects/${projectId}?fixture=${scenario}`}
-              download="videoforge-fixture-project-record.json"
+              href={
+                localVideo
+                  ? `/api/v1/projects/${projectId}`
+                  : `/api/v1/projects/${projectId}?fixture=${scenario}`
+              }
+              download={
+                localVideo
+                  ? "videoforge-local-project-record.json"
+                  : "videoforge-fixture-project-record.json"
+              }
             >
               <FileJson size={18} />
-              Fixture record
+              {localVideo ? "Project record" : "Fixture record"}
             </a>
           </div>
         ) : (

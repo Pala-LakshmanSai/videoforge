@@ -120,6 +120,15 @@ export interface ProjectStage {
   detail: string;
 }
 
+export interface MediaArtifact {
+  kind: "IMAGE" | "AVATAR_CLIP" | "VIDEO";
+  url: string;
+  label: string;
+  sha256?: string;
+  bytes?: number;
+  filename?: string;
+}
+
 export interface ProjectSummary {
   id: string;
   title: string;
@@ -154,7 +163,7 @@ export interface ProjectSummary {
     image: { state: string; completed: number; total: number; action: string };
     avatar: { state: string; completed: number; total: number; action: string };
   };
-  latestArtifact: { kind: "IMAGE" | "AVATAR_CLIP" | "VIDEO"; url: string; label: string } | null;
+  latestArtifact: MediaArtifact | null;
   review: {
     candidateId: string | null;
     candidateSha256: string | null;
@@ -240,16 +249,17 @@ export interface ProjectDetail {
   notice: FixtureNotice | null;
 }
 
-export interface HealthResponse {
+interface HealthResponseBase {
   app: "videoforge";
   status: "ok";
-  mode: "fixture";
   commit: string;
-  fixture_id: ScenarioId;
   synthetic: true;
   provider_calls_authorized: false;
   authorized_spend_usd: 0;
 }
+
+export type HealthResponse = HealthResponseBase &
+  ({ mode: "fixture"; fixture_id: ScenarioId } | { mode: "local"; fixture_id: null });
 
 export interface RegisteredVoiceover {
   assetId: string;
@@ -259,6 +269,6 @@ export interface RegisteredVoiceover {
   sampleRate: number;
   channels: 1 | 2;
   verificationState: "VERIFIED";
-  persistedBytes: false;
+  persistedBytes: boolean;
   providerCallsAuthorized: false;
 }
