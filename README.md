@@ -18,6 +18,8 @@ pnpm dev
 
 The strict hot-reload URL is [http://localhost:4173](http://localhost:4173). VideoForge will reuse only a healthy fixture-mode server on that port and will fail instead of silently choosing a different port.
 
+For fixture review from a phone on the same trusted Wi-Fi, `pnpm dev:status` also reports a temporary `lanUrl`. The LAN route exists only while the local development server and Mac are running; it is not a public deployment.
+
 Useful commands:
 
 ```bash
