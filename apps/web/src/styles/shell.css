@@ -532,12 +532,7 @@
 }
 
 .bottom-nav-item {
-  --dock-lift: 0px;
   --dock-scale: 1;
-  --dock-shift: 0px;
-  --dock-surface-lift: 0px;
-  --dock-surface-scale: 1;
-  --dock-surface-shift: 0px;
 
   position: relative;
   display: flex;
@@ -574,10 +569,6 @@
     0 10px 30px rgba(10, 17, 65, 0.22),
     inset 0 1px rgba(255, 255, 255, 0.1);
   content: "";
-  transform: translate3d(var(--dock-surface-shift), var(--dock-surface-lift), 0)
-    scale(var(--dock-surface-scale));
-  transform-origin: 50% 100%;
-  will-change: transform;
 }
 
 .bottom-nav-item-active:hover::before {
@@ -590,11 +581,12 @@
 
 .bottom-nav-icon {
   display: grid;
-  width: 41px;
-  height: 36px;
+  width: 48px;
+  height: 44px;
+  flex: 0 0 auto;
   place-items: center;
-  transform: translate3d(var(--dock-shift), var(--dock-lift), 0) scale(var(--dock-scale));
-  transform-origin: 50% 100%;
+  transform: scale(var(--dock-scale));
+  transform-origin: center bottom;
   border: 1px solid rgba(222, 226, 255, 0.1);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.035);

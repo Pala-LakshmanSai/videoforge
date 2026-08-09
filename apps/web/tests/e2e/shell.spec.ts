@@ -182,10 +182,15 @@ test("dock magnifies by pointer proximity without moving its layout boxes", asyn
   const target = items.nth(3);
   const neighbor = items.nth(2);
   const far = items.nth(7);
+  const targetIcon = target.locator(".bottom-nav-icon");
   const before = await target.boundingBox();
+  const iconBefore = await targetIcon.boundingBox();
   if (!before) throw new Error("Dock target has no layout box.");
+  if (!iconBefore) throw new Error("Dock target icon has no layout box.");
   expect(before.width).toBeGreaterThanOrEqual(94);
   expect(before.height).toBeGreaterThanOrEqual(74);
+  expect(iconBefore.width).toBeCloseTo(48, 1);
+  expect(iconBefore.height).toBeCloseTo(44, 1);
 
   await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
   await expect
@@ -194,29 +199,34 @@ test("dock magnifies by pointer proximity without moving its layout boxes", asyn
         Number(getComputedStyle(element).getPropertyValue("--dock-scale")),
       ),
     )
-    .toBeGreaterThan(1.8);
-  await expect
-    .poll(() =>
-      neighbor.evaluate((element) =>
-        Number(getComputedStyle(element).getPropertyValue("--dock-scale")),
-      ),
-    )
-    .toBeGreaterThan(1.4);
-  await expect
-    .poll(() =>
-      neighbor.evaluate((element) =>
-        Math.abs(Number.parseFloat(getComputedStyle(element).getPropertyValue("--dock-shift"))),
-      ),
-    )
-    .toBeGreaterThan(10);
-  await expect
-    .poll(() =>
-      far.evaluate((element) => Number(getComputedStyle(element).getPropertyValue("--dock-scale"))),
-    )
-    .toBeLessThan(1.03);
+    .toBeGreaterThan(1.74);
+
+  const targetScale = await target.evaluate((element) =>
+    Number(getComputedStyle(element).getPropertyValue("--dock-scale")),
+  );
+  const neighborScale = await neighbor.evaluate((element) =>
+    Number(getComputedStyle(element).getPropertyValue("--dock-scale")),
+  );
+  const farScale = await far.evaluate((element) =>
+    Number(getComputedStyle(element).getPropertyValue("--dock-scale")),
+  );
+  expect(targetScale).toBeCloseTo(1.75, 2);
+  expect(targetScale).toBeGreaterThan(neighborScale);
+  expect(neighborScale).toBeGreaterThan(farScale);
+  expect(farScale).toBe(1);
 
   const after = await target.boundingBox();
+  const iconAfter = await targetIcon.boundingBox();
   expect(after).toEqual(before);
+  if (!iconAfter) throw new Error("Magnified dock icon has no layout box.");
+  expect(iconAfter.width).toBeCloseTo(84, 1);
+  expect(iconAfter.height).toBeCloseTo(77, 1);
+  expect(
+    Math.abs(iconAfter.y + iconAfter.height - (iconBefore.y + iconBefore.height)),
+  ).toBeLessThanOrEqual(0.5);
+  await expect(target).toHaveCSS("--dock-lift", "");
+  await expect(target).toHaveCSS("--dock-shift", "");
+  await expect(target).toHaveCSS("--dock-surface-scale", "");
 
   await page.mouse.move(10, 10);
   await expect
@@ -226,26 +236,25 @@ test("dock magnifies by pointer proximity without moving its layout boxes", asyn
       ),
     )
     .toBe(1);
-  await expect
-    .poll(() =>
-      target.evaluate((element) =>
-        Number.parseFloat(getComputedStyle(element).getPropertyValue("--dock-shift")),
-      ),
-    )
-    .toBe(0);
 
   const active = items.first();
   const activeBox = await active.boundingBox();
   if (!activeBox) throw new Error("Active dock item has no layout box.");
+  expect(await active.evaluate((element) => getComputedStyle(element, "::before").transform)).toBe(
+    "none",
+  );
   await page.mouse.move(activeBox.x + activeBox.width / 2, activeBox.y + activeBox.height / 2);
   await expect
     .poll(() =>
       active.evaluate((element) =>
-        Number(getComputedStyle(element).getPropertyValue("--dock-surface-scale")),
+        Number(getComputedStyle(element).getPropertyValue("--dock-scale")),
       ),
     )
-    .toBeGreaterThan(1.3);
+    .toBeGreaterThan(1.74);
   expect(await active.boundingBox()).toEqual(activeBox);
+  expect(await active.evaluate((element) => getComputedStyle(element, "::before").transform)).toBe(
+    "none",
+  );
 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);

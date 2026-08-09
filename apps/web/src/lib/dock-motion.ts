@@ -1,8 +1,6 @@
 export interface DockMotionTarget {
   influence: number;
-  liftPx: number;
   scale: number;
-  shiftPx: number;
 }
 
 export interface DockSpringState {
@@ -22,32 +20,26 @@ export const dockSpringConfig: DockSpringConfig = {
   stiffness: 440,
 };
 
-const MAX_DISTANCE_PX = 340;
-
-function smoothstep(start: number, end: number, value: number): number {
-  const normalized = Math.min(1, Math.max(0, (value - start) / (end - start)));
-  return normalized * normalized * (3 - 2 * normalized);
-}
+const MAX_DISTANCE_PX = 300;
+const MAX_SCALE = 1.75;
 
 export function dockMotionTarget(distancePx: number, motionEnabled = true): DockMotionTarget {
   if (!motionEnabled || !Number.isFinite(distancePx)) {
-    return { influence: 0, liftPx: 0, scale: 1, shiftPx: 0 };
+    return { influence: 0, scale: 1 };
   }
   const distance = Math.max(0, Math.abs(distancePx));
   if (distance >= MAX_DISTANCE_PX) {
-    return { influence: 0, liftPx: 0, scale: 1, shiftPx: 0 };
+    return { influence: 0, scale: 1 };
   }
 
-  const edgeFade = 1 - smoothstep(240, MAX_DISTANCE_PX, distance);
-  const influence = Math.exp(-distance / 150) * edgeFade;
-  const direction = Math.sign(distancePx);
-  const separation = Math.min(1, distance / 80);
+  // A raised-cosine curve gives the hovered icon, its immediate neighbors,
+  // and the next neighbors progressively smaller magnification while all
+  // farther icons remain exactly at their resting scale.
+  const influence = (1 + Math.cos((Math.PI * distance) / MAX_DISTANCE_PX)) / 2;
 
   return {
     influence,
-    liftPx: -32 * influence,
-    scale: 1 + 0.88 * influence,
-    shiftPx: direction === 0 ? 0 : -direction * 24 * influence ** 0.75 * separation,
+    scale: 1 + (MAX_SCALE - 1) * influence,
   };
 }
 

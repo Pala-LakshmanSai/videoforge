@@ -37,18 +37,14 @@ const nav = [
 ] as const;
 
 interface DockItemSpring {
-  lift: DockSpringState;
   scale: DockSpringState;
-  shift: DockSpringState;
 }
 
-const neutralDockTarget: DockMotionTarget = { influence: 0, liftPx: 0, scale: 1, shiftPx: 0 };
+const neutralDockTarget: DockMotionTarget = { influence: 0, scale: 1 };
 
 function neutralDockSpring(): DockItemSpring {
   return {
-    lift: { value: 0, velocity: 0 },
     scale: { value: 1, velocity: 0 },
-    shift: { value: 0, velocity: 0 },
   };
 }
 
@@ -156,7 +152,9 @@ export function AppShell({ children }: PropsWithChildren) {
     const dock = dockRef.current;
     if (!dock) return;
 
-    const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const finePointer = window.matchMedia(
+      "(hover: hover) and (pointer: fine) and (min-width: 681px)",
+    );
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let items: HTMLElement[] = [];
     let centers: number[] = [];
@@ -168,14 +166,6 @@ export function AppShell({ children }: PropsWithChildren) {
 
     const applySpring = (item: HTMLElement, spring: DockItemSpring) => {
       item.style.setProperty("--dock-scale", spring.scale.value.toFixed(4));
-      item.style.setProperty("--dock-lift", `${spring.lift.value.toFixed(2)}px`);
-      item.style.setProperty("--dock-shift", `${spring.shift.value.toFixed(2)}px`);
-      item.style.setProperty(
-        "--dock-surface-scale",
-        (1 + (spring.scale.value - 1) * 0.38).toFixed(4),
-      );
-      item.style.setProperty("--dock-surface-lift", `${(spring.lift.value * 0.42).toFixed(2)}px`);
-      item.style.setProperty("--dock-surface-shift", `${(spring.shift.value * 0.32).toFixed(2)}px`);
     };
 
     const resetImmediately = () => {
@@ -219,23 +209,13 @@ export function AppShell({ children }: PropsWithChildren) {
         const spring = springs[index] ?? neutralDockSpring();
         const target = targetFor(index);
         spring.scale = stepDockSpring(spring.scale, target.scale, elapsedSeconds);
-        spring.lift = stepDockSpring(spring.lift, target.liftPx, elapsedSeconds);
-        spring.shift = stepDockSpring(spring.shift, target.shiftPx, elapsedSeconds);
 
         if (dockSpringSettled(spring.scale, target.scale))
           spring.scale = { value: target.scale, velocity: 0 };
-        if (dockSpringSettled(spring.lift, target.liftPx, 0.03, 0.2))
-          spring.lift = { value: target.liftPx, velocity: 0 };
-        if (dockSpringSettled(spring.shift, target.shiftPx, 0.03, 0.2))
-          spring.shift = { value: target.shiftPx, velocity: 0 };
 
         springs[index] = spring;
         applySpring(item, spring);
-        moving ||= !(
-          dockSpringSettled(spring.scale, target.scale) &&
-          dockSpringSettled(spring.lift, target.liftPx, 0.03, 0.2) &&
-          dockSpringSettled(spring.shift, target.shiftPx, 0.03, 0.2)
-        );
+        moving ||= !dockSpringSettled(spring.scale, target.scale);
       });
 
       if (tracking || moving) {
@@ -333,7 +313,7 @@ export function AppShell({ children }: PropsWithChildren) {
         aria-label={item.label}
       >
         <span className="bottom-nav-icon" aria-hidden="true">
-          <Icon size={25} />
+          <Icon size={30} />
         </span>
         <span className="bottom-nav-label bottom-nav-label-full">{item.label}</span>
         <span className="bottom-nav-label bottom-nav-label-mobile" aria-hidden="true">
@@ -455,7 +435,7 @@ export function AppShell({ children }: PropsWithChildren) {
             }
           >
             <span className="bottom-nav-icon" aria-hidden="true">
-              <Activity size={25} />
+              <Activity size={30} />
             </span>
             <span className="bottom-nav-label">Progress</span>
             {path.startsWith("/projects/") && path !== "/projects/new" ? (

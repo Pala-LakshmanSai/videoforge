@@ -5,47 +5,49 @@ import { dockMotionTarget, dockSpringSettled, stepDockSpring } from "./dock-moti
 describe("dockMotionTarget", () => {
   it("produces a macOS-like center, neighbor, and far curve", () => {
     const center = dockMotionTarget(0);
-    expect(center.scale).toBeCloseTo(1.88, 8);
-    expect(center).toMatchObject({ liftPx: -32, shiftPx: 0 });
-    expect(dockMotionTarget(100).scale).toBeCloseTo(1.45, 2);
-    expect(dockMotionTarget(100).shiftPx).toBeLessThan(-13);
-    expect(dockMotionTarget(-100).shiftPx).toBeGreaterThan(13);
-    expect(dockMotionTarget(200).scale).toBeCloseTo(1.23, 2);
-    expect(dockMotionTarget(340)).toEqual({
+    expect(center).toEqual({ influence: 1, scale: 1.75 });
+    expect(dockMotionTarget(100).scale).toBeCloseTo(1.5625, 8);
+    expect(dockMotionTarget(200).scale).toBeCloseTo(1.1875, 8);
+    expect(dockMotionTarget(300)).toEqual({
       influence: 0,
-      liftPx: 0,
       scale: 1,
-      shiftPx: 0,
     });
   });
 
-  it("clamps invalid distances and disables movement for reduced motion", () => {
+  it("is symmetric and exposes scale only, with no translation channel", () => {
     const left = dockMotionTarget(-20);
     const right = dockMotionTarget(20);
-    expect(left.influence).toBe(right.influence);
-    expect(left.liftPx).toBe(right.liftPx);
-    expect(left.scale).toBe(right.scale);
-    expect(left.shiftPx).toBe(-right.shiftPx);
+    expect(left).toEqual(right);
+    expect(Object.keys(left)).toEqual(["influence", "scale"]);
+  });
+
+  it("decreases monotonically to an exact neutral far-field scale", () => {
+    const samples = [0, 50, 100, 150, 200, 250, 300].map(
+      (distance) => dockMotionTarget(distance).scale,
+    );
+    for (let index = 1; index < samples.length; index += 1) {
+      expect(samples[index]).toBeLessThan(samples[index - 1] ?? Number.POSITIVE_INFINITY);
+    }
+    expect(dockMotionTarget(1_000)).toEqual({ influence: 0, scale: 1 });
+  });
+
+  it("clamps invalid distances and disables magnification for reduced motion", () => {
     expect(dockMotionTarget(Number.NaN)).toEqual({
       influence: 0,
-      liftPx: 0,
       scale: 1,
-      shiftPx: 0,
     });
     expect(dockMotionTarget(0, false)).toEqual({
       influence: 0,
-      liftPx: 0,
       scale: 1,
-      shiftPx: 0,
     });
   });
 });
 
 describe("dock spring", () => {
   it("approaches a new target with continuous velocity instead of jumping", () => {
-    const first = stepDockSpring({ value: 1, velocity: 0 }, 1.88, 1 / 60);
+    const first = stepDockSpring({ value: 1, velocity: 0 }, 1.75, 1 / 60);
     expect(first.value).toBeGreaterThan(1);
-    expect(first.value).toBeLessThan(1.88);
+    expect(first.value).toBeLessThan(1.75);
     expect(first.velocity).toBeGreaterThan(0);
 
     const redirected = stepDockSpring(first, 1.1, 1 / 60);
@@ -56,10 +58,10 @@ describe("dock spring", () => {
   it("settles snappily at the target after repeated animation frames", () => {
     let spring = { value: 1, velocity: 0 };
     for (let frame = 0; frame < 120; frame += 1) {
-      spring = stepDockSpring(spring, 1.88, 1 / 60);
+      spring = stepDockSpring(spring, 1.75, 1 / 60);
     }
-    expect(spring.value).toBeCloseTo(1.88, 3);
-    expect(dockSpringSettled(spring, 1.88)).toBe(true);
+    expect(spring.value).toBeCloseTo(1.75, 3);
+    expect(dockSpringSettled(spring, 1.75)).toBe(true);
   });
 
   it("fails closed to a finite neutral value for invalid timing", () => {
