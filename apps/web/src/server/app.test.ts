@@ -102,6 +102,7 @@ describe("fixture API", () => {
       ok: true,
       id: "project_fixture_001",
       status: "QUEUED",
+      nextFixture: "happy_generating",
       providerCallsAuthorized: false,
     });
 

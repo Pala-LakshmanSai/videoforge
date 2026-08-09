@@ -1,7 +1,11 @@
 import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+
+const unexpectedRequests = new WeakMap<Page, string[]>();
 
 test.beforeEach(async ({ page }) => {
   const externalRequests: string[] = [];
+  unexpectedRequests.set(page, externalRequests);
   page.on("request", (request) => {
     const url = new URL(request.url());
     if (!["localhost", "127.0.0.1"].includes(url.hostname)) externalRequests.push(request.url());
@@ -9,6 +13,10 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/?fixture=happy_generating");
   await expect(page.getByText("Fixture mode", { exact: true })).toBeVisible();
   expect(externalRequests).toEqual([]);
+});
+
+test.afterEach(async ({ page }) => {
+  expect(unexpectedRequests.get(page)).toEqual([]);
 });
 
 test("queue exposes truthful status and core navigation", async ({ page }) => {
@@ -36,6 +44,21 @@ test("create project pins presets and has no inline avatar upload", async ({ pag
   await page.getByRole("switch").click();
   await expect(
     page.getByText("Applied once to image prompts. Permanent no-text guardrails still win."),
+  ).toBeVisible();
+  await page.getByLabel("Scenario").selectOption("project_create_ready");
+  await expect(page).toHaveURL(/fixture=project_create_ready/);
+  await page.getByLabel("Video title").fill("Recognizing a Sweet Watermelon");
+  await page.getByLabel("Upload final voiceover").setInputFiles({
+    name: "acceptance-voiceover.wav",
+    mimeType: "audio/wav",
+    buffer: Buffer.from("RIFF fixture voiceover"),
+  });
+  await page.getByLabel("Avatar Profile").selectOption("avatar_profile_version_fixture_001");
+  await expect(page.getByRole("button", { name: "Generate video" })).toBeEnabled();
+  await page.getByRole("button", { name: "Generate video" }).click();
+  await expect(page).toHaveURL(/\/projects\/project_fixture_001\?fixture=happy_generating/);
+  await expect(
+    page.getByRole("heading", { name: "How to Recognize a Sweet Watermelon" }),
   ).toBeVisible();
 });
 

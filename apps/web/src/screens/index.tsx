@@ -44,7 +44,14 @@ import {
 import { api } from "../lib/api";
 import { loadDraft, saveDraft, updateDraft, type ProjectDraft } from "../lib/draft";
 import { currentScenario, withScenario } from "../lib/scenario";
-import type { AvatarProfile, ImageStyle, ProjectStage, ProjectSummary, Tone } from "../lib/types";
+import type {
+  AvatarProfile,
+  ImageStyle,
+  ProjectStage,
+  ProjectSummary,
+  ScenarioId,
+  Tone,
+} from "../lib/types";
 
 function statusTone(status: string): Tone {
   if (["COMPLETE", "APPROVED", "PASSED", "PUBLISHED", "READY"].includes(status)) return "success";
@@ -271,7 +278,7 @@ export function CreateProjectScreen() {
       };
       const mutationId = crypto.randomUUID();
       await api.mutate("/api/v1/projects/preflight", payload, scenario, `${mutationId}:preflight`);
-      return api.mutate<{ id: string; status: string }>(
+      return api.mutate<{ id: string; status: string; nextFixture?: ScenarioId }>(
         "/api/v1/projects",
         payload,
         scenario,
@@ -279,7 +286,12 @@ export function CreateProjectScreen() {
       );
     },
     onSuccess: (result) =>
-      window.location.assign(fixtureLink(`/projects/${result.id || "project_fixture_001"}`)),
+      window.location.assign(
+        withScenario(
+          `/projects/${result.id || "project_fixture_001"}`,
+          result.nextFixture ?? scenario,
+        ),
+      ),
     onError: (error) =>
       setSubmittedError(error instanceof Error ? error.message : "Project could not be created."),
   });

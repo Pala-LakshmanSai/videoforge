@@ -248,6 +248,7 @@ export function createApiApp(options: { commit?: string } = {}): Hono {
         revisionId: "revision_fixture_001",
         status: "QUEUED" as const,
         fixture: resolved.id,
+        nextFixture: "happy_generating" as const,
         pinned: {
           avatarProfileVersionId: request.data.avatar_profile_version_id,
           imageStyleVersionId: request.data.image_style_version_id,
