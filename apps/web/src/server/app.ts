@@ -18,22 +18,19 @@ export interface CreateApiAppOptions {
   readonly localRunner?: LocalSliceRunner;
 }
 
-const missingLocalRunner: LocalSliceRunner = {
-  prepareOwnedVoiceover: () =>
-    Promise.reject(new Error("The local media runner has not been configured.")),
-  run: () => Promise.reject(new Error("The local media runner has not been configured.")),
-};
-
 export function createApiApp(options: CreateApiAppOptions = {}): Hono {
   const commit = safeCommit(options.commit ?? process.env.VIDEOFORGE_COMMIT);
   const environment = options.environment ?? process.env.NODE_ENV ?? "development";
   const mode =
     options.mode ?? (process.env.VIDEOFORGE_PROVIDER_MODE === "local" ? "local" : "fixture");
   if (mode === "local") {
+    if (!options.localRunner) {
+      throw new Error("Local mode requires an explicit Node media runner.");
+    }
     return createLocalApiApp({
       commit,
       environment,
-      runner: options.localRunner ?? missingLocalRunner,
+      runner: options.localRunner,
     });
   }
 

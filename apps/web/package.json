@@ -21,6 +21,7 @@
     "@tanstack/react-router": "1.131.35",
     "@videoforge/config": "workspace:*",
     "@videoforge/contracts": "workspace:*",
+    "@videoforge/pipeline": "workspace:*",
     "@videoforge/test-fixtures": "workspace:*",
     "hono": "4.13.1",
     "lucide-react": "0.542.0",

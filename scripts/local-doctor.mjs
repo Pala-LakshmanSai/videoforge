@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
+import path from "node:path";
 import { realpath, stat } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 import { resolveWhisperModelPath, whisperModel } from "./local-media-config.mjs";
 import { commandOutput } from "./process.mjs";
@@ -8,6 +10,7 @@ import { expectedUvVersion, resolveUv } from "./uv-tool.mjs";
 
 const checks = [];
 const record = (name, ok, detail) => checks.push({ name, ok, detail });
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 let uv;
 try {
@@ -53,7 +56,28 @@ try {
 }
 
 const fixtureNarrator = await commandOutput("which", ["say"]);
-record("Owned narration generator", Boolean(fixtureNarrator), fixtureNarrator ?? "missing: say");
+const voices = fixtureNarrator ? await commandOutput(fixtureNarrator, ["-v", "?"]) : null;
+record(
+  "Owned narration generator",
+  Boolean(fixtureNarrator && voices?.includes("Samantha")),
+  fixtureNarrator && voices?.includes("Samantha")
+    ? `${fixtureNarrator}; Samantha available`
+    : "missing /usr/bin/say or Samantha voice",
+);
+
+const rasterizer = await commandOutput("which", ["sips"]);
+record("Owned SVG rasterizer", Boolean(rasterizer), rasterizer ?? "missing: /usr/bin/sips");
+
+const bridgePython = path.join(repositoryRoot, ".venv/bin/python");
+const bridge = await commandOutput(bridgePython, [
+  "-c",
+  "import videoforge_image_media.local_cli; print('ready')",
+]);
+record(
+  "Local Python bridge",
+  bridge === "ready",
+  bridge === "ready" ? bridgePython : "missing; run pnpm python:sync",
+);
 record("Provider authorization", true, "$0; external provider calls disabled");
 
 for (const check of checks)

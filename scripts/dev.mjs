@@ -1,3 +1,5 @@
+import { spawnSync } from "node:child_process";
+
 import { commandOutput, health, listeningProcess, run } from "./process.mjs";
 
 const url = "http://localhost:4173";
@@ -32,6 +34,18 @@ for (const port of [4173, apiPort]) {
         "Stop that process explicitly or restore the owned VideoForge server; no alternate port will be chosen.",
     );
     process.exit(1);
+  }
+}
+
+if (requestedMode === "local") {
+  const setupCommands = [
+    [process.execPath, ["scripts/local-doctor.mjs"]],
+    ["pnpm", ["--filter", "@videoforge/contracts", "build"]],
+    ["pnpm", ["--filter", "@videoforge/pipeline", "build"]],
+  ];
+  for (const [command, arguments_] of setupCommands) {
+    const result = spawnSync(command, arguments_, { cwd: process.cwd(), stdio: "inherit" });
+    if (result.status !== 0) process.exit(result.status ?? 1);
   }
 }
 

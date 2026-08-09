@@ -63,6 +63,9 @@ importers:
       '@videoforge/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@videoforge/pipeline':
+        specifier: workspace:*
+        version: link:../../packages/pipeline
       '@videoforge/test-fixtures':
         specifier: workspace:*
         version: link:../../packages/test-fixtures

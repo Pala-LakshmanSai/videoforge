@@ -6,6 +6,8 @@ const commands = [
   ["pnpm", ["--filter", "@videoforge/pipeline", "test"]],
   ["pnpm", ["--filter", "@videoforge/test-fixtures", "test"]],
   ["pnpm", ["test:workers"]],
+  ["pnpm", ["--filter", "@videoforge/web", "typecheck"]],
+  ["pnpm", ["--filter", "@videoforge/web", "exec", "tsx", "src/server/local/run-local-slice.ts"]],
 ];
 
 for (const [command, args] of commands) {

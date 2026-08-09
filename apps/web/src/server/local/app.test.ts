@@ -173,6 +173,12 @@ async function waitForReady(app: Awaited<ReturnType<typeof localApp>>["app"]) {
 }
 
 describe("local walking-slice API", () => {
+  it("requires the Node entry point to inject an explicit local media runner", () => {
+    expect(() => createApiApp({ mode: "local", environment: "test" })).toThrow(
+      "Local mode requires an explicit Node media runner.",
+    );
+  });
+
   it("reports truthful local health and owned persisted voiceover facts", async () => {
     const { app, runner } = await localApp();
     const health = await app.request("/api/health?fixture=project_create_ready");
