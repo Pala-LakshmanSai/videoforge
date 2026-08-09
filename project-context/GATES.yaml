@@ -1,0 +1,77 @@
+schema_version: "1.0"
+updated_at: "2026-08-09"
+evidence_root: "evidence/gates"
+
+gates:
+  GATE_AVATAR_001:
+    status: open
+    blocks: avatar_primary_production_profile
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#avatarforcing-exact-avatar-suite"
+    owner: unassigned
+    last_run: null
+  GATE_AVATAR_002:
+    status: open
+    blocks: automatic_global_avatar_primary_demotion
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#avatarforcing-exact-avatar-suite"
+    owner: unassigned
+    last_run: null
+  GATE_IMAGE_001:
+    status: open
+    blocks: mage_production_profile
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#mage-acceptance-suite"
+    owner: unassigned
+    last_run: null
+  GATE_IMAGE_002:
+    status: open
+    blocks: commercial_launch
+    acceptance: "08_MODELS_AND_PROVIDERS.md#mage-flow-turbo"
+    owner: unassigned
+    last_run: null
+  GATE_LLM_001:
+    status: open
+    blocks: runware_prompt_production_profile
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#runwaredeepseek-gate"
+    owner: unassigned
+    last_run: null
+  GATE_STYLE_001:
+    status: open
+    blocks: custom_reference_style_analysis
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#image-style-analyzer-and-compiler-gate"
+    owner: unassigned
+    last_run: null
+  GATE_STYLE_002:
+    status: open
+    blocks: custom_prompt_only_style_claim
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#image-style-analyzer-and-compiler-gate"
+    owner: unassigned
+    last_run: null
+  GATE_FALLBACK_001:
+    status: open
+    blocks: automatic_skyreels_dispatch
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#skyreels-fallback-gate"
+    owner: unassigned
+    last_run: null
+  GATE_GPU_001:
+    status: open
+    blocks: advanced_execution_profile_ui
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#queuefault-gate"
+    owner: unassigned
+    last_run: null
+  GATE_RUNPOD_001:
+    status: open
+    blocks: live_runpod_dispatch
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-endpoint-and-dispatch-gate"
+    owner: unassigned
+    last_run: null
+  GATE_COST_001:
+    status: open
+    blocks: measured_unit_economics_claim
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#production-slo-targets"
+    owner: unassigned
+    last_run: null
+  GATE_UI_001:
+    status: open
+    blocks: visual_system_lock
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#chrome-acceptance-journey"
+    owner: user
+    last_run: null

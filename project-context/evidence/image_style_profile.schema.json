@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/image-style-profile-v1.json",
+  "title": "VideoForge Immutable Image Style Profile Payload v1",
+  "description": "Creative profile data only. Style identity, lifecycle, version, provenance, references, and canonical payload hash are trusted envelope fields outside this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "summary",
+    "visual_profile",
+    "prompt_profile",
+    "analysis"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "image-style-profile/v1"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 600
+    },
+    "visual_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "medium_family",
+        "realism",
+        "subject_treatment",
+        "camera_language",
+        "image_framing",
+        "shot_scale_preferences",
+        "lighting",
+        "color",
+        "contrast_and_exposure",
+        "depth_of_field",
+        "texture_and_grain",
+        "human_rendering",
+        "environment_and_material_detail",
+        "imperfection_profile",
+        "mood",
+        "continuity_rules",
+        "must_include",
+        "must_avoid",
+        "flexible_properties"
+      ],
+      "properties": {
+        "medium_family": {"type": "string", "maxLength": 100},
+        "realism": {"type": "string", "maxLength": 600},
+        "subject_treatment": {"type": "string", "maxLength": 600},
+        "camera_language": {"type": "string", "maxLength": 600},
+        "image_framing": {"type": "string", "maxLength": 600},
+        "shot_scale_preferences": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"type": "string", "maxLength": 160}
+        },
+        "lighting": {"type": "string", "maxLength": 600},
+        "color": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["descriptors", "approximate_hex"],
+          "properties": {
+            "descriptors": {
+              "type": "array",
+              "maxItems": 20,
+              "items": {"type": "string", "maxLength": 120}
+            },
+            "approximate_hex": {
+              "type": "array",
+              "maxItems": 12,
+              "items": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              }
+            }
+          }
+        },
+        "contrast_and_exposure": {"type": "string", "maxLength": 600},
+        "depth_of_field": {"type": "string", "maxLength": 600},
+        "texture_and_grain": {"type": "string", "maxLength": 600},
+        "human_rendering": {"type": "string", "maxLength": 600},
+        "environment_and_material_detail": {"type": "string", "maxLength": 600},
+        "imperfection_profile": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"type": "string", "maxLength": 160}
+        },
+        "mood": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"type": "string", "maxLength": 120}
+        },
+        "continuity_rules": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {"type": "string", "maxLength": 240}
+        },
+        "must_include": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {"type": "string", "maxLength": 200}
+        },
+        "must_avoid": {
+          "type": "array",
+          "maxItems": 40,
+          "items": {"type": "string", "maxLength": 200}
+        },
+        "flexible_properties": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {"type": "string", "maxLength": 200}
+        }
+      }
+    },
+    "prompt_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planner_guidance",
+        "positive_suffix",
+        "negative_suffix",
+        "full_image_guidance",
+        "split_image_guidance"
+      ],
+      "properties": {
+        "planner_guidance": {"type": "string", "maxLength": 1800},
+        "positive_suffix": {"type": "string", "maxLength": 2400},
+        "negative_suffix": {"type": "string", "maxLength": 2400},
+        "full_image_guidance": {"type": "string", "maxLength": 800},
+        "split_image_guidance": {"type": "string", "maxLength": 800}
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "analysis_kind",
+        "overall_confidence",
+        "trait_evidence",
+        "uncertain_fields",
+        "outlier_reference_aliases",
+        "content_leakage_warnings"
+      ],
+      "properties": {
+        "analysis_kind": {
+          "type": "string",
+          "enum": ["MANUAL", "VISION_ANALYSIS", "MANUAL_EDIT"]
+        },
+        "overall_confidence": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "trait_evidence": {
+          "type": "array",
+          "maxItems": 24,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["trait", "support_status", "confidence", "supporting_reference_aliases"],
+            "properties": {
+              "trait": {
+                "type": "string",
+                "enum": [
+                  "medium",
+                  "realism",
+                  "subject_treatment",
+                  "camera",
+                  "image_framing",
+                  "lighting",
+                  "color",
+                  "contrast_exposure",
+                  "depth_of_field",
+                  "texture_grain",
+                  "human_rendering",
+                  "materials_environment",
+                  "mood",
+                  "continuity"
+                ]
+              },
+              "support_status": {
+                "type": "string",
+                "enum": ["SUPPORTED", "UNCERTAIN", "UNSUPPORTED"]
+              },
+              "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+              "supporting_reference_aliases": {
+                "type": "array",
+                "maxItems": 12,
+                "items": {"type": "string", "maxLength": 120}
+              }
+            }
+          }
+        },
+        "uncertain_fields": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {"type": "string", "maxLength": 200}
+        },
+        "outlier_reference_aliases": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {"type": "string", "maxLength": 120}
+        },
+        "content_leakage_warnings": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {"type": "string", "maxLength": 240}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "schema_version": "image-style-profile/v1",
+  "summary": "Believable observational stock-footage frames with ordinary practical light, true-to-life color and texture, candid subjects, physical evidence, restrained camera language, and natural imperfections rather than glossy AI polish.",
+  "visual_profile": {
+    "medium_family": "authentic documentary and editorial photography",
+    "realism": "Absolutely photorealistic and physically believable, reading as a genuine frame captured on location rather than an AI render or polished advertisement.",
+    "subject_treatment": "Candid, unposed, spontaneous people engaged in ordinary real activity; use concrete physical evidence instead of symbolic poses or spectacle.",
+    "camera_language": "Observational consumer or documentary camera at eye level or a practical working angle, with restrained handheld plausibility and no stylized virtual-camera moves.",
+    "image_framing": "Useful rather than perfect framing, grounded spatial context, key evidence inside a crop-safe center area, and natural clutter where it supports credibility.",
+    "shot_scale_preferences": [
+      "environmental establishing wide",
+      "observational human medium",
+      "hands and action demonstration",
+      "close object evidence",
+      "extreme physical detail",
+      "reaction or visible result"
+    ],
+    "lighting": "Available daylight or practical interior lighting with soft direction, slightly uneven exposure, plausible shadows, and no glossy studio or glamour-light setup.",
+    "color": {
+      "descriptors": [
+        "true-to-life",
+        "earthy",
+        "restrained saturation",
+        "neutral-to-warm practical white balance",
+        "soft contrast"
+      ],
+      "approximate_hex": ["#6F5A43", "#90765A", "#A6977E", "#52604A", "#C0AA84"]
+    },
+    "contrast_and_exposure": "Soft natural contrast with recoverable highlights and believable shadow detail; avoid extreme HDR, crushed blacks, glowing highlights, or commercial-grade polish.",
+    "depth_of_field": "Natural lens depth appropriate to the shot; enough environmental context to understand the action, with shallow focus reserved for real close evidence rather than every frame.",
+    "texture_and_grain": "Real skin pores, weathered wood, soil, fabric, tools, produce and ordinary material wear; mild sensor grain or softness is acceptable when photographic.",
+    "human_rendering": "Natural skin texture, imperfect clothing, ordinary expressions and body language, correct anatomy, realistic hands and teeth, and no waxy or beautified faces.",
+    "environment_and_material_detail": "Specific period, geography, weather, tools, clothing and surface detail should support the narration while remaining ordinary and lived-in.",
+    "imperfection_profile": [
+      "slightly uneven exposure",
+      "ordinary environmental clutter",
+      "worn tools and clothing",
+      "natural produce and material blemishes",
+      "restrained sensor softness or grain"
+    ],
+    "mood": ["observational", "grounded", "credible", "practical", "human"],
+    "continuity_rules": [
+      "Preserve era, geography, season, weather and time-of-day across adjacent scenes.",
+      "Preserve recurring clothing, tools, people and materials when narration implies the same setting.",
+      "Vary shot scale while keeping the same factual world.",
+      "Prefer literal visible evidence over metaphor."
+    ],
+    "must_include": [
+      "literal narration-relevant subject or action",
+      "believable practical lighting",
+      "realistic textures and natural imperfections",
+      "useful observational framing"
+    ],
+    "must_avoid": [
+      "glossy commercial polish",
+      "studio advertising pose",
+      "fantasy or surreal treatment",
+      "waxy skin or unrealistic perfection",
+      "excessive HDR or universal golden-hour grading",
+      "painterly or CGI appearance"
+    ],
+    "flexible_properties": [
+      "weather and time of day when narration permits",
+      "lens focal impression appropriate to shot scale",
+      "minor grain and exposure variation",
+      "ordinary environmental clutter"
+    ]
+  },
+  "prompt_profile": {
+    "planner_guidance": "Write literal, narration-related documentary image content. Prefer a concrete person, object, action, process, place, physical detail or visible result. Rotate useful environmental, human, hands/action, object-detail and result shots. Keep era, geography, people, clothing, tools, weather and materials continuous. Avoid symbolism, spectacle and generic cinematic landscapes when direct evidence exists.",
+    "positive_suffix": "authentic observational documentary photography, candid and unposed, filmed on location, available practical light, true-to-life colors, soft contrast, realistic skin and material textures, naturally imperfect clothing, tools and environment, ordinary consumer-camera framing, photojournalistic, genuine frame from real stock or documentary footage, believable everyday life, no glossy commercial polish, absolutely photorealistic, no AI look",
+    "negative_suffix": "illustration, cartoon, anime, CGI, 3D render, digital painting, fantasy, surrealism, plastic skin, waxy face, perfect symmetry, excessive HDR, glamour lighting, studio advertising, staged pose, impossible anatomy, duplicate people, duplicate limbs, malformed hands, unrealistic perfection",
+    "full_image_guidance": "Compose for 16:9 with the primary evidence inside the center-safe 80 percent so the required slow zoom does not crop it; retain useful environmental context.",
+    "split_image_guidance": "Compose for an 8:9 right-side panel with the primary evidence centered, readable at half-frame size, and clear of extreme edges."
+  },
+  "analysis": {
+    "analysis_kind": "MANUAL",
+    "overall_confidence": null,
+    "trait_evidence": [],
+    "uncertain_fields": [
+      "The references mix real, stock and generated-looking material, so exact capture hardware is intentionally not inferred."
+    ],
+    "outlier_reference_aliases": [],
+    "content_leakage_warnings": [
+      "Do not reproduce any reference presenter, identity, room, farm, brand, exact location or source footage.",
+      "Do not reproduce reference subtitles, watermarks, sponsor screens, arrows, circles or web graphics."
+    ]
+  }
+}

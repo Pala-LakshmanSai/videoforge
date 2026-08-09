@@ -1,0 +1,87 @@
+schema_version: "1.0"
+context_schema_version: "1.5"
+updated_at: "2026-08-09"
+
+phase: implementation_in_progress
+implementation_authorized_in_current_task: true
+current_milestone: phase_0a_private_repo_and_contract_skeleton
+current_task: VF-0A
+
+repository:
+  initialized: true
+  expected_visibility: private
+  branch: main
+  base_commit: null
+  last_good_commit: null
+
+live_development:
+  expected_url: "http://localhost:4173"
+  server_state: stopped
+  dev_server_pid: null
+  owner_task_id: VF-0A
+  health_checked_at: null
+  chrome_route: null
+  fixture_scenario: null
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  last_user_checkpoint:
+    result: not_started
+    commit: null
+    route: null
+    scenario: null
+    checked_at: null
+    feedback_refs: []
+
+active_ownership:
+  - task_id: VF-0A
+    owner: root
+    scope: "Repository bootstrap, shared contracts, stable commands, and fixture shell integration"
+
+recommended_next_task:
+  task_id: VF-0A
+  milestone: phase_0a_private_repo_and_contract_skeleton
+  read_profile: repo_bootstrap
+  goal: "Initialize the private repository and contract-first monorepo, implement the stable no-spend developer commands, and commit a green cross-language contract skeleton."
+  provider_calls_authorized: false
+  maximum_external_spend_usd: 0
+  live_route: null
+  fixture_scenario: null
+
+last_green:
+  commands:
+    - "project-context/scripts/validate-context.sh"
+    - "project-context/scripts/validate-schemas.sh"
+    - "bash -n project-context/scripts/validate-context.sh project-context/scripts/validate-schemas.sh && node --check project-context/scripts/validate-schemas.cjs"
+    - "AJV draft-2020 validation of Create Project, Avatar Profile, project revision, timeline plan, resolved render, production manifest, and default Image Style fixtures"
+    - "AJV rejection of legacy inline-avatar upload, over-budget request, Avatar compatibility state/evidence mismatch, and renderer-profile/crop mismatch fixtures; Image Style analyzer schema compile"
+  checked_at: "2026-08-09"
+  result: pass
+  notes:
+    - "Context validator: 21 JSON files, 20 focused read profiles, 27 decisions, and 12 gates; zero warnings or errors."
+    - "All positive machine fixtures validate; the removed IMAGE_ASSET/project-local avatar shape, a cap above $2.00, mismatched Avatar compatibility provenance, and a SkyReels-profile/AvatarForcing-crop mismatch are rejected as intended."
+    - "The live-development profile locks doctor/status/open/verify commands, strict port reuse, fixture-only status visibility, draft-preserving hot reload, and baseline/after-change Chrome console/network checks."
+    - "Schema evidence is reproducible through the committed pinned-Ajv validator; no ad-hoc command reconstruction is required."
+
+blocking_gates_for_production:
+  - GATE_AVATAR_001
+  - GATE_IMAGE_001
+  - GATE_IMAGE_002
+  - GATE_LLM_001
+  - GATE_STYLE_001
+  - GATE_STYLE_002
+  - GATE_FALLBACK_001
+  - GATE_GPU_001
+  - GATE_RUNPOD_001
+  - GATE_COST_001
+  - GATE_UI_001
+
+next_tasks:
+  - "0A: initialize a private Git repository and the contract-first monorepo, including project-revision v2 Avatar Profile bindings"
+  - "0B: launch the fixture-backed UI with Avatar Hub, Image Styles Hub, and project selectors at the stable Chrome URL"
+  - "0C: complete the local short-video walking skeleton"
+  - "0D: run only explicitly authorized capped provider/model spikes"
+
+notes:
+  - "This is a replace-in-place snapshot, not a progress log."
+  - "Update it at every implementation handoff and after each accepted milestone."

@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.4",
+  "checked_at": "2026-08-08",
+  "currency": "USD",
+  "warning": "Planning assumptions only; runtime must fetch/configure current prices and Phase 0 replaces model throughput assumptions",
+  "reference_job": {
+    "duration_seconds": 1800,
+    "avatar_share": 0.22,
+    "avatar_output_seconds": 396,
+    "avatar_fps": 25,
+    "avatar_frames": 9900,
+    "image_count_range": [220, 320],
+    "typical_image_count": 300
+  },
+  "rates": {
+    "runware_deepseek_input_per_million": 0.076,
+    "runware_deepseek_output_per_million": 0.153,
+    "runware_deepseek_cached_input_per_million": 0.014,
+    "runware_gemini_3_5_flash_input_per_million": 1.5,
+    "runware_gemini_3_5_flash_output_per_million": 9.0,
+    "runpod_serverless_flex_rtx4090_per_second": 0.00031,
+    "runpod_hourly_pod_rtx4090": 0.69,
+    "runpod_hourly_pod_rtx5090": 0.99,
+    "runpod_hourly_pod_l40s": 0.99,
+    "runpod_hourly_pod_rtx6000_ada": 0.84,
+    "runpod_hourly_pod_a100_pcie_80": 1.39,
+    "runpod_network_storage_per_gb_month_under_1tb": 0.07,
+    "r2_standard_per_gb_month": 0.015,
+    "r2_free_gb_month": 10
+  },
+  "targets": {
+    "one_time_image_style_analysis": [0.03, 0.07],
+    "one_time_image_style_first_attempt_gate_max": 0.08,
+    "one_time_image_style_with_approved_retry_gate_max": 0.15,
+    "ready_style_per_video_vision_cost": 0,
+    "ready_avatar_profile_per_video_onboarding_cost": 0,
+    "optional_one_time_avatar_profile_compatibility_test_max": 0.20,
+    "runware_prompts": [0.005, 0.015],
+    "mage_images": [0.12, 0.25],
+    "avatarforcing": [0.20, 0.51],
+    "conditional_fallback_reserve": [0.10, 0.35],
+    "render_qa": [0.06, 0.15],
+    "fast_path_total": [0.40, 0.98],
+    "normal_planning_total": [0.50, 1.30],
+    "default_hard_cap": 1.50,
+    "mvp_contract_cap_max": 2.00,
+    "user_goal_ceiling_range": [1.0, 2.0],
+    "p50_end_to_end_minutes": 30,
+    "p90_end_to_end_minutes": 45
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "schema_version": "timeline-plan/v1",
+  "project_revision_id": "revision_fixture_001",
+  "revision_config_hash": "sha256:89bc38845a41ed0070eca069ac19e36ccab65688e0997d2b791f2200e4c00586",
+  "scheduler_version": "scheduler-v1",
+  "seed": 982341,
+  "output_fps_num": 30,
+  "output_fps_den": 1,
+  "total_frames": 360,
+  "segments": [
+    {
+      "segment_id": "seg_0001",
+      "start_frame": 0,
+      "end_frame_exclusive": 90,
+      "source_audio_start_ms": 0,
+      "source_audio_end_ms": 3000,
+      "timeline_composition": "AVATAR_FULL",
+      "phrase": "There is a simple traditional way to begin.",
+      "word_start": 0,
+      "word_end_exclusive": 8,
+      "required_slots": {
+        "avatar": {
+          "task_key": "avatar:seg_0001",
+          "span_audio_task_key": "audio-span:seg_0001"
+        }
+      }
+    },
+    {
+      "segment_id": "seg_0002",
+      "start_frame": 90,
+      "end_frame_exclusive": 240,
+      "source_audio_start_ms": 3000,
+      "source_audio_end_ms": 8000,
+      "timeline_composition": "IMAGE_FULL",
+      "phrase": "The worker checks the surface carefully with both hands.",
+      "word_start": 8,
+      "word_end_exclusive": 17,
+      "in_image_shot_role": "HANDS_ACTION",
+      "required_slots": {
+        "image": {
+          "task_key": "image:seg_0002"
+        }
+      }
+    },
+    {
+      "segment_id": "seg_0003",
+      "start_frame": 240,
+      "end_frame_exclusive": 360,
+      "source_audio_start_ms": 8000,
+      "source_audio_end_ms": 12000,
+      "timeline_composition": "AVATAR_SPLIT_IMAGE",
+      "phrase": "This small physical sign is the detail that matters.",
+      "word_start": 17,
+      "word_end_exclusive": 26,
+      "in_image_shot_role": "OBJECT_EVIDENCE",
+      "required_slots": {
+        "avatar": {
+          "task_key": "avatar:seg_0003",
+          "span_audio_task_key": "audio-span:seg_0003"
+        },
+        "right_image": {
+          "task_key": "image:seg_0003:right"
+        }
+      }
+    }
+  ]
+}

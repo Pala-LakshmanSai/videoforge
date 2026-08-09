@@ -1,0 +1,38 @@
+# Private third-party reference imagery; keep locally for research only.
+project-context/assets/ui/*.jpg
+project-context/assets/research/*.png
+project-context/references/ranga/frames/*.jpg
+
+# Never commit local provider secrets, generated media, or model weights.
+.env
+.env.*
+!.env.example
+outputs/
+artifacts/
+weights/
+*.mp4
+*.wav
+*.mp3
+
+# JavaScript, Cloudflare, Turbo, tests, and editor output.
+node_modules/
+.pnpm-store/
+dist/
+.turbo/
+.wrangler/
+.dev.vars
+coverage/
+playwright-report/
+test-results/
+*.log
+.DS_Store
+
+# Python environments and caches.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/

@@ -1,0 +1,13 @@
+{
+  "title": "Legacy inline avatar shape must be rejected",
+  "voiceover_asset_id": "asset_voiceover_example",
+  "avatar_source": {
+    "kind": "IMAGE_ASSET",
+    "avatar_image_asset_id": "asset_avatar_inline_forbidden"
+  },
+  "image_style_version_id": "style_version_documentary_stock_v1",
+  "extra_prompt_keywords": null,
+  "apply_extra_prompt_keywords": false,
+  "generation_mode": "BALANCED",
+  "spend_cap_usd": 1.5
+}

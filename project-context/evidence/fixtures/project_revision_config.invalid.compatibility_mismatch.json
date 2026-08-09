@@ -1,0 +1,43 @@
+{
+  "schema_version": "project-revision-config/v2",
+  "project_id": "project_fixture_001",
+  "project_revision_id": "revision_fixture_001",
+  "title": "How to Recognize a Sweet Watermelon",
+  "voiceover_asset_id": "asset_voiceover_example",
+  "voiceover_sha256": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "avatar_binding": {
+    "avatar_profile_id": "avatar_profile_fixture_001",
+    "avatar_profile_version_id": "avatar_profile_version_fixture_001",
+    "avatar_display_name_snapshot": "Amish Farm Host",
+    "avatar_profile_hash": "sha256:fa75a60ef265e4a0704ca4ab103f30e185dd9de9ac0528eaf606fff7691ea869",
+    "runtime_source_asset_id": "asset_avatar_runtime_001",
+    "runtime_source_sha256": "sha256:abababababababababababababababababababababababababababababababab",
+    "source_preparation_version": "avatar-source-prep-v1",
+    "source_validation_profile_version": "avatar-source-validation-v1",
+    "compatibility_state_at_preflight": "PASSED",
+    "compatibility_evidence": {
+      "assessment_id": "avatar_compatibility_fixture_001",
+      "assessment_hash": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "status": "FAILED",
+      "model_profile_id": "avatarforcing-v1-production-candidate",
+      "assessed_at": "2026-08-09T08:15:00Z"
+    }
+  },
+  "optional_script": null,
+  "image_style_version_id": "style_version_documentary_stock_v1",
+  "style_profile_hash": "sha256:e344d37b9a04604891334cdd2b60601619885a4a16acad8eb15957340a90e430",
+  "extra_prompt_keywords": "ultra realistic, no AI look",
+  "apply_extra_prompt_keywords": false,
+  "generation_mode": "BALANCED",
+  "execution_profiles": {
+    "image_media_profile_id": "exec_image_media_balanced_v1",
+    "avatar_primary_profile_id": "exec_avatar_primary_balanced_v1",
+    "avatar_repair_profile_id": "exec_avatar_repair_balanced_v1",
+    "avatar_quality_profile_id": null
+  },
+  "spend_cap_usd": 1.5,
+  "scheduler_version": "scheduler-v1",
+  "scheduler_seed": 982341,
+  "prompt_writer_version": "runware-deepseek-v4-flash-0731-v1",
+  "prompt_compiler_version": "mage-prompt-compiler-v1"
+}

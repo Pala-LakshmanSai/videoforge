@@ -1,0 +1,214 @@
+schema_version: "1.5"
+project: VideoForge
+phase_source: CURRENT_STATE.yaml
+last_updated: "2026-08-09"
+source_of_truth: project-context
+
+mandatory_read:
+  - 00_START_HERE.md
+  - MANIFEST.yaml
+  - CURRENT_STATE.yaml
+
+authority_precedence:
+  - current_explicit_user_change
+  - 15_DECISIONS_AND_OPEN_GATES.md
+  - primary_domain_file_from_16_CONTEXT_MAINTENANCE.md
+  - versioned_machine_schema_for_field_shape
+  - 14_TESTING_AND_ACCEPTANCE.md
+derived_indexes:
+  - MANIFEST.yaml
+  - 00_START_HERE.md
+conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
+target_profile_word_budget: 9000
+
+read_profiles:
+  product:
+    - 01_PRODUCT_REQUIREMENTS.md
+    - 02_OUTPUT_VIDEO_SPEC.md
+    - 20_AVATAR_HUB.md
+    - 15_DECISIONS_AND_OPEN_GATES.md
+  ui_shell:
+    - 01_PRODUCT_REQUIREMENTS.md
+    - 05_UI_UX_SPEC.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - assets/ui/README.md
+  avatar_hub_ui:
+    - 05_UI_UX_SPEC.md
+    - 20_AVATAR_HUB.md
+    - evidence/avatar_profile_version.schema.json
+  avatar_hub_backend:
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 20_AVATAR_HUB.md
+    - evidence/avatar_profile_version.schema.json
+    - evidence/project_revision_config.schema.json
+  reference_style:
+    - 02_OUTPUT_VIDEO_SPEC.md
+    - 03_REFERENCE_VIDEO_FORENSICS.md
+    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
+    - 18_IMAGE_STYLES_HUB.md
+    - references/ranga/README.md
+  style_analyzer:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 18_IMAGE_STYLES_HUB.md
+    - evidence/image_style_profile.schema.json
+    - evidence/image_style_analyzer_output.schema.json
+  style_backend:
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 18_IMAGE_STYLES_HUB.md
+    - evidence/image_style_profile.schema.json
+  scheduler:
+    - GLOSSARY.md
+    - 02_OUTPUT_VIDEO_SPEC.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - evidence/project_revision_config.schema.json
+    - evidence/timeline_plan.schema.json
+    - evidence/fixtures/README.md
+  prompt_lane:
+    - GLOSSARY.md
+    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
+    - 08_MODELS_AND_PROVIDERS.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+  queue_orchestration:
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 10_DATA_AND_API_CONTRACTS.md
+  image_worker:
+    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 08_MODELS_AND_PROVIDERS.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+  avatar_worker:
+    - 02_OUTPUT_VIDEO_SPEC.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 08_MODELS_AND_PROVIDERS.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - evidence/avatar_profile_version.schema.json
+    - evidence/project_revision_config.schema.json
+  renderer:
+    - GLOSSARY.md
+    - 02_OUTPUT_VIDEO_SPEC.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - evidence/timeline_plan.schema.json
+    - evidence/resolved_render_manifest.schema.json
+    - evidence/production_manifest.schema.json
+    - evidence/fixtures/README.md
+  cost_models:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 11_COST_SPEED_BUDGET.md
+    - 15_DECISIONS_AND_OPEN_GATES.md
+  repo_bootstrap:
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 12_DEVELOPMENT_PLAN.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - evidence/create_project_request.schema.json
+    - evidence/avatar_profile_version.schema.json
+    - evidence/project_revision_config.schema.json
+    - evidence/fixtures/README.md
+  live_development:
+    - 05_UI_UX_SPEC.md
+    - 12_DEVELOPMENT_PLAN.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - templates/IMPLEMENTATION_TASK_BRIEF.md
+    - templates/NEW_CHAT_BOOTSTRAP.md
+  release_ops:
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 11_COST_SPEED_BUDGET.md
+  acceptance:
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - GATES.yaml
+    - evidence/fixtures/README.md
+  engineering_practices:
+    - 13_ENGINEERING_BEST_PRACTICES.md
+  context_update:
+    - 15_DECISIONS_AND_OPEN_GATES.md
+    - 16_CONTEXT_MAINTENANCE.md
+    - GATES.yaml
+
+hard_rules:
+  - no_motion_graphics
+  - no_text_overlays_or_captions
+  - no_decorative_transitions
+  - hard_cuts_only
+  - slow_smooth_image_zoom_required
+  - no_llm_composition_selection
+  - no_full_voiceover_avatar_generation
+  - one_avatar_clip_serves_both_layouts
+  - runpod_api_automation_only
+  - scale_gpu_workers_to_zero_when_lane_drains
+  - live_chrome_during_development
+  - published_image_style_version_pinned_per_project_revision
+  - no_style_vision_call_during_ordinary_video_production
+  - project_requires_ready_stored_avatar_profile_no_inline_avatar_upload
+  - avatar_profile_version_and_runtime_source_pinned_per_project_revision
+
+approved_decisions:
+  DEC_SCOPE_001: image_only_broll_mvp
+  DEC_OUTPUT_001: "full_avatar | full_image | split_avatar_left_image_right"
+  DEC_OUTPUT_002: hard_cuts_no_motion_graphics_text_or_decorative_transitions
+  DEC_OUTPUT_003: every_ai_image_has_slow_smooth_zoom_in
+  DEC_LLM_001: runware_deepseek_v4_flash_0731
+  DEC_LLM_002: deepseek_writes_production_image_prompts_only
+  DEC_STYLE_001: reusable_workspace_image_styles_hub
+  DEC_STYLE_002: documentary_stock_v1_builtin_default
+  DEC_STYLE_003: runware_gemini_3_5_flash_one_time_style_analysis
+  DEC_STYLE_004: immutable_published_style_version_pinned_to_project
+  DEC_STYLE_005: optional_extra_image_keywords_explicit_toggle
+  DEC_STYLE_006: extract_shared_visual_traits_not_reference_content
+  DEC_IMAGE_001: microsoft_mage_flow_turbo
+  DEC_AVATAR_001: avatarforcing_primary
+  DEC_AVATAR_002: musetalk_lip_only_repair
+  DEC_AVATAR_003: skyreels_v3_whole_frame_fallback
+  DEC_AVATAR_004: one_clip_two_deterministic_crops
+  DEC_AVATAR_005: reusable_avatar_hub_required_exact_ready_version_no_inline_upload
+  DEC_TIMING_001: local_whisper_cpp_base_en
+  DEC_SCHEDULER_001: seeded_deterministic_bounded_variation
+  DEC_SCHEDULER_002: target_22_percent_avatar_half_full_half_split
+  DEC_RENDER_001: direct_ffmpeg_no_remotion_or_hyperframes
+  DEC_RENDER_002: no_remotion_or_hyperframes_in_mvp
+  DEC_HOSTING_001: zero_required_subscription_control_plane
+  DEC_QUEUE_001: postgres_authoritative_runpod_execution_transport
+  DEC_RUNPOD_001: scale_to_zero_api_only_endpoints_first
+  DEC_UX_001: fixture_first_live_chrome_hot_reload
+
+open_gates:
+  GATE_AVATAR_001: avatarforcing_exact_avatar_4090_fit_speed_quality
+  GATE_AVATAR_002: global_rejection_threshold_to_be_set_after_bakeoff
+  GATE_IMAGE_001: reproduce_mage_300_image_speed_and_quality
+  GATE_IMAGE_002: verify_exact_checkpoint_access_and_launch_terms
+  GATE_LLM_001: verify_runware_endpoint_is_exact_0731_and_schema_stable
+  GATE_STYLE_001: verify_gemini_style_schema_cost_latency_privacy_and_content_separation
+  GATE_STYLE_002: verify_mage_adherence_across_distinct_extracted_styles
+  GATE_FALLBACK_001: benchmark_skyreels_low_vram_cost_and_quality
+  GATE_GPU_001: produce_tested_compatible_gpu_allowlists
+  GATE_RUNPOD_001: verify_endpoint_config_reconciliation_dispatch_ambiguity_timeout_and_result_lifecycle
+  GATE_COST_001: replace_planning_ranges_with_new_account_measurements
+  GATE_UI_001: user_approves_live_chrome_shell_and_core_flows
+
+deferred:
+  - ai_broll_video
+  - stock_footage_search
+  - performance_bank_dubbing
+  - mobile_full_editor
+  - advanced_timeline_editor
+  - automatic_visual_qa_model
+  - automatic_style_lora_training
+  - reference_conditioned_image_generation
+  - remotion
+  - hyperframes
+
+root_loaders:
+  - ../AGENTS.md
+  - ../CLAUDE.md
+
+maintenance: 16_CONTEXT_MAINTENANCE.md
+current_state: CURRENT_STATE.yaml
+gate_registry: GATES.yaml
+glossary: GLOSSARY.md
+implementation_playbook: 19_IMPLEMENTATION_PLAYBOOK.md
+context_validator: scripts/validate-context.sh
+schema_validator: scripts/validate-schemas.sh

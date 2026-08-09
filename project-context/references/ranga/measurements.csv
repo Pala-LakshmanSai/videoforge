@@ -1,0 +1,4 @@
+video_id,title,duration_s,audit_sampling_fps,avatar_pct,full_avatar_pct,split_avatar_pct,avatar_appearances,estimated_mean_avatar_clip_s,typical_avatar_clip_s,notes
+cVotLLx5bNs,"KILL EVERY Mosquito The AMISH Way. SAFE For Honey Bees & Pets!",1481.814,5,21.60,10.53,11.07,86,3.722,"2-6","Audit estimate; hard cuts dominate"
+6jZ7ib2Edes,"How to Pick a Sweet Watermelon... The Old AMISH Way",1132.294,5,21.97,11.08,10.90,66,3.769,"2-6","Audit estimate; strict exceptionless alternation is not claimed"
+combined,"Combined reference grammar",2614.108,5,21.76,10.81,10.99,152,3.742,"2-6","Median non-avatar gap approximately 11.2 seconds"

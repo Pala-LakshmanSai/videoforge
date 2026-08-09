@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "audit_date": "2026-08-08",
+  "method": "prior 5-fps composition classification with direct frame spot checks",
+  "precision_note": "Audit estimates, not frame-perfect publisher analytics",
+  "sources": [
+    {
+      "video_id": "cVotLLx5bNs",
+      "url": "https://www.youtube.com/watch?v=cVotLLx5bNs",
+      "duration_seconds": 1481.814,
+      "avatar_percent": 21.60,
+      "full_avatar_percent": 10.53,
+      "split_avatar_percent": 11.07,
+      "avatar_appearances": 86,
+      "estimated_mean_avatar_clip_seconds": 3.722
+    },
+    {
+      "video_id": "6jZ7ib2Edes",
+      "url": "https://www.youtube.com/watch?v=6jZ7ib2Edes",
+      "duration_seconds": 1132.294,
+      "avatar_percent": 21.97,
+      "full_avatar_percent": 11.08,
+      "split_avatar_percent": 10.90,
+      "avatar_appearances": 66,
+      "estimated_mean_avatar_clip_seconds": 3.769
+    }
+  ],
+  "combined": {
+    "avatar_percent_approx": 21.76,
+    "mean_avatar_clip_seconds_approx": 3.742,
+    "typical_avatar_clip_seconds": [2, 6],
+    "median_non_avatar_gap_seconds_approx": 11.2,
+    "target_avatar_start_cycle_seconds": [14, 20],
+    "full_split_share": "approximately_equal",
+    "transition_rule": "hard_cuts_only",
+    "alternation_note": "Strict alternation is a VideoForge rule, not an exceptionless source claim"
+  }
+}

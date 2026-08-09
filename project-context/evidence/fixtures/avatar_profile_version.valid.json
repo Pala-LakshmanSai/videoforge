@@ -1,0 +1,31 @@
+{
+  "schema_version": "avatar-profile-version/v1",
+  "source_asset_id": "asset_avatar_source_original_001",
+  "source_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "source_media": {
+    "mime_type": "image/png",
+    "width": 1536,
+    "height": 1536,
+    "bytes": 2457600
+  },
+  "runtime_source_asset_id": "asset_avatar_runtime_001",
+  "runtime_source_sha256": "sha256:abababababababababababababababababababababababababababababababab",
+  "thumbnail_asset_id": "asset_avatar_thumbnail_001",
+  "thumbnail_sha256": "sha256:acacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacac",
+  "source_preparation_version": "avatar-source-prep-v1",
+  "source_validation_profile_version": "avatar-source-validation-v1",
+  "framing_confirmation": {
+    "one_primary_presenter": true,
+    "horizontally_centered": true,
+    "direct_to_camera_suitable": true,
+    "confirmed_by_user_id": "user_fixture_owner_001",
+    "confirmed_at": "2026-08-09T08:00:00Z"
+  },
+  "rights_basis": "OWNED",
+  "rights_attested_by_user_id": "user_fixture_owner_001",
+  "rights_attested_at": "2026-08-09T08:00:00Z",
+  "avatar_generation_consent": true,
+  "likeness_animation_rights_attested": true,
+  "likeness_attested_by_user_id": "user_fixture_owner_001",
+  "likeness_attested_at": "2026-08-09T08:00:00Z"
+}
