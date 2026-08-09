@@ -67,9 +67,15 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
   const percent = Math.round((project.completed / Math.max(1, project.total)) * 100);
   const stages = project.stages;
   const actionableStageIndex = stages.findIndex((stage) =>
-    ["STARTING", "RUNNING", "RETRYING", "BLOCKED", "FAILED", "CANCEL_REQUESTED"].includes(
-      stage.status,
-    ),
+    [
+      "STARTING",
+      "RUNNING",
+      "RETRYING",
+      "BLOCKED",
+      "FAILED",
+      "CANCEL_REQUESTED",
+      "CANCELLED",
+    ].includes(stage.status),
   );
   const nextStageIndex = stages.findIndex((stage) => ["PENDING", "QUEUED"].includes(stage.status));
   const currentStageIndex =
@@ -190,11 +196,13 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
                   ? "Checking durable worker truth"
                   : project.status === "CANCEL_REQUESTED"
                     ? "Workers are settling"
-                    : project.status === "READY_FOR_REVIEW"
-                      ? "Human approval required"
-                      : project.status === "APPROVED"
-                        ? "Final revision locked"
-                        : "Authoritative project state"
+                    : project.status === "CANCELLED"
+                      ? "Run stopped before completion"
+                      : project.status === "READY_FOR_REVIEW"
+                        ? "Human approval required"
+                        : project.status === "APPROVED"
+                          ? "Final revision locked"
+                          : "Authoritative project state"
               }
               tone={statusTone(project.status)}
             />

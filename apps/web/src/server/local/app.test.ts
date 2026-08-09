@@ -1,8 +1,10 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdtemp, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { CreateProjectRequest, Sha256Digest } from "@videoforge/contracts";
+import { LocalArtifactStore } from "@videoforge/pipeline";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createApiApp } from "../app";
@@ -14,7 +16,9 @@ import type {
 } from "./types";
 
 const VOICEOVER_SHA = `sha256:${"a".repeat(64)}` as Sha256Digest;
-const OUTPUT_SHA = `sha256:${"b".repeat(64)}` as Sha256Digest;
+const OUTPUT_CONTENT = Buffer.from("synthetic mp4 bytes for byte range delivery", "utf8");
+const OUTPUT_SHA =
+  `sha256:${createHash("sha256").update(OUTPUT_CONTENT).digest("hex")}` as Sha256Digest;
 const DOCUMENT_SHA = `sha256:${"c".repeat(64)}` as Sha256Digest;
 const PROJECT_ID = "project_local_owned_001";
 
@@ -52,6 +56,7 @@ class ControlledRunner implements LocalSliceRunner {
   readonly runRequests: LocalPipelineRunRequest[] = [];
   readonly voiceover: LocalOwnedVoiceover;
   readonly output: LocalPipelineRunResult;
+  readonly previewPath: string;
   private resolveRun!: (result: LocalPipelineRunResult) => void;
   private rejectRun!: (error: Error) => void;
   private readonly completion = new Promise<LocalPipelineRunResult>((resolve, reject) => {
@@ -59,18 +64,23 @@ class ControlledRunner implements LocalSliceRunner {
     this.rejectRun = reject;
   });
 
-  private constructor(voiceover: LocalOwnedVoiceover, output: LocalPipelineRunResult) {
+  private constructor(
+    voiceover: LocalOwnedVoiceover,
+    output: LocalPipelineRunResult,
+    previewPath: string,
+  ) {
     this.voiceover = voiceover;
     this.output = output;
+    this.previewPath = previewPath;
   }
 
   static async create(): Promise<ControlledRunner> {
     const root = await mkdtemp(join(tmpdir(), "videoforge-local-api-test-"));
     temporaryRoots.push(root);
     const source = join(root, "owned-voiceover.wav");
-    const preview = join(root, "videoforge-local-owned-slice.mp4");
     await writeFile(source, "owned voiceover bytes");
-    await writeFile(preview, "synthetic mp4 bytes for byte range delivery");
+    const store = await LocalArtifactStore.create(join(root, "artifacts"));
+    const preview = await store.putObject(OUTPUT_CONTENT, "mp4");
     return new ControlledRunner(
       {
         assetId: `fixture_voiceover_sha256_${"a".repeat(64)}`,
@@ -83,10 +93,10 @@ class ControlledRunner implements LocalSliceRunner {
         channels: 1,
       },
       {
-        previewPath: preview,
+        artifactRoot: store.root,
         filename: "videoforge-local-owned-slice.mp4",
         sha256: OUTPUT_SHA,
-        bytes: 43,
+        bytes: OUTPUT_CONTENT.byteLength,
         durationMs: 40_000,
         totalFrames: 1_200,
         transcriptSha256: DOCUMENT_SHA,
@@ -95,6 +105,7 @@ class ControlledRunner implements LocalSliceRunner {
         renderResultSha256: DOCUMENT_SHA,
         evidencePath: join(root, "evidence.json"),
       },
+      preview.absolutePath,
     );
   }
 
@@ -305,6 +316,33 @@ describe("local walking-slice API", () => {
     expect(await download.text()).toBe("synthetic mp4 bytes for byte range delivery");
   });
 
+  it("fails closed when accepted media is corrupted or replaced by a symlink", async () => {
+    const corrupted = await localApp();
+    const corruptedAssetId = (await bootstrap(corrupted.app)).draft.voiceover.assetId;
+    await createLocalProject(corrupted.app, corruptedAssetId);
+    corrupted.runner.complete();
+    await waitForReady(corrupted.app);
+    await writeFile(corrupted.runner.previewPath, Buffer.alloc(OUTPUT_CONTENT.byteLength, 0x78));
+
+    const corruptedPreview = await corrupted.app.request(`/api/v1/projects/${PROJECT_ID}/preview`);
+    expect(corruptedPreview.status).toBe(500);
+    expect(corruptedPreview.headers.get("x-content-sha256")).toBeNull();
+
+    const replaced = await localApp();
+    const replacedAssetId = (await bootstrap(replaced.app)).draft.voiceover.assetId;
+    await createLocalProject(replaced.app, replacedAssetId);
+    replaced.runner.complete();
+    await waitForReady(replaced.app);
+    const replacement = `${replaced.runner.previewPath}.replacement`;
+    await writeFile(replacement, OUTPUT_CONTENT);
+    await unlink(replaced.runner.previewPath);
+    await symlink(replacement, replaced.runner.previewPath);
+
+    const replacedDownload = await replaced.app.request(`/api/v1/projects/${PROJECT_ID}/preview`);
+    expect(replacedDownload.status).toBe(500);
+    expect(replacedDownload.headers.get("x-content-sha256")).toBeNull();
+  });
+
   it("surfaces cancellation and retryable failures as authoritative project state", async () => {
     const cancelling = await localApp();
     const cancelAssetId = (await bootstrap(cancelling.app)).draft.voiceover.assetId;
@@ -322,6 +360,24 @@ describe("local walking-slice API", () => {
     await expect(cancelledState.json()).resolves.toMatchObject({
       project: { status: "CANCEL_REQUESTED" },
     });
+    cancelling.runner.fail("Local process acknowledged cancellation");
+    let cancelledVersion = "";
+    await vi.waitFor(async () => {
+      const response = await cancelling.app.request(`/api/v1/projects/${PROJECT_ID}`);
+      const body = (await response.json()) as {
+        project: { status: string; versionToken: string; allowedActions: string[] };
+      };
+      expect(body.project.status).toBe("CANCELLED");
+      expect(body.project.allowedActions).toContain("RETRY_FAILED_ITEMS");
+      cancelledVersion = body.project.versionToken;
+    });
+    const retryCancelled = await cancelling.app.request(`/api/v1/projects/${PROJECT_ID}/retry`, {
+      method: "POST",
+      headers: mutationHeaders(cancelledVersion, "local-retry-cancelled-001"),
+      body: JSON.stringify({ project_id: PROJECT_ID }),
+    });
+    expect(retryCancelled.status).toBe(202);
+    expect(cancelling.runner.runRequests).toHaveLength(2);
 
     const failing = await localApp();
     const failureAssetId = (await bootstrap(failing.app)).draft.voiceover.assetId;

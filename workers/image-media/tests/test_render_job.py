@@ -94,6 +94,7 @@ class FakeProcess:
         self.invalid_sample_rate = False
         self.input_loudness = (-21.4, -4.7)
         self.output_loudness = (-16.0, -2.1)
+        self.visual_probes: dict[Path, tuple[str, int, int, str]] = {}
 
     @staticmethod
     def _loudness_payload(values: tuple[float, float]) -> str:
@@ -108,7 +109,24 @@ class FakeProcess:
             }
         )
 
-    def _probe_payload(self) -> str:
+    def _probe_payload(self, path: Path) -> str:
+        visual = self.visual_probes.get(path)
+        if visual is not None:
+            codec, width, height, frame_rate = visual
+            return json.dumps(
+                {
+                    "streams": [
+                        {
+                            "codec_type": "video",
+                            "codec_name": codec,
+                            "width": width,
+                            "height": height,
+                            "avg_frame_rate": frame_rate,
+                            "r_frame_rate": frame_rate,
+                        }
+                    ]
+                }
+            )
         streams: list[dict[str, Any]] = [
             {
                 "codec_type": "video",
@@ -154,7 +172,7 @@ class FakeProcess:
             return ProcessResult(return_code=-1, cancelled=True)
         executable = Path(call[0]).name
         if executable == "ffprobe":
-            return ProcessResult(return_code=0, stdout=self._probe_payload())
+            return ProcessResult(return_code=0, stdout=self._probe_payload(Path(call[-1])))
         if "-af" in call:
             source = Path(call[call.index("-i") + 1])
             values = (
@@ -191,6 +209,12 @@ class RenderFixture:
         path = Path(f"/safe/objects/{sha256.removeprefix('sha256:')}.{extension}")
         self.resolver.objects[uri] = path
         self.artifacts.files[path] = data
+        if kind == "IMAGE":
+            self.process.visual_probes[path] = ("png", 1280, 720, "25/1")
+        elif kind == "AVATAR_CLIP":
+            self.process.visual_probes[path] = (
+                ("h264", 832, 480, "25/1") if "full" in asset_id else ("h264", 1280, 720, "24/1")
+            )
         return {
             "asset_id": asset_id,
             "sha256": sha256,
@@ -525,6 +549,25 @@ class RenderJobTests(unittest.TestCase):
         )
         self.assertEqual(short_result["error"]["code"], "RENDER_INPUT_INVALID")
         self.assertFalse(short_fixture.process.calls)
+
+    def test_rejects_avatar_bytes_that_do_not_match_the_claimed_source_profile(self) -> None:
+        fixture = RenderFixture()
+        avatar = next(
+            asset
+            for asset in fixture.document["assets"]
+            if asset["asset_id"] == "asset_avatar_full_001"
+        )
+        avatar_path = fixture.resolver.objects[avatar["artifact_uri"]]
+        fixture.process.visual_probes[avatar_path] = ("h264", 1280, 720, "24/1")
+
+        result = fixture.job().run(
+            fixture.document,
+            claimed_attempt_id="attempt_render_local_001",
+        )
+
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["error"]["code"], "RENDER_INPUT_INVALID")
+        self.assertFalse(any("-filter_complex" in call for call in fixture.process.calls))
 
     def test_process_probe_and_cancellation_fail_without_publication(self) -> None:
         process_fixture = RenderFixture()

@@ -48,7 +48,7 @@ function neutralDockSpring(): DockItemSpring {
   };
 }
 
-const terminalProjectStatuses = new Set<ProjectSummary["status"]>(["APPROVED"]);
+const terminalProjectStatuses = new Set<ProjectSummary["status"]>(["APPROVED", "CANCELLED"]);
 const accessFixtureScenarios: ReadonlySet<string> = new Set([
   "invite_sign_in",
   "invite_access_denied",
@@ -56,7 +56,8 @@ const accessFixtureScenarios: ReadonlySet<string> = new Set([
 
 function projectTone(status: ProjectSummary["status"]): Tone {
   if (status === "APPROVED" || status === "READY_FOR_REVIEW") return "success";
-  if (status === "NEEDS_ATTENTION" || status === "CANCEL_REQUESTED") return "warning";
+  if (status === "NEEDS_ATTENTION" || status === "CANCEL_REQUESTED" || status === "CANCELLED")
+    return "warning";
   if (status === "DRAFT" || status === "QUEUED") return "neutral";
   return "info";
 }

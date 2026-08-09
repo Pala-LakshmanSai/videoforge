@@ -36,7 +36,7 @@ export interface LocalPipelineRunRequest {
 }
 
 export interface LocalPipelineRunResult {
-  readonly previewPath: string;
+  readonly artifactRoot: string;
   readonly filename: string;
   readonly sha256: Sha256Digest;
   readonly bytes: number;

@@ -41,6 +41,8 @@ test("stores and verifies immutable binary objects at the locked content-address
     assert.equal(duplicate.created, false);
     assert.equal(duplicate.absolutePath, first.absolutePath);
     assert.equal((await store.verifyObject(digest, "mp4")).bytes, bytes.byteLength);
+    const read = await store.readObject(digest, "mp4");
+    assert.deepEqual(Buffer.from(read.content), bytes);
 
     const concurrent = await Promise.all(
       Array.from({ length: 8 }, () => store.putObject(bytes, "mp4")),
@@ -115,6 +117,19 @@ test("rejects symlink escape attempts in object and run directory components", a
     await symlink(outside, path.join(root, "runs", "revision_001"), "dir");
     await assert.rejects(
       store.ensureRunDirectory("revision_001", "attempt_001"),
+      (error) => error instanceof LocalArtifactStoreError && error.code === "SYMLINK_ESCAPE",
+    );
+  });
+
+  await withTemporaryRoots(async ({ root, outside }) => {
+    const store = await LocalArtifactStore.create(root);
+    const stored = await store.putObject(Buffer.from("expected object"), "bin");
+    const replacement = path.join(outside, "replacement.bin");
+    await writeFile(replacement, "expected object");
+    await rm(stored.absolutePath);
+    await symlink(replacement, stored.absolutePath);
+    await assert.rejects(
+      store.readObject(stored.sha256, "bin"),
       (error) => error instanceof LocalArtifactStoreError && error.code === "SYMLINK_ESCAPE",
     );
   });

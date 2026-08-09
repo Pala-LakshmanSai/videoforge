@@ -314,6 +314,7 @@ export class LocalRuntime {
       .catch((error: unknown) => this.recordFailure(error))
       .finally(() => {
         this.abortController = null;
+        this.recordCancelled();
       });
     return this.project();
   }
@@ -326,6 +327,21 @@ export class LocalRuntime {
     this.projectDetail.project.eta = "Settling";
     this.projectDetail.project.queuePosition = null;
     this.projectDetail.project.allowedActions = [];
+    for (const stage of this.projectDetail.project.stages ?? []) {
+      if (["QUEUED", "STARTING", "RUNNING", "RETRYING"].includes(stage.status)) {
+        stage.status = "CANCEL_REQUESTED";
+        stage.detail = "Cancellation is settling";
+      }
+    }
+    for (const lane of [
+      this.projectDetail.project.lanes.image,
+      this.projectDetail.project.lanes.avatar,
+    ]) {
+      if (["QUEUED", "STARTING", "RUNNING", "RETRYING"].includes(lane.state)) {
+        lane.state = "CANCEL_REQUESTED";
+        lane.action = "Cancellation is settling";
+      }
+    }
     this.projectDetail.events.push({
       id: `event_local_cancel_${this.projectDetail.events.length + 1}`,
       detail: "Cancellation requested for the active local media process",
@@ -359,7 +375,11 @@ export class LocalRuntime {
   }
 
   retry(): LocalProjectDetail | null {
-    if (!this.projectDetail || this.projectDetail.project.status !== "NEEDS_ATTENTION") return null;
+    if (
+      !this.projectDetail ||
+      !["NEEDS_ATTENTION", "CANCELLED"].includes(this.projectDetail.project.status)
+    )
+      return null;
     const createRequest = this.lastCreateRequest;
     const voiceover = this.lastVoiceover;
     if (!createRequest || !voiceover) return null;
@@ -482,6 +502,43 @@ export class LocalRuntime {
     this.projectDetail.events.push({
       id: `event_local_ready_${this.projectDetail.events.length + 1}`,
       detail: `Technical probe accepted ${result.filename} at ${result.sha256}`,
+      at: nowIso(),
+    });
+    rotateProjectVersion(this.projectDetail as RuntimeProjectDetail);
+  }
+
+  private recordCancelled(): void {
+    if (!this.projectDetail || this.projectDetail.project.status !== "CANCEL_REQUESTED") return;
+    for (const stage of this.projectDetail.project.stages ?? []) {
+      if (stage.status === "CANCEL_REQUESTED") {
+        stage.status = "CANCELLED";
+        stage.detail = "Local media work stopped before publication";
+      }
+    }
+    for (const lane of [
+      this.projectDetail.project.lanes.image,
+      this.projectDetail.project.lanes.avatar,
+    ]) {
+      if (lane.state === "CANCEL_REQUESTED") {
+        lane.state = "CANCELLED";
+        lane.action = "Local media work stopped";
+      }
+    }
+    this.projectDetail.project.status = "CANCELLED";
+    this.projectDetail.project.stage = "CANCELLED";
+    this.projectDetail.project.eta = "Cancelled";
+    this.projectDetail.project.queuePosition = null;
+    this.projectDetail.project.allowedActions = ["RETRY_FAILED_ITEMS"];
+    this.projectDetail.notice = {
+      tone: "WARNING",
+      title: "Local run cancelled",
+      detail: "No candidate was published. Retry starts a fresh bounded local attempt.",
+      action: "Retry local run",
+      scope: "PROJECT",
+    };
+    this.projectDetail.events.push({
+      id: `event_local_cancelled_${this.projectDetail.events.length + 1}`,
+      detail: "Cancellation settled without publishing a review candidate",
       at: nowIso(),
     });
     rotateProjectVersion(this.projectDetail as RuntimeProjectDetail);

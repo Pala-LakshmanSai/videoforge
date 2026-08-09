@@ -396,14 +396,21 @@ const toneByStage: Record<ProjectStage["status"], Tone> = {
   BLOCKED: "warning",
   FAILED: "danger",
   CANCEL_REQUESTED: "warning",
+  CANCELLED: "warning",
   COMPLETE: "success",
 };
 
 function activeStageIndex(stages: ProjectStage[]): number {
   const actionable = stages.findIndex((stage) =>
-    ["STARTING", "RUNNING", "RETRYING", "BLOCKED", "FAILED", "CANCEL_REQUESTED"].includes(
-      stage.status,
-    ),
+    [
+      "STARTING",
+      "RUNNING",
+      "RETRYING",
+      "BLOCKED",
+      "FAILED",
+      "CANCEL_REQUESTED",
+      "CANCELLED",
+    ].includes(stage.status),
   );
   if (actionable >= 0) return actionable;
   return stages.findIndex((stage) => stage.status === "QUEUED" || stage.status === "PENDING");

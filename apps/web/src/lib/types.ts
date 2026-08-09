@@ -114,6 +114,7 @@ export interface ProjectStage {
     | "BLOCKED"
     | "FAILED"
     | "CANCEL_REQUESTED"
+    | "CANCELLED"
     | "COMPLETE";
   completed: number;
   total: number;
@@ -140,6 +141,7 @@ export interface ProjectSummary {
     | "NEEDS_ATTENTION"
     | "RECONCILING"
     | "CANCEL_REQUESTED"
+    | "CANCELLED"
     | "READY_FOR_REVIEW"
     | "APPROVED";
   stage: string;

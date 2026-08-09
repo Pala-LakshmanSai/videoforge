@@ -32,6 +32,11 @@ OBJECT_URI_PATTERN = re.compile(
     r"(?P<digest>[0-9a-f]{64})\.(?P<extension>[a-z0-9]{1,10})$"
 )
 SHA256_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
+IMAGE_CODECS = frozenset({"bmp", "gif", "mjpeg", "png", "tiff", "webp"})
+AVATAR_SOURCE_PROFILES = {
+    "avatarforcing-centered-832x480p25-v1": (832, 480, 25, 1),
+    "skyreels-centered-1280x720p24-v1": (1280, 720, 24, 1),
+}
 
 
 @dataclass(frozen=True)
@@ -218,6 +223,23 @@ def _expected_assets(manifest: Mapping[str, Any]) -> dict[str, ExpectedAsset]:
             expected[candidate.asset_id] = candidate
             kinds_by_sha256[candidate.sha256] = candidate.kind
     return expected
+
+
+def _probe_frame_rate(stream: Mapping[str, Any]) -> tuple[int, int]:
+    for field in ("avg_frame_rate", "r_frame_rate"):
+        value = stream.get(field)
+        if not isinstance(value, str):
+            continue
+        parts = value.split("/", maxsplit=1)
+        if len(parts) != 2:
+            continue
+        try:
+            numerator, denominator = (int(part) for part in parts)
+        except ValueError:
+            continue
+        if numerator > 0 and denominator > 0:
+            return numerator, denominator
+    raise ValueError("Visual input has no positive frame rate")
 
 
 class RenderJob:
@@ -525,6 +547,77 @@ class RenderJob:
         voiceover_id = cast(dict[str, str], manifest["voiceover"])["asset_id"]
         return paths, paths[voiceover_id]
 
+    def _probe_visual_assets(
+        self,
+        *,
+        tools: RenderTools,
+        manifest: Mapping[str, Any],
+        paths: Mapping[str, Path],
+        token: str,
+    ) -> None:
+        verified_checksums: set[str] = set()
+        for binding in _expected_assets(manifest).values():
+            if binding.kind == "VOICEOVER" or binding.sha256 in verified_checksums:
+                continue
+            path = paths[binding.asset_id]
+            result = self._run_process(
+                (
+                    str(tools.ffprobe),
+                    "-v",
+                    "error",
+                    "-show_streams",
+                    "-of",
+                    "json",
+                    str(path),
+                ),
+                token=token,
+                failure_code="RENDER_PROBE_FAILED",
+            )
+            try:
+                payload = _parse_json_document(result.stdout.encode("utf-8"))
+                streams = payload["streams"]
+                if not isinstance(streams, list):
+                    raise ValueError("Visual probe streams must be an array")
+                video_streams = [
+                    stream
+                    for stream in streams
+                    if isinstance(stream, dict) and stream.get("codec_type") == "video"
+                ]
+                other_streams = [
+                    stream
+                    for stream in streams
+                    if not isinstance(stream, dict) or stream.get("codec_type") != "video"
+                ]
+                if len(video_streams) != 1 or other_streams:
+                    raise ValueError("Visual inputs require exactly one video stream")
+                video = cast(dict[str, Any], video_streams[0])
+                codec = video.get("codec_name")
+                if not isinstance(codec, str):
+                    raise ValueError("Visual input codec is missing")
+                if binding.kind == "IMAGE":
+                    if codec not in IMAGE_CODECS:
+                        raise ValueError("Image input does not use a still-image codec")
+                else:
+                    expected_profile = AVATAR_SOURCE_PROFILES.get(
+                        binding.renderer_source_profile or ""
+                    )
+                    if expected_profile is None or codec in IMAGE_CODECS:
+                        raise ValueError("Avatar input source profile is unsupported")
+                    width, height, fps_num, fps_den = expected_profile
+                    if video.get("width") != width or video.get("height") != height:
+                        raise ValueError("Avatar input geometry does not match its source profile")
+                    if _probe_frame_rate(video) != (fps_num, fps_den):
+                        raise ValueError(
+                            "Avatar input frame rate does not match its source profile"
+                        )
+            except (KeyError, TypeError, UnicodeEncodeError, ValueError) as error:
+                raise _RenderFailure(
+                    "RENDER_INPUT_INVALID",
+                    "Accepted visual media does not match its declared kind or source profile.",
+                    retryable=False,
+                ) from error
+            verified_checksums.add(binding.sha256)
+
     def _probe_output(
         self,
         *,
@@ -589,6 +682,12 @@ class RenderJob:
         manifest = self._load_manifest(document)
         asset_paths, voiceover_path = self._resolve_assets(document, manifest)
         tools = self._resolve_tools(document)
+        self._probe_visual_assets(
+            tools=tools,
+            manifest=manifest,
+            paths=asset_paths,
+            token=token,
+        )
         input_loudness = self._measure_loudness(tools, voiceover_path, token)
 
         output = cast(dict[str, str], document["output"])

@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import {
+  constants,
   link,
   lstat,
   mkdir,
@@ -49,6 +50,10 @@ export interface StoredLocalArtifact {
   readonly extension: string;
   readonly absolutePath: string;
   readonly created: boolean;
+}
+
+export interface ReadLocalArtifact extends StoredLocalArtifact {
+  readonly content: Uint8Array;
 }
 
 export interface LocalRunLocation {
@@ -263,11 +268,17 @@ export class LocalArtifactStore {
   }
 
   async verifyObject(sha256: Sha256Digest, extension: string): Promise<StoredLocalArtifact> {
+    const verified = await this.readObject(sha256, extension);
+    const { content: _content, ...artifact } = verified;
+    return Object.freeze(artifact);
+  }
+
+  async readObject(sha256: Sha256Digest, extension: string): Promise<ReadLocalArtifact> {
     const hex = digestHex(sha256);
     const normalizedExtension = safeExtension(extension);
     const directory = await this.ensureDirectory(["objects", "sha256", hex.slice(0, 2)]);
     const destination = path.join(directory, `${hex}.${normalizedExtension}`);
-    const verified = await this.verifyIfPresent(destination, sha256, normalizedExtension);
+    const verified = await this.readIfPresent(destination, sha256, normalizedExtension);
     if (!verified) {
       throw new LocalArtifactStoreError(
         "NOT_FOUND",
@@ -423,6 +434,17 @@ export class LocalArtifactStore {
     expected: Sha256Digest,
     extension: string,
   ): Promise<StoredLocalArtifact | null> {
+    const verified = await this.readIfPresent(destination, expected, extension);
+    if (!verified) return null;
+    const { content: _content, ...artifact } = verified;
+    return Object.freeze(artifact);
+  }
+
+  private async readIfPresent(
+    destination: string,
+    expected: Sha256Digest,
+    extension: string,
+  ): Promise<ReadLocalArtifact | null> {
     try {
       const information = await lstat(destination);
       if (information.isSymbolicLink()) {
@@ -442,22 +464,48 @@ export class LocalArtifactStore {
 
       const canonicalDestination = await realpath(destination);
       assertContained(this.root, canonicalDestination);
-      const bytes = await readFile(canonicalDestination);
-      const actual = digestBytes(bytes);
-      if (actual !== expected) {
-        throw new LocalArtifactStoreError(
-          "CONTENT_HASH_MISMATCH",
-          `Stored artifact bytes hash to ${actual}, not ${expected}.`,
-          canonicalDestination,
-        );
+      let handle;
+      try {
+        handle = await open(canonicalDestination, constants.O_RDONLY | constants.O_NOFOLLOW);
+      } catch (error) {
+        if (errorCode(error) === "ELOOP") {
+          throw new LocalArtifactStoreError(
+            "SYMLINK_ESCAPE",
+            "Content-addressed artifacts may not be symbolic links.",
+            canonicalDestination,
+          );
+        }
+        throw error;
       }
-      return Object.freeze({
-        sha256: expected,
-        bytes: bytes.byteLength,
-        extension,
-        absolutePath: canonicalDestination,
-        created: false,
-      });
+      try {
+        const openedInformation = await handle.stat();
+        if (!openedInformation.isFile()) {
+          throw new LocalArtifactStoreError(
+            "IMMUTABLE_COLLISION",
+            "The immutable artifact destination is occupied by a non-file entry.",
+            canonicalDestination,
+          );
+        }
+        const content = await handle.readFile();
+        const actual = digestBytes(content);
+        if (actual !== expected) {
+          throw new LocalArtifactStoreError(
+            "CONTENT_HASH_MISMATCH",
+            `Stored artifact bytes hash to ${actual}, not ${expected}.`,
+            canonicalDestination,
+          );
+        }
+        return {
+          sha256: expected,
+          bytes: content.byteLength,
+          extension,
+          absolutePath: canonicalDestination,
+          created: false,
+          content,
+        };
+      } finally {
+        await handle.close();
+      }
     } catch (error) {
       if (errorCode(error) === "ENOENT") return null;
       throw error;

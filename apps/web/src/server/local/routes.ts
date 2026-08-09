@@ -1,6 +1,5 @@
-import { readFile, stat } from "node:fs/promises";
-
 import { executionProfileCatalog } from "@videoforge/config";
+import { LocalArtifactStore } from "@videoforge/pipeline";
 import { getFixtureScenario, toBootstrapResponse } from "@videoforge/test-fixtures";
 import type { Hono } from "hono";
 
@@ -84,11 +83,12 @@ async function mediaResponse(
     return pipelineNotReady("Approve the exact current MP4 candidate before downloading it.");
   }
 
-  const information = await stat(output.previewPath);
-  if (!information.isFile() || information.size !== output.bytes) {
+  const store = await LocalArtifactStore.create(output.artifactRoot);
+  const verified = await store.readObject(output.sha256, "mp4");
+  if (verified.bytes !== output.bytes) {
     throw new Error("The accepted local MP4 no longer matches its recorded byte count.");
   }
-  const bytes = await readFile(output.previewPath);
+  const bytes = verified.content;
   const headers = new Headers({
     "accept-ranges": "bytes",
     "cache-control": "no-store",

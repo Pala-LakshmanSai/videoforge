@@ -38,6 +38,7 @@ export type FixtureProjectStatus =
   | "NEEDS_ATTENTION"
   | "RECONCILING"
   | "CANCEL_REQUESTED"
+  | "CANCELLED"
   | "READY_FOR_REVIEW"
   | "APPROVED";
 
@@ -50,6 +51,7 @@ export type FixtureStageState =
   | "BLOCKED"
   | "FAILED"
   | "CANCEL_REQUESTED"
+  | "CANCELLED"
   | "COMPLETE";
 
 export interface FixtureProblem {

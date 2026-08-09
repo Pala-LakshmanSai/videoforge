@@ -870,7 +870,7 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
     );
 
     return Object.freeze({
-      previewPath: output.absolutePath,
+      artifactRoot: store.root,
       filename: renderResult.value.output.filename,
       sha256: outputSha256,
       bytes: renderResult.value.output.bytes,
