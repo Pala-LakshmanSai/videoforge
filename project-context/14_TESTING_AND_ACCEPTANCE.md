@@ -255,12 +255,12 @@ Pass: no duplicate accepted asset or corrupt state, any duplicate dispatch/charg
 
 ## UI shell presentation gate
 
-Automated fixture/browser checks and the user's real-Chrome review must jointly verify the approved large-scale minimal direction. Screenshots can support comparison but never replace interaction, console, request, focus, and responsive checks.
+Automated fixture/browser checks and the user's real-Chrome review must jointly verify the approved medium-scale minimal direction. Screenshots can support comparison but never replace interaction, console, request, focus, and responsive checks.
 
 - Direct page titles, one dominant action, and a calm glance layer replace slogans, repeated implementation rationale, and walls of persistent success messages.
-- Roots compute to 20/18 px desktop/mobile, visible text is at least 16 CSS px, normal controls are at least 60 px, and no CSS `zoom` simulates scale.
-- The active-project command bar spans the viewport with deliberate page-edge padding while its project/progress track is inset internally; it does not become a narrow centered island. Its compact mobile form, oversized project title, large factual progress hero, metric cards, vertical pipeline, and latest-artifact panel preserve authoritative counts/states without fabricating smooth work.
-- The keyboard-reachable dock reports the active route and exposes every destination at 1024 px. Fine-pointer hover scales center > neighbor > far without layout movement and resets on leave; reduced-motion/coarse-pointer modes stay neutral. Mobile is a labelled 4×2 dock with safe content padding.
+- The root computes to 18 px on desktop and mobile, ordinary reading text remains 16–18 CSS px, 14.4–16 px microtype is restricted to secondary status/provenance labels, normal controls are 52 px or larger, compact actions remain at least 44 px, and no CSS `zoom` simulates scale.
+- The active-project command bar spans the viewport with deliberate page-edge padding while its project/progress track is inset internally; it does not become a narrow centered island. Its compact mobile form, medium project title and factual progress hero, metric cards, vertical pipeline, and latest-artifact panel preserve authoritative counts/states without fabricating smooth work.
+- The keyboard-reachable dock reports the active route and exposes every destination at 1024 px. Its approved base item and dock geometry do not shrink with the medium-scale adjustment. Fine-pointer hover produces a strong center peak, progressively smaller neighbors, outward neighbor shift, no layout movement, and a clean reset on leave; reduced-motion/coarse-pointer modes stay neutral. Mobile is a labelled 4×2 dock with safe content padding.
 - Avatar cards use an accessible authorized thumbnail or labelled fallback. Healthy cards show only image, name, and `Details`; both Hubs use equal media heights, two columns above 680 px, and one on mobile.
 - Style cards use an allowed cover or labelled fallback. `References (N)` opens only version-bound authorized images; the built-in has zero uploaded references and calls owned media `Examples (N)`. No research asset ships.
 - Galleries load without broken requests and disclose larger images plus metadata on demand. New Avatar/Style round trips retain imagery, exact pins, voiceover handle, and every other draft field.

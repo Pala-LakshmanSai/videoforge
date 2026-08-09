@@ -184,6 +184,8 @@ test("dock magnifies by pointer proximity without moving its layout boxes", asyn
   const far = items.nth(7);
   const before = await target.boundingBox();
   if (!before) throw new Error("Dock target has no layout box.");
+  expect(before.width).toBeGreaterThanOrEqual(94);
+  expect(before.height).toBeGreaterThanOrEqual(74);
 
   await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
   await expect
@@ -192,14 +194,21 @@ test("dock magnifies by pointer proximity without moving its layout boxes", asyn
         Number(getComputedStyle(element).getPropertyValue("--dock-scale")),
       ),
     )
-    .toBeGreaterThan(1.35);
+    .toBeGreaterThan(1.6);
   await expect
     .poll(() =>
       neighbor.evaluate((element) =>
         Number(getComputedStyle(element).getPropertyValue("--dock-scale")),
       ),
     )
-    .toBeGreaterThan(1.05);
+    .toBeGreaterThan(1.3);
+  await expect
+    .poll(() =>
+      neighbor.evaluate((element) =>
+        Math.abs(Number.parseFloat(getComputedStyle(element).getPropertyValue("--dock-shift"))),
+      ),
+    )
+    .toBeGreaterThan(10);
   await expect
     .poll(() =>
       far.evaluate((element) => Number(getComputedStyle(element).getPropertyValue("--dock-scale"))),
@@ -217,6 +226,13 @@ test("dock magnifies by pointer proximity without moving its layout boxes", asyn
       ),
     )
     .toBe(1);
+  await expect
+    .poll(() =>
+      target.evaluate((element) =>
+        Number.parseFloat(getComputedStyle(element).getPropertyValue("--dock-shift")),
+      ),
+    )
+    .toBe(0);
 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
@@ -227,6 +243,34 @@ test("dock magnifies by pointer proximity without moving its layout boxes", asyn
       ),
     )
     .toBe(1);
+});
+
+test("content uses the medium scale while the dock keeps its approved base size", async ({
+  page,
+}) => {
+  await page.goto("/projects/new?fixture=project_create_ready");
+  await expect(page.getByRole("heading", { name: "New project" })).toBeVisible();
+
+  const scale = await page.evaluate(() => {
+    const title = document.querySelector<HTMLElement>(".page-header-title");
+    const input = document.querySelector<HTMLElement>(".input");
+    const dockItem = document.querySelector<HTMLElement>(".bottom-nav-item");
+    if (!title || !input || !dockItem) throw new Error("Scale audit targets are missing.");
+    return {
+      dockHeight: dockItem.getBoundingClientRect().height,
+      dockWidth: dockItem.getBoundingClientRect().width,
+      inputHeight: input.getBoundingClientRect().height,
+      root: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+      title: Number.parseFloat(getComputedStyle(title).fontSize),
+    };
+  });
+
+  expect(scale.root).toBe(18);
+  expect(scale.title).toBeGreaterThanOrEqual(36);
+  expect(scale.title).toBeLessThanOrEqual(52);
+  expect(scale.inputHeight).toBe(52);
+  expect(scale.dockWidth).toBeGreaterThanOrEqual(94);
+  expect(scale.dockHeight).toBeGreaterThanOrEqual(74);
 });
 
 test("Avatar Hub shows the preset image and keeps technical detail collapsed", async ({ page }) => {
@@ -564,6 +608,18 @@ for (const viewport of [
       await expect(page.locator("main")).toBeVisible();
       await expectNoHorizontalOverflow(page);
     }
+
+    await page.goto("/avatars?fixture=avatar_profile_ready");
+    const avatarMediaHeight = await page
+      .locator(".avatar-card-media")
+      .first()
+      .evaluate((element) => element.getBoundingClientRect().height);
+    await page.goto("/styles?fixture=happy_generating");
+    const styleMediaHeight = await page
+      .locator(".style-card-media")
+      .first()
+      .evaluate((element) => element.getBoundingClientRect().height);
+    expect(styleMediaHeight).toBe(avatarMediaHeight);
 
     await page.keyboard.press("Home");
     await page.keyboard.press("Tab");

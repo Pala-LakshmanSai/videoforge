@@ -178,7 +178,7 @@ approved_decisions:
   DEC_QUEUE_001: postgres_authoritative_runpod_execution_transport
   DEC_RUNPOD_001: scale_to_zero_api_only_endpoints_first
   DEC_UX_001: fixture_first_live_chrome_hot_reload
-  DEC_UX_002: large_minimal_reference_inspired_production_console
+  DEC_UX_002: medium_minimal_reference_inspired_production_console_fixed_base_dock
   DEC_UX_003: visual_presets_with_on_demand_reference_and_audit_details
 
 open_gates:
@@ -193,7 +193,7 @@ open_gates:
   GATE_GPU_001: produce_tested_compatible_gpu_allowlists
   GATE_RUNPOD_001: verify_endpoint_config_reconciliation_dispatch_ambiguity_timeout_and_result_lifecycle
   GATE_COST_001: replace_planning_ranges_with_new_account_measurements
-  GATE_UI_001: user_approves_large_minimal_live_chrome_shell_proximity_dock_integrated_app_native_controls_preset_galleries_and_core_flows
+  GATE_UI_001: user_approves_medium_minimal_live_chrome_shell_fixed_base_proximity_dock_integrated_app_native_controls_preset_galleries_and_core_flows
 
 deferred:
   - ai_broll_video

@@ -148,7 +148,9 @@ export function AppShell({ children }: PropsWithChildren) {
       for (const item of items) {
         item.style.setProperty("--dock-scale", "1");
         item.style.setProperty("--dock-lift", "0px");
+        item.style.setProperty("--dock-shift", "0px");
       }
+      dock.classList.remove("bottom-nav-dock-tracking");
     };
 
     const cacheGeometry = () => {
@@ -171,6 +173,7 @@ export function AppShell({ children }: PropsWithChildren) {
         const target = dockMotionTarget(pointerX - center, true);
         item.style.setProperty("--dock-scale", target.scale.toFixed(4));
         item.style.setProperty("--dock-lift", `${target.liftPx.toFixed(2)}px`);
+        item.style.setProperty("--dock-shift", `${target.shiftPx.toFixed(2)}px`);
       });
     };
 
@@ -182,6 +185,7 @@ export function AppShell({ children }: PropsWithChildren) {
     const enter = (event: PointerEvent) => {
       if (!finePointer.matches || reducedMotion.matches) return;
       cacheGeometry();
+      dock.classList.add("bottom-nav-dock-tracking");
       updatePointer(event);
     };
 
@@ -243,7 +247,6 @@ export function AppShell({ children }: PropsWithChildren) {
         to={item.to}
         search={{ fixture: scenario } as never}
         className={`bottom-nav-item ${active ? "bottom-nav-item-active" : ""}`}
-        title={item.label}
         aria-current={active ? "page" : undefined}
       >
         <span className="bottom-nav-icon" aria-hidden="true">
@@ -361,7 +364,6 @@ export function AppShell({ children }: PropsWithChildren) {
             params={{ projectId: activeProject.id }}
             search={{ fixture: scenario } as never}
             className={`bottom-nav-item ${path.startsWith("/projects/") && path !== "/projects/new" ? "bottom-nav-item-active" : ""}`}
-            title="Progress"
             aria-current={
               path.startsWith("/projects/") && path !== "/projects/new" ? "page" : undefined
             }

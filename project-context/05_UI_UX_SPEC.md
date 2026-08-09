@@ -1,6 +1,6 @@
 # UI and UX specification
 
-Status: implemented large-scale minimal direction; `GATE_UI_001` awaits user approval
+Status: implemented medium-scale minimal direction; `GATE_UI_001` awaits user approval
 Read when: designing or implementing any user-visible flow.
 
 ## Design objective
@@ -9,7 +9,7 @@ The UI should feel like a clean, lively, futuristic production console while rem
 
 Primary reference: `assets/ui/swipecut-ui-reference.jpg`. It is inspiration only. Do not copy its logo, name, sample content, exact trade dress, or proprietary text.
 
-The user reconfirmed this direction on 2026-08-09 after rejecting the first fixture shell as too small, too dense, and too text-heavy. The approved hierarchy borrows the reference's active-project command strip, oversized project title, large progress hero, factual metric cards, strong vertical pipeline, live artifact panel, and floating navigation dock. VideoForge must translate those concepts into its own routes, copy, data, and visual identity rather than copying the reference product.
+The user reconfirmed this direction on 2026-08-09 after rejecting the first fixture shell as too small, too dense, and too text-heavy, then rejected the later 20 px/60 px scale as oversized. The target is a medium production-console hierarchy: a prominent active-project command strip and project title, compact factual progress hero, clear metric cards, strong vertical pipeline, live artifact panel, and floating navigation dock. VideoForge must translate those concepts into its own routes, copy, data, and visual identity rather than copying the reference product.
 
 The same review later refined the Create Project hierarchy: keep the active choice compact, open choices only on demand, remove nonessential technical hints and success confirmations, and expose the two primary compute lanes without implying unverified GPU availability. The active-project bar remains full-width; only its internal content and progress track are deliberately inset. Every visible select/disclosure uses the VideoForge surface language rather than a browser-native menu. Child choices expand inside the same bordered surface, never as visually detached boxes or an overlay that covers the following controls. The floating dock is approximately 20% larger than the prior version and uses fine-pointer proximity magnification with a calm reduced-motion fallback.
 
@@ -41,10 +41,10 @@ Initial design tokens:
 | Success | `#4bd99f` |
 | Control radius | about 18 px |
 | Panel radius | about 28–30 px |
-| Base text | 20 px desktop; 18 px compact/mobile |
+| Base text | 18 px desktop and compact/mobile; ordinary reading text 16–18 px |
 | Secondary text | at least 16 px |
 | Micro labels | at least 16 CSS px; short labels/status only |
-| Control height | normally 60 px |
+| Control height | normally 52 px; at least 44 px for compact actionable controls |
 | Minimum touch target | 44×44 px |
 | Page title | roughly 48–72 px desktop |
 
@@ -101,7 +101,7 @@ Use direct nouns and outcomes instead of slogans or repeated implementation rati
 
 4. **Project progress**
    - Sticky full-width active-project command bar with title, phase, factual percent, ETA, and current cost; API/worker health is compact unless degraded. Use normal page-edge padding and inset the inner project/progress track itself. Do not center the whole bar inside a narrow max-width island.
-   - Oversized project title and progress hero containing a large ring, stage/status/ETA/cost cards, and one clear progress bar.
+   - Prominent but medium-scale project title and progress hero containing a compact ring, stage/status/ETA/cost cards, and one clear progress bar.
    - Parallel image and avatar lane cards.
    - Human stage rows: Prepare → Transcribe → Plan → Write image prompts → Generate media → Assemble → Technical check → Review. Raw stage IDs remain in details.
    - A large latest-artifact preview, not three generic composition explainers.
@@ -120,7 +120,7 @@ Use direct nouns and outcomes instead of slogans or repeated implementation rati
    - The final preview and filters are primary. Output codec/grammar/provenance facts move into `Technical details`; after approval, `Download MP4` and `Manifest` are direct actions.
 
 6. **Avatar Hub**
-   - First-class floating-dock destination containing private named Avatar Profile cards with a large actual thumbnail and name. Healthy ready/passed/version/date metadata stays in `Details`; only an exceptional actionable state becomes a glance-layer badge. Initials or a generic silhouette are fallback-only when an authorized thumbnail genuinely fails.
+   - First-class floating-dock destination containing private named Avatar Profile cards with an actual thumbnail and name. Healthy ready/passed/version/date metadata stays in `Details`; only an exceptional actionable state becomes a glance-layer badge. Initials or a generic silhouette are fallback-only when an authorized thumbnail genuinely fails.
    - Avatar and Image Style Hubs share the same card anatomy and media height: exactly two columns above 680 px and one column on mobile. A single avatar remains one half-width card on desktop rather than stretching across the row.
    - New-avatar flow: name → one private source upload → technical validation → source safe-area/centering review plus rights/likeness consent → `Approve and add to Avatar Hub`.
    - View, rename, create a new source version, optional test/retest, duplicate, and archive. Only the active ready version appears in the normal project selector; source dimensions, crop previews, compatibility evidence, version history, rights, retention, hashes, and exact IDs are progressive disclosure.
@@ -153,7 +153,7 @@ Use direct nouns and outcomes instead of slogans or repeated implementation rati
 
 ## Core components
 
-- Reference-inspired floating navigation dock with Queue, New Project, active Progress, Avatar Hub, Image Styles, Library, Usage, and Settings; the active route is unmistakable. Its desktop base items are approximately 94×74 px with about 12 px dock padding. On fine pointers, the hovered icon lifts and scales most, immediate and second neighbors scale progressively less, and layout boxes never move. Touch/coarse-pointer and reduced-motion modes remain stable. At 1024 px every destination remains directly reachable with visible focus and accessible names. Mobile uses a labelled 4×2 dock without hiding either Hub or destructive/budget controls.
+- Reference-inspired floating navigation dock with Queue, New Project, active Progress, Avatar Hub, Image Styles, Library, Usage, and Settings; the active route is unmistakable. Its approved desktop base geometry is frozen at approximately 94×74 px minimum items with about 12 px dock padding even when the rest of the application scale changes. On fine pointers, the hovered icon lifts to the strongest peak, adjacent icons fan outward and scale progressively less, far icons remain neutral, and layout boxes never move. Touch/coarse-pointer and reduced-motion modes remain stable. At 1024 px every destination remains directly reachable with visible focus and accessible names. Mobile uses a labelled 4×2 dock without hiding either Hub or destructive/budget controls.
 - Full-width top active-project command bar with an internally inset project/progress track and compact mobile treatment.
 - Progress ring plus factual completed/total counts.
 - Metric cards for stage, ETA, cost, queue, GPU.
@@ -243,4 +243,4 @@ Opening `+ New avatar` from Create Project follows the same no-loss rule: autosa
 
 ## UI acceptance
 
-The UI passes when the non-developer user can create/store a named avatar once, see every authorized preset thumbnail, select avatar/style versions from compact visual dropdowns without re-upload, inspect every authorized custom-style reference on demand, distinguish built-in generated examples from uploaded references, create/review/publish/select a style, opt into extra keywords without a redundant confirmation panel, select truthful image/avatar execution profiles, and start/monitor/recover/review/download a project without asking what a technical status means. The primary layer is large, minimal, and free of repeated technical explanations; the full audit detail remains reachable; no button appears inert; navigation is clear; the full-width command bar and its internal track scale cleanly; cost and compute/avatar/style state are truthful; no supported viewport overflows or hides critical controls; and the user approves the design through the live Chrome gate.
+The UI passes when the non-developer user can create/store a named avatar once, see every authorized preset thumbnail, select avatar/style versions from compact visual dropdowns without re-upload, inspect every authorized custom-style reference on demand, distinguish built-in generated examples from uploaded references, create/review/publish/select a style, opt into extra keywords without a redundant confirmation panel, select truthful image/avatar execution profiles, and start/monitor/recover/review/download a project without asking what a technical status means. The primary layer is medium-scale, minimal, and free of repeated technical explanations; the full audit detail remains reachable; no button appears inert; navigation is clear; the full-width command bar and its internal track scale cleanly; cost and compute/avatar/style state are truthful; no supported viewport overflows or hides critical controls; and the user approves the design through the live Chrome gate.
