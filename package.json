@@ -23,14 +23,15 @@
     "test:chrome": "pnpm --filter @videoforge/web test:chrome",
     "test:workers": "node scripts/test-workers.mjs",
     "typecheck": "turbo run typecheck",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm contracts:check && pnpm context:validate && pnpm build && pnpm test:chrome"
+    "audit:dependencies": "pnpm audit --audit-level high",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm contracts:check && pnpm context:validate && pnpm build && pnpm test:chrome && pnpm audit:dependencies"
   },
   "devDependencies": {
     "@eslint/js": "9.35.0",
     "eslint": "9.35.0",
     "globals": "16.3.0",
     "prettier": "3.6.2",
-    "turbo": "2.5.6",
+    "turbo": "2.10.9",
     "typescript": "5.9.2",
     "typescript-eslint": "8.42.0"
   }
