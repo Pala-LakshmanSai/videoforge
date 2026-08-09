@@ -376,9 +376,15 @@ test("every screen keeps separated sections and legible structural surfaces", as
           const bounds = child.getBoundingClientRect();
           return { bottom: bounds.bottom, top: bounds.top };
         });
+      const gaps: number[] = [];
+      for (let index = 1; index < children.length; index += 1) {
+        const previous = children[index - 1];
+        const current = children[index];
+        if (previous && current) gaps.push(current.top - previous.bottom);
+      }
       return {
         expectedGap,
-        gaps: children.slice(1).map((child, index) => child.top - children[index].bottom),
+        gaps,
       };
     });
 
