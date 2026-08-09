@@ -390,9 +390,10 @@ test("Create Project uses exact visual presets and never exposes project-local a
   await expect(page.locator("select")).toHaveCount(0);
 
   const avatarDetails = avatarPicker.locator("..");
-  await avatarPicker.click();
+  await avatarPicker.press("ArrowDown");
   const avatarOptions = page.getByRole("radiogroup", { name: "Avatar Profile options" });
   await expect(avatarOptions).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Amish Farm Host/ })).toBeFocused();
   await expect
     .poll(() =>
       avatarDetails.evaluate((element) => {
@@ -407,10 +408,11 @@ test("Create Project uses exact visual presets and never exposes project-local a
   await expect(avatarPicker).toBeFocused();
 
   const imageCompute = page.getByLabel("Image generation compute profile", { exact: true });
-  await imageCompute.click();
+  await imageCompute.press("ArrowDown");
   await expect(
     page.getByRole("listbox", { name: "Image generation compute profile options" }),
   ).toBeVisible();
+  await expect(page.getByRole("option", { name: /^Auto/ })).toBeFocused();
   await expect(page.getByRole("option", { name: /RTX 4090/ })).toBeDisabled();
   await page.keyboard.press("Escape");
   await expect(imageCompute).toBeFocused();
@@ -434,12 +436,15 @@ test("Create Project uses exact visual presets and never exposes project-local a
     .toBe(true);
   await page.keyboard.press("Escape");
 
-  await stylePicker.click();
+  await stylePicker.press("ArrowDown");
   const documentary = page.getByRole("radio", { name: /Authentic Documentary Stock/ });
   const warmRural = page.getByRole("radio", { name: /Warm Rural Documentary/ });
   await expect(documentary).toHaveAttribute("aria-checked", "true");
+  await expect(documentary).toBeFocused();
   await expectImagesLoaded(documentary.getByRole("img"));
-  await warmRural.click();
+  await documentary.press("ArrowDown");
+  await expect(warmRural).toBeFocused();
+  await warmRural.press("Enter");
   await expect(stylePicker).toContainText("Warm Rural Documentary");
   await expect
     .poll(() =>
@@ -498,7 +503,9 @@ test("Create Project uses exact visual presets and never exposes project-local a
     mimeType: "audio/wav",
     buffer: Buffer.from("not a wave file"),
   });
-  await expect(page.getByText("The file contents do not match its audio extension.")).toBeVisible();
+  await expect(page.locator(".run-readiness")).toContainText(
+    "The file contents do not match its audio extension.",
+  );
   await expect(page.getByRole("button", { name: "Generate video" })).toBeDisabled();
   await expect
     .poll(() =>
@@ -522,6 +529,10 @@ test("Create Project uses exact visual presets and never exposes project-local a
     mimeType: "audio/wav",
     buffer: createPcmWavBuffer(),
   });
+  await page.getByLabel("Video title").fill("");
+  await expect(page.locator(".run-readiness")).toContainText("Add a video title.");
+  await expect(page.getByRole("button", { name: "Generate video" })).toBeDisabled();
+  await page.getByLabel("Video title").fill("Recognizing a Sweet Watermelon");
   await expect(page.getByRole("button", { name: "Generate video" })).toBeEnabled();
   await page.getByRole("button", { name: "Generate video" }).click();
   await expect(page).toHaveURL(/\/projects\/project_fixture_001\?fixture=happy_generating/);
@@ -561,8 +572,13 @@ test("scenario actions match authoritative project and review state", async ({ p
   await expect(page.getByRole("link", { name: "Review output" })).toHaveCount(0);
 
   await page.goto("/projects/project_fixture_001?fixture=image_partial_failure");
-  await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
+  const retry = page.getByRole("button", { name: "Retry" });
+  const cancelAfterRetry = page.getByRole("button", { name: "Cancel" });
+  await expect(retry).toBeVisible();
+  await expect(cancelAfterRetry).toBeVisible();
+  await retry.click();
+  await expect(retry).toHaveCount(0);
+  await expect(cancelAfterRetry).toBeEnabled();
 
   await page.goto("/projects/project_fixture_001?fixture=cancel_requested");
   await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);

@@ -1,6 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Progress from "@radix-ui/react-progress";
-import { useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type {
   ButtonHTMLAttributes,
   CSSProperties,
@@ -184,29 +184,130 @@ export function AppSelect({
   className?: string;
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const typeaheadRef = useRef("");
+  const typeaheadTimerRef = useRef<number | null>(null);
+  const [open, setOpen] = useState(false);
+  const triggerId = useId();
+  const menuId = useId();
   const selected = options.find((option) => option.value === value) ?? options[0];
   let previousGroup: string | undefined;
+
+  useEffect(
+    () => () => {
+      if (typeaheadTimerRef.current !== null) window.clearTimeout(typeaheadTimerRef.current);
+    },
+    [],
+  );
+
+  const enabledIndexes = () => options.flatMap((option, index) => (option.disabled ? [] : [index]));
+
+  const focusIndex = (index: number) => {
+    window.requestAnimationFrame(() => optionRefs.current[index]?.focus());
+  };
+
+  const focusBoundary = (boundary: "first" | "last") => {
+    const indexes = enabledIndexes();
+    const index = boundary === "first" ? indexes[0] : indexes.at(-1);
+    if (index !== undefined) focusIndex(index);
+  };
+
+  const focusRelative = (direction: -1 | 1) => {
+    const indexes = enabledIndexes();
+    if (!indexes.length) return;
+    const activeIndex = optionRefs.current.findIndex(
+      (element) => element === document.activeElement,
+    );
+    const current = Math.max(0, indexes.indexOf(activeIndex));
+    const next = indexes[(current + direction + indexes.length) % indexes.length];
+    if (next !== undefined) focusIndex(next);
+  };
+
+  const focusByTypeahead = (key: string) => {
+    if (typeaheadTimerRef.current !== null) window.clearTimeout(typeaheadTimerRef.current);
+    typeaheadRef.current += key.toLocaleLowerCase();
+    typeaheadTimerRef.current = window.setTimeout(() => {
+      typeaheadRef.current = "";
+      typeaheadTimerRef.current = null;
+    }, 600);
+    const indexes = enabledIndexes();
+    if (!indexes.length) return;
+    const activeIndex = optionRefs.current.findIndex(
+      (element) => element === document.activeElement,
+    );
+    const start = Math.max(0, indexes.indexOf(activeIndex));
+    const ordered = [...indexes.slice(start + 1), ...indexes.slice(0, start + 1)];
+    const match = ordered.find((index) =>
+      options[index]?.label.toLocaleLowerCase().startsWith(typeaheadRef.current),
+    );
+    if (match !== undefined) focusIndex(match);
+  };
+
+  const closeAndFocusTrigger = () => {
+    if (detailsRef.current) detailsRef.current.open = false;
+    setOpen(false);
+    window.requestAnimationFrame(() =>
+      detailsRef.current?.querySelector<HTMLElement>("summary")?.focus(),
+    );
+  };
 
   return (
     <details
       ref={detailsRef}
       className={`app-select ${className}`.trim()}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
       onKeyDown={(event) => {
-        if (event.key !== "Escape" || !detailsRef.current?.open) return;
-        event.preventDefault();
-        detailsRef.current.open = false;
-        detailsRef.current.querySelector<HTMLElement>("summary")?.focus();
+        if (event.key === "Escape" && detailsRef.current?.open) {
+          event.preventDefault();
+          closeAndFocusTrigger();
+          return;
+        }
+        if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+          event.preventDefault();
+          if (!detailsRef.current?.open) {
+            detailsRef.current?.setAttribute("open", "");
+            setOpen(true);
+            const selectedIndex = options.findIndex(
+              (option) => option.value === selected?.value && !option.disabled,
+            );
+            if (event.key === "End") focusBoundary("last");
+            else if (event.key === "Home") focusBoundary("first");
+            else if (selectedIndex >= 0) focusIndex(selectedIndex);
+            else focusBoundary(event.key === "ArrowUp" ? "last" : "first");
+            return;
+          }
+          if (event.key === "Home") focusBoundary("first");
+          else if (event.key === "End") focusBoundary("last");
+          else focusRelative(event.key === "ArrowDown" ? 1 : -1);
+          return;
+        }
+        if (
+          detailsRef.current?.open &&
+          event.key.length === 1 &&
+          !event.altKey &&
+          !event.ctrlKey &&
+          !event.metaKey
+        ) {
+          focusByTypeahead(event.key);
+        }
       }}
     >
-      <summary className="app-select-trigger" aria-label={label}>
+      <summary
+        className="app-select-trigger"
+        aria-label={label}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={menuId}
+        id={triggerId}
+      >
         <span>
           <strong>{selected?.label ?? "Choose"}</strong>
           {selected?.detail ? <small>{selected.detail}</small> : null}
         </span>
         <span className="app-select-chevron" aria-hidden="true" />
       </summary>
-      <div className="app-select-menu" role="listbox" aria-label={`${label} options`}>
-        {options.map((option) => {
+      <div className="app-select-menu" role="listbox" aria-label={`${label} options`} id={menuId}>
+        {options.map((option, optionIndex) => {
           const showGroup = option.group !== previousGroup;
           previousGroup = option.group;
           return (
@@ -220,11 +321,15 @@ export function AppSelect({
                 role="option"
                 aria-selected={option.value === value}
                 disabled={option.disabled}
+                data-option-label={option.label}
+                ref={(element) => {
+                  optionRefs.current[optionIndex] = element;
+                }}
+                tabIndex={option.value === selected?.value && !option.disabled ? 0 : -1}
                 onClick={() => {
                   if (option.disabled) return;
                   onValueChange(option.value);
-                  detailsRef.current?.removeAttribute("open");
-                  detailsRef.current?.querySelector<HTMLElement>("summary")?.focus();
+                  closeAndFocusTrigger();
                 }}
               >
                 <span>

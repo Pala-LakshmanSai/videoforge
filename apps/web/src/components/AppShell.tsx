@@ -14,21 +14,43 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, type PropsWithChildren } from "react";
 import { api } from "../lib/api";
-import { dockMotionTarget } from "../lib/dock-motion";
+import {
+  dockMotionTarget,
+  dockSpringSettled,
+  stepDockSpring,
+  type DockMotionTarget,
+  type DockSpringState,
+} from "../lib/dock-motion";
 import { currentScenario, setScenario } from "../lib/scenario";
 import { scenarioIds, type ProjectSummary, type Tone } from "../lib/types";
 import { AccessGate, AccessGatePending, AccessGateUnavailable } from "./AccessGate";
 import { AppSelect, Badge, Disclosure, ProgressBar } from "./ui";
 
 const nav = [
-  { to: "/", label: "Queue", icon: CircleGauge },
-  { to: "/projects/new", label: "New Project", icon: Sparkles },
-  { to: "/avatars", label: "Avatar Hub", icon: UsersRound },
-  { to: "/styles", label: "Image Styles", icon: Images },
-  { to: "/library", label: "Library", icon: Library },
-  { to: "/usage", label: "Usage", icon: BookOpen },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/", label: "Queue", mobileLabel: "Queue", icon: CircleGauge },
+  { to: "/projects/new", label: "New Project", mobileLabel: "New", icon: Sparkles },
+  { to: "/avatars", label: "Avatar Hub", mobileLabel: "Avatars", icon: UsersRound },
+  { to: "/styles", label: "Image Styles", mobileLabel: "Styles", icon: Images },
+  { to: "/library", label: "Library", mobileLabel: "Library", icon: Library },
+  { to: "/usage", label: "Usage", mobileLabel: "Usage", icon: BookOpen },
+  { to: "/settings", label: "Settings", mobileLabel: "Settings", icon: Settings },
 ] as const;
+
+interface DockItemSpring {
+  lift: DockSpringState;
+  scale: DockSpringState;
+  shift: DockSpringState;
+}
+
+const neutralDockTarget: DockMotionTarget = { influence: 0, liftPx: 0, scale: 1, shiftPx: 0 };
+
+function neutralDockSpring(): DockItemSpring {
+  return {
+    lift: { value: 0, velocity: 0 },
+    scale: { value: 1, velocity: 0 },
+    shift: { value: 0, velocity: 0 },
+  };
+}
 
 const terminalProjectStatuses = new Set<ProjectSummary["status"]>(["APPROVED"]);
 const accessFixtureScenarios: ReadonlySet<string> = new Set([
@@ -139,18 +161,26 @@ export function AppShell({ children }: PropsWithChildren) {
     let items: HTMLElement[] = [];
     let centers: number[] = [];
     let animationFrame = 0;
+    let lastFrameAt: number | null = null;
     let pointerX: number | null = null;
+    let tracking = false;
+    let springs: DockItemSpring[] = [];
 
-    const reset = () => {
+    const applySpring = (item: HTMLElement, spring: DockItemSpring) => {
+      item.style.setProperty("--dock-scale", spring.scale.value.toFixed(4));
+      item.style.setProperty("--dock-lift", `${spring.lift.value.toFixed(2)}px`);
+      item.style.setProperty("--dock-shift", `${spring.shift.value.toFixed(2)}px`);
+    };
+
+    const resetImmediately = () => {
+      tracking = false;
       pointerX = null;
       if (animationFrame) window.cancelAnimationFrame(animationFrame);
       animationFrame = 0;
-      for (const item of items) {
-        item.style.setProperty("--dock-scale", "1");
-        item.style.setProperty("--dock-lift", "0px");
-        item.style.setProperty("--dock-shift", "0px");
-      }
-      dock.classList.remove("bottom-nav-dock-tracking");
+      lastFrameAt = null;
+      springs = items.map(() => neutralDockSpring());
+      items.forEach((item, index) => applySpring(item, springs[index] ?? neutralDockSpring()));
+      dock.classList.remove("bottom-nav-dock-springing");
     };
 
     const cacheGeometry = () => {
@@ -159,52 +189,98 @@ export function AppShell({ children }: PropsWithChildren) {
         const rect = item.getBoundingClientRect();
         return rect.left + rect.width / 2;
       });
+      if (springs.length !== items.length) springs = items.map(() => neutralDockSpring());
     };
 
-    const render = () => {
+    const targetFor = (index: number): DockMotionTarget => {
+      const center = centers[index];
+      return tracking && pointerX !== null && center !== undefined
+        ? dockMotionTarget(pointerX - center, true)
+        : neutralDockTarget;
+    };
+
+    const render = (frameAt: number) => {
       animationFrame = 0;
-      if (pointerX === null || !finePointer.matches || reducedMotion.matches) {
-        reset();
+      if (!finePointer.matches || reducedMotion.matches) {
+        resetImmediately();
         return;
       }
+      const elapsedSeconds = lastFrameAt === null ? 1 / 60 : (frameAt - lastFrameAt) / 1_000;
+      lastFrameAt = frameAt;
+      let moving = false;
+
       items.forEach((item, index) => {
-        const center = centers[index];
-        if (center === undefined || pointerX === null) return;
-        const target = dockMotionTarget(pointerX - center, true);
-        item.style.setProperty("--dock-scale", target.scale.toFixed(4));
-        item.style.setProperty("--dock-lift", `${target.liftPx.toFixed(2)}px`);
-        item.style.setProperty("--dock-shift", `${target.shiftPx.toFixed(2)}px`);
+        const spring = springs[index] ?? neutralDockSpring();
+        const target = targetFor(index);
+        spring.scale = stepDockSpring(spring.scale, target.scale, elapsedSeconds);
+        spring.lift = stepDockSpring(spring.lift, target.liftPx, elapsedSeconds);
+        spring.shift = stepDockSpring(spring.shift, target.shiftPx, elapsedSeconds);
+
+        if (dockSpringSettled(spring.scale, target.scale))
+          spring.scale = { value: target.scale, velocity: 0 };
+        if (dockSpringSettled(spring.lift, target.liftPx, 0.03, 0.2))
+          spring.lift = { value: target.liftPx, velocity: 0 };
+        if (dockSpringSettled(spring.shift, target.shiftPx, 0.03, 0.2))
+          spring.shift = { value: target.shiftPx, velocity: 0 };
+
+        springs[index] = spring;
+        applySpring(item, spring);
+        moving ||= !(
+          dockSpringSettled(spring.scale, target.scale) &&
+          dockSpringSettled(spring.lift, target.liftPx, 0.03, 0.2) &&
+          dockSpringSettled(spring.shift, target.shiftPx, 0.03, 0.2)
+        );
       });
+
+      if (tracking || moving) {
+        animationFrame = window.requestAnimationFrame(render);
+      } else {
+        lastFrameAt = null;
+        dock.classList.remove("bottom-nav-dock-springing");
+      }
+    };
+
+    const schedule = () => {
+      if (!animationFrame) animationFrame = window.requestAnimationFrame(render);
     };
 
     const updatePointer = (event: PointerEvent) => {
+      if (!tracking || !finePointer.matches || reducedMotion.matches) return;
       pointerX = event.clientX;
-      if (!animationFrame) animationFrame = window.requestAnimationFrame(render);
+      schedule();
     };
 
     const enter = (event: PointerEvent) => {
       if (!finePointer.matches || reducedMotion.matches) return;
       cacheGeometry();
-      dock.classList.add("bottom-nav-dock-tracking");
+      tracking = true;
+      lastFrameAt = null;
+      dock.classList.add("bottom-nav-dock-springing");
       updatePointer(event);
+    };
+
+    const leave = () => {
+      tracking = false;
+      pointerX = null;
+      schedule();
     };
 
     cacheGeometry();
     dock.addEventListener("pointerenter", enter);
     dock.addEventListener("pointermove", updatePointer);
-    dock.addEventListener("pointerleave", reset);
+    dock.addEventListener("pointerleave", leave);
     window.addEventListener("resize", cacheGeometry);
-    finePointer.addEventListener("change", reset);
-    reducedMotion.addEventListener("change", reset);
+    finePointer.addEventListener("change", resetImmediately);
+    reducedMotion.addEventListener("change", resetImmediately);
 
     return () => {
-      reset();
+      resetImmediately();
       dock.removeEventListener("pointerenter", enter);
       dock.removeEventListener("pointermove", updatePointer);
-      dock.removeEventListener("pointerleave", reset);
+      dock.removeEventListener("pointerleave", leave);
       window.removeEventListener("resize", cacheGeometry);
-      finePointer.removeEventListener("change", reset);
-      reducedMotion.removeEventListener("change", reset);
+      finePointer.removeEventListener("change", resetImmediately);
+      reducedMotion.removeEventListener("change", resetImmediately);
     };
   }, [bootstrap.data?.projects.length, scenario]);
 
@@ -248,11 +324,15 @@ export function AppShell({ children }: PropsWithChildren) {
         search={{ fixture: scenario } as never}
         className={`bottom-nav-item ${active ? "bottom-nav-item-active" : ""}`}
         aria-current={active ? "page" : undefined}
+        aria-label={item.label}
       >
         <span className="bottom-nav-icon" aria-hidden="true">
           <Icon size={25} />
         </span>
-        <span className="bottom-nav-label">{item.label}</span>
+        <span className="bottom-nav-label bottom-nav-label-full">{item.label}</span>
+        <span className="bottom-nav-label bottom-nav-label-mobile" aria-hidden="true">
+          {item.mobileLabel}
+        </span>
         {active ? <i className="bottom-nav-active-dot" aria-hidden="true" /> : null}
       </Link>
     );

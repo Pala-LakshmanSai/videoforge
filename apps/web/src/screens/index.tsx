@@ -41,6 +41,7 @@ import {
   StageTimeline,
 } from "../components/ui";
 import { api, ApiError } from "../lib/api";
+import { createProjectBlockers } from "../lib/create-eligibility";
 import { hasStoredDraft, loadDraft, saveDraft, updateDraft, type ProjectDraft } from "../lib/draft";
 import {
   validateImageFile,
@@ -206,18 +207,24 @@ function ComputeLaneSelect({
 }
 
 function VisualPresetSelect({
+  id,
   label,
   options,
   selectedId,
   onChange,
 }: {
+  id?: string;
   label: string;
   options: VisualPresetOption[];
   selectedId: string;
   onChange: (id: string) => void;
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const typeaheadRef = useRef("");
+  const typeaheadTimerRef = useRef<number | null>(null);
   const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
   const selected = options.find((option) => option.id === selectedId);
   const normalizedQuery = query.trim().toLowerCase();
   const visibleOptions = normalizedQuery
@@ -226,6 +233,13 @@ function VisualPresetSelect({
       )
     : options;
 
+  useEffect(
+    () => () => {
+      if (typeaheadTimerRef.current !== null) window.clearTimeout(typeaheadTimerRef.current);
+    },
+    [],
+  );
+
   function closeAndFocus() {
     const details = detailsRef.current;
     if (!details) return;
@@ -233,22 +247,82 @@ function VisualPresetSelect({
     window.requestAnimationFrame(() => details.querySelector("summary")?.focus());
   }
 
+  function focusOption(index: number) {
+    window.requestAnimationFrame(() => optionRefs.current[index]?.focus());
+  }
+
+  function focusRelative(direction: -1 | 1) {
+    if (!visibleOptions.length) return;
+    const current = optionRefs.current.findIndex((element) => element === document.activeElement);
+    const next = (Math.max(0, current) + direction + visibleOptions.length) % visibleOptions.length;
+    focusOption(next);
+  }
+
+  function focusByTypeahead(key: string) {
+    if (typeaheadTimerRef.current !== null) window.clearTimeout(typeaheadTimerRef.current);
+    typeaheadRef.current += key.toLocaleLowerCase();
+    typeaheadTimerRef.current = window.setTimeout(() => {
+      typeaheadRef.current = "";
+      typeaheadTimerRef.current = null;
+    }, 600);
+    const current = optionRefs.current.findIndex((element) => element === document.activeElement);
+    const indexes = visibleOptions.map((_, index) => index);
+    const ordered = [...indexes.slice(current + 1), ...indexes.slice(0, current + 1)];
+    const match = ordered.find((index) =>
+      visibleOptions[index]?.name.toLocaleLowerCase().startsWith(typeaheadRef.current),
+    );
+    if (match !== undefined) focusOption(match);
+  }
+
   return (
-    <div className="visual-preset-select">
+    <div className="visual-preset-select" id={id}>
       <span className="field-label">{label}</span>
       <details
         className="visual-preset-details"
         ref={detailsRef}
         onToggle={(event) => {
+          setOpen(event.currentTarget.open);
           if (!event.currentTarget.open) setQuery("");
         }}
         onKeyDown={(event) => {
-          if (event.key !== "Escape" || !detailsRef.current?.open) return;
-          event.preventDefault();
-          closeAndFocus();
+          if (event.key === "Escape" && detailsRef.current?.open) {
+            event.preventDefault();
+            closeAndFocus();
+            return;
+          }
+          const fromSearch = event.target instanceof HTMLInputElement;
+          if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+            if (fromSearch && event.key !== "ArrowDown") return;
+            event.preventDefault();
+            if (!detailsRef.current?.open) {
+              detailsRef.current?.setAttribute("open", "");
+              setOpen(true);
+              const selectedIndex = visibleOptions.findIndex((option) => option.id === selectedId);
+              if (event.key === "End") focusOption(Math.max(0, visibleOptions.length - 1));
+              else if (event.key === "Home") focusOption(0);
+              else if (selectedIndex >= 0) focusOption(selectedIndex);
+              else
+                focusOption(event.key === "ArrowUp" ? Math.max(0, visibleOptions.length - 1) : 0);
+              return;
+            }
+            if (event.key === "Home") focusOption(0);
+            else if (event.key === "End") focusOption(Math.max(0, visibleOptions.length - 1));
+            else focusRelative(event.key === "ArrowDown" ? 1 : -1);
+            return;
+          }
+          if (
+            !fromSearch &&
+            detailsRef.current?.open &&
+            event.key.length === 1 &&
+            !event.altKey &&
+            !event.ctrlKey &&
+            !event.metaKey
+          ) {
+            focusByTypeahead(event.key);
+          }
         }}
       >
-        <summary className="visual-preset-summary">
+        <summary className="visual-preset-summary" aria-expanded={open}>
           {selected ? (
             <>
               <PresetImage src={selected.imageUrl} alt={`${selected.name} selected preset`} />
@@ -277,7 +351,7 @@ function VisualPresetSelect({
               />
             </label>
           ) : null}
-          {visibleOptions.map((option) => {
+          {visibleOptions.map((option, optionIndex) => {
             const checked = option.id === selectedId;
             return (
               <button
@@ -286,6 +360,10 @@ function VisualPresetSelect({
                 aria-checked={checked}
                 className={`visual-preset-option ${checked ? "selected" : ""}`}
                 key={option.id}
+                ref={(element) => {
+                  optionRefs.current[optionIndex] = element;
+                }}
+                tabIndex={checked ? 0 : -1}
                 onClick={() => {
                   onChange(option.id);
                   closeAndFocus();
@@ -733,22 +811,26 @@ export function CreateProjectScreen() {
     user_seed: draft.userSeed,
   };
   const estimatedCostUsd = 0.88;
-  const canSubmit = Boolean(
-    draftHydrated &&
-      !bootstrap.isPending &&
-      !bootstrap.isError &&
-      !compute.isPending &&
-      !compute.isError &&
-      !audioPending &&
-      !audioError &&
-      selectedAvatar &&
-      selectedStyle &&
-      primaryProfilesReady &&
-      !conflict &&
-      !keywordEmpty &&
-      draft.spendCapUsd >= estimatedCostUsd &&
-      createProjectRequestSchema.safeParse(payload).success,
-  );
+  const submitBlockers = createProjectBlockers({
+    audioError,
+    audioPending,
+    avatarReady: Boolean(selectedAvatar),
+    bootstrapState: bootstrap.isError ? "error" : bootstrap.isPending ? "pending" : "ready",
+    computeState: compute.isError ? "error" : compute.isPending ? "pending" : "ready",
+    contractValid: createProjectRequestSchema.safeParse(payload).success,
+    draftHydrated,
+    estimatedCostUsd,
+    keywordConflictLabels: keywordValidation.conflicts.map((item) => item.label),
+    keywordEnabled: draft.applyExtraPromptKeywords,
+    keywordText: draft.extraPromptKeywords,
+    primaryProfilesReady,
+    spendCapUsd: draft.spendCapUsd,
+    stylePublished: Boolean(selectedStyle),
+    title: draft.title,
+    voiceoverAssetId: draft.voiceoverAssetId,
+  });
+  const canSubmit = submitBlockers.length === 0;
+  const primaryBlocker = submitBlockers[0];
   const create = useMutation({
     mutationFn: async () => {
       setSubmittedError(null);
@@ -857,6 +939,7 @@ export function CreateProjectScreen() {
                   <label className="dropzone">
                     <input
                       aria-label="Upload final voiceover"
+                      id="voiceover-input"
                       type="file"
                       accept="audio/wav,audio/mpeg,audio/mp4,audio/aac,audio/flac"
                       disabled={audioPending || create.isPending}
@@ -895,6 +978,7 @@ export function CreateProjectScreen() {
               <div className="create-section-grid">
                 <div className="field preset-field">
                   <VisualPresetSelect
+                    id="avatar-profile-select"
                     label="Avatar Profile"
                     options={readyAvatars.map((avatar) => ({
                       id: avatar.versionId,
@@ -925,6 +1009,7 @@ export function CreateProjectScreen() {
                 </div>
                 <div className="field preset-field">
                   <VisualPresetSelect
+                    id="image-style-select"
                     label="Image Style"
                     options={publishedStyles.map((style) => ({
                       id: style.versionId,
@@ -1004,7 +1089,7 @@ export function CreateProjectScreen() {
               </header>
               <div className="create-section-grid">
                 {imageLane && avatarLane ? (
-                  <div className="compute-lane-grid field-wide">
+                  <div className="compute-lane-grid field-wide" id="compute-profiles">
                     <ComputeLaneSelect
                       lane={imageLane}
                       selectedProfileId={selectedImageProfileId}
@@ -1069,15 +1154,38 @@ export function CreateProjectScreen() {
         </Panel>
         <div className="stack">
           <Panel className="create-run-panel" eyebrow="Run" heading="Ready to generate">
-            <div className={`run-readiness ${canSubmit ? "ready" : "blocked"}`} role="status">
+            <div
+              className={`run-readiness ${canSubmit ? "ready" : "blocked"}`}
+              role="status"
+              id="run-blocker-summary"
+            >
               {canSubmit ? <Check size={18} /> : <AlertTriangle size={18} />}
-              <strong>{canSubmit ? "Ready" : "Complete required inputs"}</strong>
+              <span>
+                <strong>
+                  {canSubmit ? "Ready" : (primaryBlocker?.message ?? "Review inputs.")}
+                </strong>
+                {!canSubmit && submitBlockers.length > 1 ? (
+                  <small>{submitBlockers.length - 1} more to review</small>
+                ) : null}
+              </span>
             </div>
-            {draft.spendCapUsd < estimatedCostUsd ? (
-              <div className="validation validation-danger">
-                <AlertTriangle size={16} />${estimatedCostUsd.toFixed(2)} fixture estimate exceeds
-                this cap.
-              </div>
+            {!canSubmit && submitBlockers.length > 1 ? (
+              <Disclosure
+                className="run-blocker-details"
+                summary={<span>Review all {submitBlockers.length} issues</span>}
+              >
+                <ul className="run-blocker-list">
+                  {submitBlockers.map((blocker) => (
+                    <li key={blocker.code}>
+                      {blocker.target ? (
+                        <a href={`#${blocker.target}`}>{blocker.message}</a>
+                      ) : (
+                        blocker.message
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </Disclosure>
             ) : null}
             <div className="field">
               <label htmlFor="spend-cap">Hard spend cap</label>
@@ -1098,7 +1206,12 @@ export function CreateProjectScreen() {
               />
               <small>Estimated ${estimatedCostUsd.toFixed(2)} · fixture spend $0</small>
             </div>
-            <Button busy={create.isPending} disabled={!canSubmit} onClick={() => create.mutate()}>
+            <Button
+              busy={create.isPending}
+              disabled={!canSubmit}
+              aria-describedby={canSubmit ? undefined : "run-blocker-summary"}
+              onClick={() => create.mutate()}
+            >
               {create.isPending ? "Creating project…" : "Generate video"}
               <ArrowRight size={16} />
             </Button>
@@ -1239,6 +1352,7 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
         tone: "danger",
         text: error instanceof Error ? error.message : "The fixture action could not be accepted.",
       });
+    } finally {
       setAction(null);
     }
   }

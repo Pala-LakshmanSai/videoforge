@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { dockMotionTarget } from "./dock-motion";
+import { dockMotionTarget, dockSpringSettled, stepDockSpring } from "./dock-motion";
 
 describe("dockMotionTarget", () => {
   it("produces a macOS-like center, neighbor, and far curve", () => {
@@ -37,6 +37,35 @@ describe("dockMotionTarget", () => {
       liftPx: 0,
       scale: 1,
       shiftPx: 0,
+    });
+  });
+});
+
+describe("dock spring", () => {
+  it("approaches a new target with continuous velocity instead of jumping", () => {
+    const first = stepDockSpring({ value: 1, velocity: 0 }, 1.68, 1 / 60);
+    expect(first.value).toBeGreaterThan(1);
+    expect(first.value).toBeLessThan(1.68);
+    expect(first.velocity).toBeGreaterThan(0);
+
+    const redirected = stepDockSpring(first, 1.1, 1 / 60);
+    expect(redirected.value).not.toBe(1.1);
+    expect(Math.abs(redirected.value - first.value)).toBeLessThan(0.2);
+  });
+
+  it("settles snappily at the target after repeated animation frames", () => {
+    let spring = { value: 1, velocity: 0 };
+    for (let frame = 0; frame < 120; frame += 1) {
+      spring = stepDockSpring(spring, 1.68, 1 / 60);
+    }
+    expect(spring.value).toBeCloseTo(1.68, 3);
+    expect(dockSpringSettled(spring, 1.68)).toBe(true);
+  });
+
+  it("fails closed to a finite neutral value for invalid timing", () => {
+    expect(stepDockSpring({ value: 1, velocity: 0 }, 1.5, Number.NaN)).toEqual({
+      value: 1.5,
+      velocity: 0,
     });
   });
 });

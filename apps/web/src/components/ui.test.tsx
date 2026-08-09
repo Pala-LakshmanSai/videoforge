@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { AppSelect, Button, DetailsSheet, Disclosure } from "./ui";
@@ -59,6 +59,41 @@ describe("AppSelect", () => {
 
     fireEvent.click(screen.getByRole("option", { name: "Auto · Fixture · $0" }));
     expect(onValueChange).toHaveBeenCalledWith("fixture_auto");
+    expect(trigger.closest("details")).not.toHaveAttribute("open");
+  });
+
+  it("supports arrow, boundary, typeahead, and Escape keyboard navigation", async () => {
+    const onValueChange = vi.fn();
+    const { container } = render(
+      <AppSelect
+        label="Image generation compute profile"
+        value="fixture_auto"
+        onValueChange={onValueChange}
+        options={[
+          { value: "fixture_auto", label: "Auto · Fixture · $0" },
+          { value: "blocked", label: "RTX 4090", disabled: true },
+          { value: "balanced", label: "Balanced local" },
+          { value: "fast", label: "Faster local" },
+        ]}
+      />,
+    );
+
+    const view = within(container);
+    const trigger = view.getByLabelText("Image generation compute profile");
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    await waitFor(() =>
+      expect(view.getByRole("option", { name: "Auto · Fixture · $0" })).toHaveFocus(),
+    );
+
+    fireEvent.keyDown(document.activeElement ?? trigger, { key: "ArrowDown" });
+    await waitFor(() => expect(view.getByRole("option", { name: "Balanced local" })).toHaveFocus());
+    fireEvent.keyDown(document.activeElement ?? trigger, { key: "End" });
+    await waitFor(() => expect(view.getByRole("option", { name: "Faster local" })).toHaveFocus());
+    fireEvent.keyDown(document.activeElement ?? trigger, { key: "b" });
+    await waitFor(() => expect(view.getByRole("option", { name: "Balanced local" })).toHaveFocus());
+
+    fireEvent.keyDown(document.activeElement ?? trigger, { key: "Escape" });
+    await waitFor(() => expect(trigger).toHaveFocus());
     expect(trigger.closest("details")).not.toHaveAttribute("open");
   });
 });
