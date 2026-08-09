@@ -188,9 +188,12 @@ def _read_input(path: Path, root: Path) -> dict[str, Any]:
 
 def _absolute_tool(value: str) -> Path:
     path = Path(value)
-    if not path.is_absolute() or path.is_symlink() or not path.is_file():
+    if not path.is_absolute():
         raise ValueError("tool paths must be absolute existing regular files")
-    return path.resolve(strict=True)
+    resolved = path.resolve(strict=True)
+    if not resolved.is_file():
+        raise ValueError("tool paths must be absolute existing regular files")
+    return resolved
 
 
 def _transcribe(arguments: argparse.Namespace, resolver: LocalArtifactResolver) -> dict[str, Any]:

@@ -50,7 +50,16 @@ def _normalize_text(value: object, label: str) -> str:
 
 
 def _words_from_segment(segment: dict[str, Any], segment_index: int) -> list[_WordCandidate]:
-    text = _normalize_text(segment.get("text"), f"segment {segment_index}")
+    raw_text = segment.get("text")
+    if not isinstance(raw_text, str):
+        raise WhisperOutputError(f"segment {segment_index} text must be a string")
+    normalized = " ".join(raw_text.split())
+    if not normalized:
+        start_ms, end_ms = _offsets(segment.get("offsets"), f"segment {segment_index}")
+        if start_ms == end_ms:
+            return []
+        raise WhisperOutputError(f"segment {segment_index} text is empty")
+    text = _normalize_text(raw_text, f"segment {segment_index}")
     if any(character.isspace() for character in text):
         raise WhisperOutputError(
             f"segment {segment_index} is not word-split and has no usable token timestamps"
