@@ -19,7 +19,7 @@ derived_indexes:
   - MANIFEST.yaml
   - 00_START_HERE.md
 conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
-target_profile_word_budget: 9000
+target_profile_word_budget: 9250
 
 read_profiles:
   product:
@@ -188,6 +188,7 @@ approved_decisions:
   DEC_UX_001: fixture_first_live_chrome_hot_reload
   DEC_UX_002: medium_minimal_production_console_fixed_base_scale_only_macos_like_dock
   DEC_UX_003: visual_presets_with_on_demand_reference_and_audit_details
+  DEC_UX_004: visible_layered_surface_separation_with_consistent_page_rhythm
 
 open_gates:
   GATE_AVATAR_001: avatarforcing_exact_avatar_4090_fit_speed_quality

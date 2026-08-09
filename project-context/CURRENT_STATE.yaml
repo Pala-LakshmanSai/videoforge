@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-09T17:10:01Z"
+updated_at: "2026-08-09T17:36:44Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: true
 current_milestone: phase_0c_local_walking_slice_acceptance
-current_task: VF-UI-DOCK-001
+current_task: VF-UI-SURFACE-001
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -14,11 +14,11 @@ repository:
   remote: null
   published: false
   branch: main
-  base_commit: "f635604075d9ff768e98a28200fcb732ee6c4083"
+  base_commit: "1ac161dbf6b8fbc08568dc0456a5c6f6ee8d8992"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
-  verified_implementation_commit: "277e18f5c370d445ec9c69c7447ddcad3287629e"
-  last_good_commit: "277e18f5c370d445ec9c69c7447ddcad3287629e"
+  verified_implementation_commit: "3ec957c9ecd2c06cd12ad50c5d183f56d907c8e3"
+  last_good_commit: "3ec957c9ecd2c06cd12ad50c5d183f56d907c8e3"
   dependency_policy:
     ajv: "8.20.0"
     note: "Security override of the original 8.17.1 pin: 8.17.1 is affected by a moderate ReDoS advisory."
@@ -33,12 +33,12 @@ live_development:
     pid: null
     lifetime: null
   server_state: running
-  dev_server_pid: 61570
-  owner_task_id: VF-UI-DOCK-001
-  health_checked_at: "2026-08-09T17:05:30Z"
-  health_commit: "277e18f"
-  chrome_route: "http://localhost:4173/styles?fixture=avatar_lip_failure"
-  fixture_scenario: avatar_lip_failure
+  dev_server_pid: 65282
+  owner_task_id: VF-UI-SURFACE-001
+  health_checked_at: "2026-08-09T17:36:44Z"
+  health_commit: "709e45d"
+  chrome_route: "http://localhost:4173/usage?fixture=happy_generating"
+  fixture_scenario: happy_generating
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
@@ -56,23 +56,28 @@ live_development:
       - DEC_UX_003
   latest_user_directed_ui_change:
     status: implemented_and_verified_pending_user_review
-    task_id: VF-UI-DOCK-001
-    commit: "277e18f5c370d445ec9c69c7447ddcad3287629e"
-    route: "http://localhost:4173/styles?fixture=avatar_lip_failure"
-    checked_at: "2026-08-09T17:05:30Z"
-    evidence: "evidence/gates/GATE_UI_001/2026-08-09-scale-only-dock-refinement"
-    user_direction: "Match the macOS dock with larger resting icons and stronger scale-only proximity magnification; remove lift, bottom padding movement, neighbor translation, and backing-tile expansion."
+    task_id: VF-UI-SURFACE-001
+    commit: "709e45df46a4276541334ef9dcbdf12b5863ffee"
+    route: "http://localhost:4173/usage?fixture=happy_generating"
+    checked_at: "2026-08-09T17:36:44Z"
+    evidence: "evidence/gates/GATE_UI_001/2026-08-09-surface-separation-refinement"
+    user_direction: "Fix touching layouts and weak visual division application-wide with real spacing plus visible borders, restrained shadows, or restrained glow in the established futuristic clean/minimal style."
     feedback_refs:
-      - DEC_UX_002
+      - DEC_UX_004
 
 active_ownership:
-  - task_id: VF-UI-DOCK-001
+  - task_id: VF-UI-SURFACE-001
     owner: root_ui_lane
     paths:
-      - apps/web/src/components/AppShell.tsx
-      - apps/web/src/lib/dock-motion.ts
-      - apps/web/src/lib/dock-motion.test.ts
+      - apps/web/src/screens/UsageScreen.tsx
+      - apps/web/src/styles/tokens-base.css
       - apps/web/src/styles/shell.css
+      - apps/web/src/styles/components.css
+      - apps/web/src/styles/features/queue.css
+      - apps/web/src/styles/features/project-review.css
+      - apps/web/src/styles/features/preset-hubs.css
+      - apps/web/src/styles/features/library-usage-settings.css
+      - apps/web/src/styles/responsive.css
       - apps/web/tests/e2e/shell.spec.ts
       - project-context/**
 
@@ -84,7 +89,7 @@ recommended_next_task:
   dependencies:
     - "GATE_UI_001 closed"
     - "provider-free local pipeline and API integration commit f635604075d9ff768e98a28200fcb732ee6c4083"
-    - "user review of dock refinement commit 277e18f5c370d445ec9c69c7447ddcad3287629e"
+    - "user review of dock refinement commit 277e18f5c370d445ec9c69c7447ddcad3287629e and surface-separation refinement commit 709e45df46a4276541334ef9dcbdf12b5863ffee"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   live_route: "http://localhost:4173"
@@ -102,11 +107,12 @@ last_green:
     - "pnpm --filter @videoforge/web test"
     - "pnpm --filter @videoforge/web typecheck"
     - "pnpm --filter @videoforge/web lint"
-    - "pnpm --filter @videoforge/web test:chrome -- tests/e2e/shell.spec.ts"
-    - "Real Chrome 2544x1105 scale-only dock geometry and visual audit"
-  checked_at: "2026-08-09T17:10:01Z"
+    - "pnpm --filter @videoforge/web build"
+    - "pnpm --filter @videoforge/web test:chrome"
+    - "Real Chrome 2544x1161 multi-route surface geometry, console, and visual audit"
+  checked_at: "2026-08-09T17:36:44Z"
   result: pass
-  evidence: "evidence/gates/GATE_UI_001/2026-08-09-scale-only-dock-refinement"
+  evidence: "evidence/gates/GATE_UI_001/2026-08-09-surface-separation-refinement"
   counts:
     web_server_component_tests: 118
     dock_motion_unit_tests: 7
@@ -117,14 +123,15 @@ last_green:
     pipeline_tests: 19
     isolated_worker_tests: 37
     synchronized_contract_files: 47
-    focused_shell_chrome_journeys: 20
-    playwright_chrome_journeys: 26
+    focused_shell_chrome_journeys: 22
+    playwright_chrome_journeys: 28
   notes:
-    - "The final pnpm verify passes formatting, TypeScript and Python linting, typechecking, every listed test suite, canonical contract synchronization, context validation, tracked-file secret scanning, production build, the 26-journey Chrome matrix, and dependency audit."
-    - "Desktop icon tiles now rest at 48x44 px with 30 px glyphs. Real Chrome measured a 1.75x hovered peak, 1.4907x/1.5150x immediate neighbors at the observed pointer position, smaller second neighbors, and exactly 1x far icons."
-    - "Every measured icon bottom stayed at 1034 CSS px and every item box stayed fixed at y=981..1074 while magnifying. Lift, shift, and surface-scale properties were absent; the active ::before transform stayed none."
-    - "Fine-pointer magnification is disabled at 680 px or below and for reduced motion; the labelled mobile 4x2 dock remains neutral."
-    - "The development server reports commit 277e18f, fixture mode, synthetic data, provider calls unauthorized, and $0 authorized spend."
+    - "The final pnpm verify passes formatting, TypeScript and Python linting, typechecking, every listed test suite, canonical contract synchronization, context validation, tracked-file secret scanning, production build, the 28-journey Chrome matrix, and dependency audit."
+    - "Every audited leaf screen now uses a 24 px desktop / 20 px compact top-level rhythm. Usage's two metric groups measure 24 px apart; Library declares a 20 px output gap; notices and their following content measure 24 px apart."
+    - "Structural borders use dedicated 0.22/0.30/0.48 alpha tiers with dark depth shadows and restrained cobalt/violet halos. Project stage rows measure 6 px apart, media lanes 12 px apart, and Settings cards 18 px apart."
+    - "Real Chrome visually reviewed Usage, Queue, Project, Review, Avatar Hub, Image Styles with a blocker notice, Library, Settings, and New Avatar. All measured routes had zero horizontal overflow and no console errors or warnings; automated journeys also found no failed or external requests."
+    - "The scale-only dock remains fixed-bottom with the accepted 48x44 resting icon, 1.75x peak, neutral mobile/reduced-motion modes, and no lift/shift/backing transform."
+    - "The development server reports commit 709e45d, fixture mode, synthetic data, provider calls unauthorized, and $0 authorized spend."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -147,6 +154,7 @@ next_tasks:
 notes:
   - "This is a replace-in-place snapshot, not a progress log."
   - "The user accepted the Phase 0B UI on 2026-08-09. GATE_UI_001 is closed; later tasks preserve this baseline unless the user explicitly changes it or a verified regression is repaired."
+  - "The application-wide surface-separation refinement requested on 2026-08-09 is technically verified at commit 709e45d and remains pending the user's visual review; DEC_UX_004 records the new normative spacing and boundary treatment."
   - "21_IMPLEMENTATION_EXECUTION_PLAN.md owns remaining sequencing, task IDs, safe parallel ownership, integration order, checkpoints, and authorization boundaries."
   - "The Phase 0A fixture-contract foundation is implemented. Complex non-Create Zod/Pydantic validators are intentionally schema-backed entry points rather than independent hand models."
   - "DEC_CONTRACT_001 is locked: TypeScript is the sole JCS authority; Python validates canonical schemas and exact byte hashes while treating canonical JSON hashes as opaque."

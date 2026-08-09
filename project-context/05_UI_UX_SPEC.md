@@ -13,6 +13,8 @@ The user reconfirmed this direction on 2026-08-09 after rejecting the first fixt
 
 The same review later refined the Create Project hierarchy: keep the active choice compact, open choices only on demand, remove nonessential technical hints and success confirmations, and expose the two primary compute lanes without implying unverified GPU availability. The active-project bar remains full-width; only its internal content and progress track are deliberately inset. Every visible select/disclosure uses the VideoForge surface language rather than a browser-native menu. Child choices expand inside the same bordered surface, never as visually detached boxes or an overlay that covers the following controls. The floating dock uses fine-pointer proximity magnification with a calm reduced-motion fallback. Following the user's macOS comparison on 2026-08-09, hover is scale-only: icon tiles grow from a larger resting size, their bottom edges stay fixed, neighboring scale tapers smoothly, and the item plus active-route backing geometry remains static.
 
+The user's later surface-separation review applies across the whole application, not only Usage. Major sibling sections must never touch: use a consistent 24 px desktop and 20 px compact/mobile page rhythm, with explicit nonzero gaps inside card/list grids. Structural surfaces need a clearly visible lavender edge supported by a dark depth shadow and restrained cobalt/violet halo. Keep the effect calm: major panels and cards receive the layered treatment, while nested controls and incidental dividers remain lighter so the UI does not become double-boxed or neon-heavy.
+
 Reuse proven visual concepts from the user's ImageForge app where helpful. The compact, portable baseline is `evidence/source-briefs/LOCAL_BASELINES.md`; the absolute paths below are optional local evidence only, and their absence must never block a fresh chat, clone, build, or test:
 
 - `/Volumes/ESD-USB/ImageForge/src/styles.css`
@@ -41,6 +43,9 @@ Initial design tokens:
 | Success | `#4bd99f` |
 | Control radius | about 18 px |
 | Panel radius | about 28–30 px |
+| Structural boundary | translucent lavender, visibly stronger than control/divider borders; current surface tiers use roughly 22%, 30%, and 48% alpha |
+| Structural depth | dark 10–42 px shadow plus a restrained 1 px cobalt/violet outer halo and subtle inner highlight |
+| Page section gap | 24 px desktop; 20 px compact/mobile; never zero between sibling layout groups |
 | Base text | 18 px desktop and compact/mobile; ordinary reading text 16–18 px |
 | Secondary text | normally at least 16 px; the user-accepted fixture shell retains compact developer-only metadata down to 14.4 px |
 | Micro labels | normally at least 16 CSS px; the user-accepted fixture shell retains short developer-only status labels down to 14.4 px |
@@ -48,13 +53,14 @@ Initial design tokens:
 | Minimum touch target | 44×44 px |
 | Page title | roughly 48–72 px desktop |
 
-- Thin translucent lavender borders.
+- Clearly visible translucent lavender boundaries on structural panels/cards; lighter thin borders remain appropriate for controls and incidental dividers.
 - Restrained red/blue ambient glow and modest blur.
 - Bold clean sans-serif for content; monospace only for job IDs, stages, ETA, cost, and technical status.
 - Generous spacing and clear hierarchy.
 - One dominant action per screen.
 - Glow and gradient must never reduce readability.
 - Major panels normally use 28–42 px padding and 24–32 px inter-section gaps.
+- Shadow or glow reinforces a boundary but never replaces real padding or a nonzero layout gap. Avoid double-boxing nested content and avoid applying a heavy glow to every input.
 - Do not simulate scale with CSS `zoom`; components themselves must use readable type, controls, media, spacing, and hit targets.
 - Do not render ordinary user-facing text below 16 CSS px. The user-accepted fixture baseline may retain its existing 14.4–15.3 px developer-only health, fixture, and terse technical metadata; do not expand that exception to normal product copy.
 
