@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "videoforge-avatar-primary-worker"
+version = "0.0.0"
+description = "VideoForge fixture skeleton for AvatarForcing primary jobs"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/videoforge_avatar_primary"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100

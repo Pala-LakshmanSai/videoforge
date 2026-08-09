@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/image-style-analyzer-output-v1.json",
+  "title": "VideoForge Image Style Analyzer Output v1",
+  "description": "Provider-owned fields only. Resolve and inline the local references before sending this schema to Runware.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "visual_profile", "prompt_profile", "analysis"],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 600
+    },
+    "visual_profile": {
+      "$ref": "https://videoforge.local/schemas/image-style-profile-v1.json#/properties/visual_profile"
+    },
+    "prompt_profile": {
+      "$ref": "https://videoforge.local/schemas/image-style-profile-v1.json#/properties/prompt_profile"
+    },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overall_confidence",
+        "trait_evidence",
+        "uncertain_fields",
+        "outlier_reference_aliases",
+        "content_leakage_warnings"
+      ],
+      "properties": {
+        "overall_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "trait_evidence": {
+          "type": "array",
+          "description": "Compact support map using only request aliases: exactly one entry for each of the 14 defined traits. Semantic validation rejects missing or duplicate trait names.",
+          "minItems": 14,
+          "maxItems": 14,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["trait", "support_status", "confidence", "supporting_reference_aliases"],
+            "properties": {
+              "trait": {
+                "type": "string",
+                "enum": [
+                  "medium",
+                  "realism",
+                  "subject_treatment",
+                  "camera",
+                  "image_framing",
+                  "lighting",
+                  "color",
+                  "contrast_exposure",
+                  "depth_of_field",
+                  "texture_grain",
+                  "human_rendering",
+                  "materials_environment",
+                  "mood",
+                  "continuity"
+                ]
+              },
+              "support_status": {
+                "type": "string",
+                "enum": ["SUPPORTED", "UNCERTAIN", "UNSUPPORTED"]
+              },
+              "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+              "supporting_reference_aliases": {
+                "type": "array",
+                "minItems": 0,
+                "maxItems": 12,
+                "items": {"type": "string", "maxLength": 120}
+              }
+            }
+          }
+        },
+        "uncertain_fields": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {"type": "string", "maxLength": 200}
+        },
+        "outlier_reference_aliases": {
+          "description": "Only opaque aliases supplied in the request, never database IDs or hashes invented by the model.",
+          "type": "array",
+          "maxItems": 12,
+          "items": {"type": "string", "maxLength": 120}
+        },
+        "content_leakage_warnings": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {"type": "string", "maxLength": 240}
+        }
+      }
+    }
+  }
+}

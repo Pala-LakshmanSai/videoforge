@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/create-project-request-v2.json",
+  "title": "VideoForge Create Project Request v2",
+  "description": "Client-to-control-plane input. The server resolves and pins hashes, versions, provider settings, and immutable revision provenance.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "title",
+    "voiceover_asset_id",
+    "avatar_profile_version_id",
+    "image_style_version_id",
+    "extra_prompt_keywords",
+    "apply_extra_prompt_keywords",
+    "generation_mode",
+    "spend_cap_usd"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": ".*\\S.*"
+    },
+    "voiceover_asset_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "avatar_profile_version_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "image_style_version_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "optional_script": {
+      "type": ["string", "null"],
+      "maxLength": 100000
+    },
+    "extra_prompt_keywords": {
+      "type": ["string", "null"],
+      "maxLength": 500
+    },
+    "apply_extra_prompt_keywords": {
+      "type": "boolean",
+      "default": false
+    },
+    "generation_mode": {
+      "type": "string",
+      "enum": ["LOWEST_COST", "BALANCED", "FASTER"]
+    },
+    "execution_profile_overrides": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "image_media_profile_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "avatar_primary_profile_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "avatar_repair_profile_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "avatar_quality_profile_id": {"type": "string", "minLength": 1, "maxLength": 160}
+      }
+    },
+    "spend_cap_usd": {
+      "type": "number",
+      "minimum": 0.1,
+      "maximum": 2
+    },
+    "user_seed": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 4294967295
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"apply_extra_prompt_keywords": {"const": true}},
+        "required": ["apply_extra_prompt_keywords"]
+      },
+      "then": {
+        "properties": {
+          "extra_prompt_keywords": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "pattern": ".*\\S.*"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "name": "videoforge",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": "22.23.2",
+    "pnpm": "11.5.2"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "context:validate": "node scripts/context-validate.mjs",
+    "contracts:sync": "pnpm --filter @videoforge/contracts sync",
+    "contracts:check": "pnpm --filter @videoforge/contracts sync:check",
+    "dev": "node scripts/dev.mjs",
+    "dev:open": "node scripts/dev-open.mjs",
+    "dev:status": "node scripts/dev-status.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "turbo run lint",
+    "test": "turbo run test && pnpm test:workers",
+    "test:chrome": "pnpm --filter @videoforge/web test:chrome",
+    "test:workers": "node scripts/test-workers.mjs",
+    "typecheck": "turbo run typecheck",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm contracts:check && pnpm context:validate && pnpm build && pnpm test:chrome"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.35.0",
+    "eslint": "9.35.0",
+    "globals": "16.3.0",
+    "prettier": "3.6.2",
+    "turbo": "2.5.6",
+    "typescript": "5.9.2",
+    "typescript-eslint": "8.42.0"
+  }
+}

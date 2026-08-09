@@ -1,0 +1,25 @@
+{
+  "name": "@videoforge/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./profiles/fixture-runtime-v1": "./profiles/fixture-runtime.v1.json",
+    "./schemas/worker-health-v1": "./schemas/worker-health.v1.schema.json"
+  },
+  "files": [
+    "dist",
+    "profiles",
+    "schemas"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src test",
+    "test": "node --test test/*.test.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

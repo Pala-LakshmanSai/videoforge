@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/production-manifest-v2.json",
+  "title": "VideoForge Production Manifest v2",
+  "description": "Immutable provenance index for one rendered project revision. Detailed prompts, attempts, QA, and cost events remain in content-addressed child manifests.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "project_revision_id",
+    "created_at",
+    "revision_config_hash",
+    "timeline_plan",
+    "resolved_render_manifest",
+    "prompt_manifest",
+    "attempt_index",
+    "qa_manifest",
+    "cost_ledger_snapshot",
+    "avatar_binding",
+    "style_binding",
+    "model_bindings",
+    "cost_summary",
+    "creative_approval",
+    "final_output"
+  ],
+  "properties": {
+    "schema_version": {"const": "production-manifest/v2"},
+    "project_id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "project_revision_id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "created_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+    },
+    "revision_config_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "timeline_plan": {"$ref": "#/$defs/pointer"},
+    "resolved_render_manifest": {"$ref": "#/$defs/pointer"},
+    "prompt_manifest": {"$ref": "#/$defs/pointer"},
+    "attempt_index": {"$ref": "#/$defs/pointer"},
+    "qa_manifest": {"$ref": "#/$defs/pointer"},
+    "cost_ledger_snapshot": {"$ref": "#/$defs/pointer"},
+    "avatar_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "avatar_profile_id",
+        "avatar_profile_version_id",
+        "avatar_display_name_snapshot",
+        "avatar_profile_hash",
+        "runtime_source_asset_id",
+        "runtime_source_sha256",
+        "source_preparation_version",
+        "source_validation_profile_version",
+        "compatibility_state_at_preflight",
+        "compatibility_evidence"
+      ],
+      "properties": {
+        "avatar_profile_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "avatar_profile_version_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "avatar_display_name_snapshot": {"type": "string", "minLength": 1, "maxLength": 120, "pattern": ".*\\S.*"},
+        "avatar_profile_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "runtime_source_asset_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "runtime_source_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "source_preparation_version": {"type": "string", "minLength": 1, "maxLength": 160},
+        "source_validation_profile_version": {"type": "string", "minLength": 1, "maxLength": 160},
+        "compatibility_state_at_preflight": {
+          "type": "string",
+          "enum": ["UNTESTED", "RUNNING", "PASSED", "FAILED", "STALE", "CANCELLED"]
+        },
+        "compatibility_evidence": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["assessment_id", "assessment_hash", "status", "model_profile_id", "assessed_at"],
+              "properties": {
+                "assessment_id": {"type": "string", "minLength": 1, "maxLength": 160},
+                "assessment_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+                "status": {"type": "string", "enum": ["PASSED", "FAILED", "STALE", "CANCELLED"]},
+                "model_profile_id": {"type": "string", "minLength": 1, "maxLength": 160},
+                "assessed_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"}
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"compatibility_state_at_preflight": {"enum": ["UNTESTED", "RUNNING"]}},
+            "required": ["compatibility_state_at_preflight"]
+          },
+          "then": {"properties": {"compatibility_evidence": {"type": "null"}}}
+        },
+        {
+          "if": {"properties": {"compatibility_state_at_preflight": {"const": "PASSED"}}},
+          "then": {"properties": {"compatibility_evidence": {"type": "object", "properties": {"status": {"const": "PASSED"}}, "required": ["status"]}}}
+        },
+        {
+          "if": {"properties": {"compatibility_state_at_preflight": {"const": "FAILED"}}},
+          "then": {"properties": {"compatibility_evidence": {"type": "object", "properties": {"status": {"const": "FAILED"}}, "required": ["status"]}}}
+        },
+        {
+          "if": {"properties": {"compatibility_state_at_preflight": {"const": "STALE"}}},
+          "then": {"properties": {"compatibility_evidence": {"type": "object", "properties": {"status": {"const": "STALE"}}, "required": ["status"]}}}
+        },
+        {
+          "if": {"properties": {"compatibility_state_at_preflight": {"const": "CANCELLED"}}},
+          "then": {"properties": {"compatibility_evidence": {"type": "object", "properties": {"status": {"const": "CANCELLED"}}, "required": ["status"]}}}
+        }
+      ]
+    },
+    "style_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image_style_version_id", "style_profile_hash"],
+      "properties": {
+        "image_style_version_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "style_profile_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "model_bindings": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "provider", "model_id", "revision_or_profile", "execution_profile_id", "artifact_digest"],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "PROMPT_WRITER", "STYLE_ANALYZER", "IMAGE_GENERATOR", "AVATAR_PRIMARY",
+              "AVATAR_REPAIR", "AVATAR_QUALITY", "ASR", "RENDERER"
+            ]
+          },
+          "provider": {"type": "string", "minLength": 1, "maxLength": 120},
+          "model_id": {"type": "string", "minLength": 1, "maxLength": 240},
+          "revision_or_profile": {"type": "string", "minLength": 1, "maxLength": 240},
+          "execution_profile_id": {"type": ["string", "null"], "minLength": 1, "maxLength": 160},
+          "artifact_digest": {
+            "type": ["string", "null"],
+            "pattern": "^(?:sha256:)?[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "cost_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency", "reported_total_usd", "settled_total_usd"],
+      "properties": {
+        "currency": {"const": "USD"},
+        "reported_total_usd": {"type": "number", "minimum": 0},
+        "settled_total_usd": {"type": ["number", "null"], "minimum": 0}
+      }
+    },
+    "creative_approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "reviewer_user_id", "approved_at"],
+      "properties": {
+        "state": {"const": "APPROVED"},
+        "reviewer_user_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "approved_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+        }
+      }
+    },
+    "final_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_id", "sha256", "bytes", "total_frames", "output_profile_version"],
+      "properties": {
+        "asset_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "bytes": {"type": "integer", "minimum": 1},
+        "total_frames": {"type": "integer", "minimum": 1},
+        "output_profile_version": {"const": "ffmpeg-render-v1"}
+      }
+    }
+  },
+  "$defs": {
+    "pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_id", "sha256"],
+      "properties": {
+        "asset_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "@videoforge/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./generated/*": "./generated/*"
+  },
+  "scripts": {
+    "build": "pnpm sync:check && tsc -p tsconfig.build.json",
+    "lint": "eslint src scripts tests --max-warnings 0",
+    "python:install": "node scripts/bootstrap-python.mjs",
+    "sync": "node scripts/sync-contracts.mjs",
+    "sync:check": "node scripts/sync-contracts.mjs --check",
+    "test": "pnpm test:ts && pnpm test:python",
+    "test:python": "node scripts/run-python-tests.mjs",
+    "test:ts": "pnpm build && node --test tests/*.test.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "ajv": "8.17.1",
+    "zod": "4.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "22.18.0",
+    "eslint": "9.35.0",
+    "typescript": "5.9.2"
+  }
+}
