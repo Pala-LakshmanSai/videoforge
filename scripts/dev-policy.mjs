@@ -42,4 +42,21 @@ export function isLanListenerAddress(address) {
   return address.startsWith("*:") || address.startsWith("0.0.0.0:") || address.startsWith("[::]:");
 }
 
+export function developmentOpenRoute(status, requestedRoute) {
+  const fallback =
+    status?.mode === "local"
+      ? "/projects/new"
+      : `/?fixture=${encodeURIComponent(status?.fixture_id ?? "happy_generating")}`;
+  if (requestedRoute === undefined) return fallback;
+  if (typeof requestedRoute !== "string" || !requestedRoute.startsWith("/")) {
+    throw new Error("Development routes must be same-origin paths beginning with '/'.");
+  }
+  const base = new URL("http://localhost:4173");
+  const resolved = new URL(requestedRoute, base);
+  if (resolved.origin !== base.origin) {
+    throw new Error("Development routes may not navigate to another origin.");
+  }
+  return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+}
+
 export const integrationEnvironmentNames = INTEGRATION_ENVIRONMENT_NAMES;

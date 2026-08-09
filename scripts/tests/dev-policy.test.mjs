@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   assertProviderFreeEnvironment,
+  developmentOpenRoute,
   isLanListenerAddress,
   presentIntegrationSecretNames,
   sanitizedDevelopmentEnvironment,
@@ -40,4 +41,17 @@ test("listener exposure classification distinguishes wildcard and loopback bindi
   assert.equal(isLanListenerAddress("127.0.0.1:4173"), false);
   assert.equal(isLanListenerAddress("[::1]:4173"), false);
   assert.equal(isLanListenerAddress(undefined), false);
+});
+
+test("development open routes select truthful defaults and reject another origin", () => {
+  assert.equal(developmentOpenRoute({ mode: "local" }), "/projects/new");
+  assert.equal(
+    developmentOpenRoute({ mode: "fixture", fixture_id: "budget_blocked" }),
+    "/?fixture=budget_blocked",
+  );
+  assert.equal(
+    developmentOpenRoute({ mode: "fixture" }, "/usage?fixture=happy_generating"),
+    "/usage?fixture=happy_generating",
+  );
+  assert.throws(() => developmentOpenRoute({ mode: "fixture" }, "//example.invalid/path"));
 });
