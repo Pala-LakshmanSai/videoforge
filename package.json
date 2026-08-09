@@ -24,7 +24,8 @@
     "test:workers": "node scripts/test-workers.mjs",
     "typecheck": "turbo run typecheck",
     "audit:dependencies": "pnpm audit --audit-level high",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm contracts:check && pnpm context:validate && pnpm build && pnpm test:chrome && pnpm audit:dependencies"
+    "secret:scan": "node scripts/secret-scan.mjs",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm contracts:check && pnpm context:validate && pnpm secret:scan && pnpm build && pnpm test:chrome && pnpm audit:dependencies"
   },
   "devDependencies": {
     "@eslint/js": "9.35.0",

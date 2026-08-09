@@ -37,11 +37,11 @@ flowchart LR
 
 ## Phase 0A: private repository and contract skeleton
 
-Current (2026-08-09): repo/commands, ten canonical contracts, cross-language validator entry
-points, and TypeScript JCS exist. `worker-job-envelope/v1` and `orchestration-state/v1` now lock
+Current (2026-08-09): repo/commands, ten contracts, validator entry
+points, and TypeScript JCS exist. `worker-job-envelope/v1` and `orchestration-state/v1` lock
 claim-bound dispatch plus task/attempt/outbox/event state before provider transport. Complex
-documents intentionally use canonical Draft 2020-12 JSON Schema through Zod/Pydantic entry points
-instead of drift-prone independent hand models; Create Project remains independently typed at the
+documents use canonical Draft 2020-12 JSON Schema through Zod/Pydantic entry points
+instead of independent hand models; Create Project remains independently typed at the
 interactive form boundary. Python JCS and persistent database orchestration remain later work, so
 0A is not yet closed.
 

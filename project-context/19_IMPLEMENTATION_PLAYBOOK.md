@@ -21,6 +21,7 @@ Implementation starts only when the user authorizes it.
    - `pnpm dev:open` — open or focus the stable route in the user's real Chrome after the health check passes.
    - `pnpm test` — local unit/schema tests.
    - `pnpm test:chrome` — Playwright smoke against the running stable URL.
+   - `pnpm secret:scan` — detect tracked secrets without echoing values.
    - `pnpm verify` — formatting check, lint, typecheck, unit/contracts/context validation, and fixture-mode Chrome smoke; it must not call external providers. It reuses a healthy owned server or starts/stops only a server instance it owns, never the user's unrelated process.
    - `pnpm context:validate` — invoke both `project-context/scripts/validate-context.sh` and `project-context/scripts/validate-schemas.sh`; after the monorepo installs pinned Ajv, this is network-free.
 5. Convert the context schemas into shared TypeScript/Zod and Python/Pydantic contracts, with golden cross-language fixtures.
