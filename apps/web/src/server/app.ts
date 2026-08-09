@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import {
   createProjectRequestSchema,
+  sha256CanonicalJson,
   validateOutputRuleKeywords,
   type CreateProjectRequest,
 } from "@videoforge/contracts";
@@ -37,7 +38,6 @@ import { apiProblem, problemResponse } from "./problem";
 
 const FIXTURE_ESTIMATED_COST_USD = 0.88;
 const FIXTURE_FALLBACK_INCREMENT_USD = 0.18;
-const FIXTURE_VERSION_TOKEN = "fixture-v1";
 const VERIFIED_FIXTURE_VOICEOVER_HANDLE = /^fixture_voiceover_sha256_[a-f0-9]{64}$/u;
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const AVATAR_FIXTURE_PATH = /^\/fixtures\/avatar\/[a-z0-9][a-z0-9._-]*\.svg$/u;
@@ -47,6 +47,10 @@ const FIXTURE_SESSION_HEADER = "x-videoforge-fixture-session";
 const DEFAULT_FIXTURE_SESSION_ID = "default";
 const MAX_FIXTURE_SESSION_ID_LENGTH = 96;
 const MAX_FIXTURE_SESSION_NAMESPACES = 256;
+const MAX_IDEMPOTENCY_RECORDS_PER_SESSION = 512;
+const MAX_REGISTERED_VOICEOVERS_PER_SESSION = 128;
+const MAX_CREATED_AVATARS_PER_SESSION = 64;
+const MAX_CREATED_STYLES_PER_SESSION = 64;
 const FIXTURE_SESSION_ID = /^[A-Za-z0-9](?:[A-Za-z0-9._:-]{0,95})$/u;
 const FIXTURE_PREVIEW_FILE = resolve(process.cwd(), "public/fixtures/media/watermelon-market.svg");
 
@@ -76,6 +80,7 @@ interface ProjectPins {
 
 type RuntimeProjectSummary = ProjectSummaryResponse & {
   revisionId: string;
+  versionToken: string;
   pins: ProjectPins;
 };
 
@@ -146,7 +151,6 @@ const avatarProfileMetadataSchema = z
         height: z.number().int().min(512).max(16_384),
       })
       .strict(),
-    profile_hash: z.string().regex(SHA256),
     preparation_profile: z.string().trim().min(1).max(120),
     validation_profile: z.string().trim().min(1).max(120),
     compatibility: z.enum(["UNTESTED", "RUNNING", "PASSED", "FAILED", "CANCELLED", "STALE"]),
@@ -169,7 +173,6 @@ const imageStyleMetadataSchema = z
     cover_url: z.string().regex(STYLE_FIXTURE_PATH),
     reference_urls: z.array(z.string().regex(STYLE_FIXTURE_PATH)).max(8),
     example_urls: z.array(z.string().regex(STYLE_FIXTURE_PATH)).max(8),
-    profile_hash: z.string().regex(SHA256),
     medium: z.string().trim().min(1).max(160),
     lighting: z.string().trim().min(1).max(160),
     color: z.string().trim().min(1).max(160),
@@ -191,6 +194,43 @@ const imageStyleMetadataSchema = z
     path: ["example_urls"],
   });
 
+type AvatarProfileMetadata = z.infer<typeof avatarProfileMetadataSchema>;
+type ImageStyleMetadata = z.infer<typeof imageStyleMetadataSchema>;
+
+function avatarProfileHashPayload(metadata: AvatarProfileMetadata): Record<string, unknown> {
+  return {
+    schema_version: "fixture-avatar-profile-version/v1",
+    thumbnail_url: metadata.thumbnail_url,
+    source_dimensions: metadata.source_dimensions,
+    preparation_profile: metadata.preparation_profile,
+    validation_profile: metadata.validation_profile,
+    compatibility: metadata.compatibility,
+    lifecycle: metadata.lifecycle,
+    version_state: metadata.version_state,
+    uploaded_bytes_persisted: metadata.uploaded_bytes_persisted,
+    attestations: metadata.attestations,
+  };
+}
+
+function imageStyleHashPayload(metadata: ImageStyleMetadata): Record<string, unknown> {
+  return {
+    schema_version: "fixture-image-style-version/v1",
+    summary: metadata.summary,
+    cover_url: metadata.cover_url,
+    reference_urls: metadata.reference_urls,
+    example_urls: metadata.example_urls,
+    medium: metadata.medium,
+    lighting: metadata.lighting,
+    color: metadata.color,
+    texture: metadata.texture,
+    retention_summary: metadata.retention_summary,
+    lifecycle: metadata.lifecycle,
+    version_state: metadata.version_state,
+    uploaded_bytes_persisted: metadata.uploaded_bytes_persisted,
+    attestations: metadata.attestations,
+  };
+}
+
 function resolveContextFixture(c: Context): FixtureResolution {
   return fixtureFromRequest(c.req.raw);
 }
@@ -199,13 +239,31 @@ type ProjectDetailResolution =
   | { ok: true; detail: RuntimeProjectDetail }
   | { ok: false; response: Response };
 
+function projectVersionToken(projectId: string, revisionId: string, version: number): string {
+  return `"vf-${projectId}-${revisionId}-v${version}"`;
+}
+
+function nextProjectVersionToken(current: string): string {
+  const match = /-v([1-9][0-9]*)"$/u.exec(current);
+  if (!match) throw new Error("Runtime project has an invalid version token.");
+  return current.replace(/-v[1-9][0-9]*"$/u, `-v${Number(match[1]) + 1}"`);
+}
+
+function rotateProjectVersion(detail: RuntimeProjectDetail): string {
+  const next = nextProjectVersionToken(detail.project.versionToken);
+  detail.project.versionToken = next;
+  return next;
+}
+
 function enrichProjectSummary(
   scenario: FixtureScenario,
   project: ProjectSummaryResponse,
 ): RuntimeProjectSummary {
+  const revisionId = scenario.snapshot.project?.revisionId ?? "revision_fixture_unknown";
   return {
     ...structuredClone(project),
-    revisionId: scenario.snapshot.project?.revisionId ?? "revision_fixture_unknown",
+    revisionId,
+    versionToken: projectVersionToken(project.id, revisionId, 1),
     pins: {
       avatarProfileVersionId: scenario.snapshot.draft.avatarProfileVersionId,
       imageStyleVersionId: scenario.snapshot.draft.imageStyleVersionId,
@@ -405,13 +463,17 @@ function mutationHeadersError(c: Context, requireVersion = false): Response | nu
       ),
     );
   }
-  if (requireVersion && c.req.header("if-match") !== FIXTURE_VERSION_TOKEN) {
+  return null;
+}
+
+function projectVersionError(c: Context, currentVersionToken: string): Response | null {
+  if (c.req.header("if-match") !== currentVersionToken) {
     return problemResponse(
       apiProblem(
         "REVISION_CONFLICT",
         412,
         "The project version has changed",
-        `Send the exact current If-Match token '${FIXTURE_VERSION_TOKEN}' before retrying.`,
+        "Refresh the authoritative project state and retry with its current version token.",
         false,
       ),
     );
@@ -490,6 +552,21 @@ async function idempotentMutation(
   }
 
   const record: IdempotencyRecord = { fingerprint, response: null, pending: null };
+  if (ledger.size >= MAX_IDEMPOTENCY_RECORDS_PER_SESSION) {
+    const settledKey = [...ledger].find(([, value]) => value.pending === null)?.[0];
+    if (settledKey) ledger.delete(settledKey);
+  }
+  if (ledger.size >= MAX_IDEMPOTENCY_RECORDS_PER_SESSION) {
+    return problemResponse(
+      apiProblem(
+        "IDEMPOTENCY_CAPACITY_EXCEEDED",
+        429,
+        "Too many fixture mutations are still pending",
+        "Wait for an in-flight fixture mutation to settle, then retry with the same key.",
+        true,
+      ),
+    );
+  }
   const pending = Promise.resolve()
     .then(() => handle(rawBody))
     .then((response) => {
@@ -1113,7 +1190,7 @@ export function createApiApp(
   });
 
   app.post("/api/v1/avatar-profiles", (c) =>
-    fixtureMutation(c, false, (rawBody, state) => {
+    fixtureMutation(c, false, async (rawBody, state) => {
       const resolved = resolveContextFixture(c);
       if (!resolved.ok) return resolved.response;
       const metadata = readStrictMetadata(
@@ -1121,7 +1198,7 @@ export function createApiApp(
         avatarProfileMetadataSchema,
         "INVALID_AVATAR_PROFILE_METADATA",
         "Avatar Profile metadata is invalid",
-        "Send strict fixture metadata with an owned same-origin thumbnail, a 64-hex hash, and both required attestations.",
+        "Send strict fixture metadata with an owned same-origin thumbnail and both required attestations. The server derives the immutable profile hash.",
       );
       if (!metadata.ok) return metadata.response;
       const duplicate = avatarCatalog(resolved.scenario, state.createdAvatars).some(
@@ -1138,8 +1215,20 @@ export function createApiApp(
           ),
         );
       }
+      if (state.createdAvatars.length >= MAX_CREATED_AVATARS_PER_SESSION) {
+        return problemResponse(
+          apiProblem(
+            "AVATAR_PROFILE_CAPACITY_EXCEEDED",
+            429,
+            "Fixture Avatar Profile capacity is full",
+            "Reset this local fixture session before creating more synthetic profiles.",
+            false,
+          ),
+        );
+      }
       state.avatarSequence += 1;
       const suffix = String(state.avatarSequence).padStart(3, "0");
+      const profileHash = await sha256CanonicalJson(avatarProfileHashPayload(metadata.data));
       const profile: AvatarProfileResponse = {
         id: `avatar_profile_fixture_created_${suffix}`,
         versionId: `avatar_profile_version_fixture_created_${suffix}`,
@@ -1159,7 +1248,7 @@ export function createApiApp(
         selectedVersion: 1,
         warning: "Fixture metadata only; uploaded bytes were not persisted",
         thumbnailUrl: metadata.data.thumbnail_url,
-        profileHash: metadata.data.profile_hash,
+        profileHash,
         preparationProfile: metadata.data.preparation_profile,
         validationProfile: metadata.data.validation_profile,
         rightsStatus: "ATTESTED",
@@ -1191,7 +1280,7 @@ export function createApiApp(
   });
 
   app.post("/api/v1/image-styles", (c) =>
-    fixtureMutation(c, false, (rawBody, state) => {
+    fixtureMutation(c, false, async (rawBody, state) => {
       const resolved = resolveContextFixture(c);
       if (!resolved.ok) return resolved.response;
       const metadata = readStrictMetadata(
@@ -1199,7 +1288,7 @@ export function createApiApp(
         imageStyleMetadataSchema,
         "INVALID_IMAGE_STYLE_METADATA",
         "Image Style metadata is invalid",
-        "Send strict published-version metadata with owned same-origin media paths, a 64-hex hash, and both required attestations.",
+        "Send strict published-version metadata with owned same-origin media paths and both required attestations. The server derives the immutable profile hash.",
       );
       if (!metadata.ok) return metadata.response;
       const duplicate = imageStyleCatalog(resolved.scenario, state.createdStyles).some(
@@ -1216,8 +1305,20 @@ export function createApiApp(
           ),
         );
       }
+      if (state.createdStyles.length >= MAX_CREATED_STYLES_PER_SESSION) {
+        return problemResponse(
+          apiProblem(
+            "IMAGE_STYLE_CAPACITY_EXCEEDED",
+            429,
+            "Fixture Image Style capacity is full",
+            "Reset this local fixture session before creating more synthetic styles.",
+            false,
+          ),
+        );
+      }
       state.styleSequence += 1;
       const suffix = String(state.styleSequence).padStart(3, "0");
+      const profileHash = await sha256CanonicalJson(imageStyleHashPayload(metadata.data));
       const style: ImageStyleResponse = {
         id: `image_style_fixture_created_${suffix}`,
         versionId: `image_style_version_fixture_created_${suffix}`,
@@ -1234,7 +1335,7 @@ export function createApiApp(
         coverUrl: metadata.data.cover_url,
         referenceUrls: [...metadata.data.reference_urls],
         exampleUrls: [...metadata.data.example_urls],
-        profileHash: metadata.data.profile_hash,
+        profileHash,
         medium: metadata.data.medium,
         lighting: metadata.data.lighting,
         color: metadata.data.color,
@@ -1307,6 +1408,17 @@ export function createApiApp(
           ),
         );
       }
+      if (!existing && state.registeredVoiceovers.size >= MAX_REGISTERED_VOICEOVERS_PER_SESSION) {
+        return problemResponse(
+          apiProblem(
+            "VOICEOVER_REGISTRATION_CAPACITY_EXCEEDED",
+            429,
+            "Fixture voiceover capacity is full",
+            "Reset this local fixture session before registering another synthetic voiceover.",
+            false,
+          ),
+        );
+      }
       state.registeredVoiceovers.set(voiceover.assetId, voiceover);
       return c.json(
         { ok: true as const, voiceover, synthetic: true as const },
@@ -1358,6 +1470,7 @@ export function createApiApp(
       session.state.runtimeProjects,
     );
     if (!project.ok) return project.response;
+    c.header("etag", project.detail.project.versionToken);
     return c.json(project.detail);
   });
 
@@ -1498,6 +1611,7 @@ export function createApiApp(
       ];
       putRuntimeProject(state.runtimeProjects, "happy_generating", created);
       state.createdProjectRequest = structuredClone(request.data);
+      c.header("etag", created.project.versionToken);
       return c.json(
         {
           ok: true as const,
@@ -1511,6 +1625,7 @@ export function createApiApp(
             imageStyleVersionId: request.data.image_style_version_id,
           },
           providerCallsAuthorized: false as const,
+          versionToken: created.project.versionToken,
         },
         202,
       );
@@ -1526,6 +1641,8 @@ export function createApiApp(
       if (!resolved.ok) return resolved.response;
       const project = resolveProjectDetail(resolved.scenario, pathProjectId, state.runtimeProjects);
       if (!project.ok) return project.response;
+      const versionError = projectVersionError(c, project.detail.project.versionToken);
+      if (versionError) return versionError;
       if (project.detail.project.status === "APPROVED") {
         return problemResponse(
           apiProblem(
@@ -1598,12 +1715,15 @@ export function createApiApp(
         detail: "Cancellation requested once; conflicting actions are disabled",
         at: "2026-08-09T09:32:00.000Z",
       });
+      const versionToken = rotateProjectVersion(cancelled);
       putRuntimeProject(state.runtimeProjects, resolved.id, cancelled);
+      c.header("etag", versionToken);
       return c.json(
         {
           ok: true as const,
           id: project.detail.project.id,
           status: "CANCEL_REQUESTED" as const,
+          versionToken,
         },
         202,
       );
@@ -1619,6 +1739,8 @@ export function createApiApp(
       if (!resolved.ok) return resolved.response;
       const project = resolveProjectDetail(resolved.scenario, pathProjectId, state.runtimeProjects);
       if (!project.ok) return project.response;
+      const versionError = projectVersionError(c, project.detail.project.versionToken);
+      if (versionError) return versionError;
       if (
         project.detail.project.status === "APPROVED" ||
         project.detail.project.status === "CANCEL_REQUESTED" ||
@@ -1682,7 +1804,9 @@ export function createApiApp(
           : "Targeted lip-sync repair accepted once",
         at: "2026-08-09T09:34:00.000Z",
       });
+      const versionToken = rotateProjectVersion(retrying);
       putRuntimeProject(state.runtimeProjects, resolved.id, retrying);
+      c.header("etag", versionToken);
       return c.json(
         {
           ok: true as const,
@@ -1693,6 +1817,7 @@ export function createApiApp(
               ? (["scene_fixture_014", "scene_fixture_015"] as const)
               : (["avatar_span_fixture_018"] as const),
           nextCheckSeconds: 10,
+          versionToken,
         },
         202,
       );
@@ -1708,6 +1833,8 @@ export function createApiApp(
       if (!resolved.ok) return resolved.response;
       const project = resolveProjectDetail(resolved.scenario, pathProjectId, state.runtimeProjects);
       if (!project.ok) return project.response;
+      const versionError = projectVersionError(c, project.detail.project.versionToken);
+      if (versionError) return versionError;
       if (
         resolved.id !== "skyreels_approval_required" ||
         project.detail.project.status !== "NEEDS_ATTENTION" ||
@@ -1767,7 +1894,9 @@ export function createApiApp(
         detail: "Whole-frame fallback reservation approved once for $0.18",
         at: "2026-08-09T09:35:00.000Z",
       });
+      const versionToken = rotateProjectVersion(fallback);
       putRuntimeProject(state.runtimeProjects, resolved.id, fallback);
+      c.header("etag", versionToken);
       return c.json(
         {
           ok: true as const,
@@ -1777,6 +1906,7 @@ export function createApiApp(
           estimatedTotalUsd,
           spendCapUsd: project.detail.project.capUsd,
           providerCallsAuthorized: false as const,
+          versionToken,
         },
         202,
       );
@@ -1792,6 +1922,8 @@ export function createApiApp(
       if (!resolved.ok) return resolved.response;
       const project = resolveProjectDetail(resolved.scenario, pathProjectId, state.runtimeProjects);
       if (!project.ok) return project.response;
+      const versionError = projectVersionError(c, project.detail.project.versionToken);
+      if (versionError) return versionError;
       if (project.detail.project.status === "APPROVED") {
         return problemResponse(
           apiProblem(
@@ -1864,13 +1996,16 @@ export function createApiApp(
         detail: `Candidate ${approvalRequest.candidateId} approved`,
         at: "2026-08-09T09:36:00.000Z",
       });
+      const versionToken = rotateProjectVersion(approved);
       putRuntimeProject(state.runtimeProjects, resolved.id, approved);
+      c.header("etag", versionToken);
       return c.json({
         ok: true as const,
         id: approved.project.id,
         status: "APPROVED" as const,
         candidateId: approvalRequest.candidateId,
         downloadUrl: approved.project.review.downloadUrl,
+        versionToken,
       });
     }),
   );

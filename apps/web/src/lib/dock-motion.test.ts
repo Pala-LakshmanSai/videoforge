@@ -5,12 +5,12 @@ import { dockMotionTarget, dockSpringSettled, stepDockSpring } from "./dock-moti
 describe("dockMotionTarget", () => {
   it("produces a macOS-like center, neighbor, and far curve", () => {
     const center = dockMotionTarget(0);
-    expect(center.scale).toBeCloseTo(1.68, 8);
-    expect(center).toMatchObject({ liftPx: -26, shiftPx: 0 });
-    expect(dockMotionTarget(100).scale).toBeCloseTo(1.35, 2);
-    expect(dockMotionTarget(100).shiftPx).toBeLessThan(-12);
-    expect(dockMotionTarget(-100).shiftPx).toBeGreaterThan(12);
-    expect(dockMotionTarget(200).scale).toBeCloseTo(1.18, 2);
+    expect(center.scale).toBeCloseTo(1.88, 8);
+    expect(center).toMatchObject({ liftPx: -32, shiftPx: 0 });
+    expect(dockMotionTarget(100).scale).toBeCloseTo(1.45, 2);
+    expect(dockMotionTarget(100).shiftPx).toBeLessThan(-13);
+    expect(dockMotionTarget(-100).shiftPx).toBeGreaterThan(13);
+    expect(dockMotionTarget(200).scale).toBeCloseTo(1.23, 2);
     expect(dockMotionTarget(340)).toEqual({
       influence: 0,
       liftPx: 0,
@@ -43,9 +43,9 @@ describe("dockMotionTarget", () => {
 
 describe("dock spring", () => {
   it("approaches a new target with continuous velocity instead of jumping", () => {
-    const first = stepDockSpring({ value: 1, velocity: 0 }, 1.68, 1 / 60);
+    const first = stepDockSpring({ value: 1, velocity: 0 }, 1.88, 1 / 60);
     expect(first.value).toBeGreaterThan(1);
-    expect(first.value).toBeLessThan(1.68);
+    expect(first.value).toBeLessThan(1.88);
     expect(first.velocity).toBeGreaterThan(0);
 
     const redirected = stepDockSpring(first, 1.1, 1 / 60);
@@ -56,10 +56,10 @@ describe("dock spring", () => {
   it("settles snappily at the target after repeated animation frames", () => {
     let spring = { value: 1, velocity: 0 };
     for (let frame = 0; frame < 120; frame += 1) {
-      spring = stepDockSpring(spring, 1.68, 1 / 60);
+      spring = stepDockSpring(spring, 1.88, 1 / 60);
     }
-    expect(spring.value).toBeCloseTo(1.68, 3);
-    expect(dockSpringSettled(spring, 1.68)).toBe(true);
+    expect(spring.value).toBeCloseTo(1.88, 3);
+    expect(dockSpringSettled(spring, 1.88)).toBe(true);
   });
 
   it("fails closed to a finite neutral value for invalid timing", () => {

@@ -14,6 +14,13 @@ import {
   type UsageSummary,
 } from "./types";
 
+const SHA256 = /^sha256:[a-f0-9]{64}$/u;
+const PROJECT_VERSION_TOKEN = /^"vf-[A-Za-z0-9._:-]+-v[1-9][0-9]*"$/u;
+const AVATAR_FIXTURE_PATH = /^\/fixtures\/avatar\/[a-z0-9][a-z0-9._-]*\.svg$/u;
+const STYLE_FIXTURE_PATH = /^\/fixtures\/styles\/[a-z0-9][a-z0-9._-]*\.svg$/u;
+const MEDIA_FIXTURE_PATH = /^\/fixtures\/media\/[a-z0-9][a-z0-9._-]*\.(?:mp4|svg)$/u;
+const DOWNLOAD_PATH = /^\/api\/v1\/projects\/[A-Za-z0-9._:-]+\/download\?fixture=[a-z0-9_]+$/u;
+
 const scenarioSchema = z.enum(scenarioIds);
 const noticeSchema = z
   .object({
@@ -36,8 +43,8 @@ const avatarSchema = z
     compatibility: z.enum(["UNTESTED", "RUNNING", "PASSED", "FAILED", "STALE", "CANCELLED"]),
     dimensions: z.string(),
     lastUsed: z.string(),
-    thumbnailUrl: z.string(),
-    profileHash: z.string(),
+    thumbnailUrl: z.string().regex(AVATAR_FIXTURE_PATH),
+    profileHash: z.string().regex(SHA256),
     preparationProfile: z.string(),
     validationProfile: z.string(),
     rightsStatus: z.literal("ATTESTED"),
@@ -58,10 +65,10 @@ const imageStyleSchema = z
     referenceCount: z.number().int().nonnegative(),
     isDefault: z.boolean().optional(),
     palette: z.tuple([z.string(), z.string()]),
-    coverUrl: z.string(),
-    referenceUrls: z.array(z.string()),
-    exampleUrls: z.array(z.string()),
-    profileHash: z.string(),
+    coverUrl: z.string().regex(STYLE_FIXTURE_PATH),
+    referenceUrls: z.array(z.string().regex(STYLE_FIXTURE_PATH)),
+    exampleUrls: z.array(z.string().regex(STYLE_FIXTURE_PATH)),
+    profileHash: z.string().regex(SHA256),
     medium: z.string(),
     lighting: z.string(),
     color: z.string(),
@@ -122,6 +129,7 @@ const projectSummarySchema = z
     createdAt: z.string(),
     stages: z.array(projectStageSchema),
     revisionId: z.string(),
+    versionToken: z.string().regex(PROJECT_VERSION_TOKEN),
     pins: z
       .object({
         avatarProfileVersionId: z.string().nullable(),
@@ -152,7 +160,7 @@ const projectSummarySchema = z
     latestArtifact: z
       .object({
         kind: z.enum(["IMAGE", "AVATAR_CLIP", "VIDEO"]),
-        url: z.string(),
+        url: z.string().regex(MEDIA_FIXTURE_PATH),
         label: z.string(),
       })
       .strict()
@@ -163,7 +171,7 @@ const projectSummarySchema = z
         state: z.enum(["NOT_READY", "READY_FOR_REVIEW", "CHANGES_REQUESTED", "APPROVED"]),
         flaggedDefect: z.enum(["LIP_SYNC_ONLY", "WHOLE_FRAME", "IMAGE_QUALITY"]).nullable(),
         selectedAvatarClipId: z.string().nullable(),
-        downloadUrl: z.string().nullable(),
+        downloadUrl: z.string().regex(DOWNLOAD_PATH).nullable(),
       })
       .strict(),
     allowedActions: z.array(

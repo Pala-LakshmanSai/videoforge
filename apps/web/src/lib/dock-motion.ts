@@ -45,9 +45,9 @@ export function dockMotionTarget(distancePx: number, motionEnabled = true): Dock
 
   return {
     influence,
-    liftPx: -26 * influence,
-    scale: 1 + 0.68 * influence,
-    shiftPx: direction === 0 ? 0 : -direction * 22 * influence ** 0.75 * separation,
+    liftPx: -32 * influence,
+    scale: 1 + 0.88 * influence,
+    shiftPx: direction === 0 ? 0 : -direction * 24 * influence ** 0.75 * separation,
   };
 }
 

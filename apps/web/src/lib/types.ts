@@ -144,6 +144,7 @@ export interface ProjectSummary {
   createdAt: string;
   stages: ProjectStage[];
   revisionId: string;
+  versionToken: string;
   pins: {
     avatarProfileVersionId: string | null;
     imageStyleVersionId: string;

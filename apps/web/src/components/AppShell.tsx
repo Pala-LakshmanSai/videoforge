@@ -170,6 +170,12 @@ export function AppShell({ children }: PropsWithChildren) {
       item.style.setProperty("--dock-scale", spring.scale.value.toFixed(4));
       item.style.setProperty("--dock-lift", `${spring.lift.value.toFixed(2)}px`);
       item.style.setProperty("--dock-shift", `${spring.shift.value.toFixed(2)}px`);
+      item.style.setProperty(
+        "--dock-surface-scale",
+        (1 + (spring.scale.value - 1) * 0.38).toFixed(4),
+      );
+      item.style.setProperty("--dock-surface-lift", `${(spring.lift.value * 0.42).toFixed(2)}px`);
+      item.style.setProperty("--dock-surface-shift", `${(spring.shift.value * 0.32).toFixed(2)}px`);
     };
 
     const resetImmediately = () => {

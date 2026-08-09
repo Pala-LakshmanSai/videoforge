@@ -92,6 +92,11 @@ function query(scenario: ScenarioId) {
   return `?fixture=${encodeURIComponent(scenario)}`;
 }
 
+interface MutationOptions {
+  idempotencyKey?: string;
+  ifMatch?: string;
+}
+
 export const api = {
   health: (scenario?: ScenarioId) =>
     request<HealthResponse>(
@@ -143,15 +148,21 @@ export const api = {
     path: string,
     body: unknown,
     scenario: ScenarioId,
-    idempotencyKey = crypto.randomUUID(),
-  ) =>
-    request<T>(
+    options: string | MutationOptions = {},
+  ) => {
+    const normalizedOptions = typeof options === "string" ? { idempotencyKey: options } : options;
+    const headers: Record<string, string> = {
+      "Idempotency-Key": normalizedOptions.idempotencyKey ?? crypto.randomUUID(),
+    };
+    if (normalizedOptions.ifMatch) headers["If-Match"] = normalizedOptions.ifMatch;
+    return request<T>(
       `${path}${path.includes("?") ? "&" : "?"}${query(scenario).slice(1)}`,
       {
         method: "POST",
-        headers: { "Idempotency-Key": idempotencyKey, "If-Match": "fixture-v1" },
+        headers,
         body: JSON.stringify(body),
       },
       (value) => parseMutationResponse(value) as T,
-    ),
+    );
+  },
 };

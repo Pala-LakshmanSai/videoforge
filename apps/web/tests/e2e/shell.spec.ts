@@ -194,14 +194,14 @@ test("dock magnifies by pointer proximity without moving its layout boxes", asyn
         Number(getComputedStyle(element).getPropertyValue("--dock-scale")),
       ),
     )
-    .toBeGreaterThan(1.6);
+    .toBeGreaterThan(1.8);
   await expect
     .poll(() =>
       neighbor.evaluate((element) =>
         Number(getComputedStyle(element).getPropertyValue("--dock-scale")),
       ),
     )
-    .toBeGreaterThan(1.3);
+    .toBeGreaterThan(1.4);
   await expect
     .poll(() =>
       neighbor.evaluate((element) =>
@@ -233,6 +233,19 @@ test("dock magnifies by pointer proximity without moving its layout boxes", asyn
       ),
     )
     .toBe(0);
+
+  const active = items.first();
+  const activeBox = await active.boundingBox();
+  if (!activeBox) throw new Error("Active dock item has no layout box.");
+  await page.mouse.move(activeBox.x + activeBox.width / 2, activeBox.y + activeBox.height / 2);
+  await expect
+    .poll(() =>
+      active.evaluate((element) =>
+        Number(getComputedStyle(element).getPropertyValue("--dock-surface-scale")),
+      ),
+    )
+    .toBeGreaterThan(1.3);
+  expect(await active.boundingBox()).toEqual(activeBox);
 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);

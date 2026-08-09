@@ -1,3 +1,4 @@
+import { sha256CanonicalJson } from "@videoforge/contracts";
 import { FIXTURE_SCENARIO_IDS } from "@videoforge/test-fixtures";
 import { describe, expect, it } from "vitest";
 
@@ -21,7 +22,6 @@ const validAvatarProfileMetadata = {
   name: "Maya — field presenter",
   thumbnail_url: "/fixtures/avatar/amish-farm-host.svg",
   source_dimensions: { width: 1536, height: 2048 },
-  profile_hash: `sha256:${"b".repeat(64)}`,
   preparation_profile: "fixture-browser-decode-v1",
   validation_profile: "fixture-manual-framing-v1",
   compatibility: "UNTESTED",
@@ -44,7 +44,6 @@ const validImageStyleMetadata = {
     "/fixtures/styles/rural-hands.svg",
     "/fixtures/styles/rural-kitchen.svg",
   ],
-  profile_hash: `sha256:${"c".repeat(64)}`,
   medium: "Observational documentary still",
   lighting: "Natural soft side light",
   color: "Neutral earth and muted botanical green",
@@ -59,11 +58,46 @@ const validImageStyleMetadata = {
   },
 };
 
+async function expectedAvatarProfileHash(): Promise<string> {
+  return sha256CanonicalJson({
+    schema_version: "fixture-avatar-profile-version/v1",
+    thumbnail_url: validAvatarProfileMetadata.thumbnail_url,
+    source_dimensions: validAvatarProfileMetadata.source_dimensions,
+    preparation_profile: validAvatarProfileMetadata.preparation_profile,
+    validation_profile: validAvatarProfileMetadata.validation_profile,
+    compatibility: validAvatarProfileMetadata.compatibility,
+    lifecycle: validAvatarProfileMetadata.lifecycle,
+    version_state: validAvatarProfileMetadata.version_state,
+    uploaded_bytes_persisted: validAvatarProfileMetadata.uploaded_bytes_persisted,
+    attestations: validAvatarProfileMetadata.attestations,
+  });
+}
+
+async function expectedImageStyleHash(): Promise<string> {
+  return sha256CanonicalJson({
+    schema_version: "fixture-image-style-version/v1",
+    summary: validImageStyleMetadata.summary,
+    cover_url: validImageStyleMetadata.cover_url,
+    reference_urls: validImageStyleMetadata.reference_urls,
+    example_urls: validImageStyleMetadata.example_urls,
+    medium: validImageStyleMetadata.medium,
+    lighting: validImageStyleMetadata.lighting,
+    color: validImageStyleMetadata.color,
+    texture: validImageStyleMetadata.texture,
+    retention_summary: validImageStyleMetadata.retention_summary,
+    lifecycle: validImageStyleMetadata.lifecycle,
+    version_state: validImageStyleMetadata.version_state,
+    uploaded_bytes_persisted: validImageStyleMetadata.uploaded_bytes_persisted,
+    attestations: validImageStyleMetadata.attestations,
+  });
+}
+
 let mutationKeySequence = 0;
+const INITIAL_VERSION_TOKEN = '"vf-project_fixture_001-revision_fixture_001-v1"';
 
 function mutationHeaders(
   key = `fixture-idempotency-key-${++mutationKeySequence}`,
-  ifMatch = "fixture-v1",
+  ifMatch = INITIAL_VERSION_TOKEN,
 ): Record<string, string> {
   return {
     "content-type": "application/json",
@@ -694,6 +728,47 @@ describe("fixture API", () => {
     });
   });
 
+  it("publishes a strong project ETag, rotates it atomically, and rejects a racing mutation", async () => {
+    const statefulApp = createApiApp({ commit: "project-etag-race", environment: "test" });
+    const detailResponse = await statefulApp.request(
+      "/api/v1/projects/project_fixture_001?fixture=image_partial_failure",
+    );
+    const detail = (await detailResponse.json()) as {
+      project: { versionToken: string };
+    };
+    expect(detail.project.versionToken).toBe(INITIAL_VERSION_TOKEN);
+    expect(detailResponse.headers.get("etag")).toBe(INITIAL_VERSION_TOKEN);
+
+    const [retry, cancel] = await Promise.all([
+      statefulApp.request(
+        "/api/v1/projects/project_fixture_001/retry?fixture=image_partial_failure",
+        {
+          method: "POST",
+          headers: mutationHeaders("etag-race-retry", detail.project.versionToken),
+          body: JSON.stringify({ project_id: "project_fixture_001" }),
+        },
+      ),
+      statefulApp.request(
+        "/api/v1/projects/project_fixture_001/cancel?fixture=image_partial_failure",
+        {
+          method: "POST",
+          headers: mutationHeaders("etag-race-cancel", detail.project.versionToken),
+          body: JSON.stringify({ project_id: "project_fixture_001" }),
+        },
+      ),
+    ]);
+    expect([retry.status, cancel.status].sort()).toEqual([202, 412]);
+
+    const accepted = retry.status === 202 ? retry : cancel;
+    const rejected = retry.status === 412 ? retry : cancel;
+    const acceptedBody = (await accepted.json()) as { versionToken: string };
+    expect(accepted.headers.get("etag")).toBe(acceptedBody.versionToken);
+    expect(acceptedBody.versionToken).not.toBe(INITIAL_VERSION_TOKEN);
+    await expect(rejected.json()).resolves.toMatchObject({
+      error: { code: "REVISION_CONFLICT" },
+    });
+  });
+
   it("approves only the exact capped fallback request and replays it idempotently", async () => {
     const statefulApp = createApiApp({ commit: "stateful-fallback" });
     const key = "fixture-fallback-approval-replay-key";
@@ -710,7 +785,7 @@ describe("fixture API", () => {
 
     const approval = await statefulApp.request(path, request);
     expect(approval.status).toBe(202);
-    const approvalBody = await approval.json();
+    const approvalBody = (await approval.json()) as { versionToken: string };
     expect(approvalBody).toMatchObject({
       ok: true,
       id: "project_fixture_001",
@@ -755,7 +830,7 @@ describe("fixture API", () => {
 
     const duplicateWithNewKey = await statefulApp.request(path, {
       method: "POST",
-      headers: mutationHeaders("fixture-fallback-second-key"),
+      headers: mutationHeaders("fixture-fallback-second-key", approvalBody.versionToken),
       body: JSON.stringify({
         project_id: "project_fixture_001",
         approved_increment_usd: 0.18,
@@ -875,7 +950,8 @@ describe("fixture API", () => {
       },
     );
     expect(retry.status).toBe(202);
-    expect(await retry.json()).toMatchObject({
+    const retryBody = (await retry.json()) as { versionToken: string };
+    expect(retryBody).toMatchObject({
       ok: true,
       status: "RETRY_REQUESTED",
       retryScope: ["scene_fixture_014", "scene_fixture_015"],
@@ -899,7 +975,7 @@ describe("fixture API", () => {
       "/api/v1/projects/project_fixture_001/retry?fixture=image_partial_failure",
       {
         method: "POST",
-        headers: mutationHeaders("fixture-retry-second-key"),
+        headers: mutationHeaders("fixture-retry-second-key", retryBody.versionToken),
         body: JSON.stringify({ project_id: "project_fixture_001" }),
       },
     );
@@ -1255,6 +1331,7 @@ describe("fixture API", () => {
       body: JSON.stringify({ project_id: "project_fixture_001" }),
     });
     expect(cancelled.status).toBe(202);
+    const cancelledBody = (await cancelled.json()) as { versionToken: string };
 
     const [detailResponse, projectsResponse, bootstrapResponse] = await Promise.all([
       statefulApp.request("/api/v1/projects/project_fixture_001?fixture=happy_generating"),
@@ -1280,7 +1357,7 @@ describe("fixture API", () => {
 
     const duplicate = await statefulApp.request(path, {
       method: "POST",
-      headers: mutationHeaders(),
+      headers: mutationHeaders(undefined, cancelledBody.versionToken),
       body: JSON.stringify({ project_id: "project_fixture_001" }),
     });
     expect(duplicate.status).toBe(409);
@@ -1312,7 +1389,7 @@ describe("fixture API", () => {
         versionId: "avatar_profile_version_fixture_created_001",
         name: validAvatarProfileMetadata.name,
         status: "READY",
-        profileHash: validAvatarProfileMetadata.profile_hash,
+        profileHash: await expectedAvatarProfileHash(),
       },
       lifecycle: { profile: "ACTIVE", version: "READY" },
       immutableVersion: true,
@@ -1374,7 +1451,7 @@ describe("fixture API", () => {
         versionId: "image_style_version_fixture_created_001",
         name: validImageStyleMetadata.name,
         status: "PUBLISHED",
-        profileHash: validImageStyleMetadata.profile_hash,
+        profileHash: await expectedImageStyleHash(),
         exampleUrls: validImageStyleMetadata.example_urls,
       },
       lifecycle: { style: "ACTIVE", version: "PUBLISHED" },
@@ -1404,7 +1481,7 @@ describe("fixture API", () => {
     expect(preflight.status).toBe(200);
   });
 
-  it("rejects unowned media paths, malformed hashes, missing attestations, and voiceover mismatches", async () => {
+  it("rejects unowned media paths, client-supplied hashes, missing attestations, and voiceover mismatches", async () => {
     const statefulApp = createApiApp({ commit: "strict-metadata" });
     const badAvatar = await statefulApp.request(
       "/api/v1/avatar-profiles?fixture=avatar_hub_empty",
@@ -1414,7 +1491,7 @@ describe("fixture API", () => {
         body: JSON.stringify({
           ...validAvatarProfileMetadata,
           thumbnail_url: "https://example.com/private-avatar.png",
-          profile_hash: "sha256:not-a-real-hash",
+          profile_hash: `sha256:${"f".repeat(64)}`,
           attestations: { image_use_rights: true },
         }),
       },

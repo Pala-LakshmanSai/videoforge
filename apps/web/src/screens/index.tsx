@@ -1338,7 +1338,9 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
           : "Cancellation request pending. Duplicate submission is disabled.",
     });
     try {
-      await api.mutate(path, { project_id: project.id }, scenario);
+      await api.mutate(path, { project_id: project.id }, scenario, {
+        ifMatch: project.versionToken,
+      });
       setActionNotice({
         tone: "info",
         text:
@@ -1622,6 +1624,7 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
             `/api/v1/projects/${projectId}/approve`,
             { project_id: projectId, candidate_id: project?.review.candidateId },
             scenario,
+            { ifMatch: project?.versionToken },
           ),
           new Promise((resolve) => window.setTimeout(resolve, 600)),
         ]);
@@ -1632,6 +1635,7 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
           `/api/v1/projects/${projectId}/retry`,
           { project_id: projectId },
           scenario,
+          { ifMatch: project?.versionToken },
         );
         setReviewActionNotice("Targeted repair accepted. Next project check in 10 seconds.");
         await query.refetch();
@@ -1640,6 +1644,7 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
           `/api/v1/projects/${projectId}/fallback-approval`,
           { project_id: projectId, approved_increment_usd: 0.18 },
           scenario,
+          { ifMatch: project?.versionToken },
         );
         setReviewActionNotice("The $0.18 fallback reservation was approved for this fixture.");
         await query.refetch();
@@ -2120,7 +2125,6 @@ export function NewAvatarScreen() {
           name: name.trim(),
           thumbnail_url: "/fixtures/avatar/amish-farm-host.svg",
           source_dimensions: { width: source.width, height: source.height },
-          profile_hash: "sha256:4edb4a84b48056a5e12122153099c2243b7d3b59ac8c76db8a3b3471eedcc672",
           preparation_profile: "fixture-browser-decode-v1",
           validation_profile: "fixture-manual-framing-v1",
           compatibility: "UNTESTED",
@@ -2590,7 +2594,6 @@ export function NewStyleScreen() {
           cover_url: "/fixtures/styles/warm-rural.svg",
           reference_urls: [],
           example_urls: exampleUrls,
-          profile_hash: "sha256:5606a4a2ff7a347cf3b2529a91e557e945ee0aeb9db26849dc85aaef5f27fde9",
           medium: "Natural-light rural documentary",
           lighting: "Warm available light",
           color: "Earth tones and muted botanical green",
