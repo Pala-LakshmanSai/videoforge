@@ -8,5 +8,4 @@ import type { ValidatedContractDocument } from "@videoforge/contracts";
  */
 export type ProjectRevisionDocumentRef = ValidatedContractDocument<"projectRevisionConfig">;
 export type TimelinePlanDocumentRef = ValidatedContractDocument<"timelinePlan">;
-export type ResolvedRenderManifestDocumentRef =
-  ValidatedContractDocument<"resolvedRenderManifest">;
+export type ResolvedRenderManifestDocumentRef = ValidatedContractDocument<"resolvedRenderManifest">;
