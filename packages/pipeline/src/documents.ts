@@ -1,20 +1,12 @@
-import type { ContractName, JsonValue, Sha256Digest } from "@videoforge/contracts";
-
-/** A JSON object whose field shape remains owned by its canonical contract. */
-export type CanonicalDocumentValue = Readonly<Record<string, JsonValue>>;
+import type { ValidatedContractDocument } from "@videoforge/contracts";
 
 /**
  * An already validated, content-addressed canonical document crossing a pure pipeline boundary.
  *
- * This reference is intentionally field-opaque. Construct it only after validation through
- * `@videoforge/contracts`; this package neither redefines nor independently validates schemas.
+ * Construct these only through `validateAndHashContractDocument`; the brand prevents callers from
+ * assembling lookalike values that bypass canonical schema validation or TypeScript-owned JCS.
  */
-export interface ValidatedDocumentRef<Name extends ContractName> {
-  readonly contractName: Name;
-  readonly value: CanonicalDocumentValue;
-  readonly sha256: Sha256Digest;
-}
-
-export type ProjectRevisionDocumentRef = ValidatedDocumentRef<"projectRevisionConfig">;
-export type TimelinePlanDocumentRef = ValidatedDocumentRef<"timelinePlan">;
-export type ResolvedRenderManifestDocumentRef = ValidatedDocumentRef<"resolvedRenderManifest">;
+export type ProjectRevisionDocumentRef = ValidatedContractDocument<"projectRevisionConfig">;
+export type TimelinePlanDocumentRef = ValidatedContractDocument<"timelinePlan">;
+export type ResolvedRenderManifestDocumentRef =
+  ValidatedContractDocument<"resolvedRenderManifest">;
