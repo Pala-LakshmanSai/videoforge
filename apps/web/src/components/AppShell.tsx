@@ -1,24 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  Activity,
   Aperture,
   BookOpen,
-  ChevronLeft,
   CircleGauge,
   Clapperboard,
   Images,
   Library,
-  Menu,
   Settings,
   Sparkles,
-  UserRound,
   UsersRound,
 } from "lucide-react";
-import { useState, type PropsWithChildren } from "react";
+import type { PropsWithChildren } from "react";
 import { api } from "../lib/api";
 import { currentScenario, setScenario } from "../lib/scenario";
-import { scenarioIds } from "../lib/types";
-import { Badge } from "./ui";
+import { scenarioIds, type ProjectSummary, type Tone } from "../lib/types";
+import { Badge, Disclosure, ProgressBar } from "./ui";
 
 const nav = [
   { to: "/", label: "Queue", icon: CircleGauge },
@@ -30,105 +28,233 @@ const nav = [
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
-export function AppShell({ children }: PropsWithChildren) {
-  const [collapsed, setCollapsed] = useState(false);
-  const scenario = currentScenario();
-  const path = useRouterState({ select: (state) => state.location.pathname });
-  const health = useQuery({ queryKey: ["health"], queryFn: api.health, refetchInterval: 10_000 });
+const terminalProjectStatuses = new Set<ProjectSummary["status"]>(["APPROVED", "CANCELLED"]);
+
+function projectTone(status: ProjectSummary["status"]): Tone {
+  if (status === "APPROVED" || status === "READY_FOR_REVIEW") return "success";
+  if (status === "NEEDS_ATTENTION") return "warning";
+  if (status === "CANCELLED") return "neutral";
+  return "info";
+}
+
+function projectProgress(project: ProjectSummary): number {
+  if (project.status === "APPROVED") return 100;
+  if (project.total === 0) return 0;
+  return Math.round((project.completed / project.total) * 100);
+}
+
+function isNavItemActive(path: string, destination: (typeof nav)[number]["to"]): boolean {
+  if (destination === "/") {
+    return path === "/";
+  }
+  if (destination === "/projects/new") return path === destination;
+  return path.startsWith(destination);
+}
+
+function ProjectCommandTrack({
+  project,
+  scenario,
+}: {
+  project?: ProjectSummary;
+  scenario: ReturnType<typeof currentScenario>;
+}) {
+  if (!project) {
+    return (
+      <Link
+        to="/projects/new"
+        search={{ fixture: scenario } as never}
+        className="project-command-track project-command-track-empty"
+      >
+        <span className="project-command-copy">
+          <span className="project-command-status">Ready</span>
+          <strong>No active project</strong>
+        </span>
+        <span className="project-command-action">New project</span>
+      </Link>
+    );
+  }
+
+  const progress = projectProgress(project);
+  const status = project.status.replaceAll("_", " ");
 
   return (
-    <div className={`app-shell ${collapsed ? "sidebar-collapsed" : ""}`}>
-      <aside className="sidebar" aria-label="Primary navigation">
-        <div className="brand-row">
-          <Link
-            to="/"
-            search={{ fixture: scenario } as never}
-            className="brand"
-            aria-label="VideoForge queue"
-          >
-            <span className="brand-mark">
-              <Clapperboard size={20} />
+    <Link
+      to="/projects/$projectId"
+      params={{ projectId: project.id }}
+      search={{ fixture: scenario } as never}
+      className="project-command-track"
+      aria-label={`Open ${project.title}, ${progress}% complete, ${status.toLowerCase()}`}
+    >
+      <span className="project-command-copy">
+        <span
+          className={`project-command-status project-command-status-${projectTone(project.status)}`}
+        >
+          {status}
+        </span>
+        <strong>{project.title}</strong>
+      </span>
+      <span className="project-command-metrics" aria-hidden="true">
+        <strong>{progress}%</strong>
+        <span>ETA {project.eta}</span>
+      </span>
+      <ProgressBar value={progress} label={`${project.title} progress`} />
+    </Link>
+  );
+}
+
+export function AppShell({ children }: PropsWithChildren) {
+  const scenario = currentScenario();
+  const path = useRouterState({ select: (state) => state.location.pathname });
+  const health = useQuery({
+    queryKey: ["health", scenario],
+    queryFn: () => api.health(scenario),
+    refetchInterval: 10_000,
+  });
+  const bootstrap = useQuery({
+    queryKey: ["bootstrap", scenario],
+    queryFn: () => api.bootstrap(scenario),
+    refetchInterval: 10_000,
+  });
+  const projects = bootstrap.data?.projects ?? [];
+  const activeProject =
+    projects.find((project) => !terminalProjectStatuses.has(project.status)) ?? projects[0];
+  const renderNavItem = (item: (typeof nav)[number]) => {
+    const Icon = item.icon;
+    const active = isNavItemActive(path, item.to);
+    return (
+      <Link
+        key={item.to}
+        to={item.to}
+        search={{ fixture: scenario } as never}
+        className={`bottom-nav-item ${active ? "bottom-nav-item-active" : ""}`}
+        title={item.label}
+        aria-current={active ? "page" : undefined}
+      >
+        <span className="bottom-nav-icon" aria-hidden="true">
+          <Icon size={21} />
+        </span>
+        <span>{item.label}</span>
+        {active ? <i className="bottom-nav-active-dot" aria-hidden="true" /> : null}
+      </Link>
+    );
+  };
+
+  return (
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
+      <span className="shell-ambient shell-ambient-crimson" aria-hidden="true" />
+      <span className="shell-ambient shell-ambient-cobalt" aria-hidden="true" />
+
+      <header className="top-command-bar">
+        <Link
+          to="/"
+          search={{ fixture: scenario } as never}
+          className="top-brand"
+          aria-label="VideoForge queue"
+        >
+          <span className="top-brand-mark" aria-hidden="true">
+            <Clapperboard size={24} />
+          </span>
+          <strong>VideoForge</strong>
+        </Link>
+
+        {bootstrap.isError ? (
+          <div className="project-command-track project-command-track-error" role="status">
+            <span className="project-command-copy">
+              <span className="project-command-status project-command-status-danger">
+                Unavailable
+              </span>
+              <strong>Project status could not load</strong>
             </span>
-            <span className="brand-copy">
-              <strong>VideoForge</strong>
-              <small>Production studio</small>
-            </span>
-          </Link>
-          <button
-            className="icon-button collapse-button"
-            onClick={() => setCollapsed((value) => !value)}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}
-          </button>
-        </div>
-
-        <nav className="nav-list">
-          {nav.map((item) => {
-            const Icon = item.icon;
-            const active = item.to === "/" ? path === "/" : path.startsWith(item.to);
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                search={{ fixture: scenario } as never}
-                className={`nav-link ${active ? "active" : ""}`}
-                title={item.label}
-                aria-current={active ? "page" : undefined}
-              >
-                <Icon size={19} aria-hidden="true" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="sidebar-card">
-          <div className="avatar-orb">
-            <UserRound size={18} />
           </div>
-          <div>
-            <strong>Lakshman</strong>
-            <small>Workspace admin</small>
+        ) : bootstrap.isPending ? (
+          <div className="project-command-track project-command-track-loading" aria-busy="true">
+            <span className="spinner" aria-hidden="true" />
+            <strong>Loading project</strong>
           </div>
-          <Badge tone="success">INVITED</Badge>
-        </div>
-      </aside>
+        ) : (
+          <ProjectCommandTrack project={activeProject} scenario={scenario} />
+        )}
 
-      <div className="workspace">
-        <div className="dev-ribbon" role="status">
-          <div>
-            <Aperture size={14} />
-            <strong>Fixture mode</strong>
-            <span>Synthetic data · $0 spend</span>
-          </div>
-          <div className="ribbon-controls">
-            <label htmlFor="fixture-select">Scenario</label>
-            <select
-              id="fixture-select"
-              value={scenario}
-              onChange={(event) => setScenario(event.target.value as typeof scenario)}
-            >
-              {scenarioIds.map((id) => (
-                <option value={id} key={id}>
-                  {id}
-                </option>
-              ))}
-            </select>
+        <div className="top-command-tools">
+          <div className="top-health" role="status" aria-live="polite">
+            <Activity size={16} aria-hidden="true" />
             <Badge
               tone={
                 health.data?.status === "ok" ? "success" : health.isError ? "danger" : "warning"
               }
             >
-              API {health.data?.status ?? (health.isError ? "offline" : "checking")}
+              API{" "}
+              {health.data?.status === "ok" ? "healthy" : health.isError ? "offline" : "checking"}
             </Badge>
-            <span className="commit">{health.data?.commit ?? "local"}</span>
           </div>
+
+          <Disclosure
+            className="fixture-control"
+            summary={
+              <>
+                <Aperture size={16} aria-hidden="true" />
+                <span className="fixture-control-summary">
+                  <strong>Fixture mode</strong>
+                  <small>Synthetic data · $0 spend</small>
+                </span>
+              </>
+            }
+          >
+            <label className="fixture-control-field" htmlFor="fixture-select">
+              <span>Scenario</span>
+              <select
+                id="fixture-select"
+                value={scenario}
+                onChange={(event) => setScenario(event.target.value as typeof scenario)}
+              >
+                {scenarioIds.map((id) => (
+                  <option value={id} key={id}>
+                    {id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="fixture-control-meta">
+              <span>{health.data?.commit ?? "local"}</span>
+              <span>No provider calls</span>
+            </div>
+          </Disclosure>
         </div>
+      </header>
+
+      <div className="workspace">
         <main className="page" id="main-content">
           {children}
         </main>
       </div>
+
+      <nav className="bottom-nav-dock" aria-label="Primary navigation">
+        {nav.slice(0, 2).map(renderNavItem)}
+        {activeProject ? (
+          <Link
+            to="/projects/$projectId"
+            params={{ projectId: activeProject.id }}
+            search={{ fixture: scenario } as never}
+            className={`bottom-nav-item ${path.startsWith("/projects/") && path !== "/projects/new" ? "bottom-nav-item-active" : ""}`}
+            title="Progress"
+            aria-current={
+              path.startsWith("/projects/") && path !== "/projects/new" ? "page" : undefined
+            }
+          >
+            <span className="bottom-nav-icon" aria-hidden="true">
+              <Activity size={21} />
+            </span>
+            <span>Progress</span>
+            {path.startsWith("/projects/") && path !== "/projects/new" ? (
+              <i className="bottom-nav-active-dot" aria-hidden="true" />
+            ) : null}
+          </Link>
+        ) : null}
+        {nav.slice(2).map(renderNavItem)}
+      </nav>
     </div>
   );
 }

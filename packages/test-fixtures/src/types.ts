@@ -80,6 +80,8 @@ export interface FixtureImageStyle {
   readonly name: string;
   readonly summary: string;
   readonly coverUrl: string;
+  readonly referenceUrls: readonly string[];
+  readonly exampleUrls: readonly string[];
   readonly lifecycle: "ACTIVE" | "ARCHIVED";
   readonly versionState: "DRAFT" | "ANALYZING" | "NEEDS_REVIEW" | "PUBLISHED" | "FAILED";
   readonly activeVersion: number;

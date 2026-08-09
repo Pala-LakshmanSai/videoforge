@@ -22,7 +22,7 @@ export const emptyDraft: ProjectDraft = {
   title: "",
   voiceoverAssetId: null,
   voiceoverName: null,
-  avatarProfileVersionId: "avatar_version_maya_v1",
+  avatarProfileVersionId: "avatar_profile_version_fixture_001",
   imageStyleVersionId: "style_version_documentary_stock_v1",
   optionalScript: "",
   extraPromptKeywords: "ultra realistic, no AI look",

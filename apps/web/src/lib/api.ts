@@ -43,7 +43,8 @@ function query(scenario: ScenarioId) {
 }
 
 export const api = {
-  health: () => request<HealthResponse>("/api/health"),
+  health: (scenario?: ScenarioId) =>
+    request<HealthResponse>(`/api/health${scenario ? query(scenario) : ""}`),
   bootstrap: (scenario: ScenarioId) =>
     request<FixtureBootstrap>(`/api/v1/bootstrap${query(scenario)}`),
   projects: (scenario: ScenarioId) =>

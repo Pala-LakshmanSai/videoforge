@@ -1,5 +1,12 @@
+import * as Dialog from "@radix-ui/react-dialog";
 import * as Progress from "@radix-ui/react-progress";
-import type { ButtonHTMLAttributes, PropsWithChildren, ReactNode } from "react";
+import type {
+  ButtonHTMLAttributes,
+  CSSProperties,
+  DetailsHTMLAttributes,
+  PropsWithChildren,
+  ReactNode,
+} from "react";
 import type { ProjectStage, Tone } from "../lib/types";
 
 export function Badge({ children, tone = "neutral" }: PropsWithChildren<{ tone?: Tone }>) {
@@ -10,6 +17,7 @@ export function Button({
   children,
   variant = "primary",
   busy = false,
+  className = "",
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "ghost" | "danger";
@@ -18,7 +26,7 @@ export function Button({
   return (
     <button
       {...props}
-      className={`button button-${variant}`}
+      className={`button button-${variant} ${className}`.trim()}
       aria-busy={busy || undefined}
       disabled={busy || props.disabled}
     >
@@ -41,7 +49,7 @@ export function Panel({
   action?: ReactNode;
 }>) {
   return (
-    <section className={`panel ${className}`}>
+    <section className={`panel ${className}`.trim()}>
       {heading || eyebrow || action ? (
         <header className="panel-header">
           <div>
@@ -63,7 +71,7 @@ export function Metric({
   tone = "neutral",
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   detail: string;
   tone?: Tone;
 }) {
@@ -76,14 +84,105 @@ export function Metric({
   );
 }
 
+function clampProgress(value: number): number {
+  return Math.min(100, Math.max(0, value));
+}
+
 export function ProgressBar({ value, label }: { value: number; label: string }) {
+  const clamped = clampProgress(value);
   return (
-    <Progress.Root className="progress-root" value={value} aria-label={label}>
+    <Progress.Root className="progress-root" value={clamped} aria-label={label}>
       <Progress.Indicator
         className="progress-indicator"
-        style={{ transform: `translateX(-${100 - value}%)` }}
+        style={{ transform: `translateX(-${100 - clamped}%)` }}
       />
     </Progress.Root>
+  );
+}
+
+export function ProgressRing({
+  value,
+  label,
+  detail,
+}: {
+  value: number;
+  label: string;
+  detail?: string;
+}) {
+  const clamped = clampProgress(value);
+  return (
+    <div
+      className="progress-ring"
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={clamped}
+      aria-label={label}
+      style={{ "--progress-value": `${clamped * 3.6}deg` } as CSSProperties}
+    >
+      <span className="progress-ring-inner">
+        <strong>{clamped}%</strong>
+        <span>{detail ?? label}</span>
+      </span>
+    </div>
+  );
+}
+
+export function Disclosure({
+  summary,
+  children,
+  className = "",
+  ...props
+}: PropsWithChildren<
+  DetailsHTMLAttributes<HTMLDetailsElement> & {
+    summary: ReactNode;
+  }
+>) {
+  return (
+    <details {...props} className={`disclosure ${className}`.trim()}>
+      <summary className="disclosure-summary">
+        <span className="disclosure-summary-content">{summary}</span>
+        <span className="disclosure-chevron" aria-hidden="true" />
+      </summary>
+      <div className="disclosure-content">{children}</div>
+    </details>
+  );
+}
+
+export function DetailsSheet({
+  trigger,
+  title,
+  description,
+  children,
+}: PropsWithChildren<{
+  trigger: ReactNode;
+  title: string;
+  description?: string;
+}>) {
+  return (
+    <Dialog.Root>
+      <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="sheet-overlay" />
+        <Dialog.Content className="details-sheet">
+          <header className="details-sheet-header">
+            <div>
+              <p className="eyebrow">Details</p>
+              <Dialog.Title>{title}</Dialog.Title>
+              {description ? (
+                <Dialog.Description className="details-sheet-description">
+                  {description}
+                </Dialog.Description>
+              ) : null}
+            </div>
+            <Dialog.Close className="sheet-close" aria-label="Close details">
+              <span aria-hidden="true">×</span>
+            </Dialog.Close>
+          </header>
+          <div className="details-sheet-body">{children}</div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -97,25 +196,47 @@ const toneByStage: Record<ProjectStage["status"], Tone> = {
   COMPLETE: "success",
 };
 
+function activeStageIndex(stages: ProjectStage[]): number {
+  const actionable = stages.findIndex((stage) =>
+    ["RUNNING", "RETRYING", "BLOCKED", "FAILED"].includes(stage.status),
+  );
+  if (actionable >= 0) return actionable;
+  return stages.findIndex((stage) => stage.status === "QUEUED");
+}
+
 export function StageTimeline({ stages }: { stages: ProjectStage[] }) {
+  const activeIndex = activeStageIndex(stages);
   return (
-    <div className="stage-list">
-      {stages.map((stage) => (
-        <div className="stage-row" key={stage.id}>
-          <span className={`stage-dot stage-${toneByStage[stage.status]}`} aria-hidden="true" />
-          <div className="stage-copy">
-            <div>
-              <strong>{stage.label}</strong>
-              <Badge tone={toneByStage[stage.status]}>{stage.status.replaceAll("_", " ")}</Badge>
+    <ol className="stage-list" aria-label="Project stages">
+      {stages.map((stage, index) => {
+        const tone = toneByStage[stage.status];
+        const active = index === activeIndex;
+        return (
+          <li
+            className={`stage-row stage-row-${tone} ${active ? "stage-row-active" : ""} ${stage.status === "COMPLETE" ? "stage-row-complete" : ""}`.trim()}
+            key={stage.id}
+            aria-current={active ? "step" : undefined}
+          >
+            <span className="stage-index" aria-hidden="true">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <span className="stage-rail" aria-hidden="true">
+              <span className={`stage-dot stage-${tone}`} />
+            </span>
+            <div className="stage-copy">
+              <div>
+                <strong>{stage.label}</strong>
+                <Badge tone={tone}>{stage.status.replaceAll("_", " ")}</Badge>
+              </div>
+              <p>{stage.detail}</p>
             </div>
-            <p>{stage.detail}</p>
-          </div>
-          <span className="stage-count">
-            {stage.completed}/{stage.total}
-          </span>
-        </div>
-      ))}
-    </div>
+            <span className="stage-count">
+              {stage.completed}/{stage.total}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

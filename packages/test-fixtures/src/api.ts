@@ -28,6 +28,11 @@ export interface AvatarProfileResponse {
   activeVersion: number;
   selectedVersion: number;
   warning: string | null;
+  thumbnailUrl: string;
+  profileHash: string;
+  preparationProfile: string;
+  validationProfile: string;
+  rightsStatus: "ATTESTED";
 }
 
 export interface ImageStyleResponse {
@@ -44,6 +49,16 @@ export interface ImageStyleResponse {
   draftVersion: number | null;
   draftStatus: "DRAFT" | "ANALYZING" | "NEEDS_REVIEW" | "FAILED" | null;
   warning: string | null;
+  coverUrl: string;
+  referenceUrls: string[];
+  exampleUrls: string[];
+  profileHash: string;
+  medium: string;
+  lighting: string;
+  color: string;
+  texture: string;
+  rightsStatus: "ATTESTED" | "SYSTEM_OWNED";
+  retentionSummary: string;
 }
 
 export interface ProjectStageResponse {
@@ -77,6 +92,10 @@ export interface ProjectSummaryResponse {
   queuePosition: number | null;
   createdAt: string;
   stages?: ProjectStageResponse[];
+  capUsd: number;
+  lanes: FixtureProject["lanes"];
+  latestArtifact: FixtureProject["latestArtifact"];
+  reviewState: FixtureProject["review"]["state"];
 }
 
 export interface UsageSummaryResponse {
@@ -137,6 +156,11 @@ export function toAvatarProfileResponse(profile: FixtureAvatarProfile): AvatarPr
     activeVersion: profile.activeVersion,
     selectedVersion: profile.selectedVersion,
     warning: profile.warning,
+    thumbnailUrl: profile.thumbnailUrl,
+    profileHash: "sha256:7c49f38b7e2a-fixture-avatar-profile",
+    preparationProfile: "avatar-source-prep-v1",
+    validationProfile: "avatar-source-validation-v1",
+    rightsStatus: "ATTESTED",
   };
 }
 
@@ -165,6 +189,24 @@ export function toImageStyleResponse(style: FixtureImageStyle): ImageStyleRespon
     draftStatus:
       style.draftVersion === null || style.versionState === "PUBLISHED" ? null : style.versionState,
     warning: style.warning,
+    coverUrl: style.coverUrl,
+    referenceUrls: [...style.referenceUrls],
+    exampleUrls: [...style.exampleUrls],
+    profileHash: style.isDefault
+      ? "sha256:4a21c91d-documentary-stock-v1"
+      : "sha256:ce7d61c4-warm-rural-v1",
+    medium: style.isDefault ? "Observational documentary still" : "Natural-light rural documentary",
+    lighting: style.isDefault
+      ? "Available light, restrained contrast"
+      : "Warm afternoon side light",
+    color: style.isDefault
+      ? "Neutral earth, muted blue-green"
+      : "Warm earth, muted botanical green",
+    texture: "Tactile material detail, restrained sharpening",
+    rightsStatus: style.isDefault ? "SYSTEM_OWNED" : "ATTESTED",
+    retentionSummary: style.isDefault
+      ? "Built-in owned examples"
+      : "Private normalized references retained for this published version",
   };
 }
 
@@ -240,6 +282,10 @@ export function toProjectSummaryResponse(
       total: 1,
       detail: stage.detail,
     })),
+    capUsd: project.cost.capUsd,
+    lanes: project.lanes,
+    latestArtifact: project.latestArtifact,
+    reviewState: project.review.state,
   };
 }
 

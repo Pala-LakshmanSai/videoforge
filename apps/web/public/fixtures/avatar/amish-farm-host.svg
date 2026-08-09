@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="960" viewBox="0 0 800 960" role="img" aria-labelledby="title desc">
+  <title id="title">Synthetic presenter portrait</title>
+  <desc id="desc">A fixture portrait of a presenter in a warm rural studio.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#182a2c"/>
+      <stop offset=".48" stop-color="#6d5141"/>
+      <stop offset="1" stop-color="#121827"/>
+    </linearGradient>
+    <radialGradient id="skin" cx="44%" cy="30%" r="65%">
+      <stop stop-color="#e3b895"/>
+      <stop offset=".72" stop-color="#b97f61"/>
+      <stop offset="1" stop-color="#744a3d"/>
+    </radialGradient>
+    <linearGradient id="shirt" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#263c47"/>
+      <stop offset="1" stop-color="#111b2a"/>
+    </linearGradient>
+    <filter id="grain">
+      <feTurbulence baseFrequency=".75" numOctaves="2" seed="7" type="fractalNoise"/>
+      <feColorMatrix values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 .075 0"/>
+    </filter>
+  </defs>
+  <rect width="800" height="960" fill="url(#bg)"/>
+  <circle cx="650" cy="180" r="210" fill="#e8b56e" opacity=".13"/>
+  <path d="M0 720C160 645 270 650 405 710s255 66 395-5v255H0Z" fill="#0b111c" opacity=".65"/>
+  <ellipse cx="401" cy="967" rx="322" ry="285" fill="url(#shirt)"/>
+  <path d="M283 481c-4-139 42-246 117-252 85-6 133 100 122 246-8 110-49 191-120 196-77 6-116-74-119-190Z" fill="url(#skin)"/>
+  <path d="M278 397c-6-118 44-216 128-220 78-4 130 71 125 190-34-42-74-61-126-61-51 0-92 29-127 91Z" fill="#3b2a24"/>
+  <path d="M288 507c17 119 58 170 116 166 59-4 97-65 111-173-18 21-41 32-65 36-35 7-64 6-90-2-27-8-51-17-72-27Z" fill="#4a332b" opacity=".9"/>
+  <ellipse cx="354" cy="448" rx="9" ry="6" fill="#2a1d1b"/>
+  <ellipse cx="455" cy="445" rx="9" ry="6" fill="#2a1d1b"/>
+  <path d="M382 532c20 14 43 14 64-1" fill="none" stroke="#7a3d3b" stroke-width="8" stroke-linecap="round"/>
+  <path d="M340 411c20-10 39-11 57-3M426 405c19-6 38-3 55 7" fill="none" stroke="#463026" stroke-width="9" stroke-linecap="round"/>
+  <rect width="800" height="960" filter="url(#grain)" opacity=".8"/>
+</svg>

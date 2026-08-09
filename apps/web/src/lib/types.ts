@@ -49,6 +49,11 @@ export interface AvatarProfile {
   compatibility: "UNTESTED" | "RUNNING" | "PASSED" | "FAILED" | "STALE" | "CANCELLED";
   dimensions: string;
   lastUsed: string;
+  thumbnailUrl: string;
+  profileHash: string;
+  preparationProfile: string;
+  validationProfile: string;
+  rightsStatus: "ATTESTED";
 }
 
 export interface ImageStyle {
@@ -61,6 +66,16 @@ export interface ImageStyle {
   referenceCount: number;
   isDefault?: boolean;
   palette: [string, string];
+  coverUrl: string;
+  referenceUrls: string[];
+  exampleUrls: string[];
+  profileHash: string;
+  medium: string;
+  lighting: string;
+  color: string;
+  texture: string;
+  rightsStatus: "ATTESTED" | "SYSTEM_OWNED";
+  retentionSummary: string;
 }
 
 export interface ProjectStage {
@@ -94,6 +109,13 @@ export interface ProjectSummary {
   queuePosition: number | null;
   createdAt: string;
   stages?: ProjectStage[];
+  capUsd: number;
+  lanes: {
+    image: { state: string; completed: number; total: number; action: string };
+    avatar: { state: string; completed: number; total: number; action: string };
+  };
+  latestArtifact: { kind: "IMAGE" | "AVATAR_CLIP" | "VIDEO"; url: string; label: string } | null;
+  reviewState: "NOT_READY" | "READY_FOR_REVIEW" | "CHANGES_REQUESTED" | "APPROVED";
 }
 
 export interface UsageSummary {

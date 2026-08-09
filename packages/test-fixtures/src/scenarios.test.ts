@@ -72,6 +72,17 @@ describe("fixture scenario registry", () => {
   });
 
   it("encodes the high-risk scenario invariants", () => {
+    const readyAvatar = getFixtureScenario("avatar_profile_ready").snapshot.avatarHub.profiles[0];
+    const styles = getFixtureScenario("happy_generating").snapshot.imageStyles.styles;
+    const documentary = styles.find((style) => style.id === "style_documentary_stock");
+    const warmRural = styles.find((style) => style.id === "style_warm_rural");
+
+    assert.equal(readyAvatar?.thumbnailUrl, "/fixtures/avatar/amish-farm-host.svg");
+    assert.deepEqual(documentary?.referenceUrls, []);
+    assert.equal(documentary?.exampleUrls.length, 3);
+    assert.equal(warmRural?.referenceUrls.length, 4);
+    assert.deepEqual(warmRural?.exampleUrls, []);
+    assert.equal(warmRural?.referenceCount, 4);
     assert.equal(getFixtureScenario("avatar_hub_empty").snapshot.avatarHub.profiles.length, 0);
     assert.equal(
       getFixtureScenario("avatar_hub_empty").snapshot.draft.avatarProfileVersionId,
@@ -111,7 +122,12 @@ describe("fixture scenario registry", () => {
     assert.equal(bootstrap.user.role, "ADMIN");
     assert.equal(bootstrap.projects.length, 1);
     assert.equal(bootstrap.avatars[0]?.status, "READY");
+    assert.equal(bootstrap.avatars[0]?.thumbnailUrl, "/fixtures/avatar/amish-farm-host.svg");
     assert.equal(bootstrap.styles[0]?.status, "PUBLISHED");
+    assert.equal(bootstrap.styles[0]?.exampleUrls.length, 3);
+    assert.equal(bootstrap.styles[0]?.rightsStatus, "SYSTEM_OWNED");
+    assert.equal(bootstrap.styles[0]?.retentionSummary, "Built-in owned examples");
+    assert.equal(bootstrap.styles[1]?.referenceUrls.length, 4);
     assert.equal(bootstrap.usage.projectSpend, 0.41);
   });
 });
