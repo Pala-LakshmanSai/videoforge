@@ -323,6 +323,11 @@ test("Avatar Hub shows the preset image and keeps technical detail collapsed", a
   await page.keyboard.press("Escape");
   await expect(detailsSheet).toHaveCount(0);
   await expect(detailsTrigger).toBeFocused();
+
+  await page.goto("/avatars?fixture=avatar_test_cancelled");
+  const cancelledCard = page.locator("article").filter({ hasText: "Amish Farm Host" });
+  await expect(cancelledCard.getByText("Test cancelled", { exact: true })).toBeVisible();
+  await expect(cancelledCard.getByText("Ready", { exact: true })).toHaveCount(0);
 });
 
 test("Image Styles discloses four Warm Rural references and labels owned examples honestly", async ({

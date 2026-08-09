@@ -41,6 +41,13 @@ import {
   StageTimeline,
 } from "../components/ui";
 import { api, ApiError } from "../lib/api";
+import {
+  parseAvatarCreateMutationResponse,
+  parseImageStyleCreateMutationResponse,
+  parseProjectCreateMutationResponse,
+  parseProjectPreflightMutationResponse,
+  parseVoiceoverRegistrationMutationResponse,
+} from "../lib/api-schemas";
 import { createProjectBlockers } from "../lib/create-eligibility";
 import { hasStoredDraft, loadDraft, saveDraft, updateDraft, type ProjectDraft } from "../lib/draft";
 import {
@@ -80,6 +87,23 @@ function statusTone(status: string): Tone {
   )
     return "info";
   return "neutral";
+}
+
+function avatarCompatibilityLabel(status: AvatarProfile["compatibility"]): string {
+  switch (status) {
+    case "UNTESTED":
+      return "Not tested";
+    case "RUNNING":
+      return "Testing";
+    case "PASSED":
+      return "Passed";
+    case "FAILED":
+      return "Test failed";
+    case "STALE":
+      return "Retest recommended";
+    case "CANCELLED":
+      return "Test cancelled";
+  }
 }
 
 function noticeForScope(
@@ -843,13 +867,14 @@ export function CreateProjectScreen() {
     mutationFn: async () => {
       setSubmittedError(null);
       const mutationId = crypto.randomUUID();
-      await api.mutate("/api/v1/projects/preflight", payload, scenario, `${mutationId}:preflight`);
-      return api.mutate<{ id: string; status: string; nextFixture?: ScenarioId }>(
-        "/api/v1/projects",
-        payload,
-        scenario,
-        `${mutationId}:create`,
-      );
+      await api.mutate("/api/v1/projects/preflight", payload, scenario, {
+        idempotencyKey: `${mutationId}:preflight`,
+        parse: parseProjectPreflightMutationResponse,
+      });
+      return api.mutate("/api/v1/projects", payload, scenario, {
+        idempotencyKey: `${mutationId}:create`,
+        parse: parseProjectCreateMutationResponse,
+      });
     },
     onSuccess: (result) =>
       window.location.assign(
@@ -893,6 +918,7 @@ export function CreateProjectScreen() {
           channels: verified.channels,
         },
         scenario,
+        { parse: parseVoiceoverRegistrationMutationResponse },
       );
       if (validation.signal.aborted) return;
       setDraft((value) => ({
@@ -1001,6 +1027,10 @@ export function CreateProjectScreen() {
                     options={readyAvatars.map((avatar) => ({
                       id: avatar.versionId,
                       imageUrl: avatar.thumbnailUrl,
+                      meta:
+                        avatar.compatibility === "PASSED"
+                          ? undefined
+                          : avatarCompatibilityLabel(avatar.compatibility),
                       name: avatar.name,
                     }))}
                     selectedId={draft.avatarProfileVersionId}
@@ -1634,19 +1664,16 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
     setReviewActionNotice(null);
     try {
       if (id === "approve") {
-        await Promise.all([
-          api.mutate(
-            `/api/v1/projects/${projectId}/approve`,
-            {
-              project_id: projectId,
-              candidate_id: project?.review.candidateId,
-              candidate_sha256: project?.review.candidateSha256,
-            },
-            scenario,
-            { ifMatch: project?.versionToken },
-          ),
-          new Promise((resolve) => window.setTimeout(resolve, 600)),
-        ]);
+        await api.mutate(
+          `/api/v1/projects/${projectId}/approve`,
+          {
+            project_id: projectId,
+            candidate_id: project?.review.candidateId,
+            candidate_sha256: project?.review.candidateSha256,
+          },
+          scenario,
+          { ifMatch: project?.versionToken },
+        );
         setApprovalRecorded(true);
         await query.refetch();
       } else if (id === "retry") {
@@ -2006,16 +2033,21 @@ export function AvatarHubScreen() {
         ) : (
           <div className="card-grid avatar-card-grid">
             {visibleAvatars.map((avatar) => {
-              const needsAttention =
-                avatar.status !== "READY" ||
-                avatar.compatibility !== "PASSED" ||
-                Boolean(avatar.warning);
+              const attentionStatus =
+                avatar.status !== "READY"
+                  ? { label: humanize(avatar.status), tone: statusTone(avatar.status) }
+                  : avatar.compatibility !== "PASSED"
+                    ? {
+                        label: avatarCompatibilityLabel(avatar.compatibility),
+                        tone: statusTone(avatar.compatibility),
+                      }
+                    : null;
               return (
                 <article className="entity-card avatar-card" key={avatar.versionId}>
                   <div className="avatar-card-media">
                     <PresetImage src={avatar.thumbnailUrl} alt={`${avatar.name} presenter`} />
-                    {needsAttention ? (
-                      <Badge tone={statusTone(avatar.status)}>{humanize(avatar.status)}</Badge>
+                    {attentionStatus ? (
+                      <Badge tone={attentionStatus.tone}>{attentionStatus.label}</Badge>
                     ) : null}
                   </div>
                   <div className="entity-card-body">
@@ -2077,9 +2109,7 @@ export function AvatarHubScreen() {
                       </span>
                       <span className="detail-fact-wide">
                         <small>Profile hash</small>
-                        <strong>
-                          {avatar.profileHash ?? "sha256:fixture-local-avatar-profile"}
-                        </strong>
+                        <strong>{avatar.profileHash}</strong>
                       </span>
                     </div>
                   </DetailsSheet>
@@ -2141,7 +2171,7 @@ export function NewAvatarScreen() {
     setBusy(true);
     setSaveError(null);
     try {
-      const result = await api.mutate<{ avatarProfile: AvatarProfile }>(
+      const result = await api.mutate(
         "/api/v1/avatar-profiles",
         {
           name: name.trim(),
@@ -2156,6 +2186,7 @@ export function NewAvatarScreen() {
           attestations: { image_use_rights: true, likeness_animation_consent: true },
         },
         scenario,
+        { parse: parseAvatarCreateMutationResponse },
       );
       updateDraft({ avatarProfileVersionId: result.avatarProfile.versionId }, scenario);
       window.location.assign(fixtureLink(returnTo));
@@ -2607,7 +2638,7 @@ export function NewStyleScreen() {
         "/fixtures/styles/rural-kitchen.svg",
         "/fixtures/styles/rural-market.svg",
       ].slice(0, files.length);
-      const result = await api.mutate<{ imageStyle: ImageStyle }>(
+      const result = await api.mutate(
         "/api/v1/image-styles",
         {
           name: name.trim(),
@@ -2631,6 +2662,7 @@ export function NewStyleScreen() {
           },
         },
         scenario,
+        { parse: parseImageStyleCreateMutationResponse },
       );
       updateDraft({ imageStyleVersionId: result.imageStyle.versionId }, scenario);
       window.location.assign(fixtureLink(returnTo));

@@ -20,6 +20,8 @@ const AVATAR_FIXTURE_PATH = /^\/fixtures\/avatar\/[a-z0-9][a-z0-9._-]*\.svg$/u;
 const STYLE_FIXTURE_PATH = /^\/fixtures\/styles\/[a-z0-9][a-z0-9._-]*\.svg$/u;
 const MEDIA_FIXTURE_PATH = /^\/fixtures\/media\/[a-z0-9][a-z0-9._-]*\.(?:mp4|svg)$/u;
 const DOWNLOAD_PATH = /^\/api\/v1\/projects\/[A-Za-z0-9._:-]+\/download\?fixture=[a-z0-9_]+$/u;
+const FIXTURE_VOICEOVER_ASSET = /^fixture_voiceover_sha256_([a-f0-9]{64})$/u;
+const VOICEOVER_FILENAME = /^[^/\\\0]+\.(?:aac|flac|m4a|mp3|wav)$/iu;
 
 const scenarioSchema = z.enum(scenarioIds);
 const noticeSchema = z
@@ -291,16 +293,84 @@ const healthSchema = z
 
 const registeredVoiceoverSchema = z
   .object({
-    assetId: z.string(),
-    checksum: z.string(),
-    filename: z.string(),
-    durationSeconds: z.number(),
-    sampleRate: z.number().int(),
+    assetId: z.string().regex(FIXTURE_VOICEOVER_ASSET),
+    checksum: z.string().regex(SHA256),
+    filename: z.string().min(1).max(240).regex(VOICEOVER_FILENAME),
+    durationSeconds: z.number().min(10).max(3_600),
+    sampleRate: z.number().int().min(8_000).max(192_000),
     channels: z.union([z.literal(1), z.literal(2)]),
     verificationState: z.literal("VERIFIED"),
     persistedBytes: z.literal(false),
     providerCallsAuthorized: z.literal(false),
   })
+  .strict()
+  .superRefine((voiceover, context) => {
+    const digest = FIXTURE_VOICEOVER_ASSET.exec(voiceover.assetId)?.[1];
+    if (!digest || voiceover.checksum !== `sha256:${digest}`) {
+      context.addIssue({
+        code: "custom",
+        path: ["checksum"],
+        message: "Voiceover asset handle and checksum do not match",
+      });
+    }
+  });
+
+const projectPreflightMutationSchema = z
+  .object({
+    ok: z.literal(true),
+    status: z.literal("READY"),
+    fixture: scenarioSchema,
+    avatarProfileVersionId: z.string(),
+    imageStyleVersionId: z.string(),
+    estimatedCostUsd: z.number().nonnegative(),
+    spendCapUsd: z.number().nonnegative(),
+    providerCallsAuthorized: z.literal(false),
+  })
+  .strict();
+
+const projectCreateMutationSchema = z
+  .object({
+    ok: z.literal(true),
+    id: z.string(),
+    revisionId: z.string(),
+    status: z.literal("QUEUED"),
+    fixture: scenarioSchema,
+    nextFixture: scenarioSchema,
+    pins: z
+      .object({
+        avatarProfileVersionId: z.string(),
+        imageStyleVersionId: z.string(),
+      })
+      .strict(),
+    providerCallsAuthorized: z.literal(false),
+    versionToken: z.string().regex(PROJECT_VERSION_TOKEN),
+  })
+  .strict();
+
+const avatarCreateMutationSchema = z
+  .object({
+    ok: z.literal(true),
+    avatarProfile: avatarSchema,
+    lifecycle: z.object({ profile: z.literal("ACTIVE"), version: z.literal("READY") }).strict(),
+    immutableVersion: z.literal(true),
+    uploadedBytesPersisted: z.literal(false),
+    providerCallsAuthorized: z.literal(false),
+  })
+  .strict();
+
+const imageStyleCreateMutationSchema = z
+  .object({
+    ok: z.literal(true),
+    imageStyle: imageStyleSchema,
+    lifecycle: z.object({ style: z.literal("ACTIVE"), version: z.literal("PUBLISHED") }).strict(),
+    immutableVersion: z.literal(true),
+    uploadedBytesPersisted: z.literal(false),
+    providerCallsAuthorized: z.literal(false),
+  })
+  .strict();
+
+const voiceoverRegistrationMutationSchema = z
+  .object({ ok: z.literal(true), voiceover: registeredVoiceoverSchema, synthetic: z.literal(true) })
   .strict();
 
 export const parseHealthResponse = (value: unknown): HealthResponse => healthSchema.parse(value);
@@ -319,5 +389,15 @@ export const parseExecutionProfilesResponse = (value: unknown): ExecutionProfile
   parseExecutionProfileCatalog(value, fixtureRuntimeProfileSet);
 export const parseRegisteredVoiceoverResponse = (value: unknown): RegisteredVoiceover =>
   registeredVoiceoverSchema.parse(value) as RegisteredVoiceover;
+export const parseProjectPreflightMutationResponse = (value: unknown) =>
+  projectPreflightMutationSchema.parse(value);
+export const parseProjectCreateMutationResponse = (value: unknown) =>
+  projectCreateMutationSchema.parse(value);
+export const parseAvatarCreateMutationResponse = (value: unknown) =>
+  avatarCreateMutationSchema.parse(value);
+export const parseImageStyleCreateMutationResponse = (value: unknown) =>
+  imageStyleCreateMutationSchema.parse(value);
+export const parseVoiceoverRegistrationMutationResponse = (value: unknown) =>
+  voiceoverRegistrationMutationSchema.parse(value);
 export const parseMutationResponse = (value: unknown): Record<string, unknown> =>
   z.record(z.string(), z.unknown()).parse(value);

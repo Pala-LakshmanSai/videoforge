@@ -92,9 +92,10 @@ function query(scenario: ScenarioId) {
   return `?fixture=${encodeURIComponent(scenario)}`;
 }
 
-interface MutationOptions {
+interface MutationOptions<T> {
   idempotencyKey?: string;
   ifMatch?: string;
+  parse?: (value: unknown) => T;
 }
 
 export const api = {
@@ -144,13 +145,14 @@ export const api = {
       undefined,
       parseRegisteredVoiceoverResponse,
     ),
-  mutate: <T>(
+  mutate: <T = Record<string, unknown>>(
     path: string,
     body: unknown,
     scenario: ScenarioId,
-    options: string | MutationOptions = {},
+    options: string | MutationOptions<T> = {},
   ) => {
-    const normalizedOptions = typeof options === "string" ? { idempotencyKey: options } : options;
+    const normalizedOptions: MutationOptions<T> =
+      typeof options === "string" ? { idempotencyKey: options } : options;
     const headers: Record<string, string> = {
       "Idempotency-Key": normalizedOptions.idempotencyKey ?? crypto.randomUUID(),
     };
@@ -162,7 +164,10 @@ export const api = {
         headers,
         body: JSON.stringify(body),
       },
-      (value) => parseMutationResponse(value) as T,
+      (value) =>
+        normalizedOptions.parse
+          ? normalizedOptions.parse(value)
+          : (parseMutationResponse(value) as T),
     );
   },
 };
