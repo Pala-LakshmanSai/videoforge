@@ -46,6 +46,19 @@ describe("fixture media validation", () => {
     );
   });
 
+  it("cancels voiceover validation before reading bytes", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const file = fixtureFile(
+      "cancelled.wav",
+      "audio/wav",
+      bytes(...ascii("RIFF"), 0, 0, 0, 0, ...ascii("WAVE")),
+    );
+    await expect(validateVoiceoverFile(file, { signal: controller.signal })).rejects.toMatchObject({
+      name: "AbortError",
+    });
+  });
+
   it("rejects image magic bytes that disagree with the extension before decode", async () => {
     const pngHeader = bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a);
     const file = fixtureFile("renamed.jpg", "image/jpeg", pngHeader);

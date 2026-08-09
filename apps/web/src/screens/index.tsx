@@ -668,6 +668,7 @@ export function CreateProjectScreen() {
   const [audioPending, setAudioPending] = useState(false);
   const [submittedError, setSubmittedError] = useState<string | null>(null);
   const revalidatedVoiceover = useRef<string | null>(null);
+  const audioValidation = useRef<AbortController | null>(null);
   const bootstrap = useQuery({
     queryKey: ["bootstrap", scenario],
     queryFn: () => api.bootstrap(scenario),
@@ -794,6 +795,13 @@ export function CreateProjectScreen() {
     };
   }, [draft.voiceoverAssetId, draftHydrated, scenario]);
 
+  useEffect(
+    () => () => {
+      audioValidation.current?.abort();
+    },
+    [],
+  );
+
   const keywordValidation = validateOutputRuleKeywords(draft.extraPromptKeywords);
   const conflict = draft.applyExtraPromptKeywords && !keywordValidation.valid;
   const keywordEmpty = draft.applyExtraPromptKeywords && !draft.extraPromptKeywords.trim();
@@ -856,6 +864,9 @@ export function CreateProjectScreen() {
 
   async function chooseAudio(file?: File) {
     if (!file) return;
+    audioValidation.current?.abort();
+    const validation = new AbortController();
+    audioValidation.current = validation;
     revalidatedVoiceover.current = null;
     setDraft((value) => ({
       ...value,
@@ -869,7 +880,8 @@ export function CreateProjectScreen() {
     setAudioError(null);
     setAudioPending(true);
     try {
-      const verified = await validateVoiceoverFile(file);
+      const verified = await validateVoiceoverFile(file, { signal: validation.signal });
+      if (validation.signal.aborted) return;
       await api.mutate(
         "/api/v1/voiceovers/register",
         {
@@ -882,6 +894,7 @@ export function CreateProjectScreen() {
         },
         scenario,
       );
+      if (validation.signal.aborted) return;
       setDraft((value) => ({
         ...value,
         voiceoverAssetId: verified.assetId,
@@ -892,9 +905,14 @@ export function CreateProjectScreen() {
         voiceoverChecksum: verified.checksum,
       }));
     } catch (error) {
-      setAudioError(error instanceof Error ? error.message : "Voiceover validation failed.");
+      if (!(error instanceof DOMException && error.name === "AbortError")) {
+        setAudioError(error instanceof Error ? error.message : "Voiceover validation failed.");
+      }
     } finally {
-      setAudioPending(false);
+      if (audioValidation.current === validation) {
+        audioValidation.current = null;
+        setAudioPending(false);
+      }
     }
   }
 

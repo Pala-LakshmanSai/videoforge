@@ -14,6 +14,26 @@ export interface VerifiedImage {
   width: number;
 }
 
+interface VoiceoverReadResult {
+  buffer: ArrayBuffer;
+  hex: string;
+}
+
+interface VoiceoverWorkerSuccess extends VoiceoverReadResult {
+  ok: true;
+}
+
+interface VoiceoverWorkerFailure {
+  message: string;
+  ok: false;
+}
+
+type VoiceoverWorkerResponse = VoiceoverWorkerFailure | VoiceoverWorkerSuccess;
+
+interface VoiceoverValidationOptions {
+  signal?: AbortSignal;
+}
+
 const supportedExtensions = new Set(["aac", "flac", "m4a", "mp3", "wav"]);
 const supportedMimeTypes = new Set([
   "audio/aac",
@@ -60,7 +80,53 @@ function containerMatchesExtension(
   return container.toLowerCase() === extension;
 }
 
-export async function validateVoiceoverFile(file: File): Promise<VerifiedVoiceover> {
+function abortError(): DOMException {
+  return new DOMException("Voiceover validation was cancelled.", "AbortError");
+}
+
+async function readAndHashVoiceover(
+  file: File,
+  signal?: AbortSignal,
+): Promise<VoiceoverReadResult> {
+  if (signal?.aborted) throw abortError();
+
+  if (typeof Worker === "undefined") {
+    const buffer = await file.arrayBuffer();
+    if (signal?.aborted) throw abortError();
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", buffer));
+    const hex = Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    return { buffer, hex };
+  }
+
+  return new Promise<VoiceoverReadResult>((resolve, reject) => {
+    const worker = new Worker(new URL("./media-validation-worker.ts", import.meta.url), {
+      type: "module",
+    });
+    const stop = () => worker.terminate();
+    const cancel = () => {
+      stop();
+      reject(abortError());
+    };
+    signal?.addEventListener("abort", cancel, { once: true });
+    worker.onerror = () => {
+      signal?.removeEventListener("abort", cancel);
+      stop();
+      reject(new Error("The voiceover validation worker failed. Choose the file again."));
+    };
+    worker.onmessage = (event: MessageEvent<VoiceoverWorkerResponse>) => {
+      signal?.removeEventListener("abort", cancel);
+      stop();
+      if (event.data.ok) resolve({ buffer: event.data.buffer, hex: event.data.hex });
+      else reject(new Error(event.data.message));
+    };
+    worker.postMessage({ file });
+  });
+}
+
+export async function validateVoiceoverFile(
+  file: File,
+  options: VoiceoverValidationOptions = {},
+): Promise<VerifiedVoiceover> {
   const extension = extensionOf(file.name);
   if (!supportedExtensions.has(extension)) {
     throw new Error("Use WAV, MP3, M4A/AAC, or FLAC audio.");
@@ -71,8 +137,11 @@ export async function validateVoiceoverFile(file: File): Promise<VerifiedVoiceov
   if (file.size === 0) throw new Error("The voiceover file is empty.");
   if (file.size > 1_000_000_000) throw new Error("Voiceover must be 1 GB or smaller.");
 
-  const bytes = await file.arrayBuffer();
-  const container = detectAudioContainer(new Uint8Array(bytes.slice(0, 32)));
+  const { buffer, hex } = await readAndHashVoiceover(file, options.signal);
+  if (options.signal?.aborted) throw abortError();
+  const container = detectAudioContainer(
+    new Uint8Array(buffer, 0, Math.min(32, buffer.byteLength)),
+  );
   if (!container || !containerMatchesExtension(container, extension)) {
     throw new Error("The file contents do not match its audio extension.");
   }
@@ -80,12 +149,13 @@ export async function validateVoiceoverFile(file: File): Promise<VerifiedVoiceov
   const context = new AudioContext();
   let decoded: AudioBuffer;
   try {
-    decoded = await context.decodeAudioData(bytes.slice(0));
+    decoded = await context.decodeAudioData(buffer);
   } catch {
     throw new Error("The voiceover could not be decoded. Choose a complete audio file.");
   } finally {
     await context.close();
   }
+  if (options.signal?.aborted) throw abortError();
 
   if (decoded.duration < 10 || decoded.duration > 3_600) {
     throw new Error("Voiceover duration must be between 10 seconds and 60 minutes.");
@@ -96,9 +166,6 @@ export async function validateVoiceoverFile(file: File): Promise<VerifiedVoiceov
   if (decoded.sampleRate < 8_000 || decoded.sampleRate > 192_000) {
     throw new Error("The voiceover sample rate is outside the supported range.");
   }
-
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
-  const hex = [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
   return {
     assetId: `fixture_voiceover_sha256_${hex}`,
     channels: decoded.numberOfChannels,
