@@ -14,6 +14,11 @@ export {
   toProjectSummaryResponse,
   toUsageSummaryResponse,
 } from "./api";
+export {
+  LOCAL_SHORT_SLICE_MANIFEST,
+  LOCAL_SHORT_SLICE_SOURCE_PATHS,
+  validateLocalShortSliceManifest,
+} from "./local-short-slice";
 export type {
   FixtureAvatarProfile,
   FixtureAccessState,
@@ -39,3 +44,11 @@ export type {
   ProjectSummaryResponse,
   UsageSummaryResponse,
 } from "./api";
+export type {
+  LocalShortSliceComposition,
+  LocalShortSliceImageZoom,
+  LocalShortSliceManifest,
+  LocalShortSliceSegment,
+  LocalShortSliceSourceAsset,
+  LocalShortSliceValidationIssue,
+} from "./local-short-slice";
