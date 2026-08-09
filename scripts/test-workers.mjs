@@ -2,7 +2,16 @@ import { spawnSync } from "node:child_process";
 
 import { resolveUv } from "./uv-tool.mjs";
 
-const workers = ["image-media", "avatar-primary", "avatar-repair", "avatar-quality"];
+const suites = [
+  ...["image-media", "avatar-primary", "avatar-repair", "avatar-quality"].map((worker) => ({
+    label: worker,
+    start: `workers/${worker}/tests`,
+  })),
+  {
+    label: "image-media/transcribe",
+    start: "workers/image-media/tests/jobs/transcribe",
+  },
+];
 let uv;
 try {
   uv = resolveUv();
@@ -11,7 +20,7 @@ try {
   process.exit(1);
 }
 
-for (const worker of workers) {
+for (const suite of suites) {
   const result = spawnSync(
     uv,
     [
@@ -23,7 +32,7 @@ for (const worker of workers) {
       "unittest",
       "discover",
       "-s",
-      `workers/${worker}/tests`,
+      suite.start,
       "-p",
       "test_*.py",
     ],
@@ -32,4 +41,4 @@ for (const worker of workers) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-console.log(`Worker health tests passed (${workers.length} isolated Python 3.12 lanes).`);
+console.log(`Worker tests passed (${suites.length} explicit Python 3.12 suites).`);
