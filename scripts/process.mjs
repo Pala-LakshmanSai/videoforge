@@ -13,11 +13,16 @@ export async function commandOutput(command, args = []) {
 }
 
 export async function listeningProcess(port) {
-  const output = await commandOutput("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-Fpc"]);
+  const output = await commandOutput("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-Fpcn"]);
+  return parseListeningProcess(output);
+}
+
+export function parseListeningProcess(output) {
   if (!output) return null;
   const pid = output.match(/^p(\d+)$/m)?.[1] ?? null;
   const command = output.match(/^c(.+)$/m)?.[1] ?? "unknown";
-  return pid ? { pid: Number(pid), command } : null;
+  const address = output.match(/^n(.+)$/m)?.[1] ?? null;
+  return pid ? { pid: Number(pid), command, address } : null;
 }
 
 export async function health(url = "http://localhost:4173/api/health") {

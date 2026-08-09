@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev:raw": "concurrently -k -s first -n web,api -c magenta,cyan \"vite --host 0.0.0.0 --port 4173 --strictPort\" \"tsx watch src/server.ts\"",
-    "lint": "eslint src tests vite.config.ts playwright.config.ts",
+    "dev:raw": "concurrently -k -s first -n web,api -c magenta,cyan \"vite --host 127.0.0.1 --port 4173 --strictPort\" \"tsx watch src/server.ts\"",
+    "dev:raw:lan": "concurrently -k -s first -n web,api -c magenta,cyan \"vite --host 0.0.0.0 --port 4173 --strictPort\" \"tsx watch src/server.ts\"",
+    "lint": "eslint src tests vite.config.ts vitest.config.ts playwright.config.ts tailwind.config.ts postcss.config.cjs",
     "test": "vitest run",
     "test:chrome": "playwright test",
     "typecheck": "tsc --noEmit"

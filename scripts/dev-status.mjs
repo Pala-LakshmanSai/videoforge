@@ -1,6 +1,7 @@
 import { networkInterfaces } from "node:os";
 
-import { health, listeningProcess } from "./process.mjs";
+import { isLanListenerAddress } from "./dev-policy.mjs";
+import { commandOutput, health, listeningProcess } from "./process.mjs";
 
 const url = "http://localhost:4173";
 const owner = await listeningProcess(4173);
@@ -25,25 +26,63 @@ function localNetworkAddress() {
   return null;
 }
 
-if (!owner || !status) {
+if (!owner || !status || status.app !== "videoforge") {
   console.error(`VideoForge is stopped or unhealthy at ${url}.`);
   process.exit(1);
 }
 
-const lanAddress = localNetworkAddress();
+const headCommit = await commandOutput("git", ["rev-parse", "--short", "HEAD"]);
+const workingTree = await commandOutput("git", ["status", "--porcelain"]);
+const workingTreeDirty = workingTree === null ? null : workingTree.length > 0;
+const healthCommit = typeof status.commit === "string" ? status.commit : null;
+const commitMatchesHead = Boolean(headCommit && healthCommit === headCommit);
+const lanExposed = isLanListenerAddress(owner.address);
+const lanAddress = lanExposed && status.mode === "fixture" ? localNetworkAddress() : null;
+const warnings = [];
+
+if (!commitMatchesHead) {
+  warnings.push("Health commit does not match the current HEAD; restart the owned server.");
+}
+if (workingTreeDirty === true) {
+  warnings.push(
+    "The working tree is dirty; a matching HEAD cannot prove that the served source is current.",
+  );
+}
+if (workingTreeDirty === null) {
+  warnings.push("Git working-tree state could not be determined.");
+}
+if (status.provider_calls_authorized !== false || status.authorized_spend_usd !== 0) {
+  warnings.push(
+    "Health does not prove provider calls are disabled with an authorized spend of $0.",
+  );
+  process.exitCode = 1;
+}
+if (status.mode === "local" && lanExposed) {
+  warnings.push("Local-media mode is exposed on LAN; restart it on loopback before continuing.");
+  process.exitCode = 1;
+}
 
 console.log(
   JSON.stringify(
     {
       url,
       lanUrl: lanAddress ? `http://${lanAddress}:4173` : null,
+      binding: lanExposed ? "lan" : "loopback",
+      listener: owner.address,
       pid: owner.pid,
       process: owner.command,
       mode: status.mode,
-      commit: status.commit,
+      commit: healthCommit,
+      healthCommit,
+      headCommit,
+      commitMatchesHead,
+      workingTreeDirty,
       health: status.status,
       fixture: status.fixture_id,
       synthetic: status.synthetic,
+      providerCallsAuthorized: status.provider_calls_authorized,
+      authorizedSpendUsd: status.authorized_spend_usd,
+      warnings,
     },
     null,
     2,

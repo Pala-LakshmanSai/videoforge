@@ -15,6 +15,13 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    files: ["**/*.cjs"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: globals.commonjs,
+    },
+  },
+  {
     files: ["**/*.{js,mjs,ts,tsx}"],
     languageOptions: {
       globals: { ...globals.browser, ...globals.node },

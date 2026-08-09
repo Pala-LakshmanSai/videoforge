@@ -1,7 +1,8 @@
+import forms from "@tailwindcss/forms";
 import type { Config } from "tailwindcss";
 
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: { extend: {} },
-  plugins: [require("@tailwindcss/forms")],
+  plugins: [forms],
 } satisfies Config;
