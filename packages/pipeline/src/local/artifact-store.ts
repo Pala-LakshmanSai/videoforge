@@ -5,7 +5,6 @@ import {
   lstat,
   mkdir,
   open,
-  readFile,
   readdir,
   realpath,
   stat,
@@ -269,8 +268,13 @@ export class LocalArtifactStore {
 
   async verifyObject(sha256: Sha256Digest, extension: string): Promise<StoredLocalArtifact> {
     const verified = await this.readObject(sha256, extension);
-    const { content: _content, ...artifact } = verified;
-    return Object.freeze(artifact);
+    return Object.freeze({
+      sha256: verified.sha256,
+      bytes: verified.bytes,
+      extension: verified.extension,
+      absolutePath: verified.absolutePath,
+      created: verified.created,
+    });
   }
 
   async readObject(sha256: Sha256Digest, extension: string): Promise<ReadLocalArtifact> {
@@ -436,8 +440,13 @@ export class LocalArtifactStore {
   ): Promise<StoredLocalArtifact | null> {
     const verified = await this.readIfPresent(destination, expected, extension);
     if (!verified) return null;
-    const { content: _content, ...artifact } = verified;
-    return Object.freeze(artifact);
+    return Object.freeze({
+      sha256: verified.sha256,
+      bytes: verified.bytes,
+      extension: verified.extension,
+      absolutePath: verified.absolutePath,
+      created: verified.created,
+    });
   }
 
   private async readIfPresent(
