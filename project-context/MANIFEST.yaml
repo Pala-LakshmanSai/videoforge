@@ -193,7 +193,7 @@ open_gates:
   GATE_GPU_001: produce_tested_compatible_gpu_allowlists
   GATE_RUNPOD_001: verify_endpoint_config_reconciliation_dispatch_ambiguity_timeout_and_result_lifecycle
   GATE_COST_001: replace_planning_ranges_with_new_account_measurements
-  GATE_UI_001: user_approves_large_minimal_live_chrome_shell_visual_preset_galleries_and_core_flows
+  GATE_UI_001: user_approves_large_minimal_live_chrome_shell_proximity_dock_integrated_app_native_controls_preset_galleries_and_core_flows
 
 deferred:
   - ai_broll_video

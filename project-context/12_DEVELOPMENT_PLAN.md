@@ -52,8 +52,8 @@ Exit: TypeScript and Python validate identical fixtures; root commands work; a p
 
 ## Phase 0B: fixture UI shell in live Chrome
 
-- Implement tokens, full-width command bar/inset progress, floating dock, all fixture shell routes, and both preset Hubs/wizards.
-- Create Project uses compact visual preset dropdowns, minimal voiceover copy with strict validation, no script field, a confirmation-free keyword opt-in, and truthful `image_media`/`avatar_primary` profile selectors; planned candidates stay disabled until `GATE_GPU_001`.
+- Implement large-scale tokens, the full-width command bar, proximity dock, all fixture routes, and matched preset Hubs/wizards.
+- Create Project uses integrated app-native visual preset dropdowns, minimal voiceover copy with strict validation, no script field, a confirmation-free keyword opt-in, and truthful app-native `image_media`/`avatar_primary` profile selectors; planned candidates stay disabled until `GATE_GPU_001`.
 - Implement every scenario ID from `19_IMPLEMENTATION_PLAYBOOK.md`, including preset draft preservation/version drift, extra-keyword off/conflict behavior, empty/invalid/ready/archived avatar states, cold start, style analysis, partial failure, fallback approval, budget block, ambiguous dispatch, reconciliation, cancellation, ready-for-review, and approved.
 - Keep `http://localhost:4173` running/reused in the user's actual Chrome; inspect workflows as a human and capture approved feedback in `05_UI_UX_SPEC.md`.
 - `+ New style` must preserve the entire project draft and return/select after publish.

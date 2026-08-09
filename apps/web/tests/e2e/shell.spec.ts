@@ -101,18 +101,24 @@ async function expectFocusWithin(container: Locator): Promise<void> {
 }
 
 async function chooseFixture(page: Page, fixture: string): Promise<void> {
-  const scenario = page.getByLabel("Scenario");
-  if (!(await scenario.isVisible())) {
+  const scenarioTrigger = page.getByLabel("Scenario", { exact: true });
+  if (!(await scenarioTrigger.isVisible())) {
     await page.getByText("Fixture mode", { exact: true }).click();
   }
-  await scenario.selectOption(fixture);
+  await scenarioTrigger.click();
+  await page.getByRole("option", { name: fixture, exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`fixture=${fixture}`));
 }
 
 test.beforeEach(async ({ page }, testInfo) => {
+  const sessionId = fixtureSessionId(testInfo);
   await page.setExtraHTTPHeaders({
-    "X-VideoForge-Fixture-Session": fixtureSessionId(testInfo),
+    "X-VideoForge-Fixture-Session": sessionId,
   });
+  const reset = await page.request.post("/api/dev/fixture-session/reset", {
+    headers: { "X-VideoForge-Fixture-Session": sessionId },
+  });
+  expect(reset.ok()).toBe(true);
   const failures: RuntimeFailures = {
     consoleErrors: [],
     externalRequests: [],
@@ -170,6 +176,59 @@ test("queue exposes truthful status and complete primary navigation", async ({ p
   await expect(page.getByRole("heading", { name: "Image Styles" })).toBeVisible();
 });
 
+test("dock magnifies by pointer proximity without moving its layout boxes", async ({ page }) => {
+  const items = page.locator(".bottom-nav-item");
+  await expect(items).toHaveCount(8);
+  const target = items.nth(3);
+  const neighbor = items.nth(2);
+  const far = items.nth(7);
+  const before = await target.boundingBox();
+  if (!before) throw new Error("Dock target has no layout box.");
+
+  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+  await expect
+    .poll(() =>
+      target.evaluate((element) =>
+        Number(getComputedStyle(element).getPropertyValue("--dock-scale")),
+      ),
+    )
+    .toBeGreaterThan(1.35);
+  await expect
+    .poll(() =>
+      neighbor.evaluate((element) =>
+        Number(getComputedStyle(element).getPropertyValue("--dock-scale")),
+      ),
+    )
+    .toBeGreaterThan(1.05);
+  await expect
+    .poll(() =>
+      far.evaluate((element) => Number(getComputedStyle(element).getPropertyValue("--dock-scale"))),
+    )
+    .toBeLessThan(1.03);
+
+  const after = await target.boundingBox();
+  expect(after).toEqual(before);
+
+  await page.mouse.move(10, 10);
+  await expect
+    .poll(() =>
+      target.evaluate((element) =>
+        Number(getComputedStyle(element).getPropertyValue("--dock-scale")),
+      ),
+    )
+    .toBe(1);
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+  await expect
+    .poll(() =>
+      target.evaluate((element) =>
+        Number(getComputedStyle(element).getPropertyValue("--dock-scale")),
+      ),
+    )
+    .toBe(1);
+});
+
 test("Avatar Hub shows the preset image and keeps technical detail collapsed", async ({ page }) => {
   await page.goto("/avatars?fixture=avatar_profile_ready");
   await expect(page.getByRole("heading", { name: "Avatar Hub" })).toBeVisible();
@@ -177,6 +236,17 @@ test("Avatar Hub shows the preset image and keeps technical detail collapsed", a
   const avatarCard = page.locator("article").filter({ hasText: "Amish Farm Host" });
   await expect(avatarCard).toBeVisible();
   await expectImagesLoaded(avatarCard.getByRole("img", { name: "Amish Farm Host presenter" }));
+  await expect(avatarCard).not.toContainText("READY");
+  await expect(avatarCard).not.toContainText("PASSED");
+  await expect(avatarCard).not.toContainText("Active v");
+
+  const avatarGrid = page.locator(".avatar-card-grid");
+  const [cardBounds, gridBounds] = await Promise.all([
+    avatarCard.boundingBox(),
+    avatarGrid.boundingBox(),
+  ]);
+  if (!cardBounds || !gridBounds) throw new Error("Avatar Hub card geometry is unavailable.");
+  expect(cardBounds.width / gridBounds.width).toBeLessThanOrEqual(0.51);
 
   const detailsTrigger = avatarCard.getByRole("button", { name: /^Details/ });
   await expect(detailsTrigger).toBeVisible();
@@ -213,6 +283,13 @@ test("Image Styles discloses four Warm Rural references and labels owned example
 
   await expectImagesLoaded(defaultCard.getByRole("img", { name: /cover$/ }));
   await expectImagesLoaded(warmCard.getByRole("img", { name: /cover$/ }));
+  await expect(defaultCard).not.toContainText("Published v");
+  await expect(warmCard).not.toContainText("Published v");
+  const [defaultMediaHeight, warmMediaHeight] = await Promise.all([
+    defaultCard.locator(".style-card-media").evaluate((element) => element.clientHeight),
+    warmCard.locator(".style-card-media").evaluate((element) => element.clientHeight),
+  ]);
+  expect(defaultMediaHeight).toBe(warmMediaHeight);
   const defaultTrigger = defaultCard.getByRole("button", { name: /^Owned examples \(3\)/ });
   const warmTrigger = warmCard.getByRole("button", { name: /^References \(4\)/ });
   await expect(defaultTrigger).toBeVisible();
@@ -266,6 +343,52 @@ test("Create Project uses exact visual presets and never exposes project-local a
   await expect(page.locator('input[type="file"]')).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Upload final voiceover" })).toBeVisible();
   await expect(page.getByRole("button", { name: /upload avatar/i })).toHaveCount(0);
+  await expect(page.locator("select")).toHaveCount(0);
+
+  const avatarDetails = avatarPicker.locator("..");
+  await avatarPicker.click();
+  const avatarOptions = page.getByRole("radiogroup", { name: "Avatar Profile options" });
+  await expect(avatarOptions).toBeVisible();
+  await expect
+    .poll(() =>
+      avatarDetails.evaluate((element) => {
+        const container = element.getBoundingClientRect();
+        const menu = element.querySelector(".visual-preset-menu")?.getBoundingClientRect();
+        return Boolean(menu && menu.top >= container.top && menu.bottom <= container.bottom + 1);
+      }),
+    )
+    .toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(avatarOptions).not.toBeVisible();
+  await expect(avatarPicker).toBeFocused();
+
+  const imageCompute = page.getByLabel("Image generation compute profile", { exact: true });
+  await imageCompute.click();
+  await expect(
+    page.getByRole("listbox", { name: "Image generation compute profile options" }),
+  ).toBeVisible();
+  await expect(page.getByRole("option", { name: /RTX 4090/ })).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await expect(imageCompute).toBeFocused();
+
+  const keywordSummary = page.locator("summary.disclosure-summary").filter({
+    hasText: "Image keywords",
+  });
+  await keywordSummary.click();
+  const keywordDetails = keywordSummary.locator("..");
+  await expect(page.getByLabel("Image keywords")).toBeVisible();
+  await expect
+    .poll(() =>
+      keywordDetails.evaluate((element) => {
+        const container = element.getBoundingClientRect();
+        const content = element.querySelector(".disclosure-content")?.getBoundingClientRect();
+        return Boolean(
+          content && content.top >= container.top && content.bottom <= container.bottom + 1,
+        );
+      }),
+    )
+    .toBe(true);
+  await page.keyboard.press("Escape");
 
   await stylePicker.click();
   const documentary = page.getByRole("radio", { name: /Authentic Documentary Stock/ });
@@ -277,8 +400,11 @@ test("Create Project uses exact visual presets and never exposes project-local a
   await expect
     .poll(() =>
       page.evaluate(() => {
+        const scope = new URL(window.location.href).searchParams.get("fixture") ?? "default";
         const draft = JSON.parse(
-          localStorage.getItem("videoforge:fixture:project-draft:v1") ?? "null",
+          localStorage.getItem(
+            `videoforge:fixture:project-draft:v2:${encodeURIComponent(scope)}`,
+          ) ?? "null",
         ) as { avatarProfileVersionId?: string; imageStyleVersionId?: string } | null;
         return {
           avatar: draft?.avatarProfileVersionId,
@@ -306,8 +432,11 @@ test("Create Project uses exact visual presets and never exposes project-local a
   await expect
     .poll(() =>
       page.evaluate(() => {
+        const scope = new URL(window.location.href).searchParams.get("fixture") ?? "default";
         const draft = JSON.parse(
-          localStorage.getItem("videoforge:fixture:project-draft:v1") ?? "null",
+          localStorage.getItem(
+            `videoforge:fixture:project-draft:v2:${encodeURIComponent(scope)}`,
+          ) ?? "null",
         ) as { voiceoverAssetId?: string; voiceoverChecksum?: string } | null;
         return {
           assetId: draft?.voiceoverAssetId,
@@ -330,8 +459,11 @@ test("Create Project uses exact visual presets and never exposes project-local a
   await expect
     .poll(() =>
       page.evaluate(() => {
+        const scope = new URL(window.location.href).searchParams.get("fixture") ?? "default";
         const draft = JSON.parse(
-          localStorage.getItem("videoforge:fixture:project-draft:v1") ?? "null",
+          localStorage.getItem(
+            `videoforge:fixture:project-draft:v2:${encodeURIComponent(scope)}`,
+          ) ?? "null",
         ) as { voiceoverAssetId?: string | null; voiceoverChecksum?: string | null } | null;
         return {
           assetId: draft?.voiceoverAssetId,
@@ -368,13 +500,13 @@ test("project progress reaches review and records explicit approval", async ({ p
   await page.getByRole("link", { name: "Review output" }).click();
   await expect(page.getByRole("heading", { name: "Review", exact: true, level: 1 })).toBeVisible();
   await expect(page.getByText("Ready for review", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Fixture preview" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Download preview" })).toHaveCount(0);
 
   const approve = page.getByRole("button", { name: "Approve final" });
   await approve.click();
   await expect(approve).toBeDisabled();
   await expect(page.getByRole("button", { name: "Approved" })).toBeDisabled();
-  await expect(page.getByRole("link", { name: "Fixture preview" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Download preview" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Fixture record" })).toBeVisible();
 });
 
@@ -409,7 +541,7 @@ test("scenario actions match authoritative project and review state", async ({ p
 
   await page.goto("/projects/project_fixture_001/review?fixture=project_approved");
   await expect(page.getByRole("button", { name: "Approved" })).toBeDisabled();
-  await expect(page.getByRole("link", { name: "Fixture preview" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Download preview" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Fixture record" })).toBeVisible();
 });
 

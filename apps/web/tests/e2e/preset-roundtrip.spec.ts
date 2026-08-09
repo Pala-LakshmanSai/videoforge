@@ -126,7 +126,10 @@ async function createDecodablePng(page: Page, variant: number): Promise<Buffer> 
 
 async function readDraft(page: Page): Promise<ProjectDraftSnapshot> {
   return page.evaluate(() => {
-    const stored = localStorage.getItem("videoforge:fixture:project-draft:v1");
+    const scope = new URL(window.location.href).searchParams.get("fixture") ?? "default";
+    const stored = localStorage.getItem(
+      `videoforge:fixture:project-draft:v2:${encodeURIComponent(scope)}`,
+    );
     if (!stored) throw new Error("Project draft was not persisted");
     return JSON.parse(stored) as ProjectDraftSnapshot;
   });
@@ -194,9 +197,14 @@ async function expectProjectDraftVisible(page: Page, expected: ProjectDraftSnaps
 }
 
 test.beforeEach(async ({ page }, testInfo) => {
+  const sessionId = fixtureSessionId(testInfo);
   await page.setExtraHTTPHeaders({
-    "X-VideoForge-Fixture-Session": fixtureSessionId(testInfo),
+    "X-VideoForge-Fixture-Session": sessionId,
   });
+  const reset = await page.request.post("/api/dev/fixture-session/reset", {
+    headers: { "X-VideoForge-Fixture-Session": sessionId },
+  });
+  expect(reset.ok()).toBe(true);
   const failures: RuntimeFailures = {
     consoleErrors: [],
     externalRequests: [],
@@ -270,16 +278,25 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
     ["Image generation compute profile", ["RTX 4090", "RTX 5090", "L40S"]],
     ["Avatar generation compute profile", ["RTX 4090", "L40S", "RTX 6000 Ada"]],
   ] as const) {
-    const select = page.getByRole("combobox", { name });
-    await expect(select).toBeVisible();
-    await expect(select.locator("option:checked")).toContainText("Auto");
-    const planned = select.locator('optgroup[label="Requires GPU qualification"] option');
-    await expect(planned).toHaveCount(expectedCandidates.length);
-    for (const [index, candidate] of expectedCandidates.entries()) {
-      await expect(planned.nth(index)).toContainText(candidate);
-      await expect(planned.nth(index)).toHaveAttribute("disabled", "");
+    const trigger = page.getByLabel(name, { exact: true });
+    await expect(trigger).toBeVisible();
+    await expect(trigger).toContainText("Auto");
+    await trigger.click();
+    const listbox = page.getByRole("listbox", { name: `${name} options` });
+    await expect(listbox).toBeVisible();
+    await expect(listbox.getByRole("option", { name: /Auto/u })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    for (const candidate of expectedCandidates) {
+      await expect(
+        listbox.getByRole("option", { name: new RegExp(candidate, "u") }),
+      ).toBeDisabled();
     }
+    await page.keyboard.press("Escape");
+    await expect(trigger).toBeFocused();
   }
+  await expect(page.locator("select")).toHaveCount(0);
 
   await page.getByLabel("Video title").fill(title);
   await page.getByLabel("Upload final voiceover").setInputFiles({

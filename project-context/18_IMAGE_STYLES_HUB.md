@@ -240,11 +240,11 @@ The compiler uses one versioned, documented separator and normalization rule. Ha
 Add **Image Styles** to primary navigation. Each card shows:
 
 - Consented retained low-resolution thumbnail, accepted original Mage cover, or deterministic palette/medium placeholder.
-- Name and one-line summary.
-- Default/system badge where applicable.
-- Style lifecycle (`Active` or `Archived`), active published version, and any separate draft-version state (`Draft`, `Analyzing`, `Needs review`, or `Failed`).
-- Uploaded-reference count or truthful owned/generated-example count, active version, and last updated. Every authorized image for the exact version is available through the card's focused details sheet and keyboard lightbox.
-- Use, view, create new version, duplicate, test, and archive actions as permitted.
+- Name plus `Default` or an exceptional actionable draft/version state when applicable.
+- `References (N)` or truthful `Owned examples (N)`. Every authorized image for the exact version is available through the focused details sheet and keyboard lightbox.
+- Summary, lifecycle (`Active` or `Archived`), active published version, separate draft-version state (`Draft`, `Analyzing`, `Needs review`, or `Failed`), timestamps, provenance, and permitted secondary actions only on demand.
+
+The Hub uses the same card anatomy and media height as Avatar Hub: exactly two columns above 680 px and one column on mobile. Healthy published metadata does not repeat in the glance layer.
 
 The built-in default can be viewed, tested, used, and duplicated; it cannot be edited, deleted, or archived.
 
@@ -260,8 +260,8 @@ Analysis is asynchronous and resumable. Leaving the screen does not lose work. B
 
 Retain title, final voiceover, and selected Avatar Profile. The web shell has no script field and sends `optional_script: null`. Add:
 
-- Required compact visual Image Style dropdown, preselected to Authentic Documentary Stock. Its closed trigger shows only the selected cover/name/version; opening it reveals the searchable visual list with cover, name, summary, and version.
-- `Manage styles` and `+ New style` shortcuts.
+- Required compact app-native visual Image Style dropdown, preselected to Authentic Documentary Stock. Its closed trigger shows only the selected cover/name plus `Default` when applicable; opening it expands choices inside the same bordered control and adds search only when catalog size warrants it. The selected exact version ID is still persisted and auditable.
+- `+ New style` shortcut; ordinary Hub navigation remains in the persistent dock.
 - `Apply extra keywords to every AI image` toggle, off by default.
 - Extra Image Prompt Keywords textarea with examples and character count.
 - No persistent applied/not-applied or effective-settings confirmation; the toggle is the state, and only real enabled-text validation errors are shown.

@@ -24,11 +24,12 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CompositionPreview } from "../components/CompositionPreview";
 import { PageHeader } from "../components/PageHeader";
 import {
   Badge,
+  AppSelect,
   Button,
   DetailsSheet,
   Disclosure,
@@ -39,7 +40,7 @@ import {
   ProgressRing,
   StageTimeline,
 } from "../components/ui";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { hasStoredDraft, loadDraft, saveDraft, updateDraft, type ProjectDraft } from "../lib/draft";
 import {
   validateImageFile,
@@ -80,15 +81,43 @@ function statusTone(status: string): Tone {
   return "neutral";
 }
 
-function NoticeBanner({ notice }: { notice: FixtureNotice | null | undefined }) {
+function noticeForScope(
+  notice: FixtureNotice | null | undefined,
+  scope: FixtureNotice["scope"],
+): FixtureNotice | null {
+  return notice?.scope === scope ? notice : null;
+}
+
+function blockerNoticeForScope(
+  notice: FixtureNotice | null | undefined,
+  scope: FixtureNotice["scope"],
+): FixtureNotice | null {
+  const scoped = noticeForScope(notice, scope);
+  return scoped?.tone === "WARNING" || scoped?.tone === "ERROR" ? scoped : null;
+}
+
+function NoticeBanner({
+  notice,
+  action,
+}: {
+  notice: FixtureNotice | null | undefined;
+  action?: ReactNode;
+}) {
   if (!notice) return null;
-  const tone = notice.tone === "ERROR" ? "danger" : notice.tone === "WARNING" ? "warning" : "info";
+  const tone =
+    notice.tone === "ERROR"
+      ? "danger"
+      : notice.tone === "WARNING"
+        ? "warning"
+        : notice.tone === "SUCCESS"
+          ? "success"
+          : "info";
   return (
-    <div
-      className={`notice ${tone === "danger" ? "notice-danger" : tone === "warning" ? "notice-warning" : ""}`}
-      role={tone === "danger" ? "alert" : "status"}
-    >
-      <strong>{notice.title}.</strong> {notice.detail}
+    <div className={`notice notice-${tone}`} role={tone === "danger" ? "alert" : "status"}>
+      <span>
+        <strong>{notice.title}.</strong> {notice.detail}
+      </span>
+      {action ? <span className="notice-action">{action}</span> : null}
     </div>
   );
 }
@@ -127,7 +156,7 @@ function PresetImage({ src, alt }: { src: string; alt: string }) {
 interface VisualPresetOption {
   id: string;
   imageUrl: string;
-  meta: string;
+  meta?: string;
   name: string;
 }
 
@@ -152,27 +181,26 @@ function ComputeLaneSelect({
           {lane.status.provider_state === "NOT_CONNECTED" ? "No GPU connected" : lane.status.label}
         </span>
       </div>
-      <label>
-        <span className="sr-only">{lane.selector_label} compute profile</span>
-        <select
-          className="input compute-profile-select"
-          value={selectedProfileId}
-          onChange={(event) => onChange(event.target.value)}
-        >
-          {lane.selector_options.map((option) => (
-            <option key={option.profile_id} value={option.profile_id}>
-              {option.label} · {option.detail}
-            </option>
-          ))}
-          <optgroup label="Requires GPU qualification">
-            {lane.planned_candidates.map((candidate) => (
-              <option disabled key={candidate.candidate_id} value={candidate.candidate_id}>
-                {candidate.label} · benchmark required
-              </option>
-            ))}
-          </optgroup>
-        </select>
-      </label>
+      <AppSelect
+        className="compute-profile-select"
+        label={`${lane.selector_label} compute profile`}
+        value={selectedProfileId}
+        onValueChange={onChange}
+        options={[
+          ...lane.selector_options.map((option) => ({
+            value: option.profile_id,
+            label: option.label,
+            detail: option.detail,
+          })),
+          ...lane.planned_candidates.map((candidate) => ({
+            value: candidate.candidate_id,
+            label: candidate.label,
+            detail: "Benchmark required",
+            disabled: true,
+            group: "GPU qualification",
+          })),
+        ]}
+      />
     </div>
   );
 }
@@ -189,7 +217,14 @@ function VisualPresetSelect({
   onChange: (id: string) => void;
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
+  const [query, setQuery] = useState("");
   const selected = options.find((option) => option.id === selectedId);
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleOptions = normalizedQuery
+    ? options.filter((option) =>
+        `${option.name} ${option.meta ?? ""}`.toLowerCase().includes(normalizedQuery),
+      )
+    : options;
 
   function closeAndFocus() {
     const details = detailsRef.current;
@@ -204,6 +239,9 @@ function VisualPresetSelect({
       <details
         className="visual-preset-details"
         ref={detailsRef}
+        onToggle={(event) => {
+          if (!event.currentTarget.open) setQuery("");
+        }}
         onKeyDown={(event) => {
           if (event.key !== "Escape" || !detailsRef.current?.open) return;
           event.preventDefault();
@@ -216,7 +254,7 @@ function VisualPresetSelect({
               <PresetImage src={selected.imageUrl} alt={`${selected.name} selected preset`} />
               <span className="visual-preset-copy">
                 <strong>{selected.name}</strong>
-                <small>{selected.meta}</small>
+                {selected.meta ? <small>{selected.meta}</small> : null}
               </span>
             </>
           ) : (
@@ -228,7 +266,18 @@ function VisualPresetSelect({
           <span className="visual-preset-chevron" aria-hidden="true" />
         </summary>
         <div className="visual-preset-menu" role="radiogroup" aria-label={`${label} options`}>
-          {options.map((option) => {
+          {options.length > 4 ? (
+            <label className="visual-preset-search">
+              <span className="sr-only">Search {label.toLowerCase()}</span>
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={`Search ${label.toLowerCase()}`}
+              />
+            </label>
+          ) : null}
+          {visibleOptions.map((option) => {
             const checked = option.id === selectedId;
             return (
               <button
@@ -245,27 +294,20 @@ function VisualPresetSelect({
                 <PresetImage src={option.imageUrl} alt={`${option.name} preset`} />
                 <span className="visual-preset-copy">
                   <strong>{option.name}</strong>
-                  <small>{option.meta}</small>
+                  {option.meta ? <small>{option.meta}</small> : null}
                 </span>
                 {checked ? <Check size={18} aria-hidden="true" /> : null}
               </button>
             );
           })}
-          {options.length === 0 ? (
-            <span className="visual-preset-empty">No ready presets</span>
+          {visibleOptions.length === 0 ? (
+            <span className="visual-preset-empty">
+              {options.length === 0 ? "No ready presets" : "No matching presets"}
+            </span>
           ) : null}
         </div>
       </details>
     </div>
-  );
-}
-
-function formatShortDate(value: string): string {
-  if (value === "Never") return "Never";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return new Intl.DateTimeFormat("en", { day: "2-digit", month: "short", year: "numeric" }).format(
-    parsed,
   );
 }
 
@@ -399,8 +441,8 @@ export function QueueScreen() {
   if (query.isPending) {
     return (
       <>
-        <PageHeader eyebrow="Production" title="Your queue" />
-        <Panel eyebrow="Workspace" heading="Loading projects">
+        <PageHeader title="Your queue" />
+        <Panel heading="Loading projects">
           <div className="empty-state" aria-busy="true">
             <span className="spinner" aria-hidden="true" />
             <p>Connecting to the authoritative queue…</p>
@@ -412,7 +454,7 @@ export function QueueScreen() {
   if (query.isError) {
     return (
       <>
-        <PageHeader eyebrow="Production" title="Your queue" />
+        <PageHeader title="Your queue" />
         <EmptyState
           icon={<AlertTriangle />}
           title="Queue unavailable"
@@ -430,9 +472,7 @@ export function QueueScreen() {
   return (
     <>
       <PageHeader
-        eyebrow="Production"
         title="Your queue"
-        description={`${running} active · ${attention} need attention · ${complete} ready`}
         actions={
           <Link
             to="/projects/new"
@@ -445,30 +485,19 @@ export function QueueScreen() {
         }
       />
       <div className="grid grid-4 queue-overview">
-        <Metric label="Active" value={String(running)} detail="running now" tone="info" />
+        <Metric label="Active" value={String(running)} tone="info" />
         <Metric
           label="Queued"
           value={String(projects.filter((project) => project.status === "QUEUED").length)}
-          detail="waiting"
         />
         <Metric
           label="Needs attention"
           value={String(attention)}
-          detail="needs action"
           tone={attention ? "warning" : "success"}
         />
-        <Metric label="Ready" value={String(complete)} detail="review or download" tone="success" />
+        <Metric label="Ready" value={String(complete)} tone="success" />
       </div>
-      <Panel
-        className="queue-panel"
-        eyebrow="Workspace"
-        heading="Projects"
-        action={
-          <Badge tone={query.isError ? "danger" : "success"}>
-            {query.isError ? "Offline" : "Live"}
-          </Badge>
-        }
-      >
+      <Panel className="queue-panel" heading="Projects">
         {projects.length === 0 ? (
           <EmptyState
             icon={<Video />}
@@ -541,12 +570,12 @@ export function QueueScreen() {
   );
 }
 
-function useProjectDraft() {
-  const [draft, setDraftState] = useState<ProjectDraft>(() => loadDraft());
+function useProjectDraft(scope: ScenarioId) {
+  const [draft, setDraftState] = useState<ProjectDraft>(() => loadDraft(scope));
   const setDraft = (next: ProjectDraft | ((current: ProjectDraft) => ProjectDraft)) => {
     setDraftState((current) => {
       const resolved = typeof next === "function" ? next(current) : next;
-      saveDraft(resolved);
+      saveDraft(resolved, scope);
       return resolved;
     });
   };
@@ -555,11 +584,12 @@ function useProjectDraft() {
 
 export function CreateProjectScreen() {
   const scenario = currentScenario();
-  const [draft, setDraft] = useProjectDraft();
-  const [draftHydrated, setDraftHydrated] = useState(() => hasStoredDraft());
+  const [draft, setDraft] = useProjectDraft(scenario);
+  const [draftHydrated, setDraftHydrated] = useState(() => hasStoredDraft(scenario));
   const [audioError, setAudioError] = useState<string | null>(null);
   const [audioPending, setAudioPending] = useState(false);
   const [submittedError, setSubmittedError] = useState<string | null>(null);
+  const revalidatedVoiceover = useRef<string | null>(null);
   const bootstrap = useQuery({
     queryKey: ["bootstrap", scenario],
     queryFn: () => api.bootstrap(scenario),
@@ -637,6 +667,55 @@ export function CreateProjectScreen() {
     }));
   }, [avatarLane, draft.executionProfileOverrides, imageLane, setDraft]);
 
+  useEffect(() => {
+    const assetId = draft.voiceoverAssetId;
+    if (
+      !draftHydrated ||
+      !assetId?.startsWith("fixture_voiceover_sha256_") ||
+      revalidatedVoiceover.current === assetId
+    ) {
+      return;
+    }
+    revalidatedVoiceover.current = assetId;
+    let active = true;
+    void api
+      .voiceover(assetId, scenario)
+      .then((voiceover) => {
+        if (!active) return;
+        setAudioError(null);
+        setDraft((current) => ({
+          ...current,
+          voiceoverName: voiceover.filename,
+          voiceoverDurationSeconds: voiceover.durationSeconds,
+          voiceoverSampleRate: voiceover.sampleRate,
+          voiceoverChannels: voiceover.channels,
+          voiceoverChecksum: voiceover.checksum,
+        }));
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setDraft((current) => ({
+          ...current,
+          voiceoverAssetId: null,
+          voiceoverName: null,
+          voiceoverDurationSeconds: null,
+          voiceoverSampleRate: null,
+          voiceoverChannels: null,
+          voiceoverChecksum: null,
+        }));
+        setAudioError(
+          error instanceof ApiError && error.code === "VOICEOVER_ASSET_NOT_FOUND"
+            ? "Voiceover verification expired when the local fixture server restarted. Choose the file again."
+            : error instanceof Error
+              ? error.message
+              : "Voiceover verification could not be confirmed. Choose the file again.",
+        );
+      });
+    return () => {
+      active = false;
+    };
+  }, [draft.voiceoverAssetId, draftHydrated, scenario]);
+
   const keywordValidation = validateOutputRuleKeywords(draft.extraPromptKeywords);
   const conflict = draft.applyExtraPromptKeywords && !keywordValidation.valid;
   const keywordEmpty = draft.applyExtraPromptKeywords && !draft.extraPromptKeywords.trim();
@@ -695,6 +774,7 @@ export function CreateProjectScreen() {
 
   async function chooseAudio(file?: File) {
     if (!file) return;
+    revalidatedVoiceover.current = null;
     setDraft((value) => ({
       ...value,
       voiceoverAssetId: null,
@@ -738,17 +818,17 @@ export function CreateProjectScreen() {
 
   return (
     <>
-      <PageHeader eyebrow="Production" title="New project" />
+      <PageHeader title="New project" />
       <ActionToast message={submittedError} onDismiss={() => setSubmittedError(null)} />
       {bootstrap.isError ? (
         <div className="notice notice-danger" role="alert">
           <strong>Project setup unavailable.</strong> Reload after the local API is healthy.
         </div>
       ) : (
-        <NoticeBanner notice={bootstrap.data?.notice} />
+        <NoticeBanner notice={noticeForScope(bootstrap.data?.notice, "CREATE")} />
       )}
       <div className="layout-main">
-        <Panel eyebrow="Configure" heading="Project setup">
+        <Panel className="create-config-panel">
           <div className="form-grid">
             <section className="create-section field-wide" aria-labelledby="create-narration">
               <header className="create-section-header">
@@ -819,7 +899,6 @@ export function CreateProjectScreen() {
                     options={readyAvatars.map((avatar) => ({
                       id: avatar.versionId,
                       imageUrl: avatar.thumbnailUrl,
-                      meta: `v${avatar.version} · ${humanize(avatar.compatibility)}`,
                       name: avatar.name,
                     }))}
                     selectedId={draft.avatarProfileVersionId}
@@ -828,13 +907,6 @@ export function CreateProjectScreen() {
                     }
                   />
                   <div className="preset-select-actions">
-                    <Link
-                      className="button button-ghost"
-                      to="/avatars"
-                      search={{ fixture: scenario } as never}
-                    >
-                      Manage avatars
-                    </Link>
                     <Link
                       className="button button-secondary"
                       to="/avatars/new"
@@ -857,7 +929,7 @@ export function CreateProjectScreen() {
                     options={publishedStyles.map((style) => ({
                       id: style.versionId,
                       imageUrl: style.coverUrl,
-                      meta: `v${style.version}${style.isDefault ? " · Default" : ""}`,
+                      meta: style.isDefault ? "Default" : undefined,
                       name: style.name,
                     }))}
                     selectedId={draft.imageStyleVersionId}
@@ -866,13 +938,6 @@ export function CreateProjectScreen() {
                     }
                   />
                   <div className="preset-select-actions">
-                    <Link
-                      className="button button-ghost"
-                      to="/styles"
-                      search={{ fixture: scenario } as never}
-                    >
-                      Manage styles
-                    </Link>
                     <Link
                       className="button button-secondary"
                       to="/styles/new"
@@ -1576,7 +1641,7 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
           <strong>{busy === "approve" ? "Approving…" : "Approval recorded."}</strong>{" "}
           {busy === "approve"
             ? "Candidate and checksum are being verified."
-            : "Downloads are ready."}
+            : "Synthetic preview ready. Real MP4 rendering remains in Phase 0C."}
         </div>
       ) : null}
       {reviewActionNotice ? (
@@ -1651,7 +1716,7 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
           <div className="detail-facts">
             <span>
               <small>Output</small>
-              <strong>H.264/AAC · 1080p30</strong>
+              <strong>Synthetic contact sheet</strong>
             </span>
             <span>
               <small>Layouts</small>
@@ -1667,15 +1732,15 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
             </span>
           </div>
         </Disclosure>
-        {approved ? (
+        {approved && project.review.downloadUrl ? (
           <div className="download-actions">
             <a
               className="button button-secondary"
-              href="/fixtures/media/watermelon-market.svg"
+              href={project.review.downloadUrl}
               download="videoforge-fixture-preview.svg"
             >
               <Download size={18} />
-              Fixture preview
+              Download preview
             </a>
             <a
               className="button button-secondary"
@@ -1733,9 +1798,7 @@ export function AvatarHubScreen() {
   return (
     <>
       <PageHeader
-        eyebrow="Presets"
         title="Avatar Hub"
-        description={`${avatars.length} reusable presenter${avatars.length === 1 ? "" : "s"}`}
         actions={
           <Link
             className="button button-primary"
@@ -1747,7 +1810,20 @@ export function AvatarHubScreen() {
           </Link>
         }
       />
-      <NoticeBanner notice={bootstrap.data?.notice} />
+      <NoticeBanner
+        notice={blockerNoticeForScope(bootstrap.data?.notice, "AVATAR")}
+        action={
+          blockerNoticeForScope(bootstrap.data?.notice, "AVATAR")?.action ? (
+            <Link
+              className="button button-secondary"
+              to="/avatars/new"
+              search={{ fixture: scenario } as never}
+            >
+              Open avatar workflow
+            </Link>
+          ) : undefined
+        }
+      />
       {bootstrap.data?.activeOperations.avatar ? (
         <div className="notice" role="status">
           <strong>In progress.</strong> {bootstrap.data.activeOperations.avatar}
@@ -1763,13 +1839,8 @@ export function AvatarHubScreen() {
             placeholder="Search avatars"
           />
         </label>
-        <Badge tone="success">Private workspace</Badge>
       </div>
-      <Panel
-        className="hub-panel"
-        eyebrow="Workspace profiles"
-        heading={`${visibleAvatars.length} avatar${visibleAvatars.length === 1 ? "" : "s"}`}
-      >
+      <Panel className="hub-panel">
         {avatars.length === 0 ? (
           <EmptyState
             icon={<UsersRound />}
@@ -1793,84 +1864,87 @@ export function AvatarHubScreen() {
           />
         ) : (
           <div className="card-grid avatar-card-grid">
-            {visibleAvatars.map((avatar) => (
-              <article className="entity-card avatar-card" key={avatar.versionId}>
-                <div className="avatar-card-media">
-                  <PresetImage src={avatar.thumbnailUrl} alt={`${avatar.name} presenter`} />
-                  <Badge tone={statusTone(avatar.status)}>{avatar.status}</Badge>
-                </div>
-                <div className="entity-card-body">
-                  <div className="entity-title-row">
-                    <div>
+            {visibleAvatars.map((avatar) => {
+              const needsAttention =
+                avatar.status !== "READY" ||
+                avatar.compatibility !== "PASSED" ||
+                Boolean(avatar.warning);
+              return (
+                <article className="entity-card avatar-card" key={avatar.versionId}>
+                  <div className="avatar-card-media">
+                    <PresetImage src={avatar.thumbnailUrl} alt={`${avatar.name} presenter`} />
+                    {needsAttention ? (
+                      <Badge tone={statusTone(avatar.status)}>{humanize(avatar.status)}</Badge>
+                    ) : null}
+                  </div>
+                  <div className="entity-card-body">
+                    <div className="entity-title-row">
                       <h3>{avatar.name}</h3>
-                      <span>Active v{avatar.version}</span>
                     </div>
-                    <Badge tone={statusTone(avatar.compatibility)}>{avatar.compatibility}</Badge>
+                    {avatar.warning ? <p>{avatar.warning}</p> : null}
                   </div>
-                  <p>{avatar.warning ?? `Last used ${formatShortDate(avatar.lastUsed)}`}</p>
-                </div>
-                <DetailsSheet
-                  title={avatar.name}
-                  description={`Active v${avatar.version} · ${avatar.compatibility.toLowerCase()}`}
-                  trigger={
-                    <button className="entity-details-trigger" type="button">
-                      <span>
+                  <DetailsSheet
+                    title={avatar.name}
+                    description={`Version ${avatar.version} · ${avatar.compatibility.toLowerCase()}`}
+                    trigger={
+                      <button className="entity-details-trigger" type="button">
                         <strong>Details</strong>
-                        <small>Source, compatibility, rights</small>
+                        <ArrowRight size={18} aria-hidden="true" />
+                      </button>
+                    }
+                  >
+                    <div className="avatar-crop-grid">
+                      <figure>
+                        <PresetImage
+                          src={avatar.thumbnailUrl}
+                          alt={`${avatar.name} full avatar crop`}
+                        />
+                        <figcaption>Full frame</figcaption>
+                      </figure>
+                      <figure className="split-crop">
+                        <PresetImage
+                          src={avatar.thumbnailUrl}
+                          alt={`${avatar.name} split avatar crop`}
+                        />
+                        <figcaption>Split crop</figcaption>
+                      </figure>
+                    </div>
+                    <div className="detail-facts">
+                      <span>
+                        <small>Source</small>
+                        <strong>{avatar.dimensions}</strong>
                       </span>
-                      <ArrowRight size={18} aria-hidden="true" />
-                    </button>
-                  }
-                >
-                  <div className="avatar-crop-grid">
-                    <figure>
-                      <PresetImage
-                        src={avatar.thumbnailUrl}
-                        alt={`${avatar.name} full avatar crop`}
-                      />
-                      <figcaption>Full frame</figcaption>
-                    </figure>
-                    <figure className="split-crop">
-                      <PresetImage
-                        src={avatar.thumbnailUrl}
-                        alt={`${avatar.name} split avatar crop`}
-                      />
-                      <figcaption>Split crop</figcaption>
-                    </figure>
-                  </div>
-                  <div className="detail-facts">
-                    <span>
-                      <small>Source</small>
-                      <strong>{avatar.dimensions}</strong>
-                    </span>
-                    <span>
-                      <small>Compatibility</small>
-                      <strong>{avatar.compatibility}</strong>
-                    </span>
-                    <span>
-                      <small>Rights</small>
-                      <strong>{avatar.rightsStatus ?? "ATTESTED"}</strong>
-                    </span>
-                    <span>
-                      <small>Preparation</small>
-                      <strong>{avatar.preparationProfile ?? "avatar-source-prep-v1"}</strong>
-                    </span>
-                    <span>
-                      <small>Validation</small>
-                      <strong>{avatar.validationProfile ?? "avatar-source-validation-v1"}</strong>
-                    </span>
-                    <span>
-                      <small>Version ID</small>
-                      <strong>{avatar.versionId}</strong>
-                    </span>
-                    <span className="detail-fact-wide">
-                      <small>Profile hash</small>
-                      <strong>{avatar.profileHash ?? "sha256:fixture-local-avatar-profile"}</strong>
-                    </span>
-                  </div>
-                </DetailsSheet>
-              </article>
-            ))}
+                      <span>
+                        <small>Compatibility</small>
+                        <strong>{avatar.compatibility}</strong>
+                      </span>
+                      <span>
+                        <small>Rights</small>
+                        <strong>{avatar.rightsStatus ?? "ATTESTED"}</strong>
+                      </span>
+                      <span>
+                        <small>Preparation</small>
+                        <strong>{avatar.preparationProfile ?? "avatar-source-prep-v1"}</strong>
+                      </span>
+                      <span>
+                        <small>Validation</small>
+                        <strong>{avatar.validationProfile ?? "avatar-source-validation-v1"}</strong>
+                      </span>
+                      <span>
+                        <small>Version ID</small>
+                        <strong>{avatar.versionId}</strong>
+                      </span>
+                      <span className="detail-fact-wide">
+                        <small>Profile hash</small>
+                        <strong>
+                          {avatar.profileHash ?? "sha256:fixture-local-avatar-profile"}
+                        </strong>
+                      </span>
+                    </div>
+                  </DetailsSheet>
+                </article>
+              );
+            })}
           </div>
         )}
       </Panel>
@@ -1943,7 +2017,7 @@ export function NewAvatarScreen() {
         },
         scenario,
       );
-      updateDraft({ avatarProfileVersionId: result.avatarProfile.versionId });
+      updateDraft({ avatarProfileVersionId: result.avatarProfile.versionId }, scenario);
       window.location.assign(fixtureLink(returnTo));
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Avatar Profile could not be saved.");
@@ -2170,9 +2244,7 @@ export function StylesHubScreen() {
   return (
     <>
       <PageHeader
-        eyebrow="Presets"
         title="Image Styles"
-        description={`${styles.length} reusable visual direction${styles.length === 1 ? "" : "s"}`}
         actions={
           <Link
             className="button button-primary"
@@ -2184,7 +2256,20 @@ export function StylesHubScreen() {
           </Link>
         }
       />
-      <NoticeBanner notice={bootstrap.data?.notice} />
+      <NoticeBanner
+        notice={blockerNoticeForScope(bootstrap.data?.notice, "STYLE")}
+        action={
+          blockerNoticeForScope(bootstrap.data?.notice, "STYLE")?.action ? (
+            <Link
+              className="button button-secondary"
+              to="/styles/new"
+              search={{ fixture: scenario } as never}
+            >
+              Open style workflow
+            </Link>
+          ) : undefined
+        }
+      />
       {bootstrap.data?.activeOperations.style ? (
         <div className="notice" role="status">
           <strong>In progress.</strong> {bootstrap.data.activeOperations.style}
@@ -2200,13 +2285,8 @@ export function StylesHubScreen() {
             placeholder="Search styles"
           />
         </label>
-        <Badge tone="info">Default pinned</Badge>
       </div>
-      <Panel
-        className="hub-panel"
-        eyebrow="Workspace library"
-        heading={`${visibleStyles.length} style${visibleStyles.length === 1 ? "" : "s"}`}
-      >
+      <Panel className="hub-panel">
         {visibleStyles.length === 0 ? (
           <EmptyState
             icon={<Images />}
@@ -2226,21 +2306,16 @@ export function StylesHubScreen() {
                     <PresetImage src={style.coverUrl} alt={`${style.name} cover`} />
                     <div className="style-card-badges">
                       {style.isDefault ? <Badge tone="info">DEFAULT</Badge> : null}
-                      <Badge tone={statusTone(style.status)}>{style.status}</Badge>
+                      {style.status !== "PUBLISHED" ? (
+                        <Badge tone={statusTone(style.status)}>{humanize(style.status)}</Badge>
+                      ) : null}
                     </div>
                   </div>
                   <div className="entity-card-body">
                     <div className="entity-title-row">
-                      <div>
-                        <h3>{style.name}</h3>
-                        <span>
-                          {style.status === "PUBLISHED"
-                            ? `Published v${style.version}`
-                            : `${humanize(style.status)} · draft v${style.draftVersion ?? style.version}`}
-                        </span>
-                      </div>
+                      <h3>{style.name}</h3>
                     </div>
-                    <p>{style.warning ?? style.summary}</p>
+                    {style.warning ? <p>{style.warning}</p> : null}
                   </div>
                   <DetailsSheet
                     title={style.name}
@@ -2251,7 +2326,6 @@ export function StylesHubScreen() {
                           <strong>
                             {galleryLabel} ({gallery.length})
                           </strong>
-                          <small>Profile, rights, provenance</small>
                         </span>
                         <ArrowRight size={18} aria-hidden="true" />
                       </button>
@@ -2419,7 +2493,7 @@ export function NewStyleScreen() {
         },
         scenario,
       );
-      updateDraft({ imageStyleVersionId: result.imageStyle.versionId });
+      updateDraft({ imageStyleVersionId: result.imageStyle.versionId }, scenario);
       window.location.assign(fixtureLink(returnTo));
     } catch (error) {
       setPublishError(error instanceof Error ? error.message : "Image Style could not be saved.");
@@ -2489,7 +2563,6 @@ export function NewStyleScreen() {
                       ? `${files.length} private reference${files.length === 1 ? "" : "s"} selected`
                       : "Choose 3–8 visual references"}
                   </strong>
-                  Files are signature-checked and decoded locally; fixture mode does not upload them
                 </span>
               </label>
               {fileError ? <div className="validation validation-danger">{fileError}</div> : null}
@@ -2684,7 +2757,7 @@ export function LibraryScreen() {
   }
   return (
     <>
-      <PageHeader eyebrow="Approved outputs" title="Library" />
+      <PageHeader title="Library" />
       {approvedProjects.length === 0 ? (
         <EmptyState
           icon={<Library />}
@@ -2715,11 +2788,14 @@ export function LibraryScreen() {
                   </Link>
                   <a
                     className="button button-secondary"
-                    href="/fixtures/media/watermelon-market.svg"
+                    href={
+                      project.review.downloadUrl ??
+                      `/api/v1/projects/${project.id}/download?fixture=${scenario}`
+                    }
                     download="videoforge-fixture-preview.svg"
                   >
                     <Download size={15} />
-                    Fixture preview
+                    Download preview
                   </a>
                 </div>
               </div>
@@ -2739,11 +2815,11 @@ export function LibraryScreen() {
                   </span>
                   <span>
                     <small>Manifest</small>
-                    <strong>Bound to approved revision</strong>
+                    <strong>Deferred to local render</strong>
                   </span>
                   <span>
                     <small>Output</small>
-                    <strong>1080p30 · H.264/AAC</strong>
+                    <strong>Synthetic contact sheet</strong>
                   </span>
                   <span>
                     <small>Cost</small>
@@ -2789,7 +2865,7 @@ export function UsageScreen() {
   const usage = query.data;
   return (
     <>
-      <PageHeader eyebrow="Workspace" title="Usage" />
+      <PageHeader title="Usage" />
       <div className="grid grid-4">
         <Metric
           label="Total"
@@ -2825,7 +2901,7 @@ export function UsageScreen() {
 export function SettingsScreen() {
   return (
     <>
-      <PageHeader eyebrow="Workspace" title="Settings" />
+      <PageHeader title="Settings" />
       <div className="grid grid-2 settings-grid">
         <Panel eyebrow="Team" heading="Access">
           <div className="settings-summary">

@@ -30,7 +30,14 @@ export const projectDraftSchema = z.object({
 
 export type ProjectDraft = z.infer<typeof projectDraftSchema>;
 
-export const projectDraftStorageKey = "videoforge:fixture:project-draft:v1";
+const legacyProjectDraftStorageKey = "videoforge:fixture:project-draft:v1";
+const projectDraftStoragePrefix = "videoforge:fixture:project-draft:v2";
+
+export function projectDraftStorageKeyFor(scope = "default"): string {
+  return `${projectDraftStoragePrefix}:${encodeURIComponent(scope.trim() || "default")}`;
+}
+
+export const projectDraftStorageKey = projectDraftStorageKeyFor();
 
 export const emptyDraft: ProjectDraft = {
   title: "",
@@ -50,9 +57,20 @@ export const emptyDraft: ProjectDraft = {
   userSeed: 982341,
 };
 
-export function loadDraft(): ProjectDraft {
+function migrateLegacyDraft(): void {
+  const legacy = localStorage.getItem(legacyProjectDraftStorageKey);
+  if (legacy === null) return;
+  const destination = projectDraftStorageKeyFor("project_create_ready");
+  if (localStorage.getItem(destination) === null) localStorage.setItem(destination, legacy);
+  localStorage.removeItem(legacyProjectDraftStorageKey);
+}
+
+export function loadDraft(scope = "default"): ProjectDraft {
   try {
-    const stored: unknown = JSON.parse(localStorage.getItem(projectDraftStorageKey) ?? "null");
+    migrateLegacyDraft();
+    const stored: unknown = JSON.parse(
+      localStorage.getItem(projectDraftStorageKeyFor(scope)) ?? "null",
+    );
     const parsed = projectDraftSchema.safeParse(
       typeof stored === "object" && stored !== null ? { ...emptyDraft, ...stored } : stored,
     );
@@ -62,16 +80,20 @@ export function loadDraft(): ProjectDraft {
   }
 }
 
-export function saveDraft(draft: ProjectDraft) {
-  localStorage.setItem(projectDraftStorageKey, JSON.stringify(projectDraftSchema.parse(draft)));
+export function saveDraft(draft: ProjectDraft, scope = "default") {
+  localStorage.setItem(
+    projectDraftStorageKeyFor(scope),
+    JSON.stringify(projectDraftSchema.parse(draft)),
+  );
 }
 
-export function hasStoredDraft(): boolean {
-  return localStorage.getItem(projectDraftStorageKey) !== null;
+export function hasStoredDraft(scope = "default"): boolean {
+  migrateLegacyDraft();
+  return localStorage.getItem(projectDraftStorageKeyFor(scope)) !== null;
 }
 
-export function updateDraft(patch: Partial<ProjectDraft>) {
-  const draft = projectDraftSchema.parse({ ...loadDraft(), ...patch });
-  saveDraft(draft);
+export function updateDraft(patch: Partial<ProjectDraft>, scope = "default") {
+  const draft = projectDraftSchema.parse({ ...loadDraft(scope), ...patch });
+  saveDraft(draft, scope);
   return draft;
 }

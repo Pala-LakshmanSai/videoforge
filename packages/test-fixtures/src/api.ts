@@ -110,6 +110,14 @@ export interface UsageSummaryResponse {
   retries: number;
 }
 
+export interface FixtureNoticeResponse {
+  tone: "INFO" | "SUCCESS" | "WARNING" | "ERROR";
+  title: string;
+  detail: string;
+  action: string | null;
+  scope: "ACCESS" | "AVATAR" | "CREATE" | "PROJECT" | "STYLE";
+}
+
 export interface FixtureBootstrapResponse {
   scenario: FixtureScenarioId;
   access: FixtureScenario["snapshot"]["access"];
@@ -119,7 +127,7 @@ export interface FixtureBootstrapResponse {
   styles: ImageStyleResponse[];
   usage: UsageSummaryResponse;
   draft: FixtureScenario["snapshot"]["draft"];
-  notice: FixtureScenario["snapshot"]["notice"];
+  notice: FixtureNoticeResponse | null;
   activeOperations: {
     avatar: string | null;
     style: string | null;
@@ -129,11 +137,30 @@ export interface FixtureBootstrapResponse {
 export interface FixtureProjectDetailResponse {
   project: ProjectSummaryResponse;
   events: Array<{ id: string; detail: string; at: string }>;
-  notice: FixtureScenario["snapshot"]["notice"];
+  notice: FixtureNoticeResponse | null;
 }
 
 const FIXTURE_CREATED_AT = "2026-08-09T09:20:00.000Z";
 const FIXTURE_LAST_USED = "2026-08-09T08:15:00.000Z";
+
+function noticeForScenario(
+  scenario: FixtureScenario,
+  forcedScope?: FixtureNoticeResponse["scope"],
+): FixtureNoticeResponse | null {
+  if (!scenario.snapshot.notice) return null;
+  const scope =
+    forcedScope ??
+    (scenario.snapshot.access.state !== "AUTHORIZED"
+      ? "ACCESS"
+      : scenario.route.startsWith("/avatars")
+        ? "AVATAR"
+        : scenario.route.startsWith("/styles")
+          ? "STYLE"
+          : scenario.route === "/projects/new"
+            ? "CREATE"
+            : "PROJECT");
+  return { ...scenario.snapshot.notice, scope };
+}
 
 function initials(name: string): string {
   return name
@@ -346,7 +373,7 @@ export function toBootstrapResponse(scenario: FixtureScenario): FixtureBootstrap
     styles: scenario.snapshot.imageStyles.styles.map(toImageStyleResponse),
     usage: toUsageSummaryResponse(scenario),
     draft: structuredClone(scenario.snapshot.draft),
-    notice: scenario.snapshot.notice ? { ...scenario.snapshot.notice } : null,
+    notice: noticeForScenario(scenario),
     activeOperations: {
       avatar: scenario.snapshot.avatarHub.activeOperation,
       style: scenario.snapshot.imageStyles.activeOperation,
@@ -368,6 +395,6 @@ export function toProjectDetailResponse(
       detail: event.message,
       at: event.occurredAt,
     })),
-    notice: scenario.snapshot.notice ? { ...scenario.snapshot.notice } : null,
+    notice: noticeForScenario(scenario, "PROJECT"),
   };
 }

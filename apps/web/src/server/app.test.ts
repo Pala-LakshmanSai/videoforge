@@ -183,6 +183,44 @@ describe("fixture API", () => {
     );
   });
 
+  it("resets one development fixture session without affecting another", async () => {
+    const isolatedApp = createApiApp({ commit: "fixture-session-reset", environment: "test" });
+    const sessionA = "test.reset-a";
+    const sessionB = "test.reset-b";
+    const approvalPath =
+      "/api/v1/projects/project_fixture_001/approve?fixture=project_ready_for_review";
+    const approval = await isolatedApp.request(approvalPath, {
+      method: "POST",
+      headers: withFixtureSession(sessionA, mutationHeaders("reset-session-approval")),
+      body: JSON.stringify({
+        project_id: "project_fixture_001",
+        candidate_id: "review_candidate_fixture_001",
+      }),
+    });
+    expect(approval.status).toBe(200);
+
+    const reset = await isolatedApp.request("/api/dev/fixture-session/reset", {
+      method: "POST",
+      headers: withFixtureSession(sessionA),
+    });
+    expect(reset.status).toBe(200);
+    await expect(reset.json()).resolves.toEqual({
+      ok: true,
+      sessionId: sessionA,
+      providerCallsAuthorized: false,
+    });
+
+    for (const sessionId of [sessionA, sessionB]) {
+      const detail = await isolatedApp.request(
+        "/api/v1/projects/project_fixture_001?fixture=project_ready_for_review",
+        { headers: withFixtureSession(sessionId) },
+      );
+      await expect(detail.json()).resolves.toMatchObject({
+        project: { status: "READY_FOR_REVIEW", review: { state: "READY_FOR_REVIEW" } },
+      });
+    }
+  });
+
   it.each(FIXTURE_SCENARIO_IDS)("serves direct bootstrap JSON for %s", async (fixture) => {
     const response = await app.request(`/api/v1/bootstrap?fixture=${fixture}`);
     const body = (await response.json()) as { scenario: string; user: { id: string } };
@@ -657,6 +695,7 @@ describe("fixture API", () => {
   });
 
   it("approves only the exact capped fallback request and replays it idempotently", async () => {
+    const statefulApp = createApiApp({ commit: "stateful-fallback" });
     const key = "fixture-fallback-approval-replay-key";
     const path =
       "/api/v1/projects/project_fixture_001/fallback-approval?fixture=skyreels_approval_required";
@@ -669,7 +708,7 @@ describe("fixture API", () => {
       }),
     } as const;
 
-    const approval = await app.request(path, request);
+    const approval = await statefulApp.request(path, request);
     expect(approval.status).toBe(202);
     const approvalBody = await approval.json();
     expect(approvalBody).toMatchObject({
@@ -682,12 +721,12 @@ describe("fixture API", () => {
       providerCallsAuthorized: false,
     });
 
-    const replay = await app.request(path, request);
+    const replay = await statefulApp.request(path, request);
     expect(replay.status).toBe(202);
     expect(replay.headers.get("x-videoforge-idempotent-replay")).toBe("true");
     await expect(replay.json()).resolves.toEqual(approvalBody);
 
-    const conflict = await app.request(path, {
+    const conflict = await statefulApp.request(path, {
       method: "POST",
       headers: mutationHeaders(key),
       body: JSON.stringify({
@@ -698,6 +737,33 @@ describe("fixture API", () => {
     expect(conflict.status).toBe(409);
     await expect(conflict.json()).resolves.toMatchObject({
       error: { code: "IDEMPOTENCY_KEY_REUSED" },
+    });
+
+    const detail = await statefulApp.request(
+      "/api/v1/projects/project_fixture_001?fixture=skyreels_approval_required",
+    );
+    await expect(detail.json()).resolves.toMatchObject({
+      project: {
+        status: "RUNNING",
+        stage: "AVATAR_FALLBACK",
+        estimatedCost: 1.06,
+        allowedActions: ["CANCEL", "REVIEW"],
+        lanes: { avatar: { state: "STARTING" } },
+      },
+      notice: { title: "Fallback reservation recorded" },
+    });
+
+    const duplicateWithNewKey = await statefulApp.request(path, {
+      method: "POST",
+      headers: mutationHeaders("fixture-fallback-second-key"),
+      body: JSON.stringify({
+        project_id: "project_fixture_001",
+        approved_increment_usd: 0.18,
+      }),
+    });
+    expect(duplicateWithNewKey.status).toBe(409);
+    await expect(duplicateWithNewKey.json()).resolves.toMatchObject({
+      error: { code: "FALLBACK_APPROVAL_NOT_ALLOWED" },
     });
   });
 
@@ -799,7 +865,8 @@ describe("fixture API", () => {
   });
 
   it("retries only the exact failed item set and never blind-dispatches reconciliation", async () => {
-    const retry = await app.request(
+    const statefulApp = createApiApp({ commit: "stateful-retry" });
+    const retry = await statefulApp.request(
       "/api/v1/projects/project_fixture_001/retry?fixture=image_partial_failure",
       {
         method: "POST",
@@ -815,7 +882,33 @@ describe("fixture API", () => {
       nextCheckSeconds: 10,
     });
 
-    const unsafeRetry = await app.request(
+    const detail = await statefulApp.request(
+      "/api/v1/projects/project_fixture_001?fixture=image_partial_failure",
+    );
+    await expect(detail.json()).resolves.toMatchObject({
+      project: {
+        status: "RUNNING",
+        stage: "IMAGE_RETRY",
+        allowedActions: ["CANCEL"],
+        lanes: { image: { state: "RETRYING" } },
+      },
+      notice: { title: "Image retry queued" },
+    });
+
+    const duplicateWithNewKey = await statefulApp.request(
+      "/api/v1/projects/project_fixture_001/retry?fixture=image_partial_failure",
+      {
+        method: "POST",
+        headers: mutationHeaders("fixture-retry-second-key"),
+        body: JSON.stringify({ project_id: "project_fixture_001" }),
+      },
+    );
+    expect(duplicateWithNewKey.status).toBe(409);
+    await expect(duplicateWithNewKey.json()).resolves.toMatchObject({
+      error: { code: "PROJECT_RETRY_NOT_ALLOWED" },
+    });
+
+    const unsafeRetry = await statefulApp.request(
       "/api/v1/projects/project_fixture_001/retry?fixture=dispatch_ack_unknown",
       {
         method: "POST",
@@ -1063,6 +1156,14 @@ describe("fixture API", () => {
     const statefulApp = createApiApp({ commit: "stateful-approval" });
     const path = "/api/v1/projects/project_fixture_001/approve?fixture=project_ready_for_review";
 
+    const prematureDownload = await statefulApp.request(
+      "/api/v1/projects/project_fixture_001/download?fixture=project_ready_for_review",
+    );
+    expect(prematureDownload.status).toBe(409);
+    await expect(prematureDownload.json()).resolves.toMatchObject({
+      error: { code: "PROJECT_DOWNLOAD_NOT_READY" },
+    });
+
     const missingCandidate = await statefulApp.request(path, {
       method: "POST",
       headers: mutationHeaders(),
@@ -1134,6 +1235,15 @@ describe("fixture API", () => {
         },
       });
     }
+
+    const download = await statefulApp.request(
+      "/api/v1/projects/project_fixture_001/download?fixture=project_ready_for_review",
+    );
+    expect(download.status).toBe(200);
+    expect(download.headers.get("content-type")).toContain("image/svg+xml");
+    expect(download.headers.get("content-disposition")).toContain("videoforge-fixture-preview.svg");
+    expect(download.headers.get("x-videoforge-artifact-kind")).toBe("synthetic-preview");
+    expect(await download.text()).toContain("<svg");
   });
 
   it("persists cancellation and removes conflicting project actions", async () => {

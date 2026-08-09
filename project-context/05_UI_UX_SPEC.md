@@ -1,6 +1,6 @@
 # UI and UX specification
 
-Status: approved large-scale minimal direction; exact implementation awaits live Chrome review
+Status: implemented large-scale minimal direction; `GATE_UI_001` awaits user approval
 Read when: designing or implementing any user-visible flow.
 
 ## Design objective
@@ -11,7 +11,7 @@ Primary reference: `assets/ui/swipecut-ui-reference.jpg`. It is inspiration only
 
 The user reconfirmed this direction on 2026-08-09 after rejecting the first fixture shell as too small, too dense, and too text-heavy. The approved hierarchy borrows the reference's active-project command strip, oversized project title, large progress hero, factual metric cards, strong vertical pipeline, live artifact panel, and floating navigation dock. VideoForge must translate those concepts into its own routes, copy, data, and visual identity rather than copying the reference product.
 
-The same review later refined the Create Project hierarchy: keep the active choice compact, open choices only on demand, remove nonessential technical hints and success confirmations, and expose the two primary compute lanes without implying unverified GPU availability. The active-project bar remains full-width; only its internal content and progress track are deliberately inset.
+The same review later refined the Create Project hierarchy: keep the active choice compact, open choices only on demand, remove nonessential technical hints and success confirmations, and expose the two primary compute lanes without implying unverified GPU availability. The active-project bar remains full-width; only its internal content and progress track are deliberately inset. Every visible select/disclosure uses the VideoForge surface language rather than a browser-native menu. Child choices expand inside the same bordered surface, never as visually detached boxes or an overlay that covers the following controls. The floating dock is approximately 20% larger than the prior version and uses fine-pointer proximity magnification with a calm reduced-motion fallback.
 
 Reuse proven visual concepts from the user's ImageForge app where helpful. The compact, portable baseline is `evidence/source-briefs/LOCAL_BASELINES.md`; the absolute paths below are optional local evidence only, and their absence must never block a fresh chat, clone, build, or test:
 
@@ -41,10 +41,10 @@ Initial design tokens:
 | Success | `#4bd99f` |
 | Control radius | about 18 px |
 | Panel radius | about 28–30 px |
-| Base text | 16–17 px |
-| Secondary text | at least 15 px |
-| Micro labels | 12–13 px; labels/status only |
-| Control height | 50–56 px |
+| Base text | 20 px desktop; 18 px compact/mobile |
+| Secondary text | at least 16 px |
+| Micro labels | at least 16 CSS px; short labels/status only |
+| Control height | normally 60 px |
 | Minimum touch target | 44×44 px |
 | Page title | roughly 48–72 px desktop |
 
@@ -54,19 +54,19 @@ Initial design tokens:
 - Generous spacing and clear hierarchy.
 - One dominant action per screen.
 - Glow and gradient must never reduce readability.
-- Major panels normally use 28–36 px padding and 24–32 px inter-section gaps.
+- Major panels normally use 28–42 px padding and 24–32 px inter-section gaps.
 - Do not simulate scale with CSS `zoom`; components themselves must use readable type, controls, media, spacing, and hit targets.
-- Avoid body/helper text below 15 px. Micro labels below that size are reserved for short stage/status metadata and must still meet contrast requirements.
+- Do not render user-facing text below 16 CSS px. Short stage/status metadata may be visually quieter through color, weight, and letter spacing—not a tiny font.
 
 ## Information density and content voice
 
 Use three consistent information layers:
 
-1. **Glance:** identity or preview, name, human-readable status, progress/version, and the primary action.
+1. **Glance:** identity or preview, name, current actionable exception when one exists, and the primary action. A healthy preset card does not repeat ready/passed/version/date metadata.
 2. **Inspect:** a `Details`, `References (N)`, or `Examples (N)` trigger opens a focused side sheet with user-facing settings and evidence.
 3. **Audit:** collapsed sections inside that sheet contain immutable IDs, hashes, models, attempts, detailed cost, rights/retention, and version history.
 
-Details are closed by default. On desktop the preferred inspect surface is a roughly 480–560 px side sheet that does not reflow the card grid; on mobile it becomes a full-screen sheet. Dense image galleries use a sheet/lightbox, not a small dropdown. Accordions within the sheet expose sections without producing one long wall of metadata.
+Details are closed by default. On desktop the preferred inspect surface is a roughly 480–560 px side sheet that does not reflow the card grid; on mobile it becomes a full-screen sheet. Dense image galleries use a sheet/lightbox, not a small dropdown. Accordions within the sheet expose sections without producing one long wall of metadata. A disclosure that edits the current form expands in normal flow inside its parent border, so its child controls read as one component and cannot cover the next section.
 
 Keep an active blocker, pending next check, incurred charge, required consent, budget approval, spend cap, and destructive action visible in the primary layer. These are never hidden merely to make the page look cleaner. Short success confirmation belongs in a toast; persistent panels are for actionable failure or an operation that is still pending.
 
@@ -89,14 +89,14 @@ Use direct nouns and outcomes instead of slogans or repeated implementation rati
 3. **Create project**
    - Title.
    - Voiceover dropzone with a short `Drop or choose final narration` prompt, accepted format names, and selected-file/upload state. Duration limits, channel count, sample rate, and other technical media rules remain strictly validated but are not advertised in the primary dropzone; show a precise field error only when the actual file violates one.
-   - Required compact visual Avatar dropdown. Its closed trigger shows only the selected private thumbnail, name, active version, and compatibility badge; opening it reveals the searchable visual choices. No per-project avatar upload. A native text-only `<select>` or an always-expanded preset-card grid does not satisfy this requirement.
+   - Required compact visual Avatar dropdown. Its closed trigger shows only the selected private thumbnail and name; opening it reveals the visual choices and search when the catalog is large enough to need it. Version and compatibility evidence remain in details or a real warning state. No per-project avatar upload. A native browser `<select>` or an always-expanded preset-card grid does not satisfy this requirement.
    - Selecting stores the exact version immediately. A later v2 does not silently replace selected v1; show `Newer version available`. Untested/stale/cancelled/failed compatibility shows increasingly strong warnings, but none blocks a ready source or starts a hidden test under the proposed MVP policy.
-   - `Manage avatars` and `+ New avatar` shortcuts. With no ready avatar, Generate is blocked by a clear `Create your first avatar` action.
-   - Required compact visual Image Style dropdown, preselected to Authentic Documentary Stock. Its closed trigger shows the selected cover, name, and version; opening it reveals searchable visual choices. `Manage styles`, `+ New style`, and reference/example details remain available without expanding every style into the form.
+   - A `+ New avatar` shortcut. With no ready avatar, Generate is blocked by a clear `Create your first avatar` action; the persistent dock owns ordinary Hub navigation.
+   - Required compact visual Image Style dropdown, preselected to Authentic Documentary Stock. Its closed trigger shows the selected cover/name and `Default` only when useful; opening it reveals the visual choices and search when useful. `+ New style` and reference/example details remain available without expanding every style into the form.
    - One simple `Apply extra keywords to every AI image` toggle, off by default, plus a bounded optional textarea. The toggle itself is the state; do not add persistent `Applied`, `Not applied`, success, or effective-settings confirmation panels. Show only a real validation error when enabled text is empty, invalid, or conflicts with output rules.
    - Do not expose an exact-script field in the first-shell web UI. The versioned request may retain nullable `optional_script` for backward compatibility, but this shell sends `null` and uses local ASR text as canonical.
    - Lowest cost / Balanced / Faster preset.
-   - A compact Compute section exposes two independent dropdowns: `Image generation` (`image_media`) and `Avatar generation` (`avatar_primary`). Each selects an immutable execution profile—not a raw per-job GPU—and shows truthful lane/profile status. Planned GPU candidates may appear disabled with `Benchmark required`; no production candidate becomes selectable until `GATE_GPU_001`. Optional repair/quality lanes remain behind details and appear only when provisioned. Never imply that one exact Serverless GPU is guaranteed per job. The resolved per-lane profile IDs are pinned before dispatch.
+   - A compact Compute section exposes two independent app-native dropdowns: `Image generation` (`image_media`) and `Avatar generation` (`avatar_primary`). Each selects an immutable execution profile—not a raw per-job GPU—and shows truthful lane/profile status. Planned GPU candidates remain visible but disabled with `Benchmark required`; no production candidate becomes selectable until `GATE_GPU_001`. Options expand inside the same compute card rather than invoking a Chrome/OS menu. Optional repair/quality lanes remain behind details and appear only when provisioned. Never imply that one exact Serverless GPU is guaranteed per job. The resolved per-lane profile IDs are pinned before dispatch.
    - Preflight appears as `Ready to generate` or a concise blocker count, plus cost range, spend cap, and one `Generate video` button. Passed immutable-contract facts move into `Review settings` rather than occupying four success panels.
 
 4. **Project progress**
@@ -120,14 +120,15 @@ Use direct nouns and outcomes instead of slogans or repeated implementation rati
    - The final preview and filters are primary. Output codec/grammar/provenance facts move into `Technical details`; after approval, `Download MP4` and `Manifest` are direct actions.
 
 6. **Avatar Hub**
-   - First-class floating-dock destination containing private named Avatar Profile cards with a large actual thumbnail, active ready version, human-readable compatibility state, and last used/updated time. Initials or a generic silhouette are fallback-only when an authorized thumbnail genuinely fails.
+   - First-class floating-dock destination containing private named Avatar Profile cards with a large actual thumbnail and name. Healthy ready/passed/version/date metadata stays in `Details`; only an exceptional actionable state becomes a glance-layer badge. Initials or a generic silhouette are fallback-only when an authorized thumbnail genuinely fails.
+   - Avatar and Image Style Hubs share the same card anatomy and media height: exactly two columns above 680 px and one column on mobile. A single avatar remains one half-width card on desktop rather than stretching across the row.
    - New-avatar flow: name → one private source upload → technical validation → source safe-area/centering review plus rights/likeness consent → `Approve and add to Avatar Hub`.
    - View, rename, create a new source version, optional test/retest, duplicate, and archive. Only the active ready version appears in the normal project selector; source dimensions, crop previews, compatibility evidence, version history, rights, retention, hashes, and exact IDs are progressive disclosure.
    - No built-in or silent avatar default. Recent ready profiles sort first, and the user explicitly selects one; duplicated projects may retain their pinned profile.
    - A new source is uploaded here once and never copied into each project. Optional compatibility tests are explicit, separately estimated, and do not block a structurally ready profile in MVP.
 
 7. **Image Styles Hub**
-   - Card hub for workspace/system styles with a real consented retained thumbnail, accepted generated cover, or deterministic palette/medium placeholder; name, one-line summary, active version, separate draft-version state, reference/example count, and Default badge.
+   - Card hub for workspace/system styles with a real consented retained thumbnail, accepted generated cover, or deterministic palette/medium placeholder; name, a `Default` or exceptional draft/action badge only when useful, and a `References (N)` or truthful `Owned examples (N)` trigger. Summary, active version, and technical lifecycle move into details.
    - Every custom style exposes the actual authorized reference images for that exact version behind `References (N)`. The gallery supports a larger lightbox and on-demand alias, dimensions, supporting traits, outlier state, rights, and retention details.
    - The manually seeded built-in `documentary_stock_v1` has no uploaded runtime reference set. It may expose owned/generated `Examples (N)`, but must never call those images references or reuse the third-party Ranga research frames in the product.
    - New-style wizard: upload references → analyze → review/edit → optional Mage test → return to review → explicit publish. A completed preview never auto-publishes.
@@ -152,7 +153,7 @@ Use direct nouns and outcomes instead of slogans or repeated implementation rati
 
 ## Core components
 
-- Reference-inspired floating navigation dock with Queue, New Project, active Progress, Avatar Hub, Image Styles, Library, Usage, and Settings; the active route is unmistakable. At 1024 px every destination remains directly reachable with visible focus and accessible names. Narrow mobile navigation may use an explicit `More` surface, but it cannot make either Hub undiscoverable or hide destructive/budget controls.
+- Reference-inspired floating navigation dock with Queue, New Project, active Progress, Avatar Hub, Image Styles, Library, Usage, and Settings; the active route is unmistakable. Its desktop base items are approximately 94×74 px with about 12 px dock padding. On fine pointers, the hovered icon lifts and scales most, immediate and second neighbors scale progressively less, and layout boxes never move. Touch/coarse-pointer and reduced-motion modes remain stable. At 1024 px every destination remains directly reachable with visible focus and accessible names. Mobile uses a labelled 4×2 dock without hiding either Hub or destructive/budget controls.
 - Full-width top active-project command bar with an internally inset project/progress track and compact mobile treatment.
 - Progress ring plus factual completed/total counts.
 - Metric cards for stage, ETA, cost, queue, GPU.
@@ -220,6 +221,7 @@ Opening `+ New avatar` from Create Project follows the same no-loss rule: autosa
 - Accordion triggers expose `aria-expanded`/`aria-controls`; reference lightboxes support Escape and previous/next keyboard commands.
 - No substantive information or action is hover-only.
 - Respect `prefers-reduced-motion`; status remains clear without animation.
+- Dock proximity magnification is enhancement-only: it never carries information, never changes layout geometry, and is disabled for reduced motion and coarse/touch pointers.
 - Operator transcript text may appear in the app but is never burned into output.
 - Desktop-first at 1280–1920 px; fully usable at 1024 px.
 - Floating navigation is keyboard reachable, reports the active route semantically, and keeps Avatar Hub/Image Styles Hub directly reachable at 1024 px.

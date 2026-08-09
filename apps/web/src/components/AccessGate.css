@@ -311,23 +311,17 @@
   transform: rotate(180deg);
 }
 
-.access-fixture-picker label {
+.access-fixture-field {
   display: grid;
   gap: 7px;
   padding: 0 13px 11px;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 700;
 }
 
-.access-fixture-picker select {
-  width: 100%;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid rgba(177, 174, 229, 0.22);
-  border-radius: 12px;
-  background: #0d1022;
-  color: var(--text);
+.access-fixture-field .app-select-trigger {
+  min-height: 52px;
 }
 
 .access-fixture-picker > small {

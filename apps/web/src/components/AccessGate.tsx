@@ -10,6 +10,7 @@ import {
 import type { ReactNode } from "react";
 
 import { scenarioIds, type FixtureAccessState, type ScenarioId } from "../lib/types";
+import { AppSelect } from "./ui";
 import "./AccessGate.css";
 
 interface FixturePickerProps {
@@ -28,20 +29,15 @@ function FixturePicker({ enabled, scenario, onScenarioChange }: FixturePickerPro
         <span>Fixture</span>
         <ChevronDown className="access-fixture-chevron" size={16} aria-hidden="true" />
       </summary>
-      <label>
+      <div className="access-fixture-field">
         <span>Scenario</span>
-        <select
-          aria-label="Fixture scenario"
+        <AppSelect
+          label="Fixture scenario"
           value={scenario}
-          onChange={(event) => onScenarioChange(event.target.value as ScenarioId)}
-        >
-          {scenarioIds.map((id) => (
-            <option value={id} key={id}>
-              {id}
-            </option>
-          ))}
-        </select>
-      </label>
+          onValueChange={(value) => onScenarioChange(value as ScenarioId)}
+          options={scenarioIds.map((id) => ({ value: id, label: id }))}
+        />
+      </div>
       <small>Synthetic data · no provider calls · $0 spend</small>
     </details>
   );

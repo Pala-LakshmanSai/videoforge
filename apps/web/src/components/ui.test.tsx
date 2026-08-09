@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { Button, DetailsSheet, Disclosure } from "./ui";
+import { AppSelect, Button, DetailsSheet, Disclosure } from "./ui";
 
 describe("Button", () => {
   it("locks duplicate clicks whenever an action is busy", () => {
@@ -33,6 +33,33 @@ describe("Disclosure", () => {
     fireEvent.click(summary);
     expect(details).toHaveAttribute("open");
     expect(screen.getByText("Profile hash")).toBeVisible();
+  });
+});
+
+describe("AppSelect", () => {
+  it("uses an integrated application menu instead of a native browser select", () => {
+    const onValueChange = vi.fn();
+    const { container } = render(
+      <AppSelect
+        label="Avatar generation compute profile"
+        value="fixture_auto"
+        onValueChange={onValueChange}
+        options={[
+          { value: "fixture_auto", label: "Auto · Fixture · $0" },
+          { value: "rtx_4090", label: "RTX 4090", disabled: true, group: "GPU qualification" },
+        ]}
+      />,
+    );
+
+    expect(container.querySelector("select")).not.toBeInTheDocument();
+    const trigger = screen.getByLabelText("Avatar generation compute profile");
+    fireEvent.click(trigger);
+    expect(screen.getByRole("listbox", { name: /compute profile options/i })).toBeVisible();
+    expect(screen.getByRole("option", { name: "RTX 4090" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("option", { name: "Auto · Fixture · $0" }));
+    expect(onValueChange).toHaveBeenCalledWith("fixture_auto");
+    expect(trigger.closest("details")).not.toHaveAttribute("open");
   });
 });
 

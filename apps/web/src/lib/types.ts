@@ -177,6 +177,7 @@ export interface FixtureNotice {
   title: string;
   detail: string;
   action: string | null;
+  scope: "ACCESS" | "AVATAR" | "CREATE" | "PROJECT" | "STYLE";
 }
 
 export interface FixtureDraftState {
@@ -246,4 +247,16 @@ export interface HealthResponse {
   synthetic: true;
   provider_calls_authorized: false;
   authorized_spend_usd: 0;
+}
+
+export interface RegisteredVoiceover {
+  assetId: string;
+  checksum: string;
+  filename: string;
+  durationSeconds: number;
+  sampleRate: number;
+  channels: 1 | 2;
+  verificationState: "VERIFIED";
+  persistedBytes: false;
+  providerCallsAuthorized: false;
 }

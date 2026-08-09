@@ -1,5 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Progress from "@radix-ui/react-progress";
+import { useRef } from "react";
 import type {
   ButtonHTMLAttributes,
   CSSProperties,
@@ -72,14 +73,14 @@ export function Metric({
 }: {
   label: string;
   value: ReactNode;
-  detail: string;
+  detail?: string;
   tone?: Tone;
 }) {
   return (
     <div className={`metric metric-${tone}`}>
       <span>{label}</span>
       <strong>{value}</strong>
-      <small>{detail}</small>
+      {detail ? <small>{detail}</small> : null}
     </div>
   );
 }
@@ -138,13 +139,108 @@ export function Disclosure({
     summary: ReactNode;
   }
 >) {
+  const detailsRef = useRef<HTMLDetailsElement>(null);
   return (
-    <details {...props} className={`disclosure ${className}`.trim()}>
+    <details
+      {...props}
+      ref={detailsRef}
+      className={`disclosure ${className}`.trim()}
+      onKeyDown={(event) => {
+        props.onKeyDown?.(event);
+        if (event.defaultPrevented || event.key !== "Escape" || !detailsRef.current?.open) return;
+        event.preventDefault();
+        detailsRef.current.open = false;
+        detailsRef.current.querySelector<HTMLElement>("summary")?.focus();
+      }}
+    >
       <summary className="disclosure-summary">
         <span className="disclosure-summary-content">{summary}</span>
         <span className="disclosure-chevron" aria-hidden="true" />
       </summary>
       <div className="disclosure-content">{children}</div>
+    </details>
+  );
+}
+
+export interface AppSelectOption {
+  value: string;
+  label: string;
+  detail?: string;
+  disabled?: boolean;
+  group?: string;
+}
+
+export function AppSelect({
+  label,
+  value,
+  options,
+  onValueChange,
+  className = "",
+}: {
+  label: string;
+  value: string;
+  options: AppSelectOption[];
+  onValueChange: (value: string) => void;
+  className?: string;
+}) {
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+  const selected = options.find((option) => option.value === value) ?? options[0];
+  let previousGroup: string | undefined;
+
+  return (
+    <details
+      ref={detailsRef}
+      className={`app-select ${className}`.trim()}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || !detailsRef.current?.open) return;
+        event.preventDefault();
+        detailsRef.current.open = false;
+        detailsRef.current.querySelector<HTMLElement>("summary")?.focus();
+      }}
+    >
+      <summary className="app-select-trigger" aria-label={label}>
+        <span>
+          <strong>{selected?.label ?? "Choose"}</strong>
+          {selected?.detail ? <small>{selected.detail}</small> : null}
+        </span>
+        <span className="app-select-chevron" aria-hidden="true" />
+      </summary>
+      <div className="app-select-menu" role="listbox" aria-label={`${label} options`}>
+        {options.map((option) => {
+          const showGroup = option.group !== previousGroup;
+          previousGroup = option.group;
+          return (
+            <div className="app-select-option-wrap" key={option.value}>
+              {showGroup && option.group ? (
+                <span className="app-select-group">{option.group}</span>
+              ) : null}
+              <button
+                type="button"
+                className="app-select-option"
+                role="option"
+                aria-selected={option.value === value}
+                disabled={option.disabled}
+                onClick={() => {
+                  if (option.disabled) return;
+                  onValueChange(option.value);
+                  detailsRef.current?.removeAttribute("open");
+                  detailsRef.current?.querySelector<HTMLElement>("summary")?.focus();
+                }}
+              >
+                <span>
+                  <strong>{option.label}</strong>
+                  {option.detail ? <small>{option.detail}</small> : null}
+                </span>
+                {option.value === value ? (
+                  <span className="app-select-check" aria-hidden="true">
+                    ✓
+                  </span>
+                ) : null}
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </details>
   );
 }

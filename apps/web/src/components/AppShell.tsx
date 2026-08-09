@@ -12,12 +12,13 @@ import {
   Sparkles,
   UsersRound,
 } from "lucide-react";
-import type { PropsWithChildren } from "react";
+import { useEffect, useRef, type PropsWithChildren } from "react";
 import { api } from "../lib/api";
+import { dockMotionTarget } from "../lib/dock-motion";
 import { currentScenario, setScenario } from "../lib/scenario";
 import { scenarioIds, type ProjectSummary, type Tone } from "../lib/types";
 import { AccessGate, AccessGatePending, AccessGateUnavailable } from "./AccessGate";
-import { Badge, Disclosure, ProgressBar } from "./ui";
+import { AppSelect, Badge, Disclosure, ProgressBar } from "./ui";
 
 const nav = [
   { to: "/", label: "Queue", icon: CircleGauge },
@@ -108,6 +109,7 @@ function ProjectCommandTrack({
 }
 
 export function AppShell({ children }: PropsWithChildren) {
+  const dockRef = useRef<HTMLElement>(null);
   const scenario = currentScenario();
   const fixtureControlsEnabled = import.meta.env.DEV;
   const path = useRouterState({ select: (state) => state.location.pathname });
@@ -127,6 +129,80 @@ export function AppShell({ children }: PropsWithChildren) {
     onScenarioChange: setScenario,
   };
   const isAccessFixture = accessFixtureScenarios.has(scenario);
+
+  useEffect(() => {
+    const dock = dockRef.current;
+    if (!dock) return;
+
+    const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let items: HTMLElement[] = [];
+    let centers: number[] = [];
+    let animationFrame = 0;
+    let pointerX: number | null = null;
+
+    const reset = () => {
+      pointerX = null;
+      if (animationFrame) window.cancelAnimationFrame(animationFrame);
+      animationFrame = 0;
+      for (const item of items) {
+        item.style.setProperty("--dock-scale", "1");
+        item.style.setProperty("--dock-lift", "0px");
+      }
+    };
+
+    const cacheGeometry = () => {
+      items = Array.from(dock.querySelectorAll<HTMLElement>(".bottom-nav-item"));
+      centers = items.map((item) => {
+        const rect = item.getBoundingClientRect();
+        return rect.left + rect.width / 2;
+      });
+    };
+
+    const render = () => {
+      animationFrame = 0;
+      if (pointerX === null || !finePointer.matches || reducedMotion.matches) {
+        reset();
+        return;
+      }
+      items.forEach((item, index) => {
+        const center = centers[index];
+        if (center === undefined || pointerX === null) return;
+        const target = dockMotionTarget(pointerX - center, true);
+        item.style.setProperty("--dock-scale", target.scale.toFixed(4));
+        item.style.setProperty("--dock-lift", `${target.liftPx.toFixed(2)}px`);
+      });
+    };
+
+    const updatePointer = (event: PointerEvent) => {
+      pointerX = event.clientX;
+      if (!animationFrame) animationFrame = window.requestAnimationFrame(render);
+    };
+
+    const enter = (event: PointerEvent) => {
+      if (!finePointer.matches || reducedMotion.matches) return;
+      cacheGeometry();
+      updatePointer(event);
+    };
+
+    cacheGeometry();
+    dock.addEventListener("pointerenter", enter);
+    dock.addEventListener("pointermove", updatePointer);
+    dock.addEventListener("pointerleave", reset);
+    window.addEventListener("resize", cacheGeometry);
+    finePointer.addEventListener("change", reset);
+    reducedMotion.addEventListener("change", reset);
+
+    return () => {
+      reset();
+      dock.removeEventListener("pointerenter", enter);
+      dock.removeEventListener("pointermove", updatePointer);
+      dock.removeEventListener("pointerleave", reset);
+      window.removeEventListener("resize", cacheGeometry);
+      finePointer.removeEventListener("change", reset);
+      reducedMotion.removeEventListener("change", reset);
+    };
+  }, [bootstrap.data?.projects.length, scenario]);
 
   if (isAccessFixture && bootstrap.isPending) {
     return <AccessGatePending {...fixturePickerProps} />;
@@ -171,7 +247,7 @@ export function AppShell({ children }: PropsWithChildren) {
         aria-current={active ? "page" : undefined}
       >
         <span className="bottom-nav-icon" aria-hidden="true">
-          <Icon size={21} />
+          <Icon size={25} />
         </span>
         <span className="bottom-nav-label">{item.label}</span>
         {active ? <i className="bottom-nav-active-dot" aria-hidden="true" /> : null}
@@ -252,20 +328,15 @@ export function AppShell({ children }: PropsWithChildren) {
                   </>
                 }
               >
-                <label className="fixture-control-field" htmlFor="fixture-select">
+                <div className="fixture-control-field">
                   <span>Scenario</span>
-                  <select
-                    id="fixture-select"
+                  <AppSelect
+                    label="Scenario"
                     value={scenario}
-                    onChange={(event) => setScenario(event.target.value as typeof scenario)}
-                  >
-                    {scenarioIds.map((id) => (
-                      <option value={id} key={id}>
-                        {id}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    onValueChange={(value) => setScenario(value as typeof scenario)}
+                    options={scenarioIds.map((id) => ({ value: id, label: id }))}
+                  />
+                </div>
                 <div className="fixture-control-meta">
                   <span>{health.data?.commit ?? "local"}</span>
                   <span>No provider calls</span>
@@ -282,7 +353,7 @@ export function AppShell({ children }: PropsWithChildren) {
         </main>
       </div>
 
-      <nav className="bottom-nav-dock" aria-label="Primary navigation">
+      <nav ref={dockRef} className="bottom-nav-dock" aria-label="Primary navigation">
         {nav.slice(0, 2).map(renderNavItem)}
         {activeProject ? (
           <Link
@@ -296,7 +367,7 @@ export function AppShell({ children }: PropsWithChildren) {
             }
           >
             <span className="bottom-nav-icon" aria-hidden="true">
-              <Activity size={21} />
+              <Activity size={25} />
             </span>
             <span className="bottom-nav-label">Progress</span>
             {path.startsWith("/projects/") && path !== "/projects/new" ? (

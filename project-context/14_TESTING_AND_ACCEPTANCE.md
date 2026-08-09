@@ -258,17 +258,15 @@ Pass: no duplicate accepted asset or corrupt state, any duplicate dispatch/charg
 Automated fixture/browser checks and the user's real-Chrome review must jointly verify the approved large-scale minimal direction. Screenshots can support comparison but never replace interaction, console, request, focus, and responsive checks.
 
 - Direct page titles, one dominant action, and a calm glance layer replace slogans, repeated implementation rationale, and walls of persistent success messages.
-- Base/secondary text, controls, hit targets, media, panels, and spacing meet the scale ranges in `05_UI_UX_SPEC.md`; no CSS `zoom` or viewport trick simulates a larger interface.
+- Roots compute to 20/18 px desktop/mobile, visible text is at least 16 CSS px, normal controls are at least 60 px, and no CSS `zoom` simulates scale.
 - The active-project command bar spans the viewport with deliberate page-edge padding while its project/progress track is inset internally; it does not become a narrow centered island. Its compact mobile form, oversized project title, large factual progress hero, metric cards, vertical pipeline, and latest-artifact panel preserve authoritative counts/states without fabricating smooth work.
-- Floating navigation reports the active route, is fully keyboard reachable, and exposes Queue, New Project, active Progress, Avatar Hub, Image Styles, Library, Usage, and Settings at 1024 px. Any narrow-mobile `More` surface remains explicit and discoverable.
-- Every returned Avatar Hub preset renders its authorized thumbnail with a useful accessible name; a missing/failed thumbnail has a truthful labelled fallback and never silently becomes the normal initials-only design.
-- Every style card renders its allowed cover or labelled placeholder. A custom style's `References (N)` remains closed initially, opens exactly the version-bound authorized images, and never leaks another workspace's asset.
-- The manually seeded built-in style reports zero uploaded references. Owned/generated gallery media is labelled `Examples (N)`, never references; no Ranga research frame or other third-party research asset ships in the web bundle.
-- Reference/example mosaics load without broken requests. Opening an item provides a larger lightbox and its on-demand alias/dimensions/version/evidence/rights/retention data where applicable.
-- Avatar and Image Style creation preserve the selected/uploaded imagery needed by the fixture round trip; returning to Create Project shows the new preset image and exact selected version without losing the verified voiceover handle or other draft fields.
-- Avatar and Image Style selectors are compact when closed and show only the selected image/name/version/status. Opening each visual dropdown reveals searchable options and supports arrow/Enter/Escape operation, then closes with the exact version persisted. A native text-only select or always-expanded preset-card grid is not accepted as the finished selector.
+- The keyboard-reachable dock reports the active route and exposes every destination at 1024 px. Fine-pointer hover scales center > neighbor > far without layout movement and resets on leave; reduced-motion/coarse-pointer modes stay neutral. Mobile is a labelled 4×2 dock with safe content padding.
+- Avatar cards use an accessible authorized thumbnail or labelled fallback. Healthy cards show only image, name, and `Details`; both Hubs use equal media heights, two columns above 680 px, and one on mobile.
+- Style cards use an allowed cover or labelled fallback. `References (N)` opens only version-bound authorized images; the built-in has zero uploaded references and calls owned media `Examples (N)`. No research asset ships.
+- Galleries load without broken requests and disclose larger images plus metadata on demand. New Avatar/Style round trips retain imagery, exact pins, voiceover handle, and every other draft field.
+- Closed preset selectors show image/name and optional `Default`. Choices stay inside the same app-native border, add search when useful, restore focus on Escape, and persist the exact version ID. Native, detached, covering, or always-expanded variants fail.
 - The voiceover dropzone does not advertise duration bounds, channel count, sample rate, or other technical media rules. Valid files show concise selected/upload state; invalid files show an accurate field-specific error while the strict server/browser validation matrix remains unchanged.
-- Create Project exposes independent `image_media` and `avatar_primary` execution-profile dropdowns with truthful lane status. Only immutable tested profiles are selectable; planned GPU candidates remain disabled and labelled `Benchmark required` while `GATE_GPU_001` is open.
+- App-native `image_media` and `avatar_primary` profile controls keep options inside each compute card. Only immutable tested profiles are selectable; planned GPUs remain disabled as `Benchmark required` while `GATE_GPU_001` is open.
 - The first-shell UI has no exact-script input and sends `optional_script: null`. Extra keywords use only the opt-in toggle and textarea; no persistent applied/not-applied success panel appears, while enabled empty/invalid/conflicting text still receives the precise existing error.
 - Details are closed by default. Side sheets/accordions/lightboxes expose complete inspect/audit data, trap/manage focus correctly, close with Escape, restore focus, and do not depend on hover.
 - Pending actions immediately disable duplicates and show concise progress/next-check state. Active blockers, charges, consent, spend caps, budget approvals, and destructive controls remain in the primary layer even when technical details are collapsed.
@@ -282,14 +280,14 @@ Automated fixture/browser checks and the user's real-Chrome review must jointly 
 In the user's real Chrome:
 
 1. Sign in.
-2. Use the floating navigation dock with keyboard and pointer; verify its active route, 1024 px layout, and narrow-mobile safe area without hidden critical controls.
-3. Open Avatar Hub, verify every preset has a large authorized image, then create a named private avatar once, leave/resume if needed, approve it, and see its image/name/version in the searchable project selector.
+2. Verify dock keyboard/pointer navigation, proximity/reset/no-layout-shift behavior, reduced-motion neutrality, active route, 1024 px layout, and mobile safe area.
+3. Verify authorized Avatar Hub imagery and minimal healthy cards; create/approve one private avatar and confirm its image/name plus inspectable exact pin in Create Project.
 4. Open Image Styles, inspect the built-in owned/generated examples without calling them uploaded references, then open every reference image for a custom style and exercise the keyboard lightbox/details sheet.
 5. Create a private Image Style from references, keep the uploaded mosaic visible through analysis/review, leave/resume analysis, review/edit it, optionally test, and publish it.
 6. Create a project with real audio, select the stored avatar and new style through compact visual dropdowns, verify no avatar upload control/request or exact-script field exists, and confirm the dropzone omits proactive duration/channel/sample-rate details.
 7. Enter extra image keywords, leave the toggle off and verify there is no separate applied/not-applied confirmation, then enable it and exercise one accepted negative refinement plus one precise conflict error.
 8. See immediate preflight/pending state without duplicate submission or persistent non-actionable explanation panels.
-9. Select or inspect the two truthful primary execution profiles, then observe the full-width command bar, large authoritative progress hero, parallel image/avatar lane status, pipeline, queue/cold-start/model progress, and latest artifact; confirm disabled unbenchmarked profiles cannot be selected and no style analyzer or Avatar Hub onboarding test runs during the project.
+9. Confirm both app-native profile menus stay inside their compute cards; inspect the command bar, progress hero, parallel lanes, pipeline, cold/model states, and artifact. Disabled unbenchmarked profiles remain unselectable and no onboarding analysis runs per project.
 10. Expand and collapse project technical details, then verify the primary layer remains concise while IDs, pinned inputs, worker evidence, and costs remain reachable.
 11. Open another user/session and verify ownership/fair queue plus avatar/style isolation.
 12. Review full/split preview from the same clip and style-aware image prompts.

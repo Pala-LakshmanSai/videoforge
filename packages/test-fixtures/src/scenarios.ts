@@ -987,7 +987,7 @@ const scenarios = {
   project_ready_for_review: createScenario(
     "project_ready_for_review",
     "Project ready for review",
-    "Technical QA passed, but creative approval still requires an explicit human action.",
+    "Fixture checks passed, but approval still requires an explicit human action.",
     "/projects/project_fixture_001/review",
     ["project", "review", "success"],
     (snapshot) => {
@@ -1010,9 +1010,9 @@ const scenarios = {
       };
       for (const stage of snapshot.project.stages) stage.state = "COMPLETE";
       snapshot.project.latestArtifact = {
-        kind: "VIDEO",
-        url: "/fixtures/media/final-review-candidate.mp4",
-        label: "1080p30 review candidate",
+        kind: "IMAGE",
+        url: "/fixtures/media/watermelon-market.svg",
+        label: "Synthetic review contact sheet",
       };
       snapshot.project.review = {
         candidateId: "review_candidate_fixture_001",
@@ -1025,7 +1025,7 @@ const scenarios = {
         tone: "SUCCESS",
         title: "Ready for review",
         detail:
-          "Technical QA passed. Review the video and contact sheet before approving the final revision.",
+          "Fixture checks passed. Review the synthetic contact sheet before approving this revision.",
         action: "Review candidate",
       };
     },
@@ -1057,9 +1057,9 @@ const scenarios = {
       };
       for (const stage of snapshot.project.stages) stage.state = "COMPLETE";
       snapshot.project.latestArtifact = {
-        kind: "VIDEO",
-        url: "/fixtures/media/final-approved.mp4",
-        label: "Approved 1080p30 video",
+        kind: "IMAGE",
+        url: "/fixtures/media/watermelon-market.svg",
+        label: "Approved synthetic contact sheet",
       };
       snapshot.project.review = {
         candidateId: "review_candidate_fixture_001",
@@ -1072,8 +1072,9 @@ const scenarios = {
       snapshot.notice = {
         tone: "SUCCESS",
         title: "Final revision approved",
-        detail: "The immutable fixture manifest and video are ready to download.",
-        action: "Download video",
+        detail:
+          "The immutable approval is recorded. A synthetic preview is available; real MP4 rendering remains in Phase 0C.",
+        action: "Download fixture preview",
       };
     },
   ),

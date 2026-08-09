@@ -8,7 +8,20 @@ import type {
   ProjectSummary,
   ScenarioId,
   UsageSummary,
+  RegisteredVoiceover,
 } from "./types";
+import {
+  parseAvatarsResponse,
+  parseBootstrapResponse,
+  parseExecutionProfilesResponse,
+  parseHealthResponse,
+  parseMutationResponse,
+  parseProjectResponse,
+  parseProjectsResponse,
+  parseRegisteredVoiceoverResponse,
+  parseStylesResponse,
+  parseUsageResponse,
+} from "./api-schemas";
 
 export class ApiError extends Error {
   constructor(
@@ -35,23 +48,29 @@ interface ProblemPayload {
   };
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(
+  path: string,
+  init: RequestInit | undefined,
+  parse: (value: unknown) => T,
+): Promise<T> {
   const response = await fetch(path, {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
   const responseText = await response.text();
-  let payload: T | ProblemPayload | null = null;
+  let payload: unknown | ProblemPayload | null = null;
   if (responseText) {
     try {
-      payload = JSON.parse(responseText) as T | ProblemPayload;
+      payload = JSON.parse(responseText) as unknown;
     } catch {
       if (response.ok) throw new Error("VideoForge returned an unreadable response.");
     }
   }
   if (!response.ok) {
     const error =
-      payload && typeof payload === "object" && "error" in payload ? payload.error : undefined;
+      payload && typeof payload === "object" && "error" in payload
+        ? (payload as ProblemPayload).error
+        : undefined;
     throw new ApiError(
       error?.detail ?? error?.message ?? "VideoForge request failed.",
       error?.code ?? "UNKNOWN",
@@ -62,7 +81,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     );
   }
   if (payload === null) throw new Error("VideoForge returned an empty response.");
-  return payload as T;
+  try {
+    return parse(payload);
+  } catch {
+    throw new Error(`VideoForge returned an invalid response for ${path.split("?")[0]}.`);
+  }
 }
 
 function query(scenario: ScenarioId) {
@@ -71,28 +94,64 @@ function query(scenario: ScenarioId) {
 
 export const api = {
   health: (scenario?: ScenarioId) =>
-    request<HealthResponse>(`/api/health${scenario ? query(scenario) : ""}`),
+    request<HealthResponse>(
+      `/api/health${scenario ? query(scenario) : ""}`,
+      undefined,
+      parseHealthResponse,
+    ),
   bootstrap: (scenario: ScenarioId) =>
-    request<FixtureBootstrap>(`/api/v1/bootstrap${query(scenario)}`),
+    request<FixtureBootstrap>(
+      `/api/v1/bootstrap${query(scenario)}`,
+      undefined,
+      parseBootstrapResponse,
+    ),
   projects: (scenario: ScenarioId) =>
-    request<ProjectSummary[]>(`/api/v1/projects${query(scenario)}`),
+    request<ProjectSummary[]>(
+      `/api/v1/projects${query(scenario)}`,
+      undefined,
+      parseProjectsResponse,
+    ),
   project: (id: string, scenario: ScenarioId) =>
-    request<ProjectDetail>(`/api/v1/projects/${encodeURIComponent(id)}${query(scenario)}`),
+    request<ProjectDetail>(
+      `/api/v1/projects/${encodeURIComponent(id)}${query(scenario)}`,
+      undefined,
+      parseProjectResponse,
+    ),
   avatars: (scenario: ScenarioId) =>
-    request<AvatarProfile[]>(`/api/v1/avatar-profiles${query(scenario)}`),
-  styles: (scenario: ScenarioId) => request<ImageStyle[]>(`/api/v1/image-styles${query(scenario)}`),
+    request<AvatarProfile[]>(
+      `/api/v1/avatar-profiles${query(scenario)}`,
+      undefined,
+      parseAvatarsResponse,
+    ),
+  styles: (scenario: ScenarioId) =>
+    request<ImageStyle[]>(`/api/v1/image-styles${query(scenario)}`, undefined, parseStylesResponse),
   executionProfiles: (scenario: ScenarioId) =>
-    request<ExecutionProfileCatalog>(`/api/v1/execution-profiles${query(scenario)}`),
-  usage: (scenario: ScenarioId) => request<UsageSummary>(`/api/v1/usage${query(scenario)}`),
+    request<ExecutionProfileCatalog>(
+      `/api/v1/execution-profiles${query(scenario)}`,
+      undefined,
+      parseExecutionProfilesResponse,
+    ),
+  usage: (scenario: ScenarioId) =>
+    request<UsageSummary>(`/api/v1/usage${query(scenario)}`, undefined, parseUsageResponse),
+  voiceover: (assetId: string, scenario: ScenarioId) =>
+    request<RegisteredVoiceover>(
+      `/api/v1/voiceovers/${encodeURIComponent(assetId)}${query(scenario)}`,
+      undefined,
+      parseRegisteredVoiceoverResponse,
+    ),
   mutate: <T>(
     path: string,
     body: unknown,
     scenario: ScenarioId,
     idempotencyKey = crypto.randomUUID(),
   ) =>
-    request<T>(`${path}${path.includes("?") ? "&" : "?"}${query(scenario).slice(1)}`, {
-      method: "POST",
-      headers: { "Idempotency-Key": idempotencyKey, "If-Match": "fixture-v1" },
-      body: JSON.stringify(body),
-    }),
+    request<T>(
+      `${path}${path.includes("?") ? "&" : "?"}${query(scenario).slice(1)}`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey, "If-Match": "fixture-v1" },
+        body: JSON.stringify(body),
+      },
+      (value) => parseMutationResponse(value) as T,
+    ),
 };

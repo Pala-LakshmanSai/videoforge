@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+
 import {
   createProjectRequestSchema,
   validateOutputRuleKeywords,
@@ -45,6 +48,7 @@ const DEFAULT_FIXTURE_SESSION_ID = "default";
 const MAX_FIXTURE_SESSION_ID_LENGTH = 96;
 const MAX_FIXTURE_SESSION_NAMESPACES = 256;
 const FIXTURE_SESSION_ID = /^[A-Za-z0-9](?:[A-Za-z0-9._:-]{0,95})$/u;
+const FIXTURE_PREVIEW_FILE = resolve(process.cwd(), "public/fixtures/media/watermelon-market.svg");
 
 type FixtureMutationOperation = "PROJECT_CREATE" | "PROJECT_PREFLIGHT";
 
@@ -1077,6 +1081,13 @@ export function createApiApp(
       if (!resolved.ok) return resolved.response;
       return c.json(resolved.scenario);
     });
+
+    app.post("/api/dev/fixture-session/reset", (c) => {
+      const session = resolveFixtureSession(c);
+      if (!session.ok) return session.response;
+      fixtureSessions.set(session.id, createFixtureSessionState());
+      return c.json({ ok: true as const, sessionId: session.id, providerCallsAuthorized: false });
+    });
   }
 
   app.get("/api/v1/bootstrap", (c) => {
@@ -1364,6 +1375,35 @@ export function createApiApp(
     return c.json(project.detail.events);
   });
 
+  app.get("/api/v1/projects/:projectId/download", async (c) => {
+    const resolved = resolveContextFixture(c);
+    if (!resolved.ok) return resolved.response;
+    const session = resolveFixtureSession(c);
+    if (!session.ok) return session.response;
+    const project = resolveProjectDetail(
+      resolved.scenario,
+      c.req.param("projectId"),
+      session.state.runtimeProjects,
+    );
+    if (!project.ok) return project.response;
+    if (project.detail.project.review.state !== "APPROVED") {
+      return problemResponse(
+        apiProblem(
+          "PROJECT_DOWNLOAD_NOT_READY",
+          409,
+          "Fixture preview is not ready",
+          "Approve the exact current review candidate before downloading its synthetic preview.",
+          false,
+        ),
+      );
+    }
+    const preview = await readFile(FIXTURE_PREVIEW_FILE, "utf8");
+    c.header("content-type", "image/svg+xml; charset=utf-8");
+    c.header("content-disposition", 'attachment; filename="videoforge-fixture-preview.svg"');
+    c.header("x-videoforge-artifact-kind", "synthetic-preview");
+    return c.body(preview);
+  });
+
   app.get("/api/v1/usage", (c) => {
     const resolved = resolveContextFixture(c);
     if (!resolved.ok) return resolved.response;
@@ -1551,6 +1591,7 @@ export function createApiApp(
         title: "Cancellation requested",
         detail: "Workers are settling; accepted fixture artifacts remain recorded.",
         action: null,
+        scope: "PROJECT",
       };
       cancelled.events.push({
         id: `event_fixture_cancel_${cancelled.events.length + 1}`,
@@ -1580,7 +1621,8 @@ export function createApiApp(
       if (!project.ok) return project.response;
       if (
         project.detail.project.status === "APPROVED" ||
-        project.detail.project.status === "CANCEL_REQUESTED"
+        project.detail.project.status === "CANCEL_REQUESTED" ||
+        !project.detail.project.allowedActions.includes("RETRY_FAILED_ITEMS")
       ) {
         return problemResponse(
           apiProblem(
@@ -1604,6 +1646,43 @@ export function createApiApp(
           ),
         );
       }
+      const retrying = structuredClone(project.detail);
+      const imageRetry = resolved.id === "image_partial_failure";
+      retrying.project.status = "RUNNING";
+      retrying.project.stage = imageRetry ? "IMAGE_RETRY" : "AVATAR_REPAIR";
+      retrying.project.eta = "10 min";
+      retrying.project.queuePosition = null;
+      retrying.project.allowedActions = imageRetry ? ["CANCEL"] : ["CANCEL", "REVIEW"];
+      const lane = imageRetry ? retrying.project.lanes.image : retrying.project.lanes.avatar;
+      lane.state = "RETRYING";
+      lane.action = imageRetry
+        ? "Retrying failed image chunk; accepted images remain checkpointed"
+        : "MuseTalk repair queued for the flagged lip-sync clip";
+      const generationStage = retrying.project.stages?.find((stage) => stage.id === "generation");
+      if (generationStage) {
+        generationStage.status = "RETRYING";
+        generationStage.detail = imageRetry
+          ? "Failed image chunk retry accepted"
+          : "Targeted lip repair accepted";
+      }
+      if (!imageRetry) retrying.project.review.state = "CHANGES_REQUESTED";
+      retrying.notice = {
+        tone: "INFO",
+        title: imageRetry ? "Image retry queued" : "Lip repair queued",
+        detail: imageRetry
+          ? "Accepted images remain checkpointed; only the failed chunk is being retried."
+          : "Only the flagged clip is being repaired; accepted avatar work remains unchanged.",
+        action: null,
+        scope: "PROJECT",
+      };
+      retrying.events.push({
+        id: `event_fixture_retry_${retrying.events.length + 1}`,
+        detail: imageRetry
+          ? "Failed image chunk retry accepted once"
+          : "Targeted lip-sync repair accepted once",
+        at: "2026-08-09T09:34:00.000Z",
+      });
+      putRuntimeProject(state.runtimeProjects, resolved.id, retrying);
       return c.json(
         {
           ok: true as const,
@@ -1659,6 +1738,36 @@ export function createApiApp(
           ),
         );
       }
+      const fallback = structuredClone(project.detail);
+      fallback.project.status = "RUNNING";
+      fallback.project.stage = "AVATAR_FALLBACK";
+      fallback.project.estimatedCost = estimatedTotalUsd;
+      fallback.project.eta = "10 min";
+      fallback.project.queuePosition = null;
+      fallback.project.lanes.avatar.state = "STARTING";
+      fallback.project.lanes.avatar.action =
+        "Synthetic SkyReels fallback reserved; provider dispatch remains disabled";
+      fallback.project.review.state = "CHANGES_REQUESTED";
+      fallback.project.allowedActions = ["CANCEL", "REVIEW"];
+      const generationStage = fallback.project.stages?.find((stage) => stage.id === "generation");
+      if (generationStage) {
+        generationStage.status = "STARTING";
+        generationStage.detail = "Whole-frame fallback reservation accepted";
+      }
+      fallback.notice = {
+        tone: "INFO",
+        title: "Fallback reservation recorded",
+        detail:
+          "The fixture estimate now includes $0.18; no provider call or external spend was made.",
+        action: null,
+        scope: "PROJECT",
+      };
+      fallback.events.push({
+        id: `event_fixture_fallback_${fallback.events.length + 1}`,
+        detail: "Whole-frame fallback reservation approved once for $0.18",
+        at: "2026-08-09T09:35:00.000Z",
+      });
+      putRuntimeProject(state.runtimeProjects, resolved.id, fallback);
       return c.json(
         {
           ok: true as const,
@@ -1737,15 +1846,18 @@ export function createApiApp(
       approved.project.latestArtifact = approved.project.latestArtifact
         ? {
             ...approved.project.latestArtifact,
-            kind: "VIDEO",
-            label: "Approved 1080p30 fixture video",
+            kind: "IMAGE",
+            url: "/fixtures/media/watermelon-market.svg",
+            label: "Approved synthetic contact sheet",
           }
         : null;
       approved.notice = {
         tone: "SUCCESS",
         title: "Final revision approved",
-        detail: "The selected fixture candidate is immutable and download-enabled.",
-        action: "Download video",
+        detail:
+          "The selected candidate is immutable. A synthetic preview is available; real MP4 rendering remains in Phase 0C.",
+        action: "Download fixture preview",
+        scope: "PROJECT",
       };
       approved.events.push({
         id: `event_fixture_approval_${approved.events.length + 1}`,

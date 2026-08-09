@@ -4,6 +4,7 @@ import {
   loadDraft,
   projectDraftSchema,
   projectDraftStorageKey,
+  projectDraftStorageKeyFor,
   saveDraft,
   updateDraft,
 } from "./draft";
@@ -38,6 +39,37 @@ describe("fixture project draft", () => {
     saveDraft(saved);
     updateDraft({ avatarProfileVersionId: "avatar_version_new_v1" });
     expect(loadDraft()).toEqual({ ...saved, avatarProfileVersionId: "avatar_version_new_v1" });
+  });
+
+  it("isolates scenario drafts so stable fixture states do not overwrite each other", () => {
+    saveDraft({ ...emptyDraft, title: "Budget fixture draft", spendCapUsd: 0.5 }, "budget_blocked");
+    saveDraft(
+      { ...emptyDraft, title: "Keyword fixture draft", applyExtraPromptKeywords: true },
+      "extra_keywords_conflict",
+    );
+
+    expect(loadDraft("budget_blocked")).toMatchObject({
+      title: "Budget fixture draft",
+      spendCapUsd: 0.5,
+      applyExtraPromptKeywords: false,
+    });
+    expect(loadDraft("extra_keywords_conflict")).toMatchObject({
+      title: "Keyword fixture draft",
+      spendCapUsd: 1.5,
+      applyExtraPromptKeywords: true,
+    });
+    expect(localStorage.getItem(projectDraftStorageKeyFor("budget_blocked"))).not.toBeNull();
+  });
+
+  it("migrates the old global fixture draft only into the ordinary Create scenario", () => {
+    localStorage.setItem(
+      "videoforge:fixture:project-draft:v1",
+      JSON.stringify({ ...emptyDraft, title: "Legacy ordinary project" }),
+    );
+
+    expect(loadDraft("extra_keywords_conflict")).toEqual(emptyDraft);
+    expect(loadDraft("project_create_ready").title).toBe("Legacy ordinary project");
+    expect(localStorage.getItem("videoforge:fixture:project-draft:v1")).toBeNull();
   });
 
   it("migrates an older stored draft by adding new verified-media fields", () => {

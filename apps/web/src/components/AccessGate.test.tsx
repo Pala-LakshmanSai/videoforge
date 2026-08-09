@@ -92,8 +92,8 @@ describe("AccessGate", () => {
     );
 
     fireEvent.click(screen.getByText("Fixture"));
-    const picker = screen.getByRole("combobox", { name: "Fixture scenario" });
-    fireEvent.change(picker, { target: { value: "happy_generating" } });
+    fireEvent.click(screen.getByLabelText("Fixture scenario"));
+    fireEvent.click(screen.getByRole("option", { name: "happy_generating" }));
     expect(onScenarioChange).toHaveBeenCalledWith("happy_generating");
   });
 });
