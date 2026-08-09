@@ -624,7 +624,7 @@ test("Create Project uses exact visual presets and never exposes project-local a
         const scope = new URL(window.location.href).searchParams.get("fixture") ?? "default";
         const draft = JSON.parse(
           localStorage.getItem(
-            `videoforge:fixture:project-draft:v2:${encodeURIComponent(scope)}`,
+            `videoforge:project-draft:v3:fixture:${encodeURIComponent(scope)}`,
           ) ?? "null",
         ) as { avatarProfileVersionId?: string; imageStyleVersionId?: string } | null;
         return {
@@ -656,7 +656,7 @@ test("Create Project uses exact visual presets and never exposes project-local a
         const scope = new URL(window.location.href).searchParams.get("fixture") ?? "default";
         const draft = JSON.parse(
           localStorage.getItem(
-            `videoforge:fixture:project-draft:v2:${encodeURIComponent(scope)}`,
+            `videoforge:project-draft:v3:fixture:${encodeURIComponent(scope)}`,
           ) ?? "null",
         ) as { voiceoverAssetId?: string; voiceoverChecksum?: string } | null;
         return {
@@ -685,7 +685,7 @@ test("Create Project uses exact visual presets and never exposes project-local a
         const scope = new URL(window.location.href).searchParams.get("fixture") ?? "default";
         const draft = JSON.parse(
           localStorage.getItem(
-            `videoforge:fixture:project-draft:v2:${encodeURIComponent(scope)}`,
+            `videoforge:project-draft:v3:fixture:${encodeURIComponent(scope)}`,
           ) ?? "null",
         ) as { voiceoverAssetId?: string | null; voiceoverChecksum?: string | null } | null;
         return {

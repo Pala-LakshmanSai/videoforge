@@ -128,7 +128,7 @@ async function readDraft(page: Page): Promise<ProjectDraftSnapshot> {
   return page.evaluate(() => {
     const scope = new URL(window.location.href).searchParams.get("fixture") ?? "default";
     const stored = localStorage.getItem(
-      `videoforge:fixture:project-draft:v2:${encodeURIComponent(scope)}`,
+      `videoforge:project-draft:v3:fixture:${encodeURIComponent(scope)}`,
     );
     if (!stored) throw new Error("Project draft was not persisted");
     return JSON.parse(stored) as ProjectDraftSnapshot;
