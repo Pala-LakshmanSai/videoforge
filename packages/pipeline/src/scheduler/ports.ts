@@ -12,5 +12,11 @@ export interface SchedulerRequest {
 
 /** Pure deterministic timeline compiler boundary. */
 export interface SchedulerPort {
-  schedule(request: SchedulerRequest): PipelineResult<TimelinePlanDocumentRef>;
+  schedule(request: SchedulerRequest): Promise<PipelineResult<TimelinePlanDocumentRef>>;
 }
+
+export {
+  deterministicTimelineScheduler,
+  scheduleTimeline,
+  SUPPORTED_SCHEDULER_VERSION,
+} from "./scheduler.js";
