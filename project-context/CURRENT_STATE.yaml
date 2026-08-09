@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-09T06:45:09Z"
+updated_at: "2026-08-09T07:41:35Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: true
@@ -12,7 +12,7 @@ repository:
   expected_visibility: private
   branch: main
   base_commit: "a8439d28cf8d2403630260770f0e29d87c3a6c8f"
-  last_good_commit: "3b3d9165a31d8c99c331a2958152f4155edb9bd0"
+  last_good_commit: "4a22893f3e0b042cbcc33e1bfc6af4ebcd9282a5"
 
 live_development:
   expected_url: "http://localhost:4173"
@@ -24,21 +24,23 @@ live_development:
     pid: 77968
     lifetime: until_local_process_stops
   server_state: running
-  dev_server_pid: 77941
+  dev_server_pid: 86539
   owner_task_id: GATE_UI_001
-  health_checked_at: "2026-08-09T06:45:09Z"
-  chrome_route: "https://enclosure-insert-theatre-wellington.trycloudflare.com/projects/project_fixture_001/review?fixture=project_ready_for_review"
-  fixture_scenario: project_ready_for_review
+  health_checked_at: "2026-08-09T07:41:35Z"
+  chrome_route: "https://enclosure-insert-theatre-wellington.trycloudflare.com/projects/project_fixture_001?fixture=happy_generating"
+  fixture_scenario: happy_generating
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
   last_user_checkpoint:
     result: awaiting_user_approval
-    commit: "3b3d9165a31d8c99c331a2958152f4155edb9bd0"
-    route: "https://enclosure-insert-theatre-wellington.trycloudflare.com/projects/project_fixture_001/review?fixture=project_ready_for_review"
-    scenario: project_ready_for_review
-    checked_at: "2026-08-09T06:45:09Z"
-    feedback_refs: []
+    commit: "4a22893f3e0b042cbcc33e1bfc6af4ebcd9282a5"
+    route: "https://enclosure-insert-theatre-wellington.trycloudflare.com/projects/project_fixture_001?fixture=happy_generating"
+    scenario: happy_generating
+    checked_at: "2026-08-09T07:41:35Z"
+    feedback_refs:
+      - DEC_UX_002
+      - DEC_UX_003
 
 active_ownership: []
 
@@ -49,24 +51,25 @@ recommended_next_task:
   goal: "Review the live fixture shell on desktop or mobile, approve the core visual direction, or provide bounded UI feedback before Phase 0C begins."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
-  live_route: "https://enclosure-insert-theatre-wellington.trycloudflare.com/projects/project_fixture_001/review?fixture=project_ready_for_review"
-  fixture_scenario: project_ready_for_review
+  live_route: "https://enclosure-insert-theatre-wellington.trycloudflare.com/projects/project_fixture_001?fixture=happy_generating"
+  fixture_scenario: happy_generating
 
 last_green:
   commands:
     - "pnpm verify"
     - "pnpm doctor"
     - "pnpm dev:status"
-    - "curl -fsS --max-time 15 https://enclosure-insert-theatre-wellington.trycloudflare.com/api/health?fixture=project_ready_for_review"
-    - "Real Chrome: queue, preset and keyword round trips, cold start, exact retry, ambiguous dispatch blocker, cancellation, review, API-backed approval, compact layout, and keyboard focus"
-  checked_at: "2026-08-09T06:45:09Z"
+    - "curl -fsS --max-time 15 https://enclosure-insert-theatre-wellington.trycloudflare.com/api/health?fixture=happy_generating"
+    - "Real Chrome: public 1440px progress dashboard; 430px style sheet and four-reference gallery; 390px Create Project; keyboard lightbox; focus restoration; no horizontal overflow, console errors, or broken images"
+  checked_at: "2026-08-09T07:41:35Z"
   result: pass
   notes:
-    - "pnpm verify passed formatting, linting, typechecking, 39 web/server tests, 14 Ajv/Zod contract tests, 15 Pydantic tests, 6 scenario tests, 2 config tests, 4 isolated Python worker tests, 19-file contract sync, context validation, production build, and 8 Playwright Chrome journeys."
-    - "The automated Create Project journey attaches synthetic audio, pins the exact Avatar Profile and default published style, runs preflight/create through the fixture API, and transitions to the generating fixture with zero unexpected external requests."
-    - "Committed-source Chrome reload at the public review route showed API ok, commit 3b3d916, no console warnings/errors, locked composition grammar, duplicate-submit locks, and no horizontal overflow at the 1024 CSS-pixel breakpoint."
+    - "pnpm verify passed formatting, linting, typechecking, 41 web/server/component tests, 14 Ajv/Zod contract tests, 15 Pydantic tests, 6 scenario tests, 2 config tests, 4 isolated Python worker tests, 19-file contract sync, context validation, production build, and 14 Playwright Chrome journeys across desktop and compact projects."
+    - "Chrome tests prove decoded avatar/style imagery, absent-until-open focus-trapped detail sheets, four custom references, three truthful owned examples, exact visual preset version pinning, no project-local avatar upload, progress-to-approval, and 1024/430 responsive behavior without unexpected external requests."
+    - "Real Chrome loaded the public progress dashboard at 1440x1000 with eight authoritative stages, 62% progress, all eight dock destinations, no broken images, and no horizontal overflow; the console had no warnings or errors."
+    - "Real Chrome loaded the mobile style sheet at 430x932 as a full-screen focus-managed surface with four decoded references, then loaded Create Project at 390x844 with only the voiceover file input and the spend cap/Generate controls clear of the floating dock."
+    - "Committed-source health reports API ok, commit 4a22893, fixture mode, provider calls unauthorized, and $0 authorized spend."
     - "The public tunnel health response reports fixture mode, synthetic data, provider calls unauthorized, and $0 authorized spend."
-    - "The user's Chrome extension still needs Allow access to file URLs before a local WAV can be attached through that controlled Chrome session; automated Chrome completed the same submission path."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -89,6 +92,7 @@ next_tasks:
 notes:
   - "This is a replace-in-place snapshot, not a progress log."
   - "Update it at every implementation handoff and after each accepted milestone."
-  - "VF-0A and the VF-0B implementation are complete; Phase 0B remains open only for the user's visual-direction approval."
+  - "VF-0A and the redesigned VF-0B implementation are complete; Phase 0B remains open only for the user's live visual-direction approval."
+  - "The 2026-08-09 redesign replaces the small/dense shell with a large minimal command-track, progress-hero, pipeline, visual preset, side-sheet, lightbox, and floating-dock system."
   - "The user authorized future RunPod use and credential retrieval from their existing signed-in Chrome session. No task-specific model/endpoint spend cap exists yet, so no key was fetched and this checkpoint made no provider call."
   - "The Cloudflare quick-tunnel URL is temporary, fixture-only, and has no uptime guarantee; it ends when the local tunnel process stops."
