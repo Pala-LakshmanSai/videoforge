@@ -16,5 +16,14 @@ export interface RenderPlanRequest {
 
 /** Pure render-manifest planning boundary; it never invokes a media process. */
 export interface RenderPlanner {
-  plan(request: RenderPlanRequest): PipelineResult<ResolvedRenderManifestDocumentRef>;
+  plan(request: RenderPlanRequest): Promise<PipelineResult<ResolvedRenderManifestDocumentRef>>;
 }
+
+export {
+  collectRequiredAssetTaskKeys,
+  planResolvedRenderManifest,
+  resolveAcceptedAssets,
+  resolvedRenderManifestPlanner,
+  timelineAcceptedAssetResolver,
+  SUPPORTED_RENDER_PROFILE_VERSION,
+} from "./resolved-manifest.js";
