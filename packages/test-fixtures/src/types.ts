@@ -164,6 +164,7 @@ export interface FixtureProject {
   } | null;
   review: {
     candidateId: string | null;
+    candidateSha256: string | null;
     state: "NOT_READY" | "READY_FOR_REVIEW" | "CHANGES_REQUESTED" | "APPROVED";
     flaggedDefect: "LIP_SYNC_ONLY" | "WHOLE_FRAME" | "IMAGE_QUALITY" | null;
     selectedAvatarClipId: string | null;

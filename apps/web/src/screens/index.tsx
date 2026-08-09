@@ -1611,21 +1611,18 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
       id: "seg_0001",
       time: "00:00–00:04",
       type: sameClipMode,
-      phrase: "The story begins with one simple observation.",
       status: "SELECTED",
     },
     {
       id: "seg_0002",
       time: "00:04–00:10",
       type: "IMAGE_FULL" as const,
-      phrase: "Prices respond to the pressures around them.",
       status: "SELECTED",
     },
     {
       id: "seg_0003",
       time: "00:10–00:14",
       type: "AVATAR_SPLIT_IMAGE" as const,
-      phrase: "That becomes visible in ordinary daily choices.",
       status: scenario === "avatar_lip_failure" ? "FLAGGED" : "SELECTED",
     },
   ];
@@ -1640,7 +1637,11 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
         await Promise.all([
           api.mutate(
             `/api/v1/projects/${projectId}/approve`,
-            { project_id: projectId, candidate_id: project?.review.candidateId },
+            {
+              project_id: projectId,
+              candidate_id: project?.review.candidateId,
+              candidate_sha256: project?.review.candidateSha256,
+            },
             scenario,
             { ifMatch: project?.versionToken },
           ),
@@ -1791,7 +1792,7 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
           <CompositionPreview type={sameClipMode} />
         </div>
         <div className="review-player-meta">
-          <span>01:34 · 1920×1080 · 30 fps</span>
+          <span>1920×1080 · 30 fps · synthetic preview</span>
           <Badge tone={approved ? "success" : "warning"}>
             {approved ? "Approved" : "Review needed"}
           </Badge>
@@ -1830,7 +1831,6 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
                   {shot.status}
                 </Badge>
               </div>
-              <p>{shot.phrase}</p>
               <small className="review-segment-state">
                 {shot.status === "FLAGGED"
                   ? "Repair is controlled by the project action above."
@@ -1865,7 +1865,11 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
             </span>
             <span>
               <small>Candidate</small>
-              <strong>review_candidate_fixture_v3</strong>
+              <strong>{project.review.candidateId ?? "Unavailable"}</strong>
+            </span>
+            <span>
+              <small>Checksum</small>
+              <strong>{project.review.candidateSha256 ?? "Unavailable"}</strong>
             </span>
           </div>
         </Disclosure>

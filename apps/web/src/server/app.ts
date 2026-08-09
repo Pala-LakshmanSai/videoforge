@@ -633,7 +633,7 @@ function readProjectMutationRequest(
 }
 
 type FinalApprovalRequestResolution =
-  | { ok: true; projectId: string; candidateId: string }
+  | { ok: true; projectId: string; candidateId: string; candidateSha256: string }
   | { ok: false; response: Response };
 
 function readFinalApprovalRequest(
@@ -646,15 +646,18 @@ function readFinalApprovalRequest(
     payload.data === null ||
     typeof payload.data !== "object" ||
     Array.isArray(payload.data) ||
-    Object.keys(payload.data).length !== 2 ||
+    Object.keys(payload.data).length !== 3 ||
     !("project_id" in payload.data) ||
     !("candidate_id" in payload.data) ||
+    !("candidate_sha256" in payload.data) ||
     typeof payload.data.project_id !== "string" ||
     payload.data.project_id.length === 0 ||
     payload.data.project_id.length > 160 ||
     typeof payload.data.candidate_id !== "string" ||
     payload.data.candidate_id.length === 0 ||
-    payload.data.candidate_id.length > 160
+    payload.data.candidate_id.length > 160 ||
+    typeof payload.data.candidate_sha256 !== "string" ||
+    !SHA256.test(payload.data.candidate_sha256)
   ) {
     return {
       ok: false,
@@ -663,7 +666,7 @@ function readFinalApprovalRequest(
           "INVALID_FINAL_APPROVAL_REQUEST",
           422,
           "Final approval request is invalid",
-          "Send exactly project_id and the current non-empty candidate_id.",
+          "Send exactly project_id, the current candidate_id, and its SHA-256 checksum.",
           false,
         ),
       ),
@@ -687,6 +690,7 @@ function readFinalApprovalRequest(
     ok: true,
     projectId: payload.data.project_id,
     candidateId: payload.data.candidate_id,
+    candidateSha256: payload.data.candidate_sha256,
   };
 }
 
@@ -1938,7 +1942,8 @@ export function createApiApp(
       if (
         project.detail.project.status !== "READY_FOR_REVIEW" ||
         project.detail.project.review.state !== "READY_FOR_REVIEW" ||
-        project.detail.project.review.candidateId === null
+        project.detail.project.review.candidateId === null ||
+        project.detail.project.review.candidateSha256 === null
       ) {
         return problemResponse(
           apiProblem(
@@ -1961,6 +1966,17 @@ export function createApiApp(
           ),
         );
       }
+      if (approvalRequest.candidateSha256 !== project.detail.project.review.candidateSha256) {
+        return problemResponse(
+          apiProblem(
+            "REVIEW_CANDIDATE_CHECKSUM_CONFLICT",
+            409,
+            "Review candidate checksum has changed",
+            "Refresh the candidate and approve its exact current SHA-256 checksum.",
+            false,
+          ),
+        );
+      }
       const approved = structuredClone(project.detail);
       approved.project.status = "APPROVED";
       approved.project.stage = "APPROVED";
@@ -1970,6 +1986,7 @@ export function createApiApp(
       approved.project.review = {
         ...approved.project.review,
         candidateId: approvalRequest.candidateId,
+        candidateSha256: approvalRequest.candidateSha256,
         state: "APPROVED",
         flaggedDefect: null,
         downloadUrl: `/api/v1/projects/${encodeURIComponent(pathProjectId)}/download?fixture=${encodeURIComponent(resolved.id)}`,
@@ -1993,7 +2010,7 @@ export function createApiApp(
       };
       approved.events.push({
         id: `event_fixture_approval_${approved.events.length + 1}`,
-        detail: `Candidate ${approvalRequest.candidateId} approved`,
+        detail: `Candidate ${approvalRequest.candidateId} approved at ${approvalRequest.candidateSha256}`,
         at: "2026-08-09T09:36:00.000Z",
       });
       const versionToken = rotateProjectVersion(approved);
@@ -2004,6 +2021,7 @@ export function createApiApp(
         id: approved.project.id,
         status: "APPROVED" as const,
         candidateId: approvalRequest.candidateId,
+        candidateSha256: approvalRequest.candidateSha256,
         downloadUrl: approved.project.review.downloadUrl,
         versionToken,
       });

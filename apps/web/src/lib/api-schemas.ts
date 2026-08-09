@@ -168,6 +168,7 @@ const projectSummarySchema = z
     review: z
       .object({
         candidateId: z.string().nullable(),
+        candidateSha256: z.string().regex(SHA256).nullable(),
         state: z.enum(["NOT_READY", "READY_FOR_REVIEW", "CHANGES_REQUESTED", "APPROVED"]),
         flaggedDefect: z.enum(["LIP_SYNC_ONLY", "WHOLE_FRAME", "IMAGE_QUALITY"]).nullable(),
         selectedAvatarClipId: z.string().nullable(),

@@ -64,6 +64,7 @@ read_profiles:
     - 10_DATA_AND_API_CONTRACTS.md
     - evidence/project_revision_config.schema.json
     - evidence/timeline_plan.schema.json
+    - evidence/orchestration_state.schema.json
     - evidence/fixtures/README.md
   prompt_lane:
     - GLOSSARY.md
@@ -74,11 +75,14 @@ read_profiles:
     - 06_SYSTEM_ARCHITECTURE.md
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
     - 10_DATA_AND_API_CONTRACTS.md
+    - evidence/orchestration_state.schema.json
+    - evidence/worker_job_envelope.schema.json
   image_worker:
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md
     - 07_PIPELINE_AND_SCHEDULER.md
     - 08_MODELS_AND_PROVIDERS.md
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - evidence/worker_job_envelope.schema.json
   avatar_worker:
     - 02_OUTPUT_VIDEO_SPEC.md
     - 07_PIPELINE_AND_SCHEDULER.md
@@ -86,6 +90,7 @@ read_profiles:
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
     - evidence/avatar_profile_version.schema.json
     - evidence/project_revision_config.schema.json
+    - evidence/worker_job_envelope.schema.json
   renderer:
     - GLOSSARY.md
     - 02_OUTPUT_VIDEO_SPEC.md

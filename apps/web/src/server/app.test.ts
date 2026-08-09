@@ -94,6 +94,8 @@ async function expectedImageStyleHash(): Promise<string> {
 
 let mutationKeySequence = 0;
 const INITIAL_VERSION_TOKEN = '"vf-project_fixture_001-revision_fixture_001-v1"';
+const REVIEW_CANDIDATE_SHA256 =
+  "sha256:7777777777777777777777777777777777777777777777777777777777777777";
 
 function mutationHeaders(
   key = `fixture-idempotency-key-${++mutationKeySequence}`,
@@ -229,6 +231,7 @@ describe("fixture API", () => {
       body: JSON.stringify({
         project_id: "project_fixture_001",
         candidate_id: "review_candidate_fixture_001",
+        candidate_sha256: REVIEW_CANDIDATE_SHA256,
       }),
     });
     expect(approval.status).toBe(200);
@@ -930,6 +933,7 @@ describe("fixture API", () => {
         body: JSON.stringify({
           project_id: "project_fixture_001",
           candidate_id: "review_candidate_fixture_001",
+          candidate_sha256: REVIEW_CANDIDATE_SHA256,
         }),
       },
     );
@@ -1014,6 +1018,7 @@ describe("fixture API", () => {
       body: JSON.stringify({
         project_id: "project_fixture_001",
         candidate_id: "review_candidate_fixture_001",
+        candidate_sha256: REVIEW_CANDIDATE_SHA256,
       }),
     });
     expect(approval.status).toBe(200);
@@ -1256,11 +1261,26 @@ describe("fixture API", () => {
       body: JSON.stringify({
         project_id: "project_fixture_001",
         candidate_id: "review_candidate_stale",
+        candidate_sha256: REVIEW_CANDIDATE_SHA256,
       }),
     });
     expect(staleCandidate.status).toBe(409);
     await expect(staleCandidate.json()).resolves.toMatchObject({
       error: { code: "REVIEW_CANDIDATE_CONFLICT" },
+    });
+
+    const staleChecksum = await statefulApp.request(path, {
+      method: "POST",
+      headers: mutationHeaders(),
+      body: JSON.stringify({
+        project_id: "project_fixture_001",
+        candidate_id: "review_candidate_fixture_001",
+        candidate_sha256: "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+      }),
+    });
+    expect(staleChecksum.status).toBe(409);
+    await expect(staleChecksum.json()).resolves.toMatchObject({
+      error: { code: "REVIEW_CANDIDATE_CHECKSUM_CONFLICT" },
     });
 
     const extraField = await statefulApp.request(path, {
@@ -1269,6 +1289,7 @@ describe("fixture API", () => {
       body: JSON.stringify({
         project_id: "project_fixture_001",
         candidate_id: "review_candidate_fixture_001",
+        candidate_sha256: REVIEW_CANDIDATE_SHA256,
         reviewer_user_id: "client-must-not-authorize-reviewer",
       }),
     });
@@ -1280,6 +1301,7 @@ describe("fixture API", () => {
       body: JSON.stringify({
         project_id: "project_fixture_001",
         candidate_id: "review_candidate_fixture_001",
+        candidate_sha256: REVIEW_CANDIDATE_SHA256,
       }),
     });
     expect(approved.status).toBe(200);
@@ -1287,6 +1309,7 @@ describe("fixture API", () => {
       ok: true,
       status: "APPROVED",
       candidateId: "review_candidate_fixture_001",
+      candidateSha256: REVIEW_CANDIDATE_SHA256,
       downloadUrl: expect.stringContaining("/download?fixture=project_ready_for_review"),
     });
 
@@ -1306,6 +1329,7 @@ describe("fixture API", () => {
         allowedActions: ["REVIEW", "DOWNLOAD"],
         review: {
           candidateId: "review_candidate_fixture_001",
+          candidateSha256: REVIEW_CANDIDATE_SHA256,
           state: "APPROVED",
           downloadUrl: expect.any(String),
         },

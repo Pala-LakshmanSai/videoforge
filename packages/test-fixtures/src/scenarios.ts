@@ -207,6 +207,7 @@ function baseSnapshot(): FixtureSnapshot {
       },
       review: {
         candidateId: null,
+        candidateSha256: null,
         state: "NOT_READY",
         flaggedDefect: null,
         selectedAvatarClipId: null,
@@ -1016,6 +1017,7 @@ const scenarios = {
       };
       snapshot.project.review = {
         candidateId: "review_candidate_fixture_001",
+        candidateSha256: "sha256:7777777777777777777777777777777777777777777777777777777777777777",
         state: "READY_FOR_REVIEW",
         flaggedDefect: null,
         selectedAvatarClipId: "avatar_clip_fixture_018",
@@ -1063,6 +1065,7 @@ const scenarios = {
       };
       snapshot.project.review = {
         candidateId: "review_candidate_fixture_001",
+        candidateSha256: "sha256:7777777777777777777777777777777777777777777777777777777777777777",
         state: "APPROVED",
         flaggedDefect: null,
         selectedAvatarClipId: "avatar_clip_fixture_018",
