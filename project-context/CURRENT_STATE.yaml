@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-09T09:41:52Z"
+updated_at: "2026-08-09T12:16:01Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: true
@@ -14,8 +14,8 @@ repository:
   published: false
   branch: main
   base_commit: "879c3f20d405910b2efcb9b33c0d302e8b73aaa7"
-  verified_implementation_commit: "080927d24a9e9666b1ee354aafe7055c18227b31"
-  last_good_commit: "080927d24a9e9666b1ee354aafe7055c18227b31"
+  verified_implementation_commit: "ec5fda50511c7f3c6cce231d6811d0802197debf"
+  last_good_commit: "ec5fda50511c7f3c6cce231d6811d0802197debf"
   dependency_policy:
     ajv: "8.20.0"
     note: "Security override of the original 8.17.1 pin: 8.17.1 is affected by a moderate ReDoS advisory."
@@ -30,20 +30,20 @@ live_development:
     pid: null
     lifetime: null
   server_state: running
-  dev_server_pid: 8207
+  dev_server_pid: 21280
   owner_task_id: GATE_UI_001
-  health_checked_at: "2026-08-09T09:41:52Z"
+  health_checked_at: "2026-08-09T12:16:01Z"
   chrome_route: "http://localhost:4173/projects/project_fixture_001?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
   last_user_checkpoint:
-    result: changes_requested
-    commit: "080927d24a9e9666b1ee354aafe7055c18227b31"
+    result: changes_implemented_awaiting_approval
+    commit: "ec5fda50511c7f3c6cce231d6811d0802197debf"
     route: "http://localhost:4173/projects/project_fixture_001?fixture=happy_generating"
     scenario: happy_generating
-    checked_at: "2026-08-09T09:41:52Z"
+    checked_at: "2026-08-09T12:16:01Z"
     feedback_refs:
       - DEC_UX_002
       - DEC_UX_003
@@ -66,16 +66,17 @@ last_green:
     - "pnpm doctor"
     - "pnpm dev:status"
     - "curl -fsS http://localhost:4173/api/health?fixture=happy_generating"
-    - "Real Chrome at the user's actual 75% zoom: Create, Run configuration, project progress, preset disclosures, and access-denied states; no horizontal overflow or broken imagery"
-  checked_at: "2026-08-09T09:41:52Z"
+    - "Real Chrome desktop route audit: Queue, Create, Progress, Review, both Hubs and wizards, Library, Usage, Settings, invite sign-in, and access denial"
+    - "Real Chrome 430×932 audit with the viewport restored afterward"
+  checked_at: "2026-08-09T12:16:01Z"
   result: pass
   notes:
-    - "pnpm verify passed formatting, linting, typechecking, 88 web/server/component tests, 26 TypeScript contract/JCS tests, 15 Python contract tests, 8 fixture-scenario tests, 4 configuration tests, 4 isolated Python worker tests, 19-file contract synchronization, context validation, production build, 22 Playwright Chrome journeys across desktop and compact projects, and the high-severity dependency audit."
-    - "Chrome coverage includes invite sign-in/access denial, decoded preset imagery, keyboard/focus-managed details, compact visual Avatar and Image Style selectors, new-preset cancel/save draft round trips, strict audio registration, exact immutable version pins, semantic preflight, progress recovery, review approval, action eligibility, and 1024/430 responsive layouts without unexpected external requests."
-    - "Real Chrome at 75% zoom confirmed the full-width command bar with internal progress insets, large readable sections, compact preset dropdowns, two truthful compute lanes, lively authoritative pipeline, access blocker, and zero horizontal overflow."
-    - "The development server reports commit 080927d, fixture mode, synthetic data, provider calls unauthorized, and $0 authorized spend."
+    - "Two consecutive post-fix browser matrices are green. The final pnpm verify passes formatting, linting, typechecking, 94 web/server/component tests, 26 TypeScript contract/JCS tests, 15 Python contract tests, 8 fixture-scenario tests, 4 configuration tests, 4 isolated Python worker tests, 19-file contract synchronization, context validation, production build, 26 Playwright Chrome journeys across desktop and compact projects, and the high-severity dependency audit."
+    - "Chrome coverage includes invite sign-in/access denial, decoded preset imagery, minimal equal-height two-column Hubs, integrated app-native preset/compute menus, keyboard/focus-managed disclosures, new-preset cancel/save draft round trips, strict audio registration, exact immutable pins, semantic preflight, progress recovery, review approval, action eligibility, the stronger macOS-like dock peak/outward-neighbor curve with fixed base geometry and reduced-motion fallback, and 1024/430 layouts without unexpected external requests."
+    - "Real Chrome confirmed the medium 18 px root, 16-18 px ordinary text with 14.4 px restricted micro status labels, 51.3 px maximum desktop page title, 52 px normal controls, fixed 94x85 rendered desktop dock items, equal 300 px desktop and 240 px mobile Avatar/Style media, contained in-flow disclosures, accurate fixture review/download copy, zero horizontal overflow on all eleven primary routes and 430x932 mobile, and no unexpected alert state."
+    - "The development server reports verified implementation commit ec5fda5, fixture mode, synthetic data, provider calls unauthorized, and $0 authorized spend."
     - "Production-mode API construction fails closed for fixture routes. Invite-denied fixture states expose no workspace data through the API."
-    - "Playwright workers are isolated by a development-only fixture-session header. The real local browser still uses the default fixture namespace and a development draft key; this is not a production multi-user authentication or session-isolation claim."
+    - "Playwright workers are isolated by a development-only fixture-session header, and each reset now explicitly targets that same namespace so repeated runs cannot inherit approval/catalog state. The real local browser still uses the default fixture namespace and a development draft key; this is not a production multi-user authentication or session-isolation claim."
     - "Ajv 8.20.0 intentionally replaces the requested 8.17.1 pin because the older version has a known moderate ReDoS advisory; pnpm audit currently reports no known vulnerabilities."
 
 blocking_gates_for_production:
