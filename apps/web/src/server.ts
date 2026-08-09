@@ -13,13 +13,14 @@ const server = serve({
   port: FIXTURE_API_PORT,
 });
 
-console.log(`VideoForge fixture API listening on http://${FIXTURE_API_HOST}:${FIXTURE_API_PORT}`);
+const mode = process.env.VIDEOFORGE_PROVIDER_MODE === "local" ? "local" : "fixture";
+console.log(`VideoForge ${mode} API listening on http://${FIXTURE_API_HOST}:${FIXTURE_API_PORT}`);
 
 function shutdown(signal: string): void {
   console.log(`VideoForge fixture API received ${signal}; closing`);
   server.close((error) => {
     if (error) {
-      console.error("VideoForge fixture API close failed", error.message);
+      console.error(`VideoForge ${mode} API close failed`, error.message);
       process.exitCode = 1;
     }
   });

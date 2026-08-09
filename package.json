@@ -13,6 +13,7 @@
     "contracts:sync": "pnpm --filter @videoforge/contracts sync",
     "contracts:check": "pnpm --filter @videoforge/contracts sync:check",
     "dev": "node scripts/dev.mjs",
+    "dev:local": "node scripts/dev.mjs --mode=local",
     "dev:open": "node scripts/dev-open.mjs",
     "dev:status": "node scripts/dev-status.mjs",
     "doctor": "node scripts/doctor.mjs",

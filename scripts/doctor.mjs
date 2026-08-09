@@ -40,7 +40,7 @@ for (const file of [
 
 const envExample = await readFile(".env.example", "utf8");
 const providerMode = process.env.VIDEOFORGE_PROVIDER_MODE ?? "fixture";
-record("Provider mode", providerMode === "fixture", providerMode);
+record("Provider mode", ["fixture", "local"].includes(providerMode), providerMode);
 record(
   "Environment names",
   /RUNPOD_API_KEY=/.test(envExample) && /RUNWARE_API_KEY=/.test(envExample),
@@ -54,7 +54,7 @@ if (!owner) {
   const status = await health();
   record(
     "Port 4173",
-    status?.app === "videoforge" && status?.mode === "fixture",
+    status?.app === "videoforge" && ["fixture", "local"].includes(status?.mode),
     `PID ${owner.pid} (${owner.command})`,
   );
 }
