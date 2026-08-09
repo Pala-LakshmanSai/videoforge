@@ -24,10 +24,15 @@ import type { ProjectSummary } from "../lib/types";
 
 export function ProjectScreen({ projectId }: { projectId: string }) {
   const scenario = currentScenario();
+  const health = useQuery({
+    queryKey: ["health", scenario],
+    queryFn: () => api.health(scenario),
+  });
+  const localMode = health.data?.mode === "local";
   const query = useQuery({
     queryKey: ["project", projectId, scenario],
     queryFn: () => api.project(projectId, scenario),
-    refetchInterval: 10_000,
+    refetchInterval: localMode ? 1_000 : 10_000,
   });
   const compute = useQuery({
     queryKey: ["execution-profiles", scenario],
@@ -111,14 +116,14 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
         tone: "info",
         text:
           label === "retry"
-            ? "Retry accepted for the failed item set only. Next fixture check in 10 seconds."
-            : "Cancellation accepted. Running work is settling; next fixture check in 10 seconds.",
+            ? `Retry accepted for the failed item set only. Next ${localMode ? "local" : "fixture"} check in ${localMode ? 1 : 10} second${localMode ? "" : "s"}.`
+            : `Cancellation accepted. Running work is settling; next ${localMode ? "local" : "fixture"} check in ${localMode ? 1 : 10} second${localMode ? "" : "s"}.`,
       });
       await query.refetch();
     } catch (error) {
       setActionNotice({
         tone: "danger",
-        text: error instanceof Error ? error.message : "The fixture action could not be accepted.",
+        text: error instanceof Error ? error.message : "The action could not be accepted.",
       });
     } finally {
       setAction(null);
@@ -264,7 +269,11 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
                   <span className="compute-status">
                     <i aria-hidden="true" />
                     {imageCompute?.status.provider_state === "NOT_CONNECTED"
-                      ? "Fixture · no GPU"
+                      ? localMode
+                        ? "Local · no provider GPU"
+                        : health.data?.mode === "fixture"
+                          ? "Fixture · no GPU"
+                          : "No provider GPU"
                       : (imageCompute?.status.label ?? "Status unavailable")}
                   </span>
                 </div>
@@ -280,7 +289,11 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
                   <span className="compute-status">
                     <i aria-hidden="true" />
                     {avatarCompute?.status.provider_state === "NOT_CONNECTED"
-                      ? "Fixture · no GPU"
+                      ? localMode
+                        ? "Local · no provider GPU"
+                        : health.data?.mode === "fixture"
+                          ? "Fixture · no GPU"
+                          : "No provider GPU"
                       : (avatarCompute?.status.label ?? "Status unavailable")}
                   </span>
                 </div>

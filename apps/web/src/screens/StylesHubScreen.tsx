@@ -15,6 +15,10 @@ export function StylesHubScreen() {
   const scenario = currentScenario();
   const [search, setSearch] = useState("");
   const query = useQuery({ queryKey: ["styles", scenario], queryFn: () => api.styles(scenario) });
+  const health = useQuery({
+    queryKey: ["health", scenario],
+    queryFn: () => api.health(scenario),
+  });
   const bootstrap = useQuery({
     queryKey: ["bootstrap", scenario],
     queryFn: () => api.bootstrap(scenario),
@@ -23,6 +27,8 @@ export function StylesHubScreen() {
   const visibleStyles = styles.filter((style) =>
     style.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
+  const localMode = health.data?.mode === "local";
+  const creationAvailable = health.data?.mode === "fixture";
   if (query.isPending) {
     return (
       <Panel eyebrow="Presets" heading="Loading Image Styles">
@@ -52,20 +58,36 @@ export function StylesHubScreen() {
       <PageHeader
         title="Image Styles"
         actions={
-          <Link
-            className="button button-primary"
-            to="/styles/new"
-            search={{ fixture: scenario } as never}
-          >
-            <ImagePlus size={16} />
-            New style
-          </Link>
+          creationAvailable ? (
+            <Link
+              className="button button-primary"
+              to="/styles/new"
+              search={{ fixture: scenario } as never}
+            >
+              <ImagePlus size={16} />
+              New style
+            </Link>
+          ) : (
+            <Badge tone={localMode ? "info" : health.isError ? "danger" : "neutral"}>
+              {localMode
+                ? "LOCAL STYLE LOCKED"
+                : health.isError
+                  ? "MODE UNAVAILABLE"
+                  : "CHECKING MODE"}
+            </Badge>
+          )
         }
       />
+      {localMode ? (
+        <div className="notice" role="status">
+          <strong>Bounded local mode.</strong> Style creation is unavailable; use the exact
+          published documentary style shown below.
+        </div>
+      ) : null}
       <NoticeBanner
         notice={blockerNoticeForScope(bootstrap.data?.notice, "STYLE")}
         action={
-          blockerNoticeForScope(bootstrap.data?.notice, "STYLE")?.action ? (
+          creationAvailable && blockerNoticeForScope(bootstrap.data?.notice, "STYLE")?.action ? (
             <Link
               className="button button-secondary"
               to="/styles/new"

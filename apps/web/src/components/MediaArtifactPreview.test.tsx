@@ -25,6 +25,7 @@ describe("MediaArtifactPreview", () => {
     expect(video).not.toBeNull();
     expect(video).toHaveAttribute("src", "/api/v1/projects/project_local_owned_001/preview");
     expect(video).toHaveAttribute("controls");
+    expect(video).toHaveAttribute("playsinline");
     expect(video).toHaveAttribute("preload", "metadata");
     expect(video).toHaveAccessibleName("Local 1080p30 MP4");
     expect(screen.queryByText("Fixture composition")).not.toBeInTheDocument();

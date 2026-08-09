@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Download, FileJson, RefreshCw, ShieldCheck, Video } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CompositionPreview } from "../components/CompositionPreview";
 import { isLocalVideoArtifact, MediaArtifactPreview } from "../components/MediaArtifactPreview";
 import { PageHeader } from "../components/PageHeader";
@@ -13,10 +13,15 @@ import { currentScenario } from "../lib/scenario";
 
 export function ReviewScreen({ projectId }: { projectId: string }) {
   const scenario = currentScenario();
+  const health = useQuery({
+    queryKey: ["health", scenario],
+    queryFn: () => api.health(scenario),
+  });
+  const localMode = health.data?.mode === "local";
   const query = useQuery({
     queryKey: ["project", projectId, scenario],
     queryFn: () => api.project(projectId, scenario),
-    refetchInterval: 10_000,
+    refetchInterval: localMode ? 1_000 : 10_000,
   });
   const [sameClipMode, setSameClipMode] = useState<"AVATAR_FULL" | "AVATAR_SPLIT_IMAGE">(
     "AVATAR_FULL",
@@ -25,6 +30,15 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
   const [approvalRecorded, setApprovalRecorded] = useState(false);
   const [approvalError, setApprovalError] = useState<string | null>(null);
   const [reviewActionNotice, setReviewActionNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSameClipMode("AVATAR_FULL");
+    setBusy(null);
+    setApprovalRecorded(false);
+    setApprovalError(null);
+    setReviewActionNotice(null);
+  }, [projectId]);
+
   const project = query.data?.project;
   const artifact = project?.latestArtifact ?? null;
   const localVideo = isLocalVideoArtifact(artifact);
@@ -76,7 +90,9 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
           scenario,
           { ifMatch: project?.versionToken },
         );
-        setReviewActionNotice("Targeted repair accepted. Next project check in 10 seconds.");
+        setReviewActionNotice(
+          `Targeted repair accepted. Next project check in ${localMode ? 1 : 10} second${localMode ? "" : "s"}.`,
+        );
         await query.refetch();
       } else if (id === "fallback") {
         await api.mutate(

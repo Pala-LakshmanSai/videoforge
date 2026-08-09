@@ -24,6 +24,10 @@ export function NewStyleScreen() {
   const [disclosure, setDisclosure] = useState(false);
   const [busy, setBusy] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const health = useQuery({
+    queryKey: ["health", scenario],
+    queryFn: () => api.health(scenario),
+  });
   const catalog = useQuery({ queryKey: ["styles", scenario], queryFn: () => api.styles(scenario) });
   const duplicateName = (catalog.data ?? []).some(
     (style) => style.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase(),
@@ -111,6 +115,56 @@ export function NewStyleScreen() {
       setPublishError(error instanceof Error ? error.message : "Image Style could not be saved.");
       setBusy(false);
     }
+  }
+
+  if (health.isPending) {
+    return (
+      <>
+        <PageHeader title="New style" />
+        <Panel eyebrow="Provider mode" heading="Checking workflow availability">
+          <div className="empty-state" aria-busy="true">
+            <span className="spinner" aria-hidden="true" />
+            <p>Confirming whether style creation is available…</p>
+          </div>
+        </Panel>
+      </>
+    );
+  }
+
+  if (health.isError) {
+    return (
+      <>
+        <PageHeader title="New style" />
+        <Panel eyebrow="Provider mode" heading="Style workflow unavailable">
+          <div className="notice notice-danger" role="alert">
+            Provider mode could not be confirmed, so no upload, analysis, or mutation is enabled.
+          </div>
+          <Button variant="secondary" onClick={() => void health.refetch()}>
+            Retry mode check
+          </Button>
+        </Panel>
+      </>
+    );
+  }
+
+  if (health.data.mode === "local") {
+    return (
+      <>
+        <PageHeader
+          eyebrow="Bounded local mode"
+          title="New style"
+          actions={
+            <Button onClick={() => window.location.assign(fixtureLink(returnTo))}>Return</Button>
+          }
+        />
+        <Panel eyebrow="Exact preset required" heading="Style creation is unavailable locally">
+          <p className="helper">
+            The local walking slice uses the exact published documentary style exposed by the
+            server. No references are uploaded or analyzed and your project draft remains unchanged.
+          </p>
+        </Panel>
+      </>
+    );
   }
 
   return (

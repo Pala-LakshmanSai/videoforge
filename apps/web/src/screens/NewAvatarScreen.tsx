@@ -24,6 +24,10 @@ export function NewAvatarScreen() {
   const [likeness, setLikeness] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const health = useQuery({
+    queryKey: ["health", scenario],
+    queryFn: () => api.health(scenario),
+  });
   const catalog = useQuery({
     queryKey: ["avatars", scenario],
     queryFn: () => api.avatars(scenario),
@@ -82,6 +86,56 @@ export function NewAvatarScreen() {
       setSaveError(error instanceof Error ? error.message : "Avatar Profile could not be saved.");
       setBusy(false);
     }
+  }
+
+  if (health.isPending) {
+    return (
+      <>
+        <PageHeader title="New avatar" />
+        <Panel eyebrow="Provider mode" heading="Checking workflow availability">
+          <div className="empty-state" aria-busy="true">
+            <span className="spinner" aria-hidden="true" />
+            <p>Confirming whether avatar creation is available…</p>
+          </div>
+        </Panel>
+      </>
+    );
+  }
+
+  if (health.isError) {
+    return (
+      <>
+        <PageHeader title="New avatar" />
+        <Panel eyebrow="Provider mode" heading="Avatar workflow unavailable">
+          <div className="notice notice-danger" role="alert">
+            Provider mode could not be confirmed, so no upload or mutation is enabled.
+          </div>
+          <Button variant="secondary" onClick={() => void health.refetch()}>
+            Retry mode check
+          </Button>
+        </Panel>
+      </>
+    );
+  }
+
+  if (health.data.mode === "local") {
+    return (
+      <>
+        <PageHeader
+          eyebrow="Bounded local mode"
+          title="New avatar"
+          actions={
+            <Button onClick={() => window.location.assign(fixtureLink(returnTo))}>Return</Button>
+          }
+        />
+        <Panel eyebrow="Exact preset required" heading="Avatar creation is unavailable locally">
+          <p className="helper">
+            The local walking slice uses the exact ready owned avatar exposed by the server. No
+            upload is accepted and your project draft remains unchanged.
+          </p>
+        </Panel>
+      </>
+    );
   }
 
   return (

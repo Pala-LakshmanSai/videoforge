@@ -14,6 +14,10 @@ export function AvatarHubScreen() {
   const scenario = currentScenario();
   const [search, setSearch] = useState("");
   const query = useQuery({ queryKey: ["avatars", scenario], queryFn: () => api.avatars(scenario) });
+  const health = useQuery({
+    queryKey: ["health", scenario],
+    queryFn: () => api.health(scenario),
+  });
   const bootstrap = useQuery({
     queryKey: ["bootstrap", scenario],
     queryFn: () => api.bootstrap(scenario),
@@ -22,6 +26,8 @@ export function AvatarHubScreen() {
   const visibleAvatars = avatars.filter((avatar) =>
     avatar.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
+  const localMode = health.data?.mode === "local";
+  const creationAvailable = health.data?.mode === "fixture";
   if (query.isPending) {
     return (
       <Panel eyebrow="Presets" heading="Loading Avatar Hub">
@@ -51,20 +57,36 @@ export function AvatarHubScreen() {
       <PageHeader
         title="Avatar Hub"
         actions={
-          <Link
-            className="button button-primary"
-            to="/avatars/new"
-            search={{ fixture: scenario } as never}
-          >
-            <UserPlus size={16} />
-            New avatar
-          </Link>
+          creationAvailable ? (
+            <Link
+              className="button button-primary"
+              to="/avatars/new"
+              search={{ fixture: scenario } as never}
+            >
+              <UserPlus size={16} />
+              New avatar
+            </Link>
+          ) : (
+            <Badge tone={localMode ? "info" : health.isError ? "danger" : "neutral"}>
+              {localMode
+                ? "LOCAL PRESET LOCKED"
+                : health.isError
+                  ? "MODE UNAVAILABLE"
+                  : "CHECKING MODE"}
+            </Badge>
+          )
         }
       />
+      {localMode ? (
+        <div className="notice" role="status">
+          <strong>Bounded local mode.</strong> Avatar creation is unavailable; use the exact owned
+          preset shown below.
+        </div>
+      ) : null}
       <NoticeBanner
         notice={blockerNoticeForScope(bootstrap.data?.notice, "AVATAR")}
         action={
-          blockerNoticeForScope(bootstrap.data?.notice, "AVATAR")?.action ? (
+          creationAvailable && blockerNoticeForScope(bootstrap.data?.notice, "AVATAR")?.action ? (
             <Link
               className="button button-secondary"
               to="/avatars/new"
@@ -98,13 +120,15 @@ export function AvatarHubScreen() {
             title="No ready avatars yet"
             body="Create your first named presenter before starting an ordinary project. There is no per-project upload bypass."
             action={
-              <Link
-                className="button button-primary"
-                to="/avatars/new"
-                search={{ fixture: scenario } as never}
-              >
-                Create your first avatar
-              </Link>
+              creationAvailable ? (
+                <Link
+                  className="button button-primary"
+                  to="/avatars/new"
+                  search={{ fixture: scenario } as never}
+                >
+                  Create your first avatar
+                </Link>
+              ) : undefined
             }
           />
         ) : visibleAvatars.length === 0 ? (

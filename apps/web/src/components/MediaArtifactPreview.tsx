@@ -28,6 +28,7 @@ export function MediaArtifactPreview({
       aria-label={artifact.label}
       className={["media-artifact-video", className].filter(Boolean).join(" ")}
       controls
+      playsInline
       preload="metadata"
       src={artifact.url}
     />
