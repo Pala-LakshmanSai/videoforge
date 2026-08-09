@@ -224,6 +224,10 @@ async function main(): Promise<void> {
   };
   invariant(!evidence.provider_calls_authorized, "Acceptance evidence authorized provider calls.");
   invariant(evidence.external_spend_usd === 0, "Acceptance evidence recorded external spend.");
+  invariant(
+    sha256Bytes(await readFile(result.evidencePath)) === result.evidenceSha256,
+    "Acceptance evidence bytes do not match their content-addressed SHA-256.",
+  );
 
   console.log(
     JSON.stringify(
@@ -247,6 +251,7 @@ async function main(): Promise<void> {
           totalFrames: result.totalFrames,
           downloadedSha256,
           evidencePath: result.evidencePath,
+          evidenceSha256: result.evidenceSha256,
         },
       },
       null,

@@ -195,10 +195,7 @@ async function verifyPinnedTools(
   if (!ffprobeVersion.stdout.startsWith(`ffprobe version ${FFMPEG_VERSION} `)) {
     throw new Error(`Local FFprobe must be pinned to ${FFMPEG_VERSION}.`);
   }
-  if (
-    !whisper.includes(`/whisper-cpp/${WHISPER_VERSION}/`) &&
-    process.env.VIDEOFORGE_WHISPER_CPP_VERSION !== WHISPER_VERSION
-  ) {
+  if (!whisper.includes(`/whisper-cpp/${WHISPER_VERSION}/`)) {
     throw new Error(`Local whisper.cpp must be pinned to ${WHISPER_VERSION}.`);
   }
   return Object.freeze({ ffmpegSha256, ffprobeSha256, whisperSha256 });
@@ -822,13 +819,16 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
       renderAttemptId,
       "acceptance-evidence.json",
     );
-    await writeFile(
-      evidencePath,
+    const evidenceBytes = Buffer.from(
       canonicalizeJson({
         schema_version: "videoforge.local-slice-evidence/v1",
         provider_calls_authorized: false,
         external_spend_usd: 0,
         source_fixture_id: LOCAL_SHORT_SLICE_MANIFEST.fixtureId,
+        attempts: {
+          asr: asrAttemptId,
+          render: renderAttemptId,
+        },
         source_voiceover: {
           asset_id: request.voiceover.assetId,
           sha256: request.voiceover.checksum,
@@ -866,8 +866,10 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
           actual_composition_coverage: timelineCompositionCoverage,
         },
       }),
-      { encoding: "utf8", flag: "wx", mode: 0o600 },
+      "utf8",
     );
+    const evidenceArtifact = await store.putObject(evidenceBytes, "json");
+    await writeFile(evidencePath, evidenceBytes, { flag: "wx", mode: 0o600 });
 
     return Object.freeze({
       artifactRoot: store.root,
@@ -881,6 +883,7 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
       resolvedRenderManifestSha256: resolvedManifest.sha256,
       renderResultSha256: renderResult.sha256,
       evidencePath,
+      evidenceSha256: evidenceArtifact.sha256,
     });
   }
 

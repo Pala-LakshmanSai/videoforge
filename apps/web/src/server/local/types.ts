@@ -47,6 +47,7 @@ export interface LocalPipelineRunResult {
   readonly resolvedRenderManifestSha256: Sha256Digest;
   readonly renderResultSha256: Sha256Digest;
   readonly evidencePath: string;
+  readonly evidenceSha256: Sha256Digest;
 }
 
 export interface LocalSliceRunner {

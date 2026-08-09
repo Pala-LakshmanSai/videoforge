@@ -104,6 +104,7 @@ class ControlledRunner implements LocalSliceRunner {
         resolvedRenderManifestSha256: DOCUMENT_SHA,
         renderResultSha256: DOCUMENT_SHA,
         evidencePath: join(root, "evidence.json"),
+        evidenceSha256: DOCUMENT_SHA,
       },
       preview.absolutePath,
     );
