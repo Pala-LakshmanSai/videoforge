@@ -843,6 +843,14 @@ h4 {
   font-size: 1rem;
 }
 
+.dropzone-readonly,
+.dropzone-readonly:hover {
+  border-style: solid;
+  border-color: var(--surface-border);
+  background: var(--surface-fill-soft);
+  cursor: default;
+}
+
 .option-grid {
   gap: 12px;
 }

@@ -148,13 +148,14 @@ export function AppShell({ children }: PropsWithChildren) {
     onScenarioChange: setScenario,
   };
   const isAccessFixture = accessFixtureScenarios.has(scenario);
+  const localMode = health.data?.mode === "local";
 
   useEffect(() => {
     const dock = dockRef.current;
     if (!dock) return;
 
     const finePointer = window.matchMedia(
-      "(hover: hover) and (pointer: fine) and (min-width: 681px)",
+      "(hover: hover) and (pointer: fine) and (min-width: 821px)",
     );
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let items: HTMLElement[] = [];
@@ -219,7 +220,7 @@ export function AppShell({ children }: PropsWithChildren) {
         moving ||= !dockSpringSettled(spring.scale, target.scale);
       });
 
-      if (tracking || moving) {
+      if (moving) {
         animationFrame = window.requestAnimationFrame(render);
       } else {
         lastFrameAt = null;
@@ -234,6 +235,7 @@ export function AppShell({ children }: PropsWithChildren) {
     const updatePointer = (event: PointerEvent) => {
       if (!tracking || !finePointer.matches || reducedMotion.matches) return;
       pointerX = event.clientX;
+      dock.classList.add("bottom-nav-dock-springing");
       schedule();
     };
 
@@ -249,6 +251,7 @@ export function AppShell({ children }: PropsWithChildren) {
     const leave = () => {
       tracking = false;
       pointerX = null;
+      dock.classList.add("bottom-nav-dock-springing");
       schedule();
     };
 
@@ -391,25 +394,38 @@ export function AppShell({ children }: PropsWithChildren) {
                   <>
                     <Aperture size={16} aria-hidden="true" />
                     <span className="fixture-control-summary">
-                      <strong>Fixture mode</strong>
-                      <small>Synthetic data · $0 spend</small>
+                      <strong>{localMode ? "Local media mode" : "Fixture mode"}</strong>
+                      <small>
+                        {localMode
+                          ? "Owned media · $0 external spend"
+                          : "Synthetic data · $0 spend"}
+                      </small>
                     </span>
-                    <span className="fixture-control-compact-label">Fixture</span>
+                    <span className="fixture-control-compact-label">
+                      {localMode ? "Local" : "Fixture"}
+                    </span>
                   </>
                 }
               >
-                <div className="fixture-control-field">
-                  <span>Scenario</span>
-                  <AppSelect
-                    label="Scenario"
-                    value={scenario}
-                    onValueChange={(value) => setScenario(value as typeof scenario)}
-                    options={scenarioIds.map((id) => ({ value: id, label: id }))}
-                  />
-                </div>
+                {localMode ? (
+                  <div className="fixture-control-field">
+                    <span>Walking slice</span>
+                    <strong>Owned narration, avatar, and image</strong>
+                  </div>
+                ) : (
+                  <div className="fixture-control-field">
+                    <span>Scenario</span>
+                    <AppSelect
+                      label="Scenario"
+                      value={scenario}
+                      onValueChange={(value) => setScenario(value as typeof scenario)}
+                      options={scenarioIds.map((id) => ({ value: id, label: id }))}
+                    />
+                  </div>
+                )}
                 <div className="fixture-control-meta">
                   <span>{health.data?.commit ?? "local"}</span>
-                  <span>No provider calls</span>
+                  <span>{localMode ? "Local tools only" : "No provider calls"}</span>
                 </div>
               </Disclosure>
             ) : null}

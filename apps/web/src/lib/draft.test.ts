@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   emptyDraft,
+  hydrateDraftFromBootstrap,
   loadDraft,
   projectDraftSchema,
   projectDraftStorageKey,
@@ -8,6 +9,28 @@ import {
   saveDraft,
   updateDraft,
 } from "./draft";
+import type { FixtureDraftState } from "./types";
+
+const localServerDraft: FixtureDraftState = {
+  title: "Owned local walking slice",
+  voiceover: {
+    assetId: "voiceover_local_owned_001",
+    filename: "owned-local-narration.wav",
+    durationSeconds: 37.2,
+    uploadState: "VERIFIED",
+  },
+  avatarProfileVersionId: "avatar_local_owned_v1",
+  imageStyleVersionId: "style_local_owned_v1",
+  optionalScript: null,
+  extraPromptKeywords: null,
+  applyExtraPromptKeywords: false,
+  effectiveExtraPromptKeywords: null,
+  generationMode: "BALANCED",
+  spendCapUsd: 0.1,
+  preservedAcrossPresetRoundtrip: false,
+  returnRoute: null,
+  preflight: { status: "READY", checks: [] },
+};
 
 describe("fixture project draft", () => {
   beforeEach(() => localStorage.clear());
@@ -61,6 +84,54 @@ describe("fixture project draft", () => {
     expect(localStorage.getItem(projectDraftStorageKeyFor("budget_blocked"))).not.toBeNull();
   });
 
+  it("isolates local drafts from fixture drafts on the stable origin", () => {
+    saveDraft({ ...emptyDraft, title: "Fixture draft", spendCapUsd: 1.5 }, "project_create_ready");
+    saveDraft(
+      { ...emptyDraft, title: "Local draft", spendCapUsd: 0.1 },
+      "project_create_ready",
+      "local",
+    );
+
+    expect(loadDraft("project_create_ready", "fixture").title).toBe("Fixture draft");
+    expect(loadDraft("project_create_ready", "local")).toMatchObject({
+      title: "Local draft",
+      spendCapUsd: 0.1,
+    });
+  });
+
+  it("rebinds stale local server-owned inputs while preserving only safe edits", () => {
+    const hydrated = hydrateDraftFromBootstrap(
+      {
+        ...emptyDraft,
+        title: "My local title",
+        voiceoverAssetId: "stale-fixture-voiceover",
+        avatarProfileVersionId: "stale-fixture-avatar",
+        imageStyleVersionId: "stale-fixture-style",
+        generationMode: "FASTER",
+        executionProfileOverrides: {
+          image_media_profile_id: "stale-image-profile",
+          avatar_primary_profile_id: "stale-avatar-profile",
+        },
+        spendCapUsd: 1.5,
+        userSeed: 42,
+      },
+      localServerDraft,
+      "local",
+      true,
+    );
+
+    expect(hydrated).toMatchObject({
+      title: "My local title",
+      voiceoverAssetId: "voiceover_local_owned_001",
+      avatarProfileVersionId: "avatar_local_owned_v1",
+      imageStyleVersionId: "style_local_owned_v1",
+      generationMode: "FASTER",
+      executionProfileOverrides: null,
+      spendCapUsd: 0.1,
+      userSeed: 42,
+    });
+  });
+
   it("migrates the old global fixture draft only into the ordinary Create scenario", () => {
     localStorage.setItem(
       "videoforge:fixture:project-draft:v1",
@@ -70,6 +141,19 @@ describe("fixture project draft", () => {
     expect(loadDraft("extra_keywords_conflict")).toEqual(emptyDraft);
     expect(loadDraft("project_create_ready").title).toBe("Legacy ordinary project");
     expect(localStorage.getItem("videoforge:fixture:project-draft:v1")).toBeNull();
+  });
+
+  it("migrates v2 drafts only into the fixture namespace", () => {
+    localStorage.setItem(
+      "videoforge:fixture:project-draft:v2:project_create_ready",
+      JSON.stringify({ ...emptyDraft, title: "Version two fixture draft" }),
+    );
+
+    expect(loadDraft("project_create_ready", "local")).toEqual(emptyDraft);
+    expect(loadDraft("project_create_ready", "fixture").title).toBe("Version two fixture draft");
+    expect(
+      localStorage.getItem("videoforge:fixture:project-draft:v2:project_create_ready"),
+    ).toBeNull();
   });
 
   it("migrates an older stored draft by adding new verified-media fields", () => {

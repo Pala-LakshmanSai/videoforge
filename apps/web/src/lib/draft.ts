@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { FixtureDraftState } from "./types";
 
 export const projectDraftSchema = z.object({
   title: z.string().max(240),
@@ -29,12 +30,17 @@ export const projectDraftSchema = z.object({
 });
 
 export type ProjectDraft = z.infer<typeof projectDraftSchema>;
+export type ProjectDraftProviderMode = "fixture" | "local";
 
 const legacyProjectDraftStorageKey = "videoforge:fixture:project-draft:v1";
-const projectDraftStoragePrefix = "videoforge:fixture:project-draft:v2";
+const legacyProjectDraftStoragePrefix = "videoforge:fixture:project-draft:v2";
+const projectDraftStoragePrefix = "videoforge:project-draft:v3";
 
-export function projectDraftStorageKeyFor(scope = "default"): string {
-  return `${projectDraftStoragePrefix}:${encodeURIComponent(scope.trim() || "default")}`;
+export function projectDraftStorageKeyFor(
+  scope = "default",
+  mode: ProjectDraftProviderMode = "fixture",
+): string {
+  return `${projectDraftStoragePrefix}:${mode}:${encodeURIComponent(scope.trim() || "default")}`;
 }
 
 export const projectDraftStorageKey = projectDraftStorageKeyFor();
@@ -57,19 +63,75 @@ export const emptyDraft: ProjectDraft = {
   userSeed: 982341,
 };
 
-function migrateLegacyDraft(): void {
-  const legacy = localStorage.getItem(legacyProjectDraftStorageKey);
-  if (legacy === null) return;
-  const destination = projectDraftStorageKeyFor("project_create_ready");
-  if (localStorage.getItem(destination) === null) localStorage.setItem(destination, legacy);
-  localStorage.removeItem(legacyProjectDraftStorageKey);
+export function hydrateDraftFromBootstrap(
+  current: ProjectDraft,
+  serverDraft: FixtureDraftState,
+  mode: ProjectDraftProviderMode,
+  stored: boolean,
+): ProjectDraft {
+  if (stored && mode === "fixture") return current;
+  const preserveLocalEdits = stored && mode === "local";
+
+  return projectDraftSchema.parse({
+    ...current,
+    title:
+      preserveLocalEdits && current.title.trim().length > 0 ? current.title : serverDraft.title,
+    voiceoverAssetId:
+      serverDraft.voiceover.uploadState === "VERIFIED" ? serverDraft.voiceover.assetId : null,
+    voiceoverName:
+      serverDraft.voiceover.uploadState === "VERIFIED" ? serverDraft.voiceover.filename : null,
+    voiceoverDurationSeconds:
+      serverDraft.voiceover.uploadState === "VERIFIED"
+        ? serverDraft.voiceover.durationSeconds
+        : null,
+    voiceoverSampleRate: null,
+    voiceoverChannels: null,
+    voiceoverChecksum: null,
+    avatarProfileVersionId: serverDraft.avatarProfileVersionId ?? "",
+    imageStyleVersionId: serverDraft.imageStyleVersionId,
+    extraPromptKeywords: preserveLocalEdits
+      ? current.extraPromptKeywords
+      : (serverDraft.extraPromptKeywords ?? ""),
+    applyExtraPromptKeywords: preserveLocalEdits
+      ? current.applyExtraPromptKeywords
+      : serverDraft.applyExtraPromptKeywords,
+    generationMode: preserveLocalEdits ? current.generationMode : serverDraft.generationMode,
+    executionProfileOverrides: mode === "local" ? null : current.executionProfileOverrides,
+    spendCapUsd: serverDraft.spendCapUsd,
+  });
 }
 
-export function loadDraft(scope = "default"): ProjectDraft {
+function legacyV2StorageKeyFor(scope: string): string {
+  return `${legacyProjectDraftStoragePrefix}:${encodeURIComponent(scope.trim() || "default")}`;
+}
+
+function migrateLegacyDraft(scope: string, mode: ProjectDraftProviderMode): void {
+  if (mode !== "fixture") return;
+  const legacy = localStorage.getItem(legacyProjectDraftStorageKey);
+  if (legacy !== null) {
+    const v2Destination = legacyV2StorageKeyFor("project_create_ready");
+    if (localStorage.getItem(v2Destination) === null) {
+      localStorage.setItem(v2Destination, legacy);
+    }
+    localStorage.removeItem(legacyProjectDraftStorageKey);
+  }
+
+  const v2Key = legacyV2StorageKeyFor(scope);
+  const v2Draft = localStorage.getItem(v2Key);
+  if (v2Draft === null) return;
+  const destination = projectDraftStorageKeyFor(scope, mode);
+  if (localStorage.getItem(destination) === null) localStorage.setItem(destination, v2Draft);
+  localStorage.removeItem(v2Key);
+}
+
+export function loadDraft(
+  scope = "default",
+  mode: ProjectDraftProviderMode = "fixture",
+): ProjectDraft {
   try {
-    migrateLegacyDraft();
+    migrateLegacyDraft(scope, mode);
     const stored: unknown = JSON.parse(
-      localStorage.getItem(projectDraftStorageKeyFor(scope)) ?? "null",
+      localStorage.getItem(projectDraftStorageKeyFor(scope, mode)) ?? "null",
     );
     const parsed = projectDraftSchema.safeParse(
       typeof stored === "object" && stored !== null ? { ...emptyDraft, ...stored } : stored,
@@ -80,20 +142,31 @@ export function loadDraft(scope = "default"): ProjectDraft {
   }
 }
 
-export function saveDraft(draft: ProjectDraft, scope = "default") {
+export function saveDraft(
+  draft: ProjectDraft,
+  scope = "default",
+  mode: ProjectDraftProviderMode = "fixture",
+) {
   localStorage.setItem(
-    projectDraftStorageKeyFor(scope),
+    projectDraftStorageKeyFor(scope, mode),
     JSON.stringify(projectDraftSchema.parse(draft)),
   );
 }
 
-export function hasStoredDraft(scope = "default"): boolean {
-  migrateLegacyDraft();
-  return localStorage.getItem(projectDraftStorageKeyFor(scope)) !== null;
+export function hasStoredDraft(
+  scope = "default",
+  mode: ProjectDraftProviderMode = "fixture",
+): boolean {
+  migrateLegacyDraft(scope, mode);
+  return localStorage.getItem(projectDraftStorageKeyFor(scope, mode)) !== null;
 }
 
-export function updateDraft(patch: Partial<ProjectDraft>, scope = "default") {
-  const draft = projectDraftSchema.parse({ ...loadDraft(scope), ...patch });
-  saveDraft(draft, scope);
+export function updateDraft(
+  patch: Partial<ProjectDraft>,
+  scope = "default",
+  mode: ProjectDraftProviderMode = "fixture",
+) {
+  const draft = projectDraftSchema.parse({ ...loadDraft(scope, mode), ...patch });
+  saveDraft(draft, scope, mode);
   return draft;
 }

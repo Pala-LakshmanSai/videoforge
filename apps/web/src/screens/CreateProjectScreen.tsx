@@ -18,14 +18,22 @@ import {
   parseVoiceoverRegistrationMutationResponse,
 } from "../lib/api-schemas";
 import { createProjectBlockers } from "../lib/create-eligibility";
-import { hasStoredDraft } from "../lib/draft";
+import { hasStoredDraft, hydrateDraftFromBootstrap } from "../lib/draft";
 import { validateVoiceoverFile } from "../lib/media-validation";
 import { currentScenario, withScenario } from "../lib/scenario";
 
 export function CreateProjectScreen() {
   const scenario = currentScenario();
-  const [draft, setDraft] = useProjectDraft(scenario);
-  const [draftHydrated, setDraftHydrated] = useState(() => hasStoredDraft(scenario));
+  const health = useQuery({
+    queryKey: ["health", scenario],
+    queryFn: () => api.health(scenario),
+  });
+  const providerMode = health.data?.mode ?? null;
+  const [draft, setDraft, draftScopeReady] = useProjectDraft(scenario, providerMode);
+  const [hydratedScope, setHydratedScope] = useState<string | null>(null);
+  const draftScope = providerMode === null ? null : `${providerMode}:${scenario}`;
+  const draftHydrated = draftScopeReady && hydratedScope === draftScope;
+  const localMode = providerMode === "local";
   const [audioError, setAudioError] = useState<string | null>(null);
   const [audioPending, setAudioPending] = useState(false);
   const [submittedError, setSubmittedError] = useState<string | null>(null);
@@ -69,31 +77,28 @@ export function CreateProjectScreen() {
   );
 
   useEffect(() => {
-    if (!bootstrap.data || draftHydrated) return;
-    const fixtureDraft = bootstrap.data.draft;
-    setDraft((current) => ({
-      ...current,
-      title: fixtureDraft.title,
-      voiceoverAssetId:
-        fixtureDraft.voiceover.uploadState === "VERIFIED" ? fixtureDraft.voiceover.assetId : null,
-      voiceoverName:
-        fixtureDraft.voiceover.uploadState === "VERIFIED" ? fixtureDraft.voiceover.filename : null,
-      voiceoverDurationSeconds:
-        fixtureDraft.voiceover.uploadState === "VERIFIED"
-          ? fixtureDraft.voiceover.durationSeconds
-          : null,
-      voiceoverSampleRate: null,
-      voiceoverChannels: null,
-      voiceoverChecksum: null,
-      avatarProfileVersionId: fixtureDraft.avatarProfileVersionId ?? "",
-      imageStyleVersionId: fixtureDraft.imageStyleVersionId,
-      extraPromptKeywords: fixtureDraft.extraPromptKeywords ?? "",
-      applyExtraPromptKeywords: fixtureDraft.applyExtraPromptKeywords,
-      generationMode: fixtureDraft.generationMode,
-      spendCapUsd: fixtureDraft.spendCapUsd,
-    }));
-    setDraftHydrated(true);
-  }, [bootstrap.data, draftHydrated, setDraft]);
+    if (
+      !bootstrap.data ||
+      providerMode === null ||
+      draftScope === null ||
+      !draftScopeReady ||
+      hydratedScope === draftScope
+    )
+      return;
+    const serverDraft = bootstrap.data.draft;
+    const stored = hasStoredDraft(scenario, providerMode);
+    setDraft((current) => hydrateDraftFromBootstrap(current, serverDraft, providerMode, stored));
+    setHydratedScope(draftScope);
+  }, [
+    bootstrap.data,
+    draftScope,
+    draftScopeReady,
+    hydratedScope,
+    localMode,
+    providerMode,
+    scenario,
+    setDraft,
+  ]);
 
   useEffect(() => {
     const imageProfileId = imageLane?.selector_options[0]?.profile_id;
@@ -180,7 +185,7 @@ export function CreateProjectScreen() {
     spend_cap_usd: draft.spendCapUsd,
     user_seed: draft.userSeed,
   };
-  const estimatedCostUsd = 0.88;
+  const estimatedCostUsd = localMode ? 0 : 0.88;
   const submitBlockers = createProjectBlockers({
     audioError,
     audioPending,
@@ -280,6 +285,34 @@ export function CreateProjectScreen() {
     }
   }
 
+  if (health.isPending) {
+    return (
+      <>
+        <PageHeader title="New project" />
+        <Panel eyebrow="Runtime" heading="Checking execution mode">
+          <div className="empty-state" aria-busy="true">
+            <span className="spinner" aria-hidden="true" />
+            <p>Loading the provider-safe project controls…</p>
+          </div>
+        </Panel>
+      </>
+    );
+  }
+
+  if (health.isError) {
+    return (
+      <>
+        <PageHeader title="New project" />
+        <Panel eyebrow="Runtime" heading="Execution mode unavailable">
+          <p>Project controls stay locked until the local API confirms the active mode.</p>
+          <Button variant="secondary" onClick={() => void health.refetch()}>
+            Retry mode check
+          </Button>
+        </Panel>
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader title="New project" />
@@ -318,31 +351,43 @@ export function CreateProjectScreen() {
                 </div>
                 <div className="field field-wide">
                   <span className="field-label">Final voiceover</span>
-                  <label className="dropzone">
-                    <input
-                      aria-label="Upload final voiceover"
-                      id="voiceover-input"
-                      type="file"
-                      accept="audio/wav,audio/mpeg,audio/mp4,audio/aac,audio/flac"
-                      disabled={audioPending || create.isPending}
-                      onChange={(event) => void chooseAudio(event.target.files?.[0])}
-                    />
-                    {audioPending ? (
-                      <span className="spinner" aria-hidden="true" />
-                    ) : (
+                  {localMode ? (
+                    <div className="dropzone dropzone-readonly" id="voiceover-input">
                       <FileAudio size={28} />
-                    )}
-                    <span>
-                      <strong>
-                        {audioPending
-                          ? "Checking audio…"
-                          : (draft.voiceoverName ?? "Drop or choose final narration")}
-                      </strong>
-                      {draft.voiceoverAssetId
-                        ? "Verified and ready"
-                        : "WAV, MP3, M4A, AAC, or FLAC"}
-                    </span>
-                  </label>
+                      <span>
+                        <strong>{draft.voiceoverName ?? "Preparing owned narration…"}</strong>
+                        {draft.voiceoverAssetId
+                          ? "Owned local bytes verified and fixed for this walking slice"
+                          : "Waiting for local media preparation"}
+                      </span>
+                    </div>
+                  ) : (
+                    <label className="dropzone">
+                      <input
+                        aria-label="Upload final voiceover"
+                        id="voiceover-input"
+                        type="file"
+                        accept="audio/wav,audio/mpeg,audio/mp4,audio/aac,audio/flac"
+                        disabled={audioPending || create.isPending}
+                        onChange={(event) => void chooseAudio(event.target.files?.[0])}
+                      />
+                      {audioPending ? (
+                        <span className="spinner" aria-hidden="true" />
+                      ) : (
+                        <FileAudio size={28} />
+                      )}
+                      <span>
+                        <strong>
+                          {audioPending
+                            ? "Checking audio…"
+                            : (draft.voiceoverName ?? "Drop or choose final narration")}
+                        </strong>
+                        {draft.voiceoverAssetId
+                          ? "Verified and ready"
+                          : "WAV, MP3, M4A, AAC, or FLAC"}
+                      </span>
+                    </label>
+                  )}
                   {audioError ? (
                     <div className="validation validation-danger">
                       <AlertTriangle size={16} />
@@ -376,16 +421,20 @@ export function CreateProjectScreen() {
                       setDraft((value) => ({ ...value, avatarProfileVersionId }))
                     }
                   />
-                  <div className="preset-select-actions">
-                    <Link
-                      className="button button-secondary"
-                      to="/avatars/new"
-                      search={{ fixture: scenario, returnTo: "/projects/new" } as never}
-                    >
-                      <UserPlus size={15} />
-                      New avatar
-                    </Link>
-                  </div>
+                  {localMode ? (
+                    <small>Exact owned synthetic avatar version pinned for local acceptance.</small>
+                  ) : (
+                    <div className="preset-select-actions">
+                      <Link
+                        className="button button-secondary"
+                        to="/avatars/new"
+                        search={{ fixture: scenario, returnTo: "/projects/new" } as never}
+                      >
+                        <UserPlus size={15} />
+                        New avatar
+                      </Link>
+                    </div>
+                  )}
                   {readyAvatars.length === 0 ? (
                     <div className="validation validation-warning">
                       <AlertTriangle size={16} />
@@ -408,16 +457,22 @@ export function CreateProjectScreen() {
                       setDraft((value) => ({ ...value, imageStyleVersionId }))
                     }
                   />
-                  <div className="preset-select-actions">
-                    <Link
-                      className="button button-secondary"
-                      to="/styles/new"
-                      search={{ fixture: scenario, returnTo: "/projects/new" } as never}
-                    >
-                      <ImagePlus size={15} />
-                      New style
-                    </Link>
-                  </div>
+                  {localMode ? (
+                    <small>
+                      Exact owned Documentary Stock version pinned for local acceptance.
+                    </small>
+                  ) : (
+                    <div className="preset-select-actions">
+                      <Link
+                        className="button button-secondary"
+                        to="/styles/new"
+                        search={{ fixture: scenario, returnTo: "/projects/new" } as never}
+                      >
+                        <ImagePlus size={15} />
+                        New style
+                      </Link>
+                    </div>
+                  )}
                 </div>
                 <Disclosure
                   className="field field-wide create-options"
@@ -520,6 +575,7 @@ export function CreateProjectScreen() {
                         type="button"
                         key={mode}
                         className={`option-card ${draft.generationMode === mode ? "selected" : ""}`}
+                        aria-pressed={draft.generationMode === mode}
                         onClick={() => setDraft((value) => ({ ...value, generationMode: mode }))}
                       >
                         <strong>{mode.replace("_", " ")}</strong>
@@ -582,15 +638,23 @@ export function CreateProjectScreen() {
                 min="0.1"
                 max="2"
                 step="0.05"
+                readOnly={localMode}
+                aria-readonly={localMode}
                 value={draft.spendCapUsd}
                 onChange={(event) =>
-                  setDraft((value) => ({
-                    ...value,
-                    spendCapUsd: Math.min(2, Math.max(0.1, Number(event.target.value))),
-                  }))
+                  localMode
+                    ? undefined
+                    : setDraft((value) => ({
+                        ...value,
+                        spendCapUsd: Math.min(2, Math.max(0.1, Number(event.target.value))),
+                      }))
                 }
               />
-              <small>Estimated ${estimatedCostUsd.toFixed(2)} · fixture spend $0</small>
+              <small>
+                {localMode
+                  ? "Fixed request cap · local tools · external spend $0"
+                  : `Estimated $${estimatedCostUsd.toFixed(2)} · fixture spend $0`}
+              </small>
             </div>
             <Button
               busy={create.isPending}
@@ -637,7 +701,7 @@ export function CreateProjectScreen() {
                 </span>
                 <span>
                   <small>Provider calls</small>
-                  <strong>0 in fixture mode</strong>
+                  <strong>{localMode ? "0 in local mode" : "0 in fixture mode"}</strong>
                 </span>
               </div>
             </Disclosure>

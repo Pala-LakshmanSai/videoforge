@@ -778,6 +778,7 @@ test("scenario actions match authoritative project and review state", async ({ p
 
 for (const viewport of [
   { name: "1024px", width: 1024, height: 900 },
+  { name: "tablet", width: 768, height: 900 },
   { name: "mobile", width: 430, height: 932 },
 ]) {
   test(`${viewport.name} layout stays keyboard reachable without horizontal overflow`, async ({
