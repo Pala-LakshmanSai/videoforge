@@ -7,10 +7,12 @@ from .models import (
     GenerationMode,
     ImageStyleAnalyzerOutputDocument,
     ImageStyleProfileDocument,
+    OrchestrationStateDocument,
     ProductionManifestDocument,
     ProjectRevisionConfigDocument,
     ResolvedRenderManifestDocument,
     TimelinePlanDocument,
+    WorkerJobEnvelopeDocument,
 )
 from .validator import (
     CONTRACT_NAMES,
@@ -35,9 +37,11 @@ __all__ = [
     "GenerationMode",
     "ImageStyleAnalyzerOutputDocument",
     "ImageStyleProfileDocument",
+    "OrchestrationStateDocument",
     "ProductionManifestDocument",
     "ProjectRevisionConfigDocument",
     "ResolvedRenderManifestDocument",
     "TimelinePlanDocument",
+    "WorkerJobEnvelopeDocument",
     "validate_contract",
 ]

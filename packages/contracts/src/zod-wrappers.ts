@@ -15,8 +15,10 @@ export const canonicalContractZodSchemas = {
   createProjectRequest: createProjectRequestSchema,
   imageStyleProfile: canonicalContractZodSchema("imageStyleProfile"),
   imageStyleAnalyzerOutput: canonicalContractZodSchema("imageStyleAnalyzerOutput"),
+  orchestrationState: canonicalContractZodSchema("orchestrationState"),
   projectRevisionConfig: canonicalContractZodSchema("projectRevisionConfig"),
   timelinePlan: canonicalContractZodSchema("timelinePlan"),
   resolvedRenderManifest: canonicalContractZodSchema("resolvedRenderManifest"),
   productionManifest: canonicalContractZodSchema("productionManifest"),
+  workerJobEnvelope: canonicalContractZodSchema("workerJobEnvelope"),
 } as const;

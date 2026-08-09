@@ -13,10 +13,12 @@ ContractName = Literal[
     "createProjectRequest",
     "imageStyleProfile",
     "imageStyleAnalyzerOutput",
+    "orchestrationState",
     "projectRevisionConfig",
     "timelinePlan",
     "resolvedRenderManifest",
     "productionManifest",
+    "workerJobEnvelope",
 ]
 
 CONTRACT_NAMES: tuple[ContractName, ...] = (
@@ -24,10 +26,12 @@ CONTRACT_NAMES: tuple[ContractName, ...] = (
     "createProjectRequest",
     "imageStyleProfile",
     "imageStyleAnalyzerOutput",
+    "orchestrationState",
     "projectRevisionConfig",
     "timelinePlan",
     "resolvedRenderManifest",
     "productionManifest",
+    "workerJobEnvelope",
 )
 
 

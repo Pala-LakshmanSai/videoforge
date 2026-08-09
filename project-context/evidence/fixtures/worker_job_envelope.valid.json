@@ -1,0 +1,31 @@
+{
+  "schema_version": "worker-job-envelope/v1",
+  "job_type": "AVATAR_PRIMARY_CHUNK",
+  "dispatch_target": "FIXTURE",
+  "idempotency_key": "revision_fixture_001:avatar:chunk_001:attempt_001",
+  "workspace_id": "workspace_fixture_001",
+  "project_id": "project_fixture_001",
+  "revision_id": "revision_fixture_001",
+  "task_id": "task_avatar_chunk_001",
+  "attempt_id": "attempt_avatar_chunk_001_001",
+  "execution_profile_id": "fixture-avatar-primary-auto-v1",
+  "execution_claim_token": "fixture-single-use-claim-token-0000000000000001",
+  "revision_config": {
+    "asset_id": "asset_revision_config_001",
+    "sha256": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "input_manifest": {
+    "asset_id": "asset_avatar_input_manifest_001",
+    "sha256": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "signed_url": "https://assets.videoforge.invalid/input-manifest.json?fixture=1",
+    "expires_at": "2026-08-09T11:30:00.000Z"
+  },
+  "output_prefix": "workspace/workspace_fixture_001/project/project_fixture_001/revision/revision_fixture_001/avatar/primary/attempt_avatar_chunk_001_001/",
+  "callback": {
+    "url": "https://api.videoforge.invalid/v1/worker-callbacks/avatar",
+    "token": "fixture-short-lived-callback-token-0000000000001",
+    "expires_at": "2026-08-09T11:30:00.000Z"
+  },
+  "cancel_token": "fixture-cancel-token-000000000000000000000001",
+  "deadline_at": "2026-08-09T11:20:00.000Z"
+}

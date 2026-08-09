@@ -24,6 +24,8 @@ const fixtureCases = [
   ["createProjectRequest", "create_project_request.valid.json", true],
   ["createProjectRequest", "create_project_request.invalid.inline_avatar.json", false],
   ["createProjectRequest", "create_project_request.invalid.over_budget.json", false],
+  ["orchestrationState", "orchestration_state.valid.json", true],
+  ["orchestrationState", "orchestration_state.invalid.unhashed_outbox.json", false],
   ["projectRevisionConfig", "project_revision_config.valid.json", true],
   ["projectRevisionConfig", "project_revision_config.invalid.compatibility_mismatch.json", false],
   ["timelinePlan", "timeline_plan.valid.json", true],
@@ -31,13 +33,15 @@ const fixtureCases = [
   ["resolvedRenderManifest", "resolved_render_manifest.invalid.avatar_profile_crop.json", false],
   ["productionManifest", "production_manifest.valid.json", true],
   ["imageStyleProfile", "default_image_style_v1.json", true],
+  ["workerJobEnvelope", "worker_job_envelope.valid.json", true],
+  ["workerJobEnvelope", "worker_job_envelope.invalid.shell_args.json", false],
 ];
 
 const loadFixture = async (filename) =>
   JSON.parse(await readFile(path.join(fixtureRoot, filename), "utf8"));
 
 test("all canonical schemas compile and expose stable IDs", () => {
-  assert.equal(contractNames.length, 8);
+  assert.equal(contractNames.length, 10);
   for (const contractName of contractNames) {
     assert.match(contractSchemaIds[contractName], /^https:\/\/videoforge\.local\/schemas\//);
     assert.equal(typeof contractValidators[contractName], "function");

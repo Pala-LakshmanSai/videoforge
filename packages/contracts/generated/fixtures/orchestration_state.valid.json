@@ -1,0 +1,78 @@
+{
+  "schema_version": "orchestration-state/v1",
+  "workflow": {
+    "workflow_id": "workflow_fixture_001",
+    "workspace_id": "workspace_fixture_001",
+    "project_id": "project_fixture_001",
+    "revision_id": "revision_fixture_001",
+    "state": "RUNNING",
+    "version": 3,
+    "created_at": "2026-08-09T09:20:00.000Z",
+    "updated_at": "2026-08-09T09:21:03.000Z",
+    "cancel_requested_at": null
+  },
+  "tasks": [
+    {
+      "task_id": "task_avatar_chunk_001",
+      "task_key": "avatar:chunk:001",
+      "lane": "AVATAR",
+      "state": "RUNNING",
+      "required": true,
+      "depends_on": ["task_audio_span_001"],
+      "accepted_attempt_id": null,
+      "version": 2
+    }
+  ],
+  "attempts": [
+    {
+      "attempt_id": "attempt_avatar_chunk_001_001",
+      "task_id": "task_avatar_chunk_001",
+      "ordinal": 1,
+      "state": "RUNNING",
+      "dispatch_state": "ACKNOWLEDGED",
+      "execution_profile_id": "fixture-avatar-primary-auto-v1",
+      "claim_state": "CLAIMED",
+      "external_job_id": "fixture_job_avatar_001",
+      "input_hash": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "output_asset_id": null,
+      "started_at": "2026-08-09T09:21:03.000Z",
+      "finished_at": null,
+      "problem_code": null
+    }
+  ],
+  "outbox_messages": [
+    {
+      "outbox_id": "outbox_dispatch_avatar_001",
+      "attempt_id": "attempt_avatar_chunk_001_001",
+      "kind": "DISPATCH",
+      "state": "DELIVERED",
+      "dedupe_key": "revision_fixture_001:avatar:chunk_001:attempt_001",
+      "payload_hash": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "available_at": "2026-08-09T09:21:00.000Z",
+      "lease_expires_at": null,
+      "delivered_at": "2026-08-09T09:21:02.000Z"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "event_workflow_001_001",
+      "workflow_id": "workflow_fixture_001",
+      "task_id": null,
+      "attempt_id": null,
+      "sequence": 1,
+      "kind": "WORKFLOW_CREATED",
+      "occurred_at": "2026-08-09T09:20:00.000Z",
+      "payload_hash": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+    },
+    {
+      "event_id": "event_workflow_001_002",
+      "workflow_id": "workflow_fixture_001",
+      "task_id": "task_avatar_chunk_001",
+      "attempt_id": "attempt_avatar_chunk_001_001",
+      "sequence": 2,
+      "kind": "DISPATCH_ACKNOWLEDGED",
+      "occurred_at": "2026-08-09T09:21:03.000Z",
+      "payload_hash": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+    }
+  ]
+}

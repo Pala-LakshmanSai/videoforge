@@ -37,13 +37,21 @@ flowchart LR
 
 ## Phase 0A: private repository and contract skeleton
 
-Current (2026-08-09): repo/commands, eight contracts, validator entry points, and TypeScript JCS exist. Job/event/state-machine contracts, independent non-Create Zod/Pydantic types, and Python JCS remain open; 0A is not closed.
+Current (2026-08-09): repo/commands, ten canonical contracts, cross-language validator entry
+points, and TypeScript JCS exist. `worker-job-envelope/v1` and `orchestration-state/v1` now lock
+claim-bound dispatch plus task/attempt/outbox/event state before provider transport. Complex
+documents intentionally use canonical Draft 2020-12 JSON Schema through Zod/Pydantic entry points
+instead of drift-prone independent hand models; Create Project remains independently typed at the
+interactive form boundary. Python JCS and persistent database orchestration remain later work, so
+0A is not yet closed.
 
 - Initialize private Git; exclude research, private references, outputs, secrets, weights, and screenshots.
 - Create the monorepo shape in `19_IMPLEMENTATION_PLAYBOOK.md`: web, shared packages, and four worker lanes.
 - Pin Node, pnpm, Python, CUDA bases, FFmpeg, formatters, test runners, and lockfiles.
 - Implement the strict-port, provider-free root commands and stable URL in `19_IMPLEMENTATION_PLAYBOOK.md`.
-- Convert project request/revision, Avatar Profile version, Image Style, analyzer, timeline-plan, resolved-render, production-manifest, job, event, and state-machine contracts into cross-language Zod/Pydantic types and golden fixtures.
+- Keep project request/revision, Avatar Profile version, Image Style, analyzer, timeline-plan,
+  resolved-render, production-manifest, worker-job, and orchestration-state JSON Schemas canonical;
+  expose them through parity-tested Zod/Pydantic entry points and golden valid/invalid fixtures.
 - Add CI: typecheck, lint, unit/schema compatibility, local link/context validation, secret scan, dependency audit.
 - Add `.env.example` with no values. Real provider mode defaults off.
 - Keep GHCR provisional until pull/cache/storage/start behavior is measured.

@@ -54,93 +54,11 @@ Do not put generated asset IDs into the pre-generation EDL. Use two immutable co
 1. **`timeline-plan/v1`** — canonical 30 fps frame intervals, source-audio boundaries, narration, deterministic timeline composition/in-image shot role, and composition-specific required task slots.
 2. **`resolved-render-manifest/v1`** — revision/timeline hashes, original voiceover binding, fixed output/render profile, total frames, accepted asset IDs/checksums, and exact render geometry after the asset barrier closes.
 
-Illustrative split excerpt in the plan:
-
-```json
-{
-  "schema_version": "timeline-plan/v1",
-  "project_revision_id": "rev_...",
-  "revision_config_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
-  "scheduler_version": "scheduler-v1",
-  "seed": 982341,
-  "output_fps_num": 30,
-  "output_fps_den": 1,
-  "total_frames": 54000,
-  "segments": [
-    {
-      "segment_id": "seg_0003",
-      "start_frame": 300,
-      "end_frame_exclusive": 420,
-      "source_audio_start_ms": 10000,
-      "source_audio_end_ms": 14000,
-      "timeline_composition": "AVATAR_SPLIT_IMAGE",
-      "phrase": "...",
-      "word_start": 24,
-      "word_end_exclusive": 36,
-      "in_image_shot_role": "OBJECT_EVIDENCE",
-      "required_slots": {
-        "avatar": {
-          "task_key": "avatar:seg_0003",
-          "span_audio_task_key": "audio-span:seg_0003"
-        },
-        "right_image": {
-          "task_key": "image:seg_0003:right"
-        }
-      }
-    }
-  ]
-}
-```
-
-Illustrative resolved excerpt:
-
-```json
-{
-  "schema_version": "resolved-render-manifest/v1",
-  "project_revision_id": "rev_...",
-  "revision_config_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
-  "timeline_plan_hash": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
-  "render_profile_version": "ffmpeg-render-v1",
-  "voiceover": {
-    "asset_id": "asset_voiceover_...",
-    "sha256": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
-  },
-  "output": {
-    "width": 1920,
-    "height": 1080,
-    "fps_num": 30,
-    "fps_den": 1,
-    "video_codec": "h264",
-    "pixel_format": "yuv420p",
-    "audio_codec": "aac",
-    "audio_sample_rate_hz": 48000,
-    "loudness_profile": "voiceover-minus16lufs-v1"
-  },
-  "total_frames": 54000,
-  "segments": [
-    {
-      "segment_id": "seg_0003",
-      "start_frame": 300,
-      "end_frame_exclusive": 420,
-      "timeline_composition": "AVATAR_SPLIT_IMAGE",
-      "accepted_assets": {
-        "avatar": {"asset_id": "asset_avatar_...", "sha256": "sha256:..."},
-        "right_image": {"asset_id": "asset_image_...", "sha256": "sha256:..."}
-      },
-      "render": {
-        "avatar_source_profile": "avatarforcing-centered-832x480p25-v1",
-        "avatar_crop": "416:468:208:6",
-        "avatar_scale": "960:1080",
-        "avatar_fps": "30:round=near",
-        "right_image_scale": "960:1080",
-        "right_image_zoom_profile": "split-right-zoom-v1"
-      }
-    }
-  ]
-}
-```
-
-The snippets above emphasize one split relationship and intentionally omit unrelated segments/use readable placeholder asset IDs. Complete schema-valid documents are in `evidence/fixtures/timeline_plan.valid.json` and `evidence/fixtures/resolved_render_manifest.valid.json`.
+Complete schema-valid plan and resolved documents are
+`evidence/fixtures/timeline_plan.valid.json` and
+`evidence/fixtures/resolved_render_manifest.valid.json`. Their split segment proves the exact
+avatar/audio-span/right-image task keys become accepted content-addressed assets with the locked
+AvatarForcing crop, 30 fps conversion, and right-image zoom profile.
 
 Unless a field explicitly hashes raw provider bytes, every JSON contract hash uses `SHA-256(RFC 8785 JCS(payload))` and includes the `sha256:` prefix. Never hash pretty-printed JSON or a mutable database projection. The golden chain contains real content-derived revision, timeline, render, and default-style hashes.
 
@@ -290,40 +208,37 @@ Every start/cancel/regenerate/segment-accept/final-approve mutation requires `Id
 
 ## Worker job envelope
 
+`evidence/worker_job_envelope.schema.json` (`worker-job-envelope/v1`) is the canonical
+claim-bound dispatch contract. It carries only immutable identity, content-addressed pointers,
+controlled output/callback destinations, expiry, and cancellation authority. Job-specific avatar,
+audio-span, image-prompt, or render inputs live in the content-addressed `input_manifest`; workers
+must validate that manifest against the expected job type before loading a model. The complete
+schema-valid synthetic example is `evidence/fixtures/worker_job_envelope.valid.json`.
+
 ```json
 {
-  "contract_version": "1.0",
-  "job_type": "avatar_primary_chunk",
-  "idempotency_key": "rev:avatar:chunk:attempt",
-  "workspace_id": "...",
-  "project_id": "...",
-  "revision_id": "...",
-  "task_id": "...",
-  "execution_profile_id": "exec_avatar_balanced_v1",
-  "execution_claim_token": "single-use-task-attempt-claim",
-  "avatar_binding": {
-    "avatar_profile_id": "avatar_profile_...",
-    "avatar_profile_version_id": "avatar_profile_version_...",
-    "avatar_profile_hash": "sha256:...",
-    "runtime_source": {"asset_id": "asset_avatar_runtime", "signed_url": "...", "sha256": "..."},
-    "source_preparation_version": "avatar-source-prep-v1",
-    "source_validation_profile_version": "avatar-source-validation-v1"
+  "schema_version": "worker-job-envelope/v1",
+  "job_type": "AVATAR_PRIMARY_CHUNK",
+  "dispatch_target": "FIXTURE",
+  "idempotency_key": "revision_fixture_001:avatar:chunk_001:attempt_001",
+  "workspace_id": "workspace_fixture_001",
+  "project_id": "project_fixture_001",
+  "revision_id": "revision_fixture_001",
+  "task_id": "task_avatar_chunk_001",
+  "attempt_id": "attempt_avatar_chunk_001_001",
+  "execution_profile_id": "fixture-avatar-primary-auto-v1",
+  "execution_claim_token": "single-use-token-at-least-32-characters",
+  "revision_config": {"asset_id": "asset_revision_config_001", "sha256": "sha256:..."},
+  "input_manifest": {
+    "asset_id": "asset_avatar_input_manifest_001",
+    "sha256": "sha256:...",
+    "signed_url": "https://...",
+    "expires_at": "2026-08-09T11:30:00.000Z"
   },
-  "items": [
-    {
-      "segment_id": "seg_...",
-      "span_audio": {"asset_id": "asset_span_audio", "signed_url": "...", "sha256": "..."},
-      "padding_before_ms": 250,
-      "padding_after_ms": 250,
-      "trim_start_ms": 250,
-      "trim_end_ms": 4050,
-      "expected_output_frames_30fps": 114
-    }
-  ],
-  "output_prefix": "...",
-  "callback": {"url": "...", "token": "short-lived"},
-  "model_profile": "avatarforcing-v1-production-candidate",
-  "cancel_token": "..."
+  "output_prefix": "workspace/.../avatar/primary/attempt_001/",
+  "callback": {"url": "https://...", "token": "short-lived-token-at-least-32-characters", "expires_at": "2026-08-09T11:30:00.000Z"},
+  "cancel_token": "cancel-token-at-least-32-characters",
+  "deadline_at": "2026-08-09T11:20:00.000Z"
 }
 ```
 
@@ -334,6 +249,12 @@ An image-generation item carries the immutable compiled prompt components/final 
 ## Events and UI progress
 
 Events are append-only and monotonic per attempt. Derived project progress can be rebuilt from them. The UI may receive them through realtime/SSE and must poll after disconnect.
+
+`evidence/orchestration_state.schema.json` (`orchestration-state/v1`) locks the durable workflow,
+task, attempt, outbox, cancellation, and event vocabulary before any provider transport is added.
+The valid/invalid golden fixtures prove that dispatch is content-addressed and that an unhashed
+outbox payload cannot cross the boundary. Cross-row reference integrity and strictly increasing
+event sequences remain transactional database invariants in addition to document validation.
 
 Do not store a fake `63%` that cannot be explained. Calculate stage progress from completed/total units, and overall progress from explicit weighted stages whose weights are versioned.
 

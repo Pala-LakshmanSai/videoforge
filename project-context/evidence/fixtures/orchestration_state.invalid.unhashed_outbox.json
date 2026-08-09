@@ -1,0 +1,51 @@
+{
+  "schema_version": "orchestration-state/v1",
+  "workflow": {
+    "workflow_id": "workflow_fixture_001",
+    "workspace_id": "workspace_fixture_001",
+    "project_id": "project_fixture_001",
+    "revision_id": "revision_fixture_001",
+    "state": "RUNNING",
+    "version": 3,
+    "created_at": "2026-08-09T09:20:00.000Z",
+    "updated_at": "2026-08-09T09:21:03.000Z",
+    "cancel_requested_at": null
+  },
+  "tasks": [
+    {
+      "task_id": "task_avatar_chunk_001",
+      "task_key": "avatar:chunk:001",
+      "lane": "AVATAR",
+      "state": "DISPATCHING",
+      "required": true,
+      "depends_on": [],
+      "accepted_attempt_id": null,
+      "version": 2
+    }
+  ],
+  "attempts": [],
+  "outbox_messages": [
+    {
+      "outbox_id": "outbox_dispatch_avatar_001",
+      "attempt_id": "attempt_avatar_chunk_001_001",
+      "kind": "DISPATCH",
+      "state": "PENDING",
+      "dedupe_key": "revision_fixture_001:avatar:chunk_001:attempt_001",
+      "available_at": "2026-08-09T09:21:00.000Z",
+      "lease_expires_at": null,
+      "delivered_at": null
+    }
+  ],
+  "events": [
+    {
+      "event_id": "event_workflow_001_001",
+      "workflow_id": "workflow_fixture_001",
+      "task_id": null,
+      "attempt_id": null,
+      "sequence": 1,
+      "kind": "WORKFLOW_CREATED",
+      "occurred_at": "2026-08-09T09:20:00.000Z",
+      "payload_hash": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+    }
+  ]
+}

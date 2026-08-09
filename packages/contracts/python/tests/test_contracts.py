@@ -28,6 +28,12 @@ FIXTURE_CASES: tuple[tuple[ContractName, str, bool], ...] = (
         "create_project_request.invalid.inline_avatar.json",
         False,
     ),
+    ("orchestrationState", "orchestration_state.valid.json", True),
+    (
+        "orchestrationState",
+        "orchestration_state.invalid.unhashed_outbox.json",
+        False,
+    ),
     (
         "createProjectRequest",
         "create_project_request.invalid.over_budget.json",
@@ -48,6 +54,12 @@ FIXTURE_CASES: tuple[tuple[ContractName, str, bool], ...] = (
     ),
     ("productionManifest", "production_manifest.valid.json", True),
     ("imageStyleProfile", "default_image_style_v1.json", True),
+    ("workerJobEnvelope", "worker_job_envelope.valid.json", True),
+    (
+        "workerJobEnvelope",
+        "worker_job_envelope.invalid.shell_args.json",
+        False,
+    ),
 )
 
 
@@ -57,7 +69,7 @@ def load_fixture(filename: str) -> Any:
 
 def test_all_canonical_schemas_compile() -> None:
     assert set(CONTRACT_NAMES) == set(CONTRACT_VALIDATORS)
-    assert len(CONTRACT_NAMES) == 8
+    assert len(CONTRACT_NAMES) == 10
 
 
 def test_fixture_matrix_covers_every_synchronized_fixture() -> None:

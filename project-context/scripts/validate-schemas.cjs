@@ -14,10 +14,12 @@ const schemaFiles = [
   "create_project_request.schema.json",
   "image_style_profile.schema.json",
   "image_style_analyzer_output.schema.json",
+  "orchestration_state.schema.json",
   "project_revision_config.schema.json",
   "timeline_plan.schema.json",
   "resolved_render_manifest.schema.json",
   "production_manifest.schema.json",
+  "worker_job_envelope.schema.json",
 ];
 
 const schemaDocuments = schemaFiles.map(readJson);
@@ -29,6 +31,8 @@ const cases = [
   ["create-project-request-v2.json", "fixtures/create_project_request.valid.json", true],
   ["create-project-request-v2.json", "fixtures/create_project_request.invalid.inline_avatar.json", false],
   ["create-project-request-v2.json", "fixtures/create_project_request.invalid.over_budget.json", false],
+  ["orchestration-state-v1.json", "fixtures/orchestration_state.valid.json", true],
+  ["orchestration-state-v1.json", "fixtures/orchestration_state.invalid.unhashed_outbox.json", false],
   ["project-revision-config-v2.json", "fixtures/project_revision_config.valid.json", true],
   ["project-revision-config-v2.json", "fixtures/project_revision_config.invalid.compatibility_mismatch.json", false],
   ["timeline-plan-v1.json", "fixtures/timeline_plan.valid.json", true],
@@ -36,6 +40,8 @@ const cases = [
   ["resolved-render-manifest-v1.json", "fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json", false],
   ["production-manifest-v2.json", "fixtures/production_manifest.valid.json", true],
   ["image-style-profile-v1.json", "default_image_style_v1.json", true],
+  ["worker-job-envelope-v1.json", "fixtures/worker_job_envelope.valid.json", true],
+  ["worker-job-envelope-v1.json", "fixtures/worker_job_envelope.invalid.shell_args.json", false],
 ];
 
 let failed = false;

@@ -753,6 +753,464 @@ export const canonicalSchemaDocuments = {
       }
     }
   },
+  "orchestrationState": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/orchestration-state-v1.json",
+    "title": "VideoForge Durable Orchestration State v1",
+    "description": "Rebuildable workflow snapshot covering task eligibility, attempt lineage, transactional dispatch, cancellation, and monotonic audit events.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "workflow",
+      "tasks",
+      "attempts",
+      "outbox_messages",
+      "events"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "orchestration-state/v1"
+      },
+      "workflow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "workflow_id",
+          "workspace_id",
+          "project_id",
+          "revision_id",
+          "state",
+          "version",
+          "created_at",
+          "updated_at",
+          "cancel_requested_at"
+        ],
+        "properties": {
+          "workflow_id": {
+            "$ref": "#/$defs/id"
+          },
+          "workspace_id": {
+            "$ref": "#/$defs/id"
+          },
+          "project_id": {
+            "$ref": "#/$defs/id"
+          },
+          "revision_id": {
+            "$ref": "#/$defs/id"
+          },
+          "state": {
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "NEEDS_ATTENTION",
+              "RECONCILING",
+              "CANCEL_REQUESTED",
+              "CANCELLED",
+              "READY_FOR_REVIEW",
+              "APPROVED",
+              "FAILED"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "created_at": {
+            "$ref": "#/$defs/timestamp"
+          },
+          "updated_at": {
+            "$ref": "#/$defs/timestamp"
+          },
+          "cancel_requested_at": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/timestamp"
+              }
+            ]
+          }
+        }
+      },
+      "tasks": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 10000,
+        "items": {
+          "$ref": "#/$defs/task"
+        }
+      },
+      "attempts": {
+        "type": "array",
+        "maxItems": 30000,
+        "items": {
+          "$ref": "#/$defs/attempt"
+        }
+      },
+      "outbox_messages": {
+        "type": "array",
+        "maxItems": 30000,
+        "items": {
+          "$ref": "#/$defs/outbox"
+        }
+      },
+      "events": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 100000,
+        "items": {
+          "$ref": "#/$defs/event"
+        }
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "timestamp": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      },
+      "task": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id",
+          "task_key",
+          "lane",
+          "state",
+          "required",
+          "depends_on",
+          "accepted_attempt_id",
+          "version"
+        ],
+        "properties": {
+          "task_id": {
+            "$ref": "#/$defs/id"
+          },
+          "task_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "lane": {
+            "enum": [
+              "PREPARE",
+              "TRANSCRIBE",
+              "PLAN",
+              "PROMPT",
+              "IMAGE",
+              "AVATAR",
+              "RENDER",
+              "QA"
+            ]
+          },
+          "state": {
+            "enum": [
+              "PENDING",
+              "READY",
+              "DISPATCHING",
+              "RUNNING",
+              "RETRY_WAIT",
+              "BLOCKED",
+              "FAILED",
+              "CANCEL_REQUESTED",
+              "CANCELLED",
+              "COMPLETE"
+            ]
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "depends_on": {
+            "type": "array",
+            "maxItems": 100,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/id"
+            }
+          },
+          "accepted_attempt_id": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/id"
+              }
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "attempt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "attempt_id",
+          "task_id",
+          "ordinal",
+          "state",
+          "dispatch_state",
+          "execution_profile_id",
+          "claim_state",
+          "external_job_id",
+          "input_hash",
+          "output_asset_id",
+          "started_at",
+          "finished_at",
+          "problem_code"
+        ],
+        "properties": {
+          "attempt_id": {
+            "$ref": "#/$defs/id"
+          },
+          "task_id": {
+            "$ref": "#/$defs/id"
+          },
+          "ordinal": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "state": {
+            "enum": [
+              "CREATED",
+              "CLAIMED",
+              "RUNNING",
+              "SUCCEEDED",
+              "FAILED",
+              "CANCELLED",
+              "UNKNOWN"
+            ]
+          },
+          "dispatch_state": {
+            "enum": [
+              "NOT_SENT",
+              "SENDING",
+              "ACKNOWLEDGED",
+              "AMBIGUOUS",
+              "RECONCILED"
+            ]
+          },
+          "execution_profile_id": {
+            "$ref": "#/$defs/id"
+          },
+          "claim_state": {
+            "enum": [
+              "UNCLAIMED",
+              "CLAIMED",
+              "REJECTED",
+              "EXPIRED"
+            ]
+          },
+          "external_job_id": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/id"
+              }
+            ]
+          },
+          "input_hash": {
+            "$ref": "#/$defs/sha256"
+          },
+          "output_asset_id": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/id"
+              }
+            ]
+          },
+          "started_at": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/timestamp"
+              }
+            ]
+          },
+          "finished_at": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/timestamp"
+              }
+            ]
+          },
+          "problem_code": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              }
+            ]
+          }
+        }
+      },
+      "outbox": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "outbox_id",
+          "attempt_id",
+          "kind",
+          "state",
+          "dedupe_key",
+          "payload_hash",
+          "available_at",
+          "lease_expires_at",
+          "delivered_at"
+        ],
+        "properties": {
+          "outbox_id": {
+            "$ref": "#/$defs/id"
+          },
+          "attempt_id": {
+            "$ref": "#/$defs/id"
+          },
+          "kind": {
+            "enum": [
+              "DISPATCH",
+              "CANCEL",
+              "CALLBACK_RECONCILE"
+            ]
+          },
+          "state": {
+            "enum": [
+              "PENDING",
+              "LEASED",
+              "DELIVERED",
+              "RETRY_WAIT",
+              "DEAD_LETTER"
+            ]
+          },
+          "dedupe_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "payload_hash": {
+            "$ref": "#/$defs/sha256"
+          },
+          "available_at": {
+            "$ref": "#/$defs/timestamp"
+          },
+          "lease_expires_at": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/timestamp"
+              }
+            ]
+          },
+          "delivered_at": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/timestamp"
+              }
+            ]
+          }
+        }
+      },
+      "event": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event_id",
+          "workflow_id",
+          "task_id",
+          "attempt_id",
+          "sequence",
+          "kind",
+          "occurred_at",
+          "payload_hash"
+        ],
+        "properties": {
+          "event_id": {
+            "$ref": "#/$defs/id"
+          },
+          "workflow_id": {
+            "$ref": "#/$defs/id"
+          },
+          "task_id": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/id"
+              }
+            ]
+          },
+          "attempt_id": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/id"
+              }
+            ]
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "kind": {
+            "enum": [
+              "WORKFLOW_CREATED",
+              "TASK_READY",
+              "ATTEMPT_CREATED",
+              "DISPATCH_RECORDED",
+              "DISPATCH_ACKNOWLEDGED",
+              "ATTEMPT_SUCCEEDED",
+              "ATTEMPT_FAILED",
+              "CANCEL_REQUESTED",
+              "RECONCILIATION_RECORDED",
+              "WORKFLOW_READY_FOR_REVIEW",
+              "WORKFLOW_APPROVED"
+            ]
+          },
+          "occurred_at": {
+            "$ref": "#/$defs/timestamp"
+          },
+          "payload_hash": {
+            "$ref": "#/$defs/sha256"
+          }
+        }
+      }
+    }
+  },
   "projectRevisionConfig": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://videoforge.local/schemas/project-revision-config-v2.json",
@@ -2411,6 +2869,185 @@ export const canonicalSchemaDocuments = {
           "sha256": {
             "type": "string",
             "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "workerJobEnvelope": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/worker-job-envelope-v1.json",
+    "title": "VideoForge Worker Job Envelope v1",
+    "description": "Immutable, claim-bound dispatch metadata. Workers receive content-addressed inputs and controlled destinations, never mutable latest-state lookups or shell arguments.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "job_type",
+      "dispatch_target",
+      "idempotency_key",
+      "workspace_id",
+      "project_id",
+      "revision_id",
+      "task_id",
+      "attempt_id",
+      "execution_profile_id",
+      "execution_claim_token",
+      "revision_config",
+      "input_manifest",
+      "output_prefix",
+      "callback",
+      "cancel_token",
+      "deadline_at"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "worker-job-envelope/v1"
+      },
+      "job_type": {
+        "enum": [
+          "ASR",
+          "IMAGE_MEDIA_CHUNK",
+          "AVATAR_PRIMARY_CHUNK",
+          "AVATAR_REPAIR_CHUNK",
+          "AVATAR_QUALITY_CHUNK",
+          "RENDER"
+        ]
+      },
+      "dispatch_target": {
+        "enum": [
+          "FIXTURE",
+          "LOCAL",
+          "RUNPOD"
+        ]
+      },
+      "idempotency_key": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 240
+      },
+      "workspace_id": {
+        "$ref": "#/$defs/id"
+      },
+      "project_id": {
+        "$ref": "#/$defs/id"
+      },
+      "revision_id": {
+        "$ref": "#/$defs/id"
+      },
+      "task_id": {
+        "$ref": "#/$defs/id"
+      },
+      "attempt_id": {
+        "$ref": "#/$defs/id"
+      },
+      "execution_profile_id": {
+        "$ref": "#/$defs/id"
+      },
+      "execution_claim_token": {
+        "type": "string",
+        "minLength": 32,
+        "maxLength": 512
+      },
+      "revision_config": {
+        "$ref": "#/$defs/assetPointer"
+      },
+      "input_manifest": {
+        "$ref": "#/$defs/signedAssetPointer"
+      },
+      "output_prefix": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 600,
+        "pattern": "^(?!.*(?:^|/)\\.\\.(?:/|$))workspace/[A-Za-z0-9._/-]+/$"
+      },
+      "callback": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "url",
+          "token",
+          "expires_at"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "pattern": "^https://",
+            "maxLength": 2000
+          },
+          "token": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 512
+          },
+          "expires_at": {
+            "$ref": "#/$defs/timestamp"
+          }
+        }
+      },
+      "cancel_token": {
+        "type": "string",
+        "minLength": 32,
+        "maxLength": 512
+      },
+      "deadline_at": {
+        "$ref": "#/$defs/timestamp"
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "timestamp": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      },
+      "assetPointer": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asset_id",
+          "sha256"
+        ],
+        "properties": {
+          "asset_id": {
+            "$ref": "#/$defs/id"
+          },
+          "sha256": {
+            "$ref": "#/$defs/sha256"
+          }
+        }
+      },
+      "signedAssetPointer": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asset_id",
+          "sha256",
+          "signed_url",
+          "expires_at"
+        ],
+        "properties": {
+          "asset_id": {
+            "$ref": "#/$defs/id"
+          },
+          "sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "signed_url": {
+            "type": "string",
+            "pattern": "^https://",
+            "maxLength": 2000
+          },
+          "expires_at": {
+            "$ref": "#/$defs/timestamp"
           }
         }
       }

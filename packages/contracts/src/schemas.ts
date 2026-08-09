@@ -5,10 +5,12 @@ export const contractNames = [
   "createProjectRequest",
   "imageStyleProfile",
   "imageStyleAnalyzerOutput",
+  "orchestrationState",
   "projectRevisionConfig",
   "timelinePlan",
   "resolvedRenderManifest",
   "productionManifest",
+  "workerJobEnvelope",
 ] as const;
 
 export type ContractName = (typeof contractNames)[number];
@@ -20,8 +22,10 @@ export const contractSchemaIds = {
   createProjectRequest: canonicalSchemaDocuments.createProjectRequest.$id,
   imageStyleProfile: canonicalSchemaDocuments.imageStyleProfile.$id,
   imageStyleAnalyzerOutput: canonicalSchemaDocuments.imageStyleAnalyzerOutput.$id,
+  orchestrationState: canonicalSchemaDocuments.orchestrationState.$id,
   projectRevisionConfig: canonicalSchemaDocuments.projectRevisionConfig.$id,
   timelinePlan: canonicalSchemaDocuments.timelinePlan.$id,
   resolvedRenderManifest: canonicalSchemaDocuments.resolvedRenderManifest.$id,
   productionManifest: canonicalSchemaDocuments.productionManifest.$id,
+  workerJobEnvelope: canonicalSchemaDocuments.workerJobEnvelope.$id,
 } as const satisfies Record<ContractName, string>;

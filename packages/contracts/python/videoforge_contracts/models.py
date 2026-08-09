@@ -64,6 +64,10 @@ class ImageStyleAnalyzerOutputDocument(CanonicalContractDocument):
     contract_name = "imageStyleAnalyzerOutput"
 
 
+class OrchestrationStateDocument(CanonicalContractDocument):
+    contract_name = "orchestrationState"
+
+
 class ProjectRevisionConfigDocument(CanonicalContractDocument):
     contract_name = "projectRevisionConfig"
 
@@ -80,13 +84,19 @@ class ProductionManifestDocument(CanonicalContractDocument):
     contract_name = "productionManifest"
 
 
+class WorkerJobEnvelopeDocument(CanonicalContractDocument):
+    contract_name = "workerJobEnvelope"
+
+
 CONTRACT_MODELS: dict[ContractName, type[BaseModel]] = {
     "avatarProfileVersion": AvatarProfileVersionDocument,
     "createProjectRequest": CreateProjectRequest,
     "imageStyleProfile": ImageStyleProfileDocument,
     "imageStyleAnalyzerOutput": ImageStyleAnalyzerOutputDocument,
+    "orchestrationState": OrchestrationStateDocument,
     "projectRevisionConfig": ProjectRevisionConfigDocument,
     "timelinePlan": TimelinePlanDocument,
     "resolvedRenderManifest": ResolvedRenderManifestDocument,
     "productionManifest": ProductionManifestDocument,
+    "workerJobEnvelope": WorkerJobEnvelopeDocument,
 }

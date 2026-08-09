@@ -13,10 +13,12 @@ const schemaSpecs = [
   ["createProjectRequest", "create_project_request.schema.json"],
   ["imageStyleProfile", "image_style_profile.schema.json"],
   ["imageStyleAnalyzerOutput", "image_style_analyzer_output.schema.json"],
+  ["orchestrationState", "orchestration_state.schema.json"],
   ["projectRevisionConfig", "project_revision_config.schema.json"],
   ["timelinePlan", "timeline_plan.schema.json"],
   ["resolvedRenderManifest", "resolved_render_manifest.schema.json"],
   ["productionManifest", "production_manifest.schema.json"],
+  ["workerJobEnvelope", "worker_job_envelope.schema.json"],
 ];
 
 const fixtureFiles = [
@@ -24,12 +26,16 @@ const fixtureFiles = [
   "create_project_request.invalid.inline_avatar.json",
   "create_project_request.invalid.over_budget.json",
   "create_project_request.valid.json",
+  "orchestration_state.invalid.unhashed_outbox.json",
+  "orchestration_state.valid.json",
   "production_manifest.valid.json",
   "project_revision_config.invalid.compatibility_mismatch.json",
   "project_revision_config.valid.json",
   "resolved_render_manifest.invalid.avatar_profile_crop.json",
   "resolved_render_manifest.valid.json",
   "timeline_plan.valid.json",
+  "worker_job_envelope.invalid.shell_args.json",
+  "worker_job_envelope.valid.json",
 ];
 
 const toPosix = (value) => value.split(path.sep).join("/");
