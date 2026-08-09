@@ -695,10 +695,10 @@
 .panel {
   padding: clamp(22px, 2vw, 30px);
   overflow: visible;
-  border-color: var(--border);
+  border-color: var(--surface-border);
   border-radius: 26px;
   background: linear-gradient(130deg, rgba(255, 255, 255, 0.035), transparent 35%), var(--panel);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow), var(--surface-glow);
   backdrop-filter: blur(22px) saturate(115%);
 }
 
@@ -766,8 +766,10 @@ h4 {
 .metric {
   min-height: 96px;
   padding: 16px;
+  border-color: var(--surface-border-subtle);
   border-radius: 19px;
-  background: rgba(8, 10, 25, 0.48);
+  background: var(--surface-fill);
+  box-shadow: var(--surface-tile-shadow), var(--surface-glow);
 }
 
 .metric span {
@@ -849,7 +851,9 @@ h4 {
   min-height: 84px;
   gap: 7px;
   padding: 15px;
+  border-color: var(--surface-border-subtle);
   border-radius: 17px;
+  background: var(--surface-fill-soft);
   font-size: 0.92rem;
   text-align: left;
 }
@@ -857,7 +861,9 @@ h4 {
 .toggle-row {
   min-height: 60px;
   padding: 12px 14px;
+  border-color: var(--surface-border-subtle);
   border-radius: 16px;
+  background: var(--surface-fill-soft);
 }
 
 .switch-root {
@@ -1030,12 +1036,6 @@ h4 {
     transform: translateY(0) scale(1);
     opacity: 1;
   }
-}
-
-.notice + .notice,
-.page-header + .notice,
-.notice + .progress-hero {
-  margin-top: 14px;
 }
 
 .app-select {
@@ -1372,6 +1372,14 @@ h4 {
 
 .empty-state {
   min-height: 380px;
+}
+
+.page > .empty-state {
+  padding: clamp(28px, 6vw, 48px);
+  border: 1px solid var(--surface-border);
+  border-radius: 26px;
+  background: var(--surface-fill);
+  box-shadow: var(--surface-shadow), var(--surface-glow);
 }
 
 .empty-state p {

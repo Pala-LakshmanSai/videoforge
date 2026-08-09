@@ -195,6 +195,7 @@
 @media (max-width: 680px) {
   :root {
     font-size: 18px;
+    --page-section-gap: 20px;
   }
 
   .app-shell {
@@ -315,7 +316,7 @@
 
   .page-header {
     gap: 16px;
-    margin-bottom: 22px;
+    margin-bottom: 0;
   }
 
   .page-header-title,

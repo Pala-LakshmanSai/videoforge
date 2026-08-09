@@ -3,6 +3,7 @@
 .library-grid {
   display: grid;
   grid-template-columns: minmax(0, 920px);
+  gap: 20px;
 }
 
 .library-output .entity-card-footer {
@@ -28,4 +29,15 @@
   min-height: 58px;
   align-items: center;
   gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--surface-border-subtle);
+  border-radius: 16px;
+  background: var(--surface-fill-soft);
+  box-shadow: var(--surface-tile-shadow);
+}
+
+.usage-grid .metric {
+  min-height: 108px;
+  padding: 20px 22px;
+  border-color: var(--surface-border);
 }

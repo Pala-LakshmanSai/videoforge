@@ -71,12 +71,12 @@
 }
 
 .queue-overview {
-  margin-bottom: 24px;
+  margin-bottom: 0;
 }
 
 .queue-list {
   display: grid;
-  gap: 13px;
+  gap: 16px;
 }
 
 .queue-card {
@@ -86,19 +86,22 @@
   align-items: center;
   gap: 22px;
   padding: 18px 20px;
-  border: 1px solid rgba(183, 178, 230, 0.14);
+  border: 1px solid var(--surface-border-subtle);
   border-radius: 22px;
-  background: rgba(7, 9, 22, 0.42);
+  background: var(--surface-fill);
+  box-shadow: var(--surface-tile-shadow), var(--surface-glow);
   transition:
     border-color 150ms ease,
+    box-shadow 150ms ease,
     transform 150ms ease,
     background 150ms ease;
 }
 
 .queue-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(255, 94, 115, 0.35);
+  border-color: var(--surface-border-strong);
   background: rgba(21, 21, 42, 0.68);
+  box-shadow: var(--surface-shadow), var(--surface-glow);
 }
 
 .queue-card__identity,

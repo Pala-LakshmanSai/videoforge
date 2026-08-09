@@ -644,15 +644,18 @@
 }
 
 .page {
+  display: flex;
   width: min(1480px, 100%);
   margin: 0 auto;
   padding: 36px clamp(22px, 3.5vw, 52px) 56px;
+  flex-direction: column;
+  gap: var(--page-section-gap);
 }
 
 .page-header {
   align-items: flex-end;
   gap: 22px;
-  margin: 4px 0 24px;
+  margin: 4px 0 0;
 }
 
 .page-header-copy {

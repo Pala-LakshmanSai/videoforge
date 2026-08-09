@@ -36,7 +36,7 @@ export function UsageScreen() {
   return (
     <>
       <PageHeader title="Usage" />
-      <div className="grid grid-4">
+      <div className="grid grid-4 usage-grid">
         <Metric
           label="Total"
           value={`$${usage.currentMonth.toFixed(2)}`}
@@ -59,7 +59,7 @@ export function UsageScreen() {
           detail="optional"
         />
       </div>
-      <div className="grid grid-3">
+      <div className="grid grid-3 usage-grid">
         <Metric label="GPU" value={`${usage.gpuSeconds}s`} detail="billed time" />
         <Metric label="Storage" value={`${usage.storageGb.toFixed(2)} GB`} detail="retained" />
         <Metric label="Retries" value={String(usage.retries)} detail="item-level" />

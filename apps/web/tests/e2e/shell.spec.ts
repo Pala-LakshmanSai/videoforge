@@ -9,6 +9,70 @@ interface RuntimeFailures {
   pageErrors: string[];
 }
 
+interface UiSurfaceRoute {
+  heading: string;
+  path: string;
+  surfaces: string[];
+}
+
+const uiSurfaceRoutes: UiSurfaceRoute[] = [
+  {
+    heading: "Your queue",
+    path: "/?fixture=happy_generating",
+    surfaces: [".queue-overview .metric", ".queue-panel", ".queue-card"],
+  },
+  {
+    heading: "New project",
+    path: "/projects/new?fixture=project_create_ready",
+    surfaces: [".create-config-panel", ".create-section", ".create-run-panel"],
+  },
+  {
+    heading: "How to Recognize a Sweet Watermelon",
+    path: "/projects/project_fixture_001?fixture=happy_generating",
+    surfaces: [".progress-hero", ".pipeline-panel", ".stage-row", ".lane-row"],
+  },
+  {
+    heading: "Review",
+    path: "/projects/project_fixture_001/review?fixture=project_ready_for_review",
+    surfaces: [".review-player", ".review-segments", ".review-card"],
+  },
+  {
+    heading: "Avatar Hub",
+    path: "/avatars?fixture=avatar_profile_ready",
+    surfaces: [".entity-card"],
+  },
+  {
+    heading: "New avatar",
+    path: "/avatars/new?fixture=project_create_ready",
+    surfaces: [".layout-main > .panel", ".onboarding-details"],
+  },
+  {
+    heading: "Image Styles",
+    path: "/styles?fixture=happy_generating",
+    surfaces: [".entity-card"],
+  },
+  {
+    heading: "New style",
+    path: "/styles/new?fixture=project_create_ready",
+    surfaces: [".layout-main > .panel", ".onboarding-details"],
+  },
+  {
+    heading: "Library",
+    path: "/library?fixture=project_approved",
+    surfaces: [".library-output"],
+  },
+  {
+    heading: "Usage",
+    path: "/usage?fixture=happy_generating",
+    surfaces: [".usage-grid .metric"],
+  },
+  {
+    heading: "Settings",
+    path: "/settings?fixture=happy_generating",
+    surfaces: [".settings-grid .panel", ".settings-summary"],
+  },
+];
+
 const runtimeFailures = new WeakMap<Page, RuntimeFailures>();
 
 function fixtureSessionId(testInfo: TestInfo): string {
@@ -293,6 +357,81 @@ test("content uses the medium scale while the dock keeps its approved base size"
   expect(scale.inputHeight).toBe(52);
   expect(scale.dockWidth).toBeGreaterThanOrEqual(94);
   expect(scale.dockHeight).toBeGreaterThanOrEqual(74);
+});
+
+test("every screen keeps separated sections and legible structural surfaces", async ({ page }) => {
+  for (const route of uiSurfaceRoutes) {
+    await page.goto(route.path);
+    await expect(page.getByRole("heading", { name: route.heading }).first()).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+
+    const pageLayout = await page.locator(".page").evaluate((element) => {
+      const expectedGap = Number.parseFloat(getComputedStyle(element).rowGap);
+      const children = Array.from(element.children)
+        .filter((child) => {
+          const bounds = child.getBoundingClientRect();
+          return bounds.height > 0 && getComputedStyle(child).position !== "fixed";
+        })
+        .map((child) => {
+          const bounds = child.getBoundingClientRect();
+          return { bottom: bounds.bottom, top: bounds.top };
+        });
+      return {
+        expectedGap,
+        gaps: children.slice(1).map((child, index) => child.top - children[index].bottom),
+      };
+    });
+
+    expect(pageLayout.expectedGap, `${route.path} has no page section gap`).toBeGreaterThanOrEqual(
+      20,
+    );
+    for (const gap of pageLayout.gaps) {
+      expect(
+        gap,
+        `${route.path} has touching or overlapping top-level sections`,
+      ).toBeGreaterThanOrEqual(pageLayout.expectedGap - 0.5);
+    }
+
+    for (const selector of route.surfaces) {
+      const surface = page.locator(selector).first();
+      await expect(surface, `${route.path} is missing ${selector}`).toBeVisible();
+      const boundary = await surface.evaluate((element) => {
+        const style = getComputedStyle(element);
+        const color = style.borderTopColor;
+        const rgba = color.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)$/u);
+        return {
+          borderAlpha: rgba ? Number(rgba[1]) : 1,
+          borderWidth: Number.parseFloat(style.borderTopWidth),
+          boxShadow: style.boxShadow,
+        };
+      });
+      expect(
+        boundary.borderWidth,
+        `${route.path} ${selector} has no boundary`,
+      ).toBeGreaterThanOrEqual(1);
+      expect(
+        boundary.borderAlpha,
+        `${route.path} ${selector} boundary is too faint`,
+      ).toBeGreaterThanOrEqual(0.2);
+      expect(boundary.boxShadow, `${route.path} ${selector} has no depth cue`).not.toBe("none");
+    }
+
+    if (route.path.startsWith("/usage")) {
+      const usageGap = await page.locator(".usage-grid").evaluateAll((grids) => {
+        const first = grids[0]?.getBoundingClientRect();
+        const second = grids[1]?.getBoundingClientRect();
+        return first && second ? second.top - first.bottom : 0;
+      });
+      expect(usageGap).toBeGreaterThanOrEqual(pageLayout.expectedGap - 0.5);
+    }
+
+    if (route.path.startsWith("/library")) {
+      const libraryGap = await page
+        .locator(".library-grid")
+        .evaluate((element) => Number.parseFloat(getComputedStyle(element).rowGap));
+      expect(libraryGap).toBeGreaterThanOrEqual(20);
+    }
+  }
 });
 
 test("Avatar Hub shows the preset image and keeps technical detail collapsed", async ({ page }) => {
@@ -640,13 +779,8 @@ for (const viewport of [
   }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
-    for (const route of [
-      "/?fixture=happy_generating",
-      "/projects/project_fixture_001?fixture=happy_generating",
-      "/avatars?fixture=avatar_profile_ready",
-      "/styles?fixture=happy_generating",
-    ]) {
-      await page.goto(route);
+    for (const route of uiSurfaceRoutes) {
+      await page.goto(route.path);
       await expect(page.locator("main")).toBeVisible();
       await expectNoHorizontalOverflow(page);
     }
