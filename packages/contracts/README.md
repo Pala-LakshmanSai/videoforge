@@ -19,9 +19,9 @@ cross-language documents; the Zod and Pydantic document entry points invoke that
 validator instead of maintaining independently hand-written copies that can drift. Golden valid
 and invalid fixtures must produce identical Ajv, Zod-entry-point, and Pydantic-entry-point results.
 
-The Python package is pinned to the repository's Python 3.12 worker/CI baseline. Install its
-isolated test environment once with `pnpm python:install`; subsequent `pnpm test` runs are
-network-free.
+The Python package participates in the repository's Python 3.12 `uv` workspace. Run
+`pnpm python:sync` with exactly `uv 0.8.13`; `uv.lock` pins the complete worker/contract graph and
+subsequent `pnpm test` runs use `--locked --no-sync` without installer mixing.
 
 ## Canonical hashes
 

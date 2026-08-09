@@ -1,0 +1,35 @@
+[project]
+name = "videoforge-python-workspace"
+version = "0.0.0"
+description = "Reproducible Python workspace for VideoForge contracts and workers"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "pytest==8.4.1",
+  "ruff==0.12.9",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = [
+  "packages/contracts",
+  "workers/avatar-primary",
+  "workers/avatar-quality",
+  "workers/avatar-repair",
+  "workers/image-media",
+]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["packages/contracts/python/videoforge_contracts/_schema_documents.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

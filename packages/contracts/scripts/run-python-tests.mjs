@@ -1,42 +1,33 @@
-import { existsSync } from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+import { resolveUv } from "../../../scripts/uv-tool.mjs";
+
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const venvPython = path.join(
-  packageRoot,
-  ".venv",
-  process.platform === "win32" ? "Scripts/python.exe" : "bin/python",
-);
-
-const candidates = [
-  process.env.VIDEOFORGE_CONTRACTS_PYTHON,
-  existsSync(venvPython) ? venvPython : undefined,
-  "python3.12",
-].filter(Boolean);
-
-const python = candidates.find(
-  (candidate) =>
-    spawnSync(
-      candidate,
-      [
-        "-c",
-        "import sys, jsonschema, pydantic, pytest; raise SystemExit(0 if sys.version_info[:2] == (3, 12) else 1)",
-      ],
-      { stdio: "ignore" },
-    ).status === 0,
-);
-
-if (!python) {
-  console.error(
-    "Contracts Python dependencies are missing. Run `pnpm --filter @videoforge/contracts python:install` once.",
-  );
+const repoRoot = path.resolve(packageRoot, "../..");
+let uv;
+try {
+  uv = resolveUv();
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 }
-
-const result = spawnSync(python, ["-m", "pytest", "-q", "python/tests"], {
-  cwd: packageRoot,
-  stdio: "inherit",
-});
+const result = spawnSync(
+  uv,
+  [
+    "run",
+    "--locked",
+    "--no-sync",
+    "python",
+    "-m",
+    "pytest",
+    "-q",
+    "packages/contracts/python/tests",
+  ],
+  {
+    cwd: repoRoot,
+    stdio: "inherit",
+  },
+);
 process.exit(result.status ?? 1);

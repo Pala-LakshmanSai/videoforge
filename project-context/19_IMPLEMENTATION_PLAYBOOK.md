@@ -22,10 +22,14 @@ Implementation starts only when the user authorizes it.
    - `pnpm dev:status` — query `GET /api/health` and report URL, PID/process owner, mode, commit, health, and active fixture without starting a duplicate server. The health response exposes no secrets.
    - `pnpm dev:open` — open or focus the stable route in the user's real Chrome after the health check passes.
    - `pnpm test` — local unit/schema tests.
+   - `pnpm python:sync` — use exactly `uv 0.8.13` and `uv.lock` to install the complete Python 3.12 contracts/worker workspace; no package may use a second installer workflow.
+   - `pnpm python:lint` — run locked Ruff checks and formatting verification without syncing or downloading dependencies.
    - `pnpm test:chrome` — Playwright smoke against the running stable URL.
    - `pnpm secret:scan` — detect tracked secrets without echoing values.
    - `pnpm verify` — formatting check, lint, typecheck, unit/contracts/context validation, and fixture-mode Chrome smoke; it must not call external providers. It reuses a healthy owned server or starts/stops only a server instance it owns, never the user's unrelated process.
    - `pnpm context:validate` — invoke both `project-context/scripts/validate-context.sh` and `project-context/scripts/validate-schemas.sh`; after the monorepo installs pinned Ajv, this is network-free.
+   - `pnpm local:doctor` — separately verify real local-media tools and the explicitly fetched Whisper model; ordinary `doctor`/`verify` must not download it.
+   - `pnpm test:local-slice` — run the provider-free real-media acceptance slice only when its local prerequisites are present.
 5. Convert the context schemas into shared TypeScript/Zod and Python/Pydantic contracts, with golden cross-language fixtures.
 6. Open the real app in the user's Chrome and keep it available during user-visible work.
 7. Update `CURRENT_STATE.yaml` with branch/base commit, URL/server state, active task owner, last green commands, and one exact `recommended_next_task` ID/profile/budget for the next chat.

@@ -46,6 +46,7 @@ weights/
 # JavaScript, Cloudflare, Turbo, tests, and editor output.
 node_modules/
 .pnpm-store/
+.tools/
 dist/
 .turbo/
 .wrangler/

@@ -154,7 +154,7 @@ Sequential shared task after Wave 1.
 - Audit the existing ten schemas and add only the missing versioned documents required by a real local job, expected to include canonical transcript/word timing, job-specific input/result manifests, and technical-probe output.
 - Run every new valid/invalid fixture through Ajv, Zod, JSON Schema, and Pydantic entry points.
 - Keep canonicalization solely in the TypeScript control plane. Python workers validate parsed documents and exact byte hashes but treat canonical JSON hashes as opaque; they never reserialize JSON for JCS. This is the recorded `DEC_CONTRACT_001` choice, not mixed behavior.
-- Lock one Python 3.12 dependency workflow with reproducible transitive versions/hashes before adding worker dependencies. Do not mix installers between workers.
+- Use the repository-wide Python 3.12 workspace with exactly `uv 0.8.13` and the committed `uv.lock`; all contracts/workers share it and tests run locked/no-sync. Do not mix installers between workers.
 - Add provider-free commands such as `pnpm local:doctor` and `pnpm test:local-slice`; keep them separate from the fast default until stable, then include their deterministic subset in `pnpm verify`.
 - Lock the local artifact root, content-addressed filenames, cleanup policy, and fixture/local mode separation.
 

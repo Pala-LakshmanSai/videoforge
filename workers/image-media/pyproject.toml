@@ -7,7 +7,12 @@ name = "videoforge-image-media-worker"
 version = "0.0.0"
 description = "VideoForge fixture skeleton for local ASR, image, render, and probe jobs"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+  "videoforge-contracts",
+]
+
+[tool.uv.sources]
+videoforge-contracts = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/videoforge_image_media"]

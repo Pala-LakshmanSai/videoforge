@@ -19,13 +19,18 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "turbo run lint",
+    "local:doctor": "node scripts/local-doctor.mjs",
+    "local:model:fetch": "node scripts/fetch-whisper-model.mjs",
+    "python:lint": "node scripts/python-lint.mjs",
+    "python:sync": "node scripts/python-sync.mjs",
     "test": "turbo run test && pnpm test:workers",
     "test:chrome": "pnpm --filter @videoforge/web test:chrome",
+    "test:local-slice": "node scripts/test-local-slice.mjs",
     "test:workers": "node scripts/test-workers.mjs",
     "typecheck": "turbo run typecheck",
     "audit:dependencies": "pnpm audit --audit-level high",
     "secret:scan": "node scripts/secret-scan.mjs",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm contracts:check && pnpm context:validate && pnpm secret:scan && pnpm build && pnpm test:chrome && pnpm audit:dependencies"
+    "verify": "pnpm format:check && pnpm lint && pnpm python:lint && pnpm typecheck && pnpm test && pnpm contracts:check && pnpm context:validate && pnpm secret:scan && pnpm build && pnpm test:chrome && pnpm audit:dependencies"
   },
   "devDependencies": {
     "@eslint/js": "9.35.0",
