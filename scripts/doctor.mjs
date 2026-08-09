@@ -53,7 +53,8 @@ record(
 try {
   const uv = resolveUv();
   const uvVersion = await commandOutput(uv, ["--version"]);
-  record("uv", uvVersion === expectedUvVersion, `${uvVersion ?? "missing"}; ${uv}`);
+  const normalizedUvVersion = uvVersion?.split(/\s+/u).slice(0, 2).join(" ");
+  record("uv", normalizedUvVersion === expectedUvVersion, `${uvVersion ?? "missing"}; ${uv}`);
 } catch (error) {
   record("uv", false, error instanceof Error ? error.message : String(error));
 }
