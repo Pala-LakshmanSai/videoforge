@@ -1,7 +1,22 @@
 # Private third-party reference imagery; keep locally for research only.
-project-context/assets/ui/*.jpg
-project-context/assets/research/*.png
-project-context/references/ranga/frames/*.jpg
+project-context/assets/ui/**/*.[jJ][pP][gG]
+project-context/assets/ui/**/*.[jJ][pP][eE][gG]
+project-context/assets/ui/**/*.[pP][nN][gG]
+project-context/assets/ui/**/*.[wW][eE][bB][pP]
+project-context/assets/ui/**/*.[aA][vV][iI][fF]
+project-context/assets/ui/**/*.[hH][eE][iI][cC]
+project-context/assets/research/**/*.[jJ][pP][gG]
+project-context/assets/research/**/*.[jJ][pP][eE][gG]
+project-context/assets/research/**/*.[pP][nN][gG]
+project-context/assets/research/**/*.[wW][eE][bB][pP]
+project-context/assets/research/**/*.[aA][vV][iI][fF]
+project-context/assets/research/**/*.[hH][eE][iI][cC]
+project-context/references/ranga/frames/**/*.[jJ][pP][gG]
+project-context/references/ranga/frames/**/*.[jJ][pP][eE][gG]
+project-context/references/ranga/frames/**/*.[pP][nN][gG]
+project-context/references/ranga/frames/**/*.[wW][eE][bB][pP]
+project-context/references/ranga/frames/**/*.[aA][vV][iI][fF]
+project-context/references/ranga/frames/**/*.[hH][eE][iI][cC]
 
 # Never commit local provider secrets, generated media, or model weights.
 .env
@@ -11,8 +26,22 @@ outputs/
 artifacts/
 weights/
 *.mp4
+*.m4v
+*.mov
+*.mkv
+*.webm
+*.avi
 *.wav
 *.mp3
+*.m4a
+*.aac
+*.flac
+*.ogg
+*.opus
+
+# Repository-owned deterministic fixtures are intentional tracked test assets.
+!apps/web/public/fixtures/
+!apps/web/public/fixtures/**
 
 # JavaScript, Cloudflare, Turbo, tests, and editor output.
 node_modules/

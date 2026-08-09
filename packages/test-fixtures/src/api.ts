@@ -64,7 +64,7 @@ export interface ImageStyleResponse {
 export interface ProjectStageResponse {
   id: string;
   label: string;
-  status: "QUEUED" | "RUNNING" | "RETRYING" | "BLOCKED" | "FAILED" | "CANCELLED" | "COMPLETE";
+  status: FixtureStageState;
   completed: number;
   total: number;
   detail: string;
@@ -74,14 +74,7 @@ export interface ProjectSummaryResponse {
   id: string;
   title: string;
   owner: string;
-  status:
-    | "QUEUED"
-    | "STARTING"
-    | "RUNNING"
-    | "NEEDS_ATTENTION"
-    | "READY_FOR_REVIEW"
-    | "APPROVED"
-    | "CANCELLED";
+  status: FixtureProject["status"];
   stage: string;
   completed: number;
   total: number;
@@ -95,8 +88,17 @@ export interface ProjectSummaryResponse {
   capUsd: number;
   lanes: FixtureProject["lanes"];
   latestArtifact: FixtureProject["latestArtifact"];
-  reviewState: FixtureProject["review"]["state"];
+  review: FixtureProject["review"];
+  allowedActions: ProjectAllowedAction[];
 }
+
+export type ProjectAllowedAction =
+  | "APPROVE"
+  | "APPROVE_FALLBACK"
+  | "CANCEL"
+  | "DOWNLOAD"
+  | "RETRY_FAILED_ITEMS"
+  | "REVIEW";
 
 export interface UsageSummaryResponse {
   currentMonth: number;
@@ -110,16 +112,24 @@ export interface UsageSummaryResponse {
 
 export interface FixtureBootstrapResponse {
   scenario: FixtureScenarioId;
+  access: FixtureScenario["snapshot"]["access"];
   user: FixtureUserResponse;
   projects: ProjectSummaryResponse[];
   avatars: AvatarProfileResponse[];
   styles: ImageStyleResponse[];
   usage: UsageSummaryResponse;
+  draft: FixtureScenario["snapshot"]["draft"];
+  notice: FixtureScenario["snapshot"]["notice"];
+  activeOperations: {
+    avatar: string | null;
+    style: string | null;
+  };
 }
 
 export interface FixtureProjectDetailResponse {
   project: ProjectSummaryResponse;
   events: Array<{ id: string; detail: string; at: string }>;
+  notice: FixtureScenario["snapshot"]["notice"];
 }
 
 const FIXTURE_CREATED_AT = "2026-08-09T09:20:00.000Z";
@@ -157,7 +167,7 @@ export function toAvatarProfileResponse(profile: FixtureAvatarProfile): AvatarPr
     selectedVersion: profile.selectedVersion,
     warning: profile.warning,
     thumbnailUrl: profile.thumbnailUrl,
-    profileHash: "sha256:7c49f38b7e2a-fixture-avatar-profile",
+    profileHash: "sha256:aa4f5236269ba63ae3ffdbd5ce6ed7e1c7c2cd31e93ea42b7f427afcd502d1ea",
     preparationProfile: "avatar-source-prep-v1",
     validationProfile: "avatar-source-validation-v1",
     rightsStatus: "ATTESTED",
@@ -166,6 +176,7 @@ export function toAvatarProfileResponse(profile: FixtureAvatarProfile): AvatarPr
 
 function styleStatus(style: FixtureImageStyle): ImageStyleResponse["status"] {
   if (style.lifecycle === "ARCHIVED") return "ARCHIVED";
+  if (style.activeVersion > 0) return "PUBLISHED";
   if (style.versionState === "DRAFT") return "NEEDS_REVIEW";
   return style.versionState;
 }
@@ -179,7 +190,7 @@ export function toImageStyleResponse(style: FixtureImageStyle): ImageStyleRespon
     versionId: style.versionId,
     name: style.name,
     summary: style.summary,
-    version: style.draftVersion ?? style.activeVersion,
+    version: style.activeVersion || style.draftVersion || 1,
     status: styleStatus(style),
     referenceCount: style.referenceCount,
     ...(style.isDefault ? { isDefault: true } : {}),
@@ -193,8 +204,8 @@ export function toImageStyleResponse(style: FixtureImageStyle): ImageStyleRespon
     referenceUrls: [...style.referenceUrls],
     exampleUrls: [...style.exampleUrls],
     profileHash: style.isDefault
-      ? "sha256:4a21c91d-documentary-stock-v1"
-      : "sha256:ce7d61c4-warm-rural-v1",
+      ? "sha256:a0be214b3a153a9a9641734102a53ed450af0ad99b8ecfb8b0196a7b83cdb0a2"
+      : "sha256:fe8f642298a8aa93c18d3df9ee2f614b68f74e9ad0e81ab8fc4a40f15f51b65b",
     medium: style.isDefault ? "Observational documentary still" : "Natural-light rural documentary",
     lighting: style.isDefault
       ? "Available light, restrained contrast"
@@ -210,38 +221,25 @@ export function toImageStyleResponse(style: FixtureImageStyle): ImageStyleRespon
   };
 }
 
-function projectStatus(project: FixtureProject): ProjectSummaryResponse["status"] {
-  switch (project.status) {
-    case "DRAFT":
-    case "QUEUED":
-      return "QUEUED";
-    case "RECONCILING":
-      return "STARTING";
-    case "CANCEL_REQUESTED":
-      return "RUNNING";
-    case "RUNNING":
-    case "NEEDS_ATTENTION":
-    case "READY_FOR_REVIEW":
-    case "APPROVED":
-      return project.status;
+function allowedProjectActions(project: FixtureProject): ProjectAllowedAction[] {
+  const actions: ProjectAllowedAction[] = [];
+  if (["QUEUED", "RUNNING", "NEEDS_ATTENTION", "RECONCILING"].includes(project.status)) {
+    actions.push("CANCEL");
   }
-}
-
-function stageStatus(state: FixtureStageState): ProjectStageResponse["status"] {
-  switch (state) {
-    case "PENDING":
-    case "STARTING":
-      return "QUEUED";
-    case "CANCEL_REQUESTED":
-      return "CANCELLED";
-    case "QUEUED":
-    case "RUNNING":
-    case "RETRYING":
-    case "BLOCKED":
-    case "FAILED":
-    case "COMPLETE":
-      return state;
+  if (
+    project.lanes.image.state === "FAILED" ||
+    project.lanes.avatar.state === "FAILED" ||
+    project.review.flaggedDefect === "LIP_SYNC_ONLY"
+  ) {
+    actions.push("RETRY_FAILED_ITEMS");
   }
+  if (project.review.flaggedDefect === "WHOLE_FRAME") actions.push("APPROVE_FALLBACK");
+  if (project.review.state !== "NOT_READY" || project.review.flaggedDefect !== null) {
+    actions.push("REVIEW");
+  }
+  if (project.review.state === "READY_FOR_REVIEW") actions.push("APPROVE");
+  if (project.review.state === "APPROVED" && project.review.downloadUrl) actions.push("DOWNLOAD");
+  return actions;
 }
 
 function etaLabel(seconds: number | null): string {
@@ -259,7 +257,7 @@ export function toProjectSummaryResponse(
     id: project.id,
     title: project.title,
     owner: project.ownerName,
-    status: projectStatus(project),
+    status: project.status,
     stage: project.stage,
     completed: project.progressPercent,
     total: 100,
@@ -272,7 +270,7 @@ export function toProjectSummaryResponse(
     stages: project.stages.map((stage) => ({
       id: stage.id,
       label: stage.label,
-      status: stageStatus(stage.state),
+      status: stage.state,
       completed:
         stage.state === "COMPLETE"
           ? 1
@@ -285,11 +283,24 @@ export function toProjectSummaryResponse(
     capUsd: project.cost.capUsd,
     lanes: project.lanes,
     latestArtifact: project.latestArtifact,
-    reviewState: project.review.state,
+    review: project.review,
+    allowedActions: allowedProjectActions(project),
   };
 }
 
 export function toUsageSummaryResponse(scenario: FixtureScenario): UsageSummaryResponse {
+  if (scenario.snapshot.access.state !== "AUTHORIZED") {
+    return {
+      currentMonth: 0,
+      projectSpend: 0,
+      styleSpend: 0,
+      avatarTestSpend: 0,
+      storageGb: 0,
+      gpuSeconds: 0,
+      retries: 0,
+    };
+  }
+
   const currentMonth = Number(
     (
       scenario.snapshot.usage.projectUsd +
@@ -311,14 +322,16 @@ export function toUsageSummaryResponse(scenario: FixtureScenario): UsageSummaryR
 }
 
 export function toBootstrapResponse(scenario: FixtureScenario): FixtureBootstrapResponse {
+  const selectedAccount = scenario.snapshot.access.selectedAccount;
   return {
     scenario: scenario.id,
+    access: structuredClone(scenario.snapshot.access),
     user: {
       id: scenario.snapshot.session.userId,
-      name: scenario.snapshot.session.displayName,
-      email: "lakshman@videoforge.local",
+      name: selectedAccount?.displayName ?? scenario.snapshot.session.displayName,
+      email: selectedAccount?.email ?? "signed-out.fixture@example.invalid",
       role: scenario.snapshot.session.role,
-      invited: true,
+      invited: scenario.snapshot.access.state !== "DENIED",
     },
     projects:
       scenario.snapshot.project === null
@@ -332,6 +345,12 @@ export function toBootstrapResponse(scenario: FixtureScenario): FixtureBootstrap
     avatars: scenario.snapshot.avatarHub.profiles.map(toAvatarProfileResponse),
     styles: scenario.snapshot.imageStyles.styles.map(toImageStyleResponse),
     usage: toUsageSummaryResponse(scenario),
+    draft: structuredClone(scenario.snapshot.draft),
+    notice: scenario.snapshot.notice ? { ...scenario.snapshot.notice } : null,
+    activeOperations: {
+      avatar: scenario.snapshot.avatarHub.activeOperation,
+      style: scenario.snapshot.imageStyles.activeOperation,
+    },
   };
 }
 
@@ -349,5 +368,6 @@ export function toProjectDetailResponse(
       detail: event.message,
       at: event.occurredAt,
     })),
+    notice: scenario.snapshot.notice ? { ...scenario.snapshot.notice } : null,
   };
 }

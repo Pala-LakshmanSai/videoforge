@@ -2,6 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import * as Switch from "@radix-ui/react-switch";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { createProjectRequestSchema, validateOutputRuleKeywords } from "@videoforge/contracts";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -12,7 +13,7 @@ import {
   FileJson,
   ImagePlus,
   Images,
-  PauseCircle,
+  Library,
   Play,
   Plus,
   RefreshCw,
@@ -23,7 +24,7 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CompositionPreview } from "../components/CompositionPreview";
 import { PageHeader } from "../components/PageHeader";
 import {
@@ -39,12 +40,18 @@ import {
   StageTimeline,
 } from "../components/ui";
 import { api } from "../lib/api";
-import { loadDraft, saveDraft, updateDraft, type ProjectDraft } from "../lib/draft";
+import { hasStoredDraft, loadDraft, saveDraft, updateDraft, type ProjectDraft } from "../lib/draft";
+import {
+  validateImageFile,
+  validateVoiceoverFile,
+  type VerifiedImage,
+} from "../lib/media-validation";
 import { currentScenario, withScenario } from "../lib/scenario";
 import type {
   AvatarProfile,
+  ExecutionProfileCatalog,
   ImageStyle,
-  ProjectStage,
+  FixtureNotice,
   ProjectSummary,
   ScenarioId,
   Tone,
@@ -53,11 +60,204 @@ import type {
 function statusTone(status: string): Tone {
   if (["COMPLETE", "APPROVED", "PASSED", "PUBLISHED", "READY"].includes(status)) return "success";
   if (["FAILED", "INVALID"].includes(status)) return "danger";
-  if (["BLOCKED", "NEEDS_ATTENTION", "CANCELLED", "STALE", "NEEDS_REVIEW"].includes(status))
+  if (
+    [
+      "BLOCKED",
+      "NEEDS_ATTENTION",
+      "CANCELLED",
+      "CANCEL_REQUESTED",
+      "STALE",
+      "NEEDS_REVIEW",
+    ].includes(status)
+  )
     return "warning";
-  if (["RUNNING", "STARTING", "ANALYZING", "VALIDATING", "READY_FOR_REVIEW"].includes(status))
+  if (
+    ["RUNNING", "STARTING", "RECONCILING", "ANALYZING", "VALIDATING", "READY_FOR_REVIEW"].includes(
+      status,
+    )
+  )
     return "info";
   return "neutral";
+}
+
+function NoticeBanner({ notice }: { notice: FixtureNotice | null | undefined }) {
+  if (!notice) return null;
+  const tone = notice.tone === "ERROR" ? "danger" : notice.tone === "WARNING" ? "warning" : "info";
+  return (
+    <div
+      className={`notice ${tone === "danger" ? "notice-danger" : tone === "warning" ? "notice-warning" : ""}`}
+      role={tone === "danger" ? "alert" : "status"}
+    >
+      <strong>{notice.title}.</strong> {notice.detail}
+    </div>
+  );
+}
+
+function ActionToast({ message, onDismiss }: { message: string | null; onDismiss: () => void }) {
+  if (!message) return null;
+  return (
+    <div className="app-toast" role="alert" aria-live="assertive">
+      <span className="app-toast-icon" aria-hidden="true">
+        <AlertTriangle size={18} />
+      </span>
+      <span>{message}</span>
+      <button
+        className="app-toast-dismiss"
+        type="button"
+        aria-label="Dismiss error"
+        onClick={onDismiss}
+      >
+        <X size={17} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
+function PresetImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  return failed || !src.startsWith("/fixtures/") ? (
+    <span className="preset-image-fallback" role="img" aria-label={`${alt} unavailable`}>
+      <Images aria-hidden="true" />
+    </span>
+  ) : (
+    <img src={src} alt={alt} onError={() => setFailed(true)} />
+  );
+}
+
+interface VisualPresetOption {
+  id: string;
+  imageUrl: string;
+  meta: string;
+  name: string;
+}
+
+function ComputeLaneSelect({
+  lane,
+  selectedProfileId,
+  onChange,
+}: {
+  lane: ExecutionProfileCatalog["lanes"][number];
+  selectedProfileId: string;
+  onChange: (profileId: string) => void;
+}) {
+  return (
+    <div className="compute-lane-card">
+      <div className="compute-lane-heading">
+        <span>
+          <strong>{lane.selector_label}</strong>
+          <small>{lane.model.display_name}</small>
+        </span>
+        <span className="compute-status">
+          <i aria-hidden="true" />
+          {lane.status.provider_state === "NOT_CONNECTED" ? "No GPU connected" : lane.status.label}
+        </span>
+      </div>
+      <label>
+        <span className="sr-only">{lane.selector_label} compute profile</span>
+        <select
+          className="input compute-profile-select"
+          value={selectedProfileId}
+          onChange={(event) => onChange(event.target.value)}
+        >
+          {lane.selector_options.map((option) => (
+            <option key={option.profile_id} value={option.profile_id}>
+              {option.label} · {option.detail}
+            </option>
+          ))}
+          <optgroup label="Requires GPU qualification">
+            {lane.planned_candidates.map((candidate) => (
+              <option disabled key={candidate.candidate_id} value={candidate.candidate_id}>
+                {candidate.label} · benchmark required
+              </option>
+            ))}
+          </optgroup>
+        </select>
+      </label>
+    </div>
+  );
+}
+
+function VisualPresetSelect({
+  label,
+  options,
+  selectedId,
+  onChange,
+}: {
+  label: string;
+  options: VisualPresetOption[];
+  selectedId: string;
+  onChange: (id: string) => void;
+}) {
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+  const selected = options.find((option) => option.id === selectedId);
+
+  function closeAndFocus() {
+    const details = detailsRef.current;
+    if (!details) return;
+    details.open = false;
+    window.requestAnimationFrame(() => details.querySelector("summary")?.focus());
+  }
+
+  return (
+    <div className="visual-preset-select">
+      <span className="field-label">{label}</span>
+      <details
+        className="visual-preset-details"
+        ref={detailsRef}
+        onKeyDown={(event) => {
+          if (event.key !== "Escape" || !detailsRef.current?.open) return;
+          event.preventDefault();
+          closeAndFocus();
+        }}
+      >
+        <summary className="visual-preset-summary">
+          {selected ? (
+            <>
+              <PresetImage src={selected.imageUrl} alt={`${selected.name} selected preset`} />
+              <span className="visual-preset-copy">
+                <strong>{selected.name}</strong>
+                <small>{selected.meta}</small>
+              </span>
+            </>
+          ) : (
+            <span className="visual-preset-copy">
+              <strong>Select {label.toLowerCase()}</strong>
+              <small>No ready preset selected</small>
+            </span>
+          )}
+          <span className="visual-preset-chevron" aria-hidden="true" />
+        </summary>
+        <div className="visual-preset-menu" role="radiogroup" aria-label={`${label} options`}>
+          {options.map((option) => {
+            const checked = option.id === selectedId;
+            return (
+              <button
+                type="button"
+                role="radio"
+                aria-checked={checked}
+                className={`visual-preset-option ${checked ? "selected" : ""}`}
+                key={option.id}
+                onClick={() => {
+                  onChange(option.id);
+                  closeAndFocus();
+                }}
+              >
+                <PresetImage src={option.imageUrl} alt={`${option.name} preset`} />
+                <span className="visual-preset-copy">
+                  <strong>{option.name}</strong>
+                  <small>{option.meta}</small>
+                </span>
+                {checked ? <Check size={18} aria-hidden="true" /> : null}
+              </button>
+            );
+          })}
+          {options.length === 0 ? (
+            <span className="visual-preset-empty">No ready presets</span>
+          ) : null}
+        </div>
+      </details>
+    </div>
+  );
 }
 
 function formatShortDate(value: string): string {
@@ -72,77 +272,6 @@ function formatShortDate(value: string): string {
 function humanize(value: string): string {
   const normalized = value.replaceAll("_", " ").toLowerCase();
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
-}
-
-function isAvatarProfile(value: unknown): value is AvatarProfile {
-  if (!isRecord(value)) return false;
-  return (
-    [
-      "id",
-      "versionId",
-      "name",
-      "initials",
-      "dimensions",
-      "lastUsed",
-      "thumbnailUrl",
-      "profileHash",
-      "preparationProfile",
-      "validationProfile",
-    ].every((field) => typeof value[field] === "string") &&
-    typeof value.version === "number" &&
-    ["READY", "VALIDATING", "NEEDS_REVIEW", "FAILED", "ARCHIVED"].includes(String(value.status)) &&
-    ["UNTESTED", "RUNNING", "PASSED", "FAILED", "STALE", "CANCELLED"].includes(
-      String(value.compatibility),
-    ) &&
-    value.rightsStatus === "ATTESTED"
-  );
-}
-
-function isImageStyle(value: unknown): value is ImageStyle {
-  if (!isRecord(value)) return false;
-  return (
-    [
-      "id",
-      "versionId",
-      "name",
-      "summary",
-      "coverUrl",
-      "profileHash",
-      "medium",
-      "lighting",
-      "color",
-      "texture",
-      "retentionSummary",
-    ].every((field) => typeof value[field] === "string") &&
-    typeof value.version === "number" &&
-    typeof value.referenceCount === "number" &&
-    ["PUBLISHED", "ANALYZING", "NEEDS_REVIEW", "FAILED", "ARCHIVED"].includes(
-      String(value.status),
-    ) &&
-    Array.isArray(value.palette) &&
-    value.palette.length === 2 &&
-    value.palette.every((item) => typeof item === "string") &&
-    isStringArray(value.referenceUrls) &&
-    isStringArray(value.exampleUrls) &&
-    ["ATTESTED", "SYSTEM_OWNED"].includes(String(value.rightsStatus))
-  );
-}
-
-function readLocalEntities<T>(key: string, isValid: (value: unknown) => value is T): T[] {
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter(isValid) : [];
-  } catch {
-    return [];
-  }
 }
 
 function fixtureLink(path: string) {
@@ -267,6 +396,37 @@ export function QueueScreen() {
     ["READY_FOR_REVIEW", "APPROVED"].includes(project.status),
   ).length;
 
+  if (query.isPending) {
+    return (
+      <>
+        <PageHeader eyebrow="Production" title="Your queue" />
+        <Panel eyebrow="Workspace" heading="Loading projects">
+          <div className="empty-state" aria-busy="true">
+            <span className="spinner" aria-hidden="true" />
+            <p>Connecting to the authoritative queue…</p>
+          </div>
+        </Panel>
+      </>
+    );
+  }
+  if (query.isError) {
+    return (
+      <>
+        <PageHeader eyebrow="Production" title="Your queue" />
+        <EmptyState
+          icon={<AlertTriangle />}
+          title="Queue unavailable"
+          body="The local API did not return project data. No empty queue is being inferred."
+          action={
+            <Button variant="secondary" onClick={() => void query.refetch()}>
+              Retry load
+            </Button>
+          }
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader
@@ -309,13 +469,7 @@ export function QueueScreen() {
           </Badge>
         }
       >
-        {query.isPending ? (
-          <div className="empty-state">
-            <span className="spinner" />
-            <p>Loading queue…</p>
-          </div>
-        ) : null}
-        {!query.isPending && projects.length === 0 ? (
+        {projects.length === 0 ? (
           <EmptyState
             icon={<Video />}
             title="Queue is clear"
@@ -402,22 +556,20 @@ function useProjectDraft() {
 export function CreateProjectScreen() {
   const scenario = currentScenario();
   const [draft, setDraft] = useProjectDraft();
+  const [draftHydrated, setDraftHydrated] = useState(() => hasStoredDraft());
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [audioPending, setAudioPending] = useState(false);
   const [submittedError, setSubmittedError] = useState<string | null>(null);
   const bootstrap = useQuery({
     queryKey: ["bootstrap", scenario],
     queryFn: () => api.bootstrap(scenario),
   });
-  const localAvatars = readLocalEntities("videoforge:fixture:avatars:v1", isAvatarProfile);
-  const localStyles = readLocalEntities("videoforge:fixture:styles:v1", isImageStyle);
-  const avatars = [...(bootstrap.data?.avatars ?? []), ...localAvatars].filter(
-    (item, index, list) =>
-      list.findIndex((candidate) => candidate.versionId === item.versionId) === index,
-  );
-  const styles = [...(bootstrap.data?.styles ?? []), ...localStyles].filter(
-    (item, index, list) =>
-      list.findIndex((candidate) => candidate.versionId === item.versionId) === index,
-  );
+  const compute = useQuery({
+    queryKey: ["execution-profiles", scenario],
+    queryFn: () => api.executionProfiles(scenario),
+  });
+  const avatars = bootstrap.data?.avatars ?? [];
+  const styles = bootstrap.data?.styles ?? [];
   const readyAvatars = avatars.filter((avatar) => avatar.status === "READY");
   const publishedStyles = styles.filter((style) => style.status === "PUBLISHED");
   const selectedAvatar = readyAvatars.find(
@@ -426,35 +578,101 @@ export function CreateProjectScreen() {
   const selectedStyle = publishedStyles.find(
     (style) => style.versionId === draft.imageStyleVersionId,
   );
+  const imageLane = compute.data?.lanes.find((lane) => lane.lane === "image_media");
+  const avatarLane = compute.data?.lanes.find((lane) => lane.lane === "avatar_primary");
+  const selectedImageProfileId =
+    draft.executionProfileOverrides?.image_media_profile_id ??
+    imageLane?.selector_options[0]?.profile_id ??
+    "";
+  const selectedAvatarProfileId =
+    draft.executionProfileOverrides?.avatar_primary_profile_id ??
+    avatarLane?.selector_options[0]?.profile_id ??
+    "";
+  const primaryProfilesReady = Boolean(
+    imageLane?.selector_options.some(
+      (option) => option.selectable && option.profile_id === selectedImageProfileId,
+    ) &&
+      avatarLane?.selector_options.some(
+        (option) => option.selectable && option.profile_id === selectedAvatarProfileId,
+      ),
+  );
 
-  const conflict =
-    draft.applyExtraPromptKeywords &&
-    /\b(add|include|show|write)\b.{0,30}\b(logo|caption|title|watermark|text)\b/i.test(
-      draft.extraPromptKeywords,
-    );
+  useEffect(() => {
+    if (!bootstrap.data || draftHydrated) return;
+    const fixtureDraft = bootstrap.data.draft;
+    setDraft((current) => ({
+      ...current,
+      title: fixtureDraft.title,
+      voiceoverAssetId:
+        fixtureDraft.voiceover.uploadState === "VERIFIED" ? fixtureDraft.voiceover.assetId : null,
+      voiceoverName:
+        fixtureDraft.voiceover.uploadState === "VERIFIED" ? fixtureDraft.voiceover.filename : null,
+      voiceoverDurationSeconds:
+        fixtureDraft.voiceover.uploadState === "VERIFIED"
+          ? fixtureDraft.voiceover.durationSeconds
+          : null,
+      voiceoverSampleRate: null,
+      voiceoverChannels: null,
+      voiceoverChecksum: null,
+      avatarProfileVersionId: fixtureDraft.avatarProfileVersionId ?? "",
+      imageStyleVersionId: fixtureDraft.imageStyleVersionId,
+      extraPromptKeywords: fixtureDraft.extraPromptKeywords ?? "",
+      applyExtraPromptKeywords: fixtureDraft.applyExtraPromptKeywords,
+      generationMode: fixtureDraft.generationMode,
+      spendCapUsd: fixtureDraft.spendCapUsd,
+    }));
+    setDraftHydrated(true);
+  }, [bootstrap.data, draftHydrated, setDraft]);
+
+  useEffect(() => {
+    const imageProfileId = imageLane?.selector_options[0]?.profile_id;
+    const avatarProfileId = avatarLane?.selector_options[0]?.profile_id;
+    if (draft.executionProfileOverrides !== null || !imageProfileId || !avatarProfileId) return;
+    setDraft((current) => ({
+      ...current,
+      executionProfileOverrides: {
+        image_media_profile_id: imageProfileId,
+        avatar_primary_profile_id: avatarProfileId,
+      },
+    }));
+  }, [avatarLane, draft.executionProfileOverrides, imageLane, setDraft]);
+
+  const keywordValidation = validateOutputRuleKeywords(draft.extraPromptKeywords);
+  const conflict = draft.applyExtraPromptKeywords && !keywordValidation.valid;
   const keywordEmpty = draft.applyExtraPromptKeywords && !draft.extraPromptKeywords.trim();
+  const payload = {
+    title: draft.title.trim(),
+    voiceover_asset_id: draft.voiceoverAssetId ?? "",
+    avatar_profile_version_id: draft.avatarProfileVersionId,
+    image_style_version_id: draft.imageStyleVersionId,
+    optional_script: null,
+    extra_prompt_keywords: draft.extraPromptKeywords || null,
+    apply_extra_prompt_keywords: draft.applyExtraPromptKeywords,
+    generation_mode: draft.generationMode,
+    execution_profile_overrides: draft.executionProfileOverrides,
+    spend_cap_usd: draft.spendCapUsd,
+    user_seed: draft.userSeed,
+  };
+  const estimatedCostUsd = 0.88;
   const canSubmit = Boolean(
-    draft.title.trim() &&
-      draft.voiceoverAssetId &&
+    draftHydrated &&
+      !bootstrap.isPending &&
+      !bootstrap.isError &&
+      !compute.isPending &&
+      !compute.isError &&
+      !audioPending &&
+      !audioError &&
       selectedAvatar &&
       selectedStyle &&
+      primaryProfilesReady &&
       !conflict &&
-      !keywordEmpty,
+      !keywordEmpty &&
+      draft.spendCapUsd >= estimatedCostUsd &&
+      createProjectRequestSchema.safeParse(payload).success,
   );
   const create = useMutation({
     mutationFn: async () => {
-      const payload = {
-        title: draft.title.trim(),
-        voiceover_asset_id: draft.voiceoverAssetId,
-        avatar_profile_version_id: draft.avatarProfileVersionId,
-        image_style_version_id: draft.imageStyleVersionId,
-        optional_script: draft.optionalScript || null,
-        extra_prompt_keywords: draft.extraPromptKeywords || null,
-        apply_extra_prompt_keywords: draft.applyExtraPromptKeywords,
-        generation_mode: draft.generationMode,
-        spend_cap_usd: draft.spendCapUsd,
-        user_seed: draft.userSeed,
-      };
+      setSubmittedError(null);
       const mutationId = crypto.randomUUID();
       await api.mutate("/api/v1/projects/preflight", payload, scenario, `${mutationId}:preflight`);
       return api.mutate<{ id: string; status: string; nextFixture?: ScenarioId }>(
@@ -475,275 +693,327 @@ export function CreateProjectScreen() {
       setSubmittedError(error instanceof Error ? error.message : "Project could not be created."),
   });
 
-  function chooseAudio(file?: File) {
+  async function chooseAudio(file?: File) {
     if (!file) return;
-    if (!/\.(wav|mp3|m4a|aac|flac)$/i.test(file.name)) {
-      setAudioError("Use WAV, MP3, M4A/AAC, or FLAC audio.");
-      return;
-    }
-    if (file.size > 1_000_000_000) {
-      setAudioError("Voiceover must be 1 GB or smaller.");
-      return;
-    }
-    setAudioError(null);
     setDraft((value) => ({
       ...value,
-      voiceoverAssetId: `fixture_voiceover_${file.size}`,
-      voiceoverName: file.name,
+      voiceoverAssetId: null,
+      voiceoverName: null,
+      voiceoverDurationSeconds: null,
+      voiceoverSampleRate: null,
+      voiceoverChannels: null,
+      voiceoverChecksum: null,
     }));
+    setAudioError(null);
+    setAudioPending(true);
+    try {
+      const verified = await validateVoiceoverFile(file);
+      await api.mutate(
+        "/api/v1/voiceovers/register",
+        {
+          asset_id: verified.assetId,
+          checksum: verified.checksum,
+          filename: verified.filename,
+          duration_seconds: verified.durationSeconds,
+          sample_rate: verified.sampleRate,
+          channels: verified.channels,
+        },
+        scenario,
+      );
+      setDraft((value) => ({
+        ...value,
+        voiceoverAssetId: verified.assetId,
+        voiceoverName: verified.filename,
+        voiceoverDurationSeconds: verified.durationSeconds,
+        voiceoverSampleRate: verified.sampleRate,
+        voiceoverChannels: verified.channels,
+        voiceoverChecksum: verified.checksum,
+      }));
+    } catch (error) {
+      setAudioError(error instanceof Error ? error.message : "Voiceover validation failed.");
+    } finally {
+      setAudioPending(false);
+    }
   }
 
   return (
     <>
       <PageHeader eyebrow="Production" title="New project" />
+      <ActionToast message={submittedError} onDismiss={() => setSubmittedError(null)} />
+      {bootstrap.isError ? (
+        <div className="notice notice-danger" role="alert">
+          <strong>Project setup unavailable.</strong> Reload after the local API is healthy.
+        </div>
+      ) : (
+        <NoticeBanner notice={bootstrap.data?.notice} />
+      )}
       <div className="layout-main">
-        <Panel eyebrow="Project setup" heading="Narration and look">
+        <Panel eyebrow="Configure" heading="Project setup">
           <div className="form-grid">
-            <h3 className="form-section-title field-wide">Narration</h3>
-            <div className="field field-wide">
-              <label htmlFor="project-title">Video title</label>
-              <input
-                id="project-title"
-                className="input"
-                maxLength={240}
-                placeholder="Why food prices behave the way they do"
-                value={draft.title}
-                onChange={(event) => setDraft((value) => ({ ...value, title: event.target.value }))}
-              />
-              <small>{draft.title.trim().length}/240</small>
-            </div>
-            <div className="field field-wide">
-              <span className="field-label">Final voiceover</span>
-              <label className="dropzone">
-                <input
-                  aria-label="Upload final voiceover"
-                  type="file"
-                  accept="audio/wav,audio/mpeg,audio/mp4,audio/aac,audio/flac"
-                  onChange={(event) => chooseAudio(event.target.files?.[0])}
-                />
-                <FileAudio size={28} />
-                <span>
-                  <strong>{draft.voiceoverName ?? "Drop or choose final narration"}</strong>
-                  {draft.voiceoverAssetId ? "Ready" : "WAV, MP3, M4A/AAC, or FLAC"}
-                </span>
-              </label>
-              {audioError ? (
-                <div className="validation validation-danger">
-                  <AlertTriangle size={16} />
-                  {audioError}
+            <section className="create-section field-wide" aria-labelledby="create-narration">
+              <header className="create-section-header">
+                <span className="create-section-index">01</span>
+                <h3 id="create-narration">Narration</h3>
+              </header>
+              <div className="create-section-grid">
+                <div className="field field-wide">
+                  <label htmlFor="project-title">Video title</label>
+                  <input
+                    id="project-title"
+                    className="input"
+                    maxLength={240}
+                    placeholder="Why food prices behave the way they do"
+                    value={draft.title}
+                    onChange={(event) =>
+                      setDraft((value) => ({ ...value, title: event.target.value }))
+                    }
+                  />
+                  {draft.title.trim().length > 200 ? (
+                    <small>{draft.title.trim().length}/240</small>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
-            <h3 className="form-section-title field-wide">Look</h3>
-            <div className="field preset-field">
-              <span className="field-label">Avatar Profile</span>
-              <div className="preset-picker" role="radiogroup" aria-label="Avatar Profile">
-                {readyAvatars.map((avatar) => {
-                  const checked = avatar.versionId === draft.avatarProfileVersionId;
-                  return (
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={checked}
-                      className={`preset-choice ${checked ? "selected" : ""}`}
-                      key={avatar.versionId}
-                      onClick={() =>
+                <div className="field field-wide">
+                  <span className="field-label">Final voiceover</span>
+                  <label className="dropzone">
+                    <input
+                      aria-label="Upload final voiceover"
+                      type="file"
+                      accept="audio/wav,audio/mpeg,audio/mp4,audio/aac,audio/flac"
+                      disabled={audioPending || create.isPending}
+                      onChange={(event) => void chooseAudio(event.target.files?.[0])}
+                    />
+                    {audioPending ? (
+                      <span className="spinner" aria-hidden="true" />
+                    ) : (
+                      <FileAudio size={28} />
+                    )}
+                    <span>
+                      <strong>
+                        {audioPending
+                          ? "Checking audio…"
+                          : (draft.voiceoverName ?? "Drop or choose final narration")}
+                      </strong>
+                      {draft.voiceoverAssetId
+                        ? "Verified and ready"
+                        : "WAV, MP3, M4A, AAC, or FLAC"}
+                    </span>
+                  </label>
+                  {audioError ? (
+                    <div className="validation validation-danger">
+                      <AlertTriangle size={16} />
+                      {audioError}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+            <section className="create-section field-wide" aria-labelledby="create-look">
+              <header className="create-section-header">
+                <span className="create-section-index">02</span>
+                <h3 id="create-look">Look</h3>
+              </header>
+              <div className="create-section-grid">
+                <div className="field preset-field">
+                  <VisualPresetSelect
+                    label="Avatar Profile"
+                    options={readyAvatars.map((avatar) => ({
+                      id: avatar.versionId,
+                      imageUrl: avatar.thumbnailUrl,
+                      meta: `v${avatar.version} · ${humanize(avatar.compatibility)}`,
+                      name: avatar.name,
+                    }))}
+                    selectedId={draft.avatarProfileVersionId}
+                    onChange={(avatarProfileVersionId) =>
+                      setDraft((value) => ({ ...value, avatarProfileVersionId }))
+                    }
+                  />
+                  <div className="preset-select-actions">
+                    <Link
+                      className="button button-ghost"
+                      to="/avatars"
+                      search={{ fixture: scenario } as never}
+                    >
+                      Manage avatars
+                    </Link>
+                    <Link
+                      className="button button-secondary"
+                      to="/avatars/new"
+                      search={{ fixture: scenario, returnTo: "/projects/new" } as never}
+                    >
+                      <UserPlus size={15} />
+                      New avatar
+                    </Link>
+                  </div>
+                  {readyAvatars.length === 0 ? (
+                    <div className="validation validation-warning">
+                      <AlertTriangle size={16} />
+                      Create your first ready avatar before generation.
+                    </div>
+                  ) : null}
+                </div>
+                <div className="field preset-field">
+                  <VisualPresetSelect
+                    label="Image Style"
+                    options={publishedStyles.map((style) => ({
+                      id: style.versionId,
+                      imageUrl: style.coverUrl,
+                      meta: `v${style.version}${style.isDefault ? " · Default" : ""}`,
+                      name: style.name,
+                    }))}
+                    selectedId={draft.imageStyleVersionId}
+                    onChange={(imageStyleVersionId) =>
+                      setDraft((value) => ({ ...value, imageStyleVersionId }))
+                    }
+                  />
+                  <div className="preset-select-actions">
+                    <Link
+                      className="button button-ghost"
+                      to="/styles"
+                      search={{ fixture: scenario } as never}
+                    >
+                      Manage styles
+                    </Link>
+                    <Link
+                      className="button button-secondary"
+                      to="/styles/new"
+                      search={{ fixture: scenario, returnTo: "/projects/new" } as never}
+                    >
+                      <ImagePlus size={15} />
+                      New style
+                    </Link>
+                  </div>
+                </div>
+                <Disclosure
+                  className="field field-wide create-options"
+                  summary={<span>Image keywords</span>}
+                >
+                  <div className="stack">
+                    <div className="toggle-row">
+                      <strong>Apply extra keywords to AI images</strong>
+                      <Switch.Root
+                        className="switch-root"
+                        checked={draft.applyExtraPromptKeywords}
+                        onCheckedChange={(checked) =>
+                          setDraft((value) => ({ ...value, applyExtraPromptKeywords: checked }))
+                        }
+                        aria-label="Apply extra image prompt keywords"
+                      >
+                        <Switch.Thumb className="switch-thumb" />
+                      </Switch.Root>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="image-keywords">Image keywords</label>
+                      <textarea
+                        id="image-keywords"
+                        className="textarea"
+                        maxLength={500}
+                        value={draft.extraPromptKeywords}
+                        onChange={(event) =>
+                          setDraft((value) => ({
+                            ...value,
+                            extraPromptKeywords: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    {keywordEmpty ? (
+                      <div className="validation validation-danger">
+                        <X size={16} />
+                        Add keywords or turn the toggle off.
+                      </div>
+                    ) : conflict ? (
+                      <div className="validation validation-danger">
+                        <X size={16} />
+                        Remove requests for{" "}
+                        {keywordValidation.conflicts.map((item) => item.label).join(", ")}.
+                      </div>
+                    ) : null}
+                  </div>
+                </Disclosure>
+              </div>
+            </section>
+            <section className="create-section field-wide" aria-labelledby="create-run">
+              <header className="create-section-header">
+                <span className="create-section-index">03</span>
+                <h3 id="create-run">Run</h3>
+              </header>
+              <div className="create-section-grid">
+                {imageLane && avatarLane ? (
+                  <div className="compute-lane-grid field-wide">
+                    <ComputeLaneSelect
+                      lane={imageLane}
+                      selectedProfileId={selectedImageProfileId}
+                      onChange={(image_media_profile_id) =>
                         setDraft((value) => ({
                           ...value,
-                          avatarProfileVersionId: avatar.versionId,
+                          executionProfileOverrides: {
+                            ...(value.executionProfileOverrides ?? {}),
+                            image_media_profile_id,
+                          },
                         }))
                       }
-                    >
-                      <img
-                        src={avatar.thumbnailUrl || "/fixtures/avatar/amish-farm-host.svg"}
-                        alt={`${avatar.name} avatar`}
-                      />
-                      <span>
-                        <strong>{avatar.name}</strong>
-                        <small>
-                          v{avatar.version} · {avatar.compatibility.toLowerCase()}
-                        </small>
-                      </span>
-                      {checked ? <Check size={20} aria-hidden="true" /> : null}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="cluster">
-                <Link
-                  className="button button-ghost"
-                  to="/avatars"
-                  search={{ fixture: scenario } as never}
-                >
-                  Manage avatars
-                </Link>
-                <Link
-                  className="button button-secondary"
-                  to="/avatars/new"
-                  search={{ fixture: scenario, returnTo: "/projects/new" } as never}
-                >
-                  <UserPlus size={15} />
-                  New avatar
-                </Link>
-              </div>
-              {readyAvatars.length === 0 ? (
-                <div className="validation validation-warning">
-                  <AlertTriangle size={16} />
-                  Create your first ready avatar before generation.
-                </div>
-              ) : null}
-            </div>
-            <div className="field preset-field">
-              <span className="field-label">Image Style</span>
-              <div className="preset-picker" role="radiogroup" aria-label="Image Style">
-                {publishedStyles.map((style) => {
-                  const checked = style.versionId === draft.imageStyleVersionId;
-                  return (
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={checked}
-                      className={`preset-choice preset-choice-style ${checked ? "selected" : ""}`}
-                      key={style.versionId}
-                      onClick={() =>
-                        setDraft((value) => ({ ...value, imageStyleVersionId: style.versionId }))
+                    />
+                    <ComputeLaneSelect
+                      lane={avatarLane}
+                      selectedProfileId={selectedAvatarProfileId}
+                      onChange={(avatar_primary_profile_id) =>
+                        setDraft((value) => ({
+                          ...value,
+                          executionProfileOverrides: {
+                            ...(value.executionProfileOverrides ?? {}),
+                            avatar_primary_profile_id,
+                          },
+                        }))
                       }
-                    >
-                      <img src={style.coverUrl} alt={`${style.name} style`} />
-                      <span>
-                        <strong>{style.name}</strong>
-                        <small>
-                          v{style.version}
-                          {style.isDefault ? " · default" : ""}
-                        </small>
-                      </span>
-                      {checked ? <Check size={20} aria-hidden="true" /> : null}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="cluster">
-                <Link
-                  className="button button-ghost"
-                  to="/styles"
-                  search={{ fixture: scenario } as never}
-                >
-                  Manage styles
-                </Link>
-                <Link
-                  className="button button-secondary"
-                  to="/styles/new"
-                  search={{ fixture: scenario, returnTo: "/projects/new" } as never}
-                >
-                  <ImagePlus size={15} />
-                  New style
-                </Link>
-              </div>
-            </div>
-            <Disclosure
-              className="field field-wide create-options"
-              summary={
-                <>
-                  <span>Script and image keywords</span>
-                  <small>
-                    {draft.applyExtraPromptKeywords ? "Keywords on" : "Keywords not applied"}
-                  </small>
-                </>
-              }
-            >
-              <div className="stack">
-                <div className="toggle-row">
-                  <strong>Apply extra keywords to AI images</strong>
-                  <Switch.Root
-                    className="switch-root"
-                    checked={draft.applyExtraPromptKeywords}
-                    onCheckedChange={(checked) =>
-                      setDraft((value) => ({ ...value, applyExtraPromptKeywords: checked }))
-                    }
-                    aria-label="Apply extra image prompt keywords"
-                  >
-                    <Switch.Thumb className="switch-thumb" />
-                  </Switch.Root>
-                </div>
-                <div className="field">
-                  <label htmlFor="image-keywords">Image keywords</label>
-                  <textarea
-                    id="image-keywords"
-                    className="textarea"
-                    maxLength={500}
-                    value={draft.extraPromptKeywords}
-                    onChange={(event) =>
-                      setDraft((value) => ({ ...value, extraPromptKeywords: event.target.value }))
-                    }
-                  />
-                </div>
-                {!draft.applyExtraPromptKeywords ? (
-                  <div className="validation">
-                    <PauseCircle size={16} />
-                    Not applied
+                    />
                   </div>
-                ) : keywordEmpty ? (
-                  <div className="validation validation-danger">
-                    <X size={16} />
-                    Add keywords or turn the toggle off.
-                  </div>
-                ) : conflict ? (
-                  <div className="validation validation-danger">
-                    <X size={16} />
-                    Visible text, captions, logos, and watermarks are not allowed.
+                ) : compute.isError ? (
+                  <div className="validation validation-danger field-wide" role="alert">
+                    Compute profiles are unavailable. Reload after the local API is healthy.
                   </div>
                 ) : (
-                  <div className="validation validation-success">
-                    <Check size={16} />
-                    Keywords will be applied
+                  <div className="validation field-wide" role="status">
+                    Loading compute profiles…
                   </div>
                 )}
-                <div className="field">
-                  <label htmlFor="exact-script">Exact script (optional)</label>
-                  <textarea
-                    id="exact-script"
-                    className="textarea"
-                    value={draft.optionalScript}
-                    onChange={(event) =>
-                      setDraft((value) => ({ ...value, optionalScript: event.target.value }))
-                    }
-                  />
+                <div className="field field-wide">
+                  <span className="field-label">Execution mode</span>
+                  <div className="option-grid">
+                    {(["LOWEST_COST", "BALANCED", "FASTER"] as const).map((mode) => (
+                      <button
+                        type="button"
+                        key={mode}
+                        className={`option-card ${draft.generationMode === mode ? "selected" : ""}`}
+                        onClick={() => setDraft((value) => ({ ...value, generationMode: mode }))}
+                      >
+                        <strong>{mode.replace("_", " ")}</strong>
+                        <span>
+                          {mode === "LOWEST_COST"
+                            ? "Cheapest tested profiles"
+                            : mode === "BALANCED"
+                              ? "Recommended cost and speed"
+                              : "Faster tested endpoint priority"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </Disclosure>
-            <h3 className="form-section-title field-wide">Run</h3>
-            <div className="field field-wide">
-              <span className="field-label">Execution mode</span>
-              <div className="option-grid">
-                {(["LOWEST_COST", "BALANCED", "FASTER"] as const).map((mode) => (
-                  <button
-                    type="button"
-                    key={mode}
-                    className={`option-card ${draft.generationMode === mode ? "selected" : ""}`}
-                    onClick={() => setDraft((value) => ({ ...value, generationMode: mode }))}
-                  >
-                    <strong>{mode.replace("_", " ")}</strong>
-                    <span>
-                      {mode === "LOWEST_COST"
-                        ? "Cheapest tested profiles"
-                        : mode === "BALANCED"
-                          ? "Recommended cost and speed"
-                          : "Faster tested endpoint priority"}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            </section>
           </div>
         </Panel>
         <div className="stack">
           <Panel className="create-run-panel" eyebrow="Run" heading="Ready to generate">
             <div className={`run-readiness ${canSubmit ? "ready" : "blocked"}`} role="status">
               {canSubmit ? <Check size={18} /> : <AlertTriangle size={18} />}
-              <strong>
-                {canSubmit ? "All required inputs are ready" : "Complete required inputs"}
-              </strong>
+              <strong>{canSubmit ? "Ready" : "Complete required inputs"}</strong>
             </div>
+            {draft.spendCapUsd < estimatedCostUsd ? (
+              <div className="validation validation-danger">
+                <AlertTriangle size={16} />${estimatedCostUsd.toFixed(2)} fixture estimate exceeds
+                this cap.
+              </div>
+            ) : null}
             <div className="field">
               <label htmlFor="spend-cap">Hard spend cap</label>
               <input
@@ -761,14 +1031,8 @@ export function CreateProjectScreen() {
                   }))
                 }
               />
-              <small>Maximum $2.00 · Fixture spend $0</small>
+              <small>Estimated ${estimatedCostUsd.toFixed(2)} · fixture spend $0</small>
             </div>
-            {submittedError ? (
-              <div className="validation validation-danger">
-                <AlertTriangle size={16} />
-                {submittedError}
-              </div>
-            ) : null}
             <Button busy={create.isPending} disabled={!canSubmit} onClick={() => create.mutate()}>
               {create.isPending ? "Creating project…" : "Generate video"}
               <ArrowRight size={16} />
@@ -804,10 +1068,6 @@ export function CreateProjectScreen() {
                   <strong>{draft.generationMode.replaceAll("_", " ")}</strong>
                 </span>
                 <span>
-                  <small>Keywords</small>
-                  <strong>{draft.applyExtraPromptKeywords ? "Applied" : "Not applied"}</strong>
-                </span>
-                <span>
                   <small>Seed</small>
                   <strong>{draft.userSeed}</strong>
                 </span>
@@ -824,165 +1084,73 @@ export function CreateProjectScreen() {
   );
 }
 
-const defaultStages: ProjectStage[] = [
-  {
-    id: "ingest",
-    label: "Ingest",
-    status: "COMPLETE",
-    completed: 1,
-    total: 1,
-    detail: "Voiceover verified and immutable revision created.",
-  },
-  {
-    id: "timing",
-    label: "Word timing",
-    status: "COMPLETE",
-    completed: 1,
-    total: 1,
-    detail: "Fixture transcript aligned; no paid ASR.",
-  },
-  {
-    id: "timeline",
-    label: "Timeline",
-    status: "COMPLETE",
-    completed: 1,
-    total: 1,
-    detail: "Deterministic 30 fps plan compiled without gaps.",
-  },
-  {
-    id: "prompts",
-    label: "Image prompts",
-    status: "COMPLETE",
-    completed: 5,
-    total: 5,
-    detail: "Pinned documentary style and phrase roles compiled.",
-  },
-  {
-    id: "media",
-    label: "Image + avatar lanes",
-    status: "RUNNING",
-    completed: 31,
-    total: 52,
-    detail: "AvatarForcing fixture clip 18/22 · Mage image 13/30.",
-  },
-  {
-    id: "assembly",
-    label: "Assembly",
-    status: "QUEUED",
-    completed: 0,
-    total: 1,
-    detail: "Waiting for accepted asset barrier.",
-  },
-  {
-    id: "qa",
-    label: "Technical QA",
-    status: "QUEUED",
-    completed: 0,
-    total: 1,
-    detail: "FFprobe and checksum pending.",
-  },
-];
-
-const scenarioMessages: Partial<
-  Record<ReturnType<typeof currentScenario>, { tone: Tone; title: string; body: string }>
-> = {
-  gpu_cold_start: {
-    tone: "info",
-    title: "GPU cold start",
-    body: "Container is ready; the model is loading. Queue wait and model-ready time are shown separately.",
-  },
-  image_partial_failure: {
-    tone: "warning",
-    title: "Image chunk needs one retry",
-    body: "13/15 items are accepted. Only two failed scene IDs will be retried.",
-  },
-  avatar_lip_failure: {
-    tone: "warning",
-    title: "Reviewer classification required",
-    body: "Clip 18 is otherwise good but has isolated lip sync drift. MuseTalk is the only approved repair route.",
-  },
-  skyreels_approval_required: {
-    tone: "warning",
-    title: "Whole-frame fallback needs budget approval",
-    body: "SkyReels would start from the exact pinned Avatar Profile source, never the failed derivative.",
-  },
-  budget_blocked: {
-    tone: "danger",
-    title: "Budget blocked",
-    body: "The next dispatch would exceed the immutable project cap. No provider work has started.",
-  },
-  dispatch_ack_unknown: {
-    tone: "warning",
-    title: "Dispatch acknowledgement unknown",
-    body: "VideoForge is reconciling the original idempotency key and will not blindly dispatch again.",
-  },
-  callback_reconciling: {
-    tone: "info",
-    title: "Reconnecting to worker truth",
-    body: "A callback was missed. Accepted artifacts and the provider job are being reconciled.",
-  },
-  cancel_requested: {
-    tone: "warning",
-    title: "Cancellation requested",
-    body: "Queued work is blocked; already-running work is settling cooperatively and billed cost remains visible.",
-  },
-};
-
 export function ProjectScreen({ projectId }: { projectId: string }) {
   const scenario = currentScenario();
   const query = useQuery({
     queryKey: ["project", projectId, scenario],
     queryFn: () => api.project(projectId, scenario),
+    refetchInterval: 10_000,
+  });
+  const compute = useQuery({
+    queryKey: ["execution-profiles", scenario],
+    queryFn: () => api.executionProfiles(scenario),
   });
   const [action, setAction] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<{
     tone: "info" | "danger";
     text: string;
   } | null>(null);
-  const project: ProjectSummary = query.data?.project ?? {
-    id: projectId,
-    title: "Why the everyday world is changing",
-    owner: "Lakshman",
-    status: scenario === "project_ready_for_review" ? "READY_FOR_REVIEW" : "RUNNING",
-    stage: "Image + avatar generation",
-    completed: 31,
-    total: 52,
-    eta: "18 min",
-    mode: "BALANCED",
-    estimatedCost: 0.91,
-    actualCost: 0.34,
-    queuePosition: null,
-    createdAt: "Today, 10:42",
-    stages: defaultStages,
-    capUsd: 1.5,
-    lanes: {
-      image: { state: "RUNNING", completed: 13, total: 30, action: "Image 14 compiling" },
-      avatar: { state: "RUNNING", completed: 18, total: 22, action: "Clip 19 generating" },
-    },
-    latestArtifact: {
-      kind: "IMAGE",
-      url: "/fixtures/media/watermelon-market.svg",
-      label: "Latest accepted image",
-    },
-    reviewState: "NOT_READY",
-  };
+  if (query.isPending) {
+    return (
+      <Panel className="loading-panel" eyebrow="Project" heading="Loading progress">
+        <div className="empty-state" aria-busy="true">
+          <span className="spinner" aria-hidden="true" />
+          <p>Connecting to the authoritative project state…</p>
+        </div>
+      </Panel>
+    );
+  }
+  if (query.isError || !query.data) {
+    return (
+      <EmptyState
+        icon={<AlertTriangle />}
+        title="Project progress is unavailable"
+        body="The local API did not return a project. No fallback status is being shown."
+        action={
+          <Button variant="secondary" onClick={() => void query.refetch()}>
+            Retry load
+          </Button>
+        }
+      />
+    );
+  }
+
+  const project: ProjectSummary = query.data.project;
   const percent = Math.round((project.completed / Math.max(1, project.total)) * 100);
-  const message = scenarioMessages[scenario];
-  const stages = project.stages ?? defaultStages;
-  const currentStageIndex = Math.max(
-    0,
-    stages.findIndex((stage) =>
-      ["RUNNING", "RETRYING", "BLOCKED", "FAILED"].includes(stage.status),
+  const stages = project.stages;
+  const actionableStageIndex = stages.findIndex((stage) =>
+    ["STARTING", "RUNNING", "RETRYING", "BLOCKED", "FAILED", "CANCEL_REQUESTED"].includes(
+      stage.status,
     ),
   );
+  const nextStageIndex = stages.findIndex((stage) => ["PENDING", "QUEUED"].includes(stage.status));
+  const currentStageIndex =
+    actionableStageIndex >= 0
+      ? actionableStageIndex
+      : nextStageIndex >= 0
+        ? nextStageIndex
+        : Math.max(0, stages.length - 1);
   const imagePercent = Math.round(
     (project.lanes.image.completed / Math.max(1, project.lanes.image.total)) * 100,
   );
   const avatarPercent = Math.round(
     (project.lanes.avatar.completed / Math.max(1, project.lanes.avatar.total)) * 100,
   );
+  const imageCompute = compute.data?.lanes.find((lane) => lane.lane === "image_media");
+  const avatarCompute = compute.data?.lanes.find((lane) => lane.lane === "avatar_primary");
 
   async function perform(label: string, path: string) {
+    if (action !== null) return;
     setAction(label);
     setActionNotice({
       tone: "info",
@@ -1000,56 +1168,59 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
             ? "Retry accepted for the failed item set only. Next fixture check in 10 seconds."
             : "Cancellation accepted. Running work is settling; next fixture check in 10 seconds.",
       });
+      await query.refetch();
     } catch (error) {
       setActionNotice({
         tone: "danger",
         text: error instanceof Error ? error.message : "The fixture action could not be accepted.",
       });
-    } finally {
-      window.setTimeout(() => setAction(null), 650);
+      setAction(null);
     }
   }
 
   return (
     <>
       <PageHeader
-        eyebrow={`${project.status.replaceAll("_", " ")} · REV 001`}
+        eyebrow={`${project.status.replaceAll("_", " ")} · REV ${project.revisionId.split("_").at(-1)?.toUpperCase() ?? "—"}`}
         title={project.title}
         description={`${project.owner} · ${project.mode.replaceAll("_", " ")}`}
         actions={
-          <>
-            <Button
-              variant="secondary"
-              busy={action === "retry"}
-              onClick={() => perform("retry", `/api/v1/projects/${project.id}/retry`)}
-            >
-              <RefreshCw size={15} />
-              Retry
-            </Button>
-            <Button
-              variant="danger"
-              busy={action === "cancel"}
-              onClick={() => perform("cancel", `/api/v1/projects/${project.id}/cancel`)}
-            >
-              <X size={15} />
-              Cancel
-            </Button>
-          </>
+          project.allowedActions.includes("RETRY_FAILED_ITEMS") ||
+          project.allowedActions.includes("CANCEL") ? (
+            <>
+              {project.allowedActions.includes("RETRY_FAILED_ITEMS") ? (
+                <Button
+                  variant="secondary"
+                  busy={action === "retry"}
+                  disabled={action !== null}
+                  onClick={() => perform("retry", `/api/v1/projects/${project.id}/retry`)}
+                >
+                  <RefreshCw size={15} />
+                  Retry
+                </Button>
+              ) : null}
+              {project.allowedActions.includes("CANCEL") ? (
+                <Button
+                  variant="danger"
+                  busy={action === "cancel"}
+                  disabled={action !== null}
+                  onClick={() => perform("cancel", `/api/v1/projects/${project.id}/cancel`)}
+                >
+                  <X size={15} />
+                  Cancel
+                </Button>
+              ) : null}
+            </>
+          ) : undefined
         }
       />
-      {message ? (
-        <div
-          className={`notice ${message.tone === "warning" ? "notice-warning" : message.tone === "danger" ? "notice-danger" : ""}`}
-        >
-          <strong>{message.title}.</strong> {message.body}
-        </div>
-      ) : null}
-      {actionNotice ? (
-        <div
-          className={`notice ${actionNotice.tone === "danger" ? "notice-danger" : ""}`}
-          role="status"
-          aria-live="polite"
-        >
+      <NoticeBanner notice={query.data.notice} />
+      <ActionToast
+        message={actionNotice?.tone === "danger" ? actionNotice.text : null}
+        onDismiss={() => setActionNotice(null)}
+      />
+      {actionNotice?.tone === "info" ? (
+        <div className="notice" role="status" aria-live="polite">
           {actionNotice.text}
         </div>
       ) : null}
@@ -1072,9 +1243,19 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
             />
             <Metric
               label="Status"
-              value={query.isError ? "Blocked" : "Running"}
-              detail={query.isError ? "API unavailable" : "Lanes connected"}
-              tone={query.isError ? "danger" : "success"}
+              value={humanize(project.status)}
+              detail={
+                project.status === "RECONCILING"
+                  ? "Checking durable worker truth"
+                  : project.status === "CANCEL_REQUESTED"
+                    ? "Workers are settling"
+                    : project.status === "READY_FOR_REVIEW"
+                      ? "Human approval required"
+                      : project.status === "APPROVED"
+                        ? "Final revision locked"
+                        : "Authoritative project state"
+              }
+              tone={statusTone(project.status)}
             />
             <Metric label="Estimated" value={project.eta} detail="remaining" />
             <Metric
@@ -1104,7 +1285,7 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
                   aria-label={project.latestArtifact.label}
                 >
                   <CompositionPreview type="AVATAR_SPLIT_IMAGE" />
-                  <Badge tone="success">VIDEO READY</Badge>
+                  <Badge tone="info">SYNTHETIC CANDIDATE</Badge>
                 </div>
               ) : (
                 <CompositionPreview type="IMAGE_FULL" />
@@ -1121,21 +1302,33 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
           <Panel className="lane-panel" eyebrow="Parallel work" heading="Media lanes">
             <div className="lane-list">
               <div className="lane-row">
-                <div>
+                <div className="lane-title">
                   <span>Images</span>
                   <strong>
                     {project.lanes.image.completed} / {project.lanes.image.total}
                   </strong>
+                  <span className="compute-status">
+                    <i aria-hidden="true" />
+                    {imageCompute?.status.provider_state === "NOT_CONNECTED"
+                      ? "Fixture · no GPU"
+                      : (imageCompute?.status.label ?? "Status unavailable")}
+                  </span>
                 </div>
                 <ProgressBar value={imagePercent} label="Image lane progress" />
                 <small>{project.lanes.image.action}</small>
               </div>
               <div className="lane-row">
-                <div>
+                <div className="lane-title">
                   <span>Avatar</span>
                   <strong>
                     {project.lanes.avatar.completed} / {project.lanes.avatar.total}
                   </strong>
+                  <span className="compute-status">
+                    <i aria-hidden="true" />
+                    {avatarCompute?.status.provider_state === "NOT_CONNECTED"
+                      ? "Fixture · no GPU"
+                      : (avatarCompute?.status.label ?? "Status unavailable")}
+                  </span>
                 </div>
                 <ProgressBar value={avatarPercent} label="Avatar lane progress" />
                 <small>{project.lanes.avatar.action}</small>
@@ -1155,11 +1348,11 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
             <div className="detail-facts">
               <span>
                 <small>Avatar</small>
-                <strong>Amish Farm Host · v1</strong>
+                <strong>{project.pins.avatarProfileVersionId ?? "Not pinned"}</strong>
               </span>
               <span>
                 <small>Image style</small>
-                <strong>Authentic Documentary Stock · v1</strong>
+                <strong>{project.pins.imageStyleVersionId}</strong>
               </span>
               <span>
                 <small>Estimate</small>
@@ -1167,7 +1360,7 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
               </span>
               <span>
                 <small>Revision</small>
-                <strong>rev_fixture_001</strong>
+                <strong>{project.revisionId}</strong>
               </span>
             </div>
             <div className="activity-list">
@@ -1181,15 +1374,17 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
             </div>
           </Disclosure>
 
-          <Link
-            className="button button-primary progress-review-action"
-            to="/projects/$projectId/review"
-            params={{ projectId }}
-            search={{ fixture: scenario } as never}
-          >
-            Review output
-            <ArrowRight size={18} />
-          </Link>
+          {project.allowedActions.includes("REVIEW") ? (
+            <Link
+              className="button button-primary progress-review-action"
+              to="/projects/$projectId/review"
+              params={{ projectId }}
+              search={{ fixture: scenario } as never}
+            >
+              Review output
+              <ArrowRight size={18} />
+            </Link>
+          ) : null}
         </div>
       </div>
     </>
@@ -1198,13 +1393,20 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
 
 export function ReviewScreen({ projectId }: { projectId: string }) {
   const scenario = currentScenario();
+  const query = useQuery({
+    queryKey: ["project", projectId, scenario],
+    queryFn: () => api.project(projectId, scenario),
+    refetchInterval: 10_000,
+  });
   const [sameClipMode, setSameClipMode] = useState<"AVATAR_FULL" | "AVATAR_SPLIT_IMAGE">(
     "AVATAR_FULL",
   );
   const [busy, setBusy] = useState<string | null>(null);
-  const [approved, setApproved] = useState(scenario === "project_approved");
+  const [approvalRecorded, setApprovalRecorded] = useState(false);
   const [approvalError, setApprovalError] = useState<string | null>(null);
   const [reviewActionNotice, setReviewActionNotice] = useState<string | null>(null);
+  const project = query.data?.project;
+  const approved = approvalRecorded || project?.review.state === "APPROVED";
   const shots = [
     {
       id: "seg_0001",
@@ -1230,29 +1432,97 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
   ];
 
   async function act(id: string) {
+    if (busy !== null) return;
     setBusy(id);
     setApprovalError(null);
     setReviewActionNotice(null);
     try {
       if (id === "approve") {
         await Promise.all([
-          api.mutate(`/api/v1/projects/${projectId}/approve`, { project_id: projectId }, scenario),
+          api.mutate(
+            `/api/v1/projects/${projectId}/approve`,
+            { project_id: projectId, candidate_id: project?.review.candidateId },
+            scenario,
+          ),
           new Promise((resolve) => window.setTimeout(resolve, 600)),
         ]);
-        setApproved(true);
-      } else {
-        await new Promise((resolve) => window.setTimeout(resolve, 600));
-        setReviewActionNotice(
-          id.endsWith("-regen")
-            ? "Regeneration queued for this segment. Next check in 10 seconds."
-            : "Issue saved. The accepted candidate is unchanged.",
+        setApprovalRecorded(true);
+        await query.refetch();
+      } else if (id === "retry") {
+        await api.mutate(
+          `/api/v1/projects/${projectId}/retry`,
+          { project_id: projectId },
+          scenario,
         );
+        setReviewActionNotice("Targeted repair accepted. Next project check in 10 seconds.");
+        await query.refetch();
+      } else if (id === "fallback") {
+        await api.mutate(
+          `/api/v1/projects/${projectId}/fallback-approval`,
+          { project_id: projectId, approved_increment_usd: 0.18 },
+          scenario,
+        );
+        setReviewActionNotice("The $0.18 fallback reservation was approved for this fixture.");
+        await query.refetch();
+      } else {
+        throw new Error("This review action is not implemented in fixture mode.");
       }
     } catch (error) {
       setApprovalError(error instanceof Error ? error.message : "Approval could not be recorded.");
     } finally {
       setBusy(null);
     }
+  }
+
+  if (query.isPending) {
+    return (
+      <Panel eyebrow="Review" heading="Loading candidate">
+        <div className="empty-state" aria-busy="true">
+          <span className="spinner" aria-hidden="true" />
+          <p>Checking candidate and approval state…</p>
+        </div>
+      </Panel>
+    );
+  }
+  if (query.isError || !project) {
+    return (
+      <EmptyState
+        icon={<AlertTriangle />}
+        title="Review unavailable"
+        body="No candidate is inferred when project state cannot be loaded."
+        action={
+          <Button variant="secondary" onClick={() => void query.refetch()}>
+            Retry load
+          </Button>
+        }
+      />
+    );
+  }
+  if (!project.allowedActions.includes("REVIEW") && !approved) {
+    return (
+      <>
+        <PageHeader
+          eyebrow={humanize(project.status)}
+          title="Review"
+          description="No candidate yet"
+        />
+        <EmptyState
+          icon={<Video />}
+          title="Output is not ready for review"
+          body="Return to Progress. Approval stays unavailable until a candidate passes technical checks."
+          action={
+            <Link
+              className="button button-primary"
+              to="/projects/$projectId"
+              params={{ projectId }}
+              search={{ fixture: scenario } as never}
+            >
+              Open progress
+            </Link>
+          }
+        />
+      </>
+    );
   }
 
   return (
@@ -1271,30 +1541,42 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
             >
               Progress
             </Link>
-            <Button busy={busy === "approve"} disabled={approved} onClick={() => act("approve")}>
-              <ShieldCheck size={16} />
-              {approved ? "Approved" : "Approve final"}
-            </Button>
+            {project.allowedActions.includes("APPROVE") || approved ? (
+              <Button
+                busy={busy === "approve"}
+                disabled={approved || busy !== null}
+                onClick={() => act("approve")}
+              >
+                <ShieldCheck size={16} />
+                {approved ? "Approved" : "Approve final"}
+              </Button>
+            ) : null}
+            {project.allowedActions.includes("RETRY_FAILED_ITEMS") ? (
+              <Button busy={busy === "retry"} disabled={busy !== null} onClick={() => act("retry")}>
+                <RefreshCw size={16} />
+                Retry failed item
+              </Button>
+            ) : null}
+            {project.allowedActions.includes("APPROVE_FALLBACK") ? (
+              <Button
+                busy={busy === "fallback"}
+                disabled={busy !== null}
+                onClick={() => act("fallback")}
+              >
+                Approve $0.18 fallback
+              </Button>
+            ) : null}
           </>
         }
       />
-      {approvalError || busy === "approve" || approved ? (
-        <div
-          className={`notice ${approvalError ? "notice-danger" : ""}`}
-          role="status"
-          aria-live="polite"
-        >
-          <strong>
-            {approvalError
-              ? "Approval blocked."
-              : busy === "approve"
-                ? "Approving…"
-                : "Approval recorded."}
-          </strong>{" "}
-          {approvalError ??
-            (busy === "approve"
-              ? "Candidate and checksum are being verified."
-              : "Downloads are ready.")}
+      <NoticeBanner notice={query.data.notice} />
+      <ActionToast message={approvalError} onDismiss={() => setApprovalError(null)} />
+      {busy === "approve" || approved ? (
+        <div className="notice" role="status" aria-live="polite">
+          <strong>{busy === "approve" ? "Approving…" : "Approval recorded."}</strong>{" "}
+          {busy === "approve"
+            ? "Candidate and checksum are being verified."
+            : "Downloads are ready."}
         </div>
       ) : null}
       {reviewActionNotice ? (
@@ -1321,12 +1603,14 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
           <div className="cluster">
             <Button
               variant={sameClipMode === "AVATAR_FULL" ? "primary" : "secondary"}
+              aria-pressed={sameClipMode === "AVATAR_FULL"}
               onClick={() => setSameClipMode("AVATAR_FULL")}
             >
               Full
             </Button>
             <Button
               variant={sameClipMode === "AVATAR_SPLIT_IMAGE" ? "primary" : "secondary"}
+              aria-pressed={sameClipMode === "AVATAR_SPLIT_IMAGE"}
               onClick={() => setSameClipMode("AVATAR_SPLIT_IMAGE")}
             >
               Split
@@ -1345,26 +1629,11 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
                 </Badge>
               </div>
               <p>{shot.phrase}</p>
-              <div className="cluster">
-                <Button
-                  variant="secondary"
-                  busy={busy === `${shot.id}-regen`}
-                  onClick={() => act(`${shot.id}-regen`)}
-                >
-                  <RefreshCw size={14} />
-                  Regenerate
-                </Button>
-                {shot.type !== "IMAGE_FULL" ? (
-                  <Button
-                    variant="ghost"
-                    busy={busy === `${shot.id}-flag`}
-                    onClick={() => act(`${shot.id}-flag`)}
-                  >
-                    <AlertTriangle size={14} />
-                    Flag issue
-                  </Button>
-                ) : null}
-              </div>
+              <small className="review-segment-state">
+                {shot.status === "FLAGGED"
+                  ? "Repair is controlled by the project action above."
+                  : "Read-only fixture contact sheet"}
+              </small>
             </article>
           ))}
         </div>
@@ -1411,10 +1680,10 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
             <a
               className="button button-secondary"
               href={`/api/v1/projects/${projectId}?fixture=${scenario}`}
-              download="videoforge-fixture-manifest.json"
+              download="videoforge-fixture-project-record.json"
             >
               <FileJson size={18} />
-              Manifest
+              Fixture record
             </a>
           </div>
         ) : (
@@ -1429,14 +1698,38 @@ export function AvatarHubScreen() {
   const scenario = currentScenario();
   const [search, setSearch] = useState("");
   const query = useQuery({ queryKey: ["avatars", scenario], queryFn: () => api.avatars(scenario) });
-  const local = readLocalEntities("videoforge:fixture:avatars:v1", isAvatarProfile);
-  const avatars = [...(query.data ?? []), ...local].filter(
-    (item, index, list) =>
-      list.findIndex((candidate) => candidate.versionId === item.versionId) === index,
-  );
+  const bootstrap = useQuery({
+    queryKey: ["bootstrap", scenario],
+    queryFn: () => api.bootstrap(scenario),
+  });
+  const avatars = query.data ?? [];
   const visibleAvatars = avatars.filter((avatar) =>
     avatar.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
+  if (query.isPending) {
+    return (
+      <Panel eyebrow="Presets" heading="Loading Avatar Hub">
+        <div className="empty-state" aria-busy="true">
+          <span className="spinner" aria-hidden="true" />
+          <p>Loading reusable presenters…</p>
+        </div>
+      </Panel>
+    );
+  }
+  if (query.isError) {
+    return (
+      <EmptyState
+        icon={<AlertTriangle />}
+        title="Avatar Hub unavailable"
+        body="The profile catalog could not be loaded. No empty catalog is being inferred."
+        action={
+          <Button variant="secondary" onClick={() => void query.refetch()}>
+            Retry load
+          </Button>
+        }
+      />
+    );
+  }
   return (
     <>
       <PageHeader
@@ -1454,6 +1747,12 @@ export function AvatarHubScreen() {
           </Link>
         }
       />
+      <NoticeBanner notice={bootstrap.data?.notice} />
+      {bootstrap.data?.activeOperations.avatar ? (
+        <div className="notice" role="status">
+          <strong>In progress.</strong> {bootstrap.data.activeOperations.avatar}
+        </div>
+      ) : null}
       <div className="hub-toolbar">
         <label className="search-field">
           <span className="sr-only">Search avatars</span>
@@ -1486,15 +1785,18 @@ export function AvatarHubScreen() {
               </Link>
             }
           />
+        ) : visibleAvatars.length === 0 ? (
+          <EmptyState
+            icon={<UsersRound />}
+            title="No matching avatars"
+            body="Clear or change the search to see the workspace catalog."
+          />
         ) : (
           <div className="card-grid avatar-card-grid">
             {visibleAvatars.map((avatar) => (
               <article className="entity-card avatar-card" key={avatar.versionId}>
                 <div className="avatar-card-media">
-                  <img
-                    src={avatar.thumbnailUrl || "/fixtures/avatar/amish-farm-host.svg"}
-                    alt={`${avatar.name} presenter`}
-                  />
+                  <PresetImage src={avatar.thumbnailUrl} alt={`${avatar.name} presenter`} />
                   <Badge tone={statusTone(avatar.status)}>{avatar.status}</Badge>
                 </div>
                 <div className="entity-card-body">
@@ -1505,7 +1807,7 @@ export function AvatarHubScreen() {
                     </div>
                     <Badge tone={statusTone(avatar.compatibility)}>{avatar.compatibility}</Badge>
                   </div>
-                  <p>Last used {formatShortDate(avatar.lastUsed)}</p>
+                  <p>{avatar.warning ?? `Last used ${formatShortDate(avatar.lastUsed)}`}</p>
                 </div>
                 <DetailsSheet
                   title={avatar.name}
@@ -1522,16 +1824,16 @@ export function AvatarHubScreen() {
                 >
                   <div className="avatar-crop-grid">
                     <figure>
-                      <img
-                        src={avatar.thumbnailUrl || "/fixtures/avatar/amish-farm-host.svg"}
-                        alt="Full avatar crop"
+                      <PresetImage
+                        src={avatar.thumbnailUrl}
+                        alt={`${avatar.name} full avatar crop`}
                       />
                       <figcaption>Full frame</figcaption>
                     </figure>
                     <figure className="split-crop">
-                      <img
-                        src={avatar.thumbnailUrl || "/fixtures/avatar/amish-farm-host.svg"}
-                        alt="Split avatar crop"
+                      <PresetImage
+                        src={avatar.thumbnailUrl}
+                        alt={`${avatar.name} split avatar crop`}
                       />
                       <figcaption>Split crop</figcaption>
                     </figure>
@@ -1577,51 +1879,76 @@ export function AvatarHubScreen() {
 }
 
 export function NewAvatarScreen() {
+  const scenario = currentScenario();
   const params = new URLSearchParams(window.location.search);
   const returnTo = params.get("returnTo") || "/avatars";
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
-  const [sourceName, setSourceName] = useState<string | null>(null);
+  const [source, setSource] = useState<VerifiedImage | null>(null);
+  const [sourceError, setSourceError] = useState<string | null>(null);
+  const [sourcePending, setSourcePending] = useState(false);
   const [rights, setRights] = useState(false);
   const [likeness, setLikeness] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const catalog = useQuery({
+    queryKey: ["avatars", scenario],
+    queryFn: () => api.avatars(scenario),
+  });
+  const duplicateName = (catalog.data ?? []).some(
+    (avatar) => avatar.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase(),
+  );
 
-  function finish() {
+  useEffect(
+    () => () => {
+      if (source) URL.revokeObjectURL(source.objectUrl);
+    },
+    [source],
+  );
+
+  async function chooseAvatarSource(file?: File) {
+    if (!file) return;
+    if (source) URL.revokeObjectURL(source.objectUrl);
+    setSource(null);
+    setSourceError(null);
+    setSourcePending(true);
+    try {
+      setSource(await validateImageFile(file, 512));
+    } catch (error) {
+      setSourceError(error instanceof Error ? error.message : "Avatar source validation failed.");
+    } finally {
+      setSourcePending(false);
+    }
+  }
+
+  async function finish() {
+    if (!source || busy) return;
     setBusy(true);
-    window.setTimeout(() => {
-      const versionId = `avatar_version_${crypto.randomUUID()}`;
-      const next: AvatarProfile = {
-        id: `avatar_${crypto.randomUUID()}`,
-        versionId,
-        name: name.trim(),
-        initials: name
-          .trim()
-          .split(/\s+/)
-          .map((part) => part[0])
-          .join("")
-          .slice(0, 2)
-          .toUpperCase(),
-        version: 1,
-        status: "READY",
-        compatibility: "UNTESTED",
-        dimensions: "1200×1600",
-        lastUsed: "Never",
-        thumbnailUrl: "/fixtures/avatar/amish-farm-host.svg",
-        profileHash: "sha256:fixture-local-avatar-profile",
-        preparationProfile: "avatar-source-prep-v1",
-        validationProfile: "avatar-source-validation-v1",
-        rightsStatus: "ATTESTED",
-      };
-      localStorage.setItem(
-        "videoforge:fixture:avatars:v1",
-        JSON.stringify([
-          ...readLocalEntities("videoforge:fixture:avatars:v1", isAvatarProfile),
-          next,
-        ]),
+    setSaveError(null);
+    try {
+      const result = await api.mutate<{ avatarProfile: AvatarProfile }>(
+        "/api/v1/avatar-profiles",
+        {
+          name: name.trim(),
+          thumbnail_url: "/fixtures/avatar/amish-farm-host.svg",
+          source_dimensions: { width: source.width, height: source.height },
+          profile_hash: "sha256:4edb4a84b48056a5e12122153099c2243b7d3b59ac8c76db8a3b3471eedcc672",
+          preparation_profile: "fixture-browser-decode-v1",
+          validation_profile: "fixture-manual-framing-v1",
+          compatibility: "UNTESTED",
+          lifecycle: "ACTIVE",
+          version_state: "READY",
+          uploaded_bytes_persisted: false,
+          attestations: { image_use_rights: true, likeness_animation_consent: true },
+        },
+        scenario,
       );
-      updateDraft({ avatarProfileVersionId: versionId });
+      updateDraft({ avatarProfileVersionId: result.avatarProfile.versionId });
       window.location.assign(fixtureLink(returnTo));
-    }, 650);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Avatar Profile could not be saved.");
+      setBusy(false);
+    }
   }
 
   return (
@@ -1630,11 +1957,16 @@ export function NewAvatarScreen() {
         eyebrow={`New avatar · step ${step} of 3`}
         title="New avatar"
         actions={
-          <a className="button button-ghost" href={fixtureLink(returnTo)}>
+          <Button
+            variant="ghost"
+            disabled={busy}
+            onClick={() => window.location.assign(fixtureLink(returnTo))}
+          >
             Cancel
-          </a>
+          </Button>
         }
       />
+      <ActionToast message={saveError} onDismiss={() => setSaveError(null)} />
       <div className="layout-main">
         <Panel
           eyebrow="Source workflow"
@@ -1664,36 +1996,60 @@ export function NewAvatarScreen() {
                   aria-label="Upload avatar source"
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
-                  onChange={(event) => setSourceName(event.target.files?.[0]?.name ?? null)}
+                  disabled={sourcePending}
+                  onChange={(event) => void chooseAvatarSource(event.target.files?.[0])}
                 />
-                <Upload size={27} />
+                {sourcePending ? (
+                  <span className="spinner" aria-hidden="true" />
+                ) : (
+                  <Upload size={27} />
+                )}
                 <span>
-                  <strong>{sourceName ?? "Choose one private centered source"}</strong>JPEG, PNG, or
-                  WebP · at least 512×512 · 20 MB max
+                  <strong>{source?.filename ?? "Choose one private centered source"}</strong>
+                  {source
+                    ? `${source.width}×${source.height} · decoded locally`
+                    : "JPEG, PNG, or WebP · at least 512×512 · 20 MB max"}
                 </span>
               </label>
-              <Button disabled={!name.trim() || !sourceName} onClick={() => setStep(2)}>
-                Validate source
+              {sourceError ? (
+                <div className="validation validation-danger">{sourceError}</div>
+              ) : null}
+              {duplicateName ? (
+                <div className="validation validation-danger">
+                  Use a unique Avatar Profile name.
+                </div>
+              ) : null}
+              <Button
+                disabled={!name.trim() || !source || duplicateName}
+                onClick={() => setStep(2)}
+              >
+                Review source
                 <ArrowRight size={16} />
               </Button>
             </div>
           ) : null}
           {step === 2 ? (
             <div className="stack">
-              <div className="composition">
-                <div className="avatar-frame">
-                  <span className="avatar-silhouette" />
-                </div>
-              </div>
+              {source ? (
+                <img
+                  className="avatar-source-preview"
+                  src={source.objectUrl}
+                  alt="Selected avatar source preview"
+                />
+              ) : null}
               <div className="validation validation-success">
                 <Check size={16} />
-                Magic bytes, dimensions, checksum, orientation, color profile, and EXIF/GPS-free
-                derivative verified.
+                File signature, browser decode, and {source?.width}×{source?.height} dimensions
+                passed.
               </div>
-              <div className="validation validation-success">
-                <Check size={16} />
-                One presenter, horizontally centered, direct-to-camera safe area confirmed.
+              <div className="notice notice-warning">
+                <strong>Manual check required.</strong> Confirm one centered, front-facing
+                presenter. Fixture mode does not run person detection, crop analysis, EXIF
+                stripping, or a model.
               </div>
+              <Button variant="ghost" onClick={() => setStep(1)}>
+                Back
+              </Button>
               <Button onClick={() => setStep(3)}>
                 Confirm framing
                 <ArrowRight size={16} />
@@ -1730,9 +2086,13 @@ export function NewAvatarScreen() {
               </label>
               <div className="notice">
                 <strong>Optional compatibility testing is not running.</strong> Saving this ready
-                source costs $0 and makes no model call.
+                fixture profile costs $0 and makes no model call. Uploaded bytes stay only in this
+                browser page; the Hub uses a labelled owned stand-in thumbnail.
               </div>
-              <Button busy={busy} disabled={!rights || !likeness} onClick={finish}>
+              <Button variant="ghost" disabled={busy} onClick={() => setStep(2)}>
+                Back
+              </Button>
+              <Button busy={busy} disabled={!rights || !likeness} onClick={() => void finish()}>
                 Approve and add to Avatar Hub
               </Button>
             </div>
@@ -1750,11 +2110,11 @@ export function NewAvatarScreen() {
           <div className="detail-facts">
             <span>
               <small>Source</small>
-              <strong>Private original + checksum</strong>
+              <strong>Not persisted by fixture shell</strong>
             </span>
             <span>
               <small>Runtime</small>
-              <strong>Prepared derivative + thumbnail</strong>
+              <strong>Owned stand-in thumbnail</strong>
             </span>
             <span>
               <small>Consent</small>
@@ -1775,14 +2135,38 @@ export function StylesHubScreen() {
   const scenario = currentScenario();
   const [search, setSearch] = useState("");
   const query = useQuery({ queryKey: ["styles", scenario], queryFn: () => api.styles(scenario) });
-  const local = readLocalEntities("videoforge:fixture:styles:v1", isImageStyle);
-  const styles = [...(query.data ?? []), ...local].filter(
-    (item, index, list) =>
-      list.findIndex((candidate) => candidate.versionId === item.versionId) === index,
-  );
+  const bootstrap = useQuery({
+    queryKey: ["bootstrap", scenario],
+    queryFn: () => api.bootstrap(scenario),
+  });
+  const styles = query.data ?? [];
   const visibleStyles = styles.filter((style) =>
     style.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
+  if (query.isPending) {
+    return (
+      <Panel eyebrow="Presets" heading="Loading Image Styles">
+        <div className="empty-state" aria-busy="true">
+          <span className="spinner" aria-hidden="true" />
+          <p>Loading reusable visual profiles…</p>
+        </div>
+      </Panel>
+    );
+  }
+  if (query.isError) {
+    return (
+      <EmptyState
+        icon={<AlertTriangle />}
+        title="Image Styles unavailable"
+        body="The style catalog could not be loaded. No empty catalog is being inferred."
+        action={
+          <Button variant="secondary" onClick={() => void query.refetch()}>
+            Retry load
+          </Button>
+        }
+      />
+    );
+  }
   return (
     <>
       <PageHeader
@@ -1800,6 +2184,12 @@ export function StylesHubScreen() {
           </Link>
         }
       />
+      <NoticeBanner notice={bootstrap.data?.notice} />
+      {bootstrap.data?.activeOperations.style ? (
+        <div className="notice" role="status">
+          <strong>In progress.</strong> {bootstrap.data.activeOperations.style}
+        </div>
+      ) : null}
       <div className="hub-toolbar">
         <label className="search-field">
           <span className="sr-only">Search image styles</span>
@@ -1817,162 +2207,224 @@ export function StylesHubScreen() {
         eyebrow="Workspace library"
         heading={`${visibleStyles.length} style${visibleStyles.length === 1 ? "" : "s"}`}
       >
-        <div className="card-grid style-card-grid">
-          {visibleStyles.map((style) => {
-            const references = style.referenceUrls ?? [];
-            const examples = style.exampleUrls ?? [];
-            const gallery = references.length ? references : examples;
-            const galleryLabel = references.length ? "References" : "Owned examples";
-            return (
-              <article className="entity-card style-card" key={style.versionId}>
-                <div className="style-card-media">
-                  <img
-                    src={style.coverUrl || "/fixtures/styles/warm-rural.svg"}
-                    alt={`${style.name} cover`}
-                  />
-                  <div className="style-card-badges">
-                    {style.isDefault ? <Badge tone="info">DEFAULT</Badge> : null}
-                    <Badge tone={statusTone(style.status)}>{style.status}</Badge>
-                  </div>
-                </div>
-                <div className="entity-card-body">
-                  <div className="entity-title-row">
-                    <div>
-                      <h3>{style.name}</h3>
-                      <span>Published v{style.version}</span>
+        {visibleStyles.length === 0 ? (
+          <EmptyState
+            icon={<Images />}
+            title="No matching styles"
+            body="Clear or change the search to see the workspace library."
+          />
+        ) : (
+          <div className="card-grid style-card-grid">
+            {visibleStyles.map((style) => {
+              const references = style.referenceUrls ?? [];
+              const examples = style.exampleUrls ?? [];
+              const gallery = references.length ? references : examples;
+              const galleryLabel = references.length ? "References" : "Owned examples";
+              return (
+                <article className="entity-card style-card" key={style.versionId}>
+                  <div className="style-card-media">
+                    <PresetImage src={style.coverUrl} alt={`${style.name} cover`} />
+                    <div className="style-card-badges">
+                      {style.isDefault ? <Badge tone="info">DEFAULT</Badge> : null}
+                      <Badge tone={statusTone(style.status)}>{style.status}</Badge>
                     </div>
                   </div>
-                  <p>{style.summary}</p>
-                </div>
-                <DetailsSheet
-                  title={style.name}
-                  description={`Published v${style.version} · ${galleryLabel} ${gallery.length}`}
-                  trigger={
-                    <button className="entity-details-trigger" type="button">
-                      <span>
-                        <strong>
-                          {galleryLabel} ({gallery.length})
-                        </strong>
-                        <small>Profile, rights, provenance</small>
-                      </span>
-                      <ArrowRight size={18} aria-hidden="true" />
-                    </button>
-                  }
-                >
-                  <section className="detail-section">
-                    <div className="detail-section-heading">
-                      <h4>{galleryLabel}</h4>
-                      <span>{gallery.length} images</span>
+                  <div className="entity-card-body">
+                    <div className="entity-title-row">
+                      <div>
+                        <h3>{style.name}</h3>
+                        <span>
+                          {style.status === "PUBLISHED"
+                            ? `Published v${style.version}`
+                            : `${humanize(style.status)} · draft v${style.draftVersion ?? style.version}`}
+                        </span>
+                      </div>
                     </div>
-                    <PresetGallery
-                      style={style}
-                      urls={gallery}
-                      kind={references.length ? "reference" : "owned example"}
-                    />
-                  </section>
-                  <section className="detail-section">
-                    <div className="detail-section-heading">
-                      <h4>Visual profile</h4>
-                    </div>
-                    <div className="detail-facts">
-                      <span>
-                        <small>Medium</small>
-                        <strong>{style.medium}</strong>
-                      </span>
-                      <span>
-                        <small>Lighting</small>
-                        <strong>{style.lighting}</strong>
-                      </span>
-                      <span>
-                        <small>Color</small>
-                        <strong>{style.color}</strong>
-                      </span>
-                      <span>
-                        <small>Texture</small>
-                        <strong>{style.texture}</strong>
-                      </span>
-                    </div>
-                  </section>
-                  <section className="detail-section">
-                    <div className="detail-section-heading">
-                      <h4>Rights and retention</h4>
-                    </div>
-                    <p>
-                      {style.rightsStatus} · {style.retentionSummary}
-                    </p>
-                  </section>
-                  <section className="detail-section">
-                    <div className="detail-section-heading">
-                      <h4>Technical provenance</h4>
-                    </div>
-                    <div className="detail-facts">
-                      <span>
-                        <small>Version ID</small>
-                        <strong>{style.versionId}</strong>
-                      </span>
-                      <span>
-                        <small>Profile hash</small>
-                        <strong>{style.profileHash}</strong>
-                      </span>
-                    </div>
-                  </section>
-                </DetailsSheet>
-              </article>
-            );
-          })}
-        </div>
+                    <p>{style.warning ?? style.summary}</p>
+                  </div>
+                  <DetailsSheet
+                    title={style.name}
+                    description={`${style.status === "PUBLISHED" ? `Published v${style.version}` : humanize(style.status)} · ${galleryLabel} ${gallery.length}`}
+                    trigger={
+                      <button className="entity-details-trigger" type="button">
+                        <span>
+                          <strong>
+                            {galleryLabel} ({gallery.length})
+                          </strong>
+                          <small>Profile, rights, provenance</small>
+                        </span>
+                        <ArrowRight size={18} aria-hidden="true" />
+                      </button>
+                    }
+                  >
+                    <section className="detail-section">
+                      <div className="detail-section-heading">
+                        <h4>{galleryLabel}</h4>
+                        <span>{gallery.length} images</span>
+                      </div>
+                      <PresetGallery
+                        style={style}
+                        urls={gallery}
+                        kind={references.length ? "reference" : "owned example"}
+                      />
+                    </section>
+                    <section className="detail-section">
+                      <div className="detail-section-heading">
+                        <h4>Visual profile</h4>
+                      </div>
+                      <div className="detail-facts">
+                        <span>
+                          <small>Medium</small>
+                          <strong>{style.medium}</strong>
+                        </span>
+                        <span>
+                          <small>Lighting</small>
+                          <strong>{style.lighting}</strong>
+                        </span>
+                        <span>
+                          <small>Color</small>
+                          <strong>{style.color}</strong>
+                        </span>
+                        <span>
+                          <small>Texture</small>
+                          <strong>{style.texture}</strong>
+                        </span>
+                      </div>
+                    </section>
+                    <section className="detail-section">
+                      <div className="detail-section-heading">
+                        <h4>Rights and retention</h4>
+                      </div>
+                      <p>
+                        {style.rightsStatus} · {style.retentionSummary}
+                      </p>
+                    </section>
+                    <section className="detail-section">
+                      <div className="detail-section-heading">
+                        <h4>Technical provenance</h4>
+                      </div>
+                      <div className="detail-facts">
+                        <span>
+                          <small>Version ID</small>
+                          <strong>{style.versionId}</strong>
+                        </span>
+                        <span>
+                          <small>Profile hash</small>
+                          <strong>{style.profileHash}</strong>
+                        </span>
+                      </div>
+                    </section>
+                  </DetailsSheet>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </Panel>
     </>
   );
 }
 
 export function NewStyleScreen() {
+  const scenario = currentScenario();
   const params = new URLSearchParams(window.location.search);
   const returnTo = params.get("returnTo") || "/styles";
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
-  const [files, setFiles] = useState<string[]>([]);
+  const [files, setFiles] = useState<VerifiedImage[]>([]);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [filesPending, setFilesPending] = useState(false);
   const [rights, setRights] = useState(false);
   const [disclosure, setDisclosure] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const catalog = useQuery({ queryKey: ["styles", scenario], queryFn: () => api.styles(scenario) });
+  const duplicateName = (catalog.data ?? []).some(
+    (style) => style.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase(),
+  );
 
-  function publish() {
-    setBusy(true);
-    window.setTimeout(() => {
-      const versionId = `style_version_${crypto.randomUUID()}`;
-      const next: ImageStyle = {
-        id: `style_${crypto.randomUUID()}`,
-        versionId,
-        name: name.trim(),
-        summary:
-          "Natural light, restrained contrast, material texture, and documentary camera language.",
-        version: 1,
-        status: "PUBLISHED",
-        referenceCount: files.length,
-        palette: ["#1f3b45", "#b6805e"],
-        coverUrl: "/fixtures/styles/warm-rural.svg",
-        referenceUrls: [
-          "/fixtures/styles/rural-field.svg",
-          "/fixtures/styles/rural-hands.svg",
-          "/fixtures/styles/rural-kitchen.svg",
-          "/fixtures/styles/rural-market.svg",
-        ].slice(0, files.length),
-        exampleUrls: [],
-        profileHash: "sha256:fixture-local-style-profile",
-        medium: "Natural-light rural documentary",
-        lighting: "Warm available light",
-        color: "Earth tones and muted botanical green",
-        texture: "Tactile material detail, restrained sharpening",
-        rightsStatus: "ATTESTED",
-        retentionSummary: "Private normalized references retained for this published version",
-      };
-      localStorage.setItem(
-        "videoforge:fixture:styles:v1",
-        JSON.stringify([...readLocalEntities("videoforge:fixture:styles:v1", isImageStyle), next]),
+  useEffect(
+    () => () => {
+      for (const file of files) URL.revokeObjectURL(file.objectUrl);
+    },
+    [files],
+  );
+
+  async function chooseStyleReferences(selected: FileList | null) {
+    for (const file of files) URL.revokeObjectURL(file.objectUrl);
+    setFiles([]);
+    setFileError(null);
+    const candidates = Array.from(selected ?? []);
+    if (candidates.length === 0) return;
+    if (candidates.length > 8) {
+      setFileError("Choose no more than 8 reference images.");
+      return;
+    }
+    setFilesPending(true);
+    try {
+      const results = await Promise.allSettled(
+        candidates.map((file) => validateImageFile(file, 256)),
       );
-      updateDraft({ imageStyleVersionId: versionId });
+      const failure = results.find(
+        (result): result is PromiseRejectedResult => result.status === "rejected",
+      );
+      if (failure) {
+        for (const result of results) {
+          if (result.status === "fulfilled") URL.revokeObjectURL(result.value.objectUrl);
+        }
+        throw failure.reason;
+      }
+      setFiles(results.map((result) => (result as PromiseFulfilledResult<VerifiedImage>).value));
+    } catch (error) {
+      setFileError(error instanceof Error ? error.message : "Reference validation failed.");
+    } finally {
+      setFilesPending(false);
+    }
+  }
+
+  async function publish() {
+    if (busy) return;
+    setBusy(true);
+    setPublishError(null);
+    try {
+      const exampleUrls = [
+        "/fixtures/styles/rural-field.svg",
+        "/fixtures/styles/rural-hands.svg",
+        "/fixtures/styles/rural-kitchen.svg",
+        "/fixtures/styles/rural-market.svg",
+      ].slice(0, files.length);
+      const result = await api.mutate<{ imageStyle: ImageStyle }>(
+        "/api/v1/image-styles",
+        {
+          name: name.trim(),
+          summary:
+            "Natural light, restrained contrast, material texture, and documentary camera language.",
+          cover_url: "/fixtures/styles/warm-rural.svg",
+          reference_urls: [],
+          example_urls: exampleUrls,
+          profile_hash: "sha256:5606a4a2ff7a347cf3b2529a91e557e945ee0aeb9db26849dc85aaef5f27fde9",
+          medium: "Natural-light rural documentary",
+          lighting: "Warm available light",
+          color: "Earth tones and muted botanical green",
+          texture: "Tactile material detail, restrained sharpening",
+          retention_summary:
+            "Fixture mode retained no uploaded bytes; owned examples stand in after navigation",
+          lifecycle: "ACTIVE",
+          version_state: "PUBLISHED",
+          uploaded_bytes_persisted: false,
+          attestations: {
+            reference_rights: true,
+            processing_disclosure_acknowledged: true,
+          },
+        },
+        scenario,
+      );
+      updateDraft({ imageStyleVersionId: result.imageStyle.versionId });
       window.location.assign(fixtureLink(returnTo));
-    }, 650);
+    } catch (error) {
+      setPublishError(error instanceof Error ? error.message : "Image Style could not be saved.");
+      setBusy(false);
+    }
   }
 
   return (
@@ -1981,11 +2433,16 @@ export function NewStyleScreen() {
         eyebrow={`New style · step ${step} of 4`}
         title="New style"
         actions={
-          <a className="button button-ghost" href={fixtureLink(returnTo)}>
+          <Button
+            variant="ghost"
+            disabled={busy}
+            onClick={() => window.location.assign(fixtureLink(returnTo))}
+          >
             Cancel
-          </a>
+          </Button>
         }
       />
+      <ActionToast message={publishError} onDismiss={() => setPublishError(null)} />
       <div className="layout-main">
         <Panel
           eyebrow="Version workflow"
@@ -2018,25 +2475,43 @@ export function NewStyleScreen() {
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   multiple
-                  onChange={(event) =>
-                    setFiles(
-                      Array.from(event.target.files ?? [])
-                        .map((file) => file.name)
-                        .slice(0, 8),
-                    )
-                  }
+                  disabled={filesPending}
+                  onChange={(event) => void chooseStyleReferences(event.target.files)}
                 />
-                <Images size={28} />
+                {filesPending ? (
+                  <span className="spinner" aria-hidden="true" />
+                ) : (
+                  <Images size={28} />
+                )}
                 <span>
                   <strong>
                     {files.length
                       ? `${files.length} private reference${files.length === 1 ? "" : "s"} selected`
                       : "Choose 3–8 visual references"}
                   </strong>
-                  Normalized sRGB copies strip EXIF/GPS before analysis
+                  Files are signature-checked and decoded locally; fixture mode does not upload them
                 </span>
               </label>
-              <Button disabled={!name.trim() || files.length < 3} onClick={() => setStep(2)}>
+              {fileError ? <div className="validation validation-danger">{fileError}</div> : null}
+              {duplicateName ? (
+                <div className="validation validation-danger">Use a unique Image Style name.</div>
+              ) : null}
+              {files.length ? (
+                <div className="reference-mosaic fixture-upload-preview">
+                  {files.map((file) => (
+                    <figure key={file.objectUrl}>
+                      <img src={file.objectUrl} alt={`${file.filename} local preview`} />
+                      <figcaption>
+                        {file.width}×{file.height}
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              ) : null}
+              <Button
+                disabled={!name.trim() || files.length < 3 || duplicateName}
+                onClick={() => setStep(2)}
+              >
                 Continue
                 <ArrowRight size={16} />
               </Button>
@@ -2072,9 +2547,13 @@ export function NewStyleScreen() {
                 />
               </label>
               <div className="notice notice-warning">
-                <strong>Fixture checkpoint.</strong> Analyze simulates the one-time call and records
-                $0. No Runware request is made.
+                <strong>Fixture simulation.</strong> No references leave this page, no traits are
+                inferred from them, and no Runware request is made. The next screen demonstrates the
+                review shape with owned synthetic data at $0.
               </div>
+              <Button variant="ghost" onClick={() => setStep(1)}>
+                Back
+              </Button>
               <Button disabled={!rights || !disclosure} onClick={() => setStep(3)}>
                 Analyze fixture references
               </Button>
@@ -2086,29 +2565,32 @@ export function NewStyleScreen() {
                 <div className="metric">
                   <span>Medium</span>
                   <strong>Documentary still</strong>
-                  <small>Supported by ref_01, ref_03</small>
+                  <small>Owned fixture example · not inferred</small>
                 </div>
                 <div className="metric">
                   <span>Lighting</span>
                   <strong>Natural soft side light</strong>
-                  <small>High confidence · 0.91</small>
+                  <small>Synthetic review value</small>
                 </div>
                 <div className="metric">
                   <span>Color</span>
                   <strong>Warm earth + muted cyan</strong>
-                  <small>One outlier excluded</small>
+                  <small>Synthetic review value</small>
                 </div>
                 <div className="metric">
                   <span>Texture</span>
                   <strong>Material detail</strong>
-                  <small>Restrained digital sharpness</small>
+                  <small>Synthetic review value</small>
                 </div>
               </div>
               <div className="validation validation-success">
                 <Check size={16} />
-                People, logos, visible instructions, and exact subjects were not converted into
-                prompt requirements.
+                The deterministic fixture profile contains no people, logos, visible instructions,
+                or exact-subject requirements.
               </div>
+              <Button variant="ghost" onClick={() => setStep(2)}>
+                Back
+              </Button>
               <Button onClick={() => setStep(4)}>Accept reviewed profile</Button>
             </div>
           ) : null}
@@ -2123,10 +2605,14 @@ export function NewStyleScreen() {
                 Publishing creates immutable style profile v1 and atomically activates it.
               </div>
               <div className="notice">
-                <strong>No automatic test.</strong> A separate optional Mage preview would require
-                an explicit estimate and authorization.
+                <strong>Uploaded bytes are not persisted.</strong> The published fixture card will
+                show labelled owned examples. A real analysis or Mage test requires separate
+                authorization later.
               </div>
-              <Button busy={busy} onClick={publish}>
+              <Button variant="ghost" disabled={busy} onClick={() => setStep(3)}>
+                Back
+              </Button>
+              <Button busy={busy} onClick={() => void publish()}>
                 Publish style v1
               </Button>
             </div>
@@ -2167,68 +2653,108 @@ export function NewStyleScreen() {
 
 export function LibraryScreen() {
   const scenario = currentScenario();
+  const query = useQuery({
+    queryKey: ["projects", scenario],
+    queryFn: () => api.projects(scenario),
+  });
+  const approvedProjects = (query.data ?? []).filter((project) => project.status === "APPROVED");
+  if (query.isPending) {
+    return (
+      <Panel eyebrow="Approved outputs" heading="Loading Library">
+        <div className="empty-state" aria-busy="true">
+          <span className="spinner" aria-hidden="true" />
+          <p>Loading approved revisions…</p>
+        </div>
+      </Panel>
+    );
+  }
+  if (query.isError) {
+    return (
+      <EmptyState
+        icon={<AlertTriangle />}
+        title="Library unavailable"
+        body="Approved output data could not be loaded."
+        action={
+          <Button variant="secondary" onClick={() => void query.refetch()}>
+            Retry load
+          </Button>
+        }
+      />
+    );
+  }
   return (
     <>
       <PageHeader eyebrow="Approved outputs" title="Library" />
-      <div className="library-grid">
-        <Panel
-          className="library-output"
-          eyebrow="Approved today"
-          heading="Why the everyday world is changing"
-        >
-          <CompositionPreview type="AVATAR_SPLIT_IMAGE" />
-          <div className="entity-card-footer">
-            <Badge tone="success">APPROVED</Badge>
-            <div className="cluster">
-              <Link
-                className="button button-secondary"
-                to="/projects/$projectId/review"
-                params={{ projectId: "project_fixture_001" }}
-                search={{ fixture: scenario } as never}
+      {approvedProjects.length === 0 ? (
+        <EmptyState
+          icon={<Library />}
+          title="No approved outputs"
+          body="Projects appear here only after an explicit final approval."
+        />
+      ) : (
+        <div className="library-grid">
+          {approvedProjects.map((project) => (
+            <Panel
+              key={project.id}
+              className="library-output"
+              eyebrow="Approved today"
+              heading={project.title}
+            >
+              <CompositionPreview type="AVATAR_SPLIT_IMAGE" />
+              <div className="entity-card-footer">
+                <Badge tone="success">APPROVED</Badge>
+                <div className="cluster">
+                  <Link
+                    className="button button-secondary"
+                    to="/projects/$projectId/review"
+                    params={{ projectId: project.id }}
+                    search={{ fixture: scenario } as never}
+                  >
+                    <Play size={15} />
+                    Review
+                  </Link>
+                  <a
+                    className="button button-secondary"
+                    href="/fixtures/media/watermelon-market.svg"
+                    download="videoforge-fixture-preview.svg"
+                  >
+                    <Download size={15} />
+                    Fixture preview
+                  </a>
+                </div>
+              </div>
+              <Disclosure
+                className="library-details"
+                summary={
+                  <>
+                    <span>Details</span>
+                    <small>Retention and provenance</small>
+                  </>
+                }
               >
-                <Play size={15} />
-                Review
-              </Link>
-              <a
-                className="button button-secondary"
-                href="/fixtures/media/watermelon-market.svg"
-                download="videoforge-fixture-preview.svg"
-              >
-                <Download size={15} />
-                Fixture preview
-              </a>
-            </div>
-          </div>
-          <Disclosure
-            className="library-details"
-            summary={
-              <>
-                <span>Details</span>
-                <small>Retention and provenance</small>
-              </>
-            }
-          >
-            <div className="detail-facts">
-              <span>
-                <small>Retention</small>
-                <strong>30 days remaining</strong>
-              </span>
-              <span>
-                <small>Manifest</small>
-                <strong>Bound to approved revision</strong>
-              </span>
-              <span>
-                <small>Output</small>
-                <strong>1080p30 · H.264/AAC</strong>
-              </span>
-              <span>
-                <small>Cost</small>
-                <strong>$0.78</strong>
-              </span>
-            </div>
-          </Disclosure>
-        </Panel>
-      </div>
+                <div className="detail-facts">
+                  <span>
+                    <small>Retention</small>
+                    <strong>30 days remaining</strong>
+                  </span>
+                  <span>
+                    <small>Manifest</small>
+                    <strong>Bound to approved revision</strong>
+                  </span>
+                  <span>
+                    <small>Output</small>
+                    <strong>1080p30 · H.264/AAC</strong>
+                  </span>
+                  <span>
+                    <small>Cost</small>
+                    <strong>${project.actualCost.toFixed(2)}</strong>
+                  </span>
+                </div>
+              </Disclosure>
+            </Panel>
+          ))}
+        </div>
+      )}
     </>
   );
 }
@@ -2236,15 +2762,31 @@ export function LibraryScreen() {
 export function UsageScreen() {
   const scenario = currentScenario();
   const query = useQuery({ queryKey: ["usage", scenario], queryFn: () => api.usage(scenario) });
-  const usage = query.data ?? {
-    currentMonth: 0.78,
-    projectSpend: 0.72,
-    styleSpend: 0.06,
-    avatarTestSpend: 0,
-    storageGb: 0.84,
-    gpuSeconds: 0,
-    retries: 1,
-  };
+  if (query.isPending) {
+    return (
+      <Panel eyebrow="Workspace" heading="Loading Usage">
+        <div className="empty-state" aria-busy="true">
+          <span className="spinner" aria-hidden="true" />
+          <p>Loading cost and resource totals…</p>
+        </div>
+      </Panel>
+    );
+  }
+  if (query.isError || !query.data) {
+    return (
+      <EmptyState
+        icon={<AlertTriangle />}
+        title="Usage unavailable"
+        body="No estimated spend is substituted when usage data cannot be loaded."
+        action={
+          <Button variant="secondary" onClick={() => void query.refetch()}>
+            Retry load
+          </Button>
+        }
+      />
+    );
+  }
+  const usage = query.data;
   return (
     <>
       <PageHeader eyebrow="Workspace" title="Usage" />

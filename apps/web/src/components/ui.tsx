@@ -187,21 +187,25 @@ export function DetailsSheet({
 }
 
 const toneByStage: Record<ProjectStage["status"], Tone> = {
+  PENDING: "neutral",
   QUEUED: "neutral",
+  STARTING: "info",
   RUNNING: "info",
   RETRYING: "warning",
   BLOCKED: "warning",
   FAILED: "danger",
-  CANCELLED: "neutral",
+  CANCEL_REQUESTED: "warning",
   COMPLETE: "success",
 };
 
 function activeStageIndex(stages: ProjectStage[]): number {
   const actionable = stages.findIndex((stage) =>
-    ["RUNNING", "RETRYING", "BLOCKED", "FAILED"].includes(stage.status),
+    ["STARTING", "RUNNING", "RETRYING", "BLOCKED", "FAILED", "CANCEL_REQUESTED"].includes(
+      stage.status,
+    ),
   );
   if (actionable >= 0) return actionable;
-  return stages.findIndex((stage) => stage.status === "QUEUED");
+  return stages.findIndex((stage) => stage.status === "QUEUED" || stage.status === "PENDING");
 }
 
 export function StageTimeline({ stages }: { stages: ProjectStage[] }) {

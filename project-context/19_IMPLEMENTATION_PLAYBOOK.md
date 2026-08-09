@@ -62,6 +62,8 @@ Default is `fixture`. A task brief must explicitly set `provider_calls_authorize
 
 The app exposes a development-only scenario selector and deterministic IDs:
 
+- `invite_sign_in`
+- `invite_access_denied`
 - `happy_generating`
 - `project_create_ready`
 - `avatar_hub_empty`

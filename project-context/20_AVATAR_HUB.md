@@ -114,11 +114,11 @@ Mandatory states include upload/validation failure, unsupported or too-small ima
 
 ### Create Project selector
 
-Create Project contains a required searchable **Avatar** selector. The normal list shows one card per accessible `ACTIVE` parent, backed by that parent's current active `READY` version; every option shows thumbnail, name, version, and compatibility status. Selecting a card immediately stores the exact version ID in the draft—never only a parent/latest pointer—and there is no silent default.
+Create Project contains a required compact visual **Avatar** dropdown. Its closed trigger shows only the selected thumbnail, name, version, and compatibility status; opening it reveals the searchable options, one per accessible `ACTIVE` parent backed by that parent's current active `READY` version. Selecting an option immediately stores the exact version ID in the draft—never only a parent/latest pointer—and there is no silent default. Do not spread every avatar card across the normal form.
 
 Approving v2 after a draft selected v1 does not silently upgrade the draft. Keep v1 selected with `Newer version available`; new selections use v2. Archiving/access loss before revision creation blocks preflight and asks for re-selection, while an already-created revision remains pinned. Under the proposed MVP optional-test policy, every compatibility state (`UNTESTED`, `RUNNING`, `PASSED`, `FAILED`, `STALE`, or `CANCELLED`) remains selectable when the source version is otherwise ready; `FAILED` gets the strongest warning while untested/stale/cancelled show ordinary warnings. No status may block the ready source or trigger a hidden test charge.
 
-The field includes `Manage avatars` and `+ New avatar`. Opening either from a project draft autosaves title, verified voiceover upload handle, selected Image Style, optional script, prompt-keyword text/toggle, mode, execution-profile overrides, cap, and seed. Saving or cancelling returns to the same draft; a newly ready avatar is selected automatically without re-uploading the voiceover or re-entering settings.
+The field includes `Manage avatars` and `+ New avatar`. Opening either from a project draft autosaves title, verified voiceover upload handle, selected Image Style, prompt-keyword text/toggle, mode, both primary execution-profile selections, cap, and seed. Saving or cancelling returns to the same draft; a newly ready avatar is selected automatically without re-uploading the voiceover or re-entering settings. The first-shell web UI has no exact-script field.
 
 Do not add an `Upload avatar for this video` escape hatch to the normal form. A new source belongs in the Hub so reuse, consent, validation, compatibility, and provenance cannot be bypassed.
 

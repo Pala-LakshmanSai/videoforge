@@ -57,6 +57,9 @@ importers:
       '@tanstack/react-router':
         specifier: 1.131.35
         version: 1.131.35(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@videoforge/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@videoforge/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

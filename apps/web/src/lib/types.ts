@@ -1,4 +1,10 @@
+import type { ExecutionProfileCatalog } from "@videoforge/config";
+
+export type { ExecutionProfileCatalog };
+
 export const scenarioIds = [
+  "invite_sign_in",
+  "invite_access_denied",
   "happy_generating",
   "project_create_ready",
   "avatar_hub_empty",
@@ -39,6 +45,17 @@ export interface FixtureUser {
   invited: boolean;
 }
 
+export interface FixtureAccessState {
+  state: "AUTHORIZED" | "SIGN_IN_REQUIRED" | "DENIED";
+  selectedAccount: {
+    displayName: string;
+    email: string;
+  } | null;
+  workspaceName: string;
+  adminContact: string;
+  reason: string | null;
+}
+
 export interface AvatarProfile {
   id: string;
   versionId: string;
@@ -54,6 +71,9 @@ export interface AvatarProfile {
   preparationProfile: string;
   validationProfile: string;
   rightsStatus: "ATTESTED";
+  activeVersion: number;
+  selectedVersion: number;
+  warning: string | null;
 }
 
 export interface ImageStyle {
@@ -76,12 +96,25 @@ export interface ImageStyle {
   texture: string;
   rightsStatus: "ATTESTED" | "SYSTEM_OWNED";
   retentionSummary: string;
+  activeVersion: number;
+  draftVersion: number | null;
+  draftStatus: "DRAFT" | "ANALYZING" | "NEEDS_REVIEW" | "FAILED" | null;
+  warning: string | null;
 }
 
 export interface ProjectStage {
   id: string;
   label: string;
-  status: "QUEUED" | "RUNNING" | "RETRYING" | "BLOCKED" | "FAILED" | "CANCELLED" | "COMPLETE";
+  status:
+    | "PENDING"
+    | "QUEUED"
+    | "STARTING"
+    | "RUNNING"
+    | "RETRYING"
+    | "BLOCKED"
+    | "FAILED"
+    | "CANCEL_REQUESTED"
+    | "COMPLETE";
   completed: number;
   total: number;
   detail: string;
@@ -92,13 +125,14 @@ export interface ProjectSummary {
   title: string;
   owner: string;
   status:
+    | "DRAFT"
     | "QUEUED"
-    | "STARTING"
     | "RUNNING"
     | "NEEDS_ATTENTION"
+    | "RECONCILING"
+    | "CANCEL_REQUESTED"
     | "READY_FOR_REVIEW"
-    | "APPROVED"
-    | "CANCELLED";
+    | "APPROVED";
   stage: string;
   completed: number;
   total: number;
@@ -108,14 +142,70 @@ export interface ProjectSummary {
   actualCost: number;
   queuePosition: number | null;
   createdAt: string;
-  stages?: ProjectStage[];
+  stages: ProjectStage[];
+  revisionId: string;
+  pins: {
+    avatarProfileVersionId: string | null;
+    imageStyleVersionId: string;
+  };
   capUsd: number;
   lanes: {
     image: { state: string; completed: number; total: number; action: string };
     avatar: { state: string; completed: number; total: number; action: string };
   };
   latestArtifact: { kind: "IMAGE" | "AVATAR_CLIP" | "VIDEO"; url: string; label: string } | null;
-  reviewState: "NOT_READY" | "READY_FOR_REVIEW" | "CHANGES_REQUESTED" | "APPROVED";
+  review: {
+    candidateId: string | null;
+    state: "NOT_READY" | "READY_FOR_REVIEW" | "CHANGES_REQUESTED" | "APPROVED";
+    flaggedDefect: "LIP_SYNC_ONLY" | "WHOLE_FRAME" | "IMAGE_QUALITY" | null;
+    selectedAvatarClipId: string | null;
+    downloadUrl: string | null;
+  };
+  allowedActions: ProjectAllowedAction[];
+}
+
+export type ProjectAllowedAction =
+  | "APPROVE"
+  | "APPROVE_FALLBACK"
+  | "CANCEL"
+  | "DOWNLOAD"
+  | "RETRY_FAILED_ITEMS"
+  | "REVIEW";
+
+export interface FixtureNotice {
+  tone: "INFO" | "SUCCESS" | "WARNING" | "ERROR";
+  title: string;
+  detail: string;
+  action: string | null;
+}
+
+export interface FixtureDraftState {
+  title: string;
+  voiceover: {
+    assetId: string | null;
+    filename: string | null;
+    durationSeconds: number | null;
+    uploadState: "EMPTY" | "UPLOADING" | "VERIFIED" | "FAILED";
+  };
+  avatarProfileVersionId: string | null;
+  imageStyleVersionId: string;
+  optionalScript: string | null;
+  extraPromptKeywords: string | null;
+  applyExtraPromptKeywords: boolean;
+  effectiveExtraPromptKeywords: string | null;
+  generationMode: "LOWEST_COST" | "BALANCED" | "FASTER";
+  spendCapUsd: number;
+  preservedAcrossPresetRoundtrip: boolean;
+  returnRoute: string | null;
+  preflight: {
+    status: "PENDING" | "READY" | "BLOCKED";
+    checks: Array<{
+      id: string;
+      label: string;
+      state: "PENDING" | "PASS" | "WARN" | "BLOCK";
+      message: string;
+    }>;
+  };
 }
 
 export interface UsageSummary {
@@ -130,11 +220,21 @@ export interface UsageSummary {
 
 export interface FixtureBootstrap {
   scenario: ScenarioId;
+  access: FixtureAccessState;
   user: FixtureUser;
   projects: ProjectSummary[];
   avatars: AvatarProfile[];
   styles: ImageStyle[];
   usage: UsageSummary;
+  draft: FixtureDraftState;
+  notice: FixtureNotice | null;
+  activeOperations: { avatar: string | null; style: string | null };
+}
+
+export interface ProjectDetail {
+  project: ProjectSummary;
+  events: Array<{ id: string; detail: string; at: string }>;
+  notice: FixtureNotice | null;
 }
 
 export interface HealthResponse {

@@ -53,7 +53,7 @@ gates:
     last_run: null
   GATE_GPU_001:
     status: open
-    blocks: advanced_execution_profile_ui
+    blocks: selectable_production_execution_profiles
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#queuefault-gate"
     owner: unassigned
     last_run: null

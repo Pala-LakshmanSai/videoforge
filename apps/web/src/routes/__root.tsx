@@ -19,7 +19,7 @@ export const Route = createRootRoute({
   notFoundComponent: () => (
     <div className="empty-state">
       <h1>That production view does not exist.</h1>
-      <p>Use the sidebar to return to a fixture-backed VideoForge route.</p>
+      <p>Use the navigation dock to return to a VideoForge workspace.</p>
     </div>
   ),
 });

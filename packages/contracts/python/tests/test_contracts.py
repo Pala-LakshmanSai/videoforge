@@ -81,6 +81,8 @@ def test_fixture_contract_validation(
         with pytest.raises(ContractValidationError) as error:
             validate_contract(contract_name, fixture)
         assert error.value.issues
+        with pytest.raises(ValidationError):
+            CONTRACT_MODELS[contract_name].model_validate(fixture)
 
 
 def test_typed_create_project_model_rejects_inline_avatar() -> None:

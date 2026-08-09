@@ -15,8 +15,8 @@ The app must automate a visually simple but quality-sensitive edit. Quality come
 2. Create or choose a named reusable presenter in the Avatar Hub, then select it from the project form by image and name.
 3. Create a project with a title and voiceover audio; no avatar image is re-uploaded for that video.
 4. Select a published Image Style; Authentic Documentary Stock is already selected by default.
-5. Optionally provide the exact voiceover script and optionally enable project-wide extra image-prompt keywords.
-6. Pick Lowest cost, Balanced, or Faster; Advanced may override a compatible GPU.
+5. Optionally enable project-wide extra image-prompt keywords.
+6. Pick Lowest cost, Balanced, or Faster, then review or override the independently resolved image/media and primary-avatar execution profiles from tested compatible choices.
 7. See preflight validation, effective avatar/style settings, estimated cost, and a configurable spend cap.
 8. Submit once.
 9. Watch truthful parallel image/avatar progress, queue position, ETA, cost, retries, and blockers.
@@ -36,11 +36,11 @@ Required:
 
 Optional:
 
-- `optional_script`: exact narration text. If present, its normalized text is canonical while ASR supplies timing. If absent, the local ASR result is canonical and is editable before generation.
+- `optional_script`: backward-compatible API-only field. The first-shell web UI does not expose it and sends `null`, so local ASR text is canonical there. If another versioned client supplies it, its normalized text remains canonical while ASR supplies timing.
 - `extra_prompt_keywords`: up to 500 characters of image-only refinements such as `ultra realistic, no AI look`.
 - `apply_extra_prompt_keywords`: explicit boolean, default false. Text is preserved while off but excluded from all generation requests.
 - `user_seed`: advanced reproducibility setting; normally generated automatically.
-- `execution_profile_overrides`: advanced, per-lane selection from tested compatible profiles only; normally absent so the chosen Lowest cost/Balanced/Faster mode resolves the profiles.
+- `execution_profile_overrides`: independent `image_media` and `avatar_primary` selections from immutable tested compatible profiles only; normally absent so Lowest cost/Balanced/Faster resolves both. A planned GPU/profile may be shown disabled for orientation but cannot be selected before `GATE_GPU_001` passes.
 - `spend_cap_usd`: suggested default is `min(max($0.10, $1.50 × duration / 30 minutes), $2.00)`; the user may lower it no further than `$0.10`, while the MVP schema always rejects values above `$2.00`.
 
 ## Output

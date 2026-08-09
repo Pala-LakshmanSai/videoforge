@@ -1,0 +1,145 @@
+{
+  "schema_version": "execution-profile-catalog/v1",
+  "catalog_id": "fixture-primary-lanes-v1",
+  "provider_mode": "fixture",
+  "provider_calls_authorized": false,
+  "maximum_external_spend_usd": 0,
+  "selection_policy": {
+    "mode": "IMMUTABLE_PROFILE_ONLY",
+    "default_option_label": "Auto",
+    "raw_gpu_mutation_allowed": false,
+    "production_gate_id": "GATE_GPU_001"
+  },
+  "lanes": [
+    {
+      "lane": "image_media",
+      "selector_label": "Image generation",
+      "model": {
+        "display_name": "Mage-Flow Turbo",
+        "model_id": "microsoft/Mage-Flow-Turbo",
+        "role": "IMAGE_GENERATOR",
+        "qualification_state": "BENCHMARK_REQUIRED"
+      },
+      "process": {
+        "display_name": "Generate images",
+        "parallel_group": "PRIMARY_GENERATION",
+        "parallel_with": "avatar_primary"
+      },
+      "status": {
+        "code": "FIXTURE_IDLE",
+        "label": "Fixture ready",
+        "detail": "Synthetic output · no provider connected",
+        "process_state": "IDLE",
+        "model_state": "NOT_LOADED",
+        "provider_state": "NOT_CONNECTED",
+        "queued_jobs": 0,
+        "active_jobs": 0,
+        "external_spend_usd": 0
+      },
+      "selector_options": [
+        {
+          "profile_id": "exec_fixture_image_media_v1",
+          "profile_version": 1,
+          "label": "Auto",
+          "detail": "Fixture · $0",
+          "selectable": true,
+          "selection_state": "FIXTURE_ONLY",
+          "endpoint_id": null,
+          "gpu_label": null,
+          "external_spend_usd": 0
+        }
+      ],
+      "planned_candidates": [
+        {
+          "candidate_id": "mage-rtx-4090",
+          "label": "RTX 4090",
+          "planned_priority": 1,
+          "selectable": false,
+          "status": "BENCHMARK_REQUIRED",
+          "gate_id": "GATE_GPU_001"
+        },
+        {
+          "candidate_id": "mage-rtx-5090",
+          "label": "RTX 5090",
+          "planned_priority": 2,
+          "selectable": false,
+          "status": "BENCHMARK_REQUIRED",
+          "gate_id": "GATE_GPU_001"
+        },
+        {
+          "candidate_id": "mage-l40s",
+          "label": "L40S",
+          "planned_priority": 3,
+          "selectable": false,
+          "status": "BENCHMARK_REQUIRED",
+          "gate_id": "GATE_GPU_001"
+        }
+      ]
+    },
+    {
+      "lane": "avatar_primary",
+      "selector_label": "Avatar generation",
+      "model": {
+        "display_name": "AvatarForcing",
+        "model_id": "KlingAIResearch/AvatarForcing",
+        "role": "AVATAR_PRIMARY",
+        "qualification_state": "BENCHMARK_REQUIRED"
+      },
+      "process": {
+        "display_name": "Generate avatar clips",
+        "parallel_group": "PRIMARY_GENERATION",
+        "parallel_with": "image_media"
+      },
+      "status": {
+        "code": "FIXTURE_IDLE",
+        "label": "Fixture ready",
+        "detail": "Synthetic output · no provider connected",
+        "process_state": "IDLE",
+        "model_state": "NOT_LOADED",
+        "provider_state": "NOT_CONNECTED",
+        "queued_jobs": 0,
+        "active_jobs": 0,
+        "external_spend_usd": 0
+      },
+      "selector_options": [
+        {
+          "profile_id": "exec_fixture_avatar_primary_v1",
+          "profile_version": 1,
+          "label": "Auto",
+          "detail": "Fixture · $0",
+          "selectable": true,
+          "selection_state": "FIXTURE_ONLY",
+          "endpoint_id": null,
+          "gpu_label": null,
+          "external_spend_usd": 0
+        }
+      ],
+      "planned_candidates": [
+        {
+          "candidate_id": "avatarforcing-rtx-4090",
+          "label": "RTX 4090",
+          "planned_priority": 1,
+          "selectable": false,
+          "status": "BENCHMARK_REQUIRED",
+          "gate_id": "GATE_GPU_001"
+        },
+        {
+          "candidate_id": "avatarforcing-l40s",
+          "label": "L40S",
+          "planned_priority": 2,
+          "selectable": false,
+          "status": "BENCHMARK_REQUIRED",
+          "gate_id": "GATE_GPU_001"
+        },
+        {
+          "candidate_id": "avatarforcing-rtx-6000-ada",
+          "label": "RTX 6000 Ada",
+          "planned_priority": 3,
+          "selectable": false,
+          "status": "BENCHMARK_REQUIRED",
+          "gate_id": "GATE_GPU_001"
+        }
+      ]
+    }
+  ]
+}

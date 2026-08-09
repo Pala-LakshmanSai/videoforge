@@ -16,6 +16,7 @@ export {
 } from "./api";
 export type {
   FixtureAvatarProfile,
+  FixtureAccessState,
   FixtureDraft,
   FixtureEvent,
   FixtureImageStyle,

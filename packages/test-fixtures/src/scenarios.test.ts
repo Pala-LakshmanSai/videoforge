@@ -12,6 +12,8 @@ import {
 } from "./index";
 
 const PLAYBOOK_SCENARIO_IDS = [
+  "invite_sign_in",
+  "invite_access_denied",
   "happy_generating",
   "project_create_ready",
   "avatar_hub_empty",
@@ -40,23 +42,73 @@ const PLAYBOOK_SCENARIO_IDS = [
   "project_approved",
 ] as const;
 
+const STATIC_APP_PATHS = new Set([
+  "/",
+  "/projects",
+  "/projects/new",
+  "/avatars",
+  "/avatars/new",
+  "/styles",
+  "/styles/new",
+  "/library",
+  "/usage",
+  "/settings",
+]);
+
+function isRealAppPath(pathname: string): boolean {
+  return STATIC_APP_PATHS.has(pathname) || /^\/projects\/[^/]+(?:\/review)?$/u.test(pathname);
+}
+
 describe("fixture scenario registry", () => {
   it("covers every stable playbook scenario exactly once", () => {
     assert.deepEqual(FIXTURE_SCENARIO_IDS, PLAYBOOK_SCENARIO_IDS);
     assert.deepEqual(Object.keys(fixtureScenarioRegistry), PLAYBOOK_SCENARIO_IDS);
-    assert.equal(listFixtureScenarios().length, 26);
+    assert.equal(listFixtureScenarios().length, 28);
     assert.equal(DEFAULT_FIXTURE_SCENARIO_ID, "happy_generating");
   });
 
-  it("marks every scenario as synthetic fixture mode and gives it a stable route", () => {
+  it("marks every scenario as synthetic fixture mode and gives it a real stable app route", () => {
     for (const id of FIXTURE_SCENARIO_IDS) {
       const scenario = fixtureScenarioRegistry[id];
+      const route = new URL(scenario.route, "http://videoforge.local");
       assert.equal(scenario.id, id);
       assert.equal(scenario.snapshot.development.providerMode, "fixture");
       assert.equal(scenario.snapshot.development.synthetic, true);
-      assert.match(scenario.route, new RegExp(`[?&]fixture=${id}$`, "u"));
+      assert.equal(
+        isRealAppPath(route.pathname),
+        true,
+        `${id} uses unknown path ${route.pathname}`,
+      );
+      assert.equal(scenario.snapshot.navigation.activeRoute, route.pathname);
+      assert.deepEqual([...route.searchParams.keys()], ["fixture"]);
+      assert.equal(route.searchParams.get("fixture"), id);
+      if (scenario.snapshot.draft.returnRoute !== null) {
+        const returnRoute = new URL(scenario.snapshot.draft.returnRoute, "http://videoforge.local");
+        assert.equal(
+          isRealAppPath(returnRoute.pathname),
+          true,
+          `${id} uses unknown return path ${returnRoute.pathname}`,
+        );
+      }
       assert.doesNotThrow(() => JSON.stringify(scenario));
     }
+  });
+
+  it("uses the approved human pipeline vocabulary", () => {
+    const project = getFixtureScenario("happy_generating").snapshot.project;
+    assert.deepEqual(
+      project?.stages.map((stage) => stage.label),
+      [
+        "Prepare",
+        "Transcribe",
+        "Plan",
+        "Write image prompts",
+        "Generate media",
+        "Assemble",
+        "Technical check",
+        "Review",
+      ],
+    );
   });
 
   it("returns defensive scenario copies", () => {
@@ -113,6 +165,36 @@ describe("fixture scenario registry", () => {
       "READY_FOR_REVIEW",
     );
     assert.equal(getFixtureScenario("project_approved").snapshot.project?.review.state, "APPROVED");
+  });
+
+  it("keeps signed-out and denied fixture responses outside the workspace data boundary", () => {
+    const signIn = getFixtureScenario("invite_sign_in");
+    const denied = getFixtureScenario("invite_access_denied");
+
+    assert.equal(signIn.snapshot.access.state, "SIGN_IN_REQUIRED");
+    assert.equal(denied.snapshot.access.state, "DENIED");
+
+    for (const scenario of [signIn, denied]) {
+      assert.equal(scenario.snapshot.project, null);
+      assert.deepEqual(scenario.snapshot.events, []);
+      assert.deepEqual(scenario.snapshot.avatarHub.profiles, []);
+      assert.deepEqual(scenario.snapshot.imageStyles.styles, []);
+      assert.equal(scenario.snapshot.draft.title, "");
+      assert.equal(scenario.snapshot.draft.voiceover.assetId, null);
+      assert.equal(scenario.snapshot.usage.projectUsd, 0);
+
+      const bootstrap = toBootstrapResponse(scenario);
+      assert.equal(bootstrap.projects.length, 0);
+      assert.equal(bootstrap.avatars.length, 0);
+      assert.equal(bootstrap.styles.length, 0);
+      assert.equal(bootstrap.usage.currentMonth, 0);
+      assert.equal(bootstrap.draft.title, "");
+      assert.equal(bootstrap.activeOperations.avatar, null);
+      assert.equal(bootstrap.activeOperations.style, null);
+    }
+
+    assert.equal(toBootstrapResponse(signIn).user.invited, true);
+    assert.equal(toBootstrapResponse(denied).user.invited, false);
   });
 
   it("builds the direct client bootstrap shape", () => {

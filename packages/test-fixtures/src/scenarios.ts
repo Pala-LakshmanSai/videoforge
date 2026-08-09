@@ -85,6 +85,16 @@ function baseSnapshot(): FixtureSnapshot {
       workspaceId: "workspace_fixture_001",
       workspaceName: "VideoForge Studio",
     },
+    access: {
+      state: "AUTHORIZED",
+      selectedAccount: {
+        displayName: "Lakshman",
+        email: "lakshman.fixture@example.invalid",
+      },
+      workspaceName: "VideoForge Studio",
+      adminContact: "admin.fixture@example.invalid",
+      reason: null,
+    },
     navigation: {
       activeRoute: "/projects/project_fixture_001",
       sidebarCollapsed: false,
@@ -156,29 +166,39 @@ function baseSnapshot(): FixtureSnapshot {
         avatar: { state: "RUNNING", completed: 48, total: 52, action: "AvatarForcing: clip 49/52" },
       },
       stages: [
-        { id: "ingest", label: "Ingest", state: "COMPLETE", detail: "Voiceover verified" },
-        { id: "timing", label: "Timing", state: "COMPLETE", detail: "Word timing complete" },
+        { id: "ingest", label: "Prepare", state: "COMPLETE", detail: "Voiceover verified" },
+        {
+          id: "timing",
+          label: "Transcribe",
+          state: "COMPLETE",
+          detail: "Word timing complete",
+        },
         {
           id: "timeline",
-          label: "Timeline",
+          label: "Plan",
           state: "COMPLETE",
           detail: "Deterministic plan locked",
         },
-        { id: "prompts", label: "Prompts", state: "COMPLETE", detail: "260 fixture prompts ready" },
+        {
+          id: "prompts",
+          label: "Write image prompts",
+          state: "COMPLETE",
+          detail: "260 fixture prompts ready",
+        },
         {
           id: "generation",
-          label: "Image and avatar generation",
+          label: "Generate media",
           state: "RUNNING",
           detail: "Parallel fixture lanes",
         },
         {
           id: "assembly",
-          label: "Assembly",
+          label: "Assemble",
           state: "PENDING",
           detail: "Waiting for asset barrier",
         },
-        { id: "qa", label: "Technical QA", state: "PENDING", detail: "Not started" },
-        { id: "ready", label: "Ready", state: "PENDING", detail: "Not started" },
+        { id: "qa", label: "Technical check", state: "PENDING", detail: "Not started" },
+        { id: "ready", label: "Review", state: "PENDING", detail: "Not started" },
       ],
       latestArtifact: {
         kind: "IMAGE",
@@ -259,6 +279,51 @@ function blockPreflight(snapshot: FixtureSnapshot, checkId: string, message: str
   }
 }
 
+function clearConsoleData(snapshot: FixtureSnapshot): void {
+  snapshot.project = null;
+  snapshot.events = [];
+  snapshot.avatarHub = { profiles: [], activeOperation: null };
+  snapshot.imageStyles = { styles: [], activeOperation: null };
+  snapshot.usage = {
+    projectUsd: 0,
+    oneTimeStyleUsd: 0,
+    oneTimeAvatarTestUsd: 0,
+    imageGpuSeconds: 0,
+    avatarGpuSeconds: 0,
+  };
+  snapshot.draft = {
+    title: "",
+    voiceover: {
+      assetId: null,
+      filename: null,
+      durationSeconds: null,
+      uploadState: "EMPTY",
+    },
+    avatarProfileVersionId: null,
+    imageStyleVersionId: "",
+    optionalScript: null,
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+    effectiveExtraPromptKeywords: null,
+    generationMode: "BALANCED",
+    spendCapUsd: 1.5,
+    preservedAcrossPresetRoundtrip: false,
+    returnRoute: null,
+    preflight: {
+      status: "BLOCKED",
+      checks: [
+        {
+          id: "access",
+          label: "Workspace access",
+          state: "BLOCK",
+          message: "Sign in with an invited account",
+        },
+      ],
+    },
+  };
+  snapshot.mutationProblem = null;
+}
+
 function createScenario(
   id: FixtureScenarioId,
   label: string,
@@ -274,6 +339,60 @@ function createScenario(
 }
 
 const scenarios = {
+  invite_sign_in: createScenario(
+    "invite_sign_in",
+    "Invite-only sign in",
+    "A synthetic invited account can enter the fixture console without contacting Google.",
+    "/",
+    ["access", "sign-in", "synthetic"],
+    (snapshot) => {
+      clearConsoleData(snapshot);
+      snapshot.access = {
+        state: "SIGN_IN_REQUIRED",
+        selectedAccount: {
+          displayName: "Lakshman (fixture)",
+          email: "lakshman.fixture@example.invalid",
+        },
+        workspaceName: "VideoForge Studio",
+        adminContact: "admin.fixture@example.invalid",
+        reason: null,
+      };
+      snapshot.session.userId = "user_fixture_signed_out";
+      snapshot.session.displayName = "Lakshman (fixture)";
+      snapshot.draft.preflight.checks[0]!.message = "Continue with the invited fixture account";
+      snapshot.notice = null;
+    },
+  ),
+  invite_access_denied: createScenario(
+    "invite_access_denied",
+    "Invite required",
+    "An uninvited synthetic account is blocked before any workspace console data is returned.",
+    "/",
+    ["access", "denied", "blocked"],
+    (snapshot) => {
+      clearConsoleData(snapshot);
+      snapshot.access = {
+        state: "DENIED",
+        selectedAccount: {
+          displayName: "Guest account (fixture)",
+          email: "guest.fixture@example.invalid",
+        },
+        workspaceName: "VideoForge Studio",
+        adminContact: "admin.fixture@example.invalid",
+        reason: "This account has not been invited to this workspace.",
+      };
+      snapshot.session.userId = "user_fixture_uninvited";
+      snapshot.session.displayName = "Guest account (fixture)";
+      snapshot.session.role = "MEMBER";
+      snapshot.draft.preflight.checks[0]!.message = "Ask a workspace admin for an invite";
+      snapshot.notice = {
+        tone: "ERROR",
+        title: "Workspace invite required",
+        detail: "This account is not on the VideoForge Studio invite list.",
+        action: "Try another account",
+      };
+    },
+  ),
   happy_generating: createScenario(
     "happy_generating",
     "Happy path: generating",
@@ -286,7 +405,7 @@ const scenarios = {
     "project_create_ready",
     "Create project: ready",
     "All required inputs are pinned and preflight is ready.",
-    "/create",
+    "/projects/new",
     ["create", "preflight", "success"],
     (snapshot) => {
       snapshot.project = null;
@@ -298,7 +417,7 @@ const scenarios = {
     "avatar_hub_empty",
     "Avatar Hub: empty",
     "No ready Avatar Profile exists; project creation is blocked with a clear next action.",
-    "/avatar-hub",
+    "/avatars",
     ["avatar", "empty", "blocked"],
     (snapshot) => {
       snapshot.project = null;
@@ -325,7 +444,7 @@ const scenarios = {
     "avatar_profile_uploading",
     "Avatar profile: uploading",
     "A reusable avatar source is uploading and duplicate submission is disabled.",
-    "/avatar-hub/new",
+    "/avatars/new",
     ["avatar", "uploading", "pending"],
     (snapshot) => {
       snapshot.project = null;
@@ -353,7 +472,7 @@ const scenarios = {
     "avatar_profile_invalid",
     "Avatar profile: invalid source",
     "Source validation rejects an undersized or off-center avatar image.",
-    "/avatar-hub/avatar_profile_fixture_001",
+    "/avatars",
     ["avatar", "validation", "error"],
     (snapshot) => {
       snapshot.project = null;
@@ -388,7 +507,7 @@ const scenarios = {
     "avatar_profile_ready",
     "Avatar profile: ready",
     "A named reusable Avatar Profile version is ready and selectable.",
-    "/avatar-hub/avatar_profile_fixture_001",
+    "/avatars",
     ["avatar", "ready", "success"],
     (snapshot) => {
       snapshot.project = null;
@@ -404,7 +523,7 @@ const scenarios = {
     "avatar_profile_archived_during_draft",
     "Selected avatar archived",
     "The exact selected version was archived before revision creation.",
-    "/create",
+    "/projects/new",
     ["avatar", "versioning", "blocked"],
     (snapshot) => {
       snapshot.project = null;
@@ -430,7 +549,7 @@ const scenarios = {
     "avatar_profile_newer_version_available",
     "Newer avatar version available",
     "The draft remains pinned to v1 while an active v2 is available.",
-    "/create",
+    "/projects/new",
     ["avatar", "versioning", "warning"],
     (snapshot) => {
       snapshot.project = null;
@@ -453,7 +572,7 @@ const scenarios = {
     "avatar_test_cancelled",
     "Avatar compatibility test cancelled",
     "Optional compatibility evidence was cancelled without blocking a structurally ready profile.",
-    "/avatar-hub/avatar_profile_fixture_001",
+    "/avatars",
     ["avatar", "test", "warning"],
     (snapshot) => {
       snapshot.project = null;
@@ -476,7 +595,7 @@ const scenarios = {
     "style_analyzing",
     "Image style: analyzing",
     "A consented custom style analysis is asynchronous and resumable.",
-    "/image-styles/style_warm_rural",
+    "/styles",
     ["style", "analysis", "pending"],
     (snapshot) => {
       snapshot.project = null;
@@ -497,7 +616,7 @@ const scenarios = {
     "style_v2_analyzing_v1_active",
     "Style v2 analyzing, v1 active",
     "Published v1 remains available while a v2 draft is analyzed.",
-    "/image-styles/style_warm_rural",
+    "/styles",
     ["style", "versioning", "pending"],
     (snapshot) => {
       snapshot.project = null;
@@ -518,7 +637,7 @@ const scenarios = {
     "style_needs_review",
     "Image style: needs review",
     "Analyzer output exposes confidence, support, and outliers before publication.",
-    "/image-styles/style_warm_rural/review",
+    "/styles",
     ["style", "analysis", "review"],
     (snapshot) => {
       snapshot.project = null;
@@ -544,7 +663,7 @@ const scenarios = {
     "style_analysis_failed",
     "Image style: analysis failed",
     "A provider failure is visible, retryable, and never auto-publishes.",
-    "/image-styles/style_warm_rural",
+    "/styles",
     ["style", "analysis", "error"],
     (snapshot) => {
       snapshot.project = null;
@@ -578,7 +697,7 @@ const scenarios = {
     "extra_keywords_not_applied",
     "Extra keywords: not applied",
     "Retained keyword text is inert while the explicit toggle is off.",
-    "/create",
+    "/projects/new",
     ["create", "keywords", "success"],
     (snapshot) => {
       snapshot.project = null;
@@ -593,7 +712,7 @@ const scenarios = {
     "extra_keywords_conflict",
     "Extra keywords: hard-rule conflict",
     "Enabled keywords requesting a logo are blocked with plain feedback.",
-    "/create",
+    "/projects/new",
     ["create", "keywords", "blocked"],
     (snapshot) => {
       snapshot.project = null;
@@ -619,12 +738,12 @@ const scenarios = {
     "preset_roundtrip_draft_preserved",
     "Preset round trip preserves draft",
     "Returning from a preset Hub retains the complete project draft and verified upload handle.",
-    "/create",
+    "/projects/new",
     ["create", "draft", "success"],
     (snapshot) => {
       snapshot.project = null;
       snapshot.draft.preservedAcrossPresetRoundtrip = true;
-      snapshot.draft.returnRoute = "/image-styles/style_warm_rural/review";
+      snapshot.draft.returnRoute = "/projects/new";
       snapshot.draft.imageStyleVersionId = customStyle.versionId;
       snapshot.notice = {
         tone: "SUCCESS",
@@ -769,7 +888,7 @@ const scenarios = {
     "budget_blocked",
     "Project budget blocked",
     "Preflight truthfully blocks a project whose estimate exceeds its configured cap.",
-    "/create",
+    "/projects/new",
     ["create", "budget", "blocked"],
     (snapshot) => {
       snapshot.project = null;

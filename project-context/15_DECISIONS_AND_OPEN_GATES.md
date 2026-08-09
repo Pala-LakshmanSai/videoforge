@@ -19,7 +19,7 @@ Every row below is `APPROVED` by the user and recorded in this planning session 
 | `DEC_STYLE_002` | Built-in `documentary_stock_v1` is the default | Preserves the approved realistic Ranga/stock-footage look without setup |
 | `DEC_STYLE_003` | Runware Gemini 3.5 Flash performs one-time reference analysis | Strong multi-image/strict-JSON fit through the already selected Runware account; provisional on gate |
 | `DEC_STYLE_004` | Every project revision pins one published style version/hash | Reproducibility; later edits/archive cannot change prior output |
-| `DEC_STYLE_005` | Optional extra image keywords require an explicit toggle, off by default | Gives user control without silently changing every prompt or adding an LLM call |
+| `DEC_STYLE_005` | Optional extra image keywords require an explicit toggle, off by default; the toggle is the only persistent applied-state indicator | Gives user control without silently changing every prompt or adding an LLM call; the user removed redundant applied/not-applied confirmation UI on 2026-08-09 |
 | `DEC_STYLE_006` | Analyzer extracts shared visual traits, not reference content/identity/logo/text | Prevents accidental copying and keeps styles reusable across topics |
 | `DEC_IMAGE_001` | `microsoft/Mage-Flow-Turbo`, 4-step path | User locked Mage Flow; speed/quality fit |
 | `DEC_AVATAR_001` | AvatarForcing primary | Fast one-step open model; provisional on exact-avatar gate |
@@ -36,8 +36,8 @@ Every row below is `APPROVED` by the user and recorded in this planning session 
 | `DEC_QUEUE_001` | Postgres is authoritative; RunPod is execution transport | Durable multi-user recovery and audit |
 | `DEC_RUNPOD_001` | Scale-to-zero endpoints first; all operations via API | Simple, no console, no idle GPU |
 | `DEC_UX_001` | Fixture-first UI visible in real Chrome throughout development | User can identify breakage and guide UX live |
-| `DEC_UX_002` | Use a large-scale minimal production-console UI with an active-project command strip, oversized project/progress hierarchy, strong vertical pipeline, live artifact panel, and floating navigation dock | User rejected the first shell as too small/zoomed-out, dense, and explanatory, then explicitly approved the hierarchy inspired by `assets/ui/swipecut-ui-reference.jpg` on 2026-08-09 |
-| `DEC_UX_003` | Avatar and Image Style surfaces are visual-first; real authorized thumbnails/covers and version-bound reference/example galleries are visible on demand while dense technical detail stays progressively disclosed | User explicitly required seeing every avatar preset and every style's imagery without clutter on 2026-08-09; custom uploaded references must remain distinct from built-in owned/generated examples |
+| `DEC_UX_002` | Use a large-scale minimal production-console UI with a full-width active-project command bar whose progress track is inset internally, oversized project/progress hierarchy, strong vertical pipeline, live artifact panel, and floating navigation dock | User rejected the first shell as too small/zoomed-out, dense, and explanatory, then corrected the later narrow centered top bar and explicitly required a full-width, internally padded treatment on 2026-08-09 |
+| `DEC_UX_003` | Avatar and Image Style surfaces are visual-first; Create Project uses compact visual dropdowns, while real authorized thumbnails/covers and version-bound reference/example galleries remain visible on demand and dense technical detail stays progressively disclosed | User required seeing every avatar/style image without spreading every preset across the form on 2026-08-09; custom uploaded references remain distinct from built-in owned/generated examples |
 
 ## User-approved avatar router
 
@@ -63,10 +63,10 @@ In MVP, deterministic media checks can auto-pass technical validity, but the use
 | `GATE_STYLE_001` | Gemini 3.5 multi-reference schema, content separation, latency, cost, retention posture | Lock analyzer model/settings or A/B only the analyzer fallback |
 | `GATE_STYLE_002` | Same-content Mage bakeoff across default + four distinct extracted styles | Prove prompt-only profiles are sufficient before considering LoRA/reference conditioning |
 | `GATE_FALLBACK_001` | SkyReels low-VRAM 48 GB fit, quality, boot, accepted cost | Provision/lock quality endpoint |
-| `GATE_GPU_001` | Benchmark tested model/GPU allowlists | Advanced UI cannot expose untested cards |
+| `GATE_GPU_001` | Benchmark tested model/GPU allowlists | The UI may show planned candidates disabled, but no untested image/media or primary-avatar execution profile can become selectable |
 | `GATE_RUNPOD_001` | Prove API repair after RunPod's idle max-worker reduction/config drift, timeout/TTL/result reconciliation, ambiguous dispatch handling, worker execution claims, and duplicate-cost visibility | Required before live RunPod dispatch is enabled |
 | `GATE_COST_001` | Full cold/warm 30-minute measurement on new RunPod account | Replace planning estimates/SLO confidence |
-| `GATE_UI_001` | User approves the redesigned large/minimal live Chrome shell, visual preset galleries, and creation/progress/review flows at desktop and mobile widths | Lock visual tokens, scale, hierarchy, navigation, and progressive-disclosure behavior |
+| `GATE_UI_001` | User approves the redesigned large/minimal live Chrome shell, compact visual preset dropdowns, full-width command bar, dual truthful compute selectors, preset galleries, and creation/progress/review flows at desktop and mobile widths | Lock visual tokens, scale, hierarchy, navigation, and progressive-disclosure behavior |
 
 ## Proposed values awaiting evidence/user sign-off
 

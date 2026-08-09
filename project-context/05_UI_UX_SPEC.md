@@ -11,6 +11,8 @@ Primary reference: `assets/ui/swipecut-ui-reference.jpg`. It is inspiration only
 
 The user reconfirmed this direction on 2026-08-09 after rejecting the first fixture shell as too small, too dense, and too text-heavy. The approved hierarchy borrows the reference's active-project command strip, oversized project title, large progress hero, factual metric cards, strong vertical pipeline, live artifact panel, and floating navigation dock. VideoForge must translate those concepts into its own routes, copy, data, and visual identity rather than copying the reference product.
 
+The same review later refined the Create Project hierarchy: keep the active choice compact, open choices only on demand, remove nonessential technical hints and success confirmations, and expose the two primary compute lanes without implying unverified GPU availability. The active-project bar remains full-width; only its internal content and progress track are deliberately inset.
+
 Reuse proven visual concepts from the user's ImageForge app where helpful. The compact, portable baseline is `evidence/source-briefs/LOCAL_BASELINES.md`; the absolute paths below are optional local evidence only, and their absence must never block a fresh chat, clone, build, or test:
 
 - `/Volumes/ESD-USB/ImageForge/src/styles.css`
@@ -68,6 +70,8 @@ Details are closed by default. On desktop the preferred inspect surface is a rou
 
 Keep an active blocker, pending next check, incurred charge, required consent, budget approval, spend cap, and destructive action visible in the primary layer. These are never hidden merely to make the page look cleaner. Short success confirmation belongs in a toast; persistent panels are for actionable failure or an operation that is still pending.
 
+Errors name the actual failed field or operation and the next useful action. Do not substitute a generic preflight message for a specific upload, preset, budget, profile, or provider error. Field validation stays adjacent to the field; mutation failures may use a concise accessible toast, and durable blockers remain inline until resolved.
+
 Use direct nouns and outcomes instead of slogans or repeated implementation rationale. Preferred page titles are `Queue`, `New project`, the project title, `Review`, `Avatar Hub`, `Image Styles`, `Library`, `Usage`, and `Settings`. Friendly labels such as `Ready`, `Test passed`, `Retest suggested`, and `Needs review` belong in the primary layer; raw enum values remain available only in technical details.
 
 ## Information architecture
@@ -84,19 +88,19 @@ Use direct nouns and outcomes instead of slogans or repeated implementation rati
 
 3. **Create project**
    - Title.
-   - Voiceover dropzone with format/duration validation and waveform/duration summary.
-   - Required searchable visual Avatar selector showing the private thumbnail, name, active version, and compatibility badge; no per-project avatar upload. A native text-only `<select>` does not satisfy this requirement.
+   - Voiceover dropzone with a short `Drop or choose final narration` prompt, accepted format names, and selected-file/upload state. Duration limits, channel count, sample rate, and other technical media rules remain strictly validated but are not advertised in the primary dropzone; show a precise field error only when the actual file violates one.
+   - Required compact visual Avatar dropdown. Its closed trigger shows only the selected private thumbnail, name, active version, and compatibility badge; opening it reveals the searchable visual choices. No per-project avatar upload. A native text-only `<select>` or an always-expanded preset-card grid does not satisfy this requirement.
    - Selecting stores the exact version immediately. A later v2 does not silently replace selected v1; show `Newer version available`. Untested/stale/cancelled/failed compatibility shows increasingly strong warnings, but none blocks a ready source or starts a hidden test under the proposed MVP policy.
    - `Manage avatars` and `+ New avatar` shortcuts. With no ready avatar, Generate is blocked by a clear `Create your first avatar` action.
-   - Required visual Image Style picker, preselected to Authentic Documentary Stock, with cover, summary, version, search, `Manage styles`, `+ New style`, and direct access to its reference/example gallery.
-   - `Apply extra keywords to every AI image` toggle, off by default, plus a bounded optional textarea and effective-settings preview.
-   - Optional script and image-keyword controls share one collapsed `Script and image keywords` section; `Not applied` remains visible when saved keyword text is disabled.
+   - Required compact visual Image Style dropdown, preselected to Authentic Documentary Stock. Its closed trigger shows the selected cover, name, and version; opening it reveals searchable visual choices. `Manage styles`, `+ New style`, and reference/example details remain available without expanding every style into the form.
+   - One simple `Apply extra keywords to every AI image` toggle, off by default, plus a bounded optional textarea. The toggle itself is the state; do not add persistent `Applied`, `Not applied`, success, or effective-settings confirmation panels. Show only a real validation error when enabled text is empty, invalid, or conflicts with output rules.
+   - Do not expose an exact-script field in the first-shell web UI. The versioned request may retain nullable `optional_script` for backward compatibility, but this shell sends `null` and uses local ASR text as canonical.
    - Lowest cost / Balanced / Faster preset.
-   - Advanced tested execution-profile overrides behind disclosure, independently selectable for image/media and primary avatar (with repair/quality lanes visible only when provisioned); show ordered compatible GPU priorities without pretending one exact Serverless GPU is guaranteed per job. The resolved per-lane profile IDs are pinned before dispatch.
+   - A compact Compute section exposes two independent dropdowns: `Image generation` (`image_media`) and `Avatar generation` (`avatar_primary`). Each selects an immutable execution profile—not a raw per-job GPU—and shows truthful lane/profile status. Planned GPU candidates may appear disabled with `Benchmark required`; no production candidate becomes selectable until `GATE_GPU_001`. Optional repair/quality lanes remain behind details and appear only when provisioned. Never imply that one exact Serverless GPU is guaranteed per job. The resolved per-lane profile IDs are pinned before dispatch.
    - Preflight appears as `Ready to generate` or a concise blocker count, plus cost range, spend cap, and one `Generate video` button. Passed immutable-contract facts move into `Review settings` rather than occupying four success panels.
 
 4. **Project progress**
-   - Sticky active-project command track with title, phase, factual percent, ETA, and current cost; API/worker health is compact unless degraded.
+   - Sticky full-width active-project command bar with title, phase, factual percent, ETA, and current cost; API/worker health is compact unless degraded. Use normal page-edge padding and inset the inner project/progress track itself. Do not center the whole bar inside a narrow max-width island.
    - Oversized project title and progress hero containing a large ring, stage/status/ETA/cost cards, and one clear progress bar.
    - Parallel image and avatar lane cards.
    - Human stage rows: Prepare → Transcribe → Plan → Write image prompts → Generate media → Assemble → Technical check → Review. Raw stage IDs remain in details.
@@ -149,11 +153,11 @@ Use direct nouns and outcomes instead of slogans or repeated implementation rati
 ## Core components
 
 - Reference-inspired floating navigation dock with Queue, New Project, active Progress, Avatar Hub, Image Styles, Library, Usage, and Settings; the active route is unmistakable. At 1024 px every destination remains directly reachable with visible focus and accessible names. Narrow mobile navigation may use an explicit `More` surface, but it cannot make either Hub undiscoverable or hide destructive/budget controls.
-- Top active-project command/progress track.
+- Full-width top active-project command bar with an internally inset project/progress track and compact mobile treatment.
 - Progress ring plus factual completed/total counts.
 - Metric cards for stage, ETA, cost, queue, GPU.
 - Stage timeline with queued/running/retrying/blocked/failed/cancelled/complete states.
-- Execution-profile selector showing endpoint mode, ordered GPU priorities, availability, VRAM, current maximum rate, compatibility, and measured speed.
+- Two primary execution-profile selectors for `image_media` and `avatar_primary`, each showing truthful lane status. Selected tested profiles may progressively disclose endpoint mode, ordered GPU priorities, availability, VRAM, current maximum rate, compatibility, and measured speed; planned candidates remain disabled until `GATE_GPU_001`.
 - Validated upload dropzones.
 - Searchable visual Avatar selector and private reusable Avatar Profile cards with real thumbnails.
 - Searchable visual Image Style selector and reusable style cards with covers.
@@ -193,11 +197,11 @@ Design these before polishing the happy path:
 
 Every click that starts asynchronous work must immediately disable duplicate submission and show the authoritative next check.
 
-The project extra-keyword textarea may retain text when its toggle is off, but the UI must clearly say `Not applied`. Inactive text is not semantically validated and never blocks production. Turning the toggle on validates immediately: whitespace-only text is rejected; enabling requests for forbidden output block with plain feedback; negative phrases such as `no logo`, `no text`, and `no AI look` remain valid. Soft creative tension only warns. Its helper text: `Affects AI images only. It does not change avatar, timing, or layout.`
+The project extra-keyword textarea may retain text when its toggle is off. The toggle is the only persistent applied-state indicator; do not add a separate applied/not-applied confirmation. Inactive text is not semantically validated and never blocks production. Turning the toggle on validates immediately: whitespace-only text is rejected; enabling requests for forbidden output blocks with plain feedback; negative phrases such as `no logo`, `no text`, and `no AI look` remain valid. Soft creative tension only warns. Any explanatory copy belongs behind on-demand details rather than occupying another persistent panel.
 
-Opening `+ New style` from Create Project autosaves the complete draft and verified voiceover upload handle. Publishing or cancelling returns to that same draft; a newly published style is selected automatically, and no title/audio/avatar-selection/script re-entry or voiceover re-upload is required.
+Opening `+ New style` from Create Project autosaves the complete draft and verified voiceover upload handle. Publishing or cancelling returns to that same draft; a newly published style is selected automatically, and no title/audio/avatar-selection/settings re-entry or voiceover re-upload is required.
 
-Opening `+ New avatar` from Create Project follows the same no-loss rule: autosave title, verified voiceover upload handle, selected style, optional script, keyword text/toggle, mode, execution-profile overrides, cap, and seed. Saving or cancelling returns to that draft; a newly ready avatar is selected automatically. There is no voiceover re-upload and no hidden project-local avatar copy.
+Opening `+ New avatar` from Create Project follows the same no-loss rule: autosave title, verified voiceover upload handle, selected style, keyword text/toggle, mode, both execution-profile selections, cap, and seed. Saving or cancelling returns to that draft; a newly ready avatar is selected automatically. There is no voiceover re-upload and no hidden project-local avatar copy.
 
 ## Multi-user clarity
 
@@ -220,6 +224,7 @@ Opening `+ New avatar` from Create Project follows the same no-loss rule: autosa
 - Desktop-first at 1280–1920 px; fully usable at 1024 px.
 - Floating navigation is keyboard reachable, reports the active route semantically, and keeps Avatar Hub/Image Styles Hub directly reachable at 1024 px.
 - Mobile may emphasize queue/status/review, but cannot silently hide destructive or budget controls.
+- On mobile the command bar remains full-width and compact; its internal progress inset may reduce, but title/status/progress must not collapse into unreadable microcopy or create horizontal overflow.
 - At mobile widths, the progress hero becomes one column, galleries use two columns, and details/lightboxes become full-screen. Bottom safe-area/content padding prevents the floating dock from covering Generate, Approve, Cancel, or spend-cap controls.
 - No supported viewport may have page-level horizontal overflow.
 
@@ -236,4 +241,4 @@ Opening `+ New avatar` from Create Project follows the same no-loss rule: autosa
 
 ## UI acceptance
 
-The UI passes when the non-developer user can create/store a named avatar once, see every authorized preset thumbnail, select it later by image and name without re-upload, inspect every authorized custom-style reference on demand, distinguish built-in generated examples from uploaded references, create/review/publish/select a style, understand whether extra keywords are applied, and start/monitor/recover/review/download a project without asking what a technical status means. The primary layer is large, minimal, and free of repeated technical explanations; the full audit detail remains reachable; no button appears inert; navigation is clear; cost and GPU/avatar/style state are truthful; no supported viewport overflows or hides critical controls; and the user approves the design through the live Chrome gate.
+The UI passes when the non-developer user can create/store a named avatar once, see every authorized preset thumbnail, select avatar/style versions from compact visual dropdowns without re-upload, inspect every authorized custom-style reference on demand, distinguish built-in generated examples from uploaded references, create/review/publish/select a style, opt into extra keywords without a redundant confirmation panel, select truthful image/avatar execution profiles, and start/monitor/recover/review/download a project without asking what a technical status means. The primary layer is large, minimal, and free of repeated technical explanations; the full audit detail remains reachable; no button appears inert; navigation is clear; the full-width command bar and its internal track scale cleanly; cost and compute/avatar/style state are truthful; no supported viewport overflows or hides critical controls; and the user approves the design through the live Chrome gate.

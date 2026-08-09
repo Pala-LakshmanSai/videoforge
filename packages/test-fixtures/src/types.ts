@@ -1,4 +1,6 @@
 export const FIXTURE_SCENARIO_IDS = [
+  "invite_sign_in",
+  "invite_access_denied",
   "happy_generating",
   "project_create_ready",
   "avatar_hub_empty",
@@ -178,6 +180,17 @@ export interface FixtureEvent {
   readonly stage: string;
 }
 
+export interface FixtureAccessState {
+  readonly state: "AUTHORIZED" | "SIGN_IN_REQUIRED" | "DENIED";
+  readonly selectedAccount: {
+    readonly displayName: string;
+    readonly email: string;
+  } | null;
+  readonly workspaceName: string;
+  readonly adminContact: string;
+  readonly reason: string | null;
+}
+
 export interface FixtureSnapshot {
   development: {
     providerMode: "fixture";
@@ -192,6 +205,7 @@ export interface FixtureSnapshot {
     workspaceId: string;
     workspaceName: string;
   };
+  access: FixtureAccessState;
   navigation: {
     activeRoute: string;
     sidebarCollapsed: boolean;

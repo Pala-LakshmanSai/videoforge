@@ -258,16 +258,15 @@ Analysis is asynchronous and resumable. Leaving the screen does not lose work. B
 
 ### Create Project
 
-Retain title, final voiceover, selected reusable Avatar Profile, and optional script. Add:
+Retain title, final voiceover, and selected Avatar Profile. The web shell has no script field and sends `optional_script: null`. Add:
 
-- Required Image Style selector, preselected to Authentic Documentary Stock.
-- Searchable list with cover, name, summary, and version.
+- Required compact visual Image Style dropdown, preselected to Authentic Documentary Stock. Its closed trigger shows only the selected cover/name/version; opening it reveals the searchable visual list with cover, name, summary, and version.
 - `Manage styles` and `+ New style` shortcuts.
 - `Apply extra keywords to every AI image` toggle, off by default.
 - Extra Image Prompt Keywords textarea with examples and character count.
-- Collapsed effective-settings preview showing selected version and whether extras are active.
+- No persistent applied/not-applied or effective-settings confirmation; the toggle is the state, and only real enabled-text validation errors are shown.
 
-Only a published accessible version can be selected for a new project revision. An archived style disappears from new selection, but a published v1 remains selectable while v2 is analyzing. If a new style is created from the project form, autosave the current title, verified voiceover upload handle, selected Avatar Profile version, script, mode, any execution-profile overrides, cap, seed, and keyword text/toggle before leaving; after first publication, return without re-uploading anything and select the new version.
+Only a published accessible version can be selected for a new project revision. An archived style disappears from new selection, but a published v1 remains selectable while v2 is analyzing. If a new style is created from the project form, autosave the current title, verified voiceover upload handle, selected Avatar Profile version, mode, both primary execution-profile selections, cap, seed, and keyword text/toggle before leaving; after first publication, return without re-uploading anything and select the new version.
 
 ## Records and API
 

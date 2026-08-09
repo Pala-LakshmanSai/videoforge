@@ -16,6 +16,7 @@ import type { PropsWithChildren } from "react";
 import { api } from "../lib/api";
 import { currentScenario, setScenario } from "../lib/scenario";
 import { scenarioIds, type ProjectSummary, type Tone } from "../lib/types";
+import { AccessGate, AccessGatePending, AccessGateUnavailable } from "./AccessGate";
 import { Badge, Disclosure, ProgressBar } from "./ui";
 
 const nav = [
@@ -28,12 +29,16 @@ const nav = [
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
-const terminalProjectStatuses = new Set<ProjectSummary["status"]>(["APPROVED", "CANCELLED"]);
+const terminalProjectStatuses = new Set<ProjectSummary["status"]>(["APPROVED"]);
+const accessFixtureScenarios: ReadonlySet<string> = new Set([
+  "invite_sign_in",
+  "invite_access_denied",
+]);
 
 function projectTone(status: ProjectSummary["status"]): Tone {
   if (status === "APPROVED" || status === "READY_FOR_REVIEW") return "success";
-  if (status === "NEEDS_ATTENTION") return "warning";
-  if (status === "CANCELLED") return "neutral";
+  if (status === "NEEDS_ATTENTION" || status === "CANCEL_REQUESTED") return "warning";
+  if (status === "DRAFT" || status === "QUEUED") return "neutral";
   return "info";
 }
 
@@ -104,6 +109,7 @@ function ProjectCommandTrack({
 
 export function AppShell({ children }: PropsWithChildren) {
   const scenario = currentScenario();
+  const fixtureControlsEnabled = import.meta.env.DEV;
   const path = useRouterState({ select: (state) => state.location.pathname });
   const health = useQuery({
     queryKey: ["health", scenario],
@@ -115,9 +121,43 @@ export function AppShell({ children }: PropsWithChildren) {
     queryFn: () => api.bootstrap(scenario),
     refetchInterval: 10_000,
   });
+  const fixturePickerProps = {
+    enabled: fixtureControlsEnabled,
+    scenario,
+    onScenarioChange: setScenario,
+  };
+  const isAccessFixture = accessFixtureScenarios.has(scenario);
+
+  if (isAccessFixture && bootstrap.isPending) {
+    return <AccessGatePending {...fixturePickerProps} />;
+  }
+
+  if (isAccessFixture && bootstrap.isError) {
+    return (
+      <AccessGateUnavailable
+        {...fixturePickerProps}
+        onRetry={() => {
+          void bootstrap.refetch();
+        }}
+      />
+    );
+  }
+
+  if (bootstrap.data?.access.state && bootstrap.data.access.state !== "AUTHORIZED") {
+    return (
+      <AccessGate
+        {...fixturePickerProps}
+        access={bootstrap.data.access}
+        onContinue={() => setScenario("happy_generating")}
+        onTryAnotherAccount={() => setScenario("invite_sign_in")}
+      />
+    );
+  }
+
   const projects = bootstrap.data?.projects ?? [];
   const activeProject =
     projects.find((project) => !terminalProjectStatuses.has(project.status)) ?? projects[0];
+  const healthDegraded = health.isError;
   const renderNavItem = (item: (typeof nav)[number]) => {
     const Icon = item.icon;
     const active = isNavItemActive(path, item.to);
@@ -133,7 +173,7 @@ export function AppShell({ children }: PropsWithChildren) {
         <span className="bottom-nav-icon" aria-hidden="true">
           <Icon size={21} />
         </span>
-        <span>{item.label}</span>
+        <span className="bottom-nav-label">{item.label}</span>
         {active ? <i className="bottom-nav-active-dot" aria-hidden="true" /> : null}
       </Link>
     );
@@ -148,80 +188,91 @@ export function AppShell({ children }: PropsWithChildren) {
       <span className="shell-ambient shell-ambient-cobalt" aria-hidden="true" />
 
       <header className="top-command-bar">
-        <Link
-          to="/"
-          search={{ fixture: scenario } as never}
-          className="top-brand"
-          aria-label="VideoForge queue"
-        >
-          <span className="top-brand-mark" aria-hidden="true">
-            <Clapperboard size={24} />
-          </span>
-          <strong>VideoForge</strong>
-        </Link>
-
-        {bootstrap.isError ? (
-          <div className="project-command-track project-command-track-error" role="status">
-            <span className="project-command-copy">
-              <span className="project-command-status project-command-status-danger">
-                Unavailable
-              </span>
-              <strong>Project status could not load</strong>
-            </span>
-          </div>
-        ) : bootstrap.isPending ? (
-          <div className="project-command-track project-command-track-loading" aria-busy="true">
-            <span className="spinner" aria-hidden="true" />
-            <strong>Loading project</strong>
-          </div>
-        ) : (
-          <ProjectCommandTrack project={activeProject} scenario={scenario} />
-        )}
-
-        <div className="top-command-tools">
-          <div className="top-health" role="status" aria-live="polite">
-            <Activity size={16} aria-hidden="true" />
-            <Badge
-              tone={
-                health.data?.status === "ok" ? "success" : health.isError ? "danger" : "warning"
-              }
-            >
-              API{" "}
-              {health.data?.status === "ok" ? "healthy" : health.isError ? "offline" : "checking"}
-            </Badge>
-          </div>
-
-          <Disclosure
-            className="fixture-control"
-            summary={
-              <>
-                <Aperture size={16} aria-hidden="true" />
-                <span className="fixture-control-summary">
-                  <strong>Fixture mode</strong>
-                  <small>Synthetic data · $0 spend</small>
-                </span>
-              </>
-            }
+        <div className="top-command-bar-inner">
+          <Link
+            to="/"
+            search={{ fixture: scenario } as never}
+            className="top-brand"
+            aria-label="VideoForge queue"
           >
-            <label className="fixture-control-field" htmlFor="fixture-select">
-              <span>Scenario</span>
-              <select
-                id="fixture-select"
-                value={scenario}
-                onChange={(event) => setScenario(event.target.value as typeof scenario)}
-              >
-                {scenarioIds.map((id) => (
-                  <option value={id} key={id}>
-                    {id}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="fixture-control-meta">
-              <span>{health.data?.commit ?? "local"}</span>
-              <span>No provider calls</span>
+            <span className="top-brand-mark" aria-hidden="true">
+              <Clapperboard size={24} />
+            </span>
+            <strong>VideoForge</strong>
+          </Link>
+
+          {bootstrap.isError ? (
+            <div className="project-command-track project-command-track-error" role="status">
+              <span className="project-command-copy">
+                <span className="project-command-status project-command-status-danger">
+                  Unavailable
+                </span>
+                <strong>Project status could not load</strong>
+              </span>
             </div>
-          </Disclosure>
+          ) : bootstrap.isPending ? (
+            <div className="project-command-track project-command-track-loading" aria-busy="true">
+              <span className="spinner" aria-hidden="true" />
+              <strong>Loading project</strong>
+            </div>
+          ) : (
+            <ProjectCommandTrack project={activeProject} scenario={scenario} />
+          )}
+
+          <div
+            className={`top-command-tools ${fixtureControlsEnabled ? "" : "top-command-tools-production"} ${healthDegraded ? "top-command-tools-degraded" : ""}`.trim()}
+          >
+            <div
+              className={`top-health ${healthDegraded ? "top-health-degraded" : ""}`.trim()}
+              role="status"
+              aria-live="polite"
+            >
+              <Activity size={16} aria-hidden="true" />
+              <Badge
+                tone={
+                  health.data?.status === "ok" ? "success" : health.isError ? "danger" : "warning"
+                }
+              >
+                API{" "}
+                {health.data?.status === "ok" ? "healthy" : health.isError ? "offline" : "checking"}
+              </Badge>
+            </div>
+
+            {fixtureControlsEnabled ? (
+              <Disclosure
+                className="fixture-control"
+                summary={
+                  <>
+                    <Aperture size={16} aria-hidden="true" />
+                    <span className="fixture-control-summary">
+                      <strong>Fixture mode</strong>
+                      <small>Synthetic data · $0 spend</small>
+                    </span>
+                    <span className="fixture-control-compact-label">Fixture</span>
+                  </>
+                }
+              >
+                <label className="fixture-control-field" htmlFor="fixture-select">
+                  <span>Scenario</span>
+                  <select
+                    id="fixture-select"
+                    value={scenario}
+                    onChange={(event) => setScenario(event.target.value as typeof scenario)}
+                  >
+                    {scenarioIds.map((id) => (
+                      <option value={id} key={id}>
+                        {id}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="fixture-control-meta">
+                  <span>{health.data?.commit ?? "local"}</span>
+                  <span>No provider calls</span>
+                </div>
+              </Disclosure>
+            ) : null}
+          </div>
         </div>
       </header>
 
@@ -247,7 +298,7 @@ export function AppShell({ children }: PropsWithChildren) {
             <span className="bottom-nav-icon" aria-hidden="true">
               <Activity size={21} />
             </span>
-            <span>Progress</span>
+            <span className="bottom-nav-label">Progress</span>
             {path.startsWith("/projects/") && path !== "/projects/new" ? (
               <i className="bottom-nav-active-dot" aria-hidden="true" />
             ) : null}

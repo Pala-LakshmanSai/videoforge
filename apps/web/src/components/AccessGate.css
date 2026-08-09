@@ -1,0 +1,449 @@
+.access-shell {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 16% 18%, rgba(77, 93, 229, 0.16), transparent 30%),
+    radial-gradient(circle at 86% 78%, rgba(255, 68, 96, 0.12), transparent 32%),
+    linear-gradient(145deg, #050610 0%, #090b1a 54%, #070713 100%);
+}
+
+.access-shell::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(160, 170, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(160, 170, 255, 0.035) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(circle at center, black, transparent 78%);
+  content: "";
+}
+
+.access-header {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: clamp(22px, 3vw, 42px) clamp(22px, 4vw, 68px);
+}
+
+.access-brand {
+  display: inline-flex;
+  min-height: 52px;
+  align-items: center;
+  gap: 13px;
+  color: var(--text);
+  font-size: 1.06rem;
+  letter-spacing: -0.025em;
+}
+
+.access-brand-mark {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 1px solid rgba(255, 111, 133, 0.34);
+  border-radius: 17px;
+  background: linear-gradient(145deg, rgba(255, 72, 102, 0.94), rgba(151, 54, 170, 0.86));
+  box-shadow: 0 14px 38px rgba(255, 65, 94, 0.22);
+}
+
+.access-main {
+  display: grid;
+  min-height: calc(100vh - 118px);
+  place-items: center;
+  padding: 24px 24px clamp(56px, 9vh, 112px);
+}
+
+.access-card {
+  position: relative;
+  width: min(100%, 560px);
+  padding: clamp(30px, 4.2vw, 50px);
+  overflow: hidden;
+  border: 1px solid rgba(177, 174, 229, 0.2);
+  border-radius: 32px;
+  background: linear-gradient(145deg, rgba(25, 28, 53, 0.9), rgba(14, 16, 34, 0.82));
+  box-shadow:
+    0 42px 110px rgba(0, 0, 0, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(24px);
+}
+
+.access-card::after {
+  position: absolute;
+  top: -90px;
+  right: -110px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(75, 101, 255, 0.1);
+  filter: blur(4px);
+  content: "";
+  pointer-events: none;
+}
+
+.access-card-denied::after {
+  background: rgba(255, 70, 98, 0.1);
+}
+
+.access-lock {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 28px;
+  place-items: center;
+  border: 1px solid rgba(92, 224, 170, 0.26);
+  border-radius: 19px;
+  background: rgba(63, 199, 145, 0.1);
+  color: #6ee5b4;
+}
+
+.access-lock-denied {
+  border-color: rgba(255, 104, 126, 0.3);
+  background: rgba(255, 72, 101, 0.11);
+  color: #ff758a;
+}
+
+.access-eyebrow {
+  margin-bottom: 11px;
+  color: #ff758a;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.access-card h1 {
+  max-width: 470px;
+  font-size: clamp(2.5rem, 5vw, 4.15rem);
+  line-height: 0.98;
+  letter-spacing: -0.062em;
+}
+
+.access-lead {
+  max-width: 450px;
+  margin-top: 18px;
+  color: #b8bac9;
+  font-size: 1.03rem;
+  line-height: 1.65;
+}
+
+.access-account {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: 78px;
+  align-items: center;
+  gap: 14px;
+  margin-top: 30px;
+  padding: 13px 15px;
+  border: 1px solid rgba(177, 174, 229, 0.18);
+  border-radius: 20px;
+  background: rgba(8, 10, 25, 0.52);
+}
+
+.access-account-avatar {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(77, 107, 255, 0.24), rgba(143, 85, 255, 0.18));
+  color: #cbd3ff;
+}
+
+.access-account > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.access-account strong {
+  overflow: hidden;
+  font-size: 0.98rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.access-account small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.access-account-state {
+  padding: 7px 9px;
+  border-radius: 999px;
+  background: rgba(75, 217, 159, 0.1);
+  color: #69e5b2;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.access-account-state.is-denied {
+  background: rgba(255, 85, 111, 0.11);
+  color: #ff8295;
+}
+
+.access-blocker {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 15px 16px;
+  border: 1px solid rgba(255, 95, 120, 0.24);
+  border-radius: 17px;
+  background: rgba(255, 70, 98, 0.075);
+  color: #ff8b9c;
+}
+
+.access-blocker > span {
+  display: grid;
+  gap: 4px;
+}
+
+.access-blocker strong {
+  color: #ffdbe1;
+  font-size: 0.94rem;
+}
+
+.access-blocker small {
+  color: #c7a8ae;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.access-primary-action {
+  display: flex;
+  width: 100%;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 0 20px;
+  border: 1px solid rgba(255, 116, 136, 0.34);
+  border-radius: 18px;
+  background: linear-gradient(115deg, #f53e5c, #cf356f 58%, #794bc7);
+  box-shadow: 0 18px 42px rgba(237, 55, 93, 0.22);
+  color: white;
+  cursor: pointer;
+  font-weight: 800;
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.access-primary-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 22px 48px rgba(237, 55, 93, 0.29);
+}
+
+.access-secondary-action {
+  border-color: rgba(180, 183, 227, 0.24);
+  background: rgba(42, 45, 75, 0.8);
+  box-shadow: none;
+}
+
+.access-secondary-action:hover {
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
+}
+
+.access-footnote {
+  min-height: 21px;
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.access-footnote p {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.access-footnote a {
+  color: #c8d0ff;
+  text-decoration: underline;
+  text-decoration-color: rgba(200, 208, 255, 0.36);
+  text-underline-offset: 4px;
+}
+
+.access-fixture-picker {
+  position: relative;
+  width: min(290px, calc(100vw - 150px));
+  border: 1px solid rgba(177, 174, 229, 0.18);
+  border-radius: 16px;
+  background: rgba(18, 20, 40, 0.8);
+  color: var(--text);
+  backdrop-filter: blur(18px);
+}
+
+.access-fixture-picker summary {
+  display: flex;
+  min-height: 50px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 14px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 750;
+  list-style: none;
+}
+
+.access-fixture-picker summary::-webkit-details-marker {
+  display: none;
+}
+
+.access-fixture-chevron {
+  margin-left: auto;
+  transition: transform 150ms ease;
+}
+
+.access-fixture-picker[open] .access-fixture-chevron {
+  transform: rotate(180deg);
+}
+
+.access-fixture-picker label {
+  display: grid;
+  gap: 7px;
+  padding: 0 13px 11px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.access-fixture-picker select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(177, 174, 229, 0.22);
+  border-radius: 12px;
+  background: #0d1022;
+  color: var(--text);
+}
+
+.access-fixture-picker > small {
+  display: block;
+  padding: 0 13px 13px;
+  color: #86899d;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.access-card-pending {
+  display: grid;
+  justify-items: start;
+}
+
+.access-card-pending .access-eyebrow {
+  margin-top: 26px;
+}
+
+.access-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(166, 175, 255, 0.16);
+  border-top-color: #8398ff;
+  border-radius: 50%;
+  animation: access-spin 800ms linear infinite;
+}
+
+.access-orbit {
+  position: absolute;
+  z-index: -1;
+  border: 1px solid rgba(146, 157, 255, 0.08);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.access-orbit-one {
+  top: 10%;
+  left: -180px;
+  width: 520px;
+  height: 520px;
+}
+
+.access-orbit-two {
+  right: -230px;
+  bottom: -240px;
+  width: 680px;
+  height: 680px;
+}
+
+@keyframes access-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .access-header {
+    align-items: center;
+    padding: 18px;
+  }
+
+  .access-brand {
+    min-height: 46px;
+  }
+
+  .access-brand strong {
+    display: none;
+  }
+
+  .access-brand-mark {
+    width: 46px;
+    height: 46px;
+    border-radius: 15px;
+  }
+
+  .access-fixture-picker {
+    width: min(220px, calc(100vw - 92px));
+  }
+
+  .access-main {
+    min-height: calc(100vh - 88px);
+    align-items: start;
+    padding: clamp(30px, 9vh, 74px) 16px 44px;
+  }
+
+  .access-card {
+    padding: 28px 22px;
+    border-radius: 26px;
+  }
+
+  .access-card h1 {
+    font-size: clamp(2.45rem, 13vw, 3.35rem);
+  }
+
+  .access-account {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .access-account-state {
+    grid-column: 2;
+    width: max-content;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .access-primary-action,
+  .access-fixture-chevron {
+    transition: none;
+  }
+
+  .access-primary-action:hover {
+    transform: none;
+  }
+
+  .access-spinner {
+    animation-duration: 1.8s;
+  }
+}

@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: see `CURRENT_STATE.yaml` (currently `planning_complete`)  
+Status: see `CURRENT_STATE.yaml` (currently `implementation_in_progress`)
 Context schema: `1.5`  
 Last updated: `2026-08-09`
 
@@ -27,7 +27,8 @@ The normal user supplies:
 - A ready named Avatar Profile selected by image and name from the Avatar Hub. Avatar upload happens once in that Hub, never inside an ordinary project.
 - A published Image Style, preselected to the built-in `documentary_stock_v1` realistic stock-footage look.
 - Optional extra image-prompt keywords plus an explicit apply toggle; the toggle defaults off.
-- An optional exact script. If supplied, it is canonical; otherwise local ASR text is canonical.
+
+The first-shell Create Project UI does not expose an exact-script field. Local ASR text is canonical on that path. The versioned API may continue accepting nullable `optional_script` for backward compatibility, but the web shell sends `null`.
 
 The Image Styles Hub creates reusable styles from reference images. Runware Gemini 3.5 Flash runs only when a new draft style version is explicitly analyzed; ordinary projects reuse the pinned text profile and never make a per-video/per-image vision call.
 
@@ -62,7 +63,7 @@ The Avatar Hub creates reusable private presenter presets from one centered sour
 | Primary avatar | AvatarForcing | Revision-pinned canonical Avatar Profile runtime source + selected span audio; provisional pending exact-avatar benchmark |
 | Lip-only repair | MuseTalk 1.5 | Only an otherwise-good failed AvatarForcing clip |
 | Whole-frame avatar fallback | SkyReels V3 Talking Avatar | Same pinned runtime source + selected span audio, never a failed derivative; cold quality fallback |
-| Word timing | Local `whisper.cpp base.en` | Free ASR; reconcile to optional supplied script |
+| Word timing | Local `whisper.cpp base.en` | Free ASR; local ASR is canonical in the web shell, with legacy optional-script alignment retained only at the versioned API boundary |
 | Composition/render | FFmpeg | EDL, crops, zoom, hard cuts, loudness, encode |
 
 The avatar router and crop geometry are user-approved. AvatarForcing remains provisional only because its paper does not disclose the hardware behind the reported speed; the one-time RunPod acceptance suite must pass before production lock.

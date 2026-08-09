@@ -8,7 +8,7 @@ Read when: implementing transcript alignment, EDL compilation, prompt dispatch, 
 ```mermaid
 flowchart TD
     A["Validate title, audio, ready Avatar Profile, pinned style and optional keywords"] --> B["Create immutable revision and upload voiceover to R2"]
-    B --> C["Local ASR and optional script alignment"]
+    B --> C["Local ASR; legacy API script alignment when supplied"]
     B --> W["Optional parallel lane warm-up by mode"]
     C --> D["Sentence and word timing"]
     D --> E["Seeded deterministic timeline scheduler"]
@@ -64,7 +64,7 @@ Use `whisper.cpp base.en`, not Groq/Deepgram:
 - Normalize audio once.
 - Persist millisecond word starts/ends and true FFprobe duration.
 
-If an exact script is supplied, normalize its tokens and sequence-align ASR words to the script with deterministic dynamic programming. Keep matched times, interpolate unmatched script tokens, and retain the supplied wording as canonical. Do not add WhisperX unless evaluation shows visible boundary error above roughly 250 ms.
+The first-shell web client does not expose an exact-script field and submits `optional_script: null`, so ASR wording is canonical on that path. For backward-compatible versioned API clients that supply a non-null exact script, normalize its tokens and sequence-align ASR words to the script with deterministic dynamic programming. Keep matched times, interpolate unmatched script tokens, and retain the supplied wording as canonical. Do not add WhisperX unless evaluation shows visible boundary error above roughly 250 ms.
 
 ### 3. Sentence/phrase boundaries
 

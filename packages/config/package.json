@@ -8,6 +8,7 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./profiles/execution-profile-catalog-v1": "./profiles/execution-profile-catalog.v1.json",
     "./profiles/fixture-runtime-v1": "./profiles/fixture-runtime.v1.json",
     "./schemas/worker-health-v1": "./schemas/worker-health.v1.schema.json"
   },

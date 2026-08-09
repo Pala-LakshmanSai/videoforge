@@ -22,7 +22,7 @@ Read when: creating schemas, routes, worker payloads, callbacks, or the canonica
 | `image_style_previews` | Optional standardized Mage style-test outputs and acceptance |
 | `projects` | Stable project identity and owner |
 | `project_revisions` | Immutable production configuration/seed |
-| `project_inputs` | Upload/session records for voiceover and optional script; resolved production fields live only on the revision |
+| `project_inputs` | Upload/session records for voiceover and backward-compatible optional script; resolved production fields live only on the revision |
 | `transcripts` | ASR/alignment version and duration |
 | `transcript_words` | Millisecond words or a pointer to canonical JSON |
 | `timeline_segments` | Ordered EDL rows |
@@ -44,6 +44,8 @@ Use UUID/ULID identifiers, UTC timestamps, explicit workspace IDs, and soft arch
 Validate the client request against `evidence/create_project_request.schema.json` (`create-project-request/v2`). Before scheduling or external dispatch, trusted code resolves checksums/defaults/versions into immutable `project-revision-config/v2` using `evidence/project_revision_config.schema.json`. The resolved revision—not form state—is the authority for title, voiceover, exact Avatar Profile/version/hash/runtime source, selected style version/hash, extra-keyword text/toggle, generation mode/cap, per-lane execution-profile IDs, seed, and compiler versions.
 
 The Create button is one user action but not one giant upload request: the control plane creates a draft project shell, issues a signed R2 voiceover upload, verifies it, resolves the already-stored Avatar Profile and Image Style versions, and then creates the immutable revision. Large audio bytes never pass through the Worker body. Avatar source upload occurs only in the Avatar Hub. If any step fails, the same draft resumes without re-uploading verified voiceover assets.
+
+For compatibility, `optional_script` stays nullable. The web shell sends `null` and uses local ASR; other inputs remain strictly validated.
 
 ## Timeline plan versus resolved render manifest
 
@@ -229,6 +231,8 @@ workspace/{workspace_id}/avatar-profile/{profile_id}/version/{version_id}/
 Object filenames are content-addressed or include an immutable attempt ID. Never overwrite an accepted artifact in place.
 
 ## API surface
+
+The canonical same-origin prefix is `/api`: `/v1/...` shorthand below is requested as `/api/v1/...`; health is `/api/health`.
 
 Minimum routes:
 

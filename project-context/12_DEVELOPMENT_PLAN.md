@@ -1,6 +1,6 @@
 # Development plan
 
-Status: implementation underway; Phase 0A and the Phase 0B fixture shell are complete, with `GATE_UI_001` awaiting user approval
+Status: implementation underway; the Phase 0A foundation and Phase 0B shell are implemented but their exits remain open for contract completion and `GATE_UI_001`
 Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
 
 ## Delivery strategy
@@ -10,7 +10,7 @@ Run two coordinated tracks from the first development day:
 - **Experience track:** fixture-backed UI at the stable URL in the user's real Chrome with hot reload.
 - **Viability track:** capped RunPod/Runware spikes replacing paper claims with measured VRAM, cold/warm time, accepted quality, rate, cost, and exact digests.
 
-Shared schemas land first. Every milestone ends in a small green commit, reproducible evidence, an updated `CURRENT_STATE.yaml`, and a live-Chrome checkpoint when user-visible. Do not build a polished disconnected UI or throwaway provider calls that bypass durable task contracts.
+Shared schemas land first. Each milestone ends in a green commit, reproducible evidence, an updated `CURRENT_STATE.yaml`, and a live-Chrome checkpoint. Provider calls use durable task contracts.
 
 ## Milestone map
 
@@ -37,20 +37,23 @@ flowchart LR
 
 ## Phase 0A: private repository and contract skeleton
 
-- Initialize private Git; keep third-party research, private references, outputs, secrets, model weights, and local UI screenshots out of tracked/public artifacts.
-- Create pnpm/Turborepo layout: `apps/web` (Vite React + same-origin Hono Worker API), `workers/image-media`, `workers/avatar-primary`, `workers/avatar-repair`, `workers/avatar-quality`, `packages/contracts`, `packages/config`, and `packages/test-fixtures`.
+Current (2026-08-09): repo/commands, eight contracts, validator entry points, and TypeScript JCS exist. Job/event/state-machine contracts, independent non-Create Zod/Pydantic types, and Python JCS remain open; 0A is not closed.
+
+- Initialize private Git; exclude research, private references, outputs, secrets, weights, and screenshots.
+- Create the monorepo shape in `19_IMPLEMENTATION_PLAYBOOK.md`: web, shared packages, and four worker lanes.
 - Pin Node, pnpm, Python, CUDA bases, FFmpeg, formatters, test runners, and lockfiles.
-- Implement the stable commands and URL in `19_IMPLEMENTATION_PLAYBOOK.md`, including `doctor`, strict-port `dev`, `dev:status`, `dev:open`, provider-free `verify`, fixture default, Chrome smoke, and context validation.
+- Implement the strict-port, provider-free root commands and stable URL in `19_IMPLEMENTATION_PLAYBOOK.md`.
 - Convert project request/revision, Avatar Profile version, Image Style, analyzer, timeline-plan, resolved-render, production-manifest, job, event, and state-machine contracts into cross-language Zod/Pydantic types and golden fixtures.
 - Add CI: typecheck, lint, unit/schema compatibility, local link/context validation, secret scan, dependency audit.
 - Add `.env.example` with no values. Real provider mode defaults off.
-- Configure a private GHCR candidate/profile for worker containers; benchmark image pull/cache/storage/start behavior before treating it as locked.
+- Keep GHCR provisional until pull/cache/storage/start behavior is measured.
 
 Exit: TypeScript and Python validate identical fixtures; root commands work; a private initial commit exists.
 
 ## Phase 0B: fixture UI shell in live Chrome
 
-- Implement tokens, the active-project command strip and floating navigation dock, queue, Create Project, Avatar Hub, Image Styles Hub/wizard, progress, review, usage, settings, and library against deterministic fixtures.
+- Implement tokens, full-width command bar/inset progress, floating dock, all fixture shell routes, and both preset Hubs/wizards.
+- Create Project uses compact visual preset dropdowns, minimal voiceover copy with strict validation, no script field, a confirmation-free keyword opt-in, and truthful `image_media`/`avatar_primary` profile selectors; planned candidates stay disabled until `GATE_GPU_001`.
 - Implement every scenario ID from `19_IMPLEMENTATION_PLAYBOOK.md`, including preset draft preservation/version drift, extra-keyword off/conflict behavior, empty/invalid/ready/archived avatar states, cold start, style analysis, partial failure, fallback approval, budget block, ambiguous dispatch, reconciliation, cancellation, ready-for-review, and approved.
 - Keep `http://localhost:4173` running/reused in the user's actual Chrome; inspect workflows as a human and capture approved feedback in `05_UI_UX_SPEC.md`.
 - `+ New style` must preserve the entire project draft and return/select after publish.
@@ -116,7 +119,7 @@ The Chrome checkpoint also creates a named Avatar Profile once, selects it by im
 ## Phase 2: word timing and deterministic timeline compiler
 
 - Add image/media `transcribe` job using local `whisper.cpp base.en`; benchmark CPU behavior without evicting Mage.
-- Optional-script deterministic token reconciliation; word/sentence/phrase records.
+- Deterministic optional-script reconciliation for legacy non-null API inputs; the web shell uses ASR text; word/sentence/phrase records.
 - Seeded timeline composition and in-image shot-role scheduler.
 - Canonical 30 fps frame conversion, `timeline-plan/v1` validation, selected avatar span-audio materialization.
 - Show the timeline strip/coverage in Chrome using real audio.

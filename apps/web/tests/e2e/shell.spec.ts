@@ -1,4 +1,6 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { createHash } from "node:crypto";
+
+import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 
 interface RuntimeFailures {
   consoleErrors: string[];
@@ -8,6 +10,48 @@ interface RuntimeFailures {
 }
 
 const runtimeFailures = new WeakMap<Page, RuntimeFailures>();
+
+function fixtureSessionId(testInfo: TestInfo): string {
+  const project = testInfo.project.name.replaceAll(/[^a-z0-9]+/giu, "-").slice(0, 32);
+  const digest = createHash("sha256")
+    .update(
+      [
+        testInfo.file,
+        testInfo.title,
+        testInfo.project.name,
+        testInfo.repeatEachIndex,
+        testInfo.retry,
+      ]
+        .map(String)
+        .join("\n"),
+    )
+    .digest("hex")
+    .slice(0, 20);
+  return `pw-${project}-${digest}`;
+}
+
+function createPcmWavBuffer(durationSeconds = 10.25, sampleRate = 8_000): Buffer {
+  const channels = 1;
+  const bytesPerSample = 2;
+  const sampleCount = Math.ceil(durationSeconds * sampleRate);
+  const dataBytes = sampleCount * channels * bytesPerSample;
+  const wav = Buffer.alloc(44 + dataBytes);
+
+  wav.write("RIFF", 0, "ascii");
+  wav.writeUInt32LE(36 + dataBytes, 4);
+  wav.write("WAVE", 8, "ascii");
+  wav.write("fmt ", 12, "ascii");
+  wav.writeUInt32LE(16, 16);
+  wav.writeUInt16LE(1, 20);
+  wav.writeUInt16LE(channels, 22);
+  wav.writeUInt32LE(sampleRate, 24);
+  wav.writeUInt32LE(sampleRate * channels * bytesPerSample, 28);
+  wav.writeUInt16LE(channels * bytesPerSample, 32);
+  wav.writeUInt16LE(bytesPerSample * 8, 34);
+  wav.write("data", 36, "ascii");
+  wav.writeUInt32LE(dataBytes, 40);
+  return wav;
+}
 
 function isLocalRequest(rawUrl: string): boolean {
   const url = new URL(rawUrl);
@@ -65,7 +109,10 @@ async function chooseFixture(page: Page, fixture: string): Promise<void> {
   await expect(page).toHaveURL(new RegExp(`fixture=${fixture}`));
 }
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
+  await page.setExtraHTTPHeaders({
+    "X-VideoForge-Fixture-Session": fixtureSessionId(testInfo),
+  });
   const failures: RuntimeFailures = {
     consoleErrors: [],
     externalRequests: [],
@@ -207,20 +254,26 @@ test("Create Project uses exact visual presets and never exposes project-local a
   await page.getByRole("link", { name: "New Project", exact: true }).click();
   await expect(page.getByRole("heading", { name: "New project" })).toBeVisible();
 
-  const avatar = page.getByRole("radio", { name: /Amish Farm Host/ });
-  const documentary = page.getByRole("radio", { name: /Authentic Documentary Stock/ });
-  const warmRural = page.getByRole("radio", { name: /Warm Rural Documentary/ });
-  await expect(avatar).toHaveAttribute("aria-checked", "true");
-  await expect(documentary).toHaveAttribute("aria-checked", "true");
-  await expectImagesLoaded(avatar.getByRole("img"));
-  await expectImagesLoaded(documentary.getByRole("img"));
+  const avatarPicker = page.locator("summary.visual-preset-summary").nth(0);
+  const stylePicker = page.locator("summary.visual-preset-summary").nth(1);
+  await expect(avatarPicker).toContainText("Amish Farm Host");
+  await expect(stylePicker).toContainText("Authentic Documentary Stock");
+  await expect(page.getByRole("radiogroup", { name: "Avatar Profile options" })).not.toBeVisible();
+  await expect(page.getByRole("radiogroup", { name: "Image Style options" })).not.toBeVisible();
+  await expect(page.getByLabel("Exact script (optional)")).toHaveCount(0);
+  await expect(page.getByText("Keywords not applied", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Keywords will be applied", { exact: true })).toHaveCount(0);
   await expect(page.locator('input[type="file"]')).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Upload final voiceover" })).toBeVisible();
   await expect(page.getByRole("button", { name: /upload avatar/i })).toHaveCount(0);
 
+  await stylePicker.click();
+  const documentary = page.getByRole("radio", { name: /Authentic Documentary Stock/ });
+  const warmRural = page.getByRole("radio", { name: /Warm Rural Documentary/ });
+  await expect(documentary).toHaveAttribute("aria-checked", "true");
+  await expectImagesLoaded(documentary.getByRole("img"));
   await warmRural.click();
-  await expect(warmRural).toHaveAttribute("aria-checked", "true");
-  await expect(documentary).toHaveAttribute("aria-checked", "false");
+  await expect(stylePicker).toContainText("Warm Rural Documentary");
   await expect
     .poll(() =>
       page.evaluate(() => {
@@ -238,23 +291,65 @@ test("Create Project uses exact visual presets and never exposes project-local a
       style: "style_version_warm_rural_v1",
     });
 
+  await stylePicker.click();
   await documentary.click();
-  await expect(documentary).toHaveAttribute("aria-checked", "true");
-  await expect(page.getByText("Keywords not applied", { exact: true })).toBeVisible();
+  await expect(stylePicker).toContainText("Authentic Documentary Stock");
 
   await chooseFixture(page, "project_create_ready");
   await page.getByLabel("Video title").fill("Recognizing a Sweet Watermelon");
   await page.getByLabel("Upload final voiceover").setInputFiles({
     name: "acceptance-voiceover.wav",
     mimeType: "audio/wav",
-    buffer: Buffer.from("RIFF fixture voiceover"),
+    buffer: createPcmWavBuffer(),
+  });
+  await expect(page.locator(".dropzone")).toContainText("Verified and ready");
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const draft = JSON.parse(
+          localStorage.getItem("videoforge:fixture:project-draft:v1") ?? "null",
+        ) as { voiceoverAssetId?: string; voiceoverChecksum?: string } | null;
+        return {
+          assetId: draft?.voiceoverAssetId,
+          checksum: draft?.voiceoverChecksum,
+        };
+      }),
+    )
+    .toEqual({
+      assetId: expect.stringMatching(/^fixture_voiceover_sha256_[a-f0-9]{64}$/u),
+      checksum: expect.stringMatching(/^sha256:[a-f0-9]{64}$/u),
+    });
+
+  await page.getByLabel("Upload final voiceover").setInputFiles({
+    name: "invalid-replacement.wav",
+    mimeType: "audio/wav",
+    buffer: Buffer.from("not a wave file"),
+  });
+  await expect(page.getByText("The file contents do not match its audio extension.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Generate video" })).toBeDisabled();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const draft = JSON.parse(
+          localStorage.getItem("videoforge:fixture:project-draft:v1") ?? "null",
+        ) as { voiceoverAssetId?: string | null; voiceoverChecksum?: string | null } | null;
+        return {
+          assetId: draft?.voiceoverAssetId,
+          checksum: draft?.voiceoverChecksum,
+        };
+      }),
+    )
+    .toEqual({ assetId: null, checksum: null });
+
+  await page.getByLabel("Upload final voiceover").setInputFiles({
+    name: "acceptance-voiceover.wav",
+    mimeType: "audio/wav",
+    buffer: createPcmWavBuffer(),
   });
   await expect(page.getByRole("button", { name: "Generate video" })).toBeEnabled();
   await page.getByRole("button", { name: "Generate video" }).click();
   await expect(page).toHaveURL(/\/projects\/project_fixture_001\?fixture=happy_generating/);
-  await expect(
-    page.getByRole("heading", { name: "How to Recognize a Sweet Watermelon" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Recognizing a Sweet Watermelon" })).toBeVisible();
 });
 
 test("project progress reaches review and records explicit approval", async ({ page }) => {
@@ -280,7 +375,42 @@ test("project progress reaches review and records explicit approval", async ({ p
   await expect(approve).toBeDisabled();
   await expect(page.getByRole("button", { name: "Approved" })).toBeDisabled();
   await expect(page.getByRole("link", { name: "Fixture preview" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Manifest" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Fixture record" })).toBeVisible();
+});
+
+test("scenario actions match authoritative project and review state", async ({ page }) => {
+  await page.goto("/projects/project_fixture_001?fixture=happy_generating");
+  await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Review output" })).toHaveCount(0);
+
+  await page.goto("/projects/project_fixture_001?fixture=image_partial_failure");
+  await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
+
+  await page.goto("/projects/project_fixture_001?fixture=cancel_requested");
+  await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Cancel" })).toHaveCount(0);
+
+  await page.goto("/projects/project_fixture_001/review?fixture=avatar_lip_failure");
+  await expect(page.getByRole("button", { name: "Retry failed item" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Approve final" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Approve $0.18 fallback" })).toHaveCount(0);
+
+  await page.goto("/projects/project_fixture_001/review?fixture=skyreels_approval_required");
+  await expect(page.getByRole("button", { name: "Approve $0.18 fallback" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry failed item" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Approve final" })).toHaveCount(0);
+
+  await page.goto("/projects/project_fixture_001/review?fixture=project_ready_for_review");
+  await expect(page.getByRole("button", { name: "Approve final" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry failed item" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Approve $0.18 fallback" })).toHaveCount(0);
+
+  await page.goto("/projects/project_fixture_001/review?fixture=project_approved");
+  await expect(page.getByRole("button", { name: "Approved" })).toBeDisabled();
+  await expect(page.getByRole("link", { name: "Fixture preview" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Fixture record" })).toBeVisible();
 });
 
 for (const viewport of [

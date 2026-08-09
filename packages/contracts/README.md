@@ -14,3 +14,15 @@ Cross-language boundary validation for VideoForge. The versioned JSON Schemas in
 The Python package is pinned to the repository's Python 3.12 worker/CI baseline. Install its
 isolated test environment once with `pnpm python:install`; subsequent `pnpm test` runs are
 network-free.
+
+## Canonical hashes
+
+The TypeScript entry point exposes RFC 8785 JCS canonicalization and asynchronous SHA-256
+helpers for immutable contract/configuration hashes. Inputs are validated as I-JSON data;
+unsupported JavaScript values are rejected instead of silently coerced or omitted.
+Raw JSON must first be parsed with duplicate-name rejection because ordinary `JSON.parse`
+discards that evidence before canonicalization can inspect it.
+
+This foundation is TypeScript-only for now. The Python package intentionally does not claim
+JCS parity: Python's standard number serializer is not ECMAScript-compatible for all binary64
+values, and no separately pinned Python JCS dependency has been approved.

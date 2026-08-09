@@ -136,6 +136,8 @@ Default UI choice is `Auto: cheapest compatible`. The user selects an immutable 
 
 Lowest cost/Balanced/Faster resolves one profile ID per lane. Advanced input may override only an exposed tested lane profile. The immutable revision stores the resolved `image_media`, `avatar_primary`, optional `avatar_repair`, and optional `avatar_quality` profile IDs; each attempt separately records the profile and actual GPU that executed.
 
+Create Project exposes two compact primary controls: `Image generation` for `image_media` and `Avatar generation` for `avatar_primary`. Each control shows the selected profile's truthful readiness/availability state. While `GATE_GPU_001` is open, planned GPU/profile candidates may be listed only as disabled `Benchmark required` options; a provider's public GPU inventory or account balance alone is not endpoint/model compatibility evidence. Fixture mode may select only an explicitly synthetic no-GPU profile and must label it as such.
+
 Each execution profile stores:
 
 - Endpoint ID and configuration revision.
@@ -156,6 +158,8 @@ Suggested initial test matrix:
 - SkyReels: 48 GB preferred for low-VRAM/offload bakeoff; do not promise under-24 GB speed.
 
 Expose only profiles whose intersection is valid across benchmarked model/container/VRAM support, endpoint GPU priorities, network-volume data center, and live availability. Lowest cost/Balanced/Faster may map to separate tested endpoint profiles or to documented fallback priorities. If no compatible profile is available, queue with a clear price/time choice. Never silently select an incompatible card or a much more expensive fallback.
+
+The progress surface reports `image_media` and `avatar_primary` separately so parallel work is obvious. Show the resolved profile state before dispatch and the actual executing GPU only after authoritative provider/worker evidence exists; never fill that field from a planned priority list.
 
 ## Warm-up modes
 

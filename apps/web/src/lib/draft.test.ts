@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { emptyDraft, loadDraft, projectDraftSchema, saveDraft, updateDraft } from "./draft";
+import {
+  emptyDraft,
+  loadDraft,
+  projectDraftSchema,
+  projectDraftStorageKey,
+  saveDraft,
+  updateDraft,
+} from "./draft";
 
 describe("fixture project draft", () => {
   beforeEach(() => localStorage.clear());
@@ -17,13 +24,62 @@ describe("fixture project draft", () => {
       title: "A preserved production draft",
       voiceoverAssetId: "asset_voiceover_fixture",
       voiceoverName: "voiceover.wav",
-      optionalScript: "Exact supplied narration.",
+      voiceoverDurationSeconds: 94.4,
+      voiceoverSampleRate: 48_000,
+      voiceoverChannels: 1,
+      voiceoverChecksum: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       generationMode: "FASTER" as const,
+      executionProfileOverrides: {
+        image_media_profile_id: "image-media-balanced-v1",
+        avatar_primary_profile_id: "avatar-primary-balanced-v1",
+      },
       applyExtraPromptKeywords: true,
     };
     saveDraft(saved);
     updateDraft({ avatarProfileVersionId: "avatar_version_new_v1" });
     expect(loadDraft()).toEqual({ ...saved, avatarProfileVersionId: "avatar_version_new_v1" });
+  });
+
+  it("migrates an older stored draft by adding new verified-media fields", () => {
+    localStorage.setItem(
+      projectDraftStorageKey,
+      JSON.stringify({
+        ...emptyDraft,
+        title: "Legacy fixture draft",
+        voiceoverAssetId: "asset_voiceover_fixture",
+        voiceoverName: "voiceover.wav",
+        voiceoverDurationSeconds: undefined,
+        voiceoverSampleRate: undefined,
+        voiceoverChannels: undefined,
+        voiceoverChecksum: undefined,
+        executionProfileOverrides: undefined,
+      }),
+    );
+
+    expect(loadDraft()).toEqual({
+      ...emptyDraft,
+      title: "Legacy fixture draft",
+      voiceoverAssetId: "asset_voiceover_fixture",
+      voiceoverName: "voiceover.wav",
+    });
+  });
+
+  it("falls back safely when persisted verified-media metadata is invalid", () => {
+    localStorage.setItem(
+      projectDraftStorageKey,
+      JSON.stringify({
+        ...emptyDraft,
+        title: "Invalid fixture draft",
+        voiceoverAssetId: "asset_voiceover_fixture",
+        voiceoverName: "voiceover.wav",
+        voiceoverDurationSeconds: 4,
+        voiceoverSampleRate: 48_000,
+        voiceoverChannels: 1,
+        voiceoverChecksum: "sha256:not-a-checksum",
+      }),
+    );
+
+    expect(loadDraft()).toEqual(emptyDraft);
   });
 
   it("rejects the MVP cap above two dollars", () => {

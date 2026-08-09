@@ -132,7 +132,7 @@ Use owned/synthetic sources for automated fixtures and separately authorized pri
 - Archive between form selection and revision creation produces a clear preflight blocker. A revision already created from that version remains reproducible.
 - Optional Test starts only after an explicit estimate/confirmation, is version-scoped/idempotent, records ambiguous dispatch/cost/verdict, and is never called when merely saving/selecting/reusing the profile.
 - Project revision and `production-manifest/v2` contain matching parent/version/profile hash/runtime source checksum/preparation-validation profiles, exact compatibility state at preflight, and nullable evidence. `UNTESTED`/`RUNNING` require null evidence; terminal evidence status must equal the pinned preflight state. AvatarForcing and SkyReels attempts match that binding; MuseTalk retains its clip-source lineage.
-- `+ New avatar` from a project draft preserves title, verified voiceover upload handle, selected style, script, keywords/toggle, mode, overrides, cap, and seed; return/select requires no re-upload.
+- `+ New avatar` from a project draft preserves title, verified voiceover upload handle, selected style, keywords/toggle, mode, both primary execution-profile selections, cap, and seed; return/select requires no re-upload.
 
 Pass: a named avatar can be stored once and reused by image/name without project-local upload, with immutable provenance and no unapproved provider charge.
 
@@ -259,16 +259,20 @@ Automated fixture/browser checks and the user's real-Chrome review must jointly 
 
 - Direct page titles, one dominant action, and a calm glance layer replace slogans, repeated implementation rationale, and walls of persistent success messages.
 - Base/secondary text, controls, hit targets, media, panels, and spacing meet the scale ranges in `05_UI_UX_SPEC.md`; no CSS `zoom` or viewport trick simulates a larger interface.
-- The active-project track, oversized project title, large factual progress hero, metric cards, vertical pipeline, and latest-artifact panel preserve authoritative counts/states without fabricating smooth work.
+- The active-project command bar spans the viewport with deliberate page-edge padding while its project/progress track is inset internally; it does not become a narrow centered island. Its compact mobile form, oversized project title, large factual progress hero, metric cards, vertical pipeline, and latest-artifact panel preserve authoritative counts/states without fabricating smooth work.
 - Floating navigation reports the active route, is fully keyboard reachable, and exposes Queue, New Project, active Progress, Avatar Hub, Image Styles, Library, Usage, and Settings at 1024 px. Any narrow-mobile `More` surface remains explicit and discoverable.
 - Every returned Avatar Hub preset renders its authorized thumbnail with a useful accessible name; a missing/failed thumbnail has a truthful labelled fallback and never silently becomes the normal initials-only design.
 - Every style card renders its allowed cover or labelled placeholder. A custom style's `References (N)` remains closed initially, opens exactly the version-bound authorized images, and never leaks another workspace's asset.
 - The manually seeded built-in style reports zero uploaded references. Owned/generated gallery media is labelled `Examples (N)`, never references; no Ranga research frame or other third-party research asset ships in the web bundle.
 - Reference/example mosaics load without broken requests. Opening an item provides a larger lightbox and its on-demand alias/dimensions/version/evidence/rights/retention data where applicable.
 - Avatar and Image Style creation preserve the selected/uploaded imagery needed by the fixture round trip; returning to Create Project shows the new preset image and exact selected version without losing the verified voiceover handle or other draft fields.
-- Visual Avatar and Image Style selectors support search plus arrow/Enter/Escape operation, expose image/name/version/status, and persist the exact version ID. A native text-only select is not accepted as the finished selector.
+- Avatar and Image Style selectors are compact when closed and show only the selected image/name/version/status. Opening each visual dropdown reveals searchable options and supports arrow/Enter/Escape operation, then closes with the exact version persisted. A native text-only select or always-expanded preset-card grid is not accepted as the finished selector.
+- The voiceover dropzone does not advertise duration bounds, channel count, sample rate, or other technical media rules. Valid files show concise selected/upload state; invalid files show an accurate field-specific error while the strict server/browser validation matrix remains unchanged.
+- Create Project exposes independent `image_media` and `avatar_primary` execution-profile dropdowns with truthful lane status. Only immutable tested profiles are selectable; planned GPU candidates remain disabled and labelled `Benchmark required` while `GATE_GPU_001` is open.
+- The first-shell UI has no exact-script input and sends `optional_script: null`. Extra keywords use only the opt-in toggle and textarea; no persistent applied/not-applied success panel appears, while enabled empty/invalid/conflicting text still receives the precise existing error.
 - Details are closed by default. Side sheets/accordions/lightboxes expose complete inspect/audit data, trap/manage focus correctly, close with Escape, restore focus, and do not depend on hover.
 - Pending actions immediately disable duplicates and show concise progress/next-check state. Active blockers, charges, consent, spend caps, budget approvals, and destructive controls remain in the primary layer even when technical details are collapsed.
+- Field errors identify the actual failing input; action errors identify the failed operation and next useful action. Short mutation errors use an accessible concise toast, while unresolved blockers remain inline and are not replaced by unrelated generic preflight copy.
 - At 1920, 1440, 1280, and 1024 CSS-pixel desktop widths plus representative 430 and 390 CSS-pixel mobile widths, the page has no horizontal overflow, controls remain legible, reference galleries remain usable, and the floating dock does not cover Generate, Approve, Cancel, or budget controls.
 - Status is conveyed with text/icon as well as color; focus contrast meets WCAG AA; reduced-motion mode retains complete status meaning.
 - Fixture verification makes no unexpected provider request, all visual fixture assets are owned/synthetic and same-origin, and the compact development control truthfully exposes fixture ID, commit, API health, synthetic mode, and `$0` authorization on demand.
@@ -282,10 +286,10 @@ In the user's real Chrome:
 3. Open Avatar Hub, verify every preset has a large authorized image, then create a named private avatar once, leave/resume if needed, approve it, and see its image/name/version in the searchable project selector.
 4. Open Image Styles, inspect the built-in owned/generated examples without calling them uploaded references, then open every reference image for a custom style and exercise the keyboard lightbox/details sheet.
 5. Create a private Image Style from references, keep the uploaded mosaic visible through analysis/review, leave/resume analysis, review/edit it, optionally test, and publish it.
-6. Create a project with real audio, select the stored avatar and new style through visual pickers, and verify no avatar upload control/request runs.
-7. Enter extra image keywords, verify off means `Not applied`, enable the toggle, and inspect effective settings.
+6. Create a project with real audio, select the stored avatar and new style through compact visual dropdowns, verify no avatar upload control/request or exact-script field exists, and confirm the dropzone omits proactive duration/channel/sample-rate details.
+7. Enter extra image keywords, leave the toggle off and verify there is no separate applied/not-applied confirmation, then enable it and exercise one accepted negative refinement plus one precise conflict error.
 8. See immediate preflight/pending state without duplicate submission or persistent non-actionable explanation panels.
-9. Observe the large authoritative progress hero, parallel lanes, pipeline, queue/cold-start/model progress, and latest artifact; confirm no style analyzer or Avatar Hub onboarding test runs during the project.
+9. Select or inspect the two truthful primary execution profiles, then observe the full-width command bar, large authoritative progress hero, parallel image/avatar lane status, pipeline, queue/cold-start/model progress, and latest artifact; confirm disabled unbenchmarked profiles cannot be selected and no style analyzer or Avatar Hub onboarding test runs during the project.
 10. Expand and collapse project technical details, then verify the primary layer remains concise while IDs, pinned inputs, worker evidence, and costs remain reachable.
 11. Open another user/session and verify ownership/fair queue plus avatar/style isolation.
 12. Review full/split preview from the same clip and style-aware image prompts.
@@ -294,7 +298,7 @@ In the user's real Chrome:
 15. Render, seek, play audio, download, and verify pinned avatar/style/keyword components in the manifest.
 16. Confirm the automatic result says `Ready for review`; use the contact sheet, flag/regenerate a visible defect, then explicitly approve the final revision.
 17. Confirm video cost, separate one-time style/optional avatar-test costs, and retention.
-18. From an in-progress project draft, open `+ New avatar`, save or cancel, and return with title/voiceover/style/script/settings intact; the new ready avatar image is visible and selected without re-upload.
+18. From an in-progress project draft, open `+ New avatar`, save or cancel, and return with title/voiceover/style/keywords/compute/settings intact; the new ready avatar image is visible and selected without re-upload.
 19. Repeat the draft-preserving round trip for `+ New style`, verify the new cover/reference gallery, and retain the avatar selection plus all execution-profile overrides.
 
 No milestone is accepted solely from screenshots.
