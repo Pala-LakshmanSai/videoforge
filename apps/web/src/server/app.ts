@@ -286,6 +286,40 @@ export function createApiApp(options: { commit?: string } = {}): Hono {
     );
   });
 
+  app.post("/api/v1/projects/:projectId/retry", (c) => {
+    const headersError = mutationHeadersError(c, true);
+    if (headersError) return headersError;
+    const resolved = resolveContextFixture(c);
+    if (!resolved.ok) return resolved.response;
+    const project = resolveProjectDetail(resolved.scenario, c.req.param("projectId"));
+    if (!project.ok) return project.response;
+    const retryableScenarios: readonly string[] = ["image_partial_failure", "avatar_lip_failure"];
+    if (!retryableScenarios.includes(resolved.id)) {
+      return problemResponse(
+        apiProblem(
+          "PROJECT_RETRY_NOT_ALLOWED",
+          409,
+          "Project has no retryable failed items",
+          "Retry only an explicitly failed item set; reconciliation and active work must not be dispatched twice.",
+          false,
+        ),
+      );
+    }
+    return c.json(
+      {
+        ok: true as const,
+        id: project.detail.project.id,
+        status: "RETRY_REQUESTED" as const,
+        retryScope:
+          resolved.id === "image_partial_failure"
+            ? (["scene_fixture_014", "scene_fixture_015"] as const)
+            : (["avatar_span_fixture_018"] as const),
+        nextCheckSeconds: 10,
+      },
+      202,
+    );
+  });
+
   app.post("/api/v1/projects/:projectId/approve", (c) => {
     const headersError = mutationHeadersError(c, true);
     if (headersError) return headersError;

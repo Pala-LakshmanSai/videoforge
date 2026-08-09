@@ -56,8 +56,13 @@ export const api = {
     request<AvatarProfile[]>(`/api/v1/avatar-profiles${query(scenario)}`),
   styles: (scenario: ScenarioId) => request<ImageStyle[]>(`/api/v1/image-styles${query(scenario)}`),
   usage: (scenario: ScenarioId) => request<UsageSummary>(`/api/v1/usage${query(scenario)}`),
-  mutate: <T>(path: string, body: unknown, idempotencyKey = crypto.randomUUID()) =>
-    request<T>(path, {
+  mutate: <T>(
+    path: string,
+    body: unknown,
+    scenario: ScenarioId,
+    idempotencyKey = crypto.randomUUID(),
+  ) =>
+    request<T>(`${path}${path.includes("?") ? "&" : "?"}${query(scenario).slice(1)}`, {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey, "If-Match": "fixture-v1" },
       body: JSON.stringify(body),

@@ -57,4 +57,9 @@ test("1024px navigation remains keyboard reachable", async ({ page }) => {
   await expect(page.locator(":focus")).toBeVisible();
   await expect(page.getByRole("link", { name: "Avatar Hub" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Image Styles" })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
 });

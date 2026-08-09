@@ -256,8 +256,8 @@ export function CreateProjectScreen() {
       !keywordEmpty,
   );
   const create = useMutation({
-    mutationFn: () =>
-      api.mutate<{ id: string; status: string }>("/api/v1/projects", {
+    mutationFn: async () => {
+      const payload = {
         title: draft.title.trim(),
         voiceover_asset_id: draft.voiceoverAssetId,
         avatar_profile_version_id: draft.avatarProfileVersionId,
@@ -268,7 +268,16 @@ export function CreateProjectScreen() {
         generation_mode: draft.generationMode,
         spend_cap_usd: draft.spendCapUsd,
         user_seed: draft.userSeed,
-      }),
+      };
+      const mutationId = crypto.randomUUID();
+      await api.mutate("/api/v1/projects/preflight", payload, scenario, `${mutationId}:preflight`);
+      return api.mutate<{ id: string; status: string }>(
+        "/api/v1/projects",
+        payload,
+        scenario,
+        `${mutationId}:create`,
+      );
+    },
     onSuccess: (result) =>
       window.location.assign(fixtureLink(`/projects/${result.id || "project_fixture_001"}`)),
     onError: (error) =>
@@ -680,6 +689,10 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
     queryFn: () => api.project(projectId, scenario),
   });
   const [action, setAction] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<{
+    tone: "info" | "danger";
+    text: string;
+  } | null>(null);
   const project: ProjectSummary = query.data?.project ?? {
     id: projectId,
     title: "Why the everyday world is changing",
@@ -701,8 +714,27 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
 
   async function perform(label: string, path: string) {
     setAction(label);
+    setActionNotice({
+      tone: "info",
+      text:
+        label === "retry"
+          ? "Retry request pending. Duplicate submission is disabled."
+          : "Cancellation request pending. Duplicate submission is disabled.",
+    });
     try {
-      await api.mutate(path, { project_id: project.id });
+      await api.mutate(path, { project_id: project.id }, scenario);
+      setActionNotice({
+        tone: "info",
+        text:
+          label === "retry"
+            ? "Retry accepted for the failed item set only. Next fixture check in 10 seconds."
+            : "Cancellation accepted. Running work is settling; next fixture check in 10 seconds.",
+      });
+    } catch (error) {
+      setActionNotice({
+        tone: "danger",
+        text: error instanceof Error ? error.message : "The fixture action could not be accepted.",
+      });
     } finally {
       window.setTimeout(() => setAction(null), 650);
     }
@@ -740,6 +772,15 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
           className={`notice ${message.tone === "warning" ? "notice-warning" : message.tone === "danger" ? "notice-danger" : ""}`}
         >
           <strong>{message.title}.</strong> {message.body}
+        </div>
+      ) : null}
+      {actionNotice ? (
+        <div
+          className={`notice ${actionNotice.tone === "danger" ? "notice-danger" : ""}`}
+          role="status"
+          aria-live="polite"
+        >
+          {actionNotice.text}
         </div>
       ) : null}
       <div className="grid grid-4">
@@ -852,6 +893,8 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
   );
   const [busy, setBusy] = useState<string | null>(null);
   const [approved, setApproved] = useState(scenario === "project_approved");
+  const [approvalError, setApprovalError] = useState<string | null>(null);
+  const [reviewActionNotice, setReviewActionNotice] = useState<string | null>(null);
   const shots = [
     {
       id: "seg_0001",
@@ -878,9 +921,28 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
 
   async function act(id: string) {
     setBusy(id);
-    await new Promise((resolve) => window.setTimeout(resolve, 600));
-    if (id === "approve") setApproved(true);
-    setBusy(null);
+    setApprovalError(null);
+    setReviewActionNotice(null);
+    try {
+      if (id === "approve") {
+        await Promise.all([
+          api.mutate(`/api/v1/projects/${projectId}/approve`, { project_id: projectId }, scenario),
+          new Promise((resolve) => window.setTimeout(resolve, 600)),
+        ]);
+        setApproved(true);
+      } else {
+        await new Promise((resolve) => window.setTimeout(resolve, 600));
+        setReviewActionNotice(
+          id.endsWith("-regen")
+            ? "Synthetic regeneration request captured for this segment only. Next fixture check in 10 seconds; provider calls remain zero."
+            : "Synthetic defect classification opened for this segment. The accepted candidate remains unchanged.",
+        );
+      }
+    } catch (error) {
+      setApprovalError(error instanceof Error ? error.message : "Approval could not be recorded.");
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
@@ -906,12 +968,33 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
           </>
         }
       />
-      <div className={`notice ${approved ? "" : "notice-warning"}`}>
-        <strong>{approved ? "Approval recorded." : "Synthetic review fixture."}</strong>{" "}
-        {approved
-          ? "Reviewer, candidate checksum, manifest, and final output are immutable."
-          : "Inspect relevance, style, anatomy, pseudo-text, identity, motion, and lip sync before approving."}
+      <div
+        className={`notice ${approvalError ? "notice-danger" : approved ? "" : "notice-warning"}`}
+        role="status"
+        aria-live="polite"
+      >
+        <strong>
+          {approvalError
+            ? "Approval blocked."
+            : busy === "approve"
+              ? "Approval pending."
+              : approved
+                ? "Approval recorded."
+                : "Synthetic review fixture."}
+        </strong>{" "}
+        {approvalError
+          ? approvalError
+          : busy === "approve"
+            ? "Duplicate submission is disabled while the immutable candidate is checked."
+            : approved
+              ? "Reviewer, candidate checksum, manifest, and final output are immutable."
+              : "Inspect relevance, style, anatomy, pseudo-text, identity, motion, and lip sync before approving."}
       </div>
+      {reviewActionNotice ? (
+        <div className="notice" role="status" aria-live="polite">
+          {reviewActionNotice}
+        </div>
+      ) : null}
       <Panel
         eyebrow="Fast contact sheet"
         heading="Three representative segments"
@@ -953,7 +1036,11 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
                   Regenerate
                 </Button>
                 {shot.type !== "IMAGE_FULL" ? (
-                  <Button variant="ghost" onClick={() => act(`${shot.id}-flag`)}>
+                  <Button
+                    variant="ghost"
+                    busy={busy === `${shot.id}-flag`}
+                    onClick={() => act(`${shot.id}-flag`)}
+                  >
                     <AlertTriangle size={14} />
                     Classify defect
                   </Button>

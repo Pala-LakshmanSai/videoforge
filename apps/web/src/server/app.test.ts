@@ -159,4 +159,35 @@ describe("fixture API", () => {
     );
     expect(missingVersion.status).toBe(428);
   });
+
+  it("retries only the exact failed item set and never blind-dispatches reconciliation", async () => {
+    const retry = await app.request(
+      "/api/v1/projects/project_fixture_001/retry?fixture=image_partial_failure",
+      {
+        method: "POST",
+        headers: mutationHeaders(),
+        body: JSON.stringify({ project_id: "project_fixture_001" }),
+      },
+    );
+    expect(retry.status).toBe(202);
+    expect(await retry.json()).toMatchObject({
+      ok: true,
+      status: "RETRY_REQUESTED",
+      retryScope: ["scene_fixture_014", "scene_fixture_015"],
+      nextCheckSeconds: 10,
+    });
+
+    const unsafeRetry = await app.request(
+      "/api/v1/projects/project_fixture_001/retry?fixture=dispatch_ack_unknown",
+      {
+        method: "POST",
+        headers: mutationHeaders(),
+        body: JSON.stringify({ project_id: "project_fixture_001" }),
+      },
+    );
+    expect(unsafeRetry.status).toBe(409);
+    expect(await unsafeRetry.json()).toMatchObject({
+      error: { code: "PROJECT_RETRY_NOT_ALLOWED", retryable: false },
+    });
+  });
 });
