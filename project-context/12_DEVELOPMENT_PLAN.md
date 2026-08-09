@@ -1,6 +1,6 @@
 # Development plan
 
-Status: implementation underway; the Phase 0A foundation and Phase 0B shell are implemented but their exits remain open for contract completion and `GATE_UI_001`
+Status: implementation underway; the Phase 0A fixture-contract foundation is implemented and the Phase 0B shell awaits `GATE_UI_001`
 Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
 
 ## Delivery strategy
@@ -37,13 +37,12 @@ flowchart LR
 
 ## Phase 0A: private repository and contract skeleton
 
-Current (2026-08-09): repo/commands, ten contracts, validator entry
-points, and TypeScript JCS exist. `worker-job-envelope/v1` and `orchestration-state/v1` lock
-claim-bound dispatch plus task/attempt/outbox/event state before provider transport. Complex
-documents use canonical Draft 2020-12 JSON Schema through Zod/Pydantic entry points
-instead of independent hand models; Create Project remains independently typed at the
-interactive form boundary. Python JCS and persistent database orchestration remain later work, so
-0A is not yet closed.
+Current (2026-08-09): repo/commands, ten contracts, validator entry points, and TypeScript JCS
+exist. `worker-job-envelope/v1` and `orchestration-state/v1` lock claim-bound dispatch and
+task/attempt/outbox/event state before provider transport. Complex documents use canonical JSON
+Schema through parity-tested Zod/Pydantic entry points; Create Project remains independently typed.
+The fixture contract foundation is complete. Python JCS must precede canonical hashes from Python
+workers; durable database orchestration belongs to Phase 1.
 
 - Initialize private Git; exclude research, private references, outputs, secrets, weights, and screenshots.
 - Create the monorepo shape in `19_IMPLEMENTATION_PLAYBOOK.md`: web, shared packages, and four worker lanes.

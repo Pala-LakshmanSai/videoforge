@@ -74,4 +74,4 @@ gates:
     blocks: visual_system_lock
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#ui-shell-presentation-gate"
     owner: user
-    last_run: null
+    last_run: "evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit"
