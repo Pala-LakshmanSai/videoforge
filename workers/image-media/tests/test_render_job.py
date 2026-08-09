@@ -408,6 +408,18 @@ class RenderJobTests(unittest.TestCase):
         self.assertNotIn("loudnorm=", graph)
         self.assertIn("aresample=48000", graph)
 
+    def test_normalizes_and_records_a_positive_input_true_peak(self) -> None:
+        fixture = RenderFixture()
+        fixture.process.input_loudness = (-12.0, 0.8)
+        result = fixture.job().run(
+            fixture.document,
+            claimed_attempt_id="attempt_render_local_001",
+        )
+
+        self.assertEqual(result["status"], "SUCCEEDED")
+        self.assertEqual(result["probe"]["loudness"]["input_true_peak_dbtp"], 0.8)
+        self.assertTrue(result["probe"]["loudness"]["normalized"])
+
     def test_rejects_exact_byte_hash_drift_before_invoking_render(self) -> None:
         fixture = RenderFixture()
         first_asset = fixture.document["assets"][0]

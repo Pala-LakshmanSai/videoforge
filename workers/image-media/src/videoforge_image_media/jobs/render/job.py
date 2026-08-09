@@ -380,7 +380,7 @@ class RenderJob:
             ) from error
         if not (
             -100.0 <= measurement.integrated_lufs <= 0.0
-            and -100.0 <= measurement.true_peak_dbtp <= 0.0
+            and -100.0 <= measurement.true_peak_dbtp <= 20.0
         ):
             raise _RenderFailure(
                 "RENDER_PROBE_FAILED",

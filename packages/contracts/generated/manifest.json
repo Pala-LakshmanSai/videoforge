@@ -89,8 +89,8 @@
     {
       "source": "project-context/evidence/technical_probe.schema.json",
       "destination": "generated/schemas/technical_probe.schema.json",
-      "bytes": 3527,
-      "sha256": "sha256:ce21d00d984fa7cc5303462796a88bb041e642f57af6c6b7aa5bf415d32db9a9"
+      "bytes": 3528,
+      "sha256": "sha256:b4bfcda5218a5ed68a766684eeb8f87a171020bedfdf8fe6d264328f9db298d6"
     },
     {
       "source": "project-context/evidence/render_job_result.schema.json",

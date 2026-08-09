@@ -99,6 +99,13 @@ def test_python_rejects_non_finite_numbers_like_ajv() -> None:
         CONTRACT_MODELS["technicalProbe"].model_validate(invalid)
 
 
+def test_python_preserves_positive_input_true_peak_for_normalization_evidence() -> None:
+    valid = load_fixture("technical_probe.valid.json")
+    valid["loudness"]["input_true_peak_dbtp"] = 0.8
+    parsed = validate_contract("technicalProbe", valid)
+    assert parsed["loudness"]["input_true_peak_dbtp"] == 0.8
+
+
 @pytest.mark.parametrize(
     ("contract_name", "filename", "mutate"),
     [

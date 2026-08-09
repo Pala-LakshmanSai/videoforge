@@ -4028,7 +4028,7 @@ export const canonicalSchemaDocuments = {
           "input_true_peak_dbtp": {
             "type": "number",
             "minimum": -100,
-            "maximum": 0
+            "maximum": 20
           },
           "output_integrated_lufs": {
             "type": "number",

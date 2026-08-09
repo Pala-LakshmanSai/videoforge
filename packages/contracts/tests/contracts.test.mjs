@@ -107,6 +107,12 @@ test("Ajv rejects non-finite values at canonical contract boundaries", async () 
   assert.equal(validateContract("technicalProbe", fixture).success, false);
 });
 
+test("technical probes preserve positive input true peaks for normalization evidence", async () => {
+  const fixture = await loadFixture("technical_probe.valid.json");
+  fixture.loudness.input_true_peak_dbtp = 0.8;
+  assert.equal(validateContract("technicalProbe", fixture).success, true);
+});
+
 test("semantic validation rejects contradictory media facts", async () => {
   const transcript = await loadFixture("transcript_timing.valid.json");
   transcript.words[0].start_ms = transcript.words[0].end_ms;

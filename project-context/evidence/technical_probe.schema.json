@@ -81,7 +81,7 @@
         "profile": {"const": "voiceover-minus16lufs-v1"},
         "normalized": {"type": "boolean"},
         "input_integrated_lufs": {"type": "number", "minimum": -100, "maximum": 0},
-        "input_true_peak_dbtp": {"type": "number", "minimum": -100, "maximum": 0},
+        "input_true_peak_dbtp": {"type": "number", "minimum": -100, "maximum": 20},
         "output_integrated_lufs": {"type": "number", "minimum": -17, "maximum": -15},
         "output_true_peak_dbtp": {"type": "number", "minimum": -100, "maximum": -1.5}
       }
