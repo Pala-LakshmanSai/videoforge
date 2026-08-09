@@ -44,6 +44,37 @@ class LocalArtifactResolverTests(unittest.TestCase):
             self.assertEqual(first, second)
             self.assertEqual(resolver.resolve_object(first).read_bytes(), source.read_bytes())
 
+    def test_rejects_run_ancestor_symlinks_before_creating_outside_directories(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            sandbox = Path(temporary).resolve()
+            root = sandbox / "artifacts"
+            outside = sandbox / "outside"
+            outside.mkdir()
+            resolver = LocalArtifactResolver(root)
+            (root / "runs").symlink_to(outside, target_is_directory=True)
+
+            with self.assertRaises(ValueError):
+                resolver.resolve_run("vf-local-run://revision_001/attempt_001/result.json")
+
+            self.assertFalse((outside / "revision_001").exists())
+
+    def test_rejects_object_ancestor_symlinks_before_creating_outside_directories(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            sandbox = Path(temporary).resolve()
+            root = sandbox / "artifacts"
+            outside = sandbox / "outside"
+            outside.mkdir()
+            resolver = LocalArtifactResolver(root)
+            source = root / "source.mp4"
+            source.write_bytes(b"local synthetic mp4")
+            sha256 = f"sha256:{hashlib.sha256(source.read_bytes()).hexdigest()}"
+            (root / "objects").symlink_to(outside, target_is_directory=True)
+
+            with self.assertRaises(ValueError):
+                resolver.publish_object(source, sha256, "mp4")
+
+            self.assertFalse((outside / "sha256").exists())
+
     def test_uses_an_opaque_hash_of_the_cancel_token_for_marker_paths(self) -> None:
         root = Path("/tmp/videoforge-local-cli-test").resolve()
         token = "secret-local-cancel-token-0000000000000001"

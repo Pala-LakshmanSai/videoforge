@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import time
+import uuid
 from collections.abc import Callable, Mapping
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
@@ -679,21 +681,55 @@ def _cancelled_result(attempt_id: str, source_hash: str, model_hash: str) -> dic
 
 
 def _write_result(path: Path, result: Mapping[str, object]) -> None:
-    temporary_path = path.with_name(f".{path.name}.tmp")
+    temporary_path = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+
+    def existing_matches() -> bool:
+        if path.is_symlink() or not path.is_file():
+            return False
+
+        def reject_duplicates(pairs: list[tuple[str, object]]) -> dict[str, object]:
+            parsed: dict[str, object] = {}
+            for key, value in pairs:
+                if key in parsed:
+                    raise ValueError("duplicate ASR result property")
+                parsed[key] = value
+            return parsed
+
+        def reject_constant(value: str) -> None:
+            raise ValueError(f"non-finite ASR result constant {value}")
+
+        try:
+            existing = json.loads(
+                path.read_text(encoding="utf-8"),
+                object_pairs_hook=reject_duplicates,
+                parse_constant=reject_constant,
+            )
+        except (json.JSONDecodeError, OSError, UnicodeError, ValueError):
+            return False
+        return existing == result
+
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        if path.exists():
-            existing = json.loads(path.read_text(encoding="utf-8"))
-            if existing == result:
+        if path.exists() or path.is_symlink():
+            if existing_matches():
                 return
             raise FileExistsError("ASR result URI already contains a different document")
         payload = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
         with temporary_path.open("x", encoding="utf-8") as stream:
             stream.write(payload)
-        temporary_path.replace(path)
-    except (json.JSONDecodeError, OSError) as error:
-        _cleanup_paths(temporary_path)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            os.link(temporary_path, path)
+        except FileExistsError:
+            if not existing_matches():
+                raise FileExistsError(
+                    "ASR result URI was published concurrently with different content"
+                ) from None
+    except OSError as error:
         raise OSError("ASR result could not be published atomically") from error
+    finally:
+        _cleanup_paths(temporary_path)
 
 
 def _cleanup_paths(*paths: Path) -> None:

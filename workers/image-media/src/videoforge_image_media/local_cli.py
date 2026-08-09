@@ -6,6 +6,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import sys
 import uuid
 from pathlib import Path
@@ -65,6 +66,61 @@ class LocalArtifactResolver:
             raise ValueError("artifact paths may not be symbolic links")
         return resolved
 
+    def _ensure_directory(self, *segments: str) -> Path:
+        """Create one real directory at a time without traversing an existing symlink."""
+
+        if (
+            hasattr(os, "O_DIRECTORY")
+            and hasattr(os, "O_NOFOLLOW")
+            and os.open in os.supports_dir_fd
+            and os.mkdir in os.supports_dir_fd
+        ):
+            return self._ensure_directory_from_handle(*segments)
+
+        current = self.root
+        for segment in segments:
+            candidate = current / segment
+            try:
+                information = candidate.lstat()
+            except FileNotFoundError:
+                try:
+                    candidate.mkdir(mode=0o700)
+                except FileExistsError:
+                    # Another local process may have created the entry. Inspect it below.
+                    pass
+                information = candidate.lstat()
+            if stat.S_ISLNK(information.st_mode) or not stat.S_ISDIR(information.st_mode):
+                raise ValueError("artifact directory components must be real directories")
+            current = self._inside(candidate, must_exist=True)
+        return current
+
+    def _ensure_directory_from_handle(self, *segments: str) -> Path:
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        current_fd = os.open(self.root, flags)
+        current = self.root
+        try:
+            for segment in segments:
+                try:
+                    os.mkdir(segment, mode=0o700, dir_fd=current_fd)
+                except FileExistsError:
+                    pass
+                try:
+                    next_fd = os.open(segment, flags, dir_fd=current_fd)
+                except OSError as error:
+                    raise ValueError(
+                        "artifact directory components must be real directories"
+                    ) from error
+                information = os.fstat(next_fd)
+                if not stat.S_ISDIR(information.st_mode):
+                    os.close(next_fd)
+                    raise ValueError("artifact directory components must be real directories")
+                os.close(current_fd)
+                current_fd = next_fd
+                current /= segment
+            return self._inside(current, must_exist=True)
+        finally:
+            os.close(current_fd)
+
     def resolve_object(self, uri: str) -> Path:
         match = _OBJECT_URI.fullmatch(uri)
         if match is None or match.group("prefix") != match.group("digest")[:2]:
@@ -85,9 +141,9 @@ class LocalArtifactResolver:
         match = _RUN_URI.fullmatch(uri)
         if match is None:
             raise ValueError("invalid run artifact URI")
-        parent = self.root / "runs" / match.group("revision") / match.group("attempt")
-        parent.mkdir(parents=True, exist_ok=True)
-        safe_parent = self._inside(parent, must_exist=True)
+        safe_parent = self._ensure_directory(
+            "runs", match.group("revision"), match.group("attempt")
+        )
         candidate = safe_parent / match.group("filename")
         if candidate.exists() or candidate.is_symlink():
             return self._inside(candidate, must_exist=True)
@@ -101,9 +157,7 @@ class LocalArtifactResolver:
         if not safe_source.is_file() or _sha256(safe_source) != sha256:
             raise ValueError("published object bytes do not match their SHA-256")
         digest = digest_match.group("digest")
-        destination_parent = self.root / "objects" / "sha256" / digest[:2]
-        destination_parent.mkdir(parents=True, exist_ok=True)
-        safe_parent = self._inside(destination_parent, must_exist=True)
+        safe_parent = self._ensure_directory("objects", "sha256", digest[:2])
         destination = safe_parent / f"{digest}.{extension}"
         uri = f"vf-local://objects/sha256/{digest[:2]}/{digest}.{extension}"
         if destination.exists():

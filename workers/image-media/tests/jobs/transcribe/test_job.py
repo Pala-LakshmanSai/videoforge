@@ -3,12 +3,14 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import sys
 import tempfile
 import unittest
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
@@ -18,6 +20,7 @@ from videoforge_image_media.jobs.transcribe import (  # noqa: E402
     TranscriptionJob,
     WhisperTool,
 )
+from videoforge_image_media.jobs.transcribe.job import _write_result  # noqa: E402
 
 
 def _sha256(data: bytes) -> str:
@@ -574,6 +577,65 @@ class TranscriptionJobTest(unittest.TestCase):
         self.assert_error(result, "ASR_TOOL_MISSING")
         self.assertNotIn(str(self.tool_path), json.dumps(result))
         self.assertNotIn(str(self.tool_path), json.dumps(diagnostics.events))
+
+
+class ResultPublicationTest(unittest.TestCase):
+    def test_ambiguous_existing_result_is_a_conflict(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            result_path = Path(temporary) / "runs" / "asr-result.json"
+            result_path.parent.mkdir()
+            result_path.write_text(
+                '{"status":"FAILED","status":"SUCCEEDED","attempt_id":"attempt_001"}',
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(OSError):
+                _write_result(
+                    result_path,
+                    {"status": "SUCCEEDED", "attempt_id": "attempt_001"},
+                )
+
+            self.assertIn('"status":"FAILED"', result_path.read_text(encoding="utf-8"))
+
+    def test_concurrent_different_result_never_overwrites_the_winner(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            result_path = Path(temporary) / "runs" / "asr-result.json"
+            winner = {"status": "CANCELLED", "attempt_id": "attempt_001"}
+            candidate = {"status": "SUCCEEDED", "attempt_id": "attempt_001"}
+            real_link = os.link
+
+            def publish_winner_then_collide(source: Path, destination: Path) -> None:
+                destination.write_text(json.dumps(winner), encoding="utf-8")
+                real_link(source, destination)
+
+            with patch(
+                "videoforge_image_media.jobs.transcribe.job.os.link",
+                side_effect=publish_winner_then_collide,
+            ):
+                with self.assertRaises(OSError):
+                    _write_result(result_path, candidate)
+
+            self.assertEqual(json.loads(result_path.read_text(encoding="utf-8")), winner)
+            self.assertEqual(list(result_path.parent.glob(".*.tmp")), [])
+
+    def test_concurrent_identical_result_is_an_idempotent_success(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            result_path = Path(temporary) / "runs" / "asr-result.json"
+            candidate = {"status": "SUCCEEDED", "attempt_id": "attempt_001"}
+            real_link = os.link
+
+            def publish_same_then_collide(source: Path, destination: Path) -> None:
+                destination.write_text(json.dumps(candidate), encoding="utf-8")
+                real_link(source, destination)
+
+            with patch(
+                "videoforge_image_media.jobs.transcribe.job.os.link",
+                side_effect=publish_same_then_collide,
+            ):
+                _write_result(result_path, candidate)
+
+            self.assertEqual(json.loads(result_path.read_text(encoding="utf-8")), candidate)
+            self.assertEqual(list(result_path.parent.glob(".*.tmp")), [])
 
 
 if __name__ == "__main__":
