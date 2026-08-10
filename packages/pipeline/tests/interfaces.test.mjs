@@ -19,6 +19,10 @@ test("the pure package exposes stable coded failures", () => {
     "ASSET_HASH_MISMATCH",
     "RENDER_PROFILE_MISMATCH",
     "RENDER_PLAN_INVALID",
+    "PROMPT_INPUT_INVALID",
+    "PROMPT_OUTPUT_INVALID",
+    "PROMPT_CONFLICT",
+    "PROMPT_HASH_MISMATCH",
   ]);
 
   const result = pipelineFailure({
