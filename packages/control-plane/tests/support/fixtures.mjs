@@ -324,7 +324,7 @@ async function insertLockedRevision(executor, values) {
        $5, $6, $7, $8, $9, $10, $11,
        'owned-preparation-v1', 'owned-validation-v1',
        'UNTESTED', NULL, NULL, $12, $13, $14,
-       '', false, 'LOWEST_COST', 0, 42,
+       '', false, 'LOWEST_COST', 1500000, 42,
        'project-revision-config', 'v2', '{"source":"owned-synthetic"}'::jsonb, $15,
        $16, $17
      )`,
@@ -427,14 +427,15 @@ export async function insertAttempt(
     disposition = "PENDING",
     inputHash = HASHES.attemptInputA1,
     claimHash = HASHES.claimA1,
+    finishedAt = null,
   },
 ) {
   await executor.query(
     `INSERT INTO attempts (
        id, workspace_id, task_id, ordinal, idempotency_key, state,
        dispatch_state, claim_state, execution_profile_id, execution_claim_token_hash,
-       input_hash, output_asset_id, result_disposition
-     ) VALUES ($1, $2, $3, $4, $5, $6, 'NOT_SENT', 'UNCLAIMED', $7, $8, $9, $10, $11)`,
+       input_hash, output_asset_id, result_disposition, finished_at
+     ) VALUES ($1, $2, $3, $4, $5, $6, 'NOT_SENT', 'UNCLAIMED', $7, $8, $9, $10, $11, $12)`,
     [
       id,
       IDS.workspaceA,
@@ -447,6 +448,7 @@ export async function insertAttempt(
       inputHash,
       outputAssetId,
       disposition,
+      finishedAt,
     ],
   );
 }

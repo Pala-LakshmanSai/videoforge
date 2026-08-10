@@ -6,6 +6,12 @@
       "name": "durable_control_plane_foundation",
       "filename": "0001_durable_control_plane_foundation.sql",
       "sha256": "sha256:263d2c3853b3ed6809ad3b52acddce19c6849ca8100d229ceb9cb26d3ef3f92e"
+    },
+    {
+      "version": 2,
+      "name": "relational_audit_hardening",
+      "filename": "0002_relational_audit_hardening.sql",
+      "sha256": "sha256:b6824f935b40ff89902ab1f20007e2f7e71dcbf61be59cabf0968aa0fb639ca5"
     }
   ]
 }

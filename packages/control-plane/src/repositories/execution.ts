@@ -42,30 +42,35 @@ export interface GenerationTaskRecord {
   readonly finishedAt: UtcTimestamp | null;
 }
 
-export interface AttemptRecord {
+export interface AttemptRecordBase {
   readonly attemptId: EntityId;
   readonly workspaceId: EntityId;
   readonly taskId: EntityId;
   readonly ordinal: number;
   readonly idempotencyKey: DeterministicIdempotencyKey;
-  readonly state: AttemptState;
-  readonly dispatchState: DispatchState;
   readonly claimState: ClaimState;
   readonly executionProfileId: EntityId;
   readonly executionClaimTokenHash: Sha256;
   readonly externalJobId: string | null;
   readonly inputHash: Sha256;
-  readonly outputAssetId: EntityId | null;
-  readonly resultDisposition: ResultDisposition;
   readonly parentAttemptId: EntityId | null;
   readonly fallbackReason: string | null;
-  readonly problemCode: string | null;
   readonly providerDetails: JsonObject;
   readonly createdAt: UtcTimestamp;
   readonly claimedAt: UtcTimestamp | null;
   readonly startedAt: UtcTimestamp | null;
+}
+
+export interface NonUnknownAttemptRecord extends AttemptRecordBase {
+  readonly state: Exclude<AttemptState, "UNKNOWN">;
+  readonly dispatchState: DispatchState;
+  readonly outputAssetId: EntityId | null;
+  readonly resultDisposition: ResultDisposition;
+  readonly problemCode: string | null;
   readonly finishedAt: UtcTimestamp | null;
 }
+
+export type AttemptRecord = NonUnknownAttemptRecord | UnknownAttemptRecord;
 
 export interface OutboxRecord {
   readonly outboxId: EntityId;
@@ -127,7 +132,14 @@ export interface DispatchOutboxInput {
   readonly availableAt: UtcTimestamp;
 }
 
-/** All four records are committed or none are; every retry key is caller-derived and stable. */
+export interface CancellationOutboxInput extends DispatchOutboxInput {
+  readonly kind: "CANCEL";
+}
+
+/**
+ * All four records are committed or none are; every retry key is caller-derived and stable. The
+ * outer logical-write key equals `attempt.idempotencyKey`, which is its durable relational anchor.
+ */
 export interface ReserveTaskAttemptCommand extends IdempotentMutation {
   readonly task: TaskReservationInput;
   readonly attempt: AttemptReservationInput;
@@ -142,13 +154,47 @@ export interface AtomicTaskAttemptReservation {
   readonly dispatchOutbox: PendingDispatchOutboxRecord;
 }
 
-export interface ReservedAttemptRecord extends AttemptRecord {
+export type DurableOwnerOf<OwnerType extends DurableOwner["ownerType"]> = Extract<
+  DurableOwner,
+  { readonly ownerType: OwnerType }
+>;
+
+/** Narrows the general atomic reservation to the durable owner billed by a preset action. */
+export type OwnerScopedReserveTaskAttemptCommand<Owner extends DurableOwner> = Omit<
+  ReserveTaskAttemptCommand,
+  "task"
+> & {
+  readonly task: Omit<TaskReservationInput, "owner"> & { readonly owner: Owner };
+};
+
+export type OwnerScopedAtomicTaskAttemptReservation<Owner extends DurableOwner> = Omit<
+  AtomicTaskAttemptReservation,
+  "costReservation" | "task"
+> & {
+  readonly task: GenerationTaskRecord & { readonly owner: Owner };
+  readonly costReservation: ReservedCostEventRecord & { readonly owner: Owner };
+};
+
+export type ImageStyleVersionOwner = DurableOwnerOf<"IMAGE_STYLE_VERSION">;
+export type AvatarProfileVersionOwner = DurableOwnerOf<"AVATAR_PROFILE_VERSION">;
+export type ImageStyleVersionTaskAttemptReservationCommand =
+  OwnerScopedReserveTaskAttemptCommand<ImageStyleVersionOwner>;
+export type AvatarProfileVersionTaskAttemptReservationCommand =
+  OwnerScopedReserveTaskAttemptCommand<AvatarProfileVersionOwner>;
+export type ImageStyleVersionTaskAttemptReservation =
+  OwnerScopedAtomicTaskAttemptReservation<ImageStyleVersionOwner>;
+export type AvatarProfileVersionTaskAttemptReservation =
+  OwnerScopedAtomicTaskAttemptReservation<AvatarProfileVersionOwner>;
+
+export interface ReservedAttemptRecord extends AttemptRecordBase {
   readonly state: "CREATED";
   readonly dispatchState: "NOT_SENT";
   readonly claimState: "UNCLAIMED";
   readonly externalJobId: null;
   readonly outputAssetId: null;
   readonly resultDisposition: "PENDING";
+  readonly problemCode: null;
+  readonly finishedAt: null;
 }
 
 export interface ReservedCostEventRecord extends CostEventRecord {
@@ -247,20 +293,68 @@ export interface DispatchReconciliation {
   readonly reconciledAt: UtcTimestamp;
 }
 
-export interface RequestCancellationCommand extends IdempotentMutation {
+export interface RequestTaskOnlyCancellationCommand extends IdempotentMutation {
+  readonly target: "TASK_ONLY";
   readonly taskId: EntityId;
-  readonly attemptId: EntityId | null;
   readonly expectedTaskVersion: number;
   readonly requestedAt: UtcTimestamp;
-  readonly outbox: Omit<DispatchOutboxInput, "outboxId"> & { readonly outboxId: EntityId };
 }
 
-export interface CancellationRequest {
-  readonly kind: "CANCELLATION_REQUESTED";
-  readonly completion: "NOT_ACCEPTED";
-  readonly task: GenerationTaskRecord;
-  readonly outbox: OutboxRecord;
+export interface RequestAttemptCancellationCommand extends IdempotentMutation {
+  readonly target: "ATTEMPT";
+  readonly taskId: EntityId;
+  readonly attemptId: EntityId;
+  readonly expectedTaskVersion: number;
+  readonly requestedAt: UtcTimestamp;
+  readonly outbox: CancellationOutboxInput;
 }
+
+export type RequestCancellationCommand =
+  | RequestTaskOnlyCancellationCommand
+  | RequestAttemptCancellationCommand;
+
+export interface CancelledTaskRecord extends GenerationTaskRecord {
+  readonly state: "CANCELLED";
+  readonly acceptedAttemptId: null;
+  readonly cancelRequestedAt: UtcTimestamp;
+  readonly finishedAt: UtcTimestamp;
+}
+
+export interface CancelRequestedTaskRecord extends GenerationTaskRecord {
+  readonly state: "CANCEL_REQUESTED";
+  readonly acceptedAttemptId: null;
+  readonly cancelRequestedAt: UtcTimestamp;
+  readonly finishedAt: null;
+}
+
+export interface PendingCancellationOutboxRecord extends OutboxRecord {
+  readonly kind: "CANCEL";
+  readonly state: "PENDING";
+  readonly leaseOwner: null;
+  readonly leaseExpiresAt: null;
+  readonly deliveredAt: null;
+}
+
+/** A task with no dispatched attempt cancels locally and must not fabricate a provider outbox row. */
+export interface TaskOnlyCancellation {
+  readonly kind: "TASK_ONLY_CANCELLATION";
+  readonly completion: "NOT_ACCEPTED";
+  readonly target: "TASK_ONLY";
+  readonly task: CancelledTaskRecord;
+  readonly outbox: null;
+}
+
+/** A dispatched attempt enters cancel-requested state together with its durable CANCEL outbox row. */
+export interface AttemptCancellationRequest {
+  readonly kind: "ATTEMPT_CANCELLATION_REQUESTED";
+  readonly completion: "NOT_ACCEPTED";
+  readonly target: "ATTEMPT";
+  readonly task: CancelRequestedTaskRecord;
+  readonly attemptId: EntityId;
+  readonly outbox: PendingCancellationOutboxRecord;
+}
+
+export type CancellationRequest = TaskOnlyCancellation | AttemptCancellationRequest;
 
 export interface RecordSuccessfulAttemptCommand extends IdempotentMutation {
   readonly taskId: EntityId;
@@ -271,47 +365,116 @@ export interface RecordSuccessfulAttemptCommand extends IdempotentMutation {
   readonly finishedAt: UtcTimestamp;
 }
 
-/** A verified successful candidate is still not accepted and cannot complete its task by itself. */
+export interface SuccessfulUnacceptedAttemptRecord extends AttemptRecordBase {
+  readonly state: "SUCCEEDED";
+  readonly dispatchState: DispatchState;
+  readonly outputAssetId: EntityId;
+  readonly resultDisposition: "PENDING";
+  readonly problemCode: null;
+  readonly finishedAt: UtcTimestamp;
+}
+
+export interface SuccessfulAttemptReference {
+  readonly kind: "RECORDED_SUCCESSFUL_ATTEMPT";
+  readonly taskId: EntityId;
+  readonly attemptId: EntityId;
+  /** Task version observed when the repository durably recorded the successful result. */
+  readonly expectedTaskVersion: number;
+}
+
+/**
+ * A repository-issued view of one verified successful attempt. It is still not accepted and cannot
+ * complete its task by itself. Acceptance consumes only `reference`; the adapter must re-read the
+ * attempt, verified asset, checksum, and task version rather than trusting this returned snapshot.
+ */
 export interface SuccessfulAttemptCandidate {
   readonly kind: "SUCCESSFUL_ATTEMPT_CANDIDATE";
   readonly completion: "NOT_ACCEPTED";
-  readonly taskId: EntityId;
-  readonly attemptId: EntityId;
-  readonly outputAssetId: EntityId;
+  readonly reference: SuccessfulAttemptReference;
+  readonly attempt: SuccessfulUnacceptedAttemptRecord;
   readonly outputBinarySha256: Sha256;
-  readonly state: "SUCCEEDED";
-  readonly resultDisposition: "PENDING";
-  readonly finishedAt: UtcTimestamp;
 }
 
 export interface RecordTerminalAttemptCommand extends IdempotentMutation {
   readonly taskId: EntityId;
   readonly attemptId: EntityId;
-  readonly state: "FAILED" | "CANCELLED" | "UNKNOWN";
+  readonly state: "FAILED" | "CANCELLED";
   readonly problemCode: string;
   readonly providerDetails: JsonObject;
+  readonly finishedAt: UtcTimestamp;
+}
+
+export interface TerminalAttemptRecord extends AttemptRecordBase {
+  readonly state: "FAILED" | "CANCELLED";
+  readonly dispatchState: DispatchState;
+  readonly outputAssetId: null;
+  readonly resultDisposition: "REJECTED";
+  readonly problemCode: string;
   readonly finishedAt: UtcTimestamp;
 }
 
 export interface TerminalAttemptResult {
   readonly kind: "TERMINAL_ATTEMPT_RESULT";
   readonly completion: "NOT_ACCEPTED";
-  readonly attempt: AttemptRecord;
+  readonly attempt: TerminalAttemptRecord;
+}
+
+/** UNKNOWN is a durable ambiguity requiring reconciliation, not a finished/terminal outcome. */
+export interface RecordUnknownAttemptCommand extends IdempotentMutation {
+  readonly taskId: EntityId;
+  readonly attemptId: EntityId;
+  readonly problemCode: string;
+  readonly providerDetails: JsonObject;
+  readonly observedAt: UtcTimestamp;
+}
+
+export interface UnknownAttemptRecord extends AttemptRecordBase {
+  readonly state: "UNKNOWN";
+  readonly dispatchState: "AMBIGUOUS";
+  readonly outputAssetId: null;
+  readonly resultDisposition: "PENDING";
+  readonly problemCode: string;
+  readonly finishedAt: null;
+}
+
+export interface UnknownAttemptResult {
+  readonly kind: "UNKNOWN_ATTEMPT_REQUIRES_RECONCILIATION";
+  readonly completion: "NOT_ACCEPTED";
+  readonly reconciliationRequired: true;
+  readonly observedAt: UtcTimestamp;
+  readonly attempt: UnknownAttemptRecord;
 }
 
 export interface AcceptSuccessfulResultCommand extends IdempotentMutation {
-  /** Deliberately cannot be satisfied by ProviderDispatchAcknowledgement/AckUnknown. */
-  readonly candidate: SuccessfulAttemptCandidate;
-  readonly expectedTaskVersion: number;
+  /**
+   * Provider acknowledgements have no successful-attempt reference and cannot satisfy this type.
+   * The adapter must atomically re-read the reference and validate a SUCCEEDED/PENDING attempt, its
+   * verified output asset/checksum, the expected task version, and absence of an accepted result.
+   */
+  readonly candidateReference: SuccessfulAttemptReference;
   readonly acceptedAt: UtcTimestamp;
+}
+
+export interface CompletedGenerationTaskRecord extends GenerationTaskRecord {
+  readonly state: "COMPLETE";
+  readonly acceptedAttemptId: EntityId;
+  readonly finishedAt: UtcTimestamp;
+}
+
+export interface AcceptedAttemptRecord extends AttemptRecordBase {
+  readonly state: "SUCCEEDED";
+  readonly dispatchState: DispatchState;
+  readonly outputAssetId: EntityId;
+  readonly resultDisposition: "ACCEPTED";
+  readonly problemCode: null;
+  readonly finishedAt: UtcTimestamp;
 }
 
 export interface AcceptedAttemptResult {
   readonly kind: "ACCEPTED_ATTEMPT_RESULT";
   readonly completion: "ACCEPTED";
-  readonly taskId: EntityId;
-  readonly attemptId: EntityId;
-  readonly outputAssetId: EntityId;
+  readonly task: CompletedGenerationTaskRecord;
+  readonly attempt: AcceptedAttemptRecord;
   readonly outputBinarySha256: Sha256;
   readonly acceptedAt: UtcTimestamp;
 }
@@ -404,10 +567,22 @@ export interface ExecutionRepository {
 
   requestCancellation(
     scope: WorkspaceScope,
-    command: RequestCancellationCommand,
+    command: RequestTaskOnlyCancellationCommand,
   ): Promise<
     IdempotentRepositoryResult<
-      CancellationRequest,
+      TaskOnlyCancellation,
+      ExecutionConflict,
+      ExecutionMissing,
+      ExecutionInvariant
+    >
+  >;
+
+  requestCancellation(
+    scope: WorkspaceScope,
+    command: RequestAttemptCancellationCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      AttemptCancellationRequest,
       ExecutionConflict,
       ExecutionMissing,
       ExecutionInvariant
@@ -432,6 +607,18 @@ export interface ExecutionRepository {
   ): Promise<
     IdempotentRepositoryResult<
       TerminalAttemptResult,
+      ExecutionConflict,
+      ExecutionMissing,
+      ExecutionInvariant
+    >
+  >;
+
+  recordUnknownAttempt(
+    scope: WorkspaceScope,
+    command: RecordUnknownAttemptCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      UnknownAttemptResult,
       ExecutionConflict,
       ExecutionMissing,
       ExecutionInvariant

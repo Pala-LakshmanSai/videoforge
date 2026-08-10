@@ -29,17 +29,51 @@ export interface WorkspaceMembership {
   readonly updatedAt: UtcTimestamp;
 }
 
-export interface WorkspaceAuthorization {
-  readonly identity: UserIdentity;
-  readonly membership: WorkspaceMembership;
-  readonly authorized: boolean;
-  readonly reason:
-    | "ACTIVE_MEMBER"
-    | "INVITED"
-    | "MEMBERSHIP_SUSPENDED"
-    | "MEMBERSHIP_ARCHIVED"
-    | "USER_DISABLED";
+export interface GrantedWorkspaceAuthorization {
+  readonly identity: UserIdentity & { readonly status: "ACTIVE" };
+  readonly membership: WorkspaceMembership & { readonly status: "ACTIVE" };
+  readonly authorized: true;
+  readonly reason: "ACTIVE_MEMBER";
 }
+
+interface DeniedWorkspaceAuthorizationBase {
+  readonly authorized: false;
+}
+
+export interface InvitedWorkspaceAuthorization extends DeniedWorkspaceAuthorizationBase {
+  readonly identity: UserIdentity & { readonly status: "ACTIVE" };
+  readonly membership: WorkspaceMembership & { readonly status: "INVITED" };
+  readonly reason: "INVITED";
+}
+
+export interface SuspendedWorkspaceAuthorization extends DeniedWorkspaceAuthorizationBase {
+  readonly identity: UserIdentity & { readonly status: "ACTIVE" };
+  readonly membership: WorkspaceMembership & { readonly status: "SUSPENDED" };
+  readonly reason: "MEMBERSHIP_SUSPENDED";
+}
+
+export interface ArchivedWorkspaceAuthorization extends DeniedWorkspaceAuthorizationBase {
+  readonly identity: UserIdentity & { readonly status: "ACTIVE" };
+  readonly membership: WorkspaceMembership & { readonly status: "ARCHIVED" };
+  readonly reason: "MEMBERSHIP_ARCHIVED";
+}
+
+export interface DisabledUserWorkspaceAuthorization extends DeniedWorkspaceAuthorizationBase {
+  readonly identity: UserIdentity & { readonly status: "DISABLED" };
+  readonly membership: WorkspaceMembership;
+  readonly reason: "USER_DISABLED";
+}
+
+export type DeniedWorkspaceAuthorization =
+  | InvitedWorkspaceAuthorization
+  | SuspendedWorkspaceAuthorization
+  | ArchivedWorkspaceAuthorization
+  | DisabledUserWorkspaceAuthorization;
+
+/** Authorization status is discriminated so a denial cannot carry an active-member reason. */
+export type WorkspaceAuthorization =
+  | GrantedWorkspaceAuthorization
+  | DeniedWorkspaceAuthorization;
 
 export interface MembershipLookup {
   readonly userId: EntityId;

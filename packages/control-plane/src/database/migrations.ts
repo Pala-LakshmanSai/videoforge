@@ -23,8 +23,12 @@ export interface MigrationApplicationResult {
 interface AppliedMigrationRow extends Record<string, unknown> {
   readonly version: number;
   readonly name: string;
+  readonly filename: string;
   readonly sha256: string;
 }
+
+const MIGRATION_LOCK_NAMESPACE = 1_448_494_662;
+const MIGRATION_LOCK_KEY = 1;
 
 function parseManifest(value: unknown): readonly MigrationManifestEntry[] {
   if (typeof value !== "object" || value === null || !("migrations" in value)) {
@@ -53,6 +57,12 @@ function parseManifest(value: unknown): readonly MigrationManifestEntry[] {
       if (typeof entry.filename !== "string" || !/^\d{4}_[a-z0-9_]+\.sql$/.test(entry.filename)) {
         throw new Error(`Migration ${String(entry.version)} has an invalid filename.`);
       }
+      const expectedFilename = `${String(entry.version).padStart(4, "0")}_${entry.name}.sql`;
+      if (entry.filename !== expectedFilename) {
+        throw new Error(
+          `Migration ${String(entry.version)} filename must be ${expectedFilename}.`,
+        );
+      }
       if (filenames.has(entry.filename)) {
         throw new Error(`Migration filename ${entry.filename} is duplicated.`);
       }
@@ -75,7 +85,7 @@ function parseManifest(value: unknown): readonly MigrationManifestEntry[] {
 export const MIGRATION_MANIFEST = parseManifest(migrationManifestDocument);
 
 const CREATE_MIGRATION_TABLE_SQL = `
-CREATE TABLE IF NOT EXISTS videoforge_schema_migrations (
+CREATE TABLE IF NOT EXISTS public.videoforge_schema_migrations (
   version integer PRIMARY KEY CHECK (version > 0),
   name text NOT NULL CHECK (name ~ '^[a-z0-9_]+$'),
   filename text NOT NULL UNIQUE,
@@ -84,7 +94,14 @@ CREATE TABLE IF NOT EXISTS videoforge_schema_migrations (
 )
 `;
 
-function validateSources(sources: readonly MigrationSource[]): void {
+export async function computeMigrationSha256(sql: string): Promise<`sha256:${string}`> {
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(sql));
+  return `sha256:${[...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+async function validateSources(sources: readonly MigrationSource[]): Promise<void> {
   if (sources.length !== MIGRATION_MANIFEST.length) {
     throw new Error("Migration sources must exactly match the committed manifest.");
   }
@@ -100,6 +117,10 @@ function validateSources(sources: readonly MigrationSource[]): void {
     ) {
       throw new Error(`Migration source ${expected.filename} does not match the manifest.`);
     }
+    const actualSha256 = await computeMigrationSha256(source.sql);
+    if (actualSha256 !== expected.sha256) {
+      throw new Error(`Migration SQL ${expected.filename} does not match its committed SHA-256.`);
+    }
   }
 }
 
@@ -107,48 +128,54 @@ export async function applyMigrations(
   database: TransactionalSqlExecutor,
   sources: readonly MigrationSource[],
 ): Promise<MigrationApplicationResult> {
-  validateSources(sources);
-  await database.execute(CREATE_MIGRATION_TABLE_SQL);
+  await validateSources(sources);
 
-  const existing = await database.query<AppliedMigrationRow>(
-    "SELECT version, name, sha256 FROM videoforge_schema_migrations ORDER BY version",
-  );
-  const expectedVersions = new Set(sources.map((migration) => migration.version));
-  for (const applied of existing.rows) {
-    if (!expectedVersions.has(applied.version)) {
-      throw new Error(`Database contains unknown migration version ${String(applied.version)}.`);
-    }
-    const expected = sources.find((migration) => migration.version === applied.version);
-    if (
-      expected === undefined ||
-      expected.name !== applied.name ||
-      expected.sha256 !== applied.sha256
-    ) {
-      throw new Error(
-        `Applied migration ${String(applied.version)} does not match committed metadata.`,
-      );
-    }
-  }
+  return database.transaction(async (transaction: SqlExecutor) => {
+    await transaction.execute("SET LOCAL search_path = public, pg_catalog");
+    await transaction.query("SELECT pg_advisory_xact_lock($1, $2)", [
+      MIGRATION_LOCK_NAMESPACE,
+      MIGRATION_LOCK_KEY,
+    ]);
+    await transaction.execute(CREATE_MIGRATION_TABLE_SQL);
 
-  const alreadyApplied = new Set(existing.rows.map((migration) => migration.version));
-  const appliedVersions: number[] = [];
-  for (const migration of sources) {
-    if (alreadyApplied.has(migration.version)) {
-      continue;
+    const existing = await transaction.query<AppliedMigrationRow>(
+      `SELECT version, name, filename, sha256
+         FROM public.videoforge_schema_migrations
+        ORDER BY version`,
+    );
+    if (existing.rows.length > sources.length) {
+      throw new Error("Database migration chain is longer than the committed manifest.");
     }
-    await database.transaction(async (transaction: SqlExecutor) => {
+    for (const [index, applied] of existing.rows.entries()) {
+      const expected = sources[index];
+      if (
+        expected === undefined ||
+        applied.version !== expected.version ||
+        applied.name !== expected.name ||
+        applied.filename !== expected.filename ||
+        applied.sha256 !== expected.sha256
+      ) {
+        throw new Error(
+          `Applied migration at chain position ${String(index + 1)} does not match committed metadata.`,
+        );
+      }
+    }
+
+    const alreadyAppliedVersions = existing.rows.map((migration) => migration.version);
+    const appliedVersions: number[] = [];
+    for (const migration of sources.slice(existing.rows.length)) {
       await transaction.execute(migration.sql);
       await transaction.query(
-        `INSERT INTO videoforge_schema_migrations (version, name, filename, sha256)
+        `INSERT INTO public.videoforge_schema_migrations (version, name, filename, sha256)
          VALUES ($1, $2, $3, $4)`,
         [migration.version, migration.name, migration.filename, migration.sha256],
       );
-    });
-    appliedVersions.push(migration.version);
-  }
+      appliedVersions.push(migration.version);
+    }
 
-  return Object.freeze({
-    appliedVersions: Object.freeze(appliedVersions),
-    alreadyAppliedVersions: Object.freeze([...alreadyApplied].sort((left, right) => left - right)),
+    return Object.freeze({
+      appliedVersions: Object.freeze(appliedVersions),
+      alreadyAppliedVersions: Object.freeze(alreadyAppliedVersions),
+    });
   });
 }

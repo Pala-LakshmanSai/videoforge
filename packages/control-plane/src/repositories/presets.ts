@@ -1,4 +1,10 @@
 import type {
+  AvatarProfileVersionTaskAttemptReservation,
+  AvatarProfileVersionTaskAttemptReservationCommand,
+  ImageStyleVersionTaskAttemptReservation,
+  ImageStyleVersionTaskAttemptReservationCommand,
+} from "./execution.js";
+import type {
   CanonicalDocument,
   CommonConflictCode,
   CommonInvariantCode,
@@ -31,7 +37,7 @@ export interface AvatarProfile {
   readonly archivedAt: UtcTimestamp | null;
 }
 
-export type AvatarDraftState = "DRAFT" | "UPLOADING" | "VALIDATING" | "NEEDS_REVIEW" | "FAILED";
+export type AvatarDraftState = "DRAFT" | "VALIDATING" | "NEEDS_REVIEW" | "FAILED";
 
 export interface AvatarVersionBase {
   readonly versionId: EntityId;
@@ -131,13 +137,127 @@ export interface ArchiveAvatarProfileCommand extends IdempotentMutation {
   readonly archivedAt: UtcTimestamp;
 }
 
+/** No assessment row means UNTESTED; every persisted assessment is one of these states. */
+export type AvatarCompatibilityAssessmentState =
+  | "RUNNING"
+  | "PASSED"
+  | "FAILED"
+  | "STALE"
+  | "CANCELLED";
+
+export interface AvatarCompatibilityAssessmentBase {
+  readonly assessmentId: EntityId;
+  readonly workspaceId: EntityId;
+  readonly avatarProfileVersionId: EntityId;
+  readonly executionProfileId: EntityId;
+  readonly createdAt: UtcTimestamp;
+  readonly updatedAt: UtcTimestamp;
+}
+
+export interface RunningAvatarCompatibilityAssessment
+  extends AvatarCompatibilityAssessmentBase {
+  readonly state: "RUNNING";
+  readonly modelSnapshotHash: null;
+  readonly evidenceDocument: null;
+  readonly evidenceHash: null;
+  readonly finishedAt: null;
+}
+
+export interface TerminalAvatarCompatibilityAssessment
+  extends AvatarCompatibilityAssessmentBase {
+  readonly state: "PASSED" | "FAILED" | "STALE" | "CANCELLED";
+  readonly modelSnapshotHash: Sha256;
+  readonly evidenceDocument: CanonicalDocument;
+  readonly evidenceHash: Sha256;
+  readonly finishedAt: UtcTimestamp;
+}
+
+export type AvatarCompatibilityAssessment =
+  | RunningAvatarCompatibilityAssessment
+  | TerminalAvatarCompatibilityAssessment;
+
+export interface AvatarProfileTestAttemptBase {
+  readonly testAttemptId: EntityId;
+  readonly workspaceId: EntityId;
+  readonly avatarProfileVersionId: EntityId;
+  readonly assessmentId: EntityId;
+  /** Required FK to the general attempt created in the same transaction. */
+  readonly executionAttemptId: EntityId;
+  readonly taskId: EntityId;
+  readonly reservationCostEventId: EntityId;
+  readonly dispatchOutboxId: EntityId;
+  readonly ordinal: number;
+  readonly idempotencyKey: DeterministicIdempotencyKey;
+  readonly createdAt: UtcTimestamp;
+}
+
+export interface NonUnknownAvatarProfileTestAttempt extends AvatarProfileTestAttemptBase {
+  readonly state: "CREATED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED";
+  readonly externalJobId: string | null;
+  readonly outputAssetId: EntityId | null;
+  readonly reportedCostMicroUsd: bigint | null;
+  readonly startedAt: UtcTimestamp | null;
+  readonly finishedAt: UtcTimestamp | null;
+}
+
+export interface UnknownAvatarProfileTestAttempt extends AvatarProfileTestAttemptBase {
+  readonly state: "UNKNOWN";
+  readonly externalJobId: string | null;
+  readonly outputAssetId: null;
+  readonly reportedCostMicroUsd: bigint | null;
+  readonly startedAt: UtcTimestamp | null;
+  readonly finishedAt: null;
+}
+
+export interface CreatedAvatarProfileTestAttempt extends AvatarProfileTestAttemptBase {
+  readonly state: "CREATED";
+  readonly externalJobId: null;
+  readonly outputAssetId: null;
+  readonly reportedCostMicroUsd: null;
+  readonly startedAt: null;
+  readonly finishedAt: null;
+}
+
+export type AvatarProfileTestAttempt =
+  | NonUnknownAvatarProfileTestAttempt
+  | UnknownAvatarProfileTestAttempt;
+
+export interface BeginAvatarCompatibilityTestCommand extends IdempotentMutation {
+  readonly profileId: EntityId;
+  readonly versionId: EntityId;
+  readonly assessmentId: EntityId;
+  readonly testAttemptId: EntityId;
+  /**
+   * The embedded reservation supplies task, execution attempt, budget event, and DISPATCH outbox.
+   * Its owner must be this exact AVATAR_PROFILE_VERSION; adapters reject any ID mismatch.
+   */
+  readonly reservation: Omit<
+    AvatarProfileVersionTaskAttemptReservationCommand,
+    "idempotencyKey"
+  >;
+}
+
+export interface StartedAvatarCompatibilityTest {
+  readonly kind: "AVATAR_COMPATIBILITY_TEST_STARTED";
+  readonly assessment: RunningAvatarCompatibilityAssessment;
+  readonly testAttempt: CreatedAvatarProfileTestAttempt;
+  readonly reservation: AvatarProfileVersionTaskAttemptReservation;
+}
+
 export type AvatarConflict =
   | CommonConflictCode
+  | "AVATAR_COMPATIBILITY_TEST_CONFLICT"
   | "AVATAR_PROFILE_VERSION_CONFLICT"
   | "AVATAR_READY_HASH_EXISTS";
-export type AvatarMissing = "AVATAR_PROFILE" | "AVATAR_PROFILE_VERSION" | "ASSET";
+export type AvatarMissing =
+  | "AVATAR_COMPATIBILITY_ASSESSMENT"
+  | "AVATAR_PROFILE"
+  | "AVATAR_PROFILE_VERSION"
+  | "ASSET"
+  | "EXECUTION_PROFILE";
 export type AvatarInvariant =
   | CommonInvariantCode
+  | "AVATAR_COMPATIBILITY_BILLING_BOUNDARY_MISMATCH"
   | "AVATAR_PROFILE_ARCHIVED"
   | "AVATAR_VERSION_NOT_READY"
   | "AVATAR_VERSION_NOT_PUBLISHABLE";
@@ -192,6 +312,19 @@ export interface AvatarProfileRepository {
     lookup: ExactAvatarVersionLookup,
   ): Promise<
     RepositoryResult<ReadyAvatarProfileVersion, AvatarConflict, AvatarMissing, AvatarInvariant>
+  >;
+
+  /** Atomically creates the assessment/test row and its task, attempt, budget, and outbox rows. */
+  beginCompatibilityTest(
+    scope: WorkspaceActorScope,
+    command: BeginAvatarCompatibilityTestCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      StartedAvatarCompatibilityTest,
+      AvatarConflict,
+      AvatarMissing,
+      AvatarInvariant
+    >
   >;
 
   archiveProfile(
@@ -291,27 +424,64 @@ export interface PublishImageStyleVersionCommand extends IdempotentMutation {
 export interface BeginImageStyleAnalysisCommand extends IdempotentMutation {
   readonly styleId: EntityId;
   readonly versionId: EntityId;
-  readonly attemptId: EntityId;
+  readonly analysisAttemptId: EntityId;
+  readonly requestHash: Sha256;
+  readonly provider: string;
+  readonly model: string;
+  readonly modelRevision: string;
+  /**
+   * The embedded reservation supplies task, execution attempt, budget event, and DISPATCH outbox.
+   * Its owner must be this exact IMAGE_STYLE_VERSION; adapters reject any ID mismatch.
+   */
+  readonly reservation: Omit<ImageStyleVersionTaskAttemptReservationCommand, "idempotencyKey">;
+}
+
+export interface ImageStyleAnalysisAttemptBase {
+  readonly analysisAttemptId: EntityId;
+  readonly workspaceId: EntityId;
+  readonly styleVersionId: EntityId;
+  /** Required FK to the general attempt created in the same transaction. */
+  readonly executionAttemptId: EntityId;
+  readonly taskId: EntityId;
+  readonly reservationCostEventId: EntityId;
+  readonly dispatchOutboxId: EntityId;
   readonly ordinal: number;
+  readonly idempotencyKey: DeterministicIdempotencyKey;
   readonly requestHash: Sha256;
   readonly provider: string;
   readonly model: string;
   readonly modelRevision: string;
 }
 
-export interface ImageStyleAnalysisAttempt {
-  readonly attemptId: EntityId;
-  readonly styleVersionId: EntityId;
-  readonly ordinal: number;
-  readonly idempotencyKey: DeterministicIdempotencyKey;
-  readonly requestHash: Sha256;
-  readonly state: "CREATED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED" | "UNKNOWN";
-  readonly provider: string;
-  readonly model: string;
-  readonly modelRevision: string;
+export interface NonUnknownImageStyleAnalysisAttempt extends ImageStyleAnalysisAttemptBase {
+  readonly state: "CREATED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED";
   readonly responseHash: Sha256 | null;
   readonly usagePayload: JsonObject | null;
   readonly reportedCostMicroUsd: bigint | null;
+}
+
+export interface UnknownImageStyleAnalysisAttempt extends ImageStyleAnalysisAttemptBase {
+  readonly state: "UNKNOWN";
+  readonly responseHash: null;
+  readonly usagePayload: JsonObject | null;
+  readonly reportedCostMicroUsd: bigint | null;
+}
+
+export interface CreatedImageStyleAnalysisAttempt extends ImageStyleAnalysisAttemptBase {
+  readonly state: "CREATED";
+  readonly responseHash: null;
+  readonly usagePayload: null;
+  readonly reportedCostMicroUsd: null;
+}
+
+export type ImageStyleAnalysisAttempt =
+  | NonUnknownImageStyleAnalysisAttempt
+  | UnknownImageStyleAnalysisAttempt;
+
+export interface StartedImageStyleAnalysis {
+  readonly kind: "IMAGE_STYLE_ANALYSIS_STARTED";
+  readonly analysisAttempt: CreatedImageStyleAnalysisAttempt;
+  readonly reservation: ImageStyleVersionTaskAttemptReservation;
 }
 
 export interface ExactImageStyleVersionLookup {
@@ -328,11 +498,13 @@ export interface ArchiveImageStyleCommand extends IdempotentMutation {
 
 export type ImageStyleConflict =
   | CommonConflictCode
+  | "IMAGE_STYLE_ANALYSIS_CONFLICT"
   | "IMAGE_STYLE_VERSION_CONFLICT"
   | "PUBLISHED_STYLE_HASH_EXISTS";
-export type ImageStyleMissing = "IMAGE_STYLE" | "IMAGE_STYLE_VERSION";
+export type ImageStyleMissing = "EXECUTION_PROFILE" | "IMAGE_STYLE" | "IMAGE_STYLE_VERSION";
 export type ImageStyleInvariant =
   | CommonInvariantCode
+  | "IMAGE_STYLE_ANALYSIS_BILLING_BOUNDARY_MISMATCH"
   | "IMAGE_STYLE_ARCHIVED"
   | "IMAGE_STYLE_VERSION_NOT_PUBLISHED"
   | "IMAGE_STYLE_VERSION_NOT_PUBLISHABLE";
@@ -392,7 +564,7 @@ export interface ImageStyleRepository {
     command: BeginImageStyleAnalysisCommand,
   ): Promise<
     IdempotentRepositoryResult<
-      ImageStyleAnalysisAttempt,
+      StartedImageStyleAnalysis,
       ImageStyleConflict,
       ImageStyleMissing,
       ImageStyleInvariant

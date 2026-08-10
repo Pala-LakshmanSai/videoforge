@@ -2,118 +2,178 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  CANONICAL_REPOSITORY_CONTRACT_SCENARIOS,
   registerRepositoryContractSuite,
   REPOSITORY_CONTRACT_BEHAVIORS,
+  RepositoryContractAssertionError,
 } from "../dist/src/index.js";
 import { IDS } from "./support/fixtures.mjs";
 
-function createFixture() {
+const REVISION_LOOKUP = Object.freeze({
+  projectId: IDS.projectA,
+  revisionId: IDS.projectRevisionA,
+});
+
+function createWorkspaceIsolationFixture() {
   return Object.freeze({
+    behaviorId: "explicit-workspace-isolation",
     primaryScope: Object.freeze({ workspaceId: IDS.workspaceA, actorUserId: IDS.userA }),
     secondaryScope: Object.freeze({ workspaceId: IDS.workspaceB, actorUserId: IDS.userB }),
-    ids: Object.freeze({ primaryProject: IDS.projectA, secondaryProject: IDS.projectB }),
+    revisionLookup: REVISION_LOOKUP,
   });
 }
 
-test("the reusable repository contract registry is complete, unique, and adapter-neutral", async () => {
-  const ids = REPOSITORY_CONTRACT_BEHAVIORS.map((behavior) => behavior.id);
-  assert.equal(ids.length, 13);
-  assert.equal(new Set(ids).size, ids.length);
+function createRevision(workspaceId) {
+  return Object.freeze({
+    projectId: IDS.projectA,
+    revisionId: IDS.projectRevisionA,
+    workspaceId,
+  });
+}
 
+function createWorkspaceRepositories(observedScopes = []) {
+  return Object.freeze({
+    projects: Object.freeze({
+      async resolveExactRevision(scope, lookup) {
+        observedScopes.push(scope.workspaceId);
+        assert.deepEqual(lookup, REVISION_LOOKUP);
+        if (scope.workspaceId === IDS.workspaceA) {
+          return { ok: true, value: createRevision(IDS.workspaceA) };
+        }
+        return {
+          ok: false,
+          kind: "NOT_FOUND",
+          entity: "PROJECT_REVISION",
+          id: lookup.revisionId,
+        };
+      },
+    }),
+  });
+}
+
+function registerSuite(factory, name = "owned adapter") {
   const registrations = [];
+  registerRepositoryContractSuite(
+    {
+      test(testName, run) {
+        registrations.push({ name: testName, run });
+      },
+    },
+    factory,
+    { name },
+  );
+  return registrations;
+}
+
+test("the exported canonical repository scenarios are complete, unique, and immutable", () => {
+  const behaviorIds = REPOSITORY_CONTRACT_BEHAVIORS.map((behavior) => behavior.id);
+  const scenarioIds = CANONICAL_REPOSITORY_CONTRACT_SCENARIOS.map(
+    (scenario) => scenario.behaviorId,
+  );
+
+  assert.equal(behaviorIds.length, 13);
+  assert.equal(new Set(behaviorIds).size, behaviorIds.length);
+  assert.deepEqual(scenarioIds, behaviorIds);
+  assert.equal(new Set(scenarioIds).size, scenarioIds.length);
+  assert.equal(Object.isFrozen(REPOSITORY_CONTRACT_BEHAVIORS), true);
+  assert.equal(REPOSITORY_CONTRACT_BEHAVIORS.every((behavior) => Object.isFrozen(behavior)), true);
+  assert.equal(Object.isFrozen(CANONICAL_REPOSITORY_CONTRACT_SCENARIOS), true);
+  assert.equal(
+    CANONICAL_REPOSITORY_CONTRACT_SCENARIOS.every((scenario) => Object.isFrozen(scenario)),
+    true,
+  );
+  assert.equal(registerRepositoryContractSuite.length, 2);
+});
+
+test("the harness registers and runs the canonical workspace-isolation body unchanged", async () => {
   const created = [];
   const disposed = [];
-  const exercised = [];
-  const registrar = {
-    test(name, run) {
-      registrations.push({ name, run });
-    },
-  };
+  const observedScopes = [];
   const factory = {
     async create(behavior) {
       created.push(behavior.id);
       return {
-        repositories: Object.freeze({ adapter: "owned-synthetic" }),
-        fixture: createFixture(),
+        repositories: createWorkspaceRepositories(observedScopes),
+        fixture: createWorkspaceIsolationFixture(),
         async dispose() {
           disposed.push(behavior.id);
         },
       };
     },
   };
-  const scenarios = REPOSITORY_CONTRACT_BEHAVIORS.map((behavior) => ({
-    behaviorId: behavior.id,
-    async run(context) {
-      assert.equal(context.behavior.id, behavior.id);
-      assert.equal(context.fixture.primaryScope.workspaceId, IDS.workspaceA);
-      exercised.push(behavior.id);
-    },
-  }));
 
-  registerRepositoryContractSuite(registrar, factory, scenarios, { name: "owned adapter" });
+  const registrations = registerSuite(factory);
   assert.deepEqual(
     registrations.map((registration) => registration.name),
-    ids.map((id) => `owned adapter: ${id}`),
+    REPOSITORY_CONTRACT_BEHAVIORS.map((behavior) => `owned adapter: ${behavior.id}`),
   );
-  for (const registration of registrations) {
-    await registration.run();
-  }
-  assert.deepEqual(created, ids);
-  assert.deepEqual(exercised, ids);
-  assert.deepEqual(disposed, ids);
+  assert.equal(registrations.length, 13);
+
+  await registrations[0].run();
+  assert.deepEqual(created, ["explicit-workspace-isolation"]);
+  assert.deepEqual(observedScopes, [IDS.workspaceA, IDS.workspaceB]);
+  assert.deepEqual(disposed, ["explicit-workspace-isolation"]);
 });
 
-test("the repository contract registrar rejects missing and duplicate behavior coverage", () => {
-  const registrar = { test() {} };
-  const factory = { async create() {} };
-  const first = REPOSITORY_CONTRACT_BEHAVIORS[0];
-  const scenario = { behaviorId: first.id, async run() {} };
-
-  assert.throws(
-    () => registerRepositoryContractSuite(registrar, factory, []),
-    /repository contract suite is missing behaviors/,
-  );
-  assert.throws(
-    () => registerRepositoryContractSuite(registrar, factory, [scenario, scenario]),
-    /duplicate repository contract scenario/,
-  );
-});
-
-test("the repository contract harness always disposes a fresh failing adapter", async () => {
-  const registrations = [];
-  let disposed = 0;
-  const registrar = {
-    test(name, run) {
-      registrations.push({ name, run });
+test("every fixed canonical runner has wiring/dispatch coverage and is disposed", async () => {
+  // Full semantic execution begins when VF-1-02 supplies the first concrete repository adapter.
+  const disposed = [];
+  const registrations = registerSuite(
+    {
+      async create(behavior) {
+        return {
+          repositories: createWorkspaceRepositories(),
+          fixture: createWorkspaceIsolationFixture(),
+          async dispose() {
+            disposed.push(behavior.id);
+          },
+        };
+      },
     },
-  };
+    "binding proof",
+  );
+
+  await registrations[0].run();
+  for (const registration of registrations.slice(1)) {
+    await assert.rejects(
+      registration.run(),
+      (error) =>
+        error instanceof RepositoryContractAssertionError &&
+        /fixture behavior ID/.test(error.message),
+    );
+  }
+  assert.deepEqual(
+    disposed,
+    REPOSITORY_CONTRACT_BEHAVIORS.map((behavior) => behavior.id),
+  );
+});
+
+test("a leaking adapter fails the canonical assertion and is still disposed", async () => {
+  let disposed = 0;
   const factory = {
     async create() {
       return {
-        repositories: Object.freeze({ adapter: "owned-synthetic" }),
-        fixture: createFixture(),
+        repositories: Object.freeze({
+          projects: Object.freeze({
+            async resolveExactRevision() {
+              return { ok: true, value: createRevision(IDS.workspaceA) };
+            },
+          }),
+        }),
+        fixture: createWorkspaceIsolationFixture(),
         async dispose() {
           disposed += 1;
         },
       };
     },
   };
-  const behaviorId = REPOSITORY_CONTRACT_BEHAVIORS[0].id;
-  registerRepositoryContractSuite(
-    registrar,
-    factory,
-    [
-      {
-        behaviorId,
-        async run() {
-          throw new Error("owned scenario failure");
-        },
-      },
-    ],
-    { requireCompleteCoverage: false },
-  );
 
-  assert.equal(registrations.length, 1);
-  await assert.rejects(registrations[0].run(), /owned scenario failure/);
+  const registrations = registerSuite(factory, "leaking adapter");
+  await assert.rejects(
+    registrations[0].run(),
+    (error) =>
+      error instanceof RepositoryContractAssertionError &&
+      /cross-workspace revision lookup unexpectedly succeeded/.test(error.message),
+  );
   assert.equal(disposed, 1);
 });

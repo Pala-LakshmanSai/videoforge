@@ -7,6 +7,10 @@ export interface SqlQueryResult<Row extends Record<string, unknown>> {
 
 /** Query-library-neutral minimum used by migrations and future repositories. */
 export interface SqlExecutor {
+  /**
+   * Execute one trusted SQL batch without parameters. Migration adapters must support the exact
+   * committed multi-statement PostgreSQL file as one transactional batch.
+   */
   execute(sql: string): Promise<void>;
   query<Row extends Record<string, unknown>>(
     sql: string,

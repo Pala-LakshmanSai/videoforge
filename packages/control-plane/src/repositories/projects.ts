@@ -89,11 +89,12 @@ export interface VerifyProjectInputCommand extends IdempotentMutation {
 export type AvatarCompatibilitySnapshot =
   | {
       readonly state: "UNTESTED" | "RUNNING";
+      /** Only immutable terminal evidence is pinned; an in-flight assessment is not lineage. */
       readonly assessmentId: null;
       readonly evidenceHash: null;
     }
   | {
-      readonly state: "PASSED" | "FAILED" | "CANCELLED";
+      readonly state: "PASSED" | "FAILED" | "STALE" | "CANCELLED";
       readonly assessmentId: EntityId;
       readonly evidenceHash: Sha256;
     };
@@ -116,7 +117,7 @@ export interface ProjectRevisionSnapshot {
   readonly imageStyleId: EntityId;
   readonly imageStyleVersionId: EntityId;
   readonly styleProfileHash: Sha256;
-  readonly extraPromptKeywords: string;
+  readonly extraPromptKeywords: string | null;
   readonly applyExtraPromptKeywords: boolean;
   readonly generationMode: GenerationMode;
   readonly maximumCostMicroUsd: bigint;

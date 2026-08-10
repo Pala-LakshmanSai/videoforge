@@ -15,14 +15,15 @@ test("a fresh PGlite database applies the committed migration chain idempotently
   try {
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
+    const versions = sources.map((source) => source.version);
 
     const first = await applyMigrations(executor, sources);
-    assert.deepEqual(first.appliedVersions, [1]);
+    assert.deepEqual(first.appliedVersions, versions);
     assert.deepEqual(first.alreadyAppliedVersions, []);
 
     const second = await applyMigrations(executor, sources);
     assert.deepEqual(second.appliedVersions, []);
-    assert.deepEqual(second.alreadyAppliedVersions, [1]);
+    assert.deepEqual(second.alreadyAppliedVersions, versions);
 
     const inventory = await executor.query(
       `SELECT table_name

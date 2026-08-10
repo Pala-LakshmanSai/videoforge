@@ -95,6 +95,15 @@ test("workspace ownership rejects cross-tenant membership, preset, revision, ass
     await expectDatabaseError(
       () =>
         executor.query(
+          `INSERT INTO assets (id, workspace_id, project_revision_id, kind, state)
+           VALUES ($1, $2, $3, 'OTHER', 'UPLOADING')`,
+          [uuid(926), IDS.workspaceB, IDS.revisionA],
+        ),
+      "23514",
+    );
+    await expectDatabaseError(
+      () =>
+        executor.query(
           `INSERT INTO assets (id, workspace_id, source_attempt_id, kind, state)
            VALUES ($1, $2, $3, 'OTHER', 'UPLOADING')`,
           [uuid(925), IDS.workspaceB, IDS.attemptA1],

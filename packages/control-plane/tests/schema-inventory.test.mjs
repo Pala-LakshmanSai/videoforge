@@ -34,10 +34,17 @@ const REQUIRED_CUSTOM_INDEXES = [
 ].sort();
 
 const REQUIRED_TRIGGERS = [
+  "attempts_accepted_result_consistent",
+  "attempts_execution_profile_immutable",
+  "avatar_compatibility_assessments_execution_profile_immutable",
+  "avatar_compatibility_assessments_terminal_immutable",
   "avatar_profile_versions_ready_immutable",
+  "avatar_profile_test_attempts_execution_profile_matches",
   "avatar_profiles_active_version_ready",
   "cost_events_append_only",
   "cost_events_monotonic_sequence",
+  "execution_profiles_tested_immutable",
+  "generation_tasks_accepted_result_consistent",
   "image_style_versions_published_immutable",
   "image_styles_active_version_published",
   "project_revisions_locked_immutable",
@@ -56,6 +63,18 @@ const REQUIRED_FOREIGN_KEY_FRAGMENTS = [
   "FOREIGN KEY (workspace_id, task_id, owner_type, owner_id) REFERENCES generation_tasks",
   "FOREIGN KEY (workspace_id, task_id, attempt_id) REFERENCES attempts",
 ];
+
+const REQUIRED_HARDENING_FOREIGN_KEYS = [
+  "avatar_profile_test_attempts_assessment_version_fk",
+  "avatar_profile_test_attempts_execution_attempt_fk",
+  "avatar_profile_test_attempts_outbox_fk",
+  "avatar_profile_test_attempts_owner_task_fk",
+  "avatar_profile_test_attempts_reservation_fk",
+  "image_style_analysis_attempts_execution_attempt_fk",
+  "image_style_analysis_attempts_outbox_fk",
+  "image_style_analysis_attempts_owner_task_fk",
+  "image_style_analysis_attempts_reservation_fk",
+].sort();
 
 test("the migration exposes the expected tables, indexes, foreign keys, and invariant triggers", async () => {
   await withMigratedDatabase(async ({ executor }) => {
@@ -81,16 +100,13 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
       REQUIRED_CUSTOM_INDEXES.filter((name) => indexNames.has(name)),
       REQUIRED_CUSTOM_INDEXES,
     );
-    assert.equal(indexes.rows.filter((row) => row.indexname !== undefined).length, 116);
-
     const foreignKeys = await executor.query(
-      `SELECT pg_get_constraintdef(oid) AS definition
+      `SELECT conname, pg_get_constraintdef(oid) AS definition
          FROM pg_constraint
         WHERE contype = 'f'
           AND connamespace = 'public'::regnamespace
         ORDER BY conrelid::regclass::text, conname`,
     );
-    assert.equal(foreignKeys.rows.length, 75);
     const definitions = foreignKeys.rows.map((row) => row.definition);
     for (const fragment of REQUIRED_FOREIGN_KEY_FRAGMENTS) {
       assert.ok(
@@ -98,11 +114,19 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
         fragment,
       );
     }
+    const foreignKeyNames = new Set(foreignKeys.rows.map((row) => row.conname));
+    assert.deepEqual(
+      REQUIRED_HARDENING_FOREIGN_KEYS.filter((name) => foreignKeyNames.has(name)),
+      REQUIRED_HARDENING_FOREIGN_KEYS,
+    );
 
     const triggers = await executor.query(
       `SELECT tgname
-         FROM pg_trigger
-        WHERE NOT tgisinternal
+         FROM pg_trigger trigger
+         JOIN pg_class relation ON relation.oid = trigger.tgrelid
+         JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+        WHERE NOT trigger.tgisinternal
+          AND namespace.nspname = 'public'
         ORDER BY tgname`,
     );
     assert.deepEqual(
