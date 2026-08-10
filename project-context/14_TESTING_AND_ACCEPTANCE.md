@@ -18,6 +18,19 @@ Automated green tests do not replace visual/human acceptance for Mage, avatar re
 
 Technical validity auto-selects draft assets and allows an automatic render, but never asserts generated-pixel creative perfection. The project ends `READY_FOR_REVIEW`; `APPROVED` requires a recorded user action after final video/contact-sheet review. No per-image vision API is implied.
 
+## Completed Phase 0C local walking-slice baseline
+
+**PASS on 2026-08-10.** The provider-free owned-audio slice ran through real local whisper.cpp,
+deterministic scheduling, exact fixture-asset resolution, FFmpeg render, FFprobe, Range preview,
+approval binding, hash-verified download, and installed-Chrome playback/seek at `$0`. After the user
+rejected the first shaky zoom and requested a smoother v3 replacement, the exact
+`ffmpeg-render-v3` file was reviewed and accepted as “good enough.” Canonical evidence is
+`evidence/acceptance/VF-0C-08/2026-08-10-continuous-zoom-v3/`.
+
+This baseline proves the local contracts and media path, not production durability. Fixture/local
+state remains process-bounded; Postgres/R2/auth/restart recovery/provider transports are still
+Phase 1 or later acceptance work.
+
 ## Scheduler gate
 
 - Same inputs + seed + version produce identical `timeline-plan/v1`.
@@ -262,7 +275,7 @@ Pass: no duplicate accepted asset or corrupt state, any duplicate dispatch/charg
 
 Automated fixture/browser checks and the user's real-Chrome review must jointly verify the approved visual direction and the later compact 100%-zoom density refinement. Screenshots can support comparison but never replace interaction, console, request, focus, and responsive checks.
 
-Historical `GATE_UI_001`: **PASS**, user-approved 2026-08-09 at `evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit/`. The 2026-08-10 density/disclosure refinement is technically green and awaits final review.
+Historical `GATE_UI_001`: **PASS**, user-approved 2026-08-09 at `evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit/`. The user-directed 2026-08-10 density/disclosure refinement is technically green, remains the current implementation, and did not reopen the closed gate; later explicit visual feedback may still supersede it.
 
 - Direct titles, one dominant action, and a calm glance layer replace slogans, repeated rationale, and walls of success messages.
 - Root size is 15 px at every width; ordinary copy is 14–16 px, short secondary metadata may be 12–13 px, actions remain at least 44 px, and neither CSS `zoom` nor a shell transform simulates density.

@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: approved execution sequence; Phase 0C implementation is complete through a provider-free continuous-zoom v3 replacement, with final installed-Chrome review still required
+Status: approved execution sequence; Phase 0C is user-accepted and complete, and Phase 1 begins at VF-1-01
 Read when: starting a new implementation chat, selecting the next task, assigning parallel ownership, or integrating a completed task.
 
 ## Authority and purpose
@@ -18,14 +18,14 @@ The following is already implemented and must be preserved:
 - Phase 0A/0C contract foundation: sixteen canonical contracts, Ajv/Zod/Pydantic entry-point parity, generated structural TypeScript types, TypeScript RFC 8785 JCS, worker-job and orchestration-state boundaries, local media job/result boundaries, fixture profiles, CI, secret scan, and stable root commands.
 - Phase 0B fixture shell: approved visual direction with the later user-directed compact 100%-zoom density refinement, app-native in-flow controls, reusable Avatar/Image Style Hubs, access fixtures, semantic preflight, immutable pins, mutation concurrency, review approval binding, responsive layouts, and real-Chrome acceptance.
 - Phase 0C through VF-0C-07: owned local narration, real whisper.cpp timing, deterministic scheduling, exact accepted-asset resolution, real FFmpeg render/probe, bounded local API lifecycle, and truthful playback/download UI.
-- VF-0C-08 through replacement: real Chrome created the project, observed the pipeline, played and sought the first real MP4, approved and downloaded matching bytes, and manually replayed it. The first replay exposed excessive zoom shake; after reviewing the restrained v2 replacement, the user requested exactly one percentage point more endpoint zoom and even smoother motion. `ffmpeg-render-v3` and its hash-verified continuous-subpixel replacement are implemented, and only human review of that replacement remains.
+- VF-0C-08: real Chrome created the project, observed the pipeline, played and sought the real MP4, approved and downloaded matching bytes, and manually replayed it. The first replay exposed excessive zoom shake; after reviewing the restrained v2 replacement, the user requested exactly one percentage point more endpoint zoom and even smoother motion. The final `ffmpeg-render-v3` hash-verified continuous-subpixel replacement was reviewed in installed Chrome and accepted as “good enough” on 2026-08-10, closing Phase 0C.
 - `GATE_UI_001` is closed. Preserve the compact 100%-zoom density, scale-only dock, and established visual system unless the user explicitly asks or a later feature exposes a verified regression. The 2026-08-10 density change was such an explicit request and supersedes the earlier 18 px/52 px/94 px baseline.
 - Fixture mode remains the default, makes no provider call, and authorizes `$0` external spend.
 - The stable development URL remains `http://localhost:4173`; visible work must reuse it and retain the approved routes.
 
 Known unfinished boundaries are not hidden:
 
-- The real local pipeline passes automated API/media checks and real-Chrome create/play/seek/approve/download. Phase 0C remains open for installed-Chrome playback and seek of the `ffmpeg-render-v3` replacement, including explicit confirmation that its 2.5–3.5% centered continuous cubic zoom has the requested strength and smoothness.
+- The real local pipeline and its accepted `ffmpeg-render-v3` output are bounded to local fixture assets and process-local orchestration. Durable database/object storage, restart recovery, authentication, and provider transports remain Phase 1 or later work.
 - Python intentionally does not derive RFC 8785 hashes. TypeScript is the sole JCS authority; Python validates schemas and exact input/media bytes and treats canonical document hashes as opaque.
 - Local transcription and render workers exist. Provider-backed prompt, image, and avatar generation workers do not; all corresponding gates remain open.
 - Fixture state is bounded in memory. Production authentication, Postgres, R2, Workflows, callbacks, and provider transports do not exist.
@@ -231,9 +231,9 @@ percentage point more endpoint zoom and even smoother motion. Commit
 `7d73c4e5396323a540227afcb301ead12480c407` implements `ffmpeg-render-v3` with a centered
 2.5–3.5% quintic zoom and continuous floating-point source-corner sampling with cubic
 interpolation. The provider-free gate produced SHA-256
-`7acc789f9626e23bc12540a452d52822671ba85caf37bf4148e0a6def665e276`. The gate remains
-open for installed-Chrome playback, seek, and motion-quality confirmation of
-`/Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v3.mp4`. Evidence:
+`7acc789f9626e23bc12540a452d52822671ba85caf37bf4148e0a6def665e276`. The user played and
+reviewed `/Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v3.mp4` in installed
+Chrome and accepted the final motion as “good enough” on 2026-08-10. Evidence:
 `evidence/acceptance/VF-0C-08/2026-08-10-continuous-zoom-v3`.
 
 Serial checkpoint:
@@ -245,7 +245,8 @@ Serial checkpoint:
 5. Verify every image—including split-right images—has a subtle, centered, visibly smooth zoom with no shake; compositions are legal; cuts are hard; voiceover is original; frames cover the duration exactly.
 6. Record command, commit, tool/model versions, input/output hashes, console/network result, and evidence path.
 
-Phase 0C closes only after that human playback checkpoint. Automated tests alone do not close it.
+Phase 0C closed on 2026-08-10 after that human playback checkpoint. Automated tests alone did not
+close it.
 
 ## Phase 0D — early capped viability track
 
@@ -274,8 +275,20 @@ Begin after Phase 0C acceptance. Local/test implementations stay available; prod
 
 ### Serial foundation
 
-- `VF-1-01`: lock relational schema and additive migrations for users/workspaces/memberships, presets, projects/revisions, tasks/attempts, assets, events, cost reservations, workflow instances, and outbox. Add repository contract tests before an ORM/query implementation.
+- `VF-1-01`: implement `tasks/VF-1-01.md` exactly. Create
+  `@videoforge/control-plane` with query-library-neutral repository contracts, one committed
+  additive PostgreSQL foundation migration covering identity, presets, projects/editorial records,
+  assets, tasks/attempts, workflow instances/events, cost reservations, execution profiles, and
+  outbox, plus a reusable PGlite migration/constraint/repository contract suite. Add provider-free
+  `pnpm db:check` to `pnpm verify`. No Neon connection, ORM/query implementation, auth, R2,
+  Cloudflare binding, route, or UI change belongs in this task. `DEC_DB_001` is normative.
 - `VF-1-02`: make the Hono app runtime-neutral, then add Cloudflare Vite/Worker bindings and local emulator configuration. Provisioning/deployment remains a separately authorized external mutation.
+
+`VF-1-01` is a serial shared-foundation task, but it may use two bounded child lanes after the
+relational vocabulary/migration API is committed: one owns only repository interfaces and one owns
+only constraint/contract tests. The integration owner alone edits migrations, package metadata,
+lockfiles, root scripts, and context. Its green handoff must select `VF-1-02`; no parallel Phase 1
+adapter starts against uncommitted schema semantics.
 
 ### Parallel adapters after migrations commit
 
@@ -394,7 +407,10 @@ Do not ask the user to choose routine filenames, module layouts, test libraries,
 
 ## Commit, rollback, and handoff discipline
 
-- Start each task from the exact base commit in `CURRENT_STATE.yaml`; record unrelated dirty files before editing.
+- Start each task from the clean current HEAD and verify that it descends from the evidence/base
+  commit in `CURRENT_STATE.yaml`. Context-only handoff commits may legitimately be newer; never
+  reset, checkout, or recreate the older base over them. Record and preserve any unrelated dirty
+  files before editing.
 - One commit is mechanical extraction or one behavior—not both.
 - Never hide a regression with skipped tests, broad retries, fabricated fixture state, or looser validation.
 - Preserve the last green commit. Roll back a failed task by reverting its small commit; never use destructive worktree reset against user changes.
@@ -418,6 +434,10 @@ VideoForge is not complete when code compiles or providers return artifacts. Com
 
 The user can start the next implementation chat with:
 
-> UI is approved. Work in the VideoForge repository and implement the next task from `CURRENT_STATE.yaml` according to `project-context/21_IMPLEMENTATION_EXECUTION_PLAN.md`. Continue autonomously through that task's green handoff. Keep providers off and spend at `$0` unless the current task contains my explicit capped authorization.
+> Continue VideoForge from the fresh project context. Implement the exact `CURRENT_STATE.yaml.recommended_next_task` and its task brief autonomously through a green committed handoff. Follow `project-context/21_IMPLEMENTATION_EXECUTION_PLAN.md`, preserve completed work, use safe disjoint agents only where the plan allows, and keep providers off with `$0` external spend unless I explicitly authorize a capped provider task.
 
-The new chat must read `AGENTS.md`, `00_START_HERE.md`, `MANIFEST.yaml`, and `CURRENT_STATE.yaml`, load the `implementation_sequence` profile, run `git status --short`, `pnpm doctor`, and `pnpm dev:status`, then execute the exact recommended task rather than reopening UI or architecture decisions.
+The new chat must read `AGENTS.md`, `00_START_HERE.md`, `MANIFEST.yaml`, and
+`CURRENT_STATE.yaml`, load the recommended task's named read profile and task brief, run
+`git status --short`, `pnpm doctor`, and `pnpm dev:status`, then execute the exact recommended task
+rather than reopening UI, renderer, or architecture decisions. If the recorded server is stopped,
+start the one stable loopback fixture server with `pnpm dev`; never choose another port.

@@ -1,6 +1,6 @@
 # UI and UX specification
 
-Status: compact 100%-zoom refinement implemented and technically verified pending user review; historical `GATE_UI_001` closed 2026-08-09
+Status: compact 100%-zoom refinement implemented and technically verified as the current baseline; historical `GATE_UI_001` closed 2026-08-09
 Read when: designing or implementing any user-visible flow.
 
 ## Design objective

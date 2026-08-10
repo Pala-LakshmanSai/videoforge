@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T03:06:02Z"
+updated_at: "2026-08-10T03:20:03Z"
 
 phase: implementation_in_progress
-implementation_authorized_in_current_task: true
-current_milestone: phase_0c_local_walking_slice_acceptance
-current_task: VF-0C-08
+implementation_authorized_in_current_task: false
+current_milestone: phase_1_durable_control_plane_foundation
+current_task: VF-1-01
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -14,11 +14,13 @@ repository:
   remote: null
   published: false
   branch: main
-  base_commit: "1ac161dbf6b8fbc08568dc0456a5c6f6ee8d8992"
+  base_commit: "16423e7c5a344061bad04167cd21c680feacb721"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
-  verified_implementation_commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
-  last_good_commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
+  verified_implementation_commit: "16423e7c5a344061bad04167cd21c680feacb721"
+  last_good_commit: "16423e7c5a344061bad04167cd21c680feacb721"
+  working_tree_expected: clean
+  start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
     ajv: "8.20.0"
     note: "Security override of the original 8.17.1 pin: 8.17.1 is affected by a moderate ReDoS advisory."
@@ -32,11 +34,11 @@ live_development:
     kind: null
     pid: null
     lifetime: null
-  server_state: running
-  dev_server_pid: 5850
-  owner_task_id: VF-0C-08
-  health_checked_at: "2026-08-10T03:06:02Z"
-  health_commit: "57eddf1"
+  server_state: stopped
+  dev_server_pid: null
+  owner_task_id: null
+  health_checked_at: null
+  health_commit: null
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
@@ -44,18 +46,25 @@ live_development:
   authorized_spend_usd: 0
   last_user_checkpoint:
     result: accepted
+    task_id: VF-0C-08
+    commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
+    route: "file:///Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v3.mp4"
+    scenario: local_owned_short_slice
+    checked_at: "2026-08-10T03:06:39Z"
+    evidence: "evidence/acceptance/VF-0C-08/2026-08-10-continuous-zoom-v3"
+    user_decision: "good enough"
+    feedback_refs:
+      - DEC_OUTPUT_003
+  historical_ui_checkpoint:
+    result: accepted
     gate: GATE_UI_001
     commit: "5ee979e9a9c17195f7478f4b49ce7ac4c0efb996"
     route: "http://localhost:4173/projects/project_fixture_001?fixture=happy_generating"
-    scenario: happy_generating
     checked_at: "2026-08-09T14:06:18Z"
     evidence: "evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit"
     user_decision: "ok this is good enough"
-    feedback_refs:
-      - DEC_UX_002
-      - DEC_UX_003
   latest_user_directed_ui_change:
-    status: implemented_and_technically_verified_pending_user_review
+    status: technically_verified_current_baseline
     task_id: VF-UI-DENSITY-002
     commit: "cd67b2bd82dea432a901dabe9afc4c958f3bb80a"
     route: "http://localhost:4173/settings?fixture=happy_generating"
@@ -66,41 +75,72 @@ live_development:
       - DEC_UX_002
       - DEC_UX_004
 
+completed_milestones:
+  - id: phase_0a_contract_tooling_foundation
+    status: complete
+    summary: "Sixteen canonical contracts, cross-language validation, TypeScript JCS authority, fixture/config/worker packages, CI definitions, secret scan, and stable root commands."
+  - id: phase_0b_fixture_chrome_shell
+    status: complete
+    summary: "Accepted fixture UI with reusable Avatar/Image Style Hubs, compact 100%-zoom density, visible surfaces/disclosure spacing, scale-only dock, responsive routes, and truthful fixture mode."
+  - id: phase_0c_local_walking_slice
+    status: complete
+    summary: "Owned narration through real local ASR, deterministic scheduler, exact fixture assets, FFmpeg v3 render/probe, API lifecycle, Chrome play/seek/approve/download, and accepted smooth zoom at $0."
+
 active_ownership:
-  - task_id: VF-0C-08
-    owner: root_verification_lane
+  - task_id: VF-1-01
+    owner: next_chat_integration_owner
     paths:
-      - project-context/**
+      - packages/control-plane/**
+      - package.json
+      - pnpm-lock.yaml
+      - turbo.json
+      - project-context/tasks/VF-1-01.md
+      - project-context/CURRENT_STATE.yaml
+    note: "The integration owner alone edits migrations, package metadata, lockfiles, root scripts, and context; optional child lanes are bounded by the task brief."
 
 recommended_next_task:
-  task_id: VF-0C-08
-  milestone: phase_0c_local_walking_slice_acceptance
-  read_profile: implementation_sequence
-  goal: "Open the v3 replacement MP4 in installed Chrome, play and seek it, and confirm that its one-percentage-point-stronger continuous subpixel zoom has the desired strength and smoothness before advancing to VF-1-01."
+  task_id: VF-1-01
+  milestone: phase_1_durable_control_plane_foundation
+  read_profile: phase1_foundation
+  task_brief: tasks/VF-1-01.md
+  goal: "Create @videoforge/control-plane with committed additive PostgreSQL migrations, query-library-neutral repository contracts, and provider-free PGlite migration/constraint/adapter contract tests."
   dependencies:
-    - "GATE_UI_001 closed"
-    - "provider-free local implementation and historical Chrome workflow at commit eca15bdd539a273c7e59d110729eea54c69685b8"
-    - "user replayed the first downloaded MP4 successfully but rejected its excessive, visibly shaky zoom"
-    - "user requested exactly one percentage point more endpoint zoom and even smoother motion after reviewing v2"
-    - "ffmpeg-render-v3 implementation, truthful split/full fixture policy, and provider-free local-slice verification at commit 7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
+    - "Phase 0C accepted and closed at evidence/acceptance/VF-0C-08/2026-08-10-continuous-zoom-v3"
+    - "DEC_DB_001, DEC_HOSTING_001, DEC_QUEUE_001, and DEC_CONTRACT_001 locked"
+    - "Clean current main HEAD descending from verified implementation commit 16423e7c5a344061bad04167cd21c680feacb721"
+    - "No uncommitted ownership outside the exact task brief"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
-  live_route: "file:///Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v3.mp4"
-  fixture_scenario: local_owned_short_slice
+  live_route: "http://localhost:4173/?fixture=happy_generating"
+  fixture_scenario: happy_generating
+  expected_evidence: "evidence/acceptance/VF-1-01/<UTC-date>-durable-relational-foundation"
   required_handoff:
-    - "manual confirmation that the v3 replacement plays and seeks in Chrome"
-    - "manual confirmation that the continuous subpixel image motion now has the desired smoothness and zoom strength"
-    - "update CURRENT_STATE to Phase 1 only after that confirmation"
+    - "Committed @videoforge/control-plane package and first additive migration"
+    - "Reusable repository contract suite and PGlite constraint/migration proof"
+    - "Provider-free pnpm db:check integrated into pnpm verify"
+    - "No API/UI behavior change, Neon connection, cloud mutation, credential use, or external spend"
+    - "CURRENT_STATE advanced to VF-1-02 with exact commit, table/constraint/test counts, commands, and evidence"
+  safe_parallelism:
+    maximum_lanes_including_integration: 3
+    integration_owner: "migrations, package metadata, lockfile, root scripts, context"
+    optional_repository_lane: "packages/control-plane/src/repositories/** only after vocabulary commit"
+    optional_test_lane: "packages/control-plane/tests/** only against committed APIs"
+  prohibited_in_task:
+    - "Neon project/branch/network access or DATABASE_URL use"
+    - "Production ORM/query adapter, Better Auth, R2, Cloudflare binding, or deployment"
+    - "Provider credentials/calls, model downloads, public tunnel, or LAN listener"
+    - "Resetting to the older base commit or modifying accepted UI/render behavior"
 
 last_green:
   commands:
     - "TURBO_FORCE=true pnpm verify"
     - "pnpm test:local-slice"
     - "Real Chrome 100% inspection of Create, Settings disclosures, Queue, Progress, Avatar Hub, and Usage"
+    - "Installed-Chrome playback/seek of /Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v3.mp4"
     - "shasum -a 256 /Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v3.mp4"
-    - "ffprobe /Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v3.mp4"
-  checked_at: "2026-08-10T03:06:02Z"
+  checked_at: "2026-08-10T03:06:39Z"
   result: pass
+  verified_commit: "16423e7c5a344061bad04167cd21c680feacb721"
   evidence: "evidence/acceptance/VF-0C-08/2026-08-10-continuous-zoom-v3"
   counts:
     web_server_component_tests: 132
@@ -117,18 +157,10 @@ last_green:
     playwright_chrome_journeys_passed: 34
     playwright_chrome_journeys_intentionally_skipped: 8
   notes:
-    - "The forced verify executed every Turbo task with zero cache hits and passed formatting, JavaScript/Python linting, typechecking, all listed suites, contract synchronization, context validation, secret scanning, production build, route-tree stability, and the branded-Chrome matrix."
-    - "At real Chrome 100%, Create and the route surfaces now use the compact density requested from the user's 80% reference without CSS zoom or a transformed shell. Settings disclosures measure 12 px from summary to first card and 12 px between cards. Final user visual approval remains pending."
-    - "Chrome covered 42 registered journeys: 34 applicable journeys passed and 8 duplicate compact-project viewport journeys were intentionally skipped. The route matrix explicitly covers 1920, 1440, 1280, 1024, 820, 680, 430, and 390 CSS-pixel widths."
-    - "A preset-gallery timing assertion now waits for decoded pixels instead of sampling immediately after dialog mount; genuinely broken images still fail with zero natural width."
-    - "The user manually replayed the first downloaded file in installed Chrome; playback worked, but the user rejected its 4–8% image zoom as shaky and too strong. That output is superseded for visual acceptance."
-    - "The v2 replacement reduced the zoom, then the user explicitly requested exactly one percentage point more endpoint zoom and even smoother motion. It is superseded for final visual acceptance but remains reproducible."
-    - "ffmpeg-render-v3 uses a 2.5–3.5% centered quintic zoom with per-frame floating source-corner coordinates and cubic interpolation. Historical v1/v2 manifests remain reproducible, while canonical TypeScript/Python validators and the worker reject mixed render/zoom versions."
-    - "Fixture revision 4 now declares the exact v3 composition policy: 1.03 for its typical full-image scenes and 1.025 for split-right. Validation and a negative regression test reject cross-composition drift; TS/Python version-suffix checks use the final hyphen token."
-    - "The provider-free API-level local-slice gate passed through real ASR, scheduling, asset resolution, FFmpeg render, FFprobe, Range preview, approval binding, and exact download at $0 external spend."
-    - "Attempts 012 and 013 deterministically produced the same 1,957,674-byte 1920x1080p30 H.264/AAC replacement: SHA-256 7acc789f9626e23bc12540a452d52822671ba85caf37bf4148e0a6def665e276, duration 37,167 ms, 1,115 frames."
-    - "Start/middle/end contact frames for full and split image compositions were inspected and show restrained centered motion; installed-Chrome playback and seek of the v3 replacement remain the human acceptance checkpoint."
-    - "The loopback fixture server is healthy, fixture-only, provider-off, and authorized for $0 external spend, but health commit 57eddf1 is behind current HEAD; restart it before using live health as exact-commit proof."
+    - "The forced verify executed every Turbo task with zero cache hits and passed format, JavaScript/Python lint, typecheck, unit/contract/worker suites, context/schema validation, secret scan, build/route-tree stability, and branded Chrome."
+    - "At Chrome 100%, the compact UI uses a 15 px root without CSS zoom/shell transform; Settings disclosures measure 12 px to the first card and between cards."
+    - "Attempts 012 and 013 produced the same 1,957,674-byte 1920x1080p30 H.264/AAC v3 replacement: SHA-256 7acc789f9626e23bc12540a452d52822671ba85caf37bf4148e0a6def665e276, duration 37,167 ms, 1,115 frames."
+    - "The user accepted that exact v3 replacement in installed Chrome. Historical v1/v2 manifests remain replayable but are not the active profile."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -142,20 +174,23 @@ blocking_gates_for_production:
   - GATE_RUNPOD_001
   - GATE_COST_001
 
+known_incomplete_boundaries:
+  - "No durable Postgres database, R2 object store, production authentication, Cloudflare Workflow, restart recovery, or provider transport exists yet."
+  - "No production GPU/execution profile is selectable; all provider/model/cost gates remain open."
+  - "The repository has no Git remote and is not published; GitHub Actions are locally inspected/configured but have no external run or off-machine backup proof."
+  - "The accepted local pipeline uses owned fixture/local assets and process-local orchestration; it is not a production persistence claim."
+
 next_tasks:
-  - "VF-0C-08: manually open videoforge-local-owned-slice-smooth-v3.mp4 in Chrome, play, seek, and confirm the v3 zoom has the desired smoothness and strength"
-  - "VF-1-01: after the manual replay confirmation, lock the additive relational schema and repository contracts"
-  - "VF-0D: capped provider viability preparation may overlap after local contracts lock; real calls require one explicit authorization envelope"
-  - "Phase 2 onward: timing, prompt/image, avatar, custom-style, render, fallback, fault, and production waves exactly as ordered in the execution plan"
+  - "VF-1-01 serial foundation: PostgreSQL migrations + repository contracts + PGlite checks"
+  - "VF-1-02 serial foundation: runtime-neutral Hono + local Cloudflare emulator/bindings, no deployment"
+  - "VF-1-03/VF-1-04/VF-1-05 parallel after shared foundations: Auth, R2 artifact storage, Postgres/outbox/workflow orchestration"
+  - "VF-1-06/VF-1-07/VF-1-08 serial convergence: mock ambiguity/recovery, account isolation/large upload/avatar reuse, export/restore smoke"
+  - "VF-0D provider viability may overlap only under its separately recorded exact authorization envelope; no such envelope is active"
+  - "Phase 2 onward follows 21_IMPLEMENTATION_EXECUTION_PLAN.md and remains gate/dependency ordered"
 
 notes:
-  - "This is a replace-in-place snapshot, not a progress log."
-  - "The user accepted the Phase 0B visual direction on 2026-08-09. GATE_UI_001 remains closed; the explicit 2026-08-10 request supersedes its older 18 px/52 px density with the compact 100%-zoom contract in DEC_UX_002. Final review of that density refinement is pending."
-  - "Application-wide surface separation, 12 px generic disclosure spacing, and the scale-only dock are implemented and technically verified; DEC_UX_004 records the normative spacing and boundary treatment."
-  - "21_IMPLEMENTATION_EXECUTION_PLAN.md owns remaining sequencing, task IDs, safe parallel ownership, integration order, checkpoints, and authorization boundaries."
-  - "The Phase 0A fixture-contract foundation is implemented. Complex non-Create Zod/Pydantic validators are intentionally schema-backed entry points rather than independent hand models."
-  - "DEC_CONTRACT_001 is locked: TypeScript is the sole JCS authority; Python validates canonical schemas and exact byte hashes while treating canonical JSON hashes as opaque."
-  - "A bounded provider-free real local media slice exists and the API-level harness plus historical real-Chrome create/play/seek/approve/download path are green. VF-0C-08 remains open for human review of the hash-verified v3 replacement after the user requested one percentage point more endpoint zoom and continuous smoother motion."
-  - "Durable database/object storage, production authentication, and provider transport do not exist yet. Fixture and bounded local state are not production persistence claims."
-  - "The user authorized future RunPod use and credential retrieval from their signed-in Chrome profile, but no exact provider-task spend envelope is active. No key has been fetched, no endpoint selected, no RunPod resource changed, and the next task authorizes $0/provider-off work only."
-  - "No public tunnel or LAN listener is active. The development server binds only to loopback and localhost remains the authoritative URL."
+  - "This is a replace-in-place handoff snapshot, not a progress diary."
+  - "A new chat should execute only recommended_next_task and its one read profile/task brief, then advance this snapshot after a green commit."
+  - "TypeScript is the sole RFC 8785/JCS authority; Python validates canonical schemas/exact bytes and treats canonical document hashes as opaque."
+  - "The accepted output grammar remains three compositions, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
+  - "No public tunnel or LAN listener is active. The next chat may start the stable loopback fixture server at http://localhost:4173."

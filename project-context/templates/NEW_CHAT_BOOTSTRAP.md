@@ -1,13 +1,24 @@
 # New-chat bootstrap prompt
 
-Copy, fill the task, and send in a new coding chat:
+For the current handoff, the user only needs to send this one line in a new coding chat:
 
-If the user simply says to begin development without a narrower task, use `CURRENT_STATE.yaml.recommended_next_task` exactly and follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`; do not reopen the accepted UI/architecture decisions or skip dependencies.
+```text
+Continue VideoForge from the fresh project context and implement the exact recommended next task autonomously through a green committed handoff. Preserve completed work, follow the recorded dependency/agent ownership plan, and keep providers off with $0 external spend unless I explicitly authorize a capped provider task.
+```
+
+The agent must derive the task ID, profile, brief, base/evidence commit, ownership, route, commands,
+and budget from `CURRENT_STATE.yaml`; the user should not have to paste those fields again.
+
+Use the longer form below only when deliberately overriding the recommended task:
+
+If the user simply says to begin/continue development without a narrower task, use
+`CURRENT_STATE.yaml.recommended_next_task` and its task brief exactly; do not reopen accepted
+UI/renderer/architecture decisions or skip dependencies.
 
 ```text
 Work in /Users/lakshmansai/Documents/videoforge.
 
-Before acting, read AGENTS.md, project-context/00_START_HERE.md, project-context/MANIFEST.yaml, and project-context/CURRENT_STATE.yaml. Then read only one MANIFEST read profile relevant to this task. Follow the documented authority precedence; treat approved decisions as fixed and open gates as unverified. Do not redo broad model/architecture research unless this task explicitly revisits a decision.
+Before acting, read AGENTS.md, project-context/00_START_HERE.md, project-context/MANIFEST.yaml, and project-context/CURRENT_STATE.yaml. Then read the recommended task's one MANIFEST profile and exact task brief. Follow the documented authority precedence; treat approved decisions as fixed and open gates as unverified. Do not redo broad model/architecture research unless this task explicitly revisits a decision.
 
 Task ID/milestone: <ID and dependency>
 Task: <one concrete outcome>

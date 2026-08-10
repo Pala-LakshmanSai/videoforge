@@ -1,6 +1,6 @@
 # Source index
 
-Status: evidence map; time-sensitive sources checked 2026-08-08  
+Status: evidence map; model/provider sources checked 2026-08-08; Phase 1 database sources checked 2026-08-10
 Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 
 ## Official model/provider sources
@@ -36,6 +36,9 @@ Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 - Cloudflare Workflows Free limits and three-day completed-instance retention: [developers.cloudflare.com/workflows/reference/limits](https://developers.cloudflare.com/workflows/reference/limits/)
 - Cloudflare R2 pricing: [developers.cloudflare.com/r2/pricing](https://developers.cloudflare.com/r2/pricing/)
 - Neon pricing: [neon.com/pricing](https://neon.com/pricing)
+- Neon serverless driver and Cloudflare/HTTP/WebSocket transaction guidance: [neon.com/docs/serverless/serverless-driver](https://neon.com/docs/serverless/serverless-driver)
+- PGlite official description and unit/CI/local-development use: [pglite.dev/docs/about](https://pglite.dev/docs/about)
+- Drizzle's official migration-strategy comparison, consulted but not selected for `VF-1-01`: [orm.drizzle.team/docs/migrations](https://orm.drizzle.team/docs/migrations)
 - Vercel pricing and Hobby commercial limitation: [vercel.com/pricing](https://vercel.com/pricing)
 
 ## Reference videos

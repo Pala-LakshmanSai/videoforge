@@ -61,6 +61,7 @@ Do not paste the same large explanation into multiple files. One file owns detai
 | Model/provider | `08_MODELS_AND_PROVIDERS.md` | manifest, costs, plan, tests, decisions |
 | RunPod/queue | `09_RUNPOD_AND_QUEUE_OPERATIONS.md` | architecture, contracts, tests, cost |
 | Schema/API | `10_DATA_AND_API_CONTRACTS.md` | architecture, tests, implementation plan |
+| Database migration/repository boundary | `10_DATA_AND_API_CONTRACTS.md` | architecture, engineering practices, execution plan, current task brief |
 | Golden machine fixture | relevant file under `evidence/fixtures/` | owning schema, data/API contract, tests |
 | Price/benchmark | `11_COST_SPEED_BUDGET.md` | decisions/gates, source index |
 | Mutable implementation phase/handoff | `CURRENT_STATE.yaml` | root loaders, playbook; replace snapshot rather than append logs |

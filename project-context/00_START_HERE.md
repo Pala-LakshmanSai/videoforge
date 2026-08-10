@@ -10,6 +10,19 @@ This folder is the durable project brain for new AI chats. It records what is ap
 
 VideoForge is an invite-only web app for 5–10 teammates that accepts a title, final voiceover, reusable Avatar Profile selected from the Avatar Hub, and reusable Image Style, then automatically produces a 1920×1080 YouTube video using talking-avatar clips, highly relevant style-matched AI images with slow zooms, and a clean 50/50 avatar-left/image-right layout.
 
+## Current handoff
+
+Phase 0A contracts/tooling, the accepted Phase 0B fixture shell, and the accepted provider-free
+Phase 0C local ASR → scheduler → FFmpeg → Chrome/download slice are complete. The current
+implementation is still bounded to fixture/process-local state; it does not claim durable database
+recovery, production authentication/storage, or provider transport.
+
+The exact next task is `VF-1-01` in `tasks/VF-1-01.md`: add the provider-free durable relational
+foundation and repository contracts. `CURRENT_STATE.yaml` is the replace-in-place handoff and
+`21_IMPLEMENTATION_EXECUTION_PLAN.md` owns every later dependency, safe parallel lane, gate, and
+authorization boundary. Do not redo the accepted UI, renderer, local slice, or broad architecture
+research.
+
 ## Approved MVP
 
 Allowed output compositions are only:
@@ -121,7 +134,7 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 
 ## First implementation rule
 
-Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve the accepted fixture shell, close the one remaining manual downloaded-file replay checkpoint for the local short-video slice, establish minimal durable orchestration, and run only explicitly authorized capped viability spikes. Do not wait until the end to integrate.
+Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve the accepted fixture shell and user-accepted local short-video slice, begin the durable control-plane foundation at `VF-1-01`, and run only explicitly authorized capped viability spikes. Do not wait until the end to integrate.
 
 ## Context navigation
 
@@ -148,5 +161,6 @@ Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_
 - Official and local evidence: `17_SOURCE_INDEX.md`
 - Live-development protocol: `19_IMPLEMENTATION_PLAYBOOK.md`
 - Exact remaining task order and safe parallelism: `21_IMPLEMENTATION_EXECUTION_PLAN.md`
+- Exact implementation task briefs: `tasks/README.md`; the current file is selected by `CURRENT_STATE.yaml`
 - Gate status/evidence paths: `GATES.yaml`
 - Reproducible context/schema validation: `scripts/validate-context.sh` and `scripts/validate-schemas.sh`

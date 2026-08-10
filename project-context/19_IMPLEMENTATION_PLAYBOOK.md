@@ -34,6 +34,11 @@ Implementation starts only when the user authorizes it.
 6. Open the real app in the user's Chrome and keep it available during user-visible work.
 7. Update `CURRENT_STATE.yaml` with branch/base commit, URL/server state, active task owner, last green commands, and one exact `recommended_next_task` ID/profile/budget for the next chat.
 
+When `recommended_next_task` names a file under `project-context/tasks/`, that brief is the
+implementation contract for the next chat. Read its one named profile, do not broaden it into the
+next phase, and update the same snapshot to the following task only after a committed green
+handoff.
+
 If a command cannot yet exist, the current milestone owns creating it. Do not invent a different ad-hoc start command in every chat.
 
 ## Repository/deployable shape
@@ -152,4 +157,8 @@ A screenshot is evidence of appearance, not proof that a workflow works. Pair it
 
 ## Handoff rule
 
-`CURRENT_STATE.yaml` is the only mutable snapshot. Git history and gate evidence are the durable log. Never append chat diaries to the mandatory context. A new chat reads the root loader, start file, manifest, current state, and only one task profile.
+`CURRENT_STATE.yaml` is the only mutable snapshot. Git history and gate evidence are the durable
+log. Never append chat diaries to the mandatory context. A new chat reads the root loader, start
+file, manifest, current state, the recommended task's one profile, and its task brief. A recorded
+base/evidence commit is an ancestor check, not permission to reset away newer clean context-only
+handoff commits.

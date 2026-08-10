@@ -39,6 +39,27 @@ Read when: creating schemas, routes, worker payloads, callbacks, or the canonica
 
 Use UUID/ULID identifiers, UTC timestamps, explicit workspace IDs, and soft archive rather than destructive project deletion. Large JSON/media belongs in R2; searchable state and checksums belong in Postgres.
 
+## Durable database implementation boundary
+
+`DEC_DB_001` locks the Phase 1 foundation without prematurely coupling domain logic to one query
+library. Committed additive PostgreSQL SQL migrations and query-library-neutral TypeScript
+repository contracts are authoritative. A pinned PGlite development dependency applies the same
+migrations in fast, network-free unit/CI tests; it is not the production database and passing its
+suite is not a Neon deployment claim. The Neon runtime driver and production repository
+implementation belong to `VF-1-02`/`VF-1-05` after these contracts are green.
+
+The first migration uses native UUID internal IDs, UTC `timestamptz`, integer frames/milliseconds,
+nonnegative integer micro-USD amounts, explicit workspace scope, additive checked state
+vocabularies, foreign keys, partial unique indexes, and soft archive/terminal history. Canonical
+documents remain immutable JSONB or object-storage bytes with contract name/version and distinct
+canonical-document/binary SHA-256 columns; SQL never performs JCS. Migration verification must not
+connect to Neon, require Docker, use a schema-push command, or read a `DATABASE_URL`.
+
+Repository methods are domain operations, not generic unscoped CRUD. They must require workspace
+scope and expose atomic units for revision creation, preset publication, task/attempt/cost/outbox
+reservation, execution claim/reconciliation/cancellation, append-only events, and one accepted
+result. `project-context/tasks/VF-1-01.md` owns the exact implementation and contract-test brief.
+
 ## Project input and revision configuration
 
 Validate the client request against `evidence/create_project_request.schema.json` (`create-project-request/v2`). Before scheduling or external dispatch, trusted code resolves checksums/defaults/versions into immutable `project-revision-config/v2` using `evidence/project_revision_config.schema.json`. The resolved revision—not form state—is the authority for title, voiceover, exact Avatar Profile/version/hash/runtime source, selected style version/hash, extra-keyword text/toggle, generation mode/cap, per-lane execution-profile IDs, seed, and compiler versions.

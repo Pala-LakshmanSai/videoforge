@@ -1,6 +1,6 @@
 # Development plan
 
-Status: implementation underway; Phase 0A, user-approved Phase 0B, and Phase 0C implementation are complete; VF-0C-08 passed through exact download and awaits one manual downloaded-file replay in Chrome
+Status: implementation underway; Phase 0A, user-approved Phase 0B, and user-accepted Phase 0C are complete; Phase 1 begins at VF-1-01
 Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
 
 ## Delivery strategy
@@ -74,9 +74,9 @@ Exit: user approves the core visual direction and can play through success/failu
 
 Current (2026-08-10): the provider-free ASR, scheduler, render/probe, API, UI, and automated
 acceptance are implemented. Real Chrome completed create, pipeline, playback, seek, approval, and
-hash-verified download. State remains process-local; durable recovery belongs to Phase 1. Phase 0C
-awaits only manual Chrome review of the downloaded v2 replacement because controlled navigation
-cannot open `file://`.
+hash-verified download. The user then reviewed the final `ffmpeg-render-v3` replacement in installed
+Chrome and accepted its continuous 2.5–3.5% centered zoom as “good enough.” Phase 0C is closed.
+State remains process-local; durable recovery begins in Phase 1 at `VF-1-01`.
 
 - Use 30–120 seconds of owned/synthetic English audio.
 - Use one owned synthetic ready Avatar Profile fixture, then run local `whisper.cpp base.en`, deterministic phrase/timeline scheduling, `timeline-plan/v1`, fixture image/avatar slots, `resolved-render-manifest/v1`, real FFmpeg zoom/crops/hard cuts/audio, and technical QA.
@@ -117,6 +117,17 @@ Exit: relevant gates pass or the user receives concrete evidence/tradeoffs befor
 
 ## Phase 1: durable control-plane walking slice
 
+- Begin with `VF-1-01` from `tasks/VF-1-01.md`: committed additive PostgreSQL SQL migrations,
+  query-library-neutral repository contracts, and provider-free PGlite migration/constraint tests
+  in a new `@videoforge/control-plane` package. This locks durable semantics without Docker, a live
+  Neon connection, credentials, or a premature ORM/runtime-driver choice.
+- `VF-1-02` then makes Hono runtime-neutral and adds local Cloudflare Worker/Vite emulator bindings;
+  deployment remains separately authorized.
+- Only after those shared foundations commit may Auth (`VF-1-03`), R2 artifact storage
+  (`VF-1-04`), and Postgres/outbox/workflow orchestration (`VF-1-05`) run as disjoint parallel
+  adapters under one integration owner.
+- Serial convergence remains `VF-1-06` mock dispatch/reconciliation, `VF-1-07` two-account
+  isolation/large-upload/avatar reuse, and `VF-1-08` metadata export/restore smoke.
 - One Cloudflare Vite Worker deployment with React static assets, Hono `/api/*`, Workflows/R2 bindings; Neon migrations/test DB.
 - Better Auth Google OAuth plus admin allowlist/memberships; no email provider.
 - R2 signed multipart transfers, checksums, project/revision CRUD, archive/access control.

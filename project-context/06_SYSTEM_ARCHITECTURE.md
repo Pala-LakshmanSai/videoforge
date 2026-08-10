@@ -17,6 +17,7 @@ Use one small serverless control plane and isolated scale-to-zero media lanes. P
 | Web + API deployment | One Cloudflare Worker: Vite/React static assets + same-origin Hono `/api/*` | One deployable/origin, fast HMR, no CORS/config drift, direct bindings |
 | Durable orchestration | Cloudflare Workflows | Durable waits/retries without an always-on server |
 | Database | Neon Free Postgres | Durable relational truth, scale-to-zero, enough for 5–10 users' metadata |
+| Database migrations/tests | Committed additive PostgreSQL SQL + query-library-neutral repository contracts; PGlite for local/CI tests only | Real Postgres constraint behavior without Docker, a live database, secrets, or premature runtime-driver coupling |
 | Auth | Better Auth + Google OAuth + admin email allowlist/membership table | Google sign-in without public signup or a paid email provider |
 | Artifact storage | Private Cloudflare R2 | Signed transfers, 10 GB-month free, low storage price, free direct egress |
 | Production prompt LLM | Runware DeepSeek V4 Flash 0731 | Locked user decision; strict JSON and very low token cost |
@@ -30,6 +31,12 @@ Use one small serverless control plane and isolated scale-to-zero media lanes. P
 Current free-tier facts and prices must be rechecked at deployment. As of 2026-08-08, Cloudflare Workers Free allows 100,000 requests/day, Workflows allows 3,000 steps/day, R2 includes 10 GB-month, and Neon Free includes a small scale-to-zero database. Cloudflare has announced Workflows billing while retaining a free allowance; the promise is therefore **$0 required while measured usage remains inside current allowances**, not “free forever.” Use tens of Workflow steps per project—not one per frame/image—and alert before 70/90% of an allowance.
 
 Vercel is not the zero-cost production assumption. Its Hobby plan is $0 but officially personal/non-commercial. It remains an optional preview host or production choice if the user later accepts Vercel Pro.
+
+`DEC_DB_001` makes the migration boundary explicit: Phase 1 starts with committed additive SQL and
+repository contracts, and `pnpm verify` applies them only to an ephemeral PGlite database. PGlite is
+test/development infrastructure, not recovery truth or a production adapter. Neon connectivity,
+the Cloudflare-compatible driver, and live migrations are added only in the later authorized
+runtime/integration tasks; ordinary verification never reads `DATABASE_URL` or contacts Neon.
 
 ## Logical topology
 

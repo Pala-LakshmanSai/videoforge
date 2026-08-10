@@ -1,8 +1,8 @@
 {
   "schema_version": "videoforge.acceptance-evidence/v1",
   "task_id": "VF-0C-08",
-  "status": "replacement_render_ready_for_user_review",
-  "recorded_at": "2026-08-10T03:00:16Z",
+  "status": "accepted",
+  "recorded_at": "2026-08-10T03:06:39Z",
   "trigger": {
     "review_surface": "installed Chrome file URL",
     "user_requested_more_smoothness": true,
@@ -10,7 +10,8 @@
     "superseded_output_sha256": "sha256:2d7b0fa2ff77e90eda20d34c6a24d63d2a83d7dea40da07d0edf54159ccae002"
   },
   "implementation": {
-    "commit": "7d73c4e5396323a540227afcb301ead12480c407",
+    "commit": "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864",
+    "renderer_commit": "7d73c4e5396323a540227afcb301ead12480c407",
     "render_profile": "ffmpeg-render-v3",
     "full_image_end_scales": [1.025, 1.03, 1.035],
     "split_right_end_scale": 1.025,
@@ -26,11 +27,11 @@
     "provider_calls_authorized": false,
     "external_spend_usd": 0,
     "attempts": {
-      "asr": "attempt_asr_local_012",
-      "render": "attempt_render_local_012"
+      "asr": "attempt_asr_local_013",
+      "render": "attempt_render_local_013"
     },
-    "raw_evidence_path": "artifacts/local-media/runs/revision_local_owned_001/attempt_render_local_012/acceptance-evidence.json",
-    "raw_evidence_sha256": "sha256:b098fc7e389dc57a10052bb7f1cfb501bd186c21f5066222b763a1feb488efec",
+    "raw_evidence_path": "artifacts/local-media/runs/revision_local_owned_001/attempt_render_local_013/acceptance-evidence.json",
+    "raw_evidence_sha256": "sha256:a412a35ab5f91b1c62cd46f7240af3151eb837905917fe1d95c1e94f3d9318fa",
     "resolved_render_manifest_sha256": "sha256:5fbfac224f0a3f97273daa5aae4a06ed92bcffe4c166047670c7ffc272da0541",
     "filtergraph_sha256": "sha256:9d50c866eee64792d8c79b388ec3529128634b3dea1f1b3397ebb92cbf7dd88d",
     "technical_probe": {
@@ -53,6 +54,8 @@
     "filename": "videoforge-local-owned-slice-smooth-v3.mp4",
     "sha256": "sha256:7acc789f9626e23bc12540a452d52822671ba85caf37bf4148e0a6def665e276",
     "bytes": 1957674,
-    "human_review": "pending"
+    "human_review": "accepted",
+    "accepted_at": "2026-08-10T03:06:39Z",
+    "user_decision": "good enough"
   }
 }

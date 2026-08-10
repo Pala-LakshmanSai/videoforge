@@ -8,7 +8,9 @@ The handoff is deliberately split into focused files so a new chat can load only
 
 ## Local development
 
-The first application slice is a fixture-backed production-console shell. It makes no provider calls and authorizes no external spend.
+The accepted fixture production-console shell and provider-free local ASR/scheduler/FFmpeg walking
+slice are implemented. The next milestone adds durable control-plane contracts while fixture mode
+remains the default; normal development makes no provider calls and authorizes no external spend.
 
 ```bash
 pnpm install --frozen-lockfile
@@ -18,7 +20,10 @@ pnpm dev
 
 The strict hot-reload URL is [http://localhost:4173](http://localhost:4173). VideoForge will reuse only a healthy fixture-mode server on that port and will fail instead of silently choosing a different port.
 
-For fixture review from a phone on the same trusted Wi-Fi, `pnpm dev:status` also reports a temporary `lanUrl`. The LAN route exists only while the local development server and Mac are running; it is not a public deployment.
+Loopback is the default. For explicit fixture-only review from a phone on the same trusted Wi-Fi,
+start `pnpm dev:lan`; `pnpm dev:status` reports a temporary `lanUrl` only for that deliberately
+LAN-bound process. Local-media mode never permits LAN exposure, and no LAN route is a public
+deployment.
 
 Useful commands:
 

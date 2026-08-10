@@ -19,7 +19,7 @@ derived_indexes:
   - MANIFEST.yaml
   - 00_START_HERE.md
 conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
-target_profile_word_budget: 9250
+target_profile_word_budget: 10000
 
 read_profiles:
   product:
@@ -131,6 +131,14 @@ read_profiles:
     - 13_ENGINEERING_BEST_PRACTICES.md
   implementation_sequence:
     - 21_IMPLEMENTATION_EXECUTION_PLAN.md
+  phase1_foundation:
+    - GLOSSARY.md
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 13_ENGINEERING_BEST_PRACTICES.md
+    - tasks/VF-1-01.md
+    - evidence/orchestration_state.schema.json
+    - evidence/worker_job_envelope.schema.json
   context_update:
     - 15_DECISIONS_AND_OPEN_GATES.md
     - 16_CONTEXT_MAINTENANCE.md
@@ -183,6 +191,7 @@ approved_decisions:
   DEC_RENDER_001: direct_ffmpeg_no_remotion_or_hyperframes
   DEC_RENDER_002: no_remotion_or_hyperframes_in_mvp
   DEC_HOSTING_001: zero_required_subscription_control_plane
+  DEC_DB_001: additive_postgres_sql_repository_contracts_pglite_tests_only
   DEC_QUEUE_001: postgres_authoritative_runpod_execution_transport
   DEC_RUNPOD_001: scale_to_zero_api_only_endpoints_first
   DEC_UX_001: fixture_first_live_chrome_hot_reload

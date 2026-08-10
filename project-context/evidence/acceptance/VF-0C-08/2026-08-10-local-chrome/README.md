@@ -1,7 +1,9 @@
 # VF-0C-08 local Chrome checkpoint
 
-Status: all automated and live-Chrome checks passed through approval and exact download; the gate
-remains open only for one manual replay of the downloaded file in Chrome.
+Status: superseded historical checkpoint. All automated and live-Chrome checks passed through
+approval and exact download at this stage, but the gate was still awaiting one manual replay. That
+replay and the later zoom refinements are now complete; the canonical accepted closure is
+`../2026-08-10-continuous-zoom-v3/`.
 
 ## Verified outcome
 
@@ -40,7 +42,9 @@ The downloaded MP4 passed an independent FFprobe read as H.264 1920x1080 30 fps 
 SHA-256, so the downloaded bytes are cryptographically identical to the bytes played and sought in
 Chrome before download.
 
-## Remaining manual checkpoint
+## Historical remaining manual checkpoint
+
+The following checkpoint was accurate when this evidence was captured; it is no longer open.
 
 The installed-Chrome control policy blocks direct navigation to `file://` URLs. No alternate browser
 surface or policy workaround was attempted. This prevents the agent from honestly claiming that the

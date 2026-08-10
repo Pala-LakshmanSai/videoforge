@@ -9,6 +9,7 @@
 - Decision IDs:
 - Open gate IDs:
 - Base commit/branch:
+- Current clean HEAD/ancestor check:
 
 ## Goal
 
@@ -31,6 +32,7 @@ Name the `MANIFEST.yaml` profile and any one extra file genuinely needed.
 - Expected files or module boundary.
 - Other agent ownership/collision notes.
 - Explicit shared files that must be serialized.
+- Maximum lanes and integration order when parallel work is allowed.
 
 ## Acceptance
 
@@ -42,6 +44,7 @@ Name the `MANIFEST.yaml` profile and any one extra file genuinely needed.
 - Live URL/route and fixture scenario.
 - Expected `pnpm doctor`, `pnpm dev:status`, and `pnpm verify` outcome.
 - Expected commit(s) and evidence path.
+- Exact next `CURRENT_STATE.yaml.recommended_next_task` after success.
 
 ## Safety and budget
 
