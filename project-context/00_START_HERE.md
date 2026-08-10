@@ -23,8 +23,13 @@ padded-span WAV materialization; evidence is committed at `99db821`. VF-2-03 imp
 `6359bd2` adds atomic canonical timeline persistence, byte-verifying resolution, silent
 phrase-boundary coverage, deterministic replay/restore, and all required property fixtures;
 evidence is committed at `9b333e2`. The final gate passed 131/131 control-plane tests, 39/39
-pipeline tests, 148/148 web tests, 56/56 worker tests, 36/36 installed-Chrome journeys, zero skips,
-no provider call, and `$0` spend.
+pipeline tests, 148/148 web tests, 56/56 worker tests, and 36/36 installed-Chrome journeys with zero
+skips. VF-2-04 implementation commit `f5e33ac` now persists and inspects exact canonical local
+transcript and timeline objects, exposes phrase/layout/Avatar-span and invalidation truth in the
+preserved UI, and closes the Cloudflare adapter and dock transition findings; evidence is committed
+at `3bb0186`. Its final gate passed 131/131 control-plane tests, 39/39 pipeline tests, 161/161 web
+tests, 56/56 worker tests, and 38/38 installed-Chrome journeys with zero skips, no provider call, and
+`$0` spend.
 The isolated-staging checkpoint is awaiting separate external authority; no remote, cloud/account,
 credential, deployment, provider, or paid mutation occurred.
 
@@ -33,8 +38,8 @@ is complete at implementation commit `36bf1ae`, with additive migration, constra
 executor, repository-contract, and adversarial regression hardening recorded under
 `evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening`. The user approved the
 accelerated completion sequence on 2026-08-10: exact briefs and standing provider-free authority
-now extend through `VF-2-05`. `CURRENT_STATE.yaml` selects dependency-ready `VF-2-04` with the
-`phase2_timeline_ui` profile; work continues task-by-task and refreshes the snapshot after every green
+now extend through `VF-2-05`. `CURRENT_STATE.yaml` selects dependency-ready `VF-2-05` with the
+`phase2_convergence` profile; work continues task-by-task and refreshes the snapshot after every green
 committed handoff. This authority does not activate the planned provider budget or permit a remote,
 credential, cloud/account mutation, deployment, provider call, model download, or spend.
 `CURRENT_STATE.yaml` remains the one replace-in-place handoff and ownership source. Do not redo the
