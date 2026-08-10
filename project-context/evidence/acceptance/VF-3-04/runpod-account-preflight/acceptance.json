@@ -1,0 +1,42 @@
+{
+  "task_id": "VF-3-04",
+  "result": "PASS",
+  "checked_at": "2026-08-10T17:46:11Z",
+  "context_commit": "3e810be6fb0b6bde2ca04e6e275ff04dfe403c7f",
+  "provider_calls": 0,
+  "external_spend_usd": 0,
+  "starting_balance_usd": 10,
+  "ending_balance_usd": 10,
+  "current_spend_rate_usd_per_hour": 0,
+  "api": {
+    "graphql_identity_status": 200,
+    "rest_openapi_status": 200,
+    "pods_status": 200,
+    "endpoints_status": 200,
+    "network_volumes_status": 200,
+    "pod_billing_status": 200,
+    "endpoint_billing_status": 200
+  },
+  "inventory": {
+    "pods": 0,
+    "running_pods": 0,
+    "serverless_endpoints": 0,
+    "active_workers": 0,
+    "network_volumes": 0
+  },
+  "credential": {
+    "location": "macOS Keychain service com.videoforge.runpod.lifecycle",
+    "account": "videoforge",
+    "value_recorded": false
+  },
+  "checks": {
+    "context_validation": "PASS",
+    "secret_scan": "PASS",
+    "diff_check": "PASS"
+  },
+  "gate_effect": {
+    "GATE_RUNPOD_001": "remains_open",
+    "GATE_GPU_001": "remains_open",
+    "GATE_COST_001": "remains_open"
+  }
+}
