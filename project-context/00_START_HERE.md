@@ -17,14 +17,14 @@ Phase 0C local ASR → scheduler → FFmpeg → Chrome/download slice are comple
 implementation is still bounded to fixture/process-local state; it does not claim durable database
 recovery, production authentication/storage, or provider transport.
 
-`VF-1-01` remains the committed relational baseline at implementation commit `6d0b66f`. A
-post-handoff adversarial audit found high-priority migration, constraint, and repository-contract
-gaps, and the user explicitly authorized the provider-free corrective task `VF-1-01A` on
-2026-08-10. Its exact brief and ownership are recorded in `tasks/VF-1-01A.md`; preserve the
-completed baseline and add corrective work rather than rewriting history. `VF-1-02` remains next
-only after this hardening task is committed and green, and it is still blocked because no exact
-`tasks/VF-1-02.md` brief exists. `CURRENT_STATE.yaml` is the replace-in-place handoff. Do not redo
-the accepted UI, renderer, local slice, or broad architecture research.
+`VF-1-01` remains the preserved relational baseline. The provider-free corrective task `VF-1-01A`
+is complete at implementation commit `36bf1ae`, with additive migration, constraint, migration
+executor, repository-contract, and adversarial regression hardening recorded under
+`evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening`. `VF-1-02` is dependency-ready
+and next in sequence, but it remains blocked because no exact `tasks/VF-1-02.md` brief or local
+authority envelope exists. `CURRENT_STATE.yaml` is the replace-in-place handoff. Do not infer
+runtime/adapter scope, deploy anything, or redo the accepted UI, renderer, local slice, or broad
+architecture research.
 
 ## Approved MVP
 
@@ -137,7 +137,7 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 
 ## First implementation rule
 
-Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve the accepted fixture shell, user-accepted local short-video slice, and completed `VF-1-01` relational foundation. Do not begin `VF-1-02` until its exact brief is present and selected, and run only explicitly authorized capped viability spikes. Do not wait until the end to integrate.
+Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve the accepted fixture shell, user-accepted local short-video slice, and completed `VF-1-01`/`VF-1-01A` relational foundation. Do not begin `VF-1-02` until its exact brief is present, selected, and authorized, and run only explicitly authorized capped viability spikes. Do not wait until the end to integrate.
 
 ## Context navigation
 

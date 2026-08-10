@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T05:45:02Z"
+updated_at: "2026-08-10T06:45:24Z"
 
 phase: implementation_in_progress
-implementation_authorized_in_current_task: true
+implementation_authorized_in_current_task: false
 current_milestone: phase_1_durable_control_plane_foundation
-current_task: VF-1-01A
+current_task: VF-1-02
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -17,8 +17,8 @@ repository:
   base_commit: "bea48f7124609be27d1ab57261b2c2f4269625ea"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
-  verified_implementation_commit: "6d0b66fac9fd44537bbfccd789f2023f3bcaf064"
-  last_good_commit: "ae9d8929d97bab2eb4cd9fd8f16fc8b5d724958a"
+  verified_implementation_commit: "36bf1ae0b66524f8d1c158b301eaa77ebea04a92"
+  last_good_commit: "e2e0ea2e1f0e613578b08457380d08984aedac22"
   working_tree_expected: clean
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
@@ -93,69 +93,47 @@ completed_tasks:
     implementation_commit: "6d0b66fac9fd44537bbfccd789f2023f3bcaf064"
     evidence_commit: "ae9d8929d97bab2eb4cd9fd8f16fc8b5d724958a"
     evidence: "evidence/acceptance/VF-1-01/2026-08-10-durable-relational-foundation"
+  - task_id: VF-1-01A
+    status: complete
+    summary: "Committed additive relational audit hardening, exact migration-chain verification, coherent execution invariants, fixed canonical repository scenarios, and adversarial provider-free regression proof."
+    implementation_commit: "36bf1ae0b66524f8d1c158b301eaa77ebea04a92"
+    evidence_commit: "e2e0ea2e1f0e613578b08457380d08984aedac22"
+    evidence: "evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening"
 
-active_ownership:
-  - task_id: VF-1-01A
-    owner: integration_database_lane
-    paths:
-      - packages/control-plane/migrations/**
-      - packages/control-plane/src/database/**
-      - packages/control-plane/package.json
-      - package.json
-      - pnpm-lock.yaml
-      - turbo.json
-      - project-context/**
-    note: "Integration owner alone edits migrations, metadata, lockfiles, shared context/evidence, and commits."
-  - task_id: VF-1-01A
-    owner: repository_contract_lane
-    paths:
-      - packages/control-plane/src/repositories/**
-      - packages/control-plane/tests/repository-contract-suite.test.mjs
-    note: "Disjoint repository contracts/canonical scenarios only; no migration, metadata, lockfile, or context edits."
-  - task_id: VF-1-01A
-    owner: constraint_verification_lane
-    paths:
-      - packages/control-plane/tests/**
-    excludes:
-      - packages/control-plane/tests/repository-contract-suite.test.mjs
-    note: "Disjoint database/executor regression tests only; no production code, migration, metadata, lockfile, or context edits."
+active_ownership: []
 
 recommended_next_task:
-  task_id: VF-1-01A
+  task_id: VF-1-02
   milestone: phase_1_durable_control_plane_foundation
-  status: authorized_in_progress
+  status: blocked_missing_exact_task_brief
   dependency_status: ready
-  authorization_status: explicitly_authorized_by_user
-  read_profile: phase1_foundation_hardening
-  task_brief: tasks/VF-1-01A.md
-  goal: "Fix every high-priority VF-1-01 audit finding through additive, provider-free relational and repository hardening."
+  authorization_status: blocked_missing_exact_task_brief
+  read_profile: live_development
+  task_brief: null
+  goal: "Planned only: make the Hono app runtime-neutral and add local Cloudflare Vite/Worker emulator bindings without provisioning or deployment."
   dependencies:
-    - "VF-1-01 committed baseline and evidence remain preserved"
-    - "Adversarial audit completed against clean ff97357603103d6d7d9e5b5616f818743811ce07"
-    - "User explicitly authorized all high-priority corrective findings on 2026-08-10"
+    - "VF-1-01A is committed and green at 36bf1ae0b66524f8d1c158b301eaa77ebea04a92 with evidence at evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening"
+    - "The serial execution plan identifies VF-1-02 next"
+    - "Blocking: tasks/VF-1-02.md does not exist, so exact scope, files, ownership, acceptance, and local authority are not recorded"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   live_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
-  expected_evidence: "evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening"
+  expected_evidence: null
   required_handoff:
-    - "Additive corrective migration and hardened migration executor"
-    - "Canonical adapter-independent repository behavior scenarios"
-    - "Coherent cancellation, billed preset work, accepted-result, and concurrent event invariants"
-    - "Corrected acceptance evidence and exact full-green commit"
+    - "Author and approve an exact tasks/VF-1-02.md brief before implementation starts"
+    - "Add the brief to an explicit manifest read profile and record its path/ownership/acceptance envelope here"
     - "Keep provisioning, deployment, cloud mutations, credentials, providers, and external spend unauthorized"
   safe_parallelism:
-    maximum_lanes_including_integration: 3
-    status: enabled_for_recorded_disjoint_paths
-    integration_owner: "migrations, database executor, metadata, context, evidence, commits"
-    repository_lane: "src/repositories/** plus repository-contract-suite.test.mjs"
-    constraint_lane: "tests/** except repository-contract-suite.test.mjs"
+    maximum_lanes_including_integration: 1
+    status: disabled_until_exact_task_brief
+    note: "No VF-1-02 ownership plan is recorded; do not spawn implementation lanes."
   prohibited_in_task:
+    - "Any VF-1-02 implementation, dependency addition, or file ownership before the exact brief exists"
     - "Cloudflare provisioning/deployment or any other cloud mutation"
     - "Neon project/branch/network access or DATABASE_URL use"
     - "Provider credentials/calls, model downloads, public tunnel, LAN listener, or external spend"
     - "Modifying the accepted UI/render behavior without separately recorded authority"
-    - "Rewriting the committed 0001 migration or discarding completed VF-1-01 history"
 
 last_green:
   commands:
@@ -169,17 +147,20 @@ last_green:
     - "pnpm secret:scan"
     - "pnpm audit:dependencies"
     - "git diff --check"
-  checked_at: "2026-08-10T04:41:12Z"
+  checked_at: "2026-08-10T06:42:00Z"
   result: pass
-  verified_commit: "6d0b66fac9fd44537bbfccd789f2023f3bcaf064"
-  evidence: "evidence/acceptance/VF-1-01/2026-08-10-durable-relational-foundation"
+  verified_commit: "36bf1ae0b66524f8d1c158b301eaa77ebea04a92"
+  evidence: "evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening"
   counts:
-    control_plane_pglite_tests: 16
+    control_plane_pglite_tests: 49
     repository_contract_behaviors: 13
+    repository_contract_runner_bindings: 13
+    repository_contract_semantic_fixture_bodies: 1
     relational_public_tables: 30
-    relational_indexes: 116
-    relational_constraints: 663
-    relational_invariant_triggers: 10
+    relational_indexes: 120
+    relational_constraints_including_constraint_triggers: 699
+    relational_constraint_triggers: 2
+    relational_invariant_triggers: 17
     web_server_component_tests: 132
     dock_motion_unit_tests: 7
     typescript_contract_jcs_tests: 51
@@ -195,8 +176,9 @@ last_green:
     playwright_chrome_journeys_intentionally_skipped: 8
   notes:
     - "The forced verify executed every Turbo task with zero cache hits and passed format, JavaScript/Python lint, typecheck, unit/contract/worker suites, database checks, context/schema validation, secret scan, build/route-tree stability, and installed-Chrome Playwright."
-    - "No intentional output-free task emitted Turbo's no-output warning after the metadata correction."
-    - "The migration suite proved 30 tables, 116 indexes, 663 constraints, and 10 invariant triggers; all 16 database tests and 13 reusable repository behaviors passed."
+    - "The final migration inventory is 30 tables, 120 indexes, 699 catalog constraints including 2 constraint triggers, and 17 non-internal invariant triggers; all 49 control-plane tests passed."
+    - "All 13 fixed repository runners have wiring/disposal proof; workspace isolation has concrete fixture-adapter semantic proof, while full semantic execution of the other 12 canonical bodies truthfully waits for VF-1-02's first concrete adapter."
+    - "The itemized repository re-audit closed findings 1-7 with no new high-priority finding."
     - "The explicit high-severity dependency audit reported no known vulnerabilities."
     - "All task data was owned/synthetic in local PGlite; provider calls remained disabled and external spend was $0."
 
@@ -214,6 +196,7 @@ blocking_gates_for_production:
 
 known_incomplete_boundaries:
   - "The committed PostgreSQL schema and repository contracts are a durable foundation only; no production Neon driver/adapter, database connection, R2 object store, production authentication, Cloudflare Workflow, restart recovery, or provider transport exists yet."
+  - "PGlite proves local invariants and the locking SQL is present, but real multi-session PostgreSQL contention is not claimed. Full semantic execution of 12 canonical repository bodies requires VF-1-02's first concrete adapter."
   - "No production GPU/execution profile is selectable; all provider/model/cost gates remain open."
   - "The repository has no Git remote and is not published; GitHub Actions are locally inspected/configured but have no external run or off-machine backup proof."
   - "The accepted local pipeline uses owned fixture/local assets and process-local orchestration; it is not a production persistence claim."
@@ -221,8 +204,8 @@ known_incomplete_boundaries:
 known_non_blocking_devex: []
 
 next_tasks:
-  - "VF-1-01A active: close the adversarial-audit migration, constraint, repository-suite, and execution-contract findings at $0"
-  - "VF-1-02 planned serial foundation afterward: runtime-neutral Hono + local Cloudflare emulator/bindings, blocked until an exact task brief is authored and selected; no deployment"
+  - "VF-1-01A complete: the adversarial-audit migration, constraint, repository-suite, and execution-contract findings are committed and green at $0"
+  - "VF-1-02 planned serial foundation next: runtime-neutral Hono + local Cloudflare emulator/bindings, blocked until an exact task brief is authored, selected, and authorized; no deployment"
   - "VF-1-03/VF-1-04/VF-1-05 parallel after shared foundations: Auth, R2 artifact storage, Postgres/outbox/workflow orchestration"
   - "VF-1-06/VF-1-07/VF-1-08 serial convergence: mock ambiguity/recovery, account isolation/large upload/avatar reuse, export/restore smoke"
   - "VF-0D provider viability may overlap only under its separately recorded exact authorization envelope; no such envelope is active"
@@ -234,4 +217,4 @@ notes:
   - "TypeScript is the sole RFC 8785/JCS authority; Python validates canonical schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output grammar remains three compositions, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
   - "No public tunnel or LAN listener is active. The next chat may start the stable loopback fixture server at http://localhost:4173."
-  - "The completed VF-1-01 baseline is preserved, but its acceptance claim is under corrective review until VF-1-01A replaces the overstated behavior/concurrency evidence."
+  - "The completed VF-1-01 baseline is preserved; VF-1-01A supersedes its overstated behavior/concurrency evidence with exact, bounded acceptance claims."
