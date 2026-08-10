@@ -12,6 +12,12 @@
       "name": "relational_audit_hardening",
       "filename": "0002_relational_audit_hardening.sql",
       "sha256": "sha256:b6824f935b40ff89902ab1f20007e2f7e71dcbf61be59cabf0968aa0fb639ca5"
+    },
+    {
+      "version": 3,
+      "name": "callback_replay_ledger",
+      "filename": "0003_callback_replay_ledger.sql",
+      "sha256": "sha256:1ae7732b67544469cbefe2422bd21ed70f5263ad33f4a6e65d1fbbb69cf7a1ae"
     }
   ]
 }
