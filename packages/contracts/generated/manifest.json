@@ -47,14 +47,14 @@
     {
       "source": "project-context/evidence/resolved_render_manifest.schema.json",
       "destination": "generated/schemas/resolved_render_manifest.schema.json",
-      "bytes": 7271,
-      "sha256": "sha256:de1bf9a3cefe2337fa5bf33e723aa8c38d1f181571d9ef0fefa9def3c379aaaa"
+      "bytes": 7344,
+      "sha256": "sha256:711290a2de0986b51d39f242e61388a3c1a06327b3b29877d236061c8095798e"
     },
     {
       "source": "project-context/evidence/production_manifest.schema.json",
       "destination": "generated/schemas/production_manifest.schema.json",
-      "bytes": 8395,
-      "sha256": "sha256:f01429d6a7454f7202ad14c8eb0fc90a066210a8b1d49eb6626fd9f482e99708"
+      "bytes": 8416,
+      "sha256": "sha256:8001cf541fb518e4fe82c603ce2a81259a3ef92a0472f5e02a136d263bf5194a"
     },
     {
       "source": "project-context/evidence/worker_job_envelope.schema.json",
@@ -162,19 +162,19 @@
       "source": "project-context/evidence/fixtures/resolved_render_manifest.valid.json",
       "destination": "generated/fixtures/resolved_render_manifest.valid.json",
       "bytes": 2693,
-      "sha256": "sha256:d37e835940d98aef5f3341c4ed68789e955565aedb8281cd1b46e98c11706ae9"
+      "sha256": "sha256:b9661a73adf8fd5b91f1142a9d200ea59d00ded8d800ac966c0054bf30b17115"
     },
     {
       "source": "project-context/evidence/fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json",
       "destination": "generated/fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json",
       "bytes": 1398,
-      "sha256": "sha256:aff92da1d73fa76be855a69f0b9fea3b5fc8b270684c91d41adbe7626153a7d2"
+      "sha256": "sha256:b949525b45f3d855f9c789e7ea100da0da362f2ce295813af1e2116970eb92f1"
     },
     {
       "source": "project-context/evidence/fixtures/production_manifest.valid.json",
       "destination": "generated/fixtures/production_manifest.valid.json",
       "bytes": 4506,
-      "sha256": "sha256:680a1a5c5205360ddd6a7819af27d2486dc21100b4a65ab47ccfab16d0d98e99"
+      "sha256": "sha256:0edbdaa4fd3b111c2a9b903c10b07160c20a0b5e8709d510ff6a09eba97942aa"
     },
     {
       "source": "project-context/evidence/fixtures/worker_job_envelope.valid.json",

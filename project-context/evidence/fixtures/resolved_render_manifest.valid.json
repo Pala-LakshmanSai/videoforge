@@ -3,7 +3,7 @@
   "project_revision_id": "revision_fixture_001",
   "revision_config_hash": "sha256:89bc38845a41ed0070eca069ac19e36ccab65688e0997d2b791f2200e4c00586",
   "timeline_plan_hash": "sha256:b04fcef46387c7a9e3951e7e04b8c3ed6284b65e1c0cdb34a04018cb14ec3f2c",
-  "render_profile_version": "ffmpeg-render-v1",
+  "render_profile_version": "ffmpeg-render-v2",
   "voiceover": {
     "asset_id": "asset_voiceover_example",
     "sha256": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
@@ -52,7 +52,7 @@
       },
       "render": {
         "image_scale": "1920:1080",
-        "zoom_profile": "image-full-zoom-v1"
+        "zoom_profile": "image-full-zoom-v2"
       }
     },
     {
@@ -76,7 +76,7 @@
         "avatar_scale": "960:1080",
         "avatar_fps": "30:round=near",
         "right_image_scale": "960:1080",
-        "right_image_zoom_profile": "split-right-zoom-v1"
+        "right_image_zoom_profile": "split-right-zoom-v2"
       }
     }
   ]

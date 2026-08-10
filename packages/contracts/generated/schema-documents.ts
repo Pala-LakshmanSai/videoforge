@@ -1995,9 +1995,10 @@ export const canonicalSchemaDocuments = {
         "pattern": "^sha256:[0-9a-f]{64}$"
       },
       "render_profile_version": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 160
+        "enum": [
+          "ffmpeg-render-v1",
+          "ffmpeg-render-v2"
+        ]
       },
       "voiceover": {
         "type": "object",
@@ -2262,7 +2263,10 @@ export const canonicalSchemaDocuments = {
                 "const": "1920:1080"
               },
               "zoom_profile": {
-                "const": "image-full-zoom-v1"
+                "enum": [
+                  "image-full-zoom-v1",
+                  "image-full-zoom-v2"
+                ]
               }
             }
           }
@@ -2346,7 +2350,10 @@ export const canonicalSchemaDocuments = {
                 "const": "960:1080"
               },
               "right_image_zoom_profile": {
-                "const": "split-right-zoom-v1"
+                "enum": [
+                  "split-right-zoom-v1",
+                  "split-right-zoom-v2"
+                ]
               }
             },
             "allOf": [
@@ -2847,7 +2854,10 @@ export const canonicalSchemaDocuments = {
             "minimum": 1
           },
           "output_profile_version": {
-            "const": "ffmpeg-render-v1"
+            "enum": [
+              "ffmpeg-render-v1",
+              "ffmpeg-render-v2"
+            ]
           }
         }
       }

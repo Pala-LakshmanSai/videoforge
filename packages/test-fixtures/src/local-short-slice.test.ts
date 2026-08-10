@@ -96,6 +96,13 @@ describe("owned local short-slice source", () => {
       LOCAL_SHORT_SLICE_MANIFEST.expectedOutput.imageMotionPolicy,
       "SLOW_SMOOTH_ZOOM_EVERY_IMAGE",
     );
+    assert.equal(LOCAL_SHORT_SLICE_MANIFEST.provenance.revision, 2);
+    assert.equal(
+      LOCAL_SHORT_SLICE_MANIFEST.segments
+        .filter((segment) => segment.imageZoom !== null)
+        .every((segment) => segment.imageZoom?.endScale === 1.02),
+      true,
+    );
     assert.equal(
       Object.values(LOCAL_SHORT_SLICE_MANIFEST.expectedOutput.prohibited).every(
         (enabled) => enabled === false,

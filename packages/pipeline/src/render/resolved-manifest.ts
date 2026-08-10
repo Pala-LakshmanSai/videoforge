@@ -20,7 +20,7 @@ import {
 } from "../errors.js";
 import type { RenderPlanRequest, RenderPlanner } from "./ports.js";
 
-export const SUPPORTED_RENDER_PROFILE_VERSION = "ffmpeg-render-v1";
+export const SUPPORTED_RENDER_PROFILE_VERSION = "ffmpeg-render-v2";
 
 const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 
@@ -420,7 +420,7 @@ function resolvedSegment(
       ...base,
       timeline_composition: "IMAGE_FULL",
       accepted_assets: { image: acceptedAsset(image) },
-      render: { image_scale: "1920:1080", zoom_profile: "image-full-zoom-v1" },
+      render: { image_scale: "1920:1080", zoom_profile: "image-full-zoom-v2" },
     };
   }
 
@@ -467,7 +467,7 @@ function resolvedSegment(
     render: {
       ...geometry,
       right_image_scale: "960:1080",
-      right_image_zoom_profile: "split-right-zoom-v1",
+      right_image_zoom_profile: "split-right-zoom-v2",
     },
   };
 }

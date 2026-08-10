@@ -186,7 +186,11 @@ The exact global-demotion threshold is an open user gate. Record evidence; do no
 - SkyReels source profile: pixel-exact full crop `1280:720:0:0`; split crop `640:720:320:0` and placement x=0; image x=960.
 - Each accepted avatar asset declares exactly one source profile; the resolved-render schema rejects a profile/crop pair from the other model.
 - No seam decoration.
-- Slow zoom begins/ends at specified scale and remains smooth at 30 fps.
+- The current full-image zoom ends at 1.015, 1.02, or 1.025 according to scene length; the current
+  split-right zoom ends at 1.015. Both begin at exactly 1.00.
+- Zoom progression is monotonic quintic smootherstep at 30 fps, stays centered, has no
+  frame-to-frame crop-direction reversal, and shows no visible integer-rounding shake. The v2
+  FFmpeg golden path uses the 4× Lanczos working canvas before final output sampling.
 - Slow zoom is present on both `IMAGE_FULL` and the split-right image.
 - Native 25 fps AvatarForcing and 24 fps SkyReels inputs convert directly/deterministically to 30 fps without duration drift; cadence is reviewed full-screen, no 24→25→30 double conversion occurs, and no optical-flow/interpolation model runs.
 - Hard cuts at exact frame boundaries.
@@ -255,15 +259,15 @@ Pass: no duplicate accepted asset or corrupt state, any duplicate dispatch/charg
 
 ## UI shell presentation gate
 
-Automated fixture/browser checks and the user's real-Chrome review must jointly verify the approved medium-scale minimal direction. Screenshots can support comparison but never replace interaction, console, request, focus, and responsive checks.
+Automated fixture/browser checks and the user's real-Chrome review must jointly verify the approved visual direction and the later compact 100%-zoom density refinement. Screenshots can support comparison but never replace interaction, console, request, focus, and responsive checks.
 
-Result: **PASS**, user-approved 2026-08-09; evidence: `evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit/`. Reopen only for revision or regression.
+Historical result: **PASS**, user-approved 2026-08-09; evidence: `evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit/`. The 2026-08-10 density/disclosure refinement is implemented and technically verified but remains pending final user review.
 
 - Direct titles, one dominant action, and a calm glance layer replace slogans, repeated rationale, and walls of success messages.
-- The root computes to 18 px on desktop and mobile, ordinary reading text remains 16–18 CSS px, 14.4–16 px microtype is restricted to secondary status/provenance labels, normal controls are 52 px or larger, compact actions remain at least 44 px, and no CSS `zoom` simulates scale.
-- Every visible top-level sibling section has a nonzero separation: the normal page rhythm is 24 CSS px on desktop and 20 CSS px at compact/mobile widths. Usage metric groups, multiple Library outputs, notices and their following content, workflow rows, stage rows, and card grids never touch or overlap. Structural panels/cards use the dedicated visible boundary plus restrained shadow/halo treatment; nested controls and incidental dividers remain quieter.
+- The root computes to 15 px on desktop and mobile, ordinary reading text remains 14–16 CSS px, 12–13 px microtype is restricted to short secondary status/provenance labels, normal actionable controls remain at least 44 px, and neither CSS `zoom` nor a transformed shell simulates scale.
+- Every visible top-level sibling section has a nonzero separation: the normal page rhythm is 20 CSS px on desktop and 16 CSS px at compact/mobile widths. Expanded generic disclosures have at least 12 CSS px from trigger to first child and between sibling fact cards. Usage metric groups, multiple Library outputs, notices and their following content, workflow rows, stage rows, and card grids never touch or overlap. Structural panels/cards use the dedicated visible boundary plus restrained shadow/halo treatment; nested controls and incidental dividers remain quieter.
 - The active-project command bar spans the viewport with deliberate page-edge padding while its project/progress track is inset internally; it does not become a narrow centered island. Its compact mobile form, medium project title and factual progress hero, metric cards, vertical pipeline, and latest-artifact panel preserve authoritative counts/states without fabricating smooth work.
-- The keyboard-reachable dock exposes the active route and every destination at 1024 px. Desktop icon tiles rest at 48×44 px with 30 px glyphs. Fine-pointer hover scales only the icon tile to approximately 1.75×, tapers monotonically through immediate and second neighbors, leaves far icons exactly 1×, keeps every icon bottom edge and item box fixed, and resets on leave. No lift/shift/surface transform channel exists and the active-route backing never transforms. Reduced-motion/coarse-pointer and widths at or below 680 px stay neutral. Mobile is a labelled 4×2 dock with safe content padding.
+- The keyboard-reachable dock exposes the active route and every destination at 1024 px. Desktop items rest at 76×62 px, icon tiles at 38×35 px, and glyphs at 24 px. Fine-pointer hover above 820 px scales only the icon tile to approximately 1.75×, tapers monotonically through immediate and second neighbors across a 240 px radius, leaves far icons exactly 1×, keeps every icon bottom edge and item box fixed, and resets on leave. No lift/shift/surface transform channel exists and the active-route backing never transforms. Reduced-motion/coarse-pointer and widths at or below 820 px stay neutral. Compact/mobile is a labelled 4×2 dock with safe content padding.
 - Avatar cards use an accessible authorized thumbnail or labelled fallback. Healthy cards show only image, name, and `Details`; both Hubs use equal media heights, two columns above 680 px, and one on mobile.
 - Style cards use an allowed cover or labelled fallback. `References (N)` opens only version-bound authorized images; the built-in has zero uploaded references and calls owned media `Examples (N)`. No research asset ships.
 - Galleries load without broken requests and disclose larger images plus metadata on demand. New Avatar/Style round trips retain imagery, exact pins, voiceover handle, and every other draft field.
@@ -274,7 +278,7 @@ Result: **PASS**, user-approved 2026-08-09; evidence: `evidence/gates/GATE_UI_00
 - Details are closed by default. Side sheets/accordions/lightboxes expose complete inspect/audit data, trap/manage focus correctly, close with Escape, restore focus, and do not depend on hover.
 - Pending actions immediately disable duplicates and show concise progress/next-check state. Active blockers, charges, consent, spend caps, budget approvals, and destructive controls remain in the primary layer even when technical details are collapsed.
 - Field errors identify the actual failing input; action errors identify the failed operation and next useful action. Short mutation errors use an accessible concise toast, while unresolved blockers remain inline and are not replaced by unrelated generic preflight copy.
-- At 1920, 1440, 1280, and 1024 CSS-pixel desktop widths plus representative 430 and 390 CSS-pixel mobile widths, every leaf screen has no horizontal overflow or touching top-level sections, structural boundaries remain visibly differentiated, controls remain legible, reference galleries remain usable, and the floating dock does not cover Generate, Approve, Cancel, or budget controls.
+- At 1920, 1440, 1280, 1024, 820, 680, 430, and 390 CSS-pixel widths, every leaf screen has no horizontal overflow or touching top-level sections, structural boundaries remain visibly differentiated, controls remain legible, reference galleries remain usable, expanded disclosures retain their internal gaps, and the floating dock does not cover Generate, Approve, Cancel, or budget controls.
 - Status is conveyed with text/icon as well as color; focus contrast meets WCAG AA; reduced-motion mode retains complete status meaning.
 - Fixture verification makes no unexpected provider request, all visual fixture assets are owned/synthetic and same-origin, and the compact development control truthfully exposes fixture ID, commit, API health, synthetic mode, and `$0` authorization on demand.
 
@@ -283,7 +287,7 @@ Result: **PASS**, user-approved 2026-08-09; evidence: `evidence/gates/GATE_UI_00
 In the user's real Chrome:
 
 1. Sign in.
-2. Verify all leaf screens retain the 24/20 px top-level rhythm, nonzero list/grid gaps, and clearly layered structural boundaries at desktop and compact/mobile widths; then verify dock keyboard/pointer navigation, scale-only proximity taper, fixed icon bottom edges, reset/no-layout-shift behavior, static active-route backing, reduced-motion neutrality, active route, 1024 px layout, and mobile safe area.
+2. At real Chrome 100%, verify the compact 15 px root/44 px action geometry matches the preferred 80%-zoom reference without CSS zoom or a transformed shell. Verify all leaf screens retain the 20/16 px top-level rhythm, generic disclosures retain at least 12 px internal separation, lists/grids have nonzero gaps, and structural boundaries remain layered at desktop and compact/mobile widths. Then verify dock keyboard/pointer navigation, scale-only proximity taper, fixed icon bottom edges, reset/no-layout-shift behavior, static active-route backing, reduced-motion neutrality, active route, 1024 px layout, and mobile safe area.
 3. Verify authorized Avatar Hub imagery and minimal healthy cards; create/approve one private avatar and confirm its image/name plus inspectable exact pin in Create Project.
 4. Open Image Styles, inspect the built-in owned/generated examples without calling them uploaded references, then open every reference image for a custom style and exercise the keyboard lightbox/details sheet.
 5. Create a private Image Style from references, keep the uploaded mosaic visible through analysis/review, leave/resume analysis, review/edit it, optionally test, and publish it.

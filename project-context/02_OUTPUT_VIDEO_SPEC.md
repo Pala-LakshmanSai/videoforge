@@ -49,11 +49,16 @@ A narration-relevant 16:9 Mage image following the project's pinned Image Style 
 
 Recommended zoom envelope:
 
-- Short image scene: 1.00 → 1.04.
-- Typical image scene: 1.00 → 1.05–1.06.
-- Long image scene: never exceed roughly 1.08.
-- Use a smoothstep/eased progression at 30 fps.
-- Center crop by default. Do not pan, parallax, shake, punch, or track a face.
+- Short image scene: 1.00 → 1.015.
+- Typical image scene: 1.00 → 1.02.
+- Long image scene: never exceed 1.025 without a separately approved render profile.
+- Use a quintic smootherstep progression at 30 fps so speed and acceleration both settle at the
+  first and last frame.
+- `ffmpeg-render-v2` evaluates the centered crop from a 4× Lanczos working canvas before the final
+  output sample. This keeps subpixel crop rounding from becoming visible shake; an alternative
+  implementation must prove equivalent monotonic, jitter-free motion.
+- Center crop by default. Do not pan, parallax, shake, punch, track a face, or allow frame-to-frame
+  crop-direction reversals.
 
 ### `AVATAR_SPLIT_IMAGE`
 
@@ -76,7 +81,8 @@ crop=640:720:320:0,scale=960:1080
 - Clean central seam.
 - No divider, border, label, shadow, rounded panel, or decoration.
 - The right image should be generated for an 8:9-safe composition when possible; 1024×1152 is the initial candidate.
-- The right image must use a smaller 1.00 → 1.03–1.04 slow zoom during the short split interval. Every displayed AI image moves slowly, including split companions.
+- The right image uses the smaller 1.00 → 1.015 `split-right-zoom-v2` profile during the short split
+  interval. Every displayed AI image moves slowly, including split companions.
 
 ### Avatar frame-rate conversion
 
@@ -137,7 +143,8 @@ Before delivery verify:
 - Audio/video starts at zero; no drift or missing tail.
 - Exactly one EDL segment covers every frame.
 - Full and split crop geometry matches the selected source-profile formulas above; a profile/crop mismatch is rejected.
-- Both `IMAGE_FULL` and the right image in `AVATAR_SPLIT_IMAGE` have the required eased zoom; neither is static.
+- Both `IMAGE_FULL` and the right image in `AVATAR_SPLIT_IMAGE` have the required subtle eased zoom;
+  neither is static, neither oscillates around its center, and neither exhibits integer-crop shake.
 - Every image attempt and content-addressed prompt manifest points to the revision's pinned Image Style version/effective prompt hash; `production-manifest/v2` binds that prompt manifest plus the pinned Avatar Profile binding to the renderer-only resolved-render manifest and final MP4.
 - No intermediate filename, debugging text, subtitle stream, extra audio stream, or metadata leak.
 - MP4 is seekable and plays in the user's Chrome.

@@ -198,6 +198,36 @@ const semanticContractIssues = <Name extends ContractName>(
     }
     return issues;
   }
+  if (contractName === "resolvedRenderManifest") {
+    const manifest = value as ContractDocument<"resolvedRenderManifest">;
+    const expectedSuffix = manifest.render_profile_version === "ffmpeg-render-v2" ? "v2" : "v1";
+    const issues: ContractValidationIssue[] = [];
+    for (const [index, segment] of manifest.segments.entries()) {
+      if (
+        segment.timeline_composition === "IMAGE_FULL" &&
+        segment.render.zoom_profile !== `image-full-zoom-${expectedSuffix}`
+      ) {
+        issues.push(
+          semanticIssue(
+            `/segments/${index}/render/zoom_profile`,
+            "Full-image zoom profile must match the render profile version.",
+          ),
+        );
+      }
+      if (
+        segment.timeline_composition === "AVATAR_SPLIT_IMAGE" &&
+        segment.render.right_image_zoom_profile !== `split-right-zoom-${expectedSuffix}`
+      ) {
+        issues.push(
+          semanticIssue(
+            `/segments/${index}/render/right_image_zoom_profile`,
+            "Split-image zoom profile must match the render profile version.",
+          ),
+        );
+      }
+    }
+    return issues;
+  }
   return [];
 };
 

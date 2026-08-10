@@ -179,7 +179,7 @@
         "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
         "bytes": {"type": "integer", "minimum": 1},
         "total_frames": {"type": "integer", "minimum": 1},
-        "output_profile_version": {"const": "ffmpeg-render-v1"}
+        "output_profile_version": {"enum": ["ffmpeg-render-v1", "ffmpeg-render-v2"]}
       }
     }
   },

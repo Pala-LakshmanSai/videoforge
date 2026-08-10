@@ -128,6 +128,23 @@ test("semantic validation rejects contradictory media facts", async () => {
   assert.equal(validateContract("renderJobResult", renderResult).success, false);
 });
 
+test("resolved render manifests cannot mix render and zoom profile versions", async () => {
+  const manifest = await loadFixture("resolved_render_manifest.valid.json");
+  manifest.segments.find(
+    ({ timeline_composition }) => timeline_composition === "IMAGE_FULL",
+  ).render.zoom_profile = "image-full-zoom-v1";
+
+  const result = validateContract("resolvedRenderManifest", manifest);
+  assert.equal(result.success, false);
+  assert.ok(
+    !result.success &&
+      result.issues.some(
+        ({ instancePath, keyword }) =>
+          instancePath.endsWith("/render/zoom_profile") && keyword === "semantic",
+      ),
+  );
+});
+
 test("output-rule keywords accept explicit negative constraints", () => {
   const accepted = [
     "ultra realistic, no AI look",

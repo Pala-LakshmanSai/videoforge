@@ -26,23 +26,64 @@ class RenderCommandPlan:
     normalized: bool
 
 
-def _zoom_expression(frame_count: int, delta: float) -> str:
+LEGACY_RENDER_PROFILE_VERSION = "ffmpeg-render-v1"
+SUBTLE_RENDER_PROFILE_VERSION = "ffmpeg-render-v2"
+
+_ZOOM_PRECISION_FACTOR = 4
+
+
+def _zoom_expression(frame_count: int, delta: float, *, quintic: bool) -> str:
     denominator = max(frame_count - 1, 1)
     progress = f"(on/{denominator})"
-    smoothstep = f"(3*{progress}*{progress}-2*{progress}*{progress}*{progress})"
-    return f"1+{delta:.6f}*{smoothstep}"
+    if quintic:
+        easing = f"({progress}*{progress}*{progress}*({progress}*(6*{progress}-15)+10))"
+    else:
+        easing = f"(3*{progress}*{progress}-2*{progress}*{progress}*{progress})"
+    return f"1+{delta:.6f}*{easing}"
 
 
-def _image_filter(input_index: int, width: int, frame_count: int, delta: float) -> str:
-    zoom = _zoom_expression(frame_count, delta)
+def _image_filter(
+    input_index: int,
+    width: int,
+    frame_count: int,
+    delta: float,
+    *,
+    high_precision: bool,
+) -> str:
+    zoom = _zoom_expression(frame_count, delta, quintic=high_precision)
+    if high_precision:
+        source_width = width * _ZOOM_PRECISION_FACTOR
+        source_height = 1080 * _ZOOM_PRECISION_FACTOR
+        source_geometry = (
+            f"scale={source_width}:{source_height}:"
+            "force_original_aspect_ratio=increase:flags=lanczos,"
+            f"crop={source_width}:{source_height},setsar=1,"
+        )
+    else:
+        source_geometry = (
+            f"scale={width}:1080:force_original_aspect_ratio=increase,crop={width}:1080,setsar=1,"
+        )
     return (
         f"[{input_index}:v:0]"
-        f"scale={width}:1080:force_original_aspect_ratio=increase,"
-        f"crop={width}:1080,setsar=1,"
+        f"{source_geometry}"
         f"zoompan=z='{zoom}':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':"
         f"d={frame_count}:s={width}x1080:fps=30,"
         f"trim=end_frame={frame_count},setpts=PTS-STARTPTS"
     )
+
+
+def _zoom_delta(*, frame_count: int, split: bool, profile_version: str) -> float:
+    if profile_version == SUBTLE_RENDER_PROFILE_VERSION:
+        if split or frame_count <= 120:
+            return 0.015
+        if frame_count <= 210:
+            return 0.02
+        return 0.025
+    if profile_version == LEGACY_RENDER_PROFILE_VERSION:
+        if split:
+            return 0.04
+        return 0.04 if frame_count <= 120 else 0.06 if frame_count <= 210 else 0.08
+    raise ValueError(f"Unsupported render profile {profile_version}")
 
 
 def _audio_filter(measurement: LoudnessMeasurement) -> str:
@@ -76,6 +117,8 @@ def compile_render_command(
     segments = cast(list[dict[str, Any]], manifest["segments"])
     if not segments:
         raise ValueError("at least one render segment is required")
+    profile_version = cast(str, manifest["render_profile_version"])
+    high_precision_zoom = profile_version == SUBTLE_RENDER_PROFILE_VERSION
 
     arguments: list[str] = [str(ffmpeg), "-hide_banner", "-nostdin", "-n"]
     graph: list[str] = []
@@ -113,8 +156,14 @@ def compile_render_command(
             )
         elif composition == "IMAGE_FULL":
             image_index = add_input(accepted["image"]["asset_id"], still=True)
-            delta = 0.04 if frame_count <= 120 else 0.06 if frame_count <= 210 else 0.08
-            graph.append(f"{_image_filter(image_index, 1920, frame_count, delta)}[{label}]")
+            delta = _zoom_delta(
+                frame_count=frame_count,
+                split=False,
+                profile_version=profile_version,
+            )
+            graph.append(
+                f"{_image_filter(image_index, 1920, frame_count, delta, high_precision=high_precision_zoom)}[{label}]"
+            )
         elif composition == "AVATAR_SPLIT_IMAGE":
             avatar_index = add_input(accepted["avatar"]["asset_id"], still=False)
             image_index = add_input(accepted["right_image"]["asset_id"], still=True)
@@ -125,7 +174,14 @@ def compile_render_command(
                 "scale=960:1080,setsar=1,fps=30:round=near,"
                 f"trim=end_frame={frame_count},setpts=PTS-STARTPTS[{avatar_label}]"
             )
-            graph.append(f"{_image_filter(image_index, 960, frame_count, 0.04)}[{image_label}]")
+            delta = _zoom_delta(
+                frame_count=frame_count,
+                split=True,
+                profile_version=profile_version,
+            )
+            graph.append(
+                f"{_image_filter(image_index, 960, frame_count, delta, high_precision=high_precision_zoom)}[{image_label}]"
+            )
             graph.append(
                 f"[{avatar_label}][{image_label}]hstack=inputs=2,"
                 f"trim=end_frame={frame_count},setpts=PTS-STARTPTS[{label}]"

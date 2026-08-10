@@ -140,3 +140,23 @@ def test_semantic_validation_rejects_contradictory_media_facts(
     assert any(issue.validator == "semantic" for issue in error.value.issues)
     with pytest.raises(ValidationError):
         CONTRACT_MODELS[contract_name].model_validate(invalid)
+
+
+def test_resolved_render_manifest_rejects_mixed_render_and_zoom_profile_versions() -> None:
+    invalid = load_fixture("resolved_render_manifest.valid.json")
+    full_image = next(
+        segment
+        for segment in invalid["segments"]
+        if segment["timeline_composition"] == "IMAGE_FULL"
+    )
+    full_image["render"]["zoom_profile"] = "image-full-zoom-v1"
+
+    with pytest.raises(ContractValidationError) as error:
+        validate_contract("resolvedRenderManifest", invalid)
+
+    assert any(
+        issue.validator == "semantic" and issue.json_path.endswith("/render/zoom_profile")
+        for issue in error.value.issues
+    )
+    with pytest.raises(ValidationError):
+        CONTRACT_MODELS["resolvedRenderManifest"].model_validate(invalid)

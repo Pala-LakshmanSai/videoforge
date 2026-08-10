@@ -3,7 +3,7 @@
   "project_revision_id": "revision_negative_profile_crop",
   "revision_config_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
   "timeline_plan_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
-  "render_profile_version": "ffmpeg-render-v1",
+  "render_profile_version": "ffmpeg-render-v2",
   "voiceover": {
     "asset_id": "asset_voiceover_negative",
     "sha256": "sha256:3333333333333333333333333333333333333333333333333333333333333333"

@@ -40,7 +40,7 @@ export interface LocalShortSliceManifest {
   readonly fixtureId: string;
   readonly provenance: {
     readonly manifestId: string;
-    readonly revision: 1;
+    readonly revision: 2;
     readonly immutability: "IMMUTABLE_SOURCE";
     readonly ownership: "VIDEOFORGE_SYSTEM_OWNED";
     readonly sourceOnly: true;
@@ -131,7 +131,7 @@ const SLOW_SMOOTH_ZOOM: LocalShortSliceImageZoom = {
   kind: "SLOW_SMOOTH_ZOOM",
   anchor: "CENTER",
   startScale: 1,
-  endScale: 1.06,
+  endScale: 1.02,
 };
 
 const localShortSliceManifest: LocalShortSliceManifest = {
@@ -139,7 +139,7 @@ const localShortSliceManifest: LocalShortSliceManifest = {
   fixtureId: "local_short_slice_owned_001",
   provenance: {
     manifestId: "local_short_slice_owned_manifest_001",
-    revision: 1,
+    revision: 2,
     immutability: "IMMUTABLE_SOURCE",
     ownership: "VIDEOFORGE_SYSTEM_OWNED",
     sourceOnly: true,
@@ -532,13 +532,13 @@ export function validateLocalShortSliceManifest(
         zoom.anchor !== "CENTER" ||
         zoom.startScale !== 1 ||
         zoom.endScale <= zoom.startScale ||
-        zoom.endScale > 1.1
+        zoom.endScale > 1.025
       ) {
         addIssue(
           issues,
           "IMAGE_ZOOM",
           `${path}.imageZoom`,
-          "Every image must use the restrained slow smooth zoom specification.",
+          "Every image must use the subtle centered zoom specification.",
         );
       }
     }

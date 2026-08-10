@@ -11,6 +11,8 @@ from typing import Any, cast
 from videoforge_contracts import ContractValidationError, validate_contract
 
 from .filtergraph import (
+    LEGACY_RENDER_PROFILE_VERSION,
+    SUBTLE_RENDER_PROFILE_VERSION,
     LoudnessMeasurement,
     RenderCommandPlan,
     compile_render_command,
@@ -479,12 +481,32 @@ class RenderJob:
                 "Resolved render manifest belongs to another project revision.",
                 retryable=False,
             )
-        if manifest["render_profile_version"] != "ffmpeg-render-v1":
+        render_profile_version = manifest["render_profile_version"]
+        if render_profile_version not in {
+            LEGACY_RENDER_PROFILE_VERSION,
+            SUBTLE_RENDER_PROFILE_VERSION,
+        }:
             raise _RenderFailure(
                 "RENDER_INPUT_INVALID",
                 "Resolved render manifest uses an unsupported render profile.",
                 retryable=False,
             )
+        zoom_suffix = "v2" if render_profile_version == SUBTLE_RENDER_PROFILE_VERSION else "v1"
+        for segment in cast(list[dict[str, Any]], manifest["segments"]):
+            composition = segment["timeline_composition"]
+            render = cast(dict[str, str], segment["render"])
+            if (
+                composition == "IMAGE_FULL"
+                and render["zoom_profile"] != f"image-full-zoom-{zoom_suffix}"
+            ) or (
+                composition == "AVATAR_SPLIT_IMAGE"
+                and render["right_image_zoom_profile"] != f"split-right-zoom-{zoom_suffix}"
+            ):
+                raise _RenderFailure(
+                    "RENDER_INPUT_INVALID",
+                    "Resolved render manifest mixes incompatible render and zoom profiles.",
+                    retryable=False,
+                )
         total_frames = cast(int, manifest["total_frames"])
         if not 300 <= total_frames <= 108_000:
             raise _RenderFailure(

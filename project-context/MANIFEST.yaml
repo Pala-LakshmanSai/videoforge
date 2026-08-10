@@ -161,7 +161,7 @@ approved_decisions:
   DEC_SCOPE_001: image_only_broll_mvp
   DEC_OUTPUT_001: "full_avatar | full_image | split_avatar_left_image_right"
   DEC_OUTPUT_002: hard_cuts_no_motion_graphics_text_or_decorative_transitions
-  DEC_OUTPUT_003: every_ai_image_has_slow_smooth_zoom_in
+  DEC_OUTPUT_003: every_ai_image_has_subtle_centered_jitter_free_zoom_in
   DEC_LLM_001: runware_deepseek_v4_flash_0731
   DEC_LLM_002: deepseek_writes_production_image_prompts_only
   DEC_STYLE_001: reusable_workspace_image_styles_hub
@@ -186,9 +186,9 @@ approved_decisions:
   DEC_QUEUE_001: postgres_authoritative_runpod_execution_transport
   DEC_RUNPOD_001: scale_to_zero_api_only_endpoints_first
   DEC_UX_001: fixture_first_live_chrome_hot_reload
-  DEC_UX_002: medium_minimal_production_console_fixed_base_scale_only_macos_like_dock
+  DEC_UX_002: compact_100_percent_production_console_fixed_base_scale_only_macos_like_dock
   DEC_UX_003: visual_presets_with_on_demand_reference_and_audit_details
-  DEC_UX_004: visible_layered_surface_separation_with_consistent_page_rhythm
+  DEC_UX_004: visible_layered_surface_separation_with_20_16_page_rhythm_and_12px_disclosures
 
 open_gates:
   GATE_AVATAR_001: avatarforcing_exact_avatar_4090_fit_speed_quality

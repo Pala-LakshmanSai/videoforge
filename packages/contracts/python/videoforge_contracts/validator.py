@@ -221,6 +221,32 @@ def _semantic_contract_issues(
                     )
                 )
         return tuple(issues)
+    if contract_name == "resolvedRenderManifest":
+        expected_suffix = "v2" if value["render_profile_version"] == "ffmpeg-render-v2" else "v1"
+        issues = []
+        for index, segment in enumerate(value["segments"]):
+            if (
+                segment["timeline_composition"] == "IMAGE_FULL"
+                and segment["render"]["zoom_profile"] != f"image-full-zoom-{expected_suffix}"
+            ):
+                issues.append(
+                    _semantic_issue(
+                        f"/segments/{index}/render/zoom_profile",
+                        "Full-image zoom profile must match the render profile version.",
+                    )
+                )
+            if (
+                segment["timeline_composition"] == "AVATAR_SPLIT_IMAGE"
+                and segment["render"]["right_image_zoom_profile"]
+                != f"split-right-zoom-{expected_suffix}"
+            ):
+                issues.append(
+                    _semantic_issue(
+                        f"/segments/{index}/render/right_image_zoom_profile",
+                        "Split-image zoom profile must match the render profile version.",
+                    )
+                )
+        return tuple(issues)
     return ()
 
 
