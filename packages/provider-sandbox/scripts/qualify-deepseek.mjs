@@ -9,22 +9,46 @@ const RUN_CAP_USD = 0.02;
 const PROJECT_TITLE = "Harvest Water Without Pumps";
 
 const sceneSeeds = [
-  ["farmer checks cracked soil beside a dry irrigation channel", ["farmer", "cracked soil", "irrigation channel"]],
+  [
+    "farmer checks cracked soil beside a dry irrigation channel",
+    ["farmer", "cracked soil", "irrigation channel"],
+  ],
   ["hands fit a clay pot beneath a roof downpipe", ["hands", "clay pot", "downpipe"]],
   ["rainwater flows from a tin roof into a covered barrel", ["rainwater", "tin roof", "barrel"]],
-  ["shopkeeper compares two transparent water samples in daylight", ["shopkeeper", "water samples", "daylight"]],
+  [
+    "shopkeeper compares two transparent water samples in daylight",
+    ["shopkeeper", "water samples", "daylight"],
+  ],
   ["family washes leafy vegetables at an outdoor basin", ["family", "leafy vegetables", "basin"]],
   ["worker clears silt from a stone drainage trench", ["worker", "silt", "drainage trench"]],
   ["close hands test a simple valve on a black hose", ["hands", "valve", "black hose"]],
-  ["wide hillside shows contour trenches after light rain", ["hillside", "contour trenches", "rain"]],
+  [
+    "wide hillside shows contour trenches after light rain",
+    ["hillside", "contour trenches", "rain"],
+  ],
 ];
 
 const styles = [
-  ["documentary_stock_v1", "natural documentary photograph, available light, restrained color, honest material texture"],
-  ["warm_analog", "warm analog photograph, soft highlight rolloff, subtle film grain, muted earth palette"],
-  ["cool_editorial", "cool editorial photograph, clean daylight, crisp material detail, restrained blue-gray palette"],
-  ["humid_reportage", "humid reportage photograph, overcast soft light, tactile surfaces, subdued green-brown palette"],
-  ["highland_archive", "highland archival photograph, low contrast daylight, fine grain, weathered neutral palette"],
+  [
+    "documentary_stock_v1",
+    "natural documentary photograph, available light, restrained color, honest material texture",
+  ],
+  [
+    "warm_analog",
+    "warm analog photograph, soft highlight rolloff, subtle film grain, muted earth palette",
+  ],
+  [
+    "cool_editorial",
+    "cool editorial photograph, clean daylight, crisp material detail, restrained blue-gray palette",
+  ],
+  [
+    "humid_reportage",
+    "humid reportage photograph, overcast soft light, tactile surfaces, subdued green-brown palette",
+  ],
+  [
+    "highland_archive",
+    "highland archival photograph, low contrast daylight, fine grain, weathered neutral palette",
+  ],
 ];
 
 export function buildScenes() {
@@ -117,13 +141,16 @@ function validateBatch(request, data) {
   const expected = JSON.parse(request.messages[0].content.split("Scenes: ")[1]);
   const expectedById = new Map(expected.map((scene) => [scene.scene_id, scene]));
   const ids = parsed.items.map((item) => item.scene_id);
-  const forbidden = /\b(?:caption|title|logo|watermark|border|infographic|diagram|motion graphic|visible text)\b/iu;
+  const forbidden =
+    /\b(?:caption|title|logo|watermark|border|infographic|diagram|motion graphic|visible text)\b/iu;
   const checks = parsed.items.map((item) => {
     const scene = expectedById.get(item.scene_id);
     return {
       scene_id: item.scene_id,
       role_unchanged: scene?.in_image_shot_role === item.in_image_shot_role,
-      literal_terms_present: scene?.required_terms.every((term) => item.image_prompt.toLowerCase().includes(term)) ?? false,
+      literal_terms_present:
+        scene?.required_terms.every((term) => item.image_prompt.toLowerCase().includes(term)) ??
+        false,
       forbidden_request_absent: !forbidden.test(item.image_prompt),
       prompt_sha256: sha256(item.image_prompt),
       style_treatment_sha256: sha256(item.style_treatment),
@@ -131,7 +158,10 @@ function validateBatch(request, data) {
   });
   return {
     output: parsed,
-    exact_ids: ids.length === expected.length && new Set(ids).size === expected.length && ids.every((id) => expectedById.has(id)),
+    exact_ids:
+      ids.length === expected.length &&
+      new Set(ids).size === expected.length &&
+      ids.every((id) => expectedById.has(id)),
     checks,
   };
 }
@@ -143,7 +173,8 @@ export async function runQualification({ apiKey, outputPath }) {
   const batches = [];
 
   for (let batchIndex = 0; batchIndex < styles.length; batchIndex += 1) {
-    if (totalCostUsd >= RUN_CAP_USD) throw new Error("Qualification run cap exhausted before dispatch");
+    if (totalCostUsd >= RUN_CAP_USD)
+      throw new Error("Qualification run cap exhausted before dispatch");
     const request = buildRequest(batchIndex, previousContinuity);
     const started = performance.now();
     const response = await fetch(API_URL, {
@@ -156,9 +187,16 @@ export async function runQualification({ apiKey, outputPath }) {
     const body = JSON.parse(bodyText);
     if (!response.ok || body.errors) {
       const safeErrors = Array.isArray(body.errors)
-        ? body.errors.map(({ code, message, parameter, taskUUID }) => ({ code, message, parameter, taskUUID }))
+        ? body.errors.map(({ code, message, parameter, taskUUID }) => ({
+            code,
+            message,
+            parameter,
+            taskUUID,
+          }))
         : [];
-      throw new Error(`Runware request failed: HTTP ${response.status} ${JSON.stringify(safeErrors)}`);
+      throw new Error(
+        `Runware request failed: HTTP ${response.status} ${JSON.stringify(safeErrors)}`,
+      );
     }
     const data = body.data?.find((item) => item.taskUUID === request.taskUUID);
     if (!data) throw new Error("Runware response missing matching taskUUID");
@@ -166,7 +204,8 @@ export async function runQualification({ apiKey, outputPath }) {
     const cost = Number(data.cost);
     if (!Number.isFinite(cost) || cost < 0) throw new Error("Runware response missing valid cost");
     totalCostUsd += cost;
-    if (totalCostUsd > RUN_CAP_USD || totalCostUsd > TASK_CAP_USD) throw new Error("Runware cost exceeded cap");
+    if (totalCostUsd > RUN_CAP_USD || totalCostUsd > TASK_CAP_USD)
+      throw new Error("Runware cost exceeded cap");
     previousContinuity = validated.output.continuity;
     batches.push({
       batch_id: `batch_${batchIndex + 1}`,
@@ -177,7 +216,8 @@ export async function runQualification({ apiKey, outputPath }) {
       response_fields: Object.keys(data).sort(),
       returned_model: data.model ?? null,
       returned_model_version: data.modelVersion ?? data.model_version ?? null,
-      returned_fingerprint: data.systemFingerprint ?? data.system_fingerprint ?? data.fingerprint ?? null,
+      returned_fingerprint:
+        data.systemFingerprint ?? data.system_fingerprint ?? data.fingerprint ?? null,
       finish_reason: data.finishReason,
       usage: data.usage,
       cost_usd: cost,
@@ -189,7 +229,9 @@ export async function runQualification({ apiKey, outputPath }) {
   }
 
   const allChecks = batches.flatMap((batch) => batch.checks);
-  const immutableIdentityReturned = batches.every((batch) => batch.returned_model_version || batch.returned_fingerprint);
+  const immutableIdentityReturned = batches.every(
+    (batch) => batch.returned_model_version || batch.returned_fingerprint,
+  );
   const evidence = {
     schema_version: "videoforge.deepseek-qualification/v1",
     task_id: "VF-3-01",
@@ -212,8 +254,18 @@ export async function runQualification({ apiKey, outputPath }) {
       cost_below_30_min_equivalent_target: totalCostUsd < RUN_CAP_USD,
       immutable_live_identity_returned: immutableIdentityReturned,
     },
-    gate_result: immutableIdentityReturned && batches.every((batch) => batch.exact_ids) && allChecks.every((check) => check.role_unchanged && check.literal_terms_present && check.forbidden_request_absent) ? "PASS" : "OPEN",
-    identity_note: immutableIdentityReturned ? "Live response exposed version/fingerprint evidence." : "Live response did not expose an immutable version/fingerprint; public alias-to-0731 mapping alone is insufficient for lock.",
+    gate_result:
+      immutableIdentityReturned &&
+      batches.every((batch) => batch.exact_ids) &&
+      allChecks.every(
+        (check) =>
+          check.role_unchanged && check.literal_terms_present && check.forbidden_request_absent,
+      )
+        ? "PASS"
+        : "OPEN",
+    identity_note: immutableIdentityReturned
+      ? "Live response exposed version/fingerprint evidence."
+      : "Live response did not expose an immutable version/fingerprint; public alias-to-0731 mapping alone is insufficient for lock.",
     secrets_recorded: false,
   };
   await writeFile(outputPath, `${JSON.stringify(evidence, null, 2)}\n`, { mode: 0o600 });
@@ -225,5 +277,12 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const outputPath = outputArg >= 0 ? process.argv[outputArg + 1] : null;
   if (!outputPath) throw new Error("Usage: qualify:deepseek -- --output <path>");
   const evidence = await runQualification({ apiKey: process.env.RUNWARE_API_KEY, outputPath });
-  process.stdout.write(JSON.stringify({ gate_result: evidence.gate_result, scene_count: evidence.scene_count, style_count: evidence.style_count, external_spend_usd: evidence.external_spend_usd }));
+  process.stdout.write(
+    JSON.stringify({
+      gate_result: evidence.gate_result,
+      scene_count: evidence.scene_count,
+      style_count: evidence.style_count,
+      external_spend_usd: evidence.external_spend_usd,
+    }),
+  );
 }

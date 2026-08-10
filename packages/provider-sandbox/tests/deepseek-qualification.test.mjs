@@ -17,4 +17,3 @@ test("DeepSeek qualification covers 40 exact scenes and five style batches", () 
     assert.equal(request.jsonSchema.schema.properties.items.maxItems, 8);
   }
 });
-
