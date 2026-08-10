@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T11:04:43Z"
+updated_at: "2026-08-10T11:07:05Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: true
@@ -19,7 +19,7 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
   verified_implementation_commit: "ce18e938e2f6f60f45c97753ff02811a512de443"
-  last_good_commit: "ce18e938e2f6f60f45c97753ff02811a512de443"
+  last_good_commit: "6f4b1d7cda4f88b398819ebaa9feacc860dc3be1"
   working_tree_expected: clean
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
@@ -116,19 +116,19 @@ completed_tasks:
     status: complete
     summary: "Committed deterministic local auth/session and exact workspace authorization, active-identity invitation admission, post-await session revalidation, server-derived reviewer identity, and bounded frozen plain-data mutation snapshots; live Better Auth/Google wiring remains an explicitly staging-only boundary."
     implementation_commit: "5dd17d000bf2a8d0ded937555aa5407d06d72504"
-    evidence_commit: null
+    evidence_commit: "6f4b1d7cda4f88b398819ebaa9feacc860dc3be1"
     evidence: "evidence/acceptance/VF-1-03/auth-workspace-adapter"
   - task_id: VF-1-04
     status: complete
     summary: "Committed a private signed local artifact adapter with metadata/direct-transfer separation, structural media validation, bounded disk-spooled multipart handling, retention, atomic durable acceptance, restart verification, cross-instance idempotency, and a fail-closed Hono metadata boundary."
     implementation_commit: "5775c4714917e95745221ddac6e259f8cbf291a2"
-    evidence_commit: null
+    evidence_commit: "6f4b1d7cda4f88b398819ebaa9feacc860dc3be1"
     evidence: "evidence/acceptance/VF-1-04/private-artifact-adapter"
   - task_id: VF-1-05
     status: complete
     summary: "Committed concrete PGlite repositories and unit of work, durable exact-input mutation receipts, all 13 canonical repository bodies, local outbox/workflow leasing and fencing, signed callback replay protection, reconciliation/cancellation, and bounded codec proof."
     implementation_commit: "ce18e938e2f6f60f45c97753ff02811a512de443"
-    evidence_commit: null
+    evidence_commit: "6f4b1d7cda4f88b398819ebaa9feacc860dc3be1"
     evidence: "evidence/acceptance/VF-1-05/durable-orchestration-adapters"
 
 standing_local_authority:
