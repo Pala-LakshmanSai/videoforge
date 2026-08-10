@@ -240,6 +240,10 @@ read_profiles:
     - 14_TESTING_AND_ACCEPTANCE.md
     - GATES.yaml
     - tasks/VF-3-04.md
+  phase3_private_remote_ci:
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - 21_IMPLEMENTATION_EXECUTION_PLAN.md
+    - tasks/VF-3-05.md
   context_update:
     - 15_DECISIONS_AND_OPEN_GATES.md
     - 16_CONTEXT_MAINTENANCE.md

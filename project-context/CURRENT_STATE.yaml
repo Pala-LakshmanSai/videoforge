@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T17:40:12Z"
+updated_at: "2026-08-10T17:46:11Z"
 
 phase: phase_3_provider_operations_preflight
 implementation_authorized_in_current_task: true
-current_milestone: phase_3_runpod_account_preflight
-current_task: VF-3-04
+current_milestone: phase_3_private_remote_ci
+current_task: VF-3-05
 current_wave: phase_3_evidence_first_activation
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -191,6 +191,12 @@ completed_tasks:
     implementation_commit: "3fcbcc310cf42be766b6fe90163d50e1c4620bb1"
     evidence_commit: "0e9a6b3e0fb5e59a42b5160e91a8da29893afa8e"
     evidence: "evidence/acceptance/VF-3-03/deterministic-prompt-compiler"
+  - task_id: VF-3-04
+    status: complete
+    summary: "Created one lifecycle-capable RunPod credential directly in macOS Keychain and proved through authenticated official APIs that the account balance is $10.00, spend rate is $0/hour, and there are zero Pods, Serverless endpoints, network volumes, or active workers."
+    implementation_commit: "3e810be6fb0b6bde2ca04e6e275ff04dfe403c7f"
+    evidence_commit: "8c90bd072b4190a37619a637fc3095eac5edc5d0"
+    evidence: "evidence/acceptance/VF-3-04/runpod-account-preflight"
 
 standing_local_authority:
   status: completed_and_exhausted
@@ -253,7 +259,7 @@ planned_provider_qualification:
 
 external_checkpoints:
   private_github_remote:
-    status: authorized_pending_dependency_ready_execution
+    status: authorized_active_exact_task_vf_3_05
     timing: immediately_after_wave_0_context_commit
     local_work_may_continue_while_pending: true
   isolated_staging:
@@ -267,19 +273,19 @@ external_checkpoints:
 active_ownership: []
 
 recommended_next_task:
-  task_id: VF-3-04
-  milestone: phase_3_runpod_account_preflight
-  status: ready_account_api_preflight
-  dependency_status: vf_3_03_green_user_authorized_runpod_account_access_balance_present
-  authorization_status: exact_credential_and_read_only_api_preflight_authorized
-  read_profile: phase3_runpod_account_preflight
-  task_brief: tasks/VF-3-04.md
-  goal: "Establish secure RunPod API lifecycle access, inventory billable compute, and prove the account is fully drained without creating compute or spending money."
+  task_id: VF-3-05
+  milestone: phase_3_private_remote_ci
+  status: ready_private_remote_and_hosted_ci
+  dependency_status: vf_3_04_green_clean_committed_main_authenticated_github_owner_confirmed
+  authorization_status: exact_private_remote_creation_push_and_ci_authorized
+  read_profile: phase3_private_remote_ci
+  task_brief: tasks/VF-3-05.md
+  goal: "Create the private GitHub remote, push exact main history, and prove the existing hosted CI workflow green without weakening gates."
   dependencies:
-    - "VF-3-03 implementation is green at 3fcbcc310cf42be766b6fe90163d50e1c4620bb1 with evidence at 0e9a6b3e0fb5e59a42b5160e91a8da29893afa8e"
-    - "The user explicitly authorized RunPod login/account/API work and required every Pod to be off at handoff"
-    - "The authenticated RunPod account visibly reports a $10.00 balance"
-    - "Official API lifecycle and scale-to-zero facts were refreshed in VF-3-00"
+    - "VF-3-04 is green with evidence at 8c90bd072b4190a37619a637fc3095eac5edc5d0"
+    - "The user explicitly authorized a private Git remote and hosted CI"
+    - "Authenticated GitHub CLI owner is Pala-LakshmanSai with repo/workflow scopes"
+    - "Pala-LakshmanSai/videoforge does not exist at preflight and the local worktree is clean"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: true
@@ -287,31 +293,29 @@ recommended_next_task:
   application_code_changes_authorized: false
   live_route: null
   fixture_scenario: null
-  expected_evidence: "evidence/acceptance/VF-3-04/runpod-account-preflight"
+  expected_evidence: "evidence/acceptance/VF-3-05/private-github-ci"
   required_handoff:
-    - "Create one lifecycle-capable RunPod key stored only in macOS Keychain"
-    - "Query redacted account/balance, Pod, endpoint, and active billable-compute inventory"
-    - "Stop any running Pod and set any endpoint worker maximum to zero without deleting resources"
-    - "Prove no balance decrease, no provider call, no active worker, and no running Pod"
-    - "Commit redacted evidence and select one dependency-ready next task"
+    - "Create Pala-LakshmanSai/videoforge with PRIVATE visibility and no generated history"
+    - "Add origin, push exact main, set upstream, and verify local/remote/default equality"
+    - "Wait for the existing hosted verify workflow and inspect/fix any deterministic failure"
+    - "Record remote and CI evidence without credentials or private source excerpts"
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    status: serial_external_account_preflight
-    integration_owner: VF-3-04
+    status: serial_remote_bootstrap
+    integration_owner: VF-3-05
   prohibited_in_task:
-    - "Any Pod/endpoint/template/volume creation, model download, provider inference, or spend"
-    - "Any application, schema, migration, UI, renderer, route, remote, staging, or production change"
-    - "Any resource deletion or credential value in logs, evidence, shell history, or repository"
-    - "Any claim that this account preflight closes GATE_RUNPOD_001 or qualifies a GPU/model"
+    - "Any public visibility, release, package, deployment, provider call, or spend"
+    - "Any force push, history rewrite, branch deletion, generated remote history, or source publication outside the private repository"
+    - "Any gate weakening, skip, CI deletion, credential/secret creation, or unrelated application change"
 
 latest_closed_handoff:
-  task_id: VF-3-03
+  task_id: VF-3-04
   status: complete
-  implementation_commit: "3fcbcc310cf42be766b6fe90163d50e1c4620bb1"
-  evidence_commit: "0e9a6b3e0fb5e59a42b5160e91a8da29893afa8e"
-  audit_result: "strict_prompt_input_output_conflict_and_tamper_matrix_green"
-  verification_result: "targeted_pipeline_47_and_uncached_root_gate_installed_chrome_green"
-  external_actions: "none_provider_calls_disabled_spend_zero"
+  implementation_commit: "3e810be6fb0b6bde2ca04e6e275ff04dfe403c7f"
+  evidence_commit: "8c90bd072b4190a37619a637fc3095eac5edc5d0"
+  audit_result: "authenticated_account_inventory_drained"
+  verification_result: "zero_pods_endpoints_volumes_workers_and_zero_hourly_spend"
+  external_actions: "one_keychain_credential_created_no_compute_created_no_spend"
 
 last_green:
   commands:
@@ -446,7 +450,8 @@ next_tasks:
   - "VF-3-00 complete: public provider facts were refreshed and the user authorized bounded provider/account, private Git/CI, and isolated staging work; production remains deferred"
   - "VF-3-01 prepared the bounded live runner and Runware account, then stopped at the provider's $5 account-funding prerequisite with $0 spent and GATE_LLM_001 open"
   - "VF-3-03 complete: deterministic prompt batching/validation/compilation is committed and green at $0"
-  - "Current: execute only VF-3-04 RunPod API/account drain preflight at $0; create no compute"
+  - "VF-3-04 complete: RunPod API access is secured and the account has zero Pods/endpoints/volumes/workers at $0"
+  - "Current: execute only VF-3-05 private GitHub remote and hosted CI bootstrap at $0"
   - "Resume VF-3-01/VF-3-02 only after the Runware funding prerequisite has exact authority; never transfer another sub-cap"
   - "Fastest safe implementation order after evidence and new authority: deterministic prompt compiler/fixture adapter, gated DeepSeek integration, parallel Mage image and AvatarForcing lanes plus disjoint custom-style lifecycle, FFmpeg real fast-path convergence, conditional fallbacks, fault/security/restore hardening, then controlled release"
 
@@ -468,10 +473,10 @@ activation_handoff:
     - "At activation, no Git remote/push, hosted CI, cloud/account resource, OAuth app, Neon/R2/Workflow deployment, credential, model download, provider call, or spend had been used."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this CURRENT_STATE.yaml."
-    - "Load only the phase3_runpod_account_preflight profile and tasks/VF-3-04.md."
+    - "Load only the phase3_private_remote_ci profile and tasks/VF-3-05.md."
     - "Confirm the recorded commits are ancestors of clean HEAD; do not reset or redo completed phases."
-    - "Run only secure key creation, authenticated redacted inventory, and safety drain checks."
-    - "Stop on any compute creation, model/provider call, spend, secret exposure, failed drain, or scope ambiguity."
+    - "Run only private repository creation, exact main push, hosted CI observation, and redacted evidence."
+    - "Stop on wrong owner/visibility, force/history mutation, provider/spend, secret exposure, or unexplained CI failure."
   optimized_future_sequence:
     - "A. Refresh official time-sensitive provider/model/rate/retention/license facts read-only and classify all open gates."
     - "B. With explicit caps/credential authority, run bounded provider qualification through the committed sandbox and record pass/fail evidence."
@@ -485,7 +490,8 @@ activation_handoff:
 
 notes:
   - "This is a replace-in-place handoff snapshot, not a progress diary."
-  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-04 may inventory/drain RunPod but cannot create compute or activate a model."
+  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-05 may create/push only the private GitHub repository and run existing hosted CI."
+  - "RunPod account preflight is green: Keychain credential exists, balance is $10.00, hourly spend is $0, and Pods/endpoints/volumes/workers are all zero."
   - "The accelerated approval through VF-2-05 is complete and exhausted. On 2026-08-10 the user separately activated the planned non-transferable $1/$3/$8/$8/$5 provider caps, private Git/CI, and isolated staging authority; production remains deferred."
   - "Runware signup/login is authorized, but CAPTCHA, MFA, email verification, payment, or an unclear charge still stops unattended automation."
   - "AvatarForcing's $8 sub-cap must remain untouched until GATE_AVATAR_003 reconciles the official license contradiction."
