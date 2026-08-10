@@ -119,7 +119,7 @@ test("the harness registers and runs the canonical workspace-isolation body unch
 });
 
 test("every fixed canonical runner has wiring/dispatch coverage and is disposed", async () => {
-  // Full semantic execution begins when VF-1-02 supplies the first concrete repository adapter.
+  // VF-1-05 executes these same fixed bodies against the concrete PGlite adapter.
   const disposed = [];
   const registrations = registerSuite(
     {

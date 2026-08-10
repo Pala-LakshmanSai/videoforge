@@ -1,0 +1,4175 @@
+import { createHash } from "node:crypto";
+
+import type { SqlExecutor, TransactionalSqlExecutor } from "../database/ports.js";
+import type * as ArtifactContracts from "../repositories/artifacts.js";
+import type * as EventContracts from "../repositories/events.js";
+import type * as ExecutionContracts from "../repositories/execution.js";
+import type * as IdentityContracts from "../repositories/identity.js";
+import type * as PresetContracts from "../repositories/presets.js";
+import type * as ProjectContracts from "../repositories/projects.js";
+import type {
+  CanonicalDocument,
+  DurableOwner,
+  IdempotentMutation,
+  IdempotentRepositoryResult,
+  JsonObject,
+  RepositoryResult,
+  Sha256,
+  WorkspaceScope,
+} from "../repositories/types.js";
+import type {
+  ControlPlaneRepositories,
+  RepositorySession,
+  RepositoryUnitOfWork,
+} from "../repositories/unit-of-work.js";
+
+type Row = Record<string, unknown>;
+
+interface AtomicRunner {
+  run<Value>(work: (executor: SqlExecutor) => Promise<Value>): Promise<Value>;
+}
+
+interface RepositoryContext {
+  readonly executor: SqlExecutor;
+  readonly atomic: AtomicRunner;
+}
+
+function success<Value>(value: Value): { readonly ok: true; readonly value: Value } {
+  return { ok: true, value };
+}
+
+function write<Value>(value: Value, replayed = false) {
+  return success({ value, replayed });
+}
+
+function conflict<Code extends string>(code: Code, message: string, currentVersion?: number) {
+  return currentVersion === undefined
+    ? ({ ok: false, kind: "CONFLICT", code, message } as const)
+    : ({ ok: false, kind: "CONFLICT", code, message, currentVersion } as const);
+}
+
+function missing<Entity extends string>(entity: Entity, id: string) {
+  return { ok: false, kind: "NOT_FOUND", entity, id } as const;
+}
+
+function invariant<Code extends string>(code: Code, message: string) {
+  return { ok: false, kind: "INVARIANT_VIOLATION", code, message } as const;
+}
+
+function stringValue(value: unknown, column: string): string {
+  if (typeof value !== "string") {
+    throw new TypeError(`expected ${column} to be a string`);
+  }
+  return value;
+}
+
+function nullableString(value: unknown, column: string): string | null {
+  return value === null ? null : stringValue(value, column);
+}
+
+function numberValue(value: unknown, column: string): number {
+  if (typeof value === "number") {
+    return value;
+  }
+  if (typeof value === "bigint") {
+    return Number(value);
+  }
+  if (typeof value === "string" && /^-?\d+$/.test(value)) {
+    return Number(value);
+  }
+  throw new TypeError(`expected ${column} to be numeric`);
+}
+
+function bigintValue(value: unknown, column: string): bigint {
+  if (typeof value === "bigint") {
+    return value;
+  }
+  if (typeof value === "number" && Number.isSafeInteger(value)) {
+    return BigInt(value);
+  }
+  if (typeof value === "string" && /^-?\d+$/.test(value)) {
+    return BigInt(value);
+  }
+  throw new TypeError(`expected ${column} to be an integer`);
+}
+
+function nullableBigint(value: unknown, column: string): bigint | null {
+  return value === null ? null : bigintValue(value, column);
+}
+
+function booleanValue(value: unknown, column: string): boolean {
+  if (typeof value !== "boolean") {
+    throw new TypeError(`expected ${column} to be boolean`);
+  }
+  return value;
+}
+
+function timestamp(value: unknown, column: string): string {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  return stringValue(value, column);
+}
+
+function nullableTimestamp(value: unknown, column: string): string | null {
+  return value === null ? null : timestamp(value, column);
+}
+
+function jsonObject(value: unknown, column: string): JsonObject {
+  if (typeof value === "string") {
+    return JSON.parse(value) as JsonObject;
+  }
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new TypeError(`expected ${column} to be a JSON object`);
+  }
+  return value as JsonObject;
+}
+
+function jsonArray(value: unknown, column: string): readonly string[] {
+  const parsed = typeof value === "string" ? (JSON.parse(value) as unknown) : value;
+  if (!Array.isArray(parsed) || parsed.some((entry) => typeof entry !== "string")) {
+    throw new TypeError(`expected ${column} to be a string array`);
+  }
+  return parsed;
+}
+
+function jsonParameter(value: unknown): string {
+  return JSON.stringify(value, (_key, item: unknown) =>
+    typeof item === "bigint" ? item.toString() : item,
+  );
+}
+
+function canonicalComparable(value: unknown): unknown {
+  if (typeof value === "bigint") {
+    return { $bigint: value.toString() };
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  if (Array.isArray(value)) {
+    return value.map(canonicalComparable);
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, item]) => [key, canonicalComparable(item)]),
+    );
+  }
+  return value;
+}
+
+function sameValue(left: unknown, right: unknown): boolean {
+  return JSON.stringify(canonicalComparable(left)) === JSON.stringify(canonicalComparable(right));
+}
+
+type CanonicalReceiptValue =
+  | { readonly type: "array"; readonly value: readonly CanonicalReceiptValue[] }
+  | { readonly type: "bigint"; readonly value: string }
+  | { readonly type: "boolean"; readonly value: boolean }
+  | { readonly type: "null" }
+  | { readonly type: "number"; readonly value: string }
+  | {
+      readonly type: "object";
+      readonly value: readonly (readonly [string, CanonicalReceiptValue])[];
+    }
+  | { readonly type: "string"; readonly value: string };
+
+const RECEIPT_CODEC_MAX_DEPTH = 64;
+const RECEIPT_CODEC_MAX_NODES = 50_000;
+const RECEIPT_CODEC_MAX_BYTES = 2 * 1024 * 1024;
+
+interface ReceiptCodecBudget {
+  bytes: number;
+  nodes: number;
+}
+
+function chargeReceiptCodec(budget: ReceiptCodecBudget, depth: number, bytes = 0): void {
+  if (depth > RECEIPT_CODEC_MAX_DEPTH) {
+    throw new RangeError(`repository receipt codec depth exceeds ${RECEIPT_CODEC_MAX_DEPTH}`);
+  }
+  budget.nodes += 1;
+  budget.bytes += 64 + bytes;
+  if (budget.nodes > RECEIPT_CODEC_MAX_NODES) {
+    throw new RangeError(`repository receipt codec node count exceeds ${RECEIPT_CODEC_MAX_NODES}`);
+  }
+  if (budget.bytes > RECEIPT_CODEC_MAX_BYTES) {
+    throw new RangeError(`repository receipt codec size exceeds ${RECEIPT_CODEC_MAX_BYTES} bytes`);
+  }
+}
+
+function sortedStrings(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function encodeReceiptNode(
+  value: unknown,
+  budget: ReceiptCodecBudget,
+  depth: number,
+  ancestors: WeakSet<object>,
+): CanonicalReceiptValue {
+  const primitiveBytes =
+    typeof value === "string"
+      ? Buffer.byteLength(value, "utf8")
+      : typeof value === "bigint" || typeof value === "number"
+        ? Buffer.byteLength(String(value), "utf8")
+        : 0;
+  chargeReceiptCodec(budget, depth, primitiveBytes);
+  if (value === null) return { type: "null" };
+  if (typeof value === "string") return { type: "string", value };
+  if (typeof value === "boolean") return { type: "boolean", value };
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      throw new TypeError("repository receipt numbers must be finite");
+    }
+    return { type: "number", value: Object.is(value, -0) ? "-0" : String(value) };
+  }
+  if (typeof value === "bigint") return { type: "bigint", value: value.toString() };
+  if (typeof value !== "object") {
+    throw new TypeError("repository receipts cannot encode undefined, symbols, or functions");
+  }
+  if (ancestors.has(value)) throw new TypeError("repository receipts cannot encode cycles");
+  ancestors.add(value);
+  try {
+    const ownKeys = Reflect.ownKeys(value);
+    if (ownKeys.some((key) => typeof key === "symbol")) {
+      throw new TypeError("repository receipts cannot encode symbol properties");
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    if (Array.isArray(value)) {
+      const length = value.length;
+      const expectedKeys = [...Array.from({ length }, (_unused, index) => String(index)), "length"];
+      const stringKeys = ownKeys as string[];
+      if (
+        stringKeys.length !== expectedKeys.length ||
+        expectedKeys.some((key) => !stringKeys.includes(key))
+      ) {
+        throw new TypeError("repository receipt arrays must be dense and contain no extra fields");
+      }
+      const items = Array.from({ length }, (_unused, index) => {
+        const descriptor = descriptors[String(index)];
+        if (descriptor === undefined || !("value" in descriptor)) {
+          throw new TypeError("repository receipts cannot encode accessors");
+        }
+        return encodeReceiptNode(descriptor.value, budget, depth + 1, ancestors);
+      });
+      return { type: "array", value: items };
+    }
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new TypeError("repository receipt objects must have a plain prototype");
+    }
+    const keys = (ownKeys as string[]).sort(sortedStrings);
+    const entries = keys.map((key) => {
+      budget.bytes += Buffer.byteLength(key, "utf8");
+      if (budget.bytes > RECEIPT_CODEC_MAX_BYTES) {
+        throw new RangeError(
+          `repository receipt codec size exceeds ${RECEIPT_CODEC_MAX_BYTES} bytes`,
+        );
+      }
+      const descriptor = descriptors[key];
+      if (descriptor === undefined || !("value" in descriptor)) {
+        throw new TypeError("repository receipts cannot encode accessors");
+      }
+      return [key, encodeReceiptNode(descriptor.value, budget, depth + 1, ancestors)] as const;
+    });
+    return { type: "object", value: entries };
+  } finally {
+    ancestors.delete(value);
+  }
+}
+
+function encodeReceiptValue(value: unknown): CanonicalReceiptValue {
+  const budget: ReceiptCodecBudget = { bytes: 0, nodes: 0 };
+  const encoded = encodeReceiptNode(value, budget, 0, new WeakSet());
+  const exactBytes = Buffer.byteLength(JSON.stringify(encoded), "utf8");
+  if (exactBytes > RECEIPT_CODEC_MAX_BYTES) {
+    throw new RangeError(`repository receipt codec size exceeds ${RECEIPT_CODEC_MAX_BYTES} bytes`);
+  }
+  return encoded;
+}
+
+function exactObject(
+  value: unknown,
+  expectedKeys: readonly string[],
+  label: string,
+): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new TypeError(`${label} must be an object`);
+  }
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new TypeError(`${label} must have a plain prototype`);
+  }
+  const ownKeys = Reflect.ownKeys(value);
+  if (ownKeys.some((key) => typeof key === "symbol")) {
+    throw new TypeError(`${label} cannot contain symbol properties`);
+  }
+  const keys = ownKeys as string[];
+  if (keys.length !== expectedKeys.length || expectedKeys.some((key) => !keys.includes(key))) {
+    throw new TypeError(`${label} has an invalid shape`);
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const result: Record<string, unknown> = {};
+  for (const key of expectedKeys) {
+    const descriptor = descriptors[key];
+    if (descriptor === undefined || !("value" in descriptor)) {
+      throw new TypeError(`${label} cannot contain accessors`);
+    }
+    Object.defineProperty(result, key, {
+      configurable: true,
+      enumerable: true,
+      value: descriptor.value,
+      writable: true,
+    });
+  }
+  return result;
+}
+
+function decodeReceiptNode(value: unknown, budget: ReceiptCodecBudget, depth: number): unknown {
+  chargeReceiptCodec(budget, depth);
+  const hasValue = typeof value === "object" && value !== null && Object.hasOwn(value, "value");
+  const base = exactObject(
+    value,
+    hasValue ? ["type", "value"] : ["type"],
+    "repository receipt value",
+  );
+  const type = base.type;
+  if (type === "null") {
+    exactObject(value, ["type"], "repository receipt null");
+    return null;
+  }
+  if (type === "string") {
+    if (typeof base.value !== "string") throw new TypeError("invalid receipt string");
+    budget.bytes += Buffer.byteLength(base.value, "utf8");
+    if (budget.bytes > RECEIPT_CODEC_MAX_BYTES) {
+      throw new RangeError(
+        `repository receipt codec size exceeds ${RECEIPT_CODEC_MAX_BYTES} bytes`,
+      );
+    }
+    return base.value;
+  }
+  if (type === "boolean") {
+    if (typeof base.value !== "boolean") throw new TypeError("invalid receipt boolean");
+    return base.value;
+  }
+  if (type === "number") {
+    if (typeof base.value !== "string") throw new TypeError("invalid receipt number");
+    budget.bytes += Buffer.byteLength(base.value, "utf8");
+    if (budget.bytes > RECEIPT_CODEC_MAX_BYTES) {
+      throw new RangeError(
+        `repository receipt codec size exceeds ${RECEIPT_CODEC_MAX_BYTES} bytes`,
+      );
+    }
+    if (base.value === "-0") return -0;
+    const decoded = Number(base.value);
+    if (!Number.isFinite(decoded) || String(decoded) !== base.value) {
+      throw new TypeError("receipt number is not canonical");
+    }
+    return decoded;
+  }
+  if (type === "bigint") {
+    if (typeof base.value !== "string") throw new TypeError("invalid receipt bigint");
+    budget.bytes += Buffer.byteLength(base.value, "utf8");
+    if (budget.bytes > RECEIPT_CODEC_MAX_BYTES) {
+      throw new RangeError(
+        `repository receipt codec size exceeds ${RECEIPT_CODEC_MAX_BYTES} bytes`,
+      );
+    }
+    if (!/^(?:0|-[1-9][0-9]*|[1-9][0-9]*)$/.test(base.value)) {
+      throw new TypeError("receipt bigint is not canonical");
+    }
+    return BigInt(base.value);
+  }
+  if (type === "array") {
+    if (!Array.isArray(base.value)) throw new TypeError("invalid receipt array");
+    return base.value.map((item) => decodeReceiptNode(item, budget, depth + 1));
+  }
+  if (type === "object") {
+    if (!Array.isArray(base.value)) throw new TypeError("invalid receipt object");
+    const output: Record<string, unknown> = {};
+    let priorKey: string | null = null;
+    for (const entry of base.value) {
+      if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== "string") {
+        throw new TypeError("invalid receipt object entry");
+      }
+      if (priorKey !== null && sortedStrings(priorKey, entry[0]) >= 0) {
+        throw new TypeError("receipt object keys must be unique and sorted");
+      }
+      budget.bytes += Buffer.byteLength(entry[0], "utf8");
+      if (budget.bytes > RECEIPT_CODEC_MAX_BYTES) {
+        throw new RangeError(
+          `repository receipt codec size exceeds ${RECEIPT_CODEC_MAX_BYTES} bytes`,
+        );
+      }
+      Object.defineProperty(output, entry[0], {
+        configurable: true,
+        enumerable: true,
+        value: decodeReceiptNode(entry[1], budget, depth + 1),
+        writable: true,
+      });
+      priorKey = entry[0];
+    }
+    return output;
+  }
+  throw new TypeError("unsupported repository receipt value type");
+}
+
+function decodeReceiptValue(value: unknown): unknown {
+  return decodeReceiptNode(value, { bytes: 0, nodes: 0 }, 0);
+}
+
+function receiptPayloadJson(value: CanonicalReceiptValue): string {
+  return JSON.stringify(value);
+}
+
+function receiptHash(value: CanonicalReceiptValue): Sha256 {
+  return `sha256:${createHash("sha256").update(receiptPayloadJson(value)).digest("hex")}`;
+}
+
+async function one(
+  executor: SqlExecutor,
+  sql: string,
+  parameters: readonly (string | number | bigint | boolean | Date | Uint8Array | null)[] = [],
+): Promise<Row | null> {
+  const result = await executor.query<Row>(sql, parameters);
+  return result.rows[0] ?? null;
+}
+
+function ownerColumns(owner: DurableOwner): readonly [string | null, string | null, string | null] {
+  switch (owner.ownerType) {
+    case "PROJECT_REVISION":
+      return [owner.projectRevisionId, null, null];
+    case "IMAGE_STYLE_VERSION":
+      return [null, owner.imageStyleVersionId, null];
+    case "AVATAR_PROFILE_VERSION":
+      return [null, null, owner.avatarProfileVersionId];
+  }
+}
+
+function ownerFromRow(row: Row): DurableOwner {
+  const ownerType = stringValue(row.owner_type, "owner_type");
+  const ownerId = stringValue(row.owner_id, "owner_id");
+  switch (ownerType) {
+    case "PROJECT_REVISION":
+      return {
+        ownerType,
+        ownerId,
+        projectRevisionId: stringValue(row.project_revision_id ?? ownerId, "project_revision_id"),
+      };
+    case "IMAGE_STYLE_VERSION":
+      return {
+        ownerType,
+        ownerId,
+        imageStyleVersionId: stringValue(
+          row.image_style_version_id ?? ownerId,
+          "image_style_version_id",
+        ),
+      };
+    case "AVATAR_PROFILE_VERSION":
+      return {
+        ownerType,
+        ownerId,
+        avatarProfileVersionId: stringValue(
+          row.avatar_profile_version_id ?? ownerId,
+          "avatar_profile_version_id",
+        ),
+      };
+    default:
+      throw new TypeError(`unsupported durable owner ${ownerType}`);
+  }
+}
+
+function mapTask(row: Row): ExecutionContracts.GenerationTaskRecord {
+  return {
+    taskId: stringValue(row.id, "generation_tasks.id"),
+    workspaceId: stringValue(row.workspace_id, "generation_tasks.workspace_id"),
+    owner: ownerFromRow(row),
+    taskKey: stringValue(row.task_key, "generation_tasks.task_key"),
+    lane: stringValue(
+      row.lane,
+      "generation_tasks.lane",
+    ) as ExecutionContracts.GenerationTaskRecord["lane"],
+    state: stringValue(
+      row.state,
+      "generation_tasks.state",
+    ) as ExecutionContracts.GenerationTaskRecord["state"],
+    required: booleanValue(row.required, "generation_tasks.required"),
+    dependsOn: jsonArray(row.depends_on, "generation_tasks.depends_on"),
+    acceptedAttemptId: nullableString(
+      row.accepted_attempt_id,
+      "generation_tasks.accepted_attempt_id",
+    ),
+    version: numberValue(row.version, "generation_tasks.version"),
+    createdAt: timestamp(row.created_at, "generation_tasks.created_at"),
+    updatedAt: timestamp(row.updated_at, "generation_tasks.updated_at"),
+    cancelRequestedAt: nullableTimestamp(
+      row.cancel_requested_at,
+      "generation_tasks.cancel_requested_at",
+    ),
+    finishedAt: nullableTimestamp(row.finished_at, "generation_tasks.finished_at"),
+  };
+}
+
+function mapAttempt(row: Row): ExecutionContracts.AttemptRecord {
+  return {
+    attemptId: stringValue(row.id, "attempts.id"),
+    workspaceId: stringValue(row.workspace_id, "attempts.workspace_id"),
+    taskId: stringValue(row.task_id, "attempts.task_id"),
+    ordinal: numberValue(row.ordinal, "attempts.ordinal"),
+    idempotencyKey: stringValue(
+      row.idempotency_key,
+      "attempts.idempotency_key",
+    ) as ExecutionContracts.AttemptRecord["idempotencyKey"],
+    state: stringValue(row.state, "attempts.state") as ExecutionContracts.AttemptRecord["state"],
+    dispatchState: stringValue(
+      row.dispatch_state,
+      "attempts.dispatch_state",
+    ) as ExecutionContracts.AttemptRecord["dispatchState"],
+    claimState: stringValue(
+      row.claim_state,
+      "attempts.claim_state",
+    ) as ExecutionContracts.AttemptRecord["claimState"],
+    executionProfileId: stringValue(row.execution_profile_id, "attempts.execution_profile_id"),
+    executionClaimTokenHash: stringValue(
+      row.execution_claim_token_hash,
+      "attempts.execution_claim_token_hash",
+    ) as Sha256,
+    externalJobId: nullableString(row.external_job_id, "attempts.external_job_id"),
+    inputHash: stringValue(row.input_hash, "attempts.input_hash") as Sha256,
+    outputAssetId: nullableString(row.output_asset_id, "attempts.output_asset_id"),
+    resultDisposition: stringValue(
+      row.result_disposition,
+      "attempts.result_disposition",
+    ) as ExecutionContracts.AttemptRecord["resultDisposition"],
+    parentAttemptId: nullableString(row.parent_attempt_id, "attempts.parent_attempt_id"),
+    fallbackReason: nullableString(row.fallback_reason, "attempts.fallback_reason"),
+    problemCode: nullableString(row.problem_code, "attempts.problem_code"),
+    providerDetails: jsonObject(row.provider_details, "attempts.provider_details"),
+    createdAt: timestamp(row.created_at, "attempts.created_at"),
+    claimedAt: nullableTimestamp(row.claimed_at, "attempts.claimed_at"),
+    startedAt: nullableTimestamp(row.started_at, "attempts.started_at"),
+    finishedAt: nullableTimestamp(row.finished_at, "attempts.finished_at"),
+  } as ExecutionContracts.AttemptRecord;
+}
+
+function mapCostEvent(row: Row): EventContracts.CostEventRecord {
+  return {
+    costEventId: stringValue(row.id, "cost_events.id"),
+    workspaceId: stringValue(row.workspace_id, "cost_events.workspace_id"),
+    owner: ownerFromRow(row),
+    taskId: stringValue(row.task_id, "cost_events.task_id"),
+    attemptId: stringValue(row.attempt_id, "cost_events.attempt_id"),
+    sequence: numberValue(row.sequence, "cost_events.sequence"),
+    eventType: stringValue(
+      row.event_type,
+      "cost_events.event_type",
+    ) as EventContracts.CostEventRecord["eventType"],
+    amountMicroUsd: bigintValue(row.amount_micro_usd, "cost_events.amount_micro_usd"),
+    currency: "USD",
+    idempotencyKey: stringValue(
+      row.idempotency_key,
+      "cost_events.idempotency_key",
+    ) as EventContracts.CostEventRecord["idempotencyKey"],
+    providerReference: nullableString(row.provider_reference, "cost_events.provider_reference"),
+    details: jsonObject(row.details, "cost_events.details"),
+    occurredAt: timestamp(row.occurred_at, "cost_events.occurred_at"),
+    createdAt: timestamp(row.created_at, "cost_events.created_at"),
+  };
+}
+
+function mapOutbox(row: Row): ExecutionContracts.OutboxRecord {
+  return {
+    outboxId: stringValue(row.id, "outbox.id"),
+    workspaceId: stringValue(row.workspace_id, "outbox.workspace_id"),
+    taskId: stringValue(row.task_id, "outbox.task_id"),
+    attemptId: stringValue(row.attempt_id, "outbox.attempt_id"),
+    kind: stringValue(row.kind, "outbox.kind") as ExecutionContracts.OutboxRecord["kind"],
+    state: stringValue(row.state, "outbox.state") as ExecutionContracts.OutboxRecord["state"],
+    dedupeKey: stringValue(
+      row.dedupe_key,
+      "outbox.dedupe_key",
+    ) as ExecutionContracts.OutboxRecord["dedupeKey"],
+    payloadContractName: stringValue(row.payload_contract_name, "outbox.payload_contract_name"),
+    payloadContractVersion: stringValue(
+      row.payload_contract_version,
+      "outbox.payload_contract_version",
+    ),
+    payloadHash: stringValue(row.payload_hash, "outbox.payload_hash") as Sha256,
+    payload: jsonObject(row.payload, "outbox.payload"),
+    availableAt: timestamp(row.available_at, "outbox.available_at"),
+    leaseOwner: nullableString(row.lease_owner, "outbox.lease_owner"),
+    leaseExpiresAt: nullableTimestamp(row.lease_expires_at, "outbox.lease_expires_at"),
+    deliveredAt: nullableTimestamp(row.delivered_at, "outbox.delivered_at"),
+    createdAt: timestamp(row.created_at, "outbox.created_at"),
+    updatedAt: timestamp(row.updated_at, "outbox.updated_at"),
+  };
+}
+
+function mapWorkflowEvent(row: Row): EventContracts.WorkflowEventRecord {
+  const aggregateType = stringValue(row.aggregate_type, "workflow_events.aggregate_type");
+  const aggregateId = stringValue(row.aggregate_id, "workflow_events.aggregate_id");
+  let aggregate: EventContracts.WorkflowAggregate;
+  if (aggregateType === "WORKFLOW") {
+    aggregate = { aggregateType, aggregateId, taskId: null, attemptId: null };
+  } else if (aggregateType === "TASK") {
+    aggregate = {
+      aggregateType,
+      aggregateId,
+      taskId: stringValue(row.task_id, "workflow_events.task_id"),
+      attemptId: null,
+    };
+  } else if (aggregateType === "ATTEMPT") {
+    aggregate = {
+      aggregateType,
+      aggregateId,
+      taskId: stringValue(row.task_id, "workflow_events.task_id"),
+      attemptId: stringValue(row.attempt_id, "workflow_events.attempt_id"),
+    };
+  } else {
+    throw new TypeError(`unsupported workflow aggregate ${aggregateType}`);
+  }
+  return {
+    eventId: stringValue(row.id, "workflow_events.id"),
+    workspaceId: stringValue(row.workspace_id, "workflow_events.workspace_id"),
+    workflowInstanceId: stringValue(
+      row.workflow_instance_id,
+      "workflow_events.workflow_instance_id",
+    ),
+    aggregate,
+    sequence: numberValue(row.sequence, "workflow_events.sequence"),
+    kind: stringValue(row.kind, "workflow_events.kind") as EventContracts.WorkflowEventKind,
+    payloadContractName: stringValue(
+      row.payload_contract_name,
+      "workflow_events.payload_contract_name",
+    ),
+    payloadContractVersion: stringValue(
+      row.payload_contract_version,
+      "workflow_events.payload_contract_version",
+    ),
+    payloadHash: stringValue(row.payload_hash, "workflow_events.payload_hash") as Sha256,
+    payload: jsonObject(row.payload, "workflow_events.payload"),
+    occurredAt: timestamp(row.occurred_at, "workflow_events.occurred_at"),
+    createdAt: timestamp(row.created_at, "workflow_events.created_at"),
+  };
+}
+
+async function loadTask(
+  executor: SqlExecutor,
+  workspaceId: string,
+  taskId: string,
+): Promise<ExecutionContracts.GenerationTaskRecord | null> {
+  const row = await one(
+    executor,
+    "SELECT * FROM generation_tasks WHERE workspace_id = $1 AND id = $2",
+    [workspaceId, taskId],
+  );
+  return row === null ? null : mapTask(row);
+}
+
+async function loadAttempt(
+  executor: SqlExecutor,
+  workspaceId: string,
+  attemptId: string,
+): Promise<ExecutionContracts.AttemptRecord | null> {
+  const row = await one(executor, "SELECT * FROM attempts WHERE workspace_id = $1 AND id = $2", [
+    workspaceId,
+    attemptId,
+  ]);
+  return row === null ? null : mapAttempt(row);
+}
+
+async function loadOutbox(
+  executor: SqlExecutor,
+  workspaceId: string,
+  outboxId: string,
+): Promise<ExecutionContracts.OutboxRecord | null> {
+  const row = await one(executor, "SELECT * FROM outbox WHERE workspace_id = $1 AND id = $2", [
+    workspaceId,
+    outboxId,
+  ]);
+  return row === null ? null : mapOutbox(row);
+}
+
+function mapIdentity(row: Row): IdentityContracts.UserIdentity {
+  return {
+    userId: stringValue(row.user_id, "users.id"),
+    normalizedEmail: stringValue(row.normalized_email, "users.normalized_email"),
+    displayName: stringValue(row.display_name, "users.display_name"),
+    status: stringValue(row.user_status, "users.status") as IdentityContracts.UserStatus,
+  };
+}
+
+function mapMembership(row: Row): IdentityContracts.WorkspaceMembership {
+  return {
+    membershipId: stringValue(row.membership_id, "memberships.id"),
+    workspaceId: stringValue(row.workspace_id, "memberships.workspace_id"),
+    userId: stringValue(row.user_id, "memberships.user_id"),
+    normalizedName: stringValue(row.normalized_name, "memberships.normalized_name"),
+    role: stringValue(row.role, "memberships.role") as IdentityContracts.MembershipRole,
+    status: stringValue(
+      row.membership_status,
+      "memberships.status",
+    ) as IdentityContracts.MembershipStatus,
+    version: numberValue(row.version, "memberships.version"),
+    createdAt: timestamp(row.created_at, "memberships.created_at"),
+    updatedAt: timestamp(row.updated_at, "memberships.updated_at"),
+  };
+}
+
+function authorizationFromRow(row: Row): IdentityContracts.WorkspaceAuthorization {
+  const identity = mapIdentity(row);
+  const membership = mapMembership(row);
+  if (identity.status === "DISABLED") {
+    return {
+      identity: { ...identity, status: "DISABLED" },
+      membership,
+      authorized: false,
+      reason: "USER_DISABLED",
+    };
+  }
+  const activeIdentity = { ...identity, status: "ACTIVE" } as const;
+  switch (membership.status) {
+    case "ACTIVE":
+      return {
+        identity: activeIdentity,
+        membership: { ...membership, status: "ACTIVE" },
+        authorized: true,
+        reason: "ACTIVE_MEMBER",
+      };
+    case "INVITED":
+      return {
+        identity: activeIdentity,
+        membership: { ...membership, status: "INVITED" },
+        authorized: false,
+        reason: "INVITED",
+      };
+    case "SUSPENDED":
+      return {
+        identity: activeIdentity,
+        membership: { ...membership, status: "SUSPENDED" },
+        authorized: false,
+        reason: "MEMBERSHIP_SUSPENDED",
+      };
+    case "ARCHIVED":
+      return {
+        identity: activeIdentity,
+        membership: { ...membership, status: "ARCHIVED" },
+        authorized: false,
+        reason: "MEMBERSHIP_ARCHIVED",
+      };
+  }
+}
+
+function createIdentityRepository(
+  context: RepositoryContext,
+): IdentityContracts.IdentityRepository {
+  const joinedQuery = `SELECT
+      membership.id AS membership_id, membership.workspace_id, membership.user_id,
+      membership.normalized_name, membership.role, membership.status AS membership_status,
+      membership.version, membership.created_at, membership.updated_at,
+      identity.normalized_email, identity.display_name, identity.status AS user_status
+    FROM memberships membership
+    JOIN users identity ON identity.id = membership.user_id`;
+  return {
+    async findMembership(scope, lookup) {
+      const row = await one(
+        context.executor,
+        `${joinedQuery} WHERE membership.workspace_id = $1 AND membership.user_id = $2`,
+        [scope.workspaceId, lookup.userId],
+      );
+      return row === null ? missing("MEMBERSHIP", lookup.userId) : success(mapMembership(row));
+    },
+    async findAuthentication(scope, lookup) {
+      const row = await one(
+        context.executor,
+        `${joinedQuery} WHERE membership.workspace_id = $1 AND identity.normalized_email = $2`,
+        [scope.workspaceId, lookup.normalizedEmail],
+      );
+      return row === null
+        ? missing("USER", lookup.normalizedEmail)
+        : success(authorizationFromRow(row));
+    },
+    async authorizeMembership(scope, lookup) {
+      const row = await one(
+        context.executor,
+        `${joinedQuery} WHERE membership.workspace_id = $1 AND membership.user_id = $2`,
+        [scope.workspaceId, lookup.userId],
+      );
+      return row === null
+        ? missing("MEMBERSHIP", lookup.userId)
+        : success(authorizationFromRow(row));
+    },
+  };
+}
+
+function mapArtifact(row: Row): ArtifactContracts.ArtifactMetadata {
+  return {
+    assetId: stringValue(row.id, "assets.id"),
+    workspaceId: stringValue(row.workspace_id, "assets.workspace_id"),
+    projectId: nullableString(row.project_id, "assets.project_id"),
+    projectRevisionId: nullableString(row.project_revision_id, "assets.project_revision_id"),
+    sourceAttemptId: nullableString(row.source_attempt_id, "assets.source_attempt_id"),
+    kind: stringValue(row.kind, "assets.kind") as ArtifactContracts.ArtifactKind,
+    state: stringValue(row.state, "assets.state") as ArtifactContracts.ArtifactState,
+    objectKey: nullableString(row.object_key, "assets.object_key"),
+    binarySha256: nullableString(row.binary_sha256, "assets.binary_sha256") as Sha256 | null,
+    canonicalContractName: nullableString(
+      row.canonical_contract_name,
+      "assets.canonical_contract_name",
+    ),
+    canonicalContractVersion: nullableString(
+      row.canonical_contract_version,
+      "assets.canonical_contract_version",
+    ),
+    canonicalDocumentSha256: nullableString(
+      row.canonical_document_sha256,
+      "assets.canonical_document_sha256",
+    ) as Sha256 | null,
+    contentType: nullableString(row.content_type, "assets.content_type"),
+    byteSize: nullableBigint(row.byte_size, "assets.byte_size"),
+    widthPx: row.width_px === null ? null : numberValue(row.width_px, "assets.width_px"),
+    heightPx: row.height_px === null ? null : numberValue(row.height_px, "assets.height_px"),
+    durationMs: nullableBigint(row.duration_ms, "assets.duration_ms"),
+    metadata: jsonObject(row.metadata, "assets.metadata"),
+    createdAt: timestamp(row.created_at, "assets.created_at"),
+    verifiedAt: nullableTimestamp(row.verified_at, "assets.verified_at"),
+    archivedAt: nullableTimestamp(row.archived_at, "assets.archived_at"),
+  };
+}
+
+async function findArtifact(
+  executor: SqlExecutor,
+  workspaceId: string,
+  assetId: string,
+): Promise<ArtifactContracts.ArtifactMetadata | null> {
+  const row = await one(executor, "SELECT * FROM assets WHERE workspace_id = $1 AND id = $2", [
+    workspaceId,
+    assetId,
+  ]);
+  return row === null ? null : mapArtifact(row);
+}
+
+function createArtifactRepository(
+  context: RepositoryContext,
+): ArtifactContracts.ArtifactRepository {
+  return {
+    async registerMetadata(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const existing = await findArtifact(executor, scope.workspaceId, command.assetId);
+        if (existing !== null) {
+          const expected = {
+            assetId: command.assetId,
+            workspaceId: scope.workspaceId,
+            projectId: command.projectId,
+            projectRevisionId: command.projectRevisionId,
+            sourceAttemptId: command.sourceAttemptId,
+            kind: command.kind,
+            objectKey: command.objectKey,
+            contentType: command.contentType,
+            metadata: command.metadata,
+          };
+          const actual = {
+            assetId: existing.assetId,
+            workspaceId: existing.workspaceId,
+            projectId: existing.projectId,
+            projectRevisionId: existing.projectRevisionId,
+            sourceAttemptId: existing.sourceAttemptId,
+            kind: existing.kind,
+            objectKey: existing.objectKey,
+            contentType: existing.contentType,
+            metadata: existing.metadata,
+          };
+          return sameValue(actual, expected)
+            ? write(existing, true)
+            : conflict(
+                "IDEMPOTENCY_KEY_REUSED",
+                "artifact identity was reused with different metadata",
+              );
+        }
+        await executor.query(
+          `INSERT INTO assets (
+             id, workspace_id, project_id, project_revision_id, source_attempt_id,
+             kind, state, object_key, content_type, metadata
+           ) VALUES ($1, $2, $3, $4, $5, $6, 'UPLOADING', $7, $8, $9::jsonb)`,
+          [
+            command.assetId,
+            scope.workspaceId,
+            command.projectId,
+            command.projectRevisionId,
+            command.sourceAttemptId,
+            command.kind,
+            command.objectKey,
+            command.contentType,
+            jsonParameter(command.metadata),
+          ],
+        );
+        const inserted = await findArtifact(executor, scope.workspaceId, command.assetId);
+        if (inserted === null) throw new Error("inserted artifact disappeared");
+        return write(inserted);
+      });
+    },
+    async bindBinaryContent(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const existing = await findArtifact(executor, scope.workspaceId, command.assetId);
+        if (existing === null) return missing("ASSET", command.assetId);
+        if (existing.state === "ARCHIVED") {
+          return invariant("ARTIFACT_NOT_VERIFIABLE", "archived artifacts cannot be rebound");
+        }
+        if (existing.binarySha256 !== null) {
+          const exact =
+            existing.binarySha256 === command.binarySha256 &&
+            existing.byteSize === command.byteSize &&
+            existing.contentType === command.contentType &&
+            existing.widthPx === command.widthPx &&
+            existing.heightPx === command.heightPx &&
+            existing.durationMs === command.durationMs &&
+            existing.verifiedAt === command.verifiedAt;
+          return exact
+            ? write(existing, true)
+            : invariant(
+                "ARTIFACT_ALREADY_BOUND",
+                "artifact binary content is immutable once bound",
+              );
+        }
+        await executor.query(
+          `UPDATE assets SET state = 'VERIFIED', binary_sha256 = $3, byte_size = $4,
+             content_type = $5, width_px = $6, height_px = $7, duration_ms = $8, verified_at = $9
+           WHERE workspace_id = $1 AND id = $2`,
+          [
+            scope.workspaceId,
+            command.assetId,
+            command.binarySha256,
+            command.byteSize,
+            command.contentType,
+            command.widthPx,
+            command.heightPx,
+            command.durationMs,
+            command.verifiedAt,
+          ],
+        );
+        const updated = await findArtifact(executor, scope.workspaceId, command.assetId);
+        if (updated === null) throw new Error("bound artifact disappeared");
+        return write(updated);
+      });
+    },
+    async bindCanonicalDocument(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const existing = await findArtifact(executor, scope.workspaceId, command.assetId);
+        if (existing === null) return missing("ASSET", command.assetId);
+        if (existing.canonicalDocumentSha256 !== null) {
+          const exact =
+            existing.canonicalContractName === command.contractName &&
+            existing.canonicalContractVersion === command.contractVersion &&
+            existing.canonicalDocumentSha256 === command.canonicalDocumentSha256 &&
+            existing.binarySha256 === command.binarySha256 &&
+            existing.byteSize === command.byteSize &&
+            existing.verifiedAt === command.verifiedAt;
+          return exact
+            ? write(existing, true)
+            : invariant("ARTIFACT_ALREADY_BOUND", "canonical document binding is immutable");
+        }
+        if (
+          existing.binarySha256 !== null &&
+          command.binarySha256 !== null &&
+          existing.binarySha256 !== command.binarySha256
+        ) {
+          return invariant("CONTENT_ADDRESS_MISMATCH", "binary content hash does not match");
+        }
+        await executor.query(
+          `UPDATE assets SET state = 'VERIFIED', canonical_contract_name = $3,
+             canonical_contract_version = $4, canonical_document_sha256 = $5,
+             binary_sha256 = COALESCE(binary_sha256, $6), byte_size = $7, verified_at = $8
+           WHERE workspace_id = $1 AND id = $2`,
+          [
+            scope.workspaceId,
+            command.assetId,
+            command.contractName,
+            command.contractVersion,
+            command.canonicalDocumentSha256,
+            command.binarySha256,
+            command.byteSize,
+            command.verifiedAt,
+          ],
+        );
+        const updated = await findArtifact(executor, scope.workspaceId, command.assetId);
+        if (updated === null) throw new Error("bound canonical artifact disappeared");
+        return write(updated);
+      });
+    },
+    async resolveExact(scope, assetId) {
+      const artifact = await findArtifact(context.executor, scope.workspaceId, assetId);
+      return artifact === null ? missing("ASSET", assetId) : success(artifact);
+    },
+    async findByContentAddress(scope, lookup) {
+      const result =
+        lookup.kind === "BINARY"
+          ? await context.executor.query<Row>(
+              "SELECT * FROM assets WHERE workspace_id = $1 AND binary_sha256 = $2 ORDER BY id",
+              [scope.workspaceId, lookup.sha256],
+            )
+          : await context.executor.query<Row>(
+              `SELECT * FROM assets WHERE workspace_id = $1 AND canonical_contract_name = $2
+                 AND canonical_contract_version = $3 AND canonical_document_sha256 = $4 ORDER BY id`,
+              [scope.workspaceId, lookup.contractName, lookup.contractVersion, lookup.sha256],
+            );
+      return success(result.rows.map(mapArtifact));
+    },
+    async archive(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const existing = await findArtifact(executor, scope.workspaceId, command.assetId);
+        if (existing === null) return missing("ASSET", command.assetId);
+        if (existing.state === "ARCHIVED") {
+          return existing.archivedAt === command.archivedAt
+            ? write(existing, true)
+            : conflict("STATE_CONFLICT", "artifact is already archived");
+        }
+        await executor.query(
+          "UPDATE assets SET state = 'ARCHIVED', archived_at = $3 WHERE workspace_id = $1 AND id = $2",
+          [scope.workspaceId, command.assetId, command.archivedAt],
+        );
+        const updated = await findArtifact(executor, scope.workspaceId, command.assetId);
+        if (updated === null) throw new Error("archived artifact disappeared");
+        return write(updated);
+      });
+    },
+  };
+}
+
+function mapProject(row: Row): ProjectContracts.ProjectShell {
+  return {
+    projectId: stringValue(row.id, "projects.id"),
+    workspaceId: stringValue(row.workspace_id, "projects.workspace_id"),
+    ownerUserId: stringValue(row.owner_user_id, "projects.owner_user_id"),
+    name: stringValue(row.name, "projects.name"),
+    normalizedName: stringValue(row.normalized_name, "projects.normalized_name"),
+    status: stringValue(row.status, "projects.status") as ProjectContracts.ProjectStatus,
+    version: numberValue(row.version, "projects.version"),
+    createdAt: timestamp(row.created_at, "projects.created_at"),
+    updatedAt: timestamp(row.updated_at, "projects.updated_at"),
+    archivedAt: nullableTimestamp(row.archived_at, "projects.archived_at"),
+  };
+}
+
+function mapProjectInput(row: Row): ProjectContracts.ProjectInput {
+  return {
+    inputId: stringValue(row.id, "project_inputs.id"),
+    workspaceId: stringValue(row.workspace_id, "project_inputs.workspace_id"),
+    projectId: stringValue(row.project_id, "project_inputs.project_id"),
+    kind: stringValue(row.kind, "project_inputs.kind") as ProjectContracts.ProjectInputKind,
+    state: stringValue(row.state, "project_inputs.state") as ProjectContracts.ProjectInputState,
+    assetId: nullableString(row.asset_id, "project_inputs.asset_id"),
+    declaredBinarySha256: nullableString(
+      row.declared_binary_sha256,
+      "project_inputs.declared_binary_sha256",
+    ) as Sha256 | null,
+    verifiedBinarySha256: nullableString(
+      row.verified_binary_sha256,
+      "project_inputs.verified_binary_sha256",
+    ) as Sha256 | null,
+    optionalScript: nullableString(row.optional_script, "project_inputs.optional_script"),
+    createdAt: timestamp(row.created_at, "project_inputs.created_at"),
+    updatedAt: timestamp(row.updated_at, "project_inputs.updated_at"),
+    verifiedAt: nullableTimestamp(row.verified_at, "project_inputs.verified_at"),
+    archivedAt: nullableTimestamp(row.archived_at, "project_inputs.archived_at"),
+  };
+}
+
+function mapProjectRevision(row: Row): ProjectContracts.ProjectRevision {
+  const compatibilityState = stringValue(
+    row.avatar_compatibility_state,
+    "project_revisions.avatar_compatibility_state",
+  ) as ProjectContracts.AvatarCompatibilitySnapshot["state"];
+  const avatarCompatibility: ProjectContracts.AvatarCompatibilitySnapshot =
+    compatibilityState === "UNTESTED" || compatibilityState === "RUNNING"
+      ? { state: compatibilityState, assessmentId: null, evidenceHash: null }
+      : {
+          state: compatibilityState,
+          assessmentId: stringValue(
+            row.avatar_compatibility_assessment_id,
+            "project_revisions.avatar_compatibility_assessment_id",
+          ),
+          evidenceHash: stringValue(
+            row.avatar_compatibility_evidence_hash,
+            "project_revisions.avatar_compatibility_evidence_hash",
+          ) as Sha256,
+        };
+  const base: ProjectContracts.ProjectRevisionBase = {
+    revisionId: stringValue(row.id, "project_revisions.id"),
+    workspaceId: stringValue(row.workspace_id, "project_revisions.workspace_id"),
+    projectId: stringValue(row.project_id, "project_revisions.project_id"),
+    revisionNumber: numberValue(row.revision_number, "project_revisions.revision_number"),
+    title: stringValue(row.title, "project_revisions.title"),
+    voiceoverAssetId: stringValue(row.voiceover_asset_id, "project_revisions.voiceover_asset_id"),
+    voiceoverBinarySha256: stringValue(
+      row.voiceover_binary_sha256,
+      "project_revisions.voiceover_binary_sha256",
+    ) as Sha256,
+    avatarProfileId: stringValue(row.avatar_profile_id, "project_revisions.avatar_profile_id"),
+    avatarProfileVersionId: stringValue(
+      row.avatar_profile_version_id,
+      "project_revisions.avatar_profile_version_id",
+    ),
+    avatarProfileHash: stringValue(
+      row.avatar_profile_hash,
+      "project_revisions.avatar_profile_hash",
+    ) as Sha256,
+    avatarRuntimeSourceAssetId: stringValue(
+      row.avatar_runtime_source_asset_id,
+      "project_revisions.avatar_runtime_source_asset_id",
+    ),
+    avatarRuntimeSourceBinarySha256: stringValue(
+      row.avatar_runtime_source_binary_sha256,
+      "project_revisions.avatar_runtime_source_binary_sha256",
+    ) as Sha256,
+    avatarSourcePreparationProfile: stringValue(
+      row.avatar_source_preparation_profile,
+      "project_revisions.avatar_source_preparation_profile",
+    ),
+    avatarSourceValidationProfile: stringValue(
+      row.avatar_source_validation_profile,
+      "project_revisions.avatar_source_validation_profile",
+    ),
+    avatarCompatibility,
+    imageStyleId: stringValue(row.image_style_id, "project_revisions.image_style_id"),
+    imageStyleVersionId: stringValue(
+      row.image_style_version_id,
+      "project_revisions.image_style_version_id",
+    ),
+    styleProfileHash: stringValue(
+      row.style_profile_hash,
+      "project_revisions.style_profile_hash",
+    ) as Sha256,
+    extraPromptKeywords: nullableString(
+      row.extra_prompt_keywords,
+      "project_revisions.extra_prompt_keywords",
+    ),
+    applyExtraPromptKeywords: booleanValue(
+      row.apply_extra_prompt_keywords,
+      "project_revisions.apply_extra_prompt_keywords",
+    ),
+    generationMode: stringValue(
+      row.generation_mode,
+      "project_revisions.generation_mode",
+    ) as ProjectContracts.GenerationMode,
+    maximumCostMicroUsd: bigintValue(
+      row.maximum_cost_micro_usd,
+      "project_revisions.maximum_cost_micro_usd",
+    ),
+    currency: "USD",
+    seed: bigintValue(row.seed, "project_revisions.seed"),
+    revisionConfig: {
+      contractName: stringValue(
+        row.revision_config_contract_name,
+        "project_revisions.revision_config_contract_name",
+      ),
+      contractVersion: stringValue(
+        row.revision_config_contract_version,
+        "project_revisions.revision_config_contract_version",
+      ),
+      payload: jsonObject(row.revision_config_payload, "project_revisions.revision_config_payload"),
+      canonicalDocumentSha256: stringValue(
+        row.revision_config_hash,
+        "project_revisions.revision_config_hash",
+      ) as Sha256,
+    },
+    createdByUserId: stringValue(row.created_by_user_id, "project_revisions.created_by_user_id"),
+    createdAt: timestamp(row.created_at, "project_revisions.created_at"),
+  };
+  const status = stringValue(row.status, "project_revisions.status");
+  if (status === "DRAFT") return { ...base, status, lockedAt: null };
+  if (status === "LOCKED") {
+    return {
+      ...base,
+      status,
+      lockedAt: timestamp(row.locked_at, "project_revisions.locked_at"),
+    };
+  }
+  throw new TypeError(`unsupported project revision status ${status}`);
+}
+
+async function findProject(
+  executor: SqlExecutor,
+  workspaceId: string,
+  projectId: string,
+): Promise<ProjectContracts.ProjectShell | null> {
+  const row = await one(executor, "SELECT * FROM projects WHERE workspace_id = $1 AND id = $2", [
+    workspaceId,
+    projectId,
+  ]);
+  return row === null ? null : mapProject(row);
+}
+
+async function findProjectRevision(
+  executor: SqlExecutor,
+  workspaceId: string,
+  projectId: string,
+  revisionId: string,
+): Promise<ProjectContracts.ProjectRevision | null> {
+  const row = await one(
+    executor,
+    "SELECT * FROM project_revisions WHERE workspace_id = $1 AND project_id = $2 AND id = $3",
+    [workspaceId, projectId, revisionId],
+  );
+  return row === null ? null : mapProjectRevision(row);
+}
+
+function createProjectRepository(context: RepositoryContext): ProjectContracts.ProjectRepository {
+  return {
+    async createShell(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const existing = await findProject(executor, scope.workspaceId, command.projectId);
+        if (existing !== null) {
+          return existing.ownerUserId === scope.actorUserId &&
+            existing.name === command.name &&
+            existing.normalizedName === command.normalizedName
+            ? write(existing, true)
+            : conflict(
+                "IDEMPOTENCY_KEY_REUSED",
+                "project identity was reused with different input",
+              );
+        }
+        await executor.query(
+          `INSERT INTO projects (id, workspace_id, owner_user_id, name, normalized_name)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [
+            command.projectId,
+            scope.workspaceId,
+            scope.actorUserId,
+            command.name,
+            command.normalizedName,
+          ],
+        );
+        const inserted = await findProject(executor, scope.workspaceId, command.projectId);
+        if (inserted === null) throw new Error("inserted project disappeared");
+        return write(inserted);
+      });
+    },
+    async registerInput(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const project = await findProject(executor, scope.workspaceId, command.projectId);
+        if (project === null) return missing("PROJECT", command.projectId);
+        if (project.status === "ARCHIVED") {
+          return invariant("PROJECT_ARCHIVED", "archived projects reject new inputs");
+        }
+        const existingRow = await one(
+          executor,
+          "SELECT * FROM project_inputs WHERE workspace_id = $1 AND idempotency_key = $2",
+          [scope.workspaceId, command.idempotencyKey],
+        );
+        if (existingRow !== null) {
+          const existing = mapProjectInput(existingRow);
+          const exact =
+            existing.inputId === command.inputId &&
+            existing.projectId === command.projectId &&
+            existing.kind === command.kind &&
+            existing.declaredBinarySha256 === command.declaredBinarySha256 &&
+            existing.optionalScript === command.optionalScript;
+          return exact
+            ? write(existing, true)
+            : conflict("IDEMPOTENCY_KEY_REUSED", "project input retry key changed input");
+        }
+        await executor.query(
+          `INSERT INTO project_inputs (
+             id, workspace_id, project_id, kind, state, idempotency_key,
+             declared_binary_sha256, optional_script
+           ) VALUES ($1, $2, $3, $4, 'PENDING_UPLOAD', $5, $6, $7)`,
+          [
+            command.inputId,
+            scope.workspaceId,
+            command.projectId,
+            command.kind,
+            command.idempotencyKey,
+            command.declaredBinarySha256,
+            command.optionalScript,
+          ],
+        );
+        const inserted = await one(
+          executor,
+          "SELECT * FROM project_inputs WHERE workspace_id = $1 AND id = $2",
+          [scope.workspaceId, command.inputId],
+        );
+        if (inserted === null) throw new Error("inserted project input disappeared");
+        return write(mapProjectInput(inserted));
+      });
+    },
+    async verifyInput(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const row = await one(
+          executor,
+          "SELECT * FROM project_inputs WHERE workspace_id = $1 AND project_id = $2 AND id = $3",
+          [scope.workspaceId, command.projectId, command.inputId],
+        );
+        if (row === null) return missing("PROJECT_INPUT", command.inputId);
+        const input = mapProjectInput(row);
+        if (input.state === "VERIFIED") {
+          const exact =
+            input.assetId === command.assetId &&
+            input.verifiedBinarySha256 === command.verifiedBinarySha256 &&
+            input.verifiedAt === command.verifiedAt;
+          return exact
+            ? write(input as ProjectContracts.VerifiedProjectInput, true)
+            : conflict("STATE_CONFLICT", "project input is already verified with another asset");
+        }
+        const artifact = await findArtifact(executor, scope.workspaceId, command.assetId);
+        if (artifact === null) return missing("ASSET", command.assetId);
+        if (
+          artifact.binarySha256 !== command.verifiedBinarySha256 ||
+          (artifact.state !== "VERIFIED" && artifact.state !== "ACCEPTED")
+        ) {
+          return invariant("SNAPSHOT_MISMATCH", "verified input does not match artifact content");
+        }
+        await executor.query(
+          `UPDATE project_inputs SET state = 'VERIFIED', asset_id = $4,
+             verified_binary_sha256 = $5, verified_at = $6, updated_at = $6
+           WHERE workspace_id = $1 AND project_id = $2 AND id = $3`,
+          [
+            scope.workspaceId,
+            command.projectId,
+            command.inputId,
+            command.assetId,
+            command.verifiedBinarySha256,
+            command.verifiedAt,
+          ],
+        );
+        const updated = await one(
+          executor,
+          "SELECT * FROM project_inputs WHERE workspace_id = $1 AND id = $2",
+          [scope.workspaceId, command.inputId],
+        );
+        if (updated === null) throw new Error("verified project input disappeared");
+        return write(mapProjectInput(updated) as ProjectContracts.VerifiedProjectInput);
+      });
+    },
+    async createRevisionDraft(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const project = await findProject(executor, scope.workspaceId, command.projectId);
+        if (project === null) return missing("PROJECT", command.projectId);
+        if (project.status === "ARCHIVED") {
+          return invariant("PROJECT_ARCHIVED", "archived projects reject new revisions");
+        }
+        if (project.version !== command.expectedProjectVersion) {
+          return conflict(
+            "EXPECTED_VERSION_MISMATCH",
+            "project version changed before revision creation",
+            project.version,
+          );
+        }
+        const existing = await findProjectRevision(
+          executor,
+          scope.workspaceId,
+          command.projectId,
+          command.revisionId,
+        );
+        if (existing !== null) {
+          return sameValue(
+            {
+              ...existing,
+              revisionId: undefined,
+              workspaceId: undefined,
+              projectId: undefined,
+              revisionNumber: undefined,
+              createdByUserId: undefined,
+              createdAt: undefined,
+              status: undefined,
+              lockedAt: undefined,
+            },
+            {
+              ...command,
+              idempotencyKey: undefined,
+              revisionId: undefined,
+              projectId: undefined,
+              revisionNumber: undefined,
+              expectedProjectVersion: undefined,
+            },
+          )
+            ? write(existing as ProjectContracts.DraftProjectRevision, true)
+            : conflict("PROJECT_REVISION_EXISTS", "revision identity already exists");
+        }
+        await executor.query(
+          `INSERT INTO project_revisions (
+             id, workspace_id, project_id, revision_number, status, title,
+             voiceover_asset_id, voiceover_binary_sha256,
+             avatar_profile_id, avatar_profile_version_id, avatar_profile_hash,
+             avatar_runtime_source_asset_id, avatar_runtime_source_binary_sha256,
+             avatar_source_preparation_profile, avatar_source_validation_profile,
+             avatar_compatibility_state, avatar_compatibility_assessment_id,
+             avatar_compatibility_evidence_hash,
+             image_style_id, image_style_version_id, style_profile_hash,
+             extra_prompt_keywords, apply_extra_prompt_keywords, generation_mode,
+             maximum_cost_micro_usd, currency, seed,
+             revision_config_contract_name, revision_config_contract_version,
+             revision_config_payload, revision_config_hash, created_by_user_id
+           ) VALUES (
+             $1, $2, $3, $4, 'DRAFT', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+             $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, 'USD', $25,
+             $26, $27, $28::jsonb, $29, $30
+           )`,
+          [
+            command.revisionId,
+            scope.workspaceId,
+            command.projectId,
+            command.revisionNumber,
+            command.title,
+            command.voiceoverAssetId,
+            command.voiceoverBinarySha256,
+            command.avatarProfileId,
+            command.avatarProfileVersionId,
+            command.avatarProfileHash,
+            command.avatarRuntimeSourceAssetId,
+            command.avatarRuntimeSourceBinarySha256,
+            command.avatarSourcePreparationProfile,
+            command.avatarSourceValidationProfile,
+            command.avatarCompatibility.state,
+            command.avatarCompatibility.assessmentId,
+            command.avatarCompatibility.evidenceHash,
+            command.imageStyleId,
+            command.imageStyleVersionId,
+            command.styleProfileHash,
+            command.extraPromptKeywords,
+            command.applyExtraPromptKeywords,
+            command.generationMode,
+            command.maximumCostMicroUsd,
+            command.seed,
+            command.revisionConfig.contractName,
+            command.revisionConfig.contractVersion,
+            jsonParameter(command.revisionConfig.payload),
+            command.revisionConfig.canonicalDocumentSha256,
+            scope.actorUserId,
+          ],
+        );
+        const inserted = await findProjectRevision(
+          executor,
+          scope.workspaceId,
+          command.projectId,
+          command.revisionId,
+        );
+        if (inserted === null || inserted.status !== "DRAFT") {
+          throw new Error("inserted project revision draft disappeared");
+        }
+        return write(inserted);
+      });
+    },
+    async lockRevision(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const project = await findProject(executor, scope.workspaceId, command.projectId);
+        if (project === null) return missing("PROJECT", command.projectId);
+        const revision = await findProjectRevision(
+          executor,
+          scope.workspaceId,
+          command.projectId,
+          command.revisionId,
+        );
+        if (revision === null) return missing("PROJECT_REVISION", command.revisionId);
+        if (revision.status === "LOCKED") {
+          return conflict("PROJECT_REVISION_LOCKED", "locked revisions are immutable");
+        }
+        if (project.version !== command.expectedProjectVersion) {
+          return conflict(
+            "EXPECTED_VERSION_MISMATCH",
+            "project version changed before revision lock",
+            project.version,
+          );
+        }
+        if (
+          revision.revisionConfig.canonicalDocumentSha256 !== command.expectedRevisionConfigHash
+        ) {
+          return invariant(
+            "REVISION_SNAPSHOT_MISMATCH",
+            "revision config hash changed before lock",
+          );
+        }
+        const voiceover = await findArtifact(
+          executor,
+          scope.workspaceId,
+          revision.voiceoverAssetId,
+        );
+        const avatar = await one(
+          executor,
+          `SELECT version.* FROM avatar_profile_versions version
+           WHERE version.workspace_id = $1 AND version.profile_id = $2 AND version.id = $3`,
+          [scope.workspaceId, revision.avatarProfileId, revision.avatarProfileVersionId],
+        );
+        const style = await one(
+          executor,
+          `SELECT version.* FROM image_style_versions version
+           WHERE version.workspace_id = $1 AND version.style_id = $2 AND version.id = $3`,
+          [scope.workspaceId, revision.imageStyleId, revision.imageStyleVersionId],
+        );
+        if (
+          voiceover === null ||
+          voiceover.binarySha256 !== revision.voiceoverBinarySha256 ||
+          (voiceover.state !== "VERIFIED" && voiceover.state !== "ACCEPTED") ||
+          avatar === null ||
+          avatar.state !== "READY" ||
+          avatar.profile_hash !== revision.avatarProfileHash ||
+          avatar.runtime_source_asset_id !== revision.avatarRuntimeSourceAssetId ||
+          avatar.runtime_source_binary_sha256 !== revision.avatarRuntimeSourceBinarySha256 ||
+          style === null ||
+          style.state !== "PUBLISHED" ||
+          style.style_profile_hash !== revision.styleProfileHash
+        ) {
+          return invariant(
+            "REVISION_SNAPSHOT_MISMATCH",
+            "revision pins do not match immutable sources",
+          );
+        }
+        await executor.query(
+          `UPDATE project_revisions SET status = 'LOCKED', locked_at = $4
+           WHERE workspace_id = $1 AND project_id = $2 AND id = $3`,
+          [scope.workspaceId, command.projectId, command.revisionId, command.lockedAt],
+        );
+        await executor.query(
+          `UPDATE projects SET version = version + 1, updated_at = $3
+           WHERE workspace_id = $1 AND id = $2`,
+          [scope.workspaceId, command.projectId, command.lockedAt],
+        );
+        const locked = await findProjectRevision(
+          executor,
+          scope.workspaceId,
+          command.projectId,
+          command.revisionId,
+        );
+        if (locked === null || locked.status !== "LOCKED") {
+          throw new Error("locked project revision disappeared");
+        }
+        return write(locked);
+      });
+    },
+    async resolveExactRevision(scope, lookup) {
+      const revision = await findProjectRevision(
+        context.executor,
+        scope.workspaceId,
+        lookup.projectId,
+        lookup.revisionId,
+      );
+      return revision === null ? missing("PROJECT_REVISION", lookup.revisionId) : success(revision);
+    },
+    async archiveProject(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const project = await findProject(executor, scope.workspaceId, command.projectId);
+        if (project === null) return missing("PROJECT", command.projectId);
+        if (project.status === "ARCHIVED") {
+          return project.archivedAt === command.archivedAt
+            ? write(project, true)
+            : conflict("STATE_CONFLICT", "project is already archived");
+        }
+        if (project.version !== command.expectedVersion) {
+          return conflict(
+            "EXPECTED_VERSION_MISMATCH",
+            "project version changed before archive",
+            project.version,
+          );
+        }
+        await executor.query(
+          `UPDATE projects SET status = 'ARCHIVED', version = version + 1,
+             archived_at = $3, updated_at = $3
+           WHERE workspace_id = $1 AND id = $2`,
+          [scope.workspaceId, command.projectId, command.archivedAt],
+        );
+        const archived = await findProject(executor, scope.workspaceId, command.projectId);
+        if (archived === null) throw new Error("archived project disappeared");
+        return write(archived);
+      });
+    },
+  };
+}
+
+function canonicalDocumentFromColumns(
+  row: Row,
+  prefix: "profile" | "evidence",
+): CanonicalDocument | null {
+  const contractName = row[`${prefix}_contract_name`];
+  if (contractName === null) return null;
+  return {
+    contractName: stringValue(contractName, `${prefix}_contract_name`),
+    contractVersion: stringValue(row[`${prefix}_contract_version`], `${prefix}_contract_version`),
+    payload: jsonObject(row[`${prefix}_payload`], `${prefix}_payload`),
+    canonicalDocumentSha256: stringValue(
+      row[prefix === "profile" ? "profile_hash" : "evidence_hash"],
+      `${prefix}_hash`,
+    ) as Sha256,
+  };
+}
+
+function mapAvatarProfile(row: Row): PresetContracts.AvatarProfile {
+  return {
+    profileId: stringValue(row.id, "avatar_profiles.id"),
+    workspaceId: stringValue(row.workspace_id, "avatar_profiles.workspace_id"),
+    name: stringValue(row.name, "avatar_profiles.name"),
+    normalizedName: stringValue(row.normalized_name, "avatar_profiles.normalized_name"),
+    status: stringValue(row.status, "avatar_profiles.status") as PresetContracts.PresetStatus,
+    activeVersionId: nullableString(row.active_version_id, "avatar_profiles.active_version_id"),
+    thumbnailAssetId: nullableString(row.thumbnail_asset_id, "avatar_profiles.thumbnail_asset_id"),
+    createdByUserId: stringValue(row.created_by_user_id, "avatar_profiles.created_by_user_id"),
+    createdAt: timestamp(row.created_at, "avatar_profiles.created_at"),
+    updatedAt: timestamp(row.updated_at, "avatar_profiles.updated_at"),
+    archivedAt: nullableTimestamp(row.archived_at, "avatar_profiles.archived_at"),
+  };
+}
+
+function mapAvatarVersion(row: Row): PresetContracts.AvatarProfileVersion {
+  const state = stringValue(row.state, "avatar_profile_versions.state");
+  const base: PresetContracts.AvatarVersionBase = {
+    versionId: stringValue(row.id, "avatar_profile_versions.id"),
+    workspaceId: stringValue(row.workspace_id, "avatar_profile_versions.workspace_id"),
+    profileId: stringValue(row.profile_id, "avatar_profile_versions.profile_id"),
+    versionNumber: numberValue(row.version_number, "avatar_profile_versions.version_number"),
+    createdAt: timestamp(row.created_at, "avatar_profile_versions.created_at"),
+    updatedAt: timestamp(row.updated_at, "avatar_profile_versions.updated_at"),
+  };
+  if (state === "READY") {
+    return {
+      ...base,
+      state,
+      profileDocument: canonicalDocumentFromColumns(row, "profile")!,
+      originalAssetId: stringValue(
+        row.original_asset_id,
+        "avatar_profile_versions.original_asset_id",
+      ),
+      runtimeSourceAssetId: stringValue(
+        row.runtime_source_asset_id,
+        "avatar_profile_versions.runtime_source_asset_id",
+      ),
+      runtimeSourceBinarySha256: stringValue(
+        row.runtime_source_binary_sha256,
+        "avatar_profile_versions.runtime_source_binary_sha256",
+      ) as Sha256,
+      sourcePreparationProfile: stringValue(
+        row.source_preparation_profile,
+        "avatar_profile_versions.source_preparation_profile",
+      ),
+      sourceValidationProfile: stringValue(
+        row.source_validation_profile,
+        "avatar_profile_versions.source_validation_profile",
+      ),
+      rightsAttestedByUserId: stringValue(
+        row.rights_attested_by_user_id,
+        "avatar_profile_versions.rights_attested_by_user_id",
+      ),
+      likenessAttestedByUserId: stringValue(
+        row.likeness_attested_by_user_id,
+        "avatar_profile_versions.likeness_attested_by_user_id",
+      ),
+      readyAt: timestamp(row.ready_at, "avatar_profile_versions.ready_at"),
+    };
+  }
+  if (state === "ABANDONED") {
+    return {
+      ...base,
+      state,
+      abandonedAt: timestamp(row.abandoned_at, "avatar_profile_versions.abandoned_at"),
+    };
+  }
+  return {
+    ...base,
+    state: state as PresetContracts.AvatarDraftState,
+    profileDocument: canonicalDocumentFromColumns(row, "profile"),
+    originalAssetId: nullableString(
+      row.original_asset_id,
+      "avatar_profile_versions.original_asset_id",
+    ),
+    runtimeSourceAssetId: nullableString(
+      row.runtime_source_asset_id,
+      "avatar_profile_versions.runtime_source_asset_id",
+    ),
+    runtimeSourceBinarySha256: nullableString(
+      row.runtime_source_binary_sha256,
+      "avatar_profile_versions.runtime_source_binary_sha256",
+    ) as Sha256 | null,
+    sourcePreparationProfile: nullableString(
+      row.source_preparation_profile,
+      "avatar_profile_versions.source_preparation_profile",
+    ),
+    sourceValidationProfile: nullableString(
+      row.source_validation_profile,
+      "avatar_profile_versions.source_validation_profile",
+    ),
+    rightsAttestedByUserId: nullableString(
+      row.rights_attested_by_user_id,
+      "avatar_profile_versions.rights_attested_by_user_id",
+    ),
+    likenessAttestedByUserId: nullableString(
+      row.likeness_attested_by_user_id,
+      "avatar_profile_versions.likeness_attested_by_user_id",
+    ),
+  };
+}
+
+function mapImageStyle(row: Row): PresetContracts.ImageStyle {
+  return {
+    styleId: stringValue(row.id, "image_styles.id"),
+    workspaceId: stringValue(row.workspace_id, "image_styles.workspace_id"),
+    name: stringValue(row.name, "image_styles.name"),
+    normalizedName: stringValue(row.normalized_name, "image_styles.normalized_name"),
+    status: stringValue(row.status, "image_styles.status") as PresetContracts.PresetStatus,
+    activeVersionId: nullableString(row.active_version_id, "image_styles.active_version_id"),
+    coverAssetId: nullableString(row.cover_asset_id, "image_styles.cover_asset_id"),
+    createdByUserId: stringValue(row.created_by_user_id, "image_styles.created_by_user_id"),
+    createdAt: timestamp(row.created_at, "image_styles.created_at"),
+    updatedAt: timestamp(row.updated_at, "image_styles.updated_at"),
+    archivedAt: nullableTimestamp(row.archived_at, "image_styles.archived_at"),
+  };
+}
+
+function mapImageStyleVersion(row: Row): PresetContracts.ImageStyleVersion {
+  const state = stringValue(row.state, "image_style_versions.state");
+  const base: PresetContracts.ImageStyleVersionBase = {
+    versionId: stringValue(row.id, "image_style_versions.id"),
+    workspaceId: stringValue(row.workspace_id, "image_style_versions.workspace_id"),
+    styleId: stringValue(row.style_id, "image_style_versions.style_id"),
+    versionNumber: numberValue(row.version_number, "image_style_versions.version_number"),
+    createdAt: timestamp(row.created_at, "image_style_versions.created_at"),
+    updatedAt: timestamp(row.updated_at, "image_style_versions.updated_at"),
+  };
+  if (state === "PUBLISHED") {
+    return {
+      ...base,
+      state,
+      profileDocument: {
+        contractName: stringValue(
+          row.profile_contract_name,
+          "image_style_versions.profile_contract_name",
+        ),
+        contractVersion: stringValue(
+          row.profile_contract_version,
+          "image_style_versions.profile_contract_version",
+        ),
+        payload: jsonObject(row.profile_payload, "image_style_versions.profile_payload"),
+        canonicalDocumentSha256: stringValue(
+          row.style_profile_hash,
+          "image_style_versions.style_profile_hash",
+        ) as Sha256,
+      },
+      analyzerRequestHash: nullableString(
+        row.analyzer_request_hash,
+        "image_style_versions.analyzer_request_hash",
+      ) as Sha256 | null,
+      analyzerModelSnapshot: nullableString(
+        row.analyzer_model_snapshot,
+        "image_style_versions.analyzer_model_snapshot",
+      ),
+      disclosureAttestedByUserId: stringValue(
+        row.disclosure_attested_by_user_id,
+        "image_style_versions.disclosure_attested_by_user_id",
+      ),
+      publishedAt: timestamp(row.published_at, "image_style_versions.published_at"),
+    };
+  }
+  if (state === "ABANDONED") {
+    return {
+      ...base,
+      state,
+      abandonedAt: timestamp(row.abandoned_at, "image_style_versions.abandoned_at"),
+    };
+  }
+  return {
+    ...base,
+    state: state as PresetContracts.ImageStyleDraftState,
+    profileDocument:
+      row.profile_contract_name === null
+        ? null
+        : {
+            contractName: stringValue(
+              row.profile_contract_name,
+              "image_style_versions.profile_contract_name",
+            ),
+            contractVersion: stringValue(
+              row.profile_contract_version,
+              "image_style_versions.profile_contract_version",
+            ),
+            payload: jsonObject(row.profile_payload, "image_style_versions.profile_payload"),
+            canonicalDocumentSha256: stringValue(
+              row.style_profile_hash,
+              "image_style_versions.style_profile_hash",
+            ) as Sha256,
+          },
+    analyzerRequestHash: nullableString(
+      row.analyzer_request_hash,
+      "image_style_versions.analyzer_request_hash",
+    ) as Sha256 | null,
+    analyzerModelSnapshot: nullableString(
+      row.analyzer_model_snapshot,
+      "image_style_versions.analyzer_model_snapshot",
+    ),
+    disclosureAttestedByUserId: nullableString(
+      row.disclosure_attested_by_user_id,
+      "image_style_versions.disclosure_attested_by_user_id",
+    ),
+  };
+}
+
+async function findAvatarProfile(
+  executor: SqlExecutor,
+  workspaceId: string,
+  profileId: string,
+): Promise<PresetContracts.AvatarProfile | null> {
+  const row = await one(
+    executor,
+    "SELECT * FROM avatar_profiles WHERE workspace_id = $1 AND id = $2",
+    [workspaceId, profileId],
+  );
+  return row === null ? null : mapAvatarProfile(row);
+}
+
+async function findAvatarVersion(
+  executor: SqlExecutor,
+  workspaceId: string,
+  profileId: string,
+  versionId: string,
+): Promise<PresetContracts.AvatarProfileVersion | null> {
+  const row = await one(
+    executor,
+    `SELECT * FROM avatar_profile_versions
+     WHERE workspace_id = $1 AND profile_id = $2 AND id = $3`,
+    [workspaceId, profileId, versionId],
+  );
+  return row === null ? null : mapAvatarVersion(row);
+}
+
+async function findImageStyle(
+  executor: SqlExecutor,
+  workspaceId: string,
+  styleId: string,
+): Promise<PresetContracts.ImageStyle | null> {
+  const row = await one(
+    executor,
+    "SELECT * FROM image_styles WHERE workspace_id = $1 AND id = $2",
+    [workspaceId, styleId],
+  );
+  return row === null ? null : mapImageStyle(row);
+}
+
+async function findImageStyleVersion(
+  executor: SqlExecutor,
+  workspaceId: string,
+  styleId: string,
+  versionId: string,
+): Promise<PresetContracts.ImageStyleVersion | null> {
+  const row = await one(
+    executor,
+    `SELECT * FROM image_style_versions
+     WHERE workspace_id = $1 AND style_id = $2 AND id = $3`,
+    [workspaceId, styleId, versionId],
+  );
+  return row === null ? null : mapImageStyleVersion(row);
+}
+
+function createAvatarProfileRepository(
+  context: RepositoryContext,
+): PresetContracts.AvatarProfileRepository {
+  return {
+    async createProfile(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const existing = await findAvatarProfile(executor, scope.workspaceId, command.profileId);
+        if (existing !== null) {
+          return existing.createdByUserId === scope.actorUserId &&
+            existing.name === command.name &&
+            existing.normalizedName === command.normalizedName
+            ? write(existing, true)
+            : conflict("IDEMPOTENCY_KEY_REUSED", "avatar profile identity changed on retry");
+        }
+        await executor.query(
+          `INSERT INTO avatar_profiles (id, workspace_id, name, normalized_name, created_by_user_id)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [
+            command.profileId,
+            scope.workspaceId,
+            command.name,
+            command.normalizedName,
+            scope.actorUserId,
+          ],
+        );
+        const inserted = await findAvatarProfile(executor, scope.workspaceId, command.profileId);
+        if (inserted === null) throw new Error("inserted avatar profile disappeared");
+        return write(inserted);
+      });
+    },
+    async createDraftVersion(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const profile = await findAvatarProfile(executor, scope.workspaceId, command.profileId);
+        if (profile === null) return missing("AVATAR_PROFILE", command.profileId);
+        if (profile.status === "ARCHIVED") {
+          return invariant("AVATAR_PROFILE_ARCHIVED", "archived avatar profiles reject drafts");
+        }
+        const existing = await findAvatarVersion(
+          executor,
+          scope.workspaceId,
+          command.profileId,
+          command.versionId,
+        );
+        if (existing !== null) {
+          return existing.versionNumber === command.versionNumber && existing.state === "DRAFT"
+            ? write(existing, true)
+            : conflict("AVATAR_PROFILE_VERSION_CONFLICT", "avatar version identity already exists");
+        }
+        await executor.query(
+          `INSERT INTO avatar_profile_versions (
+             id, workspace_id, profile_id, version_number, state
+           ) VALUES ($1, $2, $3, $4, 'DRAFT')`,
+          [command.versionId, scope.workspaceId, command.profileId, command.versionNumber],
+        );
+        const inserted = await findAvatarVersion(
+          executor,
+          scope.workspaceId,
+          command.profileId,
+          command.versionId,
+        );
+        if (inserted === null) throw new Error("inserted avatar draft disappeared");
+        return write(inserted as PresetContracts.AvatarProfileDraftVersion);
+      });
+    },
+    async saveDraftVersion(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const existing = await findAvatarVersion(
+          executor,
+          scope.workspaceId,
+          command.profileId,
+          command.versionId,
+        );
+        if (existing === null) return missing("AVATAR_PROFILE_VERSION", command.versionId);
+        if (existing.state === "READY" || existing.state === "ABANDONED") {
+          return invariant(
+            "IMMUTABLE_RECORD",
+            "published or abandoned avatar versions are immutable",
+          );
+        }
+        if (existing.updatedAt !== command.expectedUpdatedAt) {
+          return conflict("EXPECTED_VERSION_MISMATCH", "avatar draft changed before save");
+        }
+        await executor.query(
+          `UPDATE avatar_profile_versions SET state = $4,
+             profile_contract_name = $5, profile_contract_version = $6,
+             profile_payload = $7::jsonb, profile_hash = $8,
+             original_asset_id = $9, runtime_source_asset_id = $10,
+             runtime_source_binary_sha256 = $11, source_preparation_profile = $12,
+             source_validation_profile = $13, rights_attested_by_user_id = $14,
+             likeness_attested_by_user_id = $15, updated_at = now()
+           WHERE workspace_id = $1 AND profile_id = $2 AND id = $3`,
+          [
+            scope.workspaceId,
+            command.profileId,
+            command.versionId,
+            command.nextState,
+            command.profileDocument?.contractName ?? null,
+            command.profileDocument?.contractVersion ?? null,
+            command.profileDocument === null
+              ? null
+              : jsonParameter(command.profileDocument.payload),
+            command.profileDocument?.canonicalDocumentSha256 ?? null,
+            command.originalAssetId,
+            command.runtimeSourceAssetId,
+            command.runtimeSourceBinarySha256,
+            command.sourcePreparationProfile,
+            command.sourceValidationProfile,
+            command.rightsAttestedByUserId,
+            command.likenessAttestedByUserId,
+          ],
+        );
+        const updated = await findAvatarVersion(
+          executor,
+          scope.workspaceId,
+          command.profileId,
+          command.versionId,
+        );
+        if (updated === null) throw new Error("saved avatar draft disappeared");
+        return write(updated as PresetContracts.AvatarProfileDraftVersion);
+      });
+    },
+    async publishVersion(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const existing = await findAvatarVersion(
+          executor,
+          scope.workspaceId,
+          command.profileId,
+          command.versionId,
+        );
+        if (existing === null) return missing("AVATAR_PROFILE_VERSION", command.versionId);
+        if (existing.state === "READY") {
+          return sameValue(
+            {
+              profileDocument: existing.profileDocument,
+              originalAssetId: existing.originalAssetId,
+              runtimeSourceAssetId: existing.runtimeSourceAssetId,
+              runtimeSourceBinarySha256: existing.runtimeSourceBinarySha256,
+              sourcePreparationProfile: existing.sourcePreparationProfile,
+              sourceValidationProfile: existing.sourceValidationProfile,
+              rightsAttestedByUserId: existing.rightsAttestedByUserId,
+              likenessAttestedByUserId: existing.likenessAttestedByUserId,
+              readyAt: existing.readyAt,
+            },
+            {
+              profileDocument: command.profileDocument,
+              originalAssetId: command.originalAssetId,
+              runtimeSourceAssetId: command.runtimeSourceAssetId,
+              runtimeSourceBinarySha256: command.runtimeSourceBinarySha256,
+              sourcePreparationProfile: command.sourcePreparationProfile,
+              sourceValidationProfile: command.sourceValidationProfile,
+              rightsAttestedByUserId: command.rightsAttestedByUserId,
+              likenessAttestedByUserId: command.likenessAttestedByUserId,
+              readyAt: command.readyAt,
+            },
+          )
+            ? write(existing, true)
+            : invariant("IMMUTABLE_RECORD", "ready avatar version cannot be changed");
+        }
+        if (existing.state === "ABANDONED") {
+          return invariant(
+            "AVATAR_VERSION_NOT_PUBLISHABLE",
+            "abandoned avatar version cannot publish",
+          );
+        }
+        if (existing.updatedAt !== command.expectedUpdatedAt) {
+          return conflict("EXPECTED_VERSION_MISMATCH", "avatar version changed before publication");
+        }
+        await executor.query(
+          `UPDATE avatar_profile_versions SET state = 'READY',
+             profile_contract_name = $4, profile_contract_version = $5,
+             profile_payload = $6::jsonb, profile_hash = $7, original_asset_id = $8,
+             runtime_source_asset_id = $9, runtime_source_binary_sha256 = $10,
+             source_preparation_profile = $11, source_validation_profile = $12,
+             rights_attested_by_user_id = $13, likeness_attested_by_user_id = $14,
+             ready_at = $15, updated_at = $15
+           WHERE workspace_id = $1 AND profile_id = $2 AND id = $3`,
+          [
+            scope.workspaceId,
+            command.profileId,
+            command.versionId,
+            command.profileDocument.contractName,
+            command.profileDocument.contractVersion,
+            jsonParameter(command.profileDocument.payload),
+            command.profileDocument.canonicalDocumentSha256,
+            command.originalAssetId,
+            command.runtimeSourceAssetId,
+            command.runtimeSourceBinarySha256,
+            command.sourcePreparationProfile,
+            command.sourceValidationProfile,
+            command.rightsAttestedByUserId,
+            command.likenessAttestedByUserId,
+            command.readyAt,
+          ],
+        );
+        await executor.query(
+          `UPDATE avatar_profiles SET active_version_id = $3, updated_at = $4
+           WHERE workspace_id = $1 AND id = $2`,
+          [scope.workspaceId, command.profileId, command.versionId, command.readyAt],
+        );
+        const published = await findAvatarVersion(
+          executor,
+          scope.workspaceId,
+          command.profileId,
+          command.versionId,
+        );
+        if (published === null || published.state !== "READY") {
+          throw new Error("published avatar version disappeared");
+        }
+        return write(published);
+      });
+    },
+    async resolveExactReadyVersion(scope, lookup) {
+      const version = await findAvatarVersion(
+        context.executor,
+        scope.workspaceId,
+        lookup.profileId,
+        lookup.versionId,
+      );
+      if (version === null) return missing("AVATAR_PROFILE_VERSION", lookup.versionId);
+      if (version.state !== "READY") {
+        return invariant("AVATAR_VERSION_NOT_READY", "requested avatar version is not ready");
+      }
+      const profile = await findAvatarProfile(
+        context.executor,
+        scope.workspaceId,
+        lookup.profileId,
+      );
+      if (profile === null) return missing("AVATAR_PROFILE", lookup.profileId);
+      if (lookup.use === "NEW_REVISION" && profile.status === "ARCHIVED") {
+        return invariant("AVATAR_PROFILE_ARCHIVED", "archived avatar cannot enter a new revision");
+      }
+      return success(version);
+    },
+    async beginCompatibilityTest(scope, command) {
+      if (
+        command.reservation.task.owner.ownerType !== "AVATAR_PROFILE_VERSION" ||
+        command.reservation.task.owner.ownerId !== command.versionId ||
+        command.reservation.task.owner.avatarProfileVersionId !== command.versionId
+      ) {
+        return invariant(
+          "AVATAR_COMPATIBILITY_BILLING_BOUNDARY_MISMATCH",
+          "compatibility test must bill its exact avatar version",
+        );
+      }
+      return context.atomic.run(async (executor) => {
+        const reservationCommand = {
+          ...command.reservation,
+          idempotencyKey: command.idempotencyKey,
+        };
+        const reserved = await reserveTaskAttemptIn(executor, scope, reservationCommand);
+        if (!reserved.ok) {
+          return reserved as IdempotentRepositoryResult<
+            never,
+            PresetContracts.AvatarConflict,
+            PresetContracts.AvatarMissing,
+            PresetContracts.AvatarInvariant
+          >;
+        }
+        const existing = await one(
+          executor,
+          `SELECT test.*, assessment.execution_profile_id
+           FROM avatar_profile_test_attempts test
+           JOIN avatar_compatibility_assessments assessment
+             ON assessment.workspace_id = test.workspace_id AND assessment.id = test.assessment_id
+           WHERE test.workspace_id = $1 AND test.id = $2`,
+          [scope.workspaceId, command.testAttemptId],
+        );
+        if (existing !== null) {
+          return write(
+            {
+              kind: "AVATAR_COMPATIBILITY_TEST_STARTED" as const,
+              assessment: mapAvatarAssessment(existing),
+              testAttempt: mapAvatarTestAttempt(existing),
+              reservation: reserved.value
+                .value as ExecutionContracts.AvatarProfileVersionTaskAttemptReservation,
+            },
+            true,
+          );
+        }
+        await executor.query(
+          `INSERT INTO avatar_compatibility_assessments (
+             id, workspace_id, avatar_profile_version_id, execution_profile_id, state
+           ) VALUES ($1, $2, $3, $4, 'RUNNING')`,
+          [
+            command.assessmentId,
+            scope.workspaceId,
+            command.versionId,
+            command.reservation.attempt.executionProfileId,
+          ],
+        );
+        await executor.query(
+          `INSERT INTO avatar_profile_test_attempts (
+             id, workspace_id, assessment_id, ordinal, idempotency_key, state,
+             task_id, execution_attempt_id, reservation_cost_event_id, outbox_id,
+             avatar_profile_version_id
+           ) VALUES ($1, $2, $3, $4, $5, 'CREATED', $6, $7, $8, $9, $10)`,
+          [
+            command.testAttemptId,
+            scope.workspaceId,
+            command.assessmentId,
+            command.reservation.attempt.ordinal,
+            command.idempotencyKey,
+            command.reservation.task.taskId,
+            command.reservation.attempt.attemptId,
+            command.reservation.costReservation.costEventId,
+            command.reservation.dispatchOutbox.outboxId,
+            command.versionId,
+          ],
+        );
+        const inserted = await one(
+          executor,
+          `SELECT test.*, assessment.execution_profile_id,
+                  assessment.created_at AS assessment_created_at,
+                  assessment.updated_at AS assessment_updated_at,
+                  assessment.state AS assessment_state
+           FROM avatar_profile_test_attempts test
+           JOIN avatar_compatibility_assessments assessment
+             ON assessment.workspace_id = test.workspace_id AND assessment.id = test.assessment_id
+           WHERE test.workspace_id = $1 AND test.id = $2`,
+          [scope.workspaceId, command.testAttemptId],
+        );
+        if (inserted === null) throw new Error("avatar compatibility attempt disappeared");
+        return write({
+          kind: "AVATAR_COMPATIBILITY_TEST_STARTED" as const,
+          assessment: mapAvatarAssessment(inserted),
+          testAttempt: mapAvatarTestAttempt(inserted),
+          reservation: reserved.value
+            .value as ExecutionContracts.AvatarProfileVersionTaskAttemptReservation,
+        });
+      });
+    },
+    async archiveProfile(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const profile = await findAvatarProfile(executor, scope.workspaceId, command.profileId);
+        if (profile === null) return missing("AVATAR_PROFILE", command.profileId);
+        if (profile.status === "ARCHIVED") {
+          return profile.archivedAt === command.archivedAt
+            ? write(profile, true)
+            : conflict("STATE_CONFLICT", "avatar profile is already archived");
+        }
+        if (profile.updatedAt !== command.expectedUpdatedAt) {
+          return conflict("EXPECTED_VERSION_MISMATCH", "avatar profile changed before archive");
+        }
+        await executor.query(
+          `UPDATE avatar_profiles SET status = 'ARCHIVED', archived_at = $3, updated_at = $3
+           WHERE workspace_id = $1 AND id = $2`,
+          [scope.workspaceId, command.profileId, command.archivedAt],
+        );
+        const archived = await findAvatarProfile(executor, scope.workspaceId, command.profileId);
+        if (archived === null) throw new Error("archived avatar profile disappeared");
+        return write(archived);
+      });
+    },
+  };
+}
+
+function mapAvatarAssessment(row: Row): PresetContracts.RunningAvatarCompatibilityAssessment {
+  return {
+    assessmentId: stringValue(row.assessment_id, "avatar_compatibility_assessments.id"),
+    workspaceId: stringValue(row.workspace_id, "avatar_compatibility_assessments.workspace_id"),
+    avatarProfileVersionId: stringValue(
+      row.avatar_profile_version_id,
+      "avatar_compatibility_assessments.avatar_profile_version_id",
+    ),
+    executionProfileId: stringValue(
+      row.execution_profile_id,
+      "avatar_compatibility_assessments.execution_profile_id",
+    ),
+    state: "RUNNING",
+    modelSnapshotHash: null,
+    evidenceDocument: null,
+    evidenceHash: null,
+    createdAt: timestamp(
+      row.assessment_created_at ?? row.created_at,
+      "avatar_compatibility_assessments.created_at",
+    ),
+    updatedAt: timestamp(
+      row.assessment_updated_at ?? row.updated_at,
+      "avatar_compatibility_assessments.updated_at",
+    ),
+    finishedAt: null,
+  };
+}
+
+function mapAvatarTestAttempt(row: Row): PresetContracts.CreatedAvatarProfileTestAttempt {
+  return {
+    testAttemptId: stringValue(row.id, "avatar_profile_test_attempts.id"),
+    workspaceId: stringValue(row.workspace_id, "avatar_profile_test_attempts.workspace_id"),
+    avatarProfileVersionId: stringValue(
+      row.avatar_profile_version_id,
+      "avatar_profile_test_attempts.avatar_profile_version_id",
+    ),
+    assessmentId: stringValue(row.assessment_id, "avatar_profile_test_attempts.assessment_id"),
+    executionAttemptId: stringValue(
+      row.execution_attempt_id,
+      "avatar_profile_test_attempts.execution_attempt_id",
+    ),
+    taskId: stringValue(row.task_id, "avatar_profile_test_attempts.task_id"),
+    reservationCostEventId: stringValue(
+      row.reservation_cost_event_id,
+      "avatar_profile_test_attempts.reservation_cost_event_id",
+    ),
+    dispatchOutboxId: stringValue(row.outbox_id, "avatar_profile_test_attempts.outbox_id"),
+    ordinal: numberValue(row.ordinal, "avatar_profile_test_attempts.ordinal"),
+    idempotencyKey: stringValue(
+      row.idempotency_key,
+      "avatar_profile_test_attempts.idempotency_key",
+    ) as PresetContracts.CreatedAvatarProfileTestAttempt["idempotencyKey"],
+    state: "CREATED",
+    externalJobId: null,
+    outputAssetId: null,
+    reportedCostMicroUsd: null,
+    createdAt: timestamp(row.created_at, "avatar_profile_test_attempts.created_at"),
+    startedAt: null,
+    finishedAt: null,
+  };
+}
+
+function mapImageStyleAnalysisAttempt(row: Row): PresetContracts.CreatedImageStyleAnalysisAttempt {
+  return {
+    analysisAttemptId: stringValue(row.id, "image_style_analysis_attempts.id"),
+    workspaceId: stringValue(row.workspace_id, "image_style_analysis_attempts.workspace_id"),
+    styleVersionId: stringValue(
+      row.style_version_id,
+      "image_style_analysis_attempts.style_version_id",
+    ),
+    executionAttemptId: stringValue(
+      row.execution_attempt_id,
+      "image_style_analysis_attempts.execution_attempt_id",
+    ),
+    taskId: stringValue(row.task_id, "image_style_analysis_attempts.task_id"),
+    reservationCostEventId: stringValue(
+      row.reservation_cost_event_id,
+      "image_style_analysis_attempts.reservation_cost_event_id",
+    ),
+    dispatchOutboxId: stringValue(row.outbox_id, "image_style_analysis_attempts.outbox_id"),
+    ordinal: numberValue(row.ordinal, "image_style_analysis_attempts.ordinal"),
+    idempotencyKey: stringValue(
+      row.idempotency_key,
+      "image_style_analysis_attempts.idempotency_key",
+    ) as PresetContracts.CreatedImageStyleAnalysisAttempt["idempotencyKey"],
+    requestHash: stringValue(
+      row.request_hash,
+      "image_style_analysis_attempts.request_hash",
+    ) as Sha256,
+    provider: stringValue(row.provider, "image_style_analysis_attempts.provider"),
+    model: stringValue(row.model, "image_style_analysis_attempts.model"),
+    modelRevision: stringValue(row.model_revision, "image_style_analysis_attempts.model_revision"),
+    state: "CREATED",
+    responseHash: null,
+    usagePayload: null,
+    reportedCostMicroUsd: null,
+  };
+}
+
+function createImageStyleRepository(
+  context: RepositoryContext,
+): PresetContracts.ImageStyleRepository {
+  return {
+    async createStyle(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const existing = await findImageStyle(executor, scope.workspaceId, command.styleId);
+        if (existing !== null) {
+          return existing.createdByUserId === scope.actorUserId &&
+            existing.name === command.name &&
+            existing.normalizedName === command.normalizedName
+            ? write(existing, true)
+            : conflict("IDEMPOTENCY_KEY_REUSED", "image style identity changed on retry");
+        }
+        await executor.query(
+          `INSERT INTO image_styles (id, workspace_id, name, normalized_name, created_by_user_id)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [
+            command.styleId,
+            scope.workspaceId,
+            command.name,
+            command.normalizedName,
+            scope.actorUserId,
+          ],
+        );
+        const inserted = await findImageStyle(executor, scope.workspaceId, command.styleId);
+        if (inserted === null) throw new Error("inserted image style disappeared");
+        return write(inserted);
+      });
+    },
+    async createDraftVersion(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const style = await findImageStyle(executor, scope.workspaceId, command.styleId);
+        if (style === null) return missing("IMAGE_STYLE", command.styleId);
+        if (style.status === "ARCHIVED") {
+          return invariant("IMAGE_STYLE_ARCHIVED", "archived image styles reject drafts");
+        }
+        const existing = await findImageStyleVersion(
+          executor,
+          scope.workspaceId,
+          command.styleId,
+          command.versionId,
+        );
+        if (existing !== null) {
+          return existing.versionNumber === command.versionNumber && existing.state === "DRAFT"
+            ? write(existing, true)
+            : conflict(
+                "IMAGE_STYLE_VERSION_CONFLICT",
+                "image style version identity already exists",
+              );
+        }
+        await executor.query(
+          `INSERT INTO image_style_versions (id, workspace_id, style_id, version_number, state)
+           VALUES ($1, $2, $3, $4, 'DRAFT')`,
+          [command.versionId, scope.workspaceId, command.styleId, command.versionNumber],
+        );
+        const inserted = await findImageStyleVersion(
+          executor,
+          scope.workspaceId,
+          command.styleId,
+          command.versionId,
+        );
+        if (inserted === null) throw new Error("inserted image style draft disappeared");
+        return write(inserted as PresetContracts.ImageStyleDraftVersion);
+      });
+    },
+    async saveDraftVersion(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const existing = await findImageStyleVersion(
+          executor,
+          scope.workspaceId,
+          command.styleId,
+          command.versionId,
+        );
+        if (existing === null) return missing("IMAGE_STYLE_VERSION", command.versionId);
+        if (existing.state === "PUBLISHED" || existing.state === "ABANDONED") {
+          return invariant("IMMUTABLE_RECORD", "published or abandoned image styles are immutable");
+        }
+        if (existing.updatedAt !== command.expectedUpdatedAt) {
+          return conflict("EXPECTED_VERSION_MISMATCH", "image style draft changed before save");
+        }
+        await executor.query(
+          `UPDATE image_style_versions SET state = $4,
+             profile_contract_name = $5, profile_contract_version = $6,
+             profile_payload = $7::jsonb, style_profile_hash = $8,
+             analyzer_request_hash = $9, analyzer_model_snapshot = $10,
+             disclosure_attested_by_user_id = $11, updated_at = now()
+           WHERE workspace_id = $1 AND style_id = $2 AND id = $3`,
+          [
+            scope.workspaceId,
+            command.styleId,
+            command.versionId,
+            command.nextState,
+            command.profileDocument?.contractName ?? null,
+            command.profileDocument?.contractVersion ?? null,
+            command.profileDocument === null
+              ? null
+              : jsonParameter(command.profileDocument.payload),
+            command.profileDocument?.canonicalDocumentSha256 ?? null,
+            command.analyzerRequestHash,
+            command.analyzerModelSnapshot,
+            command.disclosureAttestedByUserId,
+          ],
+        );
+        const updated = await findImageStyleVersion(
+          executor,
+          scope.workspaceId,
+          command.styleId,
+          command.versionId,
+        );
+        if (updated === null) throw new Error("saved image style draft disappeared");
+        return write(updated as PresetContracts.ImageStyleDraftVersion);
+      });
+    },
+    async publishVersion(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const existing = await findImageStyleVersion(
+          executor,
+          scope.workspaceId,
+          command.styleId,
+          command.versionId,
+        );
+        if (existing === null) return missing("IMAGE_STYLE_VERSION", command.versionId);
+        if (existing.state === "PUBLISHED") {
+          return sameValue(
+            {
+              profileDocument: existing.profileDocument,
+              analyzerRequestHash: existing.analyzerRequestHash,
+              analyzerModelSnapshot: existing.analyzerModelSnapshot,
+              disclosureAttestedByUserId: existing.disclosureAttestedByUserId,
+              publishedAt: existing.publishedAt,
+            },
+            {
+              profileDocument: command.profileDocument,
+              analyzerRequestHash: command.analyzerRequestHash,
+              analyzerModelSnapshot: command.analyzerModelSnapshot,
+              disclosureAttestedByUserId: command.disclosureAttestedByUserId,
+              publishedAt: command.publishedAt,
+            },
+          )
+            ? write(existing, true)
+            : invariant("IMMUTABLE_RECORD", "published image style cannot be changed");
+        }
+        if (existing.state === "ABANDONED") {
+          return invariant("IMAGE_STYLE_VERSION_NOT_PUBLISHABLE", "abandoned style cannot publish");
+        }
+        if (existing.updatedAt !== command.expectedUpdatedAt) {
+          return conflict("EXPECTED_VERSION_MISMATCH", "image style changed before publication");
+        }
+        await executor.query(
+          `UPDATE image_style_versions SET state = 'PUBLISHED',
+             profile_contract_name = $4, profile_contract_version = $5,
+             profile_payload = $6::jsonb, style_profile_hash = $7,
+             analyzer_request_hash = $8, analyzer_model_snapshot = $9,
+             disclosure_attested_by_user_id = $10, published_at = $11, updated_at = $11
+           WHERE workspace_id = $1 AND style_id = $2 AND id = $3`,
+          [
+            scope.workspaceId,
+            command.styleId,
+            command.versionId,
+            command.profileDocument.contractName,
+            command.profileDocument.contractVersion,
+            jsonParameter(command.profileDocument.payload),
+            command.profileDocument.canonicalDocumentSha256,
+            command.analyzerRequestHash,
+            command.analyzerModelSnapshot,
+            command.disclosureAttestedByUserId,
+            command.publishedAt,
+          ],
+        );
+        await executor.query(
+          `UPDATE image_styles SET active_version_id = $3, updated_at = $4
+           WHERE workspace_id = $1 AND id = $2`,
+          [scope.workspaceId, command.styleId, command.versionId, command.publishedAt],
+        );
+        const published = await findImageStyleVersion(
+          executor,
+          scope.workspaceId,
+          command.styleId,
+          command.versionId,
+        );
+        if (published === null || published.state !== "PUBLISHED") {
+          throw new Error("published image style disappeared");
+        }
+        return write(published);
+      });
+    },
+    async beginAnalysis(scope, command) {
+      if (
+        command.reservation.task.owner.ownerType !== "IMAGE_STYLE_VERSION" ||
+        command.reservation.task.owner.ownerId !== command.versionId ||
+        command.reservation.task.owner.imageStyleVersionId !== command.versionId
+      ) {
+        return invariant(
+          "IMAGE_STYLE_ANALYSIS_BILLING_BOUNDARY_MISMATCH",
+          "style analysis must bill its exact style version",
+        );
+      }
+      return context.atomic.run(async (executor) => {
+        const reservationCommand = {
+          ...command.reservation,
+          idempotencyKey: command.idempotencyKey,
+        };
+        const reserved = await reserveTaskAttemptIn(executor, scope, reservationCommand);
+        if (!reserved.ok) {
+          return reserved as IdempotentRepositoryResult<
+            never,
+            PresetContracts.ImageStyleConflict,
+            PresetContracts.ImageStyleMissing,
+            PresetContracts.ImageStyleInvariant
+          >;
+        }
+        const existing = await one(
+          executor,
+          "SELECT * FROM image_style_analysis_attempts WHERE workspace_id = $1 AND id = $2",
+          [scope.workspaceId, command.analysisAttemptId],
+        );
+        if (existing !== null) {
+          return write(
+            {
+              kind: "IMAGE_STYLE_ANALYSIS_STARTED" as const,
+              analysisAttempt: mapImageStyleAnalysisAttempt(existing),
+              reservation: reserved.value
+                .value as ExecutionContracts.ImageStyleVersionTaskAttemptReservation,
+            },
+            true,
+          );
+        }
+        await executor.query(
+          `INSERT INTO image_style_analysis_attempts (
+             id, workspace_id, style_version_id, ordinal, idempotency_key,
+             request_hash, state, provider, model, model_revision,
+             task_id, execution_attempt_id, reservation_cost_event_id, outbox_id
+           ) VALUES ($1, $2, $3, $4, $5, $6, 'CREATED', $7, $8, $9, $10, $11, $12, $13)`,
+          [
+            command.analysisAttemptId,
+            scope.workspaceId,
+            command.versionId,
+            command.reservation.attempt.ordinal,
+            command.idempotencyKey,
+            command.requestHash,
+            command.provider,
+            command.model,
+            command.modelRevision,
+            command.reservation.task.taskId,
+            command.reservation.attempt.attemptId,
+            command.reservation.costReservation.costEventId,
+            command.reservation.dispatchOutbox.outboxId,
+          ],
+        );
+        const inserted = await one(
+          executor,
+          "SELECT * FROM image_style_analysis_attempts WHERE workspace_id = $1 AND id = $2",
+          [scope.workspaceId, command.analysisAttemptId],
+        );
+        if (inserted === null) throw new Error("image style analysis attempt disappeared");
+        return write({
+          kind: "IMAGE_STYLE_ANALYSIS_STARTED" as const,
+          analysisAttempt: mapImageStyleAnalysisAttempt(inserted),
+          reservation: reserved.value
+            .value as ExecutionContracts.ImageStyleVersionTaskAttemptReservation,
+        });
+      });
+    },
+    async resolveExactPublishedVersion(scope, lookup) {
+      const version = await findImageStyleVersion(
+        context.executor,
+        scope.workspaceId,
+        lookup.styleId,
+        lookup.versionId,
+      );
+      if (version === null) return missing("IMAGE_STYLE_VERSION", lookup.versionId);
+      if (version.state !== "PUBLISHED") {
+        return invariant(
+          "IMAGE_STYLE_VERSION_NOT_PUBLISHED",
+          "requested image style is not published",
+        );
+      }
+      const style = await findImageStyle(context.executor, scope.workspaceId, lookup.styleId);
+      if (style === null) return missing("IMAGE_STYLE", lookup.styleId);
+      if (lookup.use === "NEW_REVISION" && style.status === "ARCHIVED") {
+        return invariant(
+          "IMAGE_STYLE_ARCHIVED",
+          "archived image style cannot enter a new revision",
+        );
+      }
+      return success(version);
+    },
+    async archiveStyle(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const style = await findImageStyle(executor, scope.workspaceId, command.styleId);
+        if (style === null) return missing("IMAGE_STYLE", command.styleId);
+        if (style.status === "ARCHIVED") {
+          return style.archivedAt === command.archivedAt
+            ? write(style, true)
+            : conflict("STATE_CONFLICT", "image style is already archived");
+        }
+        if (style.updatedAt !== command.expectedUpdatedAt) {
+          return conflict("EXPECTED_VERSION_MISMATCH", "image style changed before archive");
+        }
+        await executor.query(
+          `UPDATE image_styles SET status = 'ARCHIVED', archived_at = $3, updated_at = $3
+           WHERE workspace_id = $1 AND id = $2`,
+          [scope.workspaceId, command.styleId, command.archivedAt],
+        );
+        const archived = await findImageStyle(executor, scope.workspaceId, command.styleId);
+        if (archived === null) throw new Error("archived image style disappeared");
+        return write(archived);
+      });
+    },
+  };
+}
+
+async function ownerExists(
+  executor: SqlExecutor,
+  workspaceId: string,
+  owner: DurableOwner,
+): Promise<boolean> {
+  const table =
+    owner.ownerType === "PROJECT_REVISION"
+      ? "project_revisions"
+      : owner.ownerType === "IMAGE_STYLE_VERSION"
+        ? "image_style_versions"
+        : "avatar_profile_versions";
+  const row = await one(executor, `SELECT id FROM ${table} WHERE workspace_id = $1 AND id = $2`, [
+    workspaceId,
+    owner.ownerId,
+  ]);
+  return row !== null;
+}
+
+function reservationFingerprint(
+  reservation: ExecutionContracts.AtomicTaskAttemptReservation,
+): unknown {
+  return {
+    task: {
+      taskId: reservation.task.taskId,
+      owner: reservation.task.owner,
+      taskKey: reservation.task.taskKey,
+      lane: reservation.task.lane,
+      required: reservation.task.required,
+      dependsOn: reservation.task.dependsOn,
+    },
+    attempt: {
+      attemptId: reservation.attempt.attemptId,
+      ordinal: reservation.attempt.ordinal,
+      idempotencyKey: reservation.attempt.idempotencyKey,
+      executionProfileId: reservation.attempt.executionProfileId,
+      executionClaimTokenHash: reservation.attempt.executionClaimTokenHash,
+      inputHash: reservation.attempt.inputHash,
+      parentAttemptId: reservation.attempt.parentAttemptId,
+      fallbackReason: reservation.attempt.fallbackReason,
+    },
+    costReservation: {
+      costEventId: reservation.costReservation.costEventId,
+      sequence: reservation.costReservation.sequence,
+      amountMicroUsd: reservation.costReservation.amountMicroUsd,
+      idempotencyKey: reservation.costReservation.idempotencyKey,
+      details: reservation.costReservation.details,
+      occurredAt: reservation.costReservation.occurredAt,
+    },
+    dispatchOutbox: {
+      outboxId: reservation.dispatchOutbox.outboxId,
+      dedupeKey: reservation.dispatchOutbox.dedupeKey,
+      payloadContractName: reservation.dispatchOutbox.payloadContractName,
+      payloadContractVersion: reservation.dispatchOutbox.payloadContractVersion,
+      payloadHash: reservation.dispatchOutbox.payloadHash,
+      payload: reservation.dispatchOutbox.payload,
+      availableAt: reservation.dispatchOutbox.availableAt,
+    },
+  };
+}
+
+function commandFingerprint(command: ExecutionContracts.ReserveTaskAttemptCommand): unknown {
+  return {
+    task: {
+      taskId: command.task.taskId,
+      owner: command.task.owner,
+      taskKey: command.task.taskKey,
+      lane: command.task.lane,
+      required: command.task.required,
+      dependsOn: command.task.dependsOn,
+    },
+    attempt: command.attempt,
+    costReservation: command.costReservation,
+    dispatchOutbox: command.dispatchOutbox,
+  };
+}
+
+async function loadReservation(
+  executor: SqlExecutor,
+  workspaceId: string,
+  attemptId: string,
+): Promise<ExecutionContracts.AtomicTaskAttemptReservation | null> {
+  const attempt = await loadAttempt(executor, workspaceId, attemptId);
+  if (attempt === null) return null;
+  const task = await loadTask(executor, workspaceId, attempt.taskId);
+  const costRow = await one(
+    executor,
+    `SELECT cost.*, task.project_revision_id, task.image_style_version_id,
+            task.avatar_profile_version_id
+     FROM cost_events cost
+     JOIN generation_tasks task
+       ON task.workspace_id = cost.workspace_id AND task.id = cost.task_id
+     WHERE cost.workspace_id = $1 AND cost.task_id = $2 AND cost.attempt_id = $3
+       AND cost.event_type = 'RESERVED'`,
+    [workspaceId, attempt.taskId, attemptId],
+  );
+  const outboxRow = await one(
+    executor,
+    `SELECT * FROM outbox WHERE workspace_id = $1 AND task_id = $2 AND attempt_id = $3
+       AND kind = 'DISPATCH'`,
+    [workspaceId, attempt.taskId, attemptId],
+  );
+  if (task === null || costRow === null || outboxRow === null) {
+    throw new Error("atomic reservation is missing a task, cost, or dispatch row");
+  }
+  return {
+    task,
+    attempt: attempt as ExecutionContracts.ReservedAttemptRecord,
+    costReservation: mapCostEvent(costRow) as ExecutionContracts.ReservedCostEventRecord,
+    dispatchOutbox: mapOutbox(outboxRow) as ExecutionContracts.PendingDispatchOutboxRecord,
+  };
+}
+
+async function reserveTaskAttemptIn(
+  executor: SqlExecutor,
+  scope: WorkspaceScope,
+  command: ExecutionContracts.ReserveTaskAttemptCommand,
+): Promise<
+  IdempotentRepositoryResult<
+    ExecutionContracts.AtomicTaskAttemptReservation,
+    ExecutionContracts.ExecutionConflict,
+    ExecutionContracts.ExecutionMissing,
+    ExecutionContracts.ExecutionInvariant
+  >
+> {
+  if (command.idempotencyKey !== command.attempt.idempotencyKey) {
+    return invariant(
+      "INVALID_IDEMPOTENCY_KEY",
+      "reservation key must equal the durable attempt retry key",
+    );
+  }
+  if (command.costReservation.amountMicroUsd < 0n) {
+    return invariant("INVALID_MONEY", "cost reservations cannot be negative");
+  }
+  if (
+    command.task.owner.ownerId !==
+    (command.task.owner.ownerType === "PROJECT_REVISION"
+      ? command.task.owner.projectRevisionId
+      : command.task.owner.ownerType === "IMAGE_STYLE_VERSION"
+        ? command.task.owner.imageStyleVersionId
+        : command.task.owner.avatarProfileVersionId)
+  ) {
+    return invariant("OWNER_REFERENCE_MISMATCH", "task owner discriminator is inconsistent");
+  }
+  const replayRow = await one(
+    executor,
+    "SELECT id FROM attempts WHERE workspace_id = $1 AND idempotency_key = $2",
+    [scope.workspaceId, command.idempotencyKey],
+  );
+  if (replayRow !== null) {
+    const existing = await loadReservation(
+      executor,
+      scope.workspaceId,
+      stringValue(replayRow.id, "attempts.id"),
+    );
+    if (existing === null) throw new Error("attempt retry row disappeared");
+    return sameValue(reservationFingerprint(existing), commandFingerprint(command))
+      ? write(existing, true)
+      : conflict("IDEMPOTENCY_KEY_REUSED", "reservation retry key changed its input fingerprint");
+  }
+  if (!(await ownerExists(executor, scope.workspaceId, command.task.owner))) {
+    return invariant("OWNER_REFERENCE_MISMATCH", "task owner does not exist in this workspace");
+  }
+  const executionProfile = await one(
+    executor,
+    "SELECT id FROM execution_profiles WHERE workspace_id = $1 AND id = $2 AND state = 'TESTED'",
+    [scope.workspaceId, command.attempt.executionProfileId],
+  );
+  if (executionProfile === null) {
+    return missing("EXECUTION_PROFILE", command.attempt.executionProfileId);
+  }
+  let task = await loadTask(executor, scope.workspaceId, command.task.taskId);
+  if (task === null) {
+    const [projectRevisionId, imageStyleVersionId, avatarProfileVersionId] = ownerColumns(
+      command.task.owner,
+    );
+    await executor.query(
+      `INSERT INTO generation_tasks (
+         id, workspace_id, owner_type, owner_id, project_revision_id,
+         image_style_version_id, avatar_profile_version_id, task_key, lane,
+         state, required, depends_on
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb)`,
+      [
+        command.task.taskId,
+        scope.workspaceId,
+        command.task.owner.ownerType,
+        command.task.owner.ownerId,
+        projectRevisionId,
+        imageStyleVersionId,
+        avatarProfileVersionId,
+        command.task.taskKey,
+        command.task.lane,
+        command.task.initialState,
+        command.task.required,
+        jsonParameter(command.task.dependsOn),
+      ],
+    );
+    task = await loadTask(executor, scope.workspaceId, command.task.taskId);
+    if (task === null) throw new Error("reserved task disappeared");
+  } else if (
+    !sameValue(task.owner, command.task.owner) ||
+    task.taskKey !== command.task.taskKey ||
+    task.lane !== command.task.lane ||
+    task.required !== command.task.required ||
+    !sameValue(task.dependsOn, command.task.dependsOn)
+  ) {
+    return conflict("TASK_KEY_EXISTS", "existing task identity does not match reservation input");
+  }
+  const conflictingAttempt = await one(
+    executor,
+    `SELECT id FROM attempts WHERE workspace_id = $1
+       AND (id = $2 OR (task_id = $3 AND ordinal = $4))`,
+    [scope.workspaceId, command.attempt.attemptId, command.task.taskId, command.attempt.ordinal],
+  );
+  if (conflictingAttempt !== null) {
+    return conflict("ALREADY_EXISTS", "attempt identity or ordinal already exists");
+  }
+  const latestCost = await one(
+    executor,
+    `SELECT max(sequence) AS sequence FROM cost_events
+     WHERE workspace_id = $1 AND owner_type = $2 AND owner_id = $3`,
+    [scope.workspaceId, command.task.owner.ownerType, command.task.owner.ownerId],
+  );
+  if (
+    latestCost !== null &&
+    latestCost.sequence !== null &&
+    command.costReservation.sequence <=
+      numberValue(latestCost.sequence, "cost_events.max(sequence)")
+  ) {
+    return invariant(
+      "SNAPSHOT_MISMATCH",
+      "cost reservation sequence must strictly increase for its owner",
+    );
+  }
+  await executor.query(
+    `INSERT INTO attempts (
+       id, workspace_id, task_id, ordinal, idempotency_key, state,
+       dispatch_state, claim_state, execution_profile_id, execution_claim_token_hash,
+       input_hash, parent_attempt_id, fallback_reason
+     ) VALUES ($1, $2, $3, $4, $5, 'CREATED', 'NOT_SENT', 'UNCLAIMED', $6, $7, $8, $9, $10)`,
+    [
+      command.attempt.attemptId,
+      scope.workspaceId,
+      command.task.taskId,
+      command.attempt.ordinal,
+      command.attempt.idempotencyKey,
+      command.attempt.executionProfileId,
+      command.attempt.executionClaimTokenHash,
+      command.attempt.inputHash,
+      command.attempt.parentAttemptId,
+      command.attempt.fallbackReason,
+    ],
+  );
+  await executor.query(
+    `INSERT INTO cost_events (
+       id, workspace_id, owner_type, owner_id, task_id, attempt_id,
+       sequence, event_type, amount_micro_usd, idempotency_key, details, occurred_at
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'RESERVED', $8, $9, $10::jsonb, $11)`,
+    [
+      command.costReservation.costEventId,
+      scope.workspaceId,
+      command.task.owner.ownerType,
+      command.task.owner.ownerId,
+      command.task.taskId,
+      command.attempt.attemptId,
+      command.costReservation.sequence,
+      command.costReservation.amountMicroUsd,
+      command.costReservation.idempotencyKey,
+      jsonParameter(command.costReservation.details),
+      command.costReservation.occurredAt,
+    ],
+  );
+  await executor.query(
+    `INSERT INTO outbox (
+       id, workspace_id, task_id, attempt_id, kind, state, dedupe_key,
+       payload_contract_name, payload_contract_version, payload_hash, payload, available_at
+     ) VALUES ($1, $2, $3, $4, 'DISPATCH', 'PENDING', $5, $6, $7, $8, $9::jsonb, $10)`,
+    [
+      command.dispatchOutbox.outboxId,
+      scope.workspaceId,
+      command.task.taskId,
+      command.attempt.attemptId,
+      command.dispatchOutbox.dedupeKey,
+      command.dispatchOutbox.payloadContractName,
+      command.dispatchOutbox.payloadContractVersion,
+      command.dispatchOutbox.payloadHash,
+      jsonParameter(command.dispatchOutbox.payload),
+      command.dispatchOutbox.availableAt,
+    ],
+  );
+  const inserted = await loadReservation(executor, scope.workspaceId, command.attempt.attemptId);
+  if (inserted === null) throw new Error("atomic reservation disappeared");
+  return write(inserted);
+}
+
+function createExecutionRepository(
+  context: RepositoryContext,
+): ExecutionContracts.ExecutionRepository {
+  return {
+    async reserveTaskAttempt(scope, command) {
+      return context.atomic.run((executor) => reserveTaskAttemptIn(executor, scope, command));
+    },
+    async claimExecution(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const task = await loadTask(executor, scope.workspaceId, command.taskId);
+        if (task === null) return missing("TASK", command.taskId);
+        const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
+        if (attempt === null) return missing("ATTEMPT", command.attemptId);
+        if (attempt.taskId !== command.taskId) {
+          return invariant("TASK_ATTEMPT_MISMATCH", "attempt does not belong to task");
+        }
+        if (attempt.executionClaimTokenHash !== command.presentedClaimTokenHash) {
+          return invariant("CLAIM_TOKEN_MISMATCH", "execution claim token hash did not match");
+        }
+        if (attempt.claimState === "CLAIMED") {
+          return attempt.claimedAt === command.claimedAt
+            ? write(
+                {
+                  kind: "EXECUTION_CLAIM" as const,
+                  completion: "NOT_ACCEPTED" as const,
+                  taskId: command.taskId,
+                  attemptId: command.attemptId,
+                  claimState: "CLAIMED" as const,
+                  claimedAt: command.claimedAt,
+                },
+                true,
+              )
+            : conflict("CLAIM_ALREADY_CONSUMED", "execution claim is single use");
+        }
+        if (task.version !== command.expectedTaskVersion) {
+          return conflict(
+            "EXPECTED_VERSION_MISMATCH",
+            "task version changed before execution claim",
+            task.version,
+          );
+        }
+        if (task.state === "CANCEL_REQUESTED" || task.state === "CANCELLED") {
+          return conflict("STATE_CONFLICT", "cancelled work cannot be claimed");
+        }
+        await executor.query(
+          `UPDATE attempts SET claim_state = 'CLAIMED', state = 'CLAIMED', claimed_at = $4
+           WHERE workspace_id = $1 AND task_id = $2 AND id = $3`,
+          [scope.workspaceId, command.taskId, command.attemptId, command.claimedAt],
+        );
+        await executor.query(
+          `UPDATE generation_tasks SET state = 'RUNNING', version = version + 1, updated_at = $3
+           WHERE workspace_id = $1 AND id = $2`,
+          [scope.workspaceId, command.taskId, command.claimedAt],
+        );
+        return write({
+          kind: "EXECUTION_CLAIM" as const,
+          completion: "NOT_ACCEPTED" as const,
+          taskId: command.taskId,
+          attemptId: command.attemptId,
+          claimState: "CLAIMED" as const,
+          claimedAt: command.claimedAt,
+        });
+      });
+    },
+    async recordDispatchAcknowledged(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
+        if (attempt === null) return missing("ATTEMPT", command.attemptId);
+        if (attempt.taskId !== command.taskId) {
+          return invariant("TASK_ATTEMPT_MISMATCH", "attempt does not belong to task");
+        }
+        if (attempt.dispatchState === "ACKNOWLEDGED") {
+          return attempt.externalJobId === command.externalJobId &&
+            sameValue(attempt.providerDetails, command.providerDetails)
+            ? write(
+                {
+                  kind: "PROVIDER_DISPATCH_ACKNOWLEDGED" as const,
+                  completion: "NOT_ACCEPTED" as const,
+                  taskId: command.taskId,
+                  attemptId: command.attemptId,
+                  dispatchState: "ACKNOWLEDGED" as const,
+                  externalJobId: command.externalJobId,
+                  acknowledgedAt: command.acknowledgedAt,
+                },
+                true,
+              )
+            : conflict(
+                "STATE_CONFLICT",
+                "dispatch acknowledgement conflicts with stored provider job",
+              );
+        }
+        if (attempt.dispatchState === "AMBIGUOUS") {
+          return invariant(
+            "DISPATCH_REQUIRES_RECONCILIATION",
+            "ambiguous dispatch must reconcile before acknowledgement",
+          );
+        }
+        const duplicateJob = await one(
+          executor,
+          "SELECT id FROM attempts WHERE workspace_id = $1 AND external_job_id = $2 AND id <> $3",
+          [scope.workspaceId, command.externalJobId, command.attemptId],
+        );
+        if (duplicateJob !== null) {
+          return conflict(
+            "EXTERNAL_JOB_ID_EXISTS",
+            "provider job is already linked to another attempt",
+          );
+        }
+        await executor.query(
+          `UPDATE attempts SET dispatch_state = 'ACKNOWLEDGED', external_job_id = $4,
+             provider_details = $5::jsonb, state = CASE WHEN state = 'CREATED' THEN 'RUNNING' ELSE state END,
+             started_at = COALESCE(started_at, $6)
+           WHERE workspace_id = $1 AND task_id = $2 AND id = $3`,
+          [
+            scope.workspaceId,
+            command.taskId,
+            command.attemptId,
+            command.externalJobId,
+            jsonParameter(command.providerDetails),
+            command.acknowledgedAt,
+          ],
+        );
+        return write({
+          kind: "PROVIDER_DISPATCH_ACKNOWLEDGED" as const,
+          completion: "NOT_ACCEPTED" as const,
+          taskId: command.taskId,
+          attemptId: command.attemptId,
+          dispatchState: "ACKNOWLEDGED" as const,
+          externalJobId: command.externalJobId,
+          acknowledgedAt: command.acknowledgedAt,
+        });
+      });
+    },
+    async recordDispatchAckUnknown(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
+        if (attempt === null) return missing("ATTEMPT", command.attemptId);
+        if (attempt.taskId !== command.taskId) {
+          return invariant("TASK_ATTEMPT_MISMATCH", "attempt does not belong to task");
+        }
+        if (attempt.dispatchState === "AMBIGUOUS") {
+          return write(
+            {
+              kind: "PROVIDER_DISPATCH_ACK_UNKNOWN" as const,
+              completion: "NOT_ACCEPTED" as const,
+              taskId: command.taskId,
+              attemptId: command.attemptId,
+              dispatchState: "AMBIGUOUS" as const,
+              observedAt: command.observedAt,
+            },
+            true,
+          );
+        }
+        if (attempt.dispatchState === "ACKNOWLEDGED" || attempt.dispatchState === "RECONCILED") {
+          return conflict(
+            "STATE_CONFLICT",
+            "a confirmed or reconciled dispatch cannot be downgraded to ambiguous",
+          );
+        }
+        await executor.query(
+          `UPDATE attempts SET dispatch_state = 'AMBIGUOUS', provider_details = $4::jsonb,
+             problem_code = $5 WHERE workspace_id = $1 AND task_id = $2 AND id = $3`,
+          [
+            scope.workspaceId,
+            command.taskId,
+            command.attemptId,
+            jsonParameter(command.providerDetails),
+            command.ambiguityReason,
+          ],
+        );
+        await executor.query(
+          `UPDATE generation_tasks SET state = 'BLOCKED', version = version + 1, updated_at = $3
+           WHERE workspace_id = $1 AND id = $2 AND state NOT IN ('CANCELLED', 'COMPLETE')`,
+          [scope.workspaceId, command.taskId, command.observedAt],
+        );
+        return write({
+          kind: "PROVIDER_DISPATCH_ACK_UNKNOWN" as const,
+          completion: "NOT_ACCEPTED" as const,
+          taskId: command.taskId,
+          attemptId: command.attemptId,
+          dispatchState: "AMBIGUOUS" as const,
+          observedAt: command.observedAt,
+        });
+      });
+    },
+    async reconcileDispatch(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
+        if (attempt === null) return missing("ATTEMPT", command.attemptId);
+        if (attempt.taskId !== command.taskId) {
+          return invariant("TASK_ATTEMPT_MISMATCH", "attempt does not belong to task");
+        }
+        if (attempt.dispatchState !== "AMBIGUOUS") {
+          return conflict("STATE_CONFLICT", "only ambiguous dispatches can reconcile");
+        }
+        const nextDispatchState =
+          command.evidence.outcome === "STILL_UNKNOWN" ? "AMBIGUOUS" : "RECONCILED";
+        const nextAttemptState =
+          command.evidence.outcome === "ACKNOWLEDGEMENT_CONFIRMED"
+            ? "RUNNING"
+            : command.evidence.outcome === "NOT_DISPATCHED_CONFIRMED"
+              ? "CREATED"
+              : attempt.state;
+        const externalJobId =
+          command.evidence.outcome === "ACKNOWLEDGEMENT_CONFIRMED"
+            ? command.evidence.externalJobId
+            : attempt.externalJobId;
+        await executor.query(
+          `UPDATE attempts SET dispatch_state = $4, state = $5, external_job_id = $6,
+             provider_details = provider_details || $7::jsonb
+           WHERE workspace_id = $1 AND task_id = $2 AND id = $3`,
+          [
+            scope.workspaceId,
+            command.taskId,
+            command.attemptId,
+            nextDispatchState,
+            nextAttemptState,
+            externalJobId,
+            jsonParameter({ reconciliationEvidence: command.evidence }),
+          ],
+        );
+        if (command.evidence.outcome !== "STILL_UNKNOWN") {
+          await executor.query(
+            `UPDATE generation_tasks SET state = $3, version = version + 1, updated_at = $4
+             WHERE workspace_id = $1 AND id = $2 AND state = 'BLOCKED'`,
+            [
+              scope.workspaceId,
+              command.taskId,
+              command.evidence.outcome === "ACKNOWLEDGEMENT_CONFIRMED" ? "RUNNING" : "READY",
+              command.reconciledAt,
+            ],
+          );
+        }
+        return write({
+          kind: "DISPATCH_RECONCILIATION" as const,
+          completion: "NOT_ACCEPTED" as const,
+          taskId: command.taskId,
+          attemptId: command.attemptId,
+          dispatchState: nextDispatchState,
+          evidence: command.evidence,
+          reconciledAt: command.reconciledAt,
+        });
+      });
+    },
+    requestCancellation: (async (
+      scope: WorkspaceScope,
+      command: ExecutionContracts.RequestCancellationCommand,
+    ) => {
+      return context.atomic.run(async (executor) => {
+        const task = await loadTask(executor, scope.workspaceId, command.taskId);
+        if (task === null) return missing("TASK", command.taskId);
+        if (
+          command.target === "TASK_ONLY" &&
+          task.state === "CANCELLED" &&
+          task.cancelRequestedAt === command.requestedAt &&
+          task.finishedAt === command.requestedAt
+        ) {
+          return write(
+            {
+              kind: "TASK_ONLY_CANCELLATION" as const,
+              completion: "NOT_ACCEPTED" as const,
+              target: "TASK_ONLY" as const,
+              task: task as ExecutionContracts.CancelledTaskRecord,
+              outbox: null,
+            },
+            true,
+          );
+        }
+        if (command.target === "ATTEMPT" && task.state === "CANCEL_REQUESTED") {
+          const existingOutbox = await loadOutbox(
+            executor,
+            scope.workspaceId,
+            command.outbox.outboxId,
+          );
+          if (
+            task.cancelRequestedAt === command.requestedAt &&
+            existingOutbox !== null &&
+            existingOutbox.kind === "CANCEL" &&
+            existingOutbox.taskId === command.taskId &&
+            existingOutbox.attemptId === command.attemptId &&
+            existingOutbox.dedupeKey === command.outbox.dedupeKey &&
+            existingOutbox.payloadHash === command.outbox.payloadHash &&
+            sameValue(existingOutbox.payload, command.outbox.payload)
+          ) {
+            return write(
+              {
+                kind: "ATTEMPT_CANCELLATION_REQUESTED" as const,
+                completion: "NOT_ACCEPTED" as const,
+                target: "ATTEMPT" as const,
+                task: task as ExecutionContracts.CancelRequestedTaskRecord,
+                attemptId: command.attemptId,
+                outbox: existingOutbox as ExecutionContracts.PendingCancellationOutboxRecord,
+              },
+              true,
+            );
+          }
+          return conflict("STATE_CONFLICT", "task already has another cancellation request");
+        }
+        if (task.version !== command.expectedTaskVersion) {
+          return conflict(
+            "EXPECTED_VERSION_MISMATCH",
+            "task version changed before cancellation",
+            task.version,
+          );
+        }
+        if (task.acceptedAttemptId !== null || task.state === "COMPLETE") {
+          return conflict("ACCEPTED_RESULT_EXISTS", "completed tasks cannot be cancelled");
+        }
+        if (command.target === "TASK_ONLY") {
+          await executor.query(
+            `UPDATE generation_tasks SET state = 'CANCELLED', version = version + 1,
+               cancel_requested_at = $3, finished_at = $3, updated_at = $3
+             WHERE workspace_id = $1 AND id = $2`,
+            [scope.workspaceId, command.taskId, command.requestedAt],
+          );
+          const cancelled = await loadTask(executor, scope.workspaceId, command.taskId);
+          if (cancelled === null) throw new Error("cancelled task disappeared");
+          return write({
+            kind: "TASK_ONLY_CANCELLATION" as const,
+            completion: "NOT_ACCEPTED" as const,
+            target: "TASK_ONLY" as const,
+            task: cancelled as ExecutionContracts.CancelledTaskRecord,
+            outbox: null,
+          });
+        }
+        const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
+        if (attempt === null) return missing("ATTEMPT", command.attemptId);
+        if (attempt.taskId !== command.taskId) {
+          return invariant("TASK_ATTEMPT_MISMATCH", "attempt does not belong to task");
+        }
+        await executor.query(
+          `UPDATE generation_tasks SET state = 'CANCEL_REQUESTED', version = version + 1,
+             cancel_requested_at = $3, finished_at = NULL, updated_at = $3
+           WHERE workspace_id = $1 AND id = $2`,
+          [scope.workspaceId, command.taskId, command.requestedAt],
+        );
+        await executor.query(
+          `INSERT INTO outbox (
+             id, workspace_id, task_id, attempt_id, kind, state, dedupe_key,
+             payload_contract_name, payload_contract_version, payload_hash, payload, available_at
+           ) VALUES ($1, $2, $3, $4, 'CANCEL', 'PENDING', $5, $6, $7, $8, $9::jsonb, $10)`,
+          [
+            command.outbox.outboxId,
+            scope.workspaceId,
+            command.taskId,
+            command.attemptId,
+            command.outbox.dedupeKey,
+            command.outbox.payloadContractName,
+            command.outbox.payloadContractVersion,
+            command.outbox.payloadHash,
+            jsonParameter(command.outbox.payload),
+            command.outbox.availableAt,
+          ],
+        );
+        const cancelTask = await loadTask(executor, scope.workspaceId, command.taskId);
+        const outbox = await loadOutbox(executor, scope.workspaceId, command.outbox.outboxId);
+        if (cancelTask === null || outbox === null)
+          throw new Error("cancellation state disappeared");
+        return write({
+          kind: "ATTEMPT_CANCELLATION_REQUESTED" as const,
+          completion: "NOT_ACCEPTED" as const,
+          target: "ATTEMPT" as const,
+          task: cancelTask as ExecutionContracts.CancelRequestedTaskRecord,
+          attemptId: command.attemptId,
+          outbox: outbox as ExecutionContracts.PendingCancellationOutboxRecord,
+        });
+      });
+    }) as ExecutionContracts.ExecutionRepository["requestCancellation"],
+    async recordSuccessfulResult(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const task = await loadTask(executor, scope.workspaceId, command.taskId);
+        if (task === null) return missing("TASK", command.taskId);
+        const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
+        if (attempt === null) return missing("ATTEMPT", command.attemptId);
+        if (attempt.taskId !== command.taskId) {
+          return invariant("TASK_ATTEMPT_MISMATCH", "attempt does not belong to task");
+        }
+        const artifact = await findArtifact(executor, scope.workspaceId, command.outputAssetId);
+        if (artifact === null) return missing("ASSET", command.outputAssetId);
+        if (
+          (artifact.state !== "VERIFIED" && artifact.state !== "ACCEPTED") ||
+          artifact.binarySha256 !== command.outputBinarySha256
+        ) {
+          return invariant(
+            "RESULT_ASSET_NOT_VERIFIED",
+            "successful output is not a verified hash match",
+          );
+        }
+        if (attempt.state === "SUCCEEDED") {
+          if (
+            attempt.outputAssetId !== command.outputAssetId ||
+            !sameValue(attempt.providerDetails, command.providerDetails) ||
+            attempt.finishedAt !== command.finishedAt
+          ) {
+            return conflict("STATE_CONFLICT", "attempt already succeeded with a different result");
+          }
+        } else if (attempt.finishedAt !== null || attempt.resultDisposition !== "PENDING") {
+          return conflict("STATE_CONFLICT", "terminal attempt cannot become successful");
+        } else {
+          await executor.query(
+            `UPDATE attempts SET state = 'SUCCEEDED', output_asset_id = $4,
+               result_disposition = 'PENDING', problem_code = NULL,
+               provider_details = $5::jsonb, finished_at = $6
+             WHERE workspace_id = $1 AND task_id = $2 AND id = $3`,
+            [
+              scope.workspaceId,
+              command.taskId,
+              command.attemptId,
+              command.outputAssetId,
+              jsonParameter(command.providerDetails),
+              command.finishedAt,
+            ],
+          );
+        }
+        const successful = await loadAttempt(executor, scope.workspaceId, command.attemptId);
+        if (successful === null) throw new Error("successful attempt disappeared");
+        return write(
+          {
+            kind: "SUCCESSFUL_ATTEMPT_CANDIDATE" as const,
+            completion: "NOT_ACCEPTED" as const,
+            reference: {
+              kind: "RECORDED_SUCCESSFUL_ATTEMPT" as const,
+              taskId: command.taskId,
+              attemptId: command.attemptId,
+              expectedTaskVersion: task.version,
+            },
+            attempt: successful as ExecutionContracts.SuccessfulUnacceptedAttemptRecord,
+            outputBinarySha256: command.outputBinarySha256,
+          },
+          attempt.state === "SUCCEEDED",
+        );
+      });
+    },
+    async recordTerminalResult(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
+        if (attempt === null) return missing("ATTEMPT", command.attemptId);
+        if (attempt.taskId !== command.taskId) {
+          return invariant("TASK_ATTEMPT_MISMATCH", "attempt does not belong to task");
+        }
+        if (attempt.state === command.state && attempt.problemCode === command.problemCode) {
+          return write(
+            {
+              kind: "TERMINAL_ATTEMPT_RESULT" as const,
+              completion: "NOT_ACCEPTED" as const,
+              attempt: attempt as ExecutionContracts.TerminalAttemptRecord,
+            },
+            true,
+          );
+        }
+        if (attempt.finishedAt !== null) {
+          return conflict("STATE_CONFLICT", "attempt already has a terminal result");
+        }
+        await executor.query(
+          `UPDATE attempts SET state = $4, output_asset_id = NULL,
+             result_disposition = 'REJECTED', problem_code = $5,
+             provider_details = $6::jsonb, finished_at = $7
+           WHERE workspace_id = $1 AND task_id = $2 AND id = $3`,
+          [
+            scope.workspaceId,
+            command.taskId,
+            command.attemptId,
+            command.state,
+            command.problemCode,
+            jsonParameter(command.providerDetails),
+            command.finishedAt,
+          ],
+        );
+        const terminal = await loadAttempt(executor, scope.workspaceId, command.attemptId);
+        if (terminal === null) throw new Error("terminal attempt disappeared");
+        return write({
+          kind: "TERMINAL_ATTEMPT_RESULT" as const,
+          completion: "NOT_ACCEPTED" as const,
+          attempt: terminal as ExecutionContracts.TerminalAttemptRecord,
+        });
+      });
+    },
+    async recordUnknownAttempt(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
+        if (attempt === null) return missing("ATTEMPT", command.attemptId);
+        if (attempt.taskId !== command.taskId) {
+          return invariant("TASK_ATTEMPT_MISMATCH", "attempt does not belong to task");
+        }
+        const replayed = attempt.state === "UNKNOWN" && attempt.problemCode === command.problemCode;
+        if (!replayed) {
+          if (attempt.finishedAt !== null || attempt.resultDisposition !== "PENDING") {
+            return conflict("STATE_CONFLICT", "terminal attempt cannot become unknown");
+          }
+          await executor.query(
+            `UPDATE attempts SET state = 'UNKNOWN', dispatch_state = 'AMBIGUOUS',
+               output_asset_id = NULL, result_disposition = 'PENDING', problem_code = $4,
+               provider_details = $5::jsonb, finished_at = NULL
+             WHERE workspace_id = $1 AND task_id = $2 AND id = $3`,
+            [
+              scope.workspaceId,
+              command.taskId,
+              command.attemptId,
+              command.problemCode,
+              jsonParameter(command.providerDetails),
+            ],
+          );
+          await executor.query(
+            `UPDATE generation_tasks SET state = 'BLOCKED', version = version + 1, updated_at = $3
+             WHERE workspace_id = $1 AND id = $2 AND state NOT IN ('CANCELLED', 'COMPLETE')`,
+            [scope.workspaceId, command.taskId, command.observedAt],
+          );
+        }
+        const unknown = await loadAttempt(executor, scope.workspaceId, command.attemptId);
+        if (unknown === null) throw new Error("unknown attempt disappeared");
+        return write(
+          {
+            kind: "UNKNOWN_ATTEMPT_REQUIRES_RECONCILIATION" as const,
+            completion: "NOT_ACCEPTED" as const,
+            reconciliationRequired: true as const,
+            observedAt: command.observedAt,
+            attempt: unknown as ExecutionContracts.UnknownAttemptRecord,
+          },
+          replayed,
+        );
+      });
+    },
+    async acceptSuccessfulResult(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const reference = command.candidateReference;
+        const task = await loadTask(executor, scope.workspaceId, reference.taskId);
+        if (task === null) return missing("TASK", reference.taskId);
+        if (task.acceptedAttemptId !== null) {
+          return conflict("ACCEPTED_RESULT_EXISTS", "task already has an accepted result");
+        }
+        if (task.version !== reference.expectedTaskVersion) {
+          return conflict(
+            "EXPECTED_VERSION_MISMATCH",
+            "task version changed after successful result was recorded",
+            task.version,
+          );
+        }
+        const attempt = await loadAttempt(executor, scope.workspaceId, reference.attemptId);
+        if (attempt === null) return missing("ATTEMPT", reference.attemptId);
+        if (attempt.taskId !== reference.taskId) {
+          return invariant("TASK_ATTEMPT_MISMATCH", "attempt does not belong to task");
+        }
+        if (
+          attempt.state !== "SUCCEEDED" ||
+          attempt.resultDisposition !== "PENDING" ||
+          attempt.outputAssetId === null ||
+          attempt.finishedAt === null
+        ) {
+          return invariant("ATTEMPT_NOT_SUCCESSFUL", "attempt is not an unaccepted success");
+        }
+        const artifact = await findArtifact(executor, scope.workspaceId, attempt.outputAssetId);
+        if (
+          artifact === null ||
+          (artifact.state !== "VERIFIED" && artifact.state !== "ACCEPTED") ||
+          artifact.binarySha256 === null
+        ) {
+          return invariant("RESULT_ASSET_NOT_VERIFIED", "accepted result asset is not verified");
+        }
+        await executor.query(
+          `UPDATE attempts SET result_disposition = 'ACCEPTED'
+           WHERE workspace_id = $1 AND task_id = $2 AND id = $3`,
+          [scope.workspaceId, reference.taskId, reference.attemptId],
+        );
+        await executor.query(
+          `UPDATE generation_tasks SET state = 'COMPLETE', accepted_attempt_id = $3,
+             version = version + 1, finished_at = $4, updated_at = $4
+           WHERE workspace_id = $1 AND id = $2`,
+          [scope.workspaceId, reference.taskId, reference.attemptId, command.acceptedAt],
+        );
+        const completed = await loadTask(executor, scope.workspaceId, reference.taskId);
+        const accepted = await loadAttempt(executor, scope.workspaceId, reference.attemptId);
+        if (completed === null || accepted === null) throw new Error("accepted result disappeared");
+        return write({
+          kind: "ACCEPTED_ATTEMPT_RESULT" as const,
+          completion: "ACCEPTED" as const,
+          task: completed as ExecutionContracts.CompletedGenerationTaskRecord,
+          attempt: accepted as ExecutionContracts.AcceptedAttemptRecord,
+          outputBinarySha256: artifact.binarySha256,
+          acceptedAt: command.acceptedAt,
+        });
+      });
+    },
+    async resolveTask(scope, lookup) {
+      const task = await loadTask(context.executor, scope.workspaceId, lookup.taskId);
+      return task === null ? missing("TASK", lookup.taskId) : success(task);
+    },
+    async listAttempts(scope, query) {
+      const task = await loadTask(context.executor, scope.workspaceId, query.taskId);
+      if (task === null) return missing("TASK", query.taskId);
+      const rows = await context.executor.query<Row>(
+        "SELECT * FROM attempts WHERE workspace_id = $1 AND task_id = $2 ORDER BY ordinal, id",
+        [scope.workspaceId, query.taskId],
+      );
+      return success(rows.rows.map(mapAttempt));
+    },
+  };
+}
+
+function workflowCommandFingerprint(command: EventContracts.AppendWorkflowEventCommand): unknown {
+  return {
+    eventId: command.eventId,
+    workflowInstanceId: command.workflowInstanceId,
+    aggregate: command.aggregate,
+    sequence: command.sequence,
+    kind: command.kind,
+    payloadContractName: command.payloadContractName,
+    payloadContractVersion: command.payloadContractVersion,
+    payloadHash: command.payloadHash,
+    payload: command.payload,
+    occurredAt: command.occurredAt,
+  };
+}
+
+function workflowRecordFingerprint(record: EventContracts.WorkflowEventRecord): unknown {
+  return {
+    eventId: record.eventId,
+    workflowInstanceId: record.workflowInstanceId,
+    aggregate: record.aggregate,
+    sequence: record.sequence,
+    kind: record.kind,
+    payloadContractName: record.payloadContractName,
+    payloadContractVersion: record.payloadContractVersion,
+    payloadHash: record.payloadHash,
+    payload: record.payload,
+    occurredAt: record.occurredAt,
+  };
+}
+
+function costCommandFingerprint(command: EventContracts.AppendCostEventCommand): unknown {
+  return {
+    costEventId: command.costEventId,
+    owner: command.owner,
+    taskId: command.taskId,
+    attemptId: command.attemptId,
+    sequence: command.sequence,
+    eventType: command.eventType,
+    amountMicroUsd: command.amountMicroUsd,
+    idempotencyKey: command.idempotencyKey,
+    providerReference: command.providerReference,
+    details: command.details,
+    occurredAt: command.occurredAt,
+  };
+}
+
+function costRecordFingerprint(record: EventContracts.CostEventRecord): unknown {
+  return {
+    costEventId: record.costEventId,
+    owner: record.owner,
+    taskId: record.taskId,
+    attemptId: record.attemptId,
+    sequence: record.sequence,
+    eventType: record.eventType,
+    amountMicroUsd: record.amountMicroUsd,
+    idempotencyKey: record.idempotencyKey,
+    providerReference: record.providerReference,
+    details: record.details,
+    occurredAt: record.occurredAt,
+  };
+}
+
+function createEventRepository(context: RepositoryContext): EventContracts.EventRepository {
+  return {
+    async appendWorkflowEvent(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const existingRow = await one(
+          executor,
+          "SELECT * FROM workflow_events WHERE workspace_id = $1 AND id = $2",
+          [scope.workspaceId, command.eventId],
+        );
+        if (existingRow !== null) {
+          const existing = mapWorkflowEvent(existingRow);
+          return sameValue(workflowRecordFingerprint(existing), workflowCommandFingerprint(command))
+            ? write(existing, true)
+            : conflict("EVENT_ID_REUSED", "workflow event ID was reused with different content");
+        }
+        const workflow = await one(
+          executor,
+          "SELECT id FROM workflow_instances WHERE workspace_id = $1 AND id = $2",
+          [scope.workspaceId, command.workflowInstanceId],
+        );
+        if (workflow === null) return missing("WORKFLOW_INSTANCE", command.workflowInstanceId);
+        const latest = await one(
+          executor,
+          `SELECT max(sequence) AS sequence FROM workflow_events
+           WHERE workspace_id = $1 AND aggregate_type = $2 AND aggregate_id = $3`,
+          [scope.workspaceId, command.aggregate.aggregateType, command.aggregate.aggregateId],
+        );
+        if (
+          latest !== null &&
+          latest.sequence !== null &&
+          command.sequence <= numberValue(latest.sequence, "workflow_events.max(sequence)")
+        ) {
+          return invariant(
+            "EVENT_SEQUENCE_NOT_MONOTONIC",
+            "workflow event sequence must strictly increase",
+          );
+        }
+        await executor.query(
+          `INSERT INTO workflow_events (
+             id, workspace_id, workflow_instance_id, task_id, attempt_id,
+             aggregate_type, aggregate_id, sequence, kind,
+             payload_contract_name, payload_contract_version, payload_hash, payload, occurred_at
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14)`,
+          [
+            command.eventId,
+            scope.workspaceId,
+            command.workflowInstanceId,
+            command.aggregate.taskId,
+            command.aggregate.attemptId,
+            command.aggregate.aggregateType,
+            command.aggregate.aggregateId,
+            command.sequence,
+            command.kind,
+            command.payloadContractName,
+            command.payloadContractVersion,
+            command.payloadHash,
+            jsonParameter(command.payload),
+            command.occurredAt,
+          ],
+        );
+        const inserted = await one(
+          executor,
+          "SELECT * FROM workflow_events WHERE workspace_id = $1 AND id = $2",
+          [scope.workspaceId, command.eventId],
+        );
+        if (inserted === null) throw new Error("appended workflow event disappeared");
+        return write(mapWorkflowEvent(inserted));
+      });
+    },
+    async appendCostEvent(scope, command) {
+      return context.atomic.run(async (executor) => {
+        if (command.amountMicroUsd < 0n) {
+          return invariant("INVALID_MONEY", "cost events cannot be negative");
+        }
+        const existingRow = await one(
+          executor,
+          `SELECT cost.*, task.project_revision_id, task.image_style_version_id,
+                  task.avatar_profile_version_id
+           FROM cost_events cost
+           JOIN generation_tasks task
+             ON task.workspace_id = cost.workspace_id AND task.id = cost.task_id
+           WHERE cost.workspace_id = $1 AND cost.id = $2`,
+          [scope.workspaceId, command.costEventId],
+        );
+        if (existingRow !== null) {
+          const existing = mapCostEvent(existingRow);
+          return sameValue(costRecordFingerprint(existing), costCommandFingerprint(command))
+            ? write(existing, true)
+            : conflict("EVENT_ID_REUSED", "cost event ID was reused with different content");
+        }
+        const retryRow = await one(
+          executor,
+          "SELECT id FROM cost_events WHERE workspace_id = $1 AND idempotency_key = $2",
+          [scope.workspaceId, command.idempotencyKey],
+        );
+        if (retryRow !== null) {
+          return conflict("IDEMPOTENCY_KEY_REUSED", "cost event retry key was reused");
+        }
+        const task = await loadTask(executor, scope.workspaceId, command.taskId);
+        if (task === null) return missing("TASK", command.taskId);
+        const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
+        if (attempt === null) return missing("ATTEMPT", command.attemptId);
+        if (attempt.taskId !== command.taskId || !sameValue(task.owner, command.owner)) {
+          return invariant(
+            "AGGREGATE_REFERENCE_MISMATCH",
+            "cost event task, attempt, and owner must share one lineage",
+          );
+        }
+        const latest = await one(
+          executor,
+          `SELECT max(sequence) AS sequence FROM cost_events
+           WHERE workspace_id = $1 AND owner_type = $2 AND owner_id = $3`,
+          [scope.workspaceId, command.owner.ownerType, command.owner.ownerId],
+        );
+        if (
+          latest !== null &&
+          latest.sequence !== null &&
+          command.sequence <= numberValue(latest.sequence, "cost_events.max(sequence)")
+        ) {
+          return invariant(
+            "EVENT_SEQUENCE_NOT_MONOTONIC",
+            "cost event sequence must strictly increase",
+          );
+        }
+        await executor.query(
+          `INSERT INTO cost_events (
+             id, workspace_id, owner_type, owner_id, task_id, attempt_id,
+             sequence, event_type, amount_micro_usd, idempotency_key,
+             provider_reference, details, occurred_at
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13)`,
+          [
+            command.costEventId,
+            scope.workspaceId,
+            command.owner.ownerType,
+            command.owner.ownerId,
+            command.taskId,
+            command.attemptId,
+            command.sequence,
+            command.eventType,
+            command.amountMicroUsd,
+            command.idempotencyKey,
+            command.providerReference,
+            jsonParameter(command.details),
+            command.occurredAt,
+          ],
+        );
+        const inserted = await one(
+          executor,
+          `SELECT cost.*, task.project_revision_id, task.image_style_version_id,
+                  task.avatar_profile_version_id
+           FROM cost_events cost
+           JOIN generation_tasks task
+             ON task.workspace_id = cost.workspace_id AND task.id = cost.task_id
+           WHERE cost.workspace_id = $1 AND cost.id = $2`,
+          [scope.workspaceId, command.costEventId],
+        );
+        if (inserted === null) throw new Error("appended cost event disappeared");
+        return write(mapCostEvent(inserted));
+      });
+    },
+    async listWorkflowEvents(scope, query) {
+      if (!Number.isInteger(query.limit) || query.limit < 1 || query.limit > 1000) {
+        return invariant("SNAPSHOT_MISMATCH", "workflow event limit must be between 1 and 1000");
+      }
+      const workflow = await one(
+        context.executor,
+        "SELECT id FROM workflow_instances WHERE workspace_id = $1 AND id = $2",
+        [scope.workspaceId, query.workflowInstanceId],
+      );
+      if (workflow === null) return missing("WORKFLOW_INSTANCE", query.workflowInstanceId);
+      const result = await context.executor.query<Row>(
+        `SELECT * FROM workflow_events WHERE workspace_id = $1 AND workflow_instance_id = $2
+           AND ($3::integer IS NULL OR sequence > $3) ORDER BY sequence, id LIMIT $4`,
+        [scope.workspaceId, query.workflowInstanceId, query.afterSequence, query.limit],
+      );
+      return success(result.rows.map(mapWorkflowEvent));
+    },
+    async listCostEvents(scope, query) {
+      if (!Number.isInteger(query.limit) || query.limit < 1 || query.limit > 1000) {
+        return invariant("SNAPSHOT_MISMATCH", "cost event limit must be between 1 and 1000");
+      }
+      const result = await context.executor.query<Row>(
+        `SELECT cost.*, task.project_revision_id, task.image_style_version_id,
+                task.avatar_profile_version_id
+         FROM cost_events cost
+         JOIN generation_tasks task
+           ON task.workspace_id = cost.workspace_id AND task.id = cost.task_id
+         WHERE cost.workspace_id = $1 AND cost.owner_type = $2 AND cost.owner_id = $3
+           AND ($4::integer IS NULL OR cost.sequence > $4)
+         ORDER BY cost.sequence, cost.id LIMIT $5`,
+        [
+          scope.workspaceId,
+          query.owner.ownerType,
+          query.owner.ownerId,
+          query.afterSequence,
+          query.limit,
+        ],
+      );
+      return success(result.rows.map(mapCostEvent));
+    },
+  };
+}
+
+type ReceiptResult = IdempotentRepositoryResult<unknown, string, string, string>;
+type ReceiptInvocation = (
+  scope: WorkspaceScope,
+  command: IdempotentMutation,
+) => Promise<ReceiptResult>;
+type MutableRepositoryName = Exclude<keyof RepositorySession, "identity">;
+
+const receiptOperations = Object.freeze({
+  artifacts: Object.freeze({
+    archive: "artifact_archive",
+    bindBinaryContent: "artifact_bind_binary_content",
+    bindCanonicalDocument: "artifact_bind_canonical_document",
+    registerMetadata: "artifact_register_metadata",
+  }),
+  avatarProfiles: Object.freeze({
+    archiveProfile: "avatar_profile_archive",
+    beginCompatibilityTest: "avatar_profile_begin_compatibility_test",
+    createDraftVersion: "avatar_profile_create_draft_version",
+    createProfile: "avatar_profile_create",
+    publishVersion: "avatar_profile_publish_version",
+    saveDraftVersion: "avatar_profile_save_draft_version",
+  }),
+  events: Object.freeze({
+    appendCostEvent: "event_append_cost",
+    appendWorkflowEvent: "event_append_workflow",
+  }),
+  execution: Object.freeze({
+    acceptSuccessfulResult: "execution_accept_successful_result",
+    claimExecution: "execution_claim",
+    reconcileDispatch: "execution_reconcile_dispatch",
+    recordDispatchAcknowledged: "execution_record_dispatch_acknowledged",
+    recordDispatchAckUnknown: "execution_record_dispatch_ack_unknown",
+    recordSuccessfulResult: "execution_record_successful_result",
+    recordTerminalResult: "execution_record_terminal_result",
+    recordUnknownAttempt: "execution_record_unknown_attempt",
+    requestCancellation: "execution_request_cancellation",
+    reserveTaskAttempt: "execution_reserve_task_attempt",
+  }),
+  imageStyles: Object.freeze({
+    archiveStyle: "image_style_archive",
+    beginAnalysis: "image_style_begin_analysis",
+    createDraftVersion: "image_style_create_draft_version",
+    createStyle: "image_style_create",
+    publishVersion: "image_style_publish_version",
+    saveDraftVersion: "image_style_save_draft_version",
+  }),
+  projects: Object.freeze({
+    archiveProject: "project_archive",
+    createRevisionDraft: "project_create_revision_draft",
+    createShell: "project_create_shell",
+    lockRevision: "project_lock_revision",
+    registerInput: "project_register_input",
+    verifyInput: "project_verify_input",
+  }),
+});
+
+function directTransactionalExecutor(executor: SqlExecutor): TransactionalSqlExecutor {
+  return {
+    execute: (sql) => executor.execute(sql),
+    query: (sql, parameters) => executor.query(sql, parameters),
+    transaction: (work) => work(executor),
+  };
+}
+
+function invalidIdempotencyKey(): ReceiptResult {
+  return invariant(
+    "INVALID_IDEMPOTENCY_KEY",
+    "idempotency key must be trimmed and contain 1 to 240 characters",
+  );
+}
+
+async function executeWithMutationReceipt(
+  database: TransactionalSqlExecutor,
+  operation: string,
+  scopeInput: WorkspaceScope,
+  commandInput: IdempotentMutation,
+  invoke: (
+    executor: SqlExecutor,
+    scope: WorkspaceScope,
+    command: IdempotentMutation,
+  ) => Promise<ReceiptResult>,
+): Promise<ReceiptResult> {
+  const encodedInput = encodeReceiptValue({ scope: scopeInput, command: commandInput });
+  const snapshot = decodeReceiptValue(encodedInput) as {
+    readonly scope: WorkspaceScope;
+    readonly command: IdempotentMutation;
+  };
+  const { scope, command } = snapshot;
+  if (
+    typeof command.idempotencyKey !== "string" ||
+    command.idempotencyKey.length < 1 ||
+    command.idempotencyKey.length > 240 ||
+    command.idempotencyKey.trim() !== command.idempotencyKey
+  ) {
+    return invalidIdempotencyKey();
+  }
+  if (
+    typeof scope.workspaceId !== "string" ||
+    scope.workspaceId.length < 1 ||
+    scope.workspaceId.trim() !== scope.workspaceId
+  ) {
+    return invariant("CROSS_WORKSPACE_REFERENCE", "workspace scope is malformed");
+  }
+  const inputHash = receiptHash(encodedInput);
+  return database.transaction(async (transaction) => {
+    // The receipt row does not exist on first use. Locking its workspace serializes the first
+    // claimant without relying on a provider-specific advisory-lock implementation.
+    await transaction.query("SELECT id FROM workspaces WHERE id = $1 FOR UPDATE", [
+      scope.workspaceId,
+    ]);
+    const existing = await one(
+      transaction,
+      `SELECT operation, input_hash, result_codec, result_payload, result_hash
+       FROM repository_mutation_receipts
+       WHERE workspace_id = $1 AND idempotency_key = $2
+       FOR UPDATE`,
+      [scope.workspaceId, command.idempotencyKey],
+    );
+    if (existing !== null) {
+      if (
+        stringValue(existing.operation, "repository_mutation_receipts.operation") !== operation ||
+        stringValue(existing.input_hash, "repository_mutation_receipts.input_hash") !== inputHash
+      ) {
+        return conflict(
+          "IDEMPOTENCY_KEY_REUSED",
+          "idempotency key was already committed for a different operation or input",
+        );
+      }
+      if (
+        stringValue(existing.result_codec, "repository_mutation_receipts.result_codec") !==
+        "repository-result/v1"
+      ) {
+        throw new Error("repository mutation receipt uses an unsupported result codec");
+      }
+      const encodedResult = jsonObject(
+        existing.result_payload,
+        "repository_mutation_receipts.result_payload",
+      ) as CanonicalReceiptValue;
+      const decodedResult = decodeReceiptValue(encodedResult);
+      const normalizedResult = encodeReceiptValue(decodedResult);
+      const storedResultHash = stringValue(
+        existing.result_hash,
+        "repository_mutation_receipts.result_hash",
+      );
+      if (receiptHash(normalizedResult) !== storedResultHash) {
+        throw new Error("repository mutation receipt result hash does not match its payload");
+      }
+      return write(decodedResult, true);
+    }
+
+    const result = await invoke(transaction, scope, command);
+    if (!result.ok) return result;
+    const encodedResult = encodeReceiptValue(result.value.value);
+    await transaction.query(
+      `INSERT INTO repository_mutation_receipts (
+         workspace_id, idempotency_key, operation, input_hash,
+         result_codec, result_payload, result_hash
+       ) VALUES ($1, $2, $3, $4, 'repository-result/v1', $5::jsonb, $6)`,
+      [
+        scope.workspaceId,
+        command.idempotencyKey,
+        operation,
+        inputHash,
+        receiptPayloadJson(encodedResult),
+        receiptHash(encodedResult),
+      ],
+    );
+    return result;
+  });
+}
+
+function receiptWrappedRepository<Repository extends object>(
+  database: TransactionalSqlExecutor,
+  repositoryName: MutableRepositoryName,
+  repository: Repository,
+  operations: Readonly<Record<string, string>>,
+): Repository {
+  const cached = new Map<string, ReceiptInvocation>();
+  return new Proxy(repository, {
+    get(target, property, receiver) {
+      if (typeof property !== "string") return Reflect.get(target, property, receiver) as unknown;
+      const operation = Object.hasOwn(operations, property) ? operations[property] : undefined;
+      if (typeof operation !== "string") return Reflect.get(target, property, receiver) as unknown;
+      const existing = cached.get(property);
+      if (existing !== undefined) return existing;
+      const wrapped: ReceiptInvocation = (scope, command) =>
+        executeWithMutationReceipt(
+          database,
+          operation,
+          scope,
+          command,
+          async (transaction, snapshotScope, snapshotCommand) => {
+            const directAtomic: AtomicRunner = { run: (work) => work(transaction) };
+            const transactionRepositories = createRepositorySession({
+              executor: transaction,
+              atomic: directAtomic,
+            });
+            const transactionRepository = transactionRepositories[
+              repositoryName
+            ] as unknown as Record<string, ReceiptInvocation>;
+            const method = transactionRepository[property];
+            if (method === undefined) {
+              throw new Error(
+                `missing receipt-wrapped repository method ${repositoryName}.${property}`,
+              );
+            }
+            return method(snapshotScope, snapshotCommand);
+          },
+        );
+      cached.set(property, wrapped);
+      return wrapped;
+    },
+  });
+}
+
+function createRepositorySession(context: RepositoryContext): RepositorySession {
+  return {
+    identity: createIdentityRepository(context),
+    avatarProfiles: createAvatarProfileRepository(context),
+    imageStyles: createImageStyleRepository(context),
+    projects: createProjectRepository(context),
+    artifacts: createArtifactRepository(context),
+    execution: createExecutionRepository(context),
+    events: createEventRepository(context),
+  };
+}
+
+function createReceiptWrappedSession(
+  database: TransactionalSqlExecutor,
+  context: RepositoryContext,
+): RepositorySession {
+  const raw = createRepositorySession(context);
+  return {
+    identity: raw.identity,
+    artifacts: receiptWrappedRepository(
+      database,
+      "artifacts",
+      raw.artifacts,
+      receiptOperations.artifacts,
+    ),
+    avatarProfiles: receiptWrappedRepository(
+      database,
+      "avatarProfiles",
+      raw.avatarProfiles,
+      receiptOperations.avatarProfiles,
+    ),
+    events: receiptWrappedRepository(database, "events", raw.events, receiptOperations.events),
+    execution: receiptWrappedRepository(
+      database,
+      "execution",
+      raw.execution,
+      receiptOperations.execution,
+    ),
+    imageStyles: receiptWrappedRepository(
+      database,
+      "imageStyles",
+      raw.imageStyles,
+      receiptOperations.imageStyles,
+    ),
+    projects: receiptWrappedRepository(
+      database,
+      "projects",
+      raw.projects,
+      receiptOperations.projects,
+    ),
+  };
+}
+
+interface UnitOfWorkScopeGuard {
+  failure: RepositoryResult<never, string, string, string> | null;
+}
+
+function guardedWorkspaceId(scope: unknown): string | null {
+  if (typeof scope !== "object" || scope === null || Array.isArray(scope)) return null;
+  const descriptor = Object.getOwnPropertyDescriptor(scope, "workspaceId");
+  return descriptor !== undefined && "value" in descriptor && typeof descriptor.value === "string"
+    ? descriptor.value
+    : null;
+}
+
+function scopeGuardedRepository<Repository extends object>(
+  repository: Repository,
+  workspaceId: string,
+  guard: UnitOfWorkScopeGuard,
+): Repository {
+  const cached = new Map<PropertyKey, unknown>();
+  return new Proxy(repository, {
+    get(target, property, receiver) {
+      const member = Reflect.get(target, property, receiver) as unknown;
+      if (typeof member !== "function") return member;
+      const existing = cached.get(property);
+      if (existing !== undefined) return existing;
+      const wrapped = async (...parameters: unknown[]): Promise<unknown> => {
+        if (guardedWorkspaceId(parameters[0]) !== workspaceId) {
+          const failure = invariant(
+            "CROSS_WORKSPACE_REFERENCE",
+            "unit-of-work repository calls must use the bound workspace scope",
+          );
+          guard.failure ??= failure;
+          return failure;
+        }
+        return Reflect.apply(member, target, parameters) as Promise<unknown>;
+      };
+      cached.set(property, wrapped);
+      return wrapped;
+    },
+  });
+}
+
+function createScopeGuardedSession(
+  session: RepositorySession,
+  workspaceId: string,
+  guard: UnitOfWorkScopeGuard,
+): RepositorySession {
+  return {
+    identity: scopeGuardedRepository(session.identity, workspaceId, guard),
+    artifacts: scopeGuardedRepository(session.artifacts, workspaceId, guard),
+    avatarProfiles: scopeGuardedRepository(session.avatarProfiles, workspaceId, guard),
+    events: scopeGuardedRepository(session.events, workspaceId, guard),
+    execution: scopeGuardedRepository(session.execution, workspaceId, guard),
+    imageStyles: scopeGuardedRepository(session.imageStyles, workspaceId, guard),
+    projects: scopeGuardedRepository(session.projects, workspaceId, guard),
+  };
+}
+
+class TypedTransactionRollback extends Error {
+  public constructor(public readonly result: RepositoryResult<unknown, string, string, string>) {
+    super("typed repository transaction rollback");
+    this.name = "TypedTransactionRollback";
+  }
+}
+
+/**
+ * Binds the committed query-library-neutral contracts to a PGlite-compatible transactional
+ * executor. The same SQL-facing boundary can be reused by a production PostgreSQL driver later;
+ * this constructor itself never reads DATABASE_URL or opens a network connection.
+ */
+export function createPGliteControlPlaneRepositories(
+  database: TransactionalSqlExecutor,
+): ControlPlaneRepositories {
+  const rootAtomic: AtomicRunner = {
+    run: (work) => database.transaction(work),
+  };
+  const session = createReceiptWrappedSession(database, {
+    executor: database,
+    atomic: rootAtomic,
+  });
+  const unitOfWork: RepositoryUnitOfWork = {
+    async execute(scope, work) {
+      try {
+        return await database.transaction(async (transaction) => {
+          const guard: UnitOfWorkScopeGuard = { failure: null };
+          const directAtomic: AtomicRunner = { run: (operation) => operation(transaction) };
+          const receiptSession = createReceiptWrappedSession(
+            directTransactionalExecutor(transaction),
+            {
+              executor: transaction,
+              atomic: directAtomic,
+            },
+          );
+          const transactionSession = createScopeGuardedSession(
+            receiptSession,
+            scope.workspaceId,
+            guard,
+          );
+          const result = await work(transactionSession);
+          if (guard.failure !== null) {
+            throw new TypedTransactionRollback(guard.failure);
+          }
+          if (!result.ok) {
+            throw new TypedTransactionRollback(result);
+          }
+          return result;
+        });
+      } catch (error: unknown) {
+        if (error instanceof TypedTransactionRollback) {
+          return error.result as Awaited<ReturnType<typeof work>>;
+        }
+        throw error;
+      }
+    },
+  };
+  return { ...session, unitOfWork };
+}
+
+/** Direct owned-path exports let isolated tests integrate without changing the shared package index. */
+export const pgliteAdapterInternals = Object.freeze({
+  mapAttempt,
+  mapCostEvent,
+  mapOutbox,
+  mapTask,
+  mapWorkflowEvent,
+});
