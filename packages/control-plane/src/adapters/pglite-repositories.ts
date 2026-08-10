@@ -2700,18 +2700,29 @@ function createTimingRepository(context: RepositoryContext): TimingContracts.Tim
         ) {
           return invariant("TIMING_INPUT_MISMATCH", "timeline transcript hash is stale");
         }
+        const phraseStartByWord = new Map(
+          transcript.phrases.map((phrase) => [phrase.wordStart, phrase.startMs] as const),
+        );
         if (
           command.segments.at(-1)?.wordEndExclusive !== transcript.words.length ||
-          command.segments.some(
-            (segment) =>
-              segment.sourceAudioStartMs !== transcript.words[segment.wordStart]?.startMs ||
-              segment.sourceAudioEndMsExclusive !==
-                transcript.words[segment.wordEndExclusive - 1]?.endMsExclusive,
-          )
+          command.segments.some((segment) => {
+            const expectedStartMs =
+              segment.wordStart === 0 ? 0 : phraseStartByWord.get(segment.wordStart);
+            const expectedEndMs =
+              segment.wordEndExclusive === transcript.words.length
+                ? transcript.sourceDurationMs
+                : phraseStartByWord.get(segment.wordEndExclusive);
+            return (
+              expectedStartMs === undefined ||
+              expectedEndMs === undefined ||
+              segment.sourceAudioStartMs !== expectedStartMs ||
+              segment.sourceAudioEndMsExclusive !== expectedEndMs
+            );
+          })
         ) {
           return invariant(
             "TIMELINE_COVERAGE_INVALID",
-            "timeline segments must cover every transcript word at its exact source timing",
+            "timeline segments must cover every transcript word and source-audio phrase boundary exactly",
           );
         }
         if (

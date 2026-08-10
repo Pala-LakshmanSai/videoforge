@@ -259,11 +259,11 @@ async function persistTimeline(executor, repositories, transcript) {
     sourceAssetId: IDS.voiceoverA,
     sourceBinarySha256: HASHES.voiceoverA,
     selectedStartMs: 0,
-    selectedEndMsExclusive: 9000,
+    selectedEndMsExclusive: 4700,
     paddedStartMs: 0,
-    paddedEndMsExclusive: 9000,
+    paddedEndMsExclusive: 5200,
     trimStartMs: 0,
-    trimEndMsExclusive: 9000,
+    trimEndMsExclusive: 4700,
   };
   const persisted = await repositories.timing.persistTimelinePlan(SCOPE, {
     idempotencyKey: "timing:timeline:vf-2-02",
@@ -296,18 +296,37 @@ async function persistTimeline(executor, repositories, transcript) {
         segmentKey: "segment:owned:0",
         index: 0,
         startFrame: 0,
-        endFrameExclusive: 360,
+        endFrameExclusive: 141,
         sourceAudioStartMs: 0,
-        sourceAudioEndMsExclusive: 9000,
+        sourceAudioEndMsExclusive: 4700,
         wordStart: 0,
-        wordEndExclusive: 9,
+        wordEndExclusive: 5,
         timelineComposition: "AVATAR_FULL",
         inImageShotRole: null,
-        narration: "Fresh watermelons reveal their quality through simple careful checks.",
+        narration: "Fresh watermelons reveal their quality",
         requiredSlots: {
           avatar: {
             task_key: "avatar:owned:0",
             span_audio_task_key: "audio-span:owned:0",
+          },
+        },
+      },
+      {
+        segmentId: uuid(31_105),
+        segmentKey: "segment:owned:1",
+        index: 1,
+        startFrame: 141,
+        endFrameExclusive: 360,
+        sourceAudioStartMs: 4700,
+        sourceAudioEndMsExclusive: 12_000,
+        wordStart: 5,
+        wordEndExclusive: 9,
+        timelineComposition: "IMAGE_FULL",
+        inImageShotRole: "OBJECT_EVIDENCE",
+        narration: "through simple careful checks.",
+        requiredSlots: {
+          image: {
+            task_key: "image:owned:1",
           },
         },
       },
@@ -350,7 +369,7 @@ function spanResult(dispatch, span) {
       artifact_uri: objectUri(hash, "wav"),
       content_type: "audio/wav",
       byte_size: bytes.byteLength,
-      duration_ms: 9000,
+      duration_ms: 5200,
       sample_rate_hz: 16_000,
       channels: 1,
     },
@@ -640,7 +659,7 @@ test("selected padded span acceptance is exact, attempt-bound and idempotent", a
     assert.equal(first.value.replayed, false);
     assert.equal(first.value.span.state, "MATERIALIZED");
     assert.equal(first.value.span.version, 2);
-    assert.equal(first.value.span.materializedDurationMs, 9000);
+    assert.equal(first.value.span.materializedDurationMs, 5200);
     assert.equal(first.value.span.materializedAssetId, setup.dispatch.outputAssetId);
     assert.equal(first.value.artifact.kind, "AUDIO_SPAN");
     assert.equal(first.value.artifact.sourceAttemptId, LOCAL_IDS.spanAttempt);

@@ -17,23 +17,52 @@ import { SeededVariation } from "./random.js";
 
 export const SUPPORTED_SCHEDULER_VERSION = "scheduler-v1";
 
-const OUTPUT_FPS = 30;
-const IMAGE_MINIMUM_MS = 3_000;
-const IMAGE_MAXIMUM_MS = 7_000;
-const AVATAR_MINIMUM_MS = 2_000;
-const AVATAR_MAXIMUM_MS = 6_000;
-const OPENER_MAXIMUM_MS = 7_000;
-const MINIMUM_AVATAR_START_DELTA_MS = 11_000;
-const MAXIMUM_AVATAR_START_DELTA_MS = 23_000;
-
-const SHOT_ROLES = [
+const SHOT_ROLES = Object.freeze([
   "ENVIRONMENTAL_WIDE",
   "HUMAN_MEDIUM",
   "HANDS_ACTION",
   "OBJECT_EVIDENCE",
   "MACRO_DETAIL",
   "REACTION_RESULT",
-] as const;
+] as const);
+
+/**
+ * Exact behavior-bearing scheduler inputs. Keep this document immutable for scheduler-v1; changing
+ * any value requires a new scheduler version so durable plans can be replayed byte-for-byte.
+ */
+export const SUPPORTED_SCHEDULER_CONFIG = Object.freeze({
+  schema_version: "deterministic-timeline-scheduler-config/v1",
+  output_fps_num: 30,
+  output_fps_den: 1,
+  image_minimum_ms: 3_000,
+  image_maximum_ms: 7_000,
+  avatar_minimum_ms: 2_000,
+  avatar_maximum_ms: 6_000,
+  opener_maximum_ms: 7_000,
+  desired_opener_minimum_ms: 4_000,
+  desired_opener_maximum_ms: 6_000,
+  minimum_avatar_start_delta_ms: 11_000,
+  maximum_avatar_start_delta_ms: 23_000,
+  desired_avatar_start_delta_minimum_ms: 14_000,
+  desired_avatar_start_delta_maximum_ms: 20_000,
+  avatar_duration_jitter_minimum_ms: -600,
+  avatar_duration_jitter_maximum_ms: 600,
+  avatar_duration_score_weight: 0.7,
+  avatar_coverage_score_weight: 0.2,
+  target_avatar_ratio_minimum: 0.21,
+  target_avatar_ratio_maximum: 0.22,
+  selected_span_context_padding_ms: 500,
+  shot_roles: SHOT_ROLES,
+});
+
+const OUTPUT_FPS = SUPPORTED_SCHEDULER_CONFIG.output_fps_num;
+const IMAGE_MINIMUM_MS = SUPPORTED_SCHEDULER_CONFIG.image_minimum_ms;
+const IMAGE_MAXIMUM_MS = SUPPORTED_SCHEDULER_CONFIG.image_maximum_ms;
+const AVATAR_MINIMUM_MS = SUPPORTED_SCHEDULER_CONFIG.avatar_minimum_ms;
+const AVATAR_MAXIMUM_MS = SUPPORTED_SCHEDULER_CONFIG.avatar_maximum_ms;
+const OPENER_MAXIMUM_MS = SUPPORTED_SCHEDULER_CONFIG.opener_maximum_ms;
+const MINIMUM_AVATAR_START_DELTA_MS = SUPPORTED_SCHEDULER_CONFIG.minimum_avatar_start_delta_ms;
+const MAXIMUM_AVATAR_START_DELTA_MS = SUPPORTED_SCHEDULER_CONFIG.maximum_avatar_start_delta_ms;
 
 type TimelineSegment = TimelinePlanDocument["segments"][number];
 type TimelineComposition = TimelineSegment["timeline_composition"];
@@ -260,7 +289,11 @@ function selectOpener(
   transcript: TranscriptTimingDocument,
   variation: SeededVariation,
 ): AvatarRange | null {
-  const desiredDuration = variation.between("avatar-opener-duration", 4_000, 6_000);
+  const desiredDuration = variation.between(
+    "avatar-opener-duration",
+    SUPPORTED_SCHEDULER_CONFIG.desired_opener_minimum_ms,
+    SUPPORTED_SCHEDULER_CONFIG.desired_opener_maximum_ms,
+  );
   let best: { readonly score: number; readonly range: AvatarRange } | null = null;
 
   for (let endIndex = 1; endIndex <= transcript.phrases.length; endIndex += 1) {
@@ -295,13 +328,23 @@ function selectNextAvatar(
 ): AvatarRange | null {
   const previousStart = boundaryMilliseconds(transcript, previous.startIndex);
   const desiredStart =
-    previousStart + variation.between(`avatar-start:${appearanceIndex}`, 14_000, 20_000);
+    previousStart +
+    variation.between(
+      `avatar-start:${appearanceIndex}`,
+      SUPPORTED_SCHEDULER_CONFIG.desired_avatar_start_delta_minimum_ms,
+      SUPPORTED_SCHEDULER_CONFIG.desired_avatar_start_delta_maximum_ms,
+    );
   const remainingCoverage = Math.max(AVATAR_MINIMUM_MS, targetAvatarMs - currentAvatarMs);
   const desiredDuration = Math.min(
     AVATAR_MAXIMUM_MS,
     Math.max(
       AVATAR_MINIMUM_MS,
-      remainingCoverage + variation.between(`avatar-duration:${appearanceIndex}`, -600, 600),
+      remainingCoverage +
+        variation.between(
+          `avatar-duration:${appearanceIndex}`,
+          SUPPORTED_SCHEDULER_CONFIG.avatar_duration_jitter_minimum_ms,
+          SUPPORTED_SCHEDULER_CONFIG.avatar_duration_jitter_maximum_ms,
+        ),
     ),
   );
 
@@ -339,8 +382,10 @@ function selectNextAvatar(
       const key = `avatar:${appearanceIndex}:${startIndex}:${endIndex}`;
       const score =
         Math.abs(start - desiredStart) +
-        Math.abs(duration - desiredDuration) * 0.7 +
-        Math.abs(projectedCoverage - targetAvatarMs) * 0.2 +
+        Math.abs(duration - desiredDuration) *
+          SUPPORTED_SCHEDULER_CONFIG.avatar_duration_score_weight +
+        Math.abs(projectedCoverage - targetAvatarMs) *
+          SUPPORTED_SCHEDULER_CONFIG.avatar_coverage_score_weight +
         variation.between(`${key}:tie`, 0, 0.25);
       if (best === null || score < best.score) best = { score, range };
     }
@@ -579,7 +624,11 @@ function buildTimelinePlan(
     );
   }
 
-  const targetAvatarRatio = variation.between("target-avatar-ratio", 0.21, 0.22);
+  const targetAvatarRatio = variation.between(
+    "target-avatar-ratio",
+    SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum,
+    SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_maximum,
+  );
   const targetAvatarMs = transcript.source.duration_ms * targetAvatarRatio;
   const avatarRanges: AvatarRange[] = [opener];
   let avatarMs = rangeDurationMilliseconds(transcript, opener);

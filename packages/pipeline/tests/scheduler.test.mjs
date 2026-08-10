@@ -5,6 +5,7 @@ import { canonicalizeJson, validateAndHashContractDocument } from "@videoforge/c
 import {
   deterministicTimelineScheduler,
   scheduleTimeline,
+  SUPPORTED_SCHEDULER_CONFIG,
   SUPPORTED_SCHEDULER_VERSION,
 } from "../dist/src/index.js";
 
@@ -147,6 +148,92 @@ async function requestFor(seed) {
   return { revision, transcript, determinism };
 }
 
+function createPropertyTranscript({
+  durationMs,
+  phraseStarts,
+  silentTailMs = 0,
+  punctuation = true,
+}) {
+  const words = [];
+  const phrases = phraseStarts.map((startMs, index) => {
+    const nextBoundary = phraseStarts[index + 1] ?? durationMs;
+    const endMs = Math.max(startMs + 1, nextBoundary - silentTailMs);
+    const word = punctuation ? `phrase-${String(index)}.` : `phrase-${String(index)}`;
+    words.push({
+      index,
+      text: word,
+      start_ms: startMs,
+      end_ms: endMs,
+      confidence: 0.99,
+    });
+    return {
+      phrase_id: `property_phrase_${String(index).padStart(5, "0")}`,
+      sentence_id: `property_sentence_${String(Math.floor(index / 2)).padStart(5, "0")}`,
+      word_start: index,
+      word_end_exclusive: index + 1,
+      start_ms: startMs,
+      end_ms: endMs,
+      pause_before_ms: index === 0 ? startMs : silentTailMs,
+      pause_after_ms: silentTailMs,
+      text: word,
+    };
+  });
+  return {
+    schema_version: "transcript-timing/v1",
+    project_revision_id: REVISION_ID,
+    source: {
+      asset_id: VOICEOVER_ASSET_ID,
+      sha256: SHA_A,
+      duration_ms: durationMs,
+    },
+    engine: {
+      name: "whisper.cpp",
+      version: "fixture-1.0.0",
+      model_name: "base.en",
+      model_sha256: SHA_B,
+      language: "en",
+    },
+    text: words.map((word) => word.text).join(" "),
+    words,
+    phrases,
+  };
+}
+
+async function propertyRequest(seed, transcriptValue) {
+  const [revision, transcript] = await Promise.all([
+    validateAndHashContractDocument("projectRevisionConfig", createRevisionValue(seed)),
+    validateAndHashContractDocument("transcriptTiming", transcriptValue),
+  ]);
+  return { revision, transcript, determinism };
+}
+
+function assertExactTimelineCoverage(plan, transcript) {
+  let nextFrame = 0;
+  let nextSourceMs = 0;
+  let nextWord = 0;
+  let previousAvatar = null;
+  let avatarFrames = 0;
+  for (const segment of plan.segments) {
+    assert.equal(segment.start_frame, nextFrame);
+    assert.equal(segment.source_audio_start_ms, nextSourceMs);
+    assert.equal(segment.word_start, nextWord);
+    assert.ok(segment.end_frame_exclusive > segment.start_frame);
+    assert.ok(segment.source_audio_end_ms > segment.source_audio_start_ms);
+    if (segment.timeline_composition !== "IMAGE_FULL") {
+      assert.notEqual(segment.timeline_composition, previousAvatar);
+      previousAvatar = segment.timeline_composition;
+      avatarFrames += segment.end_frame_exclusive - segment.start_frame;
+    }
+    nextFrame = segment.end_frame_exclusive;
+    nextSourceMs = segment.source_audio_end_ms;
+    nextWord = segment.word_end_exclusive;
+  }
+  assert.equal(nextFrame, plan.total_frames);
+  assert.equal(nextSourceMs, transcript.source.duration_ms);
+  assert.equal(nextWord, transcript.words.length);
+  return avatarFrames / plan.total_frames;
+}
+
 function requireSuccess(result) {
   assert.equal(result.ok, true, result.ok ? undefined : JSON.stringify(result.error));
   return result.value;
@@ -255,4 +342,108 @@ test("cross-revision transcript bindings fail closed", async () => {
   assert.equal(result.ok, false);
   assert.equal(result.error.code, "TRANSCRIPT_INVALID");
   assert.deepEqual(result.error.path, ["transcript", "project_revision_id"]);
+});
+
+test("scheduler-v1 publishes every behavior-bearing constant as one immutable config", () => {
+  assert.equal(
+    SUPPORTED_SCHEDULER_CONFIG.schema_version,
+    "deterministic-timeline-scheduler-config/v1",
+  );
+  assert.equal(SUPPORTED_SCHEDULER_CONFIG.output_fps_num, 30);
+  assert.deepEqual(SUPPORTED_SCHEDULER_CONFIG.shot_roles, [
+    "ENVIRONMENTAL_WIDE",
+    "HUMAN_MEDIUM",
+    "HANDS_ACTION",
+    "OBJECT_EVIDENCE",
+    "MACRO_DETAIL",
+    "REACTION_RESULT",
+  ]);
+  assert.equal(SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum, 0.21);
+  assert.equal(SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_maximum, 0.22);
+  assert.equal(SUPPORTED_SCHEDULER_CONFIG.selected_span_context_padding_ms, 500);
+  assert.equal(Object.isFrozen(SUPPORTED_SCHEDULER_CONFIG), true);
+  assert.equal(Object.isFrozen(SUPPORTED_SCHEDULER_CONFIG.shot_roles), true);
+});
+
+test("short, silent, fast, slow, unpunctuated and 30-minute fixtures remain deterministic", async () => {
+  const starts = (durationMs, stepMs, offsetMs = 0) =>
+    Array.from(
+      { length: Math.ceil((durationMs - offsetMs) / stepMs) },
+      (_, index) => offsetMs + index * stepMs,
+    );
+  const fixtures = [
+    {
+      name: "short",
+      value: createPropertyTranscript({ durationMs: 12_000, phraseStarts: [0, 4_000, 8_000] }),
+    },
+    {
+      name: "silent",
+      value: createPropertyTranscript({
+        durationMs: 40_000,
+        phraseStarts: starts(40_000, 4_000, 500),
+        silentTailMs: 1_000,
+      }),
+    },
+    {
+      name: "fast",
+      value: createPropertyTranscript({
+        durationMs: 40_000,
+        phraseStarts: starts(40_000, 500),
+        silentTailMs: 25,
+      }),
+    },
+    {
+      name: "slow",
+      value: createPropertyTranscript({ durationMs: 40_000, phraseStarts: starts(40_000, 5_000) }),
+    },
+    {
+      name: "unpunctuated",
+      value: createPropertyTranscript({
+        durationMs: 40_000,
+        phraseStarts: starts(40_000, 4_000),
+        punctuation: false,
+      }),
+    },
+    {
+      name: "thirty-minute",
+      value: createPropertyTranscript({
+        durationMs: 1_800_000,
+        phraseStarts: starts(1_800_000, 5_000),
+      }),
+    },
+  ];
+
+  for (const fixture of fixtures) {
+    for (const seed of [0, 982_341, 4_294_967_295]) {
+      const request = await propertyRequest(seed, fixture.value);
+      const firstResult = await scheduleTimeline(request);
+      const secondResult = await scheduleTimeline(request);
+      assert.equal(
+        firstResult.ok,
+        true,
+        `${fixture.name} seed ${String(seed)}: ${firstResult.ok ? "" : JSON.stringify(firstResult.error)}`,
+      );
+      assert.equal(
+        secondResult.ok,
+        true,
+        `${fixture.name} replay seed ${String(seed)}: ${secondResult.ok ? "" : JSON.stringify(secondResult.error)}`,
+      );
+      if (!firstResult.ok || !secondResult.ok) continue;
+      const first = firstResult.value;
+      const second = secondResult.value;
+      assert.equal(first.sha256, second.sha256, `${fixture.name} seed ${String(seed)}`);
+      assert.equal(
+        canonicalizeJson(first.value),
+        canonicalizeJson(second.value),
+        `${fixture.name} seed ${String(seed)}`,
+      );
+      const avatarRatio = assertExactTimelineCoverage(first.value, fixture.value);
+      if (fixture.name !== "short") {
+        assert.ok(
+          avatarRatio >= 0.19 && avatarRatio <= (fixture.name === "slow" ? 0.26 : 0.24),
+          `${fixture.name}: ${String(avatarRatio)}`,
+        );
+      }
+    }
+  }
 });

@@ -42,7 +42,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@videoforge/contracts": "workspace:*"
+    "@videoforge/contracts": "workspace:*",
+    "@videoforge/pipeline": "workspace:*"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.4",

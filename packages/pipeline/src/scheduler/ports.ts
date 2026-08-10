@@ -18,5 +18,6 @@ export interface SchedulerPort {
 export {
   deterministicTimelineScheduler,
   scheduleTimeline,
+  SUPPORTED_SCHEDULER_CONFIG,
   SUPPORTED_SCHEDULER_VERSION,
 } from "./scheduler.js";

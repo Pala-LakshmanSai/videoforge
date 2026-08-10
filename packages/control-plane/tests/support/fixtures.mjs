@@ -324,9 +324,9 @@ async function insertLockedRevision(executor, values) {
        $5, $6, $7, $8, $9, $10, $11,
        'owned-preparation-v1', 'owned-validation-v1',
        'UNTESTED', NULL, NULL, $12, $13, $14,
-       '', false, 'LOWEST_COST', 1500000, 42,
-       'project-revision-config', 'v2', '{"source":"owned-synthetic"}'::jsonb, $15,
-       $16, $17
+       '', false, 'LOWEST_COST', 1500000, $15,
+       'project-revision-config', 'v2', $16::jsonb, $17,
+       $18, $19
      )`,
     [
       values.revisionId,
@@ -343,6 +343,8 @@ async function insertLockedRevision(executor, values) {
       values.styleId,
       values.styleVersionId,
       values.styleHash,
+      values.seed ?? 42,
+      JSON.stringify(values.revisionConfigPayload ?? { source: "owned-synthetic" }),
       values.revisionHash,
       values.userId,
       FIXED_TIME,
@@ -350,7 +352,7 @@ async function insertLockedRevision(executor, values) {
   );
 }
 
-export async function seedLockedProjects(executor) {
+export async function seedLockedProjects(executor, overrides = {}) {
   await seedReadyPresets(executor);
   await executor.query(
     `INSERT INTO projects (id, workspace_id, owner_user_id, name, normalized_name)
@@ -373,7 +375,9 @@ export async function seedLockedProjects(executor) {
     styleId: IDS.styleA,
     styleVersionId: IDS.styleVersionA,
     styleHash: HASHES.styleA,
-    revisionHash: HASHES.revisionA,
+    revisionHash: overrides.revisionA?.revisionHash ?? HASHES.revisionA,
+    revisionConfigPayload: overrides.revisionA?.revisionConfigPayload,
+    seed: overrides.revisionA?.seed,
     userId: IDS.userA,
   });
   await insertLockedRevision(executor, {

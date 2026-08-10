@@ -47,7 +47,7 @@ test("a fresh PGlite database applies the committed migration chain idempotently
   }
 });
 
-test("the durable timing migration upgrades the five-migration baseline without rewriting legacy rows", async () => {
+test("the durable timing migrations upgrade the five-migration baseline without rewriting legacy rows", async () => {
   const database = new PGlite();
   try {
     const executor = new PGliteExecutor(database);
@@ -119,7 +119,7 @@ test("the durable timing migration upgrades the five-migration baseline without 
     );
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [6]);
+    assert.deepEqual(upgraded.appliedVersions, [6, 7]);
     assert.deepEqual(upgraded.alreadyAppliedVersions, [1, 2, 3, 4, 5]);
     const legacy = await executor.query(
       `SELECT transcript.lineage_contract_version, transcript.input_fingerprint_hash,
@@ -142,7 +142,7 @@ test("the durable timing migration upgrades the five-migration baseline without 
 
     const replay = await applyMigrations(executor, sources);
     assert.deepEqual(replay.appliedVersions, []);
-    assert.deepEqual(replay.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6]);
+    assert.deepEqual(replay.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7]);
   } finally {
     await database.close();
   }

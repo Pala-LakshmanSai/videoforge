@@ -175,6 +175,9 @@ importers:
       '@videoforge/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@videoforge/pipeline':
+        specifier: workspace:*
+        version: link:../pipeline
     devDependencies:
       '@electric-sql/pglite':
         specifier: 0.5.4
