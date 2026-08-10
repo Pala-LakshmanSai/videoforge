@@ -86,11 +86,10 @@ function normalizeStyle(style: PromptStyleComponents): PromptStyleComponents {
   assertNoHardConflict(result.fullImageGuidance, ["style", "fullImageGuidance"]);
   assertNoHardConflict(result.splitImageGuidance, ["style", "splitImageGuidance"]);
   if (!FULL_GEOMETRY.test(result.fullImageGuidance) || !CENTER_SAFE.test(result.fullImageGuidance))
-    fail(
-      "PROMPT_CONFLICT",
-      "Full-image guidance must preserve 16:9 center-safe geometry.",
-      ["style", "fullImageGuidance"],
-    );
+    fail("PROMPT_CONFLICT", "Full-image guidance must preserve 16:9 center-safe geometry.", [
+      "style",
+      "fullImageGuidance",
+    ]);
   if (
     !SPLIT_GEOMETRY.test(result.splitImageGuidance) ||
     !RIGHT_PANEL.test(result.splitImageGuidance) ||
