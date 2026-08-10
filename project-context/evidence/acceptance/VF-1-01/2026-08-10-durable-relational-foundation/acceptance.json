@@ -1,0 +1,93 @@
+{
+  "schema_version": "videoforge.acceptance-evidence/v1",
+  "task_id": "VF-1-01",
+  "status": "technical_pass",
+  "recorded_at": "2026-08-10T04:41:12Z",
+  "implementation": {
+    "commit": "6d0b66fac9fd44537bbfccd789f2023f3bcaf064",
+    "package": "@videoforge/control-plane",
+    "pglite_version": "0.5.4",
+    "migration": {
+      "version": 1,
+      "filename": "0001_durable_control_plane_foundation.sql",
+      "sha256": "sha256:263d2c3853b3ed6809ad3b52acddce19c6849ca8100d229ceb9cb26d3ef3f92e"
+    },
+    "commits": [
+      "7998ca2d",
+      "2bf2bebd",
+      "226845bd",
+      "345055cd",
+      "1503912d",
+      "6d0b66fa"
+    ]
+  },
+  "inventory": {
+    "public_tables": 30,
+    "domain_tables": 29,
+    "migration_ledger_tables": 1,
+    "indexes": 116,
+    "required_named_custom_indexes": 26,
+    "constraints_total": 663,
+    "constraints": {
+      "checks": 194,
+      "foreign_keys": 75,
+      "not_null": 304,
+      "primary_keys": 30,
+      "unique": 60
+    },
+    "invariant_triggers": 10
+  },
+  "repository_contracts": {
+    "exported_behavior_cases": 13,
+    "explicit_workspace_scope": true,
+    "deterministic_idempotency_for_billed_or_retryable_mutations": true,
+    "provider_acknowledgement_is_not_accepted_completion": true,
+    "query_library_neutral": true
+  },
+  "verification": {
+    "result": "pass",
+    "commands": [
+      "pnpm --filter @videoforge/control-plane lint",
+      "pnpm --filter @videoforge/control-plane typecheck",
+      "pnpm --filter @videoforge/control-plane test",
+      "pnpm --filter @videoforge/control-plane build",
+      "pnpm db:check",
+      "pnpm context:validate",
+      "pnpm secret:scan",
+      "TURBO_FORCE=true pnpm verify",
+      "pnpm audit:dependencies",
+      "git diff --check"
+    ],
+    "control_plane_tests": {
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "repository_contract_behaviors": 13,
+    "playwright_installed_chrome": {
+      "passed": 34,
+      "intentionally_skipped": 8
+    },
+    "forced_turbo_cache_hits": 0,
+    "intentional_no_output_warnings": 0,
+    "known_high_severity_dependency_vulnerabilities": 0
+  },
+  "authorization": {
+    "provider_calls_authorized": false,
+    "provider_calls_made": false,
+    "maximum_external_spend_usd": 0,
+    "external_spend_usd": 0,
+    "database_url_used": false,
+    "neon_connection_used": false,
+    "cloud_mutation_performed": false,
+    "credentials_used": false,
+    "public_or_lan_listener_used": false
+  },
+  "next_boundary": {
+    "planned_task_id": "VF-1-02",
+    "dependency_ready": true,
+    "exact_task_brief_present": false,
+    "status": "blocked_missing_exact_task_brief",
+    "external_mutation_authorized": false
+  }
+}
