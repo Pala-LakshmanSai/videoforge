@@ -1,0 +1,62 @@
+{
+  "schema_version": "videoforge.acceptance-evidence/v1",
+  "task_id": "VF-0D-01",
+  "status": "technical_pass",
+  "recorded_at": "2026-08-10T08:42:41Z",
+  "implementation": {
+    "initial_integration_commit": "674c588876333b358dc73a24e64c6a78b9211f93",
+    "hardening_commit": "1155b8ae92ae38731cfdb4840d7abc3d7f1608b2",
+    "package": "@videoforge/provider-sandbox",
+    "provider_sdk_dependencies": 0,
+    "network_dependencies": 0
+  },
+  "safety_invariants": {
+    "authorization_checked_before_transport": true,
+    "exact_task_attempt_owner_profile_and_input_binding": true,
+    "immutable_attempt_subcap": true,
+    "cumulative_task_cap_enforced_across_retries": true,
+    "ambiguous_acknowledgement_requires_reconciliation": true,
+    "unknown_reservation_remains_committed": true,
+    "confirmed_not_dispatched_reservation_refunded": true,
+    "timeout_and_cancellation_cost_floor_monotonic": true,
+    "reservation_overrun_first_class_and_reconciled": true,
+    "cleanup_failure_visible_in_compound_evidence": true,
+    "canonical_input_and_result_snapshot_single_read": true,
+    "runtime_result_shapes_fail_closed": true,
+    "fake_transport_authenticity_tamper_resistant": true,
+    "incompatible_fake_scenarios_rejected": true,
+    "evidence_hash_covers_authorization_caps_deadline_cancellation_and_identity": true
+  },
+  "verification": {
+    "result": "pass",
+    "commands": [
+      "pnpm --filter @videoforge/provider-sandbox lint",
+      "pnpm --filter @videoforge/provider-sandbox typecheck",
+      "pnpm --filter @videoforge/provider-sandbox test",
+      "pnpm --filter @videoforge/provider-sandbox build",
+      "TURBO_FORCE=true pnpm verify",
+      "pnpm audit:dependencies",
+      "git diff --check"
+    ],
+    "provider_sandbox_tests": { "passed": 39, "failed": 0, "skipped": 0 },
+    "independent_adversarial_findings_open": 0,
+    "source_scan_network_provider_environment_sdk_matches": 0,
+    "known_high_severity_dependency_vulnerabilities": 0
+  },
+  "authorization": {
+    "provider_calls_authorized": false,
+    "provider_calls_made": false,
+    "maximum_external_spend_usd": 0,
+    "external_spend_usd": 0,
+    "credentials_read": false,
+    "network_calls_made": false,
+    "cloud_resources_created": false,
+    "model_downloads_performed": false,
+    "provider_qualification_budget_activated": false
+  },
+  "next_boundary": {
+    "provider_qualification_status": "inactive_requires_separate_activation",
+    "local_wave_2_may_continue": true,
+    "external_mutation_authorized": false
+  }
+}
