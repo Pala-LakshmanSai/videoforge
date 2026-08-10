@@ -1,0 +1,95 @@
+{
+  "schema_version": "videoforge.acceptance-evidence/v1",
+  "task_id": "VF-1-07",
+  "status": "technical_pass",
+  "recorded_at": "2026-08-10T13:11:37Z",
+  "implementation": {
+    "commit": "ffceb6319ff85f7207619df7e0ecd41d20b341d0",
+    "authorization_boundary": "AuthWorkspaceBoundary",
+    "artifact_composition": "createPhase1PrivateArtifactApp",
+    "repository_factory": "createPGliteControlPlaneRepositories",
+    "artifact_store": "LocalArtifactStore"
+  },
+  "isolation_contract": {
+    "invited_local_accounts": 2,
+    "cross_workspace_exact_reads_denied_generically": true,
+    "cross_workspace_bind_denied_generically": true,
+    "cross_workspace_hash_probe_empty": true,
+    "cross_workspace_reviewer_authorization_denied_without_project_leak": true,
+    "cross_workspace_download_denied_for_header_and_body_scope_attacks": true,
+    "cross_workspace_archive_denied_generically": true,
+    "rename_mutation_exposed_by_frozen_phase1_surface": false
+  },
+  "large_audio_transfer": {
+    "content_type": "audio/wav",
+    "structurally_valid_pcm_wave": true,
+    "byte_size": 9437228,
+    "multipart_parts": 3,
+    "binary_sha256_verified_after_download": true,
+    "application_body_bytes": 0,
+    "direct_upload_bytes": 9437228,
+    "direct_download_bytes": 9437228,
+    "signed_operations": 6,
+    "direct_operations": 6
+  },
+  "avatar_reuse": {
+    "exact_ready_version_pinned_by_two_locked_revisions": true,
+    "new_avatar_assets": 0,
+    "new_compatibility_assessments": 0,
+    "new_avatar_generation_tasks": 0,
+    "new_avatar_cost_events": 0,
+    "project_local_avatar_upload_exposed": false,
+    "hub_round_trip_preserves_other_draft_fields": true
+  },
+  "audit": {
+    "result": "closed_no_remaining_high_or_medium",
+    "provider_or_network_surface_added": false,
+    "credential_or_secret_surface_added": false,
+    "authorization_precedes_body_read": true,
+    "application_can_access_direct_transfer_facet": false
+  },
+  "verification": {
+    "result": "pass",
+    "forced_turbo_cache_hits": 0,
+    "control_plane_tests": { "passed": 112, "failed": 0, "skipped": 0 },
+    "pipeline_tests": { "passed": 37, "failed": 0, "skipped": 0 },
+    "web_tests": { "passed": 148, "failed": 0, "skipped": 0 },
+    "local_workerd_tests": { "passed": 1, "failed": 0, "skipped": 0 },
+    "installed_chrome_tests": { "passed": 36, "failed": 0, "skipped": 0 },
+    "focused_installed_chrome_tests": { "passed": 2, "failed": 0, "skipped": 0 },
+    "synchronized_contract_files": 47,
+    "known_high_severity_dependency_vulnerabilities": 0,
+    "commands": [
+      "pnpm --filter @videoforge/control-plane lint",
+      "pnpm --filter @videoforge/control-plane typecheck",
+      "pnpm --filter @videoforge/control-plane test",
+      "pnpm --filter @videoforge/pipeline lint",
+      "pnpm --filter @videoforge/pipeline typecheck",
+      "pnpm --filter @videoforge/pipeline test",
+      "pnpm --filter @videoforge/web lint",
+      "pnpm --filter @videoforge/web typecheck",
+      "pnpm --filter @videoforge/web test",
+      "pnpm --filter @videoforge/web build",
+      "pnpm --filter @videoforge/web exec playwright test tests/e2e/shell.spec.ts tests/e2e/preset-roundtrip.spec.ts --project=desktop-chrome --grep 'Create Project uses exact visual presets and never exposes project-local avatar upload|new Avatar and Image Style round trips preserve and update the exact project draft'",
+      "TURBO_FORCE=true pnpm verify",
+      "pnpm context:validate",
+      "pnpm secret:scan",
+      "pnpm audit:dependencies",
+      "git diff --check",
+      "git status --short"
+    ]
+  },
+  "authorization": {
+    "database_url_used": false,
+    "remote_or_cloud_mutation_performed": false,
+    "network_used": false,
+    "credentials_used": false,
+    "provider_calls_made": false,
+    "model_downloads_performed": false,
+    "external_spend_usd": 0
+  },
+  "next_boundary": {
+    "local_next_task_requires_refreshed_current_state": true,
+    "isolated_staging": "awaiting separate external authority"
+  }
+}
