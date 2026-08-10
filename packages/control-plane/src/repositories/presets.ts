@@ -1,0 +1,425 @@
+import type {
+  CanonicalDocument,
+  CommonConflictCode,
+  CommonInvariantCode,
+  DeterministicIdempotencyKey,
+  EntityId,
+  IdempotentMutation,
+  IdempotentRepositoryResult,
+  JsonObject,
+  RepositoryResult,
+  Sha256,
+  UtcTimestamp,
+  WorkspaceActorScope,
+  WorkspaceScope,
+} from "./types.js";
+
+export type PresetStatus = "ACTIVE" | "ARCHIVED";
+export type ExactVersionUse = "NEW_REVISION" | "HISTORICAL_LINEAGE";
+
+export interface AvatarProfile {
+  readonly profileId: EntityId;
+  readonly workspaceId: EntityId;
+  readonly name: string;
+  readonly normalizedName: string;
+  readonly status: PresetStatus;
+  readonly activeVersionId: EntityId | null;
+  readonly thumbnailAssetId: EntityId | null;
+  readonly createdByUserId: EntityId;
+  readonly createdAt: UtcTimestamp;
+  readonly updatedAt: UtcTimestamp;
+  readonly archivedAt: UtcTimestamp | null;
+}
+
+export type AvatarDraftState = "DRAFT" | "UPLOADING" | "VALIDATING" | "NEEDS_REVIEW" | "FAILED";
+
+export interface AvatarVersionBase {
+  readonly versionId: EntityId;
+  readonly workspaceId: EntityId;
+  readonly profileId: EntityId;
+  readonly versionNumber: number;
+  readonly createdAt: UtcTimestamp;
+  readonly updatedAt: UtcTimestamp;
+}
+
+export interface AvatarProfileDraftVersion extends AvatarVersionBase {
+  readonly state: AvatarDraftState;
+  readonly profileDocument: CanonicalDocument | null;
+  readonly originalAssetId: EntityId | null;
+  readonly runtimeSourceAssetId: EntityId | null;
+  readonly runtimeSourceBinarySha256: Sha256 | null;
+  readonly sourcePreparationProfile: string | null;
+  readonly sourceValidationProfile: string | null;
+  readonly rightsAttestedByUserId: EntityId | null;
+  readonly likenessAttestedByUserId: EntityId | null;
+}
+
+export interface ReadyAvatarProfileVersion extends AvatarVersionBase {
+  readonly state: "READY";
+  readonly profileDocument: CanonicalDocument;
+  readonly originalAssetId: EntityId;
+  readonly runtimeSourceAssetId: EntityId;
+  readonly runtimeSourceBinarySha256: Sha256;
+  readonly sourcePreparationProfile: string;
+  readonly sourceValidationProfile: string;
+  readonly rightsAttestedByUserId: EntityId;
+  readonly likenessAttestedByUserId: EntityId;
+  readonly readyAt: UtcTimestamp;
+}
+
+export interface AbandonedAvatarProfileVersion extends AvatarVersionBase {
+  readonly state: "ABANDONED";
+  readonly abandonedAt: UtcTimestamp;
+}
+
+export type AvatarProfileVersion =
+  | AvatarProfileDraftVersion
+  | ReadyAvatarProfileVersion
+  | AbandonedAvatarProfileVersion;
+
+export interface CreateAvatarProfileCommand extends IdempotentMutation {
+  readonly profileId: EntityId;
+  readonly name: string;
+  readonly normalizedName: string;
+}
+
+export interface CreateAvatarDraftCommand extends IdempotentMutation {
+  readonly profileId: EntityId;
+  readonly versionId: EntityId;
+  readonly versionNumber: number;
+}
+
+export interface SaveAvatarDraftCommand extends IdempotentMutation {
+  readonly profileId: EntityId;
+  readonly versionId: EntityId;
+  readonly expectedUpdatedAt: UtcTimestamp;
+  readonly nextState: AvatarDraftState;
+  readonly profileDocument: CanonicalDocument | null;
+  readonly originalAssetId: EntityId | null;
+  readonly runtimeSourceAssetId: EntityId | null;
+  readonly runtimeSourceBinarySha256: Sha256 | null;
+  readonly sourcePreparationProfile: string | null;
+  readonly sourceValidationProfile: string | null;
+  readonly rightsAttestedByUserId: EntityId | null;
+  readonly likenessAttestedByUserId: EntityId | null;
+}
+
+export interface PublishAvatarVersionCommand extends IdempotentMutation {
+  readonly profileId: EntityId;
+  readonly versionId: EntityId;
+  readonly expectedUpdatedAt: UtcTimestamp;
+  readonly profileDocument: CanonicalDocument;
+  readonly originalAssetId: EntityId;
+  readonly runtimeSourceAssetId: EntityId;
+  readonly runtimeSourceBinarySha256: Sha256;
+  readonly sourcePreparationProfile: string;
+  readonly sourceValidationProfile: string;
+  readonly rightsAttestedByUserId: EntityId;
+  readonly likenessAttestedByUserId: EntityId;
+  readonly readyAt: UtcTimestamp;
+}
+
+export interface ExactAvatarVersionLookup {
+  readonly profileId: EntityId;
+  readonly versionId: EntityId;
+  readonly use: ExactVersionUse;
+}
+
+export interface ArchiveAvatarProfileCommand extends IdempotentMutation {
+  readonly profileId: EntityId;
+  readonly expectedUpdatedAt: UtcTimestamp;
+  readonly archivedAt: UtcTimestamp;
+}
+
+export type AvatarConflict =
+  | CommonConflictCode
+  | "AVATAR_PROFILE_VERSION_CONFLICT"
+  | "AVATAR_READY_HASH_EXISTS";
+export type AvatarMissing = "AVATAR_PROFILE" | "AVATAR_PROFILE_VERSION" | "ASSET";
+export type AvatarInvariant =
+  | CommonInvariantCode
+  | "AVATAR_PROFILE_ARCHIVED"
+  | "AVATAR_VERSION_NOT_READY"
+  | "AVATAR_VERSION_NOT_PUBLISHABLE";
+
+export interface AvatarProfileRepository {
+  createProfile(
+    scope: WorkspaceActorScope,
+    command: CreateAvatarProfileCommand,
+  ): Promise<
+    IdempotentRepositoryResult<AvatarProfile, AvatarConflict, AvatarMissing, AvatarInvariant>
+  >;
+
+  createDraftVersion(
+    scope: WorkspaceActorScope,
+    command: CreateAvatarDraftCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      AvatarProfileDraftVersion,
+      AvatarConflict,
+      AvatarMissing,
+      AvatarInvariant
+    >
+  >;
+
+  saveDraftVersion(
+    scope: WorkspaceActorScope,
+    command: SaveAvatarDraftCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      AvatarProfileDraftVersion,
+      AvatarConflict,
+      AvatarMissing,
+      AvatarInvariant
+    >
+  >;
+
+  /** Atomically marks the version READY and makes it the parent's active version. */
+  publishVersion(
+    scope: WorkspaceActorScope,
+    command: PublishAvatarVersionCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      ReadyAvatarProfileVersion,
+      AvatarConflict,
+      AvatarMissing,
+      AvatarInvariant
+    >
+  >;
+
+  resolveExactReadyVersion(
+    scope: WorkspaceScope,
+    lookup: ExactAvatarVersionLookup,
+  ): Promise<
+    RepositoryResult<ReadyAvatarProfileVersion, AvatarConflict, AvatarMissing, AvatarInvariant>
+  >;
+
+  archiveProfile(
+    scope: WorkspaceActorScope,
+    command: ArchiveAvatarProfileCommand,
+  ): Promise<
+    IdempotentRepositoryResult<AvatarProfile, AvatarConflict, AvatarMissing, AvatarInvariant>
+  >;
+}
+
+export interface ImageStyle {
+  readonly styleId: EntityId;
+  readonly workspaceId: EntityId;
+  readonly name: string;
+  readonly normalizedName: string;
+  readonly status: PresetStatus;
+  readonly activeVersionId: EntityId | null;
+  readonly coverAssetId: EntityId | null;
+  readonly createdByUserId: EntityId;
+  readonly createdAt: UtcTimestamp;
+  readonly updatedAt: UtcTimestamp;
+  readonly archivedAt: UtcTimestamp | null;
+}
+
+export type ImageStyleDraftState = "DRAFT" | "ANALYZING" | "NEEDS_REVIEW" | "FAILED";
+
+export interface ImageStyleVersionBase {
+  readonly versionId: EntityId;
+  readonly workspaceId: EntityId;
+  readonly styleId: EntityId;
+  readonly versionNumber: number;
+  readonly createdAt: UtcTimestamp;
+  readonly updatedAt: UtcTimestamp;
+}
+
+export interface ImageStyleDraftVersion extends ImageStyleVersionBase {
+  readonly state: ImageStyleDraftState;
+  readonly profileDocument: CanonicalDocument | null;
+  readonly analyzerRequestHash: Sha256 | null;
+  readonly analyzerModelSnapshot: string | null;
+  readonly disclosureAttestedByUserId: EntityId | null;
+}
+
+export interface PublishedImageStyleVersion extends ImageStyleVersionBase {
+  readonly state: "PUBLISHED";
+  readonly profileDocument: CanonicalDocument;
+  readonly analyzerRequestHash: Sha256 | null;
+  readonly analyzerModelSnapshot: string | null;
+  readonly disclosureAttestedByUserId: EntityId;
+  readonly publishedAt: UtcTimestamp;
+}
+
+export interface AbandonedImageStyleVersion extends ImageStyleVersionBase {
+  readonly state: "ABANDONED";
+  readonly abandonedAt: UtcTimestamp;
+}
+
+export type ImageStyleVersion =
+  | ImageStyleDraftVersion
+  | PublishedImageStyleVersion
+  | AbandonedImageStyleVersion;
+
+export interface CreateImageStyleCommand extends IdempotentMutation {
+  readonly styleId: EntityId;
+  readonly name: string;
+  readonly normalizedName: string;
+}
+
+export interface CreateImageStyleDraftCommand extends IdempotentMutation {
+  readonly styleId: EntityId;
+  readonly versionId: EntityId;
+  readonly versionNumber: number;
+}
+
+export interface SaveImageStyleDraftCommand extends IdempotentMutation {
+  readonly styleId: EntityId;
+  readonly versionId: EntityId;
+  readonly expectedUpdatedAt: UtcTimestamp;
+  readonly nextState: ImageStyleDraftState;
+  readonly profileDocument: CanonicalDocument | null;
+  readonly analyzerRequestHash: Sha256 | null;
+  readonly analyzerModelSnapshot: string | null;
+  readonly disclosureAttestedByUserId: EntityId | null;
+}
+
+export interface PublishImageStyleVersionCommand extends IdempotentMutation {
+  readonly styleId: EntityId;
+  readonly versionId: EntityId;
+  readonly expectedUpdatedAt: UtcTimestamp;
+  readonly profileDocument: CanonicalDocument;
+  readonly analyzerRequestHash: Sha256 | null;
+  readonly analyzerModelSnapshot: string | null;
+  readonly disclosureAttestedByUserId: EntityId;
+  readonly publishedAt: UtcTimestamp;
+}
+
+export interface BeginImageStyleAnalysisCommand extends IdempotentMutation {
+  readonly styleId: EntityId;
+  readonly versionId: EntityId;
+  readonly attemptId: EntityId;
+  readonly ordinal: number;
+  readonly requestHash: Sha256;
+  readonly provider: string;
+  readonly model: string;
+  readonly modelRevision: string;
+}
+
+export interface ImageStyleAnalysisAttempt {
+  readonly attemptId: EntityId;
+  readonly styleVersionId: EntityId;
+  readonly ordinal: number;
+  readonly idempotencyKey: DeterministicIdempotencyKey;
+  readonly requestHash: Sha256;
+  readonly state: "CREATED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED" | "UNKNOWN";
+  readonly provider: string;
+  readonly model: string;
+  readonly modelRevision: string;
+  readonly responseHash: Sha256 | null;
+  readonly usagePayload: JsonObject | null;
+  readonly reportedCostMicroUsd: bigint | null;
+}
+
+export interface ExactImageStyleVersionLookup {
+  readonly styleId: EntityId;
+  readonly versionId: EntityId;
+  readonly use: ExactVersionUse;
+}
+
+export interface ArchiveImageStyleCommand extends IdempotentMutation {
+  readonly styleId: EntityId;
+  readonly expectedUpdatedAt: UtcTimestamp;
+  readonly archivedAt: UtcTimestamp;
+}
+
+export type ImageStyleConflict =
+  | CommonConflictCode
+  | "IMAGE_STYLE_VERSION_CONFLICT"
+  | "PUBLISHED_STYLE_HASH_EXISTS";
+export type ImageStyleMissing = "IMAGE_STYLE" | "IMAGE_STYLE_VERSION";
+export type ImageStyleInvariant =
+  | CommonInvariantCode
+  | "IMAGE_STYLE_ARCHIVED"
+  | "IMAGE_STYLE_VERSION_NOT_PUBLISHED"
+  | "IMAGE_STYLE_VERSION_NOT_PUBLISHABLE";
+
+export interface ImageStyleRepository {
+  createStyle(
+    scope: WorkspaceActorScope,
+    command: CreateImageStyleCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      ImageStyle,
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
+  createDraftVersion(
+    scope: WorkspaceActorScope,
+    command: CreateImageStyleDraftCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      ImageStyleDraftVersion,
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
+  saveDraftVersion(
+    scope: WorkspaceActorScope,
+    command: SaveImageStyleDraftCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      ImageStyleDraftVersion,
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
+  /** Atomically marks the version PUBLISHED and makes it the parent's active version. */
+  publishVersion(
+    scope: WorkspaceActorScope,
+    command: PublishImageStyleVersionCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      PublishedImageStyleVersion,
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
+  beginAnalysis(
+    scope: WorkspaceActorScope,
+    command: BeginImageStyleAnalysisCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      ImageStyleAnalysisAttempt,
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
+  resolveExactPublishedVersion(
+    scope: WorkspaceScope,
+    lookup: ExactImageStyleVersionLookup,
+  ): Promise<
+    RepositoryResult<
+      PublishedImageStyleVersion,
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
+  archiveStyle(
+    scope: WorkspaceActorScope,
+    command: ArchiveImageStyleCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      ImageStyle,
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+}
