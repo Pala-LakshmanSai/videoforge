@@ -13,6 +13,10 @@
       "types": "./dist/src/database/index.d.ts",
       "import": "./dist/src/database/index.js"
     },
+    "./auth": {
+      "types": "./dist/src/auth/index.d.ts",
+      "import": "./dist/src/auth/index.js"
+    },
     "./repositories": {
       "types": "./dist/src/repositories/index.d.ts",
       "import": "./dist/src/repositories/index.js"
