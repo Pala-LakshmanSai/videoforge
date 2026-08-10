@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T14:22:39Z"
+updated_at: "2026-08-10T15:08:55Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: true
 current_milestone: phase_2_durable_timing_and_timeline
-current_task: VF-2-02
+current_task: VF-2-03
 current_wave: wave_4_phase_1_and_2_convergence
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -18,9 +18,9 @@ repository:
   base_commit: "bea48f7124609be27d1ab57261b2c2f4269625ea"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
-  verified_implementation_commit: "d31100bc4345457d95d1bc1e2288de012239f268"
-  last_good_commit: "e61c2bfb373b3b1f831720bdb6c1795fc4259151"
-  working_tree_expected: "clean_at_VF-2-01_evidence_handoff"
+  verified_implementation_commit: "9e79b856d0e267a8755432bcc330986923bcf3e0"
+  last_good_commit: "99db8214fc8c295bb22f259e0b3d4db1690cd6b7"
+  working_tree_expected: "clean_at_VF-2-02_evidence_handoff"
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
     ajv: "8.20.0"
@@ -158,6 +158,12 @@ completed_tasks:
     implementation_base_commit: "973d78affb6ca556b1eabf7d84f1d28a06705643"
     evidence_commit: "e61c2bfb373b3b1f831720bdb6c1795fc4259151"
     evidence: "evidence/acceptance/VF-2-01/durable-timing-contract-lock"
+  - task_id: VF-2-02
+    status: complete
+    summary: "Committed provider-free durable local ASR acceptance with exact source/model/config/tool hashes, atomic attempt/artifact/timing lineage, model invalidation and immutable replacement supersession, plus deterministic selected padded-span WAV materialization bound to the current timeline and accepted attempt."
+    implementation_commit: "9e79b856d0e267a8755432bcc330986923bcf3e0"
+    evidence_commit: "99db8214fc8c295bb22f259e0b3d4db1690cd6b7"
+    evidence: "evidence/acceptance/VF-2-02/durable-local-transcription"
 
 standing_local_authority:
   status: authorized
@@ -215,40 +221,40 @@ external_checkpoints:
     status: approval_required_after_phase_9_and_all_required_gates
 
 active_ownership:
-  - task_id: VF-2-02
+  - task_id: VF-2-03
     owner: wave_4_integration_owner
     paths:
       - packages/pipeline/src/**
       - packages/pipeline/tests/**
-      - workers/**
       - packages/control-plane/src/**
       - packages/control-plane/tests/**
       - project-context/**
-    note: "VF-2-02 is selected as the serial provider-free transcription/span-audio lane. Reuse the committed VF-2-01 contract and pinned local whisper.cpp behavior; tests use fixtures and must not download a model."
+    note: "VF-2-03 is selected as the serial provider-free deterministic timeline lane. Reuse the committed VF-2-01 timing contract and accepted scheduler grammar without retuning composition, crop, phrase-boundary, avatar-share, or frame-rounding rules."
 
 recommended_next_task:
-  task_id: VF-2-02
+  task_id: VF-2-03
   milestone: phase_2_durable_timing_and_timeline
   status: authorized_dependency_ready
   dependency_status: ready
   authorization_status: standing_local_phase2_authority
-  read_profile: phase2_transcription
-  task_brief: tasks/VF-2-02.md
-  goal: "Persist real local transcription timing and materialize checksum-bound selected avatar span audio through the committed Phase 2 contract."
+  read_profile: phase2_timeline
+  task_brief: tasks/VF-2-03.md
+  goal: "Persist and resolve byte-equivalent deterministic scheduler output with exact invalidation, coverage, and selected-span lineage."
   dependencies:
     - "VF-2-01 durable timing contract lock is committed and green at d31100bc4345457d95d1bc1e2288de012239f268 with evidence at e61c2bfb373b3b1f831720bdb6c1795fc4259151"
-    - "The exact VF-2-02 brief and phase2_transcription profile are committed"
+    - "VF-2-02 durable local transcription and selected span audio is committed and green at 9e79b856d0e267a8755432bcc330986923bcf3e0 with evidence at 99db8214fc8c295bb22f259e0b3d4db1690cd6b7"
+    - "The exact VF-2-03 brief and phase2_timeline profile are committed"
     - "The user granted standing provider-free implementation authority through VF-2-05 on 2026-08-10"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   live_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
-  expected_evidence: "evidence/acceptance/VF-2-02/durable-local-transcription"
+  expected_evidence: "evidence/acceptance/VF-2-03/durable-deterministic-timeline"
   required_handoff:
-    - "Real local or owned-fixture transcription persists exact monotonic in-bounds words plus deterministic sentence/phrase derivation through the VF-2-01 contract"
-    - "Exact retries are idempotent, and cancellation or invalidation leaves no accepted orphan result"
-    - "Only selected padded avatar spans are materialized with deterministic boundaries, checksums, and exact revision/timeline lineage"
-    - "Focused worker/control-plane tests, local-slice regression, and the full uncached gate pass without downloading a model"
+    - "The same exact revision, transcript, scheduler version/config, and seed produces a byte-identical canonical timeline before and after restart or metadata restore"
+    - "Persisted frames cover the output exactly once with no gap or overlap, while full/split requirements and selected span ownership remain legal"
+    - "Short, silent, fast, slow, unpunctuated, and 30-minute property fixtures pass without retuning the accepted scheduler grammar"
+    - "Focused pipeline/control-plane tests and the full uncached gate pass"
     - "Keep remote, provisioning, deployment, credentials, provider calls, model downloads, and spend unauthorized"
   safe_parallelism:
     maximum_lanes_including_integration: 1
@@ -262,18 +268,19 @@ recommended_next_task:
     - "Modifying the accepted UI/render behavior without separately recorded authority"
 
 latest_closed_handoff:
-  task_id: VF-2-01
+  task_id: VF-2-02
   status: complete
-  implementation_commit: "d31100bc4345457d95d1bc1e2288de012239f268"
-  implementation_base_commit: "973d78affb6ca556b1eabf7d84f1d28a06705643"
-  evidence_commit: "e61c2bfb373b3b1f831720bdb6c1795fc4259151"
+  implementation_commit: "9e79b856d0e267a8755432bcc330986923bcf3e0"
+  evidence_commit: "99db8214fc8c295bb22f259e0b3d4db1690cd6b7"
   audit_result: "closed_no_remaining_high_or_medium_findings"
-  verification_result: "uncached_root_gate_and_installed_Chrome_green_with_durable_timing_lineage_and_exact_metadata_restore"
-  external_actions: "none_provider_calls_disabled_spend_zero"
+  verification_result: "uncached_root_gate_installed_Chrome_real_local_ASR_span_audio_and_owned_slice_green"
+  external_actions: "read_only_dependency_audit_only_no_mutations_provider_calls_disabled_spend_zero"
 
 last_green:
   commands:
     - "TURBO_FORCE=true pnpm verify"
+    - "pnpm test:local-slice"
+    - "pnpm audit:dependencies"
     - "pnpm --filter @videoforge/web lint"
     - "pnpm --filter @videoforge/web typecheck"
     - "pnpm --filter @videoforge/web test"
@@ -286,9 +293,9 @@ last_green:
     - "pnpm context:validate"
     - "pnpm secret:scan"
     - "git diff --check"
-  checked_at: "2026-08-10T14:20:13Z"
+  checked_at: "2026-08-10T15:07:20Z"
   result: pass
-  verified_commit: "d31100bc4345457d95d1bc1e2288de012239f268"
+  verified_commit: "9e79b856d0e267a8755432bcc330986923bcf3e0"
   evidence:
     - "evidence/acceptance/VF-1-02/runtime-neutral-hono"
     - "evidence/acceptance/VF-0D-01/provider-sandbox-harness"
@@ -299,8 +306,9 @@ last_green:
     - "evidence/acceptance/VF-1-07/isolation-upload-avatar-reuse"
     - "evidence/acceptance/VF-1-08/metadata-export-restore"
     - "evidence/acceptance/VF-2-01/durable-timing-contract-lock"
+    - "evidence/acceptance/VF-2-02/durable-local-transcription"
   counts:
-    control_plane_pglite_tests: 119
+    control_plane_pglite_tests: 127
     repository_contract_behaviors: 13
     repository_contract_runner_bindings: 13
     repository_contract_semantic_fixture_bodies: 13
@@ -313,18 +321,18 @@ last_green:
     typescript_contract_jcs_tests: 53
     python_contract_tests: 42
     fixture_registry_and_local_slice_tests: 12
-    configuration_tests: 4
+    configuration_tests: 5
     pipeline_tests: 37
-    isolated_worker_tests: 46
+    isolated_worker_tests: 56
     focused_render_worker_tests: 11
     root_script_tests: 6
     synchronized_contract_files: 50
     playwright_chrome_journeys_passed: 36
     playwright_chrome_journeys_intentionally_skipped: 0
   notes:
-    - "This last-green record proves the completed VF-2-01 implementation at d31100bc4345457d95d1bc1e2288de012239f268; evidence is committed separately at e61c2bfb373b3b1f831720bdb6c1795fc4259151."
+    - "This last-green record proves the completed VF-2-02 implementation at 9e79b856d0e267a8755432bcc330986923bcf3e0; evidence is committed separately at 99db8214fc8c295bb22f259e0b3d4db1690cd6b7."
     - "The forced verify executed every Turbo task with zero cache hits and passed format, JavaScript/Python lint, typecheck, unit/contract/worker suites, database checks, context/schema validation, secret scan, build/route-tree stability, real local Workerd parity, and installed-Chrome Playwright."
-    - "The additive sixth migration brings the local inventory to 37 relational tables and 28 non-internal invariant triggers; all 119 control-plane tests passed."
+    - "The additive sixth migration brings the local inventory to 37 relational tables and 28 non-internal invariant triggers; the current control-plane suite passes all 127 tests."
     - "All 13 fixed repository scenario bodies execute against a fresh concrete PGlite adapter with disposal, rollback, exact idempotency, workspace isolation, callback replay, lease fencing, and cost-lineage proof."
     - "The VF-1-03 independent auth audit and the VF-1-04/VF-1-05 closure audits found no remaining high or medium issue after all reproduced findings were repaired."
     - "Private artifact transfer passed 37 pipeline tests plus the isolated Hono metadata/body-bypass boundary; accepted artifact truth survives restart and cross-instance idempotency races without exposing private bytes through legacy CAS."
@@ -334,7 +342,9 @@ last_green:
     - "VF-1-07 proves two local invited accounts cannot cross workspace reads, binds, hash probes, reviewer authorization, signed downloads, or archives; the frozen surface exposes no rename mutation. A 9,437,228-byte WAV transferred directly with zero application byte bodies, and two locked revisions reused one exact ready Avatar version without new Avatar lineage or cost."
     - "VF-1-08 deterministically snapshots the exact five-entry migration ledger and all 31 relational data tables, restores circular lineage transactionally into a fresh local database, resumes idempotently, survives reopen, and rejects malformed, incompatible, reordered, tampered, partial, or secret-shaped inputs without partial destination state."
     - "VF-2-01 preserves existing wire contracts while locking immutable timing/timeline lineage, optimistic head concurrency, selected span ownership, append-only invalidation, ordered supersession, and exact restore across the six-entry migration ledger."
-    - "No dependency-registry audit was invoked for VF-2-01 because standing authority forbids external provider calls; the local source/security audit found no provider, credential, model-download, cloud, or ambient-environment surface."
+    - "VF-2-02 atomically accepts exact local ASR attempt/artifact/timing state, preserves immutable model-replacement lineage, and materializes only checksum-bound selected padded spans; cancellation and invalidation races leave no accepted orphan result."
+    - "Two independent real FFmpeg selected-span runs produced identical hashes and bytes; the refreshed owned local slice rendered and re-downloaded the exact 37.167-second MP4 at $0 with provider calls disabled."
+    - "The required read-only dependency registry audit reported no known vulnerabilities; it performed no package change, provider call, credential operation, cloud/account mutation, or spend."
     - "All task data was owned/synthetic and local; provider calls remained disabled, no cloud/remote mutation occurred, and external spend was $0."
 
 blocking_gates_for_production:
@@ -359,6 +369,7 @@ known_incomplete_boundaries:
   - "The repository has no Git remote and is not published; GitHub Actions are locally inspected/configured but have no external run or off-machine backup proof."
   - "Live Better Auth/Google installation and atomic invitation-membership materialization remain staging work; the committed descriptor truthfully reports PENDING_STAGING."
   - "VF-1-08 provides a local scheduler-invokable metadata snapshot/restore primitive, not a production schedule, encrypted off-machine backup store, cloud backup integration, or private-media backup."
+  - "VF-2-02 persists provider-free local transcript and selected span-audio lineage; it does not install/download a model, activate a paid ASR/provider path, or provision production media workers."
 
 known_non_blocking_devex: []
 
@@ -369,8 +380,9 @@ next_tasks:
   - "Wave 3 complete: VF-1-06 durable mock recovery is committed, all seven paused audit findings are closed, and the uncached repository and installed-Chrome gates are green at $0"
   - "Wave 4 Phase 1 convergence complete: VF-1-07 isolation/upload/Avatar reuse and VF-1-08 deterministic metadata export/restore are committed, audited, and green at $0"
   - "Wave 4 Phase 2 contract lock complete: VF-2-01 durable timing identity, lineage, invalidation, ownership, and restore are committed and green at $0"
-  - "Wave 4 active locally: execute exact dependency-ready VF-2-02 durable local transcription and selected span audio"
-  - "After each refreshed green handoff: continue task-by-task through exact VF-2-03, VF-2-04, then serial VF-2-05"
+  - "Wave 4 Phase 2 transcription complete: VF-2-02 durable local ASR and selected span audio are committed, audited, and green at $0"
+  - "Wave 4 active locally: execute exact dependency-ready VF-2-03 durable deterministic timeline"
+  - "After each refreshed green handoff: continue task-by-task through exact VF-2-04, then serial VF-2-05"
   - "Standing local authority ends after VF-2-05; Phase 3 onward requires provider-informed briefs and gate review"
 
 notes:

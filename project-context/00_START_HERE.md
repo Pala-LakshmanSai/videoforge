@@ -17,8 +17,11 @@ local ASR → scheduler → FFmpeg → Chrome/download slice, and the full Phase
 are complete. VF-2-01 implementation commits `973d78a` and `d31100b` additively lock durable
 transcript, word, phrase, selected span-audio, timeline, invalidation, supersession, and exact
 source/model/config/seed lineage without changing the existing wire contracts. Acceptance evidence
-is committed at `e61c2bf`, with 119/119 control-plane tests, 148/148 web tests, 36/36
-installed-Chrome journeys, zero skips, no provider call, and `$0` spend.
+is committed at `e61c2bf`. VF-2-02 implementation commit `9e79b85` adds atomic local-ASR
+attempt/artifact/timing persistence, immutable model-replacement lineage, and exact selected
+padded-span WAV materialization; evidence is committed at `99db821`. The final gate passed 127/127
+control-plane tests, 148/148 web tests, 56/56 worker tests, 36/36 installed-Chrome journeys, zero
+skips, real local ASR/FFmpeg acceptance, no provider call, and `$0` spend.
 The isolated-staging checkpoint is awaiting separate external authority; no remote, cloud/account,
 credential, deployment, provider, or paid mutation occurred.
 
@@ -27,8 +30,8 @@ is complete at implementation commit `36bf1ae`, with additive migration, constra
 executor, repository-contract, and adversarial regression hardening recorded under
 `evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening`. The user approved the
 accelerated completion sequence on 2026-08-10: exact briefs and standing provider-free authority
-now extend through `VF-2-05`. `CURRENT_STATE.yaml` selects dependency-ready `VF-2-02` with the
-`phase2_transcription` profile; work continues task-by-task and refreshes the snapshot after every green
+now extend through `VF-2-05`. `CURRENT_STATE.yaml` selects dependency-ready `VF-2-03` with the
+`phase2_timeline` profile; work continues task-by-task and refreshes the snapshot after every green
 committed handoff. This authority does not activate the planned provider budget or permit a remote,
 credential, cloud/account mutation, deployment, provider call, model download, or spend.
 `CURRENT_STATE.yaml` remains the one replace-in-place handoff and ownership source. Do not redo the
