@@ -24,6 +24,8 @@ project-context/references/ranga/frames/**/*.[hH][eE][iI][cC]
 !.env.example
 outputs/
 artifacts/
+!packages/pipeline/src/artifacts/
+!packages/pipeline/src/artifacts/**
 weights/
 *.mp4
 *.m4v
