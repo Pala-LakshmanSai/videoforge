@@ -20,11 +20,12 @@ recovery, production authentication/storage, or provider transport.
 `VF-1-01` remains the preserved relational baseline. The provider-free corrective task `VF-1-01A`
 is complete at implementation commit `36bf1ae`, with additive migration, constraint, migration
 executor, repository-contract, and adversarial regression hardening recorded under
-`evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening`. `VF-1-02` is dependency-ready
-and next in sequence, but it remains blocked because no exact `tasks/VF-1-02.md` brief or local
-authority envelope exists. `CURRENT_STATE.yaml` is the replace-in-place handoff. Do not infer
-runtime/adapter scope, deploy anything, or redo the accepted UI, renderer, local slice, or broad
-architecture research.
+`evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening`. The user approved the
+accelerated completion sequence on 2026-08-10: exact briefs and standing provider-free authority
+now extend through `VF-2-05`, beginning with `tasks/VF-1-02.md`. This authority does not activate
+the planned provider budget or permit a remote, credential, cloud/account mutation, deployment,
+provider call, model download, or spend. `CURRENT_STATE.yaml` remains the one replace-in-place
+handoff and ownership source. Do not redo the accepted UI, renderer, local slice, or architecture.
 
 ## Approved MVP
 
@@ -137,7 +138,7 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 
 ## First implementation rule
 
-Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve the accepted fixture shell, user-accepted local short-video slice, and completed `VF-1-01`/`VF-1-01A` relational foundation. Do not begin `VF-1-02` until its exact brief is present, selected, and authorized, and run only explicitly authorized capped viability spikes. Do not wait until the end to integrate.
+Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve the accepted fixture shell, user-accepted local short-video slice, and completed `VF-1-01`/`VF-1-01A` relational foundation. Execute the exact selected provider-free briefs through `VF-2-05` task-by-task, committing and refreshing `CURRENT_STATE.yaml` between waves. Provider viability, private GitHub, staging, production and any external spend remain separate checkpoints. Do not wait until the end to integrate.
 
 ## Context navigation
 

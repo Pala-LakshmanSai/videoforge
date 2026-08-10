@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: approved execution sequence; Phase 0C is user-accepted and complete, and Phase 1 begins at VF-1-01
+Status: accelerated execution sequence approved 2026-08-10; Phase 0C and VF-1-01/VF-1-01A are complete, and Wave 1 begins at VF-1-02
 Read when: starting a new implementation chat, selecting the next task, assigning parallel ownership, or integrating a completed task.
 
 ## Authority and purpose
@@ -9,7 +9,39 @@ This file owns implementation order, dependency edges, safe parallelism, and int
 
 `CURRENT_STATE.yaml` selects the one active wave or task. A fresh chat must not choose a later item merely because it appears independently implementable. The goal is fast completion through small vertical slices and disjoint ownership—not maximum simultaneous editing.
 
-The user's future instruction “UI is good for now; implement the next tasks according to the plan” authorizes the exact `$0` fixture/local `recommended_next_task` in `CURRENT_STATE.yaml`. It does not authorize provider calls, paid resources, credential export, destructive infrastructure changes, or skipping an open gate.
+The user's 2026-08-10 accelerated-plan approval grants standing implementation authority for exact,
+dependency-ready, provider-free briefs through `VF-2-05`. This authority never crosses a missing
+brief, unresolved dependency, provider call, credential operation, model download, remote push,
+cloud/account mutation, paid resource, or open gate. `CURRENT_STATE.yaml` must still close and
+commit each task/wave before selecting the next.
+
+## Accelerated critical path
+
+The wave table is canonical for remaining order. Detailed phase sections define behavior and
+acceptance but cannot re-serialize work that this table explicitly makes disjoint.
+
+| Wave | Parallel work | Exit |
+|---|---|---|
+| 0 — context lock | Exact briefs/read profiles through Phase 2, standing local authority, inactive provider envelope, external checkpoints | Context/schema validation, secret scan, diff check, clean context-only commit |
+| 1 — runtime seam | Integration `VF-1-02`; isolated `VF-0D-01`; runtime-parity verification | Runtime-neutral Hono, local Cloudflare emulator parity, fail-closed modes, full green |
+| 2 — durable adapters | `VF-1-03` Auth, `VF-1-04` artifacts, `VF-1-05` Postgres/outbox/workflow | Three adapters integrated; all 13 canonical repository bodies execute semantically |
+| 3 — recovery/qualification | Integration `VF-1-06`; paid qualification only after separate activation | Mock restart/ambiguity/cancel green; provider evidence cannot be inferred from code |
+| 4 — Phase 1/2 convergence | Parallel `VF-1-07/08`; serial `VF-2-01`; parallel `VF-2-02/03/04`; serial `VF-2-05` | Isolation, restore, persisted real timing, byte-equivalent timeline, Chrome inspection |
+| 5 — production media | Prompt→DeepSeek→Mage, AvatarForcing, and custom styles in three lanes after gates | Accepted content-addressed assets, cost/review lineage, ready styles cause zero analysis calls |
+| 6 — real output | FFmpeg fast-path integration; styles continue; gated fallback lane | Short real video, 30-minute measurement, immutable manifest, Chrome download/playback |
+| 7 — fault hardening | Queue/fault, security/isolation, observability/backup lanes | Ten-user/restart/replay/cost/retention/restore/scale-to-zero evidence |
+| 8 — controlled release | Serial staging-to-production acceptance | Fresh-account real Chrome flow and final user sign-off |
+
+After Wave 0, request one external-mutation approval for a private GitHub remote and hosted CI;
+local Wave 1 does not wait, but no push occurs without approval. After VF-1-06, request isolated
+Cloudflare/Neon/R2/Google-OAuth staging authority; local VF-1-07/VF-1-08/Phase 2 do not wait, but no
+staging resource is created without approval.
+
+The planned provider qualification ceiling is inactive. Activation requires VF-0D-01 green,
+fresh official rates/terms, exact paid briefs, safely stored credentials, and a grouped user
+authorization. The non-transferable sub-caps are DeepSeek `$1`, Gemini `$3`, Mage/RunPod image `$8`,
+AvatarForcing `$8`, and shared RunPod lifecycle/one bounded fallback `$5`. Unused budget is not
+silently reallocated.
 
 ## Frozen baseline
 
@@ -22,6 +54,9 @@ The following is already implemented and must be preserved:
 - `GATE_UI_001` is closed. Preserve the compact 100%-zoom density, scale-only dock, and established visual system unless the user explicitly asks or a later feature exposes a verified regression. The 2026-08-10 density change was such an explicit request and supersedes the earlier 18 px/52 px/94 px baseline.
 - Fixture mode remains the default, makes no provider call, and authorizes `$0` external spend.
 - The stable development URL remains `http://localhost:4173`; visible work must reuse it and retain the approved routes.
+- VF-1-01/VF-1-01A are complete: two additive migrations, exact migration-chain verification,
+  hardened relational invariants, query-neutral repository contracts, and 49 provider-free
+  control-plane tests are committed and must be preserved.
 
 Known unfinished boundaries are not hidden:
 
@@ -36,7 +71,7 @@ Known unfinished boundaries are not hidden:
 1. **Preserve a runnable vertical slice.** Every integration wave ends with a working fixture app; local and sandbox modes are additive.
 2. **Lock contracts before adapters.** Schema, request/response, event, error, idempotency, and version semantics land before UI, worker, storage, or provider implementations depend on them.
 3. **Use ports, not temporary bypasses.** Core services depend on repositories, artifact stores, worker transports, clocks, and ID generators through explicit interfaces. Fixture, local-filesystem, Postgres/R2, and RunPod implementations plug into the same ports.
-4. **Keep mode boundaries explicit.** `fixture`, `local`, `sandbox`, and `production` use separate configuration and fail closed. `pnpm verify` is always provider-free.
+4. **Keep mode boundaries explicit.** `fixture`, `local`, `sandbox`, `staging`, and `production` use separate configuration and fail closed. `pnpm verify` is always provider-free.
 5. **Separate mechanical refactors from behavior.** A move/rename/extraction commit cannot also change output, copy, API semantics, or visual styling.
 6. **Prefer additive migrations.** Add nullable/new versioned fields, backfill, switch readers, then enforce constraints. Never combine destructive migration and feature rollout.
 7. **One authority per shared file.** Contracts, migrations, lockfiles, root scripts, route composition, and context are serialized through the integration owner.
@@ -48,33 +83,24 @@ Known unfinished boundaries are not hidden:
 
 ```mermaid
 flowchart TD
-    UI["Phase 0B UI accepted"] --> W1["Wave 1: collision-safe module seams"]
-    W1 --> C1["0C contracts + local harness"]
-    C1 --> CT["Local transcription"]
-    C1 --> CS["Deterministic scheduler"]
-    C1 --> CR["FFmpeg renderer + probe"]
-    CT --> CI["0C local orchestration integration"]
-    CS --> CI
-    CR --> CI
-    CI --> CA["Real Chrome MP4 acceptance"]
-    CA --> D1["Phase 1 durable control plane"]
-    C1 -. "code preparation only" .-> V0["0D provider viability harness"]
-    V0 -. "explicit capped authorization" .-> VG["Measured provider gates"]
-    D1 --> T2["Phase 2 durable timing + timeline"]
-    T2 --> P3["Phase 3 prompt lane"]
-    T2 --> A5["Phase 5 AvatarForcing lane"]
-    P3 --> I4["Phase 4 Mage image lane"]
-    D1 --> S7["Phase 7 custom styles"]
-    VG --> I4
-    VG --> A5
-    VG --> S7
-    I4 --> R6["Phase 6 real fast-path render"]
-    A5 --> R6
-    A5 --> F8["Phase 8 conditional fallbacks"]
-    R6 --> H9["Phase 9 multi-user/fault hardening"]
-    S7 --> H9
-    F8 --> H9
-    H9 --> P10["Phase 10 production acceptance"]
+    B["Accepted Phase 0 + VF-1-01A"] --> R["Wave 1 runtime + sandbox harness"]
+    R --> A["Wave 2 Auth | Artifacts | Orchestration"]
+    A --> M["Wave 3 mock recovery"]
+    R -. "separate activation" .-> V["Capped provider qualification"]
+    M --> C["Wave 4 isolation + restore + durable timing"]
+    C --> P["Prompt then Mage lane"]
+    C --> AV["AvatarForcing lane"]
+    C --> S["Custom styles lane"]
+    V --> P
+    V --> AV
+    V --> S
+    P --> O["Real fast-path output"]
+    AV --> O
+    AV --> F["Conditional fallbacks"]
+    O --> H["Fault hardening"]
+    S --> H
+    F --> H
+    H --> X["Controlled release"]
 ```
 
 Provider viability is deliberately off the main local-development critical path, but it starts early enough that measured failures can change a production adapter before that adapter is integrated.
@@ -286,7 +312,10 @@ Begin after Phase 0C acceptance. Local/test implementations stay available; prod
   `tasks/VF-1-01A.md`. Preserve the committed VF-1-01 baseline, use an additive corrective
   migration, replace placeholder adapter behaviors with canonical scenarios, and close the
   recorded migration/concurrency/execution-contract defects at `$0`.
-- `VF-1-02`: make the Hono app runtime-neutral, then add Cloudflare Vite/Worker bindings and local emulator configuration. Provisioning/deployment remains a separately authorized external mutation.
+- `VF-1-02`: execute `tasks/VF-1-02.md` exactly. Make the Hono factory consume explicit runtime
+  configuration/bindings, isolate Node and Cloudflare entrypoints, preserve Node fixture/local
+  behavior, and add local Cloudflare Vite/Worker emulator configuration. `VF-0D-01` may build its
+  isolated provider-free harness in parallel. Provisioning/deployment remains unauthorized.
 
 `VF-1-01` is a serial shared-foundation task, but it may use two bounded child lanes after the
 relational vocabulary/migration API is committed: one owns only repository interfaces and one owns
@@ -302,19 +331,28 @@ adapter starts against uncommitted schema semantics.
 
 These lanes share only committed repository interfaces/migrations. The integration owner composes bindings and root configuration.
 
-### Serial convergence
+### Convergence
 
-- `VF-1-06`: one mock job proves dispatch-ack ambiguity, restart/reconciliation, duplicate suppression, one accepted result, exact cost state, and cancel.
-- `VF-1-07`: two invited accounts prove workspace isolation; large audio bypasses Worker bodies; one stored avatar is selected without project upload.
-- `VF-1-08`: scheduled metadata export and restore smoke before any real worker is treated as production-capable.
+- `VF-1-06` is serial after all three adapters: one mock job proves dispatch-ack ambiguity,
+  restart/reconciliation, duplicate suppression, one accepted result, exact cost state, and cancel.
+- After VF-1-06 freezes the migration/API contract, `VF-1-07` and `VF-1-08` may run in parallel:
+  two invited accounts prove workspace isolation/large direct audio/avatar reuse while the disjoint
+  backup lane proves scheduled metadata export and clean restore.
+- The integration owner alone composes both, closes Phase 1, and selects VF-2-01.
 
 ## Phase 2 and production lane fan-out
 
 ### Phase 2 — durable timing/timeline
 
-- Persist real transcription and word/sentence/phrase records from the local worker contract.
-- Reuse the proven pure scheduler; add only durable task wiring, selected span-audio materialization, invalidation, and Chrome coverage.
-- Exit on byte-equivalent plan generation, no gap/overlap, and real-audio timeline inspection.
+- `VF-2-01` is the serial additive contract/migration/repository lock for transcript timing, selected
+  span audio, timeline persistence, invalidation, and lineage.
+- After that commit, run disjoint `VF-2-02` durable local transcription/span audio, `VF-2-03`
+  deterministic timeline persistence, and `VF-2-04` Chrome inspection lanes.
+- `VF-2-05` serially integrates restart/restore-safe real audio through byte-equivalent plan
+  generation, exact frame coverage, and installed-Chrome inspection.
+- Standing provider-free authority ends at the green VF-2-05 handoff. Phase 3–8 briefs must be
+  written from measured provider/gate evidence; if required gates remain open, stop for the
+  consolidated review rather than guessing.
 
 After Phase 2, use three disjoint lanes:
 

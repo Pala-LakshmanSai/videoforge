@@ -3,12 +3,14 @@
 For the current handoff, the user only needs to send this one line in a new coding chat:
 
 ```text
-Continue VideoForge from the fresh project context. Start with the exact recommended next task and complete it through a green committed handoff, then continue task-by-task from each refreshed CURRENT_STATE while the next task is dependency-ready, locally authorized, and provider-free. Preserve completed work and recorded ownership. Stop and hand off before any cloud mutation, provider spend, missing task brief, unresolved gate, or new authority is required.
+Continue VideoForge from the fresh project context. Start with the exact recommended next task and complete it through a green committed handoff, then continue task-by-task through VF-2-05 while each refreshed CURRENT_STATE says the next exact brief is dependency-ready and provider-free. Preserve completed work and recorded ownership. Stop before any remote/cloud/account mutation, credential operation, provider call or spend, missing brief, unresolved dependency/gate, or authority beyond the standing local Phase 2 envelope.
 ```
 
 The agent must derive the task ID, profile, brief, base/evidence commit, ownership, route, commands,
-and budget from `CURRENT_STATE.yaml`; the user should not have to paste those fields again. It must
-finish and record one green task before loading the next task's profile.
+and budget from `CURRENT_STATE.yaml`; the user should not have to paste those fields again. The
+standing authorization applies only to exact provider-free briefs through VF-2-05. It must finish
+and record one green task/wave before loading the next profile; a planned provider cap is never an
+active authorization.
 
 Use the longer form below only when deliberately overriding the recommended task:
 

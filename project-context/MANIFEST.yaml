@@ -144,6 +144,70 @@ read_profiles:
     - 18_IMAGE_STYLES_HUB.md
     - 20_AVATAR_HUB.md
     - tasks/VF-1-01A.md
+  phase0d_sandbox:
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 11_COST_SPEED_BUDGET.md
+    - tasks/VF-0D-01.md
+  phase1_runtime:
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - tasks/VF-1-02.md
+  phase1_auth:
+    - 01_PRODUCT_REQUIREMENTS.md
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - tasks/VF-1-03.md
+  phase1_artifacts:
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 13_ENGINEERING_BEST_PRACTICES.md
+    - tasks/VF-1-04.md
+  phase1_orchestration:
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - tasks/VF-1-05.md
+  phase1_recovery:
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - tasks/VF-1-06.md
+  phase1_isolation:
+    - 01_PRODUCT_REQUIREMENTS.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - tasks/VF-1-07.md
+  phase1_restore:
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 13_ENGINEERING_BEST_PRACTICES.md
+    - tasks/VF-1-08.md
+  phase2_contract_lock:
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 13_ENGINEERING_BEST_PRACTICES.md
+    - tasks/VF-2-01.md
+  phase2_transcription:
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - tasks/VF-2-02.md
+  phase2_timeline:
+    - 02_OUTPUT_VIDEO_SPEC.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - tasks/VF-2-03.md
+  phase2_timeline_ui:
+    - 05_UI_UX_SPEC.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - tasks/VF-2-04.md
+  phase2_convergence:
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - tasks/VF-2-05.md
   context_update:
     - 15_DECISIONS_AND_OPEN_GATES.md
     - 16_CONTEXT_MAINTENANCE.md

@@ -66,9 +66,13 @@ Use a private container registry profile (initial candidate: GHCR with RunPod re
 | `fixture` | $0 | Default UI/human/Playwright work with deterministic states |
 | `local` | $0 | Local whisper/FFmpeg and local contract tests |
 | `sandbox` | Explicit task cap only | Small Runware/RunPod viability or integration fixture |
+| `staging` | Explicit account-mutation and task caps | Isolated production-like Cloudflare/Neon/R2/OAuth acceptance after VF-1-06 |
 | `production` | Workspace/project caps | Only after gates, credentials, and deployment approval |
 
 Default is `fixture`. A task brief must explicitly set `provider_calls_authorized: true`, a maximum USD spend, exact provider/model, and cleanup evidence before real calls. Absence means **no external call and $0 authorization**.
+Standing local authority in `CURRENT_STATE.yaml` may advance only exact dependency-ready
+provider-free briefs through its recorded terminal task. It never implies sandbox/staging/provider
+activation, credentials, remote publication, or external spend.
 
 ## Stable fixture scenarios
 

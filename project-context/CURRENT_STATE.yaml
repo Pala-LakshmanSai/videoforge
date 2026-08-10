@@ -1,11 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T06:45:24Z"
+updated_at: "2026-08-10T07:07:25Z"
 
 phase: implementation_in_progress
-implementation_authorized_in_current_task: false
+implementation_authorized_in_current_task: true
 current_milestone: phase_1_durable_control_plane_foundation
 current_task: VF-1-02
+current_wave: wave_1_runtime_seam
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -18,7 +19,7 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
   verified_implementation_commit: "36bf1ae0b66524f8d1c158b301eaa77ebea04a92"
-  last_good_commit: "e2e0ea2e1f0e613578b08457380d08984aedac22"
+  last_good_commit: "e98ceb2ae05975bc28c661c68a1fd1d307c2be2c"
   working_tree_expected: clean
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
@@ -100,36 +101,118 @@ completed_tasks:
     evidence_commit: "e2e0ea2e1f0e613578b08457380d08984aedac22"
     evidence: "evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening"
 
-active_ownership: []
+standing_local_authority:
+  status: authorized
+  approved_by_user_at: "2026-08-10T07:07:25Z"
+  through_task: VF-2-05
+  exact_briefs_required: true
+  dependency_ready_required: true
+  provider_calls_authorized: false
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credentials_or_model_downloads_authorized: false
+  covered_tasks:
+    - VF-0D-01
+    - VF-1-02
+    - VF-1-03
+    - VF-1-04
+    - VF-1-05
+    - VF-1-06
+    - VF-1-07
+    - VF-1-08
+    - VF-2-01
+    - VF-2-02
+    - VF-2-03
+    - VF-2-04
+    - VF-2-05
+
+planned_provider_qualification:
+  status: inactive_requires_separate_activation
+  aggregate_ceiling_usd: 25
+  unused_budget_transfer_allowed: false
+  prerequisites:
+    - "VF-0D-01 provider sandbox harness committed and green"
+    - "Fresh official rates, terms, endpoint/model identities, and retention checked"
+    - "Exact paid task briefs and evidence paths committed"
+    - "Credentials stored without printing or committing values"
+    - "Grouped user authorization explicitly activates provider calls and spend"
+  sub_caps_usd:
+    deepseek: 1
+    gemini_style_analysis: 3
+    mage_image_and_gpu: 8
+    avatarforcing: 8
+    runpod_lifecycle_and_one_bounded_fallback: 5
+
+external_checkpoints:
+  private_github_remote:
+    status: approval_required_before_mutation
+    timing: immediately_after_wave_0_context_commit
+    local_work_may_continue_while_pending: true
+  isolated_staging:
+    status: approval_required_before_mutation
+    timing: after_VF-1-06
+    services: "Cloudflare Worker/Workflows, Neon branch, private R2, Google OAuth"
+    local_work_may_continue_while_pending: true
+  production:
+    status: approval_required_after_phase_9_and_all_required_gates
+
+active_ownership:
+  - task_id: VF-1-02
+    owner: integration_runtime_lane
+    paths:
+      - apps/web/src/server/app.ts
+      - apps/web/src/server.ts
+      - apps/web/src/server/runtime/**
+      - apps/web/vite.config.ts
+      - apps/web/package.json
+      - package.json
+      - pnpm-lock.yaml
+      - project-context/**
+    note: "Only this lane edits runtime composition, metadata, lockfiles, shared context/evidence, and commits."
+  - task_id: VF-0D-01
+    owner: provider_sandbox_lane
+    paths:
+      - packages/provider-sandbox/**
+    note: "Provider-neutral code/tests only; no metadata, context, credentials, network, provider SDK, or external resource."
+  - task_id: VF-1-02
+    owner: runtime_parity_verification_lane
+    paths:
+      - apps/web/src/server/runtime-parity.test.ts
+      - apps/web/tests/runtime-parity.spec.ts
+    note: "New disjoint tests only after the integration owner commits/announces the runtime interface; no production edits."
 
 recommended_next_task:
   task_id: VF-1-02
   milestone: phase_1_durable_control_plane_foundation
-  status: blocked_missing_exact_task_brief
+  status: authorized_in_progress
   dependency_status: ready
-  authorization_status: blocked_missing_exact_task_brief
-  read_profile: live_development
-  task_brief: null
-  goal: "Planned only: make the Hono app runtime-neutral and add local Cloudflare Vite/Worker emulator bindings without provisioning or deployment."
+  authorization_status: standing_local_phase2_authority
+  read_profile: phase1_runtime
+  task_brief: tasks/VF-1-02.md
+  goal: "Make the Hono factory runtime-neutral and add local Cloudflare Vite/Worker emulator bindings while preserving fixture/local behavior."
   dependencies:
     - "VF-1-01A is committed and green at 36bf1ae0b66524f8d1c158b301eaa77ebea04a92 with evidence at evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening"
-    - "The serial execution plan identifies VF-1-02 next"
-    - "Blocking: tasks/VF-1-02.md does not exist, so exact scope, files, ownership, acceptance, and local authority are not recorded"
+    - "The accelerated Wave 0 context lock commits the exact VF-1-02 and VF-0D-01 briefs/read profiles"
+    - "The user granted standing provider-free implementation authority through VF-2-05 on 2026-08-10"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   live_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
-  expected_evidence: null
+  expected_evidence: "evidence/acceptance/VF-1-02/runtime-neutral-hono"
   required_handoff:
-    - "Author and approve an exact tasks/VF-1-02.md brief before implementation starts"
-    - "Add the brief to an explicit manifest read profile and record its path/ownership/acceptance envelope here"
-    - "Keep provisioning, deployment, cloud mutations, credentials, providers, and external spend unauthorized"
+    - "Runtime-neutral application factory and isolated Node/Cloudflare entrypoints"
+    - "Local Cloudflare-emulator parity without deployment"
+    - "Fail-closed fixture/local/sandbox/staging/production configuration"
+    - "VF-0D-01 provider-neutral sandbox harness may integrate in the same wave"
+    - "Keep remote, provisioning, deployment, credentials, provider calls, model downloads, and spend unauthorized"
   safe_parallelism:
-    maximum_lanes_including_integration: 1
-    status: disabled_until_exact_task_brief
-    note: "No VF-1-02 ownership plan is recorded; do not spawn implementation lanes."
+    maximum_lanes_including_integration: 4
+    status: enabled_for_recorded_disjoint_paths
+    integration_owner: "runtime composition, metadata/lockfiles, context/evidence, commits"
+    sandbox_lane: "packages/provider-sandbox/** only"
+    verification_lane: "new runtime parity test files only after interface announcement"
   prohibited_in_task:
-    - "Any VF-1-02 implementation, dependency addition, or file ownership before the exact brief exists"
+    - "Private Git remote creation/push until separately approved"
     - "Cloudflare provisioning/deployment or any other cloud mutation"
     - "Neon project/branch/network access or DATABASE_URL use"
     - "Provider credentials/calls, model downloads, public tunnel, LAN listener, or external spend"
@@ -205,15 +288,16 @@ known_non_blocking_devex: []
 
 next_tasks:
   - "VF-1-01A complete: the adversarial-audit migration, constraint, repository-suite, and execution-contract findings are committed and green at $0"
-  - "VF-1-02 planned serial foundation next: runtime-neutral Hono + local Cloudflare emulator/bindings, blocked until an exact task brief is authored, selected, and authorized; no deployment"
-  - "VF-1-03/VF-1-04/VF-1-05 parallel after shared foundations: Auth, R2 artifact storage, Postgres/outbox/workflow orchestration"
-  - "VF-1-06/VF-1-07/VF-1-08 serial convergence: mock ambiguity/recovery, account isolation/large upload/avatar reuse, export/restore smoke"
-  - "VF-0D provider viability may overlap only under its separately recorded exact authorization envelope; no such envelope is active"
-  - "Phase 2 onward follows 21_IMPLEMENTATION_EXECUTION_PLAN.md and remains gate/dependency ordered"
+  - "Wave 1 active: VF-1-02 runtime-neutral Hono/local Cloudflare bindings plus provider-free VF-0D-01 sandbox harness"
+  - "Wave 2 after Wave 1: parallel VF-1-03 Auth, VF-1-04 artifact storage, and VF-1-05 Postgres/outbox/workflow adapters"
+  - "Wave 3 local: VF-1-06 mock ambiguity/restart/reconciliation/cancellation; provider budget remains inactive"
+  - "Wave 4: parallel VF-1-07/VF-1-08, then VF-2-01 and parallel VF-2-02/03/04, then VF-2-05"
+  - "Standing local authority ends after VF-2-05; Phase 3 onward requires provider-informed briefs and gate review"
 
 notes:
   - "This is a replace-in-place handoff snapshot, not a progress diary."
   - "A new chat starts only with recommended_next_task and its one profile/brief. After a green committed handoff and refreshed snapshot, it may continue to the newly recommended task only when that task is dependency-ready, locally authorized, provider-free, and has an exact brief; external mutation/spend/gates require a stop and new authority."
+  - "The accelerated approval grants standing provider-free authority through VF-2-05 only; it does not activate the planned $25 provider ceiling."
   - "TypeScript is the sole RFC 8785/JCS authority; Python validates canonical schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output grammar remains three compositions, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
   - "No public tunnel or LAN listener is active. The next chat may start the stable loopback fixture server at http://localhost:4173."

@@ -1,38 +1,43 @@
 # Development plan
 
-Status: implementation underway; Phase 0A, user-approved Phase 0B, and user-accepted Phase 0C are complete; Phase 1 begins at VF-1-01
+Status: implementation underway; Phase 0A/0B/0C and VF-1-01/VF-1-01A are complete; accelerated Wave 1 begins at VF-1-02
 Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
 
 ## Delivery strategy
 
-Run two coordinated tracks from the first development day:
+Run coordinated local and viability tracks under the accelerated wave authority in
+`21_IMPLEMENTATION_EXECUTION_PLAN.md`:
 
 - **Experience track:** fixture-backed UI at the stable URL in the user's real Chrome with hot reload.
 - **Viability track:** capped RunPod/Runware spikes replacing paper claims with measured VRAM, cold/warm time, accepted quality, rate, cost, and exact digests.
 
-Shared schemas land first. Each milestone ends in a green commit, reproducible evidence, an updated `CURRENT_STATE.yaml`, and a live-Chrome checkpoint. Provider calls use durable task contracts.
+Shared schemas land first. Up to three disjoint implementation lanes run under one integration
+owner. Each task/wave ends in a green commit, reproducible evidence, an updated
+`CURRENT_STATE.yaml`, and a live-Chrome checkpoint. Provider calls use durable task contracts and
+remain inactive until separately authorized.
 
 ## Milestone map
 
 ~~~mermaid
 flowchart LR
-    A["0A Private repo + contracts"] --> B["0B Fixture Chrome shell + preset hubs"]
-    A --> C["0C Local short-video slice"]
-    A --> D["0D Capped viability spikes"]
-    B --> E["1 Durable control-plane slice"]
-    C --> E
-    E --> F["2 Timing + timeline plan"]
-    F --> G["3 DeepSeek prompt lane"]
-    G --> H["4 Mage image lane"]
-    D --> H
-    F --> I["5 AvatarForcing lane"]
-    D --> I
-    H --> J["6 Real fast-path render"]
-    I --> J
-    J --> K["7 Custom Image Styles"]
-    K --> L["8 Conditional fallbacks"]
-    L --> M["9 Multi-user/fault hardening"]
-    M --> N["10 Production acceptance"]
+    A["Completed Phase 0 + VF-1-01A"] --> B["Wave 1 Runtime + sandbox harness"]
+    B --> C["Wave 2 Auth | Artifacts | Orchestration"]
+    C --> D["Wave 3 Recovery"]
+    B -. "separate activation" .-> V["Provider qualification"]
+    D --> E["Wave 4 Isolation | Restore | Timing"]
+    E --> F["Prompt then Mage"]
+    E --> G["AvatarForcing"]
+    E --> H["Custom styles"]
+    V --> F
+    V --> G
+    V --> H
+    F --> I["Real fast-path render"]
+    G --> I
+    G --> J["Fallbacks"]
+    I --> K["Fault hardening"]
+    H --> K
+    J --> K
+    K --> L["Controlled release"]
 ~~~
 
 ## Phase 0A: private repository and contract skeleton
@@ -122,12 +127,14 @@ Exit: relevant gates pass or the user receives concrete evidence/tradeoffs befor
   in a new `@videoforge/control-plane` package. This locks durable semantics without Docker, a live
   Neon connection, credentials, or a premature ORM/runtime-driver choice.
 - `VF-1-02` then makes Hono runtime-neutral and adds local Cloudflare Worker/Vite emulator bindings;
-  deployment remains separately authorized.
+  provider-free `VF-0D-01` may build its isolated sandbox harness in parallel. Deployment remains
+  separately authorized.
 - Only after those shared foundations commit may Auth (`VF-1-03`), R2 artifact storage
   (`VF-1-04`), and Postgres/outbox/workflow orchestration (`VF-1-05`) run as disjoint parallel
   adapters under one integration owner.
-- Serial convergence remains `VF-1-06` mock dispatch/reconciliation, `VF-1-07` two-account
-  isolation/large-upload/avatar reuse, and `VF-1-08` metadata export/restore smoke.
+- `VF-1-06` is the serial mock dispatch/reconciliation checkpoint. After it freezes the contract,
+  `VF-1-07` two-account isolation/large-upload/avatar reuse and `VF-1-08` metadata export/restore
+  run in parallel.
 - One Cloudflare Vite Worker deployment with React static assets, Hono `/api/*`, Workflows/R2 bindings; Neon migrations/test DB.
 - Better Auth Google OAuth plus admin allowlist/memberships; no email provider.
 - R2 signed multipart transfers, checksums, project/revision CRUD, archive/access control.
@@ -144,6 +151,9 @@ The Chrome checkpoint also creates a named Avatar Profile once, selects it by im
 
 ## Phase 2: word timing and deterministic timeline compiler
 
+- `VF-2-01` first commits the additive timing/timeline persistence contract. Then `VF-2-02`
+  transcription/span audio, `VF-2-03` deterministic timeline, and `VF-2-04` Chrome inspection run
+  in disjoint lanes; `VF-2-05` serially integrates and accepts the phase.
 - Add image/media `transcribe` job using local `whisper.cpp base.en`; benchmark CPU behavior without evicting Mage.
 - Deterministic optional-script reconciliation for legacy non-null API inputs; the web shell uses ASR text; word/sentence/phrase records.
 - Seeded timeline composition and in-image shot-role scheduler.
