@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T03:00:16Z"
+updated_at: "2026-08-10T03:06:02Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: true
@@ -17,8 +17,8 @@ repository:
   base_commit: "1ac161dbf6b8fbc08568dc0456a5c6f6ee8d8992"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
-  verified_implementation_commit: "7d73c4e5396323a540227afcb301ead12480c407"
-  last_good_commit: "7d73c4e5396323a540227afcb301ead12480c407"
+  verified_implementation_commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
+  last_good_commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
   dependency_policy:
     ajv: "8.20.0"
     note: "Security override of the original 8.17.1 pin: 8.17.1 is affected by a moderate ReDoS advisory."
@@ -33,10 +33,10 @@ live_development:
     pid: null
     lifetime: null
   server_state: running
-  dev_server_pid: 2750
+  dev_server_pid: 5850
   owner_task_id: VF-0C-08
-  health_checked_at: "2026-08-10T03:00:16Z"
-  health_commit: "d88fad7"
+  health_checked_at: "2026-08-10T03:06:02Z"
+  health_commit: "57eddf1"
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
@@ -82,7 +82,7 @@ recommended_next_task:
     - "provider-free local implementation and historical Chrome workflow at commit eca15bdd539a273c7e59d110729eea54c69685b8"
     - "user replayed the first downloaded MP4 successfully but rejected its excessive, visibly shaky zoom"
     - "user requested exactly one percentage point more endpoint zoom and even smoother motion after reviewing v2"
-    - "ffmpeg-render-v3 implementation and provider-free local-slice verification at commit 7d73c4e5396323a540227afcb301ead12480c407"
+    - "ffmpeg-render-v3 implementation, truthful split/full fixture policy, and provider-free local-slice verification at commit 7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   live_route: "file:///Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v3.mp4"
@@ -99,7 +99,7 @@ last_green:
     - "Real Chrome 100% inspection of Create, Settings disclosures, Queue, Progress, Avatar Hub, and Usage"
     - "shasum -a 256 /Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v3.mp4"
     - "ffprobe /Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v3.mp4"
-  checked_at: "2026-08-10T03:00:16Z"
+  checked_at: "2026-08-10T03:06:02Z"
   result: pass
   evidence: "evidence/acceptance/VF-0C-08/2026-08-10-continuous-zoom-v3"
   counts:
@@ -124,10 +124,11 @@ last_green:
     - "The user manually replayed the first downloaded file in installed Chrome; playback worked, but the user rejected its 4–8% image zoom as shaky and too strong. That output is superseded for visual acceptance."
     - "The v2 replacement reduced the zoom, then the user explicitly requested exactly one percentage point more endpoint zoom and even smoother motion. It is superseded for final visual acceptance but remains reproducible."
     - "ffmpeg-render-v3 uses a 2.5–3.5% centered quintic zoom with per-frame floating source-corner coordinates and cubic interpolation. Historical v1/v2 manifests remain reproducible, while canonical TypeScript/Python validators and the worker reject mixed render/zoom versions."
+    - "Fixture revision 4 now declares the exact v3 composition policy: 1.03 for its typical full-image scenes and 1.025 for split-right. Validation and a negative regression test reject cross-composition drift; TS/Python version-suffix checks use the final hyphen token."
     - "The provider-free API-level local-slice gate passed through real ASR, scheduling, asset resolution, FFmpeg render, FFprobe, Range preview, approval binding, and exact download at $0 external spend."
-    - "Attempt 012 produced a 1,957,674-byte 1920x1080p30 H.264/AAC replacement: SHA-256 7acc789f9626e23bc12540a452d52822671ba85caf37bf4148e0a6def665e276, duration 37,167 ms, 1,115 frames."
+    - "Attempts 012 and 013 deterministically produced the same 1,957,674-byte 1920x1080p30 H.264/AAC replacement: SHA-256 7acc789f9626e23bc12540a452d52822671ba85caf37bf4148e0a6def665e276, duration 37,167 ms, 1,115 frames."
     - "Start/middle/end contact frames for full and split image compositions were inspected and show restrained centered motion; installed-Chrome playback and seek of the v3 replacement remain the human acceptance checkpoint."
-    - "The loopback fixture server is healthy, fixture-only, provider-off, and authorized for $0 external spend, but health commit d88fad7 is behind current HEAD; restart it before using live health as exact-commit proof."
+    - "The loopback fixture server is healthy, fixture-only, provider-off, and authorized for $0 external spend, but health commit 57eddf1 is behind current HEAD; restart it before using live health as exact-commit proof."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
