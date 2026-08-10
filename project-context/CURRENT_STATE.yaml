@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T03:34:28Z"
+updated_at: "2026-08-10T03:35:37Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: false
@@ -182,6 +182,9 @@ known_incomplete_boundaries:
   - "No production GPU/execution profile is selectable; all provider/model/cost gates remain open."
   - "The repository has no Git remote and is not published; GitHub Actions are locally inspected/configured but have no external run or off-machine backup proof."
   - "The accepted local pipeline uses owned fixture/local assets and process-local orchestration; it is not a production persistence claim."
+
+known_non_blocking_devex:
+  - "Forced verification is fully green and uncached, but Turbo warns that test tasks declare coverage/** without emitting coverage and that @videoforge/test-fixtures build declares dist/** while using tsc --noEmit. VF-1-01 owns truthful turbo.json output metadata; fix the declarations without dummy artifacts or warning suppression."
 
 next_tasks:
   - "VF-1-01 serial foundation: PostgreSQL migrations + repository contracts + PGlite checks"
