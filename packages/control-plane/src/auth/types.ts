@@ -36,6 +36,8 @@ export interface SignInInvitationRecord {
   readonly workspaceStatus: AuthWorkspaceStatus;
   readonly normalizedEmail: string;
   readonly invitationStatus: AuthInvitationStatus;
+  /** Durable status observed in the same authorization read as the invitation. */
+  readonly membershipStatus: AuthMembershipStatus;
 }
 
 export interface WorkspaceAccessRecord {
@@ -132,10 +134,32 @@ export interface GrantedGoogleSignInAuthorization {
     readonly reason: "INVITED_VERIFIED_GOOGLE_EMAIL";
     readonly workspaceId: string;
     readonly normalizedEmail: string;
+    /** Exact compare-and-set transition the durable sign-in transaction must apply atomically. */
+    readonly materialization:
+      | {
+          readonly mode: "ACTIVATE_INVITATION";
+          readonly expectedInvitationStatus: "PENDING";
+          readonly expectedMembershipStatus: "INVITED";
+          readonly resultingInvitationStatus: "ACCEPTED";
+          readonly resultingMembershipStatus: "ACTIVE";
+          readonly transactionRequired: true;
+        }
+      | {
+          readonly mode: "ALREADY_ACTIVE";
+          readonly expectedInvitationStatus: "ACCEPTED";
+          readonly expectedMembershipStatus: "ACTIVE";
+          readonly resultingInvitationStatus: "ACCEPTED";
+          readonly resultingMembershipStatus: "ACTIVE";
+          readonly transactionRequired: true;
+        };
   };
 }
 
 export type GoogleSignInAuthorizationResult = AuthFailure | GrantedGoogleSignInAuthorization;
+
+export type GoogleSignInAdmissionHook = (
+  request: GoogleSignInAuthorizationRequest,
+) => Promise<GoogleSignInAuthorizationResult>;
 
 export interface GrantedReviewerAuthorization {
   readonly ok: true;

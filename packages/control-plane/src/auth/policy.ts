@@ -1,3 +1,4 @@
+import { snapshotExactPlainRecord, snapshotPlainRecord } from "./plain-data.js";
 import type {
   AuthClock,
   AuthFailure,
@@ -5,6 +6,7 @@ import type {
   AuthSession,
   GoogleSignInAuthorizationRequest,
   GoogleSignInAuthorizationResult,
+  GrantedGoogleSignInAuthorization,
   GrantedReviewerAuthorization,
   GrantedWorkspaceAuthorization,
   ReviewerAuthorizationResult,
@@ -14,6 +16,15 @@ import type {
   WorkspaceAuthorizationRequest,
   WorkspaceAuthorizationResult,
 } from "./types.js";
+import {
+  authIdentifier,
+  authSessionToken,
+  normalizedAuthEmailValue,
+  sameAuthSession,
+  snapshotAuthSession,
+  snapshotSignInInvitationRecord,
+  snapshotWorkspaceAccessRecord,
+} from "./validation.js";
 
 const AUTHENTICATION_REQUIRED_PROBLEM = Object.freeze({
   code: "AUTHENTICATION_REQUIRED",
@@ -54,53 +65,19 @@ const CLIENT_REVIEWER_IDENTITY_FORBIDDEN = Object.freeze({
   problem: CLIENT_REVIEWER_IDENTITY_FORBIDDEN_PROBLEM,
 } satisfies AuthFailure);
 
-function boundedIdentifier(value: unknown): value is string {
-  return (
-    typeof value === "string" && value.length >= 1 && value.length <= 200 && value === value.trim()
-  );
-}
-
-function boundedSessionToken(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.length >= 1 &&
-    value.length <= 2_048 &&
-    value === value.trim()
-  );
-}
-
-function parseTimestamp(value: string): number | null {
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) && new Date(parsed).toISOString() === value ? parsed : null;
-}
-
-function normalizedEmailValue(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const normalized = value.trim().toLowerCase();
-  return normalized.length >= 3 && normalized.length <= 320 && normalized.includes("@")
-    ? normalized
-    : null;
-}
-
-function normalizedEmail(value: unknown): value is string {
-  return typeof value === "string" && normalizedEmailValue(value) === value;
+function currentTime(clock: AuthClock): number {
+  const nowEpochMs = clock.nowEpochMs();
+  if (!Number.isSafeInteger(nowEpochMs) || nowEpochMs < 0) {
+    throw new RangeError("auth clock must return a non-negative safe epoch-millisecond integer");
+  }
+  return nowEpochMs;
 }
 
 function isCurrentSession(session: AuthSession, nowEpochMs: number): boolean {
-  if (
-    !boundedIdentifier(session.sessionId) ||
-    !boundedIdentifier(session.userId) ||
-    !normalizedEmail(session.normalizedEmail) ||
-    (session.provider !== "GOOGLE" && session.provider !== "LOCAL") ||
-    session.status !== "ACTIVE"
-  ) {
-    return false;
-  }
-  const issuedAt = parseTimestamp(session.issuedAt);
-  const expiresAt = parseTimestamp(session.expiresAt);
+  const issuedAt = Date.parse(session.issuedAt);
+  const expiresAt = Date.parse(session.expiresAt);
   return (
-    issuedAt !== null &&
-    expiresAt !== null &&
+    session.status === "ACTIVE" &&
     issuedAt < expiresAt &&
     nowEpochMs >= issuedAt &&
     nowEpochMs < expiresAt
@@ -123,7 +100,8 @@ function isExactActiveAccess(
     access.invitation.status === "ACCEPTED" &&
     access.membership.workspaceId === requestedWorkspaceId &&
     access.membership.userId === session.userId &&
-    access.membership.status === "ACTIVE"
+    access.membership.status === "ACTIVE" &&
+    (access.membership.role === "ADMIN" || access.membership.role === "MEMBER")
   );
 }
 
@@ -153,12 +131,114 @@ function freezeAuthorization(
   });
 }
 
+function workspaceRequest(value: unknown): {
+  readonly sessionToken: string | null;
+  readonly workspaceId: string | null;
+} | null {
+  const record = snapshotPlainRecord(value, ["sessionToken", "workspaceId"], []);
+  if (record === null) return null;
+  return Object.freeze({
+    sessionToken: authSessionToken(record.sessionToken) ? record.sessionToken : null,
+    workspaceId: authIdentifier(record.workspaceId) ? record.workspaceId : null,
+  });
+}
+
+function googleSignInRequest(value: unknown): {
+  readonly workspaceId: string;
+  readonly normalizedEmail: string;
+} | null {
+  const record = snapshotExactPlainRecord(value, ["workspaceId", "email", "emailVerified"]);
+  if (record === null || !authIdentifier(record.workspaceId) || record.emailVerified !== true) {
+    return null;
+  }
+  const normalizedEmail = normalizedAuthEmailValue(record.email);
+  return normalizedEmail === null
+    ? null
+    : Object.freeze({ workspaceId: record.workspaceId, normalizedEmail });
+}
+
+function signInMaterialization(
+  invitationStatus: "PENDING" | "ACCEPTED" | "REVOKED",
+  membershipStatus: "INVITED" | "ACTIVE" | "SUSPENDED" | "ARCHIVED",
+): GrantedGoogleSignInAuthorization["value"]["materialization"] | null {
+  if (invitationStatus === "PENDING" && membershipStatus === "INVITED") {
+    return Object.freeze({
+      mode: "ACTIVATE_INVITATION",
+      expectedInvitationStatus: "PENDING",
+      expectedMembershipStatus: "INVITED",
+      resultingInvitationStatus: "ACCEPTED",
+      resultingMembershipStatus: "ACTIVE",
+      transactionRequired: true,
+    });
+  }
+  if (invitationStatus === "ACCEPTED" && membershipStatus === "ACTIVE") {
+    return Object.freeze({
+      mode: "ALREADY_ACTIVE",
+      expectedInvitationStatus: "ACCEPTED",
+      expectedMembershipStatus: "ACTIVE",
+      resultingInvitationStatus: "ACCEPTED",
+      resultingMembershipStatus: "ACTIVE",
+      transactionRequired: true,
+    });
+  }
+  return null;
+}
+
+const FORBIDDEN_REVIEWER_KEYS = new Set(["reviewer", "revieweruserid", "reviewersessionid"]);
+const ARRAY_INDEX = /^(?:0|[1-9][0-9]*)$/u;
+
+/** True means the payload is unsafe or contains reviewer identity anywhere in its JSON shape. */
 function clientSuppliedReviewerIdentity(payload: unknown): boolean {
-  if (payload === null || typeof payload !== "object") return false;
-  return (
-    Object.prototype.hasOwnProperty.call(payload, "reviewer_user_id") ||
-    Object.prototype.hasOwnProperty.call(payload, "reviewerUserId")
-  );
+  if (payload === null || payload === undefined) return false;
+  if (typeof payload !== "object") return typeof payload === "function";
+
+  const pending: unknown[] = [payload];
+  const seen = new WeakSet<object>();
+  let visited = 0;
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (typeof current !== "object" || current === null) continue;
+    if (seen.has(current)) return true;
+    seen.add(current);
+    visited += 1;
+    if (visited > 1_000) return true;
+
+    try {
+      const isArray = Array.isArray(current);
+      const prototype = Object.getPrototypeOf(current) as unknown;
+      if (
+        (isArray && prototype !== Array.prototype) ||
+        (!isArray && prototype !== Object.prototype && prototype !== null)
+      ) {
+        return true;
+      }
+
+      const descriptors = Object.getOwnPropertyDescriptors(current);
+      for (const key of Reflect.ownKeys(descriptors)) {
+        if (typeof key !== "string") return true;
+        if (isArray && key === "length") continue;
+        if (isArray && !ARRAY_INDEX.test(key)) return true;
+        const descriptor = descriptors[key];
+        if (
+          descriptor === undefined ||
+          !("value" in descriptor) ||
+          descriptor.enumerable !== true
+        ) {
+          return true;
+        }
+        const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/gu, "");
+        if (FORBIDDEN_REVIEWER_KEYS.has(normalizedKey)) return true;
+        if (typeof descriptor.value === "object" && descriptor.value !== null) {
+          pending.push(descriptor.value);
+        } else if (typeof descriptor.value === "function") {
+          return true;
+        }
+      }
+    } catch {
+      return true;
+    }
+  }
+  return false;
 }
 
 export interface AuthWorkspaceBoundaryDependencies {
@@ -181,46 +261,62 @@ export class AuthWorkspaceBoundary {
   async authorizeWorkspace(
     request: WorkspaceAuthorizationRequest,
   ): Promise<WorkspaceAuthorizationResult> {
-    if (!boundedSessionToken(request.sessionToken)) return AUTHENTICATION_REQUIRED;
-    if (!boundedIdentifier(request.workspaceId)) return WORKSPACE_ACCESS_REQUIRED;
+    const requested = workspaceRequest(request);
+    if (requested === null || requested.sessionToken === null) return AUTHENTICATION_REQUIRED;
+    if (requested.workspaceId === null) return WORKSPACE_ACCESS_REQUIRED;
 
-    const session = await this.#sessions.findSession(request.sessionToken);
-    const nowEpochMs = this.#clock.nowEpochMs();
-    if (!Number.isFinite(nowEpochMs)) {
-      throw new RangeError("auth clock must return a finite epoch-millisecond value");
+    const firstSession = snapshotAuthSession(
+      await this.#sessions.findSession(requested.sessionToken),
+    );
+    if (firstSession === null || !isCurrentSession(firstSession, currentTime(this.#clock))) {
+      return AUTHENTICATION_REQUIRED;
     }
-    if (!session || !isCurrentSession(session, nowEpochMs)) return AUTHENTICATION_REQUIRED;
 
-    const access = await this.#directory.findWorkspaceAccess({
-      workspaceId: request.workspaceId,
-      userId: session.userId,
-      normalizedEmail: session.normalizedEmail,
-    });
-    if (!access || !isExactActiveAccess(session, request.workspaceId, access)) {
+    const access = snapshotWorkspaceAccessRecord(
+      await this.#directory.findWorkspaceAccess({
+        workspaceId: requested.workspaceId,
+        userId: firstSession.userId,
+        normalizedEmail: firstSession.normalizedEmail,
+      }),
+    );
+    if (access === null || !isExactActiveAccess(firstSession, requested.workspaceId, access)) {
       return WORKSPACE_ACCESS_REQUIRED;
     }
 
-    return freezeAuthorization(session, access);
+    const revalidatedSession = snapshotAuthSession(
+      await this.#sessions.findSession(requested.sessionToken),
+    );
+    if (
+      revalidatedSession === null ||
+      !sameAuthSession(firstSession, revalidatedSession) ||
+      !isCurrentSession(revalidatedSession, currentTime(this.#clock))
+    ) {
+      return AUTHENTICATION_REQUIRED;
+    }
+    return freezeAuthorization(revalidatedSession, access);
   }
 
   async authorizeInvitedGoogleSignIn(
     request: GoogleSignInAuthorizationRequest,
   ): Promise<GoogleSignInAuthorizationResult> {
-    if (!boundedIdentifier(request.workspaceId) || request.emailVerified !== true) {
-      return WORKSPACE_ACCESS_REQUIRED;
-    }
-    const normalizedEmail = normalizedEmailValue(request.email);
-    if (!normalizedEmail) return WORKSPACE_ACCESS_REQUIRED;
-    const invitation = await this.#directory.findSignInInvitation({
-      workspaceId: request.workspaceId,
-      normalizedEmail,
-    });
+    const requested = googleSignInRequest(request);
+    if (requested === null) return WORKSPACE_ACCESS_REQUIRED;
+    const invitation = snapshotSignInInvitationRecord(
+      await this.#directory.findSignInInvitation({
+        workspaceId: requested.workspaceId,
+        normalizedEmail: requested.normalizedEmail,
+      }),
+    );
+    const materialization =
+      invitation === null
+        ? null
+        : signInMaterialization(invitation.invitationStatus, invitation.membershipStatus);
     if (
-      !invitation ||
-      invitation.workspaceId !== request.workspaceId ||
+      invitation === null ||
+      invitation.workspaceId !== requested.workspaceId ||
       invitation.workspaceStatus !== "ACTIVE" ||
-      invitation.normalizedEmail !== normalizedEmail ||
-      (invitation.invitationStatus !== "PENDING" && invitation.invitationStatus !== "ACCEPTED")
+      invitation.normalizedEmail !== requested.normalizedEmail ||
+      materialization === null
     ) {
       return WORKSPACE_ACCESS_REQUIRED;
     }
@@ -229,8 +325,9 @@ export class AuthWorkspaceBoundary {
       value: Object.freeze({
         allowed: true,
         reason: "INVITED_VERIFIED_GOOGLE_EMAIL",
-        workspaceId: request.workspaceId,
-        normalizedEmail,
+        workspaceId: requested.workspaceId,
+        normalizedEmail: requested.normalizedEmail,
+        materialization,
       }),
     });
   }

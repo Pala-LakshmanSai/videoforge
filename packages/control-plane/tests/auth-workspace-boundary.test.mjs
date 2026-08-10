@@ -183,6 +183,17 @@ const AUTHENTICATION_DENIED = Object.freeze({
   }),
 });
 
+const REVIEWER_FORBIDDEN = Object.freeze({
+  ok: false,
+  problem: Object.freeze({
+    code: "CLIENT_REVIEWER_IDENTITY_FORBIDDEN",
+    status: 422,
+    title: "Reviewer identity must not be supplied",
+    detail: "Reviewer identity is derived only from the authenticated server session.",
+    retryable: false,
+  }),
+});
+
 test("an accepted invitation plus active identity, workspace, membership, and session authorizes exactly one scope", async () => {
   const result = await createBoundary().authorizeWorkspace({
     sessionToken: "token_active",
@@ -228,6 +239,14 @@ test("verified Google sign-in is allowlisted only by a pending or accepted invit
         reason: "INVITED_VERIFIED_GOOGLE_EMAIL",
         workspaceId: WORKSPACE_A,
         normalizedEmail: "pending@example.test",
+        materialization: {
+          mode: "ACTIVATE_INVITATION",
+          expectedInvitationStatus: "PENDING",
+          expectedMembershipStatus: "INVITED",
+          resultingInvitationStatus: "ACCEPTED",
+          resultingMembershipStatus: "ACTIVE",
+          transactionRequired: true,
+        },
       },
     },
   );
@@ -244,6 +263,14 @@ test("verified Google sign-in is allowlisted only by a pending or accepted invit
         reason: "INVITED_VERIFIED_GOOGLE_EMAIL",
         workspaceId: WORKSPACE_A,
         normalizedEmail: "active@example.test",
+        materialization: {
+          mode: "ALREADY_ACTIVE",
+          expectedInvitationStatus: "ACCEPTED",
+          expectedMembershipStatus: "ACTIVE",
+          resultingInvitationStatus: "ACCEPTED",
+          resultingMembershipStatus: "ACTIVE",
+          transactionRequired: true,
+        },
       },
     },
   );
@@ -420,22 +447,15 @@ test("reviewer identity is session-derived and every client-supplied reviewer fi
     },
   });
 
-  const forbidden = {
-    ok: false,
-    problem: {
-      code: "CLIENT_REVIEWER_IDENTITY_FORBIDDEN",
-      status: 422,
-      title: "Reviewer identity must not be supplied",
-      detail: "Reviewer identity is derived only from the authenticated server session.",
-      retryable: false,
-    },
-  };
   for (const payload of [
     { reviewer_user_id: "user_attacker" },
     { reviewer_user_id: "user_active" },
     { reviewerUserId: "user_attacker" },
   ]) {
-    assert.deepEqual(await boundary.authorizeReviewerMutation(request, payload), forbidden);
+    assert.deepEqual(
+      await boundary.authorizeReviewerMutation(request, payload),
+      REVIEWER_FORBIDDEN,
+    );
   }
 
   assert.deepEqual(
@@ -470,7 +490,7 @@ test("deterministic local adapters reject ambiguous tokens, sessions, emails, an
           email: "Mixed@Example.test",
         }),
       ]),
-    /must already be normalized/,
+    /valid canonical fields/,
   );
   assert.throws(
     () =>
@@ -483,6 +503,199 @@ test("deterministic local adapters reject ambiguous tokens, sessions, emails, an
           },
         },
       ]),
-    /relationships must be exact/,
+    /fields and relationships/,
+  );
+});
+
+test("session state is fetched and time-checked again after the authorization-directory await", async () => {
+  const first = SESSION_FIXTURES[0].session;
+  for (const changed of [
+    { ...first, status: "REVOKED" },
+    { ...first, userId: "user_changed_after_lookup", sessionId: "session_changed_after_lookup" },
+  ]) {
+    let sessionReads = 0;
+    const boundary = new AuthWorkspaceBoundary({
+      sessions: Object.freeze({
+        async findSession() {
+          sessionReads += 1;
+          return sessionReads === 1 ? first : changed;
+        },
+      }),
+      directory: Object.freeze({
+        async findWorkspaceAccess() {
+          return accessRecord({});
+        },
+      }),
+      clock: Object.freeze({ nowEpochMs: () => NOW }),
+    });
+    assert.deepEqual(
+      await boundary.authorizeWorkspace({
+        sessionToken: "token_active",
+        workspaceId: WORKSPACE_A,
+      }),
+      AUTHENTICATION_DENIED,
+    );
+    assert.equal(sessionReads, 2);
+  }
+});
+
+test("malformed provider and directory rows deny without getters, throws, or role leakage", async () => {
+  let getterCalls = 0;
+  const accessorSession = { ...SESSION_FIXTURES[0].session };
+  Object.defineProperty(accessorSession, "sessionId", {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return "session_accessor";
+    },
+  });
+  const accessorBoundary = new AuthWorkspaceBoundary({
+    sessions: Object.freeze({
+      async findSession() {
+        return accessorSession;
+      },
+    }),
+    directory: Object.freeze({
+      async findWorkspaceAccess() {
+        throw new Error("directory must not be reached");
+      },
+    }),
+    clock: Object.freeze({ nowEpochMs: () => NOW }),
+  });
+  assert.deepEqual(
+    await accessorBoundary.authorizeWorkspace({
+      sessionToken: "token_active",
+      workspaceId: WORKSPACE_A,
+    }),
+    AUTHENTICATION_DENIED,
+  );
+  assert.equal(getterCalls, 0);
+
+  for (const malformedAccess of [
+    { ...accessRecord({}), unexpected: true },
+    {
+      ...accessRecord({}),
+      membership: { ...accessRecord({}).membership, role: "OWNER" },
+    },
+    {
+      ...accessRecord({}),
+      membership: { ...accessRecord({}).membership, membershipId: "../unsafe" },
+    },
+  ]) {
+    const boundary = new AuthWorkspaceBoundary({
+      sessions: new DeterministicLocalIdentityProvider([SESSION_FIXTURES[0]]),
+      directory: Object.freeze({
+        async findWorkspaceAccess() {
+          return malformedAccess;
+        },
+      }),
+      clock: Object.freeze({ nowEpochMs: () => NOW }),
+    });
+    assert.deepEqual(
+      await boundary.authorizeWorkspace({
+        sessionToken: "token_active",
+        workspaceId: WORKSPACE_A,
+      }),
+      WORKSPACE_DENIED,
+    );
+  }
+});
+
+test("Google admission exposes only the two durable invitation-membership transitions", async () => {
+  for (const [invitationStatus, membershipStatus, expected] of [
+    ["PENDING", "INVITED", "ACTIVATE_INVITATION"],
+    ["ACCEPTED", "ACTIVE", "ALREADY_ACTIVE"],
+    ["PENDING", "ACTIVE", null],
+    ["ACCEPTED", "INVITED", null],
+    ["ACCEPTED", "SUSPENDED", null],
+    ["REVOKED", "ACTIVE", null],
+  ]) {
+    const boundary = new AuthWorkspaceBoundary({
+      sessions: new DeterministicLocalIdentityProvider([]),
+      directory: Object.freeze({
+        async findSignInInvitation() {
+          return {
+            workspaceId: WORKSPACE_A,
+            workspaceStatus: "ACTIVE",
+            normalizedEmail: "person@example.test",
+            invitationStatus,
+            membershipStatus,
+          };
+        },
+      }),
+      clock: Object.freeze({ nowEpochMs: () => NOW }),
+    });
+    const result = await boundary.authorizeInvitedGoogleSignIn({
+      workspaceId: WORKSPACE_A,
+      email: "person@example.test",
+      emailVerified: true,
+    });
+    if (expected === null) {
+      assert.deepEqual(result, WORKSPACE_DENIED);
+    } else {
+      assert.equal(result.ok, true);
+      assert.equal(result.value.materialization.mode, expected);
+      assert.equal(result.value.materialization.transactionRequired, true);
+    }
+  }
+});
+
+test("reviewer spoofing is rejected through nested, inherited, accessor, and cyclic payloads", async () => {
+  const boundary = createBoundary();
+  const request = { sessionToken: "token_active", workspaceId: WORKSPACE_A };
+  const inherited = Object.create({ reviewer_user_id: "user_attacker" });
+  const cyclic = {};
+  cyclic.self = cyclic;
+  let getterCalls = 0;
+  const accessor = {};
+  Object.defineProperty(accessor, "reviewerUserId", {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return "user_attacker";
+    },
+  });
+  for (const payload of [
+    { approval: { reviewer: { userId: "user_attacker" } } },
+    { approval: { reviewer_session_id: "session_attacker" } },
+    inherited,
+    accessor,
+    cyclic,
+  ]) {
+    assert.deepEqual(
+      await boundary.authorizeReviewerMutation(request, payload),
+      REVIEWER_FORBIDDEN,
+    );
+  }
+  assert.equal(getterCalls, 0);
+});
+
+test("local fixtures require exact own plain fields and complete safe identifiers and roles", () => {
+  const active = SESSION_FIXTURES[0];
+  assert.throws(
+    () => new DeterministicLocalIdentityProvider([{ ...active, unexpected: true }]),
+    /exact plain data/,
+  );
+  const inherited = Object.create(active);
+  assert.throws(() => new DeterministicLocalIdentityProvider([inherited]), /exact plain data/);
+  assert.throws(
+    () =>
+      new DeterministicLocalAuthorizationDirectory([
+        {
+          ...accessRecord({}),
+          membership: { ...accessRecord({}).membership, role: "OWNER" },
+        },
+      ]),
+    /exact valid fields/,
+  );
+  assert.throws(
+    () =>
+      new DeterministicLocalAuthorizationDirectory([
+        {
+          ...accessRecord({}),
+          membership: { ...accessRecord({}).membership, membershipId: "../membership" },
+        },
+      ]),
+    /exact valid fields/,
   );
 });
