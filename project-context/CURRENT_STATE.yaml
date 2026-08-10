@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T17:49:58Z"
+updated_at: "2026-08-10T17:52:00Z"
 
 phase: phase_3_provider_operations_preflight
 implementation_authorized_in_current_task: true
-current_milestone: phase_3_private_remote_ci
-current_task: VF-3-05
+current_milestone: phase_3_style_semantic_foundation
+current_task: VF-3-06
 current_wave: phase_3_evidence_first_activation
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -280,42 +280,51 @@ external_checkpoints:
 
 active_ownership: []
 
+blocked_tasks:
+  - task_id: VF-3-05
+    status: blocked_external_after_private_remote_success
+    completed_scope: "Private Pala-LakshmanSai/videoforge repository, exact main push, upstream, visibility/default-branch proof"
+    blocker: "GitHub refuses to start hosted Actions because recent account payments failed or the Actions spending limit must be increased."
+    evidence: "evidence/acceptance/VF-3-05/private-github-ci"
+    retry_rule: "Repair GitHub account billing/Actions eligibility, then rerun the unchanged verify workflow; do not weaken gates."
+    local_disjoint_work_allowed: true
+
 recommended_next_task:
-  task_id: VF-3-05
-  milestone: phase_3_private_remote_ci
-  status: blocked_after_private_remote_success
-  dependency_status: github_account_billing_or_actions_spending_eligibility_must_be_repaired
-  authorization_status: exact_private_remote_creation_push_and_ci_authorized
-  read_profile: phase3_private_remote_ci
-  task_brief: tasks/VF-3-05.md
-  goal: "Create the private GitHub remote, push exact main history, and prove the existing hosted CI workflow green without weakening gates."
+  task_id: VF-3-06
+  milestone: phase_3_style_semantic_foundation
+  status: ready_provider_free_implementation
+  dependency_status: vf_3_03_green_canonical_style_schemas_and_product_rules_committed
+  authorization_status: exact_provider_free_application_implementation_authorized
+  read_profile: phase3_style_semantic_foundation
+  task_brief: tasks/VF-3-06.md
+  goal: "Implement strict provider-free style analyzer semantics, deterministic fixture analysis, and trusted canonical style-profile assembly."
   dependencies:
-    - "VF-3-04 is green with evidence at 8c90bd072b4190a37619a637fc3095eac5edc5d0"
-    - "The user explicitly authorized a private Git remote and hosted CI"
-    - "Authenticated GitHub CLI owner is Pala-LakshmanSai with repo/workflow scopes"
-    - "Pala-LakshmanSai/videoforge does not exist at preflight and the local worktree is clean"
+    - "VF-3-03 deterministic prompt compiler and conflict/crop rules are committed and locally green"
+    - "Canonical image-style-profile/v1 and image-style-analyzer-output/v1 schemas are committed"
+    - "Image Style Hub lifecycle/content-separation requirements are approved and current"
+    - "The GitHub billing blocker is external and disjoint; local implementation may continue"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: true
-  credentials_or_model_downloads_authorized: true
-  application_code_changes_authorized: false
+  remote_or_cloud_mutations_authorized: false
+  credentials_or_model_downloads_authorized: false
+  application_code_changes_authorized: true
   live_route: null
   fixture_scenario: null
-  expected_evidence: "evidence/acceptance/VF-3-05/private-github-ci"
+  expected_evidence: "evidence/acceptance/VF-3-06/style-semantic-foundation"
   required_handoff:
-    - "Create Pala-LakshmanSai/videoforge with PRIVATE visibility and no generated history"
-    - "Add origin, push exact main, set upstream, and verify local/remote/default equality"
-    - "Wait for the existing hosted verify workflow and inspect/fix any deterministic failure"
-    - "Record remote and CI evidence without credentials or private source excerpts"
-    - "After GitHub billing eligibility is repaired, rerun the unchanged verify workflow and require success"
+    - "Add typed checksum-bound reference/analyzer ports plus deterministic fixture analyzer"
+    - "Validate 3-8 references, 14 exact traits, aliases/confidence/outliers, and semantic content"
+    - "Reuse permanent output and crop hard rules; reject reusable reference subjects/instructions"
+    - "Assemble deterministic trusted profile components and canonical hash input"
+    - "Run targeted and canonical local gates and commit evidence"
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    status: serial_remote_bootstrap
-    integration_owner: VF-3-05
+    status: serial_provider_free_style_foundation
+    integration_owner: VF-3-06
   prohibited_in_task:
-    - "Any public visibility, release, package, deployment, provider call, or spend"
-    - "Any force push, history rewrite, branch deletion, generated remote history, or source publication outside the private repository"
-    - "Any gate weakening, skip, CI deletion, credential/secret creation, or unrelated application change"
+    - "Any network, credential, provider call/spend, reference upload, database, route, UI, cloud, or production change"
+    - "Any publication mutation or claim that Gemini/style/Mage gates are closed"
+    - "Any accepted UI, renderer, output grammar, built-in style, or ordinary video-analysis change"
 
 latest_closed_handoff:
   task_id: VF-3-04
@@ -460,7 +469,8 @@ next_tasks:
   - "VF-3-01 prepared the bounded live runner and Runware account, then stopped at the provider's $5 account-funding prerequisite with $0 spent and GATE_LLM_001 open"
   - "VF-3-03 complete: deterministic prompt batching/validation/compilation is committed and green at $0"
   - "VF-3-04 complete: RunPod API access is secured and the account has zero Pods/endpoints/volumes/workers at $0"
-  - "Current: VF-3-05 private remote is complete; hosted CI is blocked before steps by GitHub account billing/spending eligibility"
+  - "VF-3-05 partial: private remote is exact; hosted CI remains externally blocked before steps by GitHub billing eligibility"
+  - "Current: execute only provider-free VF-3-06 style semantic validator/fixture foundation at $0"
   - "Resume VF-3-01/VF-3-02 only after the Runware funding prerequisite has exact authority; never transfer another sub-cap"
   - "Fastest safe implementation order after evidence and new authority: deterministic prompt compiler/fixture adapter, gated DeepSeek integration, parallel Mage image and AvatarForcing lanes plus disjoint custom-style lifecycle, FFmpeg real fast-path convergence, conditional fallbacks, fault/security/restore hardening, then controlled release"
 
@@ -482,10 +492,10 @@ activation_handoff:
     - "At activation, no Git remote/push, hosted CI, cloud/account resource, OAuth app, Neon/R2/Workflow deployment, credential, model download, provider call, or spend had been used."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this CURRENT_STATE.yaml."
-    - "Load only the phase3_private_remote_ci profile and tasks/VF-3-05.md."
+    - "Load only the phase3_style_semantic_foundation profile and tasks/VF-3-06.md."
     - "Confirm the recorded commits are ancestors of clean HEAD; do not reset or redo completed phases."
-    - "Run only private repository creation, exact main push, hosted CI observation, and redacted evidence."
-    - "Stop on wrong owner/visibility, force/history mutation, provider/spend, secret exposure, or unexplained CI failure."
+    - "Run only provider-free style semantic validation, fixture analysis, trusted profile assembly, tests, and evidence."
+    - "Stop on schema/decision ambiguity, provider/network/spend, publication mutation, or regression."
   optimized_future_sequence:
     - "A. Refresh official time-sensitive provider/model/rate/retention/license facts read-only and classify all open gates."
     - "B. With explicit caps/credential authority, run bounded provider qualification through the committed sandbox and record pass/fail evidence."
@@ -499,7 +509,7 @@ activation_handoff:
 
 notes:
   - "This is a replace-in-place handoff snapshot, not a progress diary."
-  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-05 may create/push only the private GitHub repository and run existing hosted CI."
+  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-06 is provider-free and cannot analyze a real reference or publish a style."
   - "RunPod account preflight is green: Keychain credential exists, balance is $10.00, hourly spend is $0, and Pods/endpoints/volumes/workers are all zero."
   - "Private GitHub remote is green and exact. Do not alter workflow gates: repair GitHub account billing/Actions eligibility, then rerun verify run 31415895273 or a fresh unchanged run."
   - "The accelerated approval through VF-2-05 is complete and exhausted. On 2026-08-10 the user separately activated the planned non-transferable $1/$3/$8/$8/$5 provider caps, private Git/CI, and isolated staging authority; production remains deferred."

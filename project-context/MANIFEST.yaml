@@ -244,6 +244,13 @@ read_profiles:
     - 19_IMPLEMENTATION_PLAYBOOK.md
     - 21_IMPLEMENTATION_EXECUTION_PLAN.md
     - tasks/VF-3-05.md
+  phase3_style_semantic_foundation:
+    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 18_IMAGE_STYLES_HUB.md
+    - evidence/image_style_profile.schema.json
+    - evidence/image_style_analyzer_output.schema.json
+    - tasks/VF-3-06.md
   context_update:
     - 15_DECISIONS_AND_OPEN_GATES.md
     - 16_CONTEXT_MAINTENANCE.md
