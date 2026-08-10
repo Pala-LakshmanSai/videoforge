@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T11:07:05Z"
+updated_at: "2026-08-10T11:15:25Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: true
@@ -200,10 +200,15 @@ active_ownership:
       - packages/control-plane/src/adapters/**
       - packages/control-plane/src/recovery/**
       - packages/control-plane/tests/**
+      - packages/test-fixtures/src/types.ts
+      - packages/test-fixtures/src/scenarios.ts
+      - packages/test-fixtures/src/scenarios.test.ts
       - apps/web/src/server/app.ts
       - apps/web/src/server/runtime/**
       - apps/web/src/server/routes/**
+      - apps/web/src/lib/types.ts
       - apps/web/src/**/recovery*.test.*
+      - apps/web/tests/e2e/recovery.spec.ts
       - project-context/**
     note: "VF-1-06 is a serial integration-owner recovery task. Preserve the completed Wave 2 adapter/auth/artifact surfaces; no parallel implementation lane is active until a refreshed ownership plan records one."
 
