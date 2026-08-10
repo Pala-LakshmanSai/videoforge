@@ -12,10 +12,14 @@ VideoForge is an invite-only web app for 5–10 teammates that accepts a title, 
 
 ## Current handoff
 
-Phase 0A contracts/tooling, the accepted Phase 0B fixture shell, and the accepted provider-free
-Phase 0C local ASR → scheduler → FFmpeg → Chrome/download slice are complete. The current
-implementation is still bounded to fixture/process-local state; it does not claim durable database
-recovery, production authentication/storage, or provider transport.
+Phase 0A contracts/tooling, the accepted Phase 0B fixture shell, the accepted provider-free
+Phase 0C local ASR → scheduler → FFmpeg → Chrome/download slice, and the audited Wave 2 local
+adapters are complete. VF-1-06 is paused at a preserved corrective checkpoint: implementation
+commit `7028413` is test-green but not acceptance-ready, because independent audits found open
+terminal-state, redispatch, cost-conservation, sibling-attempt, and bounded-snapshot defects. The
+newer eight-file corrective worktree is intentionally dirty and typecheck-red; its exact state,
+findings, completed UI correction, and resume order live only in `CURRENT_STATE.yaml.paused_handoff`.
+No durable-recovery completion, production deployment, provider transport, or spend is claimed.
 
 `VF-1-01` remains the preserved relational baseline. The provider-free corrective task `VF-1-01A`
 is complete at implementation commit `36bf1ae`, with additive migration, constraint, migration
