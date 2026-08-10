@@ -40,7 +40,7 @@ export interface LocalShortSliceManifest {
   readonly fixtureId: string;
   readonly provenance: {
     readonly manifestId: string;
-    readonly revision: 3;
+    readonly revision: 4;
     readonly immutability: "IMMUTABLE_SOURCE";
     readonly ownership: "VIDEOFORGE_SYSTEM_OWNED";
     readonly sourceOnly: true;
@@ -127,11 +127,18 @@ const NARRATION_CUES = [
   "These simple checks work best when considered together, not as isolated promises.",
 ] as const;
 
-const SLOW_SMOOTH_ZOOM: LocalShortSliceImageZoom = {
+const FULL_IMAGE_ZOOM: LocalShortSliceImageZoom = {
   kind: "SLOW_SMOOTH_ZOOM",
   anchor: "CENTER",
   startScale: 1,
   endScale: 1.03,
+};
+
+const SPLIT_RIGHT_ZOOM: LocalShortSliceImageZoom = {
+  kind: "SLOW_SMOOTH_ZOOM",
+  anchor: "CENTER",
+  startScale: 1,
+  endScale: 1.025,
 };
 
 const localShortSliceManifest: LocalShortSliceManifest = {
@@ -139,7 +146,7 @@ const localShortSliceManifest: LocalShortSliceManifest = {
   fixtureId: "local_short_slice_owned_001",
   provenance: {
     manifestId: "local_short_slice_owned_manifest_001",
-    revision: 3,
+    revision: 4,
     immutability: "IMMUTABLE_SOURCE",
     ownership: "VIDEOFORGE_SYSTEM_OWNED",
     sourceOnly: true,
@@ -232,7 +239,7 @@ const localShortSliceManifest: LocalShortSliceManifest = {
       narrationCue: NARRATION_CUES[1],
       avatarAssetId: null,
       imageAssetId: STYLE_FIELD_ASSET_ID,
-      imageZoom: SLOW_SMOOTH_ZOOM,
+      imageZoom: FULL_IMAGE_ZOOM,
     },
     {
       segmentId: "local_segment_003",
@@ -242,7 +249,7 @@ const localShortSliceManifest: LocalShortSliceManifest = {
       narrationCue: NARRATION_CUES[2],
       avatarAssetId: AVATAR_ASSET_ID,
       imageAssetId: STYLE_MARKET_ASSET_ID,
-      imageZoom: SLOW_SMOOTH_ZOOM,
+      imageZoom: SPLIT_RIGHT_ZOOM,
     },
     {
       segmentId: "local_segment_004",
@@ -252,7 +259,7 @@ const localShortSliceManifest: LocalShortSliceManifest = {
       narrationCue: NARRATION_CUES[3],
       avatarAssetId: null,
       imageAssetId: STYLE_WORKSHOP_ASSET_ID,
-      imageZoom: SLOW_SMOOTH_ZOOM,
+      imageZoom: FULL_IMAGE_ZOOM,
     },
     {
       segmentId: "local_segment_005",
@@ -526,13 +533,13 @@ export function validateLocalShortSliceManifest(
 
     if (segment.imageAssetId !== null) {
       const zoom = segment.imageZoom;
+      const expectedEndScale = segment.composition === "AVATAR_SPLIT_IMAGE" ? 1.025 : 1.03;
       if (
         zoom === null ||
         zoom.kind !== "SLOW_SMOOTH_ZOOM" ||
         zoom.anchor !== "CENTER" ||
         zoom.startScale !== 1 ||
-        zoom.endScale <= zoom.startScale ||
-        zoom.endScale > 1.035
+        zoom.endScale !== expectedEndScale
       ) {
         addIssue(
           issues,

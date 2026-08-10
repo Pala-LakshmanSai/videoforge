@@ -96,12 +96,18 @@ describe("owned local short-slice source", () => {
       LOCAL_SHORT_SLICE_MANIFEST.expectedOutput.imageMotionPolicy,
       "SLOW_SMOOTH_ZOOM_EVERY_IMAGE",
     );
-    assert.equal(LOCAL_SHORT_SLICE_MANIFEST.provenance.revision, 3);
+    assert.equal(LOCAL_SHORT_SLICE_MANIFEST.provenance.revision, 4);
     assert.equal(
       LOCAL_SHORT_SLICE_MANIFEST.segments
-        .filter((segment) => segment.imageZoom !== null)
+        .filter((segment) => segment.composition === "IMAGE_FULL")
         .every((segment) => segment.imageZoom?.endScale === 1.03),
       true,
+    );
+    assert.equal(
+      LOCAL_SHORT_SLICE_MANIFEST.segments.find(
+        (segment) => segment.composition === "AVATAR_SPLIT_IMAGE",
+      )?.imageZoom?.endScale,
+      1.025,
     );
     assert.equal(
       Object.values(LOCAL_SHORT_SLICE_MANIFEST.expectedOutput.prohibited).every(
@@ -139,6 +145,13 @@ describe("owned local short-slice source", () => {
     const missingZoom = cloneManifest();
     (missingZoom.segments[1] as { imageZoom: null }).imageZoom = null;
     assert.ok(issueCodes(missingZoom).includes("IMAGE_ZOOM"));
+
+    const wrongSplitZoom = cloneManifest();
+    (
+      wrongSplitZoom.segments.find((segment) => segment.composition === "AVATAR_SPLIT_IMAGE")
+        ?.imageZoom as { endScale: number }
+    ).endScale = 1.03;
+    assert.ok(issueCodes(wrongSplitZoom).includes("IMAGE_ZOOM"));
 
     const prohibitedText = cloneManifest();
     (
