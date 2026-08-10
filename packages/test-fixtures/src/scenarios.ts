@@ -985,6 +985,103 @@ const scenarios = {
       };
     },
   ),
+  project_failed: createScenario(
+    "project_failed",
+    "Project failed",
+    "A terminal recovery failure preserves accepted partial artifacts and exact settled cost.",
+    "/projects/project_fixture_001",
+    ["project", "failure", "terminal"],
+    (snapshot) => {
+      if (!snapshot.project) return;
+      snapshot.project.status = "FAILED";
+      snapshot.project.stage = "FAILED";
+      snapshot.project.etaSeconds = 0;
+      snapshot.project.cost.currentUsd = 0.23;
+      snapshot.project.lanes.image = {
+        state: "FAILED",
+        completed: 181,
+        total: 260,
+        action: "Terminal worker failure; 181 accepted images retained",
+      };
+      snapshot.project.lanes.avatar = {
+        state: "CANCELLED",
+        completed: 18,
+        total: 52,
+        action: "Stopped after terminal project failure",
+      };
+      for (const stage of snapshot.project.stages) {
+        if (stage.id === "generation") {
+          stage.state = "FAILED";
+          stage.detail = "Recovery exhausted without an accepted final result";
+        } else if (stage.state !== "COMPLETE") {
+          stage.state = "CANCELLED";
+          stage.detail = "Not run after terminal failure";
+        }
+      }
+      snapshot.events.push({
+        id: "event_fixture_failed_terminal",
+        sequence: 4,
+        occurredAt: "2026-08-09T09:32:00.000Z",
+        kind: "FAILED",
+        message: "Recovery ended terminally; partial artifacts and exact cost were preserved",
+        stage: "GENERATING_MEDIA",
+      });
+      snapshot.notice = {
+        tone: "ERROR",
+        title: "Project failed",
+        detail:
+          "No work remains active. Accepted partial artifacts and the $0.23 settled cost remain recorded.",
+        action: "Retry failed work",
+      };
+    },
+  ),
+  project_cancelled: createScenario(
+    "project_cancelled",
+    "Project cancelled",
+    "A settled cancellation is terminal while accepted partial artifacts and exact cost remain visible.",
+    "/projects/project_fixture_001",
+    ["project", "cancel", "terminal"],
+    (snapshot) => {
+      if (!snapshot.project) return;
+      snapshot.project.status = "CANCELLED";
+      snapshot.project.stage = "CANCELLED";
+      snapshot.project.etaSeconds = 0;
+      snapshot.project.cost.currentUsd = 0.18;
+      snapshot.project.lanes.image = {
+        state: "CANCELLED",
+        completed: 72,
+        total: 260,
+        action: "Stopped after the last safe image checkpoint",
+      };
+      snapshot.project.lanes.avatar = {
+        state: "CANCELLED",
+        completed: 18,
+        total: 52,
+        action: "Cancellation settled; no worker remains active",
+      };
+      for (const stage of snapshot.project.stages) {
+        if (stage.state !== "COMPLETE") {
+          stage.state = "CANCELLED";
+          stage.detail = "Stopped after durable cancellation settlement";
+        }
+      }
+      snapshot.events.push({
+        id: "event_fixture_cancelled_terminal",
+        sequence: 4,
+        occurredAt: "2026-08-09T09:33:00.000Z",
+        kind: "CANCELLED",
+        message: "Cancellation settled; partial artifacts and exact cost were preserved",
+        stage: "GENERATING_MEDIA",
+      });
+      snapshot.notice = {
+        tone: "WARNING",
+        title: "Project cancelled",
+        detail:
+          "No work remains active. Accepted partial artifacts and the $0.18 settled cost remain recorded.",
+        action: null,
+      };
+    },
+  ),
   project_ready_for_review: createScenario(
     "project_ready_for_review",
     "Project ready for review",

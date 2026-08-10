@@ -3225,11 +3225,59 @@ function createExecutionRepository(
         if (task.acceptedAttemptId !== null || task.state === "COMPLETE") {
           return conflict("ACCEPTED_RESULT_EXISTS", "completed tasks cannot be cancelled");
         }
+        if (task.state === "CANCELLED" || task.state === "FAILED") {
+          return conflict("STATE_CONFLICT", "terminal tasks cannot be cancelled again");
+        }
         if (command.target === "TASK_ONLY") {
+          const dispatchOutboxes = await executor.query<Row>(
+            `SELECT state FROM outbox
+             WHERE workspace_id = $1 AND task_id = $2 AND kind = 'DISPATCH'
+             FOR UPDATE`,
+            [scope.workspaceId, command.taskId],
+          );
+          if (
+            dispatchOutboxes.rows.some(
+              (row) => row.state !== "PENDING" && row.state !== "RETRY_WAIT",
+            )
+          ) {
+            return conflict(
+              "STATE_CONFLICT",
+              "task-only cancellation cannot race a leased, delivered, or ambiguous dispatch",
+            );
+          }
+          const dispatchedAttempts = await one(
+            executor,
+            `SELECT count(*)::int AS count FROM attempts
+             WHERE workspace_id = $1 AND task_id = $2
+               AND (dispatch_state <> 'NOT_SENT' OR claim_state = 'CLAIMED' OR started_at IS NOT NULL)`,
+            [scope.workspaceId, command.taskId],
+          );
+          if (
+            dispatchedAttempts === null ||
+            numberValue(dispatchedAttempts.count, "attempts.dispatched_count") !== 0
+          ) {
+            return conflict(
+              "STATE_CONFLICT",
+              "task-only cancellation requires every attempt to remain undispatched and unclaimed",
+            );
+          }
           await executor.query(
             `UPDATE generation_tasks SET state = 'CANCELLED', version = version + 1,
                cancel_requested_at = $3, finished_at = $3, updated_at = $3
              WHERE workspace_id = $1 AND id = $2`,
+            [scope.workspaceId, command.taskId, command.requestedAt],
+          );
+          await executor.query(
+            `UPDATE attempts SET state = 'CANCELLED', result_disposition = 'REJECTED',
+               problem_code = 'CANCELLED_BEFORE_DISPATCH', finished_at = $3
+             WHERE workspace_id = $1 AND task_id = $2 AND finished_at IS NULL`,
+            [scope.workspaceId, command.taskId, command.requestedAt],
+          );
+          await executor.query(
+            `UPDATE outbox SET state = 'DEAD_LETTER', lease_owner = NULL,
+               lease_expires_at = NULL, delivered_at = NULL, updated_at = $3
+             WHERE workspace_id = $1 AND task_id = $2 AND kind = 'DISPATCH'
+               AND state IN ('PENDING', 'RETRY_WAIT')`,
             [scope.workspaceId, command.taskId, command.requestedAt],
           );
           const cancelled = await loadTask(executor, scope.workspaceId, command.taskId);
@@ -3391,6 +3439,96 @@ function createExecutionRepository(
           kind: "TERMINAL_ATTEMPT_RESULT" as const,
           completion: "NOT_ACCEPTED" as const,
           attempt: terminal as ExecutionContracts.TerminalAttemptRecord,
+        });
+      });
+    },
+    async settleAttemptCancellation(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const task = await loadTask(executor, scope.workspaceId, command.taskId);
+        if (task === null) return missing("TASK", command.taskId);
+        const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
+        if (attempt === null) return missing("ATTEMPT", command.attemptId);
+        if (attempt.taskId !== command.taskId) {
+          return invariant("TASK_ATTEMPT_MISMATCH", "attempt does not belong to task");
+        }
+        if (
+          task.state === "CANCELLED" &&
+          task.finishedAt === command.settledAt &&
+          attempt.state === "CANCELLED" &&
+          attempt.resultDisposition === "REJECTED" &&
+          attempt.finishedAt !== null
+        ) {
+          return write(
+            {
+              kind: "ATTEMPT_CANCELLATION_SETTLED" as const,
+              completion: "NOT_ACCEPTED" as const,
+              task: task as ExecutionContracts.CancelledTaskRecord,
+              attempt: attempt as ExecutionContracts.TerminalAttemptRecord & {
+                readonly state: "CANCELLED";
+              },
+              settledAt: command.settledAt,
+            },
+            true,
+          );
+        }
+        if (task.version !== command.expectedTaskVersion) {
+          return conflict(
+            "EXPECTED_VERSION_MISMATCH",
+            "task version changed before cancellation settlement",
+            task.version,
+          );
+        }
+        if (task.acceptedAttemptId !== null || task.state === "COMPLETE") {
+          return conflict("ACCEPTED_RESULT_EXISTS", "completed tasks cannot settle cancellation");
+        }
+        if (task.state !== "CANCEL_REQUESTED") {
+          return conflict(
+            "STATE_CONFLICT",
+            "only a cancellation-requested task can settle as cancelled",
+          );
+        }
+        if (
+          attempt.state !== "CANCELLED" ||
+          attempt.resultDisposition !== "REJECTED" ||
+          attempt.finishedAt === null
+        ) {
+          return conflict(
+            "STATE_CONFLICT",
+            "cancellation cannot settle before the target attempt is terminal cancelled",
+          );
+        }
+        const activeAttempts = await one(
+          executor,
+          `SELECT count(*)::int AS count FROM attempts
+           WHERE workspace_id = $1 AND task_id = $2
+             AND (state NOT IN ('FAILED', 'CANCELLED') OR finished_at IS NULL)`,
+          [scope.workspaceId, command.taskId],
+        );
+        if (
+          activeAttempts === null ||
+          numberValue(activeAttempts.count, "attempts.active_count") !== 0
+        ) {
+          return conflict(
+            "STATE_CONFLICT",
+            "cancellation cannot settle while another attempt remains active",
+          );
+        }
+        await executor.query(
+          `UPDATE generation_tasks SET state = 'CANCELLED', version = version + 1,
+             accepted_attempt_id = NULL, finished_at = $3, updated_at = $3
+           WHERE workspace_id = $1 AND id = $2 AND state = 'CANCEL_REQUESTED'`,
+          [scope.workspaceId, command.taskId, command.settledAt],
+        );
+        const cancelled = await loadTask(executor, scope.workspaceId, command.taskId);
+        if (cancelled === null) throw new Error("settled cancellation task disappeared");
+        return write({
+          kind: "ATTEMPT_CANCELLATION_SETTLED" as const,
+          completion: "NOT_ACCEPTED" as const,
+          task: cancelled as ExecutionContracts.CancelledTaskRecord,
+          attempt: attempt as ExecutionContracts.TerminalAttemptRecord & {
+            readonly state: "CANCELLED";
+          },
+          settledAt: command.settledAt,
         });
       });
     },
@@ -3777,6 +3915,106 @@ function createEventRepository(context: RepositoryContext): EventContracts.Event
       );
       return success(result.rows.map(mapCostEvent));
     },
+    async summarizeTaskCost(scope, query) {
+      const task = await loadTask(context.executor, scope.workspaceId, query.taskId);
+      if (task === null) return missing("TASK", query.taskId);
+      if (query.attemptId !== undefined) {
+        const attempt = await loadAttempt(context.executor, scope.workspaceId, query.attemptId);
+        if (attempt === null) return missing("ATTEMPT", query.attemptId);
+        if (attempt.taskId !== query.taskId) {
+          return invariant("TASK_ATTEMPT_MISMATCH", "attempt does not belong to task");
+        }
+      }
+      const row = await one(
+        context.executor,
+        `WITH per_attempt AS (
+           SELECT attempt_id,
+             count(*)::int AS event_count,
+             count(*) FILTER (WHERE event_type = 'RESERVED')::int AS reserved_event_count,
+             count(*) FILTER (WHERE event_type = 'REPORTED')::int AS reported_event_count,
+             count(*) FILTER (WHERE event_type = 'SETTLED')::int AS settled_event_count,
+             count(*) FILTER (WHERE event_type IN ('SETTLED', 'RELEASED', 'REFUNDED'))::int
+               AS finalization_event_count,
+             COALESCE(max(amount_micro_usd) FILTER (WHERE event_type = 'RESERVED'), 0)::bigint
+               AS reserved_micro_usd,
+             COALESCE(max(amount_micro_usd) FILTER (WHERE event_type = 'REPORTED'), 0)::bigint
+               AS reported_micro_usd,
+             COALESCE(max(amount_micro_usd) FILTER (WHERE event_type = 'SETTLED'), 0)::bigint
+               AS settled_micro_usd,
+             COALESCE(max(amount_micro_usd) FILTER (WHERE event_type = 'RELEASED'), 0)::bigint
+               AS released_micro_usd,
+             COALESCE(max(amount_micro_usd) FILTER (WHERE event_type = 'REFUNDED'), 0)::bigint
+               AS refunded_micro_usd
+           FROM cost_events
+           WHERE workspace_id = $1 AND task_id = $2
+             AND ($3::uuid IS NULL OR attempt_id = $3::uuid)
+           GROUP BY attempt_id
+         )
+         SELECT
+           COALESCE(sum(event_count), 0)::int AS event_count,
+           COALESCE(sum(reserved_event_count), 0)::int AS reserved_event_count,
+           COALESCE(sum(reported_event_count), 0)::int AS reported_event_count,
+           COALESCE(sum(settled_event_count), 0)::int AS settled_event_count,
+           COALESCE(sum(finalization_event_count), 0)::int AS finalization_event_count,
+           COALESCE(sum(reserved_micro_usd), 0)::bigint AS reserved_micro_usd,
+           COALESCE(sum(reported_micro_usd), 0)::bigint AS reported_micro_usd,
+           COALESCE(sum(settled_micro_usd), 0)::bigint AS settled_micro_usd,
+           COALESCE(sum(released_micro_usd), 0)::bigint AS released_micro_usd,
+           COALESCE(sum(refunded_micro_usd), 0)::bigint AS refunded_micro_usd,
+           COALESCE(sum(GREATEST(
+             reserved_micro_usd - settled_micro_usd - released_micro_usd - refunded_micro_usd,
+             0
+           )), 0)::bigint AS active_reservation_micro_usd,
+           count(*) FILTER (WHERE reserved_event_count <> 1)::int
+             AS invalid_reservation_attempt_count,
+           count(*) FILTER (
+             WHERE (reported_event_count > 0 OR settled_event_count > 0)
+               AND (
+                 reported_event_count = 0 OR settled_event_count = 0
+                 OR reported_micro_usd <> settled_micro_usd
+               )
+           )::int AS unsettled_reported_attempt_count
+         FROM per_attempt`,
+        [scope.workspaceId, query.taskId, query.attemptId ?? null],
+      );
+      if (row === null) throw new Error("task cost summary aggregate returned no row");
+      return success({
+        taskId: query.taskId,
+        attemptId: query.attemptId ?? null,
+        owner: task.owner,
+        reservedMicroUsd: bigintValue(row.reserved_micro_usd, "cost summary reserved"),
+        reportedMicroUsd: bigintValue(row.reported_micro_usd, "cost summary reported"),
+        settledMicroUsd: bigintValue(row.settled_micro_usd, "cost summary settled"),
+        releasedMicroUsd: bigintValue(row.released_micro_usd, "cost summary released"),
+        refundedMicroUsd: bigintValue(row.refunded_micro_usd, "cost summary refunded"),
+        activeReservationMicroUsd: bigintValue(
+          row.active_reservation_micro_usd,
+          "cost summary active reservation",
+        ),
+        eventCount: numberValue(row.event_count, "cost summary event count"),
+        reservedEventCount: numberValue(
+          row.reserved_event_count,
+          "cost summary reserved event count",
+        ),
+        reportedEventCount: numberValue(
+          row.reported_event_count,
+          "cost summary reported event count",
+        ),
+        settledEventCount: numberValue(row.settled_event_count, "cost summary settled event count"),
+        finalizationEventCount: numberValue(
+          row.finalization_event_count,
+          "cost summary finalization event count",
+        ),
+        invalidReservationAttemptCount: numberValue(
+          row.invalid_reservation_attempt_count,
+          "cost summary invalid reservation attempt count",
+        ),
+        unsettledReportedAttemptCount: numberValue(
+          row.unsettled_reported_attempt_count,
+          "cost summary unsettled reported attempt count",
+        ),
+      });
+    },
   };
 }
 
@@ -3813,6 +4051,7 @@ const receiptOperations = Object.freeze({
     recordDispatchAcknowledged: "execution_record_dispatch_acknowledged",
     recordDispatchAckUnknown: "execution_record_dispatch_ack_unknown",
     recordSuccessfulResult: "execution_record_successful_result",
+    settleAttemptCancellation: "execution_settle_attempt_cancellation",
     recordTerminalResult: "execution_record_terminal_result",
     recordUnknownAttempt: "execution_record_unknown_attempt",
     requestCancellation: "execution_request_cancellation",

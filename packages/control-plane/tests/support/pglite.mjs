@@ -42,8 +42,8 @@ export async function loadMigrationSources() {
   );
 }
 
-export async function createMigratedDatabase() {
-  const database = new PGlite();
+export async function createMigratedDatabase(dataDir) {
+  const database = new PGlite(dataDir);
   const executor = new PGliteExecutor(database);
   const sources = await loadMigrationSources();
   await applyMigrations(executor, sources);

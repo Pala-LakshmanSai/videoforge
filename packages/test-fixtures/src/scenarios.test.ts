@@ -38,6 +38,8 @@ const PLAYBOOK_SCENARIO_IDS = [
   "dispatch_ack_unknown",
   "callback_reconciling",
   "cancel_requested",
+  "project_failed",
+  "project_cancelled",
   "project_ready_for_review",
   "project_approved",
 ] as const;
@@ -63,7 +65,7 @@ describe("fixture scenario registry", () => {
   it("covers every stable playbook scenario exactly once", () => {
     assert.deepEqual(FIXTURE_SCENARIO_IDS, PLAYBOOK_SCENARIO_IDS);
     assert.deepEqual(Object.keys(fixtureScenarioRegistry), PLAYBOOK_SCENARIO_IDS);
-    assert.equal(listFixtureScenarios().length, 28);
+    assert.equal(listFixtureScenarios().length, 30);
     assert.equal(DEFAULT_FIXTURE_SCENARIO_ID, "happy_generating");
   });
 
@@ -160,6 +162,7 @@ describe("fixture scenario registry", () => {
       getFixtureScenario("dispatch_ack_unknown").snapshot.project?.status,
       "RECONCILING",
     );
+    assert.equal(getFixtureScenario("project_cancelled").snapshot.project?.status, "CANCELLED");
     assert.equal(
       getFixtureScenario("project_ready_for_review").snapshot.project?.review.state,
       "READY_FOR_REVIEW",

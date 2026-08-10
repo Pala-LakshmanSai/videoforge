@@ -124,13 +124,38 @@ export interface CostEventListQuery {
   readonly limit: number;
 }
 
+export interface TaskCostSummaryQuery {
+  readonly taskId: EntityId;
+  readonly attemptId?: EntityId;
+}
+
+export interface TaskCostSummary {
+  readonly taskId: EntityId;
+  readonly attemptId: EntityId | null;
+  readonly owner: DurableOwner;
+  readonly reservedMicroUsd: bigint;
+  readonly reportedMicroUsd: bigint;
+  readonly settledMicroUsd: bigint;
+  readonly releasedMicroUsd: bigint;
+  readonly refundedMicroUsd: bigint;
+  readonly activeReservationMicroUsd: bigint;
+  readonly eventCount: number;
+  readonly reservedEventCount: number;
+  readonly reportedEventCount: number;
+  readonly settledEventCount: number;
+  readonly finalizationEventCount: number;
+  readonly invalidReservationAttemptCount: number;
+  readonly unsettledReportedAttemptCount: number;
+}
+
 export type EventConflict = CommonConflictCode | "EVENT_ID_REUSED";
 export type EventMissing = "ATTEMPT" | "TASK" | "WORKFLOW_INSTANCE";
 export type EventInvariant =
   | CommonInvariantCode
   | "AGGREGATE_REFERENCE_MISMATCH"
   | "EVENT_APPEND_ONLY"
-  | "EVENT_SEQUENCE_NOT_MONOTONIC";
+  | "EVENT_SEQUENCE_NOT_MONOTONIC"
+  | "TASK_ATTEMPT_MISMATCH";
 
 export interface EventRepository {
   appendWorkflowEvent(
@@ -160,4 +185,9 @@ export interface EventRepository {
   ): Promise<
     RepositoryResult<readonly CostEventRecord[], EventConflict, EventMissing, EventInvariant>
   >;
+
+  summarizeTaskCost(
+    scope: WorkspaceScope,
+    query: TaskCostSummaryQuery,
+  ): Promise<RepositoryResult<TaskCostSummary, EventConflict, EventMissing, EventInvariant>>;
 }

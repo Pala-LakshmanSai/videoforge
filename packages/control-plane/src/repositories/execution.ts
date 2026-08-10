@@ -419,6 +419,26 @@ export interface TerminalAttemptResult {
   readonly attempt: TerminalAttemptRecord;
 }
 
+/**
+ * Finalizes a previously requested attempt cancellation only after the attempt itself is durably
+ * terminal and no sibling attempt remains active. This closes the cancellation lifecycle without
+ * fabricating provider acknowledgement or discarding partial cost/artifact lineage.
+ */
+export interface SettleAttemptCancellationCommand extends IdempotentMutation {
+  readonly taskId: EntityId;
+  readonly attemptId: EntityId;
+  readonly expectedTaskVersion: number;
+  readonly settledAt: UtcTimestamp;
+}
+
+export interface SettledAttemptCancellation {
+  readonly kind: "ATTEMPT_CANCELLATION_SETTLED";
+  readonly completion: "NOT_ACCEPTED";
+  readonly task: CancelledTaskRecord;
+  readonly attempt: TerminalAttemptRecord & { readonly state: "CANCELLED" };
+  readonly settledAt: UtcTimestamp;
+}
+
 /** UNKNOWN is a durable ambiguity requiring reconciliation, not a finished/terminal outcome. */
 export interface RecordUnknownAttemptCommand extends IdempotentMutation {
   readonly taskId: EntityId;
@@ -607,6 +627,18 @@ export interface ExecutionRepository {
   ): Promise<
     IdempotentRepositoryResult<
       TerminalAttemptResult,
+      ExecutionConflict,
+      ExecutionMissing,
+      ExecutionInvariant
+    >
+  >;
+
+  settleAttemptCancellation(
+    scope: WorkspaceScope,
+    command: SettleAttemptCancellationCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      SettledAttemptCancellation,
       ExecutionConflict,
       ExecutionMissing,
       ExecutionInvariant

@@ -122,6 +122,7 @@ const projectSummarySchema = z
       "NEEDS_ATTENTION",
       "RECONCILING",
       "CANCEL_REQUESTED",
+      "FAILED",
       "CANCELLED",
       "READY_FOR_REVIEW",
       "APPROVED",

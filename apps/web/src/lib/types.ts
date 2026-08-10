@@ -29,6 +29,8 @@ export const scenarioIds = [
   "dispatch_ack_unknown",
   "callback_reconciling",
   "cancel_requested",
+  "project_failed",
+  "project_cancelled",
   "project_ready_for_review",
   "project_approved",
 ] as const;
@@ -141,6 +143,7 @@ export interface ProjectSummary {
     | "NEEDS_ATTENTION"
     | "RECONCILING"
     | "CANCEL_REQUESTED"
+    | "FAILED"
     | "CANCELLED"
     | "READY_FOR_REVIEW"
     | "APPROVED";
