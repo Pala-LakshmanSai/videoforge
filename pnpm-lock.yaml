@@ -63,6 +63,9 @@ importers:
       '@videoforge/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@videoforge/control-plane':
+        specifier: workspace:*
+        version: link:../../packages/control-plane
       '@videoforge/pipeline':
         specifier: workspace:*
         version: link:../../packages/pipeline
