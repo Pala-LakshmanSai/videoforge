@@ -254,9 +254,10 @@ function allowedProjectActions(project: FixtureProject): ProjectAllowedAction[] 
     actions.push("CANCEL");
   }
   if (
-    project.lanes.image.state === "FAILED" ||
-    project.lanes.avatar.state === "FAILED" ||
-    project.review.flaggedDefect === "LIP_SYNC_ONLY"
+    project.status !== "FAILED" &&
+    (project.lanes.image.state === "FAILED" ||
+      project.lanes.avatar.state === "FAILED" ||
+      project.review.flaggedDefect === "LIP_SYNC_ONLY")
   ) {
     actions.push("RETRY_FAILED_ITEMS");
   }
@@ -269,7 +270,9 @@ function allowedProjectActions(project: FixtureProject): ProjectAllowedAction[] 
   return actions;
 }
 
-function etaLabel(seconds: number | null): string {
+function etaLabel(project: FixtureProject): string {
+  if (project.status === "FAILED" || project.status === "CANCELLED") return "Stopped";
+  const seconds = project.etaSeconds;
   if (seconds === null) return "Calculating";
   if (seconds === 0) return "Ready";
   const minutes = Math.max(1, Math.ceil(seconds / 60));
@@ -288,7 +291,7 @@ export function toProjectSummaryResponse(
     stage: project.stage,
     completed: project.progressPercent,
     total: 100,
-    eta: etaLabel(project.etaSeconds),
+    eta: etaLabel(project),
     mode,
     estimatedCost: project.cost.estimatedUsd,
     actualCost: project.cost.currentUsd,

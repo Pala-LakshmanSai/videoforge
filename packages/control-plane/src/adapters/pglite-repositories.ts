@@ -25,6 +25,8 @@ import type {
 
 type Row = Record<string, unknown>;
 
+const MAX_TASK_ATTEMPTS = 32;
+
 interface AtomicRunner {
   run<Value>(work: (executor: SqlExecutor) => Promise<Value>): Promise<Value>;
 }
@@ -2757,6 +2759,16 @@ async function reserveTaskAttemptIn(
     return invariant("INVALID_MONEY", "cost reservations cannot be negative");
   }
   if (
+    !Number.isSafeInteger(command.attempt.ordinal) ||
+    command.attempt.ordinal < 1 ||
+    command.attempt.ordinal > MAX_TASK_ATTEMPTS
+  ) {
+    return invariant(
+      "INVALID_STATE_TRANSITION",
+      `attempt ordinal must be between 1 and ${MAX_TASK_ATTEMPTS}`,
+    );
+  }
+  if (
     command.task.owner.ownerId !==
     (command.task.owner.ownerType === "PROJECT_REVISION"
       ? command.task.owner.projectRevisionId
@@ -2829,6 +2841,26 @@ async function reserveTaskAttemptIn(
     !sameValue(task.dependsOn, command.task.dependsOn)
   ) {
     return conflict("TASK_KEY_EXISTS", "existing task identity does not match reservation input");
+  }
+  if (
+    task.state === "CANCEL_REQUESTED" ||
+    task.state === "COMPLETE" ||
+    task.state === "CANCELLED" ||
+    task.state === "FAILED"
+  ) {
+    return conflict("STATE_CONFLICT", "cancelling or terminal tasks reject new attempts");
+  }
+  const attemptCount = await one(
+    executor,
+    `SELECT count(*)::int AS count FROM attempts
+     WHERE workspace_id = $1 AND task_id = $2`,
+    [scope.workspaceId, command.task.taskId],
+  );
+  if (
+    attemptCount === null ||
+    numberValue(attemptCount.count, "attempts.task_count") >= MAX_TASK_ATTEMPTS
+  ) {
+    return conflict("STATE_CONFLICT", `task reached the ${MAX_TASK_ATTEMPTS}-attempt limit`);
   }
   const conflictingAttempt = await one(
     executor,
@@ -2928,6 +2960,9 @@ function createExecutionRepository(
       return context.atomic.run(async (executor) => {
         const task = await loadTask(executor, scope.workspaceId, command.taskId);
         if (task === null) return missing("TASK", command.taskId);
+        if (task.state === "CANCELLED" || task.state === "COMPLETE" || task.state === "FAILED") {
+          return conflict("STATE_CONFLICT", "terminal tasks reject execution claims");
+        }
         const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
         if (attempt === null) return missing("ATTEMPT", command.attemptId);
         if (attempt.taskId !== command.taskId) {
@@ -2958,8 +2993,19 @@ function createExecutionRepository(
             task.version,
           );
         }
-        if (task.state === "CANCEL_REQUESTED" || task.state === "CANCELLED") {
-          return conflict("STATE_CONFLICT", "cancelled work cannot be claimed");
+        if (task.state === "BLOCKED" || task.state === "CANCEL_REQUESTED") {
+          return conflict("STATE_CONFLICT", "blocked or cancelling work cannot be claimed");
+        }
+        if (
+          attempt.finishedAt !== null ||
+          attempt.resultDisposition !== "PENDING" ||
+          (attempt.state !== "CREATED" && attempt.state !== "RUNNING") ||
+          (attempt.dispatchState !== "ACKNOWLEDGED" && attempt.dispatchState !== "RECONCILED")
+        ) {
+          return conflict(
+            "STATE_CONFLICT",
+            "only an unfinished dispatched attempt can acquire an execution claim",
+          );
         }
         await executor.query(
           `UPDATE attempts SET claim_state = 'CLAIMED', state = 'CLAIMED', claimed_at = $4
@@ -2983,6 +3029,19 @@ function createExecutionRepository(
     },
     async recordDispatchAcknowledged(scope, command) {
       return context.atomic.run(async (executor) => {
+        const task = await loadTask(executor, scope.workspaceId, command.taskId);
+        if (task === null) return missing("TASK", command.taskId);
+        if (
+          task.state === "CANCEL_REQUESTED" ||
+          task.state === "CANCELLED" ||
+          task.state === "COMPLETE" ||
+          task.state === "FAILED"
+        ) {
+          return conflict(
+            "STATE_CONFLICT",
+            "cancelling or terminal tasks reject dispatch acknowledgement",
+          );
+        }
         const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
         if (attempt === null) return missing("ATTEMPT", command.attemptId);
         if (attempt.taskId !== command.taskId) {
@@ -3012,6 +3071,18 @@ function createExecutionRepository(
           return invariant(
             "DISPATCH_REQUIRES_RECONCILIATION",
             "ambiguous dispatch must reconcile before acknowledgement",
+          );
+        }
+        if (
+          attempt.finishedAt !== null ||
+          attempt.resultDisposition !== "PENDING" ||
+          attempt.state !== "CREATED" ||
+          attempt.claimState !== "UNCLAIMED" ||
+          (attempt.dispatchState !== "NOT_SENT" && attempt.dispatchState !== "SENDING")
+        ) {
+          return conflict(
+            "STATE_CONFLICT",
+            "only an unfinished undispatched attempt can acknowledge dispatch",
           );
         }
         const duplicateJob = await one(
@@ -3052,6 +3123,19 @@ function createExecutionRepository(
     },
     async recordDispatchAckUnknown(scope, command) {
       return context.atomic.run(async (executor) => {
+        const task = await loadTask(executor, scope.workspaceId, command.taskId);
+        if (task === null) return missing("TASK", command.taskId);
+        if (
+          task.state === "CANCEL_REQUESTED" ||
+          task.state === "CANCELLED" ||
+          task.state === "COMPLETE" ||
+          task.state === "FAILED"
+        ) {
+          return conflict(
+            "STATE_CONFLICT",
+            "cancelling or terminal tasks reject dispatch ambiguity",
+          );
+        }
         const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
         if (attempt === null) return missing("ATTEMPT", command.attemptId);
         if (attempt.taskId !== command.taskId) {
@@ -3076,6 +3160,18 @@ function createExecutionRepository(
             "a confirmed or reconciled dispatch cannot be downgraded to ambiguous",
           );
         }
+        if (
+          attempt.finishedAt !== null ||
+          attempt.resultDisposition !== "PENDING" ||
+          attempt.state !== "CREATED" ||
+          attempt.claimState !== "UNCLAIMED" ||
+          (attempt.dispatchState !== "NOT_SENT" && attempt.dispatchState !== "SENDING")
+        ) {
+          return conflict(
+            "STATE_CONFLICT",
+            "only an unfinished undispatched attempt can become ambiguous",
+          );
+        }
         await executor.query(
           `UPDATE attempts SET dispatch_state = 'AMBIGUOUS', provider_details = $4::jsonb,
              problem_code = $5 WHERE workspace_id = $1 AND task_id = $2 AND id = $3`,
@@ -3089,7 +3185,8 @@ function createExecutionRepository(
         );
         await executor.query(
           `UPDATE generation_tasks SET state = 'BLOCKED', version = version + 1, updated_at = $3
-           WHERE workspace_id = $1 AND id = $2 AND state NOT IN ('CANCELLED', 'COMPLETE')`,
+           WHERE workspace_id = $1 AND id = $2
+             AND state NOT IN ('CANCEL_REQUESTED', 'CANCELLED', 'COMPLETE', 'FAILED')`,
           [scope.workspaceId, command.taskId, command.observedAt],
         );
         return write({
@@ -3104,6 +3201,19 @@ function createExecutionRepository(
     },
     async reconcileDispatch(scope, command) {
       return context.atomic.run(async (executor) => {
+        const task = await loadTask(executor, scope.workspaceId, command.taskId);
+        if (task === null) return missing("TASK", command.taskId);
+        if (
+          task.state === "CANCEL_REQUESTED" ||
+          task.state === "CANCELLED" ||
+          task.state === "COMPLETE" ||
+          task.state === "FAILED"
+        ) {
+          return conflict(
+            "STATE_CONFLICT",
+            "cancelling or terminal tasks reject dispatch reconciliation",
+          );
+        }
         const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
         if (attempt === null) return missing("ATTEMPT", command.attemptId);
         if (attempt.taskId !== command.taskId) {
@@ -3112,8 +3222,20 @@ function createExecutionRepository(
         if (attempt.dispatchState !== "AMBIGUOUS") {
           return conflict("STATE_CONFLICT", "only ambiguous dispatches can reconcile");
         }
+        if (
+          attempt.finishedAt !== null ||
+          attempt.resultDisposition !== "PENDING" ||
+          attempt.claimState !== "UNCLAIMED" ||
+          (attempt.state !== "CREATED" && attempt.state !== "UNKNOWN")
+        ) {
+          return conflict("STATE_CONFLICT", "terminal attempts reject dispatch reconciliation");
+        }
         const nextDispatchState =
-          command.evidence.outcome === "STILL_UNKNOWN" ? "AMBIGUOUS" : "RECONCILED";
+          command.evidence.outcome === "STILL_UNKNOWN"
+            ? "AMBIGUOUS"
+            : command.evidence.outcome === "NOT_DISPATCHED_CONFIRMED"
+              ? "NOT_SENT"
+              : "RECONCILED";
         const nextAttemptState =
           command.evidence.outcome === "ACKNOWLEDGEMENT_CONFIRMED"
             ? "RUNNING"
@@ -3123,10 +3245,17 @@ function createExecutionRepository(
         const externalJobId =
           command.evidence.outcome === "ACKNOWLEDGEMENT_CONFIRMED"
             ? command.evidence.externalJobId
-            : attempt.externalJobId;
+            : command.evidence.outcome === "NOT_DISPATCHED_CONFIRMED"
+              ? null
+              : attempt.externalJobId;
         await executor.query(
-          `UPDATE attempts SET dispatch_state = $4, state = $5, external_job_id = $6,
-             provider_details = provider_details || $7::jsonb
+          `UPDATE attempts SET dispatch_state = $4, state = $5,
+           claim_state = CASE WHEN $4 = 'NOT_SENT' THEN 'UNCLAIMED' ELSE claim_state END,
+           claimed_at = CASE WHEN $4 = 'NOT_SENT' THEN NULL ELSE claimed_at END,
+           started_at = CASE WHEN $4 = 'NOT_SENT' THEN NULL ELSE started_at END,
+           external_job_id = $6, output_asset_id = NULL, result_disposition = 'PENDING',
+           problem_code = CASE WHEN $4 = 'NOT_SENT' THEN NULL ELSE problem_code END,
+           finished_at = NULL, provider_details = provider_details || $7::jsonb
            WHERE workspace_id = $1 AND task_id = $2 AND id = $3`,
           [
             scope.workspaceId,
@@ -3138,6 +3267,23 @@ function createExecutionRepository(
             jsonParameter({ reconciliationEvidence: command.evidence }),
           ],
         );
+        if (command.evidence.outcome === "NOT_DISPATCHED_CONFIRMED") {
+          const requeued = await executor.query<Row>(
+            `UPDATE outbox SET state = 'RETRY_WAIT', lease_owner = NULL,
+               lease_expires_at = NULL, delivered_at = NULL,
+               available_at = $4, updated_at = $4
+             WHERE workspace_id = $1 AND task_id = $2 AND attempt_id = $3
+               AND kind = 'DISPATCH' AND state IN ('PENDING', 'RETRY_WAIT', 'DEAD_LETTER')
+             RETURNING id`,
+            [scope.workspaceId, command.taskId, command.attemptId, command.reconciledAt],
+          );
+          if (requeued.rows.length !== 1) {
+            return conflict(
+              "STATE_CONFLICT",
+              "confirmed-not-dispatched reconciliation requires one quarantined dispatch",
+            );
+          }
+        }
         if (command.evidence.outcome !== "STILL_UNKNOWN") {
           await executor.query(
             `UPDATE generation_tasks SET state = $3, version = version + 1, updated_at = $4
@@ -3229,33 +3375,51 @@ function createExecutionRepository(
           return conflict("STATE_CONFLICT", "terminal tasks cannot be cancelled again");
         }
         if (command.target === "TASK_ONLY") {
-          const dispatchOutboxes = await executor.query<Row>(
-            `SELECT state FROM outbox
+          await executor.query(
+            `UPDATE outbox SET state = 'DEAD_LETTER', lease_owner = NULL,
+               lease_expires_at = NULL, delivered_at = NULL, updated_at = $3
              WHERE workspace_id = $1 AND task_id = $2 AND kind = 'DISPATCH'
-             FOR UPDATE`,
+               AND state IN ('PENDING', 'RETRY_WAIT')`,
+            [scope.workspaceId, command.taskId, command.requestedAt],
+          );
+          const unsafeOutbox = await one(
+            executor,
+            `SELECT id FROM outbox
+             WHERE workspace_id = $1 AND task_id = $2 AND kind = 'DISPATCH'
+               AND state <> 'DEAD_LETTER'
+             LIMIT 1 FOR UPDATE`,
             [scope.workspaceId, command.taskId],
           );
-          if (
-            dispatchOutboxes.rows.some(
-              (row) => row.state !== "PENDING" && row.state !== "RETRY_WAIT",
-            )
-          ) {
+          if (unsafeOutbox !== null) {
             return conflict(
               "STATE_CONFLICT",
               "task-only cancellation cannot race a leased, delivered, or ambiguous dispatch",
             );
           }
-          const dispatchedAttempts = await one(
-            executor,
-            `SELECT count(*)::int AS count FROM attempts
+          await executor.query(
+            `UPDATE attempts SET state = 'CANCELLED', result_disposition = 'REJECTED',
+               problem_code = 'CANCELLED_BEFORE_DISPATCH', finished_at = $3
              WHERE workspace_id = $1 AND task_id = $2
-               AND (dispatch_state <> 'NOT_SENT' OR claim_state = 'CLAIMED' OR started_at IS NOT NULL)`,
-            [scope.workspaceId, command.taskId],
+               AND state = 'CREATED' AND dispatch_state = 'NOT_SENT'
+               AND claim_state = 'UNCLAIMED' AND started_at IS NULL
+               AND finished_at IS NULL AND result_disposition = 'PENDING'`,
+            [scope.workspaceId, command.taskId, command.requestedAt],
           );
-          if (
-            dispatchedAttempts === null ||
-            numberValue(dispatchedAttempts.count, "attempts.dispatched_count") !== 0
-          ) {
+          const unsafeAttempt = await one(
+            executor,
+            `SELECT id FROM attempts
+             WHERE workspace_id = $1 AND task_id = $2
+               AND NOT (
+                 state = 'CANCELLED' AND dispatch_state = 'NOT_SENT'
+                 AND claim_state = 'UNCLAIMED' AND started_at IS NULL
+                 AND result_disposition = 'REJECTED'
+                 AND problem_code = 'CANCELLED_BEFORE_DISPATCH'
+                 AND finished_at = $3
+               )
+             LIMIT 1 FOR UPDATE`,
+            [scope.workspaceId, command.taskId, command.requestedAt],
+          );
+          if (unsafeAttempt !== null) {
             return conflict(
               "STATE_CONFLICT",
               "task-only cancellation requires every attempt to remain undispatched and unclaimed",
@@ -3265,19 +3429,6 @@ function createExecutionRepository(
             `UPDATE generation_tasks SET state = 'CANCELLED', version = version + 1,
                cancel_requested_at = $3, finished_at = $3, updated_at = $3
              WHERE workspace_id = $1 AND id = $2`,
-            [scope.workspaceId, command.taskId, command.requestedAt],
-          );
-          await executor.query(
-            `UPDATE attempts SET state = 'CANCELLED', result_disposition = 'REJECTED',
-               problem_code = 'CANCELLED_BEFORE_DISPATCH', finished_at = $3
-             WHERE workspace_id = $1 AND task_id = $2 AND finished_at IS NULL`,
-            [scope.workspaceId, command.taskId, command.requestedAt],
-          );
-          await executor.query(
-            `UPDATE outbox SET state = 'DEAD_LETTER', lease_owner = NULL,
-               lease_expires_at = NULL, delivered_at = NULL, updated_at = $3
-             WHERE workspace_id = $1 AND task_id = $2 AND kind = 'DISPATCH'
-               AND state IN ('PENDING', 'RETRY_WAIT')`,
             [scope.workspaceId, command.taskId, command.requestedAt],
           );
           const cancelled = await loadTask(executor, scope.workspaceId, command.taskId);
@@ -3337,6 +3488,17 @@ function createExecutionRepository(
       return context.atomic.run(async (executor) => {
         const task = await loadTask(executor, scope.workspaceId, command.taskId);
         if (task === null) return missing("TASK", command.taskId);
+        if (
+          task.state === "CANCEL_REQUESTED" ||
+          task.state === "CANCELLED" ||
+          task.state === "COMPLETE" ||
+          task.state === "FAILED"
+        ) {
+          return conflict(
+            "STATE_CONFLICT",
+            "cancelling or terminal tasks reject successful results",
+          );
+        }
         const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
         if (attempt === null) return missing("ATTEMPT", command.attemptId);
         if (attempt.taskId !== command.taskId) {
@@ -3361,8 +3523,17 @@ function createExecutionRepository(
           ) {
             return conflict("STATE_CONFLICT", "attempt already succeeded with a different result");
           }
-        } else if (attempt.finishedAt !== null || attempt.resultDisposition !== "PENDING") {
-          return conflict("STATE_CONFLICT", "terminal attempt cannot become successful");
+        } else if (
+          attempt.finishedAt !== null ||
+          attempt.resultDisposition !== "PENDING" ||
+          attempt.claimState !== "CLAIMED" ||
+          (attempt.dispatchState !== "ACKNOWLEDGED" && attempt.dispatchState !== "RECONCILED") ||
+          (attempt.state !== "CLAIMED" && attempt.state !== "RUNNING")
+        ) {
+          return conflict(
+            "STATE_CONFLICT",
+            "only a claimed acknowledged attempt can become successful",
+          );
         } else {
           await executor.query(
             `UPDATE attempts SET state = 'SUCCEEDED', output_asset_id = $4,
@@ -3400,6 +3571,19 @@ function createExecutionRepository(
     },
     async recordTerminalResult(scope, command) {
       return context.atomic.run(async (executor) => {
+        const task = await loadTask(executor, scope.workspaceId, command.taskId);
+        if (task === null) return missing("TASK", command.taskId);
+        if (
+          task.state === "COMPLETE" ||
+          task.state === "CANCELLED" ||
+          task.state === "FAILED" ||
+          (task.state === "CANCEL_REQUESTED" && command.state !== "CANCELLED")
+        ) {
+          return conflict(
+            "STATE_CONFLICT",
+            "terminal tasks are immutable and cancellation accepts only cancellation results",
+          );
+        }
         const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
         if (attempt === null) return missing("ATTEMPT", command.attemptId);
         if (attempt.taskId !== command.taskId) {
@@ -3534,6 +3718,19 @@ function createExecutionRepository(
     },
     async recordUnknownAttempt(scope, command) {
       return context.atomic.run(async (executor) => {
+        const task = await loadTask(executor, scope.workspaceId, command.taskId);
+        if (task === null) return missing("TASK", command.taskId);
+        if (
+          task.state === "CANCEL_REQUESTED" ||
+          task.state === "CANCELLED" ||
+          task.state === "COMPLETE" ||
+          task.state === "FAILED"
+        ) {
+          return conflict(
+            "STATE_CONFLICT",
+            "cancelling or terminal tasks reject unknown-attempt mutation",
+          );
+        }
         const attempt = await loadAttempt(executor, scope.workspaceId, command.attemptId);
         if (attempt === null) return missing("ATTEMPT", command.attemptId);
         if (attempt.taskId !== command.taskId) {
@@ -3559,7 +3756,8 @@ function createExecutionRepository(
           );
           await executor.query(
             `UPDATE generation_tasks SET state = 'BLOCKED', version = version + 1, updated_at = $3
-             WHERE workspace_id = $1 AND id = $2 AND state NOT IN ('CANCELLED', 'COMPLETE')`,
+           WHERE workspace_id = $1 AND id = $2
+             AND state NOT IN ('CANCEL_REQUESTED', 'CANCELLED', 'COMPLETE', 'FAILED')`,
             [scope.workspaceId, command.taskId, command.observedAt],
           );
         }
@@ -3585,6 +3783,17 @@ function createExecutionRepository(
         if (task.acceptedAttemptId !== null) {
           return conflict("ACCEPTED_RESULT_EXISTS", "task already has an accepted result");
         }
+        if (
+          task.state === "CANCEL_REQUESTED" ||
+          task.state === "CANCELLED" ||
+          task.state === "COMPLETE" ||
+          task.state === "FAILED"
+        ) {
+          return conflict(
+            "STATE_CONFLICT",
+            "cancelling or terminal tasks reject result acceptance",
+          );
+        }
         if (task.version !== reference.expectedTaskVersion) {
           return conflict(
             "EXPECTED_VERSION_MISMATCH",
@@ -3604,6 +3813,67 @@ function createExecutionRepository(
           attempt.finishedAt === null
         ) {
           return invariant("ATTEMPT_NOT_SUCCESSFUL", "attempt is not an unaccepted success");
+        }
+        const unsafeSibling = await one(
+          executor,
+          `SELECT sibling.id FROM attempts sibling
+           WHERE sibling.workspace_id = $1 AND sibling.task_id = $2 AND sibling.id <> $3
+             AND sibling.finished_at IS NULL
+             AND NOT (
+               sibling.state = 'CREATED' AND sibling.dispatch_state = 'NOT_SENT'
+               AND sibling.claim_state = 'UNCLAIMED' AND sibling.started_at IS NULL
+               AND sibling.result_disposition = 'PENDING'
+               AND NOT EXISTS (
+                 SELECT 1 FROM outbox sibling_outbox
+                 WHERE sibling_outbox.workspace_id = sibling.workspace_id
+                   AND sibling_outbox.task_id = sibling.task_id
+                   AND sibling_outbox.attempt_id = sibling.id
+                   AND sibling_outbox.kind = 'DISPATCH'
+                   AND sibling_outbox.state = 'LEASED'
+               )
+             )
+           LIMIT 1 FOR UPDATE`,
+          [scope.workspaceId, reference.taskId, reference.attemptId],
+        );
+        if (unsafeSibling !== null) {
+          return conflict(
+            "STATE_CONFLICT",
+            "acceptance cannot race a leased or dispatched active sibling attempt",
+          );
+        }
+        await executor.query(
+          `UPDATE attempts SET state = 'CANCELLED', result_disposition = 'REJECTED',
+             problem_code = 'SUPERSEDED_BY_ACCEPTED_RESULT', finished_at = $4
+           WHERE workspace_id = $1 AND task_id = $2 AND id <> $3
+             AND state = 'CREATED' AND dispatch_state = 'NOT_SENT'
+             AND claim_state = 'UNCLAIMED' AND started_at IS NULL
+             AND finished_at IS NULL AND result_disposition = 'PENDING'`,
+          [scope.workspaceId, reference.taskId, reference.attemptId, command.acceptedAt],
+        );
+        await executor.query(
+          `UPDATE attempts SET result_disposition = 'REJECTED',
+             problem_code = COALESCE(problem_code, 'SUPERSEDED_BY_ACCEPTED_RESULT')
+           WHERE workspace_id = $1 AND task_id = $2 AND id <> $3
+             AND finished_at IS NOT NULL AND result_disposition = 'PENDING'`,
+          [scope.workspaceId, reference.taskId, reference.attemptId],
+        );
+        await executor.query(
+          `UPDATE outbox SET state = 'DEAD_LETTER', lease_owner = NULL,
+             lease_expires_at = NULL, delivered_at = NULL, updated_at = $3
+           WHERE workspace_id = $1 AND task_id = $2 AND kind = 'DISPATCH'
+             AND state IN ('PENDING', 'RETRY_WAIT')`,
+          [scope.workspaceId, reference.taskId, command.acceptedAt],
+        );
+        const runnableOutbox = await one(
+          executor,
+          `SELECT id FROM outbox
+           WHERE workspace_id = $1 AND task_id = $2 AND kind = 'DISPATCH'
+             AND state IN ('PENDING', 'RETRY_WAIT', 'LEASED')
+           LIMIT 1 FOR UPDATE`,
+          [scope.workspaceId, reference.taskId],
+        );
+        if (runnableOutbox !== null) {
+          return conflict("STATE_CONFLICT", "accepted tasks cannot retain runnable dispatch work");
         }
         const artifact = await findArtifact(executor, scope.workspaceId, attempt.outputAssetId);
         if (
@@ -3649,6 +3919,215 @@ function createExecutionRepository(
         [scope.workspaceId, query.taskId],
       );
       return success(rows.rows.map(mapAttempt));
+    },
+    async resolveRecoveryTaskFacts(scope, query) {
+      const row = await one(
+        context.executor,
+        `WITH target_task AS (
+           SELECT * FROM generation_tasks
+           WHERE workspace_id = $1 AND id = $2
+         ),
+         attempt_facts AS (
+           SELECT
+             count(*)::int AS recovery_attempt_count,
+             count(*) FILTER (WHERE claim_state = 'CLAIMED')::int
+               AS recovery_claimed_attempt_count,
+             count(*) FILTER (WHERE result_disposition = 'ACCEPTED')::int
+               AS recovery_accepted_attempt_count,
+             count(*) FILTER (WHERE dispatch_state = 'AMBIGUOUS')::int
+               AS recovery_ambiguous_attempt_count,
+             count(*) FILTER (WHERE finished_at IS NULL)::int
+               AS recovery_active_attempt_count,
+             count(*) FILTER (
+               WHERE state = 'UNKNOWN' OR dispatch_state = 'AMBIGUOUS'
+             )::int AS recovery_reconciling_attempt_count,
+             count(*) FILTER (
+               WHERE finished_at IS NULL AND state IN ('CLAIMED', 'RUNNING')
+             )::int AS recovery_running_attempt_count
+           FROM attempts
+           WHERE workspace_id = $1 AND task_id = $2
+         ),
+         outbox_facts AS (
+           SELECT
+             count(*) FILTER (WHERE kind = 'DISPATCH')::int
+               AS recovery_dispatch_outbox_count,
+             count(*) FILTER (WHERE kind = 'CANCEL')::int
+               AS recovery_cancellation_outbox_count,
+             count(*) FILTER (WHERE state = 'DEAD_LETTER')::int
+               AS recovery_dead_letter_outbox_count
+           FROM outbox
+           WHERE workspace_id = $1 AND task_id = $2
+         ),
+         per_attempt_cost AS (
+           SELECT attempt_id,
+             count(*)::int AS event_count,
+             count(*) FILTER (WHERE event_type = 'RESERVED')::int AS reserved_event_count,
+             count(*) FILTER (WHERE event_type = 'REPORTED')::int AS reported_event_count,
+             count(*) FILTER (WHERE event_type = 'SETTLED')::int AS settled_event_count,
+             count(*) FILTER (WHERE event_type IN ('SETTLED', 'RELEASED', 'REFUNDED'))::int
+               AS finalization_event_count,
+             COALESCE(sum(amount_micro_usd) FILTER (WHERE event_type = 'RESERVED'), 0)::bigint
+               AS reserved_micro_usd,
+             COALESCE(sum(amount_micro_usd) FILTER (WHERE event_type = 'REPORTED'), 0)::bigint
+               AS reported_micro_usd,
+             COALESCE(sum(amount_micro_usd) FILTER (WHERE event_type = 'SETTLED'), 0)::bigint
+               AS settled_micro_usd,
+             COALESCE(sum(amount_micro_usd) FILTER (WHERE event_type = 'RELEASED'), 0)::bigint
+               AS released_micro_usd,
+             COALESCE(sum(amount_micro_usd) FILTER (WHERE event_type = 'REFUNDED'), 0)::bigint
+               AS refunded_micro_usd
+           FROM cost_events
+           WHERE workspace_id = $1 AND task_id = $2
+           GROUP BY attempt_id
+         ),
+         cost_facts AS (
+           SELECT
+             COALESCE(sum(event_count), 0)::int AS recovery_cost_event_count,
+             COALESCE(sum(reserved_event_count), 0)::int
+               AS recovery_cost_reserved_event_count,
+             COALESCE(sum(reported_event_count), 0)::int
+               AS recovery_cost_reported_event_count,
+             COALESCE(sum(settled_event_count), 0)::int
+               AS recovery_cost_settled_event_count,
+             COALESCE(sum(finalization_event_count), 0)::int
+               AS recovery_cost_finalization_event_count,
+             COALESCE(sum(reserved_micro_usd), 0)::bigint
+               AS recovery_cost_reserved_micro_usd,
+             COALESCE(sum(reported_micro_usd), 0)::bigint
+               AS recovery_cost_reported_micro_usd,
+             COALESCE(sum(settled_micro_usd), 0)::bigint
+               AS recovery_cost_settled_micro_usd,
+             COALESCE(sum(released_micro_usd), 0)::bigint
+               AS recovery_cost_released_micro_usd,
+             COALESCE(sum(refunded_micro_usd), 0)::bigint
+               AS recovery_cost_refunded_micro_usd,
+             COALESCE(sum(GREATEST(
+               reserved_micro_usd - settled_micro_usd - released_micro_usd - refunded_micro_usd,
+               0
+             )), 0)::bigint AS recovery_cost_active_reservation_micro_usd,
+             count(*) FILTER (WHERE reserved_event_count <> 1)::int
+               AS recovery_cost_invalid_reservation_attempt_count,
+             count(*) FILTER (
+               WHERE (reported_event_count > 0 OR settled_event_count > 0)
+                 AND (
+                   reported_event_count = 0 OR settled_event_count = 0
+                   OR reported_micro_usd <> settled_micro_usd
+                 )
+             )::int AS recovery_cost_unsettled_reported_attempt_count,
+             count(*) FILTER (
+               WHERE finalization_event_count < 1
+                 OR reserved_micro_usd <>
+                   settled_micro_usd + released_micro_usd + refunded_micro_usd
+             )::int AS recovery_cost_non_conserving_attempt_count
+           FROM per_attempt_cost
+         )
+         SELECT target_task.*, attempt_facts.*, outbox_facts.*, cost_facts.*
+         FROM target_task
+         CROSS JOIN attempt_facts
+         CROSS JOIN outbox_facts
+         CROSS JOIN cost_facts`,
+        [scope.workspaceId, query.taskId],
+      );
+      if (row === null) return missing("TASK", query.taskId);
+      const task = mapTask(row);
+      return success({
+        task,
+        attemptCount: numberValue(row.recovery_attempt_count, "recovery attempt count"),
+        claimedAttemptCount: numberValue(
+          row.recovery_claimed_attempt_count,
+          "recovery claimed attempt count",
+        ),
+        acceptedAttemptCount: numberValue(
+          row.recovery_accepted_attempt_count,
+          "recovery accepted attempt count",
+        ),
+        ambiguousAttemptCount: numberValue(
+          row.recovery_ambiguous_attempt_count,
+          "recovery ambiguous attempt count",
+        ),
+        activeAttemptCount: numberValue(
+          row.recovery_active_attempt_count,
+          "recovery active attempt count",
+        ),
+        reconcilingAttemptCount: numberValue(
+          row.recovery_reconciling_attempt_count,
+          "recovery reconciling attempt count",
+        ),
+        runningAttemptCount: numberValue(
+          row.recovery_running_attempt_count,
+          "recovery running attempt count",
+        ),
+        dispatchOutboxCount: numberValue(
+          row.recovery_dispatch_outbox_count,
+          "recovery dispatch outbox count",
+        ),
+        cancellationOutboxCount: numberValue(
+          row.recovery_cancellation_outbox_count,
+          "recovery cancellation outbox count",
+        ),
+        deadLetterOutboxCount: numberValue(
+          row.recovery_dead_letter_outbox_count,
+          "recovery dead-letter outbox count",
+        ),
+        cost: {
+          taskId: query.taskId,
+          attemptId: null,
+          owner: task.owner,
+          reservedMicroUsd: bigintValue(
+            row.recovery_cost_reserved_micro_usd,
+            "recovery cost reserved",
+          ),
+          reportedMicroUsd: bigintValue(
+            row.recovery_cost_reported_micro_usd,
+            "recovery cost reported",
+          ),
+          settledMicroUsd: bigintValue(
+            row.recovery_cost_settled_micro_usd,
+            "recovery cost settled",
+          ),
+          releasedMicroUsd: bigintValue(
+            row.recovery_cost_released_micro_usd,
+            "recovery cost released",
+          ),
+          refundedMicroUsd: bigintValue(
+            row.recovery_cost_refunded_micro_usd,
+            "recovery cost refunded",
+          ),
+          activeReservationMicroUsd: bigintValue(
+            row.recovery_cost_active_reservation_micro_usd,
+            "recovery cost active reservation",
+          ),
+          eventCount: numberValue(row.recovery_cost_event_count, "recovery cost event count"),
+          reservedEventCount: numberValue(
+            row.recovery_cost_reserved_event_count,
+            "recovery cost reserved event count",
+          ),
+          reportedEventCount: numberValue(
+            row.recovery_cost_reported_event_count,
+            "recovery cost reported event count",
+          ),
+          settledEventCount: numberValue(
+            row.recovery_cost_settled_event_count,
+            "recovery cost settled event count",
+          ),
+          finalizationEventCount: numberValue(
+            row.recovery_cost_finalization_event_count,
+            "recovery cost finalization event count",
+          ),
+          invalidReservationAttemptCount: numberValue(
+            row.recovery_cost_invalid_reservation_attempt_count,
+            "recovery cost invalid reservation attempt count",
+          ),
+          unsettledReportedAttemptCount: numberValue(
+            row.recovery_cost_unsettled_reported_attempt_count,
+            "recovery cost unsettled reported attempt count",
+          ),
+          nonConservingAttemptCount: numberValue(
+            row.recovery_cost_non_conserving_attempt_count,
+            "recovery cost non-conserving attempt count",
+          ),
+        },
+      });
     },
   };
 }
@@ -3935,15 +4414,15 @@ function createEventRepository(context: RepositoryContext): EventContracts.Event
              count(*) FILTER (WHERE event_type = 'SETTLED')::int AS settled_event_count,
              count(*) FILTER (WHERE event_type IN ('SETTLED', 'RELEASED', 'REFUNDED'))::int
                AS finalization_event_count,
-             COALESCE(max(amount_micro_usd) FILTER (WHERE event_type = 'RESERVED'), 0)::bigint
+             COALESCE(sum(amount_micro_usd) FILTER (WHERE event_type = 'RESERVED'), 0)::bigint
                AS reserved_micro_usd,
-             COALESCE(max(amount_micro_usd) FILTER (WHERE event_type = 'REPORTED'), 0)::bigint
+             COALESCE(sum(amount_micro_usd) FILTER (WHERE event_type = 'REPORTED'), 0)::bigint
                AS reported_micro_usd,
-             COALESCE(max(amount_micro_usd) FILTER (WHERE event_type = 'SETTLED'), 0)::bigint
+             COALESCE(sum(amount_micro_usd) FILTER (WHERE event_type = 'SETTLED'), 0)::bigint
                AS settled_micro_usd,
-             COALESCE(max(amount_micro_usd) FILTER (WHERE event_type = 'RELEASED'), 0)::bigint
+             COALESCE(sum(amount_micro_usd) FILTER (WHERE event_type = 'RELEASED'), 0)::bigint
                AS released_micro_usd,
-             COALESCE(max(amount_micro_usd) FILTER (WHERE event_type = 'REFUNDED'), 0)::bigint
+             COALESCE(sum(amount_micro_usd) FILTER (WHERE event_type = 'REFUNDED'), 0)::bigint
                AS refunded_micro_usd
            FROM cost_events
            WHERE workspace_id = $1 AND task_id = $2
@@ -3973,7 +4452,12 @@ function createEventRepository(context: RepositoryContext): EventContracts.Event
                  reported_event_count = 0 OR settled_event_count = 0
                  OR reported_micro_usd <> settled_micro_usd
                )
-           )::int AS unsettled_reported_attempt_count
+           )::int AS unsettled_reported_attempt_count,
+           count(*) FILTER (
+             WHERE finalization_event_count < 1
+               OR reserved_micro_usd <>
+                 settled_micro_usd + released_micro_usd + refunded_micro_usd
+           )::int AS non_conserving_attempt_count
          FROM per_attempt`,
         [scope.workspaceId, query.taskId, query.attemptId ?? null],
       );
@@ -4012,6 +4496,10 @@ function createEventRepository(context: RepositoryContext): EventContracts.Event
         unsettledReportedAttemptCount: numberValue(
           row.unsettled_reported_attempt_count,
           "cost summary unsettled reported attempt count",
+        ),
+        nonConservingAttemptCount: numberValue(
+          row.non_conserving_attempt_count,
+          "cost summary non-conserving attempt count",
         ),
       });
     },

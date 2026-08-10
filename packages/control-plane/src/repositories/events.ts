@@ -146,6 +146,7 @@ export interface TaskCostSummary {
   readonly finalizationEventCount: number;
   readonly invalidReservationAttemptCount: number;
   readonly unsettledReportedAttemptCount: number;
+  readonly nonConservingAttemptCount: number;
 }
 
 export type EventConflict = CommonConflictCode | "EVENT_ID_REUSED";

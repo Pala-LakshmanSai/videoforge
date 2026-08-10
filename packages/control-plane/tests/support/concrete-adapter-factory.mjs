@@ -162,21 +162,40 @@ async function insertTask(executor, { taskId, taskKey, state = "READY" }) {
   );
 }
 
-async function insertAttempt(executor, { taskId, attemptId, ordinal, key }) {
+async function insertAttempt(
+  executor,
+  {
+    taskId,
+    attemptId,
+    ordinal,
+    key,
+    state = "CREATED",
+    dispatchState = "NOT_SENT",
+    claimState = "UNCLAIMED",
+    claimedAt = null,
+    startedAt = null,
+  },
+) {
   await executor.query(
     `INSERT INTO attempts (
        id, workspace_id, task_id, ordinal, idempotency_key, state,
-       dispatch_state, claim_state, execution_profile_id, execution_claim_token_hash, input_hash
-     ) VALUES ($1, $2, $3, $4, $5, 'CREATED', 'NOT_SENT', 'UNCLAIMED', $6, $7, $8)`,
+       dispatch_state, claim_state, execution_profile_id, execution_claim_token_hash, input_hash,
+       claimed_at, started_at
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
     [
       attemptId,
       IDS.workspaceA,
       taskId,
       ordinal,
       key,
+      state,
+      dispatchState,
+      claimState,
       IDS.executionProfileA,
       sha256(`${key}:claim`),
       sha256(`${key}:input`),
+      claimedAt,
+      startedAt,
     ],
   );
 }
@@ -596,18 +615,32 @@ async function fixtureFor(behaviorId, executor) {
       };
     }
     case "one-accepted-result": {
-      await insertTask(executor, { taskId: X.acceptedTask, taskKey: "contract:accepted" });
+      await insertTask(executor, {
+        taskId: X.acceptedTask,
+        taskKey: "contract:accepted",
+        state: "RUNNING",
+      });
       await insertAttempt(executor, {
         taskId: X.acceptedTask,
         attemptId: X.acceptedAttempt1,
         ordinal: 1,
         key: "contract:accepted:attempt:1",
+        state: "CLAIMED",
+        dispatchState: "ACKNOWLEDGED",
+        claimState: "CLAIMED",
+        claimedAt: FIXED_TIME,
+        startedAt: FIXED_TIME,
       });
       await insertAttempt(executor, {
         taskId: X.acceptedTask,
         attemptId: X.acceptedAttempt2,
         ordinal: 2,
         key: "contract:accepted:attempt:2",
+        state: "CLAIMED",
+        dispatchState: "ACKNOWLEDGED",
+        claimState: "CLAIMED",
+        claimedAt: FIXED_TIME,
+        startedAt: FIXED_TIME,
       });
       return {
         ...baseFixture(behaviorId),

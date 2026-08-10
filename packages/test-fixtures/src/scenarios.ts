@@ -1031,7 +1031,7 @@ const scenarios = {
         title: "Project failed",
         detail:
           "No work remains active. Accepted partial artifacts and the $0.23 settled cost remain recorded.",
-        action: "Retry failed work",
+        action: null,
       };
     },
   ),

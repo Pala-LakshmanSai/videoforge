@@ -25,12 +25,17 @@ test("installed Chrome renders pending, reconciling, failed, cancelled, and read
   await expect(
     page.getByText("Accepted partial artifacts and the $0.23 settled cost", { exact: false }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
+  await expect(page.getByText("ETA Stopped", { exact: true })).toBeVisible();
+  await expect(page.getByText("no work active", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Cancel" })).toHaveCount(0);
 
   await page.goto(`${projectPath}?fixture=project_cancelled`);
   await expect(page.getByText("CANCELLED", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Run stopped before completion", { exact: true })).toBeVisible();
   await expect(page.getByText("No work remains active.", { exact: false })).toBeVisible();
+  await expect(page.getByText("ETA Stopped", { exact: true })).toBeVisible();
+  await expect(page.getByText("no work active", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Cancel" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);
 

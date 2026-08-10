@@ -7,7 +7,12 @@ import type {
   ProviderDispatchAckUnknown,
   ProviderDispatchAcknowledgement,
 } from "../repositories/execution.js";
-import type { JsonObject, Sha256, WorkspaceScope } from "../repositories/types.js";
+import type {
+  DeterministicIdempotencyKey,
+  JsonObject,
+  Sha256,
+  WorkspaceScope,
+} from "../repositories/types.js";
 import {
   createPGliteControlPlaneRepositories,
   pgliteAdapterInternals,
@@ -163,6 +168,15 @@ function fixedTuple(fields: readonly string[]): string {
   return fields.map((field) => `${Buffer.byteLength(field, "utf8")}:${field}`).join("");
 }
 
+function deliveryMutationKey(
+  outbox: OutboxRecord,
+  transition: "ACKNOWLEDGED" | "ACKNOWLEDGEMENT_UNKNOWN",
+): DeterministicIdempotencyKey {
+  return `local-outbox:${sha256(
+    fixedTuple([outbox.outboxId, outbox.updatedAt, outbox.leaseOwner ?? "", transition]),
+  )}` as DeterministicIdempotencyKey;
+}
+
 function callbackSigningInput(input: CallbackSignatureInput, payloadHash: Sha256): string {
   const eventDescriptorHash = sha256(
     fixedTuple([
@@ -308,12 +322,31 @@ export class LocalWorkflowTransport {
     }
     return this.database.transaction(async (transaction) => {
       const candidate = await transaction.query<Row>(
-        `SELECT * FROM outbox
+        `SELECT queued.* FROM outbox queued
+         JOIN generation_tasks task
+           ON task.workspace_id = queued.workspace_id AND task.id = queued.task_id
+         JOIN attempts attempt
+           ON attempt.workspace_id = queued.workspace_id
+          AND attempt.task_id = queued.task_id AND attempt.id = queued.attempt_id
          WHERE (
-           (state IN ('PENDING', 'RETRY_WAIT') AND available_at <= $1)
-           OR (state = 'LEASED' AND lease_expires_at <= $1)
+           (queued.state IN ('PENDING', 'RETRY_WAIT') AND queued.available_at <= $1)
+           OR (queued.state = 'LEASED' AND queued.lease_expires_at <= $1)
          )
-         ORDER BY available_at, created_at, id
+         AND (
+           (
+             queued.kind = 'DISPATCH'
+             AND task.state IN ('PENDING', 'READY', 'DISPATCHING', 'RETRY_WAIT')
+             AND attempt.state = 'CREATED' AND attempt.dispatch_state = 'NOT_SENT'
+             AND attempt.claim_state = 'UNCLAIMED' AND attempt.started_at IS NULL
+             AND attempt.finished_at IS NULL AND attempt.result_disposition = 'PENDING'
+           )
+           OR (queued.kind = 'CANCEL' AND task.state = 'CANCEL_REQUESTED')
+           OR (
+             queued.kind = 'CALLBACK_RECONCILE'
+             AND task.state NOT IN ('CANCELLED', 'COMPLETE', 'FAILED')
+           )
+         )
+         ORDER BY queued.available_at, queued.created_at, queued.id
          LIMIT 1
          FOR UPDATE SKIP LOCKED`,
         [request.now],
@@ -386,7 +419,7 @@ export class LocalWorkflowTransport {
           const result = await repositories.execution.recordDispatchAcknowledged(
             { workspaceId: outbox.workspaceId },
             {
-              idempotencyKey: outbox.dedupeKey,
+              idempotencyKey: deliveryMutationKey(outbox, "ACKNOWLEDGED"),
               taskId: outbox.taskId,
               attemptId: outbox.attemptId,
               externalJobId: outcome.externalJobId,
@@ -416,7 +449,7 @@ export class LocalWorkflowTransport {
           const result = await repositories.execution.recordDispatchAckUnknown(
             { workspaceId: outbox.workspaceId },
             {
-              idempotencyKey: outbox.dedupeKey,
+              idempotencyKey: deliveryMutationKey(outbox, "ACKNOWLEDGEMENT_UNKNOWN"),
               taskId: outbox.taskId,
               attemptId: outbox.attemptId,
               providerDetails: outcome.providerDetails,

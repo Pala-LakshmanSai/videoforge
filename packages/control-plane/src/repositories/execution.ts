@@ -6,7 +6,7 @@ import type {
   TaskLane,
   TaskState,
 } from "../database/vocabulary.js";
-import type { CostEventRecord } from "./events.js";
+import type { CostEventRecord, TaskCostSummary } from "./events.js";
 import type {
   CommonConflictCode,
   CommonInvariantCode,
@@ -288,7 +288,7 @@ export interface DispatchReconciliation {
   readonly completion: "NOT_ACCEPTED";
   readonly taskId: EntityId;
   readonly attemptId: EntityId;
-  readonly dispatchState: "RECONCILED" | "AMBIGUOUS";
+  readonly dispatchState: "NOT_SENT" | "RECONCILED" | "AMBIGUOUS";
   readonly evidence: DispatchReconciliationEvidence;
   readonly reconciledAt: UtcTimestamp;
 }
@@ -507,6 +507,26 @@ export interface AttemptListQuery {
   readonly taskId: EntityId;
 }
 
+export interface RecoveryTaskFactsQuery {
+  readonly taskId: EntityId;
+}
+
+/** One bounded SQL snapshot used by recovery status projection. */
+export interface RecoveryTaskFacts {
+  readonly task: GenerationTaskRecord;
+  readonly attemptCount: number;
+  readonly claimedAttemptCount: number;
+  readonly acceptedAttemptCount: number;
+  readonly ambiguousAttemptCount: number;
+  readonly activeAttemptCount: number;
+  readonly reconcilingAttemptCount: number;
+  readonly runningAttemptCount: number;
+  readonly dispatchOutboxCount: number;
+  readonly cancellationOutboxCount: number;
+  readonly deadLetterOutboxCount: number;
+  readonly cost: TaskCostSummary;
+}
+
 export type ExecutionConflict =
   | CommonConflictCode
   | "ACCEPTED_RESULT_EXISTS"
@@ -686,5 +706,12 @@ export interface ExecutionRepository {
       ExecutionMissing,
       ExecutionInvariant
     >
+  >;
+
+  resolveRecoveryTaskFacts(
+    scope: WorkspaceScope,
+    query: RecoveryTaskFactsQuery,
+  ): Promise<
+    RepositoryResult<RecoveryTaskFacts, ExecutionConflict, ExecutionMissing, ExecutionInvariant>
   >;
 }

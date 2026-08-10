@@ -101,12 +101,49 @@ function cancellationOutbox(command, serial, availableAt) {
   };
 }
 
+function siblingReservation(command, serial, costSequence, ordinal) {
+  const sibling = reservation(serial, costSequence);
+  return {
+    ...sibling,
+    task: structuredClone(command.task),
+    attempt: {
+      ...sibling.attempt,
+      ordinal,
+      parentAttemptId: command.attempt.attemptId,
+      fallbackReason: "DUPLICATE_RECOVERY",
+    },
+  };
+}
+
+async function acknowledgeAndClaim(repositories, command, serial, expectedTaskVersion) {
+  ok(
+    await repositories.execution.recordDispatchAcknowledged(SCOPE, {
+      idempotencyKey: `${command.idempotencyKey}:ack:${serial}`,
+      taskId: command.task.taskId,
+      attemptId: command.attempt.attemptId,
+      externalJobId: `local-recovery-job-${serial}`,
+      providerDetails: { provider: "none", serial },
+      acknowledgedAt: secondsAfter(serial),
+    }),
+  );
+  return ok(
+    await repositories.execution.claimExecution(SCOPE, {
+      idempotencyKey: `${command.idempotencyKey}:claim:${serial}`,
+      taskId: command.task.taskId,
+      attemptId: command.attempt.attemptId,
+      presentedClaimTokenHash: command.attempt.executionClaimTokenHash,
+      expectedTaskVersion,
+      claimedAt: secondsAfter(serial),
+    }),
+  );
+}
+
 function coordinator(context, driver, clock) {
   const repositories = createPGliteControlPlaneRepositories(context.executor);
   const workflow = new LocalWorkflowTransport(context.executor, driver, { clock });
   return {
     repositories,
-    recovery: new DurableRecoveryCoordinator(context.executor, repositories, workflow),
+    recovery: new DurableRecoveryCoordinator(repositories, workflow),
   };
 }
 
@@ -276,6 +313,16 @@ test("ambiguous dispatch survives restart and converges to one claimed, accepted
         ok(await restarted.recovery.inspect(SCOPE, command.task.taskId)).cost.eventCount,
         1,
       );
+      const overFinalizedCompletion = structuredClone(completion);
+      overFinalizedCompletion.costEvents[2].amountMicroUsd = 801n;
+      const overFinalized = await restarted.recovery.complete(SCOPE, overFinalizedCompletion);
+      assert.equal(overFinalized.ok, false);
+      assert.equal(overFinalized.kind, "INVARIANT_VIOLATION");
+      assert.equal(overFinalized.code, "INVALID_MONEY");
+      assert.equal(
+        ok(await restarted.recovery.inspect(SCOPE, command.task.taskId)).cost.eventCount,
+        1,
+      );
       const accepted = ok(await restarted.recovery.complete(SCOPE, completion));
       assert.equal(accepted.replayed, false);
       assert.equal(accepted.value.completion, "ACCEPTED");
@@ -307,7 +354,7 @@ test("ambiguous dispatch survives restart and converges to one claimed, accepted
     context = await createMigratedDatabase(dataDir);
     try {
       const repositories = createPGliteControlPlaneRepositories(context.executor);
-      const finalRecovery = new DurableRecoveryCoordinator(context.executor, repositories, {
+      const finalRecovery = new DurableRecoveryCoordinator(repositories, {
         async deliverNext() {
           throw new Error("terminal recovery inspection must not dispatch");
         },
@@ -493,18 +540,23 @@ test("cancellation converges before dispatch, after dispatch, during reconciliat
         outbox: cancellationOutbox(reconciling, 31_204, secondsAfter(16)),
       }),
     );
-    ok(
-      await recovery.reconcile(SCOPE, {
-        idempotencyKey: `${reconciling.idempotencyKey}:reconcile-while-cancelling`,
-        taskId: reconciling.task.taskId,
-        attemptId: reconciling.attempt.attemptId,
-        evidence: {
-          outcome: "ACKNOWLEDGEMENT_CONFIRMED",
-          externalJobId: "local-reconciled-cancel-job",
-          evidenceHash: sha256("local-reconciled-cancel-job:evidence"),
-        },
-        reconciledAt: secondsAfter(17),
-      }),
+    const lateReconciliation = await recovery.reconcile(SCOPE, {
+      idempotencyKey: `${reconciling.idempotencyKey}:reconcile-while-cancelling`,
+      taskId: reconciling.task.taskId,
+      attemptId: reconciling.attempt.attemptId,
+      evidence: {
+        outcome: "ACKNOWLEDGEMENT_CONFIRMED",
+        externalJobId: "local-reconciled-cancel-job",
+        evidenceHash: sha256("local-reconciled-cancel-job:evidence"),
+      },
+      reconciledAt: secondsAfter(17),
+    });
+    assert.equal(lateReconciliation.ok, false);
+    assert.equal(lateReconciliation.kind, "CONFLICT");
+    assert.equal(lateReconciliation.code, "STATE_CONFLICT");
+    assert.equal(
+      ok(await recovery.inspect(SCOPE, reconciling.task.taskId)).displayState,
+      "CANCEL_REQUESTED",
     );
     assert.equal(
       (
@@ -543,7 +595,7 @@ test("cancellation converges before dispatch, after dispatch, during reconciliat
     );
     const reconciledCancellation = ok(await recovery.inspect(SCOPE, reconciling.task.taskId));
     assert.equal(reconciledCancellation.displayState, "CANCELLED");
-    assert.equal(reconciledCancellation.ambiguousAttemptCount, 0);
+    assert.equal(reconciledCancellation.ambiguousAttemptCount, 1);
     assert.equal(reconciledCancellation.cost.activeReservationMicroUsd, 0n);
 
     const terminalRetry = await repositories.execution.requestCancellation(SCOPE, {
@@ -577,7 +629,7 @@ test("task-only cancellation loses safely to an already leased dispatch", async 
         throw new Error("lease-only regression must not dispatch");
       },
     });
-    const recovery = new DurableRecoveryCoordinator(context.executor, repositories, workflow);
+    const recovery = new DurableRecoveryCoordinator(repositories, workflow);
     const command = reservation(31_300, 1);
     const reserved = ok(await recovery.reserve(SCOPE, command));
     const leased = await workflow.leaseNext({
@@ -616,12 +668,12 @@ test("task-only cancellation loses safely to an already leased dispatch", async 
   }
 });
 
-test("one attempt cost overrun cannot conceal another attempt's open reservation", async () => {
+test("one attempt cost overrun cannot conceal another attempt or be repaired by compound release", async () => {
   const context = await createMigratedDatabase();
   try {
     await seedLockedProjects(context.executor);
     const repositories = createPGliteControlPlaneRepositories(context.executor);
-    const recovery = new DurableRecoveryCoordinator(context.executor, repositories, {
+    const recovery = new DurableRecoveryCoordinator(repositories, {
       async deliverNext() {
         throw new Error("cost isolation regression must not dispatch");
       },
@@ -675,17 +727,328 @@ test("one attempt cost overrun cannot conceal another attempt's open reservation
     assert.equal(hiddenOpenReservation.code, "INVALID_MONEY");
     assert.equal(ok(await recovery.inspect(SCOPE, first.task.taskId)).displayState, "PENDING");
 
-    const cancelled = ok(
-      await recovery.cancelPending(SCOPE, {
-        cancellation,
-        costEvents: [costEvent(sibling, 31_422, 5, "RELEASED", 5_000n, secondsAfter(3))],
-      }),
-    );
-    assert.equal(cancelled.value.task.state, "CANCELLED");
+    const compoundRelease = await recovery.cancelPending(SCOPE, {
+      cancellation,
+      costEvents: [costEvent(sibling, 31_422, 5, "RELEASED", 5_000n, secondsAfter(3))],
+    });
+    assert.equal(compoundRelease.ok, false);
+    assert.equal(compoundRelease.kind, "INVARIANT_VIOLATION");
+    assert.equal(compoundRelease.code, "INVALID_MONEY");
     const finalSnapshot = ok(await recovery.inspect(SCOPE, first.task.taskId));
     assert.equal(finalSnapshot.attemptCount, 2);
-    assert.equal(finalSnapshot.activeAttemptCount, 0);
-    assert.equal(finalSnapshot.cost.activeReservationMicroUsd, 0n);
+    assert.equal(finalSnapshot.displayState, "PENDING");
+    assert.equal(finalSnapshot.activeAttemptCount, 2);
+    assert.equal(finalSnapshot.cost.activeReservationMicroUsd, 5_000n);
+    assert.equal(finalSnapshot.cost.eventCount, 4);
+    const exactCost = ok(
+      await repositories.events.summarizeTaskCost(SCOPE, { taskId: first.task.taskId }),
+    );
+    assert.equal(exactCost.nonConservingAttemptCount, 2);
+  } finally {
+    await context.database.close();
+  }
+});
+
+test("cancellation and terminal states fence every late execution mutation and dispatch", async () => {
+  const context = await createMigratedDatabase();
+  try {
+    await seedLockedProjects(context.executor);
+    const repositories = createPGliteControlPlaneRepositories(context.executor);
+    const workflow = new LocalWorkflowTransport(context.executor, {
+      async dispatch() {
+        throw new Error("terminal work must never reach the dispatch driver");
+      },
+    });
+    const recovery = new DurableRecoveryCoordinator(repositories, workflow);
+    const command = reservation(32_000, 1);
+    const reserved = ok(await recovery.reserve(SCOPE, command));
+    ok(
+      await recovery.cancelPending(SCOPE, {
+        cancellation: {
+          idempotencyKey: `${command.idempotencyKey}:cancel-terminal-fence`,
+          target: "TASK_ONLY",
+          taskId: command.task.taskId,
+          expectedTaskVersion: reserved.value.task.version,
+          requestedAt: secondsAfter(1),
+        },
+        costEvents: [costEvent(command, 32_004, 2, "RELEASED", 5_000n, secondsAfter(1))],
+      }),
+    );
+    const terminal = ok(await recovery.inspect(SCOPE, command.task.taskId));
+    assert.equal(terminal.displayState, "CANCELLED");
+
+    const lateMutations = [
+      repositories.execution.recordDispatchAcknowledged(SCOPE, {
+        idempotencyKey: `${command.idempotencyKey}:late-ack`,
+        taskId: command.task.taskId,
+        attemptId: command.attempt.attemptId,
+        externalJobId: "late-terminal-job",
+        providerDetails: { provider: "none" },
+        acknowledgedAt: secondsAfter(2),
+      }),
+      repositories.execution.recordDispatchAckUnknown(SCOPE, {
+        idempotencyKey: `${command.idempotencyKey}:late-ambiguity`,
+        taskId: command.task.taskId,
+        attemptId: command.attempt.attemptId,
+        providerDetails: { provider: "none" },
+        ambiguityReason: "late response",
+        observedAt: secondsAfter(2),
+      }),
+      repositories.execution.reconcileDispatch(SCOPE, {
+        idempotencyKey: `${command.idempotencyKey}:late-reconcile`,
+        taskId: command.task.taskId,
+        attemptId: command.attempt.attemptId,
+        evidence: {
+          outcome: "ACKNOWLEDGEMENT_CONFIRMED",
+          externalJobId: "late-terminal-job",
+          evidenceHash: sha256("late-terminal-job:evidence"),
+        },
+        reconciledAt: secondsAfter(2),
+      }),
+      repositories.execution.recordUnknownAttempt(SCOPE, {
+        idempotencyKey: `${command.idempotencyKey}:late-unknown`,
+        taskId: command.task.taskId,
+        attemptId: command.attempt.attemptId,
+        problemCode: "LATE_UNKNOWN",
+        providerDetails: { provider: "none" },
+        observedAt: secondsAfter(2),
+      }),
+      repositories.execution.recordSuccessfulResult(SCOPE, {
+        idempotencyKey: `${command.idempotencyKey}:late-success`,
+        taskId: command.task.taskId,
+        attemptId: command.attempt.attemptId,
+        outputAssetId: IDS.outputA1,
+        outputBinarySha256: HASHES.outputA1,
+        providerDetails: { provider: "none" },
+        finishedAt: secondsAfter(2),
+      }),
+      repositories.execution.acceptSuccessfulResult(SCOPE, {
+        idempotencyKey: `${command.idempotencyKey}:late-accept`,
+        candidateReference: {
+          kind: "RECORDED_SUCCESSFUL_ATTEMPT",
+          taskId: command.task.taskId,
+          attemptId: command.attempt.attemptId,
+          expectedTaskVersion: terminal.task.version,
+        },
+        acceptedAt: secondsAfter(2),
+      }),
+      repositories.execution.claimExecution(SCOPE, {
+        idempotencyKey: `${command.idempotencyKey}:late-claim`,
+        taskId: command.task.taskId,
+        attemptId: command.attempt.attemptId,
+        presentedClaimTokenHash: command.attempt.executionClaimTokenHash,
+        expectedTaskVersion: terminal.task.version,
+        claimedAt: secondsAfter(2),
+      }),
+    ];
+    for (const mutation of lateMutations) {
+      const result = await mutation;
+      assert.equal(result.ok, false);
+      assert.equal(result.kind, "CONFLICT");
+    }
+    const newAttempt = siblingReservation(command, 32_010, 3, 2);
+    const terminalReservation = await recovery.reserve(SCOPE, newAttempt);
+    assert.equal(terminalReservation.ok, false);
+    assert.equal(terminalReservation.kind, "CONFLICT");
+    assert.equal(
+      (
+        await recovery.dispatch({
+          workerId: "terminal-dispatcher",
+          now: secondsAfter(3),
+          leaseExpiresAt: secondsAfter(33),
+        })
+      ).kind,
+      "NO_WORK",
+    );
+    const unchanged = ok(await recovery.inspect(SCOPE, command.task.taskId));
+    assert.equal(unchanged.task.version, terminal.task.version);
+    assert.equal(unchanged.displayState, "CANCELLED");
+    assert.equal(unchanged.activeAttemptCount, 0);
+  } finally {
+    await context.database.close();
+  }
+});
+
+test("acceptance suppresses safe siblings, rejects active siblings, and leaves no runnable work", async () => {
+  const context = await createMigratedDatabase();
+  try {
+    await seedLockedProjects(context.executor);
+    const repositories = createPGliteControlPlaneRepositories(context.executor);
+    const recovery = new DurableRecoveryCoordinator(repositories, {
+      async deliverNext() {
+        return { kind: "NO_WORK" };
+      },
+    });
+    const candidate = reservation(33_000, 1);
+    const sibling = siblingReservation(candidate, 33_010, 2, 2);
+    const candidateReservation = ok(await recovery.reserve(SCOPE, candidate));
+    ok(await recovery.reserve(SCOPE, sibling));
+    await acknowledgeAndClaim(repositories, candidate, 1, candidateReservation.value.task.version);
+    const accepted = ok(
+      await recovery.complete(SCOPE, {
+        successfulResult: {
+          idempotencyKey: `${candidate.idempotencyKey}:success`,
+          taskId: candidate.task.taskId,
+          attemptId: candidate.attempt.attemptId,
+          outputAssetId: IDS.outputA1,
+          outputBinarySha256: HASHES.outputA1,
+          providerDetails: { provider: "none" },
+          finishedAt: secondsAfter(2),
+        },
+        costEvents: [
+          costEvent(candidate, 33_020, 3, "REPORTED", 4_200n, secondsAfter(2)),
+          costEvent(candidate, 33_021, 4, "SETTLED", 4_200n, secondsAfter(2)),
+          costEvent(candidate, 33_022, 5, "REFUNDED", 800n, secondsAfter(2)),
+          costEvent(sibling, 33_023, 6, "RELEASED", 5_000n, secondsAfter(2)),
+        ],
+        acceptance: {
+          idempotencyKey: `${candidate.idempotencyKey}:accept`,
+          acceptedAt: secondsAfter(3),
+        },
+      }),
+    );
+    assert.equal(accepted.value.task.state, "COMPLETE");
+    const rows = await context.executor.query(
+      `SELECT id, state, result_disposition, problem_code, finished_at IS NOT NULL AS finished
+       FROM attempts WHERE workspace_id = $1 AND task_id = $2 ORDER BY ordinal`,
+      [IDS.workspaceA, candidate.task.taskId],
+    );
+    assert.deepEqual(rows.rows, [
+      {
+        id: candidate.attempt.attemptId,
+        state: "SUCCEEDED",
+        result_disposition: "ACCEPTED",
+        problem_code: null,
+        finished: true,
+      },
+      {
+        id: sibling.attempt.attemptId,
+        state: "CANCELLED",
+        result_disposition: "REJECTED",
+        problem_code: "SUPERSEDED_BY_ACCEPTED_RESULT",
+        finished: true,
+      },
+    ]);
+    const outboxes = await context.executor.query(
+      `SELECT state FROM outbox WHERE workspace_id = $1 AND task_id = $2 ORDER BY id`,
+      [IDS.workspaceA, candidate.task.taskId],
+    );
+    assert.deepEqual(outboxes.rows, [{ state: "DEAD_LETTER" }, { state: "DEAD_LETTER" }]);
+
+    const activeCandidate = reservation(33_100, 7);
+    const activeSibling = siblingReservation(activeCandidate, 33_110, 8, 2);
+    const activeCandidateReservation = ok(await recovery.reserve(SCOPE, activeCandidate));
+    ok(await recovery.reserve(SCOPE, activeSibling));
+    await acknowledgeAndClaim(
+      repositories,
+      activeCandidate,
+      4,
+      activeCandidateReservation.value.task.version,
+    );
+    const afterCandidateClaim = ok(
+      await repositories.execution.resolveTask(SCOPE, { taskId: activeCandidate.task.taskId }),
+    );
+    await acknowledgeAndClaim(repositories, activeSibling, 5, afterCandidateClaim.version);
+    const racedAcceptance = await recovery.complete(SCOPE, {
+      successfulResult: {
+        idempotencyKey: `${activeCandidate.idempotencyKey}:success`,
+        taskId: activeCandidate.task.taskId,
+        attemptId: activeCandidate.attempt.attemptId,
+        outputAssetId: IDS.outputA1,
+        outputBinarySha256: HASHES.outputA1,
+        providerDetails: { provider: "none" },
+        finishedAt: secondsAfter(6),
+      },
+      costEvents: [
+        costEvent(activeCandidate, 33_120, 9, "REPORTED", 4_000n, secondsAfter(6)),
+        costEvent(activeCandidate, 33_121, 10, "SETTLED", 4_000n, secondsAfter(6)),
+        costEvent(activeCandidate, 33_122, 11, "REFUNDED", 1_000n, secondsAfter(6)),
+        costEvent(activeSibling, 33_123, 12, "RELEASED", 5_000n, secondsAfter(6)),
+      ],
+      acceptance: {
+        idempotencyKey: `${activeCandidate.idempotencyKey}:accept`,
+        acceptedAt: secondsAfter(7),
+      },
+    });
+    assert.equal(racedAcceptance.ok, false);
+    assert.equal(racedAcceptance.kind, "CONFLICT");
+    assert.equal(racedAcceptance.code, "STATE_CONFLICT");
+    const rolledBack = ok(await recovery.inspect(SCOPE, activeCandidate.task.taskId));
+    assert.equal(rolledBack.displayState, "RUNNING");
+    assert.equal(rolledBack.acceptedAttemptCount, 0);
+    assert.equal(rolledBack.cost.eventCount, 2);
+  } finally {
+    await context.database.close();
+  }
+});
+
+test("terminal attempts are unclaimable and recovery snapshots stay one-query bounded at 32 attempts", async () => {
+  const context = await createMigratedDatabase();
+  try {
+    await seedLockedProjects(context.executor);
+    const repositories = createPGliteControlPlaneRepositories(context.executor);
+    const terminalCommand = reservation(34_000, 1);
+    const terminalReservation = ok(
+      await repositories.execution.reserveTaskAttempt(SCOPE, terminalCommand),
+    );
+    ok(
+      await repositories.execution.recordTerminalResult(SCOPE, {
+        idempotencyKey: `${terminalCommand.idempotencyKey}:failed`,
+        taskId: terminalCommand.task.taskId,
+        attemptId: terminalCommand.attempt.attemptId,
+        state: "FAILED",
+        problemCode: "TERMINAL_BEFORE_CLAIM",
+        providerDetails: { provider: "none" },
+        finishedAt: secondsAfter(1),
+      }),
+    );
+    const terminalClaim = await repositories.execution.claimExecution(SCOPE, {
+      idempotencyKey: `${terminalCommand.idempotencyKey}:late-claim`,
+      taskId: terminalCommand.task.taskId,
+      attemptId: terminalCommand.attempt.attemptId,
+      presentedClaimTokenHash: terminalCommand.attempt.executionClaimTokenHash,
+      expectedTaskVersion: terminalReservation.value.task.version,
+      claimedAt: secondsAfter(2),
+    });
+    assert.equal(terminalClaim.ok, false);
+    assert.equal(terminalClaim.kind, "CONFLICT");
+
+    const bounded = reservation(34_100, 2);
+    ok(await repositories.execution.reserveTaskAttempt(SCOPE, bounded));
+    for (let ordinal = 2; ordinal <= 32; ordinal += 1) {
+      ok(
+        await repositories.execution.reserveTaskAttempt(
+          SCOPE,
+          siblingReservation(bounded, 34_100 + ordinal * 10, ordinal + 1, ordinal),
+        ),
+      );
+    }
+    const overflow = siblingReservation(bounded, 34_500, 34, 32);
+    const overflowResult = await repositories.execution.reserveTaskAttempt(SCOPE, overflow);
+    assert.equal(overflowResult.ok, false);
+    assert.equal(overflowResult.kind, "CONFLICT");
+    assert.equal(overflowResult.code, "STATE_CONFLICT");
+
+    let queryCount = 0;
+    const countingExecutor = {
+      execute: (sql) => context.executor.execute(sql),
+      query(sql, parameters) {
+        queryCount += 1;
+        assert.match(sql, /WITH target_task AS/);
+        return context.executor.query(sql, parameters);
+      },
+      transaction: (work) => context.executor.transaction(work),
+    };
+    const countingRepositories = createPGliteControlPlaneRepositories(countingExecutor);
+    const countingRecovery = new DurableRecoveryCoordinator(countingRepositories, {
+      async deliverNext() {
+        return { kind: "NO_WORK" };
+      },
+    });
+    const snapshot = ok(await countingRecovery.inspect(SCOPE, bounded.task.taskId));
+    assert.equal(queryCount, 1);
+    assert.equal(snapshot.attemptCount, 32);
+    assert.equal(snapshot.activeAttemptCount, 32);
   } finally {
     await context.database.close();
   }

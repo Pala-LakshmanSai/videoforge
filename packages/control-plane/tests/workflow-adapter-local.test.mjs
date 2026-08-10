@@ -189,7 +189,37 @@ test("ambiguous acknowledgement is quarantined and never blindly redispatched", 
       },
     );
     assert.equal(reconciled.ok, true);
-    assert.equal(reconciled.value.value.dispatchState, "RECONCILED");
+    assert.equal(reconciled.value.value.dispatchState, "NOT_SENT");
+    const recoveredTransport = new LocalWorkflowTransport(
+      executor,
+      {
+        async dispatch() {
+          dispatches += 1;
+          return {
+            kind: "ACKNOWLEDGED",
+            externalJobId: "local-recovered-after-not-sent",
+            providerDetails: { driver: "fixture", recovered: true },
+            acknowledgedAt: secondsAfter(41),
+          };
+        },
+      },
+      { clock: () => secondsAfter(41) },
+    );
+    const redelivery = await recoveredTransport.deliverNext({
+      workerId: "local-worker-3",
+      now: secondsAfter(40),
+      leaseExpiresAt: secondsAfter(70),
+    });
+    assert.equal(redelivery.kind, "DELIVERED");
+    assert.equal(dispatches, 2);
+    const facts = await repositories.execution.resolveRecoveryTaskFacts(
+      { workspaceId: IDS.workspaceA },
+      { taskId: command.task.taskId },
+    );
+    assert.equal(facts.ok, true);
+    assert.equal(facts.value.attemptCount, 1);
+    assert.equal(facts.value.cost.reservedEventCount, 1);
+    assert.equal(facts.value.task.state, "READY");
   });
 });
 
@@ -408,13 +438,25 @@ test("execution claims are single-use before costly local work starts", async ()
   await withContext(async ({ repositories }) => {
     const command = reservation(20_300);
     const reserved = await reserve(repositories, command);
+    const acknowledged = await repositories.execution.recordDispatchAcknowledged(
+      { workspaceId: IDS.workspaceA },
+      {
+        idempotencyKey: "workflow-local:claim:acknowledged",
+        taskId: command.task.taskId,
+        attemptId: command.attempt.attemptId,
+        externalJobId: "workflow-local-claim-job",
+        providerDetails: { provider: "local" },
+        acknowledgedAt: secondsAfter(1),
+      },
+    );
+    assert.equal(acknowledged.ok, true);
     const claim = {
       idempotencyKey: "workflow-local:claim:first",
       taskId: command.task.taskId,
       attemptId: command.attempt.attemptId,
       presentedClaimTokenHash: command.attempt.executionClaimTokenHash,
       expectedTaskVersion: reserved.task.version,
-      claimedAt: secondsAfter(1),
+      claimedAt: secondsAfter(2),
     };
     const first = await repositories.execution.claimExecution(
       { workspaceId: IDS.workspaceA },
@@ -430,7 +472,7 @@ test("execution claims are single-use before costly local work starts", async ()
     assert.equal(replay.value.replayed, true);
     const duplicate = await repositories.execution.claimExecution(
       { workspaceId: IDS.workspaceA },
-      { ...claim, idempotencyKey: "workflow-local:claim:duplicate", claimedAt: secondsAfter(2) },
+      { ...claim, idempotencyKey: "workflow-local:claim:duplicate", claimedAt: secondsAfter(3) },
     );
     assert.equal(duplicate.ok, false);
     assert.equal(duplicate.kind, "CONFLICT");
@@ -466,6 +508,15 @@ test("mutation receipts preserve exact results and reject changed or cross-opera
       expectedTaskVersion: reserved.task.version,
       claimedAt: secondsAfter(1),
     };
+    const receiptAcknowledged = await repositories.execution.recordDispatchAcknowledged(scope, {
+      idempotencyKey: "workflow-local:receipt:claim-acknowledged",
+      taskId: reservedCommand.task.taskId,
+      attemptId: reservedCommand.attempt.attemptId,
+      externalJobId: "workflow-local-receipt-claim-job",
+      providerDetails: { provider: "local" },
+      acknowledgedAt: secondsAfter(1),
+    });
+    assert.equal(receiptAcknowledged.ok, true);
     const claimed = await repositories.execution.claimExecution(scope, claim);
     assert.equal(claimed.ok, true);
     assert.equal(claimed.value.replayed, false);
@@ -589,7 +640,25 @@ test("mutation receipts preserve exact results and reject changed or cross-opera
     assert.equal(changedTerminal.code, "IDEMPOTENCY_KEY_REUSED");
 
     const acceptedReservation = reservation(20_380, 23);
-    await reserve(repositories, acceptedReservation);
+    const acceptedReserved = await reserve(repositories, acceptedReservation);
+    const acceptedAcknowledged = await repositories.execution.recordDispatchAcknowledged(scope, {
+      idempotencyKey: "workflow-local:receipt:successful-acknowledged",
+      taskId: acceptedReservation.task.taskId,
+      attemptId: acceptedReservation.attempt.attemptId,
+      externalJobId: "workflow-local-receipt-success-job",
+      providerDetails: { provider: "local" },
+      acknowledgedAt: secondsAfter(6),
+    });
+    assert.equal(acceptedAcknowledged.ok, true);
+    const acceptedClaim = await repositories.execution.claimExecution(scope, {
+      idempotencyKey: "workflow-local:receipt:successful-claim",
+      taskId: acceptedReservation.task.taskId,
+      attemptId: acceptedReservation.attempt.attemptId,
+      presentedClaimTokenHash: acceptedReservation.attempt.executionClaimTokenHash,
+      expectedTaskVersion: acceptedReserved.task.version,
+      claimedAt: secondsAfter(6),
+    });
+    assert.equal(acceptedClaim.ok, true);
     const successful = await repositories.execution.recordSuccessfulResult(scope, {
       idempotencyKey: "workflow-local:receipt:successful",
       taskId: acceptedReservation.task.taskId,

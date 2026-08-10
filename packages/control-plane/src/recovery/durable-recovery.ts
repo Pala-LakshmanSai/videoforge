@@ -1,4 +1,3 @@
-import type { SqlExecutor } from "../database/ports.js";
 import type {
   AppendCostEventCommand,
   EventRepository,
@@ -91,37 +90,18 @@ export interface SettleRecoveredCancellationCommand {
 
 export type CostEventMutation = AppendCostEventCommand;
 
-interface CountRow extends Record<string, unknown> {
-  readonly count: unknown;
-}
-
-function integer(value: unknown, label: string): number {
-  const normalized = typeof value === "bigint" ? Number(value) : Number(value);
-  if (!Number.isSafeInteger(normalized) || normalized < 0) {
-    throw new TypeError(`${label} must be a nonnegative safe integer`);
-  }
-  return normalized;
-}
-
 function displayState(
   task: GenerationTaskRecord,
-  attempts: readonly {
-    readonly state: string;
-    readonly dispatchState: string;
-    readonly finishedAt: string | null;
-  }[],
+  facts: { readonly reconcilingAttemptCount: number; readonly runningAttemptCount: number },
 ): RecoveryDisplayState {
   if (task.state === "COMPLETE") return "READY";
   if (task.state === "CANCELLED") return "CANCELLED";
   if (task.state === "CANCEL_REQUESTED") return "CANCEL_REQUESTED";
-  if (
-    task.state === "BLOCKED" ||
-    attempts.some((attempt) => attempt.state === "UNKNOWN" || attempt.dispatchState === "AMBIGUOUS")
-  ) {
+  if (task.state === "BLOCKED" || facts.reconcilingAttemptCount > 0) {
     return "RECONCILING";
   }
   if (task.state === "FAILED") return "FAILED";
-  if (attempts.some((attempt) => ["CLAIMED", "RUNNING"].includes(attempt.state))) {
+  if (facts.runningAttemptCount > 0) {
     return "RUNNING";
   }
   if (["PENDING", "READY", "DISPATCHING", "RETRY_WAIT"].includes(task.state)) return "PENDING";
@@ -145,6 +125,7 @@ async function requireFinalizedCost(
     value.reservedEventCount < 1 ||
     value.finalizationEventCount < 1 ||
     value.invalidReservationAttemptCount !== 0 ||
+    value.nonConservingAttemptCount !== 0 ||
     value.activeReservationMicroUsd !== 0n ||
     value.unsettledReportedAttemptCount !== 0
   ) {
@@ -172,7 +153,6 @@ async function requireFinalizedCost(
  */
 export class DurableRecoveryCoordinator {
   public constructor(
-    private readonly database: SqlExecutor,
     private readonly repositories: ControlPlaneRepositories,
     private readonly workflow: Pick<LocalWorkflowTransport, "deliverNext">,
   ) {}
@@ -296,37 +276,12 @@ export class DurableRecoveryCoordinator {
     scope: WorkspaceScope,
     taskId: string,
   ): Promise<RecoveryRepositoryResult<DurableRecoverySnapshot>> {
-    const taskResult = await this.repositories.execution.resolveTask(scope, { taskId });
-    if (!taskResult.ok) return taskResult;
-    const attemptsResult = await this.repositories.execution.listAttempts(scope, { taskId });
-    if (!attemptsResult.ok) return attemptsResult;
-    const costResult = await this.repositories.events.summarizeTaskCost(scope, { taskId });
-    if (!costResult.ok) return costResult;
-    const attempts = attemptsResult.value;
-    const outboxRows = await this.database.query<{
-      readonly dead_letter_count: unknown;
-      readonly dispatch_count: unknown;
-      readonly cancellation_count: unknown;
-    }>(
-      `SELECT
-         count(*) FILTER (WHERE kind = 'DISPATCH')::int AS dispatch_count,
-         count(*) FILTER (WHERE kind = 'CANCEL')::int AS cancellation_count,
-         count(*) FILTER (WHERE state = 'DEAD_LETTER')::int AS dead_letter_count
-       FROM outbox WHERE workspace_id = $1 AND task_id = $2`,
-      [scope.workspaceId, taskId],
-    );
-    const outbox = outboxRows.rows[0];
-    if (outbox === undefined) throw new Error("recovery outbox aggregate query returned no row");
-    const acceptedCountRows = await this.database.query<CountRow>(
-      `SELECT count(*)::int AS count FROM attempts
-       WHERE workspace_id = $1 AND task_id = $2 AND result_disposition = 'ACCEPTED'`,
-      [scope.workspaceId, taskId],
-    );
-    const acceptedCount = acceptedCountRows.rows[0];
-    if (acceptedCount === undefined) {
-      throw new Error("recovery accepted-attempt aggregate query returned no row");
-    }
-    const costs = costResult.value;
+    const factsResult = await this.repositories.execution.resolveRecoveryTaskFacts(scope, {
+      taskId,
+    });
+    if (!factsResult.ok) return factsResult;
+    const facts = factsResult.value;
+    const costs = facts.cost;
     const reserved = costs.reservedMicroUsd;
     const settled = costs.settledMicroUsd;
     const released = costs.releasedMicroUsd;
@@ -335,17 +290,16 @@ export class DurableRecoveryCoordinator {
       ok: true,
       value: {
         workspaceId: scope.workspaceId,
-        task: taskResult.value,
-        displayState: displayState(taskResult.value, attempts),
-        attemptCount: attempts.length,
-        claimedAttemptCount: attempts.filter((attempt) => attempt.claimState === "CLAIMED").length,
-        acceptedAttemptCount: integer(acceptedCount.count, "accepted attempt count"),
-        ambiguousAttemptCount: attempts.filter((attempt) => attempt.dispatchState === "AMBIGUOUS")
-          .length,
-        activeAttemptCount: attempts.filter((attempt) => attempt.finishedAt === null).length,
-        dispatchOutboxCount: integer(outbox.dispatch_count, "dispatch outbox count"),
-        cancellationOutboxCount: integer(outbox.cancellation_count, "cancellation outbox count"),
-        deadLetterOutboxCount: integer(outbox.dead_letter_count, "dead-letter outbox count"),
+        task: facts.task,
+        displayState: displayState(facts.task, facts),
+        attemptCount: facts.attemptCount,
+        claimedAttemptCount: facts.claimedAttemptCount,
+        acceptedAttemptCount: facts.acceptedAttemptCount,
+        ambiguousAttemptCount: facts.ambiguousAttemptCount,
+        activeAttemptCount: facts.activeAttemptCount,
+        dispatchOutboxCount: facts.dispatchOutboxCount,
+        cancellationOutboxCount: facts.cancellationOutboxCount,
+        deadLetterOutboxCount: facts.deadLetterOutboxCount,
         cost: {
           reservedMicroUsd: reserved,
           reportedMicroUsd: costs.reportedMicroUsd,

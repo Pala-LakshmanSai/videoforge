@@ -211,7 +211,19 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
               }
               tone={statusTone(project.status)}
             />
-            <Metric label="Estimated" value={project.eta} detail="remaining" />
+            <Metric
+              label={
+                project.status === "FAILED" || project.status === "CANCELLED"
+                  ? "Runtime"
+                  : "Estimated"
+              }
+              value={project.eta}
+              detail={
+                project.status === "FAILED" || project.status === "CANCELLED"
+                  ? "no work active"
+                  : "remaining"
+              }
+            />
             <Metric
               label="Cost"
               value={`$${project.actualCost.toFixed(2)}`}
