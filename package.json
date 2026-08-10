@@ -18,6 +18,7 @@
     "dev:local": "node scripts/dev.mjs --mode=local",
     "dev:open": "node scripts/dev-open.mjs",
     "dev:status": "node scripts/dev-status.mjs",
+    "db:check": "pnpm --filter @videoforge/control-plane test",
     "doctor": "node scripts/doctor.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -35,7 +36,7 @@
     "typecheck": "turbo run typecheck",
     "audit:dependencies": "pnpm audit --audit-level high",
     "secret:scan": "node scripts/secret-scan.mjs",
-    "verify": "pnpm format:check && pnpm lint && pnpm python:lint && pnpm typecheck && pnpm test && pnpm contracts:check && pnpm context:validate && pnpm secret:scan && pnpm build:check-generated && pnpm test:chrome"
+    "verify": "pnpm format:check && pnpm lint && pnpm python:lint && pnpm typecheck && pnpm db:check && pnpm test && pnpm contracts:check && pnpm context:validate && pnpm secret:scan && pnpm build:check-generated && pnpm test:chrome"
   },
   "devDependencies": {
     "@eslint/js": "9.35.0",
