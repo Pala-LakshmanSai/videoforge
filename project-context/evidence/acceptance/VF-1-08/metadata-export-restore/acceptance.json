@@ -1,0 +1,98 @@
+{
+  "schema_version": "videoforge.acceptance-evidence/v1",
+  "task_id": "VF-1-08",
+  "status": "technical_pass",
+  "recorded_at": "2026-08-10T13:35:44Z",
+  "implementation": {
+    "commit": "866a5ddf4bce994f5521e93bf9b5ea8f288d96cf",
+    "snapshot_schema_version": "videoforge.metadata-snapshot/v1",
+    "migration_ledger_entries": 5,
+    "relational_tables": 31,
+    "source_transaction": "repeatable_read_read_only",
+    "restore_transactional": true,
+    "restore_plan_requires_special_database_privileges": false
+  },
+  "determinism_and_integrity": {
+    "same_source_serializes_identically": true,
+    "per_table_sha256": true,
+    "whole_snapshot_sha256": true,
+    "table_order_locked": true,
+    "migration_ledger_locked": true,
+    "fresh_restore_reexports_exact_snapshot": true,
+    "persistent_database_reopen_verified": true,
+    "exact_revision_hash_resolves_after_reopen": true,
+    "checksum_is_claimed_as_cryptographic_signature": false
+  },
+  "recovery": {
+    "exact_snapshot_resume_is_idempotent": true,
+    "accepted_and_rejected_attempt_lineage_preserved": true,
+    "dead_letter_outbox_preserved": true,
+    "workflow_event_preserved": true,
+    "cost_reservation_preserved": true,
+    "injected_partial_failure_rolls_back": true,
+    "retry_after_rollback_succeeds": true,
+    "different_nonempty_destination_rejected": true
+  },
+  "negative_matrix": {
+    "truncated_snapshot_rejected": true,
+    "unsupported_version_rejected": true,
+    "incompatible_migration_digest_rejected": true,
+    "reordered_tables_rejected": true,
+    "tampered_row_rejected": true,
+    "secret_shaped_payload_rejected": true,
+    "failure_errors_include_recovery_guidance": true,
+    "partial_destination_rows_after_failure": 0
+  },
+  "scope": {
+    "scheduler_invokable_export_primitive": true,
+    "production_schedule_created": false,
+    "private_media_bytes_exported": false,
+    "raw_credentials_or_signed_urls_exported": false,
+    "cloud_backup_or_storage_configured": false
+  },
+  "audit": {
+    "result": "closed_no_remaining_high_or_medium",
+    "restore_plan_covers_every_relational_table_exactly_once": true,
+    "dynamic_values_parameterized": true,
+    "committed_schema_constants_are_identifier_authority": true,
+    "network_or_provider_surface_added": false,
+    "ambient_environment_or_credential_surface_added": false
+  },
+  "verification": {
+    "result": "pass",
+    "forced_turbo_cache_hits": 0,
+    "focused_metadata_restore_tests": { "passed": 4, "failed": 0, "skipped": 0 },
+    "control_plane_tests": { "passed": 116, "failed": 0, "skipped": 0 },
+    "pipeline_tests": { "passed": 37, "failed": 0, "skipped": 0 },
+    "web_tests": { "passed": 148, "failed": 0, "skipped": 0 },
+    "local_workerd_tests": { "passed": 1, "failed": 0, "skipped": 0 },
+    "installed_chrome_tests": { "passed": 36, "failed": 0, "skipped": 0 },
+    "synchronized_contract_files": 47,
+    "known_dependency_vulnerabilities": 0,
+    "commands": [
+      "pnpm --filter @videoforge/control-plane lint",
+      "pnpm --filter @videoforge/control-plane typecheck",
+      "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/metadata-export-restore.test.mjs",
+      "pnpm db:check",
+      "TURBO_FORCE=true pnpm verify",
+      "pnpm context:validate",
+      "pnpm secret:scan",
+      "pnpm audit:dependencies",
+      "git diff --check",
+      "git status --short"
+    ]
+  },
+  "authorization": {
+    "database_url_used": false,
+    "remote_or_cloud_mutation_performed": false,
+    "network_used": false,
+    "credentials_used": false,
+    "provider_calls_made": false,
+    "model_downloads_performed": false,
+    "external_spend_usd": 0
+  },
+  "next_boundary": {
+    "local_next_task_requires_refreshed_current_state": true,
+    "isolated_staging": "awaiting separate external authority"
+  }
+}
