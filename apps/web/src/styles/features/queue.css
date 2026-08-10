@@ -1,5 +1,5 @@
 .queue-overview .metric {
-  min-height: 108px;
+  min-height: 86px;
 }
 
 .table-list {
@@ -76,18 +76,18 @@
 
 .queue-list {
   display: grid;
-  gap: 16px;
+  gap: 13px;
 }
 
 .queue-card {
   display: grid;
-  min-height: 112px;
-  grid-template-columns: minmax(260px, 1.25fr) minmax(190px, 0.7fr) minmax(210px, 0.8fr) auto;
+  min-height: 90px;
+  grid-template-columns: minmax(208px, 1.25fr) minmax(152px, 0.7fr) minmax(168px, 0.8fr) auto;
   align-items: center;
-  gap: 22px;
-  padding: 18px 20px;
+  gap: 18px;
+  padding: 14px 16px;
   border: 1px solid var(--surface-border-subtle);
-  border-radius: 22px;
+  border-radius: 18px;
   background: var(--surface-fill);
   box-shadow: var(--surface-tile-shadow), var(--surface-glow);
   transition:
@@ -134,10 +134,10 @@
 }
 
 .project-icon {
-  width: 50px;
-  height: 50px;
-  flex-basis: 50px;
-  border-radius: 16px;
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+  border-radius: 13px;
 }
 
 .queue-card__status {
@@ -171,7 +171,7 @@
 .queue-card__facts small {
   color: var(--muted);
   font:
-    700 max(0.8rem, 16px) ui-monospace,
+    700 max(0.8rem, 13px) ui-monospace,
     SFMono-Regular,
     Menlo,
     monospace;

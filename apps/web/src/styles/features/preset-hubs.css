@@ -90,15 +90,15 @@
 
 .search-field {
   display: block;
-  width: min(520px, 100%);
+  width: min(416px, 100%);
 }
 
 .search-field input {
   width: 100%;
-  height: 52px;
-  padding: 0 18px;
+  height: 44px;
+  padding: 0 14px;
   border: 1px solid var(--border);
-  border-radius: 17px;
+  border-radius: 14px;
   color: var(--text);
   background: rgba(12, 14, 30, 0.78);
 }
@@ -106,14 +106,14 @@
 .avatar-card-grid,
 .style-card-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px;
+  gap: 18px;
   align-items: start;
 }
 
 .entity-card {
   padding: 0;
   overflow: hidden;
-  border-radius: 22px;
+  border-radius: 18px;
   background: rgba(8, 10, 24, 0.76);
 }
 
@@ -126,7 +126,7 @@
 
 .avatar-card-media,
 .style-card-media {
-  height: clamp(220px, 18vw, 300px);
+  height: clamp(176px, 14.4vw, 240px);
 }
 
 .avatar-card-media::after,
@@ -155,8 +155,8 @@
 .avatar-card-media > .badge,
 .style-card-badges {
   position: absolute;
-  right: 16px;
-  bottom: 16px;
+  right: 13px;
+  bottom: 13px;
   z-index: 1;
 }
 
@@ -166,7 +166,7 @@
 }
 
 .entity-card-body {
-  padding: 18px 20px 15px;
+  padding: 14px 16px 12px;
 }
 
 .entity-title-row {
@@ -199,20 +199,20 @@
 }
 
 .entity-details {
-  margin: 0 14px 14px;
+  margin: 0 11px 11px;
 }
 
 .entity-details-trigger {
   display: flex;
-  width: calc(100% - 28px);
-  min-height: 52px;
+  width: calc(100% - 22px);
+  min-height: 44px;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  margin: 0 14px 14px;
-  padding: 10px 14px;
+  gap: 11px;
+  margin: 0 11px 11px;
+  padding: 8px 11px;
   border: 1px solid var(--border);
-  border-radius: 17px;
+  border-radius: 14px;
   color: var(--text);
   background: rgba(255, 255, 255, 0.035);
   cursor: pointer;
@@ -366,7 +366,7 @@
 
 .onboarding-details {
   align-self: start;
-  padding: 18px;
+  padding: 14px;
   border: 1px solid var(--surface-border);
   border-radius: var(--panel-radius);
   background: var(--panel);
@@ -374,6 +374,6 @@
 }
 
 .onboarding-details > .disclosure-summary {
-  min-height: 72px;
-  border-radius: 19px;
+  min-height: 58px;
+  border-radius: 15px;
 }

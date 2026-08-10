@@ -28,14 +28,14 @@
   width: 100%;
   align-items: flex-start;
   justify-content: space-between;
-  padding: clamp(22px, 3vw, 42px) clamp(22px, 4vw, 68px);
+  padding: clamp(18px, 2.4vw, 34px) clamp(18px, 3.2vw, 54px);
 }
 
 .access-brand {
   display: inline-flex;
-  min-height: 52px;
+  min-height: 44px;
   align-items: center;
-  gap: 13px;
+  gap: 10px;
   color: var(--text);
   font-size: 1.06rem;
   letter-spacing: -0.025em;
@@ -43,29 +43,29 @@
 
 .access-brand-mark {
   display: grid;
-  width: 52px;
-  height: 52px;
+  width: 42px;
+  height: 42px;
   place-items: center;
   border: 1px solid rgba(255, 111, 133, 0.34);
-  border-radius: 17px;
+  border-radius: 14px;
   background: linear-gradient(145deg, rgba(255, 72, 102, 0.94), rgba(151, 54, 170, 0.86));
   box-shadow: 0 14px 38px rgba(255, 65, 94, 0.22);
 }
 
 .access-main {
   display: grid;
-  min-height: calc(100vh - 118px);
+  min-height: calc(100vh - 94px);
   place-items: center;
-  padding: 24px 24px clamp(56px, 9vh, 112px);
+  padding: 19px 19px clamp(45px, 7.2vh, 90px);
 }
 
 .access-card {
   position: relative;
-  width: min(100%, 560px);
-  padding: clamp(30px, 4.2vw, 50px);
+  width: min(100%, 448px);
+  padding: clamp(24px, 3.4vw, 40px);
   overflow: hidden;
   border: 1px solid rgba(177, 174, 229, 0.2);
-  border-radius: 32px;
+  border-radius: 26px;
   background: linear-gradient(145deg, rgba(25, 28, 53, 0.9), rgba(14, 16, 34, 0.82));
   box-shadow:
     0 42px 110px rgba(0, 0, 0, 0.46),
@@ -92,12 +92,12 @@
 
 .access-lock {
   display: grid;
-  width: 58px;
-  height: 58px;
-  margin-bottom: 28px;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 22px;
   place-items: center;
   border: 1px solid rgba(92, 224, 170, 0.26);
-  border-radius: 19px;
+  border-radius: 15px;
   background: rgba(63, 199, 145, 0.1);
   color: #6ee5b4;
 }
@@ -126,7 +126,7 @@
 
 .access-lead {
   max-width: 450px;
-  margin-top: 18px;
+  margin-top: 14px;
   color: #b8bac9;
   font-size: 1.03rem;
   line-height: 1.65;
@@ -135,22 +135,22 @@
 .access-account {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  min-height: 78px;
+  min-height: 62px;
   align-items: center;
-  gap: 14px;
-  margin-top: 30px;
-  padding: 13px 15px;
+  gap: 11px;
+  margin-top: 24px;
+  padding: 10px 12px;
   border: 1px solid rgba(177, 174, 229, 0.18);
-  border-radius: 20px;
+  border-radius: 16px;
   background: rgba(8, 10, 25, 0.52);
 }
 
 .access-account-avatar {
   display: grid;
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   place-items: center;
-  border-radius: 16px;
+  border-radius: 13px;
   background: linear-gradient(145deg, rgba(77, 107, 255, 0.24), rgba(143, 85, 255, 0.18));
   color: #cbd3ff;
 }
@@ -194,11 +194,11 @@
 .access-blocker {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 12px;
-  margin-top: 16px;
-  padding: 15px 16px;
+  gap: 10px;
+  margin-top: 13px;
+  padding: 12px 13px;
   border: 1px solid rgba(255, 95, 120, 0.24);
-  border-radius: 17px;
+  border-radius: 14px;
   background: rgba(255, 70, 98, 0.075);
   color: #ff8b9c;
 }
@@ -222,14 +222,14 @@
 .access-primary-action {
   display: flex;
   width: 100%;
-  min-height: 56px;
+  min-height: 44px;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-top: 24px;
-  padding: 0 20px;
+  gap: 13px;
+  margin-top: 19px;
+  padding: 0 16px;
   border: 1px solid rgba(255, 116, 136, 0.34);
-  border-radius: 18px;
+  border-radius: 14px;
   background: linear-gradient(115deg, #f53e5c, #cf356f 58%, #794bc7);
   box-shadow: 0 18px 42px rgba(237, 55, 93, 0.22);
   color: white;
@@ -282,9 +282,9 @@
 
 .access-fixture-picker {
   position: relative;
-  width: min(290px, calc(100vw - 150px));
+  width: min(232px, calc(100vw - 120px));
   border: 1px solid rgba(177, 174, 229, 0.18);
-  border-radius: 16px;
+  border-radius: 13px;
   background: rgba(18, 20, 40, 0.8);
   color: var(--text);
   backdrop-filter: blur(18px);
@@ -292,10 +292,10 @@
 
 .access-fixture-picker summary {
   display: flex;
-  min-height: 50px;
+  min-height: 44px;
   align-items: center;
-  gap: 9px;
-  padding: 0 14px;
+  gap: 7px;
+  padding: 0 11px;
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 750;
@@ -325,7 +325,7 @@
 }
 
 .access-fixture-field .app-select-trigger {
-  min-height: 52px;
+  min-height: 44px;
 }
 
 .access-fixture-picker > small {
@@ -397,9 +397,9 @@
   }
 
   .access-brand-mark {
-    width: 46px;
-    height: 46px;
-    border-radius: 15px;
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
   }
 
   .access-fixture-picker {
@@ -409,12 +409,12 @@
   .access-main {
     min-height: calc(100vh - 88px);
     align-items: start;
-    padding: clamp(30px, 9vh, 74px) 16px 44px;
+    padding: clamp(24px, 7vh, 59px) 14px 36px;
   }
 
   .access-card {
-    padding: 28px 22px;
-    border-radius: 26px;
+    padding: 22px 18px;
+    border-radius: 21px;
   }
 
   .access-card h1 {

@@ -264,7 +264,7 @@
   position: relative;
   display: block;
   min-height: 100vh;
-  padding: 0 0 178px;
+  padding: 0 0 144px;
 }
 
 .shell-ambient {
@@ -297,7 +297,7 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  min-height: 88px;
+  min-height: 70px;
   border-bottom: 1px solid var(--border);
   background: rgba(5, 7, 18, 0.78);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
@@ -307,50 +307,51 @@
 .top-command-bar-inner {
   display: grid;
   width: 100%;
-  grid-template-columns: max-content minmax(360px, 1fr) max-content;
+  grid-template-columns: max-content minmax(288px, 1fr) max-content;
   align-items: center;
-  gap: 18px;
-  min-height: 88px;
-  padding: 11px clamp(20px, 2.2vw, 42px);
+  gap: 14px;
+  min-height: 70px;
+  padding: 9px clamp(16px, 1.8vw, 34px);
 }
 
 .top-brand {
   display: flex;
-  min-width: 162px;
+  min-width: 130px;
+  min-height: 44px;
   align-items: center;
-  gap: 11px;
+  gap: 9px;
   font-size: 1.08rem;
   letter-spacing: -0.035em;
 }
 
 .top-brand-mark {
   display: grid;
-  width: 48px;
-  height: 48px;
+  width: 38px;
+  height: 38px;
   place-items: center;
   border: 1px solid rgba(255, 126, 143, 0.32);
-  border-radius: 16px;
+  border-radius: 13px;
   color: #fff;
   background: linear-gradient(145deg, rgba(255, 64, 89, 0.9), rgba(141, 76, 212, 0.82));
   box-shadow: 0 12px 35px rgba(255, 50, 82, 0.25);
 }
 
 .project-command-track {
-  --project-command-inline-inset: clamp(22px, 1.7vw, 34px);
+  --project-command-inline-inset: clamp(18px, 1.35vw, 27px);
 
   position: relative;
   display: grid;
   width: 100%;
   max-width: none;
   min-width: 0;
-  min-height: 62px;
+  min-height: 50px;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  padding: 8px var(--project-command-inline-inset) 14px;
+  gap: 13px;
+  padding: 6px var(--project-command-inline-inset) 11px;
   overflow: hidden;
   border: 1px solid var(--border-strong);
-  border-radius: 21px;
+  border-radius: 17px;
   background:
     linear-gradient(
       100deg,
@@ -368,7 +369,7 @@
 .project-command-track .progress-root {
   position: absolute;
   right: var(--project-command-inline-inset);
-  bottom: 7px;
+  bottom: 5px;
   left: var(--project-command-inline-inset);
   width: auto;
   height: 4px;
@@ -378,7 +379,7 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 13px;
+  gap: 10px;
 }
 
 .project-command-copy > strong {
@@ -419,7 +420,7 @@
 .project-command-metrics {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 10px;
   color: var(--muted);
   font:
     700 0.8rem ui-monospace,
@@ -452,34 +453,36 @@
 .top-command-tools {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .top-health {
   display: flex;
-  min-height: 48px;
+  min-height: 44px;
   align-items: center;
-  gap: 8px;
-  padding: 0 14px;
+  gap: 7px;
+  padding: 0 11px;
   border: 1px solid var(--border);
-  border-radius: 17px;
+  border-radius: 14px;
   color: var(--muted);
   background: rgba(255, 255, 255, 0.035);
 }
 
 .fixture-control > .disclosure-summary {
-  min-width: 182px;
+  min-width: 146px;
+  min-height: 44px;
+  padding: 4px 10px;
 }
 
 .fixture-control > .disclosure-content {
   position: absolute;
-  top: calc(100% + 12px);
+  top: calc(100% + 10px);
   right: 0;
   z-index: 60;
-  width: min(380px, calc(100vw - 32px));
-  padding: 18px;
+  width: min(304px, calc(100vw - 26px));
+  padding: 14px;
   border: 1px solid var(--border-strong);
-  border-radius: 22px;
+  border-radius: 18px;
   background: rgba(11, 14, 30, 0.98);
   box-shadow: var(--shadow);
 }
@@ -507,17 +510,17 @@
 
 .bottom-nav-dock {
   position: fixed;
-  bottom: max(18px, env(safe-area-inset-bottom));
+  bottom: max(14px, env(safe-area-inset-bottom));
   left: 50%;
   z-index: 48;
   display: flex;
-  max-width: calc(100vw - 24px);
+  max-width: calc(100vw - 20px);
   align-items: stretch;
-  gap: 6px;
-  padding: 12px;
+  gap: 5px;
+  padding: 10px;
   transform: translateX(-50%);
   border: 1px solid rgba(164, 175, 255, 0.26);
-  border-radius: 32px;
+  border-radius: 26px;
   background:
     linear-gradient(
       105deg,
@@ -536,16 +539,16 @@
 
   position: relative;
   display: flex;
-  min-width: 94px;
-  min-height: 74px;
+  min-width: 76px;
+  min-height: 62px;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: 7px;
-  padding: 9px 11px;
-  border-radius: 21px;
+  gap: 6px;
+  padding: 3px 2px;
+  border-radius: 17px;
   color: rgba(241, 240, 251, 0.72);
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 650;
   isolation: isolate;
 }
@@ -581,14 +584,14 @@
 
 .bottom-nav-icon {
   display: grid;
-  width: 48px;
-  height: 44px;
+  width: 38px;
+  height: 35px;
   flex: 0 0 auto;
   place-items: center;
   transform: scale(var(--dock-scale));
   transform-origin: center bottom;
   border: 1px solid rgba(222, 226, 255, 0.1);
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.035);
   will-change: transform;
   transition:
@@ -614,6 +617,8 @@
 }
 
 .bottom-nav-label {
+  line-height: 1.15;
+  white-space: nowrap;
   transition: color 150ms ease;
 }
 
@@ -623,7 +628,7 @@
 
 .bottom-nav-item-active .bottom-nav-icon {
   border-color: rgba(255, 173, 187, 0.42);
-  border-radius: 12px;
+  border-radius: 10px;
   color: #fff;
   background: linear-gradient(145deg, var(--accent), #ff6c7d);
   box-shadow: 0 7px 22px rgba(255, 49, 78, 0.34);
@@ -631,7 +636,7 @@
 
 .bottom-nav-active-dot {
   position: absolute;
-  bottom: 3px;
+  bottom: 2px;
   width: 4px;
   height: 4px;
   border-radius: 50%;
@@ -645,16 +650,16 @@
 
 .page {
   display: flex;
-  width: min(1480px, 100%);
+  width: min(1184px, 100%);
   margin: 0 auto;
-  padding: 36px clamp(22px, 3.5vw, 52px) 56px;
+  padding: 29px clamp(18px, 2.8vw, 42px) 45px;
   flex-direction: column;
   gap: var(--page-section-gap);
 }
 
 .page-header {
   align-items: flex-end;
-  gap: 22px;
+  gap: 18px;
   margin: 4px 0 0;
 }
 
@@ -665,7 +670,7 @@
 .page-header-title,
 .page-header h1 {
   margin: 6px 0 8px;
-  font-size: clamp(2.05rem, 3.1vw, 2.85rem);
+  font-size: clamp(1.9rem, 2.5vw, 2.5rem);
   line-height: 1.02;
   letter-spacing: -0.06em;
   text-wrap: balance;
@@ -675,12 +680,12 @@
 .page-header > div > p:last-child {
   max-width: 760px;
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   line-height: 1.45;
 }
 
 .page-actions {
-  gap: 12px;
+  gap: 10px;
 }
 
 .eyebrow {

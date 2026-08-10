@@ -317,7 +317,7 @@ export function AppShell({ children }: PropsWithChildren) {
         aria-label={item.label}
       >
         <span className="bottom-nav-icon" aria-hidden="true">
-          <Icon size={30} />
+          <Icon size={24} />
         </span>
         <span className="bottom-nav-label bottom-nav-label-full">{item.label}</span>
         <span className="bottom-nav-label bottom-nav-label-mobile" aria-hidden="true">
@@ -452,7 +452,7 @@ export function AppShell({ children }: PropsWithChildren) {
             }
           >
             <span className="bottom-nav-icon" aria-hidden="true">
-              <Activity size={30} />
+              <Activity size={24} />
             </span>
             <span className="bottom-nav-label">Progress</span>
             {path.startsWith("/projects/") && path !== "/projects/new" ? (

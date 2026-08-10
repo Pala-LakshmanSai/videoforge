@@ -1,13 +1,13 @@
 .review-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 15px;
+  gap: 12px;
 }
 
 .review-card {
-  padding: 13px;
+  padding: 10px;
   border: 1px solid var(--surface-border);
-  border-radius: 20px;
+  border-radius: 16px;
   background: var(--surface-fill);
   box-shadow: var(--surface-tile-shadow), var(--surface-glow);
 }
@@ -30,15 +30,15 @@
 .progress-hero {
   position: relative;
   display: grid;
-  min-height: 300px;
-  grid-template-columns: 220px minmax(0, 1fr);
+  min-height: 240px;
+  grid-template-columns: 176px minmax(0, 1fr);
   align-items: center;
-  gap: 28px;
+  gap: 22px;
   margin-top: 0;
-  padding: clamp(24px, 2.6vw, 36px);
+  padding: clamp(19px, 2.1vw, 29px);
   overflow: hidden;
   border: 1px solid var(--surface-border);
-  border-radius: 27px;
+  border-radius: 22px;
   background:
     radial-gradient(circle at 10% 30%, rgba(255, 49, 80, 0.22), transparent 36%),
     radial-gradient(circle at 88% 88%, rgba(60, 85, 201, 0.14), transparent 34%),
@@ -63,8 +63,8 @@
   position: relative;
   z-index: 1;
   display: grid;
-  width: 190px;
-  height: 190px;
+  width: 152px;
+  height: 152px;
   place-items: center;
   border-radius: 50%;
   background: conic-gradient(
@@ -76,7 +76,7 @@
 
 .progress-ring::before {
   position: absolute;
-  inset: 18px;
+  inset: 14px;
   content: "";
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: inherit;
@@ -118,14 +118,14 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
 .progress-hero-heading {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 18px;
+  gap: 14px;
 }
 
 .progress-hero-heading h2 {
@@ -136,12 +136,12 @@
 .progress-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .progress-metrics .metric {
-  min-height: 100px;
-  padding: 15px;
+  min-height: 80px;
+  padding: 12px;
   border-color: var(--surface-border-subtle);
   background: rgba(255, 255, 255, 0.065);
 }
@@ -152,19 +152,19 @@
 
 .progress-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(400px, 0.85fr);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 16px;
   margin-top: 0;
   align-items: start;
 }
 
 .progress-side {
   display: grid;
-  gap: 20px;
+  gap: 16px;
 }
 
 .pipeline-panel {
-  min-height: 620px;
+  min-height: 496px;
 }
 
 .stage-list {
@@ -180,13 +180,13 @@
 .stage-row {
   position: relative;
   display: grid;
-  min-height: 68px;
-  grid-template-columns: 34px 20px minmax(0, 1fr) auto;
+  min-height: 55px;
+  grid-template-columns: 27px 16px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 11px;
-  padding: 8px 13px 8px 7px;
+  gap: 9px;
+  padding: 6px 10px 6px 6px;
   border: 1px solid var(--surface-border-subtle);
-  border-radius: 18px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.022);
   box-shadow: 0 7px 18px rgba(0, 0, 0, 0.12);
 }
@@ -202,7 +202,7 @@
 .stage-count {
   color: var(--muted-dim);
   font:
-    750 max(0.8rem, 16px) ui-monospace,
+    750 max(0.8rem, 13px) ui-monospace,
     SFMono-Regular,
     Menlo,
     monospace;
@@ -232,15 +232,15 @@
 .stage-dot {
   position: relative;
   z-index: 1;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   margin: 0;
   border-width: 2px;
 }
 
 .stage-row-active .stage-dot {
-  width: 17px;
-  height: 17px;
+  width: 14px;
+  height: 14px;
   box-shadow:
     0 0 0 5px rgba(255, 65, 91, 0.12),
     0 0 22px rgba(255, 65, 91, 0.4);
@@ -265,7 +265,7 @@
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.13);
-  border-radius: 22px;
+  border-radius: 18px;
   background: #0b0e1c;
 }
 
@@ -283,8 +283,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  margin-top: 14px;
+  gap: 11px;
+  margin-top: 11px;
   color: var(--muted);
   font-size: 0.88rem;
 }
@@ -296,10 +296,10 @@
 
 .lane-row {
   display: grid;
-  gap: 10px;
-  padding: 15px 16px;
+  gap: 8px;
+  padding: 12px 13px;
   border: 1px solid var(--surface-border-subtle);
-  border-radius: 17px;
+  border-radius: 14px;
   background: var(--surface-fill-soft);
   box-shadow: 0 7px 18px rgba(0, 0, 0, 0.12);
 }
@@ -350,47 +350,47 @@
 
 .lane-title > .compute-status {
   color: var(--muted);
-  font-size: max(0.8rem, 16px);
+  font-size: max(0.8rem, 13px);
 }
 
 .project-details > .disclosure-summary {
-  min-height: 72px;
-  padding: 16px 20px;
+  min-height: 58px;
+  padding: 13px 16px;
   border-color: var(--border-strong);
   background: var(--panel);
 }
 
 .project-details > .disclosure-content {
-  padding: 20px;
+  padding: 16px;
   border: 1px solid var(--border);
   border-top: 0;
-  border-radius: 0 0 20px 20px;
+  border-radius: 0 0 16px 16px;
   background: rgba(10, 12, 28, 0.72);
 }
 
 .detail-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .detail-facts > span {
   display: flex;
   min-width: 0;
-  min-height: 76px;
+  min-height: 62px;
   justify-content: center;
   flex-direction: column;
-  gap: 6px;
-  padding: 13px 15px;
+  gap: 5px;
+  padding: 10px 12px;
   border: 1px solid var(--surface-border-subtle);
-  border-radius: 15px;
+  border-radius: 12px;
   background: var(--surface-fill-soft);
 }
 
 .detail-facts small {
   color: var(--muted);
   font:
-    700 max(0.8rem, 16px) ui-monospace,
+    700 max(0.8rem, 13px) ui-monospace,
     SFMono-Regular,
     Menlo,
     monospace;

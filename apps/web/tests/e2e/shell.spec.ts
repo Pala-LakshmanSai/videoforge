@@ -151,9 +151,22 @@ async function expectImagesLoaded(images: Locator): Promise<void> {
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   await expect
     .poll(() =>
-      page.evaluate(
-        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-      ),
+      page.evaluate(() => {
+        const htmlFits =
+          document.documentElement.scrollWidth <= document.documentElement.clientWidth;
+        const bodyFits = document.body.scrollWidth <= document.documentElement.clientWidth;
+        const critical = [
+          document.querySelector("main"),
+          document.querySelector(".page"),
+          document.querySelector(".top-command-bar"),
+          document.querySelector(".bottom-nav-dock"),
+        ].filter((element): element is Element => element !== null);
+        const boundsFit = critical.every((element) => {
+          const bounds = element.getBoundingClientRect();
+          return bounds.left >= -0.5 && bounds.right <= window.innerWidth + 0.5;
+        });
+        return htmlFits && bodyFits && boundsFit;
+      }),
     )
     .toBe(true);
 }
@@ -251,10 +264,10 @@ test("dock magnifies by pointer proximity without moving its layout boxes", asyn
   const iconBefore = await targetIcon.boundingBox();
   if (!before) throw new Error("Dock target has no layout box.");
   if (!iconBefore) throw new Error("Dock target icon has no layout box.");
-  expect(before.width).toBeGreaterThanOrEqual(94);
-  expect(before.height).toBeGreaterThanOrEqual(74);
-  expect(iconBefore.width).toBeCloseTo(48, 1);
-  expect(iconBefore.height).toBeCloseTo(44, 1);
+  expect(before.width).toBeCloseTo(76, 1);
+  expect(before.height).toBeCloseTo(62, 1);
+  expect(iconBefore.width).toBeCloseTo(38, 1);
+  expect(iconBefore.height).toBeCloseTo(35, 1);
 
   await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
   await expect
@@ -283,8 +296,8 @@ test("dock magnifies by pointer proximity without moving its layout boxes", asyn
   const iconAfter = await targetIcon.boundingBox();
   expect(after).toEqual(before);
   if (!iconAfter) throw new Error("Magnified dock icon has no layout box.");
-  expect(iconAfter.width).toBeCloseTo(84, 1);
-  expect(iconAfter.height).toBeCloseTo(77, 1);
+  expect(iconAfter.width).toBeCloseTo(66.5, 1);
+  expect(iconAfter.height).toBeCloseTo(61.25, 1);
   expect(
     Math.abs(iconAfter.y + iconAfter.height - (iconBefore.y + iconBefore.height)),
   ).toBeLessThanOrEqual(0.5);
@@ -331,9 +344,7 @@ test("dock magnifies by pointer proximity without moving its layout boxes", asyn
     .toBe(1);
 });
 
-test("content uses the medium scale while the dock keeps its approved base size", async ({
-  page,
-}) => {
+test("content uses the compact 100% density without simulated page zoom", async ({ page }) => {
   await page.goto("/projects/new?fixture=project_create_ready");
   await expect(page.getByRole("heading", { name: "New project" })).toBeVisible();
 
@@ -341,22 +352,45 @@ test("content uses the medium scale while the dock keeps its approved base size"
     const title = document.querySelector<HTMLElement>(".page-header-title");
     const input = document.querySelector<HTMLElement>(".input");
     const dockItem = document.querySelector<HTMLElement>(".bottom-nav-item");
-    if (!title || !input || !dockItem) throw new Error("Scale audit targets are missing.");
+    const dockIcon = document.querySelector<HTMLElement>(".bottom-nav-icon");
+    const dockGlyph = document.querySelector<SVGElement>(".bottom-nav-icon > svg");
+    const topbar = document.querySelector<HTMLElement>(".top-command-bar");
+    const page = document.querySelector<HTMLElement>(".page");
+    const shell = document.querySelector<HTMLElement>(".app-shell");
+    if (!title || !input || !dockItem || !dockIcon || !dockGlyph || !topbar || !page || !shell) {
+      throw new Error("Scale audit targets are missing.");
+    }
     return {
       dockHeight: dockItem.getBoundingClientRect().height,
+      dockIconHeight: dockIcon.getBoundingClientRect().height,
+      dockIconWidth: dockIcon.getBoundingClientRect().width,
+      dockGlyph: dockGlyph.getBoundingClientRect().width,
       dockWidth: dockItem.getBoundingClientRect().width,
       inputHeight: input.getBoundingClientRect().height,
+      pageWidth: page.getBoundingClientRect().width,
+      pageTransform: getComputedStyle(page).transform,
       root: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+      rootZoom: getComputedStyle(document.documentElement).zoom,
+      shellTransform: getComputedStyle(shell).transform,
       title: Number.parseFloat(getComputedStyle(title).fontSize),
+      topbarHeight: topbar.getBoundingClientRect().height,
     };
   });
 
-  expect(scale.root).toBe(18);
-  expect(scale.title).toBeGreaterThanOrEqual(36);
-  expect(scale.title).toBeLessThanOrEqual(52);
-  expect(scale.inputHeight).toBe(52);
-  expect(scale.dockWidth).toBeGreaterThanOrEqual(94);
-  expect(scale.dockHeight).toBeGreaterThanOrEqual(74);
+  expect(scale.root).toBe(15);
+  expect(scale.title).toBeGreaterThanOrEqual(28);
+  expect(scale.title).toBeLessThanOrEqual(40);
+  expect(scale.inputHeight).toBe(44);
+  expect(scale.topbarHeight).toBeCloseTo(71, 1);
+  expect(scale.dockWidth).toBeCloseTo(76, 1);
+  expect(scale.dockHeight).toBeCloseTo(62, 1);
+  expect(scale.dockIconWidth).toBeCloseTo(38, 1);
+  expect(scale.dockIconHeight).toBeCloseTo(35, 1);
+  expect(scale.dockGlyph).toBeCloseTo(24, 1);
+  expect(scale.pageWidth).toBeLessThanOrEqual(1184);
+  expect(scale.rootZoom).toBe("1");
+  expect(scale.pageTransform).toBe("none");
+  expect(scale.shellTransform).toBe("none");
 });
 
 test("every screen keeps separated sections and legible structural surfaces", async ({ page }) => {
@@ -389,7 +423,7 @@ test("every screen keeps separated sections and legible structural surfaces", as
     });
 
     expect(pageLayout.expectedGap, `${route.path} has no page section gap`).toBeGreaterThanOrEqual(
-      20,
+      16,
     );
     for (const gap of pageLayout.gaps) {
       expect(
@@ -435,7 +469,69 @@ test("every screen keeps separated sections and legible structural surfaces", as
       const libraryGap = await page
         .locator(".library-grid")
         .evaluate((element) => Number.parseFloat(getComputedStyle(element).rowGap));
-      expect(libraryGap).toBeGreaterThanOrEqual(20);
+      expect(libraryGap).toBeGreaterThanOrEqual(16);
+    }
+  }
+});
+
+test("Settings disclosures keep padded, non-touching content at desktop and mobile density", async ({
+  page,
+}) => {
+  for (const viewport of [
+    { height: 900, width: 1440 },
+    { height: 844, width: 390 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/settings?fixture=happy_generating");
+    await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+
+    for (const label of [
+      "Team details",
+      "Connection status",
+      "Execution details",
+      "Default details",
+    ]) {
+      const summary = page.locator(".settings-grid summary").filter({ hasText: label });
+      const details = summary.locator("xpath=..");
+      await summary.focus();
+      await page.keyboard.press("Enter");
+      await expect(details).toHaveAttribute("open", "");
+
+      const geometry = await details.evaluate((element) => {
+        const summaryBounds = element.querySelector("summary")?.getBoundingClientRect();
+        const facts = element.querySelector<HTMLElement>(".detail-facts");
+        const cards = Array.from(element.querySelectorAll<HTMLElement>(".detail-facts > span")).map(
+          (card) => {
+            const bounds = card.getBoundingClientRect();
+            return {
+              bottom: bounds.bottom,
+              left: bounds.left,
+              right: bounds.right,
+              top: bounds.top,
+            };
+          },
+        );
+        if (!summaryBounds || !facts || cards.length < 2) {
+          throw new Error("Settings disclosure geometry is incomplete.");
+        }
+        const [first, second] = cards;
+        if (!first || !second) throw new Error("Settings fact cards are missing.");
+        const sameRow = Math.abs(first.top - second.top) < 0.5;
+        return {
+          columns: getComputedStyle(facts).gridTemplateColumns.split(" ").length,
+          firstGap: first.top - summaryBounds.bottom,
+          pairGap: sameRow ? second.left - first.right : second.top - first.bottom,
+        };
+      });
+
+      expect(geometry.firstGap).toBeGreaterThanOrEqual(11.5);
+      expect(geometry.pairGap).toBeGreaterThanOrEqual(11.5);
+      expect(geometry.columns).toBe(viewport.width <= 680 ? 1 : 2);
+      await expectNoHorizontalOverflow(page);
+
+      await page.keyboard.press("Escape");
+      await expect(details).not.toHaveAttribute("open", "");
+      await expect(summary).toBeFocused();
     }
   }
 });
@@ -777,13 +873,19 @@ test("scenario actions match authoritative project and review state", async ({ p
 });
 
 for (const viewport of [
+  { name: "1920px", width: 1920, height: 1080 },
+  { name: "1440px", width: 1440, height: 1000 },
+  { name: "1280px", width: 1280, height: 900 },
   { name: "1024px", width: 1024, height: 900 },
-  { name: "tablet", width: 768, height: 900 },
-  { name: "mobile", width: 430, height: 932 },
+  { name: "820px boundary", width: 820, height: 900 },
+  { name: "680px boundary", width: 680, height: 900 },
+  { name: "430px mobile", width: 430, height: 932 },
+  { name: "390px mobile", width: 390, height: 844 },
 ]) {
   test(`${viewport.name} layout stays keyboard reachable without horizontal overflow`, async ({
     page,
-  }) => {
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chrome", "Viewport matrix runs once in Chrome.");
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
     for (const route of uiSurfaceRoutes) {
@@ -811,7 +913,22 @@ for (const viewport of [
     await expect(navigation.getByRole("link", { name: "Avatar Hub" })).toBeVisible();
     await expect(navigation.getByRole("link", { name: "Image Styles" })).toBeVisible();
 
-    if (viewport.width === 430) {
+    const dockLayout = await navigation.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        columns:
+          style.gridTemplateColumns === "none" ? 0 : style.gridTemplateColumns.split(" ").length,
+        display: style.display,
+      };
+    });
+    if (viewport.width <= 820) {
+      expect(dockLayout.display).toBe("grid");
+      expect(dockLayout.columns).toBe(4);
+    } else {
+      expect(dockLayout.display).toBe("flex");
+    }
+
+    if (viewport.width <= 430) {
       const warmCard = page.locator("article").filter({
         has: page.getByRole("heading", { name: "Warm Rural Documentary" }),
       });

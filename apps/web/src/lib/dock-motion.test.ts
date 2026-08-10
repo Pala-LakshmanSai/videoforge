@@ -6,9 +6,9 @@ describe("dockMotionTarget", () => {
   it("produces a macOS-like center, neighbor, and far curve", () => {
     const center = dockMotionTarget(0);
     expect(center).toEqual({ influence: 1, scale: 1.75 });
-    expect(dockMotionTarget(100).scale).toBeCloseTo(1.5625, 8);
-    expect(dockMotionTarget(200).scale).toBeCloseTo(1.1875, 8);
-    expect(dockMotionTarget(300)).toEqual({
+    expect(dockMotionTarget(80).scale).toBeCloseTo(1.5625, 8);
+    expect(dockMotionTarget(160).scale).toBeCloseTo(1.1875, 8);
+    expect(dockMotionTarget(240)).toEqual({
       influence: 0,
       scale: 1,
     });
@@ -22,7 +22,7 @@ describe("dockMotionTarget", () => {
   });
 
   it("decreases monotonically to an exact neutral far-field scale", () => {
-    const samples = [0, 50, 100, 150, 200, 250, 300].map(
+    const samples = [0, 40, 80, 120, 160, 200, 240].map(
       (distance) => dockMotionTarget(distance).scale,
     );
     for (let index = 1; index < samples.length; index += 1) {

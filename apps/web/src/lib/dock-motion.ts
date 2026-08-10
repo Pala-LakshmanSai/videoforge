@@ -20,7 +20,7 @@ export const dockSpringConfig: DockSpringConfig = {
   stiffness: 440,
 };
 
-const MAX_DISTANCE_PX = 300;
+const MAX_DISTANCE_PX = 240;
 const MAX_SCALE = 1.75;
 
 export function dockMotionTarget(distancePx: number, motionEnabled = true): DockMotionTarget {

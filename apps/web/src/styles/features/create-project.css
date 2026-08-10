@@ -1,9 +1,9 @@
 .form-grid {
-  gap: 18px;
+  gap: 14px;
 }
 
 .create-config-panel {
-  padding: clamp(18px, 1.5vw, 22px);
+  padding: clamp(14px, 1.2vw, 18px);
 }
 
 .create-section {
@@ -11,10 +11,10 @@
   display: grid;
   min-width: 0;
   grid-column: 1 / -1;
-  gap: 18px;
-  padding: clamp(22px, 1.9vw, 28px);
+  gap: 14px;
+  padding: clamp(18px, 1.5vw, 22px);
   border: 1px solid rgba(205, 199, 249, 0.3);
-  border-radius: 22px;
+  border-radius: 18px;
   background:
     radial-gradient(circle at 96% 0%, rgba(83, 94, 210, 0.08), transparent 34%),
     linear-gradient(135deg, rgba(24, 28, 55, 0.88), rgba(12, 15, 33, 0.88));
@@ -39,8 +39,8 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 12px;
-  padding-bottom: 15px;
+  gap: 10px;
+  padding-bottom: 12px;
   border-bottom: 1px solid rgba(205, 199, 249, 0.22);
 }
 
@@ -69,12 +69,12 @@
 
 .create-section-index {
   display: grid;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
   place-items: center;
   border: 1px solid rgba(255, 110, 128, 0.24);
-  border-radius: 11px;
+  border-radius: 9px;
   color: #ff91a0;
   background: rgba(255, 71, 96, 0.075);
   font:
@@ -90,7 +90,7 @@
   min-width: 0;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
-  gap: 18px;
+  gap: 14px;
 }
 
 .create-section-grid > .field-wide,
@@ -107,17 +107,17 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
-  gap: 14px;
+  gap: 11px;
 }
 
 .compute-lane-card {
   display: grid;
   min-width: 0;
   align-content: start;
-  gap: 14px;
-  padding: 18px;
+  gap: 11px;
+  padding: 14px;
   border: 1px solid rgba(205, 199, 249, 0.25);
-  border-radius: 18px;
+  border-radius: 15px;
   background: rgba(255, 255, 255, 0.035);
 }
 
@@ -188,7 +188,7 @@
   position: relative;
   display: grid;
   min-width: 0;
-  gap: 9px;
+  gap: 7px;
 }
 
 .visual-preset-details {
@@ -196,7 +196,7 @@
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 16px;
   background: rgba(9, 12, 29, 0.86);
   transition:
     border-color 150ms ease,
@@ -215,13 +215,13 @@
 .visual-preset-summary {
   display: grid;
   min-width: 0;
-  min-height: 76px;
-  grid-template-columns: 56px minmax(0, 1fr) 24px;
+  min-height: 62px;
+  grid-template-columns: 46px minmax(0, 1fr) 20px;
   align-items: center;
-  gap: 13px;
-  padding: 9px 13px 9px 9px;
+  gap: 10px;
+  padding: 7px 10px 7px 7px;
   border: 0;
-  border-radius: 19px;
+  border-radius: 15px;
   color: var(--text);
   background: rgba(255, 255, 255, 0.03);
   cursor: pointer;
@@ -245,7 +245,7 @@
 }
 
 .visual-preset-details[open] > .visual-preset-summary {
-  border-radius: 19px 19px 0 0;
+  border-radius: 15px 15px 0 0;
   background: rgba(255, 67, 95, 0.065);
   box-shadow: none;
 }
@@ -253,12 +253,12 @@
 .visual-preset-summary > img,
 .visual-preset-summary > .preset-image-fallback {
   display: block;
-  width: 56px;
-  height: 56px;
+  width: 46px;
+  height: 46px;
   min-height: 0;
   object-fit: cover;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
+  border-radius: 11px;
 }
 
 .visual-preset-summary > .visual-preset-copy:first-child {
@@ -308,9 +308,9 @@
 .visual-preset-menu {
   position: static;
   display: grid;
-  max-height: min(348px, calc(100vh - 220px));
-  gap: 6px;
-  padding: 8px;
+  max-height: min(278px, calc(100vh - 176px));
+  gap: 5px;
+  padding: 6px;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -330,10 +330,10 @@
 
 .visual-preset-search input {
   width: 100%;
-  min-height: 52px;
-  padding: 0 15px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 1px solid rgba(205, 199, 249, 0.2);
-  border-radius: 13px;
+  border-radius: 11px;
   color: var(--text);
   background: rgba(12, 15, 34, 0.9);
   font-size: 1rem;
@@ -347,13 +347,13 @@
   display: grid;
   width: 100%;
   min-width: 0;
-  min-height: 68px;
-  grid-template-columns: 52px minmax(0, 1fr) 22px;
+  min-height: 56px;
+  grid-template-columns: 42px minmax(0, 1fr) 18px;
   align-items: center;
-  gap: 11px;
-  padding: 7px 10px 7px 7px;
+  gap: 9px;
+  padding: 6px 8px 6px 6px;
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: 11px;
   color: var(--text);
   background: transparent;
   cursor: pointer;
@@ -378,12 +378,12 @@
 .visual-preset-option > img,
 .visual-preset-option > .preset-image-fallback {
   display: block;
-  width: 52px;
-  height: 52px;
+  width: 42px;
+  height: 42px;
   min-height: 0;
   object-fit: cover;
   border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .visual-preset-option > svg {
@@ -408,8 +408,8 @@
 
 .preset-select-actions > * {
   width: auto;
-  min-height: 54px;
-  padding-inline: 16px;
+  min-height: 44px;
+  padding-inline: 13px;
 }
 
 .preset-choice {
@@ -504,8 +504,8 @@
 .create-options > .disclosure-summary,
 .run-settings > .disclosure-summary,
 .run-blocker-details > .disclosure-summary {
-  min-height: 60px;
-  padding-inline: 16px;
+  min-height: 48px;
+  padding-inline: 13px;
 }
 
 .create-options,
@@ -513,7 +513,7 @@
 .run-blocker-details {
   overflow: hidden;
   border: 1px solid rgba(205, 199, 249, 0.25);
-  border-radius: 20px;
+  border-radius: 16px;
   background: rgba(9, 12, 29, 0.72);
   transition:
     border-color 150ms ease,
@@ -531,7 +531,7 @@
 .run-settings > .disclosure-summary,
 .run-blocker-details > .disclosure-summary {
   border: 0;
-  border-radius: 19px;
+  border-radius: 15px;
   background: transparent;
 }
 
@@ -539,22 +539,22 @@
 .run-settings[open] > .disclosure-summary,
 .run-blocker-details[open] > .disclosure-summary {
   border-bottom: 1px solid rgba(205, 199, 249, 0.17);
-  border-radius: 19px 19px 0 0;
+  border-radius: 15px 15px 0 0;
   background: rgba(255, 67, 95, 0.045);
 }
 
 .create-options > .disclosure-content,
 .run-settings > .disclosure-content,
 .run-blocker-details > .disclosure-content {
-  padding: 18px;
+  padding: 14px;
   animation: disclosure-reveal 160ms cubic-bezier(0.2, 0.72, 0.25, 1);
 }
 
 .create-run-panel {
   position: sticky;
-  top: 104px;
+  top: 84px;
   display: grid;
-  gap: 16px;
+  gap: 13px;
 }
 
 .create-run-panel .panel-header {
@@ -567,12 +567,12 @@
 
 .run-readiness {
   display: flex;
-  min-height: 56px;
+  min-height: 46px;
   align-items: center;
-  gap: 12px;
-  padding: 13px 15px;
+  gap: 10px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.03);
 }
 

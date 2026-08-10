@@ -113,10 +113,10 @@ h3 {
   font-size: 1rem;
 }
 
-/* VideoForge Studio 2.0 — medium-scale, calm, hierarchy-first. */
+/* VideoForge Studio 2.0 — compact, calm, hierarchy-first. */
 
 :root {
-  font-size: 18px;
+  font-size: 15px;
   --canvas: #070916;
   --canvas-deep: #04050d;
   --panel: rgba(18, 21, 43, 0.78);
@@ -133,7 +133,7 @@ h3 {
   --surface-glow:
     0 0 0 1px rgba(88, 112, 255, 0.065), 0 0 28px rgba(53, 80, 190, 0.085),
     inset 0 1px 0 rgba(255, 255, 255, 0.045);
-  --page-section-gap: 24px;
+  --page-section-gap: 20px;
   --text: #fbf8f4;
   --muted: #a8a9b8;
   --muted-dim: #777b90;
@@ -144,8 +144,8 @@ h3 {
   --success: #50dda5;
   --warning: #f4bd68;
   --danger: #ff667b;
-  --control-radius: 18px;
-  --panel-radius: 30px;
+  --control-radius: 15px;
+  --panel-radius: 24px;
   --shadow: 0 30px 90px rgba(0, 0, 0, 0.34);
 }
 
@@ -189,8 +189,8 @@ select:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 summary:focus-visible {
-  outline: 3px solid #9db4ff;
-  outline-offset: 4px;
+  outline: 2px solid #9db4ff;
+  outline-offset: 3px;
 }
 
 .sr-only {
@@ -209,9 +209,9 @@ summary:focus-visible {
   top: 12px;
   left: 12px;
   z-index: 100;
-  padding: 12px 18px;
+  padding: 10px 15px;
   transform: translateY(-150%);
-  border-radius: 14px;
+  border-radius: 12px;
   color: #071019;
   background: #fff;
   font-weight: 800;

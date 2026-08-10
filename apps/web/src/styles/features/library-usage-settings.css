@@ -2,22 +2,22 @@
 
 .library-grid {
   display: grid;
-  grid-template-columns: minmax(0, 920px);
-  gap: 20px;
+  grid-template-columns: minmax(0, 736px);
+  gap: 16px;
 }
 
 .library-output .entity-card-footer {
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .library-details {
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .settings-grid .panel {
   display: grid;
   align-content: start;
-  gap: 18px;
+  gap: 14px;
 }
 
 .settings-grid .panel-header {
@@ -26,18 +26,45 @@
 
 .settings-summary {
   display: flex;
-  min-height: 58px;
+  min-height: 48px;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 11px 13px;
   border: 1px solid var(--surface-border-subtle);
-  border-radius: 16px;
+  border-radius: 13px;
   background: var(--surface-fill-soft);
   box-shadow: var(--surface-tile-shadow);
 }
 
+.settings-grid .disclosure {
+  overflow: hidden;
+  border: 1px solid var(--surface-border-subtle);
+  border-radius: 14px;
+  background: rgba(7, 10, 24, 0.5);
+}
+
+.settings-grid .disclosure > .disclosure-summary {
+  border: 0;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.settings-grid .disclosure[open] > .disclosure-summary {
+  border-bottom: 1px solid var(--surface-border-subtle);
+  border-radius: 13px 13px 0 0;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.settings-grid .disclosure > .disclosure-content {
+  padding: 12px;
+}
+
+.settings-grid .detail-facts {
+  gap: 12px;
+}
+
 .usage-grid .metric {
-  min-height: 108px;
-  padding: 20px 22px;
+  min-height: 86px;
+  padding: 16px 18px;
   border-color: var(--surface-border);
 }
