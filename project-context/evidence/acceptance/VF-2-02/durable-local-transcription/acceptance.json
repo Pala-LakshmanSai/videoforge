@@ -1,0 +1,100 @@
+{
+  "schema_version": "videoforge.acceptance-evidence/v1",
+  "task_id": "VF-2-02",
+  "status": "technical_pass",
+  "recorded_at": "2026-08-10T15:07:20Z",
+  "implementation": {
+    "commit": "9e79b856d0e267a8755432bcc330986923bcf3e0",
+    "asr_input_contract": "asr-job-input/v1",
+    "asr_result_contract": "asr-job-result/v1",
+    "transcript_contract": "transcript-timing/v1",
+    "span_input_contract": "selected-span-audio-job/v1",
+    "span_result_contract": "selected-span-audio-result/v1"
+  },
+  "transcription": {
+    "canonical_input_result_and_transcript_validated": true,
+    "source_model_config_and_tool_hashes_bound": true,
+    "attempt_artifact_and_timing_acceptance_atomic": true,
+    "exact_retry_idempotent": true,
+    "cancellation_race_rolls_back": true,
+    "model_invalidation_preserves_history": true,
+    "replacement_supersession_verified": true,
+    "accepted_orphan_results": 0
+  },
+  "selected_span_audio": {
+    "full_voiceover_sent_to_avatar_worker": false,
+    "exact_selected_and_padded_boundaries_bound": true,
+    "source_and_output_checksums_bound": true,
+    "revision_transcript_timeline_segment_and_task_bound": true,
+    "accepted_attempt_and_input_hash_bound": true,
+    "optimistic_invalidation_fence_verified": true,
+    "real_ffmpeg_runs": 2,
+    "real_ffmpeg_output_deterministic": true,
+    "output_profile": {
+      "codec": "pcm_s16le",
+      "sample_rate_hz": 16000,
+      "channels": 1
+    }
+  },
+  "audit": {
+    "result": "closed_no_remaining_high_or_medium",
+    "accepted_attempt_ownership_closed": true,
+    "replacement_lineage_closed": true,
+    "invalidation_and_cancellation_races_closed": true,
+    "task_key_and_attempt_lineage_closed": true,
+    "strict_hostile_json_and_runtime_inputs_closed": true,
+    "dependency_registry_audit_invoked": true,
+    "dependency_registry_audit_read_only": true,
+    "known_vulnerabilities": 0
+  },
+  "verification": {
+    "result": "pass",
+    "verified_commit": "9e79b856d0e267a8755432bcc330986923bcf3e0",
+    "forced_turbo_cache_hits": 0,
+    "control_plane_tests": {"passed": 127, "failed": 0, "skipped": 0},
+    "pipeline_tests": {"passed": 37, "failed": 0, "skipped": 0},
+    "web_tests": {"passed": 148, "failed": 0, "skipped": 0},
+    "contract_typescript_tests": {"passed": 53, "failed": 0, "skipped": 0},
+    "contract_python_tests": {"passed": 42, "failed": 0, "skipped": 0},
+    "python_worker_tests": {"passed": 56, "failed": 0, "skipped": 0},
+    "local_workerd_tests": {"passed": 1, "failed": 0, "skipped": 0},
+    "installed_chrome_tests": {"passed": 36, "failed": 0, "skipped": 0},
+    "synchronized_contract_files": 50,
+    "commands": [
+      "pnpm --filter @videoforge/control-plane test",
+      "pnpm test:workers",
+      "TURBO_FORCE=true pnpm verify",
+      "pnpm test:local-slice",
+      "pnpm audit:dependencies",
+      "pnpm context:validate",
+      "pnpm secret:scan",
+      "git diff --check",
+      "git status --short"
+    ]
+  },
+  "local_slice": {
+    "status": "SUCCEEDED",
+    "provider_calls_authorized": false,
+    "external_spend_usd": 0,
+    "duration_ms": 37167,
+    "total_frames": 1115,
+    "output_bytes": 1957674,
+    "output_sha256": "sha256:7acc789f9626e23bc12540a452d52822671ba85caf37bf4148e0a6def665e276",
+    "downloaded_sha256": "sha256:7acc789f9626e23bc12540a452d52822671ba85caf37bf4148e0a6def665e276",
+    "acceptance_evidence_sha256": "sha256:b383cab56e8f7ef6b7bba543087f75f98009ce9c8b46f4a12f01e5eec45279ba"
+  },
+  "authorization": {
+    "database_url_used": false,
+    "read_only_dependency_registry_access_used": true,
+    "remote_or_cloud_mutation_performed": false,
+    "credentials_used": false,
+    "provider_calls_made": false,
+    "model_downloads_performed": false,
+    "external_spend_usd": 0
+  },
+  "next_boundary": {
+    "requires_refreshed_current_state": true,
+    "provider_free_only": true,
+    "remote_or_cloud_work_authorized": false
+  }
+}
