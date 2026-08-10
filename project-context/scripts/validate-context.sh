@@ -125,8 +125,21 @@ end
 recommended_task = state["recommended_next_task"] || {}
 recommended_profile = recommended_task["read_profile"]
 errors << "CURRENT_STATE recommended next task names an unknown read profile: #{recommended_profile}" unless (manifest["read_profiles"] || {}).key?(recommended_profile)
-errors << "CURRENT_STATE recommended next task must default to no provider calls" unless recommended_task["provider_calls_authorized"] == false
-errors << "CURRENT_STATE recommended next task must default to $0 external spend" unless recommended_task["maximum_external_spend_usd"] == 0
+if recommended_task["provider_calls_authorized"] == false
+  errors << "CURRENT_STATE provider-free next task must default to $0 external spend" unless recommended_task["maximum_external_spend_usd"] == 0
+elsif recommended_task["provider_calls_authorized"] == true
+  authority = recommended_task["provider_authority"] || {}
+  cap = recommended_task["maximum_external_spend_usd"]
+  errors << "CURRENT_STATE live provider task requires a positive numeric cap" unless cap.is_a?(Numeric) && cap.positive?
+  errors << "CURRENT_STATE live provider task requires an exact provider" unless authority["provider"].is_a?(String) && !authority["provider"].empty?
+  errors << "CURRENT_STATE live provider task requires an exact model_id" unless authority["model_id"].is_a?(String) && !authority["model_id"].empty?
+  errors << "CURRENT_STATE live provider cap must be explicitly non-transferable" unless authority["non_transferable"] == true
+  errors << "CURRENT_STATE live provider cap disagrees with provider_authority" unless authority["cap_usd"] == cap
+  errors << "CURRENT_STATE live provider task requires an authorization timestamp" unless authority["authorized_by_user_at"].is_a?(String) && !authority["authorized_by_user_at"].empty?
+  errors << "CURRENT_STATE live provider task cap must match live_development" unless live_state["authorized_spend_usd"] == cap
+else
+  errors << "CURRENT_STATE recommended next task must explicitly declare provider_calls_authorized"
+end
 
 declared_paths = Array(manifest["mandatory_read"])
 Array(manifest.dig("read_profiles")&.values).flatten.each { |value| declared_paths << value }

@@ -1,6 +1,6 @@
 # Source index
 
-Status: evidence map; model/provider sources checked 2026-08-08; Phase 1 database sources checked 2026-08-10
+Status: evidence map; model/provider/infrastructure sources refreshed 2026-08-10; Phase 1 database sources checked 2026-08-10
 Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 
 ## Official model/provider sources
@@ -10,12 +10,15 @@ Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 - Runware Gemini 3.1 Flash Lite cheaper comparison: [runware.ai/docs/models/google-gemini-3-1-flash-lite](https://runware.ai/docs/models/google-gemini-3-1-flash-lite)
 - Runware LLM data/security claims and enterprise-only ZDR option: [runware.ai/llm-api](https://runware.ai/llm-api)
 - Runware terms governing uploaded contributions, provider/model rules, and output rights: [runware.ai/terms](https://runware.ai/terms)
+- Runware privacy and standard-service retention/deletion posture: [runware.ai/privacy](https://runware.ai/privacy)
 - Google Gemini media-resolution/token guidance: [ai.google.dev/gemini-api/docs/media-resolution](https://ai.google.dev/gemini-api/docs/media-resolution)
 - Google Gemini structured outputs: [ai.google.dev/gemini-api/docs/structured-output](https://ai.google.dev/gemini-api/docs/structured-output)
 - Google Gemini 3.6 Flash quality-fallback candidate: [ai.google.dev/gemini-api/docs/models/gemini-3.6-flash](https://ai.google.dev/gemini-api/docs/models/gemini-3.6-flash)
 - Mage-Flow-Turbo model card: [huggingface.co/microsoft/Mage-Flow-Turbo](https://huggingface.co/microsoft/Mage-Flow-Turbo)
 - Mage code: [github.com/microsoft/Mage](https://github.com/microsoft/Mage)
 - AvatarForcing: [github.com/KlingAIResearch/AvatarForcing](https://github.com/KlingAIResearch/AvatarForcing)
+- AvatarForcing contradictory committed academic-only/non-commercial license artifact: [github.com/KlingAIResearch/AvatarForcing/blob/main/LICENSE.txt](https://github.com/KlingAIResearch/AvatarForcing/blob/main/LICENSE.txt)
+- AvatarForcing official public weights repository and observed revision identity: [huggingface.co/lycui/AvatarForcing](https://huggingface.co/lycui/AvatarForcing)
 - AvatarForcing paper: [arxiv.org/abs/2603.14331](https://arxiv.org/abs/2603.14331)
 - MuseTalk: [github.com/TMElyralab/MuseTalk](https://github.com/TMElyralab/MuseTalk)
 - SkyReels V3: [github.com/SkyworkAI/SkyReels-V3](https://github.com/SkyworkAI/SkyReels-V3)
@@ -26,6 +29,7 @@ Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 - RunPod Serverless per-second rates and defaults: [endpoint settings](https://docs.runpod.io/serverless/endpoints/endpoint-configurations)
 - RunPod Serverless overview: [docs.runpod.io/serverless/overview](https://docs.runpod.io/serverless/overview)
 - RunPod endpoint configuration: [docs.runpod.io/serverless/endpoints/endpoint-configurations](https://docs.runpod.io/serverless/endpoints/endpoint-configurations)
+- RunPod worker quotas and account-balance interaction: [docs.runpod.io/serverless/endpoints/endpoint-configurations](https://docs.runpod.io/serverless/endpoints/endpoint-configurations)
 - RunPod async request lifecycle, execution timeout, TTL, status, and result retention: [docs.runpod.io/serverless/endpoints/send-requests](https://docs.runpod.io/serverless/endpoints/send-requests)
 - RunPod endpoint REST create/read/update contracts used for API-only reconciliation: [create](https://docs.runpod.io/api-reference/endpoints/POST/endpoints), [read](https://docs.runpod.io/api-reference/endpoints/GET/endpoints/endpointId), [update](https://docs.runpod.io/api-reference/endpoints/PATCH/endpoints/endpointId)
 - RunPod network volumes: [docs.runpod.io/storage/network-volumes](https://docs.runpod.io/storage/network-volumes)
@@ -87,4 +91,4 @@ All three paths are optional local evidence and are not VideoForge build depende
 
 ## Citation/freshness rule
 
-Use primary/official sources for technical claims. For a future model/price/license question, browse again rather than treating this 2026-08-08 snapshot as permanently current.
+Use primary/official sources for technical claims. For a future model/price/license question, browse again rather than treating this 2026-08-10 snapshot as permanently current.

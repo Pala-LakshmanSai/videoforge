@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: see `CURRENT_STATE.yaml` (currently paused at the green Phase 2 checkpoint)
+Status: see `CURRENT_STATE.yaml` (Phase 2 preserved; bounded Phase 3 qualification active)
 Context schema: `1.5`  
 Last updated: `2026-08-10`
 
@@ -23,18 +23,24 @@ transcript/timeline/output/span hashes across independent runs, fresh-database m
 real installed-Chrome creation/playback/approval/download, and an uncached full gate: 131/131
 control-plane, 39/39 pipeline, 163/163 web, 39/39 provider-sandbox, 56/56 worker, 38/38 fixture
 Chrome plus 1/1 real-local Chrome, with zero skips, no provider call, and `$0` spend.
-The isolated-staging checkpoint is awaiting separate external authority; no remote, cloud/account,
-credential, deployment, provider, or paid mutation occurred.
+No remote, cloud/account, credential, deployment, provider, or paid mutation occurred through the
+Phase 2 evidence checkpoint.
 
 `VF-1-01` remains the preserved relational baseline. The provider-free corrective task `VF-1-01A`
 is complete at implementation commit `36bf1ae`, with additive migration, constraint, migration
 executor, repository-contract, and adversarial regression hardening recorded under
 `evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening`. The user-approved accelerated
-provider-free authority through `VF-2-05` is complete and exhausted. `CURRENT_STATE.yaml` selects
-only the planning-only `VF-3-00` consolidated gate/freshness/authorization checkpoint with the
-`phase3_checkpoint` profile. It must not implement application code or use credentials, providers,
-spend, remote publication, or cloud/account mutation. There is no exact Phase 3 implementation
-brief yet; high-level roadmap sections are not authority.
+provider-free authority through `VF-2-05` is complete and exhausted. `VF-3-00` refreshed official
+facts on 2026-08-10. The user then authorized autonomous provider/account, private Git/hosted CI,
+and isolated staging work while preserving the existing non-transferable provider caps and keeping
+production deferred. `CURRENT_STATE.yaml` now selects exact brief `VF-3-01`; no adjacent brief or
+high-level roadmap item is authority.
+
+The refresh found a hard AvatarForcing licensing contradiction: the official repository README
+claims Apache-2.0, its committed `LICENSE.txt` is academic-only/non-commercial and prohibits
+production use, and the public weights repository declares no license. `GATE_AVATAR_003` therefore
+blocks weight download, paid qualification, and commercial use until authoritative clarification;
+the AvatarForcing `$8` sub-cap remains untouched.
 `CURRENT_STATE.yaml` remains the one replace-in-place handoff and ownership source. Do not redo the
 accepted UI, renderer, local slice, or architecture.
 
@@ -149,7 +155,7 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 
 ## First implementation rule
 
-Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve every completed Phase 0–2 commit, the accepted fixture shell, and the user-accepted local render. Run `VF-3-00` only as a planning/freshness/authorization checkpoint. Do not select or implement Phase 3+ work until fresh gate evidence, an exact brief, a refreshed `CURRENT_STATE.yaml`, and explicit authority all agree. Provider qualification, private GitHub, staging, production, credentials, and spend remain separate opt-in checkpoints.
+Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve every completed Phase 0–2 commit, the accepted fixture shell, and the user-accepted local render. `VF-3-00` is complete. Execute only the exact task selected by `CURRENT_STATE.yaml`; its provider/model/cap is not transferable to another lane. Private Git/CI and isolated staging are authorized but remain dependency-ordered. Production is deferred.
 
 ## Context navigation
 

@@ -214,6 +214,19 @@ read_profiles:
     - 15_DECISIONS_AND_OPEN_GATES.md
     - GATES.yaml
     - tasks/VF-3-00.md
+  phase3_runware_deepseek_qualification:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 11_COST_SPEED_BUDGET.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - GATES.yaml
+    - tasks/VF-3-01.md
+  phase3_runware_style_qualification:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 11_COST_SPEED_BUDGET.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 18_IMAGE_STYLES_HUB.md
+    - GATES.yaml
+    - tasks/VF-3-02.md
   context_update:
     - 15_DECISIONS_AND_OPEN_GATES.md
     - 16_CONTEXT_MAINTENANCE.md
@@ -277,6 +290,7 @@ approved_decisions:
 open_gates:
   GATE_AVATAR_001: avatarforcing_exact_avatar_4090_fit_speed_quality
   GATE_AVATAR_002: global_rejection_threshold_to_be_set_after_bakeoff
+  GATE_AVATAR_003: reconcile_avatarforcing_code_and_weights_commercial_license
   GATE_IMAGE_001: reproduce_mage_300_image_speed_and_quality
   GATE_IMAGE_002: verify_exact_checkpoint_access_and_launch_terms
   GATE_LLM_001: verify_runware_endpoint_is_exact_0731_and_schema_stable

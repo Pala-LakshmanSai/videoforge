@@ -3,7 +3,7 @@
 Status: planning envelope; replace with measurements during Phase 0  
 Read when: showing estimates, choosing GPU profiles, changing avatar share, adding a stage, or approving fallback.
 
-Checked: 2026-08-08. Prices and inventory change; production reads live/provider-configured rates.
+Checked: 2026-08-10. Prices and inventory change; production reads live/provider-configured rates.
 
 ## Current reference rates
 
@@ -21,7 +21,7 @@ Runware Gemini 3.5 Flash style analyzer:
 
 RunPod Serverless Flex baseline for the approved MVP:
 
-- RTX 4090: currently about $0.00031/second, equivalent to about $1.116/hour while a worker is billed.
+- RTX 4090 PRO: currently about $0.00031/second, equivalent to about $1.10/hour while a worker is billed.
 - Fetch the exact endpoint/GPU rate before every estimate and pin the rate snapshot to the execution profile/task.
 
 Hourly Pod examples are later optimization references, not the MVP cost formula:
@@ -114,7 +114,7 @@ The paper reports 34 ms/frame but not the GPU:
 | 68 ms | 11.2 min | 16.2 min | $0.30 |
 | 136 ms | 22.4 min | 27.4 min | $0.51 |
 
-Practical planning range is therefore roughly $0.20–$0.51 before unusual fallback. The exact-avatar RunPod benchmark replaces this table.
+Practical planning range would therefore be roughly $0.20–$0.51 before unusual fallback. It is not an actionable budget until `GATE_AVATAR_003` resolves commercial-use terms; only then may the exact-avatar RunPod benchmark replace this table.
 
 Every one percentage point of avatar share equals 18 output seconds or 450 frames at 25 fps. With a fast avatar engine this is affordable, but the scheduler still targets the measured 21–22% style rather than maximizing avatar.
 

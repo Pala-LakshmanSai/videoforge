@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T16:45:12Z"
+updated_at: "2026-08-10T17:07:12Z"
 
-phase: implementation_paused_at_phase_2_checkpoint
-implementation_authorized_in_current_task: false
-current_milestone: phase_3_gate_and_authorization_checkpoint
-current_task: VF-3-00
-current_wave: post_phase_2_planning_checkpoint
+phase: phase_3_bounded_provider_qualification
+implementation_authorized_in_current_task: true
+current_milestone: phase_3_runware_deepseek_qualification
+current_task: VF-3-01
+current_wave: phase_3_evidence_first_activation
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -43,8 +43,8 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
+  provider_calls_authorized: true
+  authorized_spend_usd: 1
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -212,7 +212,8 @@ standing_local_authority:
     - VF-2-05
 
 planned_provider_qualification:
-  status: inactive_requires_separate_activation
+  status: active_one_exact_task_at_a_time
+  authorized_by_user_at: "2026-08-10T17:07:12Z"
   aggregate_ceiling_usd: 25
   unused_budget_transfer_allowed: false
   prerequisites:
@@ -220,7 +221,7 @@ planned_provider_qualification:
     - "Fresh official rates, terms, endpoint/model identities, and retention checked"
     - "Exact paid task briefs and evidence paths committed"
     - "Credentials stored without printing or committing values"
-    - "Grouped user authorization explicitly activates provider calls and spend"
+    - "User authorization explicitly activated the existing non-transferable provider caps"
   sub_caps_usd:
     deepseek: 1
     gemini_style_analysis: 3
@@ -230,56 +231,63 @@ planned_provider_qualification:
 
 external_checkpoints:
   private_github_remote:
-    status: approval_required_before_mutation
+    status: authorized_pending_dependency_ready_execution
     timing: immediately_after_wave_0_context_commit
     local_work_may_continue_while_pending: true
   isolated_staging:
-    status: awaiting_external_authority_local_work_continues
+    status: authorized_pending_dependency_ready_execution
     timing: VF-1-08_complete_no_staging_mutation_performed
     services: "Cloudflare Worker/Workflows, Neon branch, private R2, Google OAuth"
     local_work_may_continue_while_pending: true
   production:
-    status: approval_required_after_phase_9_and_all_required_gates
+    status: deferred_until_phase_9_all_required_gates_and_explicit_release_decision
 
 active_ownership: []
 
 recommended_next_task:
-  task_id: VF-3-00
-  milestone: phase_3_gate_and_authorization_checkpoint
-  status: planning_only_ready_on_fresh_user_request
-  dependency_status: phase_2_green_no_phase_3_implementation_brief
-  authorization_status: no_application_implementation_or_external_mutation_authorized
-  read_profile: phase3_checkpoint
-  task_brief: tasks/VF-3-00.md
-  goal: "Perform the read-only Phase 3 gate/freshness audit, present one consolidated authorization decision, and stop; do not implement application code or use credentials/providers/spend."
+  task_id: VF-3-01
+  milestone: phase_3_runware_deepseek_qualification
+  status: ready_bounded_live_provider_qualification
+  dependency_status: phase_2_green_public_facts_refreshed_exact_brief_authored
+  authorization_status: exact_runware_deepseek_calls_credentials_and_nontransferable_one_dollar_cap_authorized
+  read_profile: phase3_runware_deepseek_qualification
+  task_brief: tasks/VF-3-01.md
+  goal: "Close or truthfully fail GATE_LLM_001 with at least 40 representative scenes and five styles through a fail-closed redacted Runware qualification; do not integrate the provider into the application."
   dependencies:
     - "VF-2-05 and Phase 2 are committed and green at 907e0e4908bddc1ec7b90232f043a10d9c7d5b2a with evidence at d16c2a9102125fa6e56d014fcf2f6241c878fa07"
-    - "All Phase 3+ provider/model/cost gates remain open and no exact implementation brief exists"
-    - "Standing provider-free implementation authority ended after VF-2-05"
-  provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
-  credentials_or_model_downloads_authorized: false
-  application_code_changes_authorized: false
-  live_route: null
+    - "VF-3-00 refreshed official Runware/model/pricing/terms facts on 2026-08-10"
+    - "The existing provider-sandbox harness is committed and green"
+    - "The user explicitly authorized autonomous Runware account/provider qualification work while preserving the fixed sub-caps"
+  provider_calls_authorized: true
+  maximum_external_spend_usd: 1
+  provider_authority:
+    provider: runware
+    model_id: deepseek-v4-flash
+    cap_usd: 1
+    non_transferable: true
+    authorized_by_user_at: "2026-08-10T17:07:12Z"
+  remote_or_cloud_mutations_authorized: true
+  credentials_or_model_downloads_authorized: true
+  application_code_changes_authorized: true
+  live_route: "Runware API qualification runner only"
   fixture_scenario: null
-  expected_evidence: null
+  expected_evidence: "evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification"
   required_handoff:
-    - "Confirm the Phase 2 implementation/evidence commits and clean local state without rerunning completed work"
-    - "Classify every open gate and stale provider fact against the Phase 3–8 dependency order"
-    - "Present one consolidated user decision separating read-only research, capped provider qualification, private Git/CI, isolated staging, and later production authority"
-    - "Recommend the smallest evidence-first activation sequence and exact non-transferable caps"
-    - "Stop before application/context implementation, credentials, provider calls, spend, account/cloud/remote mutation, or invented Phase 3–8 briefs"
+    - "Keep provider mode fixture outside the exact qualification runner"
+    - "Exercise at least 40 scenes across documentary_stock_v1 and four distinct owned/synthetic style blocks"
+    - "Record redacted request/response hashes, returned identity, usage, cost, latency, strict-schema and exact-ID results"
+    - "Close GATE_LLM_001 only if the exact 0731 identity and every acceptance criterion are proven; otherwise preserve a truthful failure"
+    - "Run targeted checks before the canonical full gate, commit evidence, and select only VF-3-02 after success"
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    status: serial_read_only_planning_checkpoint
-    integration_owner: null
+    status: serial_live_provider_qualification
+    integration_owner: VF-3-01
   prohibited_in_task:
-    - "Application or context implementation beyond reporting the authorization decision"
-    - "Private Git remote creation, push, publication, hosted CI, or release mutation"
-    - "Google OAuth, Cloudflare, Neon, R2, RunPod, or Runware account/resource mutation"
-    - "Provider credentials/calls, model downloads, public tunnel, LAN listener, or external spend"
-    - "Inventing Phase 3–8 implementation briefs without the required fresh facts, gate evidence, and user authority"
+    - "Application prompt integration, accepted UI/renderer/output changes, or production enablement"
+    - "Any provider/model other than Runware DeepSeek V4 Flash for this task"
+    - "More than the non-transferable DeepSeek $1 sub-cap, balance purchase, paid subscription, or budget transfer"
+    - "Full voiceover, user-private assets, secret logging/committing, or a pass inferred from a mutable model alias"
+    - "Mage, Avatar, RunPod, staging, remote, or deployment mutation inside this task"
 
 latest_closed_handoff:
   task_id: VF-2-05
@@ -375,6 +383,7 @@ last_green:
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
+  - GATE_AVATAR_003
   - GATE_IMAGE_001
   - GATE_IMAGE_002
   - GATE_LLM_001
@@ -391,7 +400,7 @@ known_incomplete_boundaries:
   - "Provider-free Auth plus private-artifact Hono composition is complete at ffceb6319ff85f7207619df7e0ecd41d20b341d0; it remains deliberately unmounted from fixture/local production-like entrypoints, and its application surface cannot access the direct-transfer facet."
   - "Durable mock restart/reconciliation/cancellation convergence is complete at dc86938972e776c8479637f2fb3ca9706999eed4; real Cloudflare Workflow and multi-session Neon behavior remain separately authorized staging work."
   - "The runtime-neutral Hono seam and local Workerd parity are complete, but no Worker is deployed and production-like modes deliberately fail closed until separately authorized staging bindings exist."
-  - "No production GPU/execution profile is selectable; all provider/model/cost gates remain open."
+  - "No production GPU/execution profile is selectable; all provider/model/cost gates remain open. AvatarForcing download, paid qualification, and commercial use are additionally blocked by contradictory official license artifacts in GATE_AVATAR_003."
   - "The repository has no Git remote and is not published; GitHub Actions are locally inspected/configured but have no external run or off-machine backup proof."
   - "Live Better Auth/Google installation and atomic invitation-membership materialization remain staging work; the committed descriptor truthfully reports PENDING_STAGING."
   - "VF-1-08 provides a local scheduler-invokable metadata snapshot/restore primitive, not a production schedule, encrypted off-machine backup store, cloud backup integration, or private-media backup."
@@ -399,7 +408,7 @@ known_incomplete_boundaries:
   - "VF-2-03 persists provider-free deterministic timeline bytes and lineage through local PGlite/content-store boundaries; it does not activate a provider asset lane, cloud database/object store, deployment, or production scheduler."
   - "VF-2-04 exposes provider-free persisted timing/timeline truth through fixture/local UI adapters; it does not add a timeline editor, provider asset generation, cloud persistence, or deployment."
   - "VF-2-05 completes strict local Phase 2 restart/restore and selected-span convergence; the runtime-state file and local content store are not a production Neon/R2/Workflow deployment or an off-machine recovery claim."
-  - "No exact Phase 3–8 implementation brief exists because provider/model/cost gates and freshness checks remain unresolved; high-level roadmap items are not implementation authority."
+  - "Exact briefs exist only for bounded Runware DeepSeek and Gemini qualification. No Phase 3 application-provider integration or later implementation brief is authority until its gate evidence is green."
 
 known_non_blocking_devex: []
 
@@ -414,15 +423,15 @@ next_tasks:
   - "Wave 4 Phase 2 deterministic timeline complete: VF-2-03 canonical persistence, exact resolution/restore, silence coverage, and property fixtures are committed, audited, and green at $0"
   - "Wave 4 Phase 2 timeline UI complete: VF-2-04 persisted real-audio inspection, fail-closed invalidation truth, responsive focus behavior, and Cloudflare/Chrome parity are committed, audited, and green at $0"
   - "Wave 4 Phase 2 convergence complete: VF-2-05 exact selected-span audio, restart/restore, byte-equivalent metadata restore, real local Chrome playback/approval/download, and uncached gates are committed and green at $0"
-  - "Next, run only the read-only VF-3-00 consolidated gate/freshness/authorization checkpoint when the user starts the fresh chat; do not change application code"
-  - "Ask once for separately scoped choices: official-source freshness research; capped provider qualification under non-transferable sub-caps; optional private Git/hosted CI; optional isolated staging; keep production deferred"
-  - "If provider qualification is authorized, close or fail gates with exact evidence first; only then author dependency-ready Phase 3–8 implementation briefs and refresh CURRENT_STATE before coding"
+  - "VF-3-00 complete: public provider facts were refreshed and the user authorized bounded provider/account, private Git/CI, and isolated staging work; production remains deferred"
+  - "Current: execute only VF-3-01 Runware DeepSeek qualification under its non-transferable $1 cap"
+  - "Next on a green handoff: execute VF-3-02 Runware Gemini style qualification under its non-transferable $3 cap"
   - "Fastest safe implementation order after evidence and new authority: deterministic prompt compiler/fixture adapter, gated DeepSeek integration, parallel Mage image and AvatarForcing lanes plus disjoint custom-style lifecycle, FFmpeg real fast-path convergence, conditional fallbacks, fault/security/restore hardening, then controlled release"
 
-paused_handoff:
-  status: clean_committed_phase_2_checkpoint
-  requested_by_user_at: "2026-08-10T16:45:12Z"
-  reason: "The user requested the nearest green checkpoint, full project-context reconciliation, and a fresh-chat handoff instead of continuing implementation."
+activation_handoff:
+  status: phase_2_preserved_phase_3_bounded_qualification_active
+  requested_by_user_at: "2026-08-10T17:07:12Z"
+  reason: "The user authorized autonomous progress across provider accounts/qualification, private Git/CI, and isolated staging while preserving exact caps, dependency gates, and deferred production."
   completed_and_preserved:
     - "Phase 0A/0B/0C, Phase 1, and Phase 2 are fully committed; accepted UI/render/output decisions remain unchanged."
     - "VF-1-06 has all seven corrective audit findings closed; no paused corrective work remains."
@@ -434,13 +443,13 @@ paused_handoff:
     - "Accepted fixture shell, fixed-base dock, Hub workflows, hard-cut-only output grammar, and required smooth image zoom."
   intentionally_not_done:
     - "No production provider prompt, image, Avatar, custom-style analyzer, fallback, GPU, cost/SLO, or deployed adapter is implemented or qualified."
-    - "No Git remote/push, hosted CI, cloud/account resource, OAuth app, Neon/R2/Workflow deployment, credential, model download, provider call, or spend was used."
+    - "At activation, no Git remote/push, hosted CI, cloud/account resource, OAuth app, Neon/R2/Workflow deployment, credential, model download, provider call, or spend had been used."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this CURRENT_STATE.yaml."
-    - "Load only the phase3_checkpoint profile and tasks/VF-3-00.md."
+    - "Load only the phase3_runware_deepseek_qualification profile and tasks/VF-3-01.md."
     - "Confirm the recorded commits are ancestors of clean HEAD; do not reset or redo completed phases."
-    - "Perform the planning-only freshness/gate audit and present the consolidated authorization decision."
-    - "Stop unless the user explicitly authorizes the next exact boundary; never infer provider, credential, spend, remote, cloud/account, or implementation authority."
+    - "Run only bounded DeepSeek qualification, keep ordinary provider mode fixture, and record redacted pass/fail evidence."
+    - "Stop on CAPTCHA/MFA/payment, credential ambiguity, exact identity ambiguity, regression, or the non-transferable $1 cap."
   optimized_future_sequence:
     - "A. Refresh official time-sensitive provider/model/rate/retention/license facts read-only and classify all open gates."
     - "B. With explicit caps/credential authority, run bounded provider qualification through the committed sandbox and record pass/fail evidence."
@@ -449,14 +458,16 @@ paused_handoff:
     - "E. Add conditional fallbacks only after primary-avatar evidence; then fault/security/backup/load hardening and controlled release under separately authorized staging/production checkpoints."
   stop_conditions:
     - "Missing or non-exact brief, unresolved dependency/gate, dirty/unexplained worktree, or regression."
-    - "Any credential, model download, provider call/spend, remote/cloud/account mutation, deployment, or public/LAN exposure without explicit authority."
+    - "Any provider, model, credential, download, call/spend, remote/cloud/account mutation, deployment, or public/LAN exposure outside the exact selected brief and recorded authority."
     - "Any request to alter accepted UI/output/product decisions without same-change context reconciliation."
 
 notes:
   - "This is a replace-in-place handoff snapshot, not a progress diary."
-  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-00 is planning-only: it prepares a consolidated decision and cannot implement, mutate context/application code, use providers, or spend."
-  - "The accelerated approval through VF-2-05 is complete and exhausted; it never activated the planned $25 provider ceiling."
+  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-01 authorizes only bounded live DeepSeek qualification, not application integration or adjacent lanes."
+  - "The accelerated approval through VF-2-05 is complete and exhausted. On 2026-08-10 the user separately activated the planned non-transferable $1/$3/$8/$8/$5 provider caps, private Git/CI, and isolated staging authority; production remains deferred."
+  - "Runware signup/login is authorized, but CAPTCHA, MFA, email verification, payment, or an unclear charge still stops unattended automation."
+  - "AvatarForcing's $8 sub-cap must remain untouched until GATE_AVATAR_003 reconciles the official license contradiction."
   - "TypeScript is the sole RFC 8785/JCS authority; Python validates canonical schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output grammar remains three compositions, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
-  - "No public tunnel or LAN listener is active. VF-3-00 does not need to start the stable loopback fixture server."
+  - "No public tunnel or LAN listener is active. VF-3-01 does not need to start the stable loopback fixture server."
   - "The completed VF-1-01 baseline is preserved; VF-1-01A supersedes its overstated behavior/concurrency evidence with exact, bounded acceptance claims."

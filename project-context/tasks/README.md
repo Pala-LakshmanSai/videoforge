@@ -13,8 +13,7 @@ Most recently completed brief: `VF-2-05.md`, with implementation commit `907e0e4
 commit `d16c2a9`. The 2026-08-10 standing provider-free implementation authority through Phase 2 is
 complete and exhausted.
 
-`CURRENT_STATE.yaml` now selects `VF-3-00.md`, an exact planning-only gate/authorization checkpoint.
-It authorizes no application implementation or context mutation. A brief being present does not
-permit concurrent edits, credentials, the planned `$25` envelope, or remote/cloud/provider
-mutation. Phase 3 onward must be briefed from fresh facts and measured gate evidence rather than
-guessed from the high-level roadmap.
+`VF-3-00.md` is complete: the 2026-08-10 public-fact audit found a blocking AvatarForcing license
+contradiction and the user then granted bounded provider/account, private-Git/CI, and isolated
+staging authority. `CURRENT_STATE.yaml` selects `VF-3-01.md`; only its exact Runware DeepSeek lane
+and non-transferable `$1` sub-cap are active. `VF-3-02.md` is dependency-ready but not selected.

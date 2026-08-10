@@ -22,7 +22,7 @@ Every row below is `APPROVED` by the user and recorded in this planning session 
 | `DEC_STYLE_005` | Optional extra image keywords require an explicit toggle, off by default; the toggle is the only persistent applied-state indicator | Gives user control without silently changing every prompt or adding an LLM call; the user removed redundant applied/not-applied confirmation UI on 2026-08-09 |
 | `DEC_STYLE_006` | Analyzer extracts shared visual traits, not reference content/identity/logo/text | Prevents accidental copying and keeps styles reusable across topics |
 | `DEC_IMAGE_001` | `microsoft/Mage-Flow-Turbo`, 4-step path | User locked Mage Flow; speed/quality fit |
-| `DEC_AVATAR_001` | AvatarForcing primary | Fast one-step open model; provisional on exact-avatar gate |
+| `DEC_AVATAR_001` | AvatarForcing is the provisional primary technical candidate | Fast one-step fit remains promising, but commercial qualification/use is blocked by the contradictory official license artifacts recorded in `GATE_AVATAR_003` |
 | `DEC_AVATAR_002` | MuseTalk only repairs isolated lip failure | Avoid redundant face softening/seams |
 | `DEC_AVATAR_003` | SkyReels V3 is whole-frame fallback from the revision-pinned canonical runtime source and same selected span audio—not from a failed derivative | Higher-detail/heavier rescue path while preserving exact Avatar Profile provenance |
 | `DEC_AVATAR_004` | Same centered avatar clip serves both layouts | Saves inference; deterministic crop is sufficient |
@@ -60,6 +60,7 @@ In MVP, deterministic media checks can auto-pass technical validity, but the use
 |---|---|---|
 | `GATE_AVATAR_001` | AvatarForcing exact-avatar 4090 VRAM, FPS, cold start, quality, cost | Lock 4090 profile or select measured compatible GPU |
 | `GATE_AVATAR_002` | User approves global rejection/demotion threshold after bakeoff | Until then SkyReels is per-clip only |
+| `GATE_AVATAR_003` | Obtain authoritative clarification reconciling the repository README's Apache-2.0 claim, the committed academic-only/non-commercial `LICENSE.txt`, and the weights repository's missing license | No AvatarForcing weight download, paid qualification, production profile, or commercial use |
 | `GATE_IMAGE_001` | Reproduce ~300 images in 5–8 generation minutes and <$0.20 | Lock Mage resolution/batch/GPU |
 | `GATE_IMAGE_002` | Retrieve exact checkpoint and launch-license artifact | Required before commercial launch |
 | `GATE_LLM_001` | Confirm exact 0731 endpoint identity and strict-schema fixture | Lock Runware production config |

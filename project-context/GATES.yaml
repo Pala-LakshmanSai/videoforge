@@ -15,6 +15,12 @@ gates:
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#avatarforcing-exact-avatar-suite"
     owner: unassigned
     last_run: null
+  GATE_AVATAR_003:
+    status: open
+    blocks: avatarforcing_download_paid_qualification_and_commercial_use
+    acceptance: "08_MODELS_AND_PROVIDERS.md#avatarforcing"
+    owner: unassigned
+    last_run: null
   GATE_IMAGE_001:
     status: open
     blocks: mage_production_profile

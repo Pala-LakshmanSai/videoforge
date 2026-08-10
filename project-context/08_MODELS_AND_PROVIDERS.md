@@ -3,7 +3,7 @@
 Status: user-approved ladder plus explicit benchmark gates  
 Read when: building a worker, pinning dependencies, estimating cost, or proposing a model change.
 
-Prices and provider capabilities below were checked on 2026-08-08 and are time-sensitive. Runtime code must store current rates/configuration rather than hard-code this document.
+Prices and provider capabilities below were refreshed from official sources on 2026-08-10 and are time-sensitive. Runtime code must store current rates/configuration rather than hard-code this document.
 
 ## Runware DeepSeek V4 Flash 0731
 
@@ -27,7 +27,7 @@ Current documented Runware prices:
 
 A conservative 30-minute workload of 10k input and 30k output is approximately $0.00535. Even a less efficient workload remains around one cent. Do not downgrade prompt relevance to save a fraction of a cent.
 
-Integration gate: verify the live endpoint resolves to the exact approved 0731 revision/fingerprint, strict schema is stable, and a representative batch returns all IDs before lock.
+Runware's public page identifies the checkpoint as DeepSeek-V4-Flash-0731 but does not expose an immutable served revision or fingerprint. Integration therefore remains gated on a live response/provider record, stable strict-schema behavior, and complete representative-batch IDs; do not infer exact identity from the friendly model name alone.
 
 Official source: [Runware DeepSeek-V4-Flash API](https://runware.ai/docs/models/deepseek-v4-flash).
 
@@ -51,11 +51,11 @@ Current documented Runware prices:
 
 Why not use Gemini 3.1 Flash Lite by default: it is substantially cheaper, but extracting subtle shared treatment while excluding recurring reference content is a quality-sensitive one-time task. The additional few cents are amortized across every project that reuses the style. The exact choice remains gated by a VideoForge-specific A/B.
 
-Runware states that LLM prompts/outputs are not used for training, but zero-data-retention is an enterprise option. Standard processing must not be described as ZDR or confidential. Require disclosure consent, send browser-normalized derivatives over short-lived signed URLs, record user rights, distinguish VideoForge deletion from provider retention/deletion, and never send the private Ranga frames.
+Runware advertises no LLM training on prompts/outputs, but zero-data-retention is enterprise-only. Its standard terms/privacy posture may store inputs, treats uploads as non-confidential, and grants service-related rights broad enough that VideoForge must not describe standard processing as ZDR or confidential. Require disclosure consent, use only owned/synthetic qualification images, send browser-normalized derivatives over short-lived signed URLs, minimize content, record user rights, distinguish VideoForge deletion from provider retention/deletion, and never send the private Ranga frames.
 
 If the analyzer repeatedly fails style/content separation, A/B only the analyzer against direct Gemini 3.6 Flash. Do not disturb DeepSeek, Mage, the scheduler, or avatar architecture.
 
-Official sources: [Runware Gemini 3.5 Flash](https://runware.ai/docs/models/google-gemini-3-5-flash), [Runware LLM security](https://runware.ai/llm-api), and [Runware terms](https://runware.ai/terms).
+Official sources: [Runware Gemini 3.5 Flash](https://runware.ai/docs/models/google-gemini-3-5-flash), [Runware LLM security](https://runware.ai/llm-api), [Runware terms](https://runware.ai/terms), and [Runware privacy](https://runware.ai/privacy).
 
 ## Mage-Flow-Turbo
 
@@ -82,26 +82,27 @@ The separate `microsoft/Mage-Flow-Edit-Turbo` model is not needed in the normal 
 
 Mage receives a text prompt compiled from the selected style profile; it does not receive the style's reference images in MVP. Prompt-derived styling is intentionally simple/cheap but must pass `GATE_STYLE_002`. Do not silently introduce reference conditioning or LoRA training if a distinctive style fails.
 
-Access/launch gate: preserve the exact model card/license/checkpoint artifact used, verify commercial launch terms and gated download access, and pin a revision/hash. The current public metadata reports MIT, but launch must rely on the retrieved license artifact, not memory.
+Access/launch gate: preserve the exact model card/license/checkpoint artifact used, verify commercial launch terms and gated download access, and pin a revision/hash. The public metadata reports MIT, but unauthenticated model/license artifact retrieval returned authorization-required on 2026-08-10. Launch must rely on the exact retrieved artifact, not metadata or memory.
 
 Official source: [Mage-Flow-Turbo model card](https://huggingface.co/microsoft/Mage-Flow-Turbo).
 
 ## AvatarForcing
 
-Approved role: provisional primary talking-avatar model.
+Approved role: provisional technical candidate for primary talking-avatar model; commercial qualification is blocked by `GATE_AVATAR_003`.
 
-- Official repo/weights are open; repo license Apache-2.0.
+- The official repository README labels the project Apache-2.0, while its committed `LICENSE.txt` says academic-only/non-commercial and prohibits production use; that file also refers to a different project name, `RollingForcing`.
+- The public Hugging Face weights repository currently declares no license. Its observed repository revision on 2026-08-10 was `e2448919a7b535c29f34e07892884ae1a43c6ace`; this is identity evidence, not permission to use it commercially.
 - Input: the canonical runtime image from the exact pinned Avatar Profile version + selected speech audio + a simple restrained text prompt.
 - Typical paper configuration: 832×480, 25 fps, one-step, 1.3B student; renderer deterministically duplicates/resamples frames to 30 fps without optical flow.
 - Paper reports 34 ms/frame, but does not disclose the GPU.
 - Produces lip movement plus face/head/subtle upper-body motion.
 - Initial RunPod target: RTX 4090 24 GB; L40S/other compatible GPU only if the measured fit requires it.
 
-Do not promise 4090 VRAM, cold-start, FPS, full-screen realism, or unit cost before the exact-avatar suite across representative Avatar Profile versions. The accepted clip is cropped deterministically for both layouts.
+Do not download weights, provision compute, or spend the AvatarForcing sub-cap until authoritative code-and-weights commercial-use terms reconcile the contradiction. Even after that, do not promise 4090 VRAM, cold-start, FPS, full-screen realism, or unit cost before the exact-avatar suite across representative Avatar Profile versions. The accepted clip is cropped deterministically for both layouts.
 
 MVP fallback dispatch requires an explicit user/reviewer defect classification after deterministic technical checks. AvatarForcing/MuseTalk/SkyReels are not coupled to an unapproved automatic visual-QA model.
 
-Official source: [KlingAIResearch AvatarForcing](https://github.com/KlingAIResearch/AvatarForcing).
+Official sources: [KlingAIResearch AvatarForcing](https://github.com/KlingAIResearch/AvatarForcing), [repository license artifact](https://github.com/KlingAIResearch/AvatarForcing/blob/main/LICENSE.txt), and [official Hugging Face weights](https://huggingface.co/lycui/AvatarForcing).
 
 ## MuseTalk 1.5
 
