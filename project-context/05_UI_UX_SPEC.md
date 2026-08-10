@@ -1,19 +1,21 @@
 # UI and UX specification
 
-Status: implemented and user-accepted medium-scale minimal direction; `GATE_UI_001` closed 2026-08-09
+Status: compact 100%-zoom refinement implemented and technically verified pending user review; historical `GATE_UI_001` closed 2026-08-09
 Read when: designing or implementing any user-visible flow.
 
 ## Design objective
 
-The UI should feel like a clean, lively, futuristic production console while remaining understandable to a non-developer. The backend can be complex; the primary layer must be visually calm, large enough to read without zooming, and free of explanatory clutter.
+The UI should feel like a clean, lively, futuristic production console while remaining understandable to a non-developer. The backend can be complex; the primary layer must be visually calm, comfortably readable at Chrome 100%, and free of explanatory clutter.
 
 Primary reference: `assets/ui/swipecut-ui-reference.jpg`. It is inspiration only. Do not copy its logo, name, sample content, exact trade dress, or proprietary text.
 
 The user reconfirmed this direction on 2026-08-09 after rejecting the first fixture shell as too small, too dense, and too text-heavy, then rejected the later 20 px/60 px scale as oversized. The target is a medium production-console hierarchy: a prominent active-project command strip and project title, compact factual progress hero, clear metric cards, strong vertical pipeline, live artifact panel, and floating navigation dock. VideoForge must translate those concepts into its own routes, copy, data, and visual identity rather than copying the reference product.
 
+On 2026-08-10 the user explicitly superseded the 18 px/52 px desktop density after comparing the same app at Chrome 100% and 80%. The 80% appearance is now the design target at real 100% zoom, implemented through component geometry rather than CSS `zoom` or a transformed shell. The compact desktop contract uses a 15 px root, 44 px normal controls, an 1184 px content canvas, 20 px top-level rhythm, and proportionally compact panels/media. Mobile keeps the same 15 px root, 44 px actionable floor, and a 16 px top-level rhythm.
+
 The same review later refined the Create Project hierarchy: keep the active choice compact, open choices only on demand, remove nonessential technical hints and success confirmations, and expose the two primary compute lanes without implying unverified GPU availability. The active-project bar remains full-width; only its internal content and progress track are deliberately inset. Every visible select/disclosure uses the VideoForge surface language rather than a browser-native menu. Child choices expand inside the same bordered surface, never as visually detached boxes or an overlay that covers the following controls. The floating dock uses fine-pointer proximity magnification with a calm reduced-motion fallback. Following the user's macOS comparison on 2026-08-09, hover is scale-only: icon tiles grow from a larger resting size, their bottom edges stay fixed, neighboring scale tapers smoothly, and the item plus active-route backing geometry remains static.
 
-The user's later surface-separation review applies across the whole application, not only Usage. Major sibling sections must never touch: use a consistent 24 px desktop and 20 px compact/mobile page rhythm, with explicit nonzero gaps inside card/list grids. Structural surfaces need a clearly visible lavender edge supported by a dark depth shadow and restrained cobalt/violet halo. Keep the effect calm: major panels and cards receive the layered treatment, while nested controls and incidental dividers remain lighter so the UI does not become double-boxed or neon-heavy.
+The user's later surface-separation review applies across the whole application, not only Usage. Major sibling sections must never touch: use a consistent 20 px desktop and 16 px compact/mobile page rhythm, with explicit nonzero gaps inside card/list grids. Expanded generic disclosures place at least 12 px between their trigger and first visible child and between sibling fact cards. Structural surfaces need a clearly visible lavender edge supported by a dark depth shadow and restrained cobalt/violet halo. Keep the effect calm: major panels and cards receive the layered treatment, while nested controls and incidental dividers remain lighter so the UI does not become double-boxed or neon-heavy.
 
 Reuse proven visual concepts from the user's ImageForge app where helpful. The compact, portable baseline is `evidence/source-briefs/LOCAL_BASELINES.md`; the absolute paths below are optional local evidence only, and their absence must never block a fresh chat, clone, build, or test:
 
@@ -41,28 +43,28 @@ Initial design tokens:
 | Primary accent | coral/crimson `#ff3f57` to `#ff5969` |
 | Secondary accent | cobalt/violet `#2f6fff` / `#8d5cff` |
 | Success | `#4bd99f` |
-| Control radius | about 18 px |
-| Panel radius | about 28–30 px |
+| Control radius | about 12–15 px |
+| Panel radius | about 21–24 px |
 | Structural boundary | translucent lavender, visibly stronger than control/divider borders; current surface tiers use roughly 22%, 30%, and 48% alpha |
 | Structural depth | dark 10–42 px shadow plus a restrained 1 px cobalt/violet outer halo and subtle inner highlight |
-| Page section gap | 24 px desktop; 20 px compact/mobile; never zero between sibling layout groups |
-| Base text | 18 px desktop and compact/mobile; ordinary reading text 16–18 px |
-| Secondary text | normally at least 16 px; the user-accepted fixture shell retains compact developer-only metadata down to 14.4 px |
-| Micro labels | normally at least 16 CSS px; the user-accepted fixture shell retains short developer-only status labels down to 14.4 px |
-| Control height | normally 52 px; at least 44 px for compact actionable controls |
+| Page section gap | 20 px desktop; 16 px compact/mobile; never zero between sibling layout groups |
+| Base text | 15 px desktop and compact/mobile |
+| Secondary text | normally 13–15 px in the compact shell |
+| Micro labels | normally 12–13 px for short status/provenance labels |
+| Control height | 44 px normal actionable floor |
 | Minimum touch target | 44×44 px |
-| Page title | roughly 48–72 px desktop |
+| Page title | roughly 28–40 px desktop |
 
 - Clearly visible translucent lavender boundaries on structural panels/cards; lighter thin borders remain appropriate for controls and incidental dividers.
 - Restrained red/blue ambient glow and modest blur.
 - Bold clean sans-serif for content; monospace only for job IDs, stages, ETA, cost, and technical status.
-- Generous spacing and clear hierarchy.
+- Compact but nonzero spacing and clear hierarchy.
 - One dominant action per screen.
 - Glow and gradient must never reduce readability.
-- Major panels normally use 28–42 px padding and 24–32 px inter-section gaps.
+- Major panels normally use 18–24 px padding and 14–20 px inter-section gaps.
 - Shadow or glow reinforces a boundary but never replaces real padding or a nonzero layout gap. Avoid double-boxing nested content and avoid applying a heavy glow to every input.
 - Do not simulate scale with CSS `zoom`; components themselves must use readable type, controls, media, spacing, and hit targets.
-- Do not render ordinary user-facing text below 16 CSS px. The user-accepted fixture baseline may retain its existing 14.4–15.3 px developer-only health, fixture, and terse technical metadata; do not expand that exception to normal product copy.
+- Do not simulate the requested density by shrinking the whole page. Ordinary user-facing copy stays legible in the 14–16 px range; short status/provenance microcopy may use 12–13 px when it remains high contrast and nonessential to the primary action.
 
 ## Information density and content voice
 
@@ -159,7 +161,7 @@ Use direct nouns and outcomes instead of slogans or repeated implementation rati
 
 ## Core components
 
-- Floating navigation dock with Queue, New Project, active Progress, Avatar Hub, Image Styles, Library, Usage, and Settings; the active route is unmistakable. Desktop items retain approximately 94 px minimum width and 12 px dock padding, while icon tiles rest at 48×44 px with 30 px glyphs. On fine pointers above 680 px, only the icon tile scales: the pointer target peaks at 1.75×, immediate and second neighbors scale progressively less, and icons 300 px or farther remain exactly 1×. Every icon keeps the same bottom edge; link boxes, labels, dock padding, and the active-route backing remain static. Touch/coarse-pointer, mobile, and reduced-motion modes stay neutral. At 1024 px every destination remains directly reachable with visible focus and accessible names. Mobile uses a labelled 4×2 dock without hiding either Hub or destructive/budget controls.
+- Floating navigation dock with Queue, New Project, active Progress, Avatar Hub, Image Styles, Library, Usage, and Settings; the active route is unmistakable. Desktop items rest at 76×62 px with 10 px dock padding, while icon tiles rest at 38×35 px with 24 px glyphs. On fine pointers above 820 px, only the icon tile scales: the pointer target peaks at 1.75×, immediate and second neighbors scale progressively less, and icons 240 px or farther remain exactly 1×. Every icon keeps the same bottom edge; link boxes, labels, dock padding, and the active-route backing remain static. Touch/coarse-pointer, widths at or below 820 px, and reduced-motion modes stay neutral. At 1024 px every destination remains directly reachable with visible focus and accessible names. Compact/mobile uses a labelled 4×2 dock without hiding either Hub or destructive/budget controls.
 - Full-width top active-project command bar with an internally inset project/progress track and compact mobile treatment.
 - Progress ring plus factual completed/total counts.
 - Metric cards for stage, ETA, cost, queue, GPU.
@@ -227,7 +229,7 @@ Opening `+ New avatar` from Create Project follows the same no-loss rule: autosa
 - Accordion triggers expose `aria-expanded`/`aria-controls`; reference lightboxes support Escape and previous/next keyboard commands.
 - No substantive information or action is hover-only.
 - Respect `prefers-reduced-motion`; status remains clear without animation.
-- Dock proximity magnification is enhancement-only: it never carries information, never translates an icon or backing surface, never changes layout geometry, and is disabled at 680 px or below, for reduced motion, and for coarse/touch pointers.
+- Dock proximity magnification is enhancement-only: it never carries information, never translates an icon or backing surface, never changes layout geometry, and is disabled at 820 px or below, for reduced motion, and for coarse/touch pointers.
 - Operator transcript text may appear in the app but is never burned into output.
 - Desktop-first at 1280–1920 px; fully usable at 1024 px.
 - Floating navigation is keyboard reachable, reports the active route semantically, and keeps Avatar Hub/Image Styles Hub directly reachable at 1024 px.
@@ -249,4 +251,4 @@ Opening `+ New avatar` from Create Project follows the same no-loss rule: autosa
 
 ## UI acceptance
 
-The UI passes when the non-developer user can create/store a named avatar once, see every authorized preset thumbnail, select avatar/style versions from compact visual dropdowns without re-upload, inspect every authorized custom-style reference on demand, distinguish built-in generated examples from uploaded references, create/review/publish/select a style, opt into extra keywords without a redundant confirmation panel, select truthful image/avatar execution profiles, and start/monitor/recover/review/download a project without asking what a technical status means. The primary layer is medium-scale, minimal, and free of repeated technical explanations; the full audit detail remains reachable; no button appears inert; navigation is clear; the full-width command bar and its internal track scale cleanly; cost and compute/avatar/style state are truthful; no supported viewport overflows or hides critical controls; and the user approves the design through the live Chrome gate.
+The UI passes when the non-developer user can create/store a named avatar once, see every authorized preset thumbnail, select avatar/style versions from compact visual dropdowns without re-upload, inspect every authorized custom-style reference on demand, distinguish built-in generated examples from uploaded references, create/review/publish/select a style, opt into extra keywords without a redundant confirmation panel, select truthful image/avatar execution profiles, and start/monitor/recover/review/download a project without asking what a technical status means. The primary layer is compact at real Chrome 100%, minimal, and free of repeated technical explanations; the full audit detail remains reachable; no button appears inert; navigation is clear; expanded content has real internal separation; the full-width command bar and its internal track scale cleanly; cost and compute/avatar/style state are truthful; no supported viewport overflows or hides critical controls; and the user approves the design through the live Chrome gate.

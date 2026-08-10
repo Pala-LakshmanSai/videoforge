@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T02:43:05Z"
+updated_at: "2026-08-10T02:52:23Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: true
@@ -17,8 +17,8 @@ repository:
   base_commit: "1ac161dbf6b8fbc08568dc0456a5c6f6ee8d8992"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
-  verified_implementation_commit: "d9bee0e63c40070ca943b6c7c1f32774d41f699e"
-  last_good_commit: "d9bee0e63c40070ca943b6c7c1f32774d41f699e"
+  verified_implementation_commit: "1d21b324618d8abb7cfdaa0ebef1be1028bd9d64"
+  last_good_commit: "1d21b324618d8abb7cfdaa0ebef1be1028bd9d64"
   dependency_policy:
     ajv: "8.20.0"
     note: "Security override of the original 8.17.1 pin: 8.17.1 is affected by a moderate ReDoS advisory."
@@ -33,10 +33,10 @@ live_development:
     pid: null
     lifetime: null
   server_state: running
-  dev_server_pid: 81771
+  dev_server_pid: 99498
   owner_task_id: VF-0C-08
-  health_checked_at: "2026-08-10T02:43:05Z"
-  health_commit: "7a852f8"
+  health_checked_at: "2026-08-10T02:52:23Z"
+  health_commit: "1d21b32"
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
@@ -55,14 +55,15 @@ live_development:
       - DEC_UX_002
       - DEC_UX_003
   latest_user_directed_ui_change:
-    status: implemented_and_verified_pending_user_review
-    task_id: VF-UI-SURFACE-001
-    commit: "709e45df46a4276541334ef9dcbdf12b5863ffee"
-    route: "http://localhost:4173/usage?fixture=happy_generating"
-    checked_at: "2026-08-09T17:36:44Z"
-    evidence: "evidence/gates/GATE_UI_001/2026-08-09-surface-separation-refinement"
-    user_direction: "Fix touching layouts and weak visual division application-wide with real spacing plus visible borders, restrained shadows, or restrained glow in the established futuristic clean/minimal style."
+    status: implemented_and_technically_verified_pending_user_review
+    task_id: VF-UI-DENSITY-002
+    commit: "cd67b2bd82dea432a901dabe9afc4c958f3bb80a"
+    route: "http://localhost:4173/settings?fixture=happy_generating"
+    checked_at: "2026-08-10T02:52:23Z"
+    evidence: "apps/web/tests/e2e/shell.spec.ts"
+    user_direction: "Make Chrome 100% match the preferred 80% appearance through real component density, and repair expanded Settings content that touches its trigger or sibling cards."
     feedback_refs:
+      - DEC_UX_002
       - DEC_UX_004
 
 active_ownership:
@@ -92,31 +93,39 @@ recommended_next_task:
 
 last_green:
   commands:
+    - "TURBO_FORCE=true pnpm verify"
     - "pnpm test:local-slice"
-    - "pnpm --filter @videoforge/contracts lint && pnpm --filter @videoforge/contracts typecheck && pnpm --filter @videoforge/contracts sync:check"
-    - "pnpm --filter @videoforge/pipeline lint && pnpm --filter @videoforge/pipeline typecheck"
-    - "pnpm --filter @videoforge/test-fixtures lint && pnpm --filter @videoforge/test-fixtures typecheck"
-    - ".venv/bin/ruff check and format --check on the render worker"
+    - "Real Chrome 100% inspection of Create, Settings disclosures, Queue, Progress, Avatar Hub, and Usage"
     - "shasum -a 256 /Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v2.mp4"
     - "ffprobe /Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v2.mp4"
-  checked_at: "2026-08-10T02:43:05Z"
+  checked_at: "2026-08-10T02:52:23Z"
   result: pass
   evidence: "evidence/acceptance/VF-0C-08/2026-08-10-subtle-zoom-rework"
   counts:
+    web_server_component_tests: 132
+    dock_motion_unit_tests: 7
     typescript_contract_jcs_tests: 51
     python_contract_tests: 40
     fixture_registry_and_local_slice_tests: 12
+    configuration_tests: 4
     pipeline_tests: 19
     isolated_worker_tests: 45
     focused_render_worker_tests: 10
+    root_script_tests: 6
     synchronized_contract_files: 47
+    playwright_chrome_journeys_passed: 34
+    playwright_chrome_journeys_intentionally_skipped: 8
   notes:
+    - "The forced verify executed every Turbo task with zero cache hits and passed formatting, JavaScript/Python linting, typechecking, all listed suites, contract synchronization, context validation, secret scanning, production build, route-tree stability, and the branded-Chrome matrix."
+    - "At real Chrome 100%, Create and the route surfaces now use the compact density requested from the user's 80% reference without CSS zoom or a transformed shell. Settings disclosures measure 12 px from summary to first card and 12 px between cards. Final user visual approval remains pending."
+    - "Chrome covered 42 registered journeys: 34 applicable journeys passed and 8 duplicate compact-project viewport journeys were intentionally skipped. The route matrix explicitly covers 1920, 1440, 1280, 1024, 820, 680, 430, and 390 CSS-pixel widths."
+    - "A preset-gallery timing assertion now waits for decoded pixels instead of sampling immediately after dialog mount; genuinely broken images still fail with zero natural width."
     - "The user manually replayed the first downloaded file in installed Chrome; playback worked, but the user rejected its 4–8% image zoom as shaky and too strong. That output is superseded for visual acceptance."
     - "ffmpeg-render-v2 uses a 1.5–2.5% centered quintic zoom on a 4× Lanczos working canvas. Historical v1 manifests remain reproducible, while canonical TypeScript/Python validators and the worker reject mixed render/zoom versions."
     - "The provider-free API-level local-slice gate passed through real ASR, scheduling, asset resolution, FFmpeg render, FFprobe, Range preview, approval binding, and exact download at $0 external spend."
     - "Attempts 010 and 011 deterministically produced the same 1,804,769-byte 1920x1080p30 H.264/AAC file: SHA-256 2d7b0fa2ff77e90eda20d34c6a24d63d2a83d7dea40da07d0edf54159ccae002, duration 37,167 ms, 1,115 frames."
     - "Start/middle/end contact frames for both image compositions were inspected and show restrained centered motion; installed-Chrome playback and seek of the replacement remain the human acceptance checkpoint."
-    - "The loopback fixture server is healthy and provider-off, but its health commit 7a852f8 is behind current HEAD; restart it before using live health as exact-commit proof."
+    - "The loopback fixture server is healthy at implementation commit 1d21b32, fixture-only, provider-off, and authorized for $0 external spend."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -138,8 +147,8 @@ next_tasks:
 
 notes:
   - "This is a replace-in-place snapshot, not a progress log."
-  - "The user accepted the Phase 0B UI on 2026-08-09. GATE_UI_001 is closed; later tasks preserve this baseline unless the user explicitly changes it or a verified regression is repaired."
-  - "The application-wide surface-separation and scale-only dock refinements requested on 2026-08-09 are implemented and technically verified; DEC_UX_004 records the normative spacing and boundary treatment."
+  - "The user accepted the Phase 0B visual direction on 2026-08-09. GATE_UI_001 remains closed; the explicit 2026-08-10 request supersedes its older 18 px/52 px density with the compact 100%-zoom contract in DEC_UX_002. Final review of that density refinement is pending."
+  - "Application-wide surface separation, 12 px generic disclosure spacing, and the scale-only dock are implemented and technically verified; DEC_UX_004 records the normative spacing and boundary treatment."
   - "21_IMPLEMENTATION_EXECUTION_PLAN.md owns remaining sequencing, task IDs, safe parallel ownership, integration order, checkpoints, and authorization boundaries."
   - "The Phase 0A fixture-contract foundation is implemented. Complex non-Create Zod/Pydantic validators are intentionally schema-backed entry points rather than independent hand models."
   - "DEC_CONTRACT_001 is locked: TypeScript is the sole JCS authority; Python validates canonical schemas and exact byte hashes while treating canonical JSON hashes as opaque."

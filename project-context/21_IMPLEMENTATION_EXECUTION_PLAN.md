@@ -16,10 +16,10 @@ The user's future instruction “UI is good for now; implement the next tasks ac
 The following is already implemented and must be preserved:
 
 - Phase 0A/0C contract foundation: sixteen canonical contracts, Ajv/Zod/Pydantic entry-point parity, generated structural TypeScript types, TypeScript RFC 8785 JCS, worker-job and orchestration-state boundaries, local media job/result boundaries, fixture profiles, CI, secret scan, and stable root commands.
-- Phase 0B fixture shell: approved medium-scale UI, app-native in-flow controls, reusable Avatar/Image Style Hubs, access fixtures, semantic preflight, immutable pins, mutation concurrency, review approval binding, responsive layouts, and real-Chrome acceptance.
+- Phase 0B fixture shell: approved visual direction with the later user-directed compact 100%-zoom density refinement, app-native in-flow controls, reusable Avatar/Image Style Hubs, access fixtures, semantic preflight, immutable pins, mutation concurrency, review approval binding, responsive layouts, and real-Chrome acceptance.
 - Phase 0C through VF-0C-07: owned local narration, real whisper.cpp timing, deterministic scheduling, exact accepted-asset resolution, real FFmpeg render/probe, bounded local API lifecycle, and truthful playback/download UI.
 - VF-0C-08 through replacement: real Chrome created the project, observed the pipeline, played and sought the first real MP4, approved and downloaded matching bytes, and manually replayed that file. The replay exposed excessive visible zoom shake; `ffmpeg-render-v2` and its hash-verified replacement are implemented, and only human review of that replacement remains.
-- `GATE_UI_001` is closed. Do not redesign the visual system, change its medium scale, or alter dock resting geometry unless the user explicitly asks or a later feature exposes a verified regression.
+- `GATE_UI_001` is closed. Preserve the compact 100%-zoom density, scale-only dock, and established visual system unless the user explicitly asks or a later feature exposes a verified regression. The 2026-08-10 density change was such an explicit request and supersedes the earlier 18 px/52 px/94 px baseline.
 - Fixture mode remains the default, makes no provider call, and authorizes `$0` external spend.
 - The stable development URL remains `http://localhost:4173`; visible work must reuse it and retain the approved routes.
 
@@ -131,7 +131,7 @@ Run these children in parallel after one integration owner records path ownershi
 - Own: `apps/web/src/screens/**`, new `apps/web/src/features/**`, screen-scoped styles, and frontend-only tests.
 - Move route screens and feature components out of `screens/index.tsx` without changing JSX semantics, copy, class names, DOM order, or query behavior.
 - Split the stylesheet into an explicit import order: tokens/base → shell/components → feature screens → responsive/reduced-motion. Do not retune values.
-- Preserve the approved dock, medium scale, dropdown containment, Hub geometry, focus, and responsive behavior exactly.
+- Preserve the approved scale-only dock, compact 100%-zoom density, dropdown containment, Hub geometry, focus, and responsive behavior exactly.
 - Acceptance: component tests and all 26 Chrome journeys pass; computed root/control/dock metrics and real-Chrome screenshots show no intended visual difference.
 
 ### `VF-W1-PIPE` — pure pipeline package scaffold

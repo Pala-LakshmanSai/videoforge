@@ -37,12 +37,10 @@ flowchart LR
 
 ## Phase 0A: private repository and contract skeleton
 
-Current (2026-08-09): repo commands, sixteen contracts, parity-tested validator entry points,
-generated structural TypeScript types, and TypeScript JCS are complete. Worker-job and
-orchestration schemas lock dispatch plus task/attempt/outbox/event state; Phase 0C added transcript,
-ASR, render, and technical-probe boundaries. TypeScript is the sole JCS authority; Python verifies
-exact byte hashes and treats canonical document hashes as opaque. Durable database orchestration
-belongs to Phase 1.
+Current: repo commands, sixteen contracts, cross-language validation/types, and TypeScript JCS
+are complete. Schemas cover orchestration plus local ASR,
+render, and probe boundaries. Python verifies exact bytes and treats canonical hashes as opaque;
+durable database orchestration belongs to Phase 1.
 
 - Initialize private Git; exclude research, private references, outputs, secrets, weights, and screenshots.
 - Create the monorepo shape in `19_IMPLEMENTATION_PLAYBOOK.md`: web, shared packages, and four worker lanes.
@@ -59,9 +57,11 @@ Exit: TypeScript and Python validate identical fixtures; root commands work; a p
 
 ## Phase 0B: fixture UI shell in live Chrome
 
-Current (2026-08-09): accepted; `GATE_UI_001` is closed. Preserve it while adding capabilities.
+Current (2026-08-10): `GATE_UI_001` remains closed. A later user-directed refinement maps the
+preferred Chrome 80% appearance to real 100% through compact geometry; it is technically verified
+and awaits final review.
 
-- Implement medium tokens, the full-width command bar, fixed-base dock, fixture routes, and matched preset Hubs/wizards.
+- Implement compact 100%-zoom tokens, the full-width command bar, fixed-base scale-only dock, fixture routes, and matched preset Hubs/wizards.
 - Create Project uses integrated app-native visual preset dropdowns, minimal voiceover copy with strict validation, no script field, a confirmation-free keyword opt-in, and truthful app-native `image_media`/`avatar_primary` profile selectors; planned candidates stay disabled until `GATE_GPU_001`.
 - Implement every scenario ID from `19_IMPLEMENTATION_PLAYBOOK.md`, including preset draft preservation/version drift, extra-keyword off/conflict behavior, empty/invalid/ready/archived avatar states, cold start, style analysis, partial failure, fallback approval, budget block, ambiguous dispatch, reconciliation, cancellation, ready-for-review, and approved.
 - Keep `http://localhost:4173` running/reused in the user's actual Chrome; inspect workflows as a human and capture approved feedback in `05_UI_UX_SPEC.md`.
@@ -72,13 +72,11 @@ Exit: user approves the core visual direction and can play through success/failu
 
 ## Phase 0C: local walking vertical slice
 
-Current (2026-08-10): the provider-free adapter, whisper.cpp transcription, deterministic
-scheduler, FFmpeg render/probe, API, playback/download UI, and automated acceptance are
-implemented. Real Chrome has created the project, observed the pipeline, played and sought every
-legal layout, approved the exact candidate, and downloaded an independently hash-verified MP4.
-State is process-local and the bridge direct; durable outbox/envelope recovery belongs to Phase 1.
-Phase 0C remains open only until the downloaded filesystem path is manually replayed in Chrome;
-the agent-controlled Chrome surface blocks direct `file://` navigation and no workaround is allowed.
+Current (2026-08-10): the provider-free ASR, scheduler, render/probe, API, UI, and automated
+acceptance are implemented. Real Chrome completed create, pipeline, playback, seek, approval, and
+hash-verified download. State remains process-local; durable recovery belongs to Phase 1. Phase 0C
+awaits only manual Chrome review of the downloaded v2 replacement because controlled navigation
+cannot open `file://`.
 
 - Use 30–120 seconds of owned/synthetic English audio.
 - Use one owned synthetic ready Avatar Profile fixture, then run local `whisper.cpp base.en`, deterministic phrase/timeline scheduling, `timeline-plan/v1`, fixture image/avatar slots, `resolved-render-manifest/v1`, real FFmpeg zoom/crops/hard cuts/audio, and technical QA.
