@@ -3,11 +3,12 @@
 For the current handoff, the user only needs to send this one line in a new coding chat:
 
 ```text
-Continue VideoForge from the fresh project context and implement the exact recommended next task autonomously through a green committed handoff. Preserve completed work, follow the recorded dependency/agent ownership plan, and keep providers off with $0 external spend unless I explicitly authorize a capped provider task.
+Continue VideoForge from the fresh project context. Start with the exact recommended next task and complete it through a green committed handoff, then continue task-by-task from each refreshed CURRENT_STATE while the next task is dependency-ready, locally authorized, and provider-free. Preserve completed work and recorded ownership. Stop and hand off before any cloud mutation, provider spend, missing task brief, unresolved gate, or new authority is required.
 ```
 
 The agent must derive the task ID, profile, brief, base/evidence commit, ownership, route, commands,
-and budget from `CURRENT_STATE.yaml`; the user should not have to paste those fields again.
+and budget from `CURRENT_STATE.yaml`; the user should not have to paste those fields again. It must
+finish and record one green task before loading the next task's profile.
 
 Use the longer form below only when deliberately overriding the recommended task:
 

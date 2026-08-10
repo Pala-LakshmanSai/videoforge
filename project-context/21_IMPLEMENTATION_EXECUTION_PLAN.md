@@ -434,10 +434,13 @@ VideoForge is not complete when code compiles or providers return artifacts. Com
 
 The user can start the next implementation chat with:
 
-> Continue VideoForge from the fresh project context. Implement the exact `CURRENT_STATE.yaml.recommended_next_task` and its task brief autonomously through a green committed handoff. Follow `project-context/21_IMPLEMENTATION_EXECUTION_PLAN.md`, preserve completed work, use safe disjoint agents only where the plan allows, and keep providers off with `$0` external spend unless I explicitly authorize a capped provider task.
+> Continue VideoForge from the fresh project context. Start with the exact recommended next task and complete it through a green committed handoff, then continue task-by-task from each refreshed CURRENT_STATE while the next task is dependency-ready, locally authorized, and provider-free. Preserve completed work and recorded ownership. Stop and hand off before any cloud mutation, provider spend, missing task brief, unresolved gate, or new authority is required.
 
 The new chat must read `AGENTS.md`, `00_START_HERE.md`, `MANIFEST.yaml`, and
 `CURRENT_STATE.yaml`, load the recommended task's named read profile and task brief, run
 `git status --short`, `pnpm doctor`, and `pnpm dev:status`, then execute the exact recommended task
 rather than reopening UI, renderer, or architecture decisions. If the recorded server is stopped,
 start the one stable loopback fixture server with `pnpm dev`; never choose another port.
+
+This is task-by-task autonomy, not permission to preload or implement the whole roadmap at once.
+Finish, verify, commit, and refresh `CURRENT_STATE.yaml` before reading the next task's profile.

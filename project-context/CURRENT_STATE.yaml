@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T03:32:28Z"
+updated_at: "2026-08-10T03:34:28Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: false
@@ -193,7 +193,7 @@ next_tasks:
 
 notes:
   - "This is a replace-in-place handoff snapshot, not a progress diary."
-  - "A new chat should execute only recommended_next_task and its one read profile/task brief, then advance this snapshot after a green commit."
+  - "A new chat starts only with recommended_next_task and its one profile/brief. After a green committed handoff and refreshed snapshot, it may continue to the newly recommended task only when that task is dependency-ready, locally authorized, provider-free, and has an exact brief; external mutation/spend/gates require a stop and new authority."
   - "TypeScript is the sole RFC 8785/JCS authority; Python validates canonical schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output grammar remains three compositions, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
   - "No public tunnel or LAN listener is active. The next chat may start the stable loopback fixture server at http://localhost:4173."
