@@ -126,6 +126,21 @@ function isLocalRequest(rawUrl: string): boolean {
 
 async function expectImagesLoaded(images: Locator): Promise<void> {
   await expect(images.first()).toBeVisible();
+  await expect
+    .poll(
+      () =>
+        images.evaluateAll((elements) =>
+          elements.every((element) => {
+            const image = element as HTMLImageElement;
+            return image.complete && image.naturalWidth > 0;
+          }),
+        ),
+      {
+        message: "expected every visible preset image to finish decoding",
+        timeout: 10_000,
+      },
+    )
+    .toBe(true);
   const imageState = await images.evaluateAll((elements) =>
     elements.map((element) => {
       const image = element as HTMLImageElement;
