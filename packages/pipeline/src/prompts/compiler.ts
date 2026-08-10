@@ -47,10 +47,22 @@ const normalize = (
   return result;
 };
 
+const normalizeOptional = (
+  value: string,
+  maximum: number,
+  label: string,
+  path: readonly string[],
+): string => {
+  const result = stripControls(value.normalize("NFKC")).replace(/\s+/gu, " ").trim();
+  if (result.length > maximum)
+    fail("PROMPT_INPUT_INVALID", `${label} must contain at most ${maximum} characters.`, path);
+  return result;
+};
+
 const hash = (value: string): Sha256Digest =>
   `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
 
-function assertNoHardConflict(value: string, path: readonly string[]): void {
+export function assertNoHardPromptConflict(value: string, path: readonly string[]): void {
   for (const clause of value
     .split(/[;,]/u)
     .map((part) => part.trim())
@@ -63,13 +75,13 @@ function assertNoHardConflict(value: string, path: readonly string[]): void {
   }
 }
 
-function normalizeStyle(style: PromptStyleComponents): PromptStyleComponents {
+export function validatePromptStyleComponents(style: PromptStyleComponents): PromptStyleComponents {
   const result = {
     positiveSuffix: normalize(style.positiveSuffix, 2_000, "Style positive suffix", [
       "style",
       "positiveSuffix",
     ]),
-    negativeSuffix: normalize(style.negativeSuffix, 2_000, "Style negative suffix", [
+    negativeSuffix: normalizeOptional(style.negativeSuffix, 2_000, "Style negative suffix", [
       "style",
       "negativeSuffix",
     ]),
@@ -82,9 +94,9 @@ function normalizeStyle(style: PromptStyleComponents): PromptStyleComponents {
       "splitImageGuidance",
     ]),
   };
-  assertNoHardConflict(result.positiveSuffix, ["style", "positiveSuffix"]);
-  assertNoHardConflict(result.fullImageGuidance, ["style", "fullImageGuidance"]);
-  assertNoHardConflict(result.splitImageGuidance, ["style", "splitImageGuidance"]);
+  assertNoHardPromptConflict(result.positiveSuffix, ["style", "positiveSuffix"]);
+  assertNoHardPromptConflict(result.fullImageGuidance, ["style", "fullImageGuidance"]);
+  assertNoHardPromptConflict(result.splitImageGuidance, ["style", "splitImageGuidance"]);
   if (!FULL_GEOMETRY.test(result.fullImageGuidance) || !CENTER_SAFE.test(result.fullImageGuidance))
     fail("PROMPT_CONFLICT", "Full-image guidance must preserve 16:9 center-safe geometry.", [
       "style",
@@ -111,12 +123,12 @@ function normalizeExtra(raw: string | null, enabled: boolean): string | null {
       "extraPromptKeywords",
     ]);
   const value = normalize(raw, 500, "Enabled extra keywords", ["extraPromptKeywords"]);
-  assertNoHardConflict(value, ["extraPromptKeywords"]);
+  assertNoHardPromptConflict(value, ["extraPromptKeywords"]);
   return value;
 }
 
 const join = (parts: readonly (string | null)[]): string =>
-  parts.filter((part): part is string => part !== null).join(", ");
+  parts.filter((part): part is string => part !== null && part.length > 0).join(", ");
 
 export function compileImagePrompt(request: CompilePromptRequest): CompiledImagePrompt {
   const output = request.writerOutput;
@@ -128,7 +140,7 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     fail("PROMPT_INPUT_INVALID", "Writer output identity or shot role does not match the scene.", [
       "writerOutput",
     ]);
-  const style = normalizeStyle(request.style);
+  const style = validatePromptStyleComponents(request.style);
   const extra = normalizeExtra(request.extraPromptKeywords, request.applyExtraPromptKeywords);
   const literalContent = join([
     normalize(output.literal_subject, 600, "Literal subject", ["writerOutput", "literal_subject"]),
@@ -137,7 +149,7 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     normalize(output.lighting_context, 300, "Lighting", ["writerOutput", "lighting_context"]),
     normalize(output.prompt_core, 1_200, "Prompt core", ["writerOutput", "prompt_core"]),
   ]);
-  assertNoHardConflict(literalContent, ["writerOutput"]);
+  assertNoHardPromptConflict(literalContent, ["writerOutput"]);
   const continuityAndShotRole = join([
     output.continuity_tags.length === 0
       ? "continuity: none"

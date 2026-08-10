@@ -192,6 +192,16 @@ test("compiler preserves normative order, layout crop rules, five styles, and de
     applyExtraPromptKeywords: false,
   });
   assert.equal(full.positivePrompt.includes("center-safe 80%"), true);
+
+  const noStyleNegative = compileImagePrompt({
+    writerOutput: output.scenes[0],
+    expectedScene: input.scenes[0],
+    style: { ...style(), negativeSuffix: "" },
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+  });
+  assert.equal(noStyleNegative.negativePrompt.startsWith(","), false);
+  assert.equal(noStyleNegative.components.styleNegativeSuffix, "");
 });
 
 test("enabled extras normalize once, support negative refinements, and count Unicode UTF-8 bytes", async () => {
