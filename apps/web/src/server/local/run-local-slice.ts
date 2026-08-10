@@ -77,6 +77,30 @@ interface LocalProjectResponse {
   readonly notice: { readonly detail: string } | null;
 }
 
+interface LocalTimelineInspectionResponse {
+  readonly sourceMode: string;
+  readonly ready: boolean;
+  readonly invalidation: { readonly state: string; readonly recomputeRequired: boolean };
+  readonly blockers: readonly string[];
+  readonly documents: {
+    readonly transcriptSha256: string | null;
+    readonly timelineSha256: string | null;
+  };
+  readonly timing: {
+    readonly sourceDurationMs: number;
+    readonly phraseCount: number;
+    readonly coverage: string;
+  } | null;
+  readonly plan: {
+    readonly totalFrames: number;
+    readonly sourceStartMs: number;
+    readonly sourceEndMs: number;
+    readonly coverage: string;
+  } | null;
+  readonly selectedAvatar: { readonly count: number } | null;
+  readonly phrases: readonly unknown[];
+}
+
 async function main(): Promise<void> {
   const runner = new CapturingRunner(createLocalMediaPipelineRunner());
   const app = createApiApp({
@@ -178,6 +202,43 @@ async function main(): Promise<void> {
   invariant(ready.project.review.candidateId, "Ready local project omitted its candidate ID.");
   invariant(ready.project.review.candidateSha256, "Ready local project omitted its candidate SHA.");
 
+  const result = runner.result();
+  const inspectionResponse = await app.request(
+    `/api/v1/projects/${LOCAL_PROJECT_ID}/timeline-inspection`,
+  );
+  await requireStatus(inspectionResponse, 200, "Persisted local timeline inspection");
+  const inspection = (await inspectionResponse.json()) as LocalTimelineInspectionResponse;
+  invariant(inspection.sourceMode === "LOCAL_PERSISTED", "Inspection did not read local storage.");
+  invariant(inspection.ready, "Persisted local timing was not ready for inspection.");
+  invariant(
+    inspection.invalidation.state === "CURRENT" &&
+      !inspection.invalidation.recomputeRequired &&
+      inspection.blockers.length === 0,
+    "Persisted local timing reported an invalidation or blocker.",
+  );
+  invariant(
+    inspection.documents.transcriptSha256 === result.transcriptSha256 &&
+      inspection.documents.timelineSha256 === result.timelineSha256,
+    "Inspection document hashes do not bind the accepted local run.",
+  );
+  invariant(
+    inspection.timing?.coverage === "COMPLETE" &&
+      inspection.timing.phraseCount > 0 &&
+      inspection.phrases.length === inspection.timing.phraseCount,
+    "Inspection did not expose exact canonical phrase coverage.",
+  );
+  invariant(
+    inspection.plan?.coverage === "COMPLETE" &&
+      inspection.plan.sourceStartMs === 0 &&
+      inspection.plan.sourceEndMs === inspection.timing.sourceDurationMs &&
+      inspection.plan.totalFrames === result.totalFrames,
+    "Inspection did not expose exact source-audio and frame coverage.",
+  );
+  invariant(
+    inspection.selectedAvatar !== null && inspection.selectedAvatar.count > 0,
+    "Inspection omitted selected avatar spans.",
+  );
+
   const rangeResponse = await app.request(`/api/v1/projects/${LOCAL_PROJECT_ID}/preview`, {
     headers: { range: "bytes=0-1023" },
   });
@@ -220,7 +281,6 @@ async function main(): Promise<void> {
     "Downloaded bytes do not match the approved candidate byte count.",
   );
 
-  const result = runner.result();
   const evidence = JSON.parse(await readFile(result.evidencePath, "utf8")) as {
     provider_calls_authorized: boolean;
     external_spend_usd: number;
@@ -241,6 +301,7 @@ async function main(): Promise<void> {
           preflight: "READY",
           createReplay: "idempotent",
           previewRange: 1_024,
+          timelineInspection: "persisted-hashes-phrases-layouts-and-avatar-spans",
           approval: "exact-candidate-and-sha256",
           download: "queryless-exact-bytes",
         },

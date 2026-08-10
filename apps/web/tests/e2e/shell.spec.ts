@@ -847,6 +847,66 @@ test("project progress reaches review and records explicit approval", async ({ p
   await expect(page.getByRole("link", { name: "Fixture record" })).toBeVisible();
 });
 
+test("persisted timeline inspection is keyboard-accessible, responsive, and fail-closed", async ({
+  page,
+}) => {
+  const path = "/projects/project_fixture_001?fixture=happy_generating";
+  await page.goto(path);
+  const inspection = page.locator(".timeline-inspection");
+  await expect(inspection).toBeVisible();
+  await expect(inspection.getByText("Current revision is fully covered")).toBeVisible();
+  await expect(inspection.getByText("7/7", { exact: true })).toBeVisible();
+  await expect(inspection.getByText("1200 frames · 30 fps", { exact: true })).toBeVisible();
+  await expect(inspection.getByText("21.25%", { exact: true })).toBeVisible();
+  await expect(inspection.getByText("Local persisted", { exact: true })).toHaveCount(0);
+  await expect(inspection.getByText("Fixture snapshot", { exact: true })).toBeVisible();
+
+  const phraseDetails = inspection.locator(".timeline-phrase-disclosure");
+  const phraseSummary = phraseDetails.locator("summary");
+  await phraseSummary.focus();
+  await expect(phraseSummary).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(phraseDetails).toHaveAttribute("open", "");
+  await expect(inspection.getByText("Transcript", { exact: true })).toBeVisible();
+  await expect(inspection.getByText("Timeline", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(phraseDetails).not.toHaveAttribute("open", "");
+  await expect(phraseSummary).toBeFocused();
+  await expectNoHorizontalOverflow(page);
+
+  const response = await page.request.get(
+    "/api/v1/projects/project_fixture_001/timeline-inspection?fixture=happy_generating",
+  );
+  expect(response.ok()).toBe(true);
+  const uncovered = {
+    ...(await response.json()),
+    ready: true,
+    invalidation: {
+      state: "UNCOVERED",
+      recomputeRequired: true,
+      reason: "The final canonical phrase has no layout assignment.",
+    },
+    blockers: ["The final canonical phrase has no layout assignment."],
+    timing: null,
+    plan: null,
+    selectedAvatar: null,
+    phrases: [],
+  };
+  await page.route("**/api/v1/projects/*/timeline-inspection**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(uncovered),
+    }),
+  );
+  await page.goto(path);
+  const blocked = page.locator(".timeline-inspection");
+  await expect(blocked.getByText("Not ready", { exact: true })).toBeVisible();
+  await expect(blocked.getByText("Recompute is required", { exact: true })).toBeVisible();
+  await expect(blocked.getByText("Current revision is fully covered")).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+});
+
 test("scenario actions match authoritative project and review state", async ({ page }) => {
   await page.goto("/projects/project_fixture_001?fixture=happy_generating");
   await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();

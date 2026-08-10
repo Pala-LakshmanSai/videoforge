@@ -21,6 +21,7 @@ import {
 } from "../mutation";
 import { apiProblem, problemResponse } from "../problem";
 import type { FixturePreviewBinding } from "../runtime/types";
+import { fixtureTimelineInspection } from "../timeline-inspection";
 
 export function registerProjectRoutes(
   app: Hono,
@@ -66,6 +67,20 @@ export function registerProjectRoutes(
     );
     if (!project.ok) return project.response;
     return c.json(project.detail.events);
+  });
+
+  app.get("/api/v1/projects/:projectId/timeline-inspection", async (c) => {
+    const resolved = fixtureFromRequest(c.req.raw);
+    if (!resolved.ok) return resolved.response;
+    const session = runtime.resolveSession(c);
+    if (!session.ok) return session.response;
+    const project = resolveProjectDetail(
+      resolved.scenario,
+      c.req.param("projectId"),
+      session.state.runtimeProjects,
+    );
+    if (!project.ok) return project.response;
+    return c.json(await fixtureTimelineInspection(project.detail.project));
   });
 
   app.get("/api/v1/projects/:projectId/download", async (c) => {

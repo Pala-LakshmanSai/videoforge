@@ -18,6 +18,7 @@ import {
 } from "../components/ui";
 import { ActionToast, NoticeBanner } from "../features/shared/FixtureFeedback";
 import { humanize, statusTone } from "../features/shared/status";
+import { TimelineInspectionPanel } from "../features/timeline/TimelineInspectionPanel";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
 import type { ProjectSummary } from "../lib/types";
@@ -37,6 +38,11 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
   const compute = useQuery({
     queryKey: ["execution-profiles", scenario],
     queryFn: () => api.executionProfiles(scenario),
+  });
+  const timelineInspection = useQuery({
+    queryKey: ["timeline-inspection", projectId, scenario],
+    queryFn: () => api.timelineInspection(projectId, scenario),
+    refetchInterval: localMode ? 1_000 : 10_000,
   });
   const [action, setAction] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<{
@@ -234,6 +240,13 @@ export function ProjectScreen({ projectId }: { projectId: string }) {
           <ProgressBar value={percent} label="Overall project progress" />
         </div>
       </section>
+
+      <TimelineInspectionPanel
+        inspection={timelineInspection.data}
+        loading={timelineInspection.isPending}
+        failed={timelineInspection.isError}
+        onRetry={() => void timelineInspection.refetch()}
+      />
 
       <div className="progress-workspace">
         <Panel className="pipeline-panel" eyebrow="Pipeline" heading="Production stages">

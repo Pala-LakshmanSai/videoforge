@@ -638,6 +638,16 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
       await scheduleTimeline({ revision, transcript, determinism }),
       "Deterministic timeline scheduling",
     );
+    const [transcriptArtifact, timelineArtifact] = await Promise.all([
+      store.putObject(Buffer.from(canonicalizeJson(transcript.value), "utf8"), "json"),
+      store.putObject(Buffer.from(canonicalizeJson(timeline.value), "utf8"), "json"),
+    ]);
+    if (
+      transcriptArtifact.sha256 !== transcript.sha256 ||
+      timelineArtifact.sha256 !== timeline.sha256
+    ) {
+      throw new Error("Persisted timing document bytes do not match their canonical hashes.");
+    }
     const timelineCompositionCoverage = requireCompositionCoverage(
       timeline.value.segments,
       "Deterministic timeline",

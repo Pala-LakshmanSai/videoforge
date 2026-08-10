@@ -1,8 +1,9 @@
-import { sha256CanonicalJson } from "@videoforge/contracts";
+import { sha256CanonicalJson, validateAndHashContractDocument } from "@videoforge/contracts";
 import { FIXTURE_SCENARIO_IDS } from "@videoforge/test-fixtures";
 import { describe, expect, it } from "vitest";
 
 import { createApiApp as createRuntimeApiApp } from "./app";
+import { fixtureTimelineDocuments } from "./timeline-inspection";
 
 const fixturePreview = { read: async () => "<svg>fixture preview</svg>" };
 
@@ -152,6 +153,40 @@ describe("fixture API", () => {
       synthetic: true,
       provider_calls_authorized: false,
       authorized_spend_usd: 0,
+    });
+  });
+
+  it("exposes revision-bound fixture timing and layout coverage without provider data", async () => {
+    const response = await app.request(
+      "/api/v1/projects/project_fixture_001/timeline-inspection?fixture=happy_generating",
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      documents: { transcriptSha256: string; timelineSha256: string };
+    };
+    expect(body).toMatchObject({
+      schemaVersion: "videoforge.timeline-inspection/v1",
+      projectId: "project_fixture_001",
+      revisionId: "revision_fixture_001",
+      sourceMode: "FIXTURE",
+      ready: true,
+      invalidation: { state: "CURRENT", recomputeRequired: false, reason: null },
+      blockers: [],
+      timing: { sourceDurationMs: 40_000, phraseCount: 7, coverage: "COMPLETE" },
+      plan: { totalFrames: 1_200, sourceStartMs: 0, sourceEndMs: 40_000 },
+      selectedAvatar: { count: 2, coveragePercent: 21.25 },
+    });
+    const documents = fixtureTimelineDocuments({
+      id: "project_fixture_001",
+      revisionId: "revision_fixture_001",
+    });
+    const [transcript, timeline] = await Promise.all([
+      validateAndHashContractDocument("transcriptTiming", documents.transcript),
+      validateAndHashContractDocument("timelinePlan", documents.timeline),
+    ]);
+    expect(body.documents).toEqual({
+      transcriptSha256: transcript.sha256,
+      timelineSha256: timeline.sha256,
     });
   });
 

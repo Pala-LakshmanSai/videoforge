@@ -12,6 +12,7 @@ import {
 import { apiProblem, problemResponse } from "../problem";
 import type { LocalRuntime } from "./runtime";
 import { LOCAL_PROJECT_ID } from "./types";
+import { localTimelineInspection } from "./timeline-inspection";
 
 const LOCAL_SCENARIO_ID = "project_create_ready" as const;
 
@@ -180,6 +181,25 @@ export function registerLocalRoutes(app: Hono, runtime: LocalRuntime): void {
       return projectNotFound(c.req.param("projectId"));
     }
     return c.json(project.events);
+  });
+  app.get("/api/v1/projects/:projectId/timeline-inspection", async (c) => {
+    const project = runtime.project();
+    if (!project || c.req.param("projectId") !== project.project.id) {
+      return projectNotFound(c.req.param("projectId"));
+    }
+    const output = runtime.output();
+    return c.json(
+      await localTimelineInspection(
+        project.project,
+        output
+          ? {
+              artifactRoot: output.artifactRoot,
+              transcriptSha256: output.transcriptSha256,
+              timelineSha256: output.timelineSha256,
+            }
+          : null,
+      ),
+    );
   });
   app.get("/api/v1/projects/:projectId/preview", (c) => {
     if (c.req.param("projectId") !== LOCAL_PROJECT_ID) {

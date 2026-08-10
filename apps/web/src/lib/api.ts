@@ -7,6 +7,7 @@ import type {
   ProjectDetail,
   ProjectSummary,
   ScenarioId,
+  TimelineInspection,
   UsageSummary,
   RegisteredVoiceover,
 } from "./types";
@@ -20,6 +21,7 @@ import {
   parseProjectsResponse,
   parseRegisteredVoiceoverResponse,
   parseStylesResponse,
+  parseTimelineInspectionResponse,
   parseUsageResponse,
 } from "./api-schemas";
 
@@ -122,6 +124,12 @@ export const api = {
       `/api/v1/projects/${encodeURIComponent(id)}${query(scenario)}`,
       undefined,
       parseProjectResponse,
+    ),
+  timelineInspection: (id: string, scenario: ScenarioId) =>
+    request<TimelineInspection>(
+      `/api/v1/projects/${encodeURIComponent(id)}/timeline-inspection${query(scenario)}`,
+      undefined,
+      parseTimelineInspectionResponse,
     ),
   avatars: (scenario: ScenarioId) =>
     request<AvatarProfile[]>(

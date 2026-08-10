@@ -254,6 +254,68 @@ export interface ProjectDetail {
   notice: FixtureNotice | null;
 }
 
+export type TimelineInspectionState =
+  | "CURRENT"
+  | "WAITING"
+  | "STALE"
+  | "INCOMPLETE"
+  | "MISMATCHED"
+  | "UNCOVERED";
+
+export interface TimelineInspection {
+  schemaVersion: "videoforge.timeline-inspection/v1";
+  projectId: string;
+  revisionId: string;
+  sourceMode: "FIXTURE" | "LOCAL_PERSISTED";
+  ready: boolean;
+  invalidation: {
+    state: TimelineInspectionState;
+    recomputeRequired: boolean;
+    reason: string | null;
+  };
+  blockers: string[];
+  documents: {
+    transcriptSha256: string | null;
+    timelineSha256: string | null;
+  };
+  timing: {
+    sourceDurationMs: number;
+    timedWordCount: number;
+    phraseCount: number;
+    phraseStartMs: number;
+    phraseEndMs: number;
+    coverage: "COMPLETE" | "INCOMPLETE";
+  } | null;
+  plan: {
+    fps: 30;
+    totalFrames: number;
+    segmentCount: number;
+    sourceStartMs: number;
+    sourceEndMs: number;
+    coverage: "COMPLETE" | "INCOMPLETE";
+  } | null;
+  selectedAvatar: {
+    count: number;
+    durationMs: number;
+    coveragePercent: number;
+    spans: Array<{
+      id: string;
+      startMs: number;
+      endMs: number;
+      layout: "AVATAR_FULL" | "AVATAR_SPLIT_IMAGE";
+      phrase: string;
+    }>;
+  } | null;
+  phrases: Array<{
+    id: string;
+    startMs: number;
+    endMs: number;
+    text: string;
+    segmentId: string;
+    layout: "AVATAR_FULL" | "IMAGE_FULL" | "AVATAR_SPLIT_IMAGE";
+  }>;
+}
+
 interface HealthResponseBase {
   app: "videoforge";
   status: "ok";

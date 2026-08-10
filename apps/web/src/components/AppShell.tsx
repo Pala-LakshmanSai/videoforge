@@ -229,7 +229,7 @@ export function AppShell({ children }: PropsWithChildren) {
         animationFrame = window.requestAnimationFrame(render);
       } else {
         lastFrameAt = null;
-        dock.classList.remove("bottom-nav-dock-springing");
+        if (!tracking) dock.classList.remove("bottom-nav-dock-springing");
       }
     };
 

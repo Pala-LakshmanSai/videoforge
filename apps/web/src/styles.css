@@ -4,6 +4,7 @@
 @import "./styles/features/queue.css";
 @import "./styles/features/create-project.css";
 @import "./styles/features/project-review.css";
+@import "./styles/features/timeline-inspection.css";
 @import "./styles/features/preset-hubs.css";
 @import "./styles/features/library-usage-settings.css";
 @import "./styles/responsive.css";

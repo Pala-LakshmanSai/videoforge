@@ -11,6 +11,7 @@ import {
   type ProjectDetail,
   type ProjectSummary,
   type RegisteredVoiceover,
+  type TimelineInspection,
   type UsageSummary,
 } from "./types";
 
@@ -26,6 +27,83 @@ const LOCAL_DOWNLOAD_PATH = /^\/api\/v1\/projects\/[A-Za-z0-9._:-]+\/download$/u
 const FIXTURE_VOICEOVER_ASSET = /^fixture_voiceover_sha256_([a-f0-9]{64})$/u;
 const VOICEOVER_FILENAME = /^[^/\\\0]+\.(?:aac|flac|m4a|mp3|wav)$/iu;
 const ARTIFACT_FILENAME = /^[^/\\\0]+$/u;
+
+const timelineInspectionSchema = z
+  .object({
+    schemaVersion: z.literal("videoforge.timeline-inspection/v1"),
+    projectId: z.string(),
+    revisionId: z.string(),
+    sourceMode: z.enum(["FIXTURE", "LOCAL_PERSISTED"]),
+    ready: z.boolean(),
+    invalidation: z
+      .object({
+        state: z.enum(["CURRENT", "WAITING", "STALE", "INCOMPLETE", "MISMATCHED", "UNCOVERED"]),
+        recomputeRequired: z.boolean(),
+        reason: z.string().nullable(),
+      })
+      .strict(),
+    blockers: z.array(z.string()),
+    documents: z
+      .object({
+        transcriptSha256: z.string().regex(SHA256).nullable(),
+        timelineSha256: z.string().regex(SHA256).nullable(),
+      })
+      .strict(),
+    timing: z
+      .object({
+        sourceDurationMs: z.number().int().positive(),
+        timedWordCount: z.number().int().nonnegative(),
+        phraseCount: z.number().int().nonnegative(),
+        phraseStartMs: z.number().int().nonnegative(),
+        phraseEndMs: z.number().int().nonnegative(),
+        coverage: z.enum(["COMPLETE", "INCOMPLETE"]),
+      })
+      .strict()
+      .nullable(),
+    plan: z
+      .object({
+        fps: z.literal(30),
+        totalFrames: z.number().int().positive(),
+        segmentCount: z.number().int().positive(),
+        sourceStartMs: z.number().int().nonnegative(),
+        sourceEndMs: z.number().int().positive(),
+        coverage: z.enum(["COMPLETE", "INCOMPLETE"]),
+      })
+      .strict()
+      .nullable(),
+    selectedAvatar: z
+      .object({
+        count: z.number().int().nonnegative(),
+        durationMs: z.number().int().nonnegative(),
+        coveragePercent: z.number().min(0).max(100),
+        spans: z.array(
+          z
+            .object({
+              id: z.string(),
+              startMs: z.number().int().nonnegative(),
+              endMs: z.number().int().positive(),
+              layout: z.enum(["AVATAR_FULL", "AVATAR_SPLIT_IMAGE"]),
+              phrase: z.string(),
+            })
+            .strict(),
+        ),
+      })
+      .strict()
+      .nullable(),
+    phrases: z.array(
+      z
+        .object({
+          id: z.string(),
+          startMs: z.number().int().nonnegative(),
+          endMs: z.number().int().positive(),
+          text: z.string(),
+          segmentId: z.string(),
+          layout: z.enum(["AVATAR_FULL", "IMAGE_FULL", "AVATAR_SPLIT_IMAGE"]),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
 
 const scenarioSchema = z.enum(scenarioIds);
 const noticeSchema = z
@@ -414,3 +492,5 @@ export const parseVoiceoverRegistrationMutationResponse = (value: unknown) =>
   voiceoverRegistrationMutationSchema.parse(value);
 export const parseMutationResponse = (value: unknown): Record<string, unknown> =>
   z.record(z.string(), z.unknown()).parse(value);
+export const parseTimelineInspectionResponse = (value: unknown): TimelineInspection =>
+  timelineInspectionSchema.parse(value) as TimelineInspection;

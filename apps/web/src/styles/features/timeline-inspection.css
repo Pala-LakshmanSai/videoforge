@@ -1,0 +1,222 @@
+.timeline-inspection {
+  display: grid;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.timeline-inspection-ready {
+  border-color: rgba(72, 210, 158, 0.25);
+}
+
+.timeline-inspection-blocked {
+  border-color: rgba(255, 104, 126, 0.34);
+}
+
+.timeline-readiness,
+.timeline-readiness-blocker,
+.timeline-inspection-pending {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--surface-border-subtle);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.timeline-readiness > svg {
+  color: #74dbaf;
+}
+
+.timeline-inspection-blocked .timeline-readiness > svg,
+.timeline-readiness-blocker > svg {
+  color: #ff7389;
+}
+
+.timeline-readiness > div,
+.timeline-readiness-blocker > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.timeline-readiness span,
+.timeline-readiness-blocker span,
+.timeline-inspection-pending {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.timeline-coverage-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.timeline-coverage-metrics .metric {
+  min-height: 92px;
+}
+
+.selected-avatar-spans {
+  display: grid;
+  gap: 10px;
+}
+
+.timeline-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.timeline-section-heading h3 {
+  margin-top: 3px;
+  font-size: 1rem;
+}
+
+.timeline-section-heading > span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.avatar-span-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.avatar-span {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 11px;
+  padding: 11px;
+  border: 1px solid var(--surface-border-subtle);
+  border-radius: 14px;
+  background: var(--surface-fill);
+}
+
+.avatar-span-time,
+.timeline-phrase-list > li > span {
+  color: #ff98a8;
+  font:
+    750 0.75rem ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  white-space: nowrap;
+}
+
+.avatar-span p {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.79rem;
+  line-height: 1.4;
+}
+
+.timeline-phrase-disclosure {
+  margin: 0;
+}
+
+.timeline-phrase-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline-phrase-list > li {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--surface-border-subtle);
+}
+
+.timeline-phrase-list > li:last-child {
+  border-bottom: 0;
+}
+
+.timeline-phrase-list p {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.42;
+}
+
+.timeline-document-identity {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.timeline-document-identity > span {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 1px solid var(--surface-border-subtle);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.timeline-document-identity small {
+  color: var(--muted-dim);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.timeline-document-identity code {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.71rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-empty-note {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 980px) {
+  .timeline-coverage-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .timeline-readiness,
+  .timeline-readiness-blocker,
+  .timeline-inspection-pending {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .timeline-readiness > .badge,
+  .timeline-readiness-blocker > .button {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .timeline-coverage-metrics,
+  .avatar-span-list,
+  .timeline-document-identity {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-phrase-list > li {
+    grid-template-columns: 1fr auto;
+  }
+
+  .timeline-phrase-list p {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

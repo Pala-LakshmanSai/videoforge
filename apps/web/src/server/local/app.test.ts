@@ -3,7 +3,11 @@ import { mkdtemp, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { CreateProjectRequest, Sha256Digest } from "@videoforge/contracts";
+import {
+  canonicalizeJson,
+  type CreateProjectRequest,
+  type Sha256Digest,
+} from "@videoforge/contracts";
 import { LocalArtifactStore } from "@videoforge/pipeline";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -78,6 +82,7 @@ class ControlledRunner implements LocalSliceRunner {
   readonly voiceover: LocalOwnedVoiceover;
   readonly output: LocalPipelineRunResult;
   readonly previewPath: string;
+  readonly transcriptPath: string;
   private resolveRun!: (result: LocalPipelineRunResult) => void;
   private rejectRun!: (error: Error) => void;
   private readonly completion = new Promise<LocalPipelineRunResult>((resolve, reject) => {
@@ -89,10 +94,12 @@ class ControlledRunner implements LocalSliceRunner {
     voiceover: LocalOwnedVoiceover,
     output: LocalPipelineRunResult,
     previewPath: string,
+    transcriptPath: string,
   ) {
     this.voiceover = voiceover;
     this.output = output;
     this.previewPath = previewPath;
+    this.transcriptPath = transcriptPath;
   }
 
   static async create(): Promise<ControlledRunner> {
@@ -102,6 +109,211 @@ class ControlledRunner implements LocalSliceRunner {
     await writeFile(source, "owned voiceover bytes");
     const store = await LocalArtifactStore.create(join(root, "artifacts"));
     const preview = await store.putObject(OUTPUT_CONTENT, "mp4");
+    const transcript = await store.putObject(
+      Buffer.from(
+        canonicalizeJson({
+          schema_version: "transcript-timing/v1",
+          project_revision_id: "revision_local_owned_001",
+          source: {
+            asset_id: `fixture_voiceover_sha256_${"a".repeat(64)}`,
+            sha256: VOICEOVER_SHA,
+            duration_ms: 40_000,
+          },
+          engine: {
+            name: "whisper.cpp",
+            version: "1.8.4",
+            model_name: "base.en",
+            model_sha256: `sha256:${"b".repeat(64)}`,
+            language: "en",
+          },
+          text: "Check the field spot. Feel the weight. Inspect the stem. Compare every sign.",
+          words: [
+            { index: 0, text: "Check", start_ms: 400, end_ms: 3_800, confidence: 0.99 },
+            { index: 1, text: "field", start_ms: 6_400, end_ms: 10_200, confidence: 0.98 },
+            { index: 2, text: "weight", start_ms: 13_400, end_ms: 17_500, confidence: 0.98 },
+            { index: 3, text: "stem", start_ms: 20_400, end_ms: 24_600, confidence: 0.97 },
+            { index: 4, text: "compare", start_ms: 27_400, end_ms: 30_900, confidence: 0.99 },
+            { index: 5, text: "signs", start_ms: 32_400, end_ms: 39_500, confidence: 0.98 },
+          ],
+          phrases: [
+            {
+              phrase_id: "phrase_local_001",
+              sentence_id: "sentence_local_001",
+              word_start: 0,
+              word_end_exclusive: 1,
+              start_ms: 400,
+              end_ms: 3_800,
+              pause_before_ms: 400,
+              pause_after_ms: 2_600,
+              text: "Check the field spot.",
+            },
+            {
+              phrase_id: "phrase_local_002",
+              sentence_id: "sentence_local_002",
+              word_start: 1,
+              word_end_exclusive: 2,
+              start_ms: 6_400,
+              end_ms: 10_200,
+              pause_before_ms: 2_600,
+              pause_after_ms: 3_200,
+              text: "Feel the weight.",
+            },
+            {
+              phrase_id: "phrase_local_003",
+              sentence_id: "sentence_local_003",
+              word_start: 2,
+              word_end_exclusive: 3,
+              start_ms: 13_400,
+              end_ms: 17_500,
+              pause_before_ms: 3_200,
+              pause_after_ms: 2_900,
+              text: "Inspect the surface.",
+            },
+            {
+              phrase_id: "phrase_local_004",
+              sentence_id: "sentence_local_004",
+              word_start: 3,
+              word_end_exclusive: 4,
+              start_ms: 20_400,
+              end_ms: 24_600,
+              pause_before_ms: 2_900,
+              pause_after_ms: 2_800,
+              text: "Inspect the stem.",
+            },
+            {
+              phrase_id: "phrase_local_005",
+              sentence_id: "sentence_local_005",
+              word_start: 4,
+              word_end_exclusive: 5,
+              start_ms: 27_400,
+              end_ms: 30_900,
+              pause_before_ms: 2_800,
+              pause_after_ms: 1_500,
+              text: "Compare every sign.",
+            },
+            {
+              phrase_id: "phrase_local_006",
+              sentence_id: "sentence_local_006",
+              word_start: 5,
+              word_end_exclusive: 6,
+              start_ms: 32_400,
+              end_ms: 39_500,
+              pause_before_ms: 1_500,
+              pause_after_ms: 500,
+              text: "Choose with confidence.",
+            },
+          ],
+        }),
+        "utf8",
+      ),
+      "json",
+    );
+    const timeline = await store.putObject(
+      Buffer.from(
+        canonicalizeJson({
+          schema_version: "timeline-plan/v1",
+          project_revision_id: "revision_local_owned_001",
+          revision_config_hash: `sha256:${"d".repeat(64)}`,
+          scheduler_version: "scheduler-v1",
+          seed: 2_026_080_9,
+          output_fps_num: 30,
+          output_fps_den: 1,
+          total_frames: 1_200,
+          segments: [
+            {
+              segment_id: "segment_local_001",
+              start_frame: 0,
+              end_frame_exclusive: 180,
+              source_audio_start_ms: 0,
+              source_audio_end_ms: 6_000,
+              timeline_composition: "AVATAR_FULL",
+              phrase: "Check the field spot.",
+              word_start: 0,
+              word_end_exclusive: 1,
+              required_slots: {
+                avatar: {
+                  task_key: "avatar:segment_local_001",
+                  span_audio_task_key: "audio-span:segment_local_001",
+                },
+              },
+            },
+            {
+              segment_id: "segment_local_002",
+              start_frame: 180,
+              end_frame_exclusive: 390,
+              source_audio_start_ms: 6_000,
+              source_audio_end_ms: 13_000,
+              timeline_composition: "IMAGE_FULL",
+              phrase: "Feel the weight.",
+              word_start: 1,
+              word_end_exclusive: 2,
+              in_image_shot_role: "HANDS_ACTION",
+              required_slots: { image: { task_key: "image:segment_local_002" } },
+            },
+            {
+              segment_id: "segment_local_003",
+              start_frame: 390,
+              end_frame_exclusive: 600,
+              source_audio_start_ms: 13_000,
+              source_audio_end_ms: 20_000,
+              timeline_composition: "IMAGE_FULL",
+              phrase: "Inspect the surface.",
+              word_start: 2,
+              word_end_exclusive: 3,
+              in_image_shot_role: "MACRO_DETAIL",
+              required_slots: { image: { task_key: "image:segment_local_003" } },
+            },
+            {
+              segment_id: "segment_local_004",
+              start_frame: 600,
+              end_frame_exclusive: 810,
+              source_audio_start_ms: 20_000,
+              source_audio_end_ms: 27_000,
+              timeline_composition: "IMAGE_FULL",
+              phrase: "Inspect the stem.",
+              word_start: 3,
+              word_end_exclusive: 4,
+              in_image_shot_role: "OBJECT_EVIDENCE",
+              required_slots: { image: { task_key: "image:segment_local_004" } },
+            },
+            {
+              segment_id: "segment_local_005",
+              start_frame: 810,
+              end_frame_exclusive: 960,
+              source_audio_start_ms: 27_000,
+              source_audio_end_ms: 32_000,
+              timeline_composition: "AVATAR_SPLIT_IMAGE",
+              phrase: "Compare every sign.",
+              word_start: 4,
+              word_end_exclusive: 5,
+              in_image_shot_role: "REACTION_RESULT",
+              required_slots: {
+                avatar: {
+                  task_key: "avatar:segment_local_005",
+                  span_audio_task_key: "audio-span:segment_local_005",
+                },
+                right_image: { task_key: "image:segment_local_005:right" },
+              },
+            },
+            {
+              segment_id: "segment_local_006",
+              start_frame: 960,
+              end_frame_exclusive: 1_200,
+              source_audio_start_ms: 32_000,
+              source_audio_end_ms: 40_000,
+              timeline_composition: "IMAGE_FULL",
+              phrase: "Choose with confidence.",
+              word_start: 5,
+              word_end_exclusive: 6,
+              in_image_shot_role: "HUMAN_MEDIUM",
+              required_slots: { image: { task_key: "image:segment_local_006" } },
+            },
+          ],
+        }),
+        "utf8",
+      ),
+      "json",
+    );
     return new ControlledRunner(
       {
         assetId: `fixture_voiceover_sha256_${"a".repeat(64)}`,
@@ -120,14 +332,15 @@ class ControlledRunner implements LocalSliceRunner {
         bytes: OUTPUT_CONTENT.byteLength,
         durationMs: 40_000,
         totalFrames: 1_200,
-        transcriptSha256: DOCUMENT_SHA,
-        timelineSha256: DOCUMENT_SHA,
+        transcriptSha256: transcript.sha256,
+        timelineSha256: timeline.sha256,
         resolvedRenderManifestSha256: DOCUMENT_SHA,
         renderResultSha256: DOCUMENT_SHA,
         evidencePath: join(root, "evidence.json"),
         evidenceSha256: DOCUMENT_SHA,
       },
       preview.absolutePath,
+      transcript.absolutePath,
     );
   }
 
@@ -336,6 +549,58 @@ describe("local walking-slice API", () => {
       'attachment; filename="videoforge-local-owned-slice.mp4"',
     );
     expect(await download.text()).toBe("synthetic mp4 bytes for byte range delivery");
+  });
+
+  it("inspects exact persisted local timing and fails closed when its bytes drift", async () => {
+    const { app, runner } = await localApp();
+    const assetId = (await bootstrap(app)).draft.voiceover.assetId;
+    await createLocalProject(app, assetId);
+
+    const waiting = await app.request(`/api/v1/projects/${PROJECT_ID}/timeline-inspection`);
+    expect(waiting.status).toBe(200);
+    await expect(waiting.json()).resolves.toMatchObject({
+      sourceMode: "LOCAL_PERSISTED",
+      ready: false,
+      invalidation: { state: "WAITING", recomputeRequired: false },
+      documents: { transcriptSha256: null, timelineSha256: null },
+    });
+
+    runner.complete();
+    await waitForReady(app);
+    const ready = await app.request(`/api/v1/projects/${PROJECT_ID}/timeline-inspection`);
+    expect(ready.status).toBe(200);
+    const readyBody = (await ready.json()) as {
+      ready: boolean;
+      invalidation: { state: string };
+      timing: { sourceDurationMs: number; phraseCount: number; coverage: string };
+      plan: { totalFrames: number; sourceStartMs: number; sourceEndMs: number; coverage: string };
+      selectedAvatar: { count: number; coveragePercent: number };
+      phrases: unknown[];
+    };
+    expect(readyBody).toMatchObject({
+      ready: true,
+      invalidation: { state: "CURRENT" },
+      timing: { sourceDurationMs: 40_000, phraseCount: 6, coverage: "COMPLETE" },
+      plan: {
+        totalFrames: 1_200,
+        sourceStartMs: 0,
+        sourceEndMs: 40_000,
+        coverage: "COMPLETE",
+      },
+      selectedAvatar: { count: 2, coveragePercent: 27.5 },
+    });
+    expect(readyBody.phrases).toHaveLength(6);
+
+    await writeFile(runner.transcriptPath, Buffer.from("corrupted persisted timing", "utf8"));
+    const drifted = await app.request(`/api/v1/projects/${PROJECT_ID}/timeline-inspection`);
+    expect(drifted.status).toBe(200);
+    await expect(drifted.json()).resolves.toMatchObject({
+      ready: false,
+      invalidation: { state: "MISMATCHED", recomputeRequired: true },
+      timing: null,
+      plan: null,
+      phrases: [],
+    });
   });
 
   it("fails closed when accepted media is corrupted or replaced by a symlink", async () => {
