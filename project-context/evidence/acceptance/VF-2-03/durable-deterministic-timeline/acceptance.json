@@ -1,0 +1,94 @@
+{
+  "schema_version": "videoforge.acceptance-evidence/v1",
+  "task_id": "VF-2-03",
+  "status": "technical_pass",
+  "recorded_at": "2026-08-10T15:34:27Z",
+  "implementation": {
+    "commit": "6359bd2969fc086ad81d845dd10b9937c46e1c5d",
+    "timeline_contract": "timeline-plan/v1",
+    "scheduler_version": "scheduler-v1",
+    "scheduler_config_version": "deterministic-timeline-scheduler-config/v1",
+    "scheduler_config_sha256": "sha256:de668ac00cfd22ce85b91917c7a6febe740b586de71803ccf518da89a187ee7d",
+    "migration_version": 7,
+    "migration_sha256": "sha256:03affbba4464fcc02bc6e034353ec9ea9df80d7238496e957e5ea1c78ae98f27"
+  },
+  "durability": {
+    "exact_revision_transcript_version_config_seed_and_input_hash_bound": true,
+    "canonical_plan_bytes_persisted": true,
+    "artifact_plan_segments_spans_and_head_atomic": true,
+    "exact_retry_idempotent": true,
+    "stale_head_rolls_back_all_metadata": true,
+    "accepted_orphan_metadata_rows": 0,
+    "exact_object_bytes_verified_on_resolution": true,
+    "metadata_restore_to_fresh_database_verified": true,
+    "canonical_bytes_identical_after_restore": true
+  },
+  "coverage": {
+    "output_frames_cover_exactly_once": true,
+    "source_audio_covers_exactly_once": true,
+    "transcript_words_cover_exactly_once": true,
+    "phrase_boundaries_required": true,
+    "leading_interphrase_and_trailing_silence_verified": true,
+    "selected_span_ownership_verified": true,
+    "avatar_layout_alternation_verified": true,
+    "required_property_fixtures": [
+      "short",
+      "silent",
+      "fast",
+      "slow",
+      "unpunctuated",
+      "30-minute"
+    ],
+    "property_seeds": [0, 982341, 4294967295],
+    "scheduler_grammar_retuned": false
+  },
+  "audit": {
+    "result": "closed_no_remaining_high_or_medium",
+    "implicit_config_lineage_closed": true,
+    "atomic_persistence_boundary_closed": true,
+    "canonical_object_resolution_closed": true,
+    "silent_source_coverage_closed": true,
+    "stale_head_orphan_state_closed": true,
+    "required_property_boundary_closed": true,
+    "dependency_registry_audit_invoked": true,
+    "dependency_registry_audit_read_only": true,
+    "known_vulnerabilities": 0
+  },
+  "verification": {
+    "result": "pass",
+    "verified_commit": "6359bd2969fc086ad81d845dd10b9937c46e1c5d",
+    "forced_turbo_cache_hits": 0,
+    "control_plane_tests": {"passed": 131, "failed": 0, "skipped": 0},
+    "pipeline_tests": {"passed": 39, "failed": 0, "skipped": 0},
+    "web_tests": {"passed": 148, "failed": 0, "skipped": 0},
+    "contract_typescript_tests": {"passed": 53, "failed": 0, "skipped": 0},
+    "contract_python_tests": {"passed": 42, "failed": 0, "skipped": 0},
+    "python_worker_tests": {"passed": 56, "failed": 0, "skipped": 0},
+    "local_workerd_tests": {"passed": 1, "failed": 0, "skipped": 0},
+    "installed_chrome_tests": {"passed": 36, "failed": 0, "skipped": 0},
+    "synchronized_contract_files": 50,
+    "commands": [
+      "pnpm --filter @videoforge/pipeline test",
+      "pnpm --filter @videoforge/control-plane test",
+      "TURBO_FORCE=true pnpm verify",
+      "pnpm audit:dependencies",
+      "pnpm context:validate",
+      "pnpm secret:scan",
+      "git diff --check"
+    ]
+  },
+  "authorization": {
+    "database_url_used": false,
+    "read_only_dependency_registry_access_used": true,
+    "remote_or_cloud_mutation_performed": false,
+    "credentials_used": false,
+    "provider_calls_made": false,
+    "model_downloads_performed": false,
+    "external_spend_usd": 0
+  },
+  "next_boundary": {
+    "requires_refreshed_current_state": true,
+    "provider_free_only": true,
+    "remote_or_cloud_work_authorized": false
+  }
+}
