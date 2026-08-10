@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-09T18:38:16Z"
+updated_at: "2026-08-10T02:43:05Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: true
@@ -17,8 +17,8 @@ repository:
   base_commit: "1ac161dbf6b8fbc08568dc0456a5c6f6ee8d8992"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
-  verified_implementation_commit: "eca15bdd539a273c7e59d110729eea54c69685b8"
-  last_good_commit: "eca15bdd539a273c7e59d110729eea54c69685b8"
+  verified_implementation_commit: "d9bee0e63c40070ca943b6c7c1f32774d41f699e"
+  last_good_commit: "d9bee0e63c40070ca943b6c7c1f32774d41f699e"
   dependency_policy:
     ajv: "8.20.0"
     note: "Security override of the original 8.17.1 pin: 8.17.1 is affected by a moderate ReDoS advisory."
@@ -33,10 +33,10 @@ live_development:
     pid: null
     lifetime: null
   server_state: running
-  dev_server_pid: 81134
+  dev_server_pid: 81771
   owner_task_id: VF-0C-08
-  health_checked_at: "2026-08-09T18:38:16Z"
-  health_commit: "eca15bd"
+  health_checked_at: "2026-08-10T02:43:05Z"
+  health_commit: "7a852f8"
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
@@ -75,47 +75,48 @@ recommended_next_task:
   task_id: VF-0C-08
   milestone: phase_0c_local_walking_slice_acceptance
   read_profile: implementation_sequence
-  goal: "Close the one remaining manual checkpoint by opening the already downloaded, hash-verified MP4 in Chrome, playing it, and seeking once; then advance to VF-1-01."
+  goal: "Open the v2 replacement MP4 in installed Chrome, play and seek it, and confirm that every image zoom now feels subtle, centered, and smooth before advancing to VF-1-01."
   dependencies:
     - "GATE_UI_001 closed"
-    - "provider-free local implementation and forced verification commit eca15bdd539a273c7e59d110729eea54c69685b8"
-    - "real Chrome create/pipeline/play/seek/approve/download checkpoint recorded in evidence/acceptance/VF-0C-08/2026-08-10-local-chrome"
+    - "provider-free local implementation and historical Chrome workflow at commit eca15bdd539a273c7e59d110729eea54c69685b8"
+    - "user replayed the first downloaded MP4 successfully but rejected its excessive, visibly shaky zoom"
+    - "ffmpeg-render-v2 implementation and provider-free local-slice verification at commit d9bee0e63c40070ca943b6c7c1f32774d41f699e"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
-  live_route: "file:///Users/lakshmansai/Downloads/videoforge-local-owned-slice.mp4"
+  live_route: "file:///Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v2.mp4"
   fixture_scenario: local_owned_short_slice
   required_handoff:
-    - "manual confirmation that the downloaded filesystem path itself plays and seeks in Chrome"
+    - "manual confirmation that the v2 replacement plays and seeks in Chrome"
+    - "manual confirmation that image motion is now subtle and smooth, with no visible shaking"
     - "update CURRENT_STATE to Phase 1 only after that confirmation"
 
 last_green:
   commands:
     - "pnpm test:local-slice"
-    - "TURBO_FORCE=true pnpm verify"
-    - "Real Chrome create, pipeline observation, playback, seek, approve, and exact download"
-    - "shasum -a 256 /Users/lakshmansai/Downloads/videoforge-local-owned-slice.mp4"
-    - "ffprobe downloaded MP4"
-  checked_at: "2026-08-09T18:38:16Z"
+    - "pnpm --filter @videoforge/contracts lint && pnpm --filter @videoforge/contracts typecheck && pnpm --filter @videoforge/contracts sync:check"
+    - "pnpm --filter @videoforge/pipeline lint && pnpm --filter @videoforge/pipeline typecheck"
+    - "pnpm --filter @videoforge/test-fixtures lint && pnpm --filter @videoforge/test-fixtures typecheck"
+    - ".venv/bin/ruff check and format --check on the render worker"
+    - "shasum -a 256 /Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v2.mp4"
+    - "ffprobe /Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v2.mp4"
+  checked_at: "2026-08-10T02:43:05Z"
   result: pass
-  evidence: "evidence/acceptance/VF-0C-08/2026-08-10-local-chrome"
+  evidence: "evidence/acceptance/VF-0C-08/2026-08-10-subtle-zoom-rework"
   counts:
-    web_server_component_tests: 132
-    dock_motion_unit_tests: 7
-    typescript_contract_jcs_tests: 50
-    python_contract_tests: 39
+    typescript_contract_jcs_tests: 51
+    python_contract_tests: 40
     fixture_registry_and_local_slice_tests: 12
-    configuration_tests: 4
     pipeline_tests: 19
-    isolated_worker_tests: 43
-    root_script_tests: 6
+    isolated_worker_tests: 45
+    focused_render_worker_tests: 10
     synchronized_contract_files: 47
-    playwright_chrome_journeys: 30
   notes:
-    - "The forced verify executed every Turbo task with zero cache hits and passed formatting, TypeScript/Python/root-script linting, typechecking, all listed suites, contract synchronization, context validation, secret scanning, production build, route-tree stability, and 30 branded-Chrome journeys."
-    - "Real Chrome created the local project, observed the real pipeline, played and sought the 1920x1080p30 MP4, checked avatar-full/image-full/split/hard-cut/zoom output, approved the exact candidate, and downloaded the exact queryless MP4 with zero console warnings or errors."
-    - "The reviewed and downloaded files are the same 2,289,067 bytes with SHA-256 177edc7755ff822f306827256bf7a28bcc2d588da9fc78f04fd034a73e0c7285."
-    - "Direct file-URL replay is the only open acceptance item because the installed-Chrome control policy blocks file:// navigation and forbids a workaround; the manual path is recorded in the evidence."
-    - "The development server is restored to loopback-only fixture mode at commit eca15bd with provider calls unauthorized and $0 authorized spend."
+    - "The user manually replayed the first downloaded file in installed Chrome; playback worked, but the user rejected its 4–8% image zoom as shaky and too strong. That output is superseded for visual acceptance."
+    - "ffmpeg-render-v2 uses a 1.5–2.5% centered quintic zoom on a 4× Lanczos working canvas. Historical v1 manifests remain reproducible, while canonical TypeScript/Python validators and the worker reject mixed render/zoom versions."
+    - "The provider-free API-level local-slice gate passed through real ASR, scheduling, asset resolution, FFmpeg render, FFprobe, Range preview, approval binding, and exact download at $0 external spend."
+    - "Attempts 010 and 011 deterministically produced the same 1,804,769-byte 1920x1080p30 H.264/AAC file: SHA-256 2d7b0fa2ff77e90eda20d34c6a24d63d2a83d7dea40da07d0edf54159ccae002, duration 37,167 ms, 1,115 frames."
+    - "Start/middle/end contact frames for both image compositions were inspected and show restrained centered motion; installed-Chrome playback and seek of the replacement remain the human acceptance checkpoint."
+    - "The loopback fixture server is healthy and provider-off, but its health commit 7a852f8 is behind current HEAD; restart it before using live health as exact-commit proof."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -130,7 +131,7 @@ blocking_gates_for_production:
   - GATE_COST_001
 
 next_tasks:
-  - "VF-0C-08: manually open the exact downloaded MP4 in Chrome, play, and seek once; no code change is required"
+  - "VF-0C-08: manually open videoforge-local-owned-slice-smooth-v2.mp4 in Chrome, play, seek, and confirm the v2 zoom is subtle and smooth"
   - "VF-1-01: after the manual replay confirmation, lock the additive relational schema and repository contracts"
   - "VF-0D: capped provider viability preparation may overlap after local contracts lock; real calls require one explicit authorization envelope"
   - "Phase 2 onward: timing, prompt/image, avatar, custom-style, render, fallback, fault, and production waves exactly as ordered in the execution plan"
@@ -142,7 +143,7 @@ notes:
   - "21_IMPLEMENTATION_EXECUTION_PLAN.md owns remaining sequencing, task IDs, safe parallel ownership, integration order, checkpoints, and authorization boundaries."
   - "The Phase 0A fixture-contract foundation is implemented. Complex non-Create Zod/Pydantic validators are intentionally schema-backed entry points rather than independent hand models."
   - "DEC_CONTRACT_001 is locked: TypeScript is the sole JCS authority; Python validates canonical schemas and exact byte hashes while treating canonical JSON hashes as opaque."
-  - "A bounded provider-free real local media slice exists and the API-level harness plus real-Chrome create/play/seek/approve/download path are green. VF-0C-08 remains open only for manual replay of the already hash-verified downloaded path."
+  - "A bounded provider-free real local media slice exists and the API-level harness plus historical real-Chrome create/play/seek/approve/download path are green. VF-0C-08 remains open for human review of the hash-verified v2 zoom replacement after the first downloaded render was rejected for excessive visible shake."
   - "Durable database/object storage, production authentication, and provider transport do not exist yet. Fixture and bounded local state are not production persistence claims."
   - "The user authorized future RunPod use and credential retrieval from their signed-in Chrome profile, but no exact provider-task spend envelope is active. No key has been fetched, no endpoint selected, no RunPod resource changed, and the next task authorizes $0/provider-off work only."
   - "No public tunnel or LAN listener is active. The development server binds only to loopback and localhost remains the authoritative URL."

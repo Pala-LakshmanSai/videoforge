@@ -1,0 +1,58 @@
+{
+  "schema_version": "videoforge.acceptance-evidence/v1",
+  "task_id": "VF-0C-08",
+  "status": "replacement_render_ready_for_user_review",
+  "recorded_at": "2026-08-10T02:43:05Z",
+  "trigger": {
+    "review_surface": "installed Chrome file URL",
+    "playback_worked": true,
+    "user_rejected_motion": true,
+    "reason": "The prior image zoom was visibly shaky and too strong.",
+    "superseded_output_sha256": "sha256:177edc7755ff822f306827256bf7a28bcc2d588da9fc78f04fd034a73e0c7285"
+  },
+  "implementation": {
+    "commit": "d9bee0e63c40070ca943b6c7c1f32774d41f699e",
+    "render_profile": "ffmpeg-render-v2",
+    "full_image_end_scales": [1.015, 1.02, 1.025],
+    "split_right_end_scale": 1.015,
+    "easing": "quintic-smootherstep",
+    "working_canvas_scale": 4,
+    "working_canvas_resampler": "lanczos",
+    "anchor": "CENTER"
+  },
+  "verification": {
+    "command": "pnpm test:local-slice",
+    "result": "pass",
+    "provider_calls_authorized": false,
+    "external_spend_usd": 0,
+    "attempts": {
+      "asr": "attempt_asr_local_011",
+      "render": "attempt_render_local_011"
+    },
+    "raw_evidence_path": "artifacts/local-media/runs/revision_local_owned_001/attempt_render_local_011/acceptance-evidence.json",
+    "raw_evidence_sha256": "sha256:67b407ab2b177c1cfae1a122e3ad0738de107cd42a80baffaace3493f3b06331",
+    "resolved_render_manifest_sha256": "sha256:dd4be905d6ca2d480b7776a7d1a54a5e9ade9cfd4868bbaa584ef1ea80f56bb3",
+    "filtergraph_sha256": "sha256:7e81b40dc68515079c63bf8bf4b5e41a8ea76e13c0e965fae0fc47b939d9752c",
+    "technical_probe": {
+      "decode_ok": true,
+      "container": "mp4",
+      "video_codec": "h264",
+      "pixel_format": "yuv420p",
+      "width": 1920,
+      "height": 1080,
+      "fps": "30/1",
+      "audio_codec": "aac",
+      "audio_sample_rate_hz": 48000,
+      "duration_ms": 37167,
+      "total_frames": 1115,
+      "av_drift_ms": 13
+    }
+  },
+  "replacement": {
+    "review_path": "/Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v2.mp4",
+    "filename": "videoforge-local-owned-slice-smooth-v2.mp4",
+    "sha256": "sha256:2d7b0fa2ff77e90eda20d34c6a24d63d2a83d7dea40da07d0edf54159ccae002",
+    "bytes": 1804769,
+    "human_review": "pending"
+  }
+}
