@@ -26,6 +26,7 @@ const REQUIRED_CUSTOM_INDEXES = [
   "project_revisions_one_draft_uq",
   "projects_active_name_uq",
   "qa_results_one_terminal_acceptance_uq",
+  "repository_mutation_receipts_operation_idx",
   "timeline_segments_frame_idx",
   "transcripts_one_ready_per_revision_uq",
   "users_active_email_uq",
@@ -51,6 +52,7 @@ const REQUIRED_TRIGGERS = [
   "image_styles_active_version_published",
   "project_revisions_locked_immutable",
   "project_revisions_validate_locked_snapshot",
+  "repository_mutation_receipts_append_only",
   "workflow_events_append_only",
   "workflow_events_monotonic_sequence",
 ].sort();
@@ -78,6 +80,7 @@ const REQUIRED_HARDENING_FOREIGN_KEYS = [
   "image_style_analysis_attempts_outbox_fk",
   "image_style_analysis_attempts_owner_task_fk",
   "image_style_analysis_attempts_reservation_fk",
+  "repository_mutation_receipts_workspace_fk",
 ].sort();
 
 test("the migration exposes the expected tables, indexes, foreign keys, and invariant triggers", async () => {

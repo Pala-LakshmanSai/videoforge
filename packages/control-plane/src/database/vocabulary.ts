@@ -28,6 +28,7 @@ export const RELATIONAL_TABLE_NAMES = [
   "render_jobs",
   "cost_events",
   "callback_receipts",
+  "repository_mutation_receipts",
   "workflow_instances",
   "workflow_events",
   "outbox",

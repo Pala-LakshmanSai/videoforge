@@ -24,6 +24,12 @@
       "name": "callback_event_coherence",
       "filename": "0004_callback_event_coherence.sql",
       "sha256": "sha256:16a1eb20a70c7cd49c6c2131862263d7cf913d4d16b0be3beb63b4f0f489ee11"
+    },
+    {
+      "version": 5,
+      "name": "repository_mutation_receipts",
+      "filename": "0005_repository_mutation_receipts.sql",
+      "sha256": "sha256:98b3f73f075e17f1403fda49c3a24df6fb54135fbcc76d54e7753708f8f5d0bb"
     }
   ]
 }
