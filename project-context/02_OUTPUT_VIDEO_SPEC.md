@@ -49,14 +49,15 @@ A narration-relevant 16:9 Mage image following the project's pinned Image Style 
 
 Recommended zoom envelope:
 
-- Short image scene: 1.00 → 1.015.
-- Typical image scene: 1.00 → 1.02.
-- Long image scene: never exceed 1.025 without a separately approved render profile.
+- Short image scene: 1.00 → 1.025.
+- Typical image scene: 1.00 → 1.03.
+- Long image scene: never exceed 1.035 without a separately approved render profile.
 - Use a quintic smootherstep progression at 30 fps so speed and acceleration both settle at the
   first and last frame.
-- `ffmpeg-render-v2` evaluates the centered crop from a 4× Lanczos working canvas before the final
-  output sample. This keeps subpixel crop rounding from becoming visible shake; an alternative
-  implementation must prove equivalent monotonic, jitter-free motion.
+- `ffmpeg-render-v3` uses per-frame floating-point source-corner coordinates with cubic
+  interpolation rather than integer crop stepping. This keeps the centered movement continuous at
+  subpixel precision; an alternative implementation must prove equivalent monotonic, jitter-free
+  motion. `ffmpeg-render-v1` and `v2` remain replay-only profiles for historical manifests.
 - Center crop by default. Do not pan, parallax, shake, punch, track a face, or allow frame-to-frame
   crop-direction reversals.
 
@@ -81,7 +82,7 @@ crop=640:720:320:0,scale=960:1080
 - Clean central seam.
 - No divider, border, label, shadow, rounded panel, or decoration.
 - The right image should be generated for an 8:9-safe composition when possible; 1024×1152 is the initial candidate.
-- The right image uses the smaller 1.00 → 1.015 `split-right-zoom-v2` profile during the short split
+- The right image uses the smaller 1.00 → 1.025 `split-right-zoom-v3` profile during the short split
   interval. Every displayed AI image moves slowly, including split companions.
 
 ### Avatar frame-rate conversion

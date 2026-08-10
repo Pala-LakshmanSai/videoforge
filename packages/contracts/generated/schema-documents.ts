@@ -1997,7 +1997,8 @@ export const canonicalSchemaDocuments = {
       "render_profile_version": {
         "enum": [
           "ffmpeg-render-v1",
-          "ffmpeg-render-v2"
+          "ffmpeg-render-v2",
+          "ffmpeg-render-v3"
         ]
       },
       "voiceover": {
@@ -2265,7 +2266,8 @@ export const canonicalSchemaDocuments = {
               "zoom_profile": {
                 "enum": [
                   "image-full-zoom-v1",
-                  "image-full-zoom-v2"
+                  "image-full-zoom-v2",
+                  "image-full-zoom-v3"
                 ]
               }
             }
@@ -2352,7 +2354,8 @@ export const canonicalSchemaDocuments = {
               "right_image_zoom_profile": {
                 "enum": [
                   "split-right-zoom-v1",
-                  "split-right-zoom-v2"
+                  "split-right-zoom-v2",
+                  "split-right-zoom-v3"
                 ]
               }
             },
@@ -2856,7 +2859,8 @@ export const canonicalSchemaDocuments = {
           "output_profile_version": {
             "enum": [
               "ffmpeg-render-v1",
-              "ffmpeg-render-v2"
+              "ffmpeg-render-v2",
+              "ffmpeg-render-v3"
             ]
           }
         }

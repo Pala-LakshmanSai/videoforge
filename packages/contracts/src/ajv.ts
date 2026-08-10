@@ -200,7 +200,7 @@ const semanticContractIssues = <Name extends ContractName>(
   }
   if (contractName === "resolvedRenderManifest") {
     const manifest = value as ContractDocument<"resolvedRenderManifest">;
-    const expectedSuffix = manifest.render_profile_version === "ffmpeg-render-v2" ? "v2" : "v1";
+    const expectedSuffix = manifest.render_profile_version.slice(-2);
     const issues: ContractValidationIssue[] = [];
     for (const [index, segment] of manifest.segments.entries()) {
       if (

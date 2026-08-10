@@ -241,7 +241,7 @@ class RenderFixture:
             "project_revision_id": "revision_local_001",
             "revision_config_hash": f"sha256:{'1' * 64}",
             "timeline_plan_hash": f"sha256:{'2' * 64}",
-            "render_profile_version": "ffmpeg-render-v2",
+            "render_profile_version": "ffmpeg-render-v3",
             "voiceover": {
                 "asset_id": voiceover["asset_id"],
                 "sha256": voiceover["sha256"],
@@ -290,7 +290,7 @@ class RenderFixture:
                     },
                     "render": {
                         "image_scale": "1920:1080",
-                        "zoom_profile": "image-full-zoom-v2",
+                        "zoom_profile": "image-full-zoom-v3",
                     },
                 },
                 {
@@ -314,7 +314,7 @@ class RenderFixture:
                         "avatar_scale": "960:1080",
                         "avatar_fps": "30:round=near",
                         "right_image_scale": "960:1080",
-                        "right_image_zoom_profile": "split-right-zoom-v2",
+                        "right_image_zoom_profile": "split-right-zoom-v3",
                     },
                 },
             ],
@@ -402,18 +402,20 @@ class RenderJobTests(unittest.TestCase):
         graph = render_call[render_call.index("-filter_complex") + 1]
         self.assertIn("crop=832:468:0:6", graph)
         self.assertIn("crop=640:720:320:0", graph)
-        self.assertEqual(graph.count("zoompan="), 2)
+        self.assertEqual(graph.count("perspective="), 2)
+        self.assertNotIn("zoompan=", graph)
         self.assertIn(
-            "scale=7680:4320:force_original_aspect_ratio=increase:flags=lanczos,crop=7680:4320",
+            "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=1920:1080",
             graph,
         )
         self.assertIn(
-            "scale=3840:4320:force_original_aspect_ratio=increase:flags=lanczos,crop=3840:4320",
+            "scale=960:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080",
             graph,
         )
-        self.assertIn("1+0.020000*", graph)
-        self.assertIn("1+0.015000*", graph)
+        self.assertIn("1+0.030000*", graph)
+        self.assertIn("1+0.025000*", graph)
         self.assertNotRegex(graph, r"1\+0\.(?:04|06|08)0000\*")
+        self.assertIn("interpolation=cubic:sense=source:eval=frame", graph)
         self.assertIn("hstack=inputs=2", graph)
         self.assertIn("concat=n=3:v=1:a=0", graph)
         self.assertIn("loudnorm=I=-16:TP=-1.5", graph)
@@ -453,6 +455,30 @@ class RenderJobTests(unittest.TestCase):
         self.assertIn("1+0.040000*", graph)
         self.assertIn("3*(on/149)*(on/149)-2*(on/149)*(on/149)*(on/149)", graph)
         self.assertNotIn("scale=7680:4320", graph)
+
+    def test_preserves_the_v2_precision_zoom_profile_without_mixing_versions(self) -> None:
+        fixture = RenderFixture()
+
+        def use_v2_profile(manifest: dict[str, Any]) -> None:
+            manifest["render_profile_version"] = "ffmpeg-render-v2"
+            manifest["segments"][1]["render"]["zoom_profile"] = "image-full-zoom-v2"
+            manifest["segments"][2]["render"]["right_image_zoom_profile"] = "split-right-zoom-v2"
+
+        fixture.replace_manifest(use_v2_profile)
+        result = fixture.job().run(
+            fixture.document,
+            claimed_attempt_id="attempt_render_local_001",
+        )
+
+        self.assertEqual(result["status"], "SUCCEEDED")
+        render_call = next(call for call in fixture.process.calls if "-filter_complex" in call)
+        graph = render_call[render_call.index("-filter_complex") + 1]
+        self.assertEqual(graph.count("zoompan="), 2)
+        self.assertNotIn("perspective=", graph)
+        self.assertIn("scale=7680:4320", graph)
+        self.assertIn("scale=3840:4320", graph)
+        self.assertIn("1+0.020000*", graph)
+        self.assertIn("1+0.015000*", graph)
 
     def test_rejects_render_and_zoom_profile_version_mixing(self) -> None:
         fixture = RenderFixture()

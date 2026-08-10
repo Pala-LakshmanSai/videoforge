@@ -186,11 +186,12 @@ The exact global-demotion threshold is an open user gate. Record evidence; do no
 - SkyReels source profile: pixel-exact full crop `1280:720:0:0`; split crop `640:720:320:0` and placement x=0; image x=960.
 - Each accepted avatar asset declares exactly one source profile; the resolved-render schema rejects a profile/crop pair from the other model.
 - No seam decoration.
-- The current full-image zoom ends at 1.015, 1.02, or 1.025 according to scene length; the current
-  split-right zoom ends at 1.015. Both begin at exactly 1.00.
+- The current full-image zoom ends at 1.025, 1.03, or 1.035 according to scene length; the current
+  split-right zoom ends at 1.025. Both begin at exactly 1.00.
 - Zoom progression is monotonic quintic smootherstep at 30 fps, stays centered, has no
-  frame-to-frame crop-direction reversal, and shows no visible integer-rounding shake. The v2
-  FFmpeg golden path uses the 4× Lanczos working canvas before final output sampling.
+  frame-to-frame crop-direction reversal, and shows no visible integer-rounding shake. The v3
+  FFmpeg golden path evaluates floating source-corner coordinates per frame and uses cubic
+  interpolation for continuous subpixel sampling.
 - Slow zoom is present on both `IMAGE_FULL` and the split-right image.
 - Native 25 fps AvatarForcing and 24 fps SkyReels inputs convert directly/deterministically to 30 fps without duration drift; cadence is reviewed full-screen, no 24→25→30 double conversion occurs, and no optical-flow/interpolation model runs.
 - Hard cuts at exact frame boundaries.

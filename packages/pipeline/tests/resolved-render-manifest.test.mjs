@@ -120,12 +120,12 @@ test("locks exact AvatarForcing and SkyReels full/split renderer geometry", asyn
     avatar_scale: "960:1080",
     avatar_fps: "30:round=near",
     right_image_scale: "960:1080",
-    right_image_zoom_profile: "split-right-zoom-v2",
+    right_image_zoom_profile: "split-right-zoom-v3",
   });
   assert.equal(
     manifest.segments
       .filter((segment) => segment.timeline_composition === "IMAGE_FULL")
-      .every((segment) => segment.render.zoom_profile === "image-full-zoom-v2"),
+      .every((segment) => segment.render.zoom_profile === "image-full-zoom-v3"),
     true,
   );
 });

@@ -10,7 +10,7 @@
   },
   "resolved_render_manifest": {
     "asset_id": "asset_resolved_render_manifest_fixture_001",
-    "sha256": "sha256:5a335e1d6a6565e60b23357f5edb69b50ca945e627e2a1da6e54bae0ffa7adb5"
+    "sha256": "sha256:891ed75934097f0f1232b5a2039569ac9a5add6eab448e8d9f69223950c44650"
   },
   "prompt_manifest": {
     "asset_id": "asset_prompt_manifest_fixture_001",
@@ -87,7 +87,7 @@
       "role": "RENDERER",
       "provider": "local-worker",
       "model_id": "ffmpeg",
-      "revision_or_profile": "ffmpeg-render-v2",
+      "revision_or_profile": "ffmpeg-render-v3",
       "execution_profile_id": "exec_image_media_balanced_v1",
       "artifact_digest": null
     }
@@ -107,6 +107,6 @@
     "sha256": "sha256:1212121212121212121212121212121212121212121212121212121212121212",
     "bytes": 12500000,
     "total_frames": 360,
-    "output_profile_version": "ffmpeg-render-v2"
+    "output_profile_version": "ffmpeg-render-v3"
   }
 }

@@ -28,6 +28,7 @@ class RenderCommandPlan:
 
 LEGACY_RENDER_PROFILE_VERSION = "ffmpeg-render-v1"
 SUBTLE_RENDER_PROFILE_VERSION = "ffmpeg-render-v2"
+SMOOTH_RENDER_PROFILE_VERSION = "ffmpeg-render-v3"
 
 _ZOOM_PRECISION_FACTOR = 4
 
@@ -42,7 +43,7 @@ def _zoom_expression(frame_count: int, delta: float, *, quintic: bool) -> str:
     return f"1+{delta:.6f}*{easing}"
 
 
-def _image_filter(
+def _zoompan_image_filter(
     input_index: int,
     width: int,
     frame_count: int,
@@ -72,7 +73,54 @@ def _image_filter(
     )
 
 
+def _continuous_image_filter(
+    input_index: int,
+    width: int,
+    frame_count: int,
+    delta: float,
+) -> str:
+    zoom = _zoom_expression(frame_count, delta, quintic=True)
+    x_margin = f"(W-W/({zoom}))/2"
+    y_margin = f"(H-H/({zoom}))/2"
+    return (
+        f"[{input_index}:v:0]"
+        f"scale={width}:1080:force_original_aspect_ratio=increase:flags=lanczos,"
+        f"crop={width}:1080,setsar=1,"
+        f"perspective=x0='{x_margin}':y0='{y_margin}':"
+        f"x1='W-({x_margin})':y1='{y_margin}':"
+        f"x2='{x_margin}':y2='H-({y_margin})':"
+        f"x3='W-({x_margin})':y3='H-({y_margin})':"
+        "interpolation=cubic:sense=source:eval=frame,"
+        f"fps=30,trim=end_frame={frame_count},setpts=PTS-STARTPTS"
+    )
+
+
+def _image_filter(
+    input_index: int,
+    width: int,
+    frame_count: int,
+    delta: float,
+    *,
+    profile_version: str,
+) -> str:
+    if profile_version == SMOOTH_RENDER_PROFILE_VERSION:
+        return _continuous_image_filter(input_index, width, frame_count, delta)
+    return _zoompan_image_filter(
+        input_index,
+        width,
+        frame_count,
+        delta,
+        high_precision=profile_version == SUBTLE_RENDER_PROFILE_VERSION,
+    )
+
+
 def _zoom_delta(*, frame_count: int, split: bool, profile_version: str) -> float:
+    if profile_version == SMOOTH_RENDER_PROFILE_VERSION:
+        if split or frame_count <= 120:
+            return 0.025
+        if frame_count <= 210:
+            return 0.03
+        return 0.035
     if profile_version == SUBTLE_RENDER_PROFILE_VERSION:
         if split or frame_count <= 120:
             return 0.015
@@ -118,8 +166,6 @@ def compile_render_command(
     if not segments:
         raise ValueError("at least one render segment is required")
     profile_version = cast(str, manifest["render_profile_version"])
-    high_precision_zoom = profile_version == SUBTLE_RENDER_PROFILE_VERSION
-
     arguments: list[str] = [str(ffmpeg), "-hide_banner", "-nostdin", "-n"]
     graph: list[str] = []
     input_index = 0
@@ -162,7 +208,7 @@ def compile_render_command(
                 profile_version=profile_version,
             )
             graph.append(
-                f"{_image_filter(image_index, 1920, frame_count, delta, high_precision=high_precision_zoom)}[{label}]"
+                f"{_image_filter(image_index, 1920, frame_count, delta, profile_version=profile_version)}[{label}]"
             )
         elif composition == "AVATAR_SPLIT_IMAGE":
             avatar_index = add_input(accepted["avatar"]["asset_id"], still=False)
@@ -180,7 +226,7 @@ def compile_render_command(
                 profile_version=profile_version,
             )
             graph.append(
-                f"{_image_filter(image_index, 960, frame_count, delta, high_precision=high_precision_zoom)}[{image_label}]"
+                f"{_image_filter(image_index, 960, frame_count, delta, profile_version=profile_version)}[{image_label}]"
             )
             graph.append(
                 f"[{avatar_label}][{image_label}]hstack=inputs=2,"

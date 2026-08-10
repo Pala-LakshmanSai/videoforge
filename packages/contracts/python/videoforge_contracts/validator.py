@@ -222,7 +222,7 @@ def _semantic_contract_issues(
                 )
         return tuple(issues)
     if contract_name == "resolvedRenderManifest":
-        expected_suffix = "v2" if value["render_profile_version"] == "ffmpeg-render-v2" else "v1"
+        expected_suffix = value["render_profile_version"].rsplit("-", maxsplit=1)[-1]
         issues = []
         for index, segment in enumerate(value["segments"]):
             if (

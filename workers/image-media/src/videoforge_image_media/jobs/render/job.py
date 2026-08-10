@@ -12,6 +12,7 @@ from videoforge_contracts import ContractValidationError, validate_contract
 
 from .filtergraph import (
     LEGACY_RENDER_PROFILE_VERSION,
+    SMOOTH_RENDER_PROFILE_VERSION,
     SUBTLE_RENDER_PROFILE_VERSION,
     LoudnessMeasurement,
     RenderCommandPlan,
@@ -485,13 +486,14 @@ class RenderJob:
         if render_profile_version not in {
             LEGACY_RENDER_PROFILE_VERSION,
             SUBTLE_RENDER_PROFILE_VERSION,
+            SMOOTH_RENDER_PROFILE_VERSION,
         }:
             raise _RenderFailure(
                 "RENDER_INPUT_INVALID",
                 "Resolved render manifest uses an unsupported render profile.",
                 retryable=False,
             )
-        zoom_suffix = "v2" if render_profile_version == SUBTLE_RENDER_PROFILE_VERSION else "v1"
+        zoom_suffix = render_profile_version.rsplit("-", maxsplit=1)[-1]
         for segment in cast(list[dict[str, Any]], manifest["segments"]):
             composition = segment["timeline_composition"]
             render = cast(dict[str, str], segment["render"])

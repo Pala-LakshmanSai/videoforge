@@ -20,7 +20,9 @@
     "project_revision_id": {"type": "string", "minLength": 1, "maxLength": 160},
     "revision_config_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "timeline_plan_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-    "render_profile_version": {"enum": ["ffmpeg-render-v1", "ffmpeg-render-v2"]},
+    "render_profile_version": {
+      "enum": ["ffmpeg-render-v1", "ffmpeg-render-v2", "ffmpeg-render-v3"]
+    },
     "voiceover": {
       "type": "object",
       "additionalProperties": false,
@@ -130,7 +132,9 @@
           "required": ["image_scale", "zoom_profile"],
           "properties": {
             "image_scale": {"const": "1920:1080"},
-            "zoom_profile": {"enum": ["image-full-zoom-v1", "image-full-zoom-v2"]}
+            "zoom_profile": {
+              "enum": ["image-full-zoom-v1", "image-full-zoom-v2", "image-full-zoom-v3"]
+            }
           }
         }
       }
@@ -166,7 +170,7 @@
             "avatar_fps": {"const": "30:round=near"},
             "right_image_scale": {"const": "960:1080"},
             "right_image_zoom_profile": {
-              "enum": ["split-right-zoom-v1", "split-right-zoom-v2"]
+              "enum": ["split-right-zoom-v1", "split-right-zoom-v2", "split-right-zoom-v3"]
             }
           },
           "allOf": [
