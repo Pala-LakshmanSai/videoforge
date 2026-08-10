@@ -1,0 +1,93 @@
+{
+  "schema_version": "videoforge.acceptance-evidence/v1",
+  "task_id": "VF-1-04",
+  "status": "technical_pass",
+  "recorded_at": "2026-08-10T11:00:24Z",
+  "implementation": {
+    "commit": "5775c4714917e95745221ddac6e259f8cbf291a2",
+    "adapter": "LocalArtifactStore",
+    "control_plane_facet": "ArtifactControlPlanePort",
+    "direct_transfer_facet": "ArtifactDirectTransferPort",
+    "hono_router": "createPrivateArtifactControlPlaneApp",
+    "hono_router_mounted_in_fixture_or_local": false
+  },
+  "storage_boundary": {
+    "signed_operations": ["INITIATE", "UPLOAD_PART", "COMPLETE", "ABORT", "DOWNLOAD"],
+    "application_body_bytes": 0,
+    "large_body_test_bytes": 8388608,
+    "metadata_body_limit_bytes": 65536,
+    "maximum_object_bytes": 1073741824,
+    "maximum_part_bytes": 67108864,
+    "maximum_parts": 256,
+    "stream_assembly_buffer_bytes": 1048576,
+    "opaque_etags_separate_from_part_hashes": true,
+    "structural_media_signature_validation": true,
+    "private_acceptance_populates_legacy_cas": false,
+    "retention_enforced_on_resolution_and_download": true,
+    "terminal_staging_cleanup_awaited": true
+  },
+  "durability": {
+    "atomic_fsynced_accepted_directory": true,
+    "workspace_and_object_key_immutable": true,
+    "durable_workspace_idempotency_binding": true,
+    "cross_instance_per_key_lock": true,
+    "conflicting_concurrent_winners": 1,
+    "healthy_reopen_after_conflict": true,
+    "abort_or_failed_completion_leaves_false_binding": false
+  },
+  "hono_boundary": {
+    "authorization_input_has_body_handle": false,
+    "media_body_read_before_rejection": false,
+    "direct_transfer_facet_reachable": false,
+    "compressed_or_transfer_encoded_metadata_accepted": false,
+    "content_length_must_match": true,
+    "adapter_result_exact_shape_required": true,
+    "success_cache_control": "no-store",
+    "mount_deferred_to": "VF-1-07 durable account/upload composition"
+  },
+  "adversarial_audit": {
+    "result": "closed_no_remaining_high_or_medium",
+    "covered": [
+      "claimed MIME versus structural bytes",
+      "same-object and same-idempotency-key cross-instance races",
+      "restart rehydration and immutable rebinding",
+      "opaque multipart ETags",
+      "retention and legacy CAS isolation",
+      "part, object, token, accessor, framing, and cleanup bounds",
+      "metadata-only Hono result and request validation"
+    ]
+  },
+  "verification": {
+    "result": "pass",
+    "pipeline_tests": { "passed": 37, "failed": 0, "skipped": 0 },
+    "focused_hono_tests": { "passed": 4, "failed": 0, "skipped": 0 },
+    "web_tests": { "passed": 145, "failed": 0, "skipped": 0 },
+    "local_workerd_tests": { "passed": 1, "failed": 0, "skipped": 0 },
+    "installed_chrome_tests": { "passed": 34, "failed": 0, "skipped": 0 },
+    "forced_turbo_cache_hits": 0,
+    "commands": [
+      "pnpm --filter @videoforge/pipeline lint",
+      "pnpm --filter @videoforge/pipeline typecheck",
+      "pnpm --filter @videoforge/pipeline test",
+      "pnpm --filter @videoforge/pipeline build",
+      "pnpm --filter @videoforge/web test",
+      "TURBO_FORCE=true pnpm verify",
+      "pnpm secret:scan",
+      "pnpm audit:dependencies",
+      "git diff --check"
+    ]
+  },
+  "authorization": {
+    "r2_or_cloud_storage_used": false,
+    "network_used": false,
+    "credentials_used": false,
+    "provider_calls_made": false,
+    "external_spend_usd": 0,
+    "cloud_mutation_performed": false
+  },
+  "next_boundary": {
+    "real_r2_adapter": "requires isolated staging authority",
+    "durable_route_mount": "VF-1-07 after auth and repository composition",
+    "local_next_task": "VF-1-06"
+  }
+}

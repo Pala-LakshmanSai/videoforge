@@ -1,0 +1,80 @@
+{
+  "schema_version": "videoforge.acceptance-evidence/v1",
+  "task_id": "VF-1-03",
+  "status": "technical_pass",
+  "recorded_at": "2026-08-10T11:00:24Z",
+  "implementation": {
+    "commits": [
+      "688c3f631eaaead460ba397646fff64eaad54a2b",
+      "4bf79eca9322fadf43dc73cc972edba8cbc9c680",
+      "5dd17d000bf2a8d0ded937555aa5407d06d72504"
+    ],
+    "package_subpath": "@videoforge/control-plane/auth",
+    "production_descriptor": "better-auth-sdk-wiring-pending-staging",
+    "live_google_oauth_wired": false
+  },
+  "authorization_boundary": {
+    "deterministic_local_sessions": true,
+    "verified_google_email_invitation_admission": true,
+    "active_identity_required_before_materialization": true,
+    "active_workspace_and_membership_required": true,
+    "session_revalidated_after_directory_await": true,
+    "reviewer_identity_source": "SERVER_SESSION",
+    "client_reviewer_identity_accepted": false,
+    "sanitized_payload_only": true,
+    "sanitized_payload_recursively_frozen": true,
+    "sanitized_payload_null_prototypes": true,
+    "generic_non_leaking_denials": true,
+    "secret_serialization_redacted": true
+  },
+  "adversarial_audit": {
+    "result": "closed_no_remaining_high_or_medium",
+    "disabled_identity_materializer_calls": 0,
+    "proxy_getter_calls": 0,
+    "inherited_to_json_getter_calls": 0,
+    "covered": [
+      "disabled identity with accepted invitation and active membership",
+      "expired, revoked, future, malformed, and asynchronously changed sessions",
+      "cross-workspace and mismatched directory records",
+      "nested, inherited, accessor, cyclic, sparse, proxy-hidden, and oversized reviewer payloads",
+      "late source mutation, prototype poisoning, and inherited toJSON"
+    ]
+  },
+  "verification": {
+    "result": "pass",
+    "commands": [
+      "pnpm --filter @videoforge/control-plane lint",
+      "pnpm --filter @videoforge/control-plane typecheck",
+      "pnpm --filter @videoforge/control-plane build",
+      "node --test --test-concurrency=1 packages/control-plane/tests/auth-*.test.mjs",
+      "pnpm --filter @videoforge/control-plane test",
+      "TURBO_FORCE=true pnpm verify",
+      "pnpm context:validate",
+      "pnpm secret:scan",
+      "pnpm audit:dependencies",
+      "git diff --check"
+    ],
+    "focused_auth_tests": { "passed": 25, "failed": 0, "skipped": 0 },
+    "control_plane_tests": { "passed": 104, "failed": 0, "skipped": 0 },
+    "web_tests": { "passed": 145, "failed": 0, "skipped": 0 },
+    "local_workerd_tests": { "passed": 1, "failed": 0, "skipped": 0 },
+    "installed_chrome_tests": { "passed": 34, "failed": 0, "skipped": 0 },
+    "forced_turbo_cache_hits": 0,
+    "tracked_files_secret_scanned": 552,
+    "known_high_severity_dependency_vulnerabilities": 0
+  },
+  "authorization": {
+    "provider_calls_authorized": false,
+    "provider_calls_made": false,
+    "external_spend_usd": 0,
+    "credentials_used": false,
+    "live_oauth_used": false,
+    "cloud_mutation_performed": false,
+    "remote_created_or_pushed": false
+  },
+  "next_boundary": {
+    "production_sdk_install_and_google_wiring": "requires isolated staging authority",
+    "durable_invitation_membership_compare_and_set": "requires isolated staging composition",
+    "local_next_task": "VF-1-06"
+  }
+}
