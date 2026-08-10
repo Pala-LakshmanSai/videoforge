@@ -38,7 +38,8 @@ gates:
     blocks: runware_prompt_production_profile
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#runwaredeepseek-gate"
     owner: unassigned
-    last_run: null
+    last_run: "evidence/gates/GATE_LLM_001/2026-08-10-runware-account-preflight"
+    result: blocked_account_funding_prerequisite_zero_spend
   GATE_STYLE_001:
     status: open
     blocks: custom_reference_style_analysis

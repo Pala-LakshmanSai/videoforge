@@ -13,7 +13,8 @@ Most recently completed brief: `VF-2-05.md`, with implementation commit `907e0e4
 commit `d16c2a9`. The 2026-08-10 standing provider-free implementation authority through Phase 2 is
 complete and exhausted.
 
-`VF-3-00.md` is complete: the 2026-08-10 public-fact audit found a blocking AvatarForcing license
-contradiction and the user then granted bounded provider/account, private-Git/CI, and isolated
-staging authority. `CURRENT_STATE.yaml` selects `VF-3-01.md`; only its exact Runware DeepSeek lane
-and non-transferable `$1` sub-cap are active. `VF-3-02.md` is dependency-ready but not selected.
+`VF-3-00.md` is complete. `VF-3-01.md` created a safe bounded runner and Runware account, but live
+inference is blocked before spend because Runware requires a paid invoice or at least `$5` balance.
+`CURRENT_STATE.yaml` selects provider-free `VF-3-03.md`, allowing deterministic prompt work without
+funding, provider calls, or weakening `GATE_LLM_001`. `VF-3-02.md` remains unselected and blocked by
+the same account prerequisite.

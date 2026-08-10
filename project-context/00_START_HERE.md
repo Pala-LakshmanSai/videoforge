@@ -33,8 +33,9 @@ executor, repository-contract, and adversarial regression hardening recorded und
 provider-free authority through `VF-2-05` is complete and exhausted. `VF-3-00` refreshed official
 facts on 2026-08-10. The user then authorized autonomous provider/account, private Git/hosted CI,
 and isolated staging work while preserving the existing non-transferable provider caps and keeping
-production deferred. `CURRENT_STATE.yaml` now selects exact brief `VF-3-01`; no adjacent brief or
-high-level roadmap item is authority.
+production deferred. Runware account preflight then stopped before inference or spend because the
+provider requires a paid invoice or at least `$5` balance. `CURRENT_STATE.yaml` now selects exact
+provider-free brief `VF-3-03`; no adjacent brief or high-level roadmap item is authority.
 
 The refresh found a hard AvatarForcing licensing contradiction: the official repository README
 claims Apache-2.0, its committed `LICENSE.txt` is academic-only/non-commercial and prohibits

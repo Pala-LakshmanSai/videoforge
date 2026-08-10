@@ -1,0 +1,40 @@
+{
+  "schema_version": "videoforge.gate-attempt/v1",
+  "task_id": "VF-3-01",
+  "gate_id": "GATE_LLM_001",
+  "status": "blocked_account_funding_prerequisite",
+  "checked_at": "2026-08-10T17:25:48Z",
+  "provider": "Runware",
+  "requested_model": "deepseek-v4-flash",
+  "prepared_coverage": {
+    "scenes": 40,
+    "styles": 5,
+    "batches": 5,
+    "strict_json_schema": true
+  },
+  "provider_result": {
+    "http_status": 400,
+    "error_code": "thirdPartyInsufficientCredits",
+    "completed_inference_calls": 0,
+    "returned_outputs": 0,
+    "external_spend_usd": 0,
+    "wallet_balance_usd": 0.05,
+    "required_minimum_balance_usd": 5
+  },
+  "credential_handling": {
+    "active_key_location": "macOS Keychain service com.videoforge.runware.qualification",
+    "credential_value_recorded": false,
+    "exposed_initial_key_revoked": true,
+    "unused_intermediate_key_revoked": true,
+    "secret_scan": "pass"
+  },
+  "verification": {
+    "provider_sandbox_tests_passed": 40,
+    "provider_sandbox_tests_failed": 0,
+    "forced_uncached_verify": "pass",
+    "cloudflare_local_tests_passed": 1,
+    "installed_chrome_tests_passed": 38,
+    "installed_chrome_tests_skipped": 0
+  }
+}
+

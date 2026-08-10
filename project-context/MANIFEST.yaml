@@ -227,6 +227,12 @@ read_profiles:
     - 18_IMAGE_STYLES_HUB.md
     - GATES.yaml
     - tasks/VF-3-02.md
+  phase3_prompt_compiler:
+    - GLOSSARY.md
+    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - tasks/VF-3-03.md
   context_update:
     - 15_DECISIONS_AND_OPEN_GATES.md
     - 16_CONTEXT_MAINTENANCE.md
