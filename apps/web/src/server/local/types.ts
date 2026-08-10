@@ -1,4 +1,5 @@
-import type { CreateProjectRequest, Sha256Digest } from "@videoforge/contracts";
+import type { Sha256Digest } from "@videoforge/contracts/canonical-json";
+import type { CreateProjectRequest } from "@videoforge/contracts/create-project";
 
 export const LOCAL_PROJECT_ID = "project_local_owned_001";
 export const LOCAL_REVISION_ID = "revision_local_owned_001";

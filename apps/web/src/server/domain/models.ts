@@ -1,4 +1,4 @@
-import type { CreateProjectRequest } from "@videoforge/contracts";
+import type { CreateProjectRequest } from "@videoforge/contracts/create-project";
 import type {
   AvatarProfileResponse,
   FixtureProjectDetailResponse,

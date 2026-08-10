@@ -48,6 +48,7 @@ node_modules/
 .pnpm-store/
 .tools/
 dist/
+dist-cloudflare/
 .turbo/
 .wrangler/
 .dev.vars

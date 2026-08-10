@@ -1,4 +1,4 @@
-import { sha256CanonicalJson } from "@videoforge/contracts";
+import { sha256CanonicalJson } from "@videoforge/contracts/canonical-json";
 import {
   toAvatarProfileResponse,
   toImageStyleResponse,

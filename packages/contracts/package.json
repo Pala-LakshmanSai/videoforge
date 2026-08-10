@@ -8,6 +8,18 @@
       "types": "./dist/src/index.d.ts",
       "import": "./dist/src/index.js"
     },
+    "./canonical-json": {
+      "types": "./dist/src/canonical-json.d.ts",
+      "import": "./dist/src/canonical-json.js"
+    },
+    "./create-project": {
+      "types": "./dist/src/create-project.d.ts",
+      "import": "./dist/src/create-project.js"
+    },
+    "./output-rules": {
+      "types": "./dist/src/output-rules.d.ts",
+      "import": "./dist/src/output-rules.js"
+    },
     "./generated/*": "./generated/*"
   },
   "scripts": {

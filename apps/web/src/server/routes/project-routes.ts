@@ -1,6 +1,3 @@
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
-
 import { toUsageSummaryResponse } from "@videoforge/test-fixtures";
 import type { Hono } from "hono";
 
@@ -23,10 +20,13 @@ import {
   readProjectMutationRequest,
 } from "../mutation";
 import { apiProblem, problemResponse } from "../problem";
+import type { FixturePreviewBinding } from "../runtime/types";
 
-const FIXTURE_PREVIEW_FILE = resolve(process.cwd(), "public/fixtures/media/watermelon-market.svg");
-
-export function registerProjectRoutes(app: Hono, runtime: FixtureRuntime): void {
+export function registerProjectRoutes(
+  app: Hono,
+  runtime: FixtureRuntime,
+  fixturePreview: FixturePreviewBinding,
+): void {
   app.get("/api/v1/projects", (c) => {
     const resolved = fixtureFromRequest(c.req.raw);
     if (!resolved.ok) return resolved.response;
@@ -90,7 +90,7 @@ export function registerProjectRoutes(app: Hono, runtime: FixtureRuntime): void 
         ),
       );
     }
-    const preview = await readFile(FIXTURE_PREVIEW_FILE, "utf8");
+    const preview = await fixturePreview.read(c.req.raw);
     c.header("content-type", "image/svg+xml; charset=utf-8");
     c.header("content-disposition", 'attachment; filename="videoforge-fixture-preview.svg"');
     c.header("x-videoforge-artifact-kind", "synthetic-preview");

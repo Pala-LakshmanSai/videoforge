@@ -7,13 +7,34 @@ import type { CreateProjectRequest, Sha256Digest } from "@videoforge/contracts";
 import { LocalArtifactStore } from "@videoforge/pipeline";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createApiApp } from "../app";
+import { createApiApp as createRuntimeApiApp } from "../app";
+import { createLocalApiApp } from "./app";
 import type {
   LocalOwnedVoiceover,
   LocalPipelineRunRequest,
   LocalPipelineRunResult,
   LocalSliceRunner,
 } from "./types";
+
+function createApiApp(options: {
+  readonly commit?: string;
+  readonly environment?: "development" | "test" | "production";
+  readonly mode: "local";
+  readonly localRunner?: LocalSliceRunner;
+}) {
+  return createRuntimeApiApp({
+    configuration: {
+      commit: options.commit ?? "uncommitted",
+      environment: options.environment ?? "development",
+      mode: options.mode,
+    },
+    bindings: {
+      platform: "node",
+      localRunner: options.localRunner,
+      localAppFactory: createLocalApiApp,
+    },
+  });
+}
 
 const VOICEOVER_SHA = `sha256:${"a".repeat(64)}` as Sha256Digest;
 const OUTPUT_CONTENT = Buffer.from("synthetic mp4 bytes for byte range delivery", "utf8");

@@ -1,4 +1,7 @@
-import { createProjectRequestSchema, type CreateProjectRequest } from "@videoforge/contracts";
+import {
+  createProjectRequestSchema,
+  type CreateProjectRequest,
+} from "@videoforge/contracts/create-project";
 import type { Context } from "hono";
 import { z } from "zod";
 

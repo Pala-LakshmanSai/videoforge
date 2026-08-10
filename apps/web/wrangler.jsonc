@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "videoforge-local-runtime",
+  "compatibility_date": "2026-08-08",
+  "main": "./worker/index.ts",
+  "assets": {
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+  "vars": {
+    "VIDEOFORGE_COMMIT": "uncommitted",
+    "VIDEOFORGE_ENVIRONMENT": "development",
+    "VIDEOFORGE_PROVIDER_MODE": "fixture",
+  },
+}

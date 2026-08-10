@@ -1,4 +1,5 @@
-import { validateOutputRuleKeywords, type CreateProjectRequest } from "@videoforge/contracts";
+import type { CreateProjectRequest } from "@videoforge/contracts/create-project";
+import { validateOutputRuleKeywords } from "@videoforge/contracts/output-rules";
 import { getFixtureExecutionProfile, resolveFixtureExecutionProfiles } from "@videoforge/config";
 import {
   toProjectDetailResponse,

@@ -1,7 +1,12 @@
 import executionProfileCatalogJson from "../profiles/execution-profile-catalog.v1.json" with { type: "json" };
 import fixtureRuntimeProfileSetJson from "../profiles/fixture-runtime.v1.json" with { type: "json" };
 
-export type ProviderMode = "fixture" | "local" | "sandbox" | "production";
+export const PROVIDER_MODES = ["fixture", "local", "sandbox", "staging", "production"] as const;
+export type ProviderMode = (typeof PROVIDER_MODES)[number];
+
+export function isProviderMode(value: unknown): value is ProviderMode {
+  return typeof value === "string" && PROVIDER_MODES.includes(value as ProviderMode);
+}
 export type GenerationMode = "LOWEST_COST" | "BALANCED" | "FASTER";
 export type WorkerId = "image-media" | "avatar-primary" | "avatar-repair" | "avatar-quality";
 export type WorkerLane = "image_media" | "avatar_primary" | "avatar_repair" | "avatar_quality";

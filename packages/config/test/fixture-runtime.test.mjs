@@ -3,9 +3,11 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  PROVIDER_MODES,
   RuntimeConfigValidationError,
   executionProfileCatalog,
   fixtureRuntimeProfileSet,
+  isProviderMode,
   parseExecutionProfileCatalog,
   parseFixtureRuntimeProfileSet,
   resolveFixtureExecutionProfiles,
@@ -18,6 +20,12 @@ const rawRuntimeProfileSet = JSON.parse(await readFile(runtimeProfileUrl, "utf8"
 const rawCatalog = JSON.parse(await readFile(catalogUrl, "utf8"));
 
 const clone = (value) => structuredClone(value);
+
+test("provider modes include every explicit fail-closed runtime boundary", () => {
+  assert.deepEqual(PROVIDER_MODES, ["fixture", "local", "sandbox", "staging", "production"]);
+  for (const mode of PROVIDER_MODES) assert.equal(isProviderMode(mode), true);
+  assert.equal(isProviderMode("provider-typo"), false);
+});
 
 test("fixture profile set cannot dispatch, claim a GPU, or spend", () => {
   assert.equal(fixtureRuntimeProfileSet.schema_version, "runtime-profile-set/v1");

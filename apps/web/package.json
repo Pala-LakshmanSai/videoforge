@@ -4,13 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "pnpm build:web && pnpm build:cloudflare",
+    "build:cloudflare": "vite build --config vite.cloudflare.config.ts --outDir dist-cloudflare",
+    "build:web": "vite build",
+    "dev:cloudflare": "vite --config vite.cloudflare.config.ts --host 127.0.0.1 --port 4173 --strictPort",
     "dev:raw": "concurrently -k -s first -n web,api -c magenta,cyan \"vite --host 127.0.0.1 --port 4173 --strictPort\" \"tsx watch src/server.ts\"",
     "dev:raw:lan": "concurrently -k -s first -n web,api -c magenta,cyan \"vite --host 0.0.0.0 --port 4173 --strictPort\" \"tsx watch src/server.ts\"",
-    "lint": "eslint src tests vite.config.ts vitest.config.ts playwright.config.ts tailwind.config.ts postcss.config.cjs",
+    "lint": "eslint src worker tests vite.config.ts vite.cloudflare.config.ts vitest.config.ts playwright.config.ts tailwind.config.ts postcss.config.cjs",
     "test": "vitest run",
     "test:chrome": "playwright test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --project tsconfig.worker.json --noEmit"
   },
   "dependencies": {
     "@hono/node-server": "2.1.0",
@@ -31,6 +34,8 @@
     "zod": "4.1.5"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "1.51.1",
+    "@cloudflare/workers-types": "5.20260804.1",
     "@playwright/test": "1.55.1",
     "@tailwindcss/forms": "0.5.10",
     "@tanstack/router-plugin": "1.131.35",
@@ -47,6 +52,7 @@
     "tailwindcss": "3.4.17",
     "tsx": "4.20.5",
     "vite": "7.3.6",
-    "vitest": "3.2.7"
+    "vitest": "3.2.7",
+    "wrangler": "4.120.0"
   }
 }

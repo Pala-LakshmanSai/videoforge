@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import type { CreateProjectRequest } from "@videoforge/contracts";
 
 import { createApiApp } from "../app";
+import { createLocalApiApp } from "./app";
 import { createLocalMediaPipelineRunner } from "./media-runner";
 import type {
   LocalOwnedVoiceover,
@@ -79,10 +80,12 @@ interface LocalProjectResponse {
 async function main(): Promise<void> {
   const runner = new CapturingRunner(createLocalMediaPipelineRunner());
   const app = createApiApp({
-    commit: "local-acceptance",
-    environment: "test",
-    mode: "local",
-    localRunner: runner,
+    configuration: {
+      commit: "local-acceptance",
+      environment: "test",
+      mode: "local",
+    },
+    bindings: { platform: "node", localRunner: runner, localAppFactory: createLocalApiApp },
   });
 
   const healthResponse = await app.request("/api/health");

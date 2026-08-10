@@ -161,10 +161,27 @@ active_ownership:
     owner: integration_runtime_lane
     paths:
       - apps/web/src/server/app.ts
+      - apps/web/src/server/app.test.ts
       - apps/web/src/server.ts
+      - apps/web/src/server/local/app.test.ts
+      - apps/web/src/server/local/run-local-slice.ts
       - apps/web/src/server/runtime/**
+      - apps/web/src/server/routes/project-routes.ts
+      - apps/web/worker/**
       - apps/web/vite.config.ts
+      - apps/web/vite.cloudflare.config.ts
+      - apps/web/wrangler.jsonc
+      - apps/web/tsconfig.worker.json
       - apps/web/package.json
+      - packages/config/src/index.ts
+      - packages/config/test/fixture-runtime.test.mjs
+      - packages/contracts/package.json
+      - apps/web/src/server/domain/models.ts
+      - apps/web/src/server/domain/preset-service.ts
+      - apps/web/src/server/domain/project-service.ts
+      - apps/web/src/server/mutation.ts
+      - apps/web/src/server/local/types.ts
+      - .gitignore
       - package.json
       - pnpm-lock.yaml
       - project-context/**

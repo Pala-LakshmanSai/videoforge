@@ -3,35 +3,32 @@ import { Hono } from "hono";
 import { registerAccessMiddleware } from "./access-middleware";
 import { safeCommit } from "./fixture";
 import { FixtureRuntime } from "./fixture-runtime";
-import { createLocalApiApp } from "./local/app";
 import type { LocalSliceRunner } from "./local/types";
 import { apiProblem, problemResponse } from "./problem";
 import { registerPresetRoutes } from "./routes/preset-routes";
 import { registerProjectRoutes } from "./routes/project-routes";
 import { registerSystemRoutes } from "./routes/system-routes";
 import { registerVoiceoverRoutes } from "./routes/voiceover-routes";
+import { assertRunnableRuntime } from "./runtime/configuration";
+import type { CreateApiAppOptions } from "./runtime/types";
 
-export interface CreateApiAppOptions {
-  readonly commit?: string;
-  readonly environment?: "development" | "test" | "production";
-  readonly mode?: "fixture" | "local";
-  readonly localRunner?: LocalSliceRunner;
-}
+export type { CreateApiAppOptions } from "./runtime/types";
 
-export function createApiApp(options: CreateApiAppOptions = {}): Hono {
-  const commit = safeCommit(options.commit ?? process.env.VIDEOFORGE_COMMIT);
-  const environment = options.environment ?? process.env.NODE_ENV ?? "development";
-  const mode =
-    options.mode ?? (process.env.VIDEOFORGE_PROVIDER_MODE === "local" ? "local" : "fixture");
+export function createApiApp(options: CreateApiAppOptions): Hono {
+  assertRunnableRuntime(options);
+  const { bindings, configuration } = options;
+  const commit = safeCommit(configuration.commit);
+  const { environment, mode } = configuration;
   if (mode === "local") {
-    if (!options.localRunner) {
-      throw new Error("Local mode requires an explicit Node media runner.");
-    }
-    return createLocalApiApp({
+    return bindings.localAppFactory!({
       commit,
       environment,
-      runner: options.localRunner,
+      runner: bindings.localRunner as LocalSliceRunner,
     });
+  }
+
+  if (mode !== "fixture") {
+    throw new Error(`Runtime mode '${mode}' passed validation without an implementation.`);
   }
 
   const app = new Hono();
@@ -41,7 +38,7 @@ export function createApiApp(options: CreateApiAppOptions = {}): Hono {
   registerSystemRoutes(app, runtime);
   registerPresetRoutes(app, runtime);
   registerVoiceoverRoutes(app, runtime);
-  registerProjectRoutes(app, runtime);
+  registerProjectRoutes(app, runtime, bindings.fixturePreview!);
 
   app.notFound(() =>
     problemResponse(

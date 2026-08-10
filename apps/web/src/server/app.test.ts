@@ -2,7 +2,25 @@ import { sha256CanonicalJson } from "@videoforge/contracts";
 import { FIXTURE_SCENARIO_IDS } from "@videoforge/test-fixtures";
 import { describe, expect, it } from "vitest";
 
-import { createApiApp } from "./app";
+import { createApiApp as createRuntimeApiApp } from "./app";
+
+const fixturePreview = { read: async () => "<svg>fixture preview</svg>" };
+
+function createApiApp(
+  options: {
+    readonly commit?: string;
+    readonly environment?: "development" | "test" | "production";
+  } = {},
+) {
+  return createRuntimeApiApp({
+    configuration: {
+      commit: options.commit ?? "uncommitted",
+      environment: options.environment ?? "development",
+      mode: "fixture",
+    },
+    bindings: { platform: "node", fixturePreview },
+  });
+}
 
 const validCreateProjectRequest = {
   title: "How to Recognize a Sweet Watermelon",
@@ -140,7 +158,13 @@ describe("fixture API", () => {
   it("publishes two truthful primary compute lanes without selectable untested GPUs", async () => {
     const response = await app.request("/api/v1/execution-profiles?fixture=project_create_ready");
     expect(response.status).toBe(200);
-    const body = await response.json();
+    const body = (await response.json()) as {
+      lanes: Array<{
+        status: Record<string, unknown>;
+        selector_options: Array<Record<string, unknown>>;
+        planned_candidates: Array<{ selectable: boolean }>;
+      }>;
+    };
     expect(body).toMatchObject({
       provider_mode: "fixture",
       provider_calls_authorized: false,
