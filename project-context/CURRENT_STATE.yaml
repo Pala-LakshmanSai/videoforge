@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T13:13:08Z"
+updated_at: "2026-08-10T13:37:51Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: true
-current_milestone: phase_1_durable_control_plane_foundation
-current_task: VF-1-08
+current_milestone: phase_2_durable_timing_and_timeline
+current_task: VF-2-01
 current_wave: wave_4_phase_1_and_2_convergence
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -18,9 +18,9 @@ repository:
   base_commit: "bea48f7124609be27d1ab57261b2c2f4269625ea"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
-  verified_implementation_commit: "ffceb6319ff85f7207619df7e0ecd41d20b341d0"
-  last_good_commit: "08ee1bb24fd9997902a4b902da6ac1ff58442d7e"
-  working_tree_expected: "clean_at_VF-1-07_evidence_handoff"
+  verified_implementation_commit: "866a5ddf4bce994f5521e93bf9b5ea8f288d96cf"
+  last_good_commit: "ca066b66b3c20f3d97fd6b146a49d123bd15a61d"
+  working_tree_expected: "clean_at_VF-1-08_evidence_handoff"
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
     ajv: "8.20.0"
@@ -86,6 +86,9 @@ completed_milestones:
   - id: phase_0c_local_walking_slice
     status: complete
     summary: "Owned narration through real local ASR, deterministic scheduler, exact fixture assets, FFmpeg v3 render/probe, API lifecycle, Chrome play/seek/approve/download, and accepted smooth zoom at $0."
+  - id: phase_1_durable_control_plane_foundation
+    status: complete
+    summary: "Provider-free relational invariants, runtime/auth/artifact/orchestration adapters, durable recovery, isolation/direct-transfer/Avatar reuse, and deterministic metadata export/restore are committed, audited, and green."
 
 completed_tasks:
   - task_id: VF-1-01
@@ -142,6 +145,12 @@ completed_tasks:
     implementation_commit: "ffceb6319ff85f7207619df7e0ecd41d20b341d0"
     evidence_commit: "08ee1bb24fd9997902a4b902da6ac1ff58442d7e"
     evidence: "evidence/acceptance/VF-1-07/isolation-upload-avatar-reuse"
+  - task_id: VF-1-08
+    status: complete
+    summary: "Committed deterministic metadata snapshots for the exact migration ledger and all relational tables, transactional clean-database restore, idempotent resume, exact reopen/repository/recovery proof, and clean rejection of truncation, version or migration drift, reordering, tampering, partial failure, and secret-shaped payloads."
+    implementation_commit: "866a5ddf4bce994f5521e93bf9b5ea8f288d96cf"
+    evidence_commit: "ca066b66b3c20f3d97fd6b146a49d123bd15a61d"
+    evidence: "evidence/acceptance/VF-1-08/metadata-export-restore"
 
 standing_local_authority:
   status: authorized
@@ -192,52 +201,51 @@ external_checkpoints:
     local_work_may_continue_while_pending: true
   isolated_staging:
     status: awaiting_external_authority_local_work_continues
-    timing: VF-1-07_complete_no_staging_mutation_performed
+    timing: VF-1-08_complete_no_staging_mutation_performed
     services: "Cloudflare Worker/Workflows, Neon branch, private R2, Google OAuth"
     local_work_may_continue_while_pending: true
   production:
     status: approval_required_after_phase_9_and_all_required_gates
 
 active_ownership:
-  - task_id: VF-1-08
+  - task_id: VF-2-01
     owner: wave_4_integration_owner
     paths:
       - packages/control-plane/src/**
       - packages/control-plane/tests/**
-      - scripts/**
+      - packages/contracts/**
       - project-context/**
-    note: "VF-1-08 is selected as the single task-by-task integration lane. Preserve the completed migration, repository, recovery, isolation, artifact, and Avatar reuse contracts; VF-2-01 remains unstarted until metadata export/restore has a green committed handoff."
+    note: "VF-2-01 is selected as the serial Phase 2 contract-lock lane. Preserve every completed Phase 1 contract and add durable timing identity, lineage, invalidation, and ownership without provider work or scheduler retuning."
 
 recommended_next_task:
-  task_id: VF-1-08
-  milestone: phase_1_durable_control_plane_foundation
+  task_id: VF-2-01
+  milestone: phase_2_durable_timing_and_timeline
   status: authorized_dependency_ready
   dependency_status: ready
   authorization_status: standing_local_phase2_authority
-  read_profile: phase1_restore
-  task_brief: tasks/VF-1-08.md
-  goal: "Implement deterministic scheduled metadata export and a transactional clean-database restore smoke before any real worker is called production-capable."
+  read_profile: phase2_contract_lock
+  task_brief: tasks/VF-2-01.md
+  goal: "Lock the additive persistence, repository, and API contract for durable transcript timing, selected span audio, timeline persistence, invalidation, and deterministic lineage."
   dependencies:
-    - "VF-1-06 durable mock recovery is committed, independently audited, and green at dc86938972e776c8479637f2fb3ca9706999eed4"
-    - "The Phase 1 migration/API contract is frozen by the VF-1-06 acceptance handoff at 6e0431fc3bddf3c187a8a80020ee8fd50c6282ad"
     - "VF-1-07 isolation/upload/Avatar reuse is committed and green at ffceb6319ff85f7207619df7e0ecd41d20b341d0 with evidence at 08ee1bb24fd9997902a4b902da6ac1ff58442d7e"
-    - "The exact VF-1-08 brief and phase1_restore profile are committed"
+    - "VF-1-08 deterministic metadata export/restore is committed and green at 866a5ddf4bce994f5521e93bf9b5ea8f288d96cf with evidence at ca066b66b3c20f3d97fd6b146a49d123bd15a61d"
+    - "The exact VF-2-01 brief and phase2_contract_lock profile are committed"
     - "The user granted standing provider-free implementation authority through VF-2-05 on 2026-08-10"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   live_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
-  expected_evidence: "evidence/acceptance/VF-1-08/metadata-export-restore"
+  expected_evidence: "evidence/acceptance/VF-2-01/durable-timing-contract-lock"
   required_handoff:
-    - "The same local metadata snapshot yields a deterministic manifest and checksums without secret or private media bytes"
-    - "Restore into a fresh local database is transactional and resumable with exact relationships and hashes"
-    - "Truncated, reordered, incompatible, or tampered exports fail cleanly and explain recovery without partial destination state"
-    - "Post-restore canonical repository and mock-recovery suites plus the full uncached gate pass"
+    - "Fresh, upgrade, and idempotent additive migration paths pass while stale-revision and cross-workspace bindings fail"
+    - "Durable transcript, word, sentence, phrase, selected span-audio, timeline, invalidation, and lineage identities preserve the existing wire contracts"
+    - "The same source, config, and seed resolve the exact persisted plan; changed input invalidates dependents without mutating locked history"
+    - "Contract sync/parity, control-plane tests, and the full uncached gate pass"
     - "Keep remote, provisioning, deployment, credentials, provider calls, model downloads, and spend unauthorized"
   safe_parallelism:
     maximum_lanes_including_integration: 1
     status: serial_task_by_task_execution
-    integration_owner: "metadata export/restore modules, isolated tests, root integration when required, evidence, and commits"
+    integration_owner: "schemas/types, additive migration, repository interfaces, generated copies, metadata/lockfiles, context, evidence, and commits"
   prohibited_in_task:
     - "Private Git remote creation/push until separately approved"
     - "Google OAuth account/app mutation or live OAuth flow"
@@ -246,12 +254,12 @@ recommended_next_task:
     - "Modifying the accepted UI/render behavior without separately recorded authority"
 
 latest_closed_handoff:
-  task_id: VF-1-07
+  task_id: VF-1-08
   status: complete
-  implementation_commit: "ffceb6319ff85f7207619df7e0ecd41d20b341d0"
-  evidence_commit: "08ee1bb24fd9997902a4b902da6ac1ff58442d7e"
+  implementation_commit: "866a5ddf4bce994f5521e93bf9b5ea8f288d96cf"
+  evidence_commit: "ca066b66b3c20f3d97fd6b146a49d123bd15a61d"
   audit_result: "closed_no_remaining_high_or_medium_findings"
-  verification_result: "uncached_root_gate_and_installed_Chrome_green_with_exact_isolation_direct_transfer_and_avatar_reuse"
+  verification_result: "uncached_root_gate_and_installed_Chrome_green_with_deterministic_transactional_metadata_export_restore"
   external_actions: "none_provider_calls_disabled_spend_zero"
 
 last_green:
@@ -270,9 +278,9 @@ last_green:
     - "pnpm secret:scan"
     - "pnpm audit:dependencies"
     - "git diff --check"
-  checked_at: "2026-08-10T13:11:37Z"
+  checked_at: "2026-08-10T13:35:44Z"
   result: pass
-  verified_commit: "ffceb6319ff85f7207619df7e0ecd41d20b341d0"
+  verified_commit: "866a5ddf4bce994f5521e93bf9b5ea8f288d96cf"
   evidence:
     - "evidence/acceptance/VF-1-02/runtime-neutral-hono"
     - "evidence/acceptance/VF-0D-01/provider-sandbox-harness"
@@ -281,8 +289,9 @@ last_green:
     - "evidence/acceptance/VF-1-05/durable-orchestration-adapters"
     - "evidence/acceptance/VF-1-06/durable-mock-recovery"
     - "evidence/acceptance/VF-1-07/isolation-upload-avatar-reuse"
+    - "evidence/acceptance/VF-1-08/metadata-export-restore"
   counts:
-    control_plane_pglite_tests: 112
+    control_plane_pglite_tests: 116
     repository_contract_behaviors: 13
     repository_contract_runner_bindings: 13
     repository_contract_semantic_fixture_bodies: 13
@@ -308,9 +317,9 @@ last_green:
     playwright_chrome_journeys_passed: 36
     playwright_chrome_journeys_intentionally_skipped: 0
   notes:
-    - "This last-green record proves the completed VF-1-07 implementation at ffceb6319ff85f7207619df7e0ecd41d20b341d0; evidence is committed separately at 08ee1bb24fd9997902a4b902da6ac1ff58442d7e."
+    - "This last-green record proves the completed VF-1-08 implementation at 866a5ddf4bce994f5521e93bf9b5ea8f288d96cf; evidence is committed separately at ca066b66b3c20f3d97fd6b146a49d123bd15a61d."
     - "The forced verify executed every Turbo task with zero cache hits and passed format, JavaScript/Python lint, typecheck, unit/contract/worker suites, database checks, context/schema validation, secret scan, build/route-tree stability, real local Workerd parity, and installed-Chrome Playwright."
-    - "The final local migration inventory is 32 tables, 128 indexes, 739 catalog constraints including 2 constraint triggers, and 19 non-internal invariant triggers; all 112 control-plane tests passed."
+    - "The final local migration inventory remains 32 tables, 128 indexes, 739 catalog constraints including 2 constraint triggers, and 19 non-internal invariant triggers; all 116 control-plane tests passed."
     - "All 13 fixed repository scenario bodies execute against a fresh concrete PGlite adapter with disposal, rollback, exact idempotency, workspace isolation, callback replay, lease fencing, and cost-lineage proof."
     - "The VF-1-03 independent auth audit and the VF-1-04/VF-1-05 closure audits found no remaining high or medium issue after all reproduced findings were repaired."
     - "Private artifact transfer passed 37 pipeline tests plus the isolated Hono metadata/body-bypass boundary; accepted artifact truth survives restart and cross-instance idempotency races without exposing private bytes through legacy CAS."
@@ -318,6 +327,7 @@ last_green:
     - "Node and Cloudflare-local fixture behavior is equivalent across 3 unit cases and 1 real Workerd HTTP case; installed Chrome passed 36 journeys with zero collection-time skips."
     - "Three post-commit VF-1-06 audits closed all seven recorded recovery/UI/cost findings; definitely-not-sent redelivery reuses one attempt, terminal/cancellation state is fenced, acceptance leaves no runnable sibling, cost conserves exactly per attempt, and inspection is one-query bounded at 32 attempts."
     - "VF-1-07 proves two local invited accounts cannot cross workspace reads, binds, hash probes, reviewer authorization, signed downloads, or archives; the frozen surface exposes no rename mutation. A 9,437,228-byte WAV transferred directly with zero application byte bodies, and two locked revisions reused one exact ready Avatar version without new Avatar lineage or cost."
+    - "VF-1-08 deterministically snapshots the exact five-entry migration ledger and all 31 relational data tables, restores circular lineage transactionally into a fresh local database, resumes idempotently, survives reopen, and rejects malformed, incompatible, reordered, tampered, partial, or secret-shaped inputs without partial destination state."
     - "The explicit high-severity dependency audit reported no known vulnerabilities."
     - "All task data was owned/synthetic and local; provider calls remained disabled, no cloud/remote mutation occurred, and external spend was $0."
 
@@ -342,6 +352,7 @@ known_incomplete_boundaries:
   - "No production GPU/execution profile is selectable; all provider/model/cost gates remain open."
   - "The repository has no Git remote and is not published; GitHub Actions are locally inspected/configured but have no external run or off-machine backup proof."
   - "Live Better Auth/Google installation and atomic invitation-membership materialization remain staging work; the committed descriptor truthfully reports PENDING_STAGING."
+  - "VF-1-08 provides a local scheduler-invokable metadata snapshot/restore primitive, not a production schedule, encrypted off-machine backup store, cloud backup integration, or private-media backup."
 
 known_non_blocking_devex: []
 
@@ -350,9 +361,9 @@ next_tasks:
   - "Wave 1 complete: VF-1-02 runtime-neutral Hono/local Workerd parity and VF-0D-01 provider-neutral sandbox harness are committed and green"
   - "Wave 2 complete: VF-1-03 Auth, VF-1-04 private artifact storage, and VF-1-05 PGlite/outbox/workflow adapters are committed, independently audited, and green"
   - "Wave 3 complete: VF-1-06 durable mock recovery is committed, all seven paused audit findings are closed, and the uncached repository and installed-Chrome gates are green at $0"
-  - "Wave 4 isolation half complete: VF-1-07 account/upload/avatar-reuse is committed and green at $0"
-  - "Wave 4 active locally: execute exact VF-1-08 deterministic metadata export and transactional restore, then select VF-2-01 only after a green committed handoff"
-  - "After both Phase 1 convergence tasks are integrated: VF-2-01 serial contract lock, then task-by-task VF-2-02/03/04, then serial VF-2-05"
+  - "Wave 4 Phase 1 convergence complete: VF-1-07 isolation/upload/Avatar reuse and VF-1-08 deterministic metadata export/restore are committed, audited, and green at $0"
+  - "Wave 4 active locally: execute exact VF-2-01 serial durable timing contract lock"
+  - "After VF-2-01 is committed green: continue task-by-task through exact dependency-ready VF-2-02, VF-2-03, VF-2-04, then serial VF-2-05"
   - "Standing local authority ends after VF-2-05; Phase 3 onward requires provider-informed briefs and gate review"
 
 notes:

@@ -13,13 +13,13 @@ VideoForge is an invite-only web app for 5–10 teammates that accepts a title, 
 ## Current handoff
 
 Phase 0A contracts/tooling, the accepted Phase 0B fixture shell, the accepted provider-free Phase 0C
-local ASR → scheduler → FFmpeg → Chrome/download slice, the audited Wave 2 local adapters, VF-1-06
-durable mock recovery, and VF-1-07 account/upload/Avatar-reuse isolation are complete. VF-1-07
-implementation commit `ffceb63` proves two invited local accounts remain isolated, transfers a
-hash-verified 9 MiB WAV through direct multipart bytes with zero application byte bodies, and reuses
-one exact ready Avatar version without new Avatar lineage or cost. Acceptance evidence is committed
-at `08ee1bb`, with 112/112 control-plane tests, 148/148 web tests, 36/36 installed-Chrome journeys,
-zero skips, no provider call, and `$0` spend.
+local ASR → scheduler → FFmpeg → Chrome/download slice, and the full Phase 1 durable control plane
+are complete. VF-1-08 implementation commit `866a5dd` deterministically snapshots the exact
+migration ledger and all relational metadata, restores it transactionally into a fresh database,
+resumes idempotently, preserves repository/recovery lineage after reopen, and fails cleanly on
+truncation, incompatibility, reordering, tampering, partial failure, or secret-shaped metadata.
+Acceptance evidence is committed at `ca066b6`, with 116/116 control-plane tests, 148/148 web tests,
+36/36 installed-Chrome journeys, zero skips, no provider call, and `$0` spend.
 The isolated-staging checkpoint is awaiting separate external authority; no remote, cloud/account,
 credential, deployment, provider, or paid mutation occurred.
 
@@ -28,8 +28,8 @@ is complete at implementation commit `36bf1ae`, with additive migration, constra
 executor, repository-contract, and adversarial regression hardening recorded under
 `evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening`. The user approved the
 accelerated completion sequence on 2026-08-10: exact briefs and standing provider-free authority
-now extend through `VF-2-05`. `CURRENT_STATE.yaml` selects dependency-ready `VF-1-08` with the
-`phase1_restore` profile; work continues task-by-task and refreshes the snapshot after every green
+now extend through `VF-2-05`. `CURRENT_STATE.yaml` selects dependency-ready `VF-2-01` with the
+`phase2_contract_lock` profile; work continues task-by-task and refreshes the snapshot after every green
 committed handoff. This authority does not activate the planned provider budget or permit a remote,
 credential, cloud/account mutation, deployment, provider call, model download, or spend.
 `CURRENT_STATE.yaml` remains the one replace-in-place handoff and ownership source. Do not redo the
