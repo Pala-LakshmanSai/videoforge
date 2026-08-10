@@ -334,9 +334,7 @@ function expectFailureOneOf(
 ): ContractFailure {
   const failure = expectFailure(result, operation);
   assertContract(
-    allowed.some(
-      (candidate) => candidate.kind === failure.kind && candidate.code === failure.code,
-    ),
+    allowed.some((candidate) => candidate.kind === failure.kind && candidate.code === failure.code),
     `${operation} failed with unexpected ${failure.kind}/${String(failure.code)}`,
   );
   return failure;
@@ -352,10 +350,7 @@ function fixtureFor<BehaviorId extends RepositoryContractBehaviorId>(
     context.fixture.primaryScope.workspaceId !== context.fixture.secondaryScope.workspaceId,
     "repository contract fixture workspaces must be distinct",
   );
-  return context.fixture as Extract<
-    RepositoryContractFixture,
-    { readonly behaviorId: BehaviorId }
-  >;
+  return context.fixture as Extract<RepositoryContractFixture, { readonly behaviorId: BehaviorId }>;
 }
 
 function assertAtomicReservation(
@@ -430,16 +425,8 @@ function assertAtomicReservation(
     command.costReservation.idempotencyKey,
     `${label} cost retry key`,
   );
-  assertOwnerBinding(
-    reservation.costReservation.owner,
-    command.task.owner,
-    `${label} cost owner`,
-  );
-  assertEqual(
-    reservation.dispatchOutbox.taskId,
-    command.task.taskId,
-    `${label} outbox task ID`,
-  );
+  assertOwnerBinding(reservation.costReservation.owner, command.task.owner, `${label} cost owner`);
+  assertEqual(reservation.dispatchOutbox.taskId, command.task.taskId, `${label} outbox task ID`);
   assertEqual(
     reservation.dispatchOutbox.outboxId,
     command.dispatchOutbox.outboxId,
@@ -615,11 +602,7 @@ async function runStylePublication(context: RepositoryContractScenarioContext): 
   const fixture = fixtureFor(context, "style-publication-immutability");
   assertEqual(fixture.publish.styleId, fixture.lookup.styleId, "style publish parent ID");
   assertEqual(fixture.publish.versionId, fixture.lookup.versionId, "style publish version ID");
-  assertEqual(
-    fixture.mutatePublished.styleId,
-    fixture.lookup.styleId,
-    "style mutation parent ID",
-  );
+  assertEqual(fixture.mutatePublished.styleId, fixture.lookup.styleId, "style mutation parent ID");
   assertEqual(
     fixture.mutatePublished.versionId,
     fixture.lookup.versionId,
@@ -675,10 +658,7 @@ async function runRevisionLock(context: RepositoryContractScenarioContext): Prom
     "locked revision config hash",
   );
   const resolved = expectSuccess(
-    await context.repositories.projects.resolveExactRevision(
-      fixture.primaryScope,
-      fixture.lookup,
-    ),
+    await context.repositories.projects.resolveExactRevision(fixture.primaryScope, fixture.lookup),
     "resolve locked project revision",
   );
   assertEqual(resolved.status, "LOCKED", "resolved revision status");
@@ -698,9 +678,7 @@ async function runRevisionLock(context: RepositoryContractScenarioContext): Prom
   );
 }
 
-async function runContentAddressBinding(
-  context: RepositoryContractScenarioContext,
-): Promise<void> {
+async function runContentAddressBinding(context: RepositoryContractScenarioContext): Promise<void> {
   const fixture = fixtureFor(context, "content-address-binding");
   const artifact = expectSuccess(
     await context.repositories.artifacts.resolveExact(fixture.primaryScope, fixture.assetId),
@@ -974,11 +952,7 @@ async function runAtomicReservation(context: RepositoryContractScenarioContext):
     fixture.avatarCompatibilityTest.versionId,
     "avatar test version ID",
   );
-  assertEqual(
-    avatar.testAttempt.taskId,
-    avatar.reservation.task.taskId,
-    "avatar test task link",
-  );
+  assertEqual(avatar.testAttempt.taskId, avatar.reservation.task.taskId, "avatar test task link");
   assertEqual(
     avatar.testAttempt.ordinal,
     avatar.reservation.attempt.ordinal,
@@ -1158,7 +1132,10 @@ async function runOneAcceptedResult(context: RepositoryContractScenarioContext):
     "first candidate reference attempt ID",
   );
   assertEqual(first.reference.taskId, first.attempt.taskId, "first candidate reference task ID");
-  assertContract(first.reference.expectedTaskVersion > 0, "first candidate task version is invalid");
+  assertContract(
+    first.reference.expectedTaskVersion > 0,
+    "first candidate task version is invalid",
+  );
   assertEqual(
     first.attempt.outputAssetId,
     fixture.firstResult.outputAssetId,
@@ -1198,11 +1175,7 @@ async function runOneAcceptedResult(context: RepositoryContractScenarioContext):
     first.attempt.outputAssetId,
     "accepted output asset ID",
   );
-  assertEqual(
-    accepted.outputBinarySha256,
-    first.outputBinarySha256,
-    "accepted output binary hash",
-  );
+  assertEqual(accepted.outputBinarySha256, first.outputBinarySha256, "accepted output binary hash");
   const visibleAttempts = expectSuccess(
     await context.repositories.execution.listAttempts(fixture.primaryScope, {
       taskId: fixture.firstResult.taskId,
@@ -1459,18 +1432,11 @@ async function runArchiveLineage(context: RepositoryContractScenarioContext): Pr
     "resolve archived historical revision",
   );
   const historicalTask = expectSuccess(
-    await context.repositories.execution.resolveTask(
-      fixture.primaryScope,
-      fixture.historicalTask,
-    ),
+    await context.repositories.execution.resolveTask(fixture.primaryScope, fixture.historicalTask),
     "resolve archived historical task",
   );
   assertEqual(historicalTask.taskId, fixture.historicalTask.taskId, "historical task ID");
-  assertEqual(
-    historicalTask.owner.ownerType,
-    "PROJECT_REVISION",
-    "historical task owner type",
-  );
+  assertEqual(historicalTask.owner.ownerType, "PROJECT_REVISION", "historical task owner type");
   if (historicalTask.owner.ownerType === "PROJECT_REVISION") {
     assertEqual(
       historicalTask.owner.projectRevisionId,

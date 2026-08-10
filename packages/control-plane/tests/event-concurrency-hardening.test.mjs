@@ -4,10 +4,9 @@ import test from "node:test";
 import { withMigratedDatabase } from "./support/pglite.mjs";
 
 async function functionDefinition(executor, signature) {
-  const result = await executor.query(
-    "SELECT pg_get_functiondef($1::regprocedure) AS definition",
-    [signature],
-  );
+  const result = await executor.query("SELECT pg_get_functiondef($1::regprocedure) AS definition", [
+    signature,
+  ]);
   assert.equal(result.rows.length, 1);
   return result.rows[0].definition;
 }

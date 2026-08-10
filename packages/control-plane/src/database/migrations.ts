@@ -59,9 +59,7 @@ function parseManifest(value: unknown): readonly MigrationManifestEntry[] {
       }
       const expectedFilename = `${String(entry.version).padStart(4, "0")}_${entry.name}.sql`;
       if (entry.filename !== expectedFilename) {
-        throw new Error(
-          `Migration ${String(entry.version)} filename must be ${expectedFilename}.`,
-        );
+        throw new Error(`Migration ${String(entry.version)} filename must be ${expectedFilename}.`);
       }
       if (filenames.has(entry.filename)) {
         throw new Error(`Migration filename ${entry.filename} is duplicated.`);

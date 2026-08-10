@@ -2,12 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { HASHES, IDS, insertAttempt, seedTask } from "./support/fixtures.mjs";
-import {
-  expectDatabaseError,
-  FIXED_TIME,
-  uuid,
-  withMigratedDatabase,
-} from "./support/pglite.mjs";
+import { expectDatabaseError, FIXED_TIME, uuid, withMigratedDatabase } from "./support/pglite.mjs";
 
 test("accepted task pointers and attempt dispositions require the same successful pair", async () => {
   await withMigratedDatabase(async ({ executor }) => {
@@ -41,10 +36,9 @@ test("accepted task pointers and attempt dispositions require the same successfu
     });
     await expectDatabaseError(
       () =>
-        executor.query(
-          "UPDATE public.attempts SET result_disposition = 'ACCEPTED' WHERE id = $1",
-          [IDS.attemptA2],
-        ),
+        executor.query("UPDATE public.attempts SET result_disposition = 'ACCEPTED' WHERE id = $1", [
+          IDS.attemptA2,
+        ]),
       "23514",
     );
   });
@@ -99,10 +93,9 @@ test("one transaction can atomically establish an accepted task-attempt pair", a
 
     await expectDatabaseError(
       () =>
-        executor.query(
-          "UPDATE public.attempts SET result_disposition = 'REJECTED' WHERE id = $1",
-          [IDS.attemptA2],
-        ),
+        executor.query("UPDATE public.attempts SET result_disposition = 'REJECTED' WHERE id = $1", [
+          IDS.attemptA2,
+        ]),
       "23514",
     );
     await expectDatabaseError(
@@ -174,10 +167,9 @@ test("hostile shadow tables cannot forge accepted-result consistency", async () 
     );
     await expectDatabaseError(
       () =>
-        executor.query(
-          "UPDATE public.attempts SET result_disposition = 'ACCEPTED' WHERE id = $1",
-          [IDS.attemptA2],
-        ),
+        executor.query("UPDATE public.attempts SET result_disposition = 'ACCEPTED' WHERE id = $1", [
+          IDS.attemptA2,
+        ]),
       "23514",
     );
 

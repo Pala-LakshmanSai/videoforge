@@ -3,12 +3,7 @@ import test from "node:test";
 
 import { IDS, insertAttempt, seedTask } from "./support/fixtures.mjs";
 import { insertTestedExecutionProfile } from "./support/hardening-fixtures.mjs";
-import {
-  expectDatabaseError,
-  FIXED_TIME,
-  uuid,
-  withMigratedDatabase,
-} from "./support/pglite.mjs";
+import { expectDatabaseError, FIXED_TIME, uuid, withMigratedDatabase } from "./support/pglite.mjs";
 
 test("attempt and assessment execution profile assignments cannot be rewritten", async () => {
   await withMigratedDatabase(async ({ executor }) => {
@@ -23,10 +18,10 @@ test("attempt and assessment execution profile assignments cannot be rewritten",
 
     await expectDatabaseError(
       () =>
-        executor.query(
-          "UPDATE public.attempts SET execution_profile_id = $1 WHERE id = $2",
-          [alternateProfileId, IDS.attemptA1],
-        ),
+        executor.query("UPDATE public.attempts SET execution_profile_id = $1 WHERE id = $2", [
+          alternateProfileId,
+          IDS.attemptA1,
+        ]),
       "23514",
     );
     await executor.query(

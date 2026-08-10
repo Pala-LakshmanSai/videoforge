@@ -58,18 +58,18 @@ test("hostile shadow tables cannot make draft preset versions active", async () 
 
     await expectDatabaseError(
       () =>
-        executor.query(
-          "UPDATE public.avatar_profiles SET active_version_id = $1 WHERE id = $2",
-          [avatarDraftId, IDS.avatarProfileA],
-        ),
+        executor.query("UPDATE public.avatar_profiles SET active_version_id = $1 WHERE id = $2", [
+          avatarDraftId,
+          IDS.avatarProfileA,
+        ]),
       ["23503", "23514"],
     );
     await expectDatabaseError(
       () =>
-        executor.query(
-          "UPDATE public.image_styles SET active_version_id = $1 WHERE id = $2",
-          [styleDraftId, IDS.styleA],
-        ),
+        executor.query("UPDATE public.image_styles SET active_version_id = $1 WHERE id = $2", [
+          styleDraftId,
+          IDS.styleA,
+        ]),
       ["23503", "23514"],
     );
 

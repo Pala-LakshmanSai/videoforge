@@ -76,7 +76,10 @@ test("the exported canonical repository scenarios are complete, unique, and immu
   assert.deepEqual(scenarioIds, behaviorIds);
   assert.equal(new Set(scenarioIds).size, scenarioIds.length);
   assert.equal(Object.isFrozen(REPOSITORY_CONTRACT_BEHAVIORS), true);
-  assert.equal(REPOSITORY_CONTRACT_BEHAVIORS.every((behavior) => Object.isFrozen(behavior)), true);
+  assert.equal(
+    REPOSITORY_CONTRACT_BEHAVIORS.every((behavior) => Object.isFrozen(behavior)),
+    true,
+  );
   assert.equal(Object.isFrozen(CANONICAL_REPOSITORY_CONTRACT_SCENARIOS), true);
   assert.equal(
     CANONICAL_REPOSITORY_CONTRACT_SCENARIOS.every((scenario) => Object.isFrozen(scenario)),

@@ -154,8 +154,7 @@ export interface AvatarCompatibilityAssessmentBase {
   readonly updatedAt: UtcTimestamp;
 }
 
-export interface RunningAvatarCompatibilityAssessment
-  extends AvatarCompatibilityAssessmentBase {
+export interface RunningAvatarCompatibilityAssessment extends AvatarCompatibilityAssessmentBase {
   readonly state: "RUNNING";
   readonly modelSnapshotHash: null;
   readonly evidenceDocument: null;
@@ -163,8 +162,7 @@ export interface RunningAvatarCompatibilityAssessment
   readonly finishedAt: null;
 }
 
-export interface TerminalAvatarCompatibilityAssessment
-  extends AvatarCompatibilityAssessmentBase {
+export interface TerminalAvatarCompatibilityAssessment extends AvatarCompatibilityAssessmentBase {
   readonly state: "PASSED" | "FAILED" | "STALE" | "CANCELLED";
   readonly modelSnapshotHash: Sha256;
   readonly evidenceDocument: CanonicalDocument;
@@ -231,10 +229,7 @@ export interface BeginAvatarCompatibilityTestCommand extends IdempotentMutation 
    * The embedded reservation supplies task, execution attempt, budget event, and DISPATCH outbox.
    * Its owner must be this exact AVATAR_PROFILE_VERSION; adapters reject any ID mismatch.
    */
-  readonly reservation: Omit<
-    AvatarProfileVersionTaskAttemptReservationCommand,
-    "idempotencyKey"
-  >;
+  readonly reservation: Omit<AvatarProfileVersionTaskAttemptReservationCommand, "idempotencyKey">;
 }
 
 export interface StartedAvatarCompatibilityTest {

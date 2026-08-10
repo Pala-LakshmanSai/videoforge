@@ -106,16 +106,19 @@ test("the stored migration ledger must be an exact manifest prefix", async () =>
 
   await withDatabase(async (executor) => {
     await applyMigrations(executor, sources);
-    await executor.query(
-      "DELETE FROM public.videoforge_schema_migrations WHERE version = $1",
-      [sources[0].version],
-    );
+    await executor.query("DELETE FROM public.videoforge_schema_migrations WHERE version = $1", [
+      sources[0].version,
+    ]);
 
     const migrationSql = new Map(sources.map((source) => [source.sql, source.version]));
     const executedVersions = [];
     const tracked = trackingExecutor(executor, migrationSql, executedVersions);
     await assert.rejects(() => applyMigrations(tracked, sources));
-    assert.deepEqual(executedVersions, [], "chain drift must fail before any migration SQL executes");
+    assert.deepEqual(
+      executedVersions,
+      [],
+      "chain drift must fail before any migration SQL executes",
+    );
   });
 });
 
@@ -163,7 +166,10 @@ test("concurrent migration runners serialize into one application and one no-op"
     ]);
     results.sort((left, right) => right.appliedVersions.length - left.appliedVersions.length);
 
-    assert.deepEqual(results[0].appliedVersions, sources.map((source) => source.version));
+    assert.deepEqual(
+      results[0].appliedVersions,
+      sources.map((source) => source.version),
+    );
     assert.deepEqual(results[0].alreadyAppliedVersions, []);
     assert.deepEqual(results[1].appliedVersions, []);
     assert.deepEqual(

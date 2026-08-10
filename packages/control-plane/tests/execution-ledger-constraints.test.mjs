@@ -276,10 +276,9 @@ test("one task has one accepted result while every duplicate attempt remains vis
           WHERE id = $3`,
         [IDS.attemptA2, FIXED_TIME, IDS.taskA],
       );
-      await transaction.query(
-        "UPDATE attempts SET result_disposition = 'ACCEPTED' WHERE id = $1",
-        [IDS.attemptA2],
-      );
+      await transaction.query("UPDATE attempts SET result_disposition = 'ACCEPTED' WHERE id = $1", [
+        IDS.attemptA2,
+      ]);
     });
     await expectDatabaseError(
       () =>
@@ -395,10 +394,9 @@ test("archive changes catalog visibility without destroying revision, attempt, o
           WHERE id = $3`,
         [IDS.attemptA1, FIXED_TIME, IDS.taskA],
       );
-      await transaction.query(
-        "UPDATE attempts SET result_disposition = 'ACCEPTED' WHERE id = $1",
-        [IDS.attemptA1],
-      );
+      await transaction.query("UPDATE attempts SET result_disposition = 'ACCEPTED' WHERE id = $1", [
+        IDS.attemptA1,
+      ]);
     });
     await executor.query("UPDATE assets SET source_attempt_id = $1 WHERE id = $2", [
       IDS.attemptA1,

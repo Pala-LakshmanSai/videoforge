@@ -171,10 +171,9 @@ test("tested execution profiles preserve their snapshot through retirement", asy
 
     await expectDatabaseError(
       () =>
-        executor.query(
-          "UPDATE public.execution_profiles SET name = 'mutated' WHERE id = $1",
-          [IDS.executionProfileA],
-        ),
+        executor.query("UPDATE public.execution_profiles SET name = 'mutated' WHERE id = $1", [
+          IDS.executionProfileA,
+        ]),
       "23514",
     );
     await expectDatabaseError(

@@ -71,9 +71,7 @@ export type DeniedWorkspaceAuthorization =
   | DisabledUserWorkspaceAuthorization;
 
 /** Authorization status is discriminated so a denial cannot carry an active-member reason. */
-export type WorkspaceAuthorization =
-  | GrantedWorkspaceAuthorization
-  | DeniedWorkspaceAuthorization;
+export type WorkspaceAuthorization = GrantedWorkspaceAuthorization | DeniedWorkspaceAuthorization;
 
 export interface MembershipLookup {
   readonly userId: EntityId;
