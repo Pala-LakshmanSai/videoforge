@@ -13,23 +13,24 @@ VideoForge is an invite-only web app for 5–10 teammates that accepts a title, 
 ## Current handoff
 
 Phase 0A contracts/tooling, the accepted Phase 0B fixture shell, the accepted provider-free
-Phase 0C local ASR → scheduler → FFmpeg → Chrome/download slice, and the audited Wave 2 local
-adapters are complete. VF-1-06 is paused at a preserved corrective checkpoint: implementation
-commit `7028413` is test-green but not acceptance-ready, because independent audits found open
-terminal-state, redispatch, cost-conservation, sibling-attempt, and bounded-snapshot defects. The
-newer eight-file corrective worktree is intentionally dirty and typecheck-red; its exact state,
-findings, completed UI correction, and resume order live only in `CURRENT_STATE.yaml.paused_handoff`.
-No durable-recovery completion, production deployment, provider transport, or spend is claimed.
+Phase 0C local ASR → scheduler → FFmpeg → Chrome/download slice, the audited Wave 2 local adapters,
+and VF-1-06 durable mock recovery are complete. VF-1-06 implementation commit `dc86938` closes all
+seven recorded recovery audits; acceptance evidence is committed at `6e0431f`, with 111/111
+control-plane tests, 36/36 installed-Chrome journeys, zero skips, no provider call, and `$0` spend.
+The isolated-staging checkpoint is awaiting separate external authority; no remote, cloud/account,
+credential, deployment, provider, or paid mutation occurred.
 
 `VF-1-01` remains the preserved relational baseline. The provider-free corrective task `VF-1-01A`
 is complete at implementation commit `36bf1ae`, with additive migration, constraint, migration
 executor, repository-contract, and adversarial regression hardening recorded under
 `evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening`. The user approved the
 accelerated completion sequence on 2026-08-10: exact briefs and standing provider-free authority
-now extend through `VF-2-05`, beginning with `tasks/VF-1-02.md`. This authority does not activate
-the planned provider budget or permit a remote, credential, cloud/account mutation, deployment,
-provider call, model download, or spend. `CURRENT_STATE.yaml` remains the one replace-in-place
-handoff and ownership source. Do not redo the accepted UI, renderer, local slice, or architecture.
+now extend through `VF-2-05`. `CURRENT_STATE.yaml` selects dependency-ready `VF-1-07` with the
+`phase1_isolation` profile; work continues task-by-task and refreshes the snapshot after every green
+committed handoff. This authority does not activate the planned provider budget or permit a remote,
+credential, cloud/account mutation, deployment, provider call, model download, or spend.
+`CURRENT_STATE.yaml` remains the one replace-in-place handoff and ownership source. Do not redo the
+accepted UI, renderer, local slice, or architecture.
 
 ## Approved MVP
 

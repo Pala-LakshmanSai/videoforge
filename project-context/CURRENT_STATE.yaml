@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T11:59:44Z"
+updated_at: "2026-08-10T12:47:14Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: true
 current_milestone: phase_1_durable_control_plane_foundation
-current_task: VF-1-06
-current_wave: wave_3_recovery_and_qualification
+current_task: VF-1-07
+current_wave: wave_4_phase_1_and_2_convergence
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -18,9 +18,9 @@ repository:
   base_commit: "bea48f7124609be27d1ab57261b2c2f4269625ea"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
-  verified_implementation_commit: "ce18e938e2f6f60f45c97753ff02811a512de443"
-  last_good_commit: "6f4b1d7cda4f88b398819ebaa9feacc860dc3be1"
-  working_tree_expected: "dirty_checkpoint_preserved_for_VF-1-06_corrective_handoff"
+  verified_implementation_commit: "dc86938972e776c8479637f2fb3ca9706999eed4"
+  last_good_commit: "6e0431fc3bddf3c187a8a80020ee8fd50c6282ad"
+  working_tree_expected: "clean_at_VF-1-06_evidence_handoff"
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
     ajv: "8.20.0"
@@ -130,6 +130,12 @@ completed_tasks:
     implementation_commit: "ce18e938e2f6f60f45c97753ff02811a512de443"
     evidence_commit: "6f4b1d7cda4f88b398819ebaa9feacc860dc3be1"
     evidence: "evidence/acceptance/VF-1-05/durable-orchestration-adapters"
+  - task_id: VF-1-06
+    status: complete
+    summary: "Committed provider-free durable recovery convergence across ambiguous dispatch, safe same-attempt redispatch, restart, cancellation/terminal fencing, bounded one-query inspection, sibling suppression, accepted-result selection, and exact per-attempt cost conservation; all seven paused audit findings are closed and installed Chrome reports terminal/recovery truthfully."
+    implementation_commit: "dc86938972e776c8479637f2fb3ca9706999eed4"
+    evidence_commit: "6e0431fc3bddf3c187a8a80020ee8fd50c6282ad"
+    evidence: "evidence/acceptance/VF-1-06/durable-mock-recovery"
 
 standing_local_authority:
   status: authorized
@@ -179,71 +185,60 @@ external_checkpoints:
     timing: immediately_after_wave_0_context_commit
     local_work_may_continue_while_pending: true
   isolated_staging:
-    status: approval_required_before_mutation
-    timing: after_VF-1-06
+    status: awaiting_external_authority_local_work_continues
+    timing: VF-1-06_complete_no_staging_mutation_performed
     services: "Cloudflare Worker/Workflows, Neon branch, private R2, Google OAuth"
     local_work_may_continue_while_pending: true
   production:
     status: approval_required_after_phase_9_and_all_required_gates
 
 active_ownership:
-  - task_id: VF-1-06
-    owner: wave_3_integration_owner
+  - task_id: VF-1-07
+    owner: wave_4_integration_owner
     paths:
-      - package.json
-      - pnpm-lock.yaml
-      - packages/control-plane/package.json
-      - packages/control-plane/src/index.ts
-      - packages/control-plane/src/repositories/index.ts
-      - packages/control-plane/src/database/**
-      - packages/control-plane/migrations/**
-      - packages/control-plane/src/adapters/**
-      - packages/control-plane/src/recovery/**
+      - packages/control-plane/src/adapters/pglite-repositories.ts
       - packages/control-plane/tests/**
-      - packages/test-fixtures/src/types.ts
       - packages/test-fixtures/src/scenarios.ts
       - packages/test-fixtures/src/scenarios.test.ts
       - apps/web/src/server/app.ts
-      - apps/web/src/server/runtime/**
       - apps/web/src/server/routes/**
-      - apps/web/src/lib/types.ts
-      - apps/web/src/**/recovery*.test.*
-      - apps/web/tests/e2e/recovery.spec.ts
+      - apps/web/src/features/project-create/**
+      - apps/web/src/screens/CreateProjectScreen.tsx
+      - apps/web/src/screens/NewAvatarScreen.tsx
+      - apps/web/tests/e2e/**isolation*.spec.ts
+      - apps/web/tests/e2e/preset-roundtrip.spec.ts
       - project-context/**
-    note: "VF-1-06 is a serial integration-owner recovery task. Preserve the completed Wave 2 adapter/auth/artifact surfaces; no parallel implementation lane is active until a refreshed ownership plan records one."
+    note: "VF-1-07 is selected as the single task-by-task integration lane. Preserve the accepted shell and completed auth/artifact/recovery contracts; VF-1-08 remains unstarted until this task has a green committed handoff."
 
 recommended_next_task:
-  task_id: VF-1-06
+  task_id: VF-1-07
   milestone: phase_1_durable_control_plane_foundation
-  status: authorized_dependency_ready_resume_from_preserved_checkpoint
+  status: authorized_dependency_ready
   dependency_status: ready
   authorization_status: standing_local_phase2_authority
-  read_profile: phase1_recovery
-  task_brief: tasks/VF-1-06.md
-  goal: "Finish the provider-free VF-1-06 corrective pass, close every recorded recovery audit finding, then produce the clean green evidence/state handoff before advancing."
+  read_profile: phase1_isolation
+  task_brief: tasks/VF-1-07.md
+  goal: "Use two invited local accounts to prove workspace isolation, bounded direct large-audio transfer, and exact reuse of one ready stored Avatar Profile without project-local upload."
   dependencies:
-    - "VF-1-03 provider-free auth/workspace authorization is committed and green at 5dd17d000bf2a8d0ded937555aa5407d06d72504"
-    - "VF-1-04 private local artifact storage is committed and green at 5775c4714917e95745221ddac6e259f8cbf291a2"
-    - "VF-1-05 concrete PGlite repository/outbox/workflow adapters are committed and green at ce18e938e2f6f60f45c97753ff02811a512de443"
-    - "All 13 canonical repository bodies execute against the concrete adapter and the auth, artifact, and orchestration closure audits are closed"
-    - "The exact VF-1-06 brief and phase1_recovery profile are committed"
+    - "VF-1-06 durable mock recovery is committed, independently audited, and green at dc86938972e776c8479637f2fb3ca9706999eed4"
+    - "The Phase 1 migration/API contract is frozen by the VF-1-06 acceptance handoff at 6e0431fc3bddf3c187a8a80020ee8fd50c6282ad"
+    - "The exact VF-1-07 brief and phase1_isolation profile are committed"
     - "The user granted standing provider-free implementation authority through VF-2-05 on 2026-08-10"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   live_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
-  expected_evidence: "evidence/acceptance/VF-1-06/durable-mock-recovery"
+  expected_evidence: "evidence/acceptance/VF-1-07/isolation-upload-avatar-reuse"
   required_handoff:
-    - "First preserve and finish the recorded dirty corrective worktree; do not reset or redo the green UI corrections"
-    - "Close the exact open audit list in paused_handoff before claiming VF-1-06 complete"
-    - "One durable mock job survives ambiguous dispatch, process restart, reconciliation, duplicate delivery, cancellation races, and accepted-result convergence without duplicate cost"
-    - "Installed Chrome truthfully exposes pending, reconciling, cancelled, failed, and ready recovery states without changing the accepted visual grammar"
-    - "Record the isolated-staging approval checkpoint after local recovery passes; local VF-1-07 and VF-1-08 may continue while approval is pending"
+    - "Two invited local accounts cannot read, bind, infer, approve, download, rename, archive, or hash-probe each other's records"
+    - "Large audio uses signed multipart/direct bytes while application request and response bodies remain bounded"
+    - "Create Project submits only the exact ready Avatar Profile version and preserves draft fields through Avatar Hub round trips"
+    - "Focused integration and installed-Chrome tests plus the full uncached gate pass"
     - "Keep remote, provisioning, deployment, credentials, provider calls, model downloads, and spend unauthorized"
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    status: serial_integration_owner
-    integration_owner: "recovery composition, shared schemas/exports/configuration, regression tests, evidence, and commits"
+    status: serial_task_by_task_execution
+    integration_owner: "isolation, upload, avatar-reuse composition, shared routes/configuration, regression tests, evidence, and commits"
   prohibited_in_task:
     - "Private Git remote creation/push until separately approved"
     - "Google OAuth account/app mutation or live OAuth flow"
@@ -251,103 +246,14 @@ recommended_next_task:
     - "Provider credentials/calls, model downloads, public tunnel, LAN listener, or any external spend"
     - "Modifying the accepted UI/render behavior without separately recorded authority"
 
-paused_handoff:
-  status: "VF-1-06_audit_correction_in_progress"
-  requested_by_user_at: "2026-08-10T11:59:44Z"
-  checkpoint_reason: "The user requested a nearby stop, a complete project-context update, and a new-chat handoff before the corrective recovery pass was finished."
-  merge_conflicts: []
-  committed_checkpoint:
-    context_scope_commit: "1ce060b3493c55b8e2d3a1619fb0293793dd7a0f"
-    implementation_commit: "7028413f0ca7f69e37d72d663de93f327e075d5a"
-    implementation_status: "tooling_green_but_acceptance_blocked_by_post_commit_audit"
-    completed:
-      - "Added a provider-neutral DurableRecoveryCoordinator over the committed repositories and local workflow transport."
-      - "Added persistent PGlite restart, ambiguous acknowledgement, reconciliation, duplicate-claim, accepted-result, cancellation, rollback, and cost-lineage scenarios."
-      - "Added fixture/API/Chrome states for pending, reconciling, failed, cancelled, and ready recovery views without changing the accepted visual grammar."
-      - "Ran an uncached provider-free root verification at the checkpoint: control-plane 108/108, web 147/147, fixtures 12/12, installed Chrome 36/36 with zero skips, context/schema validation, secret scan, diff check, and dependency audit all passed."
-      - "No remote, cloud, provider, credential, model-download, or paid action occurred; external spend remained $0."
-  independent_audit:
-    result: "open_high_priority_findings_require_correction"
-    completed_lanes:
-      - "Recovery/UI truthfulness review"
-      - "Repository/workflow adversarial recovery review"
-      - "Cost/terminal-state compliance review"
-    open_findings:
-      - id: "VF-1-06-AUDIT-01"
-        severity: HIGH
-        finding: "NOT_DISPATCHED_CONFIRMED currently resets an attempt but leaves its only DISPATCH outbox dead-lettered, so recovery reaches READY/PENDING with no dispatchable work."
-        required_fix: "Atomically restore the attempt to NOT_SENT/CREATED and requeue exactly one safe DISPATCH outbox; prove the next local delivery succeeds without creating another paid attempt."
-      - id: "VF-1-06-AUDIT-02"
-        severity: HIGH
-        finding: "Late acknowledgement, reconciliation, unknown, success, or acceptance mutations can override CANCEL_REQUESTED/CANCELLED and resurrect cancelled work."
-        required_fix: "Fence every late mutation by task and attempt terminal/cancellation state; cancellation must win and terminal state must remain immutable."
-      - id: "VF-1-06-AUDIT-03"
-        severity: HIGH
-        finding: "A terminal attempt can be claimed again and a terminal task can receive another reservation/dispatch."
-        required_fix: "Require one unfinished, pending, acknowledged/reconciled attempt for claims; reject new attempts for COMPLETE/CANCELLED/FAILED tasks and enforce the bounded attempt limit."
-      - id: "VF-1-06-AUDIT-04"
-        severity: HIGH
-        finding: "Accepted-result convergence can complete a task while a sibling attempt/outbox remains runnable, allowing post-completion delivery."
-        required_fix: "Before acceptance, atomically suppress only safe undispatched siblings, reject leased/dispatched active siblings, and prove no work can run after COMPLETE."
-      - id: "VF-1-06-AUDIT-05"
-        severity: HIGH
-        finding: "Cost finalization checks use nonnegative clamping and event minima, so over-finalization or compound RELEASED/REFUNDED totals can pass without exact conservation."
-        required_fix: "Compute exact per-attempt commitment and finalization, reject every non-conserving attempt, retain reported/settled equality, and prove rollback leaves no partial rows."
-      - id: "VF-1-06-AUDIT-06"
-        severity: MEDIUM
-        finding: "Recovery inspection uses several nontransactional statements and materializes every attempt; task-only cancellation also materializes all dispatch outboxes."
-        required_fix: "Use one bounded aggregate SQL snapshot for inspection and atomic update-plus-existence fencing for task-only cancellation; keep the attempt maximum at 32."
-      - id: "VF-1-06-AUDIT-07"
-        severity: HIGH
-        finding: "The committed failed fixture advertises a retry action that its API always rejects; failed/cancelled also render ETA Ready and the shell tones FAILED as informational."
-        required_fix: "Keep the already completed uncommitted UI correction: terminal failure has no false Retry, failed/cancelled show Stopped/no active work, and FAILED uses terminal danger presentation."
-  preserved_uncommitted_worktree:
-    state: "dirty_and_not_green"
-    application_files:
-      - "apps/web/src/components/AppShell.tsx"
-      - "apps/web/src/screens/ProjectScreen.tsx"
-      - "apps/web/tests/e2e/recovery.spec.ts"
-      - "packages/test-fixtures/src/api.ts"
-      - "packages/test-fixtures/src/scenarios.ts"
-    control_plane_files:
-      - "packages/control-plane/src/adapters/pglite-repositories.ts"
-      - "packages/control-plane/src/repositories/events.ts"
-      - "packages/control-plane/src/repositories/execution.ts"
-    completed_uncommitted_ui_corrections:
-      - "Terminal FAILED no longer exposes the guaranteed-failing retry action."
-      - "FAILED/CANCELLED report ETA Stopped and no active work; FAILED is terminal/danger in the shell."
-      - "Focused fixture tests passed 12/12, web app/schema tests passed 75/75, lint/typecheck passed, and installed-Chrome recovery passed desktop plus compact 2/2 before the later control-plane interface edits."
-    partial_control_plane_corrections:
-      - "Introduced a 32-attempt repository cap and initial terminal-task reservation/claim guards."
-      - "Started NOT_DISPATCHED_CONFIRMED redispatch semantics and late UNKNOWN task-state fencing."
-      - "Started TaskCostSummary.nonConservingAttemptCount and a one-query RecoveryTaskFacts repository interface."
-      - "These changes are intentionally not claimed complete and must be inspected before further edits; one broad patch placed a claim guard with the wrong error message."
-    current_typecheck:
-      result: fail
-      command: "pnpm --filter @videoforge/control-plane typecheck"
-      exact_blockers:
-        - "ExecutionRepository.resolveRecoveryTaskFacts is declared but not implemented by the PGlite adapter."
-        - "claimExecution repeats terminal-state comparisons after an earlier narrowing guard."
-        - "TaskCostSummary now requires nonConservingAttemptCount but summarizeTaskCost does not return it."
-        - "The one-statement recovery snapshot and coordinator integration are not yet implemented."
-  exact_resume_order:
-    - "Run git status and inspect the existing diff; preserve all eight application/control-plane files plus this context-only handoff commit."
-    - "Finish exact per-attempt cost conservation and add over-finalization rollback regressions."
-    - "Implement resolveRecoveryTaskFacts as one bounded aggregate SQL snapshot and switch DurableRecoveryCoordinator.inspect to it."
-    - "Replace task-only cancellation's all-row SELECT with atomic safe-state updates and a LIMIT 1 unsafe-state fence."
-    - "Finish NOT_DISPATCHED_CONFIRMED redispatch, cancellation/terminal mutation fences, successful-result prerequisites, sibling suppression, and the 32-attempt regression."
-    - "Run focused control-plane typecheck/lint/build and durable recovery tests; repair canonical adapters/tests only when the stricter invariant requires it."
-    - "Commit the corrective implementation only after it is green, then run fresh independent read-only re-audits against that commit and close every listed HIGH/MEDIUM."
-    - "Run uncached pnpm verify, context validation, secret scan, dependency audit, installed-Chrome regression, diff checks, and clean-worktree proof."
-    - "Write evidence at project-context/evidence/acceptance/VF-1-06/durable-mock-recovery, mark VF-1-06 complete, and refresh CURRENT_STATE before selecting another task."
-  remaining_authorized_plan:
-    - "Finish VF-1-06 serially; do not provision the isolated staging checkpoint."
-    - "After the green VF-1-06 contract freeze, run exact briefs VF-1-07 account/upload isolation and VF-1-08 export/restore in the recorded disjoint lanes, then integrate and close Phase 1."
-    - "Run VF-2-01 serially for the additive transcript/timing/span-audio/timeline contract and migration lock."
-    - "After VF-2-01 commits, run dependency-ready VF-2-02 durable local transcription/span audio, VF-2-03 deterministic timeline persistence, and VF-2-04 Chrome inspection in their recorded disjoint lanes."
-    - "Run VF-2-05 serial convergence with restart/restore-safe real audio, byte-equivalent plans, exact frame coverage, and installed-Chrome inspection."
-    - "Stop after the green VF-2-05 handoff. Waves 5-8 need new exact briefs, provider/gate evidence, and authority; private GitHub, staging, production, provider calls, credentials, downloads, and spend remain separate blocked checkpoints."
-  new_chat_bootstrap: "Continue VideoForge from the fresh project context. Resume the preserved VF-1-06 corrective worktree exactly as recorded in paused_handoff, close every open audit finding, and complete VF-1-06 through a green committed evidence handoff. Then continue task-by-task only when each refreshed CURRENT_STATE selects a dependency-ready, exact, provider-free brief within standing authority through VF-2-05. Preserve completed work and stop before any remote/cloud/account mutation, credential operation, provider call or spend, missing brief, unresolved gate, or new authority."
+latest_closed_handoff:
+  task_id: VF-1-06
+  status: complete
+  implementation_commit: "dc86938972e776c8479637f2fb3ca9706999eed4"
+  evidence_commit: "6e0431fc3bddf3c187a8a80020ee8fd50c6282ad"
+  audit_result: "all_seven_paused_high_and_medium_findings_closed"
+  verification_result: "uncached_root_gate_and_installed_Chrome_green"
+  external_actions: "none_provider_calls_disabled_spend_zero"
 
 last_green:
   commands:
@@ -365,17 +271,18 @@ last_green:
     - "pnpm secret:scan"
     - "pnpm audit:dependencies"
     - "git diff --check"
-  checked_at: "2026-08-10T11:41:22Z"
+  checked_at: "2026-08-10T12:47:14Z"
   result: pass
-  verified_commit: "7028413f0ca7f69e37d72d663de93f327e075d5a"
+  verified_commit: "dc86938972e776c8479637f2fb3ca9706999eed4"
   evidence:
     - "evidence/acceptance/VF-1-02/runtime-neutral-hono"
     - "evidence/acceptance/VF-0D-01/provider-sandbox-harness"
     - "evidence/acceptance/VF-1-03/auth-workspace-adapter"
     - "evidence/acceptance/VF-1-04/private-artifact-adapter"
     - "evidence/acceptance/VF-1-05/durable-orchestration-adapters"
+    - "evidence/acceptance/VF-1-06/durable-mock-recovery"
   counts:
-    control_plane_pglite_tests: 108
+    control_plane_pglite_tests: 111
     repository_contract_behaviors: 13
     repository_contract_runner_bindings: 13
     repository_contract_semantic_fixture_bodies: 13
@@ -401,14 +308,15 @@ last_green:
     playwright_chrome_journeys_passed: 36
     playwright_chrome_journeys_intentionally_skipped: 0
   notes:
-    - "This last-green record proves commands/tests at 7028413, not VF-1-06 acceptance: the subsequent independent audit found the open paused_handoff invariants, and the preserved corrective worktree is currently typecheck-red."
+    - "This last-green record proves the completed VF-1-06 corrective implementation at dc86938972e776c8479637f2fb3ca9706999eed4; evidence is committed separately at 6e0431fc3bddf3c187a8a80020ee8fd50c6282ad."
     - "The forced verify executed every Turbo task with zero cache hits and passed format, JavaScript/Python lint, typecheck, unit/contract/worker suites, database checks, context/schema validation, secret scan, build/route-tree stability, real local Workerd parity, and installed-Chrome Playwright."
-    - "The final local migration inventory is 32 tables, 128 indexes, 739 catalog constraints including 2 constraint triggers, and 19 non-internal invariant triggers; all 108 control-plane tests passed at the test-green checkpoint."
+    - "The final local migration inventory is 32 tables, 128 indexes, 739 catalog constraints including 2 constraint triggers, and 19 non-internal invariant triggers; all 111 control-plane tests passed."
     - "All 13 fixed repository scenario bodies execute against a fresh concrete PGlite adapter with disposal, rollback, exact idempotency, workspace isolation, callback replay, lease fencing, and cost-lineage proof."
     - "The VF-1-03 independent auth audit and the VF-1-04/VF-1-05 closure audits found no remaining high or medium issue after all reproduced findings were repaired."
     - "Private artifact transfer passed 37 pipeline tests plus the isolated Hono metadata/body-bypass boundary; accepted artifact truth survives restart and cross-instance idempotency races without exposing private bytes through legacy CAS."
     - "The provider-sandbox adversarial audit closed all reproduced high/medium findings; all 39 tests pass with no provider/network/environment/SDK source match."
-    - "Node and Cloudflare-local fixture behavior is equivalent across 3 unit cases and 1 real Workerd HTTP case; installed Chrome passed 34 journeys with zero collection-time skips."
+    - "Node and Cloudflare-local fixture behavior is equivalent across 3 unit cases and 1 real Workerd HTTP case; installed Chrome passed 36 journeys with zero collection-time skips."
+    - "Three post-commit VF-1-06 audits closed all seven recorded recovery/UI/cost findings; definitely-not-sent redelivery reuses one attempt, terminal/cancellation state is fenced, acceptance leaves no runnable sibling, cost conserves exactly per attempt, and inspection is one-query bounded at 32 attempts."
     - "The explicit high-severity dependency audit reported no known vulnerabilities."
     - "All task data was owned/synthetic and local; provider calls remained disabled, no cloud/remote mutation occurred, and external spend was $0."
 
@@ -428,7 +336,7 @@ known_incomplete_boundaries:
   - "Concrete local PGlite repositories, auth, private artifacts, outbox/workflow, callbacks, and all 13 canonical repository scenarios are complete; no production Neon driver/connection, R2 adapter, Better Auth SDK handler, Cloudflare Workflow, or deployed Worker exists."
   - "PGlite proves local invariants and correctness-first first-claim serialization. Real multi-session PostgreSQL contention and head-of-line latency remain a separately authorized staging measurement, not a local claim."
   - "The private-artifact Hono metadata router is isolated and deliberately unmounted until VF-1-07 composition; its direct-transfer facet remains unreachable from application routes."
-  - "Durable mock restart/reconciliation/cancellation convergence is the active VF-1-06 task. Commit 7028413 is test-green but audit-blocked; the preserved corrective worktree and exact open findings are recorded under paused_handoff."
+  - "Durable mock restart/reconciliation/cancellation convergence is complete at dc86938972e776c8479637f2fb3ca9706999eed4; real Cloudflare Workflow and multi-session Neon behavior remain separately authorized staging work."
   - "The runtime-neutral Hono seam and local Workerd parity are complete, but no Worker is deployed and production-like modes deliberately fail closed until separately authorized staging bindings exist."
   - "No production GPU/execution profile is selectable; all provider/model/cost gates remain open."
   - "The repository has no Git remote and is not published; GitHub Actions are locally inspected/configured but have no external run or off-machine backup proof."
@@ -440,8 +348,9 @@ next_tasks:
   - "VF-1-01A complete: the adversarial-audit migration, constraint, repository-suite, and execution-contract findings are committed and green at $0"
   - "Wave 1 complete: VF-1-02 runtime-neutral Hono/local Workerd parity and VF-0D-01 provider-neutral sandbox harness are committed and green"
   - "Wave 2 complete: VF-1-03 Auth, VF-1-04 private artifact storage, and VF-1-05 PGlite/outbox/workflow adapters are committed, independently audited, and green"
-  - "Wave 3 active locally: resume the preserved serial VF-1-06 corrective worktree, close every recorded audit finding, then produce one clean green evidence/context handoff; staging and provider budgets remain inactive"
-  - "Wave 4: parallel VF-1-07/VF-1-08, then VF-2-01 and parallel VF-2-02/03/04, then VF-2-05"
+  - "Wave 3 complete: VF-1-06 durable mock recovery is committed, all seven paused audit findings are closed, and the uncached repository and installed-Chrome gates are green at $0"
+  - "Wave 4 active locally: execute exact VF-1-07 account/upload/avatar-reuse isolation first, then refresh the snapshot and select VF-1-08 only after a green committed handoff"
+  - "After both Phase 1 convergence tasks are integrated: VF-2-01 serial contract lock, then task-by-task VF-2-02/03/04, then serial VF-2-05"
   - "Standing local authority ends after VF-2-05; Phase 3 onward requires provider-informed briefs and gate review"
 
 notes:
