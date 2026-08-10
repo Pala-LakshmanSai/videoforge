@@ -139,6 +139,11 @@ read_profiles:
     - tasks/VF-1-01.md
     - evidence/orchestration_state.schema.json
     - evidence/worker_job_envelope.schema.json
+  phase1_foundation_hardening:
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 18_IMAGE_STYLES_HUB.md
+    - 20_AVATAR_HUB.md
+    - tasks/VF-1-01A.md
   context_update:
     - 15_DECISIONS_AND_OPEN_GATES.md
     - 16_CONTEXT_MAINTENANCE.md

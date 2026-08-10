@@ -9,5 +9,6 @@ and the required next-state update. Product behavior remains authoritative in th
 and primary domain files. Completed briefs may remain for traceability, but `CURRENT_STATE.yaml` is
 the only mutable snapshot and Git/evidence remain the progress log.
 
-Current ready brief: none. `VF-1-01.md` is complete; `VF-1-02` is next in the execution plan but
-its exact brief has not been authored. Do not infer its scope or ownership from the summary plan.
+Current active brief: `VF-1-01A.md`, the user-authorized provider-free hardening task created from
+the VF-1-01 adversarial audit. `VF-1-02` remains next afterward but its exact brief has not been
+authored. Do not infer its scope or ownership from the summary plan.

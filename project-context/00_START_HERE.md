@@ -17,12 +17,14 @@ Phase 0C local ASR → scheduler → FFmpeg → Chrome/download slice are comple
 implementation is still bounded to fixture/process-local state; it does not claim durable database
 recovery, production authentication/storage, or provider transport.
 
-`VF-1-01` is complete at implementation commit `6d0b66f`, with provider-free acceptance evidence
-under `evidence/acceptance/VF-1-01/2026-08-10-durable-relational-foundation/`. The next planned
-dependency is `VF-1-02`, but no exact `tasks/VF-1-02.md` brief currently exists. Stop before
-implementation until that brief records scope, ownership, acceptance, and local authority; do not
-infer them from the summary execution plan. `CURRENT_STATE.yaml` is the replace-in-place handoff.
-Do not redo the accepted UI, renderer, local slice, or broad architecture research.
+`VF-1-01` remains the committed relational baseline at implementation commit `6d0b66f`. A
+post-handoff adversarial audit found high-priority migration, constraint, and repository-contract
+gaps, and the user explicitly authorized the provider-free corrective task `VF-1-01A` on
+2026-08-10. Its exact brief and ownership are recorded in `tasks/VF-1-01A.md`; preserve the
+completed baseline and add corrective work rather than rewriting history. `VF-1-02` remains next
+only after this hardening task is committed and green, and it is still blocked because no exact
+`tasks/VF-1-02.md` brief exists. `CURRENT_STATE.yaml` is the replace-in-place handoff. Do not redo
+the accepted UI, renderer, local slice, or broad architecture research.
 
 ## Approved MVP
 

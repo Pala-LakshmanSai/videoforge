@@ -282,6 +282,10 @@ Begin after Phase 0C acceptance. Local/test implementations stay available; prod
   outbox, plus a reusable PGlite migration/constraint/repository contract suite. Add provider-free
   `pnpm db:check` to `pnpm verify`. No Neon connection, ORM/query implementation, auth, R2,
   Cloudflare binding, route, or UI change belongs in this task. `DEC_DB_001` is normative.
+- `VF-1-01A`: before `VF-1-02`, complete the user-authorized adversarial-audit hardening in
+  `tasks/VF-1-01A.md`. Preserve the committed VF-1-01 baseline, use an additive corrective
+  migration, replace placeholder adapter behaviors with canonical scenarios, and close the
+  recorded migration/concurrency/execution-contract defects at `$0`.
 - `VF-1-02`: make the Hono app runtime-neutral, then add Cloudflare Vite/Worker bindings and local emulator configuration. Provisioning/deployment remains a separately authorized external mutation.
 
 `VF-1-01` is a serial shared-foundation task, but it may use two bounded child lanes after the

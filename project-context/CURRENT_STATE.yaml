@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T04:42:38Z"
+updated_at: "2026-08-10T05:45:02Z"
 
 phase: implementation_in_progress
-implementation_authorized_in_current_task: false
+implementation_authorized_in_current_task: true
 current_milestone: phase_1_durable_control_plane_foundation
-current_task: VF-1-02
+current_task: VF-1-01A
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -94,40 +94,68 @@ completed_tasks:
     evidence_commit: "ae9d8929d97bab2eb4cd9fd8f16fc8b5d724958a"
     evidence: "evidence/acceptance/VF-1-01/2026-08-10-durable-relational-foundation"
 
-active_ownership: []
+active_ownership:
+  - task_id: VF-1-01A
+    owner: integration_database_lane
+    paths:
+      - packages/control-plane/migrations/**
+      - packages/control-plane/src/database/**
+      - packages/control-plane/package.json
+      - package.json
+      - pnpm-lock.yaml
+      - turbo.json
+      - project-context/**
+    note: "Integration owner alone edits migrations, metadata, lockfiles, shared context/evidence, and commits."
+  - task_id: VF-1-01A
+    owner: repository_contract_lane
+    paths:
+      - packages/control-plane/src/repositories/**
+      - packages/control-plane/tests/repository-contract-suite.test.mjs
+    note: "Disjoint repository contracts/canonical scenarios only; no migration, metadata, lockfile, or context edits."
+  - task_id: VF-1-01A
+    owner: constraint_verification_lane
+    paths:
+      - packages/control-plane/tests/**
+    excludes:
+      - packages/control-plane/tests/repository-contract-suite.test.mjs
+    note: "Disjoint database/executor regression tests only; no production code, migration, metadata, lockfile, or context edits."
 
 recommended_next_task:
-  task_id: VF-1-02
+  task_id: VF-1-01A
   milestone: phase_1_durable_control_plane_foundation
-  status: blocked_missing_exact_task_brief
+  status: authorized_in_progress
   dependency_status: ready
-  authorization_status: blocked_missing_exact_task_brief
-  read_profile: live_development
-  task_brief: null
-  goal: "Planned only: make the Hono app runtime-neutral and add local Cloudflare Vite/Worker emulator bindings without provisioning or deployment."
+  authorization_status: explicitly_authorized_by_user
+  read_profile: phase1_foundation_hardening
+  task_brief: tasks/VF-1-01A.md
+  goal: "Fix every high-priority VF-1-01 audit finding through additive, provider-free relational and repository hardening."
   dependencies:
-    - "VF-1-01 is committed and green at 6d0b66fac9fd44537bbfccd789f2023f3bcaf064 with evidence at evidence/acceptance/VF-1-01/2026-08-10-durable-relational-foundation"
-    - "The serial execution plan identifies VF-1-02 next"
-    - "Blocking: tasks/VF-1-02.md does not exist, so exact scope, files, ownership, acceptance, and local authority are not recorded"
+    - "VF-1-01 committed baseline and evidence remain preserved"
+    - "Adversarial audit completed against clean ff97357603103d6d7d9e5b5616f818743811ce07"
+    - "User explicitly authorized all high-priority corrective findings on 2026-08-10"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   live_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
-  expected_evidence: null
+  expected_evidence: "evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening"
   required_handoff:
-    - "Author and approve an exact tasks/VF-1-02.md brief before implementation starts"
-    - "Add the brief to an explicit manifest read profile and record its path/ownership/acceptance envelope here"
+    - "Additive corrective migration and hardened migration executor"
+    - "Canonical adapter-independent repository behavior scenarios"
+    - "Coherent cancellation, billed preset work, accepted-result, and concurrent event invariants"
+    - "Corrected acceptance evidence and exact full-green commit"
     - "Keep provisioning, deployment, cloud mutations, credentials, providers, and external spend unauthorized"
   safe_parallelism:
-    maximum_lanes_including_integration: 1
-    status: disabled_until_exact_task_brief
-    note: "No VF-1-02 ownership plan is recorded; do not spawn implementation lanes."
+    maximum_lanes_including_integration: 3
+    status: enabled_for_recorded_disjoint_paths
+    integration_owner: "migrations, database executor, metadata, context, evidence, commits"
+    repository_lane: "src/repositories/** plus repository-contract-suite.test.mjs"
+    constraint_lane: "tests/** except repository-contract-suite.test.mjs"
   prohibited_in_task:
-    - "Any VF-1-02 implementation, dependency addition, or file ownership before the exact brief exists"
     - "Cloudflare provisioning/deployment or any other cloud mutation"
     - "Neon project/branch/network access or DATABASE_URL use"
     - "Provider credentials/calls, model downloads, public tunnel, LAN listener, or external spend"
     - "Modifying the accepted UI/render behavior without separately recorded authority"
+    - "Rewriting the committed 0001 migration or discarding completed VF-1-01 history"
 
 last_green:
   commands:
@@ -193,7 +221,8 @@ known_incomplete_boundaries:
 known_non_blocking_devex: []
 
 next_tasks:
-  - "VF-1-02 planned serial foundation: runtime-neutral Hono + local Cloudflare emulator/bindings, blocked until an exact task brief is authored and selected; no deployment"
+  - "VF-1-01A active: close the adversarial-audit migration, constraint, repository-suite, and execution-contract findings at $0"
+  - "VF-1-02 planned serial foundation afterward: runtime-neutral Hono + local Cloudflare emulator/bindings, blocked until an exact task brief is authored and selected; no deployment"
   - "VF-1-03/VF-1-04/VF-1-05 parallel after shared foundations: Auth, R2 artifact storage, Postgres/outbox/workflow orchestration"
   - "VF-1-06/VF-1-07/VF-1-08 serial convergence: mock ambiguity/recovery, account isolation/large upload/avatar reuse, export/restore smoke"
   - "VF-0D provider viability may overlap only under its separately recorded exact authorization envelope; no such envelope is active"
@@ -205,3 +234,4 @@ notes:
   - "TypeScript is the sole RFC 8785/JCS authority; Python validates canonical schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output grammar remains three compositions, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
   - "No public tunnel or LAN listener is active. The next chat may start the stable loopback fixture server at http://localhost:4173."
+  - "The completed VF-1-01 baseline is preserved, but its acceptance claim is under corrective review until VF-1-01A replaces the overstated behavior/concurrency evidence."
