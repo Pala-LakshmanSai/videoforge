@@ -233,6 +233,13 @@ read_profiles:
     - 07_PIPELINE_AND_SCHEDULER.md
     - 14_TESTING_AND_ACCEPTANCE.md
     - tasks/VF-3-03.md
+  phase3_runpod_account_preflight:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 11_COST_SPEED_BUDGET.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - GATES.yaml
+    - tasks/VF-3-04.md
   context_update:
     - 15_DECISIONS_AND_OPEN_GATES.md
     - 16_CONTEXT_MAINTENANCE.md

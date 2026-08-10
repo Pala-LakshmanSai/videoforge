@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T17:25:48Z"
+updated_at: "2026-08-10T17:40:12Z"
 
-phase: phase_3_provider_independent_prompt_foundation
+phase: phase_3_provider_operations_preflight
 implementation_authorized_in_current_task: true
-current_milestone: phase_3_deterministic_prompt_compiler
-current_task: VF-3-03
+current_milestone: phase_3_runpod_account_preflight
+current_task: VF-3-04
 current_wave: phase_3_evidence_first_activation
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -185,6 +185,12 @@ completed_tasks:
     implementation_commit: "907e0e4908bddc1ec7b90232f043a10d9c7d5b2a"
     evidence_commit: "d16c2a9102125fa6e56d014fcf2f6241c878fa07"
     evidence: "evidence/acceptance/VF-2-05/phase2-timing-convergence"
+  - task_id: VF-3-03
+    status: complete
+    summary: "Committed provider-neutral 25-50-scene batching, strict hostile-output validation, a deterministic fixture writer, locked full/split crop guidance, permanent output guardrails, normalized optional extras, and byte/hash-verifiable Mage prompt compilation with no provider activity."
+    implementation_commit: "3fcbcc310cf42be766b6fe90163d50e1c4620bb1"
+    evidence_commit: "0e9a6b3e0fb5e59a42b5160e91a8da29893afa8e"
+    evidence: "evidence/acceptance/VF-3-03/deterministic-prompt-compiler"
 
 standing_local_authority:
   status: completed_and_exhausted
@@ -261,55 +267,58 @@ external_checkpoints:
 active_ownership: []
 
 recommended_next_task:
-  task_id: VF-3-03
-  milestone: phase_3_deterministic_prompt_compiler
-  status: ready_provider_free_implementation
-  dependency_status: phase_2_green_prompt_contract_fresh_runware_live_lane_safely_blocked
-  authorization_status: exact_provider_free_application_implementation_authorized
-  read_profile: phase3_prompt_compiler
-  task_brief: tasks/VF-3-03.md
-  goal: "Implement deterministic prompt batching, hostile-output validation, fixture writer, and exact Mage prompt compilation without provider calls or spend."
+  task_id: VF-3-04
+  milestone: phase_3_runpod_account_preflight
+  status: ready_account_api_preflight
+  dependency_status: vf_3_03_green_user_authorized_runpod_account_access_balance_present
+  authorization_status: exact_credential_and_read_only_api_preflight_authorized
+  read_profile: phase3_runpod_account_preflight
+  task_brief: tasks/VF-3-04.md
+  goal: "Establish secure RunPod API lifecycle access, inventory billable compute, and prove the account is fully drained without creating compute or spending money."
   dependencies:
-    - "VF-2-05 and Phase 2 are committed and green at 907e0e4908bddc1ec7b90232f043a10d9c7d5b2a with evidence at d16c2a9102125fa6e56d014fcf2f6241c878fa07"
-    - "VF-3-01 prepared a 40-scene/five-style bounded runner and proved the Runware account prerequisite blocks inference before spend"
-    - "Prompt compiler behavior is fully specified and provider-neutral"
-    - "The user explicitly authorized autonomous implementation while preserving accepted product rules"
+    - "VF-3-03 implementation is green at 3fcbcc310cf42be766b6fe90163d50e1c4620bb1 with evidence at 0e9a6b3e0fb5e59a42b5160e91a8da29893afa8e"
+    - "The user explicitly authorized RunPod login/account/API work and required every Pod to be off at handoff"
+    - "The authenticated RunPod account visibly reports a $10.00 balance"
+    - "Official API lifecycle and scale-to-zero facts were refreshed in VF-3-00"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: true
   credentials_or_model_downloads_authorized: true
-  application_code_changes_authorized: true
+  application_code_changes_authorized: false
   live_route: null
   fixture_scenario: null
-  expected_evidence: "evidence/acceptance/VF-3-03/deterministic-prompt-compiler"
+  expected_evidence: "evidence/acceptance/VF-3-04/runpod-account-preflight"
   required_handoff:
-    - "Add deterministic 25–50-scene batching and a provider-neutral fixture writer"
-    - "Reject duplicate/missing/unknown IDs, role drift, hostile output, and hard-rule conflicts"
-    - "Compile exact positive/negative Mage strings, components, bytes, versions, and hashes"
-    - "Cover extra-keyword toggle, crop guidance, permanent guardrails, continuity, and five styles"
-    - "Run targeted checks before the canonical full gate and commit acceptance evidence"
+    - "Create one lifecycle-capable RunPod key stored only in macOS Keychain"
+    - "Query redacted account/balance, Pod, endpoint, and active billable-compute inventory"
+    - "Stop any running Pod and set any endpoint worker maximum to zero without deleting resources"
+    - "Prove no balance decrease, no provider call, no active worker, and no running Pod"
+    - "Commit redacted evidence and select one dependency-ready next task"
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    status: serial_provider_free_prompt_foundation
-    integration_owner: VF-3-03
+    status: serial_external_account_preflight
+    integration_owner: VF-3-04
   prohibited_in_task:
-    - "Any network, credential, provider call/spend, balance purchase, model download, or production enablement"
-    - "Accepted UI/renderer/output changes, schema/migration/route changes, or cloud staging"
-    - "DeepSeek application activation while GATE_LLM_001 remains open"
-    - "Mage, Avatar, RunPod, remote, or deployment mutation inside this task"
+    - "Any Pod/endpoint/template/volume creation, model download, provider inference, or spend"
+    - "Any application, schema, migration, UI, renderer, route, remote, staging, or production change"
+    - "Any resource deletion or credential value in logs, evidence, shell history, or repository"
+    - "Any claim that this account preflight closes GATE_RUNPOD_001 or qualifies a GPU/model"
 
 latest_closed_handoff:
-  task_id: VF-2-05
+  task_id: VF-3-03
   status: complete
-  implementation_commit: "907e0e4908bddc1ec7b90232f043a10d9c7d5b2a"
-  evidence_commit: "d16c2a9102125fa6e56d014fcf2f6241c878fa07"
-  audit_result: "closed_no_remaining_high_or_medium_findings"
-  verification_result: "uncached_root_gate_fresh_process_restore_materialized_span_audio_real_local_Chrome_and_exact_download_green"
-  external_actions: "read_only_dependency_audit_only_no_mutations_provider_calls_disabled_spend_zero"
+  implementation_commit: "3fcbcc310cf42be766b6fe90163d50e1c4620bb1"
+  evidence_commit: "0e9a6b3e0fb5e59a42b5160e91a8da29893afa8e"
+  audit_result: "strict_prompt_input_output_conflict_and_tamper_matrix_green"
+  verification_result: "targeted_pipeline_47_and_uncached_root_gate_installed_chrome_green"
+  external_actions: "none_provider_calls_disabled_spend_zero"
 
 last_green:
   commands:
     - "TURBO_FORCE=true pnpm verify"
+    - "pnpm --filter @videoforge/pipeline lint"
+    - "pnpm --filter @videoforge/pipeline typecheck"
+    - "pnpm --filter @videoforge/pipeline test"
     - "pnpm audit:dependencies"
     - "pnpm --filter @videoforge/web test:local-chrome"
     - "pnpm --filter @videoforge/web exec tsx src/server/local/run-local-slice.ts"
@@ -328,9 +337,9 @@ last_green:
     - "pnpm context:validate"
     - "pnpm secret:scan"
     - "git diff --check"
-  checked_at: "2026-08-10T16:45:12Z"
+  checked_at: "2026-08-10T17:40:12Z"
   result: pass
-  verified_commit: "907e0e4908bddc1ec7b90232f043a10d9c7d5b2a"
+  verified_commit: "3fcbcc310cf42be766b6fe90163d50e1c4620bb1"
   evidence:
     - "evidence/acceptance/VF-1-02/runtime-neutral-hono"
     - "evidence/acceptance/VF-0D-01/provider-sandbox-harness"
@@ -345,6 +354,7 @@ last_green:
     - "evidence/acceptance/VF-2-03/durable-deterministic-timeline"
     - "evidence/acceptance/VF-2-04/real-audio-timeline-ui"
     - "evidence/acceptance/VF-2-05/phase2-timing-convergence"
+    - "evidence/acceptance/VF-3-03/deterministic-prompt-compiler"
   counts:
     control_plane_pglite_tests: 131
     repository_contract_behaviors: 13
@@ -352,7 +362,7 @@ last_green:
     repository_contract_semantic_fixture_bodies: 13
     relational_public_tables: 37
     web_server_component_tests: 163
-    provider_sandbox_tests: 39
+    provider_sandbox_tests: 40
     node_cloudflare_parity_unit_tests: 3
     local_workerd_http_parity_tests: 1
     dock_motion_unit_tests: 7
@@ -360,7 +370,7 @@ last_green:
     python_contract_tests: 42
     fixture_registry_and_local_slice_tests: 12
     configuration_tests: 5
-    pipeline_tests: 39
+    pipeline_tests: 47
     isolated_worker_tests: 56
     focused_render_worker_tests: 11
     root_script_tests: 6
@@ -369,6 +379,7 @@ last_green:
     playwright_chrome_journeys_intentionally_skipped: 0
     local_installed_chrome_convergence_journeys_passed: 1
   notes:
+    - "VF-3-03 adds deterministic 25-50-scene batching, strict plain-output validation, six locked shot roles, full/split crop geometry, permanent guardrails, five-style coverage, optional keyword rules, and exact UTF-8/hash replay without provider calls or spend."
     - "This last-green record proves the exact source tree committed as VF-2-05 implementation 907e0e4908bddc1ec7b90232f043a10d9c7d5b2a; evidence is committed separately at d16c2a9102125fa6e56d014fcf2f6241c878fa07."
     - "The forced verify executed every Turbo task with zero cache hits and passed format, JavaScript/Python lint, typecheck, unit/contract/worker suites, database checks, context/schema validation, secret scan, build/route-tree stability, real local Workerd parity, and installed-Chrome Playwright."
     - "The additive seventh migration preserves the 37-table inventory while correcting timeline source coverage to exact phrase boundaries with legal silence; the current control-plane suite passes all 131 tests."
@@ -417,7 +428,7 @@ known_incomplete_boundaries:
   - "VF-2-03 persists provider-free deterministic timeline bytes and lineage through local PGlite/content-store boundaries; it does not activate a provider asset lane, cloud database/object store, deployment, or production scheduler."
   - "VF-2-04 exposes provider-free persisted timing/timeline truth through fixture/local UI adapters; it does not add a timeline editor, provider asset generation, cloud persistence, or deployment."
   - "VF-2-05 completes strict local Phase 2 restart/restore and selected-span convergence; the runtime-state file and local content store are not a production Neon/R2/Workflow deployment or an off-machine recovery claim."
-  - "Exact briefs exist only for bounded Runware DeepSeek and Gemini qualification. No Phase 3 application-provider integration or later implementation brief is authority until its gate evidence is green."
+  - "Exact briefs exist for bounded Runware DeepSeek/Gemini qualification and the RunPod account preflight only. No model/GPU creation or Phase 3 application-provider integration brief is authority until its gate evidence is green."
 
 known_non_blocking_devex: []
 
@@ -434,7 +445,8 @@ next_tasks:
   - "Wave 4 Phase 2 convergence complete: VF-2-05 exact selected-span audio, restart/restore, byte-equivalent metadata restore, real local Chrome playback/approval/download, and uncached gates are committed and green at $0"
   - "VF-3-00 complete: public provider facts were refreshed and the user authorized bounded provider/account, private Git/CI, and isolated staging work; production remains deferred"
   - "VF-3-01 prepared the bounded live runner and Runware account, then stopped at the provider's $5 account-funding prerequisite with $0 spent and GATE_LLM_001 open"
-  - "Current: execute only provider-free VF-3-03 deterministic prompt compiler and fixture adapter at $0"
+  - "VF-3-03 complete: deterministic prompt batching/validation/compilation is committed and green at $0"
+  - "Current: execute only VF-3-04 RunPod API/account drain preflight at $0; create no compute"
   - "Resume VF-3-01/VF-3-02 only after the Runware funding prerequisite has exact authority; never transfer another sub-cap"
   - "Fastest safe implementation order after evidence and new authority: deterministic prompt compiler/fixture adapter, gated DeepSeek integration, parallel Mage image and AvatarForcing lanes plus disjoint custom-style lifecycle, FFmpeg real fast-path convergence, conditional fallbacks, fault/security/restore hardening, then controlled release"
 
@@ -456,10 +468,10 @@ activation_handoff:
     - "At activation, no Git remote/push, hosted CI, cloud/account resource, OAuth app, Neon/R2/Workflow deployment, credential, model download, provider call, or spend had been used."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this CURRENT_STATE.yaml."
-    - "Load only the phase3_prompt_compiler profile and tasks/VF-3-03.md."
+    - "Load only the phase3_runpod_account_preflight profile and tasks/VF-3-04.md."
     - "Confirm the recorded commits are ancestors of clean HEAD; do not reset or redo completed phases."
-    - "Run only provider-free deterministic prompt batching, fixture writing, validation, and compilation."
-    - "Stop on any provider/network/credential/spend boundary, regression, or scope ambiguity."
+    - "Run only secure key creation, authenticated redacted inventory, and safety drain checks."
+    - "Stop on any compute creation, model/provider call, spend, secret exposure, failed drain, or scope ambiguity."
   optimized_future_sequence:
     - "A. Refresh official time-sensitive provider/model/rate/retention/license facts read-only and classify all open gates."
     - "B. With explicit caps/credential authority, run bounded provider qualification through the committed sandbox and record pass/fail evidence."
@@ -473,7 +485,7 @@ activation_handoff:
 
 notes:
   - "This is a replace-in-place handoff snapshot, not a progress diary."
-  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-03 is provider-free and cannot activate live DeepSeek."
+  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-04 may inventory/drain RunPod but cannot create compute or activate a model."
   - "The accelerated approval through VF-2-05 is complete and exhausted. On 2026-08-10 the user separately activated the planned non-transferable $1/$3/$8/$8/$5 provider caps, private Git/CI, and isolated staging authority; production remains deferred."
   - "Runware signup/login is authorized, but CAPTCHA, MFA, email verification, payment, or an unclear charge still stops unattended automation."
   - "AvatarForcing's $8 sub-cap must remain untouched until GATE_AVATAR_003 reconciles the official license contradiction."
