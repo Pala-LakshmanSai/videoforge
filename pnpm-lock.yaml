@@ -158,6 +158,21 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
+  packages/control-plane:
+    devDependencies:
+      '@electric-sql/pglite':
+        specifier: 0.5.4
+        version: 0.5.4
+      '@types/node':
+        specifier: 22.18.0
+        version: 22.18.0
+      eslint:
+        specifier: 9.35.0
+        version: 9.35.0(jiti@1.21.7)
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+
   packages/pipeline:
     dependencies:
       '@videoforge/contracts':
@@ -370,6 +385,9 @@ packages:
   '@csstools/css-tokenizer@3.0.4':
     resolution: {integrity: sha512-Vd/9EVDiu6PPJt9yAh6roZP6El1xHrdvIVGjyBsHR0RYwNHgL7FJPyIIW4fANJNG6FtyZfvlRPpFI4ZM/lubvw==}
     engines: {node: '>=18'}
+
+  '@electric-sql/pglite@0.5.4':
+    resolution: {integrity: sha512-yYZUyyXrHU7tPlCjwZQJ6hIG9DscdCCn7Uk0mYKwC1FeHX286AbcmFveMiRBEak8e9iPupjsoVImN3yJZVed2g==}
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -2999,6 +3017,8 @@ snapshots:
       '@csstools/css-tokenizer': 3.0.4
 
   '@csstools/css-tokenizer@3.0.4': {}
+
+  '@electric-sql/pglite@0.5.4': {}
 
   '@esbuild/aix-ppc64@0.25.12':
     optional: true

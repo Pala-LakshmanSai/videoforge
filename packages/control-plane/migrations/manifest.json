@@ -1,0 +1,11 @@
+{
+  "schema_version": "videoforge-migration-manifest/v1",
+  "migrations": [
+    {
+      "version": 1,
+      "name": "durable_control_plane_foundation",
+      "filename": "0001_durable_control_plane_foundation.sql",
+      "sha256": "sha256:030130207d187db6372a2cc82c19d55d6f27d6dae646392d43c35015bc44b9c6"
+    }
+  ]
+}
