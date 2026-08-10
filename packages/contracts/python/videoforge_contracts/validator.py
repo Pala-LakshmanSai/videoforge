@@ -12,6 +12,7 @@ from ._schema_documents import SCHEMA_DOCUMENTS
 ContractName = Literal[
     "avatarProfileVersion",
     "createProjectRequest",
+    "durableTimingLineage",
     "imageStyleProfile",
     "imageStyleAnalyzerOutput",
     "orchestrationState",
@@ -31,6 +32,7 @@ ContractName = Literal[
 CONTRACT_NAMES: tuple[ContractName, ...] = (
     "avatarProfileVersion",
     "createProjectRequest",
+    "durableTimingLineage",
     "imageStyleProfile",
     "imageStyleAnalyzerOutput",
     "orchestrationState",

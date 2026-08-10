@@ -56,6 +56,10 @@ class AvatarProfileVersionDocument(CanonicalContractDocument):
     contract_name = "avatarProfileVersion"
 
 
+class DurableTimingLineageDocument(CanonicalContractDocument):
+    contract_name = "durableTimingLineage"
+
+
 class ImageStyleProfileDocument(CanonicalContractDocument):
     contract_name = "imageStyleProfile"
 
@@ -115,6 +119,7 @@ class RenderJobResultDocument(CanonicalContractDocument):
 CONTRACT_MODELS: dict[ContractName, type[BaseModel]] = {
     "avatarProfileVersion": AvatarProfileVersionDocument,
     "createProjectRequest": CreateProjectRequest,
+    "durableTimingLineage": DurableTimingLineageDocument,
     "imageStyleProfile": ImageStyleProfileDocument,
     "imageStyleAnalyzerOutput": ImageStyleAnalyzerOutputDocument,
     "orchestrationState": OrchestrationStateDocument,
