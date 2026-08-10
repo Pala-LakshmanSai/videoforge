@@ -1,0 +1,103 @@
+{
+  "schema_version": "videoforge.acceptance-evidence/v1",
+  "task_id": "VF-1-01A",
+  "status": "technical_pass",
+  "recorded_at": "2026-08-10T06:42:00Z",
+  "implementation": {
+    "authorization_commit": "f90e8dbd4d3ddea6f75938d4efdb00d765a67c83",
+    "implementation_commit": "0afa613708b684a9a933858e77f60730771bef5f",
+    "formatting_commit": "36bf1ae0b66524f8d1c158b301eaa77ebea04a92",
+    "package": "@videoforge/control-plane",
+    "pglite_version": "0.5.4",
+    "migrations": [
+      {
+        "version": 1,
+        "filename": "0001_durable_control_plane_foundation.sql",
+        "sha256": "sha256:263d2c3853b3ed6809ad3b52acddce19c6849ca8100d229ceb9cb26d3ef3f92e",
+        "preserved": true
+      },
+      {
+        "version": 2,
+        "filename": "0002_relational_audit_hardening.sql",
+        "sha256": "sha256:b6824f935b40ff89902ab1f20007e2f7e71dcbf61be59cabf0968aa0fb639ca5",
+        "preserved": true
+      }
+    ]
+  },
+  "inventory": {
+    "public_tables": 30,
+    "indexes": 120,
+    "constraints_total_including_constraint_triggers": 699,
+    "constraints": {
+      "checks": 203,
+      "foreign_keys": 84,
+      "not_null": 316,
+      "primary_keys": 30,
+      "unique": 64,
+      "constraint_triggers": 2
+    },
+    "non_internal_invariant_triggers": 17
+  },
+  "repository_contracts": {
+    "exported_canonical_behavior_cases": 13,
+    "immutable_fixed_scenarios": true,
+    "caller_supplied_scenarios_or_skip_controls": false,
+    "runner_wiring_and_disposal_cases_exercised": 13,
+    "canonical_bodies_semantically_executed_against_fixture_adapter": 1,
+    "full_semantic_execution_requires_first_concrete_adapter": true,
+    "first_concrete_adapter_planned_task": "VF-1-02",
+    "itemized_reaudit_high_findings_closed": 7,
+    "new_high_priority_findings": 0
+  },
+  "verification": {
+    "result": "pass",
+    "commands": [
+      "pnpm format:check",
+      "pnpm --filter @videoforge/control-plane lint",
+      "pnpm --filter @videoforge/control-plane typecheck",
+      "pnpm --filter @videoforge/control-plane test",
+      "pnpm --filter @videoforge/control-plane build",
+      "pnpm db:check",
+      "pnpm context:validate",
+      "pnpm secret:scan",
+      "TURBO_FORCE=true pnpm verify",
+      "pnpm audit:dependencies",
+      "git diff --check"
+    ],
+    "control_plane_tests": {
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0
+    },
+    "playwright_installed_chrome": {
+      "passed": 34,
+      "intentionally_skipped": 8
+    },
+    "forced_turbo_cache_hits": 0,
+    "known_high_severity_dependency_vulnerabilities": 0
+  },
+  "concurrency_boundary": {
+    "migration_advisory_lock_and_row_lock_sql_verified": true,
+    "same_process_pglite_regressions_passed": true,
+    "real_multi_session_postgresql_contention_claimed": false
+  },
+  "authorization": {
+    "provider_calls_authorized": false,
+    "provider_calls_made": false,
+    "maximum_external_spend_usd": 0,
+    "external_spend_usd": 0,
+    "database_url_used": false,
+    "neon_connection_used": false,
+    "cloud_mutation_performed": false,
+    "credentials_used": false,
+    "public_or_lan_listener_used": false
+  },
+  "next_boundary": {
+    "planned_task_id": "VF-1-02",
+    "dependency_ready": true,
+    "exact_task_brief_present": false,
+    "locally_authorized": false,
+    "status": "blocked_missing_exact_task_brief_and_authority",
+    "external_mutation_authorized": false
+  }
+}
