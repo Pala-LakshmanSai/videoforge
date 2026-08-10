@@ -119,8 +119,14 @@ export async function applyMigrations(
       throw new Error(`Database contains unknown migration version ${String(applied.version)}.`);
     }
     const expected = sources.find((migration) => migration.version === applied.version);
-    if (expected === undefined || expected.name !== applied.name || expected.sha256 !== applied.sha256) {
-      throw new Error(`Applied migration ${String(applied.version)} does not match committed metadata.`);
+    if (
+      expected === undefined ||
+      expected.name !== applied.name ||
+      expected.sha256 !== applied.sha256
+    ) {
+      throw new Error(
+        `Applied migration ${String(applied.version)} does not match committed metadata.`,
+      );
     }
   }
 

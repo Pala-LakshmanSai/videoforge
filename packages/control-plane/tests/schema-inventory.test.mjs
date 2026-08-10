@@ -93,7 +93,10 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
     assert.equal(foreignKeys.rows.length, 75);
     const definitions = foreignKeys.rows.map((row) => row.definition);
     for (const fragment of REQUIRED_FOREIGN_KEY_FRAGMENTS) {
-      assert.ok(definitions.some((definition) => definition.includes(fragment)), fragment);
+      assert.ok(
+        definitions.some((definition) => definition.includes(fragment)),
+        fragment,
+      );
     }
 
     const triggers = await executor.query(

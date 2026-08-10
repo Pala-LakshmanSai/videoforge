@@ -112,14 +112,7 @@ export async function seedIdentity(executor) {
     `INSERT INTO memberships (id, workspace_id, user_id, normalized_name, role, status)
      VALUES ($1, $2, $3, 'owner', 'ADMIN', 'ACTIVE'),
             ($4, $5, $6, 'owner', 'ADMIN', 'ACTIVE')`,
-    [
-      IDS.membershipA,
-      IDS.workspaceA,
-      IDS.userA,
-      IDS.membershipB,
-      IDS.workspaceB,
-      IDS.userB,
-    ],
+    [IDS.membershipA, IDS.workspaceA, IDS.userA, IDS.membershipB, IDS.workspaceB, IDS.userB],
   );
 }
 
@@ -218,10 +211,10 @@ async function insertReadyAvatar(executor, values) {
       FIXED_TIME,
     ],
   );
-  await executor.query(
-    "UPDATE avatar_profiles SET active_version_id = $1 WHERE id = $2",
-    [values.versionId, values.profileId],
-  );
+  await executor.query("UPDATE avatar_profiles SET active_version_id = $1 WHERE id = $2", [
+    values.versionId,
+    values.profileId,
+  ]);
 }
 
 async function insertPublishedStyle(executor, values) {
@@ -239,7 +232,14 @@ async function insertPublishedStyle(executor, values) {
        $1, $2, $3, 1, 'PUBLISHED',
        'image-style-profile', 'v1', '{"source":"owned-synthetic"}'::jsonb, $4, $5, $6
      )`,
-    [values.versionId, values.workspaceId, values.styleId, values.styleHash, values.userId, FIXED_TIME],
+    [
+      values.versionId,
+      values.workspaceId,
+      values.styleId,
+      values.styleHash,
+      values.userId,
+      FIXED_TIME,
+    ],
   );
   await executor.query("UPDATE image_styles SET active_version_id = $1 WHERE id = $2", [
     values.versionId,

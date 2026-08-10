@@ -232,20 +232,23 @@ test("terminal avatar and style version payloads are immutable", async () => {
     await seedReadyPresets(executor);
     await expectDatabaseError(
       () =>
-        executor.query("UPDATE avatar_profile_versions SET profile_payload = '{}'::jsonb WHERE id = $1", [
-          IDS.avatarVersionA,
-        ]),
-      "23514",
-    );
-    await expectDatabaseError(
-      () => executor.query("DELETE FROM avatar_profile_versions WHERE id = $1", [IDS.avatarVersionA]),
+        executor.query(
+          "UPDATE avatar_profile_versions SET profile_payload = '{}'::jsonb WHERE id = $1",
+          [IDS.avatarVersionA],
+        ),
       "23514",
     );
     await expectDatabaseError(
       () =>
-        executor.query("UPDATE image_style_versions SET profile_payload = '{}'::jsonb WHERE id = $1", [
-          IDS.styleVersionA,
-        ]),
+        executor.query("DELETE FROM avatar_profile_versions WHERE id = $1", [IDS.avatarVersionA]),
+      "23514",
+    );
+    await expectDatabaseError(
+      () =>
+        executor.query(
+          "UPDATE image_style_versions SET profile_payload = '{}'::jsonb WHERE id = $1",
+          [IDS.styleVersionA],
+        ),
       "23514",
     );
     await expectDatabaseError(
@@ -279,7 +282,10 @@ test("locked revisions retain exact preset, runtime-source, and config snapshots
       revision_config_hash: HASHES.revisionA,
     });
     await expectDatabaseError(
-      () => executor.query("UPDATE project_revisions SET title = 'Mutated' WHERE id = $1", [IDS.revisionA]),
+      () =>
+        executor.query("UPDATE project_revisions SET title = 'Mutated' WHERE id = $1", [
+          IDS.revisionA,
+        ]),
       "23514",
     );
     await expectDatabaseError(

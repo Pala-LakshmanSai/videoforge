@@ -24,15 +24,7 @@ async function insertOutbox(executor, { id, dedupeKey }) {
        payload_contract_name, payload_contract_version, payload_hash, payload, available_at
      ) VALUES ($1, $2, $3, $4, 'DISPATCH', 'PENDING', $5,
                'worker-job-envelope', 'v1', $6, '{"transport":"none"}'::jsonb, $7)`,
-    [
-      id,
-      IDS.workspaceA,
-      IDS.taskA,
-      IDS.attemptA1,
-      dedupeKey,
-      HASHES.payloadA1,
-      FIXED_TIME,
-    ],
+    [id, IDS.workspaceA, IDS.taskA, IDS.attemptA1, dedupeKey, HASHES.payloadA1, FIXED_TIME],
   );
 }
 
@@ -44,17 +36,7 @@ async function insertWorkflowEvent(executor, { id, sequence, kind, hash }) {
        payload_contract_name, payload_contract_version, payload_hash, payload, occurred_at
      ) VALUES ($1, $2, $3, $4, $5, 'ATTEMPT', $5, $6, $7,
                'workflow-event', 'v1', $8, '{"source":"owned-synthetic"}'::jsonb, $9)`,
-    [
-      id,
-      IDS.workspaceA,
-      IDS.workflowA,
-      IDS.taskA,
-      IDS.attemptA1,
-      sequence,
-      kind,
-      hash,
-      FIXED_TIME,
-    ],
+    [id, IDS.workspaceA, IDS.workflowA, IDS.taskA, IDS.attemptA1, sequence, kind, hash, FIXED_TIME],
   );
 }
 
@@ -157,7 +139,10 @@ test("workflow and cost events are append-only, unique, and strictly monotonic",
       "23514",
     );
     await expectDatabaseError(
-      () => executor.query("UPDATE workflow_events SET payload = '{}'::jsonb WHERE id = $1", [IDS.eventA1]),
+      () =>
+        executor.query("UPDATE workflow_events SET payload = '{}'::jsonb WHERE id = $1", [
+          IDS.eventA1,
+        ]),
       "23514",
     );
     await expectDatabaseError(
@@ -188,7 +173,8 @@ test("workflow and cost events are append-only, unique, and strictly monotonic",
       "23514",
     );
     await expectDatabaseError(
-      () => executor.query("UPDATE cost_events SET amount_micro_usd = 99 WHERE id = $1", [IDS.costA1]),
+      () =>
+        executor.query("UPDATE cost_events SET amount_micro_usd = 99 WHERE id = $1", [IDS.costA1]),
       "23514",
     );
     await expectDatabaseError(
@@ -305,9 +291,10 @@ test("one task has one accepted result while every duplicate attempt remains vis
       { id: IDS.attemptA2, ordinal: 2, state: "SUCCEEDED", result_disposition: "ACCEPTED" },
       { id: IDS.attemptA3, ordinal: 3, state: "SUCCEEDED", result_disposition: "REJECTED" },
     ]);
-    const task = await executor.query("SELECT accepted_attempt_id FROM generation_tasks WHERE id = $1", [
-      IDS.taskA,
-    ]);
+    const task = await executor.query(
+      "SELECT accepted_attempt_id FROM generation_tasks WHERE id = $1",
+      [IDS.taskA],
+    );
     assert.equal(task.rows[0].accepted_attempt_id, IDS.attemptA2);
   });
 });
@@ -406,10 +393,10 @@ test("archive changes catalog visibility without destroying revision, attempt, o
       "UPDATE image_styles SET status = 'ARCHIVED', archived_at = $1 WHERE id = $2",
       [FIXED_TIME, IDS.styleA],
     );
-    await executor.query("UPDATE projects SET status = 'ARCHIVED', archived_at = $1 WHERE id = $2", [
-      FIXED_TIME,
-      IDS.projectA,
-    ]);
+    await executor.query(
+      "UPDATE projects SET status = 'ARCHIVED', archived_at = $1 WHERE id = $2",
+      [FIXED_TIME, IDS.projectA],
+    );
     await executor.query(
       "UPDATE assets SET state = 'ARCHIVED', archived_at = $1 WHERE id IN ($2, $3)",
       [FIXED_TIME, IDS.voiceoverA, IDS.outputA1],

@@ -102,7 +102,14 @@ test("the repository contract harness always disposes a fresh failing adapter", 
   registerRepositoryContractSuite(
     registrar,
     factory,
-    [{ behaviorId, async run() { throw new Error("owned scenario failure"); } }],
+    [
+      {
+        behaviorId,
+        async run() {
+          throw new Error("owned scenario failure");
+        },
+      },
+    ],
     { requireCompleteCoverage: false },
   );
 
