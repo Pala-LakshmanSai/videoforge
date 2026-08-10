@@ -193,6 +193,30 @@ export interface PersistedTimelinePlan {
   readonly createdAt: UtcTimestamp;
 }
 
+export interface MaterializeSelectedSpanAudioCommand extends IdempotentMutation {
+  readonly projectId: EntityId;
+  readonly projectRevisionId: EntityId;
+  readonly expectedHeadVersion: number;
+  readonly timelinePlanId: EntityId;
+  readonly transcriptId: EntityId;
+  readonly spanId: EntityId;
+  readonly expectedSpanVersion: number;
+  readonly outputAttemptId: EntityId;
+  readonly materializedAssetId: EntityId;
+  readonly materializedBinarySha256: Sha256;
+  readonly materializedDurationMs: number;
+  readonly materializedAt: UtcTimestamp;
+}
+
+export interface MaterializedSelectedSpanAudio extends SelectedSpanAudioRecord {
+  readonly state: "MATERIALIZED";
+  readonly materializedAssetId: EntityId;
+  readonly materializedBinarySha256: Sha256;
+  readonly materializedDurationMs: number;
+  readonly version: number;
+  readonly materializedAt: UtcTimestamp;
+}
+
 export type TimingInvalidationReason =
   | "SOURCE_CHANGED"
   | "MODEL_CHANGED"
@@ -250,7 +274,8 @@ export type TimingMissing =
   | "PROJECT_REVISION"
   | "TIMING_HEAD"
   | "TIMELINE_PLAN"
-  | "TRANSCRIPT";
+  | "TRANSCRIPT"
+  | "SELECTED_SPAN_AUDIO";
 export type TimingInvariant =
   | CommonInvariantCode
   | "CANONICAL_DOCUMENT_MISMATCH"
@@ -280,6 +305,18 @@ export interface TimingRepository {
   ): Promise<
     IdempotentRepositoryResult<
       PersistedTimelinePlan,
+      TimingConflict,
+      TimingMissing,
+      TimingInvariant
+    >
+  >;
+
+  materializeSelectedSpanAudio(
+    scope: WorkspaceActorScope,
+    command: MaterializeSelectedSpanAudioCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      MaterializedSelectedSpanAudio,
       TimingConflict,
       TimingMissing,
       TimingInvariant

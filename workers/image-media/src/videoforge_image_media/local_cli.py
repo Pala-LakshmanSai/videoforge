@@ -19,6 +19,10 @@ from .jobs.render import (
     RenderTools,
     SubprocessRunner as RenderSubprocessRunner,
 )
+from .jobs.span_audio import (
+    SpanAudioMaterializationJob,
+    SubprocessRunner as SpanAudioSubprocessRunner,
+)
 from .jobs.transcribe import (
     SubprocessRunner as TranscribeSubprocessRunner,
     TranscriptionJob,
@@ -286,6 +290,19 @@ def _render(arguments: argparse.Namespace, resolver: LocalArtifactResolver) -> d
     ).run(document, claimed_attempt_id=arguments.claimed_attempt_id)
 
 
+def _materialize_span(
+    arguments: argparse.Namespace, resolver: LocalArtifactResolver
+) -> dict[str, Any]:
+    document = _read_input(Path(arguments.input), resolver.root)
+    return SpanAudioMaterializationJob(
+        artifacts=resolver,
+        process=SpanAudioSubprocessRunner(),
+        ffmpeg=_absolute_tool(arguments.ffmpeg),
+        ffprobe=_absolute_tool(arguments.ffprobe),
+        cancellation=FileCancellationProbe(resolver.root),
+    ).run(document)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="VideoForge provider-free local media job bridge")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -298,6 +315,12 @@ def _parser() -> argparse.ArgumentParser:
     transcribe.add_argument("--whisper-version", required=True)
     transcribe.add_argument("--ffmpeg", required=True)
     transcribe.add_argument("--ffprobe", required=True)
+
+    materialize_span = subparsers.add_parser("materialize-span")
+    materialize_span.add_argument("--artifact-root", required=True)
+    materialize_span.add_argument("--input", required=True)
+    materialize_span.add_argument("--ffmpeg", required=True)
+    materialize_span.add_argument("--ffprobe", required=True)
 
     render = subparsers.add_parser("render")
     render.add_argument("--artifact-root", required=True)
@@ -314,11 +337,12 @@ def main() -> int:
     arguments = _parser().parse_args()
     try:
         resolver = LocalArtifactResolver(Path(arguments.artifact_root))
-        result = (
-            _transcribe(arguments, resolver)
-            if arguments.command == "transcribe"
-            else _render(arguments, resolver)
-        )
+        if arguments.command == "transcribe":
+            result = _transcribe(arguments, resolver)
+        elif arguments.command == "materialize-span":
+            result = _materialize_span(arguments, resolver)
+        else:
+            result = _render(arguments, resolver)
     except (OSError, TypeError, ValueError):
         print("Local media bridge rejected its trusted configuration.", file=sys.stderr)
         return 2

@@ -11,6 +11,10 @@ const suites = [
     label: "image-media/transcribe",
     start: "workers/image-media/tests/jobs/transcribe",
   },
+  {
+    label: "image-media/span-audio",
+    start: "workers/image-media/tests/jobs/span_audio",
+  },
 ];
 let uv;
 try {

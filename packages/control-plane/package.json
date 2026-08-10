@@ -41,6 +41,9 @@
     "test": "pnpm build && node --test tests/*.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@videoforge/contracts": "workspace:*"
+  },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.4",
     "@types/node": "22.18.0",

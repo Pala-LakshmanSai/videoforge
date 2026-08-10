@@ -2338,6 +2338,54 @@ async function loadPersistedTimelinePlan(
   });
 }
 
+function mapMaterializedSelectedSpanAudio(row: Row): TimingContracts.MaterializedSelectedSpanAudio {
+  return Object.freeze({
+    spanId: stringValue(row.id, "selected_span_audio.id"),
+    spanKey: stringValue(row.span_key, "selected_span_audio.span_key"),
+    timelineSegmentId: stringValue(
+      row.timeline_segment_id,
+      "selected_span_audio.timeline_segment_id",
+    ),
+    transcriptId: stringValue(row.transcript_id, "selected_span_audio.transcript_id"),
+    taskKey: stringValue(row.task_key, "selected_span_audio.task_key"),
+    sourceAssetId: stringValue(row.source_asset_id, "selected_span_audio.source_asset_id"),
+    sourceBinarySha256: stringValue(
+      row.source_binary_sha256,
+      "selected_span_audio.source_binary_sha256",
+    ) as Sha256,
+    selectedStartMs: numberValue(row.selected_start_ms, "selected_span_audio.selected_start_ms"),
+    selectedEndMsExclusive: numberValue(
+      row.selected_end_ms_exclusive,
+      "selected_span_audio.selected_end_ms_exclusive",
+    ),
+    paddedStartMs: numberValue(row.padded_start_ms, "selected_span_audio.padded_start_ms"),
+    paddedEndMsExclusive: numberValue(
+      row.padded_end_ms_exclusive,
+      "selected_span_audio.padded_end_ms_exclusive",
+    ),
+    trimStartMs: numberValue(row.trim_start_ms, "selected_span_audio.trim_start_ms"),
+    trimEndMsExclusive: numberValue(
+      row.trim_end_ms_exclusive,
+      "selected_span_audio.trim_end_ms_exclusive",
+    ),
+    state: "MATERIALIZED",
+    materializedAssetId: stringValue(
+      row.materialized_asset_id,
+      "selected_span_audio.materialized_asset_id",
+    ),
+    materializedBinarySha256: stringValue(
+      row.materialized_binary_sha256,
+      "selected_span_audio.materialized_binary_sha256",
+    ) as Sha256,
+    materializedDurationMs: numberValue(
+      row.materialized_duration_ms,
+      "selected span materialized duration",
+    ),
+    version: numberValue(row.version, "selected_span_audio.version"),
+    materializedAt: timestamp(row.materialized_at, "selected_span_audio.materialized_at"),
+  });
+}
+
 function createTimingRepository(context: RepositoryContext): TimingContracts.TimingRepository {
   return {
     async persistTranscriptTiming(scope, command) {
@@ -2367,9 +2415,25 @@ function createTimingRepository(context: RepositoryContext): TimingContracts.Tim
         }
         const document = await one(
           executor,
-          `SELECT kind, state, canonical_contract_name, canonical_contract_version,
-                  canonical_document_sha256
-             FROM public.assets WHERE workspace_id = $1 AND id = $2`,
+          `SELECT document.kind, document.state, document.canonical_contract_name,
+                  document.canonical_contract_version, document.canonical_document_sha256,
+                  document.source_attempt_id,
+                  attempt.state AS source_attempt_state,
+                  attempt.result_disposition AS source_attempt_disposition,
+                  attempt.output_asset_id AS source_attempt_output_asset_id,
+                  attempt.input_hash AS source_attempt_input_hash,
+                  task.id AS source_task_id, task.owner_type AS source_task_owner_type,
+                  task.owner_id AS source_task_owner_id, task.project_revision_id,
+                  task.lane AS source_task_lane, task.state AS source_task_state,
+                  task.accepted_attempt_id,
+                  document.metadata->>'asr_input_hash' AS document_asr_input_hash
+             FROM public.assets document
+             LEFT JOIN public.attempts attempt
+               ON attempt.workspace_id = document.workspace_id
+              AND attempt.id = document.source_attempt_id
+             LEFT JOIN public.generation_tasks task
+               ON task.workspace_id = attempt.workspace_id AND task.id = attempt.task_id
+            WHERE document.workspace_id = $1 AND document.id = $2`,
           [scope.workspaceId, command.canonicalDocumentAssetId],
         );
         if (document === null) return missing("ASSET", command.canonicalDocumentAssetId);
@@ -2383,6 +2447,24 @@ function createTimingRepository(context: RepositoryContext): TimingContracts.Tim
           return invariant(
             "CANONICAL_DOCUMENT_MISMATCH",
             "transcript canonical asset does not match its exact document identity",
+          );
+        }
+        if (
+          document.source_attempt_id !== null &&
+          (document.source_attempt_state !== "SUCCEEDED" ||
+            document.source_attempt_disposition !== "ACCEPTED" ||
+            document.source_attempt_output_asset_id !== command.canonicalDocumentAssetId ||
+            document.source_task_owner_type !== "PROJECT_REVISION" ||
+            document.source_task_owner_id !== command.projectRevisionId ||
+            document.project_revision_id !== command.projectRevisionId ||
+            document.source_task_lane !== "TRANSCRIBE" ||
+            document.source_task_state !== "COMPLETE" ||
+            document.accepted_attempt_id !== document.source_attempt_id ||
+            document.document_asr_input_hash !== document.source_attempt_input_hash)
+        ) {
+          return invariant(
+            "TIMING_INPUT_MISMATCH",
+            "transcript artifact is not the exact accepted local transcription attempt",
           );
         }
         const head = await one(
@@ -2849,6 +2931,197 @@ function createTimingRepository(context: RepositoryContext): TimingContracts.Tim
         );
         if (inserted === null) throw new Error("persisted timeline plan disappeared");
         return write(inserted);
+      });
+    },
+
+    async materializeSelectedSpanAudio(scope, command) {
+      if (
+        !Number.isSafeInteger(command.expectedHeadVersion) ||
+        command.expectedHeadVersion < 2 ||
+        !Number.isSafeInteger(command.expectedSpanVersion) ||
+        command.expectedSpanVersion < 1 ||
+        !Number.isSafeInteger(command.materializedDurationMs) ||
+        command.materializedDurationMs < 1
+      ) {
+        return invariant("TIMING_INPUT_MISMATCH", "span materialization facts are invalid");
+      }
+      return context.atomic.run(async (executor) => {
+        const project = await findProject(executor, scope.workspaceId, command.projectId);
+        if (project === null) return missing("PROJECT", command.projectId);
+        const revision = await findProjectRevision(
+          executor,
+          scope.workspaceId,
+          command.projectId,
+          command.projectRevisionId,
+        );
+        if (revision === null) return missing("PROJECT_REVISION", command.projectRevisionId);
+        if (revision.status !== "LOCKED") {
+          return invariant("REVISION_NOT_LOCKED", "span audio requires one exact locked revision");
+        }
+        const head = await one(
+          executor,
+          `SELECT * FROM public.revision_timing_heads
+            WHERE workspace_id = $1 AND project_revision_id = $2 FOR UPDATE`,
+          [scope.workspaceId, command.projectRevisionId],
+        );
+        if (head === null) return missing("TIMING_HEAD", command.projectRevisionId);
+        const currentVersion = timingHeadVersion(head);
+        if (currentVersion !== command.expectedHeadVersion) {
+          return conflict(
+            "TIMING_HEAD_VERSION_MISMATCH",
+            "timing head changed before span materialization",
+            currentVersion,
+          );
+        }
+        if (
+          head.current_transcript_id !== command.transcriptId ||
+          head.current_timeline_plan_id !== command.timelinePlanId
+        ) {
+          return invariant(
+            "TIMING_INPUT_MISMATCH",
+            "span audio does not belong to the current timing head",
+          );
+        }
+        const span = await one(
+          executor,
+          `SELECT span.*, artifact.kind AS materialized_kind,
+                  artifact.state AS materialized_asset_state,
+                  artifact.project_id AS materialized_project_id,
+                  artifact.project_revision_id AS materialized_revision_id,
+                  artifact.source_attempt_id AS materialized_source_attempt_id,
+                  artifact.binary_sha256 AS materialized_asset_sha256,
+                  artifact.content_type AS materialized_content_type,
+                  artifact.duration_ms AS materialized_asset_duration_ms,
+                  artifact.metadata->>'span_id' AS materialized_span_id,
+                  artifact.metadata->>'timeline_plan_id' AS materialized_timeline_plan_id,
+                  artifact.metadata->>'transcript_id' AS materialized_transcript_id,
+                  artifact.metadata->>'task_key' AS materialized_artifact_task_key,
+                  artifact.metadata->>'source_asset_id' AS materialized_source_asset_id,
+                  artifact.metadata->>'source_binary_sha256' AS materialized_source_sha256,
+                  artifact.metadata->>'padded_start_ms' AS materialized_padded_start_ms,
+                  artifact.metadata->>'padded_end_ms_exclusive' AS materialized_padded_end_ms,
+                  artifact.metadata->>'span_audio_input_hash' AS materialized_input_hash,
+                  attempt.state AS materialized_attempt_state,
+                  attempt.result_disposition AS materialized_attempt_disposition,
+                  attempt.output_asset_id AS materialized_attempt_output_asset_id,
+                  attempt.input_hash AS materialized_attempt_input_hash,
+                  task.owner_type AS materialized_task_owner_type,
+                  task.owner_id AS materialized_task_owner_id,
+                  task.project_revision_id AS materialized_task_revision_id,
+                  task.lane AS materialized_task_lane,
+                  task.task_key AS materialized_generation_task_key,
+                  task.state AS materialized_task_state,
+                  task.accepted_attempt_id AS materialized_accepted_attempt_id
+             FROM public.selected_span_audio span
+             LEFT JOIN public.assets artifact
+               ON artifact.workspace_id = span.workspace_id
+              AND artifact.id = $6
+             LEFT JOIN public.attempts attempt
+               ON attempt.workspace_id = artifact.workspace_id
+              AND attempt.id = artifact.source_attempt_id
+             LEFT JOIN public.generation_tasks task
+               ON task.workspace_id = attempt.workspace_id AND task.id = attempt.task_id
+            WHERE span.workspace_id = $1 AND span.project_revision_id = $2
+              AND span.timeline_plan_id = $3 AND span.transcript_id = $4 AND span.id = $5
+            FOR UPDATE OF span`,
+          [
+            scope.workspaceId,
+            command.projectRevisionId,
+            command.timelinePlanId,
+            command.transcriptId,
+            command.spanId,
+            command.materializedAssetId,
+          ],
+        );
+        if (span === null) return missing("SELECTED_SPAN_AUDIO", command.spanId);
+        const spanVersion = numberValue(span.version, "selected_span_audio.version");
+        if (spanVersion !== command.expectedSpanVersion) {
+          return conflict(
+            "EXPECTED_VERSION_MISMATCH",
+            "selected span changed before materialization",
+            spanVersion,
+          );
+        }
+        if (span.state === "MATERIALIZED") {
+          const existing = mapMaterializedSelectedSpanAudio({
+            ...span,
+            materialized_duration_ms: span.materialized_asset_duration_ms,
+          });
+          return existing.materializedAssetId === command.materializedAssetId &&
+            existing.materializedBinarySha256 === command.materializedBinarySha256 &&
+            existing.materializedDurationMs === command.materializedDurationMs &&
+            existing.materializedAt === command.materializedAt
+            ? write(existing, true)
+            : conflict("STATE_CONFLICT", "selected span already has different materialized audio");
+        }
+        const expectedDuration =
+          numberValue(span.padded_end_ms_exclusive, "selected_span_audio.padded_end_ms_exclusive") -
+          numberValue(span.padded_start_ms, "selected_span_audio.padded_start_ms");
+        if (
+          expectedDuration !== command.materializedDurationMs ||
+          span.materialized_kind !== "AUDIO_SPAN" ||
+          (span.materialized_asset_state !== "VERIFIED" &&
+            span.materialized_asset_state !== "ACCEPTED") ||
+          span.materialized_project_id !== command.projectId ||
+          span.materialized_revision_id !== command.projectRevisionId ||
+          span.materialized_source_attempt_id !== command.outputAttemptId ||
+          span.materialized_asset_sha256 !== command.materializedBinarySha256 ||
+          span.materialized_content_type !== "audio/wav" ||
+          span.materialized_asset_duration_ms === null ||
+          numberValue(span.materialized_asset_duration_ms, "assets.duration_ms") !==
+            command.materializedDurationMs ||
+          span.materialized_span_id !== command.spanId ||
+          span.materialized_timeline_plan_id !== command.timelinePlanId ||
+          span.materialized_transcript_id !== command.transcriptId ||
+          span.materialized_artifact_task_key !== span.task_key ||
+          span.materialized_generation_task_key !== span.task_key ||
+          span.materialized_source_asset_id !== span.source_asset_id ||
+          span.materialized_source_sha256 !== span.source_binary_sha256 ||
+          span.materialized_padded_start_ms !== String(span.padded_start_ms) ||
+          span.materialized_padded_end_ms !== String(span.padded_end_ms_exclusive) ||
+          span.materialized_input_hash !== span.materialized_attempt_input_hash ||
+          span.materialized_attempt_state !== "SUCCEEDED" ||
+          span.materialized_attempt_disposition !== "ACCEPTED" ||
+          span.materialized_attempt_output_asset_id !== command.materializedAssetId ||
+          span.materialized_task_owner_type !== "PROJECT_REVISION" ||
+          span.materialized_task_owner_id !== command.projectRevisionId ||
+          span.materialized_task_revision_id !== command.projectRevisionId ||
+          span.materialized_task_lane !== "PREPARE" ||
+          span.materialized_task_state !== "COMPLETE" ||
+          span.materialized_accepted_attempt_id !== command.outputAttemptId
+        ) {
+          return invariant(
+            "SELECTED_SPAN_OWNERSHIP_MISMATCH",
+            "materialized audio is not the exact accepted output for this selected span",
+          );
+        }
+        const nextSpanVersion = spanVersion + 1;
+        await executor.query(
+          `UPDATE public.selected_span_audio
+              SET state = 'MATERIALIZED', materialized_asset_id = $3,
+                  materialized_binary_sha256 = $4, version = $5, materialized_at = $6
+            WHERE workspace_id = $1 AND id = $2 AND state = 'PLANNED'`,
+          [
+            scope.workspaceId,
+            command.spanId,
+            command.materializedAssetId,
+            command.materializedBinarySha256,
+            nextSpanVersion,
+            command.materializedAt,
+          ],
+        );
+        const materialized = await one(
+          executor,
+          `SELECT span.*, artifact.duration_ms AS materialized_duration_ms
+             FROM public.selected_span_audio span
+             JOIN public.assets artifact
+               ON artifact.workspace_id = span.workspace_id
+              AND artifact.id = span.materialized_asset_id
+            WHERE span.workspace_id = $1 AND span.id = $2`,
+          [scope.workspaceId, command.spanId],
+        );
+        if (materialized === null) throw new Error("materialized span audio disappeared");
+        return write(mapMaterializedSelectedSpanAudio(materialized));
       });
     },
 
@@ -5729,6 +6002,7 @@ const receiptOperations = Object.freeze({
   }),
   timing: Object.freeze({
     invalidateTiming: "timing_invalidate",
+    materializeSelectedSpanAudio: "timing_materialize_selected_span_audio",
     persistTimelinePlan: "timing_persist_timeline_plan",
     persistTranscriptTiming: "timing_persist_transcript",
   }),

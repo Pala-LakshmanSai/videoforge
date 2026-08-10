@@ -171,6 +171,10 @@ importers:
         version: 5.9.2
 
   packages/control-plane:
+    dependencies:
+      '@videoforge/contracts':
+        specifier: workspace:*
+        version: link:../contracts
     devDependencies:
       '@electric-sql/pglite':
         specifier: 0.5.4
