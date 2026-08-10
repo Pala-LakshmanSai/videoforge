@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T03:35:37Z"
+updated_at: "2026-08-10T04:42:38Z"
 
 phase: implementation_in_progress
 implementation_authorized_in_current_task: false
 current_milestone: phase_1_durable_control_plane_foundation
-current_task: VF-1-01
+current_task: VF-1-02
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -17,8 +17,8 @@ repository:
   base_commit: "bea48f7124609be27d1ab57261b2c2f4269625ea"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
-  verified_implementation_commit: "bea48f7124609be27d1ab57261b2c2f4269625ea"
-  last_good_commit: "bea48f7124609be27d1ab57261b2c2f4269625ea"
+  verified_implementation_commit: "6d0b66fac9fd44537bbfccd789f2023f3bcaf064"
+  last_good_commit: "ae9d8929d97bab2eb4cd9fd8f16fc8b5d724958a"
   working_tree_expected: clean
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
@@ -86,64 +86,72 @@ completed_milestones:
     status: complete
     summary: "Owned narration through real local ASR, deterministic scheduler, exact fixture assets, FFmpeg v3 render/probe, API lifecycle, Chrome play/seek/approve/download, and accepted smooth zoom at $0."
 
-active_ownership:
+completed_tasks:
   - task_id: VF-1-01
-    owner: next_chat_integration_owner
-    paths:
-      - packages/control-plane/**
-      - package.json
-      - pnpm-lock.yaml
-      - turbo.json
-      - project-context/tasks/VF-1-01.md
-      - project-context/CURRENT_STATE.yaml
-    note: "The integration owner alone edits migrations, package metadata, lockfiles, root scripts, and context; optional child lanes are bounded by the task brief."
+    status: complete
+    summary: "Committed provider-free PostgreSQL foundation migration, query-library-neutral repository contracts, reusable adapter contract harness, PGlite invariant proof, and truthful Turbo/database verification integration."
+    implementation_commit: "6d0b66fac9fd44537bbfccd789f2023f3bcaf064"
+    evidence_commit: "ae9d8929d97bab2eb4cd9fd8f16fc8b5d724958a"
+    evidence: "evidence/acceptance/VF-1-01/2026-08-10-durable-relational-foundation"
+
+active_ownership: []
 
 recommended_next_task:
-  task_id: VF-1-01
+  task_id: VF-1-02
   milestone: phase_1_durable_control_plane_foundation
-  read_profile: phase1_foundation
-  task_brief: tasks/VF-1-01.md
-  goal: "Create @videoforge/control-plane with committed additive PostgreSQL migrations, query-library-neutral repository contracts, and provider-free PGlite migration/constraint/adapter contract tests."
+  status: blocked_missing_exact_task_brief
+  dependency_status: ready
+  authorization_status: blocked_missing_exact_task_brief
+  read_profile: live_development
+  task_brief: null
+  goal: "Planned only: make the Hono app runtime-neutral and add local Cloudflare Vite/Worker emulator bindings without provisioning or deployment."
   dependencies:
-    - "Phase 0C accepted and closed at evidence/acceptance/VF-0C-08/2026-08-10-continuous-zoom-v3"
-    - "DEC_DB_001, DEC_HOSTING_001, DEC_QUEUE_001, and DEC_CONTRACT_001 locked"
-    - "Clean current main HEAD descending from verified implementation commit bea48f7124609be27d1ab57261b2c2f4269625ea"
-    - "No uncommitted ownership outside the exact task brief"
+    - "VF-1-01 is committed and green at 6d0b66fac9fd44537bbfccd789f2023f3bcaf064 with evidence at evidence/acceptance/VF-1-01/2026-08-10-durable-relational-foundation"
+    - "The serial execution plan identifies VF-1-02 next"
+    - "Blocking: tasks/VF-1-02.md does not exist, so exact scope, files, ownership, acceptance, and local authority are not recorded"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   live_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
-  expected_evidence: "evidence/acceptance/VF-1-01/<UTC-date>-durable-relational-foundation"
+  expected_evidence: null
   required_handoff:
-    - "Committed @videoforge/control-plane package and first additive migration"
-    - "Reusable repository contract suite and PGlite constraint/migration proof"
-    - "Provider-free pnpm db:check integrated into pnpm verify"
-    - "No API/UI behavior change, Neon connection, cloud mutation, credential use, or external spend"
-    - "CURRENT_STATE advanced to VF-1-02 with exact commit, table/constraint/test counts, commands, and evidence"
+    - "Author and approve an exact tasks/VF-1-02.md brief before implementation starts"
+    - "Add the brief to an explicit manifest read profile and record its path/ownership/acceptance envelope here"
+    - "Keep provisioning, deployment, cloud mutations, credentials, providers, and external spend unauthorized"
   safe_parallelism:
-    maximum_lanes_including_integration: 3
-    integration_owner: "migrations, package metadata, lockfile, root scripts, context"
-    optional_repository_lane: "packages/control-plane/src/repositories/** only after vocabulary commit"
-    optional_test_lane: "packages/control-plane/tests/** only against committed APIs"
+    maximum_lanes_including_integration: 1
+    status: disabled_until_exact_task_brief
+    note: "No VF-1-02 ownership plan is recorded; do not spawn implementation lanes."
   prohibited_in_task:
+    - "Any VF-1-02 implementation, dependency addition, or file ownership before the exact brief exists"
+    - "Cloudflare provisioning/deployment or any other cloud mutation"
     - "Neon project/branch/network access or DATABASE_URL use"
-    - "Production ORM/query adapter, Better Auth, R2, Cloudflare binding, or deployment"
-    - "Provider credentials/calls, model downloads, public tunnel, or LAN listener"
-    - "Resetting to the older base commit or modifying accepted UI/render behavior"
+    - "Provider credentials/calls, model downloads, public tunnel, LAN listener, or external spend"
+    - "Modifying the accepted UI/render behavior without separately recorded authority"
 
 last_green:
   commands:
     - "TURBO_FORCE=true pnpm verify"
-    - "pnpm test:local-slice"
+    - "pnpm --filter @videoforge/control-plane lint"
+    - "pnpm --filter @videoforge/control-plane typecheck"
+    - "pnpm --filter @videoforge/control-plane test"
+    - "pnpm --filter @videoforge/control-plane build"
+    - "pnpm db:check"
+    - "pnpm context:validate"
+    - "pnpm secret:scan"
     - "pnpm audit:dependencies"
-    - "Real Chrome 100% inspection of Create, Settings disclosures, Queue, Progress, Avatar Hub, and Usage"
-    - "Installed-Chrome playback/seek of /Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v3.mp4"
-    - "shasum -a 256 /Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v3.mp4"
-  checked_at: "2026-08-10T03:32:28Z"
+    - "git diff --check"
+  checked_at: "2026-08-10T04:41:12Z"
   result: pass
-  verified_commit: "bea48f7124609be27d1ab57261b2c2f4269625ea"
-  evidence: "evidence/acceptance/VF-0C-08/2026-08-10-continuous-zoom-v3"
+  verified_commit: "6d0b66fac9fd44537bbfccd789f2023f3bcaf064"
+  evidence: "evidence/acceptance/VF-1-01/2026-08-10-durable-relational-foundation"
   counts:
+    control_plane_pglite_tests: 16
+    repository_contract_behaviors: 13
+    relational_public_tables: 30
+    relational_indexes: 116
+    relational_constraints: 663
+    relational_invariant_triggers: 10
     web_server_component_tests: 132
     dock_motion_unit_tests: 7
     typescript_contract_jcs_tests: 51
@@ -158,12 +166,11 @@ last_green:
     playwright_chrome_journeys_passed: 34
     playwright_chrome_journeys_intentionally_skipped: 8
   notes:
-    - "The forced verify executed every Turbo task with zero cache hits and passed format, JavaScript/Python lint, typecheck, unit/contract/worker suites, context/schema validation, secret scan, build/route-tree stability, and branded Chrome."
-    - "At Chrome 100%, the compact UI uses a 15 px root without CSS zoom/shell transform; Settings disclosures measure 12 px to the first card and between cards."
-    - "Attempts 012 and 013 produced the same 1,957,674-byte 1920x1080p30 H.264/AAC v3 replacement: SHA-256 7acc789f9626e23bc12540a452d52822671ba85caf37bf4148e0a6def665e276, duration 37,167 ms, 1,115 frames."
-    - "The API-level local-slice gate reran on the handoff commit as attempt 014 and reproduced the same output SHA/bytes/frames at $0; raw evidence SHA-256 is caa4a84becb547a2dbd827fc24a098cae32b5b51886cee2cb4c9a88bd95ec8ef."
+    - "The forced verify executed every Turbo task with zero cache hits and passed format, JavaScript/Python lint, typecheck, unit/contract/worker suites, database checks, context/schema validation, secret scan, build/route-tree stability, and installed-Chrome Playwright."
+    - "No intentional output-free task emitted Turbo's no-output warning after the metadata correction."
+    - "The migration suite proved 30 tables, 116 indexes, 663 constraints, and 10 invariant triggers; all 16 database tests and 13 reusable repository behaviors passed."
     - "The explicit high-severity dependency audit reported no known vulnerabilities."
-    - "The user accepted that exact v3 replacement in installed Chrome. Historical v1/v2 manifests remain replayable but are not the active profile."
+    - "All task data was owned/synthetic in local PGlite; provider calls remained disabled and external spend was $0."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -178,17 +185,15 @@ blocking_gates_for_production:
   - GATE_COST_001
 
 known_incomplete_boundaries:
-  - "No durable Postgres database, R2 object store, production authentication, Cloudflare Workflow, restart recovery, or provider transport exists yet."
+  - "The committed PostgreSQL schema and repository contracts are a durable foundation only; no production Neon driver/adapter, database connection, R2 object store, production authentication, Cloudflare Workflow, restart recovery, or provider transport exists yet."
   - "No production GPU/execution profile is selectable; all provider/model/cost gates remain open."
   - "The repository has no Git remote and is not published; GitHub Actions are locally inspected/configured but have no external run or off-machine backup proof."
   - "The accepted local pipeline uses owned fixture/local assets and process-local orchestration; it is not a production persistence claim."
 
-known_non_blocking_devex:
-  - "Forced verification is fully green and uncached, but Turbo warns that test tasks declare coverage/** without emitting coverage and that @videoforge/test-fixtures build declares dist/** while using tsc --noEmit. VF-1-01 owns truthful turbo.json output metadata; fix the declarations without dummy artifacts or warning suppression."
+known_non_blocking_devex: []
 
 next_tasks:
-  - "VF-1-01 serial foundation: PostgreSQL migrations + repository contracts + PGlite checks"
-  - "VF-1-02 serial foundation: runtime-neutral Hono + local Cloudflare emulator/bindings, no deployment"
+  - "VF-1-02 planned serial foundation: runtime-neutral Hono + local Cloudflare emulator/bindings, blocked until an exact task brief is authored and selected; no deployment"
   - "VF-1-03/VF-1-04/VF-1-05 parallel after shared foundations: Auth, R2 artifact storage, Postgres/outbox/workflow orchestration"
   - "VF-1-06/VF-1-07/VF-1-08 serial convergence: mock ambiguity/recovery, account isolation/large upload/avatar reuse, export/restore smoke"
   - "VF-0D provider viability may overlap only under its separately recorded exact authorization envelope; no such envelope is active"

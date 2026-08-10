@@ -17,11 +17,12 @@ Phase 0C local ASR → scheduler → FFmpeg → Chrome/download slice are comple
 implementation is still bounded to fixture/process-local state; it does not claim durable database
 recovery, production authentication/storage, or provider transport.
 
-The exact next task is `VF-1-01` in `tasks/VF-1-01.md`: add the provider-free durable relational
-foundation and repository contracts. `CURRENT_STATE.yaml` is the replace-in-place handoff and
-`21_IMPLEMENTATION_EXECUTION_PLAN.md` owns every later dependency, safe parallel lane, gate, and
-authorization boundary. Do not redo the accepted UI, renderer, local slice, or broad architecture
-research.
+`VF-1-01` is complete at implementation commit `6d0b66f`, with provider-free acceptance evidence
+under `evidence/acceptance/VF-1-01/2026-08-10-durable-relational-foundation/`. The next planned
+dependency is `VF-1-02`, but no exact `tasks/VF-1-02.md` brief currently exists. Stop before
+implementation until that brief records scope, ownership, acceptance, and local authority; do not
+infer them from the summary execution plan. `CURRENT_STATE.yaml` is the replace-in-place handoff.
+Do not redo the accepted UI, renderer, local slice, or broad architecture research.
 
 ## Approved MVP
 
@@ -134,7 +135,7 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 
 ## First implementation rule
 
-Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve the accepted fixture shell and user-accepted local short-video slice, begin the durable control-plane foundation at `VF-1-01`, and run only explicitly authorized capped viability spikes. Do not wait until the end to integrate.
+Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve the accepted fixture shell, user-accepted local short-video slice, and completed `VF-1-01` relational foundation. Do not begin `VF-1-02` until its exact brief is present and selected, and run only explicitly authorized capped viability spikes. Do not wait until the end to integrate.
 
 ## Context navigation
 
