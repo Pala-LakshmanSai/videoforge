@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: approved execution sequence; Phase 0C implementation is complete through a provider-free subtle-zoom replacement, with final installed-Chrome review still required
+Status: approved execution sequence; Phase 0C implementation is complete through a provider-free continuous-zoom v3 replacement, with final installed-Chrome review still required
 Read when: starting a new implementation chat, selecting the next task, assigning parallel ownership, or integrating a completed task.
 
 ## Authority and purpose
@@ -18,14 +18,14 @@ The following is already implemented and must be preserved:
 - Phase 0A/0C contract foundation: sixteen canonical contracts, Ajv/Zod/Pydantic entry-point parity, generated structural TypeScript types, TypeScript RFC 8785 JCS, worker-job and orchestration-state boundaries, local media job/result boundaries, fixture profiles, CI, secret scan, and stable root commands.
 - Phase 0B fixture shell: approved visual direction with the later user-directed compact 100%-zoom density refinement, app-native in-flow controls, reusable Avatar/Image Style Hubs, access fixtures, semantic preflight, immutable pins, mutation concurrency, review approval binding, responsive layouts, and real-Chrome acceptance.
 - Phase 0C through VF-0C-07: owned local narration, real whisper.cpp timing, deterministic scheduling, exact accepted-asset resolution, real FFmpeg render/probe, bounded local API lifecycle, and truthful playback/download UI.
-- VF-0C-08 through replacement: real Chrome created the project, observed the pipeline, played and sought the first real MP4, approved and downloaded matching bytes, and manually replayed that file. The replay exposed excessive visible zoom shake; `ffmpeg-render-v2` and its hash-verified replacement are implemented, and only human review of that replacement remains.
+- VF-0C-08 through replacement: real Chrome created the project, observed the pipeline, played and sought the first real MP4, approved and downloaded matching bytes, and manually replayed it. The first replay exposed excessive zoom shake; after reviewing the restrained v2 replacement, the user requested exactly one percentage point more endpoint zoom and even smoother motion. `ffmpeg-render-v3` and its hash-verified continuous-subpixel replacement are implemented, and only human review of that replacement remains.
 - `GATE_UI_001` is closed. Preserve the compact 100%-zoom density, scale-only dock, and established visual system unless the user explicitly asks or a later feature exposes a verified regression. The 2026-08-10 density change was such an explicit request and supersedes the earlier 18 px/52 px/94 px baseline.
 - Fixture mode remains the default, makes no provider call, and authorizes `$0` external spend.
 - The stable development URL remains `http://localhost:4173`; visible work must reuse it and retain the approved routes.
 
 Known unfinished boundaries are not hidden:
 
-- The real local pipeline passes automated API/media checks and real-Chrome create/play/seek/approve/download. The first downloaded-file replay worked but failed the user's motion-quality review. Phase 0C remains open for installed-Chrome playback and seek of the `ffmpeg-render-v2` replacement, including explicit confirmation that its 1.5–2.5% centered zoom is subtle and smooth.
+- The real local pipeline passes automated API/media checks and real-Chrome create/play/seek/approve/download. Phase 0C remains open for installed-Chrome playback and seek of the `ffmpeg-render-v3` replacement, including explicit confirmation that its 2.5–3.5% centered continuous cubic zoom has the requested strength and smoothness.
 - Python intentionally does not derive RFC 8785 hashes. TypeScript is the sole JCS authority; Python validates schemas and exact input/media bytes and treats canonical document hashes as opaque.
 - Local transcription and render workers exist. Provider-backed prompt, image, and avatar generation workers do not; all corresponding gates remain open.
 - Fixture state is bounded in memory. Production authentication, Postgres, R2, Workflows, callbacks, and provider transports do not exist.
@@ -226,12 +226,15 @@ Checkpoint on 2026-08-10: installed Chrome passed steps 1–4 for the first rend
 file. That replay exposed a real visual regression: the old 4–8% image zoom was too strong and
 visibly shaky, so SHA-256 `177edc7755ff822f306827256bf7a28bcc2d588da9fc78f04fd034a73e0c7285`
 is superseded for visual acceptance. Commit `d9bee0e63c40070ca943b6c7c1f32774d41f699e`
-implements `ffmpeg-render-v2` with a centered 1.5–2.5% quintic zoom on a 4× Lanczos working
-canvas. The provider-free gate reproduced the replacement twice with SHA-256
-`2d7b0fa2ff77e90eda20d34c6a24d63d2a83d7dea40da07d0edf54159ccae002`. The gate remains
+implemented the restrained v2 replacement. After reviewing it, the user requested exactly one
+percentage point more endpoint zoom and even smoother motion. Commit
+`7d73c4e5396323a540227afcb301ead12480c407` implements `ffmpeg-render-v3` with a centered
+2.5–3.5% quintic zoom and continuous floating-point source-corner sampling with cubic
+interpolation. The provider-free gate produced SHA-256
+`7acc789f9626e23bc12540a452d52822671ba85caf37bf4148e0a6def665e276`. The gate remains
 open for installed-Chrome playback, seek, and motion-quality confirmation of
-`/Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v2.mp4`. Evidence:
-`evidence/acceptance/VF-0C-08/2026-08-10-subtle-zoom-rework`.
+`/Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v3.mp4`. Evidence:
+`evidence/acceptance/VF-0C-08/2026-08-10-continuous-zoom-v3`.
 
 Serial checkpoint:
 
