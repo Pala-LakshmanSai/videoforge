@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T17:52:00Z"
+updated_at: "2026-08-10T18:03:14Z"
 
 phase: phase_3_provider_operations_preflight
-implementation_authorized_in_current_task: true
-current_milestone: phase_3_style_semantic_foundation
-current_task: VF-3-06
+implementation_authorized_in_current_task: false
+current_milestone: phase_3_private_remote_ci
+current_task: VF-3-05
 current_wave: phase_3_evidence_first_activation
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -20,7 +20,7 @@ repository:
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
   verified_implementation_commit: "907e0e4908bddc1ec7b90232f043a10d9c7d5b2a"
   last_good_commit: "d16c2a9102125fa6e56d014fcf2f6241c878fa07"
-  working_tree_expected: "clean_at_vf_3_05_hosted_ci_billing_blocker_handoff"
+  working_tree_expected: "clean_at_vf_3_06_style_semantic_evidence_handoff"
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
     ajv: "8.20.0"
@@ -197,6 +197,12 @@ completed_tasks:
     implementation_commit: "3e810be6fb0b6bde2ca04e6e275ff04dfe403c7f"
     evidence_commit: "8c90bd072b4190a37619a637fc3095eac5edc5d0"
     evidence: "evidence/acceptance/VF-3-04/runpod-account-preflight"
+  - task_id: VF-3-06
+    status: complete
+    summary: "Committed strict checksum-bound 3-8 reference requests, deterministic fixture analysis, all 14 exact style traits, content-separation and injection rejection, shared hard prompt/crop rules, and immutable canonical trusted profile assembly at $0."
+    implementation_commit: "68577e18916ab70b3390cc93d804a82bc77dab43"
+    evidence_commit: "88ef11f52986f6da773389cd0edd8aee725dab9a"
+    evidence: "evidence/acceptance/VF-3-06/style-semantic-foundation"
 
 standing_local_authority:
   status: completed_and_exhausted
@@ -290,50 +296,45 @@ blocked_tasks:
     local_disjoint_work_allowed: true
 
 recommended_next_task:
-  task_id: VF-3-06
-  milestone: phase_3_style_semantic_foundation
-  status: ready_provider_free_implementation
-  dependency_status: vf_3_03_green_canonical_style_schemas_and_product_rules_committed
-  authorization_status: exact_provider_free_application_implementation_authorized
-  read_profile: phase3_style_semantic_foundation
-  task_brief: tasks/VF-3-06.md
-  goal: "Implement strict provider-free style analyzer semantics, deterministic fixture analysis, and trusted canonical style-profile assembly."
+  task_id: VF-3-05
+  milestone: phase_3_private_remote_ci
+  status: blocked_external_after_private_remote_success
+  dependency_status: private_remote_exact_but_github_refuses_to_start_hosted_jobs
+  authorization_status: exact_remote_ci_authority_active_but_no_billing_change_authority_assumed
+  read_profile: phase3_private_remote_ci
+  task_brief: tasks/VF-3-05.md
+  goal: "Rerun the unchanged hosted verify workflow after GitHub Actions billing eligibility is repaired."
   dependencies:
-    - "VF-3-03 deterministic prompt compiler and conflict/crop rules are committed and locally green"
-    - "Canonical image-style-profile/v1 and image-style-analyzer-output/v1 schemas are committed"
-    - "Image Style Hub lifecycle/content-separation requirements are approved and current"
-    - "The GitHub billing blocker is external and disjoint; local implementation may continue"
+    - "GitHub account payments/spending eligibility must permit hosted jobs to start"
+    - "Existing .github/workflows/ci.yml remains unchanged and exact"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
+  remote_or_cloud_mutations_authorized: true
   credentials_or_model_downloads_authorized: false
-  application_code_changes_authorized: true
+  application_code_changes_authorized: false
   live_route: null
   fixture_scenario: null
-  expected_evidence: "evidence/acceptance/VF-3-06/style-semantic-foundation"
+  expected_evidence: "evidence/acceptance/VF-3-05/private-github-ci"
   required_handoff:
-    - "Add typed checksum-bound reference/analyzer ports plus deterministic fixture analyzer"
-    - "Validate 3-8 references, 14 exact traits, aliases/confidence/outliers, and semantic content"
-    - "Reuse permanent output and crop hard rules; reject reusable reference subjects/instructions"
-    - "Assemble deterministic trusted profile components and canonical hash input"
-    - "Run targeted and canonical local gates and commit evidence"
+    - "Repair GitHub account billing/Actions eligibility outside repository source"
+    - "Rerun the unchanged verify workflow and observe it through terminal state"
+    - "Record green hosted evidence without weakening any gate"
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    status: serial_provider_free_style_foundation
-    integration_owner: VF-3-06
+    status: external_billing_blocked
+    integration_owner: VF-3-05
   prohibited_in_task:
-    - "Any network, credential, provider call/spend, reference upload, database, route, UI, cloud, or production change"
-    - "Any publication mutation or claim that Gemini/style/Mage gates are closed"
-    - "Any accepted UI, renderer, output grammar, built-in style, or ordinary video-analysis change"
+    - "Any workflow weakening, provider call/spend, deployment, production change, or source change unrelated to a repository-owned hosted failure"
+    - "Any force push, history rewrite, visibility change, release, tag, or package publication"
 
 latest_closed_handoff:
-  task_id: VF-3-04
+  task_id: VF-3-06
   status: complete
-  implementation_commit: "3e810be6fb0b6bde2ca04e6e275ff04dfe403c7f"
-  evidence_commit: "8c90bd072b4190a37619a637fc3095eac5edc5d0"
-  audit_result: "authenticated_account_inventory_drained"
-  verification_result: "zero_pods_endpoints_volumes_workers_and_zero_hourly_spend"
-  external_actions: "one_keychain_credential_created_no_compute_created_no_spend"
+  implementation_commit: "68577e18916ab70b3390cc93d804a82bc77dab43"
+  evidence_commit: "88ef11f52986f6da773389cd0edd8aee725dab9a"
+  audit_result: "strict_style_semantic_and_content_separation_foundation_green"
+  verification_result: "55_pipeline_tests_full_local_gate_and_38_installed_chrome_journeys_pass"
+  external_actions: "none_provider_calls_zero_external_spend_zero"
 
 last_green:
   commands:
@@ -359,9 +360,9 @@ last_green:
     - "pnpm context:validate"
     - "pnpm secret:scan"
     - "git diff --check"
-  checked_at: "2026-08-10T17:40:12Z"
+  checked_at: "2026-08-10T18:03:14Z"
   result: pass
-  verified_commit: "3fcbcc310cf42be766b6fe90163d50e1c4620bb1"
+  verified_commit: "68577e18916ab70b3390cc93d804a82bc77dab43"
   evidence:
     - "evidence/acceptance/VF-1-02/runtime-neutral-hono"
     - "evidence/acceptance/VF-0D-01/provider-sandbox-harness"
@@ -377,6 +378,7 @@ last_green:
     - "evidence/acceptance/VF-2-04/real-audio-timeline-ui"
     - "evidence/acceptance/VF-2-05/phase2-timing-convergence"
     - "evidence/acceptance/VF-3-03/deterministic-prompt-compiler"
+    - "evidence/acceptance/VF-3-06/style-semantic-foundation"
   counts:
     control_plane_pglite_tests: 131
     repository_contract_behaviors: 13
@@ -392,7 +394,7 @@ last_green:
     python_contract_tests: 42
     fixture_registry_and_local_slice_tests: 12
     configuration_tests: 5
-    pipeline_tests: 47
+    pipeline_tests: 55
     isolated_worker_tests: 56
     focused_render_worker_tests: 11
     root_script_tests: 6
@@ -401,6 +403,7 @@ last_green:
     playwright_chrome_journeys_intentionally_skipped: 0
     local_installed_chrome_convergence_journeys_passed: 1
   notes:
+    - "VF-3-06 adds exact checksum-bound 3-8 reference requests, a deterministic fixture analyzer, strict 14-trait semantic/content-separation validation, and frozen RFC 8785-hashed trusted style profiles without provider calls or spend."
     - "VF-3-03 adds deterministic 25-50-scene batching, strict plain-output validation, six locked shot roles, full/split crop geometry, permanent guardrails, five-style coverage, optional keyword rules, and exact UTF-8/hash replay without provider calls or spend."
     - "This last-green record proves the exact source tree committed as VF-2-05 implementation 907e0e4908bddc1ec7b90232f043a10d9c7d5b2a; evidence is committed separately at d16c2a9102125fa6e56d014fcf2f6241c878fa07."
     - "The forced verify executed every Turbo task with zero cache hits and passed format, JavaScript/Python lint, typecheck, unit/contract/worker suites, database checks, context/schema validation, secret scan, build/route-tree stability, real local Workerd parity, and installed-Chrome Playwright."
@@ -470,7 +473,8 @@ next_tasks:
   - "VF-3-03 complete: deterministic prompt batching/validation/compilation is committed and green at $0"
   - "VF-3-04 complete: RunPod API access is secured and the account has zero Pods/endpoints/volumes/workers at $0"
   - "VF-3-05 partial: private remote is exact; hosted CI remains externally blocked before steps by GitHub billing eligibility"
-  - "Current: execute only provider-free VF-3-06 style semantic validator/fixture foundation at $0"
+  - "VF-3-06 complete: provider-free style semantic validation, fixture analysis, trusted profile assembly, full local gate, and evidence are committed at $0"
+  - "Current: resume only VF-3-05 after GitHub billing permits hosted Actions jobs to start"
   - "Resume VF-3-01/VF-3-02 only after the Runware funding prerequisite has exact authority; never transfer another sub-cap"
   - "Fastest safe implementation order after evidence and new authority: deterministic prompt compiler/fixture adapter, gated DeepSeek integration, parallel Mage image and AvatarForcing lanes plus disjoint custom-style lifecycle, FFmpeg real fast-path convergence, conditional fallbacks, fault/security/restore hardening, then controlled release"
 
@@ -492,10 +496,10 @@ activation_handoff:
     - "At activation, no Git remote/push, hosted CI, cloud/account resource, OAuth app, Neon/R2/Workflow deployment, credential, model download, provider call, or spend had been used."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this CURRENT_STATE.yaml."
-    - "Load only the phase3_style_semantic_foundation profile and tasks/VF-3-06.md."
+    - "Load only the phase3_private_remote_ci profile and tasks/VF-3-05.md."
     - "Confirm the recorded commits are ancestors of clean HEAD; do not reset or redo completed phases."
-    - "Run only provider-free style semantic validation, fixture analysis, trusted profile assembly, tests, and evidence."
-    - "Stop on schema/decision ambiguity, provider/network/spend, publication mutation, or regression."
+    - "Confirm private origin remains exact, then stop until GitHub billing permits hosted Actions jobs to start."
+    - "After eligibility is repaired, rerun only the unchanged hosted verify workflow and record terminal evidence."
   optimized_future_sequence:
     - "A. Refresh official time-sensitive provider/model/rate/retention/license facts read-only and classify all open gates."
     - "B. With explicit caps/credential authority, run bounded provider qualification through the committed sandbox and record pass/fail evidence."
@@ -509,7 +513,7 @@ activation_handoff:
 
 notes:
   - "This is a replace-in-place handoff snapshot, not a progress diary."
-  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-06 is provider-free and cannot analyze a real reference or publish a style."
+  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-05 remains blocked solely before hosted job start by GitHub billing eligibility."
   - "RunPod account preflight is green: Keychain credential exists, balance is $10.00, hourly spend is $0, and Pods/endpoints/volumes/workers are all zero."
   - "Private GitHub remote is green and exact. Do not alter workflow gates: repair GitHub account billing/Actions eligibility, then rerun verify run 31415895273 or a fresh unchanged run."
   - "The accelerated approval through VF-2-05 is complete and exhausted. On 2026-08-10 the user separately activated the planned non-transferable $1/$3/$8/$8/$5 provider caps, private Git/CI, and isolated staging authority; production remains deferred."
