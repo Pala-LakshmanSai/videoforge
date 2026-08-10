@@ -162,7 +162,7 @@ CREATE TABLE avatar_profile_versions (
   workspace_id uuid NOT NULL,
   profile_id uuid NOT NULL,
   version_number integer NOT NULL CHECK (version_number > 0),
-  state text NOT NULL CHECK (state IN ('DRAFT', 'UPLOADING', 'VALIDATING', 'NEEDS_REVIEW', 'READY', 'ABANDONED')),
+  state text NOT NULL CHECK (state IN ('DRAFT', 'UPLOADING', 'VALIDATING', 'NEEDS_REVIEW', 'FAILED', 'READY', 'ABANDONED')),
   profile_contract_name text,
   profile_contract_version text,
   profile_payload jsonb,
@@ -203,7 +203,7 @@ CREATE TABLE avatar_profile_versions (
 
 CREATE UNIQUE INDEX avatar_profile_versions_open_draft_uq
   ON avatar_profile_versions (workspace_id, profile_id)
-  WHERE state IN ('DRAFT', 'UPLOADING', 'VALIDATING', 'NEEDS_REVIEW');
+  WHERE state IN ('DRAFT', 'UPLOADING', 'VALIDATING', 'NEEDS_REVIEW', 'FAILED');
 CREATE UNIQUE INDEX avatar_profile_versions_ready_hash_uq
   ON avatar_profile_versions (workspace_id, profile_id, profile_hash)
   WHERE state = 'READY';
@@ -213,6 +213,34 @@ ALTER TABLE avatar_profiles
   FOREIGN KEY (workspace_id, id, active_version_id)
   REFERENCES avatar_profile_versions (workspace_id, profile_id, id)
   ON DELETE RESTRICT;
+
+CREATE OR REPLACE FUNCTION videoforge_require_ready_avatar_active_version()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.active_version_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+      FROM avatar_profile_versions
+     WHERE workspace_id = NEW.workspace_id
+       AND profile_id = NEW.id
+       AND id = NEW.active_version_id
+       AND state = 'READY'
+  ) THEN
+    RAISE EXCEPTION 'avatar active version must be a READY version of the same profile'
+      USING ERRCODE = '23503';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER avatar_profiles_active_version_ready
+  BEFORE INSERT OR UPDATE ON avatar_profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION videoforge_require_ready_avatar_active_version();
 
 CREATE TABLE avatar_profile_assets (
   id uuid PRIMARY KEY,
@@ -313,7 +341,7 @@ CREATE TABLE image_style_versions (
   workspace_id uuid NOT NULL,
   style_id uuid NOT NULL,
   version_number integer NOT NULL CHECK (version_number > 0),
-  state text NOT NULL CHECK (state IN ('DRAFT', 'ANALYZING', 'NEEDS_REVIEW', 'PUBLISHED', 'ABANDONED')),
+  state text NOT NULL CHECK (state IN ('DRAFT', 'ANALYZING', 'NEEDS_REVIEW', 'FAILED', 'PUBLISHED', 'ABANDONED')),
   profile_contract_name text,
   profile_contract_version text,
   profile_payload jsonb,
@@ -344,7 +372,7 @@ CREATE TABLE image_style_versions (
 
 CREATE UNIQUE INDEX image_style_versions_open_draft_uq
   ON image_style_versions (workspace_id, style_id)
-  WHERE state IN ('DRAFT', 'ANALYZING', 'NEEDS_REVIEW');
+  WHERE state IN ('DRAFT', 'ANALYZING', 'NEEDS_REVIEW', 'FAILED');
 CREATE UNIQUE INDEX image_style_versions_published_hash_uq
   ON image_style_versions (workspace_id, style_id, style_profile_hash)
   WHERE state = 'PUBLISHED';
@@ -354,6 +382,34 @@ ALTER TABLE image_styles
   FOREIGN KEY (workspace_id, id, active_version_id)
   REFERENCES image_style_versions (workspace_id, style_id, id)
   ON DELETE RESTRICT;
+
+CREATE OR REPLACE FUNCTION videoforge_require_published_style_active_version()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.active_version_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+      FROM image_style_versions
+     WHERE workspace_id = NEW.workspace_id
+       AND style_id = NEW.id
+       AND id = NEW.active_version_id
+       AND state = 'PUBLISHED'
+  ) THEN
+    RAISE EXCEPTION 'image style active version must be a PUBLISHED version of the same style'
+      USING ERRCODE = '23503';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER image_styles_active_version_published
+  BEFORE INSERT OR UPDATE ON image_styles
+  FOR EACH ROW
+  EXECUTE FUNCTION videoforge_require_published_style_active_version();
 
 CREATE TABLE image_style_references (
   id uuid PRIMARY KEY,
@@ -531,6 +587,84 @@ CREATE TABLE project_revisions (
 CREATE UNIQUE INDEX project_revisions_one_draft_uq
   ON project_revisions (workspace_id, project_id)
   WHERE status = 'DRAFT';
+
+CREATE OR REPLACE FUNCTION videoforge_validate_locked_revision_snapshot()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.status <> 'LOCKED' THEN
+    RETURN NEW;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+      FROM avatar_profile_versions version
+      JOIN assets runtime_asset
+        ON runtime_asset.workspace_id = version.workspace_id
+       AND runtime_asset.id = version.runtime_source_asset_id
+     WHERE version.workspace_id = NEW.workspace_id
+       AND version.profile_id = NEW.avatar_profile_id
+       AND version.id = NEW.avatar_profile_version_id
+       AND version.state = 'READY'
+       AND version.profile_hash = NEW.avatar_profile_hash
+       AND version.runtime_source_asset_id = NEW.avatar_runtime_source_asset_id
+       AND version.runtime_source_binary_sha256 = NEW.avatar_runtime_source_binary_sha256
+       AND version.source_preparation_profile = NEW.avatar_source_preparation_profile
+       AND version.source_validation_profile = NEW.avatar_source_validation_profile
+       AND runtime_asset.binary_sha256 = NEW.avatar_runtime_source_binary_sha256
+       AND runtime_asset.state IN ('VERIFIED', 'ACCEPTED')
+  ) THEN
+    RAISE EXCEPTION 'locked revision avatar snapshot does not match the READY version and runtime asset'
+      USING ERRCODE = '23514';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+      FROM image_style_versions version
+     WHERE version.workspace_id = NEW.workspace_id
+       AND version.style_id = NEW.image_style_id
+       AND version.id = NEW.image_style_version_id
+       AND version.state = 'PUBLISHED'
+       AND version.style_profile_hash = NEW.style_profile_hash
+  ) THEN
+    RAISE EXCEPTION 'locked revision style snapshot does not match the PUBLISHED version'
+      USING ERRCODE = '23514';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+      FROM assets voiceover
+     WHERE voiceover.workspace_id = NEW.workspace_id
+       AND voiceover.id = NEW.voiceover_asset_id
+       AND voiceover.binary_sha256 = NEW.voiceover_binary_sha256
+       AND voiceover.state IN ('VERIFIED', 'ACCEPTED')
+  ) THEN
+    RAISE EXCEPTION 'locked revision voiceover snapshot does not match a verified asset'
+      USING ERRCODE = '23514';
+  END IF;
+
+  IF NEW.avatar_compatibility_state IN ('PASSED', 'FAILED', 'CANCELLED') AND NOT EXISTS (
+    SELECT 1
+      FROM avatar_compatibility_assessments assessment
+     WHERE assessment.workspace_id = NEW.workspace_id
+       AND assessment.avatar_profile_version_id = NEW.avatar_profile_version_id
+       AND assessment.id = NEW.avatar_compatibility_assessment_id
+       AND assessment.state = NEW.avatar_compatibility_state
+       AND assessment.evidence_hash = NEW.avatar_compatibility_evidence_hash
+  ) THEN
+    RAISE EXCEPTION 'locked revision compatibility snapshot does not match terminal evidence'
+      USING ERRCODE = '23514';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER project_revisions_validate_locked_snapshot
+  BEFORE INSERT OR UPDATE ON project_revisions
+  FOR EACH ROW
+  EXECUTE FUNCTION videoforge_validate_locked_revision_snapshot();
 
 CREATE TABLE transcripts (
   id uuid PRIMARY KEY,
