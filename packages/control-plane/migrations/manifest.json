@@ -18,6 +18,12 @@
       "name": "callback_replay_ledger",
       "filename": "0003_callback_replay_ledger.sql",
       "sha256": "sha256:1ae7732b67544469cbefe2422bd21ed70f5263ad33f4a6e65d1fbbb69cf7a1ae"
+    },
+    {
+      "version": 4,
+      "name": "callback_event_coherence",
+      "filename": "0004_callback_event_coherence.sql",
+      "sha256": "sha256:16a1eb20a70c7cd49c6c2131862263d7cf913d4d16b0be3beb63b4f0f489ee11"
     }
   ]
 }

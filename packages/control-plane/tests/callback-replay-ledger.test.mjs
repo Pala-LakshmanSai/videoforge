@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { IDS, seedWorkflow } from "./support/fixtures.mjs";
+import { IDS, insertAttempt, seedWorkflow } from "./support/fixtures.mjs";
 import {
   expectDatabaseError,
   FIXED_TIME,
@@ -148,6 +148,61 @@ test("callback receipt and state mutation share rollback fate", async () => {
       [NONCE_HASH],
     );
     assert.deepEqual(afterRetry.rows, [{ rows: 1 }]);
+  });
+});
+
+test("callback receipts bind the exact event attempt and authenticated payload hash", async () => {
+  await withMigratedDatabase(async ({ executor }) => {
+    await seedWorkflow(executor);
+    await insertAttempt(executor, {
+      id: IDS.attemptA2,
+      ordinal: 2,
+      idempotencyKey: "attempt:owned:002",
+      inputHash: sha256("attempt-input-002"),
+      claimHash: sha256("attempt-claim-002"),
+    });
+
+    const otherAttemptEventId = uuid(914);
+    await insertCallbackEvent(executor, {
+      id: otherAttemptEventId,
+      attemptId: IDS.attemptA2,
+      payloadHash: PAYLOAD_HASH,
+    });
+    await expectDatabaseError(
+      () =>
+        insertReceipt(executor, {
+          id: uuid(904),
+          attemptId: IDS.attemptA1,
+          workflowEventId: otherAttemptEventId,
+          nonceHash: sha256("callback-nonce-wrong-attempt"),
+          payloadHash: PAYLOAD_HASH,
+        }),
+      "23503",
+    );
+
+    const exactAttemptEventId = uuid(915);
+    await insertCallbackEvent(executor, {
+      id: exactAttemptEventId,
+      attemptId: IDS.attemptA1,
+      sequence: 2,
+      payloadHash: PAYLOAD_HASH,
+    });
+    await expectDatabaseError(
+      () =>
+        insertReceipt(executor, {
+          id: uuid(905),
+          attemptId: IDS.attemptA1,
+          workflowEventId: exactAttemptEventId,
+          nonceHash: sha256("callback-nonce-wrong-payload"),
+          payloadHash: sha256("different-authenticated-payload"),
+        }),
+      "23503",
+    );
+
+    const receipts = await executor.query(
+      "SELECT count(*)::int AS rows FROM callback_receipts",
+    );
+    assert.deepEqual(receipts.rows, [{ rows: 0 }]);
   });
 });
 
