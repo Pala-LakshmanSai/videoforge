@@ -113,7 +113,7 @@ export function TimelineInspectionPanel({
             <Metric
               label="Selected avatar"
               value={`${avatar.coveragePercent.toFixed(2)}%`}
-              detail={`${avatar.count} exact span${avatar.count === 1 ? "" : "s"}`}
+              detail={`${avatar.materializedCount}/${avatar.count} spans materialized`}
               tone="info"
             />
           </div>
@@ -136,6 +136,7 @@ export function TimelineInspectionPanel({
                     <div>
                       <strong>{layoutLabel(span.layout)}</strong>
                       <p>{span.phrase}</p>
+                      <small>Audio {span.audioSha256.slice(7, 19)}…</small>
                     </div>
                   </article>
                 ))

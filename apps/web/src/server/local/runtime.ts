@@ -35,6 +35,7 @@ export type LocalProjectDetail = Omit<RuntimeProjectDetail, "project"> & {
 
 const BASE_SCENARIO_ID = "project_create_ready" as const;
 const RUNNING_SCENARIO_ID = "happy_generating" as const;
+const LOCAL_PROJECT_TITLE = "How to Recognize a Sweet Watermelon — Local Slice";
 
 const STAGE_PROGRESS: Record<LocalPipelineProgress["stage"], number> = {
   TRANSCRIBING: 18,
@@ -176,7 +177,7 @@ function localProjectTemplate(title: string): LocalProjectDetail {
     tone: "INFO",
     title: "Local walking slice queued",
     detail:
-      "State is bounded to this development server process; generated artifacts remain content-addressed on disk.",
+      "Accepted timing, selected audio spans, and generated output are persisted locally by exact checksum.",
     action: null,
     scope: "PROJECT",
   };
@@ -186,6 +187,7 @@ function localProjectTemplate(title: string): LocalProjectDetail {
 export class LocalRuntime {
   readonly idempotencyLedger: IdempotencyLedger = new Map();
   private voiceoverPromise: Promise<LocalOwnedVoiceover> | null = null;
+  private restorePromise: Promise<void> | null = null;
   private projectDetail: LocalProjectDetail | null = null;
   private result: LocalPipelineRunResult | null = null;
   private abortController: AbortController | null = null;
@@ -219,6 +221,7 @@ export class LocalRuntime {
       this.ownedVoiceover(),
       Promise.resolve(toBootstrapResponse(scenario(BASE_SCENARIO_ID))),
     ]);
+    await this.restorePersistedResult(voiceover);
     base.projects = this.projectDetail ? [structuredClone(this.projectDetail.project)] : [];
     base.usage = {
       ...toUsageSummaryResponse(scenario(BASE_SCENARIO_ID)),
@@ -231,7 +234,7 @@ export class LocalRuntime {
     };
     base.draft = {
       ...base.draft,
-      title: "How to Recognize a Sweet Watermelon — Local Slice",
+      title: LOCAL_PROJECT_TITLE,
       voiceover: {
         assetId: voiceover.assetId,
         filename: voiceover.filename,
@@ -276,6 +279,36 @@ export class LocalRuntime {
       },
     };
     return base;
+  }
+
+  private async restorePersistedResult(voiceover: LocalOwnedVoiceover): Promise<void> {
+    if (!this.runner.restoreLatest || this.projectDetail || this.abortController) return;
+    this.restorePromise ??= (async () => {
+      const result = await this.runner.restoreLatest!();
+      if (!result) return;
+      if (result.sourceVoiceoverSha256 !== voiceover.checksum) {
+        throw new Error(
+          "Persisted local timing/output state does not bind to the current owned voiceover.",
+        );
+      }
+      this.projectDetail = localProjectTemplate(LOCAL_PROJECT_TITLE);
+      this.recordReady(result);
+      if (!this.projectDetail) throw new Error("Persisted local project restore failed.");
+      this.projectDetail.notice = {
+        tone: "SUCCESS",
+        title: "Persisted local result restored",
+        detail:
+          "Exact timing, materialized avatar spans, and the accepted MP4 passed checksum verification after restart.",
+        action: "Review candidate",
+        scope: "PROJECT",
+      };
+      this.projectDetail.events.push({
+        id: `event_local_restored_${this.projectDetail.events.length + 1}`,
+        detail: `Restored persisted timing and output at ${result.sha256}`,
+        at: nowIso(),
+      });
+    })();
+    await this.restorePromise;
   }
 
   project(): LocalProjectDetail | null {
@@ -361,7 +394,7 @@ export class LocalRuntime {
     this.projectDetail.notice = {
       tone: "SUCCESS",
       title: "Local output approved",
-      detail: "The exact MP4 candidate and checksum are locked for this in-process revision.",
+      detail: "The exact persisted MP4 candidate and checksum are locked for this revision.",
       action: "Download MP4",
       scope: "PROJECT",
     };

@@ -37,7 +37,13 @@ function inspection(state: TimelineInspectionState = "CURRENT"): TimelineInspect
       sourceEndMs: 40_000,
       coverage: "COMPLETE",
     },
-    selectedAvatar: { count: 0, durationMs: 0, coveragePercent: 0, spans: [] },
+    selectedAvatar: {
+      count: 0,
+      materializedCount: 0,
+      durationMs: 0,
+      coveragePercent: 0,
+      spans: [],
+    },
     phrases: [
       {
         id: "phrase_001",

@@ -296,6 +296,7 @@ export interface TimelineInspection {
   } | null;
   selectedAvatar: {
     count: number;
+    materializedCount: number;
     durationMs: number;
     coveragePercent: number;
     spans: Array<{
@@ -304,6 +305,7 @@ export interface TimelineInspection {
       endMs: number;
       layout: "AVATAR_FULL" | "AVATAR_SPLIT_IMAGE";
       phrase: string;
+      audioSha256: string;
     }>;
   } | null;
   phrases: Array<{

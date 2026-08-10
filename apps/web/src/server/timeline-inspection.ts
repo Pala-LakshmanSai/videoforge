@@ -207,6 +207,7 @@ export async function fixtureTimelineInspection(
             endMs: phrase.sourceEndMs,
             layout: phrase.layout,
             phrase: phrase.text,
+            audioSha256: `sha256:${String(index + 1).repeat(64)}`,
           },
         ],
   );
@@ -242,6 +243,7 @@ export async function fixtureTimelineInspection(
     },
     selectedAvatar: {
       count: avatarSpans.length,
+      materializedCount: avatarSpans.length,
       durationMs: avatarDurationMs,
       coveragePercent: Number(((avatarDurationMs / 40_000) * 100).toFixed(2)),
       spans: avatarSpans,

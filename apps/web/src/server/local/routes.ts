@@ -196,6 +196,7 @@ export function registerLocalRoutes(app: Hono, runtime: LocalRuntime): void {
               artifactRoot: output.artifactRoot,
               transcriptSha256: output.transcriptSha256,
               timelineSha256: output.timelineSha256,
+              selectedSpanAudio: output.selectedSpanAudio,
             }
           : null,
       ),

@@ -34,6 +34,7 @@ const readyInspection: TimelineInspection = {
   },
   selectedAvatar: {
     count: 1,
+    materializedCount: 1,
     durationMs: 4_500,
     coveragePercent: 11.25,
     spans: [
@@ -43,6 +44,7 @@ const readyInspection: TimelineInspection = {
         endMs: 4_500,
         layout: "AVATAR_FULL",
         phrase: "Start with the field spot.",
+        audioSha256: `sha256:${"c".repeat(64)}`,
       },
     ],
   },

@@ -4,9 +4,10 @@ import {
   type Sha256Digest,
   type TimelinePlanDocument,
 } from "@videoforge/contracts";
-import { LocalArtifactStore } from "@videoforge/pipeline";
+import { LocalArtifactStore, SUPPORTED_SCHEDULER_CONFIG } from "@videoforge/pipeline";
 
 import type { TimelineInspection, TimelineInspectionState } from "../../lib/types";
+import type { LocalSelectedSpanAudio } from "./types";
 
 interface LocalInspectionIdentity {
   readonly artifactRoot: string;
@@ -14,6 +15,7 @@ interface LocalInspectionIdentity {
   readonly revisionId: string;
   readonly transcriptSha256: Sha256Digest;
   readonly timelineSha256: Sha256Digest;
+  readonly selectedSpanAudio: readonly LocalSelectedSpanAudio[];
 }
 
 interface TimelineProjectIdentity {
@@ -156,6 +158,78 @@ async function inspectStoredDocuments(
     (total, segment) => total + segment.source_audio_end_ms - segment.source_audio_start_ms,
     0,
   );
+  if (identity.selectedSpanAudio.length < avatarSegments.length) {
+    throw new InspectionInvariantError(
+      "INCOMPLETE",
+      "At least one selected avatar span has no persisted materialized audio.",
+    );
+  }
+  if (identity.selectedSpanAudio.length !== avatarSegments.length) {
+    throw new InspectionInvariantError(
+      "MISMATCHED",
+      "Persisted selected span audio does not match the deterministic avatar plan.",
+    );
+  }
+  const spanBySegment = new Map(
+    identity.selectedSpanAudio.map((span) => [span.timelineSegmentId, span] as const),
+  );
+  if (spanBySegment.size !== identity.selectedSpanAudio.length) {
+    throw new InspectionInvariantError(
+      "MISMATCHED",
+      "Persisted selected span audio contains duplicate timeline segment bindings.",
+    );
+  }
+  const paddingMs = SUPPORTED_SCHEDULER_CONFIG.selected_span_context_padding_ms;
+  const inspectedSpans = await Promise.all(
+    avatarSegments.map(async (segment) => {
+      const span = spanBySegment.get(segment.segment_id);
+      if (!span) {
+        throw new InspectionInvariantError(
+          "INCOMPLETE",
+          `Selected avatar segment ${segment.segment_id} has no materialized audio.`,
+        );
+      }
+      const expectedPaddedStart = Math.max(0, segment.source_audio_start_ms - paddingMs);
+      const expectedPaddedEnd = Math.min(
+        transcript.value.source.duration_ms,
+        segment.source_audio_end_ms + paddingMs,
+      );
+      if (
+        span.taskKey !== segment.required_slots.avatar.span_audio_task_key ||
+        span.selectedStartMs !== segment.source_audio_start_ms ||
+        span.selectedEndMsExclusive !== segment.source_audio_end_ms ||
+        span.paddedStartMs !== expectedPaddedStart ||
+        span.paddedEndMsExclusive !== expectedPaddedEnd ||
+        span.trimStartMs !== segment.source_audio_start_ms - expectedPaddedStart ||
+        span.trimEndMsExclusive !==
+          segment.source_audio_start_ms -
+            expectedPaddedStart +
+            segment.source_audio_end_ms -
+            segment.source_audio_start_ms ||
+        span.durationMs !== expectedPaddedEnd - expectedPaddedStart
+      ) {
+        throw new InspectionInvariantError(
+          "MISMATCHED",
+          `Materialized audio for ${segment.segment_id} does not match its selected and padded lineage.`,
+        );
+      }
+      const artifact = await store.verifyObject(span.sha256, "wav");
+      if (artifact.bytes !== span.bytes) {
+        throw new InspectionInvariantError(
+          "MISMATCHED",
+          `Materialized audio for ${segment.segment_id} has drifted.`,
+        );
+      }
+      return {
+        id: segment.segment_id,
+        startMs: segment.source_audio_start_ms,
+        endMs: segment.source_audio_end_ms,
+        layout: segment.timeline_composition,
+        phrase: segment.phrase,
+        audioSha256: span.sha256,
+      };
+    }),
+  );
 
   return {
     schemaVersion: "videoforge.timeline-inspection/v1",
@@ -188,17 +262,12 @@ async function inspectStoredDocuments(
     },
     selectedAvatar: {
       count: avatarSegments.length,
+      materializedCount: inspectedSpans.length,
       durationMs: avatarDurationMs,
       coveragePercent: Number(
         ((avatarDurationMs / transcript.value.source.duration_ms) * 100).toFixed(2),
       ),
-      spans: avatarSegments.map((segment) => ({
-        id: segment.segment_id,
-        startMs: segment.source_audio_start_ms,
-        endMs: segment.source_audio_end_ms,
-        layout: segment.timeline_composition,
-        phrase: segment.phrase,
-      })),
+      spans: inspectedSpans,
     },
     phrases,
   };

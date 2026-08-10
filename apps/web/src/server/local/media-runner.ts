@@ -5,6 +5,7 @@ import {
   access,
   mkdir,
   mkdtemp,
+  readdir,
   readFile,
   realpath,
   rm,
@@ -21,6 +22,7 @@ import {
   validateAndHashContractDocument,
   type JsonValue,
   type Sha256Digest,
+  type TimelinePlanDocument,
 } from "@videoforge/contracts";
 import {
   collectRequiredAssetTaskKeys,
@@ -29,6 +31,7 @@ import {
   resolveAcceptedAssets,
   scheduleTimeline,
   SUPPORTED_RENDER_PROFILE_VERSION,
+  SUPPORTED_SCHEDULER_CONFIG,
   type AcceptedAssetBinding,
   type PipelineResult,
   type StoredLocalArtifact,
@@ -39,6 +42,7 @@ import type {
   LocalOwnedVoiceover,
   LocalPipelineRunRequest,
   LocalPipelineRunResult,
+  LocalSelectedSpanAudio,
   LocalSliceRunner,
 } from "./types";
 import { LOCAL_PROJECT_ID, LOCAL_REVISION_ID } from "./types";
@@ -57,6 +61,8 @@ const FFMPEG_VERSION = "8.1.1";
 const OWNED_VOICE = "Samantha";
 const OWNED_SPEECH_RATE = "55";
 const OUTPUT_FILENAME = "videoforge-local-owned-slice.mp4";
+const RUNTIME_STATE_FILENAME = "phase2-runtime-state.json";
+const RUNTIME_STATE_SCHEMA_VERSION = "videoforge.phase2-local-runtime-state/v1";
 const MAX_CAPTURE_BYTES = 8 * 1024 * 1024;
 const LOCAL_PROCESS_ENVIRONMENT_KEYS = Object.freeze([
   "HOME",
@@ -92,6 +98,26 @@ interface PinnedToolFacts {
   readonly whisperSha256: Sha256Digest;
 }
 
+interface PersistedLocalRuntimeState {
+  readonly schema_version: typeof RUNTIME_STATE_SCHEMA_VERSION;
+  readonly source_voiceover_sha256: Sha256Digest;
+  readonly output: {
+    readonly filename: string;
+    readonly sha256: Sha256Digest;
+    readonly bytes: number;
+    readonly duration_ms: number;
+    readonly total_frames: number;
+  };
+  readonly documents: {
+    readonly transcript_sha256: Sha256Digest;
+    readonly timeline_sha256: Sha256Digest;
+    readonly resolved_render_manifest_sha256: Sha256Digest;
+    readonly render_result_sha256: Sha256Digest;
+  };
+  readonly selected_span_audio: readonly LocalSelectedSpanAudio[];
+  readonly evidence_sha256: Sha256Digest;
+}
+
 function localProcessEnvironment(): NodeJS.ProcessEnv {
   const environment: NodeJS.ProcessEnv = {};
   for (const key of LOCAL_PROCESS_ENVIRONMENT_KEYS) {
@@ -121,6 +147,231 @@ function requireSha256Digest(value: string, label: string): Sha256Digest {
     throw new Error(`${label} is not a canonical SHA-256 digest.`);
   }
   return value as Sha256Digest;
+}
+
+function exactRecord(
+  value: unknown,
+  keys: readonly string[],
+  label: string,
+): Record<string, unknown> {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value) ||
+    Object.keys(value).sort().join("\u0000") !== [...keys].sort().join("\u0000")
+  ) {
+    throw new Error(`${label} has invalid fields.`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function exactInteger(value: unknown, label: string, minimum = 0): number {
+  if (!Number.isSafeInteger(value) || (value as number) < minimum) {
+    throw new Error(`${label} is invalid.`);
+  }
+  return value as number;
+}
+
+function exactString(value: unknown, label: string): string {
+  if (typeof value !== "string" || value.length === 0 || value.trim() !== value) {
+    throw new Error(`${label} is invalid.`);
+  }
+  return value;
+}
+
+function parseSelectedSpanAudio(value: unknown, index: number): LocalSelectedSpanAudio {
+  const label = `Persisted selected span ${String(index + 1)}`;
+  const record = exactRecord(
+    value,
+    [
+      "spanId",
+      "timelineSegmentId",
+      "taskKey",
+      "selectedStartMs",
+      "selectedEndMsExclusive",
+      "paddedStartMs",
+      "paddedEndMsExclusive",
+      "trimStartMs",
+      "trimEndMsExclusive",
+      "sha256",
+      "bytes",
+      "durationMs",
+    ],
+    label,
+  );
+  const selectedStartMs = exactInteger(record.selectedStartMs, `${label} selected start`);
+  const selectedEndMsExclusive = exactInteger(
+    record.selectedEndMsExclusive,
+    `${label} selected end`,
+    1,
+  );
+  const paddedStartMs = exactInteger(record.paddedStartMs, `${label} padded start`);
+  const paddedEndMsExclusive = exactInteger(record.paddedEndMsExclusive, `${label} padded end`, 1);
+  const trimStartMs = exactInteger(record.trimStartMs, `${label} trim start`);
+  const trimEndMsExclusive = exactInteger(record.trimEndMsExclusive, `${label} trim end`, 1);
+  const durationMs = exactInteger(record.durationMs, `${label} duration`, 1);
+  if (
+    paddedStartMs > selectedStartMs ||
+    selectedStartMs >= selectedEndMsExclusive ||
+    selectedEndMsExclusive > paddedEndMsExclusive ||
+    trimStartMs !== selectedStartMs - paddedStartMs ||
+    trimEndMsExclusive !== trimStartMs + selectedEndMsExclusive - selectedStartMs ||
+    durationMs !== paddedEndMsExclusive - paddedStartMs
+  ) {
+    throw new Error(`${label} timing lineage is inconsistent.`);
+  }
+  return Object.freeze({
+    spanId: exactString(record.spanId, `${label} ID`),
+    timelineSegmentId: exactString(record.timelineSegmentId, `${label} segment ID`),
+    taskKey: exactString(record.taskKey, `${label} task key`),
+    selectedStartMs,
+    selectedEndMsExclusive,
+    paddedStartMs,
+    paddedEndMsExclusive,
+    trimStartMs,
+    trimEndMsExclusive,
+    sha256: requireSha256Digest(exactString(record.sha256, `${label} checksum`), label),
+    bytes: exactInteger(record.bytes, `${label} bytes`, 45),
+    durationMs,
+  });
+}
+
+function parseRuntimeState(value: unknown): PersistedLocalRuntimeState {
+  const state = exactRecord(
+    value,
+    [
+      "schema_version",
+      "source_voiceover_sha256",
+      "output",
+      "documents",
+      "selected_span_audio",
+      "evidence_sha256",
+    ],
+    "Persisted local runtime state",
+  );
+  if (state.schema_version !== RUNTIME_STATE_SCHEMA_VERSION) {
+    throw new Error("Persisted local runtime state schema is unsupported.");
+  }
+  const output = exactRecord(
+    state.output,
+    ["filename", "sha256", "bytes", "duration_ms", "total_frames"],
+    "Persisted output",
+  );
+  const documents = exactRecord(
+    state.documents,
+    [
+      "transcript_sha256",
+      "timeline_sha256",
+      "resolved_render_manifest_sha256",
+      "render_result_sha256",
+    ],
+    "Persisted documents",
+  );
+  if (!Array.isArray(state.selected_span_audio) || state.selected_span_audio.length === 0) {
+    throw new Error("Persisted selected span audio is missing.");
+  }
+  const selectedSpanAudio = Object.freeze(
+    state.selected_span_audio.map((span, index) => parseSelectedSpanAudio(span, index)),
+  );
+  if (
+    new Set(selectedSpanAudio.map((span) => span.timelineSegmentId)).size !==
+    selectedSpanAudio.length
+  ) {
+    throw new Error("Persisted selected span audio contains duplicate timeline segments.");
+  }
+  const filename = exactString(output.filename, "Persisted output filename");
+  if (filename !== OUTPUT_FILENAME) {
+    throw new Error("Persisted output filename is invalid.");
+  }
+  return Object.freeze({
+    schema_version: RUNTIME_STATE_SCHEMA_VERSION,
+    source_voiceover_sha256: requireSha256Digest(
+      exactString(state.source_voiceover_sha256, "Persisted source checksum"),
+      "Persisted source checksum",
+    ),
+    output: Object.freeze({
+      filename,
+      sha256: requireSha256Digest(
+        exactString(output.sha256, "Persisted output checksum"),
+        "Persisted output checksum",
+      ),
+      bytes: exactInteger(output.bytes, "Persisted output bytes", 1),
+      duration_ms: exactInteger(output.duration_ms, "Persisted output duration", 1),
+      total_frames: exactInteger(output.total_frames, "Persisted output frames", 1),
+    }),
+    documents: Object.freeze({
+      transcript_sha256: requireSha256Digest(
+        exactString(documents.transcript_sha256, "Persisted transcript checksum"),
+        "Persisted transcript checksum",
+      ),
+      timeline_sha256: requireSha256Digest(
+        exactString(documents.timeline_sha256, "Persisted timeline checksum"),
+        "Persisted timeline checksum",
+      ),
+      resolved_render_manifest_sha256: requireSha256Digest(
+        exactString(
+          documents.resolved_render_manifest_sha256,
+          "Persisted render manifest checksum",
+        ),
+        "Persisted render manifest checksum",
+      ),
+      render_result_sha256: requireSha256Digest(
+        exactString(documents.render_result_sha256, "Persisted render result checksum"),
+        "Persisted render result checksum",
+      ),
+    }),
+    selected_span_audio: selectedSpanAudio,
+    evidence_sha256: requireSha256Digest(
+      exactString(state.evidence_sha256, "Persisted evidence checksum"),
+      "Persisted evidence checksum",
+    ),
+  });
+}
+
+function verifySelectedSpanLineage(
+  timeline: TimelinePlanDocument,
+  sourceDurationMs: number,
+  selectedSpanAudio: readonly LocalSelectedSpanAudio[],
+): void {
+  const avatarSegments = timeline.segments.filter(
+    (segment) => segment.timeline_composition !== "IMAGE_FULL",
+  );
+  const spanBySegment = new Map(
+    selectedSpanAudio.map((span) => [span.timelineSegmentId, span] as const),
+  );
+  if (
+    avatarSegments.length === 0 ||
+    avatarSegments.length !== selectedSpanAudio.length ||
+    spanBySegment.size !== selectedSpanAudio.length
+  ) {
+    throw new Error("Persisted selected span audio does not cover the exact avatar plan.");
+  }
+  const paddingMs = SUPPORTED_SCHEDULER_CONFIG.selected_span_context_padding_ms;
+  for (const segment of avatarSegments) {
+    const span = spanBySegment.get(segment.segment_id);
+    const paddedStartMs = Math.max(0, segment.source_audio_start_ms - paddingMs);
+    const paddedEndMsExclusive = Math.min(
+      sourceDurationMs,
+      segment.source_audio_end_ms + paddingMs,
+    );
+    if (
+      !span ||
+      span.taskKey !== segment.required_slots.avatar.span_audio_task_key ||
+      span.selectedStartMs !== segment.source_audio_start_ms ||
+      span.selectedEndMsExclusive !== segment.source_audio_end_ms ||
+      span.paddedStartMs !== paddedStartMs ||
+      span.paddedEndMsExclusive !== paddedEndMsExclusive ||
+      span.trimStartMs !== segment.source_audio_start_ms - paddedStartMs ||
+      span.trimEndMsExclusive !==
+        segment.source_audio_start_ms -
+          paddedStartMs +
+          segment.source_audio_end_ms -
+          segment.source_audio_start_ms ||
+      span.durationMs !== paddedEndMsExclusive - paddedStartMs
+    ) {
+      throw new Error(`Persisted selected span ${segment.segment_id} has mismatched lineage.`);
+    }
+  }
 }
 
 function stableId(namespace: string, stableKey: string): string {
@@ -469,6 +720,220 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
     }
   }
 
+  async restoreLatest(): Promise<LocalPipelineRunResult | null> {
+    const store = await this.store();
+    const revisionRunRoot = path.join(store.root, "runs", LOCAL_REVISION_ID);
+    let entries;
+    try {
+      entries = await readdir(revisionRunRoot, { withFileTypes: true });
+    } catch (error) {
+      if (errorCode(error) === "ENOENT") return null;
+      throw error;
+    }
+    const attempts = entries
+      .filter(
+        (entry) =>
+          entry.isDirectory() &&
+          !entry.isSymbolicLink() &&
+          /^attempt_render_local_[0-9]{3}$/u.test(entry.name),
+      )
+      .map((entry) => entry.name)
+      .sort((left, right) => right.localeCompare(left, "en"));
+    if (attempts.length === 0) return null;
+    const attemptId = attempts[0]!;
+    const statePath = await store.resolveRunFile(
+      LOCAL_REVISION_ID,
+      attemptId,
+      RUNTIME_STATE_FILENAME,
+    );
+    let stateBytes: Buffer;
+    try {
+      stateBytes = await readFile(statePath);
+    } catch (error) {
+      if (errorCode(error) === "ENOENT") {
+        throw new Error("The latest local render attempt has no restorable runtime state.");
+      }
+      throw error;
+    }
+    const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
+    const state = parseRuntimeState(parseJsonStrict(decoder.decode(stateBytes)));
+    const [source, output, transcript, timeline, manifest, renderResult, evidence, ...spans] =
+      await Promise.all([
+        store.verifyObject(state.source_voiceover_sha256, "wav"),
+        store.verifyObject(state.output.sha256, "mp4"),
+        store.readObject(state.documents.transcript_sha256, "json"),
+        store.readObject(state.documents.timeline_sha256, "json"),
+        store.readObject(state.documents.resolved_render_manifest_sha256, "json"),
+        store.readObject(state.documents.render_result_sha256, "json"),
+        store.readObject(state.evidence_sha256, "json"),
+        ...state.selected_span_audio.map((span) => store.verifyObject(span.sha256, "wav")),
+      ]);
+    if (
+      source.sha256 !== state.source_voiceover_sha256 ||
+      output.bytes !== state.output.bytes ||
+      transcript.sha256 !== state.documents.transcript_sha256 ||
+      timeline.sha256 !== state.documents.timeline_sha256 ||
+      manifest.sha256 !== state.documents.resolved_render_manifest_sha256 ||
+      renderResult.sha256 !== state.documents.render_result_sha256 ||
+      evidence.sha256 !== state.evidence_sha256 ||
+      spans.some((span, index) => span.bytes !== state.selected_span_audio[index]?.bytes)
+    ) {
+      throw new Error("The latest persisted local runtime state does not match its artifacts.");
+    }
+    const [transcriptDocument, timelineDocument, manifestDocument, renderResultDocument] =
+      await Promise.all([
+        validateAndHashContractDocument(
+          "transcriptTiming",
+          parseJsonStrict(decoder.decode(transcript.content)),
+        ),
+        validateAndHashContractDocument(
+          "timelinePlan",
+          parseJsonStrict(decoder.decode(timeline.content)),
+        ),
+        validateAndHashContractDocument(
+          "resolvedRenderManifest",
+          parseJsonStrict(decoder.decode(manifest.content)),
+        ),
+        validateAndHashContractDocument(
+          "renderJobResult",
+          parseJsonStrict(decoder.decode(renderResult.content)),
+        ),
+      ]);
+    if (
+      transcriptDocument.sha256 !== state.documents.transcript_sha256 ||
+      timelineDocument.sha256 !== state.documents.timeline_sha256 ||
+      manifestDocument.sha256 !== state.documents.resolved_render_manifest_sha256 ||
+      renderResultDocument.sha256 !== state.documents.render_result_sha256 ||
+      transcriptDocument.value.project_revision_id !== LOCAL_REVISION_ID ||
+      timelineDocument.value.project_revision_id !== LOCAL_REVISION_ID ||
+      manifestDocument.value.project_revision_id !== LOCAL_REVISION_ID ||
+      transcriptDocument.value.source.sha256 !== state.source_voiceover_sha256 ||
+      manifestDocument.value.timeline_plan_hash !== state.documents.timeline_sha256 ||
+      manifestDocument.value.voiceover.sha256 !== state.source_voiceover_sha256 ||
+      timelineDocument.value.total_frames !== state.output.total_frames ||
+      renderResultDocument.value.status !== "SUCCEEDED" ||
+      renderResultDocument.value.output === null ||
+      renderResultDocument.value.probe === null ||
+      renderResultDocument.value.output.filename !== state.output.filename ||
+      renderResultDocument.value.output.sha256 !== state.output.sha256 ||
+      renderResultDocument.value.output.bytes !== state.output.bytes ||
+      renderResultDocument.value.probe.duration_ms !== state.output.duration_ms ||
+      renderResultDocument.value.probe.total_frames !== state.output.total_frames
+    ) {
+      throw new Error("The latest persisted local contracts do not bind to one accepted result.");
+    }
+    verifySelectedSpanLineage(
+      timelineDocument.value,
+      transcriptDocument.value.source.duration_ms,
+      state.selected_span_audio,
+    );
+    const evidenceRecord = exactRecord(
+      parseJsonStrict(decoder.decode(evidence.content)),
+      [
+        "schema_version",
+        "provider_calls_authorized",
+        "external_spend_usd",
+        "source_fixture_id",
+        "attempts",
+        "source_voiceover",
+        "tools",
+        "documents",
+        "output",
+        "selected_span_audio",
+        "grammar",
+      ],
+      "Persisted acceptance evidence",
+    );
+    const evidenceSource = exactRecord(
+      evidenceRecord.source_voiceover,
+      ["asset_id", "sha256", "bytes", "duration_ms", "narrator", "speech_rate"],
+      "Persisted evidence source",
+    );
+    const evidenceDocuments = exactRecord(
+      evidenceRecord.documents,
+      [
+        "revision_config_sha256",
+        "asr_input_sha256",
+        "asr_result_sha256",
+        "transcript_sha256",
+        "timeline_sha256",
+        "resolved_render_manifest_sha256",
+        "render_input_sha256",
+        "render_result_sha256",
+      ],
+      "Persisted evidence documents",
+    );
+    const evidenceOutput = exactRecord(
+      evidenceRecord.output,
+      ["asset_id", "sha256", "bytes", "artifact_uri", "filename", "probe"],
+      "Persisted evidence output",
+    );
+    const evidenceProbe = exactRecord(
+      evidenceOutput.probe,
+      [
+        "schema_version",
+        "asset_id",
+        "sha256",
+        "bytes",
+        "container",
+        "duration_ms",
+        "total_frames",
+        "video",
+        "audio",
+        "stream_counts",
+        "av_drift_ms",
+        "decode_ok",
+        "loudness",
+        "tools",
+      ],
+      "Persisted evidence probe",
+    );
+    if (
+      evidenceRecord.schema_version !== "videoforge.local-slice-evidence/v1" ||
+      evidenceRecord.provider_calls_authorized !== false ||
+      evidenceRecord.external_spend_usd !== 0 ||
+      evidenceSource.sha256 !== state.source_voiceover_sha256 ||
+      evidenceDocuments.transcript_sha256 !== state.documents.transcript_sha256 ||
+      evidenceDocuments.timeline_sha256 !== state.documents.timeline_sha256 ||
+      evidenceDocuments.resolved_render_manifest_sha256 !==
+        state.documents.resolved_render_manifest_sha256 ||
+      evidenceDocuments.render_result_sha256 !== state.documents.render_result_sha256 ||
+      evidenceOutput.filename !== state.output.filename ||
+      evidenceOutput.sha256 !== state.output.sha256 ||
+      evidenceOutput.bytes !== state.output.bytes ||
+      evidenceProbe.duration_ms !== state.output.duration_ms ||
+      evidenceProbe.total_frames !== state.output.total_frames ||
+      canonicalizeJson(evidenceRecord.selected_span_audio as JsonValue) !==
+        canonicalizeJson(state.selected_span_audio as unknown as JsonValue)
+    ) {
+      throw new Error("The latest persisted local evidence does not bind to runtime state.");
+    }
+    const evidencePath = await store.resolveRunFile(
+      LOCAL_REVISION_ID,
+      attemptId,
+      "acceptance-evidence.json",
+    );
+    if ((await exactFileSha256(evidencePath)) !== state.evidence_sha256) {
+      throw new Error("The latest persisted local acceptance evidence has drifted.");
+    }
+    return Object.freeze({
+      artifactRoot: store.root,
+      sourceVoiceoverSha256: state.source_voiceover_sha256,
+      filename: state.output.filename,
+      sha256: state.output.sha256,
+      bytes: state.output.bytes,
+      durationMs: state.output.duration_ms,
+      totalFrames: state.output.total_frames,
+      transcriptSha256: state.documents.transcript_sha256,
+      timelineSha256: state.documents.timeline_sha256,
+      resolvedRenderManifestSha256: state.documents.resolved_render_manifest_sha256,
+      renderResultSha256: state.documents.render_result_sha256,
+      selectedSpanAudio: state.selected_span_audio,
+      evidencePath,
+      evidenceSha256: state.evidence_sha256,
+    });
+  }
+
   async run(request: LocalPipelineRunRequest): Promise<LocalPipelineRunResult> {
     if (
       request.projectId !== LOCAL_PROJECT_ID ||
@@ -652,6 +1117,14 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
       timeline.value.segments,
       "Deterministic timeline",
     );
+    const selectedSpanAudio = await this.materializeSelectedSpanAudio(
+      store,
+      request.voiceover,
+      timeline.value,
+      ffmpeg,
+      ffprobe,
+      request.signal,
+    );
 
     request.onProgress({
       stage: "RESOLVING_ASSETS",
@@ -824,6 +1297,13 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
     if (output.bytes !== renderResult.value.output.bytes) {
       throw new Error("Published local MP4 byte count drifted after technical acceptance.");
     }
+    const renderResultArtifact = await store.putObject(
+      Buffer.from(canonicalizeJson(renderResult.value), "utf8"),
+      "json",
+    );
+    if (renderResultArtifact.sha256 !== renderResult.sha256) {
+      throw new Error("Canonical render result bytes do not match their JCS hash.");
+    }
     const evidencePath = await store.resolveRunFile(
       request.revisionId,
       renderAttemptId,
@@ -871,6 +1351,7 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
           ...renderResult.value.output,
           probe: renderResult.value.probe,
         },
+        selected_span_audio: selectedSpanAudio,
         grammar: {
           ...LOCAL_SHORT_SLICE_MANIFEST.expectedOutput,
           actual_composition_coverage: timelineCompositionCoverage,
@@ -880,9 +1361,36 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
     );
     const evidenceArtifact = await store.putObject(evidenceBytes, "json");
     await writeFile(evidencePath, evidenceBytes, { flag: "wx", mode: 0o600 });
+    const runtimeState: PersistedLocalRuntimeState = Object.freeze({
+      schema_version: RUNTIME_STATE_SCHEMA_VERSION,
+      source_voiceover_sha256: request.voiceover.checksum,
+      output: Object.freeze({
+        filename: renderResult.value.output.filename,
+        sha256: outputSha256,
+        bytes: renderResult.value.output.bytes,
+        duration_ms: renderResult.value.probe.duration_ms,
+        total_frames: renderResult.value.probe.total_frames,
+      }),
+      documents: Object.freeze({
+        transcript_sha256: transcript.sha256,
+        timeline_sha256: timeline.sha256,
+        resolved_render_manifest_sha256: resolvedManifest.sha256,
+        render_result_sha256: renderResult.sha256,
+      }),
+      selected_span_audio: selectedSpanAudio,
+      evidence_sha256: evidenceArtifact.sha256,
+    });
+    await writeCanonicalRunDocument(
+      store,
+      request.revisionId,
+      renderAttemptId,
+      RUNTIME_STATE_FILENAME,
+      runtimeState as unknown as JsonValue,
+    );
 
     return Object.freeze({
       artifactRoot: store.root,
+      sourceVoiceoverSha256: request.voiceover.checksum,
       filename: renderResult.value.output.filename,
       sha256: outputSha256,
       bytes: renderResult.value.output.bytes,
@@ -892,9 +1400,103 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
       timelineSha256: timeline.sha256,
       resolvedRenderManifestSha256: resolvedManifest.sha256,
       renderResultSha256: renderResult.sha256,
+      selectedSpanAudio,
       evidencePath,
       evidenceSha256: evidenceArtifact.sha256,
     });
+  }
+
+  private async materializeSelectedSpanAudio(
+    store: LocalArtifactStore,
+    voiceover: LocalOwnedVoiceover,
+    timeline: TimelinePlanDocument,
+    ffmpeg: string,
+    ffprobe: string,
+    signal: AbortSignal,
+  ): Promise<readonly LocalSelectedSpanAudio[]> {
+    const paddingMs = SUPPORTED_SCHEDULER_CONFIG.selected_span_context_padding_ms;
+    const avatarSegments = timeline.segments.filter(
+      (segment) => segment.timeline_composition !== "IMAGE_FULL",
+    );
+    if (avatarSegments.length === 0) {
+      throw new Error("The deterministic timeline selected no avatar audio spans.");
+    }
+    const temporary = await mkdtemp(path.join(tmpdir(), "videoforge-selected-spans-"));
+    try {
+      const selected: LocalSelectedSpanAudio[] = [];
+      for (const [index, segment] of avatarSegments.entries()) {
+        const selectedStartMs = segment.source_audio_start_ms;
+        const selectedEndMsExclusive = segment.source_audio_end_ms;
+        const sourceDurationMs = Math.round(voiceover.durationSeconds * 1_000);
+        const paddedStartMs = Math.max(0, selectedStartMs - paddingMs);
+        const paddedEndMsExclusive = Math.min(sourceDurationMs, selectedEndMsExclusive + paddingMs);
+        const trimStartMs = selectedStartMs - paddedStartMs;
+        const trimEndMsExclusive = trimStartMs + selectedEndMsExclusive - selectedStartMs;
+        const output = path.join(temporary, `span-${String(index + 1).padStart(3, "0")}.wav`);
+        await runProcess(
+          ffmpeg,
+          [
+            "-hide_banner",
+            "-nostdin",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            voiceover.absolutePath,
+            "-map",
+            "0:a:0",
+            "-vn",
+            "-af",
+            `atrim=start_sample=${String(paddedStartMs * 48)}:end_sample=${String(paddedEndMsExclusive * 48)},asetpts=PTS-STARTPTS,aresample=16000`,
+            "-map_metadata",
+            "-1",
+            "-fflags",
+            "+bitexact",
+            "-flags:a",
+            "+bitexact",
+            "-ar",
+            "16000",
+            "-ac",
+            "1",
+            "-c:a",
+            "pcm_s16le",
+            output,
+          ],
+          `selected span audio ${String(index + 1)}`,
+          signal,
+        );
+        const probe = await runProcess(
+          ffprobe,
+          ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", output],
+          `selected span audio probe ${String(index + 1)}`,
+          signal,
+        );
+        const durationMs = Math.round(Number(probe.stdout.trim()) * 1_000);
+        if (durationMs !== paddedEndMsExclusive - paddedStartMs) {
+          throw new Error(`Selected span ${segment.segment_id} duration drifted after extraction.`);
+        }
+        const artifact = await store.putObject(await readFile(output), "wav");
+        selected.push(
+          Object.freeze({
+            spanId: stableId("selected-span", segment.segment_id).replace(/^seg_/u, "span_"),
+            timelineSegmentId: segment.segment_id,
+            taskKey: segment.required_slots.avatar.span_audio_task_key,
+            selectedStartMs,
+            selectedEndMsExclusive,
+            paddedStartMs,
+            paddedEndMsExclusive,
+            trimStartMs,
+            trimEndMsExclusive,
+            sha256: artifact.sha256,
+            bytes: artifact.bytes,
+            durationMs,
+          }),
+        );
+      }
+      return Object.freeze(selected);
+    } finally {
+      await rm(temporary, { recursive: true, force: true });
+    }
   }
 
   private async nextAttemptOrdinal(store: LocalArtifactStore, revisionId: string): Promise<number> {

@@ -80,9 +80,10 @@ function createRequest(assetId: string): CreateProjectRequest {
 class ControlledRunner implements LocalSliceRunner {
   readonly runRequests: LocalPipelineRunRequest[] = [];
   readonly voiceover: LocalOwnedVoiceover;
-  readonly output: LocalPipelineRunResult;
+  output: LocalPipelineRunResult;
   readonly previewPath: string;
   readonly transcriptPath: string;
+  restoreCalls = 0;
   private resolveRun!: (result: LocalPipelineRunResult) => void;
   private rejectRun!: (error: Error) => void;
   private readonly completion = new Promise<LocalPipelineRunResult>((resolve, reject) => {
@@ -95,6 +96,7 @@ class ControlledRunner implements LocalSliceRunner {
     output: LocalPipelineRunResult,
     previewPath: string,
     transcriptPath: string,
+    private readonly restoreOnBootstrap: boolean,
   ) {
     this.voiceover = voiceover;
     this.output = output;
@@ -102,13 +104,17 @@ class ControlledRunner implements LocalSliceRunner {
     this.transcriptPath = transcriptPath;
   }
 
-  static async create(): Promise<ControlledRunner> {
+  static async create(
+    options: { readonly restoreOnBootstrap?: boolean } = {},
+  ): Promise<ControlledRunner> {
     const root = await mkdtemp(join(tmpdir(), "videoforge-local-api-test-"));
     temporaryRoots.push(root);
     const source = join(root, "owned-voiceover.wav");
     await writeFile(source, "owned voiceover bytes");
     const store = await LocalArtifactStore.create(join(root, "artifacts"));
     const preview = await store.putObject(OUTPUT_CONTENT, "mp4");
+    const firstSpan = await store.putObject(Buffer.alloc(208_044, 0x31), "wav");
+    const secondSpan = await store.putObject(Buffer.alloc(192_044, 0x32), "wav");
     const transcript = await store.putObject(
       Buffer.from(
         canonicalizeJson({
@@ -327,6 +333,7 @@ class ControlledRunner implements LocalSliceRunner {
       },
       {
         artifactRoot: store.root,
+        sourceVoiceoverSha256: VOICEOVER_SHA,
         filename: "videoforge-local-owned-slice.mp4",
         sha256: OUTPUT_SHA,
         bytes: OUTPUT_CONTENT.byteLength,
@@ -336,16 +343,52 @@ class ControlledRunner implements LocalSliceRunner {
         timelineSha256: timeline.sha256,
         resolvedRenderManifestSha256: DOCUMENT_SHA,
         renderResultSha256: DOCUMENT_SHA,
+        selectedSpanAudio: [
+          {
+            spanId: "span_local_001",
+            timelineSegmentId: "segment_local_001",
+            taskKey: "audio-span:segment_local_001",
+            selectedStartMs: 0,
+            selectedEndMsExclusive: 6_000,
+            paddedStartMs: 0,
+            paddedEndMsExclusive: 6_500,
+            trimStartMs: 0,
+            trimEndMsExclusive: 6_000,
+            sha256: firstSpan.sha256,
+            bytes: firstSpan.bytes,
+            durationMs: 6_500,
+          },
+          {
+            spanId: "span_local_005",
+            timelineSegmentId: "segment_local_005",
+            taskKey: "audio-span:segment_local_005",
+            selectedStartMs: 27_000,
+            selectedEndMsExclusive: 32_000,
+            paddedStartMs: 26_500,
+            paddedEndMsExclusive: 32_500,
+            trimStartMs: 500,
+            trimEndMsExclusive: 5_500,
+            sha256: secondSpan.sha256,
+            bytes: secondSpan.bytes,
+            durationMs: 6_000,
+          },
+        ],
         evidencePath: join(root, "evidence.json"),
         evidenceSha256: DOCUMENT_SHA,
       },
       preview.absolutePath,
       transcript.absolutePath,
+      options.restoreOnBootstrap ?? false,
     );
   }
 
   prepareOwnedVoiceover(): Promise<LocalOwnedVoiceover> {
     return Promise.resolve(this.voiceover);
+  }
+
+  restoreLatest(): Promise<LocalPipelineRunResult | null> {
+    this.restoreCalls += 1;
+    return Promise.resolve(this.restoreOnBootstrap ? this.output : null);
   }
 
   async run(request: LocalPipelineRunRequest): Promise<LocalPipelineRunResult> {
@@ -365,6 +408,13 @@ class ControlledRunner implements LocalSliceRunner {
 
   fail(message: string): void {
     this.rejectRun(new Error(message));
+  }
+
+  omitLastSelectedSpan(): void {
+    this.output = {
+      ...this.output,
+      selectedSpanAudio: this.output.selectedSpanAudio.slice(0, -1),
+    };
   }
 }
 
@@ -452,6 +502,43 @@ describe("local walking-slice API", () => {
       checksum: VOICEOVER_SHA,
       persistedBytes: true,
       providerCallsAuthorized: false,
+    });
+  });
+
+  it("restores checksum-bound timing and output without starting a new run", async () => {
+    const runner = await ControlledRunner.create({ restoreOnBootstrap: true });
+    const app = createApiApp({
+      commit: "abcdef1234567890",
+      environment: "test",
+      mode: "local",
+      localRunner: runner,
+    });
+    const response = await app.request("/api/v1/bootstrap");
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      projects: [
+        {
+          id: PROJECT_ID,
+          status: "READY_FOR_REVIEW",
+          latestArtifact: { sha256: OUTPUT_SHA },
+        },
+      ],
+    });
+    expect(runner.restoreCalls).toBe(1);
+    expect(runner.runRequests).toHaveLength(0);
+
+    const project = await app.request(`/api/v1/projects/${PROJECT_ID}`);
+    await expect(project.json()).resolves.toMatchObject({
+      notice: { title: "Persisted local result restored" },
+      events: expect.arrayContaining([
+        expect.objectContaining({ detail: expect.stringContaining("Restored persisted timing") }),
+      ]),
+    });
+    const inspection = await app.request(`/api/v1/projects/${PROJECT_ID}/timeline-inspection`);
+    await expect(inspection.json()).resolves.toMatchObject({
+      ready: true,
+      invalidation: { state: "CURRENT" },
+      selectedAvatar: { count: 2, materializedCount: 2 },
     });
   });
 
@@ -574,7 +661,7 @@ describe("local walking-slice API", () => {
       invalidation: { state: string };
       timing: { sourceDurationMs: number; phraseCount: number; coverage: string };
       plan: { totalFrames: number; sourceStartMs: number; sourceEndMs: number; coverage: string };
-      selectedAvatar: { count: number; coveragePercent: number };
+      selectedAvatar: { count: number; materializedCount: number; coveragePercent: number };
       phrases: unknown[];
     };
     expect(readyBody).toMatchObject({
@@ -587,7 +674,7 @@ describe("local walking-slice API", () => {
         sourceEndMs: 40_000,
         coverage: "COMPLETE",
       },
-      selectedAvatar: { count: 2, coveragePercent: 27.5 },
+      selectedAvatar: { count: 2, materializedCount: 2, coveragePercent: 27.5 },
     });
     expect(readyBody.phrases).toHaveLength(6);
 
@@ -600,6 +687,23 @@ describe("local walking-slice API", () => {
       timing: null,
       plan: null,
       phrases: [],
+    });
+  });
+
+  it("fails closed when a selected avatar span was not materialized", async () => {
+    const { app, runner } = await localApp();
+    const assetId = (await bootstrap(app)).draft.voiceover.assetId;
+    runner.omitLastSelectedSpan();
+    await createLocalProject(app, assetId);
+    runner.complete();
+    await waitForReady(app);
+
+    const inspection = await app.request(`/api/v1/projects/${PROJECT_ID}/timeline-inspection`);
+    expect(inspection.status).toBe(200);
+    await expect(inspection.json()).resolves.toMatchObject({
+      ready: false,
+      invalidation: { state: "INCOMPLETE", recomputeRequired: true },
+      blockers: [expect.stringContaining("no persisted materialized audio")],
     });
   });
 

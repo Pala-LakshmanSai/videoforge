@@ -25,6 +25,11 @@ export function deriveTimelineInspectionView(
     inspection.timing?.coverage === "COMPLETE" &&
     inspection.plan?.coverage === "COMPLETE" &&
     inspection.selectedAvatar !== null &&
+    inspection.selectedAvatar.count === inspection.selectedAvatar.spans.length &&
+    inspection.selectedAvatar.materializedCount === inspection.selectedAvatar.count &&
+    inspection.selectedAvatar.spans.every((span) =>
+      /^sha256:[a-f0-9]{64}$/u.test(span.audioSha256),
+    ) &&
     inspection.phrases.length === inspection.timing.phraseCount &&
     inspection.blockers.length === 0;
   const ready =

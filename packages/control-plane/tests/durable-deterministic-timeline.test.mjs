@@ -4,7 +4,9 @@ import test from "node:test";
 
 import { canonicalizeJson, validateAndHashContractDocument } from "@videoforge/contracts";
 import {
+  buildSelectedSpanAudioJob,
   DurableDeterministicTimelinePersistence,
+  DurableSelectedSpanAudioPersistence,
   exportMetadataSnapshot,
   prepareDurableDeterministicTimeline,
   restoreMetadataSnapshot,
@@ -254,6 +256,110 @@ function persistCommand(revision, transcript) {
   };
 }
 
+function objectUri(hash, extension) {
+  const digest = hash.slice("sha256:".length);
+  return `vf-local://objects/sha256/${digest.slice(0, 2)}/${digest}.${extension}`;
+}
+
+async function insertRunningSpanAttempt(executor, span, ordinal, inputHash) {
+  const taskId = uuid(33_000 + ordinal * 2);
+  const attemptId = uuid(33_001 + ordinal * 2);
+  await executor.query(
+    `INSERT INTO generation_tasks (
+       id, workspace_id, owner_type, owner_id, project_revision_id,
+       task_key, lane, state, version
+     ) VALUES ($1, $2, 'PROJECT_REVISION', $3, $3, $4, 'PREPARE', 'RUNNING', 1)`,
+    [taskId, IDS.workspaceA, IDS.revisionA, span.taskKey],
+  );
+  await executor.query(
+    `INSERT INTO attempts (
+       id, workspace_id, task_id, ordinal, idempotency_key, state,
+       dispatch_state, claim_state, execution_profile_id, execution_claim_token_hash,
+       input_hash, claimed_at, started_at
+     ) VALUES ($1, $2, $3, 1, $4, 'RUNNING', 'ACKNOWLEDGED', 'CLAIMED',
+               $5, $6, $7, $8, $8)`,
+    [
+      attemptId,
+      IDS.workspaceA,
+      taskId,
+      `attempt:${attemptId}`,
+      IDS.executionProfileA,
+      sha256(`claim:${attemptId}`),
+      inputHash,
+      FIXED_TIME,
+    ],
+  );
+  return { taskId, attemptId };
+}
+
+async function materializeSelectedSpans(executor, repositories, timeline) {
+  const service = new DurableSelectedSpanAudioPersistence(repositories);
+  const accepted = [];
+  for (const [index, span] of timeline.selectedSpanAudio.entries()) {
+    const attemptId = uuid(33_001 + (index + 1) * 2);
+    const dispatch = await buildSelectedSpanAudioJob({
+      projectRevisionId: IDS.revisionA,
+      attemptId,
+      timelinePlanId: timeline.timelinePlanId,
+      transcriptId: timeline.transcriptId,
+      span,
+      sourceDurationMs: 40_000,
+      sourceArtifactUri: objectUri(HASHES.voiceoverA, "wav"),
+      cancelToken: `vf-2-05-selected-span-cancel-${String(index + 1).padStart(3, "0")}-000000000000`,
+    });
+    const attempt = await insertRunningSpanAttempt(executor, span, index + 1, dispatch.inputHash);
+    assert.equal(attempt.attemptId, attemptId);
+    const outputHash = sha256(`vf-2-05-selected-span-${span.spanId}`);
+    const durationMs = span.paddedEndMsExclusive - span.paddedStartMs;
+    const result = await service.accept(SCOPE, {
+      projectId: IDS.projectA,
+      taskId: attempt.taskId,
+      expectedHeadVersion: 2,
+      expectedSpanVersion: 1,
+      jobInput: dispatch.input,
+      jobResult: {
+        schema_version: "selected-span-audio-result/v1",
+        attempt_id: attempt.attemptId,
+        status: "SUCCEEDED",
+        span_id: span.spanId,
+        timeline_plan_id: timeline.timelinePlanId,
+        transcript_id: timeline.transcriptId,
+        timeline_segment_id: span.timelineSegmentId,
+        task_key: span.taskKey,
+        source_voiceover: {
+          asset_id: span.sourceAssetId,
+          sha256: span.sourceBinarySha256,
+          duration_ms: 40_000,
+        },
+        selection: {
+          selected_start_ms: span.selectedStartMs,
+          selected_end_ms_exclusive: span.selectedEndMsExclusive,
+          padded_start_ms: span.paddedStartMs,
+          padded_end_ms_exclusive: span.paddedEndMsExclusive,
+          trim_start_ms: span.trimStartMs,
+          trim_end_ms_exclusive: span.trimEndMsExclusive,
+        },
+        audio: {
+          asset_id: dispatch.outputAssetId,
+          sha256: outputHash,
+          artifact_uri: objectUri(outputHash, "wav"),
+          content_type: "audio/wav",
+          byte_size: durationMs * 32 + 44,
+          duration_ms: durationMs,
+          sample_rate_hz: 16_000,
+          channels: 1,
+        },
+        error: null,
+      },
+      finishedAt: FIXED_TIME,
+    });
+    assert.equal(result.ok, true, diagnostic(result));
+    assert.equal(result.value.span.state, "MATERIALIZED");
+    accepted.push(result.value.span);
+  }
+  return accepted;
+}
+
 test("persists silent-boundary plans and resolves byte-identical canonical bytes after restore", async () => {
   const revision = await validateAndHashContractDocument("projectRevisionConfig", revisionValue());
   const transcript = await validateAndHashContractDocument("transcriptTiming", transcriptValue());
@@ -303,6 +409,12 @@ test("persists silent-boundary plans and resolves byte-identical canonical bytes
     assert.equal(replay.ok, true, diagnostic(replay));
     assert.equal(replay.value.replayed, true);
     assert.equal(replay.value.timeline.timelinePlanId, accepted.value.timeline.timelinePlanId);
+    const materialized = await materializeSelectedSpans(
+      source.executor,
+      repositories,
+      accepted.value.timeline,
+    );
+    assert.equal(materialized.length, accepted.value.timeline.selectedSpanAudio.length);
 
     const lookup = {
       projectId: IDS.projectA,
@@ -316,6 +428,25 @@ test("persists silent-boundary plans and resolves byte-identical canonical bytes
     assert.equal(
       new TextDecoder().decode(beforeRestart.value.canonicalBytes),
       canonicalizeJson(beforeRestart.value.document.value),
+    );
+    const beforeSpanRows = await source.executor.query(
+      `SELECT id, timeline_segment_id, task_key, state, materialized_asset_id,
+              materialized_binary_sha256, version
+         FROM selected_span_audio
+        WHERE workspace_id = $1 AND timeline_plan_id = $2
+        ORDER BY timeline_segment_id`,
+      [IDS.workspaceA, accepted.value.timeline.timelinePlanId],
+    );
+    assert.equal(beforeSpanRows.rows.length, materialized.length);
+    assert.equal(
+      beforeSpanRows.rows.every(
+        (span) =>
+          span.state === "MATERIALIZED" &&
+          span.materialized_asset_id !== null &&
+          span.materialized_binary_sha256 !== null &&
+          span.version === 2,
+      ),
+      true,
     );
 
     const snapshot = serializeMetadataSnapshot(await exportMetadataSnapshot(source.executor));
@@ -333,6 +464,15 @@ test("persists silent-boundary plans and resolves byte-identical canonical bytes
       assert.equal(afterRestart.value.timing.headVersion, 2);
       assert.equal(afterRestart.value.document.sha256, beforeRestart.value.document.sha256);
       assert.deepEqual(afterRestart.value.canonicalBytes, beforeRestart.value.canonicalBytes);
+      const afterSpanRows = await destination.executor.query(
+        `SELECT id, timeline_segment_id, task_key, state, materialized_asset_id,
+                materialized_binary_sha256, version
+           FROM selected_span_audio
+          WHERE workspace_id = $1 AND timeline_plan_id = $2
+          ORDER BY timeline_segment_id`,
+        [IDS.workspaceA, accepted.value.timeline.timelinePlanId],
+      );
+      assert.deepEqual(afterSpanRows.rows, beforeSpanRows.rows);
       assert.equal(
         serializeMetadataSnapshot(await exportMetadataSnapshot(destination.executor)),
         snapshot,

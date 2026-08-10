@@ -36,8 +36,24 @@ export interface LocalPipelineRunRequest {
   readonly onProgress: (progress: LocalPipelineProgress) => void;
 }
 
+export interface LocalSelectedSpanAudio {
+  readonly spanId: string;
+  readonly timelineSegmentId: string;
+  readonly taskKey: string;
+  readonly selectedStartMs: number;
+  readonly selectedEndMsExclusive: number;
+  readonly paddedStartMs: number;
+  readonly paddedEndMsExclusive: number;
+  readonly trimStartMs: number;
+  readonly trimEndMsExclusive: number;
+  readonly sha256: Sha256Digest;
+  readonly bytes: number;
+  readonly durationMs: number;
+}
+
 export interface LocalPipelineRunResult {
   readonly artifactRoot: string;
+  readonly sourceVoiceoverSha256: Sha256Digest;
   readonly filename: string;
   readonly sha256: Sha256Digest;
   readonly bytes: number;
@@ -47,6 +63,7 @@ export interface LocalPipelineRunResult {
   readonly timelineSha256: Sha256Digest;
   readonly resolvedRenderManifestSha256: Sha256Digest;
   readonly renderResultSha256: Sha256Digest;
+  readonly selectedSpanAudio: readonly LocalSelectedSpanAudio[];
   readonly evidencePath: string;
   readonly evidenceSha256: Sha256Digest;
 }
@@ -54,4 +71,5 @@ export interface LocalPipelineRunResult {
 export interface LocalSliceRunner {
   prepareOwnedVoiceover(): Promise<LocalOwnedVoiceover>;
   run(request: LocalPipelineRunRequest): Promise<LocalPipelineRunResult>;
+  restoreLatest?(): Promise<LocalPipelineRunResult | null>;
 }

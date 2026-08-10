@@ -74,6 +74,7 @@ const timelineInspectionSchema = z
     selectedAvatar: z
       .object({
         count: z.number().int().nonnegative(),
+        materializedCount: z.number().int().nonnegative(),
         durationMs: z.number().int().nonnegative(),
         coveragePercent: z.number().min(0).max(100),
         spans: z.array(
@@ -84,6 +85,7 @@ const timelineInspectionSchema = z
               endMs: z.number().int().positive(),
               layout: z.enum(["AVATAR_FULL", "AVATAR_SPLIT_IMAGE"]),
               phrase: z.string(),
+              audioSha256: z.string().regex(SHA256),
             })
             .strict(),
         ),

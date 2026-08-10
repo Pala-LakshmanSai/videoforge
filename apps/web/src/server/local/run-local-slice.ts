@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 import type { CreateProjectRequest } from "@videoforge/contracts";
 
@@ -45,6 +47,12 @@ class CapturingRunner implements LocalSliceRunner {
 
   prepareOwnedVoiceover(): Promise<LocalOwnedVoiceover> {
     return this.delegate.prepareOwnedVoiceover();
+  }
+
+  async restoreLatest(): Promise<LocalPipelineRunResult | null> {
+    const result = (await this.delegate.restoreLatest?.()) ?? null;
+    if (result) this.completed = result;
+    return result;
   }
 
   async run(request: LocalPipelineRunRequest): Promise<LocalPipelineRunResult> {
@@ -97,12 +105,16 @@ interface LocalTimelineInspectionResponse {
     readonly sourceEndMs: number;
     readonly coverage: string;
   } | null;
-  readonly selectedAvatar: { readonly count: number } | null;
+  readonly selectedAvatar: {
+    readonly count: number;
+    readonly materializedCount: number;
+  } | null;
   readonly phrases: readonly unknown[];
 }
 
 async function main(): Promise<void> {
-  const runner = new CapturingRunner(createLocalMediaPipelineRunner());
+  const artifactRoot = await mkdtemp(path.join(tmpdir(), "videoforge-vf-2-05-"));
+  const runner = new CapturingRunner(createLocalMediaPipelineRunner({ artifactRoot }));
   const app = createApiApp({
     configuration: {
       commit: "local-acceptance",
@@ -235,8 +247,11 @@ async function main(): Promise<void> {
     "Inspection did not expose exact source-audio and frame coverage.",
   );
   invariant(
-    inspection.selectedAvatar !== null && inspection.selectedAvatar.count > 0,
-    "Inspection omitted selected avatar spans.",
+    inspection.selectedAvatar !== null &&
+      inspection.selectedAvatar.count > 0 &&
+      inspection.selectedAvatar.materializedCount === inspection.selectedAvatar.count &&
+      result.selectedSpanAudio.length === inspection.selectedAvatar.count,
+    "Inspection omitted materialized selected avatar spans.",
   );
 
   const rangeResponse = await app.request(`/api/v1/projects/${LOCAL_PROJECT_ID}/preview`, {
@@ -292,6 +307,55 @@ async function main(): Promise<void> {
     "Acceptance evidence bytes do not match their content-addressed SHA-256.",
   );
 
+  const restoredRunner = new CapturingRunner(
+    createLocalMediaPipelineRunner({ artifactRoot: result.artifactRoot }),
+  );
+  const restoredApp = createApiApp({
+    configuration: {
+      commit: "local-acceptance-restart",
+      environment: "test",
+      mode: "local",
+    },
+    bindings: {
+      platform: "node",
+      localRunner: restoredRunner,
+      localAppFactory: createLocalApiApp,
+    },
+  });
+  const restoredBootstrapResponse = await restoredApp.request("/api/v1/bootstrap");
+  await requireStatus(restoredBootstrapResponse, 200, "Restarted local bootstrap");
+  const restoredBootstrap = (await restoredBootstrapResponse.json()) as {
+    projects: readonly { readonly id: string; readonly status: string }[];
+  };
+  invariant(
+    restoredBootstrap.projects.length === 1 &&
+      restoredBootstrap.projects[0]?.id === LOCAL_PROJECT_ID &&
+      restoredBootstrap.projects[0]?.status === "READY_FOR_REVIEW",
+    "Restarted local runtime did not restore the accepted project.",
+  );
+  const restoredResult = restoredRunner.result();
+  invariant(
+    restoredResult.sha256 === result.sha256 &&
+      restoredResult.transcriptSha256 === result.transcriptSha256 &&
+      restoredResult.timelineSha256 === result.timelineSha256 &&
+      restoredResult.evidenceSha256 === result.evidenceSha256 &&
+      restoredResult.selectedSpanAudio.length === result.selectedSpanAudio.length,
+    "Restarted local runtime did not restore byte-equivalent accepted lineage.",
+  );
+  const restoredInspectionResponse = await restoredApp.request(
+    `/api/v1/projects/${LOCAL_PROJECT_ID}/timeline-inspection`,
+  );
+  await requireStatus(restoredInspectionResponse, 200, "Restarted timeline inspection");
+  const restoredInspection =
+    (await restoredInspectionResponse.json()) as LocalTimelineInspectionResponse;
+  invariant(
+    restoredInspection.ready &&
+      restoredInspection.documents.transcriptSha256 === result.transcriptSha256 &&
+      restoredInspection.documents.timelineSha256 === result.timelineSha256 &&
+      restoredInspection.selectedAvatar?.materializedCount === result.selectedSpanAudio.length,
+    "Restarted timeline inspection did not verify byte-equivalent materialized coverage.",
+  );
+
   console.log(
     JSON.stringify(
       {
@@ -301,7 +365,8 @@ async function main(): Promise<void> {
           preflight: "READY",
           createReplay: "idempotent",
           previewRange: 1_024,
-          timelineInspection: "persisted-hashes-phrases-layouts-and-avatar-spans",
+          timelineInspection: "persisted-hashes-phrases-layouts-and-materialized-avatar-spans",
+          restartRestore: "byte-equivalent-timing-spans-output-and-evidence",
           approval: "exact-candidate-and-sha256",
           download: "queryless-exact-bytes",
         },
