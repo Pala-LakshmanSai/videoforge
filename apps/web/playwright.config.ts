@@ -15,7 +15,11 @@ export default defineConfig({
   },
   projects: [
     { name: "desktop-chrome", use: { ...devices["Desktop Chrome"] } },
-    { name: "compact-chrome", use: { viewport: { width: 1024, height: 900 } } },
+    {
+      name: "compact-chrome",
+      grepInvert: /@viewport-matrix/u,
+      use: { viewport: { width: 1024, height: 900 } },
+    },
   ],
   webServer: {
     command: "pnpm --dir ../.. dev",

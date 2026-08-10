@@ -172,7 +172,11 @@ active_ownership:
       - apps/web/vite.cloudflare.config.ts
       - apps/web/wrangler.jsonc
       - apps/web/tsconfig.worker.json
+      - apps/web/tsconfig.json
       - apps/web/package.json
+      - apps/web/playwright.cloudflare.config.ts
+      - apps/web/playwright.config.ts
+      - apps/web/tests/e2e/shell.spec.ts
       - packages/config/src/index.ts
       - packages/config/test/fixture-runtime.test.mjs
       - packages/contracts/package.json
@@ -180,9 +184,11 @@ active_ownership:
       - apps/web/src/server/domain/preset-service.ts
       - apps/web/src/server/domain/project-service.ts
       - apps/web/src/server/mutation.ts
+      - apps/web/src/server/mutation.test.ts
       - apps/web/src/server/local/types.ts
       - .gitignore
       - package.json
+      - scripts/dev-cloudflare.mjs
       - pnpm-lock.yaml
       - project-context/**
     note: "Only this lane edits runtime composition, metadata, lockfiles, shared context/evidence, and commits."

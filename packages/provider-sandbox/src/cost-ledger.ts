@@ -2,6 +2,7 @@ import { deepFreeze } from "./hashing.js";
 import type {
   MicroUsd,
   SandboxAttemptCostEvidence,
+  SandboxCostEvent,
   SandboxFailureCode,
   SandboxTaskCostSnapshot,
 } from "./types.js";
@@ -13,6 +14,7 @@ interface AttemptCostState {
   reportedMicroUsd: MicroUsd;
   settledMicroUsd: MicroUsd;
   refundedMicroUsd: MicroUsd;
+  reportObserved: boolean;
   reconciled: boolean;
 }
 
@@ -85,6 +87,7 @@ export class SandboxCostLedger {
       reportedMicroUsd: 0n,
       settledMicroUsd: 0n,
       refundedMicroUsd: 0n,
+      reportObserved: false,
       reconciled: false,
     });
     return { ok: true, value: this.attemptEvidence(attemptId)! };
@@ -107,32 +110,82 @@ export class SandboxCostLedger {
         `Attempt ${attemptId} cost has already been reconciled.`,
       );
     }
-    if (!validMoney(reportedMicroUsd) || reportedMicroUsd > attempt.reservedMicroUsd) {
+    if (!validMoney(reportedMicroUsd) || reportedMicroUsd < attempt.reportedMicroUsd) {
       return failure(
         "COST_RECONCILIATION_FAILED",
-        `Attempt ${attemptId} reported cost must be nonnegative and no greater than its reservation.`,
+        `Attempt ${attemptId} final cumulative cost must be nonnegative and no lower than its observed floor.`,
       );
     }
 
     attempt.reportedMicroUsd = reportedMicroUsd;
+    attempt.reportObserved = true;
     attempt.settledMicroUsd = reportedMicroUsd;
-    attempt.refundedMicroUsd = attempt.reservedMicroUsd - reportedMicroUsd;
+    attempt.refundedMicroUsd =
+      reportedMicroUsd < attempt.reservedMicroUsd
+        ? attempt.reservedMicroUsd - reportedMicroUsd
+        : 0n;
     attempt.reconciled = true;
+    return { ok: true, value: this.attemptEvidence(attemptId)! };
+  }
+
+  /** Records the largest truthful cumulative report even when final settlement remains unknown. */
+  observeReportedCost(
+    attemptId: string,
+    reportedMicroUsd: MicroUsd,
+  ): CostLedgerResult<SandboxAttemptCostEvidence> {
+    const attempt = this.#attempts.get(attemptId);
+    if (attempt === undefined || attempt.reconciled || !validMoney(reportedMicroUsd)) {
+      return failure(
+        "COST_RECONCILIATION_FAILED",
+        `Attempt ${attemptId} cannot accept the observed cumulative cost report.`,
+      );
+    }
+    if (reportedMicroUsd > attempt.reportedMicroUsd) {
+      attempt.reportedMicroUsd = reportedMicroUsd;
+    }
+    attempt.reportObserved = true;
     return { ok: true, value: this.attemptEvidence(attemptId)! };
   }
 
   attemptEvidence(attemptId: string): SandboxAttemptCostEvidence | undefined {
     const attempt = this.#attempts.get(attemptId);
     if (attempt === undefined) return undefined;
-    const activeReservedMicroUsd = attempt.reconciled ? 0n : attempt.reservedMicroUsd;
-    const events = attempt.reconciled
-      ? [
-          { sequence: 1, eventType: "RESERVED" as const, amountMicroUsd: attempt.reservedMicroUsd },
-          { sequence: 2, eventType: "REPORTED" as const, amountMicroUsd: attempt.reportedMicroUsd },
-          { sequence: 3, eventType: "SETTLED" as const, amountMicroUsd: attempt.settledMicroUsd },
-          { sequence: 4, eventType: "REFUNDED" as const, amountMicroUsd: attempt.refundedMicroUsd },
-        ]
-      : [{ sequence: 1, eventType: "RESERVED" as const, amountMicroUsd: attempt.reservedMicroUsd }];
+    const overrunMicroUsd =
+      attempt.reportedMicroUsd > attempt.reservedMicroUsd
+        ? attempt.reportedMicroUsd - attempt.reservedMicroUsd
+        : 0n;
+    const activeCommitmentMicroUsd = attempt.reconciled
+      ? 0n
+      : attempt.reservedMicroUsd + overrunMicroUsd;
+    const events: SandboxCostEvent[] = [
+      { sequence: 1, eventType: "RESERVED", amountMicroUsd: attempt.reservedMicroUsd },
+    ];
+    if (attempt.reportObserved) {
+      events.push({
+        sequence: events.length + 1,
+        eventType: "REPORTED",
+        amountMicroUsd: attempt.reportedMicroUsd,
+      });
+    }
+    if (overrunMicroUsd > 0n) {
+      events.push({
+        sequence: events.length + 1,
+        eventType: "RESERVATION_OVERRUN",
+        amountMicroUsd: overrunMicroUsd,
+      });
+    }
+    if (attempt.reconciled) {
+      events.push({
+        sequence: events.length + 1,
+        eventType: "SETTLED",
+        amountMicroUsd: attempt.settledMicroUsd,
+      });
+      events.push({
+        sequence: events.length + 1,
+        eventType: "REFUNDED",
+        amountMicroUsd: attempt.refundedMicroUsd,
+      });
+    }
 
     return deepFreeze({
       currency: "USD" as const,
@@ -142,7 +195,9 @@ export class SandboxCostLedger {
       reportedMicroUsd: attempt.reportedMicroUsd,
       settledMicroUsd: attempt.settledMicroUsd,
       refundedMicroUsd: attempt.refundedMicroUsd,
-      activeReservedMicroUsd,
+      overrunMicroUsd,
+      activeReservedMicroUsd: activeCommitmentMicroUsd,
+      activeCommitmentMicroUsd,
       reconciled: attempt.reconciled,
       events,
     });
@@ -150,17 +205,33 @@ export class SandboxCostLedger {
 
   snapshot(): SandboxTaskCostSnapshot {
     let settledMicroUsd = 0n;
-    let activeReservedMicroUsd = 0n;
+    let activeCommitmentMicroUsd = 0n;
+    let knownReportedMicroUsd = 0n;
     for (const attempt of this.#attempts.values()) {
       settledMicroUsd += attempt.settledMicroUsd;
-      if (!attempt.reconciled) activeReservedMicroUsd += attempt.reservedMicroUsd;
+      knownReportedMicroUsd += attempt.reconciled
+        ? attempt.settledMicroUsd
+        : attempt.reportedMicroUsd;
+      if (!attempt.reconciled) {
+        activeCommitmentMicroUsd +=
+          attempt.reportedMicroUsd > attempt.reservedMicroUsd
+            ? attempt.reportedMicroUsd
+            : attempt.reservedMicroUsd;
+      }
     }
+    const committedMicroUsd = settledMicroUsd + activeCommitmentMicroUsd;
+    const availableMicroUsd =
+      committedMicroUsd >= this.taskCapMicroUsd ? 0n : this.taskCapMicroUsd - committedMicroUsd;
     return deepFreeze({
       currency: "USD" as const,
       taskCapMicroUsd: this.taskCapMicroUsd,
       settledMicroUsd,
-      activeReservedMicroUsd,
-      availableMicroUsd: this.taskCapMicroUsd - settledMicroUsd - activeReservedMicroUsd,
+      activeReservedMicroUsd: activeCommitmentMicroUsd,
+      activeCommitmentMicroUsd,
+      knownReportedMicroUsd,
+      availableMicroUsd,
+      capExceededMicroUsd:
+        committedMicroUsd > this.taskCapMicroUsd ? committedMicroUsd - this.taskCapMicroUsd : 0n,
     });
   }
 }

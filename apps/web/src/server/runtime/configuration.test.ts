@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createApiApp } from "../app";
 import { RuntimeBindingError, runtimeConfigurationFromEnvironment } from "./configuration";
+import { createNodeRuntimeConfiguration } from "./node";
 import type { CreateApiAppOptions } from "./types";
 
 const fixturePreview = { read: async () => "<svg>fixture preview</svg>" };
@@ -34,6 +35,21 @@ describe("runtime configuration", () => {
     expect(() =>
       runtimeConfigurationFromEnvironment({ VIDEOFORGE_ENVIRONMENT: "preview" }),
     ).toThrow(RuntimeBindingError);
+  });
+
+  it("gives the explicit Node environment precedence over NODE_ENV", () => {
+    expect(
+      createNodeRuntimeConfiguration({
+        VIDEOFORGE_COMMIT: "abcdef1234567890",
+        VIDEOFORGE_ENVIRONMENT: "production",
+        VIDEOFORGE_PROVIDER_MODE: "fixture",
+        NODE_ENV: "development",
+      }),
+    ).toEqual({
+      commit: "abcdef1234567890",
+      environment: "production",
+      mode: "fixture",
+    });
   });
 
   it("requires fixture assets and keeps local execution on injected Node bindings", () => {

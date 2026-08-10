@@ -2,17 +2,13 @@ import { serve } from "@hono/node-server";
 
 import { createApiApp } from "./server/app";
 import { createLocalApiApp } from "./server/local/app";
-import { runtimeConfigurationFromEnvironment } from "./server/runtime/configuration";
 import { createNodeFixturePreviewBinding } from "./server/runtime/node-fixture-preview";
+import { createNodeRuntimeConfiguration } from "./server/runtime/node";
 
 export const FIXTURE_API_HOST = "127.0.0.1";
 export const FIXTURE_API_PORT = 4174;
 
-const configuration = runtimeConfigurationFromEnvironment({
-  VIDEOFORGE_COMMIT: process.env.VIDEOFORGE_COMMIT,
-  VIDEOFORGE_PROVIDER_MODE: process.env.VIDEOFORGE_PROVIDER_MODE,
-  NODE_ENV: process.env.NODE_ENV,
-});
+const configuration = createNodeRuntimeConfiguration(process.env);
 const { mode } = configuration;
 const localRunner =
   mode === "local"

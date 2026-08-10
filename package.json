@@ -14,6 +14,7 @@
     "contracts:sync": "pnpm --filter @videoforge/contracts sync",
     "contracts:check": "pnpm --filter @videoforge/contracts sync:check",
     "dev": "node scripts/dev.mjs",
+    "dev:cloudflare": "node scripts/dev-cloudflare.mjs",
     "dev:lan": "node scripts/dev.mjs --lan",
     "dev:local": "node scripts/dev.mjs --mode=local",
     "dev:open": "node scripts/dev-open.mjs",
@@ -30,13 +31,14 @@
     "python:sync": "node scripts/python-sync.mjs",
     "test": "pnpm test:scripts && turbo run test && pnpm test:workers",
     "test:chrome": "pnpm --filter @videoforge/web test:chrome",
+    "test:cloudflare-runtime": "pnpm --filter @videoforge/web test:cloudflare",
     "test:local-slice": "node scripts/test-local-slice.mjs",
     "test:scripts": "node --test scripts/tests/*.test.mjs",
     "test:workers": "node scripts/test-workers.mjs",
     "typecheck": "turbo run typecheck",
     "audit:dependencies": "pnpm audit --audit-level high",
     "secret:scan": "node scripts/secret-scan.mjs",
-    "verify": "pnpm format:check && pnpm lint && pnpm python:lint && pnpm typecheck && pnpm db:check && pnpm test && pnpm contracts:check && pnpm context:validate && pnpm secret:scan && pnpm build:check-generated && pnpm test:chrome"
+    "verify": "pnpm format:check && pnpm lint && pnpm python:lint && pnpm typecheck && pnpm db:check && pnpm test && pnpm contracts:check && pnpm context:validate && pnpm secret:scan && pnpm build:check-generated && pnpm test:cloudflare-runtime && pnpm test:chrome"
   },
   "devDependencies": {
     "@eslint/js": "9.35.0",

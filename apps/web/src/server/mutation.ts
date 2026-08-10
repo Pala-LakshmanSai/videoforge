@@ -14,8 +14,15 @@ const MAX_IDEMPOTENCY_RECORDS_PER_SESSION = 512;
 
 interface IdempotencyRecord {
   readonly fingerprint: string;
-  response: Response | null;
-  pending: Promise<Response> | null;
+  response: ReplayableResponse | null;
+  pending: boolean;
+}
+
+interface ReplayableResponse {
+  readonly status: number;
+  readonly statusText: string;
+  readonly headers: readonly (readonly [string, string])[];
+  readonly body: Uint8Array | null;
 }
 
 export type IdempotencyLedger = Map<string, IdempotencyRecord>;
@@ -174,6 +181,25 @@ function idempotencyFingerprint(c: Context, rawBody: string): string {
   ].join("\n");
 }
 
+async function snapshotResponse(response: Response): Promise<ReplayableResponse> {
+  return {
+    status: response.status,
+    statusText: response.statusText,
+    headers: [...response.headers.entries()],
+    body: response.body === null ? null : new Uint8Array(await response.arrayBuffer()),
+  };
+}
+
+function replayResponse(response: ReplayableResponse, replayed: boolean): Response {
+  const headers = new Headers(response.headers.map(([name, value]) => [name, value]));
+  if (replayed) headers.set("x-videoforge-idempotent-replay", "true");
+  return new Response(response.body?.slice() ?? null, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export async function idempotentMutation(
   c: Context,
   ledger: IdempotencyLedger,
@@ -202,18 +228,26 @@ export async function idempotentMutation(
         ),
       );
     }
-    if (existing.pending) await existing.pending;
+    if (existing.pending) {
+      return problemResponse(
+        apiProblem(
+          "IDEMPOTENCY_REQUEST_IN_PROGRESS",
+          409,
+          "Idempotent request is still in progress",
+          "Retry the same request and Idempotency-Key after the original mutation settles.",
+          true,
+        ),
+      );
+    }
     if (!existing.response) {
       throw new Error("Idempotent mutation completed without a replayable response.");
     }
-    const replay = existing.response.clone();
-    replay.headers.set("x-videoforge-idempotent-replay", "true");
-    return replay;
+    return replayResponse(existing.response, true);
   }
 
-  const record: IdempotencyRecord = { fingerprint, response: null, pending: null };
+  const record: IdempotencyRecord = { fingerprint, response: null, pending: true };
   if (ledger.size >= MAX_IDEMPOTENCY_RECORDS_PER_SESSION) {
-    const settledKey = [...ledger].find(([, value]) => value.pending === null)?.[0];
+    const settledKey = [...ledger].find(([, value]) => !value.pending)?.[0];
     if (settledKey) ledger.delete(settledKey);
   }
   if (ledger.size >= MAX_IDEMPOTENCY_RECORDS_PER_SESSION) {
@@ -227,20 +261,17 @@ export async function idempotentMutation(
       ),
     );
   }
-  const pending = Promise.resolve()
-    .then(() => handle(rawBody))
-    .then((response) => {
-      record.response = response.clone();
-      record.pending = null;
-      return response;
-    })
-    .catch((error: unknown) => {
-      ledger.delete(idempotencyKey);
-      throw error;
-    });
-  record.pending = pending;
   ledger.set(idempotencyKey, record);
-  return pending;
+  try {
+    const response = await handle(rawBody);
+    const snapshot = await snapshotResponse(response);
+    record.response = snapshot;
+    record.pending = false;
+    return replayResponse(snapshot, false);
+  } catch (error) {
+    ledger.delete(idempotencyKey);
+    throw error;
+  }
 }
 
 type ProjectMutationRequestResolution =

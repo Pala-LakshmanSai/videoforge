@@ -897,10 +897,9 @@ for (const viewport of [
   { name: "430px mobile", width: 430, height: 932 },
   { name: "390px mobile", width: 390, height: 844 },
 ]) {
-  test(`${viewport.name} layout stays keyboard reachable without horizontal overflow`, async ({
+  test(`@viewport-matrix ${viewport.name} layout stays keyboard reachable without horizontal overflow`, async ({
     page,
-  }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop-chrome", "Viewport matrix runs once in Chrome.");
+  }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
     for (const route of uiSurfaceRoutes) {

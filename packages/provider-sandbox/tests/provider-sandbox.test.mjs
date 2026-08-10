@@ -6,12 +6,14 @@ import {
   ProviderSandboxHarness,
   createSandboxTaskIdentity,
   hashSandboxAttemptBinding,
+  hashSandboxAuthorization,
   hashSandboxEvidence,
 } from "../dist/src/index.js";
 
 const NOW = 1_800_000_000_000;
 const SHA_A = `sha256:${"a".repeat(64)}`;
 const SHA_B = `sha256:${"b".repeat(64)}`;
+const SHA_C = `sha256:${"c".repeat(64)}`;
 
 const clock = Object.freeze({ nowEpochMs: () => NOW });
 
@@ -125,6 +127,7 @@ test("unsafe authorization and unsafe transports are rejected at zero calls", as
       throw new Error("must not run");
     },
     callLog() {
+      calls.push("callLog");
       return [...calls];
     },
   };
@@ -135,6 +138,328 @@ test("unsafe authorization and unsafe transports are rejected at zero calls", as
   assert.equal(unsafeTransportResult.ok, false);
   assert.equal(unsafeTransportResult.error.code, "UNSAFE_TRANSPORT");
   assert.deepEqual(calls, []);
+});
+
+test("fake constructor rejects malformed option keys and values before use", () => {
+  let scenarioReads = 0;
+  const accessorOptions = {};
+  Object.defineProperty(accessorOptions, "scenario", {
+    enumerable: true,
+    get() {
+      scenarioReads += 1;
+      return "SUCCESS";
+    },
+  });
+  const throwAtAccessor = [];
+  Object.defineProperty(throwAtAccessor, "0", {
+    enumerable: true,
+    configurable: true,
+    get() {
+      throw new Error("throwAt accessor must not execute");
+    },
+  });
+  throwAtAccessor.length = 1;
+
+  const malformed = [
+    { scenario: "SUCCESS", scenrio: "TIMEOUT" },
+    { scenario: "NOT_A_SCENARIO" },
+    { scenario: "SUCCESS", reportedMicroUsd: -1n },
+    { scenario: "SUCCESS", executionReportedMicroUsd: 1 },
+    { scenario: "SUCCESS", cancellationReportedMicroUsd: undefined },
+    { scenario: "SUCCESS", reconciliationOutcome: "MAYBE" },
+    { scenario: "SUCCESS", protocolFault: "UNKNOWN_FAULT" },
+    { scenario: "SUCCESS", throwAt: "EXECUTION" },
+    { scenario: "SUCCESS", throwAt: ["UNKNOWN"] },
+    { scenario: "SUCCESS", throwAt: ["EXECUTION", "EXECUTION"] },
+    { scenario: "SUCCESS", throwAt: throwAtAccessor },
+    { scenario: "SUCCESS", reconciliationOutcome: "STILL_UNKNOWN" },
+    { scenario: "SUCCESS", throwAt: ["RECONCILIATION"] },
+    { scenario: "SUCCESS", protocolFault: "RECONCILIATION_INVALID_EXTERNAL_JOB_ID" },
+    { scenario: "SUCCESS", protocolFault: "EXECUTION_INVALID_TIMEOUT_TIMESTAMP" },
+    { scenario: "TIMEOUT", protocolFault: "EXECUTION_INVALID_RESULT_HASH" },
+    {
+      scenario: "AMBIGUOUS_ACKNOWLEDGEMENT",
+      protocolFault: "DISPATCH_INVALID_EXTERNAL_JOB_ID",
+    },
+    {
+      scenario: "AMBIGUOUS_ACKNOWLEDGEMENT",
+      protocolFault: "RECONCILIATION_INVALID_EXTERNAL_JOB_ID",
+    },
+    { scenario: "CAP_EXHAUSTION", protocolFault: "DISPATCH_INVALID_EXTERNAL_JOB_ID" },
+    accessorOptions,
+  ];
+  for (const options of malformed) {
+    assert.throws(() => new DeterministicFakeTransport(options), TypeError);
+  }
+  assert.equal(scenarioReads, 0);
+});
+
+test("WeakSet prototype poisoning cannot authenticate a forged transport", async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(WeakSet.prototype, "has");
+  assert.notEqual(descriptor, undefined);
+  const calls = [];
+  const forged = {
+    safety: {
+      kind: "DETERMINISTIC_FAKE",
+      networkAccess: false,
+      credentialAccess: false,
+      providerSdkAccess: false,
+      maximumExternalSpendMicroUsd: 0n,
+    },
+    async dispatch() {
+      calls.push("dispatch");
+      throw new Error("must not execute");
+    },
+    async reconcile() {
+      calls.push("reconcile");
+      throw new Error("must not execute");
+    },
+    async execute() {
+      calls.push("execute");
+      throw new Error("must not execute");
+    },
+    async cancel() {
+      calls.push("cancel");
+      throw new Error("must not execute");
+    },
+    async cleanup() {
+      calls.push("cleanup");
+      throw new Error("must not execute");
+    },
+    callLog() {
+      calls.push("callLog");
+      return calls;
+    },
+  };
+
+  try {
+    Object.defineProperty(WeakSet.prototype, "has", {
+      ...descriptor,
+      value: () => true,
+    });
+    const result = await harness().runAttempt(request("attempt_weakset_poison"), forged);
+    assert.equal(result.ok, false);
+    assert.equal(result.error.code, "UNSAFE_TRANSPORT");
+    assert.deepEqual(calls, []);
+  } finally {
+    Object.defineProperty(WeakSet.prototype, "has", descriptor);
+  }
+});
+
+test("captured freezing keeps genuine fakes immutable after Object.freeze poisoning", async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(Object, "freeze");
+  assert.notEqual(descriptor, undefined);
+  const capturedIsFrozen = Object.isFrozen;
+  try {
+    Object.defineProperty(Object, "freeze", {
+      ...descriptor,
+      value: (value) => value,
+    });
+    const transport = new DeterministicFakeTransport({ scenario: "SUCCESS" });
+    assert.equal(capturedIsFrozen(transport), true);
+    assert.equal(capturedIsFrozen(transport.safety), true);
+    assert.throws(() => {
+      transport.execute = async () => {
+        throw new Error("forged override");
+      };
+    }, TypeError);
+
+    const result = await harness().runAttempt(request("attempt_freeze_poison"), transport);
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.evidence.transportCalls, ["dispatch", "execute", "cleanup"]);
+  } finally {
+    Object.defineProperty(Object, "freeze", descriptor);
+  }
+});
+
+test("task and authorization failures occur before every injected transport method", async () => {
+  const calls = [];
+  const selfDeclaredFake = {
+    safety: {
+      kind: "DETERMINISTIC_FAKE",
+      networkAccess: false,
+      credentialAccess: false,
+      providerSdkAccess: false,
+      maximumExternalSpendMicroUsd: 0n,
+    },
+    async dispatch() {
+      calls.push("dispatch");
+      throw new Error("must not run");
+    },
+    async reconcile() {
+      calls.push("reconcile");
+      throw new Error("must not run");
+    },
+    async execute() {
+      calls.push("execute");
+      throw new Error("must not run");
+    },
+    async cancel() {
+      calls.push("cancel");
+      throw new Error("must not run");
+    },
+    async cleanup() {
+      calls.push("cleanup");
+      throw new Error("must not run");
+    },
+    callLog() {
+      calls.push("callLog");
+      return [...calls];
+    },
+  };
+
+  const missingAuthorization = await harness().runAttempt(
+    request("attempt_preflight_auth", { authorization: undefined }),
+    selfDeclaredFake,
+  );
+  assert.equal(missingAuthorization.ok, false);
+  assert.equal(missingAuthorization.error.code, "AUTHORIZATION_REQUIRED");
+  assert.deepEqual(calls, []);
+
+  const malformedOwnerTask = {
+    ...task,
+    owner: {
+      ownerType: "WORKSPACE",
+      ownerId: "workspace_fixture_001",
+      workspaceId: "workspace_fixture_001",
+    },
+  };
+  const malformedOwner = await harness(1_000_000n, malformedOwnerTask).runAttempt(
+    request("attempt_preflight_owner"),
+    selfDeclaredFake,
+  );
+  assert.equal(malformedOwner.ok, false);
+  assert.equal(malformedOwner.error.code, "IDENTITY_INVALID");
+  assert.deepEqual(calls, []);
+
+  const selfDeclaration = await harness().runAttempt(
+    request("attempt_self_declared_fake"),
+    selfDeclaredFake,
+  );
+  assert.equal(selfDeclaration.ok, false);
+  assert.equal(selfDeclaration.error.code, "UNSAFE_TRANSPORT");
+  assert.deepEqual(calls, []);
+});
+
+test("unknown undefined or cyclic task/attempt fields reject before transport and reservation", async () => {
+  const cyclicAttempt = { ...attempt("attempt_cyclic_extra") };
+  cyclicAttempt.extra = cyclicAttempt;
+  const malformedAttempts = [
+    { ...attempt("attempt_undefined_extra"), extra: undefined },
+    cyclicAttempt,
+  ];
+  for (const malformedAttempt of malformedAttempts) {
+    const transport = new DeterministicFakeTransport({ scenario: "SUCCESS" });
+    const result = await harness().runAttempt(
+      request(malformedAttempt.attemptId, { attempt: malformedAttempt }),
+      transport,
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.error.code, "IDENTITY_INVALID");
+    assert.equal(result.error.taskCost.activeCommitmentMicroUsd, 0n);
+    assert.deepEqual(transport.callLog(), []);
+  }
+
+  const cyclicTask = { ...task };
+  cyclicTask.extra = cyclicTask;
+  const transport = new DeterministicFakeTransport({ scenario: "SUCCESS" });
+  const result = await harness(1_000_000n, cyclicTask).runAttempt(
+    request("attempt_task_cyclic_extra"),
+    transport,
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, "IDENTITY_INVALID");
+  assert.equal(result.error.taskCost.activeCommitmentMicroUsd, 0n);
+  assert.deepEqual(transport.callLog(), []);
+
+  const knownFieldCycle = { ...task };
+  knownFieldCycle.owner = knownFieldCycle;
+  const knownCycleTransport = new DeterministicFakeTransport({ scenario: "SUCCESS" });
+  const knownCycle = await harness(1_000_000n, knownFieldCycle).runAttempt(
+    request("attempt_task_known_cycle"),
+    knownCycleTransport,
+  );
+  assert.equal(knownCycle.ok, false);
+  assert.equal(knownCycle.error.code, "IDENTITY_INVALID");
+  assert.equal(knownCycle.error.taskCost.activeCommitmentMicroUsd, 0n);
+  assert.deepEqual(knownCycleTransport.callLog(), []);
+});
+
+test("request, authorization, and attempt accessors reject without being invoked", async () => {
+  const cases = [];
+
+  let requestReads = 0;
+  const requestAccessor = { ...request("attempt_request_accessor") };
+  Object.defineProperty(requestAccessor, "attempt", {
+    enumerable: true,
+    get() {
+      requestReads += 1;
+      return attempt("attempt_request_accessor");
+    },
+  });
+  cases.push({ value: requestAccessor, reads: () => requestReads, code: "IDENTITY_INVALID" });
+
+  let authorizationReads = 0;
+  const authorizationAccessor = { ...authorization() };
+  Object.defineProperty(authorizationAccessor, "enabled", {
+    enumerable: true,
+    get() {
+      authorizationReads += 1;
+      return true;
+    },
+  });
+  cases.push({
+    value: request("attempt_authorization_accessor", { authorization: authorizationAccessor }),
+    reads: () => authorizationReads,
+    code: "AUTHORIZATION_REQUIRED",
+  });
+
+  let attemptReads = 0;
+  const attemptAccessor = { ...attempt("attempt_identity_accessor") };
+  Object.defineProperty(attemptAccessor, "inputHash", {
+    enumerable: true,
+    get() {
+      attemptReads += 1;
+      return SHA_B;
+    },
+  });
+  cases.push({
+    value: request("attempt_identity_accessor", { attempt: attemptAccessor }),
+    reads: () => attemptReads,
+    code: "IDENTITY_INVALID",
+  });
+
+  for (const testCase of cases) {
+    const transport = new DeterministicFakeTransport({ scenario: "SUCCESS" });
+    const result = await harness().runAttempt(testCase.value, transport);
+    assert.equal(result.ok, false);
+    assert.equal(result.error.code, testCase.code);
+    assert.equal(testCase.reads(), 0);
+    assert.equal(result.error.taskCost.activeCommitmentMicroUsd, 0n);
+    assert.deepEqual(transport.callLog(), []);
+  }
+});
+
+test("task accessors reject without cloning or invoking caller properties", async () => {
+  let reads = 0;
+  const taskAccessor = { ...task };
+  Object.defineProperty(taskAccessor, "taskId", {
+    enumerable: true,
+    get() {
+      reads += 1;
+      return "task_accessor";
+    },
+  });
+  const transport = new DeterministicFakeTransport({ scenario: "SUCCESS" });
+  const result = await harness(1_000_000n, taskAccessor).runAttempt(
+    request("attempt_task_accessor"),
+    transport,
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, "IDENTITY_INVALID");
+  assert.equal(reads, 0);
+  assert.equal(result.error.taskCost.activeCommitmentMicroUsd, 0n);
+  assert.deepEqual(transport.callLog(), []);
 });
 
 test("exact owner, task, profile, and input hashes are validated and bound immutably", async () => {
@@ -173,9 +498,53 @@ test("exact owner, task, profile, and input hashes are validated and bound immut
   assert.equal(result.evidence.task.taskHash, task.taskHash);
   assert.equal(result.evidence.attempt.executionProfileHash, SHA_A);
   assert.equal(result.evidence.attempt.inputHash, SHA_B);
-  assert.equal(result.evidence.bindingHash, hashSandboxAttemptBinding(task, identity));
+  assert.equal(
+    result.evidence.bindingHash,
+    hashSandboxAttemptBinding({
+      task,
+      attempt: identity,
+      facts: result.evidence.bindingFacts,
+    }),
+  );
+  assert.equal(
+    result.evidence.bindingFacts.authorizationHash,
+    hashSandboxAuthorization(authorization()),
+  );
   assert.equal(Object.isFrozen(result.evidence), true);
   assert.equal(Object.isFrozen(result.evidence.task.owner), true);
+});
+
+test("binding hash covers every dispatch-critical authorization, budget, deadline, and cancellation fact", async () => {
+  const identity = attempt("attempt_binding_domain");
+  const result = await harness().runAttempt(
+    request(identity.attemptId, { attempt: identity }),
+    new DeterministicFakeTransport({ scenario: "SUCCESS" }),
+  );
+  assert.equal(result.ok, true);
+  const base = {
+    task,
+    attempt: identity,
+    facts: result.evidence.bindingFacts,
+  };
+  assert.equal(hashSandboxAttemptBinding(base), result.evidence.bindingHash);
+
+  const mutations = [
+    { authorizationHash: SHA_C },
+    { taskCapMicroUsd: 1_000_001n },
+    { attemptSubcapMicroUsd: 500_001n },
+    { reservationMicroUsd: 400_001n },
+    { deadlineEpochMs: NOW + 30_001 },
+    { cancelRequested: true },
+  ];
+  for (const mutation of mutations) {
+    assert.notEqual(
+      hashSandboxAttemptBinding({
+        ...base,
+        facts: { ...base.facts, ...mutation },
+      }),
+      result.evidence.bindingHash,
+    );
+  }
 });
 
 test("attempt and authorization inputs are snapshotted before asynchronous transport work", async () => {
@@ -402,6 +771,31 @@ test("timeout is terminal only after cancellation, cleanup, and cost reconciliat
   assert.equal(result.evidence.cost.reconciled, true);
 });
 
+test("timeout reconciliation never undercounts a regressed cancellation cost report", async () => {
+  const transport = new DeterministicFakeTransport({
+    scenario: "TIMEOUT",
+    executionReportedMicroUsd: 200_000n,
+    cancellationReportedMicroUsd: 50_000n,
+  });
+  const result = await harness().runAttempt(request("attempt_timeout_regression"), transport);
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, "TRANSPORT_PROTOCOL_FAILURE");
+  const evidence = result.error.evidence;
+  assert.equal(evidence.outcome, "PROTOCOL_FAILED");
+  assert.equal(evidence.execution.outcome, "TIMED_OUT");
+  assert.equal(evidence.cancellation.outcome, "CANCELLED");
+  assert.equal(evidence.reportedCostFacts.executionReportedMicroUsd, 200_000n);
+  assert.equal(evidence.reportedCostFacts.cancellationReportedMicroUsd, 50_000n);
+  assert.equal(evidence.reportedCostFacts.conservativeReportedMicroUsd, 200_000n);
+  assert.equal(evidence.reportedCostFacts.cumulativeMonotonic, false);
+  assert.equal(evidence.cost.settledMicroUsd, 200_000n);
+  assert.equal(evidence.cost.refundedMicroUsd, 200_000n);
+  assert.deepEqual(
+    evidence.issues.map(({ stage, code }) => [stage, code]),
+    [["COST_RECONCILIATION", "CUMULATIVE_COST_REGRESSION"]],
+  );
+});
+
 test("cleanup failure stays visible without erasing execution or settled cost", async () => {
   const transport = new DeterministicFakeTransport({
     scenario: "CLEANUP_FAILURE",
@@ -417,7 +811,58 @@ test("cleanup failure stays visible without erasing execution or settled cost", 
   assert.deepEqual(result.evidence.transportCalls, ["dispatch", "execute", "cleanup"]);
 });
 
-test("reported cost above reservation fails closed and leaves the reservation visible", async () => {
+test("valid cleanup failure combines with execution, cancellation, or cost issues", async (context) => {
+  const cases = [
+    {
+      name: "execution issue",
+      attemptId: "attempt_cleanup_execution_compound",
+      options: {
+        scenario: "CLEANUP_FAILURE",
+        protocolFault: "EXECUTION_INVALID_RESULT_HASH",
+      },
+      overrides: {},
+    },
+    {
+      name: "cancellation issue",
+      attemptId: "attempt_cleanup_cancellation_compound",
+      options: {
+        scenario: "CLEANUP_FAILURE",
+        protocolFault: "CANCELLATION_NEGATIVE_COST",
+      },
+      overrides: { cancelRequested: true },
+    },
+    {
+      name: "cost issue",
+      attemptId: "attempt_cleanup_cost_compound",
+      options: { scenario: "CLEANUP_FAILURE", reportedMicroUsd: 450_000n },
+      overrides: {},
+    },
+  ];
+
+  for (const testCase of cases) {
+    await context.test(testCase.name, async () => {
+      const result = await harness().runAttempt(
+        request(testCase.attemptId, testCase.overrides),
+        new DeterministicFakeTransport(testCase.options),
+      );
+      assert.equal(result.ok, false);
+      assert.equal(result.error.code, "COMPOUND_FAILURE");
+      assert.equal(result.error.evidence.outcome, "COMPOUND_FAILURE");
+      assert.equal(result.error.evidence.cleanup.outcome, "FAILED");
+      assert.match(result.error.evidence.cleanup.reason, /cleanup failure/u);
+      assert.equal(
+        result.error.evidence.issues.some(
+          ({ stage, code, message }) =>
+            stage === "CLEANUP" && code === "CLEANUP_FAILED" && /cleanup failure/u.test(message),
+        ),
+        true,
+      );
+      assert.match(result.error.message, /cleanup failure/u);
+    });
+  }
+});
+
+test("final known cost above reservation settles actual spend with zero refund", async () => {
   const transport = new DeterministicFakeTransport({
     scenario: "SUCCESS",
     reportedMicroUsd: 400_001n,
@@ -426,6 +871,298 @@ test("reported cost above reservation fails closed and leaves the reservation vi
   assert.equal(result.ok, false);
   assert.equal(result.error.code, "COST_RECONCILIATION_FAILED");
   assert.deepEqual(result.error.transportCalls, ["dispatch", "execute", "cleanup"]);
-  assert.equal(result.error.taskCost.activeReservedMicroUsd, 400_000n);
-  assert.equal(result.error.taskCost.settledMicroUsd, 0n);
+  assert.equal(result.error.taskCost.activeReservedMicroUsd, 0n);
+  assert.equal(result.error.taskCost.settledMicroUsd, 400_001n);
+  assert.equal(result.error.taskCost.knownReportedMicroUsd, 400_001n);
+  assert.equal(result.error.evidence.execution.outcome, "SUCCEEDED");
+  assert.equal(result.error.evidence.cleanup.outcome, "SUCCEEDED");
+  assert.equal(result.error.evidence.reportedCostFacts.conservativeReportedMicroUsd, 400_001n);
+  assert.equal(result.error.evidence.reportedCostFacts.reservationOverrunMicroUsd, 1n);
+  assert.equal(result.error.evidence.cost.reconciled, true);
+  assert.equal(result.error.evidence.cost.refundedMicroUsd, 0n);
+  assert.equal(result.error.evidence.cost.overrunMicroUsd, 1n);
+  assert.equal(
+    result.error.evidence.cost.settledMicroUsd + result.error.evidence.cost.refundedMicroUsd,
+    result.error.evidence.cost.reservedMicroUsd + result.error.evidence.cost.overrunMicroUsd,
+  );
+});
+
+test("a known overrun consumes task capacity and blocks a cumulative cap breach", async () => {
+  const runHarness = harness(500n);
+  const first = await runHarness.runAttempt(
+    request("attempt_known_overrun", {
+      attemptSubcapMicroUsd: 500n,
+      reservationMicroUsd: 400n,
+    }),
+    new DeterministicFakeTransport({
+      scenario: "SUCCESS",
+      executionReportedMicroUsd: 450n,
+    }),
+  );
+  assert.equal(first.ok, false);
+  assert.equal(first.error.code, "COST_RECONCILIATION_FAILED");
+  assert.equal(first.error.evidence.cost.reservedMicroUsd, 400n);
+  assert.equal(first.error.evidence.cost.reportedMicroUsd, 450n);
+  assert.equal(first.error.evidence.cost.settledMicroUsd, 450n);
+  assert.equal(first.error.evidence.cost.refundedMicroUsd, 0n);
+  assert.equal(first.error.evidence.cost.overrunMicroUsd, 50n);
+  assert.equal(
+    first.error.evidence.reportedCostFacts.reservationOverrunMicroUsd,
+    first.error.evidence.cost.overrunMicroUsd,
+  );
+  assert.deepEqual(
+    first.error.evidence.cost.events.map(({ eventType, amountMicroUsd }) => [
+      eventType,
+      amountMicroUsd,
+    ]),
+    [
+      ["RESERVED", 400n],
+      ["REPORTED", 450n],
+      ["RESERVATION_OVERRUN", 50n],
+      ["SETTLED", 450n],
+      ["REFUNDED", 0n],
+    ],
+  );
+  assert.equal(
+    first.error.evidence.cost.settledMicroUsd + first.error.evidence.cost.refundedMicroUsd,
+    first.error.evidence.cost.reservedMicroUsd + first.error.evidence.cost.overrunMicroUsd,
+  );
+  assert.equal(first.error.taskCost.knownReportedMicroUsd, 450n);
+  assert.equal(first.error.taskCost.availableMicroUsd, 50n);
+
+  const secondTransport = new DeterministicFakeTransport({ scenario: "CAP_EXHAUSTION" });
+  const second = await runHarness.runAttempt(
+    request("attempt_would_breach_cap", {
+      attemptSubcapMicroUsd: 100n,
+      reservationMicroUsd: 100n,
+    }),
+    secondTransport,
+  );
+  assert.equal(second.ok, false);
+  assert.equal(second.error.code, "TASK_CAP_EXCEEDED");
+  assert.equal(second.error.taskCost.settledMicroUsd, 450n);
+  assert.equal(second.error.taskCost.knownReportedMicroUsd, 450n);
+  assert.deepEqual(secondTransport.callLog(), []);
+});
+
+test("overrun remains an active observed floor when cancellation and cleanup fail", async () => {
+  const runHarness = harness(500n);
+  const result = await runHarness.runAttempt(
+    request("attempt_unsettled_overrun", {
+      attemptSubcapMicroUsd: 500n,
+      reservationMicroUsd: 400n,
+    }),
+    new DeterministicFakeTransport({
+      scenario: "TIMEOUT",
+      executionReportedMicroUsd: 450n,
+      throwAt: ["CANCELLATION", "CLEANUP"],
+    }),
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, "COMPOUND_FAILURE");
+  const evidence = result.error.evidence;
+  assert.equal(evidence.execution.outcome, "TIMED_OUT");
+  assert.equal(evidence.cancellation.failureKind, "TRANSPORT_EXCEPTION");
+  assert.equal(evidence.cleanup.failureKind, "TRANSPORT_EXCEPTION");
+  assert.equal(evidence.cost.reportedMicroUsd, 450n);
+  assert.equal(evidence.cost.settledMicroUsd, 0n);
+  assert.equal(evidence.cost.activeCommitmentMicroUsd, 450n);
+  assert.equal(evidence.cost.overrunMicroUsd, 50n);
+  assert.equal(evidence.taskCostAfter.knownReportedMicroUsd, 450n);
+  assert.equal(evidence.taskCostAfter.availableMicroUsd, 50n);
+  assert.deepEqual(
+    evidence.cost.events.map(({ eventType, amountMicroUsd }) => [eventType, amountMicroUsd]),
+    [
+      ["RESERVED", 400n],
+      ["REPORTED", 450n],
+      ["RESERVATION_OVERRUN", 50n],
+    ],
+  );
+
+  const retryTransport = new DeterministicFakeTransport({ scenario: "CAP_EXHAUSTION" });
+  const retry = await runHarness.runAttempt(
+    request("attempt_after_unsettled_overrun", {
+      attemptSubcapMicroUsd: 51n,
+      reservationMicroUsd: 51n,
+    }),
+    retryTransport,
+  );
+  assert.equal(retry.ok, false);
+  assert.equal(retry.error.code, "TASK_CAP_EXCEEDED");
+  assert.deepEqual(retryTransport.callLog(), []);
+});
+
+test("acknowledged execution exceptions trigger best-effort cancellation and cleanup with full evidence", async () => {
+  const transport = new DeterministicFakeTransport({
+    scenario: "SUCCESS",
+    cancellationReportedMicroUsd: 80_000n,
+    throwAt: ["EXECUTION"],
+  });
+  const result = await harness().runAttempt(request("attempt_execution_exception"), transport);
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, "TRANSPORT_PROTOCOL_FAILURE");
+  const evidence = result.error.evidence;
+  assert.equal(evidence.dispatch.state, "ACKNOWLEDGED");
+  assert.deepEqual(evidence.transportCalls, ["dispatch", "execute", "cancel", "cleanup"]);
+  assert.deepEqual(evidence.execution, {
+    outcome: "FAILED",
+    failureKind: "TRANSPORT_EXCEPTION",
+    message: "synthetic execution transport exception",
+  });
+  assert.equal(evidence.cancellation.outcome, "CANCELLED");
+  assert.equal(evidence.cleanup.outcome, "SUCCEEDED");
+  assert.equal(evidence.reportedCostFacts.cancellationReportedMicroUsd, 80_000n);
+  assert.equal(evidence.cost.settledMicroUsd, 80_000n);
+});
+
+test("compound transport failures retain every stage and keep unknown cost reserved", async () => {
+  const transport = new DeterministicFakeTransport({
+    scenario: "SUCCESS",
+    throwAt: ["EXECUTION", "CANCELLATION", "CLEANUP"],
+  });
+  const result = await harness().runAttempt(request("attempt_compound_exception"), transport);
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, "COMPOUND_FAILURE");
+  const evidence = result.error.evidence;
+  assert.equal(evidence.outcome, "COMPOUND_FAILURE");
+  assert.equal(evidence.dispatch.state, "ACKNOWLEDGED");
+  assert.equal(evidence.execution.failureKind, "TRANSPORT_EXCEPTION");
+  assert.equal(evidence.cancellation.failureKind, "TRANSPORT_EXCEPTION");
+  assert.equal(evidence.cleanup.failureKind, "TRANSPORT_EXCEPTION");
+  assert.deepEqual(evidence.transportCalls, ["dispatch", "execute", "cancel", "cleanup"]);
+  assert.deepEqual(
+    evidence.issues.map(({ stage, code }) => [stage, code]),
+    [
+      ["EXECUTION", "TRANSPORT_EXCEPTION"],
+      ["CANCELLATION", "TRANSPORT_EXCEPTION"],
+      ["CLEANUP", "TRANSPORT_EXCEPTION"],
+    ],
+  );
+  assert.equal(evidence.reportedCostFacts.conservativeReportedMicroUsd, null);
+  assert.equal(evidence.cost.reconciled, false);
+  assert.equal(evidence.cost.activeReservedMicroUsd, 400_000n);
+});
+
+test("compound cleanup exception and cost overrun preserve the actual report and both failures", async () => {
+  const transport = new DeterministicFakeTransport({
+    scenario: "SUCCESS",
+    executionReportedMicroUsd: 450_000n,
+    throwAt: ["CLEANUP"],
+  });
+  const result = await harness().runAttempt(request("attempt_compound_overrun"), transport);
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, "COMPOUND_FAILURE");
+  const evidence = result.error.evidence;
+  assert.equal(evidence.execution.outcome, "SUCCEEDED");
+  assert.equal(evidence.cleanup.failureKind, "TRANSPORT_EXCEPTION");
+  assert.equal(evidence.reportedCostFacts.executionReportedMicroUsd, 450_000n);
+  assert.equal(evidence.reportedCostFacts.conservativeReportedMicroUsd, 450_000n);
+  assert.equal(evidence.reportedCostFacts.reservationOverrunMicroUsd, 50_000n);
+  assert.equal(evidence.cost.settledMicroUsd, 450_000n);
+  assert.equal(evidence.cost.activeReservedMicroUsd, 0n);
+  assert.deepEqual(
+    evidence.issues.map(({ stage, code }) => [stage, code]),
+    [
+      ["CLEANUP", "TRANSPORT_EXCEPTION"],
+      ["COST_RECONCILIATION", "RESERVATION_OVERRUN"],
+    ],
+  );
+});
+
+test("every transport result is runtime-validated before ledger settlement", async (context) => {
+  const cases = [
+    {
+      name: "dispatch external ID",
+      options: { scenario: "SUCCESS", protocolFault: "DISPATCH_INVALID_EXTERNAL_JOB_ID" },
+      overrides: {},
+      calls: ["dispatch"],
+      stage: "DISPATCH",
+      evidenceField: "dispatch",
+    },
+    {
+      name: "reconciliation external ID",
+      options: {
+        scenario: "AMBIGUOUS_ACKNOWLEDGEMENT",
+        reconciliationOutcome: "ACKNOWLEDGEMENT_CONFIRMED",
+        protocolFault: "RECONCILIATION_INVALID_EXTERNAL_JOB_ID",
+      },
+      overrides: {},
+      calls: ["dispatch", "reconcile"],
+      stage: "RECONCILIATION",
+      evidenceField: "reconciliation",
+    },
+    {
+      name: "execution result hash",
+      options: {
+        scenario: "SUCCESS",
+        protocolFault: "EXECUTION_INVALID_RESULT_HASH",
+        executionReportedMicroUsd: 135_000n,
+        cancellationReportedMicroUsd: 160_000n,
+      },
+      overrides: {},
+      calls: ["dispatch", "execute", "cancel", "cleanup"],
+      stage: "EXECUTION",
+      evidenceField: "execution",
+    },
+    {
+      name: "timeout timestamp",
+      options: { scenario: "TIMEOUT", protocolFault: "EXECUTION_INVALID_TIMEOUT_TIMESTAMP" },
+      overrides: {},
+      calls: ["dispatch", "execute", "cancel", "cleanup"],
+      stage: "EXECUTION",
+      evidenceField: "execution",
+    },
+    {
+      name: "cancellation cost",
+      options: { scenario: "CANCELLATION", protocolFault: "CANCELLATION_NEGATIVE_COST" },
+      overrides: { cancelRequested: true },
+      calls: ["dispatch", "cancel", "cleanup"],
+      stage: "CANCELLATION",
+      evidenceField: "cancellation",
+    },
+    {
+      name: "cleanup evidence hash",
+      options: { scenario: "SUCCESS", protocolFault: "CLEANUP_INVALID_EVIDENCE_HASH" },
+      overrides: {},
+      calls: ["dispatch", "execute", "cleanup"],
+      stage: "CLEANUP",
+      evidenceField: "cleanup",
+    },
+  ];
+
+  for (const [index, testCase] of cases.entries()) {
+    await context.test(testCase.name, async () => {
+      const transport = new DeterministicFakeTransport(testCase.options);
+      const result = await harness().runAttempt(
+        request(`attempt_protocol_${index}`, testCase.overrides),
+        transport,
+      );
+      assert.equal(result.ok, false);
+      const evidence = result.error.evidence;
+      assert.deepEqual(evidence.transportCalls, testCase.calls);
+      assert.equal(
+        evidence[testCase.evidenceField].outcome ?? evidence[testCase.evidenceField].state,
+        "FAILED",
+      );
+      assert.equal(
+        evidence.issues.some(
+          ({ stage, code }) => stage === testCase.stage && code === "RESULT_INVALID",
+        ),
+        true,
+      );
+      if (testCase.name === "execution result hash") {
+        assert.equal(evidence.reportedCostFacts.executionReportedMicroUsd, 135_000n);
+        assert.equal(evidence.reportedCostFacts.cancellationReportedMicroUsd, 160_000n);
+        assert.equal(evidence.reportedCostFacts.conservativeReportedMicroUsd, 160_000n);
+        assert.equal(evidence.cost.settledMicroUsd, 160_000n);
+      }
+      if (
+        testCase.stage === "DISPATCH" ||
+        testCase.stage === "RECONCILIATION" ||
+        testCase.stage === "CANCELLATION"
+      ) {
+        assert.equal(evidence.cost.reconciled, false);
+      }
+    });
+  }
 });
