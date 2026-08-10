@@ -1,0 +1,26 @@
+{
+  "task_id": "VF-3-05",
+  "result": "BLOCKED",
+  "checked_at": "2026-08-10T17:49:58Z",
+  "repository": {
+    "name_with_owner": "Pala-LakshmanSai/videoforge",
+    "visibility": "PRIVATE",
+    "default_branch": "main",
+    "remote_name": "origin",
+    "local_main_commit": "4a5acd3570f6217a45d9936aa80b7a3bf4fa7df4",
+    "origin_main_commit": "4a5acd3570f6217a45d9936aa80b7a3bf4fa7df4",
+    "exact_match": true
+  },
+  "hosted_ci": {
+    "workflow": "verify",
+    "run_id": 31415895273,
+    "head_commit": "4a5acd3570f6217a45d9936aa80b7a3bf4fa7df4",
+    "status": "completed",
+    "conclusion": "failure",
+    "steps_started": 0,
+    "blocker": "GitHub account payment failure or spending-limit eligibility",
+    "repository_source_failure": false
+  },
+  "external_spend_usd": 0,
+  "gate_weakening": false
+}
