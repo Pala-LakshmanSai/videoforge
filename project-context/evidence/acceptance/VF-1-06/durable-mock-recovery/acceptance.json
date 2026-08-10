@@ -1,0 +1,86 @@
+{
+  "schema_version": "videoforge.acceptance-evidence/v1",
+  "task_id": "VF-1-06",
+  "status": "technical_pass",
+  "recorded_at": "2026-08-10T12:47:14Z",
+  "implementation": {
+    "commit": "dc86938972e776c8479637f2fb3ca9706999eed4",
+    "coordinator": "DurableRecoveryCoordinator",
+    "repository_factory": "createPGliteControlPlaneRepositories",
+    "workflow_transport": "LocalWorkflowTransport",
+    "maximum_attempts_per_task": 32,
+    "recovery_snapshot_sql_statements": 1
+  },
+  "recovery_contract": {
+    "ambiguous_dispatch_quarantined": true,
+    "definitely_not_sent_redispatches_existing_outbox": true,
+    "definitely_not_sent_creates_new_attempt": false,
+    "late_mutations_fenced_after_cancellation_or_terminal_state": true,
+    "terminal_attempts_claimable": false,
+    "terminal_tasks_reservable": false,
+    "acceptance_suppresses_only_safe_siblings": true,
+    "acceptance_rejects_active_siblings": true,
+    "runnable_work_after_completion": false,
+    "exact_per_attempt_cost_conservation": true,
+    "restart_reconstructs_from_persisted_truth": true
+  },
+  "audit_closure": {
+    "result": "closed_no_remaining_high_or_medium",
+    "independent_read_only_lanes": [
+      "Recovery and UI truthfulness",
+      "Repository and workflow adversarial recovery",
+      "Cost and terminal-state compliance"
+    ],
+    "findings": [
+      { "id": "VF-1-06-AUDIT-01", "severity": "HIGH", "status": "closed" },
+      { "id": "VF-1-06-AUDIT-02", "severity": "HIGH", "status": "closed" },
+      { "id": "VF-1-06-AUDIT-03", "severity": "HIGH", "status": "closed" },
+      { "id": "VF-1-06-AUDIT-04", "severity": "HIGH", "status": "closed" },
+      { "id": "VF-1-06-AUDIT-05", "severity": "HIGH", "status": "closed" },
+      { "id": "VF-1-06-AUDIT-06", "severity": "MEDIUM", "status": "closed" },
+      { "id": "VF-1-06-AUDIT-07", "severity": "HIGH", "status": "closed" }
+    ]
+  },
+  "verification": {
+    "result": "pass",
+    "forced_turbo_cache_hits": 0,
+    "control_plane_tests": { "passed": 111, "failed": 0, "skipped": 0 },
+    "web_tests": { "passed": 147, "failed": 0, "skipped": 0 },
+    "fixture_tests": { "passed": 12, "failed": 0, "skipped": 0 },
+    "local_workerd_tests": { "passed": 1, "failed": 0, "skipped": 0 },
+    "installed_chrome_tests": { "passed": 36, "failed": 0, "skipped": 0 },
+    "synchronized_contract_files": 47,
+    "known_high_severity_dependency_vulnerabilities": 0,
+    "commands": [
+      "pnpm --filter @videoforge/control-plane lint",
+      "pnpm --filter @videoforge/control-plane typecheck",
+      "pnpm --filter @videoforge/control-plane build",
+      "pnpm --filter @videoforge/control-plane test",
+      "pnpm --filter @videoforge/test-fixtures test",
+      "pnpm --filter @videoforge/web lint",
+      "pnpm --filter @videoforge/web typecheck",
+      "pnpm --filter @videoforge/web test",
+      "pnpm --filter @videoforge/web build",
+      "pnpm --filter @videoforge/web exec playwright test tests/e2e/recovery.spec.ts",
+      "TURBO_FORCE=true pnpm verify",
+      "pnpm context:validate",
+      "pnpm secret:scan",
+      "pnpm audit:dependencies",
+      "git diff --check",
+      "git status --short"
+    ]
+  },
+  "authorization": {
+    "database_url_used": false,
+    "remote_or_cloud_mutation_performed": false,
+    "network_used": false,
+    "credentials_used": false,
+    "provider_calls_made": false,
+    "model_downloads_performed": false,
+    "external_spend_usd": 0
+  },
+  "next_boundary": {
+    "local_next_task": "VF-1-07",
+    "isolated_staging": "awaiting separate external authority"
+  }
+}
