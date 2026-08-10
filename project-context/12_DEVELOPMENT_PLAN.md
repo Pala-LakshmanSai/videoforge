@@ -1,6 +1,6 @@
 # Development plan
 
-Status: implementation underway; Phase 0A/0B/0C and VF-1-01/VF-1-01A are complete; accelerated Wave 1 begins at VF-1-02
+Status: Phase 0–2 complete; implementation paused for the Phase 3 gate/authorization checkpoint
 Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
 
 ## Delivery strategy
@@ -81,7 +81,8 @@ Current (2026-08-10): the provider-free ASR, scheduler, render/probe, API, UI, a
 acceptance are implemented. Real Chrome completed create, pipeline, playback, seek, approval, and
 hash-verified download. The user then reviewed the final `ffmpeg-render-v3` replacement in installed
 Chrome and accepted its continuous 2.5–3.5% centered zoom as “good enough.” Phase 0C is closed.
-State remains process-local; durable recovery begins in Phase 1 at `VF-1-01`.
+That historical checkpoint was process-local; the Phase 1 and 2 handoffs now add the durable local
+control-plane and strict timing/runtime restart/restore boundaries described below.
 
 - Use 30–120 seconds of owned/synthetic English audio.
 - Use one owned synthetic ready Avatar Profile fixture, then run local `whisper.cpp base.en`, deterministic phrase/timeline scheduling, `timeline-plan/v1`, fixture image/avatar slots, `resolved-render-manifest/v1`, real FFmpeg zoom/crops/hard cuts/audio, and technical QA.
@@ -151,6 +152,11 @@ The Chrome checkpoint also creates a named Avatar Profile once, selects it by im
 
 ## Phase 2: word timing and deterministic timeline compiler
 
+Current (2026-08-10): complete. `VF-2-01` through `VF-2-05` are committed and green. The final
+implementation/evidence pair is `907e0e4`/`d16c2a9`; it proves strict latest-attempt restore,
+materialized selected-span audio, byte-equivalent timing/timeline/media, and real installed-Chrome
+playback/approval/download at `$0`.
+
 - `VF-2-01` first commits the additive timing/timeline persistence contract. Then `VF-2-02`
   transcription/span audio, `VF-2-03` deterministic timeline, and `VF-2-04` Chrome inspection run
   in disjoint lanes; `VF-2-05` serially integrates and accepts the phase.
@@ -163,6 +169,10 @@ The Chrome checkpoint also creates a named Avatar Profile once, selects it by im
 Exit: identical input/seed/version yields byte-equivalent plan; no gap/overlap; full/split/image bounds pass.
 
 ## Phase 3: Runware prompt lane
+
+Entry is paused at `VF-3-00`. Refresh official time-sensitive facts, classify the open gates, and
+obtain explicit provider/credential/spend authority before qualification. Author the exact Phase 3
+implementation brief only from the resulting evidence; this roadmap is not implementation authority.
 
 - Strict schema, title/style prefix once per batch, assigned shot roles, continuity carry, 25–50 scenes, partial retry, provider cost logging.
 - Deterministic prompt compiler with pinned style profile, crop guidance, optional keywords, permanent guardrails, exact submitted bytes/hashes.

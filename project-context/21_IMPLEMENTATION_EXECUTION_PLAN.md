@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: accelerated execution sequence approved 2026-08-10; Phase 0C and VF-1-01/VF-1-01A are complete, and Wave 1 begins at VF-1-02
+Status: Waves 0–4 and Phase 0–2 complete; paused at the planning-only VF-3-00 checkpoint
 Read when: starting a new implementation chat, selecting the next task, assigning parallel ownership, or integrating a completed task.
 
 ## Authority and purpose
@@ -9,11 +9,12 @@ This file owns implementation order, dependency edges, safe parallelism, and int
 
 `CURRENT_STATE.yaml` selects the one active wave or task. A fresh chat must not choose a later item merely because it appears independently implementable. The goal is fast completion through small vertical slices and disjoint ownership—not maximum simultaneous editing.
 
-The user's 2026-08-10 accelerated-plan approval grants standing implementation authority for exact,
-dependency-ready, provider-free briefs through `VF-2-05`. This authority never crosses a missing
-brief, unresolved dependency, provider call, credential operation, model download, remote push,
-cloud/account mutation, paid resource, or open gate. `CURRENT_STATE.yaml` must still close and
-commit each task/wave before selecting the next.
+The user's 2026-08-10 accelerated-plan approval granted standing implementation authority for exact,
+dependency-ready, provider-free briefs through `VF-2-05`; that sequence is now complete and the
+authority is exhausted. It never crossed a missing brief, unresolved dependency, provider call,
+credential operation, model download, remote push, cloud/account mutation, paid resource, or open
+gate. `CURRENT_STATE.yaml` selects only the planning checkpoint until new authority and exact,
+provider-informed briefs exist.
 
 ## Accelerated critical path
 
@@ -31,6 +32,10 @@ acceptance but cannot re-serialize work that this table explicitly makes disjoin
 | 6 — real output | FFmpeg fast-path integration; styles continue; gated fallback lane | Short real video, 30-minute measurement, immutable manifest, Chrome download/playback |
 | 7 — fault hardening | Queue/fault, security/isolation, observability/backup lanes | Ten-user/restart/replay/cost/retention/restore/scale-to-zero evidence |
 | 8 — controlled release | Serial staging-to-production acceptance | Fresh-account real Chrome flow and final user sign-off |
+
+Waves 0–4 are complete. Wave 5 is blocked by the open provider/model/GPU/cost gates, missing exact
+Phase 3–8 implementation briefs, and absent provider/credential/spend authority. `VF-3-00` prepares
+one consolidated decision without changing application code or activating an external boundary.
 
 After Wave 0, request one external-mutation approval for a private GitHub remote and hosted CI;
 local Wave 1 does not wait, but no push occurs without approval. After VF-1-06, request isolated
@@ -57,13 +62,21 @@ The following is already implemented and must be preserved:
 - VF-1-01/VF-1-01A are complete: two additive migrations, exact migration-chain verification,
   hardened relational invariants, query-neutral repository contracts, and 49 provider-free
   control-plane tests are committed and must be preserved.
+- Phase 1 and Phase 2 are complete: durable local control-plane recovery, isolation/direct transfer,
+  metadata restore, timing/transcription/timeline persistence, exact selected-span audio,
+  fresh-process restore, fail-closed inspection, and real installed-Chrome playback/download are
+  committed through `907e0e4` with evidence through `d16c2a9`.
 
 Known unfinished boundaries are not hidden:
 
-- The real local pipeline and its accepted `ffmpeg-render-v3` output are bounded to local fixture assets and process-local orchestration. Durable database/object storage, restart recovery, authentication, and provider transports remain Phase 1 or later work.
+- The real local pipeline and accepted `ffmpeg-render-v3` output now have strict local
+  content-addressed restart/restore and durable metadata proof. They still use owned fixture media,
+  not production Neon/R2/Workflow deployment or provider transports.
 - Python intentionally does not derive RFC 8785 hashes. TypeScript is the sole JCS authority; Python validates schemas and exact input/media bytes and treats canonical document hashes as opaque.
 - Local transcription and render workers exist. Provider-backed prompt, image, and avatar generation workers do not; all corresponding gates remain open.
-- Fixture state is bounded in memory. Production authentication, Postgres, R2, Workflows, callbacks, and provider transports do not exist.
+- Fixture state remains bounded in memory by design. Separate local modes prove durable adapters,
+  but production authentication, Neon/R2/Workflows deployment, live callbacks, and provider
+  transports do not exist.
 - No production GPU profile is selectable; all provider/model/cost gates remain open.
 
 ## Development principles
@@ -344,6 +357,8 @@ These lanes share only committed repository interfaces/migrations. The integrati
 
 ### Phase 2 — durable timing/timeline
 
+Completed at implementation `907e0e4` and evidence `d16c2a9`; preserve this convergence baseline.
+
 - `VF-2-01` is the serial additive contract/migration/repository lock for transcript timing, selected
   span audio, timeline persistence, invalidation, and lineage.
 - After that commit, run disjoint `VF-2-02` durable local transcription/span audio, `VF-2-03`
@@ -353,6 +368,10 @@ These lanes share only committed repository interfaces/migrations. The integrati
 - Standing provider-free authority ends at the green VF-2-05 handoff. Phase 3–8 briefs must be
   written from measured provider/gate evidence; if required gates remain open, stop for the
   consolidated review rather than guessing.
+
+The handoff is green and authority has ended. Run `VF-3-00` as the next planning-only consolidated
+review. It may prepare an authorization decision and refresh public facts when requested, but may
+not implement code, retrieve credentials, call providers, spend, publish, or mutate cloud/accounts.
 
 After Phase 2, use three disjoint lanes:
 

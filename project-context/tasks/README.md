@@ -9,12 +9,12 @@ and the required next-state update. Product behavior remains authoritative in th
 and primary domain files. Completed briefs may remain for traceability, but `CURRENT_STATE.yaml` is
 the only mutable snapshot and Git/evidence remain the progress log.
 
-Most recently completed brief: `VF-1-01A.md`. The user approved the accelerated completion plan on
-2026-08-10 and granted standing provider-free implementation authority through Phase 2. Exact
-briefs now cover `VF-1-02` through `VF-1-08`, provider-free `VF-0D-01`, and `VF-2-01` through
-`VF-2-05`.
+Most recently completed brief: `VF-2-05.md`, with implementation commit `907e0e4` and evidence
+commit `d16c2a9`. The 2026-08-10 standing provider-free implementation authority through Phase 2 is
+complete and exhausted.
 
-`CURRENT_STATE.yaml` still selects exactly one active task/wave and owns the current paths. A brief
-being present does not make its dependencies ready, permit concurrent edits, authorize credentials,
-activate the planned `$25` envelope, or allow a remote/cloud/provider mutation. Phase 3 onward must
-be briefed from measured gate evidence at the Phase 2 handoff rather than guessed now.
+`CURRENT_STATE.yaml` now selects `VF-3-00.md`, an exact planning-only gate/authorization checkpoint.
+It authorizes no application implementation or context mutation. A brief being present does not
+permit concurrent edits, credentials, the planned `$25` envelope, or remote/cloud/provider
+mutation. Phase 3 onward must be briefed from fresh facts and measured gate evidence rather than
+guessed from the high-level roadmap.

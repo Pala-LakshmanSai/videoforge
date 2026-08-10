@@ -3,19 +3,19 @@
 For the current handoff, the user only needs to send this one line in a new coding chat:
 
 ```text
-Continue VideoForge from the fresh project context. Start with the exact recommended next task and complete it through a green committed handoff, then continue task-by-task through VF-2-05 while each refreshed CURRENT_STATE says the next exact brief is dependency-ready and provider-free. Preserve completed work and recorded ownership. Stop before any remote/cloud/account mutation, credential operation, provider call or spend, missing brief, unresolved dependency/gate, or authority beyond the standing local Phase 2 envelope.
+Continue VideoForge from the fresh project context. Preserve the completed green Phase 0–2 work and follow only CURRENT_STATE's exact recommended checkpoint. Do not implement application code yet. Complete the read-only VF-3-00 gate/freshness review, present the consolidated authorization choices, and stop before credentials, provider calls or spend, remote/cloud/account mutation, deployment, missing evidence/brief, unresolved gate, or new implementation authority.
 ```
 
 The agent must derive the task ID, profile, brief, base/evidence commit, ownership, route, commands,
 and budget from `CURRENT_STATE.yaml`; the user should not have to paste those fields again. The
-standing authorization applies only to exact provider-free briefs through VF-2-05. It must finish
-and record one green task/wave before loading the next profile; a planned provider cap is never an
-active authorization.
+standing provider-free authority through VF-2-05 is complete and exhausted. `VF-3-00` is
+planning-only and prepares one explicit decision; the planned provider cap is not active authority.
 
 Use the longer form below only when deliberately overriding the recommended task:
 
-If the user simply says to begin/continue development without a narrower task, use
-`CURRENT_STATE.yaml.recommended_next_task` and its task brief exactly; do not reopen accepted
+If the user simply says to begin/continue from fresh context without a narrower task, use
+`CURRENT_STATE.yaml.recommended_next_task` and its task brief exactly. At this checkpoint that means
+the read-only planning review, not Phase 3 implementation. Do not reopen accepted
 UI/renderer/architecture decisions or skip dependencies.
 
 ```text

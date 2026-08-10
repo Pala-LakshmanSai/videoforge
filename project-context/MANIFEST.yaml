@@ -208,6 +208,12 @@ read_profiles:
     - 10_DATA_AND_API_CONTRACTS.md
     - 14_TESTING_AND_ACCEPTANCE.md
     - tasks/VF-2-05.md
+  phase3_checkpoint:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 11_COST_SPEED_BUDGET.md
+    - 15_DECISIONS_AND_OPEN_GATES.md
+    - GATES.yaml
+    - tasks/VF-3-00.md
   context_update:
     - 15_DECISIONS_AND_OPEN_GATES.md
     - 16_CONTEXT_MAINTENANCE.md

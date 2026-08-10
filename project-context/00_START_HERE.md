@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: see `CURRENT_STATE.yaml` (currently `implementation_in_progress`)
+Status: see `CURRENT_STATE.yaml` (currently paused at the green Phase 2 checkpoint)
 Context schema: `1.5`  
 Last updated: `2026-08-10`
 
@@ -13,35 +13,28 @@ VideoForge is an invite-only web app for 5–10 teammates that accepts a title, 
 ## Current handoff
 
 Phase 0A contracts/tooling, the accepted Phase 0B fixture shell, the accepted provider-free Phase 0C
-local ASR → scheduler → FFmpeg → Chrome/download slice, and the full Phase 1 durable control plane
-are complete. VF-2-01 implementation commits `973d78a` and `d31100b` additively lock durable
-transcript, word, phrase, selected span-audio, timeline, invalidation, supersession, and exact
-source/model/config/seed lineage without changing the existing wire contracts. Acceptance evidence
-is committed at `e61c2bf`. VF-2-02 implementation commit `9e79b85` adds atomic local-ASR
-attempt/artifact/timing persistence, immutable model-replacement lineage, and exact selected
-padded-span WAV materialization; evidence is committed at `99db821`. VF-2-03 implementation commit
-`6359bd2` adds atomic canonical timeline persistence, byte-verifying resolution, silent
-phrase-boundary coverage, deterministic replay/restore, and all required property fixtures;
-evidence is committed at `9b333e2`. The final gate passed 131/131 control-plane tests, 39/39
-pipeline tests, 148/148 web tests, 56/56 worker tests, and 36/36 installed-Chrome journeys with zero
-skips. VF-2-04 implementation commit `f5e33ac` now persists and inspects exact canonical local
-transcript and timeline objects, exposes phrase/layout/Avatar-span and invalidation truth in the
-preserved UI, and closes the Cloudflare adapter and dock transition findings; evidence is committed
-at `3bb0186`. Its final gate passed 131/131 control-plane tests, 39/39 pipeline tests, 161/161 web
-tests, 56/56 worker tests, and 38/38 installed-Chrome journeys with zero skips, no provider call, and
-`$0` spend.
+local ASR → scheduler → FFmpeg → Chrome/download slice, the full Phase 1 durable control plane, and
+Phase 2 durable timing/timeline convergence are complete. VF-2-01 through VF-2-04 preserve exact
+timing lineage, owned local transcription, canonical deterministic timeline persistence, selected
+Avatar span ownership, metadata restore, and fail-closed Chrome inspection. VF-2-05 implementation
+commit `907e0e4` completes exact padded-span WAV materialization plus canonical latest-attempt
+runtime state and strict fresh-process restore. Evidence commit `d16c2a9` proves byte-equivalent
+transcript/timeline/output/span hashes across independent runs, fresh-database metadata restore,
+real installed-Chrome creation/playback/approval/download, and an uncached full gate: 131/131
+control-plane, 39/39 pipeline, 163/163 web, 39/39 provider-sandbox, 56/56 worker, 38/38 fixture
+Chrome plus 1/1 real-local Chrome, with zero skips, no provider call, and `$0` spend.
 The isolated-staging checkpoint is awaiting separate external authority; no remote, cloud/account,
 credential, deployment, provider, or paid mutation occurred.
 
 `VF-1-01` remains the preserved relational baseline. The provider-free corrective task `VF-1-01A`
 is complete at implementation commit `36bf1ae`, with additive migration, constraint, migration
 executor, repository-contract, and adversarial regression hardening recorded under
-`evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening`. The user approved the
-accelerated completion sequence on 2026-08-10: exact briefs and standing provider-free authority
-now extend through `VF-2-05`. `CURRENT_STATE.yaml` selects dependency-ready `VF-2-05` with the
-`phase2_convergence` profile; work continues task-by-task and refreshes the snapshot after every green
-committed handoff. This authority does not activate the planned provider budget or permit a remote,
-credential, cloud/account mutation, deployment, provider call, model download, or spend.
+`evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening`. The user-approved accelerated
+provider-free authority through `VF-2-05` is complete and exhausted. `CURRENT_STATE.yaml` selects
+only the planning-only `VF-3-00` consolidated gate/freshness/authorization checkpoint with the
+`phase3_checkpoint` profile. It must not implement application code or use credentials, providers,
+spend, remote publication, or cloud/account mutation. There is no exact Phase 3 implementation
+brief yet; high-level roadmap sections are not authority.
 `CURRENT_STATE.yaml` remains the one replace-in-place handoff and ownership source. Do not redo the
 accepted UI, renderer, local slice, or architecture.
 
@@ -156,7 +149,7 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 
 ## First implementation rule
 
-Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve the accepted fixture shell, user-accepted local short-video slice, and completed `VF-1-01`/`VF-1-01A` relational foundation. Execute the exact selected provider-free briefs through `VF-2-05` task-by-task, committing and refreshing `CURRENT_STATE.yaml` between waves. Provider viability, private GitHub, staging, production and any external spend remain separate checkpoints. Do not wait until the end to integrate.
+Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve every completed Phase 0–2 commit, the accepted fixture shell, and the user-accepted local render. Run `VF-3-00` only as a planning/freshness/authorization checkpoint. Do not select or implement Phase 3+ work until fresh gate evidence, an exact brief, a refreshed `CURRENT_STATE.yaml`, and explicit authority all agree. Provider qualification, private GitHub, staging, production, credentials, and spend remain separate opt-in checkpoints.
 
 ## Context navigation
 
