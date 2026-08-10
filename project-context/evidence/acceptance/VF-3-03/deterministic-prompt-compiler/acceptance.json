@@ -1,0 +1,34 @@
+{
+  "task_id": "VF-3-03",
+  "result": "PASS",
+  "checked_at": "2026-08-10T17:40:12Z",
+  "implementation_commit": "3fcbcc310cf42be766b6fe90163d50e1c4620bb1",
+  "provider_mode": "fixture",
+  "provider_calls": 0,
+  "external_spend_usd": 0,
+  "checks": {
+    "batch_sizes": [25, 40, 50],
+    "in_image_shot_roles": 6,
+    "styles": 5,
+    "pipeline_tests_passed": 47,
+    "pipeline_tests_failed": 0,
+    "control_plane_tests_passed": 131,
+    "web_tests_passed": 163,
+    "provider_sandbox_tests_passed": 40,
+    "local_workerd_journeys_passed": 1,
+    "installed_chrome_journeys_passed": 38,
+    "installed_chrome_journeys_skipped": 0,
+    "canonical_verify": "PASS",
+    "context_validation": "PASS",
+    "secret_scan": "PASS",
+    "diff_check": "PASS"
+  },
+  "preserved": [
+    "accepted fixture shell and density",
+    "fixed-base dock and Hubs",
+    "three-composition hard-cut output grammar",
+    "required smooth image zoom",
+    "renderer and local output baseline",
+    "immutable pinned Avatar and Image Style versions"
+  ]
+}
