@@ -9,6 +9,7 @@ import type {
   GrantedGoogleSignInAuthorization,
   GrantedReviewerAuthorization,
   GrantedWorkspaceAuthorization,
+  ReviewerMutationPayload,
   ReviewerAuthorizationResult,
   SessionIdentityProvider,
   WorkspaceAccessRecord,
@@ -164,6 +165,7 @@ function signInMaterialization(
   if (invitationStatus === "PENDING" && membershipStatus === "INVITED") {
     return Object.freeze({
       mode: "ACTIVATE_INVITATION",
+      expectedIdentityStatus: "ACTIVE",
       expectedInvitationStatus: "PENDING",
       expectedMembershipStatus: "INVITED",
       resultingInvitationStatus: "ACCEPTED",
@@ -174,6 +176,7 @@ function signInMaterialization(
   if (invitationStatus === "ACCEPTED" && membershipStatus === "ACTIVE") {
     return Object.freeze({
       mode: "ALREADY_ACTIVE",
+      expectedIdentityStatus: "ACTIVE",
       expectedInvitationStatus: "ACCEPTED",
       expectedMembershipStatus: "ACTIVE",
       resultingInvitationStatus: "ACCEPTED",
@@ -184,61 +187,174 @@ function signInMaterialization(
   return null;
 }
 
-const FORBIDDEN_REVIEWER_KEYS = new Set(["reviewer", "revieweruserid", "reviewersessionid"]);
+const FORBIDDEN_REVIEWER_KEYS = new Set([
+  "reviewer",
+  "reviewerid",
+  "revieweruserid",
+  "reviewersessionid",
+]);
 const ARRAY_INDEX = /^(?:0|[1-9][0-9]*)$/u;
+const INVALID_REVIEWER_PAYLOAD = Symbol("INVALID_REVIEWER_PAYLOAD");
+const UTF8_ENCODER = new TextEncoder();
 
-/** True means the payload is unsafe or contains reviewer identity anywhere in its JSON shape. */
-function clientSuppliedReviewerIdentity(payload: unknown): boolean {
-  if (payload === null || payload === undefined) return false;
-  if (typeof payload !== "object") return typeof payload === "function";
+export const REVIEWER_MUTATION_PAYLOAD_LIMITS = Object.freeze({
+  maximumDepth: 16,
+  maximumNodes: 1_024,
+  maximumProperties: 1_024,
+  maximumArrayLength: 1_000,
+  maximumStringCodeUnits: 64 * 1_024,
+  maximumStringUtf8Bytes: 64 * 1_024,
+  maximumEncodedBytes: 64 * 1_024,
+});
 
-  const pending: unknown[] = [payload];
-  const seen = new WeakSet<object>();
-  let visited = 0;
-  while (pending.length > 0) {
-    const current = pending.pop();
-    if (typeof current !== "object" || current === null) continue;
-    if (seen.has(current)) return true;
-    seen.add(current);
-    visited += 1;
-    if (visited > 1_000) return true;
+interface ReviewerPayloadBudget {
+  nodes: number;
+  properties: number;
+  stringUtf8Bytes: number;
+}
 
-    try {
-      const isArray = Array.isArray(current);
-      const prototype = Object.getPrototypeOf(current) as unknown;
+function consumeReviewerString(value: string, budget: ReviewerPayloadBudget): boolean {
+  if (value.length > REVIEWER_MUTATION_PAYLOAD_LIMITS.maximumStringCodeUnits) return false;
+  budget.stringUtf8Bytes += UTF8_ENCODER.encode(value).byteLength;
+  return budget.stringUtf8Bytes <= REVIEWER_MUTATION_PAYLOAD_LIMITS.maximumStringUtf8Bytes;
+}
+
+function snapshotReviewerPayloadValue(
+  value: unknown,
+  depth: number,
+  ancestors: WeakSet<object>,
+  budget: ReviewerPayloadBudget,
+): ReviewerMutationPayload | typeof INVALID_REVIEWER_PAYLOAD {
+  budget.nodes += 1;
+  if (budget.nodes > REVIEWER_MUTATION_PAYLOAD_LIMITS.maximumNodes) {
+    return INVALID_REVIEWER_PAYLOAD;
+  }
+  if (value === null || typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    return consumeReviewerString(value, budget) ? value : INVALID_REVIEWER_PAYLOAD;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : INVALID_REVIEWER_PAYLOAD;
+  }
+  if (typeof value !== "object" || depth > REVIEWER_MUTATION_PAYLOAD_LIMITS.maximumDepth) {
+    return INVALID_REVIEWER_PAYLOAD;
+  }
+  if (ancestors.has(value)) return INVALID_REVIEWER_PAYLOAD;
+  ancestors.add(value);
+
+  try {
+    const isArray = Array.isArray(value);
+    const prototype = Object.getPrototypeOf(value) as unknown;
+    if (
+      (isArray && prototype !== Array.prototype) ||
+      (!isArray && prototype !== Object.prototype && prototype !== null)
+    ) {
+      return INVALID_REVIEWER_PAYLOAD;
+    }
+
+    const descriptors = Object.getOwnPropertyDescriptors(value) as Record<
+      PropertyKey,
+      PropertyDescriptor
+    >;
+    const ownKeys = Reflect.ownKeys(descriptors);
+    if (ownKeys.some((key) => typeof key !== "string")) return INVALID_REVIEWER_PAYLOAD;
+
+    if (isArray) {
+      const lengthDescriptor = descriptors.length;
       if (
-        (isArray && prototype !== Array.prototype) ||
-        (!isArray && prototype !== Object.prototype && prototype !== null)
+        lengthDescriptor === undefined ||
+        !("value" in lengthDescriptor) ||
+        lengthDescriptor.enumerable !== false ||
+        !Number.isSafeInteger(lengthDescriptor.value) ||
+        (lengthDescriptor.value as number) < 0 ||
+        (lengthDescriptor.value as number) > REVIEWER_MUTATION_PAYLOAD_LIMITS.maximumArrayLength
       ) {
-        return true;
+        return INVALID_REVIEWER_PAYLOAD;
+      }
+      const length = lengthDescriptor.value as number;
+      if (ownKeys.length !== length + 1) return INVALID_REVIEWER_PAYLOAD;
+      budget.properties += length;
+      if (budget.properties > REVIEWER_MUTATION_PAYLOAD_LIMITS.maximumProperties) {
+        return INVALID_REVIEWER_PAYLOAD;
       }
 
-      const descriptors = Object.getOwnPropertyDescriptors(current);
-      for (const key of Reflect.ownKeys(descriptors)) {
-        if (typeof key !== "string") return true;
-        if (isArray && key === "length") continue;
-        if (isArray && !ARRAY_INDEX.test(key)) return true;
-        const descriptor = descriptors[key];
+      const snapshot: ReviewerMutationPayload[] = new Array<ReviewerMutationPayload>(length);
+      for (let index = 0; index < length; index += 1) {
+        const descriptor = descriptors[String(index)];
         if (
           descriptor === undefined ||
           !("value" in descriptor) ||
           descriptor.enumerable !== true
         ) {
-          return true;
+          return INVALID_REVIEWER_PAYLOAD;
         }
-        const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/gu, "");
-        if (FORBIDDEN_REVIEWER_KEYS.has(normalizedKey)) return true;
-        if (typeof descriptor.value === "object" && descriptor.value !== null) {
-          pending.push(descriptor.value);
-        } else if (typeof descriptor.value === "function") {
-          return true;
+        const child = snapshotReviewerPayloadValue(descriptor.value, depth + 1, ancestors, budget);
+        if (child === INVALID_REVIEWER_PAYLOAD) return INVALID_REVIEWER_PAYLOAD;
+        snapshot[index] = child;
+      }
+      for (const key of ownKeys as string[]) {
+        if (key !== "length" && (!ARRAY_INDEX.test(key) || Number(key) >= length)) {
+          return INVALID_REVIEWER_PAYLOAD;
         }
       }
-    } catch {
-      return true;
+      Object.setPrototypeOf(snapshot, null);
+      return Object.freeze(snapshot);
     }
+
+    budget.properties += ownKeys.length;
+    if (budget.properties > REVIEWER_MUTATION_PAYLOAD_LIMITS.maximumProperties) {
+      return INVALID_REVIEWER_PAYLOAD;
+    }
+    const snapshot = Object.create(null) as Record<string, ReviewerMutationPayload>;
+    for (const key of ownKeys as string[]) {
+      const descriptor = descriptors[key];
+      if (
+        descriptor === undefined ||
+        !("value" in descriptor) ||
+        descriptor.enumerable !== true ||
+        !consumeReviewerString(key, budget)
+      ) {
+        return INVALID_REVIEWER_PAYLOAD;
+      }
+      const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/gu, "");
+      if (FORBIDDEN_REVIEWER_KEYS.has(normalizedKey)) return INVALID_REVIEWER_PAYLOAD;
+      const child = snapshotReviewerPayloadValue(descriptor.value, depth + 1, ancestors, budget);
+      if (child === INVALID_REVIEWER_PAYLOAD) return INVALID_REVIEWER_PAYLOAD;
+      Object.defineProperty(snapshot, key, {
+        value: child,
+        enumerable: true,
+        configurable: false,
+        writable: false,
+      });
+    }
+    return Object.freeze(snapshot);
+  } catch {
+    return INVALID_REVIEWER_PAYLOAD;
+  } finally {
+    ancestors.delete(value);
   }
-  return false;
+}
+
+/** Returns the sole bounded payload authorized to cross the reviewer-mutation boundary. */
+function snapshotReviewerMutationPayload(
+  payload: unknown,
+): ReviewerMutationPayload | typeof INVALID_REVIEWER_PAYLOAD {
+  const budget: ReviewerPayloadBudget = { nodes: 0, properties: 0, stringUtf8Bytes: 0 };
+  const snapshot = snapshotReviewerPayloadValue(payload, 0, new WeakSet<object>(), budget);
+  if (snapshot === INVALID_REVIEWER_PAYLOAD) return INVALID_REVIEWER_PAYLOAD;
+
+  try {
+    const encoded = JSON.stringify(snapshot);
+    if (
+      encoded === undefined ||
+      UTF8_ENCODER.encode(encoded).byteLength > REVIEWER_MUTATION_PAYLOAD_LIMITS.maximumEncodedBytes
+    ) {
+      return INVALID_REVIEWER_PAYLOAD;
+    }
+  } catch {
+    return INVALID_REVIEWER_PAYLOAD;
+  }
+  return snapshot;
 }
 
 export interface AuthWorkspaceBoundaryDependencies {
@@ -316,6 +432,7 @@ export class AuthWorkspaceBoundary {
       invitation.workspaceId !== requested.workspaceId ||
       invitation.workspaceStatus !== "ACTIVE" ||
       invitation.normalizedEmail !== requested.normalizedEmail ||
+      invitation.identityStatus !== "ACTIVE" ||
       materialization === null
     ) {
       return WORKSPACE_ACCESS_REQUIRED;
@@ -338,7 +455,8 @@ export class AuthWorkspaceBoundary {
   ): Promise<ReviewerAuthorizationResult> {
     const authorization = await this.authorizeWorkspace(request);
     if (!authorization.ok) return authorization;
-    if (clientSuppliedReviewerIdentity(mutationPayload)) {
+    const sanitizedMutationPayload = snapshotReviewerMutationPayload(mutationPayload);
+    if (sanitizedMutationPayload === INVALID_REVIEWER_PAYLOAD) {
       return CLIENT_REVIEWER_IDENTITY_FORBIDDEN;
     }
     const reviewer = Object.freeze({
@@ -347,7 +465,11 @@ export class AuthWorkspaceBoundary {
     });
     return Object.freeze({
       ok: true,
-      value: Object.freeze({ authorization: authorization.value, reviewer }),
+      value: Object.freeze({
+        authorization: authorization.value,
+        reviewer,
+        sanitizedMutationPayload,
+      }),
     } satisfies GrantedReviewerAuthorization);
   }
 }

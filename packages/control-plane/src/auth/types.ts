@@ -35,6 +35,8 @@ export interface SignInInvitationRecord {
   readonly workspaceId: string;
   readonly workspaceStatus: AuthWorkspaceStatus;
   readonly normalizedEmail: string;
+  /** Durable identity status observed in the same authorization read as the invitation. */
+  readonly identityStatus: AuthUserStatus;
   readonly invitationStatus: AuthInvitationStatus;
   /** Durable status observed in the same authorization read as the invitation. */
   readonly membershipStatus: AuthMembershipStatus;
@@ -138,6 +140,7 @@ export interface GrantedGoogleSignInAuthorization {
     readonly materialization:
       | {
           readonly mode: "ACTIVATE_INVITATION";
+          readonly expectedIdentityStatus: "ACTIVE";
           readonly expectedInvitationStatus: "PENDING";
           readonly expectedMembershipStatus: "INVITED";
           readonly resultingInvitationStatus: "ACCEPTED";
@@ -146,6 +149,7 @@ export interface GrantedGoogleSignInAuthorization {
         }
       | {
           readonly mode: "ALREADY_ACTIVE";
+          readonly expectedIdentityStatus: "ACTIVE";
           readonly expectedInvitationStatus: "ACCEPTED";
           readonly expectedMembershipStatus: "ACTIVE";
           readonly resultingInvitationStatus: "ACCEPTED";
@@ -161,6 +165,14 @@ export type GoogleSignInAdmissionHook = (
   request: GoogleSignInAuthorizationRequest,
 ) => Promise<GoogleSignInAuthorizationResult>;
 
+export type ReviewerMutationPayload =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly ReviewerMutationPayload[]
+  | { readonly [key: string]: ReviewerMutationPayload };
+
 export interface GrantedReviewerAuthorization {
   readonly ok: true;
   readonly value: {
@@ -169,6 +181,8 @@ export interface GrantedReviewerAuthorization {
       readonly reviewerUserId: string;
       readonly reviewerSessionId: string;
     };
+    /** The only mutation payload authorized to cross the boundary; never reuse the input object. */
+    readonly sanitizedMutationPayload: ReviewerMutationPayload;
   };
 }
 

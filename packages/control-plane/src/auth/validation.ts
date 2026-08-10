@@ -208,17 +208,20 @@ export function snapshotSignInInvitationRecord(value: unknown): SignInInvitation
     "workspaceId",
     "workspaceStatus",
     "normalizedEmail",
+    "identityStatus",
     "invitationStatus",
     "membershipStatus",
   ]);
   if (record === null) return null;
   const workspaceStatus = enumValue(record.workspaceStatus, WORKSPACE_STATUSES);
+  const identityStatus = enumValue(record.identityStatus, USER_STATUSES);
   const invitationStatus = enumValue(record.invitationStatus, INVITATION_STATUSES);
   const membershipStatus = enumValue(record.membershipStatus, MEMBERSHIP_STATUSES);
   if (
     !authIdentifier(record.workspaceId) ||
     workspaceStatus === null ||
     !isNormalizedAuthEmail(record.normalizedEmail) ||
+    identityStatus === null ||
     invitationStatus === null ||
     membershipStatus === null
   ) {
@@ -228,6 +231,7 @@ export function snapshotSignInInvitationRecord(value: unknown): SignInInvitation
     workspaceId: record.workspaceId,
     workspaceStatus,
     normalizedEmail: record.normalizedEmail,
+    identityStatus,
     invitationStatus,
     membershipStatus,
   });

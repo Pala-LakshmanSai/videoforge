@@ -112,6 +112,7 @@ export class DeterministicLocalAuthorizationDirectory implements WorkspaceAuthor
           workspaceId: record.workspace.workspaceId,
           workspaceStatus: record.workspace.status,
           normalizedEmail: record.invitation.normalizedEmail,
+          identityStatus: record.identity.status,
           invitationStatus: record.invitation.status,
           membershipStatus: record.membership.status,
         }),

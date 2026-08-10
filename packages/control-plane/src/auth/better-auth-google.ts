@@ -213,6 +213,7 @@ function snapshotAdmissionGrant(value: unknown): GrantedGoogleSignInAuthorizatio
   }
   const materialization = snapshotExactPlainRecord(grant.materialization, [
     "mode",
+    "expectedIdentityStatus",
     "expectedInvitationStatus",
     "expectedMembershipStatus",
     "resultingInvitationStatus",
@@ -230,6 +231,7 @@ function snapshotAdmissionGrant(value: unknown): GrantedGoogleSignInAuthorizatio
     materialization.expectedMembershipStatus === "ACTIVE";
   if (
     (!activation && !alreadyActive) ||
+    materialization.expectedIdentityStatus !== "ACTIVE" ||
     materialization.resultingInvitationStatus !== "ACCEPTED" ||
     materialization.resultingMembershipStatus !== "ACTIVE" ||
     materialization.transactionRequired !== true
@@ -238,6 +240,7 @@ function snapshotAdmissionGrant(value: unknown): GrantedGoogleSignInAuthorizatio
   }
   const frozenMaterialization = Object.freeze({
     mode: materialization.mode,
+    expectedIdentityStatus: "ACTIVE",
     expectedInvitationStatus: materialization.expectedInvitationStatus,
     expectedMembershipStatus: materialization.expectedMembershipStatus,
     resultingInvitationStatus: "ACCEPTED",

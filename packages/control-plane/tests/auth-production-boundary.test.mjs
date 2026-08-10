@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  AuthWorkspaceBoundary,
   createPendingBetterAuthGoogleConfiguration,
   ProductionAuthBindingError,
 } from "../dist/src/auth/index.js";
@@ -32,6 +33,7 @@ const ACTIVE_AUTHORIZATION = Object.freeze({
     normalizedEmail: "active@example.test",
     materialization: Object.freeze({
       mode: "ALREADY_ACTIVE",
+      expectedIdentityStatus: "ACTIVE",
       expectedInvitationStatus: "ACCEPTED",
       expectedMembershipStatus: "ACTIVE",
       resultingInvitationStatus: "ACCEPTED",
@@ -286,6 +288,44 @@ test("malformed admission-hook output denies without evaluating accessors or mat
     WORKSPACE_DENIED,
   );
   assert.equal(materializationCalls, 0, "admission grants must match the exact request scope");
+});
+
+test("a disabled accepted identity is generically denied before SDK materialization", async () => {
+  const boundary = new AuthWorkspaceBoundary({
+    sessions: Object.freeze({ findSession: async () => null }),
+    directory: Object.freeze({
+      async findSignInInvitation() {
+        return {
+          workspaceId: "workspace_auth_a",
+          workspaceStatus: "ACTIVE",
+          normalizedEmail: "disabled@example.test",
+          identityStatus: "DISABLED",
+          invitationStatus: "ACCEPTED",
+          membershipStatus: "ACTIVE",
+        };
+      },
+    }),
+    clock: Object.freeze({ nowEpochMs: () => Date.parse("2026-08-10T09:00:00.000Z") }),
+  });
+  const configuration = createPendingBetterAuthGoogleConfiguration({
+    ...validInput(),
+    admissionHook: (request) => boundary.authorizeInvitedGoogleSignIn(request),
+  });
+  const gate = configuration.installSdk((contract) => contract.identityMaterialization);
+  let materializationCalls = 0;
+  const result = await gate.authorizeThenMaterialize(
+    {
+      workspaceId: "workspace_auth_a",
+      email: "disabled@example.test",
+      emailVerified: true,
+    },
+    async () => {
+      materializationCalls += 1;
+      return "must-not-run";
+    },
+  );
+  assert.deepEqual(result, WORKSPACE_DENIED);
+  assert.equal(materializationCalls, 0);
 });
 
 test("auth source has no ambient environment read, network transport, or live OAuth SDK import", async () => {

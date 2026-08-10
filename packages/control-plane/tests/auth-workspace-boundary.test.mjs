@@ -5,12 +5,15 @@ import {
   AuthWorkspaceBoundary,
   DeterministicLocalAuthorizationDirectory,
   DeterministicLocalIdentityProvider,
+  REVIEWER_MUTATION_PAYLOAD_LIMITS,
 } from "../dist/src/auth/index.js";
 
 const NOW = Date.parse("2026-08-10T09:00:00.000Z");
 const WORKSPACE_A = "workspace_auth_a";
 const WORKSPACE_B = "workspace_auth_b";
 const WORKSPACE_ARCHIVED = "workspace_auth_archived";
+
+const plainJson = (value) => JSON.parse(JSON.stringify(value));
 
 function sessionFixture({
   token,
@@ -241,6 +244,7 @@ test("verified Google sign-in is allowlisted only by a pending or accepted invit
         normalizedEmail: "pending@example.test",
         materialization: {
           mode: "ACTIVATE_INVITATION",
+          expectedIdentityStatus: "ACTIVE",
           expectedInvitationStatus: "PENDING",
           expectedMembershipStatus: "INVITED",
           resultingInvitationStatus: "ACCEPTED",
@@ -265,6 +269,7 @@ test("verified Google sign-in is allowlisted only by a pending or accepted invit
         normalizedEmail: "active@example.test",
         materialization: {
           mode: "ALREADY_ACTIVE",
+          expectedIdentityStatus: "ACTIVE",
           expectedInvitationStatus: "ACCEPTED",
           expectedMembershipStatus: "ACTIVE",
           resultingInvitationStatus: "ACCEPTED",
@@ -288,6 +293,7 @@ test("verified Google sign-in is allowlisted only by a pending or accepted invit
       emailVerified: true,
     },
     { workspaceId: WORKSPACE_A, email: "pending@example.test", emailVerified: false },
+    { workspaceId: WORKSPACE_A, email: "disabled@example.test", emailVerified: true },
     { workspaceId: WORKSPACE_A, email: "not-an-email", emailVerified: true },
     { workspaceId: WORKSPACE_B, email: "active@example.test", emailVerified: true },
   ]) {
@@ -422,7 +428,7 @@ test("reviewer identity is session-derived and every client-supplied reviewer fi
     project_id: "project_review",
     candidate_id: "candidate_review",
   });
-  assert.deepEqual(allowed, {
+  assert.deepEqual(plainJson(allowed), {
     ok: true,
     value: {
       authorization: {
@@ -443,6 +449,10 @@ test("reviewer identity is session-derived and every client-supplied reviewer fi
       reviewer: {
         reviewerUserId: "user_active",
         reviewerSessionId: "session_user_active",
+      },
+      sanitizedMutationPayload: {
+        project_id: "project_review",
+        candidate_id: "candidate_review",
       },
     },
   });
@@ -601,14 +611,17 @@ test("malformed provider and directory rows deny without getters, throws, or rol
   }
 });
 
-test("Google admission exposes only the two durable invitation-membership transitions", async () => {
-  for (const [invitationStatus, membershipStatus, expected] of [
-    ["PENDING", "INVITED", "ACTIVATE_INVITATION"],
-    ["ACCEPTED", "ACTIVE", "ALREADY_ACTIVE"],
-    ["PENDING", "ACTIVE", null],
-    ["ACCEPTED", "INVITED", null],
-    ["ACCEPTED", "SUSPENDED", null],
-    ["REVOKED", "ACTIVE", null],
+test("Google admission exposes only active-identity durable invitation-membership transitions", async () => {
+  for (const [identityStatus, invitationStatus, membershipStatus, expected] of [
+    ["ACTIVE", "PENDING", "INVITED", "ACTIVATE_INVITATION"],
+    ["ACTIVE", "ACCEPTED", "ACTIVE", "ALREADY_ACTIVE"],
+    ["ACTIVE", "PENDING", "ACTIVE", null],
+    ["ACTIVE", "ACCEPTED", "INVITED", null],
+    ["ACTIVE", "ACCEPTED", "SUSPENDED", null],
+    ["ACTIVE", "REVOKED", "ACTIVE", null],
+    ["DISABLED", "ACCEPTED", "ACTIVE", null],
+    ["LOCKED", "ACCEPTED", "ACTIVE", null],
+    [undefined, "ACCEPTED", "ACTIVE", null],
   ]) {
     const boundary = new AuthWorkspaceBoundary({
       sessions: new DeterministicLocalIdentityProvider([]),
@@ -618,6 +631,7 @@ test("Google admission exposes only the two durable invitation-membership transi
             workspaceId: WORKSPACE_A,
             workspaceStatus: "ACTIVE",
             normalizedEmail: "person@example.test",
+            identityStatus,
             invitationStatus,
             membershipStatus,
           };
@@ -635,6 +649,7 @@ test("Google admission exposes only the two durable invitation-membership transi
     } else {
       assert.equal(result.ok, true);
       assert.equal(result.value.materialization.mode, expected);
+      assert.equal(result.value.materialization.expectedIdentityStatus, "ACTIVE");
       assert.equal(result.value.materialization.transactionRequired, true);
     }
   }
@@ -668,6 +683,258 @@ test("reviewer spoofing is rejected through nested, inherited, accessor, and cyc
     );
   }
   assert.equal(getterCalls, 0);
+});
+
+test("reviewer payload authorization returns only a bounded immutable plain-data snapshot", async () => {
+  const boundary = createBoundary();
+  const request = { sessionToken: "token_active", workspaceId: WORKSPACE_A };
+  const payload = {
+    project_id: "project_review",
+    candidate: {
+      approved: true,
+      score: 0.75,
+      tags: ["usable", "final"],
+      note: null,
+    },
+  };
+  const result = await boundary.authorizeReviewerMutation(request, payload);
+  assert.equal(result.ok, true);
+  assert.deepEqual(plainJson(result.value.sanitizedMutationPayload), payload);
+  assert.notEqual(result.value.sanitizedMutationPayload, payload);
+  assert.notEqual(result.value.sanitizedMutationPayload.candidate, payload.candidate);
+  assert.notEqual(result.value.sanitizedMutationPayload.candidate.tags, payload.candidate.tags);
+  assert.equal(Object.isFrozen(result.value.sanitizedMutationPayload), true);
+  assert.equal(Object.isFrozen(result.value.sanitizedMutationPayload.candidate), true);
+  assert.equal(Object.isFrozen(result.value.sanitizedMutationPayload.candidate.tags), true);
+
+  payload.project_id = "project_changed_after_authorization";
+  payload.candidate.tags[0] = "changed_after_authorization";
+  payload.candidate.reviewer_user_id = "user_attacker";
+  assert.deepEqual(plainJson(result.value.sanitizedMutationPayload), {
+    project_id: "project_review",
+    candidate: {
+      approved: true,
+      score: 0.75,
+      tags: ["usable", "final"],
+      note: null,
+    },
+  });
+});
+
+test("reviewer payload snapshots strip hidden Proxy state without late reads or mutation", async () => {
+  const boundary = createBoundary();
+  const request = { sessionToken: "token_active", workspaceId: WORKSPACE_A };
+  let proxyGetCalls = 0;
+  const proxyTarget = {
+    project_id: "project_review",
+    reviewer_user_id: "user_attacker",
+  };
+  const hiddenReviewerProxy = new Proxy(proxyTarget, {
+    get(target, key, receiver) {
+      proxyGetCalls += 1;
+      return Reflect.get(target, key, receiver);
+    },
+    ownKeys() {
+      return ["project_id"];
+    },
+    getOwnPropertyDescriptor(target, key) {
+      return key === "project_id" ? Object.getOwnPropertyDescriptor(target, key) : undefined;
+    },
+  });
+
+  const hiddenResult = await boundary.authorizeReviewerMutation(request, hiddenReviewerProxy);
+  assert.equal(hiddenResult.ok, true);
+  assert.deepEqual(plainJson(hiddenResult.value.sanitizedMutationPayload), {
+    project_id: "project_review",
+  });
+  assert.notEqual(hiddenResult.value.sanitizedMutationPayload, hiddenReviewerProxy);
+  assert.equal("reviewer_user_id" in hiddenResult.value.sanitizedMutationPayload, false);
+  assert.equal(proxyGetCalls, 0, "proxy validation must not invoke attacker get traps");
+
+  let lateGetterCalls = 0;
+  let siblingGetCalls = 0;
+  const inspectedFirst = { value: "captured_before_sibling" };
+  const siblingTarget = { safe: "captured_sibling", reviewer_user_id: "user_attacker" };
+  const statefulSibling = new Proxy(siblingTarget, {
+    get(target, key, receiver) {
+      siblingGetCalls += 1;
+      return Reflect.get(target, key, receiver);
+    },
+    getPrototypeOf() {
+      inspectedFirst.value = "mutated_after_capture";
+      Object.defineProperty(inspectedFirst, "late", {
+        enumerable: true,
+        get() {
+          lateGetterCalls += 1;
+          return "must-not-run";
+        },
+      });
+      return Object.prototype;
+    },
+    ownKeys() {
+      return ["safe"];
+    },
+    getOwnPropertyDescriptor(target, key) {
+      return key === "safe" ? Object.getOwnPropertyDescriptor(target, key) : undefined;
+    },
+  });
+  const statefulResult = await boundary.authorizeReviewerMutation(request, {
+    first: inspectedFirst,
+    sibling: statefulSibling,
+  });
+  assert.equal(statefulResult.ok, true);
+  assert.deepEqual(plainJson(statefulResult.value.sanitizedMutationPayload), {
+    first: { value: "captured_before_sibling" },
+    sibling: { safe: "captured_sibling" },
+  });
+  assert.equal(siblingGetCalls, 0);
+  assert.equal(lateGetterCalls, 0);
+  assert.equal("late" in statefulResult.value.sanitizedMutationPayload.first, false);
+  assert.equal("reviewer_user_id" in statefulResult.value.sanitizedMutationPayload.sibling, false);
+});
+
+test("reviewer snapshots cannot inherit poisoned reviewer identities", async () => {
+  const boundary = createBoundary();
+  const request = { sessionToken: "token_active", workspaceId: WORKSPACE_A };
+  const objectGrant = await boundary.authorizeReviewerMutation(request, {
+    project_id: "project_review",
+    groups: [["one"], ["two"]],
+  });
+  const arrayGrant = await boundary.authorizeReviewerMutation(request, [
+    { project_id: "project_review" },
+    ["nested"],
+  ]);
+  assert.equal(objectGrant.ok, true);
+  assert.equal(arrayGrant.ok, true);
+
+  const objectSnapshot = objectGrant.value.sanitizedMutationPayload;
+  const rootArraySnapshot = arrayGrant.value.sanitizedMutationPayload;
+  const nestedArraySnapshot = objectSnapshot.groups[0];
+  assert.equal(Object.getPrototypeOf(objectSnapshot), null);
+  assert.equal(Array.isArray(rootArraySnapshot), true);
+  assert.equal(Array.isArray(nestedArraySnapshot), true);
+  assert.equal(Object.getPrototypeOf(rootArraySnapshot), null);
+  assert.equal(Object.getPrototypeOf(nestedArraySnapshot), null);
+
+  const originalObjectReviewer = Object.getOwnPropertyDescriptor(
+    Object.prototype,
+    "reviewer_user_id",
+  );
+  const originalArrayReviewer = Object.getOwnPropertyDescriptor(
+    Array.prototype,
+    "reviewer_session_id",
+  );
+  let objectReviewerGetterCalls = 0;
+  let arrayReviewerGetterCalls = 0;
+  try {
+    Object.defineProperty(Object.prototype, "reviewer_user_id", {
+      configurable: true,
+      get() {
+        objectReviewerGetterCalls += 1;
+        return "user_attacker";
+      },
+    });
+    Object.defineProperty(Array.prototype, "reviewer_session_id", {
+      configurable: true,
+      get() {
+        arrayReviewerGetterCalls += 1;
+        return "session_attacker";
+      },
+    });
+
+    assert.equal("reviewer_user_id" in objectSnapshot, false);
+    assert.equal(objectSnapshot.reviewer_user_id, undefined);
+    for (const snapshot of [rootArraySnapshot, nestedArraySnapshot]) {
+      assert.equal("reviewer_session_id" in snapshot, false);
+      assert.equal(snapshot.reviewer_session_id, undefined);
+    }
+  } finally {
+    if (originalObjectReviewer === undefined) {
+      delete Object.prototype.reviewer_user_id;
+    } else {
+      Object.defineProperty(Object.prototype, "reviewer_user_id", originalObjectReviewer);
+    }
+    if (originalArrayReviewer === undefined) {
+      delete Array.prototype.reviewer_session_id;
+    } else {
+      Object.defineProperty(Array.prototype, "reviewer_session_id", originalArrayReviewer);
+    }
+  }
+  assert.equal(objectReviewerGetterCalls, 0);
+  assert.equal(arrayReviewerGetterCalls, 0);
+});
+
+test("reviewer snapshot size checks never invoke inherited toJSON", async () => {
+  const boundary = createBoundary();
+  const request = { sessionToken: "token_active", workspaceId: WORKSPACE_A };
+  const originalToJson = Object.getOwnPropertyDescriptor(Object.prototype, "toJSON");
+  let toJsonGetterCalls = 0;
+  let result;
+  try {
+    Object.defineProperty(Object.prototype, "toJSON", {
+      configurable: true,
+      get() {
+        toJsonGetterCalls += 1;
+        return () => ({ reviewer_user_id: "user_attacker" });
+      },
+    });
+    result = await boundary.authorizeReviewerMutation(request, {
+      project_id: "project_review",
+      candidate: { tags: ["ordinary", "json"] },
+    });
+  } finally {
+    if (originalToJson === undefined) {
+      delete Object.prototype.toJSON;
+    } else {
+      Object.defineProperty(Object.prototype, "toJSON", originalToJson);
+    }
+  }
+  assert.equal(toJsonGetterCalls, 0);
+  assert.equal(result.ok, true);
+  assert.deepEqual(plainJson(result.value.sanitizedMutationPayload), {
+    project_id: "project_review",
+    candidate: { tags: ["ordinary", "json"] },
+  });
+});
+
+test("reviewer payload validation rejects deterministic complexity and exotic shapes", async () => {
+  const boundary = createBoundary();
+  const request = { sessionToken: "token_active", workspaceId: WORKSPACE_A };
+
+  const sparse = new Array(REVIEWER_MUTATION_PAYLOAD_LIMITS.maximumArrayLength * 10);
+  sparse[0] = "present";
+  const symbolPayload = { project_id: "project_review" };
+  symbolPayload[Symbol("reviewer")] = "user_attacker";
+  const customPrototype = Object.create({ harmless: true });
+  customPrototype.project_id = "project_review";
+  let tooDeep = { leaf: true };
+  for (let depth = 0; depth <= REVIEWER_MUTATION_PAYLOAD_LIMITS.maximumDepth; depth += 1) {
+    tooDeep = { child: tooDeep };
+  }
+  const tooManyProperties = {};
+  for (let index = 0; index <= REVIEWER_MUTATION_PAYLOAD_LIMITS.maximumProperties; index += 1) {
+    tooManyProperties[`field_${index}`] = index;
+  }
+  const encodedOversize = {
+    note: "😀".repeat(REVIEWER_MUTATION_PAYLOAD_LIMITS.maximumStringUtf8Bytes / 2),
+  };
+
+  for (const payload of [
+    sparse,
+    symbolPayload,
+    customPrototype,
+    tooDeep,
+    tooManyProperties,
+    encodedOversize,
+    { project_id: undefined },
+    { project_id: 1n },
+    { project_id: Number.NaN },
+  ]) {
+    assert.deepEqual(
+      await boundary.authorizeReviewerMutation(request, payload),
+      REVIEWER_FORBIDDEN,
+    );
+  }
 });
 
 test("local fixtures require exact own plain fields and complete safe identifiers and roles", () => {
