@@ -199,9 +199,7 @@ test("callback receipts bind the exact event attempt and authenticated payload h
       "23503",
     );
 
-    const receipts = await executor.query(
-      "SELECT count(*)::int AS rows FROM callback_receipts",
-    );
+    const receipts = await executor.query("SELECT count(*)::int AS rows FROM callback_receipts");
     assert.deepEqual(receipts.rows, [{ rows: 0 }]);
   });
 });
