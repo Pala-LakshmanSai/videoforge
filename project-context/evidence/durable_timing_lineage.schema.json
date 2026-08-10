@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/durable-timing-lineage-v1.json",
+  "title": "VideoForge Durable Timing Lineage v1",
+  "description": "Persistence/API identity that links immutable transcript-timing/v1 and timeline-plan/v1 documents without creating a second timing or EDL format.",
+  "oneOf": [
+    {"$ref": "#/$defs/activeLineage"},
+    {"$ref": "#/$defs/invalidatedLineage"}
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "baseProperties": {
+      "schema_version": {"const": "durable-timing-lineage/v1"},
+      "workspace_id": {"$ref": "#/$defs/id"},
+      "project_id": {"$ref": "#/$defs/id"},
+      "project_revision_id": {"$ref": "#/$defs/id"},
+      "head_version": {"type": "integer", "minimum": 1}
+    },
+    "activeLineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "project_id",
+        "project_revision_id",
+        "head_version",
+        "status",
+        "transcript",
+        "timeline_plan",
+        "invalidation"
+      ],
+      "properties": {
+        "schema_version": {"$ref": "#/$defs/baseProperties/schema_version"},
+        "workspace_id": {"$ref": "#/$defs/baseProperties/workspace_id"},
+        "project_id": {"$ref": "#/$defs/baseProperties/project_id"},
+        "project_revision_id": {"$ref": "#/$defs/baseProperties/project_revision_id"},
+        "head_version": {"$ref": "#/$defs/baseProperties/head_version"},
+        "status": {"const": "ACTIVE"},
+        "transcript": {"$ref": "#/$defs/transcript"},
+        "timeline_plan": {"$ref": "#/$defs/timelinePlan"},
+        "invalidation": {"type": "null"}
+      }
+    },
+    "invalidatedLineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "project_id",
+        "project_revision_id",
+        "head_version",
+        "status",
+        "transcript",
+        "timeline_plan",
+        "invalidation"
+      ],
+      "properties": {
+        "schema_version": {"$ref": "#/$defs/baseProperties/schema_version"},
+        "workspace_id": {"$ref": "#/$defs/baseProperties/workspace_id"},
+        "project_id": {"$ref": "#/$defs/baseProperties/project_id"},
+        "project_revision_id": {"$ref": "#/$defs/baseProperties/project_revision_id"},
+        "head_version": {"$ref": "#/$defs/baseProperties/head_version"},
+        "status": {"const": "INVALIDATED"},
+        "transcript": {"type": "null"},
+        "timeline_plan": {"type": "null"},
+        "invalidation": {"$ref": "#/$defs/invalidation"}
+      }
+    },
+    "transcript": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "transcript_id",
+        "source_asset_id",
+        "source_binary_sha256",
+        "source_duration_ms",
+        "engine_name",
+        "engine_version",
+        "model_name",
+        "model_sha256",
+        "language",
+        "transcription_config_hash",
+        "optional_script_hash",
+        "input_fingerprint_hash",
+        "canonical_document_asset_id",
+        "canonical_document_hash"
+      ],
+      "properties": {
+        "transcript_id": {"$ref": "#/$defs/id"},
+        "source_asset_id": {"$ref": "#/$defs/id"},
+        "source_binary_sha256": {"$ref": "#/$defs/sha256"},
+        "source_duration_ms": {"type": "integer", "minimum": 10000, "maximum": 3600000},
+        "engine_name": {"type": "string", "minLength": 1, "maxLength": 160},
+        "engine_version": {"type": "string", "minLength": 1, "maxLength": 160},
+        "model_name": {"type": "string", "minLength": 1, "maxLength": 160},
+        "model_sha256": {"$ref": "#/$defs/sha256"},
+        "language": {"type": "string", "minLength": 2, "maxLength": 35},
+        "transcription_config_hash": {"$ref": "#/$defs/sha256"},
+        "optional_script_hash": {
+          "oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]
+        },
+        "input_fingerprint_hash": {"$ref": "#/$defs/sha256"},
+        "canonical_document_asset_id": {"$ref": "#/$defs/id"},
+        "canonical_document_hash": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "timelinePlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "timeline_plan_id",
+        "transcript_id",
+        "transcript_document_hash",
+        "revision_config_hash",
+        "scheduler_version",
+        "scheduler_config_hash",
+        "seed",
+        "input_fingerprint_hash",
+        "canonical_document_asset_id",
+        "canonical_document_hash",
+        "output_fps_num",
+        "output_fps_den",
+        "total_frames",
+        "selected_span_audio"
+      ],
+      "properties": {
+        "timeline_plan_id": {"$ref": "#/$defs/id"},
+        "transcript_id": {"$ref": "#/$defs/id"},
+        "transcript_document_hash": {"$ref": "#/$defs/sha256"},
+        "revision_config_hash": {"$ref": "#/$defs/sha256"},
+        "scheduler_version": {"type": "string", "minLength": 1, "maxLength": 160},
+        "scheduler_config_hash": {"$ref": "#/$defs/sha256"},
+        "seed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+        "input_fingerprint_hash": {"$ref": "#/$defs/sha256"},
+        "canonical_document_asset_id": {"$ref": "#/$defs/id"},
+        "canonical_document_hash": {"$ref": "#/$defs/sha256"},
+        "output_fps_num": {"const": 30},
+        "output_fps_den": {"const": 1},
+        "total_frames": {"type": "integer", "minimum": 1},
+        "selected_span_audio": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/selectedSpanAudio"}
+        }
+      }
+    },
+    "selectedSpanAudio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "span_id",
+        "timeline_segment_id",
+        "transcript_id",
+        "task_key",
+        "source_asset_id",
+        "source_binary_sha256",
+        "selected_start_ms",
+        "selected_end_ms_exclusive",
+        "padded_start_ms",
+        "padded_end_ms_exclusive",
+        "trim_start_ms",
+        "trim_end_ms_exclusive"
+      ],
+      "properties": {
+        "span_id": {"$ref": "#/$defs/id"},
+        "timeline_segment_id": {"$ref": "#/$defs/id"},
+        "transcript_id": {"$ref": "#/$defs/id"},
+        "task_key": {"type": "string", "minLength": 1, "maxLength": 240},
+        "source_asset_id": {"$ref": "#/$defs/id"},
+        "source_binary_sha256": {"$ref": "#/$defs/sha256"},
+        "selected_start_ms": {"type": "integer", "minimum": 0},
+        "selected_end_ms_exclusive": {"type": "integer", "minimum": 1},
+        "padded_start_ms": {"type": "integer", "minimum": 0},
+        "padded_end_ms_exclusive": {"type": "integer", "minimum": 1},
+        "trim_start_ms": {"type": "integer", "minimum": 0},
+        "trim_end_ms_exclusive": {"type": "integer", "minimum": 1}
+      }
+    },
+    "invalidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "invalidation_id",
+        "invalidated_head_version",
+        "invalidated_transcript_id",
+        "invalidated_timeline_plan_id",
+        "prior_transcript_input_fingerprint_hash",
+        "prior_timeline_input_fingerprint_hash",
+        "next_input_fingerprint_hash",
+        "reason",
+        "created_at"
+      ],
+      "properties": {
+        "invalidation_id": {"$ref": "#/$defs/id"},
+        "invalidated_head_version": {"type": "integer", "minimum": 1},
+        "invalidated_transcript_id": {"$ref": "#/$defs/id"},
+        "invalidated_timeline_plan_id": {
+          "oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]
+        },
+        "prior_transcript_input_fingerprint_hash": {"$ref": "#/$defs/sha256"},
+        "prior_timeline_input_fingerprint_hash": {
+          "oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]
+        },
+        "next_input_fingerprint_hash": {"$ref": "#/$defs/sha256"},
+        "reason": {
+          "enum": [
+            "SOURCE_CHANGED",
+            "MODEL_CHANGED",
+            "CONFIG_CHANGED",
+            "SCRIPT_CHANGED",
+            "SCHEDULER_CHANGED"
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$"
+        }
+      }
+    }
+  }
+}

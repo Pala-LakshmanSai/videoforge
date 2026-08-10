@@ -15,6 +15,12 @@
       "sha256": "sha256:71501b87906e0a309d24995a90854860e68e307fda979fe1672ce3eee42234c8"
     },
     {
+      "source": "project-context/evidence/durable_timing_lineage.schema.json",
+      "destination": "generated/schemas/durable_timing_lineage.schema.json",
+      "bytes": 8445,
+      "sha256": "sha256:2bc4a1253d1dcfe1d7e857932da0b544ae328456891819a16941fda65496e05e"
+    },
+    {
       "source": "project-context/evidence/image_style_profile.schema.json",
       "destination": "generated/schemas/image_style_profile.schema.json",
       "bytes": 6772,
@@ -121,6 +127,18 @@
       "destination": "generated/fixtures/create_project_request.invalid.over_budget.json",
       "bytes": 482,
       "sha256": "sha256:63f9cbb6d572694b1b560573a060919bd5ca9cc27ca76ca8f57320412578c7c3"
+    },
+    {
+      "source": "project-context/evidence/fixtures/durable_timing_lineage.valid.json",
+      "destination": "generated/fixtures/durable_timing_lineage.valid.json",
+      "bytes": 2614,
+      "sha256": "sha256:f7a73c297da830e6002362339367017547a94f82a415d9da706dd156a895fc28"
+    },
+    {
+      "source": "project-context/evidence/fixtures/durable_timing_lineage.invalidated.valid.json",
+      "destination": "generated/fixtures/durable_timing_lineage.invalidated.valid.json",
+      "bytes": 936,
+      "sha256": "sha256:fb12781502cb7e039155a838ae0cf0be0c8b8722a720a0f45b3487e3ea046c0d"
     },
     {
       "source": "project-context/evidence/default_image_style_v1.json",
@@ -281,8 +299,8 @@
     {
       "source": "project-context/evidence/contract-index.v1.json",
       "destination": "generated/contract-index.v1.json",
-      "bytes": 4661,
-      "sha256": "sha256:7cfeab83f3eb2ada25f547f49625d418f167103c76d63bbdf11c76c277db6011"
+      "bytes": 4999,
+      "sha256": "sha256:6a8a3b0b7810d1eeb7c9091c7c93d16e54847ebc262e5e7cdfbc3cc2784b7a76"
     }
   ]
 }

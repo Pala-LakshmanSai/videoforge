@@ -8,7 +8,14 @@ import {
   MIGRATION_TABLE_NAME,
   RELATIONAL_TABLE_NAMES,
 } from "../dist/src/index.js";
-import { loadMigrationSources, PGliteExecutor } from "./support/pglite.mjs";
+import { HASHES, IDS, seedLockedProjects } from "./support/fixtures.mjs";
+import {
+  FIXED_TIME,
+  loadMigrationSources,
+  PGliteExecutor,
+  sha256,
+  uuid,
+} from "./support/pglite.mjs";
 
 test("a fresh PGlite database applies the committed migration chain idempotently", async () => {
   const database = new PGlite();
@@ -35,6 +42,107 @@ test("a fresh PGlite database applies the committed migration chain idempotently
       inventory.rows.map((row) => row.table_name),
       [...RELATIONAL_TABLE_NAMES, MIGRATION_TABLE_NAME].sort(),
     );
+  } finally {
+    await database.close();
+  }
+});
+
+test("the durable timing migration upgrades the five-migration baseline without rewriting legacy rows", async () => {
+  const database = new PGlite();
+  try {
+    const executor = new PGliteExecutor(database);
+    const sources = await loadMigrationSources();
+    await executor.execute(
+      `CREATE TABLE public.videoforge_schema_migrations (
+         version integer PRIMARY KEY CHECK (version > 0),
+         name text NOT NULL CHECK (name ~ '^[a-z0-9_]+$'),
+         filename text NOT NULL UNIQUE,
+         sha256 text NOT NULL CHECK (sha256 ~ '^sha256:[0-9a-f]{64}$'),
+         applied_at timestamptz NOT NULL DEFAULT now()
+       )`,
+    );
+    for (const migration of sources.slice(0, 5)) {
+      await executor.execute(migration.sql);
+      await executor.query(
+        `INSERT INTO videoforge_schema_migrations (version, name, filename, sha256)
+         VALUES ($1, $2, $3, $4)`,
+        [migration.version, migration.name, migration.filename, migration.sha256],
+      );
+    }
+    await seedLockedProjects(executor);
+
+    const documentId = uuid(31_001);
+    const transcriptId = uuid(31_002);
+    const wordId = uuid(31_003);
+    const segmentId = uuid(31_004);
+    const documentHash = sha256("legacy-transcript-document");
+    await executor.query(
+      `INSERT INTO assets (
+         id, workspace_id, kind, state, canonical_contract_name,
+         canonical_contract_version, canonical_document_sha256, verified_at
+       ) VALUES ($1, $2, 'CANONICAL_DOCUMENT', 'VERIFIED',
+                 'transcript-timing', 'v1', $3, $4)`,
+      [documentId, IDS.workspaceA, documentHash, FIXED_TIME],
+    );
+    await executor.query(
+      `INSERT INTO transcripts (
+         id, workspace_id, project_revision_id, source_asset_id, state,
+         model_name, model_hash, duration_ms, contract_name, contract_version,
+         canonical_document_asset_id, canonical_document_hash, ready_at, created_at
+       ) VALUES ($1, $2, $3, $4, 'READY', 'legacy-fixture', $5, 12000,
+                 'transcript-timing', 'v1', $6, $7, $8, $8)`,
+      [
+        transcriptId,
+        IDS.workspaceA,
+        IDS.revisionA,
+        IDS.voiceoverA,
+        sha256("legacy-model"),
+        documentId,
+        documentHash,
+        FIXED_TIME,
+      ],
+    );
+    await executor.query(
+      `INSERT INTO transcript_words (
+         id, workspace_id, transcript_id, word_index, word, start_ms, end_ms_exclusive
+       ) VALUES ($1, $2, $3, 0, 'legacy', 0, 12000)`,
+      [wordId, IDS.workspaceA, transcriptId],
+    );
+    await executor.query(
+      `INSERT INTO timeline_segments (
+         id, workspace_id, project_revision_id, segment_index, start_frame,
+         end_frame_exclusive, timeline_composition, in_image_shot_role,
+         narration, required_slots, timeline_plan_hash, created_at
+       ) VALUES ($1, $2, $3, 0, 0, 360, 'AVATAR_FULL', NULL,
+                 'Legacy segment', '{}'::jsonb, $4, $5)`,
+      [segmentId, IDS.workspaceA, IDS.revisionA, HASHES.revisionA, FIXED_TIME],
+    );
+
+    const upgraded = await applyMigrations(executor, sources);
+    assert.deepEqual(upgraded.appliedVersions, [6]);
+    assert.deepEqual(upgraded.alreadyAppliedVersions, [1, 2, 3, 4, 5]);
+    const legacy = await executor.query(
+      `SELECT transcript.lineage_contract_version, transcript.input_fingerprint_hash,
+              segment.timeline_plan_id, segment.segment_key
+         FROM transcripts transcript
+         JOIN timeline_segments segment
+           ON segment.workspace_id = transcript.workspace_id
+          AND segment.project_revision_id = transcript.project_revision_id
+        WHERE transcript.id = $1 AND segment.id = $2`,
+      [transcriptId, segmentId],
+    );
+    assert.deepEqual(legacy.rows, [
+      {
+        lineage_contract_version: null,
+        input_fingerprint_hash: null,
+        timeline_plan_id: null,
+        segment_key: null,
+      },
+    ]);
+
+    const replay = await applyMigrations(executor, sources);
+    assert.deepEqual(replay.appliedVersions, []);
+    assert.deepEqual(replay.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6]);
   } finally {
     await database.close();
   }

@@ -1,0 +1,56 @@
+{
+  "schema_version": "durable-timing-lineage/v1",
+  "workspace_id": "workspace_fixture_001",
+  "project_id": "project_fixture_001",
+  "project_revision_id": "revision_fixture_001",
+  "head_version": 2,
+  "status": "ACTIVE",
+  "transcript": {
+    "transcript_id": "transcript_fixture_001",
+    "source_asset_id": "asset_voiceover_fixture_001",
+    "source_binary_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "source_duration_ms": 12000,
+    "engine_name": "whisper.cpp",
+    "engine_version": "1.8.4",
+    "model_name": "base.en",
+    "model_sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "language": "en",
+    "transcription_config_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "optional_script_hash": null,
+    "input_fingerprint_hash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "canonical_document_asset_id": "asset_transcript_fixture_001",
+    "canonical_document_hash": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "timeline_plan": {
+    "timeline_plan_id": "timeline_fixture_001",
+    "transcript_id": "transcript_fixture_001",
+    "transcript_document_hash": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "revision_config_hash": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "scheduler_version": "scheduler-v1",
+    "scheduler_config_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "seed": 982341,
+    "input_fingerprint_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "canonical_document_asset_id": "asset_timeline_fixture_001",
+    "canonical_document_hash": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "output_fps_num": 30,
+    "output_fps_den": 1,
+    "total_frames": 360,
+    "selected_span_audio": [
+      {
+        "span_id": "span_fixture_001",
+        "timeline_segment_id": "segment_fixture_001",
+        "transcript_id": "transcript_fixture_001",
+        "task_key": "audio-span:segment_fixture_001",
+        "source_asset_id": "asset_voiceover_fixture_001",
+        "source_binary_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "selected_start_ms": 0,
+        "selected_end_ms_exclusive": 3000,
+        "padded_start_ms": 0,
+        "padded_end_ms_exclusive": 3200,
+        "trim_start_ms": 0,
+        "trim_end_ms_exclusive": 3000
+      }
+    ]
+  },
+  "invalidation": null
+}

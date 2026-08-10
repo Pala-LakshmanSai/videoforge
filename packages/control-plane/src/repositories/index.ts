@@ -5,5 +5,6 @@ export * from "./execution.js";
 export * from "./identity.js";
 export * from "./presets.js";
 export * from "./projects.js";
+export * from "./timing.js";
 export * from "./types.js";
 export * from "./unit-of-work.js";

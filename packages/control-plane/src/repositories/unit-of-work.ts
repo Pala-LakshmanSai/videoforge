@@ -4,6 +4,7 @@ import type { ExecutionRepository } from "./execution.js";
 import type { IdentityRepository } from "./identity.js";
 import type { AvatarProfileRepository, ImageStyleRepository } from "./presets.js";
 import type { ProjectRepository } from "./projects.js";
+import type { TimingRepository } from "./timing.js";
 import type { RepositoryResult, WorkspaceScope } from "./types.js";
 
 /** Repositories bound to one connection/transaction context by the adapter. */
@@ -12,6 +13,7 @@ export interface RepositorySession {
   readonly avatarProfiles: AvatarProfileRepository;
   readonly imageStyles: ImageStyleRepository;
   readonly projects: ProjectRepository;
+  readonly timing: TimingRepository;
   readonly artifacts: ArtifactRepository;
   readonly execution: ExecutionRepository;
   readonly events: EventRepository;

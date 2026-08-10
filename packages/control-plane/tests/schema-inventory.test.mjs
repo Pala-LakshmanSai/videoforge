@@ -28,6 +28,12 @@ const REQUIRED_CUSTOM_INDEXES = [
   "qa_results_one_terminal_acceptance_uq",
   "repository_mutation_receipts_operation_idx",
   "timeline_segments_frame_idx",
+  "timeline_segments_legacy_revision_index_uq",
+  "timeline_segments_plan_frame_idx",
+  "timeline_segments_plan_index_uq",
+  "timeline_segments_plan_key_uq",
+  "transcripts_idempotency_uq",
+  "transcripts_input_fingerprint_uq",
   "transcripts_one_ready_per_revision_uq",
   "users_active_email_uq",
   "workflow_events_attempt_sequence_uq",
@@ -53,6 +59,16 @@ const REQUIRED_TRIGGERS = [
   "project_revisions_locked_immutable",
   "project_revisions_validate_locked_snapshot",
   "repository_mutation_receipts_append_only",
+  "revision_timing_heads_validate",
+  "timeline_plans_immutable",
+  "timeline_plans_validate_complete_lineage",
+  "timeline_segments_durable_immutable",
+  "timing_invalidations_immutable",
+  "transcript_phrases_immutable",
+  "transcript_sentences_immutable",
+  "transcript_words_immutable",
+  "transcripts_enforce_durable_completeness",
+  "transcripts_validate_durable_lineage",
   "workflow_events_append_only",
   "workflow_events_monotonic_sequence",
 ].sort();
@@ -66,6 +82,10 @@ const REQUIRED_FOREIGN_KEY_FRAGMENTS = [
   "FOREIGN KEY (workspace_id, image_style_id, image_style_version_id) REFERENCES image_style_versions",
   "FOREIGN KEY (workspace_id, task_id, owner_type, owner_id) REFERENCES generation_tasks",
   "FOREIGN KEY (workspace_id, task_id, attempt_id) REFERENCES attempts",
+  "FOREIGN KEY (workspace_id, project_revision_id, transcript_id) REFERENCES transcripts",
+  "FOREIGN KEY (workspace_id, project_revision_id, timeline_plan_id) REFERENCES timeline_plans",
+  "FOREIGN KEY (workspace_id, project_revision_id, timeline_plan_id, timeline_segment_id) REFERENCES timeline_segments",
+  "FOREIGN KEY (workspace_id, transcript_id, sentence_id) REFERENCES transcript_sentences",
 ];
 
 const REQUIRED_HARDENING_FOREIGN_KEYS = [
@@ -81,6 +101,8 @@ const REQUIRED_HARDENING_FOREIGN_KEYS = [
   "image_style_analysis_attempts_owner_task_fk",
   "image_style_analysis_attempts_reservation_fk",
   "repository_mutation_receipts_workspace_fk",
+  "timeline_segments_timeline_plan_fk",
+  "transcripts_supersedes_fk",
 ].sort();
 
 test("the migration exposes the expected tables, indexes, foreign keys, and invariant triggers", async () => {

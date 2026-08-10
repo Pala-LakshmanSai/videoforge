@@ -7,6 +7,7 @@ import type * as ExecutionContracts from "../repositories/execution.js";
 import type * as IdentityContracts from "../repositories/identity.js";
 import type * as PresetContracts from "../repositories/presets.js";
 import type * as ProjectContracts from "../repositories/projects.js";
+import type * as TimingContracts from "../repositories/timing.js";
 import type {
   CanonicalDocument,
   DurableOwner,
@@ -1855,6 +1856,1171 @@ async function findImageStyleVersion(
     [workspaceId, styleId, versionId],
   );
   return row === null ? null : mapImageStyleVersion(row);
+}
+
+function timingHeadVersion(row: Row | null): number {
+  return row === null ? 0 : numberValue(row.version, "revision_timing_heads.version");
+}
+
+function validateTranscriptTimingCommand(
+  command: TimingContracts.PersistTranscriptTimingCommand,
+): string | null {
+  if (
+    !Number.isSafeInteger(command.expectedHeadVersion) ||
+    command.expectedHeadVersion < 0 ||
+    !Number.isSafeInteger(command.lineageSequence) ||
+    command.lineageSequence < 1 ||
+    (command.lineageSequence === 1) !== (command.supersedesTranscriptId === null) ||
+    !Number.isSafeInteger(command.sourceDurationMs) ||
+    command.sourceDurationMs < 10_000 ||
+    command.sourceDurationMs > 3_600_000 ||
+    command.canonicalDocument.contractName !== "transcript-timing" ||
+    command.canonicalDocument.contractVersion !== "v1" ||
+    command.words.length < 1 ||
+    command.sentences.length < 1 ||
+    command.phrases.length < 1
+  ) {
+    return "transcript lineage metadata is incomplete or outside the canonical envelope";
+  }
+  const wordIds = new Set<string>();
+  let priorWordEndMs = 0;
+  for (const [index, word] of command.words.entries()) {
+    if (
+      wordIds.has(word.wordId) ||
+      word.index !== index ||
+      !Number.isSafeInteger(word.startMs) ||
+      !Number.isSafeInteger(word.endMsExclusive) ||
+      word.startMs < 0 ||
+      word.startMs < priorWordEndMs ||
+      word.endMsExclusive <= word.startMs ||
+      word.endMsExclusive > command.sourceDurationMs ||
+      word.text.length < 1 ||
+      word.text.length > 240 ||
+      (word.confidence !== null &&
+        (!Number.isFinite(word.confidence) || word.confidence < 0 || word.confidence > 1))
+    ) {
+      return "transcript words must be unique, contiguous, bounded integer timing facts";
+    }
+    wordIds.add(word.wordId);
+    priorWordEndMs = word.endMsExclusive;
+  }
+  const sentenceIds = new Set<string>();
+  let nextSentenceWord = 0;
+  for (const [index, sentence] of command.sentences.entries()) {
+    if (
+      sentenceIds.has(sentence.sentenceId) ||
+      sentence.index !== index ||
+      sentence.wordStart !== nextSentenceWord ||
+      sentence.wordEndExclusive <= sentence.wordStart ||
+      sentence.wordEndExclusive > command.words.length ||
+      sentence.startMs !== command.words[sentence.wordStart]?.startMs ||
+      sentence.endMsExclusive !== command.words[sentence.wordEndExclusive - 1]?.endMsExclusive ||
+      sentence.text.length < 1 ||
+      sentence.text.length > 12_000
+    ) {
+      return "transcript sentences must provide an exact ordered partition of words";
+    }
+    sentenceIds.add(sentence.sentenceId);
+    nextSentenceWord = sentence.wordEndExclusive;
+  }
+  if (nextSentenceWord !== command.words.length) {
+    return "transcript sentences do not cover every word";
+  }
+  const phraseIds = new Set<string>();
+  let nextPhraseWord = 0;
+  for (const [index, phrase] of command.phrases.entries()) {
+    const sentence = command.sentences.find((item) => item.sentenceId === phrase.sentenceId);
+    if (
+      phraseIds.has(phrase.phraseId) ||
+      sentence === undefined ||
+      phrase.index !== index ||
+      phrase.wordStart !== nextPhraseWord ||
+      phrase.wordEndExclusive <= phrase.wordStart ||
+      phrase.wordStart < sentence.wordStart ||
+      phrase.wordEndExclusive > sentence.wordEndExclusive ||
+      phrase.startMs !== command.words[phrase.wordStart]?.startMs ||
+      phrase.endMsExclusive !== command.words[phrase.wordEndExclusive - 1]?.endMsExclusive ||
+      !Number.isSafeInteger(phrase.pauseBeforeMs) ||
+      !Number.isSafeInteger(phrase.pauseAfterMs) ||
+      phrase.pauseBeforeMs < 0 ||
+      phrase.pauseAfterMs < 0 ||
+      phrase.text.length < 1 ||
+      phrase.text.length > 4000
+    ) {
+      return "transcript phrases must provide an exact ordered partition within sentences";
+    }
+    phraseIds.add(phrase.phraseId);
+    nextPhraseWord = phrase.wordEndExclusive;
+  }
+  return nextPhraseWord === command.words.length
+    ? null
+    : "transcript phrases do not cover every word";
+}
+
+function avatarSpanTaskKey(segment: TimingContracts.TimelineSegmentRecord): string | null {
+  if (
+    segment.timelineComposition !== "AVATAR_FULL" &&
+    segment.timelineComposition !== "AVATAR_SPLIT_IMAGE"
+  ) {
+    return null;
+  }
+  const avatar = segment.requiredSlots.avatar;
+  if (typeof avatar !== "object" || avatar === null || Array.isArray(avatar)) return null;
+  const value = (avatar as Record<string, unknown>).span_audio_task_key;
+  return typeof value === "string" ? value : null;
+}
+
+function validateTimelinePlanCommand(
+  command: TimingContracts.PersistTimelinePlanCommand,
+): string | null {
+  if (
+    !Number.isSafeInteger(command.expectedHeadVersion) ||
+    command.expectedHeadVersion < 1 ||
+    !Number.isSafeInteger(command.planSequence) ||
+    command.planSequence < 1 ||
+    (command.planSequence === 1) !== (command.supersedesTimelinePlanId === null) ||
+    command.seed < 0n ||
+    command.seed > 4_294_967_295n ||
+    command.outputFpsNum !== 30 ||
+    command.outputFpsDen !== 1 ||
+    !Number.isSafeInteger(command.totalFrames) ||
+    command.totalFrames < 1 ||
+    command.canonicalDocument.contractName !== "timeline-plan" ||
+    command.canonicalDocument.contractVersion !== "v1" ||
+    command.segments.length < 1
+  ) {
+    return "timeline plan metadata is incomplete or outside the canonical envelope";
+  }
+  const segmentIds = new Set<string>();
+  let nextFrame = 0;
+  let nextWord = 0;
+  for (const [index, segment] of command.segments.entries()) {
+    const needsImage =
+      segment.timelineComposition === "IMAGE_FULL" ||
+      segment.timelineComposition === "AVATAR_SPLIT_IMAGE";
+    const spanTaskKey = avatarSpanTaskKey(segment);
+    if (
+      segmentIds.has(segment.segmentId) ||
+      segment.index !== index ||
+      segment.startFrame !== nextFrame ||
+      segment.endFrameExclusive <= segment.startFrame ||
+      segment.endFrameExclusive > command.totalFrames ||
+      segment.wordStart !== nextWord ||
+      segment.wordEndExclusive <= segment.wordStart ||
+      segment.sourceAudioStartMs < 0 ||
+      segment.sourceAudioEndMsExclusive <= segment.sourceAudioStartMs ||
+      segment.narration.length < 1 ||
+      (needsImage ? segment.inImageShotRole === null : segment.inImageShotRole !== null) ||
+      ((segment.timelineComposition === "AVATAR_FULL" ||
+        segment.timelineComposition === "AVATAR_SPLIT_IMAGE") &&
+        spanTaskKey === null)
+    ) {
+      return "timeline segments must provide exact ordered frame, word, composition, and slot facts";
+    }
+    segmentIds.add(segment.segmentId);
+    nextFrame = segment.endFrameExclusive;
+    nextWord = segment.wordEndExclusive;
+  }
+  if (nextFrame !== command.totalFrames) return "timeline segments do not cover every output frame";
+  const avatarSegments = command.segments.filter(
+    (segment) =>
+      segment.timelineComposition === "AVATAR_FULL" ||
+      segment.timelineComposition === "AVATAR_SPLIT_IMAGE",
+  );
+  if (command.selectedSpanAudio.length !== avatarSegments.length) {
+    return "every avatar segment must own exactly one selected span-audio record";
+  }
+  const spanIds = new Set<string>();
+  const spanSegments = new Set<string>();
+  for (const span of command.selectedSpanAudio) {
+    const segment = avatarSegments.find((item) => item.segmentId === span.timelineSegmentId);
+    if (
+      segment === undefined ||
+      spanIds.has(span.spanId) ||
+      spanSegments.has(span.timelineSegmentId) ||
+      span.transcriptId !== command.transcriptId ||
+      span.taskKey !== avatarSpanTaskKey(segment) ||
+      span.selectedStartMs !== segment.sourceAudioStartMs ||
+      span.selectedEndMsExclusive !== segment.sourceAudioEndMsExclusive ||
+      span.paddedStartMs < 0 ||
+      span.paddedStartMs > span.selectedStartMs ||
+      span.paddedEndMsExclusive < span.selectedEndMsExclusive ||
+      span.trimStartMs !== span.selectedStartMs - span.paddedStartMs ||
+      span.trimEndMsExclusive !==
+        span.trimStartMs + span.selectedEndMsExclusive - span.selectedStartMs
+    ) {
+      return "selected span audio does not match its immutable avatar segment ownership";
+    }
+    spanIds.add(span.spanId);
+    spanSegments.add(span.timelineSegmentId);
+  }
+  return null;
+}
+
+async function loadPersistedTranscript(
+  executor: SqlExecutor,
+  workspaceId: string,
+  projectRevisionId: string,
+  transcriptId: string,
+  headVersion: number,
+): Promise<TimingContracts.PersistedTranscriptTiming | null> {
+  const row = await one(
+    executor,
+    `SELECT * FROM public.transcripts
+      WHERE workspace_id = $1 AND project_revision_id = $2 AND id = $3
+        AND lineage_contract_version = 'timing-lineage/v1'`,
+    [workspaceId, projectRevisionId, transcriptId],
+  );
+  if (row === null) return null;
+  const words = await executor.query<Row>(
+    `SELECT * FROM public.transcript_words
+      WHERE workspace_id = $1 AND transcript_id = $2 ORDER BY word_index`,
+    [workspaceId, transcriptId],
+  );
+  const sentences = await executor.query<Row>(
+    `SELECT * FROM public.transcript_sentences
+      WHERE workspace_id = $1 AND transcript_id = $2 ORDER BY sentence_index`,
+    [workspaceId, transcriptId],
+  );
+  const phrases = await executor.query<Row>(
+    `SELECT * FROM public.transcript_phrases
+      WHERE workspace_id = $1 AND transcript_id = $2 ORDER BY phrase_index`,
+    [workspaceId, transcriptId],
+  );
+  return Object.freeze({
+    transcriptId: stringValue(row.id, "transcripts.id"),
+    projectRevisionId: stringValue(row.project_revision_id, "transcripts.project_revision_id"),
+    lineageSequence: numberValue(row.lineage_sequence, "transcripts.lineage_sequence"),
+    supersedesTranscriptId: nullableString(
+      row.supersedes_transcript_id,
+      "transcripts.supersedes_transcript_id",
+    ),
+    sourceAssetId: stringValue(row.source_asset_id, "transcripts.source_asset_id"),
+    sourceBinarySha256: stringValue(
+      row.source_binary_sha256,
+      "transcripts.source_binary_sha256",
+    ) as Sha256,
+    sourceDurationMs: numberValue(row.duration_ms, "transcripts.duration_ms"),
+    engineName: stringValue(row.engine_name, "transcripts.engine_name"),
+    engineVersion: stringValue(row.engine_version, "transcripts.engine_version"),
+    modelName: stringValue(row.model_name, "transcripts.model_name"),
+    modelSha256: stringValue(row.model_hash, "transcripts.model_hash") as Sha256,
+    language: stringValue(row.language, "transcripts.language"),
+    transcriptionConfigHash: stringValue(
+      row.transcription_config_hash,
+      "transcripts.transcription_config_hash",
+    ) as Sha256,
+    optionalScriptHash: nullableString(
+      row.optional_script_hash,
+      "transcripts.optional_script_hash",
+    ) as Sha256 | null,
+    inputFingerprintHash: stringValue(
+      row.input_fingerprint_hash,
+      "transcripts.input_fingerprint_hash",
+    ) as Sha256,
+    canonicalDocumentAssetId: stringValue(
+      row.canonical_document_asset_id,
+      "transcripts.canonical_document_asset_id",
+    ),
+    canonicalDocument: Object.freeze({
+      contractName: stringValue(row.contract_name, "transcripts.contract_name"),
+      contractVersion: stringValue(row.contract_version, "transcripts.contract_version"),
+      canonicalDocumentSha256: stringValue(
+        row.canonical_document_hash,
+        "transcripts.canonical_document_hash",
+      ) as Sha256,
+    }),
+    words: Object.freeze(
+      words.rows.map((word) =>
+        Object.freeze({
+          wordId: stringValue(word.id, "transcript_words.id"),
+          index: numberValue(word.word_index, "transcript_words.word_index"),
+          text: stringValue(word.word, "transcript_words.word"),
+          startMs: numberValue(word.start_ms, "transcript_words.start_ms"),
+          endMsExclusive: numberValue(word.end_ms_exclusive, "transcript_words.end_ms_exclusive"),
+          confidence:
+            word.confidence === null
+              ? null
+              : Number(stringValue(word.confidence, "transcript_words.confidence")),
+        }),
+      ),
+    ),
+    sentences: Object.freeze(
+      sentences.rows.map((sentence) =>
+        Object.freeze({
+          sentenceId: stringValue(sentence.id, "transcript_sentences.id"),
+          sentenceKey: stringValue(sentence.sentence_key, "transcript_sentences.sentence_key"),
+          index: numberValue(sentence.sentence_index, "transcript_sentences.sentence_index"),
+          wordStart: numberValue(sentence.word_start, "transcript_sentences.word_start"),
+          wordEndExclusive: numberValue(
+            sentence.word_end_exclusive,
+            "transcript_sentences.word_end_exclusive",
+          ),
+          startMs: numberValue(sentence.start_ms, "transcript_sentences.start_ms"),
+          endMsExclusive: numberValue(
+            sentence.end_ms_exclusive,
+            "transcript_sentences.end_ms_exclusive",
+          ),
+          text: stringValue(sentence.text, "transcript_sentences.text"),
+        }),
+      ),
+    ),
+    phrases: Object.freeze(
+      phrases.rows.map((phrase) =>
+        Object.freeze({
+          phraseId: stringValue(phrase.id, "transcript_phrases.id"),
+          phraseKey: stringValue(phrase.phrase_key, "transcript_phrases.phrase_key"),
+          sentenceId: stringValue(phrase.sentence_id, "transcript_phrases.sentence_id"),
+          index: numberValue(phrase.phrase_index, "transcript_phrases.phrase_index"),
+          wordStart: numberValue(phrase.word_start, "transcript_phrases.word_start"),
+          wordEndExclusive: numberValue(
+            phrase.word_end_exclusive,
+            "transcript_phrases.word_end_exclusive",
+          ),
+          startMs: numberValue(phrase.start_ms, "transcript_phrases.start_ms"),
+          endMsExclusive: numberValue(
+            phrase.end_ms_exclusive,
+            "transcript_phrases.end_ms_exclusive",
+          ),
+          pauseBeforeMs: numberValue(phrase.pause_before_ms, "transcript_phrases.pause_before_ms"),
+          pauseAfterMs: numberValue(phrase.pause_after_ms, "transcript_phrases.pause_after_ms"),
+          text: stringValue(phrase.text, "transcript_phrases.text"),
+        }),
+      ),
+    ),
+    headVersion,
+    createdAt: timestamp(row.created_at, "transcripts.created_at"),
+  });
+}
+
+async function loadPersistedTimelinePlan(
+  executor: SqlExecutor,
+  workspaceId: string,
+  projectRevisionId: string,
+  timelinePlanId: string,
+  headVersion: number,
+): Promise<TimingContracts.PersistedTimelinePlan | null> {
+  const row = await one(
+    executor,
+    `SELECT * FROM public.timeline_plans
+      WHERE workspace_id = $1 AND project_revision_id = $2 AND id = $3`,
+    [workspaceId, projectRevisionId, timelinePlanId],
+  );
+  if (row === null) return null;
+  const segments = await executor.query<Row>(
+    `SELECT * FROM public.timeline_segments
+      WHERE workspace_id = $1 AND timeline_plan_id = $2 ORDER BY segment_index`,
+    [workspaceId, timelinePlanId],
+  );
+  const spans = await executor.query<Row>(
+    `SELECT * FROM public.selected_span_audio
+      WHERE workspace_id = $1 AND timeline_plan_id = $2 ORDER BY span_key`,
+    [workspaceId, timelinePlanId],
+  );
+  return Object.freeze({
+    timelinePlanId: stringValue(row.id, "timeline_plans.id"),
+    projectRevisionId: stringValue(row.project_revision_id, "timeline_plans.project_revision_id"),
+    transcriptId: stringValue(row.transcript_id, "timeline_plans.transcript_id"),
+    planSequence: numberValue(row.plan_sequence, "timeline_plans.plan_sequence"),
+    supersedesTimelinePlanId: nullableString(
+      row.supersedes_timeline_plan_id,
+      "timeline_plans.supersedes_timeline_plan_id",
+    ),
+    revisionConfigHash: stringValue(
+      row.revision_config_hash,
+      "timeline_plans.revision_config_hash",
+    ) as Sha256,
+    transcriptDocumentHash: stringValue(
+      row.transcript_document_hash,
+      "timeline_plans.transcript_document_hash",
+    ) as Sha256,
+    schedulerVersion: stringValue(row.scheduler_version, "timeline_plans.scheduler_version"),
+    schedulerConfigHash: stringValue(
+      row.scheduler_config_hash,
+      "timeline_plans.scheduler_config_hash",
+    ) as Sha256,
+    seed: bigintValue(row.seed, "timeline_plans.seed"),
+    inputFingerprintHash: stringValue(
+      row.input_fingerprint_hash,
+      "timeline_plans.input_fingerprint_hash",
+    ) as Sha256,
+    canonicalDocumentAssetId: stringValue(
+      row.canonical_document_asset_id,
+      "timeline_plans.canonical_document_asset_id",
+    ),
+    canonicalDocument: Object.freeze({
+      contractName: stringValue(row.contract_name, "timeline_plans.contract_name"),
+      contractVersion: stringValue(row.contract_version, "timeline_plans.contract_version"),
+      canonicalDocumentSha256: stringValue(
+        row.canonical_document_hash,
+        "timeline_plans.canonical_document_hash",
+      ) as Sha256,
+    }),
+    outputFpsNum: numberValue(row.output_fps_num, "timeline_plans.output_fps_num") as 30,
+    outputFpsDen: numberValue(row.output_fps_den, "timeline_plans.output_fps_den") as 1,
+    totalFrames: numberValue(row.total_frames, "timeline_plans.total_frames"),
+    segments: Object.freeze(
+      segments.rows.map((segment) =>
+        Object.freeze({
+          segmentId: stringValue(segment.id, "timeline_segments.id"),
+          segmentKey: stringValue(segment.segment_key, "timeline_segments.segment_key"),
+          index: numberValue(segment.segment_index, "timeline_segments.segment_index"),
+          startFrame: numberValue(segment.start_frame, "timeline_segments.start_frame"),
+          endFrameExclusive: numberValue(
+            segment.end_frame_exclusive,
+            "timeline_segments.end_frame_exclusive",
+          ),
+          sourceAudioStartMs: numberValue(
+            segment.source_audio_start_ms,
+            "timeline_segments.source_audio_start_ms",
+          ),
+          sourceAudioEndMsExclusive: numberValue(
+            segment.source_audio_end_ms_exclusive,
+            "timeline_segments.source_audio_end_ms_exclusive",
+          ),
+          wordStart: numberValue(segment.word_start, "timeline_segments.word_start"),
+          wordEndExclusive: numberValue(
+            segment.word_end_exclusive,
+            "timeline_segments.word_end_exclusive",
+          ),
+          timelineComposition: stringValue(
+            segment.timeline_composition,
+            "timeline_segments.timeline_composition",
+          ) as TimingContracts.TimelineComposition,
+          inImageShotRole: nullableString(
+            segment.in_image_shot_role,
+            "timeline_segments.in_image_shot_role",
+          ) as TimingContracts.InImageShotRole | null,
+          narration: stringValue(segment.narration, "timeline_segments.narration"),
+          requiredSlots: jsonObject(segment.required_slots, "timeline_segments.required_slots"),
+        }),
+      ),
+    ),
+    selectedSpanAudio: Object.freeze(
+      spans.rows.map((span) =>
+        Object.freeze({
+          spanId: stringValue(span.id, "selected_span_audio.id"),
+          spanKey: stringValue(span.span_key, "selected_span_audio.span_key"),
+          timelineSegmentId: stringValue(
+            span.timeline_segment_id,
+            "selected_span_audio.timeline_segment_id",
+          ),
+          transcriptId: stringValue(span.transcript_id, "selected_span_audio.transcript_id"),
+          taskKey: stringValue(span.task_key, "selected_span_audio.task_key"),
+          sourceAssetId: stringValue(span.source_asset_id, "selected_span_audio.source_asset_id"),
+          sourceBinarySha256: stringValue(
+            span.source_binary_sha256,
+            "selected_span_audio.source_binary_sha256",
+          ) as Sha256,
+          selectedStartMs: numberValue(
+            span.selected_start_ms,
+            "selected_span_audio.selected_start_ms",
+          ),
+          selectedEndMsExclusive: numberValue(
+            span.selected_end_ms_exclusive,
+            "selected_span_audio.selected_end_ms_exclusive",
+          ),
+          paddedStartMs: numberValue(span.padded_start_ms, "selected_span_audio.padded_start_ms"),
+          paddedEndMsExclusive: numberValue(
+            span.padded_end_ms_exclusive,
+            "selected_span_audio.padded_end_ms_exclusive",
+          ),
+          trimStartMs: numberValue(span.trim_start_ms, "selected_span_audio.trim_start_ms"),
+          trimEndMsExclusive: numberValue(
+            span.trim_end_ms_exclusive,
+            "selected_span_audio.trim_end_ms_exclusive",
+          ),
+        }),
+      ),
+    ),
+    headVersion,
+    createdAt: timestamp(row.created_at, "timeline_plans.created_at"),
+  });
+}
+
+function createTimingRepository(context: RepositoryContext): TimingContracts.TimingRepository {
+  return {
+    async persistTranscriptTiming(scope, command) {
+      const validation = validateTranscriptTimingCommand(command);
+      if (validation !== null) return invariant("TRANSCRIPT_COVERAGE_INVALID", validation);
+      return context.atomic.run(async (executor) => {
+        const project = await findProject(executor, scope.workspaceId, command.projectId);
+        if (project === null) return missing("PROJECT", command.projectId);
+        const revision = await findProjectRevision(
+          executor,
+          scope.workspaceId,
+          command.projectId,
+          command.projectRevisionId,
+        );
+        if (revision === null) return missing("PROJECT_REVISION", command.projectRevisionId);
+        if (revision.status !== "LOCKED") {
+          return invariant("REVISION_NOT_LOCKED", "timing requires one exact locked revision");
+        }
+        if (
+          revision.voiceoverAssetId !== command.sourceAssetId ||
+          revision.voiceoverBinarySha256 !== command.sourceBinarySha256
+        ) {
+          return invariant(
+            "TIMING_INPUT_MISMATCH",
+            "transcript source does not match the revision-pinned voiceover",
+          );
+        }
+        const document = await one(
+          executor,
+          `SELECT kind, state, canonical_contract_name, canonical_contract_version,
+                  canonical_document_sha256
+             FROM public.assets WHERE workspace_id = $1 AND id = $2`,
+          [scope.workspaceId, command.canonicalDocumentAssetId],
+        );
+        if (document === null) return missing("ASSET", command.canonicalDocumentAssetId);
+        if (
+          document.kind !== "CANONICAL_DOCUMENT" ||
+          (document.state !== "VERIFIED" && document.state !== "ACCEPTED") ||
+          document.canonical_contract_name !== command.canonicalDocument.contractName ||
+          document.canonical_contract_version !== command.canonicalDocument.contractVersion ||
+          document.canonical_document_sha256 !== command.canonicalDocument.canonicalDocumentSha256
+        ) {
+          return invariant(
+            "CANONICAL_DOCUMENT_MISMATCH",
+            "transcript canonical asset does not match its exact document identity",
+          );
+        }
+        const head = await one(
+          executor,
+          `SELECT * FROM public.revision_timing_heads
+            WHERE workspace_id = $1 AND project_revision_id = $2 FOR UPDATE`,
+          [scope.workspaceId, command.projectRevisionId],
+        );
+        const currentVersion = timingHeadVersion(head);
+        if (currentVersion !== command.expectedHeadVersion) {
+          return conflict(
+            "TIMING_HEAD_VERSION_MISMATCH",
+            "timing head changed before transcript persistence",
+            currentVersion,
+          );
+        }
+        if (head !== null && head.current_transcript_id !== null) {
+          return invariant(
+            "TIMING_HEAD_NOT_EMPTY",
+            "invalidate the current timing head before selecting another transcript",
+          );
+        }
+        if (
+          (await one(
+            executor,
+            `SELECT id FROM public.transcripts
+              WHERE workspace_id = $1 AND project_revision_id = $2
+                AND (id = $3 OR input_fingerprint_hash = $4)`,
+            [
+              scope.workspaceId,
+              command.projectRevisionId,
+              command.transcriptId,
+              command.inputFingerprintHash,
+            ],
+          )) !== null
+        ) {
+          return conflict("TIMING_INPUT_EXISTS", "transcript identity or input already exists");
+        }
+        if (command.supersedesTranscriptId !== null) {
+          const parent = await one(
+            executor,
+            `SELECT lineage_sequence FROM public.transcripts
+              WHERE workspace_id = $1 AND project_revision_id = $2 AND id = $3
+                AND lineage_contract_version = 'timing-lineage/v1'`,
+            [scope.workspaceId, command.projectRevisionId, command.supersedesTranscriptId],
+          );
+          if (
+            parent === null ||
+            command.lineageSequence <= numberValue(parent.lineage_sequence, "parent lineage")
+          ) {
+            return invariant(
+              "TIMING_INPUT_MISMATCH",
+              "superseded transcript must be earlier immutable lineage in the same revision",
+            );
+          }
+        }
+        await executor.query(
+          `INSERT INTO public.transcripts (
+             id, workspace_id, project_revision_id, source_asset_id, state,
+             model_name, model_hash, duration_ms, contract_name, contract_version,
+             canonical_document_asset_id, canonical_document_hash, ready_at,
+             lineage_contract_version, source_binary_sha256, engine_name, engine_version,
+             language, transcription_config_hash, optional_script_hash, input_fingerprint_hash,
+             idempotency_key, lineage_sequence, supersedes_transcript_id, created_at
+           ) VALUES (
+             $1, $2, $3, $4, 'READY', $5, $6, $7, $8, $9, $10, $11, $12,
+             'timing-lineage/v1', $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $12
+           )`,
+          [
+            command.transcriptId,
+            scope.workspaceId,
+            command.projectRevisionId,
+            command.sourceAssetId,
+            command.modelName,
+            command.modelSha256,
+            command.sourceDurationMs,
+            command.canonicalDocument.contractName,
+            command.canonicalDocument.contractVersion,
+            command.canonicalDocumentAssetId,
+            command.canonicalDocument.canonicalDocumentSha256,
+            command.createdAt,
+            command.sourceBinarySha256,
+            command.engineName,
+            command.engineVersion,
+            command.language,
+            command.transcriptionConfigHash,
+            command.optionalScriptHash,
+            command.inputFingerprintHash,
+            command.idempotencyKey,
+            command.lineageSequence,
+            command.supersedesTranscriptId,
+          ],
+        );
+        for (const word of command.words) {
+          await executor.query(
+            `INSERT INTO public.transcript_words (
+               id, workspace_id, transcript_id, word_index, word,
+               start_ms, end_ms_exclusive, confidence, created_at
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [
+              word.wordId,
+              scope.workspaceId,
+              command.transcriptId,
+              word.index,
+              word.text,
+              word.startMs,
+              word.endMsExclusive,
+              word.confidence,
+              command.createdAt,
+            ],
+          );
+        }
+        for (const sentence of command.sentences) {
+          await executor.query(
+            `INSERT INTO public.transcript_sentences (
+               id, workspace_id, transcript_id, sentence_key, sentence_index,
+               word_start, word_end_exclusive, start_ms, end_ms_exclusive, text, created_at
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            [
+              sentence.sentenceId,
+              scope.workspaceId,
+              command.transcriptId,
+              sentence.sentenceKey,
+              sentence.index,
+              sentence.wordStart,
+              sentence.wordEndExclusive,
+              sentence.startMs,
+              sentence.endMsExclusive,
+              sentence.text,
+              command.createdAt,
+            ],
+          );
+        }
+        for (const phrase of command.phrases) {
+          await executor.query(
+            `INSERT INTO public.transcript_phrases (
+               id, workspace_id, transcript_id, sentence_id, phrase_key, phrase_index,
+               word_start, word_end_exclusive, start_ms, end_ms_exclusive,
+               pause_before_ms, pause_after_ms, text, created_at
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+            [
+              phrase.phraseId,
+              scope.workspaceId,
+              command.transcriptId,
+              phrase.sentenceId,
+              phrase.phraseKey,
+              phrase.index,
+              phrase.wordStart,
+              phrase.wordEndExclusive,
+              phrase.startMs,
+              phrase.endMsExclusive,
+              phrase.pauseBeforeMs,
+              phrase.pauseAfterMs,
+              phrase.text,
+              command.createdAt,
+            ],
+          );
+        }
+        const nextVersion = currentVersion + 1;
+        if (head === null) {
+          await executor.query(
+            `INSERT INTO public.revision_timing_heads (
+               workspace_id, project_revision_id, version, current_transcript_id,
+               transcript_input_fingerprint_hash, updated_at
+             ) VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              scope.workspaceId,
+              command.projectRevisionId,
+              nextVersion,
+              command.transcriptId,
+              command.inputFingerprintHash,
+              command.createdAt,
+            ],
+          );
+        } else {
+          await executor.query(
+            `UPDATE public.revision_timing_heads
+                SET version = $3, current_transcript_id = $4,
+                    transcript_input_fingerprint_hash = $5, updated_at = $6
+              WHERE workspace_id = $1 AND project_revision_id = $2`,
+            [
+              scope.workspaceId,
+              command.projectRevisionId,
+              nextVersion,
+              command.transcriptId,
+              command.inputFingerprintHash,
+              command.createdAt,
+            ],
+          );
+        }
+        const inserted = await loadPersistedTranscript(
+          executor,
+          scope.workspaceId,
+          command.projectRevisionId,
+          command.transcriptId,
+          nextVersion,
+        );
+        if (inserted === null) throw new Error("persisted transcript disappeared");
+        return write(inserted);
+      });
+    },
+
+    async persistTimelinePlan(scope, command) {
+      const validation = validateTimelinePlanCommand(command);
+      if (validation !== null) return invariant("TIMELINE_COVERAGE_INVALID", validation);
+      return context.atomic.run(async (executor) => {
+        const revision = await findProjectRevision(
+          executor,
+          scope.workspaceId,
+          command.projectId,
+          command.projectRevisionId,
+        );
+        if (revision === null) return missing("PROJECT_REVISION", command.projectRevisionId);
+        if (revision.status !== "LOCKED") {
+          return invariant("REVISION_NOT_LOCKED", "timeline requires one exact locked revision");
+        }
+        if (revision.revisionConfig.canonicalDocumentSha256 !== command.revisionConfigHash) {
+          return invariant(
+            "TIMING_INPUT_MISMATCH",
+            "timeline revision configuration hash is stale",
+          );
+        }
+        const transcript = await loadPersistedTranscript(
+          executor,
+          scope.workspaceId,
+          command.projectRevisionId,
+          command.transcriptId,
+          command.expectedHeadVersion,
+        );
+        if (transcript === null) return missing("TRANSCRIPT", command.transcriptId);
+        if (
+          transcript.canonicalDocument.canonicalDocumentSha256 !== command.transcriptDocumentHash
+        ) {
+          return invariant("TIMING_INPUT_MISMATCH", "timeline transcript hash is stale");
+        }
+        if (
+          command.segments.at(-1)?.wordEndExclusive !== transcript.words.length ||
+          command.segments.some(
+            (segment) =>
+              segment.sourceAudioStartMs !== transcript.words[segment.wordStart]?.startMs ||
+              segment.sourceAudioEndMsExclusive !==
+                transcript.words[segment.wordEndExclusive - 1]?.endMsExclusive,
+          )
+        ) {
+          return invariant(
+            "TIMELINE_COVERAGE_INVALID",
+            "timeline segments must cover every transcript word at its exact source timing",
+          );
+        }
+        if (
+          command.selectedSpanAudio.some(
+            (span) =>
+              span.sourceAssetId !== transcript.sourceAssetId ||
+              span.sourceBinarySha256 !== transcript.sourceBinarySha256,
+          )
+        ) {
+          return invariant(
+            "SELECTED_SPAN_OWNERSHIP_MISMATCH",
+            "selected span audio must use the exact transcript voiceover source",
+          );
+        }
+        const document = await one(
+          executor,
+          `SELECT kind, state, canonical_contract_name, canonical_contract_version,
+                  canonical_document_sha256
+             FROM public.assets WHERE workspace_id = $1 AND id = $2`,
+          [scope.workspaceId, command.canonicalDocumentAssetId],
+        );
+        if (document === null) return missing("ASSET", command.canonicalDocumentAssetId);
+        if (
+          document.kind !== "CANONICAL_DOCUMENT" ||
+          (document.state !== "VERIFIED" && document.state !== "ACCEPTED") ||
+          document.canonical_contract_name !== command.canonicalDocument.contractName ||
+          document.canonical_contract_version !== command.canonicalDocument.contractVersion ||
+          document.canonical_document_sha256 !== command.canonicalDocument.canonicalDocumentSha256
+        ) {
+          return invariant(
+            "CANONICAL_DOCUMENT_MISMATCH",
+            "timeline canonical asset does not match its exact document identity",
+          );
+        }
+        const head = await one(
+          executor,
+          `SELECT * FROM public.revision_timing_heads
+            WHERE workspace_id = $1 AND project_revision_id = $2 FOR UPDATE`,
+          [scope.workspaceId, command.projectRevisionId],
+        );
+        if (head === null) return missing("TIMING_HEAD", command.projectRevisionId);
+        const currentVersion = timingHeadVersion(head);
+        if (currentVersion !== command.expectedHeadVersion) {
+          return conflict(
+            "TIMING_HEAD_VERSION_MISMATCH",
+            "timing head changed before timeline persistence",
+            currentVersion,
+          );
+        }
+        if (head.current_transcript_id !== command.transcriptId) {
+          return invariant("TIMING_INPUT_MISMATCH", "timeline transcript is not the current head");
+        }
+        if (head.current_timeline_plan_id !== null) {
+          return invariant(
+            "TIMING_HEAD_NOT_EMPTY",
+            "invalidate the current timing head before selecting another plan",
+          );
+        }
+        if (
+          (await one(
+            executor,
+            `SELECT id FROM public.timeline_plans
+              WHERE workspace_id = $1 AND project_revision_id = $2
+                AND (id = $3 OR input_fingerprint_hash = $4)`,
+            [
+              scope.workspaceId,
+              command.projectRevisionId,
+              command.timelinePlanId,
+              command.inputFingerprintHash,
+            ],
+          )) !== null
+        ) {
+          return conflict("TIMING_INPUT_EXISTS", "timeline identity or input already exists");
+        }
+        if (command.supersedesTimelinePlanId !== null) {
+          const parent = await one(
+            executor,
+            `SELECT plan_sequence FROM public.timeline_plans
+              WHERE workspace_id = $1 AND project_revision_id = $2 AND id = $3`,
+            [scope.workspaceId, command.projectRevisionId, command.supersedesTimelinePlanId],
+          );
+          if (
+            parent === null ||
+            command.planSequence <= numberValue(parent.plan_sequence, "parent plan sequence")
+          ) {
+            return invariant(
+              "TIMING_INPUT_MISMATCH",
+              "superseded timeline plan must be earlier immutable lineage in the same revision",
+            );
+          }
+        }
+        await executor.query(
+          `INSERT INTO public.timeline_plans (
+             id, workspace_id, project_revision_id, transcript_id, plan_sequence,
+             supersedes_timeline_plan_id, revision_config_hash, transcript_document_hash,
+             scheduler_version, scheduler_config_hash, seed, input_fingerprint_hash,
+             contract_name, contract_version, canonical_document_asset_id,
+             canonical_document_hash, output_fps_num, output_fps_den, total_frames,
+             idempotency_key, created_by_user_id, created_at
+           ) VALUES (
+             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+             $15, $16, $17, $18, $19, $20, $21, $22
+           )`,
+          [
+            command.timelinePlanId,
+            scope.workspaceId,
+            command.projectRevisionId,
+            command.transcriptId,
+            command.planSequence,
+            command.supersedesTimelinePlanId,
+            command.revisionConfigHash,
+            command.transcriptDocumentHash,
+            command.schedulerVersion,
+            command.schedulerConfigHash,
+            command.seed,
+            command.inputFingerprintHash,
+            command.canonicalDocument.contractName,
+            command.canonicalDocument.contractVersion,
+            command.canonicalDocumentAssetId,
+            command.canonicalDocument.canonicalDocumentSha256,
+            command.outputFpsNum,
+            command.outputFpsDen,
+            command.totalFrames,
+            command.idempotencyKey,
+            scope.actorUserId,
+            command.createdAt,
+          ],
+        );
+        for (const segment of command.segments) {
+          await executor.query(
+            `INSERT INTO public.timeline_segments (
+               id, workspace_id, project_revision_id, timeline_plan_id, segment_key,
+               segment_index, start_frame, end_frame_exclusive, source_audio_start_ms,
+               source_audio_end_ms_exclusive, word_start, word_end_exclusive,
+               timeline_composition, in_image_shot_role, narration, required_slots,
+               timeline_plan_hash, created_at
+             ) VALUES (
+               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+               $15, $16::jsonb, $17, $18
+             )`,
+            [
+              segment.segmentId,
+              scope.workspaceId,
+              command.projectRevisionId,
+              command.timelinePlanId,
+              segment.segmentKey,
+              segment.index,
+              segment.startFrame,
+              segment.endFrameExclusive,
+              segment.sourceAudioStartMs,
+              segment.sourceAudioEndMsExclusive,
+              segment.wordStart,
+              segment.wordEndExclusive,
+              segment.timelineComposition,
+              segment.inImageShotRole,
+              segment.narration,
+              jsonParameter(segment.requiredSlots),
+              command.canonicalDocument.canonicalDocumentSha256,
+              command.createdAt,
+            ],
+          );
+        }
+        for (const span of command.selectedSpanAudio) {
+          await executor.query(
+            `INSERT INTO public.selected_span_audio (
+               id, workspace_id, project_revision_id, timeline_plan_id, timeline_segment_id,
+               transcript_id, span_key, task_key, source_asset_id, source_binary_sha256,
+               selected_start_ms, selected_end_ms_exclusive, padded_start_ms,
+               padded_end_ms_exclusive, trim_start_ms, trim_end_ms_exclusive,
+               state, created_at
+             ) VALUES (
+               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+               $15, $16, 'PLANNED', $17
+             )`,
+            [
+              span.spanId,
+              scope.workspaceId,
+              command.projectRevisionId,
+              command.timelinePlanId,
+              span.timelineSegmentId,
+              span.transcriptId,
+              span.spanKey,
+              span.taskKey,
+              span.sourceAssetId,
+              span.sourceBinarySha256,
+              span.selectedStartMs,
+              span.selectedEndMsExclusive,
+              span.paddedStartMs,
+              span.paddedEndMsExclusive,
+              span.trimStartMs,
+              span.trimEndMsExclusive,
+              command.createdAt,
+            ],
+          );
+        }
+        const nextVersion = currentVersion + 1;
+        await executor.query(
+          `UPDATE public.revision_timing_heads
+              SET version = $3, current_timeline_plan_id = $4,
+                  timeline_input_fingerprint_hash = $5, updated_at = $6
+            WHERE workspace_id = $1 AND project_revision_id = $2`,
+          [
+            scope.workspaceId,
+            command.projectRevisionId,
+            nextVersion,
+            command.timelinePlanId,
+            command.inputFingerprintHash,
+            command.createdAt,
+          ],
+        );
+        const inserted = await loadPersistedTimelinePlan(
+          executor,
+          scope.workspaceId,
+          command.projectRevisionId,
+          command.timelinePlanId,
+          nextVersion,
+        );
+        if (inserted === null) throw new Error("persisted timeline plan disappeared");
+        return write(inserted);
+      });
+    },
+
+    async invalidateTiming(scope, command) {
+      if (!Number.isSafeInteger(command.expectedHeadVersion) || command.expectedHeadVersion < 1) {
+        return invariant("TIMING_INPUT_MISMATCH", "expected timing head version is invalid");
+      }
+      return context.atomic.run(async (executor) => {
+        const revision = await findProjectRevision(
+          executor,
+          scope.workspaceId,
+          command.projectId,
+          command.projectRevisionId,
+        );
+        if (revision === null) return missing("PROJECT_REVISION", command.projectRevisionId);
+        if (revision.status !== "LOCKED") {
+          return invariant("REVISION_NOT_LOCKED", "timing invalidation requires a locked revision");
+        }
+        const head = await one(
+          executor,
+          `SELECT * FROM public.revision_timing_heads
+            WHERE workspace_id = $1 AND project_revision_id = $2 FOR UPDATE`,
+          [scope.workspaceId, command.projectRevisionId],
+        );
+        if (head === null) return missing("TIMING_HEAD", command.projectRevisionId);
+        const currentVersion = timingHeadVersion(head);
+        if (currentVersion !== command.expectedHeadVersion) {
+          return conflict(
+            "TIMING_HEAD_VERSION_MISMATCH",
+            "timing head changed before invalidation",
+            currentVersion,
+          );
+        }
+        if (
+          head.current_transcript_id === null ||
+          head.transcript_input_fingerprint_hash === null
+        ) {
+          return invariant("TIMING_HEAD_NOT_EMPTY", "timing head is already invalidated");
+        }
+        const currentTranscriptId = stringValue(
+          head.current_transcript_id,
+          "revision_timing_heads.current_transcript_id",
+        );
+        const currentTimelinePlanId = nullableString(
+          head.current_timeline_plan_id,
+          "revision_timing_heads.current_timeline_plan_id",
+        );
+        const currentTranscriptInputHash = stringValue(
+          head.transcript_input_fingerprint_hash,
+          "revision_timing_heads.transcript_input_fingerprint_hash",
+        ) as Sha256;
+        const currentTimelineInputHash = nullableString(
+          head.timeline_input_fingerprint_hash,
+          "revision_timing_heads.timeline_input_fingerprint_hash",
+        ) as Sha256 | null;
+        await executor.query(
+          `INSERT INTO public.timing_invalidations (
+             id, workspace_id, project_revision_id, invalidated_head_version,
+             invalidated_transcript_id, invalidated_timeline_plan_id,
+             prior_transcript_input_fingerprint_hash, prior_timeline_input_fingerprint_hash,
+             next_input_fingerprint_hash, reason, idempotency_key,
+             created_by_user_id, created_at
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+          [
+            command.invalidationId,
+            scope.workspaceId,
+            command.projectRevisionId,
+            currentVersion,
+            currentTranscriptId,
+            currentTimelinePlanId,
+            currentTranscriptInputHash,
+            currentTimelineInputHash,
+            command.nextInputFingerprintHash,
+            command.reason,
+            command.idempotencyKey,
+            scope.actorUserId,
+            command.invalidatedAt,
+          ],
+        );
+        const nextVersion = currentVersion + 1;
+        await executor.query(
+          `UPDATE public.revision_timing_heads
+              SET version = $3, current_transcript_id = NULL, current_timeline_plan_id = NULL,
+                  transcript_input_fingerprint_hash = NULL,
+                  timeline_input_fingerprint_hash = NULL, updated_at = $4
+            WHERE workspace_id = $1 AND project_revision_id = $2`,
+          [scope.workspaceId, command.projectRevisionId, nextVersion, command.invalidatedAt],
+        );
+        return write(
+          Object.freeze({
+            invalidationId: command.invalidationId,
+            projectRevisionId: command.projectRevisionId,
+            invalidatedHeadVersion: currentVersion,
+            invalidatedTranscriptId: currentTranscriptId,
+            invalidatedTimelinePlanId: currentTimelinePlanId,
+            priorTranscriptInputFingerprintHash: currentTranscriptInputHash,
+            priorTimelineInputFingerprintHash: currentTimelineInputHash,
+            nextInputFingerprintHash: command.nextInputFingerprintHash,
+            reason: command.reason,
+            createdByUserId: scope.actorUserId,
+            createdAt: command.invalidatedAt,
+            headVersion: nextVersion,
+          }),
+        );
+      });
+    },
+
+    async resolveExactPlan(scope, lookup) {
+      const project = await findProject(context.executor, scope.workspaceId, lookup.projectId);
+      if (project === null) return missing("PROJECT", lookup.projectId);
+      const revision = await findProjectRevision(
+        context.executor,
+        scope.workspaceId,
+        lookup.projectId,
+        lookup.projectRevisionId,
+      );
+      if (revision === null) return missing("PROJECT_REVISION", lookup.projectRevisionId);
+      const head = await one(
+        context.executor,
+        `SELECT * FROM public.revision_timing_heads
+          WHERE workspace_id = $1 AND project_revision_id = $2
+            AND transcript_input_fingerprint_hash = $3
+            AND timeline_input_fingerprint_hash = $4`,
+        [
+          scope.workspaceId,
+          lookup.projectRevisionId,
+          lookup.transcriptInputFingerprintHash,
+          lookup.timelineInputFingerprintHash,
+        ],
+      );
+      if (
+        head === null ||
+        head.current_transcript_id === null ||
+        head.current_timeline_plan_id === null
+      ) {
+        return missing("TIMELINE_PLAN", lookup.projectRevisionId);
+      }
+      const headVersion = timingHeadVersion(head);
+      const transcript = await loadPersistedTranscript(
+        context.executor,
+        scope.workspaceId,
+        lookup.projectRevisionId,
+        stringValue(head.current_transcript_id, "revision_timing_heads.current_transcript_id"),
+        headVersion,
+      );
+      const timelinePlan = await loadPersistedTimelinePlan(
+        context.executor,
+        scope.workspaceId,
+        lookup.projectRevisionId,
+        stringValue(
+          head.current_timeline_plan_id,
+          "revision_timing_heads.current_timeline_plan_id",
+        ),
+        headVersion,
+      );
+      if (transcript === null || timelinePlan === null) {
+        return invariant(
+          "TIMING_INPUT_MISMATCH",
+          "timing head points to missing immutable lineage",
+        );
+      }
+      return success(
+        Object.freeze({
+          projectId: lookup.projectId,
+          projectRevisionId: lookup.projectRevisionId,
+          headVersion,
+          transcript,
+          timelinePlan,
+        }),
+      );
+    },
+  };
 }
 
 function createAvatarProfileRepository(
@@ -4561,6 +5727,11 @@ const receiptOperations = Object.freeze({
     registerInput: "project_register_input",
     verifyInput: "project_verify_input",
   }),
+  timing: Object.freeze({
+    invalidateTiming: "timing_invalidate",
+    persistTimelinePlan: "timing_persist_timeline_plan",
+    persistTranscriptTiming: "timing_persist_transcript",
+  }),
 });
 
 function directTransactionalExecutor(executor: SqlExecutor): TransactionalSqlExecutor {
@@ -4728,6 +5899,7 @@ function createRepositorySession(context: RepositoryContext): RepositorySession 
     avatarProfiles: createAvatarProfileRepository(context),
     imageStyles: createImageStyleRepository(context),
     projects: createProjectRepository(context),
+    timing: createTimingRepository(context),
     artifacts: createArtifactRepository(context),
     execution: createExecutionRepository(context),
     events: createEventRepository(context),
@@ -4772,6 +5944,7 @@ function createReceiptWrappedSession(
       raw.projects,
       receiptOperations.projects,
     ),
+    timing: receiptWrappedRepository(database, "timing", raw.timing, receiptOperations.timing),
   };
 }
 
@@ -4829,6 +6002,7 @@ function createScopeGuardedSession(
     execution: scopeGuardedRepository(session.execution, workspaceId, guard),
     imageStyles: scopeGuardedRepository(session.imageStyles, workspaceId, guard),
     projects: scopeGuardedRepository(session.projects, workspaceId, guard),
+    timing: scopeGuardedRepository(session.timing, workspaceId, guard),
   };
 }
 

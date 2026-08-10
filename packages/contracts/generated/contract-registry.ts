@@ -31,6 +31,20 @@ export const canonicalContractRegistry = {
       ]
     },
     {
+      "name": "durableTimingLineage",
+      "schema": "durable_timing_lineage.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/durable_timing_lineage.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/durable_timing_lineage.invalidated.valid.json",
+          "expected": true
+        }
+      ]
+    },
+    {
       "name": "imageStyleProfile",
       "schema": "image_style_profile.schema.json",
       "fixtures": [

@@ -30,6 +30,12 @@
       "name": "repository_mutation_receipts",
       "filename": "0005_repository_mutation_receipts.sql",
       "sha256": "sha256:98b3f73f075e17f1403fda49c3a24df6fb54135fbcc76d54e7753708f8f5d0bb"
+    },
+    {
+      "version": 6,
+      "name": "durable_timing_contract_lock",
+      "filename": "0006_durable_timing_contract_lock.sql",
+      "sha256": "sha256:71aad959607e3bbac9d71bf02fa355f5d95d5da8efb830927c323245a1ca9a55"
     }
   ]
 }

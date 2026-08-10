@@ -1,0 +1,21 @@
+{
+  "schema_version": "durable-timing-lineage/v1",
+  "workspace_id": "workspace_fixture_001",
+  "project_id": "project_fixture_001",
+  "project_revision_id": "revision_fixture_001",
+  "head_version": 3,
+  "status": "INVALIDATED",
+  "transcript": null,
+  "timeline_plan": null,
+  "invalidation": {
+    "invalidation_id": "invalidation_fixture_001",
+    "invalidated_head_version": 2,
+    "invalidated_transcript_id": "transcript_fixture_001",
+    "invalidated_timeline_plan_id": "timeline_fixture_001",
+    "prior_transcript_input_fingerprint_hash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "prior_timeline_input_fingerprint_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "next_input_fingerprint_hash": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "reason": "MODEL_CHANGED",
+    "created_at": "2026-08-10T04:00:00.000Z"
+  }
+}
