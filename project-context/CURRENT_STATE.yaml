@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T09:06:13Z"
+updated_at: "2026-08-11T09:10:36Z"
 
 phase: cross_cutting_dx_reliability
 implementation_authorized_in_current_task: true
@@ -17,10 +17,10 @@ repository:
   branch: main
   base_commit: "bea48f7124609be27d1ab57261b2c2f4269625ea"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
-  planning_handoff_commit: "cd2d74a3bbcd87dd55dc801ab991b20a54e11259"
+  planning_handoff_commit: "fad28ab63d5d2c5f83526508e28fc76d5a1edcf6"
   verified_implementation_commit: "f0e3e66a545634b3f145932156e56b7da6efe4da"
-  last_good_commit: "cd2d74a3bbcd87dd55dc801ab991b20a54e11259"
-  working_tree_expected: "clean_at_vf_7_06_provenance_decision_handoff"
+  last_good_commit: "fad28ab63d5d2c5f83526508e28fc76d5a1edcf6"
+  working_tree_expected: "clean_at_vf_7_06_provenance_evidence_handoff"
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
     ajv: "8.20.0"
@@ -269,7 +269,7 @@ completed_tasks:
     summary: "Locked preserve-and-detach Image Style manual-edit provenance: accepted analyzer bytes/evidence remain immutable historical source truth; pre-publication creative edits create immutable derived artifacts with exact lineage, detached analysis fields, authenticated optimistic/idempotent provenance, atomic pointer/review behavior, and immutable publication history."
     implementation_commit: null
     decision_commit: "cd2d74a3bbcd87dd55dc801ab991b20a54e11259"
-    evidence_commit: null
+    evidence_commit: "fad28ab63d5d2c5f83526508e28fc76d5a1edcf6"
     evidence: "evidence/acceptance/VF-7-06/manual-edit-provenance-contract"
 
 progress_snapshot:
@@ -430,7 +430,7 @@ latest_closed_handoff:
   status: complete
   implementation_commit: null
   decision_commit: "cd2d74a3bbcd87dd55dc801ab991b20a54e11259"
-  evidence_commit: null
+  evidence_commit: "fad28ab63d5d2c5f83526508e28fc76d5a1edcf6"
   evidence: "evidence/acceptance/VF-7-06/manual-edit-provenance-contract"
   audit_result: "preserve_and_detach_manual_edit_provenance_contract_locked_without_contradictory_active_statement"
   verification_result: "context_schema_secret_format_and_diff_checks_green_at_zero_provider_activity"

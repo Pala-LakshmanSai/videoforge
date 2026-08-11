@@ -9,8 +9,9 @@ and the required next-state update. Product behavior remains authoritative in th
 and primary domain files. Completed briefs may remain for traceability, but `CURRENT_STATE.yaml` is
 the only mutable snapshot and Git/evidence remain the progress log.
 
-Most recently completed brief: `VF-7-06.md`, with decision/evidence commit `cd2d74a`. It locks
-preserve-and-detach manual-edit provenance without implementing application behavior or spending.
+Most recently completed brief: `VF-7-06.md`, with decision commit `cd2d74a` and evidence handoff
+`fad28ab`. It locks preserve-and-detach manual-edit provenance without implementing behavior or
+spending.
 
 `VF-3-00` through `VF-3-09` completed the authorized checkpoint, DeepSeek/Gemini qualification,
 provider-free prompt/style adapters, RunPod account preflight, public Git/hosted CI, and the still-open
