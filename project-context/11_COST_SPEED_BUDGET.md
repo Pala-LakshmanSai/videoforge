@@ -65,6 +65,15 @@ total = $0.00535
 
 Planning range: $0.005–$0.015. The cost is too small to justify weaker prompts or complicated provider routing.
 
+Measured qualification on 2026-08-11 (`VF-3-01`):
+
+- Final accepted strict-schema run: 40 scenes across five style blocks for `$0.00085053`.
+- Total task spend including two earlier recorded five-batch attempts: `$0.00243598`.
+- The final run and cumulative task spend remained below the `$0.02` run target and the
+  non-transferable `$1` DeepSeek qualification cap, respectively.
+- These are qualification measurements, not a production invoice; keep runtime cost collection
+  and the broader project planning range.
+
 ## One-time Image Style cost
 
 A ready published style adds no Gemini call to a project. Its compact guidance slightly increases the DeepSeek batch prefix but remains inside the existing $0.005–$0.015 project prompt range.

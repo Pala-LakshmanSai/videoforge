@@ -1,0 +1,508 @@
+{
+  "schema_version": "videoforge.deepseek-qualification/v1",
+  "task_id": "VF-3-01",
+  "gate_id": "GATE_LLM_001",
+  "checked_at": "2026-08-11T02:27:07.825Z",
+  "provider": "Runware",
+  "requested_model": "deepseek-v4-flash",
+  "public_provider_name": "DeepSeek-V4-Flash-0731",
+  "task_cap_usd": 1,
+  "run_cap_usd": 0.02,
+  "external_spend_usd": 0.00074945,
+  "scene_count": 40,
+  "style_count": 5,
+  "batches": [
+    {
+      "batch_id": "batch_1",
+      "style_id": "documentary_stock_v1",
+      "task_uuid": "ea243b72-22f3-474c-90f2-697f29398746",
+      "request_sha256": "sha256:310f8d244ea609b9a645e7d295392242661c8310a50275187c6c71b1823e307d",
+      "response_sha256": "sha256:dc31814e4c831ec60904a734cd4816c3cc71292fd0d9220fb75f30dc6bc04ce8",
+      "response_fields": [
+        "cost",
+        "finishReason",
+        "taskType",
+        "taskUUID",
+        "text",
+        "usage"
+      ],
+      "returned_model": null,
+      "returned_model_version": null,
+      "returned_fingerprint": null,
+      "finish_reason": "stop",
+      "usage": {
+        "promptTokens": 18,
+        "promptTokensTotal": 530,
+        "completionTokens": 747,
+        "totalTokens": 1277,
+        "promptTokensDetails": {
+          "cachedTokens": 512
+        }
+      },
+      "cost_usd": 0.00012283,
+      "latency_ms": 12134,
+      "exact_ids": true,
+      "checks": [
+        {
+          "scene_id": "scene_01",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:bd9708ba77e3a2935b01ee64b84f489c9225b737b35589a67e8396b73acc82c8",
+          "style_treatment_sha256": "sha256:45478bcb6c24c467e377e0d879ead17f6aa6dc5507d8a69cd03f404cdcd2328a"
+        },
+        {
+          "scene_id": "scene_02",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:570b4ece7159fcebd3d2fbe42156aceea0c8f4b1b0c8e15454a429de7ac18e55",
+          "style_treatment_sha256": "sha256:45478bcb6c24c467e377e0d879ead17f6aa6dc5507d8a69cd03f404cdcd2328a"
+        },
+        {
+          "scene_id": "scene_03",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:7b8f2514dad821100219884845fc84c71a50db27d7fd25dd3b66468fb0ddafd4",
+          "style_treatment_sha256": "sha256:45478bcb6c24c467e377e0d879ead17f6aa6dc5507d8a69cd03f404cdcd2328a"
+        },
+        {
+          "scene_id": "scene_04",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:f8bce771eed1e40ae25df862556f88fa85753ac7eabfa76ab2e178725f1c3cb9",
+          "style_treatment_sha256": "sha256:45478bcb6c24c467e377e0d879ead17f6aa6dc5507d8a69cd03f404cdcd2328a"
+        },
+        {
+          "scene_id": "scene_05",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:426bcf26c9e6d542ee6c8c923f3a6354732e7b9ba0cc9c14a52b3b6e4c0dfdb0",
+          "style_treatment_sha256": "sha256:45478bcb6c24c467e377e0d879ead17f6aa6dc5507d8a69cd03f404cdcd2328a"
+        },
+        {
+          "scene_id": "scene_06",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:477ba456565c19ec2e919f08fb6cdfd76a5fb3e6c2bdc80870330ffd6bc80ecc",
+          "style_treatment_sha256": "sha256:45478bcb6c24c467e377e0d879ead17f6aa6dc5507d8a69cd03f404cdcd2328a"
+        },
+        {
+          "scene_id": "scene_07",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:cda62cd76d4b2eeaaaf20c59459c7668e8e841cb3f9a7ec4f8a3453be78d51dc",
+          "style_treatment_sha256": "sha256:45478bcb6c24c467e377e0d879ead17f6aa6dc5507d8a69cd03f404cdcd2328a"
+        },
+        {
+          "scene_id": "scene_08",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:b44e4f74a1df1d34d47a66567ba5118299983284edc334b5e65715c785035ebd",
+          "style_treatment_sha256": "sha256:45478bcb6c24c467e377e0d879ead17f6aa6dc5507d8a69cd03f404cdcd2328a"
+        }
+      ],
+      "continuity_sha256": "sha256:140bedbf9c3f6d56a9846d2ba7088798683f4da0c248231336e6a05679e4fdfe"
+    },
+    {
+      "batch_id": "batch_2",
+      "style_id": "warm_analog",
+      "task_uuid": "7d209faf-0052-48b2-a4a7-36d86e89bcd2",
+      "request_sha256": "sha256:588d668e73a8d66ab8f24c8cbafc37314c0424413ab3e3d19c70a751154c0e95",
+      "response_sha256": "sha256:fb0531b5fe4bbd753aa73c6aafdd442ceb8b66834bdcf57fed8f33c93f353cfb",
+      "response_fields": [
+        "cost",
+        "finishReason",
+        "taskType",
+        "taskUUID",
+        "text",
+        "usage"
+      ],
+      "returned_model": null,
+      "returned_model_version": null,
+      "returned_fingerprint": null,
+      "finish_reason": "stop",
+      "usage": {
+        "promptTokens": 532,
+        "promptTokensTotal": 532,
+        "completionTokens": 804,
+        "totalTokens": 1336
+      },
+      "cost_usd": 0.00016344,
+      "latency_ms": 14395,
+      "exact_ids": true,
+      "checks": [
+        {
+          "scene_id": "scene_09",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:c04314aa50edecdd26740c6a88a1fbcad28c8a201c8d1e43b3ff4edd41d63d75",
+          "style_treatment_sha256": "sha256:61b7c75a17060ef32e0752b7a6ff67be7e38c804f007c851d9a20f91887f0029"
+        },
+        {
+          "scene_id": "scene_10",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:80f158b522e6fbc8ca3ce38dd494d37dfcd5b99a2462801c6c099022baee79b2",
+          "style_treatment_sha256": "sha256:61b7c75a17060ef32e0752b7a6ff67be7e38c804f007c851d9a20f91887f0029"
+        },
+        {
+          "scene_id": "scene_11",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:f2ab7469fa1c6d6290fc5bb76bc2f53ed396f2ba0a74afb31f62726f9243dae8",
+          "style_treatment_sha256": "sha256:61b7c75a17060ef32e0752b7a6ff67be7e38c804f007c851d9a20f91887f0029"
+        },
+        {
+          "scene_id": "scene_12",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:b15cab4501cba9e309c4bf9161e751c490888d6f5de1e28ed2ec5f46edcd0dc1",
+          "style_treatment_sha256": "sha256:61b7c75a17060ef32e0752b7a6ff67be7e38c804f007c851d9a20f91887f0029"
+        },
+        {
+          "scene_id": "scene_13",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:7cc053b02e751712d818f90b10344822b54c6def24af49d187eb9ed7623afbd9",
+          "style_treatment_sha256": "sha256:61b7c75a17060ef32e0752b7a6ff67be7e38c804f007c851d9a20f91887f0029"
+        },
+        {
+          "scene_id": "scene_14",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:05c11d6e6f6fda244602cd236114ac2aa719cf2728cfc232a9c55fa4e9b26966",
+          "style_treatment_sha256": "sha256:61b7c75a17060ef32e0752b7a6ff67be7e38c804f007c851d9a20f91887f0029"
+        },
+        {
+          "scene_id": "scene_15",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:e22d2c232c376b607630fd039a37de98d28bfdd1790be49a25021d213632faf0",
+          "style_treatment_sha256": "sha256:61b7c75a17060ef32e0752b7a6ff67be7e38c804f007c851d9a20f91887f0029"
+        },
+        {
+          "scene_id": "scene_16",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:ab3e7ac62d4469788d39dfcf4331e36be30ff691e11f97539add5a5a234de527",
+          "style_treatment_sha256": "sha256:61b7c75a17060ef32e0752b7a6ff67be7e38c804f007c851d9a20f91887f0029"
+        }
+      ],
+      "continuity_sha256": "sha256:140bedbf9c3f6d56a9846d2ba7088798683f4da0c248231336e6a05679e4fdfe"
+    },
+    {
+      "batch_id": "batch_3",
+      "style_id": "cool_editorial",
+      "task_uuid": "e7701cd8-1d41-4042-a711-13437c0e67bf",
+      "request_sha256": "sha256:c8043c1fa5742c429c90ba38ffa875846354d25599b5d97743ee901e3645e51f",
+      "response_sha256": "sha256:f6f293ac39caaea95f0106f0e26deec59c5e7953972dfceaaca1ae202f2de1ac",
+      "response_fields": [
+        "cost",
+        "finishReason",
+        "taskType",
+        "taskUUID",
+        "text",
+        "usage"
+      ],
+      "returned_model": null,
+      "returned_model_version": null,
+      "returned_fingerprint": null,
+      "finish_reason": "stop",
+      "usage": {
+        "promptTokens": 531,
+        "promptTokensTotal": 531,
+        "completionTokens": 971,
+        "totalTokens": 1502
+      },
+      "cost_usd": 0.00018892,
+      "latency_ms": 16832,
+      "exact_ids": true,
+      "checks": [
+        {
+          "scene_id": "scene_17",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:92cc3e9a907b6733f17df444bf6313f7c9cc7ea0eadd20acfb0bafd68606e656",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        },
+        {
+          "scene_id": "scene_18",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:5538fd662f5bf9a961fce8b74764b885124d9f85c14fbd9a4f470f39a4973590",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        },
+        {
+          "scene_id": "scene_19",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:f649c217a119a2f4dace26c0de735299f14f51cacaceb1e208fe43b5ecf70d26",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        },
+        {
+          "scene_id": "scene_20",
+          "role_unchanged": true,
+          "literal_terms_present": false,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:c4e744f21be42030ad4b19a4efbd080d522b730d54414faedfed6f6275dbedd0",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        },
+        {
+          "scene_id": "scene_21",
+          "role_unchanged": true,
+          "literal_terms_present": false,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:0eca2a3a524e38dca5217a401c0a9d67d470f80e91285f82975a9000a91fb900",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        },
+        {
+          "scene_id": "scene_22",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:b3fb376602ffa1eb77eb858676c0cd964563b34b8dd569b7988820c7a39f72c6",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        },
+        {
+          "scene_id": "scene_23",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:b77aec760dedef3e2319e6141ddb8deaaa3086421011bded4aeed133b7ad2d62",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        },
+        {
+          "scene_id": "scene_24",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:d06f492887bfde626f8b6075ce394ed6bd13ee9d88a7e72156faf0443c0d17fb",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        }
+      ],
+      "continuity_sha256": "sha256:140bedbf9c3f6d56a9846d2ba7088798683f4da0c248231336e6a05679e4fdfe"
+    },
+    {
+      "batch_id": "batch_4",
+      "style_id": "humid_reportage",
+      "task_uuid": "073f3b5b-34fe-4d8f-9529-252f8c453a98",
+      "request_sha256": "sha256:f4fe3b0a0bf977c08f92b40c10a37a216012faf245a193e9d701a6172ae0a3ae",
+      "response_sha256": "sha256:f13548b76e454a16b457177752c03e670750b28fb34c17af398eb79ddc0f2f55",
+      "response_fields": [
+        "cost",
+        "finishReason",
+        "taskType",
+        "taskUUID",
+        "text",
+        "usage"
+      ],
+      "returned_model": null,
+      "returned_model_version": null,
+      "returned_fingerprint": null,
+      "finish_reason": "stop",
+      "usage": {
+        "promptTokens": 20,
+        "promptTokensTotal": 532,
+        "completionTokens": 694,
+        "totalTokens": 1226,
+        "promptTokensDetails": {
+          "cachedTokens": 512
+        }
+      },
+      "cost_usd": 0.00011487,
+      "latency_ms": 10334,
+      "exact_ids": true,
+      "checks": [
+        {
+          "scene_id": "scene_25",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:1276d1904616d5bea3ad500fe81aa544c399ea9369fe9ba3fa2ffa4d13d7149d",
+          "style_treatment_sha256": "sha256:7710c6a1ba1214bd381f8d605e5757eb4f33d5c49d789075722a69bfeb76339a"
+        },
+        {
+          "scene_id": "scene_26",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:72247a862858960aa9aec4db150525f12c7d9fc7d1c25f0c314618299bfb6e8a",
+          "style_treatment_sha256": "sha256:7710c6a1ba1214bd381f8d605e5757eb4f33d5c49d789075722a69bfeb76339a"
+        },
+        {
+          "scene_id": "scene_27",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:8534cedf5cac6fd55ee3db91f05667e9bd7a9d762081b9d9357f0f4341f85833",
+          "style_treatment_sha256": "sha256:7710c6a1ba1214bd381f8d605e5757eb4f33d5c49d789075722a69bfeb76339a"
+        },
+        {
+          "scene_id": "scene_28",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:083a9c88cdc2255a0d8fdf74621cee5ed450257916ed7495e6cb7c4a70e0b4ad",
+          "style_treatment_sha256": "sha256:7710c6a1ba1214bd381f8d605e5757eb4f33d5c49d789075722a69bfeb76339a"
+        },
+        {
+          "scene_id": "scene_29",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:48eb8d53d498c9d9167e1d1571172867453c358f3a9c15b8641e42d3087a8da3",
+          "style_treatment_sha256": "sha256:7710c6a1ba1214bd381f8d605e5757eb4f33d5c49d789075722a69bfeb76339a"
+        },
+        {
+          "scene_id": "scene_30",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:14e78c5b814abbf963a970646710842fa2028d221dc33e90ac320ac48ce0b1fc",
+          "style_treatment_sha256": "sha256:7710c6a1ba1214bd381f8d605e5757eb4f33d5c49d789075722a69bfeb76339a"
+        },
+        {
+          "scene_id": "scene_31",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:04baa05b636beaa13d7958cb1eecd448f57ab899fdf89895fce352aad7f8569e",
+          "style_treatment_sha256": "sha256:7710c6a1ba1214bd381f8d605e5757eb4f33d5c49d789075722a69bfeb76339a"
+        },
+        {
+          "scene_id": "scene_32",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:df4cb34e40abc21123d781f5778e06a09fc5d2206141992d8be69847858de6b2",
+          "style_treatment_sha256": "sha256:7710c6a1ba1214bd381f8d605e5757eb4f33d5c49d789075722a69bfeb76339a"
+        }
+      ],
+      "continuity_sha256": "sha256:140bedbf9c3f6d56a9846d2ba7088798683f4da0c248231336e6a05679e4fdfe"
+    },
+    {
+      "batch_id": "batch_5",
+      "style_id": "highland_archive",
+      "task_uuid": "77709cd8-cc95-4fb7-b548-4f3a8658fdda",
+      "request_sha256": "sha256:b4139d1aa373e8626b0334bb61bd0365aa29889676c3076cb6741a2a4fe9e63f",
+      "response_sha256": "sha256:eb3164d15542b938d1fc51b677bb472829c42b431c1981ebf7913e6a44306adb",
+      "response_fields": [
+        "cost",
+        "finishReason",
+        "taskType",
+        "taskUUID",
+        "text",
+        "usage"
+      ],
+      "returned_model": null,
+      "returned_model_version": null,
+      "returned_fingerprint": null,
+      "finish_reason": "stop",
+      "usage": {
+        "promptTokens": 531,
+        "promptTokensTotal": 531,
+        "completionTokens": 778,
+        "totalTokens": 1309
+      },
+      "cost_usd": 0.00015939,
+      "latency_ms": 11289,
+      "exact_ids": true,
+      "checks": [
+        {
+          "scene_id": "scene_33",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:42f773209aada143d973ff5cbf01e979ac2b9ae5e38d5b0dd7d8bff4f957f1a3",
+          "style_treatment_sha256": "sha256:e7a237c3c6eeb2093fce7059139eb1e19a941b16da98959ab9791824e02d7868"
+        },
+        {
+          "scene_id": "scene_34",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:79089148c271da175ab4d7bd130a8ad641c03e10347f60325edce88695bf193f",
+          "style_treatment_sha256": "sha256:e7a237c3c6eeb2093fce7059139eb1e19a941b16da98959ab9791824e02d7868"
+        },
+        {
+          "scene_id": "scene_35",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:01b41253d6afe0ff508124ca51f80e479f5533a4d4355aab81471b3c3f8bef4a",
+          "style_treatment_sha256": "sha256:e7a237c3c6eeb2093fce7059139eb1e19a941b16da98959ab9791824e02d7868"
+        },
+        {
+          "scene_id": "scene_36",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:2514d06205f5792acc32b7d4f1a16c35e133fcca662f6290d82d419da8ebeb54",
+          "style_treatment_sha256": "sha256:e7a237c3c6eeb2093fce7059139eb1e19a941b16da98959ab9791824e02d7868"
+        },
+        {
+          "scene_id": "scene_37",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:6ae38090c693495547dfefedd98e25eedba3e2bcbca3ab881cc5f4760b0de2cb",
+          "style_treatment_sha256": "sha256:e7a237c3c6eeb2093fce7059139eb1e19a941b16da98959ab9791824e02d7868"
+        },
+        {
+          "scene_id": "scene_38",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:8614054fd411255b688bfa41b1a840f25ce888b1be500010fb37fc26de0ba628",
+          "style_treatment_sha256": "sha256:e7a237c3c6eeb2093fce7059139eb1e19a941b16da98959ab9791824e02d7868"
+        },
+        {
+          "scene_id": "scene_39",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:dacffae9c87365959c64d469b8ded575baa49cc41cedbfc7e1c465f26f2b66ca",
+          "style_treatment_sha256": "sha256:e7a237c3c6eeb2093fce7059139eb1e19a941b16da98959ab9791824e02d7868"
+        },
+        {
+          "scene_id": "scene_40",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:a8ebf1191649dfb6f13f4cb52f2495b38fc6dba1cc8d60a7184f165660be8cb6",
+          "style_treatment_sha256": "sha256:e7a237c3c6eeb2093fce7059139eb1e19a941b16da98959ab9791824e02d7868"
+        }
+      ],
+      "continuity_sha256": "sha256:140bedbf9c3f6d56a9846d2ba7088798683f4da0c248231336e6a05679e4fdfe"
+    }
+  ],
+  "criteria": {
+    "strict_schema_and_exact_ids": true,
+    "roles_unchanged": true,
+    "literal_terms_present": false,
+    "forbidden_requests_absent": true,
+    "cost_below_30_min_equivalent_target": true,
+    "immutable_live_identity_returned": false
+  },
+  "gate_result": "OPEN",
+  "identity_note": "Live response did not expose an immutable version/fingerprint; public alias-to-0731 mapping alone is insufficient for lock.",
+  "secrets_recorded": false
+}

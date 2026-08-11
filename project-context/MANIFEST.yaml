@@ -317,7 +317,6 @@ open_gates:
   GATE_AVATAR_003: reconcile_avatarforcing_code_and_weights_commercial_license
   GATE_IMAGE_001: reproduce_mage_300_image_speed_and_quality
   GATE_IMAGE_002: verify_exact_checkpoint_access_and_launch_terms
-  GATE_LLM_001: verify_runware_endpoint_is_exact_0731_and_schema_stable
   GATE_STYLE_001: verify_gemini_style_schema_cost_latency_privacy_and_content_separation
   GATE_STYLE_002: verify_mage_adherence_across_distinct_extracted_styles
   GATE_FALLBACK_001: benchmark_skyreels_low_vram_cost_and_quality
@@ -327,6 +326,7 @@ open_gates:
 
 closed_gates:
   GATE_UI_001: user_approved_medium_minimal_live_chrome_shell_on_2026_08_09
+  GATE_LLM_001: runware_canonical_0731_identity_and_strict_schema_passed_on_2026_08_11
 
 deferred:
   - ai_broll_video

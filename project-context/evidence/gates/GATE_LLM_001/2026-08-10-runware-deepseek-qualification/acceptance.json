@@ -1,0 +1,521 @@
+{
+  "schema_version": "videoforge.deepseek-qualification/v1",
+  "task_id": "VF-3-01",
+  "gate_id": "GATE_LLM_001",
+  "checked_at": "2026-08-11T02:33:18.958Z",
+  "provider": "Runware",
+  "requested_model_alias": "deepseek-v4-flash",
+  "requested_model": "deepseek:v4@flash",
+  "public_provider_name": "DeepSeek-V4-Flash-0731",
+  "model_identity": {
+    "task_uuid": "49f0123f-c49f-4074-90dc-53c9ee5111f9",
+    "response_sha256": "sha256:7c7095445e9d527f85fb892a12316778bbebf637df28f7fd742b767ff3aae6f3",
+    "air": "deepseek:v4@flash",
+    "name": "DeepSeek-V4-Flash-0731",
+    "version": "4",
+    "category": "text",
+    "architecture": "deepseek_v4",
+    "source": "curated",
+    "capabilities": [
+      "io:text-to-text",
+      "form:checkpoint"
+    ],
+    "private": false,
+    "exact_canonical_match": true
+  },
+  "task_cap_usd": 1,
+  "run_cap_usd": 0.02,
+  "prior_attempt_spend_usd": 0.00158545,
+  "external_spend_usd": 0.00085053,
+  "cumulative_task_spend_usd": 0.00243598,
+  "scene_count": 40,
+  "style_count": 5,
+  "batches": [
+    {
+      "batch_id": "batch_1",
+      "style_id": "documentary_stock_v1",
+      "task_uuid": "2a05a471-f59c-4bb8-bd84-64e320df456d",
+      "request_sha256": "sha256:7a1fe90e30c9491a648259cbab50a79cc514da77deb6d27ccdb6b10a9e8524e2",
+      "response_sha256": "sha256:1d15c63f498d58cce674a19036843fed7f0c2ba6e21e50d32939a93c6f6d887b",
+      "response_fields": [
+        "cost",
+        "finishReason",
+        "taskType",
+        "taskUUID",
+        "text",
+        "usage"
+      ],
+      "returned_model": null,
+      "returned_model_version": null,
+      "returned_fingerprint": null,
+      "finish_reason": "stop",
+      "usage": {
+        "promptTokens": 583,
+        "promptTokensTotal": 583,
+        "completionTokens": 845,
+        "totalTokens": 1428
+      },
+      "cost_usd": 0.00017359,
+      "latency_ms": 12435,
+      "exact_ids": true,
+      "checks": [
+        {
+          "scene_id": "scene_01",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:d0f5f1e95061f5704e2f2cec6c34a6df7b81d0422eacd871307dfd074eb2a4b5",
+          "style_treatment_sha256": "sha256:2a6c68f1d92206f1b4475aac317e05ae62dc50d34983c7f2cca48bec3526a387"
+        },
+        {
+          "scene_id": "scene_02",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:e1180b089aa1098da7fe95200b582cae342900c9a5a3afd2e70b4f7b698cd15f",
+          "style_treatment_sha256": "sha256:2a6c68f1d92206f1b4475aac317e05ae62dc50d34983c7f2cca48bec3526a387"
+        },
+        {
+          "scene_id": "scene_03",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:51414e17d3327e2b71932aca59573ff58b4b4186e34138ebc7d5da8a692b1cb0",
+          "style_treatment_sha256": "sha256:2a6c68f1d92206f1b4475aac317e05ae62dc50d34983c7f2cca48bec3526a387"
+        },
+        {
+          "scene_id": "scene_04",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:5f1d10c639b6489be846df822323142b029ff6c8acafa4369b5b35f6d7e0e5aa",
+          "style_treatment_sha256": "sha256:2a6c68f1d92206f1b4475aac317e05ae62dc50d34983c7f2cca48bec3526a387"
+        },
+        {
+          "scene_id": "scene_05",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:f3f90f7c798180ffde5bf59e7ae4e236b70dede9d9b5df09cf2f7247f8b2eedc",
+          "style_treatment_sha256": "sha256:2a6c68f1d92206f1b4475aac317e05ae62dc50d34983c7f2cca48bec3526a387"
+        },
+        {
+          "scene_id": "scene_06",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:f62cd2953cbb9ba31ef2c98d8605d937c63f52e98ea448f9ba290a55080aa99f",
+          "style_treatment_sha256": "sha256:2a6c68f1d92206f1b4475aac317e05ae62dc50d34983c7f2cca48bec3526a387"
+        },
+        {
+          "scene_id": "scene_07",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:befb6cb5478dd242f32deda0809af50e07bf1ce385bd8e8da7e320d88247f10a",
+          "style_treatment_sha256": "sha256:2a6c68f1d92206f1b4475aac317e05ae62dc50d34983c7f2cca48bec3526a387"
+        },
+        {
+          "scene_id": "scene_08",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:2db61d6612a7461ebe1d46484bc77c4231a1a4374219f84f837091801394dafe",
+          "style_treatment_sha256": "sha256:2a6c68f1d92206f1b4475aac317e05ae62dc50d34983c7f2cca48bec3526a387"
+        }
+      ],
+      "continuity_sha256": "sha256:140bedbf9c3f6d56a9846d2ba7088798683f4da0c248231336e6a05679e4fdfe"
+    },
+    {
+      "batch_id": "batch_2",
+      "style_id": "warm_analog",
+      "task_uuid": "17fa0dc9-6171-4044-ab6d-6b15b335e83a",
+      "request_sha256": "sha256:2cfee8a108ee15bddfb542f3ab0ebf3a83482e45ca393527133cfdbc1e556a42",
+      "response_sha256": "sha256:5792fa7e98033db6c646b27524ba486bb6a3a0542fef0038215c2539c8d73a47",
+      "response_fields": [
+        "cost",
+        "finishReason",
+        "taskType",
+        "taskUUID",
+        "text",
+        "usage"
+      ],
+      "returned_model": null,
+      "returned_model_version": null,
+      "returned_fingerprint": null,
+      "finish_reason": "stop",
+      "usage": {
+        "promptTokens": 585,
+        "promptTokensTotal": 585,
+        "completionTokens": 759,
+        "totalTokens": 1344
+      },
+      "cost_usd": 0.00016059,
+      "latency_ms": 10760,
+      "exact_ids": true,
+      "checks": [
+        {
+          "scene_id": "scene_09",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:e78ef118fab46e09cea6ffed12449ab30e9fbb123e0fd0609ebdb74cae300013",
+          "style_treatment_sha256": "sha256:8de4223c47ebfba04367bb719a579ff5a38678b61b93ae984102e75d9e615794"
+        },
+        {
+          "scene_id": "scene_10",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:814e69fa530b37476e182b779a90ed7cb6ddbbd1b666b99f12989d4940e83102",
+          "style_treatment_sha256": "sha256:8de4223c47ebfba04367bb719a579ff5a38678b61b93ae984102e75d9e615794"
+        },
+        {
+          "scene_id": "scene_11",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:20b9195ef08e2994dbb990e5b5a41ade0a978e95101e934674b9f167ee6067d8",
+          "style_treatment_sha256": "sha256:8de4223c47ebfba04367bb719a579ff5a38678b61b93ae984102e75d9e615794"
+        },
+        {
+          "scene_id": "scene_12",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:77ca09b71e9709b88de948ccb601ecf07bcd41b26e58929057d94ce05db29677",
+          "style_treatment_sha256": "sha256:8de4223c47ebfba04367bb719a579ff5a38678b61b93ae984102e75d9e615794"
+        },
+        {
+          "scene_id": "scene_13",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:3630b6b3f6d1339400c26c8c4c5592865e0eb45861d4ee0e0a17807892870c2e",
+          "style_treatment_sha256": "sha256:8de4223c47ebfba04367bb719a579ff5a38678b61b93ae984102e75d9e615794"
+        },
+        {
+          "scene_id": "scene_14",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:06021567f8e53e0c1d34470b207ff3aab6270b9e6bb0ae057d29f1fa0ae5c338",
+          "style_treatment_sha256": "sha256:8de4223c47ebfba04367bb719a579ff5a38678b61b93ae984102e75d9e615794"
+        },
+        {
+          "scene_id": "scene_15",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:3e26b252abf7d4d9fccae581817ba3d892811757d861465e95245527075f1307",
+          "style_treatment_sha256": "sha256:8de4223c47ebfba04367bb719a579ff5a38678b61b93ae984102e75d9e615794"
+        },
+        {
+          "scene_id": "scene_16",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:3764e5be4b17b8c438be235e6a0a3a6b24326d2b28af5275171153319ba91a57",
+          "style_treatment_sha256": "sha256:8de4223c47ebfba04367bb719a579ff5a38678b61b93ae984102e75d9e615794"
+        }
+      ],
+      "continuity_sha256": "sha256:140bedbf9c3f6d56a9846d2ba7088798683f4da0c248231336e6a05679e4fdfe"
+    },
+    {
+      "batch_id": "batch_3",
+      "style_id": "cool_editorial",
+      "task_uuid": "7d2f27d9-f790-42bf-99b6-9a953192ec33",
+      "request_sha256": "sha256:c40ffbd7dd86ff8e60a4cf195ba5e5b07d74b39ce6b9e8d10025107fdcc68c2f",
+      "response_sha256": "sha256:6e6c9da3d8c8e578ef93f7d4950bec113c6875ed2532be4872d839220cf392d1",
+      "response_fields": [
+        "cost",
+        "finishReason",
+        "taskType",
+        "taskUUID",
+        "text",
+        "usage"
+      ],
+      "returned_model": null,
+      "returned_model_version": null,
+      "returned_fingerprint": null,
+      "finish_reason": "stop",
+      "usage": {
+        "promptTokens": 584,
+        "promptTokensTotal": 584,
+        "completionTokens": 824,
+        "totalTokens": 1408
+      },
+      "cost_usd": 0.00017046,
+      "latency_ms": 12579,
+      "exact_ids": true,
+      "checks": [
+        {
+          "scene_id": "scene_17",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:0d5ab80494d3a52a503895a1bea07ce6c40be8bdf5b3ab50491990e1a9bca5b3",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        },
+        {
+          "scene_id": "scene_18",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:9f766495620afc15d02cfdffcf58f7eb0f8bcfa6296b28ccf6fc3f46fefb2045",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        },
+        {
+          "scene_id": "scene_19",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:53ec2fe20846a338899937eddde706d316f67d0f7ab1b68a74429a14aa5f14ab",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        },
+        {
+          "scene_id": "scene_20",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:1549f81d42cfdb9501b89748d096798cc4f813f60e88d48fd4e234caeb0c8a10",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        },
+        {
+          "scene_id": "scene_21",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:d7d86f11de68edab585a99b7935f3f4f1b298ccd3288f7ca01d741f5a683504e",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        },
+        {
+          "scene_id": "scene_22",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:b1f65c6d503d22d520a4c9bf6dc7325a3ad5b885dcccb33b4058521cb7880489",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        },
+        {
+          "scene_id": "scene_23",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:ef60055252d18606e3d246e962b6a7df69b03e0abe46833570a858204c1ae25a",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        },
+        {
+          "scene_id": "scene_24",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:6dea826389793f8729f8b289d0b68804cbff265025c1fadb811795678e9471d5",
+          "style_treatment_sha256": "sha256:9f038342a0d0f7abe929b0b741a63df7ef265d4f03aae53cb65ff0bd8236d199"
+        }
+      ],
+      "continuity_sha256": "sha256:140bedbf9c3f6d56a9846d2ba7088798683f4da0c248231336e6a05679e4fdfe"
+    },
+    {
+      "batch_id": "batch_4",
+      "style_id": "humid_reportage",
+      "task_uuid": "a521baed-b152-4884-9d45-bfcf02856047",
+      "request_sha256": "sha256:9c62dbc5695f522924b58ff09bd76b87dd9cb7a2e2f26b2a9cf252e732eb668b",
+      "response_sha256": "sha256:855b43d43dd48ef836a071d99e32c358ad4252b59c17fa806744aa4df8084378",
+      "response_fields": [
+        "cost",
+        "finishReason",
+        "taskType",
+        "taskUUID",
+        "text",
+        "usage"
+      ],
+      "returned_model": null,
+      "returned_model_version": null,
+      "returned_fingerprint": null,
+      "finish_reason": "stop",
+      "usage": {
+        "promptTokens": 585,
+        "promptTokensTotal": 585,
+        "completionTokens": 863,
+        "totalTokens": 1448
+      },
+      "cost_usd": 0.0001765,
+      "latency_ms": 13748,
+      "exact_ids": true,
+      "checks": [
+        {
+          "scene_id": "scene_25",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:c53459289f7ac95269151d1ea10448d42f4d64e7b6f0e10e83a4c8d74a7a3d63",
+          "style_treatment_sha256": "sha256:93602a05734ac3fb3395e4ada25e5e5a7313a09077a9e31a2950749acb3772c5"
+        },
+        {
+          "scene_id": "scene_26",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:0de5cffb11c1988959a71fe327e8e50e433cbc145daf94debfab46d6caced0ba",
+          "style_treatment_sha256": "sha256:93602a05734ac3fb3395e4ada25e5e5a7313a09077a9e31a2950749acb3772c5"
+        },
+        {
+          "scene_id": "scene_27",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:b1f493a22f98a9b93f1bc18c179f244c44cd129fee4c2187d4aebbdc48c7a36f",
+          "style_treatment_sha256": "sha256:93602a05734ac3fb3395e4ada25e5e5a7313a09077a9e31a2950749acb3772c5"
+        },
+        {
+          "scene_id": "scene_28",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:4e0ecf7c54ac3fcff1c81807febd1d254b36c3c57ce2e72c88172a5f90f87e6b",
+          "style_treatment_sha256": "sha256:93602a05734ac3fb3395e4ada25e5e5a7313a09077a9e31a2950749acb3772c5"
+        },
+        {
+          "scene_id": "scene_29",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:41d4dd79ecdf5ffbbf782bf143b8133f7fb9f871f6d6f89bc2df23e41dc3bb08",
+          "style_treatment_sha256": "sha256:93602a05734ac3fb3395e4ada25e5e5a7313a09077a9e31a2950749acb3772c5"
+        },
+        {
+          "scene_id": "scene_30",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:d41020ae4da8a93ab5da693944add8c0d94e19d69bb77ee2cdce7c4f746c27e8",
+          "style_treatment_sha256": "sha256:93602a05734ac3fb3395e4ada25e5e5a7313a09077a9e31a2950749acb3772c5"
+        },
+        {
+          "scene_id": "scene_31",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:cf5ff308c4b1781e70af184ca95cf4a83df775c39bcb2dd51cbf27937cb04828",
+          "style_treatment_sha256": "sha256:93602a05734ac3fb3395e4ada25e5e5a7313a09077a9e31a2950749acb3772c5"
+        },
+        {
+          "scene_id": "scene_32",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:33c67837e298b2cd575323a8e51086078a715d943d14539fd3206cfa0671cdcd",
+          "style_treatment_sha256": "sha256:93602a05734ac3fb3395e4ada25e5e5a7313a09077a9e31a2950749acb3772c5"
+        }
+      ],
+      "continuity_sha256": "sha256:140bedbf9c3f6d56a9846d2ba7088798683f4da0c248231336e6a05679e4fdfe"
+    },
+    {
+      "batch_id": "batch_5",
+      "style_id": "highland_archive",
+      "task_uuid": "d12de5b0-3e5e-478c-aa8a-67813d3fbeb9",
+      "request_sha256": "sha256:ed1690728a67528edb05779ac56f201ab410192d594a3de7ab11095a90ce0822",
+      "response_sha256": "sha256:dcf252858598c956228c810c399fbd6dc9464be9009b3762ec9a24b25593f30f",
+      "response_fields": [
+        "cost",
+        "finishReason",
+        "taskType",
+        "taskUUID",
+        "text",
+        "usage"
+      ],
+      "returned_model": null,
+      "returned_model_version": null,
+      "returned_fingerprint": null,
+      "finish_reason": "stop",
+      "usage": {
+        "promptTokens": 584,
+        "promptTokensTotal": 584,
+        "completionTokens": 817,
+        "totalTokens": 1401
+      },
+      "cost_usd": 0.00016939,
+      "latency_ms": 13152,
+      "exact_ids": true,
+      "checks": [
+        {
+          "scene_id": "scene_33",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:ad26345980a68fa014b6fd13c946ca164a92f2f2c5359a09936ae6f0090e1117",
+          "style_treatment_sha256": "sha256:36aae3f0ba9deb93003ab55fe86998a52c151e04d26bee57cde291feacca24ab"
+        },
+        {
+          "scene_id": "scene_34",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:505e75b7352df3fbd5850a8896d50dd53349995d5f5b4a7e51e31ac20c735315",
+          "style_treatment_sha256": "sha256:36aae3f0ba9deb93003ab55fe86998a52c151e04d26bee57cde291feacca24ab"
+        },
+        {
+          "scene_id": "scene_35",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:5399ab1411fca80078a0bc40807c7a88be9df3845d61da4fabbb60efea7c61e0",
+          "style_treatment_sha256": "sha256:36aae3f0ba9deb93003ab55fe86998a52c151e04d26bee57cde291feacca24ab"
+        },
+        {
+          "scene_id": "scene_36",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:2187d36a7d552713ad8f1f24b38284708e7d062a7b495db0b3d00769dcd1590b",
+          "style_treatment_sha256": "sha256:36aae3f0ba9deb93003ab55fe86998a52c151e04d26bee57cde291feacca24ab"
+        },
+        {
+          "scene_id": "scene_37",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:50550e67a5db73c3ce785f66aa52702a71061e180848a7472e6a2592f8c12d9e",
+          "style_treatment_sha256": "sha256:36aae3f0ba9deb93003ab55fe86998a52c151e04d26bee57cde291feacca24ab"
+        },
+        {
+          "scene_id": "scene_38",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:4be2fbe50e97e6a2ca97bf9ad3eb2d6b0100ef44fe2b8b35dba8b15aabe99bc3",
+          "style_treatment_sha256": "sha256:36aae3f0ba9deb93003ab55fe86998a52c151e04d26bee57cde291feacca24ab"
+        },
+        {
+          "scene_id": "scene_39",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:67086bef30cf1b06260e8392de9d10b873398cfeb7e8c4a624fb331c31fd9b0c",
+          "style_treatment_sha256": "sha256:36aae3f0ba9deb93003ab55fe86998a52c151e04d26bee57cde291feacca24ab"
+        },
+        {
+          "scene_id": "scene_40",
+          "role_unchanged": true,
+          "literal_terms_present": true,
+          "forbidden_request_absent": true,
+          "prompt_sha256": "sha256:1e190c2b8bb9fb1f8989e6dab5bee3bce878d0fe003491c0f6189db32d7eafa5",
+          "style_treatment_sha256": "sha256:36aae3f0ba9deb93003ab55fe86998a52c151e04d26bee57cde291feacca24ab"
+        }
+      ],
+      "continuity_sha256": "sha256:140bedbf9c3f6d56a9846d2ba7088798683f4da0c248231336e6a05679e4fdfe"
+    }
+  ],
+  "criteria": {
+    "strict_schema_and_exact_ids": true,
+    "roles_unchanged": true,
+    "literal_terms_present": true,
+    "forbidden_requests_absent": true,
+    "cost_below_30_min_equivalent_target": true,
+    "immutable_live_identity_returned": true
+  },
+  "gate_result": "PASS",
+  "identity_note": "Live Runware modelSearch resolved the canonical AIR deepseek:v4@flash to the public model DeepSeek-V4-Flash-0731; generation requests pinned that AIR. Native generation responses did not echo model/version fields.",
+  "secrets_recorded": false
+}

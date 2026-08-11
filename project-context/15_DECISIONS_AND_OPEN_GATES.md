@@ -63,7 +63,6 @@ In MVP, deterministic media checks can auto-pass technical validity, but the use
 | `GATE_AVATAR_003` | Obtain authoritative clarification reconciling the repository README's Apache-2.0 claim, the committed academic-only/non-commercial `LICENSE.txt`, and the weights repository's missing license | No AvatarForcing weight download, paid qualification, production profile, or commercial use |
 | `GATE_IMAGE_001` | Reproduce ~300 images in 5–8 generation minutes and <$0.20 | Lock Mage resolution/batch/GPU |
 | `GATE_IMAGE_002` | Retrieve exact checkpoint and launch-license artifact | Required before commercial launch |
-| `GATE_LLM_001` | Confirm exact 0731 endpoint identity and strict-schema fixture | Lock Runware production config |
 | `GATE_STYLE_001` | Gemini 3.5 multi-reference schema, content separation, latency, cost, retention posture | Lock analyzer model/settings or A/B only the analyzer fallback |
 | `GATE_STYLE_002` | Same-content Mage bakeoff across default + four distinct extracted styles | Prove prompt-only profiles are sufficient before considering LoRA/reference conditioning |
 | `GATE_FALLBACK_001` | SkyReels low-VRAM 48 GB fit, quality, boot, accepted cost | Provision/lock quality endpoint |
@@ -76,6 +75,7 @@ In MVP, deterministic media checks can auto-pass technical validity, but the use
 | ID | Result | Evidence |
 |---|---|---|
 | `GATE_UI_001` | **PASS** — the user explicitly accepted the final medium/minimal fixture shell on 2026-08-09; the approved visual system is frozen unless later user feedback or a verified regression reopens it | `evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit/` |
+| `GATE_LLM_001` | **PASS** — live Runware model search resolved canonical AIR `deepseek:v4@flash` to `DeepSeek-V4-Flash-0731`; 40 strict-schema scenes across five styles passed exact IDs, roles, literal anchors, forbidden-output checks, and the cost target | `evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification/` |
 
 ## Proposed values awaiting evidence/user sign-off
 

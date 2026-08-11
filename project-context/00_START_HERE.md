@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: see `CURRENT_STATE.yaml` (Phase 2 preserved; bounded Phase 3 qualification active)
+Status: see `CURRENT_STATE.yaml` (Phase 2 preserved; VF-3-01 green; bounded VF-3-02 active)
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -35,10 +35,12 @@ facts on 2026-08-10. The user then authorized autonomous provider/account, Git/h
 isolated staging work while preserving the existing non-transferable provider caps and keeping
 production deferred. The user explicitly made the GitHub repository public; hosted CI is green on
 `c23ab438` with full verification, 38 installed-Chrome journeys, Gitleaks, and dependency audit.
-Runware account preflight had stopped before inference or spend because the provider required at
-least `$5` balance; the user reported adding `$20` on 2026-08-11. `CURRENT_STATE.yaml` now selects
-exact bounded brief `VF-3-01`, beginning with live balance verification; no adjacent brief or
-high-level roadmap item is authority.
+Runware balance was verified at `$20.05` on 2026-08-11. `VF-3-01` then closed `GATE_LLM_001`:
+live provider search resolved canonical AIR `deepseek:v4@flash` to `DeepSeek-V4-Flash-0731`, and
+the accepted 40-scene/five-style strict-schema run passed all identity, relevance, safety, and cost
+criteria. Cumulative DeepSeek qualification spend was `$0.00243598`; application mode remains
+fixture. `CURRENT_STATE.yaml` now selects exact bounded brief `VF-3-02` for owned/synthetic Gemini
+style analysis only; no adjacent brief or high-level roadmap item is authority.
 
 The refresh found a hard AvatarForcing licensing contradiction: the official repository README
 claims Apache-2.0, its committed `LICENSE.txt` is academic-only/non-commercial and prohibits

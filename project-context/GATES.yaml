@@ -1,5 +1,5 @@
 schema_version: "1.0"
-updated_at: "2026-08-10"
+updated_at: "2026-08-11"
 evidence_root: "evidence/gates"
 
 gates:
@@ -34,12 +34,16 @@ gates:
     owner: unassigned
     last_run: null
   GATE_LLM_001:
-    status: open
+    status: closed
     blocks: runware_prompt_production_profile
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#runwaredeepseek-gate"
-    owner: unassigned
-    last_run: "evidence/gates/GATE_LLM_001/2026-08-10-runware-account-preflight"
-    result: blocked_account_funding_prerequisite_zero_spend
+    owner: VF-3-01
+    last_run: "evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification"
+    result: pass
+    closed_at: "2026-08-11T02:33:18Z"
+    canonical_air: "deepseek:v4@flash"
+    provider_model_name: "DeepSeek-V4-Flash-0731"
+    cumulative_qualification_spend_usd: 0.00243598
   GATE_STYLE_001:
     status: open
     blocks: custom_reference_style_analysis

@@ -3,14 +3,15 @@
 Status: user-approved ladder plus explicit benchmark gates  
 Read when: building a worker, pinning dependencies, estimating cost, or proposing a model change.
 
-Prices and provider capabilities below were refreshed from official sources on 2026-08-10 and are time-sensitive. Runtime code must store current rates/configuration rather than hard-code this document.
+Prices and provider capabilities below were refreshed from official sources on 2026-08-10 and are time-sensitive. Runware DeepSeek identity and qualification facts were refreshed live on 2026-08-11. Runtime code must store current rates/configuration rather than hard-code this document.
 
 ## Runware DeepSeek V4 Flash 0731
 
 Approved purpose: batched project image-prompt writing only. This model is text-only on Runware; it consumes a compact saved style profile and never analyzes reference images.
 
 - Provider: Runware.
-- API model ID: `deepseek-v4-flash`.
+- Public API alias: `deepseek-v4-flash`.
+- Qualified canonical Runware AIR ID: `deepseek:v4@flash`.
 - User-approved checkpoint name: DeepSeek V4 Flash 0731.
 - Thinking: explicitly `off` even though Runware currently documents it as the default.
 - Output: `outputFormat: JSON` with strict `jsonSchema`.
@@ -27,9 +28,16 @@ Current documented Runware prices:
 
 A conservative 30-minute workload of 10k input and 30k output is approximately $0.00535. Even a less efficient workload remains around one cent. Do not downgrade prompt relevance to save a fraction of a cent.
 
-Runware's public page identifies the checkpoint as DeepSeek-V4-Flash-0731 but does not expose an immutable served revision or fingerprint. Integration therefore remains gated on a live response/provider record, stable strict-schema behavior, and complete representative-batch IDs; do not infer exact identity from the friendly model name alone.
+`VF-3-01` closed `GATE_LLM_001` on 2026-08-11. Live authenticated Runware
+`modelSearch` resolved the canonical AIR `deepseek:v4@flash` to exactly one curated public result
+named `DeepSeek-V4-Flash-0731` (`version: 4`, architecture `deepseek_v4`), and all generation
+requests pinned that AIR rather than the mutable public alias. Native generation responses did not
+echo a model/version field, so the provider model-search record and its response hash remain part
+of the lock evidence. The final 40-scene/five-style strict-schema run passed every ID, role,
+literal-relevance, forbidden-output, identity, and cost criterion at `$0.00085053`; cumulative
+qualification spend including earlier recorded attempts was `$0.00243598`.
 
-Official source: [Runware DeepSeek-V4-Flash API](https://runware.ai/docs/models/deepseek-v4-flash).
+Official sources: [Runware DeepSeek-V4-Flash API](https://runware.ai/docs/models/deepseek-v4-flash), [Runware model search](https://runware.ai/docs/platform/model-search), and [Runware platform model identifiers](https://runware.ai/docs/platform/introduction).
 
 ## Runware Gemini 3.5 Flash
 

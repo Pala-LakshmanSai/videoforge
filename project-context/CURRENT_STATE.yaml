@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T02:16:26Z"
+updated_at: "2026-08-11T02:41:36Z"
 
 phase: phase_3_provider_operations_preflight
 implementation_authorized_in_current_task: false
-current_milestone: phase_3_deepseek_qualification
-current_task: VF-3-01
+current_milestone: phase_3_style_qualification
+current_task: VF-3-02
 current_wave: phase_3_evidence_first_activation
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -20,7 +20,7 @@ repository:
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
   verified_implementation_commit: "907e0e4908bddc1ec7b90232f043a10d9c7d5b2a"
   last_good_commit: "d16c2a9102125fa6e56d014fcf2f6241c878fa07"
-  working_tree_expected: "clean_at_vf_3_05_public_github_ci_handoff"
+  working_tree_expected: "clean_at_vf_3_01_deepseek_qualification_handoff"
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
     ajv: "8.20.0"
@@ -44,8 +44,8 @@ live_development:
   fixture_scenario: happy_generating
   provider_mode: fixture
   provider_calls_authorized: true
-  authorized_spend_usd: 1
-  provider_authority_scope: "VF-3-01 qualification runner only; application remains fixture"
+  authorized_spend_usd: 3
+  provider_authority_scope: "VF-3-02 qualification runner only; application remains fixture"
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -186,6 +186,11 @@ completed_tasks:
     implementation_commit: "907e0e4908bddc1ec7b90232f043a10d9c7d5b2a"
     evidence_commit: "d16c2a9102125fa6e56d014fcf2f6241c878fa07"
     evidence: "evidence/acceptance/VF-2-05/phase2-timing-convergence"
+  - task_id: VF-3-01
+    status: complete
+    summary: "Qualified Runware DeepSeek with live canonical AIR deepseek:v4@flash identity evidence and a 40-scene/five-style strict-schema pass; all exact IDs, roles, literal anchors, forbidden-output checks, and cost criteria passed while application provider mode remained fixture."
+    implementation_commit: "e157935"
+    evidence: "evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification"
   - task_id: VF-3-03
     status: complete
     summary: "Committed provider-neutral 25-50-scene batching, strict hostile-output validation, a deterministic fixture writer, locked full/split crop guidance, permanent output guardrails, normalized optional extras, and byte/hash-verifiable Mage prompt compilation with no provider activity."
@@ -231,7 +236,7 @@ standing_local_authority:
     - VF-2-05
 
 planned_provider_qualification:
-  status: active_runware_funding_user_reported_pending_live_balance_preflight
+  status: active_vf_3_02_runware_gemini_style_qualification
   authorized_by_user_at: "2026-08-10T17:07:12Z"
   aggregate_ceiling_usd: 25
   unused_budget_transfer_allowed: false
@@ -251,22 +256,27 @@ planned_provider_qualification:
     runware_account:
       status: created
       workspace_id: videoforgesujal
-      balance_usd: 0.05
-      balance_checked_at: "2026-08-10"
+      balance_usd: 20.05
+      balance_checked_at: "2026-08-11"
       user_reported_top_up_usd: 20
       user_reported_top_up_at: "2026-08-11"
-      live_balance_recheck_required: true
-      spend_usd: 0
+      live_balance_recheck_required: false
+      spend_usd: 0.00243598
       credential_location: "macOS Keychain service com.videoforge.runware.qualification"
       credential_value_recorded: false
     deepseek:
-      status: ready_for_bounded_preflight_after_live_balance_recheck
+      status: qualified_pass
       gate: GATE_LLM_001
       blocker: null
-      evidence: "evidence/gates/GATE_LLM_001/2026-08-10-runware-account-preflight"
-      external_spend_usd: 0
+      canonical_air: "deepseek:v4@flash"
+      provider_model_name: "DeepSeek-V4-Flash-0731"
+      evidence: "evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification"
+      external_spend_usd: 0.00243598
     gemini_style_analysis:
-      status: awaits_vf_3_01_result_and_separate_vf_3_02_selection
+      status: selected_ready_for_bounded_qualification
+      gate: GATE_STYLE_001
+      evidence: "evidence/gates/GATE_STYLE_001/2026-08-10-runware-gemini-style-qualification"
+      external_spend_usd: 0
 
 external_checkpoints:
   github_remote:
@@ -296,25 +306,26 @@ active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-3-01
-  milestone: phase_3_deepseek_qualification
-  status: ready_after_user_reported_runware_top_up
-  dependency_status: phase_2_sandbox_official_facts_and_exact_paid_brief_green_live_balance_recheck_pending
-  authorization_status: exact_runware_deepseek_authority_active_with_non_transferable_one_dollar_cap
-  read_profile: phase3_runware_deepseek_qualification
-  task_brief: tasks/VF-3-01.md
-  goal: "Close or truthfully fail GATE_LLM_001 with one bounded reproducible live Runware DeepSeek qualification."
+  task_id: VF-3-02
+  milestone: phase_3_style_qualification
+  status: ready
+  dependency_status: vf_3_01_account_credential_and_deepseek_handoff_green_vf_3_06_semantic_foundation_green
+  authorization_status: exact_runware_gemini_style_authority_active_with_non_transferable_three_dollar_cap
+  read_profile: phase3_runware_style_qualification
+  task_brief: tasks/VF-3-02.md
+  goal: "Qualify or truthfully fail Runware Gemini 3.5 Flash as the one-time Image Style analyzer."
   dependencies:
-    - "Green Phase 2 checkpoint and provider-sandbox harness"
-    - "Official Runware DeepSeek facts refreshed 2026-08-10"
-    - "Verify the user-reported Runware top-up through the bounded preflight before inference"
+    - "VF-3-01 canonical Runware account, credential, and GATE_LLM_001 handoff green"
+    - "VF-3-06 checksum-bound semantic style-analysis foundation green"
+    - "Official Runware Gemini, pricing, retention, terms, and privacy facts refreshed 2026-08-10"
   provider_calls_authorized: true
-  maximum_external_spend_usd: 1
+  maximum_external_spend_usd: 3
   provider_authority:
     provider: Runware
-    model_id: deepseek-v4-flash
-    expected_checkpoint: DeepSeek-V4-Flash-0731
-    cap_usd: 1
+    model_id: google-gemini-3-5-flash
+    sdk_air_alias: "google:gemini@3.5-flash"
+    expected_checkpoint: Gemini 3.5 Flash
+    cap_usd: 3
     non_transferable: true
     authorized_by_user_at: "2026-08-10T17:07:12Z"
   remote_or_cloud_mutations_authorized: false
@@ -324,31 +335,35 @@ recommended_next_task:
   application_code_changes_authorized: false
   live_route: null
   fixture_scenario: null
-  expected_evidence: "evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification"
+  expected_evidence: "evidence/gates/GATE_STYLE_001/2026-08-10-runware-gemini-style-qualification"
   required_handoff:
-    - "Verify balance without printing the Keychain credential"
-    - "Run at least 40 representative scenes across five owned/synthetic style blocks"
-    - "Record exact returned model identity, strict-schema coverage, hashes, latency, retries, and provider-reported usage/cost"
-    - "Close GATE_LLM_001 only if every exact criterion passes; otherwise preserve a truthful failed/open gate"
+    - "Use only seven owned/synthetic normalized analyzer fixtures; no private or Ranga references"
+    - "Prove strict schema, style/content separation, outlier and uncertainty behavior, alias binding, and semantic validation"
+    - "Record exact model/settings/request/response hashes, latency, retries, usage, cost, and standard-service privacy facts"
+    - "Keep first analysis below $0.08 and any reconciled retry total below $0.15"
+    - "Close GATE_STYLE_001 only if every exact criterion passes; otherwise preserve a truthful failed/open gate"
   safe_parallelism:
     maximum_lanes_including_integration: 1
     status: serial_live_provider_qualification
-    integration_owner: VF-3-01
+    integration_owner: VF-3-02
   prohibited_in_task:
-    - "Application integration, UI/renderer changes, Mage, Avatar, RunPod, staging, deployment, production enablement, full voiceover, private user assets, or unrelated refactors"
-    - "Any charge above the DeepSeek $1 sub-cap or transfer from another sub-cap"
+    - "Application/UI integration, ordinary-production style calls, Mage, direct Google fallback, Avatar, RunPod, staging, deployment, private/Ranga references, or unrelated refactors"
+    - "Any charge above the Gemini style $3 sub-cap or transfer from another sub-cap"
 
 latest_closed_handoff:
-  task_id: VF-3-05
+  task_id: VF-3-01
   status: complete
-  implementation_commit: "c23ab438b44e2b68751be341b0dac17a6fcc5dc1"
-  evidence_commit: "5f4ff39fdc7cb544aa076a2f1d88102f51d8ca21"
-  audit_result: "public_remote_exact_and_repository_owned_hosted_defects_closed_without_gate_weakening"
-  verification_result: "hosted_full_gate_38_installed_chrome_journeys_gitleaks_and_dependency_audit_pass"
-  external_actions: "public_github_remote_and_standard_hosted_ci_zero_provider_calls_zero_external_spend"
+  implementation_commit: "e157935"
+  evidence: "evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification"
+  audit_result: "canonical_runware_air_and_all_strict_schema_relevance_identity_and_cost_criteria_pass"
+  verification_result: "provider_sandbox_40_of_40_and_forced_uncached_full_gate_green"
+  external_actions: "authenticated_runware_model_search_and_15_bounded_text_inference_batches"
+  external_spend_usd: 0.00243598
 
 last_green:
   commands:
+    - "VF-3-01: live Runware modelSearch resolved deepseek:v4@flash to DeepSeek-V4-Flash-0731; the accepted five-batch run passed 40/40 exact scenes and every strict-schema, role, literal-anchor, forbidden-output, identity, and cost criterion."
+    - "VF-3-01: pnpm --filter @videoforge/provider-sandbox test passed 40/40 and TURBO_FORCE=true pnpm verify passed, including 38/38 installed-Chrome journeys."
     - "GitHub Actions run 31451226265: pnpm verify from a fresh full-history checkout"
     - "GitHub Actions run 31451226265: Gitleaks secret scan"
     - "GitHub Actions run 31451226265: pnpm audit --audit-level high"
@@ -445,7 +460,6 @@ blocking_gates_for_production:
   - GATE_AVATAR_003
   - GATE_IMAGE_001
   - GATE_IMAGE_002
-  - GATE_LLM_001
   - GATE_STYLE_001
   - GATE_STYLE_002
   - GATE_FALLBACK_001
@@ -459,7 +473,7 @@ known_incomplete_boundaries:
   - "Provider-free Auth plus private-artifact Hono composition is complete at ffceb6319ff85f7207619df7e0ecd41d20b341d0; it remains deliberately unmounted from fixture/local production-like entrypoints, and its application surface cannot access the direct-transfer facet."
   - "Durable mock restart/reconciliation/cancellation convergence is complete at dc86938972e776c8479637f2fb3ca9706999eed4; real Cloudflare Workflow and multi-session Neon behavior remain separately authorized staging work."
   - "The runtime-neutral Hono seam and local Workerd parity are complete, but no Worker is deployed and production-like modes deliberately fail closed until separately authorized staging bindings exist."
-  - "No production GPU/execution profile is selectable; all provider/model/cost gates remain open. AvatarForcing download, paid qualification, and commercial use are additionally blocked by contradictory official license artifacts in GATE_AVATAR_003."
+  - "No production GPU/execution profile is selectable. GATE_LLM_001 is closed, but application DeepSeek integration is not implemented; all remaining provider/image/avatar/style/fallback/GPU/RunPod/cost gates stay open. AvatarForcing download, paid qualification, and commercial use are additionally blocked by contradictory official license artifacts in GATE_AVATAR_003."
   - "The repository is publicly backed up at Pala-LakshmanSai/videoforge by explicit user decision. Hosted GitHub Actions is green on c23ab438 with the full gate, 38 installed-Chrome journeys, Gitleaks, and dependency audit; this proves CI, not deployment or production readiness."
   - "Live Better Auth/Google installation and atomic invitation-membership materialization remain staging work; the committed descriptor truthfully reports PENDING_STAGING."
   - "VF-1-08 provides a local scheduler-invokable metadata snapshot/restore primitive, not a production schedule, encrypted off-machine backup store, cloud backup integration, or private-media backup."
@@ -467,7 +481,7 @@ known_incomplete_boundaries:
   - "VF-2-03 persists provider-free deterministic timeline bytes and lineage through local PGlite/content-store boundaries; it does not activate a provider asset lane, cloud database/object store, deployment, or production scheduler."
   - "VF-2-04 exposes provider-free persisted timing/timeline truth through fixture/local UI adapters; it does not add a timeline editor, provider asset generation, cloud persistence, or deployment."
   - "VF-2-05 completes strict local Phase 2 restart/restore and selected-span convergence; the runtime-state file and local content store are not a production Neon/R2/Workflow deployment or an off-machine recovery claim."
-  - "Exact briefs exist for bounded Runware DeepSeek/Gemini qualification and the RunPod account preflight only. No model/GPU creation or Phase 3 application-provider integration brief is authority until its gate evidence is green."
+  - "GATE_LLM_001 is qualified but no Phase 3 application-provider integration brief is selected or authorized. The exact selected brief is bounded Runware Gemini style qualification; no model/GPU creation follows from it."
 
 known_non_blocking_devex: []
 
@@ -483,17 +497,17 @@ next_tasks:
   - "Wave 4 Phase 2 timeline UI complete: VF-2-04 persisted real-audio inspection, fail-closed invalidation truth, responsive focus behavior, and Cloudflare/Chrome parity are committed, audited, and green at $0"
   - "Wave 4 Phase 2 convergence complete: VF-2-05 exact selected-span audio, restart/restore, byte-equivalent metadata restore, real local Chrome playback/approval/download, and uncached gates are committed and green at $0"
   - "VF-3-00 complete: public provider facts were refreshed and the user authorized bounded provider/account, Git/CI, and isolated staging work; production remains deferred"
-  - "VF-3-01 prepared the bounded live runner and Runware account, then stopped at the provider's $5 account-funding prerequisite with $0 spent; the user reported a $20 top-up on 2026-08-11 and live balance verification is now the first preflight"
+  - "VF-3-01 complete: Runware wallet was verified at $20.05, canonical AIR deepseek:v4@flash resolved live to DeepSeek-V4-Flash-0731, the 40-scene/five-style strict-schema gate passed, and cumulative task spend was $0.00243598"
   - "VF-3-03 complete: deterministic prompt batching/validation/compilation is committed and green at $0"
   - "VF-3-04 complete: RunPod API access is secured and the account has zero Pods/endpoints/volumes/workers at $0"
   - "VF-3-05 complete: the public remote is exact by explicit user decision and hosted CI is green at c23ab438 after three repository-owned portability fixes"
   - "VF-3-06 complete: provider-free style semantic validation, fixture analysis, trusted profile assembly, full local gate, and evidence are committed at $0"
-  - "Current: execute only VF-3-01 through its bounded runner after a live balance preflight; DeepSeek spend may not exceed its non-transferable $1 cap"
-  - "Select VF-3-02 only after a green VF-3-01 handoff; never transfer another sub-cap"
+  - "Current: execute only VF-3-02 through its bounded runner and seven owned/synthetic style fixtures; Gemini style spend may not exceed its non-transferable $3 cap"
+  - "Keep ordinary production at zero style-analysis calls and select another brief only after a green or truthfully failed VF-3-02 handoff"
   - "Fastest safe implementation order after evidence and new authority: deterministic prompt compiler/fixture adapter, gated DeepSeek integration, parallel Mage image and AvatarForcing lanes plus disjoint custom-style lifecycle, FFmpeg real fast-path convergence, conditional fallbacks, fault/security/restore hardening, then controlled release"
 
 activation_handoff:
-  status: phase_2_preserved_phase_3_bounded_qualification_active
+  status: phase_2_preserved_vf_3_01_green_vf_3_02_bounded_qualification_active
   requested_by_user_at: "2026-08-10T17:07:12Z"
   reason: "The user authorized autonomous progress across provider accounts/qualification, Git/CI, and isolated staging while preserving exact caps, dependency gates, and deferred production; repository visibility was later explicitly changed to public."
   completed_and_preserved:
@@ -501,6 +515,7 @@ activation_handoff:
     - "VF-1-06 has all seven corrective audit findings closed; no paused corrective work remains."
     - "VF-2-05 implementation is 907e0e4908bddc1ec7b90232f043a10d9c7d5b2a and evidence is d16c2a9102125fa6e56d014fcf2f6241c878fa07."
     - "The exact provider-free regression gate, local slice, installed-Chrome fixture and real-local journeys, dependency audit, context/schema validation, secret scan, and diff check are green."
+    - "VF-3-01 closed GATE_LLM_001 with canonical Runware AIR identity plus a 40-scene/five-style strict-schema pass at $0.00243598 cumulative task spend."
   fully_sorted:
     - "Durable local relational/control-plane invariants, mock recovery, isolation, direct upload, Avatar version reuse, and deterministic metadata restore."
     - "Owned local ASR timing, canonical deterministic timeline, exact selected Avatar span audio, strict latest-attempt restart/restore, fail-closed inspection, and exact playback/download."
@@ -510,10 +525,10 @@ activation_handoff:
     - "At activation, no Git remote/push, hosted CI, cloud/account resource, OAuth app, Neon/R2/Workflow deployment, credential, model download, provider call, or spend had been used."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this CURRENT_STATE.yaml."
-    - "Load only the phase3_runware_deepseek_qualification profile and tasks/VF-3-01.md."
+    - "Load only the phase3_runware_style_qualification profile and tasks/VF-3-02.md."
     - "Confirm the recorded commits are ancestors of clean HEAD; do not reset or redo completed phases."
-    - "Confirm origin and the VF-3-05 hosted run remain exact, then use only the bounded Runware runner."
-    - "Verify the user-reported top-up without printing the credential; stop before inference if balance or cap accounting is ambiguous."
+    - "Confirm origin, the VF-3-05 hosted run, and the VF-3-01 gate evidence remain exact, then use only the bounded Gemini style runner."
+    - "Use only owned/synthetic normalized style references; never print the credential or expose signed URLs/image bytes."
   optimized_future_sequence:
     - "A. Refresh official time-sensitive provider/model/rate/retention/license facts read-only and classify all open gates."
     - "B. With explicit caps/credential authority, run bounded provider qualification through the committed sandbox and record pass/fail evidence."
@@ -527,14 +542,14 @@ activation_handoff:
 
 notes:
   - "This is a replace-in-place handoff snapshot, not a progress diary."
-  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-01 is the sole selected live-provider task."
+  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-02 is the sole selected live-provider task."
   - "RunPod account preflight is green: Keychain credential exists, balance is $10.00, hourly spend is $0, and Pods/endpoints/volumes/workers are all zero."
   - "Public GitHub remote is green and exact by explicit user decision. Hosted run 31451226265 passed the full gate on c23ab438."
   - "The accelerated approval through VF-2-05 is complete and exhausted. On 2026-08-10 the user separately activated the planned non-transferable $1/$3/$8/$8/$5 provider caps, Git/CI, and isolated staging authority; production remains deferred."
   - "Runware signup/login is authorized, but CAPTCHA, MFA, email verification, payment, or an unclear charge still stops unattended automation."
   - "AvatarForcing's $8 sub-cap must remain untouched until GATE_AVATAR_003 reconciles the official license contradiction."
-  - "Runware workspace videoforgesujal previously verified $0.05 balance and $0 spend. The user reported adding $20 on 2026-08-11; VF-3-01 must verify live balance before any bounded inference."
+  - "Runware workspace videoforgesujal verified $20.05 balance before VF-3-01. DeepSeek qualification spent $0.00243598 cumulatively and closed GATE_LLM_001; the same Keychain credential path is authorized only for selected VF-3-02."
   - "TypeScript is the sole RFC 8785/JCS authority; Python validates canonical schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output grammar remains three compositions, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
-  - "No public tunnel or LAN listener is active. VF-3-01 does not need to start the stable loopback fixture server."
+  - "No public tunnel or LAN listener is active. VF-3-02 does not need to start the stable loopback fixture server."
   - "The completed VF-1-01 baseline is preserved; VF-1-01A supersedes its overstated behavior/concurrency evidence with exact, bounded acceptance claims."
