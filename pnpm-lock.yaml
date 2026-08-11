@@ -213,6 +213,9 @@ importers:
       '@types/node':
         specifier: 22.18.0
         version: 22.18.0
+      '@videoforge/pipeline':
+        specifier: workspace:*
+        version: link:../pipeline
       eslint:
         specifier: 9.35.0
         version: 9.35.0(jiti@1.21.7)

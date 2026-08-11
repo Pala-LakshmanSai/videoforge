@@ -17,11 +17,13 @@
     "build": "tsc -p tsconfig.build.json",
     "lint": "eslint src tests --max-warnings 0",
     "qualify:deepseek": "node scripts/qualify-deepseek.mjs",
-    "test": "pnpm build && node --test tests/*.test.mjs",
+    "qualify:gemini-style": "pnpm --filter @videoforge/pipeline build && node scripts/qualify-gemini-style.mjs",
+    "test": "pnpm --filter @videoforge/pipeline build && pnpm build && node --test tests/*.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@types/node": "22.18.0",
+    "@videoforge/pipeline": "workspace:*",
     "eslint": "9.35.0",
     "typescript": "5.9.2"
   }

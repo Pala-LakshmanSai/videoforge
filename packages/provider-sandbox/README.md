@@ -40,6 +40,11 @@ The deterministic record encoder sorts object keys and serializes bigint micro-U
 base-10 strings before hashing. It is scoped to sandbox evidence and does not replace VideoForge's
 TypeScript RFC 8785 authority for canonical product contracts.
 
+The separately authorized `VF-3-01` and `VF-3-02` qualification scripts are explicit live-provider
+entrypoints. They remain outside application provider mode, read credentials only from their
+process environment, use owned/synthetic inputs, enforce task-local caps, and write redacted
+evidence. Importing this package or running its normal tests never calls a provider.
+
 ## Local checks
 
 ```bash
