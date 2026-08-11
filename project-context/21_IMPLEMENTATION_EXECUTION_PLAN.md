@@ -37,8 +37,9 @@ Waves 0–4 are complete. Wave 5 is blocked by the open provider/model/GPU/cost 
 Phase 3–8 implementation briefs, and absent provider/credential/spend authority. `VF-3-00` prepares
 one consolidated decision without changing application code or activating an external boundary.
 
-After Wave 0, request one external-mutation approval for a private GitHub remote and hosted CI;
-local Wave 1 does not wait, but no push occurs without approval. After VF-1-06, request isolated
+After Wave 0, request one external-mutation approval for a GitHub remote and hosted CI; repository
+visibility defaults private unless the user explicitly overrides it. Local Wave 1 does not wait,
+but no push occurs without approval. After VF-1-06, request isolated
 Cloudflare/Neon/R2/Google-OAuth staging authority; local VF-1-07/VF-1-08/Phase 2 do not wait, but no
 staging resource is created without approval.
 

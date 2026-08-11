@@ -1,22 +1,22 @@
-# VF-3-05 private GitHub/CI evidence
+# VF-3-05 GitHub/CI evidence
 
-Checked 2026-08-10 against local/remote commit
-`4a5acd3570f6217a45d9936aa80b7a3bf4fa7df4`.
+Checked 2026-08-11 against local/remote source commit
+`c23ab438b44e2b68751be341b0dac17a6fcc5dc1`.
 
 ## Result
 
-PARTIAL — private remote PASS; hosted CI BLOCKED by GitHub account billing.
+PASS — public remote exact; hosted CI green.
 
-- Created `Pala-LakshmanSai/videoforge` with `PRIVATE` visibility and default branch `main`.
-- Added the sole remote `origin`, pushed the complete existing history without rewrite, and set
-  local `main` to track `origin/main`.
-- Local `main` and `origin/main` matched exactly at the checked commit.
-- GitHub indexed the existing pinned `verify` workflow and triggered run `31415895273`.
-- The job started zero steps. GitHub's check annotation says the job cannot start because recent
-  account payments failed or the account spending limit must be increased.
-- No workflow/source defect ran, no gate was weakened, and no GitHub payment or spending limit was
-  changed. External spend remained `$0`.
-
-Hosted CI cannot be called green until the owner repairs GitHub billing/spending eligibility and the
-unchanged workflow completes. Local canonical verification remains green at the preceding VF-3-03
-checkpoint.
+- `Pala-LakshmanSai/videoforge` has `PUBLIC` visibility under the user's explicit 2026-08-11
+  override and default branch `main`.
+- `origin` is the sole remote. Local `main` and `origin/main` matched the checked source commit.
+- Hosted run [`31451226265`](https://github.com/Pala-LakshmanSai/videoforge/actions/runs/31451226265)
+  completed successfully: full `pnpm verify`, installed Chrome, Gitleaks, and dependency audit.
+- The first executable public run exposed missing FFmpeg. The next exposed shallow-history and
+  local-optional-asset validation defects, then Linux Chrome exposed font-dependent dock width.
+  Commits `ca8a528`, `15c5aad`, and `c23ab43` fixed those repository-owned causes without skipping
+  or weakening a gate.
+- The exact dock regression passed both installed-Chrome projects locally before the final hosted
+  run; fresh-clone context validation also downgraded only declared local-optional assets to
+  warnings.
+- No provider call, deployment, credential exposure, paid runner, or external spend occurred.

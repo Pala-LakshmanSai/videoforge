@@ -146,7 +146,9 @@ Only one production implementation per interface is needed now. The boundary exi
 - Never commit user style references, private avatar pixels/thumbnails/test clips, or generated private previews; automated fixtures must be owned, synthetic, or explicitly redistributable.
 - CI artifacts tie to an exact commit and digest.
 - Update this context pack in the same change as an approved decision.
-- Repository visibility defaults private. Optional third-party planning assets must not be required for builds/tests; use owned/synthetic fixtures.
+- Repository visibility defaults private unless the user explicitly overrides it. The current
+  repository is public by the user's 2026-08-11 decision. Optional third-party planning assets must
+  not be required for builds/tests; use owned/synthetic fixtures.
 - Keep `CURRENT_STATE.yaml` as the replace-in-place handoff snapshot and follow `19_IMPLEMENTATION_PLAYBOOK.md` for stable Chrome/dev-server behavior.
 
 ## Observability
