@@ -49,6 +49,7 @@ weights/
 node_modules/
 .pnpm-store/
 .tools/
+.videoforge/
 dist/
 dist-cloudflare/
 .turbo/
@@ -56,6 +57,7 @@ dist-cloudflare/
 .dev.vars*
 coverage/
 playwright-report/
+playwright-workerd-report/
 test-results/
 *.log
 .DS_Store

@@ -19,6 +19,7 @@
     "qualify:deepseek": "node scripts/qualify-deepseek.mjs",
     "qualify:gemini-style": "pnpm --filter @videoforge/pipeline build && node scripts/qualify-gemini-style.mjs",
     "test": "node --test tests/*.test.mjs",
+    "test:typescript": "node --test tests/*.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

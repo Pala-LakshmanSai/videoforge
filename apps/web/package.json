@@ -12,6 +12,7 @@
     "dev:raw:lan": "concurrently -k -s first -n web,api -c magenta,cyan \"vite --host 0.0.0.0 --port 4173 --strictPort\" \"tsx watch src/server.ts\"",
     "lint": "eslint src worker tests vite.config.ts vite.cloudflare.config.ts vitest.config.ts playwright.config.ts playwright.cloudflare.config.ts playwright.local.config.ts tailwind.config.ts postcss.config.cjs",
     "test": "vitest run",
+    "test:typescript": "vitest run",
     "test:cloudflare": "playwright test --config playwright.cloudflare.config.ts",
     "test:chrome": "playwright test",
     "test:local-chrome": "playwright test --config playwright.local.config.ts",

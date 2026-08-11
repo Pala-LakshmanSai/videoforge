@@ -15,6 +15,7 @@ remains the default; normal development makes no provider calls and authorizes n
 ```bash
 pnpm install --frozen-lockfile
 pnpm doctor
+pnpm doctor --json
 pnpm dev
 ```
 
@@ -29,6 +30,7 @@ Useful commands:
 
 ```bash
 pnpm dev:status
+pnpm dev:stop
 pnpm dev:open
 pnpm verify:fast
 pnpm verify
@@ -43,3 +45,12 @@ Workerd and installed-Chrome journeys, so it is never release evidence.
 `pnpm verify` is the canonical provider-free gate. It includes every `verify:fast` check, local
 Workerd parity, and all installed-Chrome journeys. Workerd runs alongside the port-free fast checks;
 installed Chrome runs afterward on the strict owned loopback port.
+
+`pnpm doctor --json` emits the same checks as stable redacted JSON for automation. Environment
+metadata contains names only. `pnpm dev:stop` is idempotent when stopped and signals a running
+server only after its ownership record, process tree, strict ports, mode, commit, and provider-free
+health identity all match; it never force-kills a foreign or ambiguous process.
+
+Hosted CI owns five independent lanes: static/contracts/security, TypeScript, Python, local
+Workerd, and installed Chrome. A sixth `required` job fails unless every lane succeeds. Browser
+lanes publish JUnit/failure evidence, and every execution lane publishes timing artifacts.

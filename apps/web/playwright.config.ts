@@ -1,4 +1,12 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices, type ReporterDescription } from "@playwright/test";
+
+const reporter: ReporterDescription[] = process.env.CI
+  ? [
+      ["list"],
+      ["junit", { outputFile: "test-results/chrome-junit.xml" }],
+      ["html", { open: "never", outputFolder: "playwright-report" }],
+    ]
+  : [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]];
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -6,7 +14,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 2,
   retries: 0,
-  reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
+  reporter,
   use: {
     baseURL: "http://localhost:4173",
     channel: "chrome",

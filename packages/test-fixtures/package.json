@@ -10,6 +10,7 @@
     "build": "tsc --noEmit",
     "lint": "eslint src --max-warnings=0",
     "test": "node --import tsx --test src/scenarios.test.ts src/local-short-slice.test.ts",
+    "test:typescript": "node --import tsx --test src/scenarios.test.ts src/local-short-slice.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

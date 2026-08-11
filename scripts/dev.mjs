@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 
+import { removeDevelopmentOwnership, writeDevelopmentOwnership } from "./dev-ownership.mjs";
 import {
   assertProviderFreeEnvironment,
   isLanListenerAddress,
@@ -117,11 +118,36 @@ const child = run("pnpm", ["--filter", "@videoforge/web", webScript], {
   },
 });
 
-for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.on(signal, () => child.kill(signal));
+try {
+  await writeDevelopmentOwnership({
+    repositoryRoot: process.cwd(),
+    supervisorPid: process.pid,
+    childPid: child.pid,
+    commit,
+    mode: requestedMode,
+    binding: requestedLan ? "lan" : "loopback",
+    ports: [4173, apiPort],
+    startedAt: new Date().toISOString(),
+  });
+} catch (error) {
+  child.kill("SIGTERM");
+  console.error(
+    `Could not record VideoForge development ownership: ${error instanceof Error ? error.message : String(error)}`,
+  );
+  process.exit(1);
 }
 
-child.on("exit", (code, signal) => {
+let stopRequested = false;
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.on(signal, () => {
+    stopRequested = true;
+    child.kill(signal);
+  });
+}
+
+child.on("exit", async (code, signal) => {
+  await removeDevelopmentOwnership(process.pid);
+  if (stopRequested) process.exit(0);
   if (signal) process.kill(process.pid, signal);
   process.exit(code ?? 1);
 });

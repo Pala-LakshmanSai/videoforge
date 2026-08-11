@@ -18,8 +18,10 @@ Implementation starts only when the user authorizes it.
 3. Add `.env.example` with names/placeholders only; real provider mode remains disabled.
 4. Implement these stable root commands before feature work:
    - `pnpm doctor` — verify pinned Node/pnpm/Python/FFmpeg versions, required fixture files, env-name completeness, port ownership, and local prerequisites without printing secrets or calling providers.
+   - `pnpm doctor --json` — emit the same exit-code-equivalent checks as deterministic `videoforge.doctor/v1` JSON. It exposes environment names and prerequisite/ownership facts only, never values.
    - `pnpm dev` — start or reuse the fixture web app on exactly `http://localhost:4173`; never silently choose another port. If an unrelated process owns the port, fail with its PID/process name and recovery guidance.
    - `pnpm dev:status` — query `GET /api/health` and report URL, PID/process owner, mode, commit, health, and active fixture without starting a duplicate server. The health response exposes no secrets.
+   - `pnpm dev:stop` — stop only the supervisor recorded by VideoForge after its process tree, strict ports, commit/mode, and provider-free health identity still match. Missing, stale, foreign, or ambiguous ownership never receives a signal or force-kill.
    - `pnpm dev:open` — open or focus the stable route in the user's real Chrome after the health check passes.
    - `pnpm test` — local unit/schema tests.
    - `pnpm python:sync` — use exactly `uv 0.8.13` and `uv.lock` to install the complete Python 3.12 contracts/worker workspace; no package may use a second installer workflow.

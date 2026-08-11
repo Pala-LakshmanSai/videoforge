@@ -2,6 +2,11 @@ import { access, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
 
 import { isLanListenerAddress, presentIntegrationSecretNames } from "./dev-policy.mjs";
+import { createDoctorReport } from "./doctor-report.mjs";
+import {
+  integrationEnvironmentMetadata,
+  integrationEnvironmentNames,
+} from "./environment-metadata.mjs";
 import { commandOutput, health, listeningProcess } from "./process.mjs";
 import { expectedUvVersion, resolveUv } from "./uv-tool.mjs";
 
@@ -10,24 +15,38 @@ const expected = {
   pnpm: "11.5.2",
 };
 const checks = [];
-
-function record(name, ok, detail) {
-  checks.push({ name, ok, detail });
+const arguments_ = process.argv.slice(2);
+const json = arguments_.length === 1 && arguments_[0] === "--json";
+if (arguments_.length > (json ? 1 : 0)) {
+  console.error("Usage: pnpm doctor [--json]");
+  process.exit(1);
 }
 
-record("Node", process.version === expected.node, `${process.version}; expected ${expected.node}`);
+function record(id, category, name, ok, detail) {
+  checks.push({ id, category, name, ok, detail });
+}
+
+record(
+  "version.node",
+  "version",
+  "Node",
+  process.version === expected.node,
+  `${process.version}; expected ${expected.node}`,
+);
 const pnpmVersion = await commandOutput("pnpm", ["--version"]);
 record(
+  "version.pnpm",
+  "version",
   "pnpm",
   pnpmVersion === expected.pnpm,
   `${pnpmVersion ?? "missing"}; expected ${expected.pnpm}`,
 );
 const gitVersion = await commandOutput("git", ["--version"]);
-record("Git", Boolean(gitVersion), gitVersion ?? "missing");
+record("prerequisite.git", "prerequisite", "Git", Boolean(gitVersion), gitVersion ?? "missing");
 const rubyVersion = await commandOutput("ruby", ["--version"]);
-record("Ruby", Boolean(rubyVersion), rubyVersion ?? "missing");
+record("prerequisite.ruby", "prerequisite", "Ruby", Boolean(rubyVersion), rubyVersion ?? "missing");
 const lsofPath = await commandOutput("which", ["lsof"]);
-record("lsof", Boolean(lsofPath), lsofPath ?? "missing");
+record("prerequisite.lsof", "prerequisite", "lsof", Boolean(lsofPath), lsofPath ?? "missing");
 
 const chromeCandidates = [
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -45,6 +64,8 @@ for (const candidate of chromeCandidates) {
   }
 }
 record(
+  "prerequisite.chrome",
+  "prerequisite",
   "Google Chrome",
   Boolean(chromeExecutable),
   chromeExecutable ? `${chromeVersion}; ${chromeExecutable}` : "missing branded Google Chrome",
@@ -54,25 +75,43 @@ try {
   const uv = resolveUv();
   const uvVersion = await commandOutput(uv, ["--version"]);
   const normalizedUvVersion = uvVersion?.split(/\s+/u).slice(0, 2).join(" ");
-  record("uv", normalizedUvVersion === expectedUvVersion, `${uvVersion ?? "missing"}; ${uv}`);
+  record(
+    "version.uv",
+    "version",
+    "uv",
+    normalizedUvVersion === expectedUvVersion,
+    `${uvVersion ?? "missing"}; ${uv}`,
+  );
 } catch (error) {
-  record("uv", false, error instanceof Error ? error.message : String(error));
+  record(
+    "version.uv",
+    "version",
+    "uv",
+    false,
+    error instanceof Error ? error.message : String(error),
+  );
 }
 
 const pythonVersion = await commandOutput("python3.12", ["--version"]);
 record(
+  "version.python",
+  "version",
   "Python",
   pythonVersion?.startsWith("Python 3.12.") ?? false,
   `${pythonVersion ?? "missing"}; expected Python 3.12.x`,
 );
 const ffmpegVersion = await commandOutput("ffmpeg", ["-version"]);
 record(
+  "version.ffmpeg",
+  "version",
   "FFmpeg",
   ffmpegVersion?.startsWith("ffmpeg version 8.1.1") ?? false,
   `${ffmpegVersion?.split("\n")[0] ?? "missing"}; expected 8.1.1`,
 );
 const ffprobeVersion = await commandOutput("ffprobe", ["-version"]);
 record(
+  "version.ffprobe",
+  "version",
   "FFprobe",
   ffprobeVersion?.startsWith("ffprobe version 8.1.1") ?? false,
   `${ffprobeVersion?.split("\n")[0] ?? "missing"}; expected 8.1.1`,
@@ -85,36 +124,32 @@ for (const file of [
 ]) {
   try {
     await access(file, constants.R_OK);
-    record(file, true, "present");
+    record(`file.${file}`, "prerequisite", file, true, "present");
   } catch {
-    record(file, false, "missing");
+    record(`file.${file}`, "prerequisite", file, false, "missing");
   }
 }
 
 const envExample = await readFile(".env.example", "utf8");
 const credentialNames = presentIntegrationSecretNames(process.env);
 record(
+  "environment.provider_free",
+  "provider_free",
   "Provider-free environment",
   credentialNames.length === 0,
   credentialNames.length === 0
     ? "no credential-bearing integration variables present"
     : `unset before development: ${credentialNames.join(", ")}`,
 );
-const expectedEnvironmentNames = [
-  "RUNPOD_API_KEY",
-  "RUNWARE_API_KEY",
-  "DATABASE_URL",
-  "R2_ACCOUNT_ID",
-  "R2_ACCESS_KEY_ID",
-  "R2_SECRET_ACCESS_KEY",
-  "GOOGLE_CLIENT_ID",
-  "GOOGLE_CLIENT_SECRET",
-  "BETTER_AUTH_SECRET",
-];
+const expectedEnvironmentNames = integrationEnvironmentMetadata
+  .filter(({ placeholderRequired }) => placeholderRequired)
+  .map(({ name }) => name);
 const missingEnvironmentNames = expectedEnvironmentNames.filter(
   (name) => !new RegExp(`^${name}=`, "mu").test(envExample),
 );
 record(
+  "environment.names",
+  "environment",
   "Environment names",
   missingEnvironmentNames.length === 0,
   missingEnvironmentNames.length === 0
@@ -141,10 +176,12 @@ const pairedServers =
   webStatus.commit === apiStatus.commit;
 
 if (!webOwner && !apiOwner) {
-  record("Port 4173", true, "free");
-  record("Port 4174", true, "free");
+  record("port.4173", "port", "Port 4173", true, "free");
+  record("port.4174", "port", "Port 4174", true, "free");
 } else {
   record(
+    "port.4173",
+    "ownership",
     "Port 4173",
     pairedServers && !(webStatus.mode === "local" && isLanListenerAddress(webOwner.address)),
     webOwner
@@ -152,6 +189,8 @@ if (!webOwner && !apiOwner) {
       : "free while an orphaned API listener remains on 4174",
   );
   record(
+    "port.4174",
+    "ownership",
     "Port 4174",
     pairedServers,
     apiOwner
@@ -160,8 +199,13 @@ if (!webOwner && !apiOwner) {
   );
 }
 
-for (const check of checks) {
-  console.log(`${check.ok ? "PASS" : "FAIL"} ${check.name}: ${check.detail}`);
+const report = createDoctorReport(checks, integrationEnvironmentNames);
+if (json) {
+  console.log(JSON.stringify(report));
+} else {
+  for (const check of checks) {
+    console.log(`${check.ok ? "PASS" : "FAIL"} ${check.name}: ${check.detail}`);
+  }
 }
 
-if (checks.some((check) => !check.ok)) process.exit(1);
+if (!report.ok) process.exit(1);

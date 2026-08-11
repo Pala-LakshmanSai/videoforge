@@ -1,23 +1,7 @@
-const SECRET_ENVIRONMENT_NAMES = Object.freeze([
-  "BETTER_AUTH_SECRET",
-  "CLOUDFLARE_API_TOKEN",
-  "DATABASE_URL",
-  "GOOGLE_CLIENT_SECRET",
-  "NEON_DATABASE_URL",
-  "R2_ACCESS_KEY_ID",
-  "R2_SECRET_ACCESS_KEY",
-  "RUNPOD_API_KEY",
-  "RUNWARE_API_KEY",
-]);
-
-const INTEGRATION_ENVIRONMENT_NAMES = Object.freeze([
-  ...SECRET_ENVIRONMENT_NAMES,
-  "GOOGLE_CLIENT_ID",
-  "R2_ACCOUNT_ID",
-]);
+import { integrationEnvironmentNames, secretEnvironmentNames } from "./environment-metadata.mjs";
 
 export function presentIntegrationSecretNames(environment = process.env) {
-  return SECRET_ENVIRONMENT_NAMES.filter((name) => {
+  return secretEnvironmentNames.filter((name) => {
     const value = environment[name];
     return typeof value === "string" && value.trim().length > 0;
   });
@@ -33,7 +17,7 @@ export function assertProviderFreeEnvironment(environment = process.env) {
 
 export function sanitizedDevelopmentEnvironment(environment = process.env) {
   const sanitized = { ...environment };
-  for (const name of INTEGRATION_ENVIRONMENT_NAMES) delete sanitized[name];
+  for (const name of integrationEnvironmentNames) delete sanitized[name];
   return sanitized;
 }
 
@@ -59,4 +43,4 @@ export function developmentOpenRoute(status, requestedRoute) {
   return `${resolved.pathname}${resolved.search}${resolved.hash}`;
 }
 
-export const integrationEnvironmentNames = INTEGRATION_ENVIRONMENT_NAMES;
+export { integrationEnvironmentNames };

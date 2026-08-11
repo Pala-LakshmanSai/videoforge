@@ -31,6 +31,7 @@
     "test": "pnpm test:ts && pnpm test:python",
     "test:python": "node scripts/run-python-tests.mjs",
     "test:ts": "node --test tests/*.test.mjs",
+    "test:typescript": "node --test tests/*.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.type-tests.json"
   },
   "dependencies": {

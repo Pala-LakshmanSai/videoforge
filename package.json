@@ -10,6 +10,9 @@
   "scripts": {
     "build": "turbo run build",
     "build:check-generated": "node scripts/build-check-generated.mjs",
+    "ci:python": "pnpm python:lint && pnpm --filter @videoforge/contracts test:python && pnpm test:workers",
+    "ci:static": "pnpm format:check && pnpm verify:graph && pnpm contracts:check && pnpm context:validate && pnpm secret:scan && pnpm audit:dependencies",
+    "ci:typescript": "pnpm lint:root && turbo run build lint typecheck test:typescript && pnpm test:scripts && pnpm build:check-generated",
     "context:validate": "node scripts/context-validate.mjs",
     "contracts:sync": "pnpm --filter @videoforge/contracts sync",
     "contracts:check": "pnpm --filter @videoforge/contracts sync:check",
@@ -19,6 +22,7 @@
     "dev:local": "node scripts/dev.mjs --mode=local",
     "dev:open": "node scripts/dev-open.mjs",
     "dev:status": "node scripts/dev-status.mjs",
+    "dev:stop": "node scripts/dev-stop.mjs",
     "db:check": "turbo run test --filter=@videoforge/control-plane",
     "doctor": "node scripts/doctor.mjs",
     "format": "prettier --write .",

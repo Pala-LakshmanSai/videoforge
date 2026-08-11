@@ -23,6 +23,12 @@
       "cache": true,
       "persistent": false
     },
+    "test:typescript": {
+      "dependsOn": ["build"],
+      "outputs": [],
+      "cache": true,
+      "persistent": false
+    },
     "typecheck": {
       "dependsOn": ["^build"],
       "outputs": [],
