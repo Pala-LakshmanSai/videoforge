@@ -2,7 +2,7 @@
 
 Status: see `CURRENT_STATE.yaml` (Phase 2 preserved; bounded Phase 3 qualification active)
 Context schema: `1.5`  
-Last updated: `2026-08-10`
+Last updated: `2026-08-11`
 
 This folder is the durable project brain for new AI chats. It records what is approved, what is prohibited, what must still be benchmarked, and how to develop the product. Do not load every file blindly; use the read profiles in `MANIFEST.yaml`.
 
@@ -31,11 +31,14 @@ is complete at implementation commit `36bf1ae`, with additive migration, constra
 executor, repository-contract, and adversarial regression hardening recorded under
 `evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening`. The user-approved accelerated
 provider-free authority through `VF-2-05` is complete and exhausted. `VF-3-00` refreshed official
-facts on 2026-08-10. The user then authorized autonomous provider/account, private Git/hosted CI,
-and isolated staging work while preserving the existing non-transferable provider caps and keeping
-production deferred. Runware account preflight then stopped before inference or spend because the
-provider requires a paid invoice or at least `$5` balance. `CURRENT_STATE.yaml` now selects exact
-provider-free brief `VF-3-03`; no adjacent brief or high-level roadmap item is authority.
+facts on 2026-08-10. The user then authorized autonomous provider/account, Git/hosted CI, and
+isolated staging work while preserving the existing non-transferable provider caps and keeping
+production deferred. The user explicitly made the GitHub repository public; hosted CI is green on
+`c23ab438` with full verification, 38 installed-Chrome journeys, Gitleaks, and dependency audit.
+Runware account preflight had stopped before inference or spend because the provider required at
+least `$5` balance; the user reported adding `$20` on 2026-08-11. `CURRENT_STATE.yaml` now selects
+exact bounded brief `VF-3-01`, beginning with live balance verification; no adjacent brief or
+high-level roadmap item is authority.
 
 The refresh found a hard AvatarForcing licensing contradiction: the official repository README
 claims Apache-2.0, its committed `LICENSE.txt` is academic-only/non-commercial and prohibits

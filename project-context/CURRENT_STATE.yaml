@@ -1,17 +1,17 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-10T18:03:14Z"
+updated_at: "2026-08-11T02:16:26Z"
 
 phase: phase_3_provider_operations_preflight
 implementation_authorized_in_current_task: false
-current_milestone: phase_3_private_remote_ci
-current_task: VF-3-05
+current_milestone: phase_3_deepseek_qualification
+current_task: VF-3-01
 current_wave: phase_3_evidence_first_activation
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
   initialized: true
-  expected_visibility: private
+  expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
   branch: main
@@ -20,7 +20,7 @@ repository:
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
   verified_implementation_commit: "907e0e4908bddc1ec7b90232f043a10d9c7d5b2a"
   last_good_commit: "d16c2a9102125fa6e56d014fcf2f6241c878fa07"
-  working_tree_expected: "clean_at_vf_3_06_style_semantic_evidence_handoff"
+  working_tree_expected: "clean_at_vf_3_05_public_github_ci_handoff"
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
     ajv: "8.20.0"
@@ -43,8 +43,9 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
+  provider_calls_authorized: true
+  authorized_spend_usd: 1
+  provider_authority_scope: "VF-3-01 qualification runner only; application remains fixture"
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -230,7 +231,7 @@ standing_local_authority:
     - VF-2-05
 
 planned_provider_qualification:
-  status: active_but_runware_lanes_blocked_on_five_dollar_account_prerequisite
+  status: active_runware_funding_user_reported_pending_live_balance_preflight
   authorized_by_user_at: "2026-08-10T17:07:12Z"
   aggregate_ceiling_usd: 25
   unused_budget_transfer_allowed: false
@@ -251,30 +252,36 @@ planned_provider_qualification:
       status: created
       workspace_id: videoforgesujal
       balance_usd: 0.05
+      balance_checked_at: "2026-08-10"
+      user_reported_top_up_usd: 20
+      user_reported_top_up_at: "2026-08-11"
+      live_balance_recheck_required: true
       spend_usd: 0
       credential_location: "macOS Keychain service com.videoforge.runware.qualification"
       credential_value_recorded: false
     deepseek:
-      status: blocked_before_inference
+      status: ready_for_bounded_preflight_after_live_balance_recheck
       gate: GATE_LLM_001
-      blocker: "Runware requires a paid invoice or at least $5 credit for external inference"
+      blocker: null
       evidence: "evidence/gates/GATE_LLM_001/2026-08-10-runware-account-preflight"
       external_spend_usd: 0
     gemini_style_analysis:
-      status: blocked_by_same_runware_account_prerequisite
+      status: awaits_vf_3_01_result_and_separate_vf_3_02_selection
 
 external_checkpoints:
-  private_github_remote:
-    status: private_remote_green_hosted_ci_blocked_by_github_account_billing
+  github_remote:
+    status: public_remote_and_hosted_ci_green
     timing: immediately_after_wave_0_context_commit
     local_work_may_continue_while_pending: true
     repository: "Pala-LakshmanSai/videoforge"
-    visibility: private
+    visibility: public
     remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
     default_branch: main
-    pushed_commit: "4a5acd3570f6217a45d9936aa80b7a3bf4fa7df4"
-    hosted_ci_run: "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/31415895273"
-    blocker: "GitHub refused to start any job step because recent account payments failed or the Actions spending limit must be increased."
+    pushed_commit: "c23ab438b44e2b68751be341b0dac17a6fcc5dc1"
+    hosted_ci_run: "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/31451226265"
+    hosted_ci_conclusion: success
+    evidence: "evidence/acceptance/VF-3-05/private-github-ci"
+    blocker: null
     external_spend_usd: 0
   isolated_staging:
     status: authorized_pending_dependency_ready_execution
@@ -286,59 +293,65 @@ external_checkpoints:
 
 active_ownership: []
 
-blocked_tasks:
-  - task_id: VF-3-05
-    status: blocked_external_after_private_remote_success
-    completed_scope: "Private Pala-LakshmanSai/videoforge repository, exact main push, upstream, visibility/default-branch proof"
-    blocker: "GitHub refuses to start hosted Actions because recent account payments failed or the Actions spending limit must be increased."
-    evidence: "evidence/acceptance/VF-3-05/private-github-ci"
-    retry_rule: "Repair GitHub account billing/Actions eligibility, then rerun the unchanged verify workflow; do not weaken gates."
-    local_disjoint_work_allowed: true
+blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-3-05
-  milestone: phase_3_private_remote_ci
-  status: blocked_external_after_private_remote_success
-  dependency_status: private_remote_exact_but_github_refuses_to_start_hosted_jobs
-  authorization_status: exact_remote_ci_authority_active_but_no_billing_change_authority_assumed
-  read_profile: phase3_private_remote_ci
-  task_brief: tasks/VF-3-05.md
-  goal: "Rerun the unchanged hosted verify workflow after GitHub Actions billing eligibility is repaired."
+  task_id: VF-3-01
+  milestone: phase_3_deepseek_qualification
+  status: ready_after_user_reported_runware_top_up
+  dependency_status: phase_2_sandbox_official_facts_and_exact_paid_brief_green_live_balance_recheck_pending
+  authorization_status: exact_runware_deepseek_authority_active_with_non_transferable_one_dollar_cap
+  read_profile: phase3_runware_deepseek_qualification
+  task_brief: tasks/VF-3-01.md
+  goal: "Close or truthfully fail GATE_LLM_001 with one bounded reproducible live Runware DeepSeek qualification."
   dependencies:
-    - "GitHub account payments/spending eligibility must permit hosted jobs to start"
-    - "Existing .github/workflows/ci.yml remains unchanged and exact"
-  provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: true
-  credentials_or_model_downloads_authorized: false
+    - "Green Phase 2 checkpoint and provider-sandbox harness"
+    - "Official Runware DeepSeek facts refreshed 2026-08-10"
+    - "Verify the user-reported Runware top-up through the bounded preflight before inference"
+  provider_calls_authorized: true
+  maximum_external_spend_usd: 1
+  provider_authority:
+    provider: Runware
+    model_id: deepseek-v4-flash
+    expected_checkpoint: DeepSeek-V4-Flash-0731
+    cap_usd: 1
+    non_transferable: true
+    authorized_by_user_at: "2026-08-10T17:07:12Z"
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: true
+  model_downloads_authorized: false
+  qualification_harness_changes_authorized: true
   application_code_changes_authorized: false
   live_route: null
   fixture_scenario: null
-  expected_evidence: "evidence/acceptance/VF-3-05/private-github-ci"
+  expected_evidence: "evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification"
   required_handoff:
-    - "Repair GitHub account billing/Actions eligibility outside repository source"
-    - "Rerun the unchanged verify workflow and observe it through terminal state"
-    - "Record green hosted evidence without weakening any gate"
+    - "Verify balance without printing the Keychain credential"
+    - "Run at least 40 representative scenes across five owned/synthetic style blocks"
+    - "Record exact returned model identity, strict-schema coverage, hashes, latency, retries, and provider-reported usage/cost"
+    - "Close GATE_LLM_001 only if every exact criterion passes; otherwise preserve a truthful failed/open gate"
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    status: external_billing_blocked
-    integration_owner: VF-3-05
+    status: serial_live_provider_qualification
+    integration_owner: VF-3-01
   prohibited_in_task:
-    - "Any workflow weakening, provider call/spend, deployment, production change, or source change unrelated to a repository-owned hosted failure"
-    - "Any force push, history rewrite, visibility change, release, tag, or package publication"
+    - "Application integration, UI/renderer changes, Mage, Avatar, RunPod, staging, deployment, production enablement, full voiceover, private user assets, or unrelated refactors"
+    - "Any charge above the DeepSeek $1 sub-cap or transfer from another sub-cap"
 
 latest_closed_handoff:
-  task_id: VF-3-06
+  task_id: VF-3-05
   status: complete
-  implementation_commit: "68577e18916ab70b3390cc93d804a82bc77dab43"
-  evidence_commit: "88ef11f52986f6da773389cd0edd8aee725dab9a"
-  audit_result: "strict_style_semantic_and_content_separation_foundation_green"
-  verification_result: "55_pipeline_tests_full_local_gate_and_38_installed_chrome_journeys_pass"
-  external_actions: "none_provider_calls_zero_external_spend_zero"
+  implementation_commit: "c23ab438b44e2b68751be341b0dac17a6fcc5dc1"
+  evidence_commit: "5f4ff39fdc7cb544aa076a2f1d88102f51d8ca21"
+  audit_result: "public_remote_exact_and_repository_owned_hosted_defects_closed_without_gate_weakening"
+  verification_result: "hosted_full_gate_38_installed_chrome_journeys_gitleaks_and_dependency_audit_pass"
+  external_actions: "public_github_remote_and_standard_hosted_ci_zero_provider_calls_zero_external_spend"
 
 last_green:
   commands:
-    - "TURBO_FORCE=true pnpm verify"
+    - "GitHub Actions run 31451226265: pnpm verify from a fresh full-history checkout"
+    - "GitHub Actions run 31451226265: Gitleaks secret scan"
+    - "GitHub Actions run 31451226265: pnpm audit --audit-level high"
     - "pnpm --filter @videoforge/pipeline lint"
     - "pnpm --filter @videoforge/pipeline typecheck"
     - "pnpm --filter @videoforge/pipeline test"
@@ -360,9 +373,9 @@ last_green:
     - "pnpm context:validate"
     - "pnpm secret:scan"
     - "git diff --check"
-  checked_at: "2026-08-10T18:03:14Z"
+  checked_at: "2026-08-11T02:14:53Z"
   result: pass
-  verified_commit: "68577e18916ab70b3390cc93d804a82bc77dab43"
+  verified_commit: "c23ab438b44e2b68751be341b0dac17a6fcc5dc1"
   evidence:
     - "evidence/acceptance/VF-1-02/runtime-neutral-hono"
     - "evidence/acceptance/VF-0D-01/provider-sandbox-harness"
@@ -379,6 +392,7 @@ last_green:
     - "evidence/acceptance/VF-2-05/phase2-timing-convergence"
     - "evidence/acceptance/VF-3-03/deterministic-prompt-compiler"
     - "evidence/acceptance/VF-3-06/style-semantic-foundation"
+    - "evidence/acceptance/VF-3-05/private-github-ci"
   counts:
     control_plane_pglite_tests: 131
     repository_contract_behaviors: 13
@@ -446,7 +460,7 @@ known_incomplete_boundaries:
   - "Durable mock restart/reconciliation/cancellation convergence is complete at dc86938972e776c8479637f2fb3ca9706999eed4; real Cloudflare Workflow and multi-session Neon behavior remain separately authorized staging work."
   - "The runtime-neutral Hono seam and local Workerd parity are complete, but no Worker is deployed and production-like modes deliberately fail closed until separately authorized staging bindings exist."
   - "No production GPU/execution profile is selectable; all provider/model/cost gates remain open. AvatarForcing download, paid qualification, and commercial use are additionally blocked by contradictory official license artifacts in GATE_AVATAR_003."
-  - "The repository is privately backed up at Pala-LakshmanSai/videoforge with exact main history. Hosted GitHub Actions indexed the workflow but refused to start any step because the account has failed payments or an insufficient Actions spending limit; hosted CI remains unproven."
+  - "The repository is publicly backed up at Pala-LakshmanSai/videoforge by explicit user decision. Hosted GitHub Actions is green on c23ab438 with the full gate, 38 installed-Chrome journeys, Gitleaks, and dependency audit; this proves CI, not deployment or production readiness."
   - "Live Better Auth/Google installation and atomic invitation-membership materialization remain staging work; the committed descriptor truthfully reports PENDING_STAGING."
   - "VF-1-08 provides a local scheduler-invokable metadata snapshot/restore primitive, not a production schedule, encrypted off-machine backup store, cloud backup integration, or private-media backup."
   - "VF-2-02 persists provider-free local transcript and selected span-audio lineage; it does not install/download a model, activate a paid ASR/provider path, or provision production media workers."
@@ -468,20 +482,20 @@ next_tasks:
   - "Wave 4 Phase 2 deterministic timeline complete: VF-2-03 canonical persistence, exact resolution/restore, silence coverage, and property fixtures are committed, audited, and green at $0"
   - "Wave 4 Phase 2 timeline UI complete: VF-2-04 persisted real-audio inspection, fail-closed invalidation truth, responsive focus behavior, and Cloudflare/Chrome parity are committed, audited, and green at $0"
   - "Wave 4 Phase 2 convergence complete: VF-2-05 exact selected-span audio, restart/restore, byte-equivalent metadata restore, real local Chrome playback/approval/download, and uncached gates are committed and green at $0"
-  - "VF-3-00 complete: public provider facts were refreshed and the user authorized bounded provider/account, private Git/CI, and isolated staging work; production remains deferred"
-  - "VF-3-01 prepared the bounded live runner and Runware account, then stopped at the provider's $5 account-funding prerequisite with $0 spent and GATE_LLM_001 open"
+  - "VF-3-00 complete: public provider facts were refreshed and the user authorized bounded provider/account, Git/CI, and isolated staging work; production remains deferred"
+  - "VF-3-01 prepared the bounded live runner and Runware account, then stopped at the provider's $5 account-funding prerequisite with $0 spent; the user reported a $20 top-up on 2026-08-11 and live balance verification is now the first preflight"
   - "VF-3-03 complete: deterministic prompt batching/validation/compilation is committed and green at $0"
   - "VF-3-04 complete: RunPod API access is secured and the account has zero Pods/endpoints/volumes/workers at $0"
-  - "VF-3-05 partial: private remote is exact; hosted CI remains externally blocked before steps by GitHub billing eligibility"
+  - "VF-3-05 complete: the public remote is exact by explicit user decision and hosted CI is green at c23ab438 after three repository-owned portability fixes"
   - "VF-3-06 complete: provider-free style semantic validation, fixture analysis, trusted profile assembly, full local gate, and evidence are committed at $0"
-  - "Current: resume only VF-3-05 after GitHub billing permits hosted Actions jobs to start"
-  - "Resume VF-3-01/VF-3-02 only after the Runware funding prerequisite has exact authority; never transfer another sub-cap"
+  - "Current: execute only VF-3-01 through its bounded runner after a live balance preflight; DeepSeek spend may not exceed its non-transferable $1 cap"
+  - "Select VF-3-02 only after a green VF-3-01 handoff; never transfer another sub-cap"
   - "Fastest safe implementation order after evidence and new authority: deterministic prompt compiler/fixture adapter, gated DeepSeek integration, parallel Mage image and AvatarForcing lanes plus disjoint custom-style lifecycle, FFmpeg real fast-path convergence, conditional fallbacks, fault/security/restore hardening, then controlled release"
 
 activation_handoff:
   status: phase_2_preserved_phase_3_bounded_qualification_active
   requested_by_user_at: "2026-08-10T17:07:12Z"
-  reason: "The user authorized autonomous progress across provider accounts/qualification, private Git/CI, and isolated staging while preserving exact caps, dependency gates, and deferred production."
+  reason: "The user authorized autonomous progress across provider accounts/qualification, Git/CI, and isolated staging while preserving exact caps, dependency gates, and deferred production; repository visibility was later explicitly changed to public."
   completed_and_preserved:
     - "Phase 0A/0B/0C, Phase 1, and Phase 2 are fully committed; accepted UI/render/output decisions remain unchanged."
     - "VF-1-06 has all seven corrective audit findings closed; no paused corrective work remains."
@@ -496,10 +510,10 @@ activation_handoff:
     - "At activation, no Git remote/push, hosted CI, cloud/account resource, OAuth app, Neon/R2/Workflow deployment, credential, model download, provider call, or spend had been used."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this CURRENT_STATE.yaml."
-    - "Load only the phase3_private_remote_ci profile and tasks/VF-3-05.md."
+    - "Load only the phase3_runware_deepseek_qualification profile and tasks/VF-3-01.md."
     - "Confirm the recorded commits are ancestors of clean HEAD; do not reset or redo completed phases."
-    - "Confirm private origin remains exact, then stop until GitHub billing permits hosted Actions jobs to start."
-    - "After eligibility is repaired, rerun only the unchanged hosted verify workflow and record terminal evidence."
+    - "Confirm origin and the VF-3-05 hosted run remain exact, then use only the bounded Runware runner."
+    - "Verify the user-reported top-up without printing the credential; stop before inference if balance or cap accounting is ambiguous."
   optimized_future_sequence:
     - "A. Refresh official time-sensitive provider/model/rate/retention/license facts read-only and classify all open gates."
     - "B. With explicit caps/credential authority, run bounded provider qualification through the committed sandbox and record pass/fail evidence."
@@ -513,13 +527,13 @@ activation_handoff:
 
 notes:
   - "This is a replace-in-place handoff snapshot, not a progress diary."
-  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-05 remains blocked solely before hosted job start by GitHub billing eligibility."
+  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-01 is the sole selected live-provider task."
   - "RunPod account preflight is green: Keychain credential exists, balance is $10.00, hourly spend is $0, and Pods/endpoints/volumes/workers are all zero."
-  - "Private GitHub remote is green and exact. Do not alter workflow gates: repair GitHub account billing/Actions eligibility, then rerun verify run 31415895273 or a fresh unchanged run."
-  - "The accelerated approval through VF-2-05 is complete and exhausted. On 2026-08-10 the user separately activated the planned non-transferable $1/$3/$8/$8/$5 provider caps, private Git/CI, and isolated staging authority; production remains deferred."
+  - "Public GitHub remote is green and exact by explicit user decision. Hosted run 31451226265 passed the full gate on c23ab438."
+  - "The accelerated approval through VF-2-05 is complete and exhausted. On 2026-08-10 the user separately activated the planned non-transferable $1/$3/$8/$8/$5 provider caps, Git/CI, and isolated staging authority; production remains deferred."
   - "Runware signup/login is authorized, but CAPTCHA, MFA, email verification, payment, or an unclear charge still stops unattended automation."
   - "AvatarForcing's $8 sub-cap must remain untouched until GATE_AVATAR_003 reconciles the official license contradiction."
-  - "Runware workspace videoforgesujal exists with $0.05 balance and $0 spend. External inference requires a paid invoice or at least $5 credit; no top-up or card was added."
+  - "Runware workspace videoforgesujal previously verified $0.05 balance and $0 spend. The user reported adding $20 on 2026-08-11; VF-3-01 must verify live balance before any bounded inference."
   - "TypeScript is the sole RFC 8785/JCS authority; Python validates canonical schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output grammar remains three compositions, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
   - "No public tunnel or LAN listener is active. VF-3-01 does not need to start the stable loopback fixture server."
