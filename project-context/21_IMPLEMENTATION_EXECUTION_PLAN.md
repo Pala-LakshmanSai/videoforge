@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: Waves 0–4 and Phase 0–2 complete; VF-7-05 green; context-only `VF-7-06` selected
+Status: Waves 0–4 and Phase 0–2 complete; VF-7-06 preserve-and-detach contract locked; `VF-DX-01` selected
 Read when: starting a new implementation chat, selecting the next task, assigning parallel ownership, or integrating a completed task.
 
 ## Authority and purpose
@@ -13,9 +13,10 @@ The user's 2026-08-10 accelerated-plan approval granted standing implementation 
 dependency-ready, provider-free briefs through `VF-2-05`; that sequence is complete. Later explicit
 authority covered bounded provider qualification, the public Git remote/hosted CI, and isolated
 staging preparation while production stayed deferred. Every new task remains bounded by its exact
-brief and `CURRENT_STATE.yaml`; the selected `VF-7-06` manual-edit provenance decision is
-context-only and authorizes no application code, credential access, provider call, runtime
-activation, cloud mutation, or spend.
+brief and `CURRENT_STATE.yaml`. On 2026-08-11 the user explicitly inserted a local verification/DX
+reliability wave before the three provider-free media/style lanes. `VF-DX-01` is the first exact
+implementation brief; it authorizes only provider-free verification-graph work, not credential
+access, provider calls, runtime activation, cloud mutation, or spend.
 
 ## Accelerated critical path
 
@@ -29,14 +30,16 @@ acceptance but cannot re-serialize work that this table explicitly makes disjoin
 | 2 — durable adapters | `VF-1-03` Auth, `VF-1-04` artifacts, `VF-1-05` Postgres/outbox/workflow | Three adapters integrated; all 13 canonical repository bodies execute semantically |
 | 3 — recovery/qualification | Integration `VF-1-06`; paid qualification only after separate activation | Mock restart/ambiguity/cancel green; provider evidence cannot be inferred from code |
 | 4 — Phase 1/2 convergence | Parallel `VF-1-07/08`; serial `VF-2-01`; parallel `VF-2-02/03/04`; serial `VF-2-05` | Isolation, restore, persisted real timing, byte-equivalent timeline, Chrome inspection |
-| 5 — production media | Prompt→DeepSeek→Mage, AvatarForcing, and custom styles in three lanes after gates | Accepted content-addressed assets, cost/review lineage, ready styles cause zero analysis calls |
-| 6 — real output | FFmpeg fast-path integration; styles continue; gated fallback lane | Short real video, 30-minute measurement, immutable manifest, Chrome download/playback |
-| 7 — fault hardening | Queue/fault, security/isolation, observability/backup lanes | Ten-user/restart/replay/cost/retention/restore/scale-to-zero evidence |
-| 8 — controlled release | Serial staging-to-production acceptance | Fresh-account real Chrome flow and final user sign-off |
+| 5 — feedback-loop guardrails | Serial `VF-DX-01`; then CI/DX and telemetry foundation as exact disjoint briefs | Fast non-duplicating local gate, split required CI, owned dev commands, vendor-neutral correlated telemetry |
+| 6 — provider-free media foundations | Prompt/image, avatar, and custom-style lanes after shared contracts | Durable fixture execution, exact asset/review/cost lineage, ready styles cause zero analysis calls |
+| 7 — bounded qualification and real output | License evidence, serialized RunPod qualification, FFmpeg fast-path integration | Short real video, 30-minute measurement, immutable manifest, Chrome download/playback |
+| 8 — fault hardening | Queue/fault, security/isolation, observability/backup lanes | Ten-user/restart/replay/cost/retention/restore/scale-to-zero evidence |
+| 9 — controlled release | Serial staging-to-production acceptance | Fresh-account real Chrome flow and final user sign-off |
 
 Waves 0–4 are complete. `GATE_LLM_001` and `GATE_STYLE_001` are closed. Provider-free DeepSeek and
 Gemini adapters are green. The custom-style lane is green through byte-identical reviewed
-publication in `VF-7-05`; `VF-7-06` is the next serial context/contract decision. Production media
+publication in `VF-7-05`; `VF-7-06` locked preserve-and-detach manual-edit provenance. `VF-DX-01`
+is next so later lanes iterate against a fast, non-duplicating canonical gate. Production media
 remains blocked by the remaining provider/model/license/GPU/cost gates and exact task authority. No
 closed qualification gate by itself activates credentials, provider calls, cloud resources, or
 spend.
@@ -374,10 +377,10 @@ Completed at implementation `907e0e4` and evidence `d16c2a9`; preserve this conv
   written from measured provider/gate evidence; if required gates remain open, stop for the
   consolidated review rather than guessing.
 
-The Phase 2 handoff and VF-3-00 checkpoint are complete. Resume only from the exact task in
-`CURRENT_STATE.yaml`; at this checkpoint that is context-only `VF-7-06`.
+The Phase 2 handoff, VF-3-00 checkpoint, and VF-7-06 contract decision are complete. Resume only
+from the exact task in `CURRENT_STATE.yaml`; at this checkpoint that is provider-free `VF-DX-01`.
 
-After Phase 2, use three disjoint lanes:
+After the feedback-loop guardrails selected by the user, use three disjoint lanes:
 
 ### Lane A — prompt then image (`VF-3-*` → `VF-4-*`)
 
@@ -395,25 +398,28 @@ After Phase 2, use three disjoint lanes:
 
 ### Lane C — custom styles (`VF-7-*`)
 
-Complete through `VF-7-05`: durable draft/version lifecycle, reference metadata, claimed analyzer
-composition, atomic canonical result acceptance, and byte-identical authenticated publication.
-Execute context-only `VF-7-06` next to reconcile manual-edit provenance before authoring edit code;
-follow with provider-free custom-style services, metadata routes and accepted-shell UI, local
+Complete through `VF-7-06`: durable draft/version lifecycle, reference metadata, claimed analyzer
+composition, atomic canonical result acceptance, byte-identical authenticated publication, and the
+preserve-and-detach manual-edit provenance contract. After the DX/reliability foundation, follow
+with provider-free custom-style services, metadata routes and accepted-shell UI, local
 upload/normalization, live analysis orchestration, optional Mage previews after gates, and final
 ordinary-project zero-analysis proof. This lane must not block the built-in-style fast path.
 
-### Fastest low-rework order from the VF-7-05 checkpoint
+### Fastest low-rework order from the VF-7-06 checkpoint
 
-1. Complete: `VF-7-05` reviewed byte-identical publication at `$0`.
-2. Current serial context owner: `VF-7-06`; reconcile and lock manual-edit provenance semantics,
-   stopping for explicit user choice if normative facts do not select one policy.
-3. Continue the custom-style lane provider-free: exact application service, then metadata API,
-   then fixture/local UI and Chrome workflow; author one dependency-ready brief at each handoff.
-4. In a disjoint evidence lane, resolve Mage checkpoint/license facts. Only after that may bounded
+1. Complete: `VF-7-06` preserve-and-detach manual-edit provenance contract at `$0`.
+2. Current serial owner: `VF-DX-01`; remove duplicate builds/tests, add `verify:fast`, preserve the
+   full provider-free gate, and prove the same suite inventory at the measured speed target.
+3. Then execute exact `VF-DX-02` CI/onboarding work and `VF-REL-01` vendor-neutral telemetry work as
+   disjoint lanes once their shared environment/metadata boundary and briefs are locked.
+4. Continue the three provider-free lanes: durable prompt/image fixture execution, exact Avatar
+   fixture jobs, and manual-style derived-artifact service/API/UI, with shared contracts,
+   migrations, route composition, lockfiles, and context serialized by the integration owner.
+5. In a disjoint evidence lane, resolve Mage checkpoint/license facts. Only after that may bounded
    Mage + RunPod qualification close image/GPU/lifecycle gates.
-5. Keep AvatarForcing work stopped until its license contradiction is authoritatively resolved;
+6. Keep AvatarForcing work stopped until its license contradiction is authoritatively resolved;
    only then qualify the primary-avatar lane under its untouched sub-cap.
-6. Converge real FFmpeg output only after both primary image and avatar assets are accepted; add
+7. Converge real FFmpeg output only after both primary image and avatar assets are accepted; add
    fallbacks afterward, then staging contention/auth/storage/workflow proof, fault/security/restore
    hardening, measured cost/SLO, and controlled production acceptance.
 

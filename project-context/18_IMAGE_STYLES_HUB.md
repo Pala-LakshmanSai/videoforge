@@ -117,9 +117,12 @@ Detailed behavior:
 5. Require a rights attestation: owned, licensed, public domain, or another recorded basis.
 6. Before Analyze, require a plain disclosure/consent: normalized copies will be sent to Runware; standard Runware processing is not zero-data-retention and must be treated as non-confidential. Then send all normalized derivatives in one idempotent Gemini request using short-lived signed URLs.
 7. Validate the provider response against `evidence/image_style_analyzer_output.schema.json`, run deterministic semantic checks, then let trusted application code assemble the stored `image-style-profile/v1` payload and provenance envelope.
-8. Show shared traits, avoid traits, per-trait confidence/support, uncertainty, and outlier references in plain language. The user may edit them.
+8. Show the analyzer's shared traits, avoid traits, per-trait confidence/support, uncertainty, and
+   outlier references as **source-analysis evidence**. The user may edit the creative profile, but
+   cannot edit or relabel analyzer evidence as if it described the new bytes.
 9. Optionally generate three standardized Mage previews: person, physical action/object, and environment. This is user-triggered and separately estimated; never boot a GPU automatically when merely saving a style. Completion returns to review and never publishes automatically.
-10. Publish an immutable version. A later reference/profile edit creates a new version.
+10. Publish the exact current immutable artifact and freeze the version. A later reference/profile
+    edit creates a new version.
 
 Every published style has a durable card-cover policy chosen explicitly: retain a consented low-resolution reference thumbnail, accept an original Mage-generated cover, or use the deterministic palette/medium placeholder. Deleting references never silently keeps their pixels as a cover.
 
@@ -155,6 +158,64 @@ The analyzer-output schema contains only `summary + visual_profile + prompt_prof
 Before a version can reach `NEEDS_REVIEW` or `PUBLISHED`, a deterministic semantic validator trims and rejects blank required creative fields. It requires at least one meaningful entry in shot-scale preferences, color descriptors, imperfection profile, mood, continuity rules, must-include, must-avoid, and flexible properties. For a vision analysis, all 14 defined trait names must appear exactly once in `trait_evidence`; each is marked `SUPPORTED`, `UNCERTAIN`, or `UNSUPPORTED`, and duplicate/unknown/missing traits are rejected. `approximate_hex`, `negative_suffix`, uncertainty/outlier/leakage lists, and manual `trait_evidence` may intentionally be empty. Provider-schema validation alone is not the publication gate.
 
 The stored profile payload contains immutable creative data only. Lifecycle/default flags and runtime provenance live outside it. Compute `style_profile_hash` as `SHA-256(JCS(profile_payload))`, using RFC 8785 canonical JSON. Archiving a style cannot alter the profile hash.
+
+## Manual-edit provenance contract
+
+`DEC_STYLE_007` owns one preserve-and-detach policy for an analyzer-derived version. The accepted
+`VISION_ANALYSIS` canonical artifact from VF-7-04 is immutable historical source truth. An edit never
+overwrites that artifact, its analyzer response, confidence/evidence, alias map, request/model
+identity, attempt/cost lineage, or acceptance timestamp. Each successful pre-publication edit
+creates another immutable `image-style-profile/v1` artifact inside the same open version and moves
+only the version's current-artifact pointer. Publishing pins the exact current artifact; a published
+version and every artifact in its history are immutable.
+
+The editable surface is exactly `/summary`, `/visual_profile/**`, and `/prompt_profile/**`. The
+client submits a complete candidate profile, not a merge patch. Trusted code validates and RFC
+8785-canonicalizes it, applies the same semantic and hard-rule/crop validator used at publication,
+and computes `style_profile_hash = SHA-256(JCS(candidate))`. The candidate must use
+`analysis.analysis_kind = MANUAL_EDIT`; its current-profile evidence fields are inapplicable and
+therefore exactly `overall_confidence = null` with empty `trait_evidence`, `uncertain_fields`,
+`outlier_reference_aliases`, and `content_leakage_warnings`. Analyzer values remain available only
+from the separately labelled immutable source-analysis artifact. They are never copied into the
+derived current profile or presented as confidence in edited bytes.
+
+| Field or fact after a creative edit | Normative transformation |
+|---|---|
+| Accepted analyzer canonical bytes and hash | Preserve unchanged as the immutable root source-analysis artifact. |
+| Analyzer request/response hashes, provider/model/settings, reference alias map/set hash, attempt, cost, disclosure, and completion facts | Preserve unchanged and attach only to the root source-analysis artifact. |
+| `analysis.analysis_kind` in the derived current profile | Recompute deterministically to `MANUAL_EDIT`. |
+| `analysis.overall_confidence` | Make inapplicable in the derived profile: `null`. Preserve the original value only as source-analysis evidence. |
+| `analysis.trait_evidence` | Make inapplicable in the derived profile: `[]`. Preserve all original rows only as source-analysis evidence. |
+| `analysis.uncertain_fields` | Make inapplicable in the derived profile: `[]`. Preserve the original list only as source-analysis evidence. |
+| `analysis.outlier_reference_aliases` | Make inapplicable in the derived profile: `[]`. Preserve the original list and reference bindings only as source-analysis evidence. |
+| `analysis.content_leakage_warnings` | Make inapplicable in the derived profile: `[]`. Preserve the original warnings only as source-analysis evidence; current creative bytes still pass deterministic leakage/guardrail validation. |
+| `summary`, `visual_profile`, and `prompt_profile` | Use the validated candidate values; unchanged fields remain byte-equivalent after canonicalization. |
+| Current profile bytes/hash | Recompute from the complete normalized candidate and store as a new immutable derived artifact. |
+| Edit provenance | Record workspace/style/version, authenticated editor, edit timestamp, root source-analysis artifact hash, immediate parent artifact hash, derived artifact hash, expected revision token, idempotency identity, and server-computed changed pointers. |
+| Review/publication evidence | Invalidate any pending review snapshot. A later explicit publication derives the reviewer from the authenticated session and binds the exact current derived hash/revision; an editor is never silently treated as reviewer. |
+
+Changed pointers describe creative changes only. The server compares the previous current artifact
+to the normalized candidate under the three editable roots, descends object properties, treats an
+array as one value at its containing field, escapes RFC 6901 tokens, then stores sorted unique leaf
+pointers. A request with no creative changed pointer fails as `STYLE_PROFILE_NO_CHANGES`; the
+automatic `analysis` detachment cannot create an otherwise no-op edit.
+
+Every edit requires authentication, `If-Match`, and `Idempotency-Key`. `If-Match` names the exact
+current revision/artifact pointer. The idempotency scope is workspace + style + version + actor +
+key, and its fingerprint includes the expected revision plus the canonical candidate bytes. Exact
+replay returns the original artifact/hash/revision response without another pointer movement; reuse
+with different candidate bytes, expected revision, actor, or target fails with an idempotency
+conflict. A stale first execution fails `STYLE_VERSION_CONFLICT`.
+
+Artifact creation, provenance insertion, current-pointer/revision movement, and review-snapshot
+invalidation are one logical atomic mutation. Validation/canonicalization/storage failure,
+incompatible profile contract/version, source/current artifact mismatch, stale review/pointer, or
+provenance failure leaves the pointer and visible history unchanged; an unreachable content-store
+write may be garbage-collected but is never current or publishable. `PUBLISHED` and `ABANDONED`
+versions reject edits. Editing a published style starts a new `DRAFT` version based on the exact
+published artifact; it retains the prior root source-analysis link when one exists, but never
+changes the published version or any project revision pinned to it. Built-in styles remain
+non-editable; non-analyzed manual/duplicate-source editing must not fabricate analyzer evidence.
 
 ## Default built-in style
 
@@ -276,7 +337,9 @@ Only a published accessible version can be selected for a new project revision. 
 Core records:
 
 - `image_styles`: workspace/system identity, name, `ACTIVE | ARCHIVED` lifecycle, active published version, cover policy/asset, ownership, and built-in/default rules.
-- `image_style_versions`: `DRAFT | ANALYZING | NEEDS_REVIEW | FAILED | PUBLISHED | ABANDONED`, immutable profile payload only after publication, analyzer provenance, hashes, and optimistic revision. `FAILED` is retriable; `ABANDONED` is terminal.
+- `image_style_versions`: `DRAFT | ANALYZING | NEEDS_REVIEW | FAILED | PUBLISHED | ABANDONED`, immutable root/current artifact pointers, analyzer provenance, hashes, and optimistic revision; the pointer may move only before publication. `FAILED` is retriable; `ABANDONED` is terminal.
+- `image_style_profile_artifacts`: immutable canonical profile bytes/hash plus root-source and immediate-parent lineage for accepted analyzer and manual-derived artifacts.
+- `image_style_profile_edits`: authenticated editor/time, expected revision, idempotency identity/fingerprint, server-computed changed pointers, and derived artifact/result revision.
 - `image_style_references`: asset, order, dimensions, checksum, rights basis, retention, outlier flag.
 - `image_style_analysis_attempts`: idempotency, provider job, usage/cost, response/error lineage.
 - `image_style_previews`: standardized Mage preview prompt/image/acceptance/cost.
@@ -288,9 +351,10 @@ Constraints:
 - Unique `(style_id, version_number)`.
 - At most one open version in `DRAFT | ANALYZING | NEEDS_REVIEW | FAILED` per style; `ABANDONED` does not count.
 - `active_version_id` must reference a `PUBLISHED` version of the same style.
-- Only `PUBLISHED` versions are immutable.
+- Every canonical profile artifact is immutable; only an open version's current-artifact pointer may move.
+- A manual edit is allowed only in `NEEDS_REVIEW`, requires exact source/current lineage, and invalidates the prior review snapshot.
 - Publish atomically marks the version published and updates `active_version_id`; a failure changes neither.
-- Every draft mutation uses `If-Match`/optimistic revision, and every billed version action has a version-scoped idempotency key.
+- Every draft mutation uses `If-Match`/optimistic revision and `Idempotency-Key`; billed actions retain their separate version/attempt/cost identities.
 
 Minimum routes:
 
@@ -312,6 +376,9 @@ POST   /v1/image-styles/{id}/archive
 
 Analyze and Test Style are externally billed actions. They need idempotency keys, budget events, visible pending state, and ambiguous-timeout reconciliation.
 
+The canonical same-origin prefix is `/api`, so the manual-edit route above is requested externally
+as `PATCH /api/v1/image-styles/{style_id}/versions/{version_id}`.
+
 Every style-analysis/test cost event uses `owner_type=IMAGE_STYLE_VERSION`, `owner_id=version_id`, and its attempt ID. Project production events use `owner_type=PROJECT_REVISION`. This keeps reservation, provider-reported, settled, and refunded amounts truthful without inventing a project for style creation.
 
 ## Storage, privacy, and rights
@@ -321,6 +388,7 @@ workspace/{workspace_id}/image-style/{style_id}/version/{version_id}/
   references/original/
   references/analysis/
   analysis/
+  profiles/derived/
   previews/
   manifests/
 ```

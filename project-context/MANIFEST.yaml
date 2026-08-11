@@ -275,6 +275,11 @@ read_profiles:
     - 15_DECISIONS_AND_OPEN_GATES.md
     - 18_IMAGE_STYLES_HUB.md
     - tasks/VF-7-06.md
+  devex_verification_feedback:
+    - 13_ENGINEERING_BEST_PRACTICES.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - 21_IMPLEMENTATION_EXECUTION_PLAN.md
+    - tasks/VF-DX-01.md
   phase3_prompt_compiler:
     - GLOSSARY.md
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md
@@ -338,6 +343,7 @@ approved_decisions:
   DEC_STYLE_004: immutable_published_style_version_pinned_to_project
   DEC_STYLE_005: optional_extra_image_keywords_explicit_toggle
   DEC_STYLE_006: extract_shared_visual_traits_not_reference_content
+  DEC_STYLE_007: manual_edits_preserve_and_detach_analyzer_evidence_from_derived_profile_bytes
   DEC_IMAGE_001: microsoft_mage_flow_turbo
   DEC_AVATAR_001: avatarforcing_primary
   DEC_AVATAR_002: musetalk_lip_only_repair

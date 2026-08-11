@@ -90,6 +90,31 @@ Proposed pass criteria:
 - Browser normalization strips EXIF/GPS and bounds dimensions/bytes; server checks reject forged MIME, malicious raster metadata, decompression bombs, and checksum mismatch without a paid image-processing dependency.
 - Reference deletion never leaves an undisclosed retained card image; the hub falls back to an approved Mage cover or deterministic palette/medium placeholder.
 
+Manual-edit provenance matrix (`DEC_STYLE_007`):
+
+- First creative edit preserves the accepted analyzer artifact/evidence byte-for-byte, creates a
+  distinct immutable `MANUAL_EDIT` artifact in the same `NEEDS_REVIEW` version, empties/nulls only
+  the derived profile's inapplicable analysis fields, and records root/parent/derived hashes.
+- Multiple edits form an unbroken immediate-parent chain back to one root source-analysis artifact;
+  every artifact and edit record survives a fresh database/content-store reopen.
+- Server-computed changed pointers cover only normalized creative differences, are sorted RFC 6901
+  pointers, treat arrays atomically at the containing field, and reject an otherwise no-op edit.
+- A candidate may change only `summary`, `visual_profile`, and `prompt_profile`; client-authored or
+  retained analyzer confidence/evidence in derived bytes fails instead of being relabelled.
+- Same actor/key/expected revision/canonical candidate replay returns the original response without
+  another artifact or pointer move. Different bytes, revision, actor, or target under that identity
+  fail with an idempotency conflict.
+- Stale `If-Match`, stale review snapshot, source/current artifact drift, incompatible profile
+  contract/version, semantic/guardrail failure, partial artifact/provenance failure, and hostile
+  cross-workspace input leave current pointer/revision/publication state unchanged.
+- Any edit invalidates the pending review snapshot. Publication requires a new authenticated review
+  of the exact current derived hash/revision and records the reviewer separately from editor history.
+- Publication pins the exact current derived bytes and freezes the version. Edit requests against
+  `PUBLISHED`/`ABANDONED` fail; a post-publication edit starts a new version without mutating the old
+  version, active historical artifacts, or project revisions pinned to them.
+- Built-in styles remain non-editable; manual/duplicate sources never receive fabricated analyzer
+  evidence. Provider calls, credentials, downloads, GPU/RunPod activity, and spend remain zero.
+
 Compiler matrix:
 
 - Empty keyword text + toggle off.

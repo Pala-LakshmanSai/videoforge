@@ -16,7 +16,9 @@ Read when: creating schemas, routes, worker payloads, callbacks, or the canonica
 | `avatar_compatibility_assessments` | Optional exact source + avatar model/execution profile test state/evidence |
 | `avatar_profile_test_attempts` | Optional idempotent RunPod test attempts, outputs, verdict, and one-time cost |
 | `image_styles` | Workspace/system style identity, `ACTIVE | ARCHIVED`, active published version, cover policy/asset |
-| `image_style_versions` | Draft workflow state; immutable structured profile/provenance only after `PUBLISHED` |
+| `image_style_versions` | Draft workflow state plus immutable root/current profile-artifact pointers; only the open-version pointer may move before `PUBLISHED` |
+| `image_style_profile_artifacts` | Immutable accepted-analysis and manual-derived canonical profile bytes/hashes with root-source and immediate-parent lineage |
+| `image_style_profile_edits` | Authenticated optimistic/idempotent edit provenance, changed pointers, and exact result artifact/revision |
 | `image_style_references` | Private reference assets, order, rights, retention, outlier/confidence |
 | `image_style_analysis_attempts` | Idempotent Runware request, usage/cost, response/error lineage |
 | `image_style_previews` | Optional standardized Mage style-test outputs and acceptance |
@@ -231,7 +233,7 @@ POST   /v1/callbacks/runpod
 POST   /v1/callbacks/worker-progress
 ```
 
-Use typed error codes such as `GPU_UNAVAILABLE`, `BUDGET_BLOCKED`, `MODEL_LOAD_FAILED`, `SCHEMA_INVALID`, `CALLBACK_REPLAY`, `REVISION_CONFLICT`, `AVATAR_PROFILE_REQUIRED`, `AVATAR_NOT_READY`, `AVATAR_ARCHIVED`, `AVATAR_SOURCE_INVALID`, `AVATAR_VERSION_CONFLICT`, `AVATAR_TEST_FAILED`, `STYLE_NOT_READY`, `STYLE_ANALYSIS_FAILED`, `STYLE_REFERENCE_INVALID`, and `STYLE_VERSION_CONFLICT`. The UI maps these to plain language.
+Use typed error codes such as `GPU_UNAVAILABLE`, `BUDGET_BLOCKED`, `MODEL_LOAD_FAILED`, `SCHEMA_INVALID`, `CALLBACK_REPLAY`, `REVISION_CONFLICT`, `AVATAR_PROFILE_REQUIRED`, `AVATAR_NOT_READY`, `AVATAR_ARCHIVED`, `AVATAR_SOURCE_INVALID`, `AVATAR_VERSION_CONFLICT`, `AVATAR_TEST_FAILED`, `STYLE_NOT_READY`, `STYLE_ANALYSIS_FAILED`, `STYLE_REFERENCE_INVALID`, `STYLE_VERSION_CONFLICT`, `STYLE_VERSION_IMMUTABLE`, `STYLE_PROFILE_NO_CHANGES`, and `IDEMPOTENCY_CONFLICT`. The UI maps these to plain language.
 
 Every start/cancel/regenerate/segment-accept/final-approve mutation requires `Idempotency-Key` and `If-Match` (or an equivalent expected revision/candidate token). Final approval derives `reviewer_user_id` from the authenticated server session—never from a client-supplied user ID—and atomically verifies the exact current review-candidate version/final checksum before creating the production manifest. A project ID alone never implies which revision to mutate.
 
@@ -322,7 +324,10 @@ Database constraints:
 - Unique `(style_id, version_number)` and at most one open `DRAFT | ANALYZING | NEEDS_REVIEW | FAILED` version per style.
 - `active_version_id` references a `PUBLISHED` version of the same style.
 - Publish atomically changes the version to `PUBLISHED` and updates the parent pointer.
-- Draft mutations require optimistic revision/`If-Match`; externally billed version actions also require version-scoped idempotency.
+- Every canonical profile artifact is immutable. Before publication, the version's current-artifact
+  pointer/revision may move only through an authenticated atomic mutation; publication freezes it.
+- Draft mutations require optimistic revision/`If-Match` and `Idempotency-Key`; externally billed
+  version actions retain separate version-scoped attempt and cost idempotency.
 
 Each published `image_style_version` contains:
 
@@ -331,6 +336,25 @@ Each published `image_style_version` contains:
 - Source kind (`BUILTIN_MANUAL | VISION_ANALYSIS | DUPLICATE | MANUAL_EDIT`).
 - Analyzer provider/model/revision/prompt/schema and reference-set hash.
 - Immutable creation/publication identity and timestamps.
+
+### Analyzer-derived manual edits
+
+`DEC_STYLE_007` and `18_IMAGE_STYLES_HUB.md` are normative. The accepted
+`VISION_ANALYSIS` artifact remains the immutable root source-analysis document. In `NEEDS_REVIEW`,
+`PATCH /api/v1/image-styles/{style_id}/versions/{version_id}` accepts one complete candidate
+`image-style-profile/v1` plus `If-Match` and `Idempotency-Key`; partial/merge patches are invalid.
+The server validates and RFC 8785-canonicalizes the candidate, requires the exact detached
+`MANUAL_EDIT` analysis block, computes the creative-field change set, and creates a new immutable
+derived artifact linked to both the root source-analysis artifact and immediate prior artifact.
+
+The edit transaction records authenticated actor/time, expected revision, idempotency
+identity/fingerprint, sorted RFC 6901 changed pointers, source/parent/derived hashes, invalidates the
+prior review snapshot, and moves the current pointer/revision. Any failed storage, validation,
+lineage, concurrency, or provenance step leaves visible state unchanged. Exact replay returns the
+original result; a changed command under the same key fails `IDEMPOTENCY_CONFLICT`; a stale first
+execution fails `STYLE_VERSION_CONFLICT`. Publication derives the reviewer from authentication and
+pins the exact current artifact/hash/revision. `PUBLISHED`/`ABANDONED` versions fail closed; editing
+published bytes requires a new `DRAFT` version and cannot reinterpret an existing project pin.
 
 Detailed fields and prompt provenance live in `18_IMAGE_STYLES_HUB.md`; stored-payload validation uses `evidence/image_style_profile.schema.json`, while the untrusted provider response uses `evidence/image_style_analyzer_output.schema.json`. Register both canonical schema `$id` values before resolving/inlining provider output schema references, and run the documented nonblank/required-list semantic validator before review/publication.
 

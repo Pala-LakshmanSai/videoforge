@@ -183,6 +183,15 @@ Mage/Avatar/GPU/RunPod/cost gates and exact task authority still block productio
 
 Chrome checkpoint: inspect phrases, title context, shot roles, style version, toggle, components, hashes, and per-item retry.
 
+## Cross-cutting DX/reliability foundation
+
+Current (2026-08-11): the user inserted this provider-free wave before further media/style
+implementation. Execute exact serial `VF-DX-01` first: remove duplicate build/test execution, add a
+warm two-minute `verify:fast`, and retain the complete forced canonical gate with an identical suite
+inventory and at least 30% measured local speed improvement. Only after that graph is green may an
+exact CI/onboarding `VF-DX-02` brief and disjoint vendor-neutral telemetry `VF-REL-01` brief proceed.
+This wave changes no product behavior and grants no provider/cloud/spend authority.
+
 ## Phase 4: Mage image lane
 
 - RunPod endpoint/template/volume and API-only configuration preflight.
@@ -214,11 +223,12 @@ Exit: output matches the spec and measured fast-path cost/SLO can replace planni
 
 ## Phase 7: full custom Image Styles lifecycle
 
-Current (2026-08-11): `VF-7-01` through `VF-7-05` are committed and green. Durable version
+Current (2026-08-11): `VF-7-01` through `VF-7-05` are committed and green, and `VF-7-06` locks the
+preserve-and-detach manual-edit contract. Durable version
 lifecycle, exact reference metadata, claimed analyzer composition, atomic canonical result
-acceptance, and byte-identical authenticated publication are complete. `VF-7-06` is the sole
-selected context/contract task and must reconcile manual-edit analyzer evidence and artifact
-lineage before edit implementation. Routes, UI, upload/normalization, previews, live orchestration,
+acceptance, byte-identical authenticated publication, and truthful derived-artifact lineage are
+specified. Manual-edit implementation follows the DX/reliability foundation. Routes, UI,
+upload/normalization, previews, live orchestration,
 and `GATE_STYLE_002` remain incomplete.
 
 - Parent/version/reference/attempt/preview records and version-scoped APIs.
