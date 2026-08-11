@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: provider-free media integration complete through `VF-7-09`; `VF-3-10` read-only AvatarForcing license preflight selected
+Status: provider-free media integration complete through `VF-7-09`; `VF-3-11` read-only primary-avatar replacement decision selected
 Read when: selecting, implementing, integrating, or handing off one task.
 
 ## Authority and operating rule
@@ -40,16 +40,16 @@ completed task.
 
 ## Exact next task
 
-### VF-3-10 — AvatarForcing access and commercial-license preflight
+### VF-3-11 — Primary-avatar replacement-model decision
 
-Use only `phase3_avatar_access_license_preflight` and `tasks/VF-3-10.md`. This is read-only and
-`$0`: reconcile authoritative code/weights/license facts for `GATE_AVATAR_003`. No weights,
-credentials, legal acceptance, inference, GPU, provider call, external mutation, or spend.
+Use only `phase3_avatar_replacement_decision` and `tasks/VF-3-11.md`. This is read-only and `$0`:
+inspect a bounded first-party candidate set and recommend at most one primary-avatar replacement
+only if code-and-weights commercial permission and contract fit are clear. No weights, credentials,
+legal acceptance, inference, GPU, provider call, external mutation, or spend.
 
-Mage preflight `VF-3-08` already ran and left `GATE_IMAGE_002` open; do not rerun it as a generic
-research pass. If AvatarForcing remains ambiguous, its lane stops and the sole successor is a
-replacement-model decision brief. If it clearly passes, the sole successor is a tightly capped
-Avatar qualification brief.
+Mage preflight `VF-3-08` and AvatarForcing preflight `VF-3-10` already ran and left
+`GATE_IMAGE_002` and `GATE_AVATAR_003` open. Do not rerun them as generic research or download
+around either blocker. `VF-3-11` owns only the Avatar primary decision, not qualification.
 
 ## Reliable remaining sequence
 
@@ -57,10 +57,10 @@ The list below is roadmap order, not authorization and not a set of pre-authored
 
 ### A. Provider decisions and gates
 
-1. Complete `VF-3-10` read-only AvatarForcing license/access evidence.
-2. Because Mage `GATE_IMAGE_002` is already blocked, make one evidence-based replacement-model
-   decision unless new authoritative evidence independently resolves it. Do the same for
-   AvatarForcing if `VF-3-10` remains blocked. Never download around either blocker.
+1. Complete `VF-3-11` read-only primary-avatar replacement-model decision.
+2. Because Mage `GATE_IMAGE_002` is already blocked, make one separately briefed evidence-based
+   image replacement-model decision unless new authoritative evidence independently resolves it.
+   Never download around either blocker.
 3. After explicit paid authority, qualify the selected image model: exact checkpoint/container,
    quality/style adherence, latency, VRAM, retries, batching, accepted-image cost, and scale-zero.
 4. Qualify the selected Avatar primary: exact code/weights/container, identity, lips, body and
@@ -121,5 +121,5 @@ fresh-account Chrome create-through-downloaded-playback, exact provenance, and u
 ## Fresh-chat start
 
 Read `AGENTS.md`, `00_START_HERE.md`, `MANIFEST.yaml`, and `CURRENT_STATE.yaml`; confirm clean HEAD
-descends from `d9adee9`; load only `phase3_avatar_access_license_preflight` and `tasks/VF-3-10.md`.
-Preserve all commits. Do not run a broad research pass or preload later profiles/briefs.
+descends from `d9adee9`; load only `phase3_avatar_replacement_decision` and `tasks/VF-3-11.md`.
+Preserve all commits. Keep candidate review bounded and do not preload later profiles/briefs.

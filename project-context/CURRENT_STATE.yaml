@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T14:32:25Z"
+updated_at: "2026-08-11T14:53:50Z"
 
 phase: provider_gate_resolution
 implementation_authorized_in_current_task: false
-current_milestone: avatarforcing_license_preflight
-current_task: VF-3-10
-current_wave: wave_7_read_only_provider_gates
+current_milestone: primary_avatar_replacement_decision
+current_task: VF-3-11
+current_wave: wave_7_read_only_provider_decisions
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -44,7 +44,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "VF-3-10 permits read-only first-party AvatarForcing license/access inspection only. No calls, credentials, legal acceptance, downloads, GPU/cloud mutation, push, or spend."
+  provider_authority_scope: "VF-3-11 permits only a bounded read-only first-party primary-avatar replacement decision at $0. No calls, credentials, legal acceptance, downloads, GPU/cloud mutation, push, or spend."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -84,9 +84,9 @@ completed_tasks:
     final_implementation_commit: "907e0e4908bddc1ec7b90232f043a10d9c7d5b2a"
     final_evidence_commit: "d16c2a9102125fa6e56d014fcf2f6241c878fa07"
   - task_group: prompt_style_provider_foundations
-    task_ids: [VF-3-00, VF-3-01, VF-3-02, VF-3-03, VF-3-04, VF-3-05, VF-3-06, VF-3-07, VF-3-08, VF-3-09]
+    task_ids: [VF-3-00, VF-3-01, VF-3-02, VF-3-03, VF-3-04, VF-3-05, VF-3-06, VF-3-07, VF-3-08, VF-3-09, VF-3-10]
     status: complete
-    summary: "DeepSeek/Gemini qualification and injected adapters, deterministic prompt/style semantics, RunPod account preflight, Git/CI, and Mage read-only gate evidence. GATE_IMAGE_002 remains open."
+    summary: "DeepSeek/Gemini qualification and injected adapters, deterministic prompt/style semantics, RunPod account preflight, Git/CI, and read-only Mage/AvatarForcing gate evidence. GATE_IMAGE_002 and GATE_AVATAR_003 remain open."
   - task_group: developer_experience_and_telemetry
     task_ids: [VF-DX-01, VF-DX-02, VF-REL-01]
     status: complete
@@ -132,13 +132,12 @@ completed_tasks:
     summary: "Browser/server normalization, authenticated fixture lifecycle, review/edit/publish/select, preview/archive/reopen, responsive Hub Chrome acceptance, and Workerd-safe contracts."
 
 latest_closed_handoff:
-  task_id: VF-7-09
+  task_id: VF-3-10
   status: complete
-  implementation_commit: "6fb3312ed14ac4da4f41de9c67e2cc52a07b4a2e"
-  correction_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  evidence: "evidence/acceptance/VF-7-09/style-hub-completion"
-  verification_result: "aggregate_786_contracts_59_control_plane_209_web_181_workerd_1_chrome_38_zero_skips"
-  external_actions: "No push, credential, provider call, model download, GPU/cloud mutation, deployment, or spend."
+  task_kind: read_only_provider_gate_preflight
+  evidence: "evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license"
+  verification_result: "GATE_AVATAR_003_open_blocked_exact_code_and_weights_revisions_pinned"
+  external_actions: "Read-only public first-party HTTP only; no push, credential, legal acceptance, provider call, model/LFS/Xet download, GPU/cloud mutation, deployment, or spend."
   external_spend_usd: 0
 
 last_green:
@@ -165,14 +164,14 @@ active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-3-10
-  milestone: avatarforcing_license_preflight
+  task_id: VF-3-11
+  milestone: primary_avatar_replacement_decision
   status: ready
-  dependency_status: provider_free_media_complete_and_gate_open
-  authorization_status: exact_read_only_zero_spend_brief_selected
-  read_profile: phase3_avatar_access_license_preflight
-  task_brief: tasks/VF-3-10.md
-  goal: "Resolve or truthfully preserve GATE_AVATAR_003 using current authoritative first-party code, weights, revision, and license evidence."
+  dependency_status: avatarforcing_preflight_complete_and_commercial_gate_blocked
+  authorization_status: exact_read_only_zero_spend_decision_brief_selected
+  read_profile: phase3_avatar_replacement_decision
+  task_brief: tasks/VF-3-11.md
+  goal: "Select at most one commercially usable primary-avatar candidate from a bounded first-party evidence review, or record that none qualifies."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   provider_authority: null
@@ -180,17 +179,17 @@ recommended_next_task:
   credential_access_authorized: false
   model_downloads_authorized: false
   application_code_changes_authorized: false
-  expected_evidence: "evidence/gates/GATE_AVATAR_003/<run_id>"
+  expected_evidence: "evidence/decisions/VF-3-11/<run_id>"
   required_handoff:
-    - "Record exact first-party URLs, timestamps, revisions/hashes, access state, and contradiction or resolution."
-    - "Update gate, decision, provider, source, and current-state truth without legal guesswork."
-    - "Author exactly one successor: replacement-model decision if blocked, capped qualification only on clear permission."
+    - "Record exact first-party candidate URLs, timestamps, revisions/hashes, access state, code and weight terms, and technical fit."
+    - "Recommend at most one candidate only when commercial code-and-weights permission is unambiguous; otherwise record the exact blocker."
+    - "Author exactly one successor: capped qualification for the selected candidate, or user-decision/blocker brief if none qualifies."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-3-10
+    integration_owner: VF-3-11
   prohibited_in_task:
-    - "Application/schema/UI changes, model install/inference, qualification, architecture replacement, or deployment."
-    - "Credential access, legal acceptance, third-party contact, weight/LFS download, push, provider call, GPU/RunPod/cloud mutation, or spend."
+    - "Application/schema/UI changes, model install/inference, paid qualification, architecture replacement, or deployment."
+    - "Credential access, legal acceptance, third-party contact, weight/LFS/Xet download, push, provider call, GPU/RunPod/cloud mutation, or spend."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -211,15 +210,15 @@ fully_sorted:
 
 known_incomplete_boundaries:
   - "Mage GATE_IMAGE_002 remains open after VF-3-08; no checkpoint/weights/download/qualification or production image profile."
-  - "AvatarForcing GATE_AVATAR_003 remains open; no weights/download/qualification or production Avatar profile."
+  - "AvatarForcing GATE_AVATAR_003 remains open after VF-3-10: pinned README/license artifacts conflict and the pinned weights card has no license; no weights/download/qualification or production Avatar profile."
   - "DeepSeek/Gemini adapters are injected but not live-runtime composed; fixture remains default."
   - "Fixture Hub reference bytes are session-scoped. No production R2/Neon/Better Auth/Workflow deployment exists."
   - "No real provider image or Avatar asset, real 30–120-second provider video, measured GPU/cost/SLO, fallback, or production release exists."
   - "No encrypted off-machine backup, R2 integrity inventory, clean-target cloud restore, ten-user contention/security proof, or fresh-account production Chrome sign-off exists."
 
 next_tasks:
-  - "1. VF-3-10 read-only AvatarForcing license/access preflight."
-  - "2. Replacement-model decision for each still-blocked primary; never download around ambiguity."
+  - "1. VF-3-11 read-only primary-avatar replacement-model decision."
+  - "2. Replacement-model decision for the still-blocked image primary; never download around ambiguity."
   - "3. Explicitly authorized capped image, Avatar, and RunPod qualifications; close required gates before profiles become selectable."
   - "4. Compose accepted durable boundaries and produce one real owned 30–120-second video through FFmpeg v3."
   - "5. Installed Chrome contact-sheet/play/seek/approve/hash-download/downloaded-playback proof."
@@ -246,16 +245,17 @@ progress_snapshot:
   interpretation: "Provider-free media is complete, but provider-backed production, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: provider_free_complete_avatar_license_preflight_selected
+  status: provider_free_complete_avatar_replacement_decision_selected
   completed_and_preserved:
     - "All completed tasks/commits above; no paused implementation or unexplained dirty state."
     - "Latest forced full verification is green at d9adee9 with 786 tests/journeys and zero skips."
-    - "Server stopped, provider mode fixture, external spend $0, no external mutation or push in VF-7-09."
+    - "VF-3-10 preserved GATE_AVATAR_003 open with pinned code/weights/license evidence at $0; no weights, credentials, legal acceptance, provider call, GPU/cloud mutation, or push."
+    - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Require clean HEAD descending from d9adee9; preserve all newer commits."
-    - "Load only phase3_avatar_access_license_preflight and tasks/VF-3-10.md."
-    - "Do not run a broad research pass, preload later briefs, use credentials, download weights, mutate resources, or spend."
+    - "Load only phase3_avatar_replacement_decision and tasks/VF-3-11.md."
+    - "Keep candidate review bounded; do not preload later briefs, use credentials, download weights, mutate resources, or spend."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
     - "Credential/legal acceptance, large transfer, provider/GPU/cloud/account mutation, push, deployment, or charge."
@@ -263,6 +263,7 @@ activation_handoff:
 notes:
   - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."
   - "Mage preflight VF-3-08 already preserved GATE_IMAGE_002 open; do not repeat a broad research pass."
-  - "AvatarForcing remains provisional and blocked until VF-3-10 records unambiguous authoritative terms or selects a replacement-decision successor."
+  - "VF-3-10 pinned AvatarForcing code revision 63b73e6 and weights revision e244891; contradictory code-license artifacts and missing weight license keep commercial use blocked."
+  - "VF-3-11 is the sole successor and may recommend at most one replacement from unambiguous first-party evidence; it cannot download, qualify, or select around ambiguity."
   - "TypeScript remains the sole RFC 8785/JCS authority; Python validates schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output remains three compositions, realistic footage, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."

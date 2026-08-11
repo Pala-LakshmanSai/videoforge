@@ -3,7 +3,7 @@
 Status: user-approved ladder plus explicit benchmark gates  
 Read when: building a worker, pinning dependencies, estimating cost, or proposing a model change.
 
-Prices and provider capabilities below were refreshed from official sources on 2026-08-10 and are time-sensitive. Runware DeepSeek/Gemini qualification facts and Mage public access state were refreshed on 2026-08-11. Runtime code must store current rates/configuration rather than hard-code this document.
+Prices and provider capabilities below were refreshed from official sources on 2026-08-10 and are time-sensitive. Runware DeepSeek/Gemini qualification facts plus Mage and AvatarForcing public access state were refreshed on 2026-08-11. Runtime code must store current rates/configuration rather than hard-code this document.
 
 ## Runware DeepSeek V4 Flash 0731
 
@@ -105,19 +105,20 @@ Official sources: [Mage-Flow-Turbo model card](https://huggingface.co/microsoft/
 
 Approved role: provisional technical candidate for primary talking-avatar model; commercial qualification is blocked by `GATE_AVATAR_003`.
 
-- The official repository README labels the project Apache-2.0, while its committed `LICENSE.txt` says academic-only/non-commercial and prohibits production use; that file also refers to a different project name, `RollingForcing`.
-- The public Hugging Face weights repository currently declares no license. Its observed repository revision on 2026-08-10 was `e2448919a7b535c29f34e07892884ae1a43c6ace`; this is identity evidence, not permission to use it commercially.
+- At GitHub main revision `63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39`, the official README labels the project Apache-2.0 and links `lycui/AvatarForcing` as its ODE/DMD weights source. GitHub itself classifies the repository license as `Other` / `NOASSERTION`.
+- The same revision's committed `LICENSE.txt` (blob `4f099d8892d0d4b98a797f64076a285a32f173ca`, SHA-256 `138fd1e58a72a7073c02c2fb5f772539d2b944519d4b17f60d3ecdc111228314`) names `RollingForcing` and Tencent, covers its named code/parameters/weights, and prohibits commercial or production use.
+- The public, ungated Hugging Face weights repository at revision `e2448919a7b535c29f34e07892884ae1a43c6ace` declares no license in metadata or its model card. Exact revision and LFS object identities establish provenance only, not commercial permission.
 - Input: the canonical runtime image from the exact pinned Avatar Profile version + selected speech audio + a simple restrained text prompt.
 - Typical paper configuration: 832×480, 25 fps, one-step, 1.3B student; renderer deterministically duplicates/resamples frames to 30 fps without optical flow.
 - Paper reports 34 ms/frame, but does not disclose the GPU.
 - Produces lip movement plus face/head/subtle upper-body motion.
 - Initial RunPod target: RTX 4090 24 GB; L40S/other compatible GPU only if the measured fit requires it.
 
-Do not download weights, provision compute, or spend the AvatarForcing sub-cap until authoritative code-and-weights commercial-use terms reconcile the contradiction. Even after that, do not promise 4090 VRAM, cold-start, FPS, full-screen realism, or unit cost before the exact-avatar suite across representative Avatar Profile versions. The accepted clip is cropped deterministically for both layouts.
+`VF-3-10` preserved `GATE_AVATAR_003` open on 2026-08-11. The README/license/project-name conflict and missing weight license do not unambiguously permit intended commercial use. Do not download weights, provision compute, or spend an AvatarForcing sub-cap. The sole selected successor is a read-only primary-avatar replacement-model decision; any later candidate still requires its own qualification before VRAM, cold-start, FPS, full-screen realism, or unit cost claims. The accepted clip contract remains one native clip cropped deterministically for both layouts.
 
 MVP fallback dispatch requires an explicit user/reviewer defect classification after deterministic technical checks. AvatarForcing/MuseTalk/SkyReels are not coupled to an unapproved automatic visual-QA model.
 
-Official sources: [KlingAIResearch AvatarForcing](https://github.com/KlingAIResearch/AvatarForcing), [repository license artifact](https://github.com/KlingAIResearch/AvatarForcing/blob/main/LICENSE.txt), and [official Hugging Face weights](https://huggingface.co/lycui/AvatarForcing).
+Official sources: [pinned KlingAIResearch AvatarForcing](https://github.com/KlingAIResearch/AvatarForcing/tree/63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39), [pinned repository license artifact](https://github.com/KlingAIResearch/AvatarForcing/blob/63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39/LICENSE.txt), and [pinned official Hugging Face weights](https://huggingface.co/lycui/AvatarForcing/tree/e2448919a7b535c29f34e07892884ae1a43c6ace). Reproducible preflight evidence: `evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license/`.
 
 ## MuseTalk 1.5
 

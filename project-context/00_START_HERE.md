@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: provider-free media complete through `VF-7-09`; read-only `VF-3-10` selected
+Status: provider-free media complete through `VF-7-09`; read-only `VF-3-11` selected
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -41,12 +41,15 @@ passed 786 tests/journeys: contracts 59/59, control-plane 209/209, web unit 181/
 installed Chrome 38/38, zero skips, fixture mode, and `$0`. The server is stopped. Fixture Hub
 reference bytes remain session-scoped; production R2 and live provider orchestration are not done.
 
-`CURRENT_STATE.yaml` selects only read-only `VF-3-10`, the AvatarForcing access/commercial-license
-preflight. Mage `VF-3-08` already preserved `GATE_IMAGE_002` open; do not repeat a broad research
-pass or download around either model blocker.
+AvatarForcing preflight `VF-3-10` is complete. It pinned GitHub code revision `63b73e6` and public
+weights revision `e244891`, but the official README's Apache-2.0 label conflicts with a root
+academic-only/non-commercial `LICENSE.txt` that names RollingForcing, while the weights card
+declares no license. `GATE_AVATAR_003` remains open. `CURRENT_STATE.yaml` selects only read-only
+`VF-3-11`, the bounded primary-avatar replacement-model decision. Mage `VF-3-08` already preserved
+`GATE_IMAGE_002` open; do not repeat either preflight or download around either model blocker.
 
 Production media remains blocked: Mage checkpoint/license evidence is unresolved; AvatarForcing
-licensing artifacts contradict each other; image/avatar/GPU/RunPod/fallback/cost/style-adherence
+commercial use is blocked by pinned contradictory/missing license artifacts; image/avatar/GPU/RunPod/fallback/cost/style-adherence
 gates remain open. No production Neon/R2/Workflow/OAuth deployment exists. `CURRENT_STATE.yaml`
 remains the replace-in-place ownership/handoff source; preserve accepted UI, renderer, local output,
 architecture, and product rules.
@@ -108,8 +111,9 @@ The Avatar Hub creates reusable private presenter presets from one centered sour
 | Composition/render | FFmpeg | EDL, crops, zoom, hard cuts, loudness, encode |
 
 The avatar router and crop geometry are user-approved. AvatarForcing remains blocked from download,
-qualification, and commercial use by contradictory official license artifacts; licensing must be
-reconciled before the one-time RunPod acceptance suite or production lock.
+qualification, production profile, and commercial use by contradictory official code artifacts and
+missing weight terms. `VF-3-11` may select at most one clearly commercial replacement candidate for
+a later separately authorized qualification; it cannot select around ambiguity.
 
 ## Reference-derived edit grammar
 
@@ -167,7 +171,7 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and
 `19_IMPLEMENTATION_PLAYBOOK.md`. Preserve all completed commits, the accepted fixture shell, and
 the user-accepted local render. Execute only the exact task selected by `CURRENT_STATE.yaml`; its
-authority is not transferable. The selected `VF-3-10` task is read-only and `$0`. Provider calls,
+authority is not transferable. The selected `VF-3-11` task is read-only and `$0`. Provider calls,
 downloads, GPU/cloud mutation, deployment, push, and production remain unauthorized in that brief.
 
 ## Context navigation

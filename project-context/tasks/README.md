@@ -13,9 +13,9 @@ Current implementation checkpoint: `d9adee9`. `VF-4-01/02`, `VF-5-01/02`, and `V
 `VF-7-09` are complete and preserved. VF-7-09 implementation is `6fb3312` plus Workerd correction
 `d9adee9`.
 
-`VF-3-00` through `VF-3-09` completed the authorized checkpoint, DeepSeek/Gemini qualification,
+`VF-3-00` through `VF-3-10` completed the authorized checkpoint, DeepSeek/Gemini qualification,
 provider-free prompt/style adapters, RunPod account preflight, public Git/hosted CI, and the still-open
-Mage checkpoint/license audit. `VF-7-01` through `VF-7-09` complete the provider-free custom-style
-lifecycle and fixture Hub. `CURRENT_STATE.yaml` selects only read-only AvatarForcing license/access
-preflight in `VF-3-10.md`. Complete tasks author exactly one successor brief; do not select or
-expand later roadmap work before that handoff.
+Mage and AvatarForcing checkpoint/license audits. `VF-7-01` through `VF-7-09` complete the
+provider-free custom-style lifecycle and fixture Hub. `CURRENT_STATE.yaml` selects only the
+read-only primary-avatar replacement-model decision in `VF-3-11.md`. Complete tasks author exactly
+one successor brief; do not select or expand later roadmap work before that handoff.

@@ -20,7 +20,10 @@ gates:
     blocks: avatarforcing_download_paid_qualification_and_commercial_use
     acceptance: "08_MODELS_AND_PROVIDERS.md#avatarforcing"
     owner: VF-3-10
-    last_run: null
+    last_run: "evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license"
+    result: open_blocked
+    checked_at: "2026-08-11T14:53:50Z"
+    blocker: "Official README Apache-2.0 labeling conflicts with a committed academic-only/non-commercial LICENSE.txt that names RollingForcing, while the official weights repository declares no license."
   GATE_IMAGE_001:
     status: open
     blocks: mage_production_profile

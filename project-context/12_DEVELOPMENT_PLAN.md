@@ -1,13 +1,14 @@
 # Development plan
 
-Status: provider-free media acceptance complete through VF-7-09; VF-3-10 selected
+Status: provider-free media acceptance complete through VF-7-09; VF-3-11 selected
 Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
 
 ## Delivery strategy
 
 Current checkpoint `d9adee9` is fully provider-free and green. Phase 0A–2, VF-DX-01/02,
-VF-REL-01, VF-4-01/02, VF-5-01/02, and VF-7-01 through VF-7-09 are complete. Current serial task
-is read-only `VF-3-10`. Provider qualification, real video, staging, hardening, and release follow
+VF-REL-01, VF-4-01/02, VF-5-01/02, and VF-7-01 through VF-7-09 are complete. `VF-3-10` pinned
+AvatarForcing's contradictory/missing commercial-license evidence and preserved `GATE_AVATAR_003`
+open. Current serial task is read-only `VF-3-11`. Provider qualification, real video, staging, hardening, and release follow
 only from exact successor briefs and recorded authority.
 
 Run coordinated local and viability tracks under the accelerated wave authority in
@@ -177,9 +178,14 @@ Exit: identical input/seed/version yields byte-equivalent plan; no gap/overlap; 
 
 Current (2026-08-11): `VF-3-00` through `VF-3-09` completed the gate refresh, bounded DeepSeek and
 Gemini qualification, deterministic prompt/style semantic foundations, provider-free injected
-adapters, RunPod account preflight, public Git/CI checkpoint, and read-only Mage evidence audit.
+adapters, RunPod account preflight, public Git/CI checkpoint, and read-only Mage/AvatarForcing
+evidence audits.
 `GATE_LLM_001` and `GATE_STYLE_001` are closed. Runtime provider composition is still disabled;
 Mage/Avatar/GPU/RunPod/cost gates and exact task authority still block production media.
+
+`VF-3-11` is a bounded primary-avatar replacement-model decision. It may recommend at most one
+candidate only from unambiguous first-party commercial code-and-weights permission and plausible
+contract fit. It cannot download weights, qualify a model, mutate providers/cloud, or spend.
 
 - Strict schema, title/style prefix once per batch, assigned shot roles, continuity carry, 25–50 scenes, partial retry, provider cost logging.
 - Deterministic prompt compiler with pinned style profile, crop guidance, optional keywords, permanent guardrails, exact submitted bytes/hashes.
@@ -213,8 +219,9 @@ Exit: real batch meets the measured Phase 0 envelope, recovers a failed chunk, a
 
 Current provider-free status: VF-5-01 deterministic fixture worker and VF-5-02 production PGlite
 result acceptance are complete at `e0bec7e`, including one native clip/two layout bindings and
-explicit subjective review authority. Real AvatarForcing remains blocked by license, Avatar, GPU,
-and RunPod gates.
+explicit subjective review authority. `VF-3-10` confirmed AvatarForcing commercial terms remain
+contradictory/missing, so real AvatarForcing remains blocked. `VF-3-11` owns only a replacement
+decision; later real Avatar work still requires license, Avatar, GPU, and RunPod gates.
 
 - Resolve only the revision-pinned Avatar Profile binding; workers never read a mutable active/latest profile pointer.
 - Materialized padded per-span audio only; never send full voiceover.

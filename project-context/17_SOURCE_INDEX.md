@@ -1,6 +1,6 @@
 # Source index
 
-Status: evidence map; model/provider/infrastructure sources refreshed 2026-08-10; Phase 1 database sources checked 2026-08-10
+Status: evidence map; AvatarForcing sources refreshed 2026-08-11; other model/provider/infrastructure sources refreshed 2026-08-10; Phase 1 database sources checked 2026-08-10
 Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 
 ## Official model/provider sources
@@ -16,9 +16,10 @@ Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 - Google Gemini 3.6 Flash quality-fallback candidate: [ai.google.dev/gemini-api/docs/models/gemini-3.6-flash](https://ai.google.dev/gemini-api/docs/models/gemini-3.6-flash)
 - Mage-Flow-Turbo model card: [huggingface.co/microsoft/Mage-Flow-Turbo](https://huggingface.co/microsoft/Mage-Flow-Turbo)
 - Mage code: [github.com/microsoft/Mage](https://github.com/microsoft/Mage)
-- AvatarForcing: [github.com/KlingAIResearch/AvatarForcing](https://github.com/KlingAIResearch/AvatarForcing)
-- AvatarForcing contradictory committed academic-only/non-commercial license artifact: [github.com/KlingAIResearch/AvatarForcing/blob/main/LICENSE.txt](https://github.com/KlingAIResearch/AvatarForcing/blob/main/LICENSE.txt)
-- AvatarForcing official public weights repository and observed revision identity: [huggingface.co/lycui/AvatarForcing](https://huggingface.co/lycui/AvatarForcing)
+- AvatarForcing pinned code revision: [KlingAIResearch/AvatarForcing at `63b73e6`](https://github.com/KlingAIResearch/AvatarForcing/tree/63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39)
+- AvatarForcing pinned contradictory academic-only/non-commercial license artifact: [`LICENSE.txt` at `63b73e6`](https://github.com/KlingAIResearch/AvatarForcing/blob/63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39/LICENSE.txt)
+- AvatarForcing pinned public weights repository with no declared license: [`lycui/AvatarForcing` at `e244891`](https://huggingface.co/lycui/AvatarForcing/tree/e2448919a7b535c29f34e07892884ae1a43c6ace)
+- AvatarForcing access/license evidence and exact hashes: `evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license/`
 - AvatarForcing paper: [arxiv.org/abs/2603.14331](https://arxiv.org/abs/2603.14331)
 - MuseTalk: [github.com/TMElyralab/MuseTalk](https://github.com/TMElyralab/MuseTalk)
 - SkyReels V3: [github.com/SkyworkAI/SkyReels-V3](https://github.com/SkyworkAI/SkyReels-V3)
