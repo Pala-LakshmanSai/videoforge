@@ -1,0 +1,52 @@
+{
+  "task_id": "VF-7-03",
+  "result": "PASS",
+  "checked_at": "2026-08-11T06:00:31Z",
+  "implementation_commit": "72d5cff2ba1ecf9049115801a159365097eb1324",
+  "provider_mode": "fixture",
+  "provider_calls": 0,
+  "external_spend_usd": 0,
+  "schema_head": 8,
+  "composition": {
+    "input_version": "videoforge.image-style-analysis-input/v1",
+    "reference_set_version": "videoforge.image-style-reference-set/v1",
+    "analyzer_version": "style-analyzer-v1",
+    "provider": "RUNWARE",
+    "model": "google:gemini@3.5-flash",
+    "model_revision": "qualified-2026-08-11",
+    "minimum_references": 3,
+    "maximum_references": 8,
+    "result_disposition": "trusted_unaccepted_completion_candidate"
+  },
+  "checks": {
+    "focused_composition_tests_passed": 12,
+    "control_plane_tests_passed": 154,
+    "web_tests_passed": 163,
+    "pipeline_tests_passed": 115,
+    "provider_sandbox_tests_passed": 43,
+    "local_workerd_journeys_passed": 1,
+    "installed_chrome_journeys_passed": 38,
+    "installed_chrome_journeys_skipped": 0,
+    "canonical_verify": "PASS",
+    "context_validation": "PASS",
+    "secret_scan": "PASS",
+    "diff_check": "PASS"
+  },
+  "fences": [
+    "exact workspace and Image Style version ownership",
+    "same RFC 8785 fingerprint in specialized request and general attempt input",
+    "exact unfinished claimed general attempt",
+    "pre-call lifecycle, owner, hash, reference, and workspace revalidation",
+    "post-call deterministic semantic validation",
+    "no raw provider output or signed URL in completion candidate or evidence"
+  ],
+  "preserved": [
+    "provider mode remains fixture",
+    "ordinary video creation performs no reference-image analysis",
+    "published Image Style versions remain immutable and pinned",
+    "accepted fixture shell and density",
+    "three-composition hard-cut output grammar",
+    "required smooth AI-image zoom",
+    "exact ready Avatar Hub selection"
+  ]
+}
