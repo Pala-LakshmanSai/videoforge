@@ -44,6 +44,8 @@ export const RELATIONAL_TABLE_NAMES = [
   "prompt_writer_attempts",
   "prompt_scene_results",
   "image_generation_acceptances",
+  "avatar_generation_acceptances",
+  "avatar_renderer_bindings",
 ] as const;
 
 export type RelationalTableName = (typeof RELATIONAL_TABLE_NAMES)[number];

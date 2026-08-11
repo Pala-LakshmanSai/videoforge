@@ -62,6 +62,8 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "image_style_profile_artifacts",
   "image_style_profile_edits",
   "image_generation_acceptances",
+  "avatar_generation_acceptances",
+  "avatar_renderer_bindings",
   "avatar_profile_test_attempts",
   "repository_mutation_receipts",
 ] satisfies readonly RelationalTableName[]);

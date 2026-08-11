@@ -120,7 +120,7 @@ test("later durable migrations upgrade the five-migration baseline", async () =>
     );
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [6, 7, 8, 9, 10, 11]);
+    assert.deepEqual(upgraded.appliedVersions, [6, 7, 8, 9, 10, 11, 12]);
     assert.deepEqual(upgraded.alreadyAppliedVersions, [1, 2, 3, 4, 5]);
     const legacy = await executor.query(
       `SELECT transcript.lineage_contract_version, transcript.input_fingerprint_hash,
@@ -155,7 +155,7 @@ test("later durable migrations upgrade the five-migration baseline", async () =>
 
     const replay = await applyMigrations(executor, sources);
     assert.deepEqual(replay.appliedVersions, []);
-    assert.deepEqual(replay.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    assert.deepEqual(replay.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
   } finally {
     await database.close();
   }
@@ -185,7 +185,7 @@ test("reference-contract migration upgrades a clean seven-migration database", a
     }
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [8, 9, 10, 11]);
+    assert.deepEqual(upgraded.appliedVersions, [8, 9, 10, 11, 12]);
     assert.deepEqual(upgraded.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7]);
   } finally {
     await database.close();
@@ -334,7 +334,7 @@ test("style artifact migration backfills only accepted analyzer profiles as immu
     await executor.execute("COMMIT");
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [10, 11]);
+    assert.deepEqual(upgraded.appliedVersions, [10, 11, 12]);
     const root = await executor.query(
       `SELECT version.root_profile_artifact_id, version.current_profile_artifact_id,
               version.profile_revision, artifact.origin, artifact.profile_hash,

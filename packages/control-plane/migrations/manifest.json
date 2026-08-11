@@ -66,6 +66,12 @@
       "name": "fixture_image_result_acceptance",
       "filename": "0011_fixture_image_result_acceptance.sql",
       "sha256": "sha256:b20e265ef5feef439ac49fdacdb413539400dd87dbd592d1554ae8702abb2be8"
+    },
+    {
+      "version": 12,
+      "name": "avatar_fixture_result_acceptance",
+      "filename": "0012_avatar_fixture_result_acceptance.sql",
+      "sha256": "sha256:505d46ff98a499cae921b35007dadb4a086e56f98340256ef714857ee1b1dc1c"
     }
   ]
 }
