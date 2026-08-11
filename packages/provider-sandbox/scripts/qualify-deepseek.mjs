@@ -1,9 +1,12 @@
 import { createHash, randomUUID } from "node:crypto";
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const API_URL = "https://api.runware.ai/v1";
-const MODEL = "deepseek-v4-flash";
+const MODEL_ALIAS = "deepseek-v4-flash";
+const MODEL = "deepseek:v4@flash";
+const PUBLIC_PROVIDER_NAME = "DeepSeek-V4-Flash-0731";
 const TASK_CAP_USD = 1;
 const RUN_CAP_USD = 0.02;
 const PROJECT_TITLE = "Harvest Water Without Pumps";
@@ -72,6 +75,7 @@ export function buildRequest(batchIndex, previousContinuity = "none") {
     `Batch: batch_${batchIndex + 1}`,
     `Previous continuity: ${previousContinuity}`,
     `Style ${styleId}: ${styleGuidance}`,
+    "Required anchor rule: copy every required_terms string verbatim into its scene's image_prompt.",
     `Scenes: ${JSON.stringify(batchScenes.map(({ style_probe: _styleProbe, ...scene }) => scene))}`,
   ].join("\n");
   if (userContent.split(titleLabel).length !== 2) throw new Error("Project title must occur once");
@@ -121,6 +125,7 @@ export function buildRequest(batchIndex, previousContinuity = "none") {
         "Return every scene ID exactly once and echo in_image_shot_role unchanged.",
         "Never select composition or timeline roles.",
         "Depict the supplied phrase without new factual claims.",
+        "Every image_prompt MUST include every required_terms string verbatim; do not paraphrase, singularize, pluralize, or reorder words inside a required term.",
         "Use style guidance as treatment, not subject matter.",
         "Never request visible text, captions, titles, logos, watermarks, borders, graphics, diagrams, or motion graphics.",
         "Keep people and materials realistic. Output only strict schema JSON.",
@@ -135,6 +140,49 @@ export function buildRequest(batchIndex, previousContinuity = "none") {
 }
 
 const sha256 = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
+
+async function fetchModelIdentity(apiKey) {
+  const taskUUID = randomUUID();
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify([
+      {
+        taskType: "modelSearch",
+        taskUUID,
+        search: MODEL_ALIAS,
+        visibility: "public",
+        limit: 20,
+      },
+    ]),
+    signal: AbortSignal.timeout(30_000),
+  });
+  const bodyText = await response.text();
+  const body = JSON.parse(bodyText);
+  if (!response.ok || body.errors)
+    throw new Error(`Runware model identity lookup failed: HTTP ${response.status}`);
+  const data = body.data?.find((item) => item.taskUUID === taskUUID);
+  const matches = (data?.results ?? []).filter(
+    (item) => item.air === MODEL && item.name === PUBLIC_PROVIDER_NAME,
+  );
+  if (matches.length !== 1) {
+    throw new Error("Runware model identity lookup did not return one exact canonical match");
+  }
+  const match = matches[0];
+  return {
+    task_uuid: taskUUID,
+    response_sha256: sha256(bodyText),
+    air: match.air,
+    name: match.name,
+    version: match.version ?? null,
+    category: match.category ?? null,
+    architecture: match.architecture ?? null,
+    source: match.source ?? null,
+    capabilities: Array.isArray(match.capabilities) ? match.capabilities : [],
+    private: match.private ?? null,
+    exact_canonical_match: true,
+  };
+}
 
 function validateBatch(request, data) {
   const parsed = typeof data.text === "string" ? JSON.parse(data.text) : data.text;
@@ -166,8 +214,13 @@ function validateBatch(request, data) {
   };
 }
 
-export async function runQualification({ apiKey, outputPath }) {
+export async function runQualification({ apiKey, outputPath, priorSpendUsd = 0 }) {
   if (!apiKey || apiKey.length < 20) throw new Error("RUNWARE_API_KEY missing or invalid");
+  if (!Number.isFinite(priorSpendUsd) || priorSpendUsd < 0)
+    throw new Error("Prior task spend must be a non-negative number");
+  if (priorSpendUsd + RUN_CAP_USD > TASK_CAP_USD)
+    throw new Error("Remaining task cap cannot reserve this qualification run");
+  const modelIdentity = await fetchModelIdentity(apiKey);
   let totalCostUsd = 0;
   let previousContinuity = "none";
   const batches = [];
@@ -204,7 +257,7 @@ export async function runQualification({ apiKey, outputPath }) {
     const cost = Number(data.cost);
     if (!Number.isFinite(cost) || cost < 0) throw new Error("Runware response missing valid cost");
     totalCostUsd += cost;
-    if (totalCostUsd > RUN_CAP_USD || totalCostUsd > TASK_CAP_USD)
+    if (totalCostUsd > RUN_CAP_USD || priorSpendUsd + totalCostUsd > TASK_CAP_USD)
       throw new Error("Runware cost exceeded cap");
     previousContinuity = validated.output.continuity;
     batches.push({
@@ -229,20 +282,22 @@ export async function runQualification({ apiKey, outputPath }) {
   }
 
   const allChecks = batches.flatMap((batch) => batch.checks);
-  const immutableIdentityReturned = batches.every(
-    (batch) => batch.returned_model_version || batch.returned_fingerprint,
-  );
+  const immutableIdentityReturned = modelIdentity.exact_canonical_match;
   const evidence = {
     schema_version: "videoforge.deepseek-qualification/v1",
     task_id: "VF-3-01",
     gate_id: "GATE_LLM_001",
     checked_at: new Date().toISOString(),
     provider: "Runware",
+    requested_model_alias: MODEL_ALIAS,
     requested_model: MODEL,
-    public_provider_name: "DeepSeek-V4-Flash-0731",
+    public_provider_name: PUBLIC_PROVIDER_NAME,
+    model_identity: modelIdentity,
     task_cap_usd: TASK_CAP_USD,
     run_cap_usd: RUN_CAP_USD,
+    prior_attempt_spend_usd: priorSpendUsd,
     external_spend_usd: totalCostUsd,
+    cumulative_task_spend_usd: priorSpendUsd + totalCostUsd,
     scene_count: allChecks.length,
     style_count: styles.length,
     batches,
@@ -264,19 +319,31 @@ export async function runQualification({ apiKey, outputPath }) {
         ? "PASS"
         : "OPEN",
     identity_note: immutableIdentityReturned
-      ? "Live response exposed version/fingerprint evidence."
-      : "Live response did not expose an immutable version/fingerprint; public alias-to-0731 mapping alone is insufficient for lock.",
+      ? "Live Runware modelSearch resolved the canonical AIR deepseek:v4@flash to the public model DeepSeek-V4-Flash-0731; generation requests pinned that AIR. Native generation responses did not echo model/version fields."
+      : "Live provider evidence did not establish an exact canonical model identity.",
     secrets_recorded: false,
   };
+  await mkdir(dirname(outputPath), { recursive: true, mode: 0o700 });
   await writeFile(outputPath, `${JSON.stringify(evidence, null, 2)}\n`, { mode: 0o600 });
   return evidence;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const outputArg = process.argv.indexOf("--output");
-  const outputPath = outputArg >= 0 ? process.argv[outputArg + 1] : null;
+  const rawOutputPath = outputArg >= 0 ? process.argv[outputArg + 1] : null;
+  const priorSpendArg = process.argv.indexOf("--prior-spend-usd");
+  const priorSpendUsd = priorSpendArg >= 0 ? Number(process.argv[priorSpendArg + 1]) : 0;
+  const outputPath = rawOutputPath
+    ? isAbsolute(rawOutputPath)
+      ? rawOutputPath
+      : resolve(process.env.INIT_CWD ?? process.cwd(), rawOutputPath)
+    : null;
   if (!outputPath) throw new Error("Usage: qualify:deepseek -- --output <path>");
-  const evidence = await runQualification({ apiKey: process.env.RUNWARE_API_KEY, outputPath });
+  const evidence = await runQualification({
+    apiKey: process.env.RUNWARE_API_KEY,
+    outputPath,
+    priorSpendUsd,
+  });
   process.stdout.write(
     JSON.stringify({
       gate_result: evidence.gate_result,
