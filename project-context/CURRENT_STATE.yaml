@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T20:28:00Z"
+updated_at: "2026-08-11T20:52:00Z"
 
-phase: skyreels_worker_preflight
+phase: skyreels_worker_build
 implementation_authorized_in_current_task: true
-current_milestone: locked_skyreels_worker_preflight
-current_task: VF-8-11
+current_milestone: locked_skyreels_worker_build
+current_task: VF-8-12
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -19,8 +19,8 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "26a63c1"
-  working_tree_expected: clean_after_vf_8_10_technical_success_quality_failure_handoff
+  last_good_commit: "c091e86"
+  working_tree_expected: clean_after_vf_8_11_skyreels_preflight_handoff
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -44,7 +44,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "VF-8-11 is read-only first-party SkyReels V3 worker preflight plus local contract planning only; no RunPod credential read/mutation, model download, GPU start, provider call, or spend."
+  provider_authority_scope: "VF-8-12 authorizes local SkyReels worker implementation and GHCR build/publish at $0 provider spend; no RunPod credential read/mutation, model-weight download, GPU start, provider call, or spend."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -186,17 +186,21 @@ completed_tasks:
     image_digest: "sha256:e46c3a9d0d770905ca2d04aecf5623986425eca861f2e1ea9245a3fd5867f434"
     evidence: "evidence/acceptance/VF-8-10/avatarforcing-a100-resume"
     summary: "A100-80GB-only qualification produced a checksum-valid H.264/AAC MP4 with exact locked lineage and returned RunPod to zero. Whole-face identity/detail blur rejects quality and triggers the locked SkyReels whole-frame route, not MuseTalk."
+  - task_id: VF-8-11
+    status: complete
+    implementation_commit: "c091e86"
+    evidence: "evidence/acceptance/VF-8-11/skyreels-worker-preflight"
+    summary: "Pinned official SkyReels V3 source/model revisions, corrected the authoritative talking-avatar output contract from 24 to 25 fps, and bounded one provider-free worker-build successor."
 
 latest_closed_handoff:
-  task_id: VF-8-10
-  status: technical_success_quality_failure
-  task_kind: avatarforcing_a100_resume
-  implementation_commit: "26a63c1"
-  evidence: "evidence/acceptance/VF-8-10/avatarforcing-a100-resume"
-  verification_result: "valid_mp4_whole_frame_quality_failure_and_live_zero_resource_inventory"
-  external_actions: "One A100-80GB Serverless worker/job, then exact endpoint/template deletion and independent zero-inventory confirmation."
+  task_id: VF-8-11
+  status: complete
+  task_kind: skyreels_worker_preflight
+  implementation_commit: "c091e86"
+  evidence: "evidence/acceptance/VF-8-11/skyreels-worker-preflight"
+  verification_result: "focused_contract_pipeline_worker_and_context_checks_passed"
+  external_actions: "Read-only official GitHub/Hugging Face metadata; no provider mutation, model download, GPU, or spend."
   external_spend_usd: 0
-  spend_note: "Balance delta was zero at cleanup; provider settlement may lag."
 
 last_green:
   checked_at: "2026-08-11T20:03:00Z"
@@ -222,31 +226,31 @@ active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-8-11
-  milestone: locked_skyreels_worker_preflight
+  task_id: VF-8-12
+  milestone: locked_skyreels_worker_build
   status: ready
-  dependency_status: vf_8_10_valid_primary_mp4_rejected_for_whole_frame_quality_and_runpod_zero
-  authorization_status: provider_free_skyreels_preflight_only
-  read_profile: phase8_skyreels_worker_preflight
-  task_brief: tasks/VF-8-11.md
-  goal: "Pin exact SkyReels V3 fallback revisions/contracts and author the smallest fail-closed worker qualification path at $0."
+  dependency_status: vf_8_11_exact_source_model_runtime_and_25fps_contract_pinned
+  authorization_status: provider_free_skyreels_worker_build_only
+  read_profile: phase8_skyreels_worker_build
+  task_brief: tasks/VF-8-12.md
+  goal: "Build and publish one pinned fail-closed SkyReels V3 worker image without downloading weights or starting paid compute."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
+  remote_or_cloud_mutations_authorized: true
   credential_access_authorized: false
   model_downloads_authorized: false
   application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-8-11/skyreels-worker-preflight"
+  expected_evidence: "evidence/acceptance/VF-8-12/skyreels-worker-build"
   required_handoff:
-    - "Pin exact official source/model revisions and low-VRAM/offload launch contract."
-    - "Define original-source/audio lineage, native 1280x720/24 output, probe, and failure boundaries."
-    - "Author exactly one executable successor and keep RunPod absolute zero."
+    - "Implement strict original-source/audio, command, timeout/cancel, probe, lineage, and safe-error boundaries."
+    - "Publish one immutable GHCR image with exact container smokes and no model weights."
+    - "Author exactly one capped qualification successor and keep RunPod absolute zero."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-8-11
+    integration_owner: VF-8-12
   prohibited_in_task:
-    - "Any RunPod credential read/mutation, provider dispatch, model download, GPU start, or spend."
-    - "Failed AvatarForcing derivative as input, MuseTalk execution, model substitution, Mage work, promotion, schema/UI redesign, credential exposure, or deployment."
+    - "Any RunPod credential read/mutation, model-weight download, provider dispatch, GPU start, or spend."
+    - "Failed AvatarForcing derivative input, MuseTalk execution, model substitution, Mage work, promotion, schema/UI redesign, credential exposure, or deployment."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -274,8 +278,8 @@ known_incomplete_boundaries:
   - "No encrypted off-machine backup, R2 integrity inventory, clean-target cloud restore, ten-user contention/security proof, or fresh-account production Chrome sign-off exists."
 
 next_tasks:
-  - "1. VF-8-11 pin and preflight the exact SkyReels V3 whole-frame worker at $0."
-  - "2. Build/publish one pinned SkyReels worker, then run one capped fallback qualification only under its exact successor brief."
+  - "1. VF-8-12 build/publish one pinned SkyReels V3 whole-frame worker at $0."
+  - "2. Run one capped A100-80GB fallback qualification only under its exact successor brief."
   - "3. Build pinned Mage worker; exact weight access currently needs Hugging Face authentication unavailable in Chrome/Keychain."
   - "4. Add MuseTalk repair and SkyReels whole-frame fallback only after their technical triggers."
   - "5. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
@@ -301,7 +305,7 @@ progress_snapshot:
   interpretation: "Provider-free media, restart-safe Node sandbox, locked Runware runtime composition, RunPod scale-zero control, and a pinned real AvatarForcing worker are implemented. A100-80GB produced the first valid real Avatar MP4 with exact lineage, but whole-frame quality failed and the candidate remains unpromoted; SkyReels, Mage access, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: skyreels_worker_preflight_selected
+  status: skyreels_worker_build_selected
   completed_and_preserved:
     - "All completed tasks/commits above; no paused implementation or unexplained dirty state."
     - "Forced full verification passed at the VF-8-04 handoff tree: Workerd 1/1 and installed Chrome 38/38 with zero skips."
@@ -314,12 +318,13 @@ activation_handoff:
     - "VF-8-08 restored torchaudio; one 213-second run returned secret-safe process-failure evidence for $0.0102739352 and left RunPod absolute zero."
     - "VF-8-09 closed compact OOM classification gaps and published A100-80GB-only image sha256:e46c3a9d0d770905ca2d04aecf5623986425eca861f2e1ea9245a3fd5867f434 at $0."
     - "VF-8-10 produced the first checksum-valid real AvatarForcing MP4, rejected it for severe whole-face blur, and returned RunPod absolute zero."
+    - "VF-8-11 pinned SkyReels source/model lineage and corrected the talking-avatar source profile to native 25 fps."
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from 26a63c1; preserve all newer commits."
-    - "Load only phase8_skyreels_worker_preflight and tasks/VF-8-11.md."
-    - "Pin exact SkyReels V3 revisions/contracts, author one executable successor, and keep RunPod zero."
+    - "Require clean HEAD descending from c091e86; preserve all newer commits."
+    - "Load only phase8_skyreels_worker_build and tasks/VF-8-12.md."
+    - "Build/publish one pinned SkyReels worker, author one capped qualification successor, and keep RunPod zero."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
     - "Credential exposure, model/revision ambiguity, failed derivative input, any provider mutation/spend, or non-zero RunPod inventory."
