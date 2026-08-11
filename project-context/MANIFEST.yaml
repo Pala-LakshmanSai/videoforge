@@ -222,11 +222,17 @@ read_profiles:
     - tasks/VF-3-01.md
   phase3_runware_style_qualification:
     - 08_MODELS_AND_PROVIDERS.md
-    - 11_COST_SPEED_BUDGET.md
     - 14_TESTING_AND_ACCEPTANCE.md
     - 18_IMAGE_STYLES_HUB.md
     - GATES.yaml
     - tasks/VF-3-02.md
+  phase3_runware_prompt_adapter:
+    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 08_MODELS_AND_PROVIDERS.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - GATES.yaml
+    - tasks/VF-3-07.md
   phase3_prompt_compiler:
     - GLOSSARY.md
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md
@@ -317,7 +323,6 @@ open_gates:
   GATE_AVATAR_003: reconcile_avatarforcing_code_and_weights_commercial_license
   GATE_IMAGE_001: reproduce_mage_300_image_speed_and_quality
   GATE_IMAGE_002: verify_exact_checkpoint_access_and_launch_terms
-  GATE_STYLE_001: verify_gemini_style_schema_cost_latency_privacy_and_content_separation
   GATE_STYLE_002: verify_mage_adherence_across_distinct_extracted_styles
   GATE_FALLBACK_001: benchmark_skyreels_low_vram_cost_and_quality
   GATE_GPU_001: produce_tested_compatible_gpu_allowlists
@@ -327,6 +332,7 @@ open_gates:
 closed_gates:
   GATE_UI_001: user_approved_medium_minimal_live_chrome_shell_on_2026_08_09
   GATE_LLM_001: runware_canonical_0731_identity_and_strict_schema_passed_on_2026_08_11
+  GATE_STYLE_001: runware_gemini_3_5_flash_seven_fixture_style_analysis_passed_on_2026_08_11
 
 deferred:
   - ai_broll_video

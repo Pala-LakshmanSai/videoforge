@@ -41,13 +41,13 @@ Official sources: [Runware DeepSeek-V4-Flash API](https://runware.ai/docs/models
 
 ## Runware Gemini 3.5 Flash
 
-Approved provisional purpose: one-time multi-reference Image Style analysis when a user explicitly analyzes a new draft style version.
+Qualified purpose: one-time multi-reference Image Style analysis when a user explicitly analyzes a new draft style version. `GATE_STYLE_001` closed on 2026-08-11.
 
 - Provider/API: Runware, same account/key/SDK selected for DeepSeek.
 - Native API model ID: `google-gemini-3-5-flash`; Runware SDK/AIR alias: `google:gemini@3.5-flash`.
 - Input: 1–12 normalized reference images in one request; 3–8 recommended.
 - Output: untrusted `image-style-analyzer-output/v1` through `outputFormat: JSON` and strict `jsonSchema`; trusted code validates it and assembles the stored `image-style-profile/v1` payload/provenance.
-- Initial mode: `mediaResolution: high`, `thinkingLevel: medium`, temperature 0.1, top-p 0.9, maximum 6000 tokens.
+- Qualified mode: `mediaResolution: medium`, `thinkingLevel: low`, temperature 0.1, top-p 0.9, maximum 6000 tokens.
 - Include provider-reported usage/cost and store exact request/profile hashes.
 - Normal project generation makes no call to this model.
 
@@ -55,9 +55,16 @@ Current documented Runware prices:
 
 - Text/image/video input: $1.50 per million tokens below 200k.
 - Output/thinking: $9.00 per million tokens below 200k.
-- Planning cost for 3–8 high-resolution references: approximately $0.03–$0.07 once per style, not per video.
+- Measured accepted first-analysis cost: $0.031974–$0.037442 across the seven synthetic sets; accepted two-attempt totals were $0.066977 and $0.075869. This is once per analyzed style, not per video.
 
-Why not use Gemini 3.1 Flash Lite by default: it is substantially cheaper, but extracting subtle shared treatment while excluding recurring reference content is a quality-sensitive one-time task. The additional few cents are amortized across every project that reuses the style. The exact choice remains gated by a VideoForge-specific A/B.
+The accepted provider-facing schema keeps exact properties, types, required fields, enums, and
+closed-object boundaries. Gemini rejected the larger fully constrained schema, so trusted local
+canonical validation remains authoritative for range/cardinality constraints. The qualified request
+also omits provider seed because the documented unsigned Runware range was not portable through
+this Google generation path. Cumulative VF-3-02 qualification spend was `$0.407604` under its `$3`
+cap; ordinary video creation still performs zero analyzer calls.
+
+Why not use Gemini 3.1 Flash Lite by default: it is substantially cheaper, but extracting subtle shared treatment while excluding recurring reference content is a quality-sensitive one-time task. The additional few cents are amortized across every project that reuses the style. The VideoForge-specific seven-set qualification passed Gemini 3.5 Flash, so no fallback A/B is currently required.
 
 Runware advertises no LLM training on prompts/outputs, but zero-data-retention is enterprise-only. Its standard terms/privacy posture may store inputs, treats uploads as non-confidential, and grants service-related rights broad enough that VideoForge must not describe standard processing as ZDR or confidential. Require disclosure consent, use only owned/synthetic qualification images, send browser-normalized derivatives over short-lived signed URLs, minimize content, record user rights, distinguish VideoForge deletion from provider retention/deletion, and never send the private Ranga frames.
 

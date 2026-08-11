@@ -45,11 +45,16 @@ gates:
     provider_model_name: "DeepSeek-V4-Flash-0731"
     cumulative_qualification_spend_usd: 0.00243598
   GATE_STYLE_001:
-    status: open
+    status: closed
     blocks: custom_reference_style_analysis
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#image-style-analyzer-and-compiler-gate"
-    owner: unassigned
-    last_run: null
+    owner: VF-3-02
+    last_run: "evidence/gates/GATE_STYLE_001/2026-08-10-runware-gemini-style-qualification"
+    result: pass
+    closed_at: "2026-08-11T03:18:48Z"
+    canonical_air: "google:gemini@3.5-flash"
+    provider_model_name: "Gemini 3.5 Flash"
+    cumulative_qualification_spend_usd: 0.407604
   GATE_STYLE_002:
     status: open
     blocks: custom_prompt_only_style_claim

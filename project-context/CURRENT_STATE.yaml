@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T02:44:08Z"
+updated_at: "2026-08-11T03:30:43Z"
 
 phase: phase_3_provider_operations_preflight
-implementation_authorized_in_current_task: false
-current_milestone: phase_3_style_qualification
-current_task: VF-3-02
+implementation_authorized_in_current_task: true
+current_milestone: phase_3_runware_prompt_adapter
+current_task: VF-3-07
 current_wave: phase_3_evidence_first_activation
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -20,7 +20,7 @@ repository:
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
   verified_implementation_commit: "907e0e4908bddc1ec7b90232f043a10d9c7d5b2a"
   last_good_commit: "d16c2a9102125fa6e56d014fcf2f6241c878fa07"
-  working_tree_expected: "clean_at_vf_3_01_deepseek_qualification_handoff"
+  working_tree_expected: "clean_at_vf_3_02_gemini_style_qualification_handoff"
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
     ajv: "8.20.0"
@@ -43,9 +43,9 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: true
-  authorized_spend_usd: 3
-  provider_authority_scope: "VF-3-02 qualification runner only; application remains fixture"
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: "VF-3-07 fake-transport application adapter only; application remains fixture"
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -192,6 +192,12 @@ completed_tasks:
     implementation_commit: "e157935d87b67b73a448c78fe032d0aa4313e29a"
     evidence_commit: "f70eca7cf4645eb284c44cf65f6053b7265b54ec"
     evidence: "evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification"
+  - task_id: VF-3-02
+    status: complete
+    summary: "Qualified Runware Gemini 3.5 Flash through seven owned/synthetic metadata-free style sets; strict exact-shape provider output plus canonical local semantic validation passed content separation, outlier/uncertainty, aliases, crop rules, latency, retries, privacy, and cost while ordinary video creation remained at zero analyzer calls."
+    implementation_commit: "481114491e3806fb7dfe8f3e903cc8201d0c9f27"
+    evidence_commit: "45be0e79515ad737d600139915594d56178730fb"
+    evidence: "evidence/gates/GATE_STYLE_001/2026-08-10-runware-gemini-style-qualification"
   - task_id: VF-3-03
     status: complete
     summary: "Committed provider-neutral 25-50-scene batching, strict hostile-output validation, a deterministic fixture writer, locked full/split crop guidance, permanent output guardrails, normalized optional extras, and byte/hash-verifiable Mage prompt compilation with no provider activity."
@@ -237,7 +243,7 @@ standing_local_authority:
     - VF-2-05
 
 planned_provider_qualification:
-  status: active_vf_3_02_runware_gemini_style_qualification
+  status: deepseek_and_gemini_complete_next_paid_lane_not_selected
   authorized_by_user_at: "2026-08-10T17:07:12Z"
   aggregate_ceiling_usd: 25
   unused_budget_transfer_allowed: false
@@ -257,12 +263,12 @@ planned_provider_qualification:
     runware_account:
       status: created
       workspace_id: videoforgesujal
-      balance_usd: 20.05
+      balance_usd: 19.67
       balance_checked_at: "2026-08-11"
       user_reported_top_up_usd: 20
       user_reported_top_up_at: "2026-08-11"
       live_balance_recheck_required: false
-      spend_usd: 0.00243598
+      spend_usd: 0.41003998
       credential_location: "macOS Keychain service com.videoforge.runware.qualification"
       credential_value_recorded: false
     deepseek:
@@ -274,10 +280,12 @@ planned_provider_qualification:
       evidence: "evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification"
       external_spend_usd: 0.00243598
     gemini_style_analysis:
-      status: selected_ready_for_bounded_qualification
+      status: qualified_pass
       gate: GATE_STYLE_001
       evidence: "evidence/gates/GATE_STYLE_001/2026-08-10-runware-gemini-style-qualification"
-      external_spend_usd: 0
+      canonical_air: "google:gemini@3.5-flash"
+      provider_model_name: "Gemini 3.5 Flash"
+      external_spend_usd: 0.407604
 
 external_checkpoints:
   github_remote:
@@ -307,63 +315,58 @@ active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-3-02
-  milestone: phase_3_style_qualification
+  task_id: VF-3-07
+  milestone: phase_3_runware_prompt_adapter
   status: ready
-  dependency_status: vf_3_01_account_credential_and_deepseek_handoff_green_vf_3_06_semantic_foundation_green
-  authorization_status: exact_runware_gemini_style_authority_active_with_non_transferable_three_dollar_cap
-  read_profile: phase3_runware_style_qualification
-  task_brief: tasks/VF-3-02.md
-  goal: "Qualify or truthfully fail Runware Gemini 3.5 Flash as the one-time Image Style analyzer."
+  dependency_status: gate_llm_001_closed_vf_3_03_prompt_compiler_green
+  authorization_status: exact_provider_free_application_adapter_brief_selected
+  read_profile: phase3_runware_prompt_adapter
+  task_brief: tasks/VF-3-07.md
+  goal: "Implement a production-shaped Runware DeepSeek prompt-writer adapter behind injected fake-tested ports while provider mode remains fixture."
   dependencies:
-    - "VF-3-01 canonical Runware account, credential, and GATE_LLM_001 handoff green"
-    - "VF-3-06 checksum-bound semantic style-analysis foundation green"
-    - "Official Runware Gemini, pricing, retention, terms, and privacy facts refreshed 2026-08-10"
-  provider_calls_authorized: true
-  maximum_external_spend_usd: 3
-  provider_authority:
-    provider: Runware
-    model_id: google-gemini-3-5-flash
-    sdk_air_alias: "google:gemini@3.5-flash"
-    expected_checkpoint: Gemini 3.5 Flash
-    cap_usd: 3
-    non_transferable: true
-    authorized_by_user_at: "2026-08-10T17:07:12Z"
+    - "VF-3-01 closed GATE_LLM_001 with canonical deepseek:v4@flash identity and 40-scene strict-schema evidence"
+    - "VF-3-03 deterministic 25-50-scene prompt batching, validation, crop grammar, and compiler green"
+    - "VF-0D-01 provider-neutral ambiguity, cap, timeout, cancellation, and evidence patterns green"
+  provider_calls_authorized: false
+  maximum_external_spend_usd: 0
+  provider_authority: null
   remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: true
+  credential_access_authorized: false
   model_downloads_authorized: false
-  qualification_harness_changes_authorized: true
-  application_code_changes_authorized: false
+  qualification_harness_changes_authorized: false
+  application_code_changes_authorized: true
   live_route: null
   fixture_scenario: null
-  expected_evidence: "evidence/gates/GATE_STYLE_001/2026-08-10-runware-gemini-style-qualification"
+  expected_evidence: "evidence/acceptance/VF-3-07/runware-deepseek-prompt-adapter"
   required_handoff:
-    - "Use only seven owned/synthetic normalized analyzer fixtures; no private or Ranga references"
-    - "Prove strict schema, style/content separation, outlier and uncertainty behavior, alias binding, and semantic validation"
-    - "Record exact model/settings/request/response hashes, latency, retries, usage, cost, and standard-service privacy facts"
-    - "Keep first analysis below $0.08 and any reconciled retry total below $0.15"
-    - "Close GATE_STYLE_001 only if every exact criterion passes; otherwise preserve a truthful failed/open gate"
+    - "Pin deepseek:v4@flash and exact scene-prompt-writer-v1 strict request/response identity"
+    - "Use injected fake transport only; importing, building, and testing performs zero provider/network/credential activity"
+    - "Retain valid first-attempt scenes and retry only unresolved expected scene IDs once"
+    - "Fail closed on identity, role, literal-anchor, schema, ambiguity, timeout, usage, or cost drift"
+    - "Keep DeterministicFixturePromptWriter as the default and external spend at $0"
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    status: serial_live_provider_qualification
-    integration_owner: VF-3-02
+    status: serial_prompt_adapter_core
+    integration_owner: VF-3-07
   prohibited_in_task:
-    - "Application/UI integration, ordinary-production style calls, Mage, direct Google fallback, Avatar, RunPod, staging, deployment, private/Ranga references, or unrelated refactors"
-    - "Any charge above the Gemini style $3 sub-cap or transfer from another sub-cap"
+    - "Live Runware calls, credentials, spend, runtime/route/database composition, UI, Mage, Gemini, Avatar, RunPod, staging, deployment, or unrelated refactors"
+    - "Any change to scheduler roles, accepted UI/output grammar, Image Style semantics, or provider mode"
 
 latest_closed_handoff:
-  task_id: VF-3-01
+  task_id: VF-3-02
   status: complete
-  implementation_commit: "e157935d87b67b73a448c78fe032d0aa4313e29a"
-  evidence_commit: "f70eca7cf4645eb284c44cf65f6053b7265b54ec"
-  evidence: "evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification"
-  audit_result: "canonical_runware_air_and_all_strict_schema_relevance_identity_and_cost_criteria_pass"
-  verification_result: "provider_sandbox_40_of_40_and_forced_uncached_full_gate_green"
-  external_actions: "authenticated_runware_model_search_and_15_bounded_text_inference_batches"
-  external_spend_usd: 0.00243598
+  implementation_commit: "481114491e3806fb7dfe8f3e903cc8201d0c9f27"
+  evidence_commit: "45be0e79515ad737d600139915594d56178730fb"
+  evidence: "evidence/gates/GATE_STYLE_001/2026-08-10-runware-gemini-style-qualification"
+  audit_result: "canonical_runware_gemini_identity_and_all_seven_schema_semantic_content_separation_alias_retry_privacy_and_cost_criteria_pass"
+  verification_result: "provider_sandbox_43_of_43_and_forced_uncached_full_gate_green"
+  external_actions: "authenticated_runware_model_search_and_bounded_gemini_style_inference_with_temporary_key_deleted_afterward"
+  external_spend_usd: 0.407604
 
 last_green:
   commands:
+    - "VF-3-02: live Runware modelSearch resolved google:gemini@3.5-flash to Gemini 3.5 Flash; seven owned/synthetic style sets passed strict exact-shape output plus canonical local semantic, content-separation, uncertainty/outlier, alias, privacy, retry, and cost criteria."
+    - "VF-3-02: pnpm --filter @videoforge/provider-sandbox test passed 43/43 and TURBO_FORCE=true pnpm verify passed, including 38/38 installed-Chrome journeys."
     - "VF-3-01: live Runware modelSearch resolved deepseek:v4@flash to DeepSeek-V4-Flash-0731; the accepted five-batch run passed 40/40 exact scenes and every strict-schema, role, literal-anchor, forbidden-output, identity, and cost criterion."
     - "VF-3-01: pnpm --filter @videoforge/provider-sandbox test passed 40/40 and TURBO_FORCE=true pnpm verify passed, including 38/38 installed-Chrome journeys."
     - "GitHub Actions run 31451226265: pnpm verify from a fresh full-history checkout"
@@ -390,10 +393,11 @@ last_green:
     - "pnpm context:validate"
     - "pnpm secret:scan"
     - "git diff --check"
-  checked_at: "2026-08-11T02:14:53Z"
+  checked_at: "2026-08-11T03:30:43Z"
   result: pass
-  verified_commit: "c23ab438b44e2b68751be341b0dac17a6fcc5dc1"
+  verified_commit: "481114491e3806fb7dfe8f3e903cc8201d0c9f27"
   evidence:
+    - "evidence/gates/GATE_STYLE_001/2026-08-10-runware-gemini-style-qualification"
     - "evidence/acceptance/VF-1-02/runtime-neutral-hono"
     - "evidence/acceptance/VF-0D-01/provider-sandbox-harness"
     - "evidence/acceptance/VF-1-03/auth-workspace-adapter"
@@ -417,7 +421,7 @@ last_green:
     repository_contract_semantic_fixture_bodies: 13
     relational_public_tables: 37
     web_server_component_tests: 163
-    provider_sandbox_tests: 40
+    provider_sandbox_tests: 43
     node_cloudflare_parity_unit_tests: 3
     local_workerd_http_parity_tests: 1
     dock_motion_unit_tests: 7
@@ -434,6 +438,8 @@ last_green:
     playwright_chrome_journeys_intentionally_skipped: 0
     local_installed_chrome_convergence_journeys_passed: 1
   notes:
+    - "VF-3-02 closed GATE_STYLE_001: canonical google:gemini@3.5-flash passed all seven owned/synthetic analyzer sets at $0.407604 cumulative task spend, with first calls below $0.08, retries below $0.15, standard-service privacy disclosed, and zero ordinary-video analyzer calls."
+    - "The qualified provider-facing Gemini schema retains exact properties, types, required fields, enums, and closed-object boundaries while trusted local canonical validation enforces removed range/cardinality constraints; this resolved documented provider schema complexity without weakening acceptance."
     - "VF-3-06 adds exact checksum-bound 3-8 reference requests, a deterministic fixture analyzer, strict 14-trait semantic/content-separation validation, and frozen RFC 8785-hashed trusted style profiles without provider calls or spend."
     - "VF-3-03 adds deterministic 25-50-scene batching, strict plain-output validation, six locked shot roles, full/split crop geometry, permanent guardrails, five-style coverage, optional keyword rules, and exact UTF-8/hash replay without provider calls or spend."
     - "This last-green record proves the exact source tree committed as VF-2-05 implementation 907e0e4908bddc1ec7b90232f043a10d9c7d5b2a; evidence is committed separately at d16c2a9102125fa6e56d014fcf2f6241c878fa07."
@@ -442,7 +448,7 @@ last_green:
     - "All 13 fixed repository scenario bodies execute against a fresh concrete PGlite adapter with disposal, rollback, exact idempotency, workspace isolation, callback replay, lease fencing, and cost-lineage proof."
     - "The VF-1-03 independent auth audit and the VF-1-04/VF-1-05 closure audits found no remaining high or medium issue after all reproduced findings were repaired."
     - "Private artifact transfer passed 37 pipeline tests plus the isolated Hono metadata/body-bypass boundary; accepted artifact truth survives restart and cross-instance idempotency races without exposing private bytes through legacy CAS."
-    - "The provider-sandbox adversarial audit closed all reproduced high/medium findings; all 39 tests pass with no provider/network/environment/SDK source match."
+    - "The provider-sandbox adversarial audit closed all reproduced high/medium findings; the current 43-test suite includes deterministic DeepSeek/Gemini qualification-runner boundaries while normal imports/tests make no provider call."
     - "Node and Cloudflare-local fixture behavior is equivalent across 3 unit cases and 1 real Workerd HTTP case; installed Chrome passed 38 journeys with zero collection-time skips."
     - "Three post-commit VF-1-06 audits closed all seven recorded recovery/UI/cost findings; definitely-not-sent redelivery reuses one attempt, terminal/cancellation state is fenced, acceptance leaves no runnable sibling, cost conserves exactly per attempt, and inspection is one-query bounded at 32 attempts."
     - "VF-1-07 proves two local invited accounts cannot cross workspace reads, binds, hash probes, reviewer authorization, signed downloads, or archives; the frozen surface exposes no rename mutation. A 9,437,228-byte WAV transferred directly with zero application byte bodies, and two locked revisions reused one exact ready Avatar version without new Avatar lineage or cost."
@@ -455,14 +461,13 @@ last_green:
     - "Two independent real FFmpeg selected-span runs produced identical transcript, timeline, output, and span hashes/bytes; the refreshed owned local slice restored without rerun and re-downloaded the exact 37.167-second MP4 at $0 with provider calls disabled."
     - "Installed Chrome passed the isolated real local project journey: real ASR/render, span inspection, keyboard/focus, playback, approval, and exact download, with zero external requests, failed responses, console/page errors, unnamed controls, or overflow."
     - "The required read-only dependency registry audit reported no known vulnerabilities; it performed no package change, provider call, credential operation, cloud/account mutation, or spend."
-    - "All task data was owned/synthetic and local; provider calls remained disabled, no cloud/remote mutation occurred, and external spend was $0."
+    - "VF-3-02 used only owned/synthetic metadata-free images and spent $0.407604 through its explicit runner; normal application provider mode remained fixture and the temporary qualification key was deleted after the pass."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
   - GATE_AVATAR_003
   - GATE_IMAGE_001
   - GATE_IMAGE_002
-  - GATE_STYLE_001
   - GATE_STYLE_002
   - GATE_FALLBACK_001
   - GATE_GPU_001
@@ -475,7 +480,7 @@ known_incomplete_boundaries:
   - "Provider-free Auth plus private-artifact Hono composition is complete at ffceb6319ff85f7207619df7e0ecd41d20b341d0; it remains deliberately unmounted from fixture/local production-like entrypoints, and its application surface cannot access the direct-transfer facet."
   - "Durable mock restart/reconciliation/cancellation convergence is complete at dc86938972e776c8479637f2fb3ca9706999eed4; real Cloudflare Workflow and multi-session Neon behavior remain separately authorized staging work."
   - "The runtime-neutral Hono seam and local Workerd parity are complete, but no Worker is deployed and production-like modes deliberately fail closed until separately authorized staging bindings exist."
-  - "No production GPU/execution profile is selectable. GATE_LLM_001 is closed, but application DeepSeek integration is not implemented; all remaining provider/image/avatar/style/fallback/GPU/RunPod/cost gates stay open. AvatarForcing download, paid qualification, and commercial use are additionally blocked by contradictory official license artifacts in GATE_AVATAR_003."
+  - "No production GPU/execution profile is selectable. GATE_LLM_001 and GATE_STYLE_001 are closed, but their application adapters/lifecycle are not integrated; image/avatar/style-adherence/fallback/GPU/RunPod/cost gates remain open. AvatarForcing download, paid qualification, and commercial use are additionally blocked by contradictory official license artifacts in GATE_AVATAR_003."
   - "The repository is publicly backed up at Pala-LakshmanSai/videoforge by explicit user decision. Hosted GitHub Actions is green on c23ab438 with the full gate, 38 installed-Chrome journeys, Gitleaks, and dependency audit; this proves CI, not deployment or production readiness."
   - "Live Better Auth/Google installation and atomic invitation-membership materialization remain staging work; the committed descriptor truthfully reports PENDING_STAGING."
   - "VF-1-08 provides a local scheduler-invokable metadata snapshot/restore primitive, not a production schedule, encrypted off-machine backup store, cloud backup integration, or private-media backup."
@@ -483,7 +488,7 @@ known_incomplete_boundaries:
   - "VF-2-03 persists provider-free deterministic timeline bytes and lineage through local PGlite/content-store boundaries; it does not activate a provider asset lane, cloud database/object store, deployment, or production scheduler."
   - "VF-2-04 exposes provider-free persisted timing/timeline truth through fixture/local UI adapters; it does not add a timeline editor, provider asset generation, cloud persistence, or deployment."
   - "VF-2-05 completes strict local Phase 2 restart/restore and selected-span convergence; the runtime-state file and local content store are not a production Neon/R2/Workflow deployment or an off-machine recovery claim."
-  - "GATE_LLM_001 is qualified but no Phase 3 application-provider integration brief is selected or authorized. The exact selected brief is bounded Runware Gemini style qualification; no model/GPU creation follows from it."
+  - "GATE_LLM_001 and GATE_STYLE_001 are qualified. VF-3-07 is selected only for a provider-free injected DeepSeek adapter; no live runtime composition, model/GPU creation, credential access, provider call, or spend follows from it."
 
 known_non_blocking_devex: []
 
@@ -500,16 +505,17 @@ next_tasks:
   - "Wave 4 Phase 2 convergence complete: VF-2-05 exact selected-span audio, restart/restore, byte-equivalent metadata restore, real local Chrome playback/approval/download, and uncached gates are committed and green at $0"
   - "VF-3-00 complete: public provider facts were refreshed and the user authorized bounded provider/account, Git/CI, and isolated staging work; production remains deferred"
   - "VF-3-01 complete: Runware wallet was verified at $20.05, canonical AIR deepseek:v4@flash resolved live to DeepSeek-V4-Flash-0731, the 40-scene/five-style strict-schema gate passed, and cumulative task spend was $0.00243598"
+  - "VF-3-02 complete: canonical Runware Gemini 3.5 Flash passed seven owned/synthetic analyzer sets and closed GATE_STYLE_001 at $0.407604 cumulative task spend"
   - "VF-3-03 complete: deterministic prompt batching/validation/compilation is committed and green at $0"
   - "VF-3-04 complete: RunPod API access is secured and the account has zero Pods/endpoints/volumes/workers at $0"
   - "VF-3-05 complete: the public remote is exact by explicit user decision and hosted CI is green at c23ab438 after three repository-owned portability fixes"
   - "VF-3-06 complete: provider-free style semantic validation, fixture analysis, trusted profile assembly, full local gate, and evidence are committed at $0"
-  - "Current: execute only VF-3-02 through its bounded runner and seven owned/synthetic style fixtures; Gemini style spend may not exceed its non-transferable $3 cap"
-  - "Keep ordinary production at zero style-analysis calls and select another brief only after a green or truthfully failed VF-3-02 handoff"
+  - "Current: execute only VF-3-07 through injected fake transport at $0; live Runware calls and runtime composition remain disabled"
+  - "Keep DeterministicFixturePromptWriter as the default and preserve ordinary production at zero style-analysis calls"
   - "Fastest safe implementation order after evidence and new authority: deterministic prompt compiler/fixture adapter, gated DeepSeek integration, parallel Mage image and AvatarForcing lanes plus disjoint custom-style lifecycle, FFmpeg real fast-path convergence, conditional fallbacks, fault/security/restore hardening, then controlled release"
 
 activation_handoff:
-  status: phase_2_preserved_vf_3_01_green_vf_3_02_bounded_qualification_active
+  status: phase_2_preserved_vf_3_01_and_vf_3_02_gates_green_vf_3_07_selected
   requested_by_user_at: "2026-08-10T17:07:12Z"
   reason: "The user authorized autonomous progress across provider accounts/qualification, Git/CI, and isolated staging while preserving exact caps, dependency gates, and deferred production; repository visibility was later explicitly changed to public."
   completed_and_preserved:
@@ -518,19 +524,20 @@ activation_handoff:
     - "VF-2-05 implementation is 907e0e4908bddc1ec7b90232f043a10d9c7d5b2a and evidence is d16c2a9102125fa6e56d014fcf2f6241c878fa07."
     - "The exact provider-free regression gate, local slice, installed-Chrome fixture and real-local journeys, dependency audit, context/schema validation, secret scan, and diff check are green."
     - "VF-3-01 closed GATE_LLM_001 with canonical Runware AIR identity plus a 40-scene/five-style strict-schema pass at $0.00243598 cumulative task spend."
+    - "VF-3-02 closed GATE_STYLE_001 with canonical Runware Gemini identity plus seven strict-schema/semantic style sets at $0.407604 cumulative task spend."
   fully_sorted:
     - "Durable local relational/control-plane invariants, mock recovery, isolation, direct upload, Avatar version reuse, and deterministic metadata restore."
     - "Owned local ASR timing, canonical deterministic timeline, exact selected Avatar span audio, strict latest-attempt restart/restore, fail-closed inspection, and exact playback/download."
     - "Accepted fixture shell, fixed-base dock, Hub workflows, hard-cut-only output grammar, and required smooth image zoom."
   intentionally_not_done:
-    - "No production provider prompt, image, Avatar, custom-style analyzer, fallback, GPU, cost/SLO, or deployed adapter is implemented or qualified."
+    - "No production provider prompt, image, Avatar, custom-style lifecycle, fallback, GPU, cost/SLO, or deployed adapter is implemented; DeepSeek and Gemini style qualification alone are complete."
     - "At activation, no Git remote/push, hosted CI, cloud/account resource, OAuth app, Neon/R2/Workflow deployment, credential, model download, provider call, or spend had been used."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this CURRENT_STATE.yaml."
-    - "Load only the phase3_runware_style_qualification profile and tasks/VF-3-02.md."
+    - "Load only the phase3_runware_prompt_adapter profile and tasks/VF-3-07.md."
     - "Confirm the recorded commits are ancestors of clean HEAD; do not reset or redo completed phases."
-    - "Confirm origin, the VF-3-05 hosted run, and the VF-3-01 gate evidence remain exact, then use only the bounded Gemini style runner."
-    - "Use only owned/synthetic normalized style references; never print the credential or expose signed URLs/image bytes."
+    - "Confirm origin, the VF-3-05 hosted run, and the VF-3-01/VF-3-02 gate evidence remain exact, then implement only the injected fake-tested prompt adapter."
+    - "Use no provider credential/network call; keep provider mode fixture and external spend at $0."
   optimized_future_sequence:
     - "A. Refresh official time-sensitive provider/model/rate/retention/license facts read-only and classify all open gates."
     - "B. With explicit caps/credential authority, run bounded provider qualification through the committed sandbox and record pass/fail evidence."
@@ -544,14 +551,14 @@ activation_handoff:
 
 notes:
   - "This is a replace-in-place handoff snapshot, not a progress diary."
-  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-02 is the sole selected live-provider task."
+  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-07 is the sole selected task and is provider-free."
   - "RunPod account preflight is green: Keychain credential exists, balance is $10.00, hourly spend is $0, and Pods/endpoints/volumes/workers are all zero."
   - "Public GitHub remote is green and exact by explicit user decision. Hosted run 31451226265 passed the full gate on c23ab438."
   - "The accelerated approval through VF-2-05 is complete and exhausted. On 2026-08-10 the user separately activated the planned non-transferable $1/$3/$8/$8/$5 provider caps, Git/CI, and isolated staging authority; production remains deferred."
   - "Runware signup/login is authorized, but CAPTCHA, MFA, email verification, payment, or an unclear charge still stops unattended automation."
   - "AvatarForcing's $8 sub-cap must remain untouched until GATE_AVATAR_003 reconciles the official license contradiction."
-  - "Runware workspace videoforgesujal verified $20.05 balance before VF-3-01. DeepSeek qualification spent $0.00243598 cumulatively and closed GATE_LLM_001; the same Keychain credential path is authorized only for selected VF-3-02."
+  - "Runware workspace videoforgesujal showed $19.67 after qualification. DeepSeek spent $0.00243598 and Gemini style spent $0.407604 cumulatively; both gates are closed and VF-3-07 has no credential/call authority."
   - "TypeScript is the sole RFC 8785/JCS authority; Python validates canonical schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output grammar remains three compositions, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
-  - "No public tunnel or LAN listener is active. VF-3-02 does not need to start the stable loopback fixture server."
+  - "No public tunnel or LAN listener is active. VF-3-07 does not need to start the stable loopback fixture server."
   - "The completed VF-1-01 baseline is preserved; VF-1-01A supersedes its overstated behavior/concurrency evidence with exact, bounded acceptance claims."

@@ -49,14 +49,14 @@ The `jsonSchema` value below is a readable identifier. Implementation must load 
   "jsonSchema": "image-style-analyzer-output/v1",
   "settings": {
     "systemPrompt": "FULL_TEXT_OF_STYLE_ANALYZER_V1_BELOW",
-    "thinkingLevel": "medium",
+    "thinkingLevel": "low",
     "temperature": 0.1,
     "topP": 0.9,
     "maxTokens": 6000
   },
   "providerSettings": {
     "google": {
-      "mediaResolution": "high"
+      "mediaResolution": "medium"
     }
   },
   "includeUsage": true,
@@ -64,7 +64,7 @@ The `jsonSchema` value below is a readable identifier. Implementation must load 
 }
 ```
 
-The exact analyzer/model profile is provisional until `GATE_STYLE_001` passes. The stored provider-reported cost, usage, model ID, request hash, prompt version, and schema version are mandatory.
+This analyzer/model profile passed `GATE_STYLE_001` on 2026-08-11. The stored provider-reported cost, usage, model ID, request hash, prompt version, and schema version remain mandatory.
 
 Initial analyzer system prompt (`style-analyzer-v1`):
 
@@ -86,6 +86,9 @@ depth_of_field, texture_grain, human_rendering, materials_environment, mood,
 and continuity. Mark each SUPPORTED, UNCERTAIN, or UNSUPPORTED with confidence
 and only the request-scoped reference aliases that support it. Return only the
 supplied strict JSON schema.
+In prompt_profile, full_image_guidance must explicitly say "16:9" and
+"center-safe"; split_image_guidance must explicitly say "8:9 right panel" and
+"centered". Never reverse the avatar-left/image-right split.
 ```
 
 ## New-style flow
@@ -334,8 +337,8 @@ workspace/{workspace_id}/image-style/{style_id}/version/{version_id}/
 ## Cost and speed
 
 - Runware Gemini 3.5 Flash is currently $1.50/M input and $9/M output.
-- Planning estimate for one 3–8-reference high-resolution analysis: approximately $0.03–$0.07 once per style.
-- One bounded retry may approximately double that; show and reserve the estimate before retrying.
+- Measured accepted first analysis: $0.031974–$0.037442 for the seven synthetic sets at medium media resolution and low thinking.
+- Measured accepted two-attempt totals: $0.066977 and $0.075869; show and reserve the estimate before retrying.
 - Optional three-image Mage test cost is tiny after model load, but a cold boot can dominate and therefore requires an explicit click.
 - Reference storage is usually only a few megabytes per style and has no new fixed subscription.
 - A ready style adds a database read and a compact DeepSeek batch prefix. It does not materially change the current $0.40–$0.98 fast/no-major-fallback Serverless planning range.
@@ -348,7 +351,7 @@ workspace/{workspace_id}/image-style/{style_id}/version/{version_id}/
 - 100% schema-valid or recovered by one reconciled retry.
 - Shared visual properties are captured without subject/person/logo/text leakage.
 - Exact model ID, media resolution, latency, usage, provider retention posture, and cost are recorded.
-- Initial target: first analysis below $0.08 and total below $0.15 if an approved retry occurs.
+- Passed target: every first analysis stayed below $0.08 and every accepted retry total stayed below $0.15 on 2026-08-11.
 
 `GATE_STYLE_002` — Mage adherence:
 

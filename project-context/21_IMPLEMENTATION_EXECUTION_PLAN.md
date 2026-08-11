@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: Waves 0–4 and Phase 0–2 complete; paused at the planning-only VF-3-00 checkpoint
+Status: Waves 0–4 and Phase 0–2 complete; DeepSeek/Gemini qualification passed; provider-free `VF-3-07` selected
 Read when: starting a new implementation chat, selecting the next task, assigning parallel ownership, or integrating a completed task.
 
 ## Authority and purpose
@@ -10,11 +10,11 @@ This file owns implementation order, dependency edges, safe parallelism, and int
 `CURRENT_STATE.yaml` selects the one active wave or task. A fresh chat must not choose a later item merely because it appears independently implementable. The goal is fast completion through small vertical slices and disjoint ownership—not maximum simultaneous editing.
 
 The user's 2026-08-10 accelerated-plan approval granted standing implementation authority for exact,
-dependency-ready, provider-free briefs through `VF-2-05`; that sequence is now complete and the
-authority is exhausted. It never crossed a missing brief, unresolved dependency, provider call,
-credential operation, model download, remote push, cloud/account mutation, paid resource, or open
-gate. `CURRENT_STATE.yaml` selects only the planning checkpoint until new authority and exact,
-provider-informed briefs exist.
+dependency-ready, provider-free briefs through `VF-2-05`; that sequence is complete. Later explicit
+authority covered bounded provider qualification, the public Git remote/hosted CI, and isolated
+staging preparation while production stayed deferred. Every new task remains bounded by its exact
+brief and `CURRENT_STATE.yaml`; the selected `VF-3-07` adapter is provider-free and authorizes no
+credential access, provider call, runtime activation, or spend.
 
 ## Accelerated critical path
 
@@ -33,9 +33,10 @@ acceptance but cannot re-serialize work that this table explicitly makes disjoin
 | 7 — fault hardening | Queue/fault, security/isolation, observability/backup lanes | Ten-user/restart/replay/cost/retention/restore/scale-to-zero evidence |
 | 8 — controlled release | Serial staging-to-production acceptance | Fresh-account real Chrome flow and final user sign-off |
 
-Waves 0–4 are complete. Wave 5 is blocked by the open provider/model/GPU/cost gates, missing exact
-Phase 3–8 implementation briefs, and absent provider/credential/spend authority. `VF-3-00` prepares
-one consolidated decision without changing application code or activating an external boundary.
+Waves 0–4 are complete. `GATE_LLM_001` and `GATE_STYLE_001` are closed. Wave 5 starts with narrowly
+briefed provider-free adapters, while production media remains blocked by the remaining
+provider/model/GPU/cost gates and exact task authority. No closed qualification gate by itself
+activates credentials, provider calls, cloud resources, or spend.
 
 After Wave 0, request one external-mutation approval for a GitHub remote and hosted CI; repository
 visibility defaults private unless the user explicitly overrides it. Local Wave 1 does not wait,
@@ -74,11 +75,11 @@ Known unfinished boundaries are not hidden:
   content-addressed restart/restore and durable metadata proof. They still use owned fixture media,
   not production Neon/R2/Workflow deployment or provider transports.
 - Python intentionally does not derive RFC 8785 hashes. TypeScript is the sole JCS authority; Python validates schemas and exact input/media bytes and treats canonical document hashes as opaque.
-- Local transcription and render workers exist. Provider-backed prompt, image, and avatar generation workers do not; all corresponding gates remain open.
+- Local transcription and render workers exist. Provider-backed prompt, image, and avatar generation workers do not; DeepSeek and Gemini style qualification gates are closed, but runtime adapters/lifecycles are not production-enabled and the image/avatar execution gates remain open.
 - Fixture state remains bounded in memory by design. Separate local modes prove durable adapters,
   but production authentication, Neon/R2/Workflows deployment, live callbacks, and provider
   transports do not exist.
-- No production GPU profile is selectable; all provider/model/cost gates remain open.
+- No production GPU profile is selectable; image, avatar, fallback, GPU, RunPod, style-adherence, and full cost/SLO gates remain open.
 
 ## Development principles
 
@@ -414,7 +415,7 @@ Phase 10 is a controlled release/acceptance sequence: fresh-account setup, exact
 | Runware prompt integration | Fixture adapter yes | Exact cap + `GATE_LLM_001` |
 | Mage worker/integration | Fixture/local harness yes | Exact cap; `GATE_IMAGE_001`, `GATE_GPU_001`, `GATE_RUNPOD_001`; `GATE_IMAGE_002` before commercial launch |
 | AvatarForcing worker/integration | Fixture/local harness yes | Exact cap; `GATE_AVATAR_001`, `GATE_GPU_001`, `GATE_RUNPOD_001` |
-| Custom style analyzer | Fixture lifecycle yes | Exact cap + `GATE_STYLE_001`; adherence claim needs `GATE_STYLE_002` |
+| Custom style analyzer | Fixture lifecycle yes; Gemini qualification passed | Runtime lifecycle remains unimplemented; adherence claim needs `GATE_STYLE_002` |
 | SkyReels fallback | Fixture routing yes | Exact cap + `GATE_FALLBACK_001` and budget approval |
 | Production cost/SLO claim | Planning UI yes | `GATE_COST_001` |
 | Cloud deployment/account mutation | Local emulator/config yes | Explicit deployment/account authorization and secret plan |

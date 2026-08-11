@@ -78,7 +78,7 @@ Measured qualification on 2026-08-11 (`VF-3-01`):
 
 A ready published style adds no Gemini call to a project. Its compact guidance slightly increases the DeepSeek batch prefix but remains inside the existing $0.005–$0.015 project prompt range.
 
-Planning estimate for creating one style from 3–8 high-resolution references with Runware Gemini 3.5 Flash:
+Original planning estimate for creating one style from 3–8 references with Runware Gemini 3.5 Flash:
 
 ```text
 first analysis = approximately $0.03–$0.07 once per style
@@ -86,7 +86,16 @@ one reconciled retry may approximately double the analysis portion
 optional three-image Mage test = explicit separate estimate; cold boot may dominate
 ```
 
-Initial gate: target first analysis below $0.08 and total below $0.15 if the user approves a retry. This is a workspace asset cost, not part of a 30-minute video's generation cap. Store provider-reported usage/cost and replace the range with measurements.
+Measured qualification on 2026-08-11 (`VF-3-02`):
+
+- Qualified `mediaResolution: medium` and `thinkingLevel: low`.
+- Accepted first-analysis range: `$0.031974–$0.037442`; every first analysis stayed below `$0.08`.
+- Accepted retry totals: `$0.066977` and `$0.075869`, both below `$0.15`.
+- Cumulative task spend including development probes/failures: `$0.407604`, below the
+  non-transferable `$3` qualification cap.
+
+This is a workspace asset cost, not part of a 30-minute video's generation cap. Runtime must keep
+provider-reported usage/cost and ordinary ready-style video generation at zero Gemini calls.
 
 ## Avatar Hub cost
 

@@ -17,7 +17,7 @@ Every row below is `APPROVED` by the user and recorded in this planning session 
 | `DEC_LLM_002` | DeepSeek writes production image prompts only | AI timeline-layout intelligence adds calls without valued quality; a separate vision model is allowed only for explicit analysis of a new draft style version |
 | `DEC_STYLE_001` | Workspace Image Styles Hub with immutable published versions | User explicitly requires reusable styles created from reference images |
 | `DEC_STYLE_002` | Built-in `documentary_stock_v1` is the default | Preserves the approved realistic Ranga/stock-footage look without setup |
-| `DEC_STYLE_003` | Runware Gemini 3.5 Flash performs one-time reference analysis | Strong multi-image/strict-JSON fit through the already selected Runware account; provisional on gate |
+| `DEC_STYLE_003` | Runware Gemini 3.5 Flash performs one-time reference analysis | Seven-set Runware qualification closed `GATE_STYLE_001` on 2026-08-11 with strict exact-shape output, canonical local semantic validation, content separation, bounded retry, latency, privacy, and cost evidence |
 | `DEC_STYLE_004` | Every project revision pins one published style version/hash | Reproducibility; later edits/archive cannot change prior output |
 | `DEC_STYLE_005` | Optional extra image keywords require an explicit toggle, off by default; the toggle is the only persistent applied-state indicator | Gives user control without silently changing every prompt or adding an LLM call; the user removed redundant applied/not-applied confirmation UI on 2026-08-09 |
 | `DEC_STYLE_006` | Analyzer extracts shared visual traits, not reference content/identity/logo/text | Prevents accidental copying and keeps styles reusable across topics |
@@ -63,7 +63,6 @@ In MVP, deterministic media checks can auto-pass technical validity, but the use
 | `GATE_AVATAR_003` | Obtain authoritative clarification reconciling the repository README's Apache-2.0 claim, the committed academic-only/non-commercial `LICENSE.txt`, and the weights repository's missing license | No AvatarForcing weight download, paid qualification, production profile, or commercial use |
 | `GATE_IMAGE_001` | Reproduce ~300 images in 5–8 generation minutes and <$0.20 | Lock Mage resolution/batch/GPU |
 | `GATE_IMAGE_002` | Retrieve exact checkpoint and launch-license artifact | Required before commercial launch |
-| `GATE_STYLE_001` | Gemini 3.5 multi-reference schema, content separation, latency, cost, retention posture | Lock analyzer model/settings or A/B only the analyzer fallback |
 | `GATE_STYLE_002` | Same-content Mage bakeoff across default + four distinct extracted styles | Prove prompt-only profiles are sufficient before considering LoRA/reference conditioning |
 | `GATE_FALLBACK_001` | SkyReels low-VRAM 48 GB fit, quality, boot, accepted cost | Provision/lock quality endpoint |
 | `GATE_GPU_001` | Benchmark tested model/GPU allowlists | The UI may show planned candidates disabled, but no untested image/media or primary-avatar execution profile can become selectable |
@@ -76,6 +75,7 @@ In MVP, deterministic media checks can auto-pass technical validity, but the use
 |---|---|---|
 | `GATE_UI_001` | **PASS** — the user explicitly accepted the final medium/minimal fixture shell on 2026-08-09; the approved visual system is frozen unless later user feedback or a verified regression reopens it | `evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit/` |
 | `GATE_LLM_001` | **PASS** — live Runware model search resolved canonical AIR `deepseek:v4@flash` to `DeepSeek-V4-Flash-0731`; 40 strict-schema scenes across five styles passed exact IDs, roles, literal anchors, forbidden-output checks, and the cost target | `evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification/` |
+| `GATE_STYLE_001` | **PASS** — canonical AIR `google:gemini@3.5-flash` passed seven owned/synthetic multi-reference sets for strict exact-shape output, canonical semantic validation, content separation, uncertainty/outliers, alias binding, crop guidance, bounded retry, latency, privacy disclosure, and cost | `evidence/gates/GATE_STYLE_001/2026-08-10-runware-gemini-style-qualification/` |
 
 ## Proposed values awaiting evidence/user sign-off
 
