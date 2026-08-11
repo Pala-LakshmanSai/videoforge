@@ -3,8 +3,8 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-11"
 source_of_truth: project-context
-current_selected_profile: phase8_skyreels_corrected_resume
-current_selected_brief: tasks/VF-8-15.md
+current_selected_profile: phase8_skyreels_timeout_hardening
+current_selected_brief: tasks/VF-8-16.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -354,6 +354,12 @@ read_profiles:
     - 14_TESTING_AND_ACCEPTANCE.md
     - 19_IMPLEMENTATION_PLAYBOOK.md
     - tasks/VF-8-15.md
+  phase8_skyreels_timeout_hardening:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - tasks/VF-8-16.md
   phase3_runware_style_adapter:
     - 08_MODELS_AND_PROVIDERS.md
     - 14_TESTING_AND_ACCEPTANCE.md
