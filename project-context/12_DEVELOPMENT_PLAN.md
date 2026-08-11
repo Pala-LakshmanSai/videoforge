@@ -6,8 +6,8 @@ Read when: opening a coding chat, sequencing work, assigning ownership, or accep
 ## Delivery strategy
 
 Current checkpoint `20fd592` is fully provider-free and green. Phase 0A–2, VF-DX-01/02,
-VF-REL-01, VF-4-01, VF-5-01, and VF-7-07 are complete. Current serial order is:
-VF-4-02, VF-5-02, VF-7-08, and VF-7-09. Provider gates,
+VF-REL-01, VF-4-01/02, VF-5-01, and VF-7-07 are complete. Current serial order is:
+VF-5-02, VF-7-08, and VF-7-09. Provider gates,
 staging, hardening, and release follow only from exact successor briefs and recorded authority.
 
 Run coordinated local and viability tracks under the accelerated wave authority in
@@ -197,8 +197,9 @@ CI remains unverified because current work grants no push/dispatch authority.
 ## Phase 4: Mage image lane
 
 Current provider-free status: VF-4-01 durable production-code PGlite prompt execution is complete
-at `1fba04c`. VF-7-07 persistence is complete at `20fd592`; VF-4-02 now adds deterministic
-Mage-shaped fixture image result acceptance. Real Mage/RunPod execution remains gate-blocked.
+at `1fba04c`. VF-7-07 persistence is complete at `20fd592`; VF-4-02 deterministic Mage-shaped
+fixture image result acceptance is complete at `bbb0a48`. Real Mage/RunPod execution remains
+gate-blocked.
 
 - RunPod endpoint/template/volume and API-only configuration preflight.
 - Async chunks, execution claim, per-item checkpoint/upload/callback, bounded provider queue, fair owner rotation.

@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: `VF-7-07` complete at `20fd592`; `VF-4-02` fixture image acceptance selected
+Status: `VF-4-02` complete at `bbb0a48`; `VF-5-02` Avatar acceptance selected
 Read when: selecting, implementing, integrating, or handing off one task.
 
 ## Authority
@@ -31,7 +31,8 @@ exact history.
 - Provider-free media foundations: VF-4-01 durable prompt execution is complete at `1fba04c`,
   VF-5-01 deterministic Avatar fixture worker is complete at `fcb8f31`, and VF-7-07 durable style
   derived-artifact persistence is complete at `20fd592`.
-- VF-7-07 checkpoint: focused 36/36, control-plane 201/201, aggregate 754, Workerd 1/1,
+- VF-4-02 durable fixture image acceptance is complete at `bbb0a48`.
+- VF-4-02 checkpoint: focused 4/4, control-plane 205/205, aggregate 758, Workerd 1/1,
   installed Chrome 38/38, zero skips, fixture mode, `$0`; development server stopped.
 
 Do not redesign accepted shell/dock/Hubs, rerun architecture research, replace the renderer, change
@@ -52,7 +53,8 @@ publication, and metadata restore are committed at `20fd592`; evidence is
 
 ### 3. VF-4-02 — Mage-shaped fixture image lane
 
-Selected now. Use `phase4_fixture_image_result_acceptance` and `tasks/VF-4-02.md` only.
+Complete at `bbb0a48`; evidence is
+`evidence/acceptance/VF-4-02/fixture-image-result-acceptance`. Do not redo it.
 
 - Deterministic fixture worker input/result handling; no weights or outbound calls.
 - Persist prompt/task/attempt/outbox/cost/technical-validation/accepted-image/callback lineage.
@@ -61,6 +63,8 @@ Selected now. Use `phase4_fixture_image_result_acceptance` and `tasks/VF-4-02.md
 - On completion author exactly one successor brief: VF-5-02.
 
 ### 4. VF-5-02 — Avatar result acceptance
+
+Selected now. Use `phase5_avatar_result_acceptance` and `tasks/VF-5-02.md` only.
 
 - Compose VF-5-01 output into durable task/attempt/asset/QA/cost records.
 - Preserve one native clip for full/split layouts, exact Avatar/span lineage, retry/cancel/callback

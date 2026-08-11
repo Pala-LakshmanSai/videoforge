@@ -1,6 +1,6 @@
 # Avatar Hub
 
-Status: approved MVP capability; deterministic VF-5-01 fixture worker complete; real Avatar acceptance/provider qualification pending
+Status: VF-5-01 fixture worker complete; VF-5-02 durable result acceptance selected
 Read when: implementing reusable avatars, avatar source upload/validation, project avatar selection, or avatar-source provenance.
 
 ## Product contract

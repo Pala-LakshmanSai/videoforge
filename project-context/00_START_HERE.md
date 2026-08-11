@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-7-07` complete at `20fd592`; `VF-4-02` fixture image acceptance selected
+Status: `VF-4-02` complete at `bbb0a48`; `VF-5-02` Avatar acceptance selected
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -36,8 +36,9 @@ at `fcb8f31`.
 
 `VF-7-07` is complete at `20fd592`: migration `0010`, immutable artifact/edit persistence,
 accepted-analysis backfill, production PGlite repository/UoW, exact-current-byte publication, and
-metadata export/restore are green. `CURRENT_STATE.yaml` selects only provider-free `VF-4-02`
-deterministic Mage-shaped fixture image result acceptance.
+metadata export/restore are green. `VF-4-02` is complete at `bbb0a48`: migration `0011`, a
+deterministic Mage-shaped PNG fixture, and atomic image asset/QA/callback/cost acceptance are green.
+`CURRENT_STATE.yaml` selects only provider-free `VF-5-02` Avatar result acceptance.
 
 Production media remains blocked: Mage checkpoint/license evidence is unresolved; AvatarForcing
 licensing artifacts contradict each other; image/avatar/GPU/RunPod/fallback/cost/style-adherence

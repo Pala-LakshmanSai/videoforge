@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T12:34:14Z"
+updated_at: "2026-08-11T13:02:41Z"
 
 phase: provider_free_media_integration
 implementation_authorized_in_current_task: true
-current_milestone: fixture_image_result_acceptance
-current_task: VF-4-02
+current_milestone: avatar_result_acceptance
+current_task: VF-5-02
 current_wave: wave_6_provider_free_media_lanes
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -18,9 +18,9 @@ repository:
   base_commit: "bea48f7124609be27d1ab57261b2c2f4269625ea"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
-  verified_implementation_commit: "20fd59228cbf5d419cd41a6a6d3cebbe5fb52cc7"
-  last_good_commit: "20fd59228cbf5d419cd41a6a6d3cebbe5fb52cc7"
-  working_tree_expected: "clean_after_vf_7_07_evidence_handoff"
+  verified_implementation_commit: "bbb0a4861e6b830bfaf4c62240203f2c90b7940c"
+  last_good_commit: "bbb0a4861e6b830bfaf4c62240203f2c90b7940c"
+  working_tree_expected: "clean_after_vf_4_02_evidence_handoff"
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
     ajv: "8.20.0"
@@ -45,7 +45,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "Provider-free tasks only; current selected authority is VF-4-02 fixture image result acceptance. Application remains fixture."
+  provider_authority_scope: "Provider-free tasks only; current selected authority is VF-5-02 Avatar result acceptance. Application remains fixture."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -308,6 +308,12 @@ completed_tasks:
     implementation_commit: "20fd59228cbf5d419cd41a6a6d3cebbe5fb52cc7"
     evidence_commit: null
     evidence: "evidence/acceptance/VF-7-07/style-derived-edit-service"
+  - task_id: VF-4-02
+    status: complete
+    summary: "Added migration 0011, deterministic Mage-shaped structural PNG fixture output, and production PGlite atomic image asset/technical-QA/callback/cost/task acceptance with exact replay and restore at $0."
+    implementation_commit: "bbb0a4861e6b830bfaf4c62240203f2c90b7940c"
+    evidence_commit: null
+    evidence: "evidence/acceptance/VF-4-02/fixture-image-result-acceptance"
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
@@ -425,18 +431,18 @@ active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-4-02
-  milestone: fixture_image_result_acceptance
+  task_id: VF-5-02
+  milestone: avatar_result_acceptance
   status: ready
-  dependency_status: prompt_and_style_persistence_green
-  authorization_status: exact_provider_free_fixture_image_acceptance_brief_selected
-  read_profile: phase4_fixture_image_result_acceptance
-  task_brief: tasks/VF-4-02.md
-  goal: "Compose deterministic Mage-shaped fixture worker results into durable image acceptance with exact prompt/style/task/attempt/outbox/callback/cost/asset lineage at $0."
+  dependency_status: avatar_fixture_worker_and_control_plane_green
+  authorization_status: exact_provider_free_avatar_acceptance_brief_selected
+  read_profile: phase5_avatar_result_acceptance
+  task_brief: tasks/VF-5-02.md
+  goal: "Compose VF-5-01 fixture results into durable single-clip/two-layout Avatar acceptance with exact pinned Avatar/span/task/attempt/outbox/callback/cost/QA lineage at $0."
   dependencies:
-    - "VF-4-01 migration 0009 and durable prompt execution are complete at 1fba04c"
-    - "VF-7-07 migration 0010 and durable style artifacts are complete at 20fd592"
-    - "Deterministic fixture behavior remains the only enabled worker mode"
+    - "VF-5-01 deterministic Avatar fixture worker is complete at fcb8f31"
+    - "Phase 2 selected span-audio and exact Avatar pins remain authoritative"
+    - "VF-4-02 image acceptance is complete at bbb0a48; shared migration head is 0011"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   provider_authority: null
@@ -447,34 +453,35 @@ recommended_next_task:
   application_code_changes_authorized: true
   live_route: null
   fixture_scenario: null
-  expected_evidence: "evidence/acceptance/VF-4-02/fixture-image-result-acceptance"
+  expected_evidence: "evidence/acceptance/VF-5-02/avatar-result-acceptance"
   required_handoff:
-    - "Compose deterministic Mage-shaped fixture input/result handling without weights or outbound calls"
-    - "Atomically persist prompt, task, claimed attempt, acknowledged outbox, callback, reservation/cost, technical validation, accepted-image asset, and telemetry lineage"
-    - "Prove fresh/upgrade/reopen/restore, malformed media, checksum/profile/style drift, replay conflict, cancellation, stale claim, isolation, cost drift, and rollback"
+    - "Compose existing VF-5-01 result/callback/media validation into production PGlite acceptance"
+    - "Atomically persist one native clip, both renderer layout bindings, technical QA, task/attempt/outbox/callback, reservation/cost, pinned Avatar/source/span, and telemetry lineage"
+    - "Prove fresh/upgrade/reopen/restore, replay conflict, cancellation, stale claim, isolation, media/Avatar/span/crop/rate/cost drift, rollback, and explicit subjective review authority"
     - "Preserve fixture default and full-gate coverage with zero new skips"
-    - "Produce exactly one successor brief after VF-4-02: VF-5-02"
+    - "Produce exactly one successor brief after VF-5-02: VF-7-08"
   safe_parallelism:
     maximum_lanes_including_integration: 1
     status: shared_migration_and_repository_integration_serial
-    integration_owner: VF-4-02
+    integration_owner: VF-5-02
   prohibited_in_task:
-    - "Avatar acceptance, Style API/UI, renderer, provider runtime activation, deployment, or unrelated refactors"
+    - "Image acceptance, Style API/UI, renderer, fallback/provider runtime activation, deployment, or unrelated refactors"
     - "Any skipped/weakened/deleted check, push, provider call, credential, model download, cloud/account mutation, GPU/RunPod action, or spend"
 
 latest_closed_handoff:
-  task_id: VF-7-07
+  task_id: VF-4-02
   status: complete
-  implementation_commit: "20fd59228cbf5d419cd41a6a6d3cebbe5fb52cc7"
+  implementation_commit: "bbb0a4861e6b830bfaf4c62240203f2c90b7940c"
   evidence_commit: null
-  evidence: "evidence/acceptance/VF-7-07/style-derived-edit-service"
-  audit_result: "immutable_style_root_and_derived_persistence_publication_restore_proven"
-  verification_result: "focused_36_control_plane_201_aggregate_754_workerd_1_chrome_38_zero_skips"
+  evidence: "evidence/acceptance/VF-4-02/fixture-image-result-acceptance"
+  audit_result: "atomic_fixture_image_asset_qa_callback_cost_acceptance_and_restore_proven"
+  verification_result: "focused_4_control_plane_205_aggregate_758_workerd_1_chrome_38_zero_skips"
   external_actions: "dependency registry audit only; no push, credential, provider, model, GPU, cloud, or spend activity"
   external_spend_usd: 0
 
 last_green:
   commands:
+    - "VF-4-02 bbb0a48: focused fixture image acceptance passed 4/4 with adversarial subcases; full control-plane passed 205/205; CI=1 TURBO_FORCE=true pnpm verify passed 758 tests/journeys with Workerd 1/1, installed Chrome 38/38, zero skips, fixture mode, and $0."
     - "VF-7-07 20fd592: focused style persistence suites passed 36/36; full control-plane passed 201/201; CI=1 TURBO_FORCE=true pnpm verify passed 754 tests/journeys with Workerd 1/1, installed Chrome 38/38, zero skips, fixture mode, and $0."
     - "VF-4-01 1fba04c: focused durable prompt/store plus migration/restore suites passed 26/26; full control-plane passed 198/198; CI=1 TURBO_FORCE=true pnpm verify passed with Workerd 1/1, installed Chrome 38/38, zero skips, fixture mode, and $0."
     - "Provider-free media foundations: CI=1 TURBO_FORCE=true pnpm verify passed in 171.14s with 751 tests/journeys, control-plane 193/193, seven worker suites, Workerd 1/1, Chrome 38/38, and zero skips at $0."
@@ -684,7 +691,7 @@ next_tasks:
   - "VF-DX-02 complete locally: five CI lanes plus aggregate, timing/JUnit/failure artifacts, centralized environment metadata, doctor JSON, and fail-closed owned dev stop"
   - "VF-REL-01 complete: injected vendor-neutral correlated telemetry contract, adapters, redaction, failure isolation, and local dispatch instrumentation"
   - "VF-4-01 complete at 1fba04c: migration 0009 and production PGlite prompt authority/acceptance persistence are green at $0"
-  - "Current: VF-4-02 deterministic fixture image result acceptance; VF-5-01 Avatar fixture worker and VF-7-07 style persistence remain complete"
+  - "Current: VF-5-02 durable Avatar fixture result acceptance; VF-4-02 image acceptance and VF-7-07 style persistence remain complete"
   - "VF-5-01 complete at fcb8f31 with 17 focused fixture-worker tests and full-gate proof"
   - "VF-7-07 complete at 20fd592 with migration 0010, PGlite repository/UoW, exact-current-byte publication, and restore integration"
   - "Keep DeterministicFixturePromptWriter as the default and preserve ordinary production at zero style-analysis calls"
@@ -693,7 +700,7 @@ next_tasks:
   - "Integration order after accepted image + avatar assets: FFmpeg real fast-path convergence, conditional fallbacks, isolated staging contention/auth/storage/workflow proof, fault/security/restore hardening, measured cost/SLO, then controlled production acceptance"
 
 activation_handoff:
-  status: vf_7_07_complete_vf_4_02_fixture_image_acceptance_selected
+  status: vf_4_02_complete_vf_5_02_avatar_acceptance_selected
   requested_by_user_at: "2026-08-10T17:07:12Z"
   reason: "The user authorized autonomous progress across provider accounts/qualification, Git/CI, and isolated staging while preserving exact caps, dependency gates, and deferred production; repository visibility was later explicitly changed to public."
   completed_and_preserved:
@@ -716,6 +723,7 @@ activation_handoff:
     - "VF-DX-02 committed local CI/onboarding convergence at 592c833 plus fail-closed stale correction a1b6a5b; the split hosted graph remains unverified because no push/dispatch occurred."
     - "VF-REL-01 committed vendor-neutral telemetry at 33d96a0 with 8/8 focused tests and integrated full-gate proof at $0."
     - "VF-4-01 completed durable provider-free prompt execution at 1fba04c with migration 0009, production PGlite atomic authority/acceptance, focused 26/26, control-plane 198/198, and full-gate proof at $0."
+    - "VF-4-02 completed deterministic Mage-shaped structural PNG generation and migration 0011 atomic image asset/QA/callback/cost acceptance at bbb0a48 with full-gate proof at $0."
     - "VF-5-01 completed the deterministic non-production Avatar fixture job boundary at fcb8f31 with 17/17 focused tests and full-gate proof."
     - "VF-7-07 completed migration 0010, immutable root/derived artifacts, production PGlite edit persistence, exact-current-byte publication, and metadata restore at 20fd592 with full-gate proof at $0."
   fully_sorted:
@@ -723,18 +731,18 @@ activation_handoff:
     - "Owned local ASR timing, canonical deterministic timeline, exact selected Avatar span audio, strict latest-attempt restart/restore, fail-closed inspection, and exact playback/download."
     - "Accepted fixture shell, fixed-base dock, Hub workflows, hard-cut-only output grammar, and required smooth image zoom."
   intentionally_not_done:
-    - "VF-4-02 fixture image result acceptance is selected; no production-composed provider transport, real image, Avatar acceptance, custom-style byte ingestion/live orchestration, route/UI, preview, fallback, GPU, measured cost/SLO, or deployed adapter exists; both Runware adapters remain injected/provider-free."
+    - "VF-4-02 fixture image result acceptance is complete at bbb0a48; VF-5-02 Avatar result acceptance is selected. No production-composed provider transport, real image/Avatar asset, custom-style byte ingestion/live orchestration, route/UI, preview, fallback, GPU, measured cost/SLO, or deployed adapter exists; both Runware adapters remain injected/provider-free."
     - "The Git remote is public and qualification used bounded provider calls, but no Cloudflare/Neon/R2/OAuth staging resource, deployed Worker/Workflow, model download, active GPU/Pod, or production release exists."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this CURRENT_STATE.yaml."
-    - "Load only phase4_fixture_image_result_acceptance and tasks/VF-4-02.md; implement its exact provider-free image acceptance boundary."
+    - "Load only phase5_avatar_result_acceptance and tasks/VF-5-02.md; implement its exact provider-free Avatar acceptance boundary."
     - "Confirm the recorded commits are ancestors of clean HEAD; do not reset or redo completed phases."
     - "Confirm VF-DX-02 commits 592c833/a1b6a5b and VF-REL-01 commit 33d96a0 plus their evidence are ancestors; do not redo them."
     - "Change only the exact provider-free lane-owned surfaces; invoke no provider/cloud action and preserve every full-gate suite and skip count at fixture mode and $0."
   optimized_future_sequence:
     - "A. VF-DX-01 complete: measured and deduplicated verification with complete forced coverage preserved."
     - "B. VF-DX-02 CI/onboarding and VF-REL-01 vendor-neutral telemetry complete locally with shared files serialized."
-    - "C. VF-4-01 durable prompt persistence and VF-7-07 style persistence are complete; continue VF-4-02 fixture image acceptance, VF-5-02 Avatar acceptance, and VF-7-08/VF-7-09 Style API/Hub; shared migrations/contracts/routes/context stay serial."
+    - "C. VF-4-01/02 prompt and fixture image acceptance plus VF-7-07 style persistence are complete; continue VF-5-02 Avatar acceptance and VF-7-08/VF-7-09 Style API/Hub; shared migrations/contracts/routes/context stay serial."
     - "D. Independently resolve Mage and AvatarForcing license evidence before bounded model/RunPod qualification or spend."
     - "E. Converge real FFmpeg output from accepted assets, then fallbacks, isolated staging, fault/security/backup/load hardening, measured cost/SLO, and controlled release."
   stop_conditions:
@@ -744,7 +752,7 @@ activation_handoff:
 
 notes:
   - "This is a replace-in-place handoff snapshot, not a progress diary."
-  - "A new chat starts with recommended_next_task VF-4-02 and only its selected profile/brief. Do not run a new research pass or preload later task profiles."
+  - "A new chat starts with recommended_next_task VF-5-02 and only its selected profile/brief. Do not run a new research pass or preload later task profiles."
   - "RunPod account preflight is green: Keychain credential exists, balance is $10.00, hourly spend is $0, and Pods/endpoints/volumes/workers are all zero."
   - "Public GitHub remote is green and exact by explicit user decision. Hosted run 31472597843 passed the full gate on f1eccbe."
   - "The accelerated approval through VF-2-05 is complete and exhausted. On 2026-08-10 the user separately activated the planned non-transferable $1/$3/$8/$8/$5 provider caps, Git/CI, and isolated staging authority; production remains deferred."
@@ -754,6 +762,6 @@ notes:
   - "Mage exact checkpoint/license evidence remains unresolved: official Hugging Face artifacts returned HTTP 401/signed-out 404, while Microsoft source labels Mage-Flow MIT but also gives research-only deployment guidance."
   - "TypeScript is the sole RFC 8785/JCS authority; Python validates canonical schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output grammar remains three compositions, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
-  - "No public tunnel or LAN listener is active. VF-4-02 may use only verification-owned loopback test servers and must not disturb any user-owned server."
+  - "No public tunnel or LAN listener is active. VF-5-02 may use only verification-owned loopback test servers and must not disturb any user-owned server."
   - "VF-7-07 is green at 20fd592 with immutable root/derived persistence, exact-current-byte publication, and restore. Upload/normalization, routes, UI, previews, and live orchestration remain open."
   - "The completed VF-1-01 baseline is preserved; VF-1-01A supersedes its overstated behavior/concurrency evidence with exact, bounded acceptance claims."
