@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import { canonicalizeJson, validateContract } from "@videoforge/contracts";
+
 import type { SqlExecutor, TransactionalSqlExecutor } from "../database/ports.js";
 import type * as ArtifactContracts from "../repositories/artifacts.js";
 import type * as EventContracts from "../repositories/events.js";
@@ -164,6 +166,50 @@ function canonicalComparable(value: unknown): unknown {
 
 function sameValue(left: unknown, right: unknown): boolean {
   return JSON.stringify(canonicalComparable(left)) === JSON.stringify(canonicalComparable(right));
+}
+
+function exactObjectKeys(value: object, expected: readonly string[]): boolean {
+  const keys = Object.keys(value).sort();
+  const expectedKeys = [...expected].sort();
+  return (
+    keys.length === expectedKeys.length && keys.every((key, index) => key === expectedKeys[index])
+  );
+}
+
+function validImageStyleProfileDocument(candidate: unknown): candidate is CanonicalDocument {
+  if (typeof candidate !== "object" || candidate === null || Array.isArray(candidate)) return false;
+  try {
+    const document = candidate as CanonicalDocument;
+    if (
+      !exactObjectKeys(document, [
+        "canonicalDocumentSha256",
+        "contractName",
+        "contractVersion",
+        "payload",
+      ]) ||
+      document.contractName !== "image-style-profile" ||
+      document.contractVersion !== "v1" ||
+      !validateContract("imageStyleProfile", document.payload).success
+    ) {
+      return false;
+    }
+    const actual = `sha256:${createHash("sha256")
+      .update(canonicalizeJson(document.payload), "utf8")
+      .digest("hex")}`;
+    return actual === document.canonicalDocumentSha256;
+  } catch {
+    return false;
+  }
+}
+
+function imageStyleAnalyzerModelSnapshot(
+  command: PresetContracts.BeginImageStyleAnalysisCommand,
+): string {
+  return canonicalizeJson({
+    model: command.model,
+    model_revision: command.modelRevision,
+    provider: command.provider,
+  });
 }
 
 type CanonicalReceiptValue =
@@ -3766,6 +3812,39 @@ function createImageStyleRepository(
   context: RepositoryContext,
 ): PresetContracts.ImageStyleRepository {
   return {
+    async resolveStyle(scope, styleId) {
+      const style = await findImageStyle(context.executor, scope.workspaceId, styleId);
+      return style === null ? missing("IMAGE_STYLE", styleId) : success(style);
+    },
+    async resolveVersion(scope, lookup) {
+      const version = await findImageStyleVersion(
+        context.executor,
+        scope.workspaceId,
+        lookup.styleId,
+        lookup.versionId,
+      );
+      return version === null ? missing("IMAGE_STYLE_VERSION", lookup.versionId) : success(version);
+    },
+    async listStyles(scope, query) {
+      const result = await context.executor.query<Row>(
+        `SELECT * FROM image_styles
+         WHERE workspace_id = $1 AND ($2 OR status = 'ACTIVE')
+         ORDER BY normalized_name ASC, id ASC`,
+        [scope.workspaceId, query.includeArchived],
+      );
+      return success(Object.freeze(result.rows.map(mapImageStyle)));
+    },
+    async listVersions(scope, styleId) {
+      const style = await findImageStyle(context.executor, scope.workspaceId, styleId);
+      if (style === null) return missing("IMAGE_STYLE", styleId);
+      const result = await context.executor.query<Row>(
+        `SELECT * FROM image_style_versions
+         WHERE workspace_id = $1 AND style_id = $2
+         ORDER BY version_number ASC, id ASC`,
+        [scope.workspaceId, styleId],
+      );
+      return success(Object.freeze(result.rows.map(mapImageStyleVersion)));
+    },
     async createStyle(scope, command) {
       return context.atomic.run(async (executor) => {
         const existing = await findImageStyle(executor, scope.workspaceId, command.styleId);
@@ -3843,6 +3922,54 @@ function createImageStyleRepository(
         if (existing.updatedAt !== command.expectedUpdatedAt) {
           return conflict("EXPECTED_VERSION_MISMATCH", "image style draft changed before save");
         }
+        const transitionAllowed =
+          (existing.state === "DRAFT" && command.nextState === "DRAFT") ||
+          (existing.state === "ANALYZING" &&
+            (command.nextState === "NEEDS_REVIEW" || command.nextState === "FAILED")) ||
+          (existing.state === "NEEDS_REVIEW" && command.nextState === "NEEDS_REVIEW") ||
+          (existing.state === "FAILED" && command.nextState === "FAILED");
+        if (!transitionAllowed) {
+          return invariant(
+            "INVALID_STATE_TRANSITION",
+            `image style version cannot transition from ${existing.state} to ${command.nextState}`,
+          );
+        }
+        if (command.nextState === "NEEDS_REVIEW") {
+          if (!validImageStyleProfileDocument(command.profileDocument)) {
+            return invariant(
+              "IMAGE_STYLE_PROFILE_INVALID",
+              "reviewable image style profile contract or canonical hash is invalid",
+            );
+          }
+          if (command.disclosureAttestedByUserId === null) {
+            return invariant(
+              "IMAGE_STYLE_DISCLOSURE_REQUIRED",
+              "reviewable image styles require recorded provider disclosure consent",
+            );
+          }
+        } else if (command.profileDocument !== null) {
+          return invariant(
+            "IMAGE_STYLE_PROFILE_INVALID",
+            "non-reviewable image style versions cannot expose a profile",
+          );
+        }
+        if (existing.state === "DRAFT") {
+          if (command.analyzerRequestHash !== null || command.analyzerModelSnapshot !== null) {
+            return invariant(
+              "SNAPSHOT_MISMATCH",
+              "draft image styles cannot claim analyzer provenance before analysis begins",
+            );
+          }
+        } else if (
+          command.analyzerRequestHash !== existing.analyzerRequestHash ||
+          command.analyzerModelSnapshot !== existing.analyzerModelSnapshot ||
+          command.disclosureAttestedByUserId !== existing.disclosureAttestedByUserId
+        ) {
+          return invariant(
+            "SNAPSHOT_MISMATCH",
+            "image style analysis provenance or disclosure changed during completion/review",
+          );
+        }
         await executor.query(
           `UPDATE image_style_versions SET state = $4,
              profile_contract_name = $5, profile_contract_version = $6,
@@ -3885,6 +4012,12 @@ function createImageStyleRepository(
           command.versionId,
         );
         if (existing === null) return missing("IMAGE_STYLE_VERSION", command.versionId);
+        if (!validImageStyleProfileDocument(command.profileDocument)) {
+          return invariant(
+            "IMAGE_STYLE_PROFILE_INVALID",
+            "published image style profile contract or canonical hash is invalid",
+          );
+        }
         if (existing.state === "PUBLISHED") {
           return sameValue(
             {
@@ -3908,8 +4041,30 @@ function createImageStyleRepository(
         if (existing.state === "ABANDONED") {
           return invariant("IMAGE_STYLE_VERSION_NOT_PUBLISHABLE", "abandoned style cannot publish");
         }
+        if (existing.state !== "NEEDS_REVIEW") {
+          return invariant(
+            "INVALID_STATE_TRANSITION",
+            `image style version cannot publish from ${existing.state}`,
+          );
+        }
         if (existing.updatedAt !== command.expectedUpdatedAt) {
           return conflict("EXPECTED_VERSION_MISMATCH", "image style changed before publication");
+        }
+        if (
+          !sameValue(existing.profileDocument, command.profileDocument) ||
+          command.analyzerRequestHash !== existing.analyzerRequestHash ||
+          command.analyzerModelSnapshot !== existing.analyzerModelSnapshot ||
+          command.disclosureAttestedByUserId !== existing.disclosureAttestedByUserId
+        ) {
+          return invariant(
+            "SNAPSHOT_MISMATCH",
+            "publication must use the exact reviewed image style profile and provenance",
+          );
+        }
+        const style = await findImageStyle(executor, scope.workspaceId, command.styleId);
+        if (style === null) return missing("IMAGE_STYLE", command.styleId);
+        if (style.status === "ARCHIVED") {
+          return invariant("IMAGE_STYLE_ARCHIVED", "archived image styles cannot publish");
         }
         await executor.query(
           `UPDATE image_style_versions SET state = 'PUBLISHED',
@@ -3961,10 +4116,41 @@ function createImageStyleRepository(
         );
       }
       return context.atomic.run(async (executor) => {
+        const version = await findImageStyleVersion(
+          executor,
+          scope.workspaceId,
+          command.styleId,
+          command.versionId,
+        );
+        if (version === null) return missing("IMAGE_STYLE_VERSION", command.versionId);
+        const existingAttempt = await one(
+          executor,
+          "SELECT * FROM image_style_analysis_attempts WHERE workspace_id = $1 AND id = $2",
+          [scope.workspaceId, command.analysisAttemptId],
+        );
         const reservationCommand = {
           ...command.reservation,
           idempotencyKey: command.idempotencyKey,
         };
+        if (existingAttempt === null) {
+          if (version.state !== "DRAFT" && version.state !== "FAILED") {
+            return invariant(
+              "INVALID_STATE_TRANSITION",
+              `image style version cannot begin analysis from ${version.state}`,
+            );
+          }
+          if (version.disclosureAttestedByUserId === null) {
+            return invariant(
+              "IMAGE_STYLE_DISCLOSURE_REQUIRED",
+              "image style analysis requires recorded provider disclosure consent",
+            );
+          }
+        } else if (version.state !== "ANALYZING") {
+          return conflict(
+            "IMAGE_STYLE_ANALYSIS_CONFLICT",
+            "existing image style analysis no longer owns the current version state",
+          );
+        }
         const reserved = await reserveTaskAttemptIn(executor, scope, reservationCommand);
         if (!reserved.ok) {
           return reserved as IdempotentRepositoryResult<
@@ -3974,22 +4160,34 @@ function createImageStyleRepository(
             PresetContracts.ImageStyleInvariant
           >;
         }
-        const existing = await one(
-          executor,
-          "SELECT * FROM image_style_analysis_attempts WHERE workspace_id = $1 AND id = $2",
-          [scope.workspaceId, command.analysisAttemptId],
-        );
-        if (existing !== null) {
+        if (existingAttempt !== null) {
           return write(
             {
               kind: "IMAGE_STYLE_ANALYSIS_STARTED" as const,
-              analysisAttempt: mapImageStyleAnalysisAttempt(existing),
+              version: version as PresetContracts.ImageStyleDraftVersion & {
+                readonly state: "ANALYZING";
+              },
+              analysisAttempt: mapImageStyleAnalysisAttempt(existingAttempt),
               reservation: reserved.value
                 .value as ExecutionContracts.ImageStyleVersionTaskAttemptReservation,
             },
             true,
           );
         }
+        await executor.query(
+          `UPDATE image_style_versions SET state = 'ANALYZING',
+             profile_contract_name = NULL, profile_contract_version = NULL,
+             profile_payload = NULL, style_profile_hash = NULL,
+             analyzer_request_hash = $4, analyzer_model_snapshot = $5, updated_at = now()
+           WHERE workspace_id = $1 AND style_id = $2 AND id = $3`,
+          [
+            scope.workspaceId,
+            command.styleId,
+            command.versionId,
+            command.requestHash,
+            imageStyleAnalyzerModelSnapshot(command),
+          ],
+        );
         await executor.query(
           `INSERT INTO image_style_analysis_attempts (
              id, workspace_id, style_version_id, ordinal, idempotency_key,
@@ -4018,12 +4216,71 @@ function createImageStyleRepository(
           [scope.workspaceId, command.analysisAttemptId],
         );
         if (inserted === null) throw new Error("image style analysis attempt disappeared");
+        const analyzing = await findImageStyleVersion(
+          executor,
+          scope.workspaceId,
+          command.styleId,
+          command.versionId,
+        );
+        if (analyzing === null || analyzing.state !== "ANALYZING") {
+          throw new Error("analyzing image style version disappeared");
+        }
         return write({
           kind: "IMAGE_STYLE_ANALYSIS_STARTED" as const,
+          version: analyzing as PresetContracts.ImageStyleDraftVersion & {
+            readonly state: "ANALYZING";
+          },
           analysisAttempt: mapImageStyleAnalysisAttempt(inserted),
           reservation: reserved.value
             .value as ExecutionContracts.ImageStyleVersionTaskAttemptReservation,
         });
+      });
+    },
+    async abandonVersion(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const existing = await findImageStyleVersion(
+          executor,
+          scope.workspaceId,
+          command.styleId,
+          command.versionId,
+        );
+        if (existing === null) return missing("IMAGE_STYLE_VERSION", command.versionId);
+        if (existing.state === "ABANDONED") {
+          return existing.abandonedAt === command.abandonedAt
+            ? write(existing, true)
+            : conflict("STATE_CONFLICT", "image style version is already abandoned");
+        }
+        if (existing.state === "PUBLISHED") {
+          return invariant(
+            "IMMUTABLE_RECORD",
+            "published image style versions cannot be abandoned",
+          );
+        }
+        if (existing.state === "ANALYZING") {
+          return invariant(
+            "INVALID_STATE_TRANSITION",
+            "running image style analysis must settle or cancel before abandonment",
+          );
+        }
+        if (existing.updatedAt !== command.expectedUpdatedAt) {
+          return conflict("EXPECTED_VERSION_MISMATCH", "image style changed before abandonment");
+        }
+        await executor.query(
+          `UPDATE image_style_versions
+           SET state = 'ABANDONED', abandoned_at = $4, updated_at = $4
+           WHERE workspace_id = $1 AND style_id = $2 AND id = $3`,
+          [scope.workspaceId, command.styleId, command.versionId, command.abandonedAt],
+        );
+        const abandoned = await findImageStyleVersion(
+          executor,
+          scope.workspaceId,
+          command.styleId,
+          command.versionId,
+        );
+        if (abandoned === null || abandoned.state !== "ABANDONED") {
+          throw new Error("abandoned image style version disappeared");
+        }
+        return write(abandoned);
       });
     },
     async resolveExactPublishedVersion(scope, lookup) {
@@ -5996,6 +6253,7 @@ const receiptOperations = Object.freeze({
     reserveTaskAttempt: "execution_reserve_task_attempt",
   }),
   imageStyles: Object.freeze({
+    abandonVersion: "image_style_abandon_version",
     archiveStyle: "image_style_archive",
     beginAnalysis: "image_style_begin_analysis",
     createDraftVersion: "image_style_create_draft_version",

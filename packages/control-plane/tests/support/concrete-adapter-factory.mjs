@@ -1,3 +1,8 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+
+import { canonicalizeJson } from "@videoforge/contracts";
+
 import { createPGliteControlPlaneRepositories } from "../../dist/src/adapters/pglite-repositories.js";
 import { IDS, HASHES, seedLockedProjects } from "./fixtures.mjs";
 import { createMigratedDatabase, FIXED_TIME, sha256, uuid } from "./pglite.mjs";
@@ -70,11 +75,19 @@ const PROFILE_DOCUMENT = Object.freeze({
   canonicalDocumentSha256: sha256("concrete-avatar-profile"),
 });
 
+const STYLE_PAYLOAD = JSON.parse(
+  readFileSync(
+    new URL("../../../../project-context/evidence/default_image_style_v1.json", import.meta.url),
+    "utf8",
+  ),
+);
 const STYLE_DOCUMENT = Object.freeze({
   contractName: "image-style-profile",
   contractVersion: "v1",
-  payload: Object.freeze({ source: "concrete-contract" }),
-  canonicalDocumentSha256: sha256("concrete-style-profile"),
+  payload: STYLE_PAYLOAD,
+  canonicalDocumentSha256: `sha256:${createHash("sha256")
+    .update(canonicalizeJson(STYLE_PAYLOAD), "utf8")
+    .digest("hex")}`,
 });
 
 function baseFixture(behaviorId) {
@@ -220,7 +233,7 @@ async function seedAvatarDraft(executor) {
   );
 }
 
-async function seedStyleDraft(executor) {
+async function seedStyleDraft(executor, state = "DRAFT") {
   await executor.query(
     `INSERT INTO image_styles (
        id, workspace_id, name, normalized_name, created_by_user_id, created_at, updated_at
@@ -229,9 +242,25 @@ async function seedStyleDraft(executor) {
   );
   await executor.query(
     `INSERT INTO image_style_versions (
-       id, workspace_id, style_id, version_number, state, created_at, updated_at
-     ) VALUES ($1, $2, $3, 1, 'DRAFT', $4, $4)`,
-    [X.styleVersion, IDS.workspaceA, X.style, FIXED_TIME],
+       id, workspace_id, style_id, version_number, state,
+       profile_contract_name, profile_contract_version, profile_payload, style_profile_hash,
+       analyzer_request_hash, analyzer_model_snapshot, disclosure_attested_by_user_id,
+       created_at, updated_at
+     ) VALUES ($1, $2, $3, 1, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $12)`,
+    [
+      X.styleVersion,
+      IDS.workspaceA,
+      X.style,
+      state,
+      state === "NEEDS_REVIEW" ? STYLE_DOCUMENT.contractName : null,
+      state === "NEEDS_REVIEW" ? STYLE_DOCUMENT.contractVersion : null,
+      state === "NEEDS_REVIEW" ? JSON.stringify(STYLE_DOCUMENT.payload) : null,
+      state === "NEEDS_REVIEW" ? STYLE_DOCUMENT.canonicalDocumentSha256 : null,
+      state === "NEEDS_REVIEW" ? sha256("contract-style-request") : null,
+      state === "NEEDS_REVIEW" ? "fixture-model-v1" : null,
+      IDS.userA,
+      FIXED_TIME,
+    ],
   );
 }
 
@@ -378,7 +407,7 @@ async function fixtureFor(behaviorId, executor) {
       };
     }
     case "style-publication-immutability": {
-      await seedStyleDraft(executor);
+      await seedStyleDraft(executor, "NEEDS_REVIEW");
       const publish = {
         idempotencyKey: "contract:style:publish",
         styleId: X.style,

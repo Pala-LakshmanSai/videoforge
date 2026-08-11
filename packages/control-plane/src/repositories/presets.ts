@@ -475,8 +475,18 @@ export type ImageStyleAnalysisAttempt =
 
 export interface StartedImageStyleAnalysis {
   readonly kind: "IMAGE_STYLE_ANALYSIS_STARTED";
+  readonly version: ImageStyleDraftVersion & { readonly state: "ANALYZING" };
   readonly analysisAttempt: CreatedImageStyleAnalysisAttempt;
   readonly reservation: ImageStyleVersionTaskAttemptReservation;
+}
+
+export interface ImageStyleVersionLookup {
+  readonly styleId: EntityId;
+  readonly versionId: EntityId;
+}
+
+export interface ListImageStylesQuery {
+  readonly includeArchived: boolean;
 }
 
 export interface ExactImageStyleVersionLookup {
@@ -491,6 +501,13 @@ export interface ArchiveImageStyleCommand extends IdempotentMutation {
   readonly archivedAt: UtcTimestamp;
 }
 
+export interface AbandonImageStyleVersionCommand extends IdempotentMutation {
+  readonly styleId: EntityId;
+  readonly versionId: EntityId;
+  readonly expectedUpdatedAt: UtcTimestamp;
+  readonly abandonedAt: UtcTimestamp;
+}
+
 export type ImageStyleConflict =
   | CommonConflictCode
   | "IMAGE_STYLE_ANALYSIS_CONFLICT"
@@ -501,10 +518,50 @@ export type ImageStyleInvariant =
   | CommonInvariantCode
   | "IMAGE_STYLE_ANALYSIS_BILLING_BOUNDARY_MISMATCH"
   | "IMAGE_STYLE_ARCHIVED"
+  | "IMAGE_STYLE_DISCLOSURE_REQUIRED"
+  | "IMAGE_STYLE_PROFILE_INVALID"
   | "IMAGE_STYLE_VERSION_NOT_PUBLISHED"
   | "IMAGE_STYLE_VERSION_NOT_PUBLISHABLE";
 
 export interface ImageStyleRepository {
+  resolveStyle(
+    scope: WorkspaceScope,
+    styleId: EntityId,
+  ): Promise<
+    RepositoryResult<ImageStyle, ImageStyleConflict, ImageStyleMissing, ImageStyleInvariant>
+  >;
+
+  resolveVersion(
+    scope: WorkspaceScope,
+    lookup: ImageStyleVersionLookup,
+  ): Promise<
+    RepositoryResult<ImageStyleVersion, ImageStyleConflict, ImageStyleMissing, ImageStyleInvariant>
+  >;
+
+  listStyles(
+    scope: WorkspaceScope,
+    query: ListImageStylesQuery,
+  ): Promise<
+    RepositoryResult<
+      readonly ImageStyle[],
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
+  listVersions(
+    scope: WorkspaceScope,
+    styleId: EntityId,
+  ): Promise<
+    RepositoryResult<
+      readonly ImageStyleVersion[],
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
   createStyle(
     scope: WorkspaceActorScope,
     command: CreateImageStyleCommand,
@@ -560,6 +617,18 @@ export interface ImageStyleRepository {
   ): Promise<
     IdempotentRepositoryResult<
       StartedImageStyleAnalysis,
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
+  abandonVersion(
+    scope: WorkspaceActorScope,
+    command: AbandonImageStyleVersionCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      AbandonedImageStyleVersion,
       ImageStyleConflict,
       ImageStyleMissing,
       ImageStyleInvariant
