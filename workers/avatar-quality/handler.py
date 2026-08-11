@@ -41,16 +41,20 @@ def handler(event: dict[str, object]) -> dict[str, object]:
         ensure_models(event)
         return {"ok": True, "result": run_job(job)}
     except SkyReelsInferenceFailure as error:
-        return {"ok": False, "error_code": str(error),
-                "diagnostic_sha256": error.diagnostic_sha256}
+        return {"ok": False, "error_code": str(error), "diagnostic_sha256": error.diagnostic_sha256}
     except Exception as error:
         code = str(error) if isinstance(error, ValueError) else "SKYREELS_WORKER_FAILED"
         return {"ok": False, "error_code": code[:120]}
 
 
 def start_worker() -> None:
-    print(json.dumps({"event": "avatar_quality_worker_start",
-                      "source_revision": SKYREELS_SOURCE_REVISION}, sort_keys=True), flush=True)
+    print(
+        json.dumps(
+            {"event": "avatar_quality_worker_start", "source_revision": SKYREELS_SOURCE_REVISION},
+            sort_keys=True,
+        ),
+        flush=True,
+    )
     runpod.serverless.start({"handler": handler})
 
 

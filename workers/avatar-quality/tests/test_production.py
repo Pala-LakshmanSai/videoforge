@@ -62,8 +62,10 @@ class ProductionContractTest(unittest.TestCase):
                 SkyReelsJob.from_value(value)
 
     def test_command_is_pinned_static_and_shell_free(self) -> None:
-        with patch.dict(os.environ, {"SKYREELS_ROOT": "/opt/skyreels-v3",
-                                     "SKYREELS_MODEL_ROOT": "/models/pinned"}):
+        with patch.dict(
+            os.environ,
+            {"SKYREELS_ROOT": "/opt/skyreels-v3", "SKYREELS_MODEL_ROOT": "/models/pinned"},
+        ):
             command = build_command(Path("/safe/original.png"), Path("/safe/span.wav"), 5)
         self.assertEqual(command[0], "python")
         self.assertIn("talking_avatar", command)
@@ -75,42 +77,47 @@ class ProductionContractTest(unittest.TestCase):
         self.assertFalse(any("http" in item or "secret" in item for item in command))
 
     def test_failure_classifier_retains_only_safe_codes(self) -> None:
-        self.assertEqual(classify_failure(b"torch.OutOfMemoryError secret"),
-                         "SKYREELS_INFERENCE_CUDA_OOM")
-        self.assertEqual(classify_failure(b"ModuleNotFoundError: token"),
-                         "SKYREELS_INFERENCE_DEPENDENCY_MISSING")
-        self.assertEqual(classify_failure(b"provider raw private value"),
-                         "SKYREELS_INFERENCE_PROCESS_FAILED")
+        self.assertEqual(
+            classify_failure(b"torch.OutOfMemoryError secret"), "SKYREELS_INFERENCE_CUDA_OOM"
+        )
+        self.assertEqual(
+            classify_failure(b"ModuleNotFoundError: token"), "SKYREELS_INFERENCE_DEPENDENCY_MISSING"
+        )
+        self.assertEqual(
+            classify_failure(b"provider raw private value"), "SKYREELS_INFERENCE_PROCESS_FAILED"
+        )
 
     def test_inline_scope_and_hashes_fail_closed_before_model_activity(self) -> None:
         image = b"owned-image"
         audio = b"owned-audio"
         value = {
-            "mode": "INLINE_QUALIFICATION_V1", "attempt_id": "attempt_skyreels_002",
+            "mode": "INLINE_QUALIFICATION_V1",
+            "attempt_id": "attempt_skyreels_002",
             "original_source_base64": base64.b64encode(image).decode(),
             "original_source_sha256": digest(image),
             "span_audio_base64": base64.b64encode(audio).decode(),
-            "span_audio_sha256": digest(audio), "duration_seconds": 5,
+            "span_audio_sha256": digest(audio),
+            "duration_seconds": 5,
         }
         job = SkyReelsInlineJob.from_value(value)
-        with tempfile.TemporaryDirectory() as temporary, patch.dict(
-            os.environ, {"SKYREELS_MODEL_ROOT": temporary}
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch.dict(os.environ, {"SKYREELS_MODEL_ROOT": temporary}),
         ):
             with self.assertRaisesRegex(ValueError, "SKYREELS_MODEL_NOT_READY"):
                 run_inline_job(job)
         broken = dict(value)
         broken["original_source_sha256"] = "sha256:" + "0" * 64
-        with tempfile.TemporaryDirectory() as temporary, patch.dict(
-            os.environ, {"SKYREELS_MODEL_ROOT": temporary}
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch.dict(os.environ, {"SKYREELS_MODEL_ROOT": temporary}),
         ):
             with self.assertRaisesRegex(ValueError, "SKYREELS_INPUT_CHECKSUM_MISMATCH"):
                 run_inline_job(SkyReelsInlineJob.from_value(broken))
 
     def test_lineage_revisions_are_exact(self) -> None:
-        self.assertEqual(SKYREELS_SOURCE_REVISION,
-                         "28c771e8456341be6a213e3d1133ed1fd19bf75d")
-        self.assertEqual(SKYREELS_MODEL_REVISION,
-                         "fdad4053f492aba389b5a8c3c6982118c6a1ecf3")
+        self.assertEqual(SKYREELS_SOURCE_REVISION, "28c771e8456341be6a213e3d1133ed1fd19bf75d")
+        self.assertEqual(SKYREELS_MODEL_REVISION, "fdad4053f492aba389b5a8c3c6982118c6a1ecf3")
 
     def test_timeout_retains_only_diagnostic_hash(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -118,12 +125,18 @@ class ProductionContractTest(unittest.TestCase):
             model = root / "model"
             model.mkdir()
             (model / "config.json").write_text("{}")
-            with patch.dict(os.environ, {"SKYREELS_MODEL_ROOT": str(model)}), patch.object(
-                production.subprocess, "run", side_effect=subprocess.TimeoutExpired("private", 1)
+            with (
+                patch.dict(os.environ, {"SKYREELS_MODEL_ROOT": str(model)}),
+                patch.object(
+                    production.subprocess,
+                    "run",
+                    side_effect=subprocess.TimeoutExpired("private", 1),
+                ),
             ):
                 with self.assertRaises(production.SkyReelsInferenceFailure) as raised:
-                    production._execute("attempt_1", root / "source.png", root / "audio.wav",
-                                        5, 1, root)
+                    production._execute(
+                        "attempt_1", root / "source.png", root / "audio.wav", 5, 1, root
+                    )
             self.assertEqual(str(raised.exception), "SKYREELS_INFERENCE_TIMEOUT")
             self.assertRegex(raised.exception.diagnostic_sha256, r"^sha256:[0-9a-f]{64}$")
             self.assertNotIn("private", raised.exception.diagnostic_sha256)
@@ -142,26 +155,35 @@ class ProductionContractTest(unittest.TestCase):
                     output.write_bytes(b"valid-mp4")
                     return subprocess.CompletedProcess(command, 0)
                 return subprocess.CompletedProcess(
-                    command, 0, stdout=json.dumps({
-                        "streams": [
-                            {"codec_type": "video", "width": 960, "height": 960,
-                             "r_frame_rate": "25/1"},
-                            {"codec_type": "audio"},
-                        ],
-                        "format": {"duration": "5.000"},
-                    }), stderr="",
+                    command,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "streams": [
+                                {
+                                    "codec_type": "video",
+                                    "width": 960,
+                                    "height": 960,
+                                    "r_frame_rate": "25/1",
+                                },
+                                {"codec_type": "audio"},
+                            ],
+                            "format": {"duration": "5.000"},
+                        }
+                    ),
+                    stderr="",
                 )
 
-            with patch.dict(os.environ, {"SKYREELS_MODEL_ROOT": str(model)}), patch.object(
-                production.subprocess, "run", side_effect=fake_run
+            with (
+                patch.dict(os.environ, {"SKYREELS_MODEL_ROOT": str(model)}),
+                patch.object(production.subprocess, "run", side_effect=fake_run),
             ):
                 result, output = production._execute(
                     "attempt_2", root / "source.png", root / "audio.wav", 5, 10, root
                 )
             self.assertEqual(result["output_sha256"], digest(b"valid-mp4"))
             self.assertEqual(result["duration_ms"], 5000)
-            self.assertEqual(result["renderer_source_profile"],
-                             "skyreels-centered-960x960p25-v2")
+            self.assertEqual(result["renderer_source_profile"], "skyreels-centered-960x960p25-v2")
             self.assertEqual(output.read_bytes(), b"valid-mp4")
 
 

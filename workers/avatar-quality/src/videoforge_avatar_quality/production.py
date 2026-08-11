@@ -55,11 +55,7 @@ def _digest_valid(value: object) -> bool:
 
 
 def _attempt_valid(value: object) -> bool:
-    return (
-        isinstance(value, str)
-        and 1 <= len(value) <= 160
-        and value.replace("_", "").isalnum()
-    )
+    return isinstance(value, str) and 1 <= len(value) <= 160 and value.replace("_", "").isalnum()
 
 
 @dataclass(frozen=True)
@@ -76,8 +72,13 @@ class SkyReelsJob:
     @classmethod
     def from_value(cls, value: object) -> SkyReelsJob:
         keys = {
-            "attempt_id", "original_source_url", "original_source_sha256", "span_audio_url",
-            "span_audio_sha256", "output_put_url", "duration_seconds",
+            "attempt_id",
+            "original_source_url",
+            "original_source_sha256",
+            "span_audio_url",
+            "span_audio_sha256",
+            "output_put_url",
+            "duration_seconds",
         }
         if not isinstance(value, dict) or set(value) != keys:
             raise ValueError("SKYREELS_JOB_SHAPE_INVALID")
@@ -87,7 +88,9 @@ class SkyReelsJob:
         for url in (job.original_source_url, job.span_audio_url, job.output_put_url):
             if not isinstance(url, str) or not url.startswith("https://") or len(url) > 8192:
                 raise ValueError("SKYREELS_SIGNED_URL_INVALID")
-        if not _digest_valid(job.original_source_sha256) or not _digest_valid(job.span_audio_sha256):
+        if not _digest_valid(job.original_source_sha256) or not _digest_valid(
+            job.span_audio_sha256
+        ):
             raise ValueError("SKYREELS_DIGEST_INVALID")
         if not isinstance(job.duration_seconds, int) or not 1 <= job.duration_seconds <= 200:
             raise ValueError("SKYREELS_DURATION_INVALID")
@@ -108,8 +111,13 @@ class SkyReelsInlineJob:
     @classmethod
     def from_value(cls, value: object) -> SkyReelsInlineJob:
         keys = {
-            "mode", "attempt_id", "original_source_base64", "original_source_sha256",
-            "span_audio_base64", "span_audio_sha256", "duration_seconds",
+            "mode",
+            "attempt_id",
+            "original_source_base64",
+            "original_source_sha256",
+            "span_audio_base64",
+            "span_audio_sha256",
+            "duration_seconds",
         }
         if not isinstance(value, dict) or set(value) != keys:
             raise ValueError("SKYREELS_INLINE_JOB_SHAPE_INVALID")
@@ -118,7 +126,9 @@ class SkyReelsInlineJob:
             raise ValueError("SKYREELS_INLINE_SCOPE_INVALID")
         if not _attempt_valid(job.attempt_id):
             raise ValueError("SKYREELS_ATTEMPT_ID_INVALID")
-        if not _digest_valid(job.original_source_sha256) or not _digest_valid(job.span_audio_sha256):
+        if not _digest_valid(job.original_source_sha256) or not _digest_valid(
+            job.span_audio_sha256
+        ):
             raise ValueError("SKYREELS_DIGEST_INVALID")
         for encoded in (job.original_source_base64, job.span_audio_base64):
             if not isinstance(encoded, str) or len(encoded) > 7_000_000:
@@ -163,10 +173,25 @@ def build_command(source: Path, audio: Path, duration_seconds: int) -> list[str]
     root = Path(os.environ.get("SKYREELS_ROOT", "/opt/skyreels-v3")).resolve()
     model = Path(os.environ.get("SKYREELS_MODEL_ROOT", "/models/skyreels-v3-a2v-19b")).resolve()
     return [
-        "python", str(root / "generate_video.py"), "--task_type", "talking_avatar",
-        "--model_id", str(model), "--input_image", str(source), "--input_audio", str(audio),
-        "--prompt", STATIC_PROMPT, "--duration", str(duration_seconds), "--resolution", "720P",
-        "--seed", "42", "--offload",
+        "python",
+        str(root / "generate_video.py"),
+        "--task_type",
+        "talking_avatar",
+        "--model_id",
+        str(model),
+        "--input_image",
+        str(source),
+        "--input_audio",
+        str(audio),
+        "--prompt",
+        STATIC_PROMPT,
+        "--duration",
+        str(duration_seconds),
+        "--resolution",
+        "720P",
+        "--seed",
+        "42",
+        "--offload",
     ]
 
 
@@ -193,9 +218,20 @@ def classify_failure(diagnostic: bytes) -> str:
 
 def _probe(path: Path) -> tuple[int, int, int, int]:
     completed = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries",
-         "stream=codec_type,width,height,r_frame_rate:format=duration", "-of", "json", str(path)],
-        check=True, capture_output=True, text=True, timeout=30,
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "stream=codec_type,width,height,r_frame_rate:format=duration",
+            "-of",
+            "json",
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     value = json.loads(completed.stdout)
     streams = value.get("streams", [])
@@ -215,9 +251,15 @@ def _execute(attempt_id: str, source: Path, audio: Path, duration: int, timeout:
     output = root / "result" / "talking_avatar"
     with tempfile.TemporaryFile() as diagnostic:
         try:
-            subprocess.run(build_command(source, audio, duration), cwd=root, check=True,
-                           timeout=timeout, stdout=diagnostic, stderr=subprocess.STDOUT,
-                           env={**os.environ, "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1"})
+            subprocess.run(
+                build_command(source, audio, duration),
+                cwd=root,
+                check=True,
+                timeout=timeout,
+                stdout=diagnostic,
+                stderr=subprocess.STDOUT,
+                env={**os.environ, "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1"},
+            )
         except subprocess.TimeoutExpired as error:
             raise _failure("SKYREELS_INFERENCE_TIMEOUT", _tail(diagnostic)) from error
         except subprocess.CalledProcessError as error:
@@ -229,18 +271,25 @@ def _execute(attempt_id: str, source: Path, audio: Path, duration: int, timeout:
     path = candidates[0]
     duration_ms, fps, width, height = _probe(path)
     result: SkyReelsResult = {
-        "schema_version": "videoforge.avatar-quality-result/v1", "attempt_id": attempt_id,
-        "output_sha256": _sha256(path), "bytes": path.stat().st_size,
-        "duration_ms": duration_ms, "fps": fps, "width": width, "height": height,
-        "source_revision": SKYREELS_SOURCE_REVISION, "model_revision": SKYREELS_MODEL_REVISION,
+        "schema_version": "videoforge.avatar-quality-result/v1",
+        "attempt_id": attempt_id,
+        "output_sha256": _sha256(path),
+        "bytes": path.stat().st_size,
+        "duration_ms": duration_ms,
+        "fps": fps,
+        "width": width,
+        "height": height,
+        "source_revision": SKYREELS_SOURCE_REVISION,
+        "model_revision": SKYREELS_MODEL_REVISION,
         "renderer_source_profile": "skyreels-centered-960x960p25-v2",
     }
     return result, path
 
 
 def _upload(url: str, path: Path) -> None:
-    request = urllib.request.Request(url, data=path.read_bytes(), method="PUT",
-                                     headers={"content-type": "video/mp4"})
+    request = urllib.request.Request(
+        url, data=path.read_bytes(), method="PUT", headers={"content-type": "video/mp4"}
+    )
     with urllib.request.urlopen(request, timeout=300) as response:
         if not 200 <= response.status < 300:
             raise ValueError("SKYREELS_OUTPUT_UPLOAD_FAILED")
@@ -253,8 +302,9 @@ def run_job(job: SkyReelsJob) -> SkyReelsResult:
         audio = root / "span.wav"
         _download(job.original_source_url, source, job.original_source_sha256, 25 * 1024 * 1024)
         _download(job.span_audio_url, audio, job.span_audio_sha256, 100 * 1024 * 1024)
-        result, output = _execute(job.attempt_id, source, audio, job.duration_seconds,
-                                  job.timeout_seconds, root)
+        result, output = _execute(
+            job.attempt_id, source, audio, job.duration_seconds, job.timeout_seconds, root
+        )
         _upload(job.output_put_url, output)
         return result
 
@@ -266,8 +316,9 @@ def run_inline_job(job: SkyReelsInlineJob) -> SkyReelsInlineResult:
         audio = root / "span.wav"
         _decode(job.original_source_base64, source, job.original_source_sha256)
         _decode(job.span_audio_base64, audio, job.span_audio_sha256)
-        result, output = _execute(job.attempt_id, source, audio, job.duration_seconds,
-                                  job.timeout_seconds, root)
+        result, output = _execute(
+            job.attempt_id, source, audio, job.duration_seconds, job.timeout_seconds, root
+        )
         if result["bytes"] > 12 * 1024 * 1024:
             raise ValueError("SKYREELS_INLINE_OUTPUT_TOO_LARGE")
         return {**result, "output_base64": base64.b64encode(output.read_bytes()).decode("ascii")}
