@@ -360,6 +360,13 @@ errors << "CURRENT_STATE contains unknown blocking gates: #{unknown_state_gates.
 closed_state_gates = state_gates & registry_closed_gates
 errors << "CURRENT_STATE lists closed gates as blocking: #{closed_state_gates.join(", ")}" unless closed_state_gates.empty?
 
+asset_manifest = root.join("evidence/asset_manifest.csv")
+asset_rows = asset_manifest.exist? ? CSV.read(asset_manifest, headers: true) : []
+optional_asset_paths = asset_rows.each_with_object([]) do |row, paths|
+  next unless row["rights_status"].to_s.match?(/third_party|historical_research/)
+  paths << root.join(row["path"]).cleanpath
+end
+
 link_pattern = /!?\[[^\]]*\]\(([^)]+)\)/
 Dir[root.join("**/*.md").to_s].sort.each do |path|
   text = File.read(path)
@@ -369,13 +376,15 @@ Dir[root.join("**/*.md").to_s].sort.each do |path|
     target = target.split("#", 2).first
     next if target.empty?
     resolved = Pathname.new(path).dirname.join(target).cleanpath
-    errors << "#{Pathname.new(path).relative_path_from(root)}: broken link #{raw}" unless resolved.exist?
+    next if resolved.exist?
+    message = "#{Pathname.new(path).relative_path_from(root)}: broken link #{raw}"
+    (optional_asset_paths.include?(resolved) ? warnings : errors) <<
+      "#{message}#{optional_asset_paths.include?(resolved) ? " (local_optional)" : ""}"
   end
 end
 
-asset_manifest = root.join("evidence/asset_manifest.csv")
-if asset_manifest.exist?
-  CSV.foreach(asset_manifest, headers: true) do |row|
+unless asset_rows.empty?
+  asset_rows.each do |row|
     path = root.join(row["path"])
     optional = row["rights_status"].to_s.match?(/third_party|historical_research/)
     unless path.exist?
