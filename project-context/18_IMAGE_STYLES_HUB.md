@@ -1,6 +1,6 @@
 # Image Styles Hub
 
-Status: durable style lifecycle/edit API complete through VF-7-08; VF-7-09 Hub completion selected
+Status: provider-free lifecycle, persistence, API, and fixture Hub complete through VF-7-09
 Read when: implementing reusable image styles, reference upload/analysis, project style selection, or prompt compilation.
 
 ## Product contract
@@ -164,8 +164,10 @@ The stored profile payload contains immutable creative data only. Lifecycle/defa
 Provider-free VF-7-07 implementation `20fd592` adds migration `0010`, immutable analysis-root and
 derived artifacts, accepted-analysis backfill, production PGlite row locking/idempotency, canonical
 derived bytes, changed-pointer computation, review invalidation, exact-current publication, and
-metadata export/restore. Style routes, byte ingestion, Hub UI, previews, and live analyzer
-orchestration remain later work.
+metadata export/restore. VF-7-08 adds the shared versioned edit contract/API. VF-7-09 adds bounded
+browser normalization, independent server media validation, authenticated fixture lifecycle routes,
+Hub review/edit/publish/select/archive/reopen, and exact previews. Production R2 transfer and live
+analyzer/Mage orchestration remain later work.
 
 `DEC_STYLE_007` owns one preserve-and-detach policy for an analyzer-derived version. The accepted
 `VISION_ANALYSIS` canonical artifact from VF-7-04 is immutable historical source truth. An edit never
@@ -225,8 +227,10 @@ VF-7-08 is committed at `326dc38`. Its shared `@videoforge/contracts/image-style
 defines the complete candidate, exact response/problem shapes, and revision-plus-current-artifact
 ETag. The authenticated route rejects identity fields and malformed/partial candidates before the
 atomic VF-7-07 service. Exact replay returns the original lineage response; stale or conflicting
-authority fails without pointer movement. VF-7-09 now owns the remaining provider-free reference
-normalization/intake, lifecycle route, Hub review/publish/select wiring, and Chrome round trip.
+authority fails without pointer movement. VF-7-09 is complete at `6fb3312` plus Workerd correction
+`d9adee9`: the provider-free reference intake, lifecycle routes, review/publish/select wiring,
+reload/reopen, preview/archive truth, responsive Chrome round trip, and ordinary-video zero-analysis
+behavior are green. Fixture reference bytes are session-scoped and are not production R2 evidence.
 
 ## Default built-in style
 

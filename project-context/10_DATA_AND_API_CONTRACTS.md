@@ -364,6 +364,14 @@ unknown fields, and composes only `PGliteImageStyleDerivedEditPersistence`. Succ
 root, immediate parent, current artifact/hash, changed pointers, invalidated review, prior/result
 revision, timestamp, replay truth, and a new exact ETag.
 
+VF-7-09 is complete at `6fb3312` plus `d9adee9`. Versioned Hub DTOs cover browser-normalized
+reference batches, server registration, draft snapshots, deterministic analysis, publication,
+preview, and archive. The browser emits bounded metadata-free sRGB WebP derivatives and exact
+original/normalized checksums; the server independently validates base64, magic, dimensions,
+checksums, decompression limits, order, disclosure, rights, retention, and normalized WebP chunk
+structure. Fixture lifecycle state is authenticated and workspace-scoped with optimistic
+concurrency/idempotency. Its retained bytes are session-scoped test data, not production R2.
+
 Detailed fields and prompt provenance live in `18_IMAGE_STYLES_HUB.md`; stored-payload validation uses `evidence/image_style_profile.schema.json`, while the untrusted provider response uses `evidence/image_style_analyzer_output.schema.json`. Register both canonical schema `$id` values before resolving/inlining provider output schema references, and run the documented nonblank/required-list semantic validator before review/publication.
 
 ## Retention

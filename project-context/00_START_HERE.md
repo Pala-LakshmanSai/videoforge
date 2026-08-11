@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-7-08` complete at `326dc38`; `VF-7-09` Style Hub completion selected
+Status: provider-free media complete through `VF-7-09`; read-only `VF-3-10` selected
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -26,26 +26,24 @@ DeepSeek/Gemini adapters are committed, but neither is runtime-composed. Runware
 spent `$0.41003998` total; ordinary application mode remains `fixture` with provider calls disabled.
 RunPod preflight found `$10.00`, zero live resources, and `$0/hour`; no Pod is active.
 
-Provider-free DX/CI/doctor/dev ownership (`VF-DX-01/02`), vendor-neutral telemetry (`VF-REL-01`),
-and durable prompt execution (`VF-4-01`, `1fba04c`) are complete. Migration `0009` and the
-production PGlite prompt store atomically bind the exact revision, current timeline, published
-style, task, claimed attempt, acknowledged outbox, reservation/cost, accepted bytes, retries,
-hashes, output asset, and telemetry. Its checkpoint passed focused 26/26, control-plane 198/198,
-Workerd 1/1, installed Chrome 38/38, zero skips, fixture mode, and `$0`. `VF-5-01` remains complete
-at `fcb8f31`.
+Provider-free DX/CI/doctor/dev ownership (`VF-DX-01/02`), telemetry (`VF-REL-01`), prompt/image
+acceptance (`VF-4-01/02`), Avatar fixture generation/acceptance (`VF-5-01/02`), and the complete
+provider-free Image Style lifecycle (`VF-7-01` through `VF-7-09`) are sorted and must not be redone.
+Migrations `0008`–`0012` cover durable style references/artifacts, prompt execution, accepted image
+assets, and accepted Avatar clips. Production PGlite services preserve exact revision, timeline,
+style, Avatar, task/attempt/outbox/callback, QA, cost, hash, replay, rollback, reopen, and restore
+lineage.
 
-`VF-7-07` is complete at `20fd592`: migration `0010`, immutable artifact/edit persistence,
-accepted-analysis backfill, production PGlite repository/UoW, exact-current-byte publication, and
-metadata export/restore are green. `VF-4-02` is complete at `bbb0a48`: migration `0011`, a
-deterministic Mage-shaped PNG fixture, and atomic image asset/QA/callback/cost acceptance are green.
-`VF-5-02` is complete at `e0bec7e`: migration `0012` and production PGlite acceptance bind one
-native Avatar clip to both renderer layouts with exact Avatar/source/span/task/attempt/outbox/
-callback/cost/QA lineage and explicit `UNREVIEWED` subjective state. `CURRENT_STATE.yaml` selects
-only provider-free `VF-7-09`, the Image Style Hub completion. `VF-7-08` is complete at `326dc38`:
-shared versioned DTO/runtime contracts and authenticated full-candidate `PATCH` bind exact
-`If-Match`, idempotency, PGlite artifact lineage, revision, provenance, and replay authority. Its
-full checkpoint passed 780 tests/journeys, control-plane 209/209, Workerd 1/1, installed Chrome
-38/38, zero skips, fixture mode, and `$0`.
+`VF-7-09` is complete at `6fb3312` plus Workerd correction `d9adee9`. Browser/server reference
+normalization, authenticated fixture lifecycle routes, review/edit/publication, exact project
+selection, preview, archive, reload/reopen, and accepted Hub UI are green. Forced full verification
+passed 786 tests/journeys: contracts 59/59, control-plane 209/209, web unit 181/181, Workerd 1/1,
+installed Chrome 38/38, zero skips, fixture mode, and `$0`. The server is stopped. Fixture Hub
+reference bytes remain session-scoped; production R2 and live provider orchestration are not done.
+
+`CURRENT_STATE.yaml` selects only read-only `VF-3-10`, the AvatarForcing access/commercial-license
+preflight. Mage `VF-3-08` already preserved `GATE_IMAGE_002` open; do not repeat a broad research
+pass or download around either model blocker.
 
 Production media remains blocked: Mage checkpoint/license evidence is unresolved; AvatarForcing
 licensing artifacts contradict each other; image/avatar/GPU/RunPod/fallback/cost/style-adherence
@@ -166,7 +164,11 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 
 ## First implementation rule
 
-Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and `19_IMPLEMENTATION_PLAYBOOK.md`: preserve every completed Phase 0–2 commit, the accepted fixture shell, and the user-accepted local render. `VF-3-00` is complete. Execute only the exact task selected by `CURRENT_STATE.yaml`; its provider/model/cap is not transferable to another lane. Private Git/CI and isolated staging are authorized but remain dependency-ordered. Production is deferred.
+Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and
+`19_IMPLEMENTATION_PLAYBOOK.md`. Preserve all completed commits, the accepted fixture shell, and
+the user-accepted local render. Execute only the exact task selected by `CURRENT_STATE.yaml`; its
+authority is not transferable. The selected `VF-3-10` task is read-only and `$0`. Provider calls,
+downloads, GPU/cloud mutation, deployment, push, and production remain unauthorized in that brief.
 
 ## Context navigation
 

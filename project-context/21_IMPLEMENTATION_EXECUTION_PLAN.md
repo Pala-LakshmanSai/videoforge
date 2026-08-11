@@ -1,154 +1,125 @@
 # Implementation execution plan
 
-Status: `VF-7-08` complete at `326dc38`; `VF-7-09` Style Hub completion selected
+Status: provider-free media integration complete through `VF-7-09`; `VF-3-10` read-only AvatarForcing license preflight selected
 Read when: selecting, implementing, integrating, or handing off one task.
 
-## Authority
+## Authority and operating rule
 
-`CURRENT_STATE.yaml` selects one task. Load only its named read profile and exact brief. Product
-behavior remains normative in the decision ledger and primary domain files. Missing brief,
-contradictory context, unexplained dirty state, failed gate, or new external authority stops work.
+`CURRENT_STATE.yaml` selects exactly one task. Read `AGENTS.md`, the three start files, then only
+the selected profile and exact brief. Preserve clean HEAD and every newer commit. Do not repeat
+architecture research or completed tasks.
 
-Shared migrations, repository/unit-of-work adapters, contracts, routes, lockfiles, context, and final
-integration are serial. Parallel work is allowed only for explicitly disjoint directories and
-recorded ownership. Each completed task ends with one green implementation commit, evidence,
-refreshed `CURRENT_STATE.yaml`, and exactly one successor brief.
+Migrations, shared repositories, contracts, routes, lockfiles, context, and final integration stay
+serial. Parallel work is allowed only for explicitly disjoint directories with one integration
+owner. Every completed task ends with one small green implementation/evidence commit, refreshed
+current state, and exactly one successor brief.
 
-## Preserved completed baseline
+Fixture is the default. No credential, provider call, model/weight download, GPU/RunPod action,
+cloud/account mutation, deployment, push, or spend is allowed without an exact recorded brief and
+authority. Stop on dirty unexplained state, missing brief, contradiction, unresolved dependency or
+gate, failed check, destructive migration, provider ambiguity, or new authority.
 
-Completed work is compressed here; Git, evidence, and `CURRENT_STATE.yaml.completed_tasks` retain
-exact history.
+## Completed and preserved
 
-- Phase 0A–0C: contracts/tooling, accepted fixture Chrome shell, local ASR/scheduler/FFmpeg slice,
-  installed-Chrome create/play/seek/approve/download, and accepted smooth zoom.
-- Phase 1–2: durable provider-free control plane, recovery, isolation, direct transfer, metadata
-  restore, timing/timeline, selected Avatar spans, and byte-equivalent reopen/restore.
-- Provider qualification foundations: DeepSeek and Gemini gates closed; injected adapters remain
-  runtime-disabled. Mage and AvatarForcing legal/model gates remain open.
-- DX/reliability: `VF-DX-01/02` and `VF-REL-01` complete.
-- Image Styles: `VF-7-01` through `VF-7-06` complete through byte-identical publication and the
-  preserve-and-detach provenance contract.
-- Provider-free media foundations: VF-4-01 durable prompt execution is complete at `1fba04c`,
-  VF-5-01 deterministic Avatar fixture worker is complete at `fcb8f31`, and VF-7-07 durable style
-  derived-artifact persistence is complete at `20fd592`.
-- VF-4-02 durable fixture image acceptance is complete at `bbb0a48`; VF-5-02 durable fixture Avatar
-  acceptance is complete at `e0bec7e`.
-- VF-5-02 checkpoint: focused 4/4, control-plane 209/209, aggregate 762, Workerd 1/1,
-  installed Chrome 38/38, zero skips, fixture mode, `$0`; development server stopped.
-- VF-7-08 checkpoint: focused 34/34, control-plane 209/209, aggregate 780, Workerd 1/1,
-  installed Chrome 38/38, zero skips, fixture mode, `$0`; development server stopped.
+- Phase 0A–0C: contracts/tooling, accepted fixture Chrome shell, owned local ASR/scheduler/FFmpeg
+  slice, Chrome play/seek/approve/hash-download, and accepted continuous image zoom.
+- Phase 1–2: durable provider-free control plane, recovery, isolation/direct transfer, metadata
+  restore, timing/timeline, selected Avatar span audio, and byte-equivalent restart/restore.
+- DX/reliability: `VF-DX-01/02` and `VF-REL-01`.
+- Prompt/style foundations and qualified injected Runware DeepSeek/Gemini adapters; ordinary runtime
+  remains fixture and neither live adapter is composed.
+- Provider-free media: `VF-4-01/02`, `VF-5-01/02`, and `VF-7-01` through `VF-7-09`, including
+  migrations `0008`–`0012`, durable prompt/image/Avatar/style acceptance, immutable root/derived
+  style artifacts, versioned edit API, browser/server reference normalization, and complete
+  fixture Hub upload/analyze/review/edit/publish/select/archive flow.
+- Latest implementation commits: `6fb3312` and Workerd correction `d9adee9`. Forced full verification
+  passed 786 tests/journeys: control-plane 209/209, Workerd 1/1, Chrome 38/38, zero skips, `$0`.
 
-Do not redesign accepted shell/dock/Hubs, rerun architecture research, replace the renderer, change
-output grammar, or redo completed tasks.
+Do not redesign the accepted shell/dock/Hubs, replace FFmpeg v3, retune output grammar, or redo any
+completed task.
 
-## Current serial provider-free sequence
+## Exact next task
 
-### 1. VF-4-01 — complete
+### VF-3-10 — AvatarForcing access and commercial-license preflight
 
-Migration `0009` and the production PGlite prompt store are committed at `1fba04c`; evidence is
-`evidence/acceptance/VF-4-01/durable-fixture-prompt-execution`. Do not redo it.
+Use only `phase3_avatar_access_license_preflight` and `tasks/VF-3-10.md`. This is read-only and
+`$0`: reconcile authoritative code/weights/license facts for `GATE_AVATAR_003`. No weights,
+credentials, legal acceptance, inference, GPU, provider call, external mutation, or spend.
 
-### 2. VF-7-07 — complete
+Mage preflight `VF-3-08` already ran and left `GATE_IMAGE_002` open; do not rerun it as a generic
+research pass. If AvatarForcing remains ambiguous, its lane stops and the sole successor is a
+replacement-model decision brief. If it clearly passes, the sole successor is a tightly capped
+Avatar qualification brief.
 
-Migration `0010`, immutable root/derived artifacts, PGlite edit persistence, exact-current-byte
-publication, and metadata restore are committed at `20fd592`; evidence is
-`evidence/acceptance/VF-7-07/style-derived-edit-service`. Do not redo it.
+## Reliable remaining sequence
 
-### 3. VF-4-02 — Mage-shaped fixture image lane
+The list below is roadmap order, not authorization and not a set of pre-authored briefs.
 
-Complete at `bbb0a48`; evidence is
-`evidence/acceptance/VF-4-02/fixture-image-result-acceptance`. Do not redo it.
+### A. Provider decisions and gates
 
-- Deterministic fixture worker input/result handling; no weights or outbound calls.
-- Persist prompt/task/attempt/outbox/cost/technical-validation/accepted-image/callback lineage.
-- Reject malformed media, checksum/profile/style drift, replay conflicts, cancellation, and
-  cross-workspace confusion.
-- On completion author exactly one successor brief: VF-5-02.
+1. Complete `VF-3-10` read-only AvatarForcing license/access evidence.
+2. Because Mage `GATE_IMAGE_002` is already blocked, make one evidence-based replacement-model
+   decision unless new authoritative evidence independently resolves it. Do the same for
+   AvatarForcing if `VF-3-10` remains blocked. Never download around either blocker.
+3. After explicit paid authority, qualify the selected image model: exact checkpoint/container,
+   quality/style adherence, latency, VRAM, retries, batching, accepted-image cost, and scale-zero.
+4. Qualify the selected Avatar primary: exact code/weights/container, identity, lips, body and
+   background stability, cadence, full/split crops, cold/warm time, cost, and scale-zero.
+5. Qualify RunPod repair and recovery serially: configuration drift, ambiguous acknowledgement,
+   claims, callback replay, duplicate-cost visibility, cancellation, and drain-to-zero.
+6. Close image, Avatar, GPU, RunPod, style-adherence, and relevant cost gates before exposing any
+   production execution profile. Rejected primary results return to explicit regenerate/review;
+   fallbacks are not required for the first real-video milestone.
 
-### 4. VF-5-02 — Avatar result acceptance
+### B. First real-video milestone
 
-Complete at `e0bec7e`; evidence is
-`evidence/acceptance/VF-5-02/avatar-result-acceptance`. Do not redo it.
+7. Compose the already durable prompt/image/Avatar acceptance boundaries with the qualified
+   providers; keep one immutable accepted asset per selected result and exact revision/profile/
+   attempt/cost lineage.
+8. Produce one owned 30–120-second real video through the existing asset barrier and FFmpeg v3.
+9. In installed Chrome verify contact-sheet review, play, seek, explicit approval, checksum-matched
+   download, and playback of the downloaded MP4. Record exact commit/container/model/profile,
+   provider cost, and scale-to-zero evidence.
 
-- Compose VF-5-01 output into durable task/attempt/asset/QA/cost records.
-- Preserve one native clip for full/split layouts, exact Avatar/span lineage, retry/cancel/callback
-  fencing, and explicit subjective review classification.
-- On completion author exactly one successor brief: VF-7-08.
+### C. Staging and hardening
 
-### 5. VF-7-08 then VF-7-09 — Style API and Hub
+10. Split oversized PGlite/artifact adapters by capability without interface or behavior changes.
+11. Add isolated Neon, then private R2 direct transfers, Better Auth/Google admission, Cloudflare
+    Workflow recovery, and fail-closed bindings as separate small serial integration tasks.
+12. Add ten-user contention/fairness, restart, callback, config-drift, cancellation, budget,
+    isolation, and security tests.
+13. Add encrypted metadata backups, R2 integrity inventory, clean-target restore drills, and
+    telemetry-backed fault evidence.
+14. Compose live Gemini custom-style analysis and optional explicitly billed image previews only
+    after storage/privacy/provider authority is exact; ordinary video generation stays at zero
+    style-analysis calls.
 
-- VF-7-08 is complete at `326dc38`: shared versioned contracts, authenticated full-candidate
-  `PATCH`, exact `If-Match`/idempotency, production PGlite composition, and safe replay/problems.
-- VF-7-09 is selected now. Use `phase7_style_hub_completion` and `tasks/VF-7-09.md` only:
-  browser/server normalization, authenticated upload/analyze/review/edit/publish/select flows, and
-  fixture-backed installed-Chrome coverage.
-- Preserve accepted UI design and ordinary-video zero-analysis behavior.
-- On VF-7-09 completion author exactly one provider-gate successor brief from refreshed authority.
+### D. Release
 
-## Provider gates and real-video milestone
+15. Run representative 30-minute cold/warm jobs. Complete at least ten successful runs before
+    reporting p50/p90.
+16. Finish with fresh-account production Chrome acceptance, exact provenance, cost review,
+    clean-target restore proof, drain-to-zero, security checks, and explicit user sign-off.
 
-License investigation may run read-only alongside provider-free work. Resource mutation and paid
-qualification remain serial.
+## Verification rhythm
 
-1. Resolve exact authoritative Mage checkpoint/license evidence.
-2. Resolve AvatarForcing code/weights/commercial-license evidence.
-3. If ambiguity remains, stop that lane and record a replacement-model decision; never download
-   around a blocker.
-4. Only after an exact paid brief and recorded authority, qualify Mage and AvatarForcing quality,
-   latency, VRAM, retries, batching/cadence, cost, and scale-to-zero.
-5. Prove RunPod config repair, ambiguous acknowledgement, claims, callback replay,
-   duplicate-cost visibility, cancellation, and drain-to-zero.
-6. Close image, Avatar, GPU, RunPod, style-adherence, and relevant cost gates before enabling any
-   selectable profile.
-7. Produce one real 30–120-second video through the accepted barrier and FFmpeg v3.
-8. In installed Chrome verify contact-sheet review, play, seek, explicit approval, hash-matched
-   download, and downloaded MP4 playback.
-
-Fallback models are not required for this milestone. Rejected primary assets return to explicit
-regeneration/review.
-
-## Staging, hardening, release
-
-After the real-video milestone and exact successor briefs:
-
-- Split oversized PGlite/artifact adapters by capability without changing interfaces.
-- Add isolated Neon, private R2 direct transfer, Better Auth/Google admission, Cloudflare Workflow
-  recovery, and fail-closed bindings as separate small tasks.
-- Add ten-user fairness/contention, restart, callback, config drift, cancellation, budget,
-  isolation, and security tests.
-- Add encrypted metadata backups, R2 integrity inventory, clean-target restore drills, and
-  telemetry-backed fault evidence.
-- Complete live custom-style Gemini orchestration and optional gated Mage previews.
-- Run representative 30-minute cold/warm jobs, then at least ten completed runs before p50/p90.
-- Finish with fresh-account production Chrome acceptance, exact commit/container/model/profile
-  evidence, cost review, restore proof, scale-to-zero, and user sign-off.
-
-## Development and verification rules
-
-- Provider mode defaults to `fixture`; ordinary verification performs zero provider calls and `$0`.
-- No credential, provider, GPU, cloud, push, download, or spend action without exact recorded
-  authority.
-- Use focused tests and `pnpm verify:fast` during implementation.
-- At integration checkpoints run forced `CI=1 TURBO_FORCE=true pnpm verify`, then
-  `pnpm context:validate`, `pnpm secret:scan`, Prettier checks, dependency audit, and
-  `git diff --check`.
-- Never skip, weaken, delete, or silently reinterpret a check or schema.
-- Use additive migrations. Preserve accepted data and rollback with normal Git revert.
-- Reuse only the owned stable loopback URL when Chrome is needed; never disturb another server.
-- Preserve exact Avatar/style version pins and accepted UI/output behavior: three compositions,
-  hard cuts, realistic footage, required slow image zoom, and no captions/text/graphics/borders/
-  watermarks/decorative transitions.
+- Development: focused tests plus `pnpm verify:fast`.
+- Integration: forced `CI=1 TURBO_FORCE=true pnpm verify`.
+- Every handoff: context/schema validation, secret scan, Prettier, dependency audit, and
+  `git diff --check`; server stopped and worktree clean.
+- Never skip, weaken, delete, or reinterpret checks. Migrations are additive and restore-tested.
+- Preserve exact style/Avatar pins and accepted output: realistic footage, three compositions,
+  hard cuts, required slow image zoom, no captions/text/graphics/borders/watermarks/decorative
+  transitions.
 
 ## Completion boundary
 
-VideoForge is complete only after durable multi-user production recovery, measured provider/model/
-GPU/cost gates, backups/restore, scale-to-zero, full real Chrome create-through-downloaded-playback,
-clean full verification, exact provenance, and explicit user sign-off. Provider-free code or one
-real artifact alone is not production completion.
+Provider-free completion is not production completion. VideoForge is complete only after durable
+multi-user production recovery, closed provider/model/GPU/cost gates, backup/restore, scale-zero,
+fresh-account Chrome create-through-downloaded-playback, exact provenance, and user sign-off.
 
 ## Fresh-chat start
 
 Read `AGENTS.md`, `00_START_HERE.md`, `MANIFEST.yaml`, and `CURRENT_STATE.yaml`; confirm clean HEAD
-descends from recorded checkpoint; then load only selected profile and brief. Preserve all commits.
-Do not run a new research pass. Finish, verify, commit, refresh state, and author exactly one
-successor brief before loading any later profile.
+descends from `d9adee9`; load only `phase3_avatar_access_license_preflight` and `tasks/VF-3-10.md`.
+Preserve all commits. Do not run a broad research pass or preload later profiles/briefs.

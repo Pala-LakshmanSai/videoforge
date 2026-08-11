@@ -19,7 +19,7 @@ gates:
     status: open
     blocks: avatarforcing_download_paid_qualification_and_commercial_use
     acceptance: "08_MODELS_AND_PROVIDERS.md#avatarforcing"
-    owner: unassigned
+    owner: VF-3-10
     last_run: null
   GATE_IMAGE_001:
     status: open

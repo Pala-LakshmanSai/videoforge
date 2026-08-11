@@ -1,14 +1,14 @@
 # Development plan
 
-Status: Phase 0–2 and provider-free media acceptance complete; VF-7-09 selected
+Status: provider-free media acceptance complete through VF-7-09; VF-3-10 selected
 Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
 
 ## Delivery strategy
 
-Current checkpoint `326dc38` is fully provider-free and green. Phase 0A–2, VF-DX-01/02,
-VF-REL-01, VF-4-01/02, VF-5-01/02, and VF-7-01 through VF-7-08 are complete. Current serial task
-is VF-7-09. Provider gates,
-staging, hardening, and release follow only from exact successor briefs and recorded authority.
+Current checkpoint `d9adee9` is fully provider-free and green. Phase 0A–2, VF-DX-01/02,
+VF-REL-01, VF-4-01/02, VF-5-01/02, and VF-7-01 through VF-7-09 are complete. Current serial task
+is read-only `VF-3-10`. Provider qualification, real video, staging, hardening, and release follow
+only from exact successor briefs and recorded authority.
 
 Run coordinated local and viability tracks under the accelerated wave authority in
 `21_IMPLEMENTATION_EXECUTION_PLAN.md`:
@@ -235,12 +235,13 @@ Exit: output matches the spec and measured fast-path cost/SLO can replace planni
 
 ## Phase 7: full custom Image Styles lifecycle
 
-Current (2026-08-11): `VF-7-01` through `VF-7-08` are committed and green. Durable version
-lifecycle, exact reference metadata, claimed analyzer composition, atomic canonical result
-acceptance, immutable root/derived artifacts, production PGlite edit persistence, exact-current-byte
-publication, metadata restore, shared versioned edit contracts, and authenticated full-candidate
-PATCH are complete. Remaining lifecycle routes, UI wiring, upload/normalization, previews, live
-orchestration, and `GATE_STYLE_002` remain incomplete.
+Current (2026-08-11): `VF-7-01` through `VF-7-09` are committed and green. Durable version
+lifecycle, reference metadata, analyzer composition/result acceptance, immutable root/derived
+artifacts, production PGlite edit persistence, exact-current-byte publication, restore, shared
+versioned edit contracts, authenticated lifecycle routes, browser/server normalization, fixture
+review/edit/publish/select/archive, previews, and installed-Chrome Hub coverage are complete.
+Production R2 composition, live Gemini/Mage orchestration, optional billed previews, and
+`GATE_STYLE_002` remain incomplete.
 
 - Parent/version/reference/attempt/preview records and version-scoped APIs.
 - Browser normalized sRGB derivatives plus independent server structure/metadata/checksum/decompression validation.

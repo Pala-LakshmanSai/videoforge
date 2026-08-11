@@ -3,8 +3,8 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-11"
 source_of_truth: project-context
-current_selected_profile: phase7_style_hub_completion
-current_selected_brief: tasks/VF-7-09.md
+current_selected_profile: phase3_avatar_access_license_preflight
+current_selected_brief: tasks/VF-3-10.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -242,6 +242,13 @@ read_profiles:
     - 19_IMPLEMENTATION_PLAYBOOK.md
     - GATES.yaml
     - tasks/VF-3-08.md
+  phase3_avatar_access_license_preflight:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 15_DECISIONS_AND_OPEN_GATES.md
+    - 17_SOURCE_INDEX.md
+    - GATES.yaml
+    - tasks/VF-3-10.md
   phase3_runware_style_adapter:
     - 08_MODELS_AND_PROVIDERS.md
     - 14_TESTING_AND_ACCEPTANCE.md
