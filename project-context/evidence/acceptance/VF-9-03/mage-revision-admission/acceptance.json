@@ -1,0 +1,19 @@
+{
+  "schema_version": "videoforge.mage-revision-admission/v1",
+  "task_id": "VF-9-03",
+  "checked_at": "2026-08-11T23:14:15Z",
+  "base_commit": "8f7391e3ff480519ab3ca3cd3d9411616c81c65a",
+  "external_spend_usd": 0,
+  "model_downloaded": false,
+  "token_created_or_read": false,
+  "model_id": "microsoft/Mage-Flow-Turbo",
+  "exact_revision": null,
+  "browser": {
+    "required_family": "chrome",
+    "connection_result": "unavailable",
+    "authenticated_page_inspected": false
+  },
+  "result": "MAGE_AUTHENTICATED_SESSION_UNAVAILABLE",
+  "worker_state": "MAGE_MODEL_REVISION_INACCESSIBLE",
+  "runpod_inventory": "INHERITED_ABSOLUTE_ZERO_NO_PROVIDER_ACCESS_IN_TASK"
+}
