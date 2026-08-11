@@ -1,3 +1,10 @@
+import {
+  imageStyleEditRequestSchema,
+  imageStyleEditResponseSchema,
+  type ImageStyleEditRequest,
+  type ImageStyleEditResponse,
+} from "@videoforge/contracts/image-style-edit";
+
 import type {
   AvatarProfile,
   ExecutionProfileCatalog,
@@ -100,6 +107,13 @@ interface MutationOptions<T> {
   parse?: (value: unknown) => T;
 }
 
+export interface ImageStyleEditRequestAuthority {
+  readonly sessionToken: string;
+  readonly workspaceId: string;
+  readonly idempotencyKey: string;
+  readonly ifMatch: string;
+}
+
 export const api = {
   health: (scenario?: ScenarioId) =>
     request<HealthResponse>(
@@ -152,6 +166,26 @@ export const api = {
       `/api/v1/voiceovers/${encodeURIComponent(assetId)}${query(scenario)}`,
       undefined,
       parseRegisteredVoiceoverResponse,
+    ),
+  editImageStyleProfile: (
+    styleId: string,
+    versionId: string,
+    body: ImageStyleEditRequest,
+    authority: ImageStyleEditRequestAuthority,
+  ) =>
+    request<ImageStyleEditResponse>(
+      `/api/v1/image-styles/${encodeURIComponent(styleId)}/versions/${encodeURIComponent(versionId)}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${authority.sessionToken}`,
+          "Idempotency-Key": authority.idempotencyKey,
+          "If-Match": authority.ifMatch,
+          "X-VideoForge-Workspace-Id": authority.workspaceId,
+        },
+        body: JSON.stringify(imageStyleEditRequestSchema.parse(body)),
+      },
+      (value) => imageStyleEditResponseSchema.parse(value),
     ),
   mutate: <T = Record<string, unknown>>(
     path: string,

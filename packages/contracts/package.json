@@ -16,6 +16,10 @@
       "types": "./dist/src/create-project.d.ts",
       "import": "./dist/src/create-project.js"
     },
+    "./image-style-edit": {
+      "types": "./dist/src/image-style-edit.d.ts",
+      "import": "./dist/src/image-style-edit.js"
+    },
     "./output-rules": {
       "types": "./dist/src/output-rules.d.ts",
       "import": "./dist/src/output-rules.js"
