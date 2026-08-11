@@ -19,6 +19,7 @@ Mage and AvatarForcing checkpoint/license audits. `VF-7-01` through `VF-7-09` co
 provider-free custom-style lifecycle and fixture Hub. `VF-3-11` ended without a replacement after
 the user reaffirmed AvatarForcing and the LongCat exclusion. `VF-8-01/02/03` are complete.
 `VF-8-04` built the pinned AvatarForcing worker but ended as a truthful bounded qualification
-failure with zero live RunPod resources. `CURRENT_STATE.yaml` selects only the `$0` cold-start
-diagnostic in `VF-8-05.md`. Complete tasks author exactly one
+failure with zero live RunPod resources. `VF-8-05` completed the container/capacity diagnostic at
+`bd34fed`. `CURRENT_STATE.yaml` selects only the capacity-corrected bounded qualification in
+`VF-8-06.md`. Complete tasks author exactly one
 successor brief; do not select or expand later roadmap work before that handoff.

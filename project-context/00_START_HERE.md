@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-8-04` bounded AvatarForcing qualification complete; `VF-8-05` cold-start diagnostic selected
+Status: `VF-8-05` AvatarForcing diagnostic complete; `VF-8-06` capacity-corrected qualification selected
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -52,7 +52,8 @@ ASR/timeline/FFmpeg v3 run, restart restore, approval, and checksum-matched down
 `VF-8-02` Runware composition and `VF-8-03` RunPod scale-zero control are complete. `VF-8-04`
 built the pinned AvatarForcing worker and ran four bounded attempts for `$0.2020189583`; no output
 or model-bootstrap progress was produced, every resource was deleted, and `GATE_AVATAR_003` remains
-open. `CURRENT_STATE.yaml` selects `$0` cold-start diagnostic `VF-8-05`.
+open. `VF-8-05` proved the built handler contract and selected a one-worker L40S/A100-80GB
+capacity correction. `CURRENT_STATE.yaml` selects one capped qualification in `VF-8-06`.
 
 Production media remains unproven. Mage and AvatarForcing terms evidence is unresolved, but the user
 explicitly accepted that risk and authorized bounded qualification of the locked models without
@@ -178,8 +179,9 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and
 `19_IMPLEMENTATION_PLAYBOOK.md`. Preserve all completed commits, the accepted fixture shell, and
 the user-accepted local render. Execute only the exact task selected by `CURRENT_STATE.yaml`; its
-authority is not transferable. Selected `VF-8-05` is `$0`, read-only RunPod/container diagnosis.
-Provider calls, downloads, GPU/cloud mutation, deployment, and production remain unauthorized.
+authority is not transferable. Selected `VF-8-06` permits one pinned AvatarForcing attempt under a
+`$4.50` cap, with one endpoint/worker and mandatory zero inventory. Other provider/model work,
+deployment, and production remain unauthorized.
 
 ## Context navigation
 
