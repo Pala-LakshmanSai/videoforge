@@ -38,6 +38,9 @@ export const RELATIONAL_TABLE_NAMES = [
   "workflow_instances",
   "workflow_events",
   "outbox",
+  "prompt_executions",
+  "prompt_writer_attempts",
+  "prompt_scene_results",
 ] as const;
 
 export type RelationalTableName = (typeof RELATIONAL_TABLE_NAMES)[number];

@@ -230,12 +230,13 @@ async function insertPublishedStyle(executor, values) {
        disclosure_attested_by_user_id, published_at
      ) VALUES (
        $1, $2, $3, 1, 'PUBLISHED',
-       'image-style-profile', 'v1', '{"source":"owned-synthetic"}'::jsonb, $4, $5, $6
+       'image-style-profile', 'v1', $4::jsonb, $5, $6, $7
      )`,
     [
       values.versionId,
       values.workspaceId,
       values.styleId,
+      JSON.stringify(values.profilePayload ?? { source: "owned-synthetic" }),
       values.styleHash,
       values.userId,
       FIXED_TIME,
@@ -247,7 +248,7 @@ async function insertPublishedStyle(executor, values) {
   ]);
 }
 
-export async function seedReadyPresets(executor) {
+export async function seedReadyPresets(executor, overrides = {}) {
   await seedAssets(executor);
   await insertReadyAvatar(executor, {
     profileId: IDS.avatarProfileA,
@@ -281,6 +282,7 @@ export async function seedReadyPresets(executor) {
     name: "Owned Documentary",
     normalizedName: "owned documentary",
     styleHash: HASHES.styleA,
+    profilePayload: overrides.styleAProfilePayload,
   });
   await insertPublishedStyle(executor, {
     styleId: IDS.styleB,
@@ -353,7 +355,9 @@ async function insertLockedRevision(executor, values) {
 }
 
 export async function seedLockedProjects(executor, overrides = {}) {
-  await seedReadyPresets(executor);
+  await seedReadyPresets(executor, {
+    styleAProfilePayload: overrides.styleAProfilePayload,
+  });
   await executor.query(
     `INSERT INTO projects (id, workspace_id, owner_user_id, name, normalized_name)
      VALUES ($1, $2, $3, 'Owned Project', 'owned project'),

@@ -28,13 +28,13 @@ export interface PromptExecutionAuthority {
   readonly projectId: string;
   readonly revisionId: string;
   readonly projectTitle: string;
-  readonly revisionState: "GENERATING";
+  readonly revisionState: "GENERATING" | "STALE";
   readonly timelineId: string;
   readonly timelineHash: Sha256Digest;
-  readonly timelineState: "CURRENT";
+  readonly timelineState: "CURRENT" | "STALE";
   readonly imageStyleVersionId: string;
   readonly styleProfileHash: Sha256Digest;
-  readonly styleState: "PUBLISHED";
+  readonly styleState: "PUBLISHED" | "STALE";
   readonly plannerGuidance: string;
   readonly style: PromptStyleComponents;
   readonly extraPromptKeywords: string | null;
@@ -49,7 +49,7 @@ export interface PromptExecutionAuthority {
   readonly claimTokenHash: Sha256Digest;
   readonly recordedInputHash: Sha256Digest;
   readonly outboxId: string;
-  readonly outboxState: "ACKNOWLEDGED";
+  readonly outboxState: "ACKNOWLEDGED" | "STALE";
   readonly reservedCostMicroUsd: number;
   readonly accepted: AcceptedPromptExecution | null;
 }

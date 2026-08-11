@@ -120,7 +120,7 @@ test("durable timing and empty reference-contract migrations upgrade the five-mi
     );
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [6, 7, 8]);
+    assert.deepEqual(upgraded.appliedVersions, [6, 7, 8, 9]);
     assert.deepEqual(upgraded.alreadyAppliedVersions, [1, 2, 3, 4, 5]);
     const legacy = await executor.query(
       `SELECT transcript.lineage_contract_version, transcript.input_fingerprint_hash,
@@ -143,7 +143,7 @@ test("durable timing and empty reference-contract migrations upgrade the five-mi
 
     const replay = await applyMigrations(executor, sources);
     assert.deepEqual(replay.appliedVersions, []);
-    assert.deepEqual(replay.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7, 8]);
+    assert.deepEqual(replay.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
   } finally {
     await database.close();
   }
@@ -173,7 +173,7 @@ test("reference-contract migration upgrades a clean seven-migration database", a
     }
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [8]);
+    assert.deepEqual(upgraded.appliedVersions, [8, 9]);
     assert.deepEqual(upgraded.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7]);
   } finally {
     await database.close();
