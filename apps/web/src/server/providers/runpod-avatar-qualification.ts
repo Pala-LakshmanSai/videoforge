@@ -153,10 +153,7 @@ try {
     if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
     job = await jobs.status(job.id);
     const liveInventory = await control.inventory();
-    if (
-      liveInventory.runningPodCount > 1 ||
-      liveInventory.pods.filter((pod) => pod.endpointWorker).length > 1
-    ) {
+    if (liveInventory.runningPodCount > 1) {
       throw new Error("RUNPOD_WORKER_RETRY_LIMIT");
     }
     if (attempt % 4 === 3 && startedBalance - (await balance(apiKey)) >= 4.5) {
