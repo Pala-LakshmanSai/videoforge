@@ -250,6 +250,10 @@ read_profiles:
     - 10_DATA_AND_API_CONTRACTS.md
     - 18_IMAGE_STYLES_HUB.md
     - tasks/VF-7-01.md
+  phase7_style_reference_bindings:
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 18_IMAGE_STYLES_HUB.md
+    - tasks/VF-7-02.md
   phase3_prompt_compiler:
     - GLOSSARY.md
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md
