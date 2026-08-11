@@ -4000,8 +4000,9 @@ function mapAvatarTestAttempt(row: Row): PresetContracts.CreatedAvatarProfileTes
   };
 }
 
-function mapImageStyleAnalysisAttempt(row: Row): PresetContracts.CreatedImageStyleAnalysisAttempt {
-  return {
+function mapImageStyleAnalysisAttempt(row: Row): PresetContracts.ImageStyleAnalysisAttempt {
+  const state = stringValue(row.state, "image_style_analysis_attempts.state");
+  const base: PresetContracts.ImageStyleAnalysisAttemptBase = {
     analysisAttemptId: stringValue(row.id, "image_style_analysis_attempts.id"),
     workspaceId: stringValue(row.workspace_id, "image_style_analysis_attempts.workspace_id"),
     styleVersionId: stringValue(
@@ -4030,10 +4031,40 @@ function mapImageStyleAnalysisAttempt(row: Row): PresetContracts.CreatedImageSty
     provider: stringValue(row.provider, "image_style_analysis_attempts.provider"),
     model: stringValue(row.model, "image_style_analysis_attempts.model"),
     modelRevision: stringValue(row.model_revision, "image_style_analysis_attempts.model_revision"),
-    state: "CREATED",
-    responseHash: null,
-    usagePayload: null,
-    reportedCostMicroUsd: null,
+  };
+  if (state === "UNKNOWN") {
+    return {
+      ...base,
+      state,
+      responseHash: null,
+      usagePayload:
+        row.usage_payload === null
+          ? null
+          : jsonObject(row.usage_payload, "image_style_analysis_attempts.usage_payload"),
+      reportedCostMicroUsd: nullableBigint(
+        row.reported_cost_micro_usd,
+        "image_style_analysis_attempts.reported_cost_micro_usd",
+      ),
+    };
+  }
+  if (!["CREATED", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED"].includes(state)) {
+    throw new TypeError(`unexpected image_style_analysis_attempts.state ${state}`);
+  }
+  return {
+    ...base,
+    state: state as PresetContracts.NonUnknownImageStyleAnalysisAttempt["state"],
+    responseHash: nullableString(
+      row.response_hash,
+      "image_style_analysis_attempts.response_hash",
+    ) as Sha256 | null,
+    usagePayload:
+      row.usage_payload === null
+        ? null
+        : jsonObject(row.usage_payload, "image_style_analysis_attempts.usage_payload"),
+    reportedCostMicroUsd: nullableBigint(
+      row.reported_cost_micro_usd,
+      "image_style_analysis_attempts.reported_cost_micro_usd",
+    ),
   };
 }
 
@@ -4053,6 +4084,24 @@ function createImageStyleRepository(
         lookup.versionId,
       );
       return version === null ? missing("IMAGE_STYLE_VERSION", lookup.versionId) : success(version);
+    },
+    async resolveAnalysisAttempt(scope, lookup) {
+      const row = await one(
+        context.executor,
+        `SELECT analysis.*
+           FROM image_style_analysis_attempts analysis
+           JOIN image_style_versions version
+             ON version.workspace_id = analysis.workspace_id
+            AND version.id = analysis.style_version_id
+          WHERE analysis.workspace_id = $1
+            AND version.style_id = $2
+            AND analysis.style_version_id = $3
+            AND analysis.id = $4`,
+        [scope.workspaceId, lookup.styleId, lookup.versionId, lookup.analysisAttemptId],
+      );
+      return row === null
+        ? missing("IMAGE_STYLE_ANALYSIS_ATTEMPT", lookup.analysisAttemptId)
+        : success(mapImageStyleAnalysisAttempt(row));
     },
     async listStyles(scope, query) {
       const result = await context.executor.query<Row>(
@@ -4608,7 +4657,9 @@ function createImageStyleRepository(
               version: version as PresetContracts.ImageStyleDraftVersion & {
                 readonly state: "ANALYZING";
               },
-              analysisAttempt: mapImageStyleAnalysisAttempt(existingAttempt),
+              analysisAttempt: mapImageStyleAnalysisAttempt(
+                existingAttempt,
+              ) as PresetContracts.CreatedImageStyleAnalysisAttempt,
               reservation: reserved.value
                 .value as ExecutionContracts.ImageStyleVersionTaskAttemptReservation,
             },
@@ -4671,7 +4722,9 @@ function createImageStyleRepository(
           version: analyzing as PresetContracts.ImageStyleDraftVersion & {
             readonly state: "ANALYZING";
           },
-          analysisAttempt: mapImageStyleAnalysisAttempt(inserted),
+          analysisAttempt: mapImageStyleAnalysisAttempt(
+            inserted,
+          ) as PresetContracts.CreatedImageStyleAnalysisAttempt,
           reservation: reserved.value
             .value as ExecutionContracts.ImageStyleVersionTaskAttemptReservation,
         });

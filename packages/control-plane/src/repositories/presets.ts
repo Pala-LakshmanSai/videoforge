@@ -555,6 +555,10 @@ export interface ImageStyleVersionLookup {
   readonly versionId: EntityId;
 }
 
+export interface ImageStyleAnalysisAttemptLookup extends ImageStyleVersionLookup {
+  readonly analysisAttemptId: EntityId;
+}
+
 export interface ListImageStylesQuery {
   readonly includeArchived: boolean;
 }
@@ -588,6 +592,7 @@ export type ImageStyleMissing =
   | "ASSET"
   | "EXECUTION_PROFILE"
   | "IMAGE_STYLE"
+  | "IMAGE_STYLE_ANALYSIS_ATTEMPT"
   | "IMAGE_STYLE_REFERENCE"
   | "IMAGE_STYLE_VERSION";
 export type ImageStyleInvariant =
@@ -615,6 +620,18 @@ export interface ImageStyleRepository {
     lookup: ImageStyleVersionLookup,
   ): Promise<
     RepositoryResult<ImageStyleVersion, ImageStyleConflict, ImageStyleMissing, ImageStyleInvariant>
+  >;
+
+  resolveAnalysisAttempt(
+    scope: WorkspaceScope,
+    lookup: ImageStyleAnalysisAttemptLookup,
+  ): Promise<
+    RepositoryResult<
+      ImageStyleAnalysisAttempt,
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
   >;
 
   listStyles(
