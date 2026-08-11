@@ -201,7 +201,12 @@ describe("RunPod scale-zero control", () => {
         expect(body).toMatchObject({ isPublic: false, isServerless: true, volumeInGb: 0 });
         return response({ id: "template_01" });
       }
-      expect(body).toMatchObject({ workersMin: 0, workersMax: 1, gpuCount: 1 });
+      expect(body).toMatchObject({
+        workersMin: 0,
+        workersMax: 1,
+        gpuCount: 1,
+        gpuTypeIds: ["NVIDIA L40S", "NVIDIA A100 80GB PCIe"],
+      });
       return response({ id: "endpoint_01", workersMin: 0, workersMax: 1 });
     });
     const client = new RunPodControlClient({
@@ -217,7 +222,7 @@ describe("RunPod scale-zero control", () => {
     const endpoint = await client.createScaleZeroEndpoint(
       "vf_avatar_cd226f4",
       template.id,
-      ["NVIDIA GeForce RTX 4090", "NVIDIA L40S"],
+      ["NVIDIA L40S", "NVIDIA A100 80GB PCIe"],
       {
         workersMin: 0,
         workersMax: 1,
