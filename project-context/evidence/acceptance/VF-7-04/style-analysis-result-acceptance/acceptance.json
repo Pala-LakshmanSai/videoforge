@@ -1,0 +1,57 @@
+{
+  "task_id": "VF-7-04",
+  "result": "PASS",
+  "checked_at": "2026-08-11T06:48:47Z",
+  "implementation_commit": "789ea98e28baea7a7d6b9b40be06c3f5f8d4f8c2",
+  "provider_mode": "fixture",
+  "provider_calls": 0,
+  "external_spend_usd": 0,
+  "schema_head": 8,
+  "acceptance": {
+    "candidate_kind": "IMAGE_STYLE_ANALYSIS_COMPLETION_CANDIDATE",
+    "usage_version": "videoforge.image-style-analysis-usage/v1",
+    "profile_contract": "image-style-profile/v1",
+    "result_state": "NEEDS_REVIEW",
+    "minimum_provider_attempts": 1,
+    "maximum_provider_attempts": 2,
+    "transaction_disposition": "artifact_cost_task_attempt_and_version_atomic"
+  },
+  "checks": {
+    "focused_result_acceptance_tests_passed": 5,
+    "control_plane_tests_passed": 159,
+    "web_tests_passed": 163,
+    "pipeline_tests_passed": 115,
+    "provider_sandbox_tests_passed": 43,
+    "local_workerd_journeys_passed": 1,
+    "installed_chrome_journeys_passed": 38,
+    "installed_chrome_journeys_skipped": 0,
+    "canonical_verify": "PASS",
+    "context_validation": "PASS",
+    "secret_scan": "PASS",
+    "diff_check": "PASS"
+  },
+  "source_sha256": {
+    "durable_analysis_result": "a319901305fd336c02b795eb85447d31db6908ca4f7f9d653e21447ff3a41e0d",
+    "pglite_repositories": "5ef6343af1661203f1c057d3f305db054a33cd70ad6725a42ee7683bbf26154d",
+    "result_acceptance_tests": "f1f53be061e35ebeaf32e96fb7dd2a5a26e372016b6dad952e737964ab8ca742"
+  },
+  "fences": [
+    "exact workspace and Image Style version ownership",
+    "exact VF-7-03 candidate and canonical profile hash",
+    "same unfinished claimed general task-attempt pair",
+    "same specialized attempt and ordered reference set",
+    "exact caller-owned chronological cost settlement",
+    "object identity checked before durable transaction",
+    "atomic artifact, cost, task, attempt, and lifecycle acceptance",
+    "exact replay after database reopen"
+  ],
+  "preserved": [
+    "provider mode remains fixture",
+    "ordinary video creation performs no reference-image analysis",
+    "published Image Style versions remain immutable and pinned",
+    "accepted fixture shell and density",
+    "three-composition hard-cut output grammar",
+    "required smooth AI-image zoom",
+    "exact ready Avatar Hub selection"
+  ]
+}
