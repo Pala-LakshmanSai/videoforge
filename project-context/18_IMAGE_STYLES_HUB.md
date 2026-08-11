@@ -1,6 +1,6 @@
 # Image Styles Hub
 
-Status: durable style lifecycle complete through VF-7-07; VF-7-08 versioned edit API selected
+Status: durable style lifecycle/edit API complete through VF-7-08; VF-7-09 Hub completion selected
 Read when: implementing reusable image styles, reference upload/analysis, project style selection, or prompt compilation.
 
 ## Product contract
@@ -220,6 +220,13 @@ versions reject edits. Editing a published style starts a new `DRAFT` based on t
 published artifact; it retains the prior root source-analysis link when one exists, but never
 changes the published version or any project revision pinned to it. Built-in styles remain
 non-editable; non-analyzed manual/duplicate-source editing must not fabricate analyzer evidence.
+
+VF-7-08 is committed at `326dc38`. Its shared `@videoforge/contracts/image-style-edit` authority
+defines the complete candidate, exact response/problem shapes, and revision-plus-current-artifact
+ETag. The authenticated route rejects identity fields and malformed/partial candidates before the
+atomic VF-7-07 service. Exact replay returns the original lineage response; stale or conflicting
+authority fails without pointer movement. VF-7-09 now owns the remaining provider-free reference
+normalization/intake, lifecycle route, Hub review/publish/select wiring, and Chrome round trip.
 
 ## Default built-in style
 

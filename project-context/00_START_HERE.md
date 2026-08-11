@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-5-02` complete at `e0bec7e`; `VF-7-08` Style edit API selected
+Status: `VF-7-08` complete at `326dc38`; `VF-7-09` Style Hub completion selected
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -41,7 +41,11 @@ deterministic Mage-shaped PNG fixture, and atomic image asset/QA/callback/cost a
 `VF-5-02` is complete at `e0bec7e`: migration `0012` and production PGlite acceptance bind one
 native Avatar clip to both renderer layouts with exact Avatar/source/span/task/attempt/outbox/
 callback/cost/QA lineage and explicit `UNREVIEWED` subjective state. `CURRENT_STATE.yaml` selects
-only provider-free `VF-7-08`, the versioned full-candidate Image Style edit API.
+only provider-free `VF-7-09`, the Image Style Hub completion. `VF-7-08` is complete at `326dc38`:
+shared versioned DTO/runtime contracts and authenticated full-candidate `PATCH` bind exact
+`If-Match`, idempotency, PGlite artifact lineage, revision, provenance, and replay authority. Its
+full checkpoint passed 780 tests/journeys, control-plane 209/209, Workerd 1/1, installed Chrome
+38/38, zero skips, fixture mode, and `$0`.
 
 Production media remains blocked: Mage checkpoint/license evidence is unresolved; AvatarForcing
 licensing artifacts contradict each other; image/avatar/GPU/RunPod/fallback/cost/style-adherence

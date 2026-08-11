@@ -1,13 +1,13 @@
 # Development plan
 
-Status: Phase 0–2 and provider-free media acceptance complete; VF-7-08 selected
+Status: Phase 0–2 and provider-free media acceptance complete; VF-7-09 selected
 Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
 
 ## Delivery strategy
 
-Current checkpoint `e0bec7e` is fully provider-free and green. Phase 0A–2, VF-DX-01/02,
-VF-REL-01, VF-4-01/02, VF-5-01/02, and VF-7-01 through VF-7-07 are complete. Current serial order
-is VF-7-08 then VF-7-09. Provider gates,
+Current checkpoint `326dc38` is fully provider-free and green. Phase 0A–2, VF-DX-01/02,
+VF-REL-01, VF-4-01/02, VF-5-01/02, and VF-7-01 through VF-7-08 are complete. Current serial task
+is VF-7-09. Provider gates,
 staging, hardening, and release follow only from exact successor briefs and recorded authority.
 
 Run coordinated local and viability tracks under the accelerated wave authority in
@@ -235,11 +235,12 @@ Exit: output matches the spec and measured fast-path cost/SLO can replace planni
 
 ## Phase 7: full custom Image Styles lifecycle
 
-Current (2026-08-11): `VF-7-01` through `VF-7-07` are committed and green. Durable version
+Current (2026-08-11): `VF-7-01` through `VF-7-08` are committed and green. Durable version
 lifecycle, exact reference metadata, claimed analyzer composition, atomic canonical result
 acceptance, immutable root/derived artifacts, production PGlite edit persistence, exact-current-byte
-publication, and metadata restore are complete. Routes, UI, upload/normalization, previews, live orchestration,
-and `GATE_STYLE_002` remain incomplete.
+publication, metadata restore, shared versioned edit contracts, and authenticated full-candidate
+PATCH are complete. Remaining lifecycle routes, UI wiring, upload/normalization, previews, live
+orchestration, and `GATE_STYLE_002` remain incomplete.
 
 - Parent/version/reference/attempt/preview records and version-scoped APIs.
 - Browser normalized sRGB derivatives plus independent server structure/metadata/checksum/decompression validation.

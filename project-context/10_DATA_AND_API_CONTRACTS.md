@@ -356,6 +356,14 @@ execution fails `STYLE_VERSION_CONFLICT`. Publication derives the reviewer from 
 pins the exact current artifact/hash/revision. `PUBLISHED`/`ABANDONED` versions fail closed; editing
 published bytes requires a new `DRAFT` version and cannot reinterpret an existing project pin.
 
+VF-7-08 implements this boundary at `326dc38`. Shared versioned request/response/problem DTOs and
+runtime validators live in `@videoforge/contracts/image-style-edit`. `If-Match` is one exact quoted
+`vf-style-r{revision}-sha256-{artifact_digest}` tag; wildcards or lists are invalid. The Hono route
+authenticates before reading JSON, derives workspace and actor from the session, rejects partial or
+unknown fields, and composes only `PGliteImageStyleDerivedEditPersistence`. Success returns the
+root, immediate parent, current artifact/hash, changed pointers, invalidated review, prior/result
+revision, timestamp, replay truth, and a new exact ETag.
+
 Detailed fields and prompt provenance live in `18_IMAGE_STYLES_HUB.md`; stored-payload validation uses `evidence/image_style_profile.schema.json`, while the untrusted provider response uses `evidence/image_style_analyzer_output.schema.json`. Register both canonical schema `$id` values before resolving/inlining provider output schema references, and run the documented nonblank/required-list semantic validator before review/publication.
 
 ## Retention

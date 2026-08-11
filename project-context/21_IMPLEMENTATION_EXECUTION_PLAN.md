@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: `VF-5-02` complete at `e0bec7e`; `VF-7-08` Style edit API selected
+Status: `VF-7-08` complete at `326dc38`; `VF-7-09` Style Hub completion selected
 Read when: selecting, implementing, integrating, or handing off one task.
 
 ## Authority
@@ -34,6 +34,8 @@ exact history.
 - VF-4-02 durable fixture image acceptance is complete at `bbb0a48`; VF-5-02 durable fixture Avatar
   acceptance is complete at `e0bec7e`.
 - VF-5-02 checkpoint: focused 4/4, control-plane 209/209, aggregate 762, Workerd 1/1,
+  installed Chrome 38/38, zero skips, fixture mode, `$0`; development server stopped.
+- VF-7-08 checkpoint: focused 34/34, control-plane 209/209, aggregate 780, Workerd 1/1,
   installed Chrome 38/38, zero skips, fixture mode, `$0`; development server stopped.
 
 Do not redesign accepted shell/dock/Hubs, rerun architecture research, replace the renderer, change
@@ -75,13 +77,13 @@ Complete at `e0bec7e`; evidence is
 
 ### 5. VF-7-08 then VF-7-09 — Style API and Hub
 
-- VF-7-08 selected now. Use `phase7_style_edit_api` and `tasks/VF-7-08.md` only: full-candidate
-  `PATCH /api/v1/image-styles/{style_id}/versions/{version_id}` with `If-Match` and
-  `Idempotency-Key`; move shared DTOs to versioned contract exports.
-- VF-7-09: browser/server normalization, upload/review/publish/select flows, fixture-backed
-  installed-Chrome coverage.
+- VF-7-08 is complete at `326dc38`: shared versioned contracts, authenticated full-candidate
+  `PATCH`, exact `If-Match`/idempotency, production PGlite composition, and safe replay/problems.
+- VF-7-09 is selected now. Use `phase7_style_hub_completion` and `tasks/VF-7-09.md` only:
+  browser/server normalization, authenticated upload/analyze/review/edit/publish/select flows, and
+  fixture-backed installed-Chrome coverage.
 - Preserve accepted UI design and ordinary-video zero-analysis behavior.
-- On VF-7-08 completion author exactly one successor brief: VF-7-09.
+- On VF-7-09 completion author exactly one provider-gate successor brief from refreshed authority.
 
 ## Provider gates and real-video milestone
 
