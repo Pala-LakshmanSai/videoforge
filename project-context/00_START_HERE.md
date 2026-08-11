@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-8-05` AvatarForcing diagnostic complete; `VF-8-06` capacity-corrected qualification selected
+Status: `VF-8-06` bounded AvatarForcing inference failure complete; `VF-8-07` failure observability selected
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -53,7 +53,9 @@ ASR/timeline/FFmpeg v3 run, restart restore, approval, and checksum-matched down
 built the pinned AvatarForcing worker and ran four bounded attempts for `$0.2020189583`; no output
 or model-bootstrap progress was produced, every resource was deleted, and `GATE_AVATAR_003` remains
 open. `VF-8-05` proved the built handler contract and selected a one-worker L40S/A100-80GB
-capacity correction. `CURRENT_STATE.yaml` selects one capped qualification in `VF-8-06`.
+capacity correction. `VF-8-06` reached the real inference process but returned generic
+`AVATAR_PRIMARY_FAILED` for `$0.0263379630`, then deleted all resources. `CURRENT_STATE.yaml`
+selects `$0` secret-safe failure observability in `VF-8-07`.
 
 Production media remains unproven. Mage and AvatarForcing terms evidence is unresolved, but the user
 explicitly accepted that risk and authorized bounded qualification of the locked models without
@@ -179,8 +181,8 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and
 `19_IMPLEMENTATION_PLAYBOOK.md`. Preserve all completed commits, the accepted fixture shell, and
 the user-accepted local render. Execute only the exact task selected by `CURRENT_STATE.yaml`; its
-authority is not transferable. Selected `VF-8-06` permits one pinned AvatarForcing attempt under a
-`$4.50` cap, with one endpoint/worker and mandatory zero inventory. Other provider/model work,
+authority is not transferable. Selected `VF-8-07` permits only provider-free failure
+classification, tests, and a pinned image build. Provider mutation/spend, other model work,
 deployment, and production remain unauthorized.
 
 ## Context navigation

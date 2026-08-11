@@ -20,6 +20,6 @@ provider-free custom-style lifecycle and fixture Hub. `VF-3-11` ended without a 
 the user reaffirmed AvatarForcing and the LongCat exclusion. `VF-8-01/02/03` are complete.
 `VF-8-04` built the pinned AvatarForcing worker but ended as a truthful bounded qualification
 failure with zero live RunPod resources. `VF-8-05` completed the container/capacity diagnostic at
-`bd34fed`. `CURRENT_STATE.yaml` selects only the capacity-corrected bounded qualification in
-`VF-8-06.md`. Complete tasks author exactly one
+`bd34fed`. `VF-8-06` reached inference but ended in one bounded generic worker failure with zero
+live resources. `CURRENT_STATE.yaml` selects only failure observability in `VF-8-07.md`. Complete tasks author exactly one
 successor brief; do not select or expand later roadmap work before that handoff.
