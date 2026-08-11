@@ -290,6 +290,23 @@ read_profiles:
     - 13_ENGINEERING_BEST_PRACTICES.md
     - 14_TESTING_AND_ACCEPTANCE.md
     - tasks/VF-REL-01.md
+  phase4_durable_prompt_execution:
+    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - tasks/VF-3-03.md
+    - tasks/VF-3-07.md
+    - tasks/VF-4-01.md
+  phase5_avatar_fixture_jobs:
+    - 20_AVATAR_HUB.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - tasks/VF-5-01.md
+  phase7_style_derived_edit_service:
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 18_IMAGE_STYLES_HUB.md
+    - tasks/VF-7-06.md
+    - tasks/VF-7-07.md
   phase3_prompt_compiler:
     - GLOSSARY.md
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md

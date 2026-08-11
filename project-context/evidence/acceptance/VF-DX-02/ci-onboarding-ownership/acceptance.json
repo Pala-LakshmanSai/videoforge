@@ -1,0 +1,50 @@
+{
+  "schema_version": "videoforge.acceptance-evidence/v1",
+  "task_id": "VF-DX-02",
+  "status": "local_technical_pass_hosted_unverified",
+  "recorded_at": "2026-08-11T10:04:49Z",
+  "implementation": {
+    "baseline_commit": "3e6e8ccbd20db63b8f2d7f1df300a88fa38c06fc",
+    "primary_commit": "592c83369980e93258f2b3ac937c0f97b46bfc1f",
+    "fail_closed_correction_commit": "a1b6a5b61f9e03032b9495c3c5fe0ecfc9d2cef8",
+    "ci_execution_jobs": 5,
+    "ci_required_aggregate_jobs": 1,
+    "hosted_ci_run": false
+  },
+  "doctor": {
+    "schema_version": "videoforge.doctor/v1",
+    "ok": true,
+    "checks": 17,
+    "environment_names": 11,
+    "environment_values_included": false,
+    "provider_mode": "fixture",
+    "provider_calls_authorized": false,
+    "authorized_spend_usd": 0
+  },
+  "development_ownership": {
+    "owned_start_stop_restart": "pass",
+    "idempotent_second_stop": "pass",
+    "foreign_listener_refused_and_preserved": "pass",
+    "dead_stale_record_refused_and_retained": "pass",
+    "force_kill_used": false
+  },
+  "verification": {
+    "forced_full_result": "pass",
+    "forced_full_seconds": 149.49,
+    "workerd_junit": { "tests": 1, "failures": 0, "skipped": 0, "errors": 0 },
+    "chrome_junit": { "tests": 38, "failures": 0, "skipped": 0, "errors": 0 },
+    "control_plane_tests": 172,
+    "root_script_tests": 13,
+    "unique_tests_and_journeys": 713,
+    "failed": 0,
+    "intentionally_skipped": 0,
+    "dependency_vulnerabilities": 0
+  },
+  "authorization": {
+    "provider_calls_made": false,
+    "credentials_used": false,
+    "model_downloads_performed": false,
+    "remote_or_cloud_mutation_performed": false,
+    "external_spend_usd": 0
+  }
+}
