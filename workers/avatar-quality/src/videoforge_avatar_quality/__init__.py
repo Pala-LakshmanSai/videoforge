@@ -2,6 +2,7 @@
 
 from .health import health_payload
 from .production import (
+    SKYREELS_INFERENCE_TIMEOUT_SECONDS,
     SKYREELS_MODEL_REVISION,
     SKYREELS_SOURCE_REVISION,
     SkyReelsInferenceFailure,
@@ -13,6 +14,7 @@ from .production import (
 )
 
 __all__ = [
+    "SKYREELS_INFERENCE_TIMEOUT_SECONDS",
     "SKYREELS_MODEL_REVISION",
     "SKYREELS_SOURCE_REVISION",
     "SkyReelsInferenceFailure",

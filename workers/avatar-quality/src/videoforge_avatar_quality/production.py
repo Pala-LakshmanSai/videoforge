@@ -18,6 +18,7 @@ SKYREELS_MODEL_REVISION = "fdad4053f492aba389b5a8c3c6982118c6a1ecf3"
 SKYREELS_MODEL_ID = "Skywork/SkyReels-V3-A2V-19B"
 STATIC_PROMPT = "A presenter speaks directly to camera. Static shot, realistic natural motion."
 DIAGNOSTIC_TAIL_BYTES = 64 * 1024
+SKYREELS_INFERENCE_TIMEOUT_SECONDS = 2_550
 
 
 class SkyReelsInferenceFailure(ValueError):
@@ -67,7 +68,7 @@ class SkyReelsJob:
     span_audio_sha256: str
     output_put_url: str
     duration_seconds: int
-    timeout_seconds: int = 1_800
+    timeout_seconds: int = SKYREELS_INFERENCE_TIMEOUT_SECONDS
 
     @classmethod
     def from_value(cls, value: object) -> SkyReelsJob:
@@ -106,7 +107,7 @@ class SkyReelsInlineJob:
     span_audio_base64: str
     span_audio_sha256: str
     duration_seconds: Literal[5]
-    timeout_seconds: int = 1_800
+    timeout_seconds: int = SKYREELS_INFERENCE_TIMEOUT_SECONDS
 
     @classmethod
     def from_value(cls, value: object) -> SkyReelsInlineJob:

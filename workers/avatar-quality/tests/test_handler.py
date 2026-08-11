@@ -1,5 +1,6 @@
 import importlib.util
 import sys
+import threading
 import types
 import unittest
 from pathlib import Path
@@ -37,6 +38,32 @@ class HandlerContractTest(unittest.TestCase):
             result = handler.handler({"input": {}})
         self.assertEqual(result, {"ok": False, "error_code": "SKYREELS_WORKER_FAILED"})
         self.assertNotIn("private", str(result))
+
+    def test_inference_progress_is_ordered_and_heartbeat_is_safe(self) -> None:
+        phases: list[str] = []
+        heartbeat_seen = threading.Event()
+
+        def progress(_event, phase: str) -> None:
+            phases.append(phase)
+            if phase.startswith("inference_skyreels_heartbeat_"):
+                heartbeat_seen.set()
+
+        def operation() -> str:
+            self.assertTrue(heartbeat_seen.wait(timeout=1))
+            return "accepted"
+
+        with patch.object(handler.runpod.serverless, "progress_update", side_effect=progress):
+            result = handler.run_with_heartbeat({}, operation, interval_seconds=0.01)
+        self.assertEqual(result, "accepted")
+        self.assertEqual(phases[0], "inference_skyreels_started")
+        self.assertTrue(phases[1].startswith("inference_skyreels_heartbeat_"))
+        self.assertEqual(phases[-1], "output_skyreels_validated")
+
+    def test_progress_transport_failure_never_breaks_inference(self) -> None:
+        with patch.object(
+            handler.runpod.serverless, "progress_update", side_effect=RuntimeError("private")
+        ):
+            self.assertEqual(handler.run_with_heartbeat({}, lambda: "accepted"), "accepted")
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from videoforge_avatar_quality.production import (  # noqa: E402
+    SKYREELS_INFERENCE_TIMEOUT_SECONDS,
     SKYREELS_MODEL_REVISION,
     SKYREELS_SOURCE_REVISION,
     SkyReelsInlineJob,
@@ -42,6 +43,8 @@ class ProductionContractTest(unittest.TestCase):
     def test_accepts_only_exact_original_source_contract(self) -> None:
         job = SkyReelsJob.from_value(self.remote_value())
         self.assertEqual(job.duration_seconds, 5)
+        self.assertEqual(job.timeout_seconds, SKYREELS_INFERENCE_TIMEOUT_SECONDS)
+        self.assertEqual(job.timeout_seconds, 2_550)
         for key in ["avatarforcing_url", "failed_candidate_url", "prompt", "layout"]:
             value = self.remote_value()
             value[key] = "forbidden"

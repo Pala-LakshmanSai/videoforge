@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import threading
+from collections.abc import Callable
+from typing import TypeVar
 
 import runpod
 
@@ -16,12 +18,43 @@ from videoforge_avatar_quality import (
 )
 
 _bootstrap_lock = threading.Lock()
+_Result = TypeVar("_Result")
+
+
+def safe_progress(event: dict[str, object], phase: str) -> None:
+    try:
+        runpod.serverless.progress_update(event, phase)
+    except Exception:
+        return
+
+
+def run_with_heartbeat(
+    event: dict[str, object], operation: Callable[[], _Result], interval_seconds: float = 60
+) -> _Result:
+    stopped = threading.Event()
+
+    def heartbeat() -> None:
+        elapsed = 0
+        while not stopped.wait(interval_seconds):
+            elapsed += round(interval_seconds)
+            safe_progress(event, f"inference_skyreels_heartbeat_{elapsed}s")
+
+    safe_progress(event, "inference_skyreels_started")
+    thread = threading.Thread(target=heartbeat, name="skyreels-heartbeat", daemon=True)
+    thread.start()
+    try:
+        result = operation()
+        safe_progress(event, "output_skyreels_validated")
+        return result
+    finally:
+        stopped.set()
+        thread.join(timeout=1)
 
 
 def ensure_models(event: dict[str, object]) -> None:
     with _bootstrap_lock:
         try:
-            bootstrap_models(lambda value: runpod.serverless.progress_update(event, value))
+            bootstrap_models(lambda value: safe_progress(event, value))
         except Exception as error:
             raise ValueError("SKYREELS_BOOTSTRAP_FAILED") from error
 
@@ -36,10 +69,10 @@ def handler(event: dict[str, object]) -> dict[str, object]:
         if value.get("mode") == "INLINE_QUALIFICATION_V1":
             job = SkyReelsInlineJob.from_value(value)
             ensure_models(event)
-            return {"ok": True, "result": run_inline_job(job)}
+            return {"ok": True, "result": run_with_heartbeat(event, lambda: run_inline_job(job))}
         job = SkyReelsJob.from_value(value)
         ensure_models(event)
-        return {"ok": True, "result": run_job(job)}
+        return {"ok": True, "result": run_with_heartbeat(event, lambda: run_job(job))}
     except SkyReelsInferenceFailure as error:
         return {"ok": False, "error_code": str(error), "diagnostic_sha256": error.diagnostic_sha256}
     except Exception as error:

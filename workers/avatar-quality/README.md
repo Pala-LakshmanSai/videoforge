@@ -9,3 +9,6 @@ Profile runtime image plus selected span audio; failed AvatarForcing/MuseTalk by
 - RunPod: one scale-zero worker only; weights download lazily into ephemeral storage.
 
 Process health deliberately reports `model_state=not_loaded`; readiness is proven per job.
+Workers emit safe bootstrap, inference, 60-second heartbeat, and output-validation progress. Inference
+fails closed after 2,550 seconds, leaving 150 seconds for a 2,700-second endpoint to return evidence
+and drain before platform termination.
