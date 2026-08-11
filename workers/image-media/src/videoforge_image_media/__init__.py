@@ -9,7 +9,9 @@ from .mage_production import (
     MAGE_TRANSFORMER_BYTES,
     MAGE_TRANSFORMER_SHA256,
     MageInlineJob,
+    MageInlineResult,
     MageJob,
+    run_inline_job,
 )
 
 __all__ = [
@@ -20,6 +22,8 @@ __all__ = [
     "MAGE_TRANSFORMER_BYTES",
     "MAGE_TRANSFORMER_SHA256",
     "MageInlineJob",
+    "MageInlineResult",
     "MageJob",
     "health_payload",
+    "run_inline_job",
 ]

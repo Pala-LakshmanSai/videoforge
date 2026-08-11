@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import os
 import re
@@ -45,6 +46,10 @@ class MageResult(TypedDict):
     source_revision: str
     model_revision: str
     renderer_source_profile: Literal["mage-square-native-v1"]
+
+
+class MageInlineResult(MageResult):
+    output_base64: str
 
 
 def _exact_keys(value: object, keys: set[str], code: str) -> dict[str, object]:
@@ -375,3 +380,20 @@ def run_process(
         time.sleep(0.1)
     if process.returncode:
         raise MageContractError("MAGE_INFERENCE_FAILED")
+
+
+def run_inline_job(job: MageInlineJob, model_root: Path) -> MageInlineResult:
+    import tempfile
+
+    with tempfile.TemporaryDirectory(prefix="videoforge-mage-qualification-") as temporary:
+        output_root = Path(temporary)
+        command = build_command(job, model_root, output_root)
+        run_process(command, Path("/opt/mage"))
+        result = collect_results(job, output_root)[0]
+        output_path = output_root / "gen_000.png"
+        if result["bytes"] > 16 * 1024 * 1024:
+            raise MageContractError("MAGE_INLINE_OUTPUT_TOO_LARGE")
+        return {
+            **result,
+            "output_base64": base64.b64encode(output_path.read_bytes()).decode("ascii"),
+        }

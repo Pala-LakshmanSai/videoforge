@@ -1,0 +1,12 @@
+accelerate==1.13.0
+diffusers==0.38.0
+einops==0.8.2
+huggingface-hub[hf-xet]==1.4.1
+loguru==0.7.3
+numpy==2.4.3
+pillow==12.3.0
+pydantic==2.12.5
+runpod==1.8.1
+safetensors==0.8.0
+transformers==5.5.0
+typing-extensions==4.15.0

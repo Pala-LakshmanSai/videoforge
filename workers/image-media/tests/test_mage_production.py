@@ -211,6 +211,20 @@ class MageProductionContractTest(unittest.TestCase):
             mage.run_process(["python", "private-token"], Path("/tmp"), 1)
         self.assertNotIn("private-token", str(raised.exception))
 
+    def test_inline_runner_returns_only_validated_png_bytes(self) -> None:
+        parsed = mage.MageInlineJob.from_value(inline())
+        with patch.object(mage, "run_process") as run:
+
+            def create_output(command: list[str], _root: Path) -> None:
+                Path(command[command.index("--out") + 1], "gen_000.png").write_bytes(
+                    png(1024, 1024)
+                )
+
+            run.side_effect = create_output
+            result = mage.run_inline_job(parsed, Path("/models/mage-flow-turbo"))
+        self.assertEqual(result["model_revision"], mage.MAGE_MODEL_REVISION)
+        self.assertGreater(len(result["output_base64"]), 100)
+
         with (
             patch.object(mage.subprocess, "Popen", side_effect=OSError("private-token")),
             self.assertRaisesRegex(mage.MageContractError, "MAGE_INFERENCE_START_FAILED") as raised,

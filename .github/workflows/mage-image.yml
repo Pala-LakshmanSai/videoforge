@@ -1,0 +1,39 @@
+name: mage-image
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: mage-image
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Authenticate GHCR
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+      - name: Build, smoke, and publish pinned Mage candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          image="ghcr.io/${owner}/videoforge-mage:${GITHUB_SHA}"
+          docker build --file workers/image-media/Dockerfile.mage --tag "$image" workers/image-media
+          docker run --rm --entrypoint python "$image" -c \
+            'import flash_attn, runpod, torch; from mage_bootstrap import verify_embedded_model; from videoforge_image_media import MAGE_MODEL_REVISION, MageInlineJob; verify_embedded_model(__import__("pathlib").Path("/models/mage-flow-turbo")); assert MAGE_MODEL_REVISION == "395402ba3ef110c96e70d01abe4d178dbe4e01a5"; print("mage-import-model-ok")'
+          docker run --rm --entrypoint python "$image" -c \
+            'import sys; sys.path.insert(0, "/opt/videoforge"); import mage_handler; observed = []; mage_handler.runpod.serverless.start = lambda config: observed.append(config); mage_handler.start_worker(); assert len(observed) == 1 and callable(observed[0]["handler"]); print("mage-handler-registration-ok")'
+          docker run --rm --entrypoint python "$image" -m compileall -q /opt/mage /opt/videoforge
+          docker push "$image"
+          digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image")"
+          printf 'image=%s\n' "$digest" >> "$GITHUB_STEP_SUMMARY"
