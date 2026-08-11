@@ -20,6 +20,10 @@
       "types": "./dist/src/image-style-edit.d.ts",
       "import": "./dist/src/image-style-edit.js"
     },
+    "./image-style-hub": {
+      "types": "./dist/src/image-style-hub.d.ts",
+      "import": "./dist/src/image-style-hub.js"
+    },
     "./output-rules": {
       "types": "./dist/src/output-rules.d.ts",
       "import": "./dist/src/output-rules.js"

@@ -7,6 +7,7 @@ import type { LocalSliceRunner } from "./local/types";
 import { apiProblem, problemResponse } from "./problem";
 import { registerPresetRoutes } from "./routes/preset-routes";
 import { registerProjectRoutes } from "./routes/project-routes";
+import { registerStyleHubRoutes } from "./routes/style-hub-routes";
 import { registerSystemRoutes } from "./routes/system-routes";
 import { registerVoiceoverRoutes } from "./routes/voiceover-routes";
 import { assertRunnableRuntime } from "./runtime/configuration";
@@ -37,6 +38,7 @@ export function createApiApp(options: CreateApiAppOptions): Hono {
   registerAccessMiddleware(app, environment, runtime.sessions);
   registerSystemRoutes(app, runtime);
   registerPresetRoutes(app, runtime);
+  registerStyleHubRoutes(app, runtime);
   registerVoiceoverRoutes(app, runtime);
   registerProjectRoutes(app, runtime, bindings.fixturePreview!);
 

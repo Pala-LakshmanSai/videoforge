@@ -1,34 +1,57 @@
 import { useQuery } from "@tanstack/react-query";
+import type { ImageStyleHubVersionResponse } from "@videoforge/contracts/image-style-hub";
 import { ArrowRight, Check, Images, ShieldCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "../components/PageHeader";
 import { Button, Disclosure, Panel } from "../components/ui";
 import { ActionToast } from "../features/shared/FixtureFeedback";
 import { fixtureLink } from "../features/shared/fixture-link";
 import { api } from "../lib/api";
-import { parseImageStyleCreateMutationResponse } from "../lib/api-schemas";
 import { updateDraft } from "../lib/draft";
-import { validateImageFile, type VerifiedImage } from "../lib/media-validation";
+import {
+  normalizeImageStyleReference,
+  type NormalizedStyleReference,
+} from "../lib/media-validation";
 import { currentScenario } from "../lib/scenario";
 
 export function NewStyleScreen() {
   const scenario = currentScenario();
   const params = new URLSearchParams(window.location.search);
   const returnTo = params.get("returnTo") || "/styles";
+  const resumeStyleId = params.get("styleId");
+  const resumeVersionId = params.get("versionId");
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
-  const [files, setFiles] = useState<VerifiedImage[]>([]);
+  const [files, setFiles] = useState<NormalizedStyleReference[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [filesPending, setFilesPending] = useState(false);
   const [rights, setRights] = useState(false);
   const [disclosure, setDisclosure] = useState(false);
   const [busy, setBusy] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [hubVersion, setHubVersion] = useState<ImageStyleHubVersionResponse | null>(null);
+  const [medium, setMedium] = useState("");
+  const [lighting, setLighting] = useState("");
+  const [color, setColor] = useState("");
+  const [texture, setTexture] = useState("");
+  const operationKeys = useRef({
+    analyze: crypto.randomUUID(),
+    create: crypto.randomUUID(),
+    edit: crypto.randomUUID(),
+    publish: crypto.randomUUID(),
+    references: crypto.randomUUID(),
+  });
+  const resumeApplied = useRef(false);
   const health = useQuery({
     queryKey: ["health", scenario],
     queryFn: () => api.health(scenario),
   });
   const catalog = useQuery({ queryKey: ["styles", scenario], queryFn: () => api.styles(scenario) });
+  const resumedDraft = useQuery({
+    queryKey: ["style-draft", resumeStyleId, resumeVersionId, scenario],
+    queryFn: () => api.imageStyleDraft(resumeStyleId!, resumeVersionId!, scenario),
+    enabled: Boolean(resumeStyleId && resumeVersionId),
+  });
   const duplicateName = (catalog.data ?? []).some(
     (style) => style.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase(),
   );
@@ -39,6 +62,23 @@ export function NewStyleScreen() {
     },
     [files],
   );
+
+  useEffect(() => {
+    const resumed = resumedDraft.data;
+    if (!resumed || resumeApplied.current) return;
+    resumeApplied.current = true;
+    setHubVersion(resumed);
+    setName(resumed.name);
+    if (resumed.profile) {
+      setMedium(resumed.profile.visual_profile.medium_family);
+      setLighting(resumed.profile.visual_profile.lighting);
+      setColor(resumed.profile.visual_profile.color.descriptors.join(", "));
+      setTexture(resumed.profile.visual_profile.texture_and_grain);
+    }
+    if (resumed.state === "NEEDS_REVIEW") setStep(3);
+    else if (resumed.state === "PUBLISHED") setStep(4);
+    else if (resumed.state === "REFERENCES_READY") setStep(2);
+  }, [resumedDraft.data]);
 
   async function chooseStyleReferences(selected: FileList | null) {
     for (const file of files) URL.revokeObjectURL(file.objectUrl);
@@ -53,7 +93,7 @@ export function NewStyleScreen() {
     setFilesPending(true);
     try {
       const results = await Promise.allSettled(
-        candidates.map((file) => validateImageFile(file, 256)),
+        candidates.map((file) => normalizeImageStyleReference(file)),
       );
       const failure = results.find(
         (result): result is PromiseRejectedResult => result.status === "rejected",
@@ -64,7 +104,9 @@ export function NewStyleScreen() {
         }
         throw failure.reason;
       }
-      setFiles(results.map((result) => (result as PromiseFulfilledResult<VerifiedImage>).value));
+      setFiles(
+        results.map((result) => (result as PromiseFulfilledResult<NormalizedStyleReference>).value),
+      );
     } catch (error) {
       setFileError(error instanceof Error ? error.message : "Reference validation failed.");
     } finally {
@@ -72,44 +114,146 @@ export function NewStyleScreen() {
     }
   }
 
-  async function publish() {
+  async function analyze() {
     if (busy) return;
     setBusy(true);
     setPublishError(null);
     try {
-      const exampleUrls = [
-        "/fixtures/styles/rural-field.svg",
-        "/fixtures/styles/rural-hands.svg",
-        "/fixtures/styles/rural-kitchen.svg",
-        "/fixtures/styles/rural-market.svg",
-      ].slice(0, files.length);
-      const result = await api.mutate(
-        "/api/v1/image-styles",
-        {
-          name: name.trim(),
-          summary:
-            "Natural light, restrained contrast, material texture, and documentary camera language.",
-          cover_url: "/fixtures/styles/warm-rural.svg",
-          reference_urls: [],
-          example_urls: exampleUrls,
-          medium: "Natural-light rural documentary",
-          lighting: "Warm available light",
-          color: "Earth tones and muted botanical green",
-          texture: "Tactile material detail, restrained sharpening",
-          retention_summary:
-            "Fixture mode retained no uploaded bytes; owned examples stand in after navigation",
-          lifecycle: "ACTIVE",
-          version_state: "PUBLISHED",
-          uploaded_bytes_persisted: false,
-          attestations: {
-            reference_rights: true,
-            processing_disclosure_acknowledged: true,
+      let current = hubVersion;
+      if (!current) {
+        current = await api.createImageStyleDraft(
+          { schema_version: "image-style-draft-create/v1", name: name.trim() },
+          scenario,
+          operationKeys.current.create,
+        );
+        setHubVersion(current);
+        const nextUrl = new URL(window.location.href);
+        nextUrl.searchParams.set("styleId", current.style_id);
+        nextUrl.searchParams.set("versionId", current.version_id);
+        window.history.replaceState(null, "", nextUrl);
+      }
+      if (current.state === "DRAFT") {
+        current = await api.registerImageStyleReferences(
+          current.style_id,
+          current.version_id,
+          {
+            schema_version: "image-style-reference-batch/v1",
+            rights: {
+              reference_rights_attested: true,
+              processing_disclosure_acknowledged: true,
+              retention_choice: "NORMALIZED_SESSION_ONLY",
+            },
+            references: files.map((file, index) => ({
+              client_reference_id: file.clientReferenceId,
+              filename: file.filename,
+              order_index: index,
+              original: {
+                media_type: file.original.mediaType,
+                checksum: file.original.checksum,
+                width: file.original.width,
+                height: file.original.height,
+                bytes_base64: file.original.bytesBase64,
+              },
+              normalized: {
+                media_type: "image/webp",
+                checksum: file.normalized.checksum,
+                width: file.normalized.width,
+                height: file.normalized.height,
+                bytes_base64: file.normalized.bytesBase64,
+                color_space: "srgb",
+                metadata_stripped: true,
+                orientation_applied: true,
+              },
+            })),
           },
+          current.version_tag,
+          scenario,
+          operationKeys.current.references,
+        );
+        setHubVersion(current);
+      }
+      const analyzed =
+        current.state === "REFERENCES_READY"
+          ? await api.analyzeImageStyleDraft(
+              current.style_id,
+              current.version_id,
+              current.version_tag,
+              scenario,
+              operationKeys.current.analyze,
+            )
+          : current;
+      if (!analyzed.profile) throw new Error("Fixture analysis returned no review profile.");
+      setHubVersion(analyzed);
+      setMedium(analyzed.profile.visual_profile.medium_family);
+      setLighting(analyzed.profile.visual_profile.lighting);
+      setColor(analyzed.profile.visual_profile.color.descriptors.join(", "));
+      setTexture(analyzed.profile.visual_profile.texture_and_grain);
+      setStep(3);
+    } catch (error) {
+      setPublishError(error instanceof Error ? error.message : "References could not be analyzed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function acceptReview() {
+    if (!hubVersion?.profile || busy) return;
+    setBusy(true);
+    setPublishError(null);
+    try {
+      const current = hubVersion.profile;
+      const candidate = {
+        ...current,
+        visual_profile: {
+          ...current.visual_profile,
+          medium_family: medium.trim(),
+          lighting: lighting.trim(),
+          color: {
+            ...current.visual_profile.color,
+            descriptors: color
+              .split(",")
+              .map((value) => value.trim())
+              .filter(Boolean),
+          },
+          texture_and_grain: texture.trim(),
         },
-        scenario,
-        { parse: parseImageStyleCreateMutationResponse },
+      };
+      const changed = JSON.stringify(candidate) !== JSON.stringify(current);
+      const accepted = changed
+        ? await api.editFixtureImageStyleDraft(
+            hubVersion.style_id,
+            hubVersion.version_id,
+            { schema_version: "image-style-edit-request/v1", candidate_profile: candidate },
+            hubVersion.version_tag,
+            scenario,
+            operationKeys.current.edit,
+          )
+        : hubVersion;
+      setHubVersion(accepted);
+      setStep(4);
+    } catch (error) {
+      setPublishError(
+        error instanceof Error ? error.message : "Reviewed profile could not be saved.",
       );
-      updateDraft({ imageStyleVersionId: result.imageStyle.versionId }, scenario);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function publish() {
+    if (busy) return;
+    if (!hubVersion) return;
+    setBusy(true);
+    setPublishError(null);
+    try {
+      const result = await api.publishImageStyleDraft(
+        hubVersion.style_id,
+        hubVersion.version_id,
+        hubVersion.version_tag,
+        scenario,
+        operationKeys.current.publish,
+      );
+      updateDraft({ imageStyleVersionId: result.version_id }, scenario);
       window.location.assign(fixtureLink(returnTo));
     } catch (error) {
       setPublishError(error instanceof Error ? error.message : "Image Style could not be saved.");
@@ -293,7 +437,7 @@ export function NewStyleScreen() {
               <Button variant="ghost" onClick={() => setStep(1)}>
                 Back
               </Button>
-              <Button disabled={!rights || !disclosure} onClick={() => setStep(3)}>
+              <Button busy={busy} disabled={!rights || !disclosure} onClick={() => void analyze()}>
                 Analyze fixture references
               </Button>
             </div>
@@ -301,26 +445,23 @@ export function NewStyleScreen() {
           {step === 3 ? (
             <div className="stack">
               <div className="grid grid-2">
-                <div className="metric">
-                  <span>Medium</span>
-                  <strong>Documentary still</strong>
-                  <small>Owned fixture example · not inferred</small>
-                </div>
-                <div className="metric">
-                  <span>Lighting</span>
-                  <strong>Natural soft side light</strong>
-                  <small>Synthetic review value</small>
-                </div>
-                <div className="metric">
-                  <span>Color</span>
-                  <strong>Warm earth + muted cyan</strong>
-                  <small>Synthetic review value</small>
-                </div>
-                <div className="metric">
-                  <span>Texture</span>
-                  <strong>Material detail</strong>
-                  <small>Synthetic review value</small>
-                </div>
+                {[
+                  ["Reviewed medium", medium, setMedium],
+                  ["Reviewed lighting", lighting, setLighting],
+                  ["Reviewed color", color, setColor],
+                  ["Reviewed texture", texture, setTexture],
+                ].map(([label, value, setter]) => (
+                  <label className="field" key={label as string}>
+                    <span>{label as string}</span>
+                    <textarea
+                      aria-label={label as string}
+                      className="input"
+                      value={value as string}
+                      maxLength={600}
+                      onChange={(event) => (setter as (next: string) => void)(event.target.value)}
+                    />
+                  </label>
+                ))}
               </div>
               <div className="validation validation-success">
                 <Check size={16} />
@@ -330,7 +471,13 @@ export function NewStyleScreen() {
               <Button variant="ghost" onClick={() => setStep(2)}>
                 Back
               </Button>
-              <Button onClick={() => setStep(4)}>Accept reviewed profile</Button>
+              <Button
+                busy={busy}
+                disabled={!medium.trim() || !lighting.trim() || !color.trim() || !texture.trim()}
+                onClick={() => void acceptReview()}
+              >
+                Accept reviewed profile
+              </Button>
             </div>
           ) : null}
           {step === 4 ? (
@@ -344,9 +491,9 @@ export function NewStyleScreen() {
                 Publishing creates immutable style profile v1 and atomically activates it.
               </div>
               <div className="notice">
-                <strong>Uploaded bytes are not persisted.</strong> The published fixture card will
-                show labelled owned examples. A real analysis or Mage test requires separate
-                authorization later.
+                <strong>Original bytes were discarded.</strong> Bounded metadata-stripped WebP
+                references remain only in this isolated fixture session. A real analysis or Mage
+                test requires separate authorization later.
               </div>
               <Button variant="ghost" disabled={busy} onClick={() => setStep(3)}>
                 Back

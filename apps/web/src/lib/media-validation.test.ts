@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { detectAudioContainer, validateImageFile, validateVoiceoverFile } from "./media-validation";
+import {
+  boundedImageDimensions,
+  buildNormalizedStyleReference,
+  detectAudioContainer,
+  detectImageContainer,
+  validateImageFile,
+  validateVoiceoverFile,
+} from "./media-validation";
 
 function bytes(...values: number[]): Uint8Array {
   return new Uint8Array(values);
@@ -65,5 +72,45 @@ describe("fixture media validation", () => {
     await expect(validateImageFile(file)).rejects.toThrow(
       "renamed.jpg contents do not match its extension.",
     );
+  });
+
+  it("bounds style references without upscaling or changing aspect ratio", () => {
+    expect(boundedImageDimensions(4_000, 2_000)).toEqual({ width: 1_600, height: 800 });
+    expect(boundedImageDimensions(640, 480)).toEqual({ width: 640, height: 480 });
+  });
+
+  it("detects normalized WebP and builds checksum-pinned reference payloads", async () => {
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: () => "blob:normalized-reference",
+    });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: () => undefined });
+    const original = bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4);
+    const normalized = bytes(...ascii("RIFF"), 4, 0, 0, 0, ...ascii("WEBP"), 9, 8, 7, 6);
+    const file = fixtureFile("owned.png", "image/png", original);
+    const normalizedBlob = {
+      arrayBuffer: async () => normalized.buffer.slice(0) as ArrayBuffer,
+      size: normalized.byteLength,
+      type: "image/webp",
+    } as Blob;
+    const result = await buildNormalizedStyleReference(
+      file,
+      { width: 640, height: 480 },
+      normalizedBlob,
+      { width: 640, height: 480 },
+      "reference_a",
+    );
+    expect(detectImageContainer(normalized)).toBe("WEBP");
+    expect(result).toMatchObject({
+      clientReferenceId: "reference_a",
+      filename: "owned.png",
+      original: { checksum: expect.stringMatching(/^sha256:[a-f0-9]{64}$/u) },
+      normalized: {
+        checksum: expect.stringMatching(/^sha256:[a-f0-9]{64}$/u),
+        mediaType: "image/webp",
+      },
+    });
+    expect(result.original.checksum).not.toBe(result.normalized.checksum);
+    URL.revokeObjectURL(result.objectUrl);
   });
 });

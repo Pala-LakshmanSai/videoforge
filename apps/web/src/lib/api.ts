@@ -4,6 +4,16 @@ import {
   type ImageStyleEditRequest,
   type ImageStyleEditResponse,
 } from "@videoforge/contracts/image-style-edit";
+import {
+  imageStyleAnalysisRequestSchema,
+  imageStyleDraftCreateRequestSchema,
+  imageStyleHubVersionResponseSchema,
+  imageStylePublishRequestSchema,
+  imageStyleReferenceBatchRequestSchema,
+  type ImageStyleDraftCreateRequest,
+  type ImageStyleHubVersionResponse,
+  type ImageStyleReferenceBatchRequest,
+} from "@videoforge/contracts/image-style-hub";
 
 import type {
   AvatarProfile,
@@ -153,6 +163,122 @@ export const api = {
     ),
   styles: (scenario: ScenarioId) =>
     request<ImageStyle[]>(`/api/v1/image-styles${query(scenario)}`, undefined, parseStylesResponse),
+  createImageStyleDraft: (
+    body: ImageStyleDraftCreateRequest,
+    scenario: ScenarioId,
+    idempotencyKey = crypto.randomUUID(),
+  ) =>
+    request<ImageStyleHubVersionResponse>(
+      `/api/v1/image-style-drafts${query(scenario)}`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify(imageStyleDraftCreateRequestSchema.parse(body)),
+      },
+      (value) => imageStyleHubVersionResponseSchema.parse(value),
+    ),
+  imageStyleDraft: (styleId: string, versionId: string, scenario: ScenarioId) =>
+    request<ImageStyleHubVersionResponse>(
+      `/api/v1/image-styles/${encodeURIComponent(styleId)}/versions/${encodeURIComponent(versionId)}${query(scenario)}`,
+      undefined,
+      (value) => imageStyleHubVersionResponseSchema.parse(value),
+    ),
+  registerImageStyleReferences: (
+    styleId: string,
+    versionId: string,
+    body: ImageStyleReferenceBatchRequest,
+    versionTag: string,
+    scenario: ScenarioId,
+    idempotencyKey = crypto.randomUUID(),
+  ) =>
+    request<ImageStyleHubVersionResponse>(
+      `/api/v1/image-styles/${encodeURIComponent(styleId)}/versions/${encodeURIComponent(versionId)}/references${query(scenario)}`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey, "If-Match": versionTag },
+        body: JSON.stringify(imageStyleReferenceBatchRequestSchema.parse(body)),
+      },
+      (value) => imageStyleHubVersionResponseSchema.parse(value),
+    ),
+  analyzeImageStyleDraft: (
+    styleId: string,
+    versionId: string,
+    versionTag: string,
+    scenario: ScenarioId,
+    idempotencyKey = crypto.randomUUID(),
+  ) =>
+    request<ImageStyleHubVersionResponse>(
+      `/api/v1/image-styles/${encodeURIComponent(styleId)}/versions/${encodeURIComponent(versionId)}/analyze${query(scenario)}`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey, "If-Match": versionTag },
+        body: JSON.stringify(
+          imageStyleAnalysisRequestSchema.parse({
+            schema_version: "image-style-analysis-request/v1",
+          }),
+        ),
+      },
+      (value) => imageStyleHubVersionResponseSchema.parse(value),
+    ),
+  editFixtureImageStyleDraft: (
+    styleId: string,
+    versionId: string,
+    body: ImageStyleEditRequest,
+    versionTag: string,
+    scenario: ScenarioId,
+    idempotencyKey = crypto.randomUUID(),
+  ) =>
+    request<ImageStyleHubVersionResponse>(
+      `/api/v1/image-styles/${encodeURIComponent(styleId)}/versions/${encodeURIComponent(versionId)}${query(scenario)}`,
+      {
+        method: "PATCH",
+        headers: { "Idempotency-Key": idempotencyKey, "If-Match": versionTag },
+        body: JSON.stringify(imageStyleEditRequestSchema.parse(body)),
+      },
+      (value) => imageStyleHubVersionResponseSchema.parse(value),
+    ),
+  publishImageStyleDraft: (
+    styleId: string,
+    versionId: string,
+    versionTag: string,
+    scenario: ScenarioId,
+    idempotencyKey = crypto.randomUUID(),
+  ) =>
+    request<ImageStyleHubVersionResponse>(
+      `/api/v1/image-styles/${encodeURIComponent(styleId)}/versions/${encodeURIComponent(versionId)}/publish${query(scenario)}`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey, "If-Match": versionTag },
+        body: JSON.stringify(
+          imageStylePublishRequestSchema.parse({
+            schema_version: "image-style-publish-request/v1",
+          }),
+        ),
+      },
+      (value) => imageStyleHubVersionResponseSchema.parse(value),
+    ),
+  archiveImageStyle: (styleId: string, versionId: string, scenario: ScenarioId) =>
+    request<{ ok: true; state: "ARCHIVED" }>(
+      `/api/v1/image-styles/${encodeURIComponent(styleId)}/archive${query(scenario)}`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify({ version_id: versionId }),
+      },
+      (value) => {
+        if (
+          !value ||
+          typeof value !== "object" ||
+          !("ok" in value) ||
+          value.ok !== true ||
+          !("state" in value) ||
+          value.state !== "ARCHIVED"
+        ) {
+          throw new Error("Invalid Image Style archive response.");
+        }
+        return { ok: true, state: "ARCHIVED" };
+      },
+    ),
   executionProfiles: (scenario: ScenarioId) =>
     request<ExecutionProfileCatalog>(
       `/api/v1/execution-profiles${query(scenario)}`,

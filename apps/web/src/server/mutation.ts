@@ -171,14 +171,18 @@ function normalizedBodyFingerprint(rawBody: string): string {
   }
 }
 
-function idempotencyFingerprint(c: Context, rawBody: string): string {
+async function idempotencyFingerprint(c: Context, rawBody: string): Promise<string> {
   const url = new URL(c.req.url);
-  return [
+  const canonicalRequest = [
     c.req.method.toUpperCase(),
     url.pathname,
     url.searchParams.get("fixture") ?? "",
     normalizedBodyFingerprint(rawBody),
   ].join("\n");
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonicalRequest)),
+  );
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function snapshotResponse(response: Response): Promise<ReplayableResponse> {
@@ -214,7 +218,7 @@ export async function idempotentMutation(
     throw new Error("Idempotency-Key was validated but is unavailable.");
   }
   const rawBody = await c.req.text();
-  const fingerprint = idempotencyFingerprint(c, rawBody);
+  const fingerprint = await idempotencyFingerprint(c, rawBody);
   const existing = ledger.get(idempotencyKey);
   if (existing) {
     if (existing.fingerprint !== fingerprint) {

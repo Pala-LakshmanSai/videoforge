@@ -14,6 +14,24 @@ export interface VerifiedImage {
   width: number;
 }
 
+export interface NormalizedStyleReference extends VerifiedImage {
+  clientReferenceId: string;
+  original: {
+    bytesBase64: string;
+    checksum: `sha256:${string}`;
+    height: number;
+    mediaType: "image/jpeg" | "image/png" | "image/webp";
+    width: number;
+  };
+  normalized: {
+    bytesBase64: string;
+    checksum: `sha256:${string}`;
+    height: number;
+    mediaType: "image/webp";
+    width: number;
+  };
+}
+
 interface VoiceoverReadResult {
   buffer: ArrayBuffer;
   hex: string;
@@ -181,7 +199,7 @@ export function formatDuration(seconds: number): string {
   return `${String(Math.floor(rounded / 60)).padStart(2, "0")}:${String(rounded % 60).padStart(2, "0")}`;
 }
 
-function detectImageContainer(bytes: Uint8Array): "JPEG" | "PNG" | "WEBP" | null {
+export function detectImageContainer(bytes: Uint8Array): "JPEG" | "PNG" | "WEBP" | null {
   if (
     bytes.length >= 8 &&
     bytes[0] === 0x89 &&
@@ -206,6 +224,116 @@ function detectImageContainer(bytes: Uint8Array): "JPEG" | "PNG" | "WEBP" | null
     return "WEBP";
   }
   return null;
+}
+
+function imageMediaType(container: NonNullable<ReturnType<typeof detectImageContainer>>) {
+  if (container === "JPEG") return "image/jpeg" as const;
+  if (container === "PNG") return "image/png" as const;
+  return "image/webp" as const;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  }
+  return btoa(binary);
+}
+
+async function sha256(bytes: Uint8Array): Promise<`sha256:${string}`> {
+  const digest = new Uint8Array(
+    await crypto.subtle.digest(
+      "SHA-256",
+      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
+    ),
+  );
+  return `sha256:${Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+
+export function boundedImageDimensions(width: number, height: number, maximum = 1_600) {
+  const scale = Math.min(1, maximum / Math.max(width, height));
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
+}
+
+export async function buildNormalizedStyleReference(
+  file: File,
+  sourceDimensions: { width: number; height: number },
+  normalizedBlob: Blob,
+  normalizedDimensions: { width: number; height: number },
+  clientReferenceId: string = crypto.randomUUID(),
+): Promise<NormalizedStyleReference> {
+  const originalBytes = new Uint8Array(await file.arrayBuffer());
+  const normalizedBytes = new Uint8Array(await normalizedBlob.arrayBuffer());
+  const originalContainer = detectImageContainer(originalBytes.subarray(0, 16));
+  if (!originalContainer) throw new Error(`${file.name} has unsupported image contents.`);
+  if (detectImageContainer(normalizedBytes.subarray(0, 16)) !== "WEBP") {
+    throw new Error(`${file.name} could not be normalized to WebP.`);
+  }
+  return {
+    clientReferenceId,
+    filename: file.name,
+    height: normalizedDimensions.height,
+    objectUrl: URL.createObjectURL(normalizedBlob),
+    original: {
+      bytesBase64: bytesToBase64(originalBytes),
+      checksum: await sha256(originalBytes),
+      height: sourceDimensions.height,
+      mediaType: imageMediaType(originalContainer),
+      width: sourceDimensions.width,
+    },
+    normalized: {
+      bytesBase64: bytesToBase64(normalizedBytes),
+      checksum: await sha256(normalizedBytes),
+      height: normalizedDimensions.height,
+      mediaType: "image/webp",
+      width: normalizedDimensions.width,
+    },
+    width: normalizedDimensions.width,
+  };
+}
+
+export async function normalizeImageStyleReference(file: File): Promise<NormalizedStyleReference> {
+  const verified = await validateImageFile(file, 256);
+  URL.revokeObjectURL(verified.objectUrl);
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file, {
+      colorSpaceConversion: "default",
+      imageOrientation: "from-image",
+      premultiplyAlpha: "default",
+    });
+  } catch {
+    throw new Error(`${file.name} could not be decoded for normalization.`);
+  }
+  const target = boundedImageDimensions(bitmap.width, bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = target.width;
+  canvas.height = target.height;
+  const context = canvas.getContext("2d", { alpha: false, colorSpace: "srgb" });
+  if (!context) {
+    bitmap.close();
+    throw new Error("This browser cannot normalize Image Style references.");
+  }
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, target.width, target.height);
+  context.drawImage(bitmap, 0, 0, target.width, target.height);
+  bitmap.close();
+  const normalizedBlob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error(`${file.name} normalization failed.`))),
+      "image/webp",
+      0.86,
+    );
+  });
+  return buildNormalizedStyleReference(
+    file,
+    { width: verified.width, height: verified.height },
+    normalizedBlob,
+    target,
+  );
 }
 
 export async function validateImageFile(

@@ -14,6 +14,8 @@ import { currentScenario } from "../lib/scenario";
 export function StylesHubScreen() {
   const scenario = currentScenario();
   const [search, setSearch] = useState("");
+  const [archiveBusy, setArchiveBusy] = useState<string | null>(null);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
   const query = useQuery({ queryKey: ["styles", scenario], queryFn: () => api.styles(scenario) });
   const health = useQuery({
     queryKey: ["health", scenario],
@@ -82,6 +84,11 @@ export function StylesHubScreen() {
         <div className="notice" role="status">
           <strong>Bounded local mode.</strong> Style creation is unavailable; use the exact
           published documentary style shown below.
+        </div>
+      ) : null}
+      {archiveError ? (
+        <div className="notice notice-danger" role="alert">
+          <strong>Archive failed.</strong> {archiveError}
         </div>
       ) : null}
       <NoticeBanner
@@ -216,6 +223,35 @@ export function StylesHubScreen() {
                         </span>
                       </div>
                     </section>
+                    {!style.isDefault && style.status === "PUBLISHED" ? (
+                      <section className="detail-section">
+                        <div className="detail-section-heading">
+                          <h4>Lifecycle</h4>
+                        </div>
+                        <Button
+                          variant="secondary"
+                          busy={archiveBusy === style.versionId}
+                          onClick={async () => {
+                            setArchiveBusy(style.versionId);
+                            setArchiveError(null);
+                            try {
+                              await api.archiveImageStyle(style.id, style.versionId, scenario);
+                              await query.refetch();
+                            } catch (error) {
+                              setArchiveError(
+                                error instanceof Error
+                                  ? error.message
+                                  : "Image Style archive failed.",
+                              );
+                            } finally {
+                              setArchiveBusy(null);
+                            }
+                          }}
+                        >
+                          Archive style
+                        </Button>
+                      </section>
+                    ) : null}
                   </DetailsSheet>
                 </article>
               );

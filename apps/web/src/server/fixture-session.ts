@@ -24,6 +24,7 @@ function createFixtureSessionState(): FixtureSessionState {
     registeredVoiceovers: new Map(),
     createdAvatars: [],
     createdStyles: [],
+    styleDrafts: new Map(),
     createdProjectRequest: null,
     avatarSequence: 0,
     styleSequence: 0,

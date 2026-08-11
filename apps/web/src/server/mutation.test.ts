@@ -34,7 +34,7 @@ describe("runtime-neutral idempotency snapshots", () => {
         "content-type": "application/json",
         "idempotency-key": "runtime-neutral-idempotency",
       },
-      body: JSON.stringify({ stable: true }),
+      body: JSON.stringify({ privateOriginalBytes: "SENSITIVE-REFERENCE-BYTES" }),
     } satisfies RequestInit;
 
     const firstPromise = app.request("/mutation", request);
@@ -48,6 +48,7 @@ describe("runtime-neutral idempotency snapshots", () => {
 
     release();
     const first = await firstPromise;
+    expect(JSON.stringify([...ledger])).not.toContain("SENSITIVE-REFERENCE-BYTES");
     expect(first.status).toBe(201);
     expect(first.headers.get("etag")).toBe('"runtime-neutral-v1"');
     expect(first.headers.get("x-videoforge-idempotent-replay")).toBeNull();

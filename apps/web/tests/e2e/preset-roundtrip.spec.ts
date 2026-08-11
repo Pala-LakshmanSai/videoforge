@@ -38,10 +38,12 @@ interface CreatedAvatarResponse {
 }
 
 interface CreatedStyleResponse {
-  imageStyle: { name: string; versionId: string };
-  immutableVersion: true;
-  providerCallsAuthorized: false;
-  uploadedBytesPersisted: false;
+  name: string;
+  version_id: string;
+  state: "PUBLISHED";
+  provider_calls_authorized: false;
+  original_bytes_persisted: false;
+  normalized_bytes_persisted: true;
 }
 
 const runtimeFailures = new WeakMap<Page, RuntimeFailures>();
@@ -153,10 +155,7 @@ function uniqueName(prefix: string, testInfo: TestInfo): string {
   return `${prefix} ${project} ${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
 }
 
-async function installMutationGate(
-  page: Page,
-  path: "/api/v1/avatar-profiles" | "/api/v1/image-styles",
-) {
+async function installMutationGate(page: Page, path: string) {
   let release: (() => void) | undefined;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
@@ -329,7 +328,7 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
   let avatarMutationCount = 0;
   page.on("request", (request) => {
     if (
-      request.method() === "POST" &&
+      ["PATCH", "POST"].includes(request.method()) &&
       new URL(request.url()).pathname === "/api/v1/avatar-profiles"
     ) {
       avatarMutationCount += 1;
@@ -398,7 +397,10 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
 
   let styleMutationCount = 0;
   page.on("request", (request) => {
-    if (request.method() === "POST" && new URL(request.url()).pathname === "/api/v1/image-styles") {
+    if (
+      ["PATCH", "POST"].includes(request.method()) &&
+      new URL(request.url()).pathname.startsWith("/api/v1/image-style")
+    ) {
       styleMutationCount += 1;
     }
   });
@@ -431,9 +433,13 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
   await page.getByRole("checkbox", { name: /Reference rights attestation/u }).check();
   await page.getByRole("checkbox", { name: /Runware processing disclosure/u }).check();
   await page.getByRole("button", { name: "Analyze fixture references" }).click();
+  await expect(page.getByLabel("Reviewed lighting")).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Reviewed lighting")).toHaveValue(/Natural available light/u);
+  await page.getByLabel("Reviewed lighting").fill("Edited natural window light");
   await page.getByRole("button", { name: "Accept reviewed profile" }).click();
 
-  const styleGate = await installMutationGate(page, "/api/v1/image-styles");
+  const styleGate = await installMutationGate(page, "/api/v1/image-styles/*/versions/*/publish");
   const publishStyle = page.getByRole("button", { name: "Publish style v1" });
   await publishStyle.click();
   await expect(publishStyle).toBeDisabled();
@@ -447,14 +453,16 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
   expect(styleResponse.status).toBe(201);
   const createdStyle = styleResponse.body as CreatedStyleResponse;
   expect(createdStyle).toMatchObject({
-    imageStyle: { name: styleName, versionId: expect.stringMatching(/^image_style_version_/u) },
-    immutableVersion: true,
-    providerCallsAuthorized: false,
-    uploadedBytesPersisted: false,
+    name: styleName,
+    version_id: expect.stringMatching(/^image_style_version_/u),
+    state: "PUBLISHED",
+    provider_calls_authorized: false,
+    original_bytes_persisted: false,
+    normalized_bytes_persisted: true,
   });
   await expect(page).toHaveURL(/\/projects\/new\?fixture=project_create_ready$/u);
   const afterStyle = await readDraft(page);
-  expect(afterStyle.imageStyleVersionId).toBe(createdStyle.imageStyle.versionId);
+  expect(afterStyle.imageStyleVersionId).toBe(createdStyle.version_id);
   expect({ ...afterStyle, imageStyleVersionId: afterAvatar.imageStyleVersionId }).toEqual(
     afterAvatar,
   );
@@ -465,7 +473,31 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
     return (await response.json()) as Array<{ name: string; versionId: string }>;
   });
   expect(styleCatalog).toContainEqual(
-    expect.objectContaining({ name: styleName, versionId: createdStyle.imageStyle.versionId }),
+    expect.objectContaining({ name: styleName, versionId: createdStyle.version_id }),
   );
-  expect(styleMutationCount).toBe(1);
+  expect(styleMutationCount).toBe(5);
+
+  await page.goto("/styles?fixture=project_create_ready");
+  await page.getByPlaceholder("Search styles").fill(styleName);
+  const createdCard = page.locator("article.style-card").filter({ hasText: styleName });
+  await expect(createdCard).toHaveCount(1);
+  await createdCard.getByRole("button", { name: /References \(3\)/u }).click();
+  await expect(page.getByRole("dialog")).toContainText("Edited natural window light");
+  const retainedReferences = page.getByRole("dialog").getByRole("img");
+  await expect(retainedReferences).toHaveCount(3);
+  for (let index = 0; index < 3; index += 1) {
+    await expect
+      .poll(() =>
+        retainedReferences
+          .nth(index)
+          .evaluate((image: HTMLImageElement) => (image.complete ? image.naturalWidth : 0)),
+      )
+      .toBe(640);
+  }
+  await page.getByRole("button", { name: "Archive style" }).click();
+  await expect(createdCard.getByText("ARCHIVED")).toBeVisible();
+
+  await page.goto("/projects/new?fixture=project_create_ready");
+  await page.locator("summary.visual-preset-summary").nth(1).click();
+  await expect(page.getByRole("radio", { name: new RegExp(styleName, "u") })).toHaveCount(0);
 });

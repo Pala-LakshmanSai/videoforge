@@ -1,4 +1,5 @@
 import type { CreateProjectRequest } from "@videoforge/contracts/create-project";
+import type { ImageStyleProfileDocument } from "@videoforge/contracts";
 import type {
   AvatarProfileResponse,
   FixtureProjectDetailResponse,
@@ -36,12 +37,36 @@ export interface RegisteredVoiceover {
   providerCallsAuthorized: false;
 }
 
+export interface FixtureStyleDraftReference {
+  readonly referenceId: string;
+  readonly filename: string;
+  readonly orderIndex: number;
+  readonly originalChecksum: string;
+  readonly normalizedChecksum: string;
+  readonly width: number;
+  readonly height: number;
+  readonly normalizedBytes: Uint8Array;
+}
+
+export interface FixtureStyleDraft {
+  readonly styleId: string;
+  readonly versionId: string;
+  readonly name: string;
+  state: "DRAFT" | "REFERENCES_READY" | "NEEDS_REVIEW" | "PUBLISHED" | "ARCHIVED";
+  revision: number;
+  authorityHash: `sha256:${string}`;
+  references: FixtureStyleDraftReference[];
+  profile: ImageStyleProfileDocument | null;
+  profileHash: `sha256:${string}` | null;
+}
+
 export interface FixtureSessionState {
   readonly idempotencyLedger: import("../mutation").IdempotencyLedger;
   readonly runtimeProjects: RuntimeProjects;
   readonly registeredVoiceovers: Map<string, RegisteredVoiceover>;
   readonly createdAvatars: AvatarProfileResponse[];
   readonly createdStyles: ImageStyleResponse[];
+  readonly styleDrafts: Map<string, FixtureStyleDraft>;
   createdProjectRequest: CreateProjectRequest | null;
   avatarSequence: number;
   styleSequence: number;

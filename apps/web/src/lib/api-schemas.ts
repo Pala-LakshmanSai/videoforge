@@ -19,6 +19,8 @@ const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const PROJECT_VERSION_TOKEN = /^"vf-[A-Za-z0-9._:-]+-v[1-9][0-9]*"$/u;
 const AVATAR_FIXTURE_PATH = /^\/fixtures\/avatar\/[a-z0-9][a-z0-9._-]*\.svg$/u;
 const STYLE_FIXTURE_PATH = /^\/fixtures\/styles\/[a-z0-9][a-z0-9._-]*\.svg$/u;
+const STYLE_REFERENCE_PREVIEW_PATH =
+  /^\/api\/v1\/image-styles\/[A-Za-z0-9._:-]+\/versions\/[A-Za-z0-9._:-]+\/references\/[A-Za-z0-9._:-]+\/preview$/u;
 const MEDIA_FIXTURE_PATH = /^\/fixtures\/media\/[a-z0-9][a-z0-9._-]*\.(?:mp4|svg)$/u;
 const MEDIA_PREVIEW_PATH = /^\/api\/v1\/projects\/[A-Za-z0-9._:-]+\/preview$/u;
 const FIXTURE_DOWNLOAD_PATH =
@@ -151,8 +153,16 @@ const imageStyleSchema = z
     referenceCount: z.number().int().nonnegative(),
     isDefault: z.boolean().optional(),
     palette: z.tuple([z.string(), z.string()]),
-    coverUrl: z.string().regex(STYLE_FIXTURE_PATH),
-    referenceUrls: z.array(z.string().regex(STYLE_FIXTURE_PATH)),
+    coverUrl: z.union([
+      z.string().regex(STYLE_FIXTURE_PATH),
+      z.string().regex(STYLE_REFERENCE_PREVIEW_PATH),
+    ]),
+    referenceUrls: z.array(
+      z.union([
+        z.string().regex(STYLE_FIXTURE_PATH),
+        z.string().regex(STYLE_REFERENCE_PREVIEW_PATH),
+      ]),
+    ),
     exampleUrls: z.array(z.string().regex(STYLE_FIXTURE_PATH)),
     profileHash: z.string().regex(SHA256),
     medium: z.string(),
