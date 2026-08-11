@@ -79,7 +79,7 @@ export function assertRunPodEndpointPolicy(value: RunPodEndpointPolicy): void {
 }
 
 export class RunPodDrainGuard {
-  private state: "unknown" | "active" | "draining" | "zero" = "unknown";
+  private state: "unknown" | "active" | "draining" | "queue_empty" | "zero" = "unknown";
 
   markActive(): void {
     this.state = "active";
@@ -103,8 +103,26 @@ export class RunPodDrainGuard {
     this.state = "zero";
   }
 
+  confirmQueueEmpty(queuedJobCount: number): void {
+    if (
+      this.state !== "draining" ||
+      !Number.isSafeInteger(queuedJobCount) ||
+      queuedJobCount !== 0
+    ) {
+      this.state = "unknown";
+      throw new RunPodControlError("RUNPOD_QUEUE_NOT_DRAINED");
+    }
+    this.state = "queue_empty";
+  }
+
   assertDispatchAllowed(): void {
     if (this.state !== "zero") throw new RunPodControlError("RUNPOD_DISPATCH_BLOCKED");
+  }
+
+  assertTerminationAllowed(): void {
+    if (this.state !== "queue_empty" && this.state !== "zero") {
+      throw new RunPodControlError("RUNPOD_TERMINATION_BLOCKED");
+    }
   }
 
   snapshot(): string {
@@ -292,7 +310,7 @@ export class RunPodControlClient {
 
   async deleteEndpoint(endpointId: string, guard: RunPodDrainGuard): Promise<void> {
     if (!ID.test(endpointId)) throw new RunPodControlError("RUNPOD_ENDPOINT_ID_INVALID");
-    guard.assertDispatchAllowed();
+    guard.assertTerminationAllowed();
     await this.mutate("DELETE", `/endpoints/${endpointId}`);
   }
 
@@ -369,6 +387,7 @@ export interface RunPodJobResult {
   readonly idHash: string;
   readonly status: string;
   readonly output?: unknown;
+  readonly progress?: unknown;
   readonly executionTimeMs: number | null;
   readonly delayTimeMs: number | null;
 }
@@ -382,6 +401,7 @@ const jobResult = (value: JsonRecord): RunPodJobResult => {
     idHash: hashId(value.id),
     status: value.status,
     ...(Object.hasOwn(value, "output") ? { output: value.output } : {}),
+    ...(Object.hasOwn(value, "progress") ? { progress: value.progress } : {}),
     executionTimeMs: numberOrNull(value.executionTime),
     delayTimeMs: numberOrNull(value.delayTime),
   });
@@ -488,5 +508,13 @@ export class RunPodServerlessJobClient {
     const queuedJobs =
       (numberOrNull(jobs?.inQueue) ?? Number.NaN) + (numberOrNull(jobs?.inProgress) ?? Number.NaN);
     this.options.guard.confirmZero(activeWorkers, queuedJobs);
+  }
+
+  async confirmQueueEmpty(): Promise<void> {
+    const value = await this.request("GET", "/health");
+    const jobs = record(value.jobs);
+    const queuedJobs =
+      (numberOrNull(jobs?.inQueue) ?? Number.NaN) + (numberOrNull(jobs?.inProgress) ?? Number.NaN);
+    this.options.guard.confirmQueueEmpty(queuedJobs);
   }
 }

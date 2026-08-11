@@ -98,7 +98,14 @@ const apiKey = await loadRunPodApiKeyFromKeychain();
 const control = new RunPodControlClient({ apiKey });
 const guard = new RunPodDrainGuard();
 const initialInventory = await control.inventory();
-if (initialInventory.runningPodCount !== 0 || initialInventory.activeServerlessWorkerCount !== 0) {
+if (
+  initialInventory.runningPodCount !== 0 ||
+  initialInventory.activeServerlessWorkerCount !== 0 ||
+  initialInventory.pods.length !== 0 ||
+  initialInventory.endpoints.length !== 0 ||
+  initialInventory.privateTemplateCount !== 0 ||
+  initialInventory.networkVolumes.length !== 0
+) {
   throw new Error("RUNPOD_NOT_ZERO_AT_START");
 }
 
@@ -185,6 +192,7 @@ try {
 } catch (error) {
   failureCode = error instanceof Error ? error.message.slice(0, 160) : "UNKNOWN_FAILURE";
 } finally {
+  let endpointDeleted = false;
   if (jobs && guard.snapshot() === "active") guard.beginDrain();
   if (jobs && job && !terminalStatuses.has(job.status)) {
     try {
@@ -195,16 +203,37 @@ try {
   }
   if (jobs && guard.snapshot() !== "zero") {
     try {
+      await jobs.confirmQueueEmpty();
+    } catch {
+      failureCode ??= "RUNPOD_QUEUE_DRAIN_UNCONFIRMED";
+    }
+  }
+  if (endpoint && (guard.snapshot() === "queue_empty" || guard.snapshot() === "zero")) {
+    try {
+      await control.deleteEndpoint(endpoint.id, guard);
+      endpointDeleted = true;
+    } catch {
+      failureCode ??= "RUNPOD_ENDPOINT_DELETE_UNCONFIRMED";
+    }
+  }
+  if (endpointDeleted) {
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      const inventory = await control.inventory();
+      if (
+        inventory.runningPodCount === 0 &&
+        inventory.activeServerlessWorkerCount === 0 &&
+        !inventory.endpoints.some((candidate) => candidate.idHash === endpoint?.idHash)
+      ) {
+        guard.confirmZero(0, 0);
+        break;
+      }
+      await sleep(2_000);
+    }
+  } else if (jobs && guard.snapshot() !== "zero") {
+    try {
       await drain(jobs);
     } catch {
       failureCode ??= "RUNPOD_DRAIN_TIMEOUT";
-    }
-  }
-  if (endpoint && guard.snapshot() === "zero") {
-    try {
-      await control.deleteEndpoint(endpoint.id, guard);
-    } catch {
-      failureCode ??= "RUNPOD_ENDPOINT_DELETE_UNCONFIRMED";
     }
   }
   if (template && (!endpoint || guard.snapshot() === "zero")) {
@@ -239,6 +268,7 @@ const evidence = {
     status: job?.status ?? null,
     delay_time_ms: job?.delayTimeMs ?? null,
     execution_time_ms: job?.executionTimeMs ?? null,
+    progress: job?.progress ?? null,
     output: outputEvidence ?? null,
     failure_code: failureCode ?? null,
   },

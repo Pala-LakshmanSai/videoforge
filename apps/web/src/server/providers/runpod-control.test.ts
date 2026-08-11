@@ -177,6 +177,22 @@ describe("RunPod scale-zero control", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("allows endpoint termination after queue drain without waiting on a paid idle worker", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    guard.markActive();
+    guard.beginDrain();
+    guard.confirmQueueEmpty(0);
+    const fetch = vi.fn(async () => new Response(null, { status: 204 }));
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(client.deleteEndpoint("endpoint_01", guard)).resolves.toBeUndefined();
+    expect(() => guard.assertDispatchAllowed()).toThrow("RUNPOD_DISPATCH_BLOCKED");
+  });
+
   it("creates only private pinned templates and scale-zero endpoints", async () => {
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const path = new URL(String(input)).pathname;

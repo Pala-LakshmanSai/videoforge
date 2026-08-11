@@ -15,17 +15,17 @@ from videoforge_avatar_primary import (
 _bootstrap_lock = threading.Lock()
 
 
-def ensure_models() -> None:
+def ensure_models(event: dict[str, object]) -> None:
     with _bootstrap_lock:
         try:
-            bootstrap_models()
+            bootstrap_models(lambda progress: runpod.serverless.progress_update(event, progress))
         except Exception as error:
             raise ValueError("AVATAR_BOOTSTRAP_FAILED") from error
 
 
 def handler(event: dict[str, object]) -> dict[str, object]:
     try:
-        ensure_models()
+        ensure_models(event)
         value = event.get("input")
         if isinstance(value, dict) and value.get("mode") == "INLINE_QUALIFICATION_V1":
             job = AvatarPrimaryInlineJob.from_value(value)

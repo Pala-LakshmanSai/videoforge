@@ -1,0 +1,52 @@
+{
+  "schema_version": "videoforge.avatarforcing-qualification-attempt/v1",
+  "attempt": 2,
+  "result": "BOUNDED_FAILURE",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:94eb70072cda316f85014830d24311762bbcb391c8b188281b3d69d341be1954",
+  "source_commit": "db74df0987af24d554ac1f7874aba480cc7458f4",
+  "checked_at": "2026-08-11T18:47:39.244Z",
+  "input": {
+    "source_sha256": "sha256:b4214d8f586608dae08ca2a56716f340d87c7bbbd8817383f4cbeaa3e188fb34",
+    "source_bytes": 227787,
+    "audio_sha256": "sha256:b7f6585b5775b53de774ce6a7b3b5d059bb4ec3c6e558d2deb44296f80dc4041",
+    "audio_bytes": 640983,
+    "layout": "AVATAR_FULL",
+    "num_output_frames": 5
+  },
+  "resource_identity": {
+    "template_id_hash": "sha256:f3fe22b871c427d9909f89ce36e4947338c7c99ac85f5878a505ee25d570bce2",
+    "endpoint_id_hash": "sha256:54e3919662ed56a016c13f05a07c345dbf0eb0f0d5e87228f372e68a07c6cc24",
+    "job_id_hash": "sha256:a6f520d06802f40ebfdec577947e6b58cef4ac7d144b945b59c6951c9b408447"
+  },
+  "runtime": {
+    "status_at_cleanup": "IN_PROGRESS",
+    "delay_time_ms": 72639,
+    "execution_time_ms": null,
+    "output_produced": false,
+    "failure_code": "RUNPOD_MUTATION_AMBIGUOUS",
+    "health_before_cleanup": {
+      "jobs_completed": 0,
+      "jobs_failed": 0,
+      "jobs_in_progress": 0,
+      "jobs_in_queue": 0,
+      "workers_idle": 1,
+      "workers_ready": 1,
+      "workers_running": 0
+    },
+    "detail": "Job status remained IN_PROGRESS while endpoint health showed an empty queue and one paid idle worker. The operator deleted the endpoint rather than pay for idle time; that invalidated the next status read."
+  },
+  "cost": {
+    "starting_balance_usd": 9.9195555556,
+    "ending_balance_usd": 9.8037332639,
+    "measured_spend_usd": 0.1158222917,
+    "cap_usd": 5
+  },
+  "cleanup": {
+    "final_running_pods": 0,
+    "final_active_workers": 0,
+    "final_endpoints": 0,
+    "final_templates": 0,
+    "confirmed_at": "2026-08-11T18:47:56.319Z"
+  },
+  "corrective_action": "Download only runtime-required pinned files, emit bootstrap progress checkpoints, and terminate the endpoint immediately after the queue drains instead of waiting on a paid idle worker."
+}
