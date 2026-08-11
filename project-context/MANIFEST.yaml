@@ -259,6 +259,12 @@ read_profiles:
     - 18_IMAGE_STYLES_HUB.md
     - tasks/VF-3-09.md
     - tasks/VF-7-03.md
+  phase7_style_analysis_result_acceptance:
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 18_IMAGE_STYLES_HUB.md
+    - tasks/VF-1-06.md
+    - tasks/VF-7-03.md
+    - tasks/VF-7-04.md
   phase3_prompt_compiler:
     - GLOSSARY.md
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md
