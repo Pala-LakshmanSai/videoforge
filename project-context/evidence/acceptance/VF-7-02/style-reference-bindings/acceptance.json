@@ -1,0 +1,52 @@
+{
+  "task_id": "VF-7-02",
+  "result": "PASS",
+  "checked_at": "2026-08-11T05:27:08Z",
+  "implementation_commit": "802a42b4171463cc22a504149047623c3b574a91",
+  "provider_mode": "fixture",
+  "provider_calls": 0,
+  "external_spend_usd": 0,
+  "migration": {
+    "version": 8,
+    "filename": "0008_image_style_reference_contract.sql",
+    "sha256": "sha256:4ee3fb90a3818a93f754267ece96044dd837af13010978e37df0838b5f7eb8d1"
+  },
+  "reference_contract": {
+    "draft_count_min": 1,
+    "draft_count_max": 12,
+    "analysis_count_min": 3,
+    "analysis_count_max": 8,
+    "analysis_aliases": "ref_01..ref_N",
+    "maximum_bytes_per_artifact": 20971520,
+    "minimum_dimension_px": 512,
+    "maximum_dimension_px": 16384,
+    "mime_types": ["image/jpeg", "image/png", "image/webp"],
+    "rights_bases": ["OWNED", "LICENSED", "PUBLIC_DOMAIN", "OTHER_DOCUMENTED_BASIS"],
+    "original_retention_policies": ["RETAIN", "DELETE_AFTER_ANALYSIS"]
+  },
+  "checks": {
+    "focused_reference_tests_passed": 4,
+    "focused_migration_tests_passed": 4,
+    "targeted_metadata_restore_tests_passed": 4,
+    "control_plane_tests_passed": 142,
+    "web_tests_passed": 163,
+    "pipeline_tests_passed": 115,
+    "provider_sandbox_tests_passed": 43,
+    "local_workerd_journeys_passed": 1,
+    "installed_chrome_journeys_passed": 38,
+    "installed_chrome_journeys_skipped": 0,
+    "canonical_verify": "PASS",
+    "context_validation": "PASS",
+    "secret_scan": "PASS",
+    "diff_check": "PASS"
+  },
+  "preserved": [
+    "provider mode remains fixture",
+    "ordinary video creation performs no reference-image analysis",
+    "published Image Style versions remain immutable and pinned",
+    "accepted fixture shell and density",
+    "three-composition hard-cut output grammar",
+    "required smooth AI-image zoom",
+    "exact ready Avatar Hub selection"
+  ]
+}
