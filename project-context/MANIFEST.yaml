@@ -240,6 +240,12 @@ read_profiles:
     - 19_IMPLEMENTATION_PLAYBOOK.md
     - GATES.yaml
     - tasks/VF-3-08.md
+  phase3_runware_style_adapter:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 18_IMAGE_STYLES_HUB.md
+    - GATES.yaml
+    - tasks/VF-3-09.md
   phase3_prompt_compiler:
     - GLOSSARY.md
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md
