@@ -592,6 +592,13 @@ export interface AcceptedImageStyleAnalysisResult {
   readonly referenceSetHash: Sha256;
 }
 
+export type AcceptedImageStyleAnalysisAttempt = NonUnknownImageStyleAnalysisAttempt & {
+  readonly state: "SUCCEEDED";
+  readonly responseHash: Sha256;
+  readonly usagePayload: ImageStyleAnalysisUsageSummary;
+  readonly reportedCostMicroUsd: bigint;
+};
+
 export interface ImageStyleVersionLookup {
   readonly styleId: EntityId;
   readonly versionId: EntityId;
@@ -672,6 +679,19 @@ export interface ImageStyleRepository {
   ): Promise<
     RepositoryResult<
       ImageStyleAnalysisAttempt,
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
+  /** Resolves the one successful specialized attempt accepted for an exact style version. */
+  resolveAcceptedAnalysisAttempt(
+    scope: WorkspaceScope,
+    lookup: ImageStyleVersionLookup,
+  ): Promise<
+    RepositoryResult<
+      AcceptedImageStyleAnalysisAttempt,
       ImageStyleConflict,
       ImageStyleMissing,
       ImageStyleInvariant

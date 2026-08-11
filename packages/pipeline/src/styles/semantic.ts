@@ -107,11 +107,10 @@ function creativeList(
 
 function validateAnalyzerSemantics(
   output: ImageStyleAnalyzerOutputDocument,
-  request: StyleAnalyzerRequest,
+  allowedAliases: ReadonlySet<string>,
 ): ImageStyleProfileDocument {
   const visual = output.visual_profile;
   const prompt = output.prompt_profile;
-  const allowedAliases = new Set(request.references.map((reference) => reference.alias));
   const traits = new Set<string>();
 
   const traitEvidence = output.analysis.trait_evidence.map((entry, index) => {
@@ -302,12 +301,80 @@ export async function validateAndAssembleStyleProfile(
   const schemaResult = validateContract("imageStyleAnalyzerOutput", candidateSnapshot);
   if (!schemaResult.success)
     return fail("STYLE_OUTPUT_INVALID", "Analyzer output does not match the canonical schema.", []);
-  const profileCandidate = validateAnalyzerSemantics(schemaResult.data, normalizedRequest);
+  const profileCandidate = validateAnalyzerSemantics(
+    schemaResult.data,
+    new Set(normalizedRequest.references.map((reference) => reference.alias)),
+  );
   const validated = await validateAndHashContractDocument("imageStyleProfile", profileCandidate);
   return Object.freeze({
     profile: validated.value,
     styleProfileHash: validated.sha256,
     analyzerOutput: deepFreeze(schemaResult.data),
     referenceBindings: normalizedRequest.references,
+  });
+}
+
+/** Revalidates stored profile bytes without trusting prior analyzer or application validation. */
+export async function validateStoredStyleProfile(
+  candidate: unknown,
+  referenceAliases: readonly string[],
+): Promise<Readonly<{ profile: ImageStyleProfileDocument; styleProfileHash: string }>> {
+  const candidateSnapshot = snapshot(candidate);
+  const schemaResult = validateContract("imageStyleProfile", candidateSnapshot);
+  if (!schemaResult.success)
+    return fail(
+      "STYLE_OUTPUT_INVALID",
+      "Stored style profile does not match the canonical schema.",
+      [],
+    );
+
+  const aliases = referenceAliases.map((alias, index) =>
+    text(alias, 6, ["reference_aliases", index]),
+  );
+  const allowedAliases = new Set(aliases);
+  if (
+    aliases.length < 3 ||
+    aliases.length > 8 ||
+    allowedAliases.size !== aliases.length ||
+    aliases.some((alias, index) => alias !== `ref_${String(index + 1).padStart(2, "0")}`)
+  ) {
+    return fail(
+      "STYLE_SEMANTIC_INVALID",
+      "Stored style profile requires one exact contiguous three-to-eight-reference alias set.",
+      ["reference_aliases"],
+    );
+  }
+
+  if (
+    schemaResult.data.analysis.analysis_kind !== "VISION_ANALYSIS" ||
+    schemaResult.data.analysis.overall_confidence === null
+  ) {
+    return fail(
+      "STYLE_SEMANTIC_INVALID",
+      "Reviewed analyzer profile must preserve VISION_ANALYSIS confidence provenance.",
+      ["analysis"],
+    );
+  }
+  const analyzerShape: ImageStyleAnalyzerOutputDocument = {
+    summary: schemaResult.data.summary,
+    visual_profile: schemaResult.data.visual_profile,
+    prompt_profile: schemaResult.data.prompt_profile,
+    analysis: {
+      ...schemaResult.data.analysis,
+      overall_confidence: schemaResult.data.analysis.overall_confidence,
+    },
+  };
+  const normalized = validateAnalyzerSemantics(analyzerShape, allowedAliases);
+  if (canonicalizeJson(normalized) !== canonicalizeJson(schemaResult.data)) {
+    return fail(
+      "STYLE_SEMANTIC_INVALID",
+      "Stored style profile is not already in its canonical semantic form.",
+      [],
+    );
+  }
+  const validated = await validateAndHashContractDocument("imageStyleProfile", normalized);
+  return deepFreeze({
+    profile: validated.value,
+    styleProfileHash: validated.sha256,
   });
 }

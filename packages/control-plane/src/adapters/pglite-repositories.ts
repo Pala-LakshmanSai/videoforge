@@ -4189,6 +4189,45 @@ function createImageStyleRepository(
         ? missing("IMAGE_STYLE_ANALYSIS_ATTEMPT", lookup.analysisAttemptId)
         : success(mapImageStyleAnalysisAttempt(row));
     },
+    async resolveAcceptedAnalysisAttempt(scope, lookup) {
+      const result = await context.executor.query<Row>(
+        `SELECT analysis.*
+           FROM image_style_analysis_attempts analysis
+           JOIN image_style_versions version
+             ON version.workspace_id = analysis.workspace_id
+            AND version.id = analysis.style_version_id
+          WHERE analysis.workspace_id = $1
+            AND version.style_id = $2
+            AND analysis.style_version_id = $3
+            AND analysis.state = 'SUCCEEDED'
+          ORDER BY analysis.ordinal ASC, analysis.id ASC
+          LIMIT 2`,
+        [scope.workspaceId, lookup.styleId, lookup.versionId],
+      );
+      if (result.rows.length === 0) {
+        return missing("IMAGE_STYLE_ANALYSIS_ATTEMPT", lookup.versionId);
+      }
+      if (result.rows.length !== 1) {
+        return invariant(
+          "SNAPSHOT_MISMATCH",
+          "Image Style version has multiple successful analysis attempts",
+        );
+      }
+      const attempt = mapImageStyleAnalysisAttempt(result.rows[0]!);
+      if (
+        attempt.state !== "SUCCEEDED" ||
+        attempt.responseHash === null ||
+        attempt.usagePayload === null ||
+        attempt.reportedCostMicroUsd === null ||
+        !validImageStyleAnalysisUsage(attempt.usagePayload)
+      ) {
+        return invariant(
+          "SNAPSHOT_MISMATCH",
+          "accepted Image Style analysis attempt is incomplete",
+        );
+      }
+      return success(attempt as PresetContracts.AcceptedImageStyleAnalysisAttempt);
+    },
     async listStyles(scope, query) {
       const result = await context.executor.query<Row>(
         `SELECT * FROM image_styles
