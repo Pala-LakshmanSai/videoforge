@@ -553,6 +553,14 @@
   isolation: isolate;
 }
 
+@media (min-width: 821px) {
+  .bottom-nav-item {
+    width: 76px;
+    height: 62px;
+    flex: 0 0 76px;
+  }
+}
+
 .bottom-nav-item:hover {
   color: #fff;
 }
