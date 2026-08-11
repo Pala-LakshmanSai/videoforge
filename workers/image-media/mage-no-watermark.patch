@@ -23,11 +23,3 @@ index 3e5aaba..6e0ff94 100644
          _, _, gh, gw = x.shape
          img_list.append(rearrange(x, "b c h w -> b (h w) c")[0])
          ids = torch.zeros(gh, gw, 3, device=dev)
-@@ -640,6 +635,5 @@ class MageFlowPipeline:
-     return a list of PIL images. Per-sample ``heights``/``widths``/``seeds`` are
-     lists. Every prompt is screened by the text encoder's mandatory content
-     gate (no opt-out); banned prompts come back as refusal placeholders
--    interleaved with the real images. Real outputs always carry a Gaussian-Shading
--    watermark in the initial noise (no toggle), using the configured secret key.
-+    interleaved with the real images.
-     """
