@@ -23,7 +23,7 @@ RUN git clone --filter=blob:none https://github.com/microsoft/Mage.git /opt/mage
     && rm -rf /opt/mage/.git
 
 COPY mage-no-watermark.patch /opt/videoforge/mage-no-watermark.patch
-RUN patch --directory=/opt/mage --strip=1 --forward < /opt/videoforge/mage-no-watermark.patch
+RUN patch --directory=/opt/mage --strip=1 --fuzz=0 --forward < /opt/videoforge/mage-no-watermark.patch
 COPY requirements.mage.txt /opt/videoforge/requirements.mage.txt
 RUN pip install --no-cache-dir -r /opt/videoforge/requirements.mage.txt \
     && pip install --no-cache-dir --no-deps /opt/mage/mage_flow

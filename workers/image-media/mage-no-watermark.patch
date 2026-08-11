@@ -1,8 +1,8 @@
 diff --git a/mage_flow/pipeline.py b/mage_flow/pipeline.py
-index 3e5aaba..0000000 100644
+index 3e5aaba..6e0ff94 100644
 --- a/mage_flow/pipeline.py
 +++ b/mage_flow/pipeline.py
-@@ -284,8 +284,7 @@ def generate_images(model, prompts, neg_prompts=None, seeds=None, steps=30, cfg=
+@@ -287,8 +287,7 @@ def generate_images(model, prompts, neg_prompts=None, seeds=None, steps=30, cfg=
          if verdict.violates:
              h_, w_ = _make_divisible_by_16(heights[i]), _make_divisible_by_16(widths[i])
              print(verdict.banner())
@@ -12,7 +12,7 @@ index 3e5aaba..0000000 100644
          active.append(i)
      if not active:
          return results
-@@ -302,10 +302,6 @@ def generate_images(model, prompts, neg_prompts=None, seeds=None, steps=30, cfg=
+@@ -302,10 +301,6 @@ def generate_images(model, prompts, neg_prompts=None, seeds=None, steps=30, cfg=
          torch.manual_seed(seeds[i])
          x = get_noise(num_samples=1, channel=ch, height=h_, width=w_,
                        device=dev, dtype=torch.bfloat16, seed=seeds[i])
