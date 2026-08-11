@@ -22,6 +22,12 @@ jobs:
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+      - name: Reclaim runner disk
+        shell: bash
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          docker system prune --all --force
+          df -h /
       - name: Build, smoke, and publish pinned Mage candidate
         shell: bash
         run: |

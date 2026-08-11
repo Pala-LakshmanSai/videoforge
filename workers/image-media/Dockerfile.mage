@@ -25,10 +25,13 @@ RUN git clone --filter=blob:none https://github.com/microsoft/Mage.git /opt/mage
 COPY mage-no-watermark.patch /opt/videoforge/mage-no-watermark.patch
 RUN patch --directory=/opt/mage --strip=1 --fuzz=0 --forward < /opt/videoforge/mage-no-watermark.patch
 COPY requirements.mage.txt /opt/videoforge/requirements.mage.txt
-RUN pip install --no-cache-dir -r /opt/videoforge/requirements.mage.txt \
-    && pip install --no-cache-dir --no-deps /opt/mage/mage_flow
+RUN python -m pip install --break-system-packages --no-cache-dir \
+        -r /opt/videoforge/requirements.mage.txt \
+    && python -m pip install --break-system-packages --no-cache-dir --no-deps \
+        /opt/mage/mage_flow
 COPY --from=flash-builder /tmp/wheels/flash_attn-*.whl /tmp/flash_attn.whl
-RUN pip install --no-cache-dir /tmp/flash_attn.whl && rm /tmp/flash_attn.whl
+RUN python -m pip install --break-system-packages --no-cache-dir /tmp/flash_attn.whl \
+    && rm /tmp/flash_attn.whl
 
 COPY src /opt/videoforge/src
 COPY mage_bootstrap.py mage_handler.py mage-entrypoint.sh /opt/videoforge/
