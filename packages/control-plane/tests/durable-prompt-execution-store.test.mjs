@@ -508,7 +508,7 @@ test("accepted prompt authority survives metadata restore and fresh-process repl
   }
 });
 
-test("migrations 0009-0010 upgrade live migration-0008 prompt authority and execute", async () => {
+test("migrations 0009-0011 upgrade live migration-0008 prompt authority and execute", async () => {
   const database = new PGlite();
   try {
     const executor = new PGliteExecutor(database);
@@ -532,7 +532,7 @@ test("migrations 0009-0010 upgrade live migration-0008 prompt authority and exec
     }
     await seedPromptAuthority(executor, { initializeInputHash: false });
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [9, 10]);
+    assert.deepEqual(upgraded.appliedVersions, [9, 10, 11]);
     await initializePromptInputHash(executor);
     const result = await execute(executor);
     assert.equal(result.replayed, false);

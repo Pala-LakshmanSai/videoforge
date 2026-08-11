@@ -61,6 +61,7 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "image_style_analysis_attempts",
   "image_style_profile_artifacts",
   "image_style_profile_edits",
+  "image_generation_acceptances",
   "avatar_profile_test_attempts",
   "repository_mutation_receipts",
 ] satisfies readonly RelationalTableName[]);
@@ -617,9 +618,15 @@ async function insertTable(
       ? "$1::jsonb"
       : `(SELECT jsonb_agg(value${deferred.map((column) => ` - '${column}'`).join("")})
             FROM jsonb_array_elements($1::jsonb))`;
+  const orderedSource =
+    tableName === "cost_events"
+      ? " ORDER BY owner_type, owner_id, sequence"
+      : tableName === "workflow_events"
+        ? " ORDER BY aggregate_type, aggregate_id, sequence"
+        : "";
   const result = await executor.query(
     `INSERT INTO ${qualifiedTable(tableName)}
-     SELECT * FROM jsonb_populate_recordset(NULL::${qualifiedTable(tableName)}, ${source})`,
+     SELECT * FROM jsonb_populate_recordset(NULL::${qualifiedTable(tableName)}, ${source})${orderedSource}`,
     [rowsDocument(table)],
   );
   if (result.affectedRows !== table.rowCount) {

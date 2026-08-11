@@ -60,6 +60,12 @@
       "name": "image_style_profile_artifacts",
       "filename": "0010_image_style_profile_artifacts.sql",
       "sha256": "sha256:f6d3657212a16413026647643fd660485781f3cc87f13ec15437f58d985b2560"
+    },
+    {
+      "version": 11,
+      "name": "fixture_image_result_acceptance",
+      "filename": "0011_fixture_image_result_acceptance.sql",
+      "sha256": "sha256:b20e265ef5feef439ac49fdacdb413539400dd87dbd592d1554ae8702abb2be8"
     }
   ]
 }
