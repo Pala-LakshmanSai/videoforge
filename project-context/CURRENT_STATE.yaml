@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T22:14:26Z"
+updated_at: "2026-08-11T22:22:00Z"
 
-phase: skyreels_timeout_hardening
+phase: skyreels_stage_visible_resume
 implementation_authorized_in_current_task: true
-current_milestone: skyreels_timeout_observability
-current_task: VF-8-16
+current_milestone: locked_skyreels_stage_visible_resume
+current_task: VF-8-17
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -19,8 +19,8 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "186955e"
-  working_tree_expected: clean_after_vf_8_15_timeout_handoff
+  last_good_commit: "24e5b1d"
+  working_tree_expected: clean_after_vf_8_16_timeout_hardening_handoff
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -42,9 +42,9 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "VF-8-16 permits local worker/tests and GitHub/GHCR build/publish only. RunPod credential access, mutation, model download, GPU, dispatch, and spend are forbidden; inventory remains absolute zero."
+  provider_calls_authorized: true
+  authorized_spend_usd: 2.1
+  provider_authority_scope: "VF-8-17 authorizes existing secure RunPod credential, one scale-zero endpoint, one A100-80GB worker, exact pinned SkyReels model download, one owned five-second dispatch, and maximum new spend $2.10; mandatory drain/delete and absolute-zero inventory."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -215,22 +215,28 @@ completed_tasks:
     image_digest: "sha256:1e7f9100bef7759ffe527d083e1655c7bfda6c9192668c9a13d15e4c4e73e878"
     evidence: "evidence/acceptance/VF-8-15/skyreels-corrected-resume"
     summary: "One corrected-image A100-80GB job remained in progress at the 30-minute limit and was cancelled without an accepted MP4. Spend was $1.2642676444; no redispatch occurred and final/independent RunPod inventories were absolute zero."
+  - task_id: VF-8-16
+    status: complete
+    implementation_commit: "24e5b1d"
+    image_digest: "sha256:8f94062164794c19036605282968a96dd098a09aa91d066b9eaafbb5577f48c9"
+    evidence: "evidence/acceptance/VF-8-16/skyreels-timeout-hardening"
+    summary: "Safe ordered inference heartbeat and output-validation progress, a 2,550-second worker timeout margin, full local verification, and pinned GHCR image build 31541727892 passed at $0."
 
 latest_closed_handoff:
-  task_id: VF-8-15
-  status: bounded_timeout_complete
-  task_kind: skyreels_corrected_resume
-  implementation_commit: "9ee16bd"
-  evidence: "evidence/acceptance/VF-8-15/skyreels-corrected-resume"
-  verification_result: "one_timeout_cancelled_no_output_and_independent_absolute_zero"
-  external_actions: "One A100-80GB Serverless job was cancelled at the 30-minute limit; endpoint/template were deleted without cleanup errors."
-  external_spend_usd: 1.2642676444
+  task_id: VF-8-16
+  status: complete
+  task_kind: skyreels_timeout_hardening
+  implementation_commit: "24e5b1d"
+  evidence: "evidence/acceptance/VF-8-16/skyreels-timeout-hardening"
+  verification_result: "focused_workers_full_local_and_immutable_container_smokes_passed"
+  external_actions: "GHCR workflow 31541727892 published one immutable image; no RunPod mutation, GPU, or spend."
+  external_spend_usd: 0
 
 last_green:
-  checked_at: "2026-08-11T20:03:00Z"
+  checked_at: "2026-08-11T22:20:00Z"
   result: pass
-  verified_commit: "f371df20f477b50c960e52f11a469d3d23c71fb9"
-  command: "Hosted CI run 31530144090 plus local CI=1 TURBO_FORCE=true pnpm verify"
+  verified_commit: "24e5b1d49cc23c03dd2396f746dfe5a009d1c99d"
+  command: "CI=1 TURBO_FORCE=true pnpm verify plus GHCR workflow 31541727892"
   counts:
     control_plane_pglite_tests: 209
     web_server_component_tests: 203
@@ -241,40 +247,44 @@ last_green:
     playwright_chrome_journeys_passed: 38
     playwright_chrome_journeys_intentionally_skipped: 0
   findings_closed:
-    - "Pinned linux/amd64 image imports exact torchaudio runtime, compiles AvatarForcing source, and registers exactly one real handler callable before model bootstrap."
+    - "SkyReels emits best-effort ordered inference heartbeat evidence and reserves a 150-second timeout margin without changing the pinned official launch command."
   evidence:
-    - "evidence/acceptance/VF-8-04/avatarforcing-worker"
-    - "evidence/acceptance/VF-8-05/avatarforcing-diagnostic"
+    - "evidence/acceptance/VF-8-16/skyreels-timeout-hardening"
 
 active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-8-16
-  milestone: skyreels_timeout_observability
+  task_id: VF-8-17
+  milestone: locked_skyreels_stage_visible_resume
   status: ready
-  dependency_status: vf_8_15_bounded_timeout_retained_and_runpod_zero
-  authorization_status: provider_free_worker_hardening
-  read_profile: phase8_skyreels_timeout_hardening
-  task_brief: tasks/VF-8-16.md
-  goal: "Add safe stage/heartbeat evidence and timeout margin, then publish one immutable worker image at $0."
-  provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  provider_authority: null
+  dependency_status: vf_8_16_immutable_image_and_timeout_margin_passed_and_runpod_zero
+  authorization_status: one_a100_80gb_stage_visible_resume
+  read_profile: phase8_skyreels_stage_visible_resume
+  task_brief: tasks/VF-8-17.md
+  goal: "Run one stage-visible SkyReels qualification and return RunPod to absolute zero."
+  provider_calls_authorized: true
+  maximum_external_spend_usd: 2.1
+  provider_authority:
+    provider: runpod_serverless
+    model_id: "Skywork/SkyReels-V3-A2V-19B@fdad4053f492aba389b5a8c3c6982118c6a1ecf3"
+    cap_usd: 2.1
+    non_transferable: true
+    authorized_by_user_at: "2026-08-11T19:36:00Z"
   remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: false
-  model_downloads_authorized: false
-  application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-8-16/skyreels-timeout-hardening"
+  credential_access_authorized: true
+  model_downloads_authorized: true
+  application_code_changes_authorized: false
+  expected_evidence: "evidence/acceptance/VF-8-17/skyreels-stage-visible-resume"
   required_handoff:
-    - "Prove ordered safe bootstrap/inference/heartbeat/output progress and timeout margin."
-    - "Publish one immutable GHCR image after focused/full/container checks."
-    - "Author exactly one capped resume; keep RunPod absolute zero."
+    - "Run exactly one owned five-second qualification on A100 80GB only."
+    - "Retain valid 960x960/25 MP4/probe/lineage/timing/progress/cost or one exact safe terminal failure."
+    - "Drain/delete all resources and independently prove RunPod absolute zero."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-8-16
+    integration_owner: VF-8-17
   prohibited_in_task:
-    - "RunPod credential read/mutation, model download, GPU, dispatch, alternate GPU count, low-VRAM/USP, or spend."
+    - "Second dispatch, alternate GPU/count, Pod/volume, low-VRAM/USP, command substitution, or spend above $2.10."
     - "Model substitution, Mage/MuseTalk, app/schema/UI change, promotion, credential exposure, or deployment."
 
 blocking_gates_for_production:
@@ -303,8 +313,8 @@ known_incomplete_boundaries:
   - "No encrypted off-machine backup, R2 integrity inventory, clean-target cloud restore, ten-user contention/security proof, or fresh-account production Chrome sign-off exists."
 
 next_tasks:
-  - "1. VF-8-16 add stage/heartbeat evidence and timeout margin, then publish one immutable image at $0."
-  - "2. Run at most one separately capped resume only after VF-8-16 passes; always leave RunPod zero."
+  - "1. VF-8-17 run one stage-visible A100-80GB SkyReels qualification under a $2.10 cap."
+  - "2. Act only on exact output/failure evidence and always leave RunPod zero."
   - "3. Build pinned Mage worker; exact weight access currently needs Hugging Face authentication unavailable in Chrome/Keychain."
   - "4. Add MuseTalk repair and SkyReels whole-frame fallback only after their technical triggers."
   - "5. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
@@ -330,7 +340,7 @@ progress_snapshot:
   interpretation: "Provider-free media, restart-safe Node sandbox, Runware runtime composition, RunPod scale-zero control, and pinned real AvatarForcing/SkyReels workers are implemented. AvatarForcing produced a valid but rejected-quality MP4; corrected SkyReels inference exceeded the bounded 30-minute window, and Mage, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: skyreels_timeout_hardening_selected
+  status: skyreels_stage_visible_resume_selected
   completed_and_preserved:
     - "All completed tasks/commits above; no paused implementation or unexplained dirty state."
     - "Forced full verification passed at the VF-8-04 handoff tree: Workerd 1/1 and installed Chrome 38/38 with zero skips."
@@ -348,15 +358,16 @@ activation_handoff:
     - "VF-8-13 retained exact safe SKYREELS_INFERENCE_DEPENDENCY_MISSING evidence for $0.0502363111 and returned RunPod to independent absolute zero."
     - "VF-8-14 published corrected SkyReels image sha256:1e7f9100bef7759ffe527d083e1655c7bfda6c9192668c9a13d15e4c4e73e878 after full CLI dependency-path proof."
     - "VF-8-15 cancelled one still-running corrected-image job at 30 minutes for $1.2642676444; no redispatch occurred and RunPod returned to independent absolute zero."
+    - "VF-8-16 added safe 60-second inference heartbeat and timeout margin, then published immutable image sha256:8f94062164794c19036605282968a96dd098a09aa91d066b9eaafbb5577f48c9 at $0."
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from 9ee16bd; preserve all newer commits."
-    - "Load only phase8_skyreels_timeout_hardening and tasks/VF-8-16.md."
-    - "Add safe progress/timeout hardening and publish one immutable image; leave RunPod zero."
+    - "Require clean HEAD descending from 24e5b1d; preserve all newer commits."
+    - "Load only phase8_skyreels_stage_visible_resume and tasks/VF-8-17.md."
+    - "Run one stage-visible A100-80GB five-second qualification and leave RunPod zero."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
-    - "Credential access, model/revision ambiguity, any dispatch/spend, or non-zero RunPod inventory."
+    - "Credential exposure, model/revision ambiguity, second dispatch, spend above $2.10, or non-zero final RunPod inventory."
 
 notes:
   - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."
