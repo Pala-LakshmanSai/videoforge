@@ -30,6 +30,19 @@ def valid_job() -> dict[str, object]:
 
 
 class ProductionContractTest(unittest.TestCase):
+    def test_handler_starts_before_model_bootstrap(self) -> None:
+        worker_root = Path(__file__).resolve().parents[1]
+        entrypoint = (worker_root / "entrypoint.sh").read_text(encoding="utf-8")
+        bootstrap = (worker_root / "bootstrap_models.py").read_text(encoding="utf-8")
+        self.assertNotIn("bootstrap_models.py", entrypoint)
+        self.assertIn("exec python /opt/videoforge/handler.py", entrypoint)
+        for revision in [
+            AVATAR_WEIGHTS_REVISION,
+            WAN_REVISION,
+            WAV2VEC_REVISION,
+        ]:
+            self.assertIn(revision, bootstrap)
+
     def test_accepts_exact_short_span_and_pins_every_upstream_revision(self) -> None:
         job = AvatarPrimaryJob.from_value(valid_job())
         self.assertEqual(job.num_output_frames, 25)

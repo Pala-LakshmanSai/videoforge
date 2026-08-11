@@ -135,6 +135,16 @@ try {
   for (let attempt = 0; attempt < 140 && !terminalStatuses.has(job.status); attempt += 1) {
     await sleep(15_000);
     job = await jobs.status(job.id);
+    const liveInventory = await control.inventory();
+    if (
+      liveInventory.runningPodCount > 1 ||
+      liveInventory.pods.filter((pod) => pod.endpointWorker).length > 1
+    ) {
+      throw new Error("RUNPOD_WORKER_RETRY_LIMIT");
+    }
+    if (attempt % 4 === 3 && startedBalance - (await balance(apiKey)) >= 4.5) {
+      throw new Error("RUNPOD_COST_STOP");
+    }
   }
   if (!terminalStatuses.has(job.status)) throw new Error("RUNPOD_JOB_TIMEOUT");
   if (job.status !== "COMPLETED") throw new Error(`RUNPOD_JOB_${job.status}`);
