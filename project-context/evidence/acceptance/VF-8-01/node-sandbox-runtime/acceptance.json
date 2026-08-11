@@ -1,0 +1,14 @@
+{
+  "task_id": "VF-8-01",
+  "checked_at": "2026-08-11T17:02:00Z",
+  "result": "pass",
+  "mode": "sandbox",
+  "loopback_only": true,
+  "restart_restore": "pass",
+  "approval": "pass",
+  "download_sha256_match": true,
+  "output_sha256": "sha256:47f3058f831a87b91767929ed0e8715e14959bbeed5ed052bd6995d4ceea3b78",
+  "output_bytes": 1999561,
+  "provider_calls": 0,
+  "external_spend_usd": 0
+}

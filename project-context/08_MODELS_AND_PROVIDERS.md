@@ -97,13 +97,15 @@ The separate `microsoft/Mage-Flow-Edit-Turbo` model is not needed in the normal 
 
 Mage receives a text prompt compiled from the selected style profile; it does not receive the style's reference images in MVP. Prompt-derived styling is intentionally simple/cheap but must pass `GATE_STYLE_002`. Do not silently introduce reference conditioning or LoRA training if a distinctive style fails.
 
-Access/launch gate: preserve the exact model card/license/checkpoint artifact used, verify commercial launch terms and gated download access, and pin a revision/hash. On 2026-08-11, anonymous official Hugging Face page/API/raw-`LICENSE` requests returned HTTP 401 and the existing signed-out Chrome session showed 404. Search-indexed official metadata reported MIT and a 17.5 GB repository, but could not establish a live exact revision or governing weight-license artifact. Microsoft's public `microsoft/Mage` source repository at `76bec2bb3818863f470de7e867c2dc7f1d0bfd83` has an MIT `LICENSE` and labels Mage-Flow MIT, while the same README describes the models as research-only/not intended for product or service deployment. `GATE_IMAGE_002` therefore remains open: neither cached metadata nor source-code licensing resolves exact checkpoint access and commercial weight authority.
+Access/terms evidence remains unresolved. On 2026-08-11, anonymous official Hugging Face page/API/raw-`LICENSE` requests returned HTTP 401 and the existing signed-out Chrome session showed 404. Search-indexed official metadata reported MIT and a 17.5 GB repository, but could not establish a live exact revision or governing weight-license artifact. Microsoft's public `microsoft/Mage` source repository at `76bec2bb3818863f470de7e867c2dc7f1d0bfd83` has an MIT `LICENSE` and labels Mage-Flow MIT, while the same README describes the models as research-only/not intended for product or service deployment. The user explicitly accepted this unresolved risk on 2026-08-11 and authorized continuing the locked Mage model. Bounded qualification may proceed, but evidence must retain the ambiguity and cannot claim clear commercial permission.
 
 Official sources: [Mage-Flow-Turbo model card](https://huggingface.co/microsoft/Mage-Flow-Turbo) and [Microsoft Mage source repository](https://github.com/microsoft/Mage).
 
 ## AvatarForcing
 
-Approved role: selected primary talking-avatar model; download and commercial qualification are blocked by `GATE_AVATAR_003`.
+Approved role: selected primary talking-avatar model. `GATE_AVATAR_003` records unresolved terms but,
+after the user's explicit 2026-08-11 risk acceptance, no longer blocks bounded qualification of the
+locked ladder. VideoForge must not describe the permission as commercially clear.
 
 - At GitHub main revision `63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39`, the official README labels the project Apache-2.0 and links `lycui/AvatarForcing` as its ODE/DMD weights source. GitHub itself classifies the repository license as `Other` / `NOASSERTION`.
 - The same revision's committed `LICENSE.txt` (blob `4f099d8892d0d4b98a797f64076a285a32f173ca`, SHA-256 `138fd1e58a72a7073c02c2fb5f772539d2b944519d4b17f60d3ecdc111228314`) names `RollingForcing` and Tencent, covers its named code/parameters/weights, and prohibits commercial or production use.
@@ -114,7 +116,7 @@ Approved role: selected primary talking-avatar model; download and commercial qu
 - Produces lip movement plus face/head/subtle upper-body motion.
 - Initial RunPod target: RTX 4090 24 GB; L40S/other compatible GPU only if the measured fit requires it.
 
-`VF-3-10` preserved `GATE_AVATAR_003` open on 2026-08-11. The README/license/project-name conflict and missing weight license do not unambiguously permit intended commercial use. `VF-3-11` then ended without a replacement after the user reaffirmed AvatarForcing and the prior LongCat exclusion. Do not download weights, provision compute, spend an Avatar sub-cap, or expose a production profile until authoritative permission resolves the gate or the user makes a new model decision. The accepted clip contract remains one native clip cropped deterministically for both layouts.
+`VF-3-10` preserved `GATE_AVATAR_003` open on 2026-08-11. The README/license/project-name conflict and missing weight license do not unambiguously permit intended commercial use. `VF-3-11` then ended without a replacement after the user reaffirmed AvatarForcing and the prior LongCat exclusion. Later on 2026-08-11, the user explicitly accepted that unresolved risk and authorized continuing the locked model ladder. Qualification may proceed only under a separately capped task; evidence retains the ambiguity and cannot claim clear commercial permission. The accepted clip contract remains one native clip cropped deterministically for both layouts.
 
 MVP fallback dispatch requires an explicit user/reviewer defect classification after deterministic technical checks. AvatarForcing/MuseTalk/SkyReels are not coupled to an unapproved automatic visual-QA model.
 

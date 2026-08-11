@@ -195,6 +195,7 @@ export class LocalRuntime {
   constructor(
     readonly environment: string,
     readonly commit: string,
+    readonly mode: "local" | "sandbox",
     readonly runner: LocalSliceRunner,
   ) {}
 

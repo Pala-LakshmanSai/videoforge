@@ -412,7 +412,17 @@ describe("Node and Cloudflare fixture runtime parity", () => {
       new RuntimeBindingError("Fixture mode requires an explicit fixture preview binding."),
     );
 
-    for (const mode of ["sandbox", "staging", "production"] as const) {
+    expect(() =>
+      createApiApp(
+        createCloudflareApiOptions({
+          VIDEOFORGE_COMMIT: COMMIT,
+          VIDEOFORGE_ENVIRONMENT: "test",
+          VIDEOFORGE_PROVIDER_MODE: "sandbox",
+        }),
+      ),
+    ).toThrow(new RuntimeBindingError("Sandbox mode is Node-only and cannot run on Cloudflare."));
+
+    for (const mode of ["staging", "production"] as const) {
       expect(() =>
         createApiApp(
           createCloudflareApiOptions({

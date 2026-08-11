@@ -26,6 +26,7 @@ export interface DurableRuntimeBindings {
 export interface LocalApiAppFactoryOptions {
   readonly commit: string;
   readonly environment: RuntimeEnvironment;
+  readonly mode: "local" | "sandbox";
   readonly runner: LocalSliceRunner;
 }
 
@@ -36,6 +37,7 @@ export interface ApiRuntimeBindings {
   readonly fixturePreview?: FixturePreviewBinding;
   readonly localRunner?: LocalSliceRunner;
   readonly localAppFactory?: LocalApiAppFactory;
+  readonly sandboxAppFactory?: LocalApiAppFactory;
   readonly durable?: Partial<DurableRuntimeBindings>;
 }
 

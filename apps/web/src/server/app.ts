@@ -20,10 +20,12 @@ export function createApiApp(options: CreateApiAppOptions): Hono {
   const { bindings, configuration } = options;
   const commit = safeCommit(configuration.commit);
   const { environment, mode } = configuration;
-  if (mode === "local") {
-    return bindings.localAppFactory!({
+  if (mode === "local" || mode === "sandbox") {
+    const factory = mode === "local" ? bindings.localAppFactory! : bindings.sandboxAppFactory!;
+    return factory({
       commit,
       environment,
+      mode,
       runner: bindings.localRunner as LocalSliceRunner,
     });
   }

@@ -1,11 +1,24 @@
 import { describe, expect, it } from "vitest";
 
 import { createApiApp } from "../app";
+import { createLocalApiApp } from "../local/app";
 import { RuntimeBindingError, runtimeConfigurationFromEnvironment } from "./configuration";
 import { createNodeRuntimeConfiguration } from "./node";
+import { resolveNodeSandboxDataRoot } from "./node-sandbox";
 import type { CreateApiAppOptions } from "./types";
 
 const fixturePreview = { read: async () => "<svg>fixture preview</svg>" };
+const mediaRunner = {
+  prepareOwnedVoiceover: async () => {
+    throw new Error("not used");
+  },
+  run: async () => {
+    throw new Error("not used");
+  },
+};
+const mediaAppFactory = () => {
+  throw new Error("factory sentinel");
+};
 
 function optionsFor(
   mode: CreateApiAppOptions["configuration"]["mode"],
@@ -52,6 +65,27 @@ describe("runtime configuration", () => {
     });
   });
 
+  it("keeps sandbox persistence inside the workspace-owned data directory", () => {
+    expect(
+      resolveNodeSandboxDataRoot(
+        { VIDEOFORGE_SANDBOX_DATA_ROOT: "/workspace/.videoforge/sandbox" },
+        "/workspace",
+      ),
+    ).toBe("/workspace/.videoforge/sandbox");
+    expect(() => resolveNodeSandboxDataRoot({}, "/workspace")).toThrow(
+      "requires an absolute VIDEOFORGE_SANDBOX_DATA_ROOT",
+    );
+    expect(() =>
+      resolveNodeSandboxDataRoot(
+        { VIDEOFORGE_SANDBOX_DATA_ROOT: "/workspace/.videoforge" },
+        "/workspace",
+      ),
+    ).toThrow("must be a child of the workspace .videoforge directory");
+    expect(() =>
+      resolveNodeSandboxDataRoot({ VIDEOFORGE_SANDBOX_DATA_ROOT: "/tmp/videoforge" }, "/workspace"),
+    ).toThrow("must be a child of the workspace .videoforge directory");
+  });
+
   it("requires fixture assets and keeps local execution on injected Node bindings", () => {
     expect(() => createApiApp(optionsFor("fixture"))).toThrow(
       "Fixture mode requires an explicit fixture preview binding.",
@@ -73,7 +107,28 @@ describe("runtime configuration", () => {
   });
 
   it("fails every production-like mode closed before serving", () => {
-    for (const mode of ["sandbox", "staging", "production"] as const) {
+    expect(() => createApiApp(optionsFor("sandbox"))).toThrow(
+      "Sandbox mode requires an explicit Node media runner.",
+    );
+    expect(() =>
+      createApiApp(
+        optionsFor("sandbox", {
+          platform: "cloudflare",
+          localRunner: mediaRunner,
+          sandboxAppFactory: mediaAppFactory,
+        }),
+      ),
+    ).toThrow("Sandbox mode is Node-only and cannot run on Cloudflare.");
+    expect(() =>
+      createApiApp(
+        optionsFor("sandbox", {
+          platform: "node",
+          localRunner: mediaRunner,
+        }),
+      ),
+    ).toThrow("Sandbox mode requires an explicit Node application factory.");
+
+    for (const mode of ["staging", "production"] as const) {
       expect(() => createApiApp(optionsFor(mode))).toThrow(
         `${mode} mode requires durable bindings: auth, repositories, artifactStore, workflow.`,
       );
@@ -86,5 +141,24 @@ describe("runtime configuration", () => {
         ),
       ).toThrow(`${mode} mode is configured but remains unavailable`);
     }
+  });
+
+  it("serves sandbox only through explicit Node bindings with zero provider authority", async () => {
+    const app = createApiApp(
+      optionsFor("sandbox", {
+        platform: "node",
+        localRunner: mediaRunner,
+        sandboxAppFactory: createLocalApiApp,
+      }),
+    );
+    const response = await app.request("/api/health");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-videoforge-provider-mode")).toBe("sandbox");
+    expect(await response.json()).toMatchObject({
+      mode: "sandbox",
+      synthetic: true,
+      provider_calls_authorized: false,
+      authorized_spend_usd: 0,
+    });
   });
 });

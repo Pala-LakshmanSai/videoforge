@@ -8,12 +8,18 @@ import type { LocalSliceRunner } from "./types";
 export interface LocalApiAppOptions {
   readonly commit: string;
   readonly environment: string;
+  readonly mode: "local" | "sandbox";
   readonly runner: LocalSliceRunner;
 }
 
 export function createLocalApiApp(options: LocalApiAppOptions): Hono {
   const app = new Hono();
-  const runtime = new LocalRuntime(options.environment, options.commit, options.runner);
+  const runtime = new LocalRuntime(
+    options.environment,
+    options.commit,
+    options.mode,
+    options.runner,
+  );
 
   app.use("/api/*", async (c, next) => {
     if (options.environment === "production") {
@@ -29,7 +35,7 @@ export function createLocalApiApp(options: LocalApiAppOptions): Hono {
     }
     await next();
     c.header("cache-control", "no-store");
-    c.header("x-videoforge-provider-mode", "local");
+    c.header("x-videoforge-provider-mode", options.mode);
     c.header("x-videoforge-synthetic", "true");
   });
 
@@ -48,15 +54,15 @@ export function createLocalApiApp(options: LocalApiAppOptions): Hono {
   );
   app.onError((error) => {
     console.error(
-      "VideoForge local API error",
+      `VideoForge ${options.mode} API error`,
       error instanceof Error ? error.message : "unknown error",
     );
     return problemResponse(
       apiProblem(
-        "LOCAL_API_INTERNAL_ERROR",
+        options.mode === "local" ? "LOCAL_API_INTERNAL_ERROR" : "SANDBOX_API_INTERNAL_ERROR",
         500,
-        "Local media API failed",
-        "The bounded local walking-slice API encountered an unexpected error.",
+        options.mode === "local" ? "Local media API failed" : "Sandbox media API failed",
+        `The bounded ${options.mode} walking-slice API encountered an unexpected error.`,
         true,
       ),
     );

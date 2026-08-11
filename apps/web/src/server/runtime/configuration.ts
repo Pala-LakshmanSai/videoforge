@@ -72,6 +72,19 @@ export function assertRunnableRuntime(options: CreateApiAppOptions): void {
     return;
   }
 
+  if (configuration.mode === "sandbox") {
+    if (bindings.platform !== "node") {
+      throw new RuntimeBindingError("Sandbox mode is Node-only and cannot run on Cloudflare.");
+    }
+    if (!bindings.localRunner) {
+      throw new RuntimeBindingError("Sandbox mode requires an explicit Node media runner.");
+    }
+    if (!bindings.sandboxAppFactory) {
+      throw new RuntimeBindingError("Sandbox mode requires an explicit Node application factory.");
+    }
+    return;
+  }
+
   const missing = missingDurableBindings(bindings.durable);
   if (missing.length > 0) {
     throw new RuntimeBindingError(

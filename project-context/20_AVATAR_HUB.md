@@ -1,6 +1,6 @@
 # Avatar Hub
 
-Status: VF-5-01 worker and VF-5-02 durable fixture acceptance complete; AvatarForcing remains selected but commercially blocked
+Status: VF-5-01 worker and VF-5-02 durable fixture acceptance complete; locked Avatar ladder reaffirmed and bounded qualification authorized
 Read when: implementing reusable avatars, avatar source upload/validation, project avatar selection, or avatar-source provenance.
 
 ## Product contract

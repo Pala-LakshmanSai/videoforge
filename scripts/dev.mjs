@@ -16,19 +16,19 @@ const unknownArguments = arguments_.filter(
   (argument) => argument !== "--lan" && !argument.startsWith("--mode="),
 );
 if (modeArguments.length > 1 || unknownArguments.length > 0) {
-  console.error("Usage: pnpm dev [--lan] [--mode=fixture|local]");
+  console.error("Usage: pnpm dev [--lan] [--mode=fixture|local|sandbox]");
   process.exit(1);
 }
 
 const modeArgument = modeArguments[0];
 const requestedMode = modeArgument?.slice("--mode=".length) ?? "fixture";
-if (!new Set(["fixture", "local"]).has(requestedMode)) {
-  console.error("VideoForge development mode must be 'fixture' or 'local'.");
+if (!new Set(["fixture", "local", "sandbox"]).has(requestedMode)) {
+  console.error("VideoForge development mode must be 'fixture', 'local', or 'sandbox'.");
   process.exit(1);
 }
 const requestedLan = arguments_.includes("--lan");
 if (requestedLan && requestedMode !== "fixture") {
-  console.error("LAN exposure is fixture-only. Local-media mode must remain on loopback.");
+  console.error("LAN exposure is fixture-only. Local/sandbox media modes must remain on loopback.");
   process.exit(1);
 }
 
@@ -78,7 +78,8 @@ if (existing?.app === "videoforge") {
     process.exit(1);
   }
 
-  const detail = requestedMode === "fixture" ? `fixture ${existing.fixture_id}` : "local media";
+  const detail =
+    requestedMode === "fixture" ? `fixture ${existing.fixture_id}` : `${requestedMode} media`;
   console.log(
     `VideoForge already healthy at ${url} (${detail}; ${requestedLan ? "LAN" : "loopback"}).`,
   );
@@ -96,7 +97,7 @@ for (const port of [4173, apiPort]) {
   }
 }
 
-if (requestedMode === "local") {
+if (requestedMode === "local" || requestedMode === "sandbox") {
   const setupCommands = [
     [process.execPath, ["scripts/local-doctor.mjs"]],
     ["pnpm", ["--filter", "@videoforge/contracts", "build"]],
@@ -115,6 +116,9 @@ const child = run("pnpm", ["--filter", "@videoforge/web", webScript], {
     ...sanitizedDevelopmentEnvironment(process.env),
     VIDEOFORGE_COMMIT: commit,
     VIDEOFORGE_PROVIDER_MODE: requestedMode,
+    ...(requestedMode === "sandbox"
+      ? { VIDEOFORGE_SANDBOX_DATA_ROOT: `${process.cwd()}/.videoforge/sandbox` }
+      : {}),
   },
 });
 

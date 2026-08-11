@@ -122,7 +122,7 @@ export function registerLocalRoutes(app: Hono, runtime: LocalRuntime): void {
     c.json({
       app: "videoforge" as const,
       status: "ok" as const,
-      mode: "local" as const,
+      mode: runtime.mode,
       commit: runtime.commit,
       fixture_id: null,
       synthetic: true as const,

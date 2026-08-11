@@ -57,8 +57,10 @@ if (status.provider_calls_authorized !== false || status.authorized_spend_usd !=
   );
   process.exitCode = 1;
 }
-if (status.mode === "local" && lanExposed) {
-  warnings.push("Local-media mode is exposed on LAN; restart it on loopback before continuing.");
+if (["local", "sandbox"].includes(status.mode) && lanExposed) {
+  warnings.push(
+    "Local/sandbox media mode is exposed on LAN; restart it on loopback before continuing.",
+  );
   process.exitCode = 1;
 }
 

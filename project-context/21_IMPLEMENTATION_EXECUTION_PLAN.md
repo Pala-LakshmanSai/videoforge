@@ -50,8 +50,9 @@ from existing durable PGlite repositories, local artifact/workflow adapters, pro
 and accepted API/UI surfaces. Keep fixture/local unchanged and all providers disabled. No credential,
 model download, GPU/cloud mutation, deployment, or spend.
 
-Mage preflight `VF-3-08` and AvatarForcing preflight `VF-3-10` remain open blockers. Do not rerun
-them, substitute LongCat, download around ambiguity, or expose a production execution profile.
+Mage preflight `VF-3-08` and AvatarForcing preflight `VF-3-10` retain unresolved terms evidence.
+The user explicitly accepted that risk for bounded qualification of the locked models. Do not
+substitute LongCat or claim unambiguous commercial permission.
 
 ## Reliable remaining sequence
 
@@ -60,8 +61,8 @@ The list below is roadmap order, not authorization and not a set of pre-authored
 ### A. Provider decisions and gates
 
 1. Complete `VF-8-01` Node sandbox durable runtime composition and restart/replay proof.
-2. Resolve Mage and AvatarForcing only from authoritative terms or a new explicit user decision;
-   never reopen excluded models or download around either blocker.
+2. Preserve the exact Mage and AvatarForcing revisions/terms evidence while proceeding only under
+   bounded qualification briefs; never reopen excluded models.
 3. After an exact gate resolution and paid brief, qualify the selected image model: exact checkpoint/container,
    quality/style adherence, latency, VRAM, retries, batching, accepted-image cost, and scale-zero.
 4. Qualify the selected Avatar primary: exact code/weights/container, identity, lips, body and

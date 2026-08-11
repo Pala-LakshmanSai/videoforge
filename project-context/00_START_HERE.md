@@ -51,9 +51,10 @@ blocked. `CURRENT_STATE.yaml` selects `VF-8-01`, a provider-free Node sandbox du
 composition. Mage `VF-3-08` already preserved `GATE_IMAGE_002` open; do not repeat either preflight
 or download around either model blocker.
 
-Production media remains blocked: Mage checkpoint/license evidence is unresolved; AvatarForcing
-commercial use is blocked by pinned contradictory/missing license artifacts; image/avatar/GPU/RunPod/fallback/cost/style-adherence
-gates remain open. No production Neon/R2/Workflow/OAuth deployment exists. `CURRENT_STATE.yaml`
+Production media remains unproven. Mage and AvatarForcing terms evidence is unresolved, but the user
+explicitly accepted that risk and authorized bounded qualification of the locked models without
+substitution. Image/avatar/GPU/RunPod/fallback/cost/style-adherence gates remain open. No production
+Neon/R2/Workflow/OAuth deployment exists. `CURRENT_STATE.yaml`
 remains the replace-in-place ownership/handoff source; preserve accepted UI, renderer, local output,
 architecture, and product rules.
 
@@ -107,16 +108,16 @@ The Avatar Hub creates reusable private presenter presets from one centered sour
 | Image-prompt writing | Runware DeepSeek V4 Flash 0731 | Batched strict JSON; thinking off; image prompts only |
 | Reference-style analysis | Runware Gemini 3.5 Flash | Qualified strict-JSON analysis only when a new draft style version is explicitly analyzed; prompt-only adherence remains gated |
 | Image generation | `microsoft/Mage-Flow-Turbo` | 4-step Turbo; narration-relevant stills compiled for the pinned style |
-| Primary avatar | AvatarForcing | User-reaffirmed selection; blocked from download/qualification/commercial use by `GATE_AVATAR_003` |
+| Primary avatar | AvatarForcing | User-reaffirmed selection; bounded qualification authorized with unresolved terms risk recorded |
 | Lip-only repair | MuseTalk 1.5 | Only an otherwise-good failed AvatarForcing clip |
 | Whole-frame avatar fallback | SkyReels V3 Talking Avatar | Same pinned runtime source + selected span audio, never a failed derivative; cold quality fallback |
 | Word timing | Local `whisper.cpp base.en` | Free ASR; local ASR is canonical in the web shell, with legacy optional-script alignment retained only at the versioned API boundary |
 | Composition/render | FFmpeg | EDL, crops, zoom, hard cuts, loudness, encode |
 
-The avatar router and crop geometry are user-approved. AvatarForcing remains blocked from download,
-qualification, production profile, and commercial use by contradictory official code artifacts and
-missing weight terms. `VF-3-11` selected no replacement; LongCat remains excluded by explicit user
-decision. Independent runtime work may proceed, but no Avatar gate is closed.
+The avatar router and crop geometry are user-approved. AvatarForcing terms remain contradictory and
+the weights metadata omits a license, but the user explicitly accepted the unresolved risk and
+authorized continuing the locked ladder. `VF-3-11` selected no replacement; LongCat remains excluded.
+Qualification evidence must retain the ambiguity and cannot claim clear commercial permission.
 
 ## Reference-derived edit grammar
 

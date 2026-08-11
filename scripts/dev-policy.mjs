@@ -28,7 +28,7 @@ export function isLanListenerAddress(address) {
 
 export function developmentOpenRoute(status, requestedRoute) {
   const fallback =
-    status?.mode === "local"
+    status?.mode === "local" || status?.mode === "sandbox"
       ? "/projects/new"
       : `/?fixture=${encodeURIComponent(status?.fixture_id ?? "happy_generating")}`;
   if (requestedRoute === undefined) return fallback;

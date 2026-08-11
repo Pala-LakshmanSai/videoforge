@@ -164,7 +164,7 @@ const apiStatus = apiOwner ? await health("http://127.0.0.1:4174/api/health") : 
 const validHealth = (status) =>
   status?.app === "videoforge" &&
   status?.status === "ok" &&
-  ["fixture", "local"].includes(status?.mode) &&
+  ["fixture", "local", "sandbox"].includes(status?.mode) &&
   status?.synthetic === true &&
   status?.provider_calls_authorized === false &&
   status?.authorized_spend_usd === 0;
@@ -183,7 +183,8 @@ if (!webOwner && !apiOwner) {
     "port.4173",
     "ownership",
     "Port 4173",
-    pairedServers && !(webStatus.mode === "local" && isLanListenerAddress(webOwner.address)),
+    pairedServers &&
+      !(["local", "sandbox"].includes(webStatus.mode) && isLanListenerAddress(webOwner.address)),
     webOwner
       ? `PID ${webOwner.pid} (${webOwner.command}); ${webOwner.address ?? "binding unknown"}`
       : "free while an orphaned API listener remains on 4174",

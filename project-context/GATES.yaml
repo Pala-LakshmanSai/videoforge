@@ -17,13 +17,14 @@ gates:
     last_run: null
   GATE_AVATAR_003:
     status: open
-    blocks: avatarforcing_download_paid_qualification_and_commercial_use
+    blocks: unambiguous_avatarforcing_commercial_permission_claim
     acceptance: "08_MODELS_AND_PROVIDERS.md#avatarforcing"
     owner: VF-3-10
     last_run: "evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license"
-    result: open_blocked
+    result: open_user_accepted_risk_for_locked_model_qualification
     checked_at: "2026-08-11T14:53:50Z"
     blocker: "Official README Apache-2.0 labeling conflicts with a committed academic-only/non-commercial LICENSE.txt that names RollingForcing, while the official weights repository declares no license."
+    user_risk_acceptance: "2026-08-11: user explicitly directed proceeding with the locked AvatarForcing ladder for YouTube use despite the unresolved terms evidence; no clear-commercial-permission claim is allowed."
   GATE_IMAGE_001:
     status: open
     blocks: mage_production_profile
@@ -32,13 +33,14 @@ gates:
     last_run: null
   GATE_IMAGE_002:
     status: open
-    blocks: commercial_launch
+    blocks: unambiguous_mage_checkpoint_commercial_permission_claim
     acceptance: "08_MODELS_AND_PROVIDERS.md#mage-flow-turbo"
     owner: VF-3-08
     last_run: "evidence/gates/GATE_IMAGE_002/2026-08-11-huggingface-mage-access-license"
-    result: open_blocked
+    result: open_user_accepted_risk_for_locked_model_qualification
     checked_at: "2026-08-11T04:03:03Z"
     blocker: "Anonymous official Hugging Face model/API/LICENSE access returns HTTP 401 and the existing signed-out Chrome session shows 404; exact weight revision/license is unavailable, while Microsoft's source README combines MIT labeling with research-only deployment guidance."
+    user_risk_acceptance: "2026-08-11: user explicitly directed proceeding with locked Mage-Flow-Turbo for YouTube use despite unresolved terms/access metadata; no clear-commercial-permission claim is allowed."
   GATE_LLM_001:
     status: closed
     blocks: runware_prompt_production_profile

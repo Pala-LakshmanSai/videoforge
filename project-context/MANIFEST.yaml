@@ -415,11 +415,13 @@ approved_decisions:
   DEC_STYLE_006: extract_shared_visual_traits_not_reference_content
   DEC_STYLE_007: manual_edits_preserve_and_detach_analyzer_evidence_from_derived_profile_bytes
   DEC_IMAGE_001: microsoft_mage_flow_turbo
+  DEC_IMAGE_002: user_accepts_unresolved_mage_terms_risk_locked_model_proceeds
   DEC_AVATAR_001: avatarforcing_primary
   DEC_AVATAR_002: musetalk_lip_only_repair
   DEC_AVATAR_003: skyreels_v3_whole_frame_fallback
   DEC_AVATAR_004: one_clip_two_deterministic_crops
   DEC_AVATAR_005: reusable_avatar_hub_required_exact_ready_version_no_inline_upload
+  DEC_AVATAR_006: user_accepts_unresolved_avatarforcing_terms_risk_locked_ladder_proceeds
   DEC_TIMING_001: local_whisper_cpp_base_en
   DEC_CONTRACT_001: typescript_only_jcs_python_exact_bytes_and_schema_validation
   DEC_SCHEDULER_001: seeded_deterministic_bounded_variation

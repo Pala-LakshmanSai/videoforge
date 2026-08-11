@@ -23,7 +23,7 @@ import type {
 function createApiApp(options: {
   readonly commit?: string;
   readonly environment?: "development" | "test" | "production";
-  readonly mode: "local";
+  readonly mode: "local" | "sandbox";
   readonly localRunner?: LocalSliceRunner;
 }) {
   return createRuntimeApiApp({
@@ -35,7 +35,9 @@ function createApiApp(options: {
     bindings: {
       platform: "node",
       localRunner: options.localRunner,
-      localAppFactory: createLocalApiApp,
+      ...(options.mode === "local"
+        ? { localAppFactory: createLocalApiApp }
+        : { sandboxAppFactory: createLocalApiApp }),
     },
   });
 }
@@ -503,6 +505,35 @@ describe("local walking-slice API", () => {
       persistedBytes: true,
       providerCallsAuthorized: false,
     });
+  });
+
+  it("exposes the same restart-safe media contract in explicit sandbox mode", async () => {
+    const runner = await ControlledRunner.create({ restoreOnBootstrap: true });
+    const app = createApiApp({
+      commit: "abcdef1234567890",
+      environment: "test",
+      mode: "sandbox",
+      localRunner: runner,
+    });
+    const health = await app.request("/api/health");
+    expect(health.headers.get("x-videoforge-provider-mode")).toBe("sandbox");
+    await expect(health.json()).resolves.toMatchObject({
+      mode: "sandbox",
+      provider_calls_authorized: false,
+      authorized_spend_usd: 0,
+    });
+    const response = await app.request("/api/v1/bootstrap");
+    await expect(response.json()).resolves.toMatchObject({
+      projects: [
+        {
+          id: PROJECT_ID,
+          status: "READY_FOR_REVIEW",
+          latestArtifact: { sha256: OUTPUT_SHA },
+        },
+      ],
+    });
+    expect(runner.restoreCalls).toBe(1);
+    expect(runner.runRequests).toHaveLength(0);
   });
 
   it("restores checksum-bound timing and output without starting a new run", async () => {
