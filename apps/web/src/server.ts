@@ -1,19 +1,28 @@
 import { serve } from "@hono/node-server";
+import path from "node:path";
 
 import { createApiApp } from "./server/app";
 import { createLocalApiApp } from "./server/local/app";
 import { createNodeFixturePreviewBinding } from "./server/runtime/node-fixture-preview";
 import { createNodeRuntimeConfiguration } from "./server/runtime/node";
+import { resolveNodeSandboxDataRoot } from "./server/runtime/node-sandbox";
 
 export const FIXTURE_API_HOST = "127.0.0.1";
 export const FIXTURE_API_PORT = 4174;
+const WORKSPACE_ROOT = path.resolve(import.meta.dirname, "../../..");
 
 const configuration = createNodeRuntimeConfiguration(process.env);
 const { mode } = configuration;
-const localRunner =
-  mode === "local"
-    ? (await import("./server/local/media-runner")).createLocalMediaPipelineRunner()
-    : undefined;
+let localRunner;
+if (mode === "local" || mode === "sandbox") {
+  const { createLocalMediaPipelineRunner } = await import("./server/local/media-runner");
+  localRunner =
+    mode === "sandbox"
+      ? createLocalMediaPipelineRunner({
+          artifactRoot: resolveNodeSandboxDataRoot(process.env, WORKSPACE_ROOT),
+        })
+      : createLocalMediaPipelineRunner();
+}
 const app = createApiApp({
   configuration,
   bindings: {
@@ -21,6 +30,7 @@ const app = createApiApp({
     fixturePreview: mode === "fixture" ? createNodeFixturePreviewBinding() : undefined,
     localRunner,
     localAppFactory: mode === "local" ? createLocalApiApp : undefined,
+    sandboxAppFactory: mode === "sandbox" ? createLocalApiApp : undefined,
   },
 });
 
