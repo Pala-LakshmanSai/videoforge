@@ -101,7 +101,12 @@ describe("RunPod scale-zero control", () => {
       if (path.includes("/cancel/")) return response({ id: "job_01", status: "CANCELLED" });
       if (path.endsWith("/health"))
         return response({ workers: { idle: 0, running: 0 }, jobs: { inQueue: 0, inProgress: 0 } });
-      return response({ id: "job_01", status: "IN_PROGRESS" });
+      return response({
+        id: "job_01",
+        status: "IN_PROGRESS",
+        delayTime: 1200,
+        executionTime: 3400,
+      });
     });
     const client = new RunPodServerlessJobClient({
       apiKey: key,
@@ -114,7 +119,12 @@ describe("RunPod scale-zero control", () => {
     const replay = client.dispatch("attempt_01", { value: "owned" });
     await expect(first).resolves.toEqual(await replay);
     expect(fetch).toHaveBeenCalledTimes(1);
-    await expect(client.status("job_01")).resolves.toMatchObject({ status: "IN_PROGRESS" });
+    await expect(client.status("job_01")).resolves.toMatchObject({
+      id: "job_01",
+      status: "IN_PROGRESS",
+      delayTimeMs: 1200,
+      executionTimeMs: 3400,
+    });
     guard.beginDrain();
     await expect(client.cancel("job_01")).resolves.toMatchObject({ status: "CANCELLED" });
     expect(() => guard.assertDispatchAllowed()).toThrow("RUNPOD_DISPATCH_BLOCKED");

@@ -365,9 +365,27 @@ export class RunPodControlClient {
 }
 
 export interface RunPodJobResult {
+  readonly id: string;
   readonly idHash: string;
   readonly status: string;
+  readonly output?: unknown;
+  readonly executionTimeMs: number | null;
+  readonly delayTimeMs: number | null;
 }
+
+const jobResult = (value: JsonRecord): RunPodJobResult => {
+  if (typeof value.id !== "string" || !ID.test(value.id) || typeof value.status !== "string") {
+    throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
+  }
+  return Object.freeze({
+    id: value.id,
+    idHash: hashId(value.id),
+    status: value.status,
+    ...(Object.hasOwn(value, "output") ? { output: value.output } : {}),
+    executionTimeMs: numberOrNull(value.executionTime),
+    delayTimeMs: numberOrNull(value.delayTime),
+  });
+};
 
 export interface RunPodServerlessJobClientOptions {
   readonly apiKey: string;
@@ -442,32 +460,23 @@ export class RunPodServerlessJobClient {
     if (replay) return replay;
     this.options.guard.assertDispatchAllowed();
     this.options.guard.markActive();
-    const pending = this.request("POST", "/run", inputBytes).then((value) => {
-      if (typeof value.id !== "string" || !ID.test(value.id) || typeof value.status !== "string") {
-        throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
-      }
-      return Object.freeze({ idHash: hashId(value.id), status: value.status });
-    });
+    const pending = this.request("POST", "/run", inputBytes).then(jobResult);
     this.replays.set(requestHash, pending);
     return pending;
   }
 
   async status(jobId: string): Promise<RunPodJobResult> {
     if (!ID.test(jobId)) throw new RunPodControlError("RUNPOD_JOB_ID_INVALID");
-    const value = await this.request("GET", `/status/${jobId}`);
-    if (typeof value.id !== "string" || !ID.test(value.id) || typeof value.status !== "string") {
-      throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
-    }
-    return Object.freeze({ idHash: hashId(value.id), status: value.status });
+    return jobResult(await this.request("GET", `/status/${jobId}`));
   }
 
   async cancel(jobId: string): Promise<RunPodJobResult> {
     if (!ID.test(jobId)) throw new RunPodControlError("RUNPOD_JOB_ID_INVALID");
     const value = await this.request("POST", `/cancel/${jobId}`);
-    if (typeof value.id !== "string" || !ID.test(value.id) || value.status !== "CANCELLED") {
+    if (value.status !== "CANCELLED") {
       throw new RunPodControlError("RUNPOD_CANCEL_UNCONFIRMED");
     }
-    return Object.freeze({ idHash: hashId(value.id), status: value.status });
+    return jobResult(value);
   }
 
   async confirmDrained(): Promise<void> {
