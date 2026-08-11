@@ -101,7 +101,18 @@ The pinned source injects a mandatory Gaussian-Shading watermark into initial no
 text refusal placeholder. Production builds must apply and verify the pinned VideoForge source patch:
 remove watermark injection and fail closed on refusal instead of emitting placeholder image bytes.
 
-Access/terms evidence remains unresolved. On 2026-08-11, anonymous official Hugging Face page/API/raw-`LICENSE` requests returned HTTP 401 and the existing signed-out Chrome session showed 404. Search-indexed official metadata reported MIT and a 17.5 GB repository, but could not establish a live exact revision or governing weight-license artifact. Microsoft's public `microsoft/Mage` source repository at `76bec2bb3818863f470de7e867c2dc7f1d0bfd83` has an MIT `LICENSE` and labels Mage-Flow MIT, while the same README describes the models as research-only/not intended for product or service deployment. The user explicitly accepted this unresolved risk on 2026-08-11 and authorized continuing the locked Mage model. Bounded qualification may proceed, but evidence must retain the ambiguity and cannot claim clear commercial permission.
+The admitted immutable model revision is
+`395402ba3ef110c96e70d01abe4d178dbe4e01a5`. First-party indexed Hugging Face evidence identifies
+the verified official commit, a 17.5 GB repository tree, and transformer weight
+`sha256:6df47df3d7efc9ebdad075b87b3e9e4f74d09dca672d592271788f0ee27ab97d`
+(`8,231,536,760` bytes). Never resolve mutable `main` at runtime.
+
+Terms evidence remains ambiguous. The indexed official model page reports MIT. Microsoft's public
+`microsoft/Mage` source repository at `76bec2bb3818863f470de7e867c2dc7f1d0bfd83` has an MIT
+`LICENSE` and labels Mage-Flow MIT, while the same README describes the models as research-only/not
+intended for product or service deployment. The user explicitly accepted this unresolved risk on
+2026-08-11 and authorized continuing the locked Mage model. Evidence must retain the ambiguity and
+cannot claim clear commercial permission.
 
 Official sources: [Mage-Flow-Turbo model card](https://huggingface.co/microsoft/Mage-Flow-Turbo) and [Microsoft Mage source repository](https://github.com/microsoft/Mage).
 

@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T23:14:15Z"
+updated_at: "2026-08-11T23:18:40Z"
 
-phase: mage_access_restore
+phase: mage_revision_code_admission
 implementation_authorized_in_current_task: true
-current_milestone: authenticated_mage_access_restore
-current_task: VF-9-04
+current_milestone: pinned_mage_revision_admission
+current_task: VF-9-05
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -20,7 +20,7 @@ repository:
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
   last_good_commit: "774b56f"
-  working_tree_expected: clean_after_vf_9_03_access_blocker_handoff
+  working_tree_expected: clean_after_vf_9_04_public_revision_handoff
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -44,7 +44,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-04 is a user-access blocker: restore the Chrome extension connection and open the authenticated official Mage model page. Token creation/copy/persistence, model download, GHCR image, RunPod/Runware mutation, GPU, dispatch, and spend are forbidden; RunPod remains absolute zero."
+  provider_authority_scope: "VF-9-05 permits local Mage boundary code/tests/docs and Git push only. Credential/session access, model download, GHCR image, RunPod/Runware mutation, GPU, dispatch, qualification, promotion, deployment, and spend are forbidden; RunPod remains absolute zero."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -242,15 +242,20 @@ completed_tasks:
     implementation_commit: "8f7391e3ff480519ab3ca3cd3d9411616c81c65a"
     evidence: "evidence/acceptance/VF-9-03/mage-revision-admission"
     summary: "Required Chrome family was unavailable, so authenticated Mage revision admission stopped safely at $0 with no token, model byte, provider, GPU, or RunPod activity."
+  - task_id: VF-9-04
+    status: complete_via_safe_alternate_evidence
+    implementation_commit: "88dd0b65e9e29ba60db3e56f3c7c4d1a665bab5e"
+    evidence: "evidence/acceptance/VF-9-04/mage-access-restore"
+    summary: "Chrome remained unavailable, but first-party indexed Hugging Face pages exposed a verified full immutable Turbo revision and transformer weight identity. No credential or model byte was accessed; the browser blocker was superseded at $0."
 
 latest_closed_handoff:
-  task_id: VF-9-03
-  status: exact_safe_access_blocker
-  task_kind: mage_revision_admission
-  implementation_commit: "8f7391e3ff480519ab3ca3cd3d9411616c81c65a"
-  evidence: "evidence/acceptance/VF-9-03/mage-revision-admission"
-  verification_result: "required_chrome_family_unavailable"
-  external_actions: "Chrome connection attempt only; no token, model, provider, GPU, or spend activity."
+  task_id: VF-9-04
+  status: complete_via_safe_alternate_evidence
+  task_kind: mage_access_restore
+  implementation_commit: "88dd0b65e9e29ba60db3e56f3c7c4d1a665bab5e"
+  evidence: "evidence/acceptance/VF-9-04/mage-access-restore"
+  verification_result: "verified_immutable_revision_found_without_authentication"
+  external_actions: "Read-only first-party indexed page checks only; no token, model, provider, GPU, or spend activity."
   external_spend_usd: 0
 
 last_green:
@@ -273,34 +278,32 @@ last_green:
     - "evidence/acceptance/VF-9-02/mage-worker-boundary"
 
 active_ownership: []
-blocked_tasks:
-  - task_id: VF-9-04
-    reason: "Required Chrome family is unavailable; user must restore the extension connection and authenticated official Hugging Face page."
+blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-9-04
-  milestone: authenticated_mage_access_restore
-  status: blocked_pending_user_browser_action
-  dependency_status: vf_9_03_required_chrome_family_unavailable
-  authorization_status: user_restores_chrome_and_authenticated_hf_page
-  read_profile: phase9_mage_access_restore
-  task_brief: tasks/VF-9-04.md
-  goal: "Restore Chrome access to the authenticated official Mage model page without exposing credentials."
+  task_id: VF-9-05
+  milestone: pinned_mage_revision_admission
+  status: ready
+  dependency_status: vf_9_04_verified_immutable_revision_available
+  authorization_status: provider_free_local_worker_code
+  read_profile: phase9_mage_revision_code_admission
+  task_brief: tasks/VF-9-05.md
+  goal: "Admit the exact verified Mage model revision into the strict worker boundary at $0."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   provider_authority: null
   remote_or_cloud_mutations_authorized: false
   credential_access_authorized: false
   model_downloads_authorized: false
-  application_code_changes_authorized: false
-  expected_evidence: "evidence/acceptance/VF-9-04/mage-access-restore"
+  application_code_changes_authorized: true
+  expected_evidence: "evidence/acceptance/VF-9-05/mage-revision-code-admission"
   required_handoff:
-    - "User restores the ChatGPT Chrome extension connection under Settings > Computer use."
-    - "User signs in to Hugging Face and leaves the official Mage model page open."
-    - "Resume read-only revision admission without copying or persisting any token."
+    - "Admit only exact revision 395402ba3ef110c96e70d01abe4d178dbe4e01a5."
+    - "Pin known official weight identity and keep execution offline/fail-closed."
+    - "Run focused/full checks and author exactly one capped worker-image successor."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-9-04
+    integration_owner: VF-9-05
   prohibited_in_task:
     - "Token creation/copy/persistence, model download, GHCR model image, RunPod/Runware mutation, GPU, dispatch, or spend."
     - "Model substitution, Avatar work, app/schema/UI change, promotion, or deployment."
@@ -323,7 +326,7 @@ fully_sorted:
   - "Complete fixture Image Styles Hub normalization-through-archive workflow with Workerd and Chrome proof."
 
 known_incomplete_boundaries:
-  - "Mage GATE_IMAGE_002 remains open after VF-3-08; no checkpoint/weights/download/qualification or production image profile."
+  - "Mage GATE_IMAGE_002 remains open: exact source/model revision and one transformer weight identity are pinned, but no model download, runnable image, qualification, or production image profile exists."
   - "Mage/AvatarForcing terms evidence remains ambiguous. The user explicitly accepted that risk for bounded locked-model qualification; do not claim clear commercial permission or substitute models."
   - "DeepSeek/Gemini are live-runtime composed and fixture remains default; latest DeepSeek smoke was correctly rejected as providerUnavailable at $0."
   - "Fixture Hub reference bytes are session-scoped. No production R2/Neon/Better Auth/Workflow deployment exists."
@@ -332,8 +335,8 @@ known_incomplete_boundaries:
   - "Two bounded SkyReels resumes produced no candidate; the latest provider 503 was cancelled and manually recovered to absolute-zero inventory. No further paid SkyReels retry is selected."
 
 next_tasks:
-  - "1. VF-9-04 restore Chrome and the authenticated official Mage model page."
-  - "2. Resume exact revision admission; publish/qualify one real Mage image only under a separate cap."
+  - "1. VF-9-05 admit exact verified Mage model revision at $0."
+  - "2. Publish/qualify one real Mage image only under a separate cap."
   - "3. Add MuseTalk repair and SkyReels whole-frame fallback only after their technical triggers."
   - "4. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
   - "5. Add isolated R2, Neon, Auth, and Workflow adapters; then contention/fault/security/backup/restore hardening."
@@ -358,7 +361,7 @@ progress_snapshot:
   interpretation: "Provider-free media, restart-safe Node sandbox, Runware runtime composition, RunPod scale-zero control, and pinned real AvatarForcing/SkyReels workers are implemented. AvatarForcing produced a valid but rejected-quality MP4; corrected SkyReels inference exceeded the bounded 30-minute window, and Mage, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: mage_access_restore_blocked_pending_user
+  status: mage_revision_code_admission_selected
   completed_and_preserved:
     - "All completed tasks/commits above; no paused implementation or unexplained dirty state."
     - "Forced full verification passed at the VF-8-04 handoff tree: Workerd 1/1 and installed Chrome 38/38 with zero skips."
@@ -381,12 +384,13 @@ activation_handoff:
     - "VF-9-01 pinned official Mage source/runtime and exact file identities; official model API remains HTTP 401/404, so exact weight revision is the sole technical blocker."
     - "VF-9-02 implemented the strict Mage boundary and pinned source patch; full verification passed at $0."
     - "VF-9-03 stopped safely because the required Chrome family was unavailable; no browser fallback or credential access occurred."
+    - "VF-9-04 superseded the Chrome blocker using a first-party indexed verified immutable revision; no model bytes or credentials were accessed."
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from 8f7391e; preserve all newer commits."
-    - "Load only phase9_mage_access_restore and tasks/VF-9-04.md."
-    - "After the user restores Chrome and opens the authenticated official Mage page, resume exact revision admission; download nothing."
+    - "Require clean HEAD descending from 88dd0b6; preserve all newer commits."
+    - "Load only phase9_mage_revision_code_admission and tasks/VF-9-05.md."
+    - "Admit the exact verified revision in the strict boundary; download nothing."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
     - "Credential access, model/revision ambiguity, any provider mutation/download/spend, or non-zero RunPod inventory."
