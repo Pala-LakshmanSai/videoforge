@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-8-01` Node sandbox runtime complete; `VF-8-02` locked Runware composition selected
+Status: `VF-8-04` bounded AvatarForcing qualification complete; `VF-8-05` cold-start diagnostic selected
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -22,9 +22,9 @@ findings are closed.
 
 The public repository and hosted CI checkpoint are established. `GATE_LLM_001` and
 `GATE_STYLE_001` are closed from bounded Runware DeepSeek/Gemini qualification. Provider-free
-DeepSeek/Gemini adapters are committed, but neither is runtime-composed. Runware qualification
-spent `$0.41003998` total; ordinary application mode remains `fixture` with provider calls disabled.
-RunPod preflight found `$10.00`, zero live resources, and `$0/hour`; no Pod is active.
+DeepSeek/Gemini adapters and their fail-closed Runware runtime composition are committed. Runware
+qualification spent `$0.41003998` total; ordinary application mode remains `fixture` with provider
+calls disabled. RunPod scale-zero control is implemented and live inventory is zero.
 
 Provider-free DX/CI/doctor/dev ownership (`VF-DX-01/02`), telemetry (`VF-REL-01`), prompt/image
 acceptance (`VF-4-01/02`), Avatar fixture generation/acceptance (`VF-5-01/02`), and the complete
@@ -46,10 +46,13 @@ weights revision `e244891`, but the official README's Apache-2.0 label conflicts
 academic-only/non-commercial `LICENSE.txt` that names RollingForcing, while the weights card
 declares no license. Evidence/context commit is `96e5fd3`; `GATE_AVATAR_003` remains open.
 `VF-3-11` ended without a replacement after the user reaffirmed the finalized Brainstorm ladder and
-explicitly rejected reopening LongCat Avatar 1.5. AvatarForcing remains selected but commercially
-blocked. `VF-8-01` is complete at `21d6646`: explicit Node sandbox mode completed a real owned
+explicitly rejected reopening LongCat Avatar 1.5. AvatarForcing remains selected; ambiguity blocks
+only a clear-permission claim, not the user's bounded qualification. `VF-8-01` is complete at `21d6646`: explicit Node sandbox mode completed a real owned
 ASR/timeline/FFmpeg v3 run, restart restore, approval, and checksum-matched download at `$0`.
-`CURRENT_STATE.yaml` selects `VF-8-02`, the locked DeepSeek/Gemini Runware runtime composition.
+`VF-8-02` Runware composition and `VF-8-03` RunPod scale-zero control are complete. `VF-8-04`
+built the pinned AvatarForcing worker and ran four bounded attempts for `$0.2020189583`; no output
+or model-bootstrap progress was produced, every resource was deleted, and `GATE_AVATAR_003` remains
+open. `CURRENT_STATE.yaml` selects `$0` cold-start diagnostic `VF-8-05`.
 
 Production media remains unproven. Mage and AvatarForcing terms evidence is unresolved, but the user
 explicitly accepted that risk and authorized bounded qualification of the locked models without
@@ -175,9 +178,8 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and
 `19_IMPLEMENTATION_PLAYBOOK.md`. Preserve all completed commits, the accepted fixture shell, and
 the user-accepted local render. Execute only the exact task selected by `CURRENT_STATE.yaml`; its
-authority is not transferable. The selected `VF-8-02` task permits only the exact locked Runware
-models under its `$0.20` cap. Other provider calls,
-downloads, GPU/cloud mutation, deployment, push, and production remain unauthorized in that brief.
+authority is not transferable. Selected `VF-8-05` is `$0`, read-only RunPod/container diagnosis.
+Provider calls, downloads, GPU/cloud mutation, deployment, and production remain unauthorized.
 
 ## Context navigation
 

@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T17:27:00Z"
+updated_at: "2026-08-11T19:25:30Z"
 
-phase: avatarforcing_worker_qualification
+phase: avatarforcing_cold_start_diagnostic
 implementation_authorized_in_current_task: true
-current_milestone: locked_avatarforcing_worker
-current_task: VF-8-04
+current_milestone: locked_avatarforcing_diagnostic
+current_task: VF-8-05
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -19,8 +19,8 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "1d93a5da0df0279adf49e64d89020cafaabfd20c"
-  working_tree_expected: clean_after_provider_free_completion_handoff
+  last_good_commit: "8ceecb4add96e93c5f3892b28152e494e2c964bf"
+  working_tree_expected: clean_after_bounded_failure_handoff
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -43,8 +43,8 @@ live_development:
   fixture_scenario: happy_generating
   provider_mode: fixture
   provider_calls_authorized: false
-  authorized_spend_usd: 5
-  provider_authority_scope: "VF-8-04 permits only pinned AvatarForcing worker build/qualification on one RunPod Serverless endpoint, workersMin=0/workersMax=1, public pinned downloads, at most $5, and mandatory drain/delete/zero inventory."
+  authorized_spend_usd: 0
+  provider_authority_scope: "VF-8-05 is provider-free cold-start diagnosis only: read-only RunPod inventory, pinned-image CI smoke, and redacted retained-log review; no provider mutation, model download, GPU activation, or spend."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -146,26 +146,30 @@ completed_tasks:
     implementation_commit: "1d93a5da0df0279adf49e64d89020cafaabfd20c"
     evidence: "evidence/acceptance/VF-8-03/runpod-scale-zero"
     summary: "Keychain-only RunPod control adapter, redacted live inventory, exact scale-zero policy, replay/ambiguity/cancel/health-drain/update/delete guards, and live proof of zero resources at $0."
+  - task_id: VF-8-04
+    status: bounded_failure_complete
+    implementation_commits: ["cd226f4", "f486c4c", "832a7b8", "21b3256", "b6035b3", "e7638a7", "db74df0", "cae8ff3", "dfdfb4f", "acfb765", "8ceecb4"]
+    evidence: "evidence/acceptance/VF-8-04/avatarforcing-worker"
+    summary: "Pinned AvatarForcing worker, strict inline/live contracts, immutable GHCR builds, capped qualification runner, progress/cancel/drain/delete guards, and four bounded attempts. RunPod never produced model-bootstrap progress or output; total settled spend was $0.2020189583 and final inventory was zero. GATE_AVATAR_003 remains open."
 
 latest_closed_handoff:
-  task_id: VF-8-03
-  status: complete
-  task_kind: runpod_scale_zero_control_implementation
-  implementation_commit: "1d93a5da0df0279adf49e64d89020cafaabfd20c"
-  evidence: "evidence/acceptance/VF-8-03/runpod-scale-zero"
-  verification_result: "verify_fast_pass_and_live_zero_resource_inventory"
-  external_actions: "RunPod live read-only inventory only; zero Pods/endpoints/templates/volumes/workers; no mutation, compute start, download, deployment, or spend."
-  external_spend_usd: 0
+  task_id: VF-8-04
+  status: bounded_failure_complete
+  task_kind: locked_avatarforcing_worker_qualification
+  implementation_commit: "8ceecb4add96e93c5f3892b28152e494e2c964bf"
+  evidence: "evidence/acceptance/VF-8-04/avatarforcing-worker"
+  verification_result: "forced_full_verify_pass_and_live_zero_resource_inventory"
+  external_actions: "Four bounded scale-zero qualification attempts used one endpoint/worker maximum; every exact endpoint/template was purged, drained, deleted, and independently confirmed zero. No output was produced."
+  external_spend_usd: 0.2020189583
 
 last_green:
-  checked_at: "2026-08-11T14:32:25Z"
+  checked_at: "2026-08-11T19:24:41Z"
   result: pass
-  verified_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  command: "CI=1 TURBO_FORCE=true pnpm verify"
+  verified_commit: "8ceecb4add96e93c5f3892b28152e494e2c964bf"
+  command: "Hosted CI run 31527308775 plus local CI=1 TURBO_FORCE=true pnpm verify"
   counts:
-    aggregate_tests_and_journeys: 786
     control_plane_pglite_tests: 209
-    web_server_component_tests: 181
+    web_server_component_tests: 201
     typescript_contract_tests: 59
     pipeline_tests: 115
     provider_sandbox_tests: 43
@@ -173,45 +177,40 @@ last_green:
     playwright_chrome_journeys_passed: 38
     playwright_chrome_journeys_intentionally_skipped: 0
   findings_closed:
-    - "AJV runtime code generation was incompatible with Workerd; d9adee9 replaced the shared boundary with a strict Workerd-safe Zod profile mirror."
+    - "Pinned linux/amd64 image imports dependencies, compiles AvatarForcing source, and registers exactly one real handler callable before model bootstrap."
   evidence:
-    - "evidence/acceptance/VF-7-09/style-hub-completion"
+    - "evidence/acceptance/VF-8-04/avatarforcing-worker"
+    - "evidence/acceptance/VF-8-05/avatarforcing-diagnostic"
 
 active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-8-04
-  milestone: locked_avatarforcing_worker
+  task_id: VF-8-05
+  milestone: locked_avatarforcing_diagnostic
   status: ready
-  dependency_status: runpod_scale_zero_control_complete_and_live_inventory_zero
-  authorization_status: pinned_avatarforcing_one_endpoint_capped_spend_and_mandatory_cleanup
-  read_profile: phase8_avatarforcing_worker
-  task_brief: tasks/VF-8-04.md
-  goal: "Build and qualify the pinned AvatarForcing primary worker, then drain/delete and prove zero paid compute."
-  provider_calls_authorized: true
-  maximum_external_spend_usd: 5
-  provider_authority:
-    provider: RunPod
-    model_id: "KlingAIResearch/AvatarForcing@63b73e6 + lycui/AvatarForcing@e244891"
-    cap_usd: 5
-    non_transferable: true
-    authorized_by_user_at: "2026-08-11T16:45:00Z"
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
-  model_downloads_authorized: true
+  dependency_status: vf_8_04_bounded_failure_complete_and_runpod_inventory_zero
+  authorization_status: provider_free_diagnostic_only
+  read_profile: phase8_avatarforcing_diagnostic
+  task_brief: tasks/VF-8-05.md
+  goal: "Prove container handler registration and isolate the RunPod cold-start failure before any paid retry."
+  provider_calls_authorized: false
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
+  model_downloads_authorized: false
   application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-8-04/avatarforcing-worker"
+  expected_evidence: "evidence/acceptance/VF-8-05/avatarforcing-diagnostic"
   required_handoff:
-    - "Build immutable pinned AvatarForcing worker and strict job/result contracts."
-    - "Qualify smallest owned short clips under $5 through one scale-zero Serverless worker."
-    - "Cancel/drain/delete and confirm live zero paid compute before authoring one successor."
+    - "Verify exact handler registration inside the immutable linux/amd64 image."
+    - "Retain redacted startup/cold-start evidence and one concrete correction before paid retry."
+    - "Keep RunPod inventory at zero and author one exact successor."
   safe_parallelism:
     maximum_lanes_including_integration: 1
     integration_owner: VF-8-04
   prohibited_in_task:
-    - "Model/role changes, schema/UI redesign, production bindings, or deployment."
-    - "Any model substitution, more than one endpoint/worker, workersMin above zero, standalone Pod, non-RunPod provider, browser credential exposure, spend above $5, or incomplete cleanup."
+    - "Any provider/GPU/cloud mutation, model download, dispatch, or spend."
+    - "Model substitution, fallback execution, schema/UI redesign, production bindings, credential exposure, or deployment."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -239,16 +238,17 @@ known_incomplete_boundaries:
   - "No encrypted off-machine backup, R2 integrity inventory, clean-target cloud restore, ten-user contention/security proof, or fresh-account production Chrome sign-off exists."
 
 next_tasks:
-  - "1. VF-8-04 build and qualify pinned AvatarForcing through one scale-zero RunPod lane."
-  - "2. Build pinned Mage worker; exact weight access currently needs Hugging Face authentication unavailable in Chrome."
-  - "3. Add MuseTalk repair and SkyReels whole-frame fallback only after their technical triggers."
+  - "1. VF-8-05 isolate AvatarForcing container cold-start from retained logs and exact built-image smoke at $0."
+  - "2. Resume one capped AvatarForcing qualification only after a concrete correction; never blind retry."
+  - "3. Build pinned Mage worker; exact weight access currently needs Hugging Face authentication unavailable in Chrome/Keychain."
+  - "4. Add MuseTalk repair and SkyReels whole-frame fallback only after their technical triggers."
   - "5. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
   - "6. Add isolated R2, Neon, Auth, and Workflow adapters; then contention/fault/security/backup/restore hardening."
   - "7. Fresh-account production acceptance, exact provenance/cost/restore/scale-zero, and user sign-off."
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
-  full_production_mvp_implemented_percent: 54
+  full_production_mvp_implemented_percent: 56
   production_end_to_end_proven: false
   completed:
     provider_free_foundation_percent: 100
@@ -259,31 +259,32 @@ progress_snapshot:
     custom_image_style_provider_free_percent: 100
   early_or_blocked:
     production_image_lane_percent: 10
-    production_avatar_lane_percent: 20
+    production_avatar_lane_percent: 35
     cloud_staging_integration_percent: 15
     production_release_percent: 0
-  interpretation: "Provider-free media, restart-safe Node sandbox, and locked Runware runtime composition are complete; provider-backed media, cloud staging, hardening, and release remain unproven."
+  interpretation: "Provider-free media, restart-safe Node sandbox, locked Runware runtime composition, RunPod scale-zero control, and the pinned AvatarForcing worker/qualification harness are implemented. The real Avatar worker still has no valid output; Mage access, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: avatarforcing_worker_selected
+  status: avatarforcing_diagnostic_selected
   completed_and_preserved:
     - "All completed tasks/commits above; no paused implementation or unexplained dirty state."
-    - "Latest forced full verification is green at d9adee9 with 786 tests/journeys and zero skips."
-    - "VF-3-10 preserved GATE_AVATAR_003 open with pinned code/weights/license evidence at $0; no weights, credentials, legal acceptance, provider call, GPU/cloud mutation, or push."
+    - "Forced full verification passed at the VF-8-04 handoff tree: Workerd 1/1 and installed Chrome 38/38 with zero skips."
+    - "Four bounded RunPod attempts produced no Avatar output; total settled spend $0.2020189583. Every endpoint/template was deleted and live inventory is zero."
+    - "Pinned handler registration now runs inside GHCR CI; GATE_AVATAR_003 remains open and no fallback trigger has been reached."
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from VF-3-10 evidence commit 96e5fd3; preserve all newer commits."
-    - "Load only phase8_avatarforcing_worker and tasks/VF-8-04.md."
-    - "Use one Serverless endpoint with pinned AvatarForcing, at most $5, and mandatory drain/delete/zero inventory."
+    - "Require clean HEAD descending from 8ceecb4add96e93c5f3892b28152e494e2c964bf; preserve all newer commits."
+    - "Load only phase8_avatarforcing_diagnostic and tasks/VF-8-05.md."
+    - "Use $0/read-only diagnostics only; do not create or start RunPod resources."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
-    - "Credential exposure, model/revision drift, second endpoint/worker, workersMin above zero, cap uncertainty/exhaustion, or cleanup not confirmed."
+    - "Credential exposure, model/revision drift, any provider mutation/spend, or non-zero RunPod inventory."
 
 notes:
   - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."
   - "Mage preflight VF-3-08 already preserved GATE_IMAGE_002 open; do not repeat a broad research pass."
-  - "VF-3-10 pinned AvatarForcing code revision 63b73e6 and weights revision e244891; contradictory code-license artifacts and missing weight license keep commercial use blocked."
+  - "VF-3-10 pinned AvatarForcing code revision 63b73e6 and weights revision e244891; terms remain ambiguous, but user-accepted risk allows bounded qualification while clear-permission claims remain blocked."
   - "VF-3-11 ended without a replacement after the user reaffirmed AvatarForcing and explicitly excluded LongCat; GATE_AVATAR_003 remains open."
   - "TypeScript remains the sole RFC 8785/JCS authority; Python validates schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output remains three compositions, realistic footage, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
