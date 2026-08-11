@@ -13,10 +13,10 @@ COPY requirements.runtime.txt /opt/videoforge/requirements.runtime.txt
 RUN pip install --no-cache-dir -r /opt/videoforge/requirements.runtime.txt
 ARG FLASH_ATTN_WHEEL_URL=https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.3/flash_attn-2.8.3%2Bcu12torch2.8cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 ARG FLASH_ATTN_WHEEL_SHA256=f1a9e6cb4dfbd1647e56235d81fd6b56e6cd01c7ea3249968ca4aa36c389371a
-RUN curl --fail --location --retry 3 --output /tmp/flash_attn.whl "$FLASH_ATTN_WHEEL_URL" \
-    && echo "$FLASH_ATTN_WHEEL_SHA256  /tmp/flash_attn.whl" | sha256sum --check --strict \
-    && pip install --no-cache-dir /tmp/flash_attn.whl \
-    && rm /tmp/flash_attn.whl
+RUN curl --fail --location --retry 3 --output /tmp/flash_attn-2.8.3+cu12torch2.8cxx11abiFALSE-cp311-cp311-linux_x86_64.whl "$FLASH_ATTN_WHEEL_URL" \
+    && echo "$FLASH_ATTN_WHEEL_SHA256  /tmp/flash_attn-2.8.3+cu12torch2.8cxx11abiFALSE-cp311-cp311-linux_x86_64.whl" | sha256sum --check --strict \
+    && pip install --no-cache-dir /tmp/flash_attn-2.8.3+cu12torch2.8cxx11abiFALSE-cp311-cp311-linux_x86_64.whl \
+    && rm /tmp/flash_attn-2.8.3+cu12torch2.8cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 COPY src /opt/videoforge/src
 COPY handler.py bootstrap_models.py entrypoint.sh /opt/videoforge/
 RUN chmod 0555 /opt/videoforge/entrypoint.sh
