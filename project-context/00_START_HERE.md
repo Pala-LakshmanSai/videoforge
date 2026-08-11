@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: see `CURRENT_STATE.yaml` (Phase 0–2 preserved; VF-7-05 green; VF-7-06 selected)
+Status: see `CURRENT_STATE.yaml` (Phase 0–2 preserved; VF-7-06 contract green; VF-DX-01 selected)
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -34,11 +34,17 @@ lineage revalidation, optimistic concurrency, replay after reopen, and atomic pu
 same-parent active-pointer movement. The forced full gate passed 164 control-plane, 163 web,
 115 pipeline, 43 provider-sandbox, 1 local-Workerd, and 38 installed-Chrome tests at `$0`.
 
-`CURRENT_STATE.yaml` selects only exact context/contract brief `VF-7-06`: reconcile how manual edits
-transform analyzer evidence and canonical artifact lineage before any edit implementation is
-authorized. The ambiguity remains explicit; the task must stop for the smallest user decision if
-multiple product-valid policies survive the normative audit. Application code, routes/UI, uploads,
-previews, live providers, staging, and production remain outside this brief.
+VF-7-06 decision commit `cd2d74a` locks preserve-and-detach manual-edit provenance: accepted
+analyzer bytes/evidence remain immutable historical source truth; every pre-publication creative
+edit creates a separate immutable derived artifact, current-profile analyzer evidence is explicitly
+inapplicable, stale review is invalidated, and publication pins exact current bytes. This is a
+contract only; no edit migration/service/route/UI is implemented.
+
+`CURRENT_STATE.yaml` now selects exact provider-free implementation brief `VF-DX-01`. It records a
+same-machine forced verification baseline, removes duplicate builds/control-plane test execution,
+adds a warm two-minute `verify:fast`, and must make the forced full gate at least 30% faster with the
+identical suite/pass/intentional-skip inventory. CI splitting, telemetry, product behavior,
+providers, cloud mutation, downloads, and spend remain outside this brief.
 
 Production media remains blocked: Mage checkpoint/license evidence is unresolved; AvatarForcing
 licensing artifacts contradict each other; image/avatar/GPU/RunPod/fallback/cost/style-adherence

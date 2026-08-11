@@ -1,0 +1,46 @@
+{
+  "task_id": "VF-7-06",
+  "result": "PASS",
+  "checked_at": "2026-08-11T09:06:13Z",
+  "decision_commit": "cd2d74a3bbcd87dd55dc801ab991b20a54e11259",
+  "provider_mode": "fixture",
+  "provider_calls": 0,
+  "external_spend_usd": 0,
+  "application_code_changed": false,
+  "machine_schema_changed": false,
+  "decision": {
+    "id": "DEC_STYLE_007",
+    "policy": "preserve_and_detach",
+    "source_analysis_artifact": "immutable_historical_truth",
+    "manual_edit_artifact": "immutable_derived_current_profile",
+    "published_bytes": "exact_current_artifact"
+  },
+  "derived_analysis": {
+    "analysis_kind": "MANUAL_EDIT",
+    "overall_confidence": null,
+    "trait_evidence": [],
+    "uncertain_fields": [],
+    "outlier_reference_aliases": [],
+    "content_leakage_warnings": []
+  },
+  "checks": {
+    "field_by_field_provenance_table": "PASS",
+    "source_parent_derived_lineage": "PASS",
+    "optimistic_concurrency_and_replay_contract": "PASS",
+    "review_and_publication_contract": "PASS",
+    "partial_failure_and_version_immutability_contract": "PASS",
+    "context_validation": "PASS",
+    "schema_validation": "PASS",
+    "secret_scan": "PASS",
+    "prettier": "PASS",
+    "diff_check": "PASS"
+  },
+  "preserved": [
+    "VF-7-04 accepted analyzer artifact and evidence",
+    "VF-7-05 byte-identical reviewed publication evidence",
+    "published style and project revision immutability",
+    "ordinary project zero style-analysis calls",
+    "provider mode fixture and zero spend",
+    "accepted UI and output grammar"
+  ]
+}

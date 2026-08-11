@@ -170,9 +170,8 @@ only the version's current-artifact pointer. Publishing pins the exact current a
 version and every artifact in its history are immutable.
 
 The editable surface is exactly `/summary`, `/visual_profile/**`, and `/prompt_profile/**`. The
-client submits a complete candidate profile, not a merge patch. Trusted code validates and RFC
-8785-canonicalizes it, applies the same semantic and hard-rule/crop validator used at publication,
-and computes `style_profile_hash = SHA-256(JCS(candidate))`. The candidate must use
+client submits a complete profile, not a merge patch. Trusted code canonicalizes it, applies the
+publication validators, and computes `style_profile_hash = SHA-256(JCS(candidate))`. It must use
 `analysis.analysis_kind = MANUAL_EDIT`; its current-profile evidence fields are inapplicable and
 therefore exactly `overall_confidence = null` with empty `trait_evidence`, `uncertain_fields`,
 `outlier_reference_aliases`, and `content_leakage_warnings`. Analyzer values remain available only
@@ -210,9 +209,8 @@ conflict. A stale first execution fails `STYLE_VERSION_CONFLICT`.
 Artifact creation, provenance insertion, current-pointer/revision movement, and review-snapshot
 invalidation are one logical atomic mutation. Validation/canonicalization/storage failure,
 incompatible profile contract/version, source/current artifact mismatch, stale review/pointer, or
-provenance failure leaves the pointer and visible history unchanged; an unreachable content-store
-write may be garbage-collected but is never current or publishable. `PUBLISHED` and `ABANDONED`
-versions reject edits. Editing a published style starts a new `DRAFT` version based on the exact
+provenance failure leaves the pointer and visible history unchanged. `PUBLISHED` and `ABANDONED`
+versions reject edits. Editing a published style starts a new `DRAFT` based on the exact
 published artifact; it retains the prior root source-analysis link when one exists, but never
 changes the published version or any project revision pinned to it. Built-in styles remain
 non-editable; non-analyzed manual/duplicate-source editing must not fabricate analyzer evidence.
