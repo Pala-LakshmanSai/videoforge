@@ -1,0 +1,58 @@
+{
+  "schema_version": "videoforge.mage-access-license-preflight/v1",
+  "task_id": "VF-3-08",
+  "gate_id": "GATE_IMAGE_002",
+  "checked_at": "2026-08-11T04:03:03Z",
+  "result": "OPEN_BLOCKED",
+  "external_spend_usd": 0,
+  "provider_calls_made": false,
+  "credentials_accessed": false,
+  "accounts_mutated": false,
+  "legal_terms_accepted": false,
+  "model_weights_downloaded": false,
+  "gpu_activated": false,
+  "hugging_face": {
+    "repository": "microsoft/Mage-Flow-Turbo",
+    "model_page": {
+      "url": "https://huggingface.co/microsoft/Mage-Flow-Turbo",
+      "anonymous_http_status": 401,
+      "existing_chrome_session_state": "SIGNED_OUT_404"
+    },
+    "model_api": {
+      "url": "https://huggingface.co/api/models/microsoft/Mage-Flow-Turbo",
+      "anonymous_http_status": 401
+    },
+    "license_artifact": {
+      "url": "https://huggingface.co/microsoft/Mage-Flow-Turbo/raw/main/LICENSE",
+      "anonymous_http_status": 401,
+      "retrieved": false
+    },
+    "exact_current_revision": null,
+    "complete_file_inventory_confirmed": false,
+    "current_gating_state_confirmed": false,
+    "cached_official_page_support": {
+      "reported_license_metadata": "mit",
+      "reported_repository_size": "17.5 GB",
+      "live_verified": false,
+      "authority": "supporting_only"
+    }
+  },
+  "microsoft_source_repository": {
+    "url": "https://github.com/microsoft/Mage",
+    "head_revision": "76bec2bb3818863f470de7e867c2dc7f1d0bfd83",
+    "license_spdx": "MIT",
+    "license_blob_sha": "9003ea9e9eace590d66dfa2941266e463d75606c",
+    "license_sha256": "sha256:275b4dd619de4e16a017b10d0beec72abbbbf14ee8a2fc68f8bdb398e821f623",
+    "readme_sha256": "sha256:add0420e81d510736e459f818504ef7906a9afb12d51a6cf61098bd06ce9565a",
+    "readme_model_license_label": "MIT",
+    "readme_product_deployment_guidance": "RESEARCH_ONLY_NOT_INTENDED_FOR_PRODUCT_OR_SERVICE_DEPLOYMENT",
+    "governs_exact_hugging_face_weight_artifacts": "UNCONFIRMED"
+  },
+  "acceptance": {
+    "exact_checkpoint_revision_recorded": false,
+    "authoritative_weight_license_artifact_recorded": false,
+    "official_policy_unambiguous": false,
+    "gate_closed": false
+  },
+  "blocker": "Live official Hugging Face checkpoint/license artifacts require access not present in the existing session, while Microsoft's source repository combines MIT labeling with research-only deployment guidance."
+}

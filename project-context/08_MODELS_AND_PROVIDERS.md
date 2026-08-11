@@ -97,9 +97,9 @@ The separate `microsoft/Mage-Flow-Edit-Turbo` model is not needed in the normal 
 
 Mage receives a text prompt compiled from the selected style profile; it does not receive the style's reference images in MVP. Prompt-derived styling is intentionally simple/cheap but must pass `GATE_STYLE_002`. Do not silently introduce reference conditioning or LoRA training if a distinctive style fails.
 
-Access/launch gate: preserve the exact model card/license/checkpoint artifact used, verify commercial launch terms and gated download access, and pin a revision/hash. Official Hugging Face search/model-card metadata still reports MIT and a public 4B BF16 repository, but unauthenticated API and raw `LICENSE` retrieval again returned HTTP 401 on 2026-08-11. `GATE_IMAGE_002` therefore remains open: launch must rely on the exact retrieved official artifact, not search metadata, an unofficial mirror, or memory.
+Access/launch gate: preserve the exact model card/license/checkpoint artifact used, verify commercial launch terms and gated download access, and pin a revision/hash. On 2026-08-11, anonymous official Hugging Face page/API/raw-`LICENSE` requests returned HTTP 401 and the existing signed-out Chrome session showed 404. Search-indexed official metadata reported MIT and a 17.5 GB repository, but could not establish a live exact revision or governing weight-license artifact. Microsoft's public `microsoft/Mage` source repository at `76bec2bb3818863f470de7e867c2dc7f1d0bfd83` has an MIT `LICENSE` and labels Mage-Flow MIT, while the same README describes the models as research-only/not intended for product or service deployment. `GATE_IMAGE_002` therefore remains open: neither cached metadata nor source-code licensing resolves exact checkpoint access and commercial weight authority.
 
-Official source: [Mage-Flow-Turbo model card](https://huggingface.co/microsoft/Mage-Flow-Turbo).
+Official sources: [Mage-Flow-Turbo model card](https://huggingface.co/microsoft/Mage-Flow-Turbo) and [Microsoft Mage source repository](https://github.com/microsoft/Mage).
 
 ## AvatarForcing
 

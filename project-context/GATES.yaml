@@ -31,8 +31,11 @@ gates:
     status: open
     blocks: commercial_launch
     acceptance: "08_MODELS_AND_PROVIDERS.md#mage-flow-turbo"
-    owner: unassigned
-    last_run: null
+    owner: VF-3-08
+    last_run: "evidence/gates/GATE_IMAGE_002/2026-08-11-huggingface-mage-access-license"
+    result: open_blocked
+    checked_at: "2026-08-11T04:03:03Z"
+    blocker: "Anonymous official Hugging Face model/API/LICENSE access returns HTTP 401 and the existing signed-out Chrome session shows 404; exact weight revision/license is unavailable, while Microsoft's source README combines MIT labeling with research-only deployment guidance."
   GATE_LLM_001:
     status: closed
     blocks: runware_prompt_production_profile

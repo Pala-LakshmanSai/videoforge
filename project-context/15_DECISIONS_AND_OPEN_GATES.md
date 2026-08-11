@@ -62,7 +62,7 @@ In MVP, deterministic media checks can auto-pass technical validity, but the use
 | `GATE_AVATAR_002` | User approves global rejection/demotion threshold after bakeoff | Until then SkyReels is per-clip only |
 | `GATE_AVATAR_003` | Obtain authoritative clarification reconciling the repository README's Apache-2.0 claim, the committed academic-only/non-commercial `LICENSE.txt`, and the weights repository's missing license | No AvatarForcing weight download, paid qualification, production profile, or commercial use |
 | `GATE_IMAGE_001` | Reproduce ~300 images in 5–8 generation minutes and <$0.20 | Lock Mage resolution/batch/GPU |
-| `GATE_IMAGE_002` | Retrieve exact checkpoint and launch-license artifact | Required before commercial launch |
+| `GATE_IMAGE_002` | Exact Hugging Face checkpoint/license remains inaccessible (HTTP 401/signed-out 404); Microsoft source labels Mage-Flow MIT but also gives research-only deployment guidance | Required before weight download, paid qualification, or commercial launch; do not infer authority from cached metadata |
 | `GATE_STYLE_002` | Same-content Mage bakeoff across default + four distinct extracted styles | Prove prompt-only profiles are sufficient before considering LoRA/reference conditioning |
 | `GATE_FALLBACK_001` | SkyReels low-VRAM 48 GB fit, quality, boot, accepted cost | Provision/lock quality endpoint |
 | `GATE_GPU_001` | Benchmark tested model/GPU allowlists | The UI may show planned candidates disabled, but no untested image/media or primary-avatar execution profile can become selectable |
