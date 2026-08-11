@@ -20,7 +20,7 @@ Status: complete; exact provider-free worker-build successor selected
   `skyreels-centered-960x960p25-v2`; the square canonical runtime source selects the official
   960x960 bucket and FFmpeg v3 deterministically center-crops then converts 25 to 30 fps.
 - First qualification envelope: one A100 80GB worker, `workersMin=0`, `workersMax=1`, no volume,
-  at least 160 GB ephemeral disk, one five-second owned/synthetic clip, 30-minute job timeout,
+  120 GB ephemeral container disk, one five-second owned/synthetic clip, 30-minute job timeout,
   one dispatch, `$2.00` maximum new spend, mandatory cancel/drain/delete and independent zero audit.
 - Worker must pin source/model revisions, verify input hashes, download only into its ephemeral
   cache, return checksum/probe/lineage/cost-safe metadata, never return raw logs, and fail closed.
