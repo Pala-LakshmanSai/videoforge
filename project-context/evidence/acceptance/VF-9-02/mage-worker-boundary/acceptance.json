@@ -1,0 +1,44 @@
+{
+  "schema_version": "videoforge.mage-worker-boundary/v1",
+  "task_id": "VF-9-02",
+  "checked_at": "2026-08-11T23:11:17Z",
+  "implementation_commit": "774b56f4d121890f23d06c235525ee09bf0febbb",
+  "external_spend_usd": 0,
+  "provider_calls": 0,
+  "model_downloaded": false,
+  "source_revision": "76bec2bb3818863f470de7e867c2dc7f1d0bfd83",
+  "model_id": "microsoft/Mage-Flow-Turbo",
+  "model_revision": null,
+  "bootstrap_state": "MAGE_MODEL_REVISION_INACCESSIBLE",
+  "boundary": {
+    "production_batch_min": 32,
+    "production_batch_max": 64,
+    "inline_qualification_batch": 1,
+    "inline_width": 1024,
+    "inline_height": 1024,
+    "steps": 4,
+    "cfg": 1.0,
+    "dtype": "bfloat16",
+    "timeout_seconds": 600,
+    "shell_execution": false,
+    "cancellation": "terminate_then_kill",
+    "offline_model_environment": true,
+    "png_crc_and_profile_validation": true,
+    "output_text_metadata_forbidden": true
+  },
+  "source_patch": {
+    "path": "workers/image-media/mage-no-watermark.patch",
+    "sha256": "sha256:86caf41c1c74ecb9ca6fd0b017e8a1ed45aaa48e76fdb5a54f638a71b4a7c9ad",
+    "removes_gaussian_shading_watermark": true,
+    "refusal_placeholder_behavior": "MAGE_PROMPT_REFUSED"
+  },
+  "verification": {
+    "command": "CI=1 TURBO_FORCE=true pnpm verify",
+    "result": "pass",
+    "workerd_http_parity": "1/1",
+    "image_media_tests": "25/25",
+    "installed_chrome": "38/38",
+    "installed_chrome_skipped": 0
+  },
+  "runpod_inventory": "INHERITED_ABSOLUTE_ZERO_NO_PROVIDER_ACCESS_IN_TASK"
+}

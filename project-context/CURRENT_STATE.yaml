@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T22:53:34Z"
+updated_at: "2026-08-11T23:11:17Z"
 
-phase: mage_worker_boundary
+phase: mage_revision_admission
 implementation_authorized_in_current_task: true
-current_milestone: locked_mage_worker_boundary
-current_task: VF-9-02
+current_milestone: authenticated_mage_revision_admission
+current_task: VF-9-03
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -19,8 +19,8 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "24e5b1d"
-  working_tree_expected: clean_after_vf_9_01_preflight_handoff
+  last_good_commit: "774b56f"
+  working_tree_expected: clean_after_vf_9_02_boundary_handoff
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -44,7 +44,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-02 permits local image-media worker code/tests/docs and Git push only. Provider credentials, model download, GHCR image, RunPod/Runware mutation, GPU, dispatch, and spend are forbidden; RunPod remains absolute zero."
+  provider_authority_scope: "VF-9-03 permits read-only inspection through an existing authenticated Hugging Face session plus local code/tests/docs and Git push. Token creation/copy/persistence, model download, GHCR image, RunPod/Runware mutation, GPU, dispatch, and spend are forbidden; RunPod remains absolute zero."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -232,22 +232,27 @@ completed_tasks:
     implementation_commit: "ed74771"
     evidence: "evidence/acceptance/VF-9-01/mage-worker-preflight"
     summary: "Pinned official Mage source/runtime facts and exact file hashes at $0. Live official Mage-Flow-Turbo model access remains HTTP 401/404, so exact model revision is unavailable; licensing is not treated as a blocker per user direction."
+  - task_id: VF-9-02
+    status: complete
+    implementation_commit: "774b56f4d121890f23d06c235525ee09bf0febbb"
+    evidence: "evidence/acceptance/VF-9-02/mage-worker-boundary"
+    summary: "Strict fail-closed Mage job/result/bootstrap boundary, pinned no-watermark/refusal source patch, hostile-input/output validation, cancellation/timeout/redaction, and full local verification passed at $0."
 
 latest_closed_handoff:
-  task_id: VF-9-01
-  status: complete_with_narrow_access_blocker
-  task_kind: mage_worker_preflight
-  implementation_commit: "ed74771"
-  evidence: "evidence/acceptance/VF-9-01/mage-worker-preflight"
-  verification_result: "source_runtime_pinned_exact_model_revision_inaccessible"
-  external_actions: "Read-only first-party GitHub/Hugging Face checks only; RunPod remained absolute zero."
+  task_id: VF-9-02
+  status: complete
+  task_kind: mage_worker_boundary
+  implementation_commit: "774b56f4d121890f23d06c235525ee09bf0febbb"
+  evidence: "evidence/acceptance/VF-9-02/mage-worker-boundary"
+  verification_result: "fail_closed_boundary_and_full_verify_passed"
+  external_actions: "Git push only; no credential, model, provider, GPU, or spend activity."
   external_spend_usd: 0
 
 last_green:
-  checked_at: "2026-08-11T22:20:00Z"
+  checked_at: "2026-08-11T23:10:00Z"
   result: pass
-  verified_commit: "24e5b1d49cc23c03dd2396f746dfe5a009d1c99d"
-  command: "CI=1 TURBO_FORCE=true pnpm verify plus GHCR workflow 31541727892"
+  verified_commit: "774b56f4d121890f23d06c235525ee09bf0febbb"
+  command: "CI=1 TURBO_FORCE=true pnpm verify"
   counts:
     control_plane_pglite_tests: 209
     web_server_component_tests: 203
@@ -258,39 +263,39 @@ last_green:
     playwright_chrome_journeys_passed: 38
     playwright_chrome_journeys_intentionally_skipped: 0
   findings_closed:
-    - "SkyReels emits best-effort ordered inference heartbeat evidence and reserves a 150-second timeout margin without changing the pinned official launch command."
+    - "Mage boundary fails closed before model activity, removes mandatory watermark injection, rejects refusal placeholders, and validates cancellation/timeout/output/lineage without secrets."
   evidence:
-    - "evidence/acceptance/VF-8-16/skyreels-timeout-hardening"
+    - "evidence/acceptance/VF-9-02/mage-worker-boundary"
 
 active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-9-02
-  milestone: locked_mage_worker_boundary
+  task_id: VF-9-03
+  milestone: authenticated_mage_revision_admission
   status: ready
-  dependency_status: vf_9_01_source_runtime_pinned_model_revision_blocker_retained
-  authorization_status: provider_free_mage_worker_boundary
-  read_profile: phase9_mage_worker_boundary
-  task_brief: tasks/VF-9-02.md
-  goal: "Build the strict Mage worker boundary with fail-closed unresolved model revision at $0."
+  dependency_status: vf_9_02_boundary_complete_exact_model_revision_unresolved
+  authorization_status: read_only_existing_authenticated_hf_session
+  read_profile: phase9_mage_revision_admission
+  task_brief: tasks/VF-9-03.md
+  goal: "Pin the exact official Mage model revision or retain one exact authenticated access blocker at $0."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   provider_authority: null
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: false
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: "existing_authenticated_browser_session_only_no_token_access"
   model_downloads_authorized: false
   application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-9-02/mage-worker-boundary"
+  expected_evidence: "evidence/acceptance/VF-9-03/mage-revision-admission"
   required_handoff:
-    - "Implement strict Mage input/result/bootstrap/cancel/timeout/redaction boundaries with fakes."
-    - "Fail closed until an exact official model revision is admitted."
-    - "Run focused/full checks and author exactly one revision-admission successor."
+    - "Use only an existing authenticated Hugging Face browser/session without reading or persisting tokens."
+    - "Pin exact official model revision/file identities or retain one exact blocker."
+    - "Author exactly one bounded image-build successor only on admission success."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-9-02
+    integration_owner: VF-9-03
   prohibited_in_task:
-    - "HF credential access, model download, GHCR model image, RunPod/Runware mutation, GPU, dispatch, or spend."
+    - "Token creation/copy/persistence, model download, GHCR model image, RunPod/Runware mutation, GPU, dispatch, or spend."
     - "Model substitution, Avatar work, app/schema/UI change, promotion, or deployment."
 
 blocking_gates_for_production:
@@ -320,17 +325,16 @@ known_incomplete_boundaries:
   - "Two bounded SkyReels resumes produced no candidate; the latest provider 503 was cancelled and manually recovered to absolute-zero inventory. No further paid SkyReels retry is selected."
 
 next_tasks:
-  - "1. VF-9-02 build the strict Mage worker boundary with fail-closed revision admission at $0."
-  - "2. Admit the exact official Mage model revision through an existing authenticated HF session."
-  - "3. Publish and qualify one real Mage image under a separate cap; always leave RunPod zero."
-  - "4. Add MuseTalk repair and SkyReels whole-frame fallback only after their technical triggers."
-  - "5. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
-  - "6. Add isolated R2, Neon, Auth, and Workflow adapters; then contention/fault/security/backup/restore hardening."
-  - "7. Fresh-account production acceptance, exact provenance/cost/restore/scale-zero, and user sign-off."
+  - "1. VF-9-03 admit the exact official Mage model revision through an existing authenticated HF session."
+  - "2. Publish and qualify one real Mage image under a separate cap; always leave RunPod zero."
+  - "3. Add MuseTalk repair and SkyReels whole-frame fallback only after their technical triggers."
+  - "4. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
+  - "5. Add isolated R2, Neon, Auth, and Workflow adapters; then contention/fault/security/backup/restore hardening."
+  - "6. Fresh-account production acceptance, exact provenance/cost/restore/scale-zero, and user sign-off."
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
-  full_production_mvp_implemented_percent: 64
+  full_production_mvp_implemented_percent: 65
   production_end_to_end_proven: false
   completed:
     provider_free_foundation_percent: 100
@@ -340,14 +344,14 @@ progress_snapshot:
     prompt_and_style_provider_qualification_and_adapters_percent: 100
     custom_image_style_provider_free_percent: 100
   early_or_blocked:
-    production_image_lane_percent: 10
+    production_image_lane_percent: 18
     production_avatar_lane_percent: 68
     cloud_staging_integration_percent: 15
     production_release_percent: 0
   interpretation: "Provider-free media, restart-safe Node sandbox, Runware runtime composition, RunPod scale-zero control, and pinned real AvatarForcing/SkyReels workers are implemented. AvatarForcing produced a valid but rejected-quality MP4; corrected SkyReels inference exceeded the bounded 30-minute window, and Mage, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: mage_worker_boundary_selected
+  status: mage_revision_admission_selected
   completed_and_preserved:
     - "All completed tasks/commits above; no paused implementation or unexplained dirty state."
     - "Forced full verification passed at the VF-8-04 handoff tree: Workerd 1/1 and installed Chrome 38/38 with zero skips."
@@ -368,12 +372,13 @@ activation_handoff:
     - "VF-8-16 added safe 60-second inference heartbeat and timeout margin, then published immutable image sha256:8f94062164794c19036605282968a96dd098a09aa91d066b9eaafbb5577f48c9 at $0."
     - "VF-8-17 met provider HTTP 503, confirmed cancellation, recovered transient cleanup 500s to exact endpoint/template 204 deletion, and independently proved RunPod absolute zero."
     - "VF-9-01 pinned official Mage source/runtime and exact file identities; official model API remains HTTP 401/404, so exact weight revision is the sole technical blocker."
+    - "VF-9-02 implemented the strict Mage boundary and pinned source patch; full verification passed at $0."
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from ed74771; preserve all newer commits."
-    - "Load only phase9_mage_worker_boundary and tasks/VF-9-02.md."
-    - "Build and test the fail-closed Mage worker boundary without provider/model access or spend."
+    - "Require clean HEAD descending from 774b56f; preserve all newer commits."
+    - "Load only phase9_mage_revision_admission and tasks/VF-9-03.md."
+    - "Use only an existing authenticated HF browser session to pin exact model identity; download nothing."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
     - "Credential access, model/revision ambiguity, any provider mutation/download/spend, or non-zero RunPod inventory."
