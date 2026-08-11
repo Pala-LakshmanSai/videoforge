@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-import type { ImageStyleProfileDocument } from "./schemas.js";
-import { canonicalContractZodSchema } from "./zod-wrappers.js";
+import { imageStyleProfileSchema } from "./image-style-profile.js";
 
 export const IMAGE_STYLE_EDIT_REQUEST_VERSION = "image-style-edit-request/v1" as const;
 export const IMAGE_STYLE_EDIT_RESPONSE_VERSION = "image-style-edit-response/v1" as const;
@@ -13,7 +12,7 @@ const positiveSafeIntegerSchema = z.number().int().positive().safe();
 export const imageStyleEditRequestSchema = z
   .object({
     schema_version: z.literal(IMAGE_STYLE_EDIT_REQUEST_VERSION),
-    candidate_profile: canonicalContractZodSchema<ImageStyleProfileDocument>("imageStyleProfile"),
+    candidate_profile: imageStyleProfileSchema,
   })
   .strict();
 

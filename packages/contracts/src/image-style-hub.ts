@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-import type { ImageStyleProfileDocument } from "./schemas.js";
-import { canonicalContractZodSchema } from "./zod-wrappers.js";
+import { imageStyleProfileSchema } from "./image-style-profile.js";
 
 export const IMAGE_STYLE_DRAFT_CREATE_VERSION = "image-style-draft-create/v1" as const;
 export const IMAGE_STYLE_REFERENCE_BATCH_VERSION = "image-style-reference-batch/v1" as const;
@@ -120,7 +119,7 @@ export const imageStyleHubVersionResponseSchema = z
     revision: positiveIntegerSchema,
     version_tag: z.string().min(1),
     references: z.array(imageStyleHubReferenceSchema).max(8),
-    profile: canonicalContractZodSchema<ImageStyleProfileDocument>("imageStyleProfile").nullable(),
+    profile: imageStyleProfileSchema.nullable(),
     profile_hash: sha256Schema.nullable(),
     original_bytes_persisted: z.literal(false),
     normalized_bytes_persisted: z.boolean(),
