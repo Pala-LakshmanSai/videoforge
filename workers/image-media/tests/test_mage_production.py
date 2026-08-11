@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from videoforge_image_media import mage_production as mage  # noqa: E402
 
-REVISION = "1" * 40
+REVISION = mage.MAGE_MODEL_REVISION
 
 
 def digest(value: str) -> str:
@@ -116,15 +116,29 @@ class MageProductionContractTest(unittest.TestCase):
         with self.assertRaisesRegex(mage.MageContractError, "MAGE_INLINE_SIZE_INVALID"):
             mage.MageInlineJob.from_value(value)
 
-    def test_model_revision_fails_closed_before_command_or_model_activity(self) -> None:
+    def test_model_revision_mismatch_fails_closed_before_command_or_model_activity(self) -> None:
         parsed = mage.MageInlineJob.from_value(inline())
-        with self.assertRaisesRegex(mage.MageContractError, "MAGE_MODEL_REVISION_INACCESSIBLE"):
-            mage.build_command(parsed, Path("/models/pinned"), Path("/output"))
+        value = inline()
+        value["model_revision"] = "1" * 40
+        mismatched = mage.MageInlineJob.from_value(value)
+        with self.assertRaisesRegex(mage.MageContractError, "MAGE_MODEL_REVISION_MISMATCH"):
+            mage.build_command(mismatched, Path("/models/pinned"), Path("/output"))
+        self.assertEqual(
+            mage.require_admitted_model_revision(parsed.model_revision), mage.MAGE_MODEL_REVISION
+        )
+
+    def test_model_identity_and_size_ceiling_are_exact(self) -> None:
+        self.assertEqual(mage.MAGE_MODEL_REVISION, "395402ba3ef110c96e70d01abe4d178dbe4e01a5")
+        self.assertEqual(
+            mage.MAGE_TRANSFORMER_SHA256,
+            "6df47df3d7efc9ebdad075b87b3e9e4f74d09dca672d592271788f0ee27ab97d",
+        )
+        self.assertEqual(mage.MAGE_TRANSFORMER_BYTES, 8_231_536_760)
+        self.assertEqual(mage.MAGE_REPOSITORY_BYTE_CEILING, 18_000_000_000)
 
     def test_command_pins_turbo_settings_and_has_no_negative_branch(self) -> None:
         parsed = mage.MageInlineJob.from_value(inline())
-        with patch.object(mage, "MAGE_MODEL_REVISION", REVISION):
-            command = mage.build_command(parsed, Path("/models/pinned"), Path("/output"))
+        command = mage.build_command(parsed, Path("/models/pinned"), Path("/output"))
         self.assertEqual(command[0], "python")
         self.assertEqual(command[command.index("--steps") + 1], "4")
         self.assertEqual(command[command.index("--cfg") + 1], "1.0")
@@ -151,8 +165,7 @@ class MageProductionContractTest(unittest.TestCase):
             root = Path(temporary)
             output = root / "gen_000.png"
             output.write_bytes(png(1024, 1024))
-            with patch.object(mage, "MAGE_MODEL_REVISION", REVISION):
-                results = mage.collect_results(parsed, root)
+            results = mage.collect_results(parsed, root)
             self.assertEqual(
                 results[0]["output_sha256"],
                 "sha256:" + hashlib.sha256(output.read_bytes()).hexdigest(),
@@ -161,7 +174,6 @@ class MageProductionContractTest(unittest.TestCase):
             self.assertEqual(results[0]["source_revision"], mage.MAGE_SOURCE_REVISION)
             output.write_bytes(png(512, 1024))
             with (
-                patch.object(mage, "MAGE_MODEL_REVISION", REVISION),
                 self.assertRaisesRegex(mage.MageContractError, "MAGE_OUTPUT_PROFILE_INVALID"),
             ):
                 mage.collect_results(parsed, root)

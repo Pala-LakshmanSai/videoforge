@@ -14,7 +14,10 @@ from urllib.parse import urlsplit
 
 MAGE_SOURCE_REVISION = "76bec2bb3818863f470de7e867c2dc7f1d0bfd83"
 MAGE_MODEL_ID = "microsoft/Mage-Flow-Turbo"
-MAGE_MODEL_REVISION: str | None = None
+MAGE_MODEL_REVISION = "395402ba3ef110c96e70d01abe4d178dbe4e01a5"
+MAGE_TRANSFORMER_SHA256 = "6df47df3d7efc9ebdad075b87b3e9e4f74d09dca672d592271788f0ee27ab97d"
+MAGE_TRANSFORMER_BYTES = 8_231_536_760
+MAGE_REPOSITORY_BYTE_CEILING = 18_000_000_000
 MAGE_STEPS = 4
 MAGE_CFG = 1.0
 MAGE_DTYPE = "bfloat16"
@@ -199,8 +202,6 @@ def _validate_identity(attempt_id: object, model_revision: object) -> None:
 
 
 def require_admitted_model_revision(requested: str) -> str:
-    if MAGE_MODEL_REVISION is None:
-        raise MageContractError("MAGE_MODEL_REVISION_INACCESSIBLE")
     if requested != MAGE_MODEL_REVISION:
         raise MageContractError("MAGE_MODEL_REVISION_MISMATCH")
     return requested

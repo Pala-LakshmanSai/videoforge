@@ -21,7 +21,8 @@ avatar span. It never sends the full voiceover to an avatar worker.
 A future HTTP/RunPod adapter may expose the same `worker-health/v1` payload, but it must not change `model_state` to `ready` until the exact pinned model is actually loaded.
 
 `mage_production.py` defines the locked Mage-Flow-Turbo job/result boundary without loading or
-downloading weights. Exact model revision remains fail-closed as `MAGE_MODEL_REVISION_INACCESSIBLE`.
+downloading weights. It admits only exact model revision
+`395402ba3ef110c96e70d01abe4d178dbe4e01a5` and fails closed on any mismatch.
 The pinned source patch removes its otherwise mandatory Gaussian-Shading watermark to preserve
 VideoForge's no-watermark output rule. Refusal placeholders must never be accepted as generated
 assets.
