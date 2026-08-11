@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T17:16:00Z"
+updated_at: "2026-08-11T17:27:00Z"
 
-phase: runpod_scale_zero_foundation
+phase: avatarforcing_worker_qualification
 implementation_authorized_in_current_task: true
-current_milestone: runpod_scale_zero_control_adapter
-current_task: VF-8-03
+current_milestone: locked_avatarforcing_worker
+current_task: VF-8-04
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -19,7 +19,7 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "9f2324af11ea002cad84a7d1326c926deac9f62d"
+  last_good_commit: "1d93a5da0df0279adf49e64d89020cafaabfd20c"
   working_tree_expected: clean_after_provider_free_completion_handoff
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
@@ -43,8 +43,8 @@ live_development:
   fixture_scenario: happy_generating
   provider_mode: fixture
   provider_calls_authorized: false
-  authorized_spend_usd: 0.01
-  provider_authority_scope: "VF-8-03 permits Keychain-only RunPod API access, adapter implementation, and live read-only account/resource inventory at $0. No compute start, resource creation, model download, or deployment."
+  authorized_spend_usd: 5
+  provider_authority_scope: "VF-8-04 permits only pinned AvatarForcing worker build/qualification on one RunPod Serverless endpoint, workersMin=0/workersMax=1, public pinned downloads, at most $5, and mandatory drain/delete/zero inventory."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -141,15 +141,20 @@ completed_tasks:
     implementation_commit: "9f2324af11ea002cad84a7d1326c926deac9f62d"
     evidence: "evidence/acceptance/VF-8-02/runware-runtime"
     summary: "Server-only locked DeepSeek/Gemini Runware composition, exact sandbox cap, Keychain credential isolation, shared ledger, replay/failure tests, and corrected UUID-v4 provider identity. Live smoke returned providerUnavailable at $0."
+  - task_id: VF-8-03
+    status: complete
+    implementation_commit: "1d93a5da0df0279adf49e64d89020cafaabfd20c"
+    evidence: "evidence/acceptance/VF-8-03/runpod-scale-zero"
+    summary: "Keychain-only RunPod control adapter, redacted live inventory, exact scale-zero policy, replay/ambiguity/cancel/health-drain/update/delete guards, and live proof of zero resources at $0."
 
 latest_closed_handoff:
-  task_id: VF-8-02
+  task_id: VF-8-03
   status: complete
-  task_kind: locked_runware_runtime_implementation
-  implementation_commit: "9f2324af11ea002cad84a7d1326c926deac9f62d"
-  evidence: "evidence/acceptance/VF-8-02/runware-runtime"
-  verification_result: "verify_fast_pass_and_live_providerUnavailable_fail_closed"
-  external_actions: "Runware live DeepSeek smoke only; provider returned HTTP 400 providerUnavailable; reservation released; no Gemini call, RunPod action, resource mutation, deployment, or spend."
+  task_kind: runpod_scale_zero_control_implementation
+  implementation_commit: "1d93a5da0df0279adf49e64d89020cafaabfd20c"
+  evidence: "evidence/acceptance/VF-8-03/runpod-scale-zero"
+  verification_result: "verify_fast_pass_and_live_zero_resource_inventory"
+  external_actions: "RunPod live read-only inventory only; zero Pods/endpoints/templates/volumes/workers; no mutation, compute start, download, deployment, or spend."
   external_spend_usd: 0
 
 last_green:
@@ -176,37 +181,37 @@ active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-8-03
-  milestone: runpod_scale_zero_control_adapter
+  task_id: VF-8-04
+  milestone: locked_avatarforcing_worker
   status: ready
-  dependency_status: sandbox_and_runware_runtime_complete
-  authorization_status: keychain_runpod_read_only_zero_spend
-  read_profile: phase8_runpod_scale_zero
-  task_brief: tasks/VF-8-03.md
-  goal: "Build the fail-closed RunPod scale-zero control adapter and prove live zero-resource inventory before model deployment."
+  dependency_status: runpod_scale_zero_control_complete_and_live_inventory_zero
+  authorization_status: pinned_avatarforcing_one_endpoint_capped_spend_and_mandatory_cleanup
+  read_profile: phase8_avatarforcing_worker
+  task_brief: tasks/VF-8-04.md
+  goal: "Build and qualify the pinned AvatarForcing primary worker, then drain/delete and prove zero paid compute."
   provider_calls_authorized: true
-  maximum_external_spend_usd: 0.01
+  maximum_external_spend_usd: 5
   provider_authority:
     provider: RunPod
-    model_id: "none_control_plane_only"
-    cap_usd: 0.01
+    model_id: "KlingAIResearch/AvatarForcing@63b73e6 + lycui/AvatarForcing@e244891"
+    cap_usd: 5
     non_transferable: true
     authorized_by_user_at: "2026-08-11T16:45:00Z"
-  remote_or_cloud_mutations_authorized: false
+  remote_or_cloud_mutations_authorized: true
   credential_access_authorized: true
-  model_downloads_authorized: false
+  model_downloads_authorized: true
   application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-8-03/runpod-scale-zero"
+  expected_evidence: "evidence/acceptance/VF-8-04/avatarforcing-worker"
   required_handoff:
-    - "Add typed RunPod account/resource/lifecycle transport with Keychain-only credential loading."
-    - "Prove workersMin=0/workersMax=1, ambiguity, cancellation, drain/delete, and secret redaction."
-    - "Run live read-only inventory, confirm no paid compute was created, and author exactly one successor."
+    - "Build immutable pinned AvatarForcing worker and strict job/result contracts."
+    - "Qualify smallest owned short clips under $5 through one scale-zero Serverless worker."
+    - "Cancel/drain/delete and confirm live zero paid compute before authoring one successor."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-8-03
+    integration_owner: VF-8-04
   prohibited_in_task:
     - "Model/role changes, schema/UI redesign, production bindings, or deployment."
-    - "Compute/resource start or creation, model/weight download, non-RunPod provider, browser credential exposure, or any spend."
+    - "Any model substitution, more than one endpoint/worker, workersMin above zero, standalone Pod, non-RunPod provider, browser credential exposure, spend above $5, or incomplete cleanup."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -234,16 +239,16 @@ known_incomplete_boundaries:
   - "No encrypted off-machine backup, R2 integrity inventory, clean-target cloud restore, ten-user contention/security proof, or fresh-account production Chrome sign-off exists."
 
 next_tasks:
-  - "1. VF-8-03 build RunPod scale-zero lifecycle control and verify live zero-resource inventory."
-  - "2. Build exact locked Mage/Avatar worker paths and tightly capped RunPod qualification with mandatory scale-to-zero."
-  - "3. Prove RunPod ambiguity, callback replay, cancellation, cost, and drain-to-zero."
+  - "1. VF-8-04 build and qualify pinned AvatarForcing through one scale-zero RunPod lane."
+  - "2. Build pinned Mage worker; exact weight access currently needs Hugging Face authentication unavailable in Chrome."
+  - "3. Add MuseTalk repair and SkyReels whole-frame fallback only after their technical triggers."
   - "5. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
   - "6. Add isolated R2, Neon, Auth, and Workflow adapters; then contention/fault/security/backup/restore hardening."
   - "7. Fresh-account production acceptance, exact provenance/cost/restore/scale-zero, and user sign-off."
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
-  full_production_mvp_implemented_percent: 52
+  full_production_mvp_implemented_percent: 54
   production_end_to_end_proven: false
   completed:
     provider_free_foundation_percent: 100
@@ -254,13 +259,13 @@ progress_snapshot:
     custom_image_style_provider_free_percent: 100
   early_or_blocked:
     production_image_lane_percent: 10
-    production_avatar_lane_percent: 10
+    production_avatar_lane_percent: 20
     cloud_staging_integration_percent: 15
     production_release_percent: 0
   interpretation: "Provider-free media, restart-safe Node sandbox, and locked Runware runtime composition are complete; provider-backed media, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: runpod_scale_zero_selected
+  status: avatarforcing_worker_selected
   completed_and_preserved:
     - "All completed tasks/commits above; no paused implementation or unexplained dirty state."
     - "Latest forced full verification is green at d9adee9 with 786 tests/journeys and zero skips."
@@ -269,11 +274,11 @@ activation_handoff:
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Require clean HEAD descending from VF-3-10 evidence commit 96e5fd3; preserve all newer commits."
-    - "Load only phase8_runpod_scale_zero and tasks/VF-8-03.md."
-    - "Use only the existing Keychain RunPod key for adapter work and live read-only inventory at $0; no resource creation, compute, model download, or deployment."
+    - "Load only phase8_avatarforcing_worker and tasks/VF-8-04.md."
+    - "Use one Serverless endpoint with pinned AvatarForcing, at most $5, and mandatory drain/delete/zero inventory."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
-    - "Credential exposure, unexpected active paid resource, any mutation/compute start, model download, deployment, or charge."
+    - "Credential exposure, model/revision drift, second endpoint/worker, workersMin above zero, cap uncertainty/exhaustion, or cleanup not confirmed."
 
 notes:
   - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."
