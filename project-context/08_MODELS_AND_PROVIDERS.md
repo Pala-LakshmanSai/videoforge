@@ -3,7 +3,7 @@
 Status: user-approved ladder plus explicit benchmark gates  
 Read when: building a worker, pinning dependencies, estimating cost, or proposing a model change.
 
-Prices and provider capabilities below were refreshed from official sources on 2026-08-10 and are time-sensitive. Runware DeepSeek/Gemini qualification facts plus Mage and AvatarForcing public access state were refreshed on 2026-08-11. Runtime code must store current rates/configuration rather than hard-code this document.
+Prices and provider capabilities below were refreshed from official sources on 2026-08-10 and are time-sensitive. Runware DeepSeek/Gemini qualification facts plus Mage and AvatarForcing public access state were refreshed on 2026-08-11. The user reaffirmed the finalized Avatar ladder and LongCat exclusion on 2026-08-11. Runtime code must store current rates/configuration rather than hard-code this document.
 
 ## Runware DeepSeek V4 Flash 0731
 
@@ -103,7 +103,7 @@ Official sources: [Mage-Flow-Turbo model card](https://huggingface.co/microsoft/
 
 ## AvatarForcing
 
-Approved role: provisional technical candidate for primary talking-avatar model; commercial qualification is blocked by `GATE_AVATAR_003`.
+Approved role: selected primary talking-avatar model; download and commercial qualification are blocked by `GATE_AVATAR_003`.
 
 - At GitHub main revision `63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39`, the official README labels the project Apache-2.0 and links `lycui/AvatarForcing` as its ODE/DMD weights source. GitHub itself classifies the repository license as `Other` / `NOASSERTION`.
 - The same revision's committed `LICENSE.txt` (blob `4f099d8892d0d4b98a797f64076a285a32f173ca`, SHA-256 `138fd1e58a72a7073c02c2fb5f772539d2b944519d4b17f60d3ecdc111228314`) names `RollingForcing` and Tencent, covers its named code/parameters/weights, and prohibits commercial or production use.
@@ -114,7 +114,7 @@ Approved role: provisional technical candidate for primary talking-avatar model;
 - Produces lip movement plus face/head/subtle upper-body motion.
 - Initial RunPod target: RTX 4090 24 GB; L40S/other compatible GPU only if the measured fit requires it.
 
-`VF-3-10` preserved `GATE_AVATAR_003` open on 2026-08-11. The README/license/project-name conflict and missing weight license do not unambiguously permit intended commercial use. Do not download weights, provision compute, or spend an AvatarForcing sub-cap. The sole selected successor is a read-only primary-avatar replacement-model decision; any later candidate still requires its own qualification before VRAM, cold-start, FPS, full-screen realism, or unit cost claims. The accepted clip contract remains one native clip cropped deterministically for both layouts.
+`VF-3-10` preserved `GATE_AVATAR_003` open on 2026-08-11. The README/license/project-name conflict and missing weight license do not unambiguously permit intended commercial use. `VF-3-11` then ended without a replacement after the user reaffirmed AvatarForcing and the prior LongCat exclusion. Do not download weights, provision compute, spend an Avatar sub-cap, or expose a production profile until authoritative permission resolves the gate or the user makes a new model decision. The accepted clip contract remains one native clip cropped deterministically for both layouts.
 
 MVP fallback dispatch requires an explicit user/reviewer defect classification after deterministic technical checks. AvatarForcing/MuseTalk/SkyReels are not coupled to an unapproved automatic visual-QA model.
 
@@ -168,7 +168,7 @@ Groq Whisper, Deepgram, WhisperX, and browser-side WebGPU ASR are excluded from 
 
 | Model/tool | Reason |
 |---|---|
-| LongCat Avatar 1.5 | Excellent quality evidence but slow per-video diffusion cost breaks target budget |
+| LongCat Avatar 1.5 | User-reaffirmed exclusion: diffusion runtime/cost breaks the target budget |
 | Hallo3/Hallo2 | Far slower than the fast-avatar budget path; unattributed ranking screenshot is not authoritative |
 | SoulX FlashHead | No longer needed if AvatarForcing passes; square/head-focused compromise |
 | InfiniteTalk | Quality fallback research option only if approved ladder fails broadly |

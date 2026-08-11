@@ -1,6 +1,6 @@
 # Avatar Hub
 
-Status: VF-5-01 worker and VF-5-02 durable fixture acceptance complete; VF-3-11 primary-avatar replacement decision selected
+Status: VF-5-01 worker and VF-5-02 durable fixture acceptance complete; AvatarForcing remains selected but commercially blocked
 Read when: implementing reusable avatars, avatar source upload/validation, project avatar selection, or avatar-source provenance.
 
 ## Product contract

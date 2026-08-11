@@ -20,6 +20,7 @@ Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 - AvatarForcing pinned contradictory academic-only/non-commercial license artifact: [`LICENSE.txt` at `63b73e6`](https://github.com/KlingAIResearch/AvatarForcing/blob/63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39/LICENSE.txt)
 - AvatarForcing pinned public weights repository with no declared license: [`lycui/AvatarForcing` at `e244891`](https://huggingface.co/lycui/AvatarForcing/tree/e2448919a7b535c29f34e07892884ae1a43c6ace)
 - AvatarForcing access/license evidence and exact hashes: `evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license/`
+- VF-3-11 no-replacement/user-reaffirmation evidence: `evidence/decisions/VF-3-11/2026-08-11-user-reaffirmed-avatar-ladder/`
 - AvatarForcing paper: [arxiv.org/abs/2603.14331](https://arxiv.org/abs/2603.14331)
 - MuseTalk: [github.com/TMElyralab/MuseTalk](https://github.com/TMElyralab/MuseTalk)
 - SkyReels V3: [github.com/SkyworkAI/SkyReels-V3](https://github.com/SkyworkAI/SkyReels-V3)

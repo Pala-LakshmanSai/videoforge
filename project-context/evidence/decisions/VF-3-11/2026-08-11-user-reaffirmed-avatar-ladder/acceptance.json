@@ -1,0 +1,13 @@
+{
+  "task_id": "VF-3-11",
+  "checked_at": "2026-08-11T16:55:00Z",
+  "result": "no_replacement_selected_user_reaffirmed_locked_avatar_ladder",
+  "selected_primary": "AvatarForcing",
+  "selected_replacement": null,
+  "explicitly_excluded": ["LongCat-Video-Avatar-1.5"],
+  "blocking_gate": "GATE_AVATAR_003",
+  "provider_calls": 0,
+  "external_spend_usd": 0,
+  "gpu_or_cloud_mutations": 0,
+  "model_downloads": 0
+}

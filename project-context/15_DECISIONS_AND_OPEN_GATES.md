@@ -23,7 +23,7 @@ Every row below is `APPROVED` by the user and recorded in this planning session 
 | `DEC_STYLE_006` | Analyzer extracts shared visual traits, not reference content/identity/logo/text | Prevents accidental copying and keeps styles reusable across topics |
 | `DEC_STYLE_007` | Manual edits use preserve-and-detach provenance: accepted analyzer bytes/evidence remain immutable historical source truth, while every pre-publication edit creates a new immutable derived profile artifact in the same open version; the derived profile marks analyzer evidence inapplicable and publication pins only its exact current bytes | User explicitly selected this policy on 2026-08-11; it prevents analyzer confidence/evidence from being misrepresented as describing user-edited creative bytes while retaining full audit history |
 | `DEC_IMAGE_001` | `microsoft/Mage-Flow-Turbo`, 4-step path | User locked Mage Flow; speed/quality fit |
-| `DEC_AVATAR_001` | AvatarForcing remains a blocked provisional primary technical candidate pending replacement decision | `VF-3-10` pinned the official code and weights revisions but found no unambiguous commercial code-and-weights permission: the README says Apache-2.0, the root license names RollingForcing and prohibits commercial/production use, and the weights card declares no license. No download, qualification, profile, or commercial use is allowed. |
+| `DEC_AVATAR_001` | AvatarForcing remains the blocked primary; no replacement is selected and LongCat Avatar 1.5 remains excluded | `VF-3-10` found no unambiguous AvatarForcing commercial code-and-weights permission. During `VF-3-11` on 2026-08-11, the user reaffirmed the finalized Brainstorm ladder and explicitly rejected reopening LongCat. No Avatar primary download, qualification, profile, or commercial use is allowed while `GATE_AVATAR_003` remains open. |
 | `DEC_AVATAR_002` | MuseTalk only repairs isolated lip failure | Avoid redundant face softening/seams |
 | `DEC_AVATAR_003` | SkyReels V3 is whole-frame fallback from the revision-pinned canonical runtime source and same selected span audio—not from a failed derivative | Higher-detail/heavier rescue path while preserving exact Avatar Profile provenance |
 | `DEC_AVATAR_004` | Same centered avatar clip serves both layouts | Saves inference; deterministic crop is sufficient |
@@ -61,7 +61,7 @@ In MVP, deterministic media checks can auto-pass technical validity, but the use
 |---|---|---|
 | `GATE_AVATAR_001` | AvatarForcing exact-avatar 4090 VRAM, FPS, cold start, quality, cost | Lock 4090 profile or select measured compatible GPU |
 | `GATE_AVATAR_002` | User approves global rejection/demotion threshold after bakeoff | Until then SkyReels is per-clip only |
-| `GATE_AVATAR_003` | **OPEN — BLOCKED:** pinned code README says Apache-2.0; pinned root `LICENSE.txt` names RollingForcing and prohibits commercial/production use; pinned public weights card has no license. Evidence: `evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license/` | No AvatarForcing weight download, paid qualification, production profile, or commercial use; next task is a bounded replacement-model decision |
+| `GATE_AVATAR_003` | **OPEN — BLOCKED:** pinned code README says Apache-2.0; pinned root `LICENSE.txt` names RollingForcing and prohibits commercial/production use; pinned public weights card has no license. Evidence: `evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license/` | No AvatarForcing weight download, paid qualification, production profile, or commercial use; `VF-3-11` selected no replacement after the user reaffirmed the finalized ladder |
 | `GATE_IMAGE_001` | Reproduce ~300 images in 5–8 generation minutes and <$0.20 | Lock Mage resolution/batch/GPU |
 | `GATE_IMAGE_002` | Exact Hugging Face checkpoint/license remains inaccessible (HTTP 401/signed-out 404); Microsoft source labels Mage-Flow MIT but also gives research-only deployment guidance | Required before weight download, paid qualification, or commercial launch; do not infer authority from cached metadata |
 | `GATE_STYLE_002` | Same-content Mage bakeoff across default + four distinct extracted styles | Prove prompt-only profiles are sufficient before considering LoRA/reference conditioning |
@@ -103,7 +103,8 @@ In MVP, deterministic media checks can auto-pass technical validity, but the use
 
 - The historical complex architecture screenshot is not the implementation blueprint.
 - The unattributed Hallo3/Hallo2 ranking screenshot is not the current avatar ladder.
-- LongCat is not the default because measured/estimated per-video cost conflicts with the budget.
+- LongCat is not the default because its diffusion runtime/cost conflicts with the budget; the user
+  explicitly reaffirmed this exclusion on 2026-08-11.
 - DeepSeek via other providers, Gemini, GPT Luna, and OpenRouter were researched but not selected after the user fixed Runware.
 - Gemini is now used through Runware only for one-time Image Style analysis; this does not supersede DeepSeek as the fixed production prompt writer.
 - AI video model comparisons are retained only as historical research; AI B-roll video is deferred.

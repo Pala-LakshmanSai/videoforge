@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: provider-free media complete through `VF-7-09`; read-only `VF-3-11` selected
+Status: provider-free media complete through `VF-7-09`; `VF-8-01` Node sandbox runtime selected
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -45,9 +45,11 @@ AvatarForcing preflight `VF-3-10` is complete. It pinned GitHub code revision `6
 weights revision `e244891`, but the official README's Apache-2.0 label conflicts with a root
 academic-only/non-commercial `LICENSE.txt` that names RollingForcing, while the weights card
 declares no license. Evidence/context commit is `96e5fd3`; `GATE_AVATAR_003` remains open.
-`CURRENT_STATE.yaml` selects only read-only
-`VF-3-11`, the bounded primary-avatar replacement-model decision. Mage `VF-3-08` already preserved
-`GATE_IMAGE_002` open; do not repeat either preflight or download around either model blocker.
+`VF-3-11` ended without a replacement after the user reaffirmed the finalized Brainstorm ladder and
+explicitly rejected reopening LongCat Avatar 1.5. AvatarForcing remains selected but commercially
+blocked. `CURRENT_STATE.yaml` selects `VF-8-01`, a provider-free Node sandbox durable runtime
+composition. Mage `VF-3-08` already preserved `GATE_IMAGE_002` open; do not repeat either preflight
+or download around either model blocker.
 
 Production media remains blocked: Mage checkpoint/license evidence is unresolved; AvatarForcing
 commercial use is blocked by pinned contradictory/missing license artifacts; image/avatar/GPU/RunPod/fallback/cost/style-adherence
@@ -105,7 +107,7 @@ The Avatar Hub creates reusable private presenter presets from one centered sour
 | Image-prompt writing | Runware DeepSeek V4 Flash 0731 | Batched strict JSON; thinking off; image prompts only |
 | Reference-style analysis | Runware Gemini 3.5 Flash | Qualified strict-JSON analysis only when a new draft style version is explicitly analyzed; prompt-only adherence remains gated |
 | Image generation | `microsoft/Mage-Flow-Turbo` | 4-step Turbo; narration-relevant stills compiled for the pinned style |
-| Primary avatar | AvatarForcing | Revision-pinned canonical Avatar Profile runtime source + selected span audio; provisional pending exact-avatar benchmark |
+| Primary avatar | AvatarForcing | User-reaffirmed selection; blocked from download/qualification/commercial use by `GATE_AVATAR_003` |
 | Lip-only repair | MuseTalk 1.5 | Only an otherwise-good failed AvatarForcing clip |
 | Whole-frame avatar fallback | SkyReels V3 Talking Avatar | Same pinned runtime source + selected span audio, never a failed derivative; cold quality fallback |
 | Word timing | Local `whisper.cpp base.en` | Free ASR; local ASR is canonical in the web shell, with legacy optional-script alignment retained only at the versioned API boundary |
@@ -113,8 +115,8 @@ The Avatar Hub creates reusable private presenter presets from one centered sour
 
 The avatar router and crop geometry are user-approved. AvatarForcing remains blocked from download,
 qualification, production profile, and commercial use by contradictory official code artifacts and
-missing weight terms. `VF-3-11` may select at most one clearly commercial replacement candidate for
-a later separately authorized qualification; it cannot select around ambiguity.
+missing weight terms. `VF-3-11` selected no replacement; LongCat remains excluded by explicit user
+decision. Independent runtime work may proceed, but no Avatar gate is closed.
 
 ## Reference-derived edit grammar
 
@@ -172,7 +174,7 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and
 `19_IMPLEMENTATION_PLAYBOOK.md`. Preserve all completed commits, the accepted fixture shell, and
 the user-accepted local render. Execute only the exact task selected by `CURRENT_STATE.yaml`; its
-authority is not transferable. The selected `VF-3-11` task is read-only and `$0`. Provider calls,
+authority is not transferable. The selected `VF-8-01` task is provider-free and `$0`. Provider calls,
 downloads, GPU/cloud mutation, deployment, push, and production remain unauthorized in that brief.
 
 ## Context navigation
