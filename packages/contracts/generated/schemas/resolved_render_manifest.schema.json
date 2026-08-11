@@ -94,7 +94,7 @@
             "avatar_source_profile": {
               "enum": [
                 "avatarforcing-centered-832x480p25-v1",
-                "skyreels-centered-1280x720p24-v1"
+                "skyreels-centered-1280x720p25-v2"
               ]
             },
             "avatar_crop": {"enum": ["832:468:0:6", "1280:720:0:0"]},
@@ -107,7 +107,7 @@
               "then": {"properties": {"avatar_crop": {"const": "832:468:0:6"}}}
             },
             {
-              "if": {"properties": {"avatar_source_profile": {"const": "skyreels-centered-1280x720p24-v1"}}},
+              "if": {"properties": {"avatar_source_profile": {"const": "skyreels-centered-1280x720p25-v2"}}},
               "then": {"properties": {"avatar_crop": {"const": "1280:720:0:0"}}}
             }
           ]
@@ -162,7 +162,7 @@
             "avatar_source_profile": {
               "enum": [
                 "avatarforcing-centered-832x480p25-v1",
-                "skyreels-centered-1280x720p24-v1"
+                "skyreels-centered-1280x720p25-v2"
               ]
             },
             "avatar_crop": {"enum": ["416:468:208:6", "640:720:320:0"]},
@@ -179,7 +179,7 @@
               "then": {"properties": {"avatar_crop": {"const": "416:468:208:6"}}}
             },
             {
-              "if": {"properties": {"avatar_source_profile": {"const": "skyreels-centered-1280x720p24-v1"}}},
+              "if": {"properties": {"avatar_source_profile": {"const": "skyreels-centered-1280x720p25-v2"}}},
               "then": {"properties": {"avatar_crop": {"const": "640:720:320:0"}}}
             }
           ]

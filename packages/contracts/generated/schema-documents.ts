@@ -2574,7 +2574,7 @@ export const canonicalSchemaDocuments = {
               "avatar_source_profile": {
                 "enum": [
                   "avatarforcing-centered-832x480p25-v1",
-                  "skyreels-centered-1280x720p24-v1"
+                  "skyreels-centered-1280x720p25-v2"
                 ]
               },
               "avatar_crop": {
@@ -2611,7 +2611,7 @@ export const canonicalSchemaDocuments = {
                 "if": {
                   "properties": {
                     "avatar_source_profile": {
-                      "const": "skyreels-centered-1280x720p24-v1"
+                      "const": "skyreels-centered-1280x720p25-v2"
                     }
                   }
                 },
@@ -2748,7 +2748,7 @@ export const canonicalSchemaDocuments = {
               "avatar_source_profile": {
                 "enum": [
                   "avatarforcing-centered-832x480p25-v1",
-                  "skyreels-centered-1280x720p24-v1"
+                  "skyreels-centered-1280x720p25-v2"
                 ]
               },
               "avatar_crop": {
@@ -2795,7 +2795,7 @@ export const canonicalSchemaDocuments = {
                 "if": {
                   "properties": {
                     "avatar_source_profile": {
-                      "const": "skyreels-centered-1280x720p24-v1"
+                      "const": "skyreels-centered-1280x720p25-v2"
                     }
                   }
                 },

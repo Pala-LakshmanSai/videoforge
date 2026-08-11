@@ -234,7 +234,7 @@ Chrome checkpoint: user reviews exact-avatar full/split clips and can flag lip-o
 ## Phase 6: real fast-path render
 
 - Close the asset barrier into immutable `resolved-render-manifest/v1`.
-- Versioned FFmpeg compiler: eased zoom on every image, source-profile-validated fixed crops, direct 25→30 AvatarForcing or 24→30 SkyReels conversion, hard cuts, original voiceover, loudness policy, H.264/AAC.
+- Versioned FFmpeg compiler: eased zoom on every image, source-profile-validated fixed crops, direct 25→30 AvatarForcing/SkyReels conversion, hard cuts, original voiceover, loudness policy, H.264/AAC.
 - FFprobe QA/checksum, `READY_FOR_REVIEW` signed Chrome play/seek preview, explicit approval, then immutable production provenance manifest and approved download.
 - Run short jobs first, then a full 30-minute fast-path measurement.
 
@@ -262,7 +262,7 @@ Chrome checkpoint: create/analyze/review/test/publish/select a style and prove o
 
 - User-confirmed defect classification activates the approved router.
 - MuseTalk only for otherwise-good lip failure; SkyReels from the same revision-pinned canonical runtime source for whole-frame failure.
-- Preserve SkyReels' accepted 1280×720/24 source through its own renderer profile and prove both native full/split crops plus direct 24→30 cadence; never force it through AvatarForcing's source profile.
+- Preserve SkyReels' accepted 1280×720/25 source through its own renderer profile and prove both native full/split crops plus direct 25→30 cadence; never force it through AvatarForcing's source profile.
 - Budget reservation/approval before heavy fallback; no redundant call and no global primary swap without user-approved threshold.
 
 Exit: forced fixtures prove source lineage, cost cap, discard behavior, and cold scale-to-zero.

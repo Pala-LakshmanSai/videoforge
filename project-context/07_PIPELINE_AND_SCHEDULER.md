@@ -172,7 +172,9 @@ The timeline becomes renderable only when every required slot points to one sele
 FFmpeg:
 
 - Apply fixed avatar crops.
-- Apply the accepted asset's renderer source profile: AvatarForcing 832×480/25 fps uses its fixed crops and direct 25→30 conversion; SkyReels 1280×720/24 fps uses its separate fixed crops and direct 24→30 conversion. Never force a fallback through the primary crop or an intermediate 25 fps encode; no optical-flow/interpolation model.
+- Apply the accepted asset's renderer source profile: AvatarForcing 832×480/25 fps and SkyReels
+  1280×720/25 fps use separate fixed crops and direct 25→30 conversion. Never force a fallback
+  through the primary crop; no optical-flow/interpolation model.
 - Apply eased centered image zoom.
 - Build exact-duration 1080p30 segments.
 - Join with hard cuts.

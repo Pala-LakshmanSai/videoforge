@@ -142,7 +142,9 @@ Approved role: cold whole-frame quality fallback.
 
 - Model: Talking Avatar 19B 720P.
 - Input: the same revision-pinned canonical Avatar Profile runtime source + selected audio, never a failed derivative, raw retained original, or mutable parent lookup.
-- Native 1280×720/24 fps candidate path; supports single-GPU offload. An accepted fallback clip keeps this resolution for detail and uses the separate deterministic `skyreels-centered-1280x720p24-v1` render-source profile; it is never forced through AvatarForcing's 832×480 crop constants.
+- Official pinned talking-avatar code writes 25 fps. An accepted 1280×720 fallback keeps this
+  resolution/detail and uses `skyreels-centered-1280x720p25-v2`; it is never forced through
+  AvatarForcing's 832×480 crop constants.
 - Official repo exposes `--low_vram` using FP8 weight-only quantization and block offload, and lower-resolution fallbacks.
 - Audio input supports up to 200 seconds, far longer than VideoForge's short spans.
 

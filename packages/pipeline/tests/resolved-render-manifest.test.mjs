@@ -37,7 +37,7 @@ const CANDIDATES = Object.freeze([
     assetId: "asset_avatar_seg_0003",
     sha256: `sha256:${"6".repeat(64)}`,
     kind: "AVATAR_CLIP",
-    rendererSourceProfile: "skyreels-centered-1280x720p24-v1",
+    rendererSourceProfile: "skyreels-centered-1280x720p25-v2",
   }),
   Object.freeze({
     taskKey: "image:seg_0003:right",
@@ -115,7 +115,7 @@ test("locks exact AvatarForcing and SkyReels full/split renderer geometry", asyn
     avatar_fps: "30:round=near",
   });
   assert.deepEqual(split?.render, {
-    avatar_source_profile: "skyreels-centered-1280x720p24-v1",
+    avatar_source_profile: "skyreels-centered-1280x720p25-v2",
     avatar_crop: "640:720:320:0",
     avatar_scale: "960:1080",
     avatar_fps: "30:round=near",

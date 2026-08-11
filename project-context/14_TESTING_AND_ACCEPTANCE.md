@@ -231,7 +231,8 @@ The exact global-demotion threshold is an open user gate. Record evidence; do no
   FFmpeg golden path evaluates floating source-corner coordinates per frame and uses cubic
   interpolation for continuous subpixel sampling.
 - Slow zoom is present on both `IMAGE_FULL` and the split-right image.
-- Native 25 fps AvatarForcing and 24 fps SkyReels inputs convert directly/deterministically to 30 fps without duration drift; cadence is reviewed full-screen, no 24→25→30 double conversion occurs, and no optical-flow/interpolation model runs.
+- Native 25 fps AvatarForcing and SkyReels inputs convert directly/deterministically to 30 fps
+  without duration drift; cadence is reviewed full-screen and no optical-flow/interpolation model runs.
 - Hard cuts at exact frame boundaries.
 - One-frame and fractional-millisecond rounding fixtures.
 - 1920×1080, 30 fps CFR, H.264, `yuv420p`, AAC 48 kHz.

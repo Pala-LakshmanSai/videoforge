@@ -33,7 +33,7 @@ AvatarForcing's typical 832×480/25 fps output uses `avatarforcing-centered-832x
 crop=832:468:0:6,scale=1920:1080
 ```
 
-An accepted SkyReels fallback keeps its 1280×720/24 fps detail and uses `skyreels-centered-1280x720p24-v1`:
+An accepted SkyReels fallback keeps its 1280×720/25 fps detail and uses `skyreels-centered-1280x720p25-v2`:
 
 ```text
 crop=1280:720:0:0,scale=1920:1080
@@ -87,7 +87,9 @@ crop=640:720:320:0,scale=960:1080
 
 ### Avatar frame-rate conversion
 
-AvatarForcing's candidate output is 25 fps and SkyReels' fallback candidate is 24 fps while delivery is 30 fps. Convert each accepted source directly from its native rate with ordinary FFmpeg nearest-timestamp frame duplication/resampling (the equivalent of `fps=30:round=near`) before layout. Never perform a needless 24→25→30 double conversion:
+AvatarForcing and SkyReels candidate outputs are 25 fps while delivery is 30 fps. Convert each
+accepted source directly with ordinary FFmpeg nearest-timestamp frame duplication/resampling (the
+equivalent of `fps=30:round=near`) before layout:
 
 - Preserve duration and timeline boundaries exactly.
 - Do not use optical flow, frame interpolation, or another AI model.
@@ -140,7 +142,7 @@ Before delivery verify:
 
 - Exact duration matches source audio within the accepted mux tolerance.
 - Constant 1920×1080/30 fps and `yuv420p`.
-- Deterministic native 25→30 AvatarForcing and 24→30 SkyReels conversion has no duration change, drift, or unacceptable visible cadence.
+- Deterministic native 25→30 AvatarForcing and SkyReels conversion has no duration change, drift, or unacceptable visible cadence.
 - Audio/video starts at zero; no drift or missing tail.
 - Exactly one EDL segment covers every frame.
 - Full and split crop geometry matches the selected source-profile formulas above; a profile/crop mismatch is rejected.

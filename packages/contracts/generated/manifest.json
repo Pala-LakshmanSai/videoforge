@@ -54,7 +54,7 @@
       "source": "project-context/evidence/resolved_render_manifest.schema.json",
       "destination": "generated/schemas/resolved_render_manifest.schema.json",
       "bytes": 7449,
-      "sha256": "sha256:b46a672768aac2ed8b5a1c7ad8f04015cb9d171b1c3ecb57bb257d555207f2d4"
+      "sha256": "sha256:77eed1bb783f8014bb9b7ef5fbb4b36a2f884b646772c690ea29e66b7a171d19"
     },
     {
       "source": "project-context/evidence/production_manifest.schema.json",
@@ -180,19 +180,19 @@
       "source": "project-context/evidence/fixtures/resolved_render_manifest.valid.json",
       "destination": "generated/fixtures/resolved_render_manifest.valid.json",
       "bytes": 2693,
-      "sha256": "sha256:b2a3f950338666a7241b90bb2fa24c48677281ddf7b5a0b0cdd20601b92d754c"
+      "sha256": "sha256:8752e2127bb1976b12ceb2ee3e7276771a40ac9d7cdb9f0ec0e82a9ccfda10c2"
     },
     {
       "source": "project-context/evidence/fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json",
       "destination": "generated/fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json",
       "bytes": 1398,
-      "sha256": "sha256:9e63ff83e14350c5f1a7ab231e41fd2b8749f042a6cd50c112811acfca7ebbef"
+      "sha256": "sha256:67718b39236614763e46d62a9cdb933a2005cbc61378f3c1312194affcae4055"
     },
     {
       "source": "project-context/evidence/fixtures/production_manifest.valid.json",
       "destination": "generated/fixtures/production_manifest.valid.json",
       "bytes": 4506,
-      "sha256": "sha256:ae0c5a4f599f2c600077c83240dcd8697cb489ac0509d0a6ec683966a6467e1c"
+      "sha256": "sha256:d49e31db60a755e991b7938d55389a825f88f2ecf9f4dd8f5eb73b70b5473ff1"
     },
     {
       "source": "project-context/evidence/fixtures/worker_job_envelope.valid.json",

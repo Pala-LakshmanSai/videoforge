@@ -283,10 +283,10 @@ end
 begin
   render_schema_text = File.read(root.join("evidence/resolved_render_manifest.schema.json"))
   errors << "resolved-render schema is missing the AvatarForcing source profile" unless render_schema_text.include?("avatarforcing-centered-832x480p25-v1")
-  errors << "resolved-render schema is missing the SkyReels source profile" unless render_schema_text.include?("skyreels-centered-1280x720p24-v1")
+  errors << "resolved-render schema is missing the SkyReels source profile" unless render_schema_text.include?("skyreels-centered-1280x720p25-v2")
   invalid_profile_crop = JSON.parse(File.read(root.join("evidence/fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json")))
   invalid_render = invalid_profile_crop.dig("segments", 0, "render") || {}
-  errors << "negative avatar profile/crop fixture no longer exercises the mismatch" unless invalid_render["avatar_source_profile"] == "skyreels-centered-1280x720p24-v1" && invalid_render["avatar_crop"] == "832:468:0:6"
+  errors << "negative avatar profile/crop fixture no longer exercises the mismatch" unless invalid_render["avatar_source_profile"] == "skyreels-centered-1280x720p25-v2" && invalid_render["avatar_crop"] == "832:468:0:6"
 rescue StandardError => e
   errors << "avatar renderer source-profile validation failed: #{e.message}"
 end
