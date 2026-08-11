@@ -30,7 +30,8 @@ jobs:
           image="ghcr.io/${owner}/videoforge-avatar-primary:${GITHUB_SHA}"
           docker build --tag "$image" workers/avatar-primary
           docker run --rm --entrypoint python "$image" -c \
-            'import flash_attn, runpod, torchvision; from pipeline import AvatarForcingInferencePipeline; from videoforge_avatar_primary import AvatarPrimaryJob; print("avatar-primary-import-ok")'
+            'import flash_attn, runpod, torchvision; from videoforge_avatar_primary import AvatarPrimaryJob; print("avatar-primary-import-ok")'
+          docker run --rm --entrypoint python "$image" -m compileall -q /opt/avatarforcing
           docker push "$image"
           digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image")"
           printf 'image=%s\n' "$digest" >> "$GITHUB_STEP_SUMMARY"
