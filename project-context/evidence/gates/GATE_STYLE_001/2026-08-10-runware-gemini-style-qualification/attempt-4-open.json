@@ -1,0 +1,133 @@
+{
+  "schema_version": "videoforge.gemini-style-qualification/v1",
+  "task_id": "VF-3-02",
+  "gate_id": "GATE_STYLE_001",
+  "checked_at": "2026-08-11T03:09:39.322Z",
+  "provider": "Runware",
+  "requested_model_alias": "google-gemini-3-5-flash",
+  "requested_model": "google:gemini@3.5-flash",
+  "public_provider_name": "Gemini 3.5 Flash",
+  "model_identity": {
+    "task_uuid": "b7cd1547-6088-4cca-9158-966786181df3",
+    "response_sha256": "sha256:9c0cb5fcccffc5facc7a6b1485246064ae88277b75c88a51ea5de45b2767a9fc",
+    "air": "google:gemini@3.5-flash",
+    "name": "Gemini 3.5 Flash",
+    "version": "3.5",
+    "category": "text",
+    "architecture": "gemini_3_5_flash",
+    "source": "curated",
+    "capabilities": [
+      "io:text-to-text",
+      "io:image-to-text",
+      "io:video-to-text",
+      "io:audio-to-text",
+      "form:checkpoint"
+    ],
+    "private": false,
+    "exact_canonical_match": true
+  },
+  "settings": {
+    "thinking_level": "medium",
+    "temperature": 0.1,
+    "top_p": 0.9,
+    "max_tokens": 6000,
+    "media_resolution": "high",
+    "output_format": "JSON",
+    "tools_enabled": false
+  },
+  "system_prompt_sha256": "sha256:1ac23f5503f2116a40a1f7c7f4bd401fe6673ae186d41d3b7bcbd21cb906cde1",
+  "provider_schema_sha256": "sha256:78ccf3137849250901ff017a461a33bf22daad757c86ec320fb87942231ebad3",
+  "provider_schema_policy": "Canonical analyzer/profile references are fully inlined. Metadata and range/cardinality constraints are removed only from the provider-facing schema after the full schema was rejected by Gemini; exact properties, types, required fields, enums, and additionalProperties boundaries remain. Canonical local schema and semantic validation remain authoritative.",
+  "prequalification_diagnostics": {
+    "provider_submissions": 6,
+    "billable_calls": 2,
+    "no_cost_http_400_rejections": 4,
+    "spend_usd": 0.006551,
+    "result": "Minimal schema passed; full inlined schema failed; lean exact-shape schema passed. Failure isolated to provider schema complexity/constraints."
+  },
+  "task_cap_usd": 3,
+  "first_analysis_cap_usd": 0.08,
+  "retry_total_cap_usd": 0.15,
+  "external_spend_usd": 0.006551,
+  "unresolved_cost": false,
+  "fixture_count": 1,
+  "expected_fixture_count": 7,
+  "generation_call_count": 6,
+  "billable_generation_call_count": 2,
+  "retry_count": 0,
+  "fixtures": [
+    {
+      "fixture_id": "coherent_reference_set",
+      "expectation": "coherent",
+      "reference_count": 4,
+      "reference_bindings": [
+        {
+          "alias": "ref_01",
+          "derivativeSha256": "sha256:c3a156a9a6c54e3015a4ed1618dafcd2ccedf9035ecfe6ddc7b6009a2d145836",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1297
+        },
+        {
+          "alias": "ref_02",
+          "derivativeSha256": "sha256:e8b5f5ea9e7a47890b23bcabf2603afab201707d588940440c65f503b49795fd",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1423
+        },
+        {
+          "alias": "ref_03",
+          "derivativeSha256": "sha256:4495a2061a179e31c152985a215052ed18e3868e7d4474fec7f83c6d64d723d7",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1450
+        },
+        {
+          "alias": "ref_04",
+          "derivativeSha256": "sha256:0d1998c23179085102998f8f9d966cf50137342356565ab9b010ac7e11aed44e",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1193
+        }
+      ],
+      "input_set_sha256": "sha256:d8487dbf300f40b3e68f6fffe02680a12b3cead2c31e839e248e718605c399a8",
+      "metadata_stripped": true,
+      "result": "OPEN",
+      "blocker": "Runware Gemini request failed: HTTP 400 [{\"code\":\"providerBadRequest\",\"message\":\"Bad request returned by Google Gemini. Additional information: Invalid value at 'generation_config.\",\"taskUUID\":\"3e552a0e-5842-49c1-9d60-de0c32ed5992\"}]",
+      "fixture_spend_usd": null,
+      "attempts": []
+    }
+  ],
+  "criteria": {
+    "exact_canonical_model_identity": true,
+    "seven_owned_synthetic_fixture_sets": false,
+    "complete_requests_and_inlined_schema": false,
+    "strict_schema_and_semantic_validation": false,
+    "content_separation_outlier_uncertainty_and_alias_binding": false,
+    "normalized_metadata_free_derivatives": true,
+    "first_analysis_cost_below_target": false,
+    "retry_total_below_target": false,
+    "task_spend_within_cap": true,
+    "ordinary_video_style_analysis_calls": 0
+  },
+  "privacy_posture": {
+    "checked_at": "2026-08-11",
+    "standard_service_zero_data_retention": false,
+    "treat_as_confidential": false,
+    "no_training_claim": "Runware states LLM prompts and outputs are not used for model training.",
+    "sources": [
+      "https://runware.ai/llm-api",
+      "https://runware.ai/terms",
+      "https://runware.ai/privacy"
+    ]
+  },
+  "gate_result": "OPEN",
+  "provider_mode_outside_runner": "fixture",
+  "image_bytes_or_data_uris_recorded": false,
+  "signed_urls_recorded": false,
+  "secrets_recorded": false
+}

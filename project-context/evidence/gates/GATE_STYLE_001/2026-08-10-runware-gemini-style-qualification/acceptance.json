@@ -1,0 +1,2803 @@
+{
+  "schema_version": "videoforge.gemini-style-qualification/v1",
+  "task_id": "VF-3-02",
+  "gate_id": "GATE_STYLE_001",
+  "checked_at": "2026-08-11T03:18:48.823Z",
+  "provider": "Runware",
+  "requested_model_alias": "google-gemini-3-5-flash",
+  "requested_model": "google:gemini@3.5-flash",
+  "public_provider_name": "Gemini 3.5 Flash",
+  "model_identity": {
+    "task_uuid": "7798f62c-d649-41c0-a72b-0d41393efa58",
+    "response_sha256": "sha256:e10ebabee2e9f14cd349d0c7709caf266e1b3d530a9d8a0010a64364e574eff2",
+    "air": "google:gemini@3.5-flash",
+    "name": "Gemini 3.5 Flash",
+    "version": "3.5",
+    "category": "text",
+    "architecture": "gemini_3_5_flash",
+    "source": "curated",
+    "capabilities": [
+      "io:text-to-text",
+      "io:image-to-text",
+      "io:video-to-text",
+      "io:audio-to-text",
+      "form:checkpoint"
+    ],
+    "private": false,
+    "exact_canonical_match": true
+  },
+  "settings": {
+    "thinking_level": "low",
+    "temperature": 0.1,
+    "top_p": 0.9,
+    "max_tokens": 6000,
+    "media_resolution": "medium",
+    "output_format": "JSON",
+    "tools_enabled": false
+  },
+  "system_prompt_sha256": "sha256:3a0f2d2e27852c0b6c3d657b3a1e851e0ea48764101b38d7b9863dc99d3ea2fa",
+  "provider_schema_sha256": "sha256:78ccf3137849250901ff017a461a33bf22daad757c86ec320fb87942231ebad3",
+  "provider_schema_policy": "Canonical analyzer/profile references are fully inlined. Metadata and range/cardinality constraints are removed only from the provider-facing schema after the full schema was rejected by Gemini; exact properties, types, required fields, enums, and additionalProperties boundaries remain. Canonical local schema and semantic validation remain authoritative.",
+  "prior_qualification_attempts": {
+    "provider_submissions": 9,
+    "billable_calls": 4,
+    "no_cost_http_400_rejections": 5,
+    "spend_usd": 0.09396,
+    "result": "Minimal schema passed; full inlined schema failed; lean exact-shape schema passed; unsigned provider seed was rejected; first semantic run exposed missing geometry instructions."
+  },
+  "task_cap_usd": 3,
+  "first_analysis_cap_usd": 0.08,
+  "retry_total_cap_usd": 0.15,
+  "external_spend_usd": 0.407604,
+  "unresolved_cost": false,
+  "fixture_count": 7,
+  "expected_fixture_count": 7,
+  "generation_call_count": 18,
+  "billable_generation_call_count": 13,
+  "retry_count": 2,
+  "fixtures": [
+    {
+      "fixture_id": "coherent_reference_set",
+      "expectation": "coherent",
+      "reference_count": 4,
+      "reference_bindings": [
+        {
+          "alias": "ref_01",
+          "derivativeSha256": "sha256:c3a156a9a6c54e3015a4ed1618dafcd2ccedf9035ecfe6ddc7b6009a2d145836",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1297
+        },
+        {
+          "alias": "ref_02",
+          "derivativeSha256": "sha256:e8b5f5ea9e7a47890b23bcabf2603afab201707d588940440c65f503b49795fd",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1423
+        },
+        {
+          "alias": "ref_03",
+          "derivativeSha256": "sha256:4495a2061a179e31c152985a215052ed18e3868e7d4474fec7f83c6d64d723d7",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1450
+        },
+        {
+          "alias": "ref_04",
+          "derivativeSha256": "sha256:0d1998c23179085102998f8f9d966cf50137342356565ab9b010ac7e11aed44e",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1193
+        }
+      ],
+      "input_set_sha256": "sha256:d8487dbf300f40b3e68f6fffe02680a12b3cead2c31e839e248e718605c399a8",
+      "metadata_stripped": true,
+      "result": "PASS",
+      "blocker": null,
+      "fixture_spend_usd": 0.032537,
+      "attempts": [
+        {
+          "attempt_number": 1,
+          "task_uuid": "e4f85352-a102-403d-8557-9fd24f6b4b10",
+          "request_sha256": "sha256:2d42cd3e7f4229ace8431107956dbd6d41250d9c383a60701c0ae10fa032be2f",
+          "response_sha256": "sha256:9c960f6b2a8b88dbaa6ec4ab4928bb0ef7183f67756503e6583d9fb1f7a2929f",
+          "response_fields": [
+            "cost",
+            "finishReason",
+            "taskType",
+            "taskUUID",
+            "text",
+            "thoughtSignature",
+            "usage"
+          ],
+          "cost_usd": 0.032537,
+          "latency_ms": 31874,
+          "usage": {
+            "promptTokens": 3913,
+            "completionTokens": 2963,
+            "totalTokens": 6876,
+            "completionTokensDetails": {
+              "reasoningTokens": 1747
+            },
+            "costBreakdown": {
+              "tokens": {
+                "prompt": {
+                  "modalities": [
+                    {
+                      "modality": "TEXT",
+                      "tokens": 1785,
+                      "cost": 0.002677,
+                      "costDisplay": "0.002677"
+                    },
+                    {
+                      "modality": "IMAGE",
+                      "tokens": 2128,
+                      "cost": 0.003192,
+                      "costDisplay": "0.003192"
+                    }
+                  ],
+                  "billableTokens": 3913,
+                  "cost": 0.00587,
+                  "costDisplay": "0.005870"
+                },
+                "cache": {
+                  "modalities": [],
+                  "billableTokens": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "completion": {
+                  "billableTokens": 2963,
+                  "textTokens": 1216,
+                  "reasoningTokens": 1747,
+                  "cost": 0.026667,
+                  "costDisplay": "0.026667"
+                }
+              },
+              "features": {
+                "search": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "maps": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                }
+              },
+              "total": 0.032537,
+              "totalDisplay": "0.032537"
+            }
+          },
+          "finish_reason": "stop",
+          "returned_model": null,
+          "returned_model_version": null,
+          "validation_result": "PASS",
+          "validation_issues": []
+        }
+      ],
+      "output_sha256": "sha256:38dc76f81eaa4b78ad680b5c6a6ff7e90e10c47b6eabb28c2e4f7763e5b78587",
+      "style_profile_hash": "sha256:08c4b17d02dd2a37f8e973541747bdd5da1c2b893782a3c9a39a10ffa98faedb",
+      "overall_confidence": 0.95,
+      "support_counts": {
+        "SUPPORTED": 14,
+        "UNCERTAIN": 0,
+        "UNSUPPORTED": 0
+      },
+      "outlier_reference_aliases": [],
+      "uncertain_field_count": 0,
+      "content_leakage_warning_count": 1,
+      "redacted_output": {
+        "analysis": {
+          "content_leakage_warnings": [
+            "Avoid generating specific characters or houses unless requested; focus on the pixelated brown style."
+          ],
+          "outlier_reference_aliases": [],
+          "overall_confidence": 0.95,
+          "trait_evidence": [
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "medium"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "realism"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "subject_treatment"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "camera"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "image_framing"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "lighting"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "color"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "contrast_exposure"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "depth_of_field"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "texture_grain"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01"
+              ],
+              "trait": "human_rendering"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "materials_environment"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "mood"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "continuity"
+            }
+          ],
+          "uncertain_fields": []
+        },
+        "prompt_profile": {
+          "full_image_guidance": "Ensure a 16:9 aspect ratio and center-safe composition. The subject must be centered on a flat horizontal ground plane.",
+          "negative_suffix": "3D, realistic, photorealistic, gradients, shadows, vibrant colors, high detail, smooth curves",
+          "planner_guidance": "Generate minimalist 2D pixel art graphics. Use a strict brown color palette. Place a single blocky geometric subject in the center on a dark brown ground against a tan background with diagonal stripes.",
+          "positive_suffix": "minimalist 2D pixel art, 8-bit retro game graphic, blocky geometric shapes, shades of brown, diagonal striped background, flat design",
+          "split_image_guidance": "Render the subject in an 8:9 right panel, centered, maintaining the flat 2D pixel art style and brown color scheme."
+        },
+        "summary": "A minimalist 2D pixel art style featuring blocky, geometric brown subjects on a dark brown ground against a diagonally striped tan background.",
+        "visual_profile": {
+          "camera_language": "Fixed 2D side-scroller perspective, orthographic projection.",
+          "color": {
+            "approximate_hex": [
+              "#3E2723",
+              "#8D6E63",
+              "#D7CCC8"
+            ],
+            "descriptors": [
+              "Earthy browns",
+              "Tan",
+              "Dark chocolate brown",
+              "Muted beige"
+            ]
+          },
+          "continuity_rules": [
+            "Maintain the dark brown ground plane",
+            "Keep the diagonal striped tan background",
+            "Use only shades of brown"
+          ],
+          "contrast_and_exposure": "Low contrast, flat exposure with muted tones.",
+          "depth_of_field": "Completely flat 2D plane with infinite depth of field.",
+          "environment_and_material_detail": "Flat solid colors, minimal detail, simple horizontal ground plane.",
+          "flexible_properties": [
+            "Subject type",
+            "Exact scale of the subject"
+          ],
+          "human_rendering": "Blocky, geometric representation using basic shapes like squares and circles.",
+          "image_framing": "Centered, eye-level, flat profile.",
+          "imperfection_profile": [
+            "Aliased pixel edges",
+            "Low resolution grid"
+          ],
+          "lighting": "Flat, ambient, no directional light or shadows.",
+          "medium_family": "2D Pixel Art",
+          "mood": [
+            "Nostalgic",
+            "Minimalist",
+            "Retro"
+          ],
+          "must_avoid": [
+            "3D depth",
+            "Gradients",
+            "Realistic textures",
+            "Non-brown colors"
+          ],
+          "must_include": [
+            "Pixelated rendering",
+            "Diagonal striped background",
+            "Solid dark brown ground line"
+          ],
+          "realism": "Abstract / Symbolic",
+          "shot_scale_preferences": [
+            "Medium Shot",
+            "Wide Shot"
+          ],
+          "subject_treatment": "Extremely simplified geometric shapes representing subjects.",
+          "texture_and_grain": "Pixelated grid texture with distinct diagonal background stripes."
+        }
+      }
+    },
+    {
+      "fixture_id": "single_obvious_outlier",
+      "expectation": "outlier",
+      "reference_count": 4,
+      "reference_bindings": [
+        {
+          "alias": "ref_01",
+          "derivativeSha256": "sha256:bb38212296fc576b5bcc7bf4d07618a75fe678785e72fe74626fc0f6f6ac17e6",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1296
+        },
+        {
+          "alias": "ref_02",
+          "derivativeSha256": "sha256:4d128c4fdb04edd9d95dbb1f5ec28dcb5e487c31c73f1fdf734a0dc0d61d50e8",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1438
+        },
+        {
+          "alias": "ref_03",
+          "derivativeSha256": "sha256:b74a832699c5f67a4e990c1e47f0ce461e6d2a64b89806faffc3af787cd0bdb6",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1463
+        },
+        {
+          "alias": "ref_04",
+          "derivativeSha256": "sha256:342485cc49337fd0339a98f0f588213f45082026613dd11065614e55e7ba97e6",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 855
+        }
+      ],
+      "input_set_sha256": "sha256:f35d675a44ac6178efdb3f92c19517ff3e128bd45ddbd71f3956d978171c6046",
+      "metadata_stripped": true,
+      "result": "PASS",
+      "blocker": null,
+      "fixture_spend_usd": 0.037442,
+      "attempts": [
+        {
+          "attempt_number": 1,
+          "task_uuid": "e0d29c95-feee-457e-8845-a93bb4017efc",
+          "request_sha256": "sha256:a994e68524526e829cf6065d56eb533e2af845d74b23de47c72a50aebc44d6a8",
+          "response_sha256": "sha256:c627ae8dee0c2e65ebe80c51e16f5ee347c2e907c9d3c95ea64a8cd84e39a2f2",
+          "response_fields": [
+            "cost",
+            "finishReason",
+            "taskType",
+            "taskUUID",
+            "text",
+            "thoughtSignature",
+            "usage"
+          ],
+          "cost_usd": 0.037442,
+          "latency_ms": 33665,
+          "usage": {
+            "promptTokens": 3913,
+            "completionTokens": 3508,
+            "totalTokens": 7421,
+            "completionTokensDetails": {
+              "reasoningTokens": 2291
+            },
+            "costBreakdown": {
+              "tokens": {
+                "prompt": {
+                  "modalities": [
+                    {
+                      "modality": "IMAGE",
+                      "tokens": 2128,
+                      "cost": 0.003192,
+                      "costDisplay": "0.003192"
+                    },
+                    {
+                      "modality": "TEXT",
+                      "tokens": 1785,
+                      "cost": 0.002677,
+                      "costDisplay": "0.002677"
+                    }
+                  ],
+                  "billableTokens": 3913,
+                  "cost": 0.00587,
+                  "costDisplay": "0.005870"
+                },
+                "cache": {
+                  "modalities": [],
+                  "billableTokens": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "completion": {
+                  "billableTokens": 3508,
+                  "textTokens": 1217,
+                  "reasoningTokens": 2291,
+                  "cost": 0.031572,
+                  "costDisplay": "0.031572"
+                }
+              },
+              "features": {
+                "search": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "maps": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                }
+              },
+              "total": 0.037442,
+              "totalDisplay": "0.037442"
+            }
+          },
+          "finish_reason": "stop",
+          "returned_model": null,
+          "returned_model_version": null,
+          "validation_result": "PASS",
+          "validation_issues": []
+        }
+      ],
+      "output_sha256": "sha256:9589dc44718e86f8b8a9b451afa2bab880a7b56498d9d657250aa04cea395b8b",
+      "style_profile_hash": "sha256:e743bf35d95921c8a177ffcf361334bd5e30fa7243dd5753dfbc29cdb5c4c9d9",
+      "overall_confidence": 0.9,
+      "support_counts": {
+        "SUPPORTED": 13,
+        "UNCERTAIN": 1,
+        "UNSUPPORTED": 0
+      },
+      "outlier_reference_aliases": [
+        "ref_04"
+      ],
+      "uncertain_field_count": 2,
+      "content_leakage_warning_count": 1,
+      "redacted_output": {
+        "analysis": {
+          "content_leakage_warnings": [
+            "Avoid generating specific characters, houses, or trees unless requested; focus purely on the geometric pixel art style."
+          ],
+          "outlier_reference_aliases": [
+            "ref_04"
+          ],
+          "overall_confidence": 0.9,
+          "trait_evidence": [
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "medium"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "realism"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "subject_treatment"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "camera"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "image_framing"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "lighting"
+            },
+            {
+              "confidence": 0.6,
+              "support_status": "UNCERTAIN",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "color"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "contrast_exposure"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "depth_of_field"
+            },
+            {
+              "confidence": 0.85,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "texture_grain"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01"
+              ],
+              "trait": "human_rendering"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "materials_environment"
+            },
+            {
+              "confidence": 0.85,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "mood"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "continuity"
+            }
+          ],
+          "uncertain_fields": [
+            "color",
+            "texture_and_grain"
+          ]
+        },
+        "prompt_profile": {
+          "full_image_guidance": "Create a 16:9 center-safe minimalist 2D pixel art image. The subject must be centered, composed of simple geometric shapes, set against a flat ground and a diagonal striped background.",
+          "negative_suffix": "3D render, photorealistic, smooth gradients, shadows, high detail, curves, anti-aliasing",
+          "planner_guidance": "Generate ultra-simple 2D pixel art scenes. Use basic geometric shapes to represent subjects. Maintain a flat ground plane and a simple patterned background.",
+          "positive_suffix": "minimalist 2D pixel art, 8-bit style, flat colors, pixelated edges, simple geometric shapes, diagonal striped background",
+          "split_image_guidance": "Create an 8:9 right panel centered minimalist 2D pixel art image. The subject must be composed of simple geometric shapes on a flat ground."
+        },
+        "summary": "Minimalist 2D pixel art style featuring extremely simplified geometric subjects on a flat ground plane with a patterned background.",
+        "visual_profile": {
+          "camera_language": "Fixed 2D side-scrolling perspective, orthographic projection.",
+          "color": {
+            "approximate_hex": [
+              "#C29B70",
+              "#3E2A21",
+              "#845236"
+            ],
+            "descriptors": [
+              "Earthy browns",
+              "Tan",
+              "Dark brown"
+            ]
+          },
+          "continuity_rules": [
+            "Maintain the flat 2D horizon line",
+            "Use consistent diagonal background stripes",
+            "Keep shapes strictly geometric"
+          ],
+          "contrast_and_exposure": "Moderate contrast, flat exposure with no gradient.",
+          "depth_of_field": "Infinite depth of field, completely flat 2D plane.",
+          "environment_and_material_detail": "Flat solid colors, no material textures, simple horizontal ground divider.",
+          "flexible_properties": [
+            "Color palette",
+            "Subject matter"
+          ],
+          "human_rendering": "Highly stylized stick-figure representation using a circle head and rectangular torso.",
+          "image_framing": "Centered, flat profile view with a solid ground plane at the bottom.",
+          "imperfection_profile": [
+            "Pixelation",
+            "Aliasing",
+            "Jagged edges"
+          ],
+          "lighting": "Flat, ambient lighting with zero shadows or highlights.",
+          "medium_family": "2D pixel art",
+          "mood": [
+            "Retro",
+            "Minimalist",
+            "Nostalgic"
+          ],
+          "must_avoid": [
+            "3D depth",
+            "Smooth gradients",
+            "Realistic textures",
+            "Complex curves"
+          ],
+          "must_include": [
+            "Pixelated edges",
+            "Flat 2D perspective",
+            "Geometric simplicity"
+          ],
+          "realism": "Abstract minimalist",
+          "shot_scale_preferences": [
+            "Medium shot",
+            "Wide shot"
+          ],
+          "subject_treatment": "Subjects are constructed from basic geometric shapes like circles and rectangles with visible pixelated edges.",
+          "texture_and_grain": "Aliased pixel edges, diagonal striped background pattern."
+        }
+      }
+    },
+    {
+      "fixture_id": "conflicting_no_consensus",
+      "expectation": "conflict",
+      "reference_count": 4,
+      "reference_bindings": [
+        {
+          "alias": "ref_01",
+          "derivativeSha256": "sha256:318eba827e21ae67d9d672ba250e28723569568b12c0dcb8c65b27e521c3a38c",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1425
+        },
+        {
+          "alias": "ref_02",
+          "derivativeSha256": "sha256:c4e5d7eb35dc5e2d322bc7054fd675816b8596fc63380abfe04b0be573d4ce73",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1031
+        },
+        {
+          "alias": "ref_03",
+          "derivativeSha256": "sha256:f5a1db5e6214f50444d33f8267f5e8a761b1d85f3be3e271bcf22ff0034bfa07",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1249
+        },
+        {
+          "alias": "ref_04",
+          "derivativeSha256": "sha256:5a5c7bb3a034772fa669a96bba0225e84f6e7ffae60dbb0d86d16661c520e93e",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1122
+        }
+      ],
+      "input_set_sha256": "sha256:4ca3e36e52ea447042dd4626a66832b3c711c0748da83c921a113e618bc34b2d",
+      "metadata_stripped": true,
+      "result": "PASS",
+      "blocker": null,
+      "fixture_spend_usd": 0.075869,
+      "attempts": [
+        {
+          "attempt_number": 1,
+          "task_uuid": "abce098a-d973-4fd3-a6c4-3749fb42e51d",
+          "request_sha256": "sha256:5c0c03adff5c65c03415ae5b29411291edde9245d04cb670d2b2dc7d88c3fc06",
+          "response_sha256": "sha256:67dad7565a2362831c7c4153ac583a2debb4b605a5d1d1b38bcbc092dfd1acb8",
+          "response_fields": [
+            "cost",
+            "finishReason",
+            "taskType",
+            "taskUUID",
+            "text",
+            "thoughtSignature",
+            "usage"
+          ],
+          "cost_usd": 0.037622,
+          "latency_ms": 31524,
+          "usage": {
+            "promptTokens": 3913,
+            "completionTokens": 3528,
+            "totalTokens": 7441,
+            "completionTokensDetails": {
+              "reasoningTokens": 2275
+            },
+            "costBreakdown": {
+              "tokens": {
+                "prompt": {
+                  "modalities": [
+                    {
+                      "modality": "IMAGE",
+                      "tokens": 2128,
+                      "cost": 0.003192,
+                      "costDisplay": "0.003192"
+                    },
+                    {
+                      "modality": "TEXT",
+                      "tokens": 1785,
+                      "cost": 0.002677,
+                      "costDisplay": "0.002677"
+                    }
+                  ],
+                  "billableTokens": 3913,
+                  "cost": 0.00587,
+                  "costDisplay": "0.005870"
+                },
+                "cache": {
+                  "modalities": [],
+                  "billableTokens": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "completion": {
+                  "billableTokens": 3528,
+                  "textTokens": 1253,
+                  "reasoningTokens": 2275,
+                  "cost": 0.031752,
+                  "costDisplay": "0.031752"
+                }
+              },
+              "features": {
+                "search": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "maps": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                }
+              },
+              "total": 0.037622,
+              "totalDisplay": "0.037622"
+            }
+          },
+          "finish_reason": "stop",
+          "returned_model": null,
+          "returned_model_version": null,
+          "validation_result": "OPEN",
+          "validation_issues": [
+            "conflicting fixture hid uncertainty"
+          ]
+        },
+        {
+          "attempt_number": 2,
+          "task_uuid": "8ad0cd92-89ca-4300-901c-2206fd4bfb4d",
+          "request_sha256": "sha256:a24ba11ad498169628c65c506d69d707da4da6b9f0a5d3acdba5b107ad77e886",
+          "response_sha256": "sha256:0740cfd2b9cefa3b9e7a002985528c10e07210e96022cc446c11e867b900d358",
+          "response_fields": [
+            "cost",
+            "finishReason",
+            "taskType",
+            "taskUUID",
+            "text",
+            "thoughtSignature",
+            "usage"
+          ],
+          "cost_usd": 0.038247,
+          "latency_ms": 70275,
+          "usage": {
+            "promptTokens": 3934,
+            "completionTokens": 3594,
+            "totalTokens": 7528,
+            "completionTokensDetails": {
+              "reasoningTokens": 2424
+            },
+            "costBreakdown": {
+              "tokens": {
+                "prompt": {
+                  "modalities": [
+                    {
+                      "modality": "IMAGE",
+                      "tokens": 2128,
+                      "cost": 0.003192,
+                      "costDisplay": "0.003192"
+                    },
+                    {
+                      "modality": "TEXT",
+                      "tokens": 1806,
+                      "cost": 0.002709,
+                      "costDisplay": "0.002709"
+                    }
+                  ],
+                  "billableTokens": 3934,
+                  "cost": 0.005901,
+                  "costDisplay": "0.005901"
+                },
+                "cache": {
+                  "modalities": [],
+                  "billableTokens": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "completion": {
+                  "billableTokens": 3594,
+                  "textTokens": 1170,
+                  "reasoningTokens": 2424,
+                  "cost": 0.032346,
+                  "costDisplay": "0.032346"
+                }
+              },
+              "features": {
+                "search": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "maps": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                }
+              },
+              "total": 0.038247,
+              "totalDisplay": "0.038247"
+            }
+          },
+          "finish_reason": "stop",
+          "returned_model": null,
+          "returned_model_version": null,
+          "validation_result": "PASS",
+          "validation_issues": []
+        }
+      ],
+      "output_sha256": "sha256:54e9323f7f1919d67fa24a8e6502e59271bc1ef7b911bf4da43bd2d6c5caff6c",
+      "style_profile_hash": "sha256:5af3b8d1be3c989efe78a452c5a898fc08a140a2d6c23097960a1ffdea102df6",
+      "overall_confidence": 0.95,
+      "support_counts": {
+        "SUPPORTED": 14,
+        "UNCERTAIN": 0,
+        "UNSUPPORTED": 0
+      },
+      "outlier_reference_aliases": [],
+      "uncertain_field_count": 1,
+      "content_leakage_warning_count": 1,
+      "redacted_output": {
+        "analysis": {
+          "content_leakage_warnings": [
+            "Avoid generating specific house, tree, sign, or stick figure subjects unless requested."
+          ],
+          "outlier_reference_aliases": [],
+          "overall_confidence": 0.95,
+          "trait_evidence": [
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "medium"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "realism"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "subject_treatment"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "camera"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "image_framing"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "lighting"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "color"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "contrast_exposure"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "depth_of_field"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "texture_grain"
+            },
+            {
+              "confidence": 0.8,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_04"
+              ],
+              "trait": "human_rendering"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "materials_environment"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "mood"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "continuity"
+            }
+          ],
+          "uncertain_fields": [
+            "human_rendering"
+          ]
+        },
+        "prompt_profile": {
+          "full_image_guidance": "Create a 16:9 center-safe flat 2D pixel art scene with a single minimalist subject centered on a solid ground line.",
+          "negative_suffix": "3D render, photorealistic, smooth gradients, soft shadows, high detail, blurry, depth of field",
+          "planner_guidance": "Generate minimalist 8-bit pixel art with flat 2D perspective and centered geometric subjects.",
+          "positive_suffix": "8-bit pixel art, retro game sprite, flat 2D, minimalist geometric shapes, solid colors, pixelated texture",
+          "split_image_guidance": "Create an 8:9 right panel centered flat 2D pixel art scene with a single minimalist subject."
+        },
+        "summary": "Minimalist 8-bit retro pixel art style featuring flat 2D geometric subjects centered against simple backgrounds.",
+        "visual_profile": {
+          "camera_language": "Fixed 2D orthographic side-view camera",
+          "color": {
+            "approximate_hex": [
+              "#C29B70",
+              "#00F0D0",
+              "#FF3399",
+              "#4A3B52"
+            ],
+            "descriptors": [
+              "Limited palette",
+              "High contrast",
+              "Solid retro tones"
+            ]
+          },
+          "continuity_rules": [
+            "Maintain strict 2D perspective",
+            "Keep pixel size consistent",
+            "Use flat color fills"
+          ],
+          "contrast_and_exposure": "High contrast with flat, solid color blocks",
+          "depth_of_field": "Infinite depth of field, completely flat 2D plane",
+          "environment_and_material_detail": "Flat solid-color ground planes and minimal backgrounds",
+          "flexible_properties": [
+            "Background color",
+            "Specific subject matter",
+            "Diagonal scanline presence"
+          ],
+          "human_rendering": "Highly simplified geometric stick figures with blocky limbs",
+          "image_framing": "Centered, flat profile framing",
+          "imperfection_profile": [
+            "Pixel aliasing",
+            "Color banding",
+            "Low resolution artifacts"
+          ],
+          "lighting": "Flat, ambient, unshaded lighting",
+          "medium_family": "Pixel Art",
+          "mood": [
+            "Nostalgic",
+            "Minimalist",
+            "Retro"
+          ],
+          "must_avoid": [
+            "3D rendering",
+            "Smooth gradients",
+            "Soft shadows",
+            "Realistic textures"
+          ],
+          "must_include": [
+            "Visible pixel grid",
+            "Flat 2D perspective",
+            "Minimalist geometric subjects"
+          ],
+          "realism": "Abstract retro 8-bit graphics",
+          "shot_scale_preferences": [
+            "Medium shot",
+            "Full shot"
+          ],
+          "subject_treatment": "Minimalist geometric shapes with hard pixelated edges",
+          "texture_and_grain": "Coarse pixel grid, blocky aliasing, optional diagonal background scanlines"
+        }
+      }
+    },
+    {
+      "fixture_id": "different_subjects_shared_style",
+      "expectation": "coherent",
+      "reference_count": 4,
+      "reference_bindings": [
+        {
+          "alias": "ref_01",
+          "derivativeSha256": "sha256:9b7126a7649160131b5a083b670d53908d6b1da39c7d86659c29d06c974ff852",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1251
+        },
+        {
+          "alias": "ref_02",
+          "derivativeSha256": "sha256:855e5d4194e76b8d4b24344be1125cfe9ea3a87253266744cbcd314c1b9e9c6a",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1316
+        },
+        {
+          "alias": "ref_03",
+          "derivativeSha256": "sha256:11f4903600b6c8d582e931384e820ab47895034271709ad730141c28cf444b3f",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1365
+        },
+        {
+          "alias": "ref_04",
+          "derivativeSha256": "sha256:6b8bf30e1078e0b274048ea87eea508954d5a2c55d63e4da10c782cbfc847c96",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1154
+        }
+      ],
+      "input_set_sha256": "sha256:ea19decf03d7d0adfbc9b2f7735574ae51d8fafa6918e9f4573c8edad433e523",
+      "metadata_stripped": true,
+      "result": "PASS",
+      "blocker": null,
+      "fixture_spend_usd": 0.034607,
+      "attempts": [
+        {
+          "attempt_number": 1,
+          "task_uuid": "d3df0512-cc76-4b97-af8c-bb733bbdd2c3",
+          "request_sha256": "sha256:9caabff5d946005e9b131ac8a319e1ef4f2aee369cfe912c6344e894dc72667e",
+          "response_sha256": "sha256:53c441a2361023b63dee6acecec198d111c6bd36705d8551b7705206e3f21f5e",
+          "response_fields": [
+            "cost",
+            "finishReason",
+            "taskType",
+            "taskUUID",
+            "text",
+            "thoughtSignature",
+            "usage"
+          ],
+          "cost_usd": 0.034607,
+          "latency_ms": 21609,
+          "usage": {
+            "promptTokens": 3913,
+            "completionTokens": 3193,
+            "totalTokens": 7106,
+            "completionTokensDetails": {
+              "reasoningTokens": 1893
+            },
+            "costBreakdown": {
+              "tokens": {
+                "prompt": {
+                  "modalities": [
+                    {
+                      "modality": "IMAGE",
+                      "tokens": 2128,
+                      "cost": 0.003192,
+                      "costDisplay": "0.003192"
+                    },
+                    {
+                      "modality": "TEXT",
+                      "tokens": 1785,
+                      "cost": 0.002677,
+                      "costDisplay": "0.002677"
+                    }
+                  ],
+                  "billableTokens": 3913,
+                  "cost": 0.00587,
+                  "costDisplay": "0.005870"
+                },
+                "cache": {
+                  "modalities": [],
+                  "billableTokens": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "completion": {
+                  "billableTokens": 3193,
+                  "textTokens": 1300,
+                  "reasoningTokens": 1893,
+                  "cost": 0.028737,
+                  "costDisplay": "0.028737"
+                }
+              },
+              "features": {
+                "search": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "maps": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                }
+              },
+              "total": 0.034607,
+              "totalDisplay": "0.034607"
+            }
+          },
+          "finish_reason": "stop",
+          "returned_model": null,
+          "returned_model_version": null,
+          "validation_result": "PASS",
+          "validation_issues": []
+        }
+      ],
+      "output_sha256": "sha256:6d9674a4632e239a9cf39412cc8e448df3847dc2f10f32ee17873ec1bdab98be",
+      "style_profile_hash": "sha256:7f247537dad9872d2d24163170d6b53e90b1b5a3da985463720258d384c7d4bd",
+      "overall_confidence": 0.98,
+      "support_counts": {
+        "SUPPORTED": 14,
+        "UNCERTAIN": 0,
+        "UNSUPPORTED": 0
+      },
+      "outlier_reference_aliases": [],
+      "uncertain_field_count": 0,
+      "content_leakage_warning_count": 1,
+      "redacted_output": {
+        "analysis": {
+          "content_leakage_warnings": [
+            "Avoid generating the specific stick figure, house, or tree unless requested; focus purely on the 3-color CRT pixel style."
+          ],
+          "outlier_reference_aliases": [],
+          "overall_confidence": 0.98,
+          "trait_evidence": [
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "medium"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "realism"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "subject_treatment"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "camera"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "image_framing"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "lighting"
+            },
+            {
+              "confidence": 0.99,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "color"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "contrast_exposure"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "depth_of_field"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "texture_grain"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01"
+              ],
+              "trait": "human_rendering"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "materials_environment"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "mood"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "continuity"
+            }
+          ],
+          "uncertain_fields": []
+        },
+        "prompt_profile": {
+          "full_image_guidance": "Ensure a 16:9 aspect ratio and center-safe composition. Place the subject centrally on a flat dark navy ground plane that occupies the bottom fifth of the frame against a solid slate blue-grey background with horizontal scanlines.",
+          "negative_suffix": "3D, photorealistic, gradients, shadows, high detail, vibrant colors, modern graphics",
+          "planner_guidance": "Generate minimalist 2D pixel art scenes using only three colors: slate blue-grey background, dark navy ground/details, and pale mint-white subjects. Apply a heavy CRT scanline texture.",
+          "positive_suffix": "minimalist 8-bit pixel art, flat 2D vector style, CRT scanlines, retro game aesthetic, three-color palette, slate blue, dark navy, pale mint",
+          "split_image_guidance": "Render an 8:9 right panel, centered, showing a single minimalist pixel art object on a flat ground plane with CRT scanlines."
+        },
+        "summary": "Minimalist 8-bit pixel art style characterized by a highly restricted three-color palette, flat 2D orthographic perspective, and a retro CRT scanline texture overlay.",
+        "visual_profile": {
+          "camera_language": "Fixed 2D side-scrolling orthographic perspective.",
+          "color": {
+            "approximate_hex": [
+              "#7a929e",
+              "#142834",
+              "#e2ebe9"
+            ],
+            "descriptors": [
+              "Muted slate blue-grey",
+              "Dark navy blue",
+              "Pale mint white"
+            ]
+          },
+          "continuity_rules": [
+            "Maintain the exact three-color palette",
+            "Keep the horizontal ground plane consistent",
+            "Apply uniform CRT scanline texture"
+          ],
+          "contrast_and_exposure": "Low contrast, flat matte exposure with no highlights or deep shadows.",
+          "depth_of_field": "Infinite, completely flat 2D plane.",
+          "environment_and_material_detail": "Flat, solid-colored shapes with zero material texture or environmental detail.",
+          "flexible_properties": [
+            "Subject matter",
+            "Exact placement of minor elements above the ground plane"
+          ],
+          "human_rendering": "Abstract stick-figure representation using basic geometric shapes like circles and rectangles.",
+          "image_framing": "Centered subject on a flat ground plane dividing the lower fifth of the frame.",
+          "imperfection_profile": [
+            "CRT scanline distortion",
+            "Pixelation artifacts"
+          ],
+          "lighting": "Flat, ambient, completely devoid of directional light or cast shadows.",
+          "medium_family": "Pixel art / Digital 2D",
+          "mood": [
+            "Nostalgic",
+            "Melancholic",
+            "Minimalist",
+            "Quiet"
+          ],
+          "must_avoid": [
+            "3D depth",
+            "Gradients",
+            "Complex textures",
+            "Dynamic lighting",
+            "More than three colors"
+          ],
+          "must_include": [
+            "Horizontal scanlines",
+            "Three-color palette",
+            "Flat 2D perspective",
+            "Minimalist geometric shapes"
+          ],
+          "realism": "Minimalist 8-bit abstraction",
+          "shot_scale_preferences": [
+            "Medium Wide Shot",
+            "Wide Shot"
+          ],
+          "subject_treatment": "Extremely simplified geometric shapes representing subjects symbolically.",
+          "texture_and_grain": "Pronounced horizontal CRT scanlines and subtle pixel grid texture."
+        }
+      }
+    },
+    {
+      "fixture_id": "similar_subjects_different_styles",
+      "expectation": "conflict",
+      "reference_count": 4,
+      "reference_bindings": [
+        {
+          "alias": "ref_01",
+          "derivativeSha256": "sha256:b6ba4754ebcd7beb0fbb41c5200d1999edb511ac6bd767ce2501de5f1d068843",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1266
+        },
+        {
+          "alias": "ref_02",
+          "derivativeSha256": "sha256:af28b3951bdd207adb8554fefe4467accc7371aae173149d27bf06ff18975d2d",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 872
+        },
+        {
+          "alias": "ref_03",
+          "derivativeSha256": "sha256:0eb4782659e4d575ef3b4fcffe2cb23d5965db4bf8ac79b97dcb908c75f6f385",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1303
+        },
+        {
+          "alias": "ref_04",
+          "derivativeSha256": "sha256:979a97a636e79d3db6cb838dbab76d5dfa621fc5706f846c33ee72cc509cd984",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1002
+        }
+      ],
+      "input_set_sha256": "sha256:2e68045bb630b8e3feb45b7f32c901995d13e3b417ef1a7b376d3524c4fb9f75",
+      "metadata_stripped": true,
+      "result": "PASS",
+      "blocker": null,
+      "fixture_spend_usd": 0.034238,
+      "attempts": [
+        {
+          "attempt_number": 1,
+          "task_uuid": "9ab2d728-6bb1-4fcd-9d1b-1187f139b8a0",
+          "request_sha256": "sha256:165c7d7b7f5ebd7334aa102b4ac1e2e1830e13a9606d7290ba20617e96bedcc9",
+          "response_sha256": "sha256:042134f07d3a686b3e73ff9d0c33aeedc4b7d6d40c8868a0fd64b85a25a2f62d",
+          "response_fields": [
+            "cost",
+            "finishReason",
+            "taskType",
+            "taskUUID",
+            "text",
+            "thoughtSignature",
+            "usage"
+          ],
+          "cost_usd": 0.034238,
+          "latency_ms": 27126,
+          "usage": {
+            "promptTokens": 3913,
+            "completionTokens": 3152,
+            "totalTokens": 7065,
+            "completionTokensDetails": {
+              "reasoningTokens": 1900
+            },
+            "costBreakdown": {
+              "tokens": {
+                "prompt": {
+                  "modalities": [
+                    {
+                      "modality": "TEXT",
+                      "tokens": 1785,
+                      "cost": 0.002677,
+                      "costDisplay": "0.002677"
+                    },
+                    {
+                      "modality": "IMAGE",
+                      "tokens": 2128,
+                      "cost": 0.003192,
+                      "costDisplay": "0.003192"
+                    }
+                  ],
+                  "billableTokens": 3913,
+                  "cost": 0.00587,
+                  "costDisplay": "0.005870"
+                },
+                "cache": {
+                  "modalities": [],
+                  "billableTokens": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "completion": {
+                  "billableTokens": 3152,
+                  "textTokens": 1252,
+                  "reasoningTokens": 1900,
+                  "cost": 0.028368,
+                  "costDisplay": "0.028368"
+                }
+              },
+              "features": {
+                "search": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "maps": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                }
+              },
+              "total": 0.034238,
+              "totalDisplay": "0.034238"
+            }
+          },
+          "finish_reason": "stop",
+          "returned_model": null,
+          "returned_model_version": null,
+          "validation_result": "PASS",
+          "validation_issues": []
+        }
+      ],
+      "output_sha256": "sha256:2db40bb2c6858f6dbb2e0ee8a88697ad5f920d8bcee8f5515b24f29a336bb2eb",
+      "style_profile_hash": "sha256:5a3ff72633efa73c31e3fbd9cbd98b633810f951e7e8f52ac748c13831d6c198",
+      "overall_confidence": 0.95,
+      "support_counts": {
+        "SUPPORTED": 13,
+        "UNCERTAIN": 1,
+        "UNSUPPORTED": 0
+      },
+      "outlier_reference_aliases": [
+        "ref_02"
+      ],
+      "uncertain_field_count": 1,
+      "content_leakage_warning_count": 1,
+      "redacted_output": {
+        "analysis": {
+          "content_leakage_warnings": [
+            "Avoid replicating the specific arch/tombstone shape or the horizontal dividing line."
+          ],
+          "outlier_reference_aliases": [
+            "ref_02"
+          ],
+          "overall_confidence": 0.95,
+          "trait_evidence": [
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "medium"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "realism"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "subject_treatment"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "camera"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "image_framing"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "lighting"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "color"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "contrast_exposure"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "depth_of_field"
+            },
+            {
+              "confidence": 0.7,
+              "support_status": "UNCERTAIN",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_03"
+              ],
+              "trait": "texture_grain"
+            },
+            {
+              "confidence": 0.99,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "human_rendering"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "materials_environment"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "mood"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03",
+                "ref_04"
+              ],
+              "trait": "continuity"
+            }
+          ],
+          "uncertain_fields": [
+            "texture_and_grain"
+          ]
+        },
+        "prompt_profile": {
+          "full_image_guidance": "A 16:9 landscape, center-safe minimalist 2D pixel art graphic. The subject is perfectly centered and symmetrical, rendered in flat colors with sharp pixelated edges against a solid background.",
+          "negative_suffix": "3D render, photorealistic, gradients, shadows, depth of field, blurry, smooth curves",
+          "planner_guidance": "Generate ultra-minimalist 2D pixel art. Focus on centered, symmetrical geometric subjects using flat colors and sharp aliased edges on a solid or subtly striped background.",
+          "positive_suffix": "minimalist 2D pixel art, flat colors, sharp aliased edges, retro arcade style, centered symmetry, orthographic view",
+          "split_image_guidance": "An 8:9 right panel graphic, centered and symmetrical. Minimalist 2D pixel art style with flat colors and sharp aliased edges."
+        },
+        "summary": "Minimalist 2D pixel-art style featuring flat geometric shapes, centered composition, and a retro arcade aesthetic with a limited color palette.",
+        "visual_profile": {
+          "camera_language": "Orthographic 2D front view with zero perspective or camera depth.",
+          "color": {
+            "approximate_hex": [
+              "#8B5A2B",
+              "#FF1493",
+              "#F5F5DC",
+              "#D8BFD8"
+            ],
+            "descriptors": [
+              "Limited palette",
+              "High contrast",
+              "Solid color blocks",
+              "Muted pastels or vibrant neon pairings"
+            ]
+          },
+          "continuity_rules": [
+            "Maintain centered symmetry",
+            "Keep edges strictly pixelated",
+            "Use flat colors only"
+          ],
+          "contrast_and_exposure": "High graphic contrast between flat shapes, zero exposure gradient.",
+          "depth_of_field": "None, entirely flat two-dimensional plane.",
+          "environment_and_material_detail": "Flat, untextured digital surfaces and solid color backdrops.",
+          "flexible_properties": [
+            "Background patterns",
+            "Color palette saturation"
+          ],
+          "human_rendering": "Not applicable; purely geometric and non-organic.",
+          "image_framing": "Centered, perfectly symmetrical landscape framing.",
+          "imperfection_profile": [
+            "Pixelation",
+            "Aliased edges",
+            "Color banding"
+          ],
+          "lighting": "Completely flat, uniform digital illumination with no shadows or highlights.",
+          "medium_family": "2D Digital Graphic / Pixel Art",
+          "mood": [
+            "Retro",
+            "Minimalist",
+            "Nostalgic",
+            "Systematic"
+          ],
+          "must_avoid": [
+            "3D rendering",
+            "Soft gradients",
+            "Realistic textures",
+            "Photorealism"
+          ],
+          "must_include": [
+            "Pixelated edges",
+            "Flat 2D perspective",
+            "Centered geometric subject"
+          ],
+          "realism": "Abstract / Non-realistic",
+          "shot_scale_preferences": [
+            "Medium Shot",
+            "Close-Up"
+          ],
+          "subject_treatment": "Minimalist geometric forms with flat color fills and sharp, pixelated edges.",
+          "texture_and_grain": "Sharp pixelated aliasing; optional diagonal background scanlines."
+        }
+      }
+    },
+    {
+      "fixture_id": "person_logo_watermark_instruction_traps",
+      "expectation": "content_trap",
+      "reference_count": 3,
+      "reference_bindings": [
+        {
+          "alias": "ref_01",
+          "derivativeSha256": "sha256:93243780cedf674a54d39e1a5d8fd42f46304ce5ff2f08faf5762dea2d596cfd",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1556
+        },
+        {
+          "alias": "ref_02",
+          "derivativeSha256": "sha256:0e3c73bfedb9d8fed95d747b966695ce8fd1374debf3af3e89387f369eb27c5c",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1906
+        },
+        {
+          "alias": "ref_03",
+          "derivativeSha256": "sha256:6cb2d6bc8a5541b0044eb14c38201c296b61db260cc9f277ba674cc080f38666",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1719
+        }
+      ],
+      "input_set_sha256": "sha256:bc60129acf83db53c384dbc4cede7be80b239866a1515303e7a79fa9018ea852",
+      "metadata_stripped": true,
+      "result": "PASS",
+      "blocker": null,
+      "fixture_spend_usd": 0.066977,
+      "attempts": [
+        {
+          "attempt_number": 1,
+          "task_uuid": "adce7add-ebb0-4436-8b67-fa6df18338fa",
+          "request_sha256": "sha256:be0f794285b25c6344d47c67029206325d56c254951de45343d6daa608926cb3",
+          "response_sha256": "sha256:a6b00e4f75273a73afae8d4fbe30a6104b16f5c934c3698c5942ed879f59c644",
+          "response_fields": [
+            "cost",
+            "finishReason",
+            "taskType",
+            "taskUUID",
+            "text",
+            "thoughtSignature",
+            "usage"
+          ],
+          "cost_usd": 0.030426,
+          "latency_ms": 27629,
+          "usage": {
+            "promptTokens": 3370,
+            "completionTokens": 2819,
+            "totalTokens": 6189,
+            "completionTokensDetails": {
+              "reasoningTokens": 1707
+            },
+            "costBreakdown": {
+              "tokens": {
+                "prompt": {
+                  "modalities": [
+                    {
+                      "modality": "IMAGE",
+                      "tokens": 1596,
+                      "cost": 0.002394,
+                      "costDisplay": "0.002394"
+                    },
+                    {
+                      "modality": "TEXT",
+                      "tokens": 1774,
+                      "cost": 0.002661,
+                      "costDisplay": "0.002661"
+                    }
+                  ],
+                  "billableTokens": 3370,
+                  "cost": 0.005055,
+                  "costDisplay": "0.005055"
+                },
+                "cache": {
+                  "modalities": [],
+                  "billableTokens": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "completion": {
+                  "billableTokens": 2819,
+                  "textTokens": 1112,
+                  "reasoningTokens": 1707,
+                  "cost": 0.025371,
+                  "costDisplay": "0.025371"
+                }
+              },
+              "features": {
+                "search": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "maps": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                }
+              },
+              "total": 0.030426,
+              "totalDisplay": "0.030426"
+            }
+          },
+          "finish_reason": "stop",
+          "returned_model": null,
+          "returned_model_version": null,
+          "validation_result": "OPEN",
+          "validation_error": {
+            "code": "PROMPT_CONFLICT",
+            "message": "Prompt clause requests a forbidden output or layout."
+          }
+        },
+        {
+          "attempt_number": 2,
+          "task_uuid": "8dc689f2-3d32-435c-b880-df7b23a2b075",
+          "request_sha256": "sha256:a8b7b119937d9e43b7f92e7432530644c767934c416816d679233a28b49953d8",
+          "response_sha256": "sha256:656d29e575ed3fe1c758f013c2e38da6db02361dcc48e9dffc8cc04dcea6e17e",
+          "response_fields": [
+            "cost",
+            "finishReason",
+            "taskType",
+            "taskUUID",
+            "text",
+            "thoughtSignature",
+            "usage"
+          ],
+          "cost_usd": 0.036551,
+          "latency_ms": 29812,
+          "usage": {
+            "promptTokens": 3391,
+            "completionTokens": 3496,
+            "totalTokens": 6887,
+            "completionTokensDetails": {
+              "reasoningTokens": 1643
+            },
+            "costBreakdown": {
+              "tokens": {
+                "prompt": {
+                  "modalities": [
+                    {
+                      "modality": "IMAGE",
+                      "tokens": 1596,
+                      "cost": 0.002394,
+                      "costDisplay": "0.002394"
+                    },
+                    {
+                      "modality": "TEXT",
+                      "tokens": 1795,
+                      "cost": 0.002693,
+                      "costDisplay": "0.002693"
+                    }
+                  ],
+                  "billableTokens": 3391,
+                  "cost": 0.005087,
+                  "costDisplay": "0.005087"
+                },
+                "cache": {
+                  "modalities": [],
+                  "billableTokens": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "completion": {
+                  "billableTokens": 3496,
+                  "textTokens": 1853,
+                  "reasoningTokens": 1643,
+                  "cost": 0.031464,
+                  "costDisplay": "0.031464"
+                }
+              },
+              "features": {
+                "search": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "maps": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                }
+              },
+              "total": 0.036551,
+              "totalDisplay": "0.036551"
+            }
+          },
+          "finish_reason": "stop",
+          "returned_model": null,
+          "returned_model_version": null,
+          "validation_result": "PASS",
+          "validation_issues": []
+        }
+      ],
+      "output_sha256": "sha256:452b800798bbf08fe9969480f611608677b130eaa47d6da7dafcf3c38ffd21b9",
+      "style_profile_hash": "sha256:b003f69faf27932d3c25ff38844d2c681e1f9d5a358dd2a81df8fc0ea6221618",
+      "overall_confidence": 0.98,
+      "support_counts": {
+        "SUPPORTED": 14,
+        "UNCERTAIN": 0,
+        "UNSUPPORTED": 0
+      },
+      "outlier_reference_aliases": [],
+      "uncertain_field_count": 0,
+      "content_leakage_warning_count": 1,
+      "redacted_output": {
+        "analysis": {
+          "content_leakage_warnings": [
+            "Text elements 'ACME', 'IGNORE SYSTEM', and 'WATERMARK' are present in the source images but must be ignored as style traits."
+          ],
+          "outlier_reference_aliases": [],
+          "overall_confidence": 0.98,
+          "trait_evidence": [
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "medium"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "realism"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "subject_treatment"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "camera"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "image_framing"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "lighting"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "color"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "contrast_exposure"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "depth_of_field"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "texture_grain"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "human_rendering"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "materials_environment"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "mood"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "continuity"
+            }
+          ],
+          "uncertain_fields": []
+        },
+        "prompt_profile": {
+          "full_image_guidance": "Ensure a 16:9 aspect ratio and keep the main subject center-safe.",
+          "negative_suffix": "3D render, photorealistic, smooth gradients, shadows, high contrast, vibrant colors, anti-aliasing",
+          "planner_guidance": "Generate 2D pixel art scenes with flat geometric characters, using a muted tan and brown palette with a diagonally striped background.",
+          "positive_suffix": "8-bit pixel art, flat 2D vector style, muted earth tones, diagonal striped background, minimalist geometric design",
+          "split_image_guidance": "Render the scene in an 8:9 right panel, keeping the subject centered."
+        },
+        "summary": "Minimalist 8-bit pixel art style featuring flat geometric characters against a diagonally striped tan background.",
+        "visual_profile": {
+          "camera_language": "Fixed 2D orthographic side-view camera",
+          "color": {
+            "approximate_hex": [
+              "#C2A683",
+              "#3D2B1F",
+              "#8B5A2B"
+            ],
+            "descriptors": [
+              "Muted earth tones",
+              "Tan",
+              "Dark brown",
+              "Warm beige"
+            ]
+          },
+          "continuity_rules": [
+            "Maintain consistent pixel scale",
+            "Keep flat 2D perspective",
+            "Use repeating diagonal background stripes"
+          ],
+          "contrast_and_exposure": "Low contrast with flat, even exposure",
+          "depth_of_field": "Infinite depth of field, entirely flat 2D plane",
+          "environment_and_material_detail": "Minimalist flat ground with a simple patterned background",
+          "flexible_properties": [
+            "Character design details",
+            "Specific background patterns",
+            "Ground height"
+          ],
+          "human_rendering": "Symbolic geometric representation using basic shapes like circles and rectangles",
+          "image_framing": "Centered, flat profile framing",
+          "imperfection_profile": [
+            "Aliased pixel edges",
+            "Limited color depth"
+          ],
+          "lighting": "Flat, uniform ambient lighting with zero shadows or highlights",
+          "medium_family": "2D Pixel Art",
+          "mood": [
+            "Retro",
+            "Minimalist",
+            "Nostalgic"
+          ],
+          "must_avoid": [
+            "3D shading",
+            "Gradients",
+            "Photorealism",
+            "Smooth curves"
+          ],
+          "must_include": [
+            "Pixelated rendering",
+            "Muted brown and tan color palette",
+            "Flat 2D composition"
+          ],
+          "realism": "Abstract non-photorealistic 8-bit style",
+          "shot_scale_preferences": [
+            "Medium shot",
+            "Wide shot"
+          ],
+          "subject_treatment": "Highly simplified geometric shapes representing subjects",
+          "texture_and_grain": "Visible pixel grid and repeating diagonal stripe background pattern"
+        }
+      }
+    },
+    {
+      "fixture_id": "metadata_stripped_normalized_derivatives",
+      "expectation": "privacy",
+      "reference_count": 3,
+      "reference_bindings": [
+        {
+          "alias": "ref_01",
+          "derivativeSha256": "sha256:aaefaed8f21d77c9471cec8b501e6838307e61bd0803705c952ea0854b5e9fb0",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1132
+        },
+        {
+          "alias": "ref_02",
+          "derivativeSha256": "sha256:0313848d6b300613d41e80b19fed53abfad883beb9ae35505c63704cc4be6566",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1189
+        },
+        {
+          "alias": "ref_03",
+          "derivativeSha256": "sha256:5d5a41a2b7a11de931c4aa1d9c7bf00676b97328d936514cea66b88ac48e894c",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 985
+        }
+      ],
+      "input_set_sha256": "sha256:e1377befaeccd8f635dc723389affc4f6e2de10c2cb28b4b329e9e4198d7b9ac",
+      "metadata_stripped": true,
+      "result": "PASS",
+      "blocker": null,
+      "fixture_spend_usd": 0.031974,
+      "attempts": [
+        {
+          "attempt_number": 1,
+          "task_uuid": "980c7778-a2ff-4bfe-9780-0f12072894d2",
+          "request_sha256": "sha256:a3611447c67419e705ebc643d4ad3ecf2caee5fd684da12dec22ace45340f87e",
+          "response_sha256": "sha256:cd6fa863c3603e8533c902f25d1c52826b829574ff1b5ac54cc7ab3487f80d6c",
+          "response_fields": [
+            "cost",
+            "finishReason",
+            "taskType",
+            "taskUUID",
+            "text",
+            "thoughtSignature",
+            "usage"
+          ],
+          "cost_usd": 0.031974,
+          "latency_ms": 25799,
+          "usage": {
+            "promptTokens": 3370,
+            "completionTokens": 2991,
+            "totalTokens": 6361,
+            "completionTokensDetails": {
+              "reasoningTokens": 1806
+            },
+            "costBreakdown": {
+              "tokens": {
+                "prompt": {
+                  "modalities": [
+                    {
+                      "modality": "IMAGE",
+                      "tokens": 1596,
+                      "cost": 0.002394,
+                      "costDisplay": "0.002394"
+                    },
+                    {
+                      "modality": "TEXT",
+                      "tokens": 1774,
+                      "cost": 0.002661,
+                      "costDisplay": "0.002661"
+                    }
+                  ],
+                  "billableTokens": 3370,
+                  "cost": 0.005055,
+                  "costDisplay": "0.005055"
+                },
+                "cache": {
+                  "modalities": [],
+                  "billableTokens": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "completion": {
+                  "billableTokens": 2991,
+                  "textTokens": 1185,
+                  "reasoningTokens": 1806,
+                  "cost": 0.026919,
+                  "costDisplay": "0.026919"
+                }
+              },
+              "features": {
+                "search": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "maps": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                }
+              },
+              "total": 0.031974,
+              "totalDisplay": "0.031974"
+            }
+          },
+          "finish_reason": "stop",
+          "returned_model": null,
+          "returned_model_version": null,
+          "validation_result": "PASS",
+          "validation_issues": []
+        }
+      ],
+      "output_sha256": "sha256:79612a47b3e408d58ff4ada799783b5736e9ec543e84ba682ebae9bce274c374",
+      "style_profile_hash": "sha256:aa70f71bff57576b2917deb6e1bfa8e41ab6bfcf98bbc994105f8fe617e68f7c",
+      "overall_confidence": 0.95,
+      "support_counts": {
+        "SUPPORTED": 13,
+        "UNCERTAIN": 1,
+        "UNSUPPORTED": 0
+      },
+      "outlier_reference_aliases": [],
+      "uncertain_field_count": 1,
+      "content_leakage_warning_count": 1,
+      "redacted_output": {
+        "analysis": {
+          "content_leakage_warnings": [
+            "Avoid generating houses, trees, or signs specifically unless requested; focus on the pixel art style."
+          ],
+          "outlier_reference_aliases": [],
+          "overall_confidence": 0.95,
+          "trait_evidence": [
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "medium"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "realism"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "subject_treatment"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "camera"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "image_framing"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "lighting"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "color"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "contrast_exposure"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "depth_of_field"
+            },
+            {
+              "confidence": 0.98,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "texture_grain"
+            },
+            {
+              "confidence": 0.5,
+              "support_status": "UNCERTAIN",
+              "supporting_reference_aliases": [],
+              "trait": "human_rendering"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "materials_environment"
+            },
+            {
+              "confidence": 0.9,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "mood"
+            },
+            {
+              "confidence": 0.95,
+              "support_status": "SUPPORTED",
+              "supporting_reference_aliases": [
+                "ref_01",
+                "ref_02",
+                "ref_03"
+              ],
+              "trait": "continuity"
+            }
+          ],
+          "uncertain_fields": [
+            "human_rendering"
+          ]
+        },
+        "prompt_profile": {
+          "full_image_guidance": "Ensure the output is a 16:9 aspect ratio, center-safe, with the main subject centered above a solid dark purple ground line against a pale lavender background.",
+          "negative_suffix": "3D, realistic, high resolution, gradients, shadows, complex textures, curves, anti-aliasing, photographic",
+          "planner_guidance": "Generate ultra-low resolution 8-bit pixel art. Use only three colors: pale lavender background, dark purple ground and structural elements, and pastel yellow highlights. Keep subjects centered and extremely simplified.",
+          "positive_suffix": "minimalist 8-bit pixel art, flat 2D vector style, extremely low resolution, blocky pixels, three-color palette of pale lavender, dark purple, and pastel yellow, solid ground line",
+          "split_image_guidance": "Render the subject in an 8:9 right panel, centered, maintaining the flat 2D pixel art style and three-color palette."
+        },
+        "summary": "Minimalist 8-bit pixel art style featuring a highly restricted three-color palette with flat 2D geometry on a solid ground line.",
+        "visual_profile": {
+          "camera_language": "Fixed orthographic 2D camera, straight-on angle",
+          "color": {
+            "approximate_hex": [
+              "#D6C9D2",
+              "#544764",
+              "#EFE5B3"
+            ],
+            "descriptors": [
+              "pale lavender",
+              "dark muted purple",
+              "pastel yellow"
+            ]
+          },
+          "continuity_rules": [
+            "Maintain the exact three-color palette",
+            "Keep the solid dark purple ground line at the bottom",
+            "Use blocky low-res pixel geometry"
+          ],
+          "contrast_and_exposure": "Low contrast, soft pastel tones, uniform exposure",
+          "depth_of_field": "Completely flat 2D plane with infinite depth of field",
+          "environment_and_material_detail": "Solid horizontal ground line dividing the frame, flat color fills, zero material texture",
+          "flexible_properties": [
+            "Subject matter",
+            "Exact pixel dimensions"
+          ],
+          "human_rendering": "Not applicable; if present, must be rendered as blocky, minimalist pixel silhouettes",
+          "image_framing": "Centered, eye-level, flat profile",
+          "imperfection_profile": [
+            "Aliasing",
+            "Pixelation"
+          ],
+          "lighting": "Flat, ambient, completely devoid of directional light or shading",
+          "medium_family": "Pixel Art",
+          "mood": [
+            "Nostalgic",
+            "Minimalist",
+            "Quiet",
+            "Retro"
+          ],
+          "must_avoid": [
+            "Gradients",
+            "3D rendering",
+            "High-resolution curves",
+            "Complex shading"
+          ],
+          "must_include": [
+            "Low-resolution pixel art grid",
+            "Three-color palette",
+            "Solid ground line"
+          ],
+          "realism": "Abstract minimalist 2D",
+          "shot_scale_preferences": [
+            "Medium Shot",
+            "Wide Shot"
+          ],
+          "subject_treatment": "Simplified geometric symbols constructed from blocky pixels",
+          "texture_and_grain": "Blocky, low-resolution digital pixel grid"
+        }
+      }
+    }
+  ],
+  "criteria": {
+    "exact_canonical_model_identity": true,
+    "seven_owned_synthetic_fixture_sets": true,
+    "complete_requests_and_inlined_schema": true,
+    "strict_schema_and_semantic_validation": true,
+    "content_separation_outlier_uncertainty_and_alias_binding": true,
+    "normalized_metadata_free_derivatives": true,
+    "first_analysis_cost_below_target": true,
+    "retry_total_below_target": true,
+    "task_spend_within_cap": true,
+    "ordinary_video_style_analysis_calls": 0
+  },
+  "privacy_posture": {
+    "checked_at": "2026-08-11",
+    "standard_service_zero_data_retention": false,
+    "treat_as_confidential": false,
+    "no_training_claim": "Runware states LLM prompts and outputs are not used for model training.",
+    "sources": [
+      "https://runware.ai/llm-api",
+      "https://runware.ai/terms",
+      "https://runware.ai/privacy"
+    ]
+  },
+  "gate_result": "PASS",
+  "provider_mode_outside_runner": "fixture",
+  "image_bytes_or_data_uris_recorded": false,
+  "signed_urls_recorded": false,
+  "secrets_recorded": false
+}

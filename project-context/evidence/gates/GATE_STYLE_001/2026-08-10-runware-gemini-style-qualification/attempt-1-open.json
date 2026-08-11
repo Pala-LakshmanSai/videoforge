@@ -1,0 +1,124 @@
+{
+  "schema_version": "videoforge.gemini-style-qualification/v1",
+  "task_id": "VF-3-02",
+  "gate_id": "GATE_STYLE_001",
+  "checked_at": "2026-08-11T02:55:58.956Z",
+  "provider": "Runware",
+  "requested_model_alias": "google-gemini-3-5-flash",
+  "requested_model": "google:gemini@3.5-flash",
+  "public_provider_name": "Gemini 3.5 Flash",
+  "model_identity": {
+    "task_uuid": "d30261df-afdf-424a-bbee-7c246c708bc1",
+    "response_sha256": "sha256:5a8cc190cf9d95fcee18fdc3ed3c53463c4f35a45878c8e861a6b33054dc0379",
+    "air": "google:gemini@3.5-flash",
+    "name": "Gemini 3.5 Flash",
+    "version": "3.5",
+    "category": "text",
+    "architecture": "gemini_3_5_flash",
+    "source": "curated",
+    "capabilities": [
+      "io:text-to-text",
+      "io:image-to-text",
+      "io:video-to-text",
+      "io:audio-to-text",
+      "form:checkpoint"
+    ],
+    "private": false,
+    "exact_canonical_match": true
+  },
+  "settings": {
+    "thinking_level": "medium",
+    "temperature": 0.1,
+    "top_p": 0.9,
+    "max_tokens": 6000,
+    "media_resolution": "high",
+    "output_format": "JSON",
+    "tools_enabled": false
+  },
+  "system_prompt_sha256": "sha256:1ac23f5503f2116a40a1f7c7f4bd401fe6673ae186d41d3b7bcbd21cb906cde1",
+  "provider_schema_sha256": "sha256:a75bf0a5dac72975c16cad662cac3d734f34a6ba6e393fa4676e185d52fcadc9",
+  "task_cap_usd": 3,
+  "first_analysis_cap_usd": 0.08,
+  "retry_total_cap_usd": 0.15,
+  "external_spend_usd": 0,
+  "unresolved_cost": true,
+  "fixture_count": 1,
+  "expected_fixture_count": 7,
+  "generation_call_count": 0,
+  "retry_count": 0,
+  "fixtures": [
+    {
+      "fixture_id": "coherent_reference_set",
+      "expectation": "coherent",
+      "reference_count": 4,
+      "reference_bindings": [
+        {
+          "alias": "ref_01",
+          "derivativeSha256": "sha256:c3a156a9a6c54e3015a4ed1618dafcd2ccedf9035ecfe6ddc7b6009a2d145836",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1297
+        },
+        {
+          "alias": "ref_02",
+          "derivativeSha256": "sha256:e8b5f5ea9e7a47890b23bcabf2603afab201707d588940440c65f503b49795fd",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1423
+        },
+        {
+          "alias": "ref_03",
+          "derivativeSha256": "sha256:4495a2061a179e31c152985a215052ed18e3868e7d4474fec7f83c6d64d723d7",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1450
+        },
+        {
+          "alias": "ref_04",
+          "derivativeSha256": "sha256:0d1998c23179085102998f8f9d966cf50137342356565ab9b010ac7e11aed44e",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1193
+        }
+      ],
+      "input_set_sha256": "sha256:d8487dbf300f40b3e68f6fffe02680a12b3cead2c31e839e248e718605c399a8",
+      "metadata_stripped": true,
+      "result": "OPEN",
+      "blocker": "Runware Gemini request failed: HTTP 400",
+      "fixture_spend_usd": null,
+      "attempts": []
+    }
+  ],
+  "criteria": {
+    "exact_canonical_model_identity": true,
+    "seven_owned_synthetic_fixture_sets": false,
+    "complete_requests_and_inlined_schema": false,
+    "strict_schema_and_semantic_validation": false,
+    "content_separation_outlier_uncertainty_and_alias_binding": false,
+    "normalized_metadata_free_derivatives": true,
+    "first_analysis_cost_below_target": false,
+    "retry_total_below_target": false,
+    "task_spend_within_cap": false,
+    "ordinary_video_style_analysis_calls": 0
+  },
+  "privacy_posture": {
+    "checked_at": "2026-08-11",
+    "standard_service_zero_data_retention": false,
+    "treat_as_confidential": false,
+    "no_training_claim": "Runware states LLM prompts and outputs are not used for model training.",
+    "sources": [
+      "https://runware.ai/llm-api",
+      "https://runware.ai/terms",
+      "https://runware.ai/privacy"
+    ]
+  },
+  "gate_result": "OPEN",
+  "provider_mode_outside_runner": "fixture",
+  "image_bytes_or_data_uris_recorded": false,
+  "signed_urls_recorded": false,
+  "secrets_recorded": false
+}

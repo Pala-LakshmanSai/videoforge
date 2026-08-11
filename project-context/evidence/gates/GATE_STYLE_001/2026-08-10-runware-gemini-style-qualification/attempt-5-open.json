@@ -1,0 +1,308 @@
+{
+  "schema_version": "videoforge.gemini-style-qualification/v1",
+  "task_id": "VF-3-02",
+  "gate_id": "GATE_STYLE_001",
+  "checked_at": "2026-08-11T03:11:44.061Z",
+  "provider": "Runware",
+  "requested_model_alias": "google-gemini-3-5-flash",
+  "requested_model": "google:gemini@3.5-flash",
+  "public_provider_name": "Gemini 3.5 Flash",
+  "model_identity": {
+    "task_uuid": "7979e8d4-6917-4334-9856-aa67c02388de",
+    "response_sha256": "sha256:7c2efa71c8c2025e47e615defd4601b20872ee3e5fcfb814614f4cb0ceace8a9",
+    "air": "google:gemini@3.5-flash",
+    "name": "Gemini 3.5 Flash",
+    "version": "3.5",
+    "category": "text",
+    "architecture": "gemini_3_5_flash",
+    "source": "curated",
+    "capabilities": [
+      "io:text-to-text",
+      "io:image-to-text",
+      "io:video-to-text",
+      "io:audio-to-text",
+      "form:checkpoint"
+    ],
+    "private": false,
+    "exact_canonical_match": true
+  },
+  "settings": {
+    "thinking_level": "medium",
+    "temperature": 0.1,
+    "top_p": 0.9,
+    "max_tokens": 6000,
+    "media_resolution": "high",
+    "output_format": "JSON",
+    "tools_enabled": false
+  },
+  "system_prompt_sha256": "sha256:1ac23f5503f2116a40a1f7c7f4bd401fe6673ae186d41d3b7bcbd21cb906cde1",
+  "provider_schema_sha256": "sha256:78ccf3137849250901ff017a461a33bf22daad757c86ec320fb87942231ebad3",
+  "provider_schema_policy": "Canonical analyzer/profile references are fully inlined. Metadata and range/cardinality constraints are removed only from the provider-facing schema after the full schema was rejected by Gemini; exact properties, types, required fields, enums, and additionalProperties boundaries remain. Canonical local schema and semantic validation remain authoritative.",
+  "prequalification_diagnostics": {
+    "provider_submissions": 7,
+    "billable_calls": 2,
+    "no_cost_http_400_rejections": 5,
+    "spend_usd": 0.006551,
+    "result": "Minimal schema passed; full inlined schema failed; lean exact-shape schema passed. Failure isolated to provider schema complexity/constraints."
+  },
+  "task_cap_usd": 3,
+  "first_analysis_cap_usd": 0.08,
+  "retry_total_cap_usd": 0.15,
+  "external_spend_usd": 0.09396,
+  "unresolved_cost": false,
+  "fixture_count": 1,
+  "expected_fixture_count": 7,
+  "generation_call_count": 9,
+  "billable_generation_call_count": 4,
+  "retry_count": 1,
+  "fixtures": [
+    {
+      "fixture_id": "coherent_reference_set",
+      "expectation": "coherent",
+      "reference_count": 4,
+      "reference_bindings": [
+        {
+          "alias": "ref_01",
+          "derivativeSha256": "sha256:c3a156a9a6c54e3015a4ed1618dafcd2ccedf9035ecfe6ddc7b6009a2d145836",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1297
+        },
+        {
+          "alias": "ref_02",
+          "derivativeSha256": "sha256:e8b5f5ea9e7a47890b23bcabf2603afab201707d588940440c65f503b49795fd",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1423
+        },
+        {
+          "alias": "ref_03",
+          "derivativeSha256": "sha256:4495a2061a179e31c152985a215052ed18e3868e7d4474fec7f83c6d64d723d7",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1450
+        },
+        {
+          "alias": "ref_04",
+          "derivativeSha256": "sha256:0d1998c23179085102998f8f9d966cf50137342356565ab9b010ac7e11aed44e",
+          "mimeType": "image/png",
+          "width": 192,
+          "height": 128,
+          "bytes": 1193
+        }
+      ],
+      "input_set_sha256": "sha256:d8487dbf300f40b3e68f6fffe02680a12b3cead2c31e839e248e718605c399a8",
+      "metadata_stripped": true,
+      "result": "OPEN",
+      "blocker": "provider output did not pass within one bounded retry",
+      "fixture_spend_usd": 0.087409,
+      "attempts": [
+        {
+          "attempt_number": 1,
+          "task_uuid": "aa4e6603-c1a8-4c3b-b6ea-28a75bcab51d",
+          "request_sha256": "sha256:67aa280aad3399d39ce0d0c9669b2cf9f6db3a9b016d12b603fedaae1cee4abf",
+          "response_sha256": "sha256:2f0d92247a60a348b1ca5547059440874cc50233fd0105989f7c867102ec5572",
+          "response_fields": [
+            "cost",
+            "finishReason",
+            "taskType",
+            "taskUUID",
+            "text",
+            "thoughtSignature",
+            "usage"
+          ],
+          "cost_usd": 0.043279,
+          "latency_ms": 32270,
+          "usage": {
+            "promptTokens": 6047,
+            "completionTokens": 3801,
+            "totalTokens": 9848,
+            "completionTokensDetails": {
+              "reasoningTokens": 2520
+            },
+            "costBreakdown": {
+              "tokens": {
+                "prompt": {
+                  "modalities": [
+                    {
+                      "modality": "TEXT",
+                      "tokens": 1727,
+                      "cost": 0.002591,
+                      "costDisplay": "0.002591"
+                    },
+                    {
+                      "modality": "IMAGE",
+                      "tokens": 4320,
+                      "cost": 0.00648,
+                      "costDisplay": "0.006480"
+                    }
+                  ],
+                  "billableTokens": 6047,
+                  "cost": 0.00907,
+                  "costDisplay": "0.009070"
+                },
+                "cache": {
+                  "modalities": [],
+                  "billableTokens": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "completion": {
+                  "billableTokens": 3801,
+                  "textTokens": 1281,
+                  "reasoningTokens": 2520,
+                  "cost": 0.034209,
+                  "costDisplay": "0.034209"
+                }
+              },
+              "features": {
+                "search": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "maps": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                }
+              },
+              "total": 0.043279,
+              "totalDisplay": "0.043279"
+            }
+          },
+          "finish_reason": "stop",
+          "returned_model": null,
+          "returned_model_version": null,
+          "validation_result": "OPEN",
+          "validation_error": {
+            "code": "PROMPT_CONFLICT",
+            "message": "Full-image guidance must preserve 16:9 center-safe geometry."
+          }
+        },
+        {
+          "attempt_number": 2,
+          "task_uuid": "ec9d1624-e328-42ad-8f00-e34a50ce301e",
+          "request_sha256": "sha256:c21bab2b8fce8e75d9f2274dda85e9b64c5fb3e18e515540973585931b3e8788",
+          "response_sha256": "sha256:f0a03f48783d0d818c1585de6b5ec9bab704e3792659e21e1d7556e1125d28c5",
+          "response_fields": [
+            "cost",
+            "finishReason",
+            "taskType",
+            "taskUUID",
+            "text",
+            "thoughtSignature",
+            "usage"
+          ],
+          "cost_usd": 0.04413,
+          "latency_ms": 31527,
+          "usage": {
+            "promptTokens": 6068,
+            "completionTokens": 3892,
+            "totalTokens": 9960,
+            "completionTokensDetails": {
+              "reasoningTokens": 2576
+            },
+            "costBreakdown": {
+              "tokens": {
+                "prompt": {
+                  "modalities": [
+                    {
+                      "modality": "IMAGE",
+                      "tokens": 4320,
+                      "cost": 0.00648,
+                      "costDisplay": "0.006480"
+                    },
+                    {
+                      "modality": "TEXT",
+                      "tokens": 1748,
+                      "cost": 0.002622,
+                      "costDisplay": "0.002622"
+                    }
+                  ],
+                  "billableTokens": 6068,
+                  "cost": 0.009102,
+                  "costDisplay": "0.009102"
+                },
+                "cache": {
+                  "modalities": [],
+                  "billableTokens": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "completion": {
+                  "billableTokens": 3892,
+                  "textTokens": 1316,
+                  "reasoningTokens": 2576,
+                  "cost": 0.035028,
+                  "costDisplay": "0.035028"
+                }
+              },
+              "features": {
+                "search": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                },
+                "maps": {
+                  "count": 0,
+                  "cost": 0,
+                  "costDisplay": "0.000000"
+                }
+              },
+              "total": 0.04413,
+              "totalDisplay": "0.044130"
+            }
+          },
+          "finish_reason": "length",
+          "returned_model": null,
+          "returned_model_version": null,
+          "validation_result": "OPEN",
+          "validation_error": {
+            "code": "PROMPT_CONFLICT",
+            "message": "Full-image guidance must preserve 16:9 center-safe geometry."
+          }
+        }
+      ],
+      "output_sha256": null,
+      "style_profile_hash": null,
+      "overall_confidence": null,
+      "support_counts": null,
+      "outlier_reference_aliases": [],
+      "uncertain_field_count": null,
+      "content_leakage_warning_count": null,
+      "redacted_output": null
+    }
+  ],
+  "criteria": {
+    "exact_canonical_model_identity": true,
+    "seven_owned_synthetic_fixture_sets": false,
+    "complete_requests_and_inlined_schema": false,
+    "strict_schema_and_semantic_validation": false,
+    "content_separation_outlier_uncertainty_and_alias_binding": false,
+    "normalized_metadata_free_derivatives": true,
+    "first_analysis_cost_below_target": true,
+    "retry_total_below_target": true,
+    "task_spend_within_cap": true,
+    "ordinary_video_style_analysis_calls": 0
+  },
+  "privacy_posture": {
+    "checked_at": "2026-08-11",
+    "standard_service_zero_data_retention": false,
+    "treat_as_confidential": false,
+    "no_training_claim": "Runware states LLM prompts and outputs are not used for model training.",
+    "sources": [
+      "https://runware.ai/llm-api",
+      "https://runware.ai/terms",
+      "https://runware.ai/privacy"
+    ]
+  },
+  "gate_result": "OPEN",
+  "provider_mode_outside_runner": "fixture",
+  "image_bytes_or_data_uris_recorded": false,
+  "signed_urls_recorded": false,
+  "secrets_recorded": false
+}
