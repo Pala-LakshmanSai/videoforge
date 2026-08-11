@@ -14,6 +14,12 @@ import type {
   WorkspaceScope,
 } from "../repositories/types.js";
 import {
+  NoopTelemetryAdapter,
+  TelemetryStream,
+  instrumentLocalOperation,
+  type TelemetryPort,
+} from "../telemetry/index.js";
+import {
   createPGliteControlPlaneRepositories,
   pgliteAdapterInternals,
 } from "./pglite-repositories.js";
@@ -271,6 +277,11 @@ export interface LocalDispatchDriver {
 export interface LocalWorkflowTransportOptions {
   /** Trusted control-plane time sampled after the dispatch driver settles. */
   readonly clock?: () => string;
+  /** Optional runtime-neutral sink. Omitted telemetry is validated then discarded locally. */
+  readonly telemetry?: TelemetryPort;
+  /** Independently injected clocks keep telemetry from changing settlement-clock behavior. */
+  readonly telemetryClock?: () => string;
+  readonly telemetryMonotonicClock?: () => number;
 }
 
 export type LocalDeliveryResult =
@@ -298,6 +309,9 @@ export type LocalDeliveryResult =
 /** Provider-free local outbox transport. The caller supplies an in-process fake dispatch driver. */
 export class LocalWorkflowTransport {
   private readonly clock: () => string;
+  private readonly telemetry: TelemetryPort;
+  private readonly telemetryClock?: () => string;
+  private readonly telemetryMonotonicClock?: () => number;
 
   public constructor(
     private readonly database: TransactionalSqlExecutor,
@@ -305,6 +319,9 @@ export class LocalWorkflowTransport {
     options: LocalWorkflowTransportOptions = {},
   ) {
     this.clock = options.clock ?? (() => new Date().toISOString());
+    this.telemetry = options.telemetry ?? new NoopTelemetryAdapter();
+    this.telemetryClock = options.telemetryClock;
+    this.telemetryMonotonicClock = options.telemetryMonotonicClock;
   }
 
   public async leaseNext(request: OutboxLeaseRequest): Promise<OutboxRecord | null> {
@@ -375,8 +392,48 @@ export class LocalWorkflowTransport {
     const outbox = await this.leaseNext(request);
     if (outbox === null) return { kind: "NO_WORK" };
     let outcome: LocalDispatchOutcome;
+    const stream = new TelemetryStream({
+      port: this.telemetry,
+      streamId: outbox.outboxId,
+      correlation: {
+        requestId: null,
+        workspaceId: outbox.workspaceId,
+        projectId: null,
+        revisionId: null,
+        taskId: outbox.taskId,
+        attemptId: outbox.attemptId,
+        outboxId: outbox.outboxId,
+        providerJobId: null,
+      },
+      ...(this.telemetryClock === undefined ? {} : { clock: this.telemetryClock }),
+    });
+    const queuedAt = Date.parse(outbox.availableAt);
+    const leasedAt = Date.parse(request.now);
+    const queueWaitMs =
+      Number.isFinite(queuedAt) && Number.isFinite(leasedAt) && leasedAt >= queuedAt
+        ? leasedAt - queuedAt
+        : null;
     try {
-      outcome = await this.driver.dispatch(structuredClone(outbox));
+      outcome = await instrumentLocalOperation(
+        stream,
+        {
+          operationName: "local_driver_dispatch",
+          stage: "dispatch",
+          providerOperation: "local.dispatch",
+          retry: null,
+          queueWaitMs,
+          cost: null,
+          ...(this.telemetryMonotonicClock === undefined
+            ? {}
+            : { monotonicClock: this.telemetryMonotonicClock }),
+          classifyError: () => ({
+            code: "LOCAL_DISPATCH_DRIVER_FAILED",
+            classification: "TRANSIENT",
+            retryable: true,
+          }),
+        },
+        () => this.driver.dispatch(structuredClone(outbox)),
+      );
     } catch (error: unknown) {
       outcome = {
         kind: "ACKNOWLEDGEMENT_UNKNOWN",
