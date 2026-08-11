@@ -29,9 +29,9 @@ jobs:
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           image="ghcr.io/${owner}/videoforge-avatar-quality:${GITHUB_SHA}"
           docker build --tag "$image" workers/avatar-quality
-          docker run --rm --entrypoint python "$image" -c \
+          docker run --rm -e TORCH_CUDA_ARCH_LIST=8.0 --entrypoint python "$image" -c \
             'import av, flash_attn, torch, torchvision, runpod, skyreels_v3; from videoforge_avatar_quality import SkyReelsJob; print("avatar-quality-import-ok")'
-          docker run --rm --entrypoint python "$image" -c \
+          docker run --rm -e TORCH_CUDA_ARCH_LIST=8.0 --entrypoint python "$image" -c \
             'import runpy, sys, torch; torch.cuda.get_device_name = lambda *_: "NVIDIA A100 80GB PCIe"; sys.argv = ["generate_video.py", "--help"]; runpy.run_path("/opt/skyreels-v3/generate_video.py", run_name="__main__")' >/dev/null
           docker run --rm --entrypoint python "$image" -c \
             'import sys; sys.path.insert(0, "/opt/videoforge"); import handler; observed = []; handler.runpod.serverless.start = lambda config: observed.append(config); handler.start_worker(); assert len(observed) == 1 and callable(observed[0]["handler"]); print("avatar-quality-handler-registration-ok")'
