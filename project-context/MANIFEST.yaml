@@ -233,6 +233,13 @@ read_profiles:
     - 19_IMPLEMENTATION_PLAYBOOK.md
     - GATES.yaml
     - tasks/VF-3-07.md
+  phase3_mage_access_license_preflight:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 11_COST_SPEED_BUDGET.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - GATES.yaml
+    - tasks/VF-3-08.md
   phase3_prompt_compiler:
     - GLOSSARY.md
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md

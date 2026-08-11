@@ -3,7 +3,7 @@
 Status: user-approved ladder plus explicit benchmark gates  
 Read when: building a worker, pinning dependencies, estimating cost, or proposing a model change.
 
-Prices and provider capabilities below were refreshed from official sources on 2026-08-10 and are time-sensitive. Runware DeepSeek identity and qualification facts were refreshed live on 2026-08-11. Runtime code must store current rates/configuration rather than hard-code this document.
+Prices and provider capabilities below were refreshed from official sources on 2026-08-10 and are time-sensitive. Runware DeepSeek/Gemini qualification facts and Mage public access state were refreshed on 2026-08-11. Runtime code must store current rates/configuration rather than hard-code this document.
 
 ## Runware DeepSeek V4 Flash 0731
 
@@ -97,7 +97,7 @@ The separate `microsoft/Mage-Flow-Edit-Turbo` model is not needed in the normal 
 
 Mage receives a text prompt compiled from the selected style profile; it does not receive the style's reference images in MVP. Prompt-derived styling is intentionally simple/cheap but must pass `GATE_STYLE_002`. Do not silently introduce reference conditioning or LoRA training if a distinctive style fails.
 
-Access/launch gate: preserve the exact model card/license/checkpoint artifact used, verify commercial launch terms and gated download access, and pin a revision/hash. The public metadata reports MIT, but unauthenticated model/license artifact retrieval returned authorization-required on 2026-08-10. Launch must rely on the exact retrieved artifact, not metadata or memory.
+Access/launch gate: preserve the exact model card/license/checkpoint artifact used, verify commercial launch terms and gated download access, and pin a revision/hash. Official Hugging Face search/model-card metadata still reports MIT and a public 4B BF16 repository, but unauthenticated API and raw `LICENSE` retrieval again returned HTTP 401 on 2026-08-11. `GATE_IMAGE_002` therefore remains open: launch must rely on the exact retrieved official artifact, not search metadata, an unofficial mirror, or memory.
 
 Official source: [Mage-Flow-Turbo model card](https://huggingface.co/microsoft/Mage-Flow-Turbo).
 
