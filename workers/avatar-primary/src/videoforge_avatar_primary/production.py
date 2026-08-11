@@ -10,7 +10,7 @@ import tempfile
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, TypedDict
+from typing import BinaryIO, Literal, TypedDict
 
 SHA256_PREFIX = "sha256:"
 AVATAR_SOURCE_REVISION = "63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39"
@@ -18,6 +18,48 @@ AVATAR_WEIGHTS_REVISION = "e2448919a7b535c29f34e07892884ae1a43c6ace"
 WAN_REVISION = "37ec512624d61f7aa208f7ea8140a131f93afc9a"
 WAV2VEC_REVISION = "22aad52d435eb6dbaf354bdad9b0da84ce7d6156"
 ALLOWED_LAYOUTS = {"AVATAR_FULL", "SPLIT_LEFT_AVATAR"}
+DIAGNOSTIC_TAIL_BYTES = 64 * 1024
+
+
+class AvatarPrimaryInferenceFailure(ValueError):
+    def __init__(self, code: str, diagnostic_sha256: str) -> None:
+        super().__init__(code)
+        self.diagnostic_sha256 = diagnostic_sha256
+
+
+def classify_inference_failure(diagnostic: bytes) -> str:
+    value = diagnostic.lower()
+    if b"out of memory" in value or b"cuda error: out of memory" in value:
+        return "AVATAR_INFERENCE_CUDA_OOM"
+    if b"modulenotfounderror" in value or b"no module named" in value:
+        return "AVATAR_INFERENCE_DEPENDENCY_MISSING"
+    if b"no such file or directory" in value or b"filenotfounderror" in value:
+        return "AVATAR_INFERENCE_ASSET_MISSING"
+    if any(
+        marker in value
+        for marker in [
+            b"invalid data found when processing input",
+            b"format not recognised",
+            b"soundfile runtime error",
+            b"could not find codec parameters",
+        ]
+    ):
+        return "AVATAR_INFERENCE_MEDIA_INVALID"
+    return "AVATAR_INFERENCE_PROCESS_FAILED"
+
+
+def _diagnostic_tail(stream: BinaryIO) -> bytes:
+    stream.seek(0, os.SEEK_END)
+    length = stream.tell()
+    stream.seek(max(0, length - DIAGNOSTIC_TAIL_BYTES))
+    return stream.read(DIAGNOSTIC_TAIL_BYTES)
+
+
+def _inference_failure(code: str, diagnostic: bytes) -> AvatarPrimaryInferenceFailure:
+    return AvatarPrimaryInferenceFailure(
+        code,
+        f"{SHA256_PREFIX}{hashlib.sha256(diagnostic).hexdigest()}",
+    )
 
 
 class AvatarPrimaryResult(TypedDict):
@@ -236,32 +278,43 @@ def _execute(
         "HF_HUB_OFFLINE": "1",
         "TRANSFORMERS_OFFLINE": "1",
     }
-    subprocess.run(
-        [
-            "python",
-            "inference.py",
-            "--config_path",
-            "configs/avatarforcing.yaml",
-            "--output_folder",
-            str(output_root),
-            "--checkpoint_path",
-            str(model_path),
-            "--data_path",
-            str(prompt_path),
-            "--num_output_frames",
-            str(num_output_frames),
-            "--seed",
-            "42",
-            "--num_samples",
-            "1",
-            "--save_with_index",
-            "--i2v",
-        ],
-        cwd=root,
-        env=env,
-        check=True,
-        timeout=timeout_seconds,
-    )
+    with tempfile.TemporaryFile() as diagnostic:
+        try:
+            subprocess.run(
+                [
+                    "python",
+                    "inference.py",
+                    "--config_path",
+                    "configs/avatarforcing.yaml",
+                    "--output_folder",
+                    str(output_root),
+                    "--checkpoint_path",
+                    str(model_path),
+                    "--data_path",
+                    str(prompt_path),
+                    "--num_output_frames",
+                    str(num_output_frames),
+                    "--seed",
+                    "42",
+                    "--num_samples",
+                    "1",
+                    "--save_with_index",
+                    "--i2v",
+                ],
+                cwd=root,
+                env=env,
+                check=True,
+                timeout=timeout_seconds,
+                stdout=diagnostic,
+                stderr=subprocess.STDOUT,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise _inference_failure(
+                "AVATAR_INFERENCE_TIMEOUT", _diagnostic_tail(diagnostic)
+            ) from error
+        except subprocess.CalledProcessError as error:
+            tail = _diagnostic_tail(diagnostic)
+            raise _inference_failure(classify_inference_failure(tail), tail) from error
     output_path = output_root / "0-0_regular.mp4"
     if not output_path.is_file():
         raise ValueError("AVATAR_OUTPUT_MISSING")

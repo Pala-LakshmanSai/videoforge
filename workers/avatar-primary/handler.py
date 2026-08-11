@@ -8,6 +8,7 @@ import runpod
 from bootstrap_models import bootstrap_models
 from videoforge_avatar_primary import (
     AvatarPrimaryInlineJob,
+    AvatarPrimaryInferenceFailure,
     AvatarPrimaryJob,
     run_avatar_primary_inline_job,
     run_avatar_primary_job,
@@ -34,6 +35,12 @@ def handler(event: dict[str, object]) -> dict[str, object]:
             return {"ok": True, "result": run_avatar_primary_inline_job(job)}
         job = AvatarPrimaryJob.from_value(value)
         return {"ok": True, "result": run_avatar_primary_job(job)}
+    except AvatarPrimaryInferenceFailure as error:
+        return {
+            "ok": False,
+            "error_code": str(error),
+            "diagnostic_sha256": error.diagnostic_sha256,
+        }
     except Exception as error:
         code = str(error) if isinstance(error, ValueError) else "AVATAR_PRIMARY_FAILED"
         return {"ok": False, "error_code": code[:120]}

@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { promisify } from "node:util";
 
 import { loadRunPodApiKeyFromKeychain } from "./keychain";
+import { safeAvatarFailureEvidence } from "./runpod-avatar-result";
 import {
   RunPodControlClient,
   RunPodDrainGuard,
@@ -176,6 +177,7 @@ try {
     error_code?: unknown;
   };
   if (!envelope || envelope.ok !== true || !envelope.result) {
+    outputEvidence = safeAvatarFailureEvidence(job.output);
     throw new Error(
       typeof envelope?.error_code === "string" ? envelope.error_code : "AVATAR_RESULT_INVALID",
     );

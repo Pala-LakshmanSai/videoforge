@@ -8,7 +8,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from videoforge_avatar_primary import AvatarPrimaryInlineJob, AvatarPrimaryJob  # noqa: E402
+from videoforge_avatar_primary import (  # noqa: E402
+    AvatarPrimaryInlineJob,
+    AvatarPrimaryJob,
+    classify_inference_failure,
+)
 from videoforge_avatar_primary.production import (  # noqa: E402
     AVATAR_SOURCE_REVISION,
     AVATAR_WEIGHTS_REVISION,
@@ -32,6 +36,17 @@ def valid_job() -> dict[str, object]:
 
 
 class ProductionContractTest(unittest.TestCase):
+    def test_classifies_failure_without_exposing_diagnostic_text(self) -> None:
+        cases = {
+            b"torch.cuda.OutOfMemoryError: CUDA out of memory": "AVATAR_INFERENCE_CUDA_OOM",
+            b"ModuleNotFoundError: No module named x": "AVATAR_INFERENCE_DEPENDENCY_MISSING",
+            b"FileNotFoundError: No such file or directory": "AVATAR_INFERENCE_ASSET_MISSING",
+            b"ffmpeg: Invalid data found when processing input": "AVATAR_INFERENCE_MEDIA_INVALID",
+            b"unrecognized upstream traceback": "AVATAR_INFERENCE_PROCESS_FAILED",
+        }
+        for diagnostic, expected in cases.items():
+            self.assertEqual(classify_inference_failure(diagnostic), expected)
+
     def test_handler_starts_before_model_bootstrap(self) -> None:
         worker_root = Path(__file__).resolve().parents[1]
         entrypoint = (worker_root / "entrypoint.sh").read_text(encoding="utf-8")
