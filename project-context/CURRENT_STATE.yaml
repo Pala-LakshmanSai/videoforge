@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T09:10:36Z"
+updated_at: "2026-08-11T09:35:20Z"
 
 phase: cross_cutting_dx_reliability
 implementation_authorized_in_current_task: true
-current_milestone: devex_verification_feedback
-current_task: VF-DX-01
+current_milestone: devex_ci_onboarding
+current_task: VF-DX-02
 current_wave: wave_5_feedback_loop_guardrails
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -19,8 +19,8 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "fad28ab63d5d2c5f83526508e28fc76d5a1edcf6"
   verified_implementation_commit: "f0e3e66a545634b3f145932156e56b7da6efe4da"
-  last_good_commit: "fad28ab63d5d2c5f83526508e28fc76d5a1edcf6"
-  working_tree_expected: "clean_at_vf_7_06_provenance_evidence_handoff"
+  last_good_commit: "cb1895ee87c375594bf084c804fd6d1b2acdfe26"
+  working_tree_expected: "clean_at_vf_dx_01_verification_feedback_handoff"
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
     ajv: "8.20.0"
@@ -45,7 +45,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "VF-DX-01 local verification graph only; application remains fixture"
+  provider_authority_scope: "VF-DX-02 CI/onboarding and disjoint VF-REL-01 telemetry only; application remains fixture"
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -271,6 +271,12 @@ completed_tasks:
     decision_commit: "cd2d74a3bbcd87dd55dc801ab991b20a54e11259"
     evidence_commit: "fad28ab63d5d2c5f83526508e28fc76d5a1edcf6"
     evidence: "evidence/acceptance/VF-7-06/manual-edit-provenance-contract"
+  - task_id: VF-DX-01
+    status: complete
+    summary: "Committed one non-duplicating 28-task verification graph, a feedback-only verify:fast gate, exact Turbo inputs/outputs, and canonical Workerd plus installed-Chrome coverage; forced full verification improved 33.05% from 231.43s to 154.95s with all 698 unique tests/journeys and zero skips preserved."
+    implementation_commit: "cb1895ee87c375594bf084c804fd6d1b2acdfe26"
+    evidence_commit: null
+    evidence: "evidence/acceptance/VF-DX-01/verification-feedback-loop"
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
@@ -388,18 +394,18 @@ active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-DX-01
-  milestone: devex_verification_feedback
+  task_id: VF-DX-02
+  milestone: devex_ci_onboarding
   status: ready
-  dependency_status: vf_7_06_preserve_and_detach_contract_green_and_full_application_baseline_preserved
-  authorization_status: exact_provider_free_local_verification_graph_implementation_brief_selected
-  read_profile: devex_verification_feedback
-  task_brief: tasks/VF-DX-01.md
-  goal: "Eliminate duplicate local build/test execution, add a warm <=2 minute verify:fast loop, and make forced full verification at least 30% faster with identical suites, counts, and zero new skips."
+  dependency_status: vf_dx_01_non_duplicating_local_gate_green
+  authorization_status: exact_provider_free_ci_onboarding_implementation_brief_selected
+  read_profile: devex_ci_onboarding
+  task_brief: tasks/VF-DX-02.md
+  goal: "Split CI by responsibility, preserve one fail-closed aggregate, centralize non-secret environment metadata, and add redacted doctor JSON plus ownership-checked dev stop."
   dependencies:
-    - "VF-7-06 preserve-and-detach manual-edit provenance contract committed at cd2d74a"
-    - "Current canonical provider-free pnpm verify, local Workerd, and 38 installed-Chrome journeys green"
-    - "Same-machine before/after forced timing and exact suite inventory must be recorded"
+    - "VF-DX-01 implementation cb1895e and exact timing/inventory evidence green"
+    - "Current canonical provider-free pnpm verify includes local Workerd and 38 installed-Chrome journeys"
+    - "VF-REL-01 exact disjoint telemetry brief exists; shared root/context files remain integration-owned"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   provider_authority: null
@@ -410,35 +416,36 @@ recommended_next_task:
   application_code_changes_authorized: true
   live_route: null
   fixture_scenario: null
-  expected_evidence: "evidence/acceptance/VF-DX-01/verification-feedback-loop"
+  expected_evidence: "evidence/acceptance/VF-DX-02/ci-onboarding-ownership"
   required_handoff:
-    - "Record a same-machine dependency-warm TURBO_FORCE=true pnpm verify baseline before graph changes"
-    - "Execute control-plane tests and each emitting package build once per full forced graph"
-    - "Add two consecutive warm <=120 second pnpm verify:fast runs without making them release evidence"
-    - "Preserve complete full-gate suite/test/pass/intentional-skip inventory, Workerd parity, and installed-Chrome journeys"
-    - "Record exact timing percentage, graph inventory, commands, commits, limits, and one next dependency-ready provider-free brief"
+    - "Split CI into five bounded verification jobs plus one fail-closed aggregate without losing any check"
+    - "Add deterministic redacted doctor --json and ownership-checked dev:stop with adversarial script tests"
+    - "Preserve verify:fast and canonical full-gate coverage with zero new skips"
+    - "Record local workflow-graph evidence and mark hosted status unverified until publication is separately authorized"
   safe_parallelism:
-    maximum_lanes_including_integration: 1
-    status: serial_shared_verification_graph
-    integration_owner: VF-DX-01
+    maximum_lanes_including_integration: 2
+    status: vf_dx_02_integration_plus_disjoint_vf_rel_01_module
+    integration_owner: VF-DX-02
   prohibited_in_task:
-    - "CI job splitting/JUnit, doctor --json, dev:stop, environment metadata centralization, telemetry, product/routes/UI/contracts/migrations/provider adapters, deployment, or unrelated refactors"
-    - "Any skipped/weakened/deleted check, hidden cache-only pass, provider call, credential, model download, cloud/account mutation, GPU/RunPod action, or spend"
+    - "Product/routes/UI/contracts/migrations/provider adapters, deployment, telemetry module edits owned by VF-REL-01, or unrelated refactors"
+    - "Any skipped/weakened/deleted check, push, required-check mutation, provider call, credential, model download, cloud/account mutation, GPU/RunPod action, or spend"
 
 latest_closed_handoff:
-  task_id: VF-7-06
+  task_id: VF-DX-01
   status: complete
-  implementation_commit: null
-  decision_commit: "cd2d74a3bbcd87dd55dc801ab991b20a54e11259"
-  evidence_commit: "fad28ab63d5d2c5f83526508e28fc76d5a1edcf6"
-  evidence: "evidence/acceptance/VF-7-06/manual-edit-provenance-contract"
-  audit_result: "preserve_and_detach_manual_edit_provenance_contract_locked_without_contradictory_active_statement"
-  verification_result: "context_schema_secret_format_and_diff_checks_green_at_zero_provider_activity"
-  external_actions: "read-only hosted CI status refresh only; no push, credential, provider, model, GPU, cloud, or spend activity"
+  implementation_commit: "cb1895ee87c375594bf084c804fd6d1b2acdfe26"
+  evidence_commit: null
+  evidence: "evidence/acceptance/VF-DX-01/verification-feedback-loop"
+  audit_result: "non_duplicating_graph_and_identical_unique_suite_inventory_proven"
+  verification_result: "forced_full_154_95_seconds_33_05_percent_faster_warm_fast_5_70_and_5_08_seconds"
+  external_actions: "dependency registry audit only; no push, credential, provider, model, GPU, cloud, or spend activity"
   external_spend_usd: 0
 
 last_green:
   commands:
+    - "VF-DX-01: forced full pnpm verify passed in 154.95s versus 231.43s baseline, preserving 698 unique tests/journeys, Workerd 1/1, installed Chrome 38/38, and zero skips at $0."
+    - "VF-DX-01: consecutive warm pnpm verify:fast runs passed in 5.70s and 5.08s; graph assertion proved 28 unique tasks, one control-plane test, seven package builds, accurate outputs, and zero recursive package builds."
+    - "VF-DX-01: pnpm contracts:check, context validation, secret scan, dependency audit, Prettier, and git diff checks passed."
     - "VF-7-06: preserve-and-detach manual-edit provenance contract committed at cd2d74a; context/schema validation, secret scan, Prettier, and git diff checks passed at $0."
     - "VF-7-05: focused reviewed-publication tests passed 5/5; combined VF-7-04 plus VF-7-05 focused tests passed 10/10 against fresh and reopened PGlite."
     - "VF-7-05: full control-plane tests passed 164/164; targeted control-plane/pipeline lint, typecheck, build, tests, formatting, secret scan, and diff checks passed."
@@ -605,7 +612,7 @@ known_incomplete_boundaries:
   - "VF-7-06 defines manual-edit transformation exactly, but no migration, artifact/edit repository, service, route, UI, or test implements it yet. That work follows the selected DX/reliability foundation as separate exact briefs."
 
 known_non_blocking_devex:
-  - "Canonical pnpm verify is complete but redundantly rebuilds packages and reruns control-plane tests through overlapping root/package scripts; VF-DX-01 owns measurement and correction without reducing coverage."
+  - "VF-DX-01 removed duplicate local builds/control-plane execution and proved the full gate 33.05% faster with identical unique coverage. Hosted CI remains monolithic and onboarding ownership diagnostics remain incomplete; VF-DX-02 owns them."
 
 next_tasks:
   - "VF-1-01A complete: the adversarial-audit migration, constraint, repository-suite, and execution-contract findings are committed and green at $0"
@@ -634,14 +641,15 @@ next_tasks:
   - "VF-7-04 complete: canonical Image Style profile artifact, cost-finalized general attempt, successful specialized attempt, atomic NEEDS_REVIEW transition, rollback, reopen replay, and full gates are committed at $0"
   - "VF-7-05 complete: authenticated safe review snapshot, exact lineage/canonical-byte revalidation, optimistic concurrency, atomic immutable publication plus same-parent active-pointer movement, rollback, reopen replay, and full gates are committed at $0"
   - "VF-7-06 complete: preserve accepted analyzer truth, detach evidence from edited bytes, create immutable derived artifact chains, invalidate stale review, and pin exact current bytes on publication"
-  - "Current: execute only VF-DX-01 provider-free verification-graph optimization; record a forced baseline, eliminate duplicate builds/tests, add verify:fast, and preserve identical full-gate coverage"
+  - "VF-DX-01 complete: one non-duplicating verification graph, feedback-only verify:fast, exact Turbo cache declarations, identical full coverage, and the measured speed target are green at $0"
+  - "Current: execute VF-DX-02 CI/onboarding convergence; VF-REL-01 may proceed only as the exact disjoint telemetry module lane under serialized integration ownership"
   - "Keep DeterministicFixturePromptWriter as the default and preserve ordinary production at zero style-analysis calls"
   - "After VF-DX-01, run exact CI/onboarding and vendor-neutral telemetry briefs as disjoint work, then continue provider-free prompt/image, avatar, and custom-style service/API/UI lanes with shared integration ownership serialized"
   - "Independent blocker order: resolve Mage checkpoint/license evidence, then bounded Mage + RunPod image/GPU/lifecycle qualification; keep AvatarForcing stopped until authoritative license reconciliation, then qualify primary avatar"
   - "Integration order after accepted image + avatar assets: FFmpeg real fast-path convergence, conditional fallbacks, isolated staging contention/auth/storage/workflow proof, fault/security/restore hardening, measured cost/SLO, then controlled production acceptance"
 
 activation_handoff:
-  status: phase_2_preserved_style_manual_edit_contract_green_vf_dx_01_selected
+  status: vf_dx_01_green_vf_dx_02_selected_vf_rel_01_disjoint_ready
   requested_by_user_at: "2026-08-10T17:07:12Z"
   reason: "The user authorized autonomous progress across provider accounts/qualification, Git/CI, and isolated staging while preserving exact caps, dependency gates, and deferred production; repository visibility was later explicitly changed to public."
   completed_and_preserved:
@@ -660,6 +668,7 @@ activation_handoff:
     - "VF-7-04 committed provider-free canonical profile artifact acceptance, exact cost/general/specialized attempt convergence, atomic NEEDS_REVIEW state, rollback, and reopen-stable replay at $0."
     - "VF-7-05 committed provider-free authenticated safe review reads, exact canonical/lineage revalidation, optimistic concurrency, atomic immutable publication plus same-parent active-pointer movement, rollback, and reopen-stable replay at $0."
     - "VF-7-06 committed the preserve-and-detach manual-edit contract at cd2d74a: accepted analyzer evidence stays immutable historical truth and edits produce separate immutable derived artifacts with exact lineage at $0."
+    - "VF-DX-01 committed the non-duplicating verification graph at cb1895e: forced full verification improved 33.05% while preserving every unique suite, Workerd, installed-Chrome journey, and zero skips at $0."
   fully_sorted:
     - "Durable local relational/control-plane invariants, mock recovery, isolation, direct upload, Avatar version reuse, and deterministic metadata restore."
     - "Owned local ASR timing, canonical deterministic timeline, exact selected Avatar span audio, strict latest-attempt restart/restore, fail-closed inspection, and exact playback/download."
@@ -669,13 +678,13 @@ activation_handoff:
     - "The Git remote is public and qualification used bounded provider calls, but no Cloudflare/Neon/R2/OAuth staging resource, deployed Worker/Workflow, model download, active GPU/Pod, or production release exists."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this CURRENT_STATE.yaml."
-    - "Load only the devex_verification_feedback profile and tasks/VF-DX-01.md."
+    - "Load only the devex_ci_onboarding profile and tasks/VF-DX-02.md; VF-REL-01 uses only its reliability_telemetry_foundation profile in the disjoint lane."
     - "Confirm the recorded commits are ancestors of clean HEAD; do not reset or redo completed phases."
-    - "Confirm VF-7-06 decision commit cd2d74a and the prior full application baseline are ancestors, then record the same-machine forced verification baseline before graph changes."
-    - "Change only verification graph/scripts/tests/docs; invoke no analyzer/provider/cloud action and preserve every full-gate suite and intentional skip count at fixture mode and $0."
+    - "Confirm VF-DX-01 implementation cb1895e and its timing/inventory evidence are ancestors; do not repeat the baseline measurement."
+    - "Change only CI/onboarding ownership surfaces in VF-DX-02 and telemetry module/tests in VF-REL-01; invoke no provider/cloud action and preserve every full-gate suite and skip count at fixture mode and $0."
   optimized_future_sequence:
-    - "A. Execute VF-DX-01 serially: measure, deduplicate verification, add verify:fast, and preserve the complete forced gate."
-    - "B. Then execute exact CI/onboarding and vendor-neutral telemetry briefs as disjoint work after their shared metadata boundary is locked."
+    - "A. VF-DX-01 complete: measured and deduplicated verification with complete forced coverage preserved."
+    - "B. Execute exact VF-DX-02 CI/onboarding and VF-REL-01 vendor-neutral telemetry briefs as disjoint work with shared files serialized."
     - "C. Continue provider-free prompt/image, Avatar fixture, and custom-style service/API/UI lanes with shared contracts/migrations/routes/context serialized."
     - "D. Independently resolve Mage and AvatarForcing license evidence before bounded model/RunPod qualification or spend."
     - "E. Converge real FFmpeg output from accepted assets, then fallbacks, isolated staging, fault/security/backup/load hardening, measured cost/SLO, and controlled release."
@@ -686,7 +695,7 @@ activation_handoff:
 
 notes:
   - "This is a replace-in-place handoff snapshot, not a progress diary."
-  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-DX-01 is the sole selected provider-free implementation task."
+  - "A new chat starts with recommended_next_task VF-DX-02 and its one profile/brief. VF-REL-01 is exact but may run only within the recorded disjoint ownership boundary."
   - "RunPod account preflight is green: Keychain credential exists, balance is $10.00, hourly spend is $0, and Pods/endpoints/volumes/workers are all zero."
   - "Public GitHub remote is green and exact by explicit user decision. Hosted run 31472597843 passed the full gate on f1eccbe."
   - "The accelerated approval through VF-2-05 is complete and exhausted. On 2026-08-10 the user separately activated the planned non-transferable $1/$3/$8/$8/$5 provider caps, Git/CI, and isolated staging authority; production remains deferred."
@@ -696,7 +705,7 @@ notes:
   - "Mage exact checkpoint/license evidence remains unresolved: official Hugging Face artifacts returned HTTP 401/signed-out 404, while Microsoft source labels Mage-Flow MIT but also gives research-only deployment guidance."
   - "TypeScript is the sole RFC 8785/JCS authority; Python validates canonical schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output grammar remains three compositions, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
-  - "No public tunnel or LAN listener is active. VF-DX-01 may use only verification-owned loopback test servers and must not disturb the stable user server."
+  - "No public tunnel or LAN listener is active. VF-DX-02 and VF-REL-01 may use only verification-owned loopback test servers and must not disturb the stable user server."
   - "VF-7-05 is green at f0e3e66 with evidence 2502b62: authenticated byte-identical Image Style review/publication is complete; manual edits, upload/normalization, routes, UI, previews, and live orchestration remain outside that proof."
   - "VF-7-06 resolved manual-edit ambiguity: preserve accepted analyzer evidence as immutable source truth, detach it from edited current bytes, and publish only the exact current derived artifact. This is a contract, not implemented code."
   - "The completed VF-1-01 baseline is preserved; VF-1-01A supersedes its overstated behavior/concurrency evidence with exact, bounded acceptance claims."

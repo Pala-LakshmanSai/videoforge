@@ -280,6 +280,16 @@ read_profiles:
     - 19_IMPLEMENTATION_PLAYBOOK.md
     - 21_IMPLEMENTATION_EXECUTION_PLAN.md
     - tasks/VF-DX-01.md
+  devex_ci_onboarding:
+    - 13_ENGINEERING_BEST_PRACTICES.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - 21_IMPLEMENTATION_EXECUTION_PLAN.md
+    - tasks/VF-DX-02.md
+  reliability_telemetry_foundation:
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 13_ENGINEERING_BEST_PRACTICES.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - tasks/VF-REL-01.md
   phase3_prompt_compiler:
     - GLOSSARY.md
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md
