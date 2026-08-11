@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: see `CURRENT_STATE.yaml` (Phase 2 preserved; VF-3-01 green; bounded VF-3-02 active)
+Status: see `CURRENT_STATE.yaml` (Phase 0–2 preserved; VF-7-04 green; VF-7-05 selected)
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -14,41 +14,37 @@ VideoForge is an invite-only web app for 5–10 teammates that accepts a title, 
 
 Phase 0A contracts/tooling, the accepted Phase 0B fixture shell, the accepted provider-free Phase 0C
 local ASR → scheduler → FFmpeg → Chrome/download slice, the full Phase 1 durable control plane, and
-Phase 2 durable timing/timeline convergence are complete. VF-2-01 through VF-2-04 preserve exact
-timing lineage, owned local transcription, canonical deterministic timeline persistence, selected
-Avatar span ownership, metadata restore, and fail-closed Chrome inspection. VF-2-05 implementation
-commit `907e0e4` completes exact padded-span WAV materialization plus canonical latest-attempt
-runtime state and strict fresh-process restore. Evidence commit `d16c2a9` proves byte-equivalent
-transcript/timeline/output/span hashes across independent runs, fresh-database metadata restore,
-real installed-Chrome creation/playback/approval/download, and an uncached full gate: 131/131
-control-plane, 39/39 pipeline, 163/163 web, 39/39 provider-sandbox, 56/56 worker, 38/38 fixture
-Chrome plus 1/1 real-local Chrome, with zero skips, no provider call, and `$0` spend.
-No remote, cloud/account, credential, deployment, provider, or paid mutation occurred through the
-Phase 2 evidence checkpoint.
+Phase 2 durable timing/timeline convergence are complete and must not be redone. The Phase 2
+implementation/evidence pair remains `907e0e4`/`d16c2a9`; it proves exact selected-span audio,
+fresh-process restore, byte-equivalent local output, and real installed-Chrome
+creation/playback/approval/download at `$0`. All VF-1-06 corrective findings and VF-2-05 audit
+findings are closed.
 
-`VF-1-01` remains the preserved relational baseline. The provider-free corrective task `VF-1-01A`
-is complete at implementation commit `36bf1ae`, with additive migration, constraint, migration
-executor, repository-contract, and adversarial regression hardening recorded under
-`evidence/acceptance/VF-1-01A/2026-08-10-relational-audit-hardening`. The user-approved accelerated
-provider-free authority through `VF-2-05` is complete and exhausted. `VF-3-00` refreshed official
-facts on 2026-08-10. The user then authorized autonomous provider/account, Git/hosted CI, and
-isolated staging work while preserving the existing non-transferable provider caps and keeping
-production deferred. The user explicitly made the GitHub repository public; hosted CI is green on
-`c23ab438` with full verification, 38 installed-Chrome journeys, Gitleaks, and dependency audit.
-Runware balance was verified at `$20.05` on 2026-08-11. `VF-3-01` then closed `GATE_LLM_001`:
-live provider search resolved canonical AIR `deepseek:v4@flash` to `DeepSeek-V4-Flash-0731`, and
-the accepted 40-scene/five-style strict-schema run passed all identity, relevance, safety, and cost
-criteria. Cumulative DeepSeek qualification spend was `$0.00243598`; application mode remains
-fixture. `CURRENT_STATE.yaml` now selects exact bounded brief `VF-3-02` for owned/synthetic Gemini
-style analysis only; no adjacent brief or high-level roadmap item is authority.
+The public repository and hosted CI checkpoint are established. `GATE_LLM_001` and
+`GATE_STYLE_001` are closed from bounded Runware DeepSeek/Gemini qualification. Provider-free
+DeepSeek/Gemini adapters are committed, but neither is runtime-composed. Runware qualification
+spent `$0.41003998` total; ordinary application mode remains `fixture` with provider calls disabled.
+RunPod preflight found `$10.00`, zero live resources, and `$0/hour`; no Pod is active.
 
-The refresh found a hard AvatarForcing licensing contradiction: the official repository README
-claims Apache-2.0, its committed `LICENSE.txt` is academic-only/non-commercial and prohibits
-production use, and the public weights repository declares no license. `GATE_AVATAR_003` therefore
-blocks weight download, paid qualification, and commercial use until authoritative clarification;
-the AvatarForcing `$8` sub-cap remains untouched.
-`CURRENT_STATE.yaml` remains the one replace-in-place handoff and ownership source. Do not redo the
-accepted UI, renderer, local slice, or architecture.
+The provider-free Image Style backend now includes lifecycle (`VF-7-01`), exact durable references
+(`VF-7-02`), claimed analysis composition (`VF-7-03`), and atomic durable result acceptance
+(`VF-7-04`). VF-7-04 implementation `789ea98` plus evidence `49acea4` proves canonical profile
+artifact persistence, accepted task/attempt and finalized cost lineage, exact replay after reopen,
+and the `ANALYZING → NEEDS_REVIEW` transition. The forced full gate passed 159 control-plane,
+163 web, 115 pipeline, 43 provider-sandbox, 1 local-Workerd, and 38 installed-Chrome tests at `$0`.
+
+`CURRENT_STATE.yaml` selects only exact provider-free brief `VF-7-05`: expose the immutable review
+snapshot and publish the byte-identical accepted profile through an authenticated, optimistic,
+replay-safe application service. Manual-edit transformation semantics are intentionally deferred
+because current primary docs do not define how edits reset analyzer evidence precisely enough to
+guess. Routes/UI, uploads, previews, live providers, staging, and production remain outside this
+brief.
+
+Production media remains blocked: Mage checkpoint/license evidence is unresolved; AvatarForcing
+licensing artifacts contradict each other; image/avatar/GPU/RunPod/fallback/cost/style-adherence
+gates remain open. No production Neon/R2/Workflow/OAuth deployment exists. `CURRENT_STATE.yaml`
+remains the replace-in-place ownership/handoff source; preserve accepted UI, renderer, local output,
+architecture, and product rules.
 
 ## Approved MVP
 
@@ -98,7 +94,7 @@ The Avatar Hub creates reusable private presenter presets from one centered sour
 | Task | Approved choice | Exact production role |
 |---|---|---|
 | Image-prompt writing | Runware DeepSeek V4 Flash 0731 | Batched strict JSON; thinking off; image prompts only |
-| Reference-style analysis | Runware Gemini 3.5 Flash | One multimodal strict-JSON call only when a new draft style version is explicitly analyzed; provisional pending style gate |
+| Reference-style analysis | Runware Gemini 3.5 Flash | Qualified strict-JSON analysis only when a new draft style version is explicitly analyzed; prompt-only adherence remains gated |
 | Image generation | `microsoft/Mage-Flow-Turbo` | 4-step Turbo; narration-relevant stills compiled for the pinned style |
 | Primary avatar | AvatarForcing | Revision-pinned canonical Avatar Profile runtime source + selected span audio; provisional pending exact-avatar benchmark |
 | Lip-only repair | MuseTalk 1.5 | Only an otherwise-good failed AvatarForcing clip |
@@ -106,7 +102,9 @@ The Avatar Hub creates reusable private presenter presets from one centered sour
 | Word timing | Local `whisper.cpp base.en` | Free ASR; local ASR is canonical in the web shell, with legacy optional-script alignment retained only at the versioned API boundary |
 | Composition/render | FFmpeg | EDL, crops, zoom, hard cuts, loudness, encode |
 
-The avatar router and crop geometry are user-approved. AvatarForcing remains provisional only because its paper does not disclose the hardware behind the reported speed; the one-time RunPod acceptance suite must pass before production lock.
+The avatar router and crop geometry are user-approved. AvatarForcing remains blocked from download,
+qualification, and commercial use by contradictory official license artifacts; licensing must be
+reconciled before the one-time RunPod acceptance suite or production lock.
 
 ## Reference-derived edit grammar
 

@@ -1,7 +1,7 @@
 schema_version: "1.5"
 project: VideoForge
 phase_source: CURRENT_STATE.yaml
-last_updated: "2026-08-10"
+last_updated: "2026-08-11"
 source_of_truth: project-context
 
 mandatory_read:
@@ -265,6 +265,11 @@ read_profiles:
     - tasks/VF-1-06.md
     - tasks/VF-7-03.md
     - tasks/VF-7-04.md
+  phase7_style_reviewed_publication_service:
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 18_IMAGE_STYLES_HUB.md
+    - tasks/VF-7-04.md
+    - tasks/VF-7-05.md
   phase3_prompt_compiler:
     - GLOSSARY.md
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md

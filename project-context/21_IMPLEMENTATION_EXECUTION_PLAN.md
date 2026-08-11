@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: Waves 0–4 and Phase 0–2 complete; DeepSeek/Gemini qualification passed; provider-free `VF-3-07` selected
+Status: Waves 0–4 and Phase 0–2 complete; VF-7-04 green; provider-free `VF-7-05` selected
 Read when: starting a new implementation chat, selecting the next task, assigning parallel ownership, or integrating a completed task.
 
 ## Authority and purpose
@@ -13,8 +13,8 @@ The user's 2026-08-10 accelerated-plan approval granted standing implementation 
 dependency-ready, provider-free briefs through `VF-2-05`; that sequence is complete. Later explicit
 authority covered bounded provider qualification, the public Git remote/hosted CI, and isolated
 staging preparation while production stayed deferred. Every new task remains bounded by its exact
-brief and `CURRENT_STATE.yaml`; the selected `VF-3-07` adapter is provider-free and authorizes no
-credential access, provider call, runtime activation, or spend.
+brief and `CURRENT_STATE.yaml`; the selected `VF-7-05` reviewed-publication service is provider-free
+and authorizes no credential access, provider call, runtime activation, cloud mutation, or spend.
 
 ## Accelerated critical path
 
@@ -33,10 +33,11 @@ acceptance but cannot re-serialize work that this table explicitly makes disjoin
 | 7 — fault hardening | Queue/fault, security/isolation, observability/backup lanes | Ten-user/restart/replay/cost/retention/restore/scale-to-zero evidence |
 | 8 — controlled release | Serial staging-to-production acceptance | Fresh-account real Chrome flow and final user sign-off |
 
-Waves 0–4 are complete. `GATE_LLM_001` and `GATE_STYLE_001` are closed. Wave 5 starts with narrowly
-briefed provider-free adapters, while production media remains blocked by the remaining
-provider/model/GPU/cost gates and exact task authority. No closed qualification gate by itself
-activates credentials, provider calls, cloud resources, or spend.
+Waves 0–4 are complete. `GATE_LLM_001` and `GATE_STYLE_001` are closed. Provider-free DeepSeek and
+Gemini adapters are green. The custom-style lane is green through durable result acceptance in
+`VF-7-04`; `VF-7-05` is the next serial slice. Production media remains blocked by the remaining
+provider/model/license/GPU/cost gates and exact task authority. No closed qualification gate by
+itself activates credentials, provider calls, cloud resources, or spend.
 
 After Wave 0, request one external-mutation approval for a GitHub remote and hosted CI; repository
 visibility defaults private unless the user explicitly overrides it. Local Wave 1 does not wait,
@@ -44,11 +45,11 @@ but no push occurs without approval. After VF-1-06, request isolated
 Cloudflare/Neon/R2/Google-OAuth staging authority; local VF-1-07/VF-1-08/Phase 2 do not wait, but no
 staging resource is created without approval.
 
-The planned provider qualification ceiling is inactive. Activation requires VF-0D-01 green,
-fresh official rates/terms, exact paid briefs, safely stored credentials, and a grouped user
-authorization. The non-transferable sub-caps are DeepSeek `$1`, Gemini `$3`, Mage/RunPod image `$8`,
-AvatarForcing `$8`, and shared RunPod lifecycle/one bounded fallback `$5`. Unused budget is not
-silently reallocated.
+The provider qualification envelope was activated on 2026-08-10 after VF-0D-01, fresh facts, exact
+briefs, safe credentials, and grouped user authority. DeepSeek and Gemini qualification consumed
+only their own sub-caps and closed their gates. The remaining non-transferable sub-caps stay Mage
+image/GPU `$8`, AvatarForcing `$8`, and RunPod lifecycle/one bounded fallback `$5`; unresolved gates
+still block their use, and unused budget is never reallocated.
 
 ## Frozen baseline
 
@@ -371,17 +372,19 @@ Completed at implementation `907e0e4` and evidence `d16c2a9`; preserve this conv
   written from measured provider/gate evidence; if required gates remain open, stop for the
   consolidated review rather than guessing.
 
-The handoff is green and authority has ended. Run `VF-3-00` as the next planning-only consolidated
-review. It may prepare an authorization decision and refresh public facts when requested, but may
-not implement code, retrieve credentials, call providers, spend, publish, or mutate cloud/accounts.
+The Phase 2 handoff and VF-3-00 checkpoint are complete. Resume only from the exact task in
+`CURRENT_STATE.yaml`; at this checkpoint that is provider-free `VF-7-05`.
 
 After Phase 2, use three disjoint lanes:
 
 ### Lane A — prompt then image (`VF-3-*` → `VF-4-*`)
 
-1. Implement the deterministic prompt compiler and fixture Runware adapter.
-2. After `GATE_LLM_001`, integrate strict batched DeepSeek with partial retry and cost lineage.
-3. After image/GPU/RunPod gates, integrate Mage chunks, per-item checkpointing, fair dispatch, selected drafts, regeneration, and scale-to-zero.
+1. Complete: deterministic prompt compiler, fixture writer, DeepSeek qualification, and injected
+   production-shaped DeepSeek adapter.
+2. Next only after an exact brief: compose the DeepSeek adapter into durable prompt execution while
+   keeping fixture default, per-task cap, accepted rows, retry, and cost lineage exact.
+3. After image/license/GPU/RunPod gates, integrate Mage chunks, per-item checkpointing, fair
+   dispatch, selected drafts, regeneration, and scale-to-zero.
 
 ### Lane B — primary avatar (`VF-5-*`)
 
@@ -390,7 +393,27 @@ After Phase 2, use three disjoint lanes:
 
 ### Lane C — custom styles (`VF-7-*`)
 
-After Phase 1 and the relevant style gates, implement durable draft/reference/analyze/review/test/publish/version/archive lifecycle. This lane must prove ordinary project generation makes zero analyzer calls. It must not block the built-in-style fast path.
+Complete through `VF-7-04`: durable draft/version lifecycle, reference metadata, claimed analyzer
+composition, and atomic canonical result acceptance into `NEEDS_REVIEW`. Execute `VF-7-05` next for
+byte-identical authenticated review/publication. Then reconcile manual-edit provenance before
+authoring its task; follow with provider-free metadata routes and accepted-shell UI, local
+upload/normalization, live analysis orchestration, optional Mage previews after gates, and final
+ordinary-project zero-analysis proof. This lane must not block the built-in-style fast path.
+
+### Fastest low-rework order from the VF-7-04 checkpoint
+
+1. Serial integration owner: `VF-7-05` reviewed byte-identical publication at `$0`.
+2. Reconcile and lock manual-edit provenance semantics; do not infer how confidence/evidence should
+   survive creative edits.
+3. Continue the custom-style lane provider-free: exact application service, then metadata API,
+   then fixture/local UI and Chrome workflow; author one dependency-ready brief at each handoff.
+4. In a disjoint evidence lane, resolve Mage checkpoint/license facts. Only after that may bounded
+   Mage + RunPod qualification close image/GPU/lifecycle gates.
+5. Keep AvatarForcing work stopped until its license contradiction is authoritatively resolved;
+   only then qualify the primary-avatar lane under its untouched sub-cap.
+6. Converge real FFmpeg output only after both primary image and avatar assets are accepted; add
+   fallbacks afterward, then staging contention/auth/storage/workflow proof, fault/security/restore
+   hardening, measured cost/SLO, and controlled production acceptance.
 
 Phase 6 real fast-path rendering waits for accepted Mage and AvatarForcing assets, not for the full custom-style lifecycle. Reuse the Phase 0C compiler; replace fixture assets with accepted content-addressed assets and create the immutable production manifest only after review approval.
 

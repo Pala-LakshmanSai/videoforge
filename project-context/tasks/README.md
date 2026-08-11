@@ -9,12 +9,14 @@ and the required next-state update. Product behavior remains authoritative in th
 and primary domain files. Completed briefs may remain for traceability, but `CURRENT_STATE.yaml` is
 the only mutable snapshot and Git/evidence remain the progress log.
 
-Most recently completed brief: `VF-2-05.md`, with implementation commit `907e0e4` and evidence
-commit `d16c2a9`. The 2026-08-10 standing provider-free implementation authority through Phase 2 is
-complete and exhausted.
+Most recently completed brief: `VF-7-04.md`, with implementation commit `789ea98` and evidence
+commit `49acea4`. It atomically accepts one trusted Image Style analysis candidate as canonical
+artifact/cost/task/attempt/version truth and moves the version to `NEEDS_REVIEW` at `$0`.
 
-`VF-3-00.md` is complete. `VF-3-01.md` created a safe bounded runner and Runware account, but live
-inference is blocked before spend because Runware requires a paid invoice or at least `$5` balance.
-`CURRENT_STATE.yaml` selects provider-free `VF-3-03.md`, allowing deterministic prompt work without
-funding, provider calls, or weakening `GATE_LLM_001`. `VF-3-02.md` remains unselected and blocked by
-the same account prerequisite.
+`VF-3-00` through `VF-3-09` completed the authorized checkpoint, DeepSeek/Gemini qualification,
+provider-free prompt/style adapters, RunPod account preflight, public Git/hosted CI, and the still-open
+Mage checkpoint/license audit. `VF-7-01` through `VF-7-04` completed the provider-free custom-style
+lifecycle, reference, claimed-analysis, and durable result-acceptance foundation.
+`CURRENT_STATE.yaml` selects only `VF-7-05.md`: byte-identical reviewed publication through a
+provider-free application service. Manual edit semantics, routes/UI, uploads, previews, live
+providers, staging, and production are not authorized by that brief.

@@ -1,6 +1,6 @@
 # Development plan
 
-Status: Phase 0–2 complete; implementation paused for the Phase 3 gate/authorization checkpoint
+Status: Phase 0–2 complete; prompt/style qualification and adapters green; VF-7-05 selected
 Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
 
 ## Delivery strategy
@@ -170,9 +170,11 @@ Exit: identical input/seed/version yields byte-equivalent plan; no gap/overlap; 
 
 ## Phase 3: Runware prompt lane
 
-Entry is paused at `VF-3-00`. Refresh official time-sensitive facts, classify the open gates, and
-obtain explicit provider/credential/spend authority before qualification. Author the exact Phase 3
-implementation brief only from the resulting evidence; this roadmap is not implementation authority.
+Current (2026-08-11): `VF-3-00` through `VF-3-09` completed the gate refresh, bounded DeepSeek and
+Gemini qualification, deterministic prompt/style semantic foundations, provider-free injected
+adapters, RunPod account preflight, public Git/CI checkpoint, and read-only Mage evidence audit.
+`GATE_LLM_001` and `GATE_STYLE_001` are closed. Runtime provider composition is still disabled;
+Mage/Avatar/GPU/RunPod/cost gates and exact task authority still block production media.
 
 - Strict schema, title/style prefix once per batch, assigned shot roles, continuity carry, 25–50 scenes, partial retry, provider cost logging.
 - Deterministic prompt compiler with pinned style profile, crop guidance, optional keywords, permanent guardrails, exact submitted bytes/hashes.
@@ -211,6 +213,12 @@ Chrome checkpoint: user reviews exact-avatar full/split clips and can flag lip-o
 Exit: output matches the spec and measured fast-path cost/SLO can replace planning ranges.
 
 ## Phase 7: full custom Image Styles lifecycle
+
+Current (2026-08-11): `VF-7-01` through `VF-7-04` are committed and green. Durable version
+lifecycle, exact reference metadata, claimed analyzer composition, and atomic canonical
+result/cost/task/attempt acceptance through `NEEDS_REVIEW` are complete. `VF-7-05` is the sole
+selected task and owns byte-identical authenticated review/publication only. Manual edits, routes,
+UI, upload/normalization, previews, live orchestration, and `GATE_STYLE_002` remain incomplete.
 
 - Parent/version/reference/attempt/preview records and version-scoped APIs.
 - Browser normalized sRGB derivatives plus independent server structure/metadata/checksum/decompression validation.
