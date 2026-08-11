@@ -246,6 +246,10 @@ read_profiles:
     - 18_IMAGE_STYLES_HUB.md
     - GATES.yaml
     - tasks/VF-3-09.md
+  phase7_style_lifecycle_core:
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 18_IMAGE_STYLES_HUB.md
+    - tasks/VF-7-01.md
   phase3_prompt_compiler:
     - GLOSSARY.md
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md

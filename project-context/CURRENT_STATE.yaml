@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T04:07:55Z"
+updated_at: "2026-08-11T04:30:19Z"
 
-phase: phase_3_provider_operations_preflight
+phase: phase_7_custom_styles
 implementation_authorized_in_current_task: true
-current_milestone: phase_3_runware_style_adapter
-current_task: VF-3-09
-current_wave: phase_3_evidence_first_activation
+current_milestone: phase_7_style_lifecycle_core
+current_task: VF-7-01
+current_wave: phase_7_provider_free_lifecycle
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -18,9 +18,9 @@ repository:
   base_commit: "bea48f7124609be27d1ab57261b2c2f4269625ea"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "cdf23f7136a81cb549527b4980d7c06695cc2cf6"
-  verified_implementation_commit: "907e0e4908bddc1ec7b90232f043a10d9c7d5b2a"
-  last_good_commit: "d16c2a9102125fa6e56d014fcf2f6241c878fa07"
-  working_tree_expected: "clean_at_vf_3_08_mage_access_preflight_handoff"
+  verified_implementation_commit: "0445a0ce98c10800471ead8280ff0b201b03bfcd"
+  last_good_commit: "8059264738ba4ea125cfbb47d0ab2a656d31ddf0"
+  working_tree_expected: "clean_at_vf_3_09_gemini_adapter_handoff"
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
     ajv: "8.20.0"
@@ -45,7 +45,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "VF-3-09 injected fake-transport Gemini style adapter only; application remains fixture"
+  provider_authority_scope: "VF-7-01 provider-free PGlite Image Style version lifecycle only; application remains fixture"
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -228,6 +228,12 @@ completed_tasks:
     implementation_commit: null
     evidence_commit: "90c22b6d7318c363e41d6c88da1c7f757c8f091f"
     evidence: "evidence/gates/GATE_IMAGE_002/2026-08-11-huggingface-mage-access-license"
+  - task_id: VF-3-09
+    status: complete
+    summary: "Committed a production-shaped Runware Gemini Image Style adapter behind injected reference resolution and transport, with canonical request/schema/prompt identity, full trusted profile validation, one whole-set bounded retry, exact metadata/cost checks, and redacted evidence at zero provider activity."
+    implementation_commit: "0445a0ce98c10800471ead8280ff0b201b03bfcd"
+    evidence_commit: "8059264738ba4ea125cfbb47d0ab2a656d31ddf0"
+    evidence: "evidence/acceptance/VF-3-09/runware-gemini-style-adapter"
 
 standing_local_authority:
   status: completed_and_exhausted
@@ -327,18 +333,18 @@ active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-3-09
-  milestone: phase_3_runware_style_adapter
+  task_id: VF-7-01
+  milestone: phase_7_style_lifecycle_core
   status: ready
-  dependency_status: gate_style_001_closed_vf_3_06_style_semantic_foundation_green
-  authorization_status: exact_provider_free_application_adapter_brief_selected
-  read_profile: phase3_runware_style_adapter
-  task_brief: tasks/VF-3-09.md
-  goal: "Implement the production-shaped Runware Gemini Image Style adapter behind injected fake transports while provider mode remains fixture."
+  dependency_status: phase_1_repository_vf_3_06_semantics_and_vf_3_09_adapter_green
+  authorization_status: exact_provider_free_style_lifecycle_brief_selected
+  read_profile: phase7_style_lifecycle_core
+  task_brief: tasks/VF-7-01.md
+  goal: "Complete the missing durable Image Style parent/version lifecycle operations and state enforcement on PGlite without composing a provider."
   dependencies:
-    - "VF-3-02 closed GATE_STYLE_001 with canonical google:gemini@3.5-flash identity and seven-set qualification evidence"
-    - "VF-3-06 exact reference binding, semantic validation, and trusted profile assembly green"
-    - "Qualified provider schema/settings and $0.08/$0.15 response caps recorded"
+    - "Phase 1 PGlite repository, transaction, idempotency, workspace-isolation, and restore foundation green"
+    - "VF-3-06 exact style-profile schema, semantic validation, and canonical hash assembly green"
+    - "VF-3-09 injected Gemini adapter green while ordinary application behavior remains fixture"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   provider_authority: null
@@ -349,34 +355,36 @@ recommended_next_task:
   application_code_changes_authorized: true
   live_route: null
   fixture_scenario: null
-  expected_evidence: "evidence/acceptance/VF-3-09/runware-gemini-style-adapter"
+  expected_evidence: "evidence/acceptance/VF-7-01/style-version-lifecycle-core"
   required_handoff:
-    - "Pin exact canonical Gemini AIR, settings, inlined provider schema, alias mapping, and one-task request identity"
-    - "Use injected fake resolver/transport only; importing, building, and testing performs zero provider/network/credential activity"
-    - "Retry the same whole set once only for deterministic output validation failure within exact reservation caps"
-    - "Fail closed on resolver, identity, finish, JSON, schema/semantic, ambiguity, usage, or cost drift"
-    - "Keep DeterministicFixtureStyleAnalyzer as the default and ordinary video generation at zero analyzer calls"
+    - "Add exact workspace-scoped style/version reads, ordered listing, and optimistic abandon"
+    - "Atomically transition eligible versions to ANALYZING with the matching task/attempt/cost/outbox reservation"
+    - "Enforce legal version transitions and exact image-style-profile/v1 payload/hash before review or publication"
+    - "Prove v1 stays active while v2 is open and only atomic publication moves the parent pointer"
+    - "Keep all provider/runtime composition disabled and ordinary video generation at zero analyzer calls"
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    status: serial_style_adapter_core
-    integration_owner: VF-3-09
+    status: serial_style_lifecycle_core
+    integration_owner: VF-7-01
   prohibited_in_task:
-    - "Live Runware calls, credentials, spend, reference upload/processing, database/API/UI lifecycle, Mage, RunPod, staging, deployment, or unrelated refactors"
-    - "Any change to accepted UI/output grammar, built-in style, provider mode, or ordinary-video zero-analysis behavior"
+    - "Reference upload/processing, signed URLs, routes/UI, live Runware, credentials, spend, Mage, RunPod, staging, deployment, schema redesign, or unrelated refactors"
+    - "Any change to accepted UI/output grammar, built-in style, provider mode, open GATE_STYLE_002, or ordinary-video zero-analysis behavior"
 
 latest_closed_handoff:
-  task_id: VF-3-08
+  task_id: VF-3-09
   status: complete
-  implementation_commit: null
-  evidence_commit: "90c22b6d7318c363e41d6c88da1c7f757c8f091f"
-  evidence: "evidence/gates/GATE_IMAGE_002/2026-08-11-huggingface-mage-access-license"
-  audit_result: "gate_truthfully_preserved_open_on_exact_access_and_official_license_policy_ambiguity"
-  verification_result: "context_schema_secret_format_and_diff_checks_green"
-  external_actions: "read_only_official_hugging_face_chrome_http_and_microsoft_github_inspection"
+  implementation_commit: "0445a0ce98c10800471ead8280ff0b201b03bfcd"
+  evidence_commit: "8059264738ba4ea125cfbb47d0ab2a656d31ddf0"
+  evidence: "evidence/acceptance/VF-3-09/runware-gemini-style-adapter"
+  audit_result: "canonical_injected_gemini_adapter_with_bounded_retry_and_redacted_evidence_green"
+  verification_result: "forced_full_gate_38_chrome_journeys_and_all_package_build_test_context_secret_checks_green"
+  external_actions: "public_git_push_only; no credential, provider, model, GPU, cloud, or spend activity"
   external_spend_usd: 0
 
 last_green:
   commands:
+    - "VF-3-09: targeted pipeline lint, typecheck, and tests passed 115/115 for exact Gemini request identity, resolver bounds, full trusted validation, one bounded whole-set retry, metadata/cost rejection, replay, and evidence redaction."
+    - "VF-3-09: TURBO_FORCE=true pnpm verify passed, including 131 control-plane, 163 web, 115 pipeline, 43 provider-sandbox, local Workerd, builds, context/schema/secret checks, and 38/38 installed-Chrome journeys at $0."
     - "VF-3-08: official Hugging Face page/API/LICENSE returned HTTP 401, signed-out Chrome showed 404, and Microsoft source/license evidence was hash-pinned without credentials, weights, GPU, inference, or spend."
     - "VF-3-08: pnpm context:validate, pnpm secret:scan, Prettier check, and git diff --check passed."
     - "VF-3-07: pipeline lint, typecheck, and tests passed 84/84 for canonical Runware DeepSeek request identity, strict validation, bounded unresolved-row retry, and redacted evidence through injected transports only."
@@ -409,10 +417,11 @@ last_green:
     - "pnpm context:validate"
     - "pnpm secret:scan"
     - "git diff --check"
-  checked_at: "2026-08-11T04:07:55Z"
+  checked_at: "2026-08-11T04:25:45Z"
   result: pass
-  verified_commit: "90c22b6d7318c363e41d6c88da1c7f757c8f091f"
+  verified_commit: "0445a0ce98c10800471ead8280ff0b201b03bfcd"
   evidence:
+    - "evidence/acceptance/VF-3-09/runware-gemini-style-adapter"
     - "evidence/gates/GATE_IMAGE_002/2026-08-11-huggingface-mage-access-license"
     - "evidence/acceptance/VF-3-07/runware-deepseek-prompt-adapter"
     - "evidence/gates/GATE_STYLE_001/2026-08-10-runware-gemini-style-qualification"
@@ -447,7 +456,7 @@ last_green:
     python_contract_tests: 42
     fixture_registry_and_local_slice_tests: 12
     configuration_tests: 5
-    pipeline_tests: 84
+    pipeline_tests: 115
     isolated_worker_tests: 56
     focused_render_worker_tests: 11
     root_script_tests: 6
@@ -456,6 +465,7 @@ last_green:
     playwright_chrome_journeys_intentionally_skipped: 0
     local_installed_chrome_convergence_journeys_passed: 1
   notes:
+    - "VF-3-09 pins google:gemini@3.5-flash, style-analyzer-v1, the qualification-locked schema/prompt hashes, exact alias/order/request bytes, $0.08 first-result and $0.15 total retry boundaries, and redacted immutable evidence behind injected seams only."
     - "VF-3-08 leaves GATE_IMAGE_002 open: exact current Hugging Face checkpoint/license artifacts were inaccessible and the official Microsoft source combines MIT labeling with research-only deployment guidance."
     - "VF-3-07 pins deepseek:v4@flash and scene-prompt-writer-v1 behind injected transport, accepts only exact role/anchor/schema identities, retries only the original-order unresolved subset once, preserves accepted rows, and emits prompt-free redacted evidence at $0."
     - "VF-3-02 closed GATE_STYLE_001: canonical google:gemini@3.5-flash passed all seven owned/synthetic analyzer sets at $0.407604 cumulative task spend, with first calls below $0.08, retries below $0.15, standard-service privacy disclosed, and zero ordinary-video analyzer calls."
@@ -500,7 +510,7 @@ known_incomplete_boundaries:
   - "Provider-free Auth plus private-artifact Hono composition is complete at ffceb6319ff85f7207619df7e0ecd41d20b341d0; it remains deliberately unmounted from fixture/local production-like entrypoints, and its application surface cannot access the direct-transfer facet."
   - "Durable mock restart/reconciliation/cancellation convergence is complete at dc86938972e776c8479637f2fb3ca9706999eed4; real Cloudflare Workflow and multi-session Neon behavior remain separately authorized staging work."
   - "The runtime-neutral Hono seam and local Workerd parity are complete, but no Worker is deployed and production-like modes deliberately fail closed until separately authorized staging bindings exist."
-  - "No production GPU/execution profile is selectable. GATE_LLM_001 and GATE_STYLE_001 are closed; the DeepSeek adapter is provider-free and not runtime-composed, while the Gemini lifecycle is not integrated. Image/avatar/style-adherence/fallback/GPU/RunPod/cost gates remain open. AvatarForcing download, paid qualification, and commercial use are additionally blocked by contradictory official license artifacts in GATE_AVATAR_003."
+  - "No production GPU/execution profile is selectable. GATE_LLM_001 and GATE_STYLE_001 are closed; the DeepSeek and Gemini adapters are provider-free and not runtime-composed, while the durable custom-style lifecycle remains incomplete. Image/avatar/style-adherence/fallback/GPU/RunPod/cost gates remain open. AvatarForcing download, paid qualification, and commercial use are additionally blocked by contradictory official license artifacts in GATE_AVATAR_003."
   - "The repository is publicly backed up at Pala-LakshmanSai/videoforge by explicit user decision. Hosted GitHub Actions is green on c23ab438 with the full gate, 38 installed-Chrome journeys, Gitleaks, and dependency audit; this proves CI, not deployment or production readiness."
   - "Live Better Auth/Google installation and atomic invitation-membership materialization remain staging work; the committed descriptor truthfully reports PENDING_STAGING."
   - "VF-1-08 provides a local scheduler-invokable metadata snapshot/restore primitive, not a production schedule, encrypted off-machine backup store, cloud backup integration, or private-media backup."
@@ -508,7 +518,7 @@ known_incomplete_boundaries:
   - "VF-2-03 persists provider-free deterministic timeline bytes and lineage through local PGlite/content-store boundaries; it does not activate a provider asset lane, cloud database/object store, deployment, or production scheduler."
   - "VF-2-04 exposes provider-free persisted timing/timeline truth through fixture/local UI adapters; it does not add a timeline editor, provider asset generation, cloud persistence, or deployment."
   - "VF-2-05 completes strict local Phase 2 restart/restore and selected-span convergence; the runtime-state file and local content store are not a production Neon/R2/Workflow deployment or an off-machine recovery claim."
-  - "GATE_LLM_001 and GATE_STYLE_001 are qualified, and VF-3-07 completed the provider-free injected DeepSeek adapter without runtime composition. VF-3-08 preserved GATE_IMAGE_002 open on inaccessible exact checkpoint/license evidence. VF-3-09 is selected only for an injected fake-transport Gemini style adapter; no credential access, provider call, or spend follows from it."
+  - "GATE_LLM_001 and GATE_STYLE_001 are qualified; VF-3-07 and VF-3-09 completed the injected DeepSeek/Gemini adapters without runtime composition. VF-3-08 preserved GATE_IMAGE_002 open on inaccessible exact checkpoint/license evidence. VF-7-01 is selected only for provider-free PGlite version lifecycle work; no credential access, provider call, or spend follows from it."
 
 known_non_blocking_devex: []
 
@@ -532,12 +542,13 @@ next_tasks:
   - "VF-3-06 complete: provider-free style semantic validation, fixture analysis, trusted profile assembly, full local gate, and evidence are committed at $0"
   - "VF-3-07 complete: the bounded Runware DeepSeek prompt adapter passed 84 pipeline tests and the forced full gate through injected transport only at $0"
   - "VF-3-08 complete: GATE_IMAGE_002 remains truthfully open on exact Hugging Face access and official license-policy ambiguity at $0"
-  - "Current: execute only VF-3-09 through injected fake resolver/transport at $0; live Runware calls and custom-style runtime composition remain disabled"
+  - "VF-3-09 complete: the bounded injected Gemini Image Style adapter passed 115 pipeline tests and the forced full gate at $0"
+  - "Current: execute only VF-7-01 durable provider-free Image Style parent/version lifecycle work; reference ingestion, live Runware composition, routes, and UI remain disabled"
   - "Keep DeterministicFixturePromptWriter as the default and preserve ordinary production at zero style-analysis calls"
   - "Fastest safe implementation order after evidence and new authority: deterministic prompt compiler/fixture adapter, gated DeepSeek integration, parallel Mage image and AvatarForcing lanes plus disjoint custom-style lifecycle, FFmpeg real fast-path convergence, conditional fallbacks, fault/security/restore hardening, then controlled release"
 
 activation_handoff:
-  status: phase_2_preserved_provider_gates_partial_vf_3_07_green_vf_3_08_open_evidence_vf_3_09_selected
+  status: phase_2_preserved_provider_adapters_green_mage_gate_open_vf_7_01_selected
   requested_by_user_at: "2026-08-10T17:07:12Z"
   reason: "The user authorized autonomous progress across provider accounts/qualification, Git/CI, and isolated staging while preserving exact caps, dependency gates, and deferred production; repository visibility was later explicitly changed to public."
   completed_and_preserved:
@@ -549,18 +560,19 @@ activation_handoff:
     - "VF-3-02 closed GATE_STYLE_001 with canonical Runware Gemini identity plus seven strict-schema/semantic style sets at $0.407604 cumulative task spend."
     - "VF-3-07 committed the bounded DeepSeek prompt adapter and exact redacted evidence at $0; deterministic fixture behavior remains the default."
     - "VF-3-08 recorded exact read-only Mage access/license evidence at $0 and preserved GATE_IMAGE_002 open without downloading around the blocker."
+    - "VF-3-09 committed the bounded Gemini style adapter and exact redacted evidence at $0; deterministic fixture behavior and ordinary-video zero-analysis remain the default."
   fully_sorted:
     - "Durable local relational/control-plane invariants, mock recovery, isolation, direct upload, Avatar version reuse, and deterministic metadata restore."
     - "Owned local ASR timing, canonical deterministic timeline, exact selected Avatar span audio, strict latest-attempt restart/restore, fail-closed inspection, and exact playback/download."
     - "Accepted fixture shell, fixed-base dock, Hub workflows, hard-cut-only output grammar, and required smooth image zoom."
   intentionally_not_done:
-    - "No production-composed provider prompt transport, image, Avatar, custom-style lifecycle, fallback, GPU, cost/SLO, or deployed adapter is implemented; the DeepSeek adapter remains injected/provider-free and Gemini has qualification evidence but no runtime adapter yet."
+    - "No production-composed provider transport, image, Avatar, custom-style lifecycle, fallback, GPU, cost/SLO, or deployed adapter is implemented; both Runware adapters remain injected/provider-free."
     - "At activation, no Git remote/push, hosted CI, cloud/account resource, OAuth app, Neon/R2/Workflow deployment, credential, model download, provider call, or spend had been used."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this CURRENT_STATE.yaml."
-    - "Load only the phase3_runware_style_adapter profile and tasks/VF-3-09.md."
+    - "Load only the phase7_style_lifecycle_core profile and tasks/VF-7-01.md."
     - "Confirm the recorded commits are ancestors of clean HEAD; do not reset or redo completed phases."
-    - "Confirm origin and the VF-3-02/VF-3-06/VF-3-08 evidence remain exact, then implement only the injected fake-tested Gemini style adapter."
+    - "Confirm origin and the VF-3-06/VF-3-09 evidence remain exact, then implement only the PGlite Image Style version lifecycle core."
     - "Use no provider credential/network call or spend; keep provider mode fixture and external spend at $0."
   optimized_future_sequence:
     - "A. Refresh official time-sensitive provider/model/rate/retention/license facts read-only and classify all open gates."
@@ -575,7 +587,7 @@ activation_handoff:
 
 notes:
   - "This is a replace-in-place handoff snapshot, not a progress diary."
-  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-3-09 is the sole selected provider-free task."
+  - "A new chat starts only with recommended_next_task and its one profile/brief. VF-7-01 is the sole selected provider-free task."
   - "RunPod account preflight is green: Keychain credential exists, balance is $10.00, hourly spend is $0, and Pods/endpoints/volumes/workers are all zero."
   - "Public GitHub remote is green and exact by explicit user decision. Hosted run 31451226265 passed the full gate on c23ab438."
   - "The accelerated approval through VF-2-05 is complete and exhausted. On 2026-08-10 the user separately activated the planned non-transferable $1/$3/$8/$8/$5 provider caps, Git/CI, and isolated staging authority; production remains deferred."
@@ -585,5 +597,5 @@ notes:
   - "Mage exact checkpoint/license evidence remains unresolved: official Hugging Face artifacts returned HTTP 401/signed-out 404, while Microsoft source labels Mage-Flow MIT but also gives research-only deployment guidance."
   - "TypeScript is the sole RFC 8785/JCS authority; Python validates canonical schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output grammar remains three compositions, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
-  - "No public tunnel or LAN listener is active. VF-3-09 does not need to start the stable loopback fixture server."
+  - "No public tunnel or LAN listener is active. VF-7-01 has no user-visible route and does not need to start the stable loopback fixture server."
   - "The completed VF-1-01 baseline is preserved; VF-1-01A supersedes its overstated behavior/concurrency evidence with exact, bounded acceptance claims."
