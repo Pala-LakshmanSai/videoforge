@@ -29,7 +29,15 @@ class AvatarPrimaryInferenceFailure(ValueError):
 
 def classify_inference_failure(diagnostic: bytes) -> str:
     value = diagnostic.lower()
-    if b"out of memory" in value or b"cuda error: out of memory" in value:
+    if any(
+        marker in value
+        for marker in [
+            b"out of memory",
+            b"outofmemoryerror",
+            b"cuda_error_out_of_memory",
+            b"cublas_status_alloc_failed",
+        ]
+    ):
         return "AVATAR_INFERENCE_CUDA_OOM"
     if b"modulenotfounderror" in value or b"no module named" in value:
         return "AVATAR_INFERENCE_DEPENDENCY_MISSING"

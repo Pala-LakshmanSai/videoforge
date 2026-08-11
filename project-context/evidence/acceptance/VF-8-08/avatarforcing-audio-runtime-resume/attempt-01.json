@@ -1,0 +1,53 @@
+{
+  "schema_version": "videoforge.avatarforcing-qualification/v1",
+  "checked_at": "2026-08-11T20:02:52.657Z",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:b7bdf282f97cb84195a7ef163670a3a7a464e593984d678723567c8ccd931b1d",
+  "input": {
+    "source_sha256": "sha256:b4214d8f586608dae08ca2a56716f340d87c7bbbd8817383f4cbeaa3e188fb34",
+    "source_bytes": 227787,
+    "audio_sha256": "sha256:b7f6585b5775b53de774ce6a7b3b5d059bb4ec3c6e558d2deb44296f80dc4041",
+    "audio_bytes": 640983,
+    "layout": "AVATAR_FULL",
+    "num_output_frames": 5
+  },
+  "resource_identity": {
+    "template_id_hash": "sha256:3a6f2f0effd0249a6bea9c72b887939840f53578b62e6d696f39769354d1ce60",
+    "endpoint_id_hash": "sha256:cfee0893844bdcdc742ca8ebc81d42b6baf76483a44648eaa7ec5380cc2203e6",
+    "job_id_hash": "sha256:a3fc352f4c2daa8529229b5e19958834f3b0220dc6f25b684cb85253895efbf7"
+  },
+  "runtime": {
+    "status": "COMPLETED",
+    "delay_time_ms": 71566,
+    "execution_time_ms": 213373,
+    "progress": null,
+    "output": {
+      "error_code": "AVATAR_INFERENCE_PROCESS_FAILED",
+      "diagnostic_sha256": "sha256:f96cb45f8916909d0f6c7a35f72260a77f6d429ce6ebf6fbdcf940344722538d"
+    },
+    "failure_code": "AVATAR_INFERENCE_PROCESS_FAILED"
+  },
+  "cost": {
+    "starting_balance_usd": 9.7510608565,
+    "ending_balance_usd": 9.7407869213,
+    "measured_spend_usd": 0.01027393520000075,
+    "cap_usd": 1
+  },
+  "initial_inventory": {
+    "checkedAt": "2026-08-11T19:57:47.464Z",
+    "pods": [],
+    "endpoints": [],
+    "privateTemplateCount": 0,
+    "networkVolumes": [],
+    "runningPodCount": 0,
+    "activeServerlessWorkerCount": 0
+  },
+  "final_inventory": {
+    "checkedAt": "2026-08-11T20:02:52.143Z",
+    "pods": [],
+    "endpoints": [],
+    "privateTemplateCount": 0,
+    "networkVolumes": [],
+    "runningPodCount": 0,
+    "activeServerlessWorkerCount": 0
+  }
+}

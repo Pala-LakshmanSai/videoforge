@@ -17,7 +17,7 @@ const execFileAsync = promisify(execFile);
 const terminalStatuses = new Set(["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"]);
 const qualificationSpendCapUsd = 1;
 const qualificationCostStopUsd = 0.9;
-const qualificationGpuTypeIds = ["NVIDIA L40S", "NVIDIA A100 80GB PCIe"] as const;
+const qualificationGpuTypeIds = ["NVIDIA A100 80GB PCIe"] as const;
 let abortRequested = false;
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {

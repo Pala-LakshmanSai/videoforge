@@ -39,6 +39,7 @@ class ProductionContractTest(unittest.TestCase):
     def test_classifies_failure_without_exposing_diagnostic_text(self) -> None:
         cases = {
             b"torch.cuda.OutOfMemoryError: CUDA out of memory": "AVATAR_INFERENCE_CUDA_OOM",
+            b"torch.OutOfMemoryError: allocation failed": "AVATAR_INFERENCE_CUDA_OOM",
             b"ModuleNotFoundError: No module named x": "AVATAR_INFERENCE_DEPENDENCY_MISSING",
             b"FileNotFoundError: No such file or directory": "AVATAR_INFERENCE_ASSET_MISSING",
             b"ffmpeg: Invalid data found when processing input": "AVATAR_INFERENCE_MEDIA_INVALID",
