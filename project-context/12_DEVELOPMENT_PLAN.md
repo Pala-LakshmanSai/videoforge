@@ -8,7 +8,7 @@ Read when: opening a coding chat, sequencing work, assigning ownership, or accep
 Current checkpoint `d9adee9` is fully provider-free and green. Phase 0A–2, VF-DX-01/02,
 VF-REL-01, VF-4-01/02, VF-5-01/02, and VF-7-01 through VF-7-09 are complete. `VF-3-10` pinned
 AvatarForcing's contradictory/missing commercial-license evidence and preserved `GATE_AVATAR_003`
-open. Current serial task is read-only `VF-3-11`. Provider qualification, real video, staging, hardening, and release follow
+open at evidence/context commit `96e5fd3`. Current serial task is read-only `VF-3-11`. Provider qualification, real video, staging, hardening, and release follow
 only from exact successor briefs and recorded authority.
 
 Run coordinated local and viability tracks under the accelerated wave authority in

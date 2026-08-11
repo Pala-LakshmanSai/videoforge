@@ -9,7 +9,8 @@ Keep responses concise and spend-conscious. Focus on the selected task and evide
 2. Read project-context/00_START_HERE.md.
 3. Read project-context/MANIFEST.yaml.
 4. Read project-context/CURRENT_STATE.yaml.
-5. Run git status --short --branch. Require clean HEAD descending from d9adee9.
+5. Run git status --short --branch. Require clean HEAD descending from 96e5fd3 (which itself
+   descends from verified implementation checkpoint d9adee9).
 6. Preserve every commit. Never reset, rewrite, or redo completed work.
 7. Load only CURRENT_STATE.recommended_next_task, its one MANIFEST read profile, and exact brief.
    Do not run a broad research pass or preload later profiles/briefs.

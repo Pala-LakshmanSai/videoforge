@@ -44,7 +44,8 @@ reference bytes remain session-scoped; production R2 and live provider orchestra
 AvatarForcing preflight `VF-3-10` is complete. It pinned GitHub code revision `63b73e6` and public
 weights revision `e244891`, but the official README's Apache-2.0 label conflicts with a root
 academic-only/non-commercial `LICENSE.txt` that names RollingForcing, while the weights card
-declares no license. `GATE_AVATAR_003` remains open. `CURRENT_STATE.yaml` selects only read-only
+declares no license. Evidence/context commit is `96e5fd3`; `GATE_AVATAR_003` remains open.
+`CURRENT_STATE.yaml` selects only read-only
 `VF-3-11`, the bounded primary-avatar replacement-model decision. Mage `VF-3-08` already preserved
 `GATE_IMAGE_002` open; do not repeat either preflight or download around either model blocker.
 

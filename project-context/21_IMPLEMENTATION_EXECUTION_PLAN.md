@@ -34,6 +34,8 @@ gate, failed check, destructive migration, provider ambiguity, or new authority.
   fixture Hub upload/analyze/review/edit/publish/select/archive flow.
 - Latest implementation commits: `6fb3312` and Workerd correction `d9adee9`. Forced full verification
   passed 786 tests/journeys: control-plane 209/209, Workerd 1/1, Chrome 38/38, zero skips, `$0`.
+- Latest read-only provider-gate evidence commit: `96e5fd3`; `VF-3-10` preserved
+  `GATE_AVATAR_003` open and selected only `VF-3-11`.
 
 Do not redesign the accepted shell/dock/Hubs, replace FFmpeg v3, retune output grammar, or redo any
 completed task.
@@ -121,5 +123,5 @@ fresh-account Chrome create-through-downloaded-playback, exact provenance, and u
 ## Fresh-chat start
 
 Read `AGENTS.md`, `00_START_HERE.md`, `MANIFEST.yaml`, and `CURRENT_STATE.yaml`; confirm clean HEAD
-descends from `d9adee9`; load only `phase3_avatar_replacement_decision` and `tasks/VF-3-11.md`.
+descends from `96e5fd3`; load only `phase3_avatar_replacement_decision` and `tasks/VF-3-11.md`.
 Preserve all commits. Keep candidate review bounded and do not preload later profiles/briefs.

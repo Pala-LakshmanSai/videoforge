@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T14:53:50Z"
+updated_at: "2026-08-11T15:17:22Z"
 
 phase: provider_gate_resolution
 implementation_authorized_in_current_task: false
@@ -19,7 +19,7 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
+  last_good_commit: "96e5fd3b91ecec6a683ce8c7c7e951aa1d208aff"
   working_tree_expected: clean_after_provider_free_completion_handoff
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
@@ -135,6 +135,7 @@ latest_closed_handoff:
   task_id: VF-3-10
   status: complete
   task_kind: read_only_provider_gate_preflight
+  evidence_commit: "96e5fd3b91ecec6a683ce8c7c7e951aa1d208aff"
   evidence: "evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license"
   verification_result: "GATE_AVATAR_003_open_blocked_exact_code_and_weights_revisions_pinned"
   external_actions: "Read-only public first-party HTTP only; no push, credential, legal acceptance, provider call, model/LFS/Xet download, GPU/cloud mutation, deployment, or spend."
@@ -253,7 +254,7 @@ activation_handoff:
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from d9adee9; preserve all newer commits."
+    - "Require clean HEAD descending from VF-3-10 evidence commit 96e5fd3; preserve all newer commits."
     - "Load only phase3_avatar_replacement_decision and tasks/VF-3-11.md."
     - "Keep candidate review bounded; do not preload later briefs, use credentials, download weights, mutate resources, or spend."
   stop_conditions:
