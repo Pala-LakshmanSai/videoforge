@@ -14,6 +14,12 @@ import {
 
 const execFileAsync = promisify(execFile);
 const terminalStatuses = new Set(["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"]);
+let abortRequested = false;
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => {
+    abortRequested = true;
+  });
+}
 const sleep = (milliseconds: number): Promise<void> =>
   new Promise((resolveSleep) => setTimeout(resolveSleep, milliseconds));
 const digest = (value: Buffer): string =>
@@ -105,8 +111,10 @@ let failureCode: string | undefined;
 let outputEvidence: unknown;
 
 try {
+  if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
   const suffix = createHash("sha256").update(image).digest("hex").slice(0, 12);
   template = await control.createServerlessTemplate(`vf_avatar_${suffix}`, image, 100);
+  if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
   endpoint = await control.createScaleZeroEndpoint(
     `vf_avatar_${suffix}`,
     template.id,
@@ -121,6 +129,7 @@ try {
   );
   jobs = new RunPodServerlessJobClient({ apiKey, endpointId: endpoint.id, guard });
   await jobs.confirmDrained();
+  if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
   job = await jobs.dispatch(`vf8_04_${suffix}`, {
     mode: "INLINE_QUALIFICATION_V1",
     attempt_id: `vf8_04_${suffix}`,
@@ -134,6 +143,7 @@ try {
   });
   for (let attempt = 0; attempt < 140 && !terminalStatuses.has(job.status); attempt += 1) {
     await sleep(15_000);
+    if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
     job = await jobs.status(job.id);
     const liveInventory = await control.inventory();
     if (
