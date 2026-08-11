@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T02:41:36Z"
+updated_at: "2026-08-11T02:44:08Z"
 
 phase: phase_3_provider_operations_preflight
 implementation_authorized_in_current_task: false
@@ -189,7 +189,8 @@ completed_tasks:
   - task_id: VF-3-01
     status: complete
     summary: "Qualified Runware DeepSeek with live canonical AIR deepseek:v4@flash identity evidence and a 40-scene/five-style strict-schema pass; all exact IDs, roles, literal anchors, forbidden-output checks, and cost criteria passed while application provider mode remained fixture."
-    implementation_commit: "e157935"
+    implementation_commit: "e157935d87b67b73a448c78fe032d0aa4313e29a"
+    evidence_commit: "f70eca7cf4645eb284c44cf65f6053b7265b54ec"
     evidence: "evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification"
   - task_id: VF-3-03
     status: complete
@@ -353,7 +354,8 @@ recommended_next_task:
 latest_closed_handoff:
   task_id: VF-3-01
   status: complete
-  implementation_commit: "e157935"
+  implementation_commit: "e157935d87b67b73a448c78fe032d0aa4313e29a"
+  evidence_commit: "f70eca7cf4645eb284c44cf65f6053b7265b54ec"
   evidence: "evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification"
   audit_result: "canonical_runware_air_and_all_strict_schema_relevance_identity_and_cost_criteria_pass"
   verification_result: "provider_sandbox_40_of_40_and_forced_uncached_full_gate_green"
