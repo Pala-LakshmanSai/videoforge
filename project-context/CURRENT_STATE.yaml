@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T21:19:00Z"
+updated_at: "2026-08-11T21:32:00Z"
 
-phase: skyreels_dependency_diagnostic
+phase: skyreels_corrected_resume
 implementation_authorized_in_current_task: true
-current_milestone: locked_skyreels_dependency_diagnostic
-current_task: VF-8-14
+current_milestone: locked_skyreels_corrected_resume
+current_task: VF-8-15
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -19,8 +19,8 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "26e2de6"
-  working_tree_expected: clean_after_vf_8_13_safe_dependency_failure_handoff
+  last_good_commit: "186955e"
+  working_tree_expected: clean_after_vf_8_14_dependency_path_handoff
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -42,9 +42,9 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "VF-8-14 authorizes local SkyReels dependency correction and GHCR build/publish only; no RunPod credential read/mutation, model-weight download, GPU, dispatch, or spend."
+  provider_calls_authorized: true
+  authorized_spend_usd: 2
+  provider_authority_scope: "VF-8-15 authorizes existing secure RunPod credential, one scale-zero endpoint, one A100-80GB worker, exact pinned SkyReels model download, one owned five-second dispatch, and maximum new spend $2.00; mandatory drain/delete and absolute-zero inventory."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -203,16 +203,22 @@ completed_tasks:
     image_digest: "sha256:eed0778157bda9c28ebdb54bbab407d64205063b0467897ee9dcb9438b930497"
     evidence: "evidence/acceptance/VF-8-13/skyreels-qualification"
     summary: "One A100-80GB job ended with SKYREELS_INFERENCE_DEPENDENCY_MISSING for $0.0502363111; no redispatch occurred and final/independent RunPod inventories were absolute zero."
+  - task_id: VF-8-14
+    status: complete
+    implementation_commit: "186955e"
+    image_digest: "sha256:1e7f9100bef7759ffe527d083e1655c7bfda6c9192668c9a13d15e4c4e73e878"
+    evidence: "evidence/acceptance/VF-8-14/skyreels-dependency-diagnostic"
+    summary: "Pinned missing av runtime dependency and proved the full official SkyReels CLI import/parser path in linux/amd64 before publishing the corrected image at $0."
 
 latest_closed_handoff:
-  task_id: VF-8-13
-  status: exact_safe_dependency_failure
-  task_kind: skyreels_qualification
-  implementation_commit: "26e2de6"
-  evidence: "evidence/acceptance/VF-8-13/skyreels-qualification"
-  verification_result: "safe_dependency_failure_no_redispatch_and_independent_zero_inventory"
-  external_actions: "One A100-80GB Serverless worker/job, then exact endpoint/template deletion and independent zero-inventory confirmation."
-  external_spend_usd: 0.0502363111
+  task_id: VF-8-14
+  status: complete
+  task_kind: skyreels_dependency_diagnostic
+  implementation_commit: "186955e"
+  evidence: "evidence/acceptance/VF-8-14/skyreels-dependency-diagnostic"
+  verification_result: "full_pinned_cli_import_parser_and_container_smokes_passed"
+  external_actions: "GHCR workflow 31537894443 published corrected immutable image; no RunPod mutation, GPU, or spend."
+  external_spend_usd: 0
 
 last_green:
   checked_at: "2026-08-11T20:03:00Z"
@@ -238,31 +244,37 @@ active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-8-14
-  milestone: locked_skyreels_dependency_diagnostic
+  task_id: VF-8-15
+  milestone: locked_skyreels_corrected_resume
   status: ready
-  dependency_status: vf_8_13_exact_missing_dependency_failure_retained_and_runpod_zero
-  authorization_status: provider_free_dependency_correction_only
-  read_profile: phase8_skyreels_dependency_diagnostic
-  task_brief: tasks/VF-8-14.md
-  goal: "Pin the missing SkyReels runtime dependency and prove the full CLI import path in-container at $0."
-  provider_calls_authorized: false
-  maximum_external_spend_usd: 0
+  dependency_status: vf_8_14_corrected_image_full_cli_smoke_passed_and_runpod_zero
+  authorization_status: one_a100_80gb_corrected_resume
+  read_profile: phase8_skyreels_corrected_resume
+  task_brief: tasks/VF-8-15.md
+  goal: "Run one corrected-image SkyReels qualification and return RunPod to absolute zero."
+  provider_calls_authorized: true
+  maximum_external_spend_usd: 2
+  provider_authority:
+    provider: runpod_serverless
+    model_id: "Skywork/SkyReels-V3-A2V-19B@fdad4053f492aba389b5a8c3c6982118c6a1ecf3"
+    cap_usd: 2
+    non_transferable: true
+    authorized_by_user_at: "2026-08-11T19:36:00Z"
   remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: false
-  model_downloads_authorized: false
-  application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-8-14/skyreels-dependency-diagnostic"
+  credential_access_authorized: true
+  model_downloads_authorized: true
+  application_code_changes_authorized: false
+  expected_evidence: "evidence/acceptance/VF-8-15/skyreels-corrected-resume"
   required_handoff:
-    - "Pin missing av runtime dependency and add full official CLI import/parser smoke."
-    - "Publish one immutable corrected image with focused/full checks green."
-    - "Author exactly one capped paid-resume successor and keep RunPod absolute zero."
+    - "Run exactly one owned five-second qualification on A100 80GB only."
+    - "Retain valid 960x960/25 MP4/probe/lineage/cost or one exact safe terminal failure."
+    - "Drain/delete all resources and independently prove RunPod absolute zero."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-8-14
+    integration_owner: VF-8-15
   prohibited_in_task:
-    - "Any RunPod credential read/mutation, model-weight download, GPU, dispatch, or spend."
-    - "Second attempt, model substitution, Mage/MuseTalk, app/schema/UI change, promotion, credential exposure, or deployment."
+    - "Second dispatch, alternate GPU, Pod/volume, low-VRAM/USP, or spend above $2.00."
+    - "Model substitution, Mage/MuseTalk, app/schema/UI change, promotion, credential exposure, or deployment."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -290,8 +302,8 @@ known_incomplete_boundaries:
   - "No encrypted off-machine backup, R2 integrity inventory, clean-target cloud restore, ten-user contention/security proof, or fresh-account production Chrome sign-off exists."
 
 next_tasks:
-  - "1. VF-8-14 close the exact SkyReels missing dependency and publish a fully imported worker at $0."
-  - "2. Resume one capped A100-80GB qualification only under the exact successor brief."
+  - "1. VF-8-15 run one corrected-image A100-80GB SkyReels qualification under a $2.00 cap."
+  - "2. Act only on its exact output/failure evidence and always leave RunPod zero."
   - "3. Build pinned Mage worker; exact weight access currently needs Hugging Face authentication unavailable in Chrome/Keychain."
   - "4. Add MuseTalk repair and SkyReels whole-frame fallback only after their technical triggers."
   - "5. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
@@ -317,7 +329,7 @@ progress_snapshot:
   interpretation: "Provider-free media, restart-safe Node sandbox, Runware runtime composition, RunPod scale-zero control, and pinned real AvatarForcing/SkyReels workers are implemented. AvatarForcing produced a valid but rejected-quality MP4; SkyReels container/runtime is verified but real model qualification, Mage, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: skyreels_dependency_diagnostic_selected
+  status: skyreels_corrected_resume_selected
   completed_and_preserved:
     - "All completed tasks/commits above; no paused implementation or unexplained dirty state."
     - "Forced full verification passed at the VF-8-04 handoff tree: Workerd 1/1 and installed Chrome 38/38 with zero skips."
@@ -333,15 +345,16 @@ activation_handoff:
     - "VF-8-11 pinned SkyReels source/model lineage and corrected the talking-avatar source profile to native 25 fps."
     - "VF-8-12 published pinned SkyReels image sha256:eed0778157bda9c28ebdb54bbab407d64205063b0467897ee9dcb9438b930497; full local/hosted verification passed."
     - "VF-8-13 retained exact safe SKYREELS_INFERENCE_DEPENDENCY_MISSING evidence for $0.0502363111 and returned RunPod to independent absolute zero."
+    - "VF-8-14 published corrected SkyReels image sha256:1e7f9100bef7759ffe527d083e1655c7bfda6c9192668c9a13d15e4c4e73e878 after full CLI dependency-path proof."
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from 26e2de6; preserve all newer commits."
-    - "Load only phase8_skyreels_dependency_diagnostic and tasks/VF-8-14.md."
-    - "Pin missing dependency, prove full CLI import in GHCR, author one resume brief, and keep RunPod zero."
+    - "Require clean HEAD descending from 186955e; preserve all newer commits."
+    - "Load only phase8_skyreels_corrected_resume and tasks/VF-8-15.md."
+    - "Run one corrected-image A100-80GB five-second qualification and leave RunPod zero."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
-    - "Credential exposure, model/revision ambiguity, any provider mutation/spend, second dispatch, or non-zero RunPod inventory."
+    - "Credential exposure, model/revision ambiguity, second dispatch, spend above $2.00, or non-zero final RunPod inventory."
 
 notes:
   - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."
