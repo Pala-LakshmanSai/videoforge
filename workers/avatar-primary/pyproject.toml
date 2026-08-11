@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "videoforge-avatar-primary-worker"
 version = "0.0.0"
-description = "VideoForge fixture skeleton for AvatarForcing primary jobs"
+description = "VideoForge AvatarForcing primary worker boundary"
 requires-python = ">=3.12,<3.13"
 dependencies = []
 
