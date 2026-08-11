@@ -18,7 +18,7 @@
     "lint": "eslint src tests --max-warnings 0",
     "qualify:deepseek": "node scripts/qualify-deepseek.mjs",
     "qualify:gemini-style": "pnpm --filter @videoforge/pipeline build && node scripts/qualify-gemini-style.mjs",
-    "test": "pnpm --filter @videoforge/pipeline build && pnpm build && node --test tests/*.test.mjs",
+    "test": "node --test tests/*.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

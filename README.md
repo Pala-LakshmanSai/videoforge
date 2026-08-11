@@ -30,8 +30,16 @@ Useful commands:
 ```bash
 pnpm dev:status
 pnpm dev:open
+pnpm verify:fast
 pnpm verify
 pnpm context:validate
 ```
 
-`pnpm verify` runs formatting, linting, typechecking, cross-language contract and fixture tests, context validation, a production build, and the Chrome smoke journeys.
+`pnpm verify:fast` is the provider-free local feedback gate. It runs formatting, linting,
+typechecking, one non-duplicating package build/test graph, cross-language contract and worker tests,
+context validation, secret scanning, and generated-file checks. It deliberately excludes local
+Workerd and installed-Chrome journeys, so it is never release evidence.
+
+`pnpm verify` is the canonical provider-free gate. It includes every `verify:fast` check, local
+Workerd parity, and all installed-Chrome journeys. Workerd runs alongside the port-free fast checks;
+installed Chrome runs afterward on the strict owned loopback port.

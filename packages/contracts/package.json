@@ -30,7 +30,7 @@
     "sync:check": "node scripts/sync-contracts.mjs --check",
     "test": "pnpm test:ts && pnpm test:python",
     "test:python": "node scripts/run-python-tests.mjs",
-    "test:ts": "pnpm build && node --test tests/*.test.mjs",
+    "test:ts": "node --test tests/*.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.type-tests.json"
   },
   "dependencies": {

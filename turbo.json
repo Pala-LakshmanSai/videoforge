@@ -1,21 +1,33 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["pnpm-lock.yaml", "pnpm-workspace.yaml", "tsconfig.base.json"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "env": ["VITE_VIDEOFORGE_COMMIT"],
+      "outputs": ["dist/**"],
+      "cache": true,
+      "persistent": false
     },
     "lint": {
       "dependsOn": ["^build"],
-      "outputs": []
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/eslint.config.mjs"],
+      "outputs": [],
+      "cache": true,
+      "persistent": false
     },
     "test": {
-      "dependsOn": ["^build"],
-      "outputs": []
+      "dependsOn": ["build"],
+      "env": ["VIDEOFORGE_PYTHON", "VIDEOFORGE_UV"],
+      "outputs": [],
+      "cache": true,
+      "persistent": false
     },
     "typecheck": {
       "dependsOn": ["^build"],
-      "outputs": []
+      "outputs": [],
+      "cache": true,
+      "persistent": false
     }
   }
 }

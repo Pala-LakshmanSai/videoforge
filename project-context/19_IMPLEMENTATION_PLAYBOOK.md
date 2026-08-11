@@ -26,7 +26,8 @@ Implementation starts only when the user authorizes it.
    - `pnpm python:lint` — run locked Ruff checks and formatting verification without syncing or downloading dependencies.
    - `pnpm test:chrome` — Playwright smoke against the running stable URL.
    - `pnpm secret:scan` — detect tracked secrets without echoing values.
-   - `pnpm verify` — formatting check, lint, typecheck, unit/contracts/context validation, and fixture-mode Chrome smoke; it must not call external providers. It reuses a healthy owned server or starts/stops only a server instance it owns, never the user's unrelated process.
+   - `pnpm verify:fast` — non-release, provider-free feedback gate covering format/static/type/generated/contract checks plus deterministic package, script, and worker suites through one non-duplicating Turbo graph. It excludes local Workerd and installed-Chrome journeys and must never be cited as release evidence.
+   - `pnpm verify` — canonical provider-free aggregate containing every `verify:fast` check, local Workerd parity, and all installed-Chrome journeys. Workerd may overlap only port-free fast checks; installed Chrome runs after the Workerd server releases the strict loopback port. It must not call external providers and starts/stops only test servers it owns, never the user's unrelated process.
    - `pnpm context:validate` — invoke both `project-context/scripts/validate-context.sh` and `project-context/scripts/validate-schemas.sh`; after the monorepo installs pinned Ajv, this is network-free.
    - `pnpm local:doctor` — separately verify real local-media tools and the explicitly fetched Whisper model; ordinary `doctor`/`verify` must not download it.
    - `pnpm test:local-slice` — run the provider-free real-media acceptance slice only when its local prerequisites are present.
