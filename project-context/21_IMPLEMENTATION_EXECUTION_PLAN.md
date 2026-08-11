@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: provider-free media integration complete through `VF-7-09`; `VF-8-01` Node sandbox durable runtime selected
+Status: `VF-8-01` Node sandbox runtime complete; `VF-8-02` locked Runware runtime selected
 Read when: selecting, implementing, integrating, or handing off one task.
 
 ## Authority and operating rule
@@ -37,18 +37,20 @@ gate, failed check, destructive migration, provider ambiguity, or new authority.
 - Latest read-only provider-gate evidence commit: `96e5fd3`; `VF-3-10` preserved
   `GATE_AVATAR_003` open. `VF-3-11` then ended without a replacement after the user reaffirmed the
   finalized AvatarForcing ladder and LongCat exclusion.
+- Node sandbox runtime: `68d11fb` plus entrypoint correction `21d6646`; real owned media completed,
+  restored after restart, approved, and downloaded with an exact SHA-256 match at `$0`.
 
 Do not redesign the accepted shell/dock/Hubs, replace FFmpeg v3, retune output grammar, or redo any
 completed task.
 
 ## Exact next task
 
-### VF-8-01 — Node sandbox durable runtime composition
+### VF-8-02 — Locked Runware runtime composition
 
-Use only `phase8_node_sandbox_runtime` and `tasks/VF-8-01.md`. Compose a restart-safe Node sandbox
-from existing durable PGlite repositories, local artifact/workflow adapters, provider-free workers,
-and accepted API/UI surfaces. Keep fixture/local unchanged and all providers disabled. No credential,
-model download, GPU/cloud mutation, deployment, or spend.
+Use only `phase8_runware_runtime` and `tasks/VF-8-02.md`. Compose the already-qualified locked
+DeepSeek V4 Flash prompt writer and Gemini 3.5 Flash style analyzer behind explicit sandbox
+authority. Credential access is Keychain-only; maximum new spend is `$0.20`. No RunPod/GPU,
+model download, deployment, model-role change, or UI redesign.
 
 Mage preflight `VF-3-08` and AvatarForcing preflight `VF-3-10` retain unresolved terms evidence.
 The user explicitly accepted that risk for bounded qualification of the locked models. Do not
@@ -60,7 +62,7 @@ The list below is roadmap order, not authorization and not a set of pre-authored
 
 ### A. Provider decisions and gates
 
-1. Complete `VF-8-01` Node sandbox durable runtime composition and restart/replay proof.
+1. Complete `VF-8-02` locked Runware runtime composition and bounded live smoke.
 2. Preserve the exact Mage and AvatarForcing revisions/terms evidence while proceeding only under
    bounded qualification briefs; never reopen excluded models.
 3. After an exact gate resolution and paid brief, qualify the selected image model: exact checkpoint/container,
@@ -123,5 +125,5 @@ fresh-account Chrome create-through-downloaded-playback, exact provenance, and u
 ## Fresh-chat start
 
 Read `AGENTS.md`, `00_START_HERE.md`, `MANIFEST.yaml`, and `CURRENT_STATE.yaml`; confirm clean HEAD
-descends from `96e5fd3`; load only `phase8_node_sandbox_runtime` and `tasks/VF-8-01.md`.
-Preserve all commits. Keep providers disabled and do not preload later profiles/briefs.
+descends from `21d6646`; load only `phase8_runware_runtime` and `tasks/VF-8-02.md`.
+Preserve all commits. Keep authority to the exact Runware cap and do not preload later briefs.

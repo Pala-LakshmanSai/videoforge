@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T16:55:00Z"
+updated_at: "2026-08-11T17:08:00Z"
 
-phase: durable_sandbox_runtime
+phase: runware_runtime_composition
 implementation_authorized_in_current_task: true
-current_milestone: node_sandbox_durable_runtime_composition
-current_task: VF-8-01
+current_milestone: locked_runware_runtime_composition
+current_task: VF-8-02
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -19,7 +19,7 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "96e5fd3b91ecec6a683ce8c7c7e951aa1d208aff"
+  last_good_commit: "21d664682bdba27c7a8b27e8f9b48d218dd2a0be"
   working_tree_expected: clean_after_provider_free_completion_handoff
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
@@ -43,8 +43,8 @@ live_development:
   fixture_scenario: happy_generating
   provider_mode: fixture
   provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "VF-8-01 is provider-free runtime implementation at $0. Keep all provider calls, credentials, model downloads, GPU/RunPod/cloud mutation, deployment, and spend disabled."
+  authorized_spend_usd: 0.2
+  provider_authority_scope: "VF-8-02 permits only locked Runware DeepSeek V4 Flash and Gemini 3.5 Flash runtime composition, Keychain-only credential access, and at most $0.20 new spend. No RunPod/GPU/model download/deployment."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -130,15 +130,22 @@ completed_tasks:
     correction_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
     evidence: "evidence/acceptance/VF-7-09/style-hub-completion"
     summary: "Browser/server normalization, authenticated fixture lifecycle, review/edit/publish/select, preview/archive/reopen, responsive Hub Chrome acceptance, and Workerd-safe contracts."
+  - task_id: VF-8-01
+    status: complete
+    implementation_commit: "68d11fb044699f56a7705189d609365e1c6ec97c"
+    correction_commit: "21d664682bdba27c7a8b27e8f9b48d218dd2a0be"
+    evidence: "evidence/acceptance/VF-8-01/node-sandbox-runtime"
+    summary: "Loopback-only Node sandbox mode, workspace-contained persistent data root, real owned ASR/timeline/FFmpeg v3 run, restart restore, approval, and checksum-matched download at $0."
 
 latest_closed_handoff:
-  task_id: VF-3-11
+  task_id: VF-8-01
   status: complete
-  task_kind: user_reaffirmed_model_decision
-  evidence_commit: pending_current_context_commit
-  evidence: "evidence/decisions/VF-3-11/2026-08-11-user-reaffirmed-avatar-ladder"
-  verification_result: "no_replacement_selected_avatarforcing_remains_blocked_longcat_excluded"
-  external_actions: "Read-only public first-party HTTP only; no push, credential, legal acceptance, provider call, model/LFS/Xet download, GPU/cloud mutation, deployment, or spend."
+  task_kind: provider_free_runtime_implementation
+  implementation_commit: "68d11fb044699f56a7705189d609365e1c6ec97c"
+  correction_commit: "21d664682bdba27c7a8b27e8f9b48d218dd2a0be"
+  evidence: "evidence/acceptance/VF-8-01/node-sandbox-runtime"
+  verification_result: "sandbox_restart_restore_approve_download_sha256_pass"
+  external_actions: "Loopback-only local execution; no provider call, credential, model download, GPU/cloud mutation, deployment, or spend."
   external_spend_usd: 0
 
 last_green:
@@ -165,32 +172,37 @@ active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-8-01
-  milestone: node_sandbox_durable_runtime_composition
+  task_id: VF-8-02
+  milestone: locked_runware_runtime_composition
   status: ready
-  dependency_status: provider_free_durable_services_and_local_media_slice_complete
-  authorization_status: explicit_user_implementation_direction_provider_free_zero_spend_first
-  read_profile: phase8_node_sandbox_runtime
-  task_brief: tasks/VF-8-01.md
-  goal: "Compose one restart-safe Node sandbox over existing durable services and the accepted local media path without activating providers."
-  provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  provider_authority: null
-  remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
+  dependency_status: sandbox_runtime_and_qualified_injected_runware_adapters_complete
+  authorization_status: exact_locked_runware_models_keychain_credential_and_capped_spend
+  read_profile: phase8_runware_runtime
+  task_brief: tasks/VF-8-02.md
+  goal: "Compose locked DeepSeek/Gemini adapters behind fail-closed sandbox authority and prove the smallest live runtime smoke."
+  provider_calls_authorized: true
+  maximum_external_spend_usd: 0.2
+  provider_authority:
+    provider: Runware
+    model_id: "deepseek:v4@flash + google:gemini@3.5-flash"
+    cap_usd: 0.2
+    non_transferable: true
+    authorized_by_user_at: "2026-08-11T16:45:00Z"
+  remote_or_cloud_mutations_authorized: true
+  credential_access_authorized: true
   model_downloads_authorized: false
   application_code_changes_authorized: false
-  expected_evidence: "evidence/acceptance/VF-8-01/node-sandbox-runtime"
+  expected_evidence: "evidence/acceptance/VF-8-02/runware-runtime"
   required_handoff:
-    - "Prove one explicit Node sandbox data root survives restart with exact durable state and artifact hashes."
-    - "Complete the existing owned short-video path through FFmpeg v3 and checksum-matched download."
-    - "Author exactly one smallest high-value successor from refreshed repository truth."
+    - "Compose exact locked model IDs through one server-only transport with explicit sandbox cap."
+    - "Prove timeout, malformed response, replay, cap exhaustion, usage/cost truth, and secret redaction."
+    - "Run only the smallest live smoke and author exactly one successor."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-8-01
+    integration_owner: VF-8-02
   prohibited_in_task:
-    - "Model changes, schema/UI redesign, production bindings, or deployment."
-    - "Credential access, legal acceptance, third-party contact, weight/LFS/Xet download, provider call, GPU/RunPod/cloud mutation, or spend."
+    - "Model/role changes, schema/UI redesign, production bindings, or deployment."
+    - "RunPod/GPU/cloud mutation, model/weight download, non-Runware provider, browser credential exposure, or spend above $0.20."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -211,24 +223,23 @@ fully_sorted:
 
 known_incomplete_boundaries:
   - "Mage GATE_IMAGE_002 remains open after VF-3-08; no checkpoint/weights/download/qualification or production image profile."
-  - "AvatarForcing GATE_AVATAR_003 remains open after VF-3-10: pinned README/license artifacts conflict and the pinned weights card has no license; no weights/download/qualification or production Avatar profile."
+  - "Mage/AvatarForcing terms evidence remains ambiguous. The user explicitly accepted that risk for bounded locked-model qualification; do not claim clear commercial permission or substitute models."
   - "DeepSeek/Gemini adapters are injected but not live-runtime composed; fixture remains default."
   - "Fixture Hub reference bytes are session-scoped. No production R2/Neon/Better Auth/Workflow deployment exists."
   - "No real provider image or Avatar asset, real 30–120-second provider video, measured GPU/cost/SLO, fallback, or production release exists."
   - "No encrypted off-machine backup, R2 integrity inventory, clean-target cloud restore, ten-user contention/security proof, or fresh-account production Chrome sign-off exists."
 
 next_tasks:
-  - "1. VF-8-01 Node sandbox durable runtime composition and restart/replay proof."
-  - "2. Compose qualified Runware prompt/style adapters behind fail-closed sandbox authority."
-  - "3. Resolve Mage/AvatarForcing gates only from authoritative terms or a new explicit user decision."
-  - "4. After exact gate resolution, run tightly capped image/Avatar/RunPod qualification with mandatory scale-to-zero."
+  - "1. VF-8-02 compose locked Runware prompt/style adapters behind fail-closed sandbox authority."
+  - "2. Build exact locked Mage/Avatar worker paths and tightly capped RunPod qualification with mandatory scale-to-zero."
+  - "3. Prove RunPod ambiguity, callback replay, cancellation, cost, and drain-to-zero."
   - "5. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
   - "6. Add isolated R2, Neon, Auth, and Workflow adapters; then contention/fault/security/backup/restore hardening."
   - "7. Fresh-account production acceptance, exact provenance/cost/restore/scale-zero, and user sign-off."
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
-  full_production_mvp_implemented_percent: 48
+  full_production_mvp_implemented_percent: 50
   production_end_to_end_proven: false
   completed:
     provider_free_foundation_percent: 100
@@ -240,12 +251,12 @@ progress_snapshot:
   early_or_blocked:
     production_image_lane_percent: 10
     production_avatar_lane_percent: 10
-    cloud_staging_integration_percent: 10
+    cloud_staging_integration_percent: 15
     production_release_percent: 0
-  interpretation: "Provider-free media is complete, but provider-backed production, cloud staging, hardening, and release remain unproven."
+  interpretation: "Provider-free media plus an explicit restart-safe Node sandbox runtime are complete; provider-backed media, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: node_sandbox_durable_runtime_selected
+  status: locked_runware_runtime_selected
   completed_and_preserved:
     - "All completed tasks/commits above; no paused implementation or unexplained dirty state."
     - "Latest forced full verification is green at d9adee9 with 786 tests/journeys and zero skips."
@@ -254,11 +265,11 @@ activation_handoff:
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Require clean HEAD descending from VF-3-10 evidence commit 96e5fd3; preserve all newer commits."
-    - "Load only phase8_node_sandbox_runtime and tasks/VF-8-01.md."
-    - "Compose only the provider-free Node sandbox; do not preload later briefs, use credentials, download weights, mutate external resources, or spend."
+    - "Load only phase8_runware_runtime and tasks/VF-8-02.md."
+    - "Use only the existing Keychain Runware key and exact locked models under $0.20; no RunPod/GPU/model download/deployment."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
-    - "Credential/legal acceptance, large transfer, provider/GPU/cloud/account mutation, push, deployment, or charge."
+    - "Credential exposure, provider/model mismatch, cap uncertainty/exhaustion, RunPod/GPU/cloud mutation, deployment, or unexplained charge."
 
 notes:
   - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."

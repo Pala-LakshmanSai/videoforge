@@ -18,5 +18,6 @@ provider-free prompt/style adapters, RunPod account preflight, public Git/hosted
 Mage and AvatarForcing checkpoint/license audits. `VF-7-01` through `VF-7-09` complete the
 provider-free custom-style lifecycle and fixture Hub. `VF-3-11` ended without a replacement after
 the user reaffirmed AvatarForcing and the LongCat exclusion. `CURRENT_STATE.yaml` selects only the
-provider-free Node sandbox runtime composition in `VF-8-01.md`. Complete tasks author exactly one
+locked Runware runtime composition in `VF-8-02.md`; the Node sandbox runtime is complete at
+`21d6646`. Complete tasks author exactly one
 successor brief; do not select or expand later roadmap work before that handoff.

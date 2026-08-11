@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: provider-free media complete through `VF-7-09`; `VF-8-01` Node sandbox runtime selected
+Status: `VF-8-01` Node sandbox runtime complete; `VF-8-02` locked Runware composition selected
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -47,9 +47,9 @@ academic-only/non-commercial `LICENSE.txt` that names RollingForcing, while the 
 declares no license. Evidence/context commit is `96e5fd3`; `GATE_AVATAR_003` remains open.
 `VF-3-11` ended without a replacement after the user reaffirmed the finalized Brainstorm ladder and
 explicitly rejected reopening LongCat Avatar 1.5. AvatarForcing remains selected but commercially
-blocked. `CURRENT_STATE.yaml` selects `VF-8-01`, a provider-free Node sandbox durable runtime
-composition. Mage `VF-3-08` already preserved `GATE_IMAGE_002` open; do not repeat either preflight
-or download around either model blocker.
+blocked. `VF-8-01` is complete at `21d6646`: explicit Node sandbox mode completed a real owned
+ASR/timeline/FFmpeg v3 run, restart restore, approval, and checksum-matched download at `$0`.
+`CURRENT_STATE.yaml` selects `VF-8-02`, the locked DeepSeek/Gemini Runware runtime composition.
 
 Production media remains unproven. Mage and AvatarForcing terms evidence is unresolved, but the user
 explicitly accepted that risk and authorized bounded qualification of the locked models without
@@ -175,7 +175,8 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and
 `19_IMPLEMENTATION_PLAYBOOK.md`. Preserve all completed commits, the accepted fixture shell, and
 the user-accepted local render. Execute only the exact task selected by `CURRENT_STATE.yaml`; its
-authority is not transferable. The selected `VF-8-01` task is provider-free and `$0`. Provider calls,
+authority is not transferable. The selected `VF-8-02` task permits only the exact locked Runware
+models under its `$0.20` cap. Other provider calls,
 downloads, GPU/cloud mutation, deployment, push, and production remain unauthorized in that brief.
 
 ## Context navigation
