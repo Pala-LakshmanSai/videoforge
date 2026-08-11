@@ -1,0 +1,42 @@
+{
+  "task_id": "VF-3-09",
+  "result": "PASS",
+  "checked_at": "2026-08-11T04:25:45Z",
+  "implementation_commit": "0445a0ce98c10800471ead8280ff0b201b03bfcd",
+  "provider_mode": "fixture",
+  "provider_calls": 0,
+  "external_spend_usd": 0,
+  "adapter": {
+    "model": "google:gemini@3.5-flash",
+    "analyzer_version": "style-analyzer-v1",
+    "provider_schema_sha256": "sha256:78ccf3137849250901ff017a461a33bf22daad757c86ec320fb87942231ebad3",
+    "system_prompt_sha256": "sha256:3a0f2d2e27852c0b6c3d657b3a1e851e0ea48764101b38d7b9863dc99d3ea2fa",
+    "maximum_transport_calls": 2,
+    "first_analysis_cap_usd": 0.08,
+    "retry_total_cap_usd": 0.15,
+    "retry_reservation_usd": 0.08
+  },
+  "checks": {
+    "pipeline_tests_passed": 115,
+    "pipeline_tests_failed": 0,
+    "control_plane_tests_passed": 131,
+    "web_tests_passed": 163,
+    "provider_sandbox_tests_passed": 43,
+    "local_workerd_journeys_passed": 1,
+    "installed_chrome_journeys_passed": 38,
+    "installed_chrome_journeys_skipped": 0,
+    "canonical_verify": "PASS",
+    "context_validation": "PASS",
+    "secret_scan": "PASS",
+    "diff_check": "PASS"
+  },
+  "preserved": [
+    "DeterministicFixtureStyleAnalyzer remains the default",
+    "ordinary video creation performs no reference-image analysis",
+    "provider mode remains fixture",
+    "accepted fixture shell and density",
+    "three-composition hard-cut output grammar",
+    "required smooth image zoom",
+    "immutable pinned Avatar and Image Style versions"
+  ]
+}
