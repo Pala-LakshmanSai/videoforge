@@ -1,0 +1,30 @@
+{
+  "schema_version": "videoforge.acceptance-evidence/v1",
+  "task_id": "VF-5-01",
+  "status": "technical_pass",
+  "recorded_at": "2026-08-11T10:26:38Z",
+  "implementation_commit": "fcb8f318122a8a89f59a6bb6c5b7f8d1c78045d8",
+  "verification": {
+    "focused_avatar_fixture_tests": 17,
+    "worker_suites": 7,
+    "forced_full_seconds": 171.14,
+    "unique_tests_and_journeys": 751,
+    "control_plane_tests": 193,
+    "workerd_tests": 1,
+    "installed_chrome_tests": 38,
+    "failed": 0,
+    "intentionally_skipped": 0
+  },
+  "authorization": {
+    "provider_calls_made": false,
+    "credentials_used": false,
+    "model_or_weight_downloads_performed": false,
+    "gpu_or_cloud_mutation_performed": false,
+    "external_spend_usd": 0
+  },
+  "limits": {
+    "fixture_non_production": true,
+    "avatar_gates_closed": false,
+    "runtime_control_plane_composed": false
+  }
+}

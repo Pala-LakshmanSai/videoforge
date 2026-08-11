@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T10:04:49Z"
+updated_at: "2026-08-11T10:26:38Z"
 
 phase: cross_cutting_dx_reliability
 implementation_authorized_in_current_task: true
@@ -19,8 +19,8 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "fad28ab63d5d2c5f83526508e28fc76d5a1edcf6"
   verified_implementation_commit: "f0e3e66a545634b3f145932156e56b7da6efe4da"
-  last_good_commit: "a1b6a5b61f9e03032b9495c3c5fe0ecfc9d2cef8"
-  working_tree_expected: "clean_at_vf_dx_02_vf_rel_01_handoff"
+  last_good_commit: "4a4806da72a9d962478586202ee78320b0b3c7d9"
+  working_tree_expected: "clean_at_provider_free_media_foundation_checkpoint"
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
     ajv: "8.20.0"
@@ -45,7 +45,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "VF-4-01 provider-free durable prompt execution only; application remains fixture"
+  provider_authority_scope: "VF-4-01 durable prompt store integration and VF-7-07 style persistence integration only; application remains fixture"
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -290,6 +290,12 @@ completed_tasks:
     implementation_commit: "33d96a086d9faee57f76887804e46858b42263d7"
     evidence_commit: null
     evidence: "evidence/acceptance/VF-REL-01/vendor-neutral-telemetry"
+  - task_id: VF-5-01
+    status: complete
+    summary: "Committed a deterministic non-production Avatar fixture worker boundary with exact revision/Avatar/span/layout lineage, technical media validation, shared native clip layout bindings, replay/retry/cancel/callback/isolation proof, and zero outbound activity at $0."
+    implementation_commit: "fcb8f318122a8a89f59a6bb6c5b7f8d1c78045d8"
+    evidence_commit: null
+    evidence: "evidence/acceptance/VF-5-01/avatar-fixture-job-boundary"
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
@@ -409,16 +415,17 @@ blocked_tasks: []
 recommended_next_task:
   task_id: VF-4-01
   milestone: durable_prompt_execution
-  status: ready
-  dependency_status: vf_dx_02_and_vf_rel_01_green
+  status: in_progress
+  dependency_status: domain_service_green_durable_store_integration_pending
   authorization_status: exact_provider_free_durable_prompt_brief_selected
   read_profile: phase4_durable_prompt_execution
   task_brief: tasks/VF-4-01.md
-  goal: "Compose deterministic and fake-qualified prompt writers behind durable claimed execution and persist exact accepted prompt lineage without provider calls."
+  goal: "Finish production-code PGlite prompt authority/acceptance persistence around the committed provider-free execution service, then close VF-4-01."
   dependencies:
     - "VF-DX-02 implementation 592c833 plus fail-closed correction a1b6a5b and local evidence green"
     - "VF-REL-01 telemetry implementation 33d96a0 and integrated control-plane/full-gate evidence green"
     - "VF-3-03 prompt compiler and VF-3-07 injected qualified-DeepSeek adapter remain green and runtime-disabled"
+    - "VF-4-01 service foundation fe07066 passes 12 focused tests; lane-local PGlite replay exists but production-code store/migration is not yet implemented"
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   provider_authority: null
@@ -431,31 +438,35 @@ recommended_next_task:
   fixture_scenario: null
   expected_evidence: "evidence/acceptance/VF-4-01/durable-fixture-prompt-execution"
   required_handoff:
-    - "Persist exact prompt request/response/compiled hashes, accepted rows, retry, attempt/outbox, cost, and telemetry lineage"
-    - "Prove fresh/reopened replay, fencing, cancellation, isolation, malformed output, and zero outbound calls"
+    - "Add an additive migration and production-code PGlite PromptExecutionStore bound to actual revision/timeline/style/task/attempt/outbox/cost authority"
+    - "Prove fresh/upgrade/reopened replay, atomic acceptance, fencing, cancellation, isolation, malformed output, and zero outbound calls"
     - "Preserve fixture default and full-gate coverage with zero new skips"
     - "Produce exactly one next prompt/image brief after durable prompt execution"
   safe_parallelism:
-    maximum_lanes_including_integration: 3
-    status: vf_4_01_integration_plus_disjoint_vf_5_01_and_vf_7_07
+    maximum_lanes_including_integration: 1
+    status: shared_migration_and_repository_integration_serial
     integration_owner: VF-4-01
   prohibited_in_task:
-    - "Shared contracts/migrations/routes/root files, Avatar/style lane files, provider runtime activation, deployment, or unrelated refactors"
+    - "Avatar lane edits, provider runtime activation, routes/UI, deployment, or unrelated refactors; serialize VF-7-07 migration work after VF-4-01"
     - "Any skipped/weakened/deleted check, push, provider call, credential, model download, cloud/account mutation, GPU/RunPod action, or spend"
 
 latest_closed_handoff:
-  task_id: VF-DX-02
+  task_id: VF-5-01
   status: complete
-  implementation_commit: "a1b6a5b61f9e03032b9495c3c5fe0ecfc9d2cef8"
+  implementation_commit: "fcb8f318122a8a89f59a6bb6c5b7f8d1c78045d8"
   evidence_commit: null
-  evidence: "evidence/acceptance/VF-DX-02/ci-onboarding-ownership plus evidence/acceptance/VF-REL-01/vendor-neutral-telemetry"
-  audit_result: "local_split_ci_doctor_ownership_and_vendor_neutral_telemetry_proven"
-  verification_result: "forced_full_green_713_unique_tests_and_journeys_workerd_1_chrome_38_zero_skips"
+  evidence: "evidence/acceptance/VF-5-01/avatar-fixture-job-boundary"
+  audit_result: "deterministic_non_production_avatar_fixture_boundary_proven"
+  verification_result: "focused_17_full_751_workerd_1_chrome_38_zero_skips"
   external_actions: "dependency registry audit only; no push, credential, provider, model, GPU, cloud, or spend activity"
   external_spend_usd: 0
 
 last_green:
   commands:
+    - "Provider-free media foundations: CI=1 TURBO_FORCE=true pnpm verify passed in 171.14s with 751 tests/journeys, control-plane 193/193, seven worker suites, Workerd 1/1, Chrome 38/38, and zero skips at $0."
+    - "VF-4-01 foundation fe07066: 12/12 prompt execution tests pass, including lane-local PGlite reopen/replay, exact hashes/retry/cost/telemetry, and zero network; production-code durable store integration remains open."
+    - "VF-5-01 fcb8f31: 17/17 Avatar fixture worker tests plus root Python lint/worker gate pass at $0."
+    - "VF-7-07 foundation 4a4806d: 9/9 derived-artifact edit service tests pass; migration, PGlite adapter, publication integration, and restore proof remain open."
     - "VF-DX-02+VF-REL-01: CI=1 TURBO_FORCE=true pnpm verify passed with 713 unique tests/journeys, control-plane 172/172, Workerd 1/1, installed Chrome 38/38, and zero skips at $0."
     - "VF-DX-02: ci:static, ci:typescript, ci:python, 13 root script tests, doctor human/JSON, owned stop/restart, foreign refusal, stale refusal, JUnit, dependency audit, secret scan, formatting, and diff checks passed locally; hosted split CI remains unverified."
     - "VF-REL-01: focused telemetry passed 8/8; control-plane lint/typecheck/build and integrated full verification passed with no vendor/network/provider activity."
@@ -611,6 +622,8 @@ blocking_gates_for_production:
   - GATE_COST_001
 
 known_incomplete_boundaries:
+  - "VF-4-01 domain execution is committed at fe07066 with exact provider-free hashing/retry/cost/telemetry and lane-local PGlite replay, but no production-code migration/store yet binds it atomically to actual revision/timeline/style/task/attempt/outbox/cost rows."
+  - "VF-7-07 domain edit service is committed at 4a4806d, but immutable artifact/edit tables, PGlite repository/UoW, accepted-analysis backfill, current-artifact publication, and snapshot/restore integration remain unimplemented; VF-7-07 is not complete."
   - "Concrete local PGlite repositories, auth, private artifacts, outbox/workflow, callbacks, and all 13 canonical repository scenarios are complete; no production Neon driver/connection, R2 adapter, Better Auth SDK handler, Cloudflare Workflow, or deployed Worker exists."
   - "PGlite proves local invariants and correctness-first first-claim serialization. Real multi-session PostgreSQL contention and head-of-line latency remain a separately authorized staging measurement, not a local claim."
   - "Provider-free Auth plus private-artifact Hono composition is complete at ffceb6319ff85f7207619df7e0ecd41d20b341d0; it remains deliberately unmounted from fixture/local production-like entrypoints, and its application surface cannot access the direct-transfer facet."
@@ -661,13 +674,16 @@ next_tasks:
   - "VF-DX-02 complete locally: five CI lanes plus aggregate, timing/JUnit/failure artifacts, centralized environment metadata, doctor JSON, and fail-closed owned dev stop"
   - "VF-REL-01 complete: injected vendor-neutral correlated telemetry contract, adapters, redaction, failure isolation, and local dispatch instrumentation"
   - "Current: execute VF-4-01 durable fixture prompt execution; VF-5-01 Avatar fixture jobs and VF-7-07 derived style edit service are exact disjoint provider-free briefs"
+  - "VF-4-01 foundation committed at fe07066; finish actual durable PGlite authority/acceptance integration before marking complete"
+  - "VF-5-01 complete at fcb8f31 with 17 focused fixture-worker tests and full-gate proof"
+  - "VF-7-07 foundation committed at 4a4806d; serialize migration/PGlite/publication/restore integration after VF-4-01"
   - "Keep DeterministicFixturePromptWriter as the default and preserve ordinary production at zero style-analysis calls"
   - "After VF-DX-01, run exact CI/onboarding and vendor-neutral telemetry briefs as disjoint work, then continue provider-free prompt/image, avatar, and custom-style service/API/UI lanes with shared integration ownership serialized"
   - "Independent blocker order: resolve Mage checkpoint/license evidence, then bounded Mage + RunPod image/GPU/lifecycle qualification; keep AvatarForcing stopped until authoritative license reconciliation, then qualify primary avatar"
   - "Integration order after accepted image + avatar assets: FFmpeg real fast-path convergence, conditional fallbacks, isolated staging contention/auth/storage/workflow proof, fault/security/restore hardening, measured cost/SLO, then controlled production acceptance"
 
 activation_handoff:
-  status: vf_dx_02_vf_rel_01_green_vf_4_01_selected_disjoint_media_briefs_ready
+  status: media_foundations_green_vf_4_01_persistence_integration_selected
   requested_by_user_at: "2026-08-10T17:07:12Z"
   reason: "The user authorized autonomous progress across provider accounts/qualification, Git/CI, and isolated staging while preserving exact caps, dependency gates, and deferred production; repository visibility was later explicitly changed to public."
   completed_and_preserved:
@@ -689,16 +705,20 @@ activation_handoff:
     - "VF-DX-01 committed the non-duplicating verification graph at cb1895e: forced full verification improved 33.05% while preserving every unique suite, Workerd, installed-Chrome journey, and zero skips at $0."
     - "VF-DX-02 committed local CI/onboarding convergence at 592c833 plus fail-closed stale correction a1b6a5b; the split hosted graph remains unverified because no push/dispatch occurred."
     - "VF-REL-01 committed vendor-neutral telemetry at 33d96a0 with 8/8 focused tests and integrated full-gate proof at $0."
+    - "VF-4-01 committed its provider-free execution service foundation at fe07066 with 12/12 focused tests; durable production-code store integration remains open."
+    - "VF-5-01 completed the deterministic non-production Avatar fixture job boundary at fcb8f31 with 17/17 focused tests and full-gate proof."
+    - "VF-7-07 committed its preserve-and-detach edit service foundation at 4a4806d with 9/9 focused tests; persistence/publication/restore integration remains open."
   fully_sorted:
     - "Durable local relational/control-plane invariants, mock recovery, isolation, direct upload, Avatar version reuse, and deterministic metadata restore."
     - "Owned local ASR timing, canonical deterministic timeline, exact selected Avatar span audio, strict latest-attempt restart/restore, fail-closed inspection, and exact playback/download."
     - "Accepted fixture shell, fixed-base dock, Hub workflows, hard-cut-only output grammar, and required smooth image zoom."
   intentionally_not_done:
+    - "VF-4-01 and VF-7-07 are not closed: shared migrations, PGlite adapters/UoW, actual durable-row composition, style publication current-artifact reading, and restore proof remain serial integration work."
     - "No production-composed provider transport, real image, Avatar, custom-style byte ingestion/live orchestration, manual-edit implementation, route/UI, preview, fallback, GPU, measured cost/SLO, or deployed adapter exists; both Runware adapters remain injected/provider-free."
     - "The Git remote is public and qualification used bounded provider calls, but no Cloudflare/Neon/R2/OAuth staging resource, deployed Worker/Workflow, model download, active GPU/Pod, or production release exists."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this CURRENT_STATE.yaml."
-    - "Load only phase4_durable_prompt_execution and tasks/VF-4-01.md; disjoint lanes use only their exact VF-5-01 or VF-7-07 profiles/briefs."
+    - "Load only phase4_durable_prompt_execution and tasks/VF-4-01.md; finish its shared durable store integration before starting VF-7-07 shared persistence work."
     - "Confirm the recorded commits are ancestors of clean HEAD; do not reset or redo completed phases."
     - "Confirm VF-DX-02 commits 592c833/a1b6a5b and VF-REL-01 commit 33d96a0 plus their evidence are ancestors; do not redo them."
     - "Change only the exact provider-free lane-owned surfaces; invoke no provider/cloud action and preserve every full-gate suite and skip count at fixture mode and $0."
