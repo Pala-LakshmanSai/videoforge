@@ -1,10 +1,12 @@
+import base64
+import hashlib
 import sys
 import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from videoforge_avatar_primary import AvatarPrimaryJob  # noqa: E402
+from videoforge_avatar_primary import AvatarPrimaryInlineJob, AvatarPrimaryJob  # noqa: E402
 from videoforge_avatar_primary.production import (  # noqa: E402
     AVATAR_SOURCE_REVISION,
     AVATAR_WEIGHTS_REVISION,
@@ -53,6 +55,25 @@ class ProductionContractTest(unittest.TestCase):
         for candidate in cases:
             with self.assertRaises(ValueError):
                 AvatarPrimaryJob.from_value(candidate)
+
+    def test_inline_qualification_is_checksum_bound_and_exactly_five_frames(self) -> None:
+        source = b"owned-source"
+        audio = b"owned-audio"
+        value = {
+            "mode": "INLINE_QUALIFICATION_V1",
+            "attempt_id": "qualification_001",
+            "source_base64": base64.b64encode(source).decode("ascii"),
+            "source_sha256": f"sha256:{hashlib.sha256(source).hexdigest()}",
+            "span_audio_base64": base64.b64encode(audio).decode("ascii"),
+            "span_audio_sha256": f"sha256:{hashlib.sha256(audio).hexdigest()}",
+            "prompt": "An owned synthetic presenter speaks naturally.",
+            "layout": "AVATAR_FULL",
+            "num_output_frames": 5,
+        }
+        self.assertEqual(AvatarPrimaryInlineJob.from_value(value).num_output_frames, 5)
+        value["num_output_frames"] = 9
+        with self.assertRaisesRegex(ValueError, "AVATAR_INLINE_SCOPE_INVALID"):
+            AvatarPrimaryInlineJob.from_value(value)
 
 
 if __name__ == "__main__":

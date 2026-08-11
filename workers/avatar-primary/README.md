@@ -4,6 +4,9 @@ The fixture health path remains provider-free. The production container pins Ava
 AvatarForcing weights, Wan 1.3B, and Wav2Vec revisions; accepts only short span-audio jobs; uploads
 the MP4 through a caller-owned signed URL; and returns checksum/probe lineage without URLs.
 
+Qualification alone may use `INLINE_QUALIFICATION_V1`: owned inputs, exact checksums, exactly five
+frames, 2 MiB per input, and an 8 MiB output ceiling. Ordinary runtime jobs cannot use inline bytes.
+
 ```sh
 PYTHONPATH=src python3 -m videoforge_avatar_primary
 python3 -m unittest discover -s tests
