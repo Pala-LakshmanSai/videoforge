@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: Waves 0–4 and Phase 0–2 complete; VF-7-04 green; provider-free `VF-7-05` selected
+Status: Waves 0–4 and Phase 0–2 complete; VF-7-05 green; context-only `VF-7-06` selected
 Read when: starting a new implementation chat, selecting the next task, assigning parallel ownership, or integrating a completed task.
 
 ## Authority and purpose
@@ -13,8 +13,9 @@ The user's 2026-08-10 accelerated-plan approval granted standing implementation 
 dependency-ready, provider-free briefs through `VF-2-05`; that sequence is complete. Later explicit
 authority covered bounded provider qualification, the public Git remote/hosted CI, and isolated
 staging preparation while production stayed deferred. Every new task remains bounded by its exact
-brief and `CURRENT_STATE.yaml`; the selected `VF-7-05` reviewed-publication service is provider-free
-and authorizes no credential access, provider call, runtime activation, cloud mutation, or spend.
+brief and `CURRENT_STATE.yaml`; the selected `VF-7-06` manual-edit provenance decision is
+context-only and authorizes no application code, credential access, provider call, runtime
+activation, cloud mutation, or spend.
 
 ## Accelerated critical path
 
@@ -34,10 +35,11 @@ acceptance but cannot re-serialize work that this table explicitly makes disjoin
 | 8 — controlled release | Serial staging-to-production acceptance | Fresh-account real Chrome flow and final user sign-off |
 
 Waves 0–4 are complete. `GATE_LLM_001` and `GATE_STYLE_001` are closed. Provider-free DeepSeek and
-Gemini adapters are green. The custom-style lane is green through durable result acceptance in
-`VF-7-04`; `VF-7-05` is the next serial slice. Production media remains blocked by the remaining
-provider/model/license/GPU/cost gates and exact task authority. No closed qualification gate by
-itself activates credentials, provider calls, cloud resources, or spend.
+Gemini adapters are green. The custom-style lane is green through byte-identical reviewed
+publication in `VF-7-05`; `VF-7-06` is the next serial context/contract decision. Production media
+remains blocked by the remaining provider/model/license/GPU/cost gates and exact task authority. No
+closed qualification gate by itself activates credentials, provider calls, cloud resources, or
+spend.
 
 After Wave 0, request one external-mutation approval for a GitHub remote and hosted CI; repository
 visibility defaults private unless the user explicitly overrides it. Local Wave 1 does not wait,
@@ -373,7 +375,7 @@ Completed at implementation `907e0e4` and evidence `d16c2a9`; preserve this conv
   consolidated review rather than guessing.
 
 The Phase 2 handoff and VF-3-00 checkpoint are complete. Resume only from the exact task in
-`CURRENT_STATE.yaml`; at this checkpoint that is provider-free `VF-7-05`.
+`CURRENT_STATE.yaml`; at this checkpoint that is context-only `VF-7-06`.
 
 After Phase 2, use three disjoint lanes:
 
@@ -393,18 +395,18 @@ After Phase 2, use three disjoint lanes:
 
 ### Lane C — custom styles (`VF-7-*`)
 
-Complete through `VF-7-04`: durable draft/version lifecycle, reference metadata, claimed analyzer
-composition, and atomic canonical result acceptance into `NEEDS_REVIEW`. Execute `VF-7-05` next for
-byte-identical authenticated review/publication. Then reconcile manual-edit provenance before
-authoring its task; follow with provider-free metadata routes and accepted-shell UI, local
+Complete through `VF-7-05`: durable draft/version lifecycle, reference metadata, claimed analyzer
+composition, atomic canonical result acceptance, and byte-identical authenticated publication.
+Execute context-only `VF-7-06` next to reconcile manual-edit provenance before authoring edit code;
+follow with provider-free custom-style services, metadata routes and accepted-shell UI, local
 upload/normalization, live analysis orchestration, optional Mage previews after gates, and final
 ordinary-project zero-analysis proof. This lane must not block the built-in-style fast path.
 
-### Fastest low-rework order from the VF-7-04 checkpoint
+### Fastest low-rework order from the VF-7-05 checkpoint
 
-1. Serial integration owner: `VF-7-05` reviewed byte-identical publication at `$0`.
-2. Reconcile and lock manual-edit provenance semantics; do not infer how confidence/evidence should
-   survive creative edits.
+1. Complete: `VF-7-05` reviewed byte-identical publication at `$0`.
+2. Current serial context owner: `VF-7-06`; reconcile and lock manual-edit provenance semantics,
+   stopping for explicit user choice if normative facts do not select one policy.
 3. Continue the custom-style lane provider-free: exact application service, then metadata API,
    then fixture/local UI and Chrome workflow; author one dependency-ready brief at each handoff.
 4. In a disjoint evidence lane, resolve Mage checkpoint/license facts. Only after that may bounded

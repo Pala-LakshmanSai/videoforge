@@ -1,6 +1,6 @@
 # Development plan
 
-Status: Phase 0–2 complete; prompt/style qualification and adapters green; VF-7-05 selected
+Status: Phase 0–2 complete; prompt/style qualification and adapters green; VF-7-06 selected
 Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
 
 ## Delivery strategy
@@ -214,11 +214,12 @@ Exit: output matches the spec and measured fast-path cost/SLO can replace planni
 
 ## Phase 7: full custom Image Styles lifecycle
 
-Current (2026-08-11): `VF-7-01` through `VF-7-04` are committed and green. Durable version
-lifecycle, exact reference metadata, claimed analyzer composition, and atomic canonical
-result/cost/task/attempt acceptance through `NEEDS_REVIEW` are complete. `VF-7-05` is the sole
-selected task and owns byte-identical authenticated review/publication only. Manual edits, routes,
-UI, upload/normalization, previews, live orchestration, and `GATE_STYLE_002` remain incomplete.
+Current (2026-08-11): `VF-7-01` through `VF-7-05` are committed and green. Durable version
+lifecycle, exact reference metadata, claimed analyzer composition, atomic canonical result
+acceptance, and byte-identical authenticated publication are complete. `VF-7-06` is the sole
+selected context/contract task and must reconcile manual-edit analyzer evidence and artifact
+lineage before edit implementation. Routes, UI, upload/normalization, previews, live orchestration,
+and `GATE_STYLE_002` remain incomplete.
 
 - Parent/version/reference/attempt/preview records and version-scoped APIs.
 - Browser normalized sRGB derivatives plus independent server structure/metadata/checksum/decompression validation.

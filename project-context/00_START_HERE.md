@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: see `CURRENT_STATE.yaml` (Phase 0–2 preserved; VF-7-04 green; VF-7-05 selected)
+Status: see `CURRENT_STATE.yaml` (Phase 0–2 preserved; VF-7-05 green; VF-7-06 selected)
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -27,18 +27,18 @@ spent `$0.41003998` total; ordinary application mode remains `fixture` with prov
 RunPod preflight found `$10.00`, zero live resources, and `$0/hour`; no Pod is active.
 
 The provider-free Image Style backend now includes lifecycle (`VF-7-01`), exact durable references
-(`VF-7-02`), claimed analysis composition (`VF-7-03`), and atomic durable result acceptance
-(`VF-7-04`). VF-7-04 implementation `789ea98` plus evidence `49acea4` proves canonical profile
-artifact persistence, accepted task/attempt and finalized cost lineage, exact replay after reopen,
-and the `ANALYZING → NEEDS_REVIEW` transition. The forced full gate passed 159 control-plane,
-163 web, 115 pipeline, 43 provider-sandbox, 1 local-Workerd, and 38 installed-Chrome tests at `$0`.
+(`VF-7-02`), claimed analysis composition (`VF-7-03`), atomic durable result acceptance
+(`VF-7-04`), and authenticated byte-identical reviewed publication (`VF-7-05`). VF-7-05
+implementation `f0e3e66` plus evidence `2502b62` proves a safe immutable snapshot, exact accepted
+lineage revalidation, optimistic concurrency, replay after reopen, and atomic publication plus
+same-parent active-pointer movement. The forced full gate passed 164 control-plane, 163 web,
+115 pipeline, 43 provider-sandbox, 1 local-Workerd, and 38 installed-Chrome tests at `$0`.
 
-`CURRENT_STATE.yaml` selects only exact provider-free brief `VF-7-05`: expose the immutable review
-snapshot and publish the byte-identical accepted profile through an authenticated, optimistic,
-replay-safe application service. Manual-edit transformation semantics are intentionally deferred
-because current primary docs do not define how edits reset analyzer evidence precisely enough to
-guess. Routes/UI, uploads, previews, live providers, staging, and production remain outside this
-brief.
+`CURRENT_STATE.yaml` selects only exact context/contract brief `VF-7-06`: reconcile how manual edits
+transform analyzer evidence and canonical artifact lineage before any edit implementation is
+authorized. The ambiguity remains explicit; the task must stop for the smallest user decision if
+multiple product-valid policies survive the normative audit. Application code, routes/UI, uploads,
+previews, live providers, staging, and production remain outside this brief.
 
 Production media remains blocked: Mage checkpoint/license evidence is unresolved; AvatarForcing
 licensing artifacts contradict each other; image/avatar/GPU/RunPod/fallback/cost/style-adherence

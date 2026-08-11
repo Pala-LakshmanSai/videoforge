@@ -270,6 +270,11 @@ read_profiles:
     - 18_IMAGE_STYLES_HUB.md
     - tasks/VF-7-04.md
     - tasks/VF-7-05.md
+  phase7_style_manual_edit_provenance_decision:
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 15_DECISIONS_AND_OPEN_GATES.md
+    - 18_IMAGE_STYLES_HUB.md
+    - tasks/VF-7-06.md
   phase3_prompt_compiler:
     - GLOSSARY.md
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md

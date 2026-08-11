@@ -9,14 +9,14 @@ and the required next-state update. Product behavior remains authoritative in th
 and primary domain files. Completed briefs may remain for traceability, but `CURRENT_STATE.yaml` is
 the only mutable snapshot and Git/evidence remain the progress log.
 
-Most recently completed brief: `VF-7-04.md`, with implementation commit `789ea98` and evidence
-commit `49acea4`. It atomically accepts one trusted Image Style analysis candidate as canonical
-artifact/cost/task/attempt/version truth and moves the version to `NEEDS_REVIEW` at `$0`.
+Most recently completed brief: `VF-7-05.md`, with implementation commit `f0e3e66` and evidence
+commit `2502b62`. It safely exposes one accepted Image Style review snapshot and atomically
+publishes only the byte-identical canonical profile with exact lineage and replay at `$0`.
 
 `VF-3-00` through `VF-3-09` completed the authorized checkpoint, DeepSeek/Gemini qualification,
 provider-free prompt/style adapters, RunPod account preflight, public Git/hosted CI, and the still-open
-Mage checkpoint/license audit. `VF-7-01` through `VF-7-04` completed the provider-free custom-style
-lifecycle, reference, claimed-analysis, and durable result-acceptance foundation.
-`CURRENT_STATE.yaml` selects only `VF-7-05.md`: byte-identical reviewed publication through a
-provider-free application service. Manual edit semantics, routes/UI, uploads, previews, live
-providers, staging, and production are not authorized by that brief.
+Mage checkpoint/license audit. `VF-7-01` through `VF-7-05` completed the provider-free custom-style
+lifecycle through byte-identical reviewed publication.
+`CURRENT_STATE.yaml` selects only `VF-7-06.md`: a context/contract decision that reconciles manual
+edit provenance before any edit implementation. Application code, routes/UI, uploads, previews,
+live providers, staging, and production are not authorized by that brief.
