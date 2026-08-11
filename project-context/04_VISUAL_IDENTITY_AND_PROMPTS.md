@@ -1,6 +1,6 @@
 # Visual identity and image prompting
 
-Status: approved architecture; durable VF-4-01 prompt execution complete at `1fba04c`
+Status: durable prompt and style authority complete; VF-4-02 fixture image acceptance selected
 Read when: implementing Runware prompt batches, the prompt compiler, Mage settings, image review, or changing a visual style.
 
 ## Universal image-quality definition

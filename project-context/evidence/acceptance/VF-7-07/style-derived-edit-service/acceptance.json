@@ -1,0 +1,35 @@
+{
+  "schema_version": "videoforge.acceptance-evidence/v1",
+  "task_id": "VF-7-07",
+  "status": "technical_pass",
+  "recorded_at": "2026-08-11T12:34:14Z",
+  "implementation_commit": "20fd59228cbf5d419cd41a6a6d3cebbe5fb52cc7",
+  "migration": {
+    "version": 10,
+    "filename": "0010_image_style_profile_artifacts.sql",
+    "sha256": "sha256:f6d3657212a16413026647643fd660485781f3cc87f13ec15437f58d985b2560"
+  },
+  "verification": {
+    "focused_tests": 36,
+    "control_plane_tests": 201,
+    "aggregate_tests_and_journeys": 754,
+    "workerd_tests": 1,
+    "installed_chrome_tests": 38,
+    "failed": 0,
+    "intentionally_skipped": 0,
+    "forced_full_verify_passed": true
+  },
+  "authorization": {
+    "provider_calls_made": false,
+    "credentials_used": false,
+    "model_or_weight_downloads_performed": false,
+    "gpu_or_cloud_mutation_performed": false,
+    "external_spend_usd": 0
+  },
+  "limits": {
+    "fixture_default_preserved": true,
+    "style_api_or_ui_implemented": false,
+    "production_provider_composed": false,
+    "provider_gates_closed": false
+  }
+}

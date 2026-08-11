@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: `VF-4-01` complete at `1fba04c`; `VF-7-07` persistence continuation selected
+Status: `VF-7-07` complete at `20fd592`; `VF-4-02` fixture image acceptance selected
 Read when: selecting, implementing, integrating, or handing off one task.
 
 ## Authority
@@ -29,10 +29,10 @@ exact history.
 - Image Styles: `VF-7-01` through `VF-7-06` complete through byte-identical publication and the
   preserve-and-detach provenance contract.
 - Provider-free media foundations: VF-4-01 durable prompt execution is complete at `1fba04c`,
-  VF-5-01 deterministic Avatar fixture worker is complete at `fcb8f31`, and VF-7-07
-  derived-artifact edit service foundation exists at `4a4806d`.
-- VF-4-01 checkpoint: focused 26/26, control-plane 198/198, Workerd 1/1, installed Chrome 38/38,
-  zero skips, fixture mode, `$0`; development server stopped.
+  VF-5-01 deterministic Avatar fixture worker is complete at `fcb8f31`, and VF-7-07 durable style
+  derived-artifact persistence is complete at `20fd592`.
+- VF-7-07 checkpoint: focused 36/36, control-plane 201/201, aggregate 754, Workerd 1/1,
+  installed Chrome 38/38, zero skips, fixture mode, `$0`; development server stopped.
 
 Do not redesign accepted shell/dock/Hubs, rerun architecture research, replace the renderer, change
 output grammar, or redo completed tasks.
@@ -44,21 +44,15 @@ output grammar, or redo completed tasks.
 Migration `0009` and the production PGlite prompt store are committed at `1fba04c`; evidence is
 `evidence/acceptance/VF-4-01/durable-fixture-prompt-execution`. Do not redo it.
 
-### 2. Close VF-7-07 — style derived-artifact persistence
+### 2. VF-7-07 — complete
 
-Selected now. Use `phase7_style_derived_edit_service` and `tasks/VF-7-07.md` only.
-
-- Add migration `0010` for immutable profile artifacts and edit records.
-- Backfill accepted style profiles as immutable analysis roots.
-- Add production-code PGlite repository/UoW, row locking, idempotency, review invalidation,
-  current-pointer/revision movement, and append-only triggers.
-- Publication pins exact current derived bytes while preserving root analyzer evidence.
-- Extend metadata export/restore and fresh/upgrade/reopen proof.
-- On completion author exactly one successor brief: VF-4-02.
+Migration `0010`, immutable root/derived artifacts, PGlite edit persistence, exact-current-byte
+publication, and metadata restore are committed at `20fd592`; evidence is
+`evidence/acceptance/VF-7-07/style-derived-edit-service`. Do not redo it.
 
 ### 3. VF-4-02 — Mage-shaped fixture image lane
 
-Brief must be authored by VF-7-07 completion from committed facts.
+Selected now. Use `phase4_fixture_image_result_acceptance` and `tasks/VF-4-02.md` only.
 
 - Deterministic fixture worker input/result handling; no weights or outbound calls.
 - Persist prompt/task/attempt/outbox/cost/technical-validation/accepted-image/callback lineage.

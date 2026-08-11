@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-4-01` complete at `1fba04c`; `VF-7-07` persistence continuation selected
+Status: `VF-7-07` complete at `20fd592`; `VF-4-02` fixture image acceptance selected
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -34,10 +34,10 @@ hashes, output asset, and telemetry. Its checkpoint passed focused 26/26, contro
 Workerd 1/1, installed Chrome 38/38, zero skips, fixture mode, and `$0`. `VF-5-01` remains complete
 at `fcb8f31`.
 
-`VF-7-07` is partial, not complete: its domain edit service exists at `4a4806d`, but it needs
-serialized migration `0010`, immutable artifact/edit persistence, accepted-analysis backfill,
-production PGlite repository/UoW, publication/current-pointer integration, and metadata
-export/restore coverage. `CURRENT_STATE.yaml` selects only that exact continuation.
+`VF-7-07` is complete at `20fd592`: migration `0010`, immutable artifact/edit persistence,
+accepted-analysis backfill, production PGlite repository/UoW, exact-current-byte publication, and
+metadata export/restore are green. `CURRENT_STATE.yaml` selects only provider-free `VF-4-02`
+deterministic Mage-shaped fixture image result acceptance.
 
 Production media remains blocked: Mage checkpoint/license evidence is unresolved; AvatarForcing
 licensing artifacts contradict each other; image/avatar/GPU/RunPod/fallback/cost/style-adherence
