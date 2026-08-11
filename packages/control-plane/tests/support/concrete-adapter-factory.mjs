@@ -264,6 +264,47 @@ async function seedStyleDraft(executor, state = "DRAFT") {
   );
 }
 
+async function seedStyleAnalysisReferences(executor) {
+  for (let index = 0; index < 3; index += 1) {
+    const originalAssetId = uuid(10_700 + index * 10);
+    const normalizedAssetId = uuid(10_701 + index * 10);
+    await executor.query(
+      `INSERT INTO assets (
+         id, workspace_id, kind, state, binary_sha256, content_type,
+         byte_size, width_px, height_px, verified_at
+       ) VALUES
+         ($1, $3, 'STYLE_REFERENCE_ORIGINAL', 'VERIFIED', $4, 'image/jpeg', 1000, 1024, 768, $6),
+         ($2, $3, 'STYLE_REFERENCE_NORMALIZED', 'VERIFIED', $5, 'image/jpeg', 900, 1024, 768, $6)`,
+      [
+        originalAssetId,
+        normalizedAssetId,
+        IDS.workspaceA,
+        sha256(`contract-style-original:${index}`),
+        sha256(`contract-style-normalized:${index}`),
+        FIXED_TIME,
+      ],
+    );
+    await executor.query(
+      `INSERT INTO image_style_references (
+         id, workspace_id, style_id, version_id, original_asset_id,
+         normalized_asset_id, reference_order, rights_attested_by_user_id,
+         rights_basis, rights_attested_at, original_retention_policy
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'OWNED', $9, 'RETAIN')`,
+      [
+        uuid(10_702 + index * 10),
+        IDS.workspaceA,
+        X.style,
+        X.styleVersion,
+        originalAssetId,
+        normalizedAssetId,
+        index + 1,
+        IDS.userA,
+        FIXED_TIME,
+      ],
+    );
+  }
+}
+
 function revisionSnapshot() {
   return {
     title: "Contract Revision Draft",
@@ -475,6 +516,7 @@ async function fixtureFor(behaviorId, executor) {
     }
     case "atomic-task-attempt-reservation": {
       await seedStyleDraft(executor);
+      await seedStyleAnalysisReferences(executor);
       const general = reservation({
         taskId: X.generalTask,
         attemptId: X.generalAttempt,

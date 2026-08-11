@@ -42,6 +42,12 @@
       "name": "timeline_phrase_boundary_coverage",
       "filename": "0007_timeline_phrase_boundary_coverage.sql",
       "sha256": "sha256:03affbba4464fcc02bc6e034353ec9ea9df80d7238496e957e5ea1c78ae98f27"
+    },
+    {
+      "version": 8,
+      "name": "image_style_reference_contract",
+      "filename": "0008_image_style_reference_contract.sql",
+      "sha256": "sha256:4ee3fb90a3818a93f754267ece96044dd837af13010978e37df0838b5f7eb8d1"
     }
   ]
 }

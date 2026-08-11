@@ -382,6 +382,76 @@ export type ImageStyleVersion =
   | PublishedImageStyleVersion
   | AbandonedImageStyleVersion;
 
+export type ImageStyleReferenceRightsBasis =
+  | "OWNED"
+  | "LICENSED"
+  | "PUBLIC_DOMAIN"
+  | "OTHER_DOCUMENTED_BASIS";
+
+export type ImageStyleOriginalRetentionPolicy = "RETAIN" | "DELETE_AFTER_ANALYSIS";
+export type ImageStyleReferenceRetentionState = "RETAIN" | "DELETE_REQUESTED" | "DELETED";
+
+export interface ImageStyleReference {
+  readonly referenceId: EntityId;
+  readonly workspaceId: EntityId;
+  readonly styleId: EntityId;
+  readonly versionId: EntityId;
+  readonly originalAssetId: EntityId;
+  readonly normalizedAssetId: EntityId;
+  readonly referenceOrder: number;
+  readonly rightsBasis: ImageStyleReferenceRightsBasis;
+  readonly rightsBasisNote: string | null;
+  readonly rightsAttestedByUserId: EntityId;
+  readonly rightsAttestedAt: UtcTimestamp;
+  readonly originalRetentionPolicy: ImageStyleOriginalRetentionPolicy;
+  readonly confidence: number | null;
+  readonly isOutlier: boolean;
+  readonly retentionState: ImageStyleReferenceRetentionState;
+  readonly createdAt: UtcTimestamp;
+  readonly deletedAt: UtcTimestamp | null;
+}
+
+export interface ImageStyleAnalysisReferenceBinding {
+  readonly referenceId: EntityId;
+  readonly normalizedAssetId: EntityId;
+  readonly alias: string;
+  readonly derivativeSha256: Sha256;
+  readonly mimeType: "image/jpeg" | "image/png" | "image/webp";
+  readonly width: number;
+  readonly height: number;
+  readonly bytes: number;
+}
+
+export interface ImageStyleReferenceLookup {
+  readonly styleId: EntityId;
+  readonly versionId: EntityId;
+  readonly referenceId: EntityId;
+}
+
+export interface ImageStyleVersionReferenceLookup {
+  readonly styleId: EntityId;
+  readonly versionId: EntityId;
+}
+
+export interface AttachImageStyleReferenceCommand extends IdempotentMutation {
+  readonly referenceId: EntityId;
+  readonly styleId: EntityId;
+  readonly versionId: EntityId;
+  readonly originalAssetId: EntityId;
+  readonly normalizedAssetId: EntityId;
+  readonly referenceOrder: number;
+  readonly rightsBasis: ImageStyleReferenceRightsBasis;
+  readonly rightsBasisNote: string | null;
+  readonly rightsAttestedAt: UtcTimestamp;
+  readonly originalRetentionPolicy: ImageStyleOriginalRetentionPolicy;
+}
+
+export interface DetachImageStyleReferenceCommand extends IdempotentMutation {
+  readonly styleId: EntityId;
+  readonly versionId: EntityId;
+  readonly referenceId: EntityId;
+}
+
 export interface CreateImageStyleCommand extends IdempotentMutation {
   readonly styleId: EntityId;
   readonly name: string;
@@ -511,15 +581,24 @@ export interface AbandonImageStyleVersionCommand extends IdempotentMutation {
 export type ImageStyleConflict =
   | CommonConflictCode
   | "IMAGE_STYLE_ANALYSIS_CONFLICT"
+  | "IMAGE_STYLE_REFERENCE_CONFLICT"
   | "IMAGE_STYLE_VERSION_CONFLICT"
   | "PUBLISHED_STYLE_HASH_EXISTS";
-export type ImageStyleMissing = "EXECUTION_PROFILE" | "IMAGE_STYLE" | "IMAGE_STYLE_VERSION";
+export type ImageStyleMissing =
+  | "ASSET"
+  | "EXECUTION_PROFILE"
+  | "IMAGE_STYLE"
+  | "IMAGE_STYLE_REFERENCE"
+  | "IMAGE_STYLE_VERSION";
 export type ImageStyleInvariant =
   | CommonInvariantCode
   | "IMAGE_STYLE_ANALYSIS_BILLING_BOUNDARY_MISMATCH"
   | "IMAGE_STYLE_ARCHIVED"
   | "IMAGE_STYLE_DISCLOSURE_REQUIRED"
   | "IMAGE_STYLE_PROFILE_INVALID"
+  | "IMAGE_STYLE_REFERENCE_INVALID"
+  | "IMAGE_STYLE_REFERENCE_LOCKED"
+  | "IMAGE_STYLE_REFERENCE_SET_INVALID"
   | "IMAGE_STYLE_VERSION_NOT_PUBLISHED"
   | "IMAGE_STYLE_VERSION_NOT_PUBLISHABLE";
 
@@ -562,6 +641,42 @@ export interface ImageStyleRepository {
     >
   >;
 
+  resolveReference(
+    scope: WorkspaceScope,
+    lookup: ImageStyleReferenceLookup,
+  ): Promise<
+    RepositoryResult<
+      ImageStyleReference,
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
+  listReferences(
+    scope: WorkspaceScope,
+    lookup: ImageStyleVersionReferenceLookup,
+  ): Promise<
+    RepositoryResult<
+      readonly ImageStyleReference[],
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
+  resolveAnalysisReferenceSet(
+    scope: WorkspaceScope,
+    lookup: ImageStyleVersionReferenceLookup,
+  ): Promise<
+    RepositoryResult<
+      readonly ImageStyleAnalysisReferenceBinding[],
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
   createStyle(
     scope: WorkspaceActorScope,
     command: CreateImageStyleCommand,
@@ -580,6 +695,30 @@ export interface ImageStyleRepository {
   ): Promise<
     IdempotentRepositoryResult<
       ImageStyleDraftVersion,
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
+  attachReference(
+    scope: WorkspaceActorScope,
+    command: AttachImageStyleReferenceCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      ImageStyleReference,
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
+  detachReference(
+    scope: WorkspaceActorScope,
+    command: DetachImageStyleReferenceCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      ImageStyleReference,
       ImageStyleConflict,
       ImageStyleMissing,
       ImageStyleInvariant

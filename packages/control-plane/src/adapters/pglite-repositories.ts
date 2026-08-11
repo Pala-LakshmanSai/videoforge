@@ -85,6 +85,16 @@ function numberValue(value: unknown, column: string): number {
   throw new TypeError(`expected ${column} to be numeric`);
 }
 
+function nullableDecimalNumber(value: unknown, column: string): number | null {
+  if (value === null) return null;
+  const parsed =
+    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  if (!Number.isFinite(parsed)) {
+    throw new TypeError(`expected ${column} to be a finite decimal`);
+  }
+  return parsed;
+}
+
 function bigintValue(value: unknown, column: string): bigint {
   if (typeof value === "bigint") {
     return value;
@@ -1902,6 +1912,225 @@ async function findImageStyleVersion(
     [workspaceId, styleId, versionId],
   );
   return row === null ? null : mapImageStyleVersion(row);
+}
+
+function mapImageStyleReference(row: Row): PresetContracts.ImageStyleReference {
+  return {
+    referenceId: stringValue(row.id, "image_style_references.id"),
+    workspaceId: stringValue(row.workspace_id, "image_style_references.workspace_id"),
+    styleId: stringValue(row.style_id, "image_style_references.style_id"),
+    versionId: stringValue(row.version_id, "image_style_references.version_id"),
+    originalAssetId: stringValue(row.original_asset_id, "image_style_references.original_asset_id"),
+    normalizedAssetId: stringValue(
+      row.normalized_asset_id,
+      "image_style_references.normalized_asset_id",
+    ),
+    referenceOrder: numberValue(row.reference_order, "image_style_references.reference_order"),
+    rightsBasis: stringValue(
+      row.rights_basis,
+      "image_style_references.rights_basis",
+    ) as PresetContracts.ImageStyleReferenceRightsBasis,
+    rightsBasisNote: nullableString(
+      row.rights_basis_note,
+      "image_style_references.rights_basis_note",
+    ),
+    rightsAttestedByUserId: stringValue(
+      row.rights_attested_by_user_id,
+      "image_style_references.rights_attested_by_user_id",
+    ),
+    rightsAttestedAt: timestamp(
+      row.rights_attested_at,
+      "image_style_references.rights_attested_at",
+    ),
+    originalRetentionPolicy: stringValue(
+      row.original_retention_policy,
+      "image_style_references.original_retention_policy",
+    ) as PresetContracts.ImageStyleOriginalRetentionPolicy,
+    confidence: nullableDecimalNumber(row.confidence, "image_style_references.confidence"),
+    isOutlier: booleanValue(row.is_outlier, "image_style_references.is_outlier"),
+    retentionState: stringValue(
+      row.retention_state,
+      "image_style_references.retention_state",
+    ) as PresetContracts.ImageStyleReferenceRetentionState,
+    createdAt: timestamp(row.created_at, "image_style_references.created_at"),
+    deletedAt: nullableTimestamp(row.deleted_at, "image_style_references.deleted_at"),
+  };
+}
+
+async function findImageStyleReference(
+  executor: SqlExecutor,
+  workspaceId: string,
+  lookup: PresetContracts.ImageStyleReferenceLookup,
+): Promise<PresetContracts.ImageStyleReference | null> {
+  const row = await one(
+    executor,
+    `SELECT * FROM image_style_references
+     WHERE workspace_id = $1 AND style_id = $2 AND version_id = $3 AND id = $4`,
+    [workspaceId, lookup.styleId, lookup.versionId, lookup.referenceId],
+  );
+  return row === null ? null : mapImageStyleReference(row);
+}
+
+const STYLE_REFERENCE_MIME_TYPES = Object.freeze([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const);
+const STYLE_REFERENCE_RIGHTS_BASES = Object.freeze([
+  "OWNED",
+  "LICENSED",
+  "PUBLIC_DOMAIN",
+  "OTHER_DOCUMENTED_BASIS",
+] as const);
+const STYLE_REFERENCE_RETENTION_POLICIES = Object.freeze([
+  "RETAIN",
+  "DELETE_AFTER_ANALYSIS",
+] as const);
+const MAX_STYLE_REFERENCE_BYTES = 20 * 1024 * 1024;
+const UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/u;
+
+function imageStyleReferenceCommandProblem(
+  command: PresetContracts.AttachImageStyleReferenceCommand,
+): string | null {
+  const note = command.rightsBasisNote;
+  if (
+    command.originalAssetId === command.normalizedAssetId ||
+    !Number.isSafeInteger(command.referenceOrder) ||
+    command.referenceOrder < 1 ||
+    command.referenceOrder > 12 ||
+    !STYLE_REFERENCE_RIGHTS_BASES.includes(command.rightsBasis) ||
+    !STYLE_REFERENCE_RETENTION_POLICIES.includes(command.originalRetentionPolicy) ||
+    !UTC_TIMESTAMP.test(command.rightsAttestedAt) ||
+    (note !== null && (note !== note.trim() || note.length < 1 || note.length > 1_000)) ||
+    (command.rightsBasis === "OTHER_DOCUMENTED_BASIS" && note === null)
+  ) {
+    return "reference identity, order, rights, retention, or attestation facts are invalid";
+  }
+  return null;
+}
+
+function styleReferenceArtifactProblem(
+  artifact: ArtifactContracts.ArtifactMetadata,
+  expectedKind: "STYLE_REFERENCE_ORIGINAL" | "STYLE_REFERENCE_NORMALIZED",
+): string | null {
+  if (artifact.kind !== expectedKind) return `artifact kind must be ${expectedKind}`;
+  if (artifact.state !== "VERIFIED" && artifact.state !== "ACCEPTED") {
+    return "reference artifacts must be verified or accepted";
+  }
+  if (
+    artifact.binarySha256 === null ||
+    artifact.byteSize === null ||
+    artifact.byteSize < 1n ||
+    artifact.byteSize > BigInt(MAX_STYLE_REFERENCE_BYTES) ||
+    artifact.widthPx === null ||
+    artifact.heightPx === null ||
+    artifact.widthPx < 512 ||
+    artifact.heightPx < 512 ||
+    artifact.widthPx > 16_384 ||
+    artifact.heightPx > 16_384 ||
+    artifact.contentType === null ||
+    !STYLE_REFERENCE_MIME_TYPES.includes(
+      artifact.contentType as (typeof STYLE_REFERENCE_MIME_TYPES)[number],
+    ) ||
+    artifact.durationMs !== null ||
+    artifact.verifiedAt === null
+  ) {
+    return "reference artifact media facts are incomplete or outside bounds";
+  }
+  return null;
+}
+
+async function imageStyleHasAnalysisAttempt(
+  executor: SqlExecutor,
+  workspaceId: string,
+  versionId: string,
+): Promise<boolean> {
+  return (
+    (await one(
+      executor,
+      `SELECT id FROM image_style_analysis_attempts
+       WHERE workspace_id = $1 AND style_version_id = $2 LIMIT 1`,
+      [workspaceId, versionId],
+    )) !== null
+  );
+}
+
+async function resolveImageStyleAnalysisReferenceSetIn(
+  executor: SqlExecutor,
+  workspaceId: string,
+  lookup: PresetContracts.ImageStyleVersionReferenceLookup,
+): Promise<
+  RepositoryResult<
+    readonly PresetContracts.ImageStyleAnalysisReferenceBinding[],
+    PresetContracts.ImageStyleConflict,
+    PresetContracts.ImageStyleMissing,
+    PresetContracts.ImageStyleInvariant
+  >
+> {
+  const version = await findImageStyleVersion(
+    executor,
+    workspaceId,
+    lookup.styleId,
+    lookup.versionId,
+  );
+  if (version === null) return missing("IMAGE_STYLE_VERSION", lookup.versionId);
+  const result = await executor.query<Row>(
+    `SELECT * FROM image_style_references
+     WHERE workspace_id = $1 AND style_id = $2 AND version_id = $3
+     ORDER BY reference_order ASC, id ASC`,
+    [workspaceId, lookup.styleId, lookup.versionId],
+  );
+  if (result.rows.length < 3 || result.rows.length > 8) {
+    return invariant(
+      "IMAGE_STYLE_REFERENCE_SET_INVALID",
+      "style analysis requires three to eight durable references",
+    );
+  }
+  const hashes = new Set<string>();
+  const bindings: PresetContracts.ImageStyleAnalysisReferenceBinding[] = [];
+  for (const [index, row] of result.rows.entries()) {
+    const reference = mapImageStyleReference(row);
+    if (reference.referenceOrder !== index + 1 || reference.retentionState !== "RETAIN") {
+      return invariant(
+        "IMAGE_STYLE_REFERENCE_SET_INVALID",
+        "analysis references must be contiguous, ordered, and retained",
+      );
+    }
+    const original = await findArtifact(executor, workspaceId, reference.originalAssetId);
+    const normalized = await findArtifact(executor, workspaceId, reference.normalizedAssetId);
+    if (original === null) return missing("ASSET", reference.originalAssetId);
+    if (normalized === null) return missing("ASSET", reference.normalizedAssetId);
+    if (
+      styleReferenceArtifactProblem(original, "STYLE_REFERENCE_ORIGINAL") !== null ||
+      styleReferenceArtifactProblem(normalized, "STYLE_REFERENCE_NORMALIZED") !== null ||
+      normalized.binarySha256 === null ||
+      normalized.byteSize === null ||
+      normalized.contentType === null ||
+      normalized.widthPx === null ||
+      normalized.heightPx === null ||
+      hashes.has(normalized.binarySha256)
+    ) {
+      return invariant(
+        "IMAGE_STYLE_REFERENCE_SET_INVALID",
+        "analysis references contain invalid artifacts or duplicate normalized hashes",
+      );
+    }
+    hashes.add(normalized.binarySha256);
+    bindings.push(
+      Object.freeze({
+        referenceId: reference.referenceId,
+        normalizedAssetId: reference.normalizedAssetId,
+        alias: `ref_${String(index + 1).padStart(2, "0")}`,
+        derivativeSha256: normalized.binarySha256,
+        mimeType:
+          normalized.contentType as PresetContracts.ImageStyleAnalysisReferenceBinding["mimeType"],
+        width: normalized.widthPx,
+        height: normalized.heightPx,
+        bytes: Number(normalized.byteSize),
+      }),
+    );
+  }
+  return success(Object.freeze(bindings));
 }
 
 function timingHeadVersion(row: Row | null): number {
@@ -3845,6 +4074,31 @@ function createImageStyleRepository(
       );
       return success(Object.freeze(result.rows.map(mapImageStyleVersion)));
     },
+    async resolveReference(scope, lookup) {
+      const reference = await findImageStyleReference(context.executor, scope.workspaceId, lookup);
+      return reference === null
+        ? missing("IMAGE_STYLE_REFERENCE", lookup.referenceId)
+        : success(reference);
+    },
+    async listReferences(scope, lookup) {
+      const version = await findImageStyleVersion(
+        context.executor,
+        scope.workspaceId,
+        lookup.styleId,
+        lookup.versionId,
+      );
+      if (version === null) return missing("IMAGE_STYLE_VERSION", lookup.versionId);
+      const result = await context.executor.query<Row>(
+        `SELECT * FROM image_style_references
+         WHERE workspace_id = $1 AND style_id = $2 AND version_id = $3
+         ORDER BY reference_order ASC, id ASC`,
+        [scope.workspaceId, lookup.styleId, lookup.versionId],
+      );
+      return success(Object.freeze(result.rows.map(mapImageStyleReference)));
+    },
+    async resolveAnalysisReferenceSet(scope, lookup) {
+      return resolveImageStyleAnalysisReferenceSetIn(context.executor, scope.workspaceId, lookup);
+    },
     async createStyle(scope, command) {
       return context.atomic.run(async (executor) => {
         const existing = await findImageStyle(executor, scope.workspaceId, command.styleId);
@@ -3905,6 +4159,187 @@ function createImageStyleRepository(
         );
         if (inserted === null) throw new Error("inserted image style draft disappeared");
         return write(inserted as PresetContracts.ImageStyleDraftVersion);
+      });
+    },
+    async attachReference(scope, command) {
+      const problem = imageStyleReferenceCommandProblem(command);
+      if (problem !== null) return invariant("IMAGE_STYLE_REFERENCE_INVALID", problem);
+      return context.atomic.run(async (executor) => {
+        const style = await findImageStyle(executor, scope.workspaceId, command.styleId);
+        if (style === null) return missing("IMAGE_STYLE", command.styleId);
+        if (style.status === "ARCHIVED") {
+          return invariant("IMAGE_STYLE_ARCHIVED", "archived image styles reject references");
+        }
+        const version = await findImageStyleVersion(
+          executor,
+          scope.workspaceId,
+          command.styleId,
+          command.versionId,
+        );
+        if (version === null) return missing("IMAGE_STYLE_VERSION", command.versionId);
+        if (version.state !== "DRAFT") {
+          return invariant(
+            "IMAGE_STYLE_REFERENCE_LOCKED",
+            "references can attach only to an unanalyzed draft",
+          );
+        }
+        if (await imageStyleHasAnalysisAttempt(executor, scope.workspaceId, command.versionId)) {
+          return invariant(
+            "IMAGE_STYLE_REFERENCE_LOCKED",
+            "references are immutable after the first analysis attempt",
+          );
+        }
+        const lookup = {
+          styleId: command.styleId,
+          versionId: command.versionId,
+          referenceId: command.referenceId,
+        };
+        const existing = await findImageStyleReference(executor, scope.workspaceId, lookup);
+        if (existing !== null) {
+          return sameValue(
+            {
+              referenceId: existing.referenceId,
+              styleId: existing.styleId,
+              versionId: existing.versionId,
+              originalAssetId: existing.originalAssetId,
+              normalizedAssetId: existing.normalizedAssetId,
+              referenceOrder: existing.referenceOrder,
+              rightsBasis: existing.rightsBasis,
+              rightsBasisNote: existing.rightsBasisNote,
+              rightsAttestedByUserId: existing.rightsAttestedByUserId,
+              rightsAttestedAt: existing.rightsAttestedAt,
+              originalRetentionPolicy: existing.originalRetentionPolicy,
+            },
+            {
+              referenceId: command.referenceId,
+              styleId: command.styleId,
+              versionId: command.versionId,
+              originalAssetId: command.originalAssetId,
+              normalizedAssetId: command.normalizedAssetId,
+              referenceOrder: command.referenceOrder,
+              rightsBasis: command.rightsBasis,
+              rightsBasisNote: command.rightsBasisNote,
+              rightsAttestedByUserId: scope.actorUserId,
+              rightsAttestedAt: command.rightsAttestedAt,
+              originalRetentionPolicy: command.originalRetentionPolicy,
+            },
+          )
+            ? write(existing, true)
+            : conflict(
+                "IMAGE_STYLE_REFERENCE_CONFLICT",
+                "reference identity already exists with different facts",
+              );
+        }
+        const original = await findArtifact(executor, scope.workspaceId, command.originalAssetId);
+        if (original === null) return missing("ASSET", command.originalAssetId);
+        const normalized = await findArtifact(
+          executor,
+          scope.workspaceId,
+          command.normalizedAssetId,
+        );
+        if (normalized === null) return missing("ASSET", command.normalizedAssetId);
+        const originalProblem = styleReferenceArtifactProblem(original, "STYLE_REFERENCE_ORIGINAL");
+        const normalizedProblem = styleReferenceArtifactProblem(
+          normalized,
+          "STYLE_REFERENCE_NORMALIZED",
+        );
+        if (originalProblem !== null || normalizedProblem !== null) {
+          return invariant(
+            "IMAGE_STYLE_REFERENCE_INVALID",
+            originalProblem ?? normalizedProblem ?? "reference artifact is invalid",
+          );
+        }
+        const collision = await one(
+          executor,
+          `SELECT reference.id
+             FROM image_style_references reference
+             JOIN assets normalized
+               ON normalized.workspace_id = reference.workspace_id
+              AND normalized.id = reference.normalized_asset_id
+            WHERE reference.workspace_id = $1
+              AND reference.style_id = $2
+              AND reference.version_id = $3
+              AND (
+                reference.reference_order = $4 OR
+                reference.original_asset_id = $5 OR
+                reference.normalized_asset_id = $6 OR
+                normalized.binary_sha256 = $7
+              )
+            LIMIT 1`,
+          [
+            scope.workspaceId,
+            command.styleId,
+            command.versionId,
+            command.referenceOrder,
+            command.originalAssetId,
+            command.normalizedAssetId,
+            normalized.binarySha256,
+          ],
+        );
+        if (collision !== null) {
+          return conflict(
+            "IMAGE_STYLE_REFERENCE_CONFLICT",
+            "reference order, artifact, or normalized hash is already bound",
+          );
+        }
+        await executor.query(
+          `INSERT INTO image_style_references (
+             id, workspace_id, style_id, version_id,
+             original_asset_id, normalized_asset_id, reference_order,
+             rights_basis, rights_basis_note, rights_attested_by_user_id,
+             rights_attested_at, original_retention_policy
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+          [
+            command.referenceId,
+            scope.workspaceId,
+            command.styleId,
+            command.versionId,
+            command.originalAssetId,
+            command.normalizedAssetId,
+            command.referenceOrder,
+            command.rightsBasis,
+            command.rightsBasisNote,
+            scope.actorUserId,
+            command.rightsAttestedAt,
+            command.originalRetentionPolicy,
+          ],
+        );
+        const inserted = await findImageStyleReference(executor, scope.workspaceId, lookup);
+        if (inserted === null) throw new Error("attached image style reference disappeared");
+        return write(inserted);
+      });
+    },
+    async detachReference(scope, command) {
+      return context.atomic.run(async (executor) => {
+        const lookup = {
+          styleId: command.styleId,
+          versionId: command.versionId,
+          referenceId: command.referenceId,
+        };
+        const existing = await findImageStyleReference(executor, scope.workspaceId, lookup);
+        if (existing === null) return missing("IMAGE_STYLE_REFERENCE", command.referenceId);
+        const version = await findImageStyleVersion(
+          executor,
+          scope.workspaceId,
+          command.styleId,
+          command.versionId,
+        );
+        if (version === null) return missing("IMAGE_STYLE_VERSION", command.versionId);
+        if (
+          version.state !== "DRAFT" ||
+          (await imageStyleHasAnalysisAttempt(executor, scope.workspaceId, command.versionId))
+        ) {
+          return invariant(
+            "IMAGE_STYLE_REFERENCE_LOCKED",
+            "references are immutable once analysis starts",
+          );
+        }
+        await executor.query(
+          `DELETE FROM image_style_references
+           WHERE workspace_id = $1 AND style_id = $2 AND version_id = $3 AND id = $4`,
+          [scope.workspaceId, command.styleId, command.versionId, command.referenceId],
+        );
+        return write(existing);
       });
     },
     async saveDraftVersion(scope, command) {
@@ -4145,6 +4580,12 @@ function createImageStyleRepository(
               "image style analysis requires recorded provider disclosure consent",
             );
           }
+          const references = await resolveImageStyleAnalysisReferenceSetIn(
+            executor,
+            scope.workspaceId,
+            { styleId: command.styleId, versionId: command.versionId },
+          );
+          if (!references.ok) return references;
         } else if (version.state !== "ANALYZING") {
           return conflict(
             "IMAGE_STYLE_ANALYSIS_CONFLICT",
@@ -6255,9 +6696,11 @@ const receiptOperations = Object.freeze({
   imageStyles: Object.freeze({
     abandonVersion: "image_style_abandon_version",
     archiveStyle: "image_style_archive",
+    attachReference: "image_style_attach_reference",
     beginAnalysis: "image_style_begin_analysis",
     createDraftVersion: "image_style_create_draft_version",
     createStyle: "image_style_create",
+    detachReference: "image_style_detach_reference",
     publishVersion: "image_style_publish_version",
     saveDraftVersion: "image_style_save_draft_version",
   }),

@@ -10,6 +10,7 @@ import {
 } from "../dist/src/index.js";
 import { HASHES, IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import {
+  expectDatabaseError,
   FIXED_TIME,
   loadMigrationSources,
   PGliteExecutor,
@@ -47,7 +48,7 @@ test("a fresh PGlite database applies the committed migration chain idempotently
   }
 });
 
-test("the durable timing migrations upgrade the five-migration baseline without rewriting legacy rows", async () => {
+test("durable timing and empty reference-contract migrations upgrade the five-migration baseline", async () => {
   const database = new PGlite();
   try {
     const executor = new PGliteExecutor(database);
@@ -119,7 +120,7 @@ test("the durable timing migrations upgrade the five-migration baseline without 
     );
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [6, 7]);
+    assert.deepEqual(upgraded.appliedVersions, [6, 7, 8]);
     assert.deepEqual(upgraded.alreadyAppliedVersions, [1, 2, 3, 4, 5]);
     const legacy = await executor.query(
       `SELECT transcript.lineage_contract_version, transcript.input_fingerprint_hash,
@@ -142,7 +143,69 @@ test("the durable timing migrations upgrade the five-migration baseline without 
 
     const replay = await applyMigrations(executor, sources);
     assert.deepEqual(replay.appliedVersions, []);
-    assert.deepEqual(replay.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7]);
+    assert.deepEqual(replay.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7, 8]);
+  } finally {
+    await database.close();
+  }
+});
+
+test("reference-contract migration upgrades a clean seven-migration database", async () => {
+  const database = new PGlite();
+  try {
+    const executor = new PGliteExecutor(database);
+    const sources = await loadMigrationSources();
+    await executor.execute(
+      `CREATE TABLE public.videoforge_schema_migrations (
+         version integer PRIMARY KEY CHECK (version > 0),
+         name text NOT NULL CHECK (name ~ '^[a-z0-9_]+$'),
+         filename text NOT NULL UNIQUE,
+         sha256 text NOT NULL CHECK (sha256 ~ '^sha256:[0-9a-f]{64}$'),
+         applied_at timestamptz NOT NULL DEFAULT now()
+       )`,
+    );
+    for (const migration of sources.slice(0, 7)) {
+      await executor.execute(migration.sql);
+      await executor.query(
+        `INSERT INTO videoforge_schema_migrations (version, name, filename, sha256)
+         VALUES ($1, $2, $3, $4)`,
+        [migration.version, migration.name, migration.filename, migration.sha256],
+      );
+    }
+
+    const upgraded = await applyMigrations(executor, sources);
+    assert.deepEqual(upgraded.appliedVersions, [8]);
+    assert.deepEqual(upgraded.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7]);
+  } finally {
+    await database.close();
+  }
+});
+
+test("reference-contract migration refuses to invent rights facts for legacy rows", async () => {
+  const database = new PGlite();
+  try {
+    const executor = new PGliteExecutor(database);
+    const sources = await loadMigrationSources();
+    for (const migration of sources.slice(0, 7)) await executor.execute(migration.sql);
+    await seedLockedProjects(executor);
+    await executor.query(
+      `INSERT INTO image_style_references (
+         id, workspace_id, style_id, version_id, asset_id,
+         reference_order, rights_attested_by_user_id
+       ) VALUES ($1, $2, $3, $4, $5, 1, $6)`,
+      [uuid(31_100), IDS.workspaceA, IDS.styleA, IDS.styleVersionA, IDS.outputA1, IDS.userA],
+    );
+
+    await expectDatabaseError(() => executor.execute(sources[7].sql), "23514");
+    const columns = await executor.query(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'image_style_references'
+       ORDER BY ordinal_position`,
+    );
+    assert.ok(columns.rows.some((row) => row.column_name === "asset_id"));
+    assert.equal(
+      columns.rows.some((row) => row.column_name === "original_asset_id"),
+      false,
+    );
   } finally {
     await database.close();
   }

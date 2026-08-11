@@ -170,6 +170,47 @@ async function attestDisclosure(repositories, styleId, version) {
   ).value;
 }
 
+async function seedAnalysisReferences(executor, styleId, versionId, serialBase) {
+  for (let index = 0; index < 3; index += 1) {
+    const originalAssetId = uuid(serialBase + index * 10);
+    const normalizedAssetId = uuid(serialBase + index * 10 + 1);
+    await executor.query(
+      `INSERT INTO assets (
+         id, workspace_id, kind, state, binary_sha256, content_type,
+         byte_size, width_px, height_px, verified_at
+       ) VALUES
+         ($1, $3, 'STYLE_REFERENCE_ORIGINAL', 'VERIFIED', $4, 'image/jpeg', 1000, 1024, 768, $6),
+         ($2, $3, 'STYLE_REFERENCE_NORMALIZED', 'VERIFIED', $5, 'image/jpeg', 900, 1024, 768, $6)`,
+      [
+        originalAssetId,
+        normalizedAssetId,
+        IDS.workspaceA,
+        sha256(`style-reference-original:${serialBase}:${index}`),
+        sha256(`style-reference-normalized:${serialBase}:${index}`),
+        FIXED_TIME,
+      ],
+    );
+    await executor.query(
+      `INSERT INTO image_style_references (
+         id, workspace_id, style_id, version_id, original_asset_id,
+         normalized_asset_id, reference_order, rights_attested_by_user_id,
+         rights_basis, rights_attested_at, original_retention_policy
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'OWNED', $9, 'RETAIN')`,
+      [
+        uuid(serialBase + index * 10 + 2),
+        IDS.workspaceA,
+        styleId,
+        versionId,
+        originalAssetId,
+        normalizedAssetId,
+        index + 1,
+        IDS.userA,
+        FIXED_TIME,
+      ],
+    );
+  }
+}
+
 test("style and version reads are deterministic and workspace scoped", async () => {
   await withMigratedDatabase(async ({ executor }) => {
     await seedLockedProjects(executor);
@@ -326,6 +367,7 @@ test("analysis start is disclosure-gated, atomic, replay-safe, and fail-closed",
     assert.deepEqual(before.rows[0], { tasks: 0, attempts: 0, costs: 0, outbox: 0 });
 
     await attestDisclosure(repositories, STYLE.lifecycle, draft);
+    await seedAnalysisReferences(executor, STYLE.lifecycle, STYLE.lifecycleV1, 24_000);
     const started = expectWrite(await repositories.imageStyles.beginAnalysis(SCOPE_A, command));
     assert.equal(started.replayed, false);
     assert.equal(started.value.version.state, "ANALYZING");
@@ -392,6 +434,7 @@ test("analysis start is disclosure-gated, atomic, replay-safe, and fail-closed",
       "Rollback Style",
     );
     rollbackDraft = await attestDisclosure(repositories, STYLE.rollback, rollbackDraft);
+    await seedAnalysisReferences(executor, STYLE.rollback, STYLE.rollbackV1, 24_100);
     const bad = beginCommand(
       STYLE.rollback,
       STYLE.rollbackV1,
@@ -438,6 +481,7 @@ test("only a reviewed canonical profile publishes and moves the active pointer",
       }),
     ).value;
     await attestDisclosure(repositories, IDS.styleA, v2);
+    await seedAnalysisReferences(executor, IDS.styleA, STYLE.lifecycleV2, 24_200);
     const command = beginCommand(
       IDS.styleA,
       STYLE.lifecycleV2,
@@ -650,6 +694,7 @@ test("abandon is optimistic, immutable, and frees the one-open-version invariant
     );
 
     const disclosed = await attestDisclosure(repositories, STYLE.lifecycle, v2);
+    await seedAnalysisReferences(executor, STYLE.lifecycle, STYLE.lifecycleV2, 24_300);
     const running = expectWrite(
       await repositories.imageStyles.beginAnalysis(
         SCOPE_A,
