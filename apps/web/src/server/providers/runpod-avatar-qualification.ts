@@ -15,7 +15,8 @@ import {
 
 const execFileAsync = promisify(execFile);
 const terminalStatuses = new Set(["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"]);
-const qualificationSpendCapUsd = 4.5;
+const qualificationSpendCapUsd = 1;
+const qualificationCostStopUsd = 0.9;
 const qualificationGpuTypeIds = ["NVIDIA L40S", "NVIDIA A100 80GB PCIe"] as const;
 let abortRequested = false;
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
@@ -140,9 +141,9 @@ try {
   jobs = new RunPodServerlessJobClient({ apiKey, endpointId: endpoint.id, guard });
   await jobs.confirmDrained();
   if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
-  job = await jobs.dispatch(`vf8_06_${suffix}`, {
+  job = await jobs.dispatch(`vf8_08_${suffix}`, {
     mode: "INLINE_QUALIFICATION_V1",
-    attempt_id: `vf8_06_${suffix}`,
+    attempt_id: `vf8_08_${suffix}`,
     source_base64: source.toString("base64"),
     source_sha256: digest(source),
     span_audio_base64: audio.toString("base64"),
@@ -165,7 +166,7 @@ try {
     if (consecutiveNoRunningPolls >= 20) {
       throw new Error("RUNPOD_STARTUP_TIMEOUT");
     }
-    if (attempt % 4 === 3 && startedBalance - (await balance(apiKey)) >= 4.25) {
+    if (attempt % 4 === 3 && startedBalance - (await balance(apiKey)) >= qualificationCostStopUsd) {
       throw new Error("RUNPOD_COST_STOP");
     }
   }
