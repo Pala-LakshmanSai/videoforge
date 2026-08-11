@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T20:05:00Z"
+updated_at: "2026-08-11T20:11:00Z"
 
-phase: avatarforcing_memory_diagnostic
+phase: avatarforcing_a100_resume
 implementation_authorized_in_current_task: true
-current_milestone: locked_avatarforcing_memory_diagnostic
-current_task: VF-8-09
+current_milestone: locked_avatarforcing_a100_resume
+current_task: VF-8-10
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -19,8 +19,8 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "f371df2"
-  working_tree_expected: clean_after_vf_8_08_bounded_failure_handoff
+  last_good_commit: "3c222a9"
+  working_tree_expected: clean_after_vf_8_09_memory_diagnostic_handoff
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -42,9 +42,9 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "VF-8-09 is provider-free OOM classification and A100-80GB allowlist correction plus pinned-image build only; no RunPod credential read, mutation, dispatch, model download, GPU start, or spend."
+  provider_calls_authorized: true
+  authorized_spend_usd: 1
+  provider_authority_scope: "VF-8-10 authorizes existing Keychain RunPod credential, one scale-zero endpoint, at most one A100-80GB worker, one pinned five-frame AvatarForcing dispatch, and maximum new spend $1.00; cleanup and absolute-zero inventory are mandatory."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -174,16 +174,22 @@ completed_tasks:
     image_digest: "sha256:b7bdf282f97cb84195a7ef163670a3a7a464e593984d678723567c8ccd931b1d"
     evidence: "evidence/acceptance/VF-8-08/avatarforcing-audio-runtime-resume"
     summary: "Torch-matched torchaudio restored audio resampling and advanced execution to 213 seconds, but one five-frame run ended AVATAR_INFERENCE_PROCESS_FAILED with no MP4. Spend was $0.0102739352; final and independent RunPod inventories were zero."
+  - task_id: VF-8-09
+    status: complete
+    implementation_commit: "3c222a9"
+    image_digest: "sha256:e46c3a9d0d770905ca2d04aecf5623986425eca861f2e1ea9245a3fd5867f434"
+    evidence: "evidence/acceptance/VF-8-09/avatarforcing-memory-diagnostic"
+    summary: "Compact OOM variants now classify deterministically, qualification is restricted to one A100-80GB worker, and pinned GHCR image build 31531241301 passed at $0."
 
 latest_closed_handoff:
-  task_id: VF-8-08
-  status: bounded_failure_complete
-  task_kind: avatarforcing_audio_runtime_resume
-  implementation_commit: "f371df2"
-  evidence: "evidence/acceptance/VF-8-08/avatarforcing-audio-runtime-resume"
-  verification_result: "terminal_classified_failure_full_verify_green_and_live_zero_resource_inventory"
-  external_actions: "One exact Serverless endpoint and worker dispatch; terminal job, endpoint/template deletion, and independent zero-inventory confirmation."
-  external_spend_usd: 0.0102739352
+  task_id: VF-8-09
+  status: complete
+  task_kind: avatarforcing_memory_diagnostic
+  implementation_commit: "3c222a9"
+  evidence: "evidence/acceptance/VF-8-09/avatarforcing-memory-diagnostic"
+  verification_result: "focused_checks_and_pinned_image_build_passed"
+  external_actions: "GHCR image build only; no provider call or RunPod mutation."
+  external_spend_usd: 0
 
 last_green:
   checked_at: "2026-08-11T20:03:00Z"
@@ -209,30 +215,36 @@ active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-8-09
-  milestone: locked_avatarforcing_memory_diagnostic
+  task_id: VF-8-10
+  milestone: locked_avatarforcing_a100_resume
   status: ready
-  dependency_status: vf_8_08_exact_process_failure_preserved_and_runpod_zero
-  authorization_status: provider_free_memory_diagnostic_only
-  read_profile: phase8_avatarforcing_memory_diagnostic
-  task_brief: tasks/VF-8-09.md
-  goal: "Close compact OOM classifier gaps, restrict qualification to A100 80GB, and publish a pinned tested image at $0."
-  provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
-  model_downloads_authorized: false
+  dependency_status: vf_8_09_pinned_a100_only_image_published_and_runpod_zero
+  authorization_status: one_a100_80gb_runpod_qualification
+  read_profile: phase8_avatarforcing_a100_resume
+  task_brief: tasks/VF-8-10.md
+  goal: "Run one pinned A100-80GB-only five-frame qualification, retain exact evidence, and return RunPod to zero."
+  provider_calls_authorized: true
+  maximum_external_spend_usd: 1
+  provider_authority:
+    provider: runpod_serverless
+    model_id: "KlingAIResearch/AvatarForcing@63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39+lycui/AvatarForcing@e2448919a7b535c29f34e07892884ae1a43c6ace"
+    cap_usd: 1
+    non_transferable: true
+    authorized_by_user_at: "2026-08-11T19:36:00Z"
+  remote_or_cloud_mutations_authorized: true
+  credential_access_authorized: true
+  model_downloads_authorized: true
   application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-8-09/avatarforcing-memory-diagnostic"
+  expected_evidence: "evidence/acceptance/VF-8-10/avatarforcing-a100-resume"
   required_handoff:
-    - "Map compact Python/CUDA OOM spellings without exposing diagnostics."
-    - "Constrain the next qualification allowlist to exactly A100 80GB."
-    - "Publish a pinned tested image and keep RunPod absolute zero."
+    - "Run exactly one owned five-frame qualification on A100 80GB only."
+    - "Retain valid MP4/probe/cost or one exact safe terminal failure."
+    - "Drain/delete all resources and independently prove RunPod absolute zero."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-8-09
+    integration_owner: VF-8-10
   prohibited_in_task:
-    - "Any RunPod/provider credential read, mutation, dispatch, model download, GPU start, or spend."
+    - "Second dispatch, L40S, more than one endpoint/worker, standalone Pod/volume, or new spend above $1.00."
     - "Blind redispatch, model substitution, fallback execution, Mage work, schema/UI redesign, production profile promotion, credential exposure, or deployment."
 
 blocking_gates_for_production:
@@ -261,8 +273,8 @@ known_incomplete_boundaries:
   - "No encrypted off-machine backup, R2 integrity inventory, clean-target cloud restore, ten-user contention/security proof, or fresh-account production Chrome sign-off exists."
 
 next_tasks:
-  - "1. VF-8-09 close OOM classification gaps, restrict to A100 80GB, and publish a pinned image at $0."
-  - "2. Run one A100-80GB-only qualification under a new exact cap, then act only on retained evidence."
+  - "1. VF-8-10 run one A100-80GB-only five-frame qualification under a $1.00 cap."
+  - "2. Act only on valid MP4 evidence or the exact retained terminal failure."
   - "3. Build pinned Mage worker; exact weight access currently needs Hugging Face authentication unavailable in Chrome/Keychain."
   - "4. Add MuseTalk repair and SkyReels whole-frame fallback only after their technical triggers."
   - "5. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
@@ -288,7 +300,7 @@ progress_snapshot:
   interpretation: "Provider-free media, restart-safe Node sandbox, locked Runware runtime composition, RunPod scale-zero control, and the pinned AvatarForcing worker/qualification harness are implemented. Capacity-corrected execution now reaches the real inference process, but no valid Avatar output exists; Mage access, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: avatarforcing_memory_diagnostic_selected
+  status: avatarforcing_a100_resume_selected
   completed_and_preserved:
     - "All completed tasks/commits above; no paused implementation or unexplained dirty state."
     - "Forced full verification passed at the VF-8-04 handoff tree: Workerd 1/1 and installed Chrome 38/38 with zero skips."
@@ -299,15 +311,16 @@ activation_handoff:
     - "VF-8-07 added secret-safe exact inference failure evidence; pinned image sha256:359ac1ec415e38058b256e6ab52084bf2c38fe0ad5b32e716f4f974e5802b7a1 passed GHCR build 31529443853."
     - "Static runtime audit found 44.1 kHz owned audio requires upstream torchaudio resampling, but worker runtime omitted torchaudio."
     - "VF-8-08 restored torchaudio; one 213-second run returned secret-safe process-failure evidence for $0.0102739352 and left RunPod absolute zero."
+    - "VF-8-09 closed compact OOM classification gaps and published A100-80GB-only image sha256:e46c3a9d0d770905ca2d04aecf5623986425eca861f2e1ea9245a3fd5867f434 at $0."
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from f371df2; preserve all newer commits."
-    - "Load only phase8_avatarforcing_memory_diagnostic and tasks/VF-8-09.md."
-    - "Close compact OOM classifiers, restrict A100 80GB, publish exact image, and keep RunPod zero."
+    - "Require clean HEAD descending from 3c222a9; preserve all newer commits."
+    - "Load only phase8_avatarforcing_a100_resume and tasks/VF-8-10.md."
+    - "Run one pinned A100-80GB five-frame qualification and leave RunPod zero."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
-    - "Credential exposure, raw diagnostic leakage, model/revision drift, any provider mutation/spend, or non-zero RunPod inventory."
+    - "Credential exposure, raw diagnostic leakage, model/revision drift, second dispatch/worker, spend above $1.00, or non-zero final RunPod inventory."
 
 notes:
   - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."

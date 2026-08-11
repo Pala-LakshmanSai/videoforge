@@ -3,8 +3,8 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-11"
 source_of_truth: project-context
-current_selected_profile: phase8_avatarforcing_memory_diagnostic
-current_selected_brief: tasks/VF-8-09.md
+current_selected_profile: phase8_avatarforcing_a100_resume
+current_selected_brief: tasks/VF-8-10.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -308,6 +308,12 @@ read_profiles:
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
     - 19_IMPLEMENTATION_PLAYBOOK.md
     - tasks/VF-8-09.md
+  phase8_avatarforcing_a100_resume:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 11_COST_SPEED_BUDGET.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - tasks/VF-8-10.md
   phase3_runware_style_adapter:
     - 08_MODELS_AND_PROVIDERS.md
     - 14_TESTING_AND_ACCEPTANCE.md

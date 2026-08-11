@@ -141,9 +141,9 @@ try {
   jobs = new RunPodServerlessJobClient({ apiKey, endpointId: endpoint.id, guard });
   await jobs.confirmDrained();
   if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
-  job = await jobs.dispatch(`vf8_08_${suffix}`, {
+  job = await jobs.dispatch(`vf8_10_${suffix}`, {
     mode: "INLINE_QUALIFICATION_V1",
-    attempt_id: `vf8_08_${suffix}`,
+    attempt_id: `vf8_10_${suffix}`,
     source_base64: source.toString("base64"),
     source_sha256: digest(source),
     span_audio_base64: audio.toString("base64"),
