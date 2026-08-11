@@ -166,4 +166,42 @@ describe("RunPod scale-zero control", () => {
     await expect(client.deleteEndpoint("endpoint_01", guard)).resolves.toBeUndefined();
     expect(fetch).toHaveBeenCalledTimes(2);
   });
+
+  it("creates only private pinned templates and scale-zero endpoints", async () => {
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      const body = init?.body === undefined ? null : JSON.parse(String(init.body));
+      if (path.endsWith("/templates")) {
+        expect(body).toMatchObject({ isPublic: false, isServerless: true, volumeInGb: 0 });
+        return response({ id: "template_01" });
+      }
+      expect(body).toMatchObject({ workersMin: 0, workersMax: 1, gpuCount: 1 });
+      return response({ id: "endpoint_01", workersMin: 0, workersMax: 1 });
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    const template = await client.createServerlessTemplate(
+      "vf_avatar_cd226f4",
+      "ghcr.io/palalakshmansai/videoforge-avatar-primary@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      100,
+    );
+    const endpoint = await client.createScaleZeroEndpoint(
+      "vf_avatar_cd226f4",
+      template.id,
+      ["NVIDIA GeForce RTX 4090", "NVIDIA L40S"],
+      {
+        workersMin: 0,
+        workersMax: 1,
+        gpuCount: 1,
+        idleTimeout: 5,
+        executionTimeoutMs: 1_800_000,
+      },
+    );
+    expect(template.idHash).toMatch(/^sha256:/u);
+    expect(endpoint.idHash).toMatch(/^sha256:/u);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
 });

@@ -37,6 +37,11 @@ export interface RunPodInventory {
   readonly activeServerlessWorkerCount: number;
 }
 
+export interface RunPodResourceIdentity {
+  readonly id: string;
+  readonly idHash: string;
+}
+
 export class RunPodControlError extends Error {
   constructor(readonly code: string) {
     super(code);
@@ -198,10 +203,102 @@ export class RunPodControlClient {
     }
   }
 
+  async createServerlessTemplate(
+    name: string,
+    imageName: string,
+    containerDiskInGb: number,
+  ): Promise<RunPodResourceIdentity> {
+    if (!ID.test(name) || !/^[a-z0-9./:_-]+@[a-z0-9:+._-]+$/u.test(imageName)) {
+      throw new RunPodControlError("RUNPOD_TEMPLATE_INPUT_INVALID");
+    }
+    if (
+      !Number.isSafeInteger(containerDiskInGb) ||
+      containerDiskInGb < 80 ||
+      containerDiskInGb > 120
+    ) {
+      throw new RunPodControlError("RUNPOD_TEMPLATE_DISK_INVALID");
+    }
+    const value = record(
+      await this.mutate(
+        "POST",
+        "/templates",
+        canonicalizeJson({
+          category: "NVIDIA",
+          containerDiskInGb,
+          dockerEntrypoint: [],
+          dockerStartCmd: [],
+          env: {},
+          imageName,
+          isPublic: false,
+          isServerless: true,
+          name,
+          ports: [],
+          readme: "VideoForge pinned AvatarForcing worker",
+          volumeInGb: 0,
+          volumeMountPath: "/models",
+        }),
+      ),
+    );
+    if (!value || typeof value.id !== "string" || !ID.test(value.id)) {
+      throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
+    }
+    return Object.freeze({ id: value.id, idHash: hashId(value.id) });
+  }
+
+  async createScaleZeroEndpoint(
+    name: string,
+    templateId: string,
+    gpuTypeIds: readonly string[],
+    policy: RunPodEndpointPolicy,
+  ): Promise<RunPodResourceIdentity> {
+    assertRunPodEndpointPolicy(policy);
+    if (!ID.test(name) || !ID.test(templateId) || gpuTypeIds.length < 1 || gpuTypeIds.length > 2) {
+      throw new RunPodControlError("RUNPOD_ENDPOINT_INPUT_INVALID");
+    }
+    if (gpuTypeIds.some((gpu) => typeof gpu !== "string" || gpu.length > 100)) {
+      throw new RunPodControlError("RUNPOD_ENDPOINT_INPUT_INVALID");
+    }
+    const value = record(
+      await this.mutate(
+        "POST",
+        "/endpoints",
+        canonicalizeJson({
+          computeType: "GPU",
+          executionTimeoutMs: policy.executionTimeoutMs,
+          flashboot: true,
+          gpuCount: policy.gpuCount,
+          gpuTypeIds,
+          idleTimeout: policy.idleTimeout,
+          name,
+          scalerType: "QUEUE_DELAY",
+          scalerValue: 1,
+          templateId,
+          workersMax: policy.workersMax,
+          workersMin: policy.workersMin,
+        }),
+      ),
+    );
+    if (
+      !value ||
+      typeof value.id !== "string" ||
+      !ID.test(value.id) ||
+      value.workersMin !== 0 ||
+      value.workersMax !== 1
+    ) {
+      throw new RunPodControlError("RUNPOD_SCALE_ZERO_UNCONFIRMED");
+    }
+    return Object.freeze({ id: value.id, idHash: hashId(value.id) });
+  }
+
   async deleteEndpoint(endpointId: string, guard: RunPodDrainGuard): Promise<void> {
     if (!ID.test(endpointId)) throw new RunPodControlError("RUNPOD_ENDPOINT_ID_INVALID");
     guard.assertDispatchAllowed();
     await this.mutate("DELETE", `/endpoints/${endpointId}`);
+  }
+
+  async deleteTemplate(templateId: string): Promise<void> {
+    if (!ID.test(templateId)) throw new RunPodControlError("RUNPOD_TEMPLATE_ID_INVALID");
+    await this.mutate("DELETE", `/templates/${templateId}`);
   }
 
   async inventory(now = new Date()): Promise<RunPodInventory> {
