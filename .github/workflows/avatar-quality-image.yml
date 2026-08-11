@@ -30,7 +30,8 @@ jobs:
           image="ghcr.io/${owner}/videoforge-avatar-quality:${GITHUB_SHA}"
           docker build --tag "$image" workers/avatar-quality
           docker run --rm --entrypoint python "$image" -c \
-            'import flash_attn, torch, torchvision, runpod, skyreels_v3; from videoforge_avatar_quality import SkyReelsJob; print("avatar-quality-import-ok")'
+            'import av, flash_attn, torch, torchvision, runpod, skyreels_v3; from videoforge_avatar_quality import SkyReelsJob; print("avatar-quality-import-ok")'
+          docker run --rm --entrypoint python "$image" /opt/skyreels-v3/generate_video.py --help >/dev/null
           docker run --rm --entrypoint python "$image" -c \
             'import sys; sys.path.insert(0, "/opt/videoforge"); import handler; observed = []; handler.runpod.serverless.start = lambda config: observed.append(config); handler.start_worker(); assert len(observed) == 1 and callable(observed[0]["handler"]); print("avatar-quality-handler-registration-ok")'
           docker run --rm --entrypoint python "$image" -m compileall -q /opt/skyreels-v3

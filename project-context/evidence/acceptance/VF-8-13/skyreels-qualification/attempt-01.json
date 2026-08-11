@@ -1,0 +1,56 @@
+{
+  "schema_version": "videoforge.skyreels-qualification/v1",
+  "checked_at": "2026-08-11T21:17:03.153Z",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-avatar-quality@sha256:eed0778157bda9c28ebdb54bbab407d64205063b0467897ee9dcb9438b930497",
+  "input": {
+    "source_sha256": "sha256:b4214d8f586608dae08ca2a56716f340d87c7bbbd8817383f4cbeaa3e188fb34",
+    "source_bytes": 227787,
+    "audio_sha256": "sha256:b7f6585b5775b53de774ce6a7b3b5d059bb4ec3c6e558d2deb44296f80dc4041",
+    "audio_bytes": 640983,
+    "duration_seconds": 5
+  },
+  "resources": {
+    "template_id_hash": "sha256:eb99975fbc61ab6fe52de5699a75f0134b8699d5f573a494777bc6b714e9553b",
+    "endpoint_id_hash": "sha256:006d580b45a9cf577bb77a4a63da7a1dfb23ee107e70793faa70a5b765fc299d",
+    "job_id_hash": "sha256:27d08544d26296293c2a83bd6e87db7eae281638e28b2ba6dcdfca8531fd31a1",
+    "gpu": "NVIDIA A100 80GB PCIe",
+    "container_disk_gb": 120,
+    "workers_min": 0,
+    "workers_max": 1
+  },
+  "runtime": {
+    "status": "COMPLETED",
+    "delay_time_ms": 160468,
+    "execution_time_ms": 203771,
+    "output": {
+      "diagnostic_sha256": "sha256:3bf89af3a94c9ed9a47a899fde879b68140fd84e7a7a575d4c72e0419206810a",
+      "error_code": "SKYREELS_INFERENCE_DEPENDENCY_MISSING",
+      "ok": false
+    }
+  },
+  "cost": {
+    "starting_balance_usd": 9.6145061685,
+    "ending_balance_usd": 9.5642698574,
+    "measured_spend_usd": 0.0502363111,
+    "cap_usd": 2
+  },
+  "cleanup_errors": [],
+  "final_inventory": {
+    "checkedAt": "2026-08-11T21:16:56.344Z",
+    "pods": [],
+    "endpoints": [],
+    "privateTemplateCount": 0,
+    "networkVolumes": [],
+    "runningPodCount": 0,
+    "activeServerlessWorkerCount": 0
+  },
+  "independent_inventory": {
+    "checkedAt": "2026-08-11T21:17:02.653Z",
+    "pods": [],
+    "endpoints": [],
+    "privateTemplateCount": 0,
+    "networkVolumes": [],
+    "runningPodCount": 0,
+    "activeServerlessWorkerCount": 0
+  }
+}
