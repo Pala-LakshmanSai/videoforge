@@ -1,6 +1,6 @@
 # Avatar Hub
 
-Status: VF-5-01 fixture worker complete; VF-5-02 durable result acceptance selected
+Status: VF-5-01 worker and VF-5-02 durable fixture acceptance complete at `e0bec7e`
 Read when: implementing reusable avatars, avatar source upload/validation, project avatar selection, or avatar-source provenance.
 
 ## Product contract
@@ -16,10 +16,10 @@ They never influence each other. Selecting an avatar does not change image promp
 
 ## Invariants
 
-Provider-free `VF-5-01` worker boundary exists at `fcb8f31`. It validates exact revision, Avatar,
-selected-span, layout, media, retry/cancel/callback, and workspace lineage using deterministic
-non-production bytes. It closes no Avatar/model/GPU gate; `VF-5-02` must compose its results into
-durable task/attempt/asset/QA/cost acceptance before any real provider lane.
+Provider-free `VF-5-01` worker boundary exists at `fcb8f31`. `VF-5-02` is complete at `e0bec7e`:
+migration `0012` and production PGlite acceptance persist one native clip, both exact layout
+bindings, technical QA, explicit `UNREVIEWED` subjective state, and full pinned Avatar/span/
+execution/callback/cost lineage. These tasks close no Avatar/model/GPU gate.
 
 - Create Project requires one exact `READY` Avatar Profile version selected from the workspace-visible hub.
 - There is no ordinary per-project avatar-image upload or unversioned `latest avatar` lookup.

@@ -3,8 +3,8 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-11"
 source_of_truth: project-context
-current_selected_profile: phase5_avatar_result_acceptance
-current_selected_brief: tasks/VF-5-02.md
+current_selected_profile: phase7_style_edit_api
+current_selected_brief: tasks/VF-7-08.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -317,6 +317,10 @@ read_profiles:
     - 20_AVATAR_HUB.md
     - tasks/VF-5-01.md
     - tasks/VF-5-02.md
+  phase7_style_edit_api:
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 18_IMAGE_STYLES_HUB.md
+    - tasks/VF-7-08.md
   phase7_style_derived_edit_service:
     - 10_DATA_AND_API_CONTRACTS.md
     - 18_IMAGE_STYLES_HUB.md

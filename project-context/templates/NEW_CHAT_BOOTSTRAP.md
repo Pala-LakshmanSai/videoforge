@@ -11,28 +11,28 @@ Startup:
 2. Read project-context/00_START_HERE.md.
 3. Read project-context/MANIFEST.yaml.
 4. Read project-context/CURRENT_STATE.yaml.
-5. Run git status --short --branch and confirm clean HEAD descends from implementation bbb0a48.
+5. Run git status --short --branch and confirm clean HEAD descends from implementation e0bec7e.
 6. Preserve every newer commit. Never reset or redo completed work.
 7. Load only CURRENT_STATE.recommended_next_task, its named MANIFEST read profile, and exact brief.
    Do not run a new research pass or preload later profiles/briefs.
 
-Selected task: VF-5-02 durable Avatar fixture result acceptance.
-Profile: phase5_avatar_result_acceptance.
-Brief: project-context/tasks/VF-5-02.md.
+Selected task: VF-7-08 versioned Image Style edit API.
+Profile: phase7_style_edit_api.
+Brief: project-context/tasks/VF-7-08.md.
 
-Compose existing VF-5-01 fixture results into durable Avatar acceptance. Bind exact revision,
-current timeline, Avatar version/source, selected span audio, task/attempt/outbox/callback/cost,
-technical QA, one native clip, and both renderer layouts. Preserve explicit subjective review.
+Expose the completed VF-7-07 immutable derived-edit service through authenticated
+`PATCH /api/v1/image-styles/{style_id}/versions/{version_id}`. Require one complete candidate,
+`If-Match`, and `Idempotency-Key`; move shared DTOs to versioned contract exports.
 
 Preserve Phase 0A–2, accepted shell/output, VF-DX-01/02, VF-REL-01, VF-5-01, completed VF-4-01
-`1fba04c`, VF-4-02 `bbb0a48`, and VF-7-07 `20fd592`. Provider mode stays fixture; provider calls,
+`1fba04c`, VF-4-02 `bbb0a48`, VF-5-02 `e0bec7e`, and VF-7-07 `20fd592`. Provider mode stays fixture; provider calls,
 credentials, downloads, GPU/RunPod, cloud/account mutation, push, deployment, and spend are
 forbidden. Shared migrations/repositories/context are serial.
 
 Use focused tests and verify:fast while developing. Before acceptance run forced full pnpm verify,
 context/schema validation, secret scan, Prettier, dependency audit, and git diff --check. Commit one
-small green VF-5-02 change, refresh CURRENT_STATE.yaml/evidence, and author exactly one successor
-brief: VF-7-08. Do not author later briefs.
+small green VF-7-08 change, refresh CURRENT_STATE.yaml/evidence, and author exactly one successor
+brief: VF-7-09. Do not author later briefs.
 
 Stop on dirty unexplained state, missing brief, context contradiction, regression, unresolved gate,
 provider ambiguity, destructive migration, or new authority requirement.

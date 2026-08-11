@@ -1,6 +1,6 @@
 # Image Styles Hub
 
-Status: lifecycle, immutable derived edits, exact-current publication, and restore complete at `20fd592`
+Status: durable style lifecycle complete through VF-7-07; VF-7-08 versioned edit API selected
 Read when: implementing reusable image styles, reference upload/analysis, project style selection, or prompt compilation.
 
 ## Product contract

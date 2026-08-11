@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-4-02` complete at `bbb0a48`; `VF-5-02` Avatar acceptance selected
+Status: `VF-5-02` complete at `e0bec7e`; `VF-7-08` Style edit API selected
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -38,7 +38,10 @@ at `fcb8f31`.
 accepted-analysis backfill, production PGlite repository/UoW, exact-current-byte publication, and
 metadata export/restore are green. `VF-4-02` is complete at `bbb0a48`: migration `0011`, a
 deterministic Mage-shaped PNG fixture, and atomic image asset/QA/callback/cost acceptance are green.
-`CURRENT_STATE.yaml` selects only provider-free `VF-5-02` Avatar result acceptance.
+`VF-5-02` is complete at `e0bec7e`: migration `0012` and production PGlite acceptance bind one
+native Avatar clip to both renderer layouts with exact Avatar/source/span/task/attempt/outbox/
+callback/cost/QA lineage and explicit `UNREVIEWED` subjective state. `CURRENT_STATE.yaml` selects
+only provider-free `VF-7-08`, the versioned full-candidate Image Style edit API.
 
 Production media remains blocked: Mage checkpoint/license evidence is unresolved; AvatarForcing
 licensing artifacts contradict each other; image/avatar/GPU/RunPod/fallback/cost/style-adherence

@@ -1,13 +1,13 @@
 # Development plan
 
-Status: Phase 0–2 complete; prompt/style qualification and adapters green; VF-7-06 selected
+Status: Phase 0–2 and provider-free media acceptance complete; VF-7-08 selected
 Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
 
 ## Delivery strategy
 
-Current checkpoint `20fd592` is fully provider-free and green. Phase 0A–2, VF-DX-01/02,
-VF-REL-01, VF-4-01/02, VF-5-01, and VF-7-07 are complete. Current serial order is:
-VF-5-02, VF-7-08, and VF-7-09. Provider gates,
+Current checkpoint `e0bec7e` is fully provider-free and green. Phase 0A–2, VF-DX-01/02,
+VF-REL-01, VF-4-01/02, VF-5-01/02, and VF-7-01 through VF-7-07 are complete. Current serial order
+is VF-7-08 then VF-7-09. Provider gates,
 staging, hardening, and release follow only from exact successor briefs and recorded authority.
 
 Run coordinated local and viability tracks under the accelerated wave authority in
@@ -211,9 +211,10 @@ Exit: real batch meets the measured Phase 0 envelope, recovers a failed chunk, a
 
 ## Phase 5: AvatarForcing primary lane
 
-Current provider-free status: VF-5-01 deterministic fixture worker is complete. VF-5-02 must
-compose results into durable control-plane acceptance. Real AvatarForcing remains blocked by
-license, Avatar, GPU, and RunPod gates.
+Current provider-free status: VF-5-01 deterministic fixture worker and VF-5-02 production PGlite
+result acceptance are complete at `e0bec7e`, including one native clip/two layout bindings and
+explicit subjective review authority. Real AvatarForcing remains blocked by license, Avatar, GPU,
+and RunPod gates.
 
 - Resolve only the revision-pinned Avatar Profile binding; workers never read a mutable active/latest profile pointer.
 - Materialized padded per-span audio only; never send full voiceover.

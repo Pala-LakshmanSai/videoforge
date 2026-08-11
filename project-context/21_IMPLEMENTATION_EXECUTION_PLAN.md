@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: `VF-4-02` complete at `bbb0a48`; `VF-5-02` Avatar acceptance selected
+Status: `VF-5-02` complete at `e0bec7e`; `VF-7-08` Style edit API selected
 Read when: selecting, implementing, integrating, or handing off one task.
 
 ## Authority
@@ -31,8 +31,9 @@ exact history.
 - Provider-free media foundations: VF-4-01 durable prompt execution is complete at `1fba04c`,
   VF-5-01 deterministic Avatar fixture worker is complete at `fcb8f31`, and VF-7-07 durable style
   derived-artifact persistence is complete at `20fd592`.
-- VF-4-02 durable fixture image acceptance is complete at `bbb0a48`.
-- VF-4-02 checkpoint: focused 4/4, control-plane 205/205, aggregate 758, Workerd 1/1,
+- VF-4-02 durable fixture image acceptance is complete at `bbb0a48`; VF-5-02 durable fixture Avatar
+  acceptance is complete at `e0bec7e`.
+- VF-5-02 checkpoint: focused 4/4, control-plane 209/209, aggregate 762, Workerd 1/1,
   installed Chrome 38/38, zero skips, fixture mode, `$0`; development server stopped.
 
 Do not redesign accepted shell/dock/Hubs, rerun architecture research, replace the renderer, change
@@ -64,7 +65,8 @@ Complete at `bbb0a48`; evidence is
 
 ### 4. VF-5-02 — Avatar result acceptance
 
-Selected now. Use `phase5_avatar_result_acceptance` and `tasks/VF-5-02.md` only.
+Complete at `e0bec7e`; evidence is
+`evidence/acceptance/VF-5-02/avatar-result-acceptance`. Do not redo it.
 
 - Compose VF-5-01 output into durable task/attempt/asset/QA/cost records.
 - Preserve one native clip for full/split layouts, exact Avatar/span lineage, retry/cancel/callback
@@ -73,12 +75,13 @@ Selected now. Use `phase5_avatar_result_acceptance` and `tasks/VF-5-02.md` only.
 
 ### 5. VF-7-08 then VF-7-09 — Style API and Hub
 
-- VF-7-08: full-candidate
+- VF-7-08 selected now. Use `phase7_style_edit_api` and `tasks/VF-7-08.md` only: full-candidate
   `PATCH /api/v1/image-styles/{style_id}/versions/{version_id}` with `If-Match` and
   `Idempotency-Key`; move shared DTOs to versioned contract exports.
 - VF-7-09: browser/server normalization, upload/review/publish/select flows, fixture-backed
   installed-Chrome coverage.
 - Preserve accepted UI design and ordinary-video zero-analysis behavior.
+- On VF-7-08 completion author exactly one successor brief: VF-7-09.
 
 ## Provider gates and real-video milestone
 
