@@ -25,6 +25,11 @@ import type {
   RepositorySession,
   RepositoryUnitOfWork,
 } from "../repositories/unit-of-work.js";
+import {
+  DURABLE_STYLE_ANALYZER_MODEL,
+  DURABLE_STYLE_ANALYZER_PROVIDER,
+  composeDurableImageStyleAnalysisInput,
+} from "../styles/durable-analysis.js";
 
 type Row = Record<string, unknown>;
 
@@ -210,6 +215,87 @@ function validImageStyleProfileDocument(candidate: unknown): candidate is Canoni
   } catch {
     return false;
   }
+}
+
+const IMAGE_STYLE_ANALYSIS_USAGE_KEYS = Object.freeze([
+  "completion_tokens",
+  "prompt_tokens",
+  "provider_attempt_count",
+  "reasoning_tokens",
+  "schema_version",
+  "total_tokens",
+]);
+
+function validImageStyleAnalysisUsage(
+  candidate: unknown,
+): candidate is PresetContracts.ImageStyleAnalysisUsageSummary {
+  if (typeof candidate !== "object" || candidate === null || Array.isArray(candidate)) return false;
+  const usage = candidate as Record<string, unknown>;
+  if (
+    !exactObjectKeys(usage, IMAGE_STYLE_ANALYSIS_USAGE_KEYS) ||
+    usage.schema_version !== "videoforge.image-style-analysis-usage/v1" ||
+    (usage.provider_attempt_count !== 1 && usage.provider_attempt_count !== 2)
+  ) {
+    return false;
+  }
+  const prompt = usage.prompt_tokens;
+  const completion = usage.completion_tokens;
+  const total = usage.total_tokens;
+  const reasoning = usage.reasoning_tokens;
+  return (
+    Number.isSafeInteger(prompt) &&
+    Number.isSafeInteger(completion) &&
+    Number.isSafeInteger(total) &&
+    Number.isSafeInteger(reasoning) &&
+    (prompt as number) >= 0 &&
+    (completion as number) >= 0 &&
+    (total as number) === (prompt as number) + (completion as number) &&
+    (reasoning as number) >= 0 &&
+    (reasoning as number) <= (completion as number)
+  );
+}
+
+function imageStyleAnalysisArtifactMetadata(
+  command: PresetContracts.AcceptImageStyleAnalysisResultCommand,
+): JsonObject {
+  return {
+    source: "image-style-analysis",
+    analysis_attempt_id: command.analysisAttemptId,
+    task_id: command.taskId,
+    execution_attempt_id: command.executionAttemptId,
+    analyzer_request_hash: command.analyzerRequestHash,
+    reference_set_hash: command.referenceSetHash,
+    analyzer_output_hash: command.analyzerOutputHash,
+    analyzer_model_snapshot: command.analyzerModelSnapshot,
+    usage_schema_version: command.usagePayload.schema_version,
+    provider_attempt_count: command.usagePayload.provider_attempt_count,
+    prompt_tokens: command.usagePayload.prompt_tokens,
+    completion_tokens: command.usagePayload.completion_tokens,
+    total_tokens: command.usagePayload.total_tokens,
+    reasoning_tokens: command.usagePayload.reasoning_tokens,
+    reported_cost_micro_usd: command.reportedCostMicroUsd.toString(),
+  };
+}
+
+function imageStyleAnalysisProviderDetails(
+  command: PresetContracts.AcceptImageStyleAnalysisResultCommand,
+): JsonObject {
+  return {
+    source: "image-style-analysis",
+    analysis_attempt_id: command.analysisAttemptId,
+    analyzer_request_hash: command.analyzerRequestHash,
+    reference_set_hash: command.referenceSetHash,
+    analyzer_output_hash: command.analyzerOutputHash,
+    analyzer_model_snapshot: command.analyzerModelSnapshot,
+    usage: command.usagePayload,
+    reported_cost_micro_usd: command.reportedCostMicroUsd.toString(),
+  };
+}
+
+function imageStyleAnalysisKind(value: unknown): unknown {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>).analysis_kind
+    : undefined;
 }
 
 function imageStyleAnalyzerModelSnapshot(
@@ -4730,6 +4816,260 @@ function createImageStyleRepository(
         });
       });
     },
+    async acceptAnalysisResult(scope, command) {
+      if (
+        !validImageStyleProfileDocument(command.profileDocument) ||
+        imageStyleAnalysisKind(command.profileDocument.payload.analysis) !== "VISION_ANALYSIS" ||
+        !validImageStyleAnalysisUsage(command.usagePayload) ||
+        typeof command.reportedCostMicroUsd !== "bigint" ||
+        command.reportedCostMicroUsd < 0n ||
+        !UTC_TIMESTAMP.test(command.completedAt) ||
+        command.objectKey.length < 1 ||
+        command.objectKey.length > 600
+      ) {
+        return invariant(
+          "IMAGE_STYLE_PROFILE_INVALID",
+          "accepted analysis profile, usage, cost, object, or completion facts are invalid",
+        );
+      }
+      return context.atomic.run(async (executor) => {
+        const version = await findImageStyleVersion(
+          executor,
+          scope.workspaceId,
+          command.styleId,
+          command.versionId,
+        );
+        if (version === null) return missing("IMAGE_STYLE_VERSION", command.versionId);
+        if (version.state === "PUBLISHED" || version.state === "ABANDONED") {
+          return invariant("IMMUTABLE_RECORD", "immutable image style versions reject analysis");
+        }
+
+        const specializedRow = await one(
+          executor,
+          `SELECT analysis.*
+             FROM image_style_analysis_attempts analysis
+             JOIN image_style_versions version
+               ON version.workspace_id = analysis.workspace_id
+              AND version.id = analysis.style_version_id
+            WHERE analysis.workspace_id = $1
+              AND version.style_id = $2
+              AND analysis.style_version_id = $3
+              AND analysis.id = $4`,
+          [scope.workspaceId, command.styleId, command.versionId, command.analysisAttemptId],
+        );
+        if (specializedRow === null) {
+          return missing("IMAGE_STYLE_ANALYSIS_ATTEMPT", command.analysisAttemptId);
+        }
+        const specialized = mapImageStyleAnalysisAttempt(specializedRow);
+        if (
+          specialized.styleVersionId !== command.versionId ||
+          specialized.taskId !== command.taskId ||
+          specialized.executionAttemptId !== command.executionAttemptId ||
+          specialized.provider !== DURABLE_STYLE_ANALYZER_PROVIDER ||
+          specialized.model !== DURABLE_STYLE_ANALYZER_MODEL
+        ) {
+          return invariant(
+            "SNAPSHOT_MISMATCH",
+            "specialized Image Style analysis lineage or pinned model does not match",
+          );
+        }
+
+        const references = await resolveImageStyleAnalysisReferenceSetIn(
+          executor,
+          scope.workspaceId,
+          { styleId: command.styleId, versionId: command.versionId },
+        );
+        if (!references.ok) return references;
+        const prepared = await composeDurableImageStyleAnalysisInput(
+          scope.workspaceId,
+          {
+            styleId: command.styleId,
+            versionId: command.versionId,
+            analysisAttemptId: command.analysisAttemptId,
+            taskId: command.taskId,
+            executionAttemptId: command.executionAttemptId,
+            provider: DURABLE_STYLE_ANALYZER_PROVIDER,
+            model: DURABLE_STYLE_ANALYZER_MODEL,
+            modelRevision: specialized.modelRevision,
+          },
+          references.value,
+        );
+        if (
+          specialized.requestHash !== command.analyzerRequestHash ||
+          command.analyzerRequestHash !== prepared.inputFingerprintHash ||
+          command.referenceSetHash !== prepared.referenceSetHash ||
+          command.analyzerModelSnapshot !== prepared.analyzerModelSnapshot ||
+          version.analyzerRequestHash !== command.analyzerRequestHash ||
+          version.analyzerModelSnapshot !== command.analyzerModelSnapshot ||
+          version.disclosureAttestedByUserId !== command.disclosureAttestedByUserId
+        ) {
+          return invariant(
+            "SNAPSHOT_MISMATCH",
+            "analysis request, references, model, or disclosure provenance drifted",
+          );
+        }
+
+        const firstAcceptance =
+          version.state === "ANALYZING" &&
+          version.profileDocument === null &&
+          specialized.state === "CREATED" &&
+          specialized.responseHash === null &&
+          specialized.usagePayload === null &&
+          specialized.reportedCostMicroUsd === null &&
+          specializedRow.started_at === null &&
+          specializedRow.finished_at === null &&
+          specializedRow.problem_code === null;
+        const exactReplay =
+          version.state === "NEEDS_REVIEW" &&
+          version.updatedAt === command.completedAt &&
+          sameValue(version.profileDocument, command.profileDocument) &&
+          specialized.state === "SUCCEEDED" &&
+          specialized.responseHash === command.analyzerOutputHash &&
+          sameValue(specialized.usagePayload, command.usagePayload) &&
+          specialized.reportedCostMicroUsd === command.reportedCostMicroUsd &&
+          nullableTimestamp(
+            specializedRow.started_at,
+            "image_style_analysis_attempts.started_at",
+          ) === command.completedAt &&
+          nullableTimestamp(
+            specializedRow.finished_at,
+            "image_style_analysis_attempts.finished_at",
+          ) === command.completedAt &&
+          specializedRow.problem_code === null;
+        if (!firstAcceptance && !exactReplay) {
+          return invariant(
+            "INVALID_STATE_TRANSITION",
+            "analysis acceptance requires the exact unfinished state or an exact replay",
+          );
+        }
+
+        const task = await loadTask(executor, scope.workspaceId, command.taskId);
+        if (task === null) return missing("TASK", command.taskId);
+        const general = await loadAttempt(executor, scope.workspaceId, command.executionAttemptId);
+        if (general === null) return missing("ATTEMPT", command.executionAttemptId);
+        const artifact = await findArtifact(executor, scope.workspaceId, command.outputAssetId);
+        if (artifact === null) return missing("ASSET", command.outputAssetId);
+        const canonicalBytes = new TextEncoder().encode(
+          canonicalizeJson(command.profileDocument.payload),
+        );
+        if (
+          task.owner.ownerType !== "IMAGE_STYLE_VERSION" ||
+          task.owner.ownerId !== command.versionId ||
+          task.owner.imageStyleVersionId !== command.versionId ||
+          task.state !== "COMPLETE" ||
+          task.acceptedAttemptId !== command.executionAttemptId ||
+          task.finishedAt !== command.completedAt ||
+          general.taskId !== command.taskId ||
+          general.ordinal !== specialized.ordinal ||
+          general.idempotencyKey !== specialized.idempotencyKey ||
+          general.inputHash !== command.analyzerRequestHash ||
+          general.state !== "SUCCEEDED" ||
+          general.claimState !== "CLAIMED" ||
+          general.resultDisposition !== "ACCEPTED" ||
+          general.outputAssetId !== command.outputAssetId ||
+          general.finishedAt !== command.completedAt ||
+          !sameValue(general.providerDetails, imageStyleAnalysisProviderDetails(command)) ||
+          artifact.projectId !== null ||
+          artifact.projectRevisionId !== null ||
+          artifact.sourceAttemptId !== command.executionAttemptId ||
+          artifact.kind !== "CANONICAL_DOCUMENT" ||
+          (artifact.state !== "VERIFIED" && artifact.state !== "ACCEPTED") ||
+          artifact.objectKey !== command.objectKey ||
+          artifact.contentType !== "application/json" ||
+          artifact.binarySha256 !== command.profileDocument.canonicalDocumentSha256 ||
+          artifact.canonicalContractName !== command.profileDocument.contractName ||
+          artifact.canonicalContractVersion !== command.profileDocument.contractVersion ||
+          artifact.canonicalDocumentSha256 !== command.profileDocument.canonicalDocumentSha256 ||
+          artifact.byteSize !== BigInt(canonicalBytes.byteLength) ||
+          artifact.widthPx !== null ||
+          artifact.heightPx !== null ||
+          artifact.durationMs !== null ||
+          artifact.verifiedAt !== command.completedAt ||
+          !sameValue(artifact.metadata, imageStyleAnalysisArtifactMetadata(command))
+        ) {
+          return invariant(
+            "SNAPSHOT_MISMATCH",
+            "accepted general attempt, canonical artifact, or analysis facts do not match",
+          );
+        }
+
+        if (!exactReplay) {
+          await executor.query(
+            `UPDATE image_style_analysis_attempts
+                SET state = 'SUCCEEDED', response_hash = $3, usage_payload = $4::jsonb,
+                    reported_cost_micro_usd = $5, problem_code = NULL,
+                    started_at = COALESCE(started_at, $6), finished_at = $6
+              WHERE workspace_id = $1 AND id = $2 AND state = 'CREATED'`,
+            [
+              scope.workspaceId,
+              command.analysisAttemptId,
+              command.analyzerOutputHash,
+              jsonParameter(command.usagePayload),
+              command.reportedCostMicroUsd,
+              command.completedAt,
+            ],
+          );
+          await executor.query(
+            `UPDATE image_style_versions
+                SET state = 'NEEDS_REVIEW', profile_contract_name = $4,
+                    profile_contract_version = $5, profile_payload = $6::jsonb,
+                    style_profile_hash = $7, updated_at = $8
+              WHERE workspace_id = $1 AND style_id = $2 AND id = $3 AND state = 'ANALYZING'`,
+            [
+              scope.workspaceId,
+              command.styleId,
+              command.versionId,
+              command.profileDocument.contractName,
+              command.profileDocument.contractVersion,
+              jsonParameter(command.profileDocument.payload),
+              command.profileDocument.canonicalDocumentSha256,
+              command.completedAt,
+            ],
+          );
+        }
+
+        const acceptedVersion = await findImageStyleVersion(
+          executor,
+          scope.workspaceId,
+          command.styleId,
+          command.versionId,
+        );
+        const acceptedAttemptRow = await one(
+          executor,
+          "SELECT * FROM image_style_analysis_attempts WHERE workspace_id = $1 AND id = $2",
+          [scope.workspaceId, command.analysisAttemptId],
+        );
+        if (
+          acceptedVersion === null ||
+          acceptedVersion.state !== "NEEDS_REVIEW" ||
+          acceptedAttemptRow === null
+        ) {
+          throw new Error("accepted Image Style analysis result disappeared");
+        }
+        const acceptedAttempt = mapImageStyleAnalysisAttempt(acceptedAttemptRow);
+        if (
+          acceptedAttempt.state !== "SUCCEEDED" ||
+          acceptedAttempt.responseHash === null ||
+          acceptedAttempt.usagePayload === null ||
+          acceptedAttempt.reportedCostMicroUsd === null
+        ) {
+          throw new Error("accepted Image Style specialized attempt disappeared");
+        }
+        return write(
+          {
+            kind: "IMAGE_STYLE_ANALYSIS_RESULT_ACCEPTED" as const,
+            version: acceptedVersion as PresetContracts.ImageStyleDraftVersion & {
+              readonly state: "NEEDS_REVIEW";
+            },
+            analysisAttempt:
+              acceptedAttempt as PresetContracts.AcceptedImageStyleAnalysisResult["analysisAttempt"],
+            outputAssetId: command.outputAssetId,
+            referenceSetHash: command.referenceSetHash,
+          },
+          exactReplay,
+        );
+      });
+    },
     async abandonVersion(scope, command) {
       return context.atomic.run(async (executor) => {
         const existing = await findImageStyleVersion(
@@ -6747,6 +7087,7 @@ const receiptOperations = Object.freeze({
     reserveTaskAttempt: "execution_reserve_task_attempt",
   }),
   imageStyles: Object.freeze({
+    acceptAnalysisResult: "image_style_accept_analysis_result",
     abandonVersion: "image_style_abandon_version",
     archiveStyle: "image_style_archive",
     attachReference: "image_style_attach_reference",

@@ -550,6 +550,48 @@ export interface StartedImageStyleAnalysis {
   readonly reservation: ImageStyleVersionTaskAttemptReservation;
 }
 
+export type ImageStyleAnalysisUsageSummary = Readonly<{
+  readonly schema_version: "videoforge.image-style-analysis-usage/v1";
+  readonly provider_attempt_count: 1 | 2;
+  readonly prompt_tokens: number;
+  readonly completion_tokens: number;
+  readonly total_tokens: number;
+  readonly reasoning_tokens: number;
+}> &
+  JsonObject;
+
+export interface AcceptImageStyleAnalysisResultCommand extends IdempotentMutation {
+  readonly styleId: EntityId;
+  readonly versionId: EntityId;
+  readonly analysisAttemptId: EntityId;
+  readonly taskId: EntityId;
+  readonly executionAttemptId: EntityId;
+  readonly outputAssetId: EntityId;
+  readonly objectKey: string;
+  readonly analyzerRequestHash: Sha256;
+  readonly referenceSetHash: Sha256;
+  readonly analyzerOutputHash: Sha256;
+  readonly analyzerModelSnapshot: string;
+  readonly disclosureAttestedByUserId: EntityId;
+  readonly profileDocument: CanonicalDocument;
+  readonly usagePayload: ImageStyleAnalysisUsageSummary;
+  readonly reportedCostMicroUsd: bigint;
+  readonly completedAt: UtcTimestamp;
+}
+
+export interface AcceptedImageStyleAnalysisResult {
+  readonly kind: "IMAGE_STYLE_ANALYSIS_RESULT_ACCEPTED";
+  readonly version: ImageStyleDraftVersion & { readonly state: "NEEDS_REVIEW" };
+  readonly analysisAttempt: NonUnknownImageStyleAnalysisAttempt & {
+    readonly state: "SUCCEEDED";
+    readonly responseHash: Sha256;
+    readonly usagePayload: ImageStyleAnalysisUsageSummary;
+    readonly reportedCostMicroUsd: bigint;
+  };
+  readonly outputAssetId: EntityId;
+  readonly referenceSetHash: Sha256;
+}
+
 export interface ImageStyleVersionLookup {
   readonly styleId: EntityId;
   readonly versionId: EntityId;
@@ -590,11 +632,13 @@ export type ImageStyleConflict =
   | "PUBLISHED_STYLE_HASH_EXISTS";
 export type ImageStyleMissing =
   | "ASSET"
+  | "ATTEMPT"
   | "EXECUTION_PROFILE"
   | "IMAGE_STYLE"
   | "IMAGE_STYLE_ANALYSIS_ATTEMPT"
   | "IMAGE_STYLE_REFERENCE"
-  | "IMAGE_STYLE_VERSION";
+  | "IMAGE_STYLE_VERSION"
+  | "TASK";
 export type ImageStyleInvariant =
   | CommonInvariantCode
   | "IMAGE_STYLE_ANALYSIS_BILLING_BOUNDARY_MISMATCH"
@@ -773,6 +817,18 @@ export interface ImageStyleRepository {
   ): Promise<
     IdempotentRepositoryResult<
       StartedImageStyleAnalysis,
+      ImageStyleConflict,
+      ImageStyleMissing,
+      ImageStyleInvariant
+    >
+  >;
+
+  acceptAnalysisResult(
+    scope: WorkspaceActorScope,
+    command: AcceptImageStyleAnalysisResultCommand,
+  ): Promise<
+    IdempotentRepositoryResult<
+      AcceptedImageStyleAnalysisResult,
       ImageStyleConflict,
       ImageStyleMissing,
       ImageStyleInvariant

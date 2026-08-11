@@ -205,7 +205,7 @@ function analyzerModelSnapshot(command: PrepareImageStyleAnalysisCommand): strin
   });
 }
 
-async function composePrepared(
+export async function composeDurableImageStyleAnalysisInput(
   workspaceId: string,
   command: PrepareImageStyleAnalysisCommand,
   references: readonly ImageStyleAnalysisReferenceBinding[],
@@ -323,7 +323,7 @@ export class DurableImageStyleAnalysisComposition {
       command,
     );
     if (!references.ok) return repositoryFailure("Image Style reference preparation failed.");
-    return composePrepared(scope.workspaceId, command, references.value);
+    return composeDurableImageStyleAnalysisInput(scope.workspaceId, command, references.value);
   }
 
   public async execute(
@@ -365,7 +365,7 @@ export class DurableImageStyleAnalysisComposition {
       command,
     );
     if (!references.ok) return repositoryFailure("Image Style analysis references cannot resolve.");
-    const prepared = await composePrepared(
+    const prepared = await composeDurableImageStyleAnalysisInput(
       scope.workspaceId,
       {
         styleId: command.styleId,
