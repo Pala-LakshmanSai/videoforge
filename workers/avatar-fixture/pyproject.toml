@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "videoforge-avatar-fixture-worker"
+version = "0.0.0"
+description = "Deterministic provider-free Avatar fixture job boundary"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/videoforge_avatar_fixture"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

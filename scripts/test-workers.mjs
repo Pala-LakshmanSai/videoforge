@@ -5,15 +5,47 @@ import { resolveUv } from "./uv-tool.mjs";
 const suites = [
   ...["image-media", "avatar-primary", "avatar-repair", "avatar-quality"].map((worker) => ({
     label: worker,
-    start: `workers/${worker}/tests`,
+    args: [
+      "python",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      `workers/${worker}/tests`,
+      "-p",
+      "test_*.py",
+    ],
   })),
   {
+    label: "avatar-fixture",
+    args: ["pytest", "-q", "workers/avatar-fixture/tests"],
+    env: { PYTHONPATH: "workers/avatar-fixture/src" },
+  },
+  {
     label: "image-media/transcribe",
-    start: "workers/image-media/tests/jobs/transcribe",
+    args: [
+      "python",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "workers/image-media/tests/jobs/transcribe",
+      "-p",
+      "test_*.py",
+    ],
   },
   {
     label: "image-media/span-audio",
-    start: "workers/image-media/tests/jobs/span_audio",
+    args: [
+      "python",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "workers/image-media/tests/jobs/span_audio",
+      "-p",
+      "test_*.py",
+    ],
   },
 ];
 let uv;
@@ -25,23 +57,10 @@ try {
 }
 
 for (const suite of suites) {
-  const result = spawnSync(
-    uv,
-    [
-      "run",
-      "--locked",
-      "--no-sync",
-      "python",
-      "-m",
-      "unittest",
-      "discover",
-      "-s",
-      suite.start,
-      "-p",
-      "test_*.py",
-    ],
-    { stdio: "inherit" },
-  );
+  const result = spawnSync(uv, ["run", "--locked", "--no-sync", ...suite.args], {
+    env: { ...process.env, ...suite.env },
+    stdio: "inherit",
+  });
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 

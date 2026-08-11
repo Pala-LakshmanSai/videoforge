@@ -16,6 +16,7 @@ package = false
 
 [tool.uv.workspace]
 members = [
+  "workers/avatar-fixture",
   "packages/contracts",
   "workers/avatar-primary",
   "workers/avatar-quality",
