@@ -39,16 +39,16 @@ const AVATAR_GEOMETRY = {
       avatar_fps: "30:round=near",
     },
   },
-  "skyreels-centered-1280x720p25-v2": {
+  "skyreels-centered-960x960p25-v2": {
     AVATAR_FULL: {
-      avatar_source_profile: "skyreels-centered-1280x720p25-v2",
-      avatar_crop: "1280:720:0:0",
+      avatar_source_profile: "skyreels-centered-960x960p25-v2",
+      avatar_crop: "960:540:0:210",
       avatar_scale: "1920:1080",
       avatar_fps: "30:round=near",
     },
     AVATAR_SPLIT_IMAGE: {
-      avatar_source_profile: "skyreels-centered-1280x720p25-v2",
-      avatar_crop: "640:720:320:0",
+      avatar_source_profile: "skyreels-centered-960x960p25-v2",
+      avatar_crop: "480:540:240:210",
       avatar_scale: "960:1080",
       avatar_fps: "30:round=near",
     },

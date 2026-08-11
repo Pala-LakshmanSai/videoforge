@@ -2574,13 +2574,13 @@ export const canonicalSchemaDocuments = {
               "avatar_source_profile": {
                 "enum": [
                   "avatarforcing-centered-832x480p25-v1",
-                  "skyreels-centered-1280x720p25-v2"
+                  "skyreels-centered-960x960p25-v2"
                 ]
               },
               "avatar_crop": {
                 "enum": [
                   "832:468:0:6",
-                  "1280:720:0:0"
+                  "960:540:0:210"
                 ]
               },
               "avatar_scale": {
@@ -2611,14 +2611,14 @@ export const canonicalSchemaDocuments = {
                 "if": {
                   "properties": {
                     "avatar_source_profile": {
-                      "const": "skyreels-centered-1280x720p25-v2"
+                      "const": "skyreels-centered-960x960p25-v2"
                     }
                   }
                 },
                 "then": {
                   "properties": {
                     "avatar_crop": {
-                      "const": "1280:720:0:0"
+                      "const": "960:540:0:210"
                     }
                   }
                 }
@@ -2748,13 +2748,13 @@ export const canonicalSchemaDocuments = {
               "avatar_source_profile": {
                 "enum": [
                   "avatarforcing-centered-832x480p25-v1",
-                  "skyreels-centered-1280x720p25-v2"
+                  "skyreels-centered-960x960p25-v2"
                 ]
               },
               "avatar_crop": {
                 "enum": [
                   "416:468:208:6",
-                  "640:720:320:0"
+                  "480:540:240:210"
                 ]
               },
               "avatar_scale": {
@@ -2795,14 +2795,14 @@ export const canonicalSchemaDocuments = {
                 "if": {
                   "properties": {
                     "avatar_source_profile": {
-                      "const": "skyreels-centered-1280x720p25-v2"
+                      "const": "skyreels-centered-960x960p25-v2"
                     }
                   }
                 },
                 "then": {
                   "properties": {
                     "avatar_crop": {
-                      "const": "640:720:320:0"
+                      "const": "480:540:240:210"
                     }
                   }
                 }

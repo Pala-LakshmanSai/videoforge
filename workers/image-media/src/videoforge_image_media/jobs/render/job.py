@@ -38,7 +38,7 @@ SHA256_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 IMAGE_CODECS = frozenset({"bmp", "gif", "mjpeg", "png", "tiff", "webp"})
 AVATAR_SOURCE_PROFILES = {
     "avatarforcing-centered-832x480p25-v1": (832, 480, 25, 1),
-    "skyreels-centered-1280x720p25-v2": (1280, 720, 25, 1),
+    "skyreels-centered-960x960p25-v2": (960, 960, 25, 1),
 }
 
 

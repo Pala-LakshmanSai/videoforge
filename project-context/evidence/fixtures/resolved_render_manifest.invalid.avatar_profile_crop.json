@@ -33,7 +33,7 @@
         }
       },
       "render": {
-        "avatar_source_profile": "skyreels-centered-1280x720p25-v2",
+        "avatar_source_profile": "skyreels-centered-960x960p25-v2",
         "avatar_crop": "832:468:0:6",
         "avatar_scale": "1920:1080",
         "avatar_fps": "30:round=near"

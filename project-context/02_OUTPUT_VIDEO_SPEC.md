@@ -33,10 +33,10 @@ AvatarForcing's typical 832×480/25 fps output uses `avatarforcing-centered-832x
 crop=832:468:0:6,scale=1920:1080
 ```
 
-An accepted SkyReels fallback keeps its 1280×720/25 fps detail and uses `skyreels-centered-1280x720p25-v2`:
+The square canonical Avatar runtime source selects SkyReels' 960×960/25 fps 720P bucket and uses `skyreels-centered-960x960p25-v2`:
 
 ```text
-crop=1280:720:0:0,scale=1920:1080
+crop=960:540:0:210,scale=1920:1080
 ```
 
 Do not route a SkyReels asset through AvatarForcing crop coordinates or downscale it to 832×480 before layout. The accepted asset records its exact source profile; renderer schema validation rejects a mismatched profile/crop pair.
@@ -74,7 +74,7 @@ crop=416:468:208:6,scale=960:1080
 SkyReels fallback profile:
 
 ```text
-crop=640:720:320:0,scale=960:1080
+crop=480:540:240:210,scale=960:1080
 ```
 
 - Avatar: x=0 through 959.

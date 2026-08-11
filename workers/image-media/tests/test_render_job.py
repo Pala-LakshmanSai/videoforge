@@ -213,7 +213,7 @@ class RenderFixture:
             self.process.visual_probes[path] = ("png", 1280, 720, "25/1")
         elif kind == "AVATAR_CLIP":
             self.process.visual_probes[path] = (
-                ("h264", 832, 480, "25/1") if "full" in asset_id else ("h264", 1280, 720, "25/1")
+                ("h264", 832, 480, "25/1") if "full" in asset_id else ("h264", 960, 960, "25/1")
             )
         return {
             "asset_id": asset_id,
@@ -309,8 +309,8 @@ class RenderFixture:
                         },
                     },
                     "render": {
-                        "avatar_source_profile": "skyreels-centered-1280x720p25-v2",
-                        "avatar_crop": "640:720:320:0",
+                        "avatar_source_profile": "skyreels-centered-960x960p25-v2",
+                        "avatar_crop": "480:540:240:210",
                         "avatar_scale": "960:1080",
                         "avatar_fps": "30:round=near",
                         "right_image_scale": "960:1080",
@@ -401,7 +401,7 @@ class RenderJobTests(unittest.TestCase):
         render_call = next(call for call in fixture.process.calls if "-filter_complex" in call)
         graph = render_call[render_call.index("-filter_complex") + 1]
         self.assertIn("crop=832:468:0:6", graph)
-        self.assertIn("crop=640:720:320:0", graph)
+        self.assertIn("crop=480:540:240:210", graph)
         self.assertEqual(graph.count("perspective="), 2)
         self.assertNotIn("zoompan=", graph)
         self.assertIn(

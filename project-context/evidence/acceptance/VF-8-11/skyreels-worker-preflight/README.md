@@ -17,12 +17,16 @@ Status: complete; exact provider-free worker-build successor selected
   low-memory lane and cannot combine with USP.
 - Authoritative pinned code writes talking-avatar output at 25 fps. README prose also mentions
   24 fps, so VideoForge corrected the SkyReels source profile to
-  `skyreels-centered-1280x720p25-v2`; FFmpeg v3 deterministically converts 25 to 30 fps.
+  `skyreels-centered-960x960p25-v2`; the square canonical runtime source selects the official
+  960x960 bucket and FFmpeg v3 deterministically center-crops then converts 25 to 30 fps.
 - First qualification envelope: one A100 80GB worker, `workersMin=0`, `workersMax=1`, no volume,
   at least 160 GB ephemeral disk, one five-second owned/synthetic clip, 30-minute job timeout,
   one dispatch, `$2.00` maximum new spend, mandatory cancel/drain/delete and independent zero audit.
 - Worker must pin source/model revisions, verify input hashes, download only into its ephemeral
   cache, return checksum/probe/lineage/cost-safe metadata, never return raw logs, and fail closed.
+- Container uses the official FlashAttention 2.8.3 Torch 2.8/CUDA 12 wheel, pinned by release asset
+  SHA-256 `f1a9e6cb4dfbd1647e56235d81fd6b56e6cd01c7ea3249968ca4aa36c389371a`;
+  this compatibility pin replaces the source repo's older 2.7.4.post1 requirement.
 - No credential, provider mutation, model download, GPU, or external spend was used in VF-8-11.
 
 Official source: <https://github.com/SkyworkAI/SkyReels-V3>

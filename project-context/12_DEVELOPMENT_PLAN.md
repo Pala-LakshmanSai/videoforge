@@ -262,7 +262,7 @@ Chrome checkpoint: create/analyze/review/test/publish/select a style and prove o
 
 - User-confirmed defect classification activates the approved router.
 - MuseTalk only for otherwise-good lip failure; SkyReels from the same revision-pinned canonical runtime source for whole-frame failure.
-- Preserve SkyReels' accepted 1280×720/25 source through its own renderer profile and prove both native full/split crops plus direct 25→30 cadence; never force it through AvatarForcing's source profile.
+- Preserve SkyReels' accepted 960×960/25 square-source bucket through its own renderer profile and prove both fixed full/split crops plus direct 25→30 cadence; never force it through AvatarForcing's source profile.
 - Budget reservation/approval before heavy fallback; no redundant call and no global primary swap without user-approved threshold.
 
 Exit: forced fixtures prove source lineage, cost cap, discard behavior, and cold scale-to-zero.

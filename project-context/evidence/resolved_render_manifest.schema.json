@@ -94,10 +94,10 @@
             "avatar_source_profile": {
               "enum": [
                 "avatarforcing-centered-832x480p25-v1",
-                "skyreels-centered-1280x720p25-v2"
+                "skyreels-centered-960x960p25-v2"
               ]
             },
-            "avatar_crop": {"enum": ["832:468:0:6", "1280:720:0:0"]},
+            "avatar_crop": {"enum": ["832:468:0:6", "960:540:0:210"]},
             "avatar_scale": {"const": "1920:1080"},
             "avatar_fps": {"const": "30:round=near"}
           },
@@ -107,8 +107,8 @@
               "then": {"properties": {"avatar_crop": {"const": "832:468:0:6"}}}
             },
             {
-              "if": {"properties": {"avatar_source_profile": {"const": "skyreels-centered-1280x720p25-v2"}}},
-              "then": {"properties": {"avatar_crop": {"const": "1280:720:0:0"}}}
+              "if": {"properties": {"avatar_source_profile": {"const": "skyreels-centered-960x960p25-v2"}}},
+              "then": {"properties": {"avatar_crop": {"const": "960:540:0:210"}}}
             }
           ]
         }
@@ -162,10 +162,10 @@
             "avatar_source_profile": {
               "enum": [
                 "avatarforcing-centered-832x480p25-v1",
-                "skyreels-centered-1280x720p25-v2"
+                "skyreels-centered-960x960p25-v2"
               ]
             },
-            "avatar_crop": {"enum": ["416:468:208:6", "640:720:320:0"]},
+            "avatar_crop": {"enum": ["416:468:208:6", "480:540:240:210"]},
             "avatar_scale": {"const": "960:1080"},
             "avatar_fps": {"const": "30:round=near"},
             "right_image_scale": {"const": "960:1080"},
@@ -179,8 +179,8 @@
               "then": {"properties": {"avatar_crop": {"const": "416:468:208:6"}}}
             },
             {
-              "if": {"properties": {"avatar_source_profile": {"const": "skyreels-centered-1280x720p25-v2"}}},
-              "then": {"properties": {"avatar_crop": {"const": "640:720:320:0"}}}
+              "if": {"properties": {"avatar_source_profile": {"const": "skyreels-centered-960x960p25-v2"}}},
+              "then": {"properties": {"avatar_crop": {"const": "480:540:240:210"}}}
             }
           ]
         }

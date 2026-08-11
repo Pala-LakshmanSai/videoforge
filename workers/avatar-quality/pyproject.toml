@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "videoforge-avatar-quality-worker"
 version = "0.0.0"
-description = "VideoForge fixture skeleton for cold SkyReels whole-frame fallback jobs"
+description = "VideoForge pinned SkyReels whole-frame fallback worker"
 requires-python = ">=3.12,<3.13"
 dependencies = []
 

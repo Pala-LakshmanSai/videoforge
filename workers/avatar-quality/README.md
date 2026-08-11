@@ -1,10 +1,11 @@
-# Avatar quality worker skeleton
+# Avatar quality worker
 
-Python 3.12 fixture-only boundary for the future cold SkyReels whole-frame fallback. A real job must start from the revision-pinned canonical Avatar Profile runtime source and selected span audio, never from a failed AvatarForcing derivative.
+Pinned cold SkyReels V3 whole-frame fallback. It always starts from the immutable original Avatar
+Profile runtime image plus selected span audio; failed AvatarForcing/MuseTalk bytes are forbidden.
 
-```sh
-PYTHONPATH=src python3 -m videoforge_avatar_quality
-python3 -m unittest discover -s tests
-```
+- Source: `SkyworkAI/SkyReels-V3@28c771e8456341be6a213e3d1133ed1fd19bf75d`
+- Model: `Skywork/SkyReels-V3-A2V-19B@fdad4053f492aba389b5a8c3c6982118c6a1ecf3`
+- Output: `skyreels-centered-960x960p25-v2`
+- RunPod: one scale-zero worker only; weights download lazily into ephemeral storage.
 
-There are no models, provider clients, secrets, downloads, or external calls in this skeleton. Process health and model readiness remain separate, and real fallback remains budget-approval gated.
+Process health deliberately reports `model_state=not_loaded`; readiness is proven per job.

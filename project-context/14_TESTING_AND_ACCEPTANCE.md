@@ -221,7 +221,7 @@ The exact global-demotion threshold is an open user gate. Record evidence; do no
 ## FFmpeg golden gate
 
 - AvatarForcing source profile: pixel-exact full crop `832:468:0:6`; split crop `416:468:208:6` and placement x=0; image x=960.
-- SkyReels source profile: pixel-exact full crop `1280:720:0:0`; split crop `640:720:320:0` and placement x=0; image x=960.
+- SkyReels square-source profile: pixel-exact full crop `960:540:0:210`; split crop `480:540:240:210` and placement x=0; image x=960.
 - Each accepted avatar asset declares exactly one source profile; the resolved-render schema rejects a profile/crop pair from the other model.
 - No seam decoration.
 - The current full-image zoom ends at 1.025, 1.03, or 1.035 according to scene length; the current

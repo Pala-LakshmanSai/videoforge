@@ -173,7 +173,7 @@ FFmpeg:
 
 - Apply fixed avatar crops.
 - Apply the accepted asset's renderer source profile: AvatarForcing 832×480/25 fps and SkyReels
-  1280×720/25 fps use separate fixed crops and direct 25→30 conversion. Never force a fallback
+  960×960/25 fps use separate fixed center crops and direct 25→30 conversion. Never force a fallback
   through the primary crop; no optical-flow/interpolation model.
 - Apply eased centered image zoom.
 - Build exact-duration 1080p30 segments.

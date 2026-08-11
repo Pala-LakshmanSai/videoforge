@@ -1,0 +1,41 @@
+name: avatar-quality-image
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: avatar-quality-image
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Authenticate GHCR
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+      - name: Build, smoke, and publish pinned worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          image="ghcr.io/${owner}/videoforge-avatar-quality:${GITHUB_SHA}"
+          docker build --tag "$image" workers/avatar-quality
+          docker run --rm --entrypoint python "$image" -c \
+            'import flash_attn, torch, torchvision, runpod, skyreels_v3; from videoforge_avatar_quality import SkyReelsJob; print("avatar-quality-import-ok")'
+          docker run --rm --entrypoint python "$image" -c \
+            'import sys; sys.path.insert(0, "/opt/videoforge"); import handler; observed = []; handler.runpod.serverless.start = lambda config: observed.append(config); handler.start_worker(); assert len(observed) == 1 and callable(observed[0]["handler"]); print("avatar-quality-handler-registration-ok")'
+          docker run --rm --entrypoint python "$image" -m compileall -q /opt/skyreels-v3
+          docker run --rm --entrypoint python "$image" -c \
+            'from videoforge_avatar_quality import health_payload; assert health_payload()["model_state"] == "not_loaded"; print("avatar-quality-model-not-loaded-ok")'
+          docker push "$image"
+          digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image")"
+          printf 'image=%s\n' "$digest" >> "$GITHUB_STEP_SUMMARY"
