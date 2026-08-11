@@ -5,6 +5,11 @@ Read when: opening a coding chat, sequencing work, assigning ownership, or accep
 
 ## Delivery strategy
 
+Current checkpoint `3168602` is fully provider-free and green. Phase 0A–2, VF-DX-01/02,
+VF-REL-01, and VF-5-01 are complete. VF-4-01 and VF-7-07 are partial. Current serial order is:
+finish VF-4-01, finish VF-7-07, then VF-4-02, VF-5-02, VF-7-08, and VF-7-09. Provider gates,
+staging, hardening, and release follow only from exact successor briefs and recorded authority.
+
 Run coordinated local and viability tracks under the accelerated wave authority in
 `21_IMPLEMENTATION_EXECUTION_PLAN.md`:
 
@@ -185,14 +190,15 @@ Chrome checkpoint: inspect phrases, title context, shot roles, style version, to
 
 ## Cross-cutting DX/reliability foundation
 
-Current (2026-08-11): the user inserted this provider-free wave before further media/style
-implementation. Execute exact serial `VF-DX-01` first: remove duplicate build/test execution, add a
-warm two-minute `verify:fast`, and retain the complete forced canonical gate with an identical suite
-inventory and at least 30% measured local speed improvement. Only after that graph is green may an
-exact CI/onboarding `VF-DX-02` brief and disjoint vendor-neutral telemetry `VF-REL-01` brief proceed.
-This wave changes no product behavior and grants no provider/cloud/spend authority.
+Complete. `VF-DX-01` reduced forced verification by 33.05% with identical coverage; `VF-DX-02`
+added split CI/doctor/owned dev commands; `VF-REL-01` added vendor-neutral telemetry. Hosted split
+CI remains unverified because current work grants no push/dispatch authority.
 
 ## Phase 4: Mage image lane
+
+Current provider-free status: VF-4-01 domain execution exists but durable production-code PGlite
+integration is partial. After VF-7-07 persistence closes, VF-4-02 adds deterministic Mage-shaped
+fixture image result acceptance. Real Mage/RunPod execution remains gate-blocked.
 
 - RunPod endpoint/template/volume and API-only configuration preflight.
 - Async chunks, execution claim, per-item checkpoint/upload/callback, bounded provider queue, fair owner rotation.
@@ -203,6 +209,10 @@ This wave changes no product behavior and grants no provider/cloud/spend authori
 Exit: real batch meets the measured Phase 0 envelope, recovers a failed chunk, and scales to zero.
 
 ## Phase 5: AvatarForcing primary lane
+
+Current provider-free status: VF-5-01 deterministic fixture worker is complete. VF-5-02 must
+compose results into durable control-plane acceptance. Real AvatarForcing remains blocked by
+license, Avatar, GPU, and RunPod gates.
 
 - Resolve only the revision-pinned Avatar Profile binding; workers never read a mutable active/latest profile pointer.
 - Materialized padded per-span audio only; never send full voiceover.
@@ -223,12 +233,12 @@ Exit: output matches the spec and measured fast-path cost/SLO can replace planni
 
 ## Phase 7: full custom Image Styles lifecycle
 
-Current (2026-08-11): `VF-7-01` through `VF-7-05` are committed and green, and `VF-7-06` locks the
-preserve-and-detach manual-edit contract. Durable version
+Current (2026-08-11): `VF-7-01` through `VF-7-05` are committed and green, `VF-7-06` locks the
+preserve-and-detach contract, and `VF-7-07` has a green domain edit service. Durable version
 lifecycle, exact reference metadata, claimed analyzer composition, atomic canonical result
 acceptance, byte-identical authenticated publication, and truthful derived-artifact lineage are
-specified. Manual-edit implementation follows the DX/reliability foundation. Routes, UI,
-upload/normalization, previews, live orchestration,
+specified. Migration/PGlite/publication/restore integration remains before `VF-7-07` can close.
+Routes, UI, upload/normalization, previews, live orchestration,
 and `GATE_STYLE_002` remain incomplete.
 
 - Parent/version/reference/attempt/preview records and version-scoped APIs.

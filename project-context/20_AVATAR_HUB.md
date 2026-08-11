@@ -1,6 +1,6 @@
 # Avatar Hub
 
-Status: approved MVP capability; primary-model compatibility remains benchmark-gated  
+Status: approved MVP capability; deterministic VF-5-01 fixture worker complete; real Avatar acceptance/provider qualification pending
 Read when: implementing reusable avatars, avatar source upload/validation, project avatar selection, or avatar-source provenance.
 
 ## Product contract
@@ -15,6 +15,11 @@ Primary floating navigation uses the explicit labels **Avatar Hub** and **Image 
 They never influence each other. Selecting an avatar does not change image prompts, and selecting an Image Style does not change the avatar.
 
 ## Invariants
+
+Provider-free `VF-5-01` worker boundary exists at `fcb8f31`. It validates exact revision, Avatar,
+selected-span, layout, media, retry/cancel/callback, and workspace lineage using deterministic
+non-production bytes. It closes no Avatar/model/GPU gate; `VF-5-02` must compose its results into
+durable task/attempt/asset/QA/cost acceptance before any real provider lane.
 
 - Create Project requires one exact `READY` Avatar Profile version selected from the workspace-visible hub.
 - There is no ordinary per-project avatar-image upload or unversioned `latest avatar` lookup.

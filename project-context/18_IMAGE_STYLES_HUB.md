@@ -1,6 +1,6 @@
 # Image Styles Hub
 
-Status: approved MVP capability; analyzer remains benchmark-gated  
+Status: lifecycle/publication complete; derived edit service green; VF-7-07 persistence integration partial
 Read when: implementing reusable image styles, reference upload/analysis, project style selection, or prompt compilation.
 
 ## Product contract
@@ -160,6 +160,13 @@ Before a version can reach `NEEDS_REVIEW` or `PUBLISHED`, a deterministic semant
 The stored profile payload contains immutable creative data only. Lifecycle/default flags and runtime provenance live outside it. Compute `style_profile_hash` as `SHA-256(JCS(profile_payload))`, using RFC 8785 canonical JSON. Archiving a style cannot alter the profile hash.
 
 ## Manual-edit provenance contract
+
+Provider-free service foundation `4a4806d` implements full-candidate validation, canonical derived
+bytes, changed-pointer computation, optimistic/idempotent replay semantics, review invalidation,
+and atomic port composition in focused tests. It is real application domain code, not only a
+contract. VF-7-07 remains partial until migration `0010`, production-code PGlite repository/UoW,
+accepted-analysis backfill, current-artifact publication reads, and metadata export/restore are
+integrated and verified.
 
 `DEC_STYLE_007` owns one preserve-and-detach policy for an analyzer-derived version. The accepted
 `VISION_ANALYSIS` canonical artifact from VF-7-04 is immutable historical source truth. An edit never

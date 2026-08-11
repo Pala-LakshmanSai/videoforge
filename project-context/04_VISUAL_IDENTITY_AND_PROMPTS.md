@@ -1,6 +1,6 @@
 # Visual identity and image prompting
 
-Status: approved style-aware prompt architecture  
+Status: approved architecture; prompt compiler/adapter and VF-4-01 domain execution green; durable store integration partial
 Read when: implementing Runware prompt batches, the prompt compiler, Mage settings, image review, or changing a visual style.
 
 ## Universal image-quality definition

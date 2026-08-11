@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: see `CURRENT_STATE.yaml` (Phase 0–2 preserved; VF-7-06 contract green; VF-DX-01 selected)
+Status: clean provider-free checkpoint `3168602`; `VF-4-01` durable-store continuation selected
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -26,25 +26,19 @@ DeepSeek/Gemini adapters are committed, but neither is runtime-composed. Runware
 spent `$0.41003998` total; ordinary application mode remains `fixture` with provider calls disabled.
 RunPod preflight found `$10.00`, zero live resources, and `$0/hour`; no Pod is active.
 
-The provider-free Image Style backend now includes lifecycle (`VF-7-01`), exact durable references
-(`VF-7-02`), claimed analysis composition (`VF-7-03`), atomic durable result acceptance
-(`VF-7-04`), and authenticated byte-identical reviewed publication (`VF-7-05`). VF-7-05
-implementation `f0e3e66` plus evidence `2502b62` proves a safe immutable snapshot, exact accepted
-lineage revalidation, optimistic concurrency, replay after reopen, and atomic publication plus
-same-parent active-pointer movement. The forced full gate passed 164 control-plane, 163 web,
-115 pipeline, 43 provider-sandbox, 1 local-Workerd, and 38 installed-Chrome tests at `$0`.
+Provider-free DX/CI/doctor/dev ownership (`VF-DX-01/02`) and vendor-neutral telemetry
+(`VF-REL-01`) are complete. Deterministic provider-free media foundations also exist: `VF-4-01`
+has a green prompt-execution domain service (`fe07066`), `VF-5-01` has a deterministic Avatar
+fixture worker (`fcb8f31`), and `VF-7-07` has a preserve-and-detach style edit service (`4a4806d`).
+Clean checkpoint/evidence commit `3168602` records forced full provider-free verification: 751
+tests/journeys, control-plane 193/193, Workerd 1/1, installed Chrome 38/38, zero skips, and `$0`.
 
-VF-7-06 decision commit `cd2d74a` locks preserve-and-detach manual-edit provenance: accepted
-analyzer bytes/evidence remain immutable historical source truth; every pre-publication creative
-edit creates a separate immutable derived artifact, current-profile analyzer evidence is explicitly
-inapplicable, stale review is invalidated, and publication pins exact current bytes. This is a
-contract only; no edit migration/service/route/UI is implemented.
-
-`CURRENT_STATE.yaml` now selects exact provider-free implementation brief `VF-DX-01`. It records a
-same-machine forced verification baseline, removes duplicate builds/control-plane test execution,
-adds a warm two-minute `verify:fast`, and must make the forced full gate at least 30% faster with the
-identical suite/pass/intentional-skip inventory. CI splitting, telemetry, product behavior,
-providers, cloud mutation, downloads, and spend remain outside this brief.
+`VF-4-01` and `VF-7-07` are partial, not complete. `VF-4-01` still needs migration `0009` and a
+production-code PGlite `PromptExecutionStore` bound atomically to real revision/timeline/style/task/
+attempt/outbox/cost authority. `VF-7-07` then needs serialized migration `0010`, immutable artifact
+and edit persistence, accepted-analysis backfill, publication/current-pointer integration, and
+metadata export/restore coverage. `CURRENT_STATE.yaml` selects only the exact `VF-4-01`
+continuation; do not begin a later brief first.
 
 Production media remains blocked: Mage checkpoint/license evidence is unresolved; AvatarForcing
 licensing artifacts contradict each other; image/avatar/GPU/RunPod/fallback/cost/style-adherence

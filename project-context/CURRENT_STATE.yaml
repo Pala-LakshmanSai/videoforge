@@ -1,8 +1,8 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T10:26:38Z"
+updated_at: "2026-08-11T11:42:06Z"
 
-phase: cross_cutting_dx_reliability
+phase: provider_free_media_integration
 implementation_authorized_in_current_task: true
 current_milestone: durable_prompt_execution
 current_task: VF-4-01
@@ -17,10 +17,10 @@ repository:
   branch: main
   base_commit: "bea48f7124609be27d1ab57261b2c2f4269625ea"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
-  planning_handoff_commit: "fad28ab63d5d2c5f83526508e28fc76d5a1edcf6"
-  verified_implementation_commit: "f0e3e66a545634b3f145932156e56b7da6efe4da"
-  last_good_commit: "4a4806da72a9d962478586202ee78320b0b3c7d9"
-  working_tree_expected: "clean_at_provider_free_media_foundation_checkpoint"
+  planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
+  verified_implementation_commit: "4a4806da72a9d962478586202ee78320b0b3c7d9"
+  last_good_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
+  working_tree_expected: "clean_after_context_only_provider_free_media_handoff"
   start_rule: "Use the clean current HEAD when it descends from verified_implementation_commit; never reset away newer context-only handoff commits."
   dependency_policy:
     ajv: "8.20.0"
@@ -45,7 +45,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "VF-4-01 durable prompt store integration and VF-7-07 style persistence integration only; application remains fixture"
+  provider_authority_scope: "Provider-free tasks only; current selected authority is VF-4-01 durable prompt store integration. Application remains fixture."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -441,13 +441,13 @@ recommended_next_task:
     - "Add an additive migration and production-code PGlite PromptExecutionStore bound to actual revision/timeline/style/task/attempt/outbox/cost authority"
     - "Prove fresh/upgrade/reopened replay, atomic acceptance, fencing, cancellation, isolation, malformed output, and zero outbound calls"
     - "Preserve fixture default and full-gate coverage with zero new skips"
-    - "Produce exactly one next prompt/image brief after durable prompt execution"
+    - "Produce exactly one successor brief after durable prompt execution: VF-7-07 persistence continuation"
   safe_parallelism:
     maximum_lanes_including_integration: 1
     status: shared_migration_and_repository_integration_serial
     integration_owner: VF-4-01
   prohibited_in_task:
-    - "Avatar lane edits, provider runtime activation, routes/UI, deployment, or unrelated refactors; serialize VF-7-07 migration work after VF-4-01"
+    - "Avatar lane edits, VF-7-07 edits, provider runtime activation, routes/UI, deployment, or unrelated refactors; serialize VF-7-07 migration work after VF-4-01"
     - "Any skipped/weakened/deleted check, push, provider call, credential, model download, cloud/account mutation, GPU/RunPod action, or spend"
 
 latest_closed_handoff:
@@ -629,7 +629,7 @@ known_incomplete_boundaries:
   - "Provider-free Auth plus private-artifact Hono composition is complete at ffceb6319ff85f7207619df7e0ecd41d20b341d0; it remains deliberately unmounted from fixture/local production-like entrypoints, and its application surface cannot access the direct-transfer facet."
   - "Durable mock restart/reconciliation/cancellation convergence is complete at dc86938972e776c8479637f2fb3ca9706999eed4; real Cloudflare Workflow and multi-session Neon behavior remain separately authorized staging work."
   - "The runtime-neutral Hono seam and local Workerd parity are complete, but no Worker is deployed and production-like modes deliberately fail closed until separately authorized staging bindings exist."
-  - "No production GPU/execution profile is selectable. GATE_LLM_001 and GATE_STYLE_001 are closed; the DeepSeek and Gemini adapters are provider-free and not runtime-composed. Durable Image Style lifecycle, reference bindings, claimed analysis, canonical success acceptance, byte-identical reviewed publication, and the preserve-and-detach manual-edit contract are complete; manual-edit code, byte ingestion, API, UI, live orchestration, and previews remain incomplete. Image/avatar/style-adherence/fallback/GPU/RunPod/cost gates remain open. AvatarForcing download, paid qualification, and commercial use are additionally blocked by contradictory official license artifacts in GATE_AVATAR_003."
+  - "No production GPU/execution profile is selectable. GATE_LLM_001 and GATE_STYLE_001 are closed; DeepSeek and Gemini adapters remain provider-free and not runtime-composed. Durable Image Style lifecycle through publication is complete, and a provider-free derived-artifact edit service exists at 4a4806d; migration/PGlite/publication/restore integration, byte ingestion, API, UI, live orchestration, and previews remain incomplete. A deterministic Avatar fixture worker exists at fcb8f31; real Avatar acceptance/provider integration remains incomplete. Image/avatar/style-adherence/fallback/GPU/RunPod/cost gates remain open. AvatarForcing download, paid qualification, and commercial use are blocked by GATE_AVATAR_003."
   - "The repository is publicly backed up at Pala-LakshmanSai/videoforge by explicit user decision. Hosted GitHub Actions run 31472597843 is green on f1eccbe with the full gate, Gitleaks, and dependency audit; this proves CI, not deployment or production readiness."
   - "Live Better Auth/Google installation and atomic invitation-membership materialization remain staging work; the committed descriptor truthfully reports PENDING_STAGING."
   - "VF-1-08 provides a local scheduler-invokable metadata snapshot/restore primitive, not a production schedule, encrypted off-machine backup store, cloud backup integration, or private-media backup."
@@ -673,7 +673,7 @@ next_tasks:
   - "VF-DX-01 complete: one non-duplicating verification graph, feedback-only verify:fast, exact Turbo cache declarations, identical full coverage, and the measured speed target are green at $0"
   - "VF-DX-02 complete locally: five CI lanes plus aggregate, timing/JUnit/failure artifacts, centralized environment metadata, doctor JSON, and fail-closed owned dev stop"
   - "VF-REL-01 complete: injected vendor-neutral correlated telemetry contract, adapters, redaction, failure isolation, and local dispatch instrumentation"
-  - "Current: execute VF-4-01 durable fixture prompt execution; VF-5-01 Avatar fixture jobs and VF-7-07 derived style edit service are exact disjoint provider-free briefs"
+  - "Current: finish VF-4-01 production-code durable prompt persistence. VF-5-01 Avatar fixture worker is complete; VF-7-07 service foundation exists but its shared persistence integration waits serially."
   - "VF-4-01 foundation committed at fe07066; finish actual durable PGlite authority/acceptance integration before marking complete"
   - "VF-5-01 complete at fcb8f31 with 17 focused fixture-worker tests and full-gate proof"
   - "VF-7-07 foundation committed at 4a4806d; serialize migration/PGlite/publication/restore integration after VF-4-01"
@@ -725,7 +725,7 @@ activation_handoff:
   optimized_future_sequence:
     - "A. VF-DX-01 complete: measured and deduplicated verification with complete forced coverage preserved."
     - "B. VF-DX-02 CI/onboarding and VF-REL-01 vendor-neutral telemetry complete locally with shared files serialized."
-    - "C. Execute VF-4-01 durable prompts, VF-5-01 Avatar fixture jobs, and VF-7-07 derived style edit service with shared contracts/migrations/routes/context serialized."
+    - "C. Finish VF-4-01 durable prompt persistence, then VF-7-07 style persistence, VF-4-02 fixture image acceptance, VF-5-02 Avatar acceptance, and VF-7-08/VF-7-09 Style API/Hub; shared migrations/contracts/routes/context stay serial."
     - "D. Independently resolve Mage and AvatarForcing license evidence before bounded model/RunPod qualification or spend."
     - "E. Converge real FFmpeg output from accepted assets, then fallbacks, isolated staging, fault/security/backup/load hardening, measured cost/SLO, and controlled release."
   stop_conditions:
@@ -735,7 +735,7 @@ activation_handoff:
 
 notes:
   - "This is a replace-in-place handoff snapshot, not a progress diary."
-  - "A new chat starts with recommended_next_task VF-4-01 and its one profile/brief. VF-5-01 and VF-7-07 may run only within their recorded disjoint ownership boundaries."
+  - "A new chat starts with recommended_next_task VF-4-01 and only its selected profile/brief. Do not run a new research pass or preload later task profiles."
   - "RunPod account preflight is green: Keychain credential exists, balance is $10.00, hourly spend is $0, and Pods/endpoints/volumes/workers are all zero."
   - "Public GitHub remote is green and exact by explicit user decision. Hosted run 31472597843 passed the full gate on f1eccbe."
   - "The accelerated approval through VF-2-05 is complete and exhausted. On 2026-08-10 the user separately activated the planned non-transferable $1/$3/$8/$8/$5 provider caps, Git/CI, and isolated staging authority; production remains deferred."
@@ -746,6 +746,6 @@ notes:
   - "TypeScript is the sole RFC 8785/JCS authority; Python validates canonical schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output grammar remains three compositions, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
   - "No public tunnel or LAN listener is active. VF-4-01, VF-5-01, and VF-7-07 may use only verification-owned loopback test servers and must not disturb any user-owned server."
-  - "VF-7-05 is green at f0e3e66 with evidence 2502b62: authenticated byte-identical Image Style review/publication is complete; manual edits, upload/normalization, routes, UI, previews, and live orchestration remain outside that proof."
-  - "VF-7-06 resolved manual-edit ambiguity: preserve accepted analyzer evidence as immutable source truth, detach it from edited current bytes, and publish only the exact current derived artifact. This is a contract, not implemented code."
+  - "VF-7-05 is green at f0e3e66 with evidence 2502b62. VF-7-07 adds a green provider-free manual-edit domain service at 4a4806d, but its migration/PGlite/publication/restore integration, upload/normalization, routes, UI, previews, and live orchestration remain open."
+  - "VF-7-06 resolved manual-edit ambiguity; VF-7-07 implements the provider-free domain edit service at 4a4806d. Durable migration/PGlite/publication/restore integration remains open."
   - "The completed VF-1-01 baseline is preserved; VF-1-01A supersedes its overstated behavior/concurrency evidence with exact, bounded acceptance claims."
