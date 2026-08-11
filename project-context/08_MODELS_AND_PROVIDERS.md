@@ -97,6 +97,10 @@ The separate `microsoft/Mage-Flow-Edit-Turbo` model is not needed in the normal 
 
 Mage receives a text prompt compiled from the selected style profile; it does not receive the style's reference images in MVP. Prompt-derived styling is intentionally simple/cheap but must pass `GATE_STYLE_002`. Do not silently introduce reference conditioning or LoRA training if a distinctive style fails.
 
+The pinned source injects a mandatory Gaussian-Shading watermark into initial noise and can return a
+text refusal placeholder. Production builds must apply and verify the pinned VideoForge source patch:
+remove watermark injection and fail closed on refusal instead of emitting placeholder image bytes.
+
 Access/terms evidence remains unresolved. On 2026-08-11, anonymous official Hugging Face page/API/raw-`LICENSE` requests returned HTTP 401 and the existing signed-out Chrome session showed 404. Search-indexed official metadata reported MIT and a 17.5 GB repository, but could not establish a live exact revision or governing weight-license artifact. Microsoft's public `microsoft/Mage` source repository at `76bec2bb3818863f470de7e867c2dc7f1d0bfd83` has an MIT `LICENSE` and labels Mage-Flow MIT, while the same README describes the models as research-only/not intended for product or service deployment. The user explicitly accepted this unresolved risk on 2026-08-11 and authorized continuing the locked Mage model. Bounded qualification may proceed, but evidence must retain the ambiguity and cannot claim clear commercial permission.
 
 Official sources: [Mage-Flow-Turbo model card](https://huggingface.co/microsoft/Mage-Flow-Turbo) and [Microsoft Mage source repository](https://github.com/microsoft/Mage).

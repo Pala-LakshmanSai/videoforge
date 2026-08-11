@@ -19,3 +19,9 @@ installed FFmpeg/FFprobe pair and extracts only the persisted padded interval fo
 avatar span. It never sends the full voiceover to an avatar worker.
 
 A future HTTP/RunPod adapter may expose the same `worker-health/v1` payload, but it must not change `model_state` to `ready` until the exact pinned model is actually loaded.
+
+`mage_production.py` defines the locked Mage-Flow-Turbo job/result boundary without loading or
+downloading weights. Exact model revision remains fail-closed as `MAGE_MODEL_REVISION_INACCESSIBLE`.
+The pinned source patch removes its otherwise mandatory Gaussian-Shading watermark to preserve
+VideoForge's no-watermark output rule. Refusal placeholders must never be accepted as generated
+assets.
