@@ -1,6 +1,8 @@
 import base64
 import hashlib
+import importlib
 import sys
+import types
 import unittest
 from pathlib import Path
 
@@ -42,6 +44,39 @@ class ProductionContractTest(unittest.TestCase):
             WAV2VEC_REVISION,
         ]:
             self.assertIn(revision, bootstrap)
+
+    def test_handler_registers_exact_callable_without_bootstrapping_models(self) -> None:
+        worker_root = Path(__file__).resolve().parents[1]
+        sys.path.insert(0, str(worker_root))
+        observed: list[dict[str, object]] = []
+        fake_runpod = types.SimpleNamespace(
+            serverless=types.SimpleNamespace(
+                start=lambda config: observed.append(config),
+                progress_update=lambda _event, _progress: None,
+            )
+        )
+        previous = sys.modules.get("runpod")
+        previous_bootstrap = sys.modules.get("bootstrap_models")
+        sys.modules["runpod"] = fake_runpod  # type: ignore[assignment]
+        sys.modules["bootstrap_models"] = types.SimpleNamespace(
+            bootstrap_models=lambda _progress: None
+        )  # type: ignore[assignment]
+        try:
+            module = importlib.import_module("handler")
+            module.start_worker()
+            self.assertEqual(len(observed), 1)
+            self.assertIs(observed[0]["handler"], module.handler)
+        finally:
+            sys.modules.pop("handler", None)
+            if previous is None:
+                sys.modules.pop("runpod", None)
+            else:
+                sys.modules["runpod"] = previous
+            if previous_bootstrap is None:
+                sys.modules.pop("bootstrap_models", None)
+            else:
+                sys.modules["bootstrap_models"] = previous_bootstrap
+            sys.path.remove(str(worker_root))
 
     def test_accepts_exact_short_span_and_pins_every_upstream_revision(self) -> None:
         job = AvatarPrimaryJob.from_value(valid_job())

@@ -148,6 +148,7 @@ try {
     layout: "AVATAR_FULL",
     num_output_frames: 5,
   });
+  let consecutiveNoRunningPolls = 0;
   for (let attempt = 0; attempt < 140 && !terminalStatuses.has(job.status); attempt += 1) {
     await sleep(15_000);
     if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
@@ -155,6 +156,11 @@ try {
     const liveInventory = await control.inventory();
     if (liveInventory.runningPodCount > 1) {
       throw new Error("RUNPOD_WORKER_RETRY_LIMIT");
+    }
+    consecutiveNoRunningPolls =
+      liveInventory.runningPodCount === 0 ? consecutiveNoRunningPolls + 1 : 0;
+    if (consecutiveNoRunningPolls >= 20) {
+      throw new Error("RUNPOD_STARTUP_TIMEOUT");
     }
     if (attempt % 4 === 3 && startedBalance - (await balance(apiKey)) >= 4.5) {
       throw new Error("RUNPOD_COST_STOP");

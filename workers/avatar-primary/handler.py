@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+import json
 
 import runpod
 
@@ -11,6 +12,7 @@ from videoforge_avatar_primary import (
     run_avatar_primary_inline_job,
     run_avatar_primary_job,
 )
+from videoforge_avatar_primary.production import AVATAR_SOURCE_REVISION
 
 _bootstrap_lock = threading.Lock()
 
@@ -37,4 +39,19 @@ def handler(event: dict[str, object]) -> dict[str, object]:
         return {"ok": False, "error_code": code[:120]}
 
 
-runpod.serverless.start({"handler": handler})
+def start_worker() -> None:
+    print(
+        json.dumps(
+            {
+                "event": "avatar_primary_worker_start",
+                "source_revision": AVATAR_SOURCE_REVISION,
+            },
+            sort_keys=True,
+        ),
+        flush=True,
+    )
+    runpod.serverless.start({"handler": handler})
+
+
+if __name__ == "__main__":
+    start_worker()
