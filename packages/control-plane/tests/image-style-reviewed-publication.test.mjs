@@ -14,9 +14,14 @@ import {
   DURABLE_STYLE_ANALYZER_PROVIDER,
   DurableImageStyleAnalysisComposition,
   DurableImageStyleAnalysisResultAcceptance,
+  ImageStyleDerivedArtifactEditService,
   ImageStyleReviewedPublicationError,
+  PGliteImageStyleDerivedEditPersistence,
   ReviewedImageStylePublicationService,
   deriveImageStylePublicationIdempotencyKey,
+  exportMetadataSnapshot,
+  restoreMetadataSnapshot,
+  serializeMetadataSnapshot,
 } from "../dist/src/index.js";
 import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import {
@@ -495,15 +500,14 @@ test("rejects archived, incomplete-lineage, and hostile stored review state", as
     const hash = `sha256:${createHash("sha256")
       .update(canonicalizeJson(payload), "utf8")
       .digest("hex")}`;
-    await executor.query(
-      `UPDATE image_style_versions
-          SET profile_payload = $2::jsonb, style_profile_hash = $3
-        WHERE id = $1`,
-      [hostile.versionId, JSON.stringify(payload), hash],
-    );
-    await rejectsService(
-      () => service.getReviewSnapshot(SCOPE_A, reviewLookup(hostile)),
-      "PROFILE_INVALID",
+    await assert.rejects(
+      executor.query(
+        `UPDATE image_style_versions
+            SET profile_payload = $2::jsonb, style_profile_hash = $3
+          WHERE id = $1`,
+        [hostile.versionId, JSON.stringify(payload), hash],
+      ),
+      (error) => error instanceof Error && error.code === "23514",
     );
   });
 });
@@ -556,11 +560,203 @@ test("publication rollback keeps prior version immutable and active pointer unch
   });
 });
 
-test("reviewed publication source has no analyzer, credential, environment, network, or byte I/O", async () => {
-  const source = await readFile(
-    new URL("../src/styles/reviewed-publication.ts", import.meta.url),
-    "utf8",
-  );
+test("production PGlite edits survive reopen/restore and publication pins exact derived bytes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "videoforge-style-derived-persistence-"));
+  const dataDir = join(root, "source");
+  let source;
+  let destination;
+  try {
+    source = await createMigratedDatabase(dataDir);
+    await seedLockedProjects(source.executor);
+    let repositories = createPGliteControlPlaneRepositories(source.executor);
+    const fixture = await provision(source.executor, repositories, 69_000);
+    let persistence = new PGliteImageStyleDerivedEditPersistence(source.executor);
+    let editService = new ImageStyleDerivedArtifactEditService(persistence);
+    const candidate = structuredClone(fixture.candidate.profileDocument.payload);
+    candidate.summary = "Derived exact-current documentary profile.";
+    candidate.visual_profile.lighting = "soft directional practical window light";
+    const editCommand = {
+      styleId: fixture.styleId,
+      versionId: fixture.versionId,
+      expectedRevision: 1,
+      expectedCurrentArtifactHash: fixture.candidate.profileDocument.canonicalDocumentSha256,
+      idempotencyKey: "style-derived-pglite-69",
+      candidateProfile: candidate,
+      editedAt: "2026-08-11T06:06:30.000Z",
+    };
+    const edited = await editService.edit(SCOPE_A, editCommand);
+    assert.equal(edited.replayed, false);
+    assert.deepEqual(edited.changedPointers, ["/summary", "/visual_profile/lighting"]);
+    const secondCandidate = structuredClone(candidate);
+    secondCandidate.prompt_profile.positive_suffix =
+      "restrained documentary realism, softer practical light, exact material detail";
+    const secondCommand = {
+      ...editCommand,
+      expectedRevision: 2,
+      expectedCurrentArtifactHash: edited.derivedArtifactHash,
+      idempotencyKey: "style-derived-pglite-69-second",
+      candidateProfile: secondCandidate,
+      editedAt: "2026-08-11T06:06:45.000Z",
+    };
+    const secondEdit = await editService.edit(SCOPE_A, secondCommand);
+    assert.equal(secondEdit.parentArtifactId, edited.derivedArtifactId);
+    assert.equal(secondEdit.resultRevision, 3);
+    await assert.rejects(
+      editService.edit(SCOPE_A, {
+        ...editCommand,
+        idempotencyKey: "style-derived-pglite-69-stale",
+      }),
+      (error) => error instanceof Error && error.code === "STYLE_VERSION_CONFLICT",
+    );
+    const rows = await source.executor.query(
+      `SELECT version.profile_revision, version.root_profile_artifact_id,
+              version.current_profile_artifact_id, version.style_profile_hash,
+              version.review_snapshot_id, version.review_invalidated_at,
+              (SELECT count(*)::int FROM image_style_profile_artifacts
+                WHERE workspace_id = version.workspace_id AND version_id = version.id) AS artifacts,
+              (SELECT count(*)::int FROM image_style_profile_edits
+                WHERE workspace_id = version.workspace_id AND version_id = version.id) AS edits
+         FROM image_style_versions version WHERE version.id = $1`,
+      [fixture.versionId],
+    );
+    assert.deepEqual(rows.rows, [
+      {
+        profile_revision: 3,
+        root_profile_artifact_id: fixture.versionId,
+        current_profile_artifact_id: secondEdit.derivedArtifactId,
+        style_profile_hash: secondEdit.derivedArtifactHash,
+        review_snapshot_id: null,
+        review_invalidated_at: new Date(secondCommand.editedAt),
+        artifacts: 3,
+        edits: 2,
+      },
+    ]);
+    await assert.rejects(
+      source.executor.query(
+        "UPDATE image_style_profile_artifacts SET origin = origin WHERE id = $1",
+        [fixture.versionId],
+      ),
+      (error) => error instanceof Error && error.code === "23514",
+    );
+    await assert.rejects(
+      editService.edit(SCOPE_B, secondCommand),
+      (error) => error instanceof Error && error.code === "STYLE_NOT_FOUND",
+    );
+
+    const serialized = serializeMetadataSnapshot(await exportMetadataSnapshot(source.executor));
+    await source.database.close();
+    source = await createMigratedDatabase(dataDir);
+    repositories = createPGliteControlPlaneRepositories(source.executor);
+    persistence = new PGliteImageStyleDerivedEditPersistence(source.executor);
+    editService = new ImageStyleDerivedArtifactEditService(persistence);
+    assert.equal((await editService.edit(SCOPE_A, secondCommand)).replayed, true);
+
+    const publication = new ReviewedImageStylePublicationService(repositories, persistence);
+    const review = await publication.getReviewSnapshot(SCOPE_A, reviewLookup(fixture));
+    assert.equal(review.styleProfileHash, secondEdit.derivedArtifactHash);
+    assert.equal(review.profileDocument.payload.summary, candidate.summary);
+    assert.deepEqual(review.profileDocument.payload.analysis, {
+      analysis_kind: "MANUAL_EDIT",
+      overall_confidence: null,
+      trait_evidence: [],
+      uncertain_fields: [],
+      outlier_reference_aliases: [],
+      content_leakage_warnings: [],
+    });
+    const publishCommand = await publicationCommand(review);
+    const published = await publication.publish(SCOPE_A, publishCommand);
+    assert.equal(published.ok, true, diagnostic(published));
+    assert.equal(
+      published.value.version.profileDocument.canonicalDocumentSha256,
+      secondEdit.derivedArtifactHash,
+    );
+    const publishReplay = await publication.publish(SCOPE_A, publishCommand);
+    assert.equal(publishReplay.ok, true, diagnostic(publishReplay));
+    assert.equal(publishReplay.value.replayed, true);
+    await assert.rejects(
+      editService.edit(SCOPE_A, {
+        ...editCommand,
+        idempotencyKey: "style-derived-after-publish",
+        expectedRevision: 3,
+        expectedCurrentArtifactHash: secondEdit.derivedArtifactHash,
+      }),
+      (error) => error instanceof Error && error.code === "STYLE_VERSION_IMMUTABLE",
+    );
+
+    destination = await createMigratedDatabase();
+    await restoreMetadataSnapshot(destination.executor, serialized);
+    const restoredRepositories = createPGliteControlPlaneRepositories(destination.executor);
+    const restoredPersistence = new PGliteImageStyleDerivedEditPersistence(destination.executor);
+    const restoredReview = await new ReviewedImageStylePublicationService(
+      restoredRepositories,
+      restoredPersistence,
+    ).getReviewSnapshot(SCOPE_A, reviewLookup(fixture));
+    assert.equal(restoredReview.styleProfileHash, secondEdit.derivedArtifactHash);
+    assert.equal(restoredReview.expectedUpdatedAt, secondCommand.editedAt);
+  } finally {
+    if (source !== undefined) await source.database.close();
+    if (destination !== undefined) await destination.database.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("production PGlite edit transaction rolls back every derived row on injected failure", async () => {
+  await withMigratedDatabase(async ({ executor }) => {
+    await seedLockedProjects(executor);
+    const repositories = createPGliteControlPlaneRepositories(executor);
+    const fixture = await provision(executor, repositories, 70_000);
+    const failing = {
+      execute: (sql) => executor.execute(sql),
+      query: (sql, parameters) => executor.query(sql, parameters),
+      transaction: (work) =>
+        executor.transaction((transaction) =>
+          work({
+            execute: (sql) => transaction.execute(sql),
+            query: async (sql, parameters) => {
+              const result = await transaction.query(sql, parameters);
+              if (sql.includes("UPDATE public.image_style_versions")) {
+                throw new Error("injected pointer failure");
+              }
+              return result;
+            },
+          }),
+        ),
+    };
+    const candidate = structuredClone(fixture.candidate.profileDocument.payload);
+    candidate.summary = "Rollback candidate.";
+    await assert.rejects(
+      new ImageStyleDerivedArtifactEditService(
+        new PGliteImageStyleDerivedEditPersistence(failing),
+      ).edit(SCOPE_A, {
+        styleId: fixture.styleId,
+        versionId: fixture.versionId,
+        expectedRevision: 1,
+        expectedCurrentArtifactHash: fixture.candidate.profileDocument.canonicalDocumentSha256,
+        idempotencyKey: "style-derived-rollback-70",
+        candidateProfile: candidate,
+        editedAt: "2026-08-11T06:06:30.000Z",
+      }),
+      (error) => error instanceof Error && error.code === "REPOSITORY_FAILURE",
+    );
+    const counts = await executor.query(
+      `SELECT
+         (SELECT count(*)::int FROM image_style_profile_artifacts WHERE version_id = $1) AS artifacts,
+         (SELECT count(*)::int FROM image_style_profile_edits WHERE version_id = $1) AS edits,
+         (SELECT profile_revision FROM image_style_versions WHERE id = $1) AS revision`,
+      [fixture.versionId],
+    );
+    assert.deepEqual(counts.rows, [{ artifacts: 1, edits: 0, revision: 1 }]);
+  });
+});
+
+test("style persistence/publication source has no analyzer, credential, environment, network, or byte I/O", async () => {
+  const source = (
+    await Promise.all(
+      ["reviewed-publication.ts", "pglite-derived-artifact-edit.ts"].map((filename) =>
+        readFile(new URL(`../src/styles/${filename}`, import.meta.url), "utf8"),
+      ),
+    )
+  ).join("\n");
   for (const forbidden of [
     "process.env",
     "fetch(",

@@ -5049,10 +5049,44 @@ function createImageStyleRepository(
             ],
           );
           await executor.query(
+            `INSERT INTO image_style_profile_artifacts (
+               id, workspace_id, style_id, version_id, origin,
+               profile_contract_name, profile_contract_version, profile_payload, profile_hash,
+               canonical_profile_json, root_source_artifact_id, root_source_artifact_hash,
+               parent_artifact_id, parent_artifact_hash, source_analysis_evidence,
+               source_analysis_attempt_id, source_analysis_output_asset_id, reference_aliases,
+               created_by_user_id, created_at
+             ) VALUES ($1, $2, $3, $1, 'VISION_ANALYSIS', $4, $5, $6::jsonb, $7, $8,
+                       $1, $7, NULL, NULL, 'HISTORICAL_SOURCE_TRUTH', $9, $10,
+                       (SELECT COALESCE(jsonb_agg(
+                          to_jsonb('ref_' || lpad(reference_order::text, 2, '0'))
+                          ORDER BY reference_order), '[]'::jsonb)
+                          FROM image_style_references
+                         WHERE workspace_id = $2 AND version_id = $1
+                           AND retention_state <> 'DELETED'),
+                       $11, $12)`,
+            [
+              command.versionId,
+              scope.workspaceId,
+              command.styleId,
+              command.profileDocument.contractName,
+              command.profileDocument.contractVersion,
+              jsonParameter(command.profileDocument.payload),
+              command.profileDocument.canonicalDocumentSha256,
+              canonicalizeJson(command.profileDocument.payload),
+              command.analysisAttemptId,
+              command.outputAssetId,
+              scope.actorUserId,
+              command.completedAt,
+            ],
+          );
+          await executor.query(
             `UPDATE image_style_versions
                 SET state = 'NEEDS_REVIEW', profile_contract_name = $4,
                     profile_contract_version = $5, profile_payload = $6::jsonb,
-                    style_profile_hash = $7, updated_at = $8
+                    style_profile_hash = $7, root_profile_artifact_id = $3,
+                    current_profile_artifact_id = $3, review_snapshot_id = $9,
+                    review_invalidated_at = NULL, updated_at = $8
               WHERE workspace_id = $1 AND style_id = $2 AND id = $3 AND state = 'ANALYZING'`,
             [
               scope.workspaceId,
@@ -5063,6 +5097,7 @@ function createImageStyleRepository(
               jsonParameter(command.profileDocument.payload),
               command.profileDocument.canonicalDocumentSha256,
               command.completedAt,
+              command.analysisAttemptId,
             ],
           );
         }

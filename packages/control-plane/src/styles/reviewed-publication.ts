@@ -25,6 +25,7 @@ import {
   DURABLE_STYLE_ANALYZER_PROVIDER,
   composeDurableImageStyleAnalysisInput,
 } from "./durable-analysis.js";
+import type { ImageStyleProfileArtifact } from "./derived-artifact-edit.js";
 
 export type ImageStyleReviewedPublicationErrorCode =
   | "AUTHORIZATION_REQUIRED"
@@ -110,6 +111,21 @@ interface ValidatedLineage {
   readonly references: readonly ImageStyleAnalysisReferenceBinding[];
   readonly referenceSetHash: Sha256;
   readonly analysisCompletedAt: string;
+  readonly rootProfileDocument: CanonicalDocument;
+  readonly currentProfileDocument: CanonicalDocument;
+  readonly derivedCurrentProfile: boolean;
+  readonly reviewedProfileUpdatedAt: string;
+}
+
+export interface ImageStylePublicationProfileResolver {
+  resolvePublicationProfileLineage(
+    scope: WorkspaceActorScope,
+    lookup: ImageStyleReviewLookup,
+  ): Promise<Readonly<{
+    root: ImageStyleProfileArtifact;
+    current: ImageStyleProfileArtifact;
+    revision: number;
+  }> | null>;
 }
 
 const LOOKUP_KEYS = ["styleId", "versionId"] as const;
@@ -300,6 +316,7 @@ async function validateAcceptedLineage(
   scope: WorkspaceActorScope,
   lookup: ImageStyleReviewLookup,
   allowPublishedReplay: boolean,
+  profileResolver?: ImageStylePublicationProfileResolver,
 ): Promise<ValidatedLineage> {
   const [styleResult, versionResult, specializedResult, referencesResult] = await Promise.all([
     repositories.imageStyles.resolveStyle(scope, lookup.styleId),
@@ -336,22 +353,77 @@ async function validateAcceptedLineage(
   }
   const reviewedVersion = version as ValidatedLineage["version"];
 
-  let validatedProfile;
+  const persistedLineage =
+    profileResolver === undefined
+      ? null
+      : await profileResolver.resolvePublicationProfileLineage(scope, lookup);
+  if (profileResolver !== undefined && persistedLineage === null) {
+    return lineageFailure("Durable Image Style profile artifact lineage cannot be resolved.");
+  }
+  const rootProfileDocument =
+    persistedLineage?.root.profileDocument ?? reviewedVersion.profileDocument;
+  const currentProfileDocument =
+    persistedLineage?.current.profileDocument ?? reviewedVersion.profileDocument;
+  const derivedCurrentProfile = persistedLineage?.current.origin === "MANUAL_EDIT";
+  if (
+    !sameValue(reviewedVersion.profileDocument, currentProfileDocument) ||
+    (persistedLineage !== null &&
+      (persistedLineage.root.origin !== "VISION_ANALYSIS" ||
+        persistedLineage.root.rootSourceArtifactId !== persistedLineage.root.artifactId ||
+        persistedLineage.root.rootSourceArtifactHash !==
+          persistedLineage.root.profileDocument.canonicalDocumentSha256 ||
+        persistedLineage.root.sourceAnalysisEvidence !== "HISTORICAL_SOURCE_TRUTH" ||
+        persistedLineage.current.rootSourceArtifactId !== persistedLineage.root.artifactId ||
+        persistedLineage.current.rootSourceArtifactHash !==
+          persistedLineage.root.profileDocument.canonicalDocumentSha256))
+  ) {
+    return lineageFailure("Current/root Image Style profile pointers or bytes changed.");
+  }
+
+  let validatedRootProfile;
   try {
-    validatedProfile = await validateStoredStyleProfile(
-      reviewedVersion.profileDocument.payload,
+    validatedRootProfile = await validateStoredStyleProfile(
+      rootProfileDocument.payload,
       references.map((reference) => reference.alias),
     );
   } catch {
-    return fail("PROFILE_INVALID", "Stored Image Style profile failed semantic validation.");
+    return fail("PROFILE_INVALID", "Stored source Image Style profile failed semantic validation.");
   }
   if (
-    validatedProfile.styleProfileHash !== reviewedVersion.profileDocument.canonicalDocumentSha256 ||
-    reviewedVersion.profileDocument.contractName !== "image-style-profile" ||
-    reviewedVersion.profileDocument.contractVersion !== "v1" ||
-    !sameValue(validatedProfile.profile, reviewedVersion.profileDocument.payload)
+    validatedRootProfile.styleProfileHash !== rootProfileDocument.canonicalDocumentSha256 ||
+    rootProfileDocument.contractName !== "image-style-profile" ||
+    rootProfileDocument.contractVersion !== "v1" ||
+    !sameValue(validatedRootProfile.profile, rootProfileDocument.payload)
   ) {
-    return fail("PROFILE_INVALID", "Stored Image Style profile bytes or hash changed.");
+    return fail("PROFILE_INVALID", "Stored source Image Style profile bytes or hash changed.");
+  }
+  if (derivedCurrentProfile) {
+    const current = currentProfileDocument.payload as Record<string, unknown>;
+    const detached = {
+      analysis_kind: "MANUAL_EDIT",
+      overall_confidence: null,
+      trait_evidence: [],
+      uncertain_fields: [],
+      outlier_reference_aliases: [],
+      content_leakage_warnings: [],
+    };
+    try {
+      await validateStoredStyleProfile(
+        { ...current, analysis: validatedRootProfile.profile.analysis },
+        references.map((reference) => reference.alias),
+      );
+    } catch {
+      return fail("PROFILE_INVALID", "Derived Image Style creative bytes failed validation.");
+    }
+    if (
+      currentProfileDocument.contractName !== "image-style-profile" ||
+      currentProfileDocument.contractVersion !== "v1" ||
+      (await sha256CanonicalJson(currentProfileDocument.payload)) !==
+        currentProfileDocument.canonicalDocumentSha256 ||
+      !sameValue(current.analysis, detached)
+    ) {
+      return fail("PROFILE_INVALID", "Derived Image Style bytes retained stale analyzer evidence.");
+    }
   }
 
   const recomposed = await composeDurableImageStyleAnalysisInput(
@@ -407,11 +479,9 @@ async function validateAcceptedLineage(
   if (analysisCompletedAt === null) {
     return lineageFailure("Accepted Image Style task has no completion timestamp.");
   }
-  const profileHash = reviewedVersion.profileDocument.canonicalDocumentSha256;
+  const profileHash = rootProfileDocument.canonicalDocumentSha256;
   const expectedObjectKey = `workspace/${scope.workspaceId}/image-style/${lookup.styleId}/version/${lookup.versionId}/analysis/${profileHash.slice("sha256:".length)}.json`;
-  const expectedBytes = new TextEncoder().encode(
-    canonicalizeJson(reviewedVersion.profileDocument.payload),
-  );
+  const expectedBytes = new TextEncoder().encode(canonicalizeJson(rootProfileDocument.payload));
   if (
     task.owner.ownerType !== "IMAGE_STYLE_VERSION" ||
     task.owner.ownerId !== lookup.versionId ||
@@ -468,7 +538,11 @@ async function validateAcceptedLineage(
   }
   if (
     (reviewedVersion.state === "NEEDS_REVIEW" &&
+      !derivedCurrentProfile &&
       reviewedVersion.updatedAt !== analysisCompletedAt) ||
+    (reviewedVersion.state === "NEEDS_REVIEW" &&
+      derivedCurrentProfile &&
+      Date.parse(reviewedVersion.updatedAt) < Date.parse(analysisCompletedAt)) ||
     (reviewedVersion.state === "PUBLISHED" &&
       (style.activeVersionId !== reviewedVersion.versionId || reviewedVersion.publishedAt === null))
   ) {
@@ -487,6 +561,12 @@ async function validateAcceptedLineage(
     references,
     referenceSetHash: recomposed.referenceSetHash,
     analysisCompletedAt,
+    rootProfileDocument,
+    currentProfileDocument,
+    derivedCurrentProfile,
+    reviewedProfileUpdatedAt:
+      persistedLineage?.current.createdAt ??
+      (reviewedVersion.state === "PUBLISHED" ? analysisCompletedAt : reviewedVersion.updatedAt),
   });
 }
 
@@ -503,9 +583,9 @@ function reviewSnapshot(lineage: ValidatedLineage): ImageStyleReviewSnapshot {
     versionId: lineage.version.versionId,
     versionNumber: lineage.version.versionNumber,
     state: "NEEDS_REVIEW" as const,
-    expectedUpdatedAt: lineage.version.updatedAt,
-    profileDocument: lineage.version.profileDocument,
-    styleProfileHash: lineage.version.profileDocument.canonicalDocumentSha256,
+    expectedUpdatedAt: lineage.reviewedProfileUpdatedAt,
+    profileDocument: lineage.currentProfileDocument,
+    styleProfileHash: lineage.currentProfileDocument.canonicalDocumentSha256,
     analyzerRequestHash: lineage.specialized.requestHash,
     analyzerModelSnapshot: lineage.version.analyzerModelSnapshot!,
     disclosureAttestedByUserId: lineage.version.disclosureAttestedByUserId!,
@@ -542,7 +622,10 @@ export async function deriveImageStylePublicationIdempotencyKey(
 
 /** Provider-free service. No analyzer, reference bytes, credentials, environment, or network. */
 export class ReviewedImageStylePublicationService {
-  public constructor(private readonly repositories: ControlPlaneRepositories) {}
+  public constructor(
+    private readonly repositories: ControlPlaneRepositories,
+    private readonly profileResolver?: ImageStylePublicationProfileResolver,
+  ) {}
 
   public async getReviewSnapshot(
     scopeInput: WorkspaceActorScope,
@@ -550,7 +633,13 @@ export class ReviewedImageStylePublicationService {
   ): Promise<ImageStyleReviewSnapshot> {
     const scope = scopeSnapshot(scopeInput);
     const lookup = lookupSnapshot(lookupInput);
-    const lineage = await validateAcceptedLineage(this.repositories, scope, lookup, false);
+    const lineage = await validateAcceptedLineage(
+      this.repositories,
+      scope,
+      lookup,
+      false,
+      this.profileResolver,
+    );
     return reviewSnapshot(lineage);
   }
 
@@ -571,10 +660,16 @@ export class ReviewedImageStylePublicationService {
       return fail("INPUT_INVALID", "Publication idempotency key is not derived from exact inputs.");
     }
 
-    const lineage = await validateAcceptedLineage(this.repositories, scope, command, true);
-    const profile = lineage.version.profileDocument;
+    const lineage = await validateAcceptedLineage(
+      this.repositories,
+      scope,
+      command,
+      true,
+      this.profileResolver,
+    );
+    const profile = lineage.currentProfileDocument;
     if (
-      command.expectedUpdatedAt !== lineage.analysisCompletedAt ||
+      command.expectedUpdatedAt !== lineage.reviewedProfileUpdatedAt ||
       command.reviewedProfileHash !== profile.canonicalDocumentSha256 ||
       (lineage.version.state === "NEEDS_REVIEW" &&
         lineage.version.updatedAt !== command.expectedUpdatedAt) ||

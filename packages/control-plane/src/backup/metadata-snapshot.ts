@@ -59,6 +59,8 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "prompt_scene_results",
   "callback_receipts",
   "image_style_analysis_attempts",
+  "image_style_profile_artifacts",
+  "image_style_profile_edits",
   "avatar_profile_test_attempts",
   "repository_mutation_receipts",
 ] satisfies readonly RelationalTableName[]);
@@ -686,6 +688,7 @@ export async function restoreMetadataSnapshot(
   try {
     return await database.transaction(async (transaction) => {
       await configureStableSession(transaction);
+      await transaction.execute("SET CONSTRAINTS ALL DEFERRED");
       await assertExpectedSchema(transaction);
       await readMigrationLedger(transaction);
       const existingRows = await countDataRows(transaction);

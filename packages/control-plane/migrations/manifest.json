@@ -54,6 +54,12 @@
       "name": "durable_prompt_execution",
       "filename": "0009_durable_prompt_execution.sql",
       "sha256": "sha256:982bc75e2c3473fe14cfa95aa4c4045c60f832c9ee370dbdfe8ad84d4f0894d3"
+    },
+    {
+      "version": 10,
+      "name": "image_style_profile_artifacts",
+      "filename": "0010_image_style_profile_artifacts.sql",
+      "sha256": "sha256:f6d3657212a16413026647643fd660485781f3cc87f13ec15437f58d985b2560"
     }
   ]
 }

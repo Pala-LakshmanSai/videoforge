@@ -48,7 +48,7 @@ test("a fresh PGlite database applies the committed migration chain idempotently
   }
 });
 
-test("durable timing and empty reference-contract migrations upgrade the five-migration baseline", async () => {
+test("later durable migrations upgrade the five-migration baseline", async () => {
   const database = new PGlite();
   try {
     const executor = new PGliteExecutor(database);
@@ -120,7 +120,7 @@ test("durable timing and empty reference-contract migrations upgrade the five-mi
     );
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [6, 7, 8, 9]);
+    assert.deepEqual(upgraded.appliedVersions, [6, 7, 8, 9, 10]);
     assert.deepEqual(upgraded.alreadyAppliedVersions, [1, 2, 3, 4, 5]);
     const legacy = await executor.query(
       `SELECT transcript.lineage_contract_version, transcript.input_fingerprint_hash,
@@ -141,9 +141,21 @@ test("durable timing and empty reference-contract migrations upgrade the five-mi
       },
     ]);
 
+    const styleRoot = await executor.query(
+      `SELECT version.root_profile_artifact_id, version.current_profile_artifact_id,
+              version.profile_revision, artifact.origin, artifact.profile_hash
+         FROM image_style_versions version
+         JOIN image_style_profile_artifacts artifact
+           ON artifact.workspace_id = version.workspace_id
+          AND artifact.id = version.root_profile_artifact_id
+        WHERE version.id = $1`,
+      [IDS.styleVersionA],
+    );
+    assert.deepEqual(styleRoot.rows, []);
+
     const replay = await applyMigrations(executor, sources);
     assert.deepEqual(replay.appliedVersions, []);
-    assert.deepEqual(replay.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    assert.deepEqual(replay.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   } finally {
     await database.close();
   }
@@ -173,8 +185,184 @@ test("reference-contract migration upgrades a clean seven-migration database", a
     }
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [8, 9]);
+    assert.deepEqual(upgraded.appliedVersions, [8, 9, 10]);
     assert.deepEqual(upgraded.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7]);
+  } finally {
+    await database.close();
+  }
+});
+
+test("style artifact migration backfills only accepted analyzer profiles as immutable roots", async () => {
+  const database = new PGlite();
+  try {
+    const executor = new PGliteExecutor(database);
+    const sources = await loadMigrationSources();
+    await executor.execute(
+      `CREATE TABLE public.videoforge_schema_migrations (
+         version integer PRIMARY KEY CHECK (version > 0),
+         name text NOT NULL CHECK (name ~ '^[a-z0-9_]+$'),
+         filename text NOT NULL UNIQUE,
+         sha256 text NOT NULL CHECK (sha256 ~ '^sha256:[0-9a-f]{64}$'),
+         applied_at timestamptz NOT NULL DEFAULT now()
+       )`,
+    );
+    for (const migration of sources.slice(0, 9)) {
+      await executor.execute(migration.sql);
+      await executor.query(
+        `INSERT INTO videoforge_schema_migrations (version, name, filename, sha256)
+         VALUES ($1, $2, $3, $4)`,
+        [migration.version, migration.name, migration.filename, migration.sha256],
+      );
+    }
+    await seedLockedProjects(executor);
+
+    const styleId = uuid(31_200);
+    const versionId = uuid(31_201);
+    const taskId = uuid(31_202);
+    const attemptId = uuid(31_203);
+    const costId = uuid(31_204);
+    const outboxId = uuid(31_205);
+    const analysisId = uuid(31_206);
+    const outputAssetId = uuid(31_207);
+    const requestHash = sha256("migration-10-analysis-request");
+    await executor.execute("BEGIN");
+    await executor.query(
+      `INSERT INTO image_styles (
+         id, workspace_id, name, normalized_name, created_by_user_id, created_at, updated_at
+       ) VALUES ($1, $2, 'Accepted migration style', 'accepted migration style', $3, $4, $4)`,
+      [styleId, IDS.workspaceA, IDS.userA, FIXED_TIME],
+    );
+    await executor.query(
+      `INSERT INTO image_style_versions (
+         id, workspace_id, style_id, version_number, state,
+         profile_contract_name, profile_contract_version, profile_payload, style_profile_hash,
+         analyzer_request_hash, analyzer_model_snapshot, disclosure_attested_by_user_id,
+         created_at, updated_at
+       )
+       SELECT $1, $2, $3, 1, 'NEEDS_REVIEW', profile_contract_name,
+              profile_contract_version, profile_payload, style_profile_hash,
+              $4, 'fixture-model-snapshot', $5, $6, $6
+         FROM image_style_versions WHERE id = $7`,
+      [versionId, IDS.workspaceA, styleId, requestHash, IDS.userA, FIXED_TIME, IDS.styleVersionA],
+    );
+    await executor.query(
+      `INSERT INTO assets (
+         id, workspace_id, kind, state, object_key, binary_sha256,
+         canonical_contract_name, canonical_contract_version, canonical_document_sha256,
+         content_type, byte_size, verified_at
+       ) VALUES ($1, $2, 'CANONICAL_DOCUMENT', 'ACCEPTED', $3, $4,
+                 'image-style-profile', 'v1', $4, 'application/json', 100, $5)`,
+      [
+        outputAssetId,
+        IDS.workspaceA,
+        "workspace/migration/style-root.json",
+        HASHES.styleA,
+        FIXED_TIME,
+      ],
+    );
+    await executor.query(
+      `INSERT INTO generation_tasks (
+         id, workspace_id, owner_type, owner_id, image_style_version_id,
+         task_key, lane, state, created_at, updated_at
+       ) VALUES ($1, $2, 'IMAGE_STYLE_VERSION', $3, $3,
+                 'migration-style-analysis', 'IMAGE', 'RUNNING', $4, $4)`,
+      [taskId, IDS.workspaceA, versionId, FIXED_TIME],
+    );
+    await executor.query(
+      `INSERT INTO attempts (
+         id, workspace_id, task_id, ordinal, idempotency_key, state, dispatch_state,
+         claim_state, execution_profile_id, execution_claim_token_hash, input_hash,
+         output_asset_id, result_disposition, provider_details, claimed_at, started_at, finished_at
+       ) VALUES ($1, $2, $3, 1, 'migration-style-attempt', 'SUCCEEDED', 'ACKNOWLEDGED',
+                 'CLAIMED', $4, $5, $6, $7, 'ACCEPTED', '{}'::jsonb, $8, $8, $8)`,
+      [
+        attemptId,
+        IDS.workspaceA,
+        taskId,
+        IDS.executionProfileA,
+        sha256("migration-10-claim"),
+        requestHash,
+        outputAssetId,
+        FIXED_TIME,
+      ],
+    );
+    await executor.query(
+      `INSERT INTO cost_events (
+         id, workspace_id, owner_type, owner_id, task_id, attempt_id, sequence,
+         event_type, amount_micro_usd, idempotency_key, details, occurred_at
+       ) VALUES ($1, $2, 'IMAGE_STYLE_VERSION', $3, $4, $5, 1,
+                 'RESERVED', 0, 'migration-style-reserve', '{}'::jsonb, $6)`,
+      [costId, IDS.workspaceA, versionId, taskId, attemptId, FIXED_TIME],
+    );
+    await executor.query(
+      `INSERT INTO outbox (
+         id, workspace_id, task_id, attempt_id, kind, state, dedupe_key,
+         payload_contract_name, payload_contract_version, payload_hash, payload,
+         available_at, delivered_at
+       ) VALUES ($1, $2, $3, $4, 'DISPATCH', 'DELIVERED', 'migration-style-dispatch',
+                 'style-analysis', 'v1', $5, '{}'::jsonb, $6, $6)`,
+      [outboxId, IDS.workspaceA, taskId, attemptId, sha256("migration-10-outbox"), FIXED_TIME],
+    );
+    await executor.query(
+      `INSERT INTO image_style_analysis_attempts (
+         id, workspace_id, style_version_id, ordinal, idempotency_key, request_hash,
+         state, provider, model, model_revision, response_hash, usage_payload,
+         reported_cost_micro_usd, task_id, execution_attempt_id,
+         reservation_cost_event_id, outbox_id, started_at, finished_at
+       ) VALUES ($1, $2, $3, 1, 'migration-style-analysis', $4,
+                 'SUCCEEDED', 'fixture', 'fixture-style', 'v1', $5, '{}'::jsonb,
+                 0, $6, $7, $8, $9, $10, $10)`,
+      [
+        analysisId,
+        IDS.workspaceA,
+        versionId,
+        requestHash,
+        sha256("migration-10-response"),
+        taskId,
+        attemptId,
+        costId,
+        outboxId,
+        FIXED_TIME,
+      ],
+    );
+    await executor.query(
+      `UPDATE generation_tasks
+          SET state = 'COMPLETE', accepted_attempt_id = $3, finished_at = $4, updated_at = $4
+        WHERE workspace_id = $1 AND id = $2`,
+      [IDS.workspaceA, taskId, attemptId, FIXED_TIME],
+    );
+    await executor.execute("COMMIT");
+
+    const upgraded = await applyMigrations(executor, sources);
+    assert.deepEqual(upgraded.appliedVersions, [10]);
+    const root = await executor.query(
+      `SELECT version.root_profile_artifact_id, version.current_profile_artifact_id,
+              version.profile_revision, artifact.origin, artifact.profile_hash,
+              artifact.source_analysis_attempt_id, artifact.source_analysis_output_asset_id,
+              artifact.source_analysis_evidence
+         FROM image_style_versions version
+         JOIN image_style_profile_artifacts artifact
+           ON artifact.workspace_id = version.workspace_id
+          AND artifact.id = version.root_profile_artifact_id
+        WHERE version.id = $1`,
+      [versionId],
+    );
+    assert.deepEqual(root.rows, [
+      {
+        root_profile_artifact_id: versionId,
+        current_profile_artifact_id: versionId,
+        profile_revision: 1,
+        origin: "VISION_ANALYSIS",
+        profile_hash: HASHES.styleA,
+        source_analysis_attempt_id: analysisId,
+        source_analysis_output_asset_id: outputAssetId,
+        source_analysis_evidence: "HISTORICAL_SOURCE_TRUTH",
+      },
+    ]);
+    await expectDatabaseError(
+      () => executor.query("DELETE FROM image_style_profile_artifacts WHERE id = $1", [versionId]),
+      "23514",
+    );
   } finally {
     await database.close();
   }
