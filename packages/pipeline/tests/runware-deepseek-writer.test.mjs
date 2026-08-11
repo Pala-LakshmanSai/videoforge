@@ -122,6 +122,10 @@ test("pins exact AIR/schema and deterministically handles 25/50 scenes across fi
     assert.equal(firstOutput.scenes.length, count);
     const request = first.transport.requests[0];
     assert.equal(request.request.model, RUNWARE_DEEPSEEK_PROMPT_MODEL);
+    assert.match(
+      request.request.taskUUID,
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+    );
     assert.equal(request.request.settings.thinkingLevel, "off");
     assert.equal(request.request.jsonSchema.strict, true);
     assert.equal(request.request.jsonSchema.schema.properties.scenes.minItems, count);

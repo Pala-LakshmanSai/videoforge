@@ -6,6 +6,7 @@ import { createLocalApiApp } from "./server/local/app";
 import { createNodeFixturePreviewBinding } from "./server/runtime/node-fixture-preview";
 import { createNodeRuntimeConfiguration } from "./server/runtime/node";
 import { resolveNodeSandboxDataRoot } from "./server/runtime/node-sandbox";
+import { createRunwareRuntime } from "./server/providers/runware-runtime";
 
 export const FIXTURE_API_HOST = "127.0.0.1";
 export const FIXTURE_API_PORT = 4174;
@@ -13,6 +14,14 @@ const WORKSPACE_ROOT = path.resolve(import.meta.dirname, "../../..");
 
 const configuration = createNodeRuntimeConfiguration(process.env);
 const { mode } = configuration;
+await createRunwareRuntime(
+  {
+    VIDEOFORGE_PROVIDER_MODE: process.env.VIDEOFORGE_PROVIDER_MODE,
+    VIDEOFORGE_RUNWARE_ENABLED: process.env.VIDEOFORGE_RUNWARE_ENABLED,
+    VIDEOFORGE_RUNWARE_CAP_USD: process.env.VIDEOFORGE_RUNWARE_CAP_USD,
+  },
+  { record: () => undefined },
+);
 let localRunner;
 if (mode === "local" || mode === "sandbox") {
   const { createLocalMediaPipelineRunner } = await import("./server/local/media-runner");
