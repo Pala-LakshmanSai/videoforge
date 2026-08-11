@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T20:52:00Z"
+updated_at: "2026-08-11T21:08:00Z"
 
-phase: skyreels_worker_build
+phase: skyreels_qualification
 implementation_authorized_in_current_task: true
-current_milestone: locked_skyreels_worker_build
-current_task: VF-8-12
+current_milestone: locked_skyreels_qualification
+current_task: VF-8-13
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -19,8 +19,8 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "c091e86"
-  working_tree_expected: clean_after_vf_8_11_skyreels_preflight_handoff
+  last_good_commit: "ccb1d0a"
+  working_tree_expected: clean_after_vf_8_12_skyreels_worker_build_handoff
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -42,9 +42,9 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "VF-8-12 authorizes local SkyReels worker implementation and GHCR build/publish at $0 provider spend; no RunPod credential read/mutation, model-weight download, GPU start, provider call, or spend."
+  provider_calls_authorized: true
+  authorized_spend_usd: 2
+  provider_authority_scope: "VF-8-13 authorizes existing secure RunPod credential, one scale-zero endpoint, one A100-80GB worker, exact pinned SkyReels model download, one owned five-second dispatch, and maximum new spend $2.00; mandatory drain/delete and absolute-zero inventory."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -191,15 +191,21 @@ completed_tasks:
     implementation_commit: "c091e86"
     evidence: "evidence/acceptance/VF-8-11/skyreels-worker-preflight"
     summary: "Pinned official SkyReels V3 source/model revisions, corrected the authoritative talking-avatar output contract from 24 to 25 fps, and bounded one provider-free worker-build successor."
+  - task_id: VF-8-12
+    status: complete
+    implementation_commit: "ccb1d0a"
+    image_digest: "sha256:eed0778157bda9c28ebdb54bbab407d64205063b0467897ee9dcb9438b930497"
+    evidence: "evidence/acceptance/VF-8-12/skyreels-worker-build"
+    summary: "Built and published the pinned fail-closed SkyReels worker, corrected square-source output to native 960x960/25 with exact renderer crops, and passed full local/hosted verification at $0."
 
 latest_closed_handoff:
-  task_id: VF-8-11
+  task_id: VF-8-12
   status: complete
-  task_kind: skyreels_worker_preflight
-  implementation_commit: "c091e86"
-  evidence: "evidence/acceptance/VF-8-11/skyreels-worker-preflight"
-  verification_result: "focused_contract_pipeline_worker_and_context_checks_passed"
-  external_actions: "Read-only official GitHub/Hugging Face metadata; no provider mutation, model download, GPU, or spend."
+  task_kind: skyreels_worker_build
+  implementation_commit: "ccb1d0a"
+  evidence: "evidence/acceptance/VF-8-12/skyreels-worker-build"
+  verification_result: "full_local_and_hosted_verify_plus_pinned_container_smokes_passed"
+  external_actions: "GHCR workflow 31535566101 published immutable image; no RunPod mutation, model-weight download, GPU, or spend."
   external_spend_usd: 0
 
 last_green:
@@ -226,31 +232,37 @@ active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-8-12
-  milestone: locked_skyreels_worker_build
+  task_id: VF-8-13
+  milestone: locked_skyreels_qualification
   status: ready
-  dependency_status: vf_8_11_exact_source_model_runtime_and_25fps_contract_pinned
-  authorization_status: provider_free_skyreels_worker_build_only
-  read_profile: phase8_skyreels_worker_build
-  task_brief: tasks/VF-8-12.md
-  goal: "Build and publish one pinned fail-closed SkyReels V3 worker image without downloading weights or starting paid compute."
-  provider_calls_authorized: false
-  maximum_external_spend_usd: 0
+  dependency_status: vf_8_12_pinned_worker_published_full_verify_green_and_runpod_zero
+  authorization_status: one_a100_80gb_runpod_qualification
+  read_profile: phase8_skyreels_qualification
+  task_brief: tasks/VF-8-13.md
+  goal: "Run one pinned five-second SkyReels qualification and return RunPod to absolute zero."
+  provider_calls_authorized: true
+  maximum_external_spend_usd: 2
+  provider_authority:
+    provider: runpod_serverless
+    model_id: "Skywork/SkyReels-V3-A2V-19B@fdad4053f492aba389b5a8c3c6982118c6a1ecf3"
+    cap_usd: 2
+    non_transferable: true
+    authorized_by_user_at: "2026-08-11T19:36:00Z"
   remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: false
-  model_downloads_authorized: false
-  application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-8-12/skyreels-worker-build"
+  credential_access_authorized: true
+  model_downloads_authorized: true
+  application_code_changes_authorized: false
+  expected_evidence: "evidence/acceptance/VF-8-13/skyreels-qualification"
   required_handoff:
-    - "Implement strict original-source/audio, command, timeout/cancel, probe, lineage, and safe-error boundaries."
-    - "Publish one immutable GHCR image with exact container smokes and no model weights."
-    - "Author exactly one capped qualification successor and keep RunPod absolute zero."
+    - "Run exactly one owned five-second qualification on A100 80GB only."
+    - "Retain valid 960x960/25 MP4/probe/lineage/cost or one exact safe terminal failure."
+    - "Drain/delete all resources and independently prove RunPod absolute zero."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-8-12
+    integration_owner: VF-8-13
   prohibited_in_task:
-    - "Any RunPod credential read/mutation, model-weight download, provider dispatch, GPU start, or spend."
-    - "Failed AvatarForcing derivative input, MuseTalk execution, model substitution, Mage work, promotion, schema/UI redesign, credential exposure, or deployment."
+    - "Second dispatch, alternate GPU, standalone Pod/volume, low-VRAM/USP, or spend above $2.00."
+    - "Failed derivative input, MuseTalk, model substitution, Mage work, app/schema/UI change, promotion, credential exposure, or deployment."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -278,8 +290,8 @@ known_incomplete_boundaries:
   - "No encrypted off-machine backup, R2 integrity inventory, clean-target cloud restore, ten-user contention/security proof, or fresh-account production Chrome sign-off exists."
 
 next_tasks:
-  - "1. VF-8-12 build/publish one pinned SkyReels V3 whole-frame worker at $0."
-  - "2. Run one capped A100-80GB fallback qualification only under its exact successor brief."
+  - "1. VF-8-13 run one pinned A100-80GB SkyReels fallback qualification under a $2.00 cap."
+  - "2. Act only on the exact valid MP4 or retained safe terminal failure; always leave RunPod zero."
   - "3. Build pinned Mage worker; exact weight access currently needs Hugging Face authentication unavailable in Chrome/Keychain."
   - "4. Add MuseTalk repair and SkyReels whole-frame fallback only after their technical triggers."
   - "5. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
@@ -288,7 +300,7 @@ next_tasks:
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
-  full_production_mvp_implemented_percent: 60
+  full_production_mvp_implemented_percent: 64
   production_end_to_end_proven: false
   completed:
     provider_free_foundation_percent: 100
@@ -299,13 +311,13 @@ progress_snapshot:
     custom_image_style_provider_free_percent: 100
   early_or_blocked:
     production_image_lane_percent: 10
-    production_avatar_lane_percent: 55
+    production_avatar_lane_percent: 68
     cloud_staging_integration_percent: 15
     production_release_percent: 0
-  interpretation: "Provider-free media, restart-safe Node sandbox, locked Runware runtime composition, RunPod scale-zero control, and a pinned real AvatarForcing worker are implemented. A100-80GB produced the first valid real Avatar MP4 with exact lineage, but whole-frame quality failed and the candidate remains unpromoted; SkyReels, Mage access, cloud staging, hardening, and release remain unproven."
+  interpretation: "Provider-free media, restart-safe Node sandbox, Runware runtime composition, RunPod scale-zero control, and pinned real AvatarForcing/SkyReels workers are implemented. AvatarForcing produced a valid but rejected-quality MP4; SkyReels container/runtime is verified but real model qualification, Mage, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: skyreels_worker_build_selected
+  status: skyreels_qualification_selected
   completed_and_preserved:
     - "All completed tasks/commits above; no paused implementation or unexplained dirty state."
     - "Forced full verification passed at the VF-8-04 handoff tree: Workerd 1/1 and installed Chrome 38/38 with zero skips."
@@ -319,15 +331,16 @@ activation_handoff:
     - "VF-8-09 closed compact OOM classification gaps and published A100-80GB-only image sha256:e46c3a9d0d770905ca2d04aecf5623986425eca861f2e1ea9245a3fd5867f434 at $0."
     - "VF-8-10 produced the first checksum-valid real AvatarForcing MP4, rejected it for severe whole-face blur, and returned RunPod absolute zero."
     - "VF-8-11 pinned SkyReels source/model lineage and corrected the talking-avatar source profile to native 25 fps."
+    - "VF-8-12 published pinned SkyReels image sha256:eed0778157bda9c28ebdb54bbab407d64205063b0467897ee9dcb9438b930497; full local/hosted verification passed."
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from c091e86; preserve all newer commits."
-    - "Load only phase8_skyreels_worker_build and tasks/VF-8-12.md."
-    - "Build/publish one pinned SkyReels worker, author one capped qualification successor, and keep RunPod zero."
+    - "Require clean HEAD descending from ccb1d0a; preserve all newer commits."
+    - "Load only phase8_skyreels_qualification and tasks/VF-8-13.md."
+    - "Run one pinned A100-80GB five-second qualification and leave RunPod zero."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
-    - "Credential exposure, model/revision ambiguity, failed derivative input, any provider mutation/spend, or non-zero RunPod inventory."
+    - "Credential exposure, model/revision ambiguity, failed derivative input, second dispatch, spend above $2.00, or non-zero final RunPod inventory."
 
 notes:
   - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."
