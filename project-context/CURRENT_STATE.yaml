@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T17:08:00Z"
+updated_at: "2026-08-11T17:16:00Z"
 
-phase: runware_runtime_composition
+phase: runpod_scale_zero_foundation
 implementation_authorized_in_current_task: true
-current_milestone: locked_runware_runtime_composition
-current_task: VF-8-02
+current_milestone: runpod_scale_zero_control_adapter
+current_task: VF-8-03
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -19,7 +19,7 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "21d664682bdba27c7a8b27e8f9b48d218dd2a0be"
+  last_good_commit: "9f2324af11ea002cad84a7d1326c926deac9f62d"
   working_tree_expected: clean_after_provider_free_completion_handoff
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
@@ -43,8 +43,8 @@ live_development:
   fixture_scenario: happy_generating
   provider_mode: fixture
   provider_calls_authorized: false
-  authorized_spend_usd: 0.2
-  provider_authority_scope: "VF-8-02 permits only locked Runware DeepSeek V4 Flash and Gemini 3.5 Flash runtime composition, Keychain-only credential access, and at most $0.20 new spend. No RunPod/GPU/model download/deployment."
+  authorized_spend_usd: 0.01
+  provider_authority_scope: "VF-8-03 permits Keychain-only RunPod API access, adapter implementation, and live read-only account/resource inventory at $0. No compute start, resource creation, model download, or deployment."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -136,16 +136,20 @@ completed_tasks:
     correction_commit: "21d664682bdba27c7a8b27e8f9b48d218dd2a0be"
     evidence: "evidence/acceptance/VF-8-01/node-sandbox-runtime"
     summary: "Loopback-only Node sandbox mode, workspace-contained persistent data root, real owned ASR/timeline/FFmpeg v3 run, restart restore, approval, and checksum-matched download at $0."
+  - task_id: VF-8-02
+    status: complete
+    implementation_commit: "9f2324af11ea002cad84a7d1326c926deac9f62d"
+    evidence: "evidence/acceptance/VF-8-02/runware-runtime"
+    summary: "Server-only locked DeepSeek/Gemini Runware composition, exact sandbox cap, Keychain credential isolation, shared ledger, replay/failure tests, and corrected UUID-v4 provider identity. Live smoke returned providerUnavailable at $0."
 
 latest_closed_handoff:
-  task_id: VF-8-01
+  task_id: VF-8-02
   status: complete
-  task_kind: provider_free_runtime_implementation
-  implementation_commit: "68d11fb044699f56a7705189d609365e1c6ec97c"
-  correction_commit: "21d664682bdba27c7a8b27e8f9b48d218dd2a0be"
-  evidence: "evidence/acceptance/VF-8-01/node-sandbox-runtime"
-  verification_result: "sandbox_restart_restore_approve_download_sha256_pass"
-  external_actions: "Loopback-only local execution; no provider call, credential, model download, GPU/cloud mutation, deployment, or spend."
+  task_kind: locked_runware_runtime_implementation
+  implementation_commit: "9f2324af11ea002cad84a7d1326c926deac9f62d"
+  evidence: "evidence/acceptance/VF-8-02/runware-runtime"
+  verification_result: "verify_fast_pass_and_live_providerUnavailable_fail_closed"
+  external_actions: "Runware live DeepSeek smoke only; provider returned HTTP 400 providerUnavailable; reservation released; no Gemini call, RunPod action, resource mutation, deployment, or spend."
   external_spend_usd: 0
 
 last_green:
@@ -172,37 +176,37 @@ active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-8-02
-  milestone: locked_runware_runtime_composition
+  task_id: VF-8-03
+  milestone: runpod_scale_zero_control_adapter
   status: ready
-  dependency_status: sandbox_runtime_and_qualified_injected_runware_adapters_complete
-  authorization_status: exact_locked_runware_models_keychain_credential_and_capped_spend
-  read_profile: phase8_runware_runtime
-  task_brief: tasks/VF-8-02.md
-  goal: "Compose locked DeepSeek/Gemini adapters behind fail-closed sandbox authority and prove the smallest live runtime smoke."
+  dependency_status: sandbox_and_runware_runtime_complete
+  authorization_status: keychain_runpod_read_only_zero_spend
+  read_profile: phase8_runpod_scale_zero
+  task_brief: tasks/VF-8-03.md
+  goal: "Build the fail-closed RunPod scale-zero control adapter and prove live zero-resource inventory before model deployment."
   provider_calls_authorized: true
-  maximum_external_spend_usd: 0.2
+  maximum_external_spend_usd: 0.01
   provider_authority:
-    provider: Runware
-    model_id: "deepseek:v4@flash + google:gemini@3.5-flash"
-    cap_usd: 0.2
+    provider: RunPod
+    model_id: "none_control_plane_only"
+    cap_usd: 0.01
     non_transferable: true
     authorized_by_user_at: "2026-08-11T16:45:00Z"
-  remote_or_cloud_mutations_authorized: true
+  remote_or_cloud_mutations_authorized: false
   credential_access_authorized: true
   model_downloads_authorized: false
-  application_code_changes_authorized: false
-  expected_evidence: "evidence/acceptance/VF-8-02/runware-runtime"
+  application_code_changes_authorized: true
+  expected_evidence: "evidence/acceptance/VF-8-03/runpod-scale-zero"
   required_handoff:
-    - "Compose exact locked model IDs through one server-only transport with explicit sandbox cap."
-    - "Prove timeout, malformed response, replay, cap exhaustion, usage/cost truth, and secret redaction."
-    - "Run only the smallest live smoke and author exactly one successor."
+    - "Add typed RunPod account/resource/lifecycle transport with Keychain-only credential loading."
+    - "Prove workersMin=0/workersMax=1, ambiguity, cancellation, drain/delete, and secret redaction."
+    - "Run live read-only inventory, confirm no paid compute was created, and author exactly one successor."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-8-02
+    integration_owner: VF-8-03
   prohibited_in_task:
     - "Model/role changes, schema/UI redesign, production bindings, or deployment."
-    - "RunPod/GPU/cloud mutation, model/weight download, non-Runware provider, browser credential exposure, or spend above $0.20."
+    - "Compute/resource start or creation, model/weight download, non-RunPod provider, browser credential exposure, or any spend."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -224,13 +228,13 @@ fully_sorted:
 known_incomplete_boundaries:
   - "Mage GATE_IMAGE_002 remains open after VF-3-08; no checkpoint/weights/download/qualification or production image profile."
   - "Mage/AvatarForcing terms evidence remains ambiguous. The user explicitly accepted that risk for bounded locked-model qualification; do not claim clear commercial permission or substitute models."
-  - "DeepSeek/Gemini adapters are injected but not live-runtime composed; fixture remains default."
+  - "DeepSeek/Gemini are live-runtime composed and fixture remains default; latest DeepSeek smoke was correctly rejected as providerUnavailable at $0."
   - "Fixture Hub reference bytes are session-scoped. No production R2/Neon/Better Auth/Workflow deployment exists."
   - "No real provider image or Avatar asset, real 30–120-second provider video, measured GPU/cost/SLO, fallback, or production release exists."
   - "No encrypted off-machine backup, R2 integrity inventory, clean-target cloud restore, ten-user contention/security proof, or fresh-account production Chrome sign-off exists."
 
 next_tasks:
-  - "1. VF-8-02 compose locked Runware prompt/style adapters behind fail-closed sandbox authority."
+  - "1. VF-8-03 build RunPod scale-zero lifecycle control and verify live zero-resource inventory."
   - "2. Build exact locked Mage/Avatar worker paths and tightly capped RunPod qualification with mandatory scale-to-zero."
   - "3. Prove RunPod ambiguity, callback replay, cancellation, cost, and drain-to-zero."
   - "5. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
@@ -239,24 +243,24 @@ next_tasks:
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
-  full_production_mvp_implemented_percent: 50
+  full_production_mvp_implemented_percent: 52
   production_end_to_end_proven: false
   completed:
     provider_free_foundation_percent: 100
     accepted_fixture_and_local_output_percent: 100
     durable_control_plane_timing_and_media_acceptance_percent: 100
   partial:
-    prompt_and_style_provider_qualification_and_adapters_percent: 80
+    prompt_and_style_provider_qualification_and_adapters_percent: 100
     custom_image_style_provider_free_percent: 100
   early_or_blocked:
     production_image_lane_percent: 10
     production_avatar_lane_percent: 10
     cloud_staging_integration_percent: 15
     production_release_percent: 0
-  interpretation: "Provider-free media plus an explicit restart-safe Node sandbox runtime are complete; provider-backed media, cloud staging, hardening, and release remain unproven."
+  interpretation: "Provider-free media, restart-safe Node sandbox, and locked Runware runtime composition are complete; provider-backed media, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: locked_runware_runtime_selected
+  status: runpod_scale_zero_selected
   completed_and_preserved:
     - "All completed tasks/commits above; no paused implementation or unexplained dirty state."
     - "Latest forced full verification is green at d9adee9 with 786 tests/journeys and zero skips."
@@ -265,11 +269,11 @@ activation_handoff:
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Require clean HEAD descending from VF-3-10 evidence commit 96e5fd3; preserve all newer commits."
-    - "Load only phase8_runware_runtime and tasks/VF-8-02.md."
-    - "Use only the existing Keychain Runware key and exact locked models under $0.20; no RunPod/GPU/model download/deployment."
+    - "Load only phase8_runpod_scale_zero and tasks/VF-8-03.md."
+    - "Use only the existing Keychain RunPod key for adapter work and live read-only inventory at $0; no resource creation, compute, model download, or deployment."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
-    - "Credential exposure, provider/model mismatch, cap uncertainty/exhaustion, RunPod/GPU/cloud mutation, deployment, or unexplained charge."
+    - "Credential exposure, unexpected active paid resource, any mutation/compute start, model download, deployment, or charge."
 
 notes:
   - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."
