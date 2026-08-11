@@ -27,9 +27,10 @@ if (!state) {
 }
 
 if (!processExists(state.supervisorPid) && !initialWebOwner && !initialApiOwner) {
-  await removeDevelopmentOwnership(state.supervisorPid);
-  console.log("Removed stale VideoForge ownership record; development server is already stopped.");
-  process.exit(0);
+  console.error(
+    `Refusing stale VideoForge ownership record at ${developmentOwnershipPath}. Inspect it, then remove it explicitly if recovery is safe.`,
+  );
+  process.exit(1);
 }
 
 const snapshot = {
