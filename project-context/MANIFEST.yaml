@@ -3,8 +3,8 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-11"
 source_of_truth: project-context
-current_selected_profile: phase4_durable_prompt_execution
-current_selected_brief: tasks/VF-4-01.md
+current_selected_profile: phase7_style_derived_edit_service
+current_selected_brief: tasks/VF-7-07.md
 
 mandatory_read:
   - 00_START_HERE.md

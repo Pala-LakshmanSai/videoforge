@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: provider-free checkpoint `3168602` green; `VF-4-01` durable-store continuation selected
+Status: `VF-4-01` complete at `1fba04c`; `VF-7-07` persistence continuation selected
 Read when: selecting, implementing, integrating, or handing off one task.
 
 ## Authority
@@ -28,33 +28,25 @@ exact history.
 - DX/reliability: `VF-DX-01/02` and `VF-REL-01` complete.
 - Image Styles: `VF-7-01` through `VF-7-06` complete through byte-identical publication and the
   preserve-and-detach provenance contract.
-- Provider-free media foundations: VF-4-01 prompt domain execution at `fe07066`, VF-5-01
-  deterministic Avatar fixture worker at `fcb8f31`, and VF-7-07 derived-artifact edit service at
-  `4a4806d` exist.
-- Clean evidence checkpoint `3168602`: 751 tests/journeys, control-plane 193/193, Workerd 1/1,
-  installed Chrome 38/38, zero skips, fixture mode, `$0`; development server stopped.
+- Provider-free media foundations: VF-4-01 durable prompt execution is complete at `1fba04c`,
+  VF-5-01 deterministic Avatar fixture worker is complete at `fcb8f31`, and VF-7-07
+  derived-artifact edit service foundation exists at `4a4806d`.
+- VF-4-01 checkpoint: focused 26/26, control-plane 198/198, Workerd 1/1, installed Chrome 38/38,
+  zero skips, fixture mode, `$0`; development server stopped.
 
 Do not redesign accepted shell/dock/Hubs, rerun architecture research, replace the renderer, change
 output grammar, or redo completed tasks.
 
 ## Current serial provider-free sequence
 
-### 1. Close VF-4-01 — durable prompt execution
+### 1. VF-4-01 — complete
 
-Selected now. Use `phase4_durable_prompt_execution` and `tasks/VF-4-01.md` only.
-
-- Add migration `0009` and production-code PGlite `PromptExecutionStore`.
-- Bind exact revision, current timeline, published style, task, claimed attempt, acknowledged
-  outbox, reservation/cost, accepted prompt rows, hashes, retries, and telemetry.
-- Accept in one atomic transaction; exact replay returns original result; changed/conflicting replay
-  fails closed.
-- Prove fresh, upgrade, reopen, restore, cancellation, stale claim, isolation, partial output, cost
-  drift, rollback, and zero outbound calls.
-- On completion author exactly one successor brief: VF-7-07 persistence continuation.
+Migration `0009` and the production PGlite prompt store are committed at `1fba04c`; evidence is
+`evidence/acceptance/VF-4-01/durable-fixture-prompt-execution`. Do not redo it.
 
 ### 2. Close VF-7-07 — style derived-artifact persistence
 
-Start only after VF-4-01 commits and selects it.
+Selected now. Use `phase7_style_derived_edit_service` and `tasks/VF-7-07.md` only.
 
 - Add migration `0010` for immutable profile artifacts and edit records.
 - Backfill accepted style profiles as immutable analysis roots.

@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: clean provider-free checkpoint `3168602`; `VF-4-01` durable-store continuation selected
+Status: `VF-4-01` complete at `1fba04c`; `VF-7-07` persistence continuation selected
 Context schema: `1.5`  
 Last updated: `2026-08-11`
 
@@ -26,19 +26,18 @@ DeepSeek/Gemini adapters are committed, but neither is runtime-composed. Runware
 spent `$0.41003998` total; ordinary application mode remains `fixture` with provider calls disabled.
 RunPod preflight found `$10.00`, zero live resources, and `$0/hour`; no Pod is active.
 
-Provider-free DX/CI/doctor/dev ownership (`VF-DX-01/02`) and vendor-neutral telemetry
-(`VF-REL-01`) are complete. Deterministic provider-free media foundations also exist: `VF-4-01`
-has a green prompt-execution domain service (`fe07066`), `VF-5-01` has a deterministic Avatar
-fixture worker (`fcb8f31`), and `VF-7-07` has a preserve-and-detach style edit service (`4a4806d`).
-Clean checkpoint/evidence commit `3168602` records forced full provider-free verification: 751
-tests/journeys, control-plane 193/193, Workerd 1/1, installed Chrome 38/38, zero skips, and `$0`.
+Provider-free DX/CI/doctor/dev ownership (`VF-DX-01/02`), vendor-neutral telemetry (`VF-REL-01`),
+and durable prompt execution (`VF-4-01`, `1fba04c`) are complete. Migration `0009` and the
+production PGlite prompt store atomically bind the exact revision, current timeline, published
+style, task, claimed attempt, acknowledged outbox, reservation/cost, accepted bytes, retries,
+hashes, output asset, and telemetry. Its checkpoint passed focused 26/26, control-plane 198/198,
+Workerd 1/1, installed Chrome 38/38, zero skips, fixture mode, and `$0`. `VF-5-01` remains complete
+at `fcb8f31`.
 
-`VF-4-01` and `VF-7-07` are partial, not complete. `VF-4-01` still needs migration `0009` and a
-production-code PGlite `PromptExecutionStore` bound atomically to real revision/timeline/style/task/
-attempt/outbox/cost authority. `VF-7-07` then needs serialized migration `0010`, immutable artifact
-and edit persistence, accepted-analysis backfill, publication/current-pointer integration, and
-metadata export/restore coverage. `CURRENT_STATE.yaml` selects only the exact `VF-4-01`
-continuation; do not begin a later brief first.
+`VF-7-07` is partial, not complete: its domain edit service exists at `4a4806d`, but it needs
+serialized migration `0010`, immutable artifact/edit persistence, accepted-analysis backfill,
+production PGlite repository/UoW, publication/current-pointer integration, and metadata
+export/restore coverage. `CURRENT_STATE.yaml` selects only that exact continuation.
 
 Production media remains blocked: Mage checkpoint/license evidence is unresolved; AvatarForcing
 licensing artifacts contradict each other; image/avatar/GPU/RunPod/fallback/cost/style-adherence
