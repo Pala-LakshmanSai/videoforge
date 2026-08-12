@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-24F` A100 runtime-guard repair and one corrected sample authorized; RunPod absolute zero
+Status: `VF-9-24G` one same-memory A100 SXM capacity sample authorized; RunPod absolute zero
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -48,7 +48,9 @@ one unchanged exact sample attempt on an A100 80 GB PCIe within the existing `$2
 `VF-9-24E` reached the worker but returned generic `AVATAR_PRIMARY_FAILED` before inference because
 the published worker still enforced an RTX-4090-only runtime guard. It spent `$0.0044856296`; cleanup
 and three independent reads prove absolute zero. `VF-9-24F` is the narrow guard/diagnostic repair,
-immutable image publication, and one corrected A100 job. No network volume, fallback, or tuning.
+immutable image publication, and one corrected A100 PCIe job. That job acquired no worker for ten
+minutes and ended `$0`; cleanup and three reads prove zero. `VF-9-24G` changes only the capacity SKU
+to A100 SXM 80 GB and keeps BF16 model/input/config identical. No network volume, fallback, or tuning.
 
 ## Locked active providers
 

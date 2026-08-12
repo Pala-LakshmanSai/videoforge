@@ -42,6 +42,7 @@ if (
 const qualificationGpuProfiles = {
   "NVIDIA GeForce RTX 4090": 24,
   "NVIDIA A100 80GB PCIe": 80,
+  "NVIDIA A100-SXM4-80GB": 80,
 } as const;
 const qualificationGpuTypeId =
   process.env.VIDEOFORGE_AVATAR_GPU_TYPE_ID ?? "NVIDIA GeForce RTX 4090";
