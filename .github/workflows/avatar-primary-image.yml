@@ -37,6 +37,17 @@ jobs:
           docker run --rm -e VIDEOFORGE_WORKER_STARTUP_SMOKE=1 "$image" | \
             grep '"event": "avatar_primary_startup_smoke_ok"'
           docker run --rm --entrypoint python "$image" -m compileall -q /opt/echomimic_v3 /opt/videoforge
-          docker push "$image"
+          pushed=false
+          for attempt in 1 2 3 4; do
+            if docker push "$image"; then
+              pushed=true
+              break
+            fi
+            if [ "$attempt" -lt 4 ]; then
+              echo "GHCR push attempt $attempt failed; retrying after 30 seconds" >&2
+              sleep 30
+            fi
+          done
+          [ "$pushed" = true ]
           digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image")"
           printf 'image=%s\n' "$digest" >> "$GITHUB_STEP_SUMMARY"
