@@ -413,5 +413,6 @@ notes:
   - "VF-3-10 pinned AvatarForcing code revision 63b73e6 and weights revision e244891; terms remain ambiguous, but user-accepted risk allows bounded qualification while clear-permission claims remain blocked."
   - "VF-3-11 ended without a replacement after the user reaffirmed AvatarForcing and explicitly excluded LongCat; GATE_AVATAR_003 remains open."
   - "A 2026-08-12 owned spike proved Mage-Flow-Turbo BF16 through pinned stock ComfyUI at 1280x720: no diffusers, FlashAttention, or source patch. VideoForge must use that route only."
+  - "VF-9-07 timing-evidence correction image sha256:9f3dc9d886b309e74adac3d7d101ee546d8d3a31d123dd1c203852d22709334b passed hosted build 31572443030; qualification must use only this digest."
   - "TypeScript remains the sole RFC 8785/JCS authority; Python validates schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output remains three compositions, realistic footage, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
