@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-24E` one A100 80 GB sample attempt authorized; pre-dispatch absolute zero
+Status: `VF-9-24F` A100 runtime-guard repair and one corrected sample authorized; RunPod absolute zero
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -45,7 +45,10 @@ used one attempt within the user's `$2` cumulative ceiling. Model bootstrap succ
 was initially measured as `$0.0260412778`; delayed billing makes the live cumulative delta
 `$0.0649517111`. Cleanup and three independent reads prove absolute zero. The user then authorized
 one unchanged exact sample attempt on an A100 80 GB PCIe within the existing `$2` cumulative cap.
-No network volume, fallback, retry, or tuning is authorized.
+`VF-9-24E` reached the worker but returned generic `AVATAR_PRIMARY_FAILED` before inference because
+the published worker still enforced an RTX-4090-only runtime guard. It spent `$0.0044856296`; cleanup
+and three independent reads prove absolute zero. `VF-9-24F` is the narrow guard/diagnostic repair,
+immutable image publication, and one corrected A100 job. No network volume, fallback, or tuning.
 
 ## Locked active providers
 

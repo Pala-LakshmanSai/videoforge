@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import time
 import urllib.request
+import urllib.error
 from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO, Literal, TypedDict
@@ -93,6 +94,15 @@ def _diagnostic_tail(stream: BinaryIO) -> bytes:
     length = stream.tell()
     stream.seek(max(0, length - DIAGNOSTIC_TAIL_BYTES))
     return stream.read(DIAGNOSTIC_TAIL_BYTES)
+
+
+def _validate_gpu_profile(gpu_name: str, gpu_vram_mb: int) -> None:
+    supported = (
+        ("4090" in gpu_name and gpu_vram_mb >= 24_000)
+        or ("A100" in gpu_name and gpu_vram_mb >= 79_000)
+    )
+    if not supported:
+        raise ValueError("AVATAR_GPU_PROFILE_UNSUPPORTED")
 
 
 def _inference_failure(code: str, diagnostic: bytes) -> AvatarPrimaryInferenceFailure:
@@ -260,12 +270,17 @@ def _sha256(path: Path) -> str:
 def _download(url: str, destination: Path, expected_sha256: str, maximum_bytes: int) -> None:
     request = urllib.request.Request(url, headers={"user-agent": "videoforge-avatar-primary/v1"})
     size = 0
-    with urllib.request.urlopen(request, timeout=120) as response, destination.open("xb") as output:
-        while chunk := response.read(1024 * 1024):
-            size += len(chunk)
-            if size > maximum_bytes:
-                raise ValueError("AVATAR_INPUT_TOO_LARGE")
-            output.write(chunk)
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response, destination.open("xb") as output:
+            while chunk := response.read(1024 * 1024):
+                size += len(chunk)
+                if size > maximum_bytes:
+                    raise ValueError("AVATAR_INPUT_TOO_LARGE")
+                output.write(chunk)
+    except ValueError:
+        raise
+    except (OSError, TimeoutError, urllib.error.URLError) as error:
+        raise ValueError("AVATAR_INPUT_DOWNLOAD_FAILED") from error
     if _sha256(destination) != expected_sha256:
         raise ValueError("AVATAR_INPUT_CHECKSUM_MISMATCH")
 
@@ -475,22 +490,24 @@ def _execute(
     source_input_sha256 = _sha256(source_path)
     audio_input_sha256 = _sha256(audio_path)
     gpu_started = time.monotonic()
-    gpu = (
-        subprocess.run(
-            ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=30,
+    try:
+        gpu = (
+            subprocess.run(
+                ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            .stdout.strip()
+            .splitlines()
         )
-        .stdout.strip()
-        .splitlines()
-    )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ValueError("AVATAR_GPU_QUERY_FAILED") from error
     if len(gpu) != 1:
         raise ValueError("AVATAR_GPU_INVALID")
     gpu_name, gpu_vram = [item.strip() for item in gpu[0].rsplit(",", 1)]
-    if "4090" not in gpu_name or int(gpu_vram) < 24_000:
-        raise ValueError("AVATAR_GPU_NOT_RTX_4090_24GB")
+    _validate_gpu_profile(gpu_name, int(gpu_vram))
     inference_started = time.monotonic()
     with tempfile.TemporaryFile() as diagnostic:
         try:
