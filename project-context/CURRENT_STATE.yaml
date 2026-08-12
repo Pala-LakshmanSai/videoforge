@@ -43,8 +43,8 @@ live_development:
   fixture_scenario: happy_generating
   provider_mode: fixture
   provider_calls_authorized: false
-  authorized_spend_usd: 1.4736943278
-  provider_authority_scope: "VF-9-21 permits one 10.12-second AvatarForcing-only sample from the exact private Elias Yoder image and first 10.12 seconds of exact private voiceover, one pinned worker build, one scale-zero endpoint, one A100-80GB worker, one job, evidence, Git push, and hosted CI. No MuseTalk, SkyReels, LongCat, redispatch, profile promotion, deployment, or unrelated cloud mutation."
+  authorized_spend_usd: 1.2856123148
+  provider_authority_scope: "VF-9-21 permits one final delivery-corrected 10.12-second AvatarForcing-only attempt from the exact private Elias Yoder image and first 10.12 seconds of exact private voiceover, one pinned worker image, one scale-zero endpoint, one A100-80GB worker, evidence, Git push, and hosted CI. No MuseTalk, SkyReels, LongCat, further redispatch, profile promotion, deployment, or unrelated cloud mutation."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -312,12 +312,12 @@ recommended_next_task:
   task_brief: tasks/VF-9-21.md
   goal: "Generate one 10.12-second Elias Yoder AvatarForcing-only MP4 for user quality review."
   provider_calls_authorized: true
-  maximum_external_spend_usd: 1.4736943278
+  maximum_external_spend_usd: 1.2856123148
   provider_authority:
     provider: runpod_serverless
     model_id: "KlingAIResearch/AvatarForcing@63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39"
-    image_digest: "sha256:fbb09ffc3e1e36f08100d58f384619e97243c32e3f3fb597aff71148d785a50e"
-    cap_usd: 1.4736943278
+    image_digest: "sha256:b2757bda535ad8daf025efacf4bb9d150bfcb11d16c6b81105f203c24ce83cd3"
+    cap_usd: 1.2856123148
     non_transferable: true
     authorized_by_user_at: "2026-08-12T11:40:00Z"
   remote_or_cloud_mutations_authorized: true
@@ -326,15 +326,15 @@ recommended_next_task:
   application_code_changes_authorized: true
   expected_evidence: "evidence/acceptance/VF-9-21/elias-avatarforcing-sample"
   required_handoff:
-    - "Use exact private image/audio derivatives and AvatarForcing only for one 253-frame sample."
+    - "Use exact private image/audio derivatives and AvatarForcing only for one final 253-frame delivery-corrected sample."
     - "Return technical-pass output as READY_FOR_USER_REVIEW; do not self-approve visual quality."
-    - "Never dispatch MuseTalk, SkyReels, LongCat, or a second AvatarForcing job."
+    - "Never dispatch MuseTalk, SkyReels, LongCat, or another job after the final delivery-corrected attempt."
     - "Cancel, drain, delete, and independently prove RunPod absolute zero."
   safe_parallelism:
     maximum_lanes_including_integration: 1
     integration_owner: VF-9-21
   prohibited_in_task:
-    - "MuseTalk, SkyReels, LongCat, model/source/audio/GPU substitution, redispatch, more than one worker/job, or spend above $1.4736943278."
+    - "MuseTalk, SkyReels, LongCat, model/source/audio/GPU substitution, more than one worker/job at a time, any further redispatch, or spend above $1.2856123148."
     - "Publishing private inputs, production profile promotion, deployment, migration, UI redesign, or unrelated cloud/account mutation."
 
 blocking_gates_for_production:
