@@ -1,0 +1,39 @@
+{
+  "schema_version": "videoforge.gate-profile-convergence/v1",
+  "checked_at": "2026-08-12T11:30:00Z",
+  "external_spend_usd": 0,
+  "provider_calls": 0,
+  "combined_new_provider_budget": {
+    "cap_usd": 5,
+    "mage_matrix_spend_usd": 0,
+    "avatar_fallback_spend_usd": 0.5263056722,
+    "first_real_video_spend_usd": 0,
+    "measured_total_usd": 0.5263056722,
+    "unused_budget_transferred": false
+  },
+  "gates": {
+    "GATE_IMAGE_001": "OPEN_ZERO_OF_40_MATRIX_OUTPUTS_AND_NO_ACCEPTED_MAGE_IMAGE",
+    "GATE_IMAGE_002": "OPEN_CLEAR_PERMISSION_UNPROVEN_USER_ACCEPTED_QUALIFICATION_RISK_ONLY",
+    "GATE_AVATAR_001": "OPEN_ONE_TECHNICAL_OUTPUT_REJECTED_FOR_WHOLE_FACE_BLUR_NOT_EXACT_AVATAR_SUITE",
+    "GATE_AVATAR_002": "OPEN_NO_USER_APPROVED_GLOBAL_DEMOTION_THRESHOLD",
+    "GATE_AVATAR_003": "OPEN_CLEAR_PERMISSION_UNPROVEN_USER_ACCEPTED_QUALIFICATION_RISK_ONLY",
+    "GATE_STYLE_002": "OPEN_NO_SAME_CONTENT_FIVE_STYLE_MAGE OUTPUTS",
+    "GATE_FALLBACK_001": "OPEN_NO_SKYREELS_OUTPUT",
+    "GATE_GPU_001": "OPEN_NO_ACCEPTED_MODEL_GPU_PROFILE",
+    "GATE_RUNPOD_001": "OPEN_PROVIDER_READ_WORKER_LIMIT_AND_CLEANUP_AMBIGUITIES_REPRODUCED",
+    "GATE_COST_001": "OPEN_NO_TEN_REPRESENTATIVE_30_MINUTE_COLD_WARM_ACCEPTED_JOBS"
+  },
+  "profile_eligibility": {
+    "mage_production": false,
+    "avatarforcing_production": false,
+    "skyreels_automatic_fallback": false,
+    "runpod_live_dispatch": false,
+    "first_real_provider_video": false
+  },
+  "review_package": {
+    "ready_for_user_review_assets": 0,
+    "accepted_mage_assets": 0,
+    "accepted_avatar_path_assets": 0,
+    "reason": "No provider candidate survived technical and visual acceptance; there are no bytes to ask the user to approve."
+  }
+}

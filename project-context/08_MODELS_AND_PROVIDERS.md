@@ -122,6 +122,10 @@ Official runtime sources: [Comfy-Org Mage-Flow weights](https://huggingface.co/C
 and [ComfyUI](https://github.com/Comfy-Org/ComfyUI). Historical Microsoft sources remain terms
 evidence only and are not the runtime implementation.
 
+Qualification status through VF-9-20: worker and application acceptance plumbing exist, but no
+production profile is eligible. Three technically valid PNGs failed strict visual review and the
+40-prompt matrix returned no output after provider failures. Fixture remains default.
+
 ## AvatarForcing
 
 Approved role: selected primary talking-avatar model. `GATE_AVATAR_003` records unresolved terms but,
@@ -173,6 +177,11 @@ Approved role: cold whole-frame quality fallback.
 It is heavier and potentially slower, so dispatch only for a whole-frame defect or failed MuseTalk repair, with budget reservation. Benchmark one 48 GB lane first; low-VRAM under-24 GB support may trade large wall time for fit.
 
 Official source: [SkyReels V3](https://github.com/SkyworkAI/SkyReels-V3).
+
+Qualification status through VF-9-20: one AvatarForcing MP4 was technically valid but rejected for
+whole-face blur. Three bounded SkyReels resumes produced no MP4. MuseTalk was correctly not invoked
+because the observed failure was whole-frame, not isolated lips. No Avatar or fallback production
+profile is eligible; fixture remains default.
 
 ## Local word timing
 

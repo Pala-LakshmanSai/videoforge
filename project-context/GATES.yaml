@@ -1,5 +1,5 @@
 schema_version: "1.0"
-updated_at: "2026-08-11"
+updated_at: "2026-08-12"
 evidence_root: "evidence/gates"
 
 gates:
@@ -7,14 +7,16 @@ gates:
     status: open
     blocks: avatar_primary_production_profile
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#avatarforcing-exact-avatar-suite"
-    owner: unassigned
-    last_run: null
+    owner: VF-9-20
+    last_run: "evidence/acceptance/VF-8-10/avatarforcing-a100-resume"
+    result: open_one_technical_clip_rejected_for_whole_face_blur_not_exact_avatar_suite
   GATE_AVATAR_002:
     status: open
     blocks: automatic_global_avatar_primary_demotion
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#avatarforcing-exact-avatar-suite"
-    owner: unassigned
+    owner: user
     last_run: null
+    result: open_no_user_approved_global_demotion_threshold
   GATE_AVATAR_003:
     status: open
     blocks: unambiguous_avatarforcing_commercial_permission_claim
@@ -29,8 +31,9 @@ gates:
     status: open
     blocks: mage_production_profile
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#mage-acceptance-suite"
-    owner: unassigned
-    last_run: null
+    owner: VF-9-20
+    last_run: "evidence/acceptance/VF-9-18/mage-quality-matrix"
+    result: open_zero_of_40_matrix_outputs_and_no_accepted_mage_image
   GATE_IMAGE_002:
     status: open
     blocks: unambiguous_mage_checkpoint_commercial_permission_claim
@@ -67,32 +70,37 @@ gates:
     status: open
     blocks: custom_prompt_only_style_claim
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#image-style-analyzer-and-compiler-gate"
-    owner: unassigned
-    last_run: null
+    owner: VF-9-20
+    last_run: "evidence/acceptance/VF-9-18/mage-quality-matrix"
+    result: open_no_same_content_five_style_outputs
   GATE_FALLBACK_001:
     status: open
     blocks: automatic_skyreels_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#skyreels-fallback-gate"
-    owner: unassigned
-    last_run: null
+    owner: VF-9-20
+    last_run: "evidence/acceptance/VF-9-19/avatar-fallback-qualification"
+    result: open_no_skyreels_output_after_three_bounded_resumes
   GATE_GPU_001:
     status: open
     blocks: selectable_production_execution_profiles
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#queuefault-gate"
-    owner: unassigned
-    last_run: null
+    owner: VF-9-20
+    last_run: "evidence/acceptance/VF-9-20/gate-profile-convergence"
+    result: open_no_accepted_model_gpu_execution_profile
   GATE_RUNPOD_001:
     status: open
     blocks: live_runpod_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-endpoint-and-dispatch-gate"
-    owner: unassigned
-    last_run: null
+    owner: VF-9-20
+    last_run: "evidence/acceptance/VF-9-20/gate-profile-convergence"
+    result: open_provider_read_worker_limit_queue_and_cleanup_ambiguities_reproduced
   GATE_COST_001:
     status: open
     blocks: measured_unit_economics_claim
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#production-slo-targets"
-    owner: unassigned
-    last_run: null
+    owner: VF-9-20
+    last_run: "evidence/acceptance/VF-9-20/gate-profile-convergence"
+    result: open_no_representative_30_minute_cold_warm_accepted_jobs
   GATE_UI_001:
     status: closed
     blocks: visual_system_lock

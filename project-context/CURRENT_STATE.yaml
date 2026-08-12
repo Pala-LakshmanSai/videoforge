@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T11:20:00Z"
+updated_at: "2026-08-12T11:35:00Z"
 
-phase: gate_profile_convergence
+phase: cloud_local_seams
 implementation_authorized_in_current_task: true
-current_milestone: provider_gate_convergence
-current_task: VF-9-20
-current_wave: wave_8_runtime_composition
+current_milestone: pglite_adapter_capability_split
+current_task: VF-10-01
+current_wave: wave_9_cloud_local_seams
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -20,7 +20,7 @@ repository:
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "33df55b"
   last_good_commit: "33df55b"
-  working_tree_expected: vf_9_20_selected_context_handoff_then_clean
+  working_tree_expected: vf_10_01_selected_context_handoff_then_clean
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -44,7 +44,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-20 is provider-free gate and profile convergence only. No credential access, GPU, provider call, cloud/account mutation, plugin installation, deployment, or profile promotion."
+  provider_authority_scope: "VF-10-01 is a local behavior-preserving PGlite adapter split only. No credential access, provider/GPU call, cloud/account mutation, plugin installation, deployment, migration, or profile promotion."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -263,17 +263,19 @@ completed_tasks:
     evidence_commit: "cacad46"
     evidence: "evidence/acceptance/VF-9-19/avatar-fallback-qualification"
     summary: "One exact pinned SkyReels job reached IN_PROGRESS but produced no stage progress or MP4 before a provider read timeout. No redispatch occurred; measured spend was $0.5263056722, cleanup was reconciled, and independent RunPod inventory is absolute zero."
+  - task_id: VF-9-20
+    status: complete
+    evidence: "evidence/acceptance/VF-9-20/gate-profile-convergence"
+    summary: "Reconciled every provider gate and production profile from reproducible evidence at $0. No unsupported gate closed, no profile was promoted, and first real provider video remains blocked."
 
 latest_closed_handoff:
-  task_id: VF-9-19
-  status: bounded_safe_provider_failure
-  task_kind: avatar_fallback_qualification
-  implementation_commit: "33df55b"
-  evidence_commit: "cacad46"
-  evidence: "evidence/acceptance/VF-9-19/avatar-fallback-qualification"
-  verification_result: "no_output_no_quality_claim_no_redispatch_and_independent_runpod_absolute_zero"
-  external_actions: "One pinned SkyReels job; cancellation and exact resource cleanup were reconciled after provider read ambiguity."
-  external_spend_usd: 0.5263056722
+  task_id: VF-9-20
+  status: complete
+  task_kind: gate_profile_convergence
+  evidence: "evidence/acceptance/VF-9-20/gate-profile-convergence"
+  verification_result: "all_provider_gates_truthfully_open_no_profile_promotion_first_real_video_blocked"
+  external_actions: none
+  external_spend_usd: 0
 
 last_green:
   checked_at: "2026-08-12T11:25:00Z"
@@ -301,32 +303,32 @@ blocked_tasks: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-9-20
-  milestone: provider_gate_convergence
+  task_id: VF-10-01
+  milestone: pglite_adapter_capability_split
   status: authorized_ready_to_start
-  dependency_status: vf_9_18_and_vf_9_19_terminal_safe_failures_and_runpod_inventory_zero
-  authorization_status: provider_free_evidence_convergence
-  read_profile: phase9_gate_profile_convergence
-  task_brief: tasks/VF-9-20.md
-  goal: "Converge gates and profiles from reproducible evidence without inventing acceptance or promotion."
+  dependency_status: vf_9_20_gate_profile_convergence_complete
+  authorization_status: local_behavior_preserving_refactor
+  read_profile: phase10_pglite_adapter_split
+  task_brief: tasks/VF-10-01.md
+  goal: "Split the oversized PGlite adapter by capability without behavior change."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
   credential_access_authorized: false
   model_downloads_authorized: false
   application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-9-20/gate-profile-convergence"
+  expected_evidence: "evidence/acceptance/VF-10-01/pglite-adapter-split"
   required_handoff:
-    - "Reconcile gate statuses, owners, evidence pointers, measured costs, blockers, and profile eligibility."
-    - "Keep permission gates open and promote no execution profile or human quality gate."
-    - "Keep first real provider video blocked because neither required accepted provider asset exists."
-    - "Author exactly one local cloud-seam planning successor; stop before cloud/plugin/credential/deployment mutation."
+    - "Split only by existing capability; preserve factory, exports, SQL, transaction behavior, and public imports."
+    - "Prove repository contracts, replay, and restore remain green with no migration or schema change."
+    - "Author exactly one private R2 local-seam successor."
+    - "Stop before any cloud/plugin/credential/deployment mutation."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-9-20
+    integration_owner: VF-10-01
   prohibited_in_task:
-    - "Provider calls, credential access, GPU, model download, spend, cloud/account mutation, plugin install, deployment, or migration."
-    - "LongCat/model substitution, production profile promotion, user-gate self-approval, or clear-permission claim."
+    - "Behavior redesign, schema/API change, migration, production adapter, provider call, credential access, spend, cloud/account mutation, plugin install, or deployment."
+    - "LongCat/model substitution, production profile promotion, or gate-status change."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -355,10 +357,11 @@ known_incomplete_boundaries:
   - "Three bounded SkyReels resumes produced no candidate; VF-9-19 stopped on provider read ambiguity after $0.5263056722, performed no redispatch, and returned to absolute-zero inventory. No further paid SkyReels retry is selected."
 
 next_tasks:
-  - "1. VF-9-20: converge reproducible gates at $0 without clear-permission claims, profile promotion, or user-gate self-approval."
-  - "2. First real provider video remains blocked until both Mage and Avatar paths have technically accepted assets; do not spend its $1.50 cap."
-  - "3. Plan local cloud seams in order; stop for new authority before resources, credentials, plugins, deployment, or paid plans."
-  - "4. After staging authority, run contention/fault/security/backup/restore hardening, representative 30-minute benchmarks, fresh-account production acceptance, and user sign-off."
+  - "1. VF-10-01: split oversized PGlite adapter by capability without behavior change."
+  - "2. Prepare private R2 direct multipart adapter and fake-binding tests locally; stop before cloud/plugin/credential mutation."
+  - "3. Prepare Neon, Better Auth Google admission, and Workflow seams locally in that order."
+  - "4. First real provider video remains blocked until both Mage and Avatar paths have technically accepted assets; do not spend its $1.50 cap."
+  - "5. After staging authority, run hardening, benchmarks, production acceptance, and user sign-off."
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
@@ -379,7 +382,7 @@ progress_snapshot:
   interpretation: "Durable accepted-provider proof composition reaches fake-provider-shaped FFmpeg v3, restart/replay, and installed-Chrome delivery. Mage matrix and SkyReels fallback qualification ended with zero outputs and no acceptance; first real provider video, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: vf_9_20_gate_profile_convergence_ready
+  status: vf_10_01_pglite_adapter_split_ready
   completed_and_preserved:
     - "All completed tasks/commits above are preserved; VF-9-17 closed at 958d7bd with canonical exit code 0."
     - "Forced full verification passed at the VF-8-04 handoff tree: Workerd 1/1 and installed Chrome 38/38 with zero skips."
@@ -418,12 +421,13 @@ activation_handoff:
     - "VF-9-17 composed durable Mage/Avatar acceptance proofs, rendered/replayed one 37.167-second fake-provider-shaped FFmpeg v3 output, and passed installed-Chrome play/seek/approve/download/hash/playback."
     - "VF-9-18 added a bounded sequential Mage matrix runner, but three provider starts produced no PNG and cost $0; every resource was deleted and independent inventory is absolute zero."
     - "VF-9-19 ran one exact pinned SkyReels job, stopped on provider read ambiguity with no MP4 and no redispatch after $0.5263056722, reconciled cleanup, and independently proved RunPod absolute zero."
+    - "VF-9-20 reconciled provider gates and profile eligibility at $0; all unproven gates remain open, no review asset exists, and no profile was promoted."
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from 33df55b; preserve all newer commits."
-    - "Load only phase9_gate_profile_convergence and tasks/VF-9-20.md."
-    - "Use only reproducible evidence to converge gates and profiles at $0; keep first real provider video blocked."
+    - "Require clean HEAD descending from 9e5c7d0; preserve all newer commits."
+    - "Load only phase10_pglite_adapter_split and tasks/VF-10-01.md."
+    - "Split packages/control-plane/src/adapters/pglite-repositories.ts by existing capability without behavior change."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
     - "Any provider/credential/GPU/cloud/plugin/deployment action, LongCat/model substitution, profile promotion, unsupported gate closure, regression, or output-grammar conflict."

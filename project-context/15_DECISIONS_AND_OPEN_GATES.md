@@ -62,16 +62,16 @@ In MVP, deterministic media checks can auto-pass technical validity, but the use
 
 | ID | Evidence needed | Consequence |
 |---|---|---|
-| `GATE_AVATAR_001` | AvatarForcing exact-avatar 4090 VRAM, FPS, cold start, quality, cost | Lock 4090 profile or select measured compatible GPU |
-| `GATE_AVATAR_002` | User approves global rejection/demotion threshold after bakeoff | Until then SkyReels is per-clip only |
+| `GATE_AVATAR_001` | **OPEN:** VF-8-10 produced one checksum-valid A100-80GB clip, but strict review rejected whole-face blur; no 12–20-clip exact-avatar suite or accepted output exists | No AvatarForcing production profile |
+| `GATE_AVATAR_002` | **OPEN:** user has not approved a global rejection/demotion threshold after bakeoff | Until then SkyReels is per-clip only |
 | `GATE_AVATAR_003` | **OPEN — USER-ACCEPTED RISK:** pinned code README says Apache-2.0; pinned root `LICENSE.txt` names RollingForcing and prohibits commercial/production use; pinned public weights card has no license. Evidence: `evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license/` | Does not block the user-authorized locked-model qualification, but blocks any VideoForge claim that AvatarForcing commercial permission is unambiguous |
-| `GATE_IMAGE_001` | Reproduce ~300 images in 5–8 generation minutes and <$0.20 | Lock Mage resolution/batch/GPU |
+| `GATE_IMAGE_001` | **OPEN:** three technical Mage PNGs failed strict visual review and VF-9-18 produced `0/40` matrix outputs | No Mage production profile |
 | `GATE_IMAGE_002` | **OPEN — USER-ACCEPTED RISK:** public Comfy-Org weights/revision are now exact and accessible; historical Microsoft terms remain ambiguous | Does not block qualification, but blocks any VideoForge claim that Mage commercial permission is unambiguous |
-| `GATE_STYLE_002` | Same-content Mage bakeoff across default + four distinct extracted styles | Prove prompt-only profiles are sufficient before considering LoRA/reference conditioning |
-| `GATE_FALLBACK_001` | SkyReels low-VRAM 48 GB fit, quality, boot, accepted cost | Provision/lock quality endpoint |
-| `GATE_GPU_001` | Benchmark tested model/GPU allowlists | The UI may show planned candidates disabled, but no untested image/media or primary-avatar execution profile can become selectable |
-| `GATE_RUNPOD_001` | Prove API repair after RunPod's idle max-worker reduction/config drift, timeout/TTL/result reconciliation, ambiguous dispatch handling, worker execution claims, and duplicate-cost visibility | Required before live RunPod dispatch is enabled |
-| `GATE_COST_001` | Full cold/warm 30-minute measurement on new RunPod account | Replace planning estimates/SLO confidence |
+| `GATE_STYLE_002` | **OPEN:** VF-9-18 produced no same-content outputs across default plus four styles | Prompt-only style adherence remains unproven |
+| `GATE_FALLBACK_001` | **OPEN:** three bounded SkyReels resumes produced no MP4; latest VF-9-19 stopped on read ambiguity after `$0.5263056722` | No automatic SkyReels dispatch/profile |
+| `GATE_GPU_001` | **OPEN:** jobs ran on RTX 4090 and A100-80GB, but no Mage/Avatar/SkyReels output reached acceptance | No production model/GPU profile can become selectable |
+| `GATE_RUNPOD_001` | **OPEN:** cancellation/scale-zero shields work, but provider read, worker-count, queue, and cleanup ambiguity remain reproducible through VF-9-19 | Live RunPod dispatch remains disabled |
+| `GATE_COST_001` | **OPEN:** qualification charges are measured, but no representative accepted 30-minute cold/warm jobs exist | Planning estimates and SLO confidence remain unverified |
 
 ## Closed gates
 

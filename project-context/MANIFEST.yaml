@@ -3,8 +3,8 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-12"
 source_of_truth: project-context
-current_selected_profile: phase9_gate_profile_convergence
-current_selected_brief: tasks/VF-9-20.md
+current_selected_profile: phase10_pglite_adapter_split
+current_selected_brief: tasks/VF-10-01.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -508,6 +508,13 @@ read_profiles:
     - 16_CONTEXT_MAINTENANCE.md
     - GATES.yaml
     - tasks/VF-9-20.md
+  phase10_pglite_adapter_split:
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 13_ENGINEERING_BEST_PRACTICES.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - 21_IMPLEMENTATION_EXECUTION_PLAN.md
+    - tasks/VF-10-01.md
   phase3_runware_style_adapter:
     - 08_MODELS_AND_PROVIDERS.md
     - 14_TESTING_AND_ACCEPTANCE.md

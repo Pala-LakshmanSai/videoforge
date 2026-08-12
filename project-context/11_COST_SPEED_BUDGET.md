@@ -132,7 +132,9 @@ The paper reports 34 ms/frame but not the GPU:
 | 68 ms | 11.2 min | 16.2 min | $0.30 |
 | 136 ms | 22.4 min | 27.4 min | $0.51 |
 
-Practical planning range would therefore be roughly $0.20–$0.51 before unusual fallback. It is not an actionable budget until `GATE_AVATAR_003` resolves commercial-use terms; only then may the exact-avatar RunPod benchmark replace this table.
+Practical planning range would therefore be roughly $0.20–$0.51 before unusual fallback. User risk
+acceptance permits separately capped qualification while `GATE_AVATAR_003` remains open, but only an
+accepted exact-avatar benchmark may replace this planning table or support a production profile.
 
 Every one percentage point of avatar share equals 18 output seconds or 450 frames at 25 fps. With a fast avatar engine this is affordable, but the scheduler still targets the measured 21–22% style rather than maximizing avatar.
 
@@ -143,6 +145,12 @@ Every one percentage point of avatar share equals 18 output seconds or 450 frame
 - Before SkyReels dispatch, reserve its measured estimate. Pause if the project would cross its hard cap.
 
 If whole-frame fallback becomes common, AvatarForcing has failed its production role; do not hide the cost through repeated fallback.
+
+Measured qualification observations through VF-9-20 are not production unit economics: three Mage
+technical runs cost `$0.0280524074`, `$0.0235054352`, and `$0.0308072963`, but all outputs failed
+strict visual review; the 40-prompt matrix produced no PNG and cost `$0`. SkyReels bounded attempts
+cost `$0.0502363111`, `$1.2642676444`, `$0.6784048000`, and `$0.5263056722`, with no output. These
+failed/partial charges must not replace the planning ranges or close `GATE_COST_001`.
 
 ## Render and ASR
 
