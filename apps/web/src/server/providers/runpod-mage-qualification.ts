@@ -103,7 +103,7 @@ const probePng = (bytes: Buffer): { width: number; height: number; bytes: number
 
 const image = requiredImage();
 const outputRoot = resolve(
-  process.env.VIDEOFORGE_QUALIFICATION_OUTPUT_ROOT ?? ".videoforge/vf-9-11",
+  process.env.VIDEOFORGE_QUALIFICATION_OUTPUT_ROOT ?? ".videoforge/vf-9-13",
 );
 await mkdir(outputRoot, { recursive: true });
 const apiKey = await loadRunPodApiKeyFromKeychain();
@@ -116,7 +116,7 @@ const startingBalanceUsd = await balance(apiKey);
 const promptHash = sha256(prompt);
 const negativePromptHash = sha256(negativePrompt);
 const suffix = createHash("sha256").update(image).digest("hex").slice(0, 12);
-const attemptId = `vf9_11_${suffix}`;
+const attemptId = `vf9_13_${suffix}`;
 const events: { event: string; at: string; elapsed_ms: number; detail?: unknown }[] = [];
 const mark = (event: string, detail?: unknown): void => {
   events.push({

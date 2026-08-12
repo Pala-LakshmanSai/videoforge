@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 export const MAGE_CANDIDATE_IMAGE =
-  "ghcr.io/pala-lakshmansai/videoforge-mage@sha256:9f3dc9d886b309e74adac3d7d101ee546d8d3a31d123dd1c203852d22709334b";
+  "ghcr.io/pala-lakshmansai/videoforge-mage@sha256:ee844a242956a376466fa233f05e3bb6ffdcf71a645f5b27241331e5e295a89c";
 export const MAGE_MODEL_REVISION = "d8c99241f6fa80fbd453014234af2bf337ea21e6";
 export const MAGE_SOURCE_REVISION = "1108f2ac5e412b27accb0e5d51c90ef2ba39784d";
 export const MAGE_GPU = "NVIDIA GeForce RTX 4090";
