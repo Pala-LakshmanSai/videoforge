@@ -3,8 +3,8 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-12"
 source_of_truth: project-context
-current_selected_profile: phase9_echomimic_v3_flash_observability_repair
-current_selected_brief: tasks/VF-9-24A.md
+current_selected_profile: phase9_echomimic_v3_flash_corrected_sample
+current_selected_brief: tasks/VF-9-24B.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -545,6 +545,12 @@ read_profiles:
     - 14_TESTING_AND_ACCEPTANCE.md
     - 19_IMPLEMENTATION_PLAYBOOK.md
     - tasks/VF-9-24A.md
+  phase9_echomimic_v3_flash_corrected_sample:
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 13_ENGINEERING_BEST_PRACTICES.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - tasks/VF-9-24B.md
   phase3_runware_style_adapter:
     - 08_MODELS_AND_PROVIDERS.md
     - 14_TESTING_AND_ACCEPTANCE.md
