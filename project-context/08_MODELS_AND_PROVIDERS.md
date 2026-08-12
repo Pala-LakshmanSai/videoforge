@@ -76,7 +76,8 @@ Official sources: [Runware Gemini 3.5 Flash](https://runware.ai/docs/models/goog
 
 Approved purpose: every original B-roll still.
 
-- Checkpoint: `microsoft/Mage-Flow-Turbo`.
+- Runtime weights: `Comfy-Org/Mage-Flow` at
+  `d8c99241f6fa80fbd453014234af2bf337ea21e6`, loaded through pinned headless ComfyUI.
 - Model family: 4B.
 - Mode: Turbo, 4 denoising steps, CFG 1.0.
 - Dtype candidate: BF16.
@@ -97,15 +98,18 @@ The separate `microsoft/Mage-Flow-Edit-Turbo` model is not needed in the normal 
 
 Mage receives a text prompt compiled from the selected style profile; it does not receive the style's reference images in MVP. Prompt-derived styling is intentionally simple/cheap but must pass `GATE_STYLE_002`. Do not silently introduce reference conditioning or LoRA training if a distinctive style fails.
 
-The pinned source injects a mandatory Gaussian-Shading watermark into initial noise and can return a
-text refusal placeholder. Production builds must apply and verify the pinned VideoForge source patch:
-remove watermark injection and fail closed on refusal instead of emitting placeholder image bytes.
+The proven runtime is stock `Comfy-Org/ComfyUI` at
+`1108f2ac5e412b27accb0e5d51c90ef2ba39784d`, using PyTorch attention. No FlashAttention, diffusers,
+Microsoft package, watermark patch, or refusal patch is part of this path. The exact graph uses
+`CLIPLoader.type=mage` and the latent emitted by `TextEncodeMageFlowEdit`; an EmptySD3 latent is invalid.
 
-The admitted immutable model revision is
-`395402ba3ef110c96e70d01abe4d178dbe4e01a5`. First-party indexed Hugging Face evidence identifies
-the verified official commit, a 17.5 GB repository tree, and transformer weight
+The immutable public weight revision contains the transformer
 `sha256:6df47df3d7efc9ebdad075b87b3e9e4f74d09dca672d592271788f0ee27ab97d`
-(`8,231,536,760` bytes). Never resolve mutable `main` at runtime.
+(`8,231,536,760` bytes), Qwen encoder
+`sha256:36f3ff447ef59201722e8f9ce6020c9819fdcfba6aa2608c4e09b1c0ce114e34`
+(`8,875,719,384` bytes), and VAE
+`sha256:34e076dc1e8a15321e1e07be5111d59cf16dd10b804b7c7e20b4de29013427e0`
+(`345,053,056` bytes). Never resolve mutable `main` at runtime.
 
 Terms evidence remains ambiguous. The indexed official model page reports MIT. Microsoft's public
 `microsoft/Mage` source repository at `76bec2bb3818863f470de7e867c2dc7f1d0bfd83` has an MIT
@@ -114,7 +118,9 @@ intended for product or service deployment. The user explicitly accepted this un
 2026-08-11 and authorized continuing the locked Mage model. Evidence must retain the ambiguity and
 cannot claim clear commercial permission.
 
-Official sources: [Mage-Flow-Turbo model card](https://huggingface.co/microsoft/Mage-Flow-Turbo) and [Microsoft Mage source repository](https://github.com/microsoft/Mage).
+Official runtime sources: [Comfy-Org Mage-Flow weights](https://huggingface.co/Comfy-Org/Mage-Flow)
+and [ComfyUI](https://github.com/Comfy-Org/ComfyUI). Historical Microsoft sources remain terms
+evidence only and are not the runtime implementation.
 
 ## AvatarForcing
 

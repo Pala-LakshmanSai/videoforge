@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-11T23:24:23Z"
+updated_at: "2026-08-12T07:55:00Z"
 
 phase: mage_worker_image_build
 implementation_authorized_in_current_task: true
@@ -20,7 +20,7 @@ repository:
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
   last_good_commit: "fd97481"
-  working_tree_expected: clean_after_vf_9_05_revision_admission_handoff
+  working_tree_expected: dirty_only_for_active_vf_9_06_comfy_bf16_correction
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -44,7 +44,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-06 permits local Mage worker code/tests/docs, Git push, GitHub Actions, exact official source/model download during image build, and existing GHCR candidate publication at $0. RunPod/Runware mutation, GPU, dispatch, inference, qualification, promotion, deployment, new credentials, and app/schema/UI/Avatar changes are forbidden; RunPod remains absolute zero."
+  provider_authority_scope: "VF-9-06 permits local Mage worker code/tests/docs, Git push, GitHub Actions, exact public source reads, and existing GHCR candidate publication at $0. The small image excludes model bytes; exact public weights download/cache occurs only in the separately capped qualification. RunPod/Runware mutation, GPU, dispatch, inference, qualification, promotion, deployment, new credentials, and app/schema/UI/Avatar changes are forbidden; RunPod remains absolute zero."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -289,7 +289,7 @@ recommended_next_task:
   task_id: VF-9-06
   milestone: pinned_mage_candidate_image
   status: ready
-  dependency_status: vf_9_05_exact_revision_admitted
+  dependency_status: user_supplied_owned_spike_corrected_runtime_to_pinned_comfy_bf16
   authorization_status: zero_spend_ghcr_candidate_build
   read_profile: phase9_mage_worker_image_build
   task_brief: tasks/VF-9-06.md
@@ -303,8 +303,8 @@ recommended_next_task:
   application_code_changes_authorized: true
   expected_evidence: "evidence/acceptance/VF-9-06/mage-worker-image-build"
   required_handoff:
-    - "Build exact source/model revisions with mandatory source patch and strict handler."
-    - "Verify size/hash/import/handler/offline boundaries and immutable linux/amd64 digest."
+    - "Build pinned stock ComfyUI source with strict BF16 graph/handler and runtime weight bootstrap."
+    - "Verify all weight sizes/hashes, graph/import/handler boundaries, and immutable linux/amd64 digest."
     - "Run local/hosted checks and author exactly one capped one-image qualification successor."
   safe_parallelism:
     maximum_lanes_including_integration: 1
@@ -331,7 +331,7 @@ fully_sorted:
   - "Complete fixture Image Styles Hub normalization-through-archive workflow with Workerd and Chrome proof."
 
 known_incomplete_boundaries:
-  - "Mage GATE_IMAGE_002 remains open: exact source/model revision and one transformer weight identity are pinned, but no model download, runnable image, qualification, or production image profile exists."
+  - "Mage GATE_IMAGE_002 remains open only for clear-permission claims. Exact public ComfyUI/weight revisions and all three BF16 hashes are pinned; the candidate image, clean timed VideoForge qualification, and production profile are not yet complete."
   - "Mage/AvatarForcing terms evidence remains ambiguous. The user explicitly accepted that risk for bounded locked-model qualification; do not claim clear commercial permission or substitute models."
   - "DeepSeek/Gemini are live-runtime composed and fixture remains default; latest DeepSeek smoke was correctly rejected as providerUnavailable at $0."
   - "Fixture Hub reference bytes are session-scoped. No production R2/Neon/Better Auth/Workflow deployment exists."
@@ -359,7 +359,7 @@ progress_snapshot:
     prompt_and_style_provider_qualification_and_adapters_percent: 100
     custom_image_style_provider_free_percent: 100
   early_or_blocked:
-    production_image_lane_percent: 24
+    production_image_lane_percent: 36
     production_avatar_lane_percent: 68
     cloud_staging_integration_percent: 15
     production_release_percent: 0
@@ -396,15 +396,16 @@ activation_handoff:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Require clean HEAD descending from fd97481; preserve all newer commits."
     - "Load only phase9_mage_worker_image_build and tasks/VF-9-06.md."
-    - "Build/publish one exact candidate image at $0; do not start RunPod."
+    - "Finish/publish the pinned ComfyUI BF16 candidate image at $0; do not start RunPod."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
-    - "Credential access, model/revision ambiguity, any provider mutation/download/spend, or non-zero RunPod inventory."
+    - "Credential access, model/revision ambiguity, any RunPod/provider mutation/download/spend, or non-zero RunPod inventory."
 
 notes:
   - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."
   - "Mage preflight VF-3-08 already preserved GATE_IMAGE_002 open; do not repeat a broad research pass."
   - "VF-3-10 pinned AvatarForcing code revision 63b73e6 and weights revision e244891; terms remain ambiguous, but user-accepted risk allows bounded qualification while clear-permission claims remain blocked."
   - "VF-3-11 ended without a replacement after the user reaffirmed AvatarForcing and explicitly excluded LongCat; GATE_AVATAR_003 remains open."
+  - "A 2026-08-12 owned spike proved Mage-Flow-Turbo BF16 through pinned stock ComfyUI at 1280x720: no diffusers, FlashAttention, or source patch. VideoForge must use that route only."
   - "TypeScript remains the sole RFC 8785/JCS authority; Python validates schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output remains three compositions, realistic footage, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."

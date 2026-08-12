@@ -12,47 +12,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  flash-wheel:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 180
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Build pinned FlashAttention wheel
-        shell: bash
-        run: |
-          set -euo pipefail
-          docker build --file workers/image-media/Dockerfile.mage-flash \
-            --output type=local,dest=/tmp/mage-flash workers/image-media
-          test -s /tmp/mage-flash/flash_attn.whl
-          sha256sum /tmp/mage-flash/flash_attn.whl
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: mage-flash-wheel
-          path: /tmp/mage-flash/flash_attn.whl
-          if-no-files-found: error
-          retention-days: 1
-
   build:
-    needs: flash-wheel
     runs-on: ubuntu-24.04
-    timeout-minutes: 180
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: mage-flash-wheel
-          path: workers/image-media
       - name: Authenticate GHCR
         shell: bash
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
-      - name: Reclaim runner disk
-        shell: bash
-        run: |
-          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
-          docker system prune --all --force
-          df -h /
       - name: Build, smoke, and publish pinned Mage candidate
         shell: bash
         run: |
@@ -61,10 +30,9 @@ jobs:
           image="ghcr.io/${owner}/videoforge-mage:${GITHUB_SHA}"
           docker build --file workers/image-media/Dockerfile.mage --tag "$image" workers/image-media
           docker run --rm --entrypoint python "$image" -c \
-            'import flash_attn, runpod, torch; from mage_bootstrap import verify_embedded_model; from videoforge_image_media import MAGE_MODEL_REVISION, MageInlineJob; verify_embedded_model(__import__("pathlib").Path("/models/mage-flow-turbo")); assert MAGE_MODEL_REVISION == "395402ba3ef110c96e70d01abe4d178dbe4e01a5"; print("mage-import-model-ok")'
+            'import runpod, torch; from videoforge_image_media import MAGE_MODEL_REVISION, MAGE_SOURCE_REVISION; assert MAGE_MODEL_REVISION == "d8c99241f6fa80fbd453014234af2bf337ea21e6"; assert MAGE_SOURCE_REVISION == "1108f2ac5e412b27accb0e5d51c90ef2ba39784d"; print("mage-comfy-import-ok")'
           docker run --rm --entrypoint python "$image" -c \
-            'import sys; sys.path.insert(0, "/opt/videoforge"); import mage_handler; observed = []; mage_handler.runpod.serverless.start = lambda config: observed.append(config); mage_handler.start_worker(); assert len(observed) == 1 and callable(observed[0]["handler"]); print("mage-handler-registration-ok")'
-          docker run --rm --entrypoint python "$image" -m compileall -q /opt/mage /opt/videoforge
+            'import sys; sys.path.insert(0, "/opt/videoforge"); import mage_handler; observed=[]; mage_handler.runpod.serverless.start=lambda config: observed.append(config); mage_handler.start_worker(); assert len(observed) == 1 and callable(observed[0]["handler"]); print("mage-handler-registration-ok")'
+          docker run --rm --entrypoint python "$image" -m compileall -q /opt/comfyui /opt/videoforge
           docker push "$image"
-          digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image")"
-          printf 'image=%s\n' "$digest" >> "$GITHUB_STEP_SUMMARY"
+          docker inspect --format='image={{index .RepoDigests 0}}' "$image" >> "$GITHUB_STEP_SUMMARY"

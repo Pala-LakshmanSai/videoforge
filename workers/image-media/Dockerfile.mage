@@ -1,46 +1,28 @@
-FROM pytorch/pytorch@sha256:6acf597eeb8e376a96580dde4952f37cc017fef732bb40bfc73f28f25e3f64b4
+FROM pytorch/pytorch@sha256:7b324d212a4450795b49edba9949b7cdc72429148a64e974334bfe5774d51385
 
-ARG MAGE_SOURCE_REVISION=76bec2bb3818863f470de7e867c2dc7f1d0bfd83
-ARG MAGE_MODEL_REVISION=395402ba3ef110c96e70d01abe4d178dbe4e01a5
-ARG MAGE_TRANSFORMER_SHA256=6df47df3d7efc9ebdad075b87b3e9e4f74d09dca672d592271788f0ee27ab97d
-ARG MAGE_REPOSITORY_BYTE_CEILING=18000000000
+ARG MAGE_SOURCE_REVISION=1108f2ac5e412b27accb0e5d51c90ef2ba39784d
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git patch \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git \
     && rm -rf /var/lib/apt/lists/*
-RUN git clone --filter=blob:none https://github.com/microsoft/Mage.git /opt/mage \
-    && git -C /opt/mage checkout --detach "$MAGE_SOURCE_REVISION" \
-    && test "$(git -C /opt/mage rev-parse HEAD)" = "$MAGE_SOURCE_REVISION" \
-    && rm -rf /opt/mage/.git
+RUN git clone --filter=blob:none https://github.com/Comfy-Org/ComfyUI.git /opt/comfyui \
+    && git -C /opt/comfyui checkout --detach "$MAGE_SOURCE_REVISION" \
+    && test "$(git -C /opt/comfyui rev-parse HEAD)" = "$MAGE_SOURCE_REVISION" \
+    && rm -rf /opt/comfyui/.git
 
-COPY mage-no-watermark.patch /opt/videoforge/mage-no-watermark.patch
-RUN patch --directory=/opt/mage --strip=1 --fuzz=0 --forward < /opt/videoforge/mage-no-watermark.patch
 COPY requirements.mage.txt /opt/videoforge/requirements.mage.txt
-RUN python -m pip install --break-system-packages --no-cache-dir \
-        -r /opt/videoforge/requirements.mage.txt \
-    && python -m pip install --break-system-packages --no-cache-dir --no-deps \
-        /opt/mage/mage_flow
-COPY flash_attn.whl /tmp/flash_attn.whl
-RUN python -m pip install --break-system-packages --no-cache-dir /tmp/flash_attn.whl \
-    && rm /tmp/flash_attn.whl
+RUN python -m pip install --no-cache-dir -r /opt/comfyui/requirements.txt \
+    && python -m pip install --no-cache-dir -r /opt/videoforge/requirements.mage.txt
 
 COPY src /opt/videoforge/src
-COPY mage_bootstrap.py mage_handler.py mage-entrypoint.sh /opt/videoforge/
-RUN chmod 0555 /opt/videoforge/mage-entrypoint.sh \
-    && PYTHONPATH=/opt/videoforge/src python -c 'from pathlib import Path; from videoforge_image_media.mage_production import assert_patched_source; assert_patched_source(Path("/opt/mage/mage_flow/pipeline.py").read_text())'
+COPY mage_bootstrap.py mage_handler.py mage-entrypoint.py /opt/videoforge/
 
-ENV MAGE_MODEL_ROOT=/models/mage-flow-turbo \
+ENV COMFY_ROOT=/opt/comfyui \
+    MAGE_MODEL_ROOT=/models/mage-flow-turbo \
+    MAGE_SOURCE_REVISION=1108f2ac5e412b27accb0e5d51c90ef2ba39784d \
     HF_HOME=/models/.cache \
     HF_HUB_DISABLE_TELEMETRY=1 \
-    PYTHONPATH=/opt/videoforge/src:/opt/mage \
+    PYTHONPATH=/opt/videoforge/src:/opt/videoforge \
     PYTHONUNBUFFERED=1
 
-RUN python -c 'from huggingface_hub import snapshot_download; snapshot_download(repo_id="microsoft/Mage-Flow-Turbo", revision="'"$MAGE_MODEL_REVISION"'", local_dir="/models/mage-flow-turbo", max_workers=4)' \
-    && echo "$MAGE_TRANSFORMER_SHA256  /models/mage-flow-turbo/transformer/diffusion_pytorch_model.safetensors" | sha256sum --check --strict \
-    && test "$(stat -c %s /models/mage-flow-turbo/transformer/diffusion_pytorch_model.safetensors)" = "8231536760" \
-    && test "$(du -sb /models/mage-flow-turbo | cut -f1)" -le "$MAGE_REPOSITORY_BYTE_CEILING" \
-    && python -c 'import json; from pathlib import Path; from videoforge_image_media import MAGE_MODEL_ID, MAGE_MODEL_REVISION, MAGE_REPOSITORY_BYTE_CEILING, MAGE_TRANSFORMER_BYTES, MAGE_TRANSFORMER_SHA256; Path("/models/mage-flow-turbo/.videoforge-model.json").write_text(json.dumps({"model_id": MAGE_MODEL_ID, "model_revision": MAGE_MODEL_REVISION, "repository_byte_ceiling": MAGE_REPOSITORY_BYTE_CEILING, "transformer_bytes": MAGE_TRANSFORMER_BYTES, "transformer_sha256": MAGE_TRANSFORMER_SHA256}, sort_keys=True), encoding="utf-8")' \
-    && python /opt/videoforge/mage_bootstrap.py
-
-ENV HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
-WORKDIR /opt/mage
-ENTRYPOINT ["/opt/videoforge/mage-entrypoint.sh"]
+WORKDIR /opt/videoforge
+ENTRYPOINT ["python", "/opt/videoforge/mage-entrypoint.py"]

@@ -561,7 +561,7 @@ approved_decisions:
   DEC_STYLE_005: optional_extra_image_keywords_explicit_toggle
   DEC_STYLE_006: extract_shared_visual_traits_not_reference_content
   DEC_STYLE_007: manual_edits_preserve_and_detach_analyzer_evidence_from_derived_profile_bytes
-  DEC_IMAGE_001: microsoft_mage_flow_turbo
+  DEC_IMAGE_001: comfy_org_mage_flow_turbo_bf16_via_pinned_comfyui
   DEC_IMAGE_002: user_accepts_unresolved_mage_terms_risk_locked_model_proceeds
   DEC_AVATAR_001: avatarforcing_primary
   DEC_AVATAR_002: musetalk_lip_only_repair
@@ -589,7 +589,7 @@ open_gates:
   GATE_AVATAR_002: global_rejection_threshold_to_be_set_after_bakeoff
   GATE_AVATAR_003: reconcile_avatarforcing_code_and_weights_commercial_license
   GATE_IMAGE_001: reproduce_mage_300_image_speed_and_quality
-  GATE_IMAGE_002: verify_exact_checkpoint_access_and_launch_terms
+  GATE_IMAGE_002: exact_checkpoint_access_resolved_terms_risk_user_accepted
   GATE_STYLE_002: verify_mage_adherence_across_distinct_extracted_styles
   GATE_FALLBACK_001: benchmark_skyreels_low_vram_cost_and_quality
   GATE_GPU_001: produce_tested_compatible_gpu_allowlists

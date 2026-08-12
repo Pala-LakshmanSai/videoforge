@@ -1,85 +1,62 @@
 import importlib.util
 import json
 import sys
+import tempfile
 import threading
 import types
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-WORKER_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(WORKER_ROOT))
-sys.path.insert(0, str(WORKER_ROOT / "src"))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path[:0] = [str(ROOT), str(ROOT / "src")]
 sys.modules.setdefault(
     "runpod",
     types.SimpleNamespace(
         serverless=types.SimpleNamespace(progress_update=lambda *_: None, start=lambda *_: None)
     ),
 )
-SPEC = importlib.util.spec_from_file_location(
-    "mage_worker_handler", WORKER_ROOT / "mage_handler.py"
-)
-assert SPEC and SPEC.loader
-handler = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(handler)
+spec = importlib.util.spec_from_file_location("mage_worker_handler", ROOT / "mage_handler.py")
+assert spec and spec.loader
+handler = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(handler)
 
 
 class MageWorkerImageTest(unittest.TestCase):
-    def test_dockerfile_and_workflow_pin_exact_candidate(self) -> None:
-        dockerfile = (WORKER_ROOT / "Dockerfile.mage").read_text(encoding="utf-8")
-        flash_dockerfile = (WORKER_ROOT / "Dockerfile.mage-flash").read_text(encoding="utf-8")
-        workflow = (WORKER_ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
+    def test_image_is_pinned_comfy_bf16_without_flash_route(self) -> None:
+        dockerfile = (ROOT / "Dockerfile.mage").read_text(encoding="utf-8")
+        workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
             encoding="utf-8"
         )
-        self.assertIn("395402ba3ef110c96e70d01abe4d178dbe4e01a5", dockerfile)
         self.assertIn(
-            "6df47df3d7efc9ebdad075b87b3e9e4f74d09dca672d592271788f0ee27ab97d", dockerfile
+            "7b324d212a4450795b49edba9949b7cdc72429148a64e974334bfe5774d51385", dockerfile
         )
-        self.assertIn("mage-no-watermark.patch", dockerfile)
-        self.assertIn("HF_HUB_OFFLINE=1", dockerfile)
+        self.assertIn("1108f2ac5e412b27accb0e5d51c90ef2ba39784d", dockerfile)
+        self.assertIn("Comfy-Org/ComfyUI", dockerfile)
+        self.assertNotIn("flash_attn", dockerfile + workflow)
+        self.assertNotIn("microsoft/Mage", dockerfile)
         self.assertIn(
-            "1e71dd64a9e0280e0447b8a0c2541bad4bf6ac65bdeaa2f90e51a9e57de0370d",
-            flash_dockerfile,
+            "--disable-metadata", (ROOT / "mage-entrypoint.py").read_text(encoding="utf-8")
         )
-        self.assertIn("MAX_JOBS=2", flash_dockerfile)
-        self.assertIn('TORCH_CUDA_ARCH_LIST="8.9;9.0"', flash_dockerfile)
-        self.assertIn("flash-attn compile heartbeat", flash_dockerfile)
-        self.assertIn("needs: flash-wheel", workflow)
-        self.assertIn("Dockerfile.mage", workflow)
+        self.assertFalse((ROOT / "Dockerfile.mage-flash").exists())
+        self.assertFalse((ROOT / "mage-no-watermark.patch").exists())
 
-    def test_embedded_model_marker_is_exact(self) -> None:
-        import tempfile
-
-        from mage_bootstrap import REQUIRED_FILES, verify_embedded_model
-        from videoforge_image_media import (
-            MAGE_MODEL_ID,
-            MAGE_MODEL_REVISION,
-            MAGE_REPOSITORY_BYTE_CEILING,
-            MAGE_TRANSFORMER_BYTES,
-            MAGE_TRANSFORMER_SHA256,
-        )
+    def test_model_marker_and_hashes_fail_closed(self) -> None:
+        from mage_bootstrap import FILES, verify_model_root
+        from videoforge_image_media import MAGE_MODEL_ID, MAGE_MODEL_REVISION
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for relative in REQUIRED_FILES:
-                path = root / relative
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.touch()
             marker = {
                 "model_id": MAGE_MODEL_ID,
                 "model_revision": MAGE_MODEL_REVISION,
-                "repository_byte_ceiling": MAGE_REPOSITORY_BYTE_CEILING,
-                "transformer_bytes": MAGE_TRANSFORMER_BYTES,
-                "transformer_sha256": MAGE_TRANSFORMER_SHA256,
+                "files": [{"path": p, "bytes": s, "sha256": d} for p, s, d in FILES],
             }
             (root / ".videoforge-model.json").write_text(json.dumps(marker), encoding="utf-8")
-            verify_embedded_model(root)
-            marker["model_revision"] = "1" * 40
-            (root / ".videoforge-model.json").write_text(json.dumps(marker), encoding="utf-8")
-            with self.assertRaisesRegex(RuntimeError, "MAGE_MODEL_MARKER_MISMATCH"):
-                verify_embedded_model(root)
+            with self.assertRaisesRegex(RuntimeError, "MAGE_MODEL_FILE_INVALID"):
+                verify_model_root(root)
 
-    def test_cancel_and_unknown_failure_are_fail_closed(self) -> None:
+    def test_cancel_and_unknown_failure_fail_closed(self) -> None:
         with patch.object(handler, "ensure_model") as ensure:
             self.assertEqual(
                 handler.handler({"input": {"cancel_requested": True}}),
@@ -91,17 +68,17 @@ class MageWorkerImageTest(unittest.TestCase):
             {"ok": False, "error_code": "MAGE_INLINE_JOB_SHAPE_INVALID"},
         )
 
-    def test_progress_heartbeat_is_best_effort_and_ordered(self) -> None:
+    def test_progress_heartbeat_is_ordered(self) -> None:
         phases: list[str] = []
-        heartbeat_seen = threading.Event()
+        seen = threading.Event()
 
         def progress(_event, phase: str) -> None:
             phases.append(phase)
-            if phase.startswith("inference_mage_heartbeat_"):
-                heartbeat_seen.set()
+            if "heartbeat" in phase:
+                seen.set()
 
         def operation() -> str:
-            self.assertTrue(heartbeat_seen.wait(timeout=1))
+            self.assertTrue(seen.wait(timeout=1))
             return "accepted"
 
         with patch.object(handler.runpod.serverless, "progress_update", side_effect=progress):

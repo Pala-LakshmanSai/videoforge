@@ -9,7 +9,7 @@ from typing import TypeVar
 
 import runpod
 
-from mage_bootstrap import verify_embedded_model
+from mage_bootstrap import verify_model_root
 from videoforge_image_media import MAGE_MODEL_REVISION, MageInlineJob, run_inline_job
 from videoforge_image_media.mage_production import MageContractError
 
@@ -29,7 +29,7 @@ def ensure_model(event: dict[str, object]) -> None:
     with _bootstrap_lock:
         safe_progress(event, "bootstrap_mage_verify_started")
         try:
-            verify_embedded_model(MODEL_ROOT)
+            verify_model_root(MODEL_ROOT)
         except Exception as error:
             raise MageContractError("MAGE_BOOTSTRAP_FAILED") from error
         safe_progress(event, "bootstrap_mage_verify_complete")

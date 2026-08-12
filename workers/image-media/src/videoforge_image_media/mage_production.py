@@ -2,27 +2,37 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import os
 import re
 import struct
-import subprocess
 import time
 import zlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Literal, TypedDict
-from urllib.parse import urlsplit
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode, urlsplit
+from urllib.request import Request, urlopen
 
-MAGE_SOURCE_REVISION = "76bec2bb3818863f470de7e867c2dc7f1d0bfd83"
-MAGE_MODEL_ID = "microsoft/Mage-Flow-Turbo"
-MAGE_MODEL_REVISION = "395402ba3ef110c96e70d01abe4d178dbe4e01a5"
+MAGE_SOURCE_REVISION = "1108f2ac5e412b27accb0e5d51c90ef2ba39784d"
+MAGE_MODEL_ID = "Comfy-Org/Mage-Flow"
+MAGE_MODEL_REVISION = "d8c99241f6fa80fbd453014234af2bf337ea21e6"
+MAGE_TRANSFORMER_FILENAME = "mage_flow_turbo_bf16.safetensors"
 MAGE_TRANSFORMER_SHA256 = "6df47df3d7efc9ebdad075b87b3e9e4f74d09dca672d592271788f0ee27ab97d"
 MAGE_TRANSFORMER_BYTES = 8_231_536_760
+MAGE_TEXT_ENCODER_FILENAME = "qwen3vl_4b_bf16.safetensors"
+MAGE_TEXT_ENCODER_SHA256 = "36f3ff447ef59201722e8f9ce6020c9819fdcfba6aa2608c4e09b1c0ce114e34"
+MAGE_TEXT_ENCODER_BYTES = 8_875_719_384
+MAGE_VAE_FILENAME = "mage_flow_vae_bf16.safetensors"
+MAGE_VAE_SHA256 = "34e076dc1e8a15321e1e07be5111d59cf16dd10b804b7c7e20b4de29013427e0"
+MAGE_VAE_BYTES = 345_053_056
 MAGE_REPOSITORY_BYTE_CEILING = 18_000_000_000
 MAGE_STEPS = 4
 MAGE_CFG = 1.0
 MAGE_DTYPE = "bfloat16"
-MAGE_QUALIFICATION_SIZE = 1024
+MAGE_QUALIFICATION_WIDTH = 1280
+MAGE_QUALIFICATION_HEIGHT = 720
 MAGE_TIMEOUT_SECONDS = 600
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 REVISION = re.compile(r"^[0-9a-f]{40}$")
@@ -45,7 +55,8 @@ class MageResult(TypedDict):
     positive_prompt_sha256: str
     source_revision: str
     model_revision: str
-    renderer_source_profile: Literal["mage-square-native-v1"]
+    renderer_source_profile: Literal["mage-landscape-native-1280x720-v1"]
+    generation_duration_ms: int
 
 
 class MageInlineResult(MageResult):
@@ -192,8 +203,8 @@ class MageInlineJob:
         _validate_identity(job.attempt_id, job.model_revision)
         _validate_batch(job.items, inline=True)
         if (job.items[0].width, job.items[0].height) != (
-            MAGE_QUALIFICATION_SIZE,
-            MAGE_QUALIFICATION_SIZE,
+            MAGE_QUALIFICATION_WIDTH,
+            MAGE_QUALIFICATION_HEIGHT,
         ):
             raise MageContractError("MAGE_INLINE_SIZE_INVALID")
         return job
@@ -212,49 +223,59 @@ def require_admitted_model_revision(requested: str) -> str:
     return requested
 
 
-def build_command(job: MageJob | MageInlineJob, model_root: Path, output_root: Path) -> list[str]:
+def build_workflow(job: MageInlineJob) -> dict[str, object]:
     require_admitted_model_revision(job.model_revision)
-    command = [
-        "python",
-        "/opt/mage/mage_flow/inference.py",
-        "--prompt",
-        *(item.positive_prompt for item in job.items),
-        "--height",
-        *(str(item.height) for item in job.items),
-        "--width",
-        *(str(item.width) for item in job.items),
-        "--model_path",
-        str(model_root),
-        "--steps",
-        str(MAGE_STEPS),
-        "--cfg",
-        str(MAGE_CFG),
-        "--seed",
-        str(job.items[0].seed),
-        "--device",
-        "cuda",
-        "--out",
-        str(output_root),
-    ]
-    if any("\x00" in argument for argument in command):
-        raise MageContractError("MAGE_COMMAND_INVALID")
-    return command
+    item = job.items[0]
+    return {
+        "1": {
+            "class_type": "UNETLoader",
+            "inputs": {"unet_name": MAGE_TRANSFORMER_FILENAME, "weight_dtype": "default"},
+        },
+        "3": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+                "clip_name": MAGE_TEXT_ENCODER_FILENAME,
+                "type": "mage",
+                "device": "default",
+            },
+        },
+        "4": {"class_type": "VAELoader", "inputs": {"vae_name": MAGE_VAE_FILENAME}},
+        "5": {
+            "class_type": "TextEncodeMageFlowEdit",
+            "inputs": {
+                "clip": ["3", 0],
+                "vae": ["4", 0],
+                "prompt": item.positive_prompt,
+                "negative_prompt": "",
+                "width": item.width,
+                "height": item.height,
+                "batch_size": 1,
+            },
+        },
+        "6": {
+            "class_type": "KSampler",
+            "inputs": {
+                "model": ["1", 0],
+                "positive": ["5", 0],
+                "negative": ["5", 1],
+                "latent_image": ["5", 2],
+                "seed": item.seed,
+                "steps": MAGE_STEPS,
+                "cfg": MAGE_CFG,
+                "sampler_name": "euler",
+                "scheduler": "simple",
+                "denoise": 1.0,
+            },
+        },
+        "8": {"class_type": "VAEDecode", "inputs": {"samples": ["6", 0], "vae": ["4", 0]}},
+        "9": {
+            "class_type": "SaveImage",
+            "inputs": {"images": ["8", 0], "filename_prefix": job.attempt_id},
+        },
+    }
 
 
-def assert_patched_source(source: str) -> None:
-    start = source.find("def generate_images(")
-    end = source.find("# Image edit", start)
-    generation = source[start:end] if start >= 0 and end > start else ""
-    if (
-        not generation
-        or "x = encode_noise(" in generation
-        or "results[i] = make_refusal_image" in generation
-    ):
-        raise MageContractError("MAGE_SOURCE_PATCH_MISSING")
-
-
-def probe_png(path: Path, expected_width: int, expected_height: int) -> tuple[int, int]:
-    data = path.read_bytes()
+def probe_png_bytes(data: bytes, expected_width: int, expected_height: int) -> tuple[int, int]:
     if len(data) < 57 or not data.startswith(PNG_SIGNATURE):
         raise MageContractError("MAGE_OUTPUT_PNG_INVALID")
     offset = len(PNG_SIGNATURE)
@@ -301,99 +322,85 @@ def probe_png(path: Path, expected_width: int, expected_height: int) -> tuple[in
     return width, height
 
 
-def collect_results(job: MageJob | MageInlineJob, output_root: Path) -> tuple[MageResult, ...]:
-    require_admitted_model_revision(job.model_revision)
-    paths = sorted(output_root.glob("gen_*.png"))
-    if len(paths) != len(job.items):
-        raise MageContractError("MAGE_OUTPUT_COUNT_INVALID")
-    results: list[MageResult] = []
-    for item, path in zip(job.items, paths, strict=True):
-        width, height = probe_png(path, item.width, item.height)
-        results.append(
-            {
-                "schema_version": "videoforge.mage-image-result/v1",
-                "attempt_id": job.attempt_id,
-                "scene_id": item.scene_id,
-                "output_sha256": "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest(),
-                "bytes": path.stat().st_size,
-                "width": width,
-                "height": height,
-                "seed": item.seed,
-                "positive_prompt_sha256": item.positive_prompt_sha256,
-                "source_revision": MAGE_SOURCE_REVISION,
-                "model_revision": job.model_revision,
-                "renderer_source_profile": "mage-square-native-v1",
-            }
-        )
-    return tuple(results)
-
-
-def run_process(
-    command: list[str],
-    root: Path,
-    timeout: int = MAGE_TIMEOUT_SECONDS,
-    cancel_requested: Callable[[], bool] = lambda: False,
-) -> None:
-    allowed_environment = {
-        key: value
-        for key, value in os.environ.items()
-        if key
-        in {
-            "CUDA_VISIBLE_DEVICES",
-            "LD_LIBRARY_PATH",
-            "NVIDIA_DRIVER_CAPABILITIES",
-            "NVIDIA_VISIBLE_DEVICES",
-            "PATH",
-            "PYTHONPATH",
-        }
-    }
-    allowed_environment.update({"HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1"})
+def _request_json(base_url: str, path: str, payload: dict[str, object] | None = None) -> object:
+    data = None if payload is None else json.dumps(payload).encode("utf-8")
+    request = Request(
+        f"{base_url}{path}",
+        data=data,
+        headers={"content-type": "application/json"} if data else {},
+    )
     try:
-        process = subprocess.Popen(
-            command,
-            cwd=root,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            env=allowed_environment,
-            start_new_session=True,
-        )
-    except OSError as error:
-        raise MageContractError("MAGE_INFERENCE_START_FAILED") from error
-    deadline = time.monotonic() + timeout
-    while process.poll() is None:
+        with urlopen(request, timeout=30) as response:
+            return json.load(response)
+    except (HTTPError, URLError, TimeoutError, ValueError) as error:
+        raise MageContractError("MAGE_COMFY_TRANSPORT_FAILED") from error
+
+
+def _request_bytes(base_url: str, path: str) -> bytes:
+    try:
+        with urlopen(f"{base_url}{path}", timeout=120) as response:
+            return response.read(16 * 1024 * 1024 + 1)
+    except (HTTPError, URLError, TimeoutError) as error:
+        raise MageContractError("MAGE_COMFY_OUTPUT_FETCH_FAILED") from error
+
+
+def run_inline_job(
+    job: MageInlineJob,
+    _model_root: Path,
+    *,
+    base_url: str | None = None,
+    cancel_requested: Callable[[], bool] = lambda: False,
+) -> MageInlineResult:
+    base = base_url or os.environ.get("MAGE_COMFY_URL", "http://127.0.0.1:8188")
+    started = time.monotonic()
+    queued = _request_json(base, "/prompt", {"prompt": build_workflow(job)})
+    if not isinstance(queued, dict) or not isinstance(queued.get("prompt_id"), str):
+        raise MageContractError("MAGE_COMFY_RESPONSE_INVALID")
+    prompt_id = queued["prompt_id"]
+    deadline = started + MAGE_TIMEOUT_SECONDS
+    history: object = None
+    while time.monotonic() < deadline:
         if cancel_requested():
-            process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait()
             raise MageContractError("MAGE_INFERENCE_CANCELLED")
-        if time.monotonic() >= deadline:
-            process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait()
-            raise MageContractError("MAGE_INFERENCE_TIMEOUT")
-        time.sleep(0.1)
-    if process.returncode:
-        raise MageContractError("MAGE_INFERENCE_FAILED")
-
-
-def run_inline_job(job: MageInlineJob, model_root: Path) -> MageInlineResult:
-    import tempfile
-
-    with tempfile.TemporaryDirectory(prefix="videoforge-mage-qualification-") as temporary:
-        output_root = Path(temporary)
-        command = build_command(job, model_root, output_root)
-        run_process(command, Path("/opt/mage"))
-        result = collect_results(job, output_root)[0]
-        output_path = output_root / "gen_000.png"
-        if result["bytes"] > 16 * 1024 * 1024:
-            raise MageContractError("MAGE_INLINE_OUTPUT_TOO_LARGE")
-        return {
-            **result,
-            "output_base64": base64.b64encode(output_path.read_bytes()).decode("ascii"),
-        }
+        observed = _request_json(base, f"/history/{prompt_id}")
+        if isinstance(observed, dict) and prompt_id in observed:
+            history = observed[prompt_id]
+            break
+        time.sleep(0.25)
+    if history is None:
+        raise MageContractError("MAGE_INFERENCE_TIMEOUT")
+    if not isinstance(history, dict) or not isinstance(history.get("outputs"), dict):
+        raise MageContractError("MAGE_COMFY_HISTORY_INVALID")
+    images: list[dict[str, object]] = []
+    for output in history["outputs"].values():
+        if isinstance(output, dict) and isinstance(output.get("images"), list):
+            images.extend(image for image in output["images"] if isinstance(image, dict))
+    if len(images) != 1:
+        raise MageContractError("MAGE_OUTPUT_COUNT_INVALID")
+    image = images[0]
+    if not all(isinstance(image.get(key), str) for key in ("filename", "subfolder", "type")):
+        raise MageContractError("MAGE_COMFY_HISTORY_INVALID")
+    query = urlencode(
+        {"filename": image["filename"], "subfolder": image["subfolder"], "type": image["type"]}
+    )
+    output = _request_bytes(base, f"/view?{query}")
+    item = job.items[0]
+    width, height = probe_png_bytes(output, item.width, item.height)
+    duration_ms = round((time.monotonic() - started) * 1000)
+    result: MageInlineResult = {
+        "schema_version": "videoforge.mage-image-result/v1",
+        "attempt_id": job.attempt_id,
+        "scene_id": item.scene_id,
+        "output_sha256": "sha256:" + hashlib.sha256(output).hexdigest(),
+        "bytes": len(output),
+        "width": width,
+        "height": height,
+        "seed": item.seed,
+        "positive_prompt_sha256": item.positive_prompt_sha256,
+        "source_revision": MAGE_SOURCE_REVISION,
+        "model_revision": job.model_revision,
+        "renderer_source_profile": "mage-landscape-native-1280x720-v1",
+        "generation_duration_ms": duration_ms,
+        "output_base64": base64.b64encode(output).decode("ascii"),
+    }
+    return result

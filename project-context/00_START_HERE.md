@@ -113,7 +113,7 @@ The Avatar Hub creates reusable private presenter presets from one centered sour
 |---|---|---|
 | Image-prompt writing | Runware DeepSeek V4 Flash 0731 | Batched strict JSON; thinking off; image prompts only |
 | Reference-style analysis | Runware Gemini 3.5 Flash | Qualified strict-JSON analysis only when a new draft style version is explicitly analyzed; prompt-only adherence remains gated |
-| Image generation | `microsoft/Mage-Flow-Turbo` | 4-step Turbo; narration-relevant stills compiled for the pinned style |
+| Image generation | Mage-Flow-Turbo BF16 via pinned headless ComfyUI | 4-step Turbo; narration-relevant stills compiled for the pinned style |
 | Primary avatar | AvatarForcing | User-reaffirmed selection; bounded qualification authorized with unresolved terms risk recorded |
 | Lip-only repair | MuseTalk 1.5 | Only an otherwise-good failed AvatarForcing clip |
 | Whole-frame avatar fallback | SkyReels V3 Talking Avatar | Same pinned runtime source + selected span audio, never a failed derivative; cold quality fallback |
