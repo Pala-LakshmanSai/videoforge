@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-23` complete; `VF-9-24` Elias native sample selected
+Status: `VF-9-24` stopped by one-worker/no-retry guard; awaiting new authority
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -28,9 +28,10 @@ bootstrap reproduces the manifest. `GATE_AVATAR_001` remains open until sample/f
 Container smoke, full local verification, and hosted CI passed at `f0829b9`; no RunPod/model/GPU
 activity or provider spend occurred.
 
-`CURRENT_STATE.yaml` selects only `VF-9-24` / `phase9_echomimic_v3_flash_sample`. Run exactly one
-native 10.12-second Elias sample on RTX 4090 under the `$0.50` cap, clean every temporary RunPod
-resource, prove absolute zero, return the private MP4 for review, then stop.
+`VF-9-24` dispatched its sole authorized job. RunPod created three `EXITED` endpoint worker records
+before returning output, so the one-worker/no-retry guard stopped the attempt. No MP4 was produced
+and no retry is authorized. Observed balance delta was `$0`; three independent post-cleanup reads
+proved zero Pods, workers, endpoints, templates, and volumes. Await explicit new user authority.
 
 ## Locked active providers
 

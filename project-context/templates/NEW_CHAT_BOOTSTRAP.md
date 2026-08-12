@@ -14,15 +14,13 @@ VF-9-22 is complete. EchoMimicV3-Flash is sole active avatar path. AvatarForcing
 SkyReels, and their decisions/evidence are historical replay only; never dispatch them. LongCat
 remains excluded.
 
-VF-9-23 is green. Use only the pinned GHCR digest in CURRENT_STATE. Verify exact private source,
-voiceover, and 10.12-second derivative hashes. Prove RunPod absolute zero, then dispatch exactly one
-native EchoMimicV3-Flash job on RTX 4090. Use 100 GB ephemeral disk, no network volume, 253 frames,
-8 steps, BF16, Flow_Unipc, TeaCache 0.1, seed 43, and the exact task prompt.
+VF-9-23 is green. VF-9-24 consumed its sole job authority, then stopped because RunPod created three
+EXITED endpoint worker records before any output. No MP4 exists. Observed balance delta was $0 and
+three independent cleanup reads proved absolute zero Pods, workers, endpoints, templates, and
+volumes.
 
-VF-9-24 permits one attempt and maximum $0.50. Queue stop 10 minutes; active stop at 25 minutes or
-projected $0.45, whichever comes first. No retry. Persist private MP4 and redacted evidence, cleanup
-in finally, independently prove zero, check play/seek/audio/duration in installed Chrome, return
-READY_FOR_USER_REVIEW, then stop. Never self-approve or create a successor.
+Do not dispatch, retry, tune, fall back, mutate cloud state, create a successor, or continue roadmap
+work. Await explicit new user authority.
 ```
 
 If this template disagrees with `CURRENT_STATE.yaml`, stop and reconcile; current state wins.

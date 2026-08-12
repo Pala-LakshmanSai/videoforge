@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: `VF-9-23` EchoMimicV3-Flash worker complete; `VF-9-24` selected
+Status: `VF-9-24` stopped by provider worker retry guard; awaiting new authority
 Read when: selecting, implementing, integrating, or handing off one task.
 
 ## Authority
@@ -20,9 +20,9 @@ They authorize no new dispatch. LongCat remains excluded.
 2. `VF-9-23` — complete: replaced generic `workers/avatar-primary` internals with a pinned
    EchoMimicV3-Flash worker and bounded RTX 4090 sample runner. Provider spend `$0`; one hosted image
    build only after local green. Pin digest and prove full local/hosted verification.
-3. `VF-9-24` — selected after `VF-9-23` passed: one native 10.12-second Elias RTX 4090
-   attempt, maximum `$0.50`, one job, no retry, exact evidence, cleanup, installed-Chrome playback,
-   then `READY_FOR_USER_REVIEW` and stop.
+3. `VF-9-24` — stopped: its sole job caused RunPod to create three `EXITED` worker records before
+   output. The guard cancelled execution, no MP4 was produced, observed balance delta was `$0`, and
+   three independent post-cleanup inventories proved absolute zero. No retry is authorized.
 4. `VF-9-25` — only after explicit sample approval: durable provider acceptance/application
    integration at `$0`, additive migration `0014`, measured crop profile, no production promotion.
 5. `VF-9-26` — separate later budget: 12–20-clip representative full Echo qualification.
@@ -34,6 +34,7 @@ They authorize no new dispatch. LongCat remains excluded.
   transient cleanup, and independent-zero boundaries.
 - Exact weights bootstrap into ephemeral `/models`; 100 GB container disk, no persistent volume.
 - RTX 4090 24 GB only. `workersMin=0`, `workersMax=1`, one job, no ambiguity redispatch.
+- Ownership is closed. Await explicit new user authority; do not create or select a successor.
 
 ## Verification
 
