@@ -1,8 +1,8 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T17:24:00Z"
+updated_at: "2026-08-12T17:35:00Z"
 
-phase: echomimic_v3_flash_digest_corrected_sample
+phase: echomimic_v3_flash_sample_oom_terminal
 implementation_authorized_in_current_task: false
 current_milestone: avatar_primary_native_sample
 current_task: VF-9-24D
@@ -18,7 +18,7 @@ repository:
   base_commit: "2b7eb5b9e38061eb7ffc44178aba285bc5f65969"
   planning_handoff_commit: "f0829b930e5cf9084312da030f1807a6e269b06f"
   last_good_commit: "a2a4adc93317e14a4aca0e6b70687908e756b7d7"
-  working_tree_expected: tracked_vf_9_24d_authority_update_plus_ignored_private_inputs
+  working_tree_expected: tracked_vf_9_24d_terminal_evidence_plus_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
 live_development:
@@ -30,9 +30,9 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: true
-  authorized_spend_usd: 1.9739587222
-  provider_authority_scope: "VF-9-24D only: one digest-corrected EchoMimic attempt within the user's $2 cumulative ceiling after $0.0260412778 settled; operational breaker remains $0.50/$0.45; mandatory immediate cleanup and absolute-zero proof."
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: "VF-9-24D authority is consumed. Exact RTX 4090 inference OOM; no retry, GPU substitution, tuning, or further spend is authorized. Cleanup is absolute zero."
   worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:d0e487d13bf19b74d09af5c7bb3b800eb2faa75dcce6eca9e155a48b0403ffe9"
   last_user_checkpoint:
     result: accepted
@@ -89,11 +89,15 @@ completed_tasks:
     hosted_verify_run: 31622000295
     external_spend_usd: 0
     evidence: "evidence/acceptance/VF-9-24C/echomimic-tokenizer-digest-correction"
-
-active_ownership:
   - task_id: VF-9-24D
-    owner: single_integration_lane
-    scope: "one digest-corrected EchoMimic sample, private MP4, evidence, and absolute-zero cleanup"
+    status: failed_inference_cuda_oom
+    external_spend_usd: 0
+    cumulative_external_spend_usd: 0.026041277800000984
+    reviewable_output: null
+    evidence: "evidence/acceptance/VF-9-24D/elias-echomimic-v3-flash-digest-corrected-sample"
+    final_absolute_zero_checked_at: "2026-08-12T17:34:08.728Z"
+
+active_ownership: []
 
 blocked_tasks: []
 in_progress_checkpoint: null
@@ -101,33 +105,25 @@ in_progress_checkpoint: null
 recommended_next_task:
   task_id: VF-9-24D
   milestone: avatar_primary_native_sample
-  status: authorized_one_digest_corrected_attempt
-  dependency_status: vf_9_24c_corrected_image_green_runpod_absolute_zero
-  authorization_status: user_authorized_cumulative_max_2_remaining_1_9739587222
+  status: terminal_oom_requires_new_decision
+  dependency_status: vf_9_24d_terminal_oom_cleanup_absolute_zero
+  authorization_status: no_action_authorized
   read_profile: phase9_echomimic_v3_flash_digest_corrected_sample
   task_brief: tasks/VF-9-24D.md
-  goal: "Reach model-ready, produce the exact private sample, show it here, and prove RunPod absolute zero."
-  provider_calls_authorized: true
-  maximum_external_spend_usd: 1.9739587222
-  provider_authority:
-    provider: RunPod
-    model_id: EchoMimicV3-Flash@311e176905a8c4c24b240b530488fe636ce4d249
-    cap_usd: 1.9739587222
-    cumulative_cap_usd: 2
-    prior_settled_spend_usd: 0.026041277800000984
-    non_transferable: true
-    authorized_by_user_at: "2026-08-12T17:04:00Z"
-  remote_or_cloud_mutations_authorized: true
-  remote_scope: "RunPod API only for one temporary template, endpoint, RTX 4090 worker/job, cancellation/drain/deletion, final inventory/balance reads, and exact output recovery."
-  credential_access_authorized: true
-  model_downloads_authorized: true
+  goal: "No action; report measured RTX 4090 OOM and request a new exact GPU/tuning decision if the user wants another attempt."
+  provider_calls_authorized: false
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  remote_scope: "None. RunPod is absolute zero."
+  credential_access_authorized: false
+  model_downloads_authorized: false
   application_code_changes_authorized: false
   expected_evidence: "evidence/acceptance/VF-9-24D/elias-echomimic-v3-flash-digest-corrected-sample"
   required_handoff:
-    - "Return a probed private MP4 and show it here, or exact terminal failure evidence."
-    - "Delete every resource and prove absolute zero with stable balance."
+    - "Report no MP4 and exact AVATAR_INFERENCE_CUDA_OOM evidence."
+    - "Preserve absolute-zero cleanup and stable-balance proof."
   prohibited_in_task:
-    - "Second VF-9-24D attempt, fallback, substitution, app integration, deployment, migration, profile promotion, or successor task."
+    - "Retry, GPU substitution, memory tuning, fallback, app integration, deployment, migration, profile promotion, or successor task."
     - "AvatarForcing, MuseTalk, SkyReels, LongCat, A100, RTX 5090, or network volume."
 
 blocking_gates_for_production:
@@ -146,10 +142,10 @@ progress_snapshot:
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: vf_9_24d_authorized_one_attempt
+  status: vf_9_24d_terminal_oom_cleanup_absolute_zero
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Load only phase9_echomimic_v3_flash_digest_corrected_sample and tasks/VF-9-24D.md."
-    - "Run one attempt, show the private MP4 if successful, and prove absolute zero."
+    - "Read terminal evidence; do not retry, substitute GPU, tune memory, or spend without a new explicit decision."
   stop_conditions:
-    - "Any second attempt, cumulative spend above $2, fallback/substitution, unconfirmed cleanup, successor selection, or roadmap continuation."
+    - "Any retry, GPU/tuning/fallback choice, provider mutation, spend, successor selection, or roadmap continuation without new explicit authority."

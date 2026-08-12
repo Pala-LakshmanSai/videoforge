@@ -1,0 +1,287 @@
+{
+  "schema_version": "videoforge.echomimic-v3-flash-sample-journal/v1",
+  "events": [
+    {
+      "checked_at": "2026-08-12T17:27:57.469Z",
+      "stage": "preflight_complete",
+      "starting_balance_usd": 16.3139572463,
+      "gpu_rate_snapshot": {
+        "checked_at": "2026-08-12T17:27:56.964Z",
+        "id": "NVIDIA GeForce RTX 4090",
+        "display_name": "RTX 4090",
+        "memory_gb": 24,
+        "secure_usd_per_hour": 0.74,
+        "community_usd_per_hour": 0.34
+      },
+      "initial_inventory": {
+        "checkedAt": "2026-08-12T17:27:55.049Z",
+        "pods": [],
+        "endpoints": [],
+        "privateTemplateCount": 0,
+        "networkVolumes": [],
+        "runningPodCount": 0,
+        "activeServerlessWorkerCount": 0
+      }
+    },
+    {
+      "checked_at": "2026-08-12T17:28:02.235Z",
+      "stage": "private_transfer_ready",
+      "output_transport": "private_tunnel_v1"
+    },
+    {
+      "checked_at": "2026-08-12T17:28:02.236Z",
+      "stage": "template_create_started"
+    },
+    {
+      "checked_at": "2026-08-12T17:28:03.467Z",
+      "stage": "template_created",
+      "template_id_hash": "sha256:13ab54d7a4a1cca8b679b742e3034ecec21c63041fd7f521bf14f21c98e9370d"
+    },
+    {
+      "checked_at": "2026-08-12T17:28:03.468Z",
+      "stage": "endpoint_create_started"
+    },
+    {
+      "checked_at": "2026-08-12T17:28:04.319Z",
+      "stage": "endpoint_created",
+      "endpoint_id_hash": "sha256:3c2a11d4d8bad4801b37d47af880d8c33e828dd9460fcad148f9ab8c080e44f3"
+    },
+    {
+      "checked_at": "2026-08-12T17:28:05.286Z",
+      "stage": "endpoint_drained_before_dispatch"
+    },
+    {
+      "checked_at": "2026-08-12T17:28:05.287Z",
+      "stage": "job_dispatch_started",
+      "attempt_id": "vf9_24_584f426045aa",
+      "input": {
+        "source_sha256": "sha256:bcc1b20cf51c0a1f5d8aae834dced1dcecf62e78434470f014f1391939fe31f7",
+        "span_audio_sha256": "sha256:ee4f007c5c5770a404a1fe7eb008ed7c9964acb47c34677374131ab509f26076",
+        "layout": "AVATAR_FULL",
+        "num_output_frames": 253
+      }
+    },
+    {
+      "checked_at": "2026-08-12T17:28:05.857Z",
+      "stage": "job_dispatched",
+      "job_id_hash": "sha256:3ac0b588c92962fafd20be3b8d18041dbcbaadb9b92ff1003933f9c298e7483e",
+      "job_status": "IN_QUEUE"
+    },
+    {
+      "checked_at": "2026-08-12T17:28:21.214Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:28:23.454Z",
+      "stage": "worker_inventory_changed",
+      "active_serverless_workers": 0,
+      "running_pods": 0,
+      "worker_records": 1,
+      "worker_statuses": [
+        "EXITED"
+      ]
+    },
+    {
+      "checked_at": "2026-08-12T17:28:38.917Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:29:00.052Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:29:17.445Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:29:19.060Z",
+      "stage": "worker_inventory_changed",
+      "active_serverless_workers": 0,
+      "running_pods": 0,
+      "worker_records": 2,
+      "worker_statuses": [
+        "EXITED",
+        "EXITED"
+      ]
+    },
+    {
+      "checked_at": "2026-08-12T17:29:46.176Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:30:03.297Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:30:04.651Z",
+      "stage": "worker_inventory_changed",
+      "active_serverless_workers": 0,
+      "running_pods": 0,
+      "worker_records": 3,
+      "worker_statuses": [
+        "EXITED",
+        "EXITED",
+        "EXITED"
+      ]
+    },
+    {
+      "checked_at": "2026-08-12T17:30:20.073Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:30:21.591Z",
+      "stage": "worker_active"
+    },
+    {
+      "checked_at": "2026-08-12T17:30:36.932Z",
+      "stage": "job_status",
+      "delay_time_ms": 142210,
+      "execution_time_ms": null,
+      "job_status": "IN_PROGRESS",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:30:54.102Z",
+      "stage": "job_status",
+      "delay_time_ms": 142210,
+      "execution_time_ms": null,
+      "job_status": "IN_PROGRESS",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:31:10.852Z",
+      "stage": "job_status",
+      "delay_time_ms": 142210,
+      "execution_time_ms": null,
+      "job_status": "IN_PROGRESS",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:31:27.570Z",
+      "stage": "job_status",
+      "delay_time_ms": 142210,
+      "execution_time_ms": null,
+      "job_status": "IN_PROGRESS",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:31:45.010Z",
+      "stage": "job_status",
+      "delay_time_ms": 142210,
+      "execution_time_ms": null,
+      "job_status": "IN_PROGRESS",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:32:03.297Z",
+      "stage": "job_status",
+      "delay_time_ms": 142210,
+      "execution_time_ms": null,
+      "job_status": "IN_PROGRESS",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:32:20.318Z",
+      "stage": "job_status",
+      "delay_time_ms": 142210,
+      "execution_time_ms": null,
+      "job_status": "IN_PROGRESS",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:32:37.286Z",
+      "stage": "job_status",
+      "delay_time_ms": 142210,
+      "execution_time_ms": null,
+      "job_status": "IN_PROGRESS",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:32:54.213Z",
+      "stage": "job_status",
+      "delay_time_ms": 142210,
+      "execution_time_ms": null,
+      "job_status": "IN_PROGRESS",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:33:12.311Z",
+      "stage": "job_status",
+      "delay_time_ms": 142210,
+      "execution_time_ms": null,
+      "job_status": "IN_PROGRESS",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:33:29.238Z",
+      "stage": "job_status",
+      "delay_time_ms": 142210,
+      "execution_time_ms": 175973,
+      "job_status": "COMPLETED",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:33:29.242Z",
+      "stage": "attempt_failed",
+      "abort_signal": null,
+      "failure_code": "AVATAR_INFERENCE_CUDA_OOM"
+    },
+    {
+      "checked_at": "2026-08-12T17:33:29.700Z",
+      "stage": "queue_empty_confirmed"
+    },
+    {
+      "checked_at": "2026-08-12T17:33:31.284Z",
+      "stage": "endpoint_deleted",
+      "endpoint_id_hash": "sha256:3c2a11d4d8bad4801b37d47af880d8c33e828dd9460fcad148f9ab8c080e44f3"
+    },
+    {
+      "checked_at": "2026-08-12T17:33:33.283Z",
+      "stage": "template_deleted",
+      "template_id_hash": "sha256:13ab54d7a4a1cca8b679b742e3034ecec21c63041fd7f521bf14f21c98e9370d"
+    },
+    {
+      "checked_at": "2026-08-12T17:33:34.241Z",
+      "stage": "final_observation",
+      "ending_balance_usd": 16.3139572463,
+      "failure_code": "AVATAR_INFERENCE_CUDA_OOM",
+      "final_inventory": {
+        "checkedAt": "2026-08-12T17:33:33.734Z",
+        "pods": [],
+        "endpoints": [],
+        "privateTemplateCount": 0,
+        "networkVolumes": [],
+        "runningPodCount": 0,
+        "activeServerlessWorkerCount": 0
+      }
+    }
+  ]
+}

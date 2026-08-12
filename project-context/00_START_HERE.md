@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-24D` one digest-corrected EchoMimic sample authorized
+Status: `VF-9-24D` terminal RTX 4090 inference OOM; cleanup absolute zero
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -40,7 +40,10 @@ fresh explicit cap. `VF-9-24B` consumed one attempt and `$0.0260412778`, failing
 because one pinned tokenizer SHA-256 omitted its final `b`. Cleanup is absolute zero. `VF-9-24C`
 corrected that pin, added the missing digest-length regression shield, and published image
 `sha256:d0e487d13bf19b74d09af5c7bb3b800eb2faa75dcce6eca9e155a48b0403ffe9` at `$0`. `VF-9-24D`
-owns one attempt within the user's `$2` cumulative ceiling and the primary goal is to show its MP4.
+used one attempt within the user's `$2` cumulative ceiling. Model bootstrap succeeded, but exact
+253-frame inference failed with `AVATAR_INFERENCE_CUDA_OOM`; no MP4 exists. Cumulative measured spend
+is `$0.0260412778`. Cleanup and three independent reads prove absolute zero. No retry, GPU
+substitution, memory tuning, or further spend is authorized.
 
 ## Locked active providers
 

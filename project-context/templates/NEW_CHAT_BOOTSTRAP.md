@@ -24,8 +24,9 @@ observability, exact-entrypoint smoke, verification, and a corrected pinned GHCR
 failed before model-ready because one tokenizer SHA-256 omitted its final `b`; it spent
 `$0.0260412778` and cleanup is absolute zero. VF-9-24C fixed the pin and published
 `sha256:d0e487d13bf19b74d09af5c7bb3b800eb2faa75dcce6eca9e155a48b0403ffe9`. VF-9-24D owns one
-digest-corrected attempt within the user's `$2` cumulative ceiling. Show the private MP4 here, then
-delete every RunPod resource and prove absolute zero.
+digest-corrected attempt reached inference but failed `AVATAR_INFERENCE_CUDA_OOM` on RTX 4090. No MP4
+exists. Cumulative measured spend is `$0.0260412778`; cleanup and three independent reads prove
+absolute zero. Do not retry, substitute GPU, tune memory, or spend without a new explicit decision.
 ```
 
 If this template disagrees with `CURRENT_STATE.yaml`, stop and reconcile; current state wins.

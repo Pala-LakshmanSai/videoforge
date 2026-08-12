@@ -26,5 +26,6 @@ records; no MP4 or paid retry authority exists. `VF-9-24A` completed the provide
 and published the corrected GHCR image. `VF-9-24B` failed before model-ready on a truncated tokenizer
 digest, spent `$0.0260412778`, and ended at absolute zero. `VF-9-24C` is the sole selected
 provider-free digest correction and image build and is complete. `VF-9-24D` owns one
-digest-corrected sample attempt within the user's `$2` cumulative ceiling and must show the MP4 or
-exact failure before absolute-zero cleanup.
+digest-corrected sample attempt reached inference but failed with RTX 4090 CUDA OOM. No MP4 exists;
+cumulative measured spend is `$0.0260412778` and cleanup is absolute zero. Any retry, larger GPU, or
+memory tuning needs a new explicit decision.
