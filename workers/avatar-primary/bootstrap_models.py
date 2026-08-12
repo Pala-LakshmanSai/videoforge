@@ -78,7 +78,7 @@ REQUIRED_FILES = (
     (
         "base/google/umt5-xxl/tokenizer.json",
         16837417,
-        "6e197b4d3dbd71da14b4eb255f4fa91c9c1f2068b20a2de2472967ca3d22602",
+        "6e197b4d3dbd71da14b4eb255f4fa91c9c1f2068b20a2de2472967ca3d22602b",
     ),
     (
         "base/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth",

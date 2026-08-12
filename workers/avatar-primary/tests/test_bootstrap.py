@@ -44,6 +44,12 @@ class BootstrapTest(unittest.TestCase):
             self.assertEqual(module.BASE_REVISION, "fc913c34361f4ec879e2f9c78b4f11ae50a937d1")
             self.assertEqual(module.AUDIO_REVISION, "3991242c806928916fff4a8c0e4f76acf661b743")
             self.assertEqual(sum(item[1] for item in module.REQUIRED_FILES if item[2]), 23922317735)
+            digests = [item[2] for item in module.REQUIRED_FILES if item[2]]
+            self.assertTrue(all(len(digest) == 64 for digest in digests))
+            self.assertIn(
+                "6e197b4d3dbd71da14b4eb255f4fa91c9c1f2068b20a2de2472967ca3d22602b",
+                digests,
+            )
 
     def test_cache_hit_is_verified_and_download_free(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

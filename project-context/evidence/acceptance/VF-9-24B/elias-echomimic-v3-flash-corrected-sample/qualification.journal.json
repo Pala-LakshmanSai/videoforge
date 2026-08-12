@@ -1,0 +1,152 @@
+{
+  "schema_version": "videoforge.echomimic-v3-flash-sample-journal/v1",
+  "events": [
+    {
+      "checked_at": "2026-08-12T16:59:47.257Z",
+      "stage": "preflight_complete",
+      "starting_balance_usd": 16.3399985241,
+      "gpu_rate_snapshot": {
+        "checked_at": "2026-08-12T16:59:46.871Z",
+        "id": "NVIDIA GeForce RTX 4090",
+        "display_name": "RTX 4090",
+        "memory_gb": 24,
+        "secure_usd_per_hour": 0.74,
+        "community_usd_per_hour": 0.34
+      },
+      "initial_inventory": {
+        "checkedAt": "2026-08-12T16:59:45.223Z",
+        "pods": [],
+        "endpoints": [],
+        "privateTemplateCount": 0,
+        "networkVolumes": [],
+        "runningPodCount": 0,
+        "activeServerlessWorkerCount": 0
+      }
+    },
+    {
+      "checked_at": "2026-08-12T16:59:51.065Z",
+      "stage": "private_transfer_ready",
+      "output_transport": "private_tunnel_v1"
+    },
+    {
+      "checked_at": "2026-08-12T16:59:51.066Z",
+      "stage": "template_create_started"
+    },
+    {
+      "checked_at": "2026-08-12T16:59:52.512Z",
+      "stage": "template_created",
+      "template_id_hash": "sha256:95467341a5c26f535c7e72d565cdf8c70a842d5c3aac0a1d068c5b3191e06652"
+    },
+    {
+      "checked_at": "2026-08-12T16:59:52.513Z",
+      "stage": "endpoint_create_started"
+    },
+    {
+      "checked_at": "2026-08-12T16:59:53.447Z",
+      "stage": "endpoint_created",
+      "endpoint_id_hash": "sha256:dcb8708744ec33c785e463c720ea9340f1161a4bd5ffb41d97e96f49101a81af"
+    },
+    {
+      "checked_at": "2026-08-12T16:59:54.305Z",
+      "stage": "endpoint_drained_before_dispatch"
+    },
+    {
+      "checked_at": "2026-08-12T16:59:54.307Z",
+      "stage": "job_dispatch_started",
+      "attempt_id": "vf9_24_f3644c7220e4",
+      "input": {
+        "source_sha256": "sha256:bcc1b20cf51c0a1f5d8aae834dced1dcecf62e78434470f014f1391939fe31f7",
+        "span_audio_sha256": "sha256:ee4f007c5c5770a404a1fe7eb008ed7c9964acb47c34677374131ab509f26076",
+        "layout": "AVATAR_FULL",
+        "num_output_frames": 253
+      }
+    },
+    {
+      "checked_at": "2026-08-12T16:59:54.773Z",
+      "stage": "job_dispatched",
+      "job_id_hash": "sha256:4563ba845df378c529715e127b0eca167fe049d4748ec1b3babe82c61bea685e",
+      "job_status": "IN_QUEUE"
+    },
+    {
+      "checked_at": "2026-08-12T17:00:10.295Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:00:23.492Z",
+      "stage": "worker_inventory_changed",
+      "active_serverless_workers": 0,
+      "running_pods": 0,
+      "worker_records": 1,
+      "worker_statuses": [
+        "EXITED"
+      ]
+    },
+    {
+      "checked_at": "2026-08-12T17:00:39.923Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T17:00:50.434Z",
+      "stage": "attempt_failed",
+      "abort_signal": null,
+      "failure_code": "RUNPOD_READ_AMBIGUOUS"
+    },
+    {
+      "checked_at": "2026-08-12T17:05:20.276Z",
+      "stage": "final_observation",
+      "ending_balance_usd": 16.3139572463,
+      "failure_code": "RUNPOD_READ_AMBIGUOUS",
+      "final_inventory": {
+        "checkedAt": "2026-08-12T17:05:17.307Z",
+        "pods": [
+          {
+            "idHash": "sha256:8570726b9fa9d0b353b5548c9ce6a23c2c663eed3b55a231c6875235907aaee7",
+            "desiredStatus": "EXITED",
+            "endpointWorker": true,
+            "costPerHourUsd": 0.74
+          },
+          {
+            "idHash": "sha256:e630c70750db1be359ee6c8bf1664f321c7ae54a07b8ec8b49a31d74addba51a",
+            "desiredStatus": "EXITED",
+            "endpointWorker": true,
+            "costPerHourUsd": 0.74
+          },
+          {
+            "idHash": "sha256:95d96e745f83973281145612256f9b3878a60a189deaa793994a83414959f329",
+            "desiredStatus": "EXITED",
+            "endpointWorker": true,
+            "costPerHourUsd": 0.74
+          }
+        ],
+        "endpoints": [
+          {
+            "idHash": "sha256:dcb8708744ec33c785e463c720ea9340f1161a4bd5ffb41d97e96f49101a81af",
+            "workersMin": 0,
+            "workersMax": 1,
+            "workerRecordCount": 3,
+            "activeWorkerCount": 0,
+            "exitedWorkerCount": 3,
+            "workerStatuses": [
+              "EXITED",
+              "EXITED",
+              "EXITED"
+            ],
+            "scaleZeroCompliant": true
+          }
+        ],
+        "privateTemplateCount": 1,
+        "networkVolumes": [],
+        "runningPodCount": 0,
+        "activeServerlessWorkerCount": 0
+      }
+    }
+  ]
+}

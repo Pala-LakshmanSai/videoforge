@@ -23,5 +23,6 @@ including `$0.4496891390` in `VF-9-21` and independent final zero inventory. `VF
 that active route with EchoMimicV3-Flash. `VF-9-23` published the pinned worker after full local and
 hosted green. `VF-9-24` dispatched one job, then stopped when RunPod created three `EXITED` worker
 records; no MP4 or paid retry authority exists. `VF-9-24A` completed the provider-free correction
-and published the corrected GHCR image. `VF-9-24B` is the sole selected task: one corrected sample
-under the user's `$2` ceiling, with the existing `$0.50` operational breaker and mandatory cleanup.
+and published the corrected GHCR image. `VF-9-24B` failed before model-ready on a truncated tokenizer
+digest, spent `$0.0260412778`, and ended at absolute zero. `VF-9-24C` is the sole selected
+provider-free digest correction and image build; it cannot dispatch a second sample.

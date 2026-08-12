@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-24B` one corrected EchoMimic sample authorized
+Status: `VF-9-24C` provider-free tokenizer digest correction selected
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -36,8 +36,9 @@ balance delta was `$0`; three independent post-cleanup reads proved absolute zer
 `VF-9-24A` corrected state-aware inventory, durable attempt journaling, startup/bootstrap
 observability, and exact-entrypoint image smoke. The corrected worker is pinned at
 `sha256:79e799a1312168123aed0809cc93c9d83047bef2354ff5dbac77caed64da87f1`. Paid RunPod use needs a
-fresh explicit cap. The user now authorizes up to `$2`; `VF-9-24B` retains the cheaper `$0.50`
-operational breaker for one attempt and mandates immediate absolute-zero cleanup.
+fresh explicit cap. `VF-9-24B` consumed one attempt and `$0.0260412778`, failing before model-ready
+because one pinned tokenizer SHA-256 omitted its final `b`. Cleanup is absolute zero. `VF-9-24C`
+corrects that pin, adds the missing digest-length regression shield, and publishes one image at `$0`.
 
 ## Locked active providers
 

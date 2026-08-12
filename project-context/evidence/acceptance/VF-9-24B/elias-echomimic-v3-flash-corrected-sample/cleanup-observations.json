@@ -1,0 +1,10 @@
+{
+  "schema_version": "videoforge.runpod-zero-observations/v1",
+  "cleanup_mode": "validated_manual_api_cleanup_after_runner_read_ambiguity",
+  "observations": [
+    {"checked_at":"2026-08-12T17:10:46.734Z","pods":0,"running_pods":0,"active_workers":0,"endpoints":0,"private_templates":0,"network_volumes":0,"balance_usd":16.3139572463},
+    {"checked_at":"2026-08-12T17:10:53.000Z","pods":0,"running_pods":0,"active_workers":0,"endpoints":0,"private_templates":0,"network_volumes":0,"balance_usd":16.3139572463},
+    {"checked_at":"2026-08-12T17:10:59.035Z","pods":0,"running_pods":0,"active_workers":0,"endpoints":0,"private_templates":0,"network_volumes":0,"balance_usd":16.3139572463}
+  ],
+  "measured_spend_usd": 0.026041277800000984
+}
