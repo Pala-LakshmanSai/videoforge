@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-24A` provider-free observability correction selected
+Status: `VF-9-24A` complete; corrected sample waits on a fresh spend cap
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -33,9 +33,10 @@ before returning output. Diagnosis found that exited history was incorrectly cou
 workers and the forced stop preceded durable runner serialization. No MP4 was produced. Observed
 balance delta was `$0`; three independent post-cleanup reads proved absolute zero.
 
-`CURRENT_STATE.yaml` selects only provider-free `VF-9-24A`: correct state-aware inventory, durable
-attempt journaling, startup/bootstrap observability, and exact-entrypoint image smoke; publish one
-corrected GHCR digest and stop. Paid RunPod use needs a fresh explicit cap.
+`VF-9-24A` corrected state-aware inventory, durable attempt journaling, startup/bootstrap
+observability, and exact-entrypoint image smoke. The corrected worker is pinned at
+`sha256:79e799a1312168123aed0809cc93c9d83047bef2354ff5dbac77caed64da87f1`. Paid RunPod use needs a
+fresh explicit cap.
 
 ## Locked active providers
 

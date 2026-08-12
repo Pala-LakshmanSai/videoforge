@@ -1,9 +1,9 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T16:45:00Z"
+updated_at: "2026-08-12T16:47:00Z"
 
-phase: echomimic_v3_flash_observability_repair
-implementation_authorized_in_current_task: true
+phase: echomimic_v3_flash_sample_waiting_spend_cap
+implementation_authorized_in_current_task: false
 current_milestone: avatar_primary_observability_repair
 current_task: VF-9-24A
 current_wave: wave_9_echomimic_sample_first
@@ -17,8 +17,8 @@ repository:
   branch: main
   base_commit: "2b7eb5b9e38061eb7ffc44178aba285bc5f65969"
   planning_handoff_commit: "f0829b930e5cf9084312da030f1807a6e269b06f"
-  last_good_commit: "dab8f6a9202a9b50c221b14198215abdcc8ab535"
-  working_tree_expected: tracked_vf_9_24a_implementation_plus_ignored_private_inputs
+  last_good_commit: "77d6008b57fb4ccd7c457e578f6e1e3bdc1f5d37"
+  working_tree_expected: clean_tracked_terminal_vf_9_24a_plus_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
 live_development:
@@ -32,8 +32,8 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-24A is provider-free. RunPod resources, dispatch, GPU, model downloads, and spend require a fresh explicit cap."
-  worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:e4a4b71e5e706ef6da4a62cdc7fa87e0c599e9fe2fa702fea73081ed19b86d73"
+  provider_authority_scope: "VF-9-24A is complete. RunPod resources, dispatch, GPU, model downloads, and spend require a fresh explicit cap."
+  worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:79e799a1312168123aed0809cc93c9d83047bef2354ff5dbac77caed64da87f1"
   last_user_checkpoint:
     result: accepted
     commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
@@ -66,11 +66,17 @@ completed_tasks:
     reviewable_output: null
     evidence: "evidence/acceptance/VF-9-24/elias-echomimic-v3-flash-sample"
     final_absolute_zero_checked_at: "2026-08-12T15:52:50.125Z"
-
-active_ownership:
   - task_id: VF-9-24A
-    owner: single_integration_lane
-    scope: "state-aware RunPod inventory, durable journal, worker startup/bootstrap observability, tests, and one GHCR build"
+    status: complete
+    implementation_commit: "5ada5c222b948c893ace093edef89ff3e327875b"
+    publication_commit: "77d6008b57fb4ccd7c457e578f6e1e3bdc1f5d37"
+    worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:79e799a1312168123aed0809cc93c9d83047bef2354ff5dbac77caed64da87f1"
+    image_build_run: 31618931186
+    hosted_verify_run: 31618929757
+    external_spend_usd: 0
+    evidence: "evidence/acceptance/VF-9-24A/echomimic-observability-repair"
+
+active_ownership: []
 
 blocked_tasks: []
 in_progress_checkpoint: null
@@ -78,26 +84,26 @@ in_progress_checkpoint: null
 recommended_next_task:
   task_id: VF-9-24A
   milestone: avatar_primary_observability_repair
-  status: authorized_provider_free_implementation
-  dependency_status: vf_9_24_terminal_no_output_cleanup_absolute_zero
-  authorization_status: code_context_git_and_one_ghcr_build_only
+  status: complete_waiting_fresh_spend_cap
+  dependency_status: vf_9_24a_corrected_image_green_runpod_absolute_zero
+  authorization_status: no_paid_action_authorized
   read_profile: phase9_echomimic_v3_flash_observability_repair
   task_brief: tasks/VF-9-24A.md
-  goal: "Correct RunPod state accounting and evidence durability, publish one corrected image, then stop before paid use."
+  goal: "No action; request a fresh exact RunPod spend cap before one corrected sample attempt."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: true
-  remote_scope: "Git push, hosted verification, and one corrected GHCR worker build only; no RunPod mutation."
+  remote_or_cloud_mutations_authorized: false
+  remote_scope: "None. Corrected image is published and RunPod remains absolute zero."
   credential_access_authorized: false
   model_downloads_authorized: false
-  application_code_changes_authorized: true
+  application_code_changes_authorized: false
   expected_evidence: "evidence/acceptance/VF-9-24A/echomimic-observability-repair"
   required_handoff:
-    - "Pin corrected worker digest after full local and hosted green."
-    - "Leave RunPod absolute zero with provider calls and spend disabled."
     - "Request a fresh explicit sample spend cap; do not dispatch before it exists."
+    - "When authorized, use only the corrected pinned image and one RTX 4090 worker."
+    - "Return a probed local MP4 or exact terminal failure evidence, then prove absolute zero."
   prohibited_in_task:
-    - "Paid retry, fallback, model/GPU substitution, app integration, deployment, migration, profile promotion, or successor task."
+    - "Any paid retry without a fresh cap, fallback, model/GPU substitution, app integration, deployment, migration, profile promotion, or successor task."
     - "AvatarForcing, MuseTalk, SkyReels, LongCat, A100, RTX 5090, or network volume."
 
 blocking_gates_for_production:
@@ -116,10 +122,11 @@ progress_snapshot:
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: vf_9_24a_observability_repair_selected
+  status: vf_9_24a_complete_waiting_fresh_spend_cap
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Load only phase9_echomimic_v3_flash_observability_repair and tasks/VF-9-24A.md."
-    - "Complete provider-free correction and one GHCR build; do not call RunPod."
+    - "Read the VF-9-24A acceptance evidence and use only its corrected pinned image."
+    - "Ask for a fresh exact spend cap; do not call RunPod before it exists."
   stop_conditions:
     - "Any RunPod call, GPU/model download, spend, successor selection, or roadmap continuation without a fresh explicit cap/authority."

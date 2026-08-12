@@ -19,10 +19,9 @@ EXITED endpoint worker records before any output. No MP4 exists. Observed balanc
 three independent cleanup reads proved absolute zero Pods, workers, endpoints, templates, and
 volumes.
 
-Implement only the provider-free VF-9-24A correction: state-aware worker accounting, durable
-journaling, startup/bootstrap observability, exact-entrypoint smoke, verification, and one corrected
-GHCR build. Do not call RunPod, download model bytes, use a GPU, or spend credits. A new sample needs
-a fresh explicit cap.
+VF-9-24A completed state-aware worker accounting, durable journaling, startup/bootstrap
+observability, exact-entrypoint smoke, verification, and a corrected pinned GHCR build. Do not call
+RunPod, download model bytes, use a GPU, or spend credits until the user gives a fresh exact cap.
 ```
 
 If this template disagrees with `CURRENT_STATE.yaml`, stop and reconcile; current state wins.

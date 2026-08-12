@@ -22,5 +22,5 @@ the user reaffirmed AvatarForcing and the LongCat exclusion. `VF-8-01/02/03` are
 including `$0.4496891390` in `VF-9-21` and independent final zero inventory. `VF-9-22` supersedes
 that active route with EchoMimicV3-Flash. `VF-9-23` published the pinned worker after full local and
 hosted green. `VF-9-24` dispatched one job, then stopped when RunPod created three `EXITED` worker
-records; no MP4 or paid retry authority exists. `VF-9-24A` is the sole selected provider-free correction; it may publish one corrected GHCR image
-but cannot create RunPod resources or spend credits.
+records; no MP4 or paid retry authority exists. `VF-9-24A` completed the provider-free correction
+and published the corrected GHCR image. A sample rerun cannot begin without a fresh exact spend cap.
