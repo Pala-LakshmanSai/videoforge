@@ -59,9 +59,10 @@ INFERENCE_CONFIG_SHA256 = (
 
 
 class AvatarPrimaryInferenceFailure(ValueError):
-    def __init__(self, code: str, diagnostic_sha256: str) -> None:
+    def __init__(self, code: str, diagnostic_sha256: str, diagnostic_tail: bytes) -> None:
         super().__init__(code)
         self.diagnostic_sha256 = diagnostic_sha256
+        self.diagnostic_tail = diagnostic_tail
 
 
 def classify_inference_failure(diagnostic: bytes) -> str:
@@ -114,6 +115,7 @@ def _inference_failure(code: str, diagnostic: bytes) -> AvatarPrimaryInferenceFa
     return AvatarPrimaryInferenceFailure(
         code,
         f"{SHA256_PREFIX}{hashlib.sha256(diagnostic).hexdigest()}",
+        diagnostic,
     )
 
 

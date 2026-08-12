@@ -8,7 +8,11 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from bootstrap_models import bootstrap_models
-from videoforge_avatar_primary import AvatarPrimaryInlineJob, run_avatar_primary_inline_job
+from videoforge_avatar_primary import (
+    AvatarPrimaryInferenceFailure,
+    AvatarPrimaryInlineJob,
+    run_avatar_primary_inline_job,
+)
 
 
 STARTED = time.monotonic()
@@ -72,6 +76,16 @@ class Handler(BaseHTTPRequestHandler):
                     "ok": True,
                     "result": result,
                     "request_execution_ms": round((time.monotonic() - request_started) * 1000),
+                },
+            )
+        except AvatarPrimaryInferenceFailure as error:
+            self._json(
+                500,
+                {
+                    "diagnostic_sha256": error.diagnostic_sha256,
+                    "diagnostic_tail": error.diagnostic_tail.decode("utf-8", errors="replace"),
+                    "error_code": str(error),
+                    "ok": False,
                 },
             )
         except Exception as error:
