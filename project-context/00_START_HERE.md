@@ -70,8 +70,8 @@ The initial FP8 image passed hosted build/import/FP8-CLI/handler/entrypoint/comp
 Bounded attempts reached a 31.385-second cached RTX 5090 boot and model execution,
 then exposed FP8 quantization before upstream pipeline device transfers. Commit `add8985` moves
 quantization after both transfers; repaired image `sha256:2d4384bed4dbe2aa479e11f0efaba8b8b18c8ebdad46871e0b3fd816e004d247`
-passed hosted run `31640266063`. Cumulative settled
-spend is `$1.9373205196`; only `$0.0626794804` remains. All RunPod resources are zero.
+passed hosted run `31640266063`. Cumulative settled spend after delayed billing is
+`$1.9623834279`; only `$0.0376165721` remains. All RunPod resources are zero.
 
 ## Locked active providers
 

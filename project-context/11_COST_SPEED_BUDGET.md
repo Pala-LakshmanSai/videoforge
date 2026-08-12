@@ -124,8 +124,9 @@ a cumulative live balance delta of `$1.8200686945`; the exact A100 sample remain
 
 `VF-9-24I` permits `$0` FP8 worker/image work now. RTX 4090 allocation was unavailable twice; bounded
 RTX 5090 attempts reached a 31.385-second cached boot and model execution, then identified an
-FP8-before-device-transfer ordering failure. Cumulative settled spend is `$1.9373205196`, leaving
-only `$0.0626794804` under the prior `$2` ceiling. A paid repaired sample requires a fresh cap. Once authorized,
+FP8-before-device-transfer ordering failure. Cumulative settled spend after delayed billing is
+`$1.9623834279`, leaving only `$0.0376165721` under the prior `$2` ceiling. A paid repaired sample
+requires a fresh cap. Once authorized,
 record live rate, queue/activation/bootstrap/quantization/load/generation/encode/upload time, peak
 VRAM, disk, exact settled cost, and absolute-zero cleanup. Only later 12–20-clip representative
 cold/warm evidence may establish production unit economics.
