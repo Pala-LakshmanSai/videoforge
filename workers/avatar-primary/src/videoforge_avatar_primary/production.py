@@ -19,6 +19,7 @@ WAN_REVISION = "37ec512624d61f7aa208f7ea8140a131f93afc9a"
 WAV2VEC_REVISION = "22aad52d435eb6dbaf354bdad9b0da84ce7d6156"
 ALLOWED_LAYOUTS = {"AVATAR_FULL", "SPLIT_LEFT_AVATAR"}
 DIAGNOSTIC_TAIL_BYTES = 64 * 1024
+INLINE_RESULT_MAX_BYTES = 4 * 1024 * 1024
 
 
 class AvatarPrimaryInferenceFailure(ValueError):
@@ -266,6 +267,42 @@ def _upload(url: str, path: Path) -> None:
             raise ValueError("AVATAR_OUTPUT_UPLOAD_FAILED")
 
 
+def _encode_inline_output(source: Path, destination: Path) -> None:
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(source),
+            "-map",
+            "0:v:0",
+            "-map",
+            "0:a:0",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "20",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "128k",
+            "-movflags",
+            "+faststart",
+            str(destination),
+        ],
+        check=True,
+        capture_output=True,
+        timeout=300,
+    )
+    if not destination.is_file() or destination.stat().st_size > INLINE_RESULT_MAX_BYTES:
+        raise ValueError("AVATAR_INLINE_OUTPUT_TOO_LARGE")
+    _probe(destination)
+
+
 def _execute(
     *,
     attempt_id: str,
@@ -400,9 +437,19 @@ def run_avatar_primary_inline_job(job: AvatarPrimaryInlineJob) -> AvatarPrimaryI
             audio_path=audio_path,
             output_root=output_root,
         )
-        if result["bytes"] > 8 * 1024 * 1024:
-            raise ValueError("AVATAR_INLINE_OUTPUT_TOO_LARGE")
+        inline_path = task_root / "inline.mp4"
+        _encode_inline_output(output_path, inline_path)
+        duration_ms, fps, width, height = _probe(inline_path)
+        result = {
+            **result,
+            "output_sha256": _sha256(inline_path),
+            "bytes": inline_path.stat().st_size,
+            "duration_ms": duration_ms,
+            "fps": fps,
+            "width": width,
+            "height": height,
+        }
         return {
             **result,
-            "output_base64": base64.b64encode(output_path.read_bytes()).decode("ascii"),
+            "output_base64": base64.b64encode(inline_path.read_bytes()).decode("ascii"),
         }

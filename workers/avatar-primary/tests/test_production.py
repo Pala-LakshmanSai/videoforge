@@ -2,8 +2,10 @@ import base64
 import hashlib
 import importlib
 import sys
+import tempfile
 import types
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -18,6 +20,7 @@ from videoforge_avatar_primary.production import (  # noqa: E402
     AVATAR_WEIGHTS_REVISION,
     WAN_REVISION,
     WAV2VEC_REVISION,
+    _encode_inline_output,
 )
 
 
@@ -141,6 +144,32 @@ class ProductionContractTest(unittest.TestCase):
             value["num_output_frames"] = invalid
             with self.assertRaisesRegex(ValueError, "AVATAR_INLINE_SCOPE_INVALID"):
                 AvatarPrimaryInlineJob.from_value(value)
+
+    def test_inline_output_is_loss_light_and_response_bounded(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "source.mp4"
+            destination = Path(temporary) / "inline.mp4"
+            source.write_bytes(b"source")
+
+            def encode(arguments: list[str], **_kwargs: object) -> object:
+                destination.write_bytes(b"encoded")
+                self.assertIn("20", arguments)
+                self.assertIn("+faststart", arguments)
+                return object()
+
+            with (
+                patch(
+                    "videoforge_avatar_primary.production.subprocess.run",
+                    side_effect=encode,
+                ),
+                patch(
+                    "videoforge_avatar_primary.production._probe",
+                    return_value=(10_120, 25, 832, 480),
+                ),
+            ):
+                _encode_inline_output(source, destination)
+
+            self.assertEqual(destination.read_bytes(), b"encoded")
 
 
 if __name__ == "__main__":

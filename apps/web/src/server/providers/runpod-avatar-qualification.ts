@@ -186,6 +186,7 @@ try {
     await sleep(15_000);
     if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
     job = await jobs.status(job.id);
+    if (terminalStatuses.has(job.status)) break;
     const liveInventory = await control.inventory();
     if (liveInventory.runningPodCount > 1) {
       throw new Error("RUNPOD_WORKER_RETRY_LIMIT");
