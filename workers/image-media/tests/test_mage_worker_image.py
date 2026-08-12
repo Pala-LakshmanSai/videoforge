@@ -27,6 +27,7 @@ SPEC.loader.exec_module(handler)
 class MageWorkerImageTest(unittest.TestCase):
     def test_dockerfile_and_workflow_pin_exact_candidate(self) -> None:
         dockerfile = (WORKER_ROOT / "Dockerfile.mage").read_text(encoding="utf-8")
+        flash_dockerfile = (WORKER_ROOT / "Dockerfile.mage-flash").read_text(encoding="utf-8")
         workflow = (WORKER_ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
             encoding="utf-8"
         )
@@ -36,6 +37,12 @@ class MageWorkerImageTest(unittest.TestCase):
         )
         self.assertIn("mage-no-watermark.patch", dockerfile)
         self.assertIn("HF_HUB_OFFLINE=1", dockerfile)
+        self.assertIn(
+            "1e71dd64a9e0280e0447b8a0c2541bad4bf6ac65bdeaa2f90e51a9e57de0370d",
+            flash_dockerfile,
+        )
+        self.assertIn("MAX_JOBS=1", flash_dockerfile)
+        self.assertIn("needs: flash-wheel", workflow)
         self.assertIn("Dockerfile.mage", workflow)
 
     def test_embedded_model_marker_is_exact(self) -> None:
