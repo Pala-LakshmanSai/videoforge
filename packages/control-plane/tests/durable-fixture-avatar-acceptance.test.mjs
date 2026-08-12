@@ -12,6 +12,7 @@ import {
   DurableFixtureAvatarAcceptanceService,
   exportMetadataSnapshot,
   PGliteFixtureAvatarAcceptanceStore,
+  PGliteProviderRenderAssetRepository,
   restoreMetadataSnapshot,
   serializeMetadataSnapshot,
 } from "../dist/src/index.js";
@@ -471,6 +472,24 @@ test("Avatar acceptance persists one clip with two renderer bindings and no subj
       result_disposition: "ACCEPTED",
       asset_state: "ACCEPTED",
       binary_sha256: sha256Bytes(bundle.media),
+    });
+    const candidates = await new PGliteProviderRenderAssetRepository(context.executor).resolve(
+      IDS.workspaceA,
+      IDS.revisionA,
+      ["avatar:span:001"],
+    );
+    assert.equal(candidates[0].kind, "AVATAR_CLIP");
+    assert.equal(candidates[0].acceptance.acceptedAttemptId, ATTEMPT_ID);
+    assert.equal(
+      candidates[0].acceptance.acceptanceFingerprintHash,
+      first.accepted.acceptanceFingerprintHash,
+    );
+    assert.equal(candidates[0].rendererSourceProfile, "avatarforcing-centered-832x480p25-v1");
+    assert.equal(candidates[0].acceptance.qualityReview.subjectiveClassification, "UNREVIEWED");
+    assert.deepEqual(candidates[0].acceptance.cost, {
+      reservedMicroUsd: 100,
+      reportedMicroUsd: 0,
+      settledMicroUsd: 0,
     });
   } finally {
     await context.database.close();

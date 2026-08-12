@@ -20,6 +20,7 @@ import {
   LOCKED_MAGE_MODEL_REVISION,
   LOCKED_MAGE_SOURCE_REVISION,
   PGliteFixtureImageAcceptanceStore,
+  PGliteProviderRenderAssetRepository,
   restoreMetadataSnapshot,
   serializeMetadataSnapshot,
 } from "../dist/src/index.js";
@@ -587,6 +588,58 @@ test("real Mage image acceptance persists truthful provider lineage and exact re
     assert.equal(state.rows[0].metadata.provider_model.image, LOCKED_MAGE_IMAGE);
     assert.equal(state.rows[0].provider_details.operation, "runpod.mage.image.generate");
     assert.match(state.rows[0].notes, /explicit visual review passed/u);
+    const candidates = await new PGliteProviderRenderAssetRepository(context.executor).resolve(
+      IDS.workspaceA,
+      IDS.revisionA,
+      ["image:scene-image-001"],
+    );
+    assert.equal(candidates[0].kind, "IMAGE");
+    assert.equal(candidates[0].acceptance.acceptedAttemptId, IMAGE_ATTEMPT_ID);
+    assert.equal(
+      candidates[0].acceptance.acceptanceFingerprintHash,
+      first.accepted.acceptanceFingerprintHash,
+    );
+    assert.equal(
+      candidates[0].acceptance.promptLineage.positivePromptHash,
+      compiledPrompt.positivePromptSha256,
+    );
+    assert.equal(candidates[0].acceptance.modelLineage.image, LOCKED_MAGE_IMAGE);
+    assert.equal(candidates[0].acceptance.cost.reportedMicroUsd, 31);
+    assert.equal(candidates[0].acceptance.qualityReview.reviewerUserId, IDS.userA);
+  } finally {
+    await context.database.close();
+  }
+});
+
+test("provider render repository fails closed for missing, rejected QA, and checksum drift", async () => {
+  const context = await createMigratedDatabase();
+  try {
+    const generated = mage();
+    await seedScenario(context.executor, generated.result.resultHash, "mage_image_result");
+    await service(context.executor).accept(SCOPE, command(), generated.result, generated.media);
+    const repository = new PGliteProviderRenderAssetRepository(context.executor);
+    await assert.rejects(
+      repository.resolve(IDS.workspaceA, IDS.revisionA, ["image:missing"]),
+      /No durable accepted provider asset/u,
+    );
+    await context.executor.query("UPDATE qa_results SET state='REJECTED' WHERE attempt_id=$1", [
+      IMAGE_ATTEMPT_ID,
+    ]);
+    await assert.rejects(
+      repository.resolve(IDS.workspaceA, IDS.revisionA, ["image:scene-image-001"]),
+      /identity drifted/u,
+    );
+    await context.executor.query("UPDATE qa_results SET state='PASSED' WHERE attempt_id=$1", [
+      IMAGE_ATTEMPT_ID,
+    ]);
+    await context.executor.query("UPDATE assets SET binary_sha256=$2 WHERE source_attempt_id=$1", [
+      IMAGE_ATTEMPT_ID,
+      sha256("drifted-provider-render-asset"),
+    ]);
+    await assert.rejects(
+      repository.resolve(IDS.workspaceA, IDS.revisionA, ["image:scene-image-001"]),
+      /identity drifted/u,
+    );
   } finally {
     await context.database.close();
   }

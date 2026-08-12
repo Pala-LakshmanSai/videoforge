@@ -28,12 +28,13 @@ import {
   collectRequiredAssetTaskKeys,
   LocalArtifactStore,
   planResolvedRenderManifest,
-  resolveAcceptedAssets,
+  resolveProviderAcceptedAssets,
   scheduleTimeline,
   SUPPORTED_RENDER_PROFILE_VERSION,
   SUPPORTED_SCHEDULER_CONFIG,
   type AcceptedAssetBinding,
   type PipelineResult,
+  type ProviderAcceptedAssetCandidate,
   type StoredLocalArtifact,
 } from "@videoforge/pipeline";
 import { LOCAL_SHORT_SLICE_MANIFEST } from "@videoforge/test-fixtures";
@@ -418,6 +419,42 @@ async function exactFileSha256(filename: string): Promise<Sha256Digest> {
   const hash = createHash("sha256");
   for await (const chunk of createReadStream(filename)) hash.update(chunk);
   return `sha256:${hash.digest("hex")}`;
+}
+
+function localProviderAcceptance(
+  candidate: AcceptedAssetBinding,
+  index: number,
+): ProviderAcceptedAssetCandidate["acceptance"] {
+  const acceptanceFingerprintHash = `sha256:${createHash("sha256")
+    .update(
+      `fake-provider-acceptance:${candidate.taskKey}:${candidate.assetId}:${candidate.sha256}`,
+    )
+    .digest("hex")}` as Sha256Digest;
+  return Object.freeze({
+    schemaVersion:
+      candidate.kind === "IMAGE"
+        ? "videoforge.mage-image-acceptance/v1"
+        : "videoforge.avatar-fixture-acceptance/v1",
+    acceptanceFingerprintHash,
+    acceptedAttemptId: `attempt_fake_provider_${String(index + 1).padStart(3, "0")}`,
+    acceptedAssetId: candidate.assetId,
+    acceptedBinarySha256: candidate.sha256,
+    qaState: "PASSED",
+    qaResultId: `qa_fake_provider_${String(index + 1).padStart(3, "0")}`,
+    resultDisposition: "ACCEPTED",
+    providerOperation:
+      candidate.kind === "IMAGE" ? "fake.runpod.mage.image.accept" : "fixture.avatar.accept",
+    modelLineage: Object.freeze({
+      provider: "fake-provider-shaped",
+      model: candidate.kind === "IMAGE" ? "Mage-Flow-Turbo BF16" : "AvatarForcing fixture contract",
+    }),
+    promptLineage: Object.freeze({
+      promptHash: `sha256:${createHash("sha256").update(candidate.taskKey).digest("hex")}`,
+    }),
+    runtimeEvidence: Object.freeze({ mode: "local", externalActivity: false }),
+    qualityReview: Object.freeze({ state: "PASSED", reviewer: "owned-synthetic-fixture" }),
+    cost: Object.freeze({ reservedMicroUsd: 0, reportedMicroUsd: 0, settledMicroUsd: 0 }),
+  });
 }
 
 async function executable(name: string): Promise<string> {
@@ -1138,28 +1175,35 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
       request.signal,
     );
     const requiredTaskKeys = collectRequiredAssetTaskKeys(timeline.value);
-    const candidates = requiredTaskKeys.map((taskKey, index) => {
-      if (taskKey.startsWith("avatar:")) {
-        return {
+    const candidates: readonly ProviderAcceptedAssetCandidate[] = requiredTaskKeys.map(
+      (taskKey, index) => {
+        if (taskKey.startsWith("avatar:")) {
+          const binding: AcceptedAssetBinding = {
+            taskKey,
+            assetId: `asset_avatar_clip_${renderMedia.avatarClip.sha256.slice(7, 31)}`,
+            sha256: renderMedia.avatarClip.sha256,
+            kind: "AVATAR_CLIP" as const,
+            rendererSourceProfile: "avatarforcing-centered-832x480p25-v1",
+          };
+          return Object.freeze({
+            ...binding,
+            acceptance: localProviderAcceptance(binding, index),
+          });
+        }
+        const image = renderMedia.images[index % renderMedia.images.length];
+        if (!image) throw new Error("Owned image fixture set is empty.");
+        const binding: AcceptedAssetBinding = {
           taskKey,
-          assetId: `asset_avatar_clip_${renderMedia.avatarClip.sha256.slice(7, 31)}`,
-          sha256: renderMedia.avatarClip.sha256,
-          kind: "AVATAR_CLIP" as const,
-          rendererSourceProfile: "avatarforcing-centered-832x480p25-v1",
+          assetId: `asset_image_${image.sha256.slice(7, 31)}`,
+          sha256: image.sha256,
+          kind: "IMAGE" as const,
         };
-      }
-      const image = renderMedia.images[index % renderMedia.images.length];
-      if (!image) throw new Error("Owned image fixture set is empty.");
-      return {
-        taskKey,
-        assetId: `asset_image_${image.sha256.slice(7, 31)}`,
-        sha256: image.sha256,
-        kind: "IMAGE" as const,
-      };
-    });
+        return Object.freeze({ ...binding, acceptance: localProviderAcceptance(binding, index) });
+      },
+    );
     const acceptedAssets = requirePipeline(
-      resolveAcceptedAssets({ timeline, requiredTaskKeys, candidates }),
-      "Accepted fixture asset resolution",
+      resolveProviderAcceptedAssets({ timeline, requiredTaskKeys, candidates }),
+      "Accepted fake-provider-shaped asset resolution",
     );
     const voiceoverBinding: AcceptedAssetBinding = {
       taskKey: "voiceover",
@@ -1191,6 +1235,8 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
       { readonly artifact: StoredLocalArtifact; readonly kind: "AVATAR_CLIP" | "IMAGE" }
     >();
     for (const candidate of candidates) {
+      if (candidate.kind === "VOICEOVER")
+        throw new Error("Provider visual candidate cannot be a voiceover.");
       const artifact =
         candidate.kind === "AVATAR_CLIP"
           ? renderMedia.avatarClip
@@ -1347,6 +1393,7 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
           render_input_sha256: renderInput.sha256,
           render_result_sha256: renderResult.sha256,
         },
+        provider_acceptance_proofs: acceptedAssets.acceptanceProofsByTaskKey,
         output: {
           ...renderResult.value.output,
           probe: renderResult.value.probe,

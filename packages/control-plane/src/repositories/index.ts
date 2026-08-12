@@ -4,6 +4,7 @@ export * from "./events.js";
 export * from "./execution.js";
 export * from "./identity.js";
 export * from "./presets.js";
+export * from "./provider-render-assets.js";
 export * from "./projects.js";
 export * from "./timing.js";
 export * from "./types.js";
