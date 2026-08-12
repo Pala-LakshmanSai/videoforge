@@ -15,7 +15,9 @@ const spendCapUsd = 0.15;
 const costStopUsd = 0.12;
 const gpuTypeIds = ["NVIDIA GeForce RTX 4090"] as const;
 const prompt =
-  "A wide documentary photograph of families loading bulk groceries into cars outside a large American warehouse supermarket at night, natural parking-lot lighting, realistic candid people, believable architecture and vehicles, no visible text, no logos, no brand names, no watermarks, no signs, no graphics, no borders, no overlays.";
+  "A wide documentary photograph of several distinct families loading bulk groceries into cars outside a large warehouse supermarket at night, blank unmarked facade, natural parking-lot lighting, realistic candid people, believable architecture and vehicles, authentic photojournalism.";
+const negativePrompt =
+  "visible text, letters, words, signage, logo, brand name, watermark, repeated people, duplicate people, cloned people, malformed hands, malformed anatomy, fused objects, distorted vehicles, nonsensical groceries, artificial CGI, illustration, graphics, borders, overlays";
 const modelRevision = "d8c99241f6fa80fbd453014234af2bf337ea21e6";
 const terminalStatuses = new Set(["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"]);
 const sleep = (milliseconds: number): Promise<void> =>
@@ -112,6 +114,7 @@ const initialInventory = await control.inventory();
 assertInitialSafe(initialInventory);
 const startingBalanceUsd = await balance(apiKey);
 const promptHash = sha256(prompt);
+const negativePromptHash = sha256(negativePrompt);
 const suffix = createHash("sha256").update(image).digest("hex").slice(0, 12);
 const attemptId = `vf9_11_${suffix}`;
 const events: { event: string; at: string; elapsed_ms: number; detail?: unknown }[] = [];
@@ -165,6 +168,8 @@ try {
         scene_id: "warehouse_night_documentary",
         positive_prompt: prompt,
         positive_prompt_sha256: promptHash,
+        negative_prompt: negativePrompt,
+        negative_prompt_sha256: negativePromptHash,
         seed: 20260812,
         width: 1280,
         height: 720,
@@ -285,7 +290,15 @@ const evidence = {
   checked_at: now(),
   image,
   model_revision: modelRevision,
-  input: { prompt, prompt_sha256: promptHash, seed: 20260812, width: 1280, height: 720 },
+  input: {
+    prompt,
+    prompt_sha256: promptHash,
+    negative_prompt: negativePrompt,
+    negative_prompt_sha256: negativePromptHash,
+    seed: 20260812,
+    width: 1280,
+    height: 720,
+  },
   network_volume: {
     attached: false,
     reason: "isolated first qualification; preexisting ImageForge volume not mutated",

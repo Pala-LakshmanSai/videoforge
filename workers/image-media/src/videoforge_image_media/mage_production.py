@@ -53,6 +53,7 @@ class MageResult(TypedDict):
     height: int
     seed: int
     positive_prompt_sha256: str
+    negative_prompt_sha256: str
     source_revision: str
     model_revision: str
     renderer_source_profile: Literal["mage-landscape-native-1280x720-v1"]
@@ -86,6 +87,8 @@ class MageItem:
     scene_id: str
     positive_prompt: str
     positive_prompt_sha256: str
+    negative_prompt: str
+    negative_prompt_sha256: str
     seed: int
     width: int
     height: int
@@ -97,6 +100,8 @@ class MageItem:
             "scene_id",
             "positive_prompt",
             "positive_prompt_sha256",
+            "negative_prompt",
+            "negative_prompt_sha256",
             "seed",
             "width",
             "height",
@@ -111,6 +116,12 @@ class MageItem:
             != item.positive_prompt_sha256
         ):
             raise MageContractError("MAGE_PROMPT_HASH_MISMATCH")
+        negative_prompt = _text(item.negative_prompt, 6_000, "MAGE_NEGATIVE_PROMPT_INVALID")
+        if (
+            "sha256:" + hashlib.sha256(negative_prompt.encode("utf-8")).hexdigest()
+            != item.negative_prompt_sha256
+        ):
+            raise MageContractError("MAGE_NEGATIVE_PROMPT_HASH_MISMATCH")
         if (
             not isinstance(item.seed, int)
             or isinstance(item.seed, bool)
@@ -246,7 +257,7 @@ def build_workflow(job: MageInlineJob) -> dict[str, object]:
                 "clip": ["3", 0],
                 "vae": ["4", 0],
                 "prompt": item.positive_prompt,
-                "negative_prompt": "",
+                "negative_prompt": item.negative_prompt,
                 "width": item.width,
                 "height": item.height,
                 "batch_size": 1,
@@ -397,6 +408,7 @@ def run_inline_job(
         "height": height,
         "seed": item.seed,
         "positive_prompt_sha256": item.positive_prompt_sha256,
+        "negative_prompt_sha256": item.negative_prompt_sha256,
         "source_revision": MAGE_SOURCE_REVISION,
         "model_revision": job.model_revision,
         "renderer_source_profile": "mage-landscape-native-1280x720-v1",

@@ -16,10 +16,13 @@ def digest(value: str) -> str:
 
 def item(index: int, *, inline: bool = False) -> dict[str, object]:
     prompt = f"Owned documentary scene {index}, photorealistic, no text"
+    negative_prompt = "visible text, logo, repeated people, malformed anatomy"
     value: dict[str, object] = {
         "scene_id": f"scene_{index:03d}",
         "positive_prompt": prompt,
         "positive_prompt_sha256": digest(prompt),
+        "negative_prompt": negative_prompt,
+        "negative_prompt_sha256": digest(negative_prompt),
         "seed": 42 + index,
         "width": 1280,
         "height": 720,
@@ -76,6 +79,22 @@ class MageProductionContractTest(unittest.TestCase):
         value["items"][0]["positive_prompt_sha256"] = "sha256:" + "0" * 64
         with self.assertRaisesRegex(mage.MageContractError, "MAGE_PROMPT_HASH_MISMATCH"):
             mage.MageJob.from_value(value)
+        for invalid, code in [
+            ("", "MAGE_NEGATIVE_PROMPT_INVALID"),
+            ("x" * 6_001, "MAGE_NEGATIVE_PROMPT_INVALID"),
+        ]:
+            value = remote()
+            value["items"][0]["negative_prompt"] = invalid
+            with self.assertRaisesRegex(mage.MageContractError, code):
+                mage.MageJob.from_value(value)
+        value = remote()
+        value["items"][0]["negative_prompt_sha256"] = "sha256:" + "0" * 64
+        with self.assertRaisesRegex(mage.MageContractError, "MAGE_NEGATIVE_PROMPT_HASH_MISMATCH"):
+            mage.MageJob.from_value(value)
+        value = remote()
+        del value["items"][0]["negative_prompt"]
+        with self.assertRaisesRegex(mage.MageContractError, "MAGE_ITEM_SHAPE_INVALID"):
+            mage.MageJob.from_value(value)
 
     def test_inline_profile_is_exact_native_landscape(self) -> None:
         parsed = mage.MageInlineJob.from_value(inline())
@@ -104,6 +123,10 @@ class MageProductionContractTest(unittest.TestCase):
         graph = mage.build_workflow(mage.MageInlineJob.from_value(inline()))
         self.assertEqual(graph["3"]["inputs"]["type"], "mage")
         self.assertEqual(graph["5"]["class_type"], "TextEncodeMageFlowEdit")
+        self.assertEqual(
+            graph["5"]["inputs"]["negative_prompt"],
+            "visible text, logo, repeated people, malformed anatomy",
+        )
         self.assertEqual(graph["6"]["inputs"]["latent_image"], ["5", 2])
         self.assertEqual(graph["6"]["inputs"]["steps"], 4)
         self.assertEqual(graph["6"]["inputs"]["cfg"], 1.0)
@@ -132,6 +155,7 @@ class MageProductionContractTest(unittest.TestCase):
         self.assertEqual(result["output_sha256"], "sha256:" + hashlib.sha256(output).hexdigest())
         self.assertEqual((result["width"], result["height"]), (1280, 720))
         self.assertGreaterEqual(result["generation_duration_ms"], 0)
+        self.assertEqual(result["negative_prompt_sha256"], digest(parsed.items[0].negative_prompt))
 
     def test_png_rejects_wrong_profile_and_metadata(self) -> None:
         mage.probe_png_bytes(png(1280, 720), 1280, 720)

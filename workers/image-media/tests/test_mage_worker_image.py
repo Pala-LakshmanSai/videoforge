@@ -85,6 +85,8 @@ class MageWorkerImageTest(unittest.TestCase):
                         "scene_id": "scene_001",
                         "positive_prompt": "Owned documentary photograph",
                         "positive_prompt_sha256": "sha256:867e3df4876b59a17bf752caa8726645f76e06856ec099224b4b7cb79a943017",
+                        "negative_prompt": "visible text, logo",
+                        "negative_prompt_sha256": "sha256:cf07ec903e03427d3f9aa4ae6379a549cb65d26fe0083b3ca495e086ad643e5a",
                         "seed": 1234,
                         "width": 1280,
                         "height": 720,

@@ -21,6 +21,7 @@ export interface MageResultAuthority {
   readonly attemptId: string;
   readonly sceneId: string;
   readonly promptSha256: string;
+  readonly negativePromptSha256: string;
   readonly seed: number;
   readonly width: 1280;
   readonly height: 720;
@@ -191,6 +192,7 @@ export const acceptMageResult = (
     !ID.test(authority.attemptId) ||
     !ID.test(authority.sceneId) ||
     !SHA256.test(authority.promptSha256) ||
+    !SHA256.test(authority.negativePromptSha256) ||
     authority.image !== MAGE_CANDIDATE_IMAGE ||
     authority.modelRevision !== MAGE_MODEL_REVISION ||
     authority.sourceRevision !== MAGE_SOURCE_REVISION ||
@@ -219,6 +221,7 @@ export const acceptMageResult = (
       "height",
       "seed",
       "positive_prompt_sha256",
+      "negative_prompt_sha256",
       "source_revision",
       "model_revision",
       "renderer_source_profile",
@@ -233,6 +236,7 @@ export const acceptMageResult = (
     result.attempt_id !== authority.attemptId ||
     result.scene_id !== authority.sceneId ||
     result.positive_prompt_sha256 !== authority.promptSha256 ||
+    result.negative_prompt_sha256 !== authority.negativePromptSha256 ||
     result.source_revision !== authority.sourceRevision ||
     result.model_revision !== authority.modelRevision ||
     result.renderer_source_profile !== "mage-landscape-native-1280x720-v1" ||
@@ -257,6 +261,7 @@ export const acceptMageResult = (
       height: result.height,
       seed: result.seed,
       positive_prompt_sha256: result.positive_prompt_sha256,
+      negative_prompt_sha256: result.negative_prompt_sha256,
       source_revision: result.source_revision,
       model_revision: result.model_revision,
       renderer_source_profile: result.renderer_source_profile,
