@@ -28,6 +28,9 @@ class FakeTransformer:
 
 
 class FakePipeline:
+    def __init__(self, transformer=None) -> None:
+        self.transformer = transformer or FakeTransformer()
+
     def __call__(self, *args, **kwargs):
         return kwargs
 
@@ -79,17 +82,22 @@ class Fp8WrapperTest(unittest.TestCase):
             else:
                 sys.modules[name] = module
 
-    def test_quantizes_after_checkpoint_load(self) -> None:
+    def test_quantizes_only_after_pipeline_device_transfers(self) -> None:
         self.wrapper._install_fp8_transformer_load()
+        self.wrapper._install_long_video_cfg()
         transformer = FakeTransformer.from_pretrained("base")
         self.assertEqual(transformer.load_state_dict({}), "loaded")
+        self.assertEqual(self.quantize_calls, [])
+        FakePipeline(transformer)()
         self.assertEqual(self.quantize_calls, [transformer])
         self.assertEqual(transformer.load_state_dict({}), "loaded")
         self.assertEqual(self.quantize_calls, [transformer])
 
     def test_forces_bounded_long_video_cfg(self) -> None:
         self.wrapper._install_long_video_cfg()
-        result = FakePipeline()(num_frames=253)
+        transformer = FakeTransformer()
+        transformer._videoforge_fp8_pending = True
+        result = FakePipeline(transformer)(num_frames=253)
         self.assertEqual(result["num_frames"], 253)
         self.assertIs(result["use_longvideo_cfg"], True)
         self.assertEqual(result["partial_video_length"], 81)
