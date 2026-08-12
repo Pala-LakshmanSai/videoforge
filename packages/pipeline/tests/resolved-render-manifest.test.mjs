@@ -9,6 +9,7 @@ import {
   collectRequiredAssetTaskKeys,
   planResolvedRenderManifest,
   resolveAcceptedAssets,
+  resolveProviderAcceptedAssets,
   SUPPORTED_RENDER_PROFILE_VERSION,
 } from "../dist/src/index.js";
 
@@ -46,6 +47,26 @@ const CANDIDATES = Object.freeze([
     kind: "IMAGE",
   }),
 ]);
+
+const PROVIDER_CANDIDATES = Object.freeze(
+  CANDIDATES.map((candidate, index) =>
+    Object.freeze({
+      ...candidate,
+      acceptance: Object.freeze({
+        schemaVersion:
+          candidate.kind === "IMAGE"
+            ? "videoforge.mage-image-acceptance/v1"
+            : "videoforge.avatar-fixture-acceptance/v1",
+        acceptanceFingerprintHash: `sha256:${String(index + 1).repeat(64)}`,
+        acceptedAttemptId: `attempt_provider_${index + 1}`,
+        acceptedAssetId: candidate.assetId,
+        acceptedBinarySha256: candidate.sha256,
+        qaState: "PASSED",
+        resultDisposition: "ACCEPTED",
+      }),
+    }),
+  ),
+);
 
 async function canonicalInputs() {
   const [revisionValue, timelineValue] = await Promise.all([
@@ -185,6 +206,64 @@ test("fails closed for missing, duplicate, kind-mismatched, and conflicting bind
   });
   assert.equal(crossKindChecksum.ok, false);
   assert.equal(crossKindChecksum.error.code, "ASSET_KIND_MISMATCH");
+});
+
+test("resolves only exact provider artifacts with durable passed QA", async () => {
+  const { timeline } = await canonicalInputs();
+  const request = {
+    timeline,
+    requiredTaskKeys: collectRequiredAssetTaskKeys(timeline.value),
+    candidates: PROVIDER_CANDIDATES,
+  };
+  const accepted = requireSuccess(resolveProviderAcceptedAssets(request));
+  assert.deepEqual(Object.keys(accepted.byTaskKey), request.requiredTaskKeys);
+
+  for (const field of ["qaState", "resultDisposition"]) {
+    const rejected = resolveProviderAcceptedAssets({
+      ...request,
+      candidates: PROVIDER_CANDIDATES.map((candidate, index) =>
+        index === 1
+          ? {
+              ...candidate,
+              acceptance: {
+                ...candidate.acceptance,
+                [field]: field === "qaState" ? "REJECTED" : "REJECTED",
+              },
+            }
+          : candidate,
+      ),
+    });
+    assert.equal(rejected.ok, false);
+    assert.equal(rejected.error.code, "REQUIRED_ASSET_MISSING");
+  }
+
+  const mismatchedIdentity = resolveProviderAcceptedAssets({
+    ...request,
+    candidates: PROVIDER_CANDIDATES.map((candidate, index) =>
+      index === 0
+        ? {
+            ...candidate,
+            acceptance: { ...candidate.acceptance, acceptedAssetId: "asset_other" },
+          }
+        : candidate,
+    ),
+  });
+  assert.equal(mismatchedIdentity.ok, false);
+  assert.equal(mismatchedIdentity.error.code, "REQUIRED_ASSET_MISSING");
+
+  const invalidFingerprint = resolveProviderAcceptedAssets({
+    ...request,
+    candidates: PROVIDER_CANDIDATES.map((candidate, index) =>
+      index === 2
+        ? {
+            ...candidate,
+            acceptance: { ...candidate.acceptance, acceptanceFingerprintHash: "sha256:bad" },
+          }
+        : candidate,
+    ),
+  });
+  assert.equal(invalidFingerprint.ok, false);
+  assert.equal(invalidFingerprint.error.code, "REQUIRED_ASSET_MISSING");
 });
 
 test("rejects unsupported avatar profiles and mismatched split identities", async () => {

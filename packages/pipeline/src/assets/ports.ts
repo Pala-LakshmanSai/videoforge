@@ -14,6 +14,27 @@ export interface AcceptedAssetBinding {
   readonly rendererSourceProfile?: string;
 }
 
+export type ProviderAcceptanceSchema =
+  | "videoforge.mage-image-acceptance/v1"
+  | "videoforge.avatar-fixture-acceptance/v1";
+
+export interface ProviderAcceptedAssetCandidate extends AcceptedAssetBinding {
+  readonly acceptance: {
+    readonly schemaVersion: ProviderAcceptanceSchema;
+    readonly acceptanceFingerprintHash: Sha256Digest;
+    readonly acceptedAttemptId: string;
+    readonly acceptedAssetId: string;
+    readonly acceptedBinarySha256: Sha256Digest;
+    readonly qaState: "PASSED" | "REJECTED" | "PENDING";
+    readonly resultDisposition: "ACCEPTED" | "REJECTED" | "PENDING";
+  };
+}
+
+export interface ProviderAcceptedAssetResolutionRequest
+  extends Omit<AcceptedAssetResolutionRequest, "candidates"> {
+  readonly candidates: readonly ProviderAcceptedAssetCandidate[];
+}
+
 export interface AcceptedAssetResolutionRequest {
   readonly timeline: TimelinePlanDocumentRef;
   readonly requiredTaskKeys: readonly string[];

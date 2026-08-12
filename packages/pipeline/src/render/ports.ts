@@ -23,6 +23,7 @@ export {
   collectRequiredAssetTaskKeys,
   planResolvedRenderManifest,
   resolveAcceptedAssets,
+  resolveProviderAcceptedAssets,
   resolvedRenderManifestPlanner,
   timelineAcceptedAssetResolver,
   SUPPORTED_RENDER_PROFILE_VERSION,

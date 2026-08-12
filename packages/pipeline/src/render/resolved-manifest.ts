@@ -9,6 +9,7 @@ import type {
   AcceptedAssetKind,
   AcceptedAssetResolution,
   AcceptedAssetResolutionRequest,
+  ProviderAcceptedAssetResolutionRequest,
   AcceptedAssetResolver,
 } from "../assets/ports.js";
 import type { ResolvedRenderManifestDocumentRef } from "../documents.js";
@@ -320,6 +321,37 @@ export function resolveAcceptedAssets(
 export const timelineAcceptedAssetResolver: AcceptedAssetResolver = Object.freeze({
   resolve: resolveAcceptedAssets,
 });
+
+export function resolveProviderAcceptedAssets(
+  request: ProviderAcceptedAssetResolutionRequest,
+): PipelineResult<AcceptedAssetResolution> {
+  for (const [index, candidate] of request.candidates.entries()) {
+    const acceptance = candidate.acceptance;
+    const expectedSchema =
+      candidate.kind === "IMAGE"
+        ? "videoforge.mage-image-acceptance/v1"
+        : "videoforge.avatar-fixture-acceptance/v1";
+    if (
+      candidate.kind === "VOICEOVER" ||
+      acceptance.schemaVersion !== expectedSchema ||
+      !SHA256_PATTERN.test(acceptance.acceptanceFingerprintHash) ||
+      acceptance.acceptedAttemptId.trim().length === 0 ||
+      acceptance.acceptedAssetId !== candidate.assetId ||
+      acceptance.acceptedBinarySha256 !== candidate.sha256 ||
+      acceptance.qaState !== "PASSED" ||
+      acceptance.resultDisposition !== "ACCEPTED"
+    ) {
+      return pipelineFailure(
+        fail(
+          "REQUIRED_ASSET_MISSING",
+          `Provider artifact ${candidate.taskKey} is not durably accepted with passed QA.`,
+          ["candidates", index, "acceptance"],
+        ),
+      );
+    }
+  }
+  return resolveAcceptedAssets(request);
+}
 
 function validateTimelineBinding(request: RenderPlanRequest): PipelineFailure | null {
   const revision = request.revision.value;
