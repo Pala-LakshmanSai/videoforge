@@ -1,34 +1,41 @@
-# VF-9-17 provider-render checkpoint
+# VF-9-17 real-provider render composition
 
-Status: in-progress checkpoint  
-Code commit: `95ff125`  
-External spend: `$0`  
-Provider/GPU activity: none
+Status: complete at `$0`.
 
-## Completed
+## Durable composition
 
-- Added a pure provider-acceptance barrier before render asset resolution.
-- Required exact Mage-image or durable Avatar acceptance schema, acceptance fingerprint, attempt ID,
-  asset ID/checksum equality, `PASSED` QA, and `ACCEPTED` disposition.
-- Preserved the existing generic fixture resolver and FFmpeg v3 manifest behavior.
-- Added fail-closed tests for rejected QA/disposition, identity drift, and invalid fingerprints.
-- Focused pipeline build, typecheck, lint, and tests passed: 116 tests, zero failures.
-- Forced canonical verification passed builds, lint, typecheck, contracts, 212 control-plane tests,
-  212 web tests, 116 pipeline tests, 43 provider-sandbox tests, Workerd 1/1, secret scan, context,
-  schemas, and all 38 installed-Chrome journeys. Playwright then failed to exit after all journey
-  results, so the command was interrupted and is not recorded as a completed green canonical run.
+- `09c937a` extended accepted-asset resolution with immutable per-task acceptance proofs while
+  leaving `resolved-render-manifest/v1` and fixture defaults unchanged.
+- `c997cb9` added one server-side PGlite composition adapter. Callers receive exact durable Mage and
+  Avatar candidate bindings; they cannot invent acceptance fingerprint, attempt, model, prompt,
+  runtime, QA, review, checksum, provider operation, or cost lineage.
+- Missing/rejected QA, task/attempt mismatch, cancellation, checksum/asset drift, invalid acceptance
+  fingerprints, provider-operation drift, and cost non-conservation fail before render resolution.
+  Rejected `VF-9-13` Mage and `VF-8-10` Avatar bytes are not accepted inputs.
 
-## Not yet complete
+## Fake-provider-shaped FFmpeg v3 proof
 
-- Durable image and Avatar repositories are not yet composed into this barrier.
-- Provider lineage is not yet carried through the local media runner into one render attempt.
-- Restart/replay, cancellation, checksum-drift, FFmpeg output, installed-Chrome playback, approval,
-  download, and download-hash evidence remain required.
-- Rejected real evidence from `VF-9-13` and `VF-8-10` must remain excluded.
-- Diagnose the installed-Chrome teardown hang, then rerun canonical verification to exit code 0.
+- One owned local `37.167` second candidate rendered as 1,115 frames with no provider capability or
+  spend. Output: 1,957,674 bytes,
+  `sha256:7acc789f9626e23bc12540a452d52822671ba85caf37bf4148e0a6def665e276`.
+- Health/preflight, idempotent create replay, byte-range preview, exact-candidate approval, and exact
+  download passed. Restart restored the persisted provider proofs and returned byte-identical media
+  without duplicate execution or cost.
+- Evidence document checksum:
+  `sha256:860f906c522e92e247afb17bccb5fcd02a8b55d2af67538111bf979d39498303`.
 
-## Cost safety
+## Installed Chrome and verification
 
-No RunPod/Runware call or mutation occurred. Last independent session inventory check recorded zero
-pods, workers, endpoints, templates, and volumes. Resume remains `$0`; do not access credentials or
-start provider resources.
+- `162cf6d` completed installed-Chrome preview play, seek, approval, download, SHA-256 match, and
+  downloaded-file playback. The local Chrome command exited `0`.
+- Two full-gate attempts reproduced a two-worker Playwright close race after all 38 journeys had
+  passed. The suite alone closed normally. `958d7bd` keeps two workers locally but serializes the CI
+  installed-Chrome gate; focused Chrome passed 38/38 and exited `0`.
+- `CI=1 TURBO_FORCE=true pnpm verify` passed at `958d7bd` and exited `0`: control-plane 213,
+  web 212, pipeline 116, provider-sandbox 43, Workerd 1/1, installed Chrome 38/38, zero skips, plus
+  build/typecheck/lint/format/context/schema/secret/generated-file checks.
+- Hosted baseline run `31581717410` for `5b92bc4` completed successfully across every required lane
+  before implementation resumed.
+
+No provider call, credential, GPU, model download, RunPod/Runware/cloud mutation, profile promotion,
+or spend occurred. Owned servers are stopped and fixture remains default.

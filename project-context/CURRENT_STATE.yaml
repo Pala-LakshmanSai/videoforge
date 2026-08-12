@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T09:35:00Z"
+updated_at: "2026-08-12T10:15:00Z"
 
-phase: real_provider_render_composition
+phase: mage_quality_qualification
 implementation_authorized_in_current_task: true
-current_milestone: accepted_provider_artifacts_to_ffmpeg_v3
-current_task: VF-9-17
+current_milestone: mage_40_prompt_quality_matrix
+current_task: VF-9-18
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -15,12 +15,12 @@ repository:
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
   branch: main
-  base_commit: "bea48f7124609be27d1ab57261b2c2f4269625ea"
+  base_commit: "5b92bc40b161a9ccfec2d06bc363534bc3404bfc"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "95ff125"
-  working_tree_expected: vf_9_17_checkpoint_context_handoff_then_clean
+  last_good_commit: "958d7bd"
+  working_tree_expected: vf_9_18_selected_context_handoff_then_clean
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -43,8 +43,8 @@ live_development:
   fixture_scenario: happy_generating
   provider_mode: fixture
   provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-17 permits local application/control-plane/renderer/tests/docs, Git push, hosted CI, and installed-Chrome verification at $0 only. No provider call, credential, GPU, model download, RunPod/Runware mutation, deployment, profile promotion, UI redesign, or spend."
+  authorized_spend_usd: 1.5
+  provider_authority_scope: "VF-9-18 permits the existing Keychain RunPod credential, exact corrected Mage image/graph, one transient template, one scale-zero endpoint, at most one RTX 4090 worker and one active job, 40 first generations plus at most one rejection-triggered retry per scene, evidence, Git push, and hosted CI. Task cap $1.50; no model substitution, LongCat, ambiguous redispatch, deployment, profile promotion, or cloud/account mutation."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -254,92 +254,74 @@ completed_tasks:
     summary: "Admitted only exact official Mage revision 395402ba3ef110c96e70d01abe4d178dbe4e01a5, pinned transformer identity/size ceiling, retained all fail-closed guards, and passed full verification at $0."
 
 latest_closed_handoff:
-  task_id: VF-9-16
+  task_id: VF-9-17
   status: complete
-  task_kind: provider_neutral_durable_image_acceptance
-  implementation_commit: "a15c4d7"
-  evidence: "evidence/acceptance/VF-9-16/provider-neutral-image-acceptance"
-  verification_result: "fixture_compatibility_and_truthful_mage_acceptance_replay_restore_green"
-  external_actions: "Git push and hosted CI only; no provider, credential, GPU, download, mutation, or spend."
+  task_kind: real_provider_render_composition
+  implementation_commit: "958d7bd"
+  evidence: "evidence/acceptance/VF-9-17/real-provider-render-composition"
+  verification_result: "durable_provider_proofs_fake_real_ffmpeg_restart_replay_and_installed_chrome_green"
+  external_actions: "Git push and hosted CI only; no provider, credential, GPU, download, cloud mutation, or spend."
   external_spend_usd: 0
 
 last_green:
-  checked_at: "2026-08-12T07:50:00Z"
+  checked_at: "2026-08-12T10:10:00Z"
   result: pass
-  verified_commit: "01876b1"
+  verified_commit: "958d7bd"
   command: "CI=1 TURBO_FORCE=true pnpm verify"
   counts:
-    control_plane_pglite_tests: 209
-    web_server_component_tests: 210
+    control_plane_pglite_tests: 213
+    web_server_component_tests: 212
     typescript_contract_tests: 59
-    pipeline_tests: 115
+    pipeline_tests: 116
     provider_sandbox_tests: 43
     local_workerd_http_parity_tests: 1
     playwright_chrome_journeys_passed: 38
     playwright_chrome_journeys_intentionally_skipped: 0
   findings_closed:
-    - "Bounded same-job RunPod GET reconciliation now tolerates transient reads without ever retrying POST dispatch or cancellation."
+    - "Durable Mage/Avatar acceptance proofs compose into exact provider-shaped render candidates without caller-invented QA, lineage, or cost."
+    - "The reproducible two-worker installed-Chrome CI close race is removed by CI-only serialization; local development retains two workers."
   evidence:
-    - "evidence/acceptance/VF-9-10/runpod-status-reconciliation"
+    - "evidence/acceptance/VF-9-17/real-provider-render-composition"
 
 active_ownership: []
 blocked_tasks: []
 
-in_progress_checkpoint:
-  task_id: VF-9-17
-  code_commit: "95ff125"
-  status: provider_acceptance_barrier_green_render_composition_remaining
-  completed:
-    - "Pure pipeline barrier accepts only exact Mage/Avatar acceptance schemas with valid fingerprints, attempt IDs, matching immutable asset IDs/checksums, PASSED QA, and ACCEPTED disposition."
-    - "Existing fixture resolver and FFmpeg v3 behavior remain unchanged."
-    - "Focused pipeline build/typecheck/lint and 116/116 tests pass."
-  remaining:
-    - "Compose durable image/Avatar repository records into the barrier without losing provider/model/prompt/runtime/cost lineage."
-    - "Run one fake-real 30–120-second local FFmpeg v3 candidate with restart/replay, cancellation, missing/rejected QA, and checksum-drift proof."
-    - "Complete installed-Chrome play/seek/approve/download/hash proof; diagnose the post-38-journey Playwright teardown hang and rerun forced full verification to exit code 0."
-  evidence: "evidence/acceptance/VF-9-17/real-provider-render-composition"
-  external_actions: "None; no provider, credential, GPU, download, cloud mutation, or spend."
-  verification_attempt:
-    result: incomplete_teardown_after_all_reported_tests_passed
-    command: "CI=1 TURBO_FORCE=true pnpm verify"
-    passed_before_hang:
-      control_plane_pglite_tests: 212
-      web_server_component_tests: 212
-      pipeline_tests: 116
-      provider_sandbox_tests: 43
-      local_workerd_http_parity_tests: 1
-      playwright_chrome_journeys_passed: 38
-      playwright_chrome_journeys_intentionally_skipped: 0
-    final_exit: 130
-    reason: "Playwright did not exit after reporting all 38 journeys; owned verification process was interrupted and owned server stopped. Do not call this canonical green."
+in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-9-17
-  milestone: accepted_provider_artifacts_to_ffmpeg_v3
-  status: resume_in_progress_checkpoint
-  dependency_status: provider_acceptance_barrier_green_at_95ff125_and_runpod_zero
-  authorization_status: zero_spend_real_provider_render_composition
-  read_profile: phase9_real_provider_render_composition
-  task_brief: tasks/VF-9-17.md
-  goal: "Compose accepted real-shaped Mage and Avatar artifacts into FFmpeg v3 render/review/download with strict QA preflight."
-  provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  provider_authority: null
+  task_id: VF-9-18
+  milestone: mage_40_prompt_quality_matrix
+  status: authorized_ready_to_start_after_inventory_zero
+  dependency_status: vf_9_17_closed_canonical_green_and_prior_runpod_inventory_zero
+  authorization_status: exact_capped_mage_quality_qualification
+  read_profile: phase9_mage_quality_matrix
+  task_brief: tasks/VF-9-18.md
+  goal: "Qualify the locked corrected Mage BF16 route across the existing 40-prompt/five-style matrix and prepare one consolidated user review package."
+  provider_calls_authorized: true
+  maximum_external_spend_usd: 1.5
+  provider_authority:
+    provider: runpod_serverless
+    model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6"
+    image_digest: "sha256:ee844a242956a376466fa233f05e3bb6ffdcf71a645f5b27241331e5e295a89c"
+    cap_usd: 1.5
+    non_transferable: true
+    authorized_by_user_at: "2026-08-12T10:15:00Z"
   remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: false
-  model_downloads_authorized: false
+  credential_access_authorized: true
+  model_downloads_authorized: true
   application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-9-17/real-provider-render-composition"
+  expected_evidence: "evidence/acceptance/VF-9-18/mage-quality-matrix"
   required_handoff:
-    - "Compose durable Mage/Avatar acceptance records into the green provider barrier."
-    - "Prove rejected/missing QA, cancellation, restart/replay, and checksum drift cannot produce an accepted render."
-    - "Render/replay/play/seek/approve/download/hash one 30–120-second fake-real candidate in installed Chrome."
+    - "Prove RunPod absolute zero before creation; use only the pinned corrected Mage image and exact negative-prompt graph."
+    - "Run and retain all 40 first generations plus only recorded rejection-triggered retries; never redispatch ambiguity."
+    - "Record every PNG/hash/seed/runtime/GPU/VRAM/cost/review/crop/style result; leave visual state READY_FOR_USER_REVIEW."
+    - "Cancel, drain, delete, and independently prove absolute zero inventory in finally."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-9-17
+    integration_owner: VF-9-18
   prohibited_in_task:
-    - "Provider call, credential, GPU, model download, RunPod/Runware mutation, or spend."
-    - "Production promotion/deployment, destructive migration, UI redesign, or provider/model changes."
+    - "LongCat, non-Turbo or other model/image/graph substitution, blind redispatch, more than one worker/job at a time, or spend above $1.50."
+    - "Production profile/style promotion, deployment, destructive migration, unrelated cloud/account mutation, UI redesign, Avatar/fallback work, or clear-permission claim."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -368,16 +350,16 @@ known_incomplete_boundaries:
   - "Two bounded SkyReels resumes produced no candidate; the latest provider 503 was cancelled and manually recovered to absolute-zero inventory. No further paid SkyReels retry is selected."
 
 next_tasks:
-  - "1. Finish VF-9-17 from checkpoint 95ff125: durable acceptance composition, fake-real 30–120-second FFmpeg v3 run, fault/replay proof, installed-Chrome acceptance, full verify. $0 and local only."
-  - "2. Under one new exact capped authority, finish the Mage 40-prompt quality/style matrix and obtain at least one accepted real image; record cold/warm/queue/GPU/cost/output evidence and force RunPod to zero."
-  - "3. Under separate exact capped authority, obtain an accepted AvatarForcing result or confirm whole-frame failure; use MuseTalk only for lip-only defects and SkyReels only for whole-frame failure. Never LongCat."
-  - "4. Compose one accepted real owned 30–120-second provider video through durable barriers, FFmpeg v3, and installed-Chrome acceptance with exact provenance, spend, and scale-zero proof."
-  - "5. Add cloud seams serially: private R2, Neon, Better Auth/Google admission, then Cloudflare Workflow recovery. Verify each seam before the next."
-  - "6. Run contention/fault/security/backup/restore hardening, representative 30-minute benchmarks, fresh-account production acceptance, and user sign-off."
+  - "1. VF-9-18: run the exact capped Mage 40-prompt/five-style quality matrix, retain all outputs/lineage, prepare user review, and prove RunPod absolute zero. Maximum $1.50."
+  - "2. Under its separate $2.00 cap, resume pinned SkyReels first for whole-frame Avatar failure; allow AvatarForcing and one MuseTalk lip-only repair only under the locked ladder. Never LongCat."
+  - "3. If both paths have technically accepted assets, compose one real owned 30–120-second provider video through durable barriers, FFmpeg v3, and installed Chrome. Maximum $1.50."
+  - "4. Converge reproducible gates without clear-permission claims or profile promotion before user visual review."
+  - "5. Plan local cloud seams in order; stop for new authority before resources, credentials, plugins, deployment, or paid plans."
+  - "6. After staging authority, run contention/fault/security/backup/restore hardening, representative 30-minute benchmarks, fresh-account production acceptance, and user sign-off."
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
-  full_production_mvp_implemented_percent: 76
+  full_production_mvp_implemented_percent: 79
   production_end_to_end_proven: false
   completed:
     provider_free_foundation_percent: 100
@@ -387,16 +369,16 @@ progress_snapshot:
     prompt_and_style_provider_qualification_and_adapters_percent: 100
     custom_image_style_provider_free_percent: 100
   early_or_blocked:
-    production_image_lane_percent: 90
+    production_image_lane_percent: 92
     production_avatar_lane_percent: 68
     cloud_staging_integration_percent: 15
     production_release_percent: 0
-  interpretation: "Provider-free media, restart-safe Node sandbox, Runware runtime composition, RunPod scale-zero control, and pinned real AvatarForcing/SkyReels workers are implemented. AvatarForcing produced a valid but rejected-quality MP4; corrected SkyReels inference exceeded the bounded 30-minute window, and Mage, cloud staging, hardening, and release remain unproven."
+  interpretation: "Durable accepted-provider proof composition now reaches fake-provider-shaped FFmpeg v3, restart/replay, and installed-Chrome delivery. Real Mage matrix, accepted Avatar/fallback output, first real provider video, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: vf_9_17_provider_render_checkpoint_ready_to_resume
+  status: vf_9_18_mage_quality_matrix_ready
   completed_and_preserved:
-    - "All completed tasks/commits above are preserved; VF-9-17 is intentionally paused only at the explicit green checkpoint recorded above."
+    - "All completed tasks/commits above are preserved; VF-9-17 closed at 958d7bd with canonical exit code 0."
     - "Forced full verification passed at the VF-8-04 handoff tree: Workerd 1/1 and installed Chrome 38/38 with zero skips."
     - "Six bounded RunPod attempts produced no Avatar output; total settled RunPod spend $0.2386308565. Every endpoint/template was deleted and live inventory is zero."
     - "Pinned handler registration runs inside GHCR CI; GATE_AVATAR_003 remains open and VF-8-10 reached the whole-frame SkyReels trigger."
@@ -430,16 +412,16 @@ activation_handoff:
     - "VF-9-14 kept locked Turbo BF16, banned text-critical generated scenes, required strict review, and allowed only one rejection-triggered candidate retry."
     - "VF-9-15 stopped before falsely mapping real 1280x720 Mage bytes into the fixture-only 64x36 durable contract."
     - "VF-9-16 added additive provider-neutral durable image acceptance, truthful Mage lineage, explicit visual review, fake transport composition, replay/restore, and full verification at $0."
-    - "VF-9-17 checkpoint 95ff125 added a pure fail-closed provider-acceptance render barrier; focused pipeline build/typecheck/lint and 116/116 tests pass. End-to-end FFmpeg/Chrome acceptance is not done."
+    - "VF-9-17 composed durable Mage/Avatar acceptance proofs, rendered/replayed one 37.167-second fake-provider-shaped FFmpeg v3 output, and passed installed-Chrome play/seek/approve/download/hash/playback."
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from 95ff125; preserve all newer commits."
-    - "Load only phase9_real_provider_render_composition and tasks/VF-9-17.md."
-    - "Resume VF-9-17 at its brief's checkpoint. Do not rebuild the provider-acceptance barrier. Compose durable acceptance records, then finish fake-real FFmpeg v3 and installed-Chrome proof at $0."
+    - "Require clean HEAD descending from 958d7bd; preserve all newer commits."
+    - "Load only phase9_mage_quality_matrix and tasks/VF-9-18.md."
+    - "Before any create call, independently prove RunPod absolute zero. Then run only the exact corrected Mage 40-prompt matrix under the $1.50 task cap and one-worker/one-job boundary."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
-    - "Any provider/credential/GPU activity, destructive migration, profile promotion, rejected real evidence entering a render, regression, or output-grammar conflict."
+    - "Nonzero starting inventory, provider ambiguity, cap/deadline risk, more than one worker/job, model/image/graph substitution, LongCat, profile promotion, cleanup failure, regression, or output-grammar conflict."
 
 notes:
   - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."
@@ -447,6 +429,6 @@ notes:
   - "VF-3-10 pinned AvatarForcing code revision 63b73e6 and weights revision e244891; terms remain ambiguous, but user-accepted risk allows bounded qualification while clear-permission claims remain blocked."
   - "VF-3-11 ended without a replacement after the user reaffirmed AvatarForcing and explicitly excluded LongCat; GATE_AVATAR_003 remains open."
   - "A 2026-08-12 owned spike proved Mage-Flow-Turbo BF16 through pinned stock ComfyUI at 1280x720: no diffusers, FlashAttention, or source patch. VideoForge must use that route only."
-  - "VF-9-07 timing-evidence correction image sha256:9f3dc9d886b309e74adac3d7d101ee546d8d3a31d123dd1c203852d22709334b passed hosted build 31572443030; qualification must use only this digest."
+  - "VF-9-18 qualification must use only corrected negative-prompt image sha256:ee844a242956a376466fa233f05e3bb6ffdcf71a645f5b27241331e5e295a89c."
   - "TypeScript remains the sole RFC 8785/JCS authority; Python validates schemas/exact bytes and treats canonical document hashes as opaque."
   - "The accepted output remains three compositions, realistic footage, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
