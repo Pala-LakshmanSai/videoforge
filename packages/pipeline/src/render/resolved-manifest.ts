@@ -325,6 +325,7 @@ export const timelineAcceptedAssetResolver: AcceptedAssetResolver = Object.freez
 export function resolveProviderAcceptedAssets(
   request: ProviderAcceptedAssetResolutionRequest,
 ): PipelineResult<AcceptedAssetResolution> {
+  const proofs: Record<string, (typeof request.candidates)[number]["acceptance"]> = {};
   for (const [index, candidate] of request.candidates.entries()) {
     const acceptance = candidate.acceptance;
     const expectedSchema =
@@ -336,10 +337,17 @@ export function resolveProviderAcceptedAssets(
       acceptance.schemaVersion !== expectedSchema ||
       !SHA256_PATTERN.test(acceptance.acceptanceFingerprintHash) ||
       acceptance.acceptedAttemptId.trim().length === 0 ||
+      acceptance.qaResultId.trim().length === 0 ||
       acceptance.acceptedAssetId !== candidate.assetId ||
       acceptance.acceptedBinarySha256 !== candidate.sha256 ||
       acceptance.qaState !== "PASSED" ||
-      acceptance.resultDisposition !== "ACCEPTED"
+      acceptance.resultDisposition !== "ACCEPTED" ||
+      acceptance.providerOperation.trim().length === 0 ||
+      !Number.isSafeInteger(acceptance.cost.reservedMicroUsd) ||
+      !Number.isSafeInteger(acceptance.cost.reportedMicroUsd) ||
+      !Number.isSafeInteger(acceptance.cost.settledMicroUsd) ||
+      acceptance.cost.reservedMicroUsd < acceptance.cost.reportedMicroUsd ||
+      acceptance.cost.reportedMicroUsd !== acceptance.cost.settledMicroUsd
     ) {
       return pipelineFailure(
         fail(
@@ -349,8 +357,16 @@ export function resolveProviderAcceptedAssets(
         ),
       );
     }
+    proofs[candidate.taskKey] = acceptance;
   }
-  return resolveAcceptedAssets(request);
+  const resolved = resolveAcceptedAssets(request);
+  if (!resolved.ok) return resolved;
+  return pipelineSuccess(
+    Object.freeze({
+      byTaskKey: resolved.value.byTaskKey,
+      acceptanceProofsByTaskKey: Object.freeze(proofs),
+    }),
+  );
 }
 
 function validateTimelineBinding(request: RenderPlanRequest): PipelineFailure | null {

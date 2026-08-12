@@ -18,16 +18,29 @@ export type ProviderAcceptanceSchema =
   | "videoforge.mage-image-acceptance/v1"
   | "videoforge.avatar-fixture-acceptance/v1";
 
-export interface ProviderAcceptedAssetCandidate extends AcceptedAssetBinding {
-  readonly acceptance: {
-    readonly schemaVersion: ProviderAcceptanceSchema;
-    readonly acceptanceFingerprintHash: Sha256Digest;
-    readonly acceptedAttemptId: string;
-    readonly acceptedAssetId: string;
-    readonly acceptedBinarySha256: Sha256Digest;
-    readonly qaState: "PASSED" | "REJECTED" | "PENDING";
-    readonly resultDisposition: "ACCEPTED" | "REJECTED" | "PENDING";
+export interface ProviderAcceptanceProof {
+  readonly schemaVersion: ProviderAcceptanceSchema;
+  readonly acceptanceFingerprintHash: Sha256Digest;
+  readonly acceptedAttemptId: string;
+  readonly acceptedAssetId: string;
+  readonly acceptedBinarySha256: Sha256Digest;
+  readonly qaState: "PASSED" | "REJECTED" | "PENDING";
+  readonly qaResultId: string;
+  readonly resultDisposition: "ACCEPTED" | "REJECTED" | "PENDING";
+  readonly providerOperation: string;
+  readonly modelLineage: Readonly<Record<string, unknown>>;
+  readonly promptLineage: Readonly<Record<string, unknown>>;
+  readonly runtimeEvidence: Readonly<Record<string, unknown>>;
+  readonly qualityReview: Readonly<Record<string, unknown>>;
+  readonly cost: {
+    readonly reservedMicroUsd: number;
+    readonly reportedMicroUsd: number;
+    readonly settledMicroUsd: number;
   };
+}
+
+export interface ProviderAcceptedAssetCandidate extends AcceptedAssetBinding {
+  readonly acceptance: ProviderAcceptanceProof;
 }
 
 export interface ProviderAcceptedAssetResolutionRequest
@@ -43,6 +56,7 @@ export interface AcceptedAssetResolutionRequest {
 
 export interface AcceptedAssetResolution {
   readonly byTaskKey: Readonly<Record<string, AcceptedAssetBinding>>;
+  readonly acceptanceProofsByTaskKey?: Readonly<Record<string, ProviderAcceptanceProof>>;
 }
 
 /** Pure selected-asset barrier; repositories and artifact stores implement separate adapters. */

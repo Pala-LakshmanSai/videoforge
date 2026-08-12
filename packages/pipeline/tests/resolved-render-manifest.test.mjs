@@ -62,7 +62,15 @@ const PROVIDER_CANDIDATES = Object.freeze(
         acceptedAssetId: candidate.assetId,
         acceptedBinarySha256: candidate.sha256,
         qaState: "PASSED",
+        qaResultId: `qa_provider_${index + 1}`,
         resultDisposition: "ACCEPTED",
+        providerOperation:
+          candidate.kind === "IMAGE" ? "runpod.mage.image.generate" : "fixture.avatar.accept",
+        modelLineage: Object.freeze({ model: "locked-test-model" }),
+        promptLineage: Object.freeze({ prompt_hash: `sha256:${String(index + 4).repeat(64)}` }),
+        runtimeEvidence: Object.freeze({ runtime: "fake-real" }),
+        qualityReview: Object.freeze({ reviewer: "owned-test" }),
+        cost: Object.freeze({ reservedMicroUsd: 0, reportedMicroUsd: 0, settledMicroUsd: 0 }),
       }),
     }),
   ),
@@ -217,6 +225,7 @@ test("resolves only exact provider artifacts with durable passed QA", async () =
   };
   const accepted = requireSuccess(resolveProviderAcceptedAssets(request));
   assert.deepEqual(Object.keys(accepted.byTaskKey), request.requiredTaskKeys);
+  assert.deepEqual(Object.keys(accepted.acceptanceProofsByTaskKey), request.requiredTaskKeys);
 
   for (const field of ["qaState", "resultDisposition"]) {
     const rejected = resolveProviderAcceptedAssets({
