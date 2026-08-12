@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import threading
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import TypeVar
@@ -16,6 +17,40 @@ from videoforge_image_media.mage_production import MageContractError
 MODEL_ROOT = Path(os.environ.get("MAGE_MODEL_ROOT", "/models/mage-flow-turbo"))
 _bootstrap_lock = threading.Lock()
 _Result = TypeVar("_Result")
+
+
+def _read_timing(path: str, schema_version: str) -> dict[str, object]:
+    try:
+        value = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError) as error:
+        raise MageContractError("MAGE_RUNTIME_EVIDENCE_INVALID") from error
+    if not isinstance(value, dict) or value.get("schema_version") != schema_version:
+        raise MageContractError("MAGE_RUNTIME_EVIDENCE_INVALID")
+    return value
+
+
+def runtime_evidence(received_unix_ms: int) -> dict[str, object]:
+    try:
+        import torch
+
+        properties = torch.cuda.get_device_properties(0)
+        gpu = {
+            "name": torch.cuda.get_device_name(0),
+            "total_memory_bytes": properties.total_memory,
+            "cuda_version": torch.version.cuda,
+            "torch_version": torch.__version__,
+        }
+    except Exception as error:
+        raise MageContractError("MAGE_GPU_EVIDENCE_UNAVAILABLE") from error
+    return {
+        "schema_version": "videoforge.mage-runtime-evidence/v1",
+        "network_volume_attached": False,
+        "handler_received_unix_ms": received_unix_ms,
+        "handler_completed_unix_ms": round(time.time() * 1000),
+        "bootstrap": _read_timing("/tmp/mage-bootstrap.json", "videoforge.mage-bootstrap/v1"),
+        "comfy_start": _read_timing("/tmp/mage-comfy-start.json", "videoforge.mage-comfy-start/v1"),
+        "gpu": gpu,
+    }
 
 
 def safe_progress(event: dict[str, object], phase: str) -> None:
@@ -60,6 +95,7 @@ def run_with_heartbeat(
 
 def handler(event: dict[str, object]) -> dict[str, object]:
     try:
+        received_unix_ms = round(time.time() * 1000)
         value = event.get("input")
         if not isinstance(value, dict):
             raise MageContractError("MAGE_INLINE_JOB_SHAPE_INVALID")
@@ -68,6 +104,7 @@ def handler(event: dict[str, object]) -> dict[str, object]:
         job = MageInlineJob.from_value(value)
         ensure_model(event)
         result = run_with_heartbeat(event, lambda: run_inline_job(job, MODEL_ROOT))
+        result["runtime_evidence"] = runtime_evidence(received_unix_ms)  # type: ignore[typeddict-unknown-key]
         return {"ok": True, "result": result}
     except MageContractError as error:
         return {"ok": False, "error_code": str(error)[:120]}

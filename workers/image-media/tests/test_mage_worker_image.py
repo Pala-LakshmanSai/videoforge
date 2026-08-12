@@ -68,6 +68,33 @@ class MageWorkerImageTest(unittest.TestCase):
             {"ok": False, "error_code": "MAGE_INLINE_JOB_SHAPE_INVALID"},
         )
 
+    def test_success_includes_worker_timing_and_gpu_evidence(self) -> None:
+        result = {"output_sha256": "sha256:" + "1" * 64}
+        timing = {"schema_version": "videoforge.mage-runtime-evidence/v1"}
+        with (
+            patch.object(handler, "ensure_model"),
+            patch.object(handler, "run_inline_job", return_value=result),
+            patch.object(handler, "runtime_evidence", return_value=timing),
+        ):
+            job = {
+                "mode": "INLINE_QUALIFICATION_V1",
+                "attempt_id": "vf9_07_test",
+                "model_revision": handler.MAGE_MODEL_REVISION,
+                "items": [
+                    {
+                        "scene_id": "scene_001",
+                        "positive_prompt": "Owned documentary photograph",
+                        "positive_prompt_sha256": "sha256:867e3df4876b59a17bf752caa8726645f76e06856ec099224b4b7cb79a943017",
+                        "seed": 1234,
+                        "width": 1280,
+                        "height": 720,
+                    }
+                ],
+            }
+            observed = handler.handler({"input": job})
+        self.assertTrue(observed["ok"])
+        self.assertEqual(observed["result"]["runtime_evidence"], timing)
+
     def test_progress_heartbeat_is_ordered(self) -> None:
         phases: list[str] = []
         seen = threading.Event()
