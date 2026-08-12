@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-17` in progress at green provider-render barrier checkpoint `95ff125`
+Status: `VF-9-21` reauthorized for one persisted-output AvatarForcing sample attempt
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -12,13 +12,12 @@ VideoForge is an invite-only web app for 5–10 teammates that accepts a title, 
 
 ## Current handoff
 
-Current selection is `VF-9-17`, not the historical VF-8/VF-3 tasks described later in this file.
-Checkpoint `95ff125` added a pure fail-closed render-input barrier for exact durable Mage/Avatar
-acceptance identity and passed QA; focused pipeline build/typecheck/lint and 116/116 tests pass.
-Durable repository composition, fake-real 30–120-second FFmpeg v3 execution, fault/replay proof,
-and installed-Chrome playback/approval/download/hash remain. Resume only the selected profile and
-brief. Provider calls, credentials, GPU/model downloads, RunPod/Runware mutations, deployment, and
-spend remain prohibited. Last recorded RunPod inventory is absolute zero.
+Current selection is `VF-9-21`. User reauthorized one new capped AvatarForcing attempt using a
+temporary private persisted-output tunnel after RunPod omitted inline MP4 bytes. Maximum remaining
+task spend is `$1.0975221518`; hard stop is `$0.90`. Use exact pinned image, source/audio, 253 frames,
+and one A100-80GB worker. Never run MuseTalk, SkyReels, or LongCat. No account resource, deployment,
+profile promotion, or unrelated cloud mutation is authorized. Start and finish with independently
+verified RunPod absolute zero. Return successful MP4 only as `READY_FOR_USER_REVIEW`.
 
 Phase 0A contracts/tooling, the accepted Phase 0B fixture shell, the accepted provider-free Phase 0C
 local ASR → scheduler → FFmpeg → Chrome/download slice, the full Phase 1 durable control plane, and

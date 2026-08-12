@@ -4,6 +4,10 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 
+import {
+  startCloudflaredAvatarPrivateTransfer,
+  type AvatarPrivateTransfer,
+} from "./avatar-private-transfer";
 import { loadRunPodApiKeyFromKeychain } from "./keychain";
 import { safeAvatarFailureEvidence } from "./runpod-avatar-result";
 import {
@@ -18,6 +22,7 @@ const terminalStatuses = new Set(["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT
 const qualificationSpendCapUsd = Number(process.env.VIDEOFORGE_COST_CAP_USD ?? "1");
 const qualificationCostStopUsd = Number(process.env.VIDEOFORGE_COST_STOP_USD ?? "0.9");
 const qualificationFrames = Number(process.env.VIDEOFORGE_AVATAR_SAMPLE_FRAMES ?? "5");
+const outputTransport = process.env.VIDEOFORGE_AVATAR_OUTPUT_TRANSPORT ?? "inline_result_v1";
 if (
   !Number.isFinite(qualificationSpendCapUsd) ||
   qualificationSpendCapUsd <= 0 ||
@@ -28,7 +33,8 @@ if (
   !Number.isSafeInteger(qualificationFrames) ||
   qualificationFrames < 5 ||
   qualificationFrames > 253 ||
-  (qualificationFrames - 1) % 4 !== 0
+  (qualificationFrames - 1) % 4 !== 0 ||
+  !["inline_result_v1", "private_tunnel_v1"].includes(outputTransport)
 ) {
   throw new Error("AVATAR_QUALIFICATION_SCOPE_INVALID");
 }
@@ -147,11 +153,16 @@ let template: Awaited<ReturnType<RunPodControlClient["createServerlessTemplate"]
 let endpoint: Awaited<ReturnType<RunPodControlClient["createScaleZeroEndpoint"]>> | undefined;
 let jobs: RunPodServerlessJobClient | undefined;
 let job: RunPodJobResult | undefined;
+let transfer: AvatarPrivateTransfer | undefined;
 let failureCode: string | undefined;
 let outputEvidence: unknown;
+const outputPath = resolve(outputRoot, "avatarforcing-qualification.mp4");
 
 try {
   if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
+  if (outputTransport === "private_tunnel_v1") {
+    transfer = await startCloudflaredAvatarPrivateTransfer({ source, audio, outputPath });
+  }
   const suffix = createHash("sha256").update(image).digest("hex").slice(0, 12);
   template = await control.createServerlessTemplate(`vf_avatar_${suffix}`, image, 100);
   if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
@@ -170,17 +181,32 @@ try {
   jobs = new RunPodServerlessJobClient({ apiKey, endpointId: endpoint.id, guard });
   await jobs.confirmDrained();
   if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
-  job = await jobs.dispatch(`vf8_10_${suffix}`, {
-    mode: "INLINE_QUALIFICATION_V1",
-    attempt_id: `vf8_10_${suffix}`,
-    source_base64: source.toString("base64"),
+  const attemptId = `vf9_21_${suffix}`;
+  const sharedInput = {
+    attempt_id: attemptId,
     source_sha256: digest(source),
-    span_audio_base64: audio.toString("base64"),
     span_audio_sha256: digest(audio),
     prompt: "A presenter speaks naturally to the camera.",
     layout: "AVATAR_FULL",
     num_output_frames: qualificationFrames,
-  });
+  };
+  job = await jobs.dispatch(
+    attemptId,
+    transfer
+      ? {
+          ...sharedInput,
+          attempt_id: attemptId,
+          source_url: transfer.sourceUrl,
+          span_audio_url: transfer.audioUrl,
+          output_put_url: transfer.outputPutUrl,
+        }
+      : {
+          ...sharedInput,
+          mode: "INLINE_QUALIFICATION_V1",
+          source_base64: source.toString("base64"),
+          span_audio_base64: audio.toString("base64"),
+        },
+  );
   let consecutiveNoRunningPolls = 0;
   for (let attempt = 0; attempt < 140 && !terminalStatuses.has(job.status); attempt += 1) {
     await sleep(15_000);
@@ -213,18 +239,29 @@ try {
       typeof envelope?.error_code === "string" ? envelope.error_code : "AVATAR_RESULT_INVALID",
     );
   }
-  const encoded = envelope.result.output_base64;
-  if (typeof encoded !== "string") throw new Error("AVATAR_OUTPUT_MISSING");
-  const output = Buffer.from(encoded, "base64");
+  let output: Buffer;
+  if (transfer) {
+    await Promise.race([
+      transfer.waitForOutput(),
+      sleep(30_000).then(() => {
+        throw new Error("AVATAR_OUTPUT_UPLOAD_TIMEOUT");
+      }),
+    ]);
+    output = await readFile(outputPath);
+  } else {
+    const encoded = envelope.result.output_base64;
+    if (typeof encoded !== "string") throw new Error("AVATAR_OUTPUT_MISSING");
+    output = Buffer.from(encoded, "base64");
+  }
   const expected = envelope.result.output_sha256;
   if (digest(output) !== expected || output.byteLength > 8 * 1024 * 1024) {
     throw new Error("AVATAR_OUTPUT_CHECKSUM_INVALID");
   }
-  const outputPath = resolve(outputRoot, "avatarforcing-qualification.mp4");
-  await writeFile(outputPath, output, { flag: "wx" });
+  if (!transfer) await writeFile(outputPath, output, { flag: "wx" });
   outputEvidence = {
     ...envelope.result,
     output_base64: undefined,
+    output_transport: outputTransport,
     local_probe: await probe(outputPath),
   };
 } catch (error) {
@@ -282,6 +319,13 @@ try {
       failureCode ??= "RUNPOD_TEMPLATE_DELETE_UNCONFIRMED";
     }
   }
+  if (transfer) {
+    try {
+      await transfer.close();
+    } catch {
+      failureCode ??= "AVATAR_TRANSFER_CLOSE_UNCONFIRMED";
+    }
+  }
 }
 
 let endingBalance: number | null = null;
@@ -296,6 +340,7 @@ const evidence = {
   schema_version: "videoforge.avatarforcing-qualification/v1",
   checked_at: new Date().toISOString(),
   image,
+  output_transport: outputTransport,
   input: {
     source_sha256: digest(source),
     source_bytes: source.byteLength,

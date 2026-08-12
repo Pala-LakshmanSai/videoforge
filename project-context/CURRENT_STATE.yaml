@@ -1,9 +1,9 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T12:20:01Z"
+updated_at: "2026-08-12T12:40:40Z"
 
 phase: avatarforcing_user_sample
-implementation_authorized_in_current_task: false
+implementation_authorized_in_current_task: true
 current_milestone: avatar_primary_user_quality_review
 current_task: VF-9-21
 current_wave: wave_8_runtime_composition
@@ -42,9 +42,9 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-21 exhausted its bounded attempts without a reviewable MP4. No further provider call or output-transport mutation is authorized. No MuseTalk, SkyReels, LongCat, profile promotion, deployment, or unrelated cloud mutation."
+  provider_calls_authorized: true
+  authorized_spend_usd: 1.0975221518
+  provider_authority_scope: "User command `fix it` authorizes one new VF-9-21 AvatarForcing attempt through a temporary private persisted-output tunnel, capped at $1.0975221518 with a $0.90 hard stop. No MuseTalk, SkyReels, LongCat, profile promotion, deployment, account resource, or unrelated cloud mutation."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -303,46 +303,43 @@ last_green:
     - "evidence/acceptance/VF-9-19/avatar-fallback-qualification"
 
 active_ownership: []
-blocked_tasks:
-  - task_id: VF-9-21
-    reason: "AvatarForcing completed inference, but the inline RunPod result boundary omitted MP4 bytes even after the pinned 4 MiB delivery encode. The same transport must not be rerun."
-    unblock: "User explicitly authorizes a different persisted output transport and a new capped attempt."
+blocked_tasks: []
 
 in_progress_checkpoint: null
 
 recommended_next_task:
   task_id: VF-9-21
   milestone: avatar_primary_user_quality_review
-  status: blocked_waiting_for_user_authority
-  dependency_status: output_transport_failed_no_reviewable_mp4
-  authorization_status: no_provider_or_transport_mutation_authorized
+  status: authorized_in_progress
+  dependency_status: persisted_output_transport_implementation_required
+  authorization_status: one_persisted_output_attempt_authorized
   read_profile: phase9_avatarforcing_user_sample
   task_brief: tasks/VF-9-21.md
   goal: "Generate one 10.12-second Elias Yoder AvatarForcing-only MP4 for user quality review."
-  provider_calls_authorized: false
-  maximum_external_spend_usd: 0
+  provider_calls_authorized: true
+  maximum_external_spend_usd: 1.0975221518
   provider_authority:
     provider: runpod_serverless
     model_id: "KlingAIResearch/AvatarForcing@63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39"
     image_digest: "sha256:b2757bda535ad8daf025efacf4bb9d150bfcb11d16c6b81105f203c24ce83cd3"
-    cap_usd: 0
+    cap_usd: 1.0975221518
     non_transferable: true
     authorized_by_user_at: "2026-08-12T11:40:00Z"
-  remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
+  remote_or_cloud_mutations_authorized: true
+  credential_access_authorized: true
   model_downloads_authorized: false
-  application_code_changes_authorized: false
+  application_code_changes_authorized: true
   expected_evidence: "evidence/acceptance/VF-9-21/elias-avatarforcing-sample"
   required_handoff:
-    - "Do not rerun the inline transport; it deterministically omitted the review MP4."
-    - "Keep the sample NOT_READY and request explicit authority for a persisted output transport."
-    - "Never dispatch MuseTalk, SkyReels, LongCat, or another AvatarForcing job without new authority."
+    - "Do not rerun inline transport; use one temporary private persisted-output tunnel attempt."
+    - "Return technically valid MP4 as READY_FOR_USER_REVIEW; never self-approve visual quality."
+    - "Never dispatch MuseTalk, SkyReels, LongCat, or a second AvatarForcing job."
     - "Preserve independent RunPod absolute zero."
   safe_parallelism:
     maximum_lanes_including_integration: 1
     integration_owner: VF-9-21
   prohibited_in_task:
-    - "MuseTalk, SkyReels, LongCat, model/source/audio/GPU substitution, more than one worker/job at a time, any further redispatch, or spend above $1.2856123148."
+    - "MuseTalk, SkyReels, LongCat, model/source/audio/GPU substitution, more than one worker/job at a time, any redispatch, or spend above $1.0975221518."
     - "Publishing private inputs, production profile promotion, deployment, migration, UI redesign, or unrelated cloud/account mutation."
 
 blocking_gates_for_production:
@@ -442,7 +439,7 @@ activation_handoff:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Preserve user image/audio untracked and private; require tracked worktree clean."
     - "Load only phase9_avatarforcing_user_sample and tasks/VF-9-21.md."
-    - "Build and pin one bounded 253-frame inline AvatarForcing worker, then run one job only after absolute-zero inventory."
+    - "Use pinned worker and one temporary private persisted-output tunnel, then run one 253-frame job only after absolute-zero inventory."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
     - "Any provider/credential/GPU/cloud/plugin/deployment action, LongCat/model substitution, profile promotion, unsupported gate closure, regression, or output-grammar conflict."
