@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { promisify } from "node:util";
 
 import {
-  startCloudflaredAvatarPrivateTransfer,
+  startSshAvatarPrivateTransfer,
   type AvatarPrivateTransfer,
 } from "./avatar-private-transfer";
 import { loadRunPodApiKeyFromKeychain } from "./keychain";
@@ -161,7 +161,7 @@ const outputPath = resolve(outputRoot, "avatarforcing-qualification.mp4");
 try {
   if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
   if (outputTransport === "private_tunnel_v1") {
-    transfer = await startCloudflaredAvatarPrivateTransfer({ source, audio, outputPath });
+    transfer = await startSshAvatarPrivateTransfer({ source, audio, outputPath });
   }
   const suffix = createHash("sha256").update(image).digest("hex").slice(0, 12);
   template = await control.createServerlessTemplate(`vf_avatar_${suffix}`, image, 100);

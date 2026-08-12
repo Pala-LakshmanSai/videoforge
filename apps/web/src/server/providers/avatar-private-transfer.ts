@@ -118,19 +118,51 @@ export const startLocalAvatarPrivateTransfer = async (input: {
   };
 };
 
-const tunnelUrl = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/iu;
+const tunnelUrl = /https:\/\/[a-z0-9-]+\.lhr\.life/iu;
+const sleep = (milliseconds: number): Promise<void> =>
+  new Promise((resolveSleep) => setTimeout(resolveSleep, milliseconds));
 
-export const startCloudflaredAvatarPrivateTransfer = async (input: {
+const waitForTunnelReady = async (
+  publicUrl: string,
+  process: ChildProcessWithoutNullStreams,
+): Promise<void> => {
+  for (let attempt = 0; attempt < 45; attempt += 1) {
+    if (process.exitCode !== null) throw new Error("AVATAR_TUNNEL_EXITED");
+    try {
+      const response = await fetch(publicUrl, { signal: AbortSignal.timeout(5_000) });
+      if (response.status === 404) return;
+    } catch {
+      // Quick-tunnel DNS propagation can lag URL announcement.
+    }
+    await sleep(2_000);
+  }
+  throw new Error("AVATAR_TUNNEL_NOT_READY");
+};
+
+export const startSshAvatarPrivateTransfer = async (input: {
   source: Buffer;
   audio: Buffer;
   outputPath: string;
-  cloudflaredPath?: string;
+  sshPath?: string;
 }): Promise<AvatarPrivateTransfer> => {
   const local = await startLocalAvatarPrivateTransfer(input);
   const localUrl = new URL(local.sourceUrl);
   const process: ChildProcessWithoutNullStreams = spawn(
-    input.cloudflaredPath ?? "/opt/homebrew/bin/cloudflared",
-    ["tunnel", "--url", localUrl.origin, "--no-autoupdate", "--loglevel", "info"],
+    input.sshPath ?? "/usr/bin/ssh",
+    [
+      "-T",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ExitOnForwardFailure=yes",
+      "-o",
+      "StrictHostKeyChecking=accept-new",
+      "-o",
+      "ServerAliveInterval=15",
+      "-R",
+      `80:127.0.0.1:${localUrl.port}`,
+      "nokey@localhost.run",
+    ],
     { stdio: "pipe" },
   );
   try {
@@ -153,6 +185,7 @@ export const startCloudflaredAvatarPrivateTransfer = async (input: {
         rejectUrl(new Error(`AVATAR_TUNNEL_EXIT_${code ?? "UNKNOWN"}`));
       });
     });
+    await waitForTunnelReady(publicUrl, process);
     local.setPublicBaseUrl(publicUrl);
   } catch (error) {
     process.kill("SIGTERM");
