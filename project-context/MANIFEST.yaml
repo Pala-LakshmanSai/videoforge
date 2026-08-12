@@ -3,8 +3,8 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-12"
 source_of_truth: project-context
-current_selected_profile: phase10_pglite_adapter_split
-current_selected_brief: tasks/VF-10-01.md
+current_selected_profile: phase9_avatarforcing_user_sample
+current_selected_brief: tasks/VF-9-21.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -515,6 +515,14 @@ read_profiles:
     - 19_IMPLEMENTATION_PLAYBOOK.md
     - 21_IMPLEMENTATION_EXECUTION_PLAN.md
     - tasks/VF-10-01.md
+  phase9_avatarforcing_user_sample:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 11_COST_SPEED_BUDGET.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - 20_AVATAR_HUB.md
+    - tasks/VF-9-21.md
   phase3_runware_style_adapter:
     - 08_MODELS_AND_PROVIDERS.md
     - 14_TESTING_AND_ACCEPTANCE.md

@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T11:35:00Z"
+updated_at: "2026-08-12T11:40:00Z"
 
-phase: cloud_local_seams
+phase: avatarforcing_user_sample
 implementation_authorized_in_current_task: true
-current_milestone: pglite_adapter_capability_split
-current_task: VF-10-01
-current_wave: wave_9_cloud_local_seams
+current_milestone: avatar_primary_user_quality_review
+current_task: VF-9-21
+current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -20,7 +20,7 @@ repository:
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "33df55b"
   last_good_commit: "33df55b"
-  working_tree_expected: vf_10_01_selected_context_handoff_then_clean
+  working_tree_expected: vf_9_21_selected_context_handoff_plus_untracked_user_inputs
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -43,8 +43,8 @@ live_development:
   fixture_scenario: happy_generating
   provider_mode: fixture
   provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "VF-10-01 is a local behavior-preserving PGlite adapter split only. No credential access, provider/GPU call, cloud/account mutation, plugin installation, deployment, migration, or profile promotion."
+  authorized_spend_usd: 1.4736943278
+  provider_authority_scope: "VF-9-21 permits one 10.12-second AvatarForcing-only sample from the exact private Elias Yoder image and first 10.12 seconds of exact private voiceover, one pinned worker build, one scale-zero endpoint, one A100-80GB worker, one job, evidence, Git push, and hosted CI. No MuseTalk, SkyReels, LongCat, redispatch, profile promotion, deployment, or unrelated cloud mutation."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -303,32 +303,39 @@ blocked_tasks: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-10-01
-  milestone: pglite_adapter_capability_split
+  task_id: VF-9-21
+  milestone: avatar_primary_user_quality_review
   status: authorized_ready_to_start
-  dependency_status: vf_9_20_gate_profile_convergence_complete
-  authorization_status: local_behavior_preserving_refactor
-  read_profile: phase10_pglite_adapter_split
-  task_brief: tasks/VF-10-01.md
-  goal: "Split the oversized PGlite adapter by capability without behavior change."
-  provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
-  model_downloads_authorized: false
+  dependency_status: user_inputs_verified_and_private_runtime_derivatives_prepared
+  authorization_status: exact_capped_avatarforcing_only_sample
+  read_profile: phase9_avatarforcing_user_sample
+  task_brief: tasks/VF-9-21.md
+  goal: "Generate one 10.12-second Elias Yoder AvatarForcing-only MP4 for user quality review."
+  provider_calls_authorized: true
+  maximum_external_spend_usd: 1.4736943278
+  provider_authority:
+    provider: runpod_serverless
+    model_id: "KlingAIResearch/AvatarForcing@63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39"
+    image_digest: pending_vf_9_21_immutable_build
+    cap_usd: 1.4736943278
+    non_transferable: true
+    authorized_by_user_at: "2026-08-12T11:40:00Z"
+  remote_or_cloud_mutations_authorized: true
+  credential_access_authorized: true
+  model_downloads_authorized: true
   application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-10-01/pglite-adapter-split"
+  expected_evidence: "evidence/acceptance/VF-9-21/elias-avatarforcing-sample"
   required_handoff:
-    - "Split only by existing capability; preserve factory, exports, SQL, transaction behavior, and public imports."
-    - "Prove repository contracts, replay, and restore remain green with no migration or schema change."
-    - "Author exactly one private R2 local-seam successor."
-    - "Stop before any cloud/plugin/credential/deployment mutation."
+    - "Use exact private image/audio derivatives and AvatarForcing only for one 253-frame sample."
+    - "Return technical-pass output as READY_FOR_USER_REVIEW; do not self-approve visual quality."
+    - "Never dispatch MuseTalk, SkyReels, LongCat, or a second AvatarForcing job."
+    - "Cancel, drain, delete, and independently prove RunPod absolute zero."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-10-01
+    integration_owner: VF-9-21
   prohibited_in_task:
-    - "Behavior redesign, schema/API change, migration, production adapter, provider call, credential access, spend, cloud/account mutation, plugin install, or deployment."
-    - "LongCat/model substitution, production profile promotion, or gate-status change."
+    - "MuseTalk, SkyReels, LongCat, model/source/audio/GPU substitution, redispatch, more than one worker/job, or spend above $1.4736943278."
+    - "Publishing private inputs, production profile promotion, deployment, migration, UI redesign, or unrelated cloud/account mutation."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -382,7 +389,7 @@ progress_snapshot:
   interpretation: "Durable accepted-provider proof composition reaches fake-provider-shaped FFmpeg v3, restart/replay, and installed-Chrome delivery. Mage matrix and SkyReels fallback qualification ended with zero outputs and no acceptance; first real provider video, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: vf_10_01_pglite_adapter_split_ready
+  status: vf_9_21_avatarforcing_user_sample_ready
   completed_and_preserved:
     - "All completed tasks/commits above are preserved; VF-9-17 closed at 958d7bd with canonical exit code 0."
     - "Forced full verification passed at the VF-8-04 handoff tree: Workerd 1/1 and installed Chrome 38/38 with zero skips."
@@ -425,9 +432,9 @@ activation_handoff:
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from 9e5c7d0; preserve all newer commits."
-    - "Load only phase10_pglite_adapter_split and tasks/VF-10-01.md."
-    - "Split packages/control-plane/src/adapters/pglite-repositories.ts by existing capability without behavior change."
+    - "Preserve user image/audio untracked and private; require tracked worktree clean."
+    - "Load only phase9_avatarforcing_user_sample and tasks/VF-9-21.md."
+    - "Build and pin one bounded 253-frame inline AvatarForcing worker, then run one job only after absolute-zero inventory."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
     - "Any provider/credential/GPU/cloud/plugin/deployment action, LongCat/model substitution, profile promotion, unsupported gate closure, regression, or output-grammar conflict."

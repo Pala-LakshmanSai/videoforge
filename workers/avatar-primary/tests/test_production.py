@@ -105,7 +105,7 @@ class ProductionContractTest(unittest.TestCase):
     def test_rejects_full_voiceover_oversize_frames_layout_and_unknown_fields(self) -> None:
         cases = []
         for key, value in [
-            ("num_output_frames", 226),
+            ("num_output_frames", 254),
             ("num_output_frames", 24),
             ("layout", "IMAGE_FULL"),
             ("source_url", "file:///private/source.jpg"),
@@ -120,7 +120,7 @@ class ProductionContractTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 AvatarPrimaryJob.from_value(candidate)
 
-    def test_inline_qualification_is_checksum_bound_and_exactly_five_frames(self) -> None:
+    def test_inline_qualification_is_checksum_bound_and_bounded(self) -> None:
         source = b"owned-source"
         audio = b"owned-audio"
         value = {
@@ -135,9 +135,12 @@ class ProductionContractTest(unittest.TestCase):
             "num_output_frames": 5,
         }
         self.assertEqual(AvatarPrimaryInlineJob.from_value(value).num_output_frames, 5)
-        value["num_output_frames"] = 9
-        with self.assertRaisesRegex(ValueError, "AVATAR_INLINE_SCOPE_INVALID"):
-            AvatarPrimaryInlineJob.from_value(value)
+        value["num_output_frames"] = 253
+        self.assertEqual(AvatarPrimaryInlineJob.from_value(value).num_output_frames, 253)
+        for invalid in (4, 6, 254):
+            value["num_output_frames"] = invalid
+            with self.assertRaisesRegex(ValueError, "AVATAR_INLINE_SCOPE_INVALID"):
+                AvatarPrimaryInlineJob.from_value(value)
 
 
 if __name__ == "__main__":

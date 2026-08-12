@@ -15,8 +15,23 @@ import {
 
 const execFileAsync = promisify(execFile);
 const terminalStatuses = new Set(["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"]);
-const qualificationSpendCapUsd = 1;
-const qualificationCostStopUsd = 0.9;
+const qualificationSpendCapUsd = Number(process.env.VIDEOFORGE_COST_CAP_USD ?? "1");
+const qualificationCostStopUsd = Number(process.env.VIDEOFORGE_COST_STOP_USD ?? "0.9");
+const qualificationFrames = Number(process.env.VIDEOFORGE_AVATAR_SAMPLE_FRAMES ?? "5");
+if (
+  !Number.isFinite(qualificationSpendCapUsd) ||
+  qualificationSpendCapUsd <= 0 ||
+  qualificationSpendCapUsd > 1.4736943278 ||
+  !Number.isFinite(qualificationCostStopUsd) ||
+  qualificationCostStopUsd <= 0 ||
+  qualificationCostStopUsd > qualificationSpendCapUsd ||
+  !Number.isSafeInteger(qualificationFrames) ||
+  qualificationFrames < 5 ||
+  qualificationFrames > 253 ||
+  (qualificationFrames - 1) % 4 !== 0
+) {
+  throw new Error("AVATAR_QUALIFICATION_SCOPE_INVALID");
+}
 const qualificationGpuTypeIds = ["NVIDIA A100 80GB PCIe"] as const;
 let abortRequested = false;
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
@@ -164,7 +179,7 @@ try {
     span_audio_sha256: digest(audio),
     prompt: "A presenter speaks naturally to the camera.",
     layout: "AVATAR_FULL",
-    num_output_frames: 5,
+    num_output_frames: qualificationFrames,
   });
   let consecutiveNoRunningPolls = 0;
   for (let attempt = 0; attempt < 140 && !terminalStatuses.has(job.status); attempt += 1) {
@@ -286,7 +301,7 @@ const evidence = {
     audio_sha256: digest(audio),
     audio_bytes: audio.byteLength,
     layout: "AVATAR_FULL",
-    num_output_frames: 5,
+    num_output_frames: qualificationFrames,
   },
   resource_identity: {
     template_id_hash: template?.idHash ?? null,

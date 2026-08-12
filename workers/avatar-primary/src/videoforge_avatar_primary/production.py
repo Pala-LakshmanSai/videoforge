@@ -139,7 +139,7 @@ class AvatarPrimaryJob:
         if (
             not isinstance(job.num_output_frames, int)
             or job.num_output_frames < 5
-            or job.num_output_frames > 225
+            or job.num_output_frames > 253
             or (job.num_output_frames - 1) % 4 != 0
         ):
             raise ValueError("AVATAR_FRAME_COUNT_INVALID")
@@ -156,7 +156,7 @@ class AvatarPrimaryInlineJob:
     span_audio_sha256: str
     prompt: str
     layout: str
-    num_output_frames: Literal[5]
+    num_output_frames: int
     timeout_seconds: int = 1_800
 
     @classmethod
@@ -174,7 +174,13 @@ class AvatarPrimaryInlineJob:
         }:
             raise ValueError("AVATAR_INLINE_JOB_SHAPE_INVALID")
         job = cls(**value)
-        if job.mode != "INLINE_QUALIFICATION_V1" or job.num_output_frames != 5:
+        if (
+            job.mode != "INLINE_QUALIFICATION_V1"
+            or not isinstance(job.num_output_frames, int)
+            or job.num_output_frames < 5
+            or job.num_output_frames > 253
+            or (job.num_output_frames - 1) % 4 != 0
+        ):
             raise ValueError("AVATAR_INLINE_SCOPE_INVALID")
         if (
             not job.attempt_id
