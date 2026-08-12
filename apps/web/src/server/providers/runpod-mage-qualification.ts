@@ -11,10 +11,11 @@ import {
   type RunPodJobResult,
 } from "./runpod-control";
 
-const spendCapUsd = 1;
-const costStopUsd = 0.9;
+const spendCapUsd = 0.15;
+const costStopUsd = 0.12;
 const gpuTypeIds = ["NVIDIA GeForce RTX 4090"] as const;
-const prompt = "a wideshot of costco store at night.";
+const prompt =
+  "A wide documentary photograph of families loading bulk groceries into cars outside a large American warehouse supermarket at night, natural parking-lot lighting, realistic candid people, believable architecture and vehicles, no visible text, no logos, no brand names, no watermarks, no signs, no graphics, no borders, no overlays.";
 const modelRevision = "d8c99241f6fa80fbd453014234af2bf337ea21e6";
 const terminalStatuses = new Set(["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"]);
 const sleep = (milliseconds: number): Promise<void> =>
@@ -98,7 +99,7 @@ const probePng = (bytes: Buffer): { width: number; height: number; bytes: number
 
 const image = requiredImage();
 const outputRoot = resolve(
-  process.env.VIDEOFORGE_QUALIFICATION_OUTPUT_ROOT ?? ".videoforge/vf-9-07",
+  process.env.VIDEOFORGE_QUALIFICATION_OUTPUT_ROOT ?? ".videoforge/vf-9-09",
 );
 await mkdir(outputRoot, { recursive: true });
 const apiKey = await loadRunPodApiKeyFromKeychain();
@@ -110,7 +111,7 @@ assertInitialSafe(initialInventory);
 const startingBalanceUsd = await balance(apiKey);
 const promptHash = sha256(prompt);
 const suffix = createHash("sha256").update(image).digest("hex").slice(0, 12);
-const attemptId = `vf9_07_${suffix}`;
+const attemptId = `vf9_09_${suffix}`;
 const events: { event: string; at: string; elapsed_ms: number; detail?: unknown }[] = [];
 const mark = (event: string, detail?: unknown): void => {
   events.push({
@@ -154,10 +155,10 @@ try {
     model_revision: modelRevision,
     items: [
       {
-        scene_id: "costco_night_wideshot",
+        scene_id: "warehouse_night_documentary",
         positive_prompt: prompt,
         positive_prompt_sha256: promptHash,
-        seed: 1234,
+        seed: 20260812,
         width: 1280,
         height: 720,
       },
@@ -204,7 +205,7 @@ try {
     throw new Error("MAGE_OUTPUT_CHECKSUM_INVALID");
   }
   const probe = probePng(output);
-  const outputPath = resolve(outputRoot, "costco-night-wideshot-seed1234.png");
+  const outputPath = resolve(outputRoot, "warehouse-night-documentary-seed20260812.png");
   await writeFile(outputPath, output, { flag: "wx" });
   const safeResult = { ...envelope.result };
   delete safeResult.output_base64;
@@ -277,7 +278,7 @@ const evidence = {
   checked_at: now(),
   image,
   model_revision: modelRevision,
-  input: { prompt, prompt_sha256: promptHash, seed: 1234, width: 1280, height: 720 },
+  input: { prompt, prompt_sha256: promptHash, seed: 20260812, width: 1280, height: 720 },
   network_volume: {
     attached: false,
     reason: "isolated first qualification; preexisting ImageForge volume not mutated",
