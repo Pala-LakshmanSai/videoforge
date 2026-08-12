@@ -20,6 +20,6 @@ provider-free custom-style lifecycle and fixture Hub. `VF-3-11` ended without a 
 the user reaffirmed AvatarForcing and the LongCat exclusion. `VF-8-01/02/03` are complete.
 `VF-8-04` through `VF-9-21` preserve the full historical AvatarForcing/SkyReels attempt lineage,
 including `$0.4496891390` in `VF-9-21` and independent final zero inventory. `VF-9-22` supersedes
-that active route with EchoMimicV3-Flash, pins `GATE_AVATAR_004` preflight evidence, and selects only
-`VF-9-23.md`. Complete tasks author exactly one successor brief; do not select or expand later
+that active route with EchoMimicV3-Flash. `VF-9-23` published the pinned worker after full local and
+hosted green and selects only `VF-9-24.md`. Complete tasks author exactly one successor brief; do not select or expand later
 roadmap work before that handoff.

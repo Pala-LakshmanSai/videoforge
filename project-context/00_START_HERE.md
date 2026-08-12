@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-22` complete; `VF-9-23` EchoMimicV3-Flash worker selected
+Status: `VF-9-23` complete; `VF-9-24` Elias native sample selected
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -23,9 +23,14 @@ license artifacts and an exact `23,922,317,735`-byte selected runtime manifest u
 credentials, providers, GPUs, or spend were used. `GATE_AVATAR_004` remains open until worker
 bootstrap reproduces the manifest. `GATE_AVATAR_001` remains open until sample/full qualification.
 
-`CURRENT_STATE.yaml` selects only `VF-9-23` / `phase9_echomimic_v3_flash_worker`. Build one
-production-shaped worker at `$0` provider spend, publish one immutable GHCR image after local green,
-pin digest, pass full local/hosted verification, then select exactly `VF-9-24`.
+`VF-9-23` published the production-shaped worker as
+`ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:e4a4b71e5e706ef6da4a62cdc7fa87e0c599e9fe2fa702fea73081ed19b86d73`.
+Container smoke, full local verification, and hosted CI passed at `f0829b9`; no RunPod/model/GPU
+activity or provider spend occurred.
+
+`CURRENT_STATE.yaml` selects only `VF-9-24` / `phase9_echomimic_v3_flash_sample`. Run exactly one
+native 10.12-second Elias sample on RTX 4090 under the `$0.50` cap, clean every temporary RunPod
+resource, prove absolute zero, return the private MP4 for review, then stop.
 
 ## Locked active providers
 

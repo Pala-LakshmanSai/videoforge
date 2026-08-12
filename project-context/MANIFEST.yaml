@@ -3,8 +3,8 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-12"
 source_of_truth: project-context
-current_selected_profile: phase9_echomimic_v3_flash_worker
-current_selected_brief: tasks/VF-9-23.md
+current_selected_profile: phase9_echomimic_v3_flash_sample
+current_selected_brief: tasks/VF-9-24.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -531,6 +531,14 @@ read_profiles:
     - 19_IMPLEMENTATION_PLAYBOOK.md
     - 20_AVATAR_HUB.md
     - tasks/VF-9-23.md
+  phase9_echomimic_v3_flash_sample:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 11_COST_SPEED_BUDGET.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - 20_AVATAR_HUB.md
+    - tasks/VF-9-24.md
   phase3_runware_style_adapter:
     - 08_MODELS_AND_PROVIDERS.md
     - 14_TESTING_AND_ACCEPTANCE.md

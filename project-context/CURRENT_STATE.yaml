@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T15:16:00Z"
+updated_at: "2026-08-12T15:38:00Z"
 
-phase: echomimic_v3_flash_worker
+phase: echomimic_v3_flash_sample
 implementation_authorized_in_current_task: true
-current_milestone: avatar_primary_worker_replacement
-current_task: VF-9-23
+current_milestone: avatar_primary_native_sample
+current_task: VF-9-24
 current_wave: wave_9_echomimic_sample_first
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -16,11 +16,9 @@ repository:
   published: true
   branch: main
   base_commit: "2b7eb5b9e38061eb7ffc44178aba285bc5f65969"
-  planning_base_commit: "2b7eb5b9e38061eb7ffc44178aba285bc5f65969"
-  planning_handoff_commit: "e2f4a8ff6baa34b49c0e48d24a1e7a5f2f4e52f3"
-  verified_implementation_commit: "0209902"
-  last_good_commit: "e2f4a8ff6baa34b49c0e48d24a1e7a5f2f4e52f3"
-  working_tree_expected: clean_tracked_vf_9_23_selected_plus_ignored_private_inputs
+  planning_handoff_commit: "f0829b930e5cf9084312da030f1807a6e269b06f"
+  last_good_commit: "f0829b930e5cf9084312da030f1807a6e269b06f"
+  working_tree_expected: clean_tracked_vf_9_24_selected_plus_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
 live_development:
@@ -32,9 +30,10 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-23 permits local code/tests, Git push, hosted CI, and one GHCR build after local green. No model download, RunPod call, GPU, or provider spend."
+  provider_calls_authorized: true
+  authorized_spend_usd: 0.5
+  provider_authority_scope: "VF-9-24 permits exactly one native EchoMimicV3-Flash RTX 4090 attempt; no retry, fallback, repair, tuning, deployment, or promotion."
+  worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:e4a4b71e5e706ef6da4a62cdc7fa87e0c599e9fe2fa702fea73081ed19b86d73"
   last_user_checkpoint:
     result: accepted
     commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
@@ -48,47 +47,58 @@ completed_tasks:
     status: superseded_preserved
     external_spend_usd: 0.449689139
     evidence: "evidence/acceptance/VF-9-21/elias-avatarforcing-sample"
-    summary: "Historical AvatarForcing attempt produced no reviewable MP4 across durable boundaries; final independent RunPod inventory was absolute zero."
   - task_id: VF-9-22
     status: complete
     implementation_commit: "e2f4a8ff6baa34b49c0e48d24a1e7a5f2f4e52f3"
     hosted_verify_run: 31610746423
     external_spend_usd: 0
-    evidence: "evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight"
-    summary: "EchoMimicV3-Flash selected as sole active avatar path; exact public source/weight/base/audio revisions, access, licenses, hashes, and 23.922317735 GB runtime manifest pinned without downloads or provider activity."
+  - task_id: VF-9-23
+    status: complete
+    implementation_commit: "f0829b930e5cf9084312da030f1807a6e269b06f"
+    worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:e4a4b71e5e706ef6da4a62cdc7fa87e0c599e9fe2fa702fea73081ed19b86d73"
+    image_build_run: 31612627689
+    hosted_verify_run: 31612617169
+    external_spend_usd: 0
+    evidence: "evidence/acceptance/VF-9-23/echomimic-v3-flash-worker"
 
 active_ownership:
-  - task_id: VF-9-23
+  - task_id: VF-9-24
     owner: single_integration_lane
-    scope: "workers/avatar-primary, Echo sample runner, GHCR workflow, tests, and handoff"
+    scope: "one Elias EchoMimic native sample, redacted evidence, private review MP4, and RunPod cleanup"
 
 blocked_tasks: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-9-23
-  milestone: avatar_primary_worker_replacement
-  status: authorized_provider_free_implementation
-  dependency_status: gate_avatar_004_read_only_preflight_pass
-  authorization_status: local_and_github_publication_only
-  read_profile: phase9_echomimic_v3_flash_worker
-  task_brief: tasks/VF-9-23.md
-  goal: "Build and pin one production-shaped EchoMimicV3-Flash worker and bounded RTX 4090 sample runner."
-  provider_calls_authorized: false
-  maximum_external_spend_usd: 0
+  task_id: VF-9-24
+  milestone: avatar_primary_native_sample
+  status: authorized_one_paid_attempt
+  dependency_status: vf_9_23_worker_full_local_hosted_green
+  authorization_status: exact_one_attempt_maximum_0_50
+  read_profile: phase9_echomimic_v3_flash_sample
+  task_brief: tasks/VF-9-24.md
+  goal: "Generate one native 10.12-second Elias EchoMimicV3-Flash sample and stop for user review."
+  provider_calls_authorized: true
+  maximum_external_spend_usd: 0.5
+  provider_authority:
+    provider: RunPod
+    model_id: "EchoMimicV3-Flash@311e176905a8c4c24b240b530488fe636ce4d249"
+    cap_usd: 0.5
+    non_transferable: true
+    authorized_by_user_at: "2026-08-12T00:00:00Z"
   remote_or_cloud_mutations_authorized: true
-  remote_scope: "Git push, hosted CI, and one GHCR image build after local green only."
-  credential_access_authorized: false
-  model_downloads_authorized: false
-  application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-9-23/echomimic-v3-flash-worker"
+  remote_scope: "One temporary RunPod serverless template, endpoint, RTX 4090 worker, and one job; finally delete and prove absolute zero."
+  credential_access_authorized: true
+  model_downloads_authorized: true
+  application_code_changes_authorized: false
+  expected_evidence: "evidence/acceptance/VF-9-24/elias-echomimic-v3-flash-sample"
   required_handoff:
-    - "Pin successful immutable GHCR digest and hosted run IDs."
-    - "Pass full local and hosted verification."
-    - "Select exactly VF-9-24 with maximum $0.50 only after worker acceptance."
+    - "Return private review MP4 if technical success."
+    - "Record exact cost and independent final zero inventory."
+    - "Leave READY_FOR_USER_REVIEW; no successor task."
   prohibited_in_task:
-    - "RunPod/provider call, model download, GPU, inference, or provider spend."
-    - "AvatarForcing, MuseTalk, SkyReels, LongCat, retry/fallback, deployment, migration, or production profile promotion."
+    - "Retry, fallback, repair, tuning, model/GPU substitution, app integration, deployment, migration, profile promotion, or successor task."
+    - "AvatarForcing, MuseTalk, SkyReels, LongCat, A100, RTX 5090, or network volume."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -100,21 +110,16 @@ blocking_gates_for_production:
   - GATE_RUNPOD_001
   - GATE_COST_001
 
-known_incomplete_boundaries:
-  - "Echo runtime bootstrap, native sample, full exact-avatar suite, crop profile, and production acceptance are unproven."
-  - "Mage has no accepted production image/style matrix."
-  - "No production Neon/R2/Workflow/OAuth deployment or fresh-account release proof exists."
-
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
   full_production_mvp_implemented_percent: 79
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: vf_9_23_echomimic_worker_selected
+  status: vf_9_24_echomimic_sample_selected
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Load only phase9_echomimic_v3_flash_worker and tasks/VF-9-23.md."
-    - "Preserve ignored private image/audio and historical AvatarForcing evidence."
+    - "Load only phase9_echomimic_v3_flash_sample and tasks/VF-9-24.md."
+    - "Verify private input hashes and absolute-zero RunPod inventory before mutation."
   stop_conditions:
-    - "Manifest mismatch, failed verification/build, unexplained tracked dirt, RunPod/model/GPU activity, spend, or unauthorized scope."
+    - "Any hash/image mismatch, nonzero inventory, unavailable RTX 4090, cap risk, ambiguity, failure, or unproven cleanup."

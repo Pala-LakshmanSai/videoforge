@@ -1,0 +1,12 @@
+{
+  "schema_version": "videoforge.echomimic-v3-flash-worker-acceptance/v1",
+  "checked_at": "2026-08-12T15:38:00Z",
+  "commit": "f0829b930e5cf9084312da030f1807a6e269b06f",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:e4a4b71e5e706ef6da4a62cdc7fa87e0c599e9fe2fa702fea73081ed19b86d73",
+  "inference_config_sha256": "sha256:85a535833b51e9cdd70e3c2367187aa4d052058cd51a0d5bdf5be7f56bec72e9",
+  "image_build_run": 31612627689,
+  "hosted_verify_run": 31612617169,
+  "local_chrome": {"passed": 38, "failed": 0},
+  "provider_calls": 0,
+  "external_spend_usd": 0
+}
