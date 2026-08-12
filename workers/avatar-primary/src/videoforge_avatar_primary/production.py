@@ -5,21 +5,52 @@ import base64
 import binascii
 import json
 import os
+import shutil
 import subprocess
 import tempfile
+import time
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO, Literal, TypedDict
 
 SHA256_PREFIX = "sha256:"
-AVATAR_SOURCE_REVISION = "63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39"
-AVATAR_WEIGHTS_REVISION = "e2448919a7b535c29f34e07892884ae1a43c6ace"
-WAN_REVISION = "37ec512624d61f7aa208f7ea8140a131f93afc9a"
-WAV2VEC_REVISION = "22aad52d435eb6dbaf354bdad9b0da84ce7d6156"
+AVATAR_SOURCE_REVISION = "7e89489ca51c0d008fc1963ec6c03fc5bd0b9397"
+AVATAR_WEIGHTS_REVISION = "311e176905a8c4c24b240b530488fe636ce4d249"
+WAN_REVISION = "fc913c34361f4ec879e2f9c78b4f11ae50a937d1"
+WAV2VEC_REVISION = "3991242c806928916fff4a8c0e4f76acf661b743"
+UPSTREAM_CONFIG_SHA256 = "21fe4409b664385a1c1cc5c23d92506ffb05ef3c374a18de9df67b715dca07e9"
 ALLOWED_LAYOUTS = {"AVATAR_FULL", "SPLIT_LEFT_AVATAR"}
 DIAGNOSTIC_TAIL_BYTES = 64 * 1024
-DELIVERY_RESULT_MAX_BYTES = 4 * 1024 * 1024
+DELIVERY_RESULT_MAX_BYTES = 64 * 1024 * 1024
+OFFICIAL_FLASH_CONFIG = {
+    "num_inference_steps": 8,
+    "sampler_name": "Flow_Unipc",
+    "video_length": 253,
+    "guidance_scale": 6.0,
+    "audio_guidance_scale": 3.0,
+    "audio_scale": 1.0,
+    "neg_scale": 1.0,
+    "neg_steps": 0,
+    "seed": 43,
+    "teacache_threshold": 0.1,
+    "num_skip_start_steps": 5,
+    "riflex_k": 6,
+    "ulysses_degree": 1,
+    "ring_degree": 1,
+    "weight_dtype": "bfloat16",
+    "sample_size": [768, 768],
+    "fps": 25,
+    "add_prompt": "",
+    "negative_prompt": "",
+    "shift": 5.0,
+}
+INFERENCE_CONFIG_SHA256 = (
+    "sha256:"
+    + hashlib.sha256(
+        json.dumps(OFFICIAL_FLASH_CONFIG, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+)
 
 
 class AvatarPrimaryInferenceFailure(ValueError):
@@ -82,6 +113,17 @@ class AvatarPrimaryResult(TypedDict):
     height: int
     source_revision: str
     weights_revision: str
+    base_revision: str
+    audio_encoder_revision: str
+    upstream_config_sha256: str
+    inference_config_sha256: str
+    source_input_sha256: str
+    audio_input_sha256: str
+    gpu_name: str
+    gpu_vram_total_mb: int
+    peak_vram_mb: int
+    runtime_stages_ms: dict[str, int]
+    bootstrap: dict[str, object]
 
 
 class AvatarPrimaryInlineResult(AvatarPrimaryResult):
@@ -140,7 +182,7 @@ class AvatarPrimaryJob:
         if (
             not isinstance(job.num_output_frames, int)
             or job.num_output_frames < 5
-            or job.num_output_frames > 253
+            or job.num_output_frames > OFFICIAL_FLASH_CONFIG["video_length"]
             or (job.num_output_frames - 1) % 4 != 0
         ):
             raise ValueError("AVATAR_FRAME_COUNT_INVALID")
@@ -179,7 +221,7 @@ class AvatarPrimaryInlineJob:
             job.mode != "INLINE_QUALIFICATION_V1"
             or not isinstance(job.num_output_frames, int)
             or job.num_output_frames < 5
-            or job.num_output_frames > 253
+            or job.num_output_frames > OFFICIAL_FLASH_CONFIG["video_length"]
             or (job.num_output_frames - 1) % 4 != 0
         ):
             raise ValueError("AVATAR_INLINE_SCOPE_INVALID")
@@ -268,43 +310,15 @@ def _upload(url: str, path: Path) -> None:
 
 
 def _encode_delivery_output(source: Path, destination: Path) -> None:
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            "-i",
-            str(source),
-            "-map",
-            "0:v:0",
-            "-map",
-            "0:a:0",
-            "-c:v",
-            "libx264",
-            "-preset",
-            "medium",
-            "-crf",
-            "20",
-            "-pix_fmt",
-            "yuv420p",
-            "-c:a",
-            "aac",
-            "-b:a",
-            "128k",
-            "-movflags",
-            "+faststart",
-            str(destination),
-        ],
-        check=True,
-        capture_output=True,
-        timeout=300,
-    )
+    # Upstream Flash already emits H.264/AAC. Preserve those exact native bytes.
+    shutil.copyfile(source, destination)
     if not destination.is_file() or destination.stat().st_size > DELIVERY_RESULT_MAX_BYTES:
         raise ValueError("AVATAR_DELIVERY_OUTPUT_TOO_LARGE")
     _probe(destination)
 
 
 def _resolve_inference_output(output_root: Path) -> Path:
-    expected = output_root / "0-0_regular.mp4"
+    expected = output_root / "source_output.mp4"
     if expected.is_file():
         return expected
     candidates = sorted(
@@ -317,6 +331,50 @@ def _resolve_inference_output(output_root: Path) -> Path:
     return candidates[0]
 
 
+def _run_inference_with_peak_vram(
+    command: list[str],
+    *,
+    root: Path,
+    env: dict[str, str],
+    timeout_seconds: int,
+    diagnostic: BinaryIO,
+) -> int:
+    process = subprocess.Popen(
+        command,
+        cwd=root,
+        env=env,
+        stdout=diagnostic,
+        stderr=subprocess.STDOUT,
+    )
+    deadline = time.monotonic() + timeout_seconds
+    peak_vram_mb = 0
+    while process.poll() is None:
+        if time.monotonic() >= deadline:
+            process.kill()
+            process.wait(timeout=30)
+            raise subprocess.TimeoutExpired(command, timeout_seconds)
+        query = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-compute-apps=used_memory",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        peak_vram_mb = max(
+            [peak_vram_mb]
+            + [
+                int(value.strip()) for value in query.stdout.splitlines() if value.strip().isdigit()
+            ],
+        )
+        time.sleep(1)
+    if process.returncode != 0:
+        raise subprocess.CalledProcessError(process.returncode, command)
+    return peak_vram_mb
+
+
 def _execute(
     *,
     attempt_id: str,
@@ -327,51 +385,121 @@ def _execute(
     audio_path: Path,
     output_root: Path,
 ) -> tuple[AvatarPrimaryResult, Path]:
-    root = Path(os.environ.get("AVATARFORCING_ROOT", "/opt/avatarforcing")).resolve()
-    model_root = Path(os.environ.get("AVATARFORCING_MODEL_ROOT", "/models")).resolve()
-    model_path = model_root / "avatarforcing" / "model.pt"
-    if not root.is_dir() or not model_path.is_file():
-        raise ValueError("AVATAR_MODEL_NOT_READY")
-    prompt_path = output_root.parent / "input.txt"
-    prompt_path.write_text(
-        f"{source_path} {audio_path} {json.dumps(prompt.strip(), ensure_ascii=False)}\n",
-        encoding="utf-8",
+    root = Path(os.environ.get("ECHOMIMIC_ROOT", "/opt/echomimic_v3")).resolve()
+    model_root = Path(os.environ.get("ECHOMIMIC_MODEL_ROOT", "/models")).resolve()
+    transformer_path = (
+        model_root / "flash" / "echomimicv3-flash-pro" / "diffusion_pytorch_model.safetensors"
     )
+    base_path = model_root / "base"
+    audio_model_path = model_root / "audio"
+    config_path = root / "config" / "config.yaml"
+    if (
+        not root.is_dir()
+        or not transformer_path.is_file()
+        or not base_path.is_dir()
+        or not audio_model_path.is_dir()
+        or _sha256(config_path) != f"{SHA256_PREFIX}{UPSTREAM_CONFIG_SHA256}"
+    ):
+        raise ValueError("AVATAR_MODEL_NOT_READY")
+    output_root.mkdir(parents=True, exist_ok=False)
+    command = [
+        "python",
+        "infer_flash.py",
+        "--image_path",
+        str(source_path),
+        "--audio_path",
+        str(audio_path),
+        "--prompt",
+        prompt.strip(),
+        "--num_inference_steps",
+        "8",
+        "--config_path",
+        str(config_path),
+        "--model_name",
+        str(base_path),
+        "--ckpt_idx",
+        "50000",
+        "--transformer_path",
+        str(transformer_path),
+        "--save_path",
+        str(output_root),
+        "--wav2vec_model_dir",
+        str(audio_model_path),
+        "--sampler_name",
+        "Flow_Unipc",
+        "--video_length",
+        str(num_output_frames),
+        "--guidance_scale",
+        "6.0",
+        "--audio_guidance_scale",
+        "3.0",
+        "--audio_scale",
+        "1.0",
+        "--neg_scale",
+        "1.0",
+        "--neg_steps",
+        "0",
+        "--seed",
+        "43",
+        "--enable_teacache",
+        "--teacache_threshold",
+        "0.1",
+        "--num_skip_start_steps",
+        "5",
+        "--riflex_k",
+        "6",
+        "--ulysses_degree",
+        "1",
+        "--ring_degree",
+        "1",
+        "--weight_dtype",
+        "bfloat16",
+        "--sample_size",
+        "768",
+        "768",
+        "--fps",
+        "25",
+        "--add_prompt",
+        "",
+        "--negative_prompt",
+        "",
+        "--shift",
+        "5.0",
+    ]
     env = {
         **os.environ,
-        "PYTHONPATH": str(root),
+        "PYTHONPATH": f"/opt/videoforge/src:{root}",
         "HF_HUB_OFFLINE": "1",
         "TRANSFORMERS_OFFLINE": "1",
     }
+    source_input_sha256 = _sha256(source_path)
+    audio_input_sha256 = _sha256(audio_path)
+    gpu_started = time.monotonic()
+    gpu = (
+        subprocess.run(
+            ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        .stdout.strip()
+        .splitlines()
+    )
+    if len(gpu) != 1:
+        raise ValueError("AVATAR_GPU_INVALID")
+    gpu_name, gpu_vram = [item.strip() for item in gpu[0].rsplit(",", 1)]
+    if "4090" not in gpu_name or int(gpu_vram) < 24_000:
+        raise ValueError("AVATAR_GPU_NOT_RTX_4090_24GB")
+    inference_started = time.monotonic()
     with tempfile.TemporaryFile() as diagnostic:
         try:
-            subprocess.run(
-                [
-                    "python",
-                    "inference.py",
-                    "--config_path",
-                    "configs/avatarforcing.yaml",
-                    "--output_folder",
-                    str(output_root),
-                    "--checkpoint_path",
-                    str(model_path),
-                    "--data_path",
-                    str(prompt_path),
-                    "--num_output_frames",
-                    str(num_output_frames),
-                    "--seed",
-                    "42",
-                    "--num_samples",
-                    "1",
-                    "--save_with_index",
-                    "--i2v",
-                ],
-                cwd=root,
+            peak_vram = _run_inference_with_peak_vram(
+                command,
+                root=root,
                 env=env,
-                check=True,
-                timeout=timeout_seconds,
-                stdout=diagnostic,
-                stderr=subprocess.STDOUT,
+                timeout_seconds=timeout_seconds,
+                diagnostic=diagnostic,
             )
         except subprocess.TimeoutExpired as error:
             raise _inference_failure(
@@ -380,6 +508,7 @@ def _execute(
         except subprocess.CalledProcessError as error:
             tail = _diagnostic_tail(diagnostic)
             raise _inference_failure(classify_inference_failure(tail), tail) from error
+    inference_ms = round((time.monotonic() - inference_started) * 1000)
     output_path = _resolve_inference_output(output_root)
     duration_ms, fps, width, height = _probe(output_path)
     return (
@@ -394,6 +523,20 @@ def _execute(
             "height": height,
             "source_revision": AVATAR_SOURCE_REVISION,
             "weights_revision": AVATAR_WEIGHTS_REVISION,
+            "base_revision": WAN_REVISION,
+            "audio_encoder_revision": WAV2VEC_REVISION,
+            "upstream_config_sha256": f"{SHA256_PREFIX}{UPSTREAM_CONFIG_SHA256}",
+            "inference_config_sha256": INFERENCE_CONFIG_SHA256,
+            "source_input_sha256": source_input_sha256,
+            "audio_input_sha256": audio_input_sha256,
+            "gpu_name": gpu_name,
+            "gpu_vram_total_mb": int(gpu_vram),
+            "peak_vram_mb": peak_vram,
+            "runtime_stages_ms": {
+                "gpu_preflight": round((inference_started - gpu_started) * 1000),
+                "model_load_and_inference_encode": inference_ms,
+            },
+            "bootstrap": {},
         },
         output_path,
     )

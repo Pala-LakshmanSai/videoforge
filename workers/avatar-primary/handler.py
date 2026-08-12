@@ -18,23 +18,29 @@ from videoforge_avatar_primary.production import AVATAR_SOURCE_REVISION
 _bootstrap_lock = threading.Lock()
 
 
-def ensure_models(event: dict[str, object]) -> None:
+def ensure_models(event: dict[str, object]) -> dict[str, object]:
     with _bootstrap_lock:
         try:
-            bootstrap_models(lambda progress: runpod.serverless.progress_update(event, progress))
+            return bootstrap_models(
+                lambda progress: runpod.serverless.progress_update(event, progress)
+            )
         except Exception as error:
             raise ValueError("AVATAR_BOOTSTRAP_FAILED") from error
 
 
 def handler(event: dict[str, object]) -> dict[str, object]:
     try:
-        ensure_models(event)
+        bootstrap = ensure_models(event)
         value = event.get("input")
         if isinstance(value, dict) and value.get("mode") == "INLINE_QUALIFICATION_V1":
             job = AvatarPrimaryInlineJob.from_value(value)
-            return {"ok": True, "result": run_avatar_primary_inline_job(job)}
+            result = run_avatar_primary_inline_job(job)
+            result["bootstrap"] = bootstrap
+            return {"ok": True, "result": result}
         job = AvatarPrimaryJob.from_value(value)
-        return {"ok": True, "result": run_avatar_primary_job(job)}
+        result = run_avatar_primary_job(job)
+        result["bootstrap"] = bootstrap
+        return {"ok": True, "result": result}
     except AvatarPrimaryInferenceFailure as error:
         return {
             "ok": False,

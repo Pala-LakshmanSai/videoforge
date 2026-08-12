@@ -9,7 +9,7 @@ import {
   type AvatarPrivateTransfer,
 } from "./avatar-private-transfer";
 import { loadRunPodApiKeyFromKeychain } from "./keychain";
-import { safeAvatarFailureEvidence } from "./runpod-avatar-result";
+import { safeAvatarFailureEvidence, safeAvatarSuccessEvidence } from "./runpod-avatar-result";
 import {
   RunPodControlClient,
   RunPodDrainGuard,
@@ -19,14 +19,14 @@ import {
 
 const execFileAsync = promisify(execFile);
 const terminalStatuses = new Set(["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"]);
-const qualificationSpendCapUsd = Number(process.env.VIDEOFORGE_COST_CAP_USD ?? "1");
-const qualificationCostStopUsd = Number(process.env.VIDEOFORGE_COST_STOP_USD ?? "0.9");
-const qualificationFrames = Number(process.env.VIDEOFORGE_AVATAR_SAMPLE_FRAMES ?? "5");
-const outputTransport = process.env.VIDEOFORGE_AVATAR_OUTPUT_TRANSPORT ?? "inline_result_v1";
+const qualificationSpendCapUsd = Number(process.env.VIDEOFORGE_COST_CAP_USD ?? "0.50");
+const qualificationCostStopUsd = Number(process.env.VIDEOFORGE_COST_STOP_USD ?? "0.45");
+const qualificationFrames = Number(process.env.VIDEOFORGE_AVATAR_SAMPLE_FRAMES ?? "253");
+const outputTransport = process.env.VIDEOFORGE_AVATAR_OUTPUT_TRANSPORT ?? "private_tunnel_v1";
 if (
   !Number.isFinite(qualificationSpendCapUsd) ||
   qualificationSpendCapUsd <= 0 ||
-  qualificationSpendCapUsd > 1.4736943278 ||
+  qualificationSpendCapUsd > 0.5 ||
   !Number.isFinite(qualificationCostStopUsd) ||
   qualificationCostStopUsd <= 0 ||
   qualificationCostStopUsd > qualificationSpendCapUsd ||
@@ -38,7 +38,7 @@ if (
 ) {
   throw new Error("AVATAR_QUALIFICATION_SCOPE_INVALID");
 }
-const qualificationGpuTypeIds = ["NVIDIA A100 80GB PCIe"] as const;
+const qualificationGpuTypeIds = ["NVIDIA GeForce RTX 4090"] as const;
 let abortRequested = false;
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {
@@ -123,9 +123,14 @@ const image = requiredEnvironment(
 const sourcePath = resolve(requiredEnvironment("VIDEOFORGE_AVATAR_SOURCE_PATH", /^\/.+/u));
 const audioPath = resolve(requiredEnvironment("VIDEOFORGE_AVATAR_AUDIO_PATH", /^\/.+/u));
 const outputRoot = resolve(
-  process.env.VIDEOFORGE_QUALIFICATION_OUTPUT_ROOT ?? ".videoforge/vf-8-04",
+  process.env.VIDEOFORGE_QUALIFICATION_OUTPUT_ROOT ?? ".videoforge/review/VF-9-24",
+);
+const evidenceRoot = resolve(
+  process.env.VIDEOFORGE_QUALIFICATION_EVIDENCE_ROOT ??
+    "project-context/evidence/acceptance/VF-9-24/elias-echomimic-v3-flash-sample",
 );
 await mkdir(outputRoot, { recursive: true });
+await mkdir(evidenceRoot, { recursive: true });
 
 const source = await readFile(sourcePath);
 const audio = await readFile(audioPath);
@@ -156,7 +161,9 @@ let job: RunPodJobResult | undefined;
 let transfer: AvatarPrivateTransfer | undefined;
 let failureCode: string | undefined;
 let outputEvidence: unknown;
-const outputPath = resolve(outputRoot, "avatarforcing-qualification.mp4");
+let resultValue: Record<string, unknown> | undefined;
+let outputProbe: unknown;
+const outputPath = resolve(outputRoot, "echomimic-v3-flash-elias-10.12s-native.mp4");
 
 try {
   if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
@@ -175,18 +182,19 @@ try {
       workersMax: 1,
       gpuCount: 1,
       idleTimeout: 5,
-      executionTimeoutMs: 1_800_000,
+      executionTimeoutMs: 1_500_000,
     },
   );
   jobs = new RunPodServerlessJobClient({ apiKey, endpointId: endpoint.id, guard });
   await jobs.confirmDrained();
   if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
-  const attemptId = `vf9_21_${suffix}`;
+  const attemptId = `vf9_24_${suffix}`;
   const sharedInput = {
     attempt_id: attemptId,
     source_sha256: digest(source),
     span_audio_sha256: digest(audio),
-    prompt: "A presenter speaks naturally to the camera.",
+    prompt:
+      "A man talks naturally to the camera with subtle head and upper-body movement. Static camera, stable background, realistic motion.",
     layout: "AVATAR_FULL",
     num_output_frames: qualificationFrames,
   };
@@ -207,7 +215,8 @@ try {
           span_audio_base64: audio.toString("base64"),
         },
   );
-  let consecutiveNoRunningPolls = 0;
+  const dispatchStartedAt = Date.now();
+  let activeStartedAt: number | null = null;
   for (let attempt = 0; attempt < 140 && !terminalStatuses.has(job.status); attempt += 1) {
     await sleep(15_000);
     if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
@@ -217,11 +226,11 @@ try {
     if (liveInventory.runningPodCount > 1) {
       throw new Error("RUNPOD_WORKER_RETRY_LIMIT");
     }
-    consecutiveNoRunningPolls =
-      liveInventory.runningPodCount === 0 ? consecutiveNoRunningPolls + 1 : 0;
-    if (consecutiveNoRunningPolls >= 20) {
-      throw new Error("RUNPOD_STARTUP_TIMEOUT");
-    }
+    if (liveInventory.runningPodCount > 0 && activeStartedAt === null) activeStartedAt = Date.now();
+    if (activeStartedAt === null && Date.now() - dispatchStartedAt >= 10 * 60_000)
+      throw new Error("RUNPOD_QUEUE_TIMEOUT");
+    if (activeStartedAt !== null && Date.now() - activeStartedAt >= 25 * 60_000)
+      throw new Error("RUNPOD_ACTIVE_TIMEOUT");
     if (attempt % 4 === 3 && startedBalance - (await balance(apiKey)) >= qualificationCostStopUsd) {
       throw new Error("RUNPOD_COST_STOP");
     }
@@ -239,6 +248,7 @@ try {
       typeof envelope?.error_code === "string" ? envelope.error_code : "AVATAR_RESULT_INVALID",
     );
   }
+  resultValue = envelope.result;
   let output: Buffer;
   if (transfer) {
     await Promise.race([
@@ -254,16 +264,11 @@ try {
     output = Buffer.from(encoded, "base64");
   }
   const expected = envelope.result.output_sha256;
-  if (digest(output) !== expected || output.byteLength > 8 * 1024 * 1024) {
+  if (digest(output) !== expected || output.byteLength > 64 * 1024 * 1024) {
     throw new Error("AVATAR_OUTPUT_CHECKSUM_INVALID");
   }
   if (!transfer) await writeFile(outputPath, output, { flag: "wx" });
-  outputEvidence = {
-    ...envelope.result,
-    output_base64: undefined,
-    output_transport: outputTransport,
-    local_probe: await probe(outputPath),
-  };
+  outputProbe = await probe(outputPath);
 } catch (error) {
   failureCode = error instanceof Error ? error.message.slice(0, 160) : "UNKNOWN_FAILURE";
 } finally {
@@ -336,8 +341,26 @@ try {
 }
 const finalInventory = await inventoryOrNull(control, 6);
 if (!finalInventory) failureCode ??= "RUNPOD_FINAL_INVENTORY_UNAVAILABLE";
+if (
+  finalInventory &&
+  (finalInventory.runningPodCount !== 0 ||
+    finalInventory.activeServerlessWorkerCount !== 0 ||
+    finalInventory.pods.length !== 0 ||
+    finalInventory.endpoints.length !== 0 ||
+    finalInventory.privateTemplateCount !== 0 ||
+    finalInventory.networkVolumes.length !== 0)
+) {
+  failureCode ??= "RUNPOD_FINAL_INVENTORY_NONZERO";
+}
+const measuredSpendUsd =
+  endingBalance === null ? null : Math.max(0, startedBalance - endingBalance);
+if (resultValue && measuredSpendUsd !== null) {
+  const parsed = safeAvatarSuccessEvidence(resultValue, measuredSpendUsd);
+  if (!parsed) failureCode ??= "AVATAR_RESULT_INVALID";
+  else outputEvidence = { ...parsed, output_transport: outputTransport, local_probe: outputProbe };
+}
 const evidence = {
-  schema_version: "videoforge.avatarforcing-qualification/v1",
+  schema_version: "videoforge.echomimic-v3-flash-sample/v1",
   checked_at: new Date().toISOString(),
   image,
   output_transport: outputTransport,
@@ -365,14 +388,14 @@ const evidence = {
   cost: {
     starting_balance_usd: startedBalance,
     ending_balance_usd: endingBalance,
-    measured_spend_usd: endingBalance === null ? null : Math.max(0, startedBalance - endingBalance),
+    measured_spend_usd: measuredSpendUsd,
     cap_usd: qualificationSpendCapUsd,
   },
   initial_inventory: initialInventory,
   final_inventory: finalInventory,
 };
 await writeFile(
-  resolve(outputRoot, "qualification.json"),
+  resolve(evidenceRoot, "qualification.json"),
   `${JSON.stringify(evidence, null, 2)}\n`,
   {
     flag: "wx",

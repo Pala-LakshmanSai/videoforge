@@ -101,10 +101,10 @@ class ProductionContractTest(unittest.TestCase):
     def test_accepts_exact_short_span_and_pins_every_upstream_revision(self) -> None:
         job = AvatarPrimaryJob.from_value(valid_job())
         self.assertEqual(job.num_output_frames, 25)
-        self.assertEqual(AVATAR_SOURCE_REVISION, "63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39")
-        self.assertEqual(AVATAR_WEIGHTS_REVISION, "e2448919a7b535c29f34e07892884ae1a43c6ace")
-        self.assertEqual(WAN_REVISION, "37ec512624d61f7aa208f7ea8140a131f93afc9a")
-        self.assertEqual(WAV2VEC_REVISION, "22aad52d435eb6dbaf354bdad9b0da84ce7d6156")
+        self.assertEqual(AVATAR_SOURCE_REVISION, "7e89489ca51c0d008fc1963ec6c03fc5bd0b9397")
+        self.assertEqual(AVATAR_WEIGHTS_REVISION, "311e176905a8c4c24b240b530488fe636ce4d249")
+        self.assertEqual(WAN_REVISION, "fc913c34361f4ec879e2f9c78b4f11ae50a937d1")
+        self.assertEqual(WAV2VEC_REVISION, "3991242c806928916fff4a8c0e4f76acf661b743")
 
     def test_rejects_full_voiceover_oversize_frames_layout_and_unknown_fields(self) -> None:
         cases = []
@@ -152,25 +152,13 @@ class ProductionContractTest(unittest.TestCase):
             destination = Path(temporary) / "inline.mp4"
             source.write_bytes(b"source")
 
-            def encode(arguments: list[str], **_kwargs: object) -> object:
-                destination.write_bytes(b"encoded")
-                self.assertIn("20", arguments)
-                self.assertIn("+faststart", arguments)
-                return object()
-
-            with (
-                patch(
-                    "videoforge_avatar_primary.production.subprocess.run",
-                    side_effect=encode,
-                ),
-                patch(
-                    "videoforge_avatar_primary.production._probe",
-                    return_value=(10_120, 25, 832, 480),
-                ),
+            with patch(
+                "videoforge_avatar_primary.production._probe",
+                return_value=(10_120, 25, 832, 480),
             ):
                 _encode_delivery_output(source, destination)
 
-            self.assertEqual(destination.read_bytes(), b"encoded")
+            self.assertEqual(destination.read_bytes(), b"source")
 
     def test_resolves_exact_or_only_nested_inference_output_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -185,7 +173,7 @@ class ProductionContractTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "AVATAR_OUTPUT_AMBIGUOUS"):
                 _resolve_inference_output(root)
 
-            expected = root / "0-0_regular.mp4"
+            expected = root / "source_output.mp4"
             expected.write_bytes(b"expected")
             self.assertEqual(_resolve_inference_output(root), expected)
 

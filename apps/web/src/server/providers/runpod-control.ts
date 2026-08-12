@@ -277,7 +277,7 @@ export class RunPodControlClient {
           isServerless: true,
           name,
           ports: [],
-          readme: "VideoForge pinned AvatarForcing worker",
+          readme: "VideoForge pinned primary avatar worker",
           volumeInGb: 0,
           volumeMountPath: "/models",
         }),

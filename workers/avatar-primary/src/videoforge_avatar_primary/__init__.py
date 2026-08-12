@@ -1,4 +1,4 @@
-"""AvatarForcing primary worker boundary."""
+"""EchoMimicV3-Flash primary worker boundary."""
 
 from .health import health_payload
 from .production import (

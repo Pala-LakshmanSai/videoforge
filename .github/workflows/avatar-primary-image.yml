@@ -30,10 +30,11 @@ jobs:
           image="ghcr.io/${owner}/videoforge-avatar-primary:${GITHUB_SHA}"
           docker build --tag "$image" workers/avatar-primary
           docker run --rm --entrypoint python "$image" -c \
-            'import flash_attn, runpod, torchaudio, torchvision; from videoforge_avatar_primary import AvatarPrimaryJob; print("avatar-primary-import-ok")'
+            'import librosa, moviepy, pyloudnorm, runpod, torch, torchvision; from videoforge_avatar_primary import AvatarPrimaryJob; print("avatar-primary-import-ok")'
+          docker run --rm --entrypoint python "$image" infer_flash.py --help >/dev/null
           docker run --rm --entrypoint python "$image" -c \
             'import sys; sys.path.insert(0, "/opt/videoforge"); import handler; observed = []; handler.runpod.serverless.start = lambda config: observed.append(config); handler.start_worker(); assert len(observed) == 1 and callable(observed[0]["handler"]); print("avatar-primary-handler-registration-ok")'
-          docker run --rm --entrypoint python "$image" -m compileall -q /opt/avatarforcing
+          docker run --rm --entrypoint python "$image" -m compileall -q /opt/echomimic_v3 /opt/videoforge
           docker push "$image"
           digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image")"
           printf 'image=%s\n' "$digest" >> "$GITHUB_STEP_SUMMARY"
