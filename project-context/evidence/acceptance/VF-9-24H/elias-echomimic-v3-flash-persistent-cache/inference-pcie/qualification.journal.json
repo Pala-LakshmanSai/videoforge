@@ -1,0 +1,140 @@
+{
+  "schema_version": "videoforge.echomimic-v3-flash-sample-journal/v1",
+  "events": [
+    {
+      "checked_at": "2026-08-12T19:24:41.071Z",
+      "stage": "preflight_complete",
+      "starting_balance_usd": 15.5216924528,
+      "gpu_rate_snapshot": {
+        "checked_at": "2026-08-12T19:24:40.358Z",
+        "id": "NVIDIA A100 80GB PCIe",
+        "display_name": "A100 PCIe",
+        "memory_gb": 80,
+        "secure_usd_per_hour": 1.39,
+        "community_usd_per_hour": 1.19
+      },
+      "initial_inventory": {
+        "checkedAt": "2026-08-12T19:24:38.460Z",
+        "pods": [],
+        "endpoints": [],
+        "privateTemplateCount": 0,
+        "networkVolumes": [
+          {
+            "idHash": "sha256:146470fccabb180f14db27070cc112f05f39c352e398265f14c7fe88b8fd4ef1",
+            "sizeGb": 50
+          }
+        ],
+        "runningPodCount": 0,
+        "activeServerlessWorkerCount": 0
+      }
+    },
+    {
+      "checked_at": "2026-08-12T19:24:45.146Z",
+      "stage": "private_transfer_ready",
+      "output_transport": "private_tunnel_v1"
+    },
+    {
+      "checked_at": "2026-08-12T19:24:45.147Z",
+      "stage": "template_create_started"
+    },
+    {
+      "checked_at": "2026-08-12T19:24:46.379Z",
+      "stage": "template_created",
+      "template_id_hash": "sha256:d21cac7f7e4d6303a79d1c2695b71b883d23a02e8f3728bf0747729d44e1f52e"
+    },
+    {
+      "checked_at": "2026-08-12T19:24:46.379Z",
+      "stage": "endpoint_create_started"
+    },
+    {
+      "checked_at": "2026-08-12T19:24:47.269Z",
+      "stage": "endpoint_created",
+      "endpoint_id_hash": "sha256:dbb6bfad2f61429fcc682d2b209409e2e89342b98e7a6db8b2292980f3629bf1"
+    },
+    {
+      "checked_at": "2026-08-12T19:24:48.149Z",
+      "stage": "endpoint_drained_before_dispatch"
+    },
+    {
+      "checked_at": "2026-08-12T19:24:48.149Z",
+      "stage": "job_dispatch_started",
+      "attempt_id": "vf9_24_c941a05304fc",
+      "input": {
+        "source_sha256": "sha256:bcc1b20cf51c0a1f5d8aae834dced1dcecf62e78434470f014f1391939fe31f7",
+        "span_audio_sha256": "sha256:ee4f007c5c5770a404a1fe7eb008ed7c9964acb47c34677374131ab509f26076",
+        "layout": "AVATAR_FULL",
+        "num_output_frames": 253
+      }
+    },
+    {
+      "checked_at": "2026-08-12T19:24:48.990Z",
+      "stage": "job_dispatched",
+      "job_id_hash": "sha256:8cbf17592dbe58f6b1abc0a44e7d5490283f7846d9c41bdf54fae5b911bddcca",
+      "job_status": "IN_QUEUE"
+    },
+    {
+      "checked_at": "2026-08-12T19:25:04.344Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T19:25:20.792Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T19:25:37.700Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T19:25:54.348Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T19:26:12.638Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T19:26:29.373Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T19:26:46.045Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    },
+    {
+      "checked_at": "2026-08-12T19:27:02.522Z",
+      "stage": "job_status",
+      "delay_time_ms": null,
+      "execution_time_ms": null,
+      "job_status": "IN_QUEUE",
+      "progress": null
+    }
+  ]
+}

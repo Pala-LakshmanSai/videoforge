@@ -1,9 +1,9 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T19:06:00Z"
+updated_at: "2026-08-12T20:00:00Z"
 
 phase: echomimic_v3_flash_persistent_cache
-implementation_authorized_in_current_task: true
+implementation_authorized_in_current_task: false
 current_milestone: avatar_primary_native_sample
 current_task: VF-9-24H
 current_wave: wave_9_echomimic_sample_first
@@ -15,10 +15,10 @@ repository:
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
   branch: main
-  base_commit: "2b7eb5b9e38061eb7ffc44178aba285bc5f65969"
+  base_commit: "d18c9306fba6cb924c726d3092809f7af9b95e1f"
   planning_handoff_commit: "f0829b930e5cf9084312da030f1807a6e269b06f"
-  last_good_commit: "a2a4adc93317e14a4aca0e6b70687908e756b7d7"
-  working_tree_expected: tracked_vf_9_24h_cache_lane_plus_ignored_private_inputs
+  last_good_commit: "d18c9306fba6cb924c726d3092809f7af9b95e1f"
+  working_tree_expected: tracked_vf_9_24h_cost_stop_evidence_and_progress_repair_plus_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
 live_development:
@@ -30,10 +30,10 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: true
-  authorized_spend_usd: 1.197906712
-  provider_authority_scope: "VF-9-24H: one temporary 50GB EU-RO-1 cache, one RTX 4090 bootstrap-only job capped $0.35, then one unchanged A100 SXM 80GB inference capped $1/$0.90; cumulative ceiling $2; delete all resources including volume."
-  worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:b3efde6f7ecc069a962492dde3a7b4795c66370aab19d41c42b1ae18b57dd82f"
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: "No further paid dispatch: VF-9-24H used its sole job and stopped at $1.0017626232; cumulative lane spend is $1.8200686945 of the user's $2 ceiling."
+  worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:93658ef71c0b947dc7bea494bf44dcea9a1e858d93149f616db2738f5ac19831"
   last_user_checkpoint:
     result: accepted
     commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
@@ -117,11 +117,17 @@ completed_tasks:
     reviewable_output: null
     evidence: "evidence/acceptance/VF-9-24G/elias-echomimic-v3-flash-a100-sxm-sample"
     final_absolute_zero_checked_at: "2026-08-12T19:00:47.907Z"
-
-active_ownership:
   - task_id: VF-9-24H
-    owner: single_integration_lane
-    scope: "temporary persistent cache warm, one unchanged A100 inference, private MP4, timings, and global-zero cleanup"
+    status: stopped_inference_cost_no_output
+    external_spend_usd: 1.0017626231999994
+    cumulative_live_balance_delta_usd: 1.8200686945
+    reviewable_output: null
+    evidence: "evidence/acceptance/VF-9-24H/elias-echomimic-v3-flash-persistent-cache"
+    inference_queue_delay_ms: 73985
+    observed_active_inference_ms: 1314935
+    final_absolute_zero_checked_at: "2026-08-12T19:55:58.666Z"
+
+active_ownership: []
 
 blocked_tasks: []
 in_progress_checkpoint: null
@@ -129,38 +135,38 @@ in_progress_checkpoint: null
 recommended_next_task:
   task_id: VF-9-24H
   milestone: avatar_primary_native_sample
-  status: selected
-  dependency_status: vf_9_24g_ephemeral_cost_stop_cleanup_absolute_zero
-  authorization_status: exact_one_attempt_authorized
+  status: blocked_external_spend_authority
+  dependency_status: vf_9_24h_cost_stop_cleanup_absolute_zero
+  authorization_status: exhausted_single_attempt_and_insufficient_remaining_cap
   read_profile: phase9_echomimic_v3_flash_persistent_cache
   task_brief: tasks/VF-9-24H.md
-  goal: "Warm an exact temporary cache cheaply, run one unchanged A100 sample, return MP4/timings, then delete the volume and prove global zero."
-  provider_calls_authorized: true
-  maximum_external_spend_usd: 1.197906712
+  goal: "Obtain the exact 10.12-second native MP4 only after fresh spend and retry authority; preserve the completed cleanup/evidence meanwhile."
+  provider_calls_authorized: false
+  maximum_external_spend_usd: 0
   cumulative_external_spend_ceiling_usd: 2
   prior_live_balance_delta_usd: 0.802093288
   provider_authority:
     provider: RunPod
     model_id: EchoMimicV3-Flash@311e176905a8c4c24b240b530488fe636ce4d249
-    cap_usd: 1.197906712
+    cap_usd: 0
     cumulative_cap_usd: 2
-    prior_settled_spend_usd: 0.802093288
-    bootstrap_stop_usd: 0.35
-    inference_hard_breaker_usd: 1
-    inference_active_breaker_usd: 0.9
+    prior_settled_spend_usd: 1.8200686945
+    bootstrap_stop_usd: 0
+    inference_hard_breaker_usd: 0
+    inference_active_breaker_usd: 0
     non_transferable: true
     authorized_by_user_at: "2026-08-12T18:26:00Z"
-  remote_or_cloud_mutations_authorized: true
-  remote_scope: "One 50GB EU-RO-1 volume, one temporary RTX 4090 bootstrap endpoint/job, one temporary A100 SXM inference endpoint/job; delete all immediately afterward."
+  remote_or_cloud_mutations_authorized: false
+  remote_scope: "None. RunPod inventory is absolute zero; do not create a volume, endpoint, template, Pod, worker, or job."
   credential_access_authorized: true
-  model_downloads_authorized: true
+  model_downloads_authorized: false
   application_code_changes_authorized: true
   expected_evidence: "evidence/acceptance/VF-9-24H/elias-echomimic-v3-flash-persistent-cache"
   required_handoff:
-    - "Return the private native MP4 with probe/hash evidence if successful."
-    - "Preserve exact failure evidence if unsuccessful and prove absolute-zero cleanup."
+    - "Preserve exact cost-stop evidence and the three absolute-zero inventory reads."
+    - "Request fresh retry/spend authority before any new RunPod mutation."
   prohibited_in_task:
-    - "Retry, GPU substitution, memory tuning, fallback, app integration, deployment, migration, profile promotion, or successor task."
+    - "Any paid dispatch, retry, GPU substitution, memory tuning, fallback, app integration, deployment, migration, profile promotion, or successor task."
     - "AvatarForcing, MuseTalk, SkyReels, LongCat, RTX 5090, retained volume, or any second inference job."
 
 blocking_gates_for_production:
@@ -179,10 +185,11 @@ progress_snapshot:
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: vf_9_24h_persistent_cache_runpod_absolute_zero
+  status: vf_9_24h_cost_stop_runpod_absolute_zero_waiting_authority
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Load only phase9_echomimic_v3_flash_persistent_cache and tasks/VF-9-24H.md."
-    - "Warm exact temporary cache, run one unchanged A100 job, return MP4/timings, delete volume, prove global zero."
+    - "Read RUN_SUMMARY.md; preserve the failed exact A100 attempt and absolute-zero cleanup."
+    - "Do not dispatch again without fresh retry and spend authority above the exhausted $2 cumulative ceiling."
   stop_conditions:
     - "Any second job, GPU/tuning/fallback choice, network volume, spend above breakers, successor selection, or roadmap continuation."

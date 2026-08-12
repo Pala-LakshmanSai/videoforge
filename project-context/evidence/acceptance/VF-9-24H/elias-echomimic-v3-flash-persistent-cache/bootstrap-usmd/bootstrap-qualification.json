@@ -1,0 +1,45 @@
+{
+  "schema_version": "videoforge.echomimic-bootstrap-qualification/v1",
+  "started_at": "2026-08-12T19:28:20.712Z",
+  "checked_at": "2026-08-12T19:31:59.761Z",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:93658ef71c0b947dc7bea494bf44dcea9a1e858d93149f616db2738f5ac19831",
+  "data_center_id": "US-MD-1",
+  "gpu_type_id": "NVIDIA A100-SXM4-80GB",
+  "network_volume_id_hash": "sha256:f1743893c769df34ffedcc2fe94487045a1683cfe8d5c1d856c685c2f9973cc0",
+  "runtime": {
+    "status": "COMPLETED",
+    "delay_time_ms": 101338,
+    "execution_time_ms": 98589,
+    "bootstrap": {
+      "audio_revision": "3991242c806928916fff4a8c0e4f76acf661b743",
+      "base_revision": "fc913c34361f4ec879e2f9c78b4f11ae50a937d1",
+      "bootstrap_ms": 98520,
+      "cache_hit": false,
+      "flash_revision": "311e176905a8c4c24b240b530488fe636ce4d249",
+      "schema_version": "videoforge.echomimic-cache/v1",
+      "selected_runtime_bytes": 23922317735,
+      "source_revision": "7e89489ca51c0d008fc1963ec6c03fc5bd0b9397"
+    },
+    "failure_code": null
+  },
+  "cost": {
+    "starting_balance_usd": 15.5216924528,
+    "ending_balance_usd": 15.5216924528,
+    "measured_spend_usd": 0,
+    "stop_usd": 0.1
+  },
+  "final_inventory": {
+    "checkedAt": "2026-08-12T19:31:59.146Z",
+    "pods": [],
+    "endpoints": [],
+    "privateTemplateCount": 0,
+    "networkVolumes": [
+      {
+        "idHash": "sha256:f1743893c769df34ffedcc2fe94487045a1683cfe8d5c1d856c685c2f9973cc0",
+        "sizeGb": 50
+      }
+    ],
+    "runningPodCount": 0,
+    "activeServerlessWorkerCount": 0
+  }
+}

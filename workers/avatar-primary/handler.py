@@ -4,6 +4,8 @@ import threading
 import hashlib
 import json
 import os
+from collections.abc import Callable
+from typing import TypeVar
 
 import runpod
 
@@ -18,6 +20,7 @@ from videoforge_avatar_primary import (
 from videoforge_avatar_primary.production import AVATAR_SOURCE_REVISION
 
 _bootstrap_lock = threading.Lock()
+_Result = TypeVar("_Result")
 
 
 def _diagnostic_hash(error: Exception) -> str:
@@ -38,6 +41,36 @@ def _progress(event: dict[str, object], stage: str) -> None:
         json.dumps({"event": "avatar_primary_progress", "stage": stage}, sort_keys=True), flush=True
     )
     runpod.serverless.progress_update(event, stage)
+
+
+def _safe_progress(event: dict[str, object], stage: str) -> None:
+    try:
+        _progress(event, stage)
+    except Exception:
+        return
+
+
+def _run_with_heartbeat(
+    event: dict[str, object], operation: Callable[[], _Result], interval_seconds: float = 60
+) -> _Result:
+    stopped = threading.Event()
+
+    def heartbeat() -> None:
+        elapsed = 0
+        while not stopped.wait(interval_seconds):
+            elapsed += max(1, round(interval_seconds))
+            _safe_progress(event, f"inference_echomimic_heartbeat_{elapsed}s")
+
+    _safe_progress(event, "inference_echomimic_started")
+    thread = threading.Thread(target=heartbeat, name="echomimic-heartbeat", daemon=True)
+    thread.start()
+    try:
+        result = operation()
+        _safe_progress(event, "output_echomimic_validated")
+        return result
+    finally:
+        stopped.set()
+        thread.join(timeout=1)
 
 
 def ensure_models(event: dict[str, object]) -> dict[str, object]:
@@ -68,11 +101,11 @@ def handler(event: dict[str, object]) -> dict[str, object]:
             return {"ok": True, "result": {"bootstrap": bootstrap}}
         if isinstance(value, dict) and value.get("mode") == "INLINE_QUALIFICATION_V1":
             job = AvatarPrimaryInlineJob.from_value(value)
-            result = run_avatar_primary_inline_job(job)
+            result = _run_with_heartbeat(event, lambda: run_avatar_primary_inline_job(job))
             result["bootstrap"] = bootstrap
             return {"ok": True, "result": result}
         job = AvatarPrimaryJob.from_value(value)
-        result = run_avatar_primary_job(job)
+        result = _run_with_heartbeat(event, lambda: run_avatar_primary_job(job))
         result["bootstrap"] = bootstrap
         return {"ok": True, "result": result}
     except AvatarPrimaryInferenceFailure as error:

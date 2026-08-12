@@ -21,6 +21,10 @@ const dataCenterId = required(
   "VIDEOFORGE_NETWORK_VOLUME_DATACENTER_ID",
   /^[A-Za-z0-9][A-Za-z0-9_-]{0,190}$/u,
 );
+const bootstrapGpuTypeId = required(
+  "VIDEOFORGE_BOOTSTRAP_GPU_TYPE_ID",
+  /^(?:NVIDIA GeForce RTX 4090|NVIDIA A100-SXM4-80GB)$/u,
+);
 const evidenceRoot = resolve(required("VIDEOFORGE_BOOTSTRAP_EVIDENCE_ROOT", /^\/.+/u));
 const capUsd = Number(process.env.VIDEOFORGE_BOOTSTRAP_COST_STOP_USD ?? "0.35");
 if (!Number.isFinite(capUsd) || capUsd <= 0 || capUsd > 0.4) {
@@ -74,7 +78,7 @@ try {
   endpoint = await control.createScaleZeroEndpoint(
     `vf_bootstrap_${suffix}`,
     template.id,
-    ["NVIDIA GeForce RTX 4090"],
+    [bootstrapGpuTypeId],
     { workersMin: 0, workersMax: 1, gpuCount: 1, idleTimeout: 5, executionTimeoutMs: 1_500_000 },
     { networkVolumeId: volumeId, dataCenterIds: [dataCenterId] },
   );
@@ -162,6 +166,7 @@ const evidence = {
   checked_at: new Date().toISOString(),
   image,
   data_center_id: dataCenterId,
+  gpu_type_id: bootstrapGpuTypeId,
   network_volume_id_hash: hashId(volumeId),
   runtime: {
     status: job?.status ?? null,

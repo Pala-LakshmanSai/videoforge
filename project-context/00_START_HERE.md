@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-24H` persistent-cache A100 sample selected; RunPod absolute zero
+Status: `VF-9-24H` A100 inference cost-stopped without output; RunPod absolute zero
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -52,8 +52,14 @@ immutable image publication, and one corrected A100 PCIe job. That job acquired 
 minutes and ended `$0`; cleanup and three reads prove zero. `VF-9-24G` changes only the capacity SKU
 to A100 SXM 80 GB and kept BF16 model/input/config identical. It acquired after 74.108 seconds but
 hit the ephemeral-download spend stop before a model result; no MP4. Cleanup and three reads prove
-zero. `VF-9-24H` creates one temporary 50 GB volume, warms the exact cache on cheaper RTX 4090, runs
-one A100 SXM inference, then deletes the volume. No FP8, fallback, chunking, or tuning.
+zero. `VF-9-24H` warmed the exact 23.922 GB cache and ran the unchanged 253-frame BF16 job on A100
+SXM 80 GB. Queue/activation was 73.985 seconds; inference remained active for about 21m 54.9s and
+was cancelled by the `$1.0017626232` attempt cost stop before output. Cumulative lane spend is
+`$1.8200686945` of the user's `$2` ceiling. No MP4 exists. The temporary volume was deleted and
+three independent inventory reads prove zero Pods, workers, endpoints, templates, and volumes.
+Further dispatch is blocked pending fresh retry and spend authority. The opaque `progress:null`
+diagnosis found missing inference progress emission; a safe heartbeat repair is locally green but
+not yet published.
 
 ## Locked active providers
 

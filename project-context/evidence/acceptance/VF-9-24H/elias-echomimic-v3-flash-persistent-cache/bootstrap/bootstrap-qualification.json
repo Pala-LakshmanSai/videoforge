@@ -1,0 +1,44 @@
+{
+  "schema_version": "videoforge.echomimic-bootstrap-qualification/v1",
+  "started_at": "2026-08-12T19:10:36.031Z",
+  "checked_at": "2026-08-12T19:13:38.544Z",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:93658ef71c0b947dc7bea494bf44dcea9a1e858d93149f616db2738f5ac19831",
+  "data_center_id": "EU-RO-1",
+  "network_volume_id_hash": "sha256:146470fccabb180f14db27070cc112f05f39c352e398265f14c7fe88b8fd4ef1",
+  "runtime": {
+    "status": "COMPLETED",
+    "delay_time_ms": 100800,
+    "execution_time_ms": 65530,
+    "bootstrap": {
+      "audio_revision": "3991242c806928916fff4a8c0e4f76acf661b743",
+      "base_revision": "fc913c34361f4ec879e2f9c78b4f11ae50a937d1",
+      "bootstrap_ms": 65337,
+      "cache_hit": false,
+      "flash_revision": "311e176905a8c4c24b240b530488fe636ce4d249",
+      "schema_version": "videoforge.echomimic-cache/v1",
+      "selected_runtime_bytes": 23922317735,
+      "source_revision": "7e89489ca51c0d008fc1963ec6c03fc5bd0b9397"
+    },
+    "failure_code": null
+  },
+  "cost": {
+    "starting_balance_usd": 15.5379052361,
+    "ending_balance_usd": 15.5379052361,
+    "measured_spend_usd": 0,
+    "stop_usd": 0.35
+  },
+  "final_inventory": {
+    "checkedAt": "2026-08-12T19:13:37.953Z",
+    "pods": [],
+    "endpoints": [],
+    "privateTemplateCount": 0,
+    "networkVolumes": [
+      {
+        "idHash": "sha256:146470fccabb180f14db27070cc112f05f39c352e398265f14c7fe88b8fd4ef1",
+        "sizeGb": 50
+      }
+    ],
+    "runningPodCount": 0,
+    "activeServerlessWorkerCount": 0
+  }
+}
