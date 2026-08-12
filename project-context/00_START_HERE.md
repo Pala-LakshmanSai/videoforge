@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-21` reauthorized for one persisted-output AvatarForcing sample attempt
+Status: `VF-9-21` blocked after persisted-output AvatarForcing attempt
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -12,12 +12,11 @@ VideoForge is an invite-only web app for 5–10 teammates that accepts a title, 
 
 ## Current handoff
 
-Current selection is `VF-9-21`. User reauthorized one new capped AvatarForcing attempt using a
-temporary private persisted-output tunnel after RunPod omitted inline MP4 bytes. Maximum remaining
-task spend is `$1.0975221518`; hard stop is `$0.90`. Use exact pinned image, source/audio, 253 frames,
-and one A100-80GB worker. Never run MuseTalk, SkyReels, or LongCat. No account resource, deployment,
-profile promotion, or unrelated cloud mutation is authorized. Start and finish with independently
-verified RunPod absolute zero. Return successful MP4 only as `READY_FOR_USER_REVIEW`.
+Current selection is `VF-9-21`. Temporary private persisted-output transport passed a live smoke,
+but the one authorized pinned AvatarForcing job returned `AVATAR_OUTPUT_MISSING` before upload.
+Attempt spent `$0.0735169630`; total VF-9-21 spend is `$0.4496891390`. No reviewable MP4 exists.
+No further provider call is authorized. Never run MuseTalk, SkyReels, or LongCat. Independent RunPod
+inventory is absolute zero. Next work requires a worker correction and new user authority.
 
 Phase 0A contracts/tooling, the accepted Phase 0B fixture shell, the accepted provider-free Phase 0C
 local ASR → scheduler → FFmpeg → Chrome/download slice, the full Phase 1 durable control plane, and
