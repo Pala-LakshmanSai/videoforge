@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.5.1-cuda12.1-cudnn9-runtime
+FROM pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime
 
 ARG ECHOMIMIC_SOURCE_REVISION=7e89489ca51c0d008fc1963ec6c03fc5bd0b9397
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg git ca-certificates \

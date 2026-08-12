@@ -101,8 +101,10 @@ def _diagnostic_tail(stream: BinaryIO) -> bytes:
 
 
 def _validate_gpu_profile(gpu_name: str, gpu_vram_mb: int) -> None:
-    supported = ("4090" in gpu_name and gpu_vram_mb >= 24_000) or (
-        "A100" in gpu_name and gpu_vram_mb >= 79_000
+    supported = (
+        ("4090" in gpu_name and gpu_vram_mb >= 24_000)
+        or ("5090" in gpu_name and gpu_vram_mb >= 31_000)
+        or ("A100" in gpu_name and gpu_vram_mb >= 79_000)
     )
     if not supported:
         raise ValueError("AVATAR_GPU_PROFILE_UNSUPPORTED")

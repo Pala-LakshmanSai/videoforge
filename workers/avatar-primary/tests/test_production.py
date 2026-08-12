@@ -45,11 +45,12 @@ def valid_job() -> dict[str, object]:
 class ProductionContractTest(unittest.TestCase):
     def test_accepts_only_qualified_gpu_profiles(self) -> None:
         _validate_gpu_profile("NVIDIA GeForce RTX 4090", 24_564)
+        _validate_gpu_profile("NVIDIA GeForce RTX 5090", 32_768)
         _validate_gpu_profile("NVIDIA A100 80GB PCIe", 81_920)
         _validate_gpu_profile("NVIDIA A100-SXM4-80GB", 81_920)
         for name, memory in [
             ("NVIDIA GeForce RTX 4090", 23_999),
-            ("NVIDIA GeForce RTX 5090", 32_768),
+            ("NVIDIA GeForce RTX 5090", 30_999),
             ("NVIDIA A100 40GB PCIe", 40_960),
         ]:
             with self.assertRaisesRegex(ValueError, "AVATAR_GPU_PROFILE_UNSUPPORTED"):
