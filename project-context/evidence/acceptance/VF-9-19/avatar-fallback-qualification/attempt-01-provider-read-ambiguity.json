@@ -1,0 +1,79 @@
+{
+  "schema_version": "videoforge.skyreels-fallback-qualification/v1",
+  "checked_at": "2026-08-12T11:16:37.038Z",
+  "result": "PROVIDER_READ_AMBIGUITY",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-avatar-quality@sha256:8f94062164794c19036605282968a96dd098a09aa91d066b9eaafbb5577f48c9",
+  "source_revision": "28c771e8456341be6a213e3d1133ed1fd19bf75d",
+  "model_revision": "fdad4053f492aba389b5a8c3c6982118c6a1ecf3",
+  "input": {
+    "source_sha256": "sha256:b4214d8f586608dae08ca2a56716f340d87c7bbbd8817383f4cbeaa3e188fb34",
+    "source_bytes": 227787,
+    "audio_sha256": "sha256:b7f6585b5775b53de774ce6a7b3b5d059bb4ec3c6e558d2deb44296f80dc4041",
+    "audio_bytes": 640983,
+    "duration_seconds": 5,
+    "width": 960,
+    "height": 960,
+    "fps": 25
+  },
+  "resources": {
+    "template_id_hash": "sha256:cd1306e006760ab9cb007ac54cd9acb353b988248936fab89d3137221ca85f7b",
+    "endpoint_id_hash": "sha256:702b7dcdfb5048795175706cf9ae94d995ef1298d1c65b78fb8db4778f0f552f",
+    "job_id_hash": null,
+    "observed_worker_pod_id_hash": "sha256:364335d210637cb0b1948bceb57946cee8605d5b04b1007a254b447619bb9ad7",
+    "gpu": "NVIDIA A100 80GB PCIe",
+    "gpu_count": 1,
+    "container_disk_gb": 120,
+    "workers_min": 0,
+    "workers_max": 1
+  },
+  "runtime": {
+    "dispatched_jobs": 1,
+    "last_observed_status": "IN_PROGRESS",
+    "first_in_progress_minute": 3,
+    "last_in_progress_minute": 12,
+    "progress_history": [],
+    "output": null,
+    "failure_code": "RUNPOD_READ_AMBIGUOUS",
+    "failure_detail": "Inventory read failed with UND_ERR_CONNECT_TIMEOUT during same-job polling.",
+    "cancellation": "REQUEST_COMPLETED_CONFIRMATION_NOT_RETAINED",
+    "redispatched": false
+  },
+  "cost": {
+    "starting_balance_usd": 7.4039428825,
+    "starting_balance_basis": "Last independently verified balance immediately before this attempt; runner-local value was lost when cleanup evidence serialization aborted.",
+    "ending_balance_usd": 6.8776372103,
+    "measured_spend_usd": 0.5263056722,
+    "task_cap_usd": 2.0
+  },
+  "initial_inventory": {
+    "checked_at": "2026-08-12T10:59:31.669Z",
+    "pods": [],
+    "endpoints": [],
+    "private_template_count": 0,
+    "network_volumes": [],
+    "running_pod_count": 0,
+    "active_serverless_worker_count": 0
+  },
+  "cleanup": {
+    "runner_cleanup_reached_endpoint_and_template_delete_before_a_transient_inventory_read_crashed_evidence_write": true,
+    "manual_same_resource_reconciliation": true,
+    "deleted_endpoint_id_hash": "sha256:702b7dcdfb5048795175706cf9ae94d995ef1298d1c65b78fb8db4778f0f552f",
+    "deleted_template_id_hash": "sha256:cd1306e006760ab9cb007ac54cd9acb353b988248936fab89d3137221ca85f7b",
+    "final_inventory": {
+      "checked_at": "2026-08-12T11:16:34.351Z",
+      "pods": [],
+      "endpoints": [],
+      "private_template_count": 0,
+      "network_volumes": [],
+      "running_pod_count": 0,
+      "active_serverless_worker_count": 0
+    }
+  },
+  "acceptance": {
+    "technical": "NOT_EVALUABLE",
+    "visual": "NOT_EVALUABLE",
+    "candidate_state": null,
+    "profile_promoted": false,
+    "gate_avatar_003_closed": false
+  }
+}
