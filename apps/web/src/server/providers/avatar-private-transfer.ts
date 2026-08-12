@@ -3,7 +3,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createServer } from "node:http";
 import { rename, writeFile } from "node:fs/promises";
 
-const maximumOutputBytes = 8 * 1024 * 1024;
+export const AVATAR_PRIVATE_OUTPUT_MAX_BYTES = 64 * 1024 * 1024;
 
 export type AvatarPrivateTransfer = {
   sourceUrl: string;
@@ -64,12 +64,13 @@ export const startLocalAvatarPrivateTransfer = async (input: {
       let bytes = 0;
       request.on("data", (chunk: Buffer) => {
         bytes += chunk.length;
-        if (bytes > maximumOutputBytes) request.destroy(new Error("AVATAR_OUTPUT_TOO_LARGE"));
+        if (bytes > AVATAR_PRIVATE_OUTPUT_MAX_BYTES)
+          request.destroy(new Error("AVATAR_OUTPUT_TOO_LARGE"));
         else chunks.push(chunk);
       });
       request.on("end", () => {
         void (async () => {
-          if (bytes === 0 || bytes > maximumOutputBytes)
+          if (bytes === 0 || bytes > AVATAR_PRIVATE_OUTPUT_MAX_BYTES)
             throw new Error("AVATAR_OUTPUT_SIZE_INVALID");
           await writeFile(partialPath, Buffer.concat(chunks), { flag: "wx" });
           await rename(partialPath, input.outputPath);

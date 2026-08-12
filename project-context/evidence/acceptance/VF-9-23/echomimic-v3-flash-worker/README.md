@@ -9,3 +9,7 @@ smokes in run `31612627689`. Published image:
 `ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:e4a4b71e5e706ef6da4a62cdc7fa87e0c599e9fe2fa702fea73081ed19b86d73`.
 Canonical local verification passed including 38/38 installed-Chrome tests. Hosted verify run
 `31612617169` passed. RunPod/model/GPU calls and external provider spend were `$0`.
+
+The pre-spend handoff audit raised the local private-tunnel limit from the historical 8 MiB ceiling
+to the same 64 MiB ceiling enforced by the Echo worker and strict result parser. This transfer-only
+guard correction does not change the published worker image.

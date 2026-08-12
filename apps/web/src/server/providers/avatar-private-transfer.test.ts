@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  AVATAR_PRIVATE_OUTPUT_MAX_BYTES,
   startLocalAvatarPrivateTransfer,
   type AvatarPrivateTransfer,
 } from "./avatar-private-transfer";
@@ -18,6 +19,10 @@ afterEach(async () => {
 });
 
 describe("avatar private transfer", () => {
+  it("matches the native Echo sample result ceiling", () => {
+    expect(AVATAR_PRIVATE_OUTPUT_MAX_BYTES).toBe(64 * 1024 * 1024);
+  });
+
   it("serves exact private inputs and accepts one bounded output", async () => {
     const root = await mkdtemp(join(tmpdir(), "vf-avatar-transfer-"));
     roots.push(root);
