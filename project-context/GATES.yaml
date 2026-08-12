@@ -6,27 +6,37 @@ gates:
   GATE_AVATAR_001:
     status: open
     blocks: avatar_primary_production_profile
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#avatarforcing-exact-avatar-suite"
-    owner: VF-9-20
-    last_run: "evidence/acceptance/VF-8-10/avatarforcing-a100-resume"
-    result: open_one_technical_clip_rejected_for_whole_face_blur_not_exact_avatar_suite
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#echomimicv3-flash-exact-avatar-suite"
+    owner: VF-9-24
+    last_run: null
+    result: open_echo_native_sample_and_full_exact_avatar_suite_not_reviewed
   GATE_AVATAR_002:
     status: open
     blocks: automatic_global_avatar_primary_demotion
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#avatarforcing-exact-avatar-suite"
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#echomimicv3-flash-exact-avatar-suite"
     owner: user
     last_run: null
     result: open_no_user_approved_global_demotion_threshold
   GATE_AVATAR_003:
     status: open
     blocks: unambiguous_avatarforcing_commercial_permission_claim
-    acceptance: "08_MODELS_AND_PROVIDERS.md#avatarforcing"
+    acceptance: "08_MODELS_AND_PROVIDERS.md#historical-avatar-paths"
     owner: VF-3-10
     last_run: "evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license"
     result: open_user_accepted_risk_for_locked_model_qualification
     checked_at: "2026-08-11T14:53:50Z"
     blocker: "Official README Apache-2.0 labeling conflicts with a committed academic-only/non-commercial LICENSE.txt that names RollingForcing, while the official weights repository declares no license."
     user_risk_acceptance: "2026-08-11: user explicitly directed proceeding with the locked AvatarForcing ladder for YouTube use despite the unresolved terms evidence; no clear-commercial-permission claim is allowed."
+    active_effect: historical_nonblocking_no_new_avatarforcing_dispatch
+  GATE_AVATAR_004:
+    status: open
+    blocks: echomimic_runtime_bootstrap_without_exact_manifest
+    acceptance: "08_MODELS_AND_PROVIDERS.md#echomimicv3-flash"
+    owner: VF-9-23
+    last_run: "evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight"
+    result: open_preflight_pass_runtime_bootstrap_not_yet_verified
+    checked_at: "2026-08-12T14:56:02Z"
+    blocker: "No source/license mismatch exists in read-only preflight; exact 23.922317735 GB runtime manifest must still be downloaded and checksum-verified inside the immutable worker before GPU use."
   GATE_IMAGE_001:
     status: open
     blocks: mage_production_profile
@@ -76,10 +86,11 @@ gates:
   GATE_FALLBACK_001:
     status: open
     blocks: automatic_skyreels_dispatch
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#skyreels-fallback-gate"
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#historical-fallback-gate"
     owner: VF-9-20
     last_run: "evidence/acceptance/VF-9-19/avatar-fallback-qualification"
     result: open_no_skyreels_output_after_three_bounded_resumes
+    active_effect: historical_nonblocking_no_fallback_dispatch
   GATE_GPU_001:
     status: open
     blocks: selectable_production_execution_profiles

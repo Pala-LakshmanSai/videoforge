@@ -17,7 +17,8 @@ Never use RunPod's queue as the only record. A provider job can expire, a callba
 - `workersMax = 1` initially per expensive lane.
 - FlashBoot/model caching enabled where compatible.
 - One GPU per worker.
-- Network volume mounted read-only for pinned weights.
+- Production lanes may use a read-only pinned network volume after qualification. The one
+  EchoMimicV3-Flash sample uses 100 GB ephemeral container disk and no network volume.
 - Mutable inputs/results through short-lived R2 URLs.
 - Execution timeout/TTL sized from measured worst-case chunk runtime, not default guesswork.
 - Async result/status reconciliation well inside RunPod's short result-retention window; application results are uploaded to R2 and never depend on provider result storage.
@@ -53,8 +54,8 @@ Initial chunks:
 
 - Prompts: 25–50 scenes.
 - Mage: 32–64 images per RunPod job, checkpointing each artifact.
-- AvatarForcing: 15–30 selected spans per job, uploading each accepted primary attempt.
-- MuseTalk/SkyReels: one or a few failed short clips per job.
+- EchoMimicV3-Flash: 15–30 selected spans per production job only after qualification; `VF-9-24`
+  is exactly one 10.12-second sample and one job.
 - Render: one immutable project revision.
 
 The orchestrator dispatches the next chunk only when allowed, enabling round-robin fairness across project owners. A warm worker keeps the model resident across queued chunks.
@@ -153,9 +154,7 @@ Each execution profile stores:
 Suggested initial test matrix:
 
 - Mage: RTX 4090 first; RTX 5090/L40S faster candidates; 3090/A5000 only if measured quality/throughput remains economical.
-- AvatarForcing: RTX 4090 first; L40S/RTX 6000 Ada fallback if VRAM/ops require 48 GB.
-- MuseTalk: 24 GB class should be sufficient, but validate the production container.
-- SkyReels: 48 GB preferred for low-VRAM/offload bakeoff; do not promise under-24 GB speed.
+- EchoMimicV3-Flash: RTX 4090 24 GB only for sample-first qualification. No GPU priority fallback.
 
 Expose only profiles whose intersection is valid across benchmarked model/container/VRAM support, endpoint GPU priorities, network-volume data center, and live availability. Lowest cost/Balanced/Faster may map to separate tested endpoint profiles or to documented fallback priorities. If no compatible profile is available, queue with a clear price/time choice. Never silently select an incompatible card or a much more expensive fallback.
 
@@ -191,7 +190,7 @@ Creative/model failures use the explicit per-clip avatar router or an image rege
 Track `reserved`, `reported`, and `settled` cost.
 
 - Reject a dispatch when `settled + active reserved + new estimate > hard cap`.
-- Whole-frame SkyReels fallback always recomputes the forecast.
+- Any future avatar retry/fallback requires a new decision, brief, and forecast; none is active.
 - Default 30-minute cap is $1.50; allow deliberate adjustment only within the versioned MVP contract ceiling of $2.00.
 - Workspace daily/monthly caps prevent ten simultaneous users from creating uncontrolled spend.
 - Provider balance errors are visible and do not cause infinite retry.

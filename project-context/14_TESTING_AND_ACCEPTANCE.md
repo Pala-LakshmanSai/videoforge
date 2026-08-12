@@ -169,12 +169,12 @@ Use owned/synthetic sources for automated fixtures and separately authorized pri
 - Duplicate/new version never inherits a human compatibility verdict or rights/likeness attestation; source-byte reuse remains private to the same workspace.
 - Archive between form selection and revision creation produces a clear preflight blocker. A revision already created from that version remains reproducible.
 - Optional Test starts only after an explicit estimate/confirmation, is version-scoped/idempotent, records ambiguous dispatch/cost/verdict, and is never called when merely saving/selecting/reusing the profile.
-- Project revision and `production-manifest/v2` contain matching parent/version/profile hash/runtime source checksum/preparation-validation profiles, exact compatibility state at preflight, and nullable evidence. `UNTESTED`/`RUNNING` require null evidence; terminal evidence status must equal the pinned preflight state. AvatarForcing and SkyReels attempts match that binding; MuseTalk retains its clip-source lineage.
+- Project revision and `production-manifest/v2` contain matching parent/version/profile hash/runtime source checksum/preparation-validation profiles, exact compatibility state at preflight, and nullable evidence. `UNTESTED`/`RUNNING` require null evidence; terminal evidence status must equal the pinned preflight state. EchoMimicV3-Flash attempts match that binding; active repair/quality profile fields are `null`.
 - `+ New avatar` from a project draft preserves title, verified voiceover upload handle, selected style, keywords/toggle, mode, both primary execution-profile selections, cap, and seed; return/select requires no re-upload.
 
 Pass: a named avatar can be stored once and reused by image/name without project-local upload, with immutable provenance and no unapproved provider charge.
 
-## AvatarForcing exact-avatar suite
+## EchoMimicV3-Flash exact-avatar suite
 
 This is the global model/container/GPU qualification gate, not a required 12–20-clip run for every Avatar Profile. Use several representative ready Avatar Profile versions and 12–20 clips of 4–10 seconds total containing:
 
@@ -197,22 +197,22 @@ Proposed provisional lock:
 - No visible lip offset greater than roughly two source frames in accepted clips.
 - All clips become acceptable after at most the approved targeted retry/repair path.
 - Planning cost remains compatible with the 30-minute cap.
-- Technically valid clips become selected draft assets only after this global AvatarForcing production suite passes; the user/reviewer can flag them. Optional per-profile quick tests are confidence evidence, not this gate.
+- Technically valid clips become selected draft assets only after this global EchoMimicV3-Flash production suite passes; the user/reviewer can flag them. Optional per-profile quick tests are confidence evidence, not this gate.
 - Subjective lip-only versus whole-frame routing is explicitly user/reviewer-classified in MVP; no deferred visual-QA model is silently invoked.
 
 The exact global-demotion threshold is an open user gate. Record evidence; do not silently set it in production.
 
-## MuseTalk repair gate
+## Historical repair gate
 
-- Test only an otherwise-good AvatarForcing clip with isolated lip failure.
+- MuseTalk is not active. Historical evidence remains replayable; any new repair test requires a new decision and brief.
 - Lip alignment improves.
 - Teeth/skin/identity are not visibly softened or changed.
 - No seam, flicker, mask edge, or background/body change.
 - If it fails, result is discarded and cannot become SkyReels input.
 
-## SkyReels fallback gate
+## Historical fallback gate
 
-- The exact revision-pinned canonical Avatar Profile runtime source and same selected span audio are used; neither a failed derivative nor the raw retained original is accepted.
+- SkyReels is not active. Historical evidence remains replayable; any new fallback test requires a new decision and brief.
 - Test full-screen final crop/detail and split crop.
 - Record FP8/offload GPU fit, load, runtime, cost, and rejection reason.
 - Budget reservation prevents cap breach.
@@ -220,9 +220,8 @@ The exact global-demotion threshold is an open user gate. Record evidence; do no
 
 ## FFmpeg golden gate
 
-- AvatarForcing source profile: pixel-exact full crop `832:468:0:6`; split crop `416:468:208:6` and placement x=0; image x=960.
-- SkyReels square-source profile: pixel-exact full crop `960:540:0:210`; split crop `480:540:240:210` and placement x=0; image x=960.
-- Each accepted avatar asset declares exactly one source profile; the resolved-render schema rejects a profile/crop pair from the other model.
+- Historical AvatarForcing/SkyReels profiles remain replay-only. EchoMimicV3-Flash receives a new profile only after approved measured sample geometry. If native output is exactly 832×480/25, the proposed full crop is `832:468:0:6` and split crop `416:468:208:6`; otherwise profile creation is blocked.
+- Each accepted avatar asset declares exactly one source profile; the resolved-render schema rejects mismatched profile/crop pairs.
 - No seam decoration.
 - The current full-image zoom ends at 1.025, 1.03, or 1.035 according to scene length; the current
   split-right zoom ends at 1.025. Both begin at exactly 1.00.
@@ -231,7 +230,7 @@ The exact global-demotion threshold is an open user gate. Record evidence; do no
   FFmpeg golden path evaluates floating source-corner coordinates per frame and uses cubic
   interpolation for continuous subpixel sampling.
 - Slow zoom is present on both `IMAGE_FULL` and the split-right image.
-- Native 25 fps AvatarForcing and SkyReels inputs convert directly/deterministically to 30 fps
+- Native 25 fps EchoMimicV3-Flash inputs convert directly/deterministically to 30 fps
   without duration drift; cadence is reviewed full-screen and no optical-flow/interpolation model runs.
 - Hard cuts at exact frame boundaries.
 - One-frame and fractional-millisecond rounding fixtures.
@@ -356,5 +355,5 @@ No milestone is accepted solely from screenshots.
 - Report p50/p90 only after at least 10 representative completed jobs with cold/warm labels.
 - Marginal fast/no-major-fallback planning approximately $0.40–$0.98; modest-fallback envelope $0.50–$1.30 until measured.
 - No silent cost above configured cap.
-- First-pass AvatarForcing rejection and Mage retry rate displayed and reviewed after first 10 real projects.
+- First-pass EchoMimicV3-Flash rejection and Mage retry rate displayed and reviewed after first 10 real projects.
 - Style and Avatar Profile creation are outside project p50/p90; a ready style adds zero vision calls and a ready avatar adds zero onboarding/test calls or new pipeline stage.

@@ -16,14 +16,10 @@ flowchart TD
     F --> G["Runware prompt batches"]
     F --> H["Selected avatar audio manifest"]
     G --> I["Mage image batches"]
-    H --> J["AvatarForcing batches"]
-    J --> K["Per-clip QA router"]
-    K -. "lip-only" .-> L["Retry, then MuseTalk"]
-    K -. "whole-frame" .-> M["SkyReels from pinned runtime source"]
+    H --> J["EchoMimicV3-Flash batches"]
+    J --> K["Deterministic technical QA"]
     I --> N["Accepted-asset barrier"]
     K --> N
-    L --> N
-    M --> N
     N --> R["Resolved render manifest"]
     R --> O["FFmpeg compile/render"]
     O --> P["Technical QA"]
@@ -145,25 +141,22 @@ Only step 5 makes that version selectable. Published v1 remains selectable while
 
 - Slice only scheduled spans, adding small context padding for coarticulation.
 - Preserve exact EDL trim points so padding never changes timeline length.
-- Send the pinned Avatar Profile runtime source + span audio + restrained prompt to AvatarForcing.
+- Send the pinned Avatar Profile runtime source + span audio + restrained prompt to EchoMimicV3-Flash.
 - Generate one clip per span and reuse it for both layouts.
 - Process multiple spans per resident worker/chunk.
 
 MVP acceptance authority:
 
 - Deterministic decode, duration, frame-rate, crop, checksum, and A/V checks may auto-pass.
-- After the global AvatarForcing model/container/GPU suite has been accepted, a technically valid primary result becomes the selected draft clip so production does not require 100+ mandatory clicks. Optional per-profile compatibility evidence is separate.
+- After the global EchoMimicV3-Flash model/container/GPU suite has been accepted, a technically valid primary result becomes the selected draft clip so production does not require 100+ mandatory clicks. Optional per-profile compatibility evidence is separate.
 - The user can inspect/flag any clip. Subjective identity/body/background/motion/detail failure is never silently inferred by a general visual-QA model in MVP.
 - A future local lip metric may be added only after its own documented gate; until then, `LIP_ONLY` versus `WHOLE_FRAME` is an explicit user/reviewer classification.
 
-Defect-specific router after a failure is classified:
+Active sample-first rule:
 
-1. Pass → accept, no MuseTalk.
-2. Lip sync only → one AvatarForcing retry.
-3. Still lip-only → MuseTalk on the otherwise-good AvatarForcing source.
-4. MuseTalk fails → discard repair; SkyReels from the same pinned Avatar Profile source/audio.
-5. Identity, body, background, motion, or full-screen-detail failure → skip MuseTalk; SkyReels from the same pinned Avatar Profile source/audio.
-6. One clip failure never changes the global default.
+1. Deterministic checks establish only technical validity.
+2. Native output becomes `READY_FOR_USER_REVIEW`; only the user decides subjective quality.
+3. Poor output stops. No retry, repair, fallback, tuning, or substitution without new authority.
 
 ### 8. Asset barrier and compilation
 
@@ -172,9 +165,9 @@ The timeline becomes renderable only when every required slot points to one sele
 FFmpeg:
 
 - Apply fixed avatar crops.
-- Apply the accepted asset's renderer source profile: AvatarForcing 832×480/25 fps and SkyReels
-  960×960/25 fps use separate fixed center crops and direct 25→30 conversion. Never force a fallback
-  through the primary crop; no optical-flow/interpolation model.
+- Apply the accepted asset's measured EchoMimicV3-Flash source profile only after user sample
+  approval. Expected native 832×480/25 fps may use the proposed centered crop, but different valid
+  geometry blocks profile creation until user-approved crop rules exist. No optical flow.
 - Apply eased centered image zoom.
 - Build exact-duration 1080p30 segments.
 - Join with hard cuts.

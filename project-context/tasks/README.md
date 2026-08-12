@@ -18,8 +18,8 @@ provider-free prompt/style adapters, RunPod account preflight, public Git/hosted
 Mage and AvatarForcing checkpoint/license audits. `VF-7-01` through `VF-7-09` complete the
 provider-free custom-style lifecycle and fixture Hub. `VF-3-11` ended without a replacement after
 the user reaffirmed AvatarForcing and the LongCat exclusion. `VF-8-01/02/03` are complete.
-`VF-8-04` built the pinned AvatarForcing worker but ended as a truthful bounded qualification
-failure with zero live RunPod resources. `VF-8-05` completed the container/capacity diagnostic at
-`bd34fed`. `VF-8-06` reached inference but ended in one bounded generic worker failure with zero
-live resources. `CURRENT_STATE.yaml` selects only failure observability in `VF-8-07.md`. Complete tasks author exactly one
-successor brief; do not select or expand later roadmap work before that handoff.
+`VF-8-04` through `VF-9-21` preserve the full historical AvatarForcing/SkyReels attempt lineage,
+including `$0.4496891390` in `VF-9-21` and independent final zero inventory. `VF-9-22` supersedes
+that active route with EchoMimicV3-Flash, pins `GATE_AVATAR_004` preflight evidence, and selects only
+`VF-9-23.md`. Complete tasks author exactly one successor brief; do not select or expand later
+roadmap work before that handoff.

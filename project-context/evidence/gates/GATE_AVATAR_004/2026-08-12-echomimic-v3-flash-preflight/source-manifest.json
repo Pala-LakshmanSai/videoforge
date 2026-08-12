@@ -1,0 +1,76 @@
+{
+  "schema": "videoforge.echomimic-runtime-source-manifest/v1",
+  "checked_at": "2026-08-12T14:56:02Z",
+  "source": {
+    "repository": "antgroup/echomimic_v3",
+    "revision": "7e89489ca51c0d008fc1963ec6c03fc5bd0b9397",
+    "tree": "ea9970b7a1cce02ae963d30535daac9b9017f2b3",
+    "public": true,
+    "license": "Apache-2.0",
+    "files": {
+      "LICENSE.txt": {"git_blob": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64", "size": 11357, "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"},
+      "LEGAL.md": {"git_blob": "f96892081dd58b22ee2199adffd7b188b79e7e7f", "size": 572, "sha256": "adba50d9794b9ef3f7ec8cbc680f7f1fa3fbf9df0ac8d1f9b9ccab6d941bc11b"},
+      "infer_flash.py": {"git_blob": "9b74bd0a93036fd22e1e7827c28ba8c0288436fe", "size": 18253, "sha256": "16db024008d85d3421cfe59988ce6d917e8e29d13cc959cc99fd9c82b6ea99ae"},
+      "run_flash.sh": {"git_blob": "179ae21743c8fdb5ea73dc87488c98e403d17984", "size": 1042, "sha256": "774a9e2ee58e52362c35296d6f4fc54f027c56f9df608c89e60b3c83d7f3cf94"},
+      "config/config.yaml": {"git_blob": "3a2747bdc9e86a6812c3ca09d2a8653aaea6cb54", "size": 843, "sha256": "21fe4409b664385a1c1cc5c23d92506ffb05ef3c374a18de9df67b715dca07e9"},
+      "requirements.txt": {"git_blob": "3b87750586daa02c9270b3c99ed766d6456486db", "size": 386, "sha256": "53e7f313d6cff22f7b646f9de86fea4566955744f78318778eb2377ee48bea7b"}
+    }
+  },
+  "repositories": [
+    {
+      "id": "BadToBest/EchoMimicV3",
+      "revision": "311e176905a8c4c24b240b530488fe636ce4d249",
+      "public": true,
+      "gated": false,
+      "disabled": false,
+      "license": "apache-2.0",
+      "license_artifact": {"path": "README.md", "sha256": "f8f184f954b0f81162cab80859058012366cb620af29eb9b5942b984b8fe4751"},
+      "runtime_files": [
+        {"path": "echomimicv3-flash-pro/config.json", "size": 577, "blob_id": "d7ea5d08780e8b9c7b852e059096561c035d4e94"},
+        {"path": "echomimicv3-flash-pro/diffusion_pytorch_model.safetensors", "size": 3727671120, "sha256": "5ebdbb2fc709108bf2a1728fd92eb2874804e4bc0324e92a2cd55425968c85a4"}
+      ]
+    },
+    {
+      "id": "alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP",
+      "revision": "fc913c34361f4ec879e2f9c78b4f11ae50a937d1",
+      "public": true,
+      "gated": false,
+      "disabled": false,
+      "license": "apache-2.0",
+      "license_artifact": {"path": "LICENSE.txt", "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"},
+      "runtime_files": [
+        {"path": "Wan2.1_VAE.pth", "size": 507609880, "sha256": "38071ab59bd94681c686fa51d75a1968f64e470262043be31f7a094e442fd981"},
+        {"path": "diffusion_pytorch_model.safetensors", "size": 3128957992, "sha256": "4ec199076538b946935ebcb3ba808d3c427e638f29519a3c3c98d31d821e5eed"},
+        {"path": "google/umt5-xxl/spiece.model", "size": 4548313, "sha256": "e3909a67b780650b35cf529ac782ad2b6b26e6d1f849d3fbb6a872905f452458"},
+        {"path": "google/umt5-xxl/tokenizer.json", "size": 16837417, "sha256": "6e197b4d3dbd71da14b4eb255f4fa91c9c1f2068b20a2de2472967ca3d22602"},
+        {"path": "models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth", "size": 4772359047, "sha256": "628c9998b613391f193eb67ff68da9667d75f492911e4eb3decf23460a158c38"},
+        {"path": "models_t5_umt5-xxl-enc-bf16.pth", "size": 11361920418, "sha256": "7cace0da2b446bbbbc57d031ab6cf163a3d59b366da94e5afe36745b746fd81d"},
+        {"path": "xlm-roberta-large/sentencepiece.bpe.model", "size": 5069051, "sha256": "cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865"},
+        {"path": "xlm-roberta-large/tokenizer.json", "size": 17082660, "sha256": "62c24cdc13d4c9952d63718d6c9fa4c287974249e16b7ade6d5a85e7bbb75626"}
+      ]
+    },
+    {
+      "id": "TencentGameMate/chinese-wav2vec2-base",
+      "revision": "3991242c806928916fff4a8c0e4f76acf661b743",
+      "public": true,
+      "gated": false,
+      "disabled": false,
+      "license": "mit",
+      "license_artifact": {"path": "README.md", "sha256": "fcc08e87ab74a235c489cf0cfde474a501b4217a701d2ef96b05fb49e1f667cb"},
+      "runtime_files": [
+        {"path": "pytorch_model.bin", "size": 380261837, "sha256": "be2da40c9e7ae26bfc904a3ed79ebb9e8f060bec6dba85d6a6ae86114bc38901"}
+      ]
+    }
+  ],
+  "selected_runtime_bytes": 23922317735,
+  "official_flash": {
+    "steps": 8,
+    "sampler": "Flow_Unipc",
+    "weight_dtype": "bfloat16",
+    "fps": 25,
+    "seed": 43,
+    "teacache_threshold": 0.1,
+    "negative_prompt": "",
+    "cpu_offload_enabled": false
+  }
+}

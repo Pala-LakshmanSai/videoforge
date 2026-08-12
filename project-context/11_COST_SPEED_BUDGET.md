@@ -99,7 +99,7 @@ provider-reported usage/cost and ordinary ready-style video generation at zero G
 
 ## Avatar Hub cost
 
-Creating a named Avatar Profile, uploading/validating its source, and selecting a ready version uses no LLM and no mandatory GPU call. Its private image/thumbnail storage is small. Reusing it avoids repeated upload/setup but does not remove the AvatarForcing compute for each video's unique scheduled speech.
+Creating a named Avatar Profile, uploading/validating its source, and selecting a ready version uses no LLM and no mandatory GPU call. Its private image/thumbnail storage is small. Reusing it avoids repeated upload/setup but does not remove EchoMimicV3-Flash compute for each video's unique scheduled speech.
 
 An optional user-triggered three-clip compatibility test is a separate one-time Avatar Profile version cost, never part of a video's generation cap. Initial planning target is at or below $0.20 because a cold worker boot may dominate a few seconds of output; show the exact execution-profile estimate first and replace this target with `GATE_AVATAR_001` measurements. Merely saving or selecting a profile must never start a worker.
 
@@ -116,35 +116,20 @@ At the current 4090 Serverless Flex baseline:
 
 Planning sensitivity including cold start/retries: roughly $0.12–$0.25; the desired accepted-image target remains at or below $0.20 after measured caching/batching. This remains a gate until measured on the new account, exact resolution, container, and batch mode.
 
-## AvatarForcing cost sensitivity
+## EchoMimicV3-Flash cost qualification
 
-The paper reports 34 ms/frame but not the GPU:
-
-```text
-9,900 frames × 0.034 sec = 336.6 sec = 5.61 generation minutes
-```
-
-4090 Serverless Flex scenarios with a five-minute cold start:
-
-| Effective frame time | Generation | Total billed time | Cost at $0.00031/s |
-|---:|---:|---:|---:|
-| 34 ms | 5.6 min | 10.6 min | $0.20 |
-| 68 ms | 11.2 min | 16.2 min | $0.30 |
-| 136 ms | 22.4 min | 27.4 min | $0.51 |
-
-Practical planning range would therefore be roughly $0.20–$0.51 before unusual fallback. User risk
-acceptance permits separately capped qualification while `GATE_AVATAR_003` remains open, but only an
-accepted exact-avatar benchmark may replace this planning table or support a production profile.
+No accepted Echo runtime/cost exists. `VF-9-24` authorizes one RTX 4090 native 10.12-second sample,
+hard cap `$0.50`, active watchdog at the earlier of 25 minutes or projected `$0.45`, and no retry.
+Record live rate, queue/activation/bootstrap/load/inference/encode/upload time, peak VRAM, disk, and
+exact settled cost. Only later 12–20-clip and representative cold/warm evidence may establish
+production unit economics.
 
 Every one percentage point of avatar share equals 18 output seconds or 450 frames at 25 fps. With a fast avatar engine this is affordable, but the scheduler still targets the measured 21–22% style rather than maximizing avatar.
 
 ## Fallback cost
 
-- MuseTalk touches only failed short clips and is fast; its marginal model compute should be small, but a cold endpoint boot can dominate. Batch lip repairs.
-- SkyReels is heavy and unmeasured. It is excluded from the expected fast-path number and receives a $0.10–$0.35 planning reserve only for a low rejection rate.
-- Before SkyReels dispatch, reserve its measured estimate. Pause if the project would cross its hard cap.
-
-If whole-frame fallback becomes common, AvatarForcing has failed its production role; do not hide the cost through repeated fallback.
+No active repair/fallback reserve exists. Any retry, repair, or fallback requires new user authority
+and separate cost evidence.
 
 Measured qualification observations through VF-9-20 are not production unit economics: three Mage
 technical runs cost `$0.0280524074`, `$0.0235054352`, and `$0.0308072963`, but all outputs failed
@@ -162,13 +147,13 @@ failed/partial charges must not replace the planning ranges or close `GATE_COST_
 
 | Component | 30-minute target |
 |---|---:|
-| Reuse of ready Avatar Profile | $0 onboarding/test call; normal AvatarForcing row still applies |
+| Reuse of ready Avatar Profile | $0 onboarding/test call; normal EchoMimicV3-Flash row still applies |
 | Reuse of ready Image Style | $0 vision; negligible added DeepSeek tokens |
 | Runware prompts | $0.005–$0.015 |
 | ASR | $0 API; <$0.01 incremental target |
 | Mage images | $0.12–$0.25 sensitivity; target ≤$0.20 |
-| AvatarForcing | $0.20–$0.51 benchmark-dependent |
-| Low-rate conditional fallback reserve | $0.10–$0.35 |
+| EchoMimicV3-Flash | unmeasured; production estimate blocked |
+| Avatar repair/fallback | none active |
 | FFmpeg/render QA | $0.06–$0.15 on current GPU baseline |
 | R2 operations/storage allocation | $0–$0.03 initially |
 | **Expected fast/no-major-fallback** | **about $0.40–$0.98** |
@@ -184,9 +169,9 @@ Avatar Profiles and Image Styles add no subscription or always-on compute. They 
 
 RunPod volumes are the accepted fixed cost. Do not pre-provision unused fallback weights. Planning envelope:
 
-- Image + fast-avatar volumes: about 60–100 GB total → $4.20–$7.00/month.
-- SkyReels quality volume after gate: add about 50–70 GB → $3.50–$4.90/month.
-- Combined planning envelope: roughly $7–$11.90/month, measured from actual selective snapshots before provisioning.
+- The one Echo sample uses 100 GB ephemeral container disk and creates no persistent volume cost.
+- Any later durable Echo volume is measured from the exact `23,922,317,735`-byte minimum runtime
+  manifest plus cache overhead before provisioning.
 
 Do not copy whole model repositories with duplicate BF16/FP8/unused artifacts. Store only pinned runtime files. Provider account minimum top-ups, if any, are account-policy cash flow rather than app fixed cost and must be checked before setup.
 

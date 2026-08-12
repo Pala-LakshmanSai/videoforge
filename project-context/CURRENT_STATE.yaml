@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T13:19:49Z"
+updated_at: "2026-08-12T14:56:02Z"
 
-phase: avatarforcing_user_sample
-implementation_authorized_in_current_task: false
-current_milestone: avatar_primary_user_quality_review
-current_task: VF-9-21
-current_wave: wave_8_runtime_composition
+phase: echomimic_v3_flash_worker
+implementation_authorized_in_current_task: true
+current_milestone: avatar_primary_worker_replacement
+current_task: VF-9-23
+current_wave: wave_9_echomimic_sample_first
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -15,445 +15,104 @@ repository:
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
   branch: main
-  base_commit: "5b92bc40b161a9ccfec2d06bc363534bc3404bfc"
-  planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
-  planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
+  base_commit: "2b7eb5b9e38061eb7ffc44178aba285bc5f65969"
+  planning_base_commit: "2b7eb5b9e38061eb7ffc44178aba285bc5f65969"
+  planning_handoff_commit: "2b7eb5b9e38061eb7ffc44178aba285bc5f65969"
   verified_implementation_commit: "0209902"
-  last_good_commit: "0209902"
-  working_tree_expected: vf_9_21_selected_context_handoff_plus_untracked_user_inputs
-  start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
-  dependency_policy:
-    ajv: "8.20.0"
-    note: "Security override of the historical 8.17.1 pin."
+  last_good_commit: "2b7eb5b9e38061eb7ffc44178aba285bc5f65969"
+  working_tree_expected: vf_9_22_context_changes_plus_ignored_private_inputs
+  start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
 live_development:
   expected_url: "http://localhost:4173"
-  lan_url: null
-  public_review_url: null
-  tunnel:
-    state: stopped
-    kind: null
-    pid: null
   server_state: stopped
   dev_server_pid: null
   owner_task_id: null
   health_checked_at: null
-  health_commit: null
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "Corrected worker is pinned, but its one authorized job stopped in queue without execution or spend because no A100 worker started. No further provider call is authorized. No MuseTalk, SkyReels, LongCat, profile promotion, deployment, account resource, or unrelated cloud mutation."
+  provider_authority_scope: "VF-9-23 permits local code/tests, Git push, hosted CI, and one GHCR build after local green. No model download, RunPod call, GPU, or provider spend."
   last_user_checkpoint:
     result: accepted
-    task_id: VF-0C-08
     commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
     route: "file:///Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v3.mp4"
     scenario: local_owned_short_slice
     checked_at: "2026-08-10T03:06:39Z"
-    evidence: "evidence/acceptance/VF-0C-08/2026-08-10-continuous-zoom-v3"
-    user_decision: "good enough"
-    feedback_refs:
-      - DEC_OUTPUT_003
-  historical_ui_checkpoint:
-    result: accepted
-    gate: GATE_UI_001
-    commit: "5ee979e9a9c17195f7478f4b49ce7ac4c0efb996"
-    evidence: "evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit"
-    user_decision: "ok this is good enough"
-
-completed_milestones:
-  - id: phase_0a_to_0c_foundation_and_local_slice
-    status: complete
-    summary: "Contracts/tooling, accepted fixture Chrome shell, owned local ASR/scheduler/FFmpeg v3 slice, play/seek/approve/hash-download, and accepted continuous image zoom."
-  - id: phase_1_durable_control_plane
-    status: complete
-    summary: "Relational invariants, runtime/auth/artifact/orchestration adapters, mock recovery, isolation/direct transfer, Avatar reuse, and deterministic metadata export/restore."
-  - id: phase_2_durable_timing_and_timeline
-    status: complete
-    summary: "Owned local transcription, immutable timing/timeline, selected Avatar span audio, strict restart/restore, inspection, and installed-Chrome playback/download."
-  - id: provider_free_media_integration
-    status: complete
-    summary: "Durable prompt execution, image/Avatar fixture result acceptance, immutable style artifacts/edits, versioned APIs, browser/server normalization, and complete fixture Image Styles Hub workflow through VF-7-09."
+    feedback_refs: [DEC_OUTPUT_003]
 
 completed_tasks:
-  - task_group: phase_1_and_2
-    task_ids: [VF-1-01, VF-1-01A, VF-1-02, VF-1-03, VF-1-04, VF-1-05, VF-1-06, VF-1-07, VF-1-08, VF-2-01, VF-2-02, VF-2-03, VF-2-04, VF-2-05]
-    status: complete
-    final_implementation_commit: "907e0e4908bddc1ec7b90232f043a10d9c7d5b2a"
-    final_evidence_commit: "d16c2a9102125fa6e56d014fcf2f6241c878fa07"
-  - task_group: prompt_style_provider_foundations
-    task_ids: [VF-3-00, VF-3-01, VF-3-02, VF-3-03, VF-3-04, VF-3-05, VF-3-06, VF-3-07, VF-3-08, VF-3-09, VF-3-10, VF-3-11]
-    status: complete
-    summary: "DeepSeek/Gemini qualification and injected adapters, deterministic prompt/style semantics, RunPod account preflight, Git/CI, read-only Mage/AvatarForcing gate evidence, and user-reaffirmed no-replacement Avatar decision. GATE_IMAGE_002 and GATE_AVATAR_003 remain open."
-  - task_group: developer_experience_and_telemetry
-    task_ids: [VF-DX-01, VF-DX-02, VF-REL-01]
-    status: complete
-    commits: ["cb1895e", "592c833", "a1b6a5b", "33d96a0"]
-  - task_id: VF-4-01
-    status: complete
-    implementation_commit: "1fba04cf2166bc5d01ab3ea375e8a1bf20093b6a"
-    evidence_commit: "466688a"
-    summary: "Migration 0009 and production PGlite atomic prompt execution/acceptance authority."
-  - task_id: VF-7-07
-    status: complete
-    implementation_commit: "20fd59228cbf5d419cd41a6a6d3cebbe5fb52cc7"
-    evidence_commit: "2e3d306"
-    summary: "Migration 0010, immutable root/derived artifacts and edits, exact-current publication, and restore."
-  - task_id: VF-4-02
-    status: complete
-    implementation_commit: "bbb0a4861e6b830bfaf4c62240203f2c90b7940c"
-    evidence_commit: "945a469"
-    summary: "Migration 0011, deterministic Mage-shaped PNG fixture, and atomic image asset/QA/callback/cost acceptance."
-  - task_id: VF-5-01
-    status: complete
-    implementation_commit: "fcb8f318122a8a89f59a6bb6c5b7f8d1c78045d8"
-    summary: "Deterministic Avatar fixture worker with exact Avatar/span/layout lineage and zero outbound activity."
-  - task_id: VF-5-02
-    status: complete
-    implementation_commit: "e0bec7e6fecd1b6ffb913f589c686b959d4f7d50"
-    evidence_commit: "58ff25d"
-    summary: "Migration 0012, one native clip/two renderer bindings, exact durable lineage, QA/cost/replay/restore."
-  - task_group: image_style_lifecycle_core
-    task_ids: [VF-7-01, VF-7-02, VF-7-03, VF-7-04, VF-7-05, VF-7-06]
-    status: complete
-    summary: "Durable versions/references/analysis/acceptance/publication and preserve-and-detach edit provenance."
-  - task_id: VF-7-08
-    status: complete
-    implementation_commit: "326dc380c2e14121118219402bde4ab96124fb49"
-    evidence_commit: "2e0386e"
-    summary: "Versioned full-candidate edit contracts/API with exact ETag/idempotency and PGlite composition."
-  - task_id: VF-7-09
-    status: complete
-    implementation_commit: "6fb3312ed14ac4da4f41de9c67e2cc52a07b4a2e"
-    correction_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-    evidence: "evidence/acceptance/VF-7-09/style-hub-completion"
-    summary: "Browser/server normalization, authenticated fixture lifecycle, review/edit/publish/select, preview/archive/reopen, responsive Hub Chrome acceptance, and Workerd-safe contracts."
-  - task_id: VF-8-01
-    status: complete
-    implementation_commit: "68d11fb044699f56a7705189d609365e1c6ec97c"
-    correction_commit: "21d664682bdba27c7a8b27e8f9b48d218dd2a0be"
-    evidence: "evidence/acceptance/VF-8-01/node-sandbox-runtime"
-    summary: "Loopback-only Node sandbox mode, workspace-contained persistent data root, real owned ASR/timeline/FFmpeg v3 run, restart restore, approval, and checksum-matched download at $0."
-  - task_id: VF-8-02
-    status: complete
-    implementation_commit: "9f2324af11ea002cad84a7d1326c926deac9f62d"
-    evidence: "evidence/acceptance/VF-8-02/runware-runtime"
-    summary: "Server-only locked DeepSeek/Gemini Runware composition, exact sandbox cap, Keychain credential isolation, shared ledger, replay/failure tests, and corrected UUID-v4 provider identity. Live smoke returned providerUnavailable at $0."
-  - task_id: VF-8-03
-    status: complete
-    implementation_commit: "1d93a5da0df0279adf49e64d89020cafaabfd20c"
-    evidence: "evidence/acceptance/VF-8-03/runpod-scale-zero"
-    summary: "Keychain-only RunPod control adapter, redacted live inventory, exact scale-zero policy, replay/ambiguity/cancel/health-drain/update/delete guards, and live proof of zero resources at $0."
-  - task_id: VF-8-04
-    status: bounded_failure_complete
-    implementation_commits: ["cd226f4", "f486c4c", "832a7b8", "21b3256", "b6035b3", "e7638a7", "db74df0", "cae8ff3", "dfdfb4f", "acfb765", "8ceecb4"]
-    evidence: "evidence/acceptance/VF-8-04/avatarforcing-worker"
-    summary: "Pinned AvatarForcing worker, strict inline/live contracts, immutable GHCR builds, capped qualification runner, progress/cancel/drain/delete guards, and four bounded attempts. RunPod never produced model-bootstrap progress or output; total settled spend was $0.2020189583 and final inventory was zero. GATE_AVATAR_003 remains open."
-  - task_id: VF-8-05
-    status: complete
-    implementation_commit: "bd34fed"
-    evidence: "evidence/acceptance/VF-8-05/avatarforcing-diagnostic"
-    summary: "Pinned linux/amd64 OCI config, exact entrypoint/handler registration, image/model byte budgets, automatic startup timeout, and a capacity-corrected L40S/A100-80GB single-worker allowlist were proven at $0."
-  - task_id: VF-8-06
-    status: bounded_failure_complete
-    implementation_commit: "bd34fed"
-    evidence_commit: "0a6571a"
-    evidence: "evidence/acceptance/VF-8-06/avatarforcing-capacity-resume"
-    summary: "Capacity-corrected one-worker qualification reached a running healthy worker and terminal completed job, then returned generic AVATAR_PRIMARY_FAILED with no MP4. Spend was $0.0263379630 and final RunPod inventory was zero. Candidate remains unpromoted."
-  - task_id: VF-8-07
-    status: complete
-    implementation_commit: "e4ae8cc"
-    image_digest: "sha256:359ac1ec415e38058b256e6ab52084bf2c38fe0ad5b32e716f4f974e5802b7a1"
-    evidence: "evidence/acceptance/VF-8-07/avatarforcing-failure-observability"
-    summary: "Secret-safe deterministic inference failure codes and diagnostic hashes now cross the worker/runtime boundary; pinned GHCR image build 31529443853 passed handler registration and source compilation at $0."
-  - task_id: VF-8-08
-    status: bounded_failure_complete
-    implementation_commit: "f371df2"
-    image_digest: "sha256:b7bdf282f97cb84195a7ef163670a3a7a464e593984d678723567c8ccd931b1d"
-    evidence: "evidence/acceptance/VF-8-08/avatarforcing-audio-runtime-resume"
-    summary: "Torch-matched torchaudio restored audio resampling and advanced execution to 213 seconds, but one five-frame run ended AVATAR_INFERENCE_PROCESS_FAILED with no MP4. Spend was $0.0102739352; final and independent RunPod inventories were zero."
-  - task_id: VF-8-09
-    status: complete
-    implementation_commit: "3c222a9"
-    image_digest: "sha256:e46c3a9d0d770905ca2d04aecf5623986425eca861f2e1ea9245a3fd5867f434"
-    evidence: "evidence/acceptance/VF-8-09/avatarforcing-memory-diagnostic"
-    summary: "Compact OOM variants now classify deterministically, qualification is restricted to one A100-80GB worker, and pinned GHCR image build 31531241301 passed at $0."
-  - task_id: VF-8-10
-    status: technical_success_quality_failure
-    implementation_commit: "26a63c1"
-    image_digest: "sha256:e46c3a9d0d770905ca2d04aecf5623986425eca861f2e1ea9245a3fd5867f434"
-    evidence: "evidence/acceptance/VF-8-10/avatarforcing-a100-resume"
-    summary: "A100-80GB-only qualification produced a checksum-valid H.264/AAC MP4 with exact locked lineage and returned RunPod to zero. Whole-face identity/detail blur rejects quality and triggers the locked SkyReels whole-frame route, not MuseTalk."
-  - task_id: VF-8-11
-    status: complete
-    implementation_commit: "c091e86"
-    evidence: "evidence/acceptance/VF-8-11/skyreels-worker-preflight"
-    summary: "Pinned official SkyReels V3 source/model revisions, corrected the authoritative talking-avatar output contract from 24 to 25 fps, and bounded one provider-free worker-build successor."
-  - task_id: VF-8-12
-    status: complete
-    implementation_commit: "ccb1d0a"
-    image_digest: "sha256:eed0778157bda9c28ebdb54bbab407d64205063b0467897ee9dcb9438b930497"
-    evidence: "evidence/acceptance/VF-8-12/skyreels-worker-build"
-    summary: "Built and published the pinned fail-closed SkyReels worker, corrected square-source output to native 960x960/25 with exact renderer crops, and passed full local/hosted verification at $0."
-  - task_id: VF-8-13
-    status: exact_safe_dependency_failure
-    implementation_commit: "26e2de6"
-    image_digest: "sha256:eed0778157bda9c28ebdb54bbab407d64205063b0467897ee9dcb9438b930497"
-    evidence: "evidence/acceptance/VF-8-13/skyreels-qualification"
-    summary: "One A100-80GB job ended with SKYREELS_INFERENCE_DEPENDENCY_MISSING for $0.0502363111; no redispatch occurred and final/independent RunPod inventories were absolute zero."
-  - task_id: VF-8-14
-    status: complete
-    implementation_commit: "186955e"
-    image_digest: "sha256:1e7f9100bef7759ffe527d083e1655c7bfda6c9192668c9a13d15e4c4e73e878"
-    evidence: "evidence/acceptance/VF-8-14/skyreels-dependency-diagnostic"
-    summary: "Pinned missing av runtime dependency and proved the full official SkyReels CLI import/parser path in linux/amd64 before publishing the corrected image at $0."
-  - task_id: VF-8-15
-    status: bounded_timeout_complete
-    implementation_commit: "9ee16bd"
-    image_digest: "sha256:1e7f9100bef7759ffe527d083e1655c7bfda6c9192668c9a13d15e4c4e73e878"
-    evidence: "evidence/acceptance/VF-8-15/skyreels-corrected-resume"
-    summary: "One corrected-image A100-80GB job remained in progress at the 30-minute limit and was cancelled without an accepted MP4. Spend was $1.2642676444; no redispatch occurred and final/independent RunPod inventories were absolute zero."
-  - task_id: VF-8-16
-    status: complete
-    implementation_commit: "24e5b1d"
-    image_digest: "sha256:8f94062164794c19036605282968a96dd098a09aa91d066b9eaafbb5577f48c9"
-    evidence: "evidence/acceptance/VF-8-16/skyreels-timeout-hardening"
-    summary: "Safe ordered inference heartbeat and output-validation progress, a 2,550-second worker timeout margin, full local verification, and pinned GHCR image build 31541727892 passed at $0."
-  - task_id: VF-8-17
-    status: exact_safe_provider_failure
-    implementation_commit: "3315f41"
-    image_digest: "sha256:8f94062164794c19036605282968a96dd098a09aa91d066b9eaafbb5577f48c9"
-    evidence: "evidence/acceptance/VF-8-17/skyreels-stage-visible-resume"
-    summary: "One A100-80GB job met RunPod HTTP 503 while in progress and was cancelled without an MP4. Observed spend was $0.6784048; transient cleanup 500s were recovered by exact 204 retries and independent inventory is absolute zero."
-  - task_id: VF-9-01
-    status: complete_with_narrow_access_blocker
-    implementation_commit: "ed74771"
-    evidence: "evidence/acceptance/VF-9-01/mage-worker-preflight"
-    summary: "Pinned official Mage source/runtime facts and exact file hashes at $0. Live official Mage-Flow-Turbo model access remains HTTP 401/404, so exact model revision is unavailable; licensing is not treated as a blocker per user direction."
-  - task_id: VF-9-02
-    status: complete
-    implementation_commit: "774b56f4d121890f23d06c235525ee09bf0febbb"
-    evidence: "evidence/acceptance/VF-9-02/mage-worker-boundary"
-    summary: "Strict fail-closed Mage job/result/bootstrap boundary, pinned no-watermark/refusal source patch, hostile-input/output validation, cancellation/timeout/redaction, and full local verification passed at $0."
-  - task_id: VF-9-03
-    status: exact_safe_access_blocker
-    implementation_commit: "8f7391e3ff480519ab3ca3cd3d9411616c81c65a"
-    evidence: "evidence/acceptance/VF-9-03/mage-revision-admission"
-    summary: "Required Chrome family was unavailable, so authenticated Mage revision admission stopped safely at $0 with no token, model byte, provider, GPU, or RunPod activity."
-  - task_id: VF-9-04
-    status: complete_via_safe_alternate_evidence
-    implementation_commit: "88dd0b65e9e29ba60db3e56f3c7c4d1a665bab5e"
-    evidence: "evidence/acceptance/VF-9-04/mage-access-restore"
-    summary: "Chrome remained unavailable, but first-party indexed Hugging Face pages exposed a verified full immutable Turbo revision and transformer weight identity. No credential or model byte was accessed; the browser blocker was superseded at $0."
-  - task_id: VF-9-05
-    status: complete
-    implementation_commit: "fd97481e7d73a7ea48831de1332cd2e5b9d7c6a8"
-    evidence: "evidence/acceptance/VF-9-05/mage-revision-code-admission"
-    summary: "Admitted only exact official Mage revision 395402ba3ef110c96e70d01abe4d178dbe4e01a5, pinned transformer identity/size ceiling, retained all fail-closed guards, and passed full verification at $0."
-  - task_id: VF-9-18
-    status: bounded_safe_provider_failure
-    implementation_commits: ["f333ac3", "6729520"]
-    evidence: "evidence/acceptance/VF-9-18/mage-quality-matrix"
-    summary: "Three bounded starts produced zero PNGs and spent $0: one status-read ambiguity, one operator-terminated queue wait with exact manual cleanup, and one provider worker-limit failure. No quality metric or profile was invented; final and independent RunPod inventory is absolute zero."
-  - task_id: VF-9-19
-    status: bounded_safe_provider_failure
-    implementation_commit: "33df55b"
-    evidence_commit: "cacad46"
-    evidence: "evidence/acceptance/VF-9-19/avatar-fallback-qualification"
-    summary: "One exact pinned SkyReels job reached IN_PROGRESS but produced no stage progress or MP4 before a provider read timeout. No redispatch occurred; measured spend was $0.5263056722, cleanup was reconciled, and independent RunPod inventory is absolute zero."
-  - task_id: VF-9-20
-    status: complete
-    evidence: "evidence/acceptance/VF-9-20/gate-profile-convergence"
-    summary: "Reconciled every provider gate and production profile from reproducible evidence at $0. No unsupported gate closed, no profile was promoted, and first real provider video remains blocked."
   - task_id: VF-9-21
-    status: blocked_worker_output_missing
-    implementation_commit: "0209902"
+    status: superseded_preserved
+    external_spend_usd: 0.449689139
     evidence: "evidence/acceptance/VF-9-21/elias-avatarforcing-sample"
-    summary: "AvatarForcing completed four 10.12-second inferences but no reviewable MP4 crossed either inline or persisted-output boundaries. Measured task spend was $0.4496891390; no MuseTalk/SkyReels/LongCat ran, and independent final RunPod inventory is absolute zero."
+    summary: "Historical AvatarForcing attempt produced no reviewable MP4 across durable boundaries; final independent RunPod inventory was absolute zero."
+  - task_id: VF-9-22
+    status: complete
+    external_spend_usd: 0
+    evidence: "evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight"
+    summary: "EchoMimicV3-Flash selected as sole active avatar path; exact public source/weight/base/audio revisions, access, licenses, hashes, and 23.922317735 GB runtime manifest pinned without downloads or provider activity."
 
-latest_closed_handoff:
-  task_id: VF-9-21
-  status: blocked_worker_output_missing
-  task_kind: avatarforcing_user_sample
-  evidence: "evidence/acceptance/VF-9-21/elias-avatarforcing-sample"
-  verification_result: "no_reviewable_mp4_no_visual_acceptance_independent_runpod_absolute_zero"
-  external_actions: "five bounded RunPod jobs: four completed without reviewable output and one zero-spend queued cancellation"
-  external_spend_usd: 0.449689139
+active_ownership:
+  - task_id: VF-9-23
+    owner: single_integration_lane
+    scope: "workers/avatar-primary, Echo sample runner, GHCR workflow, tests, and handoff"
 
-last_green:
-  checked_at: "2026-08-12T11:25:00Z"
-  result: pass
-  verified_commit: "cacad46"
-  command: "CI=1 TURBO_FORCE=true pnpm verify"
-  counts:
-    control_plane_pglite_tests: 213
-    web_server_component_tests: 215
-    typescript_contract_tests: 59
-    pipeline_tests: 116
-    provider_sandbox_tests: 43
-    local_workerd_http_parity_tests: 1
-    playwright_chrome_journeys_passed: 38
-    playwright_chrome_journeys_intentionally_skipped: 0
-  findings_closed:
-    - "Avatar qualification cleanup tolerates transient final inventory and balance reads long enough to retain failure evidence."
-    - "VF-9-19 provider ambiguity caused no redispatch or acceptance; exact resource reconciliation ended at independent RunPod absolute zero."
-  evidence:
-    - "evidence/acceptance/VF-9-19/avatar-fallback-qualification"
-
-active_ownership: []
-blocked_tasks:
-  - task_id: VF-9-21
-    reason: "Corrected worker image passed build/smoke, but the bounded RunPod job stayed IN_QUEUE and hit RUNPOD_STARTUP_TIMEOUT at $0. No inference or output occurred."
-    unblock: "User explicitly authorizes one capacity retry of the exact corrected image."
-
+blocked_tasks: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-9-21
-  milestone: avatar_primary_user_quality_review
-  status: blocked_waiting_for_capacity_retry_authority
-  dependency_status: a100_capacity_not_acquired
-  authorization_status: no_provider_call_authorized
-  read_profile: phase9_avatarforcing_user_sample
-  task_brief: tasks/VF-9-21.md
-  goal: "Generate one 10.12-second Elias Yoder AvatarForcing-only MP4 for user quality review."
+  task_id: VF-9-23
+  milestone: avatar_primary_worker_replacement
+  status: authorized_provider_free_implementation
+  dependency_status: gate_avatar_004_read_only_preflight_pass
+  authorization_status: local_and_github_publication_only
+  read_profile: phase9_echomimic_v3_flash_worker
+  task_brief: tasks/VF-9-23.md
+  goal: "Build and pin one production-shaped EchoMimicV3-Flash worker and bounded RTX 4090 sample runner."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
-  provider_authority:
-    provider: runpod_serverless
-    model_id: "KlingAIResearch/AvatarForcing@63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39"
-    image_digest: "sha256:42a14b44cd0ab42c85cd6de91a44009ba7897723ebef2ee18d358ee3c0e3a384"
-    cap_usd: 0
-    non_transferable: true
-    authorized_by_user_at: "2026-08-12T11:40:00Z"
-  remote_or_cloud_mutations_authorized: false
+  remote_or_cloud_mutations_authorized: true
+  remote_scope: "Git push, hosted CI, and one GHCR image build after local green only."
   credential_access_authorized: false
   model_downloads_authorized: false
-  application_code_changes_authorized: false
-  expected_evidence: "evidence/acceptance/VF-9-21/elias-avatarforcing-sample"
+  application_code_changes_authorized: true
+  expected_evidence: "evidence/acceptance/VF-9-23/echomimic-v3-flash-worker"
   required_handoff:
-    - "Preserve corrected worker image and do not rebuild it."
-    - "Do not redispatch until user explicitly authorizes one capacity retry."
-    - "Never dispatch MuseTalk, SkyReels, or LongCat."
-    - "Preserve independent RunPod absolute zero."
-  safe_parallelism:
-    maximum_lanes_including_integration: 1
-    integration_owner: VF-9-21
+    - "Pin successful immutable GHCR digest and hosted run IDs."
+    - "Pass full local and hosted verification."
+    - "Select exactly VF-9-24 with maximum $0.50 only after worker acceptance."
   prohibited_in_task:
-    - "MuseTalk, SkyReels, LongCat, model/source/audio/GPU substitution, any provider job, or spend."
-    - "Publishing private inputs, production profile promotion, deployment, migration, UI redesign, or unrelated cloud/account mutation."
+    - "RunPod/provider call, model download, GPU, inference, or provider spend."
+    - "AvatarForcing, MuseTalk, SkyReels, LongCat, retry/fallback, deployment, migration, or production profile promotion."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
-  - GATE_AVATAR_003
+  - GATE_AVATAR_004
   - GATE_IMAGE_001
   - GATE_IMAGE_002
   - GATE_STYLE_002
-  - GATE_FALLBACK_001
   - GATE_GPU_001
   - GATE_RUNPOD_001
   - GATE_COST_001
 
-fully_sorted:
-  - "Accepted fixture shell/dock/Hubs and hard-cut-only output grammar with continuous slow image zoom."
-  - "Durable provider-free control plane, recovery, isolation, direct transfer, timing/timeline, metadata restore, and local Chrome output."
-  - "Durable prompt/image/Avatar fixture result acceptance and immutable style lifecycle/edit/publication/restore."
-  - "Complete fixture Image Styles Hub normalization-through-archive workflow with Workerd and Chrome proof."
-
 known_incomplete_boundaries:
-  - "Mage GATE_IMAGE_002 remains open only for clear-permission claims. Exact public ComfyUI/weight revisions, the immutable candidate image, and one timed technical qualification are pinned; compliant style/semantic acceptance and the production profile are not complete."
-  - "Mage/AvatarForcing terms evidence remains ambiguous. The user explicitly accepted that risk for bounded locked-model qualification; do not claim clear commercial permission or substitute models."
-  - "DeepSeek/Gemini are live-runtime composed and fixture remains default; latest DeepSeek smoke was correctly rejected as providerUnavailable at $0."
-  - "Fixture Hub reference bytes are session-scoped. No production R2/Neon/Better Auth/Workflow deployment exists."
-  - "Three earlier real Mage provider images exist with exact GPU/cost/timing evidence, but strict quality rejected them. VF-9-18 produced zero of 40 requested matrix images because of provider read/queue/worker failures; no Mage image is technically accepted. VF-9-19 produced no SkyReels output before provider read ambiguity. No acceptable real Avatar asset, real 30–120-second provider video, full SLO, fallback, or production release exists."
-  - "No encrypted off-machine backup, R2 integrity inventory, clean-target cloud restore, ten-user contention/security proof, or fresh-account production Chrome sign-off exists."
-  - "Three bounded SkyReels resumes produced no candidate; VF-9-19 stopped on provider read ambiguity after $0.5263056722, performed no redispatch, and returned to absolute-zero inventory. No further paid SkyReels retry is selected."
-
-next_tasks:
-  - "1. VF-10-01: split oversized PGlite adapter by capability without behavior change."
-  - "2. Prepare private R2 direct multipart adapter and fake-binding tests locally; stop before cloud/plugin/credential mutation."
-  - "3. Prepare Neon, Better Auth Google admission, and Workflow seams locally in that order."
-  - "4. First real provider video remains blocked until both Mage and Avatar paths have technically accepted assets; do not spend its $1.50 cap."
-  - "5. After staging authority, run hardening, benchmarks, production acceptance, and user sign-off."
+  - "Echo runtime bootstrap, native sample, full exact-avatar suite, crop profile, and production acceptance are unproven."
+  - "Mage has no accepted production image/style matrix."
+  - "No production Neon/R2/Workflow/OAuth deployment or fresh-account release proof exists."
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
   full_production_mvp_implemented_percent: 79
   production_end_to_end_proven: false
-  completed:
-    provider_free_foundation_percent: 100
-    accepted_fixture_and_local_output_percent: 100
-    durable_control_plane_timing_and_media_acceptance_percent: 100
-  partial:
-    prompt_and_style_provider_qualification_and_adapters_percent: 100
-    custom_image_style_provider_free_percent: 100
-  early_or_blocked:
-    production_image_lane_percent: 92
-    production_avatar_lane_percent: 68
-    cloud_staging_integration_percent: 15
-    production_release_percent: 0
-  interpretation: "Durable accepted-provider proof composition reaches fake-provider-shaped FFmpeg v3, restart/replay, and installed-Chrome delivery. Mage matrix and SkyReels fallback qualification ended with zero outputs and no acceptance; first real provider video, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: vf_9_21_avatarforcing_user_sample_ready
-  completed_and_preserved:
-    - "All completed tasks/commits above are preserved; VF-9-17 closed at 958d7bd with canonical exit code 0."
-    - "Forced full verification passed at the VF-8-04 handoff tree: Workerd 1/1 and installed Chrome 38/38 with zero skips."
-    - "Six bounded RunPod attempts produced no Avatar output; total settled RunPod spend $0.2386308565. Every endpoint/template was deleted and live inventory is zero."
-    - "Pinned handler registration runs inside GHCR CI; GATE_AVATAR_003 remains open and VF-8-10 reached the whole-frame SkyReels trigger."
-    - "VF-8-05 proved linux/amd64 entrypoint/handler registration and selected exact L40S/A100-80GB capacity correction at $0."
-    - "VF-8-06 reached one healthy running worker and terminal inference, failed generically for $0.0263379630, and returned to absolute zero inventory."
-    - "VF-8-07 added secret-safe exact inference failure evidence; pinned image sha256:359ac1ec415e38058b256e6ab52084bf2c38fe0ad5b32e716f4f974e5802b7a1 passed GHCR build 31529443853."
-    - "Static runtime audit found 44.1 kHz owned audio requires upstream torchaudio resampling, but worker runtime omitted torchaudio."
-    - "VF-8-08 restored torchaudio; one 213-second run returned secret-safe process-failure evidence for $0.0102739352 and left RunPod absolute zero."
-    - "VF-8-09 closed compact OOM classification gaps and published A100-80GB-only image sha256:e46c3a9d0d770905ca2d04aecf5623986425eca861f2e1ea9245a3fd5867f434 at $0."
-    - "VF-8-10 produced the first checksum-valid real AvatarForcing MP4, rejected it for severe whole-face blur, and returned RunPod absolute zero."
-    - "VF-8-11 pinned SkyReels source/model lineage and corrected the talking-avatar source profile to native 25 fps."
-    - "VF-8-12 published pinned SkyReels image sha256:eed0778157bda9c28ebdb54bbab407d64205063b0467897ee9dcb9438b930497; full local/hosted verification passed."
-    - "VF-8-13 retained exact safe SKYREELS_INFERENCE_DEPENDENCY_MISSING evidence for $0.0502363111 and returned RunPod to independent absolute zero."
-    - "VF-8-14 published corrected SkyReels image sha256:1e7f9100bef7759ffe527d083e1655c7bfda6c9192668c9a13d15e4c4e73e878 after full CLI dependency-path proof."
-    - "VF-8-15 cancelled one still-running corrected-image job at 30 minutes for $1.2642676444; no redispatch occurred and RunPod returned to independent absolute zero."
-    - "VF-8-16 added safe 60-second inference heartbeat and timeout margin, then published immutable image sha256:8f94062164794c19036605282968a96dd098a09aa91d066b9eaafbb5577f48c9 at $0."
-    - "VF-8-17 met provider HTTP 503, confirmed cancellation, recovered transient cleanup 500s to exact endpoint/template 204 deletion, and independently proved RunPod absolute zero."
-    - "VF-9-01 pinned official Mage source/runtime and exact file identities; official model API remains HTTP 401/404, so exact weight revision is the sole technical blocker."
-    - "VF-9-02 implemented the strict Mage boundary and pinned source patch; full verification passed at $0."
-    - "VF-9-03 stopped safely because the required Chrome family was unavailable; no browser fallback or credential access occurred."
-    - "VF-9-04 superseded the Chrome blocker using a first-party indexed verified immutable revision; no model bytes or credentials were accessed."
-    - "VF-9-05 admitted the earlier indexed revision, then user-owned runtime evidence superseded its unproven implementation route."
-    - "VF-9-06 published the corrected pinned stock-ComfyUI BF16 image digest after local and hosted verification at $0."
-    - "VF-9-07 generated and saved one valid real BF16 PNG on RTX 4090 for $0.0280524074; retained malformed requested-logo quality evidence and returned RunPod to independent absolute zero."
-    - "VF-9-08 added exact candidate/result/runtime/GPU/PNG/cost acceptance with hostile-input proof; full verification passed at $0."
-    - "VF-9-09 hit one transient status-read ambiguity, cancelled without retry/output/spend, and returned RunPod absolute zero."
-    - "VF-9-10 added bounded same-job GET reconciliation with no POST retry; full verification passed at $0."
-    - "VF-9-11 completed technically for $0.0235054352 but visual inspection rejected visible text, repeated people, and weak geometry; final RunPod inventory is zero."
-    - "VF-9-12 bound exact negative prompt bytes into the Mage graph and published immutable corrected image sha256:ee844a242956a376466fa233f05e3bb6ffdcf71a645f5b27241331e5e295a89c at $0."
-    - "VF-9-13 completed for $0.0308072963 and improved visibly, but strict review rejected plate text and object/hand artifacts; cleanup plus a later independent inventory proved absolute zero."
-    - "VF-9-14 kept locked Turbo BF16, banned text-critical generated scenes, required strict review, and allowed only one rejection-triggered candidate retry."
-    - "VF-9-15 stopped before falsely mapping real 1280x720 Mage bytes into the fixture-only 64x36 durable contract."
-    - "VF-9-16 added additive provider-neutral durable image acceptance, truthful Mage lineage, explicit visual review, fake transport composition, replay/restore, and full verification at $0."
-    - "VF-9-17 composed durable Mage/Avatar acceptance proofs, rendered/replayed one 37.167-second fake-provider-shaped FFmpeg v3 output, and passed installed-Chrome play/seek/approve/download/hash/playback."
-    - "VF-9-18 added a bounded sequential Mage matrix runner, but three provider starts produced no PNG and cost $0; every resource was deleted and independent inventory is absolute zero."
-    - "VF-9-19 ran one exact pinned SkyReels job, stopped on provider read ambiguity with no MP4 and no redispatch after $0.5263056722, reconciled cleanup, and independently proved RunPod absolute zero."
-    - "VF-9-20 reconciled provider gates and profile eligibility at $0; all unproven gates remain open, no review asset exists, and no profile was promoted."
-    - "Server stopped and provider mode fixture."
+  status: vf_9_23_echomimic_worker_selected
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Preserve user image/audio untracked and private; require tracked worktree clean."
-    - "Load only phase9_avatarforcing_user_sample and tasks/VF-9-21.md."
-    - "Await explicit user authority for one capacity retry of the exact corrected worker; keep RunPod zero meanwhile."
+    - "Load only phase9_echomimic_v3_flash_worker and tasks/VF-9-23.md."
+    - "Preserve ignored private image/audio and historical AvatarForcing evidence."
   stop_conditions:
-    - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
-    - "Any provider/credential/GPU/cloud/plugin/deployment action, LongCat/model substitution, profile promotion, unsupported gate closure, regression, or output-grammar conflict."
-
-notes:
-  - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."
-  - "Mage preflight VF-3-08 already preserved GATE_IMAGE_002 open; do not repeat a broad research pass."
-  - "VF-3-10 pinned AvatarForcing code revision 63b73e6 and weights revision e244891; terms remain ambiguous, but user-accepted risk allows bounded qualification while clear-permission claims remain blocked."
-  - "VF-3-11 ended without a replacement after the user reaffirmed AvatarForcing and explicitly excluded LongCat; GATE_AVATAR_003 remains open."
-  - "A 2026-08-12 owned spike proved Mage-Flow-Turbo BF16 through pinned stock ComfyUI at 1280x720: no diffusers, FlashAttention, or source patch. VideoForge must use that route only."
-  - "VF-9-18 qualification must use only corrected negative-prompt image sha256:ee844a242956a376466fa233f05e3bb6ffdcf71a645f5b27241331e5e295a89c."
-  - "VF-9-18 ended with zero generated PNGs and $0 measured spend; do not claim matrix quality acceptance or transfer its unused budget."
-  - "TypeScript remains the sole RFC 8785/JCS authority; Python validates schemas/exact bytes and treats canonical document hashes as opaque."
-  - "The accepted output remains three compositions, realistic footage, hard cuts, no motion graphics/text/decorative overlays, and a required smooth zoom on every full/split image."
+    - "Manifest mismatch, failed verification/build, unexplained tracked dirt, RunPod/model/GPU activity, spend, or unauthorized scope."

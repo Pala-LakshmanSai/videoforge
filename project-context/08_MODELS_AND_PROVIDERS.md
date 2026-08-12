@@ -3,7 +3,7 @@
 Status: user-approved ladder plus explicit benchmark gates  
 Read when: building a worker, pinning dependencies, estimating cost, or proposing a model change.
 
-Prices and provider capabilities below were refreshed from official sources on 2026-08-10 and are time-sensitive. Runware DeepSeek/Gemini qualification facts plus Mage and AvatarForcing public access state were refreshed on 2026-08-11. The user reaffirmed the finalized Avatar ladder and LongCat exclusion on 2026-08-11. Runtime code must store current rates/configuration rather than hard-code this document.
+Prices and provider capabilities below are time-sensitive. EchoMimicV3-Flash source/license/access state was refreshed on 2026-08-12; Runware/Mage and historical AvatarForcing facts retain their recorded check dates. Runtime code stores current rates/configuration rather than hard-coding this document.
 
 ## Runware DeepSeek V4 Flash 0731
 
@@ -126,62 +126,39 @@ Qualification status through VF-9-20: worker and application acceptance plumbing
 production profile is eligible. Three technically valid PNGs failed strict visual review and the
 40-prompt matrix returned no output after provider failures. Fixture remains default.
 
-## AvatarForcing
+## EchoMimicV3-Flash
 
-Approved role: selected primary talking-avatar model. `GATE_AVATAR_003` records unresolved terms but,
-after the user's explicit 2026-08-11 risk acceptance, no longer blocks bounded qualification of the
-locked ladder. VideoForge must not describe the permission as commercially clear.
+Sole active avatar path under `DEC_AVATAR_007`. Native output only; new repair/fallback bindings are
+`null`. Fixture remains default and no production profile is eligible.
 
-- At GitHub main revision `63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39`, the official README labels the project Apache-2.0 and links `lycui/AvatarForcing` as its ODE/DMD weights source. GitHub itself classifies the repository license as `Other` / `NOASSERTION`.
-- The same revision's committed `LICENSE.txt` (blob `4f099d8892d0d4b98a797f64076a285a32f173ca`, SHA-256 `138fd1e58a72a7073c02c2fb5f772539d2b944519d4b17f60d3ecdc111228314`) names `RollingForcing` and Tencent, covers its named code/parameters/weights, and prohibits commercial or production use.
-- The public, ungated Hugging Face weights repository at revision `e2448919a7b535c29f34e07892884ae1a43c6ace` declares no license in metadata or its model card. Exact revision and LFS object identities establish provenance only, not commercial permission.
-- Input: the canonical runtime image from the exact pinned Avatar Profile version + selected speech audio + a simple restrained text prompt.
-- Typical paper configuration: 832×480, 25 fps, one-step, 1.3B student; renderer deterministically duplicates/resamples frames to 30 fps without optical flow.
-- Paper reports 34 ms/frame, but does not disclose the GPU.
-- Produces lip movement plus face/head/subtle upper-body motion.
-- Initial RunPod target: RTX 4090 24 GB; L40S/other compatible GPU only if the measured fit requires it.
+- Source: `antgroup/echomimic_v3@7e89489ca51c0d008fc1963ec6c03fc5bd0b9397`, Apache-2.0.
+- Flash weights: `BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249`, Apache-2.0; exact Flash safetensors SHA-256 `5ebdbb2fc709108bf2a1728fd92eb2874804e4bc0324e92a2cd55425968c85a4`.
+- Base: `alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP@fc913c34361f4ec879e2f9c78b4f11ae50a937d1`, Apache-2.0.
+- Audio encoder: `TencentGameMate/chinese-wav2vec2-base@3991242c806928916fff4a8c0e4f76acf661b743`, MIT.
+- Exact selected runtime bytes: `23,922,317,735` decimal bytes before small configs/source/dependencies.
+- Official Flash mode: BF16, 8 steps, `Flow_Unipc`, 25 fps, seed 43, TeaCache threshold 0.1, empty negative prompt.
+- Input: canonical runtime image from exact Avatar Profile version, selected speech span, restrained prompt.
+- One native clip serves both layouts after a measured renderer crop profile is approved.
+- RTX 4090 24 GB only for `VF-9-24`; no silent GPU fallback.
 
-`VF-3-10` preserved `GATE_AVATAR_003` open on 2026-08-11. The README/license/project-name conflict and missing weight license do not unambiguously permit intended commercial use. `VF-3-11` then ended without a replacement after the user reaffirmed AvatarForcing and the prior LongCat exclusion. Later on 2026-08-11, the user explicitly accepted that unresolved risk and authorized continuing the locked model ladder. Qualification may proceed only under a separately capped task; evidence retains the ambiguity and cannot claim clear commercial permission. The accepted clip contract remains one native clip cropped deterministically for both layouts.
+The upstream `GPU_memory_mode=sequential_cpu_offload` argument is parsed but never enables offload.
+VideoForge makes no CPU-offload claim. Worker bootstrap downloads exact files once into ephemeral
+`/models`, verifies revision/path/size/SHA-256, writes an immutable complete marker, and rejects any
+incomplete or mutated cache before inference.
 
-MVP fallback dispatch requires an explicit user/reviewer defect classification after deterministic technical checks. AvatarForcing/MuseTalk/SkyReels are not coupled to an unapproved automatic visual-QA model.
+`GATE_AVATAR_004` read-only preflight found all pinned artifacts public, ungated, and license-labeled.
+It remains open until runtime bootstrap reproduces the exact manifest. `GATE_AVATAR_001` remains open
+until native sample review and later full qualification.
 
-Official sources: [pinned KlingAIResearch AvatarForcing](https://github.com/KlingAIResearch/AvatarForcing/tree/63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39), [pinned repository license artifact](https://github.com/KlingAIResearch/AvatarForcing/blob/63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39/LICENSE.txt), and [pinned official Hugging Face weights](https://huggingface.co/lycui/AvatarForcing/tree/e2448919a7b535c29f34e07892884ae1a43c6ace). Reproducible preflight evidence: `evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license/`.
+Official sources: [pinned source](https://github.com/antgroup/echomimic_v3/tree/7e89489ca51c0d008fc1963ec6c03fc5bd0b9397), [pinned Flash weights](https://huggingface.co/BadToBest/EchoMimicV3/tree/311e176905a8c4c24b240b530488fe636ce4d249), [pinned base](https://huggingface.co/alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP/tree/fc913c34361f4ec879e2f9c78b4f11ae50a937d1), and [pinned audio encoder](https://huggingface.co/TencentGameMate/chinese-wav2vec2-base/tree/3991242c806928916fff4a8c0e4f76acf661b743). Evidence: `evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight/`.
 
-## MuseTalk 1.5
+## Historical avatar paths
 
-Approved role: conditional lip-only repair.
-
-- Source video is the otherwise-good failed AvatarForcing clip.
-- Driving audio is the same selected span.
-- Never run on a passed clip.
-- Never describe it as an enhancer/upscaler/whole-frame realism model.
-- If it adds face softness, seams, identity change, or fails sync, discard the derivative.
-
-Official repo reports 30fps+ on a Tesla V100 and edits a 256×256 face region. Reusable-avatar preparation may later support a performance-bank path, but that is deferred.
-
-Official source: [MuseTalk](https://github.com/TMElyralab/MuseTalk).
-
-## SkyReels V3 Talking Avatar
-
-Approved role: cold whole-frame quality fallback.
-
-- Model: Talking Avatar 19B 720P.
-- Input: the same revision-pinned canonical Avatar Profile runtime source + selected audio, never a failed derivative, raw retained original, or mutable parent lookup.
-- Official pinned talking-avatar code writes 25 fps and chooses an aspect bucket from the source.
-  The square canonical runtime source selects 960×960 and uses `skyreels-centered-960x960p25-v2`;
-  it is never forced through
-  AvatarForcing's 832×480 crop constants.
-- Official repo exposes `--low_vram` using FP8 weight-only quantization and block offload, and lower-resolution fallbacks.
-- Audio input supports up to 200 seconds, far longer than VideoForge's short spans.
-
-It is heavier and potentially slower, so dispatch only for a whole-frame defect or failed MuseTalk repair, with budget reservation. Benchmark one 48 GB lane first; low-VRAM under-24 GB support may trade large wall time for fit.
-
-Official source: [SkyReels V3](https://github.com/SkyworkAI/SkyReels-V3).
-
-Qualification status through VF-9-20: one AvatarForcing MP4 was technically valid but rejected for
-whole-face blur. Three bounded SkyReels resumes produced no MP4. MuseTalk was correctly not invoked
-because the observed failure was whole-frame, not isolated lips. No Avatar or fallback production
-profile is eligible; fixture remains default.
+AvatarForcing, MuseTalk, and SkyReels remain immutable history/replay evidence only. `VF-9-21`
+preserves `$0.4496891390` spend, failures, artifacts, and commits. `GATE_AVATAR_003` remains an open
+historical permission record and blocks clear permission claims, but it does not block Echo work.
+No new dispatch, fallback, repair, or production binding may use these models without a new explicit
+user decision.
 
 ## Local word timing
 
@@ -205,7 +182,7 @@ Groq Whisper, Deepgram, WhisperX, and browser-side WebGPU ASR are excluded from 
 |---|---|
 | LongCat Avatar 1.5 | User-reaffirmed exclusion: diffusion runtime/cost breaks the target budget |
 | Hallo3/Hallo2 | Far slower than the fast-avatar budget path; unattributed ranking screenshot is not authoritative |
-| SoulX FlashHead | No longer needed if AvatarForcing passes; square/head-focused compromise |
+| SoulX FlashHead | Not selected; EchoMimicV3-Flash is sole active avatar path |
 | InfiniteTalk | Quality fallback research option only if approved ladder fails broadly |
 | Remotion | Does not improve image/avatar pixels or relevance; FFmpeg is enough |
 | HyperFrames | Motion-graphics/text strengths conflict with hard rules; cloud minute cost is wasteful here |

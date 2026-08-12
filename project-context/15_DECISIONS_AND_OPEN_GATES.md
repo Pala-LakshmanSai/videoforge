@@ -25,12 +25,13 @@ Every row below is `APPROVED` by the user and recorded in this planning session 
 | `DEC_IMAGE_001` | Mage-Flow-Turbo BF16 through pinned stock headless ComfyUI, 4-step path | User locked BF16; a 2026-08-12 owned RunPod spike proved the public `Comfy-Org/Mage-Flow` weights and exact graph while disproving the diffusers/FlashAttention route |
 | `DEC_IMAGE_002` | Proceed with locked Mage-Flow-Turbo despite unresolved checkpoint access/terms metadata; do not substitute another image model | On 2026-08-11 the user explicitly accepted the unresolved open-weight terms risk for their YouTube use and directed implementation not to treat licensing ambiguity as an execution blocker. Evidence must retain the ambiguity and must not claim commercially clear permission. |
 | `DEC_IMAGE_003` | Keep Mage-Flow-Turbo BF16 locked; use exact negative prompting, exclude scenes whose core meaning requires readable generated text/branding, reject visible text/logo/watermark and material anatomy/object defects, and permit at most one same-scene candidate retry after rejection | Three real 1280x720 RTX 4090 outputs prove fast generation but variable strict quality. Negative prompting materially improved facade/crowd composition but did not guarantee clean plate text or objects. Non-Turbo is not assumed to fix these defects and is not selected. Real source media handles text-critical branded scenes; human review remains mandatory before promotion. |
-| `DEC_AVATAR_001` | AvatarForcing remains the blocked primary; no replacement is selected and LongCat Avatar 1.5 remains excluded | `VF-3-10` found no unambiguous AvatarForcing commercial code-and-weights permission. During `VF-3-11` on 2026-08-11, the user reaffirmed the finalized Brainstorm ladder and explicitly rejected reopening LongCat. No Avatar primary download, qualification, profile, or commercial use is allowed while `GATE_AVATAR_003` remains open. |
-| `DEC_AVATAR_002` | MuseTalk only repairs isolated lip failure | Avoid redundant face softening/seams |
-| `DEC_AVATAR_003` | SkyReels V3 is whole-frame fallback from the revision-pinned canonical runtime source and same selected span audio—not from a failed derivative | Higher-detail/heavier rescue path while preserving exact Avatar Profile provenance |
+| `DEC_AVATAR_001` | **SUPERSEDED by `DEC_AVATAR_007`:** AvatarForcing was the primary path | Preserved for historical replay only; `VF-9-21` spent `$0.4496891390` and produced no reviewable output across the durable boundaries. No new AvatarForcing dispatch is allowed. |
+| `DEC_AVATAR_002` | **SUPERSEDED in active effect by `DEC_AVATAR_007`:** MuseTalk was the lip-only repair | Historical replay only; no repair model is active for the sample-first Echo path. |
+| `DEC_AVATAR_003` | **SUPERSEDED in active effect by `DEC_AVATAR_007`:** SkyReels V3 was the whole-frame fallback | Historical replay only; no fallback model is active for the sample-first Echo path. |
 | `DEC_AVATAR_004` | Same centered avatar clip serves both layouts | Saves inference; deterministic crop is sufficient |
 | `DEC_AVATAR_005` | Workspace Avatar Hub is the only ordinary source of project avatars; projects select and pin an exact ready version, with no inline avatar upload | User explicitly requested create-once reuse, image/name dropdown selection, and sibling Avatar/Image Style hubs on 2026-08-09; exact version pinning prevents later source changes from altering a project |
-| `DEC_AVATAR_006` | Proceed with the locked AvatarForcing → retry → MuseTalk lip repair → SkyReels V3 quality-fallback ladder despite unresolved AvatarForcing license metadata; do not substitute another model | On 2026-08-11 the user explicitly accepted the unresolved terms risk for their YouTube use and directed implementation not to treat it as an execution blocker. Evidence must still report the ambiguity truthfully and must not claim commercially clear permission. |
+| `DEC_AVATAR_006` | **SUPERSEDED by `DEC_AVATAR_007`:** proceed with the locked AvatarForcing fallback ladder despite unresolved terms | Preserved as the exact historical authority for its completed attempts; it authorizes no new dispatch. |
+| `DEC_AVATAR_007` | EchoMimicV3-Flash native output is the sole active avatar path; repair and fallback bindings are nullable and set to `null` | User selected the sample-first replacement on 2026-08-12. One production-shaped worker and one native 10.12-second Elias RTX 4090 sample may proceed under tasks `VF-9-23` and `VF-9-24`; poor output stops without tuning, substitution, or paid retry. Source/license evidence: `evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight/`. |
 | `DEC_TIMING_001` | Free local `whisper.cpp base.en` | Proven local path; paid ASR unnecessary |
 | `DEC_CONTRACT_001` | TypeScript is the sole RFC 8785/JCS authority; Python workers validate schemas and exact byte hashes but treat canonical JSON hashes as opaque | Avoids cross-language number-serialization drift while keeping one deterministic canonical hash authority; recorded for Phase 0C on 2026-08-09 |
 | `DEC_SCHEDULER_001` | Seeded deterministic bounded variation | Fast, cheap, reproducible; no AI layout calls |
@@ -46,29 +47,25 @@ Every row below is `APPROVED` by the user and recorded in this planning session 
 | `DEC_UX_003` | Avatar and Image Style surfaces are visual-first and share a two-column/equal-media Hub layout; healthy cards keep only image/name/on-demand details, Create Project uses app-native integrated visual dropdowns, and authorized galleries plus dense technical detail remain progressively disclosed | User required seeing every avatar/style image without spreading presets across the form, removed repeated ready/passed/version copy, and rejected detached/browser-native dropdown surfaces on 2026-08-09; custom uploaded references remain distinct from built-in owned/generated examples |
 | `DEC_UX_004` | Major sibling sections use one consistent 20 px desktop / 16 px compact/mobile vertical rhythm. Expanded generic disclosures keep at least 12 px between the trigger and first visible child and between sibling fact cards. Structural panels, cards, metrics, workflow rows, and summaries use dedicated, clearly visible translucent-lavender boundary tokens plus a dark depth shadow and restrained cobalt/violet halo; nested controls and incidental dividers keep a lighter treatment. Lists and grids always declare a nonzero gap, and no border, glow, or shadow may substitute for actual spacing. | On 2026-08-09 the user rejected touching Usage layouts and application-wide faint card/section boundaries, and explicitly requested clearer futuristic, clean, minimal division via a stronger border, drop shadow, or glow. On 2026-08-10 a Settings screenshot showed expanded disclosure content touching its trigger and sibling fact card, so the same rule now explicitly covers disclosure interiors. Evidence: `evidence/gates/GATE_UI_001/2026-08-09-surface-separation-refinement/` plus the 2026-08-10 real-Chrome refinement. |
 
-## User-approved avatar router
+## Active avatar path
 
-In MVP, deterministic media checks can auto-pass technical validity, but the user/reviewer confirms the subjective defect class before fallback dispatch; no general visual-QA model is silently added.
-
-1. AvatarForcing from the revision-pinned canonical Avatar Profile runtime source and selected span audio.
-2. Passed clip → accept, no MuseTalk.
-3. Lip-only failure → retry AvatarForcing once.
-4. Still lip-only while whole frame is good → MuseTalk on failed AvatarForcing clip.
-5. MuseTalk repair fails → discard; SkyReels from that same pinned runtime source and selected span audio, never the failed derivative.
-6. Identity/body/background/motion/detail failure → skip MuseTalk; SkyReels from that same pinned runtime source and selected span audio.
-7. One failed clip never changes the primary globally.
+1. EchoMimicV3-Flash from the revision-pinned canonical Avatar Profile runtime source and selected span audio.
+2. Deterministic checks establish only technical validity and `READY_FOR_USER_REVIEW`.
+3. User reviews identity, lips/teeth, beard/hair/hat, eyes, motion, background, jitter, blur, and crop potential.
+4. Poor output stops. No retry, repair, fallback, model substitution, tuning, or promotion without new user authority.
 
 ## Open gates
 
 | ID | Evidence needed | Consequence |
 |---|---|---|
-| `GATE_AVATAR_001` | **OPEN:** VF-8-10 produced one checksum-valid A100-80GB clip, but strict review rejected whole-face blur; no 12–20-clip exact-avatar suite or accepted output exists | No AvatarForcing production profile |
-| `GATE_AVATAR_002` | **OPEN:** user has not approved a global rejection/demotion threshold after bakeoff | Until then SkyReels is per-clip only |
-| `GATE_AVATAR_003` | **OPEN — USER-ACCEPTED RISK:** pinned code README says Apache-2.0; pinned root `LICENSE.txt` names RollingForcing and prohibits commercial/production use; pinned public weights card has no license. Evidence: `evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license/` | Does not block the user-authorized locked-model qualification, but blocks any VideoForge claim that AvatarForcing commercial permission is unambiguous |
+| `GATE_AVATAR_001` | **OPEN:** one native EchoMimicV3-Flash Elias sample and the later 12–20-clip exact-avatar suite remain unreviewed/unrun | No EchoMimicV3-Flash production profile |
+| `GATE_AVATAR_002` | **OPEN:** user has not approved a global Echo rejection/demotion threshold after full bakeoff | No automatic global demotion behavior; no fallback is active |
+| `GATE_AVATAR_003` | **OPEN — HISTORICAL/NONBLOCKING:** pinned AvatarForcing code README says Apache-2.0; pinned root `LICENSE.txt` names RollingForcing and prohibits commercial/production use; pinned public weights card has no license. Evidence: `evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license/` | Blocks only claims that historical AvatarForcing commercial permission was unambiguous; authorizes no dispatch and does not block Echo work |
+| `GATE_AVATAR_004` | **OPEN — PREFLIGHT PASS:** exact Echo source, Flash weights, Wan base, and audio encoder revisions are public, ungated, and license-pinned; runtime bytes have not yet been downloaded/verified inside the production worker | Blocks Echo model download/GPU use unless the worker enforces the exact manifest; remains open until runtime bootstrap verifies every required file |
 | `GATE_IMAGE_001` | **OPEN:** three technical Mage PNGs failed strict visual review and VF-9-18 produced `0/40` matrix outputs | No Mage production profile |
 | `GATE_IMAGE_002` | **OPEN — USER-ACCEPTED RISK:** public Comfy-Org weights/revision are now exact and accessible; historical Microsoft terms remain ambiguous | Does not block qualification, but blocks any VideoForge claim that Mage commercial permission is unambiguous |
 | `GATE_STYLE_002` | **OPEN:** VF-9-18 produced no same-content outputs across default plus four styles | Prompt-only style adherence remains unproven |
-| `GATE_FALLBACK_001` | **OPEN:** three bounded SkyReels resumes produced no MP4; latest VF-9-19 stopped on read ambiguity after `$0.5263056722` | No automatic SkyReels dispatch/profile |
+| `GATE_FALLBACK_001` | **OPEN — HISTORICAL/NONBLOCKING:** three bounded SkyReels resumes produced no MP4; latest VF-9-19 stopped on read ambiguity after `$0.5263056722` | No fallback is active; historical record authorizes no dispatch/profile |
 | `GATE_GPU_001` | **OPEN:** jobs ran on RTX 4090 and A100-80GB, but no Mage/Avatar/SkyReels output reached acceptance | No production model/GPU profile can become selectable |
 | `GATE_RUNPOD_001` | **OPEN:** cancellation/scale-zero shields work, but provider read, worker-count, queue, and cleanup ambiguity remain reproducible through VF-9-19 | Live RunPod dispatch remains disabled |
 | `GATE_COST_001` | **OPEN:** qualification charges are measured, but no representative accepted 30-minute cold/warm jobs exist | Planning estimates and SLO confidence remain unverified |
@@ -83,13 +80,13 @@ In MVP, deterministic media checks can auto-pass technical validity, but the use
 
 ## Proposed values awaiting evidence/user sign-off
 
-- AvatarForcing production demotion: consider if the initial exact-avatar suite fails broadly or first-pass production rejection remains above roughly 10% after the first 10 real projects. This is not yet an approved automatic threshold.
+- EchoMimicV3-Flash production demotion: consider only after the later exact-avatar suite and first 10 real projects. No automatic threshold is approved.
 - Workspace active projects: one or two by default.
 - 30-minute default hard cap: $1.50, user-adjustable only up to the MVP contract ceiling of $2; current Serverless planning is about $0.40–$0.98 fast/no-major-fallback and $0.50–$1.30 with modest fallback.
 - Storage retention: intermediates 3–7 days, final 30 days.
 - Mage full resolution: select from benchmark candidates.
 - Style analyzer first-attempt target: <$0.08; total with one approved retry <$0.15.
-- Per-profile AvatarForcing compatibility preview remains optional in MVP: ready untested/stale profiles show a warning but remain selectable. Revisit only with rejection-rate evidence or an explicit user decision; never require the global 12–20-clip suite for every avatar.
+- Per-profile EchoMimicV3-Flash compatibility preview remains optional in MVP: ready untested/stale profiles show a warning but remain selectable. Revisit only with rejection-rate evidence or an explicit user decision; never require the global 12–20-clip suite for every avatar.
 
 ## Deferred decisions
 

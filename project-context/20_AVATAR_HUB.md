@@ -1,6 +1,6 @@
 # Avatar Hub
 
-Status: VF-5-01 worker and VF-5-02 durable fixture acceptance complete; locked Avatar ladder reaffirmed and bounded qualification authorized
+Status: VF-5-01/VF-5-02 durable fixture acceptance complete; EchoMimicV3-Flash is sole active avatar path
 Read when: implementing reusable avatars, avatar source upload/validation, project avatar selection, or avatar-source provenance.
 
 ## Product contract
@@ -73,7 +73,7 @@ flowchart LR
     D --> E["Approve and add to Hub"]
     E --> F["Selectable in Create Project"]
     E --> G{"Optional quick test?"}
-    G -- "Yes" --> H["AvatarForcing standard clips"]
+    G -- "Yes" --> H["EchoMimicV3-Flash standard clips"]
     H --> I["Review full and split compatibility"]
 ```
 
@@ -86,11 +86,11 @@ Detailed behavior:
 5. The user confirms one primary presenter, horizontal centering, direct-to-camera suitability, image-use rights, the right/consent to animate the depicted likeness, and consent to talking-avatar processing. Do not claim this manual confirmation is biometric or identity verification.
 6. `Approve and add to Avatar Hub` atomically makes the version immutable `READY`, points the parent to it, and makes it selectable. Nothing is made public; `publish` is only the internal state transition name.
 7. Offer—not require—an explicit short compatibility test. Show its exact one-time estimate before starting. No GPU starts merely because the profile was saved or selected.
-8. If requested, AvatarForcing generates three short standard clips covering ordinary speech, visible labials/teeth, and pauses/subtle head motion using owned test-audio fixtures. The user records the compatibility verdict after viewing each clip in both final crops.
+8. If requested after global qualification, EchoMimicV3-Flash generates three short standard clips covering ordinary speech, visible labials/teeth, and pauses/subtle head motion using owned test-audio fixtures. The user records the compatibility verdict after viewing each clip in both final crops.
 
 The optional three-clip quick test is a per-profile compatibility check, not the global model/GPU qualification suite in `14_TESTING_AND_ACCEPTANCE.md`. The global gate tests representative avatars and infrastructure once; the quick test gives extra confidence for this particular source. If the primary model/checkpoint/container/crop profile materially changes, the prior result becomes `STALE` without mutating the avatar payload. A ready untested/stale version remains selectable with a clear warning until benchmark evidence or a later explicit user decision makes a quick-test pass mandatory.
 
-MuseTalk is not part of avatar onboarding because it repairs a generated clip, not a still source. SkyReels compatibility is evaluated only when that heavy fallback is actually proposed and budget-approved.
+No repair or fallback model is active. All new Echo bindings keep repair/quality profile fields `null`.
 
 ## UI contract
 
@@ -197,7 +197,7 @@ Initial role matrix:
 - Creating the parent, uploading, validating metadata, and selecting a ready avatar requires no LLM and no recurring subscription.
 - An optional three-clip compatibility test is a one-time, separately estimated RunPod charge owned by `AVATAR_PROFILE_VERSION`, not by a video project. Initial planning target is at or below $0.20; the exact value remains part of `GATE_AVATAR_001` evidence.
 - A ready avatar adds only a small database/R2 lookup to ordinary project preflight. It does not increase the 30-minute per-video generation range.
-- Reusing the same source avoids repeated uploads and can reuse safe source preprocessing. It does **not** eliminate the AvatarForcing inference required for each video's unique selected speech spans.
+- Reusing the same source avoids repeated uploads and can reuse safe source preprocessing. It does **not** eliminate EchoMimicV3-Flash inference required for each video's unique selected speech spans.
 - Test workers scale to zero after the Hub test lane drains; no warm avatar worker is kept merely because profiles exist.
 
 ## Acceptance
@@ -205,7 +205,7 @@ Initial role matrix:
 - A user can create, leave, resume, test, review, approve, select, version, duplicate, and archive an avatar without a provider console or public sharing.
 - The project selector shows image + name and blocks only unready, erased, archived-parent, or inaccessible versions. Compatibility states only change warning strength under the proposed optional-test policy.
 - v1 remains selectable while v2 is open; approving v2 never mutates a revision pinned to v1.
-- The exact source/version/hash in the project revision reaches AvatarForcing and any SkyReels fallback; MuseTalk retains its clip-source lineage.
+- The exact source/version/hash in the project revision reaches EchoMimicV3-Flash; repair/quality bindings are `null`.
 - A new-avatar round trip from Create Project preserves every other input and verified upload handle.
 - One-time test spend is visible and separate; ready-avatar reuse causes zero onboarding/test calls.
 - Cross-workspace access, signed-URL, consent, deletion-in-use, idempotency, and version-race tests pass.

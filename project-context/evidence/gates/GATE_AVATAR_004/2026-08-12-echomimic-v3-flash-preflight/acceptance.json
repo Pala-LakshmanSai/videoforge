@@ -1,0 +1,14 @@
+{
+  "schema": "videoforge.gate-evidence/v1",
+  "gate_id": "GATE_AVATAR_004",
+  "task_id": "VF-9-22",
+  "checked_at": "2026-08-12T14:56:02Z",
+  "result": "PREFLIGHT_PASS_RUNTIME_BOOTSTRAP_OPEN",
+  "provider_calls": 0,
+  "model_download_bytes": 0,
+  "gpu_actions": 0,
+  "external_spend_usd": 0,
+  "source_manifest": "source-manifest.json",
+  "mismatch_found": false,
+  "next_requirement": "Worker bootstrap must download and verify every selected runtime file before inference."
+}

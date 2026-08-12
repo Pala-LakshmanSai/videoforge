@@ -1,223 +1,66 @@
 # VideoForge: start here
 
-Status: `VF-9-21` corrected worker ready; blocked on A100 capacity retry authority
+Status: `VF-9-22` complete; `VF-9-23` EchoMimicV3-Flash worker selected
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
-This folder is the durable project brain for new AI chats. It records what is approved, what is prohibited, what must still be benchmarked, and how to develop the product. Do not load every file blindly; use the read profiles in `MANIFEST.yaml`.
-
-## One-sentence product
-
-VideoForge is an invite-only web app for 5–10 teammates that accepts a title, final voiceover, reusable Avatar Profile selected from the Avatar Hub, and reusable Image Style, then automatically produces a 1920×1080 YouTube video using talking-avatar clips, highly relevant style-matched AI images with slow zooms, and a clean 50/50 avatar-left/image-right layout.
+VideoForge is an invite-only web app for 5–10 teammates. Input: title, final voiceover, exact ready
+Avatar Profile version, and immutable Image Style version. Output: 1920×1080 YouTube video using
+only full avatar, full AI image, or avatar-left/image-right split. Hard cuts only. Every AI image
+uses a slow, smooth centered zoom. No captions, titles, text overlays, lower thirds, borders,
+watermarks, motion graphics, decorative graphics, or decorative transitions.
 
 ## Current handoff
 
-Current selection is `VF-9-21`. Corrected immutable worker
-`sha256:42a14b44cd0ab42c85cd6de91a44009ba7897723ebef2ee18d358ee3c0e3a384`
-resolves exactly one MP4 fail-closed, delivery-encodes below 4 MiB, and uploads exact validated bytes.
-Its authorized job remained `IN_QUEUE`, acquired no A100-80GB worker, ran no inference, and spent
-`$0`; cleanup and independent inventory prove RunPod absolute zero. No further provider job is
-authorized. Never run MuseTalk, SkyReels, or LongCat.
+User superseded active AvatarForcing route with `DEC_AVATAR_007`: EchoMimicV3-Flash native output is
+sole active avatar path. AvatarForcing, MuseTalk, and SkyReels remain immutable historical
+evidence/replay only; no new dispatch. `VF-9-21` preserves `$0.4496891390` spend and zero-reviewable-
+output evidence. LongCat remains excluded.
 
-Phase 0A contracts/tooling, the accepted Phase 0B fixture shell, the accepted provider-free Phase 0C
-local ASR → scheduler → FFmpeg → Chrome/download slice, the full Phase 1 durable control plane, and
-Phase 2 durable timing/timeline convergence are complete and must not be redone. The Phase 2
-implementation/evidence pair remains `907e0e4`/`d16c2a9`; it proves exact selected-span audio,
-fresh-process restore, byte-equivalent local output, and real installed-Chrome
-creation/playback/approval/download at `$0`. All VF-1-06 corrective findings and VF-2-05 audit
-findings are closed.
+`VF-9-22` pinned public/ungated source, Flash weights, Wan base, and audio encoder revisions plus
+license artifacts and an exact `23,922,317,735`-byte selected runtime manifest under
+`evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight/`. No model bytes,
+credentials, providers, GPUs, or spend were used. `GATE_AVATAR_004` remains open until worker
+bootstrap reproduces the manifest. `GATE_AVATAR_001` remains open until sample/full qualification.
 
-The public repository and hosted CI checkpoint are established. `GATE_LLM_001` and
-`GATE_STYLE_001` are closed from bounded Runware DeepSeek/Gemini qualification. Provider-free
-DeepSeek/Gemini adapters and their fail-closed Runware runtime composition are committed. Runware
-qualification spent `$0.41003998` total; ordinary application mode remains `fixture` with provider
-calls disabled. RunPod scale-zero control is implemented and live inventory is zero.
+`CURRENT_STATE.yaml` selects only `VF-9-23` / `phase9_echomimic_v3_flash_worker`. Build one
+production-shaped worker at `$0` provider spend, publish one immutable GHCR image after local green,
+pin digest, pass full local/hosted verification, then select exactly `VF-9-24`.
 
-Provider-free DX/CI/doctor/dev ownership (`VF-DX-01/02`), telemetry (`VF-REL-01`), prompt/image
-acceptance (`VF-4-01/02`), Avatar fixture generation/acceptance (`VF-5-01/02`), and the complete
-provider-free Image Style lifecycle (`VF-7-01` through `VF-7-09`) are sorted and must not be redone.
-Migrations `0008`–`0012` cover durable style references/artifacts, prompt execution, accepted image
-assets, and accepted Avatar clips. Production PGlite services preserve exact revision, timeline,
-style, Avatar, task/attempt/outbox/callback, QA, cost, hash, replay, rollback, reopen, and restore
-lineage.
+## Locked active providers
 
-`VF-7-09` is complete at `6fb3312` plus Workerd correction `d9adee9`. Browser/server reference
-normalization, authenticated fixture lifecycle routes, review/edit/publication, exact project
-selection, preview, archive, reload/reopen, and accepted Hub UI are green. Forced full verification
-passed 786 tests/journeys: contracts 59/59, control-plane 209/209, web unit 181/181, Workerd 1/1,
-installed Chrome 38/38, zero skips, fixture mode, and `$0`. The server is stopped. Fixture Hub
-reference bytes remain session-scoped; production R2 and live provider orchestration are not done.
+| Task | Choice | Role |
+|---|---|---|
+| Image prompts | Runware DeepSeek V4 Flash 0731 | Batched strict JSON, thinking off |
+| Style analysis | Runware Gemini 3.5 Flash | Only explicit new draft-style analysis |
+| Images | Mage-Flow-Turbo BF16 via pinned ComfyUI | 4-step narration-relevant stills |
+| Avatar | EchoMimicV3-Flash | Sole active native avatar path |
+| Avatar repair/fallback | `null` | None active |
+| Timing | local `whisper.cpp base.en` | Free word timing |
+| Render | FFmpeg | Crops, zoom, hard cuts, audio, encode |
 
-AvatarForcing preflight `VF-3-10` is complete. It pinned GitHub code revision `63b73e6` and public
-weights revision `e244891`, but the official README's Apache-2.0 label conflicts with a root
-academic-only/non-commercial `LICENSE.txt` that names RollingForcing, while the weights card
-declares no license. Evidence/context commit is `96e5fd3`; `GATE_AVATAR_003` remains open.
-`VF-3-11` ended without a replacement after the user reaffirmed the finalized Brainstorm ladder and
-explicitly rejected reopening LongCat Avatar 1.5. AvatarForcing remains selected; ambiguity blocks
-only a clear-permission claim, not the user's bounded qualification. `VF-8-01` is complete at `21d6646`: explicit Node sandbox mode completed a real owned
-ASR/timeline/FFmpeg v3 run, restart restore, approval, and checksum-matched download at `$0`.
-`VF-8-02` Runware composition and `VF-8-03` RunPod scale-zero control are complete. `VF-8-04`
-built the pinned AvatarForcing worker and ran four bounded attempts for `$0.2020189583`; no output
-or model-bootstrap progress was produced, every resource was deleted, and `GATE_AVATAR_003` remains
-open. `VF-8-05` proved the built handler contract and selected a one-worker L40S/A100-80GB
-capacity correction. `VF-8-06` reached the real inference process but returned generic
-`AVATAR_PRIMARY_FAILED` for `$0.0263379630`, then deleted all resources. `CURRENT_STATE.yaml`
-selects `$0` secret-safe failure observability in `VF-8-07`.
-
-Production media remains unproven. Mage and AvatarForcing terms evidence is unresolved, but the user
-explicitly accepted that risk and authorized bounded qualification of the locked models without
-substitution. Image/avatar/GPU/RunPod/fallback/cost/style-adherence gates remain open. No production
-Neon/R2/Workflow/OAuth deployment exists. `CURRENT_STATE.yaml`
-remains the replace-in-place ownership/handoff source; preserve accepted UI, renderer, local output,
-architecture, and product rules.
-
-## Approved MVP
-
-Allowed output compositions are only:
-
-1. Full-screen avatar.
-2. Full-screen Mage-Flow image with a slow, smooth zoom-in.
-3. 50/50 AvatarForcing avatar on the left and Mage-Flow image on the right.
-
-AI B-roll video is explicitly deferred. The architecture keeps an adapter boundary for it, but no AI-video worker, UI, model, cost, or pipeline stage belongs in the MVP.
-
-The normal user supplies:
-
-- Video title.
-- Final voiceover audio.
-- A ready named Avatar Profile selected by image and name from the Avatar Hub. Avatar upload happens once in that Hub, never inside an ordinary project.
-- A published Image Style, preselected to the built-in `documentary_stock_v1` realistic stock-footage look.
-- Optional extra image-prompt keywords plus an explicit apply toggle; the toggle defaults off.
-
-The first-shell Create Project UI does not expose an exact-script field. Local ASR text is canonical on that path. The versioned API may continue accepting nullable `optional_script` for backward compatibility, but the web shell sends `null`.
-
-The Image Styles Hub creates reusable styles from reference images. Runware Gemini 3.5 Flash runs only when a new draft style version is explicitly analyzed; ordinary projects reuse the pinned text profile and never make a per-video/per-image vision call.
-
-The Avatar Hub creates reusable private presenter presets from one centered source image. A project pins the exact ready profile version and canonical source checksum; reusing it adds no LLM or onboarding call to the video pipeline.
+Fixture mode remains default and `$0`. Production Neon/R2/Workflow/OAuth deployment, accepted Mage
+image, accepted Echo clip, production execution profiles, 30-minute benchmarks, and production
+release remain unproven.
 
 ## Absolute rules
 
-- Never output motion graphics.
-- Never output captions, titles, lower-thirds, animated words, logos, infographics, arrows, borders, watermarks, chapter cards, or decorative overlays.
-- Never output dissolves, wipes, glitches, light leaks, or decorative transitions. Use hard cuts.
-- Slow image zoom-in is required and is allowed.
-- This includes the image on the right of every split; no AI image is static.
-- Do not use an LLM to choose avatar/full/split/image timing.
-- Pin an immutable published Image Style version to every project revision.
-- Require an exact ready Avatar Profile version; never accept an inline per-project avatar upload or resolve mutable `latest` state inside a worker.
-- Do not run reference-image analysis during ordinary video generation.
-- Do not send the full voiceover to the avatar model. Send only scheduled avatar spans plus small worker-side context padding.
-- Generate one avatar clip and derive both full-screen and split layouts from deterministic crops. Never generate a second layout-specific avatar clip.
-- Relatability to the exact narration phrase and faithful selected-style rendering are the primary image quality measures; the built-in default specifically requires believable documentary realism.
-- All RunPod work is automated through APIs. The user is never required to operate the RunPod console.
-- GPU workers scale to zero when their shared lane drains. Never stop a worker while queued or active work exists.
-- No Supabase Pro, Redis, Kubernetes, Temporal, Remotion, HyperFrames, paid Whisper API, or always-on control server is required for the MVP.
-- Subjective avatar whole-frame failures are user/reviewer-classified in MVP; do not invent an automatic visual-QA stage.
-
-## Locked models and providers
-
-| Task | Approved choice | Exact production role |
-|---|---|---|
-| Image-prompt writing | Runware DeepSeek V4 Flash 0731 | Batched strict JSON; thinking off; image prompts only |
-| Reference-style analysis | Runware Gemini 3.5 Flash | Qualified strict-JSON analysis only when a new draft style version is explicitly analyzed; prompt-only adherence remains gated |
-| Image generation | Mage-Flow-Turbo BF16 via pinned headless ComfyUI | 4-step Turbo; narration-relevant stills compiled for the pinned style |
-| Primary avatar | AvatarForcing | User-reaffirmed selection; bounded qualification authorized with unresolved terms risk recorded |
-| Lip-only repair | MuseTalk 1.5 | Only an otherwise-good failed AvatarForcing clip |
-| Whole-frame avatar fallback | SkyReels V3 Talking Avatar | Same pinned runtime source + selected span audio, never a failed derivative; cold quality fallback |
-| Word timing | Local `whisper.cpp base.en` | Free ASR; local ASR is canonical in the web shell, with legacy optional-script alignment retained only at the versioned API boundary |
-| Composition/render | FFmpeg | EDL, crops, zoom, hard cuts, loudness, encode |
-
-The avatar router and crop geometry are user-approved. AvatarForcing terms remain contradictory and
-the weights metadata omits a license, but the user explicitly accepted the unresolved risk and
-authorized continuing the locked ladder. `VF-3-11` selected no replacement; LongCat remains excluded.
-Qualification evidence must retain the ambiguity and cannot claim clear commercial permission.
-
-## Reference-derived edit grammar
-
-Two audited Ranga references both use about 22% avatar footage, divided almost equally between full-screen and 50/50. The combined average avatar appearance is about 3.74 seconds, typical clips are 2–6 seconds, the median image-only gap is about 11.2 seconds, and hard cuts dominate.
-
-VideoForge turns this into a reproducible code rule:
-
-- Cold-open with full-screen avatar.
-- Target one short avatar appearance every 14–20 seconds.
-- Alternate full-screen and 50/50 avatar layouts as the application rule.
-- Snap every boundary to a phrase or sentence.
-- Converge toward 21–22% total avatar, about half full and half split.
-- Fill all other time with 3–7 second narration-relevant images.
-
-For 30 minutes this is approximately 396 seconds of avatar, about 105 short avatar appearances, and around 220–320 generated images including images used on the right side of split shots. The exact count follows speech boundaries.
-
-## Simple architecture
-
-```mermaid
-flowchart LR
-    U["Chrome web app"] --> C["One Cloudflare Worker: Vite assets + Hono API"]
-    C --> DB["Postgres metadata, preset catalogs, and queue truth"]
-    C --> R2["Private R2 artifacts"]
-    C -. "draft style analysis only" .-> VS["Runware Gemini style analyzer"]
-    C --> RW["Runware DeepSeek"]
-    C --> I["RunPod Mage endpoint, min 0"]
-    C --> A["RunPod AvatarForcing endpoint, min 0"]
-    A -. "lip-only failure" .-> M["Cold MuseTalk repair"]
-    A -. "whole-frame failure" .-> S["Cold SkyReels fallback"]
-    I --> F["FFmpeg render job"]
-    A --> F
-    F --> R2
-```
-
-Recommended zero-required-subscription control plane: one Cloudflare Vite Worker serving the React app and same-origin Hono API, Cloudflare Workflows for durable waits, Neon Free Postgres, Google OAuth/admin allowlist, private R2, and scale-to-zero RunPod endpoints. This is $0 required only while current free allowances suffice. Vercel can be used for previews or with Pro, but its $0 Hobby plan is officially personal/non-commercial and is not the production cost assumption.
-
-## Cost and speed target
-
-For a 30-minute, no-whole-frame-fallback project:
-
-- Selecting a ready Avatar Profile adds no onboarding/model call. Optional profile testing is a separate explicit one-time cost, never charged to the video's cap.
-- A ready Image Style adds no vision call; creating a new 3–8-reference style is a separate one-time planning cost of roughly $0.03–$0.07.
-- Runware prompts: roughly $0.005–$0.015.
-- Mage images: $0.12–$0.25 sensitivity; target at or below $0.20 after measured batching/caching.
-- Local ASR: $0 API cost and negligible incremental GPU cost.
-- AvatarForcing: planning range $0.20–$0.51 on the Serverless Flex sensitivity path, benchmark-gated.
-- Render/technical QA: roughly $0.06–$0.15 on the current GPU baseline.
-- Derived fast/no-major-fallback total: approximately $0.40–$0.98; planning with modest fallback: about $0.50–$1.30.
-- Default project hard cap before approval: $1.50; UI may expose a user-selected cap up to $2.
-
-The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 30-minute final video; queue wait is reported separately. These are targets, not measured promises. Image and avatar lanes run concurrently; never add their times when calculating the critical path.
-
-## First implementation rule
-
-Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and
-`19_IMPLEMENTATION_PLAYBOOK.md`. Preserve all completed commits, the accepted fixture shell, and
-the user-accepted local render. Execute only the exact task selected by `CURRENT_STATE.yaml`; its
-authority is not transferable. Selected `VF-9-17` permits only `$0` local provider-shaped render
-composition, tests, evidence, Git push, and installed-Chrome verification. Provider calls,
-credentials, GPU/model downloads, RunPod/Runware mutation, deployment, profile promotion, and spend
-remain unauthorized.
+- Project selects exact ready Avatar Profile version; no project-local avatar upload.
+- Project pins exact immutable published Image Style; ordinary generation makes no style vision call.
+- Send only scheduled avatar spans, never full voiceover.
+- One native avatar clip serves both layouts after measured crop approval.
+- No repair, fallback, retry, tuning, model/GPU substitution, deployment, or production promotion
+  without explicit task authority.
+- RunPod is API-only, `workersMin=0`, bounded workers/jobs, exact cost, finally cleanup, independent
+  zero proof.
+- Private input/output/model/credential bytes never enter Git or public image.
+- Technical success is `READY_FOR_USER_REVIEW`; only user approves visual quality.
 
 ## Context navigation
 
-- Product and scope: `01_PRODUCT_REQUIREMENTS.md`
-- Current implementation/handoff snapshot: `CURRENT_STATE.yaml`
-- Normative naming: `GLOSSARY.md`
-- Final video specification: `02_OUTPUT_VIDEO_SPEC.md`
-- Ranga measurements and frames: `03_REFERENCE_VIDEO_FORENSICS.md` and `references/ranga/`
-- Image prompting and visual identity: `04_VISUAL_IDENTITY_AND_PROMPTS.md`
-- Image Styles Hub and reference analysis: `18_IMAGE_STYLES_HUB.md`
-- Avatar Hub and reusable presenter sources: `20_AVATAR_HUB.md`
-- UI/UX: `05_UI_UX_SPEC.md`
-- Services and data flow: `06_SYSTEM_ARCHITECTURE.md`
-- Timeline algorithm and pipeline: `07_PIPELINE_AND_SCHEDULER.md`
-- Models and exact modes: `08_MODELS_AND_PROVIDERS.md`
-- RunPod, queue, lifecycle: `09_RUNPOD_AND_QUEUE_OPERATIONS.md`
-- Contracts/state: `10_DATA_AND_API_CONTRACTS.md`
-- Cost/speed math: `11_COST_SPEED_BUDGET.md`
-- Development sequence: `12_DEVELOPMENT_PLAN.md`
-- Engineering practices: `13_ENGINEERING_BEST_PRACTICES.md`
-- Acceptance: `14_TESTING_AND_ACCEPTANCE.md`
-- Approved decisions/open gates: `15_DECISIONS_AND_OPEN_GATES.md`
-- Keeping this pack current: `16_CONTEXT_MAINTENANCE.md`
-- Official and local evidence: `17_SOURCE_INDEX.md`
-- Live-development protocol: `19_IMPLEMENTATION_PLAYBOOK.md`
-- Exact remaining task order and safe parallelism: `21_IMPLEMENTATION_EXECUTION_PLAN.md`
-- Exact implementation task briefs: `tasks/README.md`; the current file is selected by `CURRENT_STATE.yaml`
-- Gate status/evidence paths: `GATES.yaml`
-- Reproducible context/schema validation: `scripts/validate-context.sh` and `scripts/validate-schemas.sh`
+Read `MANIFEST.yaml`, `CURRENT_STATE.yaml`, then only selected profile and task. Normative decisions:
+`15_DECISIONS_AND_OPEN_GATES.md`; models: `08_MODELS_AND_PROVIDERS.md`; pipeline:
+`07_PIPELINE_AND_SCHEDULER.md`; RunPod: `09_RUNPOD_AND_QUEUE_OPERATIONS.md`; cost:
+`11_COST_SPEED_BUDGET.md`; acceptance: `14_TESTING_AND_ACCEPTANCE.md`; Avatar Hub:
+`20_AVATAR_HUB.md`; execution: `21_IMPLEMENTATION_EXECUTION_PLAN.md`; maintenance:
+`16_CONTEXT_MAINTENANCE.md`.

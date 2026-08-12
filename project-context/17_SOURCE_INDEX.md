@@ -1,6 +1,6 @@
 # Source index
 
-Status: evidence map; AvatarForcing sources refreshed 2026-08-11; other model/provider/infrastructure sources refreshed 2026-08-10; Phase 1 database sources checked 2026-08-10
+Status: evidence map; EchoMimicV3-Flash sources refreshed 2026-08-12; historical AvatarForcing sources refreshed 2026-08-11; other sources refreshed 2026-08-10
 Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 
 ## Official model/provider sources
@@ -16,6 +16,12 @@ Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 - Google Gemini 3.6 Flash quality-fallback candidate: [ai.google.dev/gemini-api/docs/models/gemini-3.6-flash](https://ai.google.dev/gemini-api/docs/models/gemini-3.6-flash)
 - Mage-Flow-Turbo model card: [huggingface.co/microsoft/Mage-Flow-Turbo](https://huggingface.co/microsoft/Mage-Flow-Turbo)
 - Mage code: [github.com/microsoft/Mage](https://github.com/microsoft/Mage)
+- EchoMimicV3 pinned source: [antgroup/echomimic_v3 at `7e89489`](https://github.com/antgroup/echomimic_v3/tree/7e89489ca51c0d008fc1963ec6c03fc5bd0b9397)
+- EchoMimicV3-Flash pinned weights: [BadToBest/EchoMimicV3 at `311e176`](https://huggingface.co/BadToBest/EchoMimicV3/tree/311e176905a8c4c24b240b530488fe636ce4d249)
+- EchoMimic Wan base: [Wan2.1-Fun-V1.1-1.3B-InP at `fc913c3`](https://huggingface.co/alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP/tree/fc913c34361f4ec879e2f9c78b4f11ae50a937d1)
+- EchoMimic audio encoder: [chinese-wav2vec2-base at `3991242`](https://huggingface.co/TencentGameMate/chinese-wav2vec2-base/tree/3991242c806928916fff4a8c0e4f76acf661b743)
+- EchoMimic exact access/license/runtime manifest: `evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight/`
+- Historical only; no new dispatch:
 - AvatarForcing pinned code revision: [KlingAIResearch/AvatarForcing at `63b73e6`](https://github.com/KlingAIResearch/AvatarForcing/tree/63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39)
 - AvatarForcing pinned contradictory academic-only/non-commercial license artifact: [`LICENSE.txt` at `63b73e6`](https://github.com/KlingAIResearch/AvatarForcing/blob/63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39/LICENSE.txt)
 - AvatarForcing pinned public weights repository with no declared license: [`lycui/AvatarForcing` at `e244891`](https://huggingface.co/lycui/AvatarForcing/tree/e2448919a7b535c29f34e07892884ae1a43c6ace)

@@ -3,40 +3,28 @@
 ```text
 Continue VideoForge in /Users/lakshmansai/Documents/videoforge.
 
-Keep responses concise and spend-conscious. Focus on the selected task and evidence.
+Keep responses concise and spend-conscious.
 
 1. Read AGENTS.md.
-2. Read project-context/00_START_HERE.md.
-3. Read project-context/MANIFEST.yaml.
-4. Read project-context/CURRENT_STATE.yaml.
-5. Run git status --short --branch. Require clean HEAD descending from 95ff125 (which descends from
-   all preserved provider/runtime checkpoints and verified implementation checkpoint d9adee9).
-6. Preserve every commit. Never reset, rewrite, or redo completed work.
-7. Load only CURRENT_STATE.recommended_next_task, its one MANIFEST read profile, and exact brief.
-   Do not run a broad research pass or preload later profiles/briefs.
+2. Read project-context/00_START_HERE.md, MANIFEST.yaml, and CURRENT_STATE.yaml.
+3. Require clean tracked HEAD descending from 2b7eb5b; preserve ignored private inputs.
+4. Load only phase9_echomimic_v3_flash_worker and tasks/VF-9-23.md.
 
-Selected task: VF-9-17 real-provider render composition boundary.
-Profile: phase9_real_provider_render_composition.
-Brief: project-context/tasks/VF-9-17.md.
+VF-9-22 is complete. EchoMimicV3-Flash is sole active avatar path. AvatarForcing, MuseTalk,
+SkyReels, and their decisions/evidence are historical replay only; never dispatch them. LongCat
+remains excluded.
 
-This task permits local application/control-plane/renderer/tests/docs, Git push, hosted CI, and
-installed-Chrome verification at `$0`. Do not access credentials, download models, call providers,
-mutate RunPod/Runware/GPU/cloud resources, deploy, promote profiles, redesign UI, or spend.
+Implement one pinned production-shaped EchoMimicV3-Flash worker in workers/avatar-primary. Preserve
+secure generic job/result, signed transfer, checksum, cancellation, deadline, redaction, cost,
+unique-output, cleanup, and independent-zero boundaries. Exact source/runtime manifest is under
+evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight/. Weights stay outside image,
+bootstrap once into ephemeral /models, verify exact files, and reject incomplete/mutated cache.
+Use RTX 4090 only in later sample task; no silent fallback.
 
-Preserve every completed task and accepted UI/output. Checkpoint `95ff125` already implements the
-pure provider-acceptance render-input barrier and passes focused pipeline build/typecheck/lint plus
-116/116 tests. Do not redo it. Compose durable Mage/Avatar acceptance records into the barrier,
-preserve exact lineage, and build one fake-real 30–120-second local FFmpeg v3 path. Prove missing or
-rejected QA, checksum drift, cancellation, and restart/replay fail closed. Rejected real evidence
-from VF-9-13 and VF-8-10 must never become accepted render input.
-
-Finish with FFmpeg v3, installed-Chrome play/seek/approve/download/hash proof, forced full verify,
-context/schema validation, secret scan, Prettier, dependency audit, git diff check, server stopped,
-clean commit, and refreshed CURRENT_STATE. Close VF-9-17 only when every acceptance item exists;
-otherwise leave a truthful resumable checkpoint.
-
-Stop on dirty unexplained state, missing brief, context contradiction, rejected real evidence
-entering render, credential/provider/GPU activity, external mutation, charge, or failed validation.
+VF-9-23 permits local code/tests, Git push, hosted CI, and one GHCR image build after local green.
+Provider calls, RunPod mutation, model downloads, GPU use, and provider spend are $0/unauthorized.
+After full local/hosted green and pinned digest, refresh state to exactly VF-9-24. Stop on any
+manifest mismatch, failed test/build, unexplained tracked dirt, or nonzero RunPod inventory.
 ```
 
-If this template disagrees with `CURRENT_STATE.yaml`, stop and reconcile it; current state wins.
+If this template disagrees with `CURRENT_STATE.yaml`, stop and reconcile; current state wins.
