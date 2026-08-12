@@ -79,15 +79,39 @@ export function assertRunPodEndpointPolicy(value: RunPodEndpointPolicy): void {
 }
 
 export class RunPodDrainGuard {
-  private state: "unknown" | "active" | "draining" | "queue_empty" | "zero" = "unknown";
+  private state: "unknown" | "active" | "warm_idle" | "draining" | "queue_empty" | "zero" =
+    "unknown";
 
   markActive(): void {
     this.state = "active";
   }
 
   beginDrain(): void {
-    if (this.state !== "active") throw new RunPodControlError("RUNPOD_DRAIN_STATE_INVALID");
+    if (this.state !== "active" && this.state !== "warm_idle") {
+      throw new RunPodControlError("RUNPOD_DRAIN_STATE_INVALID");
+    }
     this.state = "draining";
+  }
+
+  confirmWarmIdle(
+    idleWorkerCount: number,
+    runningWorkerCount: number,
+    queuedJobCount: number,
+  ): void {
+    if (
+      this.state !== "active" ||
+      !Number.isSafeInteger(idleWorkerCount) ||
+      !Number.isSafeInteger(runningWorkerCount) ||
+      !Number.isSafeInteger(queuedJobCount) ||
+      idleWorkerCount < 0 ||
+      idleWorkerCount > 1 ||
+      runningWorkerCount !== 0 ||
+      queuedJobCount !== 0
+    ) {
+      this.state = "unknown";
+      throw new RunPodControlError("RUNPOD_WARM_IDLE_NOT_CONFIRMED");
+    }
+    this.state = "warm_idle";
   }
 
   confirmZero(activeWorkerCount: number, queuedJobCount: number): void {
@@ -116,7 +140,9 @@ export class RunPodDrainGuard {
   }
 
   assertDispatchAllowed(): void {
-    if (this.state !== "zero") throw new RunPodControlError("RUNPOD_DISPATCH_BLOCKED");
+    if (this.state !== "zero" && this.state !== "warm_idle") {
+      throw new RunPodControlError("RUNPOD_DISPATCH_BLOCKED");
+    }
   }
 
   assertTerminationAllowed(): void {
@@ -551,6 +577,28 @@ export class RunPodServerlessJobClient {
     const queuedJobs =
       (numberOrNull(jobs?.inQueue) ?? Number.NaN) + (numberOrNull(jobs?.inProgress) ?? Number.NaN);
     this.options.guard.confirmZero(activeWorkers, queuedJobs);
+  }
+
+  async confirmWarmIdle(maxAttempts = 30): Promise<void> {
+    if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 60) {
+      throw new RunPodControlError("RUNPOD_WARM_IDLE_POLICY_INVALID");
+    }
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const value = await this.request("GET", "/health");
+      const workers = record(value.workers);
+      const jobs = record(value.jobs);
+      const idle = numberOrNull(workers?.idle) ?? Number.NaN;
+      const running = numberOrNull(workers?.running) ?? Number.NaN;
+      const queued =
+        (numberOrNull(jobs?.inQueue) ?? Number.NaN) +
+        (numberOrNull(jobs?.inProgress) ?? Number.NaN);
+      if (Number.isSafeInteger(idle) && idle <= 1 && running === 0 && queued === 0) {
+        this.options.guard.confirmWarmIdle(idle, running, queued);
+        return;
+      }
+      if (attempt + 1 < maxAttempts) await this.sleep(2_000);
+    }
+    this.options.guard.confirmWarmIdle(Number.NaN, Number.NaN, Number.NaN);
   }
 
   async confirmQueueEmpty(): Promise<void> {

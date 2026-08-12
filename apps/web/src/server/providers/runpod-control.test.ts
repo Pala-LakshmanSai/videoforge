@@ -45,6 +45,54 @@ describe("RunPod scale-zero control", () => {
     expect(() => guard.assertDispatchAllowed()).toThrow("RUNPOD_DISPATCH_BLOCKED");
   });
 
+  it("permits one sequential dispatch only after provider health proves warm idle", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/run"))
+        return response({ id: `job_${fetch.mock.calls.length}`, status: "IN_QUEUE" });
+      return response({
+        workers: { idle: 1, running: 0 },
+        jobs: { inQueue: 0, inProgress: 0 },
+      });
+    });
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+
+    await client.dispatch("attempt_01", { value: "first" });
+    expect(() => guard.assertDispatchAllowed()).toThrow("RUNPOD_DISPATCH_BLOCKED");
+    await client.confirmWarmIdle();
+    expect(guard.snapshot()).toBe("warm_idle");
+    await expect(client.dispatch("attempt_02", { value: "second" })).resolves.toMatchObject({
+      status: "IN_QUEUE",
+    });
+    expect(
+      fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname.endsWith("/run")),
+    ).toHaveLength(2);
+  });
+
+  it("fails closed when warm-idle health reports running, queued, or excess workers", () => {
+    for (const counts of [
+      [0, 1, 0],
+      [1, 0, 1],
+      [2, 0, 0],
+    ] as const) {
+      const guard = new RunPodDrainGuard();
+      guard.confirmZero(0, 0);
+      guard.markActive();
+      expect(() => guard.confirmWarmIdle(counts[0], counts[1], counts[2])).toThrow(
+        "RUNPOD_WARM_IDLE_NOT_CONFIRMED",
+      );
+      expect(guard.snapshot()).toBe("unknown");
+    }
+  });
+
   it("returns redacted live-shaped inventory and preserves the bearer only in transport", async () => {
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${key}`);
