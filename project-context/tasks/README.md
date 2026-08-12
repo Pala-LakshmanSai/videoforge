@@ -25,4 +25,6 @@ hosted green. `VF-9-24` dispatched one job, then stopped when RunPod created thr
 records; no MP4 or paid retry authority exists. `VF-9-24A` completed the provider-free correction
 and published the corrected GHCR image. `VF-9-24B` failed before model-ready on a truncated tokenizer
 digest, spent `$0.0260412778`, and ended at absolute zero. `VF-9-24C` is the sole selected
-provider-free digest correction and image build; it cannot dispatch a second sample.
+provider-free digest correction and image build and is complete. `VF-9-24D` owns one
+digest-corrected sample attempt within the user's `$2` cumulative ceiling and must show the MP4 or
+exact failure before absolute-zero cleanup.

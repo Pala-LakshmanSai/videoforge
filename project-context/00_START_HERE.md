@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-24C` provider-free tokenizer digest correction selected
+Status: `VF-9-24D` one digest-corrected EchoMimic sample authorized
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -38,7 +38,9 @@ observability, and exact-entrypoint image smoke. The corrected worker is pinned 
 `sha256:79e799a1312168123aed0809cc93c9d83047bef2354ff5dbac77caed64da87f1`. Paid RunPod use needs a
 fresh explicit cap. `VF-9-24B` consumed one attempt and `$0.0260412778`, failing before model-ready
 because one pinned tokenizer SHA-256 omitted its final `b`. Cleanup is absolute zero. `VF-9-24C`
-corrects that pin, adds the missing digest-length regression shield, and publishes one image at `$0`.
+corrected that pin, added the missing digest-length regression shield, and published image
+`sha256:d0e487d13bf19b74d09af5c7bb3b800eb2faa75dcce6eca9e155a48b0403ffe9` at `$0`. `VF-9-24D`
+owns one attempt within the user's `$2` cumulative ceiling and the primary goal is to show its MP4.
 
 ## Locked active providers
 

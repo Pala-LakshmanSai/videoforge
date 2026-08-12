@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T17:12:00Z"
+updated_at: "2026-08-12T17:24:00Z"
 
-phase: echomimic_v3_flash_digest_correction
-implementation_authorized_in_current_task: true
-current_milestone: avatar_primary_worker_digest_correction
-current_task: VF-9-24C
+phase: echomimic_v3_flash_digest_corrected_sample
+implementation_authorized_in_current_task: false
+current_milestone: avatar_primary_native_sample
+current_task: VF-9-24D
 current_wave: wave_9_echomimic_sample_first
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -17,8 +17,8 @@ repository:
   branch: main
   base_commit: "2b7eb5b9e38061eb7ffc44178aba285bc5f65969"
   planning_handoff_commit: "f0829b930e5cf9084312da030f1807a6e269b06f"
-  last_good_commit: "77d6008b57fb4ccd7c457e578f6e1e3bdc1f5d37"
-  working_tree_expected: tracked_vf_9_24c_correction_plus_ignored_private_inputs
+  last_good_commit: "a2a4adc93317e14a4aca0e6b70687908e756b7d7"
+  working_tree_expected: tracked_vf_9_24d_authority_update_plus_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
 live_development:
@@ -30,10 +30,10 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-24B authority is consumed. VF-9-24C is provider-free code/context/Git/GHCR correction only; another sample requires new explicit authority."
-  worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:79e799a1312168123aed0809cc93c9d83047bef2354ff5dbac77caed64da87f1"
+  provider_calls_authorized: true
+  authorized_spend_usd: 1.9739587222
+  provider_authority_scope: "VF-9-24D only: one digest-corrected EchoMimic attempt within the user's $2 cumulative ceiling after $0.0260412778 settled; operational breaker remains $0.50/$0.45; mandatory immediate cleanup and absolute-zero proof."
+  worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:d0e487d13bf19b74d09af5c7bb3b800eb2faa75dcce6eca9e155a48b0403ffe9"
   last_user_checkpoint:
     result: accepted
     commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
@@ -81,37 +81,53 @@ completed_tasks:
     reviewable_output: null
     evidence: "evidence/acceptance/VF-9-24B/elias-echomimic-v3-flash-corrected-sample"
     final_absolute_zero_checked_at: "2026-08-12T17:10:59.035Z"
+  - task_id: VF-9-24C
+    status: complete
+    implementation_commit: "a2a4adc93317e14a4aca0e6b70687908e756b7d7"
+    worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:d0e487d13bf19b74d09af5c7bb3b800eb2faa75dcce6eca9e155a48b0403ffe9"
+    image_build_run: 31621999971
+    hosted_verify_run: 31622000295
+    external_spend_usd: 0
+    evidence: "evidence/acceptance/VF-9-24C/echomimic-tokenizer-digest-correction"
 
 active_ownership:
-  - task_id: VF-9-24C
+  - task_id: VF-9-24D
     owner: single_integration_lane
-    scope: "correct truncated tokenizer digest, regression test, verification, and one GHCR build"
+    scope: "one digest-corrected EchoMimic sample, private MP4, evidence, and absolute-zero cleanup"
 
 blocked_tasks: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-9-24C
-  milestone: avatar_primary_worker_digest_correction
-  status: authorized_provider_free_implementation
-  dependency_status: vf_9_24b_terminal_failure_cleanup_absolute_zero
-  authorization_status: code_context_git_and_one_ghcr_build_only
-  read_profile: phase9_echomimic_v3_flash_digest_correction
-  task_brief: tasks/VF-9-24C.md
-  goal: "Correct the truncated tokenizer digest, publish a tested pinned image, then stop."
-  provider_calls_authorized: false
-  maximum_external_spend_usd: 0
+  task_id: VF-9-24D
+  milestone: avatar_primary_native_sample
+  status: authorized_one_digest_corrected_attempt
+  dependency_status: vf_9_24c_corrected_image_green_runpod_absolute_zero
+  authorization_status: user_authorized_cumulative_max_2_remaining_1_9739587222
+  read_profile: phase9_echomimic_v3_flash_digest_corrected_sample
+  task_brief: tasks/VF-9-24D.md
+  goal: "Reach model-ready, produce the exact private sample, show it here, and prove RunPod absolute zero."
+  provider_calls_authorized: true
+  maximum_external_spend_usd: 1.9739587222
+  provider_authority:
+    provider: RunPod
+    model_id: EchoMimicV3-Flash@311e176905a8c4c24b240b530488fe636ce4d249
+    cap_usd: 1.9739587222
+    cumulative_cap_usd: 2
+    prior_settled_spend_usd: 0.026041277800000984
+    non_transferable: true
+    authorized_by_user_at: "2026-08-12T17:04:00Z"
   remote_or_cloud_mutations_authorized: true
-  remote_scope: "Git push, hosted verification, and one corrected GHCR worker build only; no RunPod mutation."
-  credential_access_authorized: false
-  model_downloads_authorized: false
-  application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-9-24C/echomimic-tokenizer-digest-correction"
+  remote_scope: "RunPod API only for one temporary template, endpoint, RTX 4090 worker/job, cancellation/drain/deletion, final inventory/balance reads, and exact output recovery."
+  credential_access_authorized: true
+  model_downloads_authorized: true
+  application_code_changes_authorized: false
+  expected_evidence: "evidence/acceptance/VF-9-24D/elias-echomimic-v3-flash-digest-corrected-sample"
   required_handoff:
-    - "Pin a corrected worker digest after local and hosted green."
-    - "Keep RunPod absolute zero and request explicit second-attempt authority."
+    - "Return a probed private MP4 and show it here, or exact terminal failure evidence."
+    - "Delete every resource and prove absolute zero with stable balance."
   prohibited_in_task:
-    - "RunPod call, paid retry, model download, GPU, fallback, substitution, app integration, deployment, migration, profile promotion, or successor task."
+    - "Second VF-9-24D attempt, fallback, substitution, app integration, deployment, migration, profile promotion, or successor task."
     - "AvatarForcing, MuseTalk, SkyReels, LongCat, A100, RTX 5090, or network volume."
 
 blocking_gates_for_production:
@@ -130,10 +146,10 @@ progress_snapshot:
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: vf_9_24c_digest_correction_selected
+  status: vf_9_24d_authorized_one_attempt
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Load only phase9_echomimic_v3_flash_digest_correction and tasks/VF-9-24C.md."
-    - "Correct the digest, publish one tested image, and do not call RunPod."
+    - "Load only phase9_echomimic_v3_flash_digest_corrected_sample and tasks/VF-9-24D.md."
+    - "Run one attempt, show the private MP4 if successful, and prove absolute zero."
   stop_conditions:
-    - "Any RunPod call, paid retry, model download, GPU use, successor selection, or roadmap continuation."
+    - "Any second attempt, cumulative spend above $2, fallback/substitution, unconfirmed cleanup, successor selection, or roadmap continuation."
