@@ -254,6 +254,7 @@ export class RunPodControlClient {
     name: string,
     imageName: string,
     containerDiskInGb: number,
+    environment: Readonly<Record<string, string>> = {},
   ): Promise<RunPodResourceIdentity> {
     if (!ID.test(name) || !/^[a-z0-9./:_-]+@[a-z0-9:+._-]+$/u.test(imageName)) {
       throw new RunPodControlError("RUNPOD_TEMPLATE_INPUT_INVALID");
@@ -274,7 +275,7 @@ export class RunPodControlClient {
           containerDiskInGb,
           dockerEntrypoint: [],
           dockerStartCmd: [],
-          env: { LOG_LEVEL: "INFO", RUNPOD_INIT_TIMEOUT: "800" },
+          env: { LOG_LEVEL: "INFO", RUNPOD_INIT_TIMEOUT: "800", ...environment },
           imageName,
           isPublic: false,
           isServerless: true,
@@ -297,6 +298,10 @@ export class RunPodControlClient {
     templateId: string,
     gpuTypeIds: readonly string[],
     policy: RunPodEndpointPolicy,
+    placement: {
+      readonly networkVolumeId?: string;
+      readonly dataCenterIds?: readonly string[];
+    } = {},
   ): Promise<RunPodResourceIdentity> {
     assertRunPodEndpointPolicy(policy);
     if (!ID.test(name) || !ID.test(templateId) || gpuTypeIds.length < 1 || gpuTypeIds.length > 2) {
@@ -304,6 +309,13 @@ export class RunPodControlClient {
     }
     if (gpuTypeIds.some((gpu) => typeof gpu !== "string" || gpu.length > 100)) {
       throw new RunPodControlError("RUNPOD_ENDPOINT_INPUT_INVALID");
+    }
+    if (
+      (placement.networkVolumeId !== undefined && !ID.test(placement.networkVolumeId)) ||
+      (placement.dataCenterIds !== undefined &&
+        (placement.dataCenterIds.length !== 1 || !ID.test(placement.dataCenterIds[0] ?? "")))
+    ) {
+      throw new RunPodControlError("RUNPOD_ENDPOINT_PLACEMENT_INVALID");
     }
     const value = record(
       await this.mutate(
@@ -317,6 +329,8 @@ export class RunPodControlClient {
           gpuTypeIds,
           idleTimeout: policy.idleTimeout,
           name,
+          ...(placement.networkVolumeId ? { networkVolumeId: placement.networkVolumeId } : {}),
+          ...(placement.dataCenterIds ? { dataCenterIds: placement.dataCenterIds } : {}),
           scalerType: "QUEUE_DELAY",
           scalerValue: 1,
           templateId,
@@ -335,6 +349,37 @@ export class RunPodControlClient {
       throw new RunPodControlError("RUNPOD_SCALE_ZERO_UNCONFIRMED");
     }
     return Object.freeze({ id: value.id, idHash: hashId(value.id) });
+  }
+
+  async createNetworkVolume(
+    name: string,
+    sizeGb: number,
+    dataCenterId: string,
+  ): Promise<RunPodResourceIdentity> {
+    if (
+      !ID.test(name) ||
+      !ID.test(dataCenterId) ||
+      !Number.isSafeInteger(sizeGb) ||
+      sizeGb !== 50
+    ) {
+      throw new RunPodControlError("RUNPOD_NETWORK_VOLUME_INPUT_INVALID");
+    }
+    const value = record(
+      await this.mutate(
+        "POST",
+        "/networkvolumes",
+        canonicalizeJson({ dataCenterId, name, size: sizeGb }),
+      ),
+    );
+    if (!value || typeof value.id !== "string" || !ID.test(value.id)) {
+      throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
+    }
+    return Object.freeze({ id: value.id, idHash: hashId(value.id) });
+  }
+
+  async deleteNetworkVolume(volumeId: string): Promise<void> {
+    if (!ID.test(volumeId)) throw new RunPodControlError("RUNPOD_NETWORK_VOLUME_ID_INVALID");
+    await this.mutate("DELETE", `/networkvolumes/${volumeId}`);
   }
 
   async deleteEndpoint(endpointId: string, guard: RunPodDrainGuard): Promise<void> {

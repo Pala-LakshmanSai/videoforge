@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-24G` one same-memory A100 SXM capacity sample authorized; RunPod absolute zero
+Status: `VF-9-24H` persistent-cache A100 sample selected; RunPod absolute zero
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -50,7 +50,10 @@ the published worker still enforced an RTX-4090-only runtime guard. It spent `$0
 and three independent reads prove absolute zero. `VF-9-24F` is the narrow guard/diagnostic repair,
 immutable image publication, and one corrected A100 PCIe job. That job acquired no worker for ten
 minutes and ended `$0`; cleanup and three reads prove zero. `VF-9-24G` changes only the capacity SKU
-to A100 SXM 80 GB and keeps BF16 model/input/config identical. No network volume, fallback, or tuning.
+to A100 SXM 80 GB and kept BF16 model/input/config identical. It acquired after 74.108 seconds but
+hit the ephemeral-download spend stop before a model result; no MP4. Cleanup and three reads prove
+zero. `VF-9-24H` creates one temporary 50 GB volume, warms the exact cache on cheaper RTX 4090, runs
+one A100 SXM inference, then deletes the volume. No FP8, fallback, chunking, or tuning.
 
 ## Locked active providers
 

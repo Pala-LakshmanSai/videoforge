@@ -24,10 +24,12 @@ const qualificationSpendCapUsd = Number(process.env.VIDEOFORGE_COST_CAP_USD ?? "
 const qualificationCostStopUsd = Number(process.env.VIDEOFORGE_COST_STOP_USD ?? "0.45");
 const qualificationFrames = Number(process.env.VIDEOFORGE_AVATAR_SAMPLE_FRAMES ?? "253");
 const outputTransport = process.env.VIDEOFORGE_AVATAR_OUTPUT_TRANSPORT ?? "private_tunnel_v1";
+const networkVolumeId = process.env.VIDEOFORGE_NETWORK_VOLUME_ID;
+const networkVolumeDataCenterId = process.env.VIDEOFORGE_NETWORK_VOLUME_DATACENTER_ID;
 if (
   !Number.isFinite(qualificationSpendCapUsd) ||
   qualificationSpendCapUsd <= 0 ||
-  qualificationSpendCapUsd > 0.5 ||
+  qualificationSpendCapUsd > 1 ||
   !Number.isFinite(qualificationCostStopUsd) ||
   qualificationCostStopUsd <= 0 ||
   qualificationCostStopUsd > qualificationSpendCapUsd ||
@@ -35,7 +37,11 @@ if (
   qualificationFrames < 5 ||
   qualificationFrames > 253 ||
   (qualificationFrames - 1) % 4 !== 0 ||
-  !["inline_result_v1", "private_tunnel_v1"].includes(outputTransport)
+  !["inline_result_v1", "private_tunnel_v1"].includes(outputTransport) ||
+  Boolean(networkVolumeId) !== Boolean(networkVolumeDataCenterId) ||
+  (networkVolumeId !== undefined && !/^[A-Za-z0-9][A-Za-z0-9_-]{0,190}$/u.test(networkVolumeId)) ||
+  (networkVolumeDataCenterId !== undefined &&
+    !/^[A-Za-z0-9][A-Za-z0-9_-]{0,190}$/u.test(networkVolumeDataCenterId))
 ) {
   throw new Error("AVATAR_QUALIFICATION_SCOPE_INVALID");
 }
@@ -64,6 +70,8 @@ const sleep = (milliseconds: number): Promise<void> =>
   new Promise((resolveSleep) => setTimeout(resolveSleep, milliseconds));
 const digest = (value: Buffer): string =>
   `sha256:${createHash("sha256").update(value).digest("hex")}`;
+const resourceIdHash = (value: string): string =>
+  `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
 const readAmbiguous = (error: unknown): boolean =>
   error instanceof RunPodControlError &&
   (error.code === "RUNPOD_READ_AMBIGUOUS" || error.code === "RUNPOD_READ_FAILED");
@@ -226,13 +234,17 @@ const apiKey = await loadRunPodApiKeyFromKeychain();
 const control = new RunPodControlClient({ apiKey });
 const guard = new RunPodDrainGuard();
 const initialInventory = await control.inventory();
+const expectedVolumeHash = networkVolumeId ? resourceIdHash(networkVolumeId) : null;
 if (
   initialInventory.runningPodCount !== 0 ||
   initialInventory.activeServerlessWorkerCount !== 0 ||
   initialInventory.pods.length !== 0 ||
   initialInventory.endpoints.length !== 0 ||
   initialInventory.privateTemplateCount !== 0 ||
-  initialInventory.networkVolumes.length !== 0
+  (expectedVolumeHash === null
+    ? initialInventory.networkVolumes.length !== 0
+    : initialInventory.networkVolumes.length !== 1 ||
+      initialInventory.networkVolumes[0]?.idHash !== expectedVolumeHash)
 ) {
   throw new Error("RUNPOD_NOT_ZERO_AT_START");
 }
@@ -263,7 +275,17 @@ try {
   }
   const suffix = createHash("sha256").update(image).digest("hex").slice(0, 12);
   await journal("template_create_started");
-  template = await control.createServerlessTemplate(`vf_avatar_${suffix}`, image, 100);
+  template = await control.createServerlessTemplate(
+    `vf_avatar_${suffix}`,
+    image,
+    100,
+    networkVolumeId
+      ? {
+          ECHOMIMIC_MODEL_ROOT: "/runpod-volume/models",
+          HF_HOME: "/runpod-volume/models/.cache",
+        }
+      : {},
+  );
   await journal("template_created", { template_id_hash: template.idHash });
   if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
   await journal("endpoint_create_started");
@@ -278,6 +300,9 @@ try {
       idleTimeout: 5,
       executionTimeoutMs: 1_500_000,
     },
+    networkVolumeId && networkVolumeDataCenterId
+      ? { networkVolumeId, dataCenterIds: [networkVolumeDataCenterId] }
+      : {},
   );
   await journal("endpoint_created", { endpoint_id_hash: endpoint.idHash });
   jobs = new RunPodServerlessJobClient({ apiKey, endpointId: endpoint.id, guard });
@@ -493,7 +518,10 @@ if (
     finalInventory.pods.length !== 0 ||
     finalInventory.endpoints.length !== 0 ||
     finalInventory.privateTemplateCount !== 0 ||
-    finalInventory.networkVolumes.length !== 0)
+    (expectedVolumeHash === null
+      ? finalInventory.networkVolumes.length !== 0
+      : finalInventory.networkVolumes.length !== 1 ||
+        finalInventory.networkVolumes[0]?.idHash !== expectedVolumeHash))
 ) {
   failureCode ??= "RUNPOD_FINAL_INVENTORY_NONZERO";
 }

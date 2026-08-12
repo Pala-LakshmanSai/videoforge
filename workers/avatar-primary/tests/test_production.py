@@ -112,6 +112,37 @@ class ProductionContractTest(unittest.TestCase):
                 sys.modules["bootstrap_models"] = previous_bootstrap
             sys.path.remove(str(worker_root))
 
+    def test_bootstrap_only_job_returns_verified_bootstrap_without_inference(self) -> None:
+        worker_root = Path(__file__).resolve().parents[1]
+        sys.path.insert(0, str(worker_root))
+        fake_runpod = types.SimpleNamespace(
+            serverless=types.SimpleNamespace(start=lambda _config: None, progress_update=lambda *_: None)
+        )
+        previous_runpod = sys.modules.get("runpod")
+        previous_bootstrap = sys.modules.get("bootstrap_models")
+        sys.modules["runpod"] = fake_runpod  # type: ignore[assignment]
+        expected = {"cache_hit": False, "bootstrap_ms": 123}
+        sys.modules["bootstrap_models"] = types.SimpleNamespace(
+            bootstrap_models=lambda _progress: expected
+        )  # type: ignore[assignment]
+        try:
+            module = importlib.import_module("handler")
+            self.assertEqual(
+                module.handler({"input": {"mode": "BOOTSTRAP_ONLY_V1"}}),
+                {"ok": True, "result": {"bootstrap": expected}},
+            )
+        finally:
+            sys.modules.pop("handler", None)
+            if previous_runpod is None:
+                sys.modules.pop("runpod", None)
+            else:
+                sys.modules["runpod"] = previous_runpod
+            if previous_bootstrap is None:
+                sys.modules.pop("bootstrap_models", None)
+            else:
+                sys.modules["bootstrap_models"] = previous_bootstrap
+            sys.path.remove(str(worker_root))
+
     def test_startup_smoke_exercises_handler_import_without_runpod_connection(self) -> None:
         worker_root = Path(__file__).resolve().parents[1]
         sys.path.insert(0, str(worker_root))

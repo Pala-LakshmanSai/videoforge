@@ -64,6 +64,8 @@ def handler(event: dict[str, object]) -> dict[str, object]:
     try:
         bootstrap = ensure_models(event)
         value = event.get("input")
+        if value == {"mode": "BOOTSTRAP_ONLY_V1"}:
+            return {"ok": True, "result": {"bootstrap": bootstrap}}
         if isinstance(value, dict) and value.get("mode") == "INLINE_QUALIFICATION_V1":
             job = AvatarPrimaryInlineJob.from_value(value)
             result = run_avatar_primary_inline_job(job)
