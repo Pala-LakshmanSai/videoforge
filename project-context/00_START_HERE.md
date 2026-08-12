@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-24D` terminal RTX 4090 inference OOM; cleanup absolute zero
+Status: `VF-9-24E` one A100 80 GB sample attempt authorized; pre-dispatch absolute zero
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -42,8 +42,10 @@ corrected that pin, added the missing digest-length regression shield, and publi
 `sha256:d0e487d13bf19b74d09af5c7bb3b800eb2faa75dcce6eca9e155a48b0403ffe9` at `$0`. `VF-9-24D`
 used one attempt within the user's `$2` cumulative ceiling. Model bootstrap succeeded, but exact
 253-frame inference failed with `AVATAR_INFERENCE_CUDA_OOM`; no MP4 exists. Cumulative measured spend
-is `$0.0260412778`. Cleanup and three independent reads prove absolute zero. No retry, GPU
-substitution, memory tuning, or further spend is authorized.
+was initially measured as `$0.0260412778`; delayed billing makes the live cumulative delta
+`$0.0649517111`. Cleanup and three independent reads prove absolute zero. The user then authorized
+one unchanged exact sample attempt on an A100 80 GB PCIe within the existing `$2` cumulative cap.
+No network volume, fallback, retry, or tuning is authorized.
 
 ## Locked active providers
 

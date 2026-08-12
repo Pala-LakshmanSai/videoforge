@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T17:35:00Z"
+updated_at: "2026-08-12T18:12:00Z"
 
-phase: echomimic_v3_flash_sample_oom_terminal
-implementation_authorized_in_current_task: false
+phase: echomimic_v3_flash_a100_sample_authorized
+implementation_authorized_in_current_task: true
 current_milestone: avatar_primary_native_sample
-current_task: VF-9-24D
+current_task: VF-9-24E
 current_wave: wave_9_echomimic_sample_first
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -18,7 +18,7 @@ repository:
   base_commit: "2b7eb5b9e38061eb7ffc44178aba285bc5f65969"
   planning_handoff_commit: "f0829b930e5cf9084312da030f1807a6e269b06f"
   last_good_commit: "a2a4adc93317e14a4aca0e6b70687908e756b7d7"
-  working_tree_expected: tracked_vf_9_24d_terminal_evidence_plus_ignored_private_inputs
+  working_tree_expected: tracked_vf_9_24e_authority_and_gpu_selector_plus_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
 live_development:
@@ -30,9 +30,9 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-24D authority is consumed. Exact RTX 4090 inference OOM; no retry, GPU substitution, tuning, or further spend is authorized. Cleanup is absolute zero."
+  provider_calls_authorized: true
+  authorized_spend_usd: 1.9350482889
+  provider_authority_scope: "VF-9-24E: one unchanged exact Elias job on NVIDIA A100 80GB PCIe; cumulative ceiling $2, operational breaker $0.50 hard/$0.45 active; no volume, retry, fallback, tuning, or successor. Cleanup absolute zero."
   worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:d0e487d13bf19b74d09af5c7bb3b800eb2faa75dcce6eca9e155a48b0403ffe9"
   last_user_checkpoint:
     result: accepted
@@ -97,34 +97,49 @@ completed_tasks:
     evidence: "evidence/acceptance/VF-9-24D/elias-echomimic-v3-flash-digest-corrected-sample"
     final_absolute_zero_checked_at: "2026-08-12T17:34:08.728Z"
 
-active_ownership: []
+active_ownership:
+  - task_id: VF-9-24E
+    owner: single_integration_lane
+    scope: "one unchanged A100 80GB PCIe EchoMimic sample, private MP4, evidence, and absolute-zero cleanup"
 
 blocked_tasks: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-9-24D
+  task_id: VF-9-24E
   milestone: avatar_primary_native_sample
-  status: terminal_oom_requires_new_decision
+  status: selected
   dependency_status: vf_9_24d_terminal_oom_cleanup_absolute_zero
-  authorization_status: no_action_authorized
-  read_profile: phase9_echomimic_v3_flash_digest_corrected_sample
-  task_brief: tasks/VF-9-24D.md
-  goal: "No action; report measured RTX 4090 OOM and request a new exact GPU/tuning decision if the user wants another attempt."
-  provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
-  remote_scope: "None. RunPod is absolute zero."
-  credential_access_authorized: false
-  model_downloads_authorized: false
-  application_code_changes_authorized: false
-  expected_evidence: "evidence/acceptance/VF-9-24D/elias-echomimic-v3-flash-digest-corrected-sample"
+  authorization_status: exact_one_attempt_authorized
+  read_profile: phase9_echomimic_v3_flash_a100_sample
+  task_brief: tasks/VF-9-24E.md
+  goal: "Run the unchanged exact Elias sample once on A100 80GB PCIe, return native MP4, then prove absolute zero."
+  provider_calls_authorized: true
+  maximum_external_spend_usd: 1.9350482889
+  cumulative_external_spend_ceiling_usd: 2
+  prior_live_balance_delta_usd: 0.0649517111
+  provider_authority:
+    provider: RunPod
+    model_id: EchoMimicV3-Flash@311e176905a8c4c24b240b530488fe636ce4d249
+    cap_usd: 1.9350482889
+    cumulative_cap_usd: 2
+    prior_settled_spend_usd: 0.0649517111
+    operational_hard_breaker_usd: 0.5
+    operational_active_breaker_usd: 0.45
+    non_transferable: true
+    authorized_by_user_at: "2026-08-12T18:04:00Z"
+  remote_or_cloud_mutations_authorized: true
+  remote_scope: "One temporary A100 80GB PCIe template/endpoint/job; delete immediately afterward."
+  credential_access_authorized: true
+  model_downloads_authorized: true
+  application_code_changes_authorized: true
+  expected_evidence: "evidence/acceptance/VF-9-24E/elias-echomimic-v3-flash-a100-sample"
   required_handoff:
-    - "Report no MP4 and exact AVATAR_INFERENCE_CUDA_OOM evidence."
-    - "Preserve absolute-zero cleanup and stable-balance proof."
+    - "Return the private native MP4 with probe/hash evidence if successful."
+    - "Preserve exact failure evidence if unsuccessful and prove absolute-zero cleanup."
   prohibited_in_task:
     - "Retry, GPU substitution, memory tuning, fallback, app integration, deployment, migration, profile promotion, or successor task."
-    - "AvatarForcing, MuseTalk, SkyReels, LongCat, A100, RTX 5090, or network volume."
+    - "AvatarForcing, MuseTalk, SkyReels, LongCat, RTX 5090, or network volume."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -142,10 +157,10 @@ progress_snapshot:
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: vf_9_24d_terminal_oom_cleanup_absolute_zero
+  status: vf_9_24e_authorized_pre_dispatch_absolute_zero
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Load only phase9_echomimic_v3_flash_digest_corrected_sample and tasks/VF-9-24D.md."
-    - "Read terminal evidence; do not retry, substitute GPU, tune memory, or spend without a new explicit decision."
+    - "Load only phase9_echomimic_v3_flash_a100_sample and tasks/VF-9-24E.md."
+    - "Run exactly one unchanged job on A100 80GB PCIe, then clean up to absolute zero."
   stop_conditions:
-    - "Any retry, GPU/tuning/fallback choice, provider mutation, spend, successor selection, or roadmap continuation without new explicit authority."
+    - "Any second job, GPU/tuning/fallback choice, network volume, spend above breakers, successor selection, or roadmap continuation."

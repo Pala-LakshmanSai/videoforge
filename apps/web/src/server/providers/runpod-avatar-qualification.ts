@@ -39,7 +39,18 @@ if (
 ) {
   throw new Error("AVATAR_QUALIFICATION_SCOPE_INVALID");
 }
-const qualificationGpuTypeIds = ["NVIDIA GeForce RTX 4090"] as const;
+const qualificationGpuProfiles = {
+  "NVIDIA GeForce RTX 4090": 24,
+  "NVIDIA A100 80GB PCIe": 80,
+} as const;
+const qualificationGpuTypeId =
+  process.env.VIDEOFORGE_AVATAR_GPU_TYPE_ID ?? "NVIDIA GeForce RTX 4090";
+if (!(qualificationGpuTypeId in qualificationGpuProfiles)) {
+  throw new Error("AVATAR_QUALIFICATION_GPU_INVALID");
+}
+const qualificationGpuTypeIds = [qualificationGpuTypeId] as const;
+const qualificationGpuMemoryGb =
+  qualificationGpuProfiles[qualificationGpuTypeId as keyof typeof qualificationGpuProfiles];
 let abortRequested = false;
 let abortSignal: string | null = null;
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
@@ -103,11 +114,11 @@ const gpuRate = async (apiKey: string): Promise<Readonly<Record<string, unknown>
     !response.ok ||
     value.errors ||
     !row ||
-    row.memoryInGb !== 24 ||
+    row.memoryInGb !== qualificationGpuMemoryGb ||
     !Number.isFinite(Number(row.securePrice)) ||
     !Number.isFinite(Number(row.communityPrice))
   ) {
-    throw new Error("RUNPOD_RTX_4090_RATE_UNAVAILABLE");
+    throw new Error("RUNPOD_QUALIFICATION_GPU_RATE_UNAVAILABLE");
   }
   return Object.freeze({
     checked_at: new Date().toISOString(),
