@@ -34,6 +34,8 @@ jobs:
           docker run --rm --entrypoint python "$image" infer_flash.py --help >/dev/null
           docker run --rm --entrypoint python "$image" -c \
             'import sys; sys.path.insert(0, "/opt/videoforge"); import handler; observed = []; handler.runpod.serverless.start = lambda config: observed.append(config); handler.start_worker(); assert len(observed) == 1 and callable(observed[0]["handler"]); print("avatar-primary-handler-registration-ok")'
+          docker run --rm -e VIDEOFORGE_WORKER_STARTUP_SMOKE=1 "$image" | \
+            grep '"event": "avatar_primary_startup_smoke_ok"'
           docker run --rm --entrypoint python "$image" -m compileall -q /opt/echomimic_v3 /opt/videoforge
           docker push "$image"
           digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image")"

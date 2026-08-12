@@ -28,7 +28,10 @@ export interface RunPodInventory {
     readonly idHash: string;
     readonly workersMin: number | null;
     readonly workersMax: number | null;
+    readonly workerRecordCount: number;
     readonly activeWorkerCount: number;
+    readonly exitedWorkerCount: number;
+    readonly workerStatuses: readonly string[];
     readonly scaleZeroCompliant: boolean;
   }[];
   readonly privateTemplateCount: number;
@@ -271,7 +274,7 @@ export class RunPodControlClient {
           containerDiskInGb,
           dockerEntrypoint: [],
           dockerStartCmd: [],
-          env: {},
+          env: { LOG_LEVEL: "INFO", RUNPOD_INIT_TIMEOUT: "800" },
           imageName,
           isPublic: false,
           isServerless: true,
@@ -379,11 +382,24 @@ export class RunPodControlClient {
       const workersMin = numberOrNull(endpoint.workersMin);
       const workersMax = numberOrNull(endpoint.workersMax);
       const workers = Array.isArray(endpoint.workers) ? endpoint.workers : [];
+      const workerStatuses = workers.map((worker) => {
+        const value = record(worker);
+        return typeof value?.desiredStatus === "string"
+          ? value.desiredStatus
+          : typeof value?.status === "string"
+            ? value.status
+            : "UNKNOWN";
+      });
       return Object.freeze({
         idHash: hashId(endpoint.id),
         workersMin,
         workersMax,
-        activeWorkerCount: workers.length,
+        workerRecordCount: workers.length,
+        activeWorkerCount: workerStatuses.filter((status) => status === "RUNNING").length,
+        exitedWorkerCount: workerStatuses.filter(
+          (status) => status === "EXITED" || status === "TERMINATED",
+        ).length,
+        workerStatuses: Object.freeze(workerStatuses),
         scaleZeroCompliant: workersMin === 0 && workersMax === 1,
       });
     });
@@ -400,10 +416,9 @@ export class RunPodControlClient {
       privateTemplateCount: templateValue.length,
       networkVolumes: Object.freeze(networkVolumes),
       runningPodCount: pods.filter((pod) => pod.desiredStatus === "RUNNING").length,
-      activeServerlessWorkerCount: endpoints.reduce(
-        (total, endpoint) => total + endpoint.activeWorkerCount,
-        0,
-      ),
+      activeServerlessWorkerCount: pods.filter(
+        (pod) => pod.endpointWorker && pod.desiredStatus === "RUNNING",
+      ).length,
     });
   }
 }

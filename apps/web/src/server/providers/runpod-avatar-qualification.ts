@@ -40,9 +40,11 @@ if (
 }
 const qualificationGpuTypeIds = ["NVIDIA GeForce RTX 4090"] as const;
 let abortRequested = false;
+let abortSignal: string | null = null;
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
-  process.once(signal, () => {
+  process.on(signal, () => {
     abortRequested = true;
+    abortSignal ??= signal;
   });
 }
 const sleep = (milliseconds: number): Promise<void> =>
@@ -171,6 +173,32 @@ const evidenceRoot = resolve(
 );
 await mkdir(outputRoot, { recursive: true });
 await mkdir(evidenceRoot, { recursive: true });
+const journalPath = resolve(evidenceRoot, "qualification.journal.json");
+const journalEvents: Array<Readonly<Record<string, unknown>>> = [];
+const persistJournal = async () =>
+  writeFile(
+    journalPath,
+    `${JSON.stringify(
+      {
+        schema_version: "videoforge.echomimic-v3-flash-sample-journal/v1",
+        events: journalEvents,
+      },
+      null,
+      2,
+    )}\n`,
+  );
+const journalRequired = async (stage: string, detail: Readonly<Record<string, unknown>> = {}) => {
+  journalEvents.push({ checked_at: new Date().toISOString(), stage, ...detail });
+  await persistJournal();
+};
+const journal = async (stage: string, detail: Readonly<Record<string, unknown>> = {}) => {
+  journalEvents.push({ checked_at: new Date().toISOString(), stage, ...detail });
+  try {
+    await persistJournal();
+  } catch {
+    // Provider cleanup must continue even if local evidence storage becomes unavailable.
+  }
+};
 
 const source = await readFile(sourcePath);
 const audio = await readFile(audioPath);
@@ -195,6 +223,11 @@ if (
 const gpuRateSnapshot = await gpuRate(apiKey);
 
 const startedBalance = await balance(apiKey);
+await journalRequired("preflight_complete", {
+  starting_balance_usd: startedBalance,
+  gpu_rate_snapshot: gpuRateSnapshot,
+  initial_inventory: initialInventory,
+});
 let template: Awaited<ReturnType<RunPodControlClient["createServerlessTemplate"]>> | undefined;
 let endpoint: Awaited<ReturnType<RunPodControlClient["createScaleZeroEndpoint"]>> | undefined;
 let jobs: RunPodServerlessJobClient | undefined;
@@ -210,10 +243,14 @@ try {
   if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
   if (outputTransport === "private_tunnel_v1") {
     transfer = await startSshAvatarPrivateTransfer({ source, audio, outputPath });
+    await journal("private_transfer_ready", { output_transport: outputTransport });
   }
   const suffix = createHash("sha256").update(image).digest("hex").slice(0, 12);
+  await journal("template_create_started");
   template = await control.createServerlessTemplate(`vf_avatar_${suffix}`, image, 100);
+  await journal("template_created", { template_id_hash: template.idHash });
   if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
+  await journal("endpoint_create_started");
   endpoint = await control.createScaleZeroEndpoint(
     `vf_avatar_${suffix}`,
     template.id,
@@ -226,8 +263,10 @@ try {
       executionTimeoutMs: 1_500_000,
     },
   );
+  await journal("endpoint_created", { endpoint_id_hash: endpoint.idHash });
   jobs = new RunPodServerlessJobClient({ apiKey, endpointId: endpoint.id, guard });
   await jobs.confirmDrained();
+  await journal("endpoint_drained_before_dispatch");
   if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
   const attemptId = `vf9_24_${suffix}`;
   const sharedInput = {
@@ -239,6 +278,15 @@ try {
     layout: "AVATAR_FULL",
     num_output_frames: qualificationFrames,
   };
+  await journal("job_dispatch_started", {
+    attempt_id: attemptId,
+    input: {
+      source_sha256: sharedInput.source_sha256,
+      span_audio_sha256: sharedInput.span_audio_sha256,
+      layout: sharedInput.layout,
+      num_output_frames: sharedInput.num_output_frames,
+    },
+  });
   job = await jobs.dispatch(
     attemptId,
     transfer
@@ -256,18 +304,42 @@ try {
           span_audio_base64: audio.toString("base64"),
         },
   );
+  await journal("job_dispatched", { job_id_hash: job.idHash, job_status: job.status });
   const dispatchStartedAt = Date.now();
   let activeStartedAt: number | null = null;
+  let previousWorkerRecordCount = 0;
   for (let attempt = 0; attempt < 140 && !terminalStatuses.has(job.status); attempt += 1) {
     await sleep(15_000);
     if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
     job = await jobs.status(job.id);
+    await journal("job_status", {
+      delay_time_ms: job.delayTimeMs,
+      execution_time_ms: job.executionTimeMs,
+      job_status: job.status,
+      progress: job.progress ?? null,
+    });
     if (terminalStatuses.has(job.status)) break;
     const liveInventory = await control.inventory();
-    if (liveInventory.runningPodCount > 1) {
+    const workerRecordCount = liveInventory.endpoints.reduce(
+      (total, candidate) => total + candidate.workerRecordCount,
+      0,
+    );
+    if (workerRecordCount !== previousWorkerRecordCount) {
+      previousWorkerRecordCount = workerRecordCount;
+      await journal("worker_inventory_changed", {
+        active_serverless_workers: liveInventory.activeServerlessWorkerCount,
+        running_pods: liveInventory.runningPodCount,
+        worker_records: workerRecordCount,
+        worker_statuses: liveInventory.endpoints.flatMap((candidate) => candidate.workerStatuses),
+      });
+    }
+    if (liveInventory.activeServerlessWorkerCount > 1) {
       throw new Error("RUNPOD_WORKER_RETRY_LIMIT");
     }
-    if (liveInventory.runningPodCount > 0 && activeStartedAt === null) activeStartedAt = Date.now();
+    if (liveInventory.activeServerlessWorkerCount > 0 && activeStartedAt === null) {
+      activeStartedAt = Date.now();
+      await journal("worker_active");
+    }
     if (activeStartedAt === null && Date.now() - dispatchStartedAt >= 10 * 60_000)
       throw new Error("RUNPOD_QUEUE_TIMEOUT");
     if (activeStartedAt !== null && Date.now() - activeStartedAt >= 25 * 60_000)
@@ -312,12 +384,14 @@ try {
   outputProbe = await probe(outputPath);
 } catch (error) {
   failureCode = error instanceof Error ? error.message.slice(0, 160) : "UNKNOWN_FAILURE";
+  await journal("attempt_failed", { abort_signal: abortSignal, failure_code: failureCode });
 } finally {
   let endpointDeleted = false;
   if (jobs && guard.snapshot() === "active") guard.beginDrain();
   if (jobs && job && !terminalStatuses.has(job.status)) {
     try {
       await jobs.cancel(job.id);
+      await journal("job_cancelled", { job_id_hash: job.idHash });
     } catch {
       failureCode ??= "RUNPOD_CANCEL_UNCONFIRMED";
     }
@@ -325,6 +399,7 @@ try {
   if (jobs && guard.snapshot() !== "zero") {
     try {
       await jobs.confirmQueueEmpty();
+      await journal("queue_empty_confirmed");
     } catch {
       failureCode ??= "RUNPOD_QUEUE_DRAIN_UNCONFIRMED";
     }
@@ -333,6 +408,7 @@ try {
     try {
       await control.deleteEndpoint(endpoint.id, guard);
       endpointDeleted = true;
+      await journal("endpoint_deleted", { endpoint_id_hash: endpoint.idHash });
     } catch {
       failureCode ??= "RUNPOD_ENDPOINT_DELETE_UNCONFIRMED";
     }
@@ -361,6 +437,7 @@ try {
   if (template && (!endpoint || guard.snapshot() === "zero")) {
     try {
       await control.deleteTemplate(template.id);
+      await journal("template_deleted", { template_id_hash: template.idHash });
     } catch {
       failureCode ??= "RUNPOD_TEMPLATE_DELETE_UNCONFIRMED";
     }
@@ -381,6 +458,11 @@ try {
   failureCode ??= "RUNPOD_ENDING_BALANCE_UNAVAILABLE";
 }
 const finalInventory = await inventoryOrNull(control, 6);
+await journal("final_observation", {
+  ending_balance_usd: endingBalance,
+  failure_code: failureCode ?? null,
+  final_inventory: finalInventory,
+});
 if (!finalInventory) failureCode ??= "RUNPOD_FINAL_INVENTORY_UNAVAILABLE";
 if (
   finalInventory &&

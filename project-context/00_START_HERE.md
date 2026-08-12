@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-24` stopped by one-worker/no-retry guard; awaiting new authority
+Status: `VF-9-24A` provider-free observability correction selected
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -29,9 +29,13 @@ Container smoke, full local verification, and hosted CI passed at `f0829b9`; no 
 activity or provider spend occurred.
 
 `VF-9-24` dispatched its sole authorized job. RunPod created three `EXITED` endpoint worker records
-before returning output, so the one-worker/no-retry guard stopped the attempt. No MP4 was produced
-and no retry is authorized. Observed balance delta was `$0`; three independent post-cleanup reads
-proved zero Pods, workers, endpoints, templates, and volumes. Await explicit new user authority.
+before returning output. Diagnosis found that exited history was incorrectly counted as active
+workers and the forced stop preceded durable runner serialization. No MP4 was produced. Observed
+balance delta was `$0`; three independent post-cleanup reads proved absolute zero.
+
+`CURRENT_STATE.yaml` selects only provider-free `VF-9-24A`: correct state-aware inventory, durable
+attempt journaling, startup/bootstrap observability, and exact-entrypoint image smoke; publish one
+corrected GHCR digest and stop. Paid RunPod use needs a fresh explicit cap.
 
 ## Locked active providers
 

@@ -8,7 +8,7 @@ Keep responses concise and spend-conscious.
 1. Read AGENTS.md.
 2. Read project-context/00_START_HERE.md, MANIFEST.yaml, and CURRENT_STATE.yaml.
 3. Require clean tracked HEAD descending from 2b7eb5b; preserve ignored private inputs.
-4. Load only phase9_echomimic_v3_flash_sample and tasks/VF-9-24.md.
+4. Load only phase9_echomimic_v3_flash_observability_repair and tasks/VF-9-24A.md.
 
 VF-9-22 is complete. EchoMimicV3-Flash is sole active avatar path. AvatarForcing, MuseTalk,
 SkyReels, and their decisions/evidence are historical replay only; never dispatch them. LongCat
@@ -19,8 +19,10 @@ EXITED endpoint worker records before any output. No MP4 exists. Observed balanc
 three independent cleanup reads proved absolute zero Pods, workers, endpoints, templates, and
 volumes.
 
-Do not dispatch, retry, tune, fall back, mutate cloud state, create a successor, or continue roadmap
-work. Await explicit new user authority.
+Implement only the provider-free VF-9-24A correction: state-aware worker accounting, durable
+journaling, startup/bootstrap observability, exact-entrypoint smoke, verification, and one corrected
+GHCR build. Do not call RunPod, download model bytes, use a GPU, or spend credits. A new sample needs
+a fresh explicit cap.
 ```
 
 If this template disagrees with `CURRENT_STATE.yaml`, stop and reconcile; current state wins.

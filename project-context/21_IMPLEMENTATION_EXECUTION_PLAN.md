@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: `VF-9-24` stopped by provider worker retry guard; awaiting new authority
+Status: `VF-9-24A` provider-free observability correction selected
 Read when: selecting, implementing, integrating, or handing off one task.
 
 ## Authority
@@ -23,6 +23,9 @@ They authorize no new dispatch. LongCat remains excluded.
 3. `VF-9-24` — stopped: its sole job caused RunPod to create three `EXITED` worker records before
    output. The guard cancelled execution, no MP4 was produced, observed balance delta was `$0`, and
    three independent post-cleanup inventories proved absolute zero. No retry is authorized.
+3a. `VF-9-24A` — selected at `$0`: fix exited-history accounting, persist the attempt journal before
+   mutation, add entrypoint/bootstrap observability and exact-entrypoint image smoke, publish one
+   corrected digest, then stop before RunPod use pending a fresh spend cap.
 4. `VF-9-25` — only after explicit sample approval: durable provider acceptance/application
    integration at `$0`, additive migration `0014`, measured crop profile, no production promotion.
 5. `VF-9-26` — separate later budget: 12–20-clip representative full Echo qualification.

@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import importlib
+import os
 import sys
 import tempfile
 import types
@@ -57,7 +58,7 @@ class ProductionContractTest(unittest.TestCase):
         entrypoint = (worker_root / "entrypoint.sh").read_text(encoding="utf-8")
         bootstrap = (worker_root / "bootstrap_models.py").read_text(encoding="utf-8")
         self.assertNotIn("bootstrap_models.py", entrypoint)
-        self.assertIn("exec python /opt/videoforge/handler.py", entrypoint)
+        self.assertIn("exec python -u /opt/videoforge/handler.py", entrypoint)
         for revision in [
             AVATAR_WEIGHTS_REVISION,
             WAN_REVISION,
@@ -96,6 +97,42 @@ class ProductionContractTest(unittest.TestCase):
                 sys.modules.pop("bootstrap_models", None)
             else:
                 sys.modules["bootstrap_models"] = previous_bootstrap
+            sys.path.remove(str(worker_root))
+
+    def test_startup_smoke_exercises_handler_import_without_runpod_connection(self) -> None:
+        worker_root = Path(__file__).resolve().parents[1]
+        sys.path.insert(0, str(worker_root))
+        fake_runpod = types.SimpleNamespace(
+            serverless=types.SimpleNamespace(
+                start=lambda _config: self.fail("startup smoke must not connect"),
+                progress_update=lambda _event, _progress: None,
+            )
+        )
+        previous_runpod = sys.modules.get("runpod")
+        previous_bootstrap = sys.modules.get("bootstrap_models")
+        previous_smoke = os.environ.get("VIDEOFORGE_WORKER_STARTUP_SMOKE")
+        sys.modules["runpod"] = fake_runpod  # type: ignore[assignment]
+        sys.modules["bootstrap_models"] = types.SimpleNamespace(
+            bootstrap_models=lambda _progress: None
+        )  # type: ignore[assignment]
+        os.environ["VIDEOFORGE_WORKER_STARTUP_SMOKE"] = "1"
+        try:
+            module = importlib.import_module("handler")
+            module.start_worker()
+        finally:
+            sys.modules.pop("handler", None)
+            if previous_runpod is None:
+                sys.modules.pop("runpod", None)
+            else:
+                sys.modules["runpod"] = previous_runpod
+            if previous_bootstrap is None:
+                sys.modules.pop("bootstrap_models", None)
+            else:
+                sys.modules["bootstrap_models"] = previous_bootstrap
+            if previous_smoke is None:
+                os.environ.pop("VIDEOFORGE_WORKER_STARTUP_SMOKE", None)
+            else:
+                os.environ["VIDEOFORGE_WORKER_STARTUP_SMOKE"] = previous_smoke
             sys.path.remove(str(worker_root))
 
     def test_accepts_exact_short_span_and_pins_every_upstream_revision(self) -> None:

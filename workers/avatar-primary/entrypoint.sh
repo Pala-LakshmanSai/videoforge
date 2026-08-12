@@ -1,3 +1,4 @@
 #!/bin/sh
 set -eu
-exec python /opt/videoforge/handler.py
+printf '%s\n' '{"event":"avatar_primary_entrypoint_start"}'
+exec python -u /opt/videoforge/handler.py

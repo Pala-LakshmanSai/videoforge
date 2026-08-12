@@ -98,9 +98,27 @@ describe("RunPod scale-zero control", () => {
       expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${key}`);
       const path = new URL(String(input)).pathname;
       if (path.endsWith("/pods"))
-        return response([{ id: "pod_01", desiredStatus: "EXITED", costPerHr: "0.69" }]);
+        return response([
+          {
+            id: "pod_01",
+            desiredStatus: "EXITED",
+            endpointId: "endpoint_01",
+            costPerHr: "0.69",
+          },
+        ]);
       if (path.endsWith("/endpoints"))
-        return response([{ id: "endpoint_01", workersMin: 0, workersMax: 1, workers: [] }]);
+        return response([
+          {
+            id: "endpoint_01",
+            workersMin: 0,
+            workersMax: 1,
+            workers: [
+              { desiredStatus: "EXITED" },
+              { desiredStatus: "TERMINATED" },
+              { desiredStatus: "UNKNOWN" },
+            ],
+          },
+        ]);
       if (path.endsWith("/templates")) return response([{ id: "template_01" }]);
       return response([{ id: "volume_01", size: 50 }]);
     });
@@ -113,7 +131,17 @@ describe("RunPod scale-zero control", () => {
       runningPodCount: 0,
       activeServerlessWorkerCount: 0,
       privateTemplateCount: 1,
-      endpoints: [{ workersMin: 0, workersMax: 1, scaleZeroCompliant: true }],
+      endpoints: [
+        {
+          workersMin: 0,
+          workersMax: 1,
+          workerRecordCount: 3,
+          activeWorkerCount: 0,
+          exitedWorkerCount: 2,
+          workerStatuses: ["EXITED", "TERMINATED", "UNKNOWN"],
+          scaleZeroCompliant: true,
+        },
+      ],
     });
     expect(JSON.stringify(inventory)).not.toContain(key);
     expect(JSON.stringify(inventory)).not.toContain("pod_01");
@@ -316,7 +344,12 @@ describe("RunPod scale-zero control", () => {
       const path = new URL(String(input)).pathname;
       const body = init?.body === undefined ? null : JSON.parse(String(init.body));
       if (path.endsWith("/templates")) {
-        expect(body).toMatchObject({ isPublic: false, isServerless: true, volumeInGb: 0 });
+        expect(body).toMatchObject({
+          isPublic: false,
+          isServerless: true,
+          volumeInGb: 0,
+          env: { LOG_LEVEL: "INFO", RUNPOD_INIT_TIMEOUT: "800" },
+        });
         return response({ id: "template_01" });
       }
       expect(body).toMatchObject({

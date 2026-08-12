@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import threading
+import hashlib
 import json
+import os
 
 import runpod
 
@@ -18,14 +20,44 @@ from videoforge_avatar_primary.production import AVATAR_SOURCE_REVISION
 _bootstrap_lock = threading.Lock()
 
 
+def _diagnostic_hash(error: Exception) -> str:
+    return "sha256:" + hashlib.sha256(str(error).encode("utf-8", errors="replace")).hexdigest()
+
+
+def _bootstrap_failure_code(error: Exception) -> str:
+    value = str(error)
+    if isinstance(error, RuntimeError) and value.startswith("ECHOMIMIC_"):
+        return "AVATAR_BOOTSTRAP_" + value.removeprefix("ECHOMIMIC_")
+    if isinstance(error, OSError) and getattr(error, "errno", None) == 28:
+        return "AVATAR_BOOTSTRAP_DISK_FULL"
+    return "AVATAR_BOOTSTRAP_DOWNLOAD_FAILED"
+
+
+def _progress(event: dict[str, object], stage: str) -> None:
+    print(
+        json.dumps({"event": "avatar_primary_progress", "stage": stage}, sort_keys=True), flush=True
+    )
+    runpod.serverless.progress_update(event, stage)
+
+
 def ensure_models(event: dict[str, object]) -> dict[str, object]:
     with _bootstrap_lock:
         try:
-            return bootstrap_models(
-                lambda progress: runpod.serverless.progress_update(event, progress)
-            )
+            return bootstrap_models(lambda progress: _progress(event, progress))
         except Exception as error:
-            raise ValueError("AVATAR_BOOTSTRAP_FAILED") from error
+            code = _bootstrap_failure_code(error)
+            print(
+                json.dumps(
+                    {
+                        "diagnostic_sha256": _diagnostic_hash(error),
+                        "error_code": code,
+                        "event": "avatar_primary_bootstrap_failed",
+                    },
+                    sort_keys=True,
+                ),
+                flush=True,
+            )
+            raise ValueError(code) from error
 
 
 def handler(event: dict[str, object]) -> dict[str, object]:
@@ -63,6 +95,9 @@ def start_worker() -> None:
         ),
         flush=True,
     )
+    if os.environ.get("VIDEOFORGE_WORKER_STARTUP_SMOKE") == "1":
+        print(json.dumps({"event": "avatar_primary_startup_smoke_ok"}, sort_keys=True), flush=True)
+        return
     runpod.serverless.start({"handler": handler})
 
 
