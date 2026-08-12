@@ -875,6 +875,7 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
         "source_voiceover",
         "tools",
         "documents",
+        "provider_acceptance_proofs",
         "output",
         "selected_span_audio",
         "grammar",
@@ -900,6 +901,43 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
       ],
       "Persisted evidence documents",
     );
+    const evidenceProofs = exactRecord(
+      evidenceRecord.provider_acceptance_proofs,
+      collectRequiredAssetTaskKeys(timelineDocument.value),
+      "Persisted provider acceptance proofs",
+    );
+    for (const [taskKey, value] of Object.entries(evidenceProofs)) {
+      const proof = exactRecord(
+        value,
+        [
+          "schemaVersion",
+          "acceptanceFingerprintHash",
+          "acceptedAttemptId",
+          "acceptedAssetId",
+          "acceptedBinarySha256",
+          "qaState",
+          "qaResultId",
+          "resultDisposition",
+          "providerOperation",
+          "modelLineage",
+          "promptLineage",
+          "runtimeEvidence",
+          "qualityReview",
+          "cost",
+        ],
+        `Persisted provider proof ${taskKey}`,
+      );
+      requireSha256Digest(
+        exactString(proof.acceptanceFingerprintHash, `${taskKey} acceptance fingerprint`),
+        `${taskKey} acceptance fingerprint`,
+      );
+      requireSha256Digest(
+        exactString(proof.acceptedBinarySha256, `${taskKey} accepted checksum`),
+        `${taskKey} accepted checksum`,
+      );
+      if (proof.qaState !== "PASSED" || proof.resultDisposition !== "ACCEPTED")
+        throw new Error(`Persisted provider proof ${taskKey} is no longer accepted.`);
+    }
     const evidenceOutput = exactRecord(
       evidenceRecord.output,
       ["asset_id", "sha256", "bytes", "artifact_uri", "filename", "probe"],

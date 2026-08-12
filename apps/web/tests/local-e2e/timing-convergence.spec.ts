@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { pathToFileURL } from "node:url";
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -148,6 +149,21 @@ test("installed Chrome inspects and accepts the restart-safe real-audio timeline
       poll();
     });
     element.pause();
+    const target = Math.min(2, Math.max(0.2, element.duration / 2));
+    await new Promise<void>((resolve, reject) => {
+      const timeout = window.setTimeout(() => reject(new Error("Seek did not settle.")), 10_000);
+      element.addEventListener(
+        "seeked",
+        () => {
+          window.clearTimeout(timeout);
+          resolve();
+        },
+        { once: true },
+      );
+      element.currentTime = target;
+    });
+    if (Math.abs(element.currentTime - target) > 0.2)
+      throw new Error("Seek settled at the wrong timestamp.");
   });
 
   await page.getByRole("link", { name: "Review output" }).click();
@@ -170,6 +186,31 @@ test("installed Chrome inspects and accepts the restart-safe real-audio timeline
   expect(`sha256:${createHash("sha256").update(downloadedBytes).digest("hex")}`).toBe(
     project.project.latestArtifact.sha256,
   );
+  const downloadedPage = await page.context().newPage();
+  await downloadedPage.goto(pathToFileURL(downloadedPath!).href);
+  const downloadedVideo = downloadedPage.locator("video");
+  await expect(downloadedVideo).toBeVisible();
+  await downloadedVideo.evaluate(async (element: HTMLVideoElement) => {
+    element.muted = true;
+    await element.play();
+    await new Promise<void>((resolve, reject) => {
+      const timeout = window.setTimeout(
+        () => reject(new Error("Downloaded playback did not advance.")),
+        10_000,
+      );
+      const poll = () => {
+        if (element.currentTime > 0.1) {
+          window.clearTimeout(timeout);
+          resolve();
+          return;
+        }
+        window.setTimeout(poll, 50);
+      };
+      poll();
+    });
+    element.pause();
+  });
+  await downloadedPage.close();
 
   expect(failures).toEqual({
     consoleErrors: [],
