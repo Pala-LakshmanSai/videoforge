@@ -15,10 +15,17 @@ persisted-output tunnel passed a live round-trip smoke test. The production job 
 158952 ms, but the worker returned `AVATAR_OUTPUT_MISSING` before uploading any bytes. The result is
 not technically accepted and is not ready for visual review.
 
+The corrected worker image
+`sha256:42a14b44cd0ab42c85cd6de91a44009ba7897723ebef2ee18d358ee3c0e3a384`
+resolves exactly one generated MP4, rejects missing/ambiguous output, delivery-encodes below 4 MiB,
+and uploads the exact validated bytes. Its bounded job never acquired an A100-80GB worker, remained
+`IN_QUEUE`, and was cancelled by the startup deadline for `$0`. No inference ran and no blind
+redispatch occurred.
+
 Measured VF-9-21 spend is `$0.4496891390`. Combined bounded provider spend for VF-9-19 and VF-9-21
 is `$0.9759948112`. No further dispatch is authorized. Independent final inventory at
-`2026-08-12T12:50:43.675Z` proved zero Pods, workers, endpoints, private templates, and network
+`2026-08-12T13:19:49.033Z` proved zero Pods, workers, endpoints, private templates, and network
 volumes.
 
-Next work requires a worker correction that proves the production URL path creates its expected raw
-output before upload, then explicit authority for any new capped job. Do not redispatch this image.
+Next work requires explicit user authority for one capacity retry of the corrected image. Do not
+blindly redispatch.

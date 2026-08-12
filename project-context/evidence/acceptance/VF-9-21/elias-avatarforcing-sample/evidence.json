@@ -47,12 +47,21 @@
       "delay_time_ms": 74147,
       "spend_usd": 0.07351696300000032,
       "failure_code": "AVATAR_OUTPUT_MISSING"
+    },
+    {
+      "status": "CANCELLED_IN_QUEUE",
+      "worker_image": "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:42a14b44cd0ab42c85cd6de91a44009ba7897723ebef2ee18d358ee3c0e3a384",
+      "output_transport": "private_tunnel_v1",
+      "execution_time_ms": null,
+      "delay_time_ms": null,
+      "spend_usd": 0,
+      "failure_code": "RUNPOD_STARTUP_TIMEOUT"
     }
   ],
   "measured_spend_usd": 0.449689139,
   "combined_vf_9_19_and_vf_9_21_spend_usd": 0.9759948112,
   "final_inventory": {
-    "checked_at": "2026-08-12T12:50:43.675Z",
+    "checked_at": "2026-08-12T13:19:49.033Z",
     "pods": 0,
     "running_pods": 0,
     "active_workers": 0,

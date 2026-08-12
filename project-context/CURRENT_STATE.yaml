@@ -1,9 +1,9 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T13:09:00Z"
+updated_at: "2026-08-12T13:19:49Z"
 
 phase: avatarforcing_user_sample
-implementation_authorized_in_current_task: true
+implementation_authorized_in_current_task: false
 current_milestone: avatar_primary_user_quality_review
 current_task: VF-9-21
 current_wave: wave_8_runtime_composition
@@ -42,9 +42,9 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: true
-  authorized_spend_usd: 1.0240051888
-  provider_authority_scope: "User explicitly authorized diagnosis, worker correction, and one new VF-9-21 AvatarForcing output attempt. Cap $1.0240051888; hard stop $0.85. No MuseTalk, SkyReels, LongCat, profile promotion, deployment, account resource, or unrelated cloud mutation."
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: "Corrected worker is pinned, but its one authorized job stopped in queue without execution or spend because no A100 worker started. No further provider call is authorized. No MuseTalk, SkyReels, LongCat, profile promotion, deployment, account resource, or unrelated cloud mutation."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -303,43 +303,46 @@ last_green:
     - "evidence/acceptance/VF-9-19/avatar-fallback-qualification"
 
 active_ownership: []
-blocked_tasks: []
+blocked_tasks:
+  - task_id: VF-9-21
+    reason: "Corrected worker image passed build/smoke, but the bounded RunPod job stayed IN_QUEUE and hit RUNPOD_STARTUP_TIMEOUT at $0. No inference or output occurred."
+    unblock: "User explicitly authorizes one capacity retry of the exact corrected image."
 
 in_progress_checkpoint: null
 
 recommended_next_task:
   task_id: VF-9-21
   milestone: avatar_primary_user_quality_review
-  status: authorized_in_progress
-  dependency_status: corrected_worker_image_build_required
-  authorization_status: one_corrected_worker_job_authorized
+  status: blocked_waiting_for_capacity_retry_authority
+  dependency_status: a100_capacity_not_acquired
+  authorization_status: no_provider_call_authorized
   read_profile: phase9_avatarforcing_user_sample
   task_brief: tasks/VF-9-21.md
   goal: "Generate one 10.12-second Elias Yoder AvatarForcing-only MP4 for user quality review."
-  provider_calls_authorized: true
-  maximum_external_spend_usd: 1.0240051888
+  provider_calls_authorized: false
+  maximum_external_spend_usd: 0
   provider_authority:
     provider: runpod_serverless
     model_id: "KlingAIResearch/AvatarForcing@63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39"
     image_digest: "sha256:42a14b44cd0ab42c85cd6de91a44009ba7897723ebef2ee18d358ee3c0e3a384"
-    cap_usd: 1.0240051888
+    cap_usd: 0
     non_transferable: true
     authorized_by_user_at: "2026-08-12T11:40:00Z"
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
   model_downloads_authorized: false
-  application_code_changes_authorized: true
+  application_code_changes_authorized: false
   expected_evidence: "evidence/acceptance/VF-9-21/elias-avatarforcing-sample"
   required_handoff:
-    - "Build and pin corrected worker before dispatch."
-    - "Run exactly one persisted-output AvatarForcing job and return valid MP4 as READY_FOR_USER_REVIEW."
-    - "Never dispatch MuseTalk, SkyReels, LongCat, or a second AvatarForcing job."
+    - "Preserve corrected worker image and do not rebuild it."
+    - "Do not redispatch until user explicitly authorizes one capacity retry."
+    - "Never dispatch MuseTalk, SkyReels, or LongCat."
     - "Preserve independent RunPod absolute zero."
   safe_parallelism:
     maximum_lanes_including_integration: 1
     integration_owner: VF-9-21
   prohibited_in_task:
-    - "MuseTalk, SkyReels, LongCat, model/source/audio/GPU substitution, more than one provider job, or spend above $1.0240051888."
+    - "MuseTalk, SkyReels, LongCat, model/source/audio/GPU substitution, any provider job, or spend."
     - "Publishing private inputs, production profile promotion, deployment, migration, UI redesign, or unrelated cloud/account mutation."
 
 blocking_gates_for_production:
@@ -439,7 +442,7 @@ activation_handoff:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Preserve user image/audio untracked and private; require tracked worktree clean."
     - "Load only phase9_avatarforcing_user_sample and tasks/VF-9-21.md."
-    - "Build and pin corrected output resolver/delivery image, then run one 253-frame job after absolute-zero inventory."
+    - "Await explicit user authority for one capacity retry of the exact corrected worker; keep RunPod zero meanwhile."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
     - "Any provider/credential/GPU/cloud/plugin/deployment action, LongCat/model substitution, profile promotion, unsupported gate closure, regression, or output-grammar conflict."
