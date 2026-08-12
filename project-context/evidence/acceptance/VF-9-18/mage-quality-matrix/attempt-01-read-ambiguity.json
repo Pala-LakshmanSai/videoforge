@@ -1,0 +1,131 @@
+{
+  "schema_version": "videoforge.mage-quality-matrix/v1",
+  "checked_at": "2026-08-12T10:25:34.385Z",
+  "status": "FAILED",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-mage@sha256:ee844a242956a376466fa233f05e3bb6ffdcf71a645f5b27241331e5e295a89c",
+  "model_revision": "d8c99241f6fa80fbd453014234af2bf337ea21e6",
+  "source_revision": "1108f2ac5e412b27accb0e5d51c90ef2ba39784d",
+  "matrix_count": 40,
+  "first_generation_count": 0,
+  "retry_count": 0,
+  "review": null,
+  "results": [],
+  "resource_identity": {
+    "template_id_hash": "sha256:1838c697b418e520e0997af2000b6e850503451be377e3613ede705fbfe2f239",
+    "endpoint_id_hash": "sha256:35fbf231cf54cbabb391246f83fde4afb0d247980c06cce1456ea01caa99f2a3"
+  },
+  "cost": {
+    "starting_balance_usd": 7.4039428825,
+    "ending_balance_usd": 7.4039428825,
+    "measured_spend_usd": 0,
+    "cap_usd": 1.5,
+    "cost_stop_usd": 1.35
+  },
+  "vram": {
+    "peak_bytes": null,
+    "reason": "pinned worker exposes total GPU memory but not peak allocation"
+  },
+  "initial_inventory": {
+    "checkedAt": "2026-08-12T10:24:36.025Z",
+    "pods": [],
+    "endpoints": [],
+    "privateTemplateCount": 0,
+    "networkVolumes": [],
+    "runningPodCount": 0,
+    "activeServerlessWorkerCount": 0
+  },
+  "final_inventory": {
+    "checkedAt": "2026-08-12T10:25:33.701Z",
+    "pods": [],
+    "endpoints": [],
+    "privateTemplateCount": 0,
+    "networkVolumes": [],
+    "runningPodCount": 0,
+    "activeServerlessWorkerCount": 0
+  },
+  "events": [
+    {
+      "event": "initial_inventory_absolute_zero",
+      "at": "2026-08-12T10:24:37.760Z",
+      "elapsed_ms": 1735,
+      "detail": null
+    },
+    {
+      "event": "template_created",
+      "at": "2026-08-12T10:24:38.448Z",
+      "elapsed_ms": 2423,
+      "detail": {
+        "template_id_hash": "sha256:1838c697b418e520e0997af2000b6e850503451be377e3613ede705fbfe2f239"
+      }
+    },
+    {
+      "event": "endpoint_created",
+      "at": "2026-08-12T10:24:39.327Z",
+      "elapsed_ms": 3302,
+      "detail": {
+        "endpoint_id_hash": "sha256:35fbf231cf54cbabb391246f83fde4afb0d247980c06cce1456ea01caa99f2a3",
+        "network_volume_attached": false
+      }
+    },
+    {
+      "event": "item_dispatch_started",
+      "at": "2026-08-12T10:24:40.438Z",
+      "elapsed_ms": 4413,
+      "detail": {
+        "scene_id": "documentary_stock_v1_people_skin",
+        "attempt": 1,
+        "seed": 2026081200
+      }
+    },
+    {
+      "event": "item_dispatch_acknowledged",
+      "at": "2026-08-12T10:24:41.128Z",
+      "elapsed_ms": 5103,
+      "detail": {
+        "scene_id": "documentary_stock_v1_people_skin",
+        "attempt": 1,
+        "job_id_hash": "sha256:86073c52bb0b3fdf09b8fcc4e9eeb1576adfa678386824e7fa655417ace5331a"
+      }
+    },
+    {
+      "event": "qualification_failed",
+      "at": "2026-08-12T10:25:21.719Z",
+      "elapsed_ms": 45694,
+      "detail": {
+        "failure_code": "RUNPOD_READ_AMBIGUOUS"
+      }
+    },
+    {
+      "event": "job_cancelled",
+      "at": "2026-08-12T10:25:26.290Z",
+      "elapsed_ms": 50265,
+      "detail": null
+    },
+    {
+      "event": "queue_empty",
+      "at": "2026-08-12T10:25:27.124Z",
+      "elapsed_ms": 51099,
+      "detail": null
+    },
+    {
+      "event": "endpoint_deleted",
+      "at": "2026-08-12T10:25:29.905Z",
+      "elapsed_ms": 53880,
+      "detail": null
+    },
+    {
+      "event": "template_deleted",
+      "at": "2026-08-12T10:25:32.890Z",
+      "elapsed_ms": 56865,
+      "detail": null
+    },
+    {
+      "event": "final_inventory_absolute_zero",
+      "at": "2026-08-12T10:25:34.385Z",
+      "elapsed_ms": 58360,
+      "detail": null
+    }
+  ],
+  "failure_code": "RUNPOD_READ_AMBIGUOUS",
+  "total_wall_time_ms": 58361
+}

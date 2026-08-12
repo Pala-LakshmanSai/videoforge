@@ -1,0 +1,32 @@
+{
+  "schema_version": "videoforge.mage-quality-matrix-manual-recovery/v1",
+  "status": "BOUNDED_OPERATOR_TIMEOUT",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-mage@sha256:ee844a242956a376466fa233f05e3bb6ffdcf71a645f5b27241331e5e295a89c",
+  "first_scene_id": "documentary_stock_v1_people_skin",
+  "first_generation_count": 0,
+  "retry_count": 0,
+  "png_count": 0,
+  "observed_state": "IN_QUEUE_WITHOUT_OUTPUT",
+  "operator_stop_reason": "No first output after the bounded cold-start observation window.",
+  "wrapper_failure": "SIGINT terminated the pnpm wrapper before the runner finally block completed.",
+  "resource_identity": {
+    "endpoint_id_hash": "sha256:a93a4e7ab60348efa67faa2371ad2b5620a9090d8f34989abe3c2adfe763d026",
+    "template_id_hash": "sha256:8f8823c70d9681a24352ac8950a04470d5d8b8b84e120450a3ef6e2905e5a8b2"
+  },
+  "cleanup": {
+    "selection": "exact owned vf_mage_matrix_96d3a32db913 endpoint and template",
+    "endpoint_delete_confirmed": true,
+    "template_delete_confirmed": true,
+    "independent_inventory_checked_at": "2026-08-12T10:39:22.036Z",
+    "pods": 0,
+    "workers": 0,
+    "endpoints": 0,
+    "templates": 0,
+    "volumes": 0
+  },
+  "cost": {
+    "starting_balance_usd": 7.4039428825,
+    "ending_balance_usd": 7.4039428825,
+    "measured_spend_usd": 0
+  }
+}
