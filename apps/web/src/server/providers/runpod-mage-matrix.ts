@@ -25,6 +25,7 @@ import {
 
 const spendCapUsd = 1.5;
 const costStopUsd = 1.35;
+const jobDeadlineMs = 10 * 60_000;
 const gpuTypeIds = [MAGE_GPU] as const;
 const terminalStatuses = new Set(["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"]);
 const negativePrompt = MAGE_MATRIX_NEGATIVE_PROMPT;
@@ -152,7 +153,9 @@ const mark = (event: string, detail?: unknown): void => {
 
 const waitForTerminal = async (job: RunPodJobResult): Promise<RunPodJobResult> => {
   if (!jobs) throw new Error("RUNPOD_JOB_CLIENT_MISSING");
-  for (let attempt = 0; attempt < 180 && !terminalStatuses.has(job.status); attempt += 1) {
+  const jobStartedMs = Date.now();
+  for (let attempt = 0; !terminalStatuses.has(job.status); attempt += 1) {
+    if (Date.now() - jobStartedMs >= jobDeadlineMs) throw new Error("RUNPOD_JOB_TIMEOUT");
     await sleep(10_000);
     if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
     job = await jobs.status(job.id);
@@ -163,6 +166,9 @@ const waitForTerminal = async (job: RunPodJobResult): Promise<RunPodJobResult> =
         status: job.status,
         progress: job.progress ?? null,
       });
+      process.stdout.write(
+        `${JSON.stringify({ event: "job_status", status: job.status, progress: job.progress ?? null, elapsedMs: Date.now() - jobStartedMs, spendUsd: spend })}\n`,
+      );
       if (spend >= costStopUsd) throw new Error("RUNPOD_COST_STOP");
     }
     const inventory = await control.inventory();
@@ -170,7 +176,6 @@ const waitForTerminal = async (job: RunPodJobResult): Promise<RunPodJobResult> =
       throw new Error("RUNPOD_WORKER_LIMIT_BREACH");
     }
   }
-  if (!terminalStatuses.has(job.status)) throw new Error("RUNPOD_JOB_TIMEOUT");
   return job;
 };
 
@@ -395,6 +400,7 @@ const evidence = {
     cap_usd: spendCapUsd,
     cost_stop_usd: costStopUsd,
   },
+  job_deadline_ms: jobDeadlineMs,
   vram: {
     peak_bytes: null,
     reason: "pinned worker exposes total GPU memory but not peak allocation",
