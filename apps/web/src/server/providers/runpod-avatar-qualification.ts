@@ -64,6 +64,20 @@ const drain = async (client: RunPodServerlessJobClient): Promise<void> => {
   throw new Error("RUNPOD_DRAIN_TIMEOUT");
 };
 
+const inventoryOrNull = async (
+  client: RunPodControlClient,
+  attempts: number,
+): Promise<Awaited<ReturnType<RunPodControlClient["inventory"]>> | null> => {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await client.inventory();
+    } catch {
+      if (attempt + 1 < attempts) await sleep(2_000);
+    }
+  }
+  return null;
+};
+
 const probe = async (path: string): Promise<unknown> => {
   const completed = await execFileAsync(
     "ffprobe",
@@ -226,8 +240,9 @@ try {
   }
   if (endpointDeleted) {
     for (let attempt = 0; attempt < 120; attempt += 1) {
-      const inventory = await control.inventory();
+      const inventory = await inventoryOrNull(control, 1);
       if (
+        inventory &&
         inventory.runningPodCount === 0 &&
         inventory.activeServerlessWorkerCount === 0 &&
         !inventory.endpoints.some((candidate) => candidate.idHash === endpoint?.idHash)
@@ -253,8 +268,14 @@ try {
   }
 }
 
-const endingBalance = await balance(apiKey);
-const finalInventory = await control.inventory();
+let endingBalance: number | null = null;
+try {
+  endingBalance = await balance(apiKey);
+} catch {
+  failureCode ??= "RUNPOD_ENDING_BALANCE_UNAVAILABLE";
+}
+const finalInventory = await inventoryOrNull(control, 6);
+if (!finalInventory) failureCode ??= "RUNPOD_FINAL_INVENTORY_UNAVAILABLE";
 const evidence = {
   schema_version: "videoforge.avatarforcing-qualification/v1",
   checked_at: new Date().toISOString(),
@@ -283,7 +304,7 @@ const evidence = {
   cost: {
     starting_balance_usd: startedBalance,
     ending_balance_usd: endingBalance,
-    measured_spend_usd: Math.max(0, startedBalance - endingBalance),
+    measured_spend_usd: endingBalance === null ? null : Math.max(0, startedBalance - endingBalance),
     cap_usd: qualificationSpendCapUsd,
   },
   initial_inventory: initialInventory,
@@ -301,8 +322,8 @@ process.stdout.write(
     ok: !failureCode,
     status: job?.status ?? null,
     spendUsd: evidence.cost.measured_spend_usd,
-    finalRunningPods: finalInventory.runningPodCount,
-    finalActiveWorkers: finalInventory.activeServerlessWorkerCount,
+    finalRunningPods: finalInventory?.runningPodCount ?? null,
+    finalActiveWorkers: finalInventory?.activeServerlessWorkerCount ?? null,
     failureCode: failureCode ?? null,
   })}\n`,
 );
