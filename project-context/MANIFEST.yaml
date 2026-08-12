@@ -3,8 +3,8 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-11"
 source_of_truth: project-context
-current_selected_profile: phase9_mage_corrected_quality_resume
-current_selected_brief: tasks/VF-9-13.md
+current_selected_profile: phase9_mage_durable_result_integration
+current_selected_brief: tasks/VF-9-15.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -456,6 +456,19 @@ read_profiles:
     - 11_COST_SPEED_BUDGET.md
     - 14_TESTING_AND_ACCEPTANCE.md
     - tasks/VF-9-13.md
+  phase9_mage_production_lane_decision:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 11_COST_SPEED_BUDGET.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 15_DECISIONS_AND_OPEN_GATES.md
+    - tasks/VF-9-14.md
+  phase9_mage_durable_result_integration:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 13_ENGINEERING_BEST_PRACTICES.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - tasks/VF-9-15.md
   phase3_runware_style_adapter:
     - 08_MODELS_AND_PROVIDERS.md
     - 14_TESTING_AND_ACCEPTANCE.md
@@ -611,6 +624,7 @@ approved_decisions:
   DEC_STYLE_007: manual_edits_preserve_and_detach_analyzer_evidence_from_derived_profile_bytes
   DEC_IMAGE_001: comfy_org_mage_flow_turbo_bf16_via_pinned_comfyui
   DEC_IMAGE_002: user_accepts_unresolved_mage_terms_risk_locked_model_proceeds
+  DEC_IMAGE_003: locked_mage_turbo_strict_review_and_one_rejection_triggered_retry
   DEC_AVATAR_001: avatarforcing_primary
   DEC_AVATAR_002: musetalk_lip_only_repair
   DEC_AVATAR_003: skyreels_v3_whole_frame_fallback

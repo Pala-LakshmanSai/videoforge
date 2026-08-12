@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T08:14:00Z"
+updated_at: "2026-08-12T08:30:03Z"
 
-phase: corrected_mage_quality_resume
+phase: durable_real_mage_result_integration
 implementation_authorized_in_current_task: true
-current_milestone: mage_quality_acceptance_candidate
-current_task: VF-9-13
+current_milestone: exact_real_mage_durable_acceptance
+current_task: VF-9-15
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -19,8 +19,8 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "d00ca86"
-  working_tree_expected: vf_9_12_negative_prompt_image_handoff_then_clean
+  last_good_commit: "5a127b4"
+  working_tree_expected: vf_9_13_quality_evidence_and_vf_9_14_decision_handoff_then_clean
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -42,9 +42,9 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: true
-  authorized_spend_usd: 0.15
-  provider_authority_scope: "VF-9-13 permits existing Keychain RunPod credential use, exact VF-9-12 Mage image, one transient scale-zero RTX 4090 endpoint/template/job, public weights, one image, evidence, Git push, and at most $0.15 with a $0.12 stop. No redispatch, Runware, ImageForge volume mutation, promotion, deployment, schema/UI/Avatar change. Mandatory drain/delete/zero proof."
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: "VF-9-15 permits local durable real-shaped Mage result integration/tests/docs, Git push, and hosted CI at $0 only. No provider call, credential, GPU, model download, RunPod/Runware mutation, deployment, promotion, UI redesign, Avatar work, or spend."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -254,13 +254,13 @@ completed_tasks:
     summary: "Admitted only exact official Mage revision 395402ba3ef110c96e70d01abe4d178dbe4e01a5, pinned transformer identity/size ceiling, retained all fail-closed guards, and passed full verification at $0."
 
 latest_closed_handoff:
-  task_id: VF-9-12
+  task_id: VF-9-14
   status: complete
-  task_kind: mage_negative_prompt_contract_correction
-  implementation_commit: "d00ca86"
-  evidence: "evidence/acceptance/VF-9-12/mage-negative-prompt-correction"
-  verification_result: "exact_negative_prompt_graph_binding_full_verify_and_image_build_passed"
-  external_actions: "Git push, hosted CI, and GHCR image build only; no provider, credential, GPU, download, or spend."
+  task_kind: mage_production_lane_decision
+  implementation_commit: "pending_context_commit"
+  evidence: "evidence/acceptance/VF-9-14/mage-production-lane-decision"
+  verification_result: "locked_turbo_bf16_bounded_retry_and_strict_review_decision"
+  external_actions: "Read-only final RunPod inventory confirmation; no provider mutation, GPU, model download, or spend."
   external_spend_usd: 0
 
 last_green:
@@ -286,38 +286,32 @@ active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-9-13
-  milestone: mage_quality_acceptance_candidate
+  task_id: VF-9-15
+  milestone: exact_real_mage_durable_acceptance
   status: ready
-  dependency_status: vf_9_12_negative_prompt_image_green_and_runpod_zero
-  authorization_status: one_capped_corrected_quality_image
-  read_profile: phase9_mage_corrected_quality_resume
-  task_brief: tasks/VF-9-13.md
-  goal: "Generate one documentary Mage image through the exact negative-prompt contract and return RunPod zero."
-  provider_calls_authorized: true
-  maximum_external_spend_usd: 0.15
-  provider_authority:
-    provider: runpod_serverless
-    model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6"
-    image_digest: "sha256:ee844a242956a376466fa233f05e3bb6ffdcf71a645f5b27241331e5e295a89c"
-    cap_usd: 0.15
-    non_transferable: true
-    authorized_by_user_at: "2026-08-12T06:30:00Z"
+  dependency_status: vf_9_14_production_lane_decided_and_runpod_zero
+  authorization_status: zero_spend_durable_result_integration
+  read_profile: phase9_mage_durable_result_integration
+  task_brief: tasks/VF-9-15.md
+  goal: "Compose exact corrected Mage result lineage into durable image acceptance behind a fail-closed staging seam."
+  provider_calls_authorized: false
+  maximum_external_spend_usd: 0
+  provider_authority: null
   remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
-  model_downloads_authorized: true
+  credential_access_authorized: false
+  model_downloads_authorized: false
   application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-9-13/mage-corrected-quality-resume"
+  expected_evidence: "evidence/acceptance/VF-9-15/durable-real-mage-result"
   required_handoff:
-    - "Generate exactly one 1280x720 image on RTX 4090 through exact positive/negative prompt hashes."
-    - "Save/hash/probe/inspect output and retain complete timing/cost lineage."
-    - "Never redispatch; drain/delete resources and independently prove absolute zero."
+    - "Map exact Mage bytes/evidence into durable image asset, QA, attempt, task, lineage, and cost state."
+    - "Prove replay/restart/cancellation/workspace/lineage/cost drift and one rejected-result retry."
+    - "Keep fixture default and the candidate unpromoted."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-9-13
+    integration_owner: VF-9-15
   prohibited_in_task:
-    - "Runware, redispatch, ImageForge-volume mutation, model substitution, or spend above $0.15."
-    - "Production promotion/deployment, schema/UI change, or Avatar work."
+    - "Provider call, credential, GPU, model download, RunPod/Runware mutation, or spend."
+    - "Production promotion/deployment, UI redesign, or Avatar work."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -341,13 +335,13 @@ known_incomplete_boundaries:
   - "Mage/AvatarForcing terms evidence remains ambiguous. The user explicitly accepted that risk for bounded locked-model qualification; do not claim clear commercial permission or substitute models."
   - "DeepSeek/Gemini are live-runtime composed and fixture remains default; latest DeepSeek smoke was correctly rejected as providerUnavailable at $0."
   - "Fixture Hub reference bytes are session-scoped. No production R2/Neon/Better Auth/Workflow deployment exists."
-  - "One real Mage provider image exists with measured GPU/cost/timing, but its requested logo is malformed and it is not style/semantic acceptance. No acceptable real Avatar asset, real 30–120-second provider video, full SLO, fallback, or production release exists."
+  - "Three real Mage provider images exist with exact GPU/cost/timing evidence. Negative prompting improved the third, but strict quality still rejected generated plate text and object/hand artifacts; the 40-prompt matrix remains open. No acceptable real Avatar asset, real 30–120-second provider video, full SLO, fallback, or production release exists."
   - "No encrypted off-machine backup, R2 integrity inventory, clean-target cloud restore, ten-user contention/security proof, or fresh-account production Chrome sign-off exists."
   - "Two bounded SkyReels resumes produced no candidate; the latest provider 503 was cancelled and manually recovered to absolute-zero inventory. No further paid SkyReels retry is selected."
 
 next_tasks:
-  - "1. VF-9-13 run one corrected negative-prompt Mage quality confirmation and return RunPod zero."
-  - "2. If accepted, integrate real Mage result acceptance and render one real owned video."
+  - "1. VF-9-15 integrate exact corrected Mage results into durable acceptance at $0."
+  - "2. Compose one real owned 30–120-second video candidate with accepted assets and test installed Chrome."
   - "3. Add MuseTalk repair and SkyReels whole-frame fallback only after their technical triggers."
   - "4. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
   - "5. Add isolated R2, Neon, Auth, and Workflow adapters; then contention/fault/security/backup/restore hardening."
@@ -355,7 +349,7 @@ next_tasks:
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
-  full_production_mvp_implemented_percent: 72
+  full_production_mvp_implemented_percent: 74
   production_end_to_end_proven: false
   completed:
     provider_free_foundation_percent: 100
@@ -365,7 +359,7 @@ progress_snapshot:
     prompt_and_style_provider_qualification_and_adapters_percent: 100
     custom_image_style_provider_free_percent: 100
   early_or_blocked:
-    production_image_lane_percent: 78
+    production_image_lane_percent: 84
     production_avatar_lane_percent: 68
     cloud_staging_integration_percent: 15
     production_release_percent: 0
@@ -404,15 +398,17 @@ activation_handoff:
     - "VF-9-10 added bounded same-job GET reconciliation with no POST retry; full verification passed at $0."
     - "VF-9-11 completed technically for $0.0235054352 but visual inspection rejected visible text, repeated people, and weak geometry; final RunPod inventory is zero."
     - "VF-9-12 bound exact negative prompt bytes into the Mage graph and published immutable corrected image sha256:ee844a242956a376466fa233f05e3bb6ffdcf71a645f5b27241331e5e295a89c at $0."
+    - "VF-9-13 completed for $0.0308072963 and improved visibly, but strict review rejected plate text and object/hand artifacts; cleanup plus a later independent inventory proved absolute zero."
+    - "VF-9-14 kept locked Turbo BF16, banned text-critical generated scenes, required strict review, and allowed only one rejection-triggered candidate retry."
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from d00ca86 after the VF-9-12 implementation commit; preserve all newer commits."
-    - "Load only phase9_mage_corrected_quality_resume and tasks/VF-9-13.md."
-    - "Run one capped corrected quality image; inspect it and force RunPod zero."
+    - "Require clean HEAD descending from the VF-9-14 context commit after 5a127b4; preserve all newer commits."
+    - "Load only phase9_mage_durable_result_integration and tasks/VF-9-15.md."
+    - "Integrate real-shaped Mage results into durable acceptance at $0; keep fixture default."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
-    - "Initial inventory not idle, cap risk, digest drift, redispatch risk, semantic failure, cleanup uncertainty, regression, or schema need."
+    - "Any provider/credential/GPU activity, schema need beyond the existing durable acceptance contract, profile promotion, regression, or ambiguous QA/retry semantics."
 
 notes:
   - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."
