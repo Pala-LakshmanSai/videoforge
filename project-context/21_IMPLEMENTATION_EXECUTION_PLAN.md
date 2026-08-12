@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: `VF-8-01` Node sandbox runtime complete; `VF-8-02` locked Runware runtime selected
+Status: `VF-9-17` provider-render composition in progress at checkpoint `95ff125`
 Read when: selecting, implementing, integrating, or handing off one task.
 
 ## Authority and operating rule
@@ -26,8 +26,8 @@ gate, failed check, destructive migration, provider ambiguity, or new authority.
 - Phase 1–2: durable provider-free control plane, recovery, isolation/direct transfer, metadata
   restore, timing/timeline, selected Avatar span audio, and byte-equivalent restart/restore.
 - DX/reliability: `VF-DX-01/02` and `VF-REL-01`.
-- Prompt/style foundations and qualified injected Runware DeepSeek/Gemini adapters; ordinary runtime
-  remains fixture and neither live adapter is composed.
+- Prompt/style foundations, qualified injected Runware DeepSeek/Gemini adapters, and fail-closed
+  runtime composition; ordinary runtime remains fixture.
 - Provider-free media: `VF-4-01/02`, `VF-5-01/02`, and `VF-7-01` through `VF-7-09`, including
   migrations `0008`–`0012`, durable prompt/image/Avatar/style acceptance, immutable root/derived
   style artifacts, versioned edit API, browser/server reference normalization, and complete
@@ -45,64 +45,61 @@ completed task.
 
 ## Exact next task
 
-### VF-8-02 — Locked Runware runtime composition
+### VF-9-17 — Finish real-provider render composition boundary
 
-Use only `phase8_runware_runtime` and `tasks/VF-8-02.md`. Compose the already-qualified locked
-DeepSeek V4 Flash prompt writer and Gemini 3.5 Flash style analyzer behind explicit sandbox
-authority. Credential access is Keychain-only; maximum new spend is `$0.20`. No RunPod/GPU,
-model download, deployment, model-role change, or UI redesign.
+Use only `phase9_real_provider_render_composition` and `tasks/VF-9-17.md`. Start from checkpoint
+`95ff125`; do not rebuild its green provider-acceptance barrier. Compose durable accepted Mage and
+Avatar records into one fake-real 30–120-second FFmpeg v3 run, prove rejection/checksum/cancel/
+restart/replay behavior, then complete installed-Chrome play/seek/approve/download/hash evidence.
 
-Mage preflight `VF-3-08` and AvatarForcing preflight `VF-3-10` retain unresolved terms evidence.
-The user explicitly accepted that risk for bounded qualification of the locked models. Do not
-substitute LongCat or claim unambiguous commercial permission.
+Authority is `$0` local work plus Git push/hosted CI. No credential, provider call, GPU/model
+download, RunPod/Runware mutation, deployment, profile promotion, or spend. Rejected `VF-9-13`
+Mage and `VF-8-10` Avatar evidence cannot enter an accepted render.
 
 ## Reliable remaining sequence
 
 The list below is roadmap order, not authorization and not a set of pre-authored briefs.
 
-### A. Provider decisions and gates
+### A. Finish local composition boundary
 
-1. Complete `VF-8-02` locked Runware runtime composition and bounded live smoke.
-2. Preserve the exact Mage and AvatarForcing revisions/terms evidence while proceeding only under
-   bounded qualification briefs; never reopen excluded models.
-3. After an exact gate resolution and paid brief, qualify the selected image model: exact checkpoint/container,
-   quality/style adherence, latency, VRAM, retries, batching, accepted-image cost, and scale-zero.
-4. Qualify the selected Avatar primary: exact code/weights/container, identity, lips, body and
-   background stability, cadence, full/split crops, cold/warm time, cost, and scale-zero.
-5. Qualify RunPod repair and recovery serially: configuration drift, ambiguous acknowledgement,
-   claims, callback replay, duplicate-cost visibility, cancellation, and drain-to-zero.
-6. Close image, Avatar, GPU, RunPod, style-adherence, and relevant cost gates before exposing any
-   production execution profile. Rejected primary results return to explicit regenerate/review;
-   fallbacks are not required for the first real-video milestone.
+1. Finish `VF-9-17` from `95ff125`: compose durable accepted Mage/Avatar records into the green
+   barrier without changing fixture defaults or dropping immutable lineage.
+2. Prove missing/rejected QA, checksum drift, cancellation, and restart/replay fail closed; produce
+   one fake-real 30–120-second FFmpeg v3 output.
+3. Complete installed-Chrome play, seek, approval, download, and hash proof. Fix the recorded
+   Playwright teardown hang and require canonical verification exit code 0.
 
-### B. First real-video milestone
+### B. Qualify real media and produce first real video
 
-7. Compose the already durable prompt/image/Avatar acceptance boundaries with the qualified
-   providers; keep one immutable accepted asset per selected result and exact revision/profile/
-   attempt/cost lineage.
-8. Produce one owned 30–120-second real video through the existing asset barrier and FFmpeg v3.
-9. In installed Chrome verify contact-sheet review, play, seek, explicit approval, checksum-matched
-   download, and playback of the downloaded MP4. Record exact commit/container/model/profile,
-   provider cost, and scale-to-zero evidence.
+4. Under a new exact capped brief, finish the Mage 40-prompt matrix and accept at least one image.
+   Record exact image/model revision, GPU, queue/boot/load/generation time, cost, checksum, review,
+   output, and final zero inventory.
+5. Under a separate exact capped brief, accept AvatarForcing or confirm its whole-frame failure.
+   Use MuseTalk only for lip-only defects; use SkyReels only for whole-frame defects; never LongCat.
+6. Compose one accepted owned 30–120-second real video through durable barriers and FFmpeg v3.
+   Verify exact provenance, cost, restart/replay, installed-Chrome review/download/playback, and
+   RunPod absolute zero.
+7. Close image, Avatar, GPU, RunPod, style-adherence, and relevant cost gates before exposing any
+   production execution profile.
 
 ### C. Staging and hardening
 
-10. Split oversized PGlite/artifact adapters by capability without interface or behavior changes.
-11. Add isolated Neon, then private R2 direct transfers, Better Auth/Google admission, Cloudflare
+8. Split oversized PGlite/artifact adapters by capability without interface or behavior changes.
+9. Add isolated private R2, then Neon, Better Auth/Google admission, and Cloudflare
     Workflow recovery, and fail-closed bindings as separate small serial integration tasks.
-12. Add ten-user contention/fairness, restart, callback, config-drift, cancellation, budget,
+10. Add ten-user contention/fairness, restart, callback, config-drift, cancellation, budget,
     isolation, and security tests.
-13. Add encrypted metadata backups, R2 integrity inventory, clean-target restore drills, and
+11. Add encrypted metadata backups, R2 integrity inventory, clean-target restore drills, and
     telemetry-backed fault evidence.
-14. Compose live Gemini custom-style analysis and optional explicitly billed image previews only
+12. Compose live Gemini custom-style analysis and optional explicitly billed image previews only
     after storage/privacy/provider authority is exact; ordinary video generation stays at zero
     style-analysis calls.
 
 ### D. Release
 
-15. Run representative 30-minute cold/warm jobs. Complete at least ten successful runs before
+13. Run representative 30-minute cold/warm jobs. Complete at least ten successful runs before
     reporting p50/p90.
-16. Finish with fresh-account production Chrome acceptance, exact provenance, cost review,
+14. Finish with fresh-account production Chrome acceptance, exact provenance, cost review,
     clean-target restore proof, drain-to-zero, security checks, and explicit user sign-off.
 
 ## Verification rhythm
@@ -125,5 +122,6 @@ fresh-account Chrome create-through-downloaded-playback, exact provenance, and u
 ## Fresh-chat start
 
 Read `AGENTS.md`, `00_START_HERE.md`, `MANIFEST.yaml`, and `CURRENT_STATE.yaml`; confirm clean HEAD
-descends from `21d6646`; load only `phase8_runware_runtime` and `tasks/VF-8-02.md`.
-Preserve all commits. Keep authority to the exact Runware cap and do not preload later briefs.
+descends from `95ff125`; load only `phase9_real_provider_render_composition` and
+`tasks/VF-9-17.md`. Preserve all commits. Resume the recorded checkpoint at `$0`; do not preload
+later briefs or access provider credentials/resources.

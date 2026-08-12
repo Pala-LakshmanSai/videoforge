@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T09:00:00Z"
+updated_at: "2026-08-12T09:35:00Z"
 
 phase: real_provider_render_composition
 implementation_authorized_in_current_task: true
@@ -19,8 +19,8 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "a15c4d7"
-  working_tree_expected: vf_9_16_provider_neutral_acceptance_handoff_then_clean
+  last_good_commit: "95ff125"
+  working_tree_expected: vf_9_17_checkpoint_context_handoff_then_clean
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -285,11 +285,39 @@ last_green:
 active_ownership: []
 blocked_tasks: []
 
+in_progress_checkpoint:
+  task_id: VF-9-17
+  code_commit: "95ff125"
+  status: provider_acceptance_barrier_green_render_composition_remaining
+  completed:
+    - "Pure pipeline barrier accepts only exact Mage/Avatar acceptance schemas with valid fingerprints, attempt IDs, matching immutable asset IDs/checksums, PASSED QA, and ACCEPTED disposition."
+    - "Existing fixture resolver and FFmpeg v3 behavior remain unchanged."
+    - "Focused pipeline build/typecheck/lint and 116/116 tests pass."
+  remaining:
+    - "Compose durable image/Avatar repository records into the barrier without losing provider/model/prompt/runtime/cost lineage."
+    - "Run one fake-real 30–120-second local FFmpeg v3 candidate with restart/replay, cancellation, missing/rejected QA, and checksum-drift proof."
+    - "Complete installed-Chrome play/seek/approve/download/hash proof; diagnose the post-38-journey Playwright teardown hang and rerun forced full verification to exit code 0."
+  evidence: "evidence/acceptance/VF-9-17/real-provider-render-composition"
+  external_actions: "None; no provider, credential, GPU, download, cloud mutation, or spend."
+  verification_attempt:
+    result: incomplete_teardown_after_all_reported_tests_passed
+    command: "CI=1 TURBO_FORCE=true pnpm verify"
+    passed_before_hang:
+      control_plane_pglite_tests: 212
+      web_server_component_tests: 212
+      pipeline_tests: 116
+      provider_sandbox_tests: 43
+      local_workerd_http_parity_tests: 1
+      playwright_chrome_journeys_passed: 38
+      playwright_chrome_journeys_intentionally_skipped: 0
+    final_exit: 130
+    reason: "Playwright did not exit after reporting all 38 journeys; owned verification process was interrupted and owned server stopped. Do not call this canonical green."
+
 recommended_next_task:
   task_id: VF-9-17
   milestone: accepted_provider_artifacts_to_ffmpeg_v3
-  status: ready
-  dependency_status: vf_9_16_provider_neutral_mage_acceptance_green_and_runpod_zero
+  status: resume_in_progress_checkpoint
+  dependency_status: provider_acceptance_barrier_green_at_95ff125_and_runpod_zero
   authorization_status: zero_spend_real_provider_render_composition
   read_profile: phase9_real_provider_render_composition
   task_brief: tasks/VF-9-17.md
@@ -303,9 +331,9 @@ recommended_next_task:
   application_code_changes_authorized: true
   expected_evidence: "evidence/acceptance/VF-9-17/real-provider-render-composition"
   required_handoff:
-    - "Resolve only accepted Mage/Avatar artifacts into exact render inputs."
-    - "Prove rejected/missing QA and checksum drift cannot render."
-    - "Render/replay/download/hash one 30–120-second real-shaped candidate in installed Chrome."
+    - "Compose durable Mage/Avatar acceptance records into the green provider barrier."
+    - "Prove rejected/missing QA, cancellation, restart/replay, and checksum drift cannot produce an accepted render."
+    - "Render/replay/play/seek/approve/download/hash one 30–120-second fake-real candidate in installed Chrome."
   safe_parallelism:
     maximum_lanes_including_integration: 1
     integration_owner: VF-9-17
@@ -340,12 +368,12 @@ known_incomplete_boundaries:
   - "Two bounded SkyReels resumes produced no candidate; the latest provider 503 was cancelled and manually recovered to absolute-zero inventory. No further paid SkyReels retry is selected."
 
 next_tasks:
-  - "1. VF-9-17 compose accepted provider artifacts into FFmpeg v3 and installed-Chrome review/download at $0."
-  - "2. Resume the 40-prompt Mage matrix and acceptable Avatar lane only under new exact capped authority."
-  - "3. Add MuseTalk repair and SkyReels whole-frame fallback only after their technical triggers."
-  - "4. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
-  - "5. Add isolated R2, Neon, Auth, and Workflow adapters; then contention/fault/security/backup/restore hardening."
-  - "6. Fresh-account production acceptance, exact provenance/cost/restore/scale-zero, and user sign-off."
+  - "1. Finish VF-9-17 from checkpoint 95ff125: durable acceptance composition, fake-real 30–120-second FFmpeg v3 run, fault/replay proof, installed-Chrome acceptance, full verify. $0 and local only."
+  - "2. Under one new exact capped authority, finish the Mage 40-prompt quality/style matrix and obtain at least one accepted real image; record cold/warm/queue/GPU/cost/output evidence and force RunPod to zero."
+  - "3. Under separate exact capped authority, obtain an accepted AvatarForcing result or confirm whole-frame failure; use MuseTalk only for lip-only defects and SkyReels only for whole-frame failure. Never LongCat."
+  - "4. Compose one accepted real owned 30–120-second provider video through durable barriers, FFmpeg v3, and installed-Chrome acceptance with exact provenance, spend, and scale-zero proof."
+  - "5. Add cloud seams serially: private R2, Neon, Better Auth/Google admission, then Cloudflare Workflow recovery. Verify each seam before the next."
+  - "6. Run contention/fault/security/backup/restore hardening, representative 30-minute benchmarks, fresh-account production acceptance, and user sign-off."
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
@@ -366,9 +394,9 @@ progress_snapshot:
   interpretation: "Provider-free media, restart-safe Node sandbox, Runware runtime composition, RunPod scale-zero control, and pinned real AvatarForcing/SkyReels workers are implemented. AvatarForcing produced a valid but rejected-quality MP4; corrected SkyReels inference exceeded the bounded 30-minute window, and Mage, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: mage_worker_image_build_selected
+  status: vf_9_17_provider_render_checkpoint_ready_to_resume
   completed_and_preserved:
-    - "All completed tasks/commits above; no paused implementation or unexplained dirty state."
+    - "All completed tasks/commits above are preserved; VF-9-17 is intentionally paused only at the explicit green checkpoint recorded above."
     - "Forced full verification passed at the VF-8-04 handoff tree: Workerd 1/1 and installed Chrome 38/38 with zero skips."
     - "Six bounded RunPod attempts produced no Avatar output; total settled RunPod spend $0.2386308565. Every endpoint/template was deleted and live inventory is zero."
     - "Pinned handler registration runs inside GHCR CI; GATE_AVATAR_003 remains open and VF-8-10 reached the whole-frame SkyReels trigger."
@@ -402,12 +430,13 @@ activation_handoff:
     - "VF-9-14 kept locked Turbo BF16, banned text-critical generated scenes, required strict review, and allowed only one rejection-triggered candidate retry."
     - "VF-9-15 stopped before falsely mapping real 1280x720 Mage bytes into the fixture-only 64x36 durable contract."
     - "VF-9-16 added additive provider-neutral durable image acceptance, truthful Mage lineage, explicit visual review, fake transport composition, replay/restore, and full verification at $0."
+    - "VF-9-17 checkpoint 95ff125 added a pure fail-closed provider-acceptance render barrier; focused pipeline build/typecheck/lint and 116/116 tests pass. End-to-end FFmpeg/Chrome acceptance is not done."
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from a15c4d7 after the VF-9-16 implementation commit; preserve all newer commits."
+    - "Require clean HEAD descending from 95ff125; preserve all newer commits."
     - "Load only phase9_real_provider_render_composition and tasks/VF-9-17.md."
-    - "Compose accepted fake-real provider artifacts through FFmpeg v3 and installed Chrome at $0."
+    - "Resume VF-9-17 at its brief's checkpoint. Do not rebuild the provider-acceptance barrier. Compose durable acceptance records, then finish fake-real FFmpeg v3 and installed-Chrome proof at $0."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
     - "Any provider/credential/GPU activity, destructive migration, profile promotion, rejected real evidence entering a render, regression, or output-grammar conflict."

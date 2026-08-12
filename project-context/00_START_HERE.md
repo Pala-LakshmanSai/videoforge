@@ -1,8 +1,8 @@
 # VideoForge: start here
 
-Status: `VF-8-06` bounded AvatarForcing inference failure complete; `VF-8-07` failure observability selected
+Status: `VF-9-17` in progress at green provider-render barrier checkpoint `95ff125`
 Context schema: `1.5`  
-Last updated: `2026-08-11`
+Last updated: `2026-08-12`
 
 This folder is the durable project brain for new AI chats. It records what is approved, what is prohibited, what must still be benchmarked, and how to develop the product. Do not load every file blindly; use the read profiles in `MANIFEST.yaml`.
 
@@ -11,6 +11,14 @@ This folder is the durable project brain for new AI chats. It records what is ap
 VideoForge is an invite-only web app for 5–10 teammates that accepts a title, final voiceover, reusable Avatar Profile selected from the Avatar Hub, and reusable Image Style, then automatically produces a 1920×1080 YouTube video using talking-avatar clips, highly relevant style-matched AI images with slow zooms, and a clean 50/50 avatar-left/image-right layout.
 
 ## Current handoff
+
+Current selection is `VF-9-17`, not the historical VF-8/VF-3 tasks described later in this file.
+Checkpoint `95ff125` added a pure fail-closed render-input barrier for exact durable Mage/Avatar
+acceptance identity and passed QA; focused pipeline build/typecheck/lint and 116/116 tests pass.
+Durable repository composition, fake-real 30–120-second FFmpeg v3 execution, fault/replay proof,
+and installed-Chrome playback/approval/download/hash remain. Resume only the selected profile and
+brief. Provider calls, credentials, GPU/model downloads, RunPod/Runware mutations, deployment, and
+spend remain prohibited. Last recorded RunPod inventory is absolute zero.
 
 Phase 0A contracts/tooling, the accepted Phase 0B fixture shell, the accepted provider-free Phase 0C
 local ASR → scheduler → FFmpeg → Chrome/download slice, the full Phase 1 durable control plane, and
@@ -181,9 +189,10 @@ The cold no-fallback isolated-service p50 goal is at or below 30 minutes for a 3
 Follow `21_IMPLEMENTATION_EXECUTION_PLAN.md`, `12_DEVELOPMENT_PLAN.md`, and
 `19_IMPLEMENTATION_PLAYBOOK.md`. Preserve all completed commits, the accepted fixture shell, and
 the user-accepted local render. Execute only the exact task selected by `CURRENT_STATE.yaml`; its
-authority is not transferable. Selected `VF-8-07` permits only provider-free failure
-classification, tests, and a pinned image build. Provider mutation/spend, other model work,
-deployment, and production remain unauthorized.
+authority is not transferable. Selected `VF-9-17` permits only `$0` local provider-shaped render
+composition, tests, evidence, Git push, and installed-Chrome verification. Provider calls,
+credentials, GPU/model downloads, RunPod/Runware mutation, deployment, profile promotion, and spend
+remain unauthorized.
 
 ## Context navigation
 
