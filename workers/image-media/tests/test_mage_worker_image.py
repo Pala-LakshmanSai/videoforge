@@ -42,6 +42,7 @@ class MageWorkerImageTest(unittest.TestCase):
             flash_dockerfile,
         )
         self.assertIn("MAX_JOBS=2", flash_dockerfile)
+        self.assertIn('TORCH_CUDA_ARCH_LIST="8.9;9.0"', flash_dockerfile)
         self.assertIn("flash-attn compile heartbeat", flash_dockerfile)
         self.assertIn("needs: flash-wheel", workflow)
         self.assertIn("Dockerfile.mage", workflow)

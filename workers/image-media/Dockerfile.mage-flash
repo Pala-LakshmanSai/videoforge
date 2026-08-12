@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
     && echo "$FLASH_ATTN_SHA256  /tmp/flash_attn.tar.gz" | sha256sum --check --strict
 RUN (while true; do echo "flash-attn compile heartbeat"; sleep 60; done) & heartbeat_pid=$!; \
     trap 'kill "$heartbeat_pid" 2>/dev/null || true' EXIT; \
-    NVCC_THREADS=2 MAX_JOBS=2 python -m pip wheel --no-build-isolation --no-deps \
+    TORCH_CUDA_ARCH_LIST="8.9;9.0" NVCC_THREADS=2 MAX_JOBS=2 \
+      python -m pip wheel --no-build-isolation --no-deps \
       --wheel-dir /tmp/wheels /tmp/flash_attn.tar.gz; \
     kill "$heartbeat_pid"; wait "$heartbeat_pid" 2>/dev/null || true; trap - EXIT
 
