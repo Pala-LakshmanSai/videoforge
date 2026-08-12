@@ -123,7 +123,7 @@ a cumulative live balance delta of `$1.8200686945`; the exact A100 sample remain
 21m54.9s before its attempt cost stop. These failures are not production unit economics.
 
 `VF-9-24I` permits `$0` FP8 worker/image work now. Its one RTX 4090 paid sample requires a fresh
-cumulative cap because only `$0.1799313055` remains under the prior `$2` ceiling. Once authorized,
+cumulative cap because delayed billing leaves only `$0.1519632055` under the prior `$2` ceiling. Once authorized,
 record live rate, queue/activation/bootstrap/quantization/load/generation/encode/upload time, peak
 VRAM, disk, exact settled cost, and absolute-zero cleanup. Only later 12–20-clip representative
 cold/warm evidence may establish production unit economics.

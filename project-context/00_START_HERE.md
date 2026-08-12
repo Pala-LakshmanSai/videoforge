@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-24I` FP8 long-video RTX worker implementation active; RunPod absolute zero
+Status: `VF-9-24I` FP8 long-video RTX image published; RunPod absolute zero; paid run waits for cap
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -65,8 +65,11 @@ User then selected `DEC_AVATAR_008`: install a runtime-created FP8 EchoMimicV3-F
 the same 10.12-second input on RTX 4090 or RTX 5090. `VF-9-24I` selects RTX 4090, adds TorchAO FP8
 dynamic activation-and-weight quantization, and enables upstream Long Video CFG with 81-frame
 partial windows while retaining all 253 output frames. No uncarded third-party pickle is used.
-Implementation and image publication may proceed at `$0`; paid dispatch waits for a fresh
-cumulative cap because only `$0.1799313055` remains under the prior `$2` ceiling.
+Pinned image
+`sha256:833ea5cd3406b8cc82562edba8a5a701a18eb813f7cee22e40f245f7c08fceed` passed hosted
+build/import/FP8-CLI/handler/entrypoint/compile smoke in run `31636493440` at `$0`. Paid dispatch
+waits for a fresh cumulative cap. Delayed billing now leaves only `$0.1519632055` under the prior
+`$2` ceiling.
 
 ## Locked active providers
 

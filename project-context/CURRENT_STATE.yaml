@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-13T00:10:00Z"
+updated_at: "2026-08-12T20:18:00Z"
 
 phase: echomimic_v3_flash_fp8_rtx_sample
 implementation_authorized_in_current_task: true
@@ -15,10 +15,10 @@ repository:
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
   branch: main
-  base_commit: "56cbebf"
+  base_commit: "1e4d2f96890f4863b55116bf4504876756a70c8c"
   planning_handoff_commit: "f0829b930e5cf9084312da030f1807a6e269b06f"
-  last_good_commit: "56cbebf"
-  working_tree_expected: tracked_vf_9_24i_fp8_worker_plus_ignored_private_inputs
+  last_good_commit: "1e4d2f96890f4863b55116bf4504876756a70c8c"
+  working_tree_expected: tracked_vf_9_24i_image_evidence_plus_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
 live_development:
@@ -33,7 +33,7 @@ live_development:
   provider_calls_authorized: false
   authorized_spend_usd: 0
   provider_authority_scope: "VF-9-24I implementation and image publication only at $0. Paid RunPod dispatch waits for a fresh cumulative cap; prior lane spend is $1.8200686945 of $2."
-  worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:93658ef71c0b947dc7bea494bf44dcea9a1e858d93149f616db2738f5ac19831"
+  worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:833ea5cd3406b8cc82562edba8a5a701a18eb813f7cee22e40f245f7c08fceed"
   last_user_checkpoint:
     result: accepted
     commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
@@ -138,9 +138,9 @@ in_progress_checkpoint: null
 recommended_next_task:
   task_id: VF-9-24I
   milestone: avatar_primary_native_sample
-  status: implementation_in_progress
+  status: blocked_external_spend_authority
   dependency_status: vf_9_24h_cost_stop_cleanup_absolute_zero
-  authorization_status: fp8_implementation_authorized_paid_dispatch_cap_missing
+  authorization_status: fp8_worker_published_paid_dispatch_cap_missing
   read_profile: phase9_echomimic_v3_flash_fp8_rtx_sample
   task_brief: tasks/VF-9-24I.md
   goal: "Publish pinned FP8 long-video worker, then obtain and return the same 10.12-second native MP4 on RTX 4090 after fresh spend authority."
@@ -153,14 +153,14 @@ recommended_next_task:
     model_id: EchoMimicV3-Flash-FP8-dynamic@311e176905a8c4c24b240b530488fe636ce4d249
     cap_usd: 0
     cumulative_cap_usd: 2
-    prior_settled_spend_usd: 1.8200686945
+    prior_settled_spend_usd: 1.8480367945
     bootstrap_stop_usd: 0
     inference_hard_breaker_usd: 0
     inference_active_breaker_usd: 0
     non_transferable: true
     authorized_by_user_at: "2026-08-12T18:26:00Z"
-  remote_or_cloud_mutations_authorized: true
-  remote_scope: "Push VF-9-24I source and publish one pinned GHCR image at $0. Do not create a RunPod volume, endpoint, template, Pod, worker, or job until fresh spend authority."
+  remote_or_cloud_mutations_authorized: false
+  remote_scope: "FP8 image publication is complete. Do not create a RunPod volume, endpoint, template, Pod, worker, or job until fresh spend authority."
   credential_access_authorized: true
   model_downloads_authorized: false
   application_code_changes_authorized: true
@@ -188,11 +188,11 @@ progress_snapshot:
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: vf_9_24i_fp8_worker_implementation_runpod_absolute_zero
+  status: vf_9_24i_fp8_worker_published_runpod_absolute_zero_waiting_cap
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Load only phase9_echomimic_v3_flash_fp8_rtx_sample and tasks/VF-9-24I.md."
-    - "Finish and publish pinned FP8 long-video RTX 4090 worker at $0."
+    - "Use pinned image sha256:833ea5cd3406b8cc82562edba8a5a701a18eb813f7cee22e40f245f7c08fceed."
     - "Do not dispatch on RunPod without a fresh cumulative spend cap above the prior $2 ceiling."
   stop_conditions:
     - "Any RunPod mutation before fresh spend authority, unpinned dependency/checkpoint, RTX 5090 runtime upgrade, other-model fallback, successor selection, or roadmap continuation."
