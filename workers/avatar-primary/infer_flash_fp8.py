@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 
 import infer_flash
 import torch
@@ -66,7 +67,19 @@ def _install_long_video_cfg() -> None:
             ),
             flush=True,
         )
-        return original(self, *args, **kwargs)
+        started = time.monotonic()
+        result = original(self, *args, **kwargs)
+        print(
+            json.dumps(
+                {
+                    "duration_ms": round((time.monotonic() - started) * 1000),
+                    "event": "echomimic_generation_complete",
+                },
+                sort_keys=True,
+            ),
+            flush=True,
+        )
+        return result
 
     infer_flash.WanFunInpaintAudioPipeline.__call__ = call_long_video
 

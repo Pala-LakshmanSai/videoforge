@@ -359,7 +359,7 @@ def _run_inference_with_peak_vram(
     env: dict[str, str],
     timeout_seconds: int,
     diagnostic: BinaryIO,
-) -> int:
+) -> tuple[int, int]:
     process = subprocess.Popen(
         command,
         cwd=root,
@@ -393,7 +393,17 @@ def _run_inference_with_peak_vram(
         time.sleep(1)
     if process.returncode != 0:
         raise subprocess.CalledProcessError(process.returncode, command)
-    return peak_vram_mb
+    generation_ms = 0
+    for line in _diagnostic_tail(diagnostic).decode("utf-8", errors="replace").splitlines():
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict) and value.get("event") == "echomimic_generation_complete":
+            generation_ms = int(value.get("duration_ms", 0))
+    if generation_ms < 1:
+        raise RuntimeError("ECHOMIMIC_GENERATION_TIMING_MISSING")
+    return peak_vram_mb, generation_ms
 
 
 def _execute(
@@ -517,7 +527,7 @@ def _execute(
     inference_started = time.monotonic()
     with tempfile.TemporaryFile() as diagnostic:
         try:
-            peak_vram = _run_inference_with_peak_vram(
+            peak_vram, generation_ms = _run_inference_with_peak_vram(
                 command,
                 root=root,
                 env=env,
@@ -557,6 +567,7 @@ def _execute(
             "peak_vram_mb": peak_vram,
             "runtime_stages_ms": {
                 "gpu_preflight": round((inference_started - gpu_started) * 1000),
+                "generation": generation_ms,
                 "model_load_and_inference_encode": inference_ms,
             },
             "bootstrap": {},
