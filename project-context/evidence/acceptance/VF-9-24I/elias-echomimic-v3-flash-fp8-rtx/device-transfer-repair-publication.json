@@ -1,0 +1,18 @@
+{
+  "schema_version": "videoforge.echo-fp8-image-publication/v1",
+  "checked_at": "2026-08-12T21:02:07Z",
+  "source_commit": "add8985965b76263609a60e0e60b845d9014cef9",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:2d4384bed4dbe2aa479e11f0efaba8b8b18c8ebdad46871e0b3fd816e004d247",
+  "image_build_run": 31640266063,
+  "repair": "defer TorchAO FP8 quantization until pipeline invocation after all device transfers",
+  "verification": {
+    "local_worker_tests": "pass",
+    "hosted_container_build": "pass",
+    "hosted_dependency_import": "pass",
+    "hosted_fp8_cli_import": "pass",
+    "hosted_handler_registration": "pass",
+    "hosted_entrypoint_smoke": "pass",
+    "hosted_compileall": "pass"
+  },
+  "external_spend_usd": 0
+}
