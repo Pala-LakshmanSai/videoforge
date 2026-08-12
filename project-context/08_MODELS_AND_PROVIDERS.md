@@ -128,18 +128,25 @@ production profile is eligible. Three technically valid PNGs failed strict visua
 
 ## EchoMimicV3-Flash
 
-Sole active avatar path under `DEC_AVATAR_007`. Native output only; new repair/fallback bindings are
-`null`. Fixture remains default and no production profile is eligible.
+Sole active avatar path under `DEC_AVATAR_007` and precision recovery `DEC_AVATAR_008`. Native
+output only; new repair/fallback bindings are `null`. Fixture remains default and no production
+profile is eligible.
 
 - Source: `antgroup/echomimic_v3@7e89489ca51c0d008fc1963ec6c03fc5bd0b9397`, Apache-2.0.
 - Flash weights: `BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249`, Apache-2.0; exact Flash safetensors SHA-256 `5ebdbb2fc709108bf2a1728fd92eb2874804e4bc0324e92a2cd55425968c85a4`.
 - Base: `alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP@fc913c34361f4ec879e2f9c78b4f11ae50a937d1`, Apache-2.0.
 - Audio encoder: `TencentGameMate/chinese-wav2vec2-base@3991242c806928916fff4a8c0e4f76acf661b743`, MIT.
 - Exact selected runtime bytes: `23,922,317,735` decimal bytes before small configs/source/dependencies.
-- Official Flash mode: BF16, 8 steps, `Flow_Unipc`, 25 fps, seed 43, TeaCache threshold 0.1, empty negative prompt.
+- Active sample mode: compatible transformer linear operations use TorchAO 0.7.0
+  `float8_e4m3fn` dynamic activation-and-weight quantization; remaining tensors stay BF16. Sampling
+  remains 8 steps, `Flow_Unipc`, 25 fps, seed 43, TeaCache threshold 0.1, and empty negative prompt.
+- Exact 253-frame output uses upstream Long Video CFG with 81-frame partial windows and 5 latent
+  overlap frames. Input/output duration is unchanged; this bounds activation memory rather than
+  shortening the sample.
 - Input: canonical runtime image from exact Avatar Profile version, selected speech span, restrained prompt.
 - One native clip serves both layouts after a measured renderer crop profile is approved.
-- RTX 4090 24 GB only for `VF-9-24`; no silent GPU fallback.
+- RTX 4090 24 GB is selected for `VF-9-24I`; RTX 5090 is not silently used because the pinned
+  PyTorch 2.5.1 CUDA 12.1 stack does not qualify Blackwell.
 
 The upstream `GPU_memory_mode=sequential_cpu_offload` argument is parsed but never enables offload.
 VideoForge makes no CPU-offload claim. Worker bootstrap downloads exact files once into ephemeral
@@ -149,6 +156,11 @@ incomplete or mutated cache before inference.
 `GATE_AVATAR_004` read-only preflight found all pinned artifacts public, ungated, and license-labeled.
 It remains open until runtime bootstrap reproduces the exact manifest. `GATE_AVATAR_001` remains open
 until native sample review and later full qualification.
+
+No first-party FP8 checkpoint is published. A third-party `fp8wo` pickle exists without a model
+card or declared license and is not used. VideoForge deterministically quantizes the pinned
+Apache-2.0 Flash safetensors at runtime using BSD-3-Clause TorchAO. This also avoids executing an
+uncarded pickle payload.
 
 Official sources: [pinned source](https://github.com/antgroup/echomimic_v3/tree/7e89489ca51c0d008fc1963ec6c03fc5bd0b9397), [pinned Flash weights](https://huggingface.co/BadToBest/EchoMimicV3/tree/311e176905a8c4c24b240b530488fe636ce4d249), [pinned base](https://huggingface.co/alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP/tree/fc913c34361f4ec879e2f9c78b4f11ae50a937d1), and [pinned audio encoder](https://huggingface.co/TencentGameMate/chinese-wav2vec2-base/tree/3991242c806928916fff4a8c0e4f76acf661b743). Evidence: `evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight/`.
 

@@ -1,0 +1,81 @@
+from __future__ import annotations
+
+import json
+
+import infer_flash
+import torch
+from torchao.quantization import float8_dynamic_activation_float8_weight, quantize_
+
+PARTIAL_VIDEO_LENGTH = 81
+OVERLAP_VIDEO_LENGTH = 5
+
+
+def _install_fp8_transformer_load() -> None:
+    original_from_pretrained = infer_flash.WanTransformer.from_pretrained
+
+    def from_pretrained_then_fp8(*args, **kwargs):
+        transformer = original_from_pretrained(*args, **kwargs)
+        original_load = transformer.load_state_dict
+
+        def load_flash_then_fp8(state_dict, *load_args, **load_kwargs):
+            result = original_load(state_dict, *load_args, **load_kwargs)
+            quantize_(transformer, float8_dynamic_activation_float8_weight())
+            transformer.load_state_dict = original_load
+            quantized = sum(
+                1
+                for module in transformer.modules()
+                if isinstance(module, torch.nn.Linear)
+                and type(module.weight).__module__.startswith("torchao.")
+            )
+            if quantized < 1:
+                raise RuntimeError("ECHOMIMIC_FP8_QUANTIZATION_EMPTY")
+            print(
+                json.dumps(
+                    {
+                        "event": "echomimic_fp8_ready",
+                        "format": "float8_e4m3fn_dynamic_activation_weight",
+                        "quantized_linear_count": quantized,
+                    },
+                    sort_keys=True,
+                ),
+                flush=True,
+            )
+            return result
+
+        transformer.load_state_dict = load_flash_then_fp8
+        return transformer
+
+    infer_flash.WanTransformer.from_pretrained = from_pretrained_then_fp8
+
+
+def _install_long_video_cfg() -> None:
+    original = infer_flash.WanFunInpaintAudioPipeline.__call__
+
+    def call_long_video(self, *args, **kwargs):
+        kwargs["use_longvideo_cfg"] = True
+        kwargs["partial_video_length"] = PARTIAL_VIDEO_LENGTH
+        kwargs["overlap_video_length"] = OVERLAP_VIDEO_LENGTH
+        print(
+            json.dumps(
+                {
+                    "event": "echomimic_long_video_cfg",
+                    "overlap_video_length": OVERLAP_VIDEO_LENGTH,
+                    "partial_video_length": PARTIAL_VIDEO_LENGTH,
+                },
+                sort_keys=True,
+            ),
+            flush=True,
+        )
+        return original(self, *args, **kwargs)
+
+    infer_flash.WanFunInpaintAudioPipeline.__call__ = call_long_video
+
+
+def main() -> None:
+    _install_fp8_transformer_load()
+    _install_long_video_cfg()
+    infer_flash.main()
+
+
+if __name__ == "__main__":
+    main()

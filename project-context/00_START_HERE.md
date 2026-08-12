@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: `VF-9-24H` A100 inference cost-stopped without output; RunPod absolute zero
+Status: `VF-9-24I` FP8 long-video RTX worker implementation active; RunPod absolute zero
 Context schema: `1.5`  
 Last updated: `2026-08-12`
 
@@ -60,6 +60,13 @@ three independent inventory reads prove zero Pods, workers, endpoints, templates
 Further dispatch is blocked pending fresh retry and spend authority. The opaque `progress:null`
 diagnosis found missing inference progress emission; a safe heartbeat repair is locally green but
 not yet published.
+
+User then selected `DEC_AVATAR_008`: install a runtime-created FP8 EchoMimicV3-Flash variant and run
+the same 10.12-second input on RTX 4090 or RTX 5090. `VF-9-24I` selects RTX 4090, adds TorchAO FP8
+dynamic activation-and-weight quantization, and enables upstream Long Video CFG with 81-frame
+partial windows while retaining all 253 output frames. No uncarded third-party pickle is used.
+Implementation and image publication may proceed at `$0`; paid dispatch waits for a fresh
+cumulative cap because only `$0.1799313055` remains under the prior `$2` ceiling.
 
 ## Locked active providers
 

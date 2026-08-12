@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg git ca-c
 COPY requirements.runtime.txt /opt/videoforge/requirements.runtime.txt
 RUN pip install --no-cache-dir -r /opt/videoforge/requirements.runtime.txt
 COPY src /opt/videoforge/src
-COPY handler.py bootstrap_models.py entrypoint.sh /opt/videoforge/
+COPY handler.py bootstrap_models.py infer_flash_fp8.py entrypoint.sh /opt/videoforge/
 RUN chmod 0555 /opt/videoforge/entrypoint.sh
 
 ENV ECHOMIMIC_ROOT=/opt/echomimic_v3 \

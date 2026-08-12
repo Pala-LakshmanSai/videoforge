@@ -189,6 +189,14 @@ This is the global model/container/GPU qualification gate, not a required 12–2
 
 Measure cold start, model load, peak VRAM, frame time, accepted-output cost, lips, identity, background, body/motion, temporal stability, and upscale detail.
 
+For `VF-9-24I`, technical sample acceptance additionally requires the exact private source/audio
+checksums, 253 frames at 25 fps, 10.12-second source duration, runtime evidence that at least one
+compatible transformer linear used `float8_e4m3fn` dynamic activation-and-weight quantization,
+81-frame Long Video CFG windows, no OOM/NaN/crash, a playable local MP4 with SHA-256/probe, separate
+queue/bootstrap/model-load-generation-encode timings, peak VRAM, measured cost, and three
+post-cleanup zero-resource reads. This proves only a reviewable sample; user visual approval remains
+required.
+
 Proposed provisional lock:
 
 - All jobs complete without OOM/NaN/crash.

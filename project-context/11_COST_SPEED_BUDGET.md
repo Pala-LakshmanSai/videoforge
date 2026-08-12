@@ -118,11 +118,15 @@ Planning sensitivity including cold start/retries: roughly $0.12–$0.25; the de
 
 ## EchoMimicV3-Flash cost qualification
 
-No accepted Echo runtime/cost exists. `VF-9-24` authorizes one RTX 4090 native 10.12-second sample,
-hard cap `$0.50`, active watchdog at the earlier of 25 minutes or projected `$0.45`, and no retry.
-Record live rate, queue/activation/bootstrap/load/inference/encode/upload time, peak VRAM, disk, and
-exact settled cost. Only later 12–20-clip and representative cold/warm evidence may establish
-production unit economics.
+No accepted Echo runtime/cost exists. BF16 attempts through `VF-9-24H` produced no MP4 and consumed
+a cumulative live balance delta of `$1.8200686945`; the exact A100 sample remained active for about
+21m54.9s before its attempt cost stop. These failures are not production unit economics.
+
+`VF-9-24I` permits `$0` FP8 worker/image work now. Its one RTX 4090 paid sample requires a fresh
+cumulative cap because only `$0.1799313055` remains under the prior `$2` ceiling. Once authorized,
+record live rate, queue/activation/bootstrap/quantization/load/generation/encode/upload time, peak
+VRAM, disk, exact settled cost, and absolute-zero cleanup. Only later 12–20-clip representative
+cold/warm evidence may establish production unit economics.
 
 Every one percentage point of avatar share equals 18 output seconds or 450 frames at 25 fps. With a fast avatar engine this is affordable, but the scheduler still targets the measured 21–22% style rather than maximizing avatar.
 

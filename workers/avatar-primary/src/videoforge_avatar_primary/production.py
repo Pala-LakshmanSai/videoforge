@@ -39,7 +39,11 @@ OFFICIAL_FLASH_CONFIG = {
     "riflex_k": 6,
     "ulysses_degree": 1,
     "ring_degree": 1,
-    "weight_dtype": "bfloat16",
+    "weight_dtype": "float8_e4m3fn_dynamic_activation_weight",
+    "activation_dtype": "float8_e4m3fn",
+    "long_video_cfg": True,
+    "partial_video_length": 81,
+    "overlap_video_length": 5,
     "sample_size": [768, 768],
     "fps": 25,
     "add_prompt": "",
@@ -97,9 +101,8 @@ def _diagnostic_tail(stream: BinaryIO) -> bytes:
 
 
 def _validate_gpu_profile(gpu_name: str, gpu_vram_mb: int) -> None:
-    supported = (
-        ("4090" in gpu_name and gpu_vram_mb >= 24_000)
-        or ("A100" in gpu_name and gpu_vram_mb >= 79_000)
+    supported = ("4090" in gpu_name and gpu_vram_mb >= 24_000) or (
+        "A100" in gpu_name and gpu_vram_mb >= 79_000
     )
     if not supported:
         raise ValueError("AVATAR_GPU_PROFILE_UNSUPPORTED")
@@ -271,7 +274,10 @@ def _download(url: str, destination: Path, expected_sha256: str, maximum_bytes: 
     request = urllib.request.Request(url, headers={"user-agent": "videoforge-avatar-primary/v1"})
     size = 0
     try:
-        with urllib.request.urlopen(request, timeout=120) as response, destination.open("xb") as output:
+        with (
+            urllib.request.urlopen(request, timeout=120) as response,
+            destination.open("xb") as output,
+        ):
             while chunk := response.read(1024 * 1024):
                 size += len(chunk)
                 if size > maximum_bytes:
@@ -419,7 +425,7 @@ def _execute(
     output_root.mkdir(parents=True, exist_ok=False)
     command = [
         "python",
-        "infer_flash.py",
+        "/opt/videoforge/infer_flash_fp8.py",
         "--image_path",
         str(source_path),
         "--audio_path",

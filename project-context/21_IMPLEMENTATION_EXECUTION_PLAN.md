@@ -1,6 +1,6 @@
 # Implementation execution plan
 
-Status: `VF-9-24A` provider-free observability correction selected
+Status: `VF-9-24I` FP8 long-video RTX sample selected
 Read when: selecting, implementing, integrating, or handing off one task.
 
 ## Authority
@@ -23,21 +23,26 @@ They authorize no new dispatch. LongCat remains excluded.
 3. `VF-9-24` — stopped: its sole job caused RunPod to create three `EXITED` worker records before
    output. The guard cancelled execution, no MP4 was produced, observed balance delta was `$0`, and
    three independent post-cleanup inventories proved absolute zero. No retry is authorized.
-3a. `VF-9-24A` — selected at `$0`: fix exited-history accounting, persist the attempt journal before
-   mutation, add entrypoint/bootstrap observability and exact-entrypoint image smoke, publish one
-   corrected digest, then stop before RunPod use pending a fresh spend cap.
+3a. `VF-9-24A` through `VF-9-24H` — complete/stopped history: repaired observability and model
+   pins, proved RTX 4090 BF16 OOM, then A100 capacity/download/cost limits. `VF-9-24H` remained
+   active for about 21m54.9s and produced no MP4 before its cost stop. RunPod cleanup is absolute
+   zero; cumulative lane spend is `$1.8200686945`.
+3b. `VF-9-24I` — selected: publish a pinned TorchAO FP8 dynamic activation-and-weight worker,
+   enable upstream Long Video CFG with 81-frame partial windows, then run the same exact 253-frame
+   sample once on RTX 4090 after a fresh cumulative spend cap. Return MP4/timings and prove global
+   zero.
 4. `VF-9-25` — only after explicit sample approval: durable provider acceptance/application
    integration at `$0`, additive migration `0014`, measured crop profile, no production promotion.
 5. `VF-9-26` — separate later budget: 12–20-clip representative full Echo qualification.
 
-## VF-9-24 ownership
+## VF-9-24I ownership
 
 - One serial lane owns the exact private inputs, pinned worker dispatch, evidence, and cleanup.
 - Preserve signed transfer, checksum, cancellation, deadline, redaction, cost, unique-output,
   transient cleanup, and independent-zero boundaries.
-- Exact weights bootstrap into ephemeral `/models`; 100 GB container disk, no persistent volume.
+- Exact pinned weights bootstrap into a temporary persistent cache only after spend authority.
 - RTX 4090 24 GB only. `workersMin=0`, `workersMax=1`, one job, no ambiguity redispatch.
-- Ownership is closed. Await explicit new user authority; do not create or select a successor.
+- Source/image work may proceed at `$0`; RunPod mutation waits for a fresh cumulative cap.
 
 ## Verification
 
@@ -53,5 +58,5 @@ Stop on dirty unexplained tracked state, source/manifest mismatch, dependency/co
 test/CI failure, GPU substitution, nonzero preflight inventory, provider ambiguity, cap/watchdog
 risk, cleanup not independently proven, or missing new user authority.
 
-No tuning, retry, fallback, repair, application integration, deployment, production promotion, or
-roadmap continuation after the sample without exact later authority.
+No retry, other-model fallback, repair, application integration, deployment, production promotion,
+or roadmap continuation after the sample without exact later authority.

@@ -54,8 +54,9 @@ Initial chunks:
 
 - Prompts: 25–50 scenes.
 - Mage: 32–64 images per RunPod job, checkpointing each artifact.
-- EchoMimicV3-Flash: 15–30 selected spans per production job only after qualification; `VF-9-24`
-  is exactly one 10.12-second sample and one job.
+- EchoMimicV3-Flash: 15–30 selected spans per production job only after qualification; `VF-9-24I`
+  is exactly one 10.12-second, 253-frame sample and one job. Long Video CFG may internally bound
+  activation windows to 81 frames, but it must return the entire source span as one native clip.
 - Render: one immutable project revision.
 
 The orchestrator dispatches the next chunk only when allowed, enabling round-robin fairness across project owners. A warm worker keeps the model resident across queued chunks.

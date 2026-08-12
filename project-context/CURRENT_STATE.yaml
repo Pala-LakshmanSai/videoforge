@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T20:00:00Z"
+updated_at: "2026-08-13T00:10:00Z"
 
-phase: echomimic_v3_flash_persistent_cache
-implementation_authorized_in_current_task: false
+phase: echomimic_v3_flash_fp8_rtx_sample
+implementation_authorized_in_current_task: true
 current_milestone: avatar_primary_native_sample
-current_task: VF-9-24H
+current_task: VF-9-24I
 current_wave: wave_9_echomimic_sample_first
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -15,10 +15,10 @@ repository:
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
   branch: main
-  base_commit: "d18c9306fba6cb924c726d3092809f7af9b95e1f"
+  base_commit: "56cbebf"
   planning_handoff_commit: "f0829b930e5cf9084312da030f1807a6e269b06f"
-  last_good_commit: "d18c9306fba6cb924c726d3092809f7af9b95e1f"
-  working_tree_expected: tracked_vf_9_24h_cost_stop_evidence_and_progress_repair_plus_ignored_private_inputs
+  last_good_commit: "56cbebf"
+  working_tree_expected: tracked_vf_9_24i_fp8_worker_plus_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
 live_development:
@@ -32,7 +32,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "No further paid dispatch: VF-9-24H used its sole job and stopped at $1.0017626232; cumulative lane spend is $1.8200686945 of the user's $2 ceiling."
+  provider_authority_scope: "VF-9-24I implementation and image publication only at $0. Paid RunPod dispatch waits for a fresh cumulative cap; prior lane spend is $1.8200686945 of $2."
   worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:93658ef71c0b947dc7bea494bf44dcea9a1e858d93149f616db2738f5ac19831"
   last_user_checkpoint:
     result: accepted
@@ -127,27 +127,30 @@ completed_tasks:
     observed_active_inference_ms: 1314935
     final_absolute_zero_checked_at: "2026-08-12T19:55:58.666Z"
 
-active_ownership: []
+active_ownership:
+  - task_id: VF-9-24I
+    owner: single_integration_lane
+    scope: "pinned TorchAO FP8 and Long Video CFG worker, image publication, then one same-input RTX 4090 run after fresh spend authority"
 
 blocked_tasks: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-9-24H
+  task_id: VF-9-24I
   milestone: avatar_primary_native_sample
-  status: blocked_external_spend_authority
+  status: implementation_in_progress
   dependency_status: vf_9_24h_cost_stop_cleanup_absolute_zero
-  authorization_status: exhausted_single_attempt_and_insufficient_remaining_cap
-  read_profile: phase9_echomimic_v3_flash_persistent_cache
-  task_brief: tasks/VF-9-24H.md
-  goal: "Obtain the exact 10.12-second native MP4 only after fresh spend and retry authority; preserve the completed cleanup/evidence meanwhile."
+  authorization_status: fp8_implementation_authorized_paid_dispatch_cap_missing
+  read_profile: phase9_echomimic_v3_flash_fp8_rtx_sample
+  task_brief: tasks/VF-9-24I.md
+  goal: "Publish pinned FP8 long-video worker, then obtain and return the same 10.12-second native MP4 on RTX 4090 after fresh spend authority."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   cumulative_external_spend_ceiling_usd: 2
-  prior_live_balance_delta_usd: 0.802093288
+  prior_live_balance_delta_usd: 1.8200686945
   provider_authority:
     provider: RunPod
-    model_id: EchoMimicV3-Flash@311e176905a8c4c24b240b530488fe636ce4d249
+    model_id: EchoMimicV3-Flash-FP8-dynamic@311e176905a8c4c24b240b530488fe636ce4d249
     cap_usd: 0
     cumulative_cap_usd: 2
     prior_settled_spend_usd: 1.8200686945
@@ -156,18 +159,18 @@ recommended_next_task:
     inference_active_breaker_usd: 0
     non_transferable: true
     authorized_by_user_at: "2026-08-12T18:26:00Z"
-  remote_or_cloud_mutations_authorized: false
-  remote_scope: "None. RunPod inventory is absolute zero; do not create a volume, endpoint, template, Pod, worker, or job."
+  remote_or_cloud_mutations_authorized: true
+  remote_scope: "Push VF-9-24I source and publish one pinned GHCR image at $0. Do not create a RunPod volume, endpoint, template, Pod, worker, or job until fresh spend authority."
   credential_access_authorized: true
   model_downloads_authorized: false
   application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-9-24H/elias-echomimic-v3-flash-persistent-cache"
+  expected_evidence: "evidence/acceptance/VF-9-24I/elias-echomimic-v3-flash-fp8-rtx"
   required_handoff:
-    - "Preserve exact cost-stop evidence and the three absolute-zero inventory reads."
-    - "Request fresh retry/spend authority before any new RunPod mutation."
+    - "Publish a digest-pinned FP8 worker with local and hosted image smoke evidence."
+    - "After fresh spend authority, return the private MP4 with exact probe/hash/timings and prove RunPod absolute zero."
   prohibited_in_task:
-    - "Any paid dispatch, retry, GPU substitution, memory tuning, fallback, app integration, deployment, migration, profile promotion, or successor task."
-    - "AvatarForcing, MuseTalk, SkyReels, LongCat, RTX 5090, retained volume, or any second inference job."
+    - "Any paid dispatch before a fresh cumulative cap, app integration, deployment, migration, profile promotion, or successor task."
+    - "Uncarded third-party FP8 pickle, AvatarForcing, MuseTalk, SkyReels, LongCat, RTX 5090, retained paid resource, or other-model fallback."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -185,11 +188,11 @@ progress_snapshot:
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: vf_9_24h_cost_stop_runpod_absolute_zero_waiting_authority
+  status: vf_9_24i_fp8_worker_implementation_runpod_absolute_zero
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Load only phase9_echomimic_v3_flash_persistent_cache and tasks/VF-9-24H.md."
-    - "Read RUN_SUMMARY.md; preserve the failed exact A100 attempt and absolute-zero cleanup."
-    - "Do not dispatch again without fresh retry and spend authority above the exhausted $2 cumulative ceiling."
+    - "Load only phase9_echomimic_v3_flash_fp8_rtx_sample and tasks/VF-9-24I.md."
+    - "Finish and publish pinned FP8 long-video RTX 4090 worker at $0."
+    - "Do not dispatch on RunPod without a fresh cumulative spend cap above the prior $2 ceiling."
   stop_conditions:
-    - "Any second job, GPU/tuning/fallback choice, network volume, spend above breakers, successor selection, or roadmap continuation."
+    - "Any RunPod mutation before fresh spend authority, unpinned dependency/checkpoint, RTX 5090 runtime upgrade, other-model fallback, successor selection, or roadmap continuation."

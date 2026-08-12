@@ -3,8 +3,8 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-12"
 source_of_truth: project-context
-current_selected_profile: phase9_echomimic_v3_flash_persistent_cache
-current_selected_brief: tasks/VF-9-24H.md
+current_selected_profile: phase9_echomimic_v3_flash_fp8_rtx_sample
+current_selected_brief: tasks/VF-9-24I.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -587,6 +587,13 @@ read_profiles:
     - 14_TESTING_AND_ACCEPTANCE.md
     - 19_IMPLEMENTATION_PLAYBOOK.md
     - tasks/VF-9-24H.md
+  phase9_echomimic_v3_flash_fp8_rtx_sample:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 13_ENGINEERING_BEST_PRACTICES.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - tasks/VF-9-24I.md
   phase3_runware_style_adapter:
     - 08_MODELS_AND_PROVIDERS.md
     - 14_TESTING_AND_ACCEPTANCE.md
@@ -750,6 +757,7 @@ approved_decisions:
   DEC_AVATAR_005: reusable_avatar_hub_required_exact_ready_version_no_inline_upload
   DEC_AVATAR_006: superseded_user_accepted_avatarforcing_ladder_historical_authority_only
   DEC_AVATAR_007: echomimic_v3_flash_native_only_no_repair_or_fallback
+  DEC_AVATAR_008: echomimic_v3_flash_fp8_long_video_rtx_sample_after_bf16_timeout
   DEC_TIMING_001: local_whisper_cpp_base_en
   DEC_CONTRACT_001: typescript_only_jcs_python_exact_bytes_and_schema_validation
   DEC_SCHEDULER_001: seeded_deterministic_bounded_variation
