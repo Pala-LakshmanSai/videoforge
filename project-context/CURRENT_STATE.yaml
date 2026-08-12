@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T07:55:00Z"
+updated_at: "2026-08-12T12:30:00Z"
 
-phase: mage_worker_image_build
+phase: mage_bf16_4090_qualification
 implementation_authorized_in_current_task: true
-current_milestone: pinned_mage_candidate_image
-current_task: VF-9-06
+current_milestone: measured_mage_candidate
+current_task: VF-9-07
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -19,8 +19,8 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "fd97481"
-  working_tree_expected: dirty_only_for_active_vf_9_06_comfy_bf16_correction
+  last_good_commit: "022914d"
+  working_tree_expected: context_handoff_after_vf_9_06_success
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -42,9 +42,9 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-06 permits local Mage worker code/tests/docs, Git push, GitHub Actions, exact public source reads, and existing GHCR candidate publication at $0. The small image excludes model bytes; exact public weights download/cache occurs only in the separately capped qualification. RunPod/Runware mutation, GPU, dispatch, inference, qualification, promotion, deployment, new credentials, and app/schema/UI/Avatar changes are forbidden; RunPod remains absolute zero."
+  provider_calls_authorized: true
+  authorized_spend_usd: 1
+  provider_authority_scope: "VF-9-07 permits existing Keychain RunPod credential use, one transient template, one scale-zero RTX 4090 endpoint, one BF16 image job, public weight download, evidence, Git push, and at most $1.00 RunPod spend with a $0.90 stop. No Runware, retry after terminal failure, ImageForge volume mutation, promotion, deployment, or app/schema/UI/Avatar change. Mandatory cancel/drain/delete/independent zero proof."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -254,19 +254,19 @@ completed_tasks:
     summary: "Admitted only exact official Mage revision 395402ba3ef110c96e70d01abe4d178dbe4e01a5, pinned transformer identity/size ceiling, retained all fail-closed guards, and passed full verification at $0."
 
 latest_closed_handoff:
-  task_id: VF-9-05
+  task_id: VF-9-06
   status: complete
-  task_kind: mage_revision_code_admission
-  implementation_commit: "fd97481e7d73a7ea48831de1332cd2e5b9d7c6a8"
-  evidence: "evidence/acceptance/VF-9-05/mage-revision-code-admission"
-  verification_result: "exact_revision_admitted_full_verify_passed"
-  external_actions: "Git push only; no credential, model download, provider, GPU, or spend activity."
+  task_kind: pinned_comfy_bf16_worker_image
+  implementation_commit: "022914da1f6b8c3ddf6261f58ac34f3ed535d7df"
+  evidence: "evidence/acceptance/VF-9-06/mage-worker-image-build"
+  verification_result: "local_and_hosted_verify_plus_hosted_image_smokes_passed"
+  external_actions: "Git push, GitHub Actions, and immutable GHCR publication only; no RunPod/provider/GPU activity."
   external_spend_usd: 0
 
 last_green:
-  checked_at: "2026-08-11T23:23:00Z"
+  checked_at: "2026-08-12T06:51:59Z"
   result: pass
-  verified_commit: "fd97481e7d73a7ea48831de1332cd2e5b9d7c6a8"
+  verified_commit: "022914da1f6b8c3ddf6261f58ac34f3ed535d7df"
   command: "CI=1 TURBO_FORCE=true pnpm verify"
   counts:
     control_plane_pglite_tests: 209
@@ -278,40 +278,45 @@ last_green:
     playwright_chrome_journeys_passed: 38
     playwright_chrome_journeys_intentionally_skipped: 0
   findings_closed:
-    - "Mage boundary now admits one exact immutable official revision and rejects every mismatch while preserving watermark/refusal/output/reliability guards."
+    - "Proven stock ComfyUI BF16 graph, exact public source/three-weight identities, runtime bootstrap, metadata-free PNG boundary, strict handler, and immutable candidate image."
   evidence:
-    - "evidence/acceptance/VF-9-05/mage-revision-code-admission"
+    - "evidence/acceptance/VF-9-06/mage-worker-image-build"
 
 active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-9-06
-  milestone: pinned_mage_candidate_image
+  task_id: VF-9-07
+  milestone: measured_mage_candidate
   status: ready
-  dependency_status: user_supplied_owned_spike_corrected_runtime_to_pinned_comfy_bf16
-  authorization_status: zero_spend_ghcr_candidate_build
-  read_profile: phase9_mage_worker_image_build
-  task_brief: tasks/VF-9-06.md
-  goal: "Build and publish one pinned Mage candidate worker image at $0 without RunPod activity."
-  provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  provider_authority: null
+  dependency_status: vf_9_06_immutable_image_published
+  authorization_status: one_capped_runpod_4090_qualification
+  read_profile: phase9_mage_qualification
+  task_brief: tasks/VF-9-07.md
+  goal: "Qualify one exact BF16 1280x720 Mage image on RTX 4090, preserve timings/output/cost, and return RunPod to zero."
+  provider_calls_authorized: true
+  maximum_external_spend_usd: 1
+  provider_authority:
+    provider: runpod_serverless
+    model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6"
+    cap_usd: 1
+    non_transferable: true
+    authorized_by_user_at: "2026-08-12T06:30:00Z"
   remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: false
+  credential_access_authorized: true
   model_downloads_authorized: true
   application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-9-06/mage-worker-image-build"
+  expected_evidence: "evidence/acceptance/VF-9-07/mage-bf16-4090-qualification"
   required_handoff:
-    - "Build pinned stock ComfyUI source with strict BF16 graph/handler and runtime weight bootstrap."
-    - "Verify all weight sizes/hashes, graph/import/handler boundaries, and immutable linux/amd64 digest."
-    - "Run local/hosted checks and author exactly one capped one-image qualification successor."
+    - "Dispatch exactly one 1280x720 BF16 image on one RTX 4090 under the task cap."
+    - "Save/hash/probe output and record all boot/bootstrap/generation/total timings and cost."
+    - "Cancel/drain/delete all transient resources and independently prove absolute zero."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-9-06
+    integration_owner: VF-9-07
   prohibited_in_task:
-    - "RunPod/Runware mutation, GPU, dispatch, inference, qualification, promotion, deployment, or spend."
-    - "Mutable model revision, model substitution, new credentials, Avatar work, or app/schema/UI change."
+    - "Runware, a second terminal-failure retry, model substitution, production promotion/deployment, or ImageForge-volume mutation."
+    - "New credentials, Avatar work, or app/schema/UI change."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -331,7 +336,7 @@ fully_sorted:
   - "Complete fixture Image Styles Hub normalization-through-archive workflow with Workerd and Chrome proof."
 
 known_incomplete_boundaries:
-  - "Mage GATE_IMAGE_002 remains open only for clear-permission claims. Exact public ComfyUI/weight revisions and all three BF16 hashes are pinned; the candidate image, clean timed VideoForge qualification, and production profile are not yet complete."
+  - "Mage GATE_IMAGE_002 remains open only for clear-permission claims. Exact public ComfyUI/weight revisions, all three BF16 hashes, and the immutable candidate image are pinned; clean timed VideoForge qualification and the production profile are not yet complete."
   - "Mage/AvatarForcing terms evidence remains ambiguous. The user explicitly accepted that risk for bounded locked-model qualification; do not claim clear commercial permission or substitute models."
   - "DeepSeek/Gemini are live-runtime composed and fixture remains default; latest DeepSeek smoke was correctly rejected as providerUnavailable at $0."
   - "Fixture Hub reference bytes are session-scoped. No production R2/Neon/Better Auth/Workflow deployment exists."
@@ -340,8 +345,8 @@ known_incomplete_boundaries:
   - "Two bounded SkyReels resumes produced no candidate; the latest provider 503 was cancelled and manually recovered to absolute-zero inventory. No further paid SkyReels retry is selected."
 
 next_tasks:
-  - "1. VF-9-06 build/publish the exact Mage candidate image at $0."
-  - "2. Qualify one real Mage image under a separate cap and return RunPod to zero."
+  - "1. VF-9-07 qualify one exact BF16 Mage image under $1 and return RunPod to zero."
+  - "2. Integrate the passing Mage result into the real owned-video path and acceptance barrier."
   - "3. Add MuseTalk repair and SkyReels whole-frame fallback only after their technical triggers."
   - "4. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
   - "5. Add isolated R2, Neon, Auth, and Workflow adapters; then contention/fault/security/backup/restore hardening."
@@ -349,7 +354,7 @@ next_tasks:
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
-  full_production_mvp_implemented_percent: 66
+  full_production_mvp_implemented_percent: 68
   production_end_to_end_proven: false
   completed:
     provider_free_foundation_percent: 100
@@ -359,7 +364,7 @@ progress_snapshot:
     prompt_and_style_provider_qualification_and_adapters_percent: 100
     custom_image_style_provider_free_percent: 100
   early_or_blocked:
-    production_image_lane_percent: 36
+    production_image_lane_percent: 50
     production_avatar_lane_percent: 68
     cloud_staging_integration_percent: 15
     production_release_percent: 0
@@ -390,16 +395,17 @@ activation_handoff:
     - "VF-9-02 implemented the strict Mage boundary and pinned source patch; full verification passed at $0."
     - "VF-9-03 stopped safely because the required Chrome family was unavailable; no browser fallback or credential access occurred."
     - "VF-9-04 superseded the Chrome blocker using a first-party indexed verified immutable revision; no model bytes or credentials were accessed."
-    - "VF-9-05 admitted the exact Mage model revision and passed full verification at $0."
+    - "VF-9-05 admitted the earlier indexed revision, then user-owned runtime evidence superseded its unproven implementation route."
+    - "VF-9-06 published the corrected pinned stock-ComfyUI BF16 image digest after local and hosted verification at $0."
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from fd97481; preserve all newer commits."
-    - "Load only phase9_mage_worker_image_build and tasks/VF-9-06.md."
-    - "Finish/publish the pinned ComfyUI BF16 candidate image at $0; do not start RunPod."
+    - "Require clean HEAD descending from 022914d; preserve all newer commits."
+    - "Load only phase9_mage_qualification and tasks/VF-9-07.md."
+    - "Run one capped RTX 4090 qualification; save timing/output/cost evidence and force RunPod to zero."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
-    - "Credential access, model/revision ambiguity, any RunPod/provider mutation/download/spend, or non-zero RunPod inventory."
+    - "Credential failure, model/revision ambiguity, initial non-zero inventory, cap risk, or cleanup uncertainty."
 
 notes:
   - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."

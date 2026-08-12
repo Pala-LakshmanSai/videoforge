@@ -1,6 +1,15 @@
 # VF-9-06 Mage worker image evidence
 
-Status: in progress; candidate image digest not yet published.
+Status: complete.
+
+## Published candidate
+
+- Implementation commit: `022914da1f6b8c3ddf6261f58ac34f3ed535d7df`.
+- Hosted build: `31571090443`, passed 2026-08-12 at `$0`.
+- Immutable linux/amd64 image:
+  `ghcr.io/pala-lakshmansai/videoforge-mage@sha256:7c655a73fc444ba15fd52d7fa8d8f9352d6d40226ab5bbc90f300b3011bfbcbf`.
+- Hosted import/source/model identity smoke, handler registration, and compileall passed.
+- Canonical local verify and hosted verify `31571085540` passed.
 
 ## Proven correction baseline
 
