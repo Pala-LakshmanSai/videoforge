@@ -6,9 +6,12 @@ ARG FLASH_ATTN_SHA256=1e71dd64a9e0280e0447b8a0c2541bad4bf6ac65bdeaa2f90e51a9e57d
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential curl ninja-build \
     && rm -rf /var/lib/apt/lists/* \
     && curl --fail --location --retry 3 --output /tmp/flash_attn.tar.gz "$FLASH_ATTN_URL" \
-    && echo "$FLASH_ATTN_SHA256  /tmp/flash_attn.tar.gz" | sha256sum --check --strict \
-    && NVCC_THREADS=2 MAX_JOBS=2 python -m pip wheel --no-build-isolation --no-deps \
-        --wheel-dir /tmp/wheels /tmp/flash_attn.tar.gz
+    && echo "$FLASH_ATTN_SHA256  /tmp/flash_attn.tar.gz" | sha256sum --check --strict
+RUN (while true; do echo "flash-attn compile heartbeat"; sleep 60; done) & heartbeat_pid=$!; \
+    trap 'kill "$heartbeat_pid" 2>/dev/null || true' EXIT; \
+    NVCC_THREADS=2 MAX_JOBS=2 python -m pip wheel --no-build-isolation --no-deps \
+      --wheel-dir /tmp/wheels /tmp/flash_attn.tar.gz; \
+    kill "$heartbeat_pid"; wait "$heartbeat_pid" 2>/dev/null || true; trap - EXIT
 
 FROM scratch
 COPY --from=build /tmp/wheels/flash_attn-*.whl /flash_attn.whl

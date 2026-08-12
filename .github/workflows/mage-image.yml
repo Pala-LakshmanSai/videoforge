@@ -14,7 +14,7 @@ concurrency:
 jobs:
   flash-wheel:
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Build pinned FlashAttention wheel
