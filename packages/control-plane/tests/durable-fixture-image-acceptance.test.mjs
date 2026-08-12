@@ -4,6 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { deflateSync } from "node:zlib";
 
 import { canonicalizeJson } from "@videoforge/contracts";
 import { compileImagePrompt } from "@videoforge/pipeline";
@@ -13,6 +14,11 @@ import {
   DurableFixtureImageAcceptanceService,
   exportMetadataSnapshot,
   ImageAcceptanceError,
+  buildMageImageResult,
+  LOCKED_MAGE_GPU,
+  LOCKED_MAGE_IMAGE,
+  LOCKED_MAGE_MODEL_REVISION,
+  LOCKED_MAGE_SOURCE_REVISION,
   PGliteFixtureImageAcceptanceStore,
   restoreMetadataSnapshot,
   serializeMetadataSnapshot,
@@ -131,7 +137,7 @@ function deterministicUuid(label) {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-async function seedScenario(executor, callbackPayloadHash) {
+async function seedScenario(executor, callbackPayloadHash, callbackKind = "fixture_image_result") {
   await executor.transaction(async (tx) => {
     await seedLockedProjects(tx, {
       styleAProfilePayload: {
@@ -397,13 +403,14 @@ async function seedScenario(executor, callbackPayloadHash) {
     await tx.query(
       `INSERT INTO public.callback_receipts (id,workspace_id,task_id,attempt_id,workflow_event_id,
          callback_kind,nonce_hash,payload_hash,signature_key_id,signed_at,expires_at,received_at)
-       VALUES ($1,$2,$3,$4,$5,'fixture_image_result',$6,$7,'fixture-local-v1',$8,$9,$8)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'fixture-local-v1',$9,$10,$9)`,
       [
         CALLBACK_RECEIPT_ID,
         IDS.workspaceA,
         IMAGE_TASK_ID,
         IMAGE_ATTEMPT_ID,
         CALLBACK_EVENT_ID,
+        callbackKind,
         sha256("fixture-image-nonce"),
         callbackPayloadHash,
         FIXED_TIME,
@@ -423,6 +430,69 @@ function service(executor, telemetry = { record() {} }) {
 
 async function fixture() {
   return new DeterministicMageFixtureWorker().generate(manualAuthority(sha256("placeholder")));
+}
+
+function realPng() {
+  const width = 1280;
+  const height = 720;
+  const crc32 = (value) => {
+    let crc = 0xffffffff;
+    for (const byte of value) {
+      crc ^= byte;
+      for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (kind, payload) => {
+    const name = Buffer.from(kind, "ascii");
+    const output = Buffer.alloc(payload.length + 12);
+    output.writeUInt32BE(payload.length, 0);
+    name.copy(output, 4);
+    payload.copy(output, 8);
+    output.writeUInt32BE(crc32(Buffer.concat([name, payload])), payload.length + 8);
+    return output;
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  const row = Buffer.alloc(width * 3 + 1, 47);
+  row[0] = 0;
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk("IHDR", ihdr),
+    chunk("IDAT", deflateSync(Buffer.concat(Array.from({ length: height }, () => row)))),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+function mage(authority = manualAuthority(sha256("placeholder"))) {
+  const media = realPng();
+  const result = buildMageImageResult(authority, media, {
+    image: LOCKED_MAGE_IMAGE,
+    modelRevision: LOCKED_MAGE_MODEL_REVISION,
+    sourceRevision: LOCKED_MAGE_SOURCE_REVISION,
+    gpu: LOCKED_MAGE_GPU,
+    seed: 20260812,
+    positivePromptHash: compiledPrompt.positivePromptSha256,
+    negativePromptHash: compiledPrompt.negativePromptSha256,
+    outputSha256: sha256(media),
+    objectKey: `workspace/${IDS.workspaceA}/project/${IDS.projectA}/revision/${IDS.revisionA}/images/${IMAGE_ATTEMPT_ID}.png`,
+    reportedCostMicroUsd: 31,
+    runtimeEvidence: {
+      schema_version: "videoforge.mage-runtime-evidence/v1",
+      gpu: { name: LOCKED_MAGE_GPU },
+      network_volume_attached: false,
+    },
+    qualityReview: {
+      state: "PASSED",
+      reviewerUserId: IDS.userA,
+      reviewedAt: FIXED_TIME,
+      findings: ["No visible text, logo, watermark, or material anatomy defect."],
+    },
+  });
+  return { result, media };
 }
 
 async function rejectsCode(action, expected) {
@@ -476,6 +546,146 @@ test("fixture image acceptance atomically converges durable asset, QA, callback,
     });
   } finally {
     await context.database.close();
+  }
+});
+
+test("real Mage image acceptance persists truthful provider lineage and exact replay", async () => {
+  const context = await createMigratedDatabase();
+  try {
+    const generated = mage();
+    await seedScenario(context.executor, generated.result.resultHash, "mage_image_result");
+    const first = await service(context.executor).accept(
+      SCOPE,
+      command(),
+      generated.result,
+      generated.media,
+    );
+    assert.equal(first.replayed, false);
+    assert.equal(first.accepted.schemaVersion, "videoforge.mage-image-acceptance/v1");
+    const replay = await service(context.executor).accept(
+      SCOPE,
+      command(),
+      generated.result,
+      generated.media,
+    );
+    assert.equal(replay.replayed, true);
+    assert.equal(canonicalizeJson(replay.accepted), canonicalizeJson(first.accepted));
+    const state = await context.executor.query(
+      `SELECT accepted.schema_version, accepted.reported_cost_micro_usd,
+              asset.width_px, asset.height_px, asset.metadata,
+              attempt.provider_details, qa.notes
+         FROM image_generation_acceptances accepted
+         JOIN assets asset ON asset.id = accepted.output_asset_id
+         JOIN attempts attempt ON attempt.id = accepted.attempt_id
+         JOIN qa_results qa ON qa.id = accepted.qa_result_id`,
+    );
+    assert.equal(state.rows[0].schema_version, "videoforge.mage-image-acceptance/v1");
+    assert.equal(Number(state.rows[0].reported_cost_micro_usd), 31);
+    assert.equal(state.rows[0].width_px, 1280);
+    assert.equal(state.rows[0].height_px, 720);
+    assert.equal(state.rows[0].metadata.fixture_non_production, false);
+    assert.equal(state.rows[0].metadata.provider_model.image, LOCKED_MAGE_IMAGE);
+    assert.equal(state.rows[0].provider_details.operation, "runpod.mage.image.generate");
+    assert.match(state.rows[0].notes, /explicit visual review passed/u);
+  } finally {
+    await context.database.close();
+  }
+});
+
+test("Mage rejection and provider, reviewer, prompt, media, and cost drift never mutate durable state", async () => {
+  const authority = manualAuthority(sha256("placeholder"));
+  const generated = mage(authority);
+  for (const mode of ["review", "provider", "reviewer", "prompt", "media", "cost"]) {
+    const context = await createMigratedDatabase();
+    try {
+      await seedScenario(context.executor, generated.result.resultHash, "mage_image_result");
+      let result = generated.result;
+      let media = generated.media;
+      if (mode === "review")
+        assert.throws(
+          () =>
+            buildMageImageResult(authority, media, {
+              image: LOCKED_MAGE_IMAGE,
+              modelRevision: LOCKED_MAGE_MODEL_REVISION,
+              sourceRevision: LOCKED_MAGE_SOURCE_REVISION,
+              gpu: LOCKED_MAGE_GPU,
+              seed: 20260812,
+              positivePromptHash: compiledPrompt.positivePromptSha256,
+              negativePromptHash: compiledPrompt.negativePromptSha256,
+              outputSha256: sha256(media),
+              objectKey: generated.result.media.objectKey,
+              reportedCostMicroUsd: 31,
+              runtimeEvidence: generated.result.runtimeEvidence,
+              qualityReview: {
+                ...generated.result.qualityReview,
+                state: "REJECTED",
+              },
+            }),
+          (error) => error instanceof ImageAcceptanceError && error.code === "MEDIA_INVALID",
+        );
+      if (mode === "provider")
+        result = {
+          ...result,
+          providerModel: { ...result.providerModel, image: `${LOCKED_MAGE_IMAGE}x` },
+        };
+      if (mode === "reviewer")
+        result = {
+          ...result,
+          qualityReview: { ...result.qualityReview, reviewerUserId: IDS.userB },
+        };
+      if (mode === "prompt") result = { ...result, negativePromptHash: sha256("drift") };
+      if (mode === "media") {
+        media = Buffer.from(media);
+        media[0] = 0;
+      }
+      if (mode === "cost") result = { ...result, reportedCostMicroUsd: 101 };
+      if (mode !== "review")
+        await assert.rejects(
+          () => service(context.executor).accept(SCOPE, command(), result, media),
+          (error) => error instanceof ImageAcceptanceError,
+        );
+      const rows = await context.executor.query(
+        `SELECT count(*)::int AS count FROM image_generation_acceptances`,
+      );
+      assert.equal(rows.rows[0].count, 0);
+    } finally {
+      await context.database.close();
+    }
+  }
+});
+
+test("accepted Mage image survives metadata restore and reopened exact replay", async () => {
+  const root = await mkdtemp(join(tmpdir(), "videoforge-mage-acceptance-"));
+  const destinationPath = join(root, "destination");
+  const source = await createMigratedDatabase();
+  let destination = await createMigratedDatabase(destinationPath);
+  try {
+    const generated = mage();
+    await seedScenario(source.executor, generated.result.resultHash, "mage_image_result");
+    const first = await service(source.executor).accept(
+      SCOPE,
+      command(),
+      generated.result,
+      generated.media,
+    );
+    await restoreMetadataSnapshot(
+      destination.executor,
+      serializeMetadataSnapshot(await exportMetadataSnapshot(source.executor)),
+    );
+    await destination.database.close();
+    destination = await createMigratedDatabase(destinationPath);
+    const replay = await service(destination.executor).accept(
+      SCOPE,
+      command(),
+      generated.result,
+      generated.media,
+    );
+    assert.equal(replay.replayed, true);
+    assert.equal(canonicalizeJson(replay.accepted), canonicalizeJson(first.accepted));
+  } finally {
+    await source.database.close();
+    await destination.database.close();
+    await rm(root, { recursive: true, force: true });
   }
 });
 

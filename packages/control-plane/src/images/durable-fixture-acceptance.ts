@@ -9,6 +9,13 @@ import type { TelemetryPort } from "../telemetry/telemetry.js";
 
 export const FIXTURE_IMAGE_RESULT_VERSION = "videoforge.fixture-image-result/v1" as const;
 export const FIXTURE_IMAGE_ACCEPTANCE_VERSION = "videoforge.fixture-image-acceptance/v1" as const;
+export const MAGE_IMAGE_RESULT_VERSION = "videoforge.mage-durable-image-result/v1" as const;
+export const MAGE_IMAGE_ACCEPTANCE_VERSION = "videoforge.mage-image-acceptance/v1" as const;
+export const LOCKED_MAGE_IMAGE =
+  "ghcr.io/pala-lakshmansai/videoforge-mage@sha256:ee844a242956a376466fa233f05e3bb6ffdcf71a645f5b27241331e5e295a89c" as const;
+export const LOCKED_MAGE_MODEL_REVISION = "d8c99241f6fa80fbd453014234af2bf337ea21e6" as const;
+export const LOCKED_MAGE_SOURCE_REVISION = "1108f2ac5e412b27accb0e5d51c90ef2ba39784d" as const;
+export const LOCKED_MAGE_GPU = "NVIDIA GeForce RTX 4090" as const;
 
 type Row = Record<string, unknown>;
 type Layout = "IMAGE_FULL" | "SPLIT_RIGHT_IMAGE";
@@ -81,9 +88,10 @@ export interface ImageExecutionAuthority {
   readonly outboxState: "ACKNOWLEDGED" | "STALE";
   readonly callbackReceiptId: string;
   readonly callbackPayloadHash: Sha256Digest;
+  readonly callbackKind: "fixture_image_result" | "mage_image_result" | "STALE";
   readonly callbackState: "RECEIVED" | "STALE";
   readonly reservedCostMicroUsd: number;
-  readonly accepted: AcceptedFixtureImage | null;
+  readonly accepted: AcceptedImage | null;
 }
 
 export interface FixtureImageResult {
@@ -126,13 +134,44 @@ export interface FixtureImageResult {
   readonly resultHash: Sha256Digest;
 }
 
+export interface MageImageResult
+  extends Omit<FixtureImageResult, "schemaVersion" | "fixtureModel" | "technicalValidation"> {
+  readonly schemaVersion: typeof MAGE_IMAGE_RESULT_VERSION;
+  readonly providerModel: {
+    readonly provider: "runpod_serverless";
+    readonly image: typeof LOCKED_MAGE_IMAGE;
+    readonly modelRevision: typeof LOCKED_MAGE_MODEL_REVISION;
+    readonly sourceRevision: typeof LOCKED_MAGE_SOURCE_REVISION;
+    readonly gpu: typeof LOCKED_MAGE_GPU;
+  };
+  readonly technicalValidation: {
+    readonly decoder: "png-structural-v1";
+    readonly signatureValid: true;
+    readonly dimensionsValid: true;
+    readonly aspectRatioValid: true;
+  };
+  readonly runtimeEvidence: Readonly<Record<string, unknown>>;
+  readonly qualityReview: {
+    readonly state: "PASSED";
+    readonly reviewerUserId: string;
+    readonly reviewedAt: string;
+    readonly findings: readonly string[];
+  };
+}
+
+export type DurableImageResult = FixtureImageResult | MageImageResult;
+
 export interface AcceptedFixtureImage {
-  readonly schemaVersion: typeof FIXTURE_IMAGE_ACCEPTANCE_VERSION;
-  readonly result: FixtureImageResult;
+  readonly schemaVersion:
+    | typeof FIXTURE_IMAGE_ACCEPTANCE_VERSION
+    | typeof MAGE_IMAGE_ACCEPTANCE_VERSION;
+  readonly result: DurableImageResult;
   readonly callbackReceiptId: string;
   readonly acceptedAt: string;
   readonly acceptanceFingerprintHash: Sha256Digest;
 }
+
+export type AcceptedImage = AcceptedFixtureImage;
 
 export interface ImageAcceptanceStore {
   resolve(
@@ -142,8 +181,8 @@ export interface ImageAcceptanceStore {
   accept(
     scope: ImageAcceptanceScope,
     authority: ImageExecutionAuthority,
-    acceptance: AcceptedFixtureImage,
-  ): Promise<{ readonly accepted: AcceptedFixtureImage; readonly replayed: boolean }>;
+    acceptance: AcceptedImage,
+  ): Promise<{ readonly accepted: AcceptedImage; readonly replayed: boolean }>;
 }
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -292,6 +331,138 @@ export class DeterministicMageFixtureWorker {
   }
 }
 
+export interface MageDurableResultInput {
+  readonly image: typeof LOCKED_MAGE_IMAGE;
+  readonly modelRevision: typeof LOCKED_MAGE_MODEL_REVISION;
+  readonly sourceRevision: typeof LOCKED_MAGE_SOURCE_REVISION;
+  readonly gpu: typeof LOCKED_MAGE_GPU;
+  readonly seed: number;
+  readonly positivePromptHash: Sha256Digest;
+  readonly negativePromptHash: Sha256Digest;
+  readonly outputSha256: Sha256Digest;
+  readonly objectKey: string;
+  readonly reportedCostMicroUsd: number;
+  readonly runtimeEvidence: Readonly<Record<string, unknown>>;
+  readonly qualityReview: MageImageResult["qualityReview"];
+}
+
+export function buildMageImageResult(
+  authority: ImageExecutionAuthority,
+  media: Uint8Array,
+  input: MageDurableResultInput,
+): MageImageResult {
+  const expectedKeys = [
+    "gpu",
+    "image",
+    "modelRevision",
+    "negativePromptHash",
+    "objectKey",
+    "outputSha256",
+    "positivePromptHash",
+    "qualityReview",
+    "reportedCostMicroUsd",
+    "runtimeEvidence",
+    "seed",
+    "sourceRevision",
+  ].sort();
+  const actualKeys = Object.keys(input).sort();
+  if (
+    actualKeys.length !== expectedKeys.length ||
+    actualKeys.some((key, index) => key !== expectedKeys[index])
+  )
+    throw new ImageAcceptanceError("DURABLE_STATE_INVALID", "Mage result input shape is invalid.");
+  verifyCompiledImagePrompt(authority.compiledPrompt);
+  const dimensions = pngDimensions(media);
+  const binarySha256 = hashBytes(media);
+  const expectedObjectKey = `workspace/${authority.workspaceId}/project/${authority.projectId}/revision/${authority.revisionId}/images/${authority.attemptId}.png`;
+  if (
+    input.image !== LOCKED_MAGE_IMAGE ||
+    input.modelRevision !== LOCKED_MAGE_MODEL_REVISION ||
+    input.sourceRevision !== LOCKED_MAGE_SOURCE_REVISION ||
+    input.gpu !== LOCKED_MAGE_GPU ||
+    input.positivePromptHash !== authority.compiledPrompt.positivePromptSha256 ||
+    input.negativePromptHash !== authority.compiledPrompt.negativePromptSha256 ||
+    input.outputSha256 !== binarySha256 ||
+    input.objectKey !== expectedObjectKey ||
+    dimensions.width !== 1280 ||
+    dimensions.height !== 720 ||
+    !Number.isSafeInteger(input.seed) ||
+    input.seed < 0 ||
+    input.seed >= 2 ** 32 ||
+    !Number.isSafeInteger(input.reportedCostMicroUsd) ||
+    input.reportedCostMicroUsd < 0 ||
+    input.reportedCostMicroUsd > authority.reservedCostMicroUsd
+  )
+    throw new ImageAcceptanceError("HASH_MISMATCH", "Mage result identity or media drifted.");
+  const review = input.qualityReview;
+  if (
+    review === null ||
+    typeof review !== "object" ||
+    Object.keys(review).sort().join(",") !== "findings,reviewedAt,reviewerUserId,state" ||
+    review.state !== "PASSED" ||
+    !TOKEN.test(review.reviewerUserId) ||
+    Number.isNaN(Date.parse(review.reviewedAt)) ||
+    !Array.isArray(review.findings) ||
+    review.findings.length > 16 ||
+    review.findings.some(
+      (finding) => typeof finding !== "string" || !finding || finding.length > 240,
+    )
+  )
+    throw new ImageAcceptanceError("MEDIA_INVALID", "Mage visual review is absent or invalid.");
+  try {
+    canonicalizeJson(input.runtimeEvidence);
+  } catch {
+    throw new ImageAcceptanceError("DURABLE_STATE_INVALID", "Mage runtime evidence is invalid.");
+  }
+  const base = Object.freeze({
+    schemaVersion: MAGE_IMAGE_RESULT_VERSION,
+    workspaceId: authority.workspaceId,
+    projectId: authority.projectId,
+    revisionId: authority.revisionId,
+    timelineId: authority.timelineId,
+    imageStyleVersionId: authority.imageStyleVersionId,
+    styleProfileArtifactId: authority.styleProfileArtifactId,
+    styleProfileHash: authority.styleProfileHash,
+    promptExecutionId: authority.promptExecutionId,
+    promptSceneResultId: authority.promptSceneResultId,
+    sceneId: authority.sceneId,
+    taskId: authority.taskId,
+    attemptId: authority.attemptId,
+    attemptOrdinal: authority.attemptOrdinal,
+    outboxId: authority.outboxId,
+    inputHash: authority.recordedInputHash,
+    positivePromptHash: input.positivePromptHash,
+    negativePromptHash: input.negativePromptHash,
+    providerModel: Object.freeze({
+      provider: "runpod_serverless" as const,
+      image: input.image,
+      modelRevision: input.modelRevision,
+      sourceRevision: input.sourceRevision,
+      gpu: input.gpu,
+    }),
+    seed: input.seed,
+    layout: authority.layout,
+    media: Object.freeze({
+      contentType: "image/png" as const,
+      widthPx: dimensions.width,
+      heightPx: dimensions.height,
+      byteSize: media.byteLength,
+      binarySha256,
+      objectKey: input.objectKey,
+    }),
+    technicalValidation: Object.freeze({
+      decoder: "png-structural-v1" as const,
+      signatureValid: true as const,
+      dimensionsValid: true as const,
+      aspectRatioValid: true as const,
+    }),
+    runtimeEvidence: input.runtimeEvidence,
+    qualityReview: Object.freeze({ ...review, findings: Object.freeze([...review.findings]) }),
+    reportedCostMicroUsd: input.reportedCostMicroUsd,
+  });
+  return Object.freeze({ ...base, resultHash: hashCanonical(base) });
+}
+
 function same(left: unknown, right: unknown): boolean {
   return canonicalizeJson(left) === canonicalizeJson(right);
 }
@@ -346,15 +517,45 @@ function assertAuthority(
 }
 
 function validateResult(
+  scope: ImageAcceptanceScope,
   authority: ImageExecutionAuthority,
-  result: FixtureImageResult,
+  result: DurableImageResult,
   media: Uint8Array,
 ): void {
-  const { resultHash, ...providedBase } = result;
-  const expectedBase = resultBase(authority, media);
-  if (!same(providedBase, expectedBase) || resultHash !== hashCanonical(providedBase))
-    throw new ImageAcceptanceError("HASH_MISMATCH", "Image result bytes or lineage drifted.");
-  if (authority.callbackPayloadHash !== resultHash)
+  const expectedCallbackKind =
+    result.schemaVersion === FIXTURE_IMAGE_RESULT_VERSION
+      ? "fixture_image_result"
+      : "mage_image_result";
+  if (authority.callbackKind !== expectedCallbackKind)
+    throw new ImageAcceptanceError("CALLBACK_INVALID", "Image callback kind drifted.");
+  if (result.schemaVersion === FIXTURE_IMAGE_RESULT_VERSION) {
+    const { resultHash, ...providedBase } = result;
+    const expectedBase = resultBase(authority, media);
+    if (!same(providedBase, expectedBase) || resultHash !== hashCanonical(providedBase))
+      throw new ImageAcceptanceError("HASH_MISMATCH", "Image result bytes or lineage drifted.");
+  } else if (result.schemaVersion === MAGE_IMAGE_RESULT_VERSION) {
+    if (result.qualityReview.reviewerUserId !== scope.actorUserId)
+      throw new ImageAcceptanceError("WORKSPACE_MISMATCH", "Mage reviewer identity drifted.");
+    const rebuilt = buildMageImageResult(authority, media, {
+      image: result.providerModel.image,
+      modelRevision: result.providerModel.modelRevision,
+      sourceRevision: result.providerModel.sourceRevision,
+      gpu: result.providerModel.gpu,
+      seed: result.seed,
+      positivePromptHash: result.positivePromptHash,
+      negativePromptHash: result.negativePromptHash,
+      outputSha256: result.media.binarySha256,
+      objectKey: result.media.objectKey,
+      reportedCostMicroUsd: result.reportedCostMicroUsd,
+      runtimeEvidence: result.runtimeEvidence,
+      qualityReview: result.qualityReview,
+    });
+    if (!same(rebuilt, result))
+      throw new ImageAcceptanceError("HASH_MISMATCH", "Mage result bytes or lineage drifted.");
+  } else {
+    throw new ImageAcceptanceError("DURABLE_STATE_INVALID", "Image result variant is invalid.");
+  }
+  if (authority.callbackPayloadHash !== result.resultHash)
     throw new ImageAcceptanceError(
       "CALLBACK_INVALID",
       "Callback payload does not bind the image result.",
@@ -373,7 +574,7 @@ export class DurableFixtureImageAcceptanceService {
   public async accept(
     scope: ImageAcceptanceScope,
     command: ImageAcceptanceCommand,
-    result: FixtureImageResult,
+    result: DurableImageResult,
     media: Uint8Array,
   ): Promise<{ readonly accepted: AcceptedFixtureImage; readonly replayed: boolean }> {
     const expectedKeys = [
@@ -421,12 +622,15 @@ export class DurableFixtureImageAcceptanceService {
         );
       return Object.freeze({ accepted: authority.accepted, replayed: true });
     }
-    validateResult(authority, result, media);
+    validateResult(scope, authority, result, media);
     const acceptedAt = this.clock.now();
     if (Number.isNaN(Date.parse(acceptedAt)))
       throw new ImageAcceptanceError("DURABLE_STATE_INVALID", "Image acceptance clock is invalid.");
     const base = {
-      schemaVersion: FIXTURE_IMAGE_ACCEPTANCE_VERSION,
+      schemaVersion:
+        result.schemaVersion === FIXTURE_IMAGE_RESULT_VERSION
+          ? FIXTURE_IMAGE_ACCEPTANCE_VERSION
+          : MAGE_IMAGE_ACCEPTANCE_VERSION,
       result,
       callbackReceiptId: authority.callbackReceiptId,
       acceptedAt,
@@ -438,7 +642,10 @@ export class DurableFixtureImageAcceptanceService {
         schemaVersion: "telemetry-event/v1",
         streamId: `image:${authority.attemptId}`,
         sequence: 1,
-        eventName: "fixture_image.accepted",
+        eventName:
+          result.schemaVersion === FIXTURE_IMAGE_RESULT_VERSION
+            ? "fixture_image.accepted"
+            : "mage_image.accepted",
         occurredAt: acceptedAt,
         correlation: {
           requestId: null,
@@ -451,7 +658,10 @@ export class DurableFixtureImageAcceptanceService {
           providerJobId: null,
         },
         stage: "IMAGE",
-        providerOperation: "fixture.image.accept",
+        providerOperation:
+          result.schemaVersion === FIXTURE_IMAGE_RESULT_VERSION
+            ? "fixture.image.accept"
+            : "runpod.mage.image.accept",
         retry: {
           attemptNumber: authority.attemptOrdinal,
           maximumAttempts: 32,
@@ -649,8 +859,16 @@ async function loadAuthority(
         : "STALE",
     callbackReceiptId: text(row.callback_receipt_id, "callback"),
     callbackPayloadHash: text(row.callback_payload_hash, "callback payload hash") as Sha256Digest,
-    callbackState:
-      text(row.callback_kind, "callback kind") === "fixture_image_result" ? "RECEIVED" : "STALE",
+    callbackKind: ["fixture_image_result", "mage_image_result"].includes(
+      text(row.callback_kind, "callback kind"),
+    )
+      ? (text(row.callback_kind, "callback kind") as "fixture_image_result" | "mage_image_result")
+      : "STALE",
+    callbackState: ["fixture_image_result", "mage_image_result"].includes(
+      text(row.callback_kind, "callback kind"),
+    )
+      ? "RECEIVED"
+      : "STALE",
     reservedCostMicroUsd: integer(row.reserved_cost_micro_usd, "reserved cost"),
     accepted: row.acceptance_payload === null ? null : accepted(row.acceptance_payload),
   });
@@ -733,6 +951,7 @@ export class PGliteFixtureImageAcceptanceStore implements ImageAcceptanceStore {
             "Image authority changed before acceptance.",
           );
         const result = acceptance.result;
+        const fixture = result.schemaVersion === FIXTURE_IMAGE_RESULT_VERSION;
         const acceptanceId = deterministicUuid(`image-acceptance:${current.attemptId}`);
         const assetId = deterministicUuid(`image-output:${current.attemptId}`);
         const qaId = deterministicUuid(`image-technical-qa:${current.attemptId}`);
@@ -761,11 +980,13 @@ export class PGliteFixtureImageAcceptanceStore implements ImageAcceptanceStore {
             result.media.widthPx,
             result.media.heightPx,
             JSON.stringify({
-              fixture_non_production: true,
+              fixture_non_production: fixture,
               scene_id: result.sceneId,
               layout: result.layout,
               result_hash: result.resultHash,
               prompt_scene_result_id: result.promptSceneResultId,
+              result_variant: result.schemaVersion,
+              ...(fixture ? {} : { provider_model: result.providerModel }),
             }),
             acceptance.acceptedAt,
           ],
@@ -780,7 +1001,9 @@ export class PGliteFixtureImageAcceptanceStore implements ImageAcceptanceStore {
             current.revisionId,
             current.attemptId,
             assetId,
-            "Deterministic fixture PNG structure, checksum, dimensions, and aspect ratio passed.",
+            fixture
+              ? "Deterministic fixture PNG structure, checksum, dimensions, and aspect ratio passed."
+              : "Mage PNG structure, checksum, 1280x720 profile, exact runtime lineage, and explicit visual review passed.",
             acceptance.acceptedAt,
           ],
         );
@@ -806,7 +1029,7 @@ export class PGliteFixtureImageAcceptanceStore implements ImageAcceptanceStore {
               result.reportedCostMicroUsd,
               `image:${current.attemptId}:${eventType.toLowerCase()}`,
               JSON.stringify({
-                source: "fixture-image-acceptance",
+                source: fixture ? "fixture-image-acceptance" : "mage-image-acceptance",
                 result_hash: result.resultHash,
               }),
               acceptance.acceptedAt,
@@ -867,10 +1090,11 @@ export class PGliteFixtureImageAcceptanceStore implements ImageAcceptanceStore {
             current.attemptId,
             assetId,
             JSON.stringify({
-              operation: "fixture.image.generate",
+              operation: fixture ? "fixture.image.generate" : "runpod.mage.image.generate",
               result_hash: result.resultHash,
               callback_receipt_id: current.callbackReceiptId,
-              fixture_non_production: true,
+              fixture_non_production: fixture,
+              ...(fixture ? {} : { provider_model: result.providerModel }),
             }),
             acceptance.acceptedAt,
           ],
