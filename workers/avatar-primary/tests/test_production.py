@@ -20,7 +20,8 @@ from videoforge_avatar_primary.production import (  # noqa: E402
     AVATAR_WEIGHTS_REVISION,
     WAN_REVISION,
     WAV2VEC_REVISION,
-    _encode_inline_output,
+    _encode_delivery_output,
+    _resolve_inference_output,
 )
 
 
@@ -167,9 +168,26 @@ class ProductionContractTest(unittest.TestCase):
                     return_value=(10_120, 25, 832, 480),
                 ),
             ):
-                _encode_inline_output(source, destination)
+                _encode_delivery_output(source, destination)
 
             self.assertEqual(destination.read_bytes(), b"encoded")
+
+    def test_resolves_exact_or_only_nested_inference_output_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            nested = root / "nested" / "candidate.mp4"
+            nested.parent.mkdir()
+            nested.write_bytes(b"candidate")
+            self.assertEqual(_resolve_inference_output(root), nested)
+
+            another = root / "another.mp4"
+            another.write_bytes(b"another")
+            with self.assertRaisesRegex(ValueError, "AVATAR_OUTPUT_AMBIGUOUS"):
+                _resolve_inference_output(root)
+
+            expected = root / "0-0_regular.mp4"
+            expected.write_bytes(b"expected")
+            self.assertEqual(_resolve_inference_output(root), expected)
 
 
 if __name__ == "__main__":

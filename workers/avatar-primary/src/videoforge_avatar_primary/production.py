@@ -19,7 +19,7 @@ WAN_REVISION = "37ec512624d61f7aa208f7ea8140a131f93afc9a"
 WAV2VEC_REVISION = "22aad52d435eb6dbaf354bdad9b0da84ce7d6156"
 ALLOWED_LAYOUTS = {"AVATAR_FULL", "SPLIT_LEFT_AVATAR"}
 DIAGNOSTIC_TAIL_BYTES = 64 * 1024
-INLINE_RESULT_MAX_BYTES = 4 * 1024 * 1024
+DELIVERY_RESULT_MAX_BYTES = 4 * 1024 * 1024
 
 
 class AvatarPrimaryInferenceFailure(ValueError):
@@ -267,7 +267,7 @@ def _upload(url: str, path: Path) -> None:
             raise ValueError("AVATAR_OUTPUT_UPLOAD_FAILED")
 
 
-def _encode_inline_output(source: Path, destination: Path) -> None:
+def _encode_delivery_output(source: Path, destination: Path) -> None:
     subprocess.run(
         [
             "ffmpeg",
@@ -298,9 +298,23 @@ def _encode_inline_output(source: Path, destination: Path) -> None:
         capture_output=True,
         timeout=300,
     )
-    if not destination.is_file() or destination.stat().st_size > INLINE_RESULT_MAX_BYTES:
-        raise ValueError("AVATAR_INLINE_OUTPUT_TOO_LARGE")
+    if not destination.is_file() or destination.stat().st_size > DELIVERY_RESULT_MAX_BYTES:
+        raise ValueError("AVATAR_DELIVERY_OUTPUT_TOO_LARGE")
     _probe(destination)
+
+
+def _resolve_inference_output(output_root: Path) -> Path:
+    expected = output_root / "0-0_regular.mp4"
+    if expected.is_file():
+        return expected
+    candidates = sorted(
+        path
+        for path in output_root.rglob("*.mp4")
+        if path.is_file() and not path.name.endswith(".tmp.mp4")
+    )
+    if len(candidates) != 1:
+        raise ValueError("AVATAR_OUTPUT_MISSING" if not candidates else "AVATAR_OUTPUT_AMBIGUOUS")
+    return candidates[0]
 
 
 def _execute(
@@ -366,9 +380,7 @@ def _execute(
         except subprocess.CalledProcessError as error:
             tail = _diagnostic_tail(diagnostic)
             raise _inference_failure(classify_inference_failure(tail), tail) from error
-    output_path = output_root / "0-0_regular.mp4"
-    if not output_path.is_file():
-        raise ValueError("AVATAR_OUTPUT_MISSING")
+    output_path = _resolve_inference_output(output_root)
     duration_ms, fps, width, height = _probe(output_path)
     return (
         {
@@ -404,7 +416,19 @@ def run_avatar_primary_job(job: AvatarPrimaryJob) -> AvatarPrimaryResult:
             audio_path=audio_path,
             output_root=output_root,
         )
-        _upload(job.output_put_url, output_path)
+        delivery_path = task_root / "delivery.mp4"
+        _encode_delivery_output(output_path, delivery_path)
+        duration_ms, fps, width, height = _probe(delivery_path)
+        result = {
+            **result,
+            "output_sha256": _sha256(delivery_path),
+            "bytes": delivery_path.stat().st_size,
+            "duration_ms": duration_ms,
+            "fps": fps,
+            "width": width,
+            "height": height,
+        }
+        _upload(job.output_put_url, delivery_path)
         return result
 
 
@@ -438,7 +462,7 @@ def run_avatar_primary_inline_job(job: AvatarPrimaryInlineJob) -> AvatarPrimaryI
             output_root=output_root,
         )
         inline_path = task_root / "inline.mp4"
-        _encode_inline_output(output_path, inline_path)
+        _encode_delivery_output(output_path, inline_path)
         duration_ms, fps, width, height = _probe(inline_path)
         result = {
             **result,
