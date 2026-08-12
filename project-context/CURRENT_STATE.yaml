@@ -316,7 +316,7 @@ recommended_next_task:
   provider_authority:
     provider: runpod_serverless
     model_id: "KlingAIResearch/AvatarForcing@63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39"
-    image_digest: pending_vf_9_21_immutable_build
+    image_digest: "sha256:fbb09ffc3e1e36f08100d58f384619e97243c32e3f3fb597aff71148d785a50e"
     cap_usd: 1.4736943278
     non_transferable: true
     authorized_by_user_at: "2026-08-12T11:40:00Z"
