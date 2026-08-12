@@ -148,6 +148,76 @@ describe("RunPod scale-zero control", () => {
     expect(() => guard.assertDispatchAllowed()).toThrow("RUNPOD_DISPATCH_BLOCKED");
   });
 
+  it("reconciles transient reads against the same job without redispatch", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const sleep = vi.fn(async () => undefined);
+    let statusReads = 0;
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/run")) return response({ id: "job_01", status: "IN_QUEUE" });
+      statusReads += 1;
+      if (statusReads === 1) throw new Error("transient secret-bearing transport failure");
+      return response({ id: "job_01", status: "IN_PROGRESS" });
+    });
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+      readRetryDelaysMs: [0],
+      sleep,
+    });
+    const dispatched = await client.dispatch("attempt_01", { value: "owned" });
+    await expect(client.status(dispatched.id)).resolves.toMatchObject({ status: "IN_PROGRESS" });
+    expect(
+      fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+    expect(sleep).toHaveBeenCalledTimes(1);
+    expect(sleep).toHaveBeenCalledWith(0);
+  });
+
+  it("fails closed after bounded read reconciliation exhaustion", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const sleep = vi.fn(async () => undefined);
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch: async () => Promise.reject(new Error(key)),
+      baseUrl: "http://127.0.0.1:43123",
+      readRetryDelaysMs: [0, 0],
+      sleep,
+    });
+    await expect(client.status("job_01")).rejects.toMatchObject({
+      code: "RUNPOD_READ_AMBIGUOUS",
+    });
+    expect(sleep).toHaveBeenCalledTimes(2);
+  });
+
+  it("aborts bounded read reconciliation without redispatch", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const controller = new AbortController();
+    const fetch = vi.fn(async () => Promise.reject(new Error(key)));
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+      readRetryDelaysMs: [0, 0],
+      sleep: async () => controller.abort(),
+      signal: controller.signal,
+    });
+    await expect(client.status("job_01")).rejects.toMatchObject({
+      code: "RUNPOD_READ_ABORTED",
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("updates or deletes an endpoint only after exact zero and confirmation", async () => {
     const guard = new RunPodDrainGuard();
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {

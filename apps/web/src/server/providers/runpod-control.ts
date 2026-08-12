@@ -414,12 +414,17 @@ export interface RunPodServerlessJobClientOptions {
   readonly fetch?: FetchPort;
   readonly baseUrl?: string;
   readonly timeoutMs?: number;
+  readonly readRetryDelaysMs?: readonly number[];
+  readonly sleep?: (milliseconds: number) => Promise<void>;
+  readonly signal?: AbortSignal;
 }
 
 export class RunPodServerlessJobClient {
   private readonly fetch: FetchPort;
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
+  private readonly readRetryDelaysMs: readonly number[];
+  private readonly sleep: (milliseconds: number) => Promise<void>;
   private readonly replays = new Map<string, Promise<RunPodJobResult>>();
 
   constructor(private readonly options: RunPodServerlessJobClientOptions) {
@@ -436,9 +441,25 @@ export class RunPodServerlessJobClient {
       throw new RunPodControlError("RUNPOD_BASE_URL_INVALID");
     }
     this.timeoutMs = options.timeoutMs ?? 30_000;
+    this.readRetryDelaysMs = Object.freeze([...(options.readRetryDelaysMs ?? [250, 1_000, 2_000])]);
+    this.sleep =
+      options.sleep ??
+      ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+    if (
+      this.readRetryDelaysMs.length > 4 ||
+      this.readRetryDelaysMs.some(
+        (delay) => !Number.isSafeInteger(delay) || delay < 0 || delay > 10_000,
+      )
+    ) {
+      throw new RunPodControlError("RUNPOD_READ_RETRY_POLICY_INVALID");
+    }
   }
 
-  private async request(method: "GET" | "POST", path: string, body?: string): Promise<JsonRecord> {
+  private async requestOnce(
+    method: "GET" | "POST",
+    path: string,
+    body?: string,
+  ): Promise<JsonRecord> {
     let response: Response;
     try {
       response = await this.fetch(`${this.baseUrl}/${this.options.endpointId}${path}`, {
@@ -451,13 +472,17 @@ export class RunPodServerlessJobClient {
         signal: AbortSignal.timeout(this.timeoutMs),
       });
     } catch {
-      throw new RunPodControlError("RUNPOD_MUTATION_AMBIGUOUS");
+      throw new RunPodControlError(
+        method === "GET" ? "RUNPOD_READ_AMBIGUOUS" : "RUNPOD_MUTATION_AMBIGUOUS",
+      );
     }
     if (!response.ok) {
       throw new RunPodControlError(
         response.status === 401 || response.status === 403
           ? "RUNPOD_AUTH_REJECTED"
-          : "RUNPOD_MUTATION_FAILED",
+          : method === "GET"
+            ? "RUNPOD_READ_FAILED"
+            : "RUNPOD_MUTATION_FAILED",
       );
     }
     try {
@@ -466,6 +491,24 @@ export class RunPodServerlessJobClient {
       return value;
     } catch {
       throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
+    }
+  }
+
+  private async request(method: "GET" | "POST", path: string, body?: string): Promise<JsonRecord> {
+    if (method === "POST") return this.requestOnce(method, path, body);
+    for (let attempt = 0; ; attempt += 1) {
+      if (this.options.signal?.aborted) {
+        throw new RunPodControlError("RUNPOD_READ_ABORTED");
+      }
+      try {
+        return await this.requestOnce(method, path, body);
+      } catch (error) {
+        const retryable =
+          error instanceof RunPodControlError &&
+          (error.code === "RUNPOD_READ_AMBIGUOUS" || error.code === "RUNPOD_READ_FAILED");
+        if (!retryable || attempt >= this.readRetryDelaysMs.length) throw error;
+        await this.sleep(this.readRetryDelaysMs[attempt]!);
+      }
     }
   }
 

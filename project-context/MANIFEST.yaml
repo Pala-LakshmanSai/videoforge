@@ -3,8 +3,8 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-11"
 source_of_truth: project-context
-current_selected_profile: phase9_mage_quality_confirmation
-current_selected_brief: tasks/VF-9-09.md
+current_selected_profile: phase9_runpod_status_reconciliation
+current_selected_brief: tasks/VF-9-10.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -429,6 +429,12 @@ read_profiles:
     - 11_COST_SPEED_BUDGET.md
     - 14_TESTING_AND_ACCEPTANCE.md
     - tasks/VF-9-09.md
+  phase9_runpod_status_reconciliation:
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 13_ENGINEERING_BEST_PRACTICES.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - tasks/VF-9-10.md
   phase3_runware_style_adapter:
     - 08_MODELS_AND_PROVIDERS.md
     - 14_TESTING_AND_ACCEPTANCE.md
