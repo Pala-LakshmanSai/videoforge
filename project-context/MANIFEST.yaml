@@ -3,8 +3,8 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-12"
 source_of_truth: project-context
-current_selected_profile: phase9_avatar_fallback_qualification
-current_selected_brief: tasks/VF-9-19.md
+current_selected_profile: phase9_gate_profile_convergence
+current_selected_brief: tasks/VF-9-20.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -500,6 +500,14 @@ read_profiles:
     - 19_IMPLEMENTATION_PLAYBOOK.md
     - 20_AVATAR_HUB.md
     - tasks/VF-9-19.md
+  phase9_gate_profile_convergence:
+    - 08_MODELS_AND_PROVIDERS.md
+    - 11_COST_SPEED_BUDGET.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 15_DECISIONS_AND_OPEN_GATES.md
+    - 16_CONTEXT_MAINTENANCE.md
+    - GATES.yaml
+    - tasks/VF-9-20.md
   phase3_runware_style_adapter:
     - 08_MODELS_AND_PROVIDERS.md
     - 14_TESTING_AND_ACCEPTANCE.md

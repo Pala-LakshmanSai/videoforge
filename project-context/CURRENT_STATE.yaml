@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T10:47:00Z"
+updated_at: "2026-08-12T11:20:00Z"
 
-phase: avatar_fallback_qualification
+phase: gate_profile_convergence
 implementation_authorized_in_current_task: true
-current_milestone: avatar_whole_frame_fallback
-current_task: VF-9-19
+current_milestone: provider_gate_convergence
+current_task: VF-9-20
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -18,9 +18,9 @@ repository:
   base_commit: "5b92bc40b161a9ccfec2d06bc363534bc3404bfc"
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
-  verified_implementation_commit: "6729520"
-  last_good_commit: "6729520"
-  working_tree_expected: vf_9_19_selected_context_handoff_then_clean
+  verified_implementation_commit: "33df55b"
+  last_good_commit: "33df55b"
+  working_tree_expected: vf_9_20_selected_context_handoff_then_clean
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -43,8 +43,8 @@ live_development:
   fixture_scenario: happy_generating
   provider_mode: fixture
   provider_calls_authorized: false
-  authorized_spend_usd: 2.0
-  provider_authority_scope: "VF-9-19 permits the existing Keychain RunPod credential, exact pinned SkyReels image/source/model, canonical Avatar Profile runtime source, selected span audio, one transient template, one scale-zero endpoint, exactly one A100-80GB worker and one active job, evidence, Git push, and hosted CI. Task cap $2.00; no model substitution, LongCat, ambiguous redispatch, deployment, profile promotion, or unrelated cloud/account mutation."
+  authorized_spend_usd: 0
+  provider_authority_scope: "VF-9-20 is provider-free gate and profile convergence only. No credential access, GPU, provider call, cloud/account mutation, plugin installation, deployment, or profile promotion."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -257,21 +257,28 @@ completed_tasks:
     implementation_commits: ["f333ac3", "6729520"]
     evidence: "evidence/acceptance/VF-9-18/mage-quality-matrix"
     summary: "Three bounded starts produced zero PNGs and spent $0: one status-read ambiguity, one operator-terminated queue wait with exact manual cleanup, and one provider worker-limit failure. No quality metric or profile was invented; final and independent RunPod inventory is absolute zero."
+  - task_id: VF-9-19
+    status: bounded_safe_provider_failure
+    implementation_commit: "33df55b"
+    evidence_commit: "cacad46"
+    evidence: "evidence/acceptance/VF-9-19/avatar-fallback-qualification"
+    summary: "One exact pinned SkyReels job reached IN_PROGRESS but produced no stage progress or MP4 before a provider read timeout. No redispatch occurred; measured spend was $0.5263056722, cleanup was reconciled, and independent RunPod inventory is absolute zero."
 
 latest_closed_handoff:
-  task_id: VF-9-18
+  task_id: VF-9-19
   status: bounded_safe_provider_failure
-  task_kind: mage_quality_matrix
-  implementation_commits: ["f333ac3", "6729520"]
-  evidence: "evidence/acceptance/VF-9-18/mage-quality-matrix"
-  verification_result: "zero_of_40_outputs_no_quality_claim_and_independent_runpod_absolute_zero"
-  external_actions: "Three bounded RunPod starts; every acknowledged job was stopped or cancelled, every endpoint/template was deleted, and no PNG was accepted."
-  external_spend_usd: 0
+  task_kind: avatar_fallback_qualification
+  implementation_commit: "33df55b"
+  evidence_commit: "cacad46"
+  evidence: "evidence/acceptance/VF-9-19/avatar-fallback-qualification"
+  verification_result: "no_output_no_quality_claim_no_redispatch_and_independent_runpod_absolute_zero"
+  external_actions: "One pinned SkyReels job; cancellation and exact resource cleanup were reconciled after provider read ambiguity."
+  external_spend_usd: 0.5263056722
 
 last_green:
-  checked_at: "2026-08-12T10:52:00Z"
+  checked_at: "2026-08-12T11:25:00Z"
   result: pass
-  verified_commit: "6729520"
+  verified_commit: "cacad46"
   command: "CI=1 TURBO_FORCE=true pnpm verify"
   counts:
     control_plane_pglite_tests: 213
@@ -283,10 +290,10 @@ last_green:
     playwright_chrome_journeys_passed: 38
     playwright_chrome_journeys_intentionally_skipped: 0
   findings_closed:
-    - "Sequential Mage dispatch requires provider-health-proven warm idle; ambiguous reads, bounded waits, cancellation, queue drain, and deletion fail closed."
-    - "The exact 40-prompt matrix is deterministic and import-safe; no provider access occurs during tests."
+    - "Avatar qualification cleanup tolerates transient final inventory and balance reads long enough to retain failure evidence."
+    - "VF-9-19 provider ambiguity caused no redispatch or acceptance; exact resource reconciliation ended at independent RunPod absolute zero."
   evidence:
-    - "evidence/acceptance/VF-9-18/mage-quality-matrix"
+    - "evidence/acceptance/VF-9-19/avatar-fallback-qualification"
 
 active_ownership: []
 blocked_tasks: []
@@ -294,39 +301,32 @@ blocked_tasks: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-9-19
-  milestone: avatar_whole_frame_fallback
-  status: authorized_ready_to_start_after_inventory_zero
-  dependency_status: vf_9_18_terminal_safe_failure_and_runpod_inventory_zero
-  authorization_status: exact_capped_avatar_fallback_qualification
-  read_profile: phase9_avatar_fallback_qualification
-  task_brief: tasks/VF-9-19.md
-  goal: "Resume the exact pinned SkyReels whole-frame route first, retain one bounded result, and apply no fallback beyond its proven trigger."
-  provider_calls_authorized: true
-  maximum_external_spend_usd: 2.0
-  provider_authority:
-    provider: runpod_serverless
-    model_id: "Skywork/SkyReels-V3@fdad4053f492aba389b5a8c3c6982118c6a1ecf3"
-    image_digest: "sha256:8f94062164794c19036605282968a96dd098a09aa91d066b9eaafbb5577f48c9"
-    cap_usd: 2.0
-    non_transferable: true
-    authorized_by_user_at: "2026-08-12T10:47:00Z"
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
-  model_downloads_authorized: true
+  task_id: VF-9-20
+  milestone: provider_gate_convergence
+  status: authorized_ready_to_start
+  dependency_status: vf_9_18_and_vf_9_19_terminal_safe_failures_and_runpod_inventory_zero
+  authorization_status: provider_free_evidence_convergence
+  read_profile: phase9_gate_profile_convergence
+  task_brief: tasks/VF-9-20.md
+  goal: "Converge gates and profiles from reproducible evidence without inventing acceptance or promotion."
+  provider_calls_authorized: false
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
+  model_downloads_authorized: false
   application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-9-19/avatar-fallback-qualification"
+  expected_evidence: "evidence/acceptance/VF-9-20/gate-profile-convergence"
   required_handoff:
-    - "Prove RunPod absolute zero before creation; use only the pinned SkyReels image/source/model, canonical runtime source, and selected span audio."
-    - "Run exactly one A100-80GB job first with fixed deadline and same-job reconciliation; never redispatch ambiguity."
-    - "Record MP4/hash/probe/runtime/GPU/VRAM/cost and identity/lip/crop/stability/cadence review; leave any passing output READY_FOR_USER_REVIEW."
-    - "Cancel, drain, delete, and independently prove absolute zero inventory in finally."
+    - "Reconcile gate statuses, owners, evidence pointers, measured costs, blockers, and profile eligibility."
+    - "Keep permission gates open and promote no execution profile or human quality gate."
+    - "Keep first real provider video blocked because neither required accepted provider asset exists."
+    - "Author exactly one local cloud-seam planning successor; stop before cloud/plugin/credential/deployment mutation."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-9-19
+    integration_owner: VF-9-20
   prohibited_in_task:
-    - "LongCat, model/image/source/audio/GPU substitution, blind redispatch, more than one worker/job at a time, or spend above $2.00."
-    - "Production profile promotion, deployment, destructive migration, unrelated cloud/account mutation, UI redesign, Mage rerun, or clear-permission claim."
+    - "Provider calls, credential access, GPU, model download, spend, cloud/account mutation, plugin install, deployment, or migration."
+    - "LongCat/model substitution, production profile promotion, user-gate self-approval, or clear-permission claim."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -350,16 +350,15 @@ known_incomplete_boundaries:
   - "Mage/AvatarForcing terms evidence remains ambiguous. The user explicitly accepted that risk for bounded locked-model qualification; do not claim clear commercial permission or substitute models."
   - "DeepSeek/Gemini are live-runtime composed and fixture remains default; latest DeepSeek smoke was correctly rejected as providerUnavailable at $0."
   - "Fixture Hub reference bytes are session-scoped. No production R2/Neon/Better Auth/Workflow deployment exists."
-  - "Three earlier real Mage provider images exist with exact GPU/cost/timing evidence, but strict quality rejected them. VF-9-18 produced zero of 40 requested matrix images because of provider read/queue/worker failures; no Mage image is technically accepted. No acceptable real Avatar asset, real 30–120-second provider video, full SLO, fallback, or production release exists."
+  - "Three earlier real Mage provider images exist with exact GPU/cost/timing evidence, but strict quality rejected them. VF-9-18 produced zero of 40 requested matrix images because of provider read/queue/worker failures; no Mage image is technically accepted. VF-9-19 produced no SkyReels output before provider read ambiguity. No acceptable real Avatar asset, real 30–120-second provider video, full SLO, fallback, or production release exists."
   - "No encrypted off-machine backup, R2 integrity inventory, clean-target cloud restore, ten-user contention/security proof, or fresh-account production Chrome sign-off exists."
-  - "Two bounded SkyReels resumes produced no candidate; the latest provider 503 was cancelled and manually recovered to absolute-zero inventory. No further paid SkyReels retry is selected."
+  - "Three bounded SkyReels resumes produced no candidate; VF-9-19 stopped on provider read ambiguity after $0.5263056722, performed no redispatch, and returned to absolute-zero inventory. No further paid SkyReels retry is selected."
 
 next_tasks:
-  - "1. VF-9-19: under its separate $2.00 cap, resume pinned SkyReels first for whole-frame Avatar failure; allow AvatarForcing and one MuseTalk lip-only repair only under the locked ladder. Never LongCat."
-  - "2. First real provider video remains blocked until both Mage and Avatar paths have technically accepted assets; do not spend its $1.50 cap yet."
-  - "3. Converge reproducible gates without clear-permission claims or profile promotion before user visual review."
-  - "4. Plan local cloud seams in order; stop for new authority before resources, credentials, plugins, deployment, or paid plans."
-  - "5. After staging authority, run contention/fault/security/backup/restore hardening, representative 30-minute benchmarks, fresh-account production acceptance, and user sign-off."
+  - "1. VF-9-20: converge reproducible gates at $0 without clear-permission claims, profile promotion, or user-gate self-approval."
+  - "2. First real provider video remains blocked until both Mage and Avatar paths have technically accepted assets; do not spend its $1.50 cap."
+  - "3. Plan local cloud seams in order; stop for new authority before resources, credentials, plugins, deployment, or paid plans."
+  - "4. After staging authority, run contention/fault/security/backup/restore hardening, representative 30-minute benchmarks, fresh-account production acceptance, and user sign-off."
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
@@ -377,10 +376,10 @@ progress_snapshot:
     production_avatar_lane_percent: 68
     cloud_staging_integration_percent: 15
     production_release_percent: 0
-  interpretation: "Durable accepted-provider proof composition reaches fake-provider-shaped FFmpeg v3, restart/replay, and installed-Chrome delivery. The Mage matrix ended with zero outputs and no acceptance; accepted Avatar/fallback output, first real provider video, cloud staging, hardening, and release remain unproven."
+  interpretation: "Durable accepted-provider proof composition reaches fake-provider-shaped FFmpeg v3, restart/replay, and installed-Chrome delivery. Mage matrix and SkyReels fallback qualification ended with zero outputs and no acceptance; first real provider video, cloud staging, hardening, and release remain unproven."
 
 activation_handoff:
-  status: vf_9_19_avatar_fallback_qualification_ready
+  status: vf_9_20_gate_profile_convergence_ready
   completed_and_preserved:
     - "All completed tasks/commits above are preserved; VF-9-17 closed at 958d7bd with canonical exit code 0."
     - "Forced full verification passed at the VF-8-04 handoff tree: Workerd 1/1 and installed Chrome 38/38 with zero skips."
@@ -418,15 +417,16 @@ activation_handoff:
     - "VF-9-16 added additive provider-neutral durable image acceptance, truthful Mage lineage, explicit visual review, fake transport composition, replay/restore, and full verification at $0."
     - "VF-9-17 composed durable Mage/Avatar acceptance proofs, rendered/replayed one 37.167-second fake-provider-shaped FFmpeg v3 output, and passed installed-Chrome play/seek/approve/download/hash/playback."
     - "VF-9-18 added a bounded sequential Mage matrix runner, but three provider starts produced no PNG and cost $0; every resource was deleted and independent inventory is absolute zero."
+    - "VF-9-19 ran one exact pinned SkyReels job, stopped on provider read ambiguity with no MP4 and no redispatch after $0.5263056722, reconciled cleanup, and independently proved RunPod absolute zero."
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from 958d7bd; preserve all newer commits."
-    - "Load only phase9_avatar_fallback_qualification and tasks/VF-9-19.md."
-    - "Before any create call, independently prove RunPod absolute zero. Then run one exact pinned SkyReels A100-80GB job first under the $2.00 task cap and one-worker/one-job boundary."
+    - "Require clean HEAD descending from 33df55b; preserve all newer commits."
+    - "Load only phase9_gate_profile_convergence and tasks/VF-9-20.md."
+    - "Use only reproducible evidence to converge gates and profiles at $0; keep first real provider video blocked."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
-    - "Nonzero starting inventory, provider ambiguity, capacity failure, cap/deadline risk, more than one worker/job, model/image/source/audio substitution, LongCat, profile promotion, cleanup failure, regression, or output-grammar conflict."
+    - "Any provider/credential/GPU/cloud/plugin/deployment action, LongCat/model substitution, profile promotion, unsupported gate closure, regression, or output-grammar conflict."
 
 notes:
   - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."
