@@ -1,11 +1,11 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T08:38:00Z"
+updated_at: "2026-08-12T09:00:00Z"
 
-phase: provider_neutral_durable_image_acceptance
+phase: real_provider_render_composition
 implementation_authorized_in_current_task: true
-current_milestone: truthful_fixture_and_mage_result_union
-current_task: VF-9-16
+current_milestone: accepted_provider_artifacts_to_ffmpeg_v3
+current_task: VF-9-17
 current_wave: wave_8_runtime_composition
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
@@ -19,8 +19,8 @@ repository:
   planning_base_commit: "0453be2addd217a1261e14ccf99451dac8f2c9bb"
   planning_handoff_commit: "3168602d79d64646d3367bc5c58101a53c5e260c"
   verified_implementation_commit: "d9adee9faddc6dd94127693df2868b56435e9b3d"
-  last_good_commit: "8d28984"
-  working_tree_expected: vf_9_15_blocker_handoff_then_clean
+  last_good_commit: "a15c4d7"
+  working_tree_expected: vf_9_16_provider_neutral_acceptance_handoff_then_clean
   start_rule: "Use clean current HEAD when it descends from verified_implementation_commit; preserve every newer commit and never reset to an older checkpoint."
   dependency_policy:
     ajv: "8.20.0"
@@ -44,7 +44,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-16 permits local additive contracts/schema/migration/control-plane/server/tests/docs, Git push, and hosted CI at $0 only. No provider call, credential, GPU, model download, RunPod/Runware mutation, deployment, profile promotion, UI redesign, Avatar work, or spend."
+  provider_authority_scope: "VF-9-17 permits local application/control-plane/renderer/tests/docs, Git push, hosted CI, and installed-Chrome verification at $0 only. No provider call, credential, GPU, model download, RunPod/Runware mutation, deployment, profile promotion, UI redesign, or spend."
   last_user_checkpoint:
     result: accepted
     task_id: VF-0C-08
@@ -254,13 +254,13 @@ completed_tasks:
     summary: "Admitted only exact official Mage revision 395402ba3ef110c96e70d01abe4d178dbe4e01a5, pinned transformer identity/size ceiling, retained all fail-closed guards, and passed full verification at $0."
 
 latest_closed_handoff:
-  task_id: VF-9-15
-  status: exact_schema_semantic_blocker
-  task_kind: durable_real_mage_result_integration
-  implementation_commit: "8d28984"
-  evidence: "evidence/acceptance/VF-9-15/durable-real-mage-result"
-  verification_result: "stopped_before_false_fixture_provenance_or_mutation"
-  external_actions: "Read-only repository audit only; no provider, credential, GPU, download, mutation, or spend."
+  task_id: VF-9-16
+  status: complete
+  task_kind: provider_neutral_durable_image_acceptance
+  implementation_commit: "a15c4d7"
+  evidence: "evidence/acceptance/VF-9-16/provider-neutral-image-acceptance"
+  verification_result: "fixture_compatibility_and_truthful_mage_acceptance_replay_restore_green"
+  external_actions: "Git push and hosted CI only; no provider, credential, GPU, download, mutation, or spend."
   external_spend_usd: 0
 
 last_green:
@@ -286,14 +286,14 @@ active_ownership: []
 blocked_tasks: []
 
 recommended_next_task:
-  task_id: VF-9-16
-  milestone: truthful_fixture_and_mage_result_union
+  task_id: VF-9-17
+  milestone: accepted_provider_artifacts_to_ffmpeg_v3
   status: ready
-  dependency_status: vf_9_15_fixture_literal_blocker_recorded_and_runpod_zero
-  authorization_status: zero_spend_provider_neutral_contract_correction
-  read_profile: phase9_provider_neutral_image_acceptance
-  task_brief: tasks/VF-9-16.md
-  goal: "Evolve fixture-literal durable image acceptance into a strict provider-neutral fixture/Mage union."
+  dependency_status: vf_9_16_provider_neutral_mage_acceptance_green_and_runpod_zero
+  authorization_status: zero_spend_real_provider_render_composition
+  read_profile: phase9_real_provider_render_composition
+  task_brief: tasks/VF-9-17.md
+  goal: "Compose accepted real-shaped Mage and Avatar artifacts into FFmpeg v3 render/review/download with strict QA preflight."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   provider_authority: null
@@ -301,17 +301,17 @@ recommended_next_task:
   credential_access_authorized: false
   model_downloads_authorized: false
   application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-9-16/provider-neutral-image-acceptance"
+  expected_evidence: "evidence/acceptance/VF-9-17/real-provider-render-composition"
   required_handoff:
-    - "Preserve existing fixture acceptance bytes and behavior exactly."
-    - "Add exact Mage result variant with truthful metadata/telemetry/runtime/cost/QA lineage."
-    - "Prove replay/restore and rejection before mutation; keep fixture default and candidate unpromoted."
+    - "Resolve only accepted Mage/Avatar artifacts into exact render inputs."
+    - "Prove rejected/missing QA and checksum drift cannot render."
+    - "Render/replay/download/hash one 30–120-second real-shaped candidate in installed Chrome."
   safe_parallelism:
     maximum_lanes_including_integration: 1
-    integration_owner: VF-9-16
+    integration_owner: VF-9-17
   prohibited_in_task:
     - "Provider call, credential, GPU, model download, RunPod/Runware mutation, or spend."
-    - "Production promotion/deployment, destructive migration, UI redesign, or Avatar work."
+    - "Production promotion/deployment, destructive migration, UI redesign, or provider/model changes."
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -340,8 +340,8 @@ known_incomplete_boundaries:
   - "Two bounded SkyReels resumes produced no candidate; the latest provider 503 was cancelled and manually recovered to absolute-zero inventory. No further paid SkyReels retry is selected."
 
 next_tasks:
-  - "1. VF-9-16 add provider-neutral fixture/Mage durable acceptance and exact fake-transport proof at $0."
-  - "2. Resume durable Mage composition, then compose one real owned video and test installed Chrome."
+  - "1. VF-9-17 compose accepted provider artifacts into FFmpeg v3 and installed-Chrome review/download at $0."
+  - "2. Resume the 40-prompt Mage matrix and acceptable Avatar lane only under new exact capped authority."
   - "3. Add MuseTalk repair and SkyReels whole-frame fallback only after their technical triggers."
   - "4. Produce one real owned 30–120-second provider video through FFmpeg v3 and installed-Chrome acceptance."
   - "5. Add isolated R2, Neon, Auth, and Workflow adapters; then contention/fault/security/backup/restore hardening."
@@ -349,7 +349,7 @@ next_tasks:
 
 progress_snapshot:
   estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
-  full_production_mvp_implemented_percent: 74
+  full_production_mvp_implemented_percent: 76
   production_end_to_end_proven: false
   completed:
     provider_free_foundation_percent: 100
@@ -359,7 +359,7 @@ progress_snapshot:
     prompt_and_style_provider_qualification_and_adapters_percent: 100
     custom_image_style_provider_free_percent: 100
   early_or_blocked:
-    production_image_lane_percent: 84
+    production_image_lane_percent: 90
     production_avatar_lane_percent: 68
     cloud_staging_integration_percent: 15
     production_release_percent: 0
@@ -401,15 +401,16 @@ activation_handoff:
     - "VF-9-13 completed for $0.0308072963 and improved visibly, but strict review rejected plate text and object/hand artifacts; cleanup plus a later independent inventory proved absolute zero."
     - "VF-9-14 kept locked Turbo BF16, banned text-critical generated scenes, required strict review, and allowed only one rejection-triggered candidate retry."
     - "VF-9-15 stopped before falsely mapping real 1280x720 Mage bytes into the fixture-only 64x36 durable contract."
+    - "VF-9-16 added additive provider-neutral durable image acceptance, truthful Mage lineage, explicit visual review, fake transport composition, replay/restore, and full verification at $0."
     - "Server stopped and provider mode fixture."
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Require clean HEAD descending from the VF-9-15 blocker commit after 8d28984; preserve all newer commits."
-    - "Load only phase9_provider_neutral_image_acceptance and tasks/VF-9-16.md."
-    - "Add a truthful fixture/Mage durable result union at $0; keep fixture default."
+    - "Require clean HEAD descending from a15c4d7 after the VF-9-16 implementation commit; preserve all newer commits."
+    - "Load only phase9_real_provider_render_composition and tasks/VF-9-17.md."
+    - "Compose accepted fake-real provider artifacts through FFmpeg v3 and installed Chrome at $0."
   stop_conditions:
     - "Dirty unexplained worktree, missing/excess brief, context contradiction, regression, or unresolved dependency."
-    - "Any provider/credential/GPU activity, destructive migration, profile promotion, regression, or ambiguous QA/retry semantics."
+    - "Any provider/credential/GPU activity, destructive migration, profile promotion, rejected real evidence entering a render, regression, or output-grammar conflict."
 
 notes:
   - "This is a replace-in-place handoff snapshot; Git and evidence retain detailed history."
