@@ -12,6 +12,7 @@ import { loadRunPodApiKeyFromKeychain } from "./keychain";
 import { safeAvatarFailureEvidence, safeAvatarSuccessEvidence } from "./runpod-avatar-result";
 import {
   RunPodControlClient,
+  RunPodControlError,
   RunPodDrainGuard,
   RunPodServerlessJobClient,
   type RunPodJobResult,
@@ -51,6 +52,9 @@ const sleep = (milliseconds: number): Promise<void> =>
   new Promise((resolveSleep) => setTimeout(resolveSleep, milliseconds));
 const digest = (value: Buffer): string =>
   `sha256:${createHash("sha256").update(value).digest("hex")}`;
+const readAmbiguous = (error: unknown): boolean =>
+  error instanceof RunPodControlError &&
+  (error.code === "RUNPOD_READ_AMBIGUOUS" || error.code === "RUNPOD_READ_FAILED");
 
 const requiredEnvironment = (name: string, pattern: RegExp): string => {
   const value = process.env[name];
@@ -311,7 +315,13 @@ try {
   for (let attempt = 0; attempt < 140 && !terminalStatuses.has(job.status); attempt += 1) {
     await sleep(15_000);
     if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");
-    job = await jobs.status(job.id);
+    try {
+      job = await jobs.status(job.id);
+    } catch (error) {
+      if (!readAmbiguous(error)) throw error;
+      await journal("job_status_read_ambiguous", { attempt: attempt + 1 });
+      continue;
+    }
     await journal("job_status", {
       delay_time_ms: job.delayTimeMs,
       execution_time_ms: job.executionTimeMs,
