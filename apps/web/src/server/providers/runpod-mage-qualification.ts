@@ -24,9 +24,11 @@ const sha256 = (value: string | Buffer): string =>
   `sha256:${createHash("sha256").update(value).digest("hex")}`;
 const now = (): string => new Date().toISOString();
 let abortRequested = false;
+const operatorAbort = new AbortController();
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {
     abortRequested = true;
+    operatorAbort.abort();
   });
 }
 
@@ -99,7 +101,7 @@ const probePng = (bytes: Buffer): { width: number; height: number; bytes: number
 
 const image = requiredImage();
 const outputRoot = resolve(
-  process.env.VIDEOFORGE_QUALIFICATION_OUTPUT_ROOT ?? ".videoforge/vf-9-09",
+  process.env.VIDEOFORGE_QUALIFICATION_OUTPUT_ROOT ?? ".videoforge/vf-9-11",
 );
 await mkdir(outputRoot, { recursive: true });
 const apiKey = await loadRunPodApiKeyFromKeychain();
@@ -111,7 +113,7 @@ assertInitialSafe(initialInventory);
 const startingBalanceUsd = await balance(apiKey);
 const promptHash = sha256(prompt);
 const suffix = createHash("sha256").update(image).digest("hex").slice(0, 12);
-const attemptId = `vf9_09_${suffix}`;
+const attemptId = `vf9_11_${suffix}`;
 const events: { event: string; at: string; elapsed_ms: number; detail?: unknown }[] = [];
 const mark = (event: string, detail?: unknown): void => {
   events.push({
@@ -144,7 +146,12 @@ try {
     executionTimeoutMs: 1_800_000,
   });
   mark("endpoint_created", { endpoint_id_hash: endpoint.idHash, network_volume_attached: false });
-  jobs = new RunPodServerlessJobClient({ apiKey, endpointId: endpoint.id, guard });
+  jobs = new RunPodServerlessJobClient({
+    apiKey,
+    endpointId: endpoint.id,
+    guard,
+    signal: operatorAbort.signal,
+  });
   await jobs.confirmDrained();
   mark("endpoint_zero_confirmed");
   if (abortRequested) throw new Error("RUNPOD_OPERATOR_ABORT");

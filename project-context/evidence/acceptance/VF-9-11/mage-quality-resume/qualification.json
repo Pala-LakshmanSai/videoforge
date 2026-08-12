@@ -1,0 +1,232 @@
+{
+  "schema_version": "videoforge.mage-qualification/v1",
+  "checked_at": "2026-08-12T07:59:57.294Z",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-mage@sha256:9f3dc9d886b309e74adac3d7d101ee546d8d3a31d123dd1c203852d22709334b",
+  "model_revision": "d8c99241f6fa80fbd453014234af2bf337ea21e6",
+  "input": {
+    "prompt": "A wide documentary photograph of families loading bulk groceries into cars outside a large American warehouse supermarket at night, natural parking-lot lighting, realistic candid people, believable architecture and vehicles, no visible text, no logos, no brand names, no watermarks, no signs, no graphics, no borders, no overlays.",
+    "prompt_sha256": "sha256:4fa322738100692b9aea5e8d0d65d5b022e5c2a246b35992fa5c7b1b118a8856",
+    "seed": 20260812,
+    "width": 1280,
+    "height": 720
+  },
+  "network_volume": {
+    "attached": false,
+    "reason": "isolated first qualification; preexisting ImageForge volume not mutated"
+  },
+  "resource_identity": {
+    "template_id_hash": "sha256:3d96fc6e3bd12ef27dab9d0c837c38054ffb82801948901aba72962dbfca58d9",
+    "endpoint_id_hash": "sha256:f2d46cb2205f6337b0181aa0dca040aa97273b245fd0170219b7b9642eff424c",
+    "job_id_hash": "sha256:e3af591bba5453c98be053e7ba87030a1ad96a92285f6769535a144a2cd33b32"
+  },
+  "runtime": {
+    "status": "COMPLETED",
+    "delay_time_ms": 278898,
+    "execution_time_ms": 14583,
+    "progress": null,
+    "output": {
+      "attempt_id": "vf9_11_ed1082d125a2",
+      "bytes": 1335070,
+      "generation_duration_ms": 4756,
+      "height": 720,
+      "model_revision": "d8c99241f6fa80fbd453014234af2bf337ea21e6",
+      "output_sha256": "sha256:6a5517da671ca0730846f13876548a4eb2ac549cdeae0bbc88252be9e7ae5a52",
+      "positive_prompt_sha256": "sha256:4fa322738100692b9aea5e8d0d65d5b022e5c2a246b35992fa5c7b1b118a8856",
+      "renderer_source_profile": "mage-landscape-native-1280x720-v1",
+      "runtime_evidence": {
+        "bootstrap": {
+          "cache_hit": false,
+          "completed_unix_ms": 1786521553450,
+          "duration_ms": 62972,
+          "model_revision": "d8c99241f6fa80fbd453014234af2bf337ea21e6",
+          "schema_version": "videoforge.mage-bootstrap/v1",
+          "started_unix_ms": 1786521490478
+        },
+        "comfy_start": {
+          "completed_unix_ms": 1786521560460,
+          "duration_ms": 7009,
+          "schema_version": "videoforge.mage-comfy-start/v1",
+          "source_revision": "1108f2ac5e412b27accb0e5d51c90ef2ba39784d",
+          "started_unix_ms": 1786521553451
+        },
+        "gpu": {
+          "cuda_version": "12.8",
+          "name": "NVIDIA GeForce RTX 4090",
+          "torch_version": "2.9.1+cu128",
+          "total_memory_bytes": 25250627584
+        },
+        "handler_completed_unix_ms": 1786521576674,
+        "handler_received_unix_ms": 1786521562506,
+        "network_volume_attached": false,
+        "schema_version": "videoforge.mage-runtime-evidence/v1"
+      },
+      "scene_id": "warehouse_night_documentary",
+      "schema_version": "videoforge.mage-image-result/v1",
+      "seed": 20260812,
+      "source_revision": "1108f2ac5e412b27accb0e5d51c90ef2ba39784d",
+      "width": 1280,
+      "local_path": "/Users/lakshmansai/Documents/videoforge/apps/web/.videoforge/vf-9-11/warehouse-night-documentary-seed20260812.png",
+      "local_probe": {
+        "width": 1280,
+        "height": 720,
+        "bytes": 1335070
+      }
+    },
+    "failure_code": null,
+    "events": [
+      {
+        "event": "initial_inventory_zero",
+        "at": "2026-08-12T07:54:40.970Z",
+        "elapsed_ms": 3549,
+        "detail": {
+          "preexisting_volume_hashes": []
+        }
+      },
+      {
+        "event": "template_create_started",
+        "at": "2026-08-12T07:54:40.970Z",
+        "elapsed_ms": 3549
+      },
+      {
+        "event": "template_created",
+        "at": "2026-08-12T07:54:41.653Z",
+        "elapsed_ms": 4232,
+        "detail": {
+          "template_id_hash": "sha256:3d96fc6e3bd12ef27dab9d0c837c38054ffb82801948901aba72962dbfca58d9"
+        }
+      },
+      {
+        "event": "endpoint_created",
+        "at": "2026-08-12T07:54:42.514Z",
+        "elapsed_ms": 5093,
+        "detail": {
+          "endpoint_id_hash": "sha256:f2d46cb2205f6337b0181aa0dca040aa97273b245fd0170219b7b9642eff424c",
+          "network_volume_attached": false
+        }
+      },
+      {
+        "event": "endpoint_zero_confirmed",
+        "at": "2026-08-12T07:54:43.369Z",
+        "elapsed_ms": 5948
+      },
+      {
+        "event": "dispatch_started",
+        "at": "2026-08-12T07:54:43.369Z",
+        "elapsed_ms": 5948
+      },
+      {
+        "event": "dispatch_acknowledged",
+        "at": "2026-08-12T07:54:43.856Z",
+        "elapsed_ms": 6435,
+        "detail": {
+          "job_id_hash": "sha256:e3af591bba5453c98be053e7ba87030a1ad96a92285f6769535a144a2cd33b32"
+        }
+      },
+      {
+        "event": "cost_checked",
+        "at": "2026-08-12T07:55:51.256Z",
+        "elapsed_ms": 73835,
+        "detail": {
+          "spend_usd": 0,
+          "status": "IN_QUEUE",
+          "progress": null
+        }
+      },
+      {
+        "event": "cost_checked",
+        "at": "2026-08-12T07:56:58.849Z",
+        "elapsed_ms": 141428,
+        "detail": {
+          "spend_usd": 0,
+          "status": "IN_QUEUE",
+          "progress": null
+        }
+      },
+      {
+        "event": "cost_checked",
+        "at": "2026-08-12T07:58:06.548Z",
+        "elapsed_ms": 209127,
+        "detail": {
+          "spend_usd": 0,
+          "status": "IN_QUEUE",
+          "progress": null
+        }
+      },
+      {
+        "event": "cost_checked",
+        "at": "2026-08-12T07:59:14.028Z",
+        "elapsed_ms": 276607,
+        "detail": {
+          "spend_usd": 0,
+          "status": "IN_QUEUE",
+          "progress": null
+        }
+      },
+      {
+        "event": "job_terminal",
+        "at": "2026-08-12T07:59:52.685Z",
+        "elapsed_ms": 315264,
+        "detail": {
+          "status": "COMPLETED",
+          "delay_time_ms": 278898,
+          "execution_time_ms": 14583
+        }
+      },
+      {
+        "event": "output_saved",
+        "at": "2026-08-12T07:59:52.693Z",
+        "elapsed_ms": 315272,
+        "detail": {
+          "output_sha256": "sha256:6a5517da671ca0730846f13876548a4eb2ac549cdeae0bbc88252be9e7ae5a52",
+          "bytes": 1335070
+        }
+      },
+      {
+        "event": "queue_empty",
+        "at": "2026-08-12T07:59:53.269Z",
+        "elapsed_ms": 315848
+      },
+      {
+        "event": "endpoint_deleted",
+        "at": "2026-08-12T07:59:54.460Z",
+        "elapsed_ms": 317039
+      },
+      {
+        "event": "template_deleted",
+        "at": "2026-08-12T07:59:56.211Z",
+        "elapsed_ms": 318790
+      },
+      {
+        "event": "final_inventory_zero",
+        "at": "2026-08-12T07:59:57.294Z",
+        "elapsed_ms": 319873
+      }
+    ],
+    "total_wall_time_ms": 319873
+  },
+  "cost": {
+    "starting_balance_usd": 7.4647326695,
+    "ending_balance_usd": 7.4412272343,
+    "measured_spend_usd": 0.023505435199999702,
+    "cap_usd": 0.15,
+    "cost_stop_usd": 0.12
+  },
+  "initial_inventory": {
+    "checkedAt": "2026-08-12T07:54:37.421Z",
+    "pods": [],
+    "endpoints": [],
+    "privateTemplateCount": 0,
+    "networkVolumes": [],
+    "runningPodCount": 0,
+    "activeServerlessWorkerCount": 0
+  },
+  "final_inventory": {
+    "checkedAt": "2026-08-12T07:59:56.759Z",
+    "pods": [],
+    "endpoints": [],
+    "privateTemplateCount": 0,
+    "networkVolumes": [],
+    "runningPodCount": 0,
+    "activeServerlessWorkerCount": 0
+  }
+}
