@@ -73,6 +73,46 @@ const balance = async (apiKey: string): Promise<number> => {
   return candidate;
 };
 
+const gpuRate = async (apiKey: string): Promise<Readonly<Record<string, unknown>>> => {
+  const response = await fetch("https://api.runpod.io/graphql", {
+    method: "POST",
+    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      query: "query { gpuTypes { id displayName memoryInGb securePrice communityPrice } }",
+    }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  const value = (await response.json()) as {
+    data?: { gpuTypes?: unknown };
+    errors?: unknown;
+  };
+  const rows = Array.isArray(value.data?.gpuTypes) ? value.data.gpuTypes : [];
+  const row = rows.find(
+    (candidate) =>
+      candidate &&
+      typeof candidate === "object" &&
+      (candidate as Record<string, unknown>).id === qualificationGpuTypeIds[0],
+  ) as Record<string, unknown> | undefined;
+  if (
+    !response.ok ||
+    value.errors ||
+    !row ||
+    row.memoryInGb !== 24 ||
+    !Number.isFinite(Number(row.securePrice)) ||
+    !Number.isFinite(Number(row.communityPrice))
+  ) {
+    throw new Error("RUNPOD_RTX_4090_RATE_UNAVAILABLE");
+  }
+  return Object.freeze({
+    checked_at: new Date().toISOString(),
+    id: row.id,
+    display_name: row.displayName,
+    memory_gb: row.memoryInGb,
+    secure_usd_per_hour: Number(row.securePrice),
+    community_usd_per_hour: Number(row.communityPrice),
+  });
+};
+
 const drain = async (client: RunPodServerlessJobClient): Promise<void> => {
   for (let attempt = 0; attempt < 120; attempt += 1) {
     try {
@@ -152,6 +192,7 @@ if (
 ) {
   throw new Error("RUNPOD_NOT_ZERO_AT_START");
 }
+const gpuRateSnapshot = await gpuRate(apiKey);
 
 const startedBalance = await balance(apiKey);
 let template: Awaited<ReturnType<RunPodControlClient["createServerlessTemplate"]>> | undefined;
@@ -390,6 +431,7 @@ const evidence = {
     ending_balance_usd: endingBalance,
     measured_spend_usd: measuredSpendUsd,
     cap_usd: qualificationSpendCapUsd,
+    gpu_rate_snapshot: gpuRateSnapshot,
   },
   initial_inventory: initialInventory,
   final_inventory: finalInventory,
