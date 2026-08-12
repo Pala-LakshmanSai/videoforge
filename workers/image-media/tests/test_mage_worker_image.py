@@ -41,7 +41,7 @@ class MageWorkerImageTest(unittest.TestCase):
             "1e71dd64a9e0280e0447b8a0c2541bad4bf6ac65bdeaa2f90e51a9e57de0370d",
             flash_dockerfile,
         )
-        self.assertIn("MAX_JOBS=1", flash_dockerfile)
+        self.assertIn("MAX_JOBS=2", flash_dockerfile)
         self.assertIn("needs: flash-wheel", workflow)
         self.assertIn("Dockerfile.mage", workflow)
 

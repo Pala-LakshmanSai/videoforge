@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
     && rm -rf /var/lib/apt/lists/* \
     && curl --fail --location --retry 3 --output /tmp/flash_attn.tar.gz "$FLASH_ATTN_URL" \
     && echo "$FLASH_ATTN_SHA256  /tmp/flash_attn.tar.gz" | sha256sum --check --strict \
-    && NVCC_THREADS=2 MAX_JOBS=1 python -m pip wheel --no-build-isolation --no-deps \
+    && NVCC_THREADS=2 MAX_JOBS=2 python -m pip wheel --no-build-isolation --no-deps \
         --wheel-dir /tmp/wheels /tmp/flash_attn.tar.gz
 
 FROM scratch
