@@ -206,7 +206,8 @@ try {
   const probe = probePng(output);
   const outputPath = resolve(outputRoot, "costco-night-wideshot-seed1234.png");
   await writeFile(outputPath, output, { flag: "wx" });
-  const { output_base64: _removed, ...safeResult } = envelope.result;
+  const safeResult = { ...envelope.result };
+  delete safeResult.output_base64;
   outputEvidence = { ...safeResult, local_path: outputPath, local_probe: probe };
   mark("output_saved", { output_sha256: sha256(output), bytes: output.length });
 } catch (error) {
