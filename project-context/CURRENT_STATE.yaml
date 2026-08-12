@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T18:27:00Z"
+updated_at: "2026-08-12T18:31:00Z"
 
 phase: echomimic_v3_flash_a100_guard_repair
 implementation_authorized_in_current_task: true
@@ -33,7 +33,7 @@ live_development:
   provider_calls_authorized: true
   authorized_spend_usd: 1.9305626593
   provider_authority_scope: "VF-9-24F: narrow A100 guard/diagnostic repair, immutable image publication, then one unchanged exact Elias job on NVIDIA A100 80GB PCIe; cumulative ceiling $2, operational breaker $0.50 hard/$0.45 active; no volume, fallback, tuning, or successor."
-  worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:d0e487d13bf19b74d09af5c7bb3b800eb2faa75dcce6eca9e155a48b0403ffe9"
+  worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:b3efde6f7ecc069a962492dde3a7b4795c66370aab19d41c42b1ae18b57dd82f"
   last_user_checkpoint:
     result: accepted
     commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"

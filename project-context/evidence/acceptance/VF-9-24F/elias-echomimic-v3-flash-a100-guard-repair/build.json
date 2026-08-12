@@ -1,0 +1,10 @@
+{
+  "schema_version": "videoforge.avatar-primary-image-build/v1",
+  "checked_at": "2026-08-12T18:30:47Z",
+  "source_commit": "e3b5023d202d396baf94345bfeba1aa53e103c1a",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:b3efde6f7ecc069a962492dde3a7b4795c66370aab19d41c42b1ae18b57dd82f",
+  "github_run_id": 31627685109,
+  "github_run_conclusion": "success",
+  "build_smoke_publish_started_at": "2026-08-12T18:27:09Z",
+  "build_smoke_publish_completed_at": "2026-08-12T18:30:47Z"
+}
