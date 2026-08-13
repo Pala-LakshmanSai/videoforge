@@ -1,8 +1,8 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-03 complete; CP-04 active provider-free under `VF-9-24O`
+Status: CP-00 through CP-04 complete; stopped before CP-05
 Context schema: `1.5`  
-Last updated: `2026-08-13`
+Last updated: `2026-08-14`
 
 VideoForge is an invite-only voiceover-to-video app for 5–10 teammates. Input: title, final
 voiceover, exact ready Avatar Profile version, and immutable Image Style version. Output: a fully
@@ -94,10 +94,20 @@ real local Linux whisper.cpp/FFmpeg execution, and removes active legacy Auto/re
 paths. Exact re-audit proof is
 `evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json`.
 
-This is provider-free local Mac/Linux evidence only: no Cloud Run deployment, private production R2,
-hosted Linux media runtime, provider call, credential use, model download/change, GPU, or spend was
-used or proven. Hosted production proof remains open until CP-08. The current user explicitly
-selected local/provider-free CP-04 under `VF-9-24O`; external authority remains `$0`.
+`VF-9-24O`/`CP-04` is complete at implementation commit
+`ca9b816f1bd196654e03633264560050729b020a`. The extended seeded `scheduler-v2` gives exact 30 fps,
+source-time, and word coverage for all three compositions and emits immutable generation/render
+work manifests. The owned 30-minute CP-03 input produced 54,000 frames, 394 segments, 21.05% avatar
+coverage, an 81-frame full/split difference, 103 playable padded span WAVs, 342 image slots in seven
+prompt batches, and six varied shot roles with zero missing/duplicate work. Full voiceover dispatch
+to Echo is forbidden. Real local Chrome render/approve/download/playback and canonical verification
+passed. Exact proof is
+`evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/acceptance.json`.
+
+This remains provider-free local Mac/Linux evidence only: no Cloud Run deployment, private
+production R2, hosted Linux media runtime, provider call, credential use, model download/change,
+GPU, or spend was used or proven. Hosted production proof remains open until CP-08. CP-05 is not
+selected or authorized; work is stopped at the CP-04 boundary.
 
 No VideoForge persistent model volume exists yet. Future provisioning/preparation is a separate
 explicitly authorized provider task after contracts and offline workers are green.

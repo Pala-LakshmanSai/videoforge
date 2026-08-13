@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-13T18:03:31Z"
+updated_at: "2026-08-13T19:07:07Z"
 
-phase: cp04_active_provider_free
-implementation_authorized_in_current_task: true
-current_milestone: three_composition_scheduler_and_complete_work_plan
-current_task: VF-9-24O
-current_wave: cp04_three_composition_scheduler
+phase: cp04_complete_stopped_before_cp05
+implementation_authorized_in_current_task: false
+current_milestone: provider_free_complete_mvp_orchestration_and_legacy_cutover
+current_task: null
+current_wave: checkpoint_roadmap
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -27,7 +27,9 @@ repository:
   cp03_activation_commit: "e2541b4ccf69d74c818b020b500e5f7b318b400b"
   cp03_implementation_commit: "4ac1df8872db50820ad3b95979572c907bf1631f"
   cp03_audit_fix_commit: "a6a924856a58c233eadd8af402fbf78c6c821b97"
-  last_good_commit: "a6a924856a58c233eadd8af402fbf78c6c821b97"
+  cp04_activation_commit: "8d0e49e"
+  cp04_implementation_commit: "ca9b816f1bd196654e03633264560050729b020a"
+  last_good_commit: "ca9b816f1bd196654e03633264560050729b020a"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -36,9 +38,9 @@ live_development:
   server_state: stopped
   dev_server_pid: null
   owner_task_id: null
-  health_checked_at: "2026-08-13T17:52:07Z"
-  chrome_route: "http://localhost:4173/?fixture=happy_generating"
-  fixture_scenario: happy_generating
+  health_checked_at: "2026-08-13T19:07:07Z"
+  chrome_route: "http://localhost:4173/projects/project_fixture_001?fixture=happy_generating"
+  fixture_scenario: cp04_timeline_inspection
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
@@ -110,38 +112,40 @@ completed_tasks:
     audit_fix_commit: "a6a924856a58c233eadd8af402fbf78c6c821b97"
     evidence: "evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json"
     external_spend_usd: 0
-active_ownership:
   - task_id: VF-9-24O
-    checkpoint: CP-04
-    owner: current_chat
-    scope: three_composition_scheduler_complete_work_plan_provider_free
+    status: complete_cp04_three_composition_scheduler_and_work_plan_provider_free
+    activation_commit: "8d0e49e"
+    implementation_commit: "ca9b816f1bd196654e03633264560050729b020a"
+    evidence: "evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/acceptance.json"
+    external_spend_usd: 0
+active_ownership: []
 
 blocked_tasks: []
-in_progress_checkpoint: CP-04
+in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-9-24O
-  checkpoint: CP-04
-  milestone: three_composition_scheduler_and_complete_work_plan
-  status: active_authorized_provider_free
-  dependency_status: cp03_complete_green
-  authorization_status: explicit_current_user_authority
-  read_profile: cp04_three_composition_scheduler
-  task_brief: tasks/VF-9-24O.md
-  goal: "Finish existing deterministic scheduler and materialize a complete immutable three-composition work plan."
+  task_id: null
+  checkpoint: CP-05
+  milestone: provider_free_complete_mvp_orchestration_and_legacy_cutover
+  status: stopped_awaiting_explicit_user_authority
+  dependency_status: cp04_complete_green
+  authorization_status: not_authorized
+  read_profile: checkpoint_roadmap
+  task_brief: null
+  goal: "Select and authorize a bounded CP-05 brief before implementation."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
   credential_access_authorized: false
   model_downloads_authorized: false
-  application_code_changes_authorized: true
-  prerequisite_evidence: "evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json"
+  application_code_changes_authorized: false
+  prerequisite_evidence: "evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/acceptance.json"
   required_handoff:
-    - "Preserve the completed CP-03 durable transcript worker and acceptance evidence."
-    - "Extend rather than replace the deterministic scheduler foundations."
+    - "Preserve the completed CP-03 transcript and CP-04 scheduler/work-manifest evidence."
+    - "Load only checkpoint_roadmap until CP-05 receives an explicit brief and authority."
     - "Keep all hosted-production/provider gates false; local CP-04 evidence does not prove hosted production."
   prohibited_in_task:
-    - "Any CP-05 or successor implementation."
+    - "Any CP-05 or successor implementation without new explicit user authority."
     - "Any provider call, credential access, cloud mutation, model download, Pod/template/volume creation, image publication, or spend."
     - "Any production gate closure, live profile promotion, volume-capacity assumption, model/GPU substitution, repair, or fallback."
 
@@ -209,6 +213,46 @@ cp03_completion:
   paid_compute_shutdown: no_paid_compute_started_colima_stopped
   local_server: stopped_no_4173_listener
 
+cp04_completion:
+  status: complete_provider_free
+  activation_commit: "8d0e49e"
+  implementation_commit: "ca9b816f1bd196654e03633264560050729b020a"
+  evidence: "evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/acceptance.json"
+  scheduler_version: scheduler-v2
+  long_fixture_duration_ms: 1800000
+  long_fixture_total_frames: 54000
+  long_fixture_segments: 394
+  long_fixture_avatar_coverage_percent: 21.05
+  long_fixture_full_split_difference_frames: 81
+  long_fixture_selected_span_wavs: 103
+  long_fixture_image_slots: 342
+  long_fixture_prompt_batches: 7
+  long_fixture_shot_roles: 6
+  missing_or_duplicate_work: 0
+  full_voiceover_dispatched_to_echo: false
+  focused_pipeline: 117_passed
+  focused_contracts_typescript: 71_passed
+  focused_contracts_python: 55_passed
+  focused_durable_timeline: 4_passed
+  focused_web: 91_passed
+  installed_local_chrome: 1_passed_real_audio_render_approve_download_playback
+  installed_fixture_chrome: 40_passed_desktop_and_compact
+  canonical_verify: passed_ci_turbo_force
+  control_plane_full: 223_passed
+  web_unit: 222_passed
+  active_runtime_firewall: passed_57_files_echo_only_no_auto_repair_fallback_or_serverless_import
+  provider_calls: 0
+  provider_resources_created: 0
+  external_spend_usd: 0
+  credentials_accessed: false
+  model_downloaded_or_changed: false
+  gpu_used: false
+  cloud_mutations: 0
+  live_provider_inventory_refreshed: false
+  hosted_production_proven: false_waits_for_cp08
+  paid_compute_shutdown: no_paid_compute_started
+  local_server: stopped_no_4173_or_4174_listener
+
 approved_mvp_architecture:
   app_scope: one_global_shared_equal_rights
   admitted_users: 5_to_10
@@ -248,17 +292,17 @@ blocking_gates_for_production:
 
 progress_snapshot:
   estimate_kind: checkpoint_truth_no_percent_claim
-  completed_checkpoint: CP-03
-  next_checkpoint: CP-04_not_started_not_authorized
+  completed_checkpoint: CP-04
+  next_checkpoint: CP-05_not_started_not_authorized
   full_production_mvp_implemented_percent: null
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: stopped_after_cp03
+  status: stopped_after_cp04
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Load checkpoint_roadmap only until a successor task is explicitly selected."
-    - "Preserve the verified green CP-03 evidence and do not start CP-04 implicitly."
+    - "Load checkpoint_roadmap only until CP-05 is explicitly selected and authorized."
+    - "Preserve the verified green CP-03 and CP-04 evidence; do not start CP-05 implicitly."
   stop_conditions:
-    - "Any work beyond CP-03 or any successor implementation."
+    - "Any work beyond CP-04 or any successor implementation."
     - "Any provider call, cloud mutation, credential need, model download, spend, schema reinterpretation, legacy dispatch reachability, or production promotion."

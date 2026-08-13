@@ -1,6 +1,6 @@
 # VideoForge completion checkpoints
 
-Status: authoritative completion roadmap; checkpoints `CP-00` through `CP-03` complete; `CP-04` active provider-free
+Status: authoritative completion roadmap; checkpoints `CP-00` through `CP-04` complete; stopped before `CP-05`
 Read when: choosing the next implementation chat, checking project truth, or auditing completion.
 
 ## MVP destination
@@ -265,8 +265,8 @@ coverage, chunk-boundary tests, restart/replay, manual spot-check, Mac/container
 
 ## CP-04 — Three-composition scheduler and complete work plan
 
-**Status:** active provider-free under `VF-9-24O`; explicit local application/pipeline/context
-authority only with `$0` maximum external spend.
+**Status:** complete provider-free under `VF-9-24O` at implementation commit
+`ca9b816f1bd196654e03633264560050729b020a`; stopped before CP-05 with `$0` external spend.
 
 **Outcome:** the transcript deterministically becomes every timed image slot and short Echo span.
 
