@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: global shared MVP roadmap approved; implementation and provider activation paused
+Status: CP-01 provider-free contracts complete; CP-02 and provider activation not started
 Context schema: `1.5`  
 Last updated: `2026-08-13`
 
@@ -62,12 +62,16 @@ No current provider call, credential use, model download, Pod creation, volume c
 authorized.
 
 `VF-9-24L` completed the global-shared-MVP audit, every-fifth-frame Ranga recheck, architecture
-reconciliation, and balanced completion roadmap. The user authorized `VF-9-24K`/`CP-01` on
-2026-08-13 as a bounded `$0` provider-free contract/firewall task. It versions the singleton
-session, immutable GPU pair, global queue, isolated volumes, Pod lifecycle, and legacy-dispatch
-rejection before any cloud mutation.
-Current v1 machine schemas are legacy/provider-free and must fail closed before paid Pod dispatch;
-they are not being silently reinterpreted as the approved architecture.
+reconciliation, and balanced completion roadmap. `VF-9-24K`/`CP-01` then completed at implementation
+commit `9ee3267fb0c1ccf0a275a723d0ccf6dee4ad57b7` as a bounded `$0` provider-free task. It added
+versioned admitted-identity, singleton session, immutable GPU pair, global queue, isolated volume,
+Pod lifecycle/absence, durable-output/cost, and Pod-dispatch contracts plus an additive migration,
+repository, restore proof, and legacy import firewall. Current v1 machine bytes remain
+legacy/provider-free and cannot enter the new Pod dispatch boundary.
+
+`CP-02` has not started and has no active implementation authority. The CP-01 proof is
+`evidence/acceptance/VF-9-24K/cp01-global-session-contracts/acceptance.json`. All production gates
+remain open.
 
 No VideoForge persistent model volume exists yet. Future provisioning/preparation is a separate
 explicitly authorized provider task after contracts and offline workers are green.

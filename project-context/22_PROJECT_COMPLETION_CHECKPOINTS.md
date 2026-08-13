@@ -1,6 +1,6 @@
 # VideoForge completion checkpoints
 
-Status: authoritative completion roadmap; checkpoint `CP-00` complete, `CP-01` proposed/paused
+Status: authoritative completion roadmap; checkpoints `CP-00` and `CP-01` complete, `CP-02` not started
 Read when: choosing the next implementation chat, checking project truth, or auditing completion.
 
 ## MVP destination
@@ -176,6 +176,9 @@ no provider call, no private/reference video committed.
 
 ## CP-01 — Global-session vNext contracts and legacy dispatch firewall
 
+**Status:** complete provider-free at implementation commit
+`9ee3267fb0c1ccf0a275a723d0ccf6dee4ad57b7`; no provider or production gate was exercised.
+
 **Outcome:** old Serverless/v1 bytes cannot reach paid dispatch, and every new lifecycle fact has a
 versioned provider-free contract.
 
@@ -192,9 +195,11 @@ versioned provider-free contract.
 **Proof:** TypeScript/Python schema parity, valid/invalid fixtures, migration fresh/upgrade/restore,
 focused tests, canonical provider-free verification, negative import scan.
 
-**Authority:** application code explicitly authorized by a future user message; provider/cloud/model
-downloads `$0` and prohibited.
-**Done artifact:** one synthetic global session reaches both lane-absent/volumes-retained terminal state.
+**Authority used:** explicit bounded application/context authority from 2026-08-13;
+provider/cloud/credential/model-download authority remained false and spend was `$0`.
+**Done artifact:** one restored synthetic global session reaches both lane-absent/volumes-retained
+terminal state; exact proof is
+`evidence/acceptance/VF-9-24K/cp01-global-session-contracts/acceptance.json`.
 
 ## CP-02 — Shared admission, simple global queue, and idle-only GPU UX
 

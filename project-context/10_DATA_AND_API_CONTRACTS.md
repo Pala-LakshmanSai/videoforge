@@ -1,24 +1,25 @@
 # Data and API contracts
 
-Status: normative architecture blueprint; isolated persistent-model Pod contracts require a new versioned implementation before production dispatch
+Status: normative architecture plus provider-free CP-01 machine contracts; production dispatch remains disabled and unqualified
 Read when: creating schemas, routes, worker payloads, callbacks, or the canonical EDL.
 
 ## Current machine-contract boundary
 
-The checked-in `create-project-request/v2`, `project-revision-config/v2`,
-`worker-job-envelope/v1`, `orchestration-state/v1`, and their fixtures describe the existing
-provider-free/legacy implementation. They do **not** encode the new paid RunPod architecture and
-must not authorize or dispatch it. A later implementation task must add new versioned schemas,
-fixtures, validators, persistence, and migration evidence before any production start path is
-enabled. This document specifies that vNext boundary; it does not reinterpret old JSON bytes or
-pretend the current schemas already prove it.
+CP-01 added `admitted-identity/v2`, `global-generation-session/v2`, and
+`pod-worker-job-envelope/v2` with TypeScript/Python validators, coherent fixtures, additive
+migration `0014_global_session_vnext.sql`, provider-free repositories, metadata restore, and a
+negative production import scan. These bytes define the new lifecycle boundary but do not enable a
+provider transport or prove a production model/GPU/volume path. The earlier
+`create-project-request/v2`, `project-revision-config/v2`, `worker-job-envelope/v1`, and
+`orchestration-state/v1` bytes retain their historical provider-free/legacy meaning and cannot enter
+vNext paid dispatch.
 
 The production lane locks are:
 
 | Lane | Exact model/runtime | Persistent resource |
 |---|---|---|
-| `image_media` | `Comfy-Org/Mage-Flow` revision `d8c99241f6fa80fbd453014234af2bf337ea21e6`, `int8-convrot`, ComfyUI, 4 steps, guidance 1.0, 1280×720 | Dedicated Mage model volume in `EU-RO-1` plus a disposable Mage Pod |
-| `avatar_primary` | Pinned EchoMimicV3-Flash FP8 contract | Dedicated Echo model volume in `EU-RO-1` plus a disposable Echo Pod |
+| `mage_image` | `Comfy-Org/Mage-Flow` revision `d8c99241f6fa80fbd453014234af2bf337ea21e6`, `int8-convrot`, ComfyUI, 4 steps, guidance 1.0, 1280×720 | Dedicated Mage model volume in `EU-RO-1` plus a disposable Mage Pod |
+| `echo_avatar` | Pinned EchoMimicV3-Flash FP8 contract | Dedicated Echo model volume in `EU-RO-1` plus a disposable Echo Pod |
 
 The volumes and Pods are never shared, cross-mounted, cross-adopted, or substituted across lanes.
 When idle, the first accepted Generate action atomically opens one singleton global generation
@@ -32,10 +33,11 @@ waiting entry may justify retaining an already-running lane Pod, but never creat
 Each lane deletes independently when neither active work nor permitted warm retention remains; its
 model volume remains.
 
-The vNext relational and API shape below is an architecture contract only. No checked-in machine
-schema currently implements global admission, the singleton generation session, or its queue
-invariants. Existing v1/v2 documents and rows retain their historical/provider-free meaning and may
-not be reinterpreted as production authorization.
+The CP-01 schemas and migration now implement global admission, the singleton generation session,
+immutable GPU/volume pair, queue, lane demand, Pod lifecycle/absence, durable output, and cost
+invariants provider-free. `VNextPodDispatchFirewall` accepts only the exact v2 Pod envelope and has
+no production provider adapter. Existing documents and rows retain their original meaning and none
+of this evidence is production authorization.
 
 ## Core relational records
 
@@ -76,8 +78,9 @@ not be reinterpreted as production authorization.
 | `model_volume_manifests` | Immutable ordered file/checksum/size/model/runtime manifest plus verification result and activation lineage for one model volume |
 | `gpu_inventory_receipts` | Timestamped raw/normalized compatible Secure Cloud offerings observed from RunPod for one lane and region |
 | `generation_sessions` | Singleton open global run session binding the exact Mage/Echo receipt/offering pair and close barrier |
-| `queue_entries` | Global ordered project revisions with waiting/active/terminal state and optimistic queue version |
-| `generation_session_lanes` | Per-session active demand, waiting-only warm-retention hint, exact GPU/volume binding, current Pod attempt, and deletion state |
+| `session_gpu_bindings` / `session_gpu_revalidations` | Immutable per-session exact GPU/offering/rate/volume/manifest pair plus append-only same-offering revalidation receipts |
+| `global_queue_entries` | Global ordered project revisions with waiting/active/terminal/removed state and optimistic queue version |
+| `lane_demands` | Per-session active demand or waiting-only warm-retention hint; zero demand cannot imply Pod absence |
 | `compute_run_plans` | Immutable active-project execution plan referencing the current generation-session pair; waiting rows have none and historical plans keep their old meaning |
 | `pod_lifecycle_attempts` | Per-session-lane Pod create/reconcile/readiness/work/delete/absence lineage, timing, price, volume, image, and provider identity |
 | `cpu_job_attempts` | Cloud Run Job execution lineage for whisper.cpp transcription or FFmpeg render/probe, with R2 manifests, resource profile, timings, and cost |
@@ -521,13 +524,15 @@ isolated-model Pod.
 }
 ```
 
-The future Pod envelope must add immutable generation-session, queue-entry, and `compute_run_plan`
-pointers/hashes plus a `pod_resource_binding` containing lane, internal session-lane Pod-attempt ID,
+The implemented `pod-worker-job-envelope/v2` adds immutable generation-session, queue-entry, and
+`compute_run_plan` pointers/hashes plus a `pod_resource_binding` containing lane, internal
+session-lane Pod-attempt ID,
 exact execution profile/container, session-chosen offering receipt/revalidation identity,
 model-volume ID, provider volume ID, manifest ID/hash, `EU-RO-1`, and exact mount. The image worker
 accepts only the Mage binding; the avatar worker accepts only the Echo binding. A project cannot
 override the session GPU. Cross-session, cross-lane, region, mount, manifest, or model drift is a
-terminal pre-load error.
+terminal pre-load error. Its current dispatch port is injection-only and was tested with a local
+fake; no RunPod transport is wired or authorized.
 
 The worker validates contract/profile versions, the pinned Avatar Profile/hash/runtime-source
 checksum, URLs, media properties, allowed output prefix, and the single-use execution claim before

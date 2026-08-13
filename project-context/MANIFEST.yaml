@@ -3,6 +3,7 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-13"
 source_of_truth: project-context
+# Completed handoff remains selected until a fresh CP-02 brief is explicitly authorized and added.
 current_selected_profile: cp01_global_session_contracts
 current_selected_brief: tasks/VF-9-24K.md
 
