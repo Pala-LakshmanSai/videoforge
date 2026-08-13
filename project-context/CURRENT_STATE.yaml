@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-13T06:51:27Z"
+updated_at: "2026-08-13T06:52:47Z"
 
 phase: isolated_persistent_model_lane_reset
 implementation_authorized_in_current_task: false
@@ -16,8 +16,8 @@ repository:
   published: true
   branch: main
   base_commit: "8ffe611"
-  planning_handoff_commit: "8ffe611"
-  last_good_commit: "8ffe611"
+  planning_handoff_commit: "29b288e07207848af598d2f7dd1af62d6f9c9a9f"
+  last_good_commit: "29b288e07207848af598d2f7dd1af62d6f9c9a9f"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
