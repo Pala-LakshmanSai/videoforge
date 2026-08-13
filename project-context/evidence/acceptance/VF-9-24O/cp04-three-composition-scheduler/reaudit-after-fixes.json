@@ -1,0 +1,141 @@
+{
+  "schema_version": "videoforge.cp04-reaudit/v1",
+  "task_id": "VF-9-24O",
+  "checkpoint": "CP-04",
+  "status": "PASS_PROVIDER_FREE_LOCAL_REAUDIT",
+  "recorded_on": "2026-08-14",
+  "audited_code_head": "cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690",
+  "history": {
+    "activation_commit": "8d0e49e",
+    "implementation_commit": "ca9b816f1bd196654e03633264560050729b020a",
+    "original_acceptance_commit": "f94050d0bd46d1ec0727054405b1d41749b9b5bf",
+    "audit_fix_commit": "e857cfa1d8bce6ecfdd51f600378790aeedd28f2",
+    "local_render_profile_fix_commit": "cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690"
+  },
+  "dependency": {
+    "cp03_status": "GREEN_REAUDITED",
+    "cp03_audit_fix_commit": "a6a924856a58c233eadd8af402fbf78c6c821b97",
+    "cp03_evidence": "project-context/evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json"
+  },
+  "resolved_findings": [
+    {
+      "severity": "P1",
+      "finding": "Complete work-plan compilation trusted a caller-supplied scheduler hash and shape-valid timeline boundaries without semantic transcript binding.",
+      "resolution": "The compiler recomputes the locked scheduler hash, verifies revision/transcript/source identity, re-runs full timeline semantics, and rejects globally duplicate task keys.",
+      "code": [
+        "packages/pipeline/src/scheduler/work-plan.ts",
+        "packages/pipeline/src/scheduler/scheduler.ts"
+      ],
+      "regression": "packages/pipeline/tests/scheduler.test.mjs"
+    },
+    {
+      "severity": "P1",
+      "finding": "The active provider-free local render candidate used an AvatarForcing-named source profile and the active-runtime scanner missed lowercase legacy identities.",
+      "resolution": "The local path now binds an explicit local-fixture profile, its schema and renderer probe are synchronized, and active-runtime matching is case-insensitive.",
+      "code": [
+        "apps/web/src/server/local/media-runner.ts",
+        "packages/pipeline/src/render/resolved-manifest.ts",
+        "workers/image-media/src/videoforge_image_media/jobs/render/job.py",
+        "scripts/verify-active-runtime.mjs",
+        "project-context/evidence/resolved_render_manifest.schema.json"
+      ],
+      "regression": "packages/pipeline/tests/resolved-render-manifest.test.mjs"
+    }
+  ],
+  "owned_long_fixture": {
+    "status": "SUCCEEDED_REPLAY_EXACT",
+    "artifact_root": "artifacts/cp04-long-owned-work-plan",
+    "source_duration_ms": 1800000,
+    "total_frames": 54000,
+    "timeline_sha256": "sha256:d82dd9afa5d0b0f61a9472957820c540e0f336bba7a9c07fa19fca235ef2e450",
+    "replay_timeline_sha256": "sha256:d82dd9afa5d0b0f61a9472957820c540e0f336bba7a9c07fa19fca235ef2e450",
+    "generation_work_manifest_sha256": "sha256:fd7eafb36e6e52add438c48bd6c620c2bd0fafb535701fa2b83088b5ac07abd1",
+    "render_work_manifest_sha256": "sha256:0d3d0ba7ef5bfae33f23e33480eb0094a2dc8316e1bed912eee2576384c961b4",
+    "segment_count": 394,
+    "composition_frames": {
+      "IMAGE_FULL": 42633,
+      "AVATAR_FULL": 5724,
+      "AVATAR_SPLIT_IMAGE": 5643
+    },
+    "avatar_coverage_percent": 21.05,
+    "full_split_difference_frames": 81,
+    "selected_span_wavs": 103,
+    "span_wav_probe": "ALL_PCM_S16LE_16000_HZ_MONO_EXACT_DURATION",
+    "image_slots": 342,
+    "prompt_batches": 7,
+    "shot_roles": 6,
+    "missing_or_duplicate_work": 0,
+    "full_voiceover_dispatched_to_echo": false,
+    "transition_policy": "HARD_CUTS_ONLY",
+    "slow_image_zoom_required": true
+  },
+  "validation": {
+    "contracts_typescript": "71_PASSED",
+    "contracts_python": "55_PASSED",
+    "pipeline": "119_PASSED",
+    "web_unit": "222_PASSED",
+    "worker_suites": "6_PASSED",
+    "active_runtime": "57_FILES_PASSED_CASE_INSENSITIVE_LEGACY_SCAN",
+    "dispatch_firewall": "PASSED",
+    "canonical_verify": "PASSED_CI_TURBO_FORCE",
+    "canonical_control_plane": "223_PASSED",
+    "installed_fixture_chrome": "40_PASSED_DESKTOP_AND_COMPACT",
+    "installed_local_chrome": "1_PASSED_REAL_AUDIO_RENDER_APPROVE_DOWNLOAD_PLAYBACK",
+    "context_validation": "PASSED",
+    "contract_sync": "PASSED_66_CANONICAL_FILES",
+    "secret_scan": "PASSED",
+    "dependency_audit": "PASSED",
+    "diff_check": "PASSED"
+  },
+  "global_mvp_invariants": {
+    "status": "PASSED_PROVIDER_FREE_CONTRACT_FIXTURE_SCOPE",
+    "one_shared_equal_rights_app": true,
+    "gated_one_time_admission": true,
+    "singleton_session": true,
+    "gpu_selection_idle_only": true,
+    "immutable_session_pair": true,
+    "waiting_only_reorder_remove": true,
+    "one_active_video": true,
+    "independent_lane_shutdown_at_zero_demand": true,
+    "no_silent_substitution": true,
+    "queue_drain_zero_pods": true,
+    "separate_retained_volumes": true,
+    "no_active_serverless_auto_repair_fallback": true,
+    "no_active_avatarforcing_musetalk_skyreels_identity": true,
+    "no_cross_project_artifact_scratch_callback_leak": true,
+    "evidence": [
+      "packages/control-plane/tests/global-session-vnext.test.mjs",
+      "packages/control-plane/tests/vnext-dispatch-firewall.test.mjs",
+      "packages/control-plane/tests/auth-workspace-boundary.test.mjs",
+      "packages/control-plane/tests/callback-replay-ledger.test.mjs",
+      "apps/web/src/server/shared-app-fixture.test.ts",
+      "scripts/verify-active-runtime.mjs",
+      "scripts/verify-vnext-dispatch-firewall.mjs"
+    ]
+  },
+  "provider_and_spend": {
+    "checkpoint_is_paid": false,
+    "provider_calls_authorized": false,
+    "provider_calls": 0,
+    "credentials_accessed": false,
+    "cloud_mutations": 0,
+    "model_downloads": 0,
+    "gpu_used": false,
+    "external_spend_usd": 0,
+    "paid_compute_started": false,
+    "live_provider_inventory_refreshed": false,
+    "immutable_paid_provider_evidence_required": false
+  },
+  "claims_not_proven": [
+    "Hosted Cloud Run execution",
+    "Private production R2 execution",
+    "Live provider model, GPU, rate, cost, Pod, or retained-volume state",
+    "Production end-to-end completion"
+  ],
+  "next_checkpoint": {
+    "checkpoint": "CP-05",
+    "dependency_safe_to_start": true,
+    "authorized": false,
+    "started": false
+  }
+}

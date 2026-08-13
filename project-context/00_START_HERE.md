@@ -95,14 +95,19 @@ paths. Exact re-audit proof is
 `evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json`.
 
 `VF-9-24O`/`CP-04` is complete at implementation commit
-`ca9b816f1bd196654e03633264560050729b020a`. The extended seeded `scheduler-v2` gives exact 30 fps,
+`ca9b816f1bd196654e03633264560050729b020a`, audit-fix commit
+`e857cfa1d8bce6ecfdd51f600378790aeedd28f2`, and local-render binding fix
+`cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690`. The extended seeded `scheduler-v2` gives exact 30 fps,
 source-time, and word coverage for all three compositions and emits immutable generation/render
 work manifests. The owned 30-minute CP-03 input produced 54,000 frames, 394 segments, 21.05% avatar
 coverage, an 81-frame full/split difference, 103 playable padded span WAVs, 342 image slots in seven
 prompt batches, and six varied shot roles with zero missing/duplicate work. Full voiceover dispatch
 to Echo is forbidden. Real local Chrome render/approve/download/playback and canonical verification
-passed. Exact proof is
-`evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/acceptance.json`.
+passed. The re-audit now also proves that forged scheduler identity, word-cut boundaries, and
+duplicate work fail closed, while the active provider-free slice uses an explicit local fixture
+profile instead of a legacy avatar runtime identity. Exact current proof is
+`evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/reaudit-after-fixes.json`; the older
+acceptance file remains immutable historical evidence.
 
 This remains provider-free local Mac/Linux evidence only: no Cloud Run deployment, private
 production R2, hosted Linux media runtime, provider call, credential use, model download/change,

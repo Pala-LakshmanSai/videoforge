@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-13T19:07:07Z"
+updated_at: "2026-08-13T19:38:30Z"
 
 phase: cp04_complete_stopped_before_cp05
 implementation_authorized_in_current_task: false
@@ -29,7 +29,9 @@ repository:
   cp03_audit_fix_commit: "a6a924856a58c233eadd8af402fbf78c6c821b97"
   cp04_activation_commit: "8d0e49e"
   cp04_implementation_commit: "ca9b816f1bd196654e03633264560050729b020a"
-  last_good_commit: "ca9b816f1bd196654e03633264560050729b020a"
+  cp04_audit_fix_commit: "e857cfa1d8bce6ecfdd51f600378790aeedd28f2"
+  cp04_local_render_profile_fix_commit: "cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690"
+  last_good_commit: "cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -113,10 +115,12 @@ completed_tasks:
     evidence: "evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json"
     external_spend_usd: 0
   - task_id: VF-9-24O
-    status: complete_cp04_three_composition_scheduler_and_work_plan_provider_free
+    status: complete_cp04_three_composition_scheduler_and_work_plan_provider_free_reaudited
     activation_commit: "8d0e49e"
     implementation_commit: "ca9b816f1bd196654e03633264560050729b020a"
-    evidence: "evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/acceptance.json"
+    audit_fix_commit: "e857cfa1d8bce6ecfdd51f600378790aeedd28f2"
+    local_render_profile_fix_commit: "cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690"
+    evidence: "evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/reaudit-after-fixes.json"
     external_spend_usd: 0
 active_ownership: []
 
@@ -128,7 +132,7 @@ recommended_next_task:
   checkpoint: CP-05
   milestone: provider_free_complete_mvp_orchestration_and_legacy_cutover
   status: stopped_awaiting_explicit_user_authority
-  dependency_status: cp04_complete_green
+  dependency_status: cp04_complete_green_reaudited
   authorization_status: not_authorized
   read_profile: checkpoint_roadmap
   task_brief: null
@@ -139,7 +143,7 @@ recommended_next_task:
   credential_access_authorized: false
   model_downloads_authorized: false
   application_code_changes_authorized: false
-  prerequisite_evidence: "evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/acceptance.json"
+  prerequisite_evidence: "evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/reaudit-after-fixes.json"
   required_handoff:
     - "Preserve the completed CP-03 transcript and CP-04 scheduler/work-manifest evidence."
     - "Load only checkpoint_roadmap until CP-05 receives an explicit brief and authority."
@@ -214,10 +218,12 @@ cp03_completion:
   local_server: stopped_no_4173_listener
 
 cp04_completion:
-  status: complete_provider_free
+  status: complete_provider_free_reaudited_after_fixes
   activation_commit: "8d0e49e"
   implementation_commit: "ca9b816f1bd196654e03633264560050729b020a"
-  evidence: "evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/acceptance.json"
+  audit_fix_commit: "e857cfa1d8bce6ecfdd51f600378790aeedd28f2"
+  local_render_profile_fix_commit: "cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690"
+  evidence: "evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/reaudit-after-fixes.json"
   scheduler_version: scheduler-v2
   long_fixture_duration_ms: 1800000
   long_fixture_total_frames: 54000
@@ -230,7 +236,7 @@ cp04_completion:
   long_fixture_shot_roles: 6
   missing_or_duplicate_work: 0
   full_voiceover_dispatched_to_echo: false
-  focused_pipeline: 117_passed
+  focused_pipeline: 119_passed
   focused_contracts_typescript: 71_passed
   focused_contracts_python: 55_passed
   focused_durable_timeline: 4_passed
@@ -241,6 +247,8 @@ cp04_completion:
   control_plane_full: 223_passed
   web_unit: 222_passed
   active_runtime_firewall: passed_57_files_echo_only_no_auto_repair_fallback_or_serverless_import
+  adversarial_scheduler_binding: passed_wrong_config_hash_word_cut_and_duplicate_work_rejected
+  active_local_avatar_profile: local_fixture_only_no_avatarforcing_identity
   provider_calls: 0
   provider_resources_created: 0
   external_spend_usd: 0

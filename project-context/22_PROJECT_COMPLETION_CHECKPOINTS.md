@@ -265,8 +265,10 @@ coverage, chunk-boundary tests, restart/replay, manual spot-check, Mac/container
 
 ## CP-04 — Three-composition scheduler and complete work plan
 
-**Status:** complete provider-free under `VF-9-24O` at implementation commit
-`ca9b816f1bd196654e03633264560050729b020a`; stopped before CP-05 with `$0` external spend.
+**Status:** complete and independently re-audited provider-free under `VF-9-24O` at implementation
+commit `ca9b816f1bd196654e03633264560050729b020a`, audit-fix commit
+`e857cfa1d8bce6ecfdd51f600378790aeedd28f2`, and local-render binding fix
+`cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690`; stopped before CP-05 with `$0` external spend.
 
 **Outcome:** the transcript deterministically becomes every timed image slot and short Echo span.
 
@@ -281,6 +283,8 @@ coverage, chunk-boundary tests, restart/replay, manual spot-check, Mac/container
 
 **Proof:** complete Ranga-derived invariants, long-audio fixtures, deterministic replay, timeline
 visualizer, playable span WAVs, zero missing/duplicate work, exact 30 fps coverage.
+Current re-audit evidence:
+`evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/reaudit-after-fixes.json`.
 
 **Authority:** local/provider-free `$0`.
 **Done artifact:** one owned long voiceover has an inspectable complete three-composition plan.
