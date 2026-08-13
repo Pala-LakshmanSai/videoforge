@@ -38,6 +38,7 @@ const forbiddenActiveTokens = [
 ];
 const forbiddenActiveTokensCaseInsensitive = ["avatarforcing", "musetalk", "skyreels"];
 const forbiddenImports = [
+  "@videoforge/control-plane/global-session",
   "runpod-avatar-qualification",
   "runpod-mage-qualification",
   "runpod-mage-matrix",

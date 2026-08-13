@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { ProviderFreeOrchestrationError } from "@videoforge/control-plane/global-session";
+import { ProviderFreeOrchestrationError } from "@videoforge/control-plane/provider-free-orchestration";
 
 import type { FixtureRuntime } from "../fixture-runtime";
 import { apiProblem, problemResponse } from "../problem";

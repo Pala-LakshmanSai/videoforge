@@ -5,7 +5,7 @@ import {
   type ProviderFreeLane,
   type ProviderFreeOrchestrationState,
   type ProviderFreeProjectState,
-} from "@videoforge/control-plane/global-session";
+} from "@videoforge/control-plane/provider-free-orchestration";
 
 import { MemorySharedAppPersistence, type SharedAppPersistence } from "./shared-app-persistence";
 import { buildProviderFreeFoundationReceipts } from "./provider-free-foundations";
