@@ -16,8 +16,8 @@ repository:
   published: true
   branch: main
   base_commit: "8ffe611"
-  planning_handoff_commit: "62b2022"
-  last_good_commit: "62b2022"
+  planning_handoff_commit: "0e5eee22e4d51150fc358fe853f607e1f41d73c9"
+  last_good_commit: "0e5eee22e4d51150fc358fe853f607e1f41d73c9"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -78,6 +78,7 @@ completed_tasks:
     external_spend_usd: 0
   - task_id: VF-9-24L
     status: complete_cp00_context_reference_roadmap_lock
+    implementation_commit: "0e5eee22e4d51150fc358fe853f607e1f41d73c9"
     external_spend_usd: 0
 active_ownership:
   - task_id: VF-9-24K
