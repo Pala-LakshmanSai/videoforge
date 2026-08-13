@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-03 complete; stopped before CP-04 with no successor authority
+Status: CP-00 through CP-03 complete; CP-04 active provider-free under `VF-9-24O`
 Context schema: `1.5`  
 Last updated: `2026-08-13`
 
@@ -96,8 +96,8 @@ paths. Exact re-audit proof is
 
 This is provider-free local Mac/Linux evidence only: no Cloud Run deployment, private production R2,
 hosted Linux media runtime, provider call, credential use, model download/change, GPU, or spend was
-used or proven. Hosted production proof remains open until CP-08. CP-04 is not selected or
-authorized.
+used or proven. Hosted production proof remains open until CP-08. The current user explicitly
+selected local/provider-free CP-04 under `VF-9-24O`; external authority remains `$0`.
 
 No VideoForge persistent model volume exists yet. Future provisioning/preparation is a separate
 explicitly authorized provider task after contracts and offline workers are green.

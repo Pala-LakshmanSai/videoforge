@@ -3,9 +3,10 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-13"
 source_of_truth: project-context
-# CP-03 is complete provider-free and re-audited after fixes under VF-9-24N. No successor checkpoint is selected.
-current_selected_profile: checkpoint_roadmap
-current_selected_brief: null
+# CP-03 is complete provider-free and re-audited after fixes under VF-9-24N. Current user explicitly
+# selected provider-free CP-04 implementation under VF-9-24O.
+current_selected_profile: cp04_three_composition_scheduler
+current_selected_brief: tasks/VF-9-24O.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -27,6 +28,13 @@ target_profile_word_budget: 10000
 # Historical task briefs remain evidence but are intentionally not active read profiles. Create one
 # narrow profile/brief when each future checkpoint becomes current.
 read_profiles:
+  cp04_three_composition_scheduler:
+    - 22_PROJECT_COMPLETION_CHECKPOINTS.md
+    - tasks/VF-9-24O.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - references/ranga/README.md
+    - references/ranga/every-fifth-frame-audit.json
+    - evidence/reference_metrics.json
   cp03_word_transcript:
     - 22_PROJECT_COMPLETION_CHECKPOINTS.md
     - tasks/VF-9-24N.md

@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-13T17:52:07Z"
+updated_at: "2026-08-13T18:03:31Z"
 
-phase: cp03_complete_stopped_before_cp04
-implementation_authorized_in_current_task: false
+phase: cp04_active_provider_free
+implementation_authorized_in_current_task: true
 current_milestone: three_composition_scheduler_and_complete_work_plan
-current_task: null
-current_wave: checkpoint_roadmap
+current_task: VF-9-24O
+current_wave: cp04_three_composition_scheduler
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -110,34 +110,38 @@ completed_tasks:
     audit_fix_commit: "a6a924856a58c233eadd8af402fbf78c6c821b97"
     evidence: "evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json"
     external_spend_usd: 0
-active_ownership: []
+active_ownership:
+  - task_id: VF-9-24O
+    checkpoint: CP-04
+    owner: current_chat
+    scope: three_composition_scheduler_complete_work_plan_provider_free
 
 blocked_tasks: []
-in_progress_checkpoint: null
+in_progress_checkpoint: CP-04
 
 recommended_next_task:
-  task_id: null
+  task_id: VF-9-24O
   checkpoint: CP-04
   milestone: three_composition_scheduler_and_complete_work_plan
-  status: stopped_after_cp03_awaiting_explicit_selection
+  status: active_authorized_provider_free
   dependency_status: cp03_complete_green
-  authorization_status: not_authorized
-  read_profile: checkpoint_roadmap
-  task_brief: null
-  goal: "Wait for explicit CP-04 selection; do not implement successor work implicitly."
+  authorization_status: explicit_current_user_authority
+  read_profile: cp04_three_composition_scheduler
+  task_brief: tasks/VF-9-24O.md
+  goal: "Finish existing deterministic scheduler and materialize a complete immutable three-composition work plan."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
   credential_access_authorized: false
   model_downloads_authorized: false
-  application_code_changes_authorized: false
+  application_code_changes_authorized: true
   prerequisite_evidence: "evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json"
   required_handoff:
     - "Preserve the completed CP-03 durable transcript worker and acceptance evidence."
-    - "Keep all hosted-production/provider gates false; CP-03 does not prove deployed Cloud Run or private R2."
-    - "Select a new narrow brief/profile before any CP-04 implementation."
+    - "Extend rather than replace the deterministic scheduler foundations."
+    - "Keep all hosted-production/provider gates false; local CP-04 evidence does not prove hosted production."
   prohibited_in_task:
-    - "Any CP-04 or successor implementation without new explicit authority."
+    - "Any CP-05 or successor implementation."
     - "Any provider call, credential access, cloud mutation, model download, Pod/template/volume creation, image publication, or spend."
     - "Any production gate closure, live profile promotion, volume-capacity assumption, model/GPU substitution, repair, or fallback."
 
