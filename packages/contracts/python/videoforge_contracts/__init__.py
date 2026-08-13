@@ -1,5 +1,6 @@
 from .models import (
     CONTRACT_MODELS,
+    AdmittedIdentityDocument,
     AsrJobInputDocument,
     AsrJobResultDocument,
     AvatarProfileVersionDocument,
@@ -8,9 +9,11 @@ from .models import (
     DurableTimingLineageDocument,
     ExecutionProfileOverrides,
     GenerationMode,
+    GlobalGenerationSessionDocument,
     ImageStyleAnalyzerOutputDocument,
     ImageStyleProfileDocument,
     OrchestrationStateDocument,
+    PodWorkerJobEnvelopeDocument,
     ProductionManifestDocument,
     ProjectRevisionConfigDocument,
     RenderJobInputDocument,
@@ -31,6 +34,7 @@ from .validator import (
 )
 
 __all__ = [
+    "AdmittedIdentityDocument",
     "AvatarProfileVersionDocument",
     "AsrJobInputDocument",
     "AsrJobResultDocument",
@@ -45,9 +49,11 @@ __all__ = [
     "DurableTimingLineageDocument",
     "ExecutionProfileOverrides",
     "GenerationMode",
+    "GlobalGenerationSessionDocument",
     "ImageStyleAnalyzerOutputDocument",
     "ImageStyleProfileDocument",
     "OrchestrationStateDocument",
+    "PodWorkerJobEnvelopeDocument",
     "ProductionManifestDocument",
     "ProjectRevisionConfigDocument",
     "ResolvedRenderManifestDocument",

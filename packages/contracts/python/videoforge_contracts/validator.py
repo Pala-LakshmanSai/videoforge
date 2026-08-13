@@ -10,9 +10,11 @@ from referencing import Registry, Resource
 from ._schema_documents import SCHEMA_DOCUMENTS
 
 ContractName = Literal[
+    "admittedIdentity",
     "avatarProfileVersion",
     "createProjectRequest",
     "durableTimingLineage",
+    "globalGenerationSession",
     "imageStyleProfile",
     "imageStyleAnalyzerOutput",
     "orchestrationState",
@@ -20,6 +22,7 @@ ContractName = Literal[
     "timelinePlan",
     "resolvedRenderManifest",
     "productionManifest",
+    "podWorkerJobEnvelope",
     "workerJobEnvelope",
     "transcriptTiming",
     "asrJobInput",
@@ -30,9 +33,11 @@ ContractName = Literal[
 ]
 
 CONTRACT_NAMES: tuple[ContractName, ...] = (
+    "admittedIdentity",
     "avatarProfileVersion",
     "createProjectRequest",
     "durableTimingLineage",
+    "globalGenerationSession",
     "imageStyleProfile",
     "imageStyleAnalyzerOutput",
     "orchestrationState",
@@ -40,6 +45,7 @@ CONTRACT_NAMES: tuple[ContractName, ...] = (
     "timelinePlan",
     "resolvedRenderManifest",
     "productionManifest",
+    "podWorkerJobEnvelope",
     "workerJobEnvelope",
     "transcriptTiming",
     "asrJobInput",
@@ -186,6 +192,331 @@ def _transcript_timing_issues(
 def _semantic_contract_issues(
     contract_name: ContractName, value: dict[str, Any]
 ) -> tuple[ContractIssue, ...]:
+    if contract_name == "admittedIdentity":
+        normalized_email = cast(str, value["normalized_email"])
+        if normalized_email != normalized_email.strip().lower():
+            return (
+                _semantic_issue(
+                    "/normalized_email", "Admitted email must be normalized lowercase text."
+                ),
+            )
+        return ()
+    if contract_name == "globalGenerationSession":
+        issues: list[ContractIssue] = []
+        session = cast(dict[str, Any], value["session"])
+        selections = cast(dict[str, dict[str, Any]], session["gpu_pair"])
+        lanes = ("mage_image", "echo_avatar")
+        for lane in lanes:
+            selection = selections[lane]
+            receipt = cast(dict[str, Any], selection["receipt"])
+            path = f"/session/gpu_pair/{lane}"
+            if selection["lane"] != lane:
+                issues.append(
+                    _semantic_issue(f"{path}/lane", "GPU selection lane must match its pair slot.")
+                )
+            observed_at = cast(str, receipt["observed_at"])
+            expires_at = cast(str, receipt["expires_at"])
+            revalidated_at = cast(str, selection["revalidated_at"])
+            if observed_at >= expires_at:
+                issues.append(
+                    _semantic_issue(
+                        f"{path}/receipt/expires_at",
+                        "Inventory receipt must expire after observation.",
+                    )
+                )
+            if revalidated_at < observed_at or revalidated_at > expires_at:
+                issues.append(
+                    _semantic_issue(
+                        f"{path}/revalidated_at",
+                        "GPU revalidation must fall inside the live inventory receipt window.",
+                    )
+                )
+            if (
+                receipt["observed_rate_micro_usd_per_hour"]
+                > selection["rate_ceiling_micro_usd_per_hour"]
+            ):
+                issues.append(
+                    _semantic_issue(
+                        f"{path}/rate_ceiling_micro_usd_per_hour",
+                        "Observed GPU rate must not exceed the locked ceiling.",
+                    )
+                )
+
+        queue = cast(dict[str, Any], value["queue"])
+        entries = cast(list[dict[str, Any]], queue["entries"])
+        live_entries = sorted(
+            (entry for entry in entries if entry["state"] in ("ACTIVE", "WAITING")),
+            key=lambda entry: cast(int, entry["position"]),
+        )
+        active_entries = [entry for entry in live_entries if entry["state"] == "ACTIVE"]
+        if len(active_entries) > 1:
+            issues.append(
+                _semantic_issue(
+                    "/queue/entries", "Global queue may contain at most one active entry."
+                )
+            )
+        for index, entry in enumerate(live_entries):
+            if entry["position"] != index:
+                issues.append(
+                    _semantic_issue(
+                        f"/queue/entries/{index}/position",
+                        "Live queue positions must be contiguous.",
+                    )
+                )
+            if entry["inherited_gpu_pair_hash"] != session["gpu_pair_hash"]:
+                issues.append(
+                    _semantic_issue(
+                        f"/queue/entries/{index}/inherited_gpu_pair_hash",
+                        "Every queue entry must inherit the immutable session GPU pair.",
+                    )
+                )
+            if entry["state"] == "WAITING" and (
+                entry["compute_run_plan_id"] is not None or entry["executable_fact_count"] != 0
+            ):
+                issues.append(
+                    _semantic_issue(
+                        f"/queue/entries/{index}",
+                        "Waiting queue entries must remain orchestration-inert.",
+                    )
+                )
+        if active_entries and active_entries[0]["position"] != 0:
+            issues.append(
+                _semantic_issue("/queue/entries", "Active queue entry must occupy position zero.")
+            )
+        project_revision_ids = [entry["project_revision_id"] for entry in entries]
+        if len(set(project_revision_ids)) != len(project_revision_ids):
+            issues.append(
+                _semantic_issue(
+                    "/queue/entries", "A project revision may appear in the queue only once."
+                )
+            )
+
+        volumes = cast(dict[str, dict[str, Any]], value["lane_volumes"])
+        mage_volume = volumes["mage_image"]
+        echo_volume = volumes["echo_avatar"]
+        if (
+            mage_volume["model_volume_id"] == echo_volume["model_volume_id"]
+            or mage_volume["provider_volume_id"] == echo_volume["provider_volume_id"]
+            or mage_volume["manifest_id"] == echo_volume["manifest_id"]
+        ):
+            issues.append(
+                _semantic_issue(
+                    "/lane_volumes", "Mage and Echo volumes and manifests must remain isolated."
+                )
+            )
+
+        lane_states = cast(dict[str, dict[str, Any]], value["lane_states"])
+        for lane in lanes:
+            lane_state = lane_states[lane]
+            selection = selections[lane]
+            volume = volumes[lane]
+            path = f"/lane_states/{lane}"
+            if lane_state["lane"] != lane:
+                issues.append(
+                    _semantic_issue(f"{path}/lane", "Lane state must match its lane slot.")
+                )
+            active_queue_entry_id = lane_state["active_queue_entry_id"]
+            if active_queue_entry_id is not None and not any(
+                entry["queue_entry_id"] == active_queue_entry_id for entry in active_entries
+            ):
+                issues.append(
+                    _semantic_issue(
+                        f"{path}/active_queue_entry_id",
+                        "Lane demand may reference only the active global queue entry.",
+                    )
+                )
+            if lane_state["demand"] == "ACTIVE" and active_queue_entry_id is None:
+                issues.append(
+                    _semantic_issue(
+                        f"{path}/active_queue_entry_id",
+                        "Active lane demand requires an active entry.",
+                    )
+                )
+            if lane_state["demand"] == "WAITING_WARM" and not any(
+                entry["state"] == "WAITING" for entry in live_entries
+            ):
+                issues.append(
+                    _semantic_issue(
+                        f"{path}/demand",
+                        "Warm retention requires at least one waiting queue entry.",
+                    )
+                )
+            attempts = cast(list[dict[str, Any]], lane_state["pod_attempts"])
+            for index, attempt in enumerate(attempts):
+                attempt_path = f"{path}/pod_attempts/{index}"
+                if (
+                    attempt["model_volume_id"] != volume["model_volume_id"]
+                    or attempt["manifest_sha256"] != volume["manifest_sha256"]
+                ):
+                    issues.append(
+                        _semantic_issue(
+                            f"{attempt_path}/model_volume_id",
+                            "Pod attempt must bind the exact isolated lane volume manifest.",
+                        )
+                    )
+                actual_gpu = attempt["actual_gpu_sku"]
+                if actual_gpu is not None and actual_gpu != attempt["selected_gpu_sku"]:
+                    issues.append(
+                        _semantic_issue(
+                            f"{attempt_path}/actual_gpu_sku",
+                            "Actual Pod GPU must equal the session-selected GPU.",
+                        )
+                    )
+                if attempt["selected_gpu_sku"] != selection["receipt"]["gpu_sku"]:
+                    issues.append(
+                        _semantic_issue(
+                            f"{attempt_path}/selected_gpu_sku",
+                            "Pod attempt must use the immutable session GPU selection.",
+                        )
+                    )
+                if attempt["model_ready"] and (
+                    attempt["create_status"] != "ACKNOWLEDGED"
+                    or attempt["provider_pod_id"] is None
+                    or not attempt["container_ready"]
+                    or not attempt["volume_verified"]
+                    or not attempt["warmup_passed"]
+                    or actual_gpu != selection["receipt"]["gpu_sku"]
+                ):
+                    issues.append(
+                        _semantic_issue(
+                            f"{attempt_path}/model_ready",
+                            "Model ready requires acknowledged identity, exact GPU/volume, "
+                            "container, and warm-up.",
+                        )
+                    )
+                if attempt["create_status"] in ("ACK_UNKNOWN", "AMBIGUOUS") and (
+                    attempt["model_ready"] or attempt["delete_status"] == "ABSENCE_VERIFIED"
+                ):
+                    issues.append(
+                        _semantic_issue(
+                            f"{attempt_path}/create_status",
+                            "Ambiguous create cannot imply model readiness or "
+                            "authoritative absence.",
+                        )
+                    )
+                if (attempt["delete_status"] == "ABSENCE_VERIFIED") != (
+                    attempt["absence_receipt"] is not None
+                ):
+                    issues.append(
+                        _semantic_issue(
+                            f"{attempt_path}/absence_receipt",
+                            "Only an authoritative absence receipt proves Pod deletion.",
+                        )
+                    )
+            if lane_state["demand"] == "WAITING_WARM":
+                latest = attempts[-1] if attempts else None
+                if (
+                    latest is None
+                    or not latest["model_ready"]
+                    or latest["delete_status"] != "NOT_REQUESTED"
+                ):
+                    issues.append(
+                        _semantic_issue(
+                            f"{path}/demand",
+                            "Waiting demand may retain only an already model-ready Pod.",
+                        )
+                    )
+
+        if session["state"] == "ACTIVE" and (
+            session["closing_at"] is not None or session["closed_at"] is not None
+        ):
+            issues.append(
+                _semantic_issue("/session/state", "Active session cannot carry closing timestamps.")
+            )
+        if session["state"] == "DRAINING" and session["closing_at"] is None:
+            issues.append(
+                _semantic_issue("/session/closing_at", "Draining session requires closing time.")
+            )
+        if session["state"] == "CLOSED":
+            if session["closing_at"] is None or session["closed_at"] is None or live_entries:
+                issues.append(
+                    _semantic_issue(
+                        "/session/state",
+                        "Closed session requires timestamps and an empty active/waiting queue.",
+                    )
+                )
+            for lane in lanes:
+                lane_state = lane_states[lane]
+                attempts = cast(list[dict[str, Any]], lane_state["pod_attempts"])
+                latest = attempts[-1] if attempts else None
+                if (
+                    lane_state["demand"] != "ZERO"
+                    or latest is None
+                    or latest["delete_status"] != "ABSENCE_VERIFIED"
+                ):
+                    issues.append(
+                        _semantic_issue(
+                            f"/lane_states/{lane}",
+                            "Closed session requires zero demand and proven Pod absence "
+                            "in both lanes.",
+                        )
+                    )
+
+        events = cast(list[dict[str, Any]], value["events"])
+        for index, event in enumerate(events):
+            if event["sequence"] != index + 1:
+                issues.append(
+                    _semantic_issue(
+                        f"/events/{index}/sequence", "Event sequence must be contiguous."
+                    )
+                )
+        cost_summary = cast(dict[str, Any], value["cost_summary"])
+        amounts = {"RESERVED": 0, "REPORTED": 0, "SETTLED": 0}
+        for event in cost_summary["events"]:
+            amounts[event["stage"]] += event["amount_micro_usd"]
+        if (
+            amounts["RESERVED"] != cost_summary["reserved_micro_usd"]
+            or amounts["REPORTED"] != cost_summary["reported_micro_usd"]
+            or amounts["SETTLED"] != cost_summary["settled_micro_usd"]
+        ):
+            issues.append(
+                _semantic_issue("/cost_summary", "Cost summary must equal its append-only events.")
+            )
+        if (
+            max(
+                cost_summary["reserved_micro_usd"],
+                cost_summary["reported_micro_usd"],
+                cost_summary["settled_micro_usd"],
+            )
+            > cost_summary["hard_ceiling_micro_usd"]
+        ):
+            issues.append(
+                _semantic_issue("/cost_summary", "Cost totals must not exceed the hard ceiling.")
+            )
+        return tuple(issues)
+    if contract_name == "podWorkerJobEnvelope":
+        binding = cast(dict[str, Any], value["pod_resource_binding"])
+        issues: list[ContractIssue] = []
+        if value["lane"] != binding["lane"]:
+            issues.append(
+                _semantic_issue(
+                    "/pod_resource_binding/lane",
+                    "Pod binding lane must match envelope lane.",
+                )
+            )
+        if value["lane"] == "mage_image":
+            matches = (
+                binding["worker_contract"] == "videoforge-mage-pod/v1"
+                and binding["model_id"] == "Comfy-Org/Mage-Flow"
+                and binding["model_revision"] == "d8c99241f6fa80fbd453014234af2bf337ea21e6"
+                and binding["precision"] == "int8-convrot"
+                and binding["mount_path"] == "/models/mage"
+            )
+        else:
+            matches = (
+                binding["worker_contract"] == "videoforge-echo-pod/v1"
+                and binding["model_id"] == "EchoMimicV3-Flash"
+                and binding["precision"] == "fp8"
+                and binding["mount_path"] == "/models/echo"
+            )
+        if not matches:
+            issues.append(
+                _semantic_issue(
+                    "/pod_resource_binding",
+                    "Pod binding must match the exact isolated vNext lane profile.",
+                )
+            )
+        return tuple(issues)
     if contract_name == "transcriptTiming":
         return _transcript_timing_issues(value)
     if contract_name == "asrJobResult" and value["status"] == "SUCCEEDED":

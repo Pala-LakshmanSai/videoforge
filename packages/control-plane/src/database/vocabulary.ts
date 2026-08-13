@@ -2,6 +2,7 @@ export const MIGRATION_TABLE_NAME = "videoforge_schema_migrations" as const;
 
 export const RELATIONAL_TABLE_NAMES = [
   "users",
+  "app_admissions",
   "workspaces",
   "memberships",
   "assets",
@@ -46,9 +47,34 @@ export const RELATIONAL_TABLE_NAMES = [
   "image_generation_acceptances",
   "avatar_generation_acceptances",
   "avatar_renderer_bindings",
+  "model_volumes",
+  "model_volume_manifests",
+  "gpu_inventory_receipts",
+  "generation_sessions",
+  "session_gpu_bindings",
+  "session_gpu_revalidations",
+  "global_queue_entries",
+  "compute_run_plans",
+  "pod_lifecycle_attempts",
+  "lane_demands",
+  "durable_generation_outputs",
+  "global_session_cost_events",
+  "global_session_events",
 ] as const;
 
 export type RelationalTableName = (typeof RELATIONAL_TABLE_NAMES)[number];
+
+export const GLOBAL_SESSION_LANES = ["mage_image", "echo_avatar"] as const;
+export type GlobalSessionLane = (typeof GLOBAL_SESSION_LANES)[number];
+
+export const GLOBAL_SESSION_STATES = ["LOCKING", "ACTIVE", "DRAINING", "CLOSED"] as const;
+export type GlobalSessionState = (typeof GLOBAL_SESSION_STATES)[number];
+
+export const GLOBAL_QUEUE_ENTRY_STATES = ["ACTIVE", "WAITING", "TERMINAL", "REMOVED"] as const;
+export type GlobalQueueEntryState = (typeof GLOBAL_QUEUE_ENTRY_STATES)[number];
+
+export const LANE_DEMAND_STATES = ["ACTIVE", "WAITING_WARM", "ZERO"] as const;
+export type LaneDemandState = (typeof LANE_DEMAND_STATES)[number];
 
 export const OWNER_TYPES = [
   "PROJECT_REVISION",

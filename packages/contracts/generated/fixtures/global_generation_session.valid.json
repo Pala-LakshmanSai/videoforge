@@ -1,0 +1,204 @@
+{
+  "schema_version": "global-generation-session/v2",
+  "session": {
+    "generation_session_id": "session_fixture_001",
+    "singleton_key": "GLOBAL",
+    "state": "ACTIVE",
+    "version": 1,
+    "selected_by_admission_id": "admission_fixture_001",
+    "opened_at": "2026-08-13T09:00:00.000Z",
+    "closing_at": null,
+    "closed_at": null,
+    "gpu_pair_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "gpu_pair": {
+      "mage_image": {
+        "lane": "mage_image",
+        "receipt": {
+          "receipt_id": "receipt_mage_fixture_001",
+          "provider": "RUNPOD",
+          "cloud_type": "SECURE_CLOUD",
+          "region": "EU-RO-1",
+          "offering_id": "offering_mage_fixture_001",
+          "gpu_sku": "NVIDIA GeForce RTX 4090",
+          "gpu_count": 1,
+          "available_count": 2,
+          "observed_rate_micro_usd_per_hour": 340000,
+          "observed_at": "2026-08-13T08:59:30.000Z",
+          "expires_at": "2026-08-13T09:04:30.000Z"
+        },
+        "rate_ceiling_micro_usd_per_hour": 350000,
+        "revalidated_at": "2026-08-13T08:59:45.000Z"
+      },
+      "echo_avatar": {
+        "lane": "echo_avatar",
+        "receipt": {
+          "receipt_id": "receipt_echo_fixture_001",
+          "provider": "RUNPOD",
+          "cloud_type": "SECURE_CLOUD",
+          "region": "EU-RO-1",
+          "offering_id": "offering_echo_fixture_001",
+          "gpu_sku": "NVIDIA L40S",
+          "gpu_count": 1,
+          "available_count": 1,
+          "observed_rate_micro_usd_per_hour": 520000,
+          "observed_at": "2026-08-13T08:59:30.000Z",
+          "expires_at": "2026-08-13T09:04:30.000Z"
+        },
+        "rate_ceiling_micro_usd_per_hour": 550000,
+        "revalidated_at": "2026-08-13T08:59:45.000Z"
+      }
+    }
+  },
+  "queue": {
+    "version": 2,
+    "entries": [
+      {
+        "queue_entry_id": "queue_entry_active_fixture_001",
+        "project_revision_id": "revision_fixture_001",
+        "submitted_by_admission_id": "admission_fixture_001",
+        "position": 0,
+        "state": "ACTIVE",
+        "inherited_gpu_pair_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "compute_run_plan_id": "compute_run_fixture_001",
+        "executable_fact_count": 3,
+        "version": 1
+      },
+      {
+        "queue_entry_id": "queue_entry_waiting_fixture_001",
+        "project_revision_id": "revision_fixture_002",
+        "submitted_by_admission_id": "admission_fixture_002",
+        "position": 1,
+        "state": "WAITING",
+        "inherited_gpu_pair_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "compute_run_plan_id": null,
+        "executable_fact_count": 0,
+        "version": 1
+      }
+    ]
+  },
+  "lane_volumes": {
+    "mage_image": {
+      "model_volume_id": "volume_mage_fixture_001",
+      "provider_volume_id": "provider_volume_mage_fixture_001",
+      "lane": "mage_image",
+      "region": "EU-RO-1",
+      "mount_path": "/models/mage",
+      "model_id": "Comfy-Org/Mage-Flow",
+      "model_revision": "d8c99241f6fa80fbd453014234af2bf337ea21e6",
+      "precision": "int8-convrot",
+      "manifest_id": "manifest_mage_fixture_001",
+      "manifest_sha256": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "manifest_verified": true,
+      "retention_state": "RETAINED",
+      "routine_deletion_allowed": false
+    },
+    "echo_avatar": {
+      "model_volume_id": "volume_echo_fixture_001",
+      "provider_volume_id": "provider_volume_echo_fixture_001",
+      "lane": "echo_avatar",
+      "region": "EU-RO-1",
+      "mount_path": "/models/echo",
+      "model_id": "EchoMimicV3-Flash",
+      "model_revision": "echomimic-v3-flash-fp8-fixture-revision",
+      "precision": "fp8",
+      "manifest_id": "manifest_echo_fixture_001",
+      "manifest_sha256": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "manifest_verified": true,
+      "retention_state": "RETAINED",
+      "routine_deletion_allowed": false
+    }
+  },
+  "lane_states": {
+    "mage_image": {
+      "lane": "mage_image",
+      "demand": "ACTIVE",
+      "active_queue_entry_id": "queue_entry_active_fixture_001",
+      "pod_attempts": [
+        {
+          "pod_attempt_id": "pod_attempt_mage_fixture_001",
+          "create_attempt_id": "create_attempt_mage_fixture_001",
+          "create_status": "ACKNOWLEDGED",
+          "provider_pod_id": "pod_mage_fixture_001",
+          "selected_gpu_sku": "NVIDIA GeForce RTX 4090",
+          "actual_gpu_sku": "NVIDIA GeForce RTX 4090",
+          "model_volume_id": "volume_mage_fixture_001",
+          "manifest_sha256": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "container_ready": true,
+          "volume_verified": true,
+          "warmup_passed": true,
+          "model_ready": true,
+          "delete_status": "NOT_REQUESTED",
+          "absence_receipt": null
+        }
+      ]
+    },
+    "echo_avatar": {
+      "lane": "echo_avatar",
+      "demand": "ACTIVE",
+      "active_queue_entry_id": "queue_entry_active_fixture_001",
+      "pod_attempts": [
+        {
+          "pod_attempt_id": "pod_attempt_echo_fixture_001",
+          "create_attempt_id": "create_attempt_echo_fixture_001",
+          "create_status": "ACKNOWLEDGED",
+          "provider_pod_id": "pod_echo_fixture_001",
+          "selected_gpu_sku": "NVIDIA L40S",
+          "actual_gpu_sku": "NVIDIA L40S",
+          "model_volume_id": "volume_echo_fixture_001",
+          "manifest_sha256": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+          "container_ready": true,
+          "volume_verified": true,
+          "warmup_passed": true,
+          "model_ready": true,
+          "delete_status": "NOT_REQUESTED",
+          "absence_receipt": null
+        }
+      ]
+    }
+  },
+  "durable_outputs": [
+    {
+      "output_id": "output_mage_fixture_001",
+      "queue_entry_id": "queue_entry_active_fixture_001",
+      "lane": "mage_image",
+      "artifact_id": "artifact_mage_fixture_001",
+      "sha256": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "bytes": 1024,
+      "durability_state": "VERIFIED",
+      "verified_at": "2026-08-13T09:01:00.000Z"
+    }
+  ],
+  "cost_summary": {
+    "currency": "USD",
+    "hard_ceiling_micro_usd": 2000000,
+    "reserved_micro_usd": 100000,
+    "reported_micro_usd": 0,
+    "settled_micro_usd": 0,
+    "fixed_volume_cost_included": false,
+    "events": [
+      {
+        "cost_event_id": "cost_fixture_001",
+        "lane": "session",
+        "stage": "RESERVED",
+        "amount_micro_usd": 100000,
+        "occurred_at": "2026-08-13T09:00:00.000Z"
+      }
+    ]
+  },
+  "events": [
+    {
+      "event_id": "event_fixture_001",
+      "sequence": 1,
+      "kind": "GENERATION_SESSION_OPENED",
+      "occurred_at": "2026-08-13T09:00:00.000Z",
+      "payload_sha256": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+    },
+    {
+      "event_id": "event_fixture_002",
+      "sequence": 2,
+      "kind": "QUEUE_ENTRY_ADDED",
+      "occurred_at": "2026-08-13T09:00:10.000Z",
+      "payload_sha256": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+    }
+  ]
+}

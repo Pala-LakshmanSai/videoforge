@@ -30,7 +30,7 @@ const loadFixture = async (filename) =>
   JSON.parse(await readFile(path.join(fixtureRoot, filename), "utf8"));
 
 test("all canonical schemas compile and expose stable IDs", () => {
-  assert.equal(contractNames.length, 17);
+  assert.equal(contractNames.length, 20);
   for (const contractName of contractNames) {
     assert.match(contractSchemaIds[contractName], /^https:\/\/videoforge\.local\/schemas\//);
     assert.equal(typeof contractValidators[contractName], "function");
@@ -126,6 +126,22 @@ test("semantic validation rejects contradictory media facts", async () => {
   const renderResult = await loadFixture("render_job_result.valid.json");
   renderResult.output.bytes += 1;
   assert.equal(validateContract("renderJobResult", renderResult).success, false);
+});
+
+test("vNext semantic validation rejects GPU and lane-profile drift", async () => {
+  const session = await loadFixture("global_generation_session.valid.json");
+  session.lane_states.mage_image.pod_attempts[0].actual_gpu_sku = "NVIDIA L40S";
+  const sessionResult = validateContract("globalGenerationSession", session);
+  assert.ok(
+    !sessionResult.success && sessionResult.issues.some(({ keyword }) => keyword === "semantic"),
+  );
+
+  const envelope = await loadFixture("pod_worker_job_envelope.valid.json");
+  envelope.pod_resource_binding.model_id = "Comfy-Org/Unpinned-Model";
+  const envelopeResult = validateContract("podWorkerJobEnvelope", envelope);
+  assert.ok(
+    !envelopeResult.success && envelopeResult.issues.some(({ keyword }) => keyword === "semantic"),
+  );
 });
 
 test("resolved render manifests cannot mix render and zoom profile versions", async () => {

@@ -39,7 +39,7 @@ def load_fixture(filename: str) -> Any:
 
 def test_all_canonical_schemas_compile() -> None:
     assert set(CONTRACT_NAMES) == set(CONTRACT_VALIDATORS)
-    assert len(CONTRACT_NAMES) == 17
+    assert len(CONTRACT_NAMES) == 20
 
 
 def test_fixture_matrix_covers_every_synchronized_fixture() -> None:
@@ -127,6 +127,39 @@ def test_python_preserves_positive_input_true_peak_for_normalization_evidence() 
     ],
 )
 def test_semantic_validation_rejects_contradictory_media_facts(
+    contract_name: ContractName,
+    filename: str,
+    mutate: Any,
+) -> None:
+    invalid = load_fixture(filename)
+    mutate(invalid)
+
+    with pytest.raises(ContractValidationError) as error:
+        validate_contract(contract_name, invalid)
+
+    assert any(issue.validator == "semantic" for issue in error.value.issues)
+    with pytest.raises(ValidationError):
+        CONTRACT_MODELS[contract_name].model_validate(invalid)
+
+
+@pytest.mark.parametrize(
+    ("contract_name", "filename", "mutate"),
+    [
+        (
+            "globalGenerationSession",
+            "global_generation_session.valid.json",
+            lambda value: value["lane_states"]["mage_image"]["pod_attempts"][0].update(
+                actual_gpu_sku="NVIDIA L40S"
+            ),
+        ),
+        (
+            "podWorkerJobEnvelope",
+            "pod_worker_job_envelope.valid.json",
+            lambda value: value["pod_resource_binding"].update(model_id="Comfy-Org/Unpinned-Model"),
+        ),
+    ],
+)
+def test_vnext_semantic_validation_rejects_gpu_and_lane_profile_drift(
     contract_name: ContractName,
     filename: str,
     mutate: Any,

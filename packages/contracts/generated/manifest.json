@@ -3,6 +3,12 @@
   "canonical_root": "project-context/evidence",
   "files": [
     {
+      "source": "project-context/evidence/admitted_identity.schema.json",
+      "destination": "generated/schemas/admitted_identity.schema.json",
+      "bytes": 1510,
+      "sha256": "sha256:57a3548b43847983062ce1cb0fd66fdfd2044ca975cdd1c2c63f2ca2d68b9238"
+    },
+    {
       "source": "project-context/evidence/avatar_profile_version.schema.json",
       "destination": "generated/schemas/avatar_profile_version.schema.json",
       "bytes": 3624,
@@ -19,6 +25,12 @@
       "destination": "generated/schemas/durable_timing_lineage.schema.json",
       "bytes": 8445,
       "sha256": "sha256:2bc4a1253d1dcfe1d7e857932da0b544ae328456891819a16941fda65496e05e"
+    },
+    {
+      "source": "project-context/evidence/global_generation_session.schema.json",
+      "destination": "generated/schemas/global_generation_session.schema.json",
+      "bytes": 15003,
+      "sha256": "sha256:beb769faf2f6add41b92abf63a493353748f6ed0d7d7d2ab7c229021ce031e77"
     },
     {
       "source": "project-context/evidence/image_style_profile.schema.json",
@@ -63,6 +75,12 @@
       "sha256": "sha256:faf74c61debd219a1a9a91de66e622ef8017a47819a5901ad5a58a31eb00b937"
     },
     {
+      "source": "project-context/evidence/pod_worker_job_envelope.schema.json",
+      "destination": "generated/schemas/pod_worker_job_envelope.schema.json",
+      "bytes": 4134,
+      "sha256": "sha256:bd974e3f9c33cb0b70331953f41b6ebbb561099ad791f7062c71d10c9c1f37b9"
+    },
+    {
       "source": "project-context/evidence/worker_job_envelope.schema.json",
       "destination": "generated/schemas/worker_job_envelope.schema.json",
       "bytes": 4517,
@@ -105,6 +123,18 @@
       "sha256": "sha256:6d0097b02139fc8a6d54a89ebf174506c895f5c09952b5d7f43d632f0168e113"
     },
     {
+      "source": "project-context/evidence/fixtures/admitted_identity.valid.json",
+      "destination": "generated/fixtures/admitted_identity.valid.json",
+      "bytes": 356,
+      "sha256": "sha256:094189cc15d91276ddd3d5896f1e734a0cd32cb6105cd2390e1fd904297bd7d1"
+    },
+    {
+      "source": "project-context/evidence/fixtures/admitted_identity.invalid.unverified.json",
+      "destination": "generated/fixtures/admitted_identity.invalid.unverified.json",
+      "bytes": 334,
+      "sha256": "sha256:3497f5ef1b98c0f0b8eee2be5a942c259274993778189d649a9fd7898a11c6ba"
+    },
+    {
       "source": "project-context/evidence/fixtures/avatar_profile_version.valid.json",
       "destination": "generated/fixtures/avatar_profile_version.valid.json",
       "bytes": 1320,
@@ -139,6 +169,18 @@
       "destination": "generated/fixtures/durable_timing_lineage.invalidated.valid.json",
       "bytes": 936,
       "sha256": "sha256:fb12781502cb7e039155a838ae0cf0be0c8b8722a720a0f45b3487e3ea046c0d"
+    },
+    {
+      "source": "project-context/evidence/fixtures/global_generation_session.valid.json",
+      "destination": "generated/fixtures/global_generation_session.valid.json",
+      "bytes": 7273,
+      "sha256": "sha256:0b7f06a6e2ef21cd40a90feaa51cba67acd0f0c58d10cb435ae6be9e63fe6b4e"
+    },
+    {
+      "source": "project-context/evidence/fixtures/global_generation_session.invalid.routine_volume_delete.json",
+      "destination": "generated/fixtures/global_generation_session.invalid.routine_volume_delete.json",
+      "bytes": 305,
+      "sha256": "sha256:13f2e6b2e10e17589652b237366dbabb46737c0ebbb63cf49d9df4f7e3509c2e"
     },
     {
       "source": "project-context/evidence/default_image_style_v1.json",
@@ -193,6 +235,18 @@
       "destination": "generated/fixtures/production_manifest.valid.json",
       "bytes": 4506,
       "sha256": "sha256:3541c4bd8bbc6baa39b24d5fbdf3b6c701fdf4eeb7149e2fb358af556c2ef351"
+    },
+    {
+      "source": "project-context/evidence/fixtures/pod_worker_job_envelope.valid.json",
+      "destination": "generated/fixtures/pod_worker_job_envelope.valid.json",
+      "bytes": 1739,
+      "sha256": "sha256:a0ce788b1c4bdf8600247659533caebdb2163dc7da4f4ec3cd200521cade7889"
+    },
+    {
+      "source": "project-context/evidence/fixtures/pod_worker_job_envelope.invalid.legacy_dispatch.json",
+      "destination": "generated/fixtures/pod_worker_job_envelope.invalid.legacy_dispatch.json",
+      "bytes": 290,
+      "sha256": "sha256:d5ae785d48e3e1aae6d545f551a17194b8e4d9f31a1fd56077ef3107ae4c4b79"
     },
     {
       "source": "project-context/evidence/fixtures/worker_job_envelope.valid.json",
@@ -299,8 +353,8 @@
     {
       "source": "project-context/evidence/contract-index.v1.json",
       "destination": "generated/contract-index.v1.json",
-      "bytes": 4999,
-      "sha256": "sha256:6a8a3b0b7810d1eeb7c9091c7c93d16e54847ebc262e5e7cdfbc3cc2784b7a76"
+      "bytes": 6001,
+      "sha256": "sha256:abe5dec3080a194bad4408ef9dc12d8b74327f6e83703836bb358253dba409dd"
     }
   ]
 }

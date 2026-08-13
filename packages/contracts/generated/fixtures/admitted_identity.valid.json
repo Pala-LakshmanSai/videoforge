@@ -1,0 +1,11 @@
+{
+  "schema_version": "admitted-identity/v2",
+  "admission_id": "admission_fixture_001",
+  "user_id": "user_fixture_001",
+  "normalized_email": "fixture@example.com",
+  "email_verified_at": "2026-08-13T09:00:00.000Z",
+  "invite_redemption_id": "invite_redemption_fixture_001",
+  "auth_methods": ["EMAIL_PASSWORD"],
+  "status": "ADMITTED",
+  "version": 1
+}

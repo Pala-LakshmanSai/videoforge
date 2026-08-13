@@ -1,0 +1,13 @@
+{
+  "schema_version": "global-generation-session/v2",
+  "session": {},
+  "queue": {},
+  "lane_volumes": {
+    "mage_image": {"routine_deletion_allowed": true},
+    "echo_avatar": {"routine_deletion_allowed": false}
+  },
+  "lane_states": {},
+  "durable_outputs": [],
+  "cost_summary": {},
+  "events": []
+}

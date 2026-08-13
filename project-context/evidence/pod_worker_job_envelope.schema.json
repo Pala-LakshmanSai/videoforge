@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/pod-worker-job-envelope-v2.json",
+  "title": "VideoForge Isolated Pod Worker Job Envelope v2",
+  "description": "Paid-dispatch-safe vNext Pod envelope. Additional properties fail closed so legacy endpoints, worker counts, automatic GPU routing, repair, and fallback fields cannot enter dispatch.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "dispatch_target",
+    "provider_api",
+    "generation_session_id",
+    "queue_entry_id",
+    "compute_run_plan_id",
+    "compute_run_plan_sha256",
+    "lane",
+    "pod_resource_binding",
+    "input_manifest",
+    "output_prefix",
+    "maximum_cost_micro_usd",
+    "deadline_at"
+  ],
+  "properties": {
+    "schema_version": {"const": "pod-worker-job-envelope/v2"},
+    "dispatch_target": {"const": "RUNPOD_POD"},
+    "provider_api": {"const": "runpod-pods/v1"},
+    "generation_session_id": {"$ref": "#/$defs/id"},
+    "queue_entry_id": {"$ref": "#/$defs/id"},
+    "compute_run_plan_id": {"$ref": "#/$defs/id"},
+    "compute_run_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "lane": {"enum": ["mage_image", "echo_avatar"]},
+    "pod_resource_binding": {"$ref": "#/$defs/podBinding"},
+    "input_manifest": {"$ref": "#/$defs/artifactPointer"},
+    "output_prefix": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 600,
+      "pattern": "^sessions/[A-Za-z0-9._:-]+/"
+    },
+    "maximum_cost_micro_usd": {"type": "integer", "minimum": 0, "maximum": 2000000},
+    "deadline_at": {"$ref": "#/$defs/timestamp"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+    },
+    "artifactPointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "sha256"],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/id"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "podBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pod_attempt_id",
+        "create_attempt_id",
+        "lane",
+        "worker_contract",
+        "container_digest",
+        "model_id",
+        "model_revision",
+        "precision",
+        "model_volume_id",
+        "provider_volume_id",
+        "manifest_id",
+        "manifest_sha256",
+        "region",
+        "mount_path",
+        "inventory_receipt_id",
+        "offering_id",
+        "selected_gpu_sku",
+        "gpu_count",
+        "rate_ceiling_micro_usd_per_hour"
+      ],
+      "properties": {
+        "pod_attempt_id": {"$ref": "#/$defs/id"},
+        "create_attempt_id": {"$ref": "#/$defs/id"},
+        "lane": {"enum": ["mage_image", "echo_avatar"]},
+        "worker_contract": {"enum": ["videoforge-mage-pod/v1", "videoforge-echo-pod/v1"]},
+        "container_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "model_id": {"type": "string", "minLength": 1, "maxLength": 240},
+        "model_revision": {"type": "string", "minLength": 1, "maxLength": 240},
+        "precision": {"enum": ["int8-convrot", "fp8"]},
+        "model_volume_id": {"$ref": "#/$defs/id"},
+        "provider_volume_id": {"$ref": "#/$defs/id"},
+        "manifest_id": {"$ref": "#/$defs/id"},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "region": {"const": "EU-RO-1"},
+        "mount_path": {"enum": ["/models/mage", "/models/echo"]},
+        "inventory_receipt_id": {"$ref": "#/$defs/id"},
+        "offering_id": {"$ref": "#/$defs/id"},
+        "selected_gpu_sku": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120,
+          "not": {"pattern": "^[Aa][Uu][Tt][Oo]$"}
+        },
+        "gpu_count": {"const": 1},
+        "rate_ceiling_micro_usd_per_hour": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

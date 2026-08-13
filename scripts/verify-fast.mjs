@@ -38,6 +38,7 @@ await runPhase([
   { label: "root lint", script: "lint:root" },
   { label: "Python lint", script: "python:lint" },
   { label: "verification graph", script: "verify:graph" },
+  { label: "vNext dispatch firewall", script: "verify:vnext-dispatch-firewall" },
 ]);
 
 await runPhase([{ label: "package graph", script: "verify:packages" }]);

@@ -78,6 +78,12 @@
       "name": "provider_neutral_image_acceptance",
       "filename": "0013_provider_neutral_image_acceptance.sql",
       "sha256": "sha256:623a19d64bab39f276b902bc0c6a5746400f8249334538bc949636ca1c13f877"
+    },
+    {
+      "version": 14,
+      "name": "global_session_vnext",
+      "filename": "0014_global_session_vnext.sql",
+      "sha256": "sha256:a9fbe15d6b9380cf422683c3347f2425c464edc51544924f644548eacbc8aa0a"
     }
   ]
 }

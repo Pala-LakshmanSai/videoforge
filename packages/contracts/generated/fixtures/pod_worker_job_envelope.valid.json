@@ -1,0 +1,38 @@
+{
+  "schema_version": "pod-worker-job-envelope/v2",
+  "dispatch_target": "RUNPOD_POD",
+  "provider_api": "runpod-pods/v1",
+  "generation_session_id": "session_fixture_001",
+  "queue_entry_id": "queue_entry_active_fixture_001",
+  "compute_run_plan_id": "compute_run_fixture_001",
+  "compute_run_plan_sha256": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+  "lane": "mage_image",
+  "pod_resource_binding": {
+    "pod_attempt_id": "pod_attempt_mage_fixture_001",
+    "create_attempt_id": "create_attempt_mage_fixture_001",
+    "lane": "mage_image",
+    "worker_contract": "videoforge-mage-pod/v1",
+    "container_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+    "model_id": "Comfy-Org/Mage-Flow",
+    "model_revision": "d8c99241f6fa80fbd453014234af2bf337ea21e6",
+    "precision": "int8-convrot",
+    "model_volume_id": "volume_mage_fixture_001",
+    "provider_volume_id": "provider_volume_mage_fixture_001",
+    "manifest_id": "manifest_mage_fixture_001",
+    "manifest_sha256": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "region": "EU-RO-1",
+    "mount_path": "/models/mage",
+    "inventory_receipt_id": "receipt_mage_fixture_001",
+    "offering_id": "offering_mage_fixture_001",
+    "selected_gpu_sku": "NVIDIA GeForce RTX 4090",
+    "gpu_count": 1,
+    "rate_ceiling_micro_usd_per_hour": 350000
+  },
+  "input_manifest": {
+    "artifact_id": "input_manifest_fixture_001",
+    "sha256": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+  },
+  "output_prefix": "sessions/session_fixture_001/mage/create_attempt_mage_fixture_001/",
+  "maximum_cost_micro_usd": 100000,
+  "deadline_at": "2026-08-13T09:15:00.000Z"
+}

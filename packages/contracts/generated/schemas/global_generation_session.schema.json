@@ -1,0 +1,454 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/global-generation-session-v2.json",
+  "title": "VideoForge Global Generation Session v2",
+  "description": "Provider-free snapshot contract for one singleton session, immutable GPU pair, global queue, isolated volumes, Pod lifecycle, durable outputs, and cost.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "session",
+    "queue",
+    "lane_volumes",
+    "lane_states",
+    "durable_outputs",
+    "cost_summary",
+    "events"
+  ],
+  "properties": {
+    "schema_version": {"const": "global-generation-session/v2"},
+    "session": {"$ref": "#/$defs/session"},
+    "queue": {"$ref": "#/$defs/queue"},
+    "lane_volumes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mage_image", "echo_avatar"],
+      "properties": {
+        "mage_image": {"$ref": "#/$defs/mageVolume"},
+        "echo_avatar": {"$ref": "#/$defs/echoVolume"}
+      }
+    },
+    "lane_states": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mage_image", "echo_avatar"],
+      "properties": {
+        "mage_image": {"$ref": "#/$defs/mageLaneState"},
+        "echo_avatar": {"$ref": "#/$defs/echoLaneState"}
+      }
+    },
+    "durable_outputs": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {"$ref": "#/$defs/durableOutput"}
+    },
+    "cost_summary": {"$ref": "#/$defs/costSummary"},
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100000,
+      "items": {"$ref": "#/$defs/event"}
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+    },
+    "nullableTimestamp": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/timestamp"}]
+    },
+    "nullableId": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]},
+    "inventoryReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "receipt_id",
+        "provider",
+        "cloud_type",
+        "region",
+        "offering_id",
+        "gpu_sku",
+        "gpu_count",
+        "available_count",
+        "observed_rate_micro_usd_per_hour",
+        "observed_at",
+        "expires_at"
+      ],
+      "properties": {
+        "receipt_id": {"$ref": "#/$defs/id"},
+        "provider": {"const": "RUNPOD"},
+        "cloud_type": {"const": "SECURE_CLOUD"},
+        "region": {"const": "EU-RO-1"},
+        "offering_id": {"$ref": "#/$defs/id"},
+        "gpu_sku": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120,
+          "not": {"pattern": "^[Aa][Uu][Tt][Oo]$"}
+        },
+        "gpu_count": {"const": 1},
+        "available_count": {"type": "integer", "minimum": 1},
+        "observed_rate_micro_usd_per_hour": {"type": "integer", "minimum": 1},
+        "observed_at": {"$ref": "#/$defs/timestamp"},
+        "expires_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "gpuSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lane", "receipt", "rate_ceiling_micro_usd_per_hour", "revalidated_at"],
+      "properties": {
+        "lane": {"enum": ["mage_image", "echo_avatar"]},
+        "receipt": {"$ref": "#/$defs/inventoryReceipt"},
+        "rate_ceiling_micro_usd_per_hour": {"type": "integer", "minimum": 1},
+        "revalidated_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generation_session_id",
+        "singleton_key",
+        "state",
+        "version",
+        "selected_by_admission_id",
+        "opened_at",
+        "closing_at",
+        "closed_at",
+        "gpu_pair_hash",
+        "gpu_pair"
+      ],
+      "properties": {
+        "generation_session_id": {"$ref": "#/$defs/id"},
+        "singleton_key": {"const": "GLOBAL"},
+        "state": {"enum": ["ACTIVE", "DRAINING", "CLOSED"]},
+        "version": {"type": "integer", "minimum": 1},
+        "selected_by_admission_id": {"$ref": "#/$defs/id"},
+        "opened_at": {"$ref": "#/$defs/timestamp"},
+        "closing_at": {"$ref": "#/$defs/nullableTimestamp"},
+        "closed_at": {"$ref": "#/$defs/nullableTimestamp"},
+        "gpu_pair_hash": {"$ref": "#/$defs/sha256"},
+        "gpu_pair": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mage_image", "echo_avatar"],
+          "properties": {
+            "mage_image": {"$ref": "#/$defs/gpuSelection"},
+            "echo_avatar": {"$ref": "#/$defs/gpuSelection"}
+          }
+        }
+      }
+    },
+    "queueEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "queue_entry_id",
+        "project_revision_id",
+        "submitted_by_admission_id",
+        "position",
+        "state",
+        "inherited_gpu_pair_hash",
+        "compute_run_plan_id",
+        "executable_fact_count",
+        "version"
+      ],
+      "properties": {
+        "queue_entry_id": {"$ref": "#/$defs/id"},
+        "project_revision_id": {"$ref": "#/$defs/id"},
+        "submitted_by_admission_id": {"$ref": "#/$defs/id"},
+        "position": {"type": "integer", "minimum": 0},
+        "state": {"enum": ["ACTIVE", "WAITING", "TERMINAL", "REMOVED"]},
+        "inherited_gpu_pair_hash": {"$ref": "#/$defs/sha256"},
+        "compute_run_plan_id": {"$ref": "#/$defs/nullableId"},
+        "executable_fact_count": {"type": "integer", "minimum": 0},
+        "version": {"type": "integer", "minimum": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"state": {"const": "WAITING"}}, "required": ["state"]},
+          "then": {
+            "properties": {
+              "compute_run_plan_id": {"type": "null"},
+              "executable_fact_count": {"const": 0}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"state": {"const": "ACTIVE"}}, "required": ["state"]},
+          "then": {
+            "properties": {
+              "compute_run_plan_id": {"$ref": "#/$defs/id"},
+              "executable_fact_count": {"type": "integer", "minimum": 1}
+            }
+          }
+        }
+      ]
+    },
+    "queue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "entries"],
+      "properties": {
+        "version": {"type": "integer", "minimum": 1},
+        "entries": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {"$ref": "#/$defs/queueEntry"}
+        }
+      }
+    },
+    "volumeBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_volume_id",
+        "provider_volume_id",
+        "lane",
+        "region",
+        "mount_path",
+        "model_id",
+        "model_revision",
+        "precision",
+        "manifest_id",
+        "manifest_sha256",
+        "manifest_verified",
+        "retention_state",
+        "routine_deletion_allowed"
+      ],
+      "properties": {
+        "model_volume_id": {"$ref": "#/$defs/id"},
+        "provider_volume_id": {"$ref": "#/$defs/id"},
+        "lane": {"enum": ["mage_image", "echo_avatar"]},
+        "region": {"const": "EU-RO-1"},
+        "mount_path": {"enum": ["/models/mage", "/models/echo"]},
+        "model_id": {"type": "string", "minLength": 1, "maxLength": 240},
+        "model_revision": {"type": "string", "minLength": 1, "maxLength": 240},
+        "precision": {"enum": ["int8-convrot", "fp8"]},
+        "manifest_id": {"$ref": "#/$defs/id"},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "manifest_verified": {"const": true},
+        "retention_state": {"const": "RETAINED"},
+        "routine_deletion_allowed": {"const": false}
+      }
+    },
+    "mageVolume": {
+      "allOf": [
+        {"$ref": "#/$defs/volumeBase"},
+        {
+          "type": "object",
+          "properties": {
+            "lane": {"const": "mage_image"},
+            "mount_path": {"const": "/models/mage"},
+            "model_id": {"const": "Comfy-Org/Mage-Flow"},
+            "model_revision": {"const": "d8c99241f6fa80fbd453014234af2bf337ea21e6"},
+            "precision": {"const": "int8-convrot"}
+          }
+        }
+      ]
+    },
+    "echoVolume": {
+      "allOf": [
+        {"$ref": "#/$defs/volumeBase"},
+        {
+          "type": "object",
+          "properties": {
+            "lane": {"const": "echo_avatar"},
+            "mount_path": {"const": "/models/echo"},
+            "model_id": {"const": "EchoMimicV3-Flash"},
+            "precision": {"const": "fp8"}
+          }
+        }
+      ]
+    },
+    "absenceReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["receipt_id", "provider_state", "observed_at"],
+      "properties": {
+        "receipt_id": {"$ref": "#/$defs/id"},
+        "provider_state": {"const": "ABSENT"},
+        "observed_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "podAttempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pod_attempt_id",
+        "create_attempt_id",
+        "create_status",
+        "provider_pod_id",
+        "selected_gpu_sku",
+        "actual_gpu_sku",
+        "model_volume_id",
+        "manifest_sha256",
+        "container_ready",
+        "volume_verified",
+        "warmup_passed",
+        "model_ready",
+        "delete_status",
+        "absence_receipt"
+      ],
+      "properties": {
+        "pod_attempt_id": {"$ref": "#/$defs/id"},
+        "create_attempt_id": {"$ref": "#/$defs/id"},
+        "create_status": {
+          "enum": ["REQUESTED", "ACKNOWLEDGED", "ACK_UNKNOWN", "AMBIGUOUS", "RECONCILED_ABSENT"]
+        },
+        "provider_pod_id": {"$ref": "#/$defs/nullableId"},
+        "selected_gpu_sku": {"type": "string", "minLength": 2, "maxLength": 120},
+        "actual_gpu_sku": {
+          "oneOf": [{"type": "null"}, {"type": "string", "minLength": 2, "maxLength": 120}]
+        },
+        "model_volume_id": {"$ref": "#/$defs/id"},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "container_ready": {"type": "boolean"},
+        "volume_verified": {"type": "boolean"},
+        "warmup_passed": {"type": "boolean"},
+        "model_ready": {"type": "boolean"},
+        "delete_status": {
+          "enum": ["NOT_REQUESTED", "REQUESTED", "ACKNOWLEDGED", "ACK_UNKNOWN", "ABSENCE_VERIFIED"]
+        },
+        "absence_receipt": {
+          "oneOf": [{"type": "null"}, {"$ref": "#/$defs/absenceReceipt"}]
+        }
+      }
+    },
+    "laneStateBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lane", "demand", "active_queue_entry_id", "pod_attempts"],
+      "properties": {
+        "lane": {"enum": ["mage_image", "echo_avatar"]},
+        "demand": {"enum": ["ACTIVE", "WAITING_WARM", "ZERO"]},
+        "active_queue_entry_id": {"$ref": "#/$defs/nullableId"},
+        "pod_attempts": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {"$ref": "#/$defs/podAttempt"}
+        }
+      }
+    },
+    "mageLaneState": {
+      "allOf": [
+        {"$ref": "#/$defs/laneStateBase"},
+        {"type": "object", "properties": {"lane": {"const": "mage_image"}}}
+      ]
+    },
+    "echoLaneState": {
+      "allOf": [
+        {"$ref": "#/$defs/laneStateBase"},
+        {"type": "object", "properties": {"lane": {"const": "echo_avatar"}}}
+      ]
+    },
+    "durableOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "output_id",
+        "queue_entry_id",
+        "lane",
+        "artifact_id",
+        "sha256",
+        "bytes",
+        "durability_state",
+        "verified_at"
+      ],
+      "properties": {
+        "output_id": {"$ref": "#/$defs/id"},
+        "queue_entry_id": {"$ref": "#/$defs/id"},
+        "lane": {"enum": ["mage_image", "echo_avatar", "render"]},
+        "artifact_id": {"$ref": "#/$defs/id"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 1},
+        "durability_state": {"const": "VERIFIED"},
+        "verified_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "costEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cost_event_id", "lane", "stage", "amount_micro_usd", "occurred_at"],
+      "properties": {
+        "cost_event_id": {"$ref": "#/$defs/id"},
+        "lane": {"enum": ["mage_image", "echo_avatar", "cpu", "session"]},
+        "stage": {"enum": ["RESERVED", "REPORTED", "SETTLED"]},
+        "amount_micro_usd": {"type": "integer", "minimum": 0},
+        "occurred_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "costSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currency",
+        "hard_ceiling_micro_usd",
+        "reserved_micro_usd",
+        "reported_micro_usd",
+        "settled_micro_usd",
+        "fixed_volume_cost_included",
+        "events"
+      ],
+      "properties": {
+        "currency": {"const": "USD"},
+        "hard_ceiling_micro_usd": {"type": "integer", "minimum": 1, "maximum": 2000000},
+        "reserved_micro_usd": {"type": "integer", "minimum": 0},
+        "reported_micro_usd": {"type": "integer", "minimum": 0},
+        "settled_micro_usd": {"type": "integer", "minimum": 0},
+        "fixed_volume_cost_included": {"const": false},
+        "events": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {"$ref": "#/$defs/costEvent"}
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "sequence", "kind", "occurred_at", "payload_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/id"},
+        "sequence": {"type": "integer", "minimum": 1},
+        "kind": {
+          "enum": [
+            "GENERATION_SESSION_OPENED",
+            "QUEUE_ENTRY_ADDED",
+            "QUEUE_ENTRY_MOVED",
+            "QUEUE_ENTRY_REMOVED",
+            "QUEUE_ENTRY_ACTIVATED",
+            "GPU_SELECTION_REVALIDATED",
+            "LANE_DEMAND_POSITIVE",
+            "LANE_DEMAND_ZERO",
+            "LANE_WARM_RETAINED",
+            "POD_CREATE_REQUESTED",
+            "POD_CREATE_ACKNOWLEDGED",
+            "POD_CREATE_RECONCILING",
+            "MODEL_VOLUME_VERIFIED",
+            "CONTAINER_READY",
+            "MODEL_READY",
+            "OUTPUT_DURABLE",
+            "POD_DELETE_REQUESTED",
+            "POD_DELETE_ACKNOWLEDGED",
+            "POD_DELETE_RECONCILING",
+            "POD_ABSENCE_VERIFIED",
+            "GENERATION_SESSION_CLOSING",
+            "GENERATION_SESSION_CLOSED"
+          ]
+        },
+        "occurred_at": {"$ref": "#/$defs/timestamp"},
+        "payload_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

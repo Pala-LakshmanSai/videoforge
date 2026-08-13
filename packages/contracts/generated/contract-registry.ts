@@ -3,6 +3,20 @@ export const canonicalContractRegistry = {
   "schema_version": "contract-index/v1",
   "contracts": [
     {
+      "name": "admittedIdentity",
+      "schema": "admitted_identity.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/admitted_identity.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/admitted_identity.invalid.unverified.json",
+          "expected": false
+        }
+      ]
+    },
+    {
       "name": "avatarProfileVersion",
       "schema": "avatar_profile_version.schema.json",
       "fixtures": [
@@ -41,6 +55,20 @@ export const canonicalContractRegistry = {
         {
           "path": "fixtures/durable_timing_lineage.invalidated.valid.json",
           "expected": true
+        }
+      ]
+    },
+    {
+      "name": "globalGenerationSession",
+      "schema": "global_generation_session.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/global_generation_session.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/global_generation_session.invalid.routine_volume_delete.json",
+          "expected": false
         }
       ]
     },
@@ -118,6 +146,20 @@ export const canonicalContractRegistry = {
         {
           "path": "fixtures/production_manifest.valid.json",
           "expected": true
+        }
+      ]
+    },
+    {
+      "name": "podWorkerJobEnvelope",
+      "schema": "pod_worker_job_envelope.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/pod_worker_job_envelope.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/pod_worker_job_envelope.invalid.legacy_dispatch.json",
+          "expected": false
         }
       ]
     },

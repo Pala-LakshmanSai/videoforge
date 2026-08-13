@@ -48,6 +48,60 @@ test("a fresh PGlite database applies the committed migration chain idempotently
   }
 });
 
+test("global-session vNext upgrades the complete legacy chain without rewriting legacy rows", async () => {
+  const database = new PGlite();
+  try {
+    const executor = new PGliteExecutor(database);
+    const sources = await loadMigrationSources();
+    await executor.execute(
+      `CREATE TABLE public.videoforge_schema_migrations (
+         version integer PRIMARY KEY CHECK (version > 0),
+         name text NOT NULL CHECK (name ~ '^[a-z0-9_]+$'),
+         filename text NOT NULL UNIQUE,
+         sha256 text NOT NULL CHECK (sha256 ~ '^sha256:[0-9a-f]{64}$'),
+         applied_at timestamptz NOT NULL DEFAULT now()
+       )`,
+    );
+    for (const migration of sources.slice(0, 13)) {
+      await executor.execute(migration.sql);
+      await executor.query(
+        `INSERT INTO videoforge_schema_migrations (version, name, filename, sha256)
+         VALUES ($1, $2, $3, $4)`,
+        [migration.version, migration.name, migration.filename, migration.sha256],
+      );
+    }
+    await seedLockedProjects(executor);
+    const before = await executor.query(
+      `SELECT id, workspace_id, owner_user_id, name, normalized_name, status, version,
+              created_at, updated_at, archived_at
+         FROM projects ORDER BY id`,
+    );
+
+    const upgraded = await applyMigrations(executor, sources);
+
+    assert.deepEqual(upgraded.appliedVersions, [14]);
+    assert.deepEqual(
+      upgraded.alreadyAppliedVersions,
+      Array.from({ length: 13 }, (_, index) => index + 1),
+    );
+    const after = await executor.query(
+      `SELECT id, workspace_id, owner_user_id, name, normalized_name, status, version,
+              created_at, updated_at, archived_at
+         FROM projects ORDER BY id`,
+    );
+    assert.deepEqual(after.rows, before.rows);
+    const vNextRows = await executor.query(
+      `SELECT
+         (SELECT count(*)::text FROM generation_sessions) AS sessions,
+         (SELECT count(*)::text FROM global_queue_entries) AS queue_entries,
+         (SELECT count(*)::text FROM pod_lifecycle_attempts) AS pod_attempts`,
+    );
+    assert.deepEqual(vNextRows.rows, [{ sessions: "0", queue_entries: "0", pod_attempts: "0" }]);
+  } finally {
+    await database.close();
+  }
+});
+
 test("later durable migrations upgrade the five-migration baseline", async () => {
   const database = new PGlite();
   try {
@@ -120,7 +174,7 @@ test("later durable migrations upgrade the five-migration baseline", async () =>
     );
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [6, 7, 8, 9, 10, 11, 12, 13]);
+    assert.deepEqual(upgraded.appliedVersions, [6, 7, 8, 9, 10, 11, 12, 13, 14]);
     assert.deepEqual(upgraded.alreadyAppliedVersions, [1, 2, 3, 4, 5]);
     const legacy = await executor.query(
       `SELECT transcript.lineage_contract_version, transcript.input_fingerprint_hash,
@@ -155,7 +209,10 @@ test("later durable migrations upgrade the five-migration baseline", async () =>
 
     const replay = await applyMigrations(executor, sources);
     assert.deepEqual(replay.appliedVersions, []);
-    assert.deepEqual(replay.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    assert.deepEqual(
+      replay.alreadyAppliedVersions,
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+    );
   } finally {
     await database.close();
   }
@@ -185,7 +242,7 @@ test("reference-contract migration upgrades a clean seven-migration database", a
     }
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [8, 9, 10, 11, 12, 13]);
+    assert.deepEqual(upgraded.appliedVersions, [8, 9, 10, 11, 12, 13, 14]);
     assert.deepEqual(upgraded.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7]);
   } finally {
     await database.close();
@@ -334,7 +391,7 @@ test("style artifact migration backfills only accepted analyzer profiles as immu
     await executor.execute("COMMIT");
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [10, 11, 12, 13]);
+    assert.deepEqual(upgraded.appliedVersions, [10, 11, 12, 13, 14]);
     const root = await executor.query(
       `SELECT version.root_profile_artifact_id, version.current_profile_artifact_id,
               version.profile_revision, artifact.origin, artifact.profile_hash,

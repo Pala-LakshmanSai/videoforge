@@ -1,0 +1,11 @@
+{
+  "schema_version": "pod-worker-job-envelope/v2",
+  "dispatch_target": "RUNPOD_SERVERLESS",
+  "provider_api": "runpod-serverless/v1",
+  "endpoint_id": "legacy_endpoint_fixture_001",
+  "workersMin": 0,
+  "workersMax": 1,
+  "gpu": "Auto",
+  "worker": "MuseTalk",
+  "fallback": "SkyReels"
+}

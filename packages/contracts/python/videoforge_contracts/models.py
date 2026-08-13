@@ -56,6 +56,10 @@ class AvatarProfileVersionDocument(CanonicalContractDocument):
     contract_name = "avatarProfileVersion"
 
 
+class AdmittedIdentityDocument(CanonicalContractDocument):
+    contract_name = "admittedIdentity"
+
+
 class DurableTimingLineageDocument(CanonicalContractDocument):
     contract_name = "durableTimingLineage"
 
@@ -88,6 +92,14 @@ class ProductionManifestDocument(CanonicalContractDocument):
     contract_name = "productionManifest"
 
 
+class GlobalGenerationSessionDocument(CanonicalContractDocument):
+    contract_name = "globalGenerationSession"
+
+
+class PodWorkerJobEnvelopeDocument(CanonicalContractDocument):
+    contract_name = "podWorkerJobEnvelope"
+
+
 class WorkerJobEnvelopeDocument(CanonicalContractDocument):
     contract_name = "workerJobEnvelope"
 
@@ -117,9 +129,11 @@ class RenderJobResultDocument(CanonicalContractDocument):
 
 
 CONTRACT_MODELS: dict[ContractName, type[BaseModel]] = {
+    "admittedIdentity": AdmittedIdentityDocument,
     "avatarProfileVersion": AvatarProfileVersionDocument,
     "createProjectRequest": CreateProjectRequest,
     "durableTimingLineage": DurableTimingLineageDocument,
+    "globalGenerationSession": GlobalGenerationSessionDocument,
     "imageStyleProfile": ImageStyleProfileDocument,
     "imageStyleAnalyzerOutput": ImageStyleAnalyzerOutputDocument,
     "orchestrationState": OrchestrationStateDocument,
@@ -127,6 +141,7 @@ CONTRACT_MODELS: dict[ContractName, type[BaseModel]] = {
     "timelinePlan": TimelinePlanDocument,
     "resolvedRenderManifest": ResolvedRenderManifestDocument,
     "productionManifest": ProductionManifestDocument,
+    "podWorkerJobEnvelope": PodWorkerJobEnvelopeDocument,
     "workerJobEnvelope": WorkerJobEnvelopeDocument,
     "transcriptTiming": TranscriptTimingDocument,
     "asrJobInput": AsrJobInputDocument,
