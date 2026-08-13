@@ -1316,7 +1316,7 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
             assetId: `asset_avatar_clip_${renderMedia.avatarClip.sha256.slice(7, 31)}`,
             sha256: renderMedia.avatarClip.sha256,
             kind: "AVATAR_CLIP" as const,
-            rendererSourceProfile: "avatarforcing-centered-832x480p25-v1",
+            rendererSourceProfile: "local-fixture-centered-832x480p25-v1",
           };
           return Object.freeze({
             ...binding,

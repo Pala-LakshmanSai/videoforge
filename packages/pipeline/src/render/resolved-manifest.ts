@@ -26,6 +26,20 @@ export const SUPPORTED_RENDER_PROFILE_VERSION = "ffmpeg-render-v3";
 const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 
 const AVATAR_GEOMETRY = {
+  "local-fixture-centered-832x480p25-v1": {
+    AVATAR_FULL: {
+      avatar_source_profile: "local-fixture-centered-832x480p25-v1",
+      avatar_crop: "832:468:0:6",
+      avatar_scale: "1920:1080",
+      avatar_fps: "30:round=near",
+    },
+    AVATAR_SPLIT_IMAGE: {
+      avatar_source_profile: "local-fixture-centered-832x480p25-v1",
+      avatar_crop: "416:468:208:6",
+      avatar_scale: "960:1080",
+      avatar_fps: "30:round=near",
+    },
+  },
   "avatarforcing-centered-832x480p25-v1": {
     AVATAR_FULL: {
       avatar_source_profile: "avatarforcing-centered-832x480p25-v1",

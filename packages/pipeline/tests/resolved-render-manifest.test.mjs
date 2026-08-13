@@ -159,6 +159,39 @@ test("locks exact AvatarForcing and SkyReels full/split renderer geometry", asyn
   );
 });
 
+test("uses an explicit provider-free local fixture profile without legacy runtime identity", async () => {
+  const localCandidates = CANDIDATES.map((candidate) =>
+    candidate.kind === "AVATAR_CLIP"
+      ? {
+          ...candidate,
+          rendererSourceProfile: "local-fixture-centered-832x480p25-v1",
+        }
+      : candidate,
+  );
+  const manifest = requireSuccess(
+    await planResolvedRenderManifest(await requestWith(localCandidates)),
+  ).value;
+  const full = manifest.segments.find((segment) => segment.timeline_composition === "AVATAR_FULL");
+  const split = manifest.segments.find(
+    (segment) => segment.timeline_composition === "AVATAR_SPLIT_IMAGE",
+  );
+
+  assert.deepEqual(full?.render, {
+    avatar_source_profile: "local-fixture-centered-832x480p25-v1",
+    avatar_crop: "832:468:0:6",
+    avatar_scale: "1920:1080",
+    avatar_fps: "30:round=near",
+  });
+  assert.deepEqual(split?.render, {
+    avatar_source_profile: "local-fixture-centered-832x480p25-v1",
+    avatar_crop: "416:468:208:6",
+    avatar_scale: "960:1080",
+    avatar_fps: "30:round=near",
+    right_image_scale: "960:1080",
+    right_image_zoom_profile: "split-right-zoom-v3",
+  });
+});
+
 test("fails closed for missing, duplicate, kind-mismatched, and conflicting bindings", async () => {
   const { timeline } = await canonicalInputs();
   const requiredTaskKeys = collectRequiredAssetTaskKeys(timeline.value);

@@ -3958,6 +3958,7 @@ export const canonicalSchemaDocuments = {
             "properties": {
               "avatar_source_profile": {
                 "enum": [
+                  "local-fixture-centered-832x480p25-v1",
                   "avatarforcing-centered-832x480p25-v1",
                   "skyreels-centered-960x960p25-v2"
                 ]
@@ -3976,6 +3977,22 @@ export const canonicalSchemaDocuments = {
               }
             },
             "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "avatar_source_profile": {
+                      "const": "local-fixture-centered-832x480p25-v1"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "avatar_crop": {
+                      "const": "832:468:0:6"
+                    }
+                  }
+                }
+              },
               {
                 "if": {
                   "properties": {
@@ -4132,6 +4149,7 @@ export const canonicalSchemaDocuments = {
             "properties": {
               "avatar_source_profile": {
                 "enum": [
+                  "local-fixture-centered-832x480p25-v1",
                   "avatarforcing-centered-832x480p25-v1",
                   "skyreels-centered-960x960p25-v2"
                 ]
@@ -4160,6 +4178,22 @@ export const canonicalSchemaDocuments = {
               }
             },
             "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "avatar_source_profile": {
+                      "const": "local-fixture-centered-832x480p25-v1"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "avatar_crop": {
+                      "const": "416:468:208:6"
+                    }
+                  }
+                }
+              },
               {
                 "if": {
                   "properties": {

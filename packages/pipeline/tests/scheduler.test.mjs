@@ -618,3 +618,70 @@ test("owned 30-minute work plan is complete, immutable, replayable, and provider
     }),
   );
 });
+
+test("complete work plans reject forged scheduler identity, word cuts, and duplicate work", async () => {
+  const transcriptValue = createPropertyTranscript({
+    durationMs: 1_800_000,
+    phraseStarts: Array.from({ length: 360 }, (_, index) => index * 5_000),
+  });
+  const request = await propertyRequest(982_341, transcriptValue);
+  const timeline = requireSuccess(await scheduleTimeline(request));
+  const schedulerConfigHash = await sha256CanonicalJson(SUPPORTED_SCHEDULER_CONFIG);
+
+  const wrongConfig = await compileCompleteWorkPlan({
+    revision: request.revision,
+    transcript: request.transcript,
+    timeline,
+    schedulerConfigHash: SHA_C,
+    selectedSpanAudio: materializedSpans(timeline.value, transcriptValue.source.duration_ms),
+  });
+  assert.equal(wrongConfig.ok, false);
+  assert.deepEqual(wrongConfig.error.path, ["schedulerConfigHash"]);
+
+  const cutTimelineValue = structuredClone(timeline.value);
+  const cutIndex = cutTimelineValue.segments.findIndex((segment, index) => {
+    const next = cutTimelineValue.segments[index + 1];
+    return (
+      next !== undefined &&
+      Math.round((segment.source_audio_end_ms * 30) / 1_000) ===
+        Math.round(((segment.source_audio_end_ms + 1) * 30) / 1_000)
+    );
+  });
+  assert.notEqual(cutIndex, -1);
+  cutTimelineValue.segments[cutIndex].source_audio_end_ms += 1;
+  cutTimelineValue.segments[cutIndex + 1].source_audio_start_ms += 1;
+  const cutTimeline = await validateAndHashContractDocument("timelinePlan", cutTimelineValue);
+  const cutResult = await compileCompleteWorkPlan({
+    revision: request.revision,
+    transcript: request.transcript,
+    timeline: cutTimeline,
+    schedulerConfigHash,
+    selectedSpanAudio: materializedSpans(cutTimeline.value, transcriptValue.source.duration_ms),
+  });
+  assert.equal(cutResult.ok, false);
+  assert.deepEqual(cutResult.error.path, ["timeline"]);
+
+  const duplicateTimelineValue = structuredClone(timeline.value);
+  const avatarSegments = duplicateTimelineValue.segments.filter(
+    (segment) => segment.timeline_composition !== "IMAGE_FULL",
+  );
+  assert.ok(avatarSegments.length >= 2);
+  avatarSegments[1].required_slots.avatar.task_key =
+    avatarSegments[0].required_slots.avatar.task_key;
+  const duplicateTimeline = await validateAndHashContractDocument(
+    "timelinePlan",
+    duplicateTimelineValue,
+  );
+  const duplicateResult = await compileCompleteWorkPlan({
+    revision: request.revision,
+    transcript: request.transcript,
+    timeline: duplicateTimeline,
+    schedulerConfigHash,
+    selectedSpanAudio: materializedSpans(
+      duplicateTimeline.value,
+      transcriptValue.source.duration_ms,
+    ),
+  });
+  assert.equal(duplicateResult.ok, false);
+  assert.deepEqual(duplicateResult.error.path, ["timeline"]);
+});

@@ -1,4 +1,5 @@
 import {
+  sha256CanonicalJson,
   validateAndHashContractDocument,
   type Sha256Digest,
   type TimelinePlanDocument,
@@ -8,7 +9,7 @@ import {
 import type { ProjectRevisionDocumentRef, TimelinePlanDocumentRef } from "../documents.js";
 import type { TranscriptDocumentRef } from "../transcript/types.js";
 import { pipelineFailure, pipelineSuccess, type PipelineResult } from "../errors.js";
-import { SUPPORTED_SCHEDULER_CONFIG } from "./scheduler.js";
+import { SUPPORTED_SCHEDULER_CONFIG, validateTimelineSemantics } from "./scheduler.js";
 
 export interface MaterializedSelectedSpan {
   readonly spanId: string;
@@ -78,9 +79,15 @@ function validateExactTimeline(request: CompleteWorkPlanRequest): string | null 
   if (
     request.revision.value.project_revision_id !== request.timeline.value.project_revision_id ||
     request.transcript.value.project_revision_id !== request.timeline.value.project_revision_id ||
-    request.timeline.value.revision_config_hash !== request.revision.sha256
+    request.timeline.value.revision_config_hash !== request.revision.sha256 ||
+    request.timeline.value.scheduler_version !== request.revision.value.scheduler_version ||
+    request.timeline.value.seed !== request.revision.value.scheduler_seed ||
+    request.transcript.value.source.asset_id !== request.revision.value.voiceover_asset_id ||
+    request.transcript.value.source.sha256 !== request.revision.value.voiceover_sha256
   )
-    return "Revision, transcript, and timeline identity must match exactly.";
+    return "Revision, transcript, source, and timeline identity must match exactly.";
+
+  const taskKeys = new Set<string>();
 
   let nextFrame = 0;
   let nextSourceMs = 0;
@@ -94,6 +101,23 @@ function validateExactTimeline(request: CompleteWorkPlanRequest): string | null 
       segment.source_audio_end_ms <= segment.source_audio_start_ms
     )
       return "Timeline must provide exact contiguous frame, source-time, and word coverage.";
+    const segmentTaskKeys =
+      segment.timeline_composition === "AVATAR_FULL"
+        ? [
+            segment.required_slots.avatar.task_key,
+            segment.required_slots.avatar.span_audio_task_key,
+          ]
+        : segment.timeline_composition === "IMAGE_FULL"
+          ? [segment.required_slots.image.task_key]
+          : [
+              segment.required_slots.avatar.task_key,
+              segment.required_slots.avatar.span_audio_task_key,
+              segment.required_slots.right_image.task_key,
+            ];
+    if (segmentTaskKeys.some((taskKey) => taskKeys.has(taskKey))) {
+      return "Timeline work task keys must be globally unique.";
+    }
+    for (const taskKey of segmentTaskKeys) taskKeys.add(taskKey);
     nextFrame = segment.end_frame_exclusive;
     nextSourceMs = segment.source_audio_end_ms;
     nextWord = segment.word_end_exclusive;
@@ -104,12 +128,22 @@ function validateExactTimeline(request: CompleteWorkPlanRequest): string | null 
     nextWord !== request.transcript.value.words.length
   )
     return "Timeline must end at exact frame, source-time, and word totals.";
+  const semanticFailure = validateTimelineSemantics(
+    request.timeline.value,
+    request.transcript.value,
+  );
+  if (semanticFailure !== null) return semanticFailure.message;
   return null;
 }
 
 export async function compileCompleteWorkPlan(
   request: CompleteWorkPlanRequest,
 ): Promise<PipelineResult<CompleteWorkPlan>> {
+  if (request.schedulerConfigHash !== (await sha256CanonicalJson(SUPPORTED_SCHEDULER_CONFIG))) {
+    return fail("Scheduler config hash does not match the locked scheduler implementation.", [
+      "schedulerConfigHash",
+    ]);
+  }
   const timelineFailure = validateExactTimeline(request);
   if (timelineFailure !== null) return fail(timelineFailure, ["timeline"]);
 

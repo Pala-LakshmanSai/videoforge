@@ -26,6 +26,7 @@ const forbiddenActiveTokens = [
   '"avatar-repair"',
   '"avatar-quality"',
 ];
+const forbiddenActiveTokensCaseInsensitive = ["avatarforcing", "musetalk", "skyreels"];
 const forbiddenImports = [
   "runpod-avatar-qualification",
   "runpod-mage-qualification",
@@ -50,6 +51,12 @@ for (const file of activeFiles) {
   const source = await readFile(file, "utf8");
   for (const token of forbiddenActiveTokens) {
     if (source.includes(token)) failures.push(`${file} contains active legacy token ${token}`);
+  }
+  const normalizedSource = source.toLocaleLowerCase("en-US");
+  for (const token of forbiddenActiveTokensCaseInsensitive) {
+    if (normalizedSource.includes(token)) {
+      failures.push(`${file} contains active legacy token ${token}`);
+    }
   }
 }
 

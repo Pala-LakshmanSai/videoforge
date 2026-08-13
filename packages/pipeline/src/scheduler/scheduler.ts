@@ -543,7 +543,7 @@ function createTimelineSegments(
   });
 }
 
-function validateTimelineSemantics(
+export function validateTimelineSemantics(
   plan: TimelinePlanDocument,
   transcript: TranscriptTimingDocument,
 ): PipelineFailure | null {
@@ -579,7 +579,9 @@ function validateTimelineSemantics(
       segment.source_audio_start_ms !== expectedSourceMs ||
       segment.word_start !== expectedWord ||
       segment.end_frame_exclusive <= segment.start_frame ||
-      segment.source_audio_end_ms <= segment.source_audio_start_ms
+      segment.source_audio_end_ms <= segment.source_audio_start_ms ||
+      segment.start_frame !== frameForMilliseconds(segment.source_audio_start_ms) ||
+      segment.end_frame_exclusive !== frameForMilliseconds(segment.source_audio_end_ms)
     ) {
       return fail(
         "TIMELINE_INVALID",
@@ -594,6 +596,19 @@ function validateTimelineSemantics(
         index,
         "word_start",
       ]);
+    }
+
+    const expectedEndMs = boundaryMilliseconds(transcript, segment.word_end_exclusive);
+    const expectedPhrase = transcript.words
+      .slice(segment.word_start, segment.word_end_exclusive)
+      .map((word) => word.text)
+      .join(" ");
+    if (expectedEndMs !== segment.source_audio_end_ms || expectedPhrase !== segment.phrase) {
+      return fail(
+        "TIMELINE_INVALID",
+        "Every segment must end at an exact word boundary and preserve its exact word text.",
+        ["segments", index],
+      );
     }
 
     const durationMs = segment.source_audio_end_ms - segment.source_audio_start_ms;
