@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-02 complete; stopped before unselected, unauthorized CP-03
+Status: CP-00 through CP-02 complete; CP-03 provider-free implementation active under `VF-9-24N`
 Context schema: `1.5`  
 Last updated: `2026-08-13`
 
@@ -80,9 +80,10 @@ Older acceptance files remain historical. `VF-9-24M`/`CP-02` implementation comm
 `5747e7b4e9c1d41564663afb1c0c0ad7272efe5b` are accepted provider-free. The fix adds durable
 Node-fixture reconstruction, server-issued hashed fixture credentials, and database-enforced
 invite-redemption linkage while removing direct admission bypass. Exact re-audit proof is
-`evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json`. No successor
-task is selected or authorized. CP-03 is not started. All provider, credential, cloud,
-model-download, GPU, and spend authority remains false; all production gates remain open.
+`evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json`. The current user
+selected `VF-9-24N`/`CP-03`: bounded local/container word-transcript work only. All provider,
+credential, cloud, model-download, GPU, and spend authority remains false; all hosted production
+gates remain open.
 
 No VideoForge persistent model volume exists yet. Future provisioning/preparation is a separate
 explicitly authorized provider task after contracts and offline workers are green.

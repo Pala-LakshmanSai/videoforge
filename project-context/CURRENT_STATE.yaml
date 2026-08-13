@@ -2,11 +2,11 @@ schema_version: "1.0"
 context_schema_version: "1.5"
 updated_at: "2026-08-13T14:59:48Z"
 
-phase: cp02_complete_stopped_before_cp03
-implementation_authorized_in_current_task: false
-current_milestone: none_selected
-current_task: null
-current_wave: checkpoint_roadmap
+phase: cp03_active_provider_free
+implementation_authorized_in_current_task: true
+current_milestone: production_grade_word_transcript
+current_task: VF-9-24N
+current_wave: cp03_word_transcript
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -100,34 +100,38 @@ completed_tasks:
     audit_fix_commit: "5747e7b4e9c1d41564663afb1c0c0ad7272efe5b"
     evidence: "evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json"
     external_spend_usd: 0
-active_ownership: []
+active_ownership:
+  - task_id: VF-9-24N
+    checkpoint: CP-03
+    owner: current_chat
+    scope: production_grade_word_transcript_provider_free
 
 blocked_tasks: []
-in_progress_checkpoint: null
+in_progress_checkpoint: CP-03
 
 recommended_next_task:
-  task_id: null
-  checkpoint: null
-  milestone: none_selected
-  status: stopped_after_cp02
+  task_id: VF-9-24N
+  checkpoint: CP-03
+  milestone: production_grade_word_transcript
+  status: active_authorized_provider_free
   dependency_status: cp02_complete_green
-  authorization_status: no_successor_authority
-  read_profile: checkpoint_roadmap
-  task_brief: null
-  goal: "Await explicit successor checkpoint selection and authority."
+  authorization_status: explicit_current_user_authority
+  read_profile: cp03_word_transcript
+  task_brief: tasks/VF-9-24N.md
+  goal: "Promote the existing whisper.cpp path into one container-parity durable CP-03 worker."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
   credential_access_authorized: false
   model_downloads_authorized: false
-  application_code_changes_authorized: false
+  application_code_changes_authorized: true
   prerequisite_evidence: "evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json"
   required_handoff:
-    - "Read the completed CP-02 evidence and preserve its shared admission, queue, and idle GPU UX boundary."
-    - "Select an exact successor profile and brief only after explicit authority."
-    - "Keep fixture mode and all production/provider gates false unless separately authorized."
+    - "Preserve the completed CP-02 shared admission, queue, and idle GPU UX boundary."
+    - "Use the existing pinned local whisper model only; ask before any model addition or change."
+    - "Keep fixture/local mode and all hosted-production/provider gates false."
   prohibited_in_task:
-    - "Any CP-03 or successor implementation without a new explicit task."
+    - "Any CP-04 or successor implementation."
     - "Any provider call, credential access, cloud mutation, model download, Pod/template/volume creation, image publication, or spend."
     - "Any production gate closure, live profile promotion, volume-capacity assumption, model/GPU substitution, repair, or fallback."
 

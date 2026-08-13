@@ -1,6 +1,6 @@
 # VideoForge completion checkpoints
 
-Status: authoritative completion roadmap; checkpoints `CP-00` through `CP-02` complete; `CP-03` not started or authorized
+Status: authoritative completion roadmap; checkpoints `CP-00` through `CP-02` complete; `CP-03` active provider-free under `VF-9-24N`
 Read when: choosing the next implementation chat, checking project truth, or auditing completion.
 
 ## MVP destination
@@ -238,6 +238,9 @@ verified email. Code consumption and admission binding are atomic. Returning adm
 never see the challenge again.
 
 ## CP-03 — Production-grade word transcript
+
+**Status:** active provider-free under `VF-9-24N`; no Cloud Run deployment, credential access,
+provider call, model download, GPU use, or spend authorized.
 
 **Outcome:** a 30-minute voiceover becomes a durable, restart-safe, word-level transcript usable by
 the scheduler.
