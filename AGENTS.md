@@ -2,19 +2,20 @@
 
 Current phase, branch/server state, ownership, and last-green evidence live only in `project-context/CURRENT_STATE.yaml`.
 
-## Pinned project context for every task
+## Pinned, token-efficient project context
 
-Treat these repository files as persistent project context for every new VideoForge task. Repository truth replaces cross-chat memory or reattached PDFs:
+“Pinned” means repository-indexed, not injected into every prompt. Only this compact `AGENTS.md` is automatic. Never preload the full context pack, roadmap, prompt pack, Ranga evidence, PDFs, or all files under a directory.
 
-- startup authority: `project-context/00_START_HERE.md`, `project-context/MANIFEST.yaml`, and `project-context/CURRENT_STATE.yaml`;
-- completion order and checkpoint acceptance: `project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md`;
-- copy-ready implementation and audit prompts: `project-context/templates/CHECKPOINT_CHAT_PROMPTS.md`;
-- current work scope: the exact read profile and task brief selected by `MANIFEST.yaml` and `CURRENT_STATE.yaml`;
-- Ranga evidence for style, scheduling, or visual-quality work: `project-context/03_REFERENCE_VIDEO_FORENSICS.md`, `project-context/04_VISUAL_IDENTITY_AND_PROMPTS.md`, and `project-context/references/ranga/`.
+For each task:
 
-At the start of each task, read the startup authority, identify the current checkpoint, then read only that checkpoint section, its matching prompt, and the selected profile/brief. Load the Ranga evidence or other domain files only when the task needs them. Do not preload the whole context pack; do not ask the user to reattach material already stored here.
+1. Read the three startup files below.
+2. Resolve the current checkpoint and selected profile/brief from them.
+3. Read only that checkpoint's section in `project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md` and only the selected profile/brief files. If the user did not paste the matching prompt, extract only that prompt from `project-context/templates/CHECKPOINT_CHAT_PROMPTS.md`.
+4. Load domain evidence only when required. For style, scheduling, or visual-quality work, use `03_REFERENCE_VIDEO_FORENSICS.md`, `04_VISUAL_IDENTITY_AND_PROMPTS.md`, and the exact needed file under `references/ranga/`; do not load the entire folder.
 
-The prompt pack is an entrypoint, not higher authority. If a copied prompt conflicts with current repository state, stop and reconcile the context pack instead of following stale text. Every implementation or audit handoff must state the checkpoint, exact commit, validations, remaining gates, provider/spend state, and whether all paid compute is stopped.
+Use heading/range searches to extract narrow sections. Stay within `MANIFEST.yaml`'s profile word budget. Repository truth replaces cross-chat memory and reattached PDFs. Never ask the user to reattach material already stored here.
+
+The prompt pack is an entrypoint, not higher authority. Reconcile stale prompt conflicts. Every implementation or audit handoff must state checkpoint, commit, validations, remaining gates, provider/spend state, and paid-compute shutdown state.
 
 Before doing any VideoForge work:
 
