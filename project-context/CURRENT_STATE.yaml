@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-13T19:38:30Z"
+updated_at: "2026-08-13T20:27:50Z"
 
-phase: cp05_provider_free_complete_mvp_orchestration_active
-implementation_authorized_in_current_task: true
-current_milestone: provider_free_complete_mvp_orchestration_and_legacy_cutover
-current_task: VF-9-24P
-current_wave: cp05_complete_fixture_mvp
+phase: cp05_complete_stopped_before_cp06
+implementation_authorized_in_current_task: false
+current_milestone: exact_mage_int8_persistent_runpod_volume
+current_task: null
+current_wave: checkpoint_roadmap
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -31,7 +31,11 @@ repository:
   cp04_implementation_commit: "ca9b816f1bd196654e03633264560050729b020a"
   cp04_audit_fix_commit: "e857cfa1d8bce6ecfdd51f600378790aeedd28f2"
   cp04_local_render_profile_fix_commit: "cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690"
-  last_good_commit: "cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690"
+  cp05_activation_commit: "6c841b8c5ed4c7e11cdf786a0f43faf90e1914bc"
+  cp05_implementation_commit: "426156b0c30a469fb2eb786de8adb4566b8d8b22"
+  cp05_workerd_boundary_fix_commit: "55ee5caf5b742ab54f9e59198b1ab9be1a327e12"
+  cp05_chrome_download_proof_commit: "8bfd0529e9cac4773d1f0b67629cc10f97aed313"
+  last_good_commit: "8bfd0529e9cac4773d1f0b67629cc10f97aed313"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -39,14 +43,14 @@ live_development:
   expected_url: "http://localhost:4173"
   server_state: stopped
   dev_server_pid: null
-  owner_task_id: VF-9-24P
-  health_checked_at: "2026-08-13T19:07:07Z"
-  chrome_route: "http://localhost:4173/projects/project_fixture_001?fixture=happy_generating"
-  fixture_scenario: cp04_timeline_inspection
+  owner_task_id: null
+  health_checked_at: "2026-08-13T20:27:50Z"
+  chrome_route: null
+  fixture_scenario: cp05_complete_fixture_mvp
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "CP-05 fixture-only local execution. Provider calls, credentials, cloud mutation, model downloads, GPUs, and spend are forbidden."
+  provider_authority_scope: "No active task. CP-06 requires new explicit authority; provider calls, credentials, cloud mutation, model downloads, GPUs, and spend remain forbidden."
   worker_image: null
   last_user_checkpoint:
     result: accepted
@@ -122,39 +126,42 @@ completed_tasks:
     local_render_profile_fix_commit: "cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690"
     evidence: "evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/reaudit-after-fixes.json"
     external_spend_usd: 0
-active_ownership:
   - task_id: VF-9-24P
-    checkpoint: CP-05
-    scope: provider_free_complete_mvp_orchestration_and_legacy_cutover
-    provider_mode: fixture
-    maximum_external_spend_usd: 0
+    status: complete_cp05_provider_free_complete_mvp_orchestration_and_legacy_cutover
+    activation_commit: "6c841b8c5ed4c7e11cdf786a0f43faf90e1914bc"
+    implementation_commit: "426156b0c30a469fb2eb786de8adb4566b8d8b22"
+    workerd_boundary_fix_commit: "55ee5caf5b742ab54f9e59198b1ab9be1a327e12"
+    chrome_download_proof_commit: "8bfd0529e9cac4773d1f0b67629cc10f97aed313"
+    evidence: "evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/acceptance.json"
+    external_spend_usd: 0
+active_ownership: []
 
 blocked_tasks: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-9-24P
-  checkpoint: CP-05
-  milestone: provider_free_complete_mvp_orchestration_and_legacy_cutover
-  status: active_bounded_provider_free
-  dependency_status: cp04_complete_green_reaudited
-  authorization_status: authorized_by_current_user
-  read_profile: cp05_complete_fixture_mvp
-  task_brief: tasks/VF-9-24P.md
-  goal: "Complete the automatic fixture MVP and active-runtime legacy cutover, then stop before CP-06."
+  task_id: null
+  checkpoint: CP-06
+  milestone: exact_mage_int8_persistent_runpod_volume
+  status: stopped_awaiting_explicit_authority
+  dependency_status: cp05_complete_green_provider_free
+  authorization_status: not_authorized
+  read_profile: checkpoint_roadmap
+  task_brief: null
+  goal: "Do not start CP-06 until a new exact brief, spend cap, and explicit provider/cloud authority exist."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
   credential_access_authorized: false
   model_downloads_authorized: false
-  application_code_changes_authorized: true
-  prerequisite_evidence: "evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/reaudit-after-fixes.json"
+  application_code_changes_authorized: false
+  prerequisite_evidence: "evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/acceptance.json"
   required_handoff:
-    - "Preserve the completed CP-03 transcript and CP-04 scheduler/work-manifest evidence."
-    - "Complete only the provider-free CP-05 brief and stop before CP-06."
-    - "Keep all hosted-production/provider gates false; local CP-05 evidence does not prove hosted production."
+    - "Preserve the completed CP-01 through CP-05 evidence and active vNext cutover."
+    - "Refresh CURRENT_STATE and create a narrow CP-06 task brief before any implementation."
+    - "Keep all hosted-production/provider gates false; local CP-05 evidence does not prove production."
   prohibited_in_task:
-    - "Any CP-06 or successor implementation without new explicit user authority."
+    - "Any CP-06 or successor implementation without a new explicit user request."
     - "Any provider call, credential access, cloud mutation, model download, real Pod/template/volume creation, image publication, or spend."
     - "Any production gate closure, live profile promotion, volume-capacity assumption, model/GPU substitution, repair, or fallback."
 
@@ -266,6 +273,46 @@ cp04_completion:
   paid_compute_shutdown: no_paid_compute_started
   local_server: stopped_no_4173_or_4174_listener
 
+cp05_completion:
+  status: complete_provider_free_fixture_mvp_and_legacy_cutover
+  activation_commit: "6c841b8c5ed4c7e11cdf786a0f43faf90e1914bc"
+  implementation_commit: "426156b0c30a469fb2eb786de8adb4566b8d8b22"
+  workerd_boundary_fix_commit: "55ee5caf5b742ab54f9e59198b1ab9be1a327e12"
+  chrome_download_proof_commit: "8bfd0529e9cac4773d1f0b67629cc10f97aed313"
+  evidence: "evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/acceptance.json"
+  projects_queued: 4
+  waiting_projects_removed: 1
+  projects_completed: 3
+  active_video_limit: 1
+  crash_restart_recovery_count: 1
+  stale_wrong_pod_gpu_volume_callbacks_rejected: true
+  final_lane_state: both_absence_verified_before_close_and_unlock
+  waiter_policy: existing_warm_allowed_no_work_no_absent_recreation_before_activation
+  final_mp4_sha256: "sha256:fa27620397740bb5c47b8402b47cf0f5d90074246d3feb16e65b6498b81a2c37"
+  final_mp4_byte_size: 9764
+  final_mp4_probe: h264_aac_1920x1080_1000ms
+  simulated_cost_micro_usd_per_project: 880000
+  actual_external_spend_usd: 0
+  focused_orchestration: 3_passed
+  web_unit: 224_passed
+  control_plane_full: 226_passed
+  pipeline_full: 120_passed
+  workerd_runtime: 1_passed
+  installed_chrome: 42_passed_desktop_and_compact
+  canonical_verify: passed_ci_turbo_force_at_8bfd052
+  active_runtime_firewall: passed_62_files_vnext_only_no_legacy_dispatch
+  provider_calls: 0
+  provider_resources_created: 0
+  credentials_accessed: false
+  model_downloaded_or_changed: false
+  image_publications: 0
+  gpu_used: false
+  cloud_mutations: 0
+  live_provider_inventory_refreshed: false
+  hosted_production_proven: false_waits_for_cp08
+  paid_compute_shutdown: no_paid_compute_started
+  local_server: stopped_no_4173_or_4174_listener
+
 approved_mvp_architecture:
   app_scope: one_global_shared_equal_rights
   admitted_users: 5_to_10
@@ -305,17 +352,17 @@ blocking_gates_for_production:
 
 progress_snapshot:
   estimate_kind: checkpoint_truth_no_percent_claim
-  completed_checkpoint: CP-04
-  next_checkpoint: CP-05_active_provider_free
+  completed_checkpoint: CP-05
+  next_checkpoint: CP-06_not_authorized_not_started
   full_production_mvp_implemented_percent: null
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: active_cp05
+  status: stopped_before_cp06
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Load cp05_complete_fixture_mvp and tasks/VF-9-24P.md only."
-    - "Preserve the verified green CP-03 and CP-04 evidence."
+    - "Load checkpoint_roadmap only; no task brief is selected."
+    - "Preserve the verified green CP-01 through CP-05 evidence and vNext boundary."
   stop_conditions:
-    - "Any work beyond CP-05 or any successor implementation."
+    - "Any CP-06 or successor implementation without new explicit authority and a refreshed brief."
     - "Any provider call, cloud mutation, credential need, model download, spend, schema reinterpretation, legacy dispatch reachability, or production promotion."

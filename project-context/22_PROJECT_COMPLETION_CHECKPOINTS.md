@@ -1,6 +1,6 @@
 # VideoForge completion checkpoints
 
-Status: authoritative completion roadmap; checkpoints `CP-00` through `CP-04` complete; stopped before `CP-05`
+Status: authoritative completion roadmap; checkpoints `CP-00` through `CP-05` complete; stopped before `CP-06`
 Read when: choosing the next implementation chat, checking project truth, or auditing completion.
 
 ## MVP destination
@@ -290,6 +290,10 @@ Current re-audit evidence:
 **Done artifact:** one owned long voiceover has an inspectable complete three-composition plan.
 
 ## CP-05 — Provider-free complete MVP orchestration and legacy cutover
+
+**Status:** complete provider-free under `VF-9-24P` at audited code head
+`8bfd0529e9cac4773d1f0b67629cc10f97aed313`; canonical and installed-Chrome acceptance passed;
+stopped before CP-06 with `$0` external spend.
 
 **Outcome:** the entire application works in fixture mode before any new GPU spend.
 

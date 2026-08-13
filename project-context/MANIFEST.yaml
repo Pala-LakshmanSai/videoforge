@@ -3,10 +3,10 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-14"
 source_of_truth: project-context
-# CP-04 is complete and re-audited provider-free under VF-9-24O. CP-05 is explicitly selected and
-# authorized provider-free under VF-9-24P.
-current_selected_profile: cp05_complete_fixture_mvp
-current_selected_brief: tasks/VF-9-24P.md
+# CP-00 through CP-05 are complete provider-free. Work is stopped before CP-06; no successor task
+# is selected or authorized.
+current_selected_profile: checkpoint_roadmap
+current_selected_brief: null
 
 mandatory_read:
   - 00_START_HERE.md

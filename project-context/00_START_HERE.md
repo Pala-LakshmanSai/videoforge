@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-04 complete; CP-05 active provider-free under VF-9-24P
+Status: CP-00 through CP-05 complete provider-free; stopped before CP-06
 Context schema: `1.5`  
 Last updated: `2026-08-14`
 
@@ -109,10 +109,25 @@ profile instead of a legacy avatar runtime identity. Exact current proof is
 `evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/reaudit-after-fixes.json`; the older
 acceptance file remains immutable historical evidence.
 
+`VF-9-24P`/`CP-05` is complete at implementation commit
+`426156b0c30a469fb2eb786de8adb4566b8d8b22`, Workerd boundary fix
+`55ee5caf5b742ab54f9e59198b1ab9be1a327e12`, and Chrome proof commit
+`8bfd0529e9cac4773d1f0b67629cc10f97aed313`. The app now runs one complete provider-free vNext
+fixture orchestration: fake-backed inventory, immutable GPU pair, singleton session, one active
+video, inert/reorderable/removable waiters, isolated truthful synthetic Mage/Echo lane phases,
+durable transcript/timeline/prompt/generation/render/MP4 barriers, exact simulated cost, recovery,
+cancellation, independent delete/absence, final playback, and download. Three projects completed
+serially after restart and waiting reorder/removal; wrong Pod/GPU/volume and stale callbacks failed
+closed. Installed Chrome passed `42/42`, including desktop and compact CP-05 journeys; canonical
+verification passed. Active vNext scanning passed 62 files with Serverless, old Mage BF16, Auto,
+AvatarForcing, MuseTalk, SkyReels, repair/quality/fallback, and historical crops quarantined behind
+provider-free legacy replay. Exact proof is
+`evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/acceptance.json`.
+
 This remains provider-free local Mac/Linux evidence only: no Cloud Run deployment, private
 production R2, hosted Linux media runtime, provider call, credential use, model download/change,
-GPU, or spend was used or proven. Hosted production proof remains open until CP-08. CP-05 is not
-yet complete; current work is bounded to fixture-only local orchestration under `VF-9-24P`.
+image publication, GPU, paid compute, or spend was used or proven. Hosted production proof remains
+open until CP-08. CP-06 is neither authorized nor started.
 
 No VideoForge persistent model volume exists yet. Future provisioning/preparation is a separate
 explicitly authorized provider task after contracts and offline workers are green.

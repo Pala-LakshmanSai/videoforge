@@ -1,0 +1,158 @@
+{
+  "schema_version": "videoforge.cp05-acceptance/v1",
+  "task_id": "VF-9-24P",
+  "checkpoint": "CP-05",
+  "status": "PASS_PROVIDER_FREE_COMPLETE_FIXTURE_MVP",
+  "recorded_at": "2026-08-13T20:27:50Z",
+  "audited_code_head": "8bfd0529e9cac4773d1f0b67629cc10f97aed313",
+  "history": {
+    "base_commit": "9f91b26",
+    "activation_commit": "6c841b8c5ed4c7e11cdf786a0f43faf90e1914bc",
+    "implementation_commit": "426156b0c30a469fb2eb786de8adb4566b8d8b22",
+    "workerd_boundary_fix_commit": "55ee5caf5b742ab54f9e59198b1ab9be1a327e12",
+    "chrome_download_proof_commit": "8bfd0529e9cac4773d1f0b67629cc10f97aed313"
+  },
+  "dependency": {
+    "cp01_through_cp04_committed_in_head_ancestry": true,
+    "cp04_status": "GREEN_REAUDITED",
+    "cp04_local_render_profile_fix_commit": "cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690",
+    "cp04_evidence": "project-context/evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/reaudit-after-fixes.json",
+    "fresh_baseline_canonical_verify_before_cp05_changes": "PASSED_CI_TURBO_FORCE"
+  },
+  "fixture_orchestration": {
+    "inventory": "FAKE_BACKED_LIVE_SHAPED",
+    "gpu_pair": "EXACT_IMMUTABLE_SESSION_PAIR",
+    "singleton_session": true,
+    "active_video_limit": 1,
+    "projects_enqueued": 4,
+    "waiting_projects_removed": 1,
+    "projects_completed": 3,
+    "waiting_reorder_remove": "PASSED_WITH_QUEUE_VERSION_AND_ACTOR_AUDIT",
+    "waiting_work_started_before_promotion": false,
+    "crash_restart_recovery_count": 1,
+    "stale_callback_rejected": true,
+    "wrong_pod_rejected": true,
+    "wrong_gpu_rejected": true,
+    "wrong_volume_rejected": true,
+    "callback_replay_rejected": true,
+    "cancellation_converges": true,
+    "lane_phases": [
+      "CREATING",
+      "CONTAINER_READY",
+      "VOLUME_READY",
+      "MODEL_LOADING",
+      "MODEL_READY",
+      "WORKING",
+      "WARM",
+      "DELETE_REQUESTED",
+      "ABSENCE_VERIFIED"
+    ],
+    "lanes": ["mage_image", "echo_avatar"],
+    "separate_lane_volumes": true,
+    "independent_lane_drain_delete_absence": true,
+    "warm_retention_only_for_existing_pod_with_waiter": true,
+    "absent_pod_recreated_before_next_project_activation": false,
+    "session_closed_before_both_absences": false,
+    "final_lane_phases": {
+      "mage_image": "ABSENCE_VERIFIED",
+      "echo_avatar": "ABSENCE_VERIFIED"
+    }
+  },
+  "durable_barriers": {
+    "transcript": "CP03_SHAPED_STRICT_WORKERD_SAFE_FIXTURE_RECEIPT",
+    "timeline": "SCHEDULER_V2_CP04_SHAPED_STRICT_WORKERD_SAFE_FIXTURE_RECEIPT",
+    "prompt_manifest": "CONTENT_ADDRESSED_RUNWARE_WRITER_FIXTURE_NO_CALL",
+    "mage_output": "CONTENT_ADDRESSED_SYNTHETIC",
+    "echo_output": "CONTENT_ADDRESSED_SYNTHETIC_SELECTED_SPANS",
+    "render_manifest": "CONTENT_ADDRESSED_VNEXT_DIRECT_FFMPEG_FIXTURE",
+    "final_mp4": "CONTENT_ADDRESSED_DURABLE"
+  },
+  "final_mp4": {
+    "sha256": "sha256:fa27620397740bb5c47b8402b47cf0f5d90074246d3feb16e65b6498b81a2c37",
+    "byte_size": 9764,
+    "duration_ms": 1000,
+    "width": 1920,
+    "height": 1080,
+    "video_codec": "h264",
+    "audio_codec": "aac",
+    "content_type": "video/mp4",
+    "installed_chrome_metadata_and_playback": "PASSED",
+    "installed_chrome_attachment_download_and_byte_match": "PASSED_DESKTOP",
+    "compact_chrome_visible_link_attachment_headers_bytes_and_sha": "PASSED"
+  },
+  "cost": {
+    "kind": "SIMULATED_FIXTURE",
+    "reserved_micro_usd_per_completed_project": 880000,
+    "reported_micro_usd_per_completed_project": 880000,
+    "settled_micro_usd_per_completed_project": 880000,
+    "actual_external_spend_usd": 0,
+    "cost_conserved": true
+  },
+  "legacy_cutover": {
+    "active_render_boundary": "VNEXT_ONLY",
+    "historical_replay": "EXPLICIT_PROVIDER_FREE_NON_DISPATCHING",
+    "old_migrations_preserved": true,
+    "historical_evidence_preserved": true,
+    "v1_bytes_preserved": true,
+    "active_runtime_files_scanned": 62,
+    "forbidden_active_tokens_or_imports_found": 0,
+    "quarantined": [
+      "Serverless",
+      "Mage-Flow-Turbo BF16",
+      "Auto",
+      "AvatarForcing",
+      "MuseTalk",
+      "SkyReels",
+      "repair",
+      "quality",
+      "fallback",
+      "historical crops"
+    ]
+  },
+  "validation": {
+    "focused_provider_free_orchestration": "3_PASSED",
+    "shared_fixture_store": "5_PASSED",
+    "web_unit": "224_PASSED",
+    "control_plane_full": "226_PASSED",
+    "pipeline_full": "120_PASSED",
+    "workerd_runtime_parity": "1_PASSED",
+    "installed_chrome": "42_PASSED_DESKTOP_AND_COMPACT",
+    "cp05_installed_chrome": "2_PASSED_DESKTOP_AND_COMPACT",
+    "canonical_verify": "PASSED_CI_TURBO_FORCE_AT_8BFD052",
+    "package_graph": "28_OF_28_SUCCESSFUL",
+    "active_runtime_scan": "PASSED_62_FILES",
+    "vnext_dispatch_firewall": "PASSED",
+    "worker_suites": "6_PASSED",
+    "script_tests": "13_PASSED",
+    "context_validation": "PASSED",
+    "contract_sync": "PASSED_66_CANONICAL_FILES",
+    "secret_scan": "PASSED_1105_TRACKED_FILES",
+    "format_lint_typecheck_build": "PASSED",
+    "git_diff_check": "PASSED"
+  },
+  "provider_and_spend": {
+    "provider_calls_authorized": false,
+    "provider_calls": 0,
+    "credentials_accessed": false,
+    "cloud_mutations": 0,
+    "model_downloads": 0,
+    "image_publications": 0,
+    "gpu_used": false,
+    "external_spend_usd": 0,
+    "paid_compute_started": false,
+    "live_provider_inventory_refreshed": false,
+    "paid_compute_shutdown": "NO_PAID_COMPUTE_STARTED"
+  },
+  "claims_not_proven": [
+    "Hosted Cloudflare, Neon, R2, Workflow, or Cloud Run execution",
+    "Live provider model, GPU, rate, cost, Pod, or retained-volume state",
+    "Production credentials or provider integration",
+    "Production end-to-end completion"
+  ],
+  "next_checkpoint": {
+    "checkpoint": "CP-06",
+    "dependency_safe_to_plan": true,
+    "authorized": false,
+    "started": false
+  }
+}
