@@ -239,9 +239,12 @@ never see the challenge again.
 
 ## CP-03 — Production-grade word transcript
 
-**Status:** complete provider-free under `VF-9-24N` at implementation commit
-`4ac1df8872db50820ad3b95979572c907bf1631f`. Exact evidence:
-`evidence/acceptance/VF-9-24N/cp03-word-transcript/acceptance.json`. No Cloud Run deployment,
+**Status:** complete provider-free and re-audited after fixes under `VF-9-24N` at implementation
+commit `4ac1df8872db50820ad3b95979572c907bf1631f` plus audit-fix commit
+`a6a924856a58c233eadd8af402fbf78c6c821b97`. Exact evidence:
+`evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json`. Real owned media passed
+on Mac and a local Linux/arm64 deploy image with network disabled; successful transcript and
+semantic receipt hashes matched exactly. No Cloud Run deployment,
 credential access, provider call, model download/change, GPU use, or spend occurred. Hosted Cloud
 Run/private R2 production proof remains open until CP-08. CP-04 is not selected or authorized.
 

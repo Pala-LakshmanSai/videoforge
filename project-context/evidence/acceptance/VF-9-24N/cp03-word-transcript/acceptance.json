@@ -1,11 +1,13 @@
 {
-  "schema_version": "videoforge.cp03-acceptance/v1",
+  "schema_version": "videoforge.cp03-acceptance/v2",
   "task_id": "VF-9-24N",
   "checkpoint": "CP-03",
-  "accepted_at": "2026-08-13T16:33:22Z",
-  "result": "PASS_PROVIDER_FREE",
+  "accepted_at": "2026-08-13T17:52:07Z",
+  "result": "PASS_PROVIDER_FREE_REAUDITED_AFTER_FIXES",
   "activation_commit": "e2541b4ccf69d74c818b020b500e5f7b318b400b",
-  "implementation_commit": "4ac1df8872db50820ad3b95979572c907bf1631f",
+  "original_implementation_commit": "4ac1df8872db50820ad3b95979572c907bf1631f",
+  "failed_audit_head": "e223204ed37ecd4a5afa3c0a5e7bf095041375e2",
+  "audit_fix_commit": "a6a924856a58c233eadd8af402fbf78c6c821b97",
   "dependency": {
     "checkpoint": "CP-02",
     "result": "PASS",
@@ -15,78 +17,100 @@
   "implementation": {
     "promoted_existing_path": "workers/image-media/src/videoforge_image_media/jobs/transcribe",
     "media_cpu_entrypoint": "workers/media-local",
-    "ui_changed": false,
+    "r2_port_fixture_wired_to_media_entrypoint": true,
+    "executable_identity_bound_to_job_and_receipt": true,
+    "ui_redesigned": false,
+    "visible_legacy_controls_removed": true,
     "original_voiceover_preserved_for_final_render": true,
     "normalized_audio_role": "analysis_only",
     "model": "whisper.cpp base.en",
     "model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
     "model_downloaded_or_changed": false
   },
+  "container": {
+    "result": "PASS_LOCAL_LINUX_ACTUAL_MEDIA",
+    "image_id": "sha256:0919e0bc421ae8684c2c3274dc6a298873f3ee710d0c1b3d0e2aaf1b812ef5c7",
+    "platform": "linux/arm64",
+    "runtime_network": "none",
+    "model_embedded": false,
+    "whisper_executable_sha256": "sha256:270cc3eef6969199e49f96ebeefe29e85665ddf69be7fbd095a8b069c140cf6a",
+    "ffmpeg_executable_sha256": "sha256:38aa6c23df4f14f522134f43f20ff14e020ab2a3390fbef16f0f78e98a602f17",
+    "ffprobe_executable_sha256": "sha256:b4401e0c6bdbcc6abeacc31b355c41b9d2b0f071f019a40cda16bd9945611445",
+    "evidence": "project-context/evidence/acceptance/VF-9-24N/cp03-word-transcript/container-contract-parity.json"
+  },
   "owned_fixtures": {
     "short": {
       "duration_ms": 11981,
-      "result": "success",
+      "result": "success_mac_and_linux",
       "words": 22,
       "phrases": 3,
       "monotonic_and_bounded": true
     },
     "noisy": {
-      "result": "success",
+      "duration_ms": 11981,
+      "result": "success_mac_and_linux",
       "words": 22,
       "phrases": 3,
       "monotonic_and_bounded": true,
       "manual_lexical_note": "base.en heard Owned as phone; timing accepted; no repair or fallback"
     },
     "silence": {
-      "result": "expected_failure",
+      "result": "expected_failure_mac_and_linux",
       "error_code": "ASR_OUTPUT_INVALID"
     },
     "malformed": {
-      "result": "expected_failure",
+      "result": "expected_failure_mac_and_linux",
       "error_code": "ASR_SOURCE_DECODE_FAILED"
     },
     "long": {
       "duration_ms": 1800000,
-      "result": "success",
+      "result": "success_mac_and_linux",
       "words": 3309,
       "phrases": 615,
       "chunks": 4,
       "monotonic_and_bounded": true,
       "phrase_word_coverage_complete": true,
       "chunk_boundaries_reconciled": true,
-      "first_run_ms": 21559,
-      "replay_ms": 404,
-      "restart_ms": 731,
-      "restart_recovered_chunks": 4,
-      "transcript_sha256": "sha256:1513f93f62cb2a2b526256c7566b3fde5383edaa3dd50a4b6037004a79b916a5",
-      "receipt_sha256": "sha256:2c8aa5513c00d4494b23322dca9c077e0eb45481f997d90a9c86e7780a894058"
-    }
+      "transcript_sha256": "sha256:1613a5343a795d85930d059abdac7cb884605a73b8df87e07d5e0036ddca1a7e",
+      "semantic_receipt_sha256": "sha256:88a1e29f7b110d2ef9ea8495f95c6918d9bff03ef74ce313e3c30d2bad0fa172",
+      "mac_first_run_ms": 78342,
+      "mac_replay_ms": 478,
+      "mac_restart_ms": 749,
+      "linux_first_run_ms": 60146,
+      "linux_replay_ms": 707,
+      "linux_restart_ms": 1222,
+      "restart_recovered_chunks_each_platform": 4
+    },
+    "exact_cross_platform_transcript_and_semantic_receipt_parity": true,
+    "evidence": "project-context/evidence/acceptance/VF-9-24N/cp03-word-transcript/real-owned-fixtures.json"
   },
   "manual_spot_check": {
     "result": "PASS_WITH_EXPECTED_BASE_EN_LEXICAL_LIMIT",
     "evidence": "project-context/evidence/acceptance/VF-9-24N/cp03-word-transcript/manual-spot-check.json",
     "repair_fallback_or_substitution_used": false
   },
-  "container_contract_parity": {
-    "result": "PASS_CONTRACT_ONLY",
-    "mac_container_chunk_and_transcript_contract_byte_identical": true,
-    "deployable_image_id": "sha256:fcc51a1b737524285663e61a7fb181fcb0bdf457cb22e79703222c245184b28d",
-    "runtime_network": "none",
-    "evidence": "project-context/evidence/acceptance/VF-9-24N/cp03-word-transcript/container-contract-parity.json",
-    "claim_boundary": "No Linux whisper or FFmpeg execution and no Cloud Run deployment was proven."
+  "active_runtime": {
+    "result": "PASS",
+    "shared_equal_rights_app_preserved": true,
+    "active_avatar_model": "EchoMimicV3-Flash-FP8",
+    "active_image_model": "Mage-Flow INT8 ConvRot",
+    "fixture_choice_explicit_not_auto": true,
+    "repair_fallback_avatarforcing_musetalk_skyreels_serverless_active_path": false
   },
   "validations": {
-    "transcript_worker": "30 passed",
-    "media_local": "7 passed",
-    "durable_control_plane": "8 passed",
+    "transcript_worker": "31 passed",
+    "media_local": "10 passed",
+    "worker_suites": "6 explicit suites passed",
     "verify_fast": "28/28 package tasks passed",
     "canonical_verify": "CI=1 TURBO_FORCE=true pnpm verify exited 0",
     "control_plane_full": "223 passed",
-    "web_unit": "225 passed",
+    "web_unit": "221 passed",
     "workerd": "1 passed",
     "installed_chrome": "40 passed desktop and compact",
+    "active_runtime_verifier": "57 active files passed",
     "context_validate": "passed",
-    "secret_scan": "passed",
+    "contract_sync": "passed",
+    "secret_scan": "1077 tracked files passed",
     "dependency_audit": "no vulnerabilities",
     "git_diff_check": "passed"
   },
@@ -99,18 +123,20 @@
     "paid_compute_started": false,
     "external_spend_usd": 0,
     "local_colima_state": "stopped",
+    "local_cp03_containers_after_test": 0,
     "local_app_server_state": "stopped"
   },
   "claims_not_proven": [
     "hosted Cloud Run Job execution",
     "private production R2 behavior",
-    "production Linux whisper.cpp and FFmpeg runtime",
+    "hosted linux/amd64 image behavior",
     "hosted 30-minute sizing, latency, and cost",
     "production end-to-end completion"
   ],
   "hosted_production_acceptance_checkpoint": "CP-08",
   "next": {
     "checkpoint": "CP-04",
+    "dependency_safe": true,
     "selected": false,
     "authorized": false,
     "started": false

@@ -82,14 +82,19 @@ Node-fixture reconstruction, server-issued hashed fixture credentials, and datab
 invite-redemption linkage while removing direct admission bypass. Exact re-audit proof is
 `evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json`. The current user
 `VF-9-24N`/`CP-03` is complete at implementation commit
-`4ac1df8872db50820ad3b95979572c907bf1631f`. It promotes the existing whisper.cpp timing path into
+`4ac1df8872db50820ad3b95979572c907bf1631f` plus audit-fix commit
+`a6a924856a58c233eadd8af402fbf78c6c821b97`. It promotes the existing whisper.cpp timing path into
 one Mac/container contract with deterministic 30-minute chunk overlap/reconciliation, exact
 probe/hash and normalization, durable per-chunk receipts, replay/restart recovery, and R2-port
 fixtures while preserving original voiceover bytes for render. The owned 30-minute fixture yielded
 3,309 monotonic words, 615 phrases, four chunks, and recovered all four chunk receipts after restart.
-Exact proof is `evidence/acceptance/VF-9-24N/cp03-word-transcript/acceptance.json`.
+The audit fix binds exact executable hashes to receipts/replay, wires the R2-port fixture to the
+media entrypoint without symlink-side-effect escape, replaces the synthetic container contract with
+real local Linux whisper.cpp/FFmpeg execution, and removes active legacy Auto/repair/fallback/model
+paths. Exact re-audit proof is
+`evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json`.
 
-This is provider-free contract evidence only: no Cloud Run deployment, private production R2,
+This is provider-free local Mac/Linux evidence only: no Cloud Run deployment, private production R2,
 hosted Linux media runtime, provider call, credential use, model download/change, GPU, or spend was
 used or proven. Hosted production proof remains open until CP-08. CP-04 is not selected or
 authorized.

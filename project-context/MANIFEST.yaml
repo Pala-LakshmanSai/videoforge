@@ -3,7 +3,7 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-13"
 source_of_truth: project-context
-# CP-03 is complete provider-free under VF-9-24N. No successor checkpoint is selected.
+# CP-03 is complete provider-free and re-audited after fixes under VF-9-24N. No successor checkpoint is selected.
 current_selected_profile: checkpoint_roadmap
 current_selected_brief: null
 

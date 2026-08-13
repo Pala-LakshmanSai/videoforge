@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-13T16:33:22Z"
+updated_at: "2026-08-13T17:52:07Z"
 
 phase: cp03_complete_stopped_before_cp04
 implementation_authorized_in_current_task: false
@@ -26,7 +26,8 @@ repository:
   cp02_audit_fix_commit: "5747e7b4e9c1d41564663afb1c0c0ad7272efe5b"
   cp03_activation_commit: "e2541b4ccf69d74c818b020b500e5f7b318b400b"
   cp03_implementation_commit: "4ac1df8872db50820ad3b95979572c907bf1631f"
-  last_good_commit: "4ac1df8872db50820ad3b95979572c907bf1631f"
+  cp03_audit_fix_commit: "a6a924856a58c233eadd8af402fbf78c6c821b97"
+  last_good_commit: "a6a924856a58c233eadd8af402fbf78c6c821b97"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -35,7 +36,7 @@ live_development:
   server_state: stopped
   dev_server_pid: null
   owner_task_id: null
-  health_checked_at: "2026-08-13T16:33:22Z"
+  health_checked_at: "2026-08-13T17:52:07Z"
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
@@ -103,10 +104,11 @@ completed_tasks:
     evidence: "evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json"
     external_spend_usd: 0
   - task_id: VF-9-24N
-    status: complete_cp03_production_grade_word_transcript_provider_free
+    status: complete_cp03_production_grade_word_transcript_provider_free_reaudited
     activation_commit: "e2541b4ccf69d74c818b020b500e5f7b318b400b"
     implementation_commit: "4ac1df8872db50820ad3b95979572c907bf1631f"
-    evidence: "evidence/acceptance/VF-9-24N/cp03-word-transcript/acceptance.json"
+    audit_fix_commit: "a6a924856a58c233eadd8af402fbf78c6c821b97"
+    evidence: "evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json"
     external_spend_usd: 0
 active_ownership: []
 
@@ -129,7 +131,7 @@ recommended_next_task:
   credential_access_authorized: false
   model_downloads_authorized: false
   application_code_changes_authorized: false
-  prerequisite_evidence: "evidence/acceptance/VF-9-24N/cp03-word-transcript/acceptance.json"
+  prerequisite_evidence: "evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json"
   required_handoff:
     - "Preserve the completed CP-03 durable transcript worker and acceptance evidence."
     - "Keep all hosted-production/provider gates false; CP-03 does not prove deployed Cloud Run or private R2."
@@ -171,10 +173,11 @@ cp02_completion:
   local_server: stopped_no_4173_or_4174_listener
 
 cp03_completion:
-  status: complete_provider_free
+  status: complete_provider_free_reaudited_after_fixes
   activation_commit: "e2541b4ccf69d74c818b020b500e5f7b318b400b"
   implementation_commit: "4ac1df8872db50820ad3b95979572c907bf1631f"
-  evidence: "evidence/acceptance/VF-9-24N/cp03-word-transcript/acceptance.json"
+  audit_fix_commit: "a6a924856a58c233eadd8af402fbf78c6c821b97"
+  evidence: "evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json"
   promoted_worker: workers/image-media/src/videoforge_image_media/jobs/transcribe
   media_cpu_entrypoint: workers/media-local
   long_fixture_duration_ms: 1800000
@@ -182,13 +185,17 @@ cp03_completion:
   long_fixture_phrases: 615
   long_fixture_chunks: 4
   restart_recovered_chunks: 4
-  focused_transcript_worker: 30_passed
-  focused_media_local: 7_passed
+  focused_transcript_worker: 31_passed
+  focused_media_local: 10_passed
   focused_durable_control_plane: 8_passed
   canonical_verify: passed_ci_turbo_force
   control_plane_full: 223_passed
-  web_unit: 225_passed
+  web_unit: 221_passed
   installed_chrome: 40_passed_desktop_and_compact
+  local_linux_actual_media: passed_linux_arm64_network_none
+  local_linux_image_id: "sha256:0919e0bc421ae8684c2c3274dc6a298873f3ee710d0c1b3d0e2aaf1b812ef5c7"
+  mac_linux_transcript_and_semantic_receipt_parity: passed_short_noisy_long
+  active_runtime_firewall: passed_57_files_echo_only_no_auto_repair_fallback_or_serverless_import
   provider_calls: 0
   provider_resources_created: 0
   external_spend_usd: 0

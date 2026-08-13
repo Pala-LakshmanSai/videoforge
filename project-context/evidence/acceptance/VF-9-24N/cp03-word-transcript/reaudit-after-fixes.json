@@ -1,0 +1,147 @@
+{
+  "schema_version": "videoforge.checkpoint-reaudit/v1",
+  "checkpoint": "CP-03",
+  "task_id": "VF-9-24N",
+  "audited_at": "2026-08-13T17:52:07Z",
+  "result": "PASS",
+  "audited_implementation_commit": "a6a924856a58c233eadd8af402fbf78c6c821b97",
+  "failed_audit_head": "e223204ed37ecd4a5afa3c0a5e7bf095041375e2",
+  "dependency": {
+    "checkpoint": "CP-02",
+    "result": "PASS",
+    "commit": "5747e7b4e9c1d41564663afb1c0c0ad7272efe5b",
+    "evidence": "project-context/evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json"
+  },
+  "scope_and_authority": {
+    "bounded_to_cp03": true,
+    "cloud_mutation": false,
+    "credential_access": false,
+    "provider_calls": 0,
+    "gpu_used": false,
+    "model_download_or_change": false,
+    "external_spend_usd": 0,
+    "cp04_started": false
+  },
+  "prior_findings_closed": [
+    {
+      "severity": "P1",
+      "finding": "Synthetic-only container proof",
+      "closure": "Actual owned short, noisy, silence, malformed, and 30-minute media ran through pinned whisper.cpp and FFmpeg on Mac and local Linux/arm64; successful transcript and semantic receipt hashes match exactly.",
+      "evidence": "project-context/evidence/acceptance/VF-9-24N/cp03-word-transcript/real-owned-fixtures.json"
+    },
+    {
+      "severity": "P1",
+      "finding": "R2 fixture port was not wired and symlink rejection mutated the escape target",
+      "closure": "media-local now injects R2PortFixtureArtifactResolver; directory creation uses no-follow dir-fd traversal and the regression proves the outside directory remains empty.",
+      "evidence": "workers/media-local/tests/test_artifacts.py"
+    },
+    {
+      "severity": "P1",
+      "finding": "Legacy Auto, AvatarForcing, repair/fallback, MuseTalk, SkyReels, and Serverless qualification paths remained active",
+      "closure": "Active config, fixtures, routes, screens, local runtime, and production imports are fail-closed by a canonical 57-file active-runtime verifier.",
+      "evidence": "scripts/verify-active-runtime.mjs"
+    },
+    {
+      "severity": "P2",
+      "finding": "Executable identity was asserted but not bound to replay identity",
+      "closure": "Exact whisper, FFmpeg, and FFprobe executable hashes are included in the job fingerprint and durable work receipt; executable drift invalidates replay.",
+      "evidence": "workers/image-media/src/videoforge_image_media/jobs/transcribe/job.py"
+    }
+  ],
+  "open_findings": {
+    "P0": [],
+    "P1": [],
+    "P2": []
+  },
+  "contracts_and_migrations": {
+    "contract_sync": "PASS",
+    "context_schema_validation": "PASS",
+    "migration_change_required": false,
+    "reason": "The audit fixes retain existing persisted contract shapes and tighten runtime identity, ports, and reachability."
+  },
+  "cp03_acceptance": {
+    "container_image_id": "sha256:0919e0bc421ae8684c2c3274dc6a298873f3ee710d0c1b3d0e2aaf1b812ef5c7",
+    "container_platform": "linux/arm64",
+    "runtime_network": "none",
+    "model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+    "long_duration_ms": 1800000,
+    "long_words": 3309,
+    "long_phrases": 615,
+    "long_chunks": 4,
+    "long_transcript_sha256": "sha256:1613a5343a795d85930d059abdac7cb884605a73b8df87e07d5e0036ddca1a7e",
+    "long_semantic_receipt_sha256": "sha256:88a1e29f7b110d2ef9ea8495f95c6918d9bff03ef74ce313e3c30d2bad0fa172",
+    "mac_first_replay_restart_ms": [78342, 478, 749],
+    "linux_first_replay_restart_ms": [60146, 707, 1222],
+    "manual_timing_spot_check": "PASS_WITH_EXPECTED_BASE_EN_LEXICAL_LIMIT",
+    "original_voiceover_preserved": true
+  },
+  "global_mvp_invariants": {
+    "proof_scope": "provider-free contracts, persistence tests, active-runtime reachability scan, and real Chrome; not live hosted-provider proof",
+    "one_shared_equal_rights_app": "PASS",
+    "gated_one_time_admission": "PASS",
+    "one_singleton_session": "PASS",
+    "gpu_selection_only_while_truly_idle": "PASS",
+    "immutable_session_pair": "PASS",
+    "global_waiting_only_reorder_remove": "PASS",
+    "one_active_video": "PASS",
+    "independent_lane_shutdown_at_zero_demand": "PASS_CONTRACT_ONLY",
+    "no_silent_substitution": "PASS",
+    "queue_drain_zero_pods": "PASS_CONTRACT_ONLY_NO_LIVE_PROVIDER_REFRESH",
+    "separate_retained_volumes": "PASS_CONTRACT_ONLY_NOT_CREATED",
+    "no_active_serverless_auto_avatarforcing_musetalk_skyreels_repair_fallback": "PASS",
+    "no_cross_project_artifact_scratch_callback_leak": "PASS",
+    "cp01_evidence": "project-context/evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-after-authority-fix.json",
+    "cp02_evidence": "project-context/evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json"
+  },
+  "validations": {
+    "focused_transcript_worker": "31 passed",
+    "focused_media_local": "10 passed",
+    "all_worker_suites": "6 explicit suites passed",
+    "canonical_verify": "PASS exit 0",
+    "canonical_package_tasks": "28/28",
+    "control_plane": "223 passed",
+    "web_unit": "221 passed",
+    "workerd": "1 passed",
+    "real_installed_chrome": "40 passed desktop and compact",
+    "active_runtime": "57 files passed",
+    "secret_scan": "1079 tracked files passed",
+    "dependency_audit": "no vulnerabilities",
+    "git_diff_check": "PASS"
+  },
+  "commands_run": [
+    {"command": "pnpm test:workers", "exit_code": 0},
+    {"command": "pnpm verify:active-runtime", "exit_code": 0},
+    {"command": "node scripts/cp03-real-transcript-acceptance.mjs", "exit_code": 0},
+    {"command": "node scripts/cp03-container-contract-parity.mjs", "exit_code": 0},
+    {"command": "CI=1 TURBO_FORCE=true pnpm verify", "exit_code": 1, "note": "fix loop attempt 1; unused lint binding found and fixed"},
+    {"command": "CI=1 TURBO_FORCE=true pnpm verify", "exit_code": 1, "note": "fix loop attempt 2; stale fixture_auto unit expectation found and fixed"},
+    {"command": "CI=1 TURBO_FORCE=true pnpm verify", "exit_code": 1, "note": "fix loop attempt 3; secret scanner statted a deleted tracked file and was made deletion-safe"},
+    {"command": "CI=1 TURBO_FORCE=true pnpm verify", "exit_code": 0, "note": "final canonical audit"},
+    {"command": "docker ps --format ... | rg videoforge/cp03", "exit_code": 0, "note": "empty output; no CP-03 container remained"},
+    {"command": "colima stop", "exit_code": 0},
+    {"command": "colima status", "exit_code": 1, "note": "expected: colima is not running"},
+    {"command": "lsof -nP -iTCP:4173 -sTCP:LISTEN", "exit_code": 1, "note": "expected: no listener"},
+    {"command": "pnpm context:validate", "exit_code": 0},
+    {"command": "pnpm contracts:check", "exit_code": 0},
+    {"command": "pnpm secret:scan", "exit_code": 0},
+    {"command": "pnpm verify:active-runtime", "exit_code": 0},
+    {"command": "pnpm format:check", "exit_code": 0},
+    {"command": "git diff --cached --check", "exit_code": 0}
+  ],
+  "claims_not_proven": [
+    "Cloud Run Job deployment or hosted execution",
+    "private production R2 behavior",
+    "hosted linux/amd64 image behavior",
+    "current live provider Pod or retained-volume inventory because credential access was not authorized",
+    "hosted 30-minute latency, sizing, rate, or settled cost",
+    "production end-to-end completion before CP-08"
+  ],
+  "current_state_truthful": true,
+  "next_checkpoint": {
+    "checkpoint": "CP-04",
+    "dependency_safe_to_start": true,
+    "selected": false,
+    "authorized": false,
+    "started": false
+  }
+}
