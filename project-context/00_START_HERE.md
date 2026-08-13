@@ -75,12 +75,14 @@ in-memory firewall and that durable output rows did not prove exact Pod ownershi
 active persisted tuple verification before the paid port, and queue/lane ownership enforcement for
 durable model output. Fresh, upgrade, restore, schema, adversarial, canonical, and Chrome gates pass.
 The current proof is `evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-after-authority-fix.json`.
-Older acceptance files remain historical. `VF-9-24M`/`CP-02` is accepted provider-free: one
-equal-rights shared admission boundary, atomic email-bound one-time invites, singleton generation
-session, manually ordered global queue, and idle-only exact GPU receipt selectors. Evidence is
-`evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/acceptance.json`. No successor task is
-selected or authorized. CP-03 is not started. All provider, credential, cloud, model-download, GPU,
-and spend authority remains false; all production gates remain open.
+Older acceptance files remain historical. `VF-9-24M`/`CP-02` implementation commit
+`91ed5470f2d93e3cac577c70b7396c03bb42f870` plus audit-fix commit
+`5747e7b4e9c1d41564663afb1c0c0ad7272efe5b` are accepted provider-free. The fix adds durable
+Node-fixture reconstruction, server-issued hashed fixture credentials, and database-enforced
+invite-redemption linkage while removing direct admission bypass. Exact re-audit proof is
+`evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json`. No successor
+task is selected or authorized. CP-03 is not started. All provider, credential, cloud,
+model-download, GPU, and spend authority remains false; all production gates remain open.
 
 No VideoForge persistent model volume exists yet. Future provisioning/preparation is a separate
 explicitly authorized provider task after contracts and offline workers are green.

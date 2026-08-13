@@ -3,7 +3,8 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-13"
 source_of_truth: project-context
-# CP-02 is complete. No successor implementation is selected or authorized.
+# CP-02 is complete and independently re-audited after bounded fixes. No successor implementation
+# is selected or authorized.
 current_selected_profile: checkpoint_roadmap
 current_selected_brief: null
 

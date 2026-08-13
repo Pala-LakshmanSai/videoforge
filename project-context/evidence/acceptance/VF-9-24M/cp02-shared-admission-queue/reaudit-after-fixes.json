@@ -1,0 +1,120 @@
+{
+  "schema_version": "videoforge.cp02-reaudit/v1",
+  "task_id": "VF-9-24M",
+  "checkpoint": "CP-02",
+  "audited_at": "2026-08-13T14:59:48Z",
+  "result": "PASS",
+  "implementation_commit": "91ed5470f2d93e3cac577c70b7396c03bb42f870",
+  "audit_fix_commit": "5747e7b4e9c1d41564663afb1c0c0ad7272efe5b",
+  "dependency": {
+    "checkpoint": "CP-01",
+    "commit": "522ed6112d39e0bcbd03955ad753b79cef2fdb6d",
+    "verified_ancestor": true,
+    "status": "committed_and_green"
+  },
+  "resolved_findings": [
+    {
+      "severity": "P0",
+      "finding": "The web runtime used only process-local shared state and restart proof used manual export/import.",
+      "resolution": "The Node fixture server now owns an atomic file-backed persistence adapter and a fresh store reconstructs admissions, singleton session, immutable pair, queue, versions, and audit from the persisted snapshot."
+    },
+    {
+      "severity": "P0",
+      "finding": "Fixture admission trusted client-supplied verification facts and email/password had no password proof.",
+      "resolution": "The server now issues deterministic one-time fixture credentials, persists only hashes, validates email/password and Google assertion server-side, and no longer accepts a client emailVerified claim."
+    },
+    {
+      "severity": "P0",
+      "finding": "A public repository method could create admission directly and the database did not enforce admission-to-redemption linkage.",
+      "resolution": "Direct registration was removed; admission is reachable only through atomic invite redemption, and migration 0017 adds the app_admissions invite_redemption_id foreign key after legacy-safe backfill."
+    },
+    {
+      "severity": "P1",
+      "finding": "CURRENT_STATE and original acceptance evidence used a prose commit placeholder and pre-CP-02 last-good commit.",
+      "resolution": "Current context pins the exact implementation and audit-fix commits and points to this immutable re-audit evidence."
+    },
+    {
+      "severity": "P1",
+      "finding": "The first audit could not complete fresh canonical verification because the local disk returned ENOSPC.",
+      "resolution": "A fresh exact-commit canonical run subsequently completed with exit zero, including installed real Chrome."
+    }
+  ],
+  "validated_invariants": [
+    "one shared equal-rights application boundary",
+    "gated one-time email-bound admission with atomic consumption",
+    "one durable singleton generation session",
+    "GPU selection only while truly idle",
+    "immutable receipt-bound session pair",
+    "global waiting-only reorder and remove with actor plus old/new order audit",
+    "one active video and inert waiting work",
+    "no active Serverless, Auto, AvatarForcing, MuseTalk, SkyReels, repair, fallback, or legacy dispatch path in canonical composition",
+    "isolated lane volume, Pod, artifact, scratch, and callback contracts",
+    "queue-drain requires both lane Pods absent while intended volumes remain"
+  ],
+  "validations": {
+    "focused_control_plane": {
+      "command": "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/cp02-shared-admission.test.mjs packages/control-plane/tests/global-session-vnext.test.mjs packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/metadata-export-restore.test.mjs packages/control-plane/tests/durable-prompt-execution-store.test.mjs",
+      "passed": 16,
+      "failed": 0,
+      "exit_code": 0
+    },
+    "focused_web": {
+      "command": "pnpm --filter @videoforge/web typecheck && pnpm --filter @videoforge/web lint && pnpm --filter @videoforge/web test -- src/server/shared-app-fixture.test.ts src/server/runtime/node-shared-app-persistence.test.ts src/components/AccessGate.test.tsx src/server/app.test.ts",
+      "passed": 80,
+      "failed": 0,
+      "exit_code": 0
+    },
+    "focused_real_chrome": {
+      "command": "CI=1 pnpm --filter @videoforge/web exec playwright test tests/e2e/shared-app.spec.ts",
+      "passed": 2,
+      "failed": 0,
+      "projects": ["desktop-chrome", "compact-chrome"],
+      "exit_code": 0
+    },
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "tasks_passed": 28,
+      "tasks_total": 28,
+      "control_plane_tests_passed": 223,
+      "web_tests_passed": 225,
+      "installed_chrome_tests_passed": 40,
+      "workerd_tests_passed": 1,
+      "provider_free_graph_check": "passed"
+    }
+  },
+  "provider_and_spend": {
+    "provider_calls": 0,
+    "provider_resources_created": 0,
+    "oauth_calls": 0,
+    "email_sends": 0,
+    "credential_accesses": 0,
+    "cloud_mutations": 0,
+    "model_downloads": 0,
+    "gpu_uses": 0,
+    "external_spend_usd": 0,
+    "paid_compute_shutdown": "no_paid_compute_started",
+    "live_provider_inventory_refreshed": false
+  },
+  "claims_not_proven": [
+    "production Better Auth, email delivery, or Google OAuth",
+    "production Neon or Cloudflare persistence and deployment",
+    "live GPU inventory, exact live rates, provider receipts, Pods, or retained volumes",
+    "provider-side lane boot, shutdown, queue drain, callback isolation, or settled cost"
+  ],
+  "remaining_gates": [
+    "GATE_AVATAR_001",
+    "GATE_AVATAR_004",
+    "GATE_IMAGE_001",
+    "GATE_STYLE_002",
+    "GATE_GPU_001",
+    "GATE_RUNPOD_001",
+    "GATE_COST_001"
+  ],
+  "claim_boundary": {
+    "provider_free_only": true,
+    "production_end_to_end_proven": false,
+    "live_provider_audit_performed": false,
+    "cp03_started": false
+  }
+}

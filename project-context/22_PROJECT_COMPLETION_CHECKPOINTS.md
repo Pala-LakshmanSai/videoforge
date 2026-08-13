@@ -205,8 +205,10 @@ and fail-closed zero-row lifecycle mutations.
 
 ## CP-02 — Shared admission, simple global queue, and idle-only GPU UX
 
-**Status:** complete and accepted provider-free on 2026-08-13 under `VF-9-24M`. Evidence:
-`evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/acceptance.json`. CP-03 remains
+**Status:** complete and independently re-audited provider-free on 2026-08-13 under `VF-9-24M`.
+Implementation commit `91ed5470f2d93e3cac577c70b7396c03bb42f870`; audit-fix commit
+`5747e7b4e9c1d41564663afb1c0c0ad7272efe5b`. Evidence:
+`evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json`. CP-03 remains
 unselected and not started.
 
 **Outcome:** 5–10 people can enter one shared app and safely control one visible queue without

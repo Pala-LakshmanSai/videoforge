@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-13T13:57:17Z"
+updated_at: "2026-08-13T14:59:48Z"
 
 phase: cp02_complete_stopped_before_cp03
 implementation_authorized_in_current_task: false
@@ -22,8 +22,9 @@ repository:
   cp01_audit_fix_activation_commit: "234a8901d16f61b3d206d17f0f9db8d99f0afcbc"
   cp01_audit_fix_commit: "0e90f3b637949711aecda6acc5b9e0bd51ae3202"
   cp01_dispatch_authority_fix_commit: "522ed6112d39e0bcbd03955ad753b79cef2fdb6d"
-  cp02_implementation_commit: "the sole bounded VF-9-24M milestone commit containing this state"
-  last_good_commit: "5c7e77951fc217047147fef10d09d30b7a7cfdd5"
+  cp02_implementation_commit: "91ed5470f2d93e3cac577c70b7396c03bb42f870"
+  cp02_audit_fix_commit: "5747e7b4e9c1d41564663afb1c0c0ad7272efe5b"
+  last_good_commit: "5747e7b4e9c1d41564663afb1c0c0ad7272efe5b"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -94,9 +95,10 @@ completed_tasks:
     evidence: "evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-after-authority-fix.json"
     external_spend_usd: 0
   - task_id: VF-9-24M
-    status: complete_cp02_shared_admission_global_queue_idle_gpu_ux
-    implementation_commit: "the sole bounded VF-9-24M milestone commit containing this state"
-    evidence: "evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/acceptance.json"
+    status: complete_cp02_shared_admission_global_queue_idle_gpu_ux_reaudited
+    implementation_commit: "91ed5470f2d93e3cac577c70b7396c03bb42f870"
+    audit_fix_commit: "5747e7b4e9c1d41564663afb1c0c0ad7272efe5b"
+    evidence: "evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json"
     external_spend_usd: 0
 active_ownership: []
 
@@ -119,7 +121,7 @@ recommended_next_task:
   credential_access_authorized: false
   model_downloads_authorized: false
   application_code_changes_authorized: false
-  prerequisite_evidence: "evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/acceptance.json"
+  prerequisite_evidence: "evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json"
   required_handoff:
     - "Read the completed CP-02 evidence and preserve its shared admission, queue, and idle GPU UX boundary."
     - "Select an exact successor profile and brief only after explicit authority."
@@ -144,11 +146,13 @@ cp01_completion:
   local_server: stopped_no_4173_or_8787_listener
 
 cp02_completion:
-  status: complete_provider_free_accepted
-  implementation_commit: "the sole bounded VF-9-24M milestone commit containing this state"
-  evidence: "evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/acceptance.json"
-  focused_control_plane: 15_passed
-  web_unit: 224_passed
+  status: complete_provider_free_reaudited_after_fixes
+  implementation_commit: "91ed5470f2d93e3cac577c70b7396c03bb42f870"
+  audit_fix_commit: "5747e7b4e9c1d41564663afb1c0c0ad7272efe5b"
+  evidence: "evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json"
+  focused_control_plane: 16_passed
+  control_plane_full: 223_passed
+  web_unit: 225_passed
   installed_chrome: 40_passed_desktop_and_compact
   canonical_verify: passed_ci_turbo_force
   provider_calls: 0
