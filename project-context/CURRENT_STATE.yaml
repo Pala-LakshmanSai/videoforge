@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-13T10:35:13Z"
+updated_at: "2026-08-13T10:58:08Z"
 
-phase: cp01_complete_cp02_not_started
-implementation_authorized_in_current_task: false
+phase: cp01_audit_fixes_active
+implementation_authorized_in_current_task: true
 current_milestone: shared_admission_queue_and_idle_gpu_ux
-current_task: VF-9-24K_complete
-current_wave: cp01_complete_successor_paused
+current_task: VF-9-24K
+current_wave: cp01_reopened_cp02_paused
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -27,8 +27,8 @@ live_development:
   expected_url: "http://localhost:4173"
   server_state: stopped
   dev_server_pid: null
-  owner_task_id: null
-  health_checked_at: "2026-08-13T10:35:13Z"
+  owner_task_id: VF-9-24K
+  health_checked_at: "2026-08-13T10:58:08Z"
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
@@ -87,17 +87,22 @@ completed_tasks:
     implementation_commit: "9ee3267fb0c1ccf0a275a723d0ccf6dee4ad57b7"
     evidence: "evidence/acceptance/VF-9-24K/cp01-global-session-contracts"
     external_spend_usd: 0
-active_ownership: []
+active_ownership:
+  - task_id: VF-9-24K
+    scope: cp01_audit_fixes_only
+    base_commit: "96f53a7a10f0936c3e4140a14f2d5dc80abbd9fe"
+    provider_calls_authorized: false
+    maximum_external_spend_usd: 0
 
 blocked_tasks: []
-in_progress_checkpoint: null
+in_progress_checkpoint: CP-01
 
 recommended_next_task:
   task_id: unassigned
   checkpoint: CP-02
   milestone: shared_admission_queue_and_idle_gpu_ux
   status: not_started
-  dependency_status: cp01_complete_green
+  dependency_status: blocked_until_cp01_reaudit_passes
   authorization_status: fresh_explicit_user_authority_required
   read_profile: checkpoint_roadmap
   task_brief: not_created
@@ -119,10 +124,10 @@ recommended_next_task:
     - "Any production gate closure, live profile promotion, volume-capacity assumption, model/GPU substitution, repair, or fallback."
 
 cp01_completion:
-  status: complete_provider_free
+  status: reopened_for_audit_fixes
   implementation_commit: "9ee3267fb0c1ccf0a275a723d0ccf6dee4ad57b7"
   evidence: "evidence/acceptance/VF-9-24K/cp01-global-session-contracts/acceptance.json"
-  canonical_verify: passed
+  canonical_verify: prior_pass_invalidated_by_independent_audit
   provider_calls: 0
   provider_resources_created: 0
   external_spend_usd: 0

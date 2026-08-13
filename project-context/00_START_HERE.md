@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-01 provider-free contracts complete; CP-02 and provider activation not started
+Status: CP-01 audit fixes active; CP-02 and provider activation not started
 Context schema: `1.5`  
 Last updated: `2026-08-13`
 
@@ -69,7 +69,9 @@ Pod lifecycle/absence, durable-output/cost, and Pod-dispatch contracts plus an a
 repository, restore proof, and legacy import firewall. Current v1 machine bytes remain
 legacy/provider-free and cannot enter the new Pod dispatch boundary.
 
-`CP-02` has not started and has no active implementation authority. The CP-01 proof is
+An independent audit reopened `VF-9-24K`/`CP-01` for dispatch-lineage, production-graph firewall,
+and lifecycle no-op fixes under renewed bounded application/context authority. `CP-02` has not
+started and has no active implementation authority. The prior CP-01 proof is
 `evidence/acceptance/VF-9-24K/cp01-global-session-contracts/acceptance.json`. All production gates
 remain open.
 
