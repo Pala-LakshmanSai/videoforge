@@ -24,6 +24,10 @@ export function deriveTimelineInspectionView(
   const structurallyComplete =
     inspection.timing?.coverage === "COMPLETE" &&
     inspection.plan?.coverage === "COMPLETE" &&
+    inspection.workPlan !== null &&
+    inspection.workPlan.hardCutsOnly &&
+    inspection.workPlan.slowImageZoomRequired &&
+    inspection.workPlan.renderSegmentCount === inspection.plan.segmentCount &&
     inspection.selectedAvatar !== null &&
     inspection.selectedAvatar.count === inspection.selectedAvatar.spans.length &&
     inspection.selectedAvatar.materializedCount === inspection.selectedAvatar.count &&

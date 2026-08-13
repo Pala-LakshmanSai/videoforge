@@ -112,7 +112,7 @@ function revisionValue() {
       avatar_quality_profile_id: null,
     },
     spend_cap_usd: 1.5,
-    scheduler_version: "scheduler-v1",
+    scheduler_version: "scheduler-v2",
     scheduler_seed: REVISION_SEED,
     prompt_writer_version: "fixture-prompt-writer-v1",
     prompt_compiler_version: "fixture-prompt-compiler-v1",
@@ -121,24 +121,34 @@ function revisionValue() {
 
 function transcriptValue() {
   const starts = Array.from({ length: 10 }, (_, index) => 500 + index * 4_000);
-  const words = starts.map((startMs, index) => ({
-    index,
-    text: `phrase-${String(index)}.`,
-    start_ms: startMs,
-    end_ms: Math.min(39_000, startMs + 3_000),
-    confidence: 0.99,
-  }));
-  const phrases = words.map((word, index) => ({
-    phrase_id: `durable_phrase_${String(index).padStart(2, "0")}`,
-    sentence_id: `durable_sentence_${String(index).padStart(2, "0")}`,
-    word_start: index,
-    word_end_exclusive: index + 1,
-    start_ms: word.start_ms,
-    end_ms: word.end_ms,
-    pause_before_ms: index === 0 ? 500 : 1_000,
-    pause_after_ms: 1_000,
-    text: word.text,
-  }));
+  const words = [];
+  const phrases = starts.map((startMs, index) => {
+    const wordStart = words.length;
+    const endMs = Math.min(startMs + 3_000, 39_000);
+    for (let offset = 0; offset < endMs - startMs; offset += 500) {
+      words.push({
+        index: words.length,
+        text: `phrase-${String(index)}-word-${String(offset / 500)}${offset + 500 === endMs - startMs ? "." : ""}`,
+        start_ms: startMs + offset,
+        end_ms: startMs + offset + 500,
+        confidence: 0.99,
+      });
+    }
+    return {
+      phrase_id: `durable_phrase_${String(index).padStart(2, "0")}`,
+      sentence_id: `durable_sentence_${String(index).padStart(2, "0")}`,
+      word_start: wordStart,
+      word_end_exclusive: words.length,
+      start_ms: startMs,
+      end_ms: endMs,
+      pause_before_ms: index === 0 ? 500 : 1_000,
+      pause_after_ms: 1_000,
+      text: words
+        .slice(wordStart)
+        .map((word) => word.text)
+        .join(" "),
+    };
+  });
   return {
     schema_version: "transcript-timing/v1",
     project_revision_id: IDS.revisionA,
@@ -382,7 +392,7 @@ test("persists silent-boundary plans and resolves byte-identical canonical bytes
     assert.equal(accepted.ok, true, diagnostic(accepted));
     assert.equal(accepted.value.replayed, false);
     assert.equal(accepted.value.timeline.headVersion, 2);
-    assert.equal(accepted.value.timeline.schedulerVersion, "scheduler-v1");
+    assert.equal(accepted.value.timeline.schedulerVersion, "scheduler-v2");
     assert.equal(accepted.value.timeline.schedulerConfigHash, prepared.schedulerConfigHash);
     assert.equal(accepted.value.timeline.inputFingerprintHash, prepared.inputFingerprintHash);
     assert.equal(

@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import {
   canonicalizeJson,
   parseJsonStrict,
+  sha256CanonicalJson,
   validateAndHashContractDocument,
   type JsonValue,
   type Sha256Digest,
@@ -26,6 +27,7 @@ import {
 } from "@videoforge/contracts";
 import {
   collectRequiredAssetTaskKeys,
+  compileCompleteWorkPlan,
   LocalArtifactStore,
   planResolvedRenderManifest,
   resolveProviderAcceptedAssets,
@@ -63,7 +65,7 @@ const OWNED_VOICE = "Samantha";
 const OWNED_SPEECH_RATE = "55";
 const OUTPUT_FILENAME = "videoforge-local-owned-slice.mp4";
 const RUNTIME_STATE_FILENAME = "phase2-runtime-state.json";
-const RUNTIME_STATE_SCHEMA_VERSION = "videoforge.phase2-local-runtime-state/v1";
+const RUNTIME_STATE_SCHEMA_VERSION = "videoforge.local-runtime-state/v2";
 const MAX_CAPTURE_BYTES = 8 * 1024 * 1024;
 const LOCAL_PROCESS_ENVIRONMENT_KEYS = Object.freeze([
   "HOME",
@@ -112,6 +114,8 @@ interface PersistedLocalRuntimeState {
   readonly documents: {
     readonly transcript_sha256: Sha256Digest;
     readonly timeline_sha256: Sha256Digest;
+    readonly generation_work_manifest_sha256: Sha256Digest;
+    readonly render_work_manifest_sha256: Sha256Digest;
     readonly resolved_render_manifest_sha256: Sha256Digest;
     readonly render_result_sha256: Sha256Digest;
   };
@@ -186,6 +190,7 @@ function parseSelectedSpanAudio(value: unknown, index: number): LocalSelectedSpa
     value,
     [
       "spanId",
+      "artifactId",
       "timelineSegmentId",
       "taskKey",
       "selectedStartMs",
@@ -223,6 +228,7 @@ function parseSelectedSpanAudio(value: unknown, index: number): LocalSelectedSpa
   }
   return Object.freeze({
     spanId: exactString(record.spanId, `${label} ID`),
+    artifactId: exactString(record.artifactId, `${label} artifact ID`),
     timelineSegmentId: exactString(record.timelineSegmentId, `${label} segment ID`),
     taskKey: exactString(record.taskKey, `${label} task key`),
     selectedStartMs,
@@ -263,6 +269,8 @@ function parseRuntimeState(value: unknown): PersistedLocalRuntimeState {
     [
       "transcript_sha256",
       "timeline_sha256",
+      "generation_work_manifest_sha256",
+      "render_work_manifest_sha256",
       "resolved_render_manifest_sha256",
       "render_result_sha256",
     ],
@@ -308,6 +316,20 @@ function parseRuntimeState(value: unknown): PersistedLocalRuntimeState {
       timeline_sha256: requireSha256Digest(
         exactString(documents.timeline_sha256, "Persisted timeline checksum"),
         "Persisted timeline checksum",
+      ),
+      generation_work_manifest_sha256: requireSha256Digest(
+        exactString(
+          documents.generation_work_manifest_sha256,
+          "Persisted generation work manifest checksum",
+        ),
+        "Persisted generation work manifest checksum",
+      ),
+      render_work_manifest_sha256: requireSha256Digest(
+        exactString(
+          documents.render_work_manifest_sha256,
+          "Persisted render work manifest checksum",
+        ),
+        "Persisted render work manifest checksum",
       ),
       resolved_render_manifest_sha256: requireSha256Digest(
         exactString(
@@ -796,22 +818,36 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
     }
     const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
     const state = parseRuntimeState(parseJsonStrict(decoder.decode(stateBytes)));
-    const [source, output, transcript, timeline, manifest, renderResult, evidence, ...spans] =
-      await Promise.all([
-        store.verifyObject(state.source_voiceover_sha256, "wav"),
-        store.verifyObject(state.output.sha256, "mp4"),
-        store.readObject(state.documents.transcript_sha256, "json"),
-        store.readObject(state.documents.timeline_sha256, "json"),
-        store.readObject(state.documents.resolved_render_manifest_sha256, "json"),
-        store.readObject(state.documents.render_result_sha256, "json"),
-        store.readObject(state.evidence_sha256, "json"),
-        ...state.selected_span_audio.map((span) => store.verifyObject(span.sha256, "wav")),
-      ]);
+    const [
+      source,
+      output,
+      transcript,
+      timeline,
+      generationWork,
+      renderWork,
+      manifest,
+      renderResult,
+      evidence,
+      ...spans
+    ] = await Promise.all([
+      store.verifyObject(state.source_voiceover_sha256, "wav"),
+      store.verifyObject(state.output.sha256, "mp4"),
+      store.readObject(state.documents.transcript_sha256, "json"),
+      store.readObject(state.documents.timeline_sha256, "json"),
+      store.readObject(state.documents.generation_work_manifest_sha256, "json"),
+      store.readObject(state.documents.render_work_manifest_sha256, "json"),
+      store.readObject(state.documents.resolved_render_manifest_sha256, "json"),
+      store.readObject(state.documents.render_result_sha256, "json"),
+      store.readObject(state.evidence_sha256, "json"),
+      ...state.selected_span_audio.map((span) => store.verifyObject(span.sha256, "wav")),
+    ]);
     if (
       source.sha256 !== state.source_voiceover_sha256 ||
       output.bytes !== state.output.bytes ||
       transcript.sha256 !== state.documents.transcript_sha256 ||
       timeline.sha256 !== state.documents.timeline_sha256 ||
+      generationWork.sha256 !== state.documents.generation_work_manifest_sha256 ||
+      renderWork.sha256 !== state.documents.render_work_manifest_sha256 ||
       manifest.sha256 !== state.documents.resolved_render_manifest_sha256 ||
       renderResult.sha256 !== state.documents.render_result_sha256 ||
       evidence.sha256 !== state.evidence_sha256 ||
@@ -819,35 +855,57 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
     ) {
       throw new Error("The latest persisted local runtime state does not match its artifacts.");
     }
-    const [transcriptDocument, timelineDocument, manifestDocument, renderResultDocument] =
-      await Promise.all([
-        validateAndHashContractDocument(
-          "transcriptTiming",
-          parseJsonStrict(decoder.decode(transcript.content)),
-        ),
-        validateAndHashContractDocument(
-          "timelinePlan",
-          parseJsonStrict(decoder.decode(timeline.content)),
-        ),
-        validateAndHashContractDocument(
-          "resolvedRenderManifest",
-          parseJsonStrict(decoder.decode(manifest.content)),
-        ),
-        validateAndHashContractDocument(
-          "renderJobResult",
-          parseJsonStrict(decoder.decode(renderResult.content)),
-        ),
-      ]);
+    const [
+      transcriptDocument,
+      timelineDocument,
+      generationWorkDocument,
+      renderWorkDocument,
+      manifestDocument,
+      renderResultDocument,
+    ] = await Promise.all([
+      validateAndHashContractDocument(
+        "transcriptTiming",
+        parseJsonStrict(decoder.decode(transcript.content)),
+      ),
+      validateAndHashContractDocument(
+        "timelinePlan",
+        parseJsonStrict(decoder.decode(timeline.content)),
+      ),
+      validateAndHashContractDocument(
+        "generationWorkManifest",
+        parseJsonStrict(decoder.decode(generationWork.content)),
+      ),
+      validateAndHashContractDocument(
+        "renderWorkManifest",
+        parseJsonStrict(decoder.decode(renderWork.content)),
+      ),
+      validateAndHashContractDocument(
+        "resolvedRenderManifest",
+        parseJsonStrict(decoder.decode(manifest.content)),
+      ),
+      validateAndHashContractDocument(
+        "renderJobResult",
+        parseJsonStrict(decoder.decode(renderResult.content)),
+      ),
+    ]);
     if (
       transcriptDocument.sha256 !== state.documents.transcript_sha256 ||
       timelineDocument.sha256 !== state.documents.timeline_sha256 ||
+      generationWorkDocument.sha256 !== state.documents.generation_work_manifest_sha256 ||
+      renderWorkDocument.sha256 !== state.documents.render_work_manifest_sha256 ||
       manifestDocument.sha256 !== state.documents.resolved_render_manifest_sha256 ||
       renderResultDocument.sha256 !== state.documents.render_result_sha256 ||
       transcriptDocument.value.project_revision_id !== LOCAL_REVISION_ID ||
       timelineDocument.value.project_revision_id !== LOCAL_REVISION_ID ||
+      generationWorkDocument.value.project_revision_id !== LOCAL_REVISION_ID ||
+      renderWorkDocument.value.project_revision_id !== LOCAL_REVISION_ID ||
       manifestDocument.value.project_revision_id !== LOCAL_REVISION_ID ||
       transcriptDocument.value.source.sha256 !== state.source_voiceover_sha256 ||
       manifestDocument.value.timeline_plan_hash !== state.documents.timeline_sha256 ||
+      generationWorkDocument.value.timeline_plan_hash !== state.documents.timeline_sha256 ||
+      renderWorkDocument.value.timeline_plan_hash !== state.documents.timeline_sha256 ||
+      renderWorkDocument.value.generation_work_manifest_hash !==
+        state.documents.generation_work_manifest_sha256 ||
       manifestDocument.value.voiceover.sha256 !== state.source_voiceover_sha256 ||
       timelineDocument.value.total_frames !== state.output.total_frames ||
       renderResultDocument.value.status !== "SUCCEEDED" ||
@@ -897,6 +955,8 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
         "asr_result_sha256",
         "transcript_sha256",
         "timeline_sha256",
+        "generation_work_manifest_sha256",
+        "render_work_manifest_sha256",
         "resolved_render_manifest_sha256",
         "render_input_sha256",
         "render_result_sha256",
@@ -972,6 +1032,10 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
       evidenceSource.sha256 !== state.source_voiceover_sha256 ||
       evidenceDocuments.transcript_sha256 !== state.documents.transcript_sha256 ||
       evidenceDocuments.timeline_sha256 !== state.documents.timeline_sha256 ||
+      evidenceDocuments.generation_work_manifest_sha256 !==
+        state.documents.generation_work_manifest_sha256 ||
+      evidenceDocuments.render_work_manifest_sha256 !==
+        state.documents.render_work_manifest_sha256 ||
       evidenceDocuments.resolved_render_manifest_sha256 !==
         state.documents.resolved_render_manifest_sha256 ||
       evidenceDocuments.render_result_sha256 !== state.documents.render_result_sha256 ||
@@ -1003,6 +1067,8 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
       totalFrames: state.output.total_frames,
       transcriptSha256: state.documents.transcript_sha256,
       timelineSha256: state.documents.timeline_sha256,
+      generationWorkManifestSha256: state.documents.generation_work_manifest_sha256,
+      renderWorkManifestSha256: state.documents.render_work_manifest_sha256,
       resolvedRenderManifestSha256: state.documents.resolved_render_manifest_sha256,
       renderResultSha256: state.documents.render_result_sha256,
       selectedSpanAudio: state.selected_span_audio,
@@ -1171,7 +1237,7 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
         avatar_quality_profile_id: null,
       },
       spend_cap_usd: request.createRequest.spend_cap_usd,
-      scheduler_version: "scheduler-v1",
+      scheduler_version: "scheduler-v2",
       scheduler_seed: request.createRequest.user_seed ?? 982_341,
       prompt_writer_version: "fixture-prompt-writer-v1",
       prompt_compiler_version: "fixture-prompt-compiler-v1",
@@ -1202,6 +1268,33 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
       ffprobe,
       request.signal,
     );
+    const schedulerConfigHash = await sha256CanonicalJson(SUPPORTED_SCHEDULER_CONFIG);
+    const completeWorkPlan = requirePipeline(
+      await compileCompleteWorkPlan({
+        revision,
+        transcript,
+        timeline,
+        schedulerConfigHash,
+        selectedSpanAudio,
+      }),
+      "Complete generation and render work planning",
+    );
+    const [generationWorkArtifact, renderWorkArtifact] = await Promise.all([
+      store.putObject(
+        Buffer.from(canonicalizeJson(completeWorkPlan.generationWorkManifest.value), "utf8"),
+        "json",
+      ),
+      store.putObject(
+        Buffer.from(canonicalizeJson(completeWorkPlan.renderWorkManifest.value), "utf8"),
+        "json",
+      ),
+    ]);
+    if (
+      generationWorkArtifact.sha256 !== completeWorkPlan.generationWorkManifest.sha256 ||
+      renderWorkArtifact.sha256 !== completeWorkPlan.renderWorkManifest.sha256
+    ) {
+      throw new Error("Persisted work manifest bytes do not match their canonical hashes.");
+    }
 
     request.onProgress({
       stage: "RESOLVING_ASSETS",
@@ -1429,6 +1522,8 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
           asr_result_sha256: asrResult.sha256,
           transcript_sha256: transcript.sha256,
           timeline_sha256: timeline.sha256,
+          generation_work_manifest_sha256: completeWorkPlan.generationWorkManifest.sha256,
+          render_work_manifest_sha256: completeWorkPlan.renderWorkManifest.sha256,
           resolved_render_manifest_sha256: resolvedManifest.sha256,
           render_input_sha256: renderInput.sha256,
           render_result_sha256: renderResult.sha256,
@@ -1461,6 +1556,8 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
       documents: Object.freeze({
         transcript_sha256: transcript.sha256,
         timeline_sha256: timeline.sha256,
+        generation_work_manifest_sha256: completeWorkPlan.generationWorkManifest.sha256,
+        render_work_manifest_sha256: completeWorkPlan.renderWorkManifest.sha256,
         resolved_render_manifest_sha256: resolvedManifest.sha256,
         render_result_sha256: renderResult.sha256,
       }),
@@ -1485,6 +1582,8 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
       totalFrames: renderResult.value.probe.total_frames,
       transcriptSha256: transcript.sha256,
       timelineSha256: timeline.sha256,
+      generationWorkManifestSha256: completeWorkPlan.generationWorkManifest.sha256,
+      renderWorkManifestSha256: completeWorkPlan.renderWorkManifest.sha256,
       resolvedRenderManifestSha256: resolvedManifest.sha256,
       renderResultSha256: renderResult.sha256,
       selectedSpanAudio,
@@ -1566,6 +1665,7 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
         selected.push(
           Object.freeze({
             spanId: stableId("selected-span", segment.segment_id).replace(/^seg_/u, "span_"),
+            artifactId: `asset_span_audio_${artifact.sha256.slice(7, 31)}`,
             timelineSegmentId: segment.segment_id,
             taskKey: segment.required_slots.avatar.span_audio_task_key,
             selectedStartMs,

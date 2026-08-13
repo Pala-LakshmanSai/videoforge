@@ -597,6 +597,146 @@ const semanticContractIssues = <Name extends ContractName>(
     }
     return issues;
   }
+  if (contractName === "generationWorkManifest") {
+    const manifest = value as ContractDocument<"generationWorkManifest">;
+    const issues: ContractValidationIssue[] = [];
+    const batchIds = new Set<string>();
+    const batchedTaskKeys = new Set<string>();
+    for (const [index, batch] of manifest.prompt_batches.entries()) {
+      if (batch.ordinal !== index || batchIds.has(batch.batch_id)) {
+        issues.push(
+          semanticIssue(
+            `/prompt_batches/${index}`,
+            "Prompt batches must have unique IDs and contiguous zero-based ordinals.",
+          ),
+        );
+      }
+      batchIds.add(batch.batch_id);
+      for (const taskKey of batch.scene_task_keys) {
+        if (batchedTaskKeys.has(taskKey)) {
+          issues.push(
+            semanticIssue(
+              `/prompt_batches/${index}/scene_task_keys`,
+              "Each image task must appear in exactly one prompt batch.",
+            ),
+          );
+        }
+        batchedTaskKeys.add(taskKey);
+      }
+    }
+    const imageTaskKeys = new Set<string>();
+    const imageIds = new Set<string>();
+    for (const [index, slot] of manifest.image_slots.entries()) {
+      if (
+        imageTaskKeys.has(slot.task_key) ||
+        imageIds.has(slot.slot_id) ||
+        !batchIds.has(slot.prompt_batch_id) ||
+        !batchedTaskKeys.has(slot.task_key)
+      ) {
+        issues.push(
+          semanticIssue(
+            `/image_slots/${index}`,
+            "Image slots must be unique and bound to exactly one declared prompt batch.",
+          ),
+        );
+      }
+      imageTaskKeys.add(slot.task_key);
+      imageIds.add(slot.slot_id);
+    }
+    if (
+      imageTaskKeys.size !== batchedTaskKeys.size ||
+      [...batchedTaskKeys].some((taskKey) => !imageTaskKeys.has(taskKey))
+    ) {
+      issues.push(
+        semanticIssue(
+          "/prompt_batches",
+          "Prompt batches and image slots must cover the same task-key set exactly once.",
+        ),
+      );
+    }
+    const avatarTaskKeys = new Set<string>();
+    const avatarSegments = new Set<string>();
+    for (const [index, span] of manifest.avatar_spans.entries()) {
+      if (
+        avatarTaskKeys.has(span.task_key) ||
+        avatarSegments.has(span.timeline_segment_id) ||
+        span.padded_start_ms > span.selected_start_ms ||
+        span.selected_start_ms >= span.selected_end_ms_exclusive ||
+        span.selected_end_ms_exclusive > span.padded_end_ms_exclusive ||
+        span.trim_start_ms !== span.selected_start_ms - span.padded_start_ms ||
+        span.trim_end_ms_exclusive !==
+          span.trim_start_ms + span.selected_end_ms_exclusive - span.selected_start_ms
+      ) {
+        issues.push(
+          semanticIssue(
+            `/avatar_spans/${index}`,
+            "Avatar span work must be unique and preserve exact selected, padded, and trim timing.",
+          ),
+        );
+      }
+      avatarTaskKeys.add(span.task_key);
+      avatarSegments.add(span.timeline_segment_id);
+    }
+    const counts = manifest.cost_counts;
+    const selectedAudioMs = manifest.avatar_spans.reduce(
+      (sum, span) => sum + span.padded_end_ms_exclusive - span.padded_start_ms,
+      0,
+    );
+    if (
+      counts.prompt_batch_count !== manifest.prompt_batches.length ||
+      counts.image_prompt_count !== manifest.image_slots.length ||
+      counts.image_generation_count !== manifest.image_slots.length ||
+      counts.avatar_generation_count !== manifest.avatar_spans.length ||
+      counts.selected_span_audio_count !== manifest.avatar_spans.length ||
+      counts.selected_span_audio_ms !== selectedAudioMs
+    ) {
+      issues.push(
+        semanticIssue("/cost_counts", "Cost counts must equal the exact immutable work units."),
+      );
+    }
+    return issues;
+  }
+  if (contractName === "renderWorkManifest") {
+    const manifest = value as ContractDocument<"renderWorkManifest">;
+    const issues: ContractValidationIssue[] = [];
+    const segmentIds = new Set<string>();
+    let nextFrame = 0;
+    for (const [index, segment] of manifest.segments.entries()) {
+      const assetKeys = Object.keys(segment.planned_asset_ids).sort();
+      const expectedAssetKeys =
+        segment.timeline_composition === "AVATAR_FULL"
+          ? ["avatar"]
+          : segment.timeline_composition === "IMAGE_FULL"
+            ? ["image"]
+            : ["avatar", "image"];
+      const needsImage = segment.timeline_composition !== "AVATAR_FULL";
+      const needsAvatar = segment.timeline_composition !== "IMAGE_FULL";
+      if (
+        segmentIds.has(segment.timeline_segment_id) ||
+        segment.start_frame !== nextFrame ||
+        segment.end_frame_exclusive <= segment.start_frame ||
+        assetKeys.join("\u0000") !== expectedAssetKeys.join("\u0000") ||
+        segment.image_zoom_profile !== (needsImage ? "SLOW_SMOOTH_CENTERED_ZOOM" : "NONE") ||
+        segment.avatar_crop_authority !==
+          (needsAvatar ? "ACCEPTED_ECHO_PROFILE_REQUIRED" : "NOT_APPLICABLE")
+      ) {
+        issues.push(
+          semanticIssue(
+            `/segments/${index}`,
+            "Render work must be contiguous and composition-specific with hard-cut image zoom and Echo crop authority.",
+          ),
+        );
+      }
+      segmentIds.add(segment.timeline_segment_id);
+      nextFrame = segment.end_frame_exclusive;
+    }
+    if (nextFrame !== manifest.output.total_frames) {
+      issues.push(
+        semanticIssue("/segments", "Render work must cover every output frame exactly once."),
+      );
+    }
+    return issues;
+  }
   return [];
 };
 

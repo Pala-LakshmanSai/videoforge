@@ -13,6 +13,7 @@ test("the pure package exposes stable coded failures", () => {
     "CONTRACT_INVALID",
     "TRANSCRIPT_INVALID",
     "TIMELINE_INVALID",
+    "WORK_PLAN_INVALID",
     "REQUIRED_ASSET_MISSING",
     "DUPLICATE_ASSET_BINDING",
     "ASSET_KIND_MISMATCH",

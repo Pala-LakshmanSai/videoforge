@@ -10,6 +10,7 @@ import {
   readProjectMutationRequest,
 } from "../mutation";
 import { apiProblem, problemResponse } from "../problem";
+import { SharedFixtureError } from "../shared-app-fixture";
 import type { LocalRuntime } from "./runtime";
 import { LOCAL_PROJECT_ID } from "./types";
 import { localTimelineInspection } from "./timeline-inspection";
@@ -38,6 +39,15 @@ function pipelineNotReady(detail: string): Response {
   return problemResponse(
     apiProblem("PROJECT_PREVIEW_NOT_READY", 409, "Local preview is not ready", detail, false),
   );
+}
+
+function sharedAppFailure(error: unknown): Response {
+  if (error instanceof SharedFixtureError) {
+    return problemResponse(
+      apiProblem(error.code, error.status, "Local queue request rejected", error.message, false),
+    );
+  }
+  throw error;
 }
 
 function parseByteRange(header: string, bytes: number): { start: number; end: number } | null {
@@ -133,6 +143,20 @@ export function registerLocalRoutes(app: Hono, runtime: LocalRuntime): void {
 
   app.get("/api/v1/bootstrap", async (c) => c.json(await runtime.bootstrapResponse()));
   app.get("/api/v1/execution-profiles", (c) => c.json(executionProfileCatalog));
+  app.get("/api/v1/shared-app", (c) => c.json(runtime.sharedApp.view("local")));
+  app.post("/api/v1/shared-app/generate", async (c) => {
+    try {
+      const body = (await c.req.json()) as {
+        projectId: string;
+        title: string;
+        imageReceiptId?: string;
+        avatarReceiptId?: string;
+      };
+      return c.json(runtime.sharedApp.startOrEnqueue({ sessionId: "local", ...body }));
+    } catch (error) {
+      return sharedAppFailure(error);
+    }
+  });
 
   app.get("/api/v1/avatar-profiles", (c) => c.json(toBootstrapResponse(localScenario()).avatars));
   app.get("/api/v1/image-styles", (c) => c.json(toBootstrapResponse(localScenario()).styles));
@@ -196,6 +220,8 @@ export function registerLocalRoutes(app: Hono, runtime: LocalRuntime): void {
               artifactRoot: output.artifactRoot,
               transcriptSha256: output.transcriptSha256,
               timelineSha256: output.timelineSha256,
+              generationWorkManifestSha256: output.generationWorkManifestSha256,
+              renderWorkManifestSha256: output.renderWorkManifestSha256,
               selectedSpanAudio: output.selectedSpanAudio,
             }
           : null,

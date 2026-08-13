@@ -101,13 +101,36 @@ interface LocalTimelineInspectionResponse {
   } | null;
   readonly plan: {
     readonly totalFrames: number;
+    readonly segmentCount: number;
     readonly sourceStartMs: number;
     readonly sourceEndMs: number;
     readonly coverage: string;
+    readonly avatarFullPercent: number;
+    readonly avatarSplitPercent: number;
+  } | null;
+  readonly workPlan: {
+    readonly generationManifestSha256: string;
+    readonly renderManifestSha256: string;
+    readonly promptBatchCount: number;
+    readonly imageSlotCount: number;
+    readonly avatarTaskCount: number;
+    readonly renderSegmentCount: number;
+    readonly shotRoleCount: number;
+    readonly hardCutsOnly: boolean;
+    readonly slowImageZoomRequired: boolean;
   } | null;
   readonly selectedAvatar: {
     readonly count: number;
     readonly materializedCount: number;
+    readonly coveragePercent: number;
+    readonly spans: readonly {
+      readonly artifactId: string;
+      readonly audioSha256: string;
+      readonly paddedStartMs: number;
+      readonly paddedEndMs: number;
+      readonly trimStartMs: number;
+      readonly trimEndMs: number;
+    }[];
   } | null;
   readonly phrases: readonly unknown[];
 }
@@ -248,10 +271,42 @@ async function main(): Promise<void> {
   );
   invariant(
     inspection.selectedAvatar !== null &&
+      inspection.selectedAvatar.coveragePercent >= 21 &&
+      inspection.selectedAvatar.coveragePercent <= 22 &&
+      inspection.plan !== null &&
+      Math.abs(inspection.plan.avatarFullPercent - inspection.plan.avatarSplitPercent) <=
+        (7_000 / inspection.timing.sourceDurationMs) * 100,
+    "Inspection did not expose the locked avatar ratio and near-even full/split balance.",
+  );
+  invariant(
+    inspection.workPlan !== null &&
+      inspection.workPlan.generationManifestSha256 === result.generationWorkManifestSha256 &&
+      inspection.workPlan.renderManifestSha256 === result.renderWorkManifestSha256 &&
+      inspection.workPlan.avatarTaskCount === result.selectedSpanAudio.length &&
+      inspection.workPlan.renderSegmentCount === inspection.plan.segmentCount &&
+      inspection.workPlan.imageSlotCount > 0 &&
+      inspection.workPlan.promptBatchCount > 0 &&
+      inspection.workPlan.shotRoleCount > 0 &&
+      inspection.workPlan.hardCutsOnly &&
+      inspection.workPlan.slowImageZoomRequired,
+    "Inspection omitted or drifted the immutable complete work/render plan.",
+  );
+  invariant(
+    inspection.selectedAvatar !== null &&
       inspection.selectedAvatar.count > 0 &&
       inspection.selectedAvatar.materializedCount === inspection.selectedAvatar.count &&
       result.selectedSpanAudio.length === inspection.selectedAvatar.count,
     "Inspection omitted materialized selected avatar spans.",
+  );
+  invariant(
+    inspection.selectedAvatar.spans.every(
+      (span) =>
+        span.artifactId.length > 0 &&
+        /^sha256:[a-f0-9]{64}$/u.test(span.audioSha256) &&
+        span.paddedStartMs <= span.trimStartMs + span.paddedStartMs &&
+        span.trimEndMs <= span.paddedEndMs - span.paddedStartMs,
+    ),
+    "Inspection omitted playable selected-span artifact or trim lineage.",
   );
 
   const rangeResponse = await app.request(`/api/v1/projects/${LOCAL_PROJECT_ID}/preview`, {
@@ -338,6 +393,8 @@ async function main(): Promise<void> {
     restoredResult.sha256 === result.sha256 &&
       restoredResult.transcriptSha256 === result.transcriptSha256 &&
       restoredResult.timelineSha256 === result.timelineSha256 &&
+      restoredResult.generationWorkManifestSha256 === result.generationWorkManifestSha256 &&
+      restoredResult.renderWorkManifestSha256 === result.renderWorkManifestSha256 &&
       restoredResult.evidenceSha256 === result.evidenceSha256 &&
       restoredResult.selectedSpanAudio.length === result.selectedSpanAudio.length,
     "Restarted local runtime did not restore byte-equivalent accepted lineage.",
@@ -366,6 +423,7 @@ async function main(): Promise<void> {
           createReplay: "idempotent",
           previewRange: 1_024,
           timelineInspection: "persisted-hashes-phrases-layouts-and-materialized-avatar-spans",
+          immutableWorkPlan: "image-slots-prompt-batches-avatar-artifacts-cost-counts-and-render",
           restartRestore: "byte-equivalent-timing-spans-output-and-evidence",
           approval: "exact-candidate-and-sha256",
           download: "queryless-exact-bytes",
@@ -381,6 +439,16 @@ async function main(): Promise<void> {
           downloadedSha256,
           evidencePath: result.evidencePath,
           evidenceSha256: result.evidenceSha256,
+          generationWorkManifestSha256: result.generationWorkManifestSha256,
+          renderWorkManifestSha256: result.renderWorkManifestSha256,
+          selectedSpanAudioCount: result.selectedSpanAudio.length,
+          avatarCoveragePercent: inspection.selectedAvatar.coveragePercent,
+          avatarFullPercent: inspection.plan.avatarFullPercent,
+          avatarSplitPercent: inspection.plan.avatarSplitPercent,
+          imageSlotCount: inspection.workPlan.imageSlotCount,
+          promptBatchCount: inspection.workPlan.promptBatchCount,
+          renderSegmentCount: inspection.workPlan.renderSegmentCount,
+          shotRoleCount: inspection.workPlan.shotRoleCount,
         },
       },
       null,

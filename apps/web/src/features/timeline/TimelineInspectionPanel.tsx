@@ -67,6 +67,7 @@ export function TimelineInspectionPanel({
   const view = deriveTimelineInspectionView(inspection);
   const timing = inspection.timing;
   const plan = inspection.plan;
+  const work = inspection.workPlan;
   const avatar = inspection.selectedAvatar;
 
   return (
@@ -89,7 +90,7 @@ export function TimelineInspectionPanel({
         </Badge>
       </div>
 
-      {timing && plan && avatar ? (
+      {timing && plan && work && avatar ? (
         <>
           <div className="timeline-coverage-metrics">
             <Metric
@@ -116,6 +117,26 @@ export function TimelineInspectionPanel({
               detail={`${avatar.materializedCount}/${avatar.count} spans materialized`}
               tone="info"
             />
+            <Metric
+              label="Avatar balance"
+              value={`${plan.avatarFullPercent.toFixed(2)} / ${plan.avatarSplitPercent.toFixed(2)}%`}
+              detail="full / split cumulative"
+              tone="info"
+            />
+            <Metric
+              label="Image work"
+              value={`${work.imageSlotCount} slots`}
+              detail={`${work.promptBatchCount} prompt batches · ${work.shotRoleCount} shot roles`}
+              tone="success"
+            />
+            <Metric
+              label="Render work"
+              value={`${work.renderSegmentCount} hard cuts`}
+              detail={
+                work.slowImageZoomRequired ? "Slow centered image zoom locked" : "Zoom blocked"
+              }
+              tone="success"
+            />
           </div>
 
           <div className="selected-avatar-spans" aria-label="Selected avatar spans">
@@ -136,7 +157,10 @@ export function TimelineInspectionPanel({
                     <div>
                       <strong>{layoutLabel(span.layout)}</strong>
                       <p>{span.phrase}</p>
-                      <small>Audio {span.audioSha256.slice(7, 19)}…</small>
+                      <small>
+                        Audio {span.audioSha256.slice(7, 19)}… · padded {span.paddedStartMs}–
+                        {span.paddedEndMs} ms · trim {span.trimStartMs}–{span.trimEndMs} ms
+                      </small>
                     </div>
                   </article>
                 ))
@@ -160,11 +184,19 @@ export function TimelineInspectionPanel({
                 <li key={phrase.id}>
                   <span>
                     {formatTimelineTime(phrase.startMs)}–{formatTimelineTime(phrase.endMs)}
+                    <small>
+                      frames {phrase.startFrame}–{phrase.endFrameExclusive}
+                    </small>
                   </span>
                   <p>{phrase.text}</p>
-                  <Badge tone={phrase.layout === "IMAGE_FULL" ? "neutral" : "info"}>
-                    {layoutLabel(phrase.layout)}
-                  </Badge>
+                  {phrase.shotRoles.map((role) => (
+                    <code key={role}>{role}</code>
+                  ))}
+                  {phrase.layouts.map((layout) => (
+                    <Badge key={layout} tone={layout === "IMAGE_FULL" ? "neutral" : "info"}>
+                      {layoutLabel(layout)}
+                    </Badge>
+                  ))}
                 </li>
               ))}
             </ol>
@@ -176,6 +208,14 @@ export function TimelineInspectionPanel({
               <span>
                 <small>Timeline</small>
                 <code>{inspection.documents.timelineSha256}</code>
+              </span>
+              <span>
+                <small>Work</small>
+                <code>{work.generationManifestSha256}</code>
+              </span>
+              <span>
+                <small>Render</small>
+                <code>{work.renderManifestSha256}</code>
               </span>
             </div>
           </Disclosure>

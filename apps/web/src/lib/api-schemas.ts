@@ -143,6 +143,29 @@ const timelineInspectionSchema = z
         sourceStartMs: z.number().int().nonnegative(),
         sourceEndMs: z.number().int().positive(),
         coverage: z.enum(["COMPLETE", "INCOMPLETE"]),
+        compositionCounts: z
+          .object({
+            avatarFull: z.number().int().nonnegative(),
+            imageFull: z.number().int().nonnegative(),
+            avatarSplitImage: z.number().int().nonnegative(),
+          })
+          .strict(),
+        avatarFullPercent: z.number().min(0).max(100),
+        avatarSplitPercent: z.number().min(0).max(100),
+      })
+      .strict()
+      .nullable(),
+    workPlan: z
+      .object({
+        generationManifestSha256: z.string().regex(SHA256),
+        renderManifestSha256: z.string().regex(SHA256),
+        promptBatchCount: z.number().int().positive(),
+        imageSlotCount: z.number().int().positive(),
+        avatarTaskCount: z.number().int().positive(),
+        renderSegmentCount: z.number().int().positive(),
+        shotRoleCount: z.number().int().min(1).max(6),
+        hardCutsOnly: z.boolean(),
+        slowImageZoomRequired: z.boolean(),
       })
       .strict()
       .nullable(),
@@ -160,7 +183,12 @@ const timelineInspectionSchema = z
               endMs: z.number().int().positive(),
               layout: z.enum(["AVATAR_FULL", "AVATAR_SPLIT_IMAGE"]),
               phrase: z.string(),
+              artifactId: z.string(),
               audioSha256: z.string().regex(SHA256),
+              paddedStartMs: z.number().int().nonnegative(),
+              paddedEndMs: z.number().int().positive(),
+              trimStartMs: z.number().int().nonnegative(),
+              trimEndMs: z.number().int().positive(),
             })
             .strict(),
         ),
@@ -175,7 +203,31 @@ const timelineInspectionSchema = z
           endMs: z.number().int().positive(),
           text: z.string(),
           segmentId: z.string(),
+          segmentIds: z.array(z.string()).min(1),
           layout: z.enum(["AVATAR_FULL", "IMAGE_FULL", "AVATAR_SPLIT_IMAGE"]),
+          layouts: z.array(z.enum(["AVATAR_FULL", "IMAGE_FULL", "AVATAR_SPLIT_IMAGE"])).min(1),
+          startFrame: z.number().int().nonnegative(),
+          endFrameExclusive: z.number().int().positive(),
+          shotRole: z
+            .enum([
+              "ENVIRONMENTAL_WIDE",
+              "HUMAN_MEDIUM",
+              "HANDS_ACTION",
+              "OBJECT_EVIDENCE",
+              "MACRO_DETAIL",
+              "REACTION_RESULT",
+            ])
+            .nullable(),
+          shotRoles: z.array(
+            z.enum([
+              "ENVIRONMENTAL_WIDE",
+              "HUMAN_MEDIUM",
+              "HANDS_ACTION",
+              "OBJECT_EVIDENCE",
+              "MACRO_DETAIL",
+              "REACTION_RESULT",
+            ]),
+          ),
         })
         .strict(),
     ),

@@ -38,6 +38,7 @@ export interface LocalPipelineRunRequest {
 
 export interface LocalSelectedSpanAudio {
   readonly spanId: string;
+  readonly artifactId: string;
   readonly timelineSegmentId: string;
   readonly taskKey: string;
   readonly selectedStartMs: number;
@@ -61,6 +62,8 @@ export interface LocalPipelineRunResult {
   readonly totalFrames: number;
   readonly transcriptSha256: Sha256Digest;
   readonly timelineSha256: Sha256Digest;
+  readonly generationWorkManifestSha256: Sha256Digest;
+  readonly renderWorkManifestSha256: Sha256Digest;
   readonly resolvedRenderManifestSha256: Sha256Digest;
   readonly renderResultSha256: Sha256Digest;
   readonly selectedSpanAudio: readonly LocalSelectedSpanAudio[];

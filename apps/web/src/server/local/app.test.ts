@@ -222,7 +222,7 @@ class ControlledRunner implements LocalSliceRunner {
           schema_version: "timeline-plan/v1",
           project_revision_id: "revision_local_owned_001",
           revision_config_hash: `sha256:${"d".repeat(64)}`,
-          scheduler_version: "scheduler-v1",
+          scheduler_version: "scheduler-v2",
           seed: 2_026_080_9,
           output_fps_num: 30,
           output_fps_den: 1,
@@ -322,6 +322,135 @@ class ControlledRunner implements LocalSliceRunner {
       ),
       "json",
     );
+    const generationWork = await store.putObject(
+      Buffer.from(
+        canonicalizeJson({
+          schema_version: "generation-work-manifest/v1",
+          project_revision_id: "revision_local_owned_001",
+          revision_config_hash: `sha256:${"d".repeat(64)}`,
+          timeline_plan_hash: timeline.sha256,
+          transcript_document_hash: transcript.sha256,
+          scheduler_config_hash: `sha256:${"e".repeat(64)}`,
+          selection_authority: "DETERMINISTIC_CODE",
+          echo_audio_policy: {
+            full_voiceover_dispatched: false,
+            sample_rate_hz: 16_000,
+            channels: 1,
+            context_padding_ms: 500,
+          },
+          prompt_batches: [
+            {
+              batch_id: "prompt-batch:local:001",
+              ordinal: 0,
+              scene_task_keys: [
+                "image:segment_local_002",
+                "image:segment_local_003",
+                "image:segment_local_004",
+                "image:segment_local_005:right",
+                "image:segment_local_006",
+              ],
+            },
+          ],
+          image_slots: [
+            ["segment_local_002", "IMAGE_FULL", "HANDS_ACTION"],
+            ["segment_local_003", "IMAGE_FULL", "MACRO_DETAIL"],
+            ["segment_local_004", "IMAGE_FULL", "OBJECT_EVIDENCE"],
+            ["segment_local_005", "AVATAR_SPLIT_IMAGE", "REACTION_RESULT"],
+            ["segment_local_006", "IMAGE_FULL", "HUMAN_MEDIUM"],
+          ].map(([segmentId, composition, role]) => ({
+            slot_id: `image-slot:${segmentId}`,
+            task_key:
+              composition === "AVATAR_SPLIT_IMAGE"
+                ? `image:${segmentId}:right`
+                : `image:${segmentId}`,
+            timeline_segment_id: segmentId,
+            timeline_composition: composition,
+            in_image_shot_role: role,
+            prompt_batch_id: "prompt-batch:local:001",
+            planned_asset_id: `planned-image:${segmentId}`,
+          })),
+          avatar_spans: [
+            {
+              span_id: "span_local_001",
+              task_key: "avatar:segment_local_001",
+              timeline_segment_id: "segment_local_001",
+              timeline_composition: "AVATAR_FULL",
+              span_audio_artifact_id: "asset_span_audio_local_001",
+              span_audio_sha256: firstSpan.sha256,
+              planned_clip_asset_id: "planned-avatar:segment_local_001",
+              selected_start_ms: 0,
+              selected_end_ms_exclusive: 6_000,
+              padded_start_ms: 0,
+              padded_end_ms_exclusive: 6_500,
+              trim_start_ms: 0,
+              trim_end_ms_exclusive: 6_000,
+            },
+            {
+              span_id: "span_local_005",
+              task_key: "avatar:segment_local_005",
+              timeline_segment_id: "segment_local_005",
+              timeline_composition: "AVATAR_SPLIT_IMAGE",
+              span_audio_artifact_id: "asset_span_audio_local_005",
+              span_audio_sha256: secondSpan.sha256,
+              planned_clip_asset_id: "planned-avatar:segment_local_005",
+              selected_start_ms: 27_000,
+              selected_end_ms_exclusive: 32_000,
+              padded_start_ms: 26_500,
+              padded_end_ms_exclusive: 32_500,
+              trim_start_ms: 500,
+              trim_end_ms_exclusive: 5_500,
+            },
+          ],
+          cost_counts: {
+            prompt_batch_count: 1,
+            image_prompt_count: 5,
+            image_generation_count: 5,
+            avatar_generation_count: 2,
+            selected_span_audio_count: 2,
+            selected_span_audio_ms: 12_500,
+            render_segment_count: 6,
+          },
+        }),
+        "utf8",
+      ),
+      "json",
+    );
+    const renderWork = await store.putObject(
+      Buffer.from(
+        canonicalizeJson({
+          schema_version: "render-work-manifest/v1",
+          project_revision_id: "revision_local_owned_001",
+          revision_config_hash: `sha256:${"d".repeat(64)}`,
+          timeline_plan_hash: timeline.sha256,
+          generation_work_manifest_hash: generationWork.sha256,
+          output: { width: 1920, height: 1080, fps_num: 30, fps_den: 1, total_frames: 1_200 },
+          transition_policy: "HARD_CUTS_ONLY",
+          segments: [
+            ["segment_local_001", 0, 180, "AVATAR_FULL"],
+            ["segment_local_002", 180, 390, "IMAGE_FULL"],
+            ["segment_local_003", 390, 600, "IMAGE_FULL"],
+            ["segment_local_004", 600, 810, "IMAGE_FULL"],
+            ["segment_local_005", 810, 960, "AVATAR_SPLIT_IMAGE"],
+            ["segment_local_006", 960, 1_200, "IMAGE_FULL"],
+          ].map(([segmentId, startFrame, endFrame, composition]) => ({
+            timeline_segment_id: segmentId,
+            start_frame: startFrame,
+            end_frame_exclusive: endFrame,
+            timeline_composition: composition,
+            planned_asset_ids: {
+              ...(composition !== "IMAGE_FULL" ? { avatar: `planned-avatar:${segmentId}` } : {}),
+              ...(composition !== "AVATAR_FULL" ? { image: `planned-image:${segmentId}` } : {}),
+            },
+            image_zoom_profile:
+              composition === "AVATAR_FULL" ? "NONE" : "SLOW_SMOOTH_CENTERED_ZOOM",
+            avatar_crop_authority:
+              composition === "IMAGE_FULL" ? "NOT_APPLICABLE" : "ACCEPTED_ECHO_PROFILE_REQUIRED",
+          })),
+        }),
+        "utf8",
+      ),
+      "json",
+    );
     return new ControlledRunner(
       {
         assetId: `fixture_voiceover_sha256_${"a".repeat(64)}`,
@@ -343,11 +472,14 @@ class ControlledRunner implements LocalSliceRunner {
         totalFrames: 1_200,
         transcriptSha256: transcript.sha256,
         timelineSha256: timeline.sha256,
+        generationWorkManifestSha256: generationWork.sha256,
+        renderWorkManifestSha256: renderWork.sha256,
         resolvedRenderManifestSha256: DOCUMENT_SHA,
         renderResultSha256: DOCUMENT_SHA,
         selectedSpanAudio: [
           {
             spanId: "span_local_001",
+            artifactId: "asset_span_audio_local_001",
             timelineSegmentId: "segment_local_001",
             taskKey: "audio-span:segment_local_001",
             selectedStartMs: 0,
@@ -362,6 +494,7 @@ class ControlledRunner implements LocalSliceRunner {
           },
           {
             spanId: "span_local_005",
+            artifactId: "asset_span_audio_local_005",
             timelineSegmentId: "segment_local_005",
             taskKey: "audio-span:segment_local_005",
             selectedStartMs: 27_000,
@@ -505,6 +638,39 @@ describe("local walking-slice API", () => {
       persistedBytes: true,
       providerCallsAuthorized: false,
     });
+  });
+
+  it("exposes a bounded in-memory queue facade without authorizing providers or spend", async () => {
+    const runner = await ControlledRunner.create();
+    const app = createApiApp({ mode: "local", localRunner: runner });
+    const shared = await app.request("/api/v1/shared-app");
+    expect(shared.status).toBe(200);
+    const view = (await shared.json()) as {
+      admission: { admitted: boolean };
+      inventory: { receiptId: string; lane: "image_media" | "avatar_primary" }[];
+      providerCallsAuthorized: boolean;
+      authorizedSpendUsd: number;
+    };
+    expect(view.admission.admitted).toBe(true);
+    expect(view.providerCallsAuthorized).toBe(false);
+    expect(view.authorizedSpendUsd).toBe(0);
+
+    const imageReceiptId = view.inventory.find((offer) => offer.lane === "image_media")?.receiptId;
+    const avatarReceiptId = view.inventory.find(
+      (offer) => offer.lane === "avatar_primary",
+    )?.receiptId;
+    const generated = await app.request("/api/v1/shared-app/generate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        projectId: PROJECT_ID,
+        title: "Local no-provider run",
+        imageReceiptId,
+        avatarReceiptId,
+      }),
+    });
+    expect(generated.status).toBe(200);
+    await expect(generated.json()).resolves.toMatchObject({ outcome: "STARTED", queueVersion: 1 });
   });
 
   it("exposes the same restart-safe media contract in explicit sandbox mode", async () => {

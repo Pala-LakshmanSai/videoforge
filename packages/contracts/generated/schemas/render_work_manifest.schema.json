@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/render-work-manifest-v1.json",
+  "title": "VideoForge Render Work Manifest v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "project_revision_id", "revision_config_hash", "timeline_plan_hash", "generation_work_manifest_hash", "output", "transition_policy", "segments"],
+  "properties": {
+    "schema_version": {"const": "render-work-manifest/v1"}, "project_revision_id": {"$ref": "#/$defs/id"}, "revision_config_hash": {"$ref": "#/$defs/sha256"}, "timeline_plan_hash": {"$ref": "#/$defs/sha256"}, "generation_work_manifest_hash": {"$ref": "#/$defs/sha256"},
+    "output": {"type": "object", "additionalProperties": false, "required": ["width", "height", "fps_num", "fps_den", "total_frames"], "properties": {"width": {"const": 1920}, "height": {"const": 1080}, "fps_num": {"const": 30}, "fps_den": {"const": 1}, "total_frames": {"type": "integer", "minimum": 300, "maximum": 108000}}},
+    "transition_policy": {"const": "HARD_CUTS_ONLY"},
+    "segments": {"type": "array", "minItems": 1, "maxItems": 20000, "items": {"$ref": "#/$defs/segment"}}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"}, "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "assetIds": {"type": "object", "additionalProperties": false, "properties": {"avatar": {"$ref": "#/$defs/id"}, "image": {"$ref": "#/$defs/id"}}, "minProperties": 1, "maxProperties": 2},
+    "segment": {"type": "object", "additionalProperties": false, "required": ["timeline_segment_id", "start_frame", "end_frame_exclusive", "timeline_composition", "planned_asset_ids", "image_zoom_profile", "avatar_crop_authority"], "properties": {"timeline_segment_id": {"$ref": "#/$defs/id"}, "start_frame": {"type": "integer", "minimum": 0}, "end_frame_exclusive": {"type": "integer", "minimum": 1}, "timeline_composition": {"enum": ["AVATAR_FULL", "IMAGE_FULL", "AVATAR_SPLIT_IMAGE"]}, "planned_asset_ids": {"$ref": "#/$defs/assetIds"}, "image_zoom_profile": {"enum": ["NONE", "SLOW_SMOOTH_CENTERED_ZOOM"]}, "avatar_crop_authority": {"enum": ["NOT_APPLICABLE", "ACCEPTED_ECHO_PROFILE_REQUIRED"]}}}
+  }
+}

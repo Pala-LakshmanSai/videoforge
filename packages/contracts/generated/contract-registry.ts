@@ -126,6 +126,34 @@ export const canonicalContractRegistry = {
       ]
     },
     {
+      "name": "generationWorkManifest",
+      "schema": "generation_work_manifest.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/generation_work_manifest.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/generation_work_manifest.invalid.full_voiceover.json",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "renderWorkManifest",
+      "schema": "render_work_manifest.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/render_work_manifest.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/render_work_manifest.invalid.transition.json",
+          "expected": false
+        }
+      ]
+    },
+    {
       "name": "resolvedRenderManifest",
       "schema": "resolved_render_manifest.schema.json",
       "fixtures": [

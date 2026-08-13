@@ -9,6 +9,11 @@ These small owned/synthetic fixtures make the preimplementation contracts concre
 - `project_revision_config.valid.json` is the trusted server-resolved v2 form of that same request, including the exact Avatar Profile binding.
 - `project_revision_config.invalid.compatibility_mismatch.json` intentionally claims a `PASSED` preflight state with `FAILED` evidence; schema validation must reject it.
 - `timeline_plan.valid.json` hash-links to the revision and covers all three allowed timeline compositions without generated asset IDs.
+- `generation_work_manifest.valid.json` binds complete deterministic image/prompt/avatar-span work,
+  planned artifact IDs, 16 kHz mono padding/trim policy, and exact cost counts; the paired
+  `invalid.full_voiceover` fixture proves full-voiceover Echo dispatch is rejected.
+- `render_work_manifest.valid.json` binds every planned frame interval to hard cuts and required
+  image zoom; the paired `invalid.transition` fixture proves decorative transitions are rejected.
 - `resolved_render_manifest.valid.json` hash-links to the revision/timeline and binds every required slot to an accepted asset/checksum plus the fixed output/render profile. Its full-avatar row exercises the AvatarForcing 832×480/25 profile, while its split row exercises the SkyReels 960×960/25 square-source profile and matching center crop.
 - `resolved_render_manifest.invalid.avatar_profile_crop.json` intentionally declares a SkyReels source profile with AvatarForcing crop coordinates; schema validation must reject it.
 - `production_manifest.valid.json` is the v2 final provenance index for prompts, attempts, QA, cost, selected avatar/style/models, render manifest, and output.

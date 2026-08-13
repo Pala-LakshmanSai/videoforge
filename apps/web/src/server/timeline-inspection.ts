@@ -86,6 +86,7 @@ function waitingInspection(project: TimelineProjectIdentity): TimelineInspection
     documents: { transcriptSha256: null, timelineSha256: null },
     timing: null,
     plan: null,
+    workPlan: null,
     selectedAvatar: null,
     phrases: [],
   };
@@ -134,7 +135,7 @@ export function fixtureTimelineDocuments(project: TimelineProjectIdentity): {
     schema_version: "timeline-plan/v1",
     project_revision_id: project.revisionId,
     revision_config_hash: "sha256:89bc38845a41ed0070eca069ac19e36ccab65688e0997d2b791f2200e4c00586",
-    scheduler_version: "scheduler-v1",
+    scheduler_version: "scheduler-v2",
     seed: 982_341,
     output_fps_num: 30,
     output_fps_den: 1,
@@ -207,7 +208,16 @@ export async function fixtureTimelineInspection(
             endMs: phrase.sourceEndMs,
             layout: phrase.layout,
             phrase: phrase.text,
+            artifactId: `asset_span_audio_fixture_${String(index + 1).padStart(3, "0")}`,
             audioSha256: `sha256:${String(index + 1).repeat(64)}`,
+            paddedStartMs: Math.max(0, phrase.sourceStartMs - 500),
+            paddedEndMs: Math.min(40_000, phrase.sourceEndMs + 500),
+            trimStartMs: phrase.sourceStartMs - Math.max(0, phrase.sourceStartMs - 500),
+            trimEndMs:
+              phrase.sourceStartMs -
+              Math.max(0, phrase.sourceStartMs - 500) +
+              phrase.sourceEndMs -
+              phrase.sourceStartMs,
           },
         ],
   );
@@ -240,6 +250,25 @@ export async function fixtureTimelineInspection(
       sourceStartMs: 0,
       sourceEndMs: 40_000,
       coverage: "COMPLETE",
+      compositionCounts: {
+        avatarFull: FIXTURE_PHRASES.filter((phrase) => phrase.layout === "AVATAR_FULL").length,
+        imageFull: FIXTURE_PHRASES.filter((phrase) => phrase.layout === "IMAGE_FULL").length,
+        avatarSplitImage: FIXTURE_PHRASES.filter((phrase) => phrase.layout === "AVATAR_SPLIT_IMAGE")
+          .length,
+      },
+      avatarFullPercent: 11.25,
+      avatarSplitPercent: 10,
+    },
+    workPlan: {
+      generationManifestSha256: transcriptSha256,
+      renderManifestSha256: timelineSha256,
+      promptBatchCount: 1,
+      imageSlotCount: FIXTURE_PHRASES.filter((phrase) => phrase.layout !== "AVATAR_FULL").length,
+      avatarTaskCount: avatarSpans.length,
+      renderSegmentCount: FIXTURE_PHRASES.length,
+      shotRoleCount: 2,
+      hardCutsOnly: true,
+      slowImageZoomRequired: true,
     },
     selectedAvatar: {
       count: avatarSpans.length,
@@ -254,7 +283,21 @@ export async function fixtureTimelineInspection(
       endMs: phrase.endMs,
       text: phrase.text,
       segmentId: `segment_fixture_${String(index + 1).padStart(3, "0")}`,
+      segmentIds: [`segment_fixture_${String(index + 1).padStart(3, "0")}`],
       layout: phrase.layout,
+      layouts: [phrase.layout],
+      startFrame: (phrase.sourceStartMs * 30) / 1_000,
+      endFrameExclusive: (phrase.sourceEndMs * 30) / 1_000,
+      shotRole:
+        phrase.layout === "AVATAR_FULL"
+          ? null
+          : phrase.layout === "AVATAR_SPLIT_IMAGE"
+            ? "REACTION_RESULT"
+            : "OBJECT_EVIDENCE",
+      shotRoles:
+        phrase.layout === "AVATAR_FULL"
+          ? []
+          : [phrase.layout === "AVATAR_SPLIT_IMAGE" ? "REACTION_RESULT" : "OBJECT_EVIDENCE"],
     })),
   };
 }

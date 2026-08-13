@@ -234,15 +234,20 @@ For compatibility, `optional_script` stays nullable. The web shell sends `null`;
 pinned Cloud Run Job whisper.cpp path and local development uses its Mac parity path. Other inputs
 remain strictly validated.
 
-## Timeline plan versus resolved render manifest
+## Timeline and complete work manifests
 
-Do not put generated asset IDs into the pre-generation EDL. Use two immutable contracts:
+Do not put generated asset IDs into the pre-generation EDL. Use four immutable stages:
 
 1. **`timeline-plan/v1`** — canonical 30 fps frame intervals, source-audio boundaries, narration, deterministic timeline composition/in-image shot role, and composition-specific required task slots.
-2. **`resolved-render-manifest/v1`** — revision/timeline hashes, original voiceover binding, fixed output/render profile, total frames, accepted asset IDs/checksums, and exact render geometry after the asset barrier closes.
+2. **`generation-work-manifest/v1`** — exact prompt batches, image slots/planned asset IDs,
+   short selected-span Echo tasks, padded WAV/trim lineage, selection authority, and cost counts.
+3. **`render-work-manifest/v1`** — exact planned asset use per frame interval, hard-cut-only policy,
+   required slow centered image zoom, and avatar crop-acceptance requirement.
+4. **`resolved-render-manifest/v1`** — revision/timeline hashes, original voiceover binding, fixed output/render profile, total frames, accepted asset IDs/checksums, and exact render geometry after the asset barrier closes.
 
-Complete schema-valid plan and resolved documents are
-`evidence/fixtures/timeline_plan.valid.json` and
+Complete schema-valid documents are `evidence/fixtures/timeline_plan.valid.json`,
+`evidence/fixtures/generation_work_manifest.valid.json`,
+`evidence/fixtures/render_work_manifest.valid.json`, and
 `evidence/fixtures/resolved_render_manifest.valid.json`. They prove the existing provider-free
 timeline/asset-barrier mechanics only. Any embedded legacy avatar-model crop/profile name is not an
 Echo production authorization. vNext fixtures must bind the exact Echo renderer source profile,
@@ -259,7 +264,9 @@ TypeScript control plane validates returned facts, canonicalizes and stores resu
 and assigns their canonical hash. Future callback HMACs sign raw bytes; local worker envelopes use
 the explicit local artifact pointer and a null callback instead of a fake HTTPS callback.
 
-The machine contracts are `evidence/timeline_plan.schema.json` and `evidence/resolved_render_manifest.schema.json`. Their segment definitions are discriminated unions:
+The machine contracts include `evidence/timeline_plan.schema.json`,
+`evidence/generation_work_manifest.schema.json`, `evidence/render_work_manifest.schema.json`, and
+`evidence/resolved_render_manifest.schema.json`. Their segment definitions are discriminated unions:
 
 - `AVATAR_FULL` requires exactly an avatar slot/asset.
 - `IMAGE_FULL` requires exactly an image slot/asset.

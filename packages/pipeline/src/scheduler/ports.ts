@@ -16,6 +16,13 @@ export interface SchedulerPort {
 }
 
 export {
+  compileCompleteWorkPlan,
+  type CompleteWorkPlan,
+  type CompleteWorkPlanRequest,
+  type MaterializedSelectedSpan,
+} from "./work-plan.js";
+
+export {
   deterministicTimelineScheduler,
   scheduleTimeline,
   SUPPORTED_SCHEDULER_CONFIG,

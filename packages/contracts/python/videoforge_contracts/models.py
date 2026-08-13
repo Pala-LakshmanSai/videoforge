@@ -84,6 +84,14 @@ class TimelinePlanDocument(CanonicalContractDocument):
     contract_name = "timelinePlan"
 
 
+class GenerationWorkManifestDocument(CanonicalContractDocument):
+    contract_name = "generationWorkManifest"
+
+
+class RenderWorkManifestDocument(CanonicalContractDocument):
+    contract_name = "renderWorkManifest"
+
+
 class ResolvedRenderManifestDocument(CanonicalContractDocument):
     contract_name = "resolvedRenderManifest"
 
@@ -139,6 +147,8 @@ CONTRACT_MODELS: dict[ContractName, type[BaseModel]] = {
     "orchestrationState": OrchestrationStateDocument,
     "projectRevisionConfig": ProjectRevisionConfigDocument,
     "timelinePlan": TimelinePlanDocument,
+    "generationWorkManifest": GenerationWorkManifestDocument,
+    "renderWorkManifest": RenderWorkManifestDocument,
     "resolvedRenderManifest": ResolvedRenderManifestDocument,
     "productionManifest": ProductionManifestDocument,
     "podWorkerJobEnvelope": PodWorkerJobEnvelopeDocument,

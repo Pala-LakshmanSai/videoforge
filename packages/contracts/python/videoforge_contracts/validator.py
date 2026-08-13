@@ -20,6 +20,8 @@ ContractName = Literal[
     "orchestrationState",
     "projectRevisionConfig",
     "timelinePlan",
+    "generationWorkManifest",
+    "renderWorkManifest",
     "resolvedRenderManifest",
     "productionManifest",
     "podWorkerJobEnvelope",
@@ -43,6 +45,8 @@ CONTRACT_NAMES: tuple[ContractName, ...] = (
     "orchestrationState",
     "projectRevisionConfig",
     "timelinePlan",
+    "generationWorkManifest",
+    "renderWorkManifest",
     "resolvedRenderManifest",
     "productionManifest",
     "podWorkerJobEnvelope",
@@ -618,6 +622,137 @@ def _semantic_contract_issues(
                         "Split-image zoom profile must match the render profile version.",
                     )
                 )
+        return tuple(issues)
+    if contract_name == "generationWorkManifest":
+        issues = []
+        batch_ids: set[str] = set()
+        batched_task_keys: set[str] = set()
+        for index, batch in enumerate(value["prompt_batches"]):
+            if batch["ordinal"] != index or batch["batch_id"] in batch_ids:
+                issues.append(
+                    _semantic_issue(
+                        f"/prompt_batches/{index}",
+                        "Prompt batches must have unique IDs and contiguous zero-based ordinals.",
+                    )
+                )
+            batch_ids.add(batch["batch_id"])
+            for task_key in batch["scene_task_keys"]:
+                if task_key in batched_task_keys:
+                    issues.append(
+                        _semantic_issue(
+                            f"/prompt_batches/{index}/scene_task_keys",
+                            "Each image task must appear in exactly one prompt batch.",
+                        )
+                    )
+                batched_task_keys.add(task_key)
+        image_task_keys: set[str] = set()
+        image_ids: set[str] = set()
+        for index, slot in enumerate(value["image_slots"]):
+            if (
+                slot["task_key"] in image_task_keys
+                or slot["slot_id"] in image_ids
+                or slot["prompt_batch_id"] not in batch_ids
+                or slot["task_key"] not in batched_task_keys
+            ):
+                issues.append(
+                    _semantic_issue(
+                        f"/image_slots/{index}",
+                        "Image slots must be unique and bound to exactly one "
+                        "declared prompt batch.",
+                    )
+                )
+            image_task_keys.add(slot["task_key"])
+            image_ids.add(slot["slot_id"])
+        if image_task_keys != batched_task_keys:
+            issues.append(
+                _semantic_issue(
+                    "/prompt_batches",
+                    "Prompt batches and image slots must cover the same task-key set exactly once.",
+                )
+            )
+        avatar_task_keys: set[str] = set()
+        avatar_segments: set[str] = set()
+        for index, span in enumerate(value["avatar_spans"]):
+            if (
+                span["task_key"] in avatar_task_keys
+                or span["timeline_segment_id"] in avatar_segments
+                or span["padded_start_ms"] > span["selected_start_ms"]
+                or span["selected_start_ms"] >= span["selected_end_ms_exclusive"]
+                or span["selected_end_ms_exclusive"] > span["padded_end_ms_exclusive"]
+                or span["trim_start_ms"] != span["selected_start_ms"] - span["padded_start_ms"]
+                or span["trim_end_ms_exclusive"]
+                != span["trim_start_ms"]
+                + span["selected_end_ms_exclusive"]
+                - span["selected_start_ms"]
+            ):
+                issues.append(
+                    _semantic_issue(
+                        f"/avatar_spans/{index}",
+                        "Avatar span work must be unique and preserve exact selected, "
+                        "padded, and trim timing.",
+                    )
+                )
+            avatar_task_keys.add(span["task_key"])
+            avatar_segments.add(span["timeline_segment_id"])
+        counts = value["cost_counts"]
+        selected_audio_ms = sum(
+            span["padded_end_ms_exclusive"] - span["padded_start_ms"]
+            for span in value["avatar_spans"]
+        )
+        if (
+            counts["prompt_batch_count"] != len(value["prompt_batches"])
+            or counts["image_prompt_count"] != len(value["image_slots"])
+            or counts["image_generation_count"] != len(value["image_slots"])
+            or counts["avatar_generation_count"] != len(value["avatar_spans"])
+            or counts["selected_span_audio_count"] != len(value["avatar_spans"])
+            or counts["selected_span_audio_ms"] != selected_audio_ms
+        ):
+            issues.append(
+                _semantic_issue(
+                    "/cost_counts", "Cost counts must equal the exact immutable work units."
+                )
+            )
+        return tuple(issues)
+    if contract_name == "renderWorkManifest":
+        issues = []
+        segment_ids: set[str] = set()
+        next_frame = 0
+        for index, segment in enumerate(value["segments"]):
+            composition = segment["timeline_composition"]
+            expected_asset_keys = (
+                {"avatar"}
+                if composition == "AVATAR_FULL"
+                else {"image"}
+                if composition == "IMAGE_FULL"
+                else {"avatar", "image"}
+            )
+            needs_image = composition != "AVATAR_FULL"
+            needs_avatar = composition != "IMAGE_FULL"
+            if (
+                segment["timeline_segment_id"] in segment_ids
+                or segment["start_frame"] != next_frame
+                or segment["end_frame_exclusive"] <= segment["start_frame"]
+                or set(segment["planned_asset_ids"]) != expected_asset_keys
+                or segment["image_zoom_profile"]
+                != ("SLOW_SMOOTH_CENTERED_ZOOM" if needs_image else "NONE")
+                or segment["avatar_crop_authority"]
+                != ("ACCEPTED_ECHO_PROFILE_REQUIRED" if needs_avatar else "NOT_APPLICABLE")
+            ):
+                issues.append(
+                    _semantic_issue(
+                        f"/segments/{index}",
+                        "Render work must be contiguous and composition-specific with "
+                        "hard-cut image zoom and Echo crop authority.",
+                    )
+                )
+            segment_ids.add(segment["timeline_segment_id"])
+            next_frame = segment["end_frame_exclusive"]
+        if next_frame != value["output"]["total_frames"]:
+            issues.append(
+                _semantic_issue(
+                    "/segments", "Render work must cover every output frame exactly once."
+                )
+            )
         return tuple(issues)
     return ()
 

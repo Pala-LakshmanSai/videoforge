@@ -3319,6 +3319,447 @@ export const canonicalSchemaDocuments = {
       }
     }
   },
+  "generationWorkManifest": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/generation-work-manifest-v1.json",
+    "title": "VideoForge Generation Work Manifest v1",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "project_revision_id",
+      "revision_config_hash",
+      "timeline_plan_hash",
+      "transcript_document_hash",
+      "scheduler_config_hash",
+      "selection_authority",
+      "echo_audio_policy",
+      "prompt_batches",
+      "image_slots",
+      "avatar_spans",
+      "cost_counts"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "generation-work-manifest/v1"
+      },
+      "project_revision_id": {
+        "$ref": "#/$defs/id"
+      },
+      "revision_config_hash": {
+        "$ref": "#/$defs/sha256"
+      },
+      "timeline_plan_hash": {
+        "$ref": "#/$defs/sha256"
+      },
+      "transcript_document_hash": {
+        "$ref": "#/$defs/sha256"
+      },
+      "scheduler_config_hash": {
+        "$ref": "#/$defs/sha256"
+      },
+      "selection_authority": {
+        "const": "DETERMINISTIC_CODE"
+      },
+      "echo_audio_policy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "full_voiceover_dispatched",
+          "sample_rate_hz",
+          "channels",
+          "context_padding_ms"
+        ],
+        "properties": {
+          "full_voiceover_dispatched": {
+            "const": false
+          },
+          "sample_rate_hz": {
+            "const": 16000
+          },
+          "channels": {
+            "const": 1
+          },
+          "context_padding_ms": {
+            "const": 500
+          }
+        }
+      },
+      "prompt_batches": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 800,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "batch_id",
+            "ordinal",
+            "scene_task_keys"
+          ],
+          "properties": {
+            "batch_id": {
+              "$ref": "#/$defs/id"
+            },
+            "ordinal": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 799
+            },
+            "scene_task_keys": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 50,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/id"
+              }
+            }
+          }
+        }
+      },
+      "image_slots": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 20000,
+        "items": {
+          "$ref": "#/$defs/imageSlot"
+        }
+      },
+      "avatar_spans": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 20000,
+        "items": {
+          "$ref": "#/$defs/avatarSpan"
+        }
+      },
+      "cost_counts": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "prompt_batch_count",
+          "image_prompt_count",
+          "image_generation_count",
+          "avatar_generation_count",
+          "selected_span_audio_count",
+          "selected_span_audio_ms",
+          "render_segment_count"
+        ],
+        "properties": {
+          "prompt_batch_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "image_prompt_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "image_generation_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "avatar_generation_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "selected_span_audio_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "selected_span_audio_ms": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3600000
+          },
+          "render_segment_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20000
+          }
+        }
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "shotRole": {
+        "enum": [
+          "ENVIRONMENTAL_WIDE",
+          "HUMAN_MEDIUM",
+          "HANDS_ACTION",
+          "OBJECT_EVIDENCE",
+          "MACRO_DETAIL",
+          "REACTION_RESULT"
+        ]
+      },
+      "imageSlot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "slot_id",
+          "task_key",
+          "timeline_segment_id",
+          "timeline_composition",
+          "in_image_shot_role",
+          "prompt_batch_id",
+          "planned_asset_id"
+        ],
+        "properties": {
+          "slot_id": {
+            "$ref": "#/$defs/id"
+          },
+          "task_key": {
+            "$ref": "#/$defs/id"
+          },
+          "timeline_segment_id": {
+            "$ref": "#/$defs/id"
+          },
+          "timeline_composition": {
+            "enum": [
+              "IMAGE_FULL",
+              "AVATAR_SPLIT_IMAGE"
+            ]
+          },
+          "in_image_shot_role": {
+            "$ref": "#/$defs/shotRole"
+          },
+          "prompt_batch_id": {
+            "$ref": "#/$defs/id"
+          },
+          "planned_asset_id": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      },
+      "avatarSpan": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "span_id",
+          "task_key",
+          "timeline_segment_id",
+          "timeline_composition",
+          "span_audio_artifact_id",
+          "span_audio_sha256",
+          "planned_clip_asset_id",
+          "selected_start_ms",
+          "selected_end_ms_exclusive",
+          "padded_start_ms",
+          "padded_end_ms_exclusive",
+          "trim_start_ms",
+          "trim_end_ms_exclusive"
+        ],
+        "properties": {
+          "span_id": {
+            "$ref": "#/$defs/id"
+          },
+          "task_key": {
+            "$ref": "#/$defs/id"
+          },
+          "timeline_segment_id": {
+            "$ref": "#/$defs/id"
+          },
+          "timeline_composition": {
+            "enum": [
+              "AVATAR_FULL",
+              "AVATAR_SPLIT_IMAGE"
+            ]
+          },
+          "span_audio_artifact_id": {
+            "$ref": "#/$defs/id"
+          },
+          "span_audio_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "planned_clip_asset_id": {
+            "$ref": "#/$defs/id"
+          },
+          "selected_start_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "selected_end_ms_exclusive": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "padded_start_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "padded_end_ms_exclusive": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "trim_start_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "trim_end_ms_exclusive": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  },
+  "renderWorkManifest": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/render-work-manifest-v1.json",
+    "title": "VideoForge Render Work Manifest v1",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "project_revision_id",
+      "revision_config_hash",
+      "timeline_plan_hash",
+      "generation_work_manifest_hash",
+      "output",
+      "transition_policy",
+      "segments"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "render-work-manifest/v1"
+      },
+      "project_revision_id": {
+        "$ref": "#/$defs/id"
+      },
+      "revision_config_hash": {
+        "$ref": "#/$defs/sha256"
+      },
+      "timeline_plan_hash": {
+        "$ref": "#/$defs/sha256"
+      },
+      "generation_work_manifest_hash": {
+        "$ref": "#/$defs/sha256"
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "width",
+          "height",
+          "fps_num",
+          "fps_den",
+          "total_frames"
+        ],
+        "properties": {
+          "width": {
+            "const": 1920
+          },
+          "height": {
+            "const": 1080
+          },
+          "fps_num": {
+            "const": 30
+          },
+          "fps_den": {
+            "const": 1
+          },
+          "total_frames": {
+            "type": "integer",
+            "minimum": 300,
+            "maximum": 108000
+          }
+        }
+      },
+      "transition_policy": {
+        "const": "HARD_CUTS_ONLY"
+      },
+      "segments": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 20000,
+        "items": {
+          "$ref": "#/$defs/segment"
+        }
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "assetIds": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "avatar": {
+            "$ref": "#/$defs/id"
+          },
+          "image": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "minProperties": 1,
+        "maxProperties": 2
+      },
+      "segment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "timeline_segment_id",
+          "start_frame",
+          "end_frame_exclusive",
+          "timeline_composition",
+          "planned_asset_ids",
+          "image_zoom_profile",
+          "avatar_crop_authority"
+        ],
+        "properties": {
+          "timeline_segment_id": {
+            "$ref": "#/$defs/id"
+          },
+          "start_frame": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "end_frame_exclusive": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "timeline_composition": {
+            "enum": [
+              "AVATAR_FULL",
+              "IMAGE_FULL",
+              "AVATAR_SPLIT_IMAGE"
+            ]
+          },
+          "planned_asset_ids": {
+            "$ref": "#/$defs/assetIds"
+          },
+          "image_zoom_profile": {
+            "enum": [
+              "NONE",
+              "SLOW_SMOOTH_CENTERED_ZOOM"
+            ]
+          },
+          "avatar_crop_authority": {
+            "enum": [
+              "NOT_APPLICABLE",
+              "ACCEPTED_ECHO_PROFILE_REQUIRED"
+            ]
+          }
+        }
+      }
+    }
+  },
   "resolvedRenderManifest": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://videoforge.local/schemas/resolved-render-manifest-v1.json",

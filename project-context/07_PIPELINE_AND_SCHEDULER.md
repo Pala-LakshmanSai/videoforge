@@ -134,11 +134,13 @@ Create candidate boundaries from punctuation, pauses, conjunctions, and maximum 
 
 Use a versioned seeded PRNG derived from `project_revision_id + scheduler_version + user_seed`. The same input/version/seed must produce the same timeline plan.
 
-Initial algorithm:
+Active `scheduler-v2` algorithm:
 
 1. Begin with `AVATAR_FULL` at 00:00, selecting a natural 2–6 second phrase; allow 4–7 seconds for a strong cold open when a complete sentence needs it.
 2. Choose the next target avatar start 14–20 seconds after the prior start.
-3. Snap to the best nearby phrase boundary without creating an avatar clip outside 2–6 seconds except the bounded opener.
+3. Rank exact word boundaries near phrase/clause boundaries. A bounded coverage-pace term prevents
+   sparse or silence-heavy transcripts from drifting below the locked target; deterministic opener
+   alternatives avoid greedy boundary dead ends.
 4. Alternate `AVATAR_FULL` and `AVATAR_SPLIT_IMAGE`.
 5. Maintain running coverage and bias later choices toward 21–22% total avatar and near-equal full/split time.
 6. Avoid cutting inside a word, on a sharp breath, or across a meaningful pause.
@@ -148,8 +150,24 @@ Initial algorithm:
 10. Assign every image slot one `in_image_shot_role` from the versioned seeded rotation, with deterministic lexical overrides when narration clearly asks for hands/action, an object, a wide setting, macro evidence, or a result.
 11. Convert boundaries to canonical 30 fps integer `start_frame` and exclusive `end_frame_exclusive`; retain source-audio milliseconds/samples separately.
 12. Emit and validate `timeline-plan/v1`: composition-specific required slots/task keys, no generated asset IDs, exact coverage/order/percentages/duration bounds/layout alternation.
+13. Fail closed unless avatar frames are within 21–22%, full/split cumulative frame difference is
+    at most seven seconds, every word/source/frame interval is covered once, and every remaining
+    image range partitions into legal 3–7-second scenes.
 
 No LLM is called during this algorithm.
+
+After selected-span audio is materialized, deterministic code compiles two additional immutable
+JCS documents before any generation can be dispatched:
+
+- `generation-work-manifest/v1` binds the timeline/transcript/config hashes, 25–50-scene prompt
+  batches, every image slot and planned artifact ID, every short Echo task and its 16 kHz mono
+  padded WAV/trim lineage, plus exact cost cardinalities. `full_voiceover_dispatched` must be false.
+- `render-work-manifest/v1` binds every exclusive 30 fps interval to planned image/avatar assets,
+  locks `HARD_CUTS_ONLY`, requires `SLOW_SMOOTH_CENTERED_ZOOM` for every image-containing segment,
+  and requires accepted Echo crop authority before later resolution.
+
+Missing, duplicate, cross-revision, full-voiceover, transition, zoom, slot, count, or hash drift is a
+hard validation failure. These planning manifests do not authorize provider work.
 
 Normal avatar appearances have a hard 2–6-second envelope. Only the opening sentence may use the bounded 4–7-second exception. This edit rule follows measured reference cadence and creates bounded independent Echo work units; it is not evidence that VRAM scales linearly with audio duration.
 

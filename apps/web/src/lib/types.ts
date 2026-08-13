@@ -341,6 +341,24 @@ export interface TimelineInspection {
     sourceStartMs: number;
     sourceEndMs: number;
     coverage: "COMPLETE" | "INCOMPLETE";
+    compositionCounts: {
+      avatarFull: number;
+      imageFull: number;
+      avatarSplitImage: number;
+    };
+    avatarFullPercent: number;
+    avatarSplitPercent: number;
+  } | null;
+  workPlan: {
+    generationManifestSha256: string;
+    renderManifestSha256: string;
+    promptBatchCount: number;
+    imageSlotCount: number;
+    avatarTaskCount: number;
+    renderSegmentCount: number;
+    shotRoleCount: number;
+    hardCutsOnly: boolean;
+    slowImageZoomRequired: boolean;
   } | null;
   selectedAvatar: {
     count: number;
@@ -353,7 +371,12 @@ export interface TimelineInspection {
       endMs: number;
       layout: "AVATAR_FULL" | "AVATAR_SPLIT_IMAGE";
       phrase: string;
+      artifactId: string;
       audioSha256: string;
+      paddedStartMs: number;
+      paddedEndMs: number;
+      trimStartMs: number;
+      trimEndMs: number;
     }>;
   } | null;
   phrases: Array<{
@@ -362,7 +385,27 @@ export interface TimelineInspection {
     endMs: number;
     text: string;
     segmentId: string;
+    segmentIds: string[];
     layout: "AVATAR_FULL" | "IMAGE_FULL" | "AVATAR_SPLIT_IMAGE";
+    layouts: Array<"AVATAR_FULL" | "IMAGE_FULL" | "AVATAR_SPLIT_IMAGE">;
+    startFrame: number;
+    endFrameExclusive: number;
+    shotRole:
+      | "ENVIRONMENTAL_WIDE"
+      | "HUMAN_MEDIUM"
+      | "HANDS_ACTION"
+      | "OBJECT_EVIDENCE"
+      | "MACRO_DETAIL"
+      | "REACTION_RESULT"
+      | null;
+    shotRoles: Array<
+      | "ENVIRONMENTAL_WIDE"
+      | "HUMAN_MEDIUM"
+      | "HANDS_ACTION"
+      | "OBJECT_EVIDENCE"
+      | "MACRO_DETAIL"
+      | "REACTION_RESULT"
+    >;
   }>;
 }
 

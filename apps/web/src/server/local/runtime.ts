@@ -9,6 +9,7 @@ import type { Context } from "hono";
 import { baseProjectDetail, rotateProjectVersion } from "../domain/project-service";
 import type { RuntimeProjectDetail } from "../domain/models";
 import { idempotentMutation, type IdempotencyLedger } from "../mutation";
+import { SharedAppFixtureStore } from "../shared-app-fixture";
 import type {
   LocalOwnedVoiceover,
   LocalPipelineProgress,
@@ -186,6 +187,7 @@ function localProjectTemplate(title: string): LocalProjectDetail {
 
 export class LocalRuntime {
   readonly idempotencyLedger: IdempotencyLedger = new Map();
+  readonly sharedApp = new SharedAppFixtureStore();
   private voiceoverPromise: Promise<LocalOwnedVoiceover> | null = null;
   private restorePromise: Promise<void> | null = null;
   private projectDetail: LocalProjectDetail | null = null;
@@ -197,7 +199,9 @@ export class LocalRuntime {
     readonly commit: string,
     readonly mode: "local" | "sandbox",
     readonly runner: LocalSliceRunner,
-  ) {}
+  ) {
+    this.sharedApp.seedAdmittedSession("local", "local.fixture@example.invalid");
+  }
 
   mutation(
     c: Context,

@@ -40,10 +40,18 @@ Phase 1 or later acceptance work.
 - No negative/zero scene or overlap/gap.
 - Boundaries occur between words and near valid phrase/sentence points.
 - Avatar clips remain within allowed bounds except documented opener adjustment.
-- Total avatar converges to 21–22% within a reasonable tolerance.
-- Full/split time is near equal and layouts alternate by rule.
+- Total avatar frames are strictly 21–22%; no looser tolerance is accepted.
+- Full/split cumulative time differs by at most seven seconds and layouts alternate by rule.
 - No forbidden composition enum.
 - Property-test short audio, long silence, extremely fast/slow speech, missing punctuation, and 30+ minute input.
+- Replay must reproduce byte-identical timeline/work/render JCS hashes.
+- Every image-bearing segment owns one image slot/planned artifact and one prompt-batch binding;
+  every avatar segment owns one short padded WAV/artifact/trim record; exact cost counts match with
+  no missing or duplicate work.
+- Decode every owned acceptance span as playable PCM s16le, 16 kHz, mono, at exact padded duration.
+  Assert Echo dispatch policy never contains the full voiceover.
+- Render work covers `[0,total_frames)` exactly once, uses hard cuts only, and requires slow smooth
+  centered zoom on every image-containing segment.
 
 ## Runware/DeepSeek gate
 

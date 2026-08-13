@@ -15,7 +15,7 @@ import {
 import type { SchedulerPort, SchedulerRequest } from "./ports.js";
 import { SeededVariation } from "./random.js";
 
-export const SUPPORTED_SCHEDULER_VERSION = "scheduler-v1";
+export const SUPPORTED_SCHEDULER_VERSION = "scheduler-v2";
 
 const SHOT_ROLES = Object.freeze([
   "ENVIRONMENTAL_WIDE",
@@ -27,11 +27,11 @@ const SHOT_ROLES = Object.freeze([
 ] as const);
 
 /**
- * Exact behavior-bearing scheduler inputs. Keep this document immutable for scheduler-v1; changing
+ * Exact behavior-bearing scheduler inputs. Keep this document immutable for scheduler-v2; changing
  * any value requires a new scheduler version so durable plans can be replayed byte-for-byte.
  */
 export const SUPPORTED_SCHEDULER_CONFIG = Object.freeze({
-  schema_version: "deterministic-timeline-scheduler-config/v1",
+  schema_version: "deterministic-timeline-scheduler-config/v2",
   output_fps_num: 30,
   output_fps_den: 1,
   image_minimum_ms: 3_000,
@@ -45,10 +45,14 @@ export const SUPPORTED_SCHEDULER_CONFIG = Object.freeze({
   maximum_avatar_start_delta_ms: 23_000,
   desired_avatar_start_delta_minimum_ms: 14_000,
   desired_avatar_start_delta_maximum_ms: 20_000,
+  desired_avatar_duration_minimum_ms: 3_400,
+  desired_avatar_duration_maximum_ms: 4_100,
   avatar_duration_jitter_minimum_ms: -600,
   avatar_duration_jitter_maximum_ms: 600,
   avatar_duration_score_weight: 0.7,
   avatar_coverage_score_weight: 0.2,
+  avatar_coverage_pace_score_weight: 5,
+  avatar_balance_score_weight: 0.35,
   target_avatar_ratio_minimum: 0.21,
   target_avatar_ratio_maximum: 0.22,
   selected_span_context_padding_ms: 500,
@@ -68,12 +72,12 @@ type TimelineSegment = TimelinePlanDocument["segments"][number];
 type TimelineComposition = TimelineSegment["timeline_composition"];
 type ShotRole = (typeof SHOT_ROLES)[number];
 
-interface PhraseRange {
+interface WordRange {
   readonly startIndex: number;
   readonly endIndex: number;
 }
 
-interface ScheduledRange extends PhraseRange {
+interface ScheduledRange extends WordRange {
   readonly timelineComposition: TimelineComposition;
 }
 
@@ -83,7 +87,7 @@ interface AvatarRange extends ScheduledRange {
 
 interface ScoredPartition {
   readonly score: number;
-  readonly ranges: readonly PhraseRange[];
+  readonly ranges: readonly WordRange[];
 }
 
 function fail(
@@ -104,16 +108,13 @@ function frameForMilliseconds(milliseconds: number): number {
   return Math.round((milliseconds * OUTPUT_FPS) / 1_000);
 }
 
-function boundaryMilliseconds(transcript: TranscriptTimingDocument, phraseIndex: number): number {
-  if (phraseIndex === 0) return 0;
-  if (phraseIndex === transcript.phrases.length) return transcript.source.duration_ms;
-  return transcript.phrases[phraseIndex]!.start_ms;
+function boundaryMilliseconds(transcript: TranscriptTimingDocument, wordIndex: number): number {
+  if (wordIndex === 0) return 0;
+  if (wordIndex === transcript.words.length) return transcript.source.duration_ms;
+  return transcript.words[wordIndex]!.start_ms;
 }
 
-function rangeDurationMilliseconds(
-  transcript: TranscriptTimingDocument,
-  range: PhraseRange,
-): number {
+function rangeDurationMilliseconds(transcript: TranscriptTimingDocument, range: WordRange): number {
   return (
     boundaryMilliseconds(transcript, range.endIndex) -
     boundaryMilliseconds(transcript, range.startIndex)
@@ -250,7 +251,7 @@ function partitionImageRange(
   startIndex: number,
   endIndex: number,
   variation: SeededVariation,
-): readonly PhraseRange[] | null {
+): readonly WordRange[] | null {
   if (startIndex === endIndex) return [];
 
   const memo = new Map<number, ScoredPartition | null>();
@@ -285,18 +286,21 @@ function partitionImageRange(
   return solve(startIndex)?.ranges ?? null;
 }
 
-function selectOpener(
+function selectOpeners(
   transcript: TranscriptTimingDocument,
   variation: SeededVariation,
-): AvatarRange | null {
+  targetAvatarFrames: number,
+  minimumAvatarFrames: number,
+  maximumAvatarFrames: number,
+): readonly AvatarRange[] {
   const desiredDuration = variation.between(
     "avatar-opener-duration",
     SUPPORTED_SCHEDULER_CONFIG.desired_opener_minimum_ms,
     SUPPORTED_SCHEDULER_CONFIG.desired_opener_maximum_ms,
   );
-  let best: { readonly score: number; readonly range: AvatarRange } | null = null;
+  const candidates: { readonly score: number; readonly range: AvatarRange }[] = [];
 
-  for (let endIndex = 1; endIndex <= transcript.phrases.length; endIndex += 1) {
+  for (let endIndex = 1; endIndex <= transcript.words.length; endIndex += 1) {
     const range: AvatarRange = {
       startIndex: 0,
       endIndex,
@@ -305,27 +309,38 @@ function selectOpener(
     const duration = rangeDurationMilliseconds(transcript, range);
     if (duration < AVATAR_MINIMUM_MS) continue;
     if (duration > OPENER_MAXIMUM_MS) break;
-    if (partitionImageRange(transcript, endIndex, transcript.phrases.length, variation) === null) {
+    const durationFrames = frameForMilliseconds(boundaryMilliseconds(transcript, endIndex));
+    if (durationFrames > maximumAvatarFrames) continue;
+    if (
+      durationFrames >= minimumAvatarFrames &&
+      partitionImageRange(transcript, endIndex, transcript.words.length, variation) === null
+    ) {
       continue;
     }
-
     const score =
       Math.abs(duration - desiredDuration) +
+      Math.abs(durationFrames - targetAvatarFrames) *
+        SUPPORTED_SCHEDULER_CONFIG.avatar_coverage_score_weight *
+        (1_000 / OUTPUT_FPS) +
       variation.between(`avatar-opener:${endIndex}:tie`, 0, 0.25);
-    if (best === null || score < best.score) best = { score, range };
+    candidates.push({ score, range });
   }
 
-  return best?.range ?? null;
+  return candidates.sort((left, right) => left.score - right.score).map(({ range }) => range);
 }
 
-function selectNextAvatar(
+function selectNextAvatars(
   transcript: TranscriptTimingDocument,
   previous: AvatarRange,
   appearanceIndex: number,
-  currentAvatarMs: number,
-  targetAvatarMs: number,
+  currentAvatarFrames: number,
+  targetAvatarFrames: number,
+  minimumAvatarFrames: number,
+  maximumAvatarFrames: number,
+  fullAvatarMs: number,
+  splitAvatarMs: number,
   variation: SeededVariation,
-): AvatarRange | null {
+): readonly AvatarRange[] {
   const previousStart = boundaryMilliseconds(transcript, previous.startIndex);
   const desiredStart =
     previousStart +
@@ -334,24 +349,26 @@ function selectNextAvatar(
       SUPPORTED_SCHEDULER_CONFIG.desired_avatar_start_delta_minimum_ms,
       SUPPORTED_SCHEDULER_CONFIG.desired_avatar_start_delta_maximum_ms,
     );
-  const remainingCoverage = Math.max(AVATAR_MINIMUM_MS, targetAvatarMs - currentAvatarMs);
+  const composition = appearanceIndex % 2 === 0 ? "AVATAR_FULL" : "AVATAR_SPLIT_IMAGE";
+  const desiredMeanDuration = variation.between(
+    `avatar-duration:${appearanceIndex}`,
+    SUPPORTED_SCHEDULER_CONFIG.desired_avatar_duration_minimum_ms,
+    SUPPORTED_SCHEDULER_CONFIG.desired_avatar_duration_maximum_ms,
+  );
+  const ownDuration = composition === "AVATAR_FULL" ? fullAvatarMs : splitAvatarMs;
+  const peerDuration = composition === "AVATAR_FULL" ? splitAvatarMs : fullAvatarMs;
   const desiredDuration = Math.min(
     AVATAR_MAXIMUM_MS,
     Math.max(
       AVATAR_MINIMUM_MS,
-      remainingCoverage +
-        variation.between(
-          `avatar-duration:${appearanceIndex}`,
-          SUPPORTED_SCHEDULER_CONFIG.avatar_duration_jitter_minimum_ms,
-          SUPPORTED_SCHEDULER_CONFIG.avatar_duration_jitter_maximum_ms,
-        ),
+      peerDuration > ownDuration ? peerDuration - ownDuration : desiredMeanDuration,
     ),
   );
 
-  let best: { readonly score: number; readonly range: AvatarRange } | null = null;
+  const candidates: { readonly score: number; readonly range: AvatarRange }[] = [];
   for (
     let startIndex = previous.endIndex + 1;
-    startIndex < transcript.phrases.length;
+    startIndex < transcript.words.length;
     startIndex += 1
   ) {
     const start = boundaryMilliseconds(transcript, startIndex);
@@ -363,35 +380,54 @@ function selectNextAvatar(
       continue;
     }
 
-    for (let endIndex = startIndex + 1; endIndex <= transcript.phrases.length; endIndex += 1) {
+    for (let endIndex = startIndex + 1; endIndex <= transcript.words.length; endIndex += 1) {
       const range: AvatarRange = {
         startIndex,
         endIndex,
-        timelineComposition: appearanceIndex % 2 === 0 ? "AVATAR_FULL" : "AVATAR_SPLIT_IMAGE",
+        timelineComposition: composition,
       };
       const duration = rangeDurationMilliseconds(transcript, range);
       if (duration < AVATAR_MINIMUM_MS) continue;
       if (duration > AVATAR_MAXIMUM_MS) break;
+      const durationFrames =
+        frameForMilliseconds(boundaryMilliseconds(transcript, endIndex)) -
+        frameForMilliseconds(boundaryMilliseconds(transcript, startIndex));
+      const projectedCoverage = currentAvatarFrames + durationFrames;
+      if (projectedCoverage > maximumAvatarFrames) continue;
       if (
-        partitionImageRange(transcript, endIndex, transcript.phrases.length, variation) === null
+        projectedCoverage >= minimumAvatarFrames &&
+        partitionImageRange(transcript, endIndex, transcript.words.length, variation) === null
       ) {
         continue;
       }
-
-      const projectedCoverage = currentAvatarMs + duration;
+      const projectedFullMs = fullAvatarMs + (composition === "AVATAR_FULL" ? duration : 0);
+      const projectedSplitMs =
+        splitAvatarMs + (composition === "AVATAR_SPLIT_IMAGE" ? duration : 0);
+      const projectedEndFrame = frameForMilliseconds(boundaryMilliseconds(transcript, endIndex));
+      const projectedPaceFrames =
+        projectedEndFrame *
+        ((minimumAvatarFrames + maximumAvatarFrames) /
+          2 /
+          frameForMilliseconds(transcript.source.duration_ms));
       const key = `avatar:${appearanceIndex}:${startIndex}:${endIndex}`;
       const score =
         Math.abs(start - desiredStart) +
         Math.abs(duration - desiredDuration) *
           SUPPORTED_SCHEDULER_CONFIG.avatar_duration_score_weight +
-        Math.abs(projectedCoverage - targetAvatarMs) *
-          SUPPORTED_SCHEDULER_CONFIG.avatar_coverage_score_weight +
+        Math.abs(projectedCoverage - targetAvatarFrames) *
+          SUPPORTED_SCHEDULER_CONFIG.avatar_coverage_score_weight *
+          (1_000 / OUTPUT_FPS) +
+        Math.abs(projectedCoverage - projectedPaceFrames) *
+          SUPPORTED_SCHEDULER_CONFIG.avatar_coverage_pace_score_weight *
+          (1_000 / OUTPUT_FPS) +
+        Math.abs(projectedFullMs - projectedSplitMs) *
+          SUPPORTED_SCHEDULER_CONFIG.avatar_balance_score_weight +
         variation.between(`${key}:tie`, 0, 0.25);
-      if (best === null || score < best.score) best = { score, range };
+      candidates.push({ score, range });
     }
   }
 
-  return best?.range ?? null;
+  return candidates.sort((left, right) => left.score - right.score).map(({ range }) => range);
 }
 
 function lexicalShotRole(phrase: string): ShotRole | null {
@@ -417,10 +453,10 @@ function lexicalShotRole(phrase: string): ShotRole | null {
   return null;
 }
 
-function phraseText(transcript: TranscriptTimingDocument, range: PhraseRange): string {
-  return transcript.phrases
+function phraseText(transcript: TranscriptTimingDocument, range: WordRange): string {
+  return transcript.words
     .slice(range.startIndex, range.endIndex)
-    .map((phrase) => phrase.text)
+    .map((word) => word.text)
     .join(" ");
 }
 
@@ -440,8 +476,8 @@ function createTimelineSegments(
   let imageOrdinal = 0;
 
   return ranges.map((range, index) => {
-    const firstPhrase = transcript.phrases[range.startIndex]!;
-    const lastPhrase = transcript.phrases[range.endIndex - 1]!;
+    const firstWord = transcript.words[range.startIndex]!;
+    const lastWord = transcript.words[range.endIndex - 1]!;
     const sourceAudioStartMs = boundaryMilliseconds(transcript, range.startIndex);
     const sourceAudioEndMs = boundaryMilliseconds(transcript, range.endIndex);
     const segmentId = request.determinism.ids.idFor(
@@ -463,8 +499,8 @@ function createTimelineSegments(
       source_audio_start_ms: sourceAudioStartMs,
       source_audio_end_ms: sourceAudioEndMs,
       phrase: phraseText(transcript, range),
-      word_start: firstPhrase.word_start,
-      word_end_exclusive: lastPhrase.word_end_exclusive,
+      word_start: firstWord.index,
+      word_end_exclusive: lastWord.index + 1,
     };
 
     if (range.timelineComposition === "AVATAR_FULL") {
@@ -519,7 +555,9 @@ function validateTimelineSemantics(
     );
   }
 
-  const phraseStarts = new Set(transcript.phrases.map((phrase) => phrase.word_start));
+  const wordBoundaryStarts = new Map(
+    transcript.words.map((word) => [word.index, word.index === 0 ? 0 : word.start_ms] as const),
+  );
   const segmentIds = new Set<string>();
   let expectedFrame = 0;
   let expectedSourceMs = 0;
@@ -550,8 +588,8 @@ function validateTimelineSemantics(
       );
     }
 
-    if (!phraseStarts.has(segment.word_start)) {
-      return fail("TIMELINE_INVALID", "Every segment must begin at a phrase boundary.", [
+    if (wordBoundaryStarts.get(segment.word_start) !== segment.source_audio_start_ms) {
+      return fail("TIMELINE_INVALID", "Every segment must begin at an exact word boundary.", [
         "segments",
         index,
         "word_start",
@@ -594,6 +632,34 @@ function validateTimelineSemantics(
     expectedWord = segment.word_end_exclusive;
   }
 
+  const avatarSegments = plan.segments.filter(
+    (segment) => segment.timeline_composition !== "IMAGE_FULL",
+  );
+  const avatarFrames = avatarSegments.reduce(
+    (sum, segment) => sum + segment.end_frame_exclusive - segment.start_frame,
+    0,
+  );
+  const fullAvatarFrames = avatarSegments
+    .filter((segment) => segment.timeline_composition === "AVATAR_FULL")
+    .reduce((sum, segment) => sum + segment.end_frame_exclusive - segment.start_frame, 0);
+  const splitAvatarFrames = avatarFrames - fullAvatarFrames;
+  const avatarRatio = avatarFrames / plan.total_frames;
+  if (
+    avatarRatio < SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum ||
+    avatarRatio > SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_maximum
+  ) {
+    return fail("TIMELINE_INVALID", "Avatar coverage must remain inside the locked 21–22% range.", [
+      "segments",
+    ]);
+  }
+  if (Math.abs(fullAvatarFrames - splitAvatarFrames) > frameForMilliseconds(OPENER_MAXIMUM_MS)) {
+    return fail(
+      "TIMELINE_INVALID",
+      "Full and split avatar cumulative shares must remain near-even.",
+      ["segments"],
+    );
+  }
+
   if (
     expectedFrame !== plan.total_frames ||
     expectedSourceMs !== transcript.source.duration_ms ||
@@ -615,68 +681,126 @@ function buildTimelinePlan(
 ): TimelinePlanDocument | PipelineFailure {
   const revision = request.revision.value;
   const transcript = request.transcript.value;
-  const opener = selectOpener(transcript, variation);
-  if (opener === null) {
-    return fail(
-      "TIMELINE_INVALID",
-      "Phrase boundaries cannot produce a bounded avatar opener and legal image scenes.",
-      ["transcript", "phrases"],
-    );
-  }
-
   const targetAvatarRatio = variation.between(
     "target-avatar-ratio",
     SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum,
     SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_maximum,
   );
-  const targetAvatarMs = transcript.source.duration_ms * targetAvatarRatio;
-  const avatarRanges: AvatarRange[] = [opener];
-  let avatarMs = rangeDurationMilliseconds(transcript, opener);
-
-  while (targetAvatarMs - avatarMs >= AVATAR_MINIMUM_MS) {
-    const previous = avatarRanges.at(-1)!;
-    const next = selectNextAvatar(
-      transcript,
-      previous,
-      avatarRanges.length,
-      avatarMs,
-      targetAvatarMs,
-      variation,
-    );
-    if (next === null) break;
-    avatarRanges.push(next);
-    avatarMs += rangeDurationMilliseconds(transcript, next);
-  }
-
-  const ranges: ScheduledRange[] = [];
-  let cursor = 0;
-  for (const avatarRange of avatarRanges) {
-    const images = partitionImageRange(transcript, cursor, avatarRange.startIndex, variation);
-    if (images === null) {
-      return fail(
-        "TIMELINE_INVALID",
-        "An uncovered phrase range cannot be divided into legal image scenes.",
-        ["transcript", "phrases", cursor],
-      );
-    }
-    ranges.push(
-      ...images.map((range) => ({ ...range, timelineComposition: "IMAGE_FULL" as const })),
-      avatarRange,
-    );
-    cursor = avatarRange.endIndex;
-  }
-
-  const tailImages = partitionImageRange(transcript, cursor, transcript.phrases.length, variation);
-  if (tailImages === null) {
+  const totalFrames = frameForMilliseconds(transcript.source.duration_ms);
+  const minimumAvatarFrames = Math.ceil(
+    totalFrames * SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum,
+  );
+  const maximumAvatarFrames = Math.floor(
+    totalFrames * SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_maximum,
+  );
+  const targetAvatarFrames = Math.round(totalFrames * targetAvatarRatio);
+  const openers = selectOpeners(
+    transcript,
+    variation,
+    targetAvatarFrames,
+    minimumAvatarFrames,
+    maximumAvatarFrames,
+  );
+  if (openers.length === 0) {
     return fail(
       "TIMELINE_INVALID",
-      "The final phrase range cannot be divided into legal image scenes.",
-      ["transcript", "phrases", cursor],
+      "Word boundaries cannot produce a bounded avatar opener inside the locked coverage range.",
+      ["transcript", "words"],
     );
   }
-  ranges.push(
-    ...tailImages.map((range) => ({ ...range, timelineComposition: "IMAGE_FULL" as const })),
-  );
+  let ranges: ScheduledRange[] | null = null;
+  let coverageFailures = 0;
+  let internalPartitionFailures = 0;
+  let tailPartitionFailures = 0;
+  let maximumReachedAvatarFrames = 0;
+  let maximumReachedAvatarCount = 0;
+  let lastReachedStartMs = 0;
+  for (const opener of openers) {
+    const avatarRanges: AvatarRange[] = [opener];
+    let avatarFrames = frameForMilliseconds(boundaryMilliseconds(transcript, opener.endIndex));
+    let fullAvatarMs = rangeDurationMilliseconds(transcript, opener);
+    let splitAvatarMs = 0;
+    while (avatarFrames < minimumAvatarFrames) {
+      const previous = avatarRanges.at(-1)!;
+      const next = selectNextAvatars(
+        transcript,
+        previous,
+        avatarRanges.length,
+        avatarFrames,
+        targetAvatarFrames,
+        minimumAvatarFrames,
+        maximumAvatarFrames,
+        fullAvatarMs,
+        splitAvatarMs,
+        variation,
+      )[0];
+      if (next === undefined) break;
+      avatarRanges.push(next);
+      const nextDurationMs = rangeDurationMilliseconds(transcript, next);
+      avatarFrames +=
+        frameForMilliseconds(boundaryMilliseconds(transcript, next.endIndex)) -
+        frameForMilliseconds(boundaryMilliseconds(transcript, next.startIndex));
+      if (next.timelineComposition === "AVATAR_FULL") fullAvatarMs += nextDurationMs;
+      else splitAvatarMs += nextDurationMs;
+    }
+    if (
+      avatarFrames < minimumAvatarFrames ||
+      avatarFrames > maximumAvatarFrames ||
+      Math.abs(fullAvatarMs - splitAvatarMs) > OPENER_MAXIMUM_MS
+    ) {
+      if (avatarFrames > maximumReachedAvatarFrames) {
+        maximumReachedAvatarFrames = avatarFrames;
+        maximumReachedAvatarCount = avatarRanges.length;
+        lastReachedStartMs = boundaryMilliseconds(transcript, avatarRanges.at(-1)!.startIndex);
+      }
+      coverageFailures += 1;
+      continue;
+    }
+
+    const candidateRanges: ScheduledRange[] = [];
+    let cursor = 0;
+    let partitioned = true;
+    for (const avatarRange of avatarRanges) {
+      const images = partitionImageRange(transcript, cursor, avatarRange.startIndex, variation);
+      if (images === null) {
+        partitioned = false;
+        internalPartitionFailures += 1;
+        break;
+      }
+      candidateRanges.push(
+        ...images.map((range) => ({ ...range, timelineComposition: "IMAGE_FULL" as const })),
+        avatarRange,
+      );
+      cursor = avatarRange.endIndex;
+    }
+    if (!partitioned) continue;
+    const tailImages = partitionImageRange(transcript, cursor, transcript.words.length, variation);
+    if (tailImages === null) {
+      tailPartitionFailures += 1;
+      continue;
+    }
+    candidateRanges.push(
+      ...tailImages.map((range) => ({ ...range, timelineComposition: "IMAGE_FULL" as const })),
+    );
+    ranges = candidateRanges;
+    break;
+  }
+
+  if (ranges === null) {
+    return fail(
+      "TIMELINE_INVALID",
+      "Word boundaries cannot satisfy locked avatar coverage and complete image partitioning.",
+      ["transcript", "words"],
+      {
+        coverageFailures,
+        internalPartitionFailures,
+        tailPartitionFailures,
+        maximumReachedAvatarFrames,
+        maximumReachedAvatarCount,
+        lastReachedStartMs,
+      },
+    );
+  }
 
   return {
     schema_version: "timeline-plan/v1",
@@ -686,7 +810,7 @@ function buildTimelinePlan(
     seed: revision.scheduler_seed,
     output_fps_num: OUTPUT_FPS,
     output_fps_den: 1,
-    total_frames: frameForMilliseconds(transcript.source.duration_ms),
+    total_frames: totalFrames,
     segments: createTimelineSegments(request, ranges, variation),
   };
 }

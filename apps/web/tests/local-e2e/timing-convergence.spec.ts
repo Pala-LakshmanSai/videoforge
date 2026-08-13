@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { copyFile, readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 import { expect, test, type Page } from "@playwright/test";
@@ -74,10 +74,28 @@ test("installed Chrome inspects and accepts the restart-safe real-audio timeline
     invalidation: { state: string; recomputeRequired: boolean };
     blockers: readonly string[];
     documents: { transcriptSha256: string; timelineSha256: string };
+    plan: { avatarFullPercent: number; avatarSplitPercent: number };
+    workPlan: {
+      promptBatchCount: number;
+      imageSlotCount: number;
+      avatarTaskCount: number;
+      renderSegmentCount: number;
+      shotRoleCount: number;
+      hardCutsOnly: boolean;
+      slowImageZoomRequired: boolean;
+    };
     selectedAvatar: {
       count: number;
       materializedCount: number;
-      spans: readonly { audioSha256: string }[];
+      coveragePercent: number;
+      spans: readonly {
+        artifactId: string;
+        audioSha256: string;
+        paddedStartMs: number;
+        paddedEndMs: number;
+        trimStartMs: number;
+        trimEndMs: number;
+      }[];
     };
   };
   expect(inspectionBody.ready).toBe(true);
@@ -88,10 +106,32 @@ test("installed Chrome inspects and accepts the restart-safe real-audio timeline
   });
   expect(inspectionBody.blockers).toEqual([]);
   expect(inspectionBody.selectedAvatar.materializedCount).toBe(inspectionBody.selectedAvatar.count);
+  expect(inspectionBody.selectedAvatar.coveragePercent).toBeGreaterThanOrEqual(21);
+  expect(inspectionBody.selectedAvatar.coveragePercent).toBeLessThanOrEqual(22);
+  expect(
+    Math.abs(inspectionBody.plan.avatarFullPercent - inspectionBody.plan.avatarSplitPercent),
+  ).toBeLessThanOrEqual(17.5);
+  expect(inspectionBody.workPlan.avatarTaskCount).toBe(inspectionBody.selectedAvatar.count);
+  expect(inspectionBody.workPlan.imageSlotCount).toBeGreaterThan(0);
+  expect(inspectionBody.workPlan.promptBatchCount).toBeGreaterThan(0);
+  expect(inspectionBody.workPlan.renderSegmentCount).toBeGreaterThan(0);
+  expect(inspectionBody.workPlan.shotRoleCount).toBeGreaterThan(0);
+  expect(inspectionBody.workPlan.hardCutsOnly).toBe(true);
+  expect(inspectionBody.workPlan.slowImageZoomRequired).toBe(true);
   expect(inspectionBody.selectedAvatar.spans).toHaveLength(inspectionBody.selectedAvatar.count);
   for (const span of inspectionBody.selectedAvatar.spans) {
+    expect(span.artifactId).toMatch(/^asset_span_audio_[a-f0-9]{24}$/u);
     expect(span.audioSha256).toMatch(/^sha256:[a-f0-9]{64}$/u);
+    expect(span.paddedEndMs).toBeGreaterThan(span.paddedStartMs);
+    expect(span.trimEndMs).toBeGreaterThan(span.trimStartMs);
   }
+
+  await expect(inspection.getByText("Avatar balance", { exact: true })).toBeVisible();
+  await expect(inspection.getByText("Image work", { exact: true })).toBeVisible();
+  await expect(inspection.getByText("Render work", { exact: true })).toBeVisible();
+  await expect(
+    inspection.getByText("Slow centered image zoom locked", { exact: true }),
+  ).toBeVisible();
 
   const phraseDetails = inspection.locator(".timeline-phrase-disclosure");
   const phraseSummary = phraseDetails.locator("summary");
@@ -186,8 +226,10 @@ test("installed Chrome inspects and accepts the restart-safe real-audio timeline
   expect(`sha256:${createHash("sha256").update(downloadedBytes).digest("hex")}`).toBe(
     project.project.latestArtifact.sha256,
   );
+  const playableDownloadedPath = `${downloadedPath!}.mp4`;
+  await copyFile(downloadedPath!, playableDownloadedPath);
   const downloadedPage = await page.context().newPage();
-  await downloadedPage.goto(pathToFileURL(downloadedPath!).href);
+  await downloadedPage.goto(pathToFileURL(playableDownloadedPath).href);
   const downloadedVideo = downloadedPage.locator("video");
   await expect(downloadedVideo).toBeVisible();
   await downloadedVideo.evaluate(async (element: HTMLVideoElement) => {

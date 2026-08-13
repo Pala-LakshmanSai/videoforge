@@ -152,7 +152,7 @@ export function SettingsScreen() {
               </span>
               <span>
                 <small>Scheduler</small>
-                <strong>scheduler-v1</strong>
+                <strong>scheduler-v2</strong>
               </span>
             </div>
           </Disclosure>

@@ -15,6 +15,8 @@ interface LocalInspectionIdentity {
   readonly revisionId: string;
   readonly transcriptSha256: Sha256Digest;
   readonly timelineSha256: Sha256Digest;
+  readonly generationWorkManifestSha256: Sha256Digest;
+  readonly renderWorkManifestSha256: Sha256Digest;
   readonly selectedSpanAudio: readonly LocalSelectedSpanAudio[];
 }
 
@@ -58,6 +60,7 @@ function blockedInspection(
     documents,
     timing: null,
     plan: null,
+    workPlan: null,
     selectedAvatar: null,
     phrases: [],
   };
@@ -67,12 +70,15 @@ async function inspectStoredDocuments(
   identity: LocalInspectionIdentity,
 ): Promise<TimelineInspection> {
   const store = await LocalArtifactStore.create(identity.artifactRoot);
-  const [transcriptObject, timelineObject] = await Promise.all([
-    store.readObject(identity.transcriptSha256, "json"),
-    store.readObject(identity.timelineSha256, "json"),
-  ]);
+  const [transcriptObject, timelineObject, generationWorkObject, renderWorkObject] =
+    await Promise.all([
+      store.readObject(identity.transcriptSha256, "json"),
+      store.readObject(identity.timelineSha256, "json"),
+      store.readObject(identity.generationWorkManifestSha256, "json"),
+      store.readObject(identity.renderWorkManifestSha256, "json"),
+    ]);
   const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
-  const [transcript, timeline] = await Promise.all([
+  const [transcript, timeline, generationWork, renderWork] = await Promise.all([
     validateAndHashContractDocument(
       "transcriptTiming",
       parseJsonStrict(decoder.decode(transcriptObject.content)),
@@ -81,10 +87,20 @@ async function inspectStoredDocuments(
       "timelinePlan",
       parseJsonStrict(decoder.decode(timelineObject.content)),
     ),
+    validateAndHashContractDocument(
+      "generationWorkManifest",
+      parseJsonStrict(decoder.decode(generationWorkObject.content)),
+    ),
+    validateAndHashContractDocument(
+      "renderWorkManifest",
+      parseJsonStrict(decoder.decode(renderWorkObject.content)),
+    ),
   ]);
   if (
     transcript.sha256 !== identity.transcriptSha256 ||
     timeline.sha256 !== identity.timelineSha256 ||
+    generationWork.sha256 !== identity.generationWorkManifestSha256 ||
+    renderWork.sha256 !== identity.renderWorkManifestSha256 ||
     transcript.value.project_revision_id !== identity.revisionId ||
     timeline.value.project_revision_id !== identity.revisionId ||
     transcript.value.project_revision_id !== timeline.value.project_revision_id
@@ -92,6 +108,20 @@ async function inspectStoredDocuments(
     throw new InspectionInvariantError(
       "MISMATCHED",
       "The persisted timing documents do not match the selected revision and recorded hashes.",
+    );
+  }
+  if (
+    generationWork.value.project_revision_id !== identity.revisionId ||
+    renderWork.value.project_revision_id !== identity.revisionId ||
+    generationWork.value.timeline_plan_hash !== timeline.sha256 ||
+    renderWork.value.timeline_plan_hash !== timeline.sha256 ||
+    renderWork.value.generation_work_manifest_hash !== generationWork.sha256 ||
+    generationWork.value.cost_counts.render_segment_count !== timeline.value.segments.length ||
+    renderWork.value.segments.length !== timeline.value.segments.length
+  ) {
+    throw new InspectionInvariantError(
+      "MISMATCHED",
+      "Persisted work and render manifests do not match the exact deterministic timeline.",
     );
   }
 
@@ -127,23 +157,42 @@ async function inspectStoredDocuments(
   const phrases = transcript.value.phrases.map((phrase) => {
     const owners = timeline.value.segments.filter(
       (segment) =>
-        segment.word_start <= phrase.word_start &&
-        segment.word_end_exclusive >= phrase.word_end_exclusive,
+        segment.word_start < phrase.word_end_exclusive &&
+        segment.word_end_exclusive > phrase.word_start,
     );
-    if (owners.length !== 1 || owners[0] === undefined) {
+    let ownedWord = phrase.word_start;
+    for (const owner of owners) {
+      if (Math.max(owner.word_start, phrase.word_start) !== ownedWord) break;
+      ownedWord = Math.min(owner.word_end_exclusive, phrase.word_end_exclusive);
+    }
+    if (owners.length === 0 || owners[0] === undefined || ownedWord !== phrase.word_end_exclusive) {
       throw new InspectionInvariantError(
         "UNCOVERED",
         "At least one canonical phrase is not covered exactly once by the persisted plan.",
       );
     }
     const segment = owners[0];
+    const layouts = [...new Set(owners.map((owner) => owner.timeline_composition))];
+    const shotRoles = [
+      ...new Set(
+        owners.flatMap((owner) =>
+          "in_image_shot_role" in owner ? [owner.in_image_shot_role] : [],
+        ),
+      ),
+    ];
     return {
       id: phrase.phrase_id,
       startMs: phrase.start_ms,
       endMs: phrase.end_ms,
       text: phrase.text,
       segmentId: segment.segment_id,
+      segmentIds: owners.map((owner) => owner.segment_id),
       layout: segment.timeline_composition,
+      layouts,
+      startFrame: Math.round((phrase.start_ms * 30) / 1_000),
+      endFrameExclusive: Math.round((phrase.end_ms * 30) / 1_000),
+      shotRole: shotRoles.length === 1 ? shotRoles[0]! : null,
+      shotRoles,
     };
   });
   const avatarSegments = timeline.value.segments.filter(
@@ -226,10 +275,61 @@ async function inspectStoredDocuments(
         endMs: segment.source_audio_end_ms,
         layout: segment.timeline_composition,
         phrase: segment.phrase,
+        artifactId: span.artifactId,
         audioSha256: span.sha256,
+        paddedStartMs: span.paddedStartMs,
+        paddedEndMs: span.paddedEndMsExclusive,
+        trimStartMs: span.trimStartMs,
+        trimEndMs: span.trimEndMsExclusive,
       };
     }),
   );
+
+  const workSpanBySegment = new Map(
+    generationWork.value.avatar_spans.map((span) => [span.timeline_segment_id, span] as const),
+  );
+  if (
+    workSpanBySegment.size !== inspectedSpans.length ||
+    inspectedSpans.some((span) => {
+      const work = workSpanBySegment.get(span.id);
+      return (
+        !work ||
+        work.span_audio_artifact_id !== span.artifactId ||
+        work.span_audio_sha256 !== span.audioSha256 ||
+        work.padded_start_ms !== span.paddedStartMs ||
+        work.padded_end_ms_exclusive !== span.paddedEndMs ||
+        work.trim_start_ms !== span.trimStartMs ||
+        work.trim_end_ms_exclusive !== span.trimEndMs
+      );
+    }) ||
+    generationWork.value.image_slots.length !==
+      timeline.value.segments.filter((segment) => segment.timeline_composition !== "AVATAR_FULL")
+        .length
+  ) {
+    throw new InspectionInvariantError(
+      "MISMATCHED",
+      "Complete work manifest contains missing, duplicate, or drifted image/span work.",
+    );
+  }
+
+  const compositionCounts = {
+    avatarFull: timeline.value.segments.filter(
+      (segment) => segment.timeline_composition === "AVATAR_FULL",
+    ).length,
+    imageFull: timeline.value.segments.filter(
+      (segment) => segment.timeline_composition === "IMAGE_FULL",
+    ).length,
+    avatarSplitImage: timeline.value.segments.filter(
+      (segment) => segment.timeline_composition === "AVATAR_SPLIT_IMAGE",
+    ).length,
+  };
+  const avatarFullMs = timeline.value.segments
+    .filter((segment) => segment.timeline_composition === "AVATAR_FULL")
+    .reduce(
+      (total, segment) => total + segment.source_audio_end_ms - segment.source_audio_start_ms,
+      0,
+    );
+  const avatarSplitMs = avatarDurationMs - avatarFullMs;
 
   return {
     schemaVersion: "videoforge.timeline-inspection/v1",
@@ -259,6 +359,28 @@ async function inspectStoredDocuments(
       sourceEndMs:
         timeline.value.segments.at(-1)?.source_audio_end_ms ?? transcript.value.source.duration_ms,
       coverage: "COMPLETE",
+      compositionCounts,
+      avatarFullPercent: Number(
+        ((avatarFullMs / transcript.value.source.duration_ms) * 100).toFixed(2),
+      ),
+      avatarSplitPercent: Number(
+        ((avatarSplitMs / transcript.value.source.duration_ms) * 100).toFixed(2),
+      ),
+    },
+    workPlan: {
+      generationManifestSha256: generationWork.sha256,
+      renderManifestSha256: renderWork.sha256,
+      promptBatchCount: generationWork.value.cost_counts.prompt_batch_count,
+      imageSlotCount: generationWork.value.cost_counts.image_generation_count,
+      avatarTaskCount: generationWork.value.cost_counts.avatar_generation_count,
+      renderSegmentCount: generationWork.value.cost_counts.render_segment_count,
+      shotRoleCount: new Set(
+        generationWork.value.image_slots.map((slot) => slot.in_image_shot_role),
+      ).size,
+      hardCutsOnly: renderWork.value.transition_policy === "HARD_CUTS_ONLY",
+      slowImageZoomRequired: renderWork.value.segments
+        .filter((segment) => segment.timeline_composition !== "AVATAR_FULL")
+        .every((segment) => segment.image_zoom_profile === "SLOW_SMOOTH_CENTERED_ZOOM"),
     },
     selectedAvatar: {
       count: avatarSegments.length,

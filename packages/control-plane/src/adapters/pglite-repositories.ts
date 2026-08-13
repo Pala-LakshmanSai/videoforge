@@ -3061,18 +3061,18 @@ function createTimingRepository(context: RepositoryContext): TimingContracts.Tim
         ) {
           return invariant("TIMING_INPUT_MISMATCH", "timeline transcript hash is stale");
         }
-        const phraseStartByWord = new Map(
-          transcript.phrases.map((phrase) => [phrase.wordStart, phrase.startMs] as const),
+        const wordStartByIndex = new Map(
+          transcript.words.map((word) => [word.index, word.startMs] as const),
         );
         if (
           command.segments.at(-1)?.wordEndExclusive !== transcript.words.length ||
           command.segments.some((segment) => {
             const expectedStartMs =
-              segment.wordStart === 0 ? 0 : phraseStartByWord.get(segment.wordStart);
+              segment.wordStart === 0 ? 0 : wordStartByIndex.get(segment.wordStart);
             const expectedEndMs =
               segment.wordEndExclusive === transcript.words.length
                 ? transcript.sourceDurationMs
-                : phraseStartByWord.get(segment.wordEndExclusive);
+                : wordStartByIndex.get(segment.wordEndExclusive);
             return (
               expectedStartMs === undefined ||
               expectedEndMs === undefined ||
@@ -3083,7 +3083,7 @@ function createTimingRepository(context: RepositoryContext): TimingContracts.Tim
         ) {
           return invariant(
             "TIMELINE_COVERAGE_INVALID",
-            "timeline segments must cover every transcript word and source-audio phrase boundary exactly",
+            "timeline segments must cover every transcript word and source-audio word boundary exactly",
           );
         }
         if (

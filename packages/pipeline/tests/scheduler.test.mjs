@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { canonicalizeJson, validateAndHashContractDocument } from "@videoforge/contracts";
 import {
+  canonicalizeJson,
+  sha256CanonicalJson,
+  validateAndHashContractDocument,
+} from "@videoforge/contracts";
+import {
+  compileCompleteWorkPlan,
   deterministicTimelineScheduler,
   scheduleTimeline,
   SUPPORTED_SCHEDULER_CONFIG,
@@ -158,24 +163,32 @@ function createPropertyTranscript({
   const phrases = phraseStarts.map((startMs, index) => {
     const nextBoundary = phraseStarts[index + 1] ?? durationMs;
     const endMs = Math.max(startMs + 1, nextBoundary - silentTailMs);
-    const word = punctuation ? `phrase-${String(index)}.` : `phrase-${String(index)}`;
-    words.push({
-      index,
-      text: word,
-      start_ms: startMs,
-      end_ms: endMs,
-      confidence: 0.99,
-    });
+    const wordStart = words.length;
+    const wordQuantumMs = durationMs <= 20_000 ? 200 : 500;
+    const wordCount = Math.max(1, Math.ceil((endMs - startMs) / wordQuantumMs));
+    for (let wordIndex = 0; wordIndex < wordCount; wordIndex += 1) {
+      const final = wordIndex === wordCount - 1;
+      words.push({
+        index: words.length,
+        text: `phrase-${String(index)}-word-${String(wordIndex)}${final && punctuation ? "." : ""}`,
+        start_ms: startMs + Math.floor(((endMs - startMs) * wordIndex) / wordCount),
+        end_ms: startMs + Math.floor(((endMs - startMs) * (wordIndex + 1)) / wordCount),
+        confidence: 0.99,
+      });
+    }
     return {
       phrase_id: `property_phrase_${String(index).padStart(5, "0")}`,
       sentence_id: `property_sentence_${String(Math.floor(index / 2)).padStart(5, "0")}`,
-      word_start: index,
-      word_end_exclusive: index + 1,
+      word_start: wordStart,
+      word_end_exclusive: words.length,
       start_ms: startMs,
       end_ms: endMs,
       pause_before_ms: index === 0 ? startMs : silentTailMs,
       pause_after_ms: silentTailMs,
-      text: word,
+      text: words
+        .slice(wordStart)
+        .map((word) => word.text)
+        .join(" "),
     };
   });
   return {
@@ -213,6 +226,8 @@ function assertExactTimelineCoverage(plan, transcript) {
   let nextWord = 0;
   let previousAvatar = null;
   let avatarFrames = 0;
+  let fullAvatarFrames = 0;
+  let splitAvatarFrames = 0;
   for (const segment of plan.segments) {
     assert.equal(segment.start_frame, nextFrame);
     assert.equal(segment.source_audio_start_ms, nextSourceMs);
@@ -222,7 +237,10 @@ function assertExactTimelineCoverage(plan, transcript) {
     if (segment.timeline_composition !== "IMAGE_FULL") {
       assert.notEqual(segment.timeline_composition, previousAvatar);
       previousAvatar = segment.timeline_composition;
-      avatarFrames += segment.end_frame_exclusive - segment.start_frame;
+      const durationFrames = segment.end_frame_exclusive - segment.start_frame;
+      avatarFrames += durationFrames;
+      if (segment.timeline_composition === "AVATAR_FULL") fullAvatarFrames += durationFrames;
+      else splitAvatarFrames += durationFrames;
     }
     nextFrame = segment.end_frame_exclusive;
     nextSourceMs = segment.source_audio_end_ms;
@@ -231,7 +249,10 @@ function assertExactTimelineCoverage(plan, transcript) {
   assert.equal(nextFrame, plan.total_frames);
   assert.equal(nextSourceMs, transcript.source.duration_ms);
   assert.equal(nextWord, transcript.words.length);
-  return avatarFrames / plan.total_frames;
+  return {
+    avatarRatio: avatarFrames / plan.total_frames,
+    fullSplitDifferenceFrames: Math.abs(fullAvatarFrames - splitAvatarFrames),
+  };
 }
 
 function requireSuccess(result) {
@@ -272,7 +293,6 @@ test("a different explicit seed produces a different valid editorial plan", asyn
 test("the owned 40-second fixture has exact coverage, legal slots, and all compositions", async () => {
   const timeline = requireSuccess(await scheduleTimeline(await requestFor(982_341))).value;
   const transcript = createTranscriptValue();
-  const phraseWordStarts = new Set(transcript.phrases.map((phrase) => phrase.word_start));
   const compositions = new Set(timeline.segments.map((segment) => segment.timeline_composition));
 
   assert.equal(timeline.output_fps_num, 30);
@@ -293,7 +313,10 @@ test("the owned 40-second fixture has exact coverage, legal slots, and all compo
     assert.equal(segment.word_start, word);
     assert.ok(segment.end_frame_exclusive > segment.start_frame);
     assert.ok(segment.source_audio_end_ms > segment.source_audio_start_ms);
-    assert.ok(phraseWordStarts.has(segment.word_start));
+    assert.equal(
+      segment.source_audio_start_ms,
+      segment.word_start === 0 ? 0 : transcript.words[segment.word_start].start_ms,
+    );
     assert.equal(segmentIds.has(segment.segment_id), false);
     segmentIds.add(segment.segment_id);
 
@@ -327,8 +350,8 @@ test("the owned 40-second fixture has exact coverage, legal slots, and all compo
   const avatarFrames = timeline.segments
     .filter((segment) => segment.timeline_composition !== "IMAGE_FULL")
     .reduce((sum, segment) => sum + segment.end_frame_exclusive - segment.start_frame, 0);
-  assert.ok(avatarFrames / timeline.total_frames >= 0.2);
-  assert.ok(avatarFrames / timeline.total_frames <= 0.24);
+  assert.ok(avatarFrames / timeline.total_frames >= 0.21);
+  assert.ok(avatarFrames / timeline.total_frames <= 0.22);
 });
 
 test("cross-revision transcript bindings fail closed", async () => {
@@ -344,10 +367,10 @@ test("cross-revision transcript bindings fail closed", async () => {
   assert.deepEqual(result.error.path, ["transcript", "project_revision_id"]);
 });
 
-test("scheduler-v1 publishes every behavior-bearing constant as one immutable config", () => {
+test("scheduler-v2 publishes every behavior-bearing constant as one immutable config", () => {
   assert.equal(
     SUPPORTED_SCHEDULER_CONFIG.schema_version,
-    "deterministic-timeline-scheduler-config/v1",
+    "deterministic-timeline-scheduler-config/v2",
   );
   assert.equal(SUPPORTED_SCHEDULER_CONFIG.output_fps_num, 30);
   assert.deepEqual(SUPPORTED_SCHEDULER_CONFIG.shot_roles, [
@@ -360,6 +383,7 @@ test("scheduler-v1 publishes every behavior-bearing constant as one immutable co
   ]);
   assert.equal(SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum, 0.21);
   assert.equal(SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_maximum, 0.22);
+  assert.equal(SUPPORTED_SCHEDULER_CONFIG.avatar_coverage_pace_score_weight, 5);
   assert.equal(SUPPORTED_SCHEDULER_CONFIG.selected_span_context_padding_ms, 500);
   assert.equal(Object.isFrozen(SUPPORTED_SCHEDULER_CONFIG), true);
   assert.equal(Object.isFrozen(SUPPORTED_SCHEDULER_CONFIG.shot_roles), true);
@@ -437,13 +461,160 @@ test("short, silent, fast, slow, unpunctuated and 30-minute fixtures remain dete
         canonicalizeJson(second.value),
         `${fixture.name} seed ${String(seed)}`,
       );
-      const avatarRatio = assertExactTimelineCoverage(first.value, fixture.value);
-      if (fixture.name !== "short") {
-        assert.ok(
-          avatarRatio >= 0.19 && avatarRatio <= (fixture.name === "slow" ? 0.26 : 0.24),
-          `${fixture.name}: ${String(avatarRatio)}`,
-        );
-      }
+      const coverage = assertExactTimelineCoverage(first.value, fixture.value);
+      assert.ok(
+        coverage.avatarRatio >= 0.21 && coverage.avatarRatio <= 0.22,
+        `${fixture.name}: ${String(coverage.avatarRatio)}`,
+      );
+      assert.ok(
+        coverage.fullSplitDifferenceFrames <= 210,
+        `${fixture.name} full/split difference: ${String(coverage.fullSplitDifferenceFrames)}`,
+      );
     }
   }
+});
+
+function materializedSpans(plan, sourceDurationMs) {
+  return plan.segments.flatMap((segment, index) => {
+    if (segment.timeline_composition === "IMAGE_FULL") return [];
+    const paddedStartMs = Math.max(
+      0,
+      segment.source_audio_start_ms - SUPPORTED_SCHEDULER_CONFIG.selected_span_context_padding_ms,
+    );
+    const paddedEndMsExclusive = Math.min(
+      sourceDurationMs,
+      segment.source_audio_end_ms + SUPPORTED_SCHEDULER_CONFIG.selected_span_context_padding_ms,
+    );
+    return [
+      {
+        spanId: `span_${String(index).padStart(5, "0")}`,
+        timelineSegmentId: segment.segment_id,
+        taskKey: segment.required_slots.avatar.span_audio_task_key,
+        artifactId: `asset-span:${String(index).padStart(5, "0")}`,
+        sha256: `sha256:${(index % 16).toString(16).repeat(64)}`,
+        selectedStartMs: segment.source_audio_start_ms,
+        selectedEndMsExclusive: segment.source_audio_end_ms,
+        paddedStartMs,
+        paddedEndMsExclusive,
+        trimStartMs: segment.source_audio_start_ms - paddedStartMs,
+        trimEndMsExclusive:
+          segment.source_audio_start_ms -
+          paddedStartMs +
+          segment.source_audio_end_ms -
+          segment.source_audio_start_ms,
+      },
+    ];
+  });
+}
+
+test("owned 30-minute work plan is complete, immutable, replayable, and provider inert", async (t) => {
+  const transcriptValue = createPropertyTranscript({
+    durationMs: 1_800_000,
+    phraseStarts: Array.from({ length: 360 }, (_, index) => index * 5_000),
+  });
+  const request = await propertyRequest(982_341, transcriptValue);
+  const timeline = requireSuccess(await scheduleTimeline(request));
+  const schedulerConfigHash = await sha256CanonicalJson(SUPPORTED_SCHEDULER_CONFIG);
+  const selectedSpanAudio = materializedSpans(timeline.value, transcriptValue.source.duration_ms);
+  const compileRequest = {
+    revision: request.revision,
+    transcript: request.transcript,
+    timeline,
+    schedulerConfigHash,
+    selectedSpanAudio,
+  };
+  const first = requireSuccess(await compileCompleteWorkPlan(compileRequest));
+  const second = requireSuccess(await compileCompleteWorkPlan(compileRequest));
+  const work = first.generationWorkManifest.value;
+  const render = first.renderWorkManifest.value;
+
+  assert.equal(first.generationWorkManifest.sha256, second.generationWorkManifest.sha256);
+  assert.equal(first.renderWorkManifest.sha256, second.renderWorkManifest.sha256);
+  assert.equal(work.selection_authority, "DETERMINISTIC_CODE");
+  assert.equal(work.echo_audio_policy.full_voiceover_dispatched, false);
+  assert.equal(work.echo_audio_policy.sample_rate_hz, 16_000);
+  assert.equal(work.cost_counts.image_prompt_count, work.image_slots.length);
+  assert.equal(work.cost_counts.image_generation_count, work.image_slots.length);
+  assert.equal(work.cost_counts.avatar_generation_count, work.avatar_spans.length);
+  assert.equal(work.cost_counts.selected_span_audio_count, selectedSpanAudio.length);
+  assert.equal(work.cost_counts.render_segment_count, timeline.value.segments.length);
+  assert.equal(
+    new Set(work.image_slots.map((slot) => slot.task_key)).size,
+    work.image_slots.length,
+  );
+  assert.equal(
+    new Set(work.avatar_spans.map((span) => span.task_key)).size,
+    work.avatar_spans.length,
+  );
+  assert.ok(work.prompt_batches.every((batch) => batch.scene_task_keys.length >= 25));
+  assert.ok(work.prompt_batches.every((batch) => batch.scene_task_keys.length <= 50));
+  assert.ok(new Set(work.image_slots.map((slot) => slot.in_image_shot_role)).size >= 4);
+  assert.ok(
+    work.avatar_spans.every(
+      (span) => span.padded_end_ms_exclusive - span.padded_start_ms < 1_800_000,
+    ),
+  );
+
+  assert.equal(render.transition_policy, "HARD_CUTS_ONLY");
+  assert.equal(render.output.total_frames, timeline.value.total_frames);
+  assert.equal(render.generation_work_manifest_hash, first.generationWorkManifest.sha256);
+  assert.equal(render.segments.length, timeline.value.segments.length);
+  let nextFrame = 0;
+  for (const segment of render.segments) {
+    assert.equal(segment.start_frame, nextFrame);
+    assert.equal(
+      segment.image_zoom_profile,
+      segment.timeline_composition === "AVATAR_FULL" ? "NONE" : "SLOW_SMOOTH_CENTERED_ZOOM",
+    );
+    nextFrame = segment.end_frame_exclusive;
+  }
+  assert.equal(nextFrame, render.output.total_frames);
+
+  const missing = await compileCompleteWorkPlan({
+    ...compileRequest,
+    selectedSpanAudio: selectedSpanAudio.slice(1),
+  });
+  assert.equal(missing.ok, false);
+  assert.equal(missing.error.code, "WORK_PLAN_INVALID");
+
+  const framesByComposition = Object.fromEntries(
+    ["IMAGE_FULL", "AVATAR_FULL", "AVATAR_SPLIT_IMAGE"].map((composition) => [
+      composition,
+      timeline.value.segments
+        .filter((segment) => segment.timeline_composition === composition)
+        .reduce((sum, segment) => sum + segment.end_frame_exclusive - segment.start_frame, 0),
+    ]),
+  );
+  const avatarFrames = framesByComposition.AVATAR_FULL + framesByComposition.AVATAR_SPLIT_IMAGE;
+  const avatarDurations = timeline.value.segments
+    .filter((segment) => segment.timeline_composition !== "IMAGE_FULL")
+    .map((segment) => segment.source_audio_end_ms - segment.source_audio_start_ms);
+  t.diagnostic(
+    JSON.stringify({
+      fixtureDurationMs: transcriptValue.source.duration_ms,
+      totalFrames: timeline.value.total_frames,
+      timelineSha256: timeline.sha256,
+      generationWorkManifestSha256: first.generationWorkManifest.sha256,
+      renderWorkManifestSha256: first.renderWorkManifest.sha256,
+      segmentCount: timeline.value.segments.length,
+      framesByComposition,
+      avatarCoveragePercent: Number(
+        ((avatarFrames / timeline.value.total_frames) * 100).toFixed(4),
+      ),
+      fullSplitDifferenceFrames: Math.abs(
+        framesByComposition.AVATAR_FULL - framesByComposition.AVATAR_SPLIT_IMAGE,
+      ),
+      avatarSpanCount: work.avatar_spans.length,
+      avatarSpanDurationMs: {
+        minimum: Math.min(...avatarDurations),
+        maximum: Math.max(...avatarDurations),
+      },
+      imageSlotCount: work.image_slots.length,
+      promptBatchSizes: work.prompt_batches.map((batch) => batch.scene_task_keys.length),
+      shotRoleCount: new Set(work.image_slots.map((slot) => slot.in_image_shot_role)).size,
+      fullVoiceoverDispatched: work.echo_audio_policy.full_voiceover_dispatched,
+      transitionPolicy: render.transition_policy,
+      imageZoomProfiles: [...new Set(render.segments.map((segment) => segment.image_zoom_profile))],
+    }),
+  );
 });
