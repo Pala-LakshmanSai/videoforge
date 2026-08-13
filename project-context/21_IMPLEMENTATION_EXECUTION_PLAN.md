@@ -1,62 +1,91 @@
 # Implementation execution plan
 
-Status: `VF-9-24I` FP8 long-video RTX sample selected
+Status: isolated persistent model-lane reset selected; implementation not started
 Read when: selecting, implementing, integrating, or handing off one task.
 
 ## Authority
 
-`CURRENT_STATE.yaml` selects exactly one task. Fixture stays default. Every task ends with a small
-green commit, push, hosted CI, refreshed state, and exactly one successor brief. Private inputs,
-outputs, weights, and credentials never enter Git.
+`CURRENT_STATE.yaml` selects exactly one task. Fixture mode stays default. A task may use only its
+recorded provider/credential/spend authority; absence means `$0` and no external mutation. Private
+inputs, outputs, weights, credentials, and provider resource IDs never enter Git.
 
-Historical AvatarForcing/MuseTalk/SkyReels decisions and evidence remain immutable replay history.
-They authorize no new dispatch. LongCat remains excluded.
+The prior Serverless/ephemeral `VF-9-24I` retry is superseded. Its evidence remains immutable, but
+its former `$8` ceiling and temporary-cache cleanup rules do not authorize the new architecture.
+No old endpoint, Pod, template, or deleted temporary volume may be adopted as production state.
 
-## Ordered sample-first execution
+## Required order
 
-1. `VF-9-22` — complete: add `DEC_AVATAR_007`, pin source/weights/base/audio revisions and exact
-   public license/access/file evidence, keep `GATE_AVATAR_001` open, add `GATE_AVATAR_004`, and
-   preserve `VF-9-21` spend/evidence.
-2. `VF-9-23` — complete: replaced generic `workers/avatar-primary` internals with a pinned
-   EchoMimicV3-Flash worker and bounded RTX 4090 sample runner. Provider spend `$0`; one hosted image
-   build only after local green. Pin digest and prove full local/hosted verification.
-3. `VF-9-24` — stopped: its sole job caused RunPod to create three `EXITED` worker records before
-   output. The guard cancelled execution, no MP4 was produced, observed balance delta was `$0`, and
-   three independent post-cleanup inventories proved absolute zero. No retry is authorized.
-3a. `VF-9-24A` through `VF-9-24H` — complete/stopped history: repaired observability and model
-   pins, proved RTX 4090 BF16 OOM, then A100 capacity/download/cost limits. `VF-9-24H` remained
-   active for about 21m54.9s and produced no MP4 before its cost stop. RunPod cleanup is absolute
-   zero; cumulative lane spend is `$1.8200686945`.
-3b. `VF-9-24I` — selected: publish a pinned TorchAO FP8 dynamic activation-and-weight worker,
-   enable upstream Long Video CFG with 81-frame partial windows, then run the same exact 253-frame
-   sample once on RTX 4090 after a fresh cumulative spend cap. Return MP4/timings and prove global
-   zero.
-4. `VF-9-25` — only after explicit sample approval: durable provider acceptance/application
-   integration at `$0`, additive migration `0014`, measured crop profile, no production promotion.
-5. `VF-9-26` — separate later budget: 12–20-clip representative full Echo qualification.
+1. **`VF-9-24J` — isolated model-lane architecture reset (`$0`, complete).**
+   Reconciled product, architecture, RunPod, model, scheduler, cost, acceptance, context, templates,
+   and task truth. No application/schema/provider implementation occurred.
+2. **`VF-9-24K` — isolated model-lane contracts and fixtures (`$0`, proposed/paused).**
+   Version two exact model-volume bindings, immutable manifests, expiring live-inventory receipts,
+   independent exact GPU selections, Pod create/readiness/work/delete attempts, timings, durable
+   output barriers, and cross-lane rejection. Current v1 machine contracts remain legacy and must
+   fail closed before paid dispatch. Exercise concurrent lifecycle states in fixtures; no provider
+   call, schema reinterpretation, cloud resource, or app production activation.
+3. **Offline worker adaptation (`$0` plus separately authorized image publication later).**
+   Reuse the working ImageForge Mage INT8 ConvRot model identity/ComfyUI workflow/offline load and
+   warm-up mechanics without copying its resource IDs or volume. Adapt Echo FP8 to the same exact
+   manifest/readiness boundary. Ordinary startup must not download weights, install dependencies,
+   clone source, or repair storage.
+4. **Persistent volume provisioning/preparation (separate explicit cloud/spend authority).**
+   Derive each capacity from its exact manifest plus approved headroom, create two different
+   `EU-RO-1` VideoForge volumes, prepare one model per volume, verify hashes, and write completion
+   markers last. Delete preparation Pods; retain both volumes.
+5. **Pod lifecycle and independent live GPU UI (provider-free first, then separately authorized).**
+   Query fresh compatible inventory per lane, let the user choose each exact current offering,
+   revalidate, create both Pods concurrently, verify actual Pod/GPU/volume/image/model identity,
+   report truthful readiness, reconcile ambiguity, and delete each Pod without deleting its volume.
+6. **Bounded lane samples (new caps required).**
+   Run Mage INT8 owned prompts and normal owned Echo 2–6-second spans (opener maximum 7 seconds).
+   The exact historical 10.12-second input is optional stress evidence only under separate explicit
+   authority and cannot change production span policy. Return local
+   artifacts with hashes/probes plus boot/load/warm-up/inference/upload/delete timings, exact GPU/rate,
+   cost, manifest, attempt lineage, and zero-Pod/two-volume evidence. User reviews quality.
+7. **Automated concurrent E2E.**
+   One Generate starts both selected Pods while local preparation runs, then deletes each after its
+   durable barrier, renders the deterministic 1080p MP4 with FFmpeg, verifies/downloads it locally,
+   and shows it in real Chrome. No Premiere/manual import/alignment.
+8. **Production qualification and hardening.**
+   Run the Mage 40-prompt/300-image suite, Echo 12–20-clip exact-avatar suite, cold/warm fresh-Pod
+   benchmarks, stale inventory/no-capacity/cancellation/ambiguous create-delete/recovery/cost tests,
+   and close gates only from recorded evidence plus required user review.
 
-## VF-9-24I ownership
+## Locked lane identities
 
-- One serial lane owns the exact private inputs, pinned worker dispatch, evidence, and cleanup.
-- Preserve signed transfer, checksum, cancellation, deadline, redaction, cost, unique-output,
-  transient cleanup, and independent-zero boundaries.
-- Exact pinned weights bootstrap into a temporary persistent cache only after spend authority.
-- RTX 4090 24 GB only. `workersMin=0`, `workersMax=1`, one job, no ambiguity redispatch.
-- Source/image work may proceed at `$0`; RunPod mutation waits for a fresh cumulative cap.
+- Mage: `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6`, ImageForge
+  `int8-convrot`, pinned stock ComfyUI, 4 steps, guidance 1.0, 1280×720.
+- Echo: pinned EchoMimicV3-Flash FP8 derived from first-party Flash weights; short selected spans,
+  no Long Video CFG, no uncarded third-party pickle, repair, fallback, or model substitution.
+- Region: both volumes in `EU-RO-1`, but as distinct resources bound to distinct model lanes.
+- Initial concurrency: at most one Pod per lane; at most two paid Pods total.
+
+## Parallel and serialized work
+
+After shared vNext contracts lock, Mage-worker and Echo-worker adaptation may proceed in parallel.
+Fixture UI and provider adapter may proceed in parallel only when they own disjoint files. Shared
+schemas, migrations, state machines, root composition, derived context, provider mutations, and
+commits are serialized through one integration owner. Although Generate starts two Pods in
+parallel, one controller owns both create/delete intents and budget lineage.
 
 ## Verification
 
-- Focused tests, then `pnpm verify:fast`.
-- Milestone: `CI=1 TURBO_FORCE=true pnpm verify`, `pnpm context:validate`, `pnpm secret:scan`,
-  `pnpm format:check`, `pnpm audit:dependencies`, and `git diff --check`.
-- Push each completed task and confirm hosted CI/image build. Stop owned servers; tracked worktree
-  clean except ignored private inputs/outputs.
+- Focused tests, `pnpm verify:fast`, then canonical `CI=1 TURBO_FORCE=true pnpm verify` for a
+  coherent implementation milestone.
+- For context/contracts: `project-context/scripts/validate-context.sh`,
+  `project-context/scripts/validate-schemas.sh`, `pnpm secret:scan`, formatting, dependency audit,
+  and `git diff --check`.
+- Provider work additionally requires immutable evidence, output hashes/probes, measured costs,
+  exact Pod/volume/GPU/model identity, deletion and independent absence proof. Retained approved
+  volume identity must also be proven; “zero resources” is no longer the desired production state.
 
 ## Stop conditions
 
-Stop on dirty unexplained tracked state, source/manifest mismatch, dependency/container failure,
-test/CI failure, GPU substitution, nonzero preflight inventory, provider ambiguity, cap/watchdog
-risk, cleanup not independently proven, or missing new user authority.
+Stop on unexplained tracked state, contract/manifest mismatch, cross-volume binding, runtime model
+download, stale/vanished GPU offering, silent GPU/model/precision substitution, ambiguous create or
+delete without exact reconciliation, cap risk, unverified durable output, Pod absence not proven,
+unexpected volume deletion, failed validation, or missing authority for a provider/cloud action.
 
-No retry, other-model fallback, repair, application integration, deployment, production promotion,
-or roadmap continuation after the sample without exact later authority.
+Historical AvatarForcing, MuseTalk, SkyReels, earlier BF16 Mage/Echo runs, and Serverless endpoints
+remain evidence only. Reintroducing any requires a new explicit decision and task.

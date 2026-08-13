@@ -20,7 +20,7 @@ These terms intentionally separate editorial layout from the visual treatment in
 | **Avatar Profile** | Mutable named parent/catalog identity with one active ready version; it is not a generated speech clip | Avatar Hub |
 | **Avatar Profile version** | Immutable ready source payload/hash and canonical runtime asset used by projects; replacing source pixels creates another version | Avatar Hub |
 | **Avatar binding** | Server-resolved project snapshot of profile ID, exact version/hash, runtime source asset/checksum, preparation/validation profiles, compatibility state at preflight, and matching immutable terminal evidence when one exists | Project revision/avatar worker |
-| **Avatar renderer source profile** | Immutable adapter label coupling an accepted avatar asset's native dimensions/rate to its exact full/split crops and direct 30 fps conversion; primary and fallback profiles cannot be mixed | Avatar adapter/renderer |
+| **Avatar renderer source profile** | Immutable adapter label coupling an accepted Echo asset's measured native dimensions/rate to its exact full/split crops and direct 30 fps conversion; no historical-model profile may be substituted | Avatar adapter/renderer |
 | **Attempt** | One provider/model execution with immutable inputs, settings, lineage, cost, and result | Operations |
 | **Technical acceptance** | Deterministic decode/duration/format/geometry checks; it is not a claim that a human liked the pixels | QA |
 | **Creative acceptance** | Human approval or an explicitly approved future visual-QA policy | QA/user |

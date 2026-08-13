@@ -1,5 +1,5 @@
 schema_version: "1.0"
-updated_at: "2026-08-12"
+updated_at: "2026-08-13"
 evidence_root: "evidence/gates"
 
 gates:
@@ -9,7 +9,7 @@ gates:
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#echomimicv3-flash-exact-avatar-suite"
     owner: VF-9-24
     last_run: null
-    result: open_echo_native_sample_and_full_exact_avatar_suite_not_reviewed
+    result: open_echo_fp8_persistent_volume_and_full_exact_avatar_suite_not_qualified
   GATE_AVATAR_002:
     status: open
     blocks: automatic_global_avatar_primary_demotion
@@ -30,20 +30,20 @@ gates:
     active_effect: historical_nonblocking_no_new_avatarforcing_dispatch
   GATE_AVATAR_004:
     status: open
-    blocks: echomimic_runtime_bootstrap_without_exact_manifest
+    blocks: echomimic_fp8_persistent_volume_runtime_without_exact_manifest
     acceptance: "08_MODELS_AND_PROVIDERS.md#echomimicv3-flash"
     owner: VF-9-23
     last_run: "evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight"
-    result: open_preflight_pass_runtime_bootstrap_not_yet_verified
+    result: open_preflight_pass_fp8_volume_artifact_and_offline_boot_not_qualified
     checked_at: "2026-08-12T14:56:02Z"
-    blocker: "No source/license mismatch exists in read-only preflight; exact 23.922317735 GB runtime manifest must still be downloaded and checksum-verified inside the immutable worker before GPU use."
+    blocker: "No source/license mismatch exists in read-only preflight; the exact VideoForge-prepared FP8 artifact must be installed once on its dedicated EU-RO-1 volume, checksum-verified, and loaded during a normal offline Pod boot without cross-mounting the Mage volume."
   GATE_IMAGE_001:
     status: open
     blocks: mage_production_profile
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#mage-acceptance-suite"
     owner: VF-9-20
     last_run: "evidence/acceptance/VF-9-18/mage-quality-matrix"
-    result: open_zero_of_40_matrix_outputs_and_no_accepted_mage_image
+    result: open_int8_convrot_1280x720_volume_profile_not_qualified
   GATE_IMAGE_002:
     status: open
     blocks: unambiguous_mage_checkpoint_commercial_permission_claim
@@ -52,7 +52,7 @@ gates:
     last_run: "evidence/gates/GATE_IMAGE_002/2026-08-11-huggingface-mage-access-license"
     result: open_user_accepted_risk_for_locked_model_qualification
     checked_at: "2026-08-11T04:03:03Z"
-    blocker: "Exact public Comfy-Org weight revision and all required BF16 file hashes are resolved and accessible. Historical Microsoft sources still combine MIT labeling with research-only deployment guidance, so clear commercial permission remains unproven."
+    blocker: "The exact public Comfy-Org revision includes the selected INT8 ConvRot checkpoint and is accessible. The new VideoForge volume manifest and Pod/runtime compatibility remain unqualified, while historical Microsoft sources still combine MIT labeling with research-only deployment guidance, so clear commercial permission remains unproven."
     user_risk_acceptance: "2026-08-11: user explicitly directed proceeding with locked Mage-Flow-Turbo for YouTube use despite unresolved terms/access metadata; no clear-commercial-permission claim is allowed."
   GATE_LLM_001:
     status: closed
@@ -94,24 +94,24 @@ gates:
   GATE_GPU_001:
     status: open
     blocks: selectable_production_execution_profiles
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#queuefault-gate"
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-pod-and-volume-lifecycle-gate"
     owner: VF-9-20
     last_run: "evidence/acceptance/VF-9-20/gate-profile-convergence"
-    result: open_no_accepted_model_gpu_execution_profile
+    result: open_no_live_inventory_selected_exact_gpu_profile_for_both_models
   GATE_RUNPOD_001:
     status: open
     blocks: live_runpod_dispatch
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-endpoint-and-dispatch-gate"
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-pod-and-volume-lifecycle-gate"
     owner: VF-9-20
     last_run: "evidence/acceptance/VF-9-20/gate-profile-convergence"
-    result: open_provider_read_worker_limit_queue_and_cleanup_ambiguities_reproduced
+    result: open_two_volume_two_disposable_pod_lifecycle_not_qualified
   GATE_COST_001:
     status: open
     blocks: measured_unit_economics_claim
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#production-slo-targets"
     owner: VF-9-20
     last_run: "evidence/acceptance/VF-9-20/gate-profile-convergence"
-    result: open_no_representative_30_minute_cold_warm_accepted_jobs
+    result: open_no_representative_disposable_pod_boot_load_or_accepted_jobs
   GATE_UI_001:
     status: closed
     blocks: visual_system_lock

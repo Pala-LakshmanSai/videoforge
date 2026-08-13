@@ -1,6 +1,6 @@
 # Source index
 
-Status: evidence map; EchoMimicV3-Flash sources refreshed 2026-08-12; historical AvatarForcing sources refreshed 2026-08-11; other sources refreshed 2026-08-10
+Status: evidence map; current Mage INT8/ImageForge implementation and Pod architecture refreshed 2026-08-13; EchoMimicV3-Flash sources refreshed 2026-08-12; older sources are historical
 Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 
 ## Official model/provider sources
@@ -13,15 +13,25 @@ Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 - Runware privacy and standard-service retention/deletion posture: [runware.ai/privacy](https://runware.ai/privacy)
 - Google Gemini media-resolution/token guidance: [ai.google.dev/gemini-api/docs/media-resolution](https://ai.google.dev/gemini-api/docs/media-resolution)
 - Google Gemini structured outputs: [ai.google.dev/gemini-api/docs/structured-output](https://ai.google.dev/gemini-api/docs/structured-output)
-- Google Gemini 3.6 Flash quality-fallback candidate: [ai.google.dev/gemini-api/docs/models/gemini-3.6-flash](https://ai.google.dev/gemini-api/docs/models/gemini-3.6-flash)
-- Mage-Flow-Turbo model card: [huggingface.co/microsoft/Mage-Flow-Turbo](https://huggingface.co/microsoft/Mage-Flow-Turbo)
-- Mage code: [github.com/microsoft/Mage](https://github.com/microsoft/Mage)
+- Historical Gemini 3.6 Flash analyzer-comparison source: [ai.google.dev/gemini-api/docs/models/gemini-3.6-flash](https://ai.google.dev/gemini-api/docs/models/gemini-3.6-flash)
+- Active Mage model repository and pinned revision: [Comfy-Org/Mage-Flow at
+  `d8c99241`](https://huggingface.co/Comfy-Org/Mage-Flow/tree/d8c99241f6fa80fbd453014234af2bf337ea21e6)
+- Active Mage runtime evidence is the user's current local ImageForge source, not the earlier
+  VideoForge BF16 worker: `/Volumes/ESD-USB/ImageForge/worker/src/imageforge_worker/constants.py`,
+  `model_profiles.py`, `inference/mageflow.py`, `worker/Dockerfile`, and
+  `worker/scripts/prepare_mageflow_volume.py`. These pin `int8-convrot`, the required ComfyUI model
+  files, 4 steps, guidance `1.0`, `1280x720`, offline loading, warm-up, and volume preparation.
+- ImageForge Pod/volume and live-inventory implementation references:
+  `/Volumes/ESD-USB/ImageForge/docs/RUNPOD_OPERATIONS.md` and
+  `/Volumes/ESD-USB/ImageForge/src-tauri/src/native/gpu_inventory.rs`. Reuse their verified
+  mechanics; never reuse ImageForge resource IDs, credentials, or production volume.
 - EchoMimicV3 pinned source: [antgroup/echomimic_v3 at `7e89489`](https://github.com/antgroup/echomimic_v3/tree/7e89489ca51c0d008fc1963ec6c03fc5bd0b9397)
 - EchoMimicV3-Flash pinned weights: [BadToBest/EchoMimicV3 at `311e176`](https://huggingface.co/BadToBest/EchoMimicV3/tree/311e176905a8c4c24b240b530488fe636ce4d249)
 - EchoMimic Wan base: [Wan2.1-Fun-V1.1-1.3B-InP at `fc913c3`](https://huggingface.co/alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP/tree/fc913c34361f4ec879e2f9c78b4f11ae50a937d1)
 - EchoMimic audio encoder: [chinese-wav2vec2-base at `3991242`](https://huggingface.co/TencentGameMate/chinese-wav2vec2-base/tree/3991242c806928916fff4a8c0e4f76acf661b743)
 - EchoMimic exact access/license/runtime manifest: `evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight/`
-- Historical only; no new dispatch:
+### Historical avatar candidates — evidence only; no dispatch authority
+
 - AvatarForcing pinned code revision: [KlingAIResearch/AvatarForcing at `63b73e6`](https://github.com/KlingAIResearch/AvatarForcing/tree/63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39)
 - AvatarForcing pinned contradictory academic-only/non-commercial license artifact: [`LICENSE.txt` at `63b73e6`](https://github.com/KlingAIResearch/AvatarForcing/blob/63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39/LICENSE.txt)
 - AvatarForcing pinned public weights repository with no declared license: [`lycui/AvatarForcing` at `e244891`](https://huggingface.co/lycui/AvatarForcing/tree/e2448919a7b535c29f34e07892884ae1a43c6ace)
@@ -34,12 +44,12 @@ Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 ## Official infrastructure sources
 
 - RunPod GPU/storage pricing: [runpod.io/pricing](https://www.runpod.io/pricing)
-- RunPod Serverless per-second rates and defaults: [endpoint settings](https://docs.runpod.io/serverless/endpoints/endpoint-configurations)
-- RunPod Serverless overview: [docs.runpod.io/serverless/overview](https://docs.runpod.io/serverless/overview)
-- RunPod endpoint configuration: [docs.runpod.io/serverless/endpoints/endpoint-configurations](https://docs.runpod.io/serverless/endpoints/endpoint-configurations)
-- RunPod worker quotas and account-balance interaction: [docs.runpod.io/serverless/endpoints/endpoint-configurations](https://docs.runpod.io/serverless/endpoints/endpoint-configurations)
-- RunPod async request lifecycle, execution timeout, TTL, status, and result retention: [docs.runpod.io/serverless/endpoints/send-requests](https://docs.runpod.io/serverless/endpoints/send-requests)
-- RunPod endpoint REST create/read/update contracts used for API-only reconciliation: [create](https://docs.runpod.io/api-reference/endpoints/POST/endpoints), [read](https://docs.runpod.io/api-reference/endpoints/GET/endpoints/endpointId), [update](https://docs.runpod.io/api-reference/endpoints/PATCH/endpoints/endpointId)
+- RunPod network-volume Pod lifecycle: [Manage Pods](https://docs.runpod.io/pods/manage-pods)
+- RunPod Pod API used for exact create/reconcile/delete:
+  [create](https://docs.runpod.io/api-reference/pods/POST/pods),
+  [read](https://docs.runpod.io/api-reference/pods/GET/pods/podId), and
+  [delete](https://docs.runpod.io/api-reference/pods/DELETE/pods/podId)
+- RunPod live GPU availability: [GraphQL manage Pods](https://docs.runpod.io/sdks/graphql/manage-pods)
 - RunPod network volumes: [docs.runpod.io/storage/network-volumes](https://docs.runpod.io/storage/network-volumes)
 - Cloudflare React SPA + API in one Vite Worker: [developers.cloudflare.com/workers/vite-plugin/tutorial](https://developers.cloudflare.com/workers/vite-plugin/tutorial/)
 - Cloudflare Vite plugin/HMR/runtime parity: [developers.cloudflare.com/workers/vite-plugin](https://developers.cloudflare.com/workers/vite-plugin/)
@@ -81,8 +91,13 @@ Compact, pinned lesson brief: `evidence/source-briefs/LOCAL_BASELINES.md`. New c
   - Useful: local `whisper.cpp` provider, audio normalization, word offsets, queue/progress ideas.
   - Do not assume its entire architecture is production-ready.
 - ImageForge: `/Volumes/ESD-USB/ImageForge`.
-  - Useful: visual tokens/components, truthful RunPod lifecycle, owner-bound idempotency, immutable artifacts, queue UX.
-  - Do not merge the image-generation desktop product wholesale.
+  - Binding reuse target for Mage only: exact `Comfy-Org/Mage-Flow` revision,
+    `int8-convrot` ComfyUI profile, model-file manifest, offline load/warm-up, live exact GPU
+    inventory, and disposable-Pod/persistent-volume lifecycle.
+  - Useful elsewhere: visual tokens/components, owner-bound idempotency, immutable artifacts, and
+    queue UX.
+  - Do not merge the desktop product wholesale or share/copy its volume, Pod, resource IDs, or
+    secrets into VideoForge.
 - VoiceStamp: `/Users/lakshmansai/Desktop/VoiceStamp/app.py`.
   - Useful: free faster-whisper CPU INT8 word timestamps and JSON output.
   - QuickCut's M4 Metal `whisper.cpp` path was locally faster in recorded tests.
@@ -96,7 +111,12 @@ All three paths are optional local evidence and are not VideoForge build depende
 - LongCat quality research informed the avatar study, but per-video cost excluded it from default.
 - AI-video model research remains deferred because the user chose image-only MVP.
 - Runware Gemini 3.5 Flash is the provisional one-time Image Style analyzer because it supports several images and strict JSON through the same Runware account; Gemini 3.1 Flash Lite is cheaper but not preferred before a style-fidelity A/B.
+- Historical RunPod Serverless endpoint/worker-count sources supported an earlier architecture
+  that is now superseded. They are not active VideoForge deployment authority.
 
 ## Citation/freshness rule
 
-Use primary/official sources for technical claims. For a future model/price/license question, browse again rather than treating this 2026-08-10 snapshot as permanently current.
+Use primary/official sources for technical claims. Treat live GPU availability and price as an
+expiring observation that must be refreshed and revalidated before each Pod create. For a future
+model/price/license/API question, browse again rather than treating this snapshot as permanently
+current.

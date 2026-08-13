@@ -1,112 +1,94 @@
 # VideoForge: start here
 
-Status: `VF-9-24I` FP8 device-transfer repair published; RunPod absolute zero; paid retry waits for cap
+Status: isolated persistent model-lane architecture approved; provider activation paused
 Context schema: `1.5`  
-Last updated: `2026-08-12`
+Last updated: `2026-08-13`
 
-VideoForge is an invite-only web app for 5–10 teammates. Input: title, final voiceover, exact ready
-Avatar Profile version, and immutable Image Style version. Output: 1920×1080 YouTube video using
-only full avatar, full AI image, or avatar-left/image-right split. Hard cuts only. Every AI image
-uses a slow, smooth centered zoom. No captions, titles, text overlays, lower thirds, borders,
-watermarks, motion graphics, decorative graphics, or decorative transitions.
+VideoForge is an invite-only voiceover-to-video app for 5–10 teammates. Input: title, final
+voiceover, exact ready Avatar Profile version, and immutable Image Style version. Output: a fully
+assembled local/downloadable 1920×1080 MP4. No Premiere import or manual alignment is part of the
+product flow.
+
+The output grammar is only full avatar, full AI image, or avatar-left/image-right split. Hard cuts
+only. Every AI image uses a slow, smooth centered zoom. No captions, titles, text overlays, lower
+thirds, borders, watermarks, motion graphics, decorative graphics, or decorative transitions.
+
+## Authoritative model and compute lifecycle
+
+VideoForge has two isolated model lanes:
+
+| Lane | Exact active model | Durable model storage | Disposable compute |
+|---|---|---|---|
+| Images | ImageForge's current `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6` INT8 ConvRot profile, pinned ComfyUI, 4 steps, guidance 1.0, 1280×720 | Mage-only persistent `EU-RO-1` network volume | Mage-only Pod |
+| Avatar | EchoMimicV3-Flash FP8 from pinned first-party source/weights/base/audio lineage | Different Echo-only persistent `EU-RO-1` network volume | Echo-only Pod |
+
+Never share or cross-adopt a volume, Pod, manifest, cache, lock, or runtime between lanes. Volume
+capacities are not yet approved; derive each from its verified exact manifest plus explicit
+headroom before provisioning. Persistent-volume pricing is accepted.
+
+The app refreshes live compatible Secure Cloud GPU inventory and the user independently selects an
+exact current GPU offering for Mage and Echo. Local decode/probe, checksum, immutable input identity,
+and a resumable upload reservation are the pre-Generate barrier. One Generate action then starts
+both required Pods in parallel while durable voiceover upload, local ASR, deterministic scheduling,
+prompt compilation, and selected avatar-span slicing overlap boot. No inference dispatch occurs
+before its exact durable input barrier. Ordinary boots download no model files: the Pod verifies
+its lane volume, loads the exact model, runs a warm-up, then reports authoritative `model_ready`.
+
+After a lane's outputs are durable, delete its exact Pod and prove provider absence; retain its
+volume. The ideal model-ready target is at most two minutes. The user's ImageForge experience of
+roughly three to four minutes is only a comparison baseline, not a measured VideoForge result.
 
 ## Current handoff
 
-User superseded active AvatarForcing route with `DEC_AVATAR_007`: EchoMimicV3-Flash native output is
-sole active avatar path. AvatarForcing, MuseTalk, and SkyReels remain immutable historical
-evidence/replay only; no new dispatch. `VF-9-21` preserves `$0.4496891390` spend and zero-reviewable-
-output evidence. LongCat remains excluded.
+The earlier Serverless/ephemeral `VF-9-24I` paid retry is superseded and non-executable. It produced
+no MP4. Its evidence, failed attempts, measured costs, and final zero-resource observations remain
+historical truth; its former `$8` ceiling does not authorize the new two-volume/two-Pod lifecycle.
+No current provider call, credential use, model download, Pod creation, volume creation, or spend is
+authorized.
 
-`VF-9-22` pinned public/ungated source, Flash weights, Wan base, and audio encoder revisions plus
-license artifacts and an exact `23,922,317,735`-byte selected runtime manifest under
-`evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight/`. No model bytes,
-credentials, providers, GPUs, or spend were used. `GATE_AVATAR_004` remains open until worker
-bootstrap reproduces the manifest. `GATE_AVATAR_001` remains open until sample/full qualification.
+`VF-9-24J` completed this context/architecture reset. `VF-9-24K` is the proposed `$0`, provider-free
+contract and fixture task, but application implementation is paused until the user explicitly
+authorizes it. It will version exact per-lane volume bindings, live-inventory receipts, independent
+GPU selections, Pod lifecycle/model-readiness/deletion state, and cross-lane rejection before any
+cloud mutation.
+Current v1 machine schemas are legacy/provider-free and must fail closed before paid Pod dispatch;
+they are not being silently reinterpreted as the approved architecture.
 
-`VF-9-23` published the production-shaped worker as
-`ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:e4a4b71e5e706ef6da4a62cdc7fa87e0c599e9fe2fa702fea73081ed19b86d73`.
-Container smoke, full local verification, and hosted CI passed at `f0829b9`; no RunPod/model/GPU
-activity or provider spend occurred.
-
-`VF-9-24` dispatched its sole authorized job. RunPod created three `EXITED` endpoint worker records
-before returning output. Diagnosis found that exited history was incorrectly counted as active
-workers and the forced stop preceded durable runner serialization. No MP4 was produced. Observed
-balance delta was `$0`; three independent post-cleanup reads proved absolute zero.
-
-`VF-9-24A` corrected state-aware inventory, durable attempt journaling, startup/bootstrap
-observability, and exact-entrypoint image smoke. The corrected worker is pinned at
-`sha256:79e799a1312168123aed0809cc93c9d83047bef2354ff5dbac77caed64da87f1`. Paid RunPod use needs a
-fresh explicit cap. `VF-9-24B` consumed one attempt and `$0.0260412778`, failing before model-ready
-because one pinned tokenizer SHA-256 omitted its final `b`. Cleanup is absolute zero. `VF-9-24C`
-corrected that pin, added the missing digest-length regression shield, and published image
-`sha256:d0e487d13bf19b74d09af5c7bb3b800eb2faa75dcce6eca9e155a48b0403ffe9` at `$0`. `VF-9-24D`
-used one attempt within the user's `$2` cumulative ceiling. Model bootstrap succeeded, but exact
-253-frame inference failed with `AVATAR_INFERENCE_CUDA_OOM`; no MP4 exists. Cumulative measured spend
-was initially measured as `$0.0260412778`; delayed billing makes the live cumulative delta
-`$0.0649517111`. Cleanup and three independent reads prove absolute zero. The user then authorized
-one unchanged exact sample attempt on an A100 80 GB PCIe within the existing `$2` cumulative cap.
-`VF-9-24E` reached the worker but returned generic `AVATAR_PRIMARY_FAILED` before inference because
-the published worker still enforced an RTX-4090-only runtime guard. It spent `$0.0044856296`; cleanup
-and three independent reads prove absolute zero. `VF-9-24F` is the narrow guard/diagnostic repair,
-immutable image publication, and one corrected A100 PCIe job. That job acquired no worker for ten
-minutes and ended `$0`; cleanup and three reads prove zero. `VF-9-24G` changes only the capacity SKU
-to A100 SXM 80 GB and kept BF16 model/input/config identical. It acquired after 74.108 seconds but
-hit the ephemeral-download spend stop before a model result; no MP4. Cleanup and three reads prove
-zero. `VF-9-24H` warmed the exact 23.922 GB cache and ran the unchanged 253-frame BF16 job on A100
-SXM 80 GB. Queue/activation was 73.985 seconds; inference remained active for about 21m 54.9s and
-was cancelled by the `$1.0017626232` attempt cost stop before output. Cumulative lane spend is
-`$1.8200686945` of the user's `$2` ceiling. No MP4 exists. The temporary volume was deleted and
-three independent inventory reads prove zero Pods, workers, endpoints, templates, and volumes.
-Further dispatch is blocked pending fresh retry and spend authority. The opaque `progress:null`
-diagnosis found missing inference progress emission; a safe heartbeat repair is locally green but
-not yet published.
-
-User then selected `DEC_AVATAR_008`: install a runtime-created FP8 EchoMimicV3-Flash variant and run
-the same 10.12-second input on RTX 4090 or RTX 5090. RTX 4090 allocation failed twice, so
-`VF-9-24I` qualified CUDA 12.8/PyTorch 2.7.1/TorchAO 0.11 on RTX 5090, adds TorchAO FP8
-dynamic activation-and-weight quantization, and enables upstream Long Video CFG with 81-frame
-partial windows while retaining all 253 output frames. No uncarded third-party pickle is used.
-The initial FP8 image passed hosted build/import/FP8-CLI/handler/entrypoint/compile smoke at `$0`.
-Bounded attempts reached a 31.385-second cached RTX 5090 boot and model execution,
-then exposed FP8 quantization before upstream pipeline device transfers. Commit `add8985` moves
-quantization after both transfers; repaired image `sha256:2d4384bed4dbe2aa479e11f0efaba8b8b18c8ebdad46871e0b3fd816e004d247`
-passed hosted run `31640266063`. Cumulative settled spend after delayed billing is
-`$1.9623834279`; only `$0.0376165721` remains. All RunPod resources are zero.
+No VideoForge persistent model volume exists yet. Future provisioning/preparation is a separate
+explicitly authorized provider task after contracts and offline workers are green.
 
 ## Locked active providers
 
-| Task | Choice | Role |
-|---|---|---|
-| Image prompts | Runware DeepSeek V4 Flash 0731 | Batched strict JSON, thinking off |
-| Style analysis | Runware Gemini 3.5 Flash | Only explicit new draft-style analysis |
-| Images | Mage-Flow-Turbo BF16 via pinned ComfyUI | 4-step narration-relevant stills |
-| Avatar | EchoMimicV3-Flash | Sole active native avatar path |
-| Avatar repair/fallback | `null` | None active |
-| Timing | local `whisper.cpp base.en` | Free word timing |
-| Render | FFmpeg | Crops, zoom, hard cuts, audio, encode |
+| Role | Choice |
+|---|---|
+| Image prompts | Runware DeepSeek V4 Flash 0731 |
+| Style analysis | Runware Gemini 3.5 Flash, only when explicitly analyzing a new style draft |
+| Images | Exact ImageForge Mage-Flow INT8 ConvRot profile |
+| Avatar | EchoMimicV3-Flash FP8, short selected spans only |
+| Avatar repair/fallback | `null` |
+| Timing | Local `whisper.cpp base.en` |
+| Render | Direct FFmpeg |
 
-Fixture mode remains default and `$0`. Production Neon/R2/Workflow/OAuth deployment, accepted Mage
-image, accepted Echo clip, production execution profiles, 30-minute benchmarks, and production
-release remain unproven.
+AvatarForcing, MuseTalk, SkyReels, earlier Mage BF16, Serverless endpoints, ephemeral model caches,
+and Echo Long Video CFG remain historical evidence only. They authorize no active dispatch.
 
 ## Absolute rules
 
-- Project selects exact ready Avatar Profile version; no project-local avatar upload.
-- Project pins exact immutable published Image Style; ordinary generation makes no style vision call.
-- Send only scheduled avatar spans, never full voiceover.
-- One native avatar clip serves both layouts after measured crop approval.
-- No repair, fallback, retry, tuning, model/GPU substitution, deployment, or production promotion
-  without explicit task authority.
-- RunPod is API-only, `workersMin=0`, bounded workers/jobs, exact cost, finally cleanup, independent
-  zero proof.
-- Private input/output/model/credential bytes never enter Git or public image.
-- Technical success is `READY_FOR_USER_REVIEW`; only user approves visual quality.
+- Project selects an exact ready stored Avatar Profile version; no project-local avatar upload.
+- Project pins an immutable published Image Style; ordinary generation makes no style vision call.
+- Send Echo only scheduler-selected short spans, normally 2–6 seconds; opener maximum 7 seconds.
+- One native Echo clip serves full and split layouts after measured crop acceptance.
+- Deterministic code owns timing/layout. Fully automatic assembly returns the final MP4.
+- API-only RunPod control; exact create/delete intent and fail-closed ambiguity reconciliation.
+- At most one disposable Pod per lane initially. Delete Pods; retain the two intended volumes.
+- Private inputs, outputs, credentials, and model bytes never enter Git or public images.
+- Technical success is `READY_FOR_USER_REVIEW`; only the user approves visual quality.
 
 ## Context navigation
 
-Read `MANIFEST.yaml`, `CURRENT_STATE.yaml`, then only selected profile and task. Normative decisions:
-`15_DECISIONS_AND_OPEN_GATES.md`; models: `08_MODELS_AND_PROVIDERS.md`; pipeline:
-`07_PIPELINE_AND_SCHEDULER.md`; RunPod: `09_RUNPOD_AND_QUEUE_OPERATIONS.md`; cost:
-`11_COST_SPEED_BUDGET.md`; acceptance: `14_TESTING_AND_ACCEPTANCE.md`; Avatar Hub:
-`20_AVATAR_HUB.md`; execution: `21_IMPLEMENTATION_EXECUTION_PLAN.md`; maintenance:
-`16_CONTEXT_MAINTENANCE.md`.
+Read `MANIFEST.yaml`, `CURRENT_STATE.yaml`, then only the selected profile and task. Normative
+decisions: `15_DECISIONS_AND_OPEN_GATES.md`; architecture: `06_SYSTEM_ARCHITECTURE.md`; models:
+`08_MODELS_AND_PROVIDERS.md`; pipeline: `07_PIPELINE_AND_SCHEDULER.md`; RunPod:
+`09_RUNPOD_AND_QUEUE_OPERATIONS.md`; contracts: `10_DATA_AND_API_CONTRACTS.md`; cost:
+`11_COST_SPEED_BUDGET.md`; acceptance: `14_TESTING_AND_ACCEPTANCE.md`; execution:
+`21_IMPLEMENTATION_EXECUTION_PLAN.md`; maintenance: `16_CONTEXT_MAINTENANCE.md`.

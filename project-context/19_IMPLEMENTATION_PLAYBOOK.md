@@ -7,6 +7,10 @@ Read when: starting/resuming coding, handing work between chats/agents, running 
 
 Development must feel continuous and inspectable: the user can keep one stable Chrome tab open, see each working increment through hot reload, and report breakage while it is introduced. Backend/model uncertainty is isolated behind fixtures and adapters rather than blocking the visible app.
 
+The active production target has exactly two independent GPU lanes: ImageForge-aligned Mage-Flow
+INT8 ConvRot and EchoMimicV3-Flash FP8. Each has its own persistent `EU-RO-1` model volume and its
+own disposable Pod. No model volume, Pod, manifest, cache, lock, or adoption path is shared.
+
 `21_IMPLEMENTATION_EXECUTION_PLAN.md` owns task order and safe parallelism. `CURRENT_STATE.yaml` selects the next wave.
 
 ## First-session order
@@ -44,23 +48,47 @@ handoff.
 
 If a command cannot yet exist, the current milestone owns creating it. Do not invent a different ad-hoc start command in every chat.
 
+## Current architecture implementation order
+
+This order is binding. Do not jump directly from historical scripts to another paid sample:
+
+1. Version contracts and provider-free fixtures for two model-volume bindings, two exact live GPU
+   selections, Pod/create/delete reconciliation, authoritative model readiness, durable results,
+   timings, cost, and absence proof.
+2. Build pinned offline workers. Ordinary boot may not download a model, install a package, or
+   compile source. A missing/corrupt/wrong/cross-model volume manifest fails closed.
+3. Under separate explicit provider authority, provision and prepare one new VideoForge Mage volume
+   and one new VideoForge Echo volume in `EU-RO-1`. Do not reuse ImageForge IDs, secrets, or volume.
+4. Implement live compatible inventory and independent user GPU selection for each lane, final
+   availability/rate revalidation, exact Pod create/reconcile/delete, and retained-volume proof.
+5. Qualify each lane with bounded owned samples, then run one concurrent Generate-to-MP4 sample in
+   real Chrome. Preserve model-ready/generation timings, cost, hashes/probes, and zero-Pod proof.
+
+Every real-provider task is bounded by one exact brief. Volume creation/preparation and ordinary Pod
+generation are different mutations and require explicit authority for the one being performed.
+
 ## Repository/deployable shape
 
 ```text
 apps/web/                  React/Vite UI + same-origin Hono Worker API
-workers/image-media/       Python: local ASR, Mage jobs, FFmpeg jobs
-workers/avatar-primary/    Python: AvatarForcing
-workers/avatar-repair/     Python: cold MuseTalk
-workers/avatar-quality/    Python: cold SkyReels
+workers/image-media/       Python: target Mage INT8 Pod service and existing fixture adapters
+workers/avatar-primary/    Python: target EchoMimicV3-Flash FP8 Pod service
+workers/media-local/       Target local/CPU ASR, span preparation, FFmpeg render/probe boundary
 packages/contracts/        JSON Schema, Zod/Pydantic generation, fixtures
 packages/config/           Versioned non-secret runtime profiles
 packages/test-fixtures/    Owned/synthetic deterministic fixture assets
 project-context/           Product/architecture truth
 ```
 
-The Cloudflare Vite plugin serves the SPA and Hono `/api/*` from one Worker project and one origin. Workflows/R2/Neon bindings attach to that deployment. Keep Python model workers separate because their runtimes and GPU profiles differ.
+The Cloudflare Vite plugin serves the SPA and Hono `/api/*` from one Worker project and one origin.
+Workflows/R2/Neon bindings attach to that deployment. Local preparation/render may overlap GPU
+boot. Mage and Echo remain separate Python runtimes because their models, dependencies, manifests,
+volumes, compatible GPUs, readiness, and deletion lifecycles differ.
 
-Use a private container registry profile (initial candidate: GHCR with RunPod registry credentials) and measure storage, pull/cache behavior, and cold-start impact before lock. Model weights remain on pinned read-only RunPod volumes, not inside giant container images.
+Use digest-pinned prebuilt images and measure pull/cache behavior and cold-start impact. Large model
+files stay on their lane's exact persistent RunPod volume, not inside giant container images. The
+ordinary worker verifies the canonical volume manifest and loads locally/offline. Only a separately
+authorized one-time preparation tool may populate model files.
 
 ## Development modes
 
@@ -100,9 +128,20 @@ The app exposes a development-only scenario selector and deterministic IDs:
 - `extra_keywords_conflict`
 - `preset_roundtrip_draft_preserved`
 - `gpu_cold_start`
+- `mage_gpu_inventory_loading`
+- `echo_gpu_inventory_loading`
+- `gpu_inventory_stale`
+- `gpu_selection_unavailable`
+- `mage_volume_manifest_mismatch`
+- `echo_volume_manifest_mismatch`
+- `cross_model_volume_rejected`
+- `mage_model_loading`
+- `echo_model_loading`
+- `both_models_ready`
+- `mage_pod_delete_pending`
+- `echo_pod_delete_pending`
 - `image_partial_failure`
 - `avatar_lip_failure`
-- `skyreels_approval_required`
 - `budget_blocked`
 - `dispatch_ack_unknown`
 - `callback_reconciling`
@@ -121,9 +160,15 @@ Existing detailed phases remain authoritative, but each layer must end with some
 1. **Shell:** create/select a named avatar, create/select a style, create project without an avatar re-upload, and play queue/progress/review/usage flows in Chrome using fixtures.
 2. **Local short slice:** 30–120 seconds of owned fixture audio → local word timing → deterministic timeline plan → fixture images/avatar → resolved render manifest → real FFmpeg MP4 → Chrome playback.
 3. **Mock durable slice:** persisted revision/outbox/cost reservation → mock worker callback/reconciliation → render/download.
-4. **Real image slice:** one capped DeepSeek batch + small Mage set through the same contracts.
-5. **Real avatar slice:** revision-pinned Avatar Profile runtime source plus selected audio spans through AvatarForcing, one clip/two crops, explicit QA authority.
-6. **Full fast path:** real 30-minute job, measured cost/SLO, then custom Image Style lifecycle and conditional fallbacks.
+4. **Real image slice:** one capped DeepSeek batch plus a small exact Mage INT8 set. The user selects
+   one live compatible GPU, the Mage Pod attaches only the Mage volume, reaches verified/warmed
+   `model_ready`, makes outputs durable, deletes, and proves absence while retaining the volume.
+5. **Real avatar slice:** revision-pinned Avatar Profile runtime source plus selected audio spans
+   through EchoMimicV3-Flash FP8. The independently selected Echo Pod attaches only the Echo volume,
+   reaches verified/warmed `model_ready`, emits one clip/two crops, deletes, and proves absence.
+6. **Concurrent fast path:** one Generate starts both exact Pods concurrently while local ASR,
+   scheduling, prompts, and span audio run; each Pod deletes after its lane is durable; local FFmpeg
+   returns the probed MP4. Measure a short sample before any long project.
 
 Do not build temporary provider calls that bypass task/attempt/outbox contracts and later require a rewrite.
 
@@ -148,7 +193,9 @@ A screenshot is evidence of appearance, not proof that a workflow works. Pair it
 - Record task ID, milestone, dependencies, decision/gate IDs, base commit, owned files/modules, collision notes, commands, live route/scenario, external-call authorization, spend cap, cleanup, rollback, acceptance, and evidence path.
 - Parallel agents own disjoint files/modules. Shared schemas, state machines, and root UI shell are serialized or explicitly coordinated.
 - Make small working commits; do not claim a release from uncommitted/local-only evidence.
-- Provider/model work records exact endpoint/model/checkpoint/container/GPU/rate/input hashes and cost per accepted output, not just a screenshot or paper claim.
+- Provider/model work records exact lane/model/checkpoint/container, volume/manifest, inventory
+  receipt, selected and actual GPU/rate, Pod identity, input/output hashes, model-ready and inference
+  timings, cost per accepted output, and delete/absence proof—not just a screenshot or paper claim.
 
 ## Definition of done for an implementation task
 
@@ -156,7 +203,8 @@ A screenshot is evidence of appearance, not proof that a workflow works. Pair it
 - Relevant unit/schema/integration/Chrome tests pass.
 - The baseline and after-change journey have no new unexplained console errors or failed network requests.
 - No secret/private/reference asset entered Git or browser bundles.
-- Real providers stayed within explicit authorization and all GPU work scaled to zero/settled.
+- Real providers stayed within explicit authorization; every paid Pod was deleted and independently
+  proven absent. The two intended model volumes remain and their identities are recorded.
 - Cost, retry, provenance, and failure states are truthful.
 - Both `project-context/scripts/validate-context.sh` and `project-context/scripts/validate-schemas.sh` pass if context/contracts changed.
 - `CURRENT_STATE.yaml` records last green evidence and the next bounded tasks.

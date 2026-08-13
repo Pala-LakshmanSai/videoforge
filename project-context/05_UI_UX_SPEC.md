@@ -1,6 +1,6 @@
 # UI and UX specification
 
-Status: compact 100%-zoom refinement implemented and technically verified as the current baseline; historical `GATE_UI_001` closed 2026-08-09
+Status: compact 100%-zoom visual baseline implemented; isolated-model live-GPU and Pod-lifecycle UI below is normative vNext work, not yet implemented; historical `GATE_UI_001` closed 2026-08-09
 Read when: designing or implementing any user-visible flow.
 
 ## Design objective
@@ -13,7 +13,7 @@ The user reconfirmed this direction on 2026-08-09 after rejecting the first fixt
 
 On 2026-08-10 the user explicitly superseded the 18 px/52 px desktop density after comparing the same app at Chrome 100% and 80%. The 80% appearance is now the design target at real 100% zoom, implemented through component geometry rather than CSS `zoom` or a transformed shell. The compact desktop contract uses a 15 px root, 44 px normal controls, an 1184 px content canvas, 20 px top-level rhythm, and proportionally compact panels/media. Mobile keeps the same 15 px root, 44 px actionable floor, and a 16 px top-level rhythm.
 
-The same review later refined the Create Project hierarchy: keep the active choice compact, open choices only on demand, remove nonessential technical hints and success confirmations, and expose the two primary compute lanes without implying unverified GPU availability. The active-project bar remains full-width; only its internal content and progress track are deliberately inset. Every visible select/disclosure uses the VideoForge surface language rather than a browser-native menu. Child choices expand inside the same bordered surface, never as visually detached boxes or an overlay that covers the following controls. The floating dock uses fine-pointer proximity magnification with a calm reduced-motion fallback. Following the user's macOS comparison on 2026-08-09, hover is scale-only: icon tiles grow from a larger resting size, their bottom edges stay fixed, neighboring scale tapers smoothly, and the item plus active-route backing geometry remains static.
+The same review later refined the Create Project hierarchy: keep the active choice compact, open choices only on demand, remove nonessential technical hints and success confirmations, and expose the two primary compute lanes without presenting stale GPU availability as live. Each lane refreshes compatible RunPod Secure Cloud inventory in `EU-RO-1`; the user independently chooses the exact currently offered GPU for image generation and avatar generation. The active-project bar remains full-width; only its internal content and progress track are deliberately inset. Every visible select/disclosure uses the VideoForge surface language rather than a browser-native menu. Child choices expand inside the same bordered surface, never as visually detached boxes or an overlay that covers the following controls. The floating dock uses fine-pointer proximity magnification with a calm reduced-motion fallback. Following the user's macOS comparison on 2026-08-09, hover is scale-only: icon tiles grow from a larger resting size, their bottom edges stay fixed, neighboring scale tapers smoothly, and the item plus active-route backing geometry remains static.
 
 The user's later surface-separation review applies across the whole application, not only Usage. Major sibling sections must never touch: use a consistent 20 px desktop and 16 px compact/mobile page rhythm, with explicit nonzero gaps inside card/list grids. Expanded generic disclosures place at least 12 px between their trigger and first visible child and between sibling fact cards. Structural surfaces need a clearly visible lavender edge supported by a dark depth shadow and restrained cobalt/violet halo. Keep the effect calm: major panels and cards receive the layered treatment, while nested controls and incidental dividers remain lighter so the UI does not become double-boxed or neon-heavy.
 
@@ -103,17 +103,18 @@ Use direct nouns and outcomes instead of slogans or repeated implementation rati
    - Required compact visual Image Style dropdown, preselected to Authentic Documentary Stock. Its closed trigger shows the selected cover/name and `Default` only when useful; opening it reveals the visual choices and search when useful. `+ New style` and reference/example details remain available without expanding every style into the form.
    - One simple `Apply extra keywords to every AI image` toggle, off by default, plus a bounded optional textarea. The toggle itself is the state; do not add persistent `Applied`, `Not applied`, success, or effective-settings confirmation panels. Show only a real validation error when enabled text is empty, invalid, or conflicts with output rules.
    - Do not expose an exact-script field in the first-shell web UI. The versioned request may retain nullable `optional_script` for backward compatibility, but this shell sends `null` and uses local ASR text as canonical.
-   - Lowest cost / Balanced / Faster preset.
-   - A compact Compute section exposes two independent app-native dropdowns: `Image generation` (`image_media`) and `Avatar generation` (`avatar_primary`). Each selects an immutable execution profile—not a raw per-job GPU—and shows truthful lane/profile status. Planned GPU candidates remain visible but disabled with `Benchmark required`; no production candidate becomes selectable until `GATE_GPU_001`. Options expand inside the same compute card rather than invoking a Chrome/OS menu. Optional repair/quality lanes remain behind details and appear only when provisioned. Never imply that one exact Serverless GPU is guaranteed per job. The resolved per-lane profile IDs are pinned before dispatch.
-   - Preflight appears as `Ready to generate` or a concise blocker count, plus cost range, spend cap, and one `Generate video` button. Passed immutable-contract facts move into `Review settings` rather than occupying four success panels.
+   - Lowest cost / Balanced / Faster remains a suggestion for the two exact GPU choices; it never silently replaces either choice.
+   - A compact Compute section exposes two independent app-native dropdowns: `Image generation · Mage-Flow INT8` (`image_media`) and `Avatar generation · EchoMimicV3-Flash FP8` (`avatar_primary`). Each list is populated from a fresh compatible RunPod Secure Cloud inventory receipt for `EU-RO-1` and shows exact GPU SKU/offering, VRAM, current quoted rate, availability, and measured timing when evidence exists. Loading, empty, stale, refresh-failed, and selected-offering-disappeared states are explicit. Options expand inside the same compute card rather than invoking a Chrome/OS menu.
+   - The two choices are independent. Image selection is constrained to the exact Mage lane contract (`Comfy-Org/Mage-Flow` revision `d8c99241f6fa80fbd453014234af2bf337ea21e6`, `int8-convrot`, ComfyUI, 4 steps, guidance 1.0, 1280×720); avatar selection is constrained to the pinned EchoMimicV3-Flash FP8 lane contract. A GPU choice never changes the model, volume, region, or runtime contract. The server revalidates both exact offerings immediately before Pod creation; stale or vanished offerings block with `Refresh GPUs` instead of silently choosing another GPU.
+   - Preflight appears as `Ready to generate` or a concise blocker count, plus cost range, spend cap, inventory-receipt age, and one `Generate video` button. Local voiceover decode/probe/checksum plus an immutable resumable upload reservation are required before Ready. One accepted Generate action starts the separate Mage and Echo Pods concurrently, each against only its own persistent `EU-RO-1` model volume. While they boot, the app overlaps durable voiceover upload and local ASR, deterministic scheduling, prompt compilation, and avatar-span audio slicing. No model work is dispatched before its durable input barrier. Passed immutable-contract facts move into `Review settings` rather than occupying success panels.
 
 4. **Project progress**
    - Sticky full-width active-project command bar with title, phase, factual percent, ETA, and current cost; API/worker health is compact unless degraded. Use normal page-edge padding and inset the inner project/progress track itself. Do not center the whole bar inside a narrow max-width island.
    - Prominent but medium-scale project title and progress hero containing a compact ring, stage/status/ETA/cost cards, and one clear progress bar.
-   - Parallel image and avatar lane cards.
-   - Human stage rows: Prepare → Transcribe → Plan → Write image prompts → Generate media → Assemble → Technical check → Review. Raw stage IDs remain in details.
+   - Parallel image and avatar lane cards. Each exposes truthful lifecycle progress: Pod creating → model volume attached → container ready → model volume manifest verified → model loading → warm-up → model ready → generating → outputs durable → Pod deleting → Pod deleted/absence verified. `Model ready` is authoritative only after offline volume verification, GPU load, and warm-up. The retained volume is shown separately and must never look deleted with the Pod.
+   - Human stage rows: Prepare → Transcribe → Plan → Write image prompts → Generate media → Assemble → Technical check → Review. Independent lane boot and local preparation appear in parallel rather than as a false serial percentage. Raw stage and lifecycle IDs remain in details.
    - A large latest-artifact preview, not three generic composition explainers.
-   - Concrete current action such as “AvatarForcing: clip 18/52” rather than “working.”
+   - Concrete current action such as `EchoMimic: clip 18/52`, `Mage: image 42/80`, or `Deleting Mage Pod` rather than `working`.
    - Safe cancel, retry failed stage, archive, review, and download as allowed by current state.
    - Pause only if backend pause semantics genuinely exist.
    - Pinned inputs, models, immutable activity, hashes, and per-attempt cost are progressively disclosed.
@@ -123,7 +124,7 @@ Use direct nouns and outcomes instead of slogans or repeated implementation rati
    - Fast contact-sheet/filter views for full images, split companions, avatar clips, retries, and unreviewed/flagged items; reviewing one final result must not require opening 300 dialogs.
    - Each glance card shows thumbnail, time, layout, review state, and a concise phrase. Model/attempt, full phrase, QA evidence, cost, hashes, and pinned versions live in segment details.
    - Toggle the same avatar clip between full and split preview; never generate a second version.
-   - Technically valid assets appear as selected drafts. A reviewer may flag an avatar clip as `Lip sync only` or `Whole-frame/identity/motion/detail`; show the resulting retry/fallback estimate before dispatch.
+   - Technically valid assets appear as selected drafts. A reviewer may flag an avatar clip as `Lip sync` or `Whole-frame/identity/motion/detail`; show the cost of an Echo retry before dispatch. Alternative repair/fallback models are not active production choices unless a later gated decision explicitly adds them.
    - Rendering completes as `Ready for review`, not a false creative pass. `Approve final` is explicit and records the reviewer/revision; generated pseudo-text, anatomy, relevance, or style defects remain human rejection reasons in MVP.
    - The final preview and filters are primary. Output codec/grammar/provenance facts move into `Technical details`; after approval, `Download MP4` and `Manifest` are direct actions.
 
@@ -149,14 +150,14 @@ Use direct nouns and outcomes instead of slogans or repeated implementation rati
    - Preview, download, manifest, archive, retention status.
 
 9. **Usage**
-   - Per-project/lane/model cost, GPU seconds, cold start, retries, storage, budget-cap events.
+   - Per-project/lane/model cost, Pod billed seconds, Pod creation, container-ready, volume-verification, model-load, warm-up, model-ready, inference, durable-upload, deletion/absence timings, retries, storage, and budget-cap events.
    - One-time style-analysis and optional test-preview costs remain separate from a video's generation cap.
 
 10. **Settings/admin**
    - Team allowlist and roles.
    - RunPod/Runware credential status without revealing values.
-   - Storage and GPU defaults.
-   - Scheduler bounds, cost cap, and GPU-mode defaults. `documentary_stock_v1` remains the fixed MVP new-project style default.
+   - Separate Mage/Echo retained-volume health, exact immutable manifests, and `EU-RO-1` lane policy; no cross-lane adoption action.
+   - Scheduler bounds, cost cap, and optional per-lane GPU preference hints. Live availability and an explicit user selection still govern every paid run. `documentary_stock_v1` remains the fixed MVP new-project style default.
    - No instructions to use the provider console.
 
 ## Core components
@@ -166,7 +167,7 @@ Use direct nouns and outcomes instead of slogans or repeated implementation rati
 - Progress ring plus factual completed/total counts.
 - Metric cards for stage, ETA, cost, queue, GPU.
 - Stage timeline with queued/running/retrying/blocked/failed/cancelled/complete states.
-- Two primary execution-profile selectors for `image_media` and `avatar_primary`, each showing truthful lane status. Selected tested profiles may progressively disclose endpoint mode, ordered GPU priorities, availability, VRAM, current maximum rate, compatibility, and measured speed; planned candidates remain disabled until `GATE_GPU_001`.
+- Two independent live GPU selectors for `image_media` and `avatar_primary`. Each shows a fresh `EU-RO-1` Secure Cloud inventory receipt, exact offering/SKU, VRAM, current rate, compatibility, and measured speed; neither selector may display a static priority list as current availability or silently substitute another GPU.
 - Validated upload dropzones.
 - Searchable visual Avatar selector and private reusable Avatar Profile cards with real thumbnails.
 - Searchable visual Image Style selector and reusable style cards with covers.
@@ -188,15 +189,17 @@ Design these before polishing the happy path:
 - Selected style archived/not ready or style version conflict.
 - Optional test-preview estimate, starting, generating, accepted, and failed.
 - Transcribing.
-- Waiting for GPU availability.
-- GPU cold start.
-- Container starting.
-- Model loading.
+- Loading/refreshing live GPU inventory, no compatible offering, inventory refresh failed, stale receipt, and selected offering disappeared before final revalidation.
+- Pod create requested, Pod creating, and Pod create failed or ambiguous/reconciling.
+- Correct persistent model volume attaching, attached, manifest verifying, verified, unavailable, wrong lane, wrong region, or invalid manifest.
+- Container starting and container ready.
+- Model loading and model-load failed. Normal boot never downloads model files; a download state during ordinary generation is a blocking architecture violation.
+- Warm-up running/failed and authoritative model ready.
 - Generating with counts.
 - Partial lane complete.
 - Retrying a clip.
-- MuseTalk repair.
-- SkyReels fallback awaiting budget approval.
+- Outputs uploading, durable, and local final MP4 saved/verified.
+- Pod delete requested, deleting, delete ambiguous/reconciling, deleted, and independent provider-absence verified; model volume retained.
 - Reconnecting/reconciling after callback loss.
 - Cancel requested and cancel confirmed.
 - Budget blocked.
@@ -210,7 +213,7 @@ The project extra-keyword textarea may retain text when its toggle is off. The t
 
 Opening `+ New style` from Create Project autosaves the complete draft and verified voiceover upload handle. Publishing or cancelling returns to that same draft; a newly published style is selected automatically, and no title/audio/avatar-selection/settings re-entry or voiceover re-upload is required.
 
-Opening `+ New avatar` from Create Project follows the same no-loss rule: autosave title, verified voiceover upload handle, selected style, keyword text/toggle, mode, both execution-profile selections, cap, and seed. Saving or cancelling returns to that draft; a newly ready avatar is selected automatically. There is no voiceover re-upload and no hidden project-local avatar copy.
+Opening `+ New avatar` from Create Project follows the same no-loss rule: autosave title, verified voiceover upload handle, selected style, keyword text/toggle, mode, both exact GPU selections plus their inventory-receipt identity, cap, and seed. Saving or cancelling returns to that draft; a newly ready avatar is selected automatically. A stale receipt requires refresh before Generate, but never loses the rest of the draft. There is no voiceover re-upload and no hidden project-local avatar copy.
 
 ## Multi-user clarity
 
@@ -242,6 +245,7 @@ Opening `+ New avatar` from Create Project follows the same no-loss rule: autosa
 
 - Run the local hot-reload app in the user's actual Chrome from the first UI phase.
 - Use fixture/mocked GPU states before RunPod integration so all flows are playable early.
+- Until the vNext machine schemas, fixtures, persistence, and Pod adapters in `10_DATA_AND_API_CONTRACTS.md` are implemented and accepted, the live-GPU/Pod UI is fixture-only and paid Generate fails closed. Existing v1/v2 execution-profile forms must not be relabelled as this production architecture.
 - Keep one stable `http://localhost:4173` server/tab; never silently move ports or reset the user's in-progress project draft during hot reload.
 - In fixture/local mode only, show a compact `Fixture`/health control. Its on-demand details expose provider mode, commit, fixture ID, API health, synthetic-data label, and `$0` authorization. Do not consume a full persistent row with developer metadata, and hard-disable the control in production builds.
 - Commit small working increments; hot reload shows local code changes immediately, while preview deployments can support remote checks later.
@@ -251,4 +255,4 @@ Opening `+ New avatar` from Create Project follows the same no-loss rule: autosa
 
 ## UI acceptance
 
-The UI passes when the non-developer user can create/store a named avatar once, see every authorized preset thumbnail, select avatar/style versions from compact visual dropdowns without re-upload, inspect every authorized custom-style reference on demand, distinguish built-in generated examples from uploaded references, create/review/publish/select a style, opt into extra keywords without a redundant confirmation panel, select truthful image/avatar execution profiles, and start/monitor/recover/review/download a project without asking what a technical status means. The primary layer is compact at real Chrome 100%, minimal, and free of repeated technical explanations; the full audit detail remains reachable; no button appears inert; navigation is clear; expanded content has real internal separation; the full-width command bar and its internal track scale cleanly; cost and compute/avatar/style state are truthful; no supported viewport overflows or hides critical controls; and the user approves the design through the live Chrome gate.
+The UI passes when the non-developer user can create/store a named avatar once, see every authorized preset thumbnail, select avatar/style versions from compact visual dropdowns without re-upload, inspect every authorized custom-style reference on demand, distinguish built-in generated examples from uploaded references, create/review/publish/select a style, opt into extra keywords without a redundant confirmation panel, refresh live compatible `EU-RO-1` inventory, independently select the exact Mage and Echo GPUs, and start/monitor/recover/review/download a fully automated final MP4 without asking what a technical status means. The primary layer is compact at real Chrome 100%, minimal, and free of repeated technical explanations; the full audit detail remains reachable; no button appears inert; navigation is clear; expanded content has real internal separation; the full-width command bar and its internal track scale cleanly; cost and compute/avatar/style state are truthful; ordinary boot never implies model download; both disposable Pods reach provider-verified absence after their outputs are durable while their separate model volumes remain retained; no supported viewport overflows or hides critical controls; and the user approves the design through the live Chrome gate.

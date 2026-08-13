@@ -19,6 +19,8 @@ project-context/references/ranga/frames/**/*.[aA][vV][iI][fF]
 project-context/references/ranga/frames/**/*.[hH][eE][iI][cC]
 
 # Never commit local provider secrets, generated media, or model weights.
+.private-inputs/
+elias yoder(sampe avatar).png
 .env
 .env.*
 !.env.example

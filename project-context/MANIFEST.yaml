@@ -1,10 +1,10 @@
 schema_version: "1.5"
 project: VideoForge
 phase_source: CURRENT_STATE.yaml
-last_updated: "2026-08-12"
+last_updated: "2026-08-13"
 source_of_truth: project-context
-current_selected_profile: phase9_echomimic_v3_flash_fp8_rtx_sample
-current_selected_brief: tasks/VF-9-24I.md
+current_selected_profile: phase9_isolated_model_lane_contracts
+current_selected_brief: tasks/VF-9-24K.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -119,8 +119,11 @@ read_profiles:
     - 05_UI_UX_SPEC.md
     - 12_DEVELOPMENT_PLAN.md
     - 19_IMPLEMENTATION_PLAYBOOK.md
-    - templates/IMPLEMENTATION_TASK_BRIEF.md
-    - templates/NEW_CHAT_BOOTSTRAP.md
+  phase9_isolated_model_lane_contracts:
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - tasks/VF-9-24K.md
   release_ops:
     - 06_SYSTEM_ARCHITECTURE.md
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
@@ -337,7 +340,6 @@ read_profiles:
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
     - 11_COST_SPEED_BUDGET.md
     - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
     - tasks/VF-8-13.md
   phase8_skyreels_dependency_diagnostic:
     - 08_MODELS_AND_PROVIDERS.md
@@ -352,7 +354,6 @@ read_profiles:
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
     - 11_COST_SPEED_BUDGET.md
     - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
     - tasks/VF-8-15.md
   phase8_skyreels_timeout_hardening:
     - 08_MODELS_AND_PROVIDERS.md
@@ -367,7 +368,6 @@ read_profiles:
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
     - 11_COST_SPEED_BUDGET.md
     - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
     - tasks/VF-8-17.md
   phase9_mage_worker_preflight:
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md
@@ -420,7 +420,6 @@ read_profiles:
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
     - 10_DATA_AND_API_CONTRACTS.md
     - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
     - tasks/VF-9-08.md
   phase9_mage_quality_confirmation:
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md
@@ -467,7 +466,6 @@ read_profiles:
     - 10_DATA_AND_API_CONTRACTS.md
     - 13_ENGINEERING_BEST_PRACTICES.md
     - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
     - tasks/VF-9-15.md
   phase9_provider_neutral_image_acceptance:
     - 08_MODELS_AND_PROVIDERS.md
@@ -475,14 +473,12 @@ read_profiles:
     - 13_ENGINEERING_BEST_PRACTICES.md
     - 14_TESTING_AND_ACCEPTANCE.md
     - 16_CONTEXT_MAINTENANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
     - tasks/VF-9-16.md
   phase9_real_provider_render_composition:
     - 02_OUTPUT_VIDEO_SPEC.md
     - 07_PIPELINE_AND_SCHEDULER.md
     - 10_DATA_AND_API_CONTRACTS.md
     - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
     - tasks/VF-9-17.md
   phase9_mage_quality_matrix:
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md
@@ -497,7 +493,6 @@ read_profiles:
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
     - 11_COST_SPEED_BUDGET.md
     - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
     - 20_AVATAR_HUB.md
     - tasks/VF-9-19.md
   phase9_gate_profile_convergence:
@@ -520,7 +515,6 @@ read_profiles:
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
     - 11_COST_SPEED_BUDGET.md
     - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
     - 20_AVATAR_HUB.md
     - tasks/VF-9-21.md
   phase9_echomimic_v3_flash_worker:
@@ -528,7 +522,6 @@ read_profiles:
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
     - 11_COST_SPEED_BUDGET.md
     - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
     - 20_AVATAR_HUB.md
     - tasks/VF-9-23.md
   phase9_echomimic_v3_flash_sample:
@@ -536,7 +529,6 @@ read_profiles:
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
     - 11_COST_SPEED_BUDGET.md
     - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
     - 20_AVATAR_HUB.md
     - tasks/VF-9-24.md
   phase9_echomimic_v3_flash_observability_repair:
@@ -722,7 +714,13 @@ hard_rules:
   - no_full_voiceover_avatar_generation
   - one_avatar_clip_serves_both_layouts
   - runpod_api_automation_only
-  - scale_gpu_workers_to_zero_when_lane_drains
+  - separate_persistent_model_volume_per_exact_model_lane
+  - never_share_or_cross_adopt_model_volumes_or_pods
+  - independent_live_exact_gpu_selection_per_lane
+  - one_disposable_pod_per_lane_initially
+  - delete_pods_and_prove_absence_when_lane_drains
+  - retain_both_intended_model_volumes
+  - ordinary_pod_boot_downloads_no_model_files
   - live_chrome_during_development
   - published_image_style_version_pinned_per_project_revision
   - no_style_vision_call_during_ordinary_video_production
@@ -747,7 +745,7 @@ approved_decisions:
   DEC_STYLE_005: optional_extra_image_keywords_explicit_toggle
   DEC_STYLE_006: extract_shared_visual_traits_not_reference_content
   DEC_STYLE_007: manual_edits_preserve_and_detach_analyzer_evidence_from_derived_profile_bytes
-  DEC_IMAGE_001: comfy_org_mage_flow_turbo_bf16_via_pinned_comfyui
+  DEC_IMAGE_001: exact_imageforge_comfy_org_mage_flow_int8_convrot_pinned_comfyui_4step_guidance1_1280x720
   DEC_IMAGE_002: user_accepts_unresolved_mage_terms_risk_locked_model_proceeds
   DEC_IMAGE_003: locked_mage_turbo_strict_review_and_one_rejection_triggered_retry
   DEC_AVATAR_001: superseded_avatarforcing_primary_historical_replay_only
@@ -757,7 +755,7 @@ approved_decisions:
   DEC_AVATAR_005: reusable_avatar_hub_required_exact_ready_version_no_inline_upload
   DEC_AVATAR_006: superseded_user_accepted_avatarforcing_ladder_historical_authority_only
   DEC_AVATAR_007: echomimic_v3_flash_native_only_no_repair_or_fallback
-  DEC_AVATAR_008: echomimic_v3_flash_fp8_long_video_rtx_sample_after_bf16_timeout
+  DEC_AVATAR_008: echomimic_v3_flash_fp8_short_selected_spans_no_long_video_cfg
   DEC_TIMING_001: local_whisper_cpp_base_en
   DEC_CONTRACT_001: typescript_only_jcs_python_exact_bytes_and_schema_validation
   DEC_SCHEDULER_001: seeded_deterministic_bounded_variation
@@ -767,7 +765,8 @@ approved_decisions:
   DEC_HOSTING_001: zero_required_subscription_control_plane
   DEC_DB_001: additive_postgres_sql_repository_contracts_pglite_tests_only
   DEC_QUEUE_001: postgres_authoritative_runpod_execution_transport
-  DEC_RUNPOD_001: scale_to_zero_api_only_endpoints_first
+  DEC_RUNPOD_001: superseded_serverless_endpoints_first_historical_only
+  DEC_RUNPOD_002: two_isolated_persistent_eu_ro_1_model_volumes_two_disposable_pods_independent_live_gpu_choice
   DEC_UX_001: fixture_first_live_chrome_hot_reload
   DEC_UX_002: compact_100_percent_production_console_fixed_base_scale_only_macos_like_dock
   DEC_UX_003: visual_presets_with_on_demand_reference_and_audit_details
@@ -782,9 +781,9 @@ open_gates:
   GATE_IMAGE_002: exact_checkpoint_access_resolved_terms_risk_user_accepted
   GATE_STYLE_002: verify_mage_adherence_across_distinct_extracted_styles
   GATE_FALLBACK_001: benchmark_skyreels_low_vram_cost_and_quality
-  GATE_GPU_001: produce_tested_compatible_gpu_allowlists
-  GATE_RUNPOD_001: verify_endpoint_config_reconciliation_dispatch_ambiguity_timeout_and_result_lifecycle
-  GATE_COST_001: replace_planning_ranges_with_new_account_measurements
+  GATE_GPU_001: qualify_independent_live_exact_gpu_choices_for_mage_int8_and_echo_fp8
+  GATE_RUNPOD_001: verify_two_volume_two_pod_offline_ready_create_delete_and_retained_volume_lifecycle
+  GATE_COST_001: measure_pod_boot_model_ready_generation_and_delete_cost_with_fixed_volume_cost
 
 closed_gates:
   GATE_UI_001: user_approved_medium_minimal_live_chrome_shell_on_2026_08_09

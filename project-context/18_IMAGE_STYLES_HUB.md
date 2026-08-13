@@ -16,7 +16,7 @@ This feature changes image appearance only. It never changes:
 - The no-motion-graphics/no-text/no-decorative-transition rules.
 - The required slow, smooth image zoom.
 
-Custom styles may be photographic or intentionally illustrated if Mage can reproduce them, but the selected medium must be deliberate. Avatar realism remains unchanged.
+Custom styles may be photographic or intentionally illustrated if Mage can reproduce them, but the selected medium must be deliberate. Avatar realism remains unchanged. Every active `Mage` reference in this document means the exact ImageForge-aligned profile: `Comfy-Org/Mage-Flow` revision `d8c99241f6fa80fbd453014234af2bf337ea21e6`, `int8-convrot`, ComfyUI, 4 steps, guidance `1.0`, and `1280x720`.
 
 ## Why there are two LLMs
 
@@ -120,7 +120,13 @@ Detailed behavior:
 8. Show the analyzer's shared traits, avoid traits, per-trait confidence/support, uncertainty, and
    outlier references as **source-analysis evidence**. The user may edit the creative profile, but
    cannot edit or relabel analyzer evidence as if it described the new bytes.
-9. Optionally generate three standardized Mage previews: person, physical action/object, and environment. This is user-triggered and separately estimated; never boot a GPU automatically when merely saving a style. Completion returns to review and never publishes automatically.
+9. Optionally generate three standardized Mage previews: person, physical action/object, and
+   environment. This is user-triggered and separately estimated; merely saving a style never
+   starts compute. The preview action uses only the Mage lane: select a currently available
+   compatible GPU from live `EU-RO-1` inventory, start one disposable Mage Pod against the
+   Mage-only persistent volume, verify/load/warm up before `model_ready`, make previews durable,
+   then delete the Pod and retain the volume. It must never start Echo or attach/adopt the Echo
+   volume. Completion returns to review and never publishes automatically.
 10. Publish the exact current immutable artifact and freeze the version. A later reference/profile
     edit creates a new version.
 
@@ -166,8 +172,8 @@ derived artifacts, accepted-analysis backfill, production PGlite row locking/ide
 derived bytes, changed-pointer computation, review invalidation, exact-current publication, and
 metadata export/restore. VF-7-08 adds the shared versioned edit contract/API. VF-7-09 adds bounded
 browser normalization, independent server media validation, authenticated fixture lifecycle routes,
-Hub review/edit/publish/select/archive/reopen, and exact previews. Production R2 transfer and live
-analyzer/Mage orchestration remain later work.
+Hub review/edit/publish/select/archive/reopen, and exact fixture previews. Production R2 transfer
+and the isolated persistent-volume Mage preview path remain later implementation work.
 
 `DEC_STYLE_007` owns one preserve-and-detach policy for an analyzer-derived version. The accepted
 `VISION_ANALYSIS` canonical artifact from VF-7-04 is immutable historical source truth. An edit never
@@ -422,9 +428,14 @@ workspace/{workspace_id}/image-style/{style_id}/version/{version_id}/
 - Runware Gemini 3.5 Flash is currently $1.50/M input and $9/M output.
 - Measured accepted first analysis: $0.031974–$0.037442 for the seven synthetic sets at medium media resolution and low thinking.
 - Measured accepted two-attempt totals: $0.066977 and $0.075869; show and reserve the estimate before retrying.
-- Optional three-image Mage test cost is tiny after model load, but a cold boot can dominate and therefore requires an explicit click.
+- Optional three-image Mage inference can be small after model load, but Pod boot and model load can
+  dominate. The user must explicitly click, select an exact live compatible Mage GPU, and accept
+  the estimate. Reuse is only through the retained Mage model volume; never through a running Echo
+  Pod or shared model volume.
 - Reference storage is usually only a few megabytes per style and has no new fixed subscription.
-- A ready style adds a database read and a compact DeepSeek batch prefix. It does not materially change the current $0.40–$0.98 fast/no-major-fallback Serverless planning range.
+- A ready style adds a database read and a compact DeepSeek batch prefix. It makes no vision call
+  during ordinary video generation. VideoForge has no accepted production cost range for the new
+  two-Pod architecture until measured boot, load, generation, upload, and deletion evidence exists.
 
 ## Acceptance gates
 
@@ -443,14 +454,17 @@ workspace/{workspace_id}/image-style/{style_id}/version/{version_id}/
 - Full and split crops remain useful.
 - Extra-keyword toggle behavior is exact and reproducible.
 
-If Gemini 3.5 repeatedly fails style/content separation, replace only the analyzer after an A/B; direct Gemini 3.6 Flash is the current quality-fallback research candidate. If prompt-only profiles cannot reproduce a distinctive style in Mage, pause and present evidence before adding LoRA training or a reference-conditioned image model. Both are deferred, not silent automatic fallbacks.
+If Gemini 3.5 repeatedly fails style/content separation, pause and present an A/B before changing
+the analyzer; direct Gemini 3.6 Flash is research only. If prompt-only profiles cannot reproduce a
+distinctive style in Mage, pause and present evidence before adding LoRA training or a
+reference-conditioned image model. None of these deferred options is an active automatic path.
 
 ## Non-goals
 
 - No vision call per video or image.
 - No mandatory generated preview when saving a style.
 - No automatic Style LoRA training.
-- No reference image passed to Mage-Flow-Turbo in the normal path.
+- No reference image passed to the active Mage-Flow INT8 generation profile in the normal path.
 - No automatic artist/identity cloning.
 - No layout or duration changes based on style.
 - No per-image multimodal QA stage.

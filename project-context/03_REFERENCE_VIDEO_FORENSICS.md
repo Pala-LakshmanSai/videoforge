@@ -25,7 +25,7 @@ The following values are estimates from a prior 5-fps classification audit and d
 Combined findings:
 
 - Mean avatar appearance: approximately 3.74 seconds.
-- Typical avatar appearance: 2–6 seconds.
+- Typical avatar appearance: 2–6 seconds. VideoForge uses six seconds as the normal hard maximum and permits only the opening sentence to reach seven seconds.
 - Median image/B-roll-only gap: approximately 11.2 seconds.
 - Mean visual-change interval in the supplied complete Watermelon analysis: about 4.35 seconds; median 4.13 seconds; middle 50% about 2.8–5.2 seconds.
 - Full and split cumulative shares are nearly equal.
@@ -89,11 +89,11 @@ The source mixes real/UGC/stock/archive footage and occasionally contains webpag
 - The exact presenter identity or room.
 - Source exceptions containing motion graphics or text.
 
-## Economic inference, not fact
+## Runtime interpretation
 
-The recurring pixel-stable presenter background, natural mid-phoneme starts, body motion, and reported low production cost are more consistent with a reusable/recorded performance or a very fast avatar/reenactment process than with regenerating every appearance using a slow LongCat/Hallo-class diffusion model. This is a plausible inference, not confirmed knowledge of Ranga's private pipeline.
+The recurring pixel-stable presenter background, natural mid-phoneme starts, body motion, and short appearances support VideoForge's use of a reusable source image plus independently generated selected speech spans. They do not reveal Ranga's private production method.
 
-VideoForge's approved response is a fast AvatarForcing primary, short-span generation only, optional MuseTalk lip repair, and cold SkyReels whole-frame fallback.
+VideoForge therefore sends only the deterministic 2–6-second scheduled spans to the active EchoMimicV3-Flash FP8 lane, with a seven-second maximum only for the opening sentence. Do not claim that VRAM grows linearly with clip duration; duration, peak memory, and throughput remain measured properties of the exact Echo runtime. AvatarForcing, MuseTalk, and SkyReels are historical evidence/replay paths only and are not active generation, repair, or fallback routes.
 
 ## Relationship to the Image Styles Hub
 

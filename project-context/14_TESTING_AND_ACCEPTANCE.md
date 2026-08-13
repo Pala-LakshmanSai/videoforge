@@ -131,6 +131,10 @@ Compiler matrix:
 
 ## Mage acceptance suite
 
+Run the exact `DEC_IMAGE_001` profile: `Comfy-Org/Mage-Flow` revision
+`d8c99241f6fa80fbd453014234af2bf337ea21e6`, pinned stock headless ComfyUI, INT8 ConvRot, four
+steps, guidance 1.0, and 1280×720 output. Earlier BF16 attempts do not qualify this profile.
+
 At least 40 prompts covering:
 
 - People/skin.
@@ -151,7 +155,14 @@ Proposed pass criteria:
 - Full-screen final zoom frames remain acceptably detailed at 1080p.
 - Important subject survives full and split crop-safe tests.
 - A human can distinguish intended custom styles without copied reference subjects, identities, logos, text, or exact compositions.
-- 300-image cold job meets the approved measured cost and production envelope.
+- One-time Mage volume preparation records and verifies the exact INT8 ConvRot transformer,
+  Qwen3-VL BF16 encoder, and Mage VAE paths, SHA-256 values, sizes, model/ComfyUI/container
+  revisions, configuration, and immutable complete marker on the dedicated `EU-RO-1` Mage volume.
+- A normal disposable Mage Pod mounts only the Mage volume, reaches `model_ready` without model
+  download/network-repository resolution, and records Pod-create/attach/container/manifest/load
+  timings plus selected and actual GPU identity.
+- A 300-image cold job meets the approved measured cost and production envelope, then its Pod is
+  deleted while both approved model volumes remain.
 - No OOM/crash and peak VRAM leaves operational headroom.
 
 The user makes the final blind quality judgment before resolution/upscaler lock.
@@ -176,7 +187,9 @@ Pass: a named avatar can be stored once and reused by image/name without project
 
 ## EchoMimicV3-Flash exact-avatar suite
 
-This is the global model/container/GPU qualification gate, not a required 12–20-clip run for every Avatar Profile. Use several representative ready Avatar Profile versions and 12–20 clips of 4–10 seconds total containing:
+This is the global model/container/GPU qualification gate, not a required 12–20-clip run for every
+Avatar Profile. Use several representative ready Avatar Profile versions and 12–20 scheduled short
+clips, normally 2–6 seconds each and never the full voiceover, containing:
 
 - Ordinary speech.
 - Fast speech and sibilants.
@@ -187,15 +200,24 @@ This is the global model/container/GPU qualification gate, not a required 12–2
 - Difficult beard/mustache/hair boundaries if relevant.
 - Full-screen 1920×1080 and 960×1080 split crop review.
 
-Measure cold start, model load, peak VRAM, frame time, accepted-output cost, lips, identity, background, body/motion, temporal stability, and upscale detail.
+Measure Pod create, volume attach, container ready, manifest verification, model ready, generation,
+encode, upload, and Pod deletion separately, plus peak VRAM, frame time, accepted-output cost, lips,
+identity, background, body/motion, temporal stability, and upscale detail.
 
-For `VF-9-24I`, technical sample acceptance additionally requires the exact private source/audio
-checksums, 253 frames at 25 fps, 10.12-second source duration, runtime evidence that at least one
-compatible transformer linear used `float8_e4m3fn` dynamic activation-and-weight quantization,
-81-frame Long Video CFG windows, no OOM/NaN/crash, a playable local MP4 with SHA-256/probe, separate
-queue/bootstrap/model-load-generation-encode timings, peak VRAM, measured cost, and three
-post-cleanup zero-resource reads. This proves only a reviewable sample; user visual approval remains
-required.
+Technical acceptance additionally requires:
+
+- One-time Echo preparation records the exact pinned source/Flash/base/audio-encoder inputs and the
+  VideoForge-prepared FP8 artifact, TorchAO/runtime toolchain, file paths, sizes, SHA-256 values, and
+  immutable complete marker on the dedicated `EU-RO-1` Echo volume.
+- A normal disposable Echo Pod mounts only the Echo volume and reaches `model_ready` without model
+  download/network-repository resolution. It must not mount or read the Mage volume.
+- Runtime evidence proves the accepted FP8 profile executes and uses no Long Video CFG. Each input
+  binds the exact private avatar checksum and only its materialized scheduled span-audio checksum.
+- Selected GPU SKU from the fresh live compatible inventory equals the immutable profile and actual
+  executing GPU; a provider substitution or stale/unavailable choice fails before inference.
+- Every result is a playable local MP4 with SHA-256/probe, exact duration/frame count, no
+  OOM/NaN/crash, measured timings/VRAM/cost, and Pod deletion evidence that leaves zero Pods while
+  both approved model volumes remain.
 
 Proposed provisional lock:
 
@@ -203,7 +225,8 @@ Proposed provisional lock:
 - At least 90% first-pass clip acceptance.
 - No severe identity/background/body failure.
 - No visible lip offset greater than roughly two source frames in accepted clips.
-- All clips become acceptable after at most the approved targeted retry/repair path.
+- A failed clip follows only an explicitly approved bounded retry; no repair or other-model fallback
+  is active.
 - Planning cost remains compatible with the 30-minute cap.
 - Technically valid clips become selected draft assets only after this global EchoMimicV3-Flash production suite passes; the user/reviewer can flag them. Optional per-profile quick tests are confidence evidence, not this gate.
 - Subjective lip-only versus whole-frame routing is explicitly user/reviewer-classified in MVP; no deferred visual-QA model is silently invoked.
@@ -228,7 +251,10 @@ The exact global-demotion threshold is an open user gate. Record evidence; do no
 
 ## FFmpeg golden gate
 
-- Historical AvatarForcing/SkyReels profiles remain replay-only. EchoMimicV3-Flash receives a new profile only after approved measured sample geometry. If native output is exactly 832×480/25, the proposed full crop is `832:468:0:6` and split crop `416:468:208:6`; otherwise profile creation is blocked.
+- Historical AvatarForcing/SkyReels profiles remain replay-only. EchoMimicV3-Flash receives a new
+  profile only after approved measured native dimensions, frame rate, and sample geometry. No crop
+  is pre-seeded from a historical model; profile creation remains blocked until the measured Echo
+  full/split pair is user-approved.
 - Each accepted avatar asset declares exactly one source profile; the resolved-render schema rejects mismatched profile/crop pairs.
 - No seam decoration.
 - The current full-image zoom ends at 1.025, 1.03, or 1.035 according to scene length; the current
@@ -250,18 +276,45 @@ The exact global-demotion threshold is an open user gate. Record evidence; do no
 - Only `APPROVED` creates `production-manifest/v2`; it records the reviewer/time and hash-binds the validated revision, timeline, resolved render, prompt, attempts, QA, cost snapshot, selected Avatar Profile/style/model summaries, and exact final MP4.
 - Approval derives the reviewer from authentication, requires `Idempotency-Key` plus the exact review-candidate `If-Match` token/final checksum, and cannot approve a stale candidate racing a regeneration.
 
-## RunPod endpoint and dispatch gate
+## RunPod Pod and volume lifecycle gate
 
-- Preflight simulates RunPod's documented three/seven-day idle reductions (including `workersMax=0`) and restores the approved configuration through API only.
-- Execution profile matches endpoint/config revision, container digest, ordered GPU priorities, volume/data center, timeout/TTL, current rate ceiling, and live compatibility.
-- Lowest cost/Balanced/Faster resolves immutable per-lane profile IDs; an allowed Advanced override changes only the selected lane and the revision records it before dispatch.
-- Default/too-short execution timeout, queue+run TTL, 30-minute result expiry, and signed-input URL expiry are exercised.
-- Provider job/workflow IDs are persisted immediately; stale jobs reconcile before provider result retention expires.
-- Ambiguous `/run` acknowledgement enters `DISPATCH_ACK_UNKNOWN`; it does not blindly redispatch.
-- Duplicate provider workers contend for one execution claim; at most one performs costly inference and duplicate attempts/cost remain visible.
-- Endpoint idle/drain returns active workers to zero without a console action.
+- Exactly two approved persistent `EU-RO-1` model volumes exist at separately recorded,
+  manifest-derived capacities: one Mage INT8 ConvRot volume and one different Echo FP8 volume.
+  Stable volume IDs, region, capacity, manifest hash, model
+  role, preparation revision, and creation/verification evidence are durable.
+- A one-time explicitly authorized preparation job is the only path allowed to acquire or prepare
+  model bytes. It writes the complete marker only after exact path/size/SHA-256 and toolchain
+  verification; interrupted or mutated preparation remains unusable.
+- Mage and Echo Pod templates allow only their own exact volume ID. Cross-mount, shared volume,
+  swapped manifest/model role, unexpected writable mutation, or private job input on a model volume
+  fails closed.
+- At project start the app refreshes live inventory and rates, intersects them with each model's
+  qualified compatibility matrix, and lets the user select the Mage and Echo GPUs independently.
+  The revision pins inventory snapshot/time, exact GPU SKU, rate ceiling, Pod template/container,
+  model manifest, volume ID/region, and timeout.
+- One journaled create-attempt request is issued for each disposable Pod in parallel after its
+  durable intent/idempotency fingerprint. The application key does not prove provider at-most-once
+  creation; unknown acknowledgement reconciles before any later create. Record API acknowledgement,
+  provider Pod ID, requested/actual GPU, volume attach, container ready, manifest verified,
+  model-loading, and `model_ready` timestamps independently for both lanes.
+- A normal boot is tested with model acquisition disabled and no model-repository credentials. Any
+  attempted runtime download or mutable `main` resolution fails the gate.
+- Ideal Pod-start-request-to-`model_ready` target is ≤2 minutes for each lane after preparation.
+  The user's reported ImageForge 3–4-minute baseline is comparison context only and cannot pass this
+  VideoForge gate. Report cold/warm distributions and every timing component.
+- Ambiguous create or delete after a durable send permits only read/reconciliation of that exact
+  attempt and Pod; never automatically repeat the mutation. A later create/delete is allowed only
+  after authoritative evidence proves the earlier mutation was not applied and fresh policy
+  authority permits it. Duplicate orchestrators contend for one owner-bound lease/execution claim;
+  duplicate cost is visible and only one accepted result advances the revision.
+- Cancellation and normal completion stop new work, settle the lane, delete its Pod through the API,
+  and prove zero active/retained Pods. Cleanup must also prove the same two approved model volumes
+  still exist with unchanged identities/manifests; zero-volume cleanup is a failure.
 
-Pass: one accepted result/lineage, no corrupt revision, truthful duplicate-cost evidence, and API-only recovery. Do not claim provider at-most-once billing until measured semantics prove it.
+Pass: one accepted result/lineage per lane, exact selected GPU and model-volume identity, no normal
+boot download or cross-mount, truthful cost/timing evidence, zero Pods, two retained volumes, no
+corrupt revision, and API-only recovery. Do not claim provider at-most-once creation/billing until
+measured semantics prove it.
 
 ## Queue/fault gate
 
@@ -273,8 +326,11 @@ Simulate ten users and:
 - Worker crash mid-chunk after some uploads.
 - Expired signed URL.
 - RunPod no capacity.
-- RunPod idle-reduced endpoint `workersMax=0`/other configuration drift.
-- Ambiguous dispatch acknowledgement and duplicate worker execution claim.
+- Stale live GPU inventory, selected GPU becoming unavailable, or provider allocating a different GPU.
+- Missing/corrupt/incomplete model-volume manifest, swapped volume IDs, cross-mount attempt, normal
+  boot runtime-download attempt, volume/data-center mismatch, or accidental volume deletion.
+- Ambiguous Pod create/read/stop/delete acknowledgement, duplicate Pod creation, and duplicate worker
+  execution claim.
 - Runware invalid JSON/timeout.
 - Style analyzer consent missing, timeout/ambiguous completion, invalid schema, outlier/low-confidence state, and duplicate Analyze click.
 - Style publish/version conflict and archived selection.
@@ -287,7 +343,9 @@ Simulate ten users and:
 - Workspace cap and project cap breach.
 - Control-plane restart.
 
-Pass: no duplicate accepted asset or corrupt state, any duplicate dispatch/charge is detected and reconciled rather than hidden, fair progress, recoverable state, and no worker left active after a drained lane.
+Pass: no duplicate accepted asset or corrupt state, any duplicate dispatch/charge is detected and
+reconciled rather than hidden, fair progress, recoverable state, zero Pods after drained lanes, and
+the two exact persistent model volumes remain intact.
 
 ## Security gate
 
@@ -320,7 +378,10 @@ Historical `GATE_UI_001`: **PASS**, user-approved 2026-08-09 at `evidence/gates/
 - Galleries load without broken requests and disclose larger images plus metadata on demand. New Avatar/Style round trips retain imagery, exact pins, voiceover handle, and every other draft field.
 - Closed preset selectors show image/name and optional `Default`. Choices stay inside the same app-native border, add search when useful, restore focus on Escape, and persist the exact version ID. Native, detached, covering, or always-expanded variants fail.
 - The voiceover dropzone does not advertise duration bounds, channel count, sample rate, or other technical media rules. Valid files show concise selected/upload state; invalid files show an accurate field-specific error while the strict server/browser validation matrix remains unchanged.
-- App-native `image_media` and `avatar_primary` profile controls keep options inside each compute card. Only immutable tested profiles are selectable; planned GPUs remain disabled as `Benchmark required` while `GATE_GPU_001` is open.
+- App-native `image_media` and `avatar_primary` controls keep options inside each compute card. They
+  independently show freshly queried live, compatible Mage and Echo GPU choices with exact rate,
+  VRAM, region/volume compatibility, and inventory timestamp. Unqualified choices remain disabled as
+  `Benchmark required` while `GATE_GPU_001` is open.
 - The first-shell UI has no exact-script input and sends `optional_script: null`. Extra keywords use only the opt-in toggle and textarea; no persistent applied/not-applied success panel appears, while enabled empty/invalid/conflicting text still receives the precise existing error.
 - Details are closed by default. Side sheets/accordions/lightboxes expose complete inspect/audit data, trap/manage focus correctly, close with Escape, restore focus, and do not depend on hover.
 - Pending actions immediately disable duplicates and show concise progress/next-check state. Active blockers, charges, consent, spend caps, budget approvals, and destructive controls remain in the primary layer even when technical details are collapsed.
@@ -341,11 +402,16 @@ In the user's real Chrome:
 6. Create a project with real audio, select the stored avatar and new style through compact visual dropdowns, verify no avatar upload control/request or exact-script field exists, and confirm the dropzone omits proactive duration/channel/sample-rate details.
 7. Enter extra image keywords, leave the toggle off and verify there is no separate applied/not-applied confirmation, then enable it and exercise one accepted negative refinement plus one precise conflict error.
 8. See immediate preflight/pending state without duplicate submission or persistent non-actionable explanation panels.
-9. Confirm both app-native profile menus stay inside their compute cards; inspect the command bar, progress hero, parallel lanes, pipeline, cold/model states, and artifact. Disabled unbenchmarked profiles remain unselectable and no onboarding analysis runs per project.
+9. Refresh both app-native GPU menus, select Mage and Echo GPUs independently, and confirm each menu
+   stays inside its compute card. Inspect parallel Pod create/volume/model-ready states and verify a
+   stale or now-unavailable GPU blocks before spend. Disabled unbenchmarked choices remain
+   unselectable and no onboarding analysis runs per project.
 10. Expand and collapse project technical details, then verify the primary layer remains concise while IDs, pinned inputs, worker evidence, and costs remain reachable.
 11. Open another user/session and verify ownership/fair queue plus avatar/style isolation.
 12. Review full/split preview from the same clip and style-aware image prompts.
-13. Force/recover one image failure and one avatar fallback path; verify the actionable blocker remains visible and the fallback used the pinned source.
+13. Force/recover one image failure and one Echo failure. Verify the image follows only its approved
+    bounded policy, while the Echo failure keeps an actionable blocker and stops without repair,
+    fallback, tuning, or substitution.
 14. Cancel a separate test project.
 15. Render, seek, play audio, download, and verify pinned avatar/style/keyword components in the manifest.
 16. Confirm the automatic result says `Ready for review`; use the contact sheet, flag/regenerate a visible defect, then explicitly approve the final revision.
@@ -359,9 +425,14 @@ No milestone is accepted solely from screenshots.
 
 - No-fallback 30-minute isolated-service p50 ≤30 minutes.
 - Isolated-service p90 ≤45 minutes.
-- Queue wait is reported separately at 1/2/5/10 concurrent users; do not apply isolated SLOs to a ten-user backlog with `workersMax=1`.
+- Queue/capacity wait is reported separately at 1/2/5/10 concurrent users; do not apply isolated
+  SLOs to a backlog constrained by the workspace Pod caps.
 - Report p50/p90 only after at least 10 representative completed jobs with cold/warm labels.
-- Marginal fast/no-major-fallback planning approximately $0.40–$0.98; modest-fallback envelope $0.50–$1.30 until measured.
+- Per-lane Pod-start-request-to-`model_ready` ideal target is ≤2 minutes after one-time preparation;
+  report Mage and Echo separately. ImageForge's user-reported 3–4-minute baseline is not VideoForge
+  evidence.
+- Marginal disposable-Pod cost remains unmeasured until representative accepted jobs; the accepted
+  fixed cost of the two retained volumes is reported separately.
 - No silent cost above configured cap.
 - First-pass EchoMimicV3-Flash rejection and Mage retry rate displayed and reviewed after first 10 real projects.
 - Style and Avatar Profile creation are outside project p50/p90; a ready style adds zero vision calls and a ready avatar adds zero onboarding/test calls or new pipeline stage.

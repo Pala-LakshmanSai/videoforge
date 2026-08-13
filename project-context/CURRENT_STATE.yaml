@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-13T04:14:00Z"
+updated_at: "2026-08-13T06:51:27Z"
 
-phase: echomimic_v3_flash_fp8_rtx_sample
-implementation_authorized_in_current_task: true
-current_milestone: avatar_primary_native_sample
-current_task: VF-9-24I
-current_wave: wave_9_echomimic_sample_first
+phase: isolated_persistent_model_lane_reset
+implementation_authorized_in_current_task: false
+current_milestone: isolated_model_lane_contracts
+current_task: VF-9-24J
+current_wave: wave_9_persistent_model_lane_reset
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -15,10 +15,10 @@ repository:
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
   branch: main
-  base_commit: "55eb892"
-  planning_handoff_commit: "f0829b930e5cf9084312da030f1807a6e269b06f"
-  last_good_commit: "55eb892"
-  working_tree_expected: tracked_vf_9_24i_attempt_evidence_and_context_plus_ignored_private_inputs
+  base_commit: "8ffe611"
+  planning_handoff_commit: "8ffe611"
+  last_good_commit: "8ffe611"
+  working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
 live_development:
@@ -30,10 +30,10 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: true
-  authorized_spend_usd: 8
-  provider_authority_scope: "User authorized three additional $2 RunPod increases after the earlier $2 ceiling, interpreted as cumulative ceiling $8 from the original $16.3399985241 balance."
-  worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:f2bfdd3bea7dc0ec6c8d39109f216dcaa9977769daaf767dfdac8d13d4240fe0"
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: "No current authority. Historical VF-9-24I $8 ceiling is superseded and non-transferable to the new volume/Pod architecture."
+  worker_image: null
   last_user_checkpoint:
     result: accepted
     commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
@@ -42,135 +42,90 @@ live_development:
     checked_at: "2026-08-10T03:06:39Z"
     feedback_refs: [DEC_OUTPUT_003]
 
+historical_provider_checkpoint:
+  task_id: VF-9-24I
+  status: superseded_no_reviewable_mp4
+  architecture: serverless_ephemeral_or_temporary_cache
+  former_authorized_ceiling_usd: 8
+  authority_active: false
+  evidence: "evidence/acceptance/VF-9-24I/elias-echomimic-v3-flash-fp8-rtx"
+  last_committed_settled_spend_usd: 1.9623834279
+  later_current_state_recorded_live_balance_delta_usd: 4.229342856
+  spend_note: "Preserved historical observations only; not refreshed or claimed final by this context-only task."
+  reviewable_output: null
+  last_known_cleanup:
+    running_pods: 0
+    network_volumes: 0
+    checked_at: "2026-08-13T06:09:06.660Z"
+    basis: "Read-only live RunPod inventory at the user's request: zero Pods, endpoints, active workers, and volumes; no mutation or spend."
+
 completed_tasks:
-  - task_id: VF-9-21
-    status: superseded_preserved
-    external_spend_usd: 0.449689139
-    evidence: "evidence/acceptance/VF-9-21/elias-avatarforcing-sample"
   - task_id: VF-9-22
-    status: complete
+    status: complete_echo_source_and_manifest_preflight
     implementation_commit: "e2f4a8ff6baa34b49c0e48d24a1e7a5f2f4e52f3"
-    hosted_verify_run: 31610746423
     external_spend_usd: 0
   - task_id: VF-9-23
-    status: complete
+    status: complete_historical_serverless_worker
     implementation_commit: "f0829b930e5cf9084312da030f1807a6e269b06f"
-    worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:e4a4b71e5e706ef6da4a62cdc7fa87e0c599e9fe2fa702fea73081ed19b86d73"
-    image_build_run: 31612627689
-    hosted_verify_run: 31612617169
     external_spend_usd: 0
-    evidence: "evidence/acceptance/VF-9-23/echomimic-v3-flash-worker"
   - task_id: VF-9-24
-    status: stopped_provider_worker_retry_limit
-    external_spend_usd: 0
+    status: stopped_no_output
     reviewable_output: null
-    evidence: "evidence/acceptance/VF-9-24/elias-echomimic-v3-flash-sample"
-    final_absolute_zero_checked_at: "2026-08-12T15:52:50.125Z"
-  - task_id: VF-9-24A
-    status: complete
-    implementation_commit: "5ada5c222b948c893ace093edef89ff3e327875b"
-    publication_commit: "77d6008b57fb4ccd7c457e578f6e1e3bdc1f5d37"
-    worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:79e799a1312168123aed0809cc93c9d83047bef2354ff5dbac77caed64da87f1"
-    image_build_run: 31618931186
-    hosted_verify_run: 31618929757
-    external_spend_usd: 0
-    evidence: "evidence/acceptance/VF-9-24A/echomimic-observability-repair"
-  - task_id: VF-9-24B
-    status: failed_bootstrap_cache_mutated
-    external_spend_usd: 0.026041277800000984
+  - task_id: VF-9-24A_to_VF-9-24I
+    status: historical_attempt_lineage_superseded_by_dec_runpod_002
     reviewable_output: null
-    evidence: "evidence/acceptance/VF-9-24B/elias-echomimic-v3-flash-corrected-sample"
-    final_absolute_zero_checked_at: "2026-08-12T17:10:59.035Z"
-  - task_id: VF-9-24C
-    status: complete
-    implementation_commit: "a2a4adc93317e14a4aca0e6b70687908e756b7d7"
-    worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:d0e487d13bf19b74d09af5c7bb3b800eb2faa75dcce6eca9e155a48b0403ffe9"
-    image_build_run: 31621999971
-    hosted_verify_run: 31622000295
-    external_spend_usd: 0
-    evidence: "evidence/acceptance/VF-9-24C/echomimic-tokenizer-digest-correction"
-  - task_id: VF-9-24D
-    status: failed_inference_cuda_oom
-    external_spend_usd: 0
-    cumulative_external_spend_usd: 0.026041277800000984
-    reviewable_output: null
-    evidence: "evidence/acceptance/VF-9-24D/elias-echomimic-v3-flash-digest-corrected-sample"
-    final_absolute_zero_checked_at: "2026-08-12T17:34:08.728Z"
-  - task_id: VF-9-24E
-    status: failed_worker_gpu_guard_generic
-    external_spend_usd: 0.004485629599997765
-    cumulative_external_spend_usd: 0.0694373407
-    reviewable_output: null
-    evidence: "evidence/acceptance/VF-9-24E/elias-echomimic-v3-flash-a100-sample"
-    final_absolute_zero_checked_at: "2026-08-12T18:25:09.315Z"
-  - task_id: VF-9-24F
-    status: failed_queue_timeout_no_capacity
-    external_spend_usd: 0
-    cumulative_live_balance_delta_usd: 0.1313548907
-    reviewable_output: null
-    evidence: "evidence/acceptance/VF-9-24F/elias-echomimic-v3-flash-a100-guard-repair"
-    final_absolute_zero_checked_at: "2026-08-12T18:42:44.536Z"
-  - task_id: VF-9-24G
-    status: stopped_ephemeral_bootstrap_cost
-    external_spend_usd: 0.6448527556000005
-    cumulative_live_balance_delta_usd: 0.802093288
-    reviewable_output: null
-    evidence: "evidence/acceptance/VF-9-24G/elias-echomimic-v3-flash-a100-sxm-sample"
-    final_absolute_zero_checked_at: "2026-08-12T19:00:47.907Z"
-  - task_id: VF-9-24H
-    status: stopped_inference_cost_no_output
-    external_spend_usd: 1.0017626231999994
-    cumulative_live_balance_delta_usd: 1.8200686945
-    reviewable_output: null
-    evidence: "evidence/acceptance/VF-9-24H/elias-echomimic-v3-flash-persistent-cache"
-    inference_queue_delay_ms: 73985
-    observed_active_inference_ms: 1314935
-    final_absolute_zero_checked_at: "2026-08-12T19:55:58.666Z"
+    evidence_root: "evidence/acceptance"
 
 active_ownership:
-  - task_id: VF-9-24I
-    owner: single_integration_lane
-    scope: "pinned TorchAO FP8 full-video worker, then one same-input RTX 4090 or RTX 5090 run under current spend authority"
+  - task_id: VF-9-24J
+    owner: context_integration
+    scope: "context-only isolated persistent model-lane architecture reset"
 
 blocked_tasks: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-9-24I
-  milestone: avatar_primary_native_sample
-  status: implementation_in_progress
-  dependency_status: vf_9_24i_bounded_attempts_cleanup_absolute_zero
-  authorization_status: fp8_pinned_call_repair_paid_retry_authorized
-  read_profile: phase9_echomimic_v3_flash_fp8_rtx_sample
-  task_brief: tasks/VF-9-24I.md
-  goal: "Publish repaired pinned FP8 full-video worker, then obtain and return the same 10.12-second native MP4 on RTX 4090 or RTX 5090."
-  provider_calls_authorized: true
-  maximum_external_spend_usd: 8
-  cumulative_external_spend_ceiling_usd: 8
-  prior_live_balance_delta_usd: 4.229342856
-  provider_authority:
-    provider: RunPod
-    model_id: EchoMimicV3-Flash-FP8-dynamic@311e176905a8c4c24b240b530488fe636ce4d249
-    cap_usd: 8
-    cumulative_cap_usd: 8
-    prior_settled_spend_usd: 4.229342856
-    bootstrap_stop_usd: 0.5
-    inference_hard_breaker_usd: 7.95
-    inference_active_breaker_usd: 7.95
-    non_transferable: true
-    authorized_by_user_at: "2026-08-13T04:10:00Z"
-  remote_or_cloud_mutations_authorized: true
-  remote_scope: "One repaired FP8 RTX 4090 or RTX 5090 exact-input run, output retrieval, then deletion and three zero-resource reads."
-  credential_access_authorized: true
-  model_downloads_authorized: true
-  application_code_changes_authorized: true
-  expected_evidence: "evidence/acceptance/VF-9-24I/elias-echomimic-v3-flash-fp8-rtx"
+  task_id: VF-9-24K
+  milestone: isolated_model_lane_contracts
+  status: proposed_paused
+  dependency_status: context_architecture_reconciled
+  authorization_status: awaits_explicit_user_application_implementation_authority
+  read_profile: phase9_isolated_model_lane_contracts
+  task_brief: tasks/VF-9-24K.md
+  goal: "Implement and test the vNext two-isolated-model-lane contracts and fixture lifecycle without provider calls."
+  provider_calls_authorized: false
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
+  model_downloads_authorized: false
+  application_code_changes_authorized: false
+  expected_evidence: "evidence/acceptance/VF-9-24K/isolated-model-lane-contracts"
   required_handoff:
-    - "Publish a digest-pinned FP8 worker with local and hosted image smoke evidence."
-    - "Return the private MP4 with exact probe/hash/timings and prove RunPod absolute zero."
+    - "Version vNext machine contracts; keep current v1 legacy/provider-free and non-dispatchable."
+    - "Prove cross-volume, stale-inventory, false-model-ready, GPU-mismatch, duplicate-create, false-stop, and routine-volume-deletion rejection."
+    - "Show provider-free concurrent Mage/Echo lifecycle through final MP4 fixture with $0 truth."
   prohibited_in_task:
-    - "Any spend above the cumulative $8 cap, app integration, deployment, migration, profile promotion, or successor task."
-    - "Uncarded third-party FP8 pickle, AvatarForcing, MuseTalk, SkyReels, LongCat, retained paid resource, or other-model fallback."
+    - "Any RunPod/Runware/provider call, credential access, cloud mutation, model download, Pod/template/volume creation, image publication, or spend."
+    - "Any production gate closure, live profile promotion, volume-capacity assumption, model/GPU substitution, repair, or fallback."
+
+approved_future_architecture:
+  region: EU-RO-1
+  volume_capacity_status: not_selected_manifest_derived_before_provisioning
+  lanes:
+    mage_image:
+      model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6"
+      precision: int8-convrot
+      volume: separate_persistent_not_created
+      pod: disposable_not_created
+    echo_avatar:
+      model: EchoMimicV3-Flash-FP8
+      precision: fp8_prepared_from_pinned_first_party_lineage
+      volume: separate_persistent_not_created
+      pod: disposable_not_created
+  gpu_selection: independent_live_exact_offering_per_lane
+  generate: concurrent_pod_start_with_local_preparation_overlap
+  ready_barrier: exact_volume_verified_model_loaded_and_warmup_passed
+  cleanup: delete_pods_prove_absence_retain_both_volumes
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
@@ -183,16 +138,16 @@ blocking_gates_for_production:
   - GATE_COST_001
 
 progress_snapshot:
-  estimate_kind: rough_phase_weighted_engineering_estimate_not_acceptance_gate
-  full_production_mvp_implemented_percent: 79
+  estimate_kind: architecture_reset_no_new_percent_claim
+  full_production_mvp_implemented_percent: null
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: vf_9_24i_pinned_call_repair_in_progress_runpod_absolute_zero
+  status: context_architecture_complete_all_implementation_and_provider_activation_paused
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Load only phase9_echomimic_v3_flash_fp8_rtx_sample and tasks/VF-9-24I.md."
-    - "Publish the pinned-call hotfix over async image sha256:f2bfdd3bea7dc0ec6c8d39109f216dcaa9977769daaf767dfdac8d13d4240fe0."
-    - "Run only within cumulative $8 authority; force-delete the Pod after success or failure."
+    - "Load only phase9_isolated_model_lane_contracts and tasks/VF-9-24K.md."
+    - "Confirm tracked HEAD includes the context handoff and preserve untracked private inputs."
+    - "Wait for explicit user authorization before changing application code."
   stop_conditions:
-    - "Cumulative spend reaching $8, unpinned dependency/checkpoint, other-model fallback, successor selection, or roadmap continuation."
+    - "Any provider call, cloud mutation, credential need, model download, spend, schema reinterpretation, cross-lane volume binding, production promotion, or successor execution."

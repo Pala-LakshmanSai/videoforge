@@ -2,30 +2,22 @@
 
 These files turn one entry from `21_IMPLEMENTATION_EXECUTION_PLAN.md` into a bounded executable
 handoff. `CURRENT_STATE.yaml.recommended_next_task` selects exactly one brief; a fresh chat must not
-pick another file merely because it looks parallelizable.
+pick another merely because it looks parallelizable.
 
-Each brief owns scope, dependencies, files, safe agent lanes, acceptance, budget, evidence, rollback,
-and the required next-state update. Product behavior remains authoritative in the decision ledger
-and primary domain files. Completed briefs may remain for traceability, but `CURRENT_STATE.yaml` is
-the only mutable snapshot and Git/evidence remain the progress log.
+Each brief owns scope, dependencies, files, safe agent lanes, acceptance, budget, evidence,
+rollback, and required next-state update. Product behavior remains authoritative in the decision
+ledger and primary domain files. Completed briefs remain historical traceability; they do not grant
+new provider authority.
 
-Current implementation checkpoint: `8ceecb4`. `VF-4-01/02`, `VF-5-01/02`, and `VF-7-01` through
-`VF-7-09` are complete and preserved. VF-7-09 implementation is `6fb3312` plus Workerd correction
-`d9adee9`.
+Current checkpoint: `VF-9-24J`, completed context-only isolated model-lane architecture reset. The
+proposed `VF-9-24K` provider-free contract/fixture implementation is paused until explicit user
+application-implementation authority. The prior
+`VF-9-24I` paid FP8 sample path is superseded and produced no reviewable MP4. Its former `$8`
+ceiling is historical and non-transferable. No current provider call, cloud mutation, credential
+access, model download, Pod/template/volume creation, or spend is authorized.
 
-`VF-3-00` through `VF-3-10` completed the authorized checkpoint, DeepSeek/Gemini qualification,
-provider-free prompt/style adapters, RunPod account preflight, public Git/hosted CI, and the still-open
-Mage and AvatarForcing checkpoint/license audits. `VF-7-01` through `VF-7-09` complete the
-provider-free custom-style lifecycle and fixture Hub. `VF-3-11` ended without a replacement after
-the user reaffirmed AvatarForcing and the LongCat exclusion. `VF-8-01/02/03` are complete.
-`VF-8-04` through `VF-9-21` preserve the full historical AvatarForcing/SkyReels attempt lineage,
-including `$0.4496891390` in `VF-9-21` and independent final zero inventory. `VF-9-22` supersedes
-that active route with EchoMimicV3-Flash. `VF-9-23` published the pinned worker after full local and
-hosted green. `VF-9-24` dispatched one job, then stopped when RunPod created three `EXITED` worker
-records; no MP4 or paid retry authority exists. `VF-9-24A` completed the provider-free correction
-and published the corrected GHCR image. `VF-9-24B` failed before model-ready on a truncated tokenizer
-digest, spent `$0.0260412778`, and ended at absolute zero. `VF-9-24C` is the sole selected
-provider-free digest correction and image build and is complete. `VF-9-24D` owns one
-digest-corrected sample attempt reached inference but failed with RTX 4090 CUDA OOM. No MP4 exists;
-cumulative measured spend is `$0.0260412778` and cleanup is absolute zero. Any retry, larger GPU, or
-memory tuning needs a new explicit decision.
+The approved future lifecycle uses two different persistent `EU-RO-1` model volumes and two
+disposable Pods: exact ImageForge Mage INT8 ConvRot and EchoMimicV3-Flash FP8. Live compatible GPU
+selection is independent per lane. Ordinary boot downloads no model files. Delete Pods after
+durable outputs and retain both volumes. If authorized, `VF-9-24K` implements only the versioned
+`$0` contracts/fixtures for that lifecycle; real resources require a later explicit task and cap.

@@ -26,7 +26,7 @@ execution/callback/cost lineage. These tasks close no Avatar/model/GPU gate.
 - The project revision pins the parent profile, exact version, canonical profile hash, runtime source asset/checksum, preparation/validation profiles, exact compatibility state at preflight, and matching immutable terminal evidence when one exists.
 - Replacing a source image creates a new version. It never mutates an existing ready version or any queued/running/reviewed/approved project.
 - Renaming or archiving the parent does not change a version hash. Archived profiles remain resolvable for historical projects but disappear from new-project selection.
-- One generated avatar clip still serves both output layouts through the approved deterministic full/split crops.
+- One generated avatar clip serves both output layouts after the active EchoMimicV3-Flash full/split crop pair is measured and approved. Historical AvatarForcing/SkyReels crops do not authorize an Echo crop; that active crop remains a gate.
 - Only scheduled voiceover spans are sent to avatar workers. The Hub never causes the full voiceover to be sent.
 - Creating or selecting an avatar uses no LLM. A ready avatar adds no per-video model call beyond the avatar clips the timeline already requires.
 
@@ -86,7 +86,7 @@ Detailed behavior:
 5. The user confirms one primary presenter, horizontal centering, direct-to-camera suitability, image-use rights, the right/consent to animate the depicted likeness, and consent to talking-avatar processing. Do not claim this manual confirmation is biometric or identity verification.
 6. `Approve and add to Avatar Hub` atomically makes the version immutable `READY`, points the parent to it, and makes it selectable. Nothing is made public; `publish` is only the internal state transition name.
 7. Offer—not require—an explicit short compatibility test. Show its exact one-time estimate before starting. No GPU starts merely because the profile was saved or selected.
-8. If requested after global qualification, EchoMimicV3-Flash generates three short standard clips covering ordinary speech, visible labials/teeth, and pauses/subtle head motion using owned test-audio fixtures. The user records the compatibility verdict after viewing each clip in both final crops.
+8. If requested after global qualification, EchoMimicV3-Flash FP8 generates three short standard clips covering ordinary speech, visible labials/teeth, and pauses/subtle head motion using owned test-audio fixtures. The user records the compatibility verdict after viewing each clip in both final crops; this step cannot claim crop compatibility until the active Echo crop gate has closed.
 
 The optional three-clip quick test is a per-profile compatibility check, not the global model/GPU qualification suite in `14_TESTING_AND_ACCEPTANCE.md`. The global gate tests representative avatars and infrastructure once; the quick test gives extra confidence for this particular source. If the primary model/checkpoint/container/crop profile materially changes, the prior result becomes `STALE` without mutating the avatar payload. A ready untested/stale version remains selectable with a clear warning until benchmark evidence or a later explicit user decision makes a quick-test pass mandatory.
 
@@ -123,7 +123,7 @@ Create Project contains a required compact app-native visual **Avatar** dropdown
 
 Approving v2 after a draft selected v1 does not silently upgrade the draft. Keep v1 selected with `Newer version available`; new selections use v2. Archiving/access loss before revision creation blocks preflight and asks for re-selection, while an already-created revision remains pinned. Under the proposed MVP optional-test policy, every compatibility state (`UNTESTED`, `RUNNING`, `PASSED`, `FAILED`, `STALE`, or `CANCELLED`) remains selectable when the source version is otherwise ready; `FAILED` gets the strongest warning while untested/stale/cancelled show ordinary warnings. No status may block the ready source or trigger a hidden test charge.
 
-The field includes `+ New avatar`; ordinary Avatar Hub navigation stays in the floating dock. Opening the workflow from a project draft autosaves title, verified voiceover upload handle, selected Image Style, prompt-keyword text/toggle, mode, both primary execution-profile selections, cap, and seed. Saving or cancelling returns to the same draft; a newly ready avatar is selected automatically without re-uploading the voiceover or re-entering settings. The first-shell web UI has no exact-script field.
+The field includes `+ New avatar`; ordinary Avatar Hub navigation stays in the floating dock. Opening the workflow from a project draft autosaves title, verified voiceover upload handle, selected Image Style, prompt-keyword text/toggle, mode, both independent Mage/Echo execution selections, cap, and seed. Saving or cancelling returns to the same draft; a newly ready avatar is selected automatically without re-uploading the voiceover or re-entering settings. The first-shell web UI has no exact-script field.
 
 Do not add an `Upload avatar for this video` escape hatch to the normal form. A new source belongs in the Hub so reuse, consent, validation, compatibility, and provenance cannot be bypassed.
 
@@ -178,6 +178,11 @@ workspace/{workspace_id}/avatar-profile/{profile_id}/version/{version_id}/
 ```
 
 - Avatar sources are private identity/personal images. Never place them in public builds, public buckets, logs, fixtures, analytics payloads, research packs, or cross-workspace caches.
+- Echo model weights live on the dedicated retained Echo network volume in `EU-RO-1`. Ordinary
+  workers verify and treat model files as immutable/read-only application data and write
+  scratch/results elsewhere; provider-enforced read-only mounting is not assumed. Avatar source
+  images, voiceover spans, generated clips, and compatibility outputs remain in their private
+  R2/job paths and never enter that model volume.
 - Authorize every list/read/sign/mutate route by workspace membership and role. Do not reveal cross-workspace hash existence.
 - Use short-lived path-scoped URLs; redact URLs and image bytes from logs and provider errors.
 - Record the user's rights basis and explicit consent to animate the source.
@@ -198,14 +203,16 @@ Initial role matrix:
 - An optional three-clip compatibility test is a one-time, separately estimated RunPod charge owned by `AVATAR_PROFILE_VERSION`, not by a video project. Initial planning target is at or below $0.20; the exact value remains part of `GATE_AVATAR_001` evidence.
 - A ready avatar adds only a small database/R2 lookup to ordinary project preflight. It does not increase the 30-minute per-video generation range.
 - Reusing the same source avoids repeated uploads and can reuse safe source preprocessing. It does **not** eliminate EchoMimicV3-Flash inference required for each video's unique selected speech spans.
-- Test workers scale to zero after the Hub test lane drains; no warm avatar worker is kept merely because profiles exist.
+- On a video's single Generate action, its disposable Echo FP8 Pod starts concurrently with the Mage Pod, attaches the already-populated Echo volume, verifies the pinned manifest, and loads the model while local ASR/timeline/span preparation continues. Avatar dispatch waits for authoritative Echo `model_ready`.
+- After the required clips are durable and no Echo task remains queued/active, the Echo Pod drains and is deleted independently; the Echo volume remains. No warm avatar Pod is kept merely because profiles exist.
+- Normal generated spans remain 2–6 seconds, with a seven-second maximum only for the opening sentence. This reference-derived scheduling bound does not prove or imply linear VRAM growth with duration.
 
 ## Acceptance
 
 - A user can create, leave, resume, test, review, approve, select, version, duplicate, and archive an avatar without a provider console or public sharing.
 - The project selector shows image + name and blocks only unready, erased, archived-parent, or inaccessible versions. Compatibility states only change warning strength under the proposed optional-test policy.
 - v1 remains selectable while v2 is open; approving v2 never mutates a revision pinned to v1.
-- The exact source/version/hash in the project revision reaches EchoMimicV3-Flash; repair/quality bindings are `null`.
+- The exact source/version/hash in the project revision reaches the pinned EchoMimicV3-Flash FP8 runtime only after authoritative model readiness; repair/quality bindings are `null`.
 - A new-avatar round trip from Create Project preserves every other input and verified upload handle.
 - One-time test spend is visible and separate; ready-avatar reuse causes zero onboarding/test calls.
 - Cross-workspace access, signed-URL, consent, deletion-in-use, idempotency, and version-race tests pass.

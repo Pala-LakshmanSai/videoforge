@@ -1,212 +1,178 @@
 # RunPod, queue, and lifecycle operations
 
 Status: recommended MVP operational design  
-Read when: building endpoint templates, dispatch, GPU selection, progress, cancellation, retries, or cost controls.
+Read when: building Pod templates, dispatch, GPU selection, progress, cancellation, retries, or cost controls.
 
-## Two queue layers
+## One queue and two lanes
 
-1. **Application queue in Postgres:** authoritative ownership, ordering, revision, task, cost, retry, and editorial state.
-2. **RunPod endpoint queue:** transport/execution after a task has been durably reserved and dispatched.
+Postgres is the only authoritative queue. It owns workspace ordering, immutable revision, lane tasks,
+attempts, costs, retries, editorial state, and result lineage. RunPod supplies disposable compute
+state; it is not the application queue or recovery ledger.
 
-Never use RunPod's queue as the only record. A provider job can expire, a callback can be lost, or a user can cancel while the application still needs a truthful audit trail.
+| Lane | Disposable compute | Persistent model storage | Initial maximum |
+|---|---|---|---|
+| `mage_image` | Mage worker Pod | Mage-only `EU-RO-1` volume | One Pod |
+| `echo_avatar` | Echo worker Pod | Different Echo-only `EU-RO-1` volume | One Pod |
 
-## Endpoint baseline
+Volumes are never shared or cross-mounted. Future Mage Pods reuse only the Mage volume and future
+Echo Pods reuse only the Echo volume. Worker template/image, manifest, preparation marker, locks,
+leases, health, attempts, and reconciliation are also lane-scoped.
 
-- Asynchronous `/run` dispatch.
-- `workersMin = 0`.
-- `workersMax = 1` initially per expensive lane.
-- FlashBoot/model caching enabled where compatible.
-- One GPU per worker.
-- Production lanes may use a read-only pinned network volume after qualification. The one
-  EchoMimicV3-Flash sample uses 100 GB ephemeral container disk and no network volume.
-- Mutable inputs/results through short-lived R2 URLs.
-- Execution timeout/TTL sized from measured worst-case chunk runtime, not default guesswork.
-- Async result/status reconciliation well inside RunPod's short result-retention window; application results are uploaded to R2 and never depend on provider result storage.
-- Health: container ready is distinct from model ready.
-- 30–60 second drain window after the application lane reaches zero queued/active work; tune with boot measurements.
+## Pod baseline
 
-Serverless owns worker scale-to-zero. Do not implement a manual Stop button that races provider autoscaling. The UI can show “worker will scale down after queue drains.”
+- API-created RunPod Pods, not Serverless endpoints or `/run` jobs.
+- One GPU per Pod; at most one Pod in each lane and two total initially.
+- Separate immutable Mage and Echo worker images/templates and exact lane volume IDs.
+- No model download, update, derivation, or mutable repository resolution during an ordinary boot.
+- Mutable inputs/results use short-lived workspace R2 URLs or a verified local path, never a model
+  volume.
+- Signed worker health/progress and authenticated task claims.
+- Exact create, readiness, cancellation, and deletion reconciliation.
 
-### Endpoint configuration reconciliation
+The user accepts persistent-volume billing. Pod cost ends only when provider absence is proven, not
+when the app changes a label. Never retain a Pod merely for possible later work.
 
-RunPod currently caps a higher endpoint `workersMax` at 2 after three request-free days and reduces it to 0 after seven; incoming requests reset the timer, but an already reduced endpoint remains reduced. Because VideoForge initially uses `workersMax=1`, the seven-day reduction is the normal practical case, while Faster profiles may also exercise the three-day cap. The docs mention raising it in the console, while RunPod's official read/update endpoint APIs expose `workersMax`; VideoForge therefore reconciles/restores the approved profile through those APIs and never asks the user to repair it manually. The same preflight covers other configuration drift.
+## One-time preparation
 
-The preflight verifies:
+Volume preparation is separately authorized setup, never part of Generate. For its own lane it
+downloads only pinned sources, builds the approved runtime, records every source/derived path,
+size/SHA-256/configuration/toolchain identity, independently reopens and verifies the mounted
+manifest, and writes the completion marker last. Partial content is not bootable.
 
-- endpoint ID/config revision and `workersMin=0`;
-- approved `workersMax` and ordered GPU priorities;
-- active workers, queue, endpoint health, container template digest, model volume, data center, and volume/DC compatibility;
-- per-job execution timeout and queue+run TTL;
-- current rate snapshot and maximum reservation;
-- signed input URL validity beyond worst-case queue delay;
-- callback/reconciliation identifiers.
+Mage preparation implements the exact ImageForge
+`Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6` INT8 ConvRot profile through
+`Comfy-Org/ComfyUI@26d7f8556822d9d08c2d3e1878636ac3b4969af9`. Echo preparation derives the
+VideoForge-owned FP8 runtime from its pinned first-party Flash, Wan base, and audio-encoder sources;
+compatible transformer linears use `float8_e4m3fn` dynamic activation-and-weight quantization and
+other tensors remain BF16.
 
-RunPod's public defaults and retention are not production values: execution timeout may default to about 600 seconds and async results are retained only briefly (currently 30 minutes). Store provider job IDs immediately, poll stale jobs well before expiry, and persist every artifact/status/cost in VideoForge's own systems.
+One lane cannot read, write, mount, or bless the other lane's volume. A model change requires a new
+explicit preparation/version operation; a billed ordinary Pod never repairs model storage.
 
-## Chunking and fairness
+## Generate and GPU selection
 
-Avoid both extremes:
+One explicit Generate action may authorize both required Pods. Before provider mutation, locally
+decode/probe/hash the voiceover, freeze the revision/input checksum and resumable R2 upload identity,
+determine lanes from immutable generation settings, validate recorded model-volume preparation and
+compatibility evidence, and reserve the cap. Durable upload, local/CPU transcription, and timeline
+preparation may run while both Pods boot. Inference waits for `model_ready`, its exact lane work
+plan, and every required R2/local input's durable verification barrier.
 
-- One job per image reloads/queues too much.
-- One entire 300-image/105-avatar-clip job can monopolize the lane and make recovery coarse.
+Refresh RunPod inventory independently for each lane. Offer only the intersection of current
+`EU-RO-1` availability and qualified model/container/VRAM evidence for that lane. The user explicitly
+chooses the Mage GPU and Echo GPU separately. There is no `Auto` choice or silent GPU/price fallback.
+If one choice disappears, that lane requires refresh/reselection without changing the other.
 
-Initial chunks:
+After both create intents are durable, issue required Mage and Echo creates concurrently. A project
+needing one lane creates only one Pod.
 
-- Prompts: 25–50 scenes.
-- Mage: 32–64 images per RunPod job, checkpointing each artifact.
-- EchoMimicV3-Flash: 15–30 selected spans per production job only after qualification; `VF-9-24I`
-  is exactly one 10.12-second, 253-frame sample and one job. Long Video CFG may internally bound
-  activation windows to 81 frames, but it must return the entire source span as one native clip.
-- Render: one immutable project revision.
+## Exact identity and create ambiguity
 
-The orchestrator dispatches the next chunk only when allowed, enabling round-robin fairness across project owners. A warm worker keeps the model resident across queued chunks.
+Persist a unique lane-scoped `create_attempt_id` before calling RunPod, together with workspace,
+revision, lane, expected Pod tag, template/image digest/API version, exact volume/DC/mount, model
+revision/precision/manifest hash, selected GPU/count, compatibility evidence, rate/reservation, and
+callback/deletion authority.
 
-Do not prefill RunPod's internal queue with an entire project. Per lane, allow at most one active and normally one provider-queued chunk per project. After an item/chunk checkpoints, transactionally select the next eligible owner/project before dispatching again. This is what makes application fairness real.
+Before adoption, provider state and worker health must agree on Pod ID, create attempt, GPU, volume,
+DC, image, worker, and model identity. Reject same-name, wrong-attempt, wrong-image, or cross-volume
+Pods.
 
-## Project/task state
+A lost/ambiguous create response becomes `CREATE_ACK_UNKNOWN`; do not create again. Reconcile by the
+exact attempt tag and expected identity, adopting only one exact match. Multiple/unprovable matches
+fail closed and display possible spend. Another create requires authoritative absence or explicit
+resolution of the first attempt. An idempotency key does not prove provider at-most-once billing.
 
-Project high-level flow:
+## Offline boot and readiness
 
-```text
-DRAFT → UPLOADING → TRANSCRIBING → COMPILING_TIMELINE
-      → GENERATING → TECHNICAL_QA → RENDERING → READY_FOR_REVIEW → APPROVED
-                    ↘ AWAITING_FALLBACK_APPROVAL / BLOCKED_BUDGET
-```
-
-Cancellation path: `CANCEL_REQUESTED → CANCELLING → CANCELLED`. Recovery may expose `RECONCILING`. Terminal alternatives: `FAILED`, `CANCELLED`.
-
-Regenerating a selected segment from `READY_FOR_REVIEW` creates a new versioned review candidate and returns the project through the affected generation/technical-QA/render stages. `APPROVED` is immutable; changes after approval require a new project revision.
-
-Task flow:
-
-```text
-QUEUED → RESERVED → DISPATCHING → DISPATCHED → RUNNING → UPLOADING → SUCCEEDED
-                         │              │             ├→ RETRYABLE_FAILED
-                         │              │             ├→ PERMANENT_FAILED
-                         │              │             └→ CANCELLING → CANCELLED
-                         └→ DISPATCH_ACK_UNKNOWN → RECONCILING
-                                                    ├→ DISPATCHED/RUNNING
-                                                    └→ RETRYABLE_FAILED
-```
-
-State transitions are compare-and-swap/transactional. Provider callbacks can only advance a matching active attempt; stale callbacks are recorded but cannot overwrite a newer accepted result.
-
-## Idempotency and outbox
-
-Canonical idempotency key:
+Ordinary boot reads the prepared volume without contacting model registries:
 
 ```text
-{project_revision_id}:{stage}:{segment_or_chunk_id}:{attempt_number}
-avatar-profile:{avatar_profile_version_id}:compatibility:{assessment_id}:{attempt_number}
+CREATING → container_ready → volume_ready → model_loading → model_ready
 ```
 
-The first form owns ordinary video work. The second owns an optional explicit Avatar Hub compatibility test and dispatches all three short test clips as one bounded chunk so a cold model is loaded once. Merely saving, selecting, or reusing a profile creates no RunPod task.
+- `container_ready`: expected immutable container and health API are reachable; model is not ready.
+- `volume_ready`: lane volume, completion marker, paths, sizes, hashes, revision, precision, and
+  preparation identity verify.
+- `model_loading`: verified bytes load into the selected GPU; inference is rejected.
+- `model_ready`: actual GPU/full identity and a real warm-up pass without OOM, NaN, or contract error.
 
-Before any external call:
+Missing, changed, incomplete, or cross-mounted content fails; never download a substitute. Boot must
+pass with model registries unavailable, while authenticated R2/control-plane access remains. Record
+provisioning, container, volume check, model load, warm-up, first output, completion, and deletion
+timings separately. UI “ready” means `model_ready`, not merely a running container.
 
-1. Reserve budget in the same transaction as task/attempt creation.
-2. Insert an outbox record with the idempotency key.
-3. Dispatch from the outbox worker/workflow.
-4. Store the external job ID immediately.
-5. Mark the outbox item complete only after a confirmed provider acknowledgement.
+## Claims, chunks, and task truth
 
-Retried dispatches reuse the same task UUID when provider semantics allow it. Duplicate callbacks are safe.
+Only the exact `model_ready` Pod may claim a lane task. Transactional leases suppress stale/duplicate
+workers before inference. Initially keep one active chunk per lane and checkpoint each accepted
+artifact to R2. Mage may process bounded image batches; Echo processes only short selected speech
+spans, never a substitute full-voiceover job. Between chunks, the application chooses the next
+eligible owner/project. Delete the Pod when its authorized lane work ends instead of holding it for a
+future project.
 
-The application idempotency key is not proof that RunPod's public `/run` API provides at-most-once dispatch or billing. If acknowledgement is ambiguous, move to `DISPATCH_ACK_UNKNOWN` and reconcile by recorded provider job ID/status before retrying. Every worker must acquire a single task-attempt execution claim from the control plane before loading the costly model; duplicate workers exit and record `DUPLICATE_SUPPRESSED`. The product guarantees one accepted result and reconciled lineage, not zero duplicate provider billing until a provider-semantics gate proves that stronger claim.
+Mage and Echo can work concurrently and complete, fail, retry, accrue cost, and shut down
+independently. Task state uses transactional compare-and-swap:
 
-## Progress and callbacks
+```text
+QUEUED → RESERVED → CLAIMED → RUNNING → UPLOADING → SUCCEEDED
+                    └→ RETRYABLE_FAILED / PERMANENT_FAILED / CANCELLING → CANCELLED
+```
 
-Workers send signed events such as:
+Pod lifecycle is separate. Task success does not prove deletion; deletion does not erase task/result
+or cost evidence. Task idempotency keys are
+`{project_revision_id}:{lane}:{segment_or_chunk_id}:{attempt_number}`. Write budget and outbox intent
+before each external mutation. Only a matching current callback may advance state.
 
-- `worker_starting`
-- `model_loading`
-- `model_ready`
-- `item_started`
-- `item_uploaded`
-- `item_failed`
-- `job_completed`
+## Events and reconciliation
 
-Each event includes `owner_type/owner_id`, attempt, ordinal/total, monotonic sequence, timestamp, GPU SKU, elapsed/billed seconds, and cumulative cost when available. Project events also include project/revision; Avatar Profile test events include profile/version/assessment.
+Signed events include `container_ready`, `volume_ready`, `model_loading`, `model_ready`, item
+start/upload/failure, `lane_completed`, `pod_delete_requested`, and `pod_deleted`. Each carries lane,
+workspace/revision, create attempt, Pod ID, manifest, actual GPU, task attempt, monotonic sequence,
+time, and available elapsed/billed cost. Verify HMAC/timestamp/nonce and exact active identity before
+writing state. A reconciler reads authoritative RunPod state for missing heartbeats and uncertain
+create, cancel, or delete outcomes.
 
-The control API verifies HMAC/timestamp/nonce, writes the event, updates derived status transactionally, and broadcasts UI updates. Use Postgres/realtime polling or SSE with polling fallback; the owner-scoped workflow-event table remains the source.
+## Durable completion and deletion
 
-A scheduled reconciler checks dispatched/running attempts whose heartbeat is stale against RunPod's authoritative status. A lost callback must not strand a project or Avatar Profile test.
+A lane may delete its Pod only after every required successful output reaches its durable barrier:
+upload completion, size/SHA-256/media validation, immutable R2 key, and committed Postgres lineage.
+An explicitly local run may use the equivalent verified local file and receipt. Pod scratch files and
+provider logs do not count.
 
-## GPU selection
+After a lane becomes terminal and passes that barrier, immediately delete its exact Pod and retain
+its volume. Do not wait for the other lane, another project, or an idle timeout. Deletion is:
 
-Default UI choice is `Auto: cheapest compatible`. The user selects an immutable tested **execution profile**, not an arbitrary per-job GPU mutation. RunPod Serverless GPU priorities are endpoint configuration; do not change a shared endpoint configuration for every project.
+1. Persist delete intent for the exact Pod ID/create attempt.
+2. Re-read provider state and verify lane, ownership, volume, image, model, and attempt.
+3. Send one delete for that exact Pod.
+4. Reconcile until exact absence is proven.
+5. Only then record `pod_deleted`/`OFFLINE` and clear possible-spend warning.
 
-Lowest cost/Balanced/Faster resolves one profile ID per lane. Advanced input may override only an exposed tested lane profile. The immutable revision stores the resolved `image_media`, `avatar_primary`, optional `avatar_repair`, and optional `avatar_quality` profile IDs; each attempt separately records the profile and actual GPU that executed.
+A lost/ambiguous delete becomes `DELETE_ACK_UNKNOWN`. Never claim stopped or target another resource;
+continue reconciling the same Pod. The persistent volume is never part of normal cleanup.
 
-Create Project exposes two compact primary controls: `Image generation` for `image_media` and `Avatar generation` for `avatar_primary`. Each control shows the selected profile's truthful readiness/availability state. While `GATE_GPU_001` is open, planned GPU/profile candidates may be listed only as disabled `Benchmark required` options; a provider's public GPU inventory or account balance alone is not endpoint/model compatibility evidence. Fixture mode may select only an explicitly synthetic no-GPU profile and must label it as such.
+## Cancellation, retries, and CPU work
 
-Each execution profile stores:
+Cancellation first records `cancel_requested`, prevents new claims, and asks each exact worker to stop
+at a safe checkpoint. Preserve artifacts/costs, then run the same independent deletion proof. Mark
+the project cancelled only after tasks settle and all Pods are absent or truthfully reconciling.
 
-- Endpoint ID and configuration revision.
-- Allowed GPU SKU IDs in provider priority order.
-- Minimum VRAM.
-- Measured cold/warm runtime.
-- Current hourly/per-second price fetched from RunPod.
-- Data-center/volume compatibility.
-- Last successful worker image digest.
-- Per-job execution timeout/TTL and maximum reservation rate.
-- Availability and estimate timestamp.
+Retry only bounded transient transport, pre-create capacity, worker crash, or upload failures. A
+replacement Mage Pod attaches only the Mage volume; a replacement Echo Pod only the Echo volume.
+Never silently substitute model, GPU, volume, precision, fallback, or repair.
 
-Suggested initial test matrix:
+whisper.cpp ASR and deterministic FFmpeg render/probe run locally or on separately measured
+scale-to-zero CPU compute. They use R2/local artifacts, never either model volume, and never occupy
+the Mage GPU.
 
-- Mage: RTX 4090 first; RTX 5090/L40S faster candidates; 3090/A5000 only if measured quality/throughput remains economical.
-- EchoMimicV3-Flash: RTX 4090 24 GB only for sample-first qualification. No GPU priority fallback.
+## Budget and historical boundary
 
-Expose only profiles whose intersection is valid across benchmarked model/container/VRAM support, endpoint GPU priorities, network-volume data center, and live availability. Lowest cost/Balanced/Faster may map to separate tested endpoint profiles or to documented fallback priorities. If no compatible profile is available, queue with a clear price/time choice. Never silently select an incompatible card or a much more expensive fallback.
+Track reserved, reported, and settled cost per lane and project. Reject creation/additional work that
+would exceed the cap; keep persistent-volume cost visible but do not amortize it by idling Pods.
+Provider balance/capacity failures are visible and cannot loop creates. The initial global limit is
+one Mage Pod plus one Echo Pod.
 
-The progress surface reports `image_media` and `avatar_primary` separately so parallel work is obvious. Show the resolved profile state before dispatch and the actual executing GPU only after authoritative provider/worker evidence exists; never fill that field from a planned priority list.
-
-## Warm-up modes
-
-- Lowest cost: do not prewarm; dispatch when the EDL/prompt batch is ready.
-- Balanced: start per-job avatar source preprocessing/image-avatar cold start during ASR when estimated idle cost remains within cap. Reuse a profile preparation cache only after the exact model proves that cache is safe, keyed by source hash + model/preparation revision.
-- Faster: prewarm both lanes immediately and allow higher compatible GPU priority/concurrency.
-
-Record warm-up idle cost so faster mode is honest.
-
-## Cancellation
-
-- User cancellation marks the revision `cancel_requested` first.
-- Stop new dispatches immediately.
-- Call RunPod cancellation for dispatched jobs where supported.
-- Worker checks cancellation between items and before uploads.
-- Preserve completed artifacts/cost events; do not pretend charges vanished.
-- Final state becomes `CANCELLED` only after active attempts settle or reconciliation confirms termination.
-
-Avatar Profile compatibility-test cancellation follows the same attempt rules but changes the assessment—not any project revision—to `CANCELLED` with retry metadata. It never changes the immutable ready source or charges a project cap.
-
-## Retry policy
-
-Automatic infrastructure retry only for transient transport, provider capacity, worker crash, or upload failure. Use bounded exponential backoff and a maximum attempt count.
-
-Creative/model failures use the explicit per-clip avatar router or an image regenerate action. Never automatically rerun an entire 30-minute project because one scene failed.
-
-## Budget circuit breaker
-
-Track `reserved`, `reported`, and `settled` cost.
-
-- Reject a dispatch when `settled + active reserved + new estimate > hard cap`.
-- Any future avatar retry/fallback requires a new decision, brief, and forecast; none is active.
-- Default 30-minute cap is $1.50; allow deliberate adjustment only within the versioned MVP contract ceiling of $2.00.
-- Workspace daily/monthly caps prevent ten simultaneous users from creating uncontrolled spend.
-- Provider balance errors are visible and do not cause infinite retry.
-- Optional Avatar Profile tests reserve against a separate profile-version onboarding cap, use the same outbox/ambiguous-ack/cancel/reconciliation rules, and never consume a project's video cap.
-
-## Hourly Pod optimization, later only
-
-If measured volume makes Serverless premiums material, add a lane implementation that creates and stops hourly Pods through RunPod's API. It requires:
-
-- Owner-bound idempotent create.
-- One active lease per worker.
-- Authoritative RunPod state reconciliation.
-- Start on first queued work.
-- Worker long-poll/claim.
-- Stop only after zero queued/active jobs and drain timeout.
-- Fail closed on ambiguous create/stop responses.
-
-This is an adapter behind the same task contract, not MVP infrastructure.
+The former Serverless `/run`, `workersMin`/`workersMax`, endpoint queue, FlashBoot, automatic drain,
+GPU priority list, and shared image/media endpoint design is historical only. AvatarForcing,
+MuseTalk, and SkyReels endpoint routes are also replay-only. No current work may dispatch them or use
+them to justify shared volumes without a new explicit decision and gate.

@@ -25,27 +25,29 @@ Do not add music or sound effects in MVP unless the user later approves a separa
 
 ### `AVATAR_FULL`
 
-Avatar occupies the full 1920×1080 frame. The render manifest pins one of two deterministic, centered source profiles.
+Avatar occupies the full 1920×1080 frame. The active EchoMimicV3-Flash FP8 render profile must pin the accepted native geometry, frame rate, deterministic centered crop, and scale after the exact sample is approved. That active Echo crop remains an open gate; do not infer it from an older avatar model.
 
-AvatarForcing's typical 832×480/25 fps output uses `avatarforcing-centered-832x480p25-v1`, crops exactly to 16:9, then scales:
+The following coordinates are historical replay contracts only. They preserve already-recorded manifests and are not valid active Echo profiles.
+
+Historical AvatarForcing 832×480/25 fps replay uses `avatarforcing-centered-832x480p25-v1`:
 
 ```text
 crop=832:468:0:6,scale=1920:1080
 ```
 
-The square canonical Avatar runtime source selects SkyReels' 960×960/25 fps 720P bucket and uses `skyreels-centered-960x960p25-v2`:
+Historical SkyReels 960×960/25 fps replay uses `skyreels-centered-960x960p25-v2`:
 
 ```text
 crop=960:540:0:210,scale=1920:1080
 ```
 
-Do not route a SkyReels asset through AvatarForcing crop coordinates or downscale it to 832×480 before layout. The accepted asset records its exact source profile; renderer schema validation rejects a mismatched profile/crop pair.
+Do not route an Echo asset through either historical crop. Every accepted asset records its exact source profile; renderer schema validation rejects a mismatched model/profile/crop pair.
 
 Avatar source requirements are enforced when a reusable Avatar Profile version is approved in the Avatar Hub: horizontally centered, direct-to-camera, eye-level, tight head-and-shoulders or medium close shot, natural setting, and suitable for restrained motion. A project always uses the exact pinned runtime source/checksum; upscaled full-screen detail remains an acceptance gate.
 
 ### `IMAGE_FULL`
 
-A narration-relevant 16:9 Mage image following the project's pinned Image Style fills 1920×1080. The clip applies only a slow centered zoom-in. Default generation candidate is 1536×864; benchmark 1024×576, 1280×720, and 1536×864 before lock.
+A narration-relevant Mage image following the project's pinned Image Style fills 1920×1080. The active ImageForge-compatible generation contract is `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6` through pinned ComfyUI, using `int8-convrot`, four steps, guidance `1.0`, and exact 1280×720 output. The renderer scales that 16:9 source to the delivery frame and applies only a slow centered zoom-in.
 
 Recommended zoom envelope:
 
@@ -63,15 +65,15 @@ Recommended zoom envelope:
 
 ### `AVATAR_SPLIT_IMAGE`
 
-Use the same accepted centered clip that would serve full-screen; never generate a layout-specific second avatar clip. Apply the crop belonging to its pinned source profile.
+Use the same accepted centered Echo clip that would serve full-screen; never generate a layout-specific second avatar clip. The active full/split crop pair must be measured from the same approved native Echo output and pinned together. Until that gate closes, no active Echo split crop exists.
 
-AvatarForcing profile:
+Historical AvatarForcing replay profile:
 
 ```text
 crop=416:468:208:6,scale=960:1080
 ```
 
-SkyReels fallback profile:
+Historical SkyReels replay profile:
 
 ```text
 crop=480:540:240:210,scale=960:1080
@@ -81,15 +83,13 @@ crop=480:540:240:210,scale=960:1080
 - Image: x=960 through 1919.
 - Clean central seam.
 - No divider, border, label, shadow, rounded panel, or decoration.
-- The right image should be generated for an 8:9-safe composition when possible; 1024×1152 is the initial candidate.
+- Mage still returns the locked 1280×720 output. Split-scene prompt guidance keeps the evidence inside the pinned 8:9-safe crop, and the resolved render manifest records the deterministic crop/scale used for the right panel.
 - The right image uses the smaller 1.00 → 1.025 `split-right-zoom-v3` profile during the short split
   interval. Every displayed AI image moves slowly, including split companions.
 
 ### Avatar frame-rate conversion
 
-AvatarForcing and SkyReels candidate outputs are 25 fps while delivery is 30 fps. Convert each
-accepted source directly with ordinary FFmpeg nearest-timestamp frame duplication/resampling (the
-equivalent of `fps=30:round=near`) before layout:
+The active Echo sample must establish its native frame rate and approved conversion profile before production integration. If the accepted native output is 25 fps, convert it directly with ordinary FFmpeg nearest-timestamp frame duplication/resampling (the equivalent of `fps=30:round=near`) before layout. Historical AvatarForcing and SkyReels 25 fps manifests retain that same replay rule:
 
 - Preserve duration and timeline boundaries exactly.
 - Do not use optical flow, frame interpolation, or another AI model.
@@ -101,12 +101,15 @@ equivalent of `fps=30:round=near`) before layout:
 - Start at 00:00 with `AVATAR_FULL` unless a later user decision overrides the cold-open rule.
 - Target 21–22% total avatar coverage.
 - Target approximately half of avatar time in `AVATAR_FULL` and half in `AVATAR_SPLIT_IMAGE`.
-- Typical avatar clip: 2–6 seconds, approximately 3.7 seconds average.
+- Normal avatar clip: 2–6 seconds, approximately 3.7 seconds average; six seconds is the normal hard maximum.
+- A strong opening sentence may extend only to seven seconds. No later avatar appearance may use that exception.
 - Target avatar cadence: one appearance every 14–20 seconds, adjusted to phrase boundaries.
 - Alternate full and split as the VideoForge rule; do not claim the source videos do so without every exception.
 - Fill all remaining time with 3–7 second images, merging or splitting at clauses/sentences.
 - Every output frame has exactly one visual composition; no gaps and no overlaps.
 - No silent visual montage; narration drives the entire edit.
+
+These limits reproduce the measured reference cadence and bound independent Echo work units. They do not establish or imply that VRAM consumption scales linearly with clip duration; only measured runtime evidence may support a memory claim.
 
 ## Built-in default visual language
 
@@ -142,10 +145,10 @@ Before delivery verify:
 
 - Exact duration matches source audio within the accepted mux tolerance.
 - Constant 1920×1080/30 fps and `yuv420p`.
-- Deterministic native 25→30 AvatarForcing and SkyReels conversion has no duration change, drift, or unacceptable visible cadence.
+- The accepted Echo native-to-30-fps conversion has no duration change, drift, or unacceptable visible cadence; historical AvatarForcing/SkyReels replay retains the same check.
 - Audio/video starts at zero; no drift or missing tail.
 - Exactly one EDL segment covers every frame.
-- Full and split crop geometry matches the selected source-profile formulas above; a profile/crop mismatch is rejected.
+- Full and split crop geometry matches the accepted model-specific source profile; active Echo output is blocked until its measured profile is approved, and a model/profile/crop mismatch is rejected.
 - Both `IMAGE_FULL` and the right image in `AVATAR_SPLIT_IMAGE` have the required subtle eased zoom;
   neither is static, neither oscillates around its center, and neither exhibits integer-crop shake.
 - Every image attempt and content-addressed prompt manifest points to the revision's pinned Image Style version/effective prompt hash; `production-manifest/v2` binds that prompt manifest plus the pinned Avatar Profile binding to the renderer-only resolved-render manifest and final MP4.

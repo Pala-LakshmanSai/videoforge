@@ -80,36 +80,54 @@ Approved purpose: every original B-roll still.
   `d8c99241f6fa80fbd453014234af2bf337ea21e6`, loaded through pinned headless ComfyUI.
 - Model family: 4B.
 - Mode: Turbo, 4 denoising steps, CFG 1.0.
-- Dtype candidate: BF16.
+- Runtime profile: INT8 ConvRot, matching the user's current ImageForge model path.
+- Output: 1280×720.
 - Native variable resolution: official card describes 512–2048 and up to 4:1.
 - Official A100 card result: about 0.59 seconds at 1024² and about 18–20 GB peak memory.
-- Initial GPU target: RTX 4090 24 GB.
+- GPU: selected by the user from a freshly queried, model-compatible live inventory independently of
+  the Echo GPU. Public inventory is not compatibility evidence; only qualified choices are exposed.
 
-Resolution bakeoff:
-
-| Use | Candidates | Lock criterion |
-|---|---|---|
-| Full image | 1024×576, 1280×720, 1536×864 | Final 1080p detail vs total batch time/cost |
-| Split-right | 768×864 or 1024×1152 | Clean 960×1080 crop, subject safety, speed |
-
-Use packed batches if the official implementation stays stable. Do not add an upscaler until blind final-frame evaluation proves a material improvement.
+The 1280×720 lock replaces the earlier resolution/BF16 candidates. Final 1080p detail and split-safe
+framing remain acceptance checks, but they do not authorize a silent resolution, precision, or model
+change. Use packed batches only if the exact ImageForge runtime remains stable. Do not add an
+upscaler until blind final-frame evaluation proves a material improvement.
 
 The separate `microsoft/Mage-Flow-Edit-Turbo` model is not needed in the normal MVP. Add it only if the user later approves reference editing/outpainting.
 
 Mage receives a text prompt compiled from the selected style profile; it does not receive the style's reference images in MVP. Prompt-derived styling is intentionally simple/cheap but must pass `GATE_STYLE_002`. Do not silently introduce reference conditioning or LoRA training if a distinctive style fails.
 
-The proven runtime is stock `Comfy-Org/ComfyUI` at
-`1108f2ac5e412b27accb0e5d51c90ef2ba39784d`, using PyTorch attention. No FlashAttention, diffusers,
+The exact current ImageForge runtime is stock `Comfy-Org/ComfyUI` at
+`26d7f8556822d9d08c2d3e1878636ac3b4969af9`, using PyTorch attention. No FlashAttention, diffusers,
 Microsoft package, watermark patch, or refusal patch is part of this path. The exact graph uses
 `CLIPLoader.type=mage` and the latent emitted by `TextEncodeMageFlowEdit`; an EmptySD3 latent is invalid.
 
-The immutable public weight revision contains the transformer
-`sha256:6df47df3d7efc9ebdad075b87b3e9e4f74d09dca672d592271788f0ee27ab97d`
-(`8,231,536,760` bytes), Qwen encoder
+The exact normal-runtime file set at the immutable public revision is
+`diffusion_models/mage_flow_turbo_int8_convrot.safetensors`,
+`text_encoders/qwen3vl_4b_bf16.safetensors`, and `vae/mage_flow_vae_bf16.safetensors`.
+Existing evidence records the Qwen encoder as
 `sha256:36f3ff447ef59201722e8f9ce6020c9819fdcfba6aa2608c4e09b1c0ce114e34`
 (`8,875,719,384` bytes), and VAE
 `sha256:34e076dc1e8a15321e1e07be5111d59cf16dd10b804b7c7e20b4de29013427e0`
-(`345,053,056` bytes). Never resolve mutable `main` at runtime.
+(`345,053,056` bytes). The earlier BF16 transformer was
+`sha256:6df47df3d7efc9ebdad075b87b3e9e4f74d09dca672d592271788f0ee27ab97d`
+(`8,231,536,760` bytes), but it is historical and is not part of the selected normal-runtime file
+set. The one-time preparation gate must record the INT8 transformer's exact size and SHA-256 before
+writing the complete marker. Never resolve mutable `main` at runtime.
+
+Mage owns one dedicated, persistent `EU-RO-1` network volume and one disposable Pod. Its capacity
+is not yet approved: provisioning must derive it from the verified Mage manifest plus explicit
+operational headroom and record the chosen allocation before spend. The volume is not shared with
+or mounted by Echo. An explicitly authorized one-time preparation job
+downloads the three exact pinned ComfyUI-format runtime files, records every path, size, SHA-256,
+configuration, ComfyUI/container revision, and writes a completion marker only after independent
+verification. The VideoForge volume and Pod profile is not yet qualified and must not be treated as
+a confirmed production profile.
+
+A normal Mage Pod boot mounts that volume, verifies the complete manifest, and loads the model to the
+user-selected GPU without downloading model bytes or resolving a network model repository. Missing,
+mutated, cross-mounted, or incomplete content fails closed. Inputs and outputs are separate mutable
+job artifacts; they never enter the model volume. The Pod is deleted after the image lane finishes;
+the volume remains as accepted fixed-cost infrastructure.
 
 Terms evidence remains ambiguous. The indexed official model page reports MIT. Microsoft's public
 `microsoft/Mage` source repository at `76bec2bb3818863f470de7e867c2dc7f1d0bfd83` has an MIT
@@ -122,9 +140,9 @@ Official runtime sources: [Comfy-Org Mage-Flow weights](https://huggingface.co/C
 and [ComfyUI](https://github.com/Comfy-Org/ComfyUI). Historical Microsoft sources remain terms
 evidence only and are not the runtime implementation.
 
-Qualification status through VF-9-20: worker and application acceptance plumbing exist, but no
-production profile is eligible. Three technically valid PNGs failed strict visual review and the
-40-prompt matrix returned no output after provider failures. Fixture remains default.
+Qualification status: worker and application acceptance plumbing exist, but no production profile is
+eligible. The earlier BF16 attempts remain historical evidence and do not qualify the new exact INT8
+ConvRot/1280×720 volume profile. Fixture remains default.
 
 ## EchoMimicV3-Flash
 
@@ -137,29 +155,44 @@ profile is eligible.
 - Base: `alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP@fc913c34361f4ec879e2f9c78b4f11ae50a937d1`, Apache-2.0.
 - Audio encoder: `TencentGameMate/chinese-wav2vec2-base@3991242c806928916fff4a8c0e4f76acf661b743`, MIT.
 - Exact selected runtime bytes: `23,922,317,735` decimal bytes before small configs/source/dependencies.
-- Active sample mode: compatible transformer linear operations use TorchAO 0.7.0
-  `float8_e4m3fn` dynamic activation-and-weight quantization; remaining tensors stay BF16. Sampling
-  remains 8 steps, `Flow_Unipc`, 25 fps, seed 43, TeaCache threshold 0.1, and empty negative prompt.
-- Exact 253-frame output uses upstream Long Video CFG with 81-frame partial windows and 5 latent
-  overlap frames. Input/output duration is unchanged; this bounds activation memory rather than
-  shortening the sample.
+- Runtime profile: a VideoForge-prepared FP8 artifact derived from the pinned first-party Flash
+  safetensors with a pinned TorchAO toolchain; compatible transformer linear operations use
+  `float8_e4m3fn` dynamic activation-and-weight quantization and remaining tensors stay BF16.
+- Sampling remains 8 steps, `Flow_Unipc`, 25 fps, seed 43, TeaCache threshold 0.1, and empty negative
+  prompt unless a later accepted model-profile decision supersedes it.
+- No Long Video CFG. Echo receives only the scheduler's short selected speech spans, never the full
+  voiceover or a replacement long-video workload.
 - Input: canonical runtime image from exact Avatar Profile version, selected speech span, restrained prompt.
 - One native clip serves both layouts after a measured renderer crop profile is approved.
-- RTX 4090 24 GB is selected for `VF-9-24I`; RTX 5090 is not silently used because the pinned
-  PyTorch 2.5.1 CUDA 12.1 stack does not qualify Blackwell.
+- GPU: selected by the user from a freshly queried, Echo-compatible live inventory independently of
+  the Mage GPU; selected and actual GPU identity must match the immutable attempt profile.
 
 The upstream `GPU_memory_mode=sequential_cpu_offload` argument is parsed but never enables offload.
-VideoForge makes no CPU-offload claim. Worker bootstrap downloads exact files once into ephemeral
-`/models`, verifies revision/path/size/SHA-256, writes an immutable complete marker, and rejects any
-incomplete or mutated cache before inference.
+VideoForge makes no CPU-offload claim.
 
-`GATE_AVATAR_004` read-only preflight found all pinned artifacts public, ungated, and license-labeled.
-It remains open until runtime bootstrap reproduces the exact manifest. `GATE_AVATAR_001` remains open
-until native sample review and later full qualification.
+Echo owns a different persistent `EU-RO-1` network volume and a different disposable Pod. Its
+capacity is likewise not yet approved and must be manifest-derived with explicit headroom. It never
+shares or cross-mounts the Mage volume. An explicitly authorized one-time preparation
+job downloads and verifies the pinned source/Flash/base/audio-encoder files, prepares the
+VideoForge-owned FP8 runtime without an uncarded third-party pickle, records source and derived
+hashes plus the exact TorchAO/runtime toolchain, and writes a completion marker only after
+independent verification. The exact serialized FP8 artifact and manifest remain gate-controlled.
+
+A normal Echo Pod boot mounts only the Echo volume, verifies its complete manifest, and loads the
+model to the user-selected GPU without downloading model bytes or resolving a network model
+repository. Missing, mutated, cross-mounted, or incomplete content fails closed. Private avatar and
+audio inputs remain outside the model volume. The Pod is deleted after the avatar lane finishes; the
+Echo volume remains as accepted fixed-cost infrastructure.
+
+`GATE_AVATAR_004` read-only preflight found all pinned source artifacts public, ungated, and
+license-labeled. It remains open until the dedicated persistent volume contains the exact prepared
+FP8 manifest and a normal offline Pod boot reproduces it without cross-mounting or downloading.
+`GATE_AVATAR_001` remains open until native sample review and later full qualification.
 
 No first-party FP8 checkpoint is published. A third-party `fp8wo` pickle exists without a model
-card or declared license and is not used. VideoForge deterministically quantizes the pinned
-Apache-2.0 Flash safetensors at runtime using BSD-3-Clause TorchAO. This also avoids executing an
+card or declared license and is not used. VideoForge's one-time controlled preparation derives its
+own FP8 runtime from the pinned Apache-2.0 Flash safetensors using pinned BSD-3-Clause TorchAO. The
+prepared bytes, procedure, and manifest must pass the gate before use; this avoids executing an
 uncarded pickle payload.
 
 Official sources: [pinned source](https://github.com/antgroup/echomimic_v3/tree/7e89489ca51c0d008fc1963ec6c03fc5bd0b9397), [pinned Flash weights](https://huggingface.co/BadToBest/EchoMimicV3/tree/311e176905a8c4c24b240b530488fe636ce4d249), [pinned base](https://huggingface.co/alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP/tree/fc913c34361f4ec879e2f9c78b4f11ae50a937d1), and [pinned audio encoder](https://huggingface.co/TencentGameMate/chinese-wav2vec2-base/tree/3991242c806928916fff4a8c0e4f76acf661b743). Evidence: `evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight/`.

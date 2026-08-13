@@ -16,12 +16,15 @@ The app must automate a visually simple but quality-sensitive edit. Quality come
 3. Create a project with a title and voiceover audio; no avatar image is re-uploaded for that video.
 4. Select a published Image Style; Authentic Documentary Stock is already selected by default.
 5. Optionally enable project-wide extra image-prompt keywords.
-6. Pick Lowest cost, Balanced, or Faster, then review or override the independently resolved image/media and primary-avatar execution profiles from tested compatible choices.
+6. Review live compatible `EU-RO-1` inventory and explicitly choose one tested current GPU offering
+   for the Mage image Pod and one for the Echo avatar Pod. Suggestions may be highlighted, but never
+   become selections without user confirmation.
 7. See preflight validation, effective avatar/style settings, estimated cost, and a configurable spend cap.
-8. Submit once.
-9. Watch truthful parallel image/avatar progress, queue position, ETA, cost, retries, and blockers.
+8. Select **Generate video** once. That one action starts one disposable Mage Pod and one disposable Echo Pod concurrently, each attached to its own retained model volume.
+9. Watch truthful parallel durable upload/local preparation, Pod boot, volume verification,
+   model-ready, image, and avatar progress, plus queue position, ETA, cost, retries, and blockers.
 10. Review a lightweight segment strip; regenerate or replace only a failed asset if needed.
-11. Preview the finished 1080p video/contact sheet, fix any visible generated-pixel defect, approve it, and download it with its provenance manifest.
+11. Preview the automatically assembled 1080p video/contact sheet, fix any visible generated-pixel defect, approve it, and download the final MP4 with its provenance manifest.
 
 The happy path must not require a nonlinear editor, RunPod console, shell, model knowledge, or prompt writing.
 
@@ -40,7 +43,12 @@ Optional:
 - `extra_prompt_keywords`: up to 500 characters of image-only refinements such as `ultra realistic, no AI look`.
 - `apply_extra_prompt_keywords`: explicit boolean, default false. Text is preserved while off but excluded from all generation requests.
 - `user_seed`: advanced reproducibility setting; normally generated automatically.
-- `execution_profile_overrides`: independent `image_media` and `avatar_primary` selections from immutable tested compatible profiles only; normally absent so Lowest cost/Balanced/Faster resolves both. A planned GPU/profile may be shown disabled for orientation but cannot be selected before `GATE_GPU_001` passes.
+- `gpu_selections`: two required compute-run selections, one `image_media` and one
+  `avatar_primary`, each resolved from a fresh compatible `EU-RO-1` inventory receipt and pinned to
+  its immutable tested model/container/volume profile before Pod creation. This is a planned vNext
+  field; the checked-in legacy request schema does not yet authorize paid dispatch. A planned or
+  unavailable GPU may be shown disabled for orientation but cannot be selected before
+  `GATE_GPU_001` passes.
 - `spend_cap_usd`: suggested default is `min(max($0.10, $1.50 × duration / 30 minutes), $2.00)`; the user may lower it no further than `$0.10`, while the MVP schema always rejects values above `$2.00`.
 
 ## Output
@@ -49,6 +57,7 @@ Optional:
 - Continuous final voiceover, aligned to the supplied audio.
 - Full-screen avatar, full-screen AI image, and 50/50 avatar-left/image-right only.
 - AI images follow the pinned selected style and move with a slow, smooth zoom-in.
+- Automatic final assembly; no manual import, alignment, crop, or timeline work in Premiere Pro or another nonlinear editor is required.
 - A JSON `production-manifest/v2` provenance index binding the revision/timeline/render manifests, prompt components, selected avatar/style versions and hashes, extra-keyword toggle, models, seeds, attempts, costs, QA lineage, and final output.
 
 ## Functional capabilities
@@ -56,9 +65,15 @@ Optional:
 - Invite-only Google authentication and role-aware access.
 - Workspace/project ownership and safe multi-user isolation.
 - Durable queue with fairness, retries, cancellation, recovery, and clear state.
-- Parallel image and avatar lanes.
-- Automatic RunPod provisioning/dispatch/scale-to-zero through API.
-- Compatibility-filtered GPU profiles and availability display.
+- Parallel image and avatar lanes whose disposable Pods start together from the single Generate action while local upload, ASR, timeline, prompt, and selected-span preparation continue.
+- Automatic RunPod Pod creation, volume attachment, readiness verification, dispatch, drain, deletion, and reconciliation through API. Container health is not model readiness; no generation task is dispatched until its lane reports authoritative `model_ready` for the exact pinned runtime.
+- A dedicated retained Mage model volume and a separate retained Echo model volume in `EU-RO-1`.
+  Ordinary workers treat verified model files as immutable/read-only application data and write
+  scratch/results elsewhere; provider-enforced read-only mounting is not assumed. Deleting a
+  disposable Pod never deletes either model volume.
+- Compatibility-filtered live GPU inventory and independent Mage/Echo selection. Each selected GPU, price snapshot, Pod, volume, model profile, and readiness evidence is pinned in attempt lineage.
+- Mage image generation uses the ImageForge-compatible active contract: `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6`, pinned ComfyUI, `int8-convrot`, four steps, guidance `1.0`, and 1280×720 output.
+- Avatar generation uses the pinned EchoMimicV3-Flash FP8 runtime and only the scheduler-selected speech spans.
 - Per-project estimated and actual cost, with hard enforcement.
 - Workspace Avatar Hub with named private profiles, one-time source upload, immutable ready versions, crop/rights validation, optional explicit compatibility tests, archive/version controls, and required project selection.
 - Workspace Image Styles Hub with private references, one-time multimodal analysis, rights/provider-retention disclosure, human review, immutable published versions, duplicate/test/archive, durable cover fallback, and a non-deletable built-in default.
@@ -80,19 +95,19 @@ Optional:
 ## Cost and performance requirements
 
 - Required fixed web/app subscription cost: $0 while free tiers suffice.
-- RunPod network-volume cost is accepted and reported separately.
+- RunPod network-volume cost is accepted and reported separately. Model storage is an intentional fixed cost; VideoForge must not trade it away for repeated model downloads.
 - Creating a new Image Style may spend roughly $0.03–$0.07 once; it is shown separately and never repeated for each video using that style.
 - Creating/selecting an Avatar Profile uses no LLM. Any explicitly requested one-time compatibility preview is estimated and charged to the Avatar Profile version, not the video; a ready profile adds no onboarding cost per project.
-- 30-minute Serverless planning: about $0.40–$0.98 fast/no-major-fallback and $0.50–$1.30 with modest fallback; normally below $1 where measured fast-path assumptions hold, never silently above the user cap.
+- Project compute cost is calculated from the two selected live Pod rates and measured boot/inference time. Historical Serverless estimates do not qualify this Pod architecture; representative cold/warm Pod measurements must replace them before production claims.
 - Operational approval threshold: pause before projected cost exceeds $1.50 by default; the MVP project contract has a hard $2 ceiling. Raising that ceiling later requires an explicit decision and versioned contract change.
 - Cold, no-fallback 30-minute isolated-service p50 goal: at or below 30 minutes; p90 goal at or below 45 minutes; report queue wait separately.
-- Image/avatar tasks must run concurrently; queue batching should amortize boots when jobs are back-to-back.
+- Mage and Echo Pods start concurrently. Local preparation overlaps their boot, each lane begins only after authoritative model readiness, and each Pod drains and is deleted independently as soon as that lane's accepted assets are durable.
 
 ## Multi-user requirements
 
 - Initial scale: 5–10 invited users, not public signup.
 - One or two active projects per workspace by default; additional projects remain visible in a fair queue.
-- One user's backlog must not monopolize every endpoint.
+- One user's backlog must not monopolize either model lane.
 - The same project cannot be mutated concurrently without an explicit revision/lease.
 - Users see owner, current worker, active revision, and permitted actions.
 - Cancellation is cooperative and truthful; already-billed work is recorded.
@@ -114,4 +129,4 @@ Optional:
 
 ## Definition of a decent MVP
 
-The MVP is decent when one invited non-developer can create and reuse a named Avatar Profile, create/review a reusable Image Style, select both in a real project without re-uploading the avatar, submit real inputs, follow progress, recover from a failed asset, and download a relevant, style-faithful, correctly structured 30-minute video without developer help; two or more users can queue work safely; the style analyzer, Mage, and exact-avatar acceptance suites pass; Chrome E2E passes; and measured cost remains within the configured budget.
+The MVP is decent when one invited non-developer can create and reuse a named Avatar Profile, create/review a reusable Image Style, select both in a real project without re-uploading the avatar, choose independent compatible Mage/Echo GPUs, select Generate once, follow truthful boot/generation progress, recover from a failed asset, and download a relevant, style-faithful, correctly structured final video without manual editing or developer help. The two retained model volumes must survive disposable Pod deletion, later Pods must reuse them without downloading model weights again, two or more users must queue work safely, the style analyzer/Mage/exact-avatar acceptance suites and Chrome E2E must pass, and measured cost must remain within the configured budget.

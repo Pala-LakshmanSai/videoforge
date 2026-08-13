@@ -14,6 +14,7 @@ These files preserve the reasoning trail. They are not current architecture/mode
 - 729×257.
 - SHA-256: `07c45d40d809216a37245c74a0535b0816391bf9fbdbf0e466fc086ef365627c`.
 - Unattributed Hallo3/Hallo2/LivePortrait/MuseTalk/SadTalker ranking supplied during research.
-- Status: non-authoritative and superseded by the approved AvatarForcing → MuseTalk repair → SkyReels ladder.
+- Status: non-authoritative. The later AvatarForcing → MuseTalk → SkyReels ladder is itself
+  historical and superseded by the active EchoMimicV3-Flash-only decision.
 
 Do not use either image in the product UI or generated videos.

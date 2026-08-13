@@ -7,18 +7,30 @@ Read when: implementing transcript alignment, EDL compilation, prompt dispatch, 
 
 ```mermaid
 flowchart TD
-    A["Validate title, audio, ready Avatar Profile, pinned style and optional keywords"] --> B["Create immutable revision and upload voiceover to R2"]
+    P["Local decode/probe/hash + pinned avatar/style + upload reservation + GPUs/cap"] --> A["One Generate action: freeze revision and start work"]
+    A --> B["Durable voiceover upload"]
+    A --> M0["Create Mage Pod in EU-RO-1 and attach retained Mage volume"]
+    A --> E0["Create Echo Pod in EU-RO-1 and attach retained Echo volume"]
+    M0 --> M1["Verify exact Mage volume manifest and load INT8 model"]
+    E0 --> E1["Verify exact Echo volume manifest and load FP8 model"]
+    M1 --> MR["Authoritative Mage model_ready"]
+    E1 --> ER["Authoritative Echo model_ready"]
     B --> C["Local ASR; legacy API script alignment when supplied"]
-    B --> W["Optional parallel lane warm-up by mode"]
     C --> D["Sentence and word timing"]
     D --> E["Seeded deterministic timeline scheduler"]
     E --> F["Immutable timeline plan + validation"]
     F --> G["Runware prompt batches"]
-    F --> H["Selected avatar audio manifest"]
-    G --> I["Mage image batches"]
-    H --> J["EchoMimicV3-Flash batches"]
+    F --> H["Selected avatar span slicing + manifest"]
+    G --> I0["Durable Mage work ready"]
+    H --> J0["Durable Echo work ready"]
+    MR --> I["Dispatch Mage image batches"]
+    I0 --> I
+    ER --> J["Dispatch EchoMimicV3-Flash span batches"]
+    J0 --> J
+    I --> ID["Images durable; drain and delete Mage Pod"]
+    J --> JD["Avatar clips durable; drain and delete Echo Pod"]
     J --> K["Deterministic technical QA"]
-    I --> N["Accepted-asset barrier"]
+    ID --> N["Accepted-asset barrier"]
     K --> N
     N --> R["Resolved render manifest"]
     R --> O["FFmpeg compile/render"]
@@ -26,16 +38,19 @@ flowchart TD
     P --> Q["Ready + manifest"]
 ```
 
-Critical-path time is:
+Pod attachment/model loading and local preparation overlap. Critical-path time is:
 
 ```text
-upload + ASR + scheduler
-+ max(prompting + image cold start + image generation,
-      avatar cold start + avatar generation + clip QA/fallback)
+Generate preflight
++ max(durable upload + local ASR + scheduler + prompt/span preparation,
+      Mage Pod create + volume verify + model load,
+      Echo Pod create + volume verify + model load)
++ max(remaining Mage generation,
+      remaining Echo generation + clip QA)
 + final render + technical QA
 ```
 
-Never report image time plus avatar time as if the lanes were sequential.
+Never report image time plus avatar time as if the lanes were sequential. Container health, an open HTTP port, or a mounted volume is not model readiness. A lane may dispatch generation only after the exact Pod reports authoritative `model_ready` for its pinned container, model manifest, volume, and selected GPU.
 
 Image Style reference analysis is deliberately outside this critical path. A project may start only with a published pinned style version; it reads the stored profile and makes no Gemini vision call.
 
@@ -44,6 +59,14 @@ Image Style reference analysis is deliberately outside this critical path. A pro
 ### 1. Ingest
 
 - Enforce the MVP input envelope: English voiceover, 10 seconds–60 minutes, at most 1 GB; title 1–240 characters; supported decodable audio; exact accessible `READY` Avatar Profile version; and published Image Style version.
+- Before the single Generate mutation, locally decode/probe/hash the voiceover and freeze its
+  checksum/metadata plus a resumable R2 upload reservation, immutable creative revision, exact ready
+  avatar/style bindings, independent live Mage/Echo GPU selections, model-volume preparation
+  evidence, and budget reservation. Generate then starts both disposable Pods concurrently. Mage
+  and Echo attach different retained model volumes.
+- Continue durable voiceover upload, local ASR, timeline, prompts, and span slicing while both Pods
+  boot. The immutable checksum/upload identity exists before provider mutation; no inference task
+  may dispatch until its exact R2/local input assets pass their durable barrier.
 - Probe the audio with FFprobe.
 - Normalize a temporary analysis copy to 16 kHz mono PCM; preserve the original for final output.
 - Resolve the selected Avatar Profile version, verify it is `READY`, available, workspace-accessible, and belongs to an `ACTIVE` parent, then pin its canonical profile hash plus runtime source asset/checksum. A previously selected v1 remains valid after v2 becomes active; do not re-upload or silently upgrade/replace it during project ingest.
@@ -53,10 +76,10 @@ Image Style reference analysis is deliberately outside this critical path. A pro
 
 ### 2. Free local word timing
 
-Use `whisper.cpp base.en`, not Groq/Deepgram:
+Use `whisper.cpp base.en`, not Groq/Deepgram. This is a local/provider-free preparation stage and never requires either model Pod:
 
 - Local M4 development: Metal + FlashAttention, greedy decode, one segment per word using the proven QuickCut approach.
-- Production: CUDA build in the image/media worker; benchmark against faster-whisper once and lock the faster equivalent only if outputs remain compatible.
+- Production: run in the local/provider-free media preparation lane; benchmark an equivalent implementation only if outputs remain contract-compatible.
 - Normalize audio once.
 - Persist millisecond word starts/ends and true FFprobe duration.
 
@@ -94,6 +117,8 @@ Initial algorithm:
 
 No LLM is called during this algorithm.
 
+Normal avatar appearances have a hard 2–6-second envelope. Only the opening sentence may use the bounded 4–7-second exception. This edit rule follows measured reference cadence and creates bounded independent Echo work units; it is not evidence that VRAM scales linearly with audio duration.
+
 Expected 30-minute envelope:
 
 - Total avatar: about 396 seconds.
@@ -113,17 +138,23 @@ These are targets, not hard-coded counts. Speech boundaries win over hitting an 
 - Keep the full selected style suffix, optional enabled extra keywords, and permanent guardrails in code. Never send project extra keywords to DeepSeek.
 - Validate strict JSON and scene IDs.
 - Retry only missing/invalid items once; then show a blocker or deterministic fallback prompt.
-- Dispatch each valid batch to Mage immediately instead of waiting for all prompts.
+- Persist each valid batch immediately instead of waiting for all prompts. Dispatch it as soon as the Mage Pod has also produced authoritative `model_ready` evidence.
 
 ### 6. Image generation
 
-- Use Mage-Flow-Turbo, 4 steps, CFG 1, pinned revision/hash.
+- Use the exact ImageForge-compatible active contract: `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6`, pinned ComfyUI, `int8-convrot`, four steps, guidance `1.0`, and 1280×720 output.
+- Mount the dedicated retained Mage model volume on the selected disposable `EU-RO-1` Mage Pod.
+  Treat verified model files as immutable/read-only in the worker, write scratch/results elsewhere,
+  verify the content-addressed manifest before and after the ordinary job, load the model, and emit
+  authoritative `model_ready` before accepting a generation dispatch. Do not assume RunPod provides
+  a read-only mount flag.
 - Compile every prompt from scene core + crop guidance + pinned style suffix + enabled extra keywords + permanent guardrails. Store writer/compiler versions, components, exact final positive/negative UTF-8 strings, and hashes of the exact submitted bytes.
 - Keep a model resident while processing the project's batches.
-- Generate full images in 16:9 and split companions in 8:9 where supported.
+- Generate every Mage asset at 1280×720. For split companions, prompt for the pinned 8:9 safe area and record the renderer's deterministic crop from the same locked output profile.
 - Upload each result immediately with checksum and metadata.
 - Record prompt, seed, latency, GPU, peak VRAM, and actual cost.
 - Do not run a mandatory upscaler or multimodal QA stage. Use inexpensive deterministic checks and human review for obvious failures.
+- After every required Mage output is durable and no Mage task remains queued/active, drain and delete the Mage Pod independently. Retain its model volume for the next project; do not wait for Echo before stopping Mage billing.
 
 ### Separate Image Style creation workflow
 
@@ -141,9 +172,14 @@ Only step 5 makes that version selectable. Published v1 remains selectable while
 
 - Slice only scheduled spans, adding small context padding for coarticulation.
 - Preserve exact EDL trim points so padding never changes timeline length.
-- Send the pinned Avatar Profile runtime source + span audio + restrained prompt to EchoMimicV3-Flash.
+- Use the pinned EchoMimicV3-Flash FP8 runtime on its own disposable `EU-RO-1` Pod and retained Echo
+  model volume. The worker treats verified model files as immutable/read-only application data and
+  writes scratch/results elsewhere; provider-enforced read-only mounting is not assumed.
+- Verify the exact Echo volume manifest, load the FP8 runtime, and emit authoritative `model_ready` before sending any avatar task.
+- Send the pinned Avatar Profile runtime source + span audio + restrained prompt to EchoMimicV3-Flash only after both the durable span manifest and Echo `model_ready` evidence exist.
 - Generate one clip per span and reuse it for both layouts.
 - Process multiple spans per resident worker/chunk.
+- After every required Echo clip is durable and no Echo task remains queued/active, drain and delete the Echo Pod independently. Retain its model volume and do not wait for Mage before stopping Echo billing.
 
 MVP acceptance authority:
 
@@ -166,8 +202,9 @@ FFmpeg:
 
 - Apply fixed avatar crops.
 - Apply the accepted asset's measured EchoMimicV3-Flash source profile only after user sample
-  approval. Expected native 832×480/25 fps may use the proposed centered crop, but different valid
-  geometry blocks profile creation until user-approved crop rules exist. No optical flow.
+  approval. No Echo dimensions, frame rate, or crop are pre-seeded from a historical model; any
+  valid native geometry blocks profile creation until measured crop rules are user-approved. No
+  optical flow.
 - Apply eased centered image zoom.
 - Build exact-duration 1080p30 segments.
 - Join with hard cuts.
@@ -181,12 +218,15 @@ Use FFprobe and deterministic assertions for format, duration, stream count, cov
 
 ## Parallelization rules
 
-- Start ASR immediately after upload.
-- Balanced/Faster may start compatible image/avatar workers or preprocessing during ASR; Lowest cost waits until work is ready.
+- One Generate action starts the disposable Mage and Echo Pods concurrently in `EU-RO-1`; this is not an optional Faster-mode warm-up.
+- Mage and Echo always mount separate retained model volumes. Neither Pod may write mutable project inputs/results to a model volume.
+- Start local ASR as soon as enough verified voiceover data is available. Continue timeline, prompt-batch, selected-span slicing, and manifest preparation while the Pods attach volumes, verify caches, and load models.
 - Prompt generation and avatar dispatch begin together after EDL creation.
-- Mage starts each validated prompt batch immediately.
-- Avatar clip QA occurs as clips arrive; fallbacks do not wait for the whole avatar lane.
-- Prepare resolved-manifest inputs and filtergraph incrementally, but do not keep a GPU billed while waiting for the other lane.
+- A prepared task waits at a durable barrier until its own lane reports authoritative `model_ready`; readiness in one lane never authorizes dispatch to the other.
+- Mage starts each validated prompt batch immediately after its two prerequisites—durable batch and Mage `model_ready`—exist.
+- Avatar clip QA occurs as clips arrive. No repair or fallback model is active; a failed Echo clip stops for user direction.
+- Prepare resolved-manifest inputs and filtergraph incrementally. When a lane's accepted assets are durable, drain and delete that Pod independently and prove it absent; do not keep one GPU billed while waiting for the other lane or final render.
+- Pod deletion never deletes the retained Mage/Echo volume. A later project creates fresh disposable Pods that verify and load the already-present pinned model bytes instead of downloading them again.
 - Trigger a fresh lightweight render job when the barrier closes.
 - Fetch/validate the selected style during preflight; do not insert analysis into the project critical path.
 
@@ -196,7 +236,7 @@ Use FFprobe and deterministic assertions for format, duration, stream count, cov
 - No AI B-roll video.
 - No separate forced-alignment model.
 - No per-image vision QA API.
-- No automatic subjective whole-frame avatar classifier; user/reviewer classification activates the fallback router.
+- No automatic subjective whole-frame avatar classifier; user/reviewer rejection stops the affected work and does not activate a hidden repair, retry, or fallback route.
 - No per-video reference-style vision call; a ready published style is reused as data.
 - No automatic Style LoRA training or reference-conditioned image stage.
 - No enhancement/upscale stage unless the bakeoff proves it changes visible full-screen quality enough to justify cost.

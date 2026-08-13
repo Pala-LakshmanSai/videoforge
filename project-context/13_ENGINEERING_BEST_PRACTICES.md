@@ -19,9 +19,11 @@ Persist:
 - System prompt, permanent guardrail, and selected style-profile version.
 - Selected Image Style ID/version/profile hash, analyzer/prompt/schema version, scene-writer/compiler versions, prompt components, extra-keyword text/toggle, permanent guardrail version, exact final positive/negative strings, and hashes of their exact UTF-8 bytes.
 - Selected Avatar Profile parent/version/profile hash, canonical runtime source asset/checksum, source-preparation/validation versions, compatibility state at preflight, and matching immutable terminal evidence when one exists.
-- Model repo revision/checkpoint checksum.
+- Exact lane/model profile, model repo revision, every required model-file path/checksum, and the
+  canonical persistent-volume manifest hash.
 - Container digest and CUDA/PyTorch/FFmpeg versions.
-- Inference settings, seed, GPU SKU.
+- Inference settings, seed, live-inventory receipt, user-selected exact GPU SKU/ID/rate, `EU-RO-1`
+  volume binding, actual Pod identity, and actual GPU observed after create.
 - Input/output checksums and parent lineage.
 
 An accepted render must be explainable and reproducible from its manifest.
@@ -43,25 +45,34 @@ An accepted render must be explainable and reproducible from its manifest.
 - Published Image Style versions never mutate; edits create a new version while existing project revisions remain pinned. Parent style archive/default/active-version state remains outside the immutable profile payload.
 - Ready Avatar Profile versions never mutate; replacing source pixels creates a new version while parent rename/archive/active-version state stays outside the immutable payload. Workers receive only the revision-pinned binding and never resolve `latest`.
 - Failed/repaired derivatives keep parent pointers.
-- SkyReels always starts from the revision-pinned canonical runtime source and same selected span audio—not a failed derivative; enforce this in schema, not comments alone.
+- Each exact active model has one separately provisioned persistent-volume identity. Mage and Echo
+  volume IDs, manifests, caches, locks, and adoption paths are never interchangeable. A new Pod may
+  adopt only its own exact model profile's volume after manifest verification.
 
 ## Truthful asynchronous UX
 
 - Server state is authoritative.
 - Disable duplicate action immediately.
-- Distinguish queued, worker starting, container ready, model loading, model ready, generating, uploading, retrying, blocked, cancelling, and complete.
+- Distinguish inventory refreshing, Pod creating, volume attached, container ready, volume manifest
+  verified, model loading, warming up, model ready, generating, uploading, durable, Pod deleting,
+  Pod absent, retrying, blocked, cancelling, and complete.
 - Percentages derive from real completed/total units and versioned stage weights.
 - ETA shows confidence/range until measured history exists.
 - Never hide a cost-producing retry.
 
 ## Bounded concurrency and cost
 
-- Start `workersMax=1` for expensive lanes.
-- Enforce workspace/project/daily caps.
-- Fairly chunk work across users.
-- Estimate before dispatch; reconcile with provider-reported cost.
-- Judge GPUs by cost per accepted output, not hourly rate alone.
-- Scale to zero only after the shared lane drains.
+- At most one paid disposable Pod per active model lane is authorized for an ordinary Generate.
+  This is a Mage Pod and an Echo Pod, not two replicas of one lane.
+- Start the two independently selected Pods concurrently only after the exact task reservation and
+  final live-inventory/rate revalidation succeeds.
+- Enforce workspace/project/daily caps; estimate before creation and reconcile measured runtime.
+- Judge GPUs by model-ready time and cost per accepted output, not hourly rate alone.
+- Delete each exact Pod immediately after its accepted outputs are durable and no bounded retry
+  needs the resident model. Independently prove absence. Retain and keep paying for the two intended
+  model volumes; routine cleanup must never delete them.
+- Fairly chunk work across users. Never keep a Pod alive merely because another lane or the final
+  local render is unfinished.
 
 ## Stable adapters, simple implementations
 
@@ -70,7 +81,7 @@ Define narrow interfaces for:
 - Prompt provider.
 - Reference-style analyzer.
 - Image generator.
-- Avatar primary/repair/fallback.
+- Avatar generator.
 - Compute dispatcher.
 - Artifact store.
 - Renderer.
@@ -102,13 +113,23 @@ Only one production implementation per interface is needed now. The boundary exi
 
 ## Worker design
 
-- Prebuilt, pinned containers; no runtime `pip install` or source compilation in a job.
-- Weights cached on immutable read-only volumes.
-- Health check for process readiness; separate model-ready event.
+- Prebuilt, digest-pinned containers; no runtime `pip install`, source compilation, or model
+  download during ordinary Pod boot.
+- Keep large weights on two distinct persistent `EU-RO-1` network volumes: one exact Mage INT8
+  volume and one exact Echo FP8 volume. Treat verified model files as immutable/read-only in the
+  worker during jobs, write scratch/results elsewhere, and verify for mutation; do not assume a
+  provider-enforced read-only mount.
+- Normal boot fails closed on a missing, extra, corrupt, wrong-revision, wrong-profile, or
+  cross-model volume manifest. Only separately authorized one-time preparation may populate or
+  change model files.
+- Process/container health is not readiness. Emit authoritative `model_ready` only after the exact
+  volume, manifest, runtime, actual GPU, load, and bounded warm-up all pass.
 - Emit heartbeat/progress between items.
 - Check cancellation between items.
 - Upload/checkpoint each item so chunk retry resumes missing work.
-- Release/unload models between incompatible job types; never stack Mage and avatar models in one worker.
+- Never stack Mage and Echo in one container, Pod, volume, cache, or process.
+- A successful worker makes outputs durable before cleanup authorizes deletion of its Pod. Pod
+  deletion and post-delete absence are journaled separately from retained-volume health.
 
 ## Database practice
 
@@ -153,6 +174,8 @@ Only one production implementation per interface is needed now. The boundary exi
 
 ## Observability
 
-Minimum structured fields: workspace, owner type/ID, optional project/revision or Avatar Profile/version/assessment, task, attempt, model profile, provider job, GPU, stage, event sequence, elapsed, reserved/reported cost, error code. Logs are useful only when they can reconstruct a failure without exposing secrets.
+Minimum structured fields: workspace, owner type/ID, optional project/revision or Avatar Profile/version/assessment, task, attempt, lane, exact model profile, container digest, volume/manifest identity, inventory receipt, requested/actual GPU, Pod identity, stage, event sequence, elapsed, reserved/measured cost, durable-result receipt, delete/absence evidence, and error code. Logs are useful only when they can reconstruct a failure without exposing secrets.
 
-Alert on stuck leases, callback reconciliation, repeated model OOM, rising rejection rate, budget blocks, provider balance, and workers that remain active after an empty lane.
+Alert on stuck leases, ambiguous create/delete reconciliation, cross-volume or manifest mismatch,
+repeated model OOM, rising rejection rate, budget blocks, provider balance, and paid Pods that remain
+after their lane is durable. A retained intended model volume is expected, not a leaked Pod.

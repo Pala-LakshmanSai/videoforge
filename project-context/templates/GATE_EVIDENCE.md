@@ -14,8 +14,10 @@
 - Git commit:
 - Container digest:
 - Model/checkpoint hash:
-- Provider endpoint/config revision:
-- GPU SKU/region/rate:
+- Worker image/template digest:
+- Model lane/revision/precision/manifest hash:
+- Persistent volume ID/region/capacity/mount (redacted or hashed where required):
+- Live inventory receipt, selected offering, actual GPU, region, and rate:
 - Input fixture IDs and hashes:
 
 ## Authorization and cost
@@ -23,13 +25,15 @@
 - Real calls authorized by:
 - Maximum authorized spend:
 - Reserved/reported/settled cost:
-- Cleanup/scale-to-zero evidence:
+- Pod delete/absence evidence:
+- Expected retained-volume identity/state evidence:
 
 ## Procedure
 
 - Commands:
-- Cold runs:
-- Warm runs:
+- Cold Pod-to-`model_ready` runs:
+- Reattached-volume Pod-to-`model_ready` runs:
+- Container/volume-verify/model-load/warm-up/inference/upload/delete timings:
 - Fault/retry cases:
 
 ## Results
