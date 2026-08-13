@@ -211,3 +211,22 @@ test("same-code concurrent redemption produces one admission and one redemption"
     await database.database.close();
   }
 });
+
+test("durable admission cannot bypass one retained invite redemption", async () => {
+  const database = await createMigratedDatabase();
+  try {
+    await seedLockedProjects(database.executor);
+    await assert.rejects(
+      database.executor.query(
+        `INSERT INTO app_admissions (
+           id, user_id, normalized_email, email_verified_at, invite_redemption_id,
+           auth_methods, status, version, admitted_at
+         ) VALUES ($1, $2, 'owner-a@example.test', $3, $4,
+                   ARRAY['EMAIL_PASSWORD']::text[], 'ADMITTED', 1, $3)`,
+        [uuid(130_040), IDS.userA, NOW, uuid(130_041)],
+      ),
+    );
+  } finally {
+    await database.database.close();
+  }
+});

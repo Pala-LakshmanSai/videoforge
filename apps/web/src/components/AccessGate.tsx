@@ -89,6 +89,8 @@ export function AccessGate({
   const [method, setMethod] = useState<"EMAIL_PASSWORD" | "GOOGLE">("EMAIL_PASSWORD");
   const [email, setEmail] = useState(account?.email ?? "");
   const [inviteCode, setInviteCode] = useState("");
+  const [emailPassword, setEmailPassword] = useState("");
+  const [googleAssertion, setGoogleAssertion] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -98,6 +100,8 @@ export function AccessGate({
     try {
       const invite = await api.issueFixtureInvite(email);
       setInviteCode(invite.code);
+      setEmailPassword(invite.emailPassword);
+      setGoogleAssertion(invite.googleAssertion);
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "Invite fixture failed.");
     } finally {
@@ -113,13 +117,16 @@ export function AccessGate({
         {
           method,
           email,
-          emailVerified: true,
-          googleVerifiedEmail: method === "GOOGLE" ? email : undefined,
+          emailPassword: method === "EMAIL_PASSWORD" ? emailPassword : undefined,
+          googleAccountEmail: method === "GOOGLE" ? email : undefined,
+          googleAssertion: method === "GOOGLE" ? googleAssertion : undefined,
           inviteCode: inviteCode || undefined,
         },
         fixturePickerProps.scenario,
       );
       setInviteCode("");
+      setEmailPassword("");
+      setGoogleAssertion("");
       onContinue();
     } catch (error) {
       setInviteCode("");
@@ -195,6 +202,18 @@ export function AccessGate({
                 onChange={(event) => setEmail(event.target.value)}
               />
             </label>
+            {method === "EMAIL_PASSWORD" ? (
+              <label className="field">
+                Email password fixture
+                <input
+                  className="input"
+                  type="password"
+                  autoComplete="current-password"
+                  value={emailPassword}
+                  onChange={(event) => setEmailPassword(event.target.value)}
+                />
+              </label>
+            ) : null}
             <label className="field">
               One-time invite code
               <input

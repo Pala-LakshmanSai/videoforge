@@ -3,6 +3,7 @@ import { FIXTURE_SCENARIO_IDS } from "@videoforge/test-fixtures";
 import { describe, expect, it } from "vitest";
 
 import { createApiApp as createRuntimeApiApp } from "./app";
+import type { SharedAppPersistence } from "./shared-app-persistence";
 import { fixtureTimelineDocuments } from "./timeline-inspection";
 
 const fixturePreview = { read: async () => "<svg>fixture preview</svg>" };
@@ -11,6 +12,7 @@ function createApiApp(
   options: {
     readonly commit?: string;
     readonly environment?: "development" | "test" | "production";
+    readonly sharedAppPersistence?: SharedAppPersistence;
   } = {},
 ) {
   return createRuntimeApiApp({
@@ -19,7 +21,11 @@ function createApiApp(
       environment: options.environment ?? "development",
       mode: "fixture",
     },
-    bindings: { platform: "node", fixturePreview },
+    bindings: {
+      platform: "node",
+      fixturePreview,
+      fixtureSharedAppPersistence: options.sharedAppPersistence,
+    },
   });
 }
 
@@ -1671,7 +1677,12 @@ describe("CP-02 shared app fixture API", () => {
         body: JSON.stringify({ email: user.email }),
       });
       expect(inviteResponse.status).toBe(200);
-      const invite = (await inviteResponse.json()) as { code: string; shownOnce: boolean };
+      const invite = (await inviteResponse.json()) as {
+        code: string;
+        emailPassword: string;
+        googleAssertion: string;
+        shownOnce: boolean;
+      };
       expect(invite.shownOnce).toBe(true);
       const auth = await isolatedApp.request(
         "/api/v1/shared-app/authenticate?fixture=invite_sign_in",
@@ -1681,8 +1692,9 @@ describe("CP-02 shared app fixture API", () => {
           body: JSON.stringify({
             method: user.method,
             email: user.email,
-            emailVerified: true,
-            googleVerifiedEmail: user.method === "GOOGLE" ? user.email : undefined,
+            emailPassword: user.method === "EMAIL_PASSWORD" ? invite.emailPassword : undefined,
+            googleAccountEmail: user.method === "GOOGLE" ? user.email : undefined,
+            googleAssertion: user.method === "GOOGLE" ? invite.googleAssertion : undefined,
             inviteCode: invite.code,
           }),
         },

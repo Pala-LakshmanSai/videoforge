@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   GlobalSessionContractError,
   GlobalSessionRepository,
+  SharedAdmissionRepository,
   exportMetadataSnapshot,
   restoreMetadataSnapshot,
   serializeMetadataSnapshot,
@@ -160,24 +161,33 @@ function startCommand({
 async function seedGlobalFoundation(executor, repository) {
   await seedLockedProjects(executor);
   await seedThirdLockedRevision(executor);
-  await repository.registerAdmission({
-    admissionId: ID.admissionA,
-    userId: IDS.userA,
-    normalizedEmail: "owner-a@example.test",
-    emailVerifiedAt: NOW,
-    inviteRedemptionId: uuid(92_001),
-    authMethods: ["EMAIL_PASSWORD"],
-    admittedAt: NOW,
-  });
-  await repository.registerAdmission({
-    admissionId: ID.admissionB,
-    userId: IDS.userB,
-    normalizedEmail: "owner-b@example.test",
-    emailVerifiedAt: NOW,
-    inviteRedemptionId: uuid(92_002),
-    authMethods: ["GOOGLE"],
-    admittedAt: NOW,
-  });
+  const admissions = new SharedAdmissionRepository(executor);
+  for (const [serial, admissionId, userId, email, authMethod] of [
+    [1, ID.admissionA, IDS.userA, "owner-a@example.test", "EMAIL_PASSWORD"],
+    [2, ID.admissionB, IDS.userB, "owner-b@example.test", "GOOGLE"],
+  ]) {
+    const verifierSha256 = sha256(`global-session-invite-${serial}`);
+    await admissions.issueInvite({
+      inviteId: uuid(92_000 + serial),
+      intendedEmail: email,
+      verifierSha256,
+      createdAt: "2026-08-13T09:00:00.000Z",
+      expiresAt: "2026-08-13T11:00:00.000Z",
+    });
+    await admissions.redeemInvite({
+      admissionId,
+      redemptionId: uuid(92_010 + serial),
+      identityBindingId: uuid(92_020 + serial),
+      userId,
+      email,
+      emailVerified: true,
+      emailVerifiedAt: NOW,
+      authMethod,
+      providerSubjectSha256: sha256(`global-session-subject-${serial}`),
+      verifierSha256,
+      now: NOW,
+    });
+  }
   await repository.registerLaneVolume({
     lane: "mage_image",
     modelVolumeId: ID.mageVolume,

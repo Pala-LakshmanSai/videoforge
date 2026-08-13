@@ -96,6 +96,12 @@
       "name": "cp02_shared_admission_queue",
       "filename": "0016_cp02_shared_admission_queue.sql",
       "sha256": "sha256:8468e7cab0d5b73362d06775ed171545de04759bcc1d2869ab7fa758a60f27f9"
+    },
+    {
+      "version": 17,
+      "name": "cp02_admission_fk_lock",
+      "filename": "0017_cp02_admission_fk_lock.sql",
+      "sha256": "sha256:3a46e87ed02809fffebe7d7243ca3940dfbb85b3cba51a7f3d7e7c740836f53a"
     }
   ]
 }

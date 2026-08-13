@@ -136,17 +136,29 @@ export interface ImageStyleEditRequestAuthority {
 
 export const api = {
   issueFixtureInvite: (email: string) =>
-    request<{ code: string; shownOnce: true }>(
+    request<{
+      code: string;
+      emailPassword: string;
+      googleAssertion: string;
+      shownOnce: true;
+    }>(
       "/api/dev/shared-app/invites",
       { method: "POST", body: JSON.stringify({ email }) },
-      (value) => value as { code: string; shownOnce: true },
+      (value) =>
+        value as {
+          code: string;
+          emailPassword: string;
+          googleAssertion: string;
+          shownOnce: true;
+        },
     ),
   authenticateFixture: (
     body: {
       method: "EMAIL_PASSWORD" | "GOOGLE";
       email: string;
-      emailVerified: boolean;
-      googleVerifiedEmail?: string;
+      emailPassword?: string;
+      googleAccountEmail?: string;
+      googleAssertion?: string;
       inviteCode?: string;
     },
     scenario: ScenarioId,

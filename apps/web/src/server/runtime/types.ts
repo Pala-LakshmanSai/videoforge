@@ -2,6 +2,7 @@ import type { ProviderMode } from "@videoforge/config";
 import type { Hono } from "hono";
 
 import type { LocalSliceRunner } from "../local/types";
+import type { SharedAppPersistence } from "../shared-app-persistence";
 
 export type RuntimeEnvironment = "development" | "test" | "production";
 export type RuntimePlatform = "node" | "cloudflare";
@@ -35,6 +36,7 @@ export type LocalApiAppFactory = (options: LocalApiAppFactoryOptions) => Hono;
 export interface ApiRuntimeBindings {
   readonly platform: RuntimePlatform;
   readonly fixturePreview?: FixturePreviewBinding;
+  readonly fixtureSharedAppPersistence?: SharedAppPersistence;
   readonly localRunner?: LocalSliceRunner;
   readonly localAppFactory?: LocalApiAppFactory;
   readonly sandboxAppFactory?: LocalApiAppFactory;

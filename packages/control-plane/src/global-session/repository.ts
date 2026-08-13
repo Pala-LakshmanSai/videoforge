@@ -30,16 +30,6 @@ export class GlobalSessionContractError extends Error {
   }
 }
 
-export interface AdmissionCommand {
-  readonly admissionId: string;
-  readonly userId: string;
-  readonly normalizedEmail: string;
-  readonly emailVerifiedAt: string;
-  readonly inviteRedemptionId: string;
-  readonly authMethods: readonly ("EMAIL_PASSWORD" | "GOOGLE")[];
-  readonly admittedAt: string;
-}
-
 export interface LaneVolumeCommand {
   readonly lane: GlobalSessionLane;
   readonly modelVolumeId: string;
@@ -214,24 +204,6 @@ async function nextEventSequence(executor: SqlExecutor, sessionId: string): Prom
 
 export class GlobalSessionRepository {
   constructor(private readonly database: TransactionalSqlExecutor) {}
-
-  async registerAdmission(command: AdmissionCommand): Promise<void> {
-    await this.database.query(
-      `INSERT INTO app_admissions (
-         id, user_id, normalized_email, email_verified_at, invite_redemption_id,
-         auth_methods, status, version, admitted_at
-       ) VALUES ($1, $2, $3, $4, $5, string_to_array($6, ','), 'ADMITTED', 1, $7)`,
-      [
-        command.admissionId,
-        command.userId,
-        command.normalizedEmail,
-        command.emailVerifiedAt,
-        command.inviteRedemptionId,
-        command.authMethods.join(","),
-        command.admittedAt,
-      ],
-    );
-  }
 
   async registerLaneVolume(command: LaneVolumeCommand): Promise<void> {
     const expected = laneExpectations(command.lane);

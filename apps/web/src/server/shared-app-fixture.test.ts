@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { SharedAppFixtureStore, SharedFixtureError } from "./shared-app-fixture";
+import { MemorySharedAppPersistence } from "./shared-app-persistence";
 
 async function admit(
   store: SharedAppFixtureStore,
@@ -8,14 +9,15 @@ async function admit(
   method: "EMAIL_PASSWORD" | "GOOGLE" = "EMAIL_PASSWORD",
 ) {
   const email = `user-${serial}@example.test`;
-  const code = await store.issueInvite(email);
+  const issued = await store.issueInvite(email);
   return store.authenticate({
     sessionId: `browser-${serial}`,
     method,
     email,
-    emailVerified: true,
-    googleVerifiedEmail: method === "GOOGLE" ? email : undefined,
-    inviteCode: code,
+    emailPassword: method === "EMAIL_PASSWORD" ? issued.emailPassword : undefined,
+    googleAccountEmail: method === "GOOGLE" ? email : undefined,
+    googleAssertion: method === "GOOGLE" ? issued.googleAssertion : undefined,
+    inviteCode: issued.code,
   });
 }
 
@@ -31,15 +33,15 @@ describe("shared fixture admission", () => {
   it("atomically binds one verified email and lets a returning user skip the invite", async () => {
     const store = new SharedAppFixtureStore();
     const email = "owner@example.test";
-    const code = await store.issueInvite(email);
+    const issued = await store.issueInvite(email);
     expect(
       (
         await store.authenticate({
           sessionId: "first-browser",
           method: "EMAIL_PASSWORD",
           email,
-          emailVerified: true,
-          inviteCode: code,
+          emailPassword: issued.emailPassword,
+          inviteCode: issued.code,
         })
       ).outcome,
     ).toBe("ADMITTED");
@@ -49,7 +51,7 @@ describe("shared fixture admission", () => {
           sessionId: "returning-browser",
           method: "EMAIL_PASSWORD",
           email,
-          emailVerified: true,
+          emailPassword: issued.emailPassword,
         })
       ).outcome,
     ).toBe("RETURNING");
@@ -59,32 +61,32 @@ describe("shared fixture admission", () => {
         sessionId: "collision",
         method: "GOOGLE",
         email,
-        emailVerified: true,
-        googleVerifiedEmail: email,
+        googleAccountEmail: email,
+        googleAssertion: issued.googleAssertion,
       }),
     ).rejects.toThrowError(SharedFixtureError);
   });
 
   it("rejects unverified identities, Google mismatch, invite mismatch, and replay", async () => {
     const store = new SharedAppFixtureStore();
-    const code = await store.issueInvite("intended@example.test");
+    const issued = await store.issueInvite("intended@example.test");
     await expect(
       store.authenticate({
         sessionId: "bad-1",
         method: "EMAIL_PASSWORD",
         email: "intended@example.test",
-        emailVerified: false,
-        inviteCode: code,
+        emailPassword: "wrong-fixture-password",
+        inviteCode: issued.code,
       }),
-    ).rejects.toThrowError(/Verified email/);
+    ).rejects.toThrowError(/invalid/);
     await expect(
       store.authenticate({
         sessionId: "bad-2",
         method: "GOOGLE",
         email: "intended@example.test",
-        emailVerified: true,
-        googleVerifiedEmail: "different@example.test",
-        inviteCode: code,
+        googleAccountEmail: "different@example.test",
+        googleAssertion: issued.googleAssertion,
+        inviteCode: issued.code,
       }),
     ).rejects.toThrowError(/must equal/);
     await expect(
@@ -92,24 +94,24 @@ describe("shared fixture admission", () => {
         sessionId: "bad-3",
         method: "EMAIL_PASSWORD",
         email: "different@example.test",
-        emailVerified: true,
-        inviteCode: code,
+        emailPassword: issued.emailPassword,
+        inviteCode: issued.code,
       }),
     ).rejects.toThrowError(/another verified email/);
     await store.authenticate({
       sessionId: "good",
       method: "EMAIL_PASSWORD",
       email: "intended@example.test",
-      emailVerified: true,
-      inviteCode: code,
+      emailPassword: issued.emailPassword,
+      inviteCode: issued.code,
     });
     await expect(
       store.authenticate({
         sessionId: "replay",
         method: "EMAIL_PASSWORD",
         email: "new@example.test",
-        emailVerified: true,
-        inviteCode: code,
+        emailPassword: issued.emailPassword,
+        inviteCode: issued.code,
       }),
     ).rejects.toThrowError(/already used/);
   });
@@ -144,7 +146,8 @@ describe("shared fixture singleton queue", () => {
   });
 
   it("guards queue versions and active entries, audits old/new order, and recovers after restart", async () => {
-    const store = new SharedAppFixtureStore();
+    const persistence = new MemorySharedAppPersistence();
+    const store = new SharedAppFixtureStore(persistence);
     await admit(store, 1);
     await admit(store, 2);
     const pair = selectedPair(store);
@@ -180,7 +183,7 @@ describe("shared fixture singleton queue", () => {
       entryId: waitingA.id,
       ifMatch: moved.session!.queueVersion,
     });
-    const restored = new SharedAppFixtureStore(store.exportSnapshot()).view("browser-2");
+    const restored = new SharedAppFixtureStore(persistence).view("browser-2");
     expect(restored.queue.map((entry) => entry.projectId)).toEqual(["active", "waiting-b"]);
     expect(restored.session?.gpuPair).toEqual(moved.session?.gpuPair);
     expect(restored.audits.at(-1)?.operation).toBe("REMOVE");

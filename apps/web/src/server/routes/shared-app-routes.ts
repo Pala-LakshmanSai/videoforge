@@ -21,9 +21,9 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
   app.post("/api/dev/shared-app/invites", async (c) => {
     try {
       const body = (await c.req.json()) as { email?: string };
-      const code = await runtime.sharedApp.issueInvite(body.email ?? "");
+      const issued = await runtime.sharedApp.issueInvite(body.email ?? "");
       return c.json({
-        code,
+        ...issued,
         shownOnce: true,
         providerCallsAuthorized: false,
         authorizedSpendUsd: 0,
@@ -40,8 +40,9 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
       const body = (await c.req.json()) as {
         method: "EMAIL_PASSWORD" | "GOOGLE";
         email: string;
-        emailVerified: boolean;
-        googleVerifiedEmail?: string;
+        emailPassword?: string;
+        googleAccountEmail?: string;
+        googleAssertion?: string;
         inviteCode?: string;
       };
       return c.json(await runtime.sharedApp.authenticate({ sessionId: session.id, ...body }));

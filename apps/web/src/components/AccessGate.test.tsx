@@ -37,9 +37,15 @@ describe("AccessGate", () => {
     const fetch = vi
       .fn()
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ code: "vf_one_time_secret_for_test", shownOnce: true }), {
-          status: 200,
-        }),
+        new Response(
+          JSON.stringify({
+            code: "vf_one_time_secret_for_test",
+            emailPassword: "vf_pw_fixture_value_for_test",
+            googleAssertion: "vf_google_fixture_assertion_for_test",
+            shownOnce: true,
+          }),
+          { status: 200 },
+        ),
       )
       .mockResolvedValueOnce(
         new Response(
@@ -74,6 +80,7 @@ describe("AccessGate", () => {
     fireEvent.click(action);
     await waitFor(() => expect(onContinue).toHaveBeenCalledOnce());
     expect(screen.getByLabelText("One-time invite code")).toHaveValue("");
+    expect(screen.getByLabelText("Email password fixture")).toHaveValue("");
   });
 
   it("shows the exact invite blocker without rendering workspace console data", () => {

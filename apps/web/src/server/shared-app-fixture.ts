@@ -1,3 +1,5 @@
+import { MemorySharedAppPersistence, type SharedAppPersistence } from "./shared-app-persistence";
+
 export type FixtureAuthMethod = "EMAIL_PASSWORD" | "GOOGLE";
 export type SharedQueueState = "ACTIVE" | "WAITING";
 
@@ -74,11 +76,14 @@ export class SharedFixtureError extends Error {
 interface Admission {
   readonly email: string;
   readonly method: FixtureAuthMethod;
+  readonly credentialHash: string;
 }
 
 interface Invite {
   readonly email: string;
   readonly codeHash: string;
+  readonly emailPasswordHash: string;
+  readonly googleAssertionHash: string;
   consumed: boolean;
 }
 
@@ -164,13 +169,17 @@ function positions(queue: readonly SharedQueueEntry[]): SharedQueueEntry[] {
 
 export class SharedAppFixtureStore {
   #state: MutableState;
+  readonly #persistence: SharedAppPersistence;
 
-  constructor(snapshot?: string) {
+  constructor(persistence: SharedAppPersistence = new MemorySharedAppPersistence()) {
+    this.#persistence = persistence;
+    const snapshot = persistence.read();
     this.#state = snapshot ? SharedAppFixtureStore.parse(snapshot) : SharedAppFixtureStore.empty();
   }
 
   reset(): void {
     this.#state = SharedAppFixtureStore.empty();
+    this.persist();
   }
 
   static empty(): MutableState {
@@ -214,7 +223,11 @@ export class SharedAppFixtureStore {
     });
   }
 
-  async issueInvite(intendedEmail: string): Promise<string> {
+  async issueInvite(intendedEmail: string): Promise<{
+    code: string;
+    emailPassword: string;
+    googleAssertion: string;
+  }> {
     const email = normalizedEmail(intendedEmail);
     if ([...this.#state.invites.values()].some((invite) => invite.email === email)) {
       throw new SharedFixtureError(
@@ -224,38 +237,58 @@ export class SharedAppFixtureStore {
       );
     }
     const raw = `vf_${crypto.randomUUID()}_${crypto.randomUUID()}`;
+    const emailPassword = `vf_pw_${crypto.randomUUID()}`;
+    const googleAssertion = `vf_google_${crypto.randomUUID()}_${crypto.randomUUID()}`;
     const codeHash = await hash(raw);
-    this.#state.invites.set(codeHash, { email, codeHash, consumed: false });
-    return raw;
+    this.#state.invites.set(codeHash, {
+      email,
+      codeHash,
+      emailPasswordHash: await hash(emailPassword),
+      googleAssertionHash: await hash(googleAssertion),
+      consumed: false,
+    });
+    this.persist();
+    return { code: raw, emailPassword, googleAssertion };
   }
 
   seedAdmittedSession(sessionId: string, emailValue: string): void {
     const email = normalizedEmail(emailValue);
     const admission =
       this.#state.admissions.get(email) ??
-      Object.freeze({ email, method: "EMAIL_PASSWORD" as const });
+      Object.freeze({
+        email,
+        method: "EMAIL_PASSWORD" as const,
+        credentialHash: "fixture-bootstrap-identity",
+      });
     this.#state.admissions.set(email, admission);
     this.#state.sessionAdmissions.set(sessionId, admission);
+    this.persist();
   }
 
   async authenticate(input: {
     sessionId: string;
     method: FixtureAuthMethod;
     email: string;
-    emailVerified: boolean;
-    googleVerifiedEmail?: string;
+    emailPassword?: string;
+    googleAccountEmail?: string;
+    googleAssertion?: string;
     inviteCode?: string;
   }): Promise<{ outcome: "ADMITTED" | "RETURNING"; email: string; rights: "EQUAL" }> {
-    if (!input.emailVerified) {
+    const email = normalizedEmail(input.email);
+    const presentedCredential =
+      input.method === "EMAIL_PASSWORD" ? input.emailPassword : input.googleAssertion;
+    if (!presentedCredential || presentedCredential.length < 16) {
       throw new SharedFixtureError(
-        "EMAIL_VERIFICATION_REQUIRED",
+        "AUTH_CREDENTIAL_REQUIRED",
         403,
-        "Verified email is required.",
+        input.method === "EMAIL_PASSWORD"
+          ? "The issued email password fixture is required."
+          : "The issued Google fixture assertion is required.",
       );
     }
-    const email = normalizedEmail(input.email);
+    const presentedCredentialHash = await hash(presentedCredential);
     if (input.method === "GOOGLE") {
-      const google = normalizedEmail(input.googleVerifiedEmail ?? "");
+      const google = normalizedEmail(input.googleAccountEmail ?? "");
       if (google !== email) {
         throw new SharedFixtureError(
           "GOOGLE_EMAIL_MISMATCH",
@@ -273,7 +306,15 @@ export class SharedAppFixtureStore {
           "Use the login method already bound to this email.",
         );
       }
+      if (existing.credentialHash !== presentedCredentialHash) {
+        throw new SharedFixtureError(
+          "AUTH_CREDENTIAL_INVALID",
+          403,
+          "Fixture credential is invalid.",
+        );
+      }
       this.#state.sessionAdmissions.set(input.sessionId, existing);
+      this.persist();
       return { outcome: "RETURNING", email, rights: "EQUAL" };
     }
     if (!input.inviteCode) {
@@ -290,10 +331,24 @@ export class SharedAppFixtureStore {
         "Invite code belongs to another verified email.",
       );
     }
-    const admission = Object.freeze({ email, method: input.method });
+    const expectedCredentialHash =
+      input.method === "EMAIL_PASSWORD" ? invite.emailPasswordHash : invite.googleAssertionHash;
+    if (presentedCredentialHash !== expectedCredentialHash) {
+      throw new SharedFixtureError(
+        "AUTH_CREDENTIAL_INVALID",
+        403,
+        "Fixture credential is invalid.",
+      );
+    }
+    const admission = Object.freeze({
+      email,
+      method: input.method,
+      credentialHash: presentedCredentialHash,
+    });
     invite.consumed = true;
     this.#state.admissions.set(email, admission);
     this.#state.sessionAdmissions.set(input.sessionId, admission);
+    this.persist();
     return { outcome: "ADMITTED", email, rights: "EQUAL" };
   }
 
@@ -376,6 +431,7 @@ export class SharedAppFixtureStore {
       },
     ]);
     this.audit(operation, actor, oldOrder, oldVersion);
+    this.persist();
     return { outcome, queueVersion: this.#state.queueVersion };
   }
 
@@ -410,6 +466,7 @@ export class SharedAppFixtureStore {
     ]);
     this.#state.queueVersion += 1;
     this.audit("MOVE", actor, oldOrder, oldVersion);
+    this.persist();
   }
 
   remove(input: { sessionId: string; entryId: string; ifMatch: number }): void {
@@ -429,6 +486,7 @@ export class SharedAppFixtureStore {
     this.#state.queue = positions(this.#state.queue.filter((item) => item.id !== input.entryId));
     this.#state.queueVersion += 1;
     this.audit("REMOVE", actor, oldOrder, oldVersion);
+    this.persist();
   }
 
   private requireAdmission(sessionId: string): Admission {
@@ -464,5 +522,9 @@ export class SharedAppFixtureStore {
       newVersion: this.#state.queueVersion,
       occurredAt: new Date().toISOString(),
     });
+  }
+
+  private persist(): void {
+    this.#persistence.write(this.exportSnapshot());
   }
 }

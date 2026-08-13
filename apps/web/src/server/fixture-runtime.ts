@@ -11,16 +11,19 @@ import type { FixtureSessionState } from "./domain/models";
 import { FixtureSessionStore } from "./fixture-session";
 import { idempotentMutation } from "./mutation";
 import { SharedAppFixtureStore } from "./shared-app-fixture";
+import type { SharedAppPersistence } from "./shared-app-persistence";
 
 export class FixtureRuntime {
   readonly sessions: FixtureSessionStore;
-  readonly sharedApp = new SharedAppFixtureStore();
+  readonly sharedApp: SharedAppFixtureStore;
 
   constructor(
     readonly environment: string,
     readonly commit: string,
+    sharedAppPersistence?: SharedAppPersistence,
   ) {
     this.sessions = new FixtureSessionStore(environment);
+    this.sharedApp = new SharedAppFixtureStore(sharedAppPersistence);
   }
 
   resolveSession(c: Context) {

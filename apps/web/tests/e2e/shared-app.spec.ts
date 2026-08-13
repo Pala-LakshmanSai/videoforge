@@ -7,6 +7,7 @@ test("CP-02 shares admission, one GPU pair, and one queue across browser session
     baseURL: "http://localhost:4173",
     extraHTTPHeaders: { "X-VideoForge-Fixture-Session": "cp02-chrome-a" },
   });
+  let emailPassword = "";
   const contextB = await browser.newContext({
     baseURL: "http://localhost:4173",
     extraHTTPHeaders: { "X-VideoForge-Fixture-Session": "cp02-chrome-b" },
@@ -25,15 +26,21 @@ test("CP-02 shares admission, one GPU pair, and one queue across browser session
         data: { email },
       });
       expect(inviteResponse.ok()).toBe(true);
-      const invite = (await inviteResponse.json()) as { code: string };
+      const invite = (await inviteResponse.json()) as {
+        code: string;
+        emailPassword: string;
+        googleAssertion: string;
+      };
+      if (method === "EMAIL_PASSWORD") emailPassword = invite.emailPassword;
       const auth = await context.request.post(
         "/api/v1/shared-app/authenticate?fixture=invite_sign_in",
         {
           data: {
             method,
             email,
-            emailVerified: true,
-            googleVerifiedEmail: method === "GOOGLE" ? email : undefined,
+            emailPassword: method === "EMAIL_PASSWORD" ? invite.emailPassword : undefined,
+            googleAccountEmail: method === "GOOGLE" ? email : undefined,
+            googleAssertion: method === "GOOGLE" ? invite.googleAssertion : undefined,
             inviteCode: invite.code,
           },
         },
@@ -84,7 +91,7 @@ test("CP-02 shares admission, one GPU pair, and one queue across browser session
         data: {
           method: "EMAIL_PASSWORD",
           email: "chrome-a@example.test",
-          emailVerified: true,
+          emailPassword,
         },
       },
     );

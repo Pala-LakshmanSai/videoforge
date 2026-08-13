@@ -6,6 +6,7 @@ import { createLocalApiApp } from "./server/local/app";
 import { createNodeFixturePreviewBinding } from "./server/runtime/node-fixture-preview";
 import { createNodeRuntimeConfiguration } from "./server/runtime/node";
 import { resolveNodeSandboxDataRoot } from "./server/runtime/node-sandbox";
+import { createNodeSharedAppPersistence } from "./server/runtime/node-shared-app-persistence";
 import { createRunwareRuntime } from "./server/providers/runware-runtime";
 
 export const FIXTURE_API_HOST = "127.0.0.1";
@@ -37,6 +38,12 @@ const app = createApiApp({
   bindings: {
     platform: "node",
     fixturePreview: mode === "fixture" ? createNodeFixturePreviewBinding() : undefined,
+    fixtureSharedAppPersistence:
+      mode === "fixture"
+        ? createNodeSharedAppPersistence(
+            path.join(WORKSPACE_ROOT, ".videoforge", "shared-app-fixture.json"),
+          )
+        : undefined,
     localRunner,
     localAppFactory: mode === "local" ? createLocalApiApp : undefined,
     sandboxAppFactory: mode === "sandbox" ? createLocalApiApp : undefined,
