@@ -46,7 +46,7 @@ test("fixture profile set cannot dispatch, claim a GPU, or spend", () => {
   }
 });
 
-test("catalog exposes one fixture Auto option per primary lane and no candidate leakage", () => {
+test("catalog exposes one explicit Fixture option per primary lane and no candidate leakage", () => {
   assert.equal(executionProfileCatalog.provider_mode, "fixture");
   assert.equal(executionProfileCatalog.provider_calls_authorized, false);
   assert.equal(executionProfileCatalog.maximum_external_spend_usd, 0);
@@ -60,7 +60,7 @@ test("catalog exposes one fixture Auto option per primary lane and no candidate 
   for (const lane of executionProfileCatalog.lanes) {
     assert.equal(lane.selector_options.length, 1);
     const [option] = lane.selector_options;
-    assert.equal(option.label, "Auto");
+    assert.equal(option.label, "Fixture");
     assert.equal(option.selectable, true);
     assert.equal(option.selection_state, "FIXTURE_ONLY");
     assert.equal(option.endpoint_id, null);
@@ -88,7 +88,7 @@ test("catalog exposes one fixture Auto option per primary lane and no candidate 
   assert.equal(JSON.stringify(executionProfileCatalog).includes('"AVAILABLE"'), false);
 });
 
-test("every generation mode resolves the same four fixture profiles and both primary lanes", () => {
+test("every generation mode resolves the same two primary fixture profiles", () => {
   const expectedPrimaryProfileIds = {
     image_media: "exec_fixture_image_media_v1",
     avatar_primary: "exec_fixture_avatar_primary_v1",
@@ -103,8 +103,6 @@ test("every generation mode resolves the same four fixture profiles and both pri
       primaryProfiles.avatar_primary.profile_id,
       expectedPrimaryProfileIds.avatar_primary,
     );
-    assert.equal(allProfiles.avatar_repair.lane, "avatar_repair");
-    assert.equal(allProfiles.avatar_quality.lane, "avatar_quality");
     assert.equal(Object.isFrozen(allProfiles), true);
     assert.equal(Object.isFrozen(primaryProfiles), true);
   }

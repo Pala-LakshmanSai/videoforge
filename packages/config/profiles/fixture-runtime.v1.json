@@ -9,21 +9,15 @@
   "generation_mode_bindings": {
     "LOWEST_COST": {
       "image_media_profile_id": "exec_fixture_image_media_v1",
-      "avatar_primary_profile_id": "exec_fixture_avatar_primary_v1",
-      "avatar_repair_profile_id": "exec_fixture_avatar_repair_v1",
-      "avatar_quality_profile_id": "exec_fixture_avatar_quality_v1"
+      "avatar_primary_profile_id": "exec_fixture_avatar_primary_v1"
     },
     "BALANCED": {
       "image_media_profile_id": "exec_fixture_image_media_v1",
-      "avatar_primary_profile_id": "exec_fixture_avatar_primary_v1",
-      "avatar_repair_profile_id": "exec_fixture_avatar_repair_v1",
-      "avatar_quality_profile_id": "exec_fixture_avatar_quality_v1"
+      "avatar_primary_profile_id": "exec_fixture_avatar_primary_v1"
     },
     "FASTER": {
       "image_media_profile_id": "exec_fixture_image_media_v1",
-      "avatar_primary_profile_id": "exec_fixture_avatar_primary_v1",
-      "avatar_repair_profile_id": "exec_fixture_avatar_repair_v1",
-      "avatar_quality_profile_id": "exec_fixture_avatar_quality_v1"
+      "avatar_primary_profile_id": "exec_fixture_avatar_primary_v1"
     }
   },
   "profiles": [
@@ -46,34 +40,6 @@
       "profile_version": 1,
       "lane": "avatar_primary",
       "worker_id": "avatar-primary",
-      "adapter_version": "deterministic-fixture-v1",
-      "endpoint_id": null,
-      "endpoint_configuration_revision": null,
-      "provider_gpu_priorities": [],
-      "container_digest": null,
-      "model_ready": false,
-      "benchmarked": false,
-      "maximum_reservation_usd": 0
-    },
-    {
-      "profile_id": "exec_fixture_avatar_repair_v1",
-      "profile_version": 1,
-      "lane": "avatar_repair",
-      "worker_id": "avatar-repair",
-      "adapter_version": "deterministic-fixture-v1",
-      "endpoint_id": null,
-      "endpoint_configuration_revision": null,
-      "provider_gpu_priorities": [],
-      "container_digest": null,
-      "model_ready": false,
-      "benchmarked": false,
-      "maximum_reservation_usd": 0
-    },
-    {
-      "profile_id": "exec_fixture_avatar_quality_v1",
-      "profile_version": 1,
-      "lane": "avatar_quality",
-      "worker_id": "avatar-quality",
       "adapter_version": "deterministic-fixture-v1",
       "endpoint_id": null,
       "endpoint_configuration_revision": null,

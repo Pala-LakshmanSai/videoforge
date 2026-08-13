@@ -19,7 +19,7 @@
     "schema_version": { "const": "worker-health/v1" },
     "worker_id": {
       "type": "string",
-      "enum": ["image-media", "avatar-primary", "avatar-repair", "avatar-quality"]
+      "enum": ["image-media", "avatar-primary"]
     },
     "process_state": { "type": "string", "enum": ["starting", "ready", "unhealthy"] },
     "model_state": { "type": "string", "enum": ["not_loaded", "loading", "ready", "failed"] },

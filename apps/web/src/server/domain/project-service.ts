@@ -272,8 +272,6 @@ export function semanticProjectPreflight(
   const overrideEntries = [
     ["image_media_profile_id", "image_media"],
     ["avatar_primary_profile_id", "avatar_primary"],
-    ["avatar_repair_profile_id", "avatar_repair"],
-    ["avatar_quality_profile_id", "avatar_quality"],
   ] as const;
   for (const [field, lane] of overrideEntries) {
     const profileId =

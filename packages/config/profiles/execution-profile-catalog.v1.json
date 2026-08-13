@@ -6,7 +6,7 @@
   "maximum_external_spend_usd": 0,
   "selection_policy": {
     "mode": "IMMUTABLE_PROFILE_ONLY",
-    "default_option_label": "Auto",
+    "default_option_label": "Fixture",
     "raw_gpu_mutation_allowed": false,
     "production_gate_id": "GATE_GPU_001"
   },
@@ -40,7 +40,7 @@
         {
           "profile_id": "exec_fixture_image_media_v1",
           "profile_version": 1,
-          "label": "Auto",
+          "label": "Fixture",
           "detail": "Fixture · $0",
           "selectable": true,
           "selection_state": "FIXTURE_ONLY",
@@ -80,8 +80,8 @@
       "lane": "avatar_primary",
       "selector_label": "Avatar generation",
       "model": {
-        "display_name": "AvatarForcing",
-        "model_id": "KlingAIResearch/AvatarForcing",
+        "display_name": "EchoMimicV3-Flash FP8",
+        "model_id": "EchoMimicV3-Flash",
         "role": "AVATAR_PRIMARY",
         "qualification_state": "BENCHMARK_REQUIRED"
       },
@@ -105,7 +105,7 @@
         {
           "profile_id": "exec_fixture_avatar_primary_v1",
           "profile_version": 1,
-          "label": "Auto",
+          "label": "Fixture",
           "detail": "Fixture · $0",
           "selectable": true,
           "selection_state": "FIXTURE_ONLY",
@@ -116,7 +116,7 @@
       ],
       "planned_candidates": [
         {
-          "candidate_id": "avatarforcing-rtx-4090",
+          "candidate_id": "echomimic-rtx-4090",
           "label": "RTX 4090",
           "planned_priority": 1,
           "selectable": false,
@@ -124,7 +124,7 @@
           "gate_id": "GATE_GPU_001"
         },
         {
-          "candidate_id": "avatarforcing-l40s",
+          "candidate_id": "echomimic-l40s",
           "label": "L40S",
           "planned_priority": 2,
           "selectable": false,
@@ -132,7 +132,7 @@
           "gate_id": "GATE_GPU_001"
         },
         {
-          "candidate_id": "avatarforcing-rtx-6000-ada",
+          "candidate_id": "echomimic-rtx-6000-ada",
           "label": "RTX 6000 Ada",
           "planned_priority": 3,
           "selectable": false,

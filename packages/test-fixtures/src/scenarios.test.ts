@@ -32,8 +32,6 @@ const PLAYBOOK_SCENARIO_IDS = [
   "preset_roundtrip_draft_preserved",
   "gpu_cold_start",
   "image_partial_failure",
-  "avatar_lip_failure",
-  "skyreels_approval_required",
   "budget_blocked",
   "dispatch_ack_unknown",
   "callback_reconciling",
@@ -65,7 +63,7 @@ describe("fixture scenario registry", () => {
   it("covers every stable playbook scenario exactly once", () => {
     assert.deepEqual(FIXTURE_SCENARIO_IDS, PLAYBOOK_SCENARIO_IDS);
     assert.deepEqual(Object.keys(fixtureScenarioRegistry), PLAYBOOK_SCENARIO_IDS);
-    assert.equal(listFixtureScenarios().length, 30);
+    assert.equal(listFixtureScenarios().length, 28);
     assert.equal(DEFAULT_FIXTURE_SCENARIO_ID, "happy_generating");
   });
 

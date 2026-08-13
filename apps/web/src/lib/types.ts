@@ -23,8 +23,6 @@ export const scenarioIds = [
   "preset_roundtrip_draft_preserved",
   "gpu_cold_start",
   "image_partial_failure",
-  "avatar_lip_failure",
-  "skyreels_approval_required",
   "budget_blocked",
   "dispatch_ack_unknown",
   "callback_reconciling",
@@ -182,7 +180,6 @@ export interface ProjectSummary {
 
 export type ProjectAllowedAction =
   | "APPROVE"
-  | "APPROVE_FALLBACK"
   | "CANCEL"
   | "DOWNLOAD"
   | "RETRY_FAILED_ITEMS"

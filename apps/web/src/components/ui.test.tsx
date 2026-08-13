@@ -42,10 +42,10 @@ describe("AppSelect", () => {
     const { container } = render(
       <AppSelect
         label="Avatar generation compute profile"
-        value="fixture_auto"
+        value="fixture"
         onValueChange={onValueChange}
         options={[
-          { value: "fixture_auto", label: "Auto · Fixture · $0" },
+          { value: "fixture", label: "Fixture · $0" },
           { value: "rtx_4090", label: "RTX 4090", disabled: true, group: "GPU qualification" },
         ]}
       />,
@@ -57,8 +57,8 @@ describe("AppSelect", () => {
     expect(screen.getByRole("listbox", { name: /compute profile options/i })).toBeVisible();
     expect(screen.getByRole("option", { name: "RTX 4090" })).toBeDisabled();
 
-    fireEvent.click(screen.getByRole("option", { name: "Auto · Fixture · $0" }));
-    expect(onValueChange).toHaveBeenCalledWith("fixture_auto");
+    fireEvent.click(screen.getByRole("option", { name: "Fixture · $0" }));
+    expect(onValueChange).toHaveBeenCalledWith("fixture");
     expect(trigger.closest("details")).not.toHaveAttribute("open");
   });
 
@@ -67,10 +67,10 @@ describe("AppSelect", () => {
     const { container } = render(
       <AppSelect
         label="Image generation compute profile"
-        value="fixture_auto"
+        value="fixture"
         onValueChange={onValueChange}
         options={[
-          { value: "fixture_auto", label: "Auto · Fixture · $0" },
+          { value: "fixture", label: "Fixture · $0" },
           { value: "blocked", label: "RTX 4090", disabled: true },
           { value: "balanced", label: "Balanced local" },
           { value: "fast", label: "Faster local" },
@@ -81,9 +81,7 @@ describe("AppSelect", () => {
     const view = within(container);
     const trigger = view.getByLabelText("Image generation compute profile");
     fireEvent.keyDown(trigger, { key: "ArrowDown" });
-    await waitFor(() =>
-      expect(view.getByRole("option", { name: "Auto · Fixture · $0" })).toHaveFocus(),
-    );
+    await waitFor(() => expect(view.getByRole("option", { name: "Fixture · $0" })).toHaveFocus());
 
     fireEvent.keyDown(document.activeElement ?? trigger, { key: "ArrowDown" });
     await waitFor(() => expect(view.getByRole("option", { name: "Balanced local" })).toHaveFocus());

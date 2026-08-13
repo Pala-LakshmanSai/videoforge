@@ -1,0 +1,12 @@
+**
+!packages/
+!packages/contracts/
+!packages/contracts/python/
+!packages/contracts/python/**
+!workers/
+!workers/image-media/
+!workers/image-media/src/
+!workers/image-media/src/**
+!workers/media-local/
+!workers/media-local/src/
+!workers/media-local/src/**

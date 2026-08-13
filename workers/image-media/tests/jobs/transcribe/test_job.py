@@ -612,6 +612,15 @@ class TranscriptionJobTest(unittest.TestCase):
         self.assertEqual(receipt["schema_version"], "videoforge.transcription-work-receipt/v1")
         self.assertEqual(receipt["original_voiceover_role"], "FINAL_RENDER_TRUTH")
         self.assertEqual(receipt["normalized_analysis_role"], "ANALYSIS_AND_SPAN_INPUT_ONLY")
+        self.assertEqual(
+            receipt["toolchain"],
+            {
+                "whisper_cpp_version": "1.8.4",
+                "whisper_executable_sha256": _sha256(b"fixture executable"),
+                "ffmpeg_executable_sha256": _sha256(b"fixture ffmpeg executable"),
+                "ffprobe_executable_sha256": _sha256(b"fixture ffprobe executable"),
+            },
+        )
         self.assertEqual(len(receipt["chunking"]["chunks"]), 4)
         self.assertEqual(self.source_path.read_bytes(), self.source_bytes)
         words = result["transcript"]["words"]
@@ -663,6 +672,18 @@ class TranscriptionJobTest(unittest.TestCase):
         process = FakeProcessRunner(raw_document=_whisper_output())
 
         replay, selected_process, _, _ = self._run(document=changed, process=process)
+
+        self.assertEqual(replay["status"], "FAILED")
+        self.assertEqual(replay["error"]["code"], "ASR_OUTPUT_INVALID")
+        self.assertEqual(selected_process.calls, 0)
+
+    def test_changed_executable_identity_invalidates_replay_without_rerunning(self) -> None:
+        first, _, _, _ = self._run()
+        self.assertEqual(first["status"], "SUCCEEDED")
+        self.tool_path.write_bytes(b"different fixture executable")
+        process = FakeProcessRunner(raw_document=_whisper_output())
+
+        replay, selected_process, _, _ = self._run(process=process)
 
         self.assertEqual(replay["status"], "FAILED")
         self.assertEqual(replay["error"]["code"], "ASR_OUTPUT_INVALID")

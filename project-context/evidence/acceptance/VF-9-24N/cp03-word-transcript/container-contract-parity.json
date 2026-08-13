@@ -3,7 +3,14 @@
   "result": "PASS",
   "byteIdentical": true,
   "networkAtRuntime": "none",
-  "imageId": "sha256:fcc51a1b737524285663e61a7fb181fcb0bdf457cb22e79703222c245184b28d",
+  "imageId": "sha256:0919e0bc421ae8684c2c3274dc6a298873f3ee710d0c1b3d0e2aaf1b812ef5c7",
+  "imagePlatform": "linux/arm64",
+  "executableHashes": {
+    "/usr/local/bin/whisper-cli": "sha256:270cc3eef6969199e49f96ebeefe29e85665ddf69be7fbd095a8b069c140cf6a",
+    "/usr/local/bin/ffmpeg": "sha256:38aa6c23df4f14f522134f43f20ff14e020ab2a3390fbef16f0f78e98a602f17",
+    "/usr/local/bin/ffprobe": "sha256:b4401e0c6bdbcc6abeacc31b355c41b9d2b0f071f019a40cda16bd9945611445"
+  },
+  "modelEmbedded": false,
   "contract": {
     "chunk_plans": {
       "10000": [
@@ -67,5 +74,6 @@
     "transcript_sha256": "sha256:e09397b40b3eba5bfd0533b83197cd5819233ffbdca6d70b64d70cc67de63a4a",
     "word_count": 3
   },
-  "claimBoundary": "Contract-only parity; no Linux whisper.cpp/FFmpeg execution and no Cloud Run deployment."
+  "actualMediaEvidence": "project-context/evidence/acceptance/VF-9-24N/cp03-word-transcript/real-owned-fixtures.json",
+  "claimBoundary": "Local container proof only; no Cloud Run deployment or hosted-production claim."
 }

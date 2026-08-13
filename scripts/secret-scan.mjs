@@ -27,7 +27,11 @@ for (const file of tracked) {
     findings.push(`${file}: tracked secret-bearing filename`);
   }
 
-  const metadata = await stat(file);
+  const metadata = await stat(file).catch((error) => {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  });
+  if (metadata === null) continue;
   if (!metadata.isFile() || metadata.size > 2_000_000) continue;
   const bytes = await readFile(file);
   if (bytes.includes(0)) continue;

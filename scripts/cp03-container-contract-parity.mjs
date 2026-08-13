@@ -11,26 +11,8 @@ function run(command, args) {
   return result.stdout.trim();
 }
 
-const runtimeImage = "videoforge/cp03-contract-runtime:local";
-const deploymentImage = "videoforge/cp03-media-local:contract-smoke";
-run("docker", [
-  "build",
-  "--file",
-  "workers/media-local/Dockerfile.contract",
-  "--tag",
-  runtimeImage,
-  ".",
-]);
-run("docker", [
-  "build",
-  "--file",
-  "workers/media-local/Dockerfile",
-  "--build-arg",
-  `MEDIA_RUNTIME_IMAGE=${runtimeImage}`,
-  "--tag",
-  deploymentImage,
-  ".",
-]);
+const deploymentImage = "videoforge/cp03-media-local:local";
+run("docker", ["build", "--file", "workers/media-local/Dockerfile", "--tag", deploymentImage, "."]);
 const mac = run(".venv/bin/python", ["-m", "videoforge_media_local.contract_probe"]);
 const container = run("docker", [
   "run",
@@ -45,15 +27,54 @@ const container = run("docker", [
 ]);
 if (mac !== container) throw new Error("Mac and container CP-03 contract bytes differ.");
 const imageId = run("docker", ["image", "inspect", "--format", "{{.Id}}", deploymentImage]);
+const imagePlatform = run("docker", [
+  "image",
+  "inspect",
+  "--format",
+  "{{.Os}}/{{.Architecture}}",
+  deploymentImage,
+]);
+const executableHashes = run("docker", [
+  "run",
+  "--rm",
+  "--network",
+  "none",
+  "--entrypoint",
+  "/usr/bin/sha256sum",
+  deploymentImage,
+  "/usr/local/bin/whisper-cli",
+  "/usr/local/bin/ffmpeg",
+  "/usr/local/bin/ffprobe",
+]);
+const modelEmbeddingCheck = run("docker", [
+  "run",
+  "--rm",
+  "--network",
+  "none",
+  "--entrypoint",
+  "/bin/sh",
+  deploymentImage,
+  "-c",
+  "test ! -e /models && printf absent",
+]);
 const report = {
   schemaVersion: "videoforge.cp03-container-contract-parity/v1",
   result: "PASS",
   byteIdentical: true,
   networkAtRuntime: "none",
   imageId,
+  imagePlatform,
+  executableHashes: Object.fromEntries(
+    executableHashes.split("\n").map((line) => {
+      const [digest, file] = line.trim().split(/\s+/u);
+      return [file, `sha256:${digest}`];
+    }),
+  ),
+  modelEmbedded: modelEmbeddingCheck !== "absent",
   contract: JSON.parse(mac),
-  claimBoundary:
-    "Contract-only parity; no Linux whisper.cpp/FFmpeg execution and no Cloud Run deployment.",
+  actualMediaEvidence:
+    "project-context/evidence/acceptance/VF-9-24N/cp03-word-transcript/real-owned-fixtures.json",
+  claimBoundary: "Local container proof only; no Cloud Run deployment or hosted-production claim.",
 };
 const serialized = JSON.stringify(report, null, 2);
 const outputIndex = process.argv.indexOf("--output");

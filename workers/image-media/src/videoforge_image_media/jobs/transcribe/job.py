@@ -153,7 +153,46 @@ class TranscriptionJob:
                 _cancelled_result(attempt_id, source_hash, model_hash), result_path=result_path
             )
 
-        job_fingerprint = _job_fingerprint(job_input)
+        cancel_token = cast(str, job_input["cancel_token"])
+        try:
+            tool = self._tools.resolve(
+                cast(str, job_input["model"]["engine"]),
+                cast(str, job_input["model"]["name"]),
+            )
+        except (FileNotFoundError, OSError, ValueError):
+            return self._finish(
+                _failure_result(attempt_id, source_hash, model_hash, "ASR_TOOL_MISSING"),
+                result_path=result_path,
+            )
+        tool_error = _tool_error(tool)
+        if tool_error is not None:
+            return self._finish(
+                _failure_result(attempt_id, source_hash, model_hash, tool_error),
+                result_path=result_path,
+            )
+        try:
+            tool_identity = _executable_identity(
+                tool, should_cancel=lambda: self._is_cancelled(cancel_token)
+            )
+            model_digest = _sha256_file(
+                tool.model, should_cancel=lambda: self._is_cancelled(cancel_token)
+            )
+        except OSError:
+            return self._finish(
+                _failure_result(attempt_id, source_hash, model_hash, "ASR_TOOL_MISSING"),
+                result_path=result_path,
+            )
+        if tool_identity is None or model_digest is None:
+            return self._finish(
+                _cancelled_result(attempt_id, source_hash, model_hash), result_path=result_path
+            )
+        if model_digest != model_hash:
+            return self._finish(
+                _failure_result(attempt_id, source_hash, model_hash, "ASR_MODEL_HASH_MISMATCH"),
+                result_path=result_path,
+            )
+
+        job_fingerprint = _job_fingerprint(job_input, tool_identity)
         work_receipt_path = result_path.with_name("asr-work-receipt.json")
         try:
             replay = _load_replay(result_path, work_receipt_path, job_fingerprint)
@@ -184,24 +223,6 @@ class TranscriptionJob:
             )
 
         try:
-            tool = self._tools.resolve(
-                cast(str, job_input["model"]["engine"]),
-                cast(str, job_input["model"]["name"]),
-            )
-        except (FileNotFoundError, OSError, ValueError):
-            return self._finish(
-                _failure_result(attempt_id, source_hash, model_hash, "ASR_TOOL_MISSING"),
-                result_path=result_path,
-            )
-        tool_error = _tool_error(tool)
-        if tool_error is not None:
-            return self._finish(
-                _failure_result(attempt_id, source_hash, model_hash, tool_error),
-                result_path=result_path,
-            )
-
-        cancel_token = cast(str, job_input["cancel_token"])
-        try:
             source_digest = _sha256_file(
                 source_path, should_cancel=lambda: self._is_cancelled(cancel_token)
             )
@@ -217,25 +238,6 @@ class TranscriptionJob:
         if source_digest != source_hash:
             return self._finish(
                 _failure_result(attempt_id, source_hash, model_hash, "ASR_SOURCE_HASH_MISMATCH"),
-                result_path=result_path,
-            )
-
-        try:
-            model_digest = _sha256_file(
-                tool.model, should_cancel=lambda: self._is_cancelled(cancel_token)
-            )
-        except OSError:
-            return self._finish(
-                _failure_result(attempt_id, source_hash, model_hash, "ASR_MODEL_MISSING"),
-                result_path=result_path,
-            )
-        if model_digest is None:
-            return self._finish(
-                _cancelled_result(attempt_id, source_hash, model_hash), result_path=result_path
-            )
-        if model_digest != model_hash:
-            return self._finish(
-                _failure_result(attempt_id, source_hash, model_hash, "ASR_MODEL_HASH_MISMATCH"),
                 result_path=result_path,
             )
 
@@ -355,7 +357,6 @@ class TranscriptionJob:
                     job_fingerprint,
                     normalized_hash,
                     window,
-                    tool.version,
                 )
                 recovered = _load_chunk_receipt(chunk_receipt_path, chunk_fingerprint, window)
                 if recovered is not None:
@@ -495,6 +496,7 @@ class TranscriptionJob:
                 transcript=transcript,
                 windows=windows,
                 chunk_receipt_root=chunk_receipt_root,
+                tool_identity=tool_identity,
             )
         except (OSError, TypeError, ValueError):
             return self._finish(
@@ -676,6 +678,23 @@ def _sha256_file(path: Path, *, should_cancel: Callable[[], bool]) -> str | None
     return f"sha256:{digest.hexdigest()}"
 
 
+def _executable_identity(
+    tool: WhisperTool, *, should_cancel: Callable[[], bool]
+) -> dict[str, str] | None:
+    hashes: list[str] = []
+    for path in (tool.executable, tool.ffmpeg, tool.ffprobe):
+        digest = _sha256_file(path, should_cancel=should_cancel)
+        if digest is None:
+            return None
+        hashes.append(digest)
+    return {
+        "whisper_cpp_version": tool.version,
+        "whisper_executable_sha256": hashes[0],
+        "ffmpeg_executable_sha256": hashes[1],
+        "ffprobe_executable_sha256": hashes[2],
+    }
+
+
 def _ffprobe_arguments(tool: WhisperTool, source_path: Path) -> tuple[str, ...]:
     return (
         str(tool.ffprobe),
@@ -790,6 +809,7 @@ def _whisper_arguments(
         "--output-file",
         str(raw_output_prefix),
         "--no-prints",
+        "--no-gpu",
     ]
     arguments.append("--flash-attn" if flash_attention else "--no-flash-attn")
     return tuple(arguments)
@@ -893,22 +913,20 @@ def _canonical_hash(value: object) -> str:
     return f"sha256:{hashlib.sha256(_canonical_payload(value)).hexdigest()}"
 
 
-def _job_fingerprint(job_input: Mapping[str, object]) -> str:
-    return _canonical_hash(job_input)
+def _job_fingerprint(job_input: Mapping[str, object], tool_identity: Mapping[str, str]) -> str:
+    return _canonical_hash({"job_input": job_input, "toolchain": tool_identity})
 
 
 def _chunk_fingerprint(
     job_fingerprint: str,
     normalized_hash: str,
     window: ChunkWindow,
-    tool_version: str,
 ) -> str:
     return _canonical_hash(
         {
             "schema_version": "videoforge.asr-chunk-fingerprint/v1",
             "job_fingerprint": job_fingerprint,
             "normalized_analysis_sha256": normalized_hash,
-            "tool_version": tool_version,
             "chunk": {
                 "index": window.index,
                 "start_ms": window.start_ms,
@@ -1037,6 +1055,7 @@ def _write_work_receipt(
     transcript: Mapping[str, object],
     windows: tuple[ChunkWindow, ...],
     chunk_receipt_root: Path,
+    tool_identity: Mapping[str, str],
 ) -> None:
     chunks: list[dict[str, object]] = []
     for window in windows:
@@ -1057,6 +1076,7 @@ def _write_work_receipt(
             "normalized_analysis_sha256": normalized_hash,
             "normalized_analysis_role": "ANALYSIS_AND_SPAN_INPUT_ONLY",
             "model_sha256": model_hash,
+            "toolchain": dict(tool_identity),
             "chunking": {
                 "algorithm": "balanced-overlap-midpoint-v1",
                 "max_chunk_ms": 600_000,

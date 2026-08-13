@@ -43,6 +43,7 @@
     "typecheck": "turbo run typecheck",
     "verify:graph": "node scripts/verify-graph.mjs",
     "verify:vnext-dispatch-firewall": "node scripts/verify-vnext-dispatch-firewall.mjs",
+    "verify:active-runtime": "node scripts/verify-active-runtime.mjs",
     "verify:packages": "turbo run build lint typecheck test",
     "verify:fast": "node scripts/verify-fast.mjs",
     "audit:dependencies": "pnpm audit --audit-level high",

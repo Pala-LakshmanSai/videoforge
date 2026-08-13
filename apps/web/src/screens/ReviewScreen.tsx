@@ -60,7 +60,7 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
       id: "seg_0003",
       time: "00:10–00:14",
       type: "AVATAR_SPLIT_IMAGE" as const,
-      status: scenario === "avatar_lip_failure" ? "FLAGGED" : "SELECTED",
+      status: "SELECTED",
     },
   ];
 
@@ -91,17 +91,8 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
           { ifMatch: project?.versionToken },
         );
         setReviewActionNotice(
-          `Targeted repair accepted. Next project check in ${localMode ? 1 : 10} second${localMode ? "" : "s"}.`,
+          `Failed item retry accepted. Next project check in ${localMode ? 1 : 10} second${localMode ? "" : "s"}.`,
         );
-        await query.refetch();
-      } else if (id === "fallback") {
-        await api.mutate(
-          `/api/v1/projects/${projectId}/fallback-approval`,
-          { project_id: projectId, approved_increment_usd: 0.18 },
-          scenario,
-          { ifMatch: project?.versionToken },
-        );
-        setReviewActionNotice("The $0.18 fallback reservation was approved for this fixture.");
         await query.refetch();
       } else {
         throw new Error("This review action is not implemented in fixture mode.");
@@ -194,15 +185,6 @@ export function ReviewScreen({ projectId }: { projectId: string }) {
               <Button busy={busy === "retry"} disabled={busy !== null} onClick={() => act("retry")}>
                 <RefreshCw size={16} />
                 Retry failed item
-              </Button>
-            ) : null}
-            {project.allowedActions.includes("APPROVE_FALLBACK") ? (
-              <Button
-                busy={busy === "fallback"}
-                disabled={busy !== null}
-                onClick={() => act("fallback")}
-              >
-                Approve $0.18 fallback
               </Button>
             ) : null}
           </>

@@ -10,6 +10,7 @@ import stat
 import sys
 import uuid
 from pathlib import Path
+from collections.abc import Callable
 from typing import Any
 
 from .jobs.render import (
@@ -254,7 +255,7 @@ def _absolute_tool(value: str) -> Path:
     return resolved
 
 
-def _transcribe(arguments: argparse.Namespace, resolver: LocalArtifactResolver) -> dict[str, Any]:
+def _transcribe(arguments: argparse.Namespace, resolver: Any) -> dict[str, Any]:
     document = _read_input(Path(arguments.input), resolver.root)
     tool = WhisperTool(
         executable=_absolute_tool(arguments.whisper),
@@ -271,7 +272,7 @@ def _transcribe(arguments: argparse.Namespace, resolver: LocalArtifactResolver) 
     ).run(document)
 
 
-def _render(arguments: argparse.Namespace, resolver: LocalArtifactResolver) -> dict[str, Any]:
+def _render(arguments: argparse.Namespace, resolver: Any) -> dict[str, Any]:
     document = _read_input(Path(arguments.input), resolver.root)
     tools = RenderTools(
         ffmpeg=_absolute_tool(arguments.ffmpeg),
@@ -290,9 +291,7 @@ def _render(arguments: argparse.Namespace, resolver: LocalArtifactResolver) -> d
     ).run(document, claimed_attempt_id=arguments.claimed_attempt_id)
 
 
-def _materialize_span(
-    arguments: argparse.Namespace, resolver: LocalArtifactResolver
-) -> dict[str, Any]:
+def _materialize_span(arguments: argparse.Namespace, resolver: Any) -> dict[str, Any]:
     document = _read_input(Path(arguments.input), resolver.root)
     return SpanAudioMaterializationJob(
         artifacts=resolver,
@@ -333,10 +332,16 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> int:
+def main(
+    *,
+    resolver_factory: Callable[[Path], Any] = LocalArtifactResolver,
+    accepted_commands: frozenset[str] | None = None,
+) -> int:
     arguments = _parser().parse_args()
     try:
-        resolver = LocalArtifactResolver(Path(arguments.artifact_root))
+        if accepted_commands is not None and arguments.command not in accepted_commands:
+            raise ValueError("unsupported media command")
+        resolver = resolver_factory(Path(arguments.artifact_root))
         if arguments.command == "transcribe":
             result = _transcribe(arguments, resolver)
         elif arguments.command == "materialize-span":

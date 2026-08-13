@@ -8,7 +8,6 @@ import { z } from "zod";
 import { apiProblem, problemResponse } from "./problem";
 
 export const SHA256 = /^sha256:[a-f0-9]{64}$/u;
-export const FIXTURE_FALLBACK_INCREMENT_USD = 0.18;
 
 const MAX_IDEMPOTENCY_RECORDS_PER_SESSION = 512;
 
@@ -388,45 +387,5 @@ export function readFinalApprovalRequest(
     projectId: payload.data.project_id,
     candidateId: payload.data.candidate_id,
     candidateSha256: payload.data.candidate_sha256,
-  };
-}
-
-type FallbackApprovalRequestResolution =
-  | { ok: true; projectId: string; approvedIncrementUsd: number }
-  | { ok: false; response: Response };
-
-export function readFallbackApprovalRequest(
-  rawBody: string,
-  pathProjectId: string,
-): FallbackApprovalRequestResolution {
-  const projectRequest = readProjectMutationRequest(rawBody, pathProjectId);
-  if (!projectRequest.ok) return projectRequest;
-  const payload = parseJsonBody(rawBody);
-  if (!payload.ok) return payload;
-  if (
-    payload.data === null ||
-    typeof payload.data !== "object" ||
-    Array.isArray(payload.data) ||
-    Object.keys(payload.data).length !== 2 ||
-    !("approved_increment_usd" in payload.data) ||
-    payload.data.approved_increment_usd !== FIXTURE_FALLBACK_INCREMENT_USD
-  ) {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "INVALID_FALLBACK_APPROVAL_AMOUNT",
-          422,
-          "Fallback approval amount is invalid",
-          `Fixture fallback approval requires the exact capped increment of $${FIXTURE_FALLBACK_INCREMENT_USD.toFixed(2)}.`,
-          false,
-        ),
-      ),
-    };
-  }
-  return {
-    ok: true,
-    projectId: projectRequest.projectId,
-    approvedIncrementUsd: FIXTURE_FALLBACK_INCREMENT_USD,
   };
 }

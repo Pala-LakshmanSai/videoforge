@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import sys
-
 from videoforge_image_media.local_cli import main as shared_media_main
+
+from .artifacts import R2PortFixtureArtifactResolver
 
 
 def main() -> int:
-    if len(sys.argv) < 2 or sys.argv[1] != "transcribe":
-        print("CP-03 media-local worker accepts only the transcribe job mode.", file=sys.stderr)
-        return 2
-    return shared_media_main()
+    return shared_media_main(
+        resolver_factory=R2PortFixtureArtifactResolver,
+        accepted_commands=frozenset({"transcribe"}),
+    )
 
 
 if __name__ == "__main__":

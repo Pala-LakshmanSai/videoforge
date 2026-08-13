@@ -8,8 +8,8 @@ export function isProviderMode(value: unknown): value is ProviderMode {
   return typeof value === "string" && PROVIDER_MODES.includes(value as ProviderMode);
 }
 export type GenerationMode = "LOWEST_COST" | "BALANCED" | "FASTER";
-export type WorkerId = "image-media" | "avatar-primary" | "avatar-repair" | "avatar-quality";
-export type WorkerLane = "image_media" | "avatar_primary" | "avatar_repair" | "avatar_quality";
+export type WorkerId = "image-media" | "avatar-primary";
+export type WorkerLane = "image_media" | "avatar_primary";
 export type PrimaryWorkerLane = "image_media" | "avatar_primary";
 
 export interface FixtureExecutionProfile {
@@ -30,8 +30,6 @@ export interface FixtureExecutionProfile {
 export interface ExecutionProfileBindings {
   readonly image_media_profile_id: string;
   readonly avatar_primary_profile_id: string;
-  readonly avatar_repair_profile_id: string;
-  readonly avatar_quality_profile_id: string;
 }
 
 export interface FixtureRuntimeProfileSet {
@@ -48,7 +46,7 @@ export interface FixtureRuntimeProfileSet {
 
 export interface ExecutionProfileSelectionPolicy {
   readonly mode: "IMMUTABLE_PROFILE_ONLY";
-  readonly default_option_label: "Auto";
+  readonly default_option_label: "Fixture";
   readonly raw_gpu_mutation_allowed: false;
   readonly production_gate_id: "GATE_GPU_001";
 }
@@ -81,7 +79,7 @@ export interface FixtureLaneStatus {
 export interface FixtureProfileSelectorOption {
   readonly profile_id: string;
   readonly profile_version: 1;
-  readonly label: "Auto";
+  readonly label: "Fixture";
   readonly detail: "Fixture · $0";
   readonly selectable: true;
   readonly selection_state: "FIXTURE_ONLY";
@@ -123,8 +121,6 @@ export interface ResolvedFixtureExecutionProfiles {
   readonly generation_mode: GenerationMode;
   readonly image_media: FixtureExecutionProfile;
   readonly avatar_primary: FixtureExecutionProfile;
-  readonly avatar_repair: FixtureExecutionProfile;
-  readonly avatar_quality: FixtureExecutionProfile;
 }
 
 export interface ResolvedFixturePrimaryExecutionProfiles {
@@ -137,26 +133,17 @@ type JsonObject = Record<string, unknown>;
 type JsonLiteral = string | number | boolean | null;
 
 const GENERATION_MODES: readonly GenerationMode[] = ["LOWEST_COST", "BALANCED", "FASTER"];
-const WORKER_LANES: readonly WorkerLane[] = [
-  "image_media",
-  "avatar_primary",
-  "avatar_repair",
-  "avatar_quality",
-];
+const WORKER_LANES: readonly WorkerLane[] = ["image_media", "avatar_primary"];
 const PRIMARY_WORKER_LANES: readonly PrimaryWorkerLane[] = ["image_media", "avatar_primary"];
 
 const WORKER_ID_BY_LANE: Readonly<Record<WorkerLane, WorkerId>> = {
   image_media: "image-media",
   avatar_primary: "avatar-primary",
-  avatar_repair: "avatar-repair",
-  avatar_quality: "avatar-quality",
 };
 
 const PROFILE_ID_FIELD_BY_LANE: Readonly<Record<WorkerLane, keyof ExecutionProfileBindings>> = {
   image_media: "image_media_profile_id",
   avatar_primary: "avatar_primary_profile_id",
-  avatar_repair: "avatar_repair_profile_id",
-  avatar_quality: "avatar_quality_profile_id",
 };
 
 const LANE_EXPECTATIONS = {
@@ -171,8 +158,8 @@ const LANE_EXPECTATIONS = {
   },
   avatar_primary: {
     selectorLabel: "Avatar generation",
-    modelDisplayName: "AvatarForcing",
-    modelId: "KlingAIResearch/AvatarForcing",
+    modelDisplayName: "EchoMimicV3-Flash FP8",
+    modelId: "EchoMimicV3-Flash",
     modelRole: "AVATAR_PRIMARY",
     processDisplayName: "Generate avatar clips",
     parallelWith: "image_media",
@@ -238,8 +225,6 @@ function workerLaneAt(value: unknown, path: string): WorkerLane {
   switch (value) {
     case "image_media":
     case "avatar_primary":
-    case "avatar_repair":
-    case "avatar_quality":
       return value;
     default:
       return fail(path, `expected one of ${WORKER_LANES.join(", ")}`);
@@ -315,16 +300,7 @@ function parseFixtureExecutionProfile(value: unknown, path: string): FixtureExec
 
 function parseExecutionProfileBindings(value: unknown, path: string): ExecutionProfileBindings {
   const input = objectAt(value, path);
-  exactKeys(
-    input,
-    [
-      "image_media_profile_id",
-      "avatar_primary_profile_id",
-      "avatar_repair_profile_id",
-      "avatar_quality_profile_id",
-    ],
-    path,
-  );
+  exactKeys(input, ["image_media_profile_id", "avatar_primary_profile_id"], path);
   return Object.freeze({
     image_media_profile_id: stringAt(
       input.image_media_profile_id,
@@ -333,14 +309,6 @@ function parseExecutionProfileBindings(value: unknown, path: string): ExecutionP
     avatar_primary_profile_id: stringAt(
       input.avatar_primary_profile_id,
       `${path}.avatar_primary_profile_id`,
-    ),
-    avatar_repair_profile_id: stringAt(
-      input.avatar_repair_profile_id,
-      `${path}.avatar_repair_profile_id`,
-    ),
-    avatar_quality_profile_id: stringAt(
-      input.avatar_quality_profile_id,
-      `${path}.avatar_quality_profile_id`,
     ),
   });
 }
@@ -460,7 +428,7 @@ function parseSelectionPolicy(value: unknown, path: string): ExecutionProfileSel
     mode: literalAt(input.mode, "IMMUTABLE_PROFILE_ONLY", `${path}.mode`),
     default_option_label: literalAt(
       input.default_option_label,
-      "Auto",
+      "Fixture",
       `${path}.default_option_label`,
     ),
     raw_gpu_mutation_allowed: literalAt(
@@ -568,7 +536,7 @@ function parseFixtureProfileSelectorOption(
   return Object.freeze({
     profile_id: stringAt(input.profile_id, `${path}.profile_id`),
     profile_version: literalAt(input.profile_version, 1, `${path}.profile_version`),
-    label: literalAt(input.label, "Auto", `${path}.label`),
+    label: literalAt(input.label, "Fixture", `${path}.label`),
     detail: literalAt(input.detail, "Fixture · $0", `${path}.detail`),
     selectable: literalAt(input.selectable, true, `${path}.selectable`),
     selection_state: literalAt(input.selection_state, "FIXTURE_ONLY", `${path}.selection_state`),
@@ -618,7 +586,7 @@ function parsePrimaryLaneCatalogEntry(value: unknown, path: string): PrimaryLane
 
   const optionsInput = arrayAt(input.selector_options, `${path}.selector_options`);
   if (optionsInput.length !== 1) {
-    fail(`${path}.selector_options`, "expected exactly one selectable fixture Auto profile");
+    fail(`${path}.selector_options`, "expected exactly one selectable fixture profile");
   }
   const option = parseFixtureProfileSelectorOption(optionsInput[0], `${path}.selector_options[0]`);
 
@@ -781,8 +749,6 @@ export function resolveFixtureExecutionProfiles(
     generation_mode: generationMode,
     image_media: getFixtureExecutionProfile(bindings.image_media_profile_id),
     avatar_primary: getFixtureExecutionProfile(bindings.avatar_primary_profile_id),
-    avatar_repair: getFixtureExecutionProfile(bindings.avatar_repair_profile_id),
-    avatar_quality: getFixtureExecutionProfile(bindings.avatar_quality_profile_id),
   });
 }
 

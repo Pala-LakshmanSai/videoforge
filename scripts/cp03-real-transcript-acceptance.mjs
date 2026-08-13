@@ -1,7 +1,6 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { resolveWhisperModelPath, whisperModel } from "./local-media-config.mjs";
@@ -12,6 +11,8 @@ const model = resolveWhisperModelPath();
 const ffmpeg = "/opt/homebrew/bin/ffmpeg";
 const ffprobe = "/opt/homebrew/bin/ffprobe";
 const whisper = "/opt/homebrew/bin/whisper-cli";
+const containerImage = "videoforge/cp03-media-local:local";
+const fixtureBucket = "videoforge-private-fixture";
 const ownedText =
   "Owned timing evidence starts with a careful source check. Clear words cross each chunk boundary, and the original voiceover remains render truth.";
 
@@ -73,7 +74,14 @@ async function prepareObject(root, fixtureId, source, durationOverrideMs = null)
   const bytes = await readFile(source);
   const checksum = sha256(bytes);
   const digest = checksum.slice(7);
-  const destination = path.join(root, "objects", "sha256", digest.slice(0, 2), `${digest}.wav`);
+  const destination = path.join(
+    root,
+    fixtureBucket,
+    "objects",
+    "sha256",
+    digest.slice(0, 2),
+    `${digest}.wav`,
+  );
   await mkdir(path.dirname(destination), { recursive: true, mode: 0o700 });
   await copyFile(source, destination);
   return {
@@ -85,7 +93,7 @@ async function prepareObject(root, fixtureId, source, durationOverrideMs = null)
   };
 }
 
-async function runFixture(root, fixtureId, source, expectedStatus, expectedError = null) {
+async function runFixture(runtime, root, fixtureId, source, expectedStatus, expectedError = null) {
   const object = await prepareObject(
     root,
     fixtureId,
@@ -94,7 +102,7 @@ async function runFixture(root, fixtureId, source, expectedStatus, expectedError
   );
   const revisionId = `revision_cp03_${fixtureId}`;
   const attemptId = `attempt_cp03_${fixtureId}`;
-  const runRoot = path.join(root, "runs", revisionId, attemptId);
+  const runRoot = path.join(root, fixtureBucket, "runs", revisionId, attemptId);
   await mkdir(runRoot, { recursive: true, mode: 0o700 });
   const input = {
     schema_version: "asr-job-input/v1",
@@ -128,30 +136,50 @@ async function runFixture(root, fixtureId, source, expectedStatus, expectedError
   const inputPath = path.join(runRoot, "asr-input.json");
   await writeFile(inputPath, `${canonical(input)}\n`, { encoding: "utf8", flag: "wx" });
 
-  const invoke = () =>
-    run(
-      python,
+  const invoke = () => {
+    const sharedArguments = [
+      "transcribe",
+      "--artifact-root",
+      runtime === "mac" ? root : "/work/artifacts",
+      "--input",
+      runtime === "mac" ? inputPath : `/work/artifacts/${path.relative(root, inputPath)}`,
+      "--whisper",
+      runtime === "mac" ? whisper : "/usr/local/bin/whisper-cli",
+      "--model",
+      runtime === "mac" ? model : "/models/ggml-base.en.bin",
+      "--whisper-version",
+      "1.8.4",
+      "--ffmpeg",
+      runtime === "mac" ? ffmpeg : "/usr/local/bin/ffmpeg",
+      "--ffprobe",
+      runtime === "mac" ? ffprobe : "/usr/local/bin/ffprobe",
+    ];
+    if (runtime === "mac") {
+      return run(
+        python,
+        ["-m", "videoforge_media_local.cli", ...sharedArguments],
+        `CP-03 ${runtime} ${fixtureId}`,
+      );
+    }
+    return run(
+      "docker",
       [
-        "-m",
-        "videoforge_media_local.cli",
-        "transcribe",
-        "--artifact-root",
-        root,
-        "--input",
-        inputPath,
-        "--whisper",
-        whisper,
-        "--model",
-        model,
-        "--whisper-version",
-        "1.8.4",
-        "--ffmpeg",
-        ffmpeg,
-        "--ffprobe",
-        ffprobe,
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "--user",
+        `${process.getuid()}:${process.getgid()}`,
+        "--volume",
+        `${root}:/work/artifacts`,
+        "--volume",
+        `${model}:/models/ggml-base.en.bin:ro`,
+        containerImage,
+        ...sharedArguments,
       ],
-      `CP-03 ${fixtureId}`,
+      `CP-03 ${runtime} ${fixtureId}`,
     );
+  };
   const firstInvocation = await invoke();
   const first = JSON.parse(firstInvocation.stdout);
   if (first.status !== expectedStatus || (first.error?.code ?? null) !== expectedError)
@@ -161,6 +189,7 @@ async function runFixture(root, fixtureId, source, expectedStatus, expectedError
 
   const summary = {
     fixtureId,
+    runtime,
     sourceSha256: object.checksum,
     sourceBytes: object.bytes,
     sourceDurationMs: object.durationMs,
@@ -199,6 +228,31 @@ async function runFixture(root, fixtureId, source, expectedStatus, expectedError
   summary.chunkCount = receipt.chunking.chunks.length;
   summary.transcriptSha256 = sha256(Buffer.from(canonical(first.transcript)));
   summary.receiptSha256 = sha256(Buffer.from(canonical(receipt)));
+  summary.toolchain = receipt.toolchain;
+  summary.semanticReceiptSha256 = sha256(
+    Buffer.from(
+      canonical({
+        sourceVoiceoverSha256: receipt.source_voiceover_sha256,
+        originalVoiceoverRole: receipt.original_voiceover_role,
+        normalizedAnalysisSha256: receipt.normalized_analysis_sha256,
+        normalizedAnalysisRole: receipt.normalized_analysis_role,
+        modelSha256: receipt.model_sha256,
+        chunking: {
+          algorithm: receipt.chunking.algorithm,
+          maxChunkMs: receipt.chunking.max_chunk_ms,
+          overlapMs: receipt.chunking.overlap_ms,
+          chunks: receipt.chunking.chunks.map((chunk) => ({
+            index: chunk.index,
+            start_ms: chunk.start_ms,
+            end_ms: chunk.end_ms,
+            emit_start_ms: chunk.emit_start_ms,
+            emit_end_ms: chunk.emit_end_ms,
+          })),
+        },
+        transcriptSha256: receipt.transcript_sha256,
+      }),
+    ),
+  );
   const replayInvocation = await invoke();
   const replay = JSON.parse(replayInvocation.stdout);
   if (canonical(replay) !== canonical(first))
@@ -225,7 +279,9 @@ async function runFixture(root, fixtureId, source, expectedStatus, expectedError
 const outputIndex = process.argv.indexOf("--output");
 const outputPath = outputIndex >= 0 ? path.resolve(process.argv[outputIndex + 1] ?? "") : null;
 if (outputIndex >= 0 && !outputPath) throw new Error("--output requires a path.");
-const root = await mkdtemp(path.join(tmpdir(), "videoforge-cp03-real-"));
+const privateAcceptanceRoot = path.join(repoRoot, ".private-inputs", "cp03-acceptance");
+await mkdir(privateAcceptanceRoot, { recursive: true, mode: 0o700 });
+const root = await mkdtemp(path.join(privateAcceptanceRoot, "run-"));
 const fixtures = path.join(root, "owned-fixtures");
 await mkdir(fixtures, { recursive: true });
 const aiff = path.join(fixtures, "owned.aiff");
@@ -332,15 +388,53 @@ await run(
   "30-minute fixture",
 );
 
-const results = [];
-results.push(await runFixture(root, "short", short, "SUCCEEDED"));
-results.push(await runFixture(root, "noisy", noisy, "SUCCEEDED"));
-results.push(await runFixture(root, "silence", silence, "FAILED", "ASR_OUTPUT_INVALID"));
-results.push(await runFixture(root, "malformed", malformed, "FAILED", "ASR_SOURCE_DECODE_FAILED"));
-results.push(await runFixture(root, "long", long, "SUCCEEDED"));
+const platformResults = {};
+for (const runtime of ["mac", "container"]) {
+  const runtimeRoot = path.join(root, runtime);
+  await mkdir(runtimeRoot, { recursive: true, mode: 0o700 });
+  const results = [];
+  results.push(await runFixture(runtime, runtimeRoot, "short", short, "SUCCEEDED"));
+  results.push(await runFixture(runtime, runtimeRoot, "noisy", noisy, "SUCCEEDED"));
+  results.push(
+    await runFixture(runtime, runtimeRoot, "silence", silence, "FAILED", "ASR_OUTPUT_INVALID"),
+  );
+  results.push(
+    await runFixture(
+      runtime,
+      runtimeRoot,
+      "malformed",
+      malformed,
+      "FAILED",
+      "ASR_SOURCE_DECODE_FAILED",
+    ),
+  );
+  results.push(await runFixture(runtime, runtimeRoot, "long", long, "SUCCEEDED"));
+  platformResults[runtime] = results;
+}
+
+const parity = platformResults.mac.map((macResult, index) => {
+  const containerResult = platformResults.container[index];
+  const match =
+    macResult.fixtureId === containerResult.fixtureId &&
+    macResult.sourceSha256 === containerResult.sourceSha256 &&
+    macResult.status === containerResult.status &&
+    macResult.errorCode === containerResult.errorCode &&
+    macResult.transcriptSha256 === containerResult.transcriptSha256 &&
+    macResult.semanticReceiptSha256 === containerResult.semanticReceiptSha256 &&
+    macResult.chunkCount === containerResult.chunkCount;
+  if (!match)
+    throw new Error(`Mac/container actual-media parity failed for ${macResult.fixtureId}.`);
+  return {
+    fixtureId: macResult.fixtureId,
+    result: "PASS",
+    transcriptSha256: macResult.transcriptSha256 ?? null,
+    semanticReceiptSha256: macResult.semanticReceiptSha256 ?? null,
+    chunkCount: macResult.chunkCount ?? null,
+  };
+});
 
 const report = {
-  schemaVersion: "videoforge.cp03-real-transcript-acceptance/v1",
+  schemaVersion: "videoforge.cp03-real-transcript-acceptance/v2",
   artifactRoot: root,
   providerCalls: 0,
   externalSpendUsd: 0,
@@ -349,8 +443,10 @@ const report = {
     sha256: `sha256:${whisperModel.sha256}`,
     changedOrDownloaded: false,
   },
-  tools: { whisperCpp: "1.8.4", ffmpeg: "8.1.1", ffprobe: "8.1.1" },
-  results,
+  tools: { whisperCpp: "1.8.4", ffmpeg: "8.1.1", ffprobe: "8.1.1", gpu: false },
+  runtimeNetwork: { mac: "host-local-only", container: "none" },
+  platformResults,
+  parity,
 };
 const serialized = JSON.stringify(report, null, 2);
 if (outputPath) {

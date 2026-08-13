@@ -19,8 +19,6 @@ export const FIXTURE_SCENARIO_IDS = [
   "preset_roundtrip_draft_preserved",
   "gpu_cold_start",
   "image_partial_failure",
-  "avatar_lip_failure",
-  "skyreels_approval_required",
   "budget_blocked",
   "dispatch_ack_unknown",
   "callback_reconciling",

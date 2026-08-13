@@ -446,7 +446,8 @@ function localProviderAcceptance(
       candidate.kind === "IMAGE" ? "fake.runpod.mage.image.accept" : "fixture.avatar.accept",
     modelLineage: Object.freeze({
       provider: "fake-provider-shaped",
-      model: candidate.kind === "IMAGE" ? "Mage-Flow-Turbo BF16" : "AvatarForcing fixture contract",
+      model:
+        candidate.kind === "IMAGE" ? "Mage-Flow-Turbo BF16" : "EchoMimicV3-Flash fixture contract",
     }),
     promptLineage: Object.freeze({
       promptHash: `sha256:${createHash("sha256").update(candidate.taskKey).digest("hex")}`,
@@ -607,8 +608,7 @@ async function runPythonBridge(
   if (signal.aborted) throw new Error(`Local ${command} job was cancelled before launch.`);
   signal.addEventListener("abort", markCancelled, { once: true });
   try {
-    const moduleName =
-      command === "transcribe" ? "videoforge_media_local.cli" : "videoforge_image_media.local_cli";
+    const moduleName = "videoforge_image_media.local_cli";
     const capture = await runProcess(
       python,
       ["-m", moduleName, command, ...arguments_],

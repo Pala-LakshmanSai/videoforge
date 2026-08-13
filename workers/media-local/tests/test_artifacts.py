@@ -4,11 +4,21 @@ import hashlib
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from videoforge_media_local import R2PortFixtureArtifactResolver
+from videoforge_media_local import cli
 
 
 class R2PortFixtureTests(unittest.TestCase):
+    def test_media_local_entrypoint_uses_r2_fixture_port_for_transcription_only(self) -> None:
+        with patch.object(cli, "shared_media_main", return_value=0) as shared:
+            self.assertEqual(cli.main(), 0)
+        shared.assert_called_once_with(
+            resolver_factory=R2PortFixtureArtifactResolver,
+            accepted_commands=frozenset({"transcribe"}),
+        )
+
     def test_maps_content_addressed_input_and_bounded_run_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
@@ -40,6 +50,7 @@ class R2PortFixtureTests(unittest.TestCase):
             (root / resolver.bucket).symlink_to(outside, target_is_directory=True)
             with self.assertRaises(ValueError):
                 resolver.resolve_run("vf-local-run://revision_cp03/attempt_cp03/result.json")
+            self.assertEqual(list(outside.iterdir()), [])
 
 
 if __name__ == "__main__":

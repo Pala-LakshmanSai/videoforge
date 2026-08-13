@@ -94,7 +94,6 @@ export interface ProjectSummaryResponse {
 
 export type ProjectAllowedAction =
   | "APPROVE"
-  | "APPROVE_FALLBACK"
   | "CANCEL"
   | "DOWNLOAD"
   | "RETRY_FAILED_ITEMS"
@@ -255,13 +254,10 @@ function allowedProjectActions(project: FixtureProject): ProjectAllowedAction[] 
   }
   if (
     project.status !== "FAILED" &&
-    (project.lanes.image.state === "FAILED" ||
-      project.lanes.avatar.state === "FAILED" ||
-      project.review.flaggedDefect === "LIP_SYNC_ONLY")
+    (project.lanes.image.state === "FAILED" || project.lanes.avatar.state === "FAILED")
   ) {
     actions.push("RETRY_FAILED_ITEMS");
   }
-  if (project.review.flaggedDefect === "WHOLE_FRAME") actions.push("APPROVE_FALLBACK");
   if (project.review.state !== "NOT_READY" || project.review.flaggedDefect !== null) {
     actions.push("REVIEW");
   }
@@ -346,8 +342,7 @@ export function toUsageSummaryResponse(scenario: FixtureScenario): UsageSummaryR
     avatarTestSpend: scenario.snapshot.usage.oneTimeAvatarTestUsd,
     storageGb: 0.18,
     gpuSeconds: scenario.snapshot.usage.imageGpuSeconds + scenario.snapshot.usage.avatarGpuSeconds,
-    retries:
-      scenario.id === "image_partial_failure" || scenario.id === "avatar_lip_failure" ? 1 : 0,
+    retries: scenario.id === "image_partial_failure" ? 1 : 0,
   };
 }
 

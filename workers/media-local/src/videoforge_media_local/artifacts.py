@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import re
+import stat
 from pathlib import Path
 
 _OBJECT_URI = re.compile(
@@ -24,6 +26,8 @@ class R2PortFixtureArtifactResolver:
         if root.is_symlink() or not root.is_dir():
             raise ValueError("R2 fixture root must be a real directory")
         self.root = root.resolve(strict=True)
+        if self.root == Path(self.root.anchor):
+            raise ValueError("filesystem root is not a valid R2 fixture root")
         self.bucket = bucket
 
     def _inside(self, candidate: Path, *, must_exist: bool) -> Path:
@@ -31,6 +35,56 @@ class R2PortFixtureArtifactResolver:
         if not resolved.is_relative_to(self.root) or candidate.is_symlink():
             raise ValueError("R2 fixture key escaped its private root")
         return resolved
+
+    def _ensure_directory(self, *segments: str) -> Path:
+        """Create keys without ever following a pre-existing symlink component."""
+
+        if (
+            hasattr(os, "O_DIRECTORY")
+            and hasattr(os, "O_NOFOLLOW")
+            and os.open in os.supports_dir_fd
+            and os.mkdir in os.supports_dir_fd
+        ):
+            flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+            current_fd = os.open(self.root, flags)
+            current = self.root
+            try:
+                for segment in segments:
+                    try:
+                        os.mkdir(segment, mode=0o700, dir_fd=current_fd)
+                    except FileExistsError:
+                        pass
+                    try:
+                        next_fd = os.open(segment, flags, dir_fd=current_fd)
+                    except OSError as error:
+                        raise ValueError(
+                            "R2 fixture key components must be real directories"
+                        ) from error
+                    if not stat.S_ISDIR(os.fstat(next_fd).st_mode):
+                        os.close(next_fd)
+                        raise ValueError("R2 fixture key components must be real directories")
+                    os.close(current_fd)
+                    current_fd = next_fd
+                    current /= segment
+                return self._inside(current, must_exist=True)
+            finally:
+                os.close(current_fd)
+
+        current = self.root
+        for segment in segments:
+            candidate = current / segment
+            try:
+                information = candidate.lstat()
+            except FileNotFoundError:
+                try:
+                    candidate.mkdir(mode=0o700)
+                except FileExistsError:
+                    pass
+                information = candidate.lstat()
+            if stat.S_ISLNK(information.st_mode) or not stat.S_ISDIR(information.st_mode):
+                raise ValueError("R2 fixture key components must be real directories")
+            current = self._inside(candidate, must_exist=True)
+        return current
 
     def resolve_object(self, uri: str) -> Path:
         match = _OBJECT_URI.fullmatch(uri)
@@ -53,9 +107,9 @@ class R2PortFixtureArtifactResolver:
         match = _RUN_URI.fullmatch(uri)
         if match is None:
             raise ValueError("invalid run artifact URI")
-        parent = self.root / self.bucket / "runs" / match.group("revision") / match.group("attempt")
-        parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        safe_parent = self._inside(parent, must_exist=True)
+        safe_parent = self._ensure_directory(
+            self.bucket, "runs", match.group("revision"), match.group("attempt")
+        )
         candidate = safe_parent / match.group("filename")
         if candidate.exists() or candidate.is_symlink():
             return self._inside(candidate, must_exist=True)

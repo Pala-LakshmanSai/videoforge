@@ -353,7 +353,7 @@ const projectSummarySchema = z
       })
       .strict(),
     allowedActions: z.array(
-      z.enum(["APPROVE", "APPROVE_FALLBACK", "CANCEL", "DOWNLOAD", "RETRY_FAILED_ITEMS", "REVIEW"]),
+      z.enum(["APPROVE", "CANCEL", "DOWNLOAD", "RETRY_FAILED_ITEMS", "REVIEW"]),
     ),
   })
   .strict();

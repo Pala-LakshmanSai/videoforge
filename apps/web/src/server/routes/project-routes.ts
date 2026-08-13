@@ -15,7 +15,6 @@ import type { FixtureRuntime } from "../fixture-runtime";
 import {
   projectVersionError,
   readCreateProjectRequest,
-  readFallbackApprovalRequest,
   readFinalApprovalRequest,
   readProjectMutationRequest,
 } from "../mutation";
@@ -351,8 +350,7 @@ export function registerProjectRoutes(
           ),
         );
       }
-      const retryableScenarios: readonly string[] = ["image_partial_failure", "avatar_lip_failure"];
-      if (!retryableScenarios.includes(resolved.id)) {
+      if (resolved.id !== "image_partial_failure") {
         return problemResponse(
           apiProblem(
             "PROJECT_RETRY_NOT_ALLOWED",
@@ -364,39 +362,29 @@ export function registerProjectRoutes(
         );
       }
       const retrying = structuredClone(project.detail);
-      const imageRetry = resolved.id === "image_partial_failure";
       retrying.project.status = "RUNNING";
-      retrying.project.stage = imageRetry ? "IMAGE_RETRY" : "AVATAR_REPAIR";
+      retrying.project.stage = "IMAGE_RETRY";
       retrying.project.eta = "10 min";
       retrying.project.queuePosition = null;
-      retrying.project.allowedActions = imageRetry ? ["CANCEL"] : ["CANCEL", "REVIEW"];
-      const lane = imageRetry ? retrying.project.lanes.image : retrying.project.lanes.avatar;
+      retrying.project.allowedActions = ["CANCEL"];
+      const lane = retrying.project.lanes.image;
       lane.state = "RETRYING";
-      lane.action = imageRetry
-        ? "Retrying failed image chunk; accepted images remain checkpointed"
-        : "MuseTalk repair queued for the flagged lip-sync clip";
+      lane.action = "Retrying failed image chunk; accepted images remain checkpointed";
       const generationStage = retrying.project.stages?.find((stage) => stage.id === "generation");
       if (generationStage) {
         generationStage.status = "RETRYING";
-        generationStage.detail = imageRetry
-          ? "Failed image chunk retry accepted"
-          : "Targeted lip repair accepted";
+        generationStage.detail = "Failed image chunk retry accepted";
       }
-      if (!imageRetry) retrying.project.review.state = "CHANGES_REQUESTED";
       retrying.notice = {
         tone: "INFO",
-        title: imageRetry ? "Image retry queued" : "Lip repair queued",
-        detail: imageRetry
-          ? "Accepted images remain checkpointed; only the failed chunk is being retried."
-          : "Only the flagged clip is being repaired; accepted avatar work remains unchanged.",
+        title: "Image retry queued",
+        detail: "Accepted images remain checkpointed; only the failed chunk is being retried.",
         action: null,
         scope: "PROJECT",
       };
       retrying.events.push({
         id: `event_fixture_retry_${retrying.events.length + 1}`,
-        detail: imageRetry
-          ? "Failed image chunk retry accepted once"
-          : "Targeted lip-sync repair accepted once",
+        detail: "Failed image chunk retry accepted once",
         at: "2026-08-09T09:34:00.000Z",
       });
       const versionToken = rotateProjectVersion(retrying);
@@ -407,100 +395,8 @@ export function registerProjectRoutes(
           ok: true as const,
           id: project.detail.project.id,
           status: "RETRY_REQUESTED" as const,
-          retryScope:
-            resolved.id === "image_partial_failure"
-              ? (["scene_fixture_014", "scene_fixture_015"] as const)
-              : (["avatar_span_fixture_018"] as const),
+          retryScope: ["scene_fixture_014", "scene_fixture_015"] as const,
           nextCheckSeconds: 10,
-          versionToken,
-        },
-        202,
-      );
-    }),
-  );
-
-  app.post("/api/v1/projects/:projectId/fallback-approval", (c) =>
-    runtime.mutation(c, true, (rawBody, state) => {
-      const pathProjectId = c.req.param("projectId");
-      const approvalRequest = readFallbackApprovalRequest(rawBody, pathProjectId);
-      if (!approvalRequest.ok) return approvalRequest.response;
-      const resolved = fixtureFromRequest(c.req.raw);
-      if (!resolved.ok) return resolved.response;
-      const project = resolveProjectDetail(resolved.scenario, pathProjectId, state.runtimeProjects);
-      if (!project.ok) return project.response;
-      const versionError = projectVersionError(c, project.detail.project.versionToken);
-      if (versionError) return versionError;
-      if (
-        resolved.id !== "skyreels_approval_required" ||
-        project.detail.project.status !== "NEEDS_ATTENTION" ||
-        project.detail.project.review.flaggedDefect !== "WHOLE_FRAME" ||
-        !project.detail.project.allowedActions.includes("APPROVE_FALLBACK")
-      ) {
-        return problemResponse(
-          apiProblem(
-            "FALLBACK_APPROVAL_NOT_ALLOWED",
-            409,
-            "Fallback approval is not available",
-            "Approve fallback spend only for the current whole-frame defect awaiting explicit approval.",
-            false,
-          ),
-        );
-      }
-      const estimatedTotalUsd = Number(
-        (project.detail.project.estimatedCost + approvalRequest.approvedIncrementUsd).toFixed(2),
-      );
-      if (estimatedTotalUsd > project.detail.project.capUsd) {
-        return problemResponse(
-          apiProblem(
-            "BUDGET_CAP_EXCEEDED",
-            409,
-            "Fallback would exceed the project spend cap",
-            `The $${approvalRequest.approvedIncrementUsd.toFixed(2)} fallback would raise the fixture estimate to $${estimatedTotalUsd.toFixed(2)}, above the $${project.detail.project.capUsd.toFixed(2)} cap.`,
-            false,
-          ),
-        );
-      }
-      const fallback = structuredClone(project.detail);
-      fallback.project.status = "RUNNING";
-      fallback.project.stage = "AVATAR_FALLBACK";
-      fallback.project.estimatedCost = estimatedTotalUsd;
-      fallback.project.eta = "10 min";
-      fallback.project.queuePosition = null;
-      fallback.project.lanes.avatar.state = "STARTING";
-      fallback.project.lanes.avatar.action =
-        "Synthetic SkyReels fallback reserved; provider dispatch remains disabled";
-      fallback.project.review.state = "CHANGES_REQUESTED";
-      fallback.project.allowedActions = ["CANCEL", "REVIEW"];
-      const generationStage = fallback.project.stages?.find((stage) => stage.id === "generation");
-      if (generationStage) {
-        generationStage.status = "STARTING";
-        generationStage.detail = "Whole-frame fallback reservation accepted";
-      }
-      fallback.notice = {
-        tone: "INFO",
-        title: "Fallback reservation recorded",
-        detail:
-          "The fixture estimate now includes $0.18; no provider call or external spend was made.",
-        action: null,
-        scope: "PROJECT",
-      };
-      fallback.events.push({
-        id: `event_fixture_fallback_${fallback.events.length + 1}`,
-        detail: "Whole-frame fallback reservation approved once for $0.18",
-        at: "2026-08-09T09:35:00.000Z",
-      });
-      const versionToken = rotateProjectVersion(fallback);
-      putRuntimeProject(state.runtimeProjects, resolved.id, fallback);
-      c.header("etag", versionToken);
-      return c.json(
-        {
-          ok: true as const,
-          id: project.detail.project.id,
-          status: "FALLBACK_APPROVED" as const,
-          approvedIncrementUsd: approvalRequest.approvedIncrementUsd,
-          estimatedTotalUsd,
-          spendCapUsd: project.detail.project.capUsd,
-          providerCallsAuthorized: false as const,
           versionToken,
         },
         202,

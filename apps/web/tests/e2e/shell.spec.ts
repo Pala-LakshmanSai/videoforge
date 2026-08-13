@@ -929,20 +929,9 @@ test("scenario actions match authoritative project and review state", async ({ p
   await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Cancel" })).toHaveCount(0);
 
-  await page.goto("/projects/project_fixture_001/review?fixture=avatar_lip_failure");
-  await expect(page.getByRole("button", { name: "Retry failed item" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Approve final" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Approve $0.18 fallback" })).toHaveCount(0);
-
-  await page.goto("/projects/project_fixture_001/review?fixture=skyreels_approval_required");
-  await expect(page.getByRole("button", { name: "Approve $0.18 fallback" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Retry failed item" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Approve final" })).toHaveCount(0);
-
   await page.goto("/projects/project_fixture_001/review?fixture=project_ready_for_review");
   await expect(page.getByRole("button", { name: "Approve final" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Retry failed item" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Approve $0.18 fallback" })).toHaveCount(0);
 
   await page.goto("/projects/project_fixture_001/review?fixture=project_approved");
   await expect(page.getByRole("button", { name: "Approved" })).toBeDisabled();

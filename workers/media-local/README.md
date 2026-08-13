@@ -10,7 +10,8 @@ Original voiceover bytes remain immutable final-render truth. The worker normali
 overlap midpoint to exactly one chunk, and deletes transient normalized/chunk audio after publishing
 the durable result.
 
-`Dockerfile` intentionally has no default base and never downloads a model. CP-08 must supply one
-qualified digest-pinned base containing exact Linux builds of Python 3.12.13, whisper.cpp 1.8.4,
-FFmpeg 8.1.1, and FFprobe 8.1.1. The existing `ggml-base.en` model is mounted privately at runtime;
-missing or hash-mismatched bytes fail closed.
+`Dockerfile` builds the same CPU-only job entrypoint from digest-pinned multi-architecture Python
+3.12.13 and static FFmpeg 8.1.1 bases. It checksum-verifies and compiles whisper.cpp 1.8.4 with
+GPU and native-host tuning disabled. It never downloads or embeds a model. The existing pinned
+`ggml-base.en` model is mounted read-only at runtime; missing or hash-mismatched bytes fail closed.
+The durable receipt binds the exact whisper, FFmpeg, and FFprobe executable hashes used by the run.

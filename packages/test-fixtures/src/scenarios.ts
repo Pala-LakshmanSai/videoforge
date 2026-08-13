@@ -163,7 +163,12 @@ function baseSnapshot(): FixtureSnapshot {
       },
       lanes: {
         image: { state: "RUNNING", completed: 184, total: 260, action: "Mage: image 185/260" },
-        avatar: { state: "RUNNING", completed: 48, total: 52, action: "AvatarForcing: clip 49/52" },
+        avatar: {
+          state: "RUNNING",
+          completed: 48,
+          total: 52,
+          action: "EchoMimicV3-Flash: clip 49/52",
+        },
       },
       stages: [
         { id: "ingest", label: "Prepare", state: "COMPLETE", detail: "Voiceover verified" },
@@ -776,7 +781,7 @@ const scenarios = {
         state: "STARTING",
         completed: 0,
         total: 52,
-        action: "AvatarForcing endpoint: model loading",
+        action: "EchoMimicV3-Flash worker: model loading",
       };
       const generation = snapshot.project.stages.find((stage) => stage.id === "generation");
       if (generation) {
@@ -820,68 +825,6 @@ const scenarios = {
         "Accepted items are retained and the failed chunk can be retried idempotently.",
         true,
         "Retry failed chunk",
-      );
-    },
-  ),
-  avatar_lip_failure: createScenario(
-    "avatar_lip_failure",
-    "Avatar lip-only defect",
-    "A reviewer-classified lip-sync-only defect offers the targeted MuseTalk repair path.",
-    "/projects/project_fixture_001/review",
-    ["project", "avatar", "review"],
-    (snapshot) => {
-      if (!snapshot.project) return;
-      snapshot.project.status = "NEEDS_ATTENTION";
-      snapshot.project.stage = "AVATAR_REVIEW";
-      snapshot.project.progressPercent = 78;
-      snapshot.project.lanes.avatar = {
-        state: "BLOCKED",
-        completed: 51,
-        total: 52,
-        action: "Clip 18 flagged: lip sync only",
-      };
-      snapshot.project.review.flaggedDefect = "LIP_SYNC_ONLY";
-      snapshot.project.review.selectedAvatarClipId = "avatar_clip_fixture_018";
-      snapshot.notice = {
-        tone: "WARNING",
-        title: "Lip-only repair available",
-        detail:
-          "The background, identity, and motion were accepted; only clip 18 lips were flagged.",
-        action: "Estimate MuseTalk repair",
-      };
-    },
-  ),
-  skyreels_approval_required: createScenario(
-    "skyreels_approval_required",
-    "SkyReels approval required",
-    "A whole-frame defect requires explicit fallback spend approval.",
-    "/projects/project_fixture_001/review",
-    ["project", "avatar", "budget", "blocked"],
-    (snapshot) => {
-      if (!snapshot.project) return;
-      snapshot.project.status = "NEEDS_ATTENTION";
-      snapshot.project.stage = "FALLBACK_APPROVAL";
-      snapshot.project.lanes.avatar = {
-        state: "BLOCKED",
-        completed: 51,
-        total: 52,
-        action: "Whole-frame fallback awaiting approval",
-      };
-      snapshot.project.review.flaggedDefect = "WHOLE_FRAME";
-      snapshot.project.review.selectedAvatarClipId = "avatar_clip_fixture_018";
-      snapshot.notice = {
-        tone: "WARNING",
-        title: "Approve whole-frame fallback",
-        detail: "SkyReels would use the same pinned canonical source and add an estimated $0.18.",
-        action: "Review cost and approve",
-      };
-      snapshot.mutationProblem = problem(
-        "FALLBACK_APPROVAL_REQUIRED",
-        409,
-        "Fallback approval required",
-        "The costly whole-frame fallback cannot start until its reservation is approved.",
-        false,
-        "Approve fallback budget",
       );
     },
   ),
