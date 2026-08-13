@@ -195,7 +195,9 @@ async function snapshotResponse(response: Response): Promise<ReplayableResponse>
 }
 
 function replayResponse(response: ReplayableResponse, replayed: boolean): Response {
-  const headers = new Headers(response.headers.map(([name, value]) => [name, value]));
+  const headers = new Headers(
+    response.headers.map(([name, value]): [string, string] => [name, value]),
+  );
   if (replayed) headers.set("x-videoforge-idempotent-replay", "true");
   return new Response(response.body?.slice() ?? null, {
     status: response.status,

@@ -1,6 +1,6 @@
 # VideoForge completion checkpoints
 
-Status: authoritative completion roadmap; checkpoints `CP-00` and `CP-01` complete, `CP-02` not started
+Status: authoritative completion roadmap; checkpoints `CP-00` through `CP-02` complete; `CP-03` not started or authorized
 Read when: choosing the next implementation chat, checking project truth, or auditing completion.
 
 ## MVP destination
@@ -204,6 +204,10 @@ proves exact artifact-lineage binding, disabled canonical paid composition, tran
 and fail-closed zero-row lifecycle mutations.
 
 ## CP-02 — Shared admission, simple global queue, and idle-only GPU UX
+
+**Status:** complete and accepted provider-free on 2026-08-13 under `VF-9-24M`. Evidence:
+`evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/acceptance.json`. CP-03 remains
+unselected and not started.
 
 **Outcome:** 5–10 people can enter one shared app and safely control one visible queue without
 redesigning the accepted UI.

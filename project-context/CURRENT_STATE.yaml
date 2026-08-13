@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-13T12:56:01Z"
+updated_at: "2026-08-13T13:57:17Z"
 
-phase: cp01_complete_cp02_not_started
+phase: cp02_complete_stopped_before_cp03
 implementation_authorized_in_current_task: false
-current_milestone: shared_admission_queue_and_idle_gpu_ux
-current_task: VF-9-24K_complete
-current_wave: cp01_authority_reaudit_complete_cp02_paused
+current_milestone: none_selected
+current_task: null
+current_wave: checkpoint_roadmap
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -22,7 +22,8 @@ repository:
   cp01_audit_fix_activation_commit: "234a8901d16f61b3d206d17f0f9db8d99f0afcbc"
   cp01_audit_fix_commit: "0e90f3b637949711aecda6acc5b9e0bd51ae3202"
   cp01_dispatch_authority_fix_commit: "522ed6112d39e0bcbd03955ad753b79cef2fdb6d"
-  last_good_commit: "522ed6112d39e0bcbd03955ad753b79cef2fdb6d"
+  cp02_implementation_commit: "the sole bounded VF-9-24M milestone commit containing this state"
+  last_good_commit: "5c7e77951fc217047147fef10d09d30b7a7cfdd5"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -92,34 +93,39 @@ completed_tasks:
     dispatch_authority_fix_commit: "522ed6112d39e0bcbd03955ad753b79cef2fdb6d"
     evidence: "evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-after-authority-fix.json"
     external_spend_usd: 0
+  - task_id: VF-9-24M
+    status: complete_cp02_shared_admission_global_queue_idle_gpu_ux
+    implementation_commit: "the sole bounded VF-9-24M milestone commit containing this state"
+    evidence: "evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/acceptance.json"
+    external_spend_usd: 0
 active_ownership: []
 
 blocked_tasks: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: unassigned
-  checkpoint: CP-02
-  milestone: shared_admission_queue_and_idle_gpu_ux
-  status: not_started
-  dependency_status: cp01_complete_green
-  authorization_status: fresh_explicit_user_authority_required
+  task_id: null
+  checkpoint: null
+  milestone: none_selected
+  status: stopped_after_cp02
+  dependency_status: cp02_complete_green
+  authorization_status: no_successor_authority
   read_profile: checkpoint_roadmap
-  task_brief: not_created
-  goal: "Create and execute a narrow CP-02 brief only after explicit user authorization."
+  task_brief: null
+  goal: "Await explicit successor checkpoint selection and authority."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
   credential_access_authorized: false
   model_downloads_authorized: false
   application_code_changes_authorized: false
-  prerequisite_evidence: "evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-acceptance.json"
+  prerequisite_evidence: "evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/acceptance.json"
   required_handoff:
-    - "Read the completed CP-01 evidence and preserve its machine-contract and firewall boundary."
-    - "Create one CP-02-only read profile and task brief before implementation."
+    - "Read the completed CP-02 evidence and preserve its shared admission, queue, and idle GPU UX boundary."
+    - "Select an exact successor profile and brief only after explicit authority."
     - "Keep fixture mode and all production/provider gates false unless separately authorized."
   prohibited_in_task:
-    - "Any CP-02 implementation before fresh explicit authority."
+    - "Any CP-03 or successor implementation without a new explicit task."
     - "Any provider call, credential access, cloud mutation, model download, Pod/template/volume creation, image publication, or spend."
     - "Any production gate closure, live profile promotion, volume-capacity assumption, model/GPU substitution, repair, or fallback."
 
@@ -136,6 +142,21 @@ cp01_completion:
   live_provider_inventory_refreshed: false
   paid_compute_shutdown: no_paid_compute_started
   local_server: stopped_no_4173_or_8787_listener
+
+cp02_completion:
+  status: complete_provider_free_accepted
+  implementation_commit: "the sole bounded VF-9-24M milestone commit containing this state"
+  evidence: "evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/acceptance.json"
+  focused_control_plane: 15_passed
+  web_unit: 224_passed
+  installed_chrome: 40_passed_desktop_and_compact
+  canonical_verify: passed_ci_turbo_force
+  provider_calls: 0
+  provider_resources_created: 0
+  external_spend_usd: 0
+  live_provider_inventory_refreshed: false
+  paid_compute_shutdown: no_paid_compute_started
+  local_server: stopped_no_4173_or_4174_listener
 
 approved_mvp_architecture:
   app_scope: one_global_shared_equal_rights
@@ -176,18 +197,17 @@ blocking_gates_for_production:
 
 progress_snapshot:
   estimate_kind: checkpoint_truth_no_percent_claim
-  completed_checkpoint: CP-01
-  next_checkpoint: CP-02_not_started
+  completed_checkpoint: CP-02
+  next_checkpoint: CP-03_not_started_not_authorized
   full_production_mvp_implemented_percent: null
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: cp01_complete_cp02_not_started
+  status: stopped_after_cp02
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Load the completed cp01_global_session_contracts profile and its exact acceptance evidence."
-    - "Read CP-02 in 22_PROJECT_COMPLETION_CHECKPOINTS.md only when the user asks to proceed."
-    - "Create a narrow CP-02 profile/brief and reconcile context before implementation."
+    - "Load checkpoint_roadmap only until a successor task is explicitly selected."
+    - "Preserve the verified green CP-02 evidence and do not start CP-03 implicitly."
   stop_conditions:
-    - "Any successor implementation without fresh explicit user authority."
+    - "Any work beyond CP-02 or any successor implementation."
     - "Any provider call, cloud mutation, credential need, model download, spend, schema reinterpretation, legacy dispatch reachability, or production promotion."

@@ -204,7 +204,7 @@ describe("fixture scenario registry", () => {
     const scenario = getFixtureScenario("happy_generating");
     const bootstrap = toBootstrapResponse(scenario);
     assert.equal(bootstrap.scenario, "happy_generating");
-    assert.equal(bootstrap.user.role, "ADMIN");
+    assert.equal(bootstrap.user.rights, "EQUAL");
     assert.equal(bootstrap.projects.length, 1);
     assert.equal(bootstrap.avatars[0]?.status, "READY");
     assert.equal(bootstrap.avatars[0]?.thumbnailUrl, "/fixtures/avatar/amish-farm-host.svg");

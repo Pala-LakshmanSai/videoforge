@@ -7,8 +7,9 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
+import { api } from "../lib/api";
 import { scenarioIds, type FixtureAccessState, type ScenarioId } from "../lib/types";
 import { AppSelect } from "./ui";
 import "./AccessGate.css";
@@ -85,6 +86,48 @@ export function AccessGate({
 }: AccessGateProps) {
   const denied = access.state === "DENIED";
   const account = access.selectedAccount;
+  const [method, setMethod] = useState<"EMAIL_PASSWORD" | "GOOGLE">("EMAIL_PASSWORD");
+  const [email, setEmail] = useState(account?.email ?? "");
+  const [inviteCode, setInviteCode] = useState("");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function createLocalInvite() {
+    setPending(true);
+    setAuthError(null);
+    try {
+      const invite = await api.issueFixtureInvite(email);
+      setInviteCode(invite.code);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "Invite fixture failed.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function authenticate() {
+    setPending(true);
+    setAuthError(null);
+    try {
+      await api.authenticateFixture(
+        {
+          method,
+          email,
+          emailVerified: true,
+          googleVerifiedEmail: method === "GOOGLE" ? email : undefined,
+          inviteCode: inviteCode || undefined,
+        },
+        fixturePickerProps.scenario,
+      );
+      setInviteCode("");
+      onContinue();
+    } catch (error) {
+      setInviteCode("");
+      setAuthError(error instanceof Error ? error.message : "Sign-in fixture failed.");
+    } finally {
+      setPending(false);
+    }
+  }
 
   return (
     <AccessFrame {...fixturePickerProps}>
@@ -125,12 +168,68 @@ export function AccessGate({
           </div>
         ) : null}
 
+        {!denied ? (
+          <div className="stack" aria-label="Provider-free authentication fixture">
+            <div className="option-grid">
+              <button
+                type="button"
+                className={`option-card ${method === "EMAIL_PASSWORD" ? "selected" : ""}`}
+                onClick={() => setMethod("EMAIL_PASSWORD")}
+              >
+                Email + password fixture
+              </button>
+              <button
+                type="button"
+                className={`option-card ${method === "GOOGLE" ? "selected" : ""}`}
+                onClick={() => setMethod("GOOGLE")}
+              >
+                Google fixture
+              </button>
+            </div>
+            <label className="field">
+              Verified email
+              <input
+                className="input"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </label>
+            <label className="field">
+              One-time invite code
+              <input
+                className="input"
+                type="password"
+                autoComplete="one-time-code"
+                value={inviteCode}
+                onChange={(event) => setInviteCode(event.target.value)}
+              />
+            </label>
+            <button
+              className="button button-secondary"
+              type="button"
+              disabled={pending || !email}
+              onClick={() => void createLocalInvite()}
+            >
+              Create one-time local invite
+            </button>
+            {authError ? (
+              <div className="access-blocker" role="alert">
+                {authError}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         <button
           className={`access-primary-action ${denied ? "access-secondary-action" : ""}`}
           type="button"
-          onClick={denied ? onTryAnotherAccount : onContinue}
+          disabled={pending}
+          onClick={denied ? onTryAnotherAccount : () => void authenticate()}
         >
-          <span>{denied ? "Try another account" : "Continue to queue"}</span>
+          <span>
+            {denied ? "Try another account" : pending ? "Checking fixture…" : "Continue to queue"}
+          </span>
           <ArrowRight size={19} aria-hidden="true" />
         </button>
 

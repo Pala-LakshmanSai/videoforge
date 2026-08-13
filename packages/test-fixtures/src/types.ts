@@ -207,7 +207,7 @@ export interface FixtureSnapshot {
   session: {
     userId: string;
     displayName: string;
-    role: "MEMBER" | "ADMIN";
+    rights: "EQUAL";
     workspaceId: string;
     workspaceName: string;
   };

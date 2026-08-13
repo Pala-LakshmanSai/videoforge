@@ -1656,3 +1656,78 @@ describe("fixture API", () => {
     });
   });
 });
+
+describe("CP-02 shared app fixture API", () => {
+  it("admits email/password and Google fixtures, then shares one receipt-bound queue", async () => {
+    const isolatedApp = createApiApp();
+    const users = [
+      { session: "cp02-a", email: "cp02-a@example.test", method: "EMAIL_PASSWORD" as const },
+      { session: "cp02-b", email: "cp02-b@example.test", method: "GOOGLE" as const },
+    ];
+    for (const user of users) {
+      const inviteResponse = await isolatedApp.request("/api/dev/shared-app/invites", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: user.email }),
+      });
+      expect(inviteResponse.status).toBe(200);
+      const invite = (await inviteResponse.json()) as { code: string; shownOnce: boolean };
+      expect(invite.shownOnce).toBe(true);
+      const auth = await isolatedApp.request(
+        "/api/v1/shared-app/authenticate?fixture=invite_sign_in",
+        {
+          method: "POST",
+          headers: withFixtureSession(user.session, { "content-type": "application/json" }),
+          body: JSON.stringify({
+            method: user.method,
+            email: user.email,
+            emailVerified: true,
+            googleVerifiedEmail: user.method === "GOOGLE" ? user.email : undefined,
+            inviteCode: invite.code,
+          }),
+        },
+      );
+      expect(auth.status).toBe(200);
+      await expect(auth.json()).resolves.toMatchObject({ outcome: "ADMITTED", rights: "EQUAL" });
+    }
+
+    const viewResponse = await isolatedApp.request("/api/v1/shared-app?fixture=invite_sign_in", {
+      headers: withFixtureSession(users[0]!.session),
+    });
+    const view = (await viewResponse.json()) as {
+      inventory: Array<{ lane: string; receiptId: string }>;
+    };
+    const imageReceiptId = view.inventory.find((offer) => offer.lane === "image_media")!.receiptId;
+    const avatarReceiptId = view.inventory.find(
+      (offer) => offer.lane === "avatar_primary",
+    )!.receiptId;
+    const starts = await Promise.all(
+      users.map((user, index) =>
+        isolatedApp.request("/api/v1/shared-app/generate?fixture=invite_sign_in", {
+          method: "POST",
+          headers: withFixtureSession(user.session, { "content-type": "application/json" }),
+          body: JSON.stringify({
+            projectId: `cp02-project-${index + 1}`,
+            title: `CP-02 Project ${index + 1}`,
+            imageReceiptId,
+            avatarReceiptId,
+          }),
+        }),
+      ),
+    );
+    const outcomes = (await Promise.all(starts.map((response) => response.json()))) as Array<{
+      outcome: string;
+    }>;
+    expect(outcomes.map((item) => item.outcome).sort()).toEqual(["QUEUED", "STARTED"]);
+    const sharedResponse = await isolatedApp.request("/api/v1/shared-app?fixture=invite_sign_in", {
+      headers: withFixtureSession(users[1]!.session),
+    });
+    await expect(sharedResponse.json()).resolves.toMatchObject({
+      rights: "EQUAL",
+      canSelectGpuPair: false,
+      providerCallsAuthorized: false,
+      authorizedSpendUsd: 0,
+      queue: [{ state: "ACTIVE" }, { state: "WAITING" }],
+    });
+  });
+});

@@ -17,7 +17,7 @@ interface UiSurfaceRoute {
 
 const uiSurfaceRoutes: UiSurfaceRoute[] = [
   {
-    heading: "Your queue",
+    heading: "Queue",
     path: "/?fixture=happy_generating",
     surfaces: [".queue-overview .metric", ".queue-panel", ".queue-card"],
   },
@@ -211,6 +211,8 @@ test.beforeEach(async ({ page }, testInfo) => {
     headers: { "X-VideoForge-Fixture-Session": sessionId },
   });
   expect(reset.ok()).toBe(true);
+  const sharedReset = await page.request.post("/api/dev/shared-app/reset");
+  expect(sharedReset.ok()).toBe(true);
   const failures: RuntimeFailures = {
     consoleErrors: [],
     externalRequests: [],
@@ -233,7 +235,7 @@ test.beforeEach(async ({ page }, testInfo) => {
   page.on("pageerror", (error) => failures.pageErrors.push(error.message));
 
   await page.goto("/?fixture=happy_generating");
-  await expect(page.getByRole("heading", { name: "Your queue" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Queue", exact: true })).toBeVisible();
   await expect(page.getByText("Fixture mode", { exact: true })).toBeVisible();
 });
 
@@ -690,13 +692,14 @@ test("Create Project uses exact visual presets and never exposes project-local a
   await expect(avatarOptions).not.toBeVisible();
   await expect(avatarPicker).toBeFocused();
 
-  const imageCompute = page.getByLabel("Image generation compute profile", { exact: true });
+  const imageCompute = page.getByLabel("Image and media GPU offer", { exact: true });
   await imageCompute.press("ArrowDown");
   await expect(
-    page.getByRole("listbox", { name: "Image generation compute profile options" }),
+    page.getByRole("listbox", { name: "Image and media GPU offer options" }),
   ).toBeVisible();
-  await expect(page.getByRole("option", { name: /^Auto/ })).toBeFocused();
-  await expect(page.getByRole("option", { name: /RTX 4090/ })).toBeDisabled();
+  await expect(page.getByRole("option", { name: /RTX 4090/ })).toBeFocused();
+  await expect(page.getByRole("option", { name: /RTX A6000/ })).toBeEnabled();
+  await expect(page.getByText(/Secure Cloud · EU-RO-1 · receipt/u).first()).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(imageCompute).toBeFocused();
 

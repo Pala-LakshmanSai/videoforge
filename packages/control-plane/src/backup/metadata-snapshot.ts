@@ -22,6 +22,9 @@ const DEFERRED_COLUMNS = Object.freeze({
 
 const RESTORE_INSERT_ORDER = Object.freeze([
   "users",
+  "invite_codes",
+  "auth_identity_bindings",
+  "invite_redemptions",
   "app_admissions",
   "workspaces",
   "memberships",
@@ -81,6 +84,7 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "durable_generation_outputs",
   "global_session_cost_events",
   "global_session_events",
+  "global_queue_audits",
 ] satisfies readonly RelationalTableName[]);
 
 const RESTORE_INSERT_TABLES = new Set<RelationalTableName>(RESTORE_INSERT_ORDER);

@@ -11,7 +11,7 @@ export interface FixtureUserResponse {
   id: string;
   name: string;
   email: string;
-  role: "ADMIN" | "MEMBER";
+  rights: "EQUAL";
   invited: boolean;
 }
 
@@ -360,7 +360,7 @@ export function toBootstrapResponse(scenario: FixtureScenario): FixtureBootstrap
       id: scenario.snapshot.session.userId,
       name: selectedAccount?.displayName ?? scenario.snapshot.session.displayName,
       email: selectedAccount?.email ?? "signed-out.fixture@example.invalid",
-      role: scenario.snapshot.session.role,
+      rights: scenario.snapshot.session.rights,
       invited: scenario.snapshot.access.state !== "DENIED",
     },
     projects:

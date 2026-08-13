@@ -1,5 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
+test.beforeEach(async ({ request }) => {
+  const response = await request.post("/api/dev/shared-app/reset");
+  expect(response.ok()).toBe(true);
+});
+
 function observeRuntime(page: Page) {
   const errors: string[] = [];
   const externalRequests: string[] = [];
@@ -38,12 +43,14 @@ test("synthetic invited account enters the queue without an external auth reques
   await expectNoHorizontalOverflow(page);
 
   const continueButton = page.getByRole("button", { name: "Continue to queue" });
+  await page.getByRole("button", { name: "Create one-time local invite" }).click();
+  await expect(page.getByLabel("One-time invite code")).not.toHaveValue("");
   await continueButton.focus();
   await expect(continueButton).toBeFocused();
   await page.keyboard.press("Enter");
 
   await expect(page).toHaveURL(/\/?\?fixture=happy_generating$/u);
-  await expect(page.getByRole("heading", { name: "Your queue" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Queue", exact: true })).toBeVisible();
   expect(runtime.externalRequests).toEqual([]);
   expect(runtime.errors).toEqual([]);
 });

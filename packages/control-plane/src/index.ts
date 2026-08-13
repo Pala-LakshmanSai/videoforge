@@ -3,6 +3,7 @@ export * from "./avatars/index.js";
 export * from "./database/index.js";
 export * from "./images/index.js";
 export * from "./global-session/index.js";
+export * from "./shared-app/index.js";
 export * from "./recovery/index.js";
 export * from "./repositories/index.js";
 export * from "./prompts/index.js";

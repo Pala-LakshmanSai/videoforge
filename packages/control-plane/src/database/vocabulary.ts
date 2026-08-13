@@ -61,6 +61,10 @@ export const RELATIONAL_TABLE_NAMES = [
   "durable_generation_outputs",
   "global_session_cost_events",
   "global_session_events",
+  "auth_identity_bindings",
+  "invite_codes",
+  "invite_redemptions",
+  "global_queue_audits",
 ] as const;
 
 export type RelationalTableName = (typeof RELATIONAL_TABLE_NAMES)[number];

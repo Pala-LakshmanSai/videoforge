@@ -445,6 +445,23 @@ test("one synthetic global session fails closed, drains both Pods, retains volum
         },
       ],
     );
+    const queueAudits = await source.executor.query(
+      `SELECT operation, actor_admission_id, old_queue_version, new_queue_version,
+              old_order::text, new_order::text
+         FROM global_queue_audits
+        WHERE generation_session_id = $1
+        ORDER BY new_queue_version`,
+      [sessionId],
+    );
+    assert.deepEqual(
+      queueAudits.rows.map((row) => row.operation),
+      ["ADD", "ADD", "ADD", "MOVE", "REMOVE"],
+    );
+    assert.equal(queueAudits.rows.at(-2).actor_admission_id, ID.admissionB);
+    assert.equal(queueAudits.rows.at(-1).actor_admission_id, ID.admissionA);
+    assert.equal(queueAudits.rows.at(-1).old_queue_version, 4);
+    assert.equal(queueAudits.rows.at(-1).new_queue_version, 5);
+    assert.notEqual(queueAudits.rows.at(-2).old_order, queueAudits.rows.at(-2).new_order);
     assert.equal(
       Number(
         (

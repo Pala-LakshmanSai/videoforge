@@ -90,6 +90,12 @@
       "name": "cp01_dispatch_authority",
       "filename": "0015_cp01_dispatch_authority.sql",
       "sha256": "sha256:56cf9726f012c1605f0726c46f6c70c61125c5128939c811752960d9e5d11747"
+    },
+    {
+      "version": 16,
+      "name": "cp02_shared_admission_queue",
+      "filename": "0016_cp02_shared_admission_queue.sql",
+      "sha256": "sha256:8468e7cab0d5b73362d06775ed171545de04759bcc1d2869ab7fa758a60f27f9"
     }
   ]
 }

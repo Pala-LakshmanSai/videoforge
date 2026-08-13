@@ -43,7 +43,7 @@ export interface FixtureUser {
   id: string;
   name: string;
   email: string;
-  role: "ADMIN" | "MEMBER";
+  rights: "EQUAL";
   invited: boolean;
 }
 
@@ -246,6 +246,57 @@ export interface FixtureBootstrap {
   draft: FixtureDraftState;
   notice: FixtureNotice | null;
   activeOperations: { avatar: string | null; style: string | null };
+}
+
+export interface GpuOffer {
+  receiptId: string;
+  lane: "image_media" | "avatar_primary";
+  gpuSku: string;
+  vramGb: number;
+  rateUsdPerHour: number;
+  cloudType: "SECURE";
+  region: "EU-RO-1";
+  observedAt: string;
+  expiresAt: string;
+}
+
+export interface SharedQueueEntry {
+  id: string;
+  projectId: string;
+  title: string;
+  state: "ACTIVE" | "WAITING";
+  actor: string;
+  position: number;
+  createdAt: string;
+}
+
+export interface SharedAppState {
+  rights: "EQUAL";
+  admission: {
+    admitted: boolean;
+    email: string | null;
+    authMethod: "EMAIL_PASSWORD" | "GOOGLE" | null;
+  };
+  inventory: GpuOffer[];
+  session: {
+    id: string;
+    queueVersion: number;
+    gpuPair: { image: GpuOffer; avatar: GpuOffer; lockedAt: string };
+  } | null;
+  queue: SharedQueueEntry[];
+  audits: Array<{
+    id: string;
+    operation: "START" | "ADD" | "MOVE" | "REMOVE";
+    actor: string;
+    oldOrder: string[];
+    newOrder: string[];
+    oldVersion: number;
+    newVersion: number;
+    occurredAt: string;
+  }>;
+  canSelectGpuPair: boolean;
+  providerCallsAuthorized: false;
+  authorizedSpendUsd: 0;
 }
 
 export interface ProjectDetail {

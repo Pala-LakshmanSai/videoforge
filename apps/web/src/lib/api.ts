@@ -27,6 +27,7 @@ import type {
   TimelineInspection,
   UsageSummary,
   RegisteredVoiceover,
+  SharedAppState,
 } from "./types";
 import {
   parseAvatarsResponse,
@@ -38,6 +39,7 @@ import {
   parseProjectsResponse,
   parseRegisteredVoiceoverResponse,
   parseStylesResponse,
+  parseSharedAppResponse,
   parseTimelineInspectionResponse,
   parseUsageResponse,
 } from "./api-schemas";
@@ -72,9 +74,17 @@ async function request<T>(
   init: RequestInit | undefined,
   parse: (value: unknown) => T,
 ): Promise<T> {
+  const fixtureSession =
+    typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("fixtureSession");
   const response = await fetch(path, {
     ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...(fixtureSession ? { "x-videoforge-fixture-session": fixtureSession } : {}),
+      ...init?.headers,
+    },
   });
   const responseText = await response.text();
   let payload: unknown | ProblemPayload | null = null;
@@ -125,6 +135,59 @@ export interface ImageStyleEditRequestAuthority {
 }
 
 export const api = {
+  issueFixtureInvite: (email: string) =>
+    request<{ code: string; shownOnce: true }>(
+      "/api/dev/shared-app/invites",
+      { method: "POST", body: JSON.stringify({ email }) },
+      (value) => value as { code: string; shownOnce: true },
+    ),
+  authenticateFixture: (
+    body: {
+      method: "EMAIL_PASSWORD" | "GOOGLE";
+      email: string;
+      emailVerified: boolean;
+      googleVerifiedEmail?: string;
+      inviteCode?: string;
+    },
+    scenario: ScenarioId,
+  ) =>
+    request<{ outcome: "ADMITTED" | "RETURNING"; email: string; rights: "EQUAL" }>(
+      `/api/v1/shared-app/authenticate${query(scenario)}`,
+      { method: "POST", body: JSON.stringify(body) },
+      (value) => value as { outcome: "ADMITTED" | "RETURNING"; email: string; rights: "EQUAL" },
+    ),
+  sharedApp: (scenario: ScenarioId) =>
+    request<SharedAppState>(
+      `/api/v1/shared-app${query(scenario)}`,
+      undefined,
+      parseSharedAppResponse,
+    ),
+  sharedGenerate: (
+    body: { projectId: string; title: string; imageReceiptId?: string; avatarReceiptId?: string },
+    scenario: ScenarioId,
+  ) =>
+    request<{ outcome: "STARTED" | "QUEUED"; queueVersion: number }>(
+      `/api/v1/shared-app/generate${query(scenario)}`,
+      { method: "POST", body: JSON.stringify(body) },
+      (value) => value as { outcome: "STARTED" | "QUEUED"; queueVersion: number },
+    ),
+  reorderSharedQueue: (
+    entryId: string,
+    toPosition: number,
+    queueVersion: number,
+    scenario: ScenarioId,
+  ) =>
+    request<SharedAppState>(
+      `/api/v1/shared-app/queue/${encodeURIComponent(entryId)}${query(scenario)}`,
+      { method: "PATCH", body: JSON.stringify({ toPosition, queueVersion }) },
+      parseSharedAppResponse,
+    ),
+  removeSharedQueue: (entryId: string, queueVersion: number, scenario: ScenarioId) =>
+    request<SharedAppState>(
+      `/api/v1/shared-app/queue/${encodeURIComponent(entryId)}?fixture=${encodeURIComponent(scenario)}&queueVersion=${queueVersion}`,
+      { method: "DELETE" },
+      parseSharedAppResponse,
+    ),
   health: (scenario?: ScenarioId) =>
     request<HealthResponse>(
       `/api/health${scenario ? query(scenario) : ""}`,

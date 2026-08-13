@@ -3,9 +3,9 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-13"
 source_of_truth: project-context
-# Completed handoff remains selected until a fresh CP-02 brief is explicitly authorized and added.
-current_selected_profile: cp01_global_session_contracts
-current_selected_brief: tasks/VF-9-24K.md
+# CP-02 is complete. No successor implementation is selected or authorized.
+current_selected_profile: checkpoint_roadmap
+current_selected_brief: null
 
 mandatory_read:
   - 00_START_HERE.md
@@ -27,6 +27,9 @@ target_profile_word_budget: 10000
 # Historical task briefs remain evidence but are intentionally not active read profiles. Create one
 # narrow profile/brief when each future checkpoint becomes current.
 read_profiles:
+  cp02_shared_admission_queue_ui:
+    - 22_PROJECT_COMPLETION_CHECKPOINTS.md
+    - tasks/VF-9-24M.md
   cp01_global_session_contracts:
     - 22_PROJECT_COMPLETION_CHECKPOINTS.md
     - tasks/VF-9-24K.md

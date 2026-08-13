@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-01 complete after persisted-authority fix and provider-free re-audit; CP-02 not started
+Status: CP-00 through CP-02 complete; stopped before unselected, unauthorized CP-03
 Context schema: `1.5`  
 Last updated: `2026-08-13`
 
@@ -75,7 +75,12 @@ in-memory firewall and that durable output rows did not prove exact Pod ownershi
 active persisted tuple verification before the paid port, and queue/lane ownership enforcement for
 durable model output. Fresh, upgrade, restore, schema, adversarial, canonical, and Chrome gates pass.
 The current proof is `evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-after-authority-fix.json`.
-Older acceptance files remain historical. `CP-02` has not started. All production gates remain open.
+Older acceptance files remain historical. `VF-9-24M`/`CP-02` is accepted provider-free: one
+equal-rights shared admission boundary, atomic email-bound one-time invites, singleton generation
+session, manually ordered global queue, and idle-only exact GPU receipt selectors. Evidence is
+`evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/acceptance.json`. No successor task is
+selected or authorized. CP-03 is not started. All provider, credential, cloud, model-download, GPU,
+and spend authority remains false; all production gates remain open.
 
 No VideoForge persistent model volume exists yet. Future provisioning/preparation is a separate
 explicitly authorized provider task after contracts and offline workers are green.

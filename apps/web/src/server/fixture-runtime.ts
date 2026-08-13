@@ -10,9 +10,11 @@ import { avatarCatalog, imageStyleCatalog } from "./domain/preset-service";
 import type { FixtureSessionState } from "./domain/models";
 import { FixtureSessionStore } from "./fixture-session";
 import { idempotentMutation } from "./mutation";
+import { SharedAppFixtureStore } from "./shared-app-fixture";
 
 export class FixtureRuntime {
   readonly sessions: FixtureSessionStore;
+  readonly sharedApp = new SharedAppFixtureStore();
 
   constructor(
     readonly environment: string,

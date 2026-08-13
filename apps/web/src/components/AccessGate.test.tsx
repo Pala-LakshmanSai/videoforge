@@ -1,10 +1,13 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { FixtureAccessState } from "../lib/types";
 import { AccessGate } from "./AccessGate";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 const invitedAccess: FixtureAccessState = {
   state: "SIGN_IN_REQUIRED",
@@ -29,8 +32,26 @@ const deniedAccess: FixtureAccessState = {
 };
 
 describe("AccessGate", () => {
-  it("enters the fixture queue through one explicit synthetic sign-in action", () => {
+  it("enters through provider-free invite admission and clears the one-time code", async () => {
     const onContinue = vi.fn();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ code: "vf_one_time_secret_for_test", shownOnce: true }), {
+          status: 200,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            outcome: "ADMITTED",
+            email: "lakshman.fixture@example.invalid",
+            rights: "EQUAL",
+          }),
+          { status: 200 },
+        ),
+      );
+    vi.stubGlobal("fetch", fetch);
 
     render(
       <AccessGate
@@ -45,11 +66,14 @@ describe("AccessGate", () => {
 
     expect(screen.getByRole("heading", { name: "Enter VideoForge" })).toBeVisible();
     expect(screen.getByText("Fixture sign-in · no Google request will be sent")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Create one-time local invite" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
     const action = screen.getByRole("button", { name: "Continue to queue" });
     action.focus();
     expect(action).toHaveFocus();
     fireEvent.click(action);
-    expect(onContinue).toHaveBeenCalledOnce();
+    await waitFor(() => expect(onContinue).toHaveBeenCalledOnce());
+    expect(screen.getByLabelText("One-time invite code")).toHaveValue("");
   });
 
   it("shows the exact invite blocker without rendering workspace console data", () => {

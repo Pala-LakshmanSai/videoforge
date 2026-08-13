@@ -81,7 +81,7 @@ function baseSnapshot(): FixtureSnapshot {
     session: {
       userId: "user_fixture_lakshman",
       displayName: "Lakshman",
-      role: "ADMIN",
+      rights: "EQUAL",
       workspaceId: "workspace_fixture_001",
       workspaceName: "VideoForge Studio",
     },
@@ -384,7 +384,7 @@ const scenarios = {
       };
       snapshot.session.userId = "user_fixture_uninvited";
       snapshot.session.displayName = "Guest account (fixture)";
-      snapshot.session.role = "MEMBER";
+      snapshot.session.rights = "EQUAL";
       snapshot.draft.preflight.checks[0]!.message = "Ask a workspace admin for an invite";
       snapshot.notice = {
         tone: "ERROR",

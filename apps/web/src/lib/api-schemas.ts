@@ -8,12 +8,85 @@ import {
   type FixtureBootstrap,
   type HealthResponse,
   type ImageStyle,
+  type SharedAppState,
   type ProjectDetail,
   type ProjectSummary,
   type RegisteredVoiceover,
   type TimelineInspection,
   type UsageSummary,
 } from "./types";
+
+const gpuOfferSchema = z
+  .object({
+    receiptId: z.string(),
+    lane: z.enum(["image_media", "avatar_primary"]),
+    gpuSku: z.string(),
+    vramGb: z.number().int().positive(),
+    rateUsdPerHour: z.number().nonnegative(),
+    cloudType: z.literal("SECURE"),
+    region: z.literal("EU-RO-1"),
+    observedAt: z.string(),
+    expiresAt: z.string(),
+  })
+  .strict();
+
+const sharedAppSchema = z
+  .object({
+    rights: z.literal("EQUAL"),
+    admission: z
+      .object({
+        admitted: z.boolean(),
+        email: z.string().nullable(),
+        authMethod: z.enum(["EMAIL_PASSWORD", "GOOGLE"]).nullable(),
+      })
+      .strict(),
+    inventory: z.array(gpuOfferSchema),
+    session: z
+      .object({
+        id: z.string(),
+        queueVersion: z.number().int().nonnegative(),
+        gpuPair: z
+          .object({ image: gpuOfferSchema, avatar: gpuOfferSchema, lockedAt: z.string() })
+          .strict(),
+      })
+      .strict()
+      .nullable(),
+    queue: z.array(
+      z
+        .object({
+          id: z.string(),
+          projectId: z.string(),
+          title: z.string(),
+          state: z.enum(["ACTIVE", "WAITING"]),
+          actor: z.string(),
+          position: z.number().int().positive(),
+          createdAt: z.string(),
+        })
+        .strict(),
+    ),
+    audits: z.array(
+      z
+        .object({
+          id: z.string(),
+          operation: z.enum(["START", "ADD", "MOVE", "REMOVE"]),
+          actor: z.string(),
+          oldOrder: z.array(z.string()),
+          newOrder: z.array(z.string()),
+          oldVersion: z.number().int().nonnegative(),
+          newVersion: z.number().int().nonnegative(),
+          occurredAt: z.string(),
+        })
+        .strict(),
+    ),
+    canSelectGpuPair: z.boolean(),
+    providerCallsAuthorized: z.literal(false),
+    authorizedSpendUsd: z.literal(0),
+  })
+  .strict();
+
+export function parseSharedAppResponse(value: unknown): SharedAppState {
+  return sharedAppSchema.parse(value);
+}
 
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const PROJECT_VERSION_TOKEN = /^"vf-[A-Za-z0-9._:-]+-v[1-9][0-9]*"$/u;
@@ -356,7 +429,7 @@ const bootstrapSchema = z
         id: z.string(),
         name: z.string(),
         email: z.string(),
-        role: z.enum(["ADMIN", "MEMBER"]),
+        rights: z.literal("EQUAL"),
         invited: z.boolean(),
       })
       .strict(),

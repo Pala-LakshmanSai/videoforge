@@ -8,6 +8,7 @@ const REQUIRED_CUSTOM_INDEXES = [
   "assets_binary_sha256_idx",
   "assets_canonical_document_sha256_idx",
   "assets_object_key_uq",
+  "global_queue_audits_actor_idx",
   "generation_sessions_one_open_uq",
   "global_queue_entries_live_position_uq",
   "global_queue_entries_one_active_uq",
@@ -51,6 +52,7 @@ const REQUIRED_CUSTOM_INDEXES = [
 
 const REQUIRED_TRIGGERS = [
   "app_admissions_append_only",
+  "auth_identity_bindings_append_only",
   "attempts_accepted_result_consistent",
   "attempts_execution_profile_immutable",
   "avatar_generation_acceptances_append_only",
@@ -71,9 +73,12 @@ const REQUIRED_TRIGGERS = [
   "generation_sessions_transition_guard",
   "global_queue_entries_active_guard",
   "global_queue_entries_validate",
+  "global_queue_audits_append_only",
   "global_session_cost_events_append_only",
   "global_session_events_append_only",
   "gpu_inventory_receipts_append_only",
+  "invite_codes_transition_guard",
+  "invite_redemptions_append_only",
   "image_generation_acceptances_append_only",
   "image_style_profile_artifacts_append_only",
   "image_style_profile_edits_append_only",

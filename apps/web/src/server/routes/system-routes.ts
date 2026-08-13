@@ -53,7 +53,31 @@ export function registerSystemRoutes(app: Hono, runtime: FixtureRuntime): void {
     if (!resolved.ok) return resolved.response;
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
-    return c.json(runtime.bootstrapResponse(resolved.scenario, session.state));
+    const response = runtime.bootstrapResponse(resolved.scenario, session.state);
+    const returning = runtime.sharedApp.view(session.id).admission;
+    if (returning.admitted && response.access.state !== "AUTHORIZED") {
+      response.access = {
+        state: "AUTHORIZED",
+        selectedAccount: {
+          displayName: returning.email ?? "Admitted user",
+          email: returning.email ?? "",
+        },
+        workspaceName: "VideoForge",
+        adminContact: "",
+        reason: null,
+      };
+      response.user = {
+        id: `fixture_${session.id}`,
+        name: returning.email ?? "Admitted user",
+        email: returning.email ?? "",
+        rights: "EQUAL",
+        invited: true,
+      };
+    }
+    if (response.access.state === "AUTHORIZED") {
+      runtime.sharedApp.seedAdmittedSession(session.id, response.user.email);
+    }
+    return c.json(response);
   });
 
   app.get("/api/v1/execution-profiles", (c) => {

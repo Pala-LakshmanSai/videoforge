@@ -3,11 +3,13 @@ import type { Hono } from "hono";
 import { fixtureFromRequest } from "./fixture";
 import { FIXTURE_SESSION_HEADER, type FixtureSessionStore } from "./fixture-session";
 import { apiProblem, problemResponse } from "./problem";
+import type { SharedAppFixtureStore } from "./shared-app-fixture";
 
 export function registerAccessMiddleware(
   app: Hono,
   environment: string,
   fixtureSessions: FixtureSessionStore,
+  sharedApp: SharedAppFixtureStore,
 ): void {
   app.use("/api/*", async (c, next) => {
     if (environment === "production") {
@@ -37,11 +39,20 @@ export function registerAccessMiddleware(
   app.use("/api/v1/*", async (c, next) => {
     const resolved = fixtureFromRequest(c.req.raw);
     if (!resolved.ok) return resolved.response;
-    if (c.req.path === "/api/v1/bootstrap") {
+    if (
+      c.req.path === "/api/v1/bootstrap" ||
+      c.req.path === "/api/v1/shared-app/authenticate" ||
+      c.req.path === "/api/v1/shared-app"
+    ) {
       await next();
       return;
     }
-    if (resolved.scenario.snapshot.access.state !== "AUTHORIZED") {
+    const session = fixtureSessions.resolve(c);
+    if (!session.ok) return session.response;
+    if (
+      resolved.scenario.snapshot.access.state !== "AUTHORIZED" &&
+      !sharedApp.view(session.id).admission.admitted
+    ) {
       return problemResponse(
         apiProblem(
           "WORKSPACE_ACCESS_REQUIRED",

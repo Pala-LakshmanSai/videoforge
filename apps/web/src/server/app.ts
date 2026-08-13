@@ -9,6 +9,7 @@ import { registerPresetRoutes } from "./routes/preset-routes";
 import { registerProjectRoutes } from "./routes/project-routes";
 import { registerStyleHubRoutes } from "./routes/style-hub-routes";
 import { registerSystemRoutes } from "./routes/system-routes";
+import { registerSharedAppRoutes } from "./routes/shared-app-routes";
 import { registerVoiceoverRoutes } from "./routes/voiceover-routes";
 import { assertRunnableRuntime } from "./runtime/configuration";
 import type { CreateApiAppOptions } from "./runtime/types";
@@ -37,8 +38,9 @@ export function createApiApp(options: CreateApiAppOptions): Hono {
   const app = new Hono();
   const runtime = new FixtureRuntime(environment, commit);
 
-  registerAccessMiddleware(app, environment, runtime.sessions);
+  registerAccessMiddleware(app, environment, runtime.sessions, runtime.sharedApp);
   registerSystemRoutes(app, runtime);
+  registerSharedAppRoutes(app, runtime);
   registerPresetRoutes(app, runtime);
   registerStyleHubRoutes(app, runtime);
   registerVoiceoverRoutes(app, runtime);

@@ -472,6 +472,18 @@ export class GlobalSessionRepository {
         WHERE id = $1 AND state = 'LOCKING'`,
       [command.proposedSessionId],
     );
+    await this.appendQueueAudit(transaction, {
+      auditId: command.addedEventId,
+      sessionId: command.proposedSessionId,
+      operation: "ADD",
+      actorAdmissionId: command.admissionId,
+      queueEntryId: command.queueEntryId,
+      oldQueueVersion: 0,
+      newQueueVersion: 1,
+      oldOrder: [],
+      newOrder: [command.queueEntryId],
+      now: command.now,
+    });
     return Object.freeze({
       outcome: "STARTED",
       generationSessionId: command.proposedSessionId,
@@ -513,6 +525,7 @@ export class GlobalSessionRepository {
       [session.id],
     );
     const position = Number(tail.rows[0]?.count ?? "1");
+    const oldOrder = await this.liveQueueOrder(transaction, session.id);
     const nextVersion = session.queue_version + 1;
     await transaction.query(
       `INSERT INTO global_queue_entries (
@@ -552,6 +565,18 @@ export class GlobalSessionRepository {
         WHERE id = $1 AND queue_version = $3`,
       [session.id, nextVersion, session.queue_version],
     );
+    await this.appendQueueAudit(transaction, {
+      auditId: command.addedEventId,
+      sessionId: session.id,
+      operation: "ADD",
+      actorAdmissionId: command.admissionId,
+      queueEntryId: command.queueEntryId,
+      oldQueueVersion: session.queue_version,
+      newQueueVersion: nextVersion,
+      oldOrder,
+      newOrder: [...oldOrder, command.queueEntryId],
+      now: command.now,
+    });
     return Object.freeze({
       outcome: "WAITING",
       generationSessionId: session.id,
@@ -579,6 +604,7 @@ export class GlobalSessionRepository {
         command.expectedQueueVersion,
       );
       const waiting = await this.waitingEntries(transaction, command.generationSessionId);
+      const oldOrder = await this.liveQueueOrder(transaction, command.generationSessionId);
       const sourceIndex = waiting.findIndex(({ id }) => id === command.queueEntryId);
       if (sourceIndex < 0) await this.rejectNonWaiting(transaction, command.queueEntryId);
       if (
@@ -609,6 +635,18 @@ export class GlobalSessionRepository {
           WHERE id = $1 AND queue_version = $3`,
         [command.generationSessionId, nextVersion, session.queue_version],
       );
+      await this.appendQueueAudit(transaction, {
+        auditId: command.eventId,
+        sessionId: command.generationSessionId,
+        operation: "MOVE",
+        actorAdmissionId: command.actorAdmissionId,
+        queueEntryId: command.queueEntryId,
+        oldQueueVersion: session.queue_version,
+        newQueueVersion: nextVersion,
+        oldOrder,
+        newOrder: await this.liveQueueOrder(transaction, command.generationSessionId),
+        now: command.now,
+      });
       return nextVersion;
     });
   }
@@ -638,6 +676,7 @@ export class GlobalSessionRepository {
       if (entry.rows[0]?.state !== "WAITING") {
         await this.rejectNonWaiting(transaction, command.queueEntryId);
       }
+      const oldOrder = await this.liveQueueOrder(transaction, command.generationSessionId);
       await transaction.query(
         `UPDATE global_queue_entries
             SET state = 'REMOVED', removed_at = $3, version = version + 1
@@ -661,6 +700,18 @@ export class GlobalSessionRepository {
           WHERE id = $1 AND queue_version = $3`,
         [command.generationSessionId, nextVersion, session.queue_version],
       );
+      await this.appendQueueAudit(transaction, {
+        auditId: command.eventId,
+        sessionId: command.generationSessionId,
+        operation: "REMOVE",
+        actorAdmissionId: command.actorAdmissionId,
+        queueEntryId: command.queueEntryId,
+        oldQueueVersion: session.queue_version,
+        newQueueVersion: nextVersion,
+        oldOrder,
+        newOrder: await this.liveQueueOrder(transaction, command.generationSessionId),
+        now: command.now,
+      });
       return nextVersion;
     });
   }
@@ -697,6 +748,53 @@ export class GlobalSessionRepository {
       [sessionId],
     );
     return [...result.rows];
+  }
+
+  private async liveQueueOrder(transaction: SqlExecutor, sessionId: string): Promise<string[]> {
+    const result = await transaction.query<QueueEntryRow>(
+      `SELECT id, generation_session_id, state, position
+         FROM global_queue_entries
+        WHERE generation_session_id = $1 AND state IN ('ACTIVE', 'WAITING')
+        ORDER BY position, id`,
+      [sessionId],
+    );
+    return result.rows.map(({ id }) => id);
+  }
+
+  private async appendQueueAudit(
+    transaction: SqlExecutor,
+    command: {
+      readonly auditId: string;
+      readonly sessionId: string;
+      readonly operation: "ADD" | "MOVE" | "REMOVE";
+      readonly actorAdmissionId: string;
+      readonly queueEntryId: string;
+      readonly oldQueueVersion: number;
+      readonly newQueueVersion: number;
+      readonly oldOrder: readonly string[];
+      readonly newOrder: readonly string[];
+      readonly now: string;
+    },
+  ): Promise<void> {
+    await transaction.query(
+      `INSERT INTO global_queue_audits (
+         id, generation_session_id, operation, actor_admission_id, queue_entry_id,
+         old_queue_version, new_queue_version, old_order, new_order, occurred_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7,
+                 string_to_array($8, ',')::uuid[], string_to_array($9, ',')::uuid[], $10)`,
+      [
+        command.auditId,
+        command.sessionId,
+        command.operation,
+        command.actorAdmissionId,
+        command.queueEntryId,
+        command.oldQueueVersion,
+        command.newQueueVersion,
+        command.oldOrder.join(","),
+        command.newOrder.join(","),
+        command.now,
+      ],
+    );
   }
 
   private async rewriteWaitingPositions(

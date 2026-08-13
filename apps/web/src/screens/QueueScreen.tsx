@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowRight, Plus, Video } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowRight, ArrowUp, Plus, Trash2, Video } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { Badge, Button, EmptyState, Metric, Panel, ProgressBar } from "../components/ui";
 import { humanize, statusTone } from "../features/shared/status";
@@ -13,6 +13,25 @@ export function QueueScreen() {
     queryKey: ["bootstrap", scenario],
     queryFn: () => api.bootstrap(scenario),
   });
+  const shared = useQuery({
+    queryKey: ["shared-app", scenario],
+    queryFn: () => api.sharedApp(scenario),
+  });
+  const queueMutation = useMutation({
+    mutationFn: (action: { entryId: string; kind: "UP" | "DOWN" | "REMOVE"; position: number }) => {
+      const version = shared.data?.session?.queueVersion;
+      if (version === undefined) throw new Error("Queue version unavailable.");
+      return action.kind === "REMOVE"
+        ? api.removeSharedQueue(action.entryId, version, scenario)
+        : api.reorderSharedQueue(
+            action.entryId,
+            action.position + (action.kind === "UP" ? -1 : 1),
+            version,
+            scenario,
+          );
+    },
+    onSuccess: () => void shared.refetch(),
+  });
   const projects = query.data?.projects ?? [];
   const running = projects.filter((project) => project.status === "RUNNING").length;
   const attention = projects.filter((project) => project.status === "NEEDS_ATTENTION").length;
@@ -23,7 +42,7 @@ export function QueueScreen() {
   if (query.isPending) {
     return (
       <>
-        <PageHeader title="Your queue" />
+        <PageHeader title="Queue" />
         <Panel heading="Loading projects">
           <div className="empty-state" aria-busy="true">
             <span className="spinner" aria-hidden="true" />
@@ -36,7 +55,7 @@ export function QueueScreen() {
   if (query.isError) {
     return (
       <>
-        <PageHeader title="Your queue" />
+        <PageHeader title="Queue" />
         <EmptyState
           icon={<AlertTriangle />}
           title="Queue unavailable"
@@ -54,7 +73,7 @@ export function QueueScreen() {
   return (
     <>
       <PageHeader
-        title="Your queue"
+        title="Queue"
         actions={
           <Link
             to="/projects/new"
@@ -67,10 +86,19 @@ export function QueueScreen() {
         }
       />
       <div className="grid grid-4 queue-overview">
-        <Metric label="Active" value={String(running)} tone="info" />
+        <Metric
+          label="Active"
+          value={String(
+            shared.data?.queue.filter((entry) => entry.state === "ACTIVE").length ?? running,
+          )}
+          tone="info"
+        />
         <Metric
           label="Queued"
-          value={String(projects.filter((project) => project.status === "QUEUED").length)}
+          value={String(
+            shared.data?.queue.filter((entry) => entry.state === "WAITING").length ??
+              projects.filter((project) => project.status === "QUEUED").length,
+          )}
         />
         <Metric
           label="Needs attention"
@@ -79,6 +107,101 @@ export function QueueScreen() {
         />
         <Metric label="Ready" value={String(complete)} tone="success" />
       </div>
+      <Panel
+        className="queue-panel"
+        eyebrow="One shared boundary"
+        heading="Global generation queue"
+      >
+        {shared.isError ? (
+          <div className="validation validation-danger" role="alert">
+            Global queue unavailable. Refresh before changing order.
+          </div>
+        ) : shared.isPending ? (
+          <div className="empty-state" aria-busy="true">
+            <span className="spinner" />
+            <p>Loading global queue…</p>
+          </div>
+        ) : shared.data.queue.length === 0 ? (
+          <p>Idle. The next Generate locks both selected GPU receipts for everyone.</p>
+        ) : (
+          <div className="queue-list" aria-label="Global generation queue">
+            {shared.data.queue.map((entry) => (
+              <article className="queue-card" key={entry.id}>
+                <div className="queue-card__identity">
+                  <span className="project-icon">
+                    <Video size={18} />
+                  </span>
+                  <div>
+                    <strong>{entry.title}</strong>
+                    <small>{entry.actor} · equal rights</small>
+                  </div>
+                </div>
+                <div className="queue-card__status">
+                  <Badge tone={entry.state === "ACTIVE" ? "info" : "neutral"}>{entry.state}</Badge>
+                  <span>Position {entry.position}</span>
+                </div>
+                <div className="queue-card__facts">
+                  {entry.state === "WAITING" ? (
+                    <>
+                      <Button
+                        variant="secondary"
+                        aria-label={`Move ${entry.title} up`}
+                        disabled={entry.position <= 2 || queueMutation.isPending}
+                        onClick={() =>
+                          queueMutation.mutate({
+                            entryId: entry.id,
+                            kind: "UP",
+                            position: entry.position,
+                          })
+                        }
+                      >
+                        <ArrowUp size={16} />
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        aria-label={`Move ${entry.title} down`}
+                        disabled={
+                          entry.position >= shared.data.queue.length || queueMutation.isPending
+                        }
+                        onClick={() =>
+                          queueMutation.mutate({
+                            entryId: entry.id,
+                            kind: "DOWN",
+                            position: entry.position,
+                          })
+                        }
+                      >
+                        <ArrowDown size={16} />
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        aria-label={`Remove ${entry.title}`}
+                        disabled={queueMutation.isPending}
+                        onClick={() =>
+                          queueMutation.mutate({
+                            entryId: entry.id,
+                            kind: "REMOVE",
+                            position: entry.position,
+                          })
+                        }
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </>
+                  ) : (
+                    <small>Active entry cannot move or delete</small>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+        {queueMutation.isError ? (
+          <div className="validation validation-danger" role="alert">
+            {queueMutation.error.message}
+          </div>
+        ) : null}
+      </Panel>
       <Panel className="queue-panel" heading="Projects">
         {projects.length === 0 ? (
           <EmptyState
