@@ -1,9 +1,12 @@
 import type { SqlExecutor, TransactionalSqlExecutor } from "../database/ports.js";
 import type { GlobalSessionLane } from "../database/vocabulary.js";
+import { assertContract, sha256CanonicalJson, type ContractDocument } from "@videoforge/contracts";
 
 export type GlobalSessionProblemCode =
   | "ACTIVE_PROJECT_TRANSITION_UNVERIFIED"
   | "ADMISSION_REQUIRED"
+  | "DISPATCH_AUTHORITY_UNVERIFIED"
+  | "DURABLE_OUTPUT_AUTHORITY_UNVERIFIED"
   | "GENERATION_SESSION_CHANGED"
   | "GPU_INVENTORY_STALE"
   | "GPU_OFFERING_UNAVAILABLE"
@@ -866,23 +869,125 @@ export class GlobalSessionRepository {
     readonly byteSize: bigint;
     readonly verifiedAt: string;
   }): Promise<void> {
-    await this.database.query(
-      `INSERT INTO durable_generation_outputs (
-         id, generation_session_id, queue_entry_id, lane, pod_attempt_id, artifact_id,
-         artifact_sha256, byte_size, durability_state, verified_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'VERIFIED', $9)`,
+    try {
+      await this.database.query(
+        `INSERT INTO durable_generation_outputs (
+           id, generation_session_id, queue_entry_id, lane, pod_attempt_id, artifact_id,
+           artifact_sha256, byte_size, durability_state, verified_at
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'VERIFIED', $9)`,
+        [
+          command.outputId,
+          command.generationSessionId,
+          command.queueEntryId,
+          command.lane,
+          command.podAttemptId,
+          command.artifactId,
+          command.artifactSha256,
+          command.byteSize,
+          command.verifiedAt,
+        ],
+      );
+    } catch (error) {
+      throw new GlobalSessionContractError(
+        "DURABLE_OUTPUT_AUTHORITY_UNVERIFIED",
+        "Durable output must match the exact queue entry and ready Pod lane.",
+        error,
+      );
+    }
+  }
+
+  async authorizePodDispatch(command: {
+    readonly authorizationId: string;
+    readonly envelope: ContractDocument<"podWorkerJobEnvelope">;
+    readonly authorizedAt: string;
+  }): Promise<`sha256:${string}`> {
+    const envelope = assertContract("podWorkerJobEnvelope", structuredClone(command.envelope));
+    const envelopeSha256 = await sha256CanonicalJson(envelope);
+    const result = await this.database.query(
+      `INSERT INTO pod_dispatch_authorizations (
+         id, envelope_sha256, envelope_document, generation_session_id, queue_entry_id,
+         compute_run_plan_id, pod_attempt_id, lane, authorized_at, deadline_at
+       )
+       SELECT $1, $2, $3::jsonb, gs.id, queue_entry.id, run_plan.id,
+              pod_attempt.id, pod_attempt.lane, $4, $5
+         FROM generation_sessions gs
+         JOIN global_queue_entries queue_entry
+           ON queue_entry.generation_session_id = gs.id AND queue_entry.id = $6
+         JOIN project_revisions project_revision
+           ON project_revision.id = queue_entry.project_revision_id
+         JOIN compute_run_plans run_plan
+           ON run_plan.generation_session_id = gs.id
+          AND run_plan.id = $7 AND run_plan.queue_entry_id = queue_entry.id
+         JOIN pod_lifecycle_attempts pod_attempt
+           ON pod_attempt.generation_session_id = gs.id
+          AND pod_attempt.id = $8
+          AND pod_attempt.origin_queue_entry_id = queue_entry.id
+          AND pod_attempt.lane = $9
+         JOIN session_gpu_bindings binding
+           ON binding.generation_session_id = gs.id AND binding.lane = pod_attempt.lane
+         JOIN model_volumes volume
+           ON volume.id = binding.model_volume_id AND volume.lane = binding.lane
+         JOIN model_volume_manifests manifest
+           ON manifest.id = binding.manifest_id
+          AND manifest.model_volume_id = binding.model_volume_id AND manifest.lane = binding.lane
+         JOIN gpu_inventory_receipts receipt
+           ON receipt.id = binding.inventory_receipt_id AND receipt.lane = binding.lane
+        WHERE gs.id = $10 AND gs.state = 'ACTIVE'
+          AND queue_entry.state = 'ACTIVE'
+          AND run_plan.state = 'ACTIVE' AND run_plan.plan_sha256 = $11
+          AND pod_attempt.create_state = 'ACKNOWLEDGED'
+          AND pod_attempt.model_ready_at IS NOT NULL
+          AND pod_attempt.delete_state = 'NOT_REQUESTED'
+          AND pod_attempt.actual_gpu_sku = binding.selected_gpu_sku
+          AND pod_attempt.create_attempt_key = $12
+          AND binding.model_volume_id::text = $13 AND binding.manifest_id::text = $14
+          AND binding.inventory_receipt_id::text = $15 AND binding.offering_id = $16
+          AND binding.selected_gpu_sku = $17
+          AND binding.rate_ceiling_micro_usd_per_hour = $18
+          AND volume.provider_volume_id = $19 AND volume.model_id = $20
+          AND volume.model_revision = $21 AND volume.precision = $22
+          AND volume.region = $23 AND volume.mount_path = $24
+          AND manifest.manifest_sha256 = $25
+          AND receipt.gpu_count = $26 AND receipt.offering_id = $16 AND receipt.gpu_sku = $17
+          AND $4::timestamptz < $5::timestamptz
+          AND $27::bigint <= project_revision.maximum_cost_micro_usd`,
       [
-        command.outputId,
-        command.generationSessionId,
-        command.queueEntryId,
-        command.lane,
-        command.podAttemptId,
-        command.artifactId,
-        command.artifactSha256,
-        command.byteSize,
-        command.verifiedAt,
+        command.authorizationId,
+        envelopeSha256,
+        JSON.stringify(envelope),
+        command.authorizedAt,
+        envelope.deadline_at,
+        envelope.queue_entry_id,
+        envelope.compute_run_plan_id,
+        envelope.pod_resource_binding.pod_attempt_id,
+        envelope.lane,
+        envelope.generation_session_id,
+        envelope.compute_run_plan_sha256,
+        envelope.pod_resource_binding.create_attempt_id,
+        envelope.pod_resource_binding.model_volume_id,
+        envelope.pod_resource_binding.manifest_id,
+        envelope.pod_resource_binding.inventory_receipt_id,
+        envelope.pod_resource_binding.offering_id,
+        envelope.pod_resource_binding.selected_gpu_sku,
+        envelope.pod_resource_binding.rate_ceiling_micro_usd_per_hour,
+        envelope.pod_resource_binding.provider_volume_id,
+        envelope.pod_resource_binding.model_id,
+        envelope.pod_resource_binding.model_revision,
+        envelope.pod_resource_binding.precision,
+        envelope.pod_resource_binding.region,
+        envelope.pod_resource_binding.mount_path,
+        envelope.pod_resource_binding.manifest_sha256,
+        envelope.pod_resource_binding.gpu_count,
+        envelope.maximum_cost_micro_usd,
       ],
     );
+    if (result.affectedRows !== 1) {
+      throw new GlobalSessionContractError(
+        "DISPATCH_AUTHORITY_UNVERIFIED",
+        "Dispatch authority requires one exact active persisted session tuple.",
+      );
+    }
+    return envelopeSha256;
   }
 
   async settleLaneDemand(command: {

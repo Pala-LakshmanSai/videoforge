@@ -20,8 +20,17 @@ class DisabledVNextPodDispatchPort {
   }
 }
 
+class DisabledVNextPodDispatchAuthority {
+  async assertAuthorized(): Promise<void> {
+    throw new VNextProductionDispatchDisabledError();
+  }
+}
+
 export function createVNextProductionDispatch(): VNextProductionDispatch {
-  const firewall = new VNextPodDispatchFirewall(new DisabledVNextPodDispatchPort());
+  const firewall = new VNextPodDispatchFirewall(
+    new DisabledVNextPodDispatchAuthority(),
+    new DisabledVNextPodDispatchPort(),
+  );
   return Object.freeze({
     dispatch(candidate: unknown) {
       return firewall.dispatch(candidate);

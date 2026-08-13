@@ -77,8 +77,8 @@
     {
       "source": "project-context/evidence/pod_worker_job_envelope.schema.json",
       "destination": "generated/schemas/pod_worker_job_envelope.schema.json",
-      "bytes": 4559,
-      "sha256": "sha256:cfc485abbffc978bb6e5c7433f83cbb46fe7ca63d13865e110838abf2d975a5c"
+      "bytes": 4683,
+      "sha256": "sha256:85d7ca4c01d0f8ab8ab1e380cd7e4ad6115dd3fa30f24124ec22a75f7b71e7e4"
     },
     {
       "source": "project-context/evidence/worker_job_envelope.schema.json",

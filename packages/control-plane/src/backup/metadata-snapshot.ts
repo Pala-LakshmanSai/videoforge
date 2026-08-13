@@ -76,6 +76,7 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "global_queue_entries",
   "compute_run_plans",
   "pod_lifecycle_attempts",
+  "pod_dispatch_authorizations",
   "lane_demands",
   "durable_generation_outputs",
   "global_session_cost_events",

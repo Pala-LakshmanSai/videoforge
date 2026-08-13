@@ -4347,7 +4347,10 @@ export const canonicalSchemaDocuments = {
         ],
         "properties": {
           "artifact_id": {
-            "$ref": "#/$defs/id"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 600,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
           },
           "sha256": {
             "$ref": "#/$defs/sha256"

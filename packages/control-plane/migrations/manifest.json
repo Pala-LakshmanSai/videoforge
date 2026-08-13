@@ -84,6 +84,12 @@
       "name": "global_session_vnext",
       "filename": "0014_global_session_vnext.sql",
       "sha256": "sha256:a9fbe15d6b9380cf422683c3347f2425c464edc51544924f644548eacbc8aa0a"
+    },
+    {
+      "version": 15,
+      "name": "cp01_dispatch_authority",
+      "filename": "0015_cp01_dispatch_authority.sql",
+      "sha256": "sha256:56cf9726f012c1605f0726c46f6c70c61125c5128939c811752960d9e5d11747"
     }
   ]
 }

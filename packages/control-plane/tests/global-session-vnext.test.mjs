@@ -8,6 +8,11 @@ import {
   restoreMetadataSnapshot,
   serializeMetadataSnapshot,
 } from "../dist/src/index.js";
+import {
+  PersistentVNextPodDispatchAuthority,
+  VNextPodDispatchAuthorityError,
+  VNextPodDispatchFirewall,
+} from "../dist/src/global-session/production-dispatch.js";
 import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import { createMigratedDatabase, expectDatabaseError, sha256, uuid } from "./support/pglite.mjs";
 
@@ -45,6 +50,7 @@ const ID = Object.freeze({
   staleMagePod: uuid(90_064),
   staleEchoPod: uuid(90_065),
   revalidation: uuid(90_070),
+  dispatchAuthorization: uuid(90_071),
 });
 
 function expectContractCode(code) {
@@ -325,8 +331,20 @@ test("one synthetic global session fails closed, drains both Pods, retains volum
 
     const activeCommand =
       winner.queueEntryId === ID.queueA
-        ? { magePodId: ID.magePodA, echoPodId: ID.echoPodA, variant: 1 }
-        : { magePodId: ID.magePodB, echoPodId: ID.echoPodB, variant: 2 };
+        ? {
+            magePodId: ID.magePodA,
+            echoPodId: ID.echoPodA,
+            computeRunPlanId: ID.runA,
+            variant: 1,
+          }
+        : {
+            magePodId: ID.magePodB,
+            echoPodId: ID.echoPodB,
+            computeRunPlanId: ID.runB,
+            variant: 2,
+          };
+    activeCommand.computeRunPlanSha256 = sha256(`run-${activeCommand.variant}`);
+    activeCommand.mageCreateAttemptKey = `create:mage:${activeCommand.variant}`;
     const activeQueueEntryId = winner.queueEntryId;
     const waitingQueueEntryId = loser.queueEntryId;
     const sessionId = winner.generationSessionId;
@@ -543,6 +561,120 @@ test("one synthetic global session fails closed, drains both Pods, retains volum
       warmupPassedAt: LATER,
       modelReadyAt: LATER,
     });
+    const dispatchEnvelope = {
+      schema_version: "pod-worker-job-envelope/v2",
+      dispatch_target: "RUNPOD_POD",
+      provider_api: "runpod-pods/v1",
+      generation_session_id: sessionId,
+      queue_entry_id: activeQueueEntryId,
+      compute_run_plan_id: activeCommand.computeRunPlanId,
+      compute_run_plan_sha256: activeCommand.computeRunPlanSha256,
+      lane: "mage_image",
+      pod_resource_binding: {
+        pod_attempt_id: activeCommand.magePodId,
+        create_attempt_id: activeCommand.mageCreateAttemptKey,
+        lane: "mage_image",
+        worker_contract: "videoforge-mage-pod/v1",
+        container_digest: sha256("mage-container"),
+        model_id: "Comfy-Org/Mage-Flow",
+        model_revision: "d8c99241f6fa80fbd453014234af2bf337ea21e6",
+        precision: "int8-convrot",
+        model_volume_id: ID.mageVolume,
+        provider_volume_id: "provider-volume-mage-fixture",
+        manifest_id: ID.mageManifest,
+        manifest_sha256: sha256("mage-manifest"),
+        region: "EU-RO-1",
+        mount_path: "/models/mage",
+        inventory_receipt_id: ID.mageReceipt,
+        offering_id: "offering-mage-fixture",
+        selected_gpu_sku: "NVIDIA GeForce RTX 4090",
+        gpu_count: 1,
+        rate_ceiling_micro_usd_per_hour: 350_000,
+      },
+      input_manifest: {
+        artifact_id: `dispatch-input:${sessionId}:${activeQueueEntryId}:${activeCommand.computeRunPlanId}:mage_image:${activeCommand.magePodId}`,
+        sha256: sha256("mage-dispatch-input"),
+        generation_session_id: sessionId,
+        queue_entry_id: activeQueueEntryId,
+        compute_run_plan_id: activeCommand.computeRunPlanId,
+        lane: "mage_image",
+        pod_attempt_id: activeCommand.magePodId,
+      },
+      output_prefix: `sessions/${sessionId}/queue/${activeQueueEntryId}/runs/${activeCommand.computeRunPlanId}/mage_image/pods/${activeCommand.magePodId}/`,
+      maximum_cost_micro_usd: 100_000,
+      deadline_at: "2026-08-13T10:02:00.000Z",
+    };
+    await repository.authorizePodDispatch({
+      authorizationId: ID.dispatchAuthorization,
+      envelope: dispatchEnvelope,
+      authorizedAt: "2026-08-13T10:01:01.000Z",
+    });
+    const paidPortCalls = [];
+    const dispatch = new VNextPodDispatchFirewall(
+      new PersistentVNextPodDispatchAuthority(source.executor, () => "2026-08-13T10:01:02.000Z"),
+      {
+        async dispatch(candidate) {
+          paidPortCalls.push(candidate);
+          return { dispatchId: "fixture-only", acceptedAt: "2026-08-13T10:01:03.000Z" };
+        },
+      },
+    );
+    assert.equal((await dispatch.dispatch(dispatchEnvelope)).dispatchId, "fixture-only");
+    for (const foreign of [
+      {
+        ...structuredClone(dispatchEnvelope),
+        input_manifest: {
+          ...dispatchEnvelope.input_manifest,
+          sha256: sha256("foreign-input-bytes"),
+        },
+      },
+      {
+        ...structuredClone(dispatchEnvelope),
+        pod_resource_binding: {
+          ...dispatchEnvelope.pod_resource_binding,
+          model_volume_id: ID.echoVolume,
+          provider_volume_id: "provider-volume-echo-fixture",
+          manifest_id: ID.echoManifest,
+          manifest_sha256: sha256("echo-manifest"),
+          inventory_receipt_id: ID.echoReceipt,
+          offering_id: "offering-echo-fixture",
+        },
+      },
+    ]) {
+      await assert.rejects(
+        dispatch.dispatch(foreign),
+        (error) => error instanceof VNextPodDispatchAuthorityError,
+      );
+    }
+    assert.equal(paidPortCalls.length, 1);
+    await assert.rejects(
+      repository.recordDurableOutput({
+        outputId: uuid(90_128),
+        generationSessionId: sessionId,
+        queueEntryId: ID.queueC,
+        lane: "mage_image",
+        podAttemptId: activeCommand.magePodId,
+        artifactId: "artifact-cross-project-forbidden",
+        artifactSha256: sha256("artifact-cross-project-forbidden"),
+        byteSize: 1024n,
+        verifiedAt: LATER,
+      }),
+      expectContractCode("DURABLE_OUTPUT_AUTHORITY_UNVERIFIED"),
+    );
+    await assert.rejects(
+      repository.recordDurableOutput({
+        outputId: uuid(90_129),
+        generationSessionId: sessionId,
+        queueEntryId: activeQueueEntryId,
+        lane: "echo_avatar",
+        podAttemptId: activeCommand.magePodId,
+        artifactId: "artifact-cross-lane-forbidden",
+        artifactSha256: sha256("artifact-cross-lane-forbidden"),
+        byteSize: 1024n,
+        verifiedAt: LATER,
+      }),
+      expectContractCode("DURABLE_OUTPUT_AUTHORITY_UNVERIFIED"),
+    );
     await repository.recordDurableOutput({
       outputId: uuid(90_130),
       generationSessionId: sessionId,
