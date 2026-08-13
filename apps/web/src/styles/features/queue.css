@@ -113,6 +113,14 @@
   gap: 14px;
 }
 
+.queue-card video {
+  display: block;
+  width: 100%;
+  max-height: 18rem;
+  border-radius: var(--radius-md);
+  background: #111;
+}
+
 .queue-card__identity > div {
   display: flex;
   min-width: 0;

@@ -1,4 +1,14 @@
+import {
+  ProviderFreeMvpOrchestrator,
+  ProviderFreeOrchestrationError,
+  type ProviderFreeAdvanceResult,
+  type ProviderFreeLane,
+  type ProviderFreeOrchestrationState,
+  type ProviderFreeProjectState,
+} from "@videoforge/control-plane/global-session";
+
 import { MemorySharedAppPersistence, type SharedAppPersistence } from "./shared-app-persistence";
+import { buildProviderFreeFoundationReceipts } from "./provider-free-foundations";
 
 export type FixtureAuthMethod = "EMAIL_PASSWORD" | "GOOGLE";
 export type SharedQueueState = "ACTIVE" | "WAITING";
@@ -57,6 +67,7 @@ export interface SharedAppView {
   };
   readonly queue: readonly SharedQueueEntry[];
   readonly audits: readonly SharedQueueAudit[];
+  readonly orchestration: ProviderFreeOrchestrationState;
   readonly canSelectGpuPair: boolean;
   readonly providerCallsAuthorized: false;
   readonly authorizedSpendUsd: 0;
@@ -96,6 +107,7 @@ interface MutableState {
   queueVersion: number;
   queue: SharedQueueEntry[];
   audits: SharedQueueAudit[];
+  orchestration: ProviderFreeOrchestrationState;
 }
 
 const NOW = "2026-08-13T13:20:00.000Z";
@@ -170,15 +182,18 @@ function positions(queue: readonly SharedQueueEntry[]): SharedQueueEntry[] {
 export class SharedAppFixtureStore {
   #state: MutableState;
   readonly #persistence: SharedAppPersistence;
+  #orchestrator: ProviderFreeMvpOrchestrator;
 
   constructor(persistence: SharedAppPersistence = new MemorySharedAppPersistence()) {
     this.#persistence = persistence;
     const snapshot = persistence.read();
     this.#state = snapshot ? SharedAppFixtureStore.parse(snapshot) : SharedAppFixtureStore.empty();
+    this.#orchestrator = new ProviderFreeMvpOrchestrator(this.#state.orchestration);
   }
 
   reset(): void {
     this.#state = SharedAppFixtureStore.empty();
+    this.#orchestrator = new ProviderFreeMvpOrchestrator(this.#state.orchestration);
     this.persist();
   }
 
@@ -192,6 +207,7 @@ export class SharedAppFixtureStore {
       queueVersion: 0,
       queue: [],
       audits: [],
+      orchestration: new ProviderFreeMvpOrchestrator().snapshot(),
     };
   }
 
@@ -205,12 +221,14 @@ export class SharedAppFixtureStore {
       queueVersion: number;
       queue: SharedQueueEntry[];
       audits: SharedQueueAudit[];
+      orchestration?: ProviderFreeOrchestrationState;
     };
     return {
       ...value,
       admissions: new Map(value.admissions.map((item) => [item.email, item])),
       sessionAdmissions: new Map(value.sessionAdmissions),
       invites: new Map(value.invites.map((item) => [item.codeHash, item])),
+      orchestration: value.orchestration ?? new ProviderFreeMvpOrchestrator().snapshot(),
     };
   }
 
@@ -220,6 +238,7 @@ export class SharedAppFixtureStore {
       admissions: [...this.#state.admissions.values()],
       sessionAdmissions: [...this.#state.sessionAdmissions.entries()],
       invites: [...this.#state.invites.values()],
+      orchestration: this.#orchestrator.snapshot(),
     });
   }
 
@@ -372,6 +391,7 @@ export class SharedAppFixtureStore {
           : null,
       queue: this.#state.queue,
       audits: this.#state.audits,
+      orchestration: this.#orchestrator.snapshot(),
       canSelectGpuPair: this.#state.sessionId === null && this.#state.queue.length === 0,
       providerCallsAuthorized: false,
       authorizedSpendUsd: 0,
@@ -390,6 +410,7 @@ export class SharedAppFixtureStore {
     const oldVersion = this.#state.queueVersion;
     let operation: SharedQueueAudit["operation"];
     let outcome: "STARTED" | "QUEUED";
+    let gpuPair: LockedGpuPair | null = null;
     if (this.#state.sessionId === null && this.#state.queue.length === 0) {
       const image = OFFERS.find(
         (offer) => offer.lane === "image_media" && offer.receiptId === input.imageReceiptId,
@@ -410,18 +431,20 @@ export class SharedAppFixtureStore {
         );
       }
       this.#state.sessionId = crypto.randomUUID();
-      this.#state.pair = Object.freeze({ image, avatar, lockedAt: new Date().toISOString() });
+      gpuPair = Object.freeze({ image, avatar, lockedAt: new Date().toISOString() });
+      this.#state.pair = gpuPair;
       operation = "START";
       outcome = "STARTED";
     } else {
       operation = "ADD";
       outcome = "QUEUED";
     }
+    const queueEntryId = crypto.randomUUID();
     this.#state.queueVersion += 1;
     this.#state.queue = positions([
       ...this.#state.queue,
       {
-        id: crypto.randomUUID(),
+        id: queueEntryId,
         projectId: input.projectId,
         title: input.title,
         state: outcome === "STARTED" ? "ACTIVE" : "WAITING",
@@ -430,6 +453,26 @@ export class SharedAppFixtureStore {
         createdAt: new Date().toISOString(),
       },
     ]);
+    if (outcome === "STARTED") {
+      if (gpuPair === null) throw new Error("Started fixture session is missing its GPU pair.");
+      this.#orchestrator.startSession({
+        queueEntryId,
+        projectId: input.projectId,
+        title: input.title,
+        gpuPair: {
+          mage: {
+            receiptId: gpuPair.image.receiptId,
+            gpuSku: gpuPair.image.gpuSku,
+          },
+          echo: {
+            receiptId: gpuPair.avatar.receiptId,
+            gpuSku: gpuPair.avatar.gpuSku,
+          },
+        },
+      });
+    } else {
+      this.#orchestrator.addWaiting(queueEntryId, input.projectId, input.title);
+    }
     this.audit(operation, actor, oldOrder, oldVersion);
     this.persist();
     return { outcome, queueVersion: this.#state.queueVersion };
@@ -484,9 +527,85 @@ export class SharedAppFixtureStore {
         "Active entries cannot be removed.",
       );
     this.#state.queue = positions(this.#state.queue.filter((item) => item.id !== input.entryId));
+    this.#orchestrator.removeWaiting(entry.projectId);
     this.#state.queueVersion += 1;
     this.audit("REMOVE", actor, oldOrder, oldVersion);
     this.persist();
+  }
+
+  async advance(): Promise<ProviderFreeAdvanceResult> {
+    const waitingProjectIds = this.#state.queue
+      .filter((entry) => entry.state === "WAITING")
+      .map((entry) => entry.projectId);
+    const activeProjectId = this.#orchestrator.snapshot().session?.activeProjectId;
+    const foundations =
+      activeProjectId === null || activeProjectId === undefined
+        ? undefined
+        : await buildProviderFreeFoundationReceipts(activeProjectId);
+    const result = await this.#orchestrator.advance(waitingProjectIds, foundations);
+    this.synchronizeAfterAdvance(result);
+    this.persist();
+    return result;
+  }
+
+  cancelActive(sessionId: string): ProviderFreeAdvanceResult {
+    this.requireAdmission(sessionId);
+    const waitingProjectIds = this.#state.queue
+      .filter((entry) => entry.state === "WAITING")
+      .map((entry) => entry.projectId);
+    const result = this.#orchestrator.cancelActive(waitingProjectIds);
+    this.synchronizeAfterAdvance(result);
+    this.persist();
+    return result;
+  }
+
+  recover(): void {
+    this.#orchestrator.recover();
+    this.persist();
+  }
+
+  acceptLaneCallback(input: {
+    sessionId: string;
+    projectId: string;
+    lane: ProviderFreeLane;
+    podId: string;
+    gpuSku: string;
+    volumeId: string;
+    sequence: number;
+  }): void {
+    this.#orchestrator.acceptLaneCallback(input);
+    this.persist();
+  }
+
+  projectOrchestration(projectId: string): ProviderFreeProjectState {
+    return this.#orchestrator.project(projectId);
+  }
+
+  private synchronizeAfterAdvance(result: ProviderFreeAdvanceResult): void {
+    if (result.completedProjectId !== null) {
+      this.#state.queue = this.#state.queue.filter(
+        (entry) => entry.projectId !== result.completedProjectId,
+      );
+    }
+    if (result.promotedProjectId !== null) {
+      this.#state.queue = this.#state.queue.map((entry) =>
+        entry.projectId === result.promotedProjectId ? { ...entry, state: "ACTIVE" } : entry,
+      );
+    }
+    this.#state.queue = positions(this.#state.queue);
+    if (result.completedProjectId !== null || result.promotedProjectId !== null) {
+      this.#state.queueVersion += 1;
+    }
+    if (result.sessionClosed) {
+      if (this.#state.queue.length !== 0) {
+        throw new ProviderFreeOrchestrationError(
+          "SESSION_CLOSE_QUEUE_NOT_EMPTY",
+          "Synthetic session closed while queue still contained work.",
+        );
+      }
+      this.#state.sessionId = null;
+      this.#state.pair = null;
+    }
   }
 
   private requireAdmission(sessionId: string): Admission {
@@ -525,6 +644,7 @@ export class SharedAppFixtureStore {
   }
 
   private persist(): void {
+    this.#state.orchestration = this.#orchestrator.snapshot();
     this.#persistence.write(this.exportSnapshot());
   }
 }

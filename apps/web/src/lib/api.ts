@@ -200,6 +200,28 @@ export const api = {
       { method: "DELETE" },
       parseSharedAppResponse,
     ),
+  advanceSharedOrchestration: (scenario: ScenarioId) =>
+    request<{ event: string; completedProjectId: string | null; promotedProjectId: string | null }>(
+      `/api/dev/shared-app/advance${query(scenario)}`,
+      { method: "POST" },
+      (value) =>
+        value as {
+          event: string;
+          completedProjectId: string | null;
+          promotedProjectId: string | null;
+        },
+    ),
+  cancelSharedActive: (scenario: ScenarioId) =>
+    request<{ event: string; completedProjectId: string | null; promotedProjectId: string | null }>(
+      `/api/v1/shared-app/cancel${query(scenario)}`,
+      { method: "POST" },
+      (value) =>
+        value as {
+          event: string;
+          completedProjectId: string | null;
+          promotedProjectId: string | null;
+        },
+    ),
   health: (scenario?: ScenarioId) =>
     request<HealthResponse>(
       `/api/health${scenario ? query(scenario) : ""}`,

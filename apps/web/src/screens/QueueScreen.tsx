@@ -1,6 +1,16 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowDown, ArrowRight, ArrowUp, Plus, Trash2, Video } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  Download,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Video,
+} from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { Badge, Button, EmptyState, Metric, Panel, ProgressBar } from "../components/ui";
 import { humanize, statusTone } from "../features/shared/status";
@@ -32,12 +42,27 @@ export function QueueScreen() {
     },
     onSuccess: () => void shared.refetch(),
   });
+  const advanceMutation = useMutation({
+    mutationFn: () => api.advanceSharedOrchestration(scenario),
+    onSuccess: () => void shared.refetch(),
+  });
+  const cancelMutation = useMutation({
+    mutationFn: () => api.cancelSharedActive(scenario),
+    onSuccess: () => void shared.refetch(),
+  });
   const projects = query.data?.projects ?? [];
   const running = projects.filter((project) => project.status === "RUNNING").length;
   const attention = projects.filter((project) => project.status === "NEEDS_ATTENTION").length;
   const complete = projects.filter((project) =>
     ["READY_FOR_REVIEW", "APPROVED"].includes(project.status),
   ).length;
+  const orchestrationProjects = shared.data?.orchestration.projects ?? [];
+  const completedFixtureProjects = orchestrationProjects.filter(
+    (project) => project.stage === "READY_FOR_REVIEW" && project.finalAsset !== null,
+  );
+  const activeOrchestrationProject = orchestrationProjects.find((project) =>
+    ["BOOTING", "PREPARING", "GENERATING", "RENDERING"].includes(project.stage),
+  );
 
   if (query.isPending) {
     return (
@@ -133,7 +158,12 @@ export function QueueScreen() {
                   </span>
                   <div>
                     <strong>{entry.title}</strong>
-                    <small>{entry.actor} · equal rights</small>
+                    <small>
+                      {entry.actor} · equal rights ·{" "}
+                      {orchestrationProjects.find(
+                        (project) => project.projectId === entry.projectId,
+                      )?.stage ?? entry.state}
+                    </small>
                   </div>
                 </div>
                 <div className="queue-card__status">
@@ -202,6 +232,101 @@ export function QueueScreen() {
           </div>
         ) : null}
       </Panel>
+      {shared.data?.orchestration.session ? (
+        <Panel className="queue-panel" eyebrow="$0 fixture" heading="Synthetic lane truth">
+          <div className="grid grid-2">
+            {(["mage_image", "echo_avatar"] as const).map((laneName) => {
+              const lane = shared.data.orchestration.session!.lanes[laneName];
+              const attempt = lane.attempts.at(-1)!;
+              return (
+                <article className="queue-card" key={laneName}>
+                  <div className="queue-card__identity">
+                    <div>
+                      <strong>{laneName.replaceAll("_", " ")}</strong>
+                      <small>{lane.selectedGpuSku}</small>
+                    </div>
+                  </div>
+                  <div className="queue-card__status">
+                    <Badge tone={attempt.phase === "ABSENCE_VERIFIED" ? "success" : "info"}>
+                      {humanize(attempt.phase)}
+                    </Badge>
+                    <span>{lane.volumeId}</span>
+                  </div>
+                  <div className="queue-card__facts">
+                    <small>
+                      Attempt {lane.attempts.length} · callback {attempt.callbackSequence}
+                    </small>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+          <div className="button-row">
+            <Button
+              variant="secondary"
+              disabled={advanceMutation.isPending}
+              onClick={() => advanceMutation.mutate()}
+            >
+              <RefreshCw size={16} />
+              Advance $0 fixture
+            </Button>
+            {activeOrchestrationProject ? (
+              <Button
+                variant="secondary"
+                disabled={cancelMutation.isPending}
+                onClick={() => cancelMutation.mutate()}
+              >
+                Cancel active
+              </Button>
+            ) : null}
+          </div>
+          {advanceMutation.isError || cancelMutation.isError ? (
+            <div className="validation validation-danger" role="alert">
+              {(advanceMutation.error ?? cancelMutation.error)?.message}
+            </div>
+          ) : null}
+        </Panel>
+      ) : shared.data?.orchestration.lastClosedSession ? (
+        <Panel className="queue-panel" eyebrow="$0 fixture" heading="Last session closed">
+          <p>
+            Both synthetic Pods absent. Mage and Echo volumes retained. GPU pair unlocked after
+            queue drain.
+          </p>
+        </Panel>
+      ) : null}
+      {completedFixtureProjects.length > 0 ? (
+        <Panel className="queue-panel" heading="Provider-free final MP4s">
+          <div className="grid grid-2">
+            {completedFixtureProjects.map((project) => {
+              const download = `${project.finalAsset!.downloadPath}?fixture=${encodeURIComponent(scenario)}`;
+              const source = `${download}&inline=1`;
+              return (
+                <article className="queue-card" key={project.projectId}>
+                  <div className="queue-card__identity">
+                    <div>
+                      <strong>{project.title}</strong>
+                      <small>
+                        1920×1080 · H.264/AAC · {(project.finalAsset!.byteSize / 1024).toFixed(1)}{" "}
+                        KB
+                      </small>
+                    </div>
+                  </div>
+                  <video
+                    controls
+                    preload="metadata"
+                    src={source}
+                    aria-label={`${project.title} final MP4`}
+                  />
+                  <a className="button button-secondary" href={download}>
+                    <Download size={16} />
+                    Download MP4
+                  </a>
+                </article>
+              );
+            })}
+          </div>
+        </Panel>
+      ) : null}
       <Panel className="queue-panel" heading="Projects">
         {projects.length === 0 ? (
           <EmptyState

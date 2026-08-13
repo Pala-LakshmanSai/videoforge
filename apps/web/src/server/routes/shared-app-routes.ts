@@ -1,13 +1,21 @@
 import type { Hono } from "hono";
+import { ProviderFreeOrchestrationError } from "@videoforge/control-plane/global-session";
 
 import type { FixtureRuntime } from "../fixture-runtime";
 import { apiProblem, problemResponse } from "../problem";
+import { providerFreeFixtureMp4Bytes } from "../provider-free-fixture-mp4";
 import { SharedFixtureError } from "../shared-app-fixture";
 
 function failure(error: unknown): Response {
-  if (error instanceof SharedFixtureError) {
+  if (error instanceof SharedFixtureError || error instanceof ProviderFreeOrchestrationError) {
     return problemResponse(
-      apiProblem(error.code, error.status, "Shared app request rejected", error.message, false),
+      apiProblem(
+        error.code,
+        error instanceof SharedFixtureError ? error.status : 409,
+        "Shared app request rejected",
+        error.message,
+        false,
+      ),
     );
   }
   throw error;
@@ -28,6 +36,35 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
         providerCallsAuthorized: false,
         authorizedSpendUsd: 0,
       });
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
+  app.post("/api/dev/shared-app/advance", async (c) => {
+    try {
+      return c.json(await runtime.sharedApp.advance());
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
+  app.post("/api/dev/shared-app/recover", (c) => {
+    try {
+      runtime.sharedApp.recover();
+      return c.json({ ok: true, providerCallsAuthorized: false, authorizedSpendUsd: 0 });
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
+  app.post("/api/dev/shared-app/callback", async (c) => {
+    try {
+      const body = (await c.req.json()) as Parameters<
+        typeof runtime.sharedApp.acceptLaneCallback
+      >[0];
+      runtime.sharedApp.acceptLaneCallback(body);
+      return c.json({ ok: true, providerCallsAuthorized: false, authorizedSpendUsd: 0 });
     } catch (error) {
       return failure(error);
     }
@@ -68,6 +105,53 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
         avatarReceiptId?: string;
       };
       return c.json(runtime.sharedApp.startOrEnqueue({ sessionId: session.id, ...body }));
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
+  app.post("/api/v1/shared-app/cancel", (c) => {
+    const session = runtime.resolveSession(c);
+    if (!session.ok) return session.response;
+    try {
+      return c.json(runtime.sharedApp.cancelActive(session.id));
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
+  app.get("/api/v1/shared-app/projects/:projectId", (c) => {
+    try {
+      return c.json(runtime.sharedApp.projectOrchestration(c.req.param("projectId")));
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
+  app.get("/api/v1/shared-app/projects/:projectId/download", (c) => {
+    try {
+      const project = runtime.sharedApp.projectOrchestration(c.req.param("projectId"));
+      if (project.finalAsset === null || project.stage !== "READY_FOR_REVIEW") {
+        return problemResponse(
+          apiProblem(
+            "PROJECT_DOWNLOAD_NOT_READY",
+            409,
+            "Final MP4 is not ready",
+            "Every transcript, generation, and render barrier must complete before download.",
+            false,
+          ),
+        );
+      }
+      const safeProjectId = project.projectId.replaceAll(/[^A-Za-z0-9._-]/gu, "-");
+      c.header("content-type", "video/mp4");
+      c.header("content-length", String(project.finalAsset.byteSize));
+      c.header(
+        "content-disposition",
+        `${c.req.query("inline") === "1" ? "inline" : "attachment"}; filename="videoforge-${safeProjectId}.mp4"`,
+      );
+      c.header("x-videoforge-sha256", project.finalAsset.sha256);
+      c.header("x-videoforge-artifact-kind", "provider-free-final-mp4");
+      return c.body(providerFreeFixtureMp4Bytes().buffer as ArrayBuffer);
     } catch (error) {
       return failure(error);
     }

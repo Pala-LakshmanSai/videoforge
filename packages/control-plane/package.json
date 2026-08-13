@@ -29,6 +29,10 @@
       "types": "./dist/src/recovery/index.d.ts",
       "import": "./dist/src/recovery/index.js"
     },
+    "./global-session": {
+      "types": "./dist/src/global-session/index.d.ts",
+      "import": "./dist/src/global-session/index.js"
+    },
     "./migrations/*": "./migrations/*"
   },
   "files": [

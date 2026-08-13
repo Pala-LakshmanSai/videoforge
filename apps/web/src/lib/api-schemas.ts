@@ -30,6 +30,128 @@ const gpuOfferSchema = z
   })
   .strict();
 
+const podPhaseSchema = z.enum([
+  "CREATING",
+  "CONTAINER_READY",
+  "VOLUME_READY",
+  "MODEL_LOADING",
+  "MODEL_READY",
+  "WORKING",
+  "WARM",
+  "DELETE_REQUESTED",
+  "ABSENCE_VERIFIED",
+]);
+
+const orchestrationLaneSchema = z
+  .object({
+    lane: z.enum(["mage_image", "echo_avatar"]),
+    volumeId: z.string(),
+    volumeManifestSha256: z.string(),
+    selectedGpuSku: z.string(),
+    attempts: z.array(
+      z
+        .object({
+          attemptId: z.string(),
+          podId: z.string(),
+          originProjectId: z.string(),
+          phase: podPhaseSchema,
+          callbackSequence: z.number().int().nonnegative(),
+          createdAt: z.string(),
+          containerReadyAt: z.string().nullable(),
+          volumeReadyAt: z.string().nullable(),
+          modelLoadingAt: z.string().nullable(),
+          warmupPassedAt: z.string().nullable(),
+          modelReadyAt: z.string().nullable(),
+          workStartedAt: z.string().nullable(),
+          laneCompletedAt: z.string().nullable(),
+          deleteRequestedAt: z.string().nullable(),
+          absenceVerifiedAt: z.string().nullable(),
+          absenceReceiptSha256: z.string().nullable(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+const orchestrationSessionSchema = z
+  .object({
+    sessionId: z.string(),
+    state: z.enum(["ACTIVE", "DRAINING", "CLOSED"]),
+    gpuPair: z
+      .object({
+        mage: z.object({ receiptId: z.string(), gpuSku: z.string() }).strict(),
+        echo: z.object({ receiptId: z.string(), gpuSku: z.string() }).strict(),
+      })
+      .strict(),
+    openedAt: z.string(),
+    closedAt: z.string().nullable(),
+    activeProjectId: z.string().nullable(),
+    recoveryCount: z.number().int().nonnegative(),
+    lanes: z
+      .object({ mage_image: orchestrationLaneSchema, echo_avatar: orchestrationLaneSchema })
+      .strict(),
+  })
+  .strict();
+
+const orchestrationProjectStageSchema = z.enum([
+  "WAITING",
+  "BOOTING",
+  "PREPARING",
+  "GENERATING",
+  "RENDERING",
+  "READY_FOR_REVIEW",
+  "CANCELLED",
+  "REMOVED",
+]);
+
+const orchestrationProjectSchema = z
+  .object({
+    queueEntryId: z.string(),
+    projectId: z.string(),
+    title: z.string(),
+    stage: orchestrationProjectStageSchema,
+    createdAt: z.string(),
+    activatedAt: z.string().nullable(),
+    completedAt: z.string().nullable(),
+    workStartedAt: z.string().nullable(),
+    barriers: z
+      .object({
+        transcriptSha256: z.string().nullable(),
+        timelineSha256: z.string().nullable(),
+        promptManifestSha256: z.string().nullable(),
+        mageOutputSha256: z.string().nullable(),
+        echoOutputSha256: z.string().nullable(),
+        renderManifestSha256: z.string().nullable(),
+        finalMp4Sha256: z.string().nullable(),
+      })
+      .strict(),
+    cost: z
+      .object({
+        kind: z.literal("SIMULATED_FIXTURE"),
+        reservedMicroUsd: z.number().int().nonnegative(),
+        reportedMicroUsd: z.number().int().nonnegative(),
+        settledMicroUsd: z.number().int().nonnegative(),
+        actualExternalSpendUsd: z.literal(0),
+      })
+      .strict(),
+    finalAsset: z
+      .object({
+        artifactId: z.string(),
+        sha256: z.string(),
+        byteSize: z.number().int().positive(),
+        contentType: z.literal("video/mp4"),
+        width: z.literal(1920),
+        height: z.literal(1080),
+        durationMs: z.literal(1000),
+        audioCodec: z.literal("aac"),
+        videoCodec: z.literal("h264"),
+        downloadPath: z.string(),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
 const sharedAppSchema = z
   .object({
     rights: z.literal("EQUAL"),
@@ -78,6 +200,25 @@ const sharedAppSchema = z
         })
         .strict(),
     ),
+    orchestration: z
+      .object({
+        schemaVersion: z.literal("videoforge.provider-free-orchestration/v1"),
+        session: orchestrationSessionSchema.nullable(),
+        lastClosedSession: orchestrationSessionSchema.nullable(),
+        projects: z.array(orchestrationProjectSchema),
+        events: z.array(
+          z
+            .object({
+              id: z.string(),
+              kind: z.string(),
+              projectId: z.string().nullable(),
+              lane: z.enum(["mage_image", "echo_avatar"]).nullable(),
+              at: z.string(),
+            })
+            .strict(),
+        ),
+      })
+      .strict(),
     canSelectGpuPair: z.boolean(),
     providerCallsAuthorized: z.literal(false),
     authorizedSpendUsd: z.literal(0),

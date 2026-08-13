@@ -1604,3 +1604,151 @@ describe("CP-02 shared app fixture API", () => {
     });
   });
 });
+
+describe("CP-05 provider-free complete MVP API", () => {
+  it("rejects foreign callbacks and returns three playable checksum-bound MP4 downloads", async () => {
+    const isolatedApp = createApiApp();
+    const fixtureSession = "cp05-api";
+    const email = "cp05@example.test";
+    const inviteResponse = await isolatedApp.request("/api/dev/shared-app/invites", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const invite = (await inviteResponse.json()) as {
+      code: string;
+      emailPassword: string;
+    };
+    const auth = await isolatedApp.request(
+      "/api/v1/shared-app/authenticate?fixture=invite_sign_in",
+      {
+        method: "POST",
+        headers: withFixtureSession(fixtureSession, { "content-type": "application/json" }),
+        body: JSON.stringify({
+          method: "EMAIL_PASSWORD",
+          email,
+          emailPassword: invite.emailPassword,
+          inviteCode: invite.code,
+        }),
+      },
+    );
+    expect(auth.status).toBe(200);
+
+    const initial = (await (
+      await isolatedApp.request("/api/v1/shared-app?fixture=invite_sign_in", {
+        headers: withFixtureSession(fixtureSession),
+      })
+    ).json()) as {
+      inventory: Array<{ lane: string; receiptId: string }>;
+    };
+    const imageReceiptId = initial.inventory.find(
+      (offer) => offer.lane === "image_media",
+    )!.receiptId;
+    const avatarReceiptId = initial.inventory.find(
+      (offer) => offer.lane === "avatar_primary",
+    )!.receiptId;
+    for (let index = 1; index <= 3; index += 1) {
+      const generated = await isolatedApp.request(
+        "/api/v1/shared-app/generate?fixture=invite_sign_in",
+        {
+          method: "POST",
+          headers: withFixtureSession(fixtureSession, { "content-type": "application/json" }),
+          body: JSON.stringify({
+            projectId: `cp05-project-${index}`,
+            title: `CP-05 Project ${index}`,
+            imageReceiptId,
+            avatarReceiptId,
+          }),
+        },
+      );
+      expect(generated.status).toBe(200);
+    }
+
+    const active = (await (
+      await isolatedApp.request("/api/v1/shared-app?fixture=invite_sign_in", {
+        headers: withFixtureSession(fixtureSession),
+      })
+    ).json()) as {
+      orchestration: {
+        session: {
+          sessionId: string;
+          activeProjectId: string;
+          lanes: {
+            mage_image: {
+              volumeId: string;
+              selectedGpuSku: string;
+              attempts: Array<{ podId: string }>;
+            };
+          };
+        };
+      };
+    };
+    const mage = active.orchestration.session.lanes.mage_image;
+    const wrongCallback = await isolatedApp.request("/api/dev/shared-app/callback", {
+      method: "POST",
+      headers: withFixtureSession(fixtureSession, { "content-type": "application/json" }),
+      body: JSON.stringify({
+        sessionId: active.orchestration.session.sessionId,
+        projectId: active.orchestration.session.activeProjectId,
+        lane: "mage_image",
+        podId: "foreign-pod",
+        gpuSku: mage.selectedGpuSku,
+        volumeId: mage.volumeId,
+        sequence: 1,
+      }),
+    });
+    expect(wrongCallback.status).toBe(409);
+
+    for (let index = 0; index < 80; index += 1) {
+      const view = (await (
+        await isolatedApp.request("/api/v1/shared-app?fixture=invite_sign_in", {
+          headers: withFixtureSession(fixtureSession),
+        })
+      ).json()) as { orchestration: { session: object | null } };
+      if (view.orchestration.session === null) break;
+      const advanced = await isolatedApp.request("/api/dev/shared-app/advance", {
+        method: "POST",
+        headers: withFixtureSession(fixtureSession),
+      });
+      expect(advanced.status).toBe(200);
+    }
+
+    const final = (await (
+      await isolatedApp.request("/api/v1/shared-app?fixture=invite_sign_in", {
+        headers: withFixtureSession(fixtureSession),
+      })
+    ).json()) as {
+      orchestration: {
+        session: object | null;
+        projects: Array<{
+          projectId: string;
+          stage: string;
+          finalAsset: { sha256: string; byteSize: number; downloadPath: string } | null;
+        }>;
+      };
+    };
+    expect(final.orchestration.session).toBeNull();
+    const completed = final.orchestration.projects.filter(
+      (project) => project.stage === "READY_FOR_REVIEW",
+    );
+    expect(completed).toHaveLength(3);
+    for (const project of completed) {
+      const download = await isolatedApp.request(
+        `${project.finalAsset!.downloadPath}?fixture=invite_sign_in`,
+        { headers: withFixtureSession(fixtureSession) },
+      );
+      expect(download.status).toBe(200);
+      expect(download.headers.get("content-type")).toBe("video/mp4");
+      expect(download.headers.get("x-videoforge-artifact-kind")).toBe("provider-free-final-mp4");
+      const bytes = new Uint8Array(await download.arrayBuffer());
+      expect(bytes.byteLength).toBe(project.finalAsset!.byteSize);
+      expect(new TextDecoder().decode(bytes.slice(4, 12))).toContain("ftyp");
+      const digest = await crypto.subtle.digest("SHA-256", bytes);
+      const sha256 = `sha256:${[...new Uint8Array(digest)]
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("")}`;
+      expect(sha256).toBe(project.finalAsset!.sha256);
+      expect(download.headers.get("x-videoforge-sha256")).toBe(sha256);
+    }
+  });
+});

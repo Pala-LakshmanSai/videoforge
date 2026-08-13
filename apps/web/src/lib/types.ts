@@ -291,9 +291,103 @@ export interface SharedAppState {
     newVersion: number;
     occurredAt: string;
   }>;
+  orchestration: {
+    schemaVersion: "videoforge.provider-free-orchestration/v1";
+    session: SharedOrchestrationSession | null;
+    lastClosedSession: SharedOrchestrationSession | null;
+    projects: SharedOrchestrationProject[];
+    events: Array<{
+      id: string;
+      kind: string;
+      projectId: string | null;
+      lane: "mage_image" | "echo_avatar" | null;
+      at: string;
+    }>;
+  };
   canSelectGpuPair: boolean;
   providerCallsAuthorized: false;
   authorizedSpendUsd: 0;
+}
+
+export interface SharedOrchestrationSession {
+  sessionId: string;
+  state: "ACTIVE" | "DRAINING" | "CLOSED";
+  activeProjectId: string | null;
+  recoveryCount: number;
+  openedAt: string;
+  closedAt: string | null;
+  lanes: Record<
+    "mage_image" | "echo_avatar",
+    {
+      lane: "mage_image" | "echo_avatar";
+      volumeId: string;
+      volumeManifestSha256: string;
+      selectedGpuSku: string;
+      attempts: Array<{
+        attemptId: string;
+        podId: string;
+        originProjectId: string;
+        phase:
+          | "CREATING"
+          | "CONTAINER_READY"
+          | "VOLUME_READY"
+          | "MODEL_LOADING"
+          | "MODEL_READY"
+          | "WORKING"
+          | "WARM"
+          | "DELETE_REQUESTED"
+          | "ABSENCE_VERIFIED";
+        callbackSequence: number;
+        absenceReceiptSha256: string | null;
+      }>;
+    }
+  >;
+}
+
+export interface SharedOrchestrationProject {
+  queueEntryId: string;
+  projectId: string;
+  title: string;
+  stage:
+    | "WAITING"
+    | "BOOTING"
+    | "PREPARING"
+    | "GENERATING"
+    | "RENDERING"
+    | "READY_FOR_REVIEW"
+    | "CANCELLED"
+    | "REMOVED";
+  activatedAt: string | null;
+  workStartedAt: string | null;
+  barriers: Record<
+    | "transcriptSha256"
+    | "timelineSha256"
+    | "promptManifestSha256"
+    | "mageOutputSha256"
+    | "echoOutputSha256"
+    | "renderManifestSha256"
+    | "finalMp4Sha256",
+    string | null
+  >;
+  cost: {
+    kind: "SIMULATED_FIXTURE";
+    reservedMicroUsd: number;
+    reportedMicroUsd: number;
+    settledMicroUsd: number;
+    actualExternalSpendUsd: 0;
+  };
+  finalAsset: {
+    artifactId: string;
+    sha256: string;
+    byteSize: number;
+    contentType: "video/mp4";
+    width: 1920;
+    height: 1080;
+    durationMs: 1000;
+    audioCodec: "aac";
+    videoCodec: "h264";
+    downloadPath: string;
+  } | null;
 }
 
 export interface ProjectDetail {

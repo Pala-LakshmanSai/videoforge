@@ -188,4 +188,73 @@ describe("shared fixture singleton queue", () => {
     expect(restored.session?.gpuPair).toEqual(moved.session?.gpuPair);
     expect(restored.audits.at(-1)?.operation).toBe("REMOVE");
   });
+
+  it("runs three ordered provider-free projects through restart to playable final MP4 barriers", async () => {
+    const persistence = new MemorySharedAppPersistence();
+    let store = new SharedAppFixtureStore(persistence);
+    await admit(store, 1);
+    const pair = selectedPair(store);
+    store.startOrEnqueue({ sessionId: "browser-1", projectId: "active", title: "Active", ...pair });
+    store.startOrEnqueue({ sessionId: "browser-1", projectId: "waiting-a", title: "Waiting A" });
+    store.startOrEnqueue({ sessionId: "browser-1", projectId: "remove-me", title: "Remove Me" });
+    store.startOrEnqueue({ sessionId: "browser-1", projectId: "waiting-b", title: "Waiting B" });
+    const queued = store.view("browser-1");
+    const waitingB = queued.queue.find((entry) => entry.projectId === "waiting-b")!;
+    store.reorder({
+      sessionId: "browser-1",
+      entryId: waitingB.id,
+      toPosition: 2,
+      ifMatch: queued.session!.queueVersion,
+    });
+    const reordered = store.view("browser-1");
+    const removed = reordered.queue.find((entry) => entry.projectId === "remove-me")!;
+    store.remove({
+      sessionId: "browser-1",
+      entryId: removed.id,
+      ifMatch: reordered.session!.queueVersion,
+    });
+
+    store = new SharedAppFixtureStore(persistence);
+    store.recover();
+    expect(store.view("browser-1").orchestration.session?.recoveryCount).toBe(1);
+    for (let index = 0; index < 80 && store.view("browser-1").orchestration.session; index += 1) {
+      await store.advance();
+    }
+    const final = store.view("browser-1");
+    expect(final.session).toBeNull();
+    expect(final.canSelectGpuPair).toBe(true);
+    expect(final.orchestration.lastClosedSession?.state).toBe("CLOSED");
+    expect(
+      Object.values(final.orchestration.lastClosedSession!.lanes).map(
+        (lane) => lane.attempts.at(-1)?.phase,
+      ),
+    ).toEqual(["ABSENCE_VERIFIED", "ABSENCE_VERIFIED"]);
+    const completed = final.orchestration.projects.filter(
+      (project) => project.stage === "READY_FOR_REVIEW",
+    );
+    expect(completed.map((project) => project.projectId)).toEqual([
+      "active",
+      "waiting-a",
+      "waiting-b",
+    ]);
+    expect(
+      final.orchestration.events
+        .filter((event) => event.kind === "FINAL_MP4_DURABLE")
+        .map((event) => event.projectId),
+    ).toEqual(["active", "waiting-b", "waiting-a"]);
+    for (const project of completed) {
+      expect(project.finalAsset).toMatchObject({
+        contentType: "video/mp4",
+        width: 1920,
+        height: 1080,
+        videoCodec: "h264",
+        audioCodec: "aac",
+      });
+      expect(project.cost.actualExternalSpendUsd).toBe(0);
+      expect(project.cost.reportedMicroUsd).toBe(project.cost.settledMicroUsd);
+    }
+    expect(
+      final.orchestration.projects.find((project) => project.projectId === "remove-me")?.stage,
+    ).toBe("REMOVED");
+  });
 });

@@ -11,6 +11,10 @@ import {
   resolveAcceptedAssets,
   resolveProviderAcceptedAssets,
   SUPPORTED_RENDER_PROFILE_VERSION,
+} from "../dist/src/legacy-replay/index.js";
+import {
+  planVNextResolvedRenderManifest,
+  resolveVNextProviderAcceptedAssets,
 } from "../dist/src/index.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -190,6 +194,39 @@ test("uses an explicit provider-free local fixture profile without legacy runtim
     right_image_scale: "960:1080",
     right_image_zoom_profile: "split-right-zoom-v3",
   });
+});
+
+test("active vNext boundary rejects historical renderer identities before resolution", async () => {
+  const { timeline } = await canonicalInputs();
+  const rejected = resolveVNextProviderAcceptedAssets({
+    timeline,
+    requiredTaskKeys: collectRequiredAssetTaskKeys(timeline.value),
+    candidates: PROVIDER_CANDIDATES,
+  });
+  assert.equal(rejected.ok, false);
+  assert.equal(rejected.error.code, "RENDER_PROFILE_MISMATCH");
+
+  const localCandidates = PROVIDER_CANDIDATES.map((candidate) =>
+    candidate.kind === "AVATAR_CLIP"
+      ? { ...candidate, rendererSourceProfile: "local-fixture-centered-832x480p25-v1" }
+      : candidate,
+  );
+  const acceptedAssets = requireSuccess(
+    resolveVNextProviderAcceptedAssets({
+      timeline,
+      requiredTaskKeys: collectRequiredAssetTaskKeys(timeline.value),
+      candidates: localCandidates,
+    }),
+  );
+  const request = await requestWith(
+    CANDIDATES.map((candidate) =>
+      candidate.kind === "AVATAR_CLIP"
+        ? { ...candidate, rendererSourceProfile: "local-fixture-centered-832x480p25-v1" }
+        : candidate,
+    ),
+  );
+  const manifest = await planVNextResolvedRenderManifest({ ...request, acceptedAssets });
+  assert.equal(manifest.ok, true);
 });
 
 test("fails closed for missing, duplicate, kind-mismatched, and conflicting bindings", async () => {

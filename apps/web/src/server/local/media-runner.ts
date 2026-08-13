@@ -29,8 +29,8 @@ import {
   collectRequiredAssetTaskKeys,
   compileCompleteWorkPlan,
   LocalArtifactStore,
-  planResolvedRenderManifest,
-  resolveProviderAcceptedAssets,
+  planVNextResolvedRenderManifest,
+  resolveVNextProviderAcceptedAssets,
   scheduleTimeline,
   SUPPORTED_RENDER_PROFILE_VERSION,
   SUPPORTED_SCHEDULER_CONFIG,
@@ -469,7 +469,9 @@ function localProviderAcceptance(
     modelLineage: Object.freeze({
       provider: "fake-provider-shaped",
       model:
-        candidate.kind === "IMAGE" ? "Mage-Flow-Turbo BF16" : "EchoMimicV3-Flash fixture contract",
+        candidate.kind === "IMAGE"
+          ? "Mage-Flow INT8 ConvRot fixture contract"
+          : "EchoMimicV3-Flash FP8 fixture contract",
     }),
     promptLineage: Object.freeze({
       promptHash: `sha256:${createHash("sha256").update(candidate.taskKey).digest("hex")}`,
@@ -1335,7 +1337,7 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
       },
     );
     const acceptedAssets = requirePipeline(
-      resolveProviderAcceptedAssets({ timeline, requiredTaskKeys, candidates }),
+      resolveVNextProviderAcceptedAssets({ timeline, requiredTaskKeys, candidates }),
       "Accepted fake-provider-shaped asset resolution",
     );
     const voiceoverBinding: AcceptedAssetBinding = {
@@ -1345,7 +1347,7 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
       kind: "VOICEOVER",
     };
     const resolvedManifest = requirePipeline(
-      await planResolvedRenderManifest({
+      await planVNextResolvedRenderManifest({
         revision,
         timeline,
         voiceover: voiceoverBinding,

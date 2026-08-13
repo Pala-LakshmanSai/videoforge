@@ -21,10 +21,10 @@ export interface RenderPlanner {
 
 export {
   collectRequiredAssetTaskKeys,
-  planResolvedRenderManifest,
-  resolveAcceptedAssets,
-  resolveProviderAcceptedAssets,
-  resolvedRenderManifestPlanner,
-  timelineAcceptedAssetResolver,
+  planVNextResolvedRenderManifest,
+  resolveVNextAcceptedAssets,
+  resolveVNextProviderAcceptedAssets,
+  vNextResolvedRenderManifestPlanner,
+  VNEXT_PROVIDER_FREE_AVATAR_SOURCE_PROFILE,
   SUPPORTED_RENDER_PROFILE_VERSION,
-} from "./resolved-manifest.js";
+} from "./vnext-boundary.js";
