@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-02 complete; CP-03 provider-free implementation active under `VF-9-24N`
+Status: CP-00 through CP-03 complete; stopped before CP-04 with no successor authority
 Context schema: `1.5`  
 Last updated: `2026-08-13`
 
@@ -81,9 +81,18 @@ Older acceptance files remain historical. `VF-9-24M`/`CP-02` implementation comm
 Node-fixture reconstruction, server-issued hashed fixture credentials, and database-enforced
 invite-redemption linkage while removing direct admission bypass. Exact re-audit proof is
 `evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json`. The current user
-selected `VF-9-24N`/`CP-03`: bounded local/container word-transcript work only. All provider,
-credential, cloud, model-download, GPU, and spend authority remains false; all hosted production
-gates remain open.
+`VF-9-24N`/`CP-03` is complete at implementation commit
+`4ac1df8872db50820ad3b95979572c907bf1631f`. It promotes the existing whisper.cpp timing path into
+one Mac/container contract with deterministic 30-minute chunk overlap/reconciliation, exact
+probe/hash and normalization, durable per-chunk receipts, replay/restart recovery, and R2-port
+fixtures while preserving original voiceover bytes for render. The owned 30-minute fixture yielded
+3,309 monotonic words, 615 phrases, four chunks, and recovered all four chunk receipts after restart.
+Exact proof is `evidence/acceptance/VF-9-24N/cp03-word-transcript/acceptance.json`.
+
+This is provider-free contract evidence only: no Cloud Run deployment, private production R2,
+hosted Linux media runtime, provider call, credential use, model download/change, GPU, or spend was
+used or proven. Hosted production proof remains open until CP-08. CP-04 is not selected or
+authorized.
 
 No VideoForge persistent model volume exists yet. Future provisioning/preparation is a separate
 explicitly authorized provider task after contracts and offline workers are green.

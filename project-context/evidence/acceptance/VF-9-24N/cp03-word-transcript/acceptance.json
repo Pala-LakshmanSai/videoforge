@@ -1,0 +1,118 @@
+{
+  "schema_version": "videoforge.cp03-acceptance/v1",
+  "task_id": "VF-9-24N",
+  "checkpoint": "CP-03",
+  "accepted_at": "2026-08-13T16:33:22Z",
+  "result": "PASS_PROVIDER_FREE",
+  "activation_commit": "e2541b4ccf69d74c818b020b500e5f7b318b400b",
+  "implementation_commit": "4ac1df8872db50820ad3b95979572c907bf1631f",
+  "dependency": {
+    "checkpoint": "CP-02",
+    "result": "PASS",
+    "commit": "5747e7b4e9c1d41564663afb1c0c0ad7272efe5b",
+    "evidence": "project-context/evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json"
+  },
+  "implementation": {
+    "promoted_existing_path": "workers/image-media/src/videoforge_image_media/jobs/transcribe",
+    "media_cpu_entrypoint": "workers/media-local",
+    "ui_changed": false,
+    "original_voiceover_preserved_for_final_render": true,
+    "normalized_audio_role": "analysis_only",
+    "model": "whisper.cpp base.en",
+    "model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+    "model_downloaded_or_changed": false
+  },
+  "owned_fixtures": {
+    "short": {
+      "duration_ms": 11981,
+      "result": "success",
+      "words": 22,
+      "phrases": 3,
+      "monotonic_and_bounded": true
+    },
+    "noisy": {
+      "result": "success",
+      "words": 22,
+      "phrases": 3,
+      "monotonic_and_bounded": true,
+      "manual_lexical_note": "base.en heard Owned as phone; timing accepted; no repair or fallback"
+    },
+    "silence": {
+      "result": "expected_failure",
+      "error_code": "ASR_OUTPUT_INVALID"
+    },
+    "malformed": {
+      "result": "expected_failure",
+      "error_code": "ASR_SOURCE_DECODE_FAILED"
+    },
+    "long": {
+      "duration_ms": 1800000,
+      "result": "success",
+      "words": 3309,
+      "phrases": 615,
+      "chunks": 4,
+      "monotonic_and_bounded": true,
+      "phrase_word_coverage_complete": true,
+      "chunk_boundaries_reconciled": true,
+      "first_run_ms": 21559,
+      "replay_ms": 404,
+      "restart_ms": 731,
+      "restart_recovered_chunks": 4,
+      "transcript_sha256": "sha256:1513f93f62cb2a2b526256c7566b3fde5383edaa3dd50a4b6037004a79b916a5",
+      "receipt_sha256": "sha256:2c8aa5513c00d4494b23322dca9c077e0eb45481f997d90a9c86e7780a894058"
+    }
+  },
+  "manual_spot_check": {
+    "result": "PASS_WITH_EXPECTED_BASE_EN_LEXICAL_LIMIT",
+    "evidence": "project-context/evidence/acceptance/VF-9-24N/cp03-word-transcript/manual-spot-check.json",
+    "repair_fallback_or_substitution_used": false
+  },
+  "container_contract_parity": {
+    "result": "PASS_CONTRACT_ONLY",
+    "mac_container_chunk_and_transcript_contract_byte_identical": true,
+    "deployable_image_id": "sha256:fcc51a1b737524285663e61a7fb181fcb0bdf457cb22e79703222c245184b28d",
+    "runtime_network": "none",
+    "evidence": "project-context/evidence/acceptance/VF-9-24N/cp03-word-transcript/container-contract-parity.json",
+    "claim_boundary": "No Linux whisper or FFmpeg execution and no Cloud Run deployment was proven."
+  },
+  "validations": {
+    "transcript_worker": "30 passed",
+    "media_local": "7 passed",
+    "durable_control_plane": "8 passed",
+    "verify_fast": "28/28 package tasks passed",
+    "canonical_verify": "CI=1 TURBO_FORCE=true pnpm verify exited 0",
+    "control_plane_full": "223 passed",
+    "web_unit": "225 passed",
+    "workerd": "1 passed",
+    "installed_chrome": "40 passed desktop and compact",
+    "context_validate": "passed",
+    "secret_scan": "passed",
+    "dependency_audit": "no vulnerabilities",
+    "git_diff_check": "passed"
+  },
+  "provider_and_spend": {
+    "provider_calls": 0,
+    "provider_resources_created": 0,
+    "credentials_accessed": false,
+    "cloud_mutation_or_deployment": false,
+    "gpu_used": false,
+    "paid_compute_started": false,
+    "external_spend_usd": 0,
+    "local_colima_state": "stopped",
+    "local_app_server_state": "stopped"
+  },
+  "claims_not_proven": [
+    "hosted Cloud Run Job execution",
+    "private production R2 behavior",
+    "production Linux whisper.cpp and FFmpeg runtime",
+    "hosted 30-minute sizing, latency, and cost",
+    "production end-to-end completion"
+  ],
+  "hosted_production_acceptance_checkpoint": "CP-08",
+  "next": {
+    "checkpoint": "CP-04",
+    "selected": false,
+    "authorized": false,
+    "started": false
+  }
+}

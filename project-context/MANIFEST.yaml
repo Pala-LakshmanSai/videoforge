@@ -3,10 +3,9 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-13"
 source_of_truth: project-context
-# CP-02 is complete and independently re-audited after bounded fixes. The current user explicitly
-# selected provider-free CP-03 implementation under VF-9-24N.
-current_selected_profile: cp03_word_transcript
-current_selected_brief: tasks/VF-9-24N.md
+# CP-03 is complete provider-free under VF-9-24N. No successor checkpoint is selected.
+current_selected_profile: checkpoint_roadmap
+current_selected_brief: null
 
 mandatory_read:
   - 00_START_HERE.md

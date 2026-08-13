@@ -1,6 +1,6 @@
 # VideoForge completion checkpoints
 
-Status: authoritative completion roadmap; checkpoints `CP-00` through `CP-02` complete; `CP-03` active provider-free under `VF-9-24N`
+Status: authoritative completion roadmap; checkpoints `CP-00` through `CP-03` complete; stopped before `CP-04`
 Read when: choosing the next implementation chat, checking project truth, or auditing completion.
 
 ## MVP destination
@@ -239,8 +239,11 @@ never see the challenge again.
 
 ## CP-03 — Production-grade word transcript
 
-**Status:** active provider-free under `VF-9-24N`; no Cloud Run deployment, credential access,
-provider call, model download, GPU use, or spend authorized.
+**Status:** complete provider-free under `VF-9-24N` at implementation commit
+`4ac1df8872db50820ad3b95979572c907bf1631f`. Exact evidence:
+`evidence/acceptance/VF-9-24N/cp03-word-transcript/acceptance.json`. No Cloud Run deployment,
+credential access, provider call, model download/change, GPU use, or spend occurred. Hosted Cloud
+Run/private R2 production proof remains open until CP-08. CP-04 is not selected or authorized.
 
 **Outcome:** a 30-minute voiceover becomes a durable, restart-safe, word-level transcript usable by
 the scheduler.
