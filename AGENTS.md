@@ -2,6 +2,20 @@
 
 Current phase, branch/server state, ownership, and last-green evidence live only in `project-context/CURRENT_STATE.yaml`.
 
+## Pinned project context for every task
+
+Treat these repository files as persistent project context for every new VideoForge task. Repository truth replaces cross-chat memory or reattached PDFs:
+
+- startup authority: `project-context/00_START_HERE.md`, `project-context/MANIFEST.yaml`, and `project-context/CURRENT_STATE.yaml`;
+- completion order and checkpoint acceptance: `project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md`;
+- copy-ready implementation and audit prompts: `project-context/templates/CHECKPOINT_CHAT_PROMPTS.md`;
+- current work scope: the exact read profile and task brief selected by `MANIFEST.yaml` and `CURRENT_STATE.yaml`;
+- Ranga evidence for style, scheduling, or visual-quality work: `project-context/03_REFERENCE_VIDEO_FORENSICS.md`, `project-context/04_VISUAL_IDENTITY_AND_PROMPTS.md`, and `project-context/references/ranga/`.
+
+At the start of each task, read the startup authority, identify the current checkpoint, then read only that checkpoint section, its matching prompt, and the selected profile/brief. Load the Ranga evidence or other domain files only when the task needs them. Do not preload the whole context pack; do not ask the user to reattach material already stored here.
+
+The prompt pack is an entrypoint, not higher authority. If a copied prompt conflicts with current repository state, stop and reconcile the context pack instead of following stale text. Every implementation or audit handoff must state the checkpoint, exact commit, validations, remaining gates, provider/spend state, and whether all paid compute is stopped.
+
 Before doing any VideoForge work:
 
 1. Read `project-context/00_START_HERE.md`.
