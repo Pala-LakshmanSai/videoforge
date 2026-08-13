@@ -531,8 +531,11 @@ exact execution profile/container, session-chosen offering receipt/revalidation 
 model-volume ID, provider volume ID, manifest ID/hash, `EU-RO-1`, and exact mount. The image worker
 accepts only the Mage binding; the avatar worker accepts only the Echo binding. A project cannot
 override the session GPU. Cross-session, cross-lane, region, mount, manifest, or model drift is a
-terminal pre-load error. Its current dispatch port is injection-only and was tested with a local
-fake; no RunPod transport is wired or authorized.
+terminal pre-load error. The input manifest and output prefix also repeat the exact session, queue,
+run-plan, lane, and Pod-attempt lineage; semantic validators reject any mismatch before a dispatch
+port call. The canonical production composition constructs an internal disabled port. An injectable
+port exists only for bounded tests; it is not exported from the public global-session barrel. No
+RunPod transport is wired or authorized.
 
 The worker validates contract/profile versions, the pinned Avatar Profile/hash/runtime-source
 checksum, URLs, media properties, allowed output prefix, and the single-use execution claim before

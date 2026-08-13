@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-01 audit fixes active; CP-02 and provider activation not started
+Status: CP-01 complete after provider-free re-audit; CP-02 and provider activation not started
 Context schema: `1.5`  
 Last updated: `2026-08-13`
 
@@ -69,11 +69,15 @@ Pod lifecycle/absence, durable-output/cost, and Pod-dispatch contracts plus an a
 repository, restore proof, and legacy import firewall. Current v1 machine bytes remain
 legacy/provider-free and cannot enter the new Pod dispatch boundary.
 
-An independent audit reopened `VF-9-24K`/`CP-01` for dispatch-lineage, production-graph firewall,
-and lifecycle no-op fixes under renewed bounded application/context authority. `CP-02` has not
-started and has no active implementation authority. The prior CP-01 proof is
-`evidence/acceptance/VF-9-24K/cp01-global-session-contracts/acceptance.json`. All production gates
-remain open.
+The independent-audit fixes completed at
+`0e90f3b637949711aecda6acc5b9e0bd51ae3202`. Pod inputs and outputs are now bound to the exact
+session, queue entry, run plan, lane, and Pod attempt; foreign lineage fails before the dispatch
+port. The canonical production composition has an internally disabled paid port, its transitive
+graph is scanned for legacy reachability, and zero-row readiness/demand/delete/stop mutations fail
+closed. The immutable re-audit proof is
+`evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-acceptance.json`; the original
+acceptance remains historical evidence. `CP-02` has not started and has no active implementation
+authority. All production gates remain open.
 
 No VideoForge persistent model volume exists yet. Future provisioning/preparation is a separate
 explicitly authorized provider task after contracts and offline workers are green.

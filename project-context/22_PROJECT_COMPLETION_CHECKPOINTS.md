@@ -176,8 +176,8 @@ no provider call, no private/reference video committed.
 
 ## CP-01 — Global-session vNext contracts and legacy dispatch firewall
 
-**Status:** complete provider-free at implementation commit
-`9ee3267fb0c1ccf0a275a723d0ccf6dee4ad57b7`; no provider or production gate was exercised.
+**Status:** complete provider-free after independent re-audit at fix commit
+`0e90f3b637949711aecda6acc5b9e0bd51ae3202`; no provider or production gate was exercised.
 
 **Outcome:** old Serverless/v1 bytes cannot reach paid dispatch, and every new lifecycle fact has a
 versioned provider-free contract.
@@ -198,8 +198,10 @@ focused tests, canonical provider-free verification, negative import scan.
 **Authority used:** explicit bounded application/context authority from 2026-08-13;
 provider/cloud/credential/model-download authority remained false and spend was `$0`.
 **Done artifact:** one restored synthetic global session reaches both lane-absent/volumes-retained
-terminal state; exact proof is
-`evidence/acceptance/VF-9-24K/cp01-global-session-contracts/acceptance.json`.
+terminal state; exact re-audit proof is
+`evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-acceptance.json`. It additionally
+proves exact artifact-lineage binding, disabled canonical paid composition, transitive legacy scan,
+and fail-closed zero-row lifecycle mutations.
 
 ## CP-02 — Shared admission, simple global queue, and idle-only GPU UX
 
