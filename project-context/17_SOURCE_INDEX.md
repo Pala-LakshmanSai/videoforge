@@ -1,6 +1,6 @@
 # Source index
 
-Status: evidence map; current Mage INT8/ImageForge implementation and Pod architecture refreshed 2026-08-13; EchoMimicV3-Flash sources refreshed 2026-08-12; older sources are historical
+Status: evidence map; current Mage INT8/ImageForge, Cloud Run Jobs, Better Auth, and Pod architecture refreshed 2026-08-13; EchoMimicV3-Flash sources refreshed 2026-08-12; older sources are historical
 Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 
 ## Official model/provider sources
@@ -16,15 +16,23 @@ Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 - Historical Gemini 3.6 Flash analyzer-comparison source: [ai.google.dev/gemini-api/docs/models/gemini-3.6-flash](https://ai.google.dev/gemini-api/docs/models/gemini-3.6-flash)
 - Active Mage model repository and pinned revision: [Comfy-Org/Mage-Flow at
   `d8c99241`](https://huggingface.co/Comfy-Org/Mage-Flow/tree/d8c99241f6fa80fbd453014234af2bf337ea21e6)
-- Active Mage runtime evidence is the user's current local ImageForge source, not the earlier
+- Active Mage runtime evidence was audited from the user's local ImageForge `v0.2.3` source at
+  commit `1a6204e`; refresh that source before CP-06 rather than assuming it remains current. It is
+  not the earlier
   VideoForge BF16 worker: `/Volumes/ESD-USB/ImageForge/worker/src/imageforge_worker/constants.py`,
   `model_profiles.py`, `inference/mageflow.py`, `worker/Dockerfile`, and
   `worker/scripts/prepare_mageflow_volume.py`. These pin `int8-convrot`, the required ComfyUI model
   files, 4 steps, guidance `1.0`, `1280x720`, offline loading, warm-up, and volume preparation.
-- ImageForge Pod/volume and live-inventory implementation references:
-  `/Volumes/ESD-USB/ImageForge/docs/RUNPOD_OPERATIONS.md` and
-  `/Volumes/ESD-USB/ImageForge/src-tauri/src/native/gpu_inventory.rs`. Reuse their verified
-  mechanics; never reuse ImageForge resource IDs, credentials, or production volume.
+- ImageForge Pod/volume/live-inventory/queue implementation references:
+  `/Volumes/ESD-USB/ImageForge/docs/RUNPOD_OPERATIONS.md`,
+  `/Volumes/ESD-USB/ImageForge/src-tauri/src/native/gpu_inventory.rs`, `gpu_pod.rs`,
+  `profile_control.rs`, and `queue.rs`; worker references live under
+  `/Volumes/ESD-USB/ImageForge/worker/`, especially `scripts/prepare_mageflow_volume.py`,
+  `src/imageforge_worker/model_profiles.py`, `health.py`, `coordination.py`, and
+  `inference/mageflow.py`. Reuse verified inventory, exact choice, lifecycle, offline readiness,
+  lease, and Mage runtime mechanics where contracts match. Do not copy ImageForge's per-device
+  ownership model or reuse its resource IDs, credentials, production volume, or app-specific queue
+  policy.
 - EchoMimicV3 pinned source: [antgroup/echomimic_v3 at `7e89489`](https://github.com/antgroup/echomimic_v3/tree/7e89489ca51c0d008fc1963ec6c03fc5bd0b9397)
 - EchoMimicV3-Flash pinned weights: [BadToBest/EchoMimicV3 at `311e176`](https://huggingface.co/BadToBest/EchoMimicV3/tree/311e176905a8c4c24b240b530488fe636ce4d249)
 - EchoMimic Wan base: [Wan2.1-Fun-V1.1-1.3B-InP at `fc913c3`](https://huggingface.co/alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP/tree/fc913c34361f4ec879e2f9c78b4f11ae50a937d1)
@@ -51,6 +59,12 @@ Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
   [delete](https://docs.runpod.io/api-reference/pods/DELETE/pods/podId)
 - RunPod live GPU availability: [GraphQL manage Pods](https://docs.runpod.io/sdks/graphql/manage-pods)
 - RunPod network volumes: [docs.runpod.io/storage/network-volumes](https://docs.runpod.io/storage/network-volumes)
+- Cloud Run Jobs creation/configuration for pinned CPU media workers: [Create jobs](https://cloud.google.com/run/docs/create-jobs)
+- Cloud Run Job execution through console, CLI, client libraries, or REST `jobs.run`: [Execute jobs](https://cloud.google.com/run/docs/execute/jobs)
+- Current Cloud Run usage pricing and region dependence: [Cloud Run pricing](https://cloud.google.com/run/pricing)
+- Current Cloud Run job/resource/CPU/memory/execution limits and regional quotas: [Cloud Run quotas and limits](https://cloud.google.com/run/quotas)
+- Better Auth email/password, social-provider, signup, and sign-in primitives: [Basic usage](https://better-auth.com/docs/basic-usage)
+- Better Auth email verification configuration and social-email behavior: [Email](https://better-auth.com/docs/concepts/email)
 - Cloudflare React SPA + API in one Vite Worker: [developers.cloudflare.com/workers/vite-plugin/tutorial](https://developers.cloudflare.com/workers/vite-plugin/tutorial/)
 - Cloudflare Vite plugin/HMR/runtime parity: [developers.cloudflare.com/workers/vite-plugin](https://developers.cloudflare.com/workers/vite-plugin/)
 - Cloudflare Workers pricing: [developers.cloudflare.com/workers/platform/pricing](https://developers.cloudflare.com/workers/platform/pricing/)
@@ -108,6 +122,12 @@ All three paths are optional local evidence and are not VideoForge build depende
 
 - HyperFrames is an HTML/CSS/Chrome/FFmpeg compositor whose motion-graphics/text strengths are irrelevant here; direct FFmpeg is leaner.
 - Remotion similarly does not improve avatar/image realism or voiceover relevance for this grammar.
+- Cloud Run Jobs is the selected scale-to-zero production boundary for whisper.cpp transcription and
+  FFmpeg render/probe. Official docs support authenticated REST execution; exact region, CPU,
+  memory, timeout, throughput, and cost remain benchmark-gated against current pricing/quotas.
+- Better Auth supplies email/password, verified-email, and Google identity primitives. VideoForge's
+  unique single-use email-bound invite, secure verifier, and atomic redemption are app-owned
+  contracts; the cited Better Auth pages do not define that policy.
 - LongCat quality research informed the avatar study, but per-video cost excluded it from default.
 - AI-video model research remains deferred because the user chose image-only MVP.
 - Runware Gemini 3.5 Flash is the provisional one-time Image Style analyzer because it supports several images and strict JSON through the same Runware account; Gemini 3.1 Flash Lite is cheaper but not preferred before a style-fidelity A/B.

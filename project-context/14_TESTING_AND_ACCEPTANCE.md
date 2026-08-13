@@ -106,7 +106,7 @@ Manual-edit provenance matrix (`DEC_STYLE_007`):
   fail with an idempotency conflict.
 - Stale `If-Match`, stale review snapshot, source/current artifact drift, incompatible profile
   contract/version, semantic/guardrail failure, partial artifact/provenance failure, and hostile
-  cross-workspace input leave current pointer/revision/publication state unchanged.
+  cross-object input leave current pointer/revision/publication state unchanged.
 - Any edit invalidates the pending review snapshot. Publication requires a new authenticated review
   of the exact current derived hash/revision and records the reviewer separately from editor history.
 - Publication pins the exact current derived bytes and freezes the version. Edit requests against
@@ -169,19 +169,22 @@ The user makes the final blind quality judgment before resolution/upscaler lock.
 
 ## Avatar Hub contract gate
 
-Use owned/synthetic sources for automated fixtures and separately authorized private sources for human acceptance.
+Use owned/synthetic sources for automated fixtures and separately authorized user-supplied sources for human acceptance.
 
 - Create Project schema accepts only `avatar_profile_version_id`; reject `IMAGE_ASSET`, `avatar_image_asset_id`, raw avatar bytes, an unversioned parent ID, unknown fields, and mutable `latest` lookup.
 - New Avatar validates magic bytes, supported format, byte/dimension/decompression bounds, checksum, orientation/color handling, and EXIF/GPS-free runtime/thumbnail outputs. Bad horizontal centering requires source replacement; no invisible browser crop is applied.
 - Rights to use the image and rights/consent to animate the depicted likeness are explicit, authenticated, and required before `READY`.
-- Active profile names are case-insensitively unique in one workspace; immutable IDs—not names—bind projects.
+- Active profile names are case-insensitively unique in the one global catalog; immutable IDs—not names—bind projects.
 - Normal cards expose the active `READY` version of each accessible `ACTIVE` parent. A previously selected immutable v1 may remain valid after v2 activation. `UNTESTED`/`STALE`/`CANCELLED` optional compatibility is warned, not blocked; no silent/default avatar is chosen.
 - Ready v1 remains selectable while v2 is drafted. Publishing v2 or renaming/archiving the parent cannot mutate a revision pinned to v1.
-- Duplicate/new version never inherits a human compatibility verdict or rights/likeness attestation; source-byte reuse remains private to the same workspace.
+- Duplicate/new version never inherits a human compatibility verdict or rights/likeness attestation; source-byte reuse remains inside the accepted-users-only global catalog and never becomes public or unauthenticated.
 - Archive between form selection and revision creation produces a clear preflight blocker. A revision already created from that version remains reproducible.
 - Optional Test starts only after an explicit estimate/confirmation, is version-scoped/idempotent, records ambiguous dispatch/cost/verdict, and is never called when merely saving/selecting/reusing the profile.
 - Project revision and `production-manifest/v2` contain matching parent/version/profile hash/runtime source checksum/preparation-validation profiles, exact compatibility state at preflight, and nullable evidence. `UNTESTED`/`RUNNING` require null evidence; terminal evidence status must equal the pinned preflight state. EchoMimicV3-Flash attempts match that binding; active repair/quality profile fields are `null`.
-- `+ New avatar` from a project draft preserves title, verified voiceover upload handle, selected style, keywords/toggle, mode, both primary execution-profile selections, cap, and seed; return/select requires no re-upload.
+- `+ New avatar` from a project draft preserves title, verified voiceover upload handle, selected style,
+  keywords/toggle, mode, cap, and seed. It preserves tentative Mage/Echo choices only while the global
+  session remains idle; if another user locks a session, return shows the inherited pair instead.
+  Return/select requires no re-upload.
 
 Pass: a named avatar can be stored once and reused by image/name without project-local upload, with immutable provenance and no unapproved provider charge.
 
@@ -212,9 +215,10 @@ Technical acceptance additionally requires:
 - A normal disposable Echo Pod mounts only the Echo volume and reaches `model_ready` without model
   download/network-repository resolution. It must not mount or read the Mage volume.
 - Runtime evidence proves the accepted FP8 profile executes and uses no Long Video CFG. Each input
-  binds the exact private avatar checksum and only its materialized scheduled span-audio checksum.
-- Selected GPU SKU from the fresh live compatible inventory equals the immutable profile and actual
-  executing GPU; a provider substitution or stale/unavailable choice fails before inference.
+  binds the exact authorized avatar checksum and only its materialized scheduled span-audio checksum.
+- The Echo GPU SKU locked from fresh live compatible inventory at global-session start equals the
+  immutable profile and actual executing GPU for every inherited project; a provider substitution or
+  stale/unavailable first selection fails before inference.
 - Every result is a playable local MP4 with SHA-256/probe, exact duration/frame count, no
   OOM/NaN/crash, measured timings/VRAM/cost, and Pod deletion evidence that leaves zero Pods while
   both approved model volumes remain.
@@ -286,13 +290,19 @@ The exact global-demotion threshold is an open user gate. Record evidence; do no
   model bytes. It writes the complete marker only after exact path/size/SHA-256 and toolchain
   verification; interrupted or mutated preparation remains unusable.
 - Mage and Echo Pod templates allow only their own exact volume ID. Cross-mount, shared volume,
-  swapped manifest/model role, unexpected writable mutation, or private job input on a model volume
+  swapped manifest/model role, unexpected writable mutation, or mutable job input on a model volume
   fails closed.
-- At project start the app refreshes live inventory and rates, intersects them with each model's
-  qualified compatibility matrix, and lets the user select the Mage and Echo GPUs independently.
-  The revision pins inventory snapshot/time, exact GPU SKU, rate ceiling, Pod template/container,
-  model manifest, volume ID/region, and timeout.
-- One journaled create-attempt request is issued for each disposable Pod in parallel after its
+- Only while no global session is locked, the app refreshes live inventory and rates, intersects them
+  with each model's qualified compatibility matrix, and lets the user select Mage and Echo GPUs
+  independently. The first accepted Generate serializably locks both inventory snapshots/times, exact
+  GPU SKUs, rate ceilings, Pod templates/containers, model manifests, volume IDs/region, and timeouts
+  for one shared session. Every later admitted project inherits that pair; per-project overrides,
+  automatic switching, per-user pairs, and parallel sessions fail.
+- A concurrent first-Generate race with different tentative pairs produces exactly one session and one
+  locked pair. The winner atomically persists session, first project, both lane tasks, and create
+  intents; every otherwise valid loser appends under the winner's pair after cap revalidation. No
+  response path can produce a second pair or more than one Pod per lane.
+- One journaled create-attempt request is issued for each required disposable Pod in parallel after its
   durable intent/idempotency fingerprint. The application key does not prove provider at-most-once
   creation; unknown acknowledgement reconciles before any later create. Record API acknowledgement,
   provider Pod ID, requested/actual GPU, volume attach, container ready, manifest verified,
@@ -305,28 +315,53 @@ The exact global-demotion threshold is an open user gate. Record evidence; do no
 - Ambiguous create or delete after a durable send permits only read/reconciliation of that exact
   attempt and Pod; never automatically repeat the mutation. A later create/delete is allowed only
   after authoritative evidence proves the earlier mutation was not applied and fresh policy
-  authority permits it. Duplicate orchestrators contend for one owner-bound lease/execution claim;
-  duplicate cost is visible and only one accepted result advances the revision.
-- Cancellation and normal completion stop new work, settle the lane, delete its Pod through the API,
-  and prove zero active/retained Pods. Cleanup must also prove the same two approved model volumes
+  authority permits it. Duplicate orchestrators contend for one session/lane lease and execution
+  claim; duplicate cost is visible and only one accepted result advances the revision.
+- Only the active video may expose eligible lane tasks, with at most one active chunk per lane.
+  Waiting rows expose no task/attempt/outbox and may only keep an already-running Pod warm. With no
+  waiter at active-lane completion, delete and prove that Pod absent independently even if the other
+  lane remains active.
+- New waiting work for an absent lane never creates or recreates a Pod. Only after the current video
+  is terminal and that row is atomically promoted may the control plane create a new attempt for the
+  lane's exact locked GPU and retained volume. Exact-GPU unavailability blocks the active lane;
+  provider substitution or automatic reselection fails.
+- Removing a fully waiting project prevents all of its claims/provider work and records actor/time and
+  queue-version audit. Cancelling active work settles only that project's tasks, preserves charges and
+  durable assets, then atomically promotes the next waiter; a lane deletes when cancellation leaves
+  no active lane work and no waiting-only warm-retention hint.
+- A control-plane restart restores the exact session pair, queue order/version, active claims, lane
+  create/delete ambiguity, and Pod identities before new admission or dispatch. It neither unlocks
+  selectors early nor creates a replacement while an earlier attempt is unproven.
+- When queue and both lane work drain, cleanup deletes/reconciles both Pods and proves zero Pods before
+  closing the session and restoring selectors. It must also prove the same two approved model volumes
   still exist with unchanged identities/manifests; zero-volume cleanup is a failure.
 
-Pass: one accepted result/lineage per lane, exact selected GPU and model-volume identity, no normal
-boot download or cross-mount, truthful cost/timing evidence, zero Pods, two retained volumes, no
-corrupt revision, and API-only recovery. Do not claim provider at-most-once creation/billing until
-measured semantics prove it.
+Pass: one accepted result/lineage per lane task, exactly one global locked pair, exactly one active
+video, inert waiting rows, at most one Pod per lane, exact selected/actual GPU and model-volume
+identity, warm-existing-only retention, independent lane drain and next-activation recreation
+without substitution, no normal boot download or cross-mount, truthful cost/timing evidence, zero
+Pods and two retained volumes at full drain, selectors unlocked only afterward, no corrupt revision,
+and API-only restart recovery. Do not claim provider at-most-once creation/billing until measured
+semantics prove it.
 
 ## Queue/fault gate
 
 Simulate ten users and:
 
-- Duplicate Start click.
+- Duplicate Generate click.
+- Two or more simultaneous first Generate requests with different tentative GPU pairs; exactly one
+  atomically locks and every accepted contender inherits it without creating another session/Pod.
+- Concurrent append/reorder/remove on waiting projects, including reorder/remove racing the first lane
+  claim, stale queue versions, and authenticated audit replay.
+- An accepted user removing another user's waiting project and cancelling another user's active
+  project; both are allowed, audited, and conflict-safe because creator is not an authorization tier.
 - Duplicate/out-of-order callbacks.
 - Lost callback and reconciliation.
 - Worker crash mid-chunk after some uploads.
 - Expired signed URL.
 - RunPod no capacity.
-- Stale live GPU inventory, selected GPU becoming unavailable, or provider allocating a different GPU.
+- Stale live GPU inventory before the first lock, a locked GPU becoming unavailable, a missing lane
+  waiting/recreating while the other lane stays active, or provider allocating a different GPU.
 - Missing/corrupt/incomplete model-volume manifest, swapped volume IDs, cross-mount attempt, normal
   boot runtime-download attempt, volume/data-center mismatch, or accidental volume deletion.
 - Ambiguous Pod create/read/stop/delete acknowledgement, duplicate Pod creation, and duplicate worker
@@ -339,24 +374,43 @@ Simulate ten users and:
 - Failed style analysis can retry; explicit abandon frees the one-open-draft invariant.
 - OOM/model-load failure.
 - Provider balance exhausted.
-- User cancellation at queued/loading/generating/uploading/rendering.
-- Workspace cap and project cap breach.
-- Control-plane restart.
+- User cancellation at queued/loading/generating/uploading/rendering, with later queue work continuing
+  and independent lane deletion only after that lane drains.
+- Project cap breach and representative 30-minute all-variable target/ceiling breach.
+- Control-plane restart during first lock, create ambiguity, active work, reorder/remove, independent
+  lane drain, missing-lane recreation, and final session unlock.
 
-Pass: no duplicate accepted asset or corrupt state, any duplicate dispatch/charge is detected and
-reconciled rather than hidden, fair progress, recoverable state, zero Pods after drained lanes, and
-the two exact persistent model volumes remain intact.
+Pass: no duplicate accepted asset, second global session, second Pod per lane, corrupt queue order, or
+hidden charge; the first atomic lock and every queue mutation are recoverable/audited, explicit global
+order—not fairness—governs both lanes, a drained lane deletes independently, exact locked-GPU restart
+never substitutes, and full drain proves zero Pods with the two exact persistent model volumes intact.
 
 ## Security gate
 
-- Uninvited Google account denied.
-- Cross-workspace project/object access denied.
+- Public app admission and app access without a valid invite are denied. Better Auth may first create
+  or resolve a verified but unadmitted identity; it receives no VideoForge data/actions.
+- Invite validation, durable `app_admissions` binding, code consumption, and redemption audit are one
+  atomic transaction. Exactly one contender wins a same-code race. Replay, email mismatch, expired,
+  revoked, malformed, or already-consumed codes create no admission, grant no app access, and do not
+  consume the code on mismatch/failure. Unadmitted auth-identity cleanup/retention is explicit.
+- Raw invite codes are stored only as non-reversible verifiers, cleared from the form after submission,
+  and absent from URLs, cookies, local/session storage, database plaintext, logs, traces, analytics,
+  fixtures, errors, account views, and subsequent API responses.
+- A unique normalized identity cannot produce separate Google and email/password accounts. A provider
+  collision fails closed, does not auto-link or consume another invite, and directs the user to the
+  already-bound login method. Later valid login never asks for an invite code.
+- Unauthenticated project/object access is denied. Every accepted user receives the same authorization
+  result for every global project, result, Avatar Profile, Image Style, queue, review, cancel, and
+  settings action; creator/actor metadata never creates owner/admin/member privileges.
 - Signed URL expires and is path-scoped.
 - Callback signature/replay validation.
 - Secrets absent from browser bundle, logs, fixtures, and repository.
 - Malicious filename/URL/prompt cannot become a shell argument or SSRF.
-- Cross-workspace Image Style/reference/version access and hash-existence probing denied.
-- Cross-workspace Avatar Profile/version/source/thumbnail access and hash-existence probing denied; avatar bytes, signed URLs, EXIF/GPS, and likeness metadata never enter logs, public fixtures, analytics, or browser bundles.
+- Unauthenticated Image Style/reference/version access and hash-existence probing are denied; accepted
+  users see the same global catalog.
+- Unauthenticated Avatar Profile/version/source/thumbnail access and hash-existence probing are
+  denied; accepted users see the same global catalog. Avatar bytes, signed URLs, EXIF/GPS, invite
+  codes, and likeness metadata never enter logs, public fixtures, analytics, or browser bundles.
 - Avatar source deletion is blocked while queued/running/review candidates depend on it; explicit later erasure marks historical revisions non-regenerable instead of silently retaining pixels.
 - EXIF/GPS stripped from analysis copies; malicious/decompression-bomb references rejected.
 - Analyzer sees only server-created short-lived URLs; reference pixels/visible instructions cannot alter system behavior.
@@ -378,10 +432,11 @@ Historical `GATE_UI_001`: **PASS**, user-approved 2026-08-09 at `evidence/gates/
 - Galleries load without broken requests and disclose larger images plus metadata on demand. New Avatar/Style round trips retain imagery, exact pins, voiceover handle, and every other draft field.
 - Closed preset selectors show image/name and optional `Default`. Choices stay inside the same app-native border, add search when useful, restore focus on Escape, and persist the exact version ID. Native, detached, covering, or always-expanded variants fail.
 - The voiceover dropzone does not advertise duration bounds, channel count, sample rate, or other technical media rules. Valid files show concise selected/upload state; invalid files show an accurate field-specific error while the strict server/browser validation matrix remains unchanged.
-- App-native `image_media` and `avatar_primary` controls keep options inside each compute card. They
-  independently show freshly queried live, compatible Mage and Echo GPU choices with exact rate,
-  VRAM, region/volume compatibility, and inventory timestamp. Unqualified choices remain disabled as
-  `Benchmark required` while `GATE_GPU_001` is open.
+- App-native `image_media` and `avatar_primary` controls keep options inside each compute card. Only
+  while the global session is idle, they independently show freshly queried live, compatible Mage and
+  Echo GPU choices with exact rate, VRAM, region/volume compatibility, and inventory timestamp.
+  Unqualified choices remain disabled as `Benchmark required` while `GATE_GPU_001` is open. During a
+  locked session they are unavailable and a read-only exact inherited-pair summary replaces them.
 - The first-shell UI has no exact-script input and sends `optional_script: null`. Extra keywords use only the opt-in toggle and textarea; no persistent applied/not-applied success panel appears, while enabled empty/invalid/conflicting text still receives the precise existing error.
 - Details are closed by default. Side sheets/accordions/lightboxes expose complete inspect/audit data, trap/manage focus correctly, close with Escape, restore focus, and do not depend on hover.
 - Pending actions immediately disable duplicates and show concise progress/next-check state. Active blockers, charges, consent, spend caps, budget approvals, and destructive controls remain in the primary layer even when technical details are collapsed.
@@ -394,30 +449,45 @@ Historical `GATE_UI_001`: **PASS**, user-approved 2026-08-09 at `evidence/gates/
 
 In the user's real Chrome:
 
-1. Sign in.
+1. Register one account with Google and one with email/password using distinct valid invite codes;
+   verify each code is consumed once and cleared, then log out/in normally without another invite.
+   Exercise replay/expiry/revocation, a same-code registration race, and a Google/email collision.
 2. At real Chrome 100%, verify the compact 15 px root/44 px action geometry matches the preferred 80%-zoom reference without CSS zoom or a transformed shell. Verify all leaf screens retain the 20/16 px top-level rhythm, generic disclosures retain at least 12 px internal separation, lists/grids have nonzero gaps, and structural boundaries remain layered at desktop and compact/mobile widths. Then verify dock keyboard/pointer navigation, scale-only proximity taper, fixed icon bottom edges, reset/no-layout-shift behavior, static active-route backing, reduced-motion neutrality, active route, 1024 px layout, and mobile safe area.
-3. Verify authorized Avatar Hub imagery and minimal healthy cards; create/approve one private avatar and confirm its image/name plus inspectable exact pin in Create Project.
+3. Verify authorized shared Avatar Hub imagery and minimal healthy cards; create/approve one avatar and confirm its image/name plus inspectable exact pin in Create Project.
 4. Open Image Styles, inspect the built-in owned/generated examples without calling them uploaded references, then open every reference image for a custom style and exercise the keyboard lightbox/details sheet.
-5. Create a private Image Style from references, keep the uploaded mosaic visible through analysis/review, leave/resume analysis, review/edit it, optionally test, and publish it.
+5. Create a shared Image Style from references, keep the uploaded mosaic visible through analysis/review, leave/resume analysis, review/edit it, optionally test, and publish it.
 6. Create a project with real audio, select the stored avatar and new style through compact visual dropdowns, verify no avatar upload control/request or exact-script field exists, and confirm the dropzone omits proactive duration/channel/sample-rate details.
 7. Enter extra image keywords, leave the toggle off and verify there is no separate applied/not-applied confirmation, then enable it and exercise one accepted negative refinement plus one precise conflict error.
 8. See immediate preflight/pending state without duplicate submission or persistent non-actionable explanation panels.
-9. Refresh both app-native GPU menus, select Mage and Echo GPUs independently, and confirm each menu
-   stays inside its compute card. Inspect parallel Pod create/volume/model-ready states and verify a
-   stale or now-unavailable GPU blocks before spend. Disabled unbenchmarked choices remain
+9. With the generation session idle, refresh both app-native GPU menus, select Mage and Echo GPUs
+   independently, and confirm each menu stays inside its compute card. Race a second user's Generate
+   with a different tentative pair; verify exactly one pair locks, both projects are admitted in one
+   queue under it, and no second Pod per lane appears. Inspect parallel Pod create/volume/model-ready
+   states and verify stale inventory blocks the first lock. Disabled unbenchmarked choices remain
    unselectable and no onboarding analysis runs per project.
 10. Expand and collapse project technical details, then verify the primary layer remains concise while IDs, pinned inputs, worker evidence, and costs remain reachable.
-11. Open another user/session and verify ownership/fair queue plus avatar/style isolation.
+11. Open additional accepted users and verify the same global avatar/style/project/result catalog and
+    equal rights. Reorder and remove another creator's waiting project, verify actor/time/order audit,
+    and confirm a claimed project cannot be reordered or removed by a stale action.
 12. Review full/split preview from the same clip and style-aware image prompts.
 13. Force/recover one image failure and one Echo failure. Verify the image follows only its approved
     bounded policy, while the Echo failure keeps an actionable blocker and stops without repair,
     fallback, tuning, or substitution.
-14. Cancel a separate test project.
+14. Cancel a separate active test project from another admitted user. Verify the next waiting row is
+    atomically promoted before any of its work starts. Drain one lane first and prove its Pod absent
+    while the other lane stays active. Enqueue a new waiter and prove it neither starts work nor
+    recreates the missing lane early; after next-project activation, only the exact locked GPU may
+    recreate or wait.
 15. Render, seek, play audio, download, and verify pinned avatar/style/keyword components in the manifest.
 16. Confirm the automatic result says `Ready for review`; use the contact sheet, flag/regenerate a visible defect, then explicitly approve the final revision.
 17. Confirm video cost, separate one-time style/optional avatar-test costs, and retention.
 18. From an in-progress project draft, open `+ New avatar`, save or cancel, and return with title/voiceover/style/keywords/compute/settings intact; the new ready avatar image is visible and selected without re-upload.
-19. Repeat the draft-preserving round trip for `+ New style`, verify the new cover/reference gallery, and retain the avatar selection plus all execution-profile overrides.
+19. Repeat the draft-preserving round trip for `+ New style`, verify the new cover/reference gallery,
+    and retain the avatar selection plus tentative GPU choices only if still idle; if another user
+    locked the session, show the inherited pair without losing the draft.
+20. Drain the queue and both lanes, prove both Pods absent and both volumes retained, then verify live
+    selectors unlock for a new session. Restart the control plane at locked, lane-draining, and fully
+    drained boundaries and verify the same outcomes without duplicate creates or early unlock.
 
 No milestone is accepted solely from screenshots.
 
@@ -426,13 +496,15 @@ No milestone is accepted solely from screenshots.
 - No-fallback 30-minute isolated-service p50 ≤30 minutes.
 - Isolated-service p90 ≤45 minutes.
 - Queue/capacity wait is reported separately at 1/2/5/10 concurrent users; do not apply isolated
-  SLOs to a backlog constrained by the workspace Pod caps.
+  SLOs to a backlog constrained by the one-session, one-Pod-per-lane cap.
 - Report p50/p90 only after at least 10 representative completed jobs with cold/warm labels.
 - Per-lane Pod-start-request-to-`model_ready` ideal target is ≤2 minutes after one-time preparation;
   report Mage and Echo separately. ImageForge's user-reported 3–4-minute baseline is not VideoForge
   evidence.
-- Marginal disposable-Pod cost remains unmeasured until representative accepted jobs; the accepted
-  fixed cost of the two retained volumes is reported separately.
-- No silent cost above configured cap.
+- For a representative 30-minute output, total variable per-video cost targets ≤$1.00 and has a hard
+  MVP ceiling of ≤$2.00. Measure prompt, GPU boot/load/inference, processing, transfer, render, retry,
+  and deterministic shared-session cost attribution. The accepted fixed cost of the two retained
+  volumes is reported separately and excluded from this target/ceiling.
+- No silent variable cost above the per-video configured cap or $2.00 MVP ceiling.
 - First-pass EchoMimicV3-Flash rejection and Mage retry rate displayed and reviewed after first 10 real projects.
 - Style and Avatar Profile creation are outside project p50/p90; a ready style adds zero vision calls and a ready avatar adds zero onboarding/test calls or new pipeline stage.

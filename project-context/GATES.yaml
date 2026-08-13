@@ -97,21 +97,24 @@ gates:
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-pod-and-volume-lifecycle-gate"
     owner: VF-9-20
     last_run: "evidence/acceptance/VF-9-20/gate-profile-convergence"
-    result: open_no_live_inventory_selected_exact_gpu_profile_for_both_models
+    result: open_no_atomic_global_session_gpu_pair_or_selected_actual_identity_evidence
+    blocker: "No test yet proves idle-only live Mage/Echo selection, atomic first-Generate pair locking under concurrent users, inheritance by later projects, or exact locked-GPU lane recreation without substitution."
   GATE_RUNPOD_001:
     status: open
     blocks: live_runpod_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-pod-and-volume-lifecycle-gate"
     owner: VF-9-20
     last_run: "evidence/acceptance/VF-9-20/gate-profile-convergence"
-    result: open_two_volume_two_disposable_pod_lifecycle_not_qualified
+    result: open_two_volume_one_global_session_lane_lifecycle_not_qualified
+    blocker: "No test yet proves at most one Pod per lane, one-active-video ordered reuse, warm-existing-only waiter retention, independent lane drain/delete, next-activation-only exact-GPU recreation, restart reconciliation, or full-drain zero-Pod/two-retained-volume cleanup."
   GATE_COST_001:
     status: open
     blocks: measured_unit_economics_claim
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#production-slo-targets"
     owner: VF-9-20
     last_run: "evidence/acceptance/VF-9-20/gate-profile-convergence"
-    result: open_no_representative_disposable_pod_boot_load_or_accepted_jobs
+    result: open_no_representative_all_variable_per_video_cost_or_pod_timing_evidence
+    blocker: "The accepted fixed cost of both retained volumes is separate. Representative jobs have not yet proved the 30-minute all-variable per-video target at or below $1, hard MVP ceiling at or below $2, deterministic shared-session attribution, or ideal per-lane model-ready target at or below two minutes."
   GATE_UI_001:
     status: closed
     blocks: visual_system_lock

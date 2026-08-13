@@ -3,7 +3,7 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-13"
 source_of_truth: project-context
-current_selected_profile: phase9_isolated_model_lane_contracts
+current_selected_profile: cp01_global_session_contracts
 current_selected_brief: tasks/VF-9-24K.md
 
 mandatory_read:
@@ -23,682 +23,71 @@ derived_indexes:
 conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 10000
 
+# Historical task briefs remain evidence but are intentionally not active read profiles. Create one
+# narrow profile/brief when each future checkpoint becomes current.
 read_profiles:
+  cp01_global_session_contracts:
+    - 22_PROJECT_COMPLETION_CHECKPOINTS.md
+    - tasks/VF-9-24K.md
+  cp00_context_roadmap_handoff:
+    - 22_PROJECT_COMPLETION_CHECKPOINTS.md
+    - references/ranga/README.md
+    - references/ranga/every-fifth-frame-audit.json
+    - templates/CHECKPOINT_CHAT_PROMPTS.md
+    - tasks/VF-9-24L.md
+  checkpoint_roadmap:
+    - 22_PROJECT_COMPLETION_CHECKPOINTS.md
+    - templates/CHECKPOINT_CHAT_PROMPTS.md
   product:
     - 01_PRODUCT_REQUIREMENTS.md
     - 02_OUTPUT_VIDEO_SPEC.md
-    - 20_AVATAR_HUB.md
     - 15_DECISIONS_AND_OPEN_GATES.md
   ui_shell:
     - 01_PRODUCT_REQUIREMENTS.md
     - 05_UI_UX_SPEC.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - assets/ui/README.md
-  avatar_hub_ui:
-    - 05_UI_UX_SPEC.md
-    - 20_AVATAR_HUB.md
-    - evidence/avatar_profile_version.schema.json
-  avatar_hub_backend:
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 20_AVATAR_HUB.md
-    - evidence/avatar_profile_version.schema.json
-    - evidence/project_revision_config.schema.json
   reference_style:
-    - 02_OUTPUT_VIDEO_SPEC.md
     - 03_REFERENCE_VIDEO_FORENSICS.md
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 18_IMAGE_STYLES_HUB.md
     - references/ranga/README.md
-  style_analyzer:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 18_IMAGE_STYLES_HUB.md
-    - evidence/image_style_profile.schema.json
-    - evidence/image_style_analyzer_output.schema.json
-  style_backend:
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 18_IMAGE_STYLES_HUB.md
-    - evidence/image_style_profile.schema.json
+    - references/ranga/every-fifth-frame-audit.json
   scheduler:
-    - GLOSSARY.md
     - 02_OUTPUT_VIDEO_SPEC.md
     - 07_PIPELINE_AND_SCHEDULER.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - evidence/project_revision_config.schema.json
-    - evidence/timeline_plan.schema.json
-    - evidence/orchestration_state.schema.json
-    - evidence/fixtures/README.md
-  prompt_lane:
-    - GLOSSARY.md
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
+  model_lanes:
     - 08_MODELS_AND_PROVIDERS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
   queue_orchestration:
     - 06_SYSTEM_ARCHITECTURE.md
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - evidence/orchestration_state.schema.json
-    - evidence/worker_job_envelope.schema.json
-  image_worker:
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - evidence/worker_job_envelope.schema.json
-  avatar_worker:
-    - 02_OUTPUT_VIDEO_SPEC.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - evidence/avatar_profile_version.schema.json
-    - evidence/project_revision_config.schema.json
-    - evidence/worker_job_envelope.schema.json
-  renderer:
-    - GLOSSARY.md
-    - 02_OUTPUT_VIDEO_SPEC.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - evidence/timeline_plan.schema.json
-    - evidence/resolved_render_manifest.schema.json
-    - evidence/production_manifest.schema.json
-    - evidence/fixtures/README.md
-  cost_models:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 15_DECISIONS_AND_OPEN_GATES.md
-  repo_bootstrap:
+  auth_and_contracts:
     - 06_SYSTEM_ARCHITECTURE.md
     - 10_DATA_AND_API_CONTRACTS.md
+  schema_contracts:
+    - 10_DATA_AND_API_CONTRACTS.md
+    - evidence/fixtures/README.md
+  avatar_hub:
+    - 20_AVATAR_HUB.md
+    - evidence/avatar_profile_version.schema.json
+  image_styles_hub:
+    - 18_IMAGE_STYLES_HUB.md
+    - evidence/image_style_profile.schema.json
+  cost_models:
+    - 11_COST_SPEED_BUDGET.md
+    - 15_DECISIONS_AND_OPEN_GATES.md
+  acceptance:
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - GATES.yaml
+  implementation:
     - 12_DEVELOPMENT_PLAN.md
     - 19_IMPLEMENTATION_PLAYBOOK.md
-    - evidence/create_project_request.schema.json
-    - evidence/avatar_profile_version.schema.json
-    - evidence/project_revision_config.schema.json
-    - evidence/fixtures/README.md
+    - 21_IMPLEMENTATION_EXECUTION_PLAN.md
   live_development:
     - 05_UI_UX_SPEC.md
     - 12_DEVELOPMENT_PLAN.md
     - 19_IMPLEMENTATION_PLAYBOOK.md
-  phase9_isolated_model_lane_contracts:
-    - 06_SYSTEM_ARCHITECTURE.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - tasks/VF-9-24K.md
   release_ops:
-    - 06_SYSTEM_ARCHITECTURE.md
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
     - 11_COST_SPEED_BUDGET.md
-  acceptance:
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - GATES.yaml
-    - evidence/fixtures/README.md
-  engineering_practices:
-    - 13_ENGINEERING_BEST_PRACTICES.md
-  implementation_sequence:
-    - 21_IMPLEMENTATION_EXECUTION_PLAN.md
-  phase1_foundation:
-    - GLOSSARY.md
-    - 06_SYSTEM_ARCHITECTURE.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - tasks/VF-1-01.md
-    - evidence/orchestration_state.schema.json
-    - evidence/worker_job_envelope.schema.json
-  phase1_foundation_hardening:
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 18_IMAGE_STYLES_HUB.md
-    - 20_AVATAR_HUB.md
-    - tasks/VF-1-01A.md
-  phase0d_sandbox:
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 11_COST_SPEED_BUDGET.md
-    - tasks/VF-0D-01.md
-  phase1_runtime:
-    - 06_SYSTEM_ARCHITECTURE.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-1-02.md
-  phase1_auth:
-    - 01_PRODUCT_REQUIREMENTS.md
-    - 06_SYSTEM_ARCHITECTURE.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - tasks/VF-1-03.md
-  phase1_artifacts:
-    - 06_SYSTEM_ARCHITECTURE.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - tasks/VF-1-04.md
-  phase1_orchestration:
-    - 06_SYSTEM_ARCHITECTURE.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - tasks/VF-1-05.md
-  phase1_recovery:
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-1-06.md
-  phase1_isolation:
-    - 01_PRODUCT_REQUIREMENTS.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-1-07.md
-  phase1_restore:
-    - 06_SYSTEM_ARCHITECTURE.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - tasks/VF-1-08.md
-  phase2_contract_lock:
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - tasks/VF-2-01.md
-  phase2_transcription:
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-2-02.md
-  phase2_timeline:
-    - 02_OUTPUT_VIDEO_SPEC.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - tasks/VF-2-03.md
-  phase2_timeline_ui:
-    - 05_UI_UX_SPEC.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - tasks/VF-2-04.md
-  phase2_convergence:
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-2-05.md
-  phase3_checkpoint:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 15_DECISIONS_AND_OPEN_GATES.md
-    - GATES.yaml
-    - tasks/VF-3-00.md
-  phase3_runware_deepseek_qualification:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - GATES.yaml
-    - tasks/VF-3-01.md
-  phase3_runware_style_qualification:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 18_IMAGE_STYLES_HUB.md
-    - GATES.yaml
-    - tasks/VF-3-02.md
-  phase3_runware_prompt_adapter:
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - GATES.yaml
-    - tasks/VF-3-07.md
-  phase3_mage_access_license_preflight:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - GATES.yaml
-    - tasks/VF-3-08.md
-  phase3_avatar_access_license_preflight:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 15_DECISIONS_AND_OPEN_GATES.md
-    - 17_SOURCE_INDEX.md
-    - GATES.yaml
-    - tasks/VF-3-10.md
-  phase3_avatar_replacement_decision:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 15_DECISIONS_AND_OPEN_GATES.md
-    - 17_SOURCE_INDEX.md
-    - GATES.yaml
-    - tasks/VF-3-11.md
-  phase8_node_sandbox_runtime:
-    - 06_SYSTEM_ARCHITECTURE.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-8-01.md
-  phase8_runware_runtime:
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-8-02.md
-  phase8_runpod_scale_zero:
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-8-03.md
-  phase8_avatarforcing_worker:
-    - 02_OUTPUT_VIDEO_SPEC.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-8-04.md
-  phase8_avatarforcing_diagnostic:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-8-05.md
-  phase8_avatarforcing_resume:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-8-06.md
-  phase8_avatarforcing_failure_observability:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-8-07.md
-  phase8_avatarforcing_audio_runtime_resume:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-8-08.md
-  phase8_avatarforcing_memory_diagnostic:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-8-09.md
-  phase8_avatarforcing_a100_resume:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-8-10.md
-  phase8_skyreels_worker_preflight:
-    - 02_OUTPUT_VIDEO_SPEC.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-8-11.md
-  phase8_skyreels_worker_build:
-    - 02_OUTPUT_VIDEO_SPEC.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-8-12.md
-  phase8_skyreels_qualification:
-    - 02_OUTPUT_VIDEO_SPEC.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-8-13.md
-  phase8_skyreels_dependency_diagnostic:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-8-14.md
-  phase8_skyreels_corrected_resume:
-    - 02_OUTPUT_VIDEO_SPEC.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-8-15.md
-  phase8_skyreels_timeout_hardening:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-8-16.md
-  phase8_skyreels_stage_visible_resume:
-    - 02_OUTPUT_VIDEO_SPEC.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-8-17.md
-  phase9_mage_worker_preflight:
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-01.md
-  phase9_mage_worker_boundary:
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-02.md
-  phase9_mage_revision_admission:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 16_CONTEXT_MAINTENANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-03.md
-  phase9_mage_access_restore:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 16_CONTEXT_MAINTENANCE.md
-    - tasks/VF-9-04.md
-  phase9_mage_revision_code_admission:
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-05.md
-  phase9_mage_worker_image_build:
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-06.md
-  phase9_mage_qualification:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-07.md
-  phase9_mage_result_integration:
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-9-08.md
-  phase9_mage_quality_confirmation:
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-9-09.md
-  phase9_runpod_status_reconciliation:
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-10.md
-  phase9_mage_quality_resume:
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-9-11.md
-  phase9_mage_negative_prompt_correction:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-12.md
-  phase9_mage_corrected_quality_resume:
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-9-13.md
-  phase9_mage_production_lane_decision:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 15_DECISIONS_AND_OPEN_GATES.md
-    - tasks/VF-9-14.md
-  phase9_mage_durable_result_integration:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-9-15.md
-  phase9_provider_neutral_image_acceptance:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 16_CONTEXT_MAINTENANCE.md
-    - tasks/VF-9-16.md
-  phase9_real_provider_render_composition:
-    - 02_OUTPUT_VIDEO_SPEC.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-9-17.md
-  phase9_mage_quality_matrix:
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-18.md
-  phase9_avatar_fallback_qualification:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 20_AVATAR_HUB.md
-    - tasks/VF-9-19.md
-  phase9_gate_profile_convergence:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 15_DECISIONS_AND_OPEN_GATES.md
-    - 16_CONTEXT_MAINTENANCE.md
-    - GATES.yaml
-    - tasks/VF-9-20.md
-  phase10_pglite_adapter_split:
-    - 06_SYSTEM_ARCHITECTURE.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - 21_IMPLEMENTATION_EXECUTION_PLAN.md
-    - tasks/VF-10-01.md
-  phase9_avatarforcing_user_sample:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 20_AVATAR_HUB.md
-    - tasks/VF-9-21.md
-  phase9_echomimic_v3_flash_worker:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 20_AVATAR_HUB.md
-    - tasks/VF-9-23.md
-  phase9_echomimic_v3_flash_sample:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 20_AVATAR_HUB.md
-    - tasks/VF-9-24.md
-  phase9_echomimic_v3_flash_observability_repair:
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-24A.md
-  phase9_echomimic_v3_flash_corrected_sample:
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-24B.md
-  phase9_echomimic_v3_flash_digest_correction:
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-24C.md
-  phase9_echomimic_v3_flash_digest_corrected_sample:
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-24D.md
-  phase9_echomimic_v3_flash_a100_sample:
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-24E.md
-  phase9_echomimic_v3_flash_a100_guard_repair:
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-24F.md
-  phase9_echomimic_v3_flash_a100_sxm_sample:
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-24G.md
-  phase9_echomimic_v3_flash_persistent_cache:
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-24H.md
-  phase9_echomimic_v3_flash_fp8_rtx_sample:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - tasks/VF-9-24I.md
-  phase3_runware_style_adapter:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 18_IMAGE_STYLES_HUB.md
-    - GATES.yaml
-    - tasks/VF-3-09.md
-  phase7_style_lifecycle_core:
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 18_IMAGE_STYLES_HUB.md
-    - tasks/VF-7-01.md
-  phase7_style_reference_bindings:
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 18_IMAGE_STYLES_HUB.md
-    - tasks/VF-7-02.md
-  phase7_style_analysis_composition:
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 18_IMAGE_STYLES_HUB.md
-    - tasks/VF-3-09.md
-    - tasks/VF-7-03.md
-  phase7_style_analysis_result_acceptance:
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 18_IMAGE_STYLES_HUB.md
-    - tasks/VF-1-06.md
-    - tasks/VF-7-03.md
-    - tasks/VF-7-04.md
-  phase7_style_reviewed_publication_service:
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 18_IMAGE_STYLES_HUB.md
-    - tasks/VF-7-04.md
-    - tasks/VF-7-05.md
-  phase7_style_manual_edit_provenance_decision:
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 15_DECISIONS_AND_OPEN_GATES.md
-    - 18_IMAGE_STYLES_HUB.md
-    - tasks/VF-7-06.md
-  devex_verification_feedback:
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - 21_IMPLEMENTATION_EXECUTION_PLAN.md
-    - tasks/VF-DX-01.md
-  devex_ci_onboarding:
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - 21_IMPLEMENTATION_EXECUTION_PLAN.md
-    - tasks/VF-DX-02.md
-  reliability_telemetry_foundation:
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 13_ENGINEERING_BEST_PRACTICES.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-REL-01.md
-  phase4_durable_prompt_execution:
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - tasks/VF-3-03.md
-    - tasks/VF-3-07.md
-    - tasks/VF-4-01.md
-  phase4_fixture_image_result_acceptance:
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - tasks/VF-3-03.md
-    - tasks/VF-4-01.md
-    - tasks/VF-4-02.md
-  phase5_avatar_fixture_jobs:
-    - 20_AVATAR_HUB.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - tasks/VF-5-01.md
-  phase5_avatar_result_acceptance:
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 20_AVATAR_HUB.md
-    - tasks/VF-5-01.md
-    - tasks/VF-5-02.md
-  phase7_style_edit_api:
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 18_IMAGE_STYLES_HUB.md
-    - tasks/VF-7-08.md
-  phase7_style_hub_completion:
-    - 05_UI_UX_SPEC.md
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 18_IMAGE_STYLES_HUB.md
-    - tasks/VF-7-09.md
-  phase7_style_derived_edit_service:
-    - 10_DATA_AND_API_CONTRACTS.md
-    - 18_IMAGE_STYLES_HUB.md
-    - tasks/VF-7-06.md
-    - tasks/VF-7-07.md
-  phase3_prompt_compiler:
-    - GLOSSARY.md
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - tasks/VF-3-03.md
-  phase3_runpod_account_preflight:
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 11_COST_SPEED_BUDGET.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - GATES.yaml
-    - tasks/VF-3-04.md
-  phase3_private_remote_ci:
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - 21_IMPLEMENTATION_EXECUTION_PLAN.md
-    - tasks/VF-3-05.md
-  phase3_style_semantic_foundation:
-    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
-    - 14_TESTING_AND_ACCEPTANCE.md
-    - 18_IMAGE_STYLES_HUB.md
-    - evidence/image_style_profile.schema.json
-    - evidence/image_style_analyzer_output.schema.json
-    - tasks/VF-3-06.md
   context_update:
     - 15_DECISIONS_AND_OPEN_GATES.md
     - 16_CONTEXT_MAINTENANCE.md
@@ -713,6 +102,11 @@ hard_rules:
   - no_llm_composition_selection
   - no_full_voiceover_avatar_generation
   - one_avatar_clip_serves_both_layouts
+  - one_global_shared_equal_rights_app_scope
+  - unique_single_use_email_bound_invite_admission
+  - one_global_generation_session_and_one_active_video
+  - waiting_projects_orchestration_inert_until_promotion
+  - waiting_project_may_keep_existing_pod_warm_but_never_recreate
   - runpod_api_automation_only
   - separate_persistent_model_volume_per_exact_model_lane
   - never_share_or_cross_adopt_model_volumes_or_pods
@@ -721,15 +115,13 @@ hard_rules:
   - delete_pods_and_prove_absence_when_lane_drains
   - retain_both_intended_model_volumes
   - ordinary_pod_boot_downloads_no_model_files
+  - production_asr_and_render_use_cloud_run_jobs
   - live_chrome_during_development
   - published_image_style_version_pinned_per_project_revision
   - no_style_vision_call_during_ordinary_video_production
   - project_requires_ready_stored_avatar_profile_no_inline_avatar_upload
   - avatar_profile_version_and_runtime_source_pinned_per_project_revision
-  - large_minimal_ui_with_progressive_disclosure
-  - visual_avatar_and_image_style_presets
-  - custom_style_references_distinct_from_builtin_generated_examples
-  - floating_navigation_keyboard_reachable_at_1024
+  - private_inputs_outputs_credentials_and_model_bytes_never_enter_git
 
 approved_decisions:
   DEC_SCOPE_001: image_only_broll_mvp
@@ -738,57 +130,61 @@ approved_decisions:
   DEC_OUTPUT_003: every_ai_image_has_subtle_centered_jitter_free_zoom_in
   DEC_LLM_001: runware_deepseek_v4_flash_0731
   DEC_LLM_002: deepseek_writes_production_image_prompts_only
-  DEC_STYLE_001: reusable_workspace_image_styles_hub
+  DEC_STYLE_001: reusable_global_image_styles_hub
   DEC_STYLE_002: documentary_stock_v1_builtin_default
   DEC_STYLE_003: runware_gemini_3_5_flash_one_time_style_analysis
   DEC_STYLE_004: immutable_published_style_version_pinned_to_project
   DEC_STYLE_005: optional_extra_image_keywords_explicit_toggle
   DEC_STYLE_006: extract_shared_visual_traits_not_reference_content
-  DEC_STYLE_007: manual_edits_preserve_and_detach_analyzer_evidence_from_derived_profile_bytes
-  DEC_IMAGE_001: exact_imageforge_comfy_org_mage_flow_int8_convrot_pinned_comfyui_4step_guidance1_1280x720
+  DEC_STYLE_007: manual_edits_preserve_and_detach_analyzer_evidence
+  DEC_IMAGE_001: exact_imageforge_mage_flow_int8_convrot_pinned_comfyui_4step_guidance1_1280x720
   DEC_IMAGE_002: user_accepts_unresolved_mage_terms_risk_locked_model_proceeds
-  DEC_IMAGE_003: locked_mage_turbo_strict_review_and_one_rejection_triggered_retry
+  DEC_IMAGE_003: locked_mage_turbo_strict_review_and_one_rejection_retry
   DEC_AVATAR_001: superseded_avatarforcing_primary_historical_replay_only
   DEC_AVATAR_002: superseded_musetalk_lip_only_repair_historical_replay_only
-  DEC_AVATAR_003: superseded_skyreels_v3_whole_frame_fallback_historical_replay_only
+  DEC_AVATAR_003: superseded_skyreels_v3_fallback_historical_replay_only
   DEC_AVATAR_004: one_clip_two_deterministic_crops
-  DEC_AVATAR_005: reusable_avatar_hub_required_exact_ready_version_no_inline_upload
-  DEC_AVATAR_006: superseded_user_accepted_avatarforcing_ladder_historical_authority_only
+  DEC_AVATAR_005: reusable_global_avatar_hub_exact_ready_version_no_inline_upload
+  DEC_AVATAR_006: superseded_avatarforcing_ladder_historical_authority_only
   DEC_AVATAR_007: echomimic_v3_flash_native_only_no_repair_or_fallback
   DEC_AVATAR_008: echomimic_v3_flash_fp8_short_selected_spans_no_long_video_cfg
-  DEC_TIMING_001: local_whisper_cpp_base_en
+  DEC_TIMING_001: whisper_cpp_base_en_cloud_run_production_mac_dev_parity
   DEC_CONTRACT_001: typescript_only_jcs_python_exact_bytes_and_schema_validation
   DEC_SCHEDULER_001: seeded_deterministic_bounded_variation
   DEC_SCHEDULER_002: target_22_percent_avatar_half_full_half_split
-  DEC_RENDER_001: direct_ffmpeg_no_remotion_or_hyperframes
+  DEC_RENDER_001: direct_ffmpeg_cloud_run_production_mac_dev_parity
   DEC_RENDER_002: no_remotion_or_hyperframes_in_mvp
-  DEC_HOSTING_001: zero_required_subscription_control_plane
+  DEC_HOSTING_001: scale_to_zero_cloudflare_neon_r2_cloud_run_control_plane
+  DEC_AUTH_001: unique_single_use_email_bound_verified_invite_admission
+  DEC_TENANCY_001: one_global_shared_equal_rights_app_scope
   DEC_DB_001: additive_postgres_sql_repository_contracts_pglite_tests_only
   DEC_QUEUE_001: postgres_authoritative_runpod_execution_transport
+  DEC_QUEUE_002: one_global_session_one_active_video_inert_waiters_shared_manual_queue
   DEC_RUNPOD_001: superseded_serverless_endpoints_first_historical_only
-  DEC_RUNPOD_002: two_isolated_persistent_eu_ro_1_model_volumes_two_disposable_pods_independent_live_gpu_choice
+  DEC_RUNPOD_002: two_isolated_persistent_volumes_session_scoped_disposable_pods
+  DEC_COST_001: representative_30_minute_variable_target_1_usd_hard_ceiling_2_usd
   DEC_UX_001: fixture_first_live_chrome_hot_reload
   DEC_UX_002: compact_100_percent_production_console_fixed_base_scale_only_macos_like_dock
   DEC_UX_003: visual_presets_with_on_demand_reference_and_audit_details
   DEC_UX_004: visible_layered_surface_separation_with_20_16_page_rhythm_and_12px_disclosures
 
 open_gates:
-  GATE_AVATAR_001: echomimic_v3_flash_exact_avatar_4090_fit_speed_quality
+  GATE_AVATAR_001: echomimic_v3_flash_exact_avatar_fit_speed_quality
   GATE_AVATAR_002: global_rejection_threshold_to_be_set_after_bakeoff
-  GATE_AVATAR_003: reconcile_avatarforcing_code_and_weights_commercial_license
+  GATE_AVATAR_003: historical_avatarforcing_commercial_license
   GATE_AVATAR_004: verify_echomimic_source_weights_license_and_runtime_manifest
-  GATE_IMAGE_001: reproduce_mage_300_image_speed_and_quality
-  GATE_IMAGE_002: exact_checkpoint_access_resolved_terms_risk_user_accepted
-  GATE_STYLE_002: verify_mage_adherence_across_distinct_extracted_styles
-  GATE_FALLBACK_001: benchmark_skyreels_low_vram_cost_and_quality
-  GATE_GPU_001: qualify_independent_live_exact_gpu_choices_for_mage_int8_and_echo_fp8
-  GATE_RUNPOD_001: verify_two_volume_two_pod_offline_ready_create_delete_and_retained_volume_lifecycle
-  GATE_COST_001: measure_pod_boot_model_ready_generation_and_delete_cost_with_fixed_volume_cost
+  GATE_IMAGE_001: reproduce_mage_speed_and_quality
+  GATE_IMAGE_002: exact_checkpoint_terms_risk_user_accepted
+  GATE_STYLE_002: verify_mage_adherence_across_styles
+  GATE_FALLBACK_001: historical_skyreels_benchmark_not_active
+  GATE_GPU_001: qualify_independent_live_exact_gpu_choices
+  GATE_RUNPOD_001: verify_two_volume_session_pod_lifecycle
+  GATE_COST_001: measure_boot_generation_cpu_and_delete_cost
 
 closed_gates:
-  GATE_UI_001: user_approved_medium_minimal_live_chrome_shell_on_2026_08_09
-  GATE_LLM_001: runware_canonical_0731_identity_and_strict_schema_passed_on_2026_08_11
-  GATE_STYLE_001: runware_gemini_3_5_flash_seven_fixture_style_analysis_passed_on_2026_08_11
+  GATE_UI_001: user_approved_live_chrome_shell_2026_08_09
+  GATE_LLM_001: runware_deepseek_0731_qualified_2026_08_11
+  GATE_STYLE_001: runware_gemini_style_analysis_qualified_2026_08_11
 
 deferred:
   - ai_broll_video
@@ -801,6 +197,10 @@ deferred:
   - reference_conditioned_image_generation
   - remotion
   - hyperframes
+  - roles_and_multi_tenancy
+  - per_user_pod_pairs
+  - parallel_projects
+  - advanced_queue_fairness
 
 root_loaders:
   - ../AGENTS.md
@@ -812,5 +212,7 @@ gate_registry: GATES.yaml
 glossary: GLOSSARY.md
 implementation_playbook: 19_IMPLEMENTATION_PLAYBOOK.md
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
+completion_roadmap: 22_PROJECT_COMPLETION_CHECKPOINTS.md
+checkpoint_prompts: templates/CHECKPOINT_CHAT_PROMPTS.md
 context_validator: scripts/validate-context.sh
 schema_validator: scripts/validate-schemas.sh

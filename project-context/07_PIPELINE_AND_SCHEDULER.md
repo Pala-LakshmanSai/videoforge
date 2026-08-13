@@ -5,9 +5,25 @@ Read when: implementing transcript alignment, EDL compilation, prompt dispatch, 
 
 ## Critical-path flow
 
+There is one global generation session and exactly one active video. When no session is open, the
+first accepted Generate selects one fresh exact GPU offering for each model, opens the session, and
+activates that video. While a video is active, every later Generate only appends an immutable
+waiting entry which inherits the session's GPU pair. A waiting project performs no transcription,
+scheduling, prompt/span preparation, Pod creation, or inference until the current video reaches a
+terminal state and that waiting entry is atomically activated.
+
+After the last active video becomes terminal and no waiting entry remains, drain/cancel both lanes
+as needed, delete every remaining Pod independently, prove both absent, close the session, and only
+then expose fresh GPU selection again. The two model volumes remain.
+
+The queue is global and shared. Every admitted user may append a project and may move or delete any
+waiting entry using optimistic queue versions; the authenticated actor and before/after state are
+audited. Creator identity gives no ownership priority. The active entry cannot be moved or removed
+through waiting-queue controls; its dedicated cancellation contract is separate.
+
 ```mermaid
 flowchart TD
-    P["Local decode/probe/hash + pinned avatar/style + upload reservation + GPUs/cap"] --> A["One Generate action: freeze revision and start work"]
+    P["Decode/probe/hash + pinned avatar/style + upload reservation + GPUs/cap"] --> A["Idle-session Generate: freeze revision and activate one video"]
     A --> B["Durable voiceover upload"]
     A --> M0["Create Mage Pod in EU-RO-1 and attach retained Mage volume"]
     A --> E0["Create Echo Pod in EU-RO-1 and attach retained Echo volume"]
@@ -15,7 +31,7 @@ flowchart TD
     E0 --> E1["Verify exact Echo volume manifest and load FP8 model"]
     M1 --> MR["Authoritative Mage model_ready"]
     E1 --> ER["Authoritative Echo model_ready"]
-    B --> C["Local ASR; legacy API script alignment when supplied"]
+    B --> C["Cloud Run Job: whisper.cpp ASR; legacy script alignment when supplied"]
     C --> D["Sentence and word timing"]
     D --> E["Seeded deterministic timeline scheduler"]
     E --> F["Immutable timeline plan + validation"]
@@ -27,22 +43,23 @@ flowchart TD
     I0 --> I
     ER --> J["Dispatch EchoMimicV3-Flash span batches"]
     J0 --> J
-    I --> ID["Images durable; drain and delete Mage Pod"]
-    J --> JD["Avatar clips durable; drain and delete Echo Pod"]
+    I --> ID["Images durable; keep warm-idle for an existing waiter or delete if none"]
+    J --> JD["Avatar clips durable; keep warm-idle for an existing waiter or delete if none"]
     J --> K["Deterministic technical QA"]
     ID --> N["Accepted-asset barrier"]
     K --> N
     N --> R["Resolved render manifest"]
-    R --> O["FFmpeg compile/render"]
-    O --> P["Technical QA"]
-    P --> Q["Ready + manifest"]
+    R --> O["Cloud Run Job: FFmpeg compile/render"]
+    O --> TQ["Technical QA"]
+    TQ --> Q["Ready + manifest"]
 ```
 
-Pod attachment/model loading and local preparation overlap. Critical-path time is:
+For the one active video, Pod attachment/model loading and hosted CPU preparation may overlap.
+Critical-path time is:
 
 ```text
 Generate preflight
-+ max(durable upload + local ASR + scheduler + prompt/span preparation,
++ max(durable upload + Cloud Run ASR + scheduler + prompt/span preparation,
       Mage Pod create + volume verify + model load,
       Echo Pod create + volume verify + model load)
 + max(remaining Mage generation,
@@ -58,28 +75,45 @@ Image Style reference analysis is deliberately outside this critical path. A pro
 
 ### 1. Ingest
 
-- Enforce the MVP input envelope: English voiceover, 10 seconds–60 minutes, at most 1 GB; title 1–240 characters; supported decodable audio; exact accessible `READY` Avatar Profile version; and published Image Style version.
+- Enforce the MVP input envelope: English voiceover, 10 seconds–60 minutes, at most 1 GB; title
+  1–240 characters; supported decodable audio; exact globally available `READY` Avatar Profile
+  version; and published Image Style version.
 - Before the single Generate mutation, locally decode/probe/hash the voiceover and freeze its
   checksum/metadata plus a resumable R2 upload reservation, immutable creative revision, exact ready
-  avatar/style bindings, independent live Mage/Echo GPU selections, model-volume preparation
-  evidence, and budget reservation. Generate then starts both disposable Pods concurrently. Mage
-  and Echo attach different retained model volumes.
-- Continue durable voiceover upload, local ASR, timeline, prompts, and span slicing while both Pods
-  boot. The immutable checksum/upload identity exists before provider mutation; no inference task
-  may dispatch until its exact R2/local input assets pass their durable barrier.
+  avatar/style bindings, model-volume preparation evidence, and budget reservation. If the global
+  generation session is idle, Generate also carries independent fresh Mage/Echo GPU choices,
+  atomically opens the session, activates this revision, and may start both disposable Pods
+  concurrently. Mage and Echo attach different retained model volumes.
+- If a session is already open, Generate omits GPU fields and only appends the revision as a
+  waiting entry inheriting the immutable session pair. Storage admission may finish, but no ASR,
+  timeline, prompt/span preparation, Pod action, or inference for that project starts before it is
+  the sole active entry.
+- For the active entry, continue durable voiceover upload, Cloud Run ASR, timeline, prompts, and
+  span slicing while required Pods boot. The immutable checksum/upload identity exists before
+  provider mutation; no inference task may dispatch until its exact R2 input assets pass their
+  durable barrier.
 - Probe the audio with FFprobe.
 - Normalize a temporary analysis copy to 16 kHz mono PCM; preserve the original for final output.
-- Resolve the selected Avatar Profile version, verify it is `READY`, available, workspace-accessible, and belongs to an `ACTIVE` parent, then pin its canonical profile hash plus runtime source asset/checksum. A previously selected v1 remains valid after v2 becomes active; do not re-upload or silently upgrade/replace it during project ingest.
-- Validate that the selected Image Style version is published and accessible in the workspace; snapshot its RFC-8785-canonical profile hash.
+- Resolve the selected Avatar Profile version, verify it is `READY`, available in the global
+  shared catalog, and belongs to an `ACTIVE` parent, then pin its canonical profile hash plus
+  runtime source asset/checksum. A previously selected v1 remains valid after v2 becomes active;
+  do not re-upload or silently upgrade/replace it during project ingest.
+- Validate that the selected Image Style version is published and available in the global shared
+  catalog; snapshot its RFC-8785-canonical profile hash.
 - Normalize/cap optional extra image keywords and persist both text and apply toggle. A false toggle means no provider/generator receives the text.
 - Hash every input and create an immutable revision.
 
-### 2. Free local word timing
+### 2. Hosted word timing with Mac development parity
 
-Use `whisper.cpp base.en`, not Groq/Deepgram. This is a local/provider-free preparation stage and never requires either model Pod:
+Use pinned `whisper.cpp base.en`, not Groq/Deepgram. Production invokes an authenticated,
+scale-to-zero Cloud Run Job against immutable R2 input/output manifests. It never requires or
+keeps either model Pod alive. The local Mac runs the same pinned contract only for development and
+provider-free parity; local success is not production execution evidence.
 
-- Local M4 development: Metal + FlashAttention, greedy decode, one segment per word using the proven QuickCut approach.
-- Production: run in the local/provider-free media preparation lane; benchmark an equivalent implementation only if outputs remain contract-compatible.
+- Local M4 development parity: Metal + FlashAttention, greedy decode, one segment per word using
+  the proven QuickCut approach.
+- Production: pinned CPU/memory/timeout/concurrency remain benchmark-gated, and accepted word JSON
+  returns to the canonical private R2 prefix with checksum/shape validation and attempt lineage.
 - Normalize audio once.
 - Persist millisecond word starts/ends and true FFprobe duration.
 
@@ -154,7 +188,13 @@ These are targets, not hard-coded counts. Speech boundaries win over hitting an 
 - Upload each result immediately with checksum and metadata.
 - Record prompt, seed, latency, GPU, peak VRAM, and actual cost.
 - Do not run a mandatory upscaler or multimodal QA stage. Use inexpensive deterministic checks and human review for obvious failures.
-- After every required Mage output is durable and no Mage task remains queued/active, drain and delete the Mage Pod independently. Retain its model volume for the next project; do not wait for Echo before stopping Mage billing.
+- After every required Mage output for the active video is durable, inspect only the global waiting
+  queue. If at least one waiting entry exists, keep an already-running Mage Pod `model_ready` but
+  idle; it may not claim or prepare waiting-project work. If there is no waiting entry, drain and
+  delete the Mage Pod immediately and retain its model volume, without waiting for Echo or final
+  render. If Mage was deleted and a project is appended later while the current video is still
+  active, do not recreate it early; recreate on that project's activation only, after revalidating
+  the same session-locked Mage offering, with no substitution.
 
 ### Separate Image Style creation workflow
 
@@ -179,7 +219,12 @@ Only step 5 makes that version selectable. Published v1 remains selectable while
 - Send the pinned Avatar Profile runtime source + span audio + restrained prompt to EchoMimicV3-Flash only after both the durable span manifest and Echo `model_ready` evidence exist.
 - Generate one clip per span and reuse it for both layouts.
 - Process multiple spans per resident worker/chunk.
-- After every required Echo clip is durable and no Echo task remains queued/active, drain and delete the Echo Pod independently. Retain its model volume and do not wait for Mage before stopping Echo billing.
+- After every required Echo clip for the active video is durable, keep an already-running Echo Pod
+  `model_ready` but idle only when at least one global waiting entry exists. It may not claim or
+  prepare waiting-project work. With no waiting entry, drain and delete it immediately, retain its
+  model volume, and do not wait for Mage or final render. If Echo was deleted and a project is
+  appended later while the current video is still active, recreate only after that project becomes
+  active, revalidating the exact session-locked Echo offering and never substituting it.
 
 MVP acceptance authority:
 
@@ -198,7 +243,9 @@ Active sample-first rule:
 
 The timeline becomes renderable only when every required slot points to one selected technically valid asset, an explicitly user-accepted replacement, or an explicit user-approved placeholder. Bind those assets/checksums, the original voiceover checksum, revision/timeline hashes, fixed output profile, and total frames into immutable `resolved-render-manifest/v1`; do not mutate the pre-generation timeline plan. Validate both manifests and artifact hashes before dispatch.
 
-FFmpeg:
+The production renderer is an authenticated scale-to-zero Cloud Run Job running pinned FFmpeg and
+FFprobe against immutable private R2 manifests. The Mac uses the same entrypoint only for
+development/provider-free parity. The production job:
 
 - Apply fixed avatar crops.
 - Apply the accepted asset's measured EchoMimicV3-Flash source profile only after user sample
@@ -218,16 +265,35 @@ Use FFprobe and deterministic assertions for format, duration, stream count, cov
 
 ## Parallelization rules
 
-- One Generate action starts the disposable Mage and Echo Pods concurrently in `EU-RO-1`; this is not an optional Faster-mode warm-up.
+- Only the first accepted idle-session Generate may select GPUs and start the disposable Mage and
+  Echo Pods concurrently in `EU-RO-1`; this is not an optional Faster-mode warm-up. A Generate
+  during the open session appends a waiting project only and inherits the pair.
+- Exactly one video owns pipeline execution. Waiting entries perform no ASR, scheduling,
+  prompt/span preparation, Pod create/recreate, or inference until atomic activation after the
+  prior video is terminal.
 - Mage and Echo always mount separate retained model volumes. Neither Pod may write mutable project inputs/results to a model volume.
-- Start local ASR as soon as enough verified voiceover data is available. Continue timeline, prompt-batch, selected-span slicing, and manifest preparation while the Pods attach volumes, verify caches, and load models.
+- For the active video, start the Cloud Run ASR Job after its durable voiceover barrier. Continue
+  timeline, prompt-batch, selected-span slicing, and manifest preparation while required Pods
+  attach volumes, verify caches, and load models.
 - Prompt generation and avatar dispatch begin together after EDL creation.
 - A prepared task waits at a durable barrier until its own lane reports authoritative `model_ready`; readiness in one lane never authorizes dispatch to the other.
 - Mage starts each validated prompt batch immediately after its two prerequisites—durable batch and Mage `model_ready`—exist.
 - Avatar clip QA occurs as clips arrive. No repair or fallback model is active; a failed Echo clip stops for user direction.
-- Prepare resolved-manifest inputs and filtergraph incrementally. When a lane's accepted assets are durable, drain and delete that Pod independently and prove it absent; do not keep one GPU billed while waiting for the other lane or final render.
-- Pod deletion never deletes the retained Mage/Echo volume. A later project creates fresh disposable Pods that verify and load the already-present pinned model bytes instead of downloading them again.
-- Trigger a fresh lightweight render job when the barrier closes.
+- Prepare resolved-manifest inputs and filtergraph incrementally. When a lane's active-video assets
+  are durable, keep its existing Pod warm but idle only if a waiting entry already exists;
+  otherwise drain/delete it and prove absence independently without waiting for the other lane or
+  final render.
+- Pod deletion never deletes the retained Mage/Echo volume. A later active video recreates only a
+  missing required Pod; that Pod verifies and loads the already-present pinned model bytes instead
+  of downloading them again.
+- A Pod deleted before a waiter appears is not recreated during the current video. When the next
+  video activates, recreate it only on the same session GPU after fresh exact-offering
+  revalidation; unavailable blocks and never substitutes. After a fully drained/closed session, a
+  future first project selects a new pair.
+- When the active video is terminal and there is no waiter, reconcile both lanes to proven Pod
+  absence before closing the session and unlocking GPU selection; terminal failure or cancellation
+  does not leave paid compute running.
+- Trigger a fresh Cloud Run FFmpeg render/probe Job when the active video's barrier closes.
 - Fetch/validate the selected style during preflight; do not insert analysis into the project critical path.
 
 ## Simplifications intentionally retained

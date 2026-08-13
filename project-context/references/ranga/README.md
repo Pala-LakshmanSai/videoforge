@@ -8,7 +8,8 @@ Their visual treatment seeds only the built-in `documentary_stock_v1` Image Styl
 
 - [Watermelon / Old Amish Way](https://www.youtube.com/watch?v=6jZ7ib2Edes), 18:52, video ID `6jZ7ib2Edes`.
 - [Mosquito / Amish Way](https://www.youtube.com/watch?v=cVotLLx5bNs), 24:42, video ID `cVotLLx5bNs`.
-- Retrieved/audited: 2026-08-08.
+- Retrieved/audited: 2026-08-08; independently rechecked 2026-08-13 by classifying every fifth
+  native frame across both complete videos.
 - Excluded wrong link: `5JCQbwj0Kso`.
 
 ## Compact cadence sheets
@@ -47,6 +48,12 @@ Mosquito opening: full avatar → full evidence → 50/50 → macro evidence.
 - `07m04s-broll-detail`: tactile close detail supplies proof.
 
 Exact timestamp/provenance is in `frames/frames.csv`. Measurement values are in `measurements.csv` and `../../evidence/reference_metrics.json`.
+
+The 2026-08-13 recheck classified 15,685 samples at six samples per second and manually reviewed
+all 151 classified avatar-interval midpoint cards. It found 21.63% combined avatar time, 10.62%
+full avatar, 11.01% split avatar, and a 3.745-second mean appearance. The narrow difference from
+the earlier independent 5-fps estimates is classifier uncertainty, not a style change. Details are
+in `every-fifth-frame-audit.json`; the locked 21–22%, near-even full/split, 2–6-second grammar stays.
 
 ## Borrow vs exclude
 

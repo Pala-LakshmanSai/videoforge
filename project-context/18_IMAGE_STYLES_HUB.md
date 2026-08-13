@@ -5,9 +5,14 @@ Read when: implementing reusable image styles, reference upload/analysis, projec
 
 ## Product contract
 
-VideoForge has a workspace-scoped Image Styles Hub. A user can create a reusable style from reference images, review what the vision model learned, publish an immutable version, and select that version when creating a project.
+VideoForge has one global shared Image Styles Hub. Every admitted user sees the same catalog and has
+equal authority to create, edit, analyze, test, publish, duplicate, archive, and select a
+style. The server derives the actor from authentication and audits every mutation; creator identity
+is provenance, not ownership or a permission tier. MVP has no Hub roles, tenant selector, or
+multi-workspace tenancy. Legacy records/contracts may retain `workspace_id`, but active writes use
+one canonical global sentinel and expose no workspace choice.
 
-The built-in default is **Authentic Documentary Stock** (`documentary_stock_v1`), derived from the approved Ranga visual research and the existing authenticity prompt. It is the fixed MVP default for every new project, cannot be deleted, and does not require an external analysis call. A custom workspace-wide default is deferred unless the user explicitly approves it. Users may duplicate the built-in profile locally and customize the copy without a vision call; a vision call occurs only after they attach references and explicitly analyze a new draft version.
+The built-in default is **Authentic Documentary Stock** (`documentary_stock_v1`), derived from the approved Ranga visual research and the existing authenticity prompt. It is the fixed MVP default for every new project, cannot be deleted, and does not require an external analysis call. A custom global default is deferred unless the user explicitly approves it. Any admitted user may duplicate the built-in profile into the shared catalog and customize the copy without a vision call; a vision call occurs only after references are attached and a new draft version is explicitly analyzed.
 
 This feature changes image appearance only. It never changes:
 
@@ -110,7 +115,9 @@ flowchart LR
 
 Detailed behavior:
 
-1. Create an `ACTIVE` private style row and its first `DRAFT` version. A later draft may coexist with the currently published active version.
+1. Create an `ACTIVE` globally shared but non-public style row and its first `DRAFT` version. A
+   later draft may coexist with the currently published active version; the authenticated actor is
+   recorded for audit, not exclusive ownership.
 2. Upload 3–8 references for best consensus. Permit 1–2 with a quality warning; cap at 12.
 3. Validate raster MIME, decode, dimensions, file size, and decompression limits.
 4. In the browser, honor orientation, re-encode a bounded sRGB analysis derivative, and strip EXIF/GPS before upload. The server independently verifies magic bytes, raster decode metadata, dimensions, byte limits, checksum, and decompression bounds. Keep the original only under the user's selected retention policy. This avoids a paid image-processing service and avoids assuming Cloudflare Workers can safely re-encode twelve full-resolution images inside free CPU limits.
@@ -121,12 +128,14 @@ Detailed behavior:
    outlier references as **source-analysis evidence**. The user may edit the creative profile, but
    cannot edit or relabel analyzer evidence as if it described the new bytes.
 9. Optionally generate three standardized Mage previews: person, physical action/object, and
-   environment. This is user-triggered and separately estimated; merely saving a style never
-   starts compute. The preview action uses only the Mage lane: select a currently available
-   compatible GPU from live `EU-RO-1` inventory, start one disposable Mage Pod against the
-   Mage-only persistent volume, verify/load/warm up before `model_ready`, make previews durable,
-   then delete the Pod and retain the volume. It must never start Echo or attach/adopt the Echo
-   volume. Completion returns to review and never publishes automatically.
+   environment. This is a globally visible, actor-audited, user-triggered, separately estimated
+   version action; merely saving a style never starts compute. It serializes behind the global
+   video session and cannot run while a video is active or waiting. The preview action uses only
+   the Mage lane: select a currently available compatible GPU from live `EU-RO-1` inventory, start
+   one disposable Mage Pod against the Mage-only persistent volume, verify/load/warm up before
+   `model_ready`, make previews durable, then delete the Pod and retain the volume. It must never
+   start Echo or attach/adopt the Echo volume. Completion returns to review and never publishes
+   automatically or changes a video session's GPU pair.
 10. Publish the exact current immutable artifact and freeze the version. A later reference/profile
     edit creates a new version.
 
@@ -159,7 +168,15 @@ The authoritative machine-readable examples are:
 - `evidence/image_style_analyzer_output.schema.json`
 - `evidence/default_image_style_v1.json`
 
-The analyzer-output schema contains only `summary + visual_profile + prompt_profile + analysis`. Application-owned identity, lifecycle, version, workspace, reference-set hash, provider/settings provenance, request/response hashes, and timestamps are supplied by trusted code; never trust the model to assign them. The request builder deterministically binds `ref_01 = inputs.images[0]`, `ref_02 = inputs.images[1]`, and so on in the final user message. The ordered alias-to-derivative-hash map is part of the request hash; reject any returned alias outside that exact supplied set. This lets the analyzer mark evidence/outliers without seeing or inventing authoritative asset IDs or hashes.
+The analyzer-output schema contains only `summary + visual_profile + prompt_profile + analysis`.
+Application-owned identity, lifecycle, version, canonical global scope, reference-set hash,
+provider/settings provenance, request/response hashes, and timestamps are supplied by trusted code;
+never trust the model to assign them. Existing compatibility fields named `workspace_id` carry only
+the one canonical sentinel. The request builder deterministically binds
+`ref_01 = inputs.images[0]`, `ref_02 = inputs.images[1]`, and so on in the final user message. The
+ordered alias-to-derivative-hash map is part of the request hash; reject any returned alias outside
+that exact supplied set. This lets the analyzer mark evidence/outliers without seeing or inventing
+authoritative asset IDs or hashes.
 
 Before a version can reach `NEEDS_REVIEW` or `PUBLISHED`, a deterministic semantic validator trims and rejects blank required creative fields. It requires at least one meaningful entry in shot-scale preferences, color descriptors, imperfection profile, mood, continuity rules, must-include, must-avoid, and flexible properties. For a vision analysis, all 14 defined trait names must appear exactly once in `trait_evidence`; each is marked `SUPPORTED`, `UNCERTAIN`, or `UNSUPPORTED`, and duplicate/unknown/missing traits are rejected. `approximate_hex`, `negative_suffix`, uncertainty/outlier/leakage lists, and manual `trait_evidence` may intentionally be empty. Provider-schema validation alone is not the publication gate.
 
@@ -204,7 +221,7 @@ derived current profile or presented as confidence in edited bytes.
 | `analysis.content_leakage_warnings` | Make inapplicable in the derived profile: `[]`. Preserve the original warnings only as source-analysis evidence; current creative bytes still pass deterministic leakage/guardrail validation. |
 | `summary`, `visual_profile`, and `prompt_profile` | Use the validated candidate values; unchanged fields remain byte-equivalent after canonicalization. |
 | Current profile bytes/hash | Recompute from the complete normalized candidate and store as a new immutable derived artifact. |
-| Edit provenance | Record workspace/style/version, authenticated editor, edit timestamp, root source-analysis artifact hash, immediate parent artifact hash, derived artifact hash, expected revision token, idempotency identity, and server-computed changed pointers. |
+| Edit provenance | Record canonical global scope/style/version, authenticated actor, edit timestamp, root source-analysis artifact hash, immediate parent artifact hash, derived artifact hash, expected revision token, idempotency identity, and server-computed changed pointers. |
 | Review/publication evidence | Invalidate any pending review snapshot. A later explicit publication derives the reviewer from the authenticated session and binds the exact current derived hash/revision; an editor is never silently treated as reviewer. |
 
 Changed pointers describe creative changes only. The server compares the previous current artifact
@@ -214,7 +231,7 @@ pointers. A request with no creative changed pointer fails as `STYLE_PROFILE_NO_
 automatic `analysis` detachment cannot create an otherwise no-op edit.
 
 Every edit requires authentication, `If-Match`, and `Idempotency-Key`. `If-Match` names the exact
-current revision/artifact pointer. The idempotency scope is workspace + style + version + actor +
+current revision/artifact pointer. The idempotency scope is canonical global sentinel + style + version + actor +
 key, and its fingerprint includes the expected revision plus the canonical candidate bytes. Exact
 replay returns the original artifact/hash/revision response without another pointer movement; reuse
 with different candidate bytes, expected revision, actor, or target fails with an idempotency
@@ -329,7 +346,7 @@ Add **Image Styles** to primary navigation. Each card shows:
 - `References (N)` or truthful `Owned examples (N)`. Every authorized image for the exact version is available through the focused details sheet and keyboard lightbox.
 - Summary, lifecycle (`Active` or `Archived`), active published version, separate draft-version state (`Draft`, `Analyzing`, `Needs review`, or `Failed`), timestamps, provenance, and permitted secondary actions only on demand.
 
-The Hub uses the same card anatomy and media height as Avatar Hub: exactly two columns above 680 px and one column on mobile. Healthy published metadata does not repeat in the glance layer.
+The Hub uses the same card anatomy and media height as Avatar Hub: exactly two columns above 680 px and one column on mobile. Healthy published metadata does not repeat in the glance layer. Every admitted user sees the same cards and permitted actions; actor audit is shown in details where useful, never as an ownership restriction.
 
 The built-in default can be viewed, tested, used, and duplicated; it cannot be edited, deleted, or archived.
 
@@ -339,7 +356,10 @@ The built-in default can be viewed, tested, used, and duplicated; it cannot be e
 Upload references → Analyze → Review extracted style → Optional test → Publish
 ```
 
-Analysis is asynchronous and resumable. Leaving the screen does not lose work. Before Analyze, the UI shows and records the Runware non-ZDR/non-confidential disclosure and the local original-retention choice. It must also show provider pending/timeout/schema failure, low confidence, outliers, and the exact charged amount.
+Analysis is asynchronous and resumable. Leaving the screen does not lose work. Before Analyze, the
+UI shows and records the Runware non-ZDR/non-confidential disclosure and the VideoForge original-
+retention choice. It must also show provider pending/timeout/schema failure, low confidence,
+outliers, and the exact charged amount.
 
 ### Create Project
 
@@ -351,13 +371,22 @@ Retain title, final voiceover, and selected Avatar Profile. The web shell has no
 - Extra Image Prompt Keywords textarea with examples and character count.
 - No persistent applied/not-applied or effective-settings confirmation; the toggle is the state, and only real enabled-text validation errors are shown.
 
-Only a published accessible version can be selected for a new project revision. An archived style disappears from new selection, but a published v1 remains selectable while v2 is analyzing. If a new style is created from the project form, autosave the current title, verified voiceover upload handle, selected Avatar Profile version, mode, both primary execution-profile selections, cap, seed, and keyword text/toggle before leaving; after first publication, return without re-uploading anything and select the new version.
+Only a published, non-archived version in the global shared catalog can be selected for a new
+project revision. An archived style disappears from new selection, but a published v1 remains
+selectable while v2 is analyzing. If a new style is created from the project form, autosave the
+current title, verified voiceover upload handle, selected Avatar Profile version, mode, cap, seed,
+and keyword text/toggle before leaving; after first publication, return without re-uploading
+anything and select the new version. GPU choices are session-scoped transient selection, never a
+style or project-style field; the return path must show the current global session state and
+revalidate any still-unsubmitted idle choice.
 
 ## Records and API
 
 Core records:
 
-- `image_styles`: workspace/system identity, name, `ACTIVE | ARCHIVED` lifecycle, active published version, cover policy/asset, ownership, and built-in/default rules.
+- `image_styles`: canonical global/system identity, name, `ACTIVE | ARCHIVED` lifecycle, active
+  published version, cover policy/asset, creator/last-mutating actor audit, and built-in/default
+  rules; creator fields grant no exclusive authority.
 - `image_style_versions`: `DRAFT | ANALYZING | NEEDS_REVIEW | FAILED | PUBLISHED | ABANDONED`, immutable root/current artifact pointers, analyzer provenance, hashes, and optimistic revision; the pointer may move only before publication. `FAILED` is retriable; `ABANDONED` is terminal.
 - `image_style_profile_artifacts`: immutable canonical profile bytes/hash plus root-source and immediate-parent lineage for accepted analyzer and manual-derived artifacts.
 - `image_style_profile_edits`: authenticated editor/time, expected revision, idempotency identity/fingerprint, server-computed changed pointers, and derived artifact/result revision.
@@ -397,6 +426,11 @@ POST   /v1/image-styles/{id}/archive
 
 Analyze and Test Style are externally billed actions. They need idempotency keys, budget events, visible pending state, and ambiguous-timeout reconciliation.
 
+All admitted users have the same route authority. Trusted code derives the actor and canonical
+global sentinel from the authenticated session, applies optimistic concurrency/idempotency, and
+appends an audit event. No client-supplied workspace, owner, member role, or tenant value may change
+authorization or storage routing.
+
 The canonical same-origin prefix is `/api`, so the manual-edit route above is requested externally
 as `PATCH /api/v1/image-styles/{style_id}/versions/{version_id}`.
 
@@ -405,7 +439,7 @@ Every style-analysis/test cost event uses `owner_type=IMAGE_STYLE_VERSION`, `own
 ## Storage, privacy, and rights
 
 ```text
-workspace/{workspace_id}/image-style/{style_id}/version/{version_id}/
+app/global/image-style/{style_id}/version/{version_id}/
   references/original/
   references/analysis/
   analysis/
@@ -414,7 +448,9 @@ workspace/{workspace_id}/image-style/{style_id}/version/{version_id}/
   manifests/
 ```
 
-- References and styles are workspace-private; never deduplicate across workspaces in a way that reveals another team's hash.
+- References and styles are private to the one admitted VideoForge app population, even though
+  they are globally shared inside it. Never expose their existence, hashes, or bytes publicly or
+  to an unauthenticated identity.
 - The analyzer receives normalized derivatives, not originals, using short-lived path-scoped URLs.
 - Never log image bytes, signed URLs, EXIF, or full provider payloads.
 - Runware says prompts/outputs are not used for model training, but ordinary service is not zero-data-retention; ZDR is an enterprise option. Do not call standard uploads confidential or ZDR. `Delete from VideoForge` means deleting VideoForge/R2 copies only; provider-side retention/deletion follows Runware's current terms/dashboard/support process and must be described separately.
@@ -429,9 +465,9 @@ workspace/{workspace_id}/image-style/{style_id}/version/{version_id}/
 - Measured accepted first analysis: $0.031974–$0.037442 for the seven synthetic sets at medium media resolution and low thinking.
 - Measured accepted two-attempt totals: $0.066977 and $0.075869; show and reserve the estimate before retrying.
 - Optional three-image Mage inference can be small after model load, but Pod boot and model load can
-  dominate. The user must explicitly click, select an exact live compatible Mage GPU, and accept
-  the estimate. Reuse is only through the retained Mage model volume; never through a running Echo
-  Pod or shared model volume.
+  dominate. Any admitted user may explicitly click, select an exact live compatible Mage GPU, and
+  accept the estimate only while the global video session is fully idle. Reuse is only through the
+  retained Mage model volume; never through a running Echo Pod or shared model volume.
 - Reference storage is usually only a few megabytes per style and has no new fixed subscription.
 - A ready style adds a database read and a compact DeepSeek batch prefix. It makes no vision call
   during ordinary video generation. VideoForge has no accepted production cost range for the new
@@ -468,3 +504,4 @@ reference-conditioned image model. None of these deferred options is an active a
 - No automatic artist/identity cloning.
 - No layout or duration changes based on style.
 - No per-image multimodal QA stage.
+- No per-user style catalog, owner-only mutation, workspace picker, or tenant-specific default.

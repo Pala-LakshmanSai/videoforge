@@ -5,6 +5,30 @@ Read when: building a worker, pinning dependencies, estimating cost, or proposin
 
 Prices and provider capabilities below are time-sensitive. EchoMimicV3-Flash source/license/access state was refreshed on 2026-08-12; Runware/Mage and historical AvatarForcing facts retain their recorded check dates. Runtime code stores current rates/configuration rather than hard-coding this document.
 
+## Global GPU session and CPU boundary
+
+MVP has one global generation session and exactly one active video. When no session is open, the
+first accepted Generate request presents fresh compatible inventory and binds one exact Mage GPU
+and one exact Echo GPU. While the session is open, every admitted user's later project inherits
+that immutable pair and enters the shared waiting queue; GPU selectors are unavailable. A waiting
+project performs no transcription, scheduling, prompt/span preparation, Pod action, or inference
+until the current video is terminal and the project becomes the sole active entry.
+
+After a lane finishes the active video, an already-running Pod may remain `model_ready` but idle
+only when a waiting entry already exists. With no waiter, delete that lane's Pod immediately and
+independently, even while the other lane or final render continues. If a waiter arrives after the
+Pod was deleted, do not recreate early: on next-video activation, revalidate and recreate only the
+same session-locked GPU. Unavailable blocks the lane; no GPU/model/precision/volume substitution is
+allowed. Persistent model volumes remain.
+
+When the final video is terminal and the waiting queue is empty, reconcile both lanes to proven Pod
+absence before closing the session and exposing fresh selectors. Failure or cancellation is not an
+exception; no paid Pod survives a fully drained session.
+
+Production word transcription and final FFmpeg render/probe run as authenticated scale-to-zero
+Cloud Run Jobs against the canonical private R2 namespace. The Mac runs the same pinned media
+contract only for development/provider-free parity and is never the shared production executor.
+
 ## Runware DeepSeek V4 Flash 0731
 
 Approved purpose: batched project image-prompt writing only. This model is text-only on Runware; it consumes a compact saved style profile and never analyzes reference images.
@@ -84,8 +108,9 @@ Approved purpose: every original B-roll still.
 - Output: 1280×720.
 - Native variable resolution: official card describes 512–2048 and up to 4:1.
 - Official A100 card result: about 0.59 seconds at 1024² and about 18–20 GB peak memory.
-- GPU: selected by the user from a freshly queried, model-compatible live inventory independently of
-  the Echo GPU. Public inventory is not compatibility evidence; only qualified choices are exposed.
+- GPU: selected independently from freshly queried, model-compatible live inventory only by the
+  request that opens an idle global session; all queued projects inherit it. Public inventory is
+  not compatibility evidence; only qualified choices are exposed.
 
 The 1280×720 lock replaces the earlier resolution/BF16 candidates. Final 1080p detail and split-safe
 framing remain acceptance checks, but they do not authorize a silent resolution, precision, or model
@@ -124,10 +149,12 @@ verification. The VideoForge volume and Pod profile is not yet qualified and mus
 a confirmed production profile.
 
 A normal Mage Pod boot mounts that volume, verifies the complete manifest, and loads the model to the
-user-selected GPU without downloading model bytes or resolving a network model repository. Missing,
-mutated, cross-mounted, or incomplete content fails closed. Inputs and outputs are separate mutable
-job artifacts; they never enter the model volume. The Pod is deleted after the image lane finishes;
-the volume remains as accepted fixed-cost infrastructure.
+global session's exact Mage GPU without downloading model bytes or resolving a network model
+repository. Missing, mutated, cross-mounted, or incomplete content fails closed. Inputs and outputs
+are separate mutable job artifacts; they never enter the model volume. After the active video's
+Mage outputs become durable, keep the existing Pod warm-idle only when a waiter already exists;
+otherwise delete it immediately. A missing Pod is recreated only when the next video activates,
+after exact same-offering revalidation. The volume remains as accepted fixed-cost infrastructure.
 
 Terms evidence remains ambiguous. The indexed official model page reports MIT. Microsoft's public
 `microsoft/Mage` source repository at `76bec2bb3818863f470de7e867c2dc7f1d0bfd83` has an MIT
@@ -164,8 +191,9 @@ profile is eligible.
   voiceover or a replacement long-video workload.
 - Input: canonical runtime image from exact Avatar Profile version, selected speech span, restrained prompt.
 - One native clip serves both layouts after a measured renderer crop profile is approved.
-- GPU: selected by the user from a freshly queried, Echo-compatible live inventory independently of
-  the Mage GPU; selected and actual GPU identity must match the immutable attempt profile.
+- GPU: selected independently from freshly queried, Echo-compatible live inventory only by the
+  request that opens an idle global session; queued projects inherit it. Selected and actual GPU
+  identity must match the immutable session/attempt profile.
 
 The upstream `GPU_memory_mode=sequential_cpu_offload` argument is parsed but never enables offload.
 VideoForge makes no CPU-offload claim.
@@ -179,10 +207,12 @@ hashes plus the exact TorchAO/runtime toolchain, and writes a completion marker 
 independent verification. The exact serialized FP8 artifact and manifest remain gate-controlled.
 
 A normal Echo Pod boot mounts only the Echo volume, verifies its complete manifest, and loads the
-model to the user-selected GPU without downloading model bytes or resolving a network model
-repository. Missing, mutated, cross-mounted, or incomplete content fails closed. Private avatar and
-audio inputs remain outside the model volume. The Pod is deleted after the avatar lane finishes; the
-Echo volume remains as accepted fixed-cost infrastructure.
+model to the global session's exact Echo GPU without downloading model bytes or resolving a network
+model repository. Missing, mutated, cross-mounted, or incomplete content fails closed. Private
+avatar and audio inputs remain outside the model volume. After the active video's Echo clips become
+durable, keep the existing Pod warm-idle only when a waiter already exists; otherwise delete it
+immediately. A missing Pod is recreated only when the next video activates, after exact
+same-offering revalidation. The Echo volume remains as accepted fixed-cost infrastructure.
 
 `GATE_AVATAR_004` read-only preflight found all pinned source artifacts public, ungated, and
 license-labeled. It remains open until the dedicated persistent volume contains the exact prepared
@@ -205,7 +235,7 @@ historical permission record and blocks clear permission claims, but it does not
 No new dispatch, fallback, repair, or production binding may use these models without a new explicit
 user decision.
 
-## Local word timing
+## Hosted CPU word timing and rendering
 
 Approved model: `whisper.cpp` `ggml-base.en`.
 
@@ -217,9 +247,20 @@ Proven QuickCut-style settings on the user's M4:
 - 8 threads, Metal and FlashAttention locally.
 - Do not enable VAD on the known local build; prior reference testing recorded a Metal crash.
 
-Short-file measurements in the local QuickCut repo imply about a minute or less for 30 minutes on the M4; this is a projection, not a direct 30-minute measurement. Production uses the same free approach in the image/media worker and reconciles optional supplied text deterministically.
+Short-file measurements in the local QuickCut repo imply about a minute or less for 30 minutes on
+the M4; this is a projection, not a direct 30-minute measurement. That Mac path is development
+parity only.
 
-Groq Whisper, Deepgram, WhisperX, and browser-side WebGPU ASR are excluded from MVP unless the local method fails a measured accuracy/timing gate.
+Production invokes a pinned Cloud Run Job media worker through authenticated `jobs.run`. One job
+mode executes whisper.cpp word timing and deterministic optional-script reconciliation; another
+executes pinned FFmpeg render/probe. Both consume immutable R2 manifest pointers/checksums, publish
+only to the expected private global prefix, and require output checksum/media-or-JSON validation
+before acceptance. They have no RunPod credential, model-volume mount, or GPU-lane claim. Cloud Run
+region, CPU, memory, timeout, concurrency, representative 30-minute runtime, and cost remain
+benchmark-gated.
+
+Groq Whisper, Deepgram, WhisperX, and browser-side WebGPU ASR are excluded from MVP unless the
+pinned Cloud Run whisper.cpp contract fails a measured accuracy/timing gate.
 
 ## Models deliberately not in the normal path
 
@@ -228,7 +269,7 @@ Groq Whisper, Deepgram, WhisperX, and browser-side WebGPU ASR are excluded from 
 | LongCat Avatar 1.5 | User-reaffirmed exclusion: diffusion runtime/cost breaks the target budget |
 | Hallo3/Hallo2 | Far slower than the fast-avatar budget path; unattributed ranking screenshot is not authoritative |
 | SoulX FlashHead | Not selected; EchoMimicV3-Flash is sole active avatar path |
-| InfiniteTalk | Quality fallback research option only if approved ladder fails broadly |
+| InfiniteTalk | Future research only under a new explicit user decision; no active ladder or fallback exists |
 | Remotion | Does not improve image/avatar pixels or relevance; FFmpeg is enough |
 | HyperFrames | Motion-graphics/text strengths conflict with hard rules; cloud minute cost is wasteful here |
 | AI B-roll video models | Deferred from MVP by user decision |

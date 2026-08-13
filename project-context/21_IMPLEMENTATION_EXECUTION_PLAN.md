@@ -1,91 +1,80 @@
 # Implementation execution plan
 
-Status: isolated persistent model-lane reset selected; implementation not started
+Status: execution router for the balanced MVP checkpoint roadmap
 Read when: selecting, implementing, integrating, or handing off one task.
 
-## Authority
+## Authority and routing
 
-`CURRENT_STATE.yaml` selects exactly one task. Fixture mode stays default. A task may use only its
-recorded provider/credential/spend authority; absence means `$0` and no external mutation. Private
-inputs, outputs, weights, credentials, and provider resource IDs never enter Git.
+`22_PROJECT_COMPLETION_CHECKPOINTS.md` owns the canonical `CP-00` through `CP-12` order and
+completion proof. `CURRENT_STATE.yaml` selects exactly one current task/read profile, and the exact
+task brief controls files, dependencies, provider/credential/cloud/model-download authority, spend
+cap, evidence, cleanup, rollback, and stop conditions.
 
-The prior Serverless/ephemeral `VF-9-24I` retry is superseded. Its evidence remains immutable, but
-its former `$8` ceiling and temporary-cache cleanup rules do not authorize the new architecture.
-No old endpoint, Pod, template, or deleted temporary volume may be adopted as production state.
+Default is fixture mode, `$0`, no external mutation. No old task cap transfers forward. In
+particular, historical Serverless/Echo attempts, endpoint resources, temporary volumes, and their
+former `$8` authority are evidence only.
 
-## Required order
+## Required checkpoint order
 
-1. **`VF-9-24J` — isolated model-lane architecture reset (`$0`, complete).**
-   Reconciled product, architecture, RunPod, model, scheduler, cost, acceptance, context, templates,
-   and task truth. No application/schema/provider implementation occurred.
-2. **`VF-9-24K` — isolated model-lane contracts and fixtures (`$0`, proposed/paused).**
-   Version two exact model-volume bindings, immutable manifests, expiring live-inventory receipts,
-   independent exact GPU selections, Pod create/readiness/work/delete attempts, timings, durable
-   output barriers, and cross-lane rejection. Current v1 machine contracts remain legacy and must
-   fail closed before paid dispatch. Exercise concurrent lifecycle states in fixtures; no provider
-   call, schema reinterpretation, cloud resource, or app production activation.
-3. **Offline worker adaptation (`$0` plus separately authorized image publication later).**
-   Reuse the working ImageForge Mage INT8 ConvRot model identity/ComfyUI workflow/offline load and
-   warm-up mechanics without copying its resource IDs or volume. Adapt Echo FP8 to the same exact
-   manifest/readiness boundary. Ordinary startup must not download weights, install dependencies,
-   clone source, or repair storage.
-4. **Persistent volume provisioning/preparation (separate explicit cloud/spend authority).**
-   Derive each capacity from its exact manifest plus approved headroom, create two different
-   `EU-RO-1` VideoForge volumes, prepare one model per volume, verify hashes, and write completion
-   markers last. Delete preparation Pods; retain both volumes.
-5. **Pod lifecycle and independent live GPU UI (provider-free first, then separately authorized).**
-   Query fresh compatible inventory per lane, let the user choose each exact current offering,
-   revalidate, create both Pods concurrently, verify actual Pod/GPU/volume/image/model identity,
-   report truthful readiness, reconcile ambiguity, and delete each Pod without deleting its volume.
-6. **Bounded lane samples (new caps required).**
-   Run Mage INT8 owned prompts and normal owned Echo 2–6-second spans (opener maximum 7 seconds).
-   The exact historical 10.12-second input is optional stress evidence only under separate explicit
-   authority and cannot change production span policy. Return local
-   artifacts with hashes/probes plus boot/load/warm-up/inference/upload/delete timings, exact GPU/rate,
-   cost, manifest, attempt lineage, and zero-Pod/two-volume evidence. User reviews quality.
-7. **Automated concurrent E2E.**
-   One Generate starts both selected Pods while local preparation runs, then deletes each after its
-   durable barrier, renders the deterministic 1080p MP4 with FFmpeg, verifies/downloads it locally,
-   and shows it in real Chrome. No Premiere/manual import/alignment.
-8. **Production qualification and hardening.**
-   Run the Mage 40-prompt/300-image suite, Echo 12–20-clip exact-avatar suite, cold/warm fresh-Pod
-   benchmarks, stale inventory/no-capacity/cancellation/ambiguous create-delete/recovery/cost tests,
-   and close gates only from recorded evidence plus required user review.
+1. `CP-00`: context, reference, and roadmap lock.
+2. `CP-01`: global-session vNext contracts and legacy dispatch firewall.
+3. `CP-02`: shared admission, simple global queue, and idle-only GPU UX.
+4. `CP-03`: production-grade word transcript and Cloud Run-compatible contract.
+5. `CP-04`: deterministic three-composition scheduler and complete work plan.
+6. `CP-05`: provider-free complete MVP orchestration and legacy cutover.
+7. `CP-06`: exact Mage INT8 worker, isolated persistent volume, and real sample.
+8. `CP-07`: exact Echo FP8 worker, isolated persistent volume, real clips, and crop lock.
+9. `CP-08`: durable hosted staging, invite auth, private R2/Neon/Workflow, and Cloud Run Jobs.
+10. `CP-09`: one real automatic three-composition MP4.
+11. `CP-10`: real shared-session queue and automatic shutdown.
+12. `CP-11`: 5–10-user reliability, quality, speed, cost, and recovery qualification.
+13. `CP-12`: production release and operating proof.
 
-## Locked lane identities
+Do not duplicate checkpoint acceptance here. Read its exact section in
+`22_PROJECT_COMPLETION_CHECKPOINTS.md`, create/refine one bounded task brief, and stop if the prior
+checkpoint is not accepted.
 
-- Mage: `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6`, ImageForge
-  `int8-convrot`, pinned stock ComfyUI, 4 steps, guidance 1.0, 1280×720.
-- Echo: pinned EchoMimicV3-Flash FP8 derived from first-party Flash weights; short selected spans,
-  no Long Video CFG, no uncarded third-party pickle, repair, fallback, or model substitution.
-- Region: both volumes in `EU-RO-1`, but as distinct resources bound to distinct model lanes.
-- Initial concurrency: at most one Pod per lane; at most two paid Pods total.
+## Runtime serialization rules
 
-## Parallel and serialized work
+- Exactly one global generation session and one active project exist in MVP. Mage and Echo may run
+  concurrently only for that active project.
+- Waiting entries are inert. They may be added, reordered, or removed, but cannot run prompts, ASR,
+  model work, rendering, or artifact mutation before activation.
+- The first idle Generate locks one exact receipt-bound Mage/Echo GPU pair. Every waiting entry
+  inherits it; no user pair, mid-session GPU switch, or silent substitute is allowed.
+- Waiting work may keep an already-running lane Pod warm. If a lane was already deleted, a late
+  enqueue does not recreate it. Recreate only when the next project becomes active, using the same
+  session GPU after fresh availability/rate revalidation.
+- At zero waiting demand when a lane completes, delete it immediately even if the other lane or
+  Cloud Run render continues. Queue drain requires both Pods absent before session close/unlock.
+- Mage INT8 and Echo FP8 retain separate `EU-RO-1` model volumes. Routine stop/delete never targets
+  either volume.
+- Production whisper.cpp and FFmpeg execute in scale-to-zero Cloud Run Jobs over private R2. Mac
+  execution is provider-free development parity only.
 
-After shared vNext contracts lock, Mage-worker and Echo-worker adaptation may proceed in parallel.
-Fixture UI and provider adapter may proceed in parallel only when they own disjoint files. Shared
-schemas, migrations, state machines, root composition, derived context, provider mutations, and
-commits are serialized through one integration owner. Although Generate starts two Pods in
-parallel, one controller owns both create/delete intents and budget lineage.
+## Engineering parallelism
 
-## Verification
+Runtime serialization does not prohibit agents from working on disjoint modules. After shared vNext
+contracts lock, Mage-worker and Echo-worker implementation may proceed in parallel; isolated tests
+may follow their owned modules. Serialize shared schemas, migrations, session/queue state, root UI,
+provider mutations, context, commits, and integration through one owner.
 
-- Focused tests, `pnpm verify:fast`, then canonical `CI=1 TURBO_FORCE=true pnpm verify` for a
-  coherent implementation milestone.
-- For context/contracts: `project-context/scripts/validate-context.sh`,
-  `project-context/scripts/validate-schemas.sh`, `pnpm secret:scan`, formatting, dependency audit,
-  and `git diff --check`.
-- Provider work additionally requires immutable evidence, output hashes/probes, measured costs,
-  exact Pod/volume/GPU/model identity, deletion and independent absence proof. Retained approved
-  volume identity must also be proven; “zero resources” is no longer the desired production state.
+No cross-project pipelining, advanced fairness engine, roles, multi-tenancy, per-user Pod pair,
+parallel project execution, fallback, repair, or model substitution enters MVP.
 
-## Stop conditions
+## Verification and handoff
 
-Stop on unexplained tracked state, contract/manifest mismatch, cross-volume binding, runtime model
-download, stale/vanished GPU offering, silent GPU/model/precision substitution, ambiguous create or
-delete without exact reconciliation, cap risk, unverified durable output, Pod absence not proven,
-unexpected volume deletion, failed validation, or missing authority for a provider/cloud action.
+- Run focused tests, then the checkpoint's required provider-free or real-provider proof.
+- Run context/schema validation and `git diff --check` whenever contracts/context change.
+- Use real Chrome for user-visible behavior; fixture output never proves a real provider path.
+- Paid checkpoints must record exact model/container/volume/GPU/rate identity, timings, settled
+  cost, hashes/probes, durable receipts, deletion, and independent Pod absence.
+- Thirty-minute variable generation targets `≤$1.00` and must not exceed `$2.00`; fixed retained
+  volume billing stays separate.
+- Update `CURRENT_STATE.yaml` and create one small green checkpoint commit before selecting the next
+  checkpoint.
 
-Historical AvatarForcing, MuseTalk, SkyReels, earlier BF16 Mage/Echo runs, and Serverless endpoints
-remain evidence only. Reintroducing any requires a new explicit decision and task.
+Stop on missing authority, cap risk, stale/unavailable selected GPU, cross-volume/model identity,
+runtime model download, ambiguous provider mutation without reconciliation, unverified durable
+output, Pod absence failure, unexpected volume deletion, schema/context failure, or dependency
+drift.

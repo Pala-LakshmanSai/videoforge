@@ -1,10 +1,11 @@
 # Cost, speed, and capacity budget
 
-Status: planning envelope; replace with measurements during Phase 0  
+Status: planning envelope; replace blocked rows with CP-11 measurements
 Read when: showing estimates, choosing GPU profiles, changing avatar share, adding a stage, or approving fallback.
 
 Architecture decision updated: 2026-08-13. Rate examples were last checked 2026-08-10. Prices and
-inventory change; production refreshes live compatible inventory and rates before every project.
+inventory change; production refreshes inventory when opening a global generation session and
+revalidates the session's exact lane offering before every Pod create.
 
 ## Current reference rates
 
@@ -28,10 +29,13 @@ RunPod on-demand Pods are the approved GPU lifecycle. Recorded planning examples
 - RTX 6000 Ada 48 GB: $0.84/hour.
 - A100 PCIe 80 GB: $1.39/hour.
 
-At project start, fetch live compatible inventory and the exact Pod rate for Mage and Echo
-independently. The user selects one qualified GPU for each lane. Pin both the selected rate snapshot
-and the actual executing GPU; do not estimate from a stale priority list. A Pod is billed only while
-it is running and must be deleted after its lane finishes.
+When the app is truly idle, fetch live compatible inventory and exact rates independently for Mage
+and Echo. The first accepted Generate selects and locks one exact pair for the singleton global
+session. Waiting projects inherit it; there is no per-project selection or mid-session switch. Pin
+the receipts/rate ceilings and actual GPUs. A lane Pod may stay warm only if it is already running
+and waiting projects exist. A deleted lane is not recreated merely because a project enters the
+queue; recreate it only when the next project becomes active, using the same session GPU after fresh
+availability/rate revalidation.
 
 RunPod network storage standard under 1 TB: $0.07/GB-month.
 
@@ -102,7 +106,7 @@ Measured qualification on 2026-08-11 (`VF-3-02`):
 - Cumulative task spend including development probes/failures: `$0.407604`, below the
   non-transferable `$3` qualification cap.
 
-This is a workspace asset cost, not part of a 30-minute video's generation cap. Runtime must keep
+This is a reusable global-catalog asset cost, not part of a 30-minute video's generation cap. Runtime must keep
 provider-reported usage/cost and ordinary ready-style video generation at zero Gemini calls.
 
 ## Avatar Hub cost
@@ -139,10 +143,10 @@ remain attempt evidence, not production unit economics or approval of a long-vid
 
 The approved production target is a dedicated Echo FP8 volume and disposable Pod processing only
 scheduled short spans. One-time volume preparation is measured separately from ordinary projects.
-For every qualification record live selected/actual GPU and rate; Pod create, volume attach,
+For every qualification record session-selected/actual GPU and rate; Pod create, volume attach,
 container-ready, manifest verification, model-ready, generation, encode, upload, and Pod deletion
-times; peak VRAM/disk; and exact settled cost. Cleanup means zero running/retained Pods while the two
-approved model volumes remain intact. Only later representative cold/warm evidence may establish
+times; peak VRAM/disk; and exact settled cost. Cleanup means zero Pods while the two approved model
+volumes remain intact. Only later representative cold/warm evidence may establish
 production unit economics.
 
 Every one percentage point of avatar share equals 18 output seconds or 450 frames at 25 fps. With a fast avatar engine this is affordable, but the scheduler still targets the measured 21–22% style rather than maximizing avatar.
@@ -160,12 +164,14 @@ failed/partial charges must not replace the planning ranges or close `GATE_COST_
 
 ## Render and ASR
 
-- Local ASR has $0 API cost and targets under $0.01 incremental compute. Start it while both GPU Pods
-  boot rather than placing it behind model-ready.
-- FFmpeg render/technical QA cost is unmeasured under the new Pod architecture; keep it off a billed
-  Mage/Echo Pod unless a measured lane profile justifies that use.
-- Delete each GPU Pod when its own lane finishes; never hold it while waiting for the other lane or
-  final render. Retaining the model volume is intentional and does not retain GPU billing.
+- Production whisper.cpp transcription and FFmpeg render/probe run as scale-to-zero Cloud Run Jobs
+  over private R2 artifacts. Their variable CPU, memory, execution, transfer, and operation cost is
+  measured separately; Mac execution is development parity only.
+- Start transcription while the active project's GPU Pods boot. Final render never occupies or
+  retains a Mage/Echo Pod. Cloud Run region and sizing remain benchmark-gated.
+- If waiting work exists when a lane finishes, its already-running Pod may stay warm but cannot
+  process that work until the next project becomes active. With no waiting work, delete immediately
+  even if the other lane or CPU render continues. After queue drain, both Pods must be absent.
 
 ## Expected marginal total
 
@@ -174,22 +180,26 @@ failed/partial charges must not replace the planning ranges or close `GATE_COST_
 | Reuse of ready Avatar Profile | $0 onboarding/test call; normal EchoMimicV3-Flash row still applies |
 | Reuse of ready Image Style | $0 vision; negligible added DeepSeek tokens |
 | Runware prompts | $0.005–$0.015 |
-| ASR | $0 API; <$0.01 incremental target |
+| Cloud Run word ASR | no paid API; variable CPU/R2 cost unmeasured |
 | Mage images | unmeasured on the selected INT8 ConvRot disposable-Pod profile |
 | EchoMimicV3-Flash | unmeasured; production estimate blocked |
 | Avatar repair/fallback | none active |
-| FFmpeg/render QA | unmeasured under the selected architecture |
+| Cloud Run FFmpeg/render QA | variable CPU/R2 cost unmeasured |
 | R2 operations/storage allocation | $0–$0.03 initially |
-| **Disposable-Pod marginal total** | **unmeasured; blocked by `GATE_COST_001`** |
+| **Total variable 30-minute generation** | **target ≤$1.00; unmeasured; blocked by `GATE_COST_001`** |
 
 The two retained model-volume charges are fixed infrastructure cost and do not consume a project's
-marginal generation cap. Default operational cap remains $1.50 before explicit approval, and the
-current MVP project contract rejects a cap above $2. Replace the blocked rows only with measured
-costs from the exact selected live GPU, model manifest, and Pod lifecycle.
+variable generation cap. The 30-minute target is at most `$1.00`; the hard MVP ceiling is `$2.00`.
+Dispatch must reject projected variable spend above `$2.00` unless a later versioned user decision
+changes it. Replace blocked rows only with measured session-GPU, Cloud Run, R2, model-manifest, and
+lifecycle costs.
 
 ## Fixed monthly cost
 
-Required control-plane subscription: $0 while the currently published Cloudflare/Neon free allowances suffice. Alert before exhaustion and re-estimate if provider pricing/allowances change; do not promise permanent free service.
+Required control-plane subscription: $0 while the currently published Cloudflare/Neon allowances
+suffice. Cloud Run Jobs add no intentionally always-on CPU worker, but executions are variable video
+cost. Alert before exhaustion and re-estimate if pricing/allowances change; do not promise permanent
+free service.
 
 Avatar Profiles and Image Styles add no subscription or always-on compute. They reuse private R2; styles also reuse the Runware balance. A few normalized references or avatar source derivatives are usually only a few megabytes; show storage/retention but do not add a paid database tier.
 
@@ -220,12 +230,12 @@ Cold, no-fallback target:
 
 | Stage | Goal |
 |---|---:|
-| Upload + ASR + timeline | 2–5 min, network dependent |
+| Upload + Cloud Run ASR + timeline | 2–5 min, network dependent; unproven |
 | Mage Pod start → model-ready | ideal ≤2 min; unproven |
 | 220–320 images | ≤5–8 min after load |
 | Echo Pod start → model-ready | ideal ≤2 min; unproven |
 | Avatar generation | ≤6–20 min, benchmark dependent |
-| Final render + technical QA | 3–8 min |
+| Cloud Run final render + technical QA | 3–8 min; unproven |
 | **End-to-end p50** | **≤30 min isolated service time** |
 | **End-to-end p90** | **≤45 min isolated service time** |
 
@@ -234,8 +244,8 @@ not VideoForge evidence and not a relaxation of the ideal ≤2-minute target. Me
 volume attach, container ready, manifest verified, model loaded, and `model_ready` separately for
 both cold and warm trials.
 
-Both Pods start in parallel with upload/ASR/timeline preparation. Expected end-to-end is dominated
-by the slower lane, not their sum.
+Both lanes may start in parallel for the one active project while upload/Cloud Run ASR/timeline
+preparation advances. Waiting projects remain inert; there is no cross-project pipelining.
 
 Style analysis is not in this table because project creation requires an already published style. Creating a new style is a separate asynchronous action; once published it does not change video-production p50/p90.
 
@@ -245,10 +255,14 @@ The SLO excludes time waiting behind already queued projects and is not valid fr
 
 ## Queue economics
 
-- One Pod load serves all chunks in its project lane; delete the Pod when that lane drains.
-- Initially allow at most one Mage Pod and one Echo Pod per project, with workspace caps preventing
-  unbounded concurrent Pod creation.
-- Round-robin chunks protect five to ten users from starvation.
+- One global session serves exactly one active project at a time with at most one Mage Pod and one
+  Echo Pod. Waiting entries never run chunks or CPU work.
+- Waiting work may keep an already-running lane Pod warm. It never recreates an absent lane; that
+  happens only after the next queue entry becomes active and the exact session offering revalidates.
+- No round-robin/fairness engine, per-user Pod pair, GPU switch, or parallel project execution enters
+  MVP. Any admitted user may manually reorder/remove waiting entries.
+- Attribute session boot, active-project inference, warm idle, retry, Cloud Run CPU, R2, and fixed
+  volume cost separately. Zero waiting/active work requires both Pods to be deleted and absent.
 - Record cost per accepted output, not just GPU hourly price; a cheaper slow GPU can cost more after retries and wall time.
 
 ## Budget-change rule

@@ -12,7 +12,7 @@ Explicitly exclude `5JCQbwj0Kso`; the user identified it as the wrong watermelon
 
 ## Measured composition audit
 
-The following values are estimates from a prior 5-fps classification audit and direct frame checks. They are internally consistent, but they are not presented as frame-perfect publisher analytics.
+The following values are estimates from a prior 5-fps classification audit and direct frame checks. They are internally consistent, but they are not presented as frame-perfect publisher analytics. A 2026-08-13 independent pass then classified every fifth native frame—15,685 samples at six samples per second across both complete videos—and manually reviewed all 151 classified avatar-interval midpoint cards.
 
 | Metric | Mosquito | Watermelon |
 |---|---:|---:|
@@ -30,6 +30,14 @@ Combined findings:
 - Mean visual-change interval in the supplied complete Watermelon analysis: about 4.35 seconds; median 4.13 seconds; middle 50% about 2.8–5.2 seconds.
 - Full and split cumulative shares are nearly equal.
 - Hard cuts dominate.
+
+The every-fifth-frame pass measured 21.63% combined avatar visibility, 10.62% full avatar, 11.01%
+split avatar, and a 3.745-second mean appearance. Across both audits the supported ranges are
+21.63–21.76% total avatar, 10.62–10.81% full, 10.99–11.01% split, 151–152 appearances, and
+3.742–3.745 seconds mean appearance. This corroborates the locked grammar; it does not justify
+changing the 21–22% scheduler target or claiming frame-perfect source analytics. Compact method and
+results are in `references/ranga/every-fifth-frame-audit.json`. No newly downloaded video, frame,
+or contact sheet is retained in the repository.
 
 Frequent near-alternation is observed; strict seeded alternation is a suitable VideoForge rule. Do not state that Watermelon alternates without any exception.
 
@@ -91,7 +99,7 @@ The source mixes real/UGC/stock/archive footage and occasionally contains webpag
 
 ## Runtime interpretation
 
-The recurring pixel-stable presenter background, natural mid-phoneme starts, body motion, and short appearances support VideoForge's use of a reusable source image plus independently generated selected speech spans. They do not reveal Ranga's private production method.
+The recurring pixel-stable presenter background, natural mid-phoneme starts, body motion, and short appearances support VideoForge's use of a reusable source image plus independently generated selected speech spans. They do not reveal the channel's private production method.
 
 VideoForge therefore sends only the deterministic 2–6-second scheduled spans to the active EchoMimicV3-Flash FP8 lane, with a seven-second maximum only for the opening sentence. Do not claim that VRAM grows linearly with clip duration; duration, peak memory, and throughput remain measured properties of the exact Echo runtime. AvatarForcing, MuseTalk, and SkyReels are historical evidence/replay paths only and are not active generation, repair, or fallback routes.
 

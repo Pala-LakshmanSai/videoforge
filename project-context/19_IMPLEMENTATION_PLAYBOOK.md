@@ -11,6 +11,16 @@ The active production target has exactly two independent GPU lanes: ImageForge-a
 INT8 ConvRot and EchoMimicV3-Flash FP8. Each has its own persistent `EU-RO-1` model volume and its
 own disposable Pod. No model volume, Pod, manifest, cache, lock, or adoption path is shared.
 
+MVP application state is global and shared for 5–10 admitted users: one catalog, project list,
+queue, result library, and singleton generation session. Every user has equal rights; there are no
+roles or tenants. Only the first Generate while idle selects one exact Mage/Echo GPU pair. Until the
+queue drains and both Pods are absent, later users can only add, reorder, or remove waiting projects,
+and all work inherits that pair. Exactly one project runs at a time.
+
+Production whisper.cpp word transcription and FFmpeg render/probe use pinned Cloud Run Jobs invoked
+through authenticated REST with private R2 artifacts. Mac execution is development/provider-free
+parity only and never production evidence.
+
 `21_IMPLEMENTATION_EXECUTION_PLAN.md` owns task order and safe parallelism. `CURRENT_STATE.yaml` selects the next wave.
 
 ## First-session order
@@ -52,17 +62,28 @@ If a command cannot yet exist, the current milestone owns creating it. Do not in
 
 This order is binding. Do not jump directly from historical scripts to another paid sample:
 
-1. Version contracts and provider-free fixtures for two model-volume bindings, two exact live GPU
-   selections, Pod/create/delete reconciliation, authoritative model readiness, durable results,
-   timings, cost, and absence proof.
-2. Build pinned offline workers. Ordinary boot may not download a model, install a package, or
-   compile source. A missing/corrupt/wrong/cross-model volume manifest fails closed.
-3. Under separate explicit provider authority, provision and prepare one new VideoForge Mage volume
+1. Version provider-free contracts/fixtures for one global admission boundary, singleton generation
+   session, optimistic shared queue, inherited GPU pair, two model-volume bindings, Pod
+   reconciliation/readiness, lane demand, durable results, cost, and session-close absence proof.
+   Preserve every existing v1 byte; do not claim the blueprint is already implemented.
+2. Complete invite-only signup and the shared queue/session UI in fixtures: email/password or
+   Google, one unique single-use email-bound invite for new users, verified-email equality, equal
+   rights, idle GPU selectors, and queue-only behavior while a session is open.
+3. Build the pinned Cloud Run Job media worker plus Mac parity path for whisper.cpp and FFmpeg.
+   Validate REST execution contracts and R2 barriers provider-free before any deployment; region
+   and sizing remain benchmark-gated.
+4. Build pinned offline Mage and Echo workers. Ordinary boot may not download a model, install a
+   package, or compile source. Missing/corrupt/wrong/cross-model manifests fail closed. Reuse only
+   matching ImageForge mechanics, not its resource identities or desktop ownership model.
+5. Under separate explicit provider authority, provision and prepare one new VideoForge Mage volume
    and one new VideoForge Echo volume in `EU-RO-1`. Do not reuse ImageForge IDs, secrets, or volume.
-4. Implement live compatible inventory and independent user GPU selection for each lane, final
-   availability/rate revalidation, exact Pod create/reconcile/delete, and retained-volume proof.
-5. Qualify each lane with bounded owned samples, then run one concurrent Generate-to-MP4 sample in
-   real Chrome. Preserve model-ready/generation timings, cost, hashes/probes, and zero-Pod proof.
+6. Implement idle-only compatible inventory, atomic pair/session lock, one-project dispatch,
+   queue inheritance, exact Pod create/reconcile/reuse, independent zero-lane-demand deletion, and
+   session close only after queue-empty plus both-Pods-absent. A warm Pod may survive for waiting
+   demand, but waiting work never starts before its entry becomes the only active project.
+7. Qualify CPU, Mage, and Echo paths with bounded owned samples; then run queued Generate-to-MP4 in
+   real Chrome. Preserve model-ready/generation/render timings, cost, hashes/probes, independent
+   lane-deletion proof, and final zero-Pod/session-closed proof.
 
 Every real-provider task is bounded by one exact brief. Volume creation/preparation and ordinary Pod
 generation are different mutations and require explicit authority for the one being performed.
@@ -73,7 +94,7 @@ generation are different mutations and require explicit authority for the one be
 apps/web/                  React/Vite UI + same-origin Hono Worker API
 workers/image-media/       Python: target Mage INT8 Pod service and existing fixture adapters
 workers/avatar-primary/    Python: target EchoMimicV3-Flash FP8 Pod service
-workers/media-local/       Target local/CPU ASR, span preparation, FFmpeg render/probe boundary
+workers/media-local/       Shared ASR/render contract: Cloud Run Job production + Mac dev parity
 packages/contracts/        JSON Schema, Zod/Pydantic generation, fixtures
 packages/config/           Versioned non-secret runtime profiles
 packages/test-fixtures/    Owned/synthetic deterministic fixture assets
@@ -81,9 +102,10 @@ project-context/           Product/architecture truth
 ```
 
 The Cloudflare Vite plugin serves the SPA and Hono `/api/*` from one Worker project and one origin.
-Workflows/R2/Neon bindings attach to that deployment. Local preparation/render may overlap GPU
-boot. Mage and Echo remain separate Python runtimes because their models, dependencies, manifests,
-volumes, compatible GPUs, readiness, and deletion lifecycles differ.
+Workflows/R2/Neon bindings attach to that deployment. Cloud Run transcription/timeline preparation
+may overlap GPU boot; final Cloud Run render begins after its asset barrier. Mage and Echo remain
+separate Python runtimes because their models, dependencies, manifests, volumes, compatible GPUs,
+readiness, demand, and deletion lifecycles differ.
 
 Use digest-pinned prebuilt images and measure pull/cache behavior and cold-start impact. Large model
 files stay on their lane's exact persistent RunPod volume, not inside giant container images. The
@@ -98,7 +120,7 @@ authorized one-time preparation tool may populate model files.
 | `local` | $0 | Local whisper/FFmpeg and local contract tests |
 | `sandbox` | Explicit task cap only | Small Runware/RunPod viability or integration fixture |
 | `staging` | Explicit account-mutation and task caps | Isolated production-like Cloudflare/Neon/R2/OAuth acceptance after VF-1-06 |
-| `production` | Workspace/project caps | Only after gates, credentials, and deployment approval |
+| `production` | Global/project caps | Only after gates, credentials, and deployment approval |
 
 Default is `fixture`. A task brief must explicitly set `provider_calls_authorized: true`, a maximum USD spend, exact provider/model, and cleanup evidence before real calls. Absence means **no external call and $0 authorization**.
 Standing local authority in `CURRENT_STATE.yaml` may advance only exact dependency-ready
@@ -111,6 +133,11 @@ The app exposes a development-only scenario selector and deterministic IDs:
 
 - `invite_sign_in`
 - `invite_access_denied`
+- `signup_email_invite_required`
+- `signup_google_invite_required`
+- `signup_invite_invalid`
+- `signup_invite_redeemed`
+- `returning_user_no_invite_prompt`
 - `happy_generating`
 - `project_create_ready`
 - `avatar_hub_empty`
@@ -132,6 +159,15 @@ The app exposes a development-only scenario selector and deterministic IDs:
 - `echo_gpu_inventory_loading`
 - `gpu_inventory_stale`
 - `gpu_selection_unavailable`
+- `global_idle_gpu_pair_selectable`
+- `global_session_gpu_pair_locked`
+- `global_queue_waiting_reorder`
+- `global_queue_version_conflict`
+- `global_queue_waiting_deleted`
+- `global_queue_active_mutation_rejected`
+- `mage_lane_demand_zero_echo_active`
+- `mage_lane_recreated_on_next_activation_same_session_gpu`
+- `global_session_closing_waits_for_pod_absence`
 - `mage_volume_manifest_mismatch`
 - `echo_volume_manifest_mismatch`
 - `cross_model_volume_rejected`
@@ -157,18 +193,27 @@ In local/fixture mode, a compact development-only `Fixture`/health control expos
 
 Existing detailed phases remain authoritative, but each layer must end with something runnable:
 
-1. **Shell:** create/select a named avatar, create/select a style, create project without an avatar re-upload, and play queue/progress/review/usage flows in Chrome using fixtures.
-2. **Local short slice:** 30–120 seconds of owned fixture audio → local word timing → deterministic timeline plan → fixture images/avatar → resolved render manifest → real FFmpeg MP4 → Chrome playback.
-3. **Mock durable slice:** persisted revision/outbox/cost reservation → mock worker callback/reconciliation → render/download.
-4. **Real image slice:** one capped DeepSeek batch plus a small exact Mage INT8 set. The user selects
-   one live compatible GPU, the Mage Pod attaches only the Mage volume, reaches verified/warmed
-   `model_ready`, makes outputs durable, deletes, and proves absence while retaining the volume.
-5. **Real avatar slice:** revision-pinned Avatar Profile runtime source plus selected audio spans
-   through EchoMimicV3-Flash FP8. The independently selected Echo Pod attaches only the Echo volume,
-   reaches verified/warmed `model_ready`, emits one clip/two crops, deletes, and proves absence.
-6. **Concurrent fast path:** one Generate starts both exact Pods concurrently while local ASR,
-   scheduling, prompts, and span audio run; each Pod deletes after its lane is durable; local FFmpeg
-   returns the probed MP4. Measure a short sample before any long project.
+1. **Shared shell:** new email/Google identity redeems an invite once; returning user enters without
+   another prompt. All admitted users see the same avatar/style catalogs, projects, queue, results,
+   progress, and usage in Chrome fixtures.
+2. **Provider-free session:** idle user selects two synthetic exact GPUs and Generate atomically
+   opens one session. A second user sees no selectors, adds a waiting entry, reorders/deletes waiting
+   entries with versioned audit, and cannot move/delete the active entry.
+3. **CPU short slice:** 30–120 seconds of owned fixture audio runs through the shared media-worker
+   contract: Mac parity first, then separately authorized Cloud Run Job transcription/render with R2
+   barriers, deterministic timeline, fixture GPU assets, probed MP4, and Chrome playback.
+4. **Mock durable slice:** persisted global session/queue/revision/outbox/cost reservation, two mock
+   lane callbacks, positive/zero lane-demand transitions, independent synthetic Pod deletion, final
+   render/download, and session close only after both Pods are absent.
+5. **Real image/avatar slices:** under separate caps, qualify exact Mage INT8 and Echo FP8 workers on
+   their own volumes with the idle-selected session pair. Preserve `model_ready`, accepted output,
+   durable barrier, reuse, and zero-demand deletion evidence for each lane.
+6. **Queued fast path:** first Generate starts both exact Pods while Cloud Run transcription,
+   scheduling, prompts, and span audio advance. A second project inherits the pair but stays inert
+   until the first is terminal. Existing Pods may remain warm for that waiter. A missing Pod is
+   recreated only when the second project activates; each Pod deletes independently when active
+   lane work ends without a waiter. Cloud Run FFmpeg returns both probed MP4s; queue drain plus
+   both-Pods-absent closes the session. Measure short samples before any long project.
 
 Do not build temporary provider calls that bypass task/attempt/outbox contracts and later require a rewrite.
 
@@ -193,9 +238,11 @@ A screenshot is evidence of appearance, not proof that a workflow works. Pair it
 - Record task ID, milestone, dependencies, decision/gate IDs, base commit, owned files/modules, collision notes, commands, live route/scenario, external-call authorization, spend cap, cleanup, rollback, acceptance, and evidence path.
 - Parallel agents own disjoint files/modules. Shared schemas, state machines, and root UI shell are serialized or explicitly coordinated.
 - Make small working commits; do not claim a release from uncommitted/local-only evidence.
-- Provider/model work records exact lane/model/checkpoint/container, volume/manifest, inventory
-  receipt, selected and actual GPU/rate, Pod identity, input/output hashes, model-ready and inference
-  timings, cost per accepted output, and delete/absence proof—not just a screenshot or paper claim.
+- Provider/model work records exact generation session, queue entry/version, lane demand,
+  lane/model/checkpoint/container, volume/manifest, session inventory receipt, selected and actual
+  GPU/rate, Pod identity, input/output hashes, model-ready and inference timings, cost per accepted
+  output, and delete/absence proof—not just a screenshot or paper claim. CPU work likewise records
+  Cloud Run job/revision/execution, region/sizing, R2 manifests, timings, cost, and validation.
 
 ## Definition of done for an implementation task
 
@@ -203,8 +250,9 @@ A screenshot is evidence of appearance, not proof that a workflow works. Pair it
 - Relevant unit/schema/integration/Chrome tests pass.
 - The baseline and after-change journey have no new unexplained console errors or failed network requests.
 - No secret/private/reference asset entered Git or browser bundles.
-- Real providers stayed within explicit authorization; every paid Pod was deleted and independently
-  proven absent. The two intended model volumes remain and their identities are recorded.
+- Real providers stayed within explicit authorization. No Pod remains with zero session-lane demand;
+  a drained test session has both paid Pods independently proven absent and is closed. The two
+  intended model volumes remain and their identities are recorded.
 - Cost, retry, provenance, and failure states are truthful.
 - Both `project-context/scripts/validate-context.sh` and `project-context/scripts/validate-schemas.sh` pass if context/contracts changed.
 - `CURRENT_STATE.yaml` records last green evidence and the next bounded tasks.

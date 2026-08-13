@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: isolated persistent model-lane architecture approved; provider activation paused
+Status: global shared MVP roadmap approved; implementation and provider activation paused
 Context schema: `1.5`  
 Last updated: `2026-08-13`
 
@@ -13,7 +13,13 @@ The output grammar is only full avatar, full AI image, or avatar-left/image-righ
 only. Every AI image uses a slow, smooth centered zoom. No captions, titles, text overlays, lower
 thirds, borders, watermarks, motion graphics, decorative graphics, or decorative transitions.
 
-## Authoritative model and compute lifecycle
+## Authoritative MVP and compute lifecycle
+
+VideoForge is one global shared application for 5–10 admitted users. Everyone sees the same
+projects, results, Avatar Hub, Image Styles Hub, generation session, and manually ordered queue,
+with equal product rights and actor audit. Signup is closed: each new identity uses email/password
+or Google plus one unique, single-use invite code bound to the same verified email. Admission and
+code consumption are atomic. Returning admitted users never see the invite challenge again.
 
 VideoForge has two isolated model lanes:
 
@@ -26,17 +32,26 @@ Never share or cross-adopt a volume, Pod, manifest, cache, lock, or runtime betw
 capacities are not yet approved; derive each from its verified exact manifest plus explicit
 headroom before provisioning. Persistent-volume pricing is accepted.
 
-The app refreshes live compatible Secure Cloud GPU inventory and the user independently selects an
-exact current GPU offering for Mage and Echo. Local decode/probe, checksum, immutable input identity,
-and a resumable upload reservation are the pre-Generate barrier. One Generate action then starts
-both required Pods in parallel while durable voiceover upload, local ASR, deterministic scheduling,
-prompt compilation, and selected avatar-span slicing overlap boot. No inference dispatch occurs
-before its exact durable input barrier. Ordinary boots download no model files: the Pod verifies
-its lane volume, loads the exact model, runs a warm-up, then reports authoritative `model_ready`.
+When no generation session exists, the first user explicitly selects one exact live compatible
+Secure Cloud offering for Mage and one for Echo. The first atomically accepted Generate locks that
+pair for the session and starts both required Pods concurrently. Exactly one video is active. New
+projects join the shared queue and inherit the locked pair; waiting projects are orchestration-inert
+until promoted after the active video is terminal.
 
-After a lane's outputs are durable, delete its exact Pod and prove provider absence; retain its
-volume. The ideal model-ready target is at most two minutes. The user's ImageForge experience of
-roughly three to four minutes is only a comparison baseline, not a measured VideoForge result.
+For the active video, the Cloud Run whisper.cpp job, deterministic scheduling, prompts, and selected
+avatar-span preparation overlap Pod boot. Ordinary boots download no model files: each Pod verifies
+only its lane volume, loads the exact model, runs a real warm-up, and then reports authoritative
+`model_ready`. An already-running lane Pod stays warm when projects are waiting. If no project is
+waiting when a lane finishes, delete that exact Pod immediately and prove absence, without waiting
+for the other lane or final render. A later waiting entry never recreates a missing Pod early; the
+next active project may recreate it only on the same locked GPU after fresh availability/rate
+revalidation. The session unlocks only after active and waiting work are empty and both Pods are
+proven absent. Both model volumes remain.
+
+Production word transcription and final FFmpeg render/probe run as scale-to-zero Cloud Run Jobs
+over private R2. The same pinned media path runs on the Mac only for development parity. The ideal
+Pod model-ready target is at most two minutes. The user's ImageForge experience of roughly three to
+four minutes is a comparison baseline, not a measured VideoForge result.
 
 ## Current handoff
 
@@ -46,11 +61,11 @@ historical truth; its former `$8` ceiling does not authorize the new two-volume/
 No current provider call, credential use, model download, Pod creation, volume creation, or spend is
 authorized.
 
-`VF-9-24J` completed this context/architecture reset. `VF-9-24K` is the proposed `$0`, provider-free
-contract and fixture task, but application implementation is paused until the user explicitly
-authorizes it. It will version exact per-lane volume bindings, live-inventory receipts, independent
-GPU selections, Pod lifecycle/model-readiness/deletion state, and cross-lane rejection before any
-cloud mutation.
+`VF-9-24L` completed the global-shared-MVP audit, every-fifth-frame Ranga recheck, architecture
+reconciliation, and balanced completion roadmap. `VF-9-24K` is now the proposed `CP-01`, `$0`,
+provider-free contract/firewall task, but application implementation is paused until the user
+explicitly authorizes it. It versions the singleton session, immutable GPU pair, global queue,
+isolated volumes, Pod lifecycle, and legacy-dispatch rejection before any cloud mutation.
 Current v1 machine schemas are legacy/provider-free and must fail closed before paid Pod dispatch;
 they are not being silently reinterpreted as the approved architecture.
 
@@ -66,8 +81,8 @@ explicitly authorized provider task after contracts and offline workers are gree
 | Images | Exact ImageForge Mage-Flow INT8 ConvRot profile |
 | Avatar | EchoMimicV3-Flash FP8, short selected spans only |
 | Avatar repair/fallback | `null` |
-| Timing | Local `whisper.cpp base.en` |
-| Render | Direct FFmpeg |
+| Timing | Pinned `whisper.cpp base.en` in Cloud Run Jobs; same path on Mac for development |
+| Render | Direct FFmpeg in Cloud Run Jobs; same path on Mac for development |
 
 AvatarForcing, MuseTalk, SkyReels, earlier Mage BF16, Serverless endpoints, ephemeral model caches,
 and Echo Long Video CFG remain historical evidence only. They authorize no active dispatch.
@@ -79,6 +94,8 @@ and Echo Long Video CFG remain historical evidence only. They authorize no activ
 - Send Echo only scheduler-selected short spans, normally 2–6 seconds; opener maximum 7 seconds.
 - One native Echo clip serves full and split layouts after measured crop acceptance.
 - Deterministic code owns timing/layout. Fully automatic assembly returns the final MP4.
+- Exactly one active video; waiting entries do no CPU/GPU work until atomic promotion.
+- All admitted users have equal shared access; only waiting queue entries may move or be removed.
 - API-only RunPod control; exact create/delete intent and fail-closed ambiguity reconciliation.
 - At most one disposable Pod per lane initially. Delete Pods; retain the two intended volumes.
 - Private inputs, outputs, credentials, and model bytes never enter Git or public images.
@@ -91,4 +108,6 @@ decisions: `15_DECISIONS_AND_OPEN_GATES.md`; architecture: `06_SYSTEM_ARCHITECTU
 `08_MODELS_AND_PROVIDERS.md`; pipeline: `07_PIPELINE_AND_SCHEDULER.md`; RunPod:
 `09_RUNPOD_AND_QUEUE_OPERATIONS.md`; contracts: `10_DATA_AND_API_CONTRACTS.md`; cost:
 `11_COST_SPEED_BUDGET.md`; acceptance: `14_TESTING_AND_ACCEPTANCE.md`; execution:
-`21_IMPLEMENTATION_EXECUTION_PLAN.md`; maintenance: `16_CONTEXT_MAINTENANCE.md`.
+`21_IMPLEMENTATION_EXECUTION_PLAN.md`; completion checkpoints:
+`22_PROJECT_COMPLETION_CHECKPOINTS.md`; copy-ready prompts:
+`templates/CHECKPOINT_CHAT_PROMPTS.md`; maintenance: `16_CONTEXT_MAINTENANCE.md`.

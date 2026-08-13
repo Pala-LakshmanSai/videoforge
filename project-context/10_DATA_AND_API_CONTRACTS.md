@@ -21,32 +21,44 @@ The production lane locks are:
 | `avatar_primary` | Pinned EchoMimicV3-Flash FP8 contract | Dedicated Echo model volume in `EU-RO-1` plus a disposable Echo Pod |
 
 The volumes and Pods are never shared, cross-mounted, cross-adopted, or substituted across lanes.
-One Generate action creates the two Pods concurrently after final GPU-offering revalidation. Normal
-Pod boot is offline with respect to model files: it verifies the exact retained-volume manifest,
-loads the model into the selected GPU, warms it, and only then reports authoritative
-`MODEL_READY`. Missing or invalid model bytes fail closed; ordinary generation never downloads or
-repairs them. Each Pod is deleted after its lane outputs are durable, and its model volume remains.
+When idle, the first accepted Generate action atomically opens one singleton global generation
+session and binds an exact receipt-validated Mage/Echo GPU pair. Later projects join the one shared
+queue and inherit that pair, but only one project is active globally. A waiting entry creates no CPU
+or GPU orchestration work until promotion after the current project becomes terminal. Normal Pod
+boot is offline with respect to model files: it verifies the exact retained-volume manifest, loads
+the model into the selected GPU, warms it, and only then reports authoritative `MODEL_READY`.
+Missing or invalid model bytes fail closed; ordinary generation never downloads or repairs them. A
+waiting entry may justify retaining an already-running lane Pod, but never creating a missing one.
+Each lane deletes independently when neither active work nor permitted warm retention remains; its
+model volume remains.
+
+The vNext relational and API shape below is an architecture contract only. No checked-in machine
+schema currently implements global admission, the singleton generation session, or its queue
+invariants. Existing v1/v2 documents and rows retain their historical/provider-free meaning and may
+not be reinterpreted as production authorization.
 
 ## Core relational records
 
 | Record | Purpose |
 |---|---|
-| `users` | Auth identity |
-| `workspaces` | Team boundary |
-| `memberships` | Invite, role, status |
-| `avatar_profiles` | Workspace named identity, `ACTIVE | ARCHIVED`, active ready version, private thumbnail pointer |
+| `users` | Better Auth identity from email/password or Google |
+| `app_admissions` | Durable binding of one Better Auth user and verified normalized email; returning sign-in never asks for an invite again |
+| `invite_codes` | Unique single-use secure verifier permanently bound to one intended normalized email; never raw invite text |
+| `invite_redemptions` | Atomic code-lock/consume/admission lineage bound to user, verified email, code record, time, and outcome |
+| `workspaces` / `memberships` | Existing v1/provider-free compatibility only; no active MVP tenants or roles |
+| `avatar_profiles` | Global shared named identity, `ACTIVE | ARCHIVED`, active ready version, private thumbnail pointer |
 | `avatar_profile_versions` | Version-scoped source workflow; immutable canonical source payload/hash after `READY` |
 | `avatar_profile_assets` | Private original/runtime/thumbnail assets, checksums, media metadata, retention |
 | `avatar_compatibility_assessments` | Optional exact source + avatar model/execution profile test state/evidence |
 | `avatar_profile_test_attempts` | Optional idempotent RunPod test attempts, outputs, verdict, and one-time cost |
-| `image_styles` | Workspace/system style identity, `ACTIVE | ARCHIVED`, active published version, cover policy/asset |
+| `image_styles` | Global/system style identity, `ACTIVE | ARCHIVED`, active published version, cover policy/asset |
 | `image_style_versions` | Draft workflow state plus immutable root/current profile-artifact pointers; only the open-version pointer may move before `PUBLISHED` |
 | `image_style_profile_artifacts` | Immutable accepted-analysis and manual-derived canonical profile bytes/hashes with root-source and immediate-parent lineage |
 | `image_style_profile_edits` | Authenticated optimistic/idempotent edit provenance, changed pointers, and exact result artifact/revision |
 | `image_style_references` | Private reference assets, order, rights, retention, outlier/confidence |
 | `image_style_analysis_attempts` | Idempotent Runware request, usage/cost, response/error lineage |
 | `image_style_previews` | Optional standardized Mage style-test outputs and acceptance |
-| `projects` | Stable project identity and owner |
+| `projects` | Global shared project identity plus creating actor for audit, not owner-only authorization |
 | `project_revisions` | Immutable production configuration/seed |
 | `project_inputs` | Upload/session records for voiceover and backward-compatible optional script; resolved production fields live only on the revision |
 | `transcripts` | ASR/alignment version and duration |
@@ -63,12 +75,54 @@ repairs them. Each Pod is deleted after its lane outputs are durable, and its mo
 | `model_volumes` | One registered persistent RunPod volume for one exact lane/model contract, fixed to `EU-RO-1`; cross-lane binding forbidden |
 | `model_volume_manifests` | Immutable ordered file/checksum/size/model/runtime manifest plus verification result and activation lineage for one model volume |
 | `gpu_inventory_receipts` | Timestamped raw/normalized compatible Secure Cloud offerings observed from RunPod for one lane and region |
-| `compute_run_plans` | Immutable two-lane start plan binding one fresh receipt and one exact chosen GPU offering per lane before dispatch |
-| `pod_lifecycle_attempts` | Per-lane Pod create/reconcile/readiness/work/delete/absence lineage, timing, price, volume, image, and provider identity |
-| `workflow_instances` | Durable mapping from application workflow/task to local work and exact RunPod Pod attempts |
+| `generation_sessions` | Singleton open global run session binding the exact Mage/Echo receipt/offering pair and close barrier |
+| `queue_entries` | Global ordered project revisions with waiting/active/terminal state and optimistic queue version |
+| `generation_session_lanes` | Per-session active demand, waiting-only warm-retention hint, exact GPU/volume binding, current Pod attempt, and deletion state |
+| `compute_run_plans` | Immutable active-project execution plan referencing the current generation-session pair; waiting rows have none and historical plans keep their old meaning |
+| `pod_lifecycle_attempts` | Per-session-lane Pod create/reconcile/readiness/work/delete/absence lineage, timing, price, volume, image, and provider identity |
+| `cpu_job_attempts` | Cloud Run Job execution lineage for whisper.cpp transcription or FFmpeg render/probe, with R2 manifests, resource profile, timings, and cost |
+| `workflow_instances` | Durable mapping from application workflow/task to CPU jobs and exact RunPod Pod attempts |
+| `actor_audit_events` | Append-only authenticated actor/action/target/version/result record for admission and shared mutations |
 | `outbox` | Transactional external dispatch |
 
-Use UUID/ULID identifiers, UTC timestamps, explicit workspace IDs, and soft archive rather than destructive project deletion. Large JSON/media belongs in R2; searchable state and checksums belong in Postgres.
+Use UUID/ULID identifiers, UTC timestamps, one configured global app scope, and soft archive rather
+than destructive project deletion. Existing machine contracts may retain `workspace_id` for byte
+compatibility, but MVP writes one canonical value and exposes no tenant selector or role boundary.
+Large JSON/media belongs in R2; searchable state and checksums belong in Postgres.
+
+The admission gate runs after Better Auth resolves an authenticated identity and verified email. Each
+high-entropy invite is unique, single-use, permanently bound to one intended normalized email, and
+cannot be retargeted. Email/password signup must complete Better Auth email verification before
+redemption. Google signup must supply the same provider-verified normalized email. In one database
+transaction, trusted code locks the unconsumed invite row, verifies the identity email equals its
+bound email, consumes the invite, creates the durable `app_admissions` binding, and records redemption.
+Mismatch, reuse, or unverified email fails without consuming the invite or admitting the user. Invite
+text is stored only as a secure verifier, compared server-side, and never appears raw in logs,
+analytics, URLs, error payloads, or audit rows. Every later sign-in checks the durable admission; an
+admitted returning user is never shown or asked for an invite again.
+
+At most one `generation_sessions` row may be open. Opening it, accepting the first queue entry,
+binding two unexpired inventory receipts/exact offerings, activating the first entry, materializing
+its executable run/tasks, and reserving provider authority is one transaction. While the session is
+open, new entries carry `generation_session_id` and inherit its immutable pair; client-supplied GPU
+fields are invalid. Exactly one queue entry may be `ACTIVE`. Waiting entries have a total global order
+and optimistic `queue_version`. They are orchestration-inert: no compute run, CPU/GPU task, attempt,
+worker claim, or dispatch outbox exists for them, including ASR, scheduling, prompt compilation,
+image generation, avatar generation, and render. Any admitted user may move or remove a waiting
+entry; trusted code derives the actor, compare-and-swaps the expected version, and appends an audit
+event. Active entries reject move/delete and may change only through the dedicated cancellation
+contract.
+
+Only after the current entry is terminal may one serializable transaction promote the next waiting
+row to `ACTIVE` and materialize its executable run/tasks. A `generation_session_lanes` row separates
+active demand from a waiting-only warm-retention hint. A waiting row may keep an already-running
+exact Pod warm but may never create or recreate an absent Pod. At no active demand and no warm
+retention, the lane deletes its exact Pod and proves absence even if the other lane remains active.
+On promotion, each absent required lane refreshes inventory and revalidates the same exact
+session-locked offering and approved rate before persisting a new create attempt against the same
+volume. Unavailability blocks the active lane; it never substitutes or asks for a new pair. A session
+closes and GPU selection unlocks only when there is no active/waiting entry and both lane Pods are
+proven absent.
 
 `model_volumes` are control-plane records for RunPod persistent storage, not R2 media assets. A
 record binds exactly one lane, model repository/revision/precision, immutable active manifest,
@@ -84,6 +138,26 @@ create, trusted code refreshes/revalidates that exact offering and rate. Disappe
 price increase beyond the approved cap, or compatibility drift blocks dispatch; it never silently
 chooses another GPU.
 
+## Hosted CPU transcription and render boundary
+
+Production word transcription and final FFmpeg render/probe execute on a pinned scale-to-zero Cloud
+Run Job media worker. The control plane invokes an existing job through authenticated Cloud Run REST
+`jobs.run`; it does not expose a public long-running render service. Inputs are immutable R2 object
+pointers/checksums plus a content-addressed job manifest. Outputs return to the expected private R2
+prefix and become accepted only after size, checksum, media/JSON validation, and committed lineage.
+
+`cpu_job_attempts` records job type (`TRANSCRIBE_WORDS | RENDER_FINAL`), idempotency fingerprint,
+Cloud Run job/revision/execution identity, region, CPU/memory/task timeout, input/output manifest
+hashes, execution state, retry lineage, timestamps, logs reference, and reported/settled cost. It
+must never contain raw signed URLs after expiry. The worker has no RunPod credential, model-volume
+mount, or GPU-lane claim. Its execution neither keeps a Mage/Echo Pod alive nor blocks independent
+zero-demand deletion.
+
+Cloud Run region and resource sizes remain benchmark-gated against representative 30-minute audio
+and render fixtures, current quotas, R2 transfer behavior, and measured cost. Local Mac development
+runs the same pinned whisper.cpp/FFmpeg versions and contract entrypoint provider-free, but local
+success is parity evidence only and never production execution evidence.
+
 ## Durable database implementation boundary
 
 `DEC_DB_001` locks the Phase 1 foundation without prematurely coupling domain logic to one query
@@ -94,16 +168,19 @@ suite is not a Neon deployment claim. The Neon runtime driver and production rep
 implementation belong to `VF-1-02`/`VF-1-05` after these contracts are green.
 
 The first migration uses native UUID internal IDs, UTC `timestamptz`, integer frames/milliseconds,
-nonnegative integer micro-USD amounts, explicit workspace scope, additive checked state
+nonnegative integer micro-USD amounts, its historical explicit workspace scope, additive checked state
 vocabularies, foreign keys, partial unique indexes, and soft archive/terminal history. Canonical
 documents remain immutable JSONB or object-storage bytes with contract name/version and distinct
 canonical-document/binary SHA-256 columns; SQL never performs JCS. Migration verification must not
 connect to Neon, require Docker, use a schema-push command, or read a `DATABASE_URL`.
 
-Repository methods are domain operations, not generic unscoped CRUD. They must require workspace
-scope and expose atomic units for revision creation, preset publication, task/attempt/cost/outbox
-reservation, execution claim/reconciliation/cancellation, append-only events, and one accepted
-result. `project-context/tasks/VF-1-01.md` owns the exact implementation and contract-test brief.
+Repository methods are domain operations, not generic unscoped CRUD. Existing v1 methods retain
+their workspace parameter for replay compatibility. Active MVP methods use the one configured global
+app scope and expose atomic units for admission/redemption, revision creation, preset publication,
+singleton-session open/close, queue compare-and-swap, task/attempt/cost/outbox reservation,
+execution claim/reconciliation/cancellation, append-only actor/workflow events, and one accepted
+result. `project-context/tasks/VF-1-01.md` owns the existing foundation, not the unimplemented vNext
+session schema.
 
 ## Project input and revision configuration
 
@@ -112,36 +189,47 @@ for the provider-free/legacy path described by their machine schemas. They must 
 new paid Pod dispatch. vNext preserves their immutable creative bindings and adds exact lane model
 profiles, while keeping transient live-GPU availability out of the creative document.
 
-Before a paid start, trusted code validates a future `start-project-revision/vNext` request carrying
-two independent selections: one fresh inventory receipt plus exact offering ID for `image_media`,
-and one for `avatar_primary`. It resolves them into immutable `compute-run-plan/v1` bytes containing:
+When no generation session is open, trusted code validates a future
+`start-project-revision/vNext` request carrying two selections: one fresh inventory receipt plus
+exact offering ID for `image_media`, and one for `avatar_primary`. In the same transaction it opens
+the singleton session, accepts the first queue entry, and creates immutable session-binding/run-plan
+bytes containing:
 
 - Revision/config identity and approved spend cap.
 - Exact Mage and Echo execution-profile IDs and container digests.
 - Exact lane-specific `model_volume_id`, immutable volume-manifest ID/hash, `EU-RO-1` region, and mount contract.
-- Receipt ID/hash/observed/expiry time, exact chosen offering ID/SKU/VRAM, quoted rate, availability, and compatibility result for each lane.
+- Generation-session ID plus receipt ID/hash/observed/expiry time, exact chosen offering
+  ID/SKU/VRAM, quoted rate, availability, and compatibility result for each lane.
 - Final revalidation receipt/hash/time and rate for each exact choice.
-- Per-lane Pod-create idempotency key, deadline, output prefix, and deletion policy.
+- Per-session-lane Pod-create idempotency key, deadline, output prefix, demand policy, and deletion
+  policy.
 - Compiler/orchestrator versions and a canonical document hash.
 
-The Compute UI may save both selections with the draft, but stale selections never become a run
-plan. Changing an exact GPU offering creates a new compute run plan/attempt, not a new creative
-project revision. Changing a model, model revision, precision, runtime, source Avatar Profile,
+GPU choices are not durable project preferences. They may be submitted only by the first Generate
+that wins the idle-session transaction; stale choices never become a session. While a session is
+open, GPU selectors are hidden/locked and a later Generate must omit GPU fields, create one waiting
+queue entry, and receive only its queue/session receipt. Its executable run plan is created only when
+that row is promoted to active. No offering can change mid-session. A different pair requires the
+queue to drain, both Pods to be proven absent, the prior session to close, and a future idle Generate
+to create a new session. Changing a model, model revision, precision, runtime, source Avatar Profile,
 Image Style, scheduler, prompt contract, or seed still requires the appropriate immutable revision.
 
 The Create/Generate control is one user action but not one giant upload request: the control plane
-creates/resumes a draft project shell, locally decodes/probes/hashes the voiceover, issues a signed
-resumable R2 upload reservation bound to that checksum/metadata, resolves the already-stored Avatar
-Profile and Image Style versions, creates the immutable revision, validates the two exact current GPU
-choices, and creates one compute run plan. The Mage and Echo Pods then start concurrently while the
-voiceover becomes durable. Large audio bytes never pass through the Worker body. During
-Pod/container/model startup, durable upload plus local/provider-free ASR, deterministic scheduling,
-prompt compilation, and padded avatar-span materialization overlap. No inference task dispatches
-until every required R2/local input passes its durable verification barrier. Avatar source upload
-occurs only in the Avatar Hub. If any preflight step fails, the same draft resumes its upload rather
-than changing immutable input identity.
+creates/resumes a draft project shell, decodes/probes/hashes the voiceover, issues a signed resumable
+R2 upload reservation bound to that checksum/metadata, resolves the already-stored Avatar Profile
+and Image Style versions, creates the immutable revision, then either opens the idle session with two
+exact choices or joins the existing queue without choices. Large audio bytes never pass through the
+Worker body. For the one active project, Pod startup may overlap durable upload, Cloud Run Job ASR,
+deterministic scheduling, prompt compilation, and padded avatar-span materialization. No inference
+task dispatches until every required R2 input passes its durable verification barrier. Avatar source
+upload occurs only in the Avatar Hub. If preflight fails, the same draft resumes its upload rather
+than changing immutable input identity. A waiting revision may retain its already-verified input
+registration and upload receipt, but dispatches no ASR, scheduling, prompt, image, avatar, render,
+worker, or provider work until atomic promotion after the prior active project is terminal.
 
-For compatibility, `optional_script` stays nullable. The web shell sends `null` and uses local ASR; other inputs remain strictly validated.
+For compatibility, `optional_script` stays nullable. The web shell sends `null`; production uses the
+pinned Cloud Run Job whisper.cpp path and local development uses its Mac parity path. Other inputs
+remain strictly validated.
 
 ## Timeline plan versus resolved render manifest
 
@@ -189,8 +277,12 @@ Every attempt records:
 - Container image digest.
 - Inference settings and seed.
 - Pinned `execution_profile_id`, exact lane, container digest, and model-volume ID/manifest hash/region/mount; a volume used by the other lane is invalid.
-- Inventory receipt/final-revalidation IDs and hashes, exact chosen RunPod offering ID/GPU SKU/VRAM, Secure Cloud/data-center scope, observed availability, quoted/final hourly rate, and approved rate ceiling.
-- Internal Pod-attempt ID, provider Pod ID, idempotent create fingerprint, create response hash, and ambiguous-ack reconciliation evidence.
+- Generation-session ID, queue-entry ID/version, active-demand/warm-retention snapshot, inventory
+  receipt/final-revalidation IDs and hashes, exact session-chosen RunPod offering ID/GPU SKU/VRAM,
+  Secure Cloud/data-center scope, observed availability, quoted/final hourly rate, and approved rate
+  ceiling.
+- Internal session-lane Pod-attempt ID, provider Pod ID, idempotent create fingerprint, create
+  response hash, and ambiguous-ack reconciliation evidence.
 - Worker execution-claim result and the exact offline-model-files policy it enforced.
 - Requested, Pod-create-acknowledged, volume-attached, container-ready, volume-manifest-verified,
   model-load-started, warm-up-started, authoritative-model-ready, inference-started/finished,
@@ -220,7 +312,9 @@ Every `cost_event` has `owner_type: PROJECT_REVISION | IMAGE_STYLE_VERSION | AVA
 - Immutable project-revision configuration.
 - Timeline plan and resolved render manifest.
 - Prompt-component manifest with the exact submitted bytes/hashes.
-- Attempt index with model/checkpoint/container, retained-volume manifest, exact inventory receipt/GPU offering/rate, Pod lifecycle, readiness timings, and deletion/absence lineage.
+- Attempt index with generation-session/queue identity, model/checkpoint/container, retained-volume
+  manifest, exact session inventory receipt/GPU offering/rate, Pod lifecycle, readiness timings, and
+  deletion/absence lineage.
 - QA manifest and defect/acceptance lineage.
 - Reviewer/approval attestation.
 - Cost-ledger snapshot and reported/settled summary.
@@ -233,7 +327,7 @@ The machine contract is `evidence/production_manifest.schema.json`; the coherent
 ## R2 layout
 
 ```text
-workspace/{workspace_id}/project/{project_id}/revision/{revision_id}/
+app/global/project/{project_id}/revision/{revision_id}/
   inputs/
   transcript/
   timeline/
@@ -244,14 +338,14 @@ workspace/{workspace_id}/project/{project_id}/revision/{revision_id}/
   renders/
   manifests/
 
-workspace/{workspace_id}/image-style/{style_id}/version/{version_id}/
+app/global/image-style/{style_id}/version/{version_id}/
   references/original/
   references/analysis/
   analysis/
   previews/
   manifests/
 
-workspace/{workspace_id}/avatar-profile/{profile_id}/version/{version_id}/
+app/global/avatar-profile/{profile_id}/version/{version_id}/
   source/original/
   source/runtime/
   thumbnails/
@@ -261,6 +355,10 @@ workspace/{workspace_id}/avatar-profile/{profile_id}/version/{version_id}/
 ```
 
 Object filenames are content-addressed or include an immutable attempt ID. Never overwrite an accepted artifact in place.
+
+Existing v1 fixtures/envelopes keep their `workspace/{workspace_id}` bytes for replay. New production
+contracts use the one configured global prefix above; there is no user-selected workspace or
+cross-tenant path in MVP.
 
 RunPod model volumes are deliberately absent from this R2 tree. R2 carries project inputs,
 generated outputs, final MP4s, and manifests; the two `EU-RO-1` persistent volumes carry only their
@@ -274,10 +372,16 @@ The canonical same-origin prefix is `/api`: `/v1/...` shorthand below is request
 Minimum routes:
 
 ```text
+GET    /v1/admission
+POST   /v1/admission/redeem
 POST   /v1/projects
 POST   /v1/projects/{id}/uploads/sign
 POST   /v1/projects/{id}/revisions
 GET    /v1/runpod/gpu-inventory?lane=image_media|avatar_primary
+GET    /v1/generation-session
+GET    /v1/queue
+PATCH  /v1/queue/{queue_entry_id}
+DELETE /v1/queue/{queue_entry_id}
 POST   /v1/projects/{project_id}/revisions/{revision_id}/start
 GET    /v1/projects/{project_id}/revisions/{revision_id}/compute-runs
 GET    /v1/projects/{project_id}/revisions/{revision_id}/compute-runs/{compute_run_id}
@@ -328,15 +432,36 @@ GET    /v1/usage
 POST   /v1/callbacks/worker-progress
 ```
 
-The vNext `start` body carries the exact two receipt/offering selections and approved cap; the server
-returns a compute-run plan identity, never a bare Pod ID. The inventory route is lane-scoped, emits
-only compatible Secure Cloud `EU-RO-1` offerings, identifies observation/expiry times, and never
-manufactures availability from a configured priority list. `model-volumes/{id}/verify` is an
-explicit authenticated administrative operation; ordinary generation cannot prepare, repair, or
-download a volume. One-time volume provisioning/preparation is a separately authorized operations
-workflow, not an implicit side effect of `start`.
+Better Auth owns email/password and Google identity routes. `admission/redeem` accepts an invite only
+for an authenticated, not-yet-admitted identity whose normalized email is verified and exactly equals
+the invite's immutable bound email. Email/password identities must finish email verification; Google
+identities use Google's verified email. The route atomically locks and consumes the unique unused code,
+records redemption, and creates durable global admission, or performs none of them. It never returns
+or logs verifier material. `admission` recognizes that durable binding on every returning sign-in and
+never requests another invite.
 
-Use typed error codes such as `GPU_INVENTORY_STALE`, `GPU_OFFERING_UNAVAILABLE`,
+When idle, vNext `start` carries the exact two receipt/offering selections and approved cap. It
+atomically opens the singleton generation session and activates the first queue entry; the server
+returns session, queue-entry, and compute-run-plan identities, never a bare Pod ID. When a session
+is already open, `start` rejects GPU fields and appends one waiting entry inheriting the session
+pair; that response has no executable compute-run-plan identity. Races serialize in Postgres, so
+only one request can win idle GPU selection. Promotion requires the previous active entry to be
+terminal and atomically creates the promoted entry's run plan/tasks. The inventory route is
+lane-scoped, available for idle-session selection only, emits compatible Secure Cloud `EU-RO-1`
+offerings with observation/expiry times, and never manufactures availability from a priority list.
+
+`queue/{id}` move/delete accepts only a waiting entry and requires `If-Match` plus
+`Idempotency-Key`. Every admitted user has the same authority; the server derives actor identity and
+records before/after order/version. An active entry returns `QUEUE_ENTRY_ACTIVE`; cancellation, if
+allowed by the project contract, uses the dedicated cancel route. Infrastructure routes under
+`/admin` are deployment-operator boundaries, not application-user roles, and are not exposed as an
+MVP role system. `model-volumes/{id}/verify` cannot prepare, repair, or download a volume. One-time
+volume provisioning/preparation remains a separately authorized operations workflow.
+
+Use typed error codes such as `ADMISSION_REQUIRED`, `EMAIL_VERIFICATION_REQUIRED`, `INVITE_INVALID`,
+`INVITE_EMAIL_MISMATCH`, `INVITE_ALREADY_USED`, `INVITE_REDEMPTION_CONFLICT`,
+`GENERATION_SESSION_BUSY`, `GENERATION_SESSION_CHANGED`,
+`QUEUE_VERSION_CONFLICT`, `QUEUE_ENTRY_ACTIVE`, `GPU_SELECTION_LOCKED`, `GPU_INVENTORY_STALE`, `GPU_OFFERING_UNAVAILABLE`,
 `GPU_PRICE_CHANGED`, `GPU_INCOMPATIBLE`, `MODEL_VOLUME_UNAVAILABLE`,
 `MODEL_VOLUME_WRONG_LANE`, `MODEL_VOLUME_WRONG_REGION`, `MODEL_VOLUME_MANIFEST_INVALID`,
 `MODEL_DOWNLOAD_FORBIDDEN`, `POD_CREATE_AMBIGUOUS`, `MODEL_LOAD_FAILED`,
@@ -347,14 +472,16 @@ Use typed error codes such as `GPU_INVENTORY_STALE`, `GPU_OFFERING_UNAVAILABLE`,
 `STYLE_VERSION_CONFLICT`, `STYLE_VERSION_IMMUTABLE`, `STYLE_PROFILE_NO_CHANGES`, and
 `IDEMPOTENCY_CONFLICT`. The UI maps these to plain language.
 
-Every start/cancel/reconcile/regenerate/segment-accept/final-approve mutation requires
-`Idempotency-Key` and `If-Match` (or an equivalent expected revision/candidate token). Start also
-requires an unexpired receipt and final exact-offering revalidation. Cancel/delete is not complete
-until independent provider absence is recorded for every created Pod; the model-volume records
-remain. Final approval derives `reviewer_user_id` from the authenticated server session—never from
-a client-supplied user ID—and atomically verifies the exact current review-candidate version/final
-checksum before creating the production manifest. A project ID alone never implies which revision
-or compute run to mutate.
+Every start/queue-move/queue-delete/cancel/reconcile/regenerate/segment-accept/final-approve mutation
+requires `Idempotency-Key` and `If-Match` (or an equivalent expected version/candidate token). An
+idle start also requires two unexpired receipts and final exact-offering revalidation; a queued
+start must inherit the open session pair and remain orchestration-inert. Session close is not complete
+until its queue is empty and independent provider absence is recorded for both lanes; model-volume
+records remain. Final
+approval derives `reviewer_user_id` from the authenticated server session—never from a
+client-supplied user ID—and atomically verifies the exact current review-candidate version/final
+checksum before creating the production manifest. A project ID alone never implies which revision,
+queue entry, session, or compute run to mutate.
 
 ## Worker job envelope
 
@@ -394,12 +521,13 @@ isolated-model Pod.
 }
 ```
 
-The future Pod envelope must add an immutable `compute_run_plan` pointer/hash and a
-`pod_resource_binding` containing lane, internal Pod-attempt ID, exact execution profile/container,
-chosen offering receipt/revalidation identity, model-volume ID, provider volume ID, manifest
-ID/hash, `EU-RO-1`, and exact mount. The image worker accepts only the Mage binding; the avatar
-worker accepts only the Echo binding. Cross-lane identity, region, mount, manifest, or model drift is
-a terminal pre-load error.
+The future Pod envelope must add immutable generation-session, queue-entry, and `compute_run_plan`
+pointers/hashes plus a `pod_resource_binding` containing lane, internal session-lane Pod-attempt ID,
+exact execution profile/container, session-chosen offering receipt/revalidation identity,
+model-volume ID, provider volume ID, manifest ID/hash, `EU-RO-1`, and exact mount. The image worker
+accepts only the Mage binding; the avatar worker accepts only the Echo binding. A project cannot
+override the session GPU. Cross-session, cross-lane, region, mount, manifest, or model drift is a
+terminal pre-load error.
 
 The worker validates contract/profile versions, the pinned Avatar Profile/hash/runtime-source
 checksum, URLs, media properties, allowed output prefix, and the single-use execution claim before
@@ -432,21 +560,33 @@ The valid/invalid golden fixtures prove that dispatch is content-addressed and t
 outbox payload cannot cross the boundary. Cross-row reference integrity and strictly increasing
 event sequences remain transactional database invariants in addition to document validation.
 
-That v1 vocabulary is not sufficient for paid Pod dispatch. vNext adds monotonic per-lane events
-for `GPU_SELECTION_REVALIDATED`, `POD_CREATE_REQUESTED`, `POD_CREATE_ACKNOWLEDGED`,
+That v1 vocabulary is not sufficient for paid Pod dispatch. vNext adds global/session events for
+`ADMISSION_GRANTED`, `QUEUE_ENTRY_ADDED`, `QUEUE_ENTRY_MOVED`, `QUEUE_ENTRY_REMOVED`,
+`QUEUE_ENTRY_ACTIVATED`, `GENERATION_SESSION_OPENED`, `GENERATION_SESSION_CLOSING`, and
+`GENERATION_SESSION_CLOSED`, plus monotonic per-session-lane events for
+`GPU_SELECTION_REVALIDATED`, `LANE_DEMAND_POSITIVE`, `LANE_DEMAND_ZERO`, `LANE_WARM_RETAINED`,
+`POD_CREATE_REQUESTED`, `POD_CREATE_ACKNOWLEDGED`,
 `POD_CREATE_RECONCILING`, `MODEL_VOLUME_ATTACHED`, `CONTAINER_READY`, `MODEL_VOLUME_VERIFIED`,
 `MODEL_LOAD_STARTED`, `WARMUP_STARTED`, `MODEL_READY`, `INFERENCE_STARTED`,
 `INFERENCE_FINISHED`, `OUTPUT_UPLOAD_STARTED`, `OUTPUT_DURABLE`, `POD_DELETE_REQUESTED`,
 `POD_DELETE_ACKNOWLEDGED`, `POD_DELETE_RECONCILING`, and `POD_ABSENCE_VERIFIED`, plus explicit
-failure/cancel events. Every event carries compute-run, lane, Pod-attempt, timestamp, and causal
+failure/cancel events. Every mutation event carries the authenticated actor where applicable,
+generation session, queue version/entry, compute run, lane, Pod attempt, timestamp, and causal
 predecessor identity. Volume retention is a separate state and never inferred from Pod absence.
 
-One Generate command creates both lane start intents in one durable transaction, then dispatches
-them concurrently. ASR/scheduling/prompt/span-audio events may progress while either Pod boots.
-Rendering begins after all required accepted assets are durable. Each Pod becomes eligible for
-deletion as soon as its own outputs are durable; it does not wait for the other lane or final local
-render. The project becomes downloadable only after the local/R2 final MP4 and provenance are
-durable and verified, while both paid Pods must independently converge to absence.
+The first idle Generate opens one session, binds both GPU choices, and creates the active entry in one
+durable transaction, then may dispatch both lane starts concurrently. A Generate during that open
+session adds an orchestration-inert waiting row and inherits the pair. Only the active project's
+Cloud Run Job ASR/scheduling/prompt/span-audio events may progress while either Pod boots. Rendering
+begins after all its required accepted assets are durable. After that project finishes a lane, a
+waiting row may keep the already-running exact Pod warm, without any task preparation or claim. With
+no waiting row, zero active lane demand deletes the Pod immediately without waiting for the other
+lane or final render. Appending or moving a waiting row never recreates an absent Pod. Only after the
+active project becomes terminal does one transaction activate the next row and create its run/tasks;
+an absent required lane then refreshes inventory and revalidates the same session offering before a
+new create attempt. Unavailability blocks with no substitution. The project becomes downloadable
+only after the R2 final MP4/provenance are durable and verified. GPU selection unlocks only after the
+queue is empty, both paid Pods are absent, and session close commits.
 
 Do not store a fake `63%` that cannot be explained. Calculate stage progress from completed/total
 units, and overall progress from explicit weighted stages whose weights are versioned. Pod running
@@ -455,7 +595,14 @@ durable until its content-addressed destination is verified.
 
 ## Revision rules
 
-- Avatar Profile version/binding, scheduler/prompt/model settings, generation mode, per-lane model execution profile, selected Image Style version/hash, extra keyword text, or its apply toggle changes create a new project revision. Exact live GPU offering selections are operational bindings: a changed/stale/unavailable selection creates a new `compute_run_plan`/attempt under the same otherwise-immutable creative revision. It never silently changes the model execution profile. `project_revisions` is the sole persisted authority for resolved creative/model fields; `project_inputs` does not duplicate them.
+- Avatar Profile version/binding, scheduler/prompt/model settings, generation mode, per-lane model
+  execution profile, selected Image Style version/hash, extra keyword text, or its apply toggle
+  changes create a new project revision. Exact live GPU offerings are generation-session bindings,
+  not project preferences. An idle first entry selects them; all later entries inherit them. A stale
+  or unavailable session offering blocks/reconciles that lane and never silently changes the model
+  execution profile. A different pair requires a new session after full drain/absence. Project
+  revisions remain sole persisted authority for resolved creative/model fields; `project_inputs`
+  does not duplicate them.
 - Every new revision requires one accessible `READY` `avatar_profile_version_id`. The server snapshots its parent/version/hash/runtime source before dispatch; archive or v2 activation after that cannot change the revision.
 - Every new revision requires one published accessible `image_style_version_id`; the built-in default satisfies this automatically.
 - Published Image Style versions are immutable. Reference/profile edits create a new version; old projects remain reproducible even if the style is archived.
@@ -463,11 +610,16 @@ durable until its content-addressed destination is verified.
 - A single-scene regenerate from `GENERATING`, review, or `READY_FOR_REVIEW` creates a new attempt, increments `review_candidate_version`, updates only that candidate's selected asset binding, and rebuilds the resolved render manifest/final preview. Prior candidates/assets remain addressable for lineage.
 - `approve` uses optimistic concurrency against the exact review-candidate version and final checksum. Once `APPROVED`, its production manifest and selected candidate are immutable; any later regenerate, timeline edit, prompt/model/profile/style/keyword change creates a new project revision.
 - Editing a timeline invalidates only downstream affected tasks and is shown before confirmation.
-- Concurrent mutations require an edit lease or optimistic version check.
+- Concurrent mutations require an edit lease or optimistic version check. Shared queue mutations
+  additionally compare-and-swap the global queue version and record the authenticated actor.
 
 ## Avatar Hub contract summary
 
-`avatar_profiles` uses `ACTIVE | ARCHIVED` plus `active_version_id`; active names are case-insensitively unique within one workspace. `avatar_profile_versions` uses `DRAFT | VALIDATING | NEEDS_REVIEW | FAILED | READY | ABANDONED`. `FAILED` is retryable, `ABANDONED` is terminal, and `READY` payloads are immutable. A ready v1 remains selectable while a v2 draft is prepared.
+`avatar_profiles` uses `ACTIVE | ARCHIVED` plus `active_version_id`; active names are
+case-insensitively unique in the one global catalog. `avatar_profile_versions` uses
+`DRAFT | VALIDATING | NEEDS_REVIEW | FAILED | READY | ABANDONED`. `FAILED` is retryable,
+`ABANDONED` is terminal, and `READY` payloads are immutable. A ready v1 remains selectable while a
+v2 draft is prepared.
 
 Database constraints:
 
@@ -523,7 +675,7 @@ published bytes requires a new `DRAFT` version and cannot reinterpret an existin
 VF-7-08 implements this boundary at `326dc38`. Shared versioned request/response/problem DTOs and
 runtime validators live in `@videoforge/contracts/image-style-edit`. `If-Match` is one exact quoted
 `vf-style-r{revision}-sha256-{artifact_digest}` tag; wildcards or lists are invalid. The Hono route
-authenticates before reading JSON, derives workspace and actor from the session, rejects partial or
+authenticates before reading JSON, derives the canonical global scope and actor from the session, rejects partial or
 unknown fields, and composes only `PGliteImageStyleDerivedEditPersistence`. Success returns the
 root, immediate parent, current artifact/hash, changed pointers, invalidated review, prior/result
 revision, timestamp, replay truth, and a new exact ETag.
@@ -533,8 +685,10 @@ reference batches, server registration, draft snapshots, deterministic analysis,
 preview, and archive. The browser emits bounded metadata-free sRGB WebP derivatives and exact
 original/normalized checksums; the server independently validates base64, magic, dimensions,
 checksums, decompression limits, order, disclosure, rights, retention, and normalized WebP chunk
-structure. Fixture lifecycle state is authenticated and workspace-scoped with optimistic
-concurrency/idempotency. Its retained bytes are session-scoped test data, not production R2.
+structure. Fixture lifecycle state is authenticated and bound to the one canonical app scope with
+optimistic concurrency/idempotency. Its retained bytes are session-scoped test data, not production
+R2. Existing v1 fixture fields named `workspace_id` remain byte-compatible and are not evidence of
+MVP multi-tenancy.
 
 Detailed fields and prompt provenance live in `18_IMAGE_STYLES_HUB.md`; stored-payload validation uses `evidence/image_style_profile.schema.json`, while the untrusted provider response uses `evidence/image_style_analyzer_output.schema.json`. Register both canonical schema `$id` values before resolving/inlining provider output schema references, and run the documented nonblank/required-list semantic validator before review/publication.
 
@@ -546,10 +700,16 @@ Initial policy proposal:
 - Avatar originals/runtime assets/thumbnails: retained while a ready version is active or referenced. Archive does not delete them; explicit erasure is blocked during queued/running use and marks historical revisions non-regenerable after a clear warning.
 - Style analysis derivatives: delete from VideoForge/R2 after analysis/publication according to the selected policy; originals retained only by explicit choice while a style remains active. Provider-side retention/deletion follows the separately disclosed Runware process.
 - Mage and Echo model volumes: retained independently until an explicit separately authorized admin deletion; ordinary project completion/cancel/Pod deletion never deletes either volume.
-- Disposable Pods: delete as soon as that lane's outputs are durable or cancellation cleanup begins, then independently prove provider absence. Pod-local intermediates are not durable retention.
+- Disposable Pods: active work may create a lane Pod. A waiting row may retain an already-running
+  exact Pod but never create or recreate one. Delete immediately when active lane work ends and no
+  waiting row remains, or during cancellation cleanup when no warm retention applies; independently
+  prove absence even if the other lane remains active. Pod-local intermediates are not durable
+  retention.
 - Disposable non-Pod worker intermediates: 3–7 days.
 - Accepted scene assets: through project approval plus configurable short retention.
 - Final render and manifest: 30 days by default, then archive/delete choice.
 - Audit/cost rows: retained longer because they are small.
 
-R2's free 10 GB will not retain many 30-minute videos indefinitely. Show retention clearly and charge storage overage rather than silently deleting a final.
+R2's free 10 GB will not retain many 30-minute videos indefinitely. Show retention clearly and
+charge storage overage rather than silently deleting a final. All admitted users see the same shared
+results in MVP; creating actor is audit metadata, not a private-result boundary.

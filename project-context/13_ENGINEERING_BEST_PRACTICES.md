@@ -22,8 +22,9 @@ Persist:
 - Exact lane/model profile, model repo revision, every required model-file path/checksum, and the
   canonical persistent-volume manifest hash.
 - Container digest and CUDA/PyTorch/FFmpeg versions.
-- Inference settings, seed, live-inventory receipt, user-selected exact GPU SKU/ID/rate, `EU-RO-1`
-  volume binding, actual Pod identity, and actual GPU observed after create.
+- Inference settings, seed, generation-session ID, queue-entry/version, session-selected live-
+  inventory receipt and exact GPU SKU/ID/rate for each lane, `EU-RO-1` volume binding, actual Pod
+  identity, and actual GPU observed after create.
 - Input/output checksums and parent lineage.
 
 An accepted render must be explainable and reproducible from its manifest.
@@ -53,6 +54,10 @@ An accepted render must be explainable and reproducible from its manifest.
 
 - Server state is authoritative.
 - Disable duplicate action immediately.
+- When no global generation session is open, show fresh Mage/Echo GPU selection. Once the first
+  Generate wins the session lock, hide/lock selectors for everyone and show only Add to queue.
+- Show one shared queue and one active project. Waiting move/delete conflicts surface their current
+  optimistic version; active entries never masquerade as deletable or movable.
 - Distinguish inventory refreshing, Pod creating, volume attached, container ready, volume manifest
   verified, model loading, warming up, model ready, generating, uploading, durable, Pod deleting,
   Pod absent, retrying, blocked, cancelling, and complete.
@@ -62,17 +67,22 @@ An accepted render must be explainable and reproducible from its manifest.
 
 ## Bounded concurrency and cost
 
-- At most one paid disposable Pod per active model lane is authorized for an ordinary Generate.
-  This is a Mage Pod and an Echo Pod, not two replicas of one lane.
-- Start the two independently selected Pods concurrently only after the exact task reservation and
-  final live-inventory/rate revalidation succeeds.
-- Enforce workspace/project/daily caps; estimate before creation and reconcile measured runtime.
+- At most one singleton global generation session, one active project, and one paid disposable Pod
+  per model lane are authorized. This is a Mage Pod and an Echo Pod, not two replicas of one lane.
+- Only the first accepted idle Generate selects the exact Mage/Echo pair. Open the session, bind
+  both receipt-validated choices, reserve the first task, and append its queue entry atomically.
+  All later waiting entries inherit that pair; do not build per-user pairs, switching, or parallel
+  project dispatch.
+- Enforce global/project/daily caps; estimate before creation and reconcile measured runtime.
 - Judge GPUs by model-ready time and cost per accepted output, not hourly rate alone.
-- Delete each exact Pod immediately after its accepted outputs are durable and no bounded retry
-  needs the resident model. Independently prove absence. Retain and keep paying for the two intended
-  model volumes; routine cleanup must never delete them.
-- Fairly chunk work across users. Never keep a Pod alive merely because another lane or the final
-  local render is unfinished.
+- A waiting row may keep an already-running exact Pod warm but cannot create/recreate a Pod or claim
+  work. With no waiter when active lane work finishes, delete and prove absence immediately, even if
+  the other lane or final Cloud Run render is unfinished. Only after the current video is terminal
+  and the next row is promoted may an absent lane recreate on the same session GPU after
+  revalidation; never substitute. Retain both intended model volumes.
+- Close the session and unlock GPU selection only after no active/waiting entry remains and both
+  Pods are proven absent. Do not add fairness schedulers, user priorities, or speculative idle
+  timers to MVP.
 
 ## Stable adapters, simple implementations
 
@@ -103,9 +113,17 @@ Only one production implementation per interface is needed now. The boundary exi
 - Secrets are server-side environment/bindings only.
 - Use per-environment credentials and rotate them.
 - Short-lived signed URLs, scoped callback tokens, HMAC replay protection.
-- Invite-only Google login plus server-side workspace checks.
+- Support Better Auth email/password and Google identity. A new identity must redeem an invite once
+  during signup; persist the admission so later sign-ins never ask again. Store only secure invite
+  verifiers, redeem atomically, rate-limit attempts, and never log raw codes. Keep reusable-versus-
+  single-use code policy and email-verification policy explicitly unresolved until chosen.
+- Every admitted user has equal rights to the one global catalog, queue, and results. Do not create
+  MVP roles, tenant routing, owner-only queue controls, or private per-user results. Derive and audit
+  actor identity for every mutation.
 - Avoid logging voiceover URLs, tokens, or raw provider authorization headers.
-- Avoid logging Avatar Profile pixels, signed source/thumbnail URLs, EXIF/GPS, likeness metadata, or cross-workspace hashes. Require workspace authorization plus image-use and likeness-animation attestations; never place private avatar assets in public fixtures/builds/analytics.
+- Avoid logging Avatar Profile pixels, signed source/thumbnail URLs, EXIF/GPS, likeness metadata, or
+  private asset hashes. Require global admission plus image-use and likeness-animation attestations;
+  never place private avatar assets in public fixtures/builds/analytics.
 - Avoid logging style-reference bytes, EXIF/GPS, signed URLs, or full analyzer payloads; send EXIF-stripped normalized derivatives only after explicit Runware non-ZDR/non-confidential disclosure consent.
 - Distinguish deletion of VideoForge/R2 copies from provider-side retention/deletion. Never imply that one button erases data outside VideoForge unless the provider confirms it.
 - Keep research-only third-party frames out of public builds and final assets.
@@ -129,7 +147,22 @@ Only one production implementation per interface is needed now. The boundary exi
 - Upload/checkpoint each item so chunk retry resumes missing work.
 - Never stack Mage and Echo in one container, Pod, volume, cache, or process.
 - A successful worker makes outputs durable before cleanup authorizes deletion of its Pod. Pod
-  deletion and post-delete absence are journaled separately from retained-volume health.
+  deletion eligibility then depends on remaining generation-session lane demand. Pod deletion and
+  post-delete absence are journaled separately from retained-volume health.
+
+## Hosted CPU worker design
+
+- Run production whisper.cpp transcription and deterministic FFmpeg render/probe as authenticated
+  Cloud Run Jobs invoked through REST. Use private content-addressed R2 inputs/outputs; no large
+  media passes through the control-plane request body.
+- Pin one media-worker container toolchain and contract. Mac development executes the same
+  versions/entrypoint provider-free for parity; it is not production evidence.
+- Record Cloud Run job/revision/execution identity, region, CPU, memory, timeout, input/output
+  manifests, timings, retries, and cost. Accept output only after checksum and media/JSON validation.
+- Benchmark region and sizing before production promotion. Respect current job quotas and pricing;
+  never assume the free tier or one region's capacity.
+- Give the CPU worker no RunPod credential, model-volume access, or GPU task claim. Its execution
+  never creates or retains a Mage/Echo Pod.
 
 ## Database practice
 
@@ -137,8 +170,11 @@ Only one production implementation per interface is needed now. The boundary exi
 - Foreign keys and unique idempotency constraints.
 - Transactions for state transitions/outbox/budget.
 - Append-only events/cost ledger.
-- Optimistic version or lease for concurrent project edits.
-- Workspace-scope every style/reference/version and Avatar Profile/version/source/thumbnail/compatibility query; never expose cross-workspace hash matches while deduplicating.
+- Optimistic version or lease for concurrent project edits. Global waiting-queue move/delete uses
+  one compare-and-swap queue version and append-only actor audit.
+- Bind style/reference/version, Avatar Profile/version/source/thumbnail/compatibility, project, and
+  result queries to the one configured global app scope. Existing `workspace_id` fields remain only
+  for v1 byte/replay compatibility, not MVP tenant routing.
 - Store timestamps in UTC. Canonical output timeline boundaries are integer `start_frame/end_frame_exclusive`; source-audio/word boundaries are integer milliseconds or samples, never float seconds.
 
 ## Media determinism
@@ -174,8 +210,15 @@ Only one production implementation per interface is needed now. The boundary exi
 
 ## Observability
 
-Minimum structured fields: workspace, owner type/ID, optional project/revision or Avatar Profile/version/assessment, task, attempt, lane, exact model profile, container digest, volume/manifest identity, inventory receipt, requested/actual GPU, Pod identity, stage, event sequence, elapsed, reserved/measured cost, durable-result receipt, delete/absence evidence, and error code. Logs are useful only when they can reconstruct a failure without exposing secrets.
+Minimum structured fields: global app scope, authenticated actor, generation session, queue
+entry/version, optional project/revision or Avatar Profile/version/assessment, task, attempt, lane,
+lane-demand snapshot, exact model profile, container digest, volume/manifest identity, inventory
+receipt, session-requested/actual GPU, Pod identity, Cloud Run execution identity where applicable,
+stage, event sequence, elapsed, reserved/measured cost, durable-result receipt, delete/absence
+evidence, and error code. Logs are useful only when they can reconstruct a failure without exposing
+secrets.
 
-Alert on stuck leases, ambiguous create/delete reconciliation, cross-volume or manifest mismatch,
-repeated model OOM, rising rejection rate, budget blocks, provider balance, and paid Pods that remain
-after their lane is durable. A retained intended model volume is expected, not a leaked Pod.
+Alert on stuck queue/session leases, optimistic-version conflict spikes, ambiguous create/delete
+reconciliation, cross-volume or manifest mismatch, repeated model OOM, rising rejection rate,
+budget blocks, provider balance, and paid Pods that remain after their session-lane demand reaches
+zero. A retained intended model volume is expected, not a leaked Pod.

@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0",
+  "audit_date": "2026-08-13",
+  "purpose": "Independent corroboration of the locked Ranga composition grammar",
+  "method": {
+    "source_native_fps": 30,
+    "frame_step": 5,
+    "effective_samples_per_second": 6,
+    "classifier": "normalized grayscale correlation against directly verified full-avatar and split-left presenter references",
+    "cleanup": "two-sample gap closing and isolated-run removal",
+    "review": "Every sample was classified; all 151 classified avatar-interval midpoint cards were manually reviewed in contact sheets",
+    "precision_note": "Classifier estimates, not publisher analytics. The earlier independent 5-fps audit remains the product baseline; use the narrow cross-audit range rather than false frame-perfect precision."
+  },
+  "sources": [
+    {
+      "video_id": "6jZ7ib2Edes",
+      "url": "https://www.youtube.com/watch?v=6jZ7ib2Edes",
+      "duration_seconds": 1132.294,
+      "sample_count": 6794,
+      "avatar_percent": 22.0047,
+      "full_avatar_percent": 11.0686,
+      "split_avatar_percent": 10.9361,
+      "avatar_appearances": 66,
+      "mean_avatar_clip_seconds": 3.775258,
+      "median_non_avatar_gap_seconds": 11.167,
+      "alternating_avatar_transitions": 65,
+      "avatar_transitions": 65
+    },
+    {
+      "video_id": "cVotLLx5bNs",
+      "url": "https://www.youtube.com/watch?v=cVotLLx5bNs",
+      "duration_seconds": 1481.814,
+      "sample_count": 8891,
+      "avatar_percent": 21.3475,
+      "full_avatar_percent": 10.2801,
+      "split_avatar_percent": 11.0674,
+      "avatar_appearances": 85,
+      "mean_avatar_clip_seconds": 3.721576,
+      "median_non_avatar_gap_seconds": 11.25,
+      "alternating_avatar_transitions": 83,
+      "avatar_transitions": 84
+    }
+  ],
+  "combined": {
+    "sample_count": 15685,
+    "avatar_percent": 21.6322,
+    "full_avatar_percent": 10.6216,
+    "split_avatar_percent": 11.0105,
+    "avatar_appearances": 151,
+    "mean_avatar_clip_seconds": 3.74504,
+    "median_avatar_clip_seconds": 3.667
+  },
+  "comparison_with_2026_08_08_audit": {
+    "avatar_percent_range": [21.6322, 21.76],
+    "full_avatar_percent_range": [10.6216, 10.81],
+    "split_avatar_percent_range": [10.99, 11.0105],
+    "avatar_appearance_range": [151, 152],
+    "mean_avatar_clip_seconds_range": [3.742, 3.74504],
+    "conclusion": "No scheduler change: target 21-22 percent total avatar, approximately equal full/split shares, normal 2-6 second appearances, seven-second opener maximum, and hard cuts."
+  },
+  "retention": {
+    "full_reference_videos_committed": false,
+    "new_reference_frames_committed": false,
+    "derived_contact_sheets_committed": false,
+    "reason": "Third-party research media is temporary; only compact measurements are retained."
+  }
+}
