@@ -3,19 +3,21 @@ import { spawnSync } from "node:child_process";
 import { resolveUv } from "./uv-tool.mjs";
 
 const suites = [
-  ...["image-media", "avatar-primary", "avatar-repair", "avatar-quality"].map((worker) => ({
-    label: worker,
-    args: [
-      "python",
-      "-m",
-      "unittest",
-      "discover",
-      "-s",
-      `workers/${worker}/tests`,
-      "-p",
-      "test_*.py",
-    ],
-  })),
+  ...["image-media", "media-local", "avatar-primary", "avatar-repair", "avatar-quality"].map(
+    (worker) => ({
+      label: worker,
+      args: [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        `workers/${worker}/tests`,
+        "-p",
+        "test_*.py",
+      ],
+    }),
+  ),
   {
     label: "avatar-fixture",
     args: ["pytest", "-q", "workers/avatar-fixture/tests"],

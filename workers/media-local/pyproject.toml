@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "videoforge-media-local-worker"
+version = "0.0.0"
+description = "Shared provider-free CPU media entrypoint for Mac and future Cloud Run Jobs"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "videoforge-contracts",
+  "videoforge-image-media-worker",
+]
+
+[tool.uv.sources]
+videoforge-contracts = { workspace = true }
+videoforge-image-media-worker = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/videoforge_media_local"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100

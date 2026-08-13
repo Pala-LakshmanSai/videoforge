@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 TIMESTAMP_TOLERANCE_MS = 250
+CHUNK_TRAILING_TOLERANCE_MS = 2000
 PHRASE_PAUSE_BOUNDARY_MS = 600
 MAX_WORDS_PER_PHRASE = 12
 MAX_PHRASE_DURATION_MS = 4500
@@ -69,7 +70,10 @@ def _words_from_segment(segment: dict[str, Any], segment_index: int) -> list[_Wo
 
 
 def _canonical_words(
-    transcription: list[object], source_duration_ms: int
+    transcription: list[object],
+    source_duration_ms: int,
+    *,
+    allow_trailing_overhang: bool = False,
 ) -> list[dict[str, object]]:
     candidates: list[_WordCandidate] = []
     for segment_index, segment in enumerate(transcription):
@@ -81,16 +85,27 @@ def _canonical_words(
 
     words: list[dict[str, object]] = []
     previous_end = 0
+    previous_zero_duration_repaired = False
     for index, candidate in enumerate(candidates):
         start_ms = candidate.start_ms
         end_ms = candidate.end_ms
-        if start_ms < 0 or end_ms <= start_ms:
+        if start_ms < 0 or end_ms < start_ms:
             raise WhisperOutputError(f"word {index} has invalid timestamps")
         if index > 0 and start_ms < previous_end:
-            raise WhisperOutputError(f"word {index} overlaps or moves backward")
+            if previous_zero_duration_repaired and previous_end - start_ms <= 10:
+                start_ms = previous_end
+            else:
+                raise WhisperOutputError(f"word {index} overlaps or moves backward")
+        if start_ms >= source_duration_ms and allow_trailing_overhang:
+            if start_ms <= source_duration_ms + CHUNK_TRAILING_TOLERANCE_MS:
+                break
+            raise WhisperOutputError(f"word {index} starts too far after the chunk duration")
         if start_ms >= source_duration_ms:
             raise WhisperOutputError(f"word {index} starts after the source duration")
-        if end_ms > source_duration_ms + TIMESTAMP_TOLERANCE_MS:
+        repaired_zero_duration = end_ms == start_ms
+        if repaired_zero_duration:
+            end_ms = min(source_duration_ms, start_ms + 10)
+        if not allow_trailing_overhang and end_ms > source_duration_ms + TIMESTAMP_TOLERANCE_MS:
             raise WhisperOutputError(f"word {index} exceeds the source duration tolerance")
         end_ms = min(end_ms, source_duration_ms)
         if end_ms <= start_ms:
@@ -106,6 +121,7 @@ def _canonical_words(
             }
         )
         previous_end = end_ms
+        previous_zero_duration_repaired = repaired_zero_duration
     return words
 
 
@@ -184,6 +200,24 @@ def parse_whisper_json(
     tool_version: str,
     model_sha256: str,
 ) -> dict[str, object]:
+    words = parse_whisper_words(raw_output_path, source_duration_ms=source_duration_ms)
+    return build_transcript_document(
+        words,
+        project_revision_id=project_revision_id,
+        source_asset_id=source_asset_id,
+        source_sha256=source_sha256,
+        source_duration_ms=source_duration_ms,
+        tool_version=tool_version,
+        model_sha256=model_sha256,
+    )
+
+
+def parse_whisper_words(
+    raw_output_path: Path,
+    *,
+    source_duration_ms: int,
+    allow_trailing_overhang: bool = False,
+) -> list[dict[str, object]]:
     try:
         raw_document = json.loads(raw_output_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
@@ -197,8 +231,49 @@ def parse_whisper_json(
     if not isinstance(transcription, list):
         raise WhisperOutputError("whisper JSON output has no transcription array")
 
-    words = _canonical_words(transcription, source_duration_ms)
-    phrases = _canonical_phrases(words, source_duration_ms)
+    return _canonical_words(
+        transcription,
+        source_duration_ms,
+        allow_trailing_overhang=allow_trailing_overhang,
+    )
+
+
+def build_transcript_document(
+    words: list[dict[str, object]],
+    *,
+    project_revision_id: str,
+    source_asset_id: str,
+    source_sha256: str,
+    source_duration_ms: int,
+    tool_version: str,
+    model_sha256: str,
+) -> dict[str, object]:
+    if not words:
+        raise WhisperOutputError("transcript contains no words")
+    canonical_words: list[dict[str, object]] = []
+    previous_end = 0
+    for index, word in enumerate(words):
+        start_ms = _integer(word.get("start_ms"), f"word {index}.start_ms")
+        end_ms = _integer(word.get("end_ms"), f"word {index}.end_ms")
+        text = _normalize_text(word.get("text"), f"word {index}.text")
+        if any(character.isspace() for character in text):
+            raise WhisperOutputError(f"word {index} text contains whitespace")
+        if start_ms < 0 or end_ms <= start_ms or start_ms < previous_end:
+            raise WhisperOutputError(f"word {index} has non-monotonic timestamps")
+        if start_ms >= source_duration_ms or end_ms > source_duration_ms:
+            raise WhisperOutputError(f"word {index} exceeds the source duration")
+        canonical_words.append(
+            {
+                "index": index,
+                "text": text,
+                "start_ms": start_ms,
+                "end_ms": end_ms,
+                "confidence": None,
+            }
+        )
+        previous_end = end_ms
+
+    phrases = _canonical_phrases(canonical_words, source_duration_ms)
     return {
         "schema_version": "transcript-timing/v1",
         "project_revision_id": project_revision_id,
@@ -214,7 +289,7 @@ def parse_whisper_json(
             "model_sha256": model_sha256,
             "language": "en",
         },
-        "text": " ".join(str(word["text"]) for word in words),
-        "words": words,
+        "text": " ".join(str(word["text"]) for word in canonical_words),
+        "words": canonical_words,
         "phrases": phrases,
     }

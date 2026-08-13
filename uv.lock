@@ -10,6 +10,7 @@ members = [
     "videoforge-avatar-repair-worker",
     "videoforge-contracts",
     "videoforge-image-media-worker",
+    "videoforge-media-local-worker",
     "videoforge-python-workspace",
 ]
 
@@ -295,6 +296,21 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "videoforge-contracts", editable = "packages/contracts" }]
+
+[[package]]
+name = "videoforge-media-local-worker"
+version = "0.0.0"
+source = { editable = "workers/media-local" }
+dependencies = [
+    { name = "videoforge-contracts" },
+    { name = "videoforge-image-media-worker" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "videoforge-contracts", editable = "packages/contracts" },
+    { name = "videoforge-image-media-worker", editable = "workers/image-media" },
+]
 
 [[package]]
 name = "videoforge-python-workspace"

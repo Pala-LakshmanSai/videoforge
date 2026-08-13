@@ -22,6 +22,7 @@ members = [
   "workers/avatar-quality",
   "workers/avatar-repair",
   "workers/image-media",
+  "workers/media-local",
 ]
 
 [tool.pytest.ini_options]

@@ -607,9 +607,11 @@ async function runPythonBridge(
   if (signal.aborted) throw new Error(`Local ${command} job was cancelled before launch.`);
   signal.addEventListener("abort", markCancelled, { once: true });
   try {
+    const moduleName =
+      command === "transcribe" ? "videoforge_media_local.cli" : "videoforge_image_media.local_cli";
     const capture = await runProcess(
       python,
-      ["-m", "videoforge_image_media.local_cli", command, ...arguments_],
+      ["-m", moduleName, command, ...arguments_],
       `local ${command} job`,
     );
     await markerWrite;

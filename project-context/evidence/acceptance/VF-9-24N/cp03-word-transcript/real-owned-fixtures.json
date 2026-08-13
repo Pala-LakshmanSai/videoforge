@@ -1,0 +1,405 @@
+{
+  "schemaVersion": "videoforge.cp03-real-transcript-acceptance/v1",
+  "artifactRoot": "/var/folders/qj/x956wfqn4b1bsn5_6066khx40000gn/T/videoforge-cp03-real-8zxZbU",
+  "providerCalls": 0,
+  "externalSpendUsd": 0,
+  "model": {
+    "name": "base.en",
+    "sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+    "changedOrDownloaded": false
+  },
+  "tools": {
+    "whisperCpp": "1.8.4",
+    "ffmpeg": "8.1.1",
+    "ffprobe": "8.1.1"
+  },
+  "results": [
+    {
+      "fixtureId": "short",
+      "sourceSha256": "sha256:3003367db2ae86726f8dc9fd1c6ca0a195a3cc972142d0fa3d18980e5d3caeba",
+      "sourceBytes": 383470,
+      "sourceDurationMs": 11981,
+      "status": "SUCCEEDED",
+      "errorCode": null,
+      "firstInvocationMs": 979,
+      "words": 22,
+      "phrases": 3,
+      "firstWords": [
+        {
+          "text": "Owned",
+          "startMs": 10,
+          "endMs": 310
+        },
+        {
+          "text": "timing",
+          "startMs": 310,
+          "endMs": 690
+        },
+        {
+          "text": "evidence",
+          "startMs": 690,
+          "endMs": 1200
+        },
+        {
+          "text": "starts",
+          "startMs": 1200,
+          "endMs": 1600
+        },
+        {
+          "text": "with",
+          "startMs": 1600,
+          "endMs": 1840
+        },
+        {
+          "text": "a",
+          "startMs": 1840,
+          "endMs": 1900
+        },
+        {
+          "text": "careful",
+          "startMs": 1900,
+          "endMs": 2350
+        },
+        {
+          "text": "source",
+          "startMs": 2350,
+          "endMs": 2730
+        },
+        {
+          "text": "check,",
+          "startMs": 2730,
+          "endMs": 3220
+        },
+        {
+          "text": "clear",
+          "startMs": 3220,
+          "endMs": 3480
+        },
+        {
+          "text": "words",
+          "startMs": 3480,
+          "endMs": 3780
+        },
+        {
+          "text": "cross",
+          "startMs": 3780,
+          "endMs": 4050
+        },
+        {
+          "text": "each",
+          "startMs": 4050,
+          "endMs": 4200
+        },
+        {
+          "text": "chunk",
+          "startMs": 4200,
+          "endMs": 4480
+        },
+        {
+          "text": "boundary,",
+          "startMs": 4480,
+          "endMs": 5130
+        },
+        {
+          "text": "and",
+          "startMs": 5130,
+          "endMs": 5310
+        },
+        {
+          "text": "the",
+          "startMs": 5310,
+          "endMs": 5560
+        },
+        {
+          "text": "original",
+          "startMs": 5560,
+          "endMs": 6080
+        },
+        {
+          "text": "voiceover",
+          "startMs": 6080,
+          "endMs": 6610
+        },
+        {
+          "text": "remains",
+          "startMs": 6610,
+          "endMs": 7070
+        }
+      ],
+      "monotonic": true,
+      "phraseWordCoverage": 22,
+      "chunkCount": 1,
+      "transcriptSha256": "sha256:e9586bc0515740e4accb56981f878320a422ad2602e16939e4581baf761f22af",
+      "receiptSha256": "sha256:1929687b29a76ba2a4f991317d048683dc917de9a51633d1684f7983352ba962",
+      "replayInvocationMs": 238
+    },
+    {
+      "fixtureId": "noisy",
+      "sourceSha256": "sha256:231df0445d22b42a608b697d4438139be4fa0a11a2075b4afd0fd746bf96c38e",
+      "sourceBytes": 383470,
+      "sourceDurationMs": 11981,
+      "status": "SUCCEEDED",
+      "errorCode": null,
+      "firstInvocationMs": 935,
+      "words": 22,
+      "phrases": 3,
+      "firstWords": [
+        {
+          "text": "phone",
+          "startMs": 10,
+          "endMs": 320
+        },
+        {
+          "text": "timing",
+          "startMs": 320,
+          "endMs": 700
+        },
+        {
+          "text": "evidence",
+          "startMs": 700,
+          "endMs": 1210
+        },
+        {
+          "text": "starts",
+          "startMs": 1210,
+          "endMs": 1600
+        },
+        {
+          "text": "with",
+          "startMs": 1600,
+          "endMs": 1850
+        },
+        {
+          "text": "a",
+          "startMs": 1850,
+          "endMs": 1910
+        },
+        {
+          "text": "careful",
+          "startMs": 1910,
+          "endMs": 2360
+        },
+        {
+          "text": "source",
+          "startMs": 2360,
+          "endMs": 2740
+        },
+        {
+          "text": "check,",
+          "startMs": 2740,
+          "endMs": 3220
+        },
+        {
+          "text": "clear",
+          "startMs": 3220,
+          "endMs": 3480
+        },
+        {
+          "text": "words",
+          "startMs": 3480,
+          "endMs": 3780
+        },
+        {
+          "text": "cross",
+          "startMs": 3780,
+          "endMs": 4050
+        },
+        {
+          "text": "each",
+          "startMs": 4050,
+          "endMs": 4200
+        },
+        {
+          "text": "chunk",
+          "startMs": 4200,
+          "endMs": 4480
+        },
+        {
+          "text": "boundary,",
+          "startMs": 4480,
+          "endMs": 5140
+        },
+        {
+          "text": "and",
+          "startMs": 5140,
+          "endMs": 5330
+        },
+        {
+          "text": "the",
+          "startMs": 5330,
+          "endMs": 5560
+        },
+        {
+          "text": "original",
+          "startMs": 5560,
+          "endMs": 6080
+        },
+        {
+          "text": "voiceover",
+          "startMs": 6080,
+          "endMs": 6640
+        },
+        {
+          "text": "remains",
+          "startMs": 6640,
+          "endMs": 7100
+        }
+      ],
+      "monotonic": true,
+      "phraseWordCoverage": 22,
+      "chunkCount": 1,
+      "transcriptSha256": "sha256:88ac13a62b38715f11b3a03368d5227f57500b6330ea09a3c7109c2991400d35",
+      "receiptSha256": "sha256:1bdfae09e4c87118a58522576a35d13e324de497ef91edbf3ed635226ef25fca",
+      "replayInvocationMs": 261
+    },
+    {
+      "fixtureId": "silence",
+      "sourceSha256": "sha256:3913ac0e9d1f6cb81388c4f7f2b09cdf0114c457d0f70833ae81346345c239a2",
+      "sourceBytes": 384078,
+      "sourceDurationMs": 12000,
+      "status": "FAILED",
+      "errorCode": "ASR_OUTPUT_INVALID",
+      "firstInvocationMs": 366,
+      "words": 0,
+      "phrases": 0,
+      "firstWords": [],
+      "monotonic": false,
+      "phraseWordCoverage": 0
+    },
+    {
+      "fixtureId": "malformed",
+      "sourceSha256": "sha256:9955927aebf7ffd1acc015fe0e9335d36229cf83b1a09de2321587f98b0d9932",
+      "sourceBytes": 64,
+      "sourceDurationMs": 12000,
+      "status": "FAILED",
+      "errorCode": "ASR_SOURCE_DECODE_FAILED",
+      "firstInvocationMs": 232,
+      "words": 0,
+      "phrases": 0,
+      "firstWords": [],
+      "monotonic": false,
+      "phraseWordCoverage": 0
+    },
+    {
+      "fixtureId": "long",
+      "sourceSha256": "sha256:20b3b95f19c8a0f3ed87b5738a223ae67465e63150d8783d45bfad6bdac69773",
+      "sourceBytes": 57600078,
+      "sourceDurationMs": 1800000,
+      "status": "SUCCEEDED",
+      "errorCode": null,
+      "firstInvocationMs": 21559,
+      "words": 3309,
+      "phrases": 615,
+      "firstWords": [
+        {
+          "text": "Own",
+          "startMs": 10,
+          "endMs": 290
+        },
+        {
+          "text": "timing",
+          "startMs": 290,
+          "endMs": 600
+        },
+        {
+          "text": "evidence",
+          "startMs": 600,
+          "endMs": 1160
+        },
+        {
+          "text": "starts",
+          "startMs": 1160,
+          "endMs": 1540
+        },
+        {
+          "text": "with",
+          "startMs": 1540,
+          "endMs": 1810
+        },
+        {
+          "text": "a",
+          "startMs": 1810,
+          "endMs": 1870
+        },
+        {
+          "text": "careful",
+          "startMs": 1870,
+          "endMs": 2340
+        },
+        {
+          "text": "source",
+          "startMs": 2340,
+          "endMs": 2740
+        },
+        {
+          "text": "check,",
+          "startMs": 2740,
+          "endMs": 3220
+        },
+        {
+          "text": "clear",
+          "startMs": 3220,
+          "endMs": 3490
+        },
+        {
+          "text": "words",
+          "startMs": 3490,
+          "endMs": 3780
+        },
+        {
+          "text": "cross",
+          "startMs": 3780,
+          "endMs": 4050
+        },
+        {
+          "text": "each",
+          "startMs": 4050,
+          "endMs": 4240
+        },
+        {
+          "text": "chunk",
+          "startMs": 4240,
+          "endMs": 4610
+        },
+        {
+          "text": "boundary,",
+          "startMs": 4610,
+          "endMs": 5360
+        },
+        {
+          "text": "and",
+          "startMs": 5360,
+          "endMs": 5840
+        },
+        {
+          "text": "the",
+          "startMs": 5840,
+          "endMs": 6320
+        },
+        {
+          "text": "original",
+          "startMs": 6320,
+          "endMs": 7610
+        },
+        {
+          "text": "voiceover",
+          "startMs": 7610,
+          "endMs": 9140
+        },
+        {
+          "text": "remains",
+          "startMs": 9140,
+          "endMs": 10180
+        }
+      ],
+      "monotonic": true,
+      "phraseWordCoverage": 3309,
+      "chunkCount": 4,
+      "transcriptSha256": "sha256:1513f93f62cb2a2b526256c7566b3fde5383edaa3dd50a4b6037004a79b916a5",
+      "receiptSha256": "sha256:2c8aa5513c00d4494b23322dca9c077e0eb45481f997d90a9c86e7780a894058",
+      "replayInvocationMs": 404,
+      "restartInvocationMs": 731,
+      "restartRecoveredChunks": 4
+    }
+  ]
+}

@@ -17,7 +17,8 @@ from videoforge_contracts import (
     TranscriptTimingDocument,
 )
 
-from .parser import WhisperOutputError, parse_whisper_json
+from .chunking import ChunkReconciliationError, ChunkWindow, plan_chunks, reconcile_chunk_words
+from .parser import WhisperOutputError, build_transcript_document, parse_whisper_words
 from .ports import (
     ArtifactResolver,
     CancellationProbe,
@@ -69,6 +70,16 @@ _ERRORS: dict[str, tuple[str, bool]] = {
     "ASR_OUTPUT_INVALID": ("The local whisper.cpp output is invalid.", False),
     "ASR_CANCELLED": ("The local ASR attempt was cancelled.", False),
 }
+
+
+class _ChunkCancelled(Exception):
+    pass
+
+
+class _ChunkProcessError(Exception):
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
 
 
 class TranscriptionJob:
@@ -141,6 +152,18 @@ class TranscriptionJob:
             return self._finish(
                 _cancelled_result(attempt_id, source_hash, model_hash), result_path=result_path
             )
+
+        job_fingerprint = _job_fingerprint(job_input)
+        work_receipt_path = result_path.with_name("asr-work-receipt.json")
+        try:
+            replay = _load_replay(result_path, work_receipt_path, job_fingerprint)
+        except (OSError, TypeError, ValueError):
+            return self._validated_result(
+                _failure_result(attempt_id, source_hash, model_hash, "ASR_OUTPUT_INVALID")
+            )
+        if replay is not None:
+            self._record("asr_replayed", {"attempt_id": attempt_id})
+            return self._validated_result(replay)
 
         try:
             source_path = self._artifacts.resolve_object(source_uri)
@@ -216,13 +239,13 @@ class TranscriptionJob:
                 result_path=result_path,
             )
 
-        normalized_audio_path = result_path.with_name(f".{result_path.stem}.asr-input.wav")
-        raw_output_prefix = result_path.with_name(f".{result_path.stem}.whisper")
-        raw_output_path = Path(f"{raw_output_prefix}.json")
+        work_root = result_path.with_name("asr-work")
+        chunk_receipt_root = work_root / "chunks"
+        normalized_audio_path = work_root / "normalized-analysis.wav"
         try:
             result_path.parent.mkdir(parents=True, exist_ok=True)
+            chunk_receipt_root.mkdir(parents=True, exist_ok=True)
             normalized_audio_path.unlink(missing_ok=True)
-            raw_output_path.unlink(missing_ok=True)
         except OSError:
             return self._finish(
                 _failure_result(attempt_id, source_hash, model_hash, "ASR_OUTPUT_INVALID"),
@@ -237,13 +260,13 @@ class TranscriptionJob:
         except Exception:
             probe_result = ProcessResult(return_code=-1, launch_error="failed")
         if probe_result.cancelled or self._is_cancelled(cancel_token):
-            _cleanup_paths(normalized_audio_path, raw_output_path)
+            _cleanup_paths(normalized_audio_path)
             return self._finish(
                 _cancelled_result(attempt_id, source_hash, model_hash), result_path=result_path
             )
         probe_error = _probe_process_error(probe_result)
         if probe_error is not None:
-            _cleanup_paths(normalized_audio_path, raw_output_path)
+            _cleanup_paths(normalized_audio_path)
             return self._finish(
                 _failure_result(attempt_id, source_hash, model_hash, probe_error),
                 result_path=result_path,
@@ -251,14 +274,14 @@ class TranscriptionJob:
         try:
             source_duration_ms = _probe_duration_ms(probe_result.stdout)
         except ValueError:
-            _cleanup_paths(normalized_audio_path, raw_output_path)
+            _cleanup_paths(normalized_audio_path)
             return self._finish(
                 _failure_result(attempt_id, source_hash, model_hash, "ASR_SOURCE_DECODE_FAILED"),
                 result_path=result_path,
             )
         claimed_duration_ms = cast(int, job_input["voiceover"]["duration_ms"])
         if abs(source_duration_ms - claimed_duration_ms) > 250:
-            _cleanup_paths(normalized_audio_path, raw_output_path)
+            _cleanup_paths(normalized_audio_path)
             return self._finish(
                 _failure_result(attempt_id, source_hash, model_hash, "ASR_INPUT_INVALID"),
                 result_path=result_path,
@@ -282,56 +305,130 @@ class TranscriptionJob:
             normalization_result = ProcessResult(return_code=-1, launch_error="failed")
 
         if normalization_result.cancelled or self._is_cancelled(cancel_token):
-            _cleanup_paths(normalized_audio_path, raw_output_path)
+            _cleanup_paths(normalized_audio_path)
             return self._finish(
                 _cancelled_result(attempt_id, source_hash, model_hash), result_path=result_path
             )
         normalization_error = _normalization_error(normalization_result)
         if normalization_error is not None:
-            _cleanup_paths(normalized_audio_path, raw_output_path)
+            _cleanup_paths(normalized_audio_path)
             return self._finish(
                 _failure_result(attempt_id, source_hash, model_hash, normalization_error),
                 result_path=result_path,
             )
         if not _is_nonempty_file(normalized_audio_path):
-            _cleanup_paths(normalized_audio_path, raw_output_path)
+            _cleanup_paths(normalized_audio_path)
+            return self._finish(
+                _failure_result(attempt_id, source_hash, model_hash, "ASR_SOURCE_DECODE_FAILED"),
+                result_path=result_path,
+            )
+        if _pcm_wav_is_digital_silence(normalized_audio_path):
+            _cleanup_paths(normalized_audio_path)
+            return self._finish(
+                _failure_result(attempt_id, source_hash, model_hash, "ASR_OUTPUT_INVALID"),
+                result_path=result_path,
+            )
+
+        try:
+            normalized_hash = _sha256_file(
+                normalized_audio_path,
+                should_cancel=lambda: self._is_cancelled(cancel_token),
+            )
+        except OSError:
+            normalized_hash = None
+        if normalized_hash is None:
+            _cleanup_paths(normalized_audio_path)
             return self._finish(
                 _failure_result(attempt_id, source_hash, model_hash, "ASR_SOURCE_DECODE_FAILED"),
                 result_path=result_path,
             )
 
-        arguments = _whisper_arguments(
-            tool,
-            normalized_audio_path,
-            raw_output_prefix,
-            threads=cast(int, job_input["options"]["threads"]),
-            flash_attention=cast(bool, job_input["options"]["flash_attention"]),
-        )
+        chunk_outputs: list[tuple[ChunkWindow, list[dict[str, Any]]]] = []
+        transient_paths: list[Path] = [normalized_audio_path]
         try:
-            process_result = self._processes.run(
-                arguments,
-                should_cancel=lambda: self._is_cancelled(cancel_token),
-            )
-        except Exception:
-            process_result = ProcessResult(return_code=-1, launch_error="failed")
-        decode_duration_ms = max(0, int(round((self._monotonic() - started_at) * 1000)))
+            windows = plan_chunks(source_duration_ms)
+            for window in windows:
+                if self._is_cancelled(cancel_token):
+                    raise _ChunkCancelled
+                chunk_receipt_path = chunk_receipt_root / f"chunk_{window.index:04d}.json"
+                chunk_fingerprint = _chunk_fingerprint(
+                    job_fingerprint,
+                    normalized_hash,
+                    window,
+                    tool.version,
+                )
+                recovered = _load_chunk_receipt(chunk_receipt_path, chunk_fingerprint, window)
+                if recovered is not None:
+                    chunk_outputs.append((window, recovered))
+                    self._record(
+                        "asr_chunk_replayed",
+                        {"attempt_id": attempt_id, "chunk_index": window.index},
+                    )
+                    continue
 
-        if process_result.cancelled or self._is_cancelled(cancel_token):
-            _cleanup_paths(normalized_audio_path, raw_output_path)
-            return self._finish(
-                _cancelled_result(attempt_id, source_hash, model_hash), result_path=result_path
-            )
-        process_error = _process_error(process_result)
-        if process_error is not None:
-            _cleanup_paths(normalized_audio_path, raw_output_path)
-            return self._finish(
-                _failure_result(attempt_id, source_hash, model_hash, process_error),
-                result_path=result_path,
-            )
+                chunk_audio_path = work_root / f"chunk_{window.index:04d}.wav"
+                raw_output_prefix = work_root / f"chunk_{window.index:04d}.whisper"
+                raw_output_path = Path(f"{raw_output_prefix}.json")
+                transient_paths.extend((chunk_audio_path, raw_output_path))
+                whisper_input = normalized_audio_path
+                if len(windows) > 1:
+                    chunk_result = self._processes.run(
+                        _ffmpeg_chunk_arguments(
+                            tool,
+                            normalized_audio_path,
+                            chunk_audio_path,
+                            window,
+                        ),
+                        should_cancel=lambda: self._is_cancelled(cancel_token),
+                    )
+                    if chunk_result.cancelled or self._is_cancelled(cancel_token):
+                        raise _ChunkCancelled
+                    chunk_error = _normalization_error(chunk_result)
+                    if chunk_error is not None or not _is_nonempty_file(chunk_audio_path):
+                        raise _ChunkProcessError(chunk_error or "ASR_SOURCE_DECODE_FAILED")
+                    whisper_input = chunk_audio_path
 
-        try:
-            transcript = parse_whisper_json(
-                raw_output_path,
+                process_result = self._processes.run(
+                    _whisper_arguments(
+                        tool,
+                        whisper_input,
+                        raw_output_prefix,
+                        threads=cast(int, job_input["options"]["threads"]),
+                        flash_attention=cast(bool, job_input["options"]["flash_attention"]),
+                    ),
+                    should_cancel=lambda: self._is_cancelled(cancel_token),
+                )
+                if process_result.cancelled or self._is_cancelled(cancel_token):
+                    raise _ChunkCancelled
+                process_error = _process_error(process_result)
+                if process_error is not None:
+                    raise _ChunkProcessError(process_error)
+                words = cast(
+                    list[dict[str, Any]],
+                    parse_whisper_words(
+                        raw_output_path,
+                        source_duration_ms=window.duration_ms,
+                        allow_trailing_overhang=len(windows) > 1,
+                    ),
+                )
+                _write_chunk_receipt(
+                    chunk_receipt_path,
+                    chunk_fingerprint,
+                    normalized_hash,
+                    window,
+                    words,
+                )
+                chunk_outputs.append((window, words))
+                self._record(
+                    "asr_chunk_finished",
+                    {"attempt_id": attempt_id, "chunk_index": window.index},
+                )
+
+            reconciled_words = reconcile_chunk_words(
+                tuple(chunk_outputs), source_duration_ms=source_duration_ms
+            )
+            transcript = build_transcript_document(
+                reconciled_words,
                 project_revision_id=cast(str, job_input["project_revision_id"]),
                 source_asset_id=cast(str, job_input["voiceover"]["asset_id"]),
                 source_sha256=source_hash,
@@ -342,17 +439,36 @@ class TranscriptionJob:
             transcript = cast(
                 dict[str, object], TranscriptTimingDocument.model_validate(transcript).root
             )
-        except (OSError, TypeError, ValueError, WhisperOutputError):
+        except _ChunkCancelled:
+            return self._finish(
+                _cancelled_result(attempt_id, source_hash, model_hash),
+                result_path=result_path,
+                cleanup=tuple(transient_paths),
+            )
+        except _ChunkProcessError as error:
+            return self._finish(
+                _failure_result(attempt_id, source_hash, model_hash, error.code),
+                result_path=result_path,
+                cleanup=tuple(transient_paths),
+            )
+        except (
+            ChunkReconciliationError,
+            OSError,
+            TypeError,
+            ValueError,
+            WhisperOutputError,
+        ):
             return self._finish(
                 _failure_result(attempt_id, source_hash, model_hash, "ASR_OUTPUT_INVALID"),
                 result_path=result_path,
-                cleanup=(normalized_audio_path, raw_output_path),
+                cleanup=tuple(transient_paths),
             )
+        decode_duration_ms = max(0, int(round((self._monotonic() - started_at) * 1000)))
         if self._is_cancelled(cancel_token):
             return self._finish(
                 _cancelled_result(attempt_id, source_hash, model_hash),
                 result_path=result_path,
-                cleanup=(normalized_audio_path, raw_output_path),
+                cleanup=tuple(transient_paths),
             )
 
         success = {
@@ -369,10 +485,27 @@ class TranscriptionJob:
             },
             "error": None,
         }
+        try:
+            _write_work_receipt(
+                work_receipt_path,
+                job_fingerprint=job_fingerprint,
+                source_hash=source_hash,
+                normalized_hash=normalized_hash,
+                model_hash=model_hash,
+                transcript=transcript,
+                windows=windows,
+                chunk_receipt_root=chunk_receipt_root,
+            )
+        except (OSError, TypeError, ValueError):
+            return self._finish(
+                _failure_result(attempt_id, source_hash, model_hash, "ASR_OUTPUT_INVALID"),
+                result_path=result_path,
+                cleanup=tuple(transient_paths),
+            )
         return self._finish(
             success,
             result_path=result_path,
-            cleanup=(normalized_audio_path, raw_output_path),
+            cleanup=tuple(transient_paths),
         )
 
     def _is_cancelled(self, token: str) -> bool:
@@ -485,6 +618,38 @@ def _media_type_matches(path: Path, media_type: str) -> bool:
     return False
 
 
+def _pcm_wav_is_digital_silence(path: Path) -> bool:
+    """Recognize exact PCM silence without treating malformed fixture bytes as silence."""
+
+    try:
+        with path.open("rb") as stream:
+            header = stream.read(12)
+            if len(header) != 12 or header[:4] != b"RIFF" or header[8:12] != b"WAVE":
+                return False
+            while True:
+                chunk_header = stream.read(8)
+                if len(chunk_header) != 8:
+                    return False
+                chunk_id = chunk_header[:4]
+                chunk_size = int.from_bytes(chunk_header[4:], "little")
+                if chunk_id != b"data":
+                    stream.seek(chunk_size + (chunk_size % 2), os.SEEK_CUR)
+                    continue
+                remaining = chunk_size
+                if remaining == 0:
+                    return True
+                while remaining > 0:
+                    payload = stream.read(min(1024 * 1024, remaining))
+                    if not payload:
+                        return False
+                    if any(payload):
+                        return False
+                    remaining -= len(payload)
+                return True
+    except OSError:
+        return False
+
+
 def _tool_error(tool: object) -> str | None:
     if not isinstance(tool, WhisperTool):
         return "ASR_TOOL_MISSING"
@@ -552,6 +717,40 @@ def _ffmpeg_arguments(
         "-c:a",
         "pcm_s16le",
         str(normalized_audio_path),
+    )
+
+
+def _ffmpeg_chunk_arguments(
+    tool: WhisperTool,
+    normalized_audio_path: Path,
+    chunk_audio_path: Path,
+    window: ChunkWindow,
+) -> tuple[str, ...]:
+    return (
+        str(tool.ffmpeg),
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-ss",
+        f"{window.start_ms / 1000:.3f}",
+        "-t",
+        f"{window.duration_ms / 1000:.3f}",
+        "-i",
+        str(normalized_audio_path),
+        "-map",
+        "0:a:0",
+        "-vn",
+        "-map_metadata",
+        "-1",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-c:a",
+        "pcm_s16le",
+        str(chunk_audio_path),
     )
 
 
@@ -677,6 +876,225 @@ def _failure_result(
 def _cancelled_result(attempt_id: str, source_hash: str, model_hash: str) -> dict[str, Any]:
     result = _failure_result(attempt_id, source_hash, model_hash, "ASR_CANCELLED")
     result["status"] = "CANCELLED"
+    return result
+
+
+def _canonical_payload(value: object) -> bytes:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+
+
+def _canonical_hash(value: object) -> str:
+    return f"sha256:{hashlib.sha256(_canonical_payload(value)).hexdigest()}"
+
+
+def _job_fingerprint(job_input: Mapping[str, object]) -> str:
+    return _canonical_hash(job_input)
+
+
+def _chunk_fingerprint(
+    job_fingerprint: str,
+    normalized_hash: str,
+    window: ChunkWindow,
+    tool_version: str,
+) -> str:
+    return _canonical_hash(
+        {
+            "schema_version": "videoforge.asr-chunk-fingerprint/v1",
+            "job_fingerprint": job_fingerprint,
+            "normalized_analysis_sha256": normalized_hash,
+            "tool_version": tool_version,
+            "chunk": {
+                "index": window.index,
+                "start_ms": window.start_ms,
+                "end_ms": window.end_ms,
+                "emit_start_ms": window.emit_start_ms,
+                "emit_end_ms": window.emit_end_ms,
+            },
+        }
+    )
+
+
+def _load_json_strict(path: Path) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("durable ASR document must be a regular file")
+
+    def reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        parsed: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in parsed:
+                raise ValueError("duplicate durable ASR property")
+            parsed[key] = value
+        return parsed
+
+    def reject_constant(value: str) -> None:
+        raise ValueError(f"non-finite durable ASR constant {value}")
+
+    parsed = json.loads(
+        path.read_text(encoding="utf-8"),
+        object_pairs_hook=reject_duplicates,
+        parse_constant=reject_constant,
+    )
+    if not isinstance(parsed, dict):
+        raise ValueError("durable ASR document must be an object")
+    return parsed
+
+
+def _write_immutable_json(path: Path, document: Mapping[str, object]) -> None:
+    temporary_path = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    payload = _canonical_payload(document) + b"\n"
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists() or path.is_symlink():
+            existing = _load_json_strict(path)
+            if _canonical_payload(existing) == _canonical_payload(document):
+                return
+            raise FileExistsError("durable ASR document conflicts with existing bytes")
+        with temporary_path.open("xb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            os.link(temporary_path, path)
+        except FileExistsError:
+            existing = _load_json_strict(path)
+            if _canonical_payload(existing) != _canonical_payload(document):
+                raise FileExistsError("durable ASR publication collided") from None
+    finally:
+        _cleanup_paths(temporary_path)
+
+
+def _chunk_window_document(window: ChunkWindow) -> dict[str, int]:
+    return {
+        "index": window.index,
+        "start_ms": window.start_ms,
+        "end_ms": window.end_ms,
+        "emit_start_ms": window.emit_start_ms,
+        "emit_end_ms": window.emit_end_ms,
+    }
+
+
+def _write_chunk_receipt(
+    path: Path,
+    chunk_fingerprint: str,
+    normalized_hash: str,
+    window: ChunkWindow,
+    words: list[dict[str, Any]],
+) -> None:
+    _write_immutable_json(
+        path,
+        {
+            "schema_version": "videoforge.asr-chunk-receipt/v1",
+            "chunk_fingerprint": chunk_fingerprint,
+            "normalized_analysis_sha256": normalized_hash,
+            "chunk": _chunk_window_document(window),
+            "words": words,
+            "words_sha256": _canonical_hash(words),
+        },
+    )
+
+
+def _load_chunk_receipt(
+    path: Path,
+    chunk_fingerprint: str,
+    window: ChunkWindow,
+) -> list[dict[str, Any]] | None:
+    if not path.exists() and not path.is_symlink():
+        return None
+    receipt = _load_json_strict(path)
+    if set(receipt) != {
+        "schema_version",
+        "chunk_fingerprint",
+        "normalized_analysis_sha256",
+        "chunk",
+        "words",
+        "words_sha256",
+    }:
+        raise ValueError("chunk receipt shape is invalid")
+    if (
+        receipt["schema_version"] != "videoforge.asr-chunk-receipt/v1"
+        or receipt["chunk_fingerprint"] != chunk_fingerprint
+        or receipt["chunk"] != _chunk_window_document(window)
+        or not isinstance(receipt["words"], list)
+        or receipt["words_sha256"] != _canonical_hash(receipt["words"])
+    ):
+        raise ValueError("chunk receipt does not match the requested work")
+    return cast(list[dict[str, Any]], receipt["words"])
+
+
+def _write_work_receipt(
+    path: Path,
+    *,
+    job_fingerprint: str,
+    source_hash: str,
+    normalized_hash: str,
+    model_hash: str,
+    transcript: Mapping[str, object],
+    windows: tuple[ChunkWindow, ...],
+    chunk_receipt_root: Path,
+) -> None:
+    chunks: list[dict[str, object]] = []
+    for window in windows:
+        receipt_path = chunk_receipt_root / f"chunk_{window.index:04d}.json"
+        chunks.append(
+            {
+                **_chunk_window_document(window),
+                "receipt_sha256": _sha256_file(receipt_path, should_cancel=lambda: False),
+            }
+        )
+    _write_immutable_json(
+        path,
+        {
+            "schema_version": "videoforge.transcription-work-receipt/v1",
+            "job_fingerprint": job_fingerprint,
+            "source_voiceover_sha256": source_hash,
+            "original_voiceover_role": "FINAL_RENDER_TRUTH",
+            "normalized_analysis_sha256": normalized_hash,
+            "normalized_analysis_role": "ANALYSIS_AND_SPAN_INPUT_ONLY",
+            "model_sha256": model_hash,
+            "chunking": {
+                "algorithm": "balanced-overlap-midpoint-v1",
+                "max_chunk_ms": 600_000,
+                "overlap_ms": 5_000,
+                "chunks": chunks,
+            },
+            "transcript_sha256": _canonical_hash(transcript),
+        },
+    )
+
+
+def _load_replay(
+    result_path: Path,
+    receipt_path: Path,
+    job_fingerprint: str,
+) -> dict[str, Any] | None:
+    result_exists = result_path.exists() or result_path.is_symlink()
+    receipt_exists = receipt_path.exists() or receipt_path.is_symlink()
+    if not result_exists and not receipt_exists:
+        return None
+    if not result_exists:
+        return None
+    if not receipt_exists:
+        raise ValueError("published ASR result has no matching work receipt")
+    result = cast(
+        dict[str, Any], AsrJobResultDocument.model_validate(_load_json_strict(result_path)).root
+    )
+    receipt = _load_json_strict(receipt_path)
+    if (
+        receipt.get("schema_version") != "videoforge.transcription-work-receipt/v1"
+        or receipt.get("job_fingerprint") != job_fingerprint
+    ):
+        raise ValueError("published ASR result belongs to different work")
+    transcript = result.get("transcript")
+    if result.get("status") != "SUCCEEDED" or not isinstance(transcript, dict):
+        raise ValueError("only successful ASR work is replayable")
+    if receipt.get("transcript_sha256") != _canonical_hash(transcript):
+        raise ValueError("published ASR transcript does not match its receipt")
     return result
 
 

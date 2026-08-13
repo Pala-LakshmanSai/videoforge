@@ -559,6 +559,14 @@ class TranscriptionJobTest(unittest.TestCase):
         self.assertEqual(result["transcript"]["words"][0]["text"], "Fresh")
         self.assertEqual(len(result["transcript"]["words"]), 9)
 
+    def test_silence_with_no_words_fails_stably(self) -> None:
+        raw_document = {
+            "result": {"language": "en"},
+            "transcription": [{"text": "", "offsets": {"from": 0, "to": 12000}}],
+        }
+        result, _, _, _ = self._run(process=FakeProcessRunner(raw_document=raw_document))
+        self.assert_error(result, "ASR_OUTPUT_INVALID")
+
     def test_preflight_cancellation_never_invokes_process(self) -> None:
         result, process, _, _ = self._run(cancellation=FakeCancellation(cancelled=True))
         self.assert_error(result, "ASR_CANCELLED", status="CANCELLED")
@@ -577,6 +585,88 @@ class TranscriptionJobTest(unittest.TestCase):
         self.assert_error(result, "ASR_TOOL_MISSING")
         self.assertNotIn(str(self.tool_path), json.dumps(result))
         self.assertNotIn(str(self.tool_path), json.dumps(diagnostics.events))
+
+    def test_thirty_minute_class_job_chunks_balances_and_publishes_work_receipt(self) -> None:
+        document = copy.deepcopy(self.document)
+        document["voiceover"]["duration_ms"] = 1_800_000
+        process = FakeProcessRunner(
+            raw_document=_whisper_output(),
+            probe_result=ProcessResult(
+                return_code=0,
+                stdout=json.dumps(
+                    {
+                        "streams": [{"duration": "1800.000000"}],
+                        "format": {"duration": "1800.000000"},
+                    }
+                ),
+            ),
+        )
+
+        result, selected_process, _, _ = self._run(document=document, process=process)
+
+        self.assertEqual(result["status"], "SUCCEEDED")
+        self.assertEqual(selected_process.calls, 10)
+        receipt = json.loads(
+            (self.root / "runs" / "asr-work-receipt.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(receipt["schema_version"], "videoforge.transcription-work-receipt/v1")
+        self.assertEqual(receipt["original_voiceover_role"], "FINAL_RENDER_TRUTH")
+        self.assertEqual(receipt["normalized_analysis_role"], "ANALYSIS_AND_SPAN_INPUT_ONLY")
+        self.assertEqual(len(receipt["chunking"]["chunks"]), 4)
+        self.assertEqual(self.source_path.read_bytes(), self.source_bytes)
+        words = result["transcript"]["words"]
+        self.assertTrue(
+            all(
+                left["end_ms"] <= right["start_ms"]
+                for left, right in zip(words, words[1:], strict=False)
+            )
+        )
+
+    def test_restart_recovers_chunks_and_identical_replay_skips_processes(self) -> None:
+        document = copy.deepcopy(self.document)
+        document["voiceover"]["duration_ms"] = 610_000
+        probe = ProcessResult(
+            return_code=0,
+            stdout=json.dumps(
+                {
+                    "streams": [{"duration": "610.000000"}],
+                    "format": {"duration": "610.000000"},
+                }
+            ),
+        )
+        first, _, _, _ = self._run(
+            document=document,
+            process=FakeProcessRunner(raw_document=_whisper_output(), probe_result=probe),
+        )
+        self.assertEqual(first["status"], "SUCCEEDED")
+        (self.root / "runs" / "asr-result.json").unlink()
+        (self.root / "runs" / "asr-work-receipt.json").unlink()
+
+        resumed_process = FakeProcessRunner(raw_document=_whisper_output(), probe_result=probe)
+        resumed, selected_process, _, _ = self._run(document=document, process=resumed_process)
+        self.assertEqual(resumed, first)
+        self.assertEqual(selected_process.calls, 2)
+
+        replay_process = FakeProcessRunner(raw_document=_whisper_output(), probe_result=probe)
+        replay, selected_replay_process, _, diagnostics = self._run(
+            document=document, process=replay_process
+        )
+        self.assertEqual(replay, first)
+        self.assertEqual(selected_replay_process.calls, 0)
+        self.assertIn("asr_replayed", [event for event, _fields in diagnostics.events])
+
+    def test_conflicting_replay_fails_closed_without_rerunning(self) -> None:
+        first, _, _, _ = self._run()
+        self.assertEqual(first["status"], "SUCCEEDED")
+        changed = copy.deepcopy(self.document)
+        changed["options"]["threads"] = 8
+        process = FakeProcessRunner(raw_document=_whisper_output())
+
+        replay, selected_process, _, _ = self._run(document=changed, process=process)
+
+        self.assertEqual(replay["status"], "FAILED")
+        self.assertEqual(replay["error"]["code"], "ASR_OUTPUT_INVALID")
+        self.assertEqual(selected_process.calls, 0)
 
 
 class ResultPublicationTest(unittest.TestCase):

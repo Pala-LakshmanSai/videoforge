@@ -69,7 +69,7 @@ record("Owned SVG rasterizer", Boolean(rasterizer), rasterizer ?? "missing: /usr
 const bridgePython = path.join(repositoryRoot, ".venv/bin/python");
 const bridge = await commandOutput(bridgePython, [
   "-c",
-  "import videoforge_image_media.local_cli; print('ready')",
+  "import videoforge_media_local.cli; print('ready')",
 ]);
 record(
   "Local Python bridge",
