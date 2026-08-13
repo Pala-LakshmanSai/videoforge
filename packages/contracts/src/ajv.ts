@@ -443,6 +443,7 @@ const semanticContractIssues = <Name extends ContractName>(
   if (contractName === "podWorkerJobEnvelope") {
     const envelope = value as ContractDocument<"podWorkerJobEnvelope">;
     const binding = envelope.pod_resource_binding;
+    const input = envelope.input_manifest;
     const issues: ContractValidationIssue[] = [];
     if (envelope.lane !== binding.lane) {
       issues.push(
@@ -475,6 +476,40 @@ const semanticContractIssues = <Name extends ContractName>(
         semanticIssue(
           "/pod_resource_binding",
           "Pod binding must match the exact isolated vNext lane profile.",
+        ),
+      );
+    }
+    const expectedArtifactId = [
+      "dispatch-input",
+      envelope.generation_session_id,
+      envelope.queue_entry_id,
+      envelope.compute_run_plan_id,
+      envelope.lane,
+      binding.pod_attempt_id,
+    ].join(":");
+    if (
+      input.artifact_id !== expectedArtifactId ||
+      input.generation_session_id !== envelope.generation_session_id ||
+      input.queue_entry_id !== envelope.queue_entry_id ||
+      input.compute_run_plan_id !== envelope.compute_run_plan_id ||
+      input.lane !== envelope.lane ||
+      input.pod_attempt_id !== binding.pod_attempt_id
+    ) {
+      issues.push(
+        semanticIssue(
+          "/input_manifest",
+          "Dispatch input must bind to the exact session, queue entry, run plan, lane, and Pod attempt.",
+        ),
+      );
+    }
+    const expectedOutputPrefix =
+      `sessions/${envelope.generation_session_id}/queue/${envelope.queue_entry_id}` +
+      `/runs/${envelope.compute_run_plan_id}/${envelope.lane}/pods/${binding.pod_attempt_id}/`;
+    if (envelope.output_prefix !== expectedOutputPrefix) {
+      issues.push(
+        semanticIssue(
+          "/output_prefix",
+          "Dispatch output prefix must bind to the exact session, queue entry, run plan, lane, and Pod attempt.",
         ),
       );
     }

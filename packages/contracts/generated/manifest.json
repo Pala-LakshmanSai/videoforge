@@ -77,8 +77,8 @@
     {
       "source": "project-context/evidence/pod_worker_job_envelope.schema.json",
       "destination": "generated/schemas/pod_worker_job_envelope.schema.json",
-      "bytes": 4134,
-      "sha256": "sha256:bd974e3f9c33cb0b70331953f41b6ebbb561099ad791f7062c71d10c9c1f37b9"
+      "bytes": 4559,
+      "sha256": "sha256:cfc485abbffc978bb6e5c7433f83cbb46fe7ca63d13865e110838abf2d975a5c"
     },
     {
       "source": "project-context/evidence/worker_job_envelope.schema.json",
@@ -239,14 +239,20 @@
     {
       "source": "project-context/evidence/fixtures/pod_worker_job_envelope.valid.json",
       "destination": "generated/fixtures/pod_worker_job_envelope.valid.json",
-      "bytes": 1739,
-      "sha256": "sha256:a0ce788b1c4bdf8600247659533caebdb2163dc7da4f4ec3cd200521cade7889"
+      "bytes": 2158,
+      "sha256": "sha256:9b2df4dd6a83ab5b843c69e3031a59cef77339533d2ac965c4df9f7fd8fa899d"
     },
     {
       "source": "project-context/evidence/fixtures/pod_worker_job_envelope.invalid.legacy_dispatch.json",
       "destination": "generated/fixtures/pod_worker_job_envelope.invalid.legacy_dispatch.json",
       "bytes": 290,
       "sha256": "sha256:d5ae785d48e3e1aae6d545f551a17194b8e4d9f31a1fd56077ef3107ae4c4b79"
+    },
+    {
+      "source": "project-context/evidence/fixtures/pod_worker_job_envelope.invalid.cross_session.json",
+      "destination": "generated/fixtures/pod_worker_job_envelope.invalid.cross_session.json",
+      "bytes": 2008,
+      "sha256": "sha256:9818f83d2991e7edb4bba202c51f22e44eaea1a62424a2d0e90ecfb20b2a7edc"
     },
     {
       "source": "project-context/evidence/fixtures/worker_job_envelope.valid.json",
@@ -353,8 +359,8 @@
     {
       "source": "project-context/evidence/contract-index.v1.json",
       "destination": "generated/contract-index.v1.json",
-      "bytes": 6001,
-      "sha256": "sha256:abe5dec3080a194bad4408ef9dc12d8b74327f6e83703836bb358253dba409dd"
+      "bytes": 6131,
+      "sha256": "sha256:b544192aefd2f01119574f1cc5ba88454abd3f6d8f3204607c1f8bd3d53ac667"
     }
   ]
 }

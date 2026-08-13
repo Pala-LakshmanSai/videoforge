@@ -29,10 +29,15 @@
     "rate_ceiling_micro_usd_per_hour": 350000
   },
   "input_manifest": {
-    "artifact_id": "input_manifest_fixture_001",
-    "sha256": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+    "artifact_id": "dispatch-input:session_fixture_001:queue_entry_active_fixture_001:compute_run_fixture_001:mage_image:pod_attempt_mage_fixture_001",
+    "sha256": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+    "generation_session_id": "session_fixture_001",
+    "queue_entry_id": "queue_entry_active_fixture_001",
+    "compute_run_plan_id": "compute_run_fixture_001",
+    "lane": "mage_image",
+    "pod_attempt_id": "pod_attempt_mage_fixture_001"
   },
-  "output_prefix": "sessions/session_fixture_001/mage/create_attempt_mage_fixture_001/",
+  "output_prefix": "sessions/session_fixture_001/queue/queue_entry_active_fixture_001/runs/compute_run_fixture_001/mage_image/pods/pod_attempt_mage_fixture_001/",
   "maximum_cost_micro_usd": 100000,
   "deadline_at": "2026-08-13T09:15:00.000Z"
 }

@@ -482,6 +482,17 @@ test("one synthetic global session fails closed, drains both Pods, retains volum
       }),
       "ACKNOWLEDGED",
     );
+    await assert.rejects(
+      repository.recordModelReady({
+        podAttemptId: uuid(90_121),
+        actualGpuSku: "NVIDIA GeForce RTX 4090",
+        containerReadyAt: LATER,
+        volumeVerifiedAt: LATER,
+        warmupPassedAt: LATER,
+        modelReadyAt: LATER,
+      }),
+      expectContractCode("POD_MODEL_READY_UNVERIFIED"),
+    );
     assert.equal(
       await repository.observeCreate({
         podAttemptId: activeCommand.magePodId,
@@ -543,6 +554,15 @@ test("one synthetic global session fails closed, drains both Pods, retains volum
       byteSize: 1024n,
       verifiedAt: LATER,
     });
+    await assert.rejects(
+      repository.settleLaneDemand({
+        generationSessionId: sessionId,
+        lane: "mage_image",
+        podAttemptId: uuid(90_122),
+        now: LATER,
+      }),
+      expectContractCode("LANE_DEMAND_UNVERIFIED"),
+    );
     assert.equal(
       await repository.settleLaneDemand({
         generationSessionId: sessionId,
@@ -568,6 +588,20 @@ test("one synthetic global session fails closed, drains both Pods, retains volum
       podAttemptId: activeCommand.magePodId,
       requestedAt: "2026-08-13T10:02:00.000Z",
     });
+    await assert.rejects(
+      repository.recordDeleteAmbiguous({
+        podAttemptId: uuid(90_123),
+        observedAt: "2026-08-13T10:02:05.000Z",
+      }),
+      expectContractCode("POD_DELETE_UNVERIFIED"),
+    );
+    await assert.rejects(
+      repository.recordDeleteAcknowledged({
+        podAttemptId: uuid(90_124),
+        acknowledgedAt: "2026-08-13T10:02:05.000Z",
+      }),
+      expectContractCode("POD_DELETE_UNVERIFIED"),
+    );
     await repository.recordDeleteAmbiguous({
       podAttemptId: activeCommand.magePodId,
       observedAt: "2026-08-13T10:02:10.000Z",
@@ -601,6 +635,14 @@ test("one synthetic global session fails closed, drains both Pods, retains volum
       ),
     );
 
+    await assert.rejects(
+      repository.markActiveTerminal({
+        generationSessionId: sessionId,
+        queueEntryId: uuid(90_125),
+        now: "2026-08-13T10:02:55.000Z",
+      }),
+      expectContractCode("ACTIVE_PROJECT_TRANSITION_UNVERIFIED"),
+    );
     await repository.markActiveTerminal({
       generationSessionId: sessionId,
       queueEntryId: activeQueueEntryId,
@@ -689,6 +731,15 @@ test("one synthetic global session fails closed, drains both Pods, retains volum
       modelReadyAt: "2026-08-13T10:03:50.000Z",
     });
 
+    await assert.rejects(
+      repository.settleLaneDemand({
+        generationSessionId: sessionId,
+        lane: "mage_image",
+        podAttemptId: uuid(90_126),
+        now: "2026-08-13T10:03:55.000Z",
+      }),
+      expectContractCode("LANE_DEMAND_UNVERIFIED"),
+    );
     assert.equal(
       await repository.settleLaneDemand({
         generationSessionId: sessionId,

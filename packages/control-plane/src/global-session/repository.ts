@@ -2,6 +2,7 @@ import type { SqlExecutor, TransactionalSqlExecutor } from "../database/ports.js
 import type { GlobalSessionLane } from "../database/vocabulary.js";
 
 export type GlobalSessionProblemCode =
+  | "ACTIVE_PROJECT_TRANSITION_UNVERIFIED"
   | "ADMISSION_REQUIRED"
   | "GENERATION_SESSION_CHANGED"
   | "GPU_INVENTORY_STALE"
@@ -9,6 +10,8 @@ export type GlobalSessionProblemCode =
   | "GPU_PRICE_CHANGED"
   | "POD_CREATE_AMBIGUOUS"
   | "POD_DELETE_UNVERIFIED"
+  | "POD_MODEL_READY_UNVERIFIED"
+  | "LANE_DEMAND_UNVERIFIED"
   | "QUEUE_ENTRY_ACTIVE"
   | "QUEUE_ENTRY_NOT_WAITING"
   | "QUEUE_VERSION_CONFLICT"
@@ -829,11 +832,12 @@ export class GlobalSessionRepository {
     readonly warmupPassedAt: string | null;
     readonly modelReadyAt: string;
   }): Promise<void> {
-    await this.database.query(
+    const result = await this.database.query(
       `UPDATE pod_lifecycle_attempts
           SET actual_gpu_sku = $2, container_ready_at = $3, volume_verified_at = $4,
               warmup_passed_at = $5, model_ready_at = $6, updated_at = $6
-        WHERE id = $1`,
+        WHERE id = $1 AND create_state = 'ACKNOWLEDGED'
+          AND delete_state = 'NOT_REQUESTED' AND model_ready_at IS NULL`,
       [
         command.podAttemptId,
         command.actualGpuSku,
@@ -843,6 +847,12 @@ export class GlobalSessionRepository {
         command.modelReadyAt,
       ],
     );
+    if (result.affectedRows !== 1) {
+      throw new GlobalSessionContractError(
+        "POD_MODEL_READY_UNVERIFIED",
+        "Model readiness requires one exact acknowledged live Pod attempt that is not already ready.",
+      );
+    }
   }
 
   async recordDurableOutput(command: {
@@ -888,28 +898,51 @@ export class GlobalSessionRepository {
         [command.generationSessionId],
       );
       if (Number(waiters.rows[0]?.count ?? "0") > 0) {
-        await transaction.query(
+        const result = await transaction.query(
           `UPDATE lane_demands
               SET demand = 'WAITING_WARM', active_queue_entry_id = NULL,
                   version = version + 1, updated_at = $3
-            WHERE generation_session_id = $1 AND lane = $2`,
-          [command.generationSessionId, command.lane, command.now],
+            WHERE generation_session_id = $1 AND lane = $2
+              AND EXISTS (
+                SELECT 1 FROM pod_lifecycle_attempts
+                 WHERE id = $4 AND generation_session_id = $1 AND lane = $2
+                   AND model_ready_at IS NOT NULL AND delete_state = 'NOT_REQUESTED'
+              )`,
+          [command.generationSessionId, command.lane, command.now, command.podAttemptId],
         );
+        if (result.affectedRows !== 1) {
+          throw new GlobalSessionContractError(
+            "LANE_DEMAND_UNVERIFIED",
+            "Waiting demand may retain only the exact model-ready live Pod attempt.",
+          );
+        }
         return "WAITING_WARM";
       }
-      await transaction.query(
+      const demand = await transaction.query(
         `UPDATE lane_demands
             SET demand = 'ZERO', active_queue_entry_id = NULL,
                 version = version + 1, updated_at = $3
-          WHERE generation_session_id = $1 AND lane = $2`,
-        [command.generationSessionId, command.lane, command.now],
+          WHERE generation_session_id = $1 AND lane = $2
+            AND EXISTS (
+              SELECT 1 FROM pod_lifecycle_attempts
+               WHERE id = $4 AND generation_session_id = $1 AND lane = $2
+                 AND delete_state = 'NOT_REQUESTED'
+            )`,
+        [command.generationSessionId, command.lane, command.now, command.podAttemptId],
       );
-      await transaction.query(
+      const deletion = await transaction.query(
         `UPDATE pod_lifecycle_attempts
             SET delete_state = 'REQUESTED', delete_requested_at = $2, updated_at = $2
-          WHERE id = $1 AND generation_session_id = $3 AND lane = $4`,
+          WHERE id = $1 AND generation_session_id = $3 AND lane = $4
+            AND delete_state = 'NOT_REQUESTED'`,
         [command.podAttemptId, command.now, command.generationSessionId, command.lane],
       );
+      if (demand.affectedRows !== 1 || deletion.affectedRows !== 1) {
+        throw new GlobalSessionContractError(
+          "LANE_DEMAND_UNVERIFIED",
+          "Zero lane demand requires one exact live Pod delete intent.",
+        );
+      }
       return "DELETE_REQUESTED";
     });
   }
@@ -918,24 +951,36 @@ export class GlobalSessionRepository {
     readonly podAttemptId: string;
     readonly acknowledgedAt: string;
   }): Promise<void> {
-    await this.database.query(
+    const result = await this.database.query(
       `UPDATE pod_lifecycle_attempts
           SET delete_state = 'ACKNOWLEDGED', delete_acknowledged_at = $2, updated_at = $2
         WHERE id = $1 AND delete_state IN ('REQUESTED', 'ACK_UNKNOWN')`,
       [command.podAttemptId, command.acknowledgedAt],
     );
+    if (result.affectedRows !== 1) {
+      throw new GlobalSessionContractError(
+        "POD_DELETE_UNVERIFIED",
+        "Delete acknowledgement requires one exact requested or reconciling Pod attempt.",
+      );
+    }
   }
 
   async recordDeleteAmbiguous(command: {
     readonly podAttemptId: string;
     readonly observedAt: string;
   }): Promise<void> {
-    await this.database.query(
+    const result = await this.database.query(
       `UPDATE pod_lifecycle_attempts
           SET delete_state = 'ACK_UNKNOWN', updated_at = $2
         WHERE id = $1 AND delete_state = 'REQUESTED'`,
       [command.podAttemptId, command.observedAt],
     );
+    if (result.affectedRows !== 1) {
+      throw new GlobalSessionContractError(
+        "POD_DELETE_UNVERIFIED",
+        "Ambiguous delete observation requires one exact requested Pod attempt.",
+      );
+    }
   }
 
   async requestPodDelete(command: {
@@ -994,24 +1039,30 @@ export class GlobalSessionRepository {
     readonly now: string;
   }): Promise<void> {
     await this.database.transaction(async (transaction) => {
-      await transaction.query(
+      const plan = await transaction.query(
         `UPDATE compute_run_plans
             SET state = 'TERMINAL', terminal_at = $3
           WHERE generation_session_id = $1 AND queue_entry_id = $2 AND state = 'ACTIVE'`,
         [command.generationSessionId, command.queueEntryId, command.now],
       );
-      await transaction.query(
+      const entry = await transaction.query(
         `UPDATE global_queue_entries
             SET state = 'TERMINAL', terminal_at = $3, version = version + 1
           WHERE generation_session_id = $1 AND id = $2 AND state = 'ACTIVE'`,
         [command.generationSessionId, command.queueEntryId, command.now],
       );
-      await transaction.query(
+      const session = await transaction.query(
         `UPDATE generation_sessions
             SET queue_version = queue_version + 1, version = version + 1
           WHERE id = $1`,
         [command.generationSessionId],
       );
+      if (plan.affectedRows !== 1 || entry.affectedRows !== 1 || session.affectedRows !== 1) {
+        throw new GlobalSessionContractError(
+          "ACTIVE_PROJECT_TRANSITION_UNVERIFIED",
+          "Active-project stop requires one exact active run plan, queue entry, and session.",
+        );
+      }
     });
   }
 

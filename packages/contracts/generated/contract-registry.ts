@@ -160,6 +160,10 @@ export const canonicalContractRegistry = {
         {
           "path": "fixtures/pod_worker_job_envelope.invalid.legacy_dispatch.json",
           "expected": false
+        },
+        {
+          "path": "fixtures/pod_worker_job_envelope.invalid.cross_session.json",
+          "expected": false
         }
       ]
     },

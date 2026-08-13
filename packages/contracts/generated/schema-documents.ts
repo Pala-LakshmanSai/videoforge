@@ -4338,7 +4338,12 @@ export const canonicalSchemaDocuments = {
         "additionalProperties": false,
         "required": [
           "artifact_id",
-          "sha256"
+          "sha256",
+          "generation_session_id",
+          "queue_entry_id",
+          "compute_run_plan_id",
+          "lane",
+          "pod_attempt_id"
         ],
         "properties": {
           "artifact_id": {
@@ -4346,6 +4351,24 @@ export const canonicalSchemaDocuments = {
           },
           "sha256": {
             "$ref": "#/$defs/sha256"
+          },
+          "generation_session_id": {
+            "$ref": "#/$defs/id"
+          },
+          "queue_entry_id": {
+            "$ref": "#/$defs/id"
+          },
+          "compute_run_plan_id": {
+            "$ref": "#/$defs/id"
+          },
+          "lane": {
+            "enum": [
+              "mage_image",
+              "echo_avatar"
+            ]
+          },
+          "pod_attempt_id": {
+            "$ref": "#/$defs/id"
           }
         }
       },

@@ -4,7 +4,11 @@ import test from "node:test";
 
 import { ContractValidationError } from "@videoforge/contracts";
 
-import { VNextPodDispatchFirewall } from "../dist/src/index.js";
+import {
+  createVNextProductionDispatch,
+  VNextProductionDispatchDisabledError,
+} from "../dist/src/index.js";
+import { VNextPodDispatchFirewall } from "../dist/src/global-session/production-dispatch.js";
 
 const fixtureUrl = new URL(
   "../../contracts/generated/fixtures/pod_worker_job_envelope.valid.json",
@@ -95,6 +99,27 @@ test("legacy dispatch fields and profiles fail before the paid port", async () =
     mutate(envelope, (candidate) => {
       candidate.worker_registry = ["avatar-primary-v1"];
     }),
+    mutate(envelope, (candidate) => {
+      candidate.input_manifest.artifact_id = "foreign_project_manifest";
+    }),
+    mutate(envelope, (candidate) => {
+      candidate.input_manifest.generation_session_id = "foreign_session";
+    }),
+    mutate(envelope, (candidate) => {
+      candidate.input_manifest.queue_entry_id = "foreign_queue_entry";
+    }),
+    mutate(envelope, (candidate) => {
+      candidate.input_manifest.compute_run_plan_id = "foreign_run_plan";
+    }),
+    mutate(envelope, (candidate) => {
+      candidate.input_manifest.lane = "echo_avatar";
+    }),
+    mutate(envelope, (candidate) => {
+      candidate.input_manifest.pod_attempt_id = "foreign_pod_attempt";
+    }),
+    mutate(envelope, (candidate) => {
+      candidate.output_prefix = "sessions/foreign_session/echo/foreign_attempt/";
+    }),
   ];
 
   for (const candidate of invalidCandidates) {
@@ -104,4 +129,22 @@ test("legacy dispatch fields and profiles fail before the paid port", async () =
     );
   }
   assert.equal(calls.length, 0);
+});
+
+test("canonical production composition validates then blocks every provider call", async () => {
+  const production = createVNextProductionDispatch();
+  const envelope = await validEnvelope();
+
+  await assert.rejects(
+    production.dispatch(envelope),
+    (error) => error instanceof VNextProductionDispatchDisabledError,
+  );
+  await assert.rejects(
+    production.dispatch(
+      mutate(envelope, (candidate) => {
+        candidate.output_prefix = "sessions/foreign_session/echo/foreign_attempt/";
+      }),
+    ),
+    (error) => error instanceof ContractValidationError,
+  );
 });

@@ -486,6 +486,7 @@ def _semantic_contract_issues(
         return tuple(issues)
     if contract_name == "podWorkerJobEnvelope":
         binding = cast(dict[str, Any], value["pod_resource_binding"])
+        input_manifest = cast(dict[str, Any], value["input_manifest"])
         issues: list[ContractIssue] = []
         if value["lane"] != binding["lane"]:
             issues.append(
@@ -514,6 +515,44 @@ def _semantic_contract_issues(
                 _semantic_issue(
                     "/pod_resource_binding",
                     "Pod binding must match the exact isolated vNext lane profile.",
+                )
+            )
+        expected_artifact_id = ":".join(
+            (
+                "dispatch-input",
+                value["generation_session_id"],
+                value["queue_entry_id"],
+                value["compute_run_plan_id"],
+                value["lane"],
+                binding["pod_attempt_id"],
+            )
+        )
+        if (
+            input_manifest["artifact_id"] != expected_artifact_id
+            or input_manifest["generation_session_id"] != value["generation_session_id"]
+            or input_manifest["queue_entry_id"] != value["queue_entry_id"]
+            or input_manifest["compute_run_plan_id"] != value["compute_run_plan_id"]
+            or input_manifest["lane"] != value["lane"]
+            or input_manifest["pod_attempt_id"] != binding["pod_attempt_id"]
+        ):
+            issues.append(
+                _semantic_issue(
+                    "/input_manifest",
+                    "Dispatch input must bind to the exact session, queue entry, "
+                    "run plan, lane, and Pod attempt.",
+                )
+            )
+        expected_output_prefix = (
+            f"sessions/{value['generation_session_id']}/queue/{value['queue_entry_id']}"
+            f"/runs/{value['compute_run_plan_id']}/{value['lane']}"
+            f"/pods/{binding['pod_attempt_id']}/"
+        )
+        if value["output_prefix"] != expected_output_prefix:
+            issues.append(
+                _semantic_issue(
+                    "/output_prefix",
+                    "Dispatch output prefix must bind to the exact session, queue entry, "
+                    "run plan, lane, and Pod attempt.",
                 )
             )
         return tuple(issues)
