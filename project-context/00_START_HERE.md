@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-01 reopened after independent audit failure; bounded fixes active; CP-02 not started
+Status: CP-01 complete after persisted-authority fix and provider-free re-audit; CP-02 not started
 Context schema: `1.5`  
 Last updated: `2026-08-13`
 
@@ -69,11 +69,13 @@ Pod lifecycle/absence, durable-output/cost, and Pod-dispatch contracts plus an a
 repository, restore proof, and legacy import firewall. Current v1 machine bytes remain
 legacy/provider-free and cannot enter the new Pod dispatch boundary.
 
-The independent audit of `0e90f3b637949711aecda6acc5b9e0bd51ae3202` found that a coherently
-rewritten foreign dispatch tuple could pass the in-memory firewall and that durable output rows did
-not prove the Pod belonged to the same queue entry and lane. `CP-01` is reopened for those bounded
-provider-free fixes and a fresh audit. Existing acceptance artifacts are historical, not current
-proof. `CP-02` has not started. All production gates remain open.
+The later independent audit found that a coherently rewritten foreign dispatch tuple could pass the
+in-memory firewall and that durable output rows did not prove exact Pod ownership. Fix commit
+`522ed6112d39e0bcbd03955ad753b79cef2fdb6d` adds append-only exact-envelope dispatch authority,
+active persisted tuple verification before the paid port, and queue/lane ownership enforcement for
+durable model output. Fresh, upgrade, restore, schema, adversarial, canonical, and Chrome gates pass.
+The current proof is `evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-after-authority-fix.json`.
+Older acceptance files remain historical. `CP-02` has not started. All production gates remain open.
 
 No VideoForge persistent model volume exists yet. Future provisioning/preparation is a separate
 explicitly authorized provider task after contracts and offline workers are green.

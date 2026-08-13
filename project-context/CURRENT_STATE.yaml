@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-13T12:26:49Z"
+updated_at: "2026-08-13T12:56:01Z"
 
-phase: cp01_audit_fixes_active
-implementation_authorized_in_current_task: true
+phase: cp01_complete_cp02_not_started
+implementation_authorized_in_current_task: false
 current_milestone: shared_admission_queue_and_idle_gpu_ux
-current_task: VF-9-24K
-current_wave: cp01_dispatch_authority_and_output_ownership_fixes
+current_task: VF-9-24K_complete
+current_wave: cp01_authority_reaudit_complete_cp02_paused
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -21,7 +21,8 @@ repository:
   cp01_implementation_commit: "9ee3267fb0c1ccf0a275a723d0ccf6dee4ad57b7"
   cp01_audit_fix_activation_commit: "234a8901d16f61b3d206d17f0f9db8d99f0afcbc"
   cp01_audit_fix_commit: "0e90f3b637949711aecda6acc5b9e0bd51ae3202"
-  last_good_commit: "0e90f3b637949711aecda6acc5b9e0bd51ae3202"
+  cp01_dispatch_authority_fix_commit: "522ed6112d39e0bcbd03955ad753b79cef2fdb6d"
+  last_good_commit: "522ed6112d39e0bcbd03955ad753b79cef2fdb6d"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -30,7 +31,7 @@ live_development:
   server_state: stopped
   dev_server_pid: null
   owner_task_id: null
-  health_checked_at: "2026-08-13T12:26:49Z"
+  health_checked_at: "2026-08-13T12:56:01Z"
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
@@ -85,25 +86,23 @@ completed_tasks:
     implementation_commit: "0e5eee22e4d51150fc358fe853f607e1f41d73c9"
     external_spend_usd: 0
   - task_id: VF-9-24K
-    status: complete_cp01_global_session_contracts_and_dispatch_firewall_reaudited
+    status: complete_cp01_global_session_contracts_and_dispatch_firewall_reaudited_after_authority_fix
     implementation_commit: "9ee3267fb0c1ccf0a275a723d0ccf6dee4ad57b7"
     audit_fix_commit: "0e90f3b637949711aecda6acc5b9e0bd51ae3202"
-    evidence: "evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-acceptance.json"
+    dispatch_authority_fix_commit: "522ed6112d39e0bcbd03955ad753b79cef2fdb6d"
+    evidence: "evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-after-authority-fix.json"
     external_spend_usd: 0
-active_ownership:
-  - task_id: VF-9-24K
-    scope: "CP-01 persisted dispatch authority, durable-output ownership, adversarial proof, and honest handoff only"
-    owner: current_agent
+active_ownership: []
 
 blocked_tasks: []
-in_progress_checkpoint: CP-01
+in_progress_checkpoint: null
 
 recommended_next_task:
   task_id: unassigned
   checkpoint: CP-02
   milestone: shared_admission_queue_and_idle_gpu_ux
-  status: blocked_until_cp01_reaudit_passes
-  dependency_status: cp01_audit_failed_fixes_active
+  status: not_started
+  dependency_status: cp01_complete_green
   authorization_status: fresh_explicit_user_authority_required
   read_profile: checkpoint_roadmap
   task_brief: not_created
@@ -125,11 +124,12 @@ recommended_next_task:
     - "Any production gate closure, live profile promotion, volume-capacity assumption, model/GPU substitution, repair, or fallback."
 
 cp01_completion:
-  status: reopened_after_independent_audit_failure
+  status: complete_provider_free_reaudited_after_persisted_authority_fix
   implementation_commit: "9ee3267fb0c1ccf0a275a723d0ccf6dee4ad57b7"
   audit_fix_commit: "0e90f3b637949711aecda6acc5b9e0bd51ae3202"
-  evidence: "evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-acceptance.json"
-  canonical_verify: must_rerun_after_current_fixes
+  dispatch_authority_fix_commit: "522ed6112d39e0bcbd03955ad753b79cef2fdb6d"
+  evidence: "evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-after-authority-fix.json"
+  canonical_verify: passed_at_dispatch_authority_fix_commit
   provider_calls: 0
   provider_resources_created: 0
   external_spend_usd: 0
@@ -176,13 +176,13 @@ blocking_gates_for_production:
 
 progress_snapshot:
   estimate_kind: checkpoint_truth_no_percent_claim
-  completed_checkpoint: CP-00
-  next_checkpoint: CP-01_reaudit_required
+  completed_checkpoint: CP-01
+  next_checkpoint: CP-02_not_started
   full_production_mvp_implemented_percent: null
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: cp01_audit_fixes_active
+  status: cp01_complete_cp02_not_started
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Load the completed cp01_global_session_contracts profile and its exact acceptance evidence."

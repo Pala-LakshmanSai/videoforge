@@ -1,0 +1,116 @@
+{
+  "schema_version": "cp01-reaudit-acceptance/v2",
+  "checkpoint": "CP-01",
+  "task_id": "VF-9-24K",
+  "status": "pass_provider_free",
+  "failed_audit_head": "79b0124f393731c135b1b6989063a521a95fe848",
+  "fix_activation_commit": "fe2e36f",
+  "implementation_commit": "522ed6112d39e0bcbd03955ad753b79cef2fdb6d",
+  "completed_at": "2026-08-13T12:56:01Z",
+  "findings": [],
+  "fixed_findings": [
+    {
+      "severity": "P0",
+      "finding": "a coherently rewritten foreign dispatch tuple could reach an injected paid port",
+      "resolution": "every exact envelope now requires an append-only persisted authorization hash and document joined to the active session, queue, run plan, ready Pod, immutable GPU binding, volume manifest, inventory receipt, cost cap, and deadline before the port"
+    },
+    {
+      "severity": "P1",
+      "finding": "durable model output could bind an unrelated queue entry or lane to a valid Pod attempt",
+      "resolution": "migration 0015 rejects output unless the Pod origin queue entry and lane exactly match the output row"
+    }
+  ],
+  "artifacts": {
+    "dispatch_schema": {
+      "path": "project-context/evidence/pod_worker_job_envelope.schema.json",
+      "sha256": "sha256:85d7ca4c01d0f8ab8ab1e380cd7e4ad6115dd3fa30f24124ec22a75f7b71e7e4"
+    },
+    "additive_migration": {
+      "path": "packages/control-plane/migrations/0015_cp01_dispatch_authority.sql",
+      "sha256": "sha256:56cf9726f012c1605f0726c46f6c70c61125c5128939c811752960d9e5d11747"
+    },
+    "implementation": "packages/control-plane/src/global-session/production-dispatch.ts",
+    "repository": "packages/control-plane/src/global-session/repository.ts",
+    "adversarial_tests": [
+      "packages/control-plane/tests/vnext-dispatch-firewall.test.mjs",
+      "packages/control-plane/tests/global-session-vnext.test.mjs"
+    ]
+  },
+  "adversarial_proof": {
+    "exact_persisted_envelope_paid_port_calls": 1,
+    "coherent_foreign_lineage_paid_port_calls": 0,
+    "foreign_resource_binding_paid_port_calls": 0,
+    "foreign_input_bytes_paid_port_calls": 0,
+    "cross_project_durable_output_accepted": false,
+    "cross_lane_durable_output_accepted": false
+  },
+  "validation": [
+    {
+      "command": "node --test packages/control-plane/tests/vnext-dispatch-firewall.test.mjs packages/control-plane/tests/global-session-vnext.test.mjs packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs packages/control-plane/tests/metadata-export-restore.test.mjs packages/control-plane/tests/durable-prompt-execution-store.test.mjs",
+      "exit_code": 0,
+      "tests": 21
+    },
+    {
+      "command": "node --test --test-reporter=dot tests/*.test.mjs",
+      "cwd": "packages/control-plane",
+      "exit_code": 0,
+      "tests": 219
+    },
+    {
+      "command": "pnpm verify:fast",
+      "exit_code": 0,
+      "turbo_tasks": 28
+    },
+    {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "turbo_tasks": 28,
+      "control_plane_tests": 219,
+      "web_unit_tests": 219,
+      "cloudflare_playwright_tests": 1,
+      "installed_chrome_tests": 38
+    },
+    {
+      "command": "pnpm audit:dependencies && pnpm secret:scan && project-context/scripts/validate-context.sh && project-context/scripts/validate-schemas.sh && pnpm verify:vnext-dispatch-firewall && git diff --check",
+      "exit_code": 0,
+      "tracked_files_secret_scanned": 1040,
+      "known_vulnerabilities": 0
+    },
+    {
+      "command": "git diff --quiet 79b0124f393731c135b1b6989063a521a95fe848..522ed6112d39e0bcbd03955ad753b79cef2fdb6d -- migrations 0001-0014 and worker-job-envelope/v1 schema/fixture",
+      "exit_code": 0,
+      "meaning": "old migrations and v1 machine bytes unchanged"
+    }
+  ],
+  "migration_proof": {
+    "fresh": "passed",
+    "full_legacy_upgrade": "passed",
+    "metadata_restore": "passed",
+    "schema_parity": "passed"
+  },
+  "visible_state": {
+    "changed": false,
+    "real_chrome_required": false,
+    "canonical_installed_chrome_suite": "38 passed"
+  },
+  "external_state": {
+    "provider_calls": 0,
+    "credential_reads": 0,
+    "remote_or_cloud_mutations": 0,
+    "model_downloads": 0,
+    "gpu_use": 0,
+    "provider_resources_created": 0,
+    "external_spend_usd": 0,
+    "live_provider_inventory_refreshed": false,
+    "paid_compute_shutdown": "no paid compute started",
+    "local_server": "stopped; no listeners on 4173 or 8787"
+  },
+  "claims_not_proven": [
+    "current live provider inventory",
+    "production RunPod model, container, volume, GPU, rate, timings, hashes, probes, cost, Pod delete, or absence",
+    "any production gate closure",
+    "CP-02 implementation or acceptance"
+  ],
+  "next_checkpoint_safe": true,
+  "next_checkpoint_authorized": false
+}
