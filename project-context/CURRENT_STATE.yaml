@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-12T21:04:00Z"
+updated_at: "2026-08-13T04:14:00Z"
 
 phase: echomimic_v3_flash_fp8_rtx_sample
 implementation_authorized_in_current_task: true
@@ -15,9 +15,9 @@ repository:
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
   branch: main
-  base_commit: "add8985"
+  base_commit: "55eb892"
   planning_handoff_commit: "f0829b930e5cf9084312da030f1807a6e269b06f"
-  last_good_commit: "add8985"
+  last_good_commit: "55eb892"
   working_tree_expected: tracked_vf_9_24i_attempt_evidence_and_context_plus_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -30,10 +30,10 @@ live_development:
   chrome_route: "http://localhost:4173/?fixture=happy_generating"
   fixture_scenario: happy_generating
   provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-24I bounded RTX attempts consumed cumulative settled spend to $1.9623834279 of $2 after delayed billing. No further paid dispatch until a fresh cumulative cap."
-  worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:2d4384bed4dbe2aa479e11f0efaba8b8b18c8ebdad46871e0b3fd816e004d247"
+  provider_calls_authorized: true
+  authorized_spend_usd: 8
+  provider_authority_scope: "User authorized three additional $2 RunPod increases after the earlier $2 ceiling, interpreted as cumulative ceiling $8 from the original $16.3399985241 balance."
+  worker_image: "ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:f2bfdd3bea7dc0ec6c8d39109f216dcaa9977769daaf767dfdac8d13d4240fe0"
   last_user_checkpoint:
     result: accepted
     commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
@@ -130,7 +130,7 @@ completed_tasks:
 active_ownership:
   - task_id: VF-9-24I
     owner: single_integration_lane
-    scope: "pinned TorchAO FP8 and Long Video CFG worker, then one same-input RTX 4090 or RTX 5090 run after fresh spend authority"
+    scope: "pinned TorchAO FP8 full-video worker, then one same-input RTX 4090 or RTX 5090 run under current spend authority"
 
 blocked_tasks: []
 in_progress_checkpoint: null
@@ -138,38 +138,38 @@ in_progress_checkpoint: null
 recommended_next_task:
   task_id: VF-9-24I
   milestone: avatar_primary_native_sample
-  status: blocked_external_spend_authority
+  status: implementation_in_progress
   dependency_status: vf_9_24i_bounded_attempts_cleanup_absolute_zero
-  authorization_status: fp8_device_transfer_repair_published_paid_retry_cap_missing
+  authorization_status: fp8_pinned_call_repair_paid_retry_authorized
   read_profile: phase9_echomimic_v3_flash_fp8_rtx_sample
   task_brief: tasks/VF-9-24I.md
-  goal: "Publish repaired pinned FP8 long-video worker, then obtain and return the same 10.12-second native MP4 on RTX 4090 or RTX 5090 after fresh spend authority."
-  provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  cumulative_external_spend_ceiling_usd: 2
-  prior_live_balance_delta_usd: 1.9623834279
+  goal: "Publish repaired pinned FP8 full-video worker, then obtain and return the same 10.12-second native MP4 on RTX 4090 or RTX 5090."
+  provider_calls_authorized: true
+  maximum_external_spend_usd: 8
+  cumulative_external_spend_ceiling_usd: 8
+  prior_live_balance_delta_usd: 4.229342856
   provider_authority:
     provider: RunPod
     model_id: EchoMimicV3-Flash-FP8-dynamic@311e176905a8c4c24b240b530488fe636ce4d249
-    cap_usd: 0
-    cumulative_cap_usd: 2
-    prior_settled_spend_usd: 1.9623834279
-    bootstrap_stop_usd: 0
-    inference_hard_breaker_usd: 0
-    inference_active_breaker_usd: 0
+    cap_usd: 8
+    cumulative_cap_usd: 8
+    prior_settled_spend_usd: 4.229342856
+    bootstrap_stop_usd: 0.5
+    inference_hard_breaker_usd: 7.95
+    inference_active_breaker_usd: 7.95
     non_transferable: true
-    authorized_by_user_at: "2026-08-12T18:26:00Z"
-  remote_or_cloud_mutations_authorized: false
-  remote_scope: "Device-transfer repair image is published. Do not create a RunPod volume, endpoint, template, Pod, worker, or job until fresh spend authority."
+    authorized_by_user_at: "2026-08-13T04:10:00Z"
+  remote_or_cloud_mutations_authorized: true
+  remote_scope: "One repaired FP8 RTX 4090 or RTX 5090 exact-input run, output retrieval, then deletion and three zero-resource reads."
   credential_access_authorized: true
-  model_downloads_authorized: false
+  model_downloads_authorized: true
   application_code_changes_authorized: true
   expected_evidence: "evidence/acceptance/VF-9-24I/elias-echomimic-v3-flash-fp8-rtx"
   required_handoff:
     - "Publish a digest-pinned FP8 worker with local and hosted image smoke evidence."
-    - "After fresh spend authority, return the private MP4 with exact probe/hash/timings and prove RunPod absolute zero."
+    - "Return the private MP4 with exact probe/hash/timings and prove RunPod absolute zero."
   prohibited_in_task:
-    - "Any paid dispatch before a fresh cumulative cap, app integration, deployment, migration, profile promotion, or successor task."
+    - "Any spend above the cumulative $8 cap, app integration, deployment, migration, profile promotion, or successor task."
     - "Uncarded third-party FP8 pickle, AvatarForcing, MuseTalk, SkyReels, LongCat, retained paid resource, or other-model fallback."
 
 blocking_gates_for_production:
@@ -188,11 +188,11 @@ progress_snapshot:
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: vf_9_24i_device_transfer_repair_published_runpod_absolute_zero_waiting_cap
+  status: vf_9_24i_pinned_call_repair_in_progress_runpod_absolute_zero
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Load only phase9_echomimic_v3_flash_fp8_rtx_sample and tasks/VF-9-24I.md."
-    - "Use pinned repaired image sha256:2d4384bed4dbe2aa479e11f0efaba8b8b18c8ebdad46871e0b3fd816e004d247."
-    - "Do not dispatch on RunPod without a fresh cumulative spend cap above the prior $2 ceiling."
+    - "Publish the pinned-call hotfix over async image sha256:f2bfdd3bea7dc0ec6c8d39109f216dcaa9977769daaf767dfdac8d13d4240fe0."
+    - "Run only within cumulative $8 authority; force-delete the Pod after success or failure."
   stop_conditions:
-    - "Any RunPod mutation before fresh spend authority, unpinned dependency/checkpoint, other-model fallback, successor selection, or roadmap continuation."
+    - "Cumulative spend reaching $8, unpinned dependency/checkpoint, other-model fallback, successor selection, or roadmap continuation."

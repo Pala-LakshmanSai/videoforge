@@ -7,9 +7,6 @@ import infer_flash
 import torch
 from torchao.quantization import float8_dynamic_activation_float8_weight, quantize_
 
-PARTIAL_VIDEO_LENGTH = 81
-OVERLAP_VIDEO_LENGTH = 5
-
 
 def _install_fp8_transformer_load() -> None:
     original_from_pretrained = infer_flash.WanTransformer.from_pretrained
@@ -40,7 +37,7 @@ def _install_fp8_transformer_load() -> None:
     infer_flash.WanTransformer.from_pretrained = from_pretrained_then_fp8
 
 
-def _install_long_video_cfg() -> None:
+def _install_generation_timing() -> None:
     original = infer_flash.WanFunInpaintAudioPipeline.__call__
 
     def call_long_video(self, *args, **kwargs):
@@ -67,15 +64,11 @@ def _install_long_video_cfg() -> None:
             ),
             flush=True,
         )
-        kwargs["use_longvideo_cfg"] = True
-        kwargs["partial_video_length"] = PARTIAL_VIDEO_LENGTH
-        kwargs["overlap_video_length"] = OVERLAP_VIDEO_LENGTH
         print(
             json.dumps(
                 {
-                    "event": "echomimic_long_video_cfg",
-                    "overlap_video_length": OVERLAP_VIDEO_LENGTH,
-                    "partial_video_length": PARTIAL_VIDEO_LENGTH,
+                    "event": "echomimic_full_video_fp8",
+                    "num_frames": kwargs.get("num_frames"),
                 },
                 sort_keys=True,
             ),
@@ -100,7 +93,7 @@ def _install_long_video_cfg() -> None:
 
 def main() -> None:
     _install_fp8_transformer_load()
-    _install_long_video_cfg()
+    _install_generation_timing()
     infer_flash.main()
 
 

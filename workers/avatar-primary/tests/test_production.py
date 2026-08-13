@@ -191,15 +191,15 @@ class ProductionContractTest(unittest.TestCase):
         self.assertEqual(WAN_REVISION, "fc913c34361f4ec879e2f9c78b4f11ae50a937d1")
         self.assertEqual(WAV2VEC_REVISION, "3991242c806928916fff4a8c0e4f76acf661b743")
 
-    def test_fp8_long_video_profile_is_exact(self) -> None:
+    def test_fp8_full_video_profile_is_exact(self) -> None:
         self.assertEqual(
             OFFICIAL_FLASH_CONFIG["weight_dtype"],
             "float8_e4m3fn_dynamic_activation_weight",
         )
         self.assertEqual(OFFICIAL_FLASH_CONFIG["activation_dtype"], "float8_e4m3fn")
-        self.assertIs(OFFICIAL_FLASH_CONFIG["long_video_cfg"], True)
-        self.assertEqual(OFFICIAL_FLASH_CONFIG["partial_video_length"], 81)
-        self.assertEqual(OFFICIAL_FLASH_CONFIG["overlap_video_length"], 5)
+        self.assertIs(OFFICIAL_FLASH_CONFIG["long_video_cfg"], False)
+        self.assertIsNone(OFFICIAL_FLASH_CONFIG["partial_video_length"])
+        self.assertIsNone(OFFICIAL_FLASH_CONFIG["overlap_video_length"])
 
         worker_root = Path(__file__).resolve().parents[1]
         production = (worker_root / "src/videoforge_avatar_primary/production.py").read_text(
@@ -208,7 +208,8 @@ class ProductionContractTest(unittest.TestCase):
         wrapper = (worker_root / "infer_flash_fp8.py").read_text(encoding="utf-8")
         self.assertIn("/opt/videoforge/infer_flash_fp8.py", production)
         self.assertIn("float8_dynamic_activation_float8_weight", wrapper)
-        self.assertIn("PARTIAL_VIDEO_LENGTH = 81", wrapper)
+        self.assertIn("echomimic_full_video_fp8", wrapper)
+        self.assertNotIn("use_longvideo_cfg", wrapper)
 
     def test_rejects_full_voiceover_oversize_frames_layout_and_unknown_fields(self) -> None:
         cases = []

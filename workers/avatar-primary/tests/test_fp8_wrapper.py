@@ -84,7 +84,7 @@ class Fp8WrapperTest(unittest.TestCase):
 
     def test_quantizes_only_after_pipeline_device_transfers(self) -> None:
         self.wrapper._install_fp8_transformer_load()
-        self.wrapper._install_long_video_cfg()
+        self.wrapper._install_generation_timing()
         transformer = FakeTransformer.from_pretrained("base")
         self.assertEqual(transformer.load_state_dict({}), "loaded")
         self.assertEqual(self.quantize_calls, [])
@@ -93,15 +93,13 @@ class Fp8WrapperTest(unittest.TestCase):
         self.assertEqual(transformer.load_state_dict({}), "loaded")
         self.assertEqual(self.quantize_calls, [transformer])
 
-    def test_forces_bounded_long_video_cfg(self) -> None:
-        self.wrapper._install_long_video_cfg()
+    def test_preserves_full_video_arguments(self) -> None:
+        self.wrapper._install_generation_timing()
         transformer = FakeTransformer()
         transformer._videoforge_fp8_pending = True
         result = FakePipeline(transformer)(num_frames=253)
         self.assertEqual(result["num_frames"], 253)
-        self.assertIs(result["use_longvideo_cfg"], True)
-        self.assertEqual(result["partial_video_length"], 81)
-        self.assertEqual(result["overlap_video_length"], 5)
+        self.assertNotIn("use_longvideo_cfg", result)
 
 
 if __name__ == "__main__":

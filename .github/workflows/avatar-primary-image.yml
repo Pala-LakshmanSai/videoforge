@@ -2,6 +2,12 @@ name: avatar-primary-image
 
 on:
   workflow_dispatch:
+    inputs:
+      hotfix:
+        description: Build the small pinned-runtime hotfix layer
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -28,7 +34,11 @@ jobs:
           set -euo pipefail
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           image="ghcr.io/${owner}/videoforge-avatar-primary:${GITHUB_SHA}"
-          docker build --tag "$image" workers/avatar-primary
+          if [ "${{ inputs.hotfix }}" = "true" ]; then
+            docker build --file workers/avatar-primary/Dockerfile.hotfix --tag "$image" workers/avatar-primary
+          else
+            docker build --tag "$image" workers/avatar-primary
+          fi
           docker run --rm --entrypoint python "$image" -c \
             'import librosa, moviepy, pyloudnorm, runpod, torch, torchao, torchvision; from videoforge_avatar_primary import AvatarPrimaryJob; print("avatar-primary-import-ok")'
           docker run --rm --entrypoint python "$image" infer_flash.py --help >/dev/null

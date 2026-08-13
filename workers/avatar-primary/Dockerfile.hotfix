@@ -1,0 +1,4 @@
+FROM ghcr.io/pala-lakshmansai/videoforge-avatar-primary@sha256:f2bfdd3bea7dc0ec6c8d39109f216dcaa9977769daaf767dfdac8d13d4240fe0
+
+COPY infer_flash_fp8.py /opt/videoforge/infer_flash_fp8.py
+COPY src/videoforge_avatar_primary/production.py /opt/videoforge/src/videoforge_avatar_primary/production.py
