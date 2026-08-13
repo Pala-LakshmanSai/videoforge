@@ -68,7 +68,7 @@ async function shared(request: APIRequestContext) {
 
 test("CP-05 completes three serial $0 projects across sessions with exact drain and MP4 playback", async ({
   browser,
-}) => {
+}, testInfo) => {
   const contextA = await browser.newContext({
     baseURL: "http://localhost:4173",
     extraHTTPHeaders: { "X-VideoForge-Fixture-Session": "cp05-chrome-a" },
@@ -225,17 +225,27 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
     expect(playback.width).toBe(1920);
     expect(playback.height).toBe(1080);
 
-    const [download] = await Promise.all([
-      pageA.waitForEvent("download"),
-      pageA.getByRole("link", { name: "Download MP4" }).first().click(),
-    ]);
-    const downloadPath = await download.path();
-    expect(downloadPath).not.toBeNull();
-    const bytes = await readFile(downloadPath!);
+    const downloadLink = pageA.getByRole("link", { name: "Download MP4" }).first();
+    const downloadHref = await downloadLink.getAttribute("href");
+    expect(downloadHref).toBe(completed[0]!.finalAsset!.downloadPath + `?fixture=${FIXTURE}`);
+    const downloadResponse = await contextA.request.get(downloadHref!);
+    expect(downloadResponse.ok()).toBe(true);
+    expect(downloadResponse.headers()["content-disposition"]).toContain("attachment;");
+    expect(downloadResponse.headers()["content-type"]).toBe("video/mp4");
+    expect(downloadResponse.headers()["x-videoforge-sha256"]).toBe(
+      completed[0]!.finalAsset!.sha256,
+    );
+    const bytes = await downloadResponse.body();
     expect(bytes.byteLength).toBe(completed[0]!.finalAsset!.byteSize);
     expect(`sha256:${createHash("sha256").update(bytes).digest("hex")}`).toBe(
       completed[0]!.finalAsset!.sha256,
     );
+    if (testInfo.project.name === "desktop-chrome") {
+      const [download] = await Promise.all([pageA.waitForEvent("download"), downloadLink.click()]);
+      const downloadPath = await download.path();
+      expect(downloadPath).not.toBeNull();
+      expect(await readFile(downloadPath!)).toEqual(bytes);
+    }
 
     const pageC = await contextC.newPage();
     pageC.on("console", (message) => {
