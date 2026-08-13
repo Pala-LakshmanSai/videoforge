@@ -62,10 +62,10 @@ No current provider call, credential use, model download, Pod creation, volume c
 authorized.
 
 `VF-9-24L` completed the global-shared-MVP audit, every-fifth-frame Ranga recheck, architecture
-reconciliation, and balanced completion roadmap. `VF-9-24K` is now the proposed `CP-01`, `$0`,
-provider-free contract/firewall task, but application implementation is paused until the user
-explicitly authorizes it. It versions the singleton session, immutable GPU pair, global queue,
-isolated volumes, Pod lifecycle, and legacy-dispatch rejection before any cloud mutation.
+reconciliation, and balanced completion roadmap. The user authorized `VF-9-24K`/`CP-01` on
+2026-08-13 as a bounded `$0` provider-free contract/firewall task. It versions the singleton
+session, immutable GPU pair, global queue, isolated volumes, Pod lifecycle, and legacy-dispatch
+rejection before any cloud mutation.
 Current v1 machine schemas are legacy/provider-free and must fail closed before paid Pod dispatch;
 they are not being silently reinterpreted as the approved architecture.
 

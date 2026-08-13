@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-13T08:39:44Z"
+updated_at: "2026-08-13T09:44:09Z"
 
-phase: global_session_contracts_paused
-implementation_authorized_in_current_task: false
+phase: global_session_contracts_in_progress
+implementation_authorized_in_current_task: true
 current_milestone: global_session_contracts
 current_task: VF-9-24K
-current_wave: cp01_global_session_contracts_paused
+current_wave: cp01_global_session_contracts_in_progress
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -15,7 +15,7 @@ repository:
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
   branch: main
-  base_commit: "8ffe611"
+  base_commit: "af1723f548f5a10ff4caee1fa24c161fbb2eca9f"
   planning_handoff_commit: "0e5eee22e4d51150fc358fe853f607e1f41d73c9"
   last_good_commit: "0e5eee22e4d51150fc358fe853f607e1f41d73c9"
   working_tree_expected: clean_except_ignored_private_inputs
@@ -82,19 +82,19 @@ completed_tasks:
     external_spend_usd: 0
 active_ownership:
   - task_id: VF-9-24K
-    owner: unassigned_awaiting_user_authorization
+    owner: current_codex_task
     scope: "CP-01 provider-free global-session contracts and legacy dispatch firewall"
 
 blocked_tasks: []
-in_progress_checkpoint: null
+in_progress_checkpoint: CP-01
 
 recommended_next_task:
   task_id: VF-9-24K
   checkpoint: CP-01
   milestone: global_session_contracts
-  status: proposed_paused
+  status: in_progress
   dependency_status: cp00_context_complete_green
-  authorization_status: awaits_explicit_user_application_implementation_authority
+  authorization_status: user_authorized_cp01_application_and_context_changes_2026_08_13
   read_profile: cp01_global_session_contracts
   task_brief: tasks/VF-9-24K.md
   goal: "Implement provider-free global-session vNext contracts and block every legacy paid dispatch path."
@@ -103,7 +103,7 @@ recommended_next_task:
   remote_or_cloud_mutations_authorized: false
   credential_access_authorized: false
   model_downloads_authorized: false
-  application_code_changes_authorized: false
+  application_code_changes_authorized: true
   expected_evidence: "evidence/acceptance/VF-9-24K/cp01-global-session-contracts"
   required_handoff:
     - "Version singleton session, exact paired GPU receipt, inert global queue, isolated volume, Pod lifecycle, cost, and absence contracts."
@@ -158,11 +158,11 @@ progress_snapshot:
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: cp00_complete_cp01_paused
+  status: cp00_complete_cp01_in_progress
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Load only cp01_global_session_contracts and tasks/VF-9-24K.md."
     - "Read CP-01 in 22_PROJECT_COMPLETION_CHECKPOINTS.md."
-    - "Wait for explicit user authorization before changing application code."
+    - "Continue only bounded CP-01 application/context work at $0; do not start CP-02."
   stop_conditions:
     - "Any provider call, cloud mutation, credential need, model download, spend, schema reinterpretation, legacy dispatch reachability, production promotion, or successor execution."
