@@ -3,11 +3,10 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-14"
 source_of_truth: project-context
-# CP-04 is complete and re-audited provider-free under VF-9-24O. No CP-05 implementation is
-# selected or authorized; use only the checkpoint roadmap until the user explicitly selects
-# successor work.
-current_selected_profile: checkpoint_roadmap
-current_selected_brief: null
+# CP-04 is complete and re-audited provider-free under VF-9-24O. CP-05 is explicitly selected and
+# authorized provider-free under VF-9-24P.
+current_selected_profile: cp05_complete_fixture_mvp
+current_selected_brief: tasks/VF-9-24P.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -29,6 +28,11 @@ target_profile_word_budget: 10000
 # Historical task briefs remain evidence but are intentionally not active read profiles. Create one
 # narrow profile/brief when each future checkpoint becomes current.
 read_profiles:
+  cp05_complete_fixture_mvp:
+    - 22_PROJECT_COMPLETION_CHECKPOINTS.md
+    - tasks/VF-9-24P.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   cp04_three_composition_scheduler:
     - 22_PROJECT_COMPLETION_CHECKPOINTS.md
     - tasks/VF-9-24O.md

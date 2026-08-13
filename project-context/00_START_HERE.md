@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-04 complete; stopped before CP-05
+Status: CP-00 through CP-04 complete; CP-05 active provider-free under VF-9-24P
 Context schema: `1.5`  
 Last updated: `2026-08-14`
 
@@ -112,7 +112,7 @@ acceptance file remains immutable historical evidence.
 This remains provider-free local Mac/Linux evidence only: no Cloud Run deployment, private
 production R2, hosted Linux media runtime, provider call, credential use, model download/change,
 GPU, or spend was used or proven. Hosted production proof remains open until CP-08. CP-05 is not
-selected or authorized; work is stopped at the CP-04 boundary.
+yet complete; current work is bounded to fixture-only local orchestration under `VF-9-24P`.
 
 No VideoForge persistent model volume exists yet. Future provisioning/preparation is a separate
 explicitly authorized provider task after contracts and offline workers are green.
