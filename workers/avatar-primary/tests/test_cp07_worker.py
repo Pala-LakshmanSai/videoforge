@@ -146,6 +146,11 @@ class Cp07WorkerTest(unittest.TestCase):
         self.assertIn('torch.cuda.device_count() != 1', source)
         self.assertIn('torch.device("cuda", torch.cuda.current_device())', source)
 
+    def test_real_warmup_audio_exceeds_loudness_block_and_is_not_silent(self) -> None:
+        source = (ROOT / "echo_backend.py").read_text()
+        self.assertIn('for index in range(16_000)', source)
+        self.assertIn('math.sin(2 * math.pi * 220', source)
+
     def test_fp8_preparation_requires_cuda_89_or_newer(self) -> None:
         class FakeCuda:
             available = True

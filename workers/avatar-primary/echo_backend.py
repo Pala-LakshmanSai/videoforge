@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import struct
 import wave
 from pathlib import Path
 
@@ -142,7 +143,11 @@ class EchoPreparedBackend:
             stream.setnchannels(1)
             stream.setsampwidth(2)
             stream.setframerate(16_000)
-            stream.writeframes(b"\x00\x00" * 3_200)
+            samples = [
+                int(1_200 * math.sin(2 * math.pi * 220 * index / 16_000))
+                for index in range(16_000)
+            ]
+            stream.writeframes(struct.pack("<16000h", *samples))
         self.generate(
             source_path=image,
             audio_path=audio,
