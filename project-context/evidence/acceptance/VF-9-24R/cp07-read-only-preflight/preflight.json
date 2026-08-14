@@ -6,6 +6,7 @@
   "status": "provider_free_preflight_passed_awaiting_paid_authority",
   "implementation_commit": "c89acef78d4a4bbbbac118ca9c658b6180d68fc8",
   "safety_fix_commit": "75c852bb891dbe205ee43d2b73e74765bc336373",
+  "turbo_profile_commit": "4a8c0c2d7f440dd2f649fc03d9cf86a6a3ab618b",
   "verified_context_commit": "b7afb69efa2e31003f1b4408f51508ea38c05b3c",
   "external_spend_usd": 0,
   "provider_mutations": 0,
@@ -64,7 +65,7 @@
     "completion_marker_written_last": true
   },
   "immutable_image_definition": {
-    "target": "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:<source-commit-before-publication>",
+    "target": "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:4a8c0c2d7f440dd2f649fc03d9cf86a6a3ab618b",
     "base": "pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime@sha256:c16f4c749e2d9e96878875cdf6cc45cddda1d1a36fddd371dd6f2360f1b6e2a2",
     "published": false,
     "digest": null,

@@ -86,6 +86,7 @@ repository:
   cp07_phase_a_code_commit: "c89acef78d4a4bbbbac118ca9c658b6180d68fc8"
   cp07_phase_a_safety_fix_commit: "75c852bb891dbe205ee43d2b73e74765bc336373"
   cp07_phase_a_evidence_commit: "b7afb69efa2e31003f1b4408f51508ea38c05b3c"
+  cp07_turbo_profile_commit: "4a8c0c2d7f440dd2f649fc03d9cf86a6a3ab618b"
   last_good_commit: "b7afb69efa2e31003f1b4408f51508ea38c05b3c"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
@@ -274,7 +275,7 @@ cp07_phase_a:
   proposed_volume_rate_usd_per_gb_month: 0.07
   proposed_ongoing_retention_charge_usd_per_month: 3.5
   capacity_growth_policy: "50 GB remains sufficient under current byte bounds. If exact preparation exceeds a bound, stop before mutation, derive the next exact GB size and current recurring rate, and request changed approval; never silently enlarge retained billing."
-  immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:<source-commit-before-publication>"
+  immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:4a8c0c2d7f440dd2f649fc03d9cf86a6a3ab618b"
   image_published: false
   image_digest: null
   local_container_build_executed: false

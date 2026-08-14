@@ -3,6 +3,8 @@
 This directory records the `$0`, zero-mutation CP-07 Phase A boundary at implementation commit
 `c89acef78d4a4bbbbac118ca9c658b6180d68fc8` plus byte-budget/native-FP8 GPU safety fix
 `75c852bb891dbe205ee43d2b73e74765bc336373`.
+The Turbo runtime-profile naming and identity lock is
+`4a8c0c2d7f440dd2f649fc03d9cf86a6a3ab618b`.
 
 It proves canonical provider-free verification, local contracts, exact pinned lineage, immutable
 image definition, private 2/4/6-second
