@@ -1,31 +1,32 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T17:13:01Z"
+updated_at: "2026-08-14T17:30:52Z"
 
-phase: cp07_phase_b_halted_image_target_change
+phase: cp07_phase_b_authorized_pre_mutation
 implementation_authorized_in_current_task: true
 current_milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
 current_task: VF-9-24R
 current_wave: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: paid_authority_recorded_not_started
+task_stage: paid_authority_recorded_pre_mutation
 application_code_changes_authorized: true
 provider_calls_authorized: true
-maximum_external_spend_usd: 6
+maximum_external_spend_usd: 4
 provider_authority:
   mode: paid
   provider: runpod
-  cap_usd: 6
-  authorized_at: "2026-08-14T17:04:41Z"
-  source: current_cp07_user_approval_sequence
+  cap_usd: 4
+  authorized_at: "2026-08-14T17:30:52Z"
+  source: current_cp07_user_reauthorization
   non_transferable: true
-  execution_halted: true
-  halt_reason: "Approved image source 4a8c0c2 built but failed smoke before registry authentication because /opt/videoforge was absent from PYTHONPATH. Corrected source 237b108 requires explicit changed-target approval before another publication attempt."
+  execution_halted: false
+  halt_reason: null
   model_id: "EchoMimicV3-Flash Turbo FP8@videoforge_echo_v3_flash_turbo_fp8_v1"
   resources:
-    - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:4a8c0c2d7f440dd2f649fc03d9cf86a6a3ab618b"
+    - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:237b108819432b4bea3d7b3cb5e6bff039749cc1"
     - "runpod:EU-RO-1:echo-only-network-volume:50GB"
-    - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 4090:1x:$0.74/hour"
+    - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 4090:1x:maximum-$0.74/hour:preferred"
+    - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 5090:1x:maximum-$0.99/hour:alternate"
     - "BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249#echomimicv3-flash-pro"
   authorized_operations:
     - publish_echo_worker_image
@@ -136,8 +137,8 @@ live_development:
   fixture_scenario: cp05_complete_fixture_mvp
   provider_mode: sandbox
   provider_calls_authorized: true
-  authorized_spend_usd: 6
-  provider_authority_scope: "CP-07 exact paid authority: RTX 4090 EU-RO-1 at $0.74/hour, one retained 50 GB Echo volume at $3.50/month, and maximum finite external spend of $6 through handoff. Only recorded publish/create/prepare/2-4-6-sample/delete/audit operations are allowed."
+  authorized_spend_usd: 4
+  provider_authority_scope: "CP-07 exact paid authority: prefer RTX 4090 EU-RO-1 at no more than $0.74/hour, otherwise RTX 5090 EU-RO-1 at no more than $0.99/hour; one retained 50 GB Echo volume at $3.50/month; maximum finite external spend of $4 through handoff. Only recorded publish/create/prepare/2-4-6-sample/delete/audit operations are allowed."
   worker_image: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
   last_user_checkpoint:
     result: accepted
@@ -238,8 +239,8 @@ active_ownership:
   - task_id: VF-9-24R
     checkpoint: CP-07
     owner: current_chat
-    stage: paid_authority_recorded_not_started
-    external_spend_cap_usd: 6
+    stage: paid_authority_recorded_pre_mutation
+    external_spend_cap_usd: 4
 
 blocked_tasks: []
 in_progress_checkpoint: CP-07
@@ -248,21 +249,22 @@ recommended_next_task:
   task_id: VF-9-24R
   checkpoint: CP-07
   milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
-  status: phase_b_halted_image_target_change
+  status: phase_b_authorized_pre_mutation
   dependency_status: cp06_complete_green_settled_visual_accepted
   authorization_status: exact_paid_authority_recorded
   task_stage: bounded_mutation
   provider_authority:
     mode: paid
     provider: runpod
-    cap_usd: 6
+    cap_usd: 4
     non_transferable: true
-    authorized_by_user_at: "2026-08-14T17:04:41Z"
+    authorized_by_user_at: "2026-08-14T17:30:52Z"
     model_id: "EchoMimicV3-Flash Turbo FP8@videoforge_echo_v3_flash_turbo_fp8_v1"
     resources:
-      - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:4a8c0c2d7f440dd2f649fc03d9cf86a6a3ab618b"
+      - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:237b108819432b4bea3d7b3cb5e6bff039749cc1"
       - "runpod:EU-RO-1:echo-only-network-volume:50GB"
-      - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 4090:1x:$0.74/hour"
+      - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 4090:1x:maximum-$0.74/hour:preferred"
+      - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 5090:1x:maximum-$0.99/hour:alternate"
       - "BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249#echomimicv3-flash-pro"
     authorized_operations:
       - publish_echo_worker_image
@@ -297,9 +299,9 @@ recommended_next_task:
       - retain_echo_volume
   read_profile: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
   task_brief: tasks/VF-9-24R.md
-  goal: "Wait for explicit approval of corrected immutable image target 237b108; then execute only the otherwise unchanged CP-07 paid proposal, stop on drift/cap risk, retain the approved Echo volume, and leave zero Pods."
+  goal: "Execute the corrected immutable image target 237b108 and exact CP-07 paid proposal under the reauthorized $4 cap; prefer the live RTX 4090 and use the RTX 5090 only if the 4090 is unavailable; retain the approved Echo volume and leave zero Pods."
   provider_calls_authorized: true
-  maximum_external_spend_usd: 6
+  maximum_external_spend_usd: 4
   remote_or_cloud_mutations_authorized: true
   credential_access_authorized: true
   model_downloads_authorized: true
@@ -321,7 +323,7 @@ recommended_next_task:
     - "Any active Echo crop before owned native samples are measured and the user explicitly approves the proposed crop pair."
 
 cp07_phase_a:
-  status: complete_awaiting_paid_authority
+  status: complete_paid_execution_reauthorized
   evidence: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
   activation_commit: "aff5f0a"
   implementation_commit: "c89acef78d4a4bbbbac118ca9c658b6180d68fc8"
@@ -342,9 +344,9 @@ cp07_phase_a:
   proposed_volume_rate_usd_per_gb_month: 0.07
   proposed_ongoing_retention_charge_usd_per_month: 3.5
   capacity_growth_policy: "50 GB remains sufficient under current byte bounds. If exact preparation exceeds a bound, stop before mutation, derive the next exact GB size and current recurring rate, and request changed approval; never silently enlarge retained billing."
-  immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:4a8c0c2d7f440dd2f649fc03d9cf86a6a3ab618b"
+  immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:237b108819432b4bea3d7b3cb5e6bff039749cc1"
   proposed_revised_immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:237b108819432b4bea3d7b3cb5e6bff039749cc1"
-  proposed_revised_image_target_approved: false
+  proposed_revised_image_target_approved: true
   image_published: false
   image_digest: null
   local_container_build_executed: false
@@ -379,14 +381,19 @@ cp07_phase_a:
   canonical_verify_checked_at: "2026-08-14T16:50:24Z"
   installed_chrome_tests: 42
   paid_execution_authorized: true
-  paid_execution_authorized_at: "2026-08-14T17:04:41Z"
-  paid_execution_cap_usd: 6
-  paid_execution_halted: true
+  paid_execution_authorized_at: "2026-08-14T17:30:52Z"
+  paid_execution_cap_usd: 4
+  paid_execution_halted: false
   image_publication_attempts: 1
   last_image_publication_run_id: 31822490514
   last_image_publication_result: failed_before_registry_authentication
-  selected_gpu_offering_id: "NVIDIA GeForce RTX 4090"
-  selected_gpu_rate_usd_per_hour: 0.74
+  selected_gpu_offering_id: null
+  selected_gpu_rate_usd_per_hour: null
+  approved_gpu_priority:
+    - offering_id: "NVIDIA GeForce RTX 4090"
+      maximum_rate_usd_per_hour: 0.74
+    - offering_id: "NVIDIA GeForce RTX 5090"
+      maximum_rate_usd_per_hour: 0.99
   approved_echo_volume_size_gb: 50
   approved_echo_volume_retention_usd_per_month: 3.5
   echo_crop_activated: false
