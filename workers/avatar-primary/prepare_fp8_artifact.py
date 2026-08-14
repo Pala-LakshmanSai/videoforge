@@ -18,6 +18,18 @@ from echo_volume import (
 )
 
 
+def require_fp8_preparation_device(torch: object) -> object:
+    """Return the exact CUDA device required by TorchAO's FP8 transform."""
+    cuda = getattr(torch, "cuda", None)
+    if cuda is None or not cuda.is_available():
+        raise RuntimeError("ECHO_PREPARATION_CUDA_REQUIRED")
+    device = torch.device("cuda")
+    major, minor = cuda.get_device_capability(device)
+    if (major, minor) < (8, 9):
+        raise RuntimeError("ECHO_PREPARATION_GPU_FP8_UNSUPPORTED")
+    return device
+
+
 def prepare_fp8_artifact(model_root: Path) -> dict[str, object]:
     """Create the owned, carded FP8 state during the authorized preparation Pod only."""
     try:
@@ -60,6 +72,9 @@ def prepare_fp8_artifact(model_root: Path) -> dict[str, object]:
     missing, unexpected = transformer.load_state_dict(state, strict=False)
     if unexpected:
         raise RuntimeError("ECHO_PREPARATION_FLASH_UNEXPECTED_KEYS")
+    preparation_device = require_fp8_preparation_device(torch)
+    transformer.to(device=preparation_device, dtype=torch.bfloat16)
+    torch.cuda.synchronize(preparation_device)
     quantize_(transformer, float8_dynamic_activation_float8_weight())
     quantized_linear_count = sum(
         1

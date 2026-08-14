@@ -34,6 +34,7 @@ import echo_prepare_service as prepare_service  # noqa: E402
 from echo_job import EchoQualificationJob  # noqa: E402
 from echo_runtime import EchoRuntime  # noqa: E402
 from prepare_echo_volume import CONFIRMATION, prepare  # noqa: E402
+from prepare_fp8_artifact import require_fp8_preparation_device  # noqa: E402
 from scratch import create_scratch  # noqa: E402
 from span_contract import EchoSpanJob, inference_frame_count, trim_filter, validate_output_probe  # noqa: E402
 
@@ -121,6 +122,36 @@ def make_volume(root: Path, *, lane: str = volume.ECHO_LANE) -> dict[str, object
 
 
 class Cp07WorkerTest(unittest.TestCase):
+    def test_fp8_preparation_requires_cuda_89_or_newer(self) -> None:
+        class FakeCuda:
+            available = True
+            capability = (8, 9)
+
+            @classmethod
+            def is_available(cls) -> bool:
+                return cls.available
+
+            @classmethod
+            def get_device_capability(cls, _device: object) -> tuple[int, int]:
+                return cls.capability
+
+        fake_torch = types.SimpleNamespace(cuda=FakeCuda, device=lambda value: value)
+        self.assertEqual(require_fp8_preparation_device(fake_torch), "cuda")
+        FakeCuda.capability = (8, 6)
+        with self.assertRaisesRegex(RuntimeError, "ECHO_PREPARATION_GPU_FP8_UNSUPPORTED"):
+            require_fp8_preparation_device(fake_torch)
+        FakeCuda.available = False
+        with self.assertRaisesRegex(RuntimeError, "ECHO_PREPARATION_CUDA_REQUIRED"):
+            require_fp8_preparation_device(fake_torch)
+
+    def test_fp8_preparation_moves_transformer_to_cuda_before_quantization(self) -> None:
+        source = (ROOT / "prepare_fp8_artifact.py").read_text(encoding="utf-8")
+        move = source.index("transformer.to(device=preparation_device, dtype=torch.bfloat16)")
+        synchronize = source.index("torch.cuda.synchronize(preparation_device)")
+        quantize = source.index("quantize_(transformer, float8_dynamic_activation_float8_weight())")
+        self.assertLess(move, synchronize)
+        self.assertLess(synchronize, quantize)
+
     def test_exact_pinned_lineage_bytes_and_derived_capacity(self) -> None:
         self.assertEqual(
             sum(item.bytes for item in volume.ECHO_REQUIRED_SOURCE_FILES),

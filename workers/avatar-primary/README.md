@@ -7,6 +7,8 @@ checkpoint. It pins the first-party Echo source, Flash, Wan base, audio encoder,
 A separately authorized preparation command
 downloads the pinned source files, derives the VideoForge-owned FP8 state, reopens it with
 `weights_only=True`, hashes every source/prepared byte, and writes the completion marker last.
+Preparation explicitly requires a CUDA GPU with compute capability 8.9 or newer, moves the loaded
+BF16 transformer to that GPU, synchronizes it, and only then invokes TorchAO's FP8 transform.
 
 Ordinary boot is offline. It mounts only the Echo volume, verifies the complete exact manifest,
 loads the prepared FP8 state, performs one real inference-path warm-up, and reports `model_ready`
