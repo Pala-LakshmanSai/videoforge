@@ -5,11 +5,15 @@ import {
   assertCp07ReplacementInventory,
   CP06_MAGE_VOLUME_ID_HASH,
   CP07_INVALID_ECHO_VOLUME_ID_HASH,
+  CP07_CAPACITY_RETRY_DELAY_MS,
+  CP07_CAPACITY_RETRY_LIMIT,
   CP07_REGION,
   CP07_PRIOR_CONSERVATIVE_SPEND_USD,
   CP07_VOLUME_NAME,
   CP07_VOLUME_ATTACHMENT_SETTLE_MS,
   CP07_REUSE_VERIFIED_EMPTY_ECHO_VOLUME,
+  Cp07PhaseBError,
+  isCp07CapacityUnavailable,
   sanitizeCp07ProviderFailure,
 } from "./runpod-echo-cp07-phase-b-live";
 
@@ -42,6 +46,23 @@ describe("CP-07 invalid Echo volume replacement boundary", () => {
   });
   it("uses a bounded provider attachment-settle delay before Pod creation", () => {
     expect(CP07_VOLUME_ATTACHMENT_SETTLE_MS).toBe(30_000);
+  });
+  it("retries only the exact provider no-capacity response with a bounded cadence", () => {
+    expect(CP07_CAPACITY_RETRY_DELAY_MS).toBe(30_000);
+    expect(CP07_CAPACITY_RETRY_LIMIT).toBe(20);
+    expect(
+      isCp07CapacityUnavailable(
+        new Cp07PhaseBError(
+          "CP07_PROVIDER_MUTATION_FAILED",
+          "status:500;provider:create pod: There are no instances currently available",
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      isCp07CapacityUnavailable(
+        new Cp07PhaseBError("CP07_PROVIDER_MUTATION_AMBIGUOUS"),
+      ),
+    ).toBe(false);
   });
   it("selects only the exact retained invalid Echo volume beside the exact Mage volume", () => {
     expect(assertCp07ReplacementInventory(exactVolumes())).toBe(CP07_INVALID_ECHO_VOLUME_ID_HASH);

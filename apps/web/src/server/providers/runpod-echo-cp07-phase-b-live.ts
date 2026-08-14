@@ -20,6 +20,8 @@ export const CP07_CAP_USD = 6;
 export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 1.876725;
 export const CP07_POD_LIFECYCLE_RESERVE_SECONDS = 120;
 export const CP07_VOLUME_ATTACHMENT_SETTLE_MS = 30_000;
+export const CP07_CAPACITY_RETRY_DELAY_MS = 30_000;
+export const CP07_CAPACITY_RETRY_LIMIT = 20;
 export const CP07_VOLUME_NAME = "videoforge-echo-cp07-model-volume-eu-ro-1-50gb";
 export const CP07_VOLUME_SIZE_GB = 50;
 export const CP06_MAGE_VOLUME_ID_HASH =
@@ -60,6 +62,11 @@ export const sanitizeCp07ProviderFailure = (value: string): string =>
     .replace(/[A-Za-z0-9_-]{20,}/gu, "[redacted-token]")
     .replace(/[^\x20-\x7E]/gu, " ")
     .slice(0, 500);
+
+export const isCp07CapacityUnavailable = (error: unknown): boolean =>
+  error instanceof Cp07PhaseBError &&
+  error.code === "CP07_PROVIDER_MUTATION_FAILED" &&
+  error.detail?.includes("There are no instances currently available") === true;
 
 const sha256 = (value: string | Buffer): `sha256:${string}` =>
   `sha256:${createHash("sha256").update(value).digest("hex")}`;
@@ -472,22 +479,37 @@ class RunPodCp07Client {
       volumeInGb: 0,
       volumeMountPath: CP07_VOLUME_MOUNT,
     };
-    let response: unknown;
-    try {
-      response = await this.request("POST", "/pods", body);
-    } catch (error) {
-      if (
-        !(error instanceof Cp07PhaseBError) ||
-        error.code !== "CP07_PROVIDER_MUTATION_AMBIGUOUS"
-      ) {
+    let response: unknown = null;
+    for (let attempt = 1; attempt <= CP07_CAPACITY_RETRY_LIMIT; attempt += 1) {
+      try {
+        response = await this.request("POST", "/pods", body);
+        break;
+      } catch (error) {
+        const candidates = await this.listPodsByName(authority.name);
+        if (isCp07CapacityUnavailable(error) && candidates.length === 0) {
+          if (attempt === CP07_CAPACITY_RETRY_LIMIT) {
+            throw new Cp07PhaseBError("CP07_GPU_CAPACITY_RETRY_EXHAUSTED");
+          }
+          await sleep(CP07_CAPACITY_RETRY_DELAY_MS);
+          continue;
+        }
+        if (
+          error instanceof Cp07PhaseBError &&
+          error.code === "CP07_PROVIDER_MUTATION_AMBIGUOUS" &&
+          candidates.length === 1
+        ) {
+          response = candidates[0];
+          break;
+        }
+        await this.deleteCandidatePods(candidates);
+        if (
+          error instanceof Cp07PhaseBError &&
+          error.code === "CP07_PROVIDER_MUTATION_AMBIGUOUS"
+        ) {
+          throw new Cp07PhaseBError("CP07_POD_CREATE_AMBIGUOUS_CLEANED");
+        }
         throw error;
       }
-      const candidates = await this.listPodsByName(authority.name);
-      if (candidates.length !== 1) {
-        await this.deleteCandidatePods(candidates);
-        throw new Cp07PhaseBError("CP07_POD_CREATE_AMBIGUOUS_CLEANED");
-      }
-      response = candidates[0];
     }
     const created = record(response);
     if (typeof created?.id !== "string" || !ID.test(created.id)) {
