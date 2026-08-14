@@ -58,11 +58,9 @@ describe("CP-07 invalid Echo volume replacement boundary", () => {
         ),
       ),
     ).toBe(true);
-    expect(
-      isCp07CapacityUnavailable(
-        new Cp07PhaseBError("CP07_PROVIDER_MUTATION_AMBIGUOUS"),
-      ),
-    ).toBe(false);
+    expect(isCp07CapacityUnavailable(new Cp07PhaseBError("CP07_PROVIDER_MUTATION_AMBIGUOUS"))).toBe(
+      false,
+    );
   });
   it("selects only the exact retained invalid Echo volume beside the exact Mage volume", () => {
     expect(assertCp07ReplacementInventory(exactVolumes())).toBe(CP07_INVALID_ECHO_VOLUME_ID_HASH);
@@ -97,8 +95,7 @@ describe("CP-07 cumulative finite-cost boundary", () => {
     const sample = assertCp07CumulativeReservation(prep, 2_700);
     const sampleTwo = assertCp07CumulativeReservation(prep + sample, 2_700);
     const sampleThree = assertCp07CumulativeReservation(prep + sample + sampleTwo, 2_700);
-    const cumulative =
-      CP07_PRIOR_CONSERVATIVE_SPEND_USD + prep + sample + sampleTwo + sampleThree;
+    const cumulative = CP07_PRIOR_CONSERVATIVE_SPEND_USD + prep + sample + sampleTwo + sampleThree;
     expect(cumulative).toBeCloseTo(3.738725, 6);
     expect(6 - cumulative).toBeCloseTo(2.261275, 6);
   });
