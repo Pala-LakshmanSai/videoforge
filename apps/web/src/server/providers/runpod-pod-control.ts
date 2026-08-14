@@ -1157,7 +1157,10 @@ export class RunPodPodControlClient {
       (value.interruptible !== false &&
         (!allowNormalizedReadOmissions || value.interruptible !== undefined)) ||
       value.volumeInGb !== 0 ||
-      (value.volumeMountPath !== undefined && value.volumeMountPath !== null) ||
+      (value.volumeMountPath !== undefined &&
+        value.volumeMountPath !== null &&
+        (!allowNormalizedReadOmissions ||
+          value.volumeMountPath !== CP06_MAGE_NETWORK_VOLUME_MOUNT_PATH)) ||
       (value.networkVolume !== null &&
         (!allowNormalizedReadOmissions || value.networkVolume !== undefined)) ||
       !exactStringArray(value.ports, [CP06_MAGE_HTTP_PORT]) ||
