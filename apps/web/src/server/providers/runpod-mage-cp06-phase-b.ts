@@ -794,7 +794,8 @@ const runPodStage = async <T>(
             createError !== null &&
             typeof createError === "object" &&
             "code" in createError &&
-            createError.code === "RUNPOD_POD_MUTATION_FAILED";
+            (createError.code === "RUNPOD_POD_MUTATION_FAILED" ||
+              createError.code === "RUNPOD_MAGE_POD_IDENTITY_REJECTED_AND_DELETED");
           if (recovered.length === 0 && definiteProviderRejection) throw createError;
           throw new Cp06PhaseBError("CP06_POD_CREATE_AMBIGUOUS");
         }

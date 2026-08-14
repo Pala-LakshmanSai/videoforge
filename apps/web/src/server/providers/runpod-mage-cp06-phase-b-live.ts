@@ -779,6 +779,13 @@ export class RunPodCp06LiveAdapter implements Cp06PodNativePort {
           maximumAttempts: 12,
           intervalMs: 2_000,
         });
+        throw new RunPodPodControlError(
+          "RUNPOD_MAGE_POD_IDENTITY_REJECTED_AND_DELETED",
+          undefined,
+          undefined,
+          error.providerStatus,
+          error.providerMessage,
+        );
       }
       throw error;
     }

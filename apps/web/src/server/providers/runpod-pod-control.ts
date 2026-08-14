@@ -885,41 +885,72 @@ export class RunPodPodControlClient {
             expectedEnvironmentVolumeIdHash,
             expectedWorkerToken,
           );
-    if (
-      !resourceId ||
-      (expectedPodId !== undefined && resourceId !== expectedPodId) ||
-      value?.name !== authority.name ||
-      value.templateId !== authority.templateId ||
-      value.image !== authority.imageDigest ||
-      (value.allowedCudaVersions !== undefined &&
-        !exactStringArray(value.allowedCudaVersions, ["13.0"])) ||
-      !exactStringArray(value.dockerEntrypoint, expectedEntrypoint) ||
-      !exactStringArray(value.dockerStartCmd, expectedStartCommand) ||
-      !environmentConfirmed ||
-      value.endpointId !== null ||
-      value.interruptible !== false ||
-      value.volumeInGb !== 0 ||
-      value.volumeMountPath !== CP06_MAGE_NETWORK_VOLUME_MOUNT_PATH ||
-      !exactStringArray(value.ports, [CP06_MAGE_HTTP_PORT]) ||
-      gpu?.count !== 1 ||
-      machine?.gpuTypeId !== CP06_MAGE_GPU_TYPE_ID ||
-      machine.dataCenterId !== CP06_MAGE_DATA_CENTER_ID ||
-      machine.secureCloud !== true ||
-      networkVolume?.id !== authority.networkVolumeId ||
-      networkVolume.dataCenterId !== CP06_MAGE_DATA_CENTER_ID ||
-      networkVolume.size !== CP06_MAGE_NETWORK_VOLUME_SIZE_GB ||
+    const mismatchFields: string[] = [];
+    const mismatch = (field: string, condition: boolean): void => {
+      if (condition) mismatchFields.push(field);
+    };
+    mismatch("id", !resourceId);
+    mismatch("expectedPodId", expectedPodId !== undefined && resourceId !== expectedPodId);
+    mismatch("name", value?.name !== authority.name);
+    mismatch("templateId", value?.templateId !== authority.templateId);
+    mismatch("image", value?.image !== authority.imageDigest);
+    mismatch(
+      "allowedCudaVersions",
+      value?.allowedCudaVersions !== undefined &&
+        !exactStringArray(value.allowedCudaVersions, ["13.0"]),
+    );
+    mismatch("dockerEntrypoint", !exactStringArray(value?.dockerEntrypoint, expectedEntrypoint));
+    mismatch("dockerStartCmd", !exactStringArray(value?.dockerStartCmd, expectedStartCommand));
+    mismatch("env", !environmentConfirmed);
+    mismatch("endpointId", value?.endpointId !== null);
+    mismatch("interruptible", value?.interruptible !== false);
+    mismatch("volumeInGb", value?.volumeInGb !== 0);
+    mismatch("volumeMountPath", value?.volumeMountPath !== CP06_MAGE_NETWORK_VOLUME_MOUNT_PATH);
+    mismatch("ports", !exactStringArray(value?.ports, [CP06_MAGE_HTTP_PORT]));
+    mismatch("gpu.count", gpu?.count !== 1);
+    mismatch("machine.gpuTypeId", machine?.gpuTypeId !== CP06_MAGE_GPU_TYPE_ID);
+    mismatch("machine.dataCenterId", machine?.dataCenterId !== CP06_MAGE_DATA_CENTER_ID);
+    mismatch("machine.secureCloud", machine?.secureCloud !== true);
+    mismatch("networkVolume.id", networkVolume?.id !== authority.networkVolumeId);
+    mismatch(
+      "networkVolume.dataCenterId",
+      networkVolume?.dataCenterId !== CP06_MAGE_DATA_CENTER_ID,
+    );
+    mismatch("networkVolume.size", networkVolume?.size !== CP06_MAGE_NETWORK_VOLUME_SIZE_GB);
+    mismatch(
+      "listedCostPerHourUsd",
       listedCostPerHourUsd === null ||
-      listedCostPerHourUsd <= 0 ||
-      listedCostPerHourUsd > CP06_MAGE_GPU_RATE_CEILING_USD_PER_HOUR ||
-      (adjustedCostPerHourUsd !== null &&
+        listedCostPerHourUsd <= 0 ||
+        listedCostPerHourUsd > CP06_MAGE_GPU_RATE_CEILING_USD_PER_HOUR,
+    );
+    mismatch(
+      "adjustedCostPerHourUsd",
+      adjustedCostPerHourUsd !== null &&
         (adjustedCostPerHourUsd <= 0 ||
-          adjustedCostPerHourUsd > CP06_MAGE_GPU_RATE_CEILING_USD_PER_HOUR)) ||
+          adjustedCostPerHourUsd > CP06_MAGE_GPU_RATE_CEILING_USD_PER_HOUR),
+    );
+    mismatch("costPerHourUsd", costPerHourUsd === null || costPerHourUsd <= 0);
+    mismatch(
+      "desiredStatus",
+      desiredStatus !== "RUNNING" && desiredStatus !== "EXITED" && desiredStatus !== "TERMINATED",
+    );
+    mismatch("lastStartedAt", !exactIsoTimestamp(value?.lastStartedAt));
+    if (mismatchFields.length > 0) {
+      throw new RunPodPodControlError(
+        "RUNPOD_MAGE_POD_IDENTITY_UNCONFIRMED",
+        resourceId,
+        undefined,
+        undefined,
+        mismatchFields.join(","),
+      );
+    }
+    if (
+      resourceId === undefined ||
       costPerHourUsd === null ||
-      costPerHourUsd <= 0 ||
       (desiredStatus !== "RUNNING" &&
         desiredStatus !== "EXITED" &&
         desiredStatus !== "TERMINATED") ||
-      !exactIsoTimestamp(value.lastStartedAt)
+      typeof value?.lastStartedAt !== "string"
     ) {
       throw new RunPodPodControlError("RUNPOD_MAGE_POD_IDENTITY_UNCONFIRMED", resourceId);
     }
