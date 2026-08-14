@@ -48,11 +48,12 @@ export function registerSystemRoutes(app: Hono, runtime: FixtureRuntime): void {
     });
   }
 
-  app.get("/api/v1/bootstrap", (c) => {
+  app.get("/api/v1/bootstrap", async (c) => {
     const resolved = fixtureFromRequest(c.req.raw);
     if (!resolved.ok) return resolved.response;
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
+    await runtime.sharedApp.waitForSettled();
     const response = runtime.bootstrapResponse(resolved.scenario, session.state);
     const returning = runtime.sharedApp.view(session.id).admission;
     if (returning.admitted && response.access.state !== "AUTHORIZED") {

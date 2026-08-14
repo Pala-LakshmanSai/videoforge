@@ -183,7 +183,8 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
     const pageB = await contextB.newPage();
     for (const page of [pageA, pageB]) {
       page.on("console", (message) => {
-        if (message.type() === "error") consoleErrors.push(message.text());
+        if (message.type() === "error")
+          consoleErrors.push(`${message.text()} @ ${message.location().url}`);
       });
       await page.goto(`/?fixture=${FIXTURE}`);
       await expect(page.getByRole("heading", { name: "Synthetic lane truth" })).toBeVisible();
@@ -267,7 +268,8 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
 
     const pageC = await contextC.newPage();
     pageC.on("console", (message) => {
-      if (message.type() === "error") consoleErrors.push(message.text());
+      if (message.type() === "error")
+        consoleErrors.push(`${message.text()} @ ${message.location().url}`);
     });
     await pageC.goto(`/?fixture=${FIXTURE}`);
     await expect(pageC.getByRole("heading", { name: "Last session closed" })).toBeVisible();

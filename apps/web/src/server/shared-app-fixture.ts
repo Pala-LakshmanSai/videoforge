@@ -327,8 +327,9 @@ export class SharedAppFixtureStore {
   }
 
   seedAdmittedSession(sessionId: string, emailValue: string): void {
+    const email = normalizedEmail(emailValue);
+    if (this.#state.sessionAdmissions.get(sessionId)?.email === email) return;
     this.commit(() => {
-      const email = normalizedEmail(emailValue);
       const admission =
         this.#state.admissions.get(email) ??
         Object.freeze({
@@ -453,6 +454,10 @@ export class SharedAppFixtureStore {
       providerCallsAuthorized: false,
       authorizedSpendUsd: 0,
     };
+  }
+
+  async waitForSettled(): Promise<void> {
+    await this.#asyncMutationTail;
   }
 
   startOrEnqueue(input: {

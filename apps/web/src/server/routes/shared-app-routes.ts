@@ -108,9 +108,10 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     }
   });
 
-  app.get("/api/v1/shared-app", (c) => {
+  app.get("/api/v1/shared-app", async (c) => {
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
+    await runtime.sharedApp.waitForSettled();
     return c.json(runtime.sharedApp.view(session.id));
   });
 
@@ -151,8 +152,9 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     }
   });
 
-  app.get("/api/v1/shared-app/projects/:projectId", (c) => {
+  app.get("/api/v1/shared-app/projects/:projectId", async (c) => {
     try {
+      await runtime.sharedApp.waitForSettled();
       return c.json(runtime.sharedApp.projectOrchestration(c.req.param("projectId")));
     } catch (error) {
       return failure(error);
@@ -161,6 +163,7 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
 
   app.get("/api/v1/shared-app/projects/:projectId/download", async (c) => {
     try {
+      await runtime.sharedApp.waitForSettled();
       const project = runtime.sharedApp.projectOrchestration(c.req.param("projectId"));
       if (project.finalAsset === null || project.stage !== "READY_FOR_REVIEW") {
         return problemResponse(

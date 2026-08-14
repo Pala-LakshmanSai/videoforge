@@ -143,7 +143,10 @@ export function registerLocalRoutes(app: Hono, runtime: LocalRuntime): void {
 
   app.get("/api/v1/bootstrap", async (c) => c.json(await runtime.bootstrapResponse()));
   app.get("/api/v1/execution-profiles", (c) => c.json(executionProfileCatalog));
-  app.get("/api/v1/shared-app", (c) => c.json(runtime.sharedApp.view("local")));
+  app.get("/api/v1/shared-app", async (c) => {
+    await runtime.sharedApp.waitForSettled();
+    return c.json(runtime.sharedApp.view("local"));
+  });
   app.post("/api/v1/shared-app/generate", async (c) => {
     try {
       const body = (await c.req.json()) as {
