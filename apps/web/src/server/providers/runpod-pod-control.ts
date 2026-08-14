@@ -996,12 +996,24 @@ export class RunPodPodControlClient {
     );
     mismatch("lastStartedAt", providerStartedAt === null);
     if (mismatchFields.length > 0) {
+      const environmentKeys = Array.isArray(value?.env)
+        ? value.env
+            .map((entry) => record(entry)?.key)
+            .filter((key): key is string => typeof key === "string")
+            .sort()
+            .join("|")
+        : record(value?.env) === null
+          ? typeof value?.env
+          : Object.keys(record(value?.env) ?? {})
+              .sort()
+              .join("|");
+      const timestampShape = `last:${typeof value?.lastStartedAt}:${String(value?.lastStartedAt)};created:${typeof value?.createdAt}:${String(value?.createdAt)}`;
       throw new RunPodPodControlError(
         "RUNPOD_MAGE_POD_IDENTITY_UNCONFIRMED",
         resourceId,
         undefined,
         undefined,
-        mismatchFields.join(","),
+        `${mismatchFields.join(",")};envKeys:${environmentKeys};${timestampShape}`,
       );
     }
     if (
