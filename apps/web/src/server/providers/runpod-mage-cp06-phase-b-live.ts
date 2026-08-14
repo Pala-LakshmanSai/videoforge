@@ -987,9 +987,7 @@ export class RunPodCp06LiveAdapter implements Cp06PodNativePort {
       registryAccessAllowed: false,
       downloadedModelBytes: 0,
       modelReadyMs: Math.max(1, Math.round(modelReadyMs)),
-      peakVramBytes: Math.round(
-        finite(gpu.peak_memory_reserved_bytes ?? gpu.total_memory_bytes) ?? 0,
-      ),
+      readyVramUsedBytes: Math.round(finite(gpu.ready_vram_used_bytes) ?? 0),
     };
   }
 
@@ -1137,7 +1135,7 @@ export class RunPodCp06LiveAdapter implements Cp06PodNativePort {
         0,
         completed - started - Math.round(finite(accepted.evidence.generation_duration_ms) ?? 0),
       ),
-      peakVramBytes: Math.round(finite(runtime?.peak_memory_reserved_bytes) ?? 0),
+      peakVramBytes: Math.round(finite(runtime?.peak_vram_used_bytes) ?? 0),
     };
   }
 

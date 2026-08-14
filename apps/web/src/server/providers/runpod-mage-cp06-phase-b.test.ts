@@ -209,7 +209,7 @@ class FakePodPort implements Cp06PodNativePort {
       registryAccessAllowed: false,
       downloadedModelBytes: 0,
       modelReadyMs: 93_000,
-      peakVramBytes: 20_000_000_000,
+      readyVramUsedBytes: 20_000_000_000,
     };
   }
 
@@ -387,12 +387,12 @@ describe("CP-06 Phase B Pod orchestrator", () => {
     expect(evidence.positivePodReadiness).toEqual([
       expect.objectContaining({
         modelReadyMs: 93_000,
-        readyPeakVramBytes: 20_000_000_000,
+        readyVramUsedBytes: 20_000_000_000,
         measurementStatus: "measured",
       }),
       expect.objectContaining({
         modelReadyMs: 93_000,
-        readyPeakVramBytes: 20_000_000_000,
+        readyVramUsedBytes: 20_000_000_000,
         measurementStatus: "measured",
       }),
     ]);
@@ -546,12 +546,12 @@ describe("CP-06 Phase B Pod orchestrator", () => {
     expect(evidence.positivePodReadiness).toEqual([
       expect.objectContaining({
         modelReadyMs: null,
-        readyPeakVramBytes: null,
+        readyVramUsedBytes: null,
         measurementStatus: "unavailable_legacy_journal",
       }),
       expect.objectContaining({
         modelReadyMs: null,
-        readyPeakVramBytes: null,
+        readyVramUsedBytes: null,
         measurementStatus: "unavailable_legacy_journal",
       }),
     ]);

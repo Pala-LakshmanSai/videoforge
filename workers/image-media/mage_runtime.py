@@ -62,6 +62,7 @@ class MageRuntime:
             await self.wait_for_comfyui()
             self.transition("warmup")
             await asyncio.to_thread(self.real_warmup, model_root)
+            self.gpu["ready_vram_used_bytes"] = self.device_vram_used_bytes()
             self.transition("ready")
             self.phase_timings_ms.setdefault("ready", 0)
             self.ready = True
@@ -114,6 +115,27 @@ class MageRuntime:
             "cuda_version": cuda_version,
             "torch_version": torch.__version__,
         }
+
+    @staticmethod
+    def device_vram_used_bytes() -> int:
+        import torch
+
+        free_bytes, total_bytes = torch.cuda.mem_get_info(0)
+        used_bytes = int(total_bytes) - int(free_bytes)
+        if used_bytes <= 0 or used_bytes > int(total_bytes):
+            raise RuntimeError("MAGE_VRAM_USAGE_INVALID")
+        return used_bytes
+
+    async def sample_peak_vram_used(self, stop: asyncio.Event) -> int:
+        peak = 0
+        while True:
+            peak = max(peak, self.device_vram_used_bytes())
+            if stop.is_set():
+                return peak
+            try:
+                await asyncio.wait_for(stop.wait(), timeout=0.05)
+            except TimeoutError:
+                pass
 
     def start_comfyui(self, comfy_root: Path) -> None:
         main = comfy_root / "main.py"
@@ -203,11 +225,19 @@ class MageRuntime:
             import torch
 
             torch.cuda.reset_peak_memory_stats(0)
-            result = await asyncio.to_thread(run_inline_job, job, model_root, base_url=COMFY_URL)
-        result["runtime_evidence"] = self.runtime_evidence()
+            stop = asyncio.Event()
+            sampler = asyncio.create_task(self.sample_peak_vram_used(stop))
+            try:
+                result = await asyncio.to_thread(run_inline_job, job, model_root, base_url=COMFY_URL)
+            finally:
+                stop.set()
+                peak_vram_used_bytes = await sampler
+        result["runtime_evidence"] = self.runtime_evidence(
+            peak_vram_used_bytes=peak_vram_used_bytes
+        )
         return result
 
-    def runtime_evidence(self) -> dict[str, object]:
+    def runtime_evidence(self, *, peak_vram_used_bytes: int) -> dict[str, object]:
         import torch
 
         gpu = {
@@ -216,9 +246,10 @@ class MageRuntime:
             "memory_reserved_bytes": torch.cuda.memory_reserved(0),
             "peak_memory_allocated_bytes": torch.cuda.max_memory_allocated(0),
             "peak_memory_reserved_bytes": torch.cuda.max_memory_reserved(0),
+            "peak_vram_used_bytes": peak_vram_used_bytes,
         }
         return {
-            "schema_version": "videoforge.mage-runtime-evidence/v2",
+            "schema_version": "videoforge.mage-runtime-evidence/v3",
             "pod_id_hash": "sha256:"
             + hashlib.sha256(os.environ.get("RUNPOD_POD_ID", "local").encode()).hexdigest(),
             "volume_id_hash": os.environ.get("VIDEOFORGE_MAGE_VOLUME_ID_HASH"),

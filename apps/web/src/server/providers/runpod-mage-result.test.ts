@@ -91,7 +91,7 @@ const validEnvelope = (): Record<string, unknown> => {
       generation_duration_ms: 23_728,
       output_base64: output.toString("base64"),
       runtime_evidence: {
-        schema_version: "videoforge.mage-runtime-evidence/v2",
+        schema_version: "videoforge.mage-runtime-evidence/v3",
         pod_id_hash: authority.podIdHash,
         volume_id_hash: authority.volumeIdHash,
         worker_image_digest: authority.image,
@@ -121,6 +121,8 @@ const validEnvelope = (): Record<string, unknown> => {
           memory_reserved_bytes: 14_000_000_000,
           peak_memory_allocated_bytes: 18_000_000_000,
           peak_memory_reserved_bytes: 20_000_000_000,
+          ready_vram_used_bytes: 18_500_000_000,
+          peak_vram_used_bytes: 21_000_000_000,
           cuda_version: "13.0",
           torch_version: "2.11.0+cu130",
         },

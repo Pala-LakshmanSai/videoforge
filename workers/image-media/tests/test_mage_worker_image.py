@@ -173,6 +173,7 @@ class MageWorkerImageTest(unittest.TestCase):
                 device_count=lambda: 1,
                 get_device_name=lambda _index: "NVIDIA GeForce RTX 4090",
                 get_device_properties=lambda _index: fake_properties,
+                mem_get_info=lambda _index: (4 * 1024**3, 24 * 1024**3),
             ),
         )
         runtime = MageRuntime()
@@ -184,6 +185,7 @@ class MageWorkerImageTest(unittest.TestCase):
             ),
         ):
             runtime.verify_gpu()
+            self.assertEqual(runtime.device_vram_used_bytes(), 20 * 1024**3)
         self.assertTrue(runtime.gpu["approved"])
         self.assertEqual(runtime.gpu["offering_id"], "NVIDIA GeForce RTX 4090")
 

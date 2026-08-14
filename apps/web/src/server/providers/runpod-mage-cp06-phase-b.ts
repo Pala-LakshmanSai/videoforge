@@ -242,7 +242,7 @@ export interface Cp06ReadyResult {
   readonly registryAccessAllowed: false;
   readonly downloadedModelBytes: 0;
   readonly modelReadyMs: number;
-  readonly peakVramBytes: number;
+  readonly readyVramUsedBytes: number;
 }
 
 export interface Cp06SampleResult {
@@ -401,7 +401,7 @@ export interface Cp06PhaseBEvidence {
     readonly attemptId: string;
     readonly podIdHash: Hash;
     readonly modelReadyMs: number | null;
-    readonly readyPeakVramBytes: number | null;
+    readonly readyVramUsedBytes: number | null;
     readonly measurementStatus: "measured" | "unavailable_legacy_journal";
   }[];
   readonly samples: readonly Cp06SanitizedSampleEvidence[];
@@ -1070,18 +1070,18 @@ const readinessEvidenceFromJournal = (
           record.podIdHash === podIdHash,
       );
     const modelReadyMs = Number(ready?.modelReadyMs);
-    const readyPeakVramBytes = Number(ready?.readyPeakVramBytes);
+    const readyVramUsedBytes = Number(ready?.readyVramUsedBytes);
     const measured =
       ready !== undefined &&
       Number.isSafeInteger(modelReadyMs) &&
       modelReadyMs > 0 &&
-      Number.isSafeInteger(readyPeakVramBytes) &&
-      readyPeakVramBytes > 0;
+      Number.isSafeInteger(readyVramUsedBytes) &&
+      readyVramUsedBytes > 0;
     return {
       attemptId: CP06_PHASE_B_ATTEMPTS[role].attemptId,
       podIdHash,
       modelReadyMs: measured ? modelReadyMs : null,
-      readyPeakVramBytes: measured ? readyPeakVramBytes : null,
+      readyVramUsedBytes: measured ? readyVramUsedBytes : null,
       measurementStatus: measured ? "measured" : "unavailable_legacy_journal",
     } as const;
   });
@@ -1408,8 +1408,8 @@ export async function runCp06MagePhaseB(
           ready.downloadedModelBytes !== 0 ||
           !Number.isSafeInteger(ready.modelReadyMs) ||
           ready.modelReadyMs < 1 ||
-          !Number.isSafeInteger(ready.peakVramBytes) ||
-          ready.peakVramBytes < 1
+          !Number.isSafeInteger(ready.readyVramUsedBytes) ||
+          ready.readyVramUsedBytes < 1
         ) {
           throw new Cp06PhaseBError("CP06_MODEL_READY_INVALID");
         }
@@ -1418,7 +1418,7 @@ export async function runCp06MagePhaseB(
           podIdHash: sha256(pod.podId),
           manifestSha256: ready.manifestSha256,
           modelReadyMs: ready.modelReadyMs,
-          readyPeakVramBytes: ready.peakVramBytes,
+          readyVramUsedBytes: ready.readyVramUsedBytes,
         });
         const batch: Cp06SanitizedSampleEvidence[] = [];
         for (const [index, prompt] of prompts.entries()) {

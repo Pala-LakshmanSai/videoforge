@@ -117,7 +117,7 @@ const validateRuntime = (
     "MAGE_RUNTIME_EVIDENCE_INVALID",
   );
   if (
-    runtime.schema_version !== "videoforge.mage-runtime-evidence/v2" ||
+    runtime.schema_version !== "videoforge.mage-runtime-evidence/v3" ||
     runtime.pod_id_hash !== authority.podIdHash ||
     runtime.volume_id_hash !== authority.volumeIdHash ||
     runtime.worker_image_digest !== authority.image ||
@@ -174,6 +174,8 @@ const validateRuntime = (
       "memory_reserved_bytes",
       "peak_memory_allocated_bytes",
       "peak_memory_reserved_bytes",
+      "ready_vram_used_bytes",
+      "peak_vram_used_bytes",
       "cuda_version",
       "torch_version",
     ],
@@ -207,6 +209,20 @@ const validateRuntime = (
       Number.MAX_SAFE_INTEGER,
       "MAGE_GPU_EVIDENCE_INVALID",
     ) < 0 ||
+    integer(gpu.ready_vram_used_bytes, 1, Number.MAX_SAFE_INTEGER, "MAGE_GPU_EVIDENCE_INVALID") >
+      integer(
+        gpu.total_memory_bytes,
+        16_380 * 1024 * 1024,
+        Number.MAX_SAFE_INTEGER,
+        "MAGE_GPU_EVIDENCE_INVALID",
+      ) ||
+    integer(gpu.peak_vram_used_bytes, 1, Number.MAX_SAFE_INTEGER, "MAGE_GPU_EVIDENCE_INVALID") >
+      integer(
+        gpu.total_memory_bytes,
+        16_380 * 1024 * 1024,
+        Number.MAX_SAFE_INTEGER,
+        "MAGE_GPU_EVIDENCE_INVALID",
+      ) ||
     typeof gpu.cuda_version !== "string" ||
     !gpu.cuda_version.startsWith("13.") ||
     typeof gpu.torch_version !== "string" ||
