@@ -2,8 +2,8 @@
   "schema_version": "videoforge.cp06-read-only-preflight/v1",
   "task_id": "VF-9-24Q",
   "checkpoint": "CP-06",
-  "status": "HOSTED_BUILD_ONLY_PENDING",
-  "checked_at": "2026-08-14T07:18:58Z",
+  "status": "PHASE_A_COMPLETE_WAITING_PHASE_B_AUTHORIZATION",
+  "checked_at": "2026-08-14T08:02:43Z",
   "authority": {
     "mode": "read_only",
     "provider": "runpod",
@@ -60,7 +60,7 @@
     "pricing_source": "https://docs.runpod.io/storage/network-volumes"
   },
   "runpod_read_only": {
-    "checked_at": "2026-08-14T07:18:58.218Z",
+    "checked_at": "2026-08-14T08:02:43.977Z",
     "account_owner": "sujal",
     "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
     "account_identity_verified": true,
@@ -71,6 +71,8 @@
     "running_pods": 0,
     "endpoints": 0,
     "templates": 0,
+    "private_template_count": 0,
+    "active_serverless_worker_count": 0,
     "network_volumes": 0,
     "short_gpu_choice_list": [
       {
@@ -101,7 +103,7 @@
     "web_typecheck": "passed",
     "context_validation_before_code": "passed",
     "dockerfile_sha256": "39679d604c0e7a9a7848591f6c24e1025d5ce5f0097bd9395c2d279c39091792",
-    "linux_amd64_container_build": "waived_local_by_user_hosted_build_pending",
+    "linux_amd64_container_build": "passed_on_public_standard_github_hosted_x64_runner",
     "container_build_failure_basis": "Historical local attempts exhausted macOS storage and then exceeded the 16 GB host memory envelope under amd64 emulation. DEC_BUILD_001 now requires a standard public GitHub-hosted x64 runner instead.",
     "local_image_id": null,
     "local_image_published": false,
@@ -117,8 +119,31 @@
     "publish": false,
     "larger_paid_runner_authorized": false,
     "artifact_or_cache_upload": false,
-    "status": "PENDING"
+    "status": "PASS",
+    "commit": "912427b5bd8a7afb4f68233072990d3c39e64cc6",
+    "run_id": 31781650276,
+    "url": "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/31781650276",
+    "started_at": "2026-08-14T07:52:51Z",
+    "completed_at": "2026-08-14T07:55:25Z",
+    "wall_seconds": 154,
+    "ghcr_authentication": "SKIPPED",
+    "image_publication": "SKIPPED"
   },
-  "phase_b_authorization_request_ready": false,
-  "blocker": "Push the Phase A source to GitHub and obtain a green public standard-runner build/smoke with publish=false."
+  "canonical_hosted_ci": {
+    "status": "PASS",
+    "commit": "912427b5bd8a7afb4f68233072990d3c39e64cc6",
+    "run_id": 31781645263,
+    "url": "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/31781645263",
+    "completed_at": "2026-08-14T08:01:49Z",
+    "lanes": {
+      "static_contracts_security": "PASS",
+      "typescript": "PASS",
+      "python": "PASS",
+      "workerd": "PASS",
+      "chrome": "PASS_42"
+    },
+    "required_aggregate": "PASS"
+  },
+  "phase_b_authorization_request_ready": true,
+  "blocker": "One complete current-chat Phase B authorization with exact GPU/rate, 20 GiB volume rate and retention consent, explicit mutation/download/publication/GPU scopes, and a user-supplied positive numeric cumulative spend cap."
 }

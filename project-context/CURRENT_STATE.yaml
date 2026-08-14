@@ -1,8 +1,8 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T07:18:58Z"
+updated_at: "2026-08-14T08:02:43Z"
 
-phase: cp06_hosted_build_preflight
+phase: cp06_phase_a_complete_waiting_phase_b_authorization
 implementation_authorized_in_current_task: true
 current_milestone: exact_mage_int8_persistent_runpod_volume
 current_task: VF-9-24Q
@@ -68,7 +68,8 @@ repository:
   cp05_read_serialization_fix_commit: "68e4f03c664c1146946ee440a1fdb15e5fb209d0"
   cp05_audit_harness_commit: "58395225d9f2e11ac556e6b67f186b1fb5502336"
   cp05_reaudit_record_commit: "d2285117c17a3f6dd37b84e9dd441fd6fe7aa1d0"
-  last_good_commit: "d2285117c17a3f6dd37b84e9dd441fd6fe7aa1d0"
+  cp06_phase_a_code_commit: "912427b5bd8a7afb4f68233072990d3c39e64cc6"
+  last_good_commit: "912427b5bd8a7afb4f68233072990d3c39e64cc6"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -181,9 +182,9 @@ recommended_next_task:
   task_id: VF-9-24Q
   checkpoint: CP-06
   milestone: exact_mage_int8_persistent_runpod_volume
-  status: in_progress_read_only_preflight
+  status: phase_a_complete_waiting_phase_b_authorization
   dependency_status: cp05_complete_green_provider_free
-  authorization_status: read_only_preflight_authorized
+  authorization_status: phase_b_exact_numeric_authorization_required
   task_stage: read_only_preflight
   provider_authority:
     mode: read_only
@@ -218,8 +219,8 @@ recommended_next_task:
   prerequisite_evidence: "evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json"
   required_handoff:
     - "Preserve the completed CP-01 through CP-05 evidence and active vNext cutover."
-    - "When the exact CP-06 prompt arrives, set task_stage=read_only_preflight and provider_authority.mode=read_only: local changes plus allowlisted read-only metadata/inventory/rate/absence calls at $0."
-    - "End Phase A with exact GPU offering/rate, byte-derived volume size/rate, proposed finite handoff cap, and separately stated ongoing volume-retention charge; wait for one complete later authorization."
+    - "Phase A is complete at code commit 912427b5bd8a7afb4f68233072990d3c39e64cc6 with green hosted build-only and canonical CI evidence."
+    - "Present exact live GPU/rate choices, byte-derived volume size/rate, and separately stated ongoing volume-retention charge; the user must supply a positive finite handoff cap in one complete Phase B authorization."
     - "Before Phase B mutation, persist the exact positive numeric cap, exact offering/rate, exact volume size/rate, ongoing-retention consent, and explicit mutation/download/publication/GPU authority."
     - "Keep all hosted-production/provider gates false; local CP-05 evidence does not prove production."
   prohibited_in_task:
@@ -229,7 +230,7 @@ recommended_next_task:
     - "Any production gate closure, live profile promotion, volume-capacity assumption, model/GPU substitution, repair, or fallback."
 
 cp06_phase_a:
-  status: hosted_build_only_pending
+  status: complete_waiting_phase_b_authorization
   evidence: "evidence/acceptance/VF-9-24Q/cp06-read-only-preflight/preflight.json"
   imageforge_source_commit: "1a6204e7b9387a4d26b5fbbb176506d670949fba"
   model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
@@ -242,7 +243,7 @@ cp06_phase_a:
   runpod_account_owner: sujal
   runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   runpod_account_identity_verified: true
-  runpod_inventory_checked_at: "2026-08-14T07:18:58.218Z"
+  runpod_inventory_checked_at: "2026-08-14T08:02:43.977Z"
   runpod_pods: 0
   runpod_endpoints: 0
   runpod_templates: 0
@@ -256,11 +257,20 @@ cp06_phase_a:
       availability: HIGH
   local_tests: passed
   local_container_build: waived_by_user_use_github_standard_hosted_runner
-  hosted_container_build: pending_public_ubuntu_24_04_x64_publish_false
+  hosted_container_build: passed_public_ubuntu_24_04_x64_publish_false
+  hosted_build_commit: "912427b5bd8a7afb4f68233072990d3c39e64cc6"
+  hosted_build_run_id: 31781650276
+  hosted_build_url: "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/31781650276"
+  hosted_build_wall_seconds: 154
+  hosted_build_publication: skipped
+  canonical_ci_run_id: 31781645263
+  canonical_ci_url: "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/31781645263"
+  canonical_ci: passed_all_five_lanes_and_required_aggregate
+  installed_chrome: 42_passed_desktop_and_compact
   github_repository_visibility: public
   larger_paid_runner_authorized: false
   hosted_artifact_or_cache_retention: false
-  phase_b_authorization_request_ready: false
+  phase_b_authorization_request_ready: true
   external_spend_usd: 0
   provider_resources_created: 0
   paid_compute_shutdown: no_paid_compute_started_colima_stopped_original_8gib_config_restored
@@ -467,18 +477,18 @@ blocking_gates_for_production:
 progress_snapshot:
   estimate_kind: checkpoint_truth_no_percent_claim
   completed_checkpoint: CP-05
-  next_checkpoint: CP-06_selected_not_authorized_not_started
+  next_checkpoint: CP-06_phase_b_waiting_exact_authorization
   full_production_mvp_implemented_percent: null
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: cp06_brief_selected_waiting_for_exact_prompt
+  status: cp06_phase_a_complete_waiting_phase_b_authorization
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Load cp06_mage_int8_persistent_runpod and tasks/VF-9-24Q.md; read only the CP-06 roadmap section."
     - "Preserve the verified green CP-01 through CP-05 evidence and vNext boundary."
-    - "The exact CP-06 prompt activates read_only_preflight only; it does not authorize Phase B mutation or spend."
+    - "Preserve Phase A code commit 912427b5bd8a7afb4f68233072990d3c39e64cc6, hosted build run 31781650276, and canonical CI run 31781645263."
+    - "Do not begin Phase B until one complete exact numeric authorization defined by VF-9-24Q is recorded."
   stop_conditions:
-    - "Any CP-06 work before the exact CP-06 prompt, or any successor work."
-    - "Any Phase A mutation, download, publication, GPU, resource creation, retention charge, or spend."
+    - "Any new Phase A mutation, download, publication, GPU, resource creation, retention charge, or spend."
     - "Any Phase B action before one complete exact numeric authorization defined by VF-9-24Q, or any schema reinterpretation, legacy dispatch reachability, or production promotion."

@@ -1,18 +1,22 @@
 # CP-06 read-only preflight
 
-Phase A hosted build-only qualification is pending. Exact ImageForge source, public model metadata,
+Phase A is complete and waiting for exact Phase B authorization. Exact ImageForge source, public model metadata,
 and live RunPod inventory/rates were reconciled at `$0` only after the credential proved Sujal's
 pinned account identity. The VideoForge Mage path now selects INT8
 ConvRot, the pinned stock ComfyUI revision, a sealed three-file volume manifest, offline-only
 ordinary boot, actual GPU checks, real warm-up, truthful health, and Pod-native runtime evidence.
 
 Local focused tests, all worker suites, Python lint, control-plane build, Mage acceptance tests,
-and web typecheck pass. Historical local build attempts exhausted storage and then the safe memory
-envelope. `DEC_BUILD_001` now requires the unpublished Linux x64 build/smoke on a standard public
-GitHub-hosted runner with `publish=false`; it forbids artifact/cache upload and keeps production
-independent of the user's Mac. Colima is stopped with its original 8 GiB configuration restored.
+and web typecheck pass. Public standard-runner Mage build/smoke run `31781650276` passed at commit
+`912427b5bd8a7afb4f68233072990d3c39e64cc6` with `publish=false`; GHCR authentication and
+publication were skipped. Canonical hosted CI run `31781645263` passed all five lanes and its
+required aggregate at the same commit, including all 42 installed-Chrome journeys. The hosted rule
+keeps production independent of the user's Mac. Colima is stopped with its original 8 GiB
+configuration restored. A final Sujal inventory audit at `2026-08-14T08:02:43.977Z` proved zero
+Pods, endpoints, private templates, network volumes, running Pods, and active Serverless workers.
 No provider mutation, model download, image publication, GPU use, retained-volume billing, or
 external spend occurred.
 
-Do not issue the Phase B paid authorization request yet. First obtain a successful hosted build and
-smoke from the public `mage-image` workflow with publication disabled.
+Phase B may begin only after one complete current-chat authorization supplies the exact GPU/rate,
+20 GiB volume rate and ongoing retention consent, all required mutation/download/publication/GPU
+scopes, and a positive numeric maximum cumulative external spend through the CP-06 handoff.
