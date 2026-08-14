@@ -1,0 +1,63 @@
+{
+  "schema_version": "videoforge.cp07-preparation-failure/v1",
+  "checkpoint": "CP-07",
+  "attempt": 2,
+  "started_after": "2026-08-14T18:44:00Z",
+  "halted_at": "2026-08-14T18:50:36.602Z",
+  "runtime_profile_id": "videoforge_echo_v3_flash_turbo_fp8_v1",
+  "image_digest": "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:9bc4e5467efeadadae58771d1c75ab40982cbecf78fb27bb85043627f5d7d5d0",
+  "gpu": {
+    "offering_id": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "secure_cloud": true,
+    "rate_usd_per_hour": 0.74,
+    "vram_gb": 24
+  },
+  "volume": {
+    "size_gb": 50,
+    "id_sha256": "sha256:9cce5166d2bf18b3db5f0aaab1c4c0ba4976177a00bc17e23709830098a9bc45",
+    "state": "incomplete_or_unverified",
+    "retained": true,
+    "ongoing_usd_per_month": 3.5
+  },
+  "terminal": {
+    "phase": "failed",
+    "controller_error_code": "CP07_PREPARATION_RESULT_INVALID",
+    "worker_error_class": "pinned_snapshot_not_available_while_huggingface_hub_remained_offline",
+    "worker_error_prefix": "Cannot find an appropriate cached snapshot folder for the specified revision on the local disk and outgoing traffic has",
+    "uptime_ms": 10337,
+    "manifest_sha256": null,
+    "private_terminal_sha256": "sha256:3e07e92bc59cd5e49f2b7632708196ed87c0f4ab2d69c39c5fc2f73bdb1d0176"
+  },
+  "diagnosis": {
+    "finding": "The image sets HF_HUB_OFFLINE=1 before huggingface_hub is imported. Preparation changes the environment only after importing snapshot_download, so the library retains its import-time offline constant and rejects the pinned snapshot download.",
+    "repair_executed": false,
+    "retry_executed": false
+  },
+  "samples": {
+    "two_second": "not_run",
+    "four_second": "not_run",
+    "six_second": "not_run"
+  },
+  "finite_cost": {
+    "current_attempt_settled_usd": 0.05622458457946777,
+    "current_attempt_time_billed_ms": 273525,
+    "prior_conservative_upper_bound_usd": 1.11,
+    "cumulative_conservative_upper_bound_usd": 1.1662245845794678,
+    "user_cap_usd": 4,
+    "cap_exceeded": false
+  },
+  "cleanup": {
+    "checked_at": "2026-08-14T18:50:36.602Z",
+    "pods": 0,
+    "running_pods": 0,
+    "private_templates": 0,
+    "endpoints": 0,
+    "active_serverless_workers": 0,
+    "network_volumes": 2,
+    "isolated_mage_and_echo_volumes": true,
+    "cleanup_certain": true
+  },
+  "stop_condition_triggered": "artifact_or_manifest_mismatch",
+  "cp07_complete": false
+}

@@ -1,8 +1,8 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T18:37:19Z"
+updated_at: "2026-08-14T18:51:19Z"
 
-phase: cp07_phase_b_paid_execution_authorized
+phase: cp07_phase_b_halted_preparation_attempt_2
 implementation_authorized_in_current_task: true
 current_milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
 current_task: VF-9-24R
@@ -20,8 +20,8 @@ provider_authority:
   authorized_at: "2026-08-14T18:37:19Z"
   source: current_cp07_exact_revised_user_authorization
   non_transferable: true
-  execution_halted: false
-  halt_reason: null
+  execution_halted: true
+  halt_reason: "Preparation attempt 2 failed before download because huggingface_hub retained the image's import-time offline constant; CP07_PREPARATION_RESULT_INVALID triggered the approved stop condition."
   model_id: "EchoMimicV3-Flash Turbo FP8@videoforge_echo_v3_flash_turbo_fp8_v1"
   resources:
     - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:d51c0a1"
@@ -354,19 +354,19 @@ cp07_phase_a:
   proposed_volume_rate_usd_per_gb_month: 0.07
   proposed_ongoing_retention_charge_usd_per_month: 3.5
   capacity_growth_policy: "50 GB remains sufficient under current byte bounds. If exact preparation exceeds a bound, stop before mutation, derive the next exact GB size and current recurring rate, and request changed approval; never silently enlarge retained billing."
-  immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:237b108819432b4bea3d7b3cb5e6bff039749cc1"
+  immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:9bc4e5467efeadadae58771d1c75ab40982cbecf78fb27bb85043627f5d7d5d0"
   proposed_revised_immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:d51c0a1"
-  proposed_revised_image_target_approved: false
+  proposed_revised_image_target_approved: true
   fp8_preparation_gpu_fix_commit: "d51c0a1"
   invalid_volume_replacement_guard_commit: "16cd30a"
   cumulative_cap_guard_commit: "1310b72"
   revised_local_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/revised-local-preflight.json"
   image_published: true
-  image_digest: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:e53842b5b9e8115e576f6d98337c228d584651fa50df0d15e086d417f60258e8"
+  image_digest: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:9bc4e5467efeadadae58771d1c75ab40982cbecf78fb27bb85043627f5d7d5d0"
   local_container_build_executed: false
   runpod_account_owner: sujal
   runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
-  runpod_inventory_checked_at: "2026-08-14T18:34:10.033Z"
+  runpod_inventory_checked_at: "2026-08-14T18:50:36.602Z"
   runpod_revised_read_only_evidence: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/revised-refresh-2026-08-14T183410Z.json"
   runpod_inventory_evidence_sha256: "sha256:48d469866a3a1fb3c0ca1310d9d30b4d2cc0fb52a8d37c19da4076006d31340c"
   runpod_pods: 0
@@ -375,7 +375,7 @@ cp07_phase_a:
   runpod_active_serverless_workers: 0
   runpod_network_volumes: 2
   echo_volume_exists: true
-  echo_volume_id_sha256: "sha256:6df3de80cfbc182e6306167c7832915240944e1ddc5753091ed529a84d634e7a"
+  echo_volume_id_sha256: "sha256:9cce5166d2bf18b3db5f0aaab1c4c0ba4976177a00bc17e23709830098a9bc45"
   echo_volume_state: incomplete_or_unverified
   gpu_choices:
     - offering_id: "NVIDIA GeForce RTX 4090"
@@ -390,14 +390,14 @@ cp07_phase_a:
       rate_usd_per_hour: 2.09
       availability: LOW
       vram_gb: 96
-  external_spend_usd: null
-  external_spend_state: pending_provider_settlement
-  conservative_reserved_finite_spend_upper_bound_usd: 1.11
+  external_spend_usd: 0.05622458457946777
+  external_spend_state: current_attempt_settled_prior_attempt_conservatively_bounded
+  conservative_reserved_finite_spend_upper_bound_usd: 1.1662245845794678
   proposed_maximum_additional_pod_cost_usd: 2.812
   proposed_maximum_cumulative_finite_estimate_usd: 3.922
   latest_user_supplied_cap_usd: 4
   proposed_cap_margin_usd: 0.078
-  provider_mutations: 5
+  provider_mutations: 11
   local_tests: passed
   canonical_verify: passed
   canonical_verify_commit: "5d38739a5f53f6b0e67d6cbf1950ba29c7645061"
@@ -406,12 +406,15 @@ cp07_phase_a:
   paid_execution_authorized: true
   paid_execution_authorized_at: "2026-08-14T18:37:19Z"
   paid_execution_cap_usd: 4
-  paid_execution_halted: false
-  revised_paid_authority_required: false
+  paid_execution_halted: true
+  revised_paid_authority_required: true
   revised_paid_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/revised-authorization.json"
-  image_publication_attempts: 2
-  last_image_publication_run_id: 31824574378
+  image_publication_attempts: 3
+  last_image_publication_run_id: 31829638252
   last_image_publication_result: success_public_digest_pinned
+  preparation_attempts: 2
+  last_preparation_result: failed_offline_constant_retained_before_pinned_snapshot_download
+  last_preparation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/preparation-attempt-2-failure.json"
   selected_gpu_offering_id: "NVIDIA GeForce RTX 4090"
   selected_gpu_rate_usd_per_hour: 0.74
   selected_gpu_vram_gb: 24
@@ -435,12 +438,12 @@ cp07_phase_a:
     - verify_zero_compute_and_exact_two_isolated_volumes
     - settle_or_conservatively_bound_cumulative_finite_cost
     - propose_but_do_not_activate_echo_full_and_split_crops
-  preparation_attempts: 1
-  preparation_result: halted_terminal_result_invalid
+  preparation_result: halted_offline_constant_retained_before_pinned_snapshot_download
   preparation_manifest_verified: false
   sample_pods_started: 0
   sample_outputs: 0
-  final_cleanup_checked_at: "2026-08-14T18:00:37.809Z"
+  final_cleanup_checked_at: "2026-08-14T18:50:36.602Z"
+  final_cleanup_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/preparation-attempt-2-failure.json"
   final_runpod_pods: 0
   final_runpod_templates: 0
   final_runpod_endpoints: 0
