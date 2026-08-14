@@ -1,25 +1,5 @@
-"""EchoMimicV3-Flash primary worker boundary."""
+"""Provider-free fixture health for the CP-07 Echo Pod package."""
 
-from .health import health_payload
-from .production import (
-    AvatarPrimaryInlineJob,
-    AvatarPrimaryInlineResult,
-    AvatarPrimaryInferenceFailure,
-    AvatarPrimaryJob,
-    AvatarPrimaryResult,
-    classify_inference_failure,
-    run_avatar_primary_inline_job,
-    run_avatar_primary_job,
-)
+from .health import WorkerHealth, health_payload
 
-__all__ = [
-    "AvatarPrimaryInlineJob",
-    "AvatarPrimaryInlineResult",
-    "AvatarPrimaryInferenceFailure",
-    "AvatarPrimaryJob",
-    "AvatarPrimaryResult",
-    "classify_inference_failure",
-    "health_payload",
-    "run_avatar_primary_inline_job",
-    "run_avatar_primary_job",
-]
+__all__ = ["WorkerHealth", "health_payload"]
