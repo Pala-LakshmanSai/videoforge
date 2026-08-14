@@ -1,14 +1,14 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T14:52:33Z"
+updated_at: "2026-08-14T15:25:38Z"
 
-phase: cp07_provider_free_read_only_preflight
+phase: cp07_phase_a_complete_awaiting_paid_authority
 implementation_authorized_in_current_task: true
 current_milestone: exact_echo_fp8_persistent_runtime_crop_lock
 current_task: VF-9-24R
 current_wave: cp07_echo_fp8_persistent_runpod_crop_lock
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: read_only_preflight
+task_stage: awaiting_paid_authority
 application_code_changes_authorized: true
 provider_calls_authorized: true
 maximum_external_spend_usd: 0
@@ -82,6 +82,8 @@ repository:
   cp06_consumed_authority_latch_commit: "3b2575d72e307545564f51d374070ffa4e20bad7"
   cp06_local_reaudit_verify_commit: "f70ed54a6f458d784a8e31cf6e1c1d9bc764997e"
   cp06_settled_reaudit_verify_commit: "efee7a11bf1a0b07f551a7fcfcc4948fe54609dd"
+  cp07_activation_commit: "aff5f0a"
+  cp07_phase_a_code_commit: "c89acef78d4a4bbbbac118ca9c658b6180d68fc8"
   last_good_commit: "efee7a11bf1a0b07f551a7fcfcc4948fe54609dd"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
@@ -198,7 +200,7 @@ active_ownership:
   - task_id: VF-9-24R
     checkpoint: CP-07
     owner: current_chat
-    stage: read_only_preflight
+    stage: awaiting_paid_authority
     external_spend_cap_usd: 0
 
 blocked_tasks: []
@@ -208,7 +210,7 @@ recommended_next_task:
   task_id: VF-9-24R
   checkpoint: CP-07
   milestone: exact_echo_fp8_persistent_runtime_crop_lock
-  status: active_provider_free_read_only_preflight
+  status: phase_a_complete_awaiting_paid_authority
   dependency_status: cp06_complete_green_settled_visual_accepted
   authorization_status: provider_free_and_read_only_zero_cap
   task_stage: read_only_preflight
@@ -226,7 +228,7 @@ recommended_next_task:
       - resource_absence_lookup
   read_profile: cp07_echo_fp8_persistent_runpod_crop_lock
   task_brief: tasks/VF-9-24R.md
-  goal: "Complete CP-07 local Echo FP8/offline/span preflight and stop before external mutation."
+  goal: "Request one combined CP-07 paid proposal approval; do not mutate before exact approval."
   provider_calls_authorized: true
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
@@ -247,6 +249,54 @@ recommended_next_task:
     - "Any remote mutation, image/output publication, model download/preparation, GPU allocation, retained Echo-volume billing, or spend before a complete current-chat paid approval."
     - "Any fallback, repair, model substitution, Long Video CFG, full-voiceover job, uncarded pickle, Mage mount, or cross-mount."
     - "Any active Echo crop before owned native samples are measured and the user explicitly approves the proposed crop pair."
+
+cp07_phase_a:
+  status: complete_awaiting_paid_authority
+  evidence: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
+  activation_commit: "aff5f0a"
+  implementation_commit: "c89acef78d4a4bbbbac118ca9c658b6180d68fc8"
+  source_revision: "antgroup/echomimic_v3@7e89489ca51c0d008fc1963ec6c03fc5bd0b9397"
+  flash_revision: "BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249"
+  wan_revision: "alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP@fc913c34361f4ec879e2f9c78b4f11ae50a937d1"
+  audio_revision: "TencentGameMate/chinese-wav2vec2-base@3991242c806928916fff4a8c0e4f76acf661b743"
+  selected_runtime_bytes: 23922317735
+  prepared_artifact_max_bytes: 4000000000
+  proposed_volume_size_gb: 50
+  minimum_post_preparation_headroom_bytes: 22077682265
+  proposed_volume_rate_usd_per_gb_month: 0.07
+  proposed_ongoing_retention_charge_usd_per_month: 3.5
+  immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-cp07:c89acef78d4a4bbbbac118ca9c658b6180d68fc8"
+  image_published: false
+  image_digest: null
+  local_container_build_executed: false
+  runpod_account_owner: sujal
+  runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
+  runpod_inventory_checked_at: "2026-08-14T15:24:53.555Z"
+  runpod_pods: 0
+  runpod_endpoints: 0
+  runpod_templates: 0
+  runpod_active_serverless_workers: 0
+  runpod_network_volumes: 1
+  echo_volume_exists: false
+  gpu_choices:
+    - offering_id: "NVIDIA GeForce RTX 4090"
+      rate_usd_per_hour: 0.74
+      availability: MEDIUM
+      vram_gb: 24
+    - offering_id: "NVIDIA GeForce RTX 5090"
+      rate_usd_per_hour: 0.99
+      availability: LOW
+      vram_gb: 32
+    - offering_id: "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+      rate_usd_per_hour: 2.09
+      availability: LOW
+      vram_gb: 96
+  external_spend_usd: 0
+  provider_mutations: 0
+  local_tests: passed
+  canonical_verify: pending_after_context_evidence_commit
+  paid_execution_authorized: false
+  echo_crop_activated: false
 
 cp06_phase_a:
   status: complete_phase_b_authorized

@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-06 complete; CP-07 provider-free/read-only preflight active
+Status: CP-00 through CP-06 complete; CP-07 Phase A green and awaiting paid authority
 Context schema: `1.5`  
 Last updated: `2026-08-14`
 
@@ -144,12 +144,14 @@ quality. A later authorized `$0` read-only Sujal audit settled all 15 exact Pod 
 exactly the intended retained 50 GB Mage volume. Proof is in
 `evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json` and its `settlement-reaudit.json`.
 
-`VF-9-24R`/`CP-07` is selected for bounded local and read-only preflight at a `$0` external-spend
-cap. It may implement and test the exact VideoForge-owned Echo FP8 prepared-artifact, offline boot,
-real warm-up, short-span, isolated-scratch, immutable-image, and crop-proposal boundaries, and may
-read Sujal RunPod `EU-RO-1` account/inventory/rates/volume pricing without exposing credentials.
-Remote mutation, image/output publication, model download/preparation, new volume billing, Pod/GPU
-allocation, spend, and active renderer crops remain unauthorized.
+`VF-9-24R`/`CP-07` Phase A is green at implementation commit
+`c89acef78d4a4bbbbac118ca9c658b6180d68fc8`. The exact VideoForge-owned Echo FP8 prepared-artifact,
+offline boot, real warm-up, short-span, isolated-scratch, immutable-image, and crop-proposal
+boundaries pass locally. A current `$0` Sujal read-only audit shows zero compute, exactly the retained
+50 GB Mage volume, no Echo volume, three eligible Secure `EU-RO-1` GPU choices, and a 50 GB Echo
+volume proposal at `$3.50/month`. Remote mutation, image/output publication, model
+download/preparation, new volume billing, Pod/GPU allocation, spend, and active renderer crops
+remain unauthorized pending one exact combined approval.
 
 ## Locked active providers
 

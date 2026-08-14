@@ -32,11 +32,11 @@ gates:
     status: open
     blocks: echomimic_fp8_persistent_volume_runtime_without_exact_manifest
     acceptance: "08_MODELS_AND_PROVIDERS.md#echomimicv3-flash"
-    owner: VF-9-23
-    last_run: "evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight"
-    result: open_preflight_pass_fp8_volume_artifact_and_offline_boot_not_qualified
-    checked_at: "2026-08-12T14:56:02Z"
-    blocker: "No source/license mismatch exists in read-only preflight; the exact VideoForge-prepared FP8 artifact must be installed once on its dedicated EU-RO-1 volume, checksum-verified, and loaded during a normal offline Pod boot without cross-mounting the Mage volume."
+    owner: VF-9-24R
+    last_run: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
+    result: open_cp07_local_artifact_and_offline_contracts_passed_paid_volume_boot_and_samples_pending
+    checked_at: "2026-08-14T15:24:53.555Z"
+    blocker: "The exact local prepared-artifact, manifest, offline-boot, real-warm-up, short-span, scratch, and immutable-image contracts pass. The image is unpublished and no Echo volume, prepared artifact, real Pod boot, or 2/4/6-second MP4 exists yet."
   GATE_IMAGE_001:
     status: open
     blocks: mage_production_profile
@@ -99,28 +99,28 @@ gates:
     blocks: selectable_production_execution_profiles
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-pod-and-volume-lifecycle-gate"
     owner: VF-9-20
-    last_run: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
-    result: open_cp06_exact_mage_4090_identity_passed_full_pair_selection_unproven
-    checked_at: "2026-08-14T11:52:23.413Z"
-    blocker: "CP-06 proved selected-versus-actual RTX 4090 identity for bounded Mage Pods. Idle-only live Mage/Echo selection, atomic pair locking under concurrent users, inheritance, and exact locked-GPU lane recreation remain unproven."
+    last_run: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
+    result: open_cp07_live_eu_ro_1_echo_choices_read_only_model_fit_and_pair_lock_unproven
+    checked_at: "2026-08-14T15:24:53.555Z"
+    blocker: "CP-06 proved selected-versus-actual RTX 4090 identity for Mage. CP-07 found three current Secure EU-RO-1 Echo candidates, but Echo model fit, real warm-up, user GPU selection, atomic pair locking, inheritance, and locked-GPU recreation remain unproven."
   GATE_RUNPOD_001:
     status: open
     blocks: live_runpod_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-pod-and-volume-lifecycle-gate"
     owner: VF-9-20
-    last_run: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
-    result: open_cp06_single_lane_volume_reuse_and_cleanup_passed_full_two_lane_lifecycle_unproven
-    checked_at: "2026-08-14T11:52:23.413Z"
-    blocker: "CP-06 proved exact Mage-volume reuse across two fresh sequential Pods, restart-safe attempt handling, and final zero compute. The two-volume global-session lifecycle, waiter retention, independent lane drain, and full Mage/Echo cleanup remain unproven."
+    last_run: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
+    result: open_cp07_zero_compute_one_mage_volume_confirmed_echo_lifecycle_unproven
+    checked_at: "2026-08-14T15:24:53.555Z"
+    blocker: "The read-only CP-07 audit confirms zero compute, exactly one retained 50 GB Mage volume, and no Echo volume. Echo image publication, isolated volume preparation, fresh-Pod sample lifecycle, final zero-Pod/two-volume proof, and the full two-lane session lifecycle remain unproven."
   GATE_COST_001:
     status: open
     blocks: measured_unit_economics_claim
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#production-slo-targets"
     owner: VF-9-20
-    last_run: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
-    result: open_cp06_bounded_cost_and_model_ready_passed_settlement_and_30_minute_video_unproven
-    checked_at: "2026-08-14T11:52:23.413Z"
-    blocker: "CP-06 conservatively accounted $1.110002 under its $3 cap and measured 31.755s/42.144s Mage readiness, but RunPod billing is partial and the representative 30-minute two-lane per-video cost and attribution proof remains unrun."
+    last_run: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
+    result: open_cp07_current_rates_and_retention_price_known_paid_timings_and_settlement_unproven
+    checked_at: "2026-08-14T15:24:53.555Z"
+    blocker: "CP-06 settled at $0.34927155333571136. CP-07 current GPU rates and the $3.50/month proposed 50 GB Echo retention rate are pinned at $0 preflight cost, but paid preparation/sample timings, settled finite cost, and representative 30-minute two-lane economics remain unproven."
   GATE_UI_001:
     status: closed
     blocks: visual_system_lock

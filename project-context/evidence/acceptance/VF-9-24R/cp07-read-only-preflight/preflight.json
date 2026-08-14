@@ -1,0 +1,152 @@
+{
+  "schema_version": "videoforge.cp07-phase-a-evidence/v1",
+  "checkpoint": "CP-07",
+  "task_id": "VF-9-24R",
+  "checked_at": "2026-08-14T15:24:53.555Z",
+  "status": "provider_free_preflight_passed_awaiting_paid_authority",
+  "implementation_commit": "c89acef78d4a4bbbbac118ca9c658b6180d68fc8",
+  "external_spend_usd": 0,
+  "provider_mutations": 0,
+  "cp06_prerequisite": {
+    "status": "green_settled_visual_accepted",
+    "settlement_reaudit_evidence": "project-context/evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json",
+    "settled_external_spend_usd": 0.34927155333571136,
+    "running_pods": 0,
+    "retained_mage_volume_size_gb": 50,
+    "retained_mage_volume_usd_per_month": 3.5
+  },
+  "account": {
+    "owner": "sujal",
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
+  },
+  "inventory": {
+    "checked_at": "2026-08-14T15:24:53.555Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "network_volumes": 1,
+    "retained_mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "retained_mage_volume_size_gb": 50,
+    "echo_volume_exists": false
+  },
+  "source_lineage": {
+    "source": "antgroup/echomimic_v3@7e89489ca51c0d008fc1963ec6c03fc5bd0b9397",
+    "source_infer_flash_sha256": "16db024008d85d3421cfe59988ce6d917e8e29d13cc959cc99fd9c82b6ea99ae",
+    "source_config_sha256": "21fe4409b664385a1c1cc5c23d92506ffb05ef3c374a18de9df67b715dca07e9",
+    "flash": "BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249",
+    "flash_safetensors_sha256": "5ebdbb2fc709108bf2a1728fd92eb2874804e4bc0324e92a2cd55425968c85a4",
+    "wan": "alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP@fc913c34361f4ec879e2f9c78b4f11ae50a937d1",
+    "audio": "TencentGameMate/chinese-wav2vec2-base@3991242c806928916fff4a8c0e4f76acf661b743"
+  },
+  "artifact_definition": {
+    "selected_runtime_bytes": 23922317735,
+    "prepared_artifact_max_bytes": 4000000000,
+    "proposed_volume_size_gb": 50,
+    "minimum_post_preparation_headroom_bytes": 22077682265,
+    "precision": "float8_e4m3fn_dynamic_activation_weight",
+    "remaining_tensor_dtype": "bfloat16",
+    "torch": "2.7.1",
+    "torchao": "0.11.0",
+    "serialization": "torch_state_dict_weights_only_v1",
+    "normal_boot_downloads": false,
+    "first_request_quantization": false,
+    "real_inference_warmup_required": true,
+    "long_video_cfg": false,
+    "full_voiceover_allowed": false,
+    "completion_marker_written_last": true
+  },
+  "immutable_image_definition": {
+    "target": "ghcr.io/pala-lakshmansai/videoforge-echo-cp07:c89acef78d4a4bbbbac118ca9c658b6180d68fc8",
+    "base": "pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime@sha256:c16f4c749e2d9e96878875cdf6cc45cddda1d1a36fddd371dd6f2360f1b6e2a2",
+    "published": false,
+    "digest": null,
+    "container_build_executed": false
+  },
+  "volume_pricing": {
+    "source": "https://docs.runpod.io/storage/network-volumes",
+    "standard_network_volume_rate_usd_per_gb_month": 0.07,
+    "proposed_ongoing_charge_usd_per_month": 3.5
+  },
+  "gpu_candidates": [
+    {
+      "offering_id": "NVIDIA GeForce RTX 4090",
+      "display_name": "RTX 4090",
+      "region": "EU-RO-1",
+      "secure_cloud": true,
+      "availability": "MEDIUM",
+      "rate_usd_per_hour": 0.74,
+      "vram_gb": 24
+    },
+    {
+      "offering_id": "NVIDIA GeForce RTX 5090",
+      "display_name": "RTX 5090",
+      "region": "EU-RO-1",
+      "secure_cloud": true,
+      "availability": "LOW",
+      "rate_usd_per_hour": 0.99,
+      "vram_gb": 32
+    },
+    {
+      "offering_id": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+      "display_name": "RTX PRO 6000",
+      "region": "EU-RO-1",
+      "secure_cloud": true,
+      "availability": "LOW",
+      "rate_usd_per_hour": 2.09,
+      "vram_gb": 96
+    }
+  ],
+  "owned_private_qualification_inputs": {
+    "avatar_sha256": "sha256:34ca7513d6e34af3fa37d2e05afa8d2f81cab9ff587c2a12d047002abc7c75e3",
+    "voiceover_sha256": "sha256:4b5c404ea6a042ca5e82ef64f238d7866f2fb770967b953e593abdadcf6c7fc4",
+    "samples": [
+      {
+        "core_duration_ms": 2000,
+        "padded_audio_duration_ms": 2500,
+        "trim_start_ms": 0,
+        "trim_end_ms": 2000,
+        "audio_sha256": "sha256:b7ad261af40caf574e9edadf856f28ccddc306a109d15523c81a427ec38e72d3"
+      },
+      {
+        "core_duration_ms": 4000,
+        "padded_audio_duration_ms": 5000,
+        "trim_start_ms": 500,
+        "trim_end_ms": 4500,
+        "audio_sha256": "sha256:076f477f512835a3e606b3312682cf1b4a3eb62e211300843023840969d09019"
+      },
+      {
+        "core_duration_ms": 6000,
+        "padded_audio_duration_ms": 6620,
+        "trim_start_ms": 500,
+        "trim_end_ms": 6500,
+        "audio_sha256": "sha256:c7c67903aae4ca8a235792402c64ffa69be3bd423babd4e0447726db27539761"
+      }
+    ],
+    "audio_contract": "16000_hz_mono_pcm",
+    "full_voiceover_job_created": false
+  },
+  "local_validation": {
+    "cp07_web_preflight_tests": "3_passed",
+    "cp07_worker_tests": "13_passed",
+    "worker_suites": "passed_6_explicit_python_3_12_suites",
+    "python_lint": "passed",
+    "verify_fast": "passed_28_of_28_tasks",
+    "active_runtime_scan": "passed_62_files",
+    "vnext_dispatch_firewall": "passed",
+    "context_validation": "passed",
+    "secret_scan": "passed",
+    "canonical_verify": "pending_after_context_evidence_commit"
+  },
+  "read_only_preflight_evidence_sha256": "sha256:b0f6b938dad890a0a79dbc5f2356bc7375486afec80556b28aea7f2d6b7ffbf6",
+  "paid_execution_authorized": false,
+  "echo_crop_activated": false,
+  "remaining_gates": [
+    "immutable_image_publication_and_digest",
+    "one_time_exact_volume_preparation_and_seal",
+    "fresh_offline_pod_boot_and_real_warmup",
+    "owned_2_4_6_second_sample_outputs",
+    "native_geometry_measurement_and_user_crop_review",
+    "settled_finite_cost_and_zero_pod_two_volume_proof"
+  ]
+}
