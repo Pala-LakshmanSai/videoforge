@@ -14,6 +14,7 @@ import {
   CP07_REUSE_VERIFIED_EMPTY_ECHO_VOLUME,
   Cp07PhaseBError,
   isCp07CapacityUnavailable,
+  normalizeCp07Timestamp,
   sanitizeCp07ProviderFailure,
 } from "./runpod-echo-cp07-phase-b-live";
 
@@ -47,6 +48,20 @@ describe("CP-07 invalid Echo volume replacement boundary", () => {
   it("uses a bounded provider attachment-settle delay before Pod creation", () => {
     expect(CP07_VOLUME_ATTACHMENT_SETTLE_MS).toBe(30_000);
   });
+  it.each([
+    ["2026-08-14T20:19:48Z", "2026-08-14T20:19:48.000Z"],
+    ["2026-08-14T20:19:48.1Z", "2026-08-14T20:19:48.100Z"],
+    ["2026-08-14T20:19:48.123Z", "2026-08-14T20:19:48.123Z"],
+    ["2026-08-14 20:19:48.123 +0000 UTC", "2026-08-14T20:19:48.123Z"],
+  ])("normalizes provider timestamp %s", (input, expected) => {
+    expect(normalizeCp07Timestamp(input)).toBe(expected);
+  });
+  it.each(["2026-08-14T20:19:48+00:00", "yesterday", 1, null])(
+    "rejects noncanonical provider timestamp %s",
+    (input) => {
+      expect(normalizeCp07Timestamp(input)).toBeNull();
+    },
+  );
   it("retries only the exact provider no-capacity response with a bounded cadence", () => {
     expect(CP07_CAPACITY_RETRY_DELAY_MS).toBe(30_000);
     expect(CP07_CAPACITY_RETRY_LIMIT).toBe(20);
@@ -90,13 +105,13 @@ describe("CP-07 invalid Echo volume replacement boundary", () => {
 
 describe("CP-07 cumulative finite-cost boundary", () => {
   it("includes the prior attempt and Pod lifecycle reserve in every reservation", () => {
-    expect(CP07_PRIOR_CONSERVATIVE_SPEND_USD).toBe(3.419893);
-    const sample = assertCp07CumulativeReservation(0, 2_700);
-    const sampleTwo = assertCp07CumulativeReservation(sample, 2_700);
-    const sampleThree = assertCp07CumulativeReservation(sample + sampleTwo, 2_700);
+    expect(CP07_PRIOR_CONSERVATIVE_SPEND_USD).toBe(4.195393);
+    const sample = assertCp07CumulativeReservation(0, 1_800);
+    const sampleTwo = assertCp07CumulativeReservation(sample, 1_800);
+    const sampleThree = assertCp07CumulativeReservation(sample + sampleTwo, 1_800);
     const cumulative = CP07_PRIOR_CONSERVATIVE_SPEND_USD + sample + sampleTwo + sampleThree;
-    expect(cumulative).toBeCloseTo(5.746393, 6);
-    expect(6 - cumulative).toBeCloseTo(0.253607, 6);
+    expect(cumulative).toBeCloseTo(5.779393, 6);
+    expect(6 - cumulative).toBeCloseTo(0.220607, 6);
   });
 
   it("rejects a next Pod whose reservation could cross the cumulative cap", () => {
