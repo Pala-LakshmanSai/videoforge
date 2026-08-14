@@ -1058,11 +1058,20 @@ export class RunPodCp06LiveAdapter implements Cp06PodNativePort {
     });
     if (!response.ok) {
       let workerCode = "UNSPECIFIED";
+      let responseBody = "";
       try {
-        workerCode = mageFailureCode(await response.text()) ?? workerCode;
+        responseBody = await response.text();
+        workerCode = mageFailureCode(responseBody) ?? workerCode;
       } catch {
         // Status plus a fixed fallback remains safe and actionable.
       }
+      const privateFailurePath = path.join(
+        this.options.artifactRoot,
+        "generation-failure-response.private.txt",
+      );
+      await mkdir(this.options.artifactRoot, { recursive: true, mode: 0o700 });
+      await writeFile(privateFailurePath, responseBody, { mode: 0o600 });
+      await chmod(privateFailurePath, 0o600);
       throw new Cp06PhaseBError(`CP06_GENERATION_FAILED_HTTP_${response.status}_${workerCode}`);
     }
     const envelope = record(await response.json());

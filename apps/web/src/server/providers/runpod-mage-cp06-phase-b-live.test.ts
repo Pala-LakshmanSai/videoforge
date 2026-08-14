@@ -272,6 +272,9 @@ describe("CP-06 live adapter provider-free boundary", () => {
     ).rejects.toMatchObject({
       code: "CP06_GENERATION_FAILED_HTTP_422_MAGE_COMFY_TRANSPORT_FAILED",
     });
+    await expect(
+      readFile(path.join(files.artifactRoot, "generation-failure-response.private.txt"), "utf8"),
+    ).resolves.toContain("MAGE_COMFY_TRANSPORT_FAILED");
     await expect(adapter.deletePod("pod_restarted")).resolves.toEqual({
       absenceProven: true,
       settledCostUsd: 0.03,
