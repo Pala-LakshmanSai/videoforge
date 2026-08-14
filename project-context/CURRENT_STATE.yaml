@@ -1,8 +1,8 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T18:34:10Z"
+updated_at: "2026-08-14T18:37:19Z"
 
-phase: cp07_phase_b_awaiting_revised_paid_authority
+phase: cp07_phase_b_paid_execution_authorized
 implementation_authorized_in_current_task: true
 current_milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
 current_task: VF-9-24R
@@ -17,26 +17,27 @@ provider_authority:
   mode: paid
   provider: runpod
   cap_usd: 4
-  authorized_at: "2026-08-14T17:30:52Z"
-  source: current_cp07_user_reauthorization
+  authorized_at: "2026-08-14T18:37:19Z"
+  source: current_cp07_exact_revised_user_authorization
   non_transferable: true
-  execution_halted: true
-  halt_reason: "The first preparation attempt left an unverified non-empty Echo volume. Provider-free correction d51c0a1 fixes the CPU-side TorchAO invocation, but retry now requires a new image plus deletion/recreation of the exact invalid Echo volume, which was not in the prior approved operation list."
+  execution_halted: false
+  halt_reason: null
   model_id: "EchoMimicV3-Flash Turbo FP8@videoforge_echo_v3_flash_turbo_fp8_v1"
   resources:
-    - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:237b108819432b4bea3d7b3cb5e6bff039749cc1"
+    - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:d51c0a1"
     - "runpod:EU-RO-1:echo-only-network-volume:50GB"
-    - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 4090:1x:maximum-$0.74/hour:preferred"
-    - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 5090:1x:maximum-$0.99/hour:alternate"
+    - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 4090:1x:maximum-$0.74/hour"
     - "BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249#echomimicv3-flash-pro"
   authorized_operations:
+    - push_exact_cp07_branch_commits
     - publish_echo_worker_image
+    - delete_exact_invalid_echo_volume
     - create_echo_template
     - create_echo_volume
     - download_prepare_echo_volume
     - create_echo_pod
     - generate_owned_2_4_6_second_samples
-    - publish_owned_sample_outputs
+    - retrieve_private_sample_outputs
     - delete_echo_pod
     - delete_echo_template
     - verify_zero_pods
@@ -48,13 +49,15 @@ provider_authority:
     - rate_lookup
     - volume_pricing_lookup
     - resource_absence_lookup
+    - push_exact_cp07_branch_commits
     - publish_echo_worker_image
+    - delete_exact_invalid_echo_volume
     - create_echo_template
     - create_echo_volume
     - download_prepare_echo_volume
     - create_echo_pod
     - generate_owned_2_4_6_second_samples
-    - publish_owned_sample_outputs
+    - retrieve_private_sample_outputs
     - delete_echo_pod
     - delete_echo_template
     - verify_zero_pods
@@ -66,11 +69,11 @@ runpod_account_scope:
   forbidden_account: demo9_imageforge
   identity_check: required_before_inventory_or_mutation
 credential_access_authorized: true
-remote_or_cloud_mutations_authorized: false
-model_downloads_authorized: false
-worker_image_publication_authorized: false
+remote_or_cloud_mutations_authorized: true
+model_downloads_authorized: true
+worker_image_publication_authorized: true
 sample_output_publication_authorized: false
-gpu_use_authorized: false
+gpu_use_authorized: true
 mage_volume_retention_authorized: true
 echo_volume_retention_authorized: true
 
@@ -400,24 +403,23 @@ cp07_phase_a:
   canonical_verify_commit: "5d38739a5f53f6b0e67d6cbf1950ba29c7645061"
   canonical_verify_checked_at: "2026-08-14T16:50:24Z"
   installed_chrome_tests: 42
-  paid_execution_authorized: false
-  paid_execution_authorized_at: "2026-08-14T17:30:52Z"
+  paid_execution_authorized: true
+  paid_execution_authorized_at: "2026-08-14T18:37:19Z"
   paid_execution_cap_usd: 4
-  paid_execution_halted: true
-  revised_paid_authority_required: true
+  paid_execution_halted: false
+  revised_paid_authority_required: false
+  revised_paid_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/revised-authorization.json"
   image_publication_attempts: 2
   last_image_publication_run_id: 31824574378
   last_image_publication_result: success_public_digest_pinned
   selected_gpu_offering_id: "NVIDIA GeForce RTX 4090"
   selected_gpu_rate_usd_per_hour: 0.74
   selected_gpu_vram_gb: 24
-  selected_gpu_availability: MEDIUM
+  selected_gpu_availability: HIGH
   pre_mutation_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/pre-mutation-preflight.json"
   approved_gpu_priority:
     - offering_id: "NVIDIA GeForce RTX 4090"
       maximum_rate_usd_per_hour: 0.74
-    - offering_id: "NVIDIA GeForce RTX 5090"
-      maximum_rate_usd_per_hour: 0.99
   approved_echo_volume_size_gb: 50
   approved_echo_volume_retention_usd_per_month: 3.5
   proposed_revised_operations:
