@@ -446,7 +446,9 @@ export class RunPodPodControlClient {
         [],
       ),
     );
-    return this.parseMagePod(value, input, undefined, "runtime", input.workerToken);
+    return this.parseCreatedPodWithReadFallback(value, (candidate) =>
+      this.parseMagePod(candidate, input, undefined, "runtime", input.workerToken),
+    );
   }
 
   async createMagePrepPod(input: CreateRunPodMagePrepPodInput): Promise<RunPodMagePod> {
@@ -456,7 +458,9 @@ export class RunPodPodControlClient {
       "/pods",
       magePodBody(input, prepEnvironment(input.networkVolumeId), prepEntrypoint, prepStartCommand),
     );
-    return this.parseMagePod(value, input, undefined, "prepare");
+    return this.parseCreatedPodWithReadFallback(value, (candidate) =>
+      this.parseMagePod(candidate, input, undefined, "prepare"),
+    );
   }
 
   async createMageMissingVolumeNegativePod(
@@ -474,7 +478,9 @@ export class RunPodPodControlClient {
         false,
       ),
     );
-    return this.parseMissingVolumeNegativePod(value, input);
+    return this.parseCreatedPodWithReadFallback(value, (candidate) =>
+      this.parseMissingVolumeNegativePod(candidate, input),
+    );
   }
 
   async createMageWrongVolumeHashNegativePod(
@@ -494,7 +500,39 @@ export class RunPodPodControlClient {
         [],
       ),
     );
-    return this.parseWrongVolumeHashNegativePod(value, input, input.workerToken);
+    return this.parseCreatedPodWithReadFallback(value, (candidate) =>
+      this.parseWrongVolumeHashNegativePod(candidate, input, input.workerToken),
+    );
+  }
+
+  private async parseCreatedPodWithReadFallback<T>(
+    createResponse: unknown,
+    parse: (candidate: unknown) => T,
+  ): Promise<T> {
+    try {
+      return parse(createResponse);
+    } catch (error) {
+      if (!(error instanceof RunPodPodControlError) || error.resourceId === undefined) throw error;
+      const podId = error.resourceId;
+      let lastError: unknown = error;
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        const observed = await this.request(
+          "GET",
+          `/pods/${podId}?includeMachine=true&includeNetworkVolume=true&includeTemplate=true`,
+          undefined,
+          true,
+        );
+        if (observed !== null) {
+          try {
+            return parse(observed);
+          } catch (readError) {
+            lastError = readError;
+          }
+        }
+        if (attempt + 1 < 12) await this.sleep(1_000);
+      }
+      throw lastError;
+    }
   }
 
   async getMagePod(

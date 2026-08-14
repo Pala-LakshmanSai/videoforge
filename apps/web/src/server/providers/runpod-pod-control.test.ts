@@ -347,7 +347,20 @@ describe("RunPod Pod-native CP-06 control", () => {
 
   it("creates a dedicated prep-service Pod with the exact raw volume authority", async () => {
     const prepEntrypoint = ["python", "/opt/videoforge/mage_prepare_service.py"];
-    const fetch = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+    let postedEnvironment: unknown;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (init?.method !== "POST") {
+        const url = new URL(String(input));
+        expect(url.pathname).toBe("/pods/pod_cp06_01");
+        return response(
+          pod({
+            name: "vf_cp06_mage_prep",
+            dockerEntrypoint: prepEntrypoint,
+            dockerStartCmd: [],
+            env: postedEnvironment,
+          }),
+        );
+      }
       const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
       expect(body.dockerEntrypoint).toEqual(prepEntrypoint);
       expect(body.dockerStartCmd).toEqual([]);
@@ -357,14 +370,8 @@ describe("RunPod Pod-native CP-06 control", () => {
         VIDEOFORGE_MAGE_DOWNLOAD_CONFIRMATION: CP06_MAGE_PREP_CONFIRMATION,
       });
       expect(JSON.stringify(body)).not.toContain("VIDEOFORGE_MAGE_WORKER_TOKEN");
-      return response(
-        pod({
-          name: "vf_cp06_mage_prep",
-          dockerEntrypoint: prepEntrypoint,
-          dockerStartCmd: [],
-          env: body.env,
-        }),
-      );
+      postedEnvironment = body.env;
+      return response({ id: "pod_cp06_01" });
     });
     const client = new RunPodPodControlClient({
       apiKey: key,
@@ -577,6 +584,7 @@ describe("RunPod Pod-native CP-06 control", () => {
         apiKey: key,
         fetch: async () => response(pod(unsafe)),
         baseUrl: "http://127.0.0.1:43123",
+        sleep: async () => undefined,
       });
       await expect(
         client.createMagePod({ ...authority, workerToken: "t".repeat(40) }),
