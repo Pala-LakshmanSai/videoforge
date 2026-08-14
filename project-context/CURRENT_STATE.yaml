@@ -86,8 +86,8 @@ repository:
   cp06_phase_b_safety_fix_commit: "6664d26f7594fe5ba6fd3896ff5f26075764d93f"
   cp06_phase_b_cleanup_invariant_fix_commit: "58512071586855b96d64e812f9c443d3db51b1dd"
   cp06_runtime_source_commit: "563ba1ab7b083c1457ab4a9504d82bd6f9d886b9"
-  cp06_handoff_content_commit: pending_this_change
-  last_good_commit: "563ba1ab7b083c1457ab4a9504d82bd6f9d886b9"
+  cp06_handoff_content_commit: "1c1d664d443af14b8f8e21cac4064cb237131d5e"
+  last_good_commit: "1c1d664d443af14b8f8e21cac4064cb237131d5e"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 

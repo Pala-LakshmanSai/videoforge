@@ -7,6 +7,7 @@
   "repository": {
     "branch": "codex/cp06-mage-int8",
     "runtime_source_commit": "563ba1ab7b083c1457ab4a9504d82bd6f9d886b9",
+    "handoff_content_commit": "1c1d664d443af14b8f8e21cac4064cb237131d5e",
     "mage_publish_run_id": 31796627338,
     "mage_publish_result": "success",
     "verify_run_id": 31796618907,
@@ -171,8 +172,10 @@
     "mage_worker_tests": 16,
     "worker_test_suites": "passed",
     "python_lint_after_ruff_format": "passed",
-    "context_validation": "pending_final_handoff_commit",
-    "schema_validation": "pending_final_handoff_commit"
+    "context_validation": "passed_at_handoff_content_commit",
+    "schema_validation": "passed_at_handoff_content_commit",
+    "secret_scan": "passed_at_handoff_content_commit",
+    "format_check": "passed_at_handoff_content_commit"
   },
   "gates": {
     "technical_checkpoint": "passed",
