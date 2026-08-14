@@ -1,0 +1,14 @@
+{
+  "schema_version": "videoforge.cp07-pinned-source-metadata-correction/v1",
+  "checked_at": "2026-08-14T17:54:00Z",
+  "repository": "alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP",
+  "revision": "fc913c34361f4ec879e2f9c78b4f11ae50a937d1",
+  "path": "google/umt5-xxl/tokenizer.json",
+  "recorded_preflight_sha256": "6e197b4d3dbd71da14b4eb255f4fa91c9c1f2068b20a2de2472967ca3d22602",
+  "recorded_preflight_length": 63,
+  "correct_sha256": "6e197b4d3dbd71da14b4eb255f4fa91c9c1f2068b20a2de2472967ca3d22602b",
+  "correct_length": 64,
+  "runtime_definition_already_used_correct_value": true,
+  "preparation_failure_attributed_to_this_typo": false,
+  "note": "The historical preflight JSON omitted the final b. The active runtime constant already matched first-party file metadata, so this evidence defect does not explain the terminal preparation failure."
+}

@@ -1,14 +1,14 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T17:44:08Z"
+updated_at: "2026-08-14T17:55:03Z"
 
-phase: cp07_phase_b_authorized_pre_mutation
+phase: cp07_phase_b_halted_preparation_terminal_mismatch
 implementation_authorized_in_current_task: true
 current_milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
 current_task: VF-9-24R
 current_wave: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: image_published_pre_runpod_mutation
+task_stage: halted_before_samples
 application_code_changes_authorized: true
 provider_calls_authorized: true
 maximum_external_spend_usd: 4
@@ -19,8 +19,8 @@ provider_authority:
   authorized_at: "2026-08-14T17:30:52Z"
   source: current_cp07_user_reauthorization
   non_transferable: true
-  execution_halted: false
-  halt_reason: null
+  execution_halted: true
+  halt_reason: "The first exact preparation Pod returned a terminal result rejected as CP07_PREPARATION_RESULT_INVALID. The original executor did not persist the exact worker terminal error before rejection, so the mismatch is ambiguous and the approved stop condition forbids retry."
   model_id: "EchoMimicV3-Flash Turbo FP8@videoforge_echo_v3_flash_turbo_fp8_v1"
   resources:
     - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:237b108819432b4bea3d7b3cb5e6bff039749cc1"
@@ -239,7 +239,7 @@ active_ownership:
   - task_id: VF-9-24R
     checkpoint: CP-07
     owner: current_chat
-    stage: image_published_pre_runpod_mutation
+    stage: halted_before_samples
     external_spend_cap_usd: 4
 
 blocked_tasks: []
@@ -249,7 +249,7 @@ recommended_next_task:
   task_id: VF-9-24R
   checkpoint: CP-07
   milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
-  status: phase_b_image_published_pre_runpod_mutation
+  status: phase_b_halted_preparation_terminal_mismatch
   dependency_status: cp06_complete_green_settled_visual_accepted
   authorization_status: exact_paid_authority_recorded
   task_stage: bounded_mutation
@@ -299,7 +299,7 @@ recommended_next_task:
       - retain_echo_volume
   read_profile: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
   task_brief: tasks/VF-9-24R.md
-  goal: "Execute the corrected immutable image target 237b108 and exact CP-07 paid proposal under the reauthorized $4 cap; prefer the live RTX 4090 and use the RTX 5090 only if the 4090 is unavailable; retain the approved Echo volume and leave zero Pods."
+  goal: "Hold after the exact preparation terminal mismatch. Preserve zero Pods, the retained but unverified 50 GB Echo volume, image/failure/billing evidence, and do not retry until a revised exact proposal is approved."
   provider_calls_authorized: true
   maximum_external_spend_usd: 4
   remote_or_cloud_mutations_authorized: true
@@ -323,7 +323,7 @@ recommended_next_task:
     - "Any active Echo crop before owned native samples are measured and the user explicitly approves the proposed crop pair."
 
 cp07_phase_a:
-  status: complete_paid_execution_reauthorized
+  status: complete_phase_b_halted_on_preparation_mismatch
   evidence: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
   activation_commit: "aff5f0a"
   implementation_commit: "c89acef78d4a4bbbbac118ca9c658b6180d68fc8"
@@ -358,8 +358,10 @@ cp07_phase_a:
   runpod_endpoints: 0
   runpod_templates: 0
   runpod_active_serverless_workers: 0
-  runpod_network_volumes: 1
-  echo_volume_exists: false
+  runpod_network_volumes: 2
+  echo_volume_exists: true
+  echo_volume_id_sha256: "sha256:6df3de80cfbc182e6306167c7832915240944e1ddc5753091ed529a84d634e7a"
+  echo_volume_state: incomplete_or_unverified
   gpu_choices:
     - offering_id: "NVIDIA GeForce RTX 4090"
       rate_usd_per_hour: 0.74
@@ -373,8 +375,10 @@ cp07_phase_a:
       rate_usd_per_hour: 2.09
       availability: LOW
       vram_gb: 96
-  external_spend_usd: 0
-  provider_mutations: 0
+  external_spend_usd: null
+  external_spend_state: pending_provider_settlement
+  conservative_reserved_finite_spend_upper_bound_usd: 1.11
+  provider_mutations: 5
   local_tests: passed
   canonical_verify: passed
   canonical_verify_commit: "5d38739a5f53f6b0e67d6cbf1950ba29c7645061"
@@ -383,7 +387,7 @@ cp07_phase_a:
   paid_execution_authorized: true
   paid_execution_authorized_at: "2026-08-14T17:30:52Z"
   paid_execution_cap_usd: 4
-  paid_execution_halted: false
+  paid_execution_halted: true
   image_publication_attempts: 2
   last_image_publication_run_id: 31824574378
   last_image_publication_result: success_public_digest_pinned
@@ -399,6 +403,17 @@ cp07_phase_a:
       maximum_rate_usd_per_hour: 0.99
   approved_echo_volume_size_gb: 50
   approved_echo_volume_retention_usd_per_month: 3.5
+  preparation_attempts: 1
+  preparation_result: halted_terminal_result_invalid
+  preparation_manifest_verified: false
+  sample_pods_started: 0
+  sample_outputs: 0
+  final_cleanup_checked_at: "2026-08-14T17:55:03.850Z"
+  final_runpod_pods: 0
+  final_runpod_templates: 0
+  final_runpod_endpoints: 0
+  final_runpod_active_serverless_workers: 0
+  final_runpod_network_volumes: 2
   echo_crop_activated: false
 
 cp06_phase_a:

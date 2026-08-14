@@ -767,6 +767,10 @@ export async function runCp07PhaseB(options: {
       prepMaximumSeconds,
       (health) => health.phase === "ready" || health.phase === "failed",
     );
+    await writePrivate(
+      path.join(options.artifactRoot, "preparation-terminal.private.json"),
+      Buffer.from(`${JSON.stringify(prepHealth, null, 2)}\n`),
+    );
     const prepVolume = record(prepHealth.volume);
     const prepModel = record(prepHealth.model);
     if (

@@ -1,0 +1,44 @@
+{
+  "schema_version": "videoforge.cp07-preparation-attempt/v1",
+  "checkpoint": "CP-07",
+  "attempt_id": "videoforge-echo-cp07-prep-a01",
+  "result": "halted_terminal_result_invalid",
+  "controller_error": "CP07_PREPARATION_RESULT_INVALID",
+  "exact_terminal_worker_error_preserved": false,
+  "ambiguity_note": "The first executor version validated the terminal health in memory but did not persist it before rejecting the result. No retry is permitted under the stop conditions.",
+  "image_digest": "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:e53842b5b9e8115e576f6d98337c228d584651fa50df0d15e086d417f60258e8",
+  "gpu": {
+    "offering_id": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "rate_usd_per_hour": 0.74,
+    "vram_gb": 24
+  },
+  "echo_volume": {
+    "name": "videoforge-echo-cp07-model-volume-eu-ro-1-50gb",
+    "id_sha256": "sha256:6df3de80cfbc182e6306167c7832915240944e1ddc5753091ed529a84d634e7a",
+    "size_gb": 50,
+    "retained": true,
+    "ongoing_usd_per_month": 3.5,
+    "prepared_manifest_verified": false,
+    "state": "incomplete_or_unverified"
+  },
+  "finite_cost": {
+    "cap_usd": 4,
+    "settled_usd": null,
+    "billing_state": "pending_provider_settlement",
+    "conservative_reserved_upper_bound_usd": 1.11
+  },
+  "samples_started": 0,
+  "sample_outputs": 0,
+  "crop_activated": false,
+  "cleanup_audit": {
+    "checked_at": "2026-08-14T17:55:03.850Z",
+    "pods": 0,
+    "running_pods": 0,
+    "private_templates": 0,
+    "endpoints": 0,
+    "active_serverless_workers": 0,
+    "network_volumes": 2,
+    "isolated_mage_and_echo_volumes": true
+  }
+}
