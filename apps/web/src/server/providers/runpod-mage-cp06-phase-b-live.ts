@@ -92,6 +92,25 @@ const record = (value: unknown): Record<string, unknown> | null =>
     ? (value as Record<string, unknown>)
     : null;
 
+const mageFailureCode = (value: unknown): string | null => {
+  const pending: unknown[] = [value];
+  for (let inspected = 0; pending.length > 0 && inspected < 100; inspected += 1) {
+    const candidate = pending.shift();
+    if (typeof candidate === "string") {
+      const match = candidate.match(/\bMAGE_[A-Z0-9_]{1,100}\b/u);
+      if (match?.[0]) return match[0];
+      continue;
+    }
+    if (Array.isArray(candidate)) {
+      pending.push(...candidate);
+      continue;
+    }
+    const object = record(candidate);
+    if (object !== null) pending.push(...Object.values(object));
+  }
+  return null;
+};
+
 const hash = (value: string | Buffer): `sha256:${string}` =>
   `sha256:${createHash("sha256").update(value).digest("hex")}`;
 
@@ -1040,11 +1059,7 @@ export class RunPodCp06LiveAdapter implements Cp06PodNativePort {
     if (!response.ok) {
       let workerCode = "UNSPECIFIED";
       try {
-        const failure = record(await response.json());
-        const detail = record(failure?.detail);
-        if (typeof detail?.code === "string" && /^[A-Z0-9_]{1,120}$/.test(detail.code)) {
-          workerCode = detail.code;
-        }
+        workerCode = mageFailureCode(await response.json()) ?? workerCode;
       } catch {
         // Status plus a fixed fallback remains safe and actionable.
       }

@@ -256,7 +256,7 @@ describe("CP-06 live adapter provider-free boundary", () => {
       }),
     ).rejects.toMatchObject({ code: "CP06_GENERATION_RESULT_REJECTED" });
     generationResponse = new Response(
-      JSON.stringify({ detail: { code: "MAGE_COMFY_TRANSPORT_FAILED" } }),
+      JSON.stringify({ error: '{"detail":{"code":"MAGE_COMFY_TRANSPORT_FAILED"}}' }),
       { status: 422, headers: { "content-type": "application/json" } },
     );
     await expect(
