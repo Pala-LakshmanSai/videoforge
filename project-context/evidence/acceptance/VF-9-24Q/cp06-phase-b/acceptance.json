@@ -178,7 +178,8 @@
     "format_check": "passed_at_handoff_content_commit"
   },
   "gates": {
-    "technical_checkpoint": "passed",
+    "technical_runtime_and_cleanup": "passed",
+    "checkpoint_cost_handoff": "pending_provider_settlement",
     "visual_quality": "pending_user_review",
     "GATE_IMAGE_001": "open",
     "GATE_STYLE_002": "open",

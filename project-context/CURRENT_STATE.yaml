@@ -2,52 +2,31 @@ schema_version: "1.0"
 context_schema_version: "1.5"
 updated_at: "2026-08-14T12:00:00Z"
 
-phase: cp06_ready_for_user_review
-implementation_authorized_in_current_task: true
+phase: cp06_ready_for_user_review_billing_settlement_pending
+implementation_authorized_in_current_task: false
 current_milestone: exact_mage_int8_persistent_runpod_volume
 current_task: VF-9-24Q
 current_wave: cp06_mage_int8_persistent_runpod
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: bounded_mutation
-application_code_changes_authorized: true
-provider_calls_authorized: true
-maximum_external_spend_usd: 3.0
+task_stage: user_review
+application_code_changes_authorized: false
+provider_calls_authorized: false
+maximum_external_spend_usd: 0
 provider_authority:
-  mode: paid
-  provider: runpod
-  cap_usd: 3.0
-  authorized_by_user_at: "2026-08-14T08:19:32Z"
-  non_transferable: true
-  model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
-  resources:
-    - videoforge-mage-cp06-worker-image
-    - videoforge-mage-cp06-template
-    - videoforge-mage-cp06-model-volume-eu-ro-1-50gb
-    - videoforge-mage-cp06-pod-attempts
-    - videoforge-mage-cp06-owned-samples
-  authorized_operations:
-    - publish_worker_image
-    - create_mage_template
-    - create_mage_volume
-    - download_prepare_mage_volume
-    - create_mage_pod
-    - generate_owned_samples
-    - publish_owned_sample_outputs
-    - delete_mage_pod
-    - delete_mage_template
-    - verify_zero_pods
-    - retain_mage_volume
+  mode: none
+  cap_usd: 0
+  consumed_phase_b_authority: cp06_phase_b
 runpod_account_scope:
   owner: sujal
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_inventory_or_mutation
-credential_access_authorized: true
-remote_or_cloud_mutations_authorized: true
-model_downloads_authorized: true
-worker_image_publication_authorized: true
-sample_output_publication_authorized: true
-gpu_use_authorized: true
+credential_access_authorized: false
+remote_or_cloud_mutations_authorized: false
+model_downloads_authorized: false
+worker_image_publication_authorized: false
+sample_output_publication_authorized: false
+gpu_use_authorized: false
 mage_volume_retention_authorized: true
 
 repository:
@@ -99,10 +78,10 @@ live_development:
   health_checked_at: "2026-08-14T07:18:58Z"
   chrome_route: null
   fixture_scenario: cp05_complete_fixture_mvp
-  provider_mode: sandbox
-  provider_calls_authorized: true
-  authorized_spend_usd: 3.0
-  provider_authority_scope: "VF-9-24Q CP-06 Phase B only on Sujal RunPod: exact RTX 4090 at no more than $0.74/hour, one retained 50 GB STANDARD EU-RO-1 Mage volume at $0.07/GB/month ($3.50/month), exact Mage INT8 download/preparation, immutable worker/template publication, two fresh Pods, at least eight private owned samples, Pod deletion and zero-Pod proof; cumulative finite-action cap $3.00."
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: "CP-06 Phase B finite-action authority is consumed. Only the already approved 50 GB Mage-volume retention continues at $3.50/month; no provider call, mutation, publication, GPU use, or new spend is authorized."
   worker_image: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
   last_user_checkpoint:
     result: accepted
@@ -200,60 +179,39 @@ recommended_next_task:
   task_id: VF-9-24Q
   checkpoint: CP-06
   milestone: exact_mage_int8_persistent_runpod_volume
-  status: ready_for_user_review
+  status: ready_for_user_review_billing_settlement_pending
   dependency_status: cp05_complete_green_provider_free
-  authorization_status: exact_current_chat_authorization_recorded
-  task_stage: bounded_mutation
+  authorization_status: consumed_historical_volume_retention_only
+  task_stage: user_review
   provider_authority:
-    mode: paid
-    provider: runpod
-    cap_usd: 3.0
-    authorized_by_user_at: "2026-08-14T08:19:32Z"
-    non_transferable: true
-    model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
-    resources:
-      - videoforge-mage-cp06-worker-image
-      - videoforge-mage-cp06-template
-      - videoforge-mage-cp06-model-volume-eu-ro-1-50gb
-      - videoforge-mage-cp06-pod-attempts
-      - videoforge-mage-cp06-owned-samples
-    authorized_operations:
-      - publish_worker_image
-      - create_mage_template
-      - create_mage_volume
-      - download_prepare_mage_volume
-      - create_mage_pod
-      - generate_owned_samples
-      - publish_owned_sample_outputs
-      - delete_mage_pod
-      - delete_mage_template
-      - verify_zero_pods
-      - retain_mage_volume
+    mode: none
+    cap_usd: 0
+    consumed_phase_b_authority: cp06_phase_b
   read_profile: cp06_mage_int8_persistent_runpod
   task_brief: tasks/VF-9-24Q.md
   goal: "Review the completed CP-06 real Mage outputs; technical qualification, cleanup, and retained-volume proof are complete."
-  provider_calls_authorized: true
-  maximum_external_spend_usd: 3.0
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
-  model_downloads_authorized: true
-  worker_image_publication_authorized: true
-  sample_output_publication_authorized: true
-  gpu_use_authorized: true
+  provider_calls_authorized: false
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
+  model_downloads_authorized: false
+  worker_image_publication_authorized: false
+  sample_output_publication_authorized: false
+  gpu_use_authorized: false
   mage_volume_retention_authorized: true
   mage_gpu_offering_id: "NVIDIA GeForce RTX 4090"
   mage_gpu_rate_usd_per_hour: 0.74
   mage_volume_size_gb: 50
   mage_volume_rate_usd_per_gb_month: 0.07
   ongoing_retention_charge_usd_per_month: 3.5
-  application_code_changes_authorized: true
+  application_code_changes_authorized: false
   prerequisite_evidence: "evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json"
   required_handoff:
     - "Preserve the completed CP-01 through CP-05 evidence and active vNext cutover."
     - "Phase A is complete at code commit 912427b5bd8a7afb4f68233072990d3c39e64cc6 with green hosted build-only and canonical CI evidence."
-    - "Present exact live GPU/rate choices, byte-derived volume size/rate, and separately stated ongoing volume-retention charge; the user must supply a positive finite handoff cap in one complete Phase B authorization."
-    - "Before Phase B mutation, persist the exact positive numeric cap, exact offering/rate, exact volume size/rate, ongoing-retention consent, and explicit mutation/download/publication/GPU authority."
-    - "Keep all hosted-production/provider gates false; local CP-05 evidence does not prove production."
+    - "Preserve the exact CP-06 digest, retained volume, outputs, zero-compute proof, and sanitized acceptance evidence."
+    - "Show the contact sheet for user visual review and keep billing settlement explicitly pending until RunPod reports all attempts."
+    - "Do not reuse the consumed Phase B mutation/spend authority; only the approved $3.50/month volume retention continues."
   prohibited_in_task:
     - "Any CP-06 action merely because this brief is selected; the exact CP-06 prompt must activate Phase A."
     - "During Phase A: any cloud mutation, model-byte download, image/container publication, GPU use, Pod/template/volume creation, retained-volume billing, or spend."
@@ -307,7 +265,7 @@ cp06_phase_a:
   paid_compute_shutdown: no_paid_compute_started_colima_stopped_original_8gib_config_restored
 
 cp06_phase_b:
-  status: ready_for_user_review
+  status: runtime_and_cleanup_ready_for_user_review_billing_settlement_pending
   controller_commit: "1c257497055ad42b78d3020a2113f8ea0cf876c8"
   safety_fix_commit: "6664d26f7594fe5ba6fd3896ff5f26075764d93f"
   cleanup_invariant_fix_commit: "58512071586855b96d64e812f9c443d3db51b1dd"
@@ -341,6 +299,7 @@ cp06_phase_b:
   conservative_accounted_spend_usd: 1.110002
   settled_external_spend_usd: null
   billing_status: partial_5_of_15_attempts_observed
+  handoff_cost_status: pending_provider_settlement_required_by_brief
   partial_billing_amount_usd: 0.11843864619731903
   provider_mutations_started: true
   provider_resources_created_during_checkpoint: true
@@ -555,13 +514,13 @@ blocking_gates_for_production:
 
 progress_snapshot:
   estimate_kind: checkpoint_truth_no_percent_claim
-  completed_checkpoint: CP-06_technical_ready_for_user_review
-  next_checkpoint: CP-06_user_visual_quality_review
+  completed_checkpoint: CP-06_runtime_and_cleanup_ready_for_user_review
+  next_checkpoint: CP-06_user_visual_quality_review_and_provider_billing_settlement
   full_production_mvp_implemented_percent: null
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: cp06_ready_for_user_review
+  status: cp06_ready_for_user_review_billing_settlement_pending
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Load cp06_mage_int8_persistent_runpod and tasks/VF-9-24Q.md; read only the CP-06 roadmap section."

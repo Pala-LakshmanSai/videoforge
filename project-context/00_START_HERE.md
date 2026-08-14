@@ -1,6 +1,7 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-05 complete; CP-06 technical qualification is `READY_FOR_USER_REVIEW`
+Status: CP-00 through CP-05 complete; CP-06 runtime/cleanup is `READY_FOR_USER_REVIEW`; provider
+billing settlement is pending
 Context schema: `1.5`  
 Last updated: `2026-08-14`
 
@@ -133,7 +134,8 @@ The CP-05 proof remains provider-free local Mac/Linux evidence only: no Cloud Ru
 private production R2, hosted Linux media runtime, model download/change, image publication, GPU,
 paid compute, or spend was used or proven. Hosted production proof remains open until CP-08.
 
-`VF-9-24Q` CP-06 is technically complete and `READY_FOR_USER_REVIEW`. Runtime source commit
+`VF-9-24Q` CP-06 runtime and cleanup are `READY_FOR_USER_REVIEW`; the brief's settled-cost handoff
+remains pending on RunPod. Runtime source commit
 `563ba1ab7b083c1457ab4a9504d82bd6f9d886b9` published immutable digest
 `ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69`
 in successful GitHub run `31796627338`. The exact 13,379,919,280-byte manifest was prepared once on

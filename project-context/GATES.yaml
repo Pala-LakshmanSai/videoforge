@@ -1,5 +1,5 @@
 schema_version: "1.0"
-updated_at: "2026-08-13"
+updated_at: "2026-08-14"
 evidence_root: "evidence/gates"
 
 gates:
@@ -54,7 +54,7 @@ gates:
     last_run: "evidence/gates/GATE_IMAGE_002/2026-08-11-huggingface-mage-access-license"
     result: open_user_accepted_risk_for_locked_model_qualification
     checked_at: "2026-08-11T04:03:03Z"
-    blocker: "The exact public Comfy-Org revision includes the selected INT8 ConvRot checkpoint and is accessible. The new VideoForge volume manifest and Pod/runtime compatibility remain unqualified, while historical Microsoft sources still combine MIT labeling with research-only deployment guidance, so clear commercial permission remains unproven."
+    blocker: "CP-06 qualified the exact public Comfy-Org INT8 ConvRot manifest and Pod/runtime compatibility. Historical Microsoft sources still combine MIT labeling with research-only deployment guidance, so clear commercial permission remains unproven."
     user_risk_acceptance: "2026-08-11: user explicitly directed proceeding with locked Mage-Flow-Turbo for YouTube use despite unresolved terms/access metadata; no clear-commercial-permission claim is allowed."
   GATE_LLM_001:
     status: closed

@@ -1,6 +1,6 @@
 # CP-06 Phase B acceptance
 
-Status: `READY_FOR_USER_REVIEW`.
+Status: runtime/cleanup `READY_FOR_USER_REVIEW`; settled-cost handoff pending.
 
 The exact Mage INT8 runtime passed its bounded live qualification on Sujal RunPod. The exact pinned
 model was prepared once on the retained 50 GB EU-RO-1 network volume, the missing-volume and

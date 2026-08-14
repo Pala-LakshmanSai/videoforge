@@ -142,8 +142,18 @@ if recommended_task["provider_calls_authorized"] == false
   errors << "CURRENT_STATE provider-free next task must default to $0 external spend" unless recommended_task["maximum_external_spend_usd"] == 0
   errors << "CURRENT_STATE provider-free next task must use fixture mode" unless live_state["provider_mode"] == "fixture"
   errors << "CURRENT_STATE provider-free next task live spend must be $0" unless live_state["authorized_spend_usd"] == 0
-  %w[remote_or_cloud_mutations_authorized credential_access_authorized model_downloads_authorized worker_image_publication_authorized sample_output_publication_authorized gpu_use_authorized mage_volume_retention_authorized].each do |field|
+  %w[remote_or_cloud_mutations_authorized credential_access_authorized model_downloads_authorized worker_image_publication_authorized sample_output_publication_authorized gpu_use_authorized].each do |field|
     errors << "CURRENT_STATE provider-free next task cannot authorize #{field}" unless recommended_task[field] == false
+  end
+  if recommended_task["mage_volume_retention_authorized"] == true
+    valid_retention_only = recommended_task["checkpoint"] == "CP-06" &&
+      recommended_task["task_stage"] == "user_review" &&
+      recommended_task["authorization_status"] == "consumed_historical_volume_retention_only" &&
+      recommended_task["ongoing_retention_charge_usd_per_month"].is_a?(Numeric) &&
+      recommended_task["ongoing_retention_charge_usd_per_month"].positive?
+    errors << "CURRENT_STATE provider-free retention-only state is invalid" unless valid_retention_only
+  elsif recommended_task["mage_volume_retention_authorized"] != false
+    errors << "CURRENT_STATE provider-free next task must explicitly declare Mage volume retention"
   end
   if recommended_task["checkpoint"] == "CP-06" && recommended_task["authorization_status"] == "at_rest_not_authorized"
     errors << "CURRENT_STATE idle CP-06 cannot authorize application code" unless recommended_task["application_code_changes_authorized"] == false

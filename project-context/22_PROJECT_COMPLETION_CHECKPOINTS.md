@@ -1,7 +1,7 @@
 # VideoForge completion checkpoints
 
-Status: authoritative completion roadmap; `CP-00` through `CP-05` complete; `CP-06` technical
-qualification is `READY_FOR_USER_REVIEW`
+Status: authoritative completion roadmap; `CP-00` through `CP-05` complete; `CP-06` runtime/cleanup
+is `READY_FOR_USER_REVIEW` and provider billing settlement is pending
 Read when: choosing the next implementation chat, checking project truth, or auditing completion.
 
 ## MVP destination
@@ -295,8 +295,8 @@ Current re-audit evidence:
 **Status:** complete provider-free under `VF-9-24P` at audited code head
 `58395225d9f2e11ac556e6b67f186b1fb5502336`, recorded by handoff commit
 `d2285117c17a3f6dd37b84e9dd441fd6fe7aa1d0`; canonical and installed-Chrome acceptance passed;
-CP-06 technical qualification is complete and awaits user visual-quality review; all paid compute
-is absent and one approved 50 GB Mage volume remains.
+CP-06 runtime/cleanup awaits user visual-quality review; all paid compute is absent, one approved
+50 GB Mage volume remains, and provider billing settlement is pending.
 
 **Outcome:** the entire application works in fixture mode before any new GPU spend.
 
@@ -319,7 +319,8 @@ wrong Pod/volume/GPU, independent lane drain, final playable MP4s, canonical ver
 
 ## CP-06 — Exact Mage INT8 on persistent RunPod volume
 
-**Status:** `VF-9-24Q` technical qualification is `READY_FOR_USER_REVIEW`. The exact model is on one
+**Status:** `VF-9-24Q` runtime/cleanup is `READY_FOR_USER_REVIEW`; settled-cost handoff is pending.
+The exact model is on one
 retained 50 GB Mage volume; eight 1280x720 PNGs came from two fresh sequential RTX 4090 Pods; every
 Pod and template was deleted and proven absent. Conservative checkpoint account: `$1.110002` under
 the `$3` cap; provider billing remains partial.
