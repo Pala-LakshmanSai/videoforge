@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T13:07:58Z"
+updated_at: "2026-08-14T13:15:15Z"
 
 phase: cp06_ready_for_user_review_billing_settlement_pending
 implementation_authorized_in_current_task: false
@@ -70,7 +70,8 @@ repository:
   cp06_hosted_verify_commit: "e17a6fb631f2cbc5e9b89a1bb1453744151df8a4"
   cp06_hosted_verify_run_id: 31799220381
   cp06_consumed_authority_latch_commit: "3b2575d72e307545564f51d374070ffa4e20bad7"
-  last_good_commit: "e17a6fb631f2cbc5e9b89a1bb1453744151df8a4"
+  cp06_local_reaudit_verify_commit: "f70ed54a6f458d784a8e31cf6e1c1d9bc764997e"
+  last_good_commit: "f70ed54a6f458d784a8e31cf6e1c1d9bc764997e"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -278,7 +279,7 @@ cp06_phase_b:
   runtime_source_commit: "563ba1ab7b083c1457ab4a9504d82bd6f9d886b9"
   worker_image_digest: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
   worker_image_publish_run_id: 31796627338
-  controller_validation: passed_48_focused_tests_web_typecheck_python_lint_55_contract_tests_worker_suites_independent_safety_and_output_audit_pass
+  controller_validation: passed_60_focused_typescript_16_mage_python_web_typecheck_canonical_28_tasks_worker_suites_context_schema_secret_scan_and_42_installed_chrome
   evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
   authorized_by_user_at: "2026-08-14T08:19:32Z"
   user_authorization_text: "I authorize the complete CP-06 Phase B scope above on Sujal RunPod using RTX 4090 at no more than $0.74/hour, retaining the 20 GiB volume at $1.40/month, with a $3 cumulative handoff cap."
