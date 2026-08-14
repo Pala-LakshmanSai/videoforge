@@ -16,14 +16,14 @@ export const CP07_GPU = "NVIDIA GeForce RTX 4090";
 export const CP07_GPU_RATE_USD_PER_HOUR = 0.74;
 export const CP07_REGION = "EU-RO-1";
 export const CP07_CAP_USD = 4;
-export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 1.11;
+export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 1.166225;
 export const CP07_POD_LIFECYCLE_RESERVE_SECONDS = 120;
 export const CP07_VOLUME_NAME = "videoforge-echo-cp07-model-volume-eu-ro-1-50gb";
 export const CP07_VOLUME_SIZE_GB = 50;
 export const CP06_MAGE_VOLUME_ID_HASH =
   "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 export const CP07_INVALID_ECHO_VOLUME_ID_HASH =
-  "sha256:6df3de80cfbc182e6306167c7832915240944e1ddc5753091ed529a84d634e7a";
+  "sha256:9cce5166d2bf18b3db5f0aaab1c4c0ba4976177a00bc17e23709830098a9bc45";
 export const CP07_TEMPLATE_NAME = "videoforge-echo-flash-turbo-cp07-template";
 export const CP07_MODEL_ROOT = "/runpod-volume/echo-flash-turbo-fp8";
 export const CP07_VOLUME_MOUNT = "/runpod-volume";
