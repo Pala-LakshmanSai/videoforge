@@ -40,6 +40,7 @@ import {
 } from "./runpod-mage-cp06-phase-b";
 
 const IMAGE = `ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:${"a".repeat(64)}`;
+const IMAGE_V2 = `ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:${"c".repeat(64)}`;
 const MANIFEST = `sha256:${"b".repeat(64)}` as const;
 const hash = (value: string): `sha256:${string}` =>
   `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
@@ -60,6 +61,7 @@ class FakePodPort implements Cp06PodNativePort {
   deleteFailure = false;
   readonly deleteFailurePodIds = new Set<string>();
   billingSettled = true;
+  contactSheetFailure = false;
 
   async assertAccountIdentity(): Promise<{ readonly accountIdHash: string }> {
     this.calls.push("account");
@@ -113,17 +115,26 @@ class FakePodPort implements Cp06PodNativePort {
     return volume;
   }
 
-  async reconcileTemplatesByExactName(name: string): Promise<readonly Cp06TemplateObservation[]> {
+  async reconcileTemplatesByExactName(
+    name: string,
+    imageDigest: string,
+  ): Promise<readonly Cp06TemplateObservation[]> {
     this.calls.push("reconcile-template");
-    return this.templates.filter((template) => template.name === name);
+    return this.templates.filter(
+      (template) => template.name === name && template.imageDigest === imageDigest,
+    );
   }
 
-  async createPodTemplate(): Promise<Cp06TemplateObservation> {
+  async createPodTemplate(input?: {
+    readonly name: typeof CP06_PHASE_B_TEMPLATE_NAME;
+    readonly imageDigest: string;
+    readonly isServerless: false;
+  }): Promise<Cp06TemplateObservation> {
     this.calls.push("create-template");
     const template: Cp06TemplateObservation = {
       id: `template_cp06_${this.templates.length + 1}`,
       name: CP06_PHASE_B_TEMPLATE_NAME,
-      imageDigest: IMAGE,
+      imageDigest: input?.imageDigest ?? IMAGE,
       isServerless: false,
     };
     this.templates.push(template);
@@ -231,6 +242,7 @@ class FakePodPort implements Cp06PodNativePort {
 
   async createContactSheet(samples: readonly Cp06SampleResult[]): Promise<Cp06ContactSheetResult> {
     this.calls.push("contact-sheet");
+    if (this.contactSheetFailure) throw new Error("contact sheet interrupted");
     return {
       outputObjectKey: "private/cp06/contact-sheet.png",
       outputSha256: hash("contact-sheet"),
@@ -284,8 +296,8 @@ const fixture = async (): Promise<{ root: string; journalPath: string }> => {
   roots.push(root);
   return { root, journalPath: path.join(root, ".videoforge", "cp06", "journal.jsonl") };
 };
-const config = (journalPath: string): Cp06PhaseBConfig => ({
-  workerImageDigest: IMAGE,
+const config = (journalPath: string, workerImageDigest = IMAGE): Cp06PhaseBConfig => ({
+  workerImageDigest,
   journalPath,
   externalCapUsd: CP06_PHASE_B_EXTERNAL_CAP_USD,
   internalStopUsd: CP06_PHASE_B_INTERNAL_STOP_USD,
@@ -435,6 +447,39 @@ describe("CP-06 Phase B Pod orchestrator", () => {
     expect(port.createdIntents.filter((intent) => intent.role === "positive1")).toHaveLength(1);
     expect(port.createdIntents.filter((intent) => intent.role === "positive2")).toHaveLength(2);
     expect(port.pods).toEqual([]);
+  });
+
+  it("preserves prep but reruns negatives and positives after the immutable template epoch changes", async () => {
+    const { journalPath } = await fixture();
+    const port = new FakePodPort();
+    port.contactSheetFailure = true;
+    await expect(runCp06MagePhaseB(port, config(journalPath))).rejects.toThrow(
+      "contact sheet interrupted",
+    );
+    port.contactSheetFailure = false;
+    port.templates.length = 0;
+
+    const evidence = await runCp06MagePhaseB(port, config(journalPath, IMAGE_V2));
+
+    expect(evidence.workerImageDigest).toBe(IMAGE_V2);
+    expect(port.createdIntents.filter((intent) => intent.role === "prep")).toHaveLength(1);
+    expect(port.createdIntents.filter((intent) => intent.role === "negativeMissing")).toHaveLength(
+      2,
+    );
+    expect(
+      port.createdIntents.filter((intent) => intent.role === "negativeWrongHash"),
+    ).toHaveLength(2);
+    expect(port.createdIntents.filter((intent) => intent.role === "positive1")).toHaveLength(2);
+    expect(port.createdIntents.filter((intent) => intent.role === "positive2")).toHaveLength(2);
+    expect(port.generatedSampleIds).toHaveLength(16);
+    const records = (await readFile(journalPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+    expect(records.filter((record) => record.event === "template_ready")).toHaveLength(2);
+    expect(
+      records.filter((record) => record.event === "stage_complete" && record.stage === "prep"),
+    ).toHaveLength(1);
   });
 
   it("revalidates resumed sample evidence and rejects a tampered completed batch", async () => {

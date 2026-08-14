@@ -963,8 +963,27 @@ const futureRuntimeSecondsAfter = (role: "positive1" | "positive2"): number =>
   role === "positive1" ? CP06_PHASE_B_ATTEMPTS.positive2.maximumRuntimeSeconds : 0;
 
 const journalStageEvidence = (journal: Cp06IntentAttemptJournal, stage: string): unknown =>
-  journal.all().find((record) => record.event === "stage_complete" && record.stage === stage)
-    ?.evidence;
+  [...journal.all()]
+    .reverse()
+    .find((record) => record.event === "stage_complete" && record.stage === stage)?.evidence;
+
+const journalStageEvidenceInCurrentTemplateEpoch = (
+  journal: Cp06IntentAttemptJournal,
+  stage: string,
+): unknown => {
+  const templateReady = [...journal.all()]
+    .reverse()
+    .find((record) => record.event === "template_ready");
+  if (templateReady === undefined) return undefined;
+  return [...journal.all()]
+    .reverse()
+    .find(
+      (record) =>
+        record.event === "stage_complete" &&
+        record.stage === stage &&
+        record.sequence > templateReady.sequence,
+    )?.evidence;
+};
 
 const journalDurationMs = (start: JournalRecord | undefined, end: JournalRecord): number | null => {
   if (start === undefined) return null;
@@ -1261,7 +1280,17 @@ export async function runCp06MagePhaseB(
   ) {
     throw new Cp06PhaseBError("CP06_TEMPLATE_IDENTITY_MISMATCH");
   }
-  await journal.append("template_ready", { templateId: template.id });
+  const latestTemplateReady = journal.last("template_ready");
+  if (
+    latestTemplateReady?.templateId !== template.id ||
+    (typeof latestTemplateReady.imageDigest === "string" &&
+      latestTemplateReady.imageDigest !== config.workerImageDigest)
+  ) {
+    await journal.append("template_ready", {
+      templateId: template.id,
+      imageDigest: config.workerImageDigest,
+    });
+  }
 
   let manifestSha256 = journalStageEvidence(journal, "prep") as Hash | undefined;
   if (!journal.has("stage_complete", (record) => record.stage === "prep")) {
@@ -1314,7 +1343,7 @@ export async function runCp06MagePhaseB(
       port.awaitWrongVolumeHashBootFailure.bind(port),
     ],
   ] as const) {
-    if (journal.has("stage_complete", (record) => record.stage === role)) continue;
+    if (journalStageEvidenceInCurrentTemplateEpoch(journal, role) === true) continue;
     await runPodStage(
       role,
       port,
@@ -1345,7 +1374,7 @@ export async function runCp06MagePhaseB(
     ["positive2", CP06_REPRESENTATIVE_PROMPTS.slice(4, 8)],
   ] as const) {
     const stage = role;
-    const resumed = journalStageEvidence(journal, stage) as
+    const resumed = journalStageEvidenceInCurrentTemplateEpoch(journal, stage) as
       | readonly Cp06SanitizedSampleEvidence[]
       | undefined;
     if (resumed !== undefined) {
