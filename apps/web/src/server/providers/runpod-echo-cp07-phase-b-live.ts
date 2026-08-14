@@ -12,9 +12,9 @@ import { fetchCp07Catalog } from "./runpod-echo-cp07-preflight";
 
 export const CP07_ACCOUNT_HASH =
   "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c";
-export const CP07_GPU = "NVIDIA RTX PRO 4500 Blackwell";
-export const CP07_GPU_RATE_USD_PER_HOUR = 0.72;
-export const CP07_GPU_VRAM_GB = 32;
+export const CP07_GPU = "NVIDIA RTX PRO 4000 Blackwell";
+export const CP07_GPU_RATE_USD_PER_HOUR = 0.57;
+export const CP07_GPU_VRAM_GB = 24;
 export const CP07_REGION = "EU-RO-1";
 export const CP07_CAP_USD = 6;
 export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 1.166225;
@@ -25,7 +25,7 @@ export const CP07_VOLUME_SIZE_GB = 50;
 export const CP06_MAGE_VOLUME_ID_HASH =
   "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 export const CP07_INVALID_ECHO_VOLUME_ID_HASH =
-  "sha256:857b2a8e5110d4ac151794d101a22e87c8235929c2d881dff9a3d671a3aad032";
+  "sha256:b1b829ef08e8259e3a350efb67074afed973da373dfbe4c6f0f85c62eb0d3ef5";
 export const CP07_TEMPLATE_NAME = "videoforge-echo-flash-turbo-cp07-template";
 export const CP07_MODEL_ROOT = "/runpod-volume/echo-flash-turbo-fp8";
 export const CP07_VOLUME_MOUNT = "/runpod-volume";

@@ -1,0 +1,25 @@
+{
+  "schema_version": "videoforge.cp07-allocation-failure/v1",
+  "checkpoint": "CP-07",
+  "attempt": "third-sequence-rtx-pro-4500-redacted-diagnostic",
+  "provider_status": 500,
+  "provider_error": "create pod: There are no instances currently available",
+  "pod_identity_returned": false,
+  "replacement_volume": {
+    "id_sha256": "sha256:b1b829ef08e8259e3a350efb67074afed973da373dfbe4c6f0f85c62eb0d3ef5",
+    "size_gb": 50,
+    "pod_ever_attached": false
+  },
+  "cleanup": {
+    "checked_at": "2026-08-14T19:24:58.934Z",
+    "pods": 0,
+    "private_templates": 0,
+    "cleanup_certain": true
+  },
+  "next_selected_offering": {
+    "offering_id": "NVIDIA RTX PRO 4000 Blackwell",
+    "availability": "MEDIUM",
+    "rate_usd_per_hour": 0.57,
+    "vram_gb": 24
+  }
+}

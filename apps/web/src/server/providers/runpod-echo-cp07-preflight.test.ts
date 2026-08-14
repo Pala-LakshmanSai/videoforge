@@ -21,6 +21,17 @@ const inventory = (): Cp07Inventory => ({
 const catalog = {
   gpus: [
     {
+      id: "NVIDIA RTX PRO 4000 Blackwell",
+      name: "RTX PRO 4000",
+      manufacturer: "NVIDIA",
+      secure: true,
+      memory: 24,
+      availability: "MEDIUM",
+      price: { secure: 0.57 },
+      maxCount: { secure: 1 },
+      dataCenters: [{ id: "EU-RO-1", availability: "MEDIUM" }],
+    },
+    {
       id: "NVIDIA RTX PRO 4500 Blackwell",
       name: "RTX PRO 4500",
       manufacturer: "NVIDIA",
@@ -70,6 +81,7 @@ const catalog = {
 describe("CP-07 read-only preflight", () => {
   it("returns only exact secure EU-RO-1 Echo candidates sorted by rate", () => {
     expect(parseCp07Catalog(catalog).map((candidate) => candidate.offeringId)).toEqual([
+      "NVIDIA RTX PRO 4000 Blackwell",
       "NVIDIA GeForce RTX 5090",
       "NVIDIA RTX PRO 4500 Blackwell",
       "NVIDIA GeForce RTX 4090",
