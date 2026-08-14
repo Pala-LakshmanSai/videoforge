@@ -520,27 +520,29 @@ class RunPodCp07Client {
     const networkVolume = record(item?.networkVolume);
     const cost = finite(item?.adjustedCostPerHr ?? item?.costPerHr);
     const startedAt = normalizeTimestamp(item?.lastStartedAt ?? item?.createdAt);
-    if (
-      !item ||
-      item.id !== expectedId ||
-      item.name !== authority.name ||
-      item.templateId !== authority.templateId ||
-      (item.image !== authority.imageDigest && item.imageName !== authority.imageDigest) ||
-      item.volumeMountPath !== CP07_VOLUME_MOUNT ||
-      item.volumeInGb !== 0 ||
-      machine?.gpuTypeId !== CP07_GPU ||
-      machine.dataCenterId !== CP07_REGION ||
-      machine.secureCloud !== true ||
-      networkVolume?.id !== authority.volumeId ||
-      networkVolume.dataCenterId !== CP07_REGION ||
-      networkVolume.size !== CP07_VOLUME_SIZE_GB ||
-      cost === null ||
-      cost <= 0 ||
-      cost > CP07_GPU_RATE_USD_PER_HOUR ||
-      startedAt === null
-    ) {
-      throw new Cp07PhaseBError("CP07_POD_IDENTITY_MISMATCH");
+    const checks = {
+      response_object: item !== null,
+      pod_id_match: item?.id === expectedId,
+      pod_name_match: item?.name === authority.name,
+      template_match: item?.templateId === authority.templateId,
+      image_digest_match:
+        item?.image === authority.imageDigest || item?.imageName === authority.imageDigest,
+      mount_path_match: item?.volumeMountPath === CP07_VOLUME_MOUNT,
+      local_volume_disabled: item?.volumeInGb === 0,
+      gpu_match: machine?.gpuTypeId === CP07_GPU,
+      region_match: machine?.dataCenterId === CP07_REGION,
+      secure_cloud_match: machine?.secureCloud === true,
+      network_volume_match: networkVolume?.id === authority.volumeId,
+      network_volume_region_match: networkVolume?.dataCenterId === CP07_REGION,
+      network_volume_size_match: networkVolume?.size === CP07_VOLUME_SIZE_GB,
+      cost_positive: cost !== null && cost > 0,
+      cost_within_rate: cost !== null && cost <= CP07_GPU_RATE_USD_PER_HOUR,
+      started_at_present: startedAt !== null,
+    };
+    if (Object.values(checks).some((passed) => !passed)) {
+      throw new Cp07PhaseBError("CP07_POD_IDENTITY_MISMATCH", JSON.stringify(checks));
     }
+    if (item === null || cost === null || startedAt === null) throw new Error("unreachable");
     return { id: expectedId, name: authority.name, costPerHourUsd: cost, startedAt };
   }
 
