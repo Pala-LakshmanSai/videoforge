@@ -357,7 +357,11 @@ describe("RunPod Pod-native CP-06 control", () => {
             name: "vf_cp06_mage_prep",
             dockerEntrypoint: prepEntrypoint,
             dockerStartCmd: [],
-            env: postedEnvironment,
+            env: {
+              ...(postedEnvironment as Record<string, unknown>),
+              PUBLIC_KEY: "ssh-ed25519 AAAA",
+            },
+            lastStartedAt: "2026-08-14 08:00:00.000 +0000 UTC",
           }),
         );
       }

@@ -61,6 +61,33 @@ const exactIsoTimestamp = (value: unknown): value is string => {
   return Number.isFinite(timestamp.getTime()) && timestamp.toISOString() === value;
 };
 
+const normalizeRunPodTimestamp = (value: unknown): string | null => {
+  if (exactIsoTimestamp(value)) return value;
+  if (typeof value !== "string") return null;
+  const match = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}\.\d{3}) \+0000 UTC$/u.exec(value);
+  if (match === null) return null;
+  const normalized = `${match[1]}T${match[2]}Z`;
+  return exactIsoTimestamp(normalized) ? normalized : null;
+};
+
+const providerNormalizedEnvironment = (value: unknown): JsonRecord | null => {
+  const environment = record(value);
+  if (environment === null) return null;
+  const publicKey = environment.PUBLIC_KEY;
+  if (
+    publicKey !== undefined &&
+    (typeof publicKey !== "string" ||
+      publicKey.length < 1 ||
+      publicKey.length > 65_536 ||
+      /[\0\r\n]/u.test(publicKey))
+  ) {
+    return null;
+  }
+  const owned = { ...environment };
+  delete owned.PUBLIC_KEY;
+  return owned;
+};
+
 const staticEnvironment = Object.freeze({
   HF_HUB_OFFLINE: "1",
   TRANSFORMERS_OFFLINE: "1",
@@ -87,7 +114,7 @@ const prepEnvironment = (volumeId: string): Readonly<Record<string, string>> => 
 });
 
 const exactPrepEnvironment = (value: unknown, volumeId: string): boolean => {
-  const environment = record(value);
+  const environment = providerNormalizedEnvironment(value);
   return (
     environment !== null &&
     exactKeys(environment, [
@@ -113,7 +140,7 @@ const exactRuntimeEnvironment = (
   volumeIdHash: string,
   workerToken?: string,
 ): boolean => {
-  const environment = record(value);
+  const environment = providerNormalizedEnvironment(value);
   const observedToken = environment?.VIDEOFORGE_MAGE_WORKER_TOKEN;
   return (
     environment !== null &&
@@ -907,11 +934,9 @@ export class RunPodPodControlClient {
     const adjustedCostPerHourUsd = numberOrNull(value?.adjustedCostPerHr);
     const costPerHourUsd = adjustedCostPerHourUsd ?? listedCostPerHourUsd;
     const desiredStatus = value?.desiredStatus;
-    const providerStartedAt = exactIsoTimestamp(value?.lastStartedAt)
-      ? value?.lastStartedAt
-      : allowNormalizedReadOmissions && exactIsoTimestamp(value?.createdAt)
-        ? value?.createdAt
-        : null;
+    const providerStartedAt =
+      normalizeRunPodTimestamp(value?.lastStartedAt) ??
+      (allowNormalizedReadOmissions ? normalizeRunPodTimestamp(value?.createdAt) : null);
     const expectedEntrypoint = mode === "prepare" ? prepEntrypoint : [];
     const expectedStartCommand = prepStartCommand;
     const environmentConfirmed =
