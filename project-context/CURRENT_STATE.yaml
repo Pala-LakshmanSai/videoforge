@@ -1,8 +1,8 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T17:03:35Z"
+updated_at: "2026-08-14T17:13:01Z"
 
-phase: cp07_phase_b_authorized_not_started
+phase: cp07_phase_b_halted_image_target_change
 implementation_authorized_in_current_task: true
 current_milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
 current_task: VF-9-24R
@@ -19,6 +19,8 @@ provider_authority:
   authorized_at: "2026-08-14T17:04:41Z"
   source: current_cp07_user_approval_sequence
   non_transferable: true
+  execution_halted: true
+  halt_reason: "Approved image source 4a8c0c2 built but failed smoke before registry authentication because /opt/videoforge was absent from PYTHONPATH. Corrected source 237b108 requires explicit changed-target approval before another publication attempt."
   model_id: "EchoMimicV3-Flash Turbo FP8@videoforge_echo_v3_flash_turbo_fp8_v1"
   resources:
     - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:4a8c0c2d7f440dd2f649fc03d9cf86a6a3ab618b"
@@ -119,6 +121,7 @@ repository:
   cp07_phase_a_evidence_commit: "b7afb69efa2e31003f1b4408f51508ea38c05b3c"
   cp07_turbo_profile_commit: "4a8c0c2d7f440dd2f649fc03d9cf86a6a3ab618b"
   cp07_turbo_profile_context_commit: "5d38739a5f53f6b0e67d6cbf1950ba29c7645061"
+  cp07_image_import_fix_commit: "237b108819432b4bea3d7b3cb5e6bff039749cc1"
   last_good_commit: "5d38739a5f53f6b0e67d6cbf1950ba29c7645061"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
@@ -245,7 +248,7 @@ recommended_next_task:
   task_id: VF-9-24R
   checkpoint: CP-07
   milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
-  status: phase_b_authorized_not_started
+  status: phase_b_halted_image_target_change
   dependency_status: cp06_complete_green_settled_visual_accepted
   authorization_status: exact_paid_authority_recorded
   task_stage: bounded_mutation
@@ -294,7 +297,7 @@ recommended_next_task:
       - retain_echo_volume
   read_profile: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
   task_brief: tasks/VF-9-24R.md
-  goal: "Execute only the recorded CP-07 paid proposal, stop on drift/cap risk, retain the approved Echo volume, and leave zero Pods."
+  goal: "Wait for explicit approval of corrected immutable image target 237b108; then execute only the otherwise unchanged CP-07 paid proposal, stop on drift/cap risk, retain the approved Echo volume, and leave zero Pods."
   provider_calls_authorized: true
   maximum_external_spend_usd: 6
   remote_or_cloud_mutations_authorized: true
@@ -340,6 +343,8 @@ cp07_phase_a:
   proposed_ongoing_retention_charge_usd_per_month: 3.5
   capacity_growth_policy: "50 GB remains sufficient under current byte bounds. If exact preparation exceeds a bound, stop before mutation, derive the next exact GB size and current recurring rate, and request changed approval; never silently enlarge retained billing."
   immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:4a8c0c2d7f440dd2f649fc03d9cf86a6a3ab618b"
+  proposed_revised_immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:237b108819432b4bea3d7b3cb5e6bff039749cc1"
+  proposed_revised_image_target_approved: false
   image_published: false
   image_digest: null
   local_container_build_executed: false
@@ -376,6 +381,10 @@ cp07_phase_a:
   paid_execution_authorized: true
   paid_execution_authorized_at: "2026-08-14T17:04:41Z"
   paid_execution_cap_usd: 6
+  paid_execution_halted: true
+  image_publication_attempts: 1
+  last_image_publication_run_id: 31822490514
+  last_image_publication_result: failed_before_registry_authentication
   selected_gpu_offering_id: "NVIDIA GeForce RTX 4090"
   selected_gpu_rate_usd_per_hour: 0.74
   approved_echo_volume_size_gb: 50
