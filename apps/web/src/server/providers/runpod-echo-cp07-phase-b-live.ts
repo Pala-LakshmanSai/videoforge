@@ -19,6 +19,10 @@ export const CP07_CAP_USD = 4;
 export const CP07_INTERNAL_STOP_USD = 3.6;
 export const CP07_VOLUME_NAME = "videoforge-echo-cp07-model-volume-eu-ro-1-50gb";
 export const CP07_VOLUME_SIZE_GB = 50;
+export const CP06_MAGE_VOLUME_ID_HASH =
+  "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
+export const CP07_INVALID_ECHO_VOLUME_ID_HASH =
+  "sha256:6df3de80cfbc182e6306167c7832915240944e1ddc5753091ed529a84d634e7a";
 export const CP07_TEMPLATE_NAME = "videoforge-echo-flash-turbo-cp07-template";
 export const CP07_MODEL_ROOT = "/runpod-volume/echo-flash-turbo-fp8";
 export const CP07_VOLUME_MOUNT = "/runpod-volume";
@@ -66,6 +70,33 @@ export class Cp07PhaseBError extends Error {
     super(code);
     this.name = "Cp07PhaseBError";
   }
+}
+
+export interface Cp07ReplacementVolume {
+  readonly idHash: `sha256:${string}`;
+  readonly name: string;
+  readonly size: number;
+  readonly dataCenterId: string;
+}
+
+export function assertCp07ReplacementInventory(
+  volumes: readonly Cp07ReplacementVolume[],
+): typeof CP07_INVALID_ECHO_VOLUME_ID_HASH {
+  const mageVolumes = volumes.filter((volume) => volume.idHash === CP06_MAGE_VOLUME_ID_HASH);
+  const echoVolumes = volumes.filter((volume) => volume.name === CP07_VOLUME_NAME);
+  const echo = echoVolumes[0];
+  if (
+    volumes.length !== 2 ||
+    mageVolumes.length !== 1 ||
+    echoVolumes.length !== 1 ||
+    echo === undefined ||
+    echo.idHash !== CP07_INVALID_ECHO_VOLUME_ID_HASH ||
+    echo.size !== CP07_VOLUME_SIZE_GB ||
+    echo.dataCenterId !== CP07_REGION
+  ) {
+    throw new Cp07PhaseBError("CP07_REPLACEMENT_VOLUME_INVENTORY_MISMATCH");
+  }
+  return CP07_INVALID_ECHO_VOLUME_ID_HASH;
 }
 
 interface ProviderVolume {
@@ -228,6 +259,20 @@ class RunPodCp07Client {
       throw new Cp07PhaseBError("CP07_VOLUME_IDENTITY_MISMATCH");
     }
     return volume;
+  }
+
+  async deleteInvalidEchoVolumeAndConfirm(volume: ProviderVolume): Promise<void> {
+    this.assertEchoVolume(volume);
+    if (sha256(volume.id) !== CP07_INVALID_ECHO_VOLUME_ID_HASH) {
+      throw new Cp07PhaseBError("CP07_INVALID_VOLUME_IDENTITY_MISMATCH");
+    }
+    await this.request("DELETE", `/networkvolumes/${volume.id}`);
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      const volumes = await this.listVolumes();
+      if (volumes.every((candidate) => candidate.id !== volume.id)) return;
+      await sleep(2_000);
+    }
+    throw new Cp07PhaseBError("CP07_INVALID_VOLUME_ABSENCE_UNCONFIRMED");
   }
 
   async listTemplates(): Promise<readonly ProviderTemplate[]> {
@@ -721,10 +766,16 @@ export async function runCp07PhaseB(options: {
     throw new Cp07PhaseBError("CP07_STARTING_PODS_PRESENT");
   }
   const namedVolumes = startingVolumes.filter((volume) => volume.name === CP07_VOLUME_NAME);
-  if (namedVolumes.length > 1) throw new Cp07PhaseBError("CP07_ECHO_VOLUME_AMBIGUOUS");
-  if (startingVolumes.length !== (namedVolumes.length === 1 ? 2 : 1)) {
-    throw new Cp07PhaseBError("CP07_STARTING_VOLUME_COUNT_MISMATCH");
-  }
+  const invalidEchoHash = assertCp07ReplacementInventory(
+    startingVolumes.map((volume) => ({
+      idHash: sha256(volume.id),
+      name: volume.name,
+      size: volume.size,
+      dataCenterId: volume.dataCenterId,
+    })),
+  );
+  const invalidEchoVolume = namedVolumes.find((volume) => sha256(volume.id) === invalidEchoHash);
+  if (invalidEchoVolume === undefined) throw new Cp07PhaseBError("CP07_ECHO_VOLUME_AMBIGUOUS");
   const startingTemplates = await client.listTemplates();
   const existingTemplates = startingTemplates.filter(
     (template) => template.name === CP07_TEMPLATE_NAME,
@@ -733,9 +784,11 @@ export async function runCp07PhaseB(options: {
     throw new Cp07PhaseBError("CP07_TEMPLATE_ALREADY_EXISTS");
   }
 
-  const volume = namedVolumes[0]
-    ? client.assertEchoVolume(namedVolumes[0])
-    : await client.createVolume();
+  await client.deleteInvalidEchoVolumeAndConfirm(invalidEchoVolume);
+  const volume = await client.createVolume();
+  if (sha256(volume.id) === CP07_INVALID_ECHO_VOLUME_ID_HASH) {
+    throw new Cp07PhaseBError("CP07_RECREATED_VOLUME_IDENTITY_REUSED");
+  }
   let template: ProviderTemplate | null = null;
   let activePod: ProviderPod | null = null;
   const deletionEvidence: DeletedPodEvidence[] = [];
