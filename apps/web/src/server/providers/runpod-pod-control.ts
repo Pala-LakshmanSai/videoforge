@@ -521,8 +521,8 @@ export class RunPodPodControlClient {
         false,
       ),
     );
-    return this.parseCreatedPodWithReadFallback(value, (candidate) =>
-      this.parseMissingVolumeNegativePod(candidate, input),
+    return this.parseCreatedPodWithReadFallback(value, (candidate, normalizedRead) =>
+      this.parseMissingVolumeNegativePod(candidate, input, normalizedRead),
     );
   }
 
@@ -543,8 +543,8 @@ export class RunPodPodControlClient {
         [],
       ),
     );
-    return this.parseCreatedPodWithReadFallback(value, (candidate) =>
-      this.parseWrongVolumeHashNegativePod(candidate, input, input.workerToken),
+    return this.parseCreatedPodWithReadFallback(value, (candidate, normalizedRead) =>
+      this.parseWrongVolumeHashNegativePod(candidate, input, input.workerToken, normalizedRead),
     );
   }
 
@@ -660,13 +660,17 @@ export class RunPodPodControlClient {
         }
         if (mode === "negativeMissing") {
           const token = record(record(candidate)?.env)?.VIDEOFORGE_MAGE_WORKER_TOKEN;
-          return this.parseMissingVolumeNegativePod(candidate, {
-            ...authority,
-            workerToken: typeof token === "string" ? token : "",
-          });
+          return this.parseMissingVolumeNegativePod(
+            candidate,
+            {
+              ...authority,
+              workerToken: typeof token === "string" ? token : "",
+            },
+            true,
+          );
         }
         if (mode === "negativeWrongHash") {
-          return this.parseWrongVolumeHashNegativePod(candidate, authority);
+          return this.parseWrongVolumeHashNegativePod(candidate, authority, undefined, true);
         }
         return this.parseMagePod(
           candidate,
@@ -1116,6 +1120,7 @@ export class RunPodPodControlClient {
   private parseMissingVolumeNegativePod(
     candidate: unknown,
     authority: CreateRunPodMagePodInput,
+    allowNormalizedReadOmissions = false,
   ): RunPodMageNegativePod {
     const value = record(candidate);
     const resourceId = typeof value?.id === "string" && ID.test(value.id) ? value.id : undefined;
@@ -1125,28 +1130,38 @@ export class RunPodPodControlClient {
     const adjustedCostPerHourUsd = numberOrNull(value?.adjustedCostPerHr);
     const costPerHourUsd = adjustedCostPerHourUsd ?? listedCostPerHourUsd;
     const desiredStatus = value?.desiredStatus;
+    const providerStartedAt =
+      normalizeRunPodTimestamp(value?.lastStartedAt) ??
+      (allowNormalizedReadOmissions ? normalizeRunPodTimestamp(value?.createdAt) : null);
     if (
       !resourceId ||
       value?.name !== authority.name ||
       value.templateId !== authority.templateId ||
-      value.image !== authority.imageDigest ||
-      !exactStringArray(value.dockerEntrypoint, []) ||
-      !exactStringArray(value.dockerStartCmd, []) ||
-      !exactRuntimeEnvironment(
-        value.env,
-        authority.imageDigest,
-        authority.networkVolumeIdHash,
-        authority.workerToken,
-      ) ||
+      (value.image !== authority.imageDigest &&
+        (!allowNormalizedReadOmissions || value.imageName !== authority.imageDigest)) ||
+      (!exactStringArray(value.dockerEntrypoint, []) &&
+        (!allowNormalizedReadOmissions || value.dockerEntrypoint !== undefined)) ||
+      (!exactStringArray(value.dockerStartCmd, []) &&
+        (!allowNormalizedReadOmissions || value.dockerStartCmd !== undefined)) ||
+      (!allowNormalizedReadOmissions &&
+        !exactRuntimeEnvironment(
+          value.env,
+          authority.imageDigest,
+          authority.networkVolumeIdHash,
+          authority.workerToken,
+        )) ||
       (value.allowedCudaVersions !== undefined &&
         !exactStringArray(value.allowedCudaVersions, ["13.0"])) ||
-      value.endpointId !== null ||
-      value.interruptible !== false ||
+      (value.endpointId !== null &&
+        (!allowNormalizedReadOmissions || value.endpointId !== undefined)) ||
+      (value.interruptible !== false &&
+        (!allowNormalizedReadOmissions || value.interruptible !== undefined)) ||
       value.volumeInGb !== 0 ||
       (value.volumeMountPath !== undefined && value.volumeMountPath !== null) ||
-      value.networkVolume !== null ||
+      (value.networkVolume !== null &&
+        (!allowNormalizedReadOmissions || value.networkVolume !== undefined)) ||
       !exactStringArray(value.ports, [CP06_MAGE_HTTP_PORT]) ||
-      gpu?.count !== 1 ||
+      (gpu?.count !== 1 && (!allowNormalizedReadOmissions || gpu?.count !== undefined)) ||
       machine?.gpuTypeId !== CP06_MAGE_GPU_TYPE_ID ||
       machine.dataCenterId !== CP06_MAGE_DATA_CENTER_ID ||
       machine.secureCloud !== true ||
@@ -1161,7 +1176,7 @@ export class RunPodPodControlClient {
       (desiredStatus !== "RUNNING" &&
         desiredStatus !== "EXITED" &&
         desiredStatus !== "TERMINATED") ||
-      !exactIsoTimestamp(value.lastStartedAt)
+      providerStartedAt === null
     ) {
       throw new RunPodPodControlError(
         "RUNPOD_MAGE_MISSING_VOLUME_NEGATIVE_UNCONFIRMED",
@@ -1179,7 +1194,7 @@ export class RunPodPodControlClient {
       gpuTypeId: CP06_MAGE_GPU_TYPE_ID,
       costPerHourUsd,
       desiredStatus,
-      lastStartedAt: value.lastStartedAt,
+      lastStartedAt: providerStartedAt as string,
       negativeKind: "MISSING_VOLUME",
       expectedWorkerError: "MAGE_VOLUME_MARKER_INVALID",
     });
@@ -1189,9 +1204,11 @@ export class RunPodPodControlClient {
     candidate: unknown,
     authority: CreateRunPodMagePrepPodInput,
     expectedWorkerToken?: string,
+    allowNormalizedReadOmissions = false,
   ): RunPodMageNegativePod {
     const value = record(candidate);
     if (
+      !allowNormalizedReadOmissions &&
       !exactRuntimeEnvironment(
         value?.env,
         authority.imageDigest,
@@ -1212,6 +1229,7 @@ export class RunPodPodControlClient {
       "runtime",
       expectedWorkerToken,
       CP06_MAGE_WRONG_VOLUME_ID_HASH,
+      allowNormalizedReadOmissions,
     );
     return Object.freeze({
       ...pod,
