@@ -129,6 +129,16 @@ class Cp07WorkerTest(unittest.TestCase):
     def test_l4_runtime_identity_is_exact_and_bounded(self) -> None:
         self.assertEqual(SUPPORTED_GPU_NAMES["NVIDIA L4"], ("NVIDIA L4", 22_000, (8, 9)))
 
+    def test_prepared_fp8_state_is_installed_before_pipeline_gpu_move(self) -> None:
+        source = (ROOT / "echo_backend.py").read_text()
+        load = source.index("state = torch.load(prepared, map_location=self.device")
+        assign = source.index(
+            "pipeline.transformer.load_state_dict(state, strict=True, assign=True)"
+        )
+        move = source.index("pipeline.to(device=self.device)")
+        self.assertLess(load, assign)
+        self.assertLess(assign, move)
+
     def test_fp8_preparation_requires_cuda_89_or_newer(self) -> None:
         class FakeCuda:
             available = True

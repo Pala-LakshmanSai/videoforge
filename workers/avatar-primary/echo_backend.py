@@ -98,13 +98,13 @@ class EchoPreparedBackend:
             scheduler=scheduler,
             clip_image_encoder=clip,
         )
-        pipeline.to(device=self.device)
         state = torch.load(prepared, map_location=self.device, weights_only=True)
-        # `assign=True` installs the prepared TorchAO tensor subclasses directly. Normal boot does
-        # not invoke a conversion API, and no device transfer occurs after FP8 state installation.
+        # Install the prepared TorchAO tensor subclasses before moving the assembled pipeline. This
+        # prevents simultaneous BF16 and FP8 transformer residency on the GPU during normal boot.
         missing, unexpected = pipeline.transformer.load_state_dict(state, strict=True, assign=True)
         if missing or unexpected:
             raise RuntimeError("ECHO_PREPARED_STATE_LOAD_MISMATCH")
+        pipeline.to(device=self.device)
         coefficients = upstream.get_teacache_coefficients(str(base))
         if coefficients is not None:
             pipeline.transformer.enable_teacache(
