@@ -589,7 +589,17 @@ export class RunPodPodControlClient {
       undefined,
       true,
     );
-    return value === null ? null : this.parseMagePod(value, authority, podId, "runtime");
+    return value === null
+      ? null
+      : this.parseMagePod(
+          value,
+          authority,
+          podId,
+          "runtime",
+          undefined,
+          authority.networkVolumeIdHash,
+          true,
+        );
   }
 
   async getMagePrepPod(
@@ -604,7 +614,17 @@ export class RunPodPodControlClient {
       undefined,
       true,
     );
-    return value === null ? null : this.parseMagePod(value, authority, podId, "prepare");
+    return value === null
+      ? null
+      : this.parseMagePod(
+          value,
+          authority,
+          podId,
+          "prepare",
+          undefined,
+          authority.networkVolumeIdHash,
+          true,
+        );
   }
 
   async listMagePodsByExactName(
@@ -972,11 +992,8 @@ export class RunPodPodControlClient {
       !exactStringArray(value?.dockerStartCmd, expectedStartCommand) &&
         (!allowNormalizedReadOmissions || value?.dockerStartCmd !== undefined),
     );
-    mismatch(
-      "env",
-      !environmentConfirmed && (!allowNormalizedReadOmissions || value?.env !== undefined),
-    );
-    if (!environmentConfirmed && mode === "prepare") {
+    mismatch("env", !environmentConfirmed && !allowNormalizedReadOmissions);
+    if (!environmentConfirmed && !allowNormalizedReadOmissions && mode === "prepare") {
       const observedEnvironment = providerNormalizedEnvironment(value?.env);
       for (const [key, expected] of Object.entries(prepEnvironment(authority.networkVolumeId))) {
         mismatch(`env.${key}`, observedEnvironment?.[key] !== expected);
