@@ -1,8 +1,8 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T18:51:19Z"
+updated_at: "2026-08-14T18:57:39Z"
 
-phase: cp07_phase_b_halted_preparation_attempt_2
+phase: cp07_phase_b_awaiting_third_revised_paid_authority
 implementation_authorized_in_current_task: true
 current_milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
 current_task: VF-9-24R
@@ -21,7 +21,7 @@ provider_authority:
   source: current_cp07_exact_revised_user_authorization
   non_transferable: true
   execution_halted: true
-  halt_reason: "Preparation attempt 2 failed before download because huggingface_hub retained the image's import-time offline constant; CP07_PREPARATION_RESULT_INVALID triggered the approved stop condition."
+  halt_reason: "Provider-free correction f6c952a is green, but its new image plus deletion/recreation of the second invalid Echo volume were not in the last approved proposal."
   model_id: "EchoMimicV3-Flash Turbo FP8@videoforge_echo_v3_flash_turbo_fp8_v1"
   resources:
     - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:d51c0a1"
@@ -69,11 +69,11 @@ runpod_account_scope:
   forbidden_account: demo9_imageforge
   identity_check: required_before_inventory_or_mutation
 credential_access_authorized: true
-remote_or_cloud_mutations_authorized: true
-model_downloads_authorized: true
-worker_image_publication_authorized: true
+remote_or_cloud_mutations_authorized: false
+model_downloads_authorized: false
+worker_image_publication_authorized: false
 sample_output_publication_authorized: false
-gpu_use_authorized: true
+gpu_use_authorized: false
 mage_volume_retention_authorized: true
 echo_volume_retention_authorized: true
 
@@ -360,13 +360,15 @@ cp07_phase_a:
   fp8_preparation_gpu_fix_commit: "d51c0a1"
   invalid_volume_replacement_guard_commit: "16cd30a"
   cumulative_cap_guard_commit: "1310b72"
+  preparation_offline_import_fix_commit: "f6c952a"
+  third_attempt_volume_and_cap_guard_commit: "d23fa10"
   revised_local_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/revised-local-preflight.json"
   image_published: true
   image_digest: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:9bc4e5467efeadadae58771d1c75ab40982cbecf78fb27bb85043627f5d7d5d0"
   local_container_build_executed: false
   runpod_account_owner: sujal
   runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
-  runpod_inventory_checked_at: "2026-08-14T18:50:36.602Z"
+  runpod_inventory_checked_at: "2026-08-14T18:57:39.128Z"
   runpod_revised_read_only_evidence: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/revised-refresh-2026-08-14T183410Z.json"
   runpod_inventory_evidence_sha256: "sha256:48d469866a3a1fb3c0ca1310d9d30b4d2cc0fb52a8d37c19da4076006d31340c"
   runpod_pods: 0
@@ -380,7 +382,7 @@ cp07_phase_a:
   gpu_choices:
     - offering_id: "NVIDIA GeForce RTX 4090"
       rate_usd_per_hour: 0.74
-      availability: HIGH
+      availability: LOW
       vram_gb: 24
     - offering_id: "NVIDIA GeForce RTX 5090"
       rate_usd_per_hour: 0.99
@@ -394,9 +396,9 @@ cp07_phase_a:
   external_spend_state: current_attempt_settled_prior_attempt_conservatively_bounded
   conservative_reserved_finite_spend_upper_bound_usd: 1.1662245845794678
   proposed_maximum_additional_pod_cost_usd: 2.812
-  proposed_maximum_cumulative_finite_estimate_usd: 3.922
+  proposed_maximum_cumulative_finite_estimate_usd: 3.978225
   latest_user_supplied_cap_usd: 4
-  proposed_cap_margin_usd: 0.078
+  proposed_cap_margin_usd: 0.021775
   provider_mutations: 11
   local_tests: passed
   canonical_verify: passed
@@ -415,10 +417,12 @@ cp07_phase_a:
   preparation_attempts: 2
   last_preparation_result: failed_offline_constant_retained_before_pinned_snapshot_download
   last_preparation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/preparation-attempt-2-failure.json"
+  third_local_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-local-preflight.json"
+  proposed_third_image_source_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:f6c952a6b5979d94f788410b6e4c093cc50ee2b7"
   selected_gpu_offering_id: "NVIDIA GeForce RTX 4090"
   selected_gpu_rate_usd_per_hour: 0.74
   selected_gpu_vram_gb: 24
-  selected_gpu_availability: HIGH
+  selected_gpu_availability: LOW
   pre_mutation_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/pre-mutation-preflight.json"
   approved_gpu_priority:
     - offering_id: "NVIDIA GeForce RTX 4090"
