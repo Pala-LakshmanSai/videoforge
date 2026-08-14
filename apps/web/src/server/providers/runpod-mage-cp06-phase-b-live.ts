@@ -1059,7 +1059,7 @@ export class RunPodCp06LiveAdapter implements Cp06PodNativePort {
     if (!response.ok) {
       let workerCode = "UNSPECIFIED";
       try {
-        workerCode = mageFailureCode(await response.json()) ?? workerCode;
+        workerCode = mageFailureCode(await response.text()) ?? workerCode;
       } catch {
         // Status plus a fixed fallback remains safe and actionable.
       }
