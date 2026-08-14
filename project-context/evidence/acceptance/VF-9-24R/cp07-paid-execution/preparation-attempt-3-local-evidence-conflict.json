@@ -1,0 +1,41 @@
+{
+  "schema_version": "videoforge.cp07-preparation-local-evidence-conflict/v1",
+  "checkpoint": "CP-07",
+  "gpu": {
+    "offering_id": "NVIDIA L4",
+    "rate_usd_per_hour": 0.49,
+    "vram_gb": 24
+  },
+  "runtime_profile_id": "videoforge_echo_v3_flash_turbo_fp8_v1",
+  "worker_terminal_observed": {
+    "phase": "ready",
+    "error_code": null,
+    "observed_at": "2026-08-14T19:39:56.286Z",
+    "uptime_ms": 207449
+  },
+  "volume": {
+    "id_sha256": "sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f",
+    "state": "prepared_and_sealed_worker_ready_pending_controller_recapture"
+  },
+  "controller_stop": {
+    "code": "EEXIST",
+    "path_class": "local_private_preparation_terminal_evidence",
+    "provider_or_artifact_failure": false,
+    "existing_private_file_preserved": true
+  },
+  "cleanup": {
+    "checked_at": "2026-08-14T19:41:17.380Z",
+    "pods": 0,
+    "private_templates": 0,
+    "cleanup_certain": true
+  },
+  "cost": {
+    "provider_settlement_pending": true,
+    "full_preparation_reservation_added_to_prior_conservative_bound_usd": 0.7105,
+    "new_prior_conservative_bound_usd": 1.876725
+  },
+  "resume": {
+    "new_private_terminal_path": "preparation-terminal-attempt-3.private.json",
+    "preparation_marker_causes_verify_only_without_download_or_quantization": true
+  }
+}

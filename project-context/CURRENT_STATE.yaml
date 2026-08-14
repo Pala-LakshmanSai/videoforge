@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T19:28:30Z"
+updated_at: "2026-08-14T19:42:47Z"
 
 phase: cp07_phase_b_third_paid_execution_authorized
 implementation_authorized_in_current_task: true
@@ -378,7 +378,7 @@ cp07_phase_a:
   runpod_network_volumes: 2
   echo_volume_exists: true
   echo_volume_id_sha256: "sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f"
-  echo_volume_state: incomplete_or_unverified
+  echo_volume_state: prepared_and_sealed_worker_ready_pending_controller_recapture
   gpu_choices:
     - offering_id: "NVIDIA GeForce RTX 4090"
       rate_usd_per_hour: 0.74
@@ -394,12 +394,12 @@ cp07_phase_a:
       vram_gb: 96
   external_spend_usd: 0.05622458457946777
   external_spend_state: current_attempt_settled_prior_attempt_conservatively_bounded
-  conservative_reserved_finite_spend_upper_bound_usd: 1.1662245845794678
+  conservative_reserved_finite_spend_upper_bound_usd: 1.876725
   proposed_maximum_additional_pod_cost_usd: 1.862
-  proposed_maximum_cumulative_finite_estimate_usd: 3.028225
+  proposed_maximum_cumulative_finite_estimate_usd: 3.738725
   latest_user_supplied_cap_usd: 6
-  proposed_cap_margin_usd: 2.971775
-  provider_mutations: 41
+  proposed_cap_margin_usd: 2.261275
+  provider_mutations: 49
   local_tests: passed
   canonical_verify: passed
   canonical_verify_commit: "5d38739a5f53f6b0e67d6cbf1950ba29c7645061"
@@ -415,8 +415,8 @@ cp07_phase_a:
   image_publication_attempts: 4
   last_image_publication_run_id: 31831935557
   last_image_publication_result: success_public_digest_pinned
-  preparation_attempts: 2
-  last_preparation_result: failed_offline_constant_retained_before_pinned_snapshot_download
+  preparation_attempts: 3
+  last_preparation_result: worker_ready_volume_sealed_local_evidence_path_conflict
   last_preparation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/preparation-attempt-2-failure.json"
   third_local_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-local-preflight.json"
   third_paid_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-authorization.json"
@@ -433,6 +433,7 @@ cp07_phase_a:
   rtx_pro_4500_post_settle_allocation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4500-allocation-failure-after-settle.json"
   rtx_pro_4500_no_instances_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4500-no-instances.json"
   rtx_pro_4000_no_instances_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4000-no-instances.json"
+  preparation_attempt_3_local_evidence_conflict: "evidence/acceptance/VF-9-24R/cp07-paid-execution/preparation-attempt-3-local-evidence-conflict.json"
   reuse_verified_empty_echo_volume: true
   volume_attachment_settle_delay_ms: 30000
   pre_mutation_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/pre-mutation-preflight.json"
@@ -454,7 +455,7 @@ cp07_phase_a:
     - verify_zero_compute_and_exact_two_isolated_volumes
     - settle_or_conservatively_bound_cumulative_finite_cost
     - propose_but_do_not_activate_echo_full_and_split_crops
-  preparation_result: halted_offline_constant_retained_before_pinned_snapshot_download
+  preparation_result: sealed_pending_controller_manifest_recapture
   preparation_manifest_verified: false
   sample_pods_started: 0
   sample_outputs: 0

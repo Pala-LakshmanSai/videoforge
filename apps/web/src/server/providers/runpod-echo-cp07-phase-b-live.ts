@@ -17,7 +17,7 @@ export const CP07_GPU_RATE_USD_PER_HOUR = 0.49;
 export const CP07_GPU_VRAM_GB = 24;
 export const CP07_REGION = "EU-RO-1";
 export const CP07_CAP_USD = 6;
-export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 1.166225;
+export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 1.876725;
 export const CP07_POD_LIFECYCLE_RESERVE_SECONDS = 120;
 export const CP07_VOLUME_ATTACHMENT_SETTLE_MS = 30_000;
 export const CP07_VOLUME_NAME = "videoforge-echo-cp07-model-volume-eu-ro-1-50gb";
@@ -855,7 +855,7 @@ export async function runCp07PhaseB(options: {
       (health) => health.phase === "ready" || health.phase === "failed",
     );
     await writePrivate(
-      path.join(options.artifactRoot, "preparation-terminal.private.json"),
+      path.join(options.artifactRoot, "preparation-terminal-attempt-3.private.json"),
       Buffer.from(`${JSON.stringify(prepHealth, null, 2)}\n`),
     );
     const prepVolume = record(prepHealth.volume);
