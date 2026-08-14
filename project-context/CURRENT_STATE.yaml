@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T14:32:37Z"
+updated_at: "2026-08-14T14:41:47Z"
 
 phase: cp06_complete_stopped_before_cp07
 implementation_authorized_in_current_task: false
@@ -71,7 +71,8 @@ repository:
   cp06_hosted_verify_run_id: 31799220381
   cp06_consumed_authority_latch_commit: "3b2575d72e307545564f51d374070ffa4e20bad7"
   cp06_local_reaudit_verify_commit: "f70ed54a6f458d784a8e31cf6e1c1d9bc764997e"
-  last_good_commit: "f70ed54a6f458d784a8e31cf6e1c1d9bc764997e"
+  cp06_settled_reaudit_verify_commit: "efee7a11bf1a0b07f551a7fcfcc4948fe54609dd"
+  last_good_commit: "efee7a11bf1a0b07f551a7fcfcc4948fe54609dd"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
