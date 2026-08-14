@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T12:00:00Z"
+updated_at: "2026-08-14T13:07:58Z"
 
 phase: cp06_ready_for_user_review_billing_settlement_pending
 implementation_authorized_in_current_task: false
@@ -69,6 +69,7 @@ repository:
   cp06_authority_closure_commit: "ad2915bf570e2db53245ff8e780a3f703d4abf56"
   cp06_hosted_verify_commit: "e17a6fb631f2cbc5e9b89a1bb1453744151df8a4"
   cp06_hosted_verify_run_id: 31799220381
+  cp06_consumed_authority_latch_commit: "3b2575d72e307545564f51d374070ffa4e20bad7"
   last_good_commit: "e17a6fb631f2cbc5e9b89a1bb1453744151df8a4"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
@@ -215,6 +216,7 @@ recommended_next_task:
     - "Preserve the exact CP-06 digest, retained volume, outputs, zero-compute proof, and sanitized acceptance evidence."
     - "Show the contact sheet for user visual review and keep billing settlement explicitly pending until RunPod reports all attempts."
     - "Do not reuse the consumed Phase B mutation/spend authority; only the approved $3.50/month volume retention continues."
+    - "The consumed live controller has no ambient credential loader or directly executable entrypoint at commit 3b2575d72e307545564f51d374070ffa4e20bad7; any future provider operation requires new explicit authority and a separately introduced audited entrypoint."
   prohibited_in_task:
     - "Any CP-06 action merely because this brief is selected; the exact CP-06 prompt must activate Phase A."
     - "During Phase A: any cloud mutation, model-byte download, image/container publication, GPU use, Pod/template/volume creation, retained-volume billing, or spend."
@@ -272,6 +274,7 @@ cp06_phase_b:
   controller_commit: "1c257497055ad42b78d3020a2113f8ea0cf876c8"
   safety_fix_commit: "6664d26f7594fe5ba6fd3896ff5f26075764d93f"
   cleanup_invariant_fix_commit: "58512071586855b96d64e812f9c443d3db51b1dd"
+  consumed_authority_latch_commit: "3b2575d72e307545564f51d374070ffa4e20bad7"
   runtime_source_commit: "563ba1ab7b083c1457ab4a9504d82bd6f9d886b9"
   worker_image_digest: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
   worker_image_publish_run_id: 31796627338
@@ -532,6 +535,7 @@ activation_handoff:
     - "Show the ignored private contact sheet and eight PNGs to the user; technical status is READY_FOR_USER_REVIEW and only the user can approve visual quality."
     - "Preserve zero Pods/endpoints/templates/workers and exactly one retained 50 GB Mage volume at $3.50/month. RunPod billing is partial; do not replace the conservative $1.110002 upper bound with the currently incomplete provider amount."
     - "Do not reuse the completed Phase B authority for new samples, CP-07, Echo, production promotion, or any new provider mutation."
+    - "The historical CP-06 live adapter remains injectable for provider-free tests, but its ambient keychain loader and direct CLI entrypoint were removed at commit 3b2575d72e307545564f51d374070ffa4e20bad7."
   stop_conditions:
     - "Any Sujal identity mismatch, RTX 4090 rate above $0.74/hour, unavailable approved capacity, resource ambiguity, scope expansion, or risk of exceeding the $3 finite-action cap."
     - "Any schema reinterpretation, legacy dispatch reachability, Echo work, cross-account action, or production promotion."
