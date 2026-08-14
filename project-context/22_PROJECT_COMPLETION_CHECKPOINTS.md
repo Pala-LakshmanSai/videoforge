@@ -1,6 +1,6 @@
 # VideoForge completion checkpoints
 
-Status: authoritative completion roadmap; `CP-00` through `CP-05` complete; `CP-06` brief selected but not started or authorized
+Status: authoritative completion roadmap; `CP-00` through `CP-05` complete; `CP-06` Phase B authorized pre-mutation
 Read when: choosing the next implementation chat, checking project truth, or auditing completion.
 
 ## MVP destination
@@ -294,7 +294,7 @@ Current re-audit evidence:
 **Status:** complete provider-free under `VF-9-24P` at audited code head
 `58395225d9f2e11ac556e6b67f186b1fb5502336`, recorded by handoff commit
 `d2285117c17a3f6dd37b84e9dd441fd6fe7aa1d0`; canonical and installed-Chrome acceptance passed;
-CP-06 remains unstarted with `$0` external spend.
+CP-06 Phase B is authorized and remains pre-mutation with `$0` external spend.
 
 **Outcome:** the entire application works in fixture mode before any new GPU spend.
 

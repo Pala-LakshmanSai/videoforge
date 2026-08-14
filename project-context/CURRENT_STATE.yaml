@@ -34,6 +34,7 @@ provider_authority:
     - generate_owned_samples
     - publish_owned_sample_outputs
     - delete_mage_pod
+    - delete_mage_template
     - verify_zero_pods
     - retain_mage_volume
 runpod_account_scope:
@@ -220,6 +221,7 @@ recommended_next_task:
       - generate_owned_samples
       - publish_owned_sample_outputs
       - delete_mage_pod
+      - delete_mage_template
       - verify_zero_pods
       - retain_mage_volume
   read_profile: cp06_mage_int8_persistent_runpod
@@ -254,7 +256,7 @@ recommended_next_task:
     - "Any production gate closure, live profile promotion, volume-capacity assumption, model/GPU substitution, repair, or fallback."
 
 cp06_phase_a:
-  status: complete_waiting_phase_b_authorization
+  status: complete_phase_b_authorized
   evidence: "evidence/acceptance/VF-9-24Q/cp06-read-only-preflight/preflight.json"
   imageforge_source_commit: "1a6204e7b9387a4d26b5fbbb176506d670949fba"
   model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"

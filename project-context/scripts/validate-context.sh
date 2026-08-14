@@ -191,7 +191,7 @@ elsif recommended_task["provider_calls_authorized"] == true
 
     if recommended_task["checkpoint"] == "CP-06"
       expected_model = "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
-      allowed_operations = %w[publish_worker_image create_mage_template create_mage_volume download_prepare_mage_volume create_mage_pod generate_owned_samples publish_owned_sample_outputs delete_mage_pod verify_zero_pods retain_mage_volume]
+      allowed_operations = %w[publish_worker_image create_mage_template create_mage_volume download_prepare_mage_volume create_mage_pod generate_owned_samples publish_owned_sample_outputs delete_mage_pod delete_mage_template verify_zero_pods retain_mage_volume]
       operations = Array(authority["authorized_operations"])
       errors << "CURRENT_STATE CP-06 paid authority requires the exact Mage INT8 model" unless authority["model_id"] == expected_model
       errors << "CURRENT_STATE CP-06 paid authority requires the exact bounded operation set" unless operations.sort == allowed_operations.sort

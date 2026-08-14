@@ -56,7 +56,7 @@ RUN python -m pip install --no-cache-dir --requirement requirements.mage.txt \
     && python -m pip check
 
 COPY src ./src
-COPY mage_api.py mage_bootstrap.py mage-entrypoint.py mage_runtime.py mage_volume.py \
+COPY mage_api.py mage_bootstrap.py mage-entrypoint.py mage_prepare_service.py mage_runtime.py mage_volume.py \
      prepare_mage_volume.py ./
 
 EXPOSE 8000

@@ -139,10 +139,11 @@ Existing evidence records the Qwen encoder as
 set. The one-time preparation gate must record the INT8 transformer's exact size and SHA-256 before
 writing the complete marker. Never resolve mutable `main` at runtime.
 
-Mage owns one dedicated, persistent `EU-RO-1` network volume and one disposable Pod. Its capacity
-is not yet approved: provisioning must derive it from the verified Mage manifest plus explicit
-operational headroom and record the chosen allocation before spend. The volume is not shared with
-or mounted by Echo. An explicitly authorized one-time preparation job
+Mage owns one dedicated, persistent `EU-RO-1` network volume and one disposable Pod. CP-06 Phase A
+verified `13,379,919,280` exact model bytes, and the user approved a 50 GB STANDARD volume at
+`$3.50/month`, leaving at least `36,620,080,720` decimal bytes (`34.11 GiB`) for download staging
+and operational headroom. The volume is not shared with or mounted by Echo. An explicitly
+authorized one-time preparation job
 downloads the three exact pinned ComfyUI-format runtime files, records every path, size, SHA-256,
 configuration, ComfyUI/container revision, and writes a completion marker only after independent
 verification. The VideoForge volume and Pod profile is not yet qualified and must not be treated as

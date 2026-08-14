@@ -30,6 +30,7 @@
       "generate_owned_samples",
       "publish_owned_sample_outputs",
       "delete_mage_pod",
+      "delete_mage_template",
       "verify_zero_pods",
       "retain_mage_volume"
     ]

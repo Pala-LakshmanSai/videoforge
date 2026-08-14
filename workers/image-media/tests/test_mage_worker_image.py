@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
 
 import mage_volume as volume  # noqa: E402
+import mage_prepare_service as prepare_service  # noqa: E402
 from mage_bootstrap import bootstrap  # noqa: E402
 from mage_runtime import MageRuntime  # noqa: E402
 from prepare_mage_volume import CONFIRMATION, prepare  # noqa: E402
@@ -120,6 +121,24 @@ class MageWorkerImageTest(unittest.TestCase):
                     volume_size_gb=50,
                     confirmation=CONFIRMATION + "_WRONG",
                 )
+
+    def test_preparation_service_exposes_only_hashed_ready_evidence(self) -> None:
+        marker = {"manifest_sha256": "sha256:" + "f" * 64}
+        environment = {
+            "VIDEOFORGE_MAGE_VOLUME_ID": "volume_cp06",
+            "VIDEOFORGE_MAGE_DOWNLOAD_CONFIRMATION": CONFIRMATION,
+        }
+        with (
+            patch.dict(os.environ, environment, clear=True),
+            patch("mage_prepare_service.prepare", return_value=marker),
+        ):
+            prepare_service.run_preparation()
+            health = prepare_service.health_payload()
+        self.assertEqual(health["phase"], "ready")
+        self.assertEqual(health["model"]["exact_bytes"], volume.MAGE_MODEL_BYTES)
+        self.assertEqual(health["volume"]["requested_size_gb"], 50)
+        self.assertEqual(health["volume"]["manifest_sha256"], marker["manifest_sha256"])
+        self.assertNotIn("volume_cp06", json.dumps(health))
 
     def test_normal_boot_requires_offline_mode_and_never_downloads(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

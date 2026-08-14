@@ -28,9 +28,10 @@ VideoForge has two isolated model lanes:
 | Images | ImageForge's current `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6` INT8 ConvRot profile, pinned ComfyUI, 4 steps, guidance 1.0, 1280×720 | Mage-only persistent `EU-RO-1` network volume | Mage-only Pod |
 | Avatar | EchoMimicV3-Flash FP8 from pinned first-party source/weights/base/audio lineage | Different Echo-only persistent `EU-RO-1` network volume | Echo-only Pod |
 
-Never share or cross-adopt a volume, Pod, manifest, cache, lock, or runtime between lanes. Volume
-capacities are not yet approved; derive each from its verified exact manifest plus explicit
-headroom before provisioning. Persistent-volume pricing is accepted.
+Never share or cross-adopt a volume, Pod, manifest, cache, lock, or runtime between lanes. The Mage
+volume is approved at 50 GB from its verified exact manifest plus explicit headroom; the Echo
+capacity remains unapproved and must be derived independently before provisioning.
+Persistent-volume pricing is accepted.
 
 When no generation session exists, the first user explicitly selects one exact live compatible
 Secure Cloud offering for Mage and one for Echo. The first atomically accepted Generate locks that
