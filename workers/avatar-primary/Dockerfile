@@ -23,7 +23,7 @@ ENV ECHOMIMIC_ROOT=/opt/echomimic_v3 \
     TRANSFORMERS_OFFLINE=1 \
     DIFFUSERS_OFFLINE=1 \
     HF_HUB_DISABLE_TELEMETRY=1 \
-    PYTHONPATH=/opt/videoforge/src:/opt/echomimic_v3 \
+    PYTHONPATH=/opt/videoforge:/opt/videoforge/src:/opt/echomimic_v3 \
     PYTHONUNBUFFERED=1
 WORKDIR /opt/echomimic_v3
 ENTRYPOINT ["python", "-u", "/opt/videoforge/echo-entrypoint.py"]

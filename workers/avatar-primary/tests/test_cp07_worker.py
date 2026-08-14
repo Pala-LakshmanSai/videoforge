@@ -230,6 +230,9 @@ class Cp07WorkerTest(unittest.TestCase):
             "@sha256:c16f4c749e2d9e96878875cdf6cc45cddda1d1a36fddd371dd6f2360f1b6e2a2", dockerfile
         )
         self.assertIn("HF_HUB_OFFLINE=1", dockerfile)
+        self.assertIn(
+            "PYTHONPATH=/opt/videoforge:/opt/videoforge/src:/opt/echomimic_v3", dockerfile
+        )
         self.assertIn("default: false", workflow)
         self.assertIn("videoforge-echo-flash-turbo-cp07", workflow)
         self.assertNotIn("runpod.serverless", active)
