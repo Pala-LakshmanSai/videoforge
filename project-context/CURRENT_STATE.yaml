@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T17:32:32Z"
+updated_at: "2026-08-14T17:44:08Z"
 
 phase: cp07_phase_b_authorized_pre_mutation
 implementation_authorized_in_current_task: true
@@ -8,7 +8,7 @@ current_milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
 current_task: VF-9-24R
 current_wave: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: paid_authority_recorded_pre_mutation
+task_stage: image_published_pre_runpod_mutation
 application_code_changes_authorized: true
 provider_calls_authorized: true
 maximum_external_spend_usd: 4
@@ -239,7 +239,7 @@ active_ownership:
   - task_id: VF-9-24R
     checkpoint: CP-07
     owner: current_chat
-    stage: paid_authority_recorded_pre_mutation
+    stage: image_published_pre_runpod_mutation
     external_spend_cap_usd: 4
 
 blocked_tasks: []
@@ -249,7 +249,7 @@ recommended_next_task:
   task_id: VF-9-24R
   checkpoint: CP-07
   milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
-  status: phase_b_authorized_pre_mutation
+  status: phase_b_image_published_pre_runpod_mutation
   dependency_status: cp06_complete_green_settled_visual_accepted
   authorization_status: exact_paid_authority_recorded
   task_stage: bounded_mutation
@@ -347,8 +347,8 @@ cp07_phase_a:
   immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:237b108819432b4bea3d7b3cb5e6bff039749cc1"
   proposed_revised_immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:237b108819432b4bea3d7b3cb5e6bff039749cc1"
   proposed_revised_image_target_approved: true
-  image_published: false
-  image_digest: null
+  image_published: true
+  image_digest: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:e53842b5b9e8115e576f6d98337c228d584651fa50df0d15e086d417f60258e8"
   local_container_build_executed: false
   runpod_account_owner: sujal
   runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
@@ -384,9 +384,9 @@ cp07_phase_a:
   paid_execution_authorized_at: "2026-08-14T17:30:52Z"
   paid_execution_cap_usd: 4
   paid_execution_halted: false
-  image_publication_attempts: 1
-  last_image_publication_run_id: 31822490514
-  last_image_publication_result: failed_before_registry_authentication
+  image_publication_attempts: 2
+  last_image_publication_run_id: 31824574378
+  last_image_publication_result: success_public_digest_pinned
   selected_gpu_offering_id: "NVIDIA GeForce RTX 4090"
   selected_gpu_rate_usd_per_hour: 0.74
   selected_gpu_vram_gb: 24
