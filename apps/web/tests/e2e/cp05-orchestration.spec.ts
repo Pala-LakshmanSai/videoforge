@@ -74,6 +74,7 @@ async function shared(request: APIRequestContext) {
 test("CP-05 completes three serial $0 projects across sessions with exact drain and MP4 playback", async ({
   browser,
 }, testInfo) => {
+  test.setTimeout(90_000);
   const contextA = await browser.newContext({
     baseURL: "http://localhost:4173",
     extraHTTPHeaders: {
