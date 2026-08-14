@@ -141,6 +141,11 @@ class Cp07WorkerTest(unittest.TestCase):
         self.assertLess(load, assign)
         self.assertLess(assign, move)
 
+    def test_runtime_uses_an_explicit_single_cuda_device_for_fp8_restore(self) -> None:
+        source = (ROOT / "echo_backend.py").read_text()
+        self.assertIn('torch.cuda.device_count() != 1', source)
+        self.assertIn('torch.device("cuda", torch.cuda.current_device())', source)
+
     def test_fp8_preparation_requires_cuda_89_or_newer(self) -> None:
         class FakeCuda:
             available = True

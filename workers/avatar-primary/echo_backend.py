@@ -49,7 +49,10 @@ class EchoPreparedBackend:
         self.wav2vec_feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(
             str(audio), local_files_only=True
         )
-        self.device = upstream.set_multi_gpus_devices(1, 1)
+        selected_device = torch.device(upstream.set_multi_gpus_devices(1, 1))
+        if selected_device.type != "cuda" or torch.cuda.device_count() != 1:
+            raise RuntimeError("ECHO_RUNTIME_GPU_TOPOLOGY_MISMATCH")
+        self.device = torch.device("cuda", torch.cuda.current_device())
         transformer_root = base / config["transformer_additional_kwargs"].get(
             "transformer_subpath", "transformer"
         )
