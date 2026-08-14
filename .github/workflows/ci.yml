@@ -185,6 +185,8 @@ jobs:
           node-version: 22.23.2
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install --yes ffmpeg
       - run: pnpm build
       - run: pnpm --filter @videoforge/web exec playwright install --with-deps chrome
       - name: Run installed-Chrome journeys
