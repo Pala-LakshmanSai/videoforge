@@ -1,0 +1,22 @@
+{
+  "schema_version": "videoforge.cp07-allocation-failure/v1",
+  "checkpoint": "CP-07",
+  "attempt": "third-sequence-rtx-pro-4500-allocation-after-volume-settle-guard",
+  "provider_result": "HTTP 500 during createPod after the 30-second volume attachment-settle barrier",
+  "controller_error_code": "CP07_PROVIDER_MUTATION_FAILED",
+  "replacement_volume_created": {
+    "id_sha256": "sha256:857b2a8e5110d4ac151794d101a22e87c8235929c2d881dff9a3d671a3aad032",
+    "size_gb": 50,
+    "pod_ever_attached": false
+  },
+  "cleanup": {
+    "checked_at": "2026-08-14T19:22:58.323Z",
+    "pods": 0,
+    "private_templates": 0,
+    "cleanup_certain": true
+  },
+  "diagnostic_followup": {
+    "provider_error_body_capture": "redacted_and_length_bounded",
+    "secrets_or_provider_ids_may_be_printed": false
+  }
+}

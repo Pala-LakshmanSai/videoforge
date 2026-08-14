@@ -9,6 +9,7 @@ import {
   CP07_PRIOR_CONSERVATIVE_SPEND_USD,
   CP07_VOLUME_NAME,
   CP07_VOLUME_ATTACHMENT_SETTLE_MS,
+  sanitizeCp07ProviderFailure,
 } from "./runpod-echo-cp07-phase-b-live";
 
 const exactVolumes = () =>
@@ -28,6 +29,13 @@ const exactVolumes = () =>
   ] as const;
 
 describe("CP-07 invalid Echo volume replacement boundary", () => {
+  it("redacts provider URLs and opaque identities before diagnostics", () => {
+    const safe = sanitizeCp07ProviderFailure(
+      "failed privateVolumeIdentity123456789 at https://private.example/path",
+    );
+    expect(safe).toBe("failed [redacted-token] at [redacted-url]");
+    expect(safe).not.toContain("privateVolumeIdentity");
+  });
   it("uses a bounded provider attachment-settle delay before Pod creation", () => {
     expect(CP07_VOLUME_ATTACHMENT_SETTLE_MS).toBe(30_000);
   });

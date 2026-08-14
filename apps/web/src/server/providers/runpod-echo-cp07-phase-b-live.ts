@@ -25,7 +25,7 @@ export const CP07_VOLUME_SIZE_GB = 50;
 export const CP06_MAGE_VOLUME_ID_HASH =
   "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 export const CP07_INVALID_ECHO_VOLUME_ID_HASH =
-  "sha256:44f609c51269a96b7050eaaa0a9003c9c72c00f5581f976d122fcc94a7eadd08";
+  "sha256:857b2a8e5110d4ac151794d101a22e87c8235929c2d881dff9a3d671a3aad032";
 export const CP07_TEMPLATE_NAME = "videoforge-echo-flash-turbo-cp07-template";
 export const CP07_MODEL_ROOT = "/runpod-volume/echo-flash-turbo-fp8";
 export const CP07_VOLUME_MOUNT = "/runpod-volume";
@@ -52,6 +52,13 @@ const finite = (value: unknown): number | null => {
   const candidate = typeof value === "number" ? value : Number(value);
   return Number.isFinite(candidate) && candidate >= 0 ? candidate : null;
 };
+
+export const sanitizeCp07ProviderFailure = (value: string): string =>
+  value
+    .replace(/https?:\/\/\S+/gu, "[redacted-url]")
+    .replace(/[A-Za-z0-9_-]{20,}/gu, "[redacted-token]")
+    .replace(/[^\x20-\x7E]/gu, " ")
+    .slice(0, 500);
 
 const sha256 = (value: string | Buffer): `sha256:${string}` =>
   `sha256:${createHash("sha256").update(value).digest("hex")}`;
@@ -205,13 +212,14 @@ class RunPodCp07Client {
     }
     if (notFoundIsNull && response.status === 404) return null;
     if (!response.ok) {
+      const providerFailure = sanitizeCp07ProviderFailure(await response.text());
       throw new Cp07PhaseBError(
         response.status === 401 || response.status === 403
           ? "CP07_PROVIDER_AUTH_REJECTED"
           : method === "GET"
             ? "CP07_PROVIDER_READ_FAILED"
             : "CP07_PROVIDER_MUTATION_FAILED",
-        `status:${response.status}`,
+        `status:${response.status};provider:${providerFailure}`,
       );
     }
     if (response.status === 204) return null;
