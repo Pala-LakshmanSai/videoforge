@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  assertCp07CumulativeReservation,
   assertCp07ReplacementInventory,
   CP06_MAGE_VOLUME_ID_HASH,
   CP07_INVALID_ECHO_VOLUME_ID_HASH,
   CP07_REGION,
+  CP07_PRIOR_CONSERVATIVE_SPEND_USD,
   CP07_VOLUME_NAME,
 } from "./runpod-echo-cp07-phase-b-live";
 
@@ -47,6 +49,33 @@ describe("CP-07 invalid Echo volume replacement boundary", () => {
   ])("rejects %s", (_label, volumes) => {
     expect(() => assertCp07ReplacementInventory(volumes)).toThrow(
       "CP07_REPLACEMENT_VOLUME_INVENTORY_MISMATCH",
+    );
+  });
+});
+
+describe("CP-07 cumulative finite-cost boundary", () => {
+  it("includes the prior attempt and Pod lifecycle reserve in every reservation", () => {
+    const prep = assertCp07CumulativeReservation(0, 5_100);
+    const sample = assertCp07CumulativeReservation(prep, 2_700);
+    const sampleTwo = assertCp07CumulativeReservation(prep + sample, 2_700);
+    const sampleThree = assertCp07CumulativeReservation(prep + sample + sampleTwo, 2_700);
+    expect(
+      CP07_PRIOR_CONSERVATIVE_SPEND_USD + prep + sample + sampleTwo + sampleThree,
+    ).toBeLessThanOrEqual(4);
+  });
+
+  it("rejects a next Pod whose reservation could cross the cumulative cap", () => {
+    expect(() => assertCp07CumulativeReservation(2.88, 60)).toThrow("CP07_CUMULATIVE_CAP_RISK");
+  });
+
+  it.each([
+    [Number.NaN, 60],
+    [-1, 60],
+    [0, 0],
+    [0, 1.5],
+  ])("rejects invalid reservation inputs", (spent, seconds) => {
+    expect(() => assertCp07CumulativeReservation(spent, seconds)).toThrow(
+      "CP07_COST_RESERVATION_INVALID",
     );
   });
 });

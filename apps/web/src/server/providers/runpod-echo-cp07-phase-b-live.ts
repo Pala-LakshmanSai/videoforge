@@ -16,7 +16,8 @@ export const CP07_GPU = "NVIDIA GeForce RTX 4090";
 export const CP07_GPU_RATE_USD_PER_HOUR = 0.74;
 export const CP07_REGION = "EU-RO-1";
 export const CP07_CAP_USD = 4;
-export const CP07_INTERNAL_STOP_USD = 3.6;
+export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 1.11;
+export const CP07_POD_LIFECYCLE_RESERVE_SECONDS = 120;
 export const CP07_VOLUME_NAME = "videoforge-echo-cp07-model-volume-eu-ro-1-50gb";
 export const CP07_VOLUME_SIZE_GB = 50;
 export const CP06_MAGE_VOLUME_ID_HASH =
@@ -98,6 +99,35 @@ export function assertCp07ReplacementInventory(
   }
   return CP07_INVALID_ECHO_VOLUME_ID_HASH;
 }
+
+export function assertCp07CumulativeReservation(
+  retryCostUpperBoundUsd: number,
+  nextPodMaximumSeconds: number,
+): number {
+  if (
+    !Number.isFinite(retryCostUpperBoundUsd) ||
+    retryCostUpperBoundUsd < 0 ||
+    !Number.isSafeInteger(nextPodMaximumSeconds) ||
+    nextPodMaximumSeconds < 1
+  ) {
+    throw new Cp07PhaseBError("CP07_COST_RESERVATION_INVALID");
+  }
+  const nextPodMaximumCostUsd =
+    ((nextPodMaximumSeconds + CP07_POD_LIFECYCLE_RESERVE_SECONDS) / 3_600) *
+    CP07_GPU_RATE_USD_PER_HOUR;
+  const cumulativeReservedUsd =
+    CP07_PRIOR_CONSERVATIVE_SPEND_USD + retryCostUpperBoundUsd + nextPodMaximumCostUsd;
+  if (cumulativeReservedUsd > CP07_CAP_USD) {
+    throw new Cp07PhaseBError("CP07_CUMULATIVE_CAP_RISK");
+  }
+  return nextPodMaximumCostUsd;
+}
+
+const assertCp07ObservedCost = (retryCostUpperBoundUsd: number): void => {
+  if (CP07_PRIOR_CONSERVATIVE_SPEND_USD + retryCostUpperBoundUsd > CP07_CAP_USD) {
+    throw new Cp07PhaseBError("CP07_CUMULATIVE_CAP_RISK");
+  }
+};
 
 interface ProviderVolume {
   readonly id: string;
@@ -807,13 +837,8 @@ export async function runCp07PhaseB(options: {
       volumeIdHash: sha256(volume.id),
       mode: "prepare",
     };
-    const prepMaximumSeconds = 5_400;
-    if (
-      conservativeCostUsd + (prepMaximumSeconds / 3_600) * CP07_GPU_RATE_USD_PER_HOUR >
-      CP07_INTERNAL_STOP_USD
-    ) {
-      throw new Cp07PhaseBError("CP07_PREP_CAP_RISK");
-    }
+    const prepMaximumSeconds = 5_100;
+    assertCp07CumulativeReservation(conservativeCostUsd, prepMaximumSeconds);
     activePod = await client.createPod(prepAuthority);
     const prepHealth = await pollWorker(
       activePod.id,
@@ -842,6 +867,7 @@ export async function runCp07PhaseB(options: {
     const prepDeletion = await deleteOwnedPod(client, activePod);
     deletionEvidence.push(prepDeletion);
     conservativeCostUsd += prepDeletion.elapsedCostUpperBoundUsd;
+    assertCp07ObservedCost(conservativeCostUsd);
     activePod = null;
 
     for (const durationSeconds of [2, 4, 6] as const) {
@@ -856,10 +882,7 @@ export async function runCp07PhaseB(options: {
         paddedDurationSeconds,
       );
       const sampleMaximumSeconds = 2_700;
-      const maximumNextCost = (sampleMaximumSeconds / 3_600) * CP07_GPU_RATE_USD_PER_HOUR;
-      if (conservativeCostUsd + maximumNextCost > CP07_INTERNAL_STOP_USD) {
-        throw new Cp07PhaseBError("CP07_SAMPLE_CAP_RISK");
-      }
+      assertCp07CumulativeReservation(conservativeCostUsd, sampleMaximumSeconds);
       const workerToken = randomBytes(32).toString("base64url");
       const authority: PodAuthority = {
         name: `videoforge-echo-cp07-${durationSeconds}s-a01`,
@@ -969,16 +992,15 @@ export async function runCp07PhaseB(options: {
       const deletion = await deleteOwnedPod(client, activePod);
       deletionEvidence.push(deletion);
       conservativeCostUsd += deletion.elapsedCostUpperBoundUsd;
+      assertCp07ObservedCost(conservativeCostUsd);
       activePod = null;
-      if (conservativeCostUsd > CP07_INTERNAL_STOP_USD || conservativeCostUsd > CP07_CAP_USD) {
-        throw new Cp07PhaseBError("CP07_CUMULATIVE_CAP_RISK");
-      }
     }
   } finally {
     if (activePod !== null) {
       const deletion = await deleteOwnedPod(client, activePod);
       deletionEvidence.push(deletion);
       conservativeCostUsd += deletion.elapsedCostUpperBoundUsd;
+      assertCp07ObservedCost(conservativeCostUsd);
       activePod = null;
     }
     if (template !== null) await client.deleteTemplate(template.id);
@@ -1023,7 +1045,10 @@ export async function runCp07PhaseB(options: {
     pod_deletions: deletionEvidence,
     finite_cost: {
       cap_usd: CP07_CAP_USD,
-      conservative_elapsed_upper_bound_usd: conservativeCostUsd,
+      prior_conservative_upper_bound_usd: CP07_PRIOR_CONSERVATIVE_SPEND_USD,
+      retry_conservative_elapsed_upper_bound_usd: conservativeCostUsd,
+      cumulative_conservative_upper_bound_usd:
+        CP07_PRIOR_CONSERVATIVE_SPEND_USD + conservativeCostUsd,
       settled: allSettled,
       settled_usd: allSettled
         ? (settledValues as number[]).reduce((sum, value) => sum + value, 0)
