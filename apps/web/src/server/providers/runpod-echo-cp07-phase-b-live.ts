@@ -12,8 +12,9 @@ import { fetchCp07Catalog } from "./runpod-echo-cp07-preflight";
 
 export const CP07_ACCOUNT_HASH =
   "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c";
-export const CP07_GPU = "NVIDIA GeForce RTX 4090";
-export const CP07_GPU_RATE_USD_PER_HOUR = 0.74;
+export const CP07_GPU = "NVIDIA GeForce RTX 5090";
+export const CP07_GPU_RATE_USD_PER_HOUR = 0.99;
+export const CP07_GPU_VRAM_GB = 32;
 export const CP07_REGION = "EU-RO-1";
 export const CP07_CAP_USD = 6;
 export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 1.166225;
@@ -23,7 +24,7 @@ export const CP07_VOLUME_SIZE_GB = 50;
 export const CP06_MAGE_VOLUME_ID_HASH =
   "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 export const CP07_INVALID_ECHO_VOLUME_ID_HASH =
-  "sha256:9cce5166d2bf18b3db5f0aaab1c4c0ba4976177a00bc17e23709830098a9bc45";
+  "sha256:ea2fa9bfcbe8d60d01618bdfcc4d12773457fe80135fe4c48c38bc8ef9dc2b34";
 export const CP07_TEMPLATE_NAME = "videoforge-echo-flash-turbo-cp07-template";
 export const CP07_MODEL_ROOT = "/runpod-volume/echo-flash-turbo-fp8";
 export const CP07_VOLUME_MOUNT = "/runpod-volume";
@@ -785,7 +786,7 @@ export async function runCp07PhaseB(options: {
     !selected ||
     selected.region !== CP07_REGION ||
     selected.rateUsdPerHour !== CP07_GPU_RATE_USD_PER_HOUR ||
-    selected.vramGb !== 24
+    selected.vramGb !== CP07_GPU_VRAM_GB
   ) {
     throw new Cp07PhaseBError("CP07_SELECTED_GPU_DRIFT");
   }
@@ -1031,7 +1032,7 @@ export async function runCp07PhaseB(options: {
       offering_id: CP07_GPU,
       region: CP07_REGION,
       rate_usd_per_hour: CP07_GPU_RATE_USD_PER_HOUR,
-      vram_gb: 24,
+      vram_gb: CP07_GPU_VRAM_GB,
     },
     volume: {
       id_sha256: sha256(volume.id),

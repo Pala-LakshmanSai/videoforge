@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T19:13:22Z"
+updated_at: "2026-08-14T19:15:43Z"
 
 phase: cp07_phase_b_third_paid_execution_authorized
 implementation_authorized_in_current_task: true
@@ -26,7 +26,7 @@ provider_authority:
   resources:
     - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:f6c952a6b5979d94f788410b6e4c093cc50ee2b7"
     - "runpod:EU-RO-1:echo-only-network-volume:50GB"
-    - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 4090:1x:maximum-$0.74/hour"
+    - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 5090:1x:maximum-$0.99/hour"
     - "BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249#echomimicv3-flash-pro"
   authorized_operations:
     - push_exact_cp07_branch_commits
@@ -364,11 +364,11 @@ cp07_phase_a:
   third_attempt_volume_and_cap_guard_commit: "d23fa10"
   revised_local_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/revised-local-preflight.json"
   image_published: true
-  image_digest: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:9bc4e5467efeadadae58771d1c75ab40982cbecf78fb27bb85043627f5d7d5d0"
+  image_digest: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:a7c14c0919a317da7f914209b8466fb922ab6bc66eab78838d90a6258fa54037"
   local_container_build_executed: false
   runpod_account_owner: sujal
   runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
-  runpod_inventory_checked_at: "2026-08-14T18:57:39.128Z"
+  runpod_inventory_checked_at: "2026-08-14T19:15:30.326Z"
   runpod_revised_read_only_evidence: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/revised-refresh-2026-08-14T183410Z.json"
   runpod_inventory_evidence_sha256: "sha256:48d469866a3a1fb3c0ca1310d9d30b4d2cc0fb52a8d37c19da4076006d31340c"
   runpod_pods: 0
@@ -377,7 +377,7 @@ cp07_phase_a:
   runpod_active_serverless_workers: 0
   runpod_network_volumes: 2
   echo_volume_exists: true
-  echo_volume_id_sha256: "sha256:9cce5166d2bf18b3db5f0aaab1c4c0ba4976177a00bc17e23709830098a9bc45"
+  echo_volume_id_sha256: "sha256:ea2fa9bfcbe8d60d01618bdfcc4d12773457fe80135fe4c48c38bc8ef9dc2b34"
   echo_volume_state: incomplete_or_unverified
   gpu_choices:
     - offering_id: "NVIDIA GeForce RTX 4090"
@@ -395,11 +395,11 @@ cp07_phase_a:
   external_spend_usd: 0.05622458457946777
   external_spend_state: current_attempt_settled_prior_attempt_conservatively_bounded
   conservative_reserved_finite_spend_upper_bound_usd: 1.1662245845794678
-  proposed_maximum_additional_pod_cost_usd: 2.812
-  proposed_maximum_cumulative_finite_estimate_usd: 3.978225
+  proposed_maximum_additional_pod_cost_usd: 3.762
+  proposed_maximum_cumulative_finite_estimate_usd: 4.928225
   latest_user_supplied_cap_usd: 6
-  proposed_cap_margin_usd: 2.021775
-  provider_mutations: 11
+  proposed_cap_margin_usd: 1.071775
+  provider_mutations: 16
   local_tests: passed
   canonical_verify: passed
   canonical_verify_commit: "5d38739a5f53f6b0e67d6cbf1950ba29c7645061"
@@ -412,8 +412,8 @@ cp07_phase_a:
   paid_execution_halted: false
   revised_paid_authority_required: false
   revised_paid_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/revised-authorization.json"
-  image_publication_attempts: 3
-  last_image_publication_run_id: 31829638252
+  image_publication_attempts: 4
+  last_image_publication_run_id: 31831935557
   last_image_publication_result: success_public_digest_pinned
   preparation_attempts: 2
   last_preparation_result: failed_offline_constant_retained_before_pinned_snapshot_download
@@ -421,18 +421,20 @@ cp07_phase_a:
   third_local_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-local-preflight.json"
   third_paid_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-authorization.json"
   proposed_third_image_source_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:f6c952a6b5979d94f788410b6e4c093cc50ee2b7"
-  selected_gpu_offering_id: "NVIDIA GeForce RTX 4090"
-  selected_gpu_rate_usd_per_hour: 0.74
-  selected_gpu_vram_gb: 24
+  selected_gpu_offering_id: "NVIDIA GeForce RTX 5090"
+  selected_gpu_rate_usd_per_hour: 0.99
+  selected_gpu_vram_gb: 32
   selected_gpu_availability: LOW
+  unattended_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/unattended-authority.json"
+  rtx4090_allocation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4090-allocation-failure.json"
   pre_mutation_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/pre-mutation-preflight.json"
   approved_gpu_priority:
-    - offering_id: "NVIDIA GeForce RTX 4090"
-      maximum_rate_usd_per_hour: 0.74
+    - offering_id: "NVIDIA GeForce RTX 5090"
+      maximum_rate_usd_per_hour: 0.99
   approved_echo_volume_size_gb: 50
   approved_echo_volume_retention_usd_per_month: 3.5
   proposed_revised_operations:
-    - publish_corrected_echo_worker_image_d51c0a1
+    - publish_corrected_echo_worker_image_f6c952a
     - delete_exact_invalid_echo_volume_after_hash_locked_two_volume_audit
     - create_fresh_echo_volume_50gb_eu_ro_1
     - create_temporary_private_echo_template

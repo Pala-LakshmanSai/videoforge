@@ -1,0 +1,17 @@
+{
+  "schema_version": "videoforge.cp07-image-publication/v1",
+  "checkpoint": "CP-07",
+  "source_commit": "f6c952a6b5979d94f788410b6e4c093cc50ee2b7",
+  "source_tag": "cp07-echo-flash-turbo-image-f6c952a",
+  "workflow": "avatar-primary-image.yml",
+  "workflow_run_id": 31831935557,
+  "workflow_job_id": 94869432480,
+  "result": "success",
+  "started_at": "2026-08-14T19:08:49Z",
+  "completed_at": "2026-08-14T19:13:40Z",
+  "smoke_result": "passed",
+  "publication_result": "passed",
+  "immutable_image": "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:a7c14c0919a317da7f914209b8466fb922ab6bc66eab78838d90a6258fa54037",
+  "platform": "linux/amd64",
+  "external_spend_usd": 0
+}
