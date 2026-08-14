@@ -1,6 +1,7 @@
 # VideoForge completion checkpoints
 
-Status: authoritative completion roadmap; `CP-00` through `CP-05` complete; `CP-06` Phase B authorized pre-mutation
+Status: authoritative completion roadmap; `CP-00` through `CP-05` complete; `CP-06` technical
+qualification is `READY_FOR_USER_REVIEW`
 Read when: choosing the next implementation chat, checking project truth, or auditing completion.
 
 ## MVP destination
@@ -294,7 +295,8 @@ Current re-audit evidence:
 **Status:** complete provider-free under `VF-9-24P` at audited code head
 `58395225d9f2e11ac556e6b67f186b1fb5502336`, recorded by handoff commit
 `d2285117c17a3f6dd37b84e9dd441fd6fe7aa1d0`; canonical and installed-Chrome acceptance passed;
-CP-06 Phase B is authorized and remains pre-mutation with `$0` external spend.
+CP-06 technical qualification is complete and awaits user visual-quality review; all paid compute
+is absent and one approved 50 GB Mage volume remains.
 
 **Outcome:** the entire application works in fixture mode before any new GPU spend.
 
@@ -317,8 +319,10 @@ wrong Pod/volume/GPU, independent lane drain, final playable MP4s, canonical ver
 
 ## CP-06 — Exact Mage INT8 on persistent RunPod volume
 
-**Status:** `VF-9-24Q` Phase A complete and green; exact Phase B bounded mutation is authorized on
-Sujal RunPod with RTX 4090, a retained 50 GB Mage volume, and a `$3` handoff cap.
+**Status:** `VF-9-24Q` technical qualification is `READY_FOR_USER_REVIEW`. The exact model is on one
+retained 50 GB Mage volume; eight 1280x720 PNGs came from two fresh sequential RTX 4090 Pods; every
+Pod and template was deleted and proven absent. Conservative checkpoint account: `$1.110002` under
+the `$3` cap; provider billing remains partial.
 
 **Outcome:** VideoForge generates real images through the exact current ImageForge Mage contract and
 can reuse a new Mage-only volume from fresh Pods.
@@ -351,6 +355,9 @@ byte-derived volume size/rate, separate consent for its ongoing post-handoff ret
 explicit mutation/download/publication/GPU scopes. No `$3` or other cap is implied.
 `DEC_BUILD_001` keeps heavyweight verification off the user's Mac and does not broaden Phase B.
 **Done artifact:** user-visible real Mage images and reproducible fresh-Pod evidence.
+
+Current proof: `evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json`. Technical success does
+not close the image/style/GPU/RunPod/cost production gates; only the user accepts visual quality.
 
 ## CP-07 — Exact Echo FP8 on persistent RunPod volume and crop lock
 

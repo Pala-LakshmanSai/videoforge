@@ -1,8 +1,8 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T09:15:12Z"
+updated_at: "2026-08-14T12:00:00Z"
 
-phase: cp06_phase_b_bounded_mutation
+phase: cp06_ready_for_user_review
 implementation_authorized_in_current_task: true
 current_milestone: exact_mage_int8_persistent_runpod_volume
 current_task: VF-9-24Q
@@ -85,7 +85,9 @@ repository:
   cp06_phase_b_controller_commit: "1c257497055ad42b78d3020a2113f8ea0cf876c8"
   cp06_phase_b_safety_fix_commit: "6664d26f7594fe5ba6fd3896ff5f26075764d93f"
   cp06_phase_b_cleanup_invariant_fix_commit: "58512071586855b96d64e812f9c443d3db51b1dd"
-  last_good_commit: "58512071586855b96d64e812f9c443d3db51b1dd"
+  cp06_runtime_source_commit: "563ba1ab7b083c1457ab4a9504d82bd6f9d886b9"
+  cp06_handoff_content_commit: pending_this_change
+  last_good_commit: "563ba1ab7b083c1457ab4a9504d82bd6f9d886b9"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -101,7 +103,7 @@ live_development:
   provider_calls_authorized: true
   authorized_spend_usd: 3.0
   provider_authority_scope: "VF-9-24Q CP-06 Phase B only on Sujal RunPod: exact RTX 4090 at no more than $0.74/hour, one retained 50 GB STANDARD EU-RO-1 Mage volume at $0.07/GB/month ($3.50/month), exact Mage INT8 download/preparation, immutable worker/template publication, two fresh Pods, at least eight private owned samples, Pod deletion and zero-Pod proof; cumulative finite-action cap $3.00."
-  worker_image: null
+  worker_image: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
   last_user_checkpoint:
     result: accepted
     commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
@@ -198,7 +200,7 @@ recommended_next_task:
   task_id: VF-9-24Q
   checkpoint: CP-06
   milestone: exact_mage_int8_persistent_runpod_volume
-  status: phase_b_authorized_bounded_mutation
+  status: ready_for_user_review
   dependency_status: cp05_complete_green_provider_free
   authorization_status: exact_current_chat_authorization_recorded
   task_stage: bounded_mutation
@@ -229,7 +231,7 @@ recommended_next_task:
       - retain_mage_volume
   read_profile: cp06_mage_int8_persistent_runpod
   task_brief: tasks/VF-9-24Q.md
-  goal: "Complete exact Mage INT8 persistent-volume qualification under the recorded $3 Phase B cap, delete every Pod, prove zero paid compute, retain only the approved Mage volume, and show the owned samples."
+  goal: "Review the completed CP-06 real Mage outputs; technical qualification, cleanup, and retained-volume proof are complete."
   provider_calls_authorized: true
   maximum_external_spend_usd: 3.0
   remote_or_cloud_mutations_authorized: true
@@ -305,12 +307,15 @@ cp06_phase_a:
   paid_compute_shutdown: no_paid_compute_started_colima_stopped_original_8gib_config_restored
 
 cp06_phase_b:
-  status: authorized_pre_mutation
+  status: ready_for_user_review
   controller_commit: "1c257497055ad42b78d3020a2113f8ea0cf876c8"
   safety_fix_commit: "6664d26f7594fe5ba6fd3896ff5f26075764d93f"
   cleanup_invariant_fix_commit: "58512071586855b96d64e812f9c443d3db51b1dd"
-  controller_validation: passed_51_focused_tests_9_worker_tests_lint_node_workerd_context_secret_format_diff_independent_safety_audit_pass
-  evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/authorization.json"
+  runtime_source_commit: "563ba1ab7b083c1457ab4a9504d82bd6f9d886b9"
+  worker_image_digest: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
+  worker_image_publish_run_id: 31796627338
+  controller_validation: passed_48_focused_tests_web_typecheck_python_lint_55_contract_tests_worker_suites_independent_safety_and_output_audit_pass
+  evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
   authorized_by_user_at: "2026-08-14T08:19:32Z"
   user_authorization_text: "I authorize the complete CP-06 Phase B scope above on Sujal RunPod using RTX 4090 at no more than $0.74/hour, retaining the 20 GiB volume at $1.40/month, with a $3 cumulative handoff cap."
   additional_user_volume_note: "you can even use 50gb network voume if that makes more sense"
@@ -327,10 +332,27 @@ cp06_phase_b:
   volume_rate_usd_per_gb_month: 0.07
   ongoing_retention_charge_usd_per_month: 3.5
   maximum_cumulative_external_spend_usd: 3.0
-  external_spend_usd: 0
-  provider_mutations_started: false
-  resources_created: 0
-  paid_compute_shutdown: no_paid_compute_started
+  model_manifest_sha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b"
+  retained_volume_id_sha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
+  output_count: 8
+  output_dimensions: 1280x720
+  final_positive_pod_count: 2
+  final_positive_pods_distinct: true
+  conservative_accounted_spend_usd: 1.110002
+  settled_external_spend_usd: null
+  billing_status: partial_5_of_15_attempts_observed
+  partial_billing_amount_usd: 0.11843864619731903
+  provider_mutations_started: true
+  provider_resources_created_during_checkpoint: true
+  final_inventory_checked_at: "2026-08-14T11:52:23.413Z"
+  final_runpod_pods: 0
+  final_runpod_endpoints: 0
+  final_runpod_templates: 0
+  final_active_serverless_workers: 0
+  final_network_volumes: 1
+  retained_resources: exact_one_50gb_mage_network_volume
+  paid_compute_shutdown: all_pods_templates_endpoints_workers_absent
+  visual_quality: pending_user_review
 
 cp01_completion:
   status: complete_provider_free_reaudited_after_persisted_authority_fix
@@ -504,13 +526,13 @@ approved_mvp_architecture:
   gpu_selection: idle_only_independent_live_exact_offering_per_lane
   session_pair: immutable_until_full_drain
   region: EU-RO-1
-  volume_capacity_status: not_selected_manifest_derived_before_provisioning
+  volume_capacity_status: mage_50gb_prepared_and_verified_echo_not_created
   lanes:
     mage_image:
       model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6"
       precision: int8-convrot
-      volume: separate_persistent_not_created
-      pod: session_scoped_disposable_not_created
+      volume: retained_50gb_eu_ro_1_manifest_verified
+      pod: absent_after_two_fresh_pod_qualification
     echo_avatar:
       model: EchoMimicV3-Flash-FP8
       precision: fp8_prepared_from_pinned_first_party_lineage
@@ -519,7 +541,7 @@ approved_mvp_architecture:
   lane_retention: waiter_may_keep_existing_pod_warm_never_recreate
   lane_recreation: next_project_activation_same_gpu_after_revalidation
   media_cpu: cloud_run_jobs_whisper_cpp_and_ffmpeg_r2_mac_dev_parity
-  cleanup: delete_pods_prove_absence_retain_both_volumes
+  cleanup: cp06_zero_compute_proven_retain_mage_volume_echo_volume_future_separate_authority
   cost: representative_30_minute_variable_target_1_usd_hard_ceiling_2_usd_fixed_volumes_separate
 
 blocking_gates_for_production:
@@ -533,19 +555,21 @@ blocking_gates_for_production:
 
 progress_snapshot:
   estimate_kind: checkpoint_truth_no_percent_claim
-  completed_checkpoint: CP-05
-  next_checkpoint: CP-06_phase_b_bounded_mutation_active
+  completed_checkpoint: CP-06_technical_ready_for_user_review
+  next_checkpoint: CP-06_user_visual_quality_review
   full_production_mvp_implemented_percent: null
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: cp06_phase_b_authorized_pre_mutation
+  status: cp06_ready_for_user_review
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Load cp06_mage_int8_persistent_runpod and tasks/VF-9-24Q.md; read only the CP-06 roadmap section."
     - "Preserve the verified green CP-01 through CP-05 evidence and vNext boundary."
-    - "Preserve Phase A code commit 912427b5bd8a7afb4f68233072990d3c39e64cc6, hosted build run 31781650276, and canonical CI run 31781645263."
-    - "Phase B exact authorization is recorded at 2026-08-14T08:19:32Z with RTX 4090 <= $0.74/hour and a $3 finite-action cap; the user's final storage confirmation at 2026-08-14T08:27:44Z resolves the retained volume to 50 GB at $3.50/month."
+    - "Preserve runtime source commit 563ba1ab7b083c1457ab4a9504d82bd6f9d886b9, exact GHCR digest 0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69, and the sanitized CP-06 acceptance evidence."
+    - "Show the ignored private contact sheet and eight PNGs to the user; technical status is READY_FOR_USER_REVIEW and only the user can approve visual quality."
+    - "Preserve zero Pods/endpoints/templates/workers and exactly one retained 50 GB Mage volume at $3.50/month. RunPod billing is partial; do not replace the conservative $1.110002 upper bound with the currently incomplete provider amount."
+    - "Do not reuse the completed Phase B authority for new samples, CP-07, Echo, production promotion, or any new provider mutation."
   stop_conditions:
     - "Any Sujal identity mismatch, RTX 4090 rate above $0.74/hour, unavailable approved capacity, resource ambiguity, scope expansion, or risk of exceeding the $3 finite-action cap."
     - "Any schema reinterpretation, legacy dispatch reachability, Echo work, cross-account action, or production promotion."

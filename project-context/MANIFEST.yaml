@@ -3,8 +3,9 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-14"
 source_of_truth: project-context
-# CP-00 through CP-05 are complete provider-free. CP-06 Phase B has exact bounded Sujal RunPod
-# authority; CURRENT_STATE owns its RTX 4090, volume, scope, retention charge, and $3 cap.
+# CP-00 through CP-05 are complete. CP-06 technical qualification is READY_FOR_USER_REVIEW;
+# CURRENT_STATE owns the immutable digest, retained 50 GB volume, zero-compute proof, cost truth,
+# open production gates, and user-review handoff.
 current_selected_profile: cp06_mage_int8_persistent_runpod
 current_selected_brief: tasks/VF-9-24Q.md
 

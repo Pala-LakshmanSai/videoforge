@@ -139,15 +139,16 @@ Existing evidence records the Qwen encoder as
 set. The one-time preparation gate must record the INT8 transformer's exact size and SHA-256 before
 writing the complete marker. Never resolve mutable `main` at runtime.
 
-Mage owns one dedicated, persistent `EU-RO-1` network volume and one disposable Pod. CP-06 Phase A
+Mage owns one dedicated, persistent `EU-RO-1` network volume and uses disposable Pods. CP-06
 verified `13,379,919,280` exact model bytes, and the user approved a 50 GB STANDARD volume at
 `$3.50/month`, leaving at least `36,620,080,720` decimal bytes (`34.11 GiB`) for download staging
 and operational headroom. The volume is not shared with or mounted by Echo. An explicitly
 authorized one-time preparation job
 downloads the three exact pinned ComfyUI-format runtime files, records every path, size, SHA-256,
-configuration, ComfyUI/container revision, and writes a completion marker only after independent
-verification. The VideoForge volume and Pod profile is not yet qualified and must not be treated as
-a confirmed production profile.
+configuration and revisions, then writes a completion marker after verification. CP-06 prepared the
+manifest once. Two RTX 4090 Pods booted offline from that volume, produced eight
+1280x720 PNGs, and became ready in 31.755s/42.144s. Both negative boots failed closed. All compute
+is absent; the 50 GB volume remains at `$3.50/month`.
 
 A normal Mage Pod boot mounts that volume, verifies the complete manifest, and loads the model to the
 global session's exact Mage GPU without downloading model bytes or resolving a network model
@@ -168,9 +169,9 @@ Official runtime sources: [Comfy-Org Mage-Flow weights](https://huggingface.co/C
 and [ComfyUI](https://github.com/Comfy-Org/ComfyUI). Historical Microsoft sources remain terms
 evidence only and are not the runtime implementation.
 
-Qualification status: worker and application acceptance plumbing exist, but no production profile is
-eligible. The earlier BF16 attempts remain historical evidence and do not qualify the new exact INT8
-ConvRot/1280×720 volume profile. Fixture remains default.
+CP-06 is `READY_FOR_USER_REVIEW`; proof is
+`evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json`. Production quality/style, two-lane, and
+30-minute cost gates remain open. Fixture stays default; BF16 attempts remain historical.
 
 ## EchoMimicV3-Flash
 

@@ -1,0 +1,188 @@
+{
+  "schema_version": "videoforge.cp06-phase-b-acceptance/v1",
+  "task_id": "VF-9-24Q",
+  "checkpoint": "CP-06",
+  "status": "READY_FOR_USER_REVIEW",
+  "checked_at": "2026-08-14T11:52:23.413Z",
+  "repository": {
+    "branch": "codex/cp06-mage-int8",
+    "runtime_source_commit": "563ba1ab7b083c1457ab4a9504d82bd6f9d886b9",
+    "mage_publish_run_id": 31796627338,
+    "mage_publish_result": "success",
+    "verify_run_id": 31796618907,
+    "verify_result_at_runtime_source_commit": "all_lanes_passed_except_python_ruff_format_only",
+    "python_format_fix": "applied_locally_and_revalidated"
+  },
+  "account": {
+    "owner": "sujal",
+    "id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "forbidden_account_untouched": "demo9_imageforge"
+  },
+  "worker": {
+    "image_digest": "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69",
+    "anonymous_exact_digest_pull_proven": true,
+    "normal_boot_offline": true
+  },
+  "model": {
+    "id": "Comfy-Org/Mage-Flow",
+    "revision": "d8c99241f6fa80fbd453014234af2bf337ea21e6",
+    "precision": "int8-convrot",
+    "steps": 4,
+    "guidance": 1.0,
+    "width": 1280,
+    "height": 720,
+    "comfyui_revision": "26d7f8556822d9d08c2d3e1878636ac3b4969af9",
+    "manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "total_bytes": 13379919280,
+    "files": [
+      {
+        "path": "diffusion_models/mage_flow_turbo_int8_convrot.safetensors",
+        "bytes": 4159146840,
+        "sha256": "327c3967a5190ea52e453ec3dd81ba168e37a2a0ff2c763aa3e9260bbbe1913c"
+      },
+      {
+        "path": "text_encoders/qwen3vl_4b_bf16.safetensors",
+        "bytes": 8875719384,
+        "sha256": "36f3ff447ef59201722e8f9ce6020c9819fdcfba6aa2608c4e09b1c0ce114e34"
+      },
+      {
+        "path": "vae/mage_flow_vae_bf16.safetensors",
+        "bytes": 345053056,
+        "sha256": "34e076dc1e8a15321e1e07be5111d59cf16dd10b804b7c7e20b4de29013427e0"
+      }
+    ]
+  },
+  "runpod": {
+    "region": "EU-RO-1",
+    "selected_gpu": "NVIDIA GeForce RTX 4090",
+    "actual_gpu": "NVIDIA GeForce RTX 4090",
+    "secure_cloud": true,
+    "rate_usd_per_hour": 0.74,
+    "volume": {
+      "name": "videoforge-mage-cp06-model-volume-eu-ro-1-50gb",
+      "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+      "size_gb": 50,
+      "rate_usd_per_gb_month": 0.07,
+      "ongoing_usd_per_month": 3.5,
+      "retained": true
+    },
+    "negative_proofs": {
+      "missing_volume": "fail_closed",
+      "wrong_volume_hash": "fail_closed"
+    },
+    "final_inventory": {
+      "checked_at": "2026-08-14T11:52:23.413Z",
+      "pods": 0,
+      "endpoints": 0,
+      "private_templates": 0,
+      "active_serverless_workers": 0,
+      "network_volumes": 1,
+      "intended_50gb_mage_volumes": 1,
+      "paid_compute_shutdown": true
+    }
+  },
+  "attempts": [
+    ["prep", "sha256:f263a1496bab3998175eaa21d7f33a963550ea465c361504636327a53d7fbcff", 0.026928, 2548, 70468],
+    ["negative_missing", "sha256:ab76d95b79ac7904f3abb839eb8c1816d256a36ad31f6e14bb5bf7efe3dd9811", 0.03515, 2604, 71239],
+    ["negative_wrong_hash", "sha256:12febaf6d12230a8770cf6d2c90bc3551944f46c0ff7843610781ae96faa4520", 0.036795, 2644, 70741],
+    ["positive_a_retired_epoch", "sha256:e7031dc90acd67dc69285210e99710dc2f98f5affb96a356a315e000e91eb1ab", 0.037206, 2608, 70343],
+    ["positive_a_retired_epoch", "sha256:7893dcbfb6e01d7f00ac4411f424be905e9052f156403dfe7a3d117b84bdcf3a", 0.039467, 2710, 71415],
+    ["positive_a_retired_epoch", "sha256:250d088a1606aff45b74d067196ce248b7f88f77cd2f827c192c7c8bbc8b9ebe", 0.03885, 2726, 70616],
+    ["positive_a_retired_epoch", "sha256:1c5f9476d66eb186524811228a3bb36eaee3c0f6c6a18edbb9261982a840c430", 0.042139, 3271, 71500],
+    ["negative_missing", "sha256:7cc1d0250dc7565a942e5578c69fa5894a516713bd22dd8d681a4c93caf00ad7", 0.039262, 2720, 70440],
+    ["negative_wrong_hash", "sha256:942a4b6ccc8ef42a422214ff7d04ef1e0bb73251feda7d9cfc1d8cad9ef2c37b", 0.036178, 2760, 71447],
+    ["positive_a_retired_epoch", "sha256:046f73cfe7096c87f2a571bcf3e866e0f0d8b08ed5feadef247ec2b4fd1633aa", 0.025284, 2644, 71430],
+    ["positive_a_retired_epoch", "sha256:bae20d4e0a5b3aa150726209d9866c4e5c5d2443d76626e44375ddc5146acc7d", 0.041523, 2478, 71276],
+    ["negative_missing_final_digest", "sha256:29ea42e8fc5536c6ee40961c9c394f7df5e3afea59db380d9023f06acb1d085d", 0.039673, 2449, 71208],
+    ["negative_wrong_hash_final_digest", "sha256:135159ce903eab3ede28281923742e0cdc0588b85a64320a70a13c3cf7911bd1", 0.017267, 2575, 70513],
+    ["positive_a_final_digest", "sha256:eff9fc60f3f00b27a6d8d10585768af036ca56221171c58baf45022456c47200", 0.021789, 2602, 72611],
+    ["positive_b_final_digest", "sha256:4d2952fae6855ed1e3fd39d08cafb9cae4162c0b41caeef95c84e0a29ba549af", 0.051595, 2724, 71499]
+  ],
+  "attempt_tuple_fields": ["role", "pod_id_sha256", "accounted_cost_usd", "create_ms", "delete_and_absence_ms"],
+  "attempt_invariants": {
+    "created": 15,
+    "absence_confirmed": 15,
+    "unresolved_deletes": 0,
+    "settled_cost_per_attempt": null,
+    "cost_basis": "conservative_elapsed"
+  },
+  "final_positive_pods": [
+    {
+      "role": "A",
+      "pod_id_sha256": "sha256:eff9fc60f3f00b27a6d8d10585768af036ca56221171c58baf45022456c47200",
+      "model_ready_ms": 31755,
+      "ready_vram_used_bytes": 13640335360,
+      "sample_count": 4
+    },
+    {
+      "role": "B",
+      "pod_id_sha256": "sha256:4d2952fae6855ed1e3fd39d08cafb9cae4162c0b41caeef95c84e0a29ba549af",
+      "model_ready_ms": 42144,
+      "ready_vram_used_bytes": 13640335360,
+      "sample_count": 4
+    }
+  ],
+  "samples": [
+    ["cp06-owned-01", "people", "documentary", "full-16:9", 20260601, "sha256:f146c7a507e07db25428b2dd643b8f06b52ff55372e98549ebd2a838c3672e65", 1239544, 766, 2568, 14009434112, "A"],
+    ["cp06-owned-02", "place", "editorial", "full-16:9", 20260602, "sha256:ebaf11bdd16e07b02d014f68eb8b99e4ed8e5e9e3db46fd3086c3992eb211121", 1203633, 766, 1822, 14009434112, "A"],
+    ["cp06-owned-03", "object", "natural-light", "split-right-8:9", 20260603, "sha256:89772111e65a413c96bd94c740b1c3223b8c7e697444632c96322cf75180b1d9", 1267757, 767, 2585, 14009434112, "A"],
+    ["cp06-owned-04", "detail", "cinematic-realism", "split-right-8:9", 20260604, "sha256:844a98770bf2772becebc3dc71f3dd609fa0392295ef96d745cbdcb0ecb70f97", 1191712, 833, 907, 14009434112, "A"],
+    ["cp06-owned-05", "people", "documentary", "full-16:9", 20260605, "sha256:74012a1a0e3ad9008d25ee759ba4a384deac0752356e314b0f465ac9fe85017f", 986371, 1039, 2610, 14009434112, "B"],
+    ["cp06-owned-06", "place", "editorial", "full-16:9", 20260606, "sha256:49b2a70355e4f6045bedec45b237fedc83c8e9322a6e01e88c1c5ac5ae3dd912", 1329718, 1044, 974, 14177206272, "B"],
+    ["cp06-owned-07", "object", "natural-light", "split-right-8:9", 20260607, "sha256:18ab036aa9c8190ab628ff6330e426beedcbfa88854f0106950a476e0a502b00", 901883, 1039, 686, 14009434112, "B"],
+    ["cp06-owned-08", "detail", "cinematic-realism", "split-right-8:9", 20260608, "sha256:cb319cd409511c87f3f2dc3e4ba438bde6bb118f76c759e02b971cc469980b53", 1148536, 1091, 1157, 14177206272, "B"]
+  ],
+  "sample_tuple_fields": ["id", "subject", "style", "crop", "seed", "sha256", "bytes", "inference_ms", "upload_ms", "peak_vram_used_bytes", "pod"],
+  "sample_invariants": {
+    "count": 8,
+    "unique_hashes": 8,
+    "media_type": "image/png",
+    "width": 1280,
+    "height": 720,
+    "fresh_pods": 2
+  },
+  "contact_sheet": {
+    "private_object_key": "contact-sheet.png",
+    "sha256": "sha256:159540fb645b7738209909449898ffdedb67c9305b0564b5a740400267e69e6d",
+    "bytes": 1192667,
+    "media_type": "image/png",
+    "width": 1280,
+    "height": 360,
+    "sample_order": ["cp06-owned-01", "cp06-owned-02", "cp06-owned-03", "cp06-owned-04", "cp06-owned-05", "cp06-owned-06", "cp06-owned-07", "cp06-owned-08"]
+  },
+  "cost": {
+    "authorized_cap_usd": 3.0,
+    "internal_stop_usd": 2.7,
+    "conservative_accounted_upper_bound_usd": 1.110002,
+    "settled_spend_usd": null,
+    "provider_billing_status": "partial",
+    "provider_billing_refresh_at": "2026-08-14T12:00:00Z",
+    "attempts_total": 15,
+    "attempts_with_billing_records": 5,
+    "billing_records_observed": 5,
+    "partial_billing_amount_usd": 0.11843864619731903,
+    "partial_billing_time_ms": 576188,
+    "retained_volume_usd_per_month_separate": 3.5
+  },
+  "validation": {
+    "focused_typescript_tests": 48,
+    "web_typecheck": "passed",
+    "python_contract_tests": 55,
+    "mage_worker_tests": 16,
+    "worker_test_suites": "passed",
+    "python_lint_after_ruff_format": "passed",
+    "context_validation": "pending_final_handoff_commit",
+    "schema_validation": "pending_final_handoff_commit"
+  },
+  "gates": {
+    "technical_checkpoint": "passed",
+    "visual_quality": "pending_user_review",
+    "GATE_IMAGE_001": "open",
+    "GATE_STYLE_002": "open",
+    "GATE_GPU_001": "open",
+    "GATE_RUNPOD_001": "open",
+    "GATE_COST_001": "open",
+    "model_terms": "ambiguous_user_accepted_risk_no_clear_commercial_permission_claim",
+    "cp07": "unauthorized"
+  }
+}

@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-05 complete provider-free; CP-06 Phase B authorized, pre-mutation
+Status: CP-00 through CP-05 complete; CP-06 technical qualification is `READY_FOR_USER_REVIEW`
 Context schema: `1.5`  
 Last updated: `2026-08-14`
 
@@ -47,7 +47,8 @@ waiting when a lane finishes, delete that exact Pod immediately and prove absenc
 for the other lane or final render. A later waiting entry never recreates a missing Pod early; the
 next active project may recreate it only on the same locked GPU after fresh availability/rate
 revalidation. The session unlocks only after active and waiting work are empty and both Pods are
-proven absent. Both model volumes remain.
+proven absent. Each separately qualified model volume remains; currently only the Mage volume has
+been created.
 
 Production word transcription and final FFmpeg render/probe run as scale-to-zero Cloud Run Jobs
 over private R2. The same pinned media path runs on the Mac only for development parity. The ideal
@@ -59,10 +60,11 @@ four minutes is a comparison baseline, not a measured VideoForge result.
 The earlier Serverless/ephemeral `VF-9-24I` paid retry is superseded and non-executable. It produced
 no MP4. Its evidence, failed attempts, measured costs, and final zero-resource observations remain
 historical truth; its former `$8` ceiling does not authorize the new two-volume/two-Pod lifecycle.
-CP-06 Phase B is authorized only on Sujal RunPod with RTX 4090 at no more than `$0.74/hour`, one
-retained 50 GB STANDARD Mage volume at `$3.50/month`, the exact bounded mutation/download/
-publication/GPU/sample/cleanup scope, and a `$3` cumulative handoff cap. No Echo or production
-promotion is authorized.
+CP-06 Phase B completed only on Sujal RunPod with RTX 4090 at `$0.74/hour`. The exact Mage model is
+prepared on one retained 50 GB STANDARD volume at `$3.50/month`; eight private outputs came from two
+fresh sequential Pods. All Pods, endpoints, templates, and workers are absent. The conservative
+checkpoint account is `$1.110002` under the `$3` cap; RunPod billing remains partial and is not
+misreported as settled. No Echo, new sample run, or production promotion is authorized.
 
 `VF-9-24L` completed the global-shared-MVP audit, every-fifth-frame Ranga recheck, architecture
 reconciliation, and balanced completion roadmap. `VF-9-24K`/`CP-01` then completed at implementation
@@ -131,17 +133,13 @@ The CP-05 proof remains provider-free local Mac/Linux evidence only: no Cloud Ru
 private production R2, hosted Linux media runtime, model download/change, image publication, GPU,
 paid compute, or spend was used or proven. Hosted production proof remains open until CP-08.
 
-`VF-9-24Q` CP-06 Phase A is complete at code commit
-`912427b5bd8a7afb4f68233072990d3c39e64cc6`. Public standard-runner Mage build/smoke run
-`31781650276` and all-lane CI run `31781645263` passed with publication disabled. The `$0`
-preflight derived the exact 13,379,919,280 model bytes and independently verified Sujal's account
-with zero resources. The user subsequently authorized the exact bounded Phase B scope, RTX 4090
-ceiling, retained-volume charge, and `$3` finite-action cap, then explicitly confirmed a 50 GB
-volume at `$3.50/month` to avoid a replacement volume and repeat model load. The final pre-mutation
-recheck still found zero resources and no paid compute.
-
-No VideoForge persistent model volume exists yet. Phase B provisioning/preparation is authorized,
-but must remain fail-closed behind the exact Sujal identity, resource, rate, and spend checks.
+`VF-9-24Q` CP-06 is technically complete and `READY_FOR_USER_REVIEW`. Runtime source commit
+`563ba1ab7b083c1457ab4a9504d82bd6f9d886b9` published immutable digest
+`ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69`
+in successful GitHub run `31796627338`. The exact 13,379,919,280-byte manifest was prepared once on
+the retained volume; missing and wrong-volume boots failed closed; eight 1280x720 PNGs were produced
+across two distinct fresh Pods with 31.755s and 42.144s model-ready times. Sanitized proof is
+`evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json`. Only the user can approve visual quality.
 
 ## Locked active providers
 
@@ -168,7 +166,8 @@ and Echo Long Video CFG remain historical evidence only. They authorize no activ
 - Exactly one active video; waiting entries do no CPU/GPU work until atomic promotion.
 - All admitted users have equal shared access; only waiting queue entries may move or be removed.
 - API-only RunPod control; exact create/delete intent and fail-closed ambiguity reconciliation.
-- At most one disposable Pod per lane initially. Delete Pods; retain the two intended volumes.
+- At most one disposable Pod per lane initially. Delete Pods; CP-06 retains only the qualified Mage
+  volume; the distinct Echo volume does not exist until separately authorized and prepared.
 - Private inputs, outputs, credentials, and model bytes never enter Git or public images.
 - Technical success is `READY_FOR_USER_REVIEW`; only the user approves visual quality.
 

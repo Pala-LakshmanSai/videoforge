@@ -42,8 +42,10 @@ gates:
     blocks: mage_production_profile
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#mage-acceptance-suite"
     owner: VF-9-20
-    last_run: "evidence/acceptance/VF-9-18/mage-quality-matrix"
-    result: open_int8_convrot_1280x720_volume_profile_not_qualified
+    last_run: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
+    result: open_cp06_runtime_passed_user_review_and_40_prompt_300_image_suite_pending
+    checked_at: "2026-08-14T11:52:23.413Z"
+    blocker: "CP-06 proved eight real 1280x720 outputs across two fresh Pods, but only the user can approve visual quality and the required 40-prompt/300-image production quality suite remains unrun."
   GATE_IMAGE_002:
     status: open
     blocks: unambiguous_mage_checkpoint_commercial_permission_claim
@@ -81,8 +83,9 @@ gates:
     blocks: custom_prompt_only_style_claim
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#image-style-analyzer-and-compiler-gate"
     owner: VF-9-20
-    last_run: "evidence/acceptance/VF-9-18/mage-quality-matrix"
-    result: open_no_same_content_five_style_outputs
+    last_run: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
+    result: open_cp06_multiple_styles_are_not_same_content_five_style_proof
+    checked_at: "2026-08-14T11:52:23.413Z"
   GATE_FALLBACK_001:
     status: open
     blocks: automatic_skyreels_dispatch
@@ -96,25 +99,28 @@ gates:
     blocks: selectable_production_execution_profiles
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-pod-and-volume-lifecycle-gate"
     owner: VF-9-20
-    last_run: "evidence/acceptance/VF-9-20/gate-profile-convergence"
-    result: open_no_atomic_global_session_gpu_pair_or_selected_actual_identity_evidence
-    blocker: "No test yet proves idle-only live Mage/Echo selection, atomic first-Generate pair locking under concurrent users, inheritance by later projects, or exact locked-GPU lane recreation without substitution."
+    last_run: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
+    result: open_cp06_exact_mage_4090_identity_passed_full_pair_selection_unproven
+    checked_at: "2026-08-14T11:52:23.413Z"
+    blocker: "CP-06 proved selected-versus-actual RTX 4090 identity for bounded Mage Pods. Idle-only live Mage/Echo selection, atomic pair locking under concurrent users, inheritance, and exact locked-GPU lane recreation remain unproven."
   GATE_RUNPOD_001:
     status: open
     blocks: live_runpod_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-pod-and-volume-lifecycle-gate"
     owner: VF-9-20
-    last_run: "evidence/acceptance/VF-9-20/gate-profile-convergence"
-    result: open_two_volume_one_global_session_lane_lifecycle_not_qualified
-    blocker: "No test yet proves at most one Pod per lane, one-active-video ordered reuse, warm-existing-only waiter retention, independent lane drain/delete, next-activation-only exact-GPU recreation, restart reconciliation, or full-drain zero-Pod/two-retained-volume cleanup."
+    last_run: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
+    result: open_cp06_single_lane_volume_reuse_and_cleanup_passed_full_two_lane_lifecycle_unproven
+    checked_at: "2026-08-14T11:52:23.413Z"
+    blocker: "CP-06 proved exact Mage-volume reuse across two fresh sequential Pods, restart-safe attempt handling, and final zero compute. The two-volume global-session lifecycle, waiter retention, independent lane drain, and full Mage/Echo cleanup remain unproven."
   GATE_COST_001:
     status: open
     blocks: measured_unit_economics_claim
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#production-slo-targets"
     owner: VF-9-20
-    last_run: "evidence/acceptance/VF-9-20/gate-profile-convergence"
-    result: open_no_representative_all_variable_per_video_cost_or_pod_timing_evidence
-    blocker: "The accepted fixed cost of both retained volumes is separate. Representative jobs have not yet proved the 30-minute all-variable per-video target at or below $1, hard MVP ceiling at or below $2, deterministic shared-session attribution, or ideal per-lane model-ready target at or below two minutes."
+    last_run: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
+    result: open_cp06_bounded_cost_and_model_ready_passed_settlement_and_30_minute_video_unproven
+    checked_at: "2026-08-14T11:52:23.413Z"
+    blocker: "CP-06 conservatively accounted $1.110002 under its $3 cap and measured 31.755s/42.144s Mage readiness, but RunPod billing is partial and the representative 30-minute two-lane per-video cost and attribution proof remains unrun."
   GATE_UI_001:
     status: closed
     blocks: visual_system_lock

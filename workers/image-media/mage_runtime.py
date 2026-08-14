@@ -228,7 +228,9 @@ class MageRuntime:
             stop = asyncio.Event()
             sampler = asyncio.create_task(self.sample_peak_vram_used(stop))
             try:
-                result = await asyncio.to_thread(run_inline_job, job, model_root, base_url=COMFY_URL)
+                result = await asyncio.to_thread(
+                    run_inline_job, job, model_root, base_url=COMFY_URL
+                )
             finally:
                 stop.set()
                 peak_vram_used_bytes = await sampler
