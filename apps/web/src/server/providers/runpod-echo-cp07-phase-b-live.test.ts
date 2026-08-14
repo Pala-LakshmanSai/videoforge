@@ -105,17 +105,17 @@ describe("CP-07 invalid Echo volume replacement boundary", () => {
 
 describe("CP-07 cumulative finite-cost boundary", () => {
   it("includes the prior attempt and Pod lifecycle reserve in every reservation", () => {
-    expect(CP07_PRIOR_CONSERVATIVE_SPEND_USD).toBe(5.105727);
+    expect(CP07_PRIOR_CONSERVATIVE_SPEND_USD).toBe(0.5);
     const sample = assertCp07CumulativeReservation(0, 1_200);
     const sampleTwo = assertCp07CumulativeReservation(sample, 1_200);
     const sampleThree = assertCp07CumulativeReservation(sample + sampleTwo, 1_200);
     const cumulative = CP07_PRIOR_CONSERVATIVE_SPEND_USD + sample + sampleTwo + sampleThree;
-    expect(cumulative).toBeCloseTo(5.919727, 6);
-    expect(6 - cumulative).toBeCloseTo(0.080273, 6);
+    expect(cumulative).toBeCloseTo(1.589, 6);
+    expect(6 - cumulative).toBeCloseTo(4.411, 6);
   });
 
   it("rejects a next Pod whose reservation could cross the cumulative cap", () => {
-    expect(() => assertCp07CumulativeReservation(4.88, 60)).toThrow("CP07_CUMULATIVE_CAP_RISK");
+    expect(() => assertCp07CumulativeReservation(5.46, 60)).toThrow("CP07_CUMULATIVE_CAP_RISK");
   });
 
   it.each([
