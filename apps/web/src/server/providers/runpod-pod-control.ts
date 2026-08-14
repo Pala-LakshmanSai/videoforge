@@ -446,8 +446,16 @@ export class RunPodPodControlClient {
         [],
       ),
     );
-    return this.parseCreatedPodWithReadFallback(value, (candidate) =>
-      this.parseMagePod(candidate, input, undefined, "runtime", input.workerToken),
+    return this.parseCreatedPodWithReadFallback(value, (candidate, normalizedRead) =>
+      this.parseMagePod(
+        candidate,
+        input,
+        undefined,
+        "runtime",
+        input.workerToken,
+        input.networkVolumeIdHash,
+        normalizedRead,
+      ),
     );
   }
 
@@ -458,8 +466,16 @@ export class RunPodPodControlClient {
       "/pods",
       magePodBody(input, prepEnvironment(input.networkVolumeId), prepEntrypoint, prepStartCommand),
     );
-    return this.parseCreatedPodWithReadFallback(value, (candidate) =>
-      this.parseMagePod(candidate, input, undefined, "prepare"),
+    return this.parseCreatedPodWithReadFallback(value, (candidate, normalizedRead) =>
+      this.parseMagePod(
+        candidate,
+        input,
+        undefined,
+        "prepare",
+        undefined,
+        input.networkVolumeIdHash,
+        normalizedRead,
+      ),
     );
   }
 
@@ -507,10 +523,10 @@ export class RunPodPodControlClient {
 
   private async parseCreatedPodWithReadFallback<T>(
     createResponse: unknown,
-    parse: (candidate: unknown) => T,
+    parse: (candidate: unknown, normalizedRead: boolean) => T,
   ): Promise<T> {
     try {
-      return parse(createResponse);
+      return parse(createResponse, false);
     } catch (error) {
       if (!(error instanceof RunPodPodControlError) || error.resourceId === undefined) throw error;
       const podId = error.resourceId;
@@ -524,7 +540,7 @@ export class RunPodPodControlClient {
         );
         if (observed !== null) {
           try {
-            return parse(observed);
+            return parse(observed, true);
           } catch (readError) {
             lastError = readError;
           }
@@ -585,7 +601,15 @@ export class RunPodPodControlClient {
           );
         }
         if (mode === "prepare") {
-          return this.parseMagePod(candidate, authority, undefined, "prepare");
+          return this.parseMagePod(
+            candidate,
+            authority,
+            undefined,
+            "prepare",
+            undefined,
+            authority.networkVolumeIdHash,
+            true,
+          );
         }
         if (mode === "negativeMissing") {
           const token = record(record(candidate)?.env)?.VIDEOFORGE_MAGE_WORKER_TOKEN;
@@ -597,7 +621,15 @@ export class RunPodPodControlClient {
         if (mode === "negativeWrongHash") {
           return this.parseWrongVolumeHashNegativePod(candidate, authority);
         }
-        return this.parseMagePod(candidate, authority, undefined, "runtime");
+        return this.parseMagePod(
+          candidate,
+          authority,
+          undefined,
+          "runtime",
+          undefined,
+          authority.networkVolumeIdHash,
+          true,
+        );
       }),
     );
   }
@@ -864,6 +896,7 @@ export class RunPodPodControlClient {
     mode: "runtime" | "prepare" = "runtime",
     expectedWorkerToken?: string,
     expectedEnvironmentVolumeIdHash: string = authority.networkVolumeIdHash,
+    allowNormalizedReadOmissions = false,
   ): RunPodMagePod {
     const value = record(candidate);
     const resourceId = typeof value?.id === "string" && ID.test(value.id) ? value.id : undefined;
@@ -874,6 +907,11 @@ export class RunPodPodControlClient {
     const adjustedCostPerHourUsd = numberOrNull(value?.adjustedCostPerHr);
     const costPerHourUsd = adjustedCostPerHourUsd ?? listedCostPerHourUsd;
     const desiredStatus = value?.desiredStatus;
+    const providerStartedAt = exactIsoTimestamp(value?.lastStartedAt)
+      ? value?.lastStartedAt
+      : allowNormalizedReadOmissions && exactIsoTimestamp(value?.createdAt)
+        ? value?.createdAt
+        : null;
     const expectedEntrypoint = mode === "prepare" ? prepEntrypoint : [];
     const expectedStartCommand = prepStartCommand;
     const environmentConfirmed =
@@ -893,21 +931,43 @@ export class RunPodPodControlClient {
     mismatch("expectedPodId", expectedPodId !== undefined && resourceId !== expectedPodId);
     mismatch("name", value?.name !== authority.name);
     mismatch("templateId", value?.templateId !== authority.templateId);
-    mismatch("image", value?.image !== authority.imageDigest);
+    mismatch(
+      "image",
+      value?.image !== authority.imageDigest &&
+        (!allowNormalizedReadOmissions || value?.imageName !== authority.imageDigest),
+    );
     mismatch(
       "allowedCudaVersions",
       value?.allowedCudaVersions !== undefined &&
         !exactStringArray(value.allowedCudaVersions, ["13.0"]),
     );
     mismatch("dockerEntrypoint", !exactStringArray(value?.dockerEntrypoint, expectedEntrypoint));
-    mismatch("dockerStartCmd", !exactStringArray(value?.dockerStartCmd, expectedStartCommand));
-    mismatch("env", !environmentConfirmed);
-    mismatch("endpointId", value?.endpointId !== null);
-    mismatch("interruptible", value?.interruptible !== false);
+    mismatch(
+      "dockerStartCmd",
+      !exactStringArray(value?.dockerStartCmd, expectedStartCommand) &&
+        (!allowNormalizedReadOmissions || value?.dockerStartCmd !== undefined),
+    );
+    mismatch(
+      "env",
+      !environmentConfirmed && (!allowNormalizedReadOmissions || value?.env !== undefined),
+    );
+    mismatch(
+      "endpointId",
+      value?.endpointId !== null &&
+        (!allowNormalizedReadOmissions || value?.endpointId !== undefined),
+    );
+    mismatch(
+      "interruptible",
+      value?.interruptible !== false &&
+        (!allowNormalizedReadOmissions || value?.interruptible !== undefined),
+    );
     mismatch("volumeInGb", value?.volumeInGb !== 0);
     mismatch("volumeMountPath", value?.volumeMountPath !== CP06_MAGE_NETWORK_VOLUME_MOUNT_PATH);
     mismatch("ports", !exactStringArray(value?.ports, [CP06_MAGE_HTTP_PORT]));
-    mismatch("gpu.count", gpu?.count !== 1);
+    mismatch(
+      "gpu.count",
+      gpu?.count !== 1 && (!allowNormalizedReadOmissions || gpu?.count !== undefined),
+    );
     mismatch("machine.gpuTypeId", machine?.gpuTypeId !== CP06_MAGE_GPU_TYPE_ID);
     mismatch("machine.dataCenterId", machine?.dataCenterId !== CP06_MAGE_DATA_CENTER_ID);
     mismatch("machine.secureCloud", machine?.secureCloud !== true);
@@ -934,7 +994,7 @@ export class RunPodPodControlClient {
       "desiredStatus",
       desiredStatus !== "RUNNING" && desiredStatus !== "EXITED" && desiredStatus !== "TERMINATED",
     );
-    mismatch("lastStartedAt", !exactIsoTimestamp(value?.lastStartedAt));
+    mismatch("lastStartedAt", providerStartedAt === null);
     if (mismatchFields.length > 0) {
       throw new RunPodPodControlError(
         "RUNPOD_MAGE_POD_IDENTITY_UNCONFIRMED",
@@ -950,7 +1010,7 @@ export class RunPodPodControlClient {
       (desiredStatus !== "RUNNING" &&
         desiredStatus !== "EXITED" &&
         desiredStatus !== "TERMINATED") ||
-      typeof value?.lastStartedAt !== "string"
+      typeof providerStartedAt !== "string"
     ) {
       throw new RunPodPodControlError("RUNPOD_MAGE_POD_IDENTITY_UNCONFIRMED", resourceId);
     }
@@ -965,7 +1025,7 @@ export class RunPodPodControlClient {
       gpuTypeId: CP06_MAGE_GPU_TYPE_ID,
       costPerHourUsd,
       desiredStatus,
-      lastStartedAt: value.lastStartedAt,
+      lastStartedAt: providerStartedAt,
     });
   }
 
