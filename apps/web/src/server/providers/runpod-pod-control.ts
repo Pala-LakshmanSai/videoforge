@@ -1181,6 +1181,9 @@ export class RunPodPodControlClient {
       throw new RunPodPodControlError(
         "RUNPOD_MAGE_MISSING_VOLUME_NEGATIVE_UNCONFIRMED",
         resourceId,
+        undefined,
+        undefined,
+        `image:${typeof value?.image}:${String(value?.image)};imageName:${typeof value?.imageName}:${String(value?.imageName)};entrypoint:${typeof value?.dockerEntrypoint};start:${typeof value?.dockerStartCmd};endpoint:${typeof value?.endpointId}:${String(value?.endpointId)};interruptible:${typeof value?.interruptible}:${String(value?.interruptible)};volumeInGb:${typeof value?.volumeInGb}:${String(value?.volumeInGb)};volumeMountPath:${typeof value?.volumeMountPath}:${String(value?.volumeMountPath)};networkVolume:${value?.networkVolume === null ? "null" : typeof value?.networkVolume};gpuCount:${typeof gpu?.count}:${String(gpu?.count)};last:${typeof value?.lastStartedAt}:${String(value?.lastStartedAt)}`,
       );
     }
     return Object.freeze({
