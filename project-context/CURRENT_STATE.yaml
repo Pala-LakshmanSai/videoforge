@@ -130,7 +130,7 @@ repository:
   cp07_fp8_preparation_gpu_fix_commit: "d51c0a1"
   cp07_invalid_volume_replacement_guard_commit: "16cd30a"
   cp07_cumulative_cap_guard_commit: "1310b72"
-  last_good_commit: "5d38739a5f53f6b0e67d6cbf1950ba29c7645061"
+  last_good_commit: "17ad36010f52be3725bb49a9ce6414e350363fb5"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -403,7 +403,7 @@ cp07_phase_a:
   provider_mutations: 49
   local_tests: passed
   canonical_verify: passed
-  canonical_verify_commit: "working_tree_pre_handoff_commit"
+  canonical_verify_commit: "17ad36010f52be3725bb49a9ce6414e350363fb5"
   canonical_verify_checked_at: "2026-08-14T23:29:58Z"
   installed_chrome_tests: 42
   paid_execution_authorized: true
