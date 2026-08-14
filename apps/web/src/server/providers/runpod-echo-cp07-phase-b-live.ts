@@ -17,7 +17,7 @@ export const CP07_GPU_RATE_USD_PER_HOUR = 0.74;
 export const CP07_GPU_VRAM_GB = 24;
 export const CP07_REGION = "EU-RO-1";
 export const CP07_CAP_USD = 6;
-export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 4.994727;
+export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 5.019394;
 export const CP07_POD_LIFECYCLE_RESERVE_SECONDS = 120;
 export const CP07_VOLUME_ATTACHMENT_SETTLE_MS = 30_000;
 export const CP07_CAPACITY_RETRY_DELAY_MS = 30_000;
@@ -455,6 +455,7 @@ class RunPodCp07Client {
   }
 
   async createPod(authority: PodAuthority): Promise<ProviderPod> {
+    const requestedAt = new Date().toISOString();
     const body: JsonRecord = {
       allowedCudaVersions: ["12.8"],
       cloudType: "SECURE",
@@ -521,7 +522,7 @@ class RunPodCp07Client {
           `/pods/${created.id}?includeMachine=true&includeNetworkVolume=true&includeTemplate=true`,
         );
         try {
-          return this.parsePod(read, authority, created.id);
+          return this.parsePod(read, authority, created.id, requestedAt);
         } catch (error) {
           lastError = error;
         }
@@ -534,12 +535,18 @@ class RunPodCp07Client {
     }
   }
 
-  private parsePod(value: unknown, authority: PodAuthority, expectedId: string): ProviderPod {
+  private parsePod(
+    value: unknown,
+    authority: PodAuthority,
+    expectedId: string,
+    requestedAt: string,
+  ): ProviderPod {
     const item = record(value);
     const machine = record(item?.machine);
     const networkVolume = record(item?.networkVolume);
     const cost = finite(item?.adjustedCostPerHr ?? item?.costPerHr);
-    const startedAt = normalizeCp07Timestamp(item?.lastStartedAt ?? item?.createdAt);
+    const providerStartedAt = normalizeCp07Timestamp(item?.lastStartedAt ?? item?.createdAt);
+    const startedAt = providerStartedAt ?? normalizeCp07Timestamp(requestedAt);
     const checks = {
       response_object: item !== null,
       pod_id_match: item?.id === expectedId,
@@ -557,7 +564,7 @@ class RunPodCp07Client {
       network_volume_size_match: networkVolume?.size === CP07_VOLUME_SIZE_GB,
       cost_positive: cost !== null && cost > 0,
       cost_within_rate: cost !== null && cost <= CP07_GPU_RATE_USD_PER_HOUR,
-      started_at_present: startedAt !== null,
+      conservative_billing_start_present: startedAt !== null,
     };
     if (Object.values(checks).some((passed) => !passed)) {
       throw new Cp07PhaseBError("CP07_POD_IDENTITY_MISMATCH", JSON.stringify(checks));
