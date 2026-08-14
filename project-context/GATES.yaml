@@ -8,8 +8,10 @@ gates:
     blocks: avatar_primary_production_profile
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#echomimicv3-flash-exact-avatar-suite"
     owner: VF-9-24
-    last_run: null
-    result: open_echo_fp8_persistent_volume_and_full_exact_avatar_suite_not_qualified
+    last_run: "evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json"
+    result: open_cp07_native_samples_ready_for_user_crop_and_quality_review_full_suite_unrun
+    checked_at: "2026-08-14T23:15:32.540Z"
+    blocker: "Exact native 2/4/6-second Echo Flash Turbo FP8 clips passed technical contracts. User crop/quality review and the later 12-20-clip exact-avatar suite remain open, so no production profile is active."
   GATE_AVATAR_002:
     status: open
     blocks: automatic_global_avatar_primary_demotion
@@ -29,14 +31,14 @@ gates:
     user_risk_acceptance: "2026-08-11: user explicitly directed proceeding with the locked AvatarForcing ladder for YouTube use despite the unresolved terms evidence; no clear-commercial-permission claim is allowed."
     active_effect: historical_nonblocking_no_new_avatarforcing_dispatch
   GATE_AVATAR_004:
-    status: open
+    status: closed
     blocks: echomimic_fp8_persistent_volume_runtime_without_exact_manifest
     acceptance: "08_MODELS_AND_PROVIDERS.md#echomimicv3-flash"
     owner: VF-9-24R
-    last_run: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
-    result: open_cp07_local_artifact_and_offline_contracts_passed_paid_volume_boot_and_samples_pending
-    checked_at: "2026-08-14T15:38:43.448Z"
-    blocker: "The exact local prepared-artifact, manifest, offline-boot, real-warm-up, short-span, scratch, and immutable-image contracts pass. The image is unpublished and no Echo volume, prepared artifact, real Pod boot, or 2/4/6-second MP4 exists yet."
+    last_run: "evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json"
+    result: pass_exact_manifest_sealed_echo_volume_offline_boot_real_warmup_and_native_samples
+    checked_at: "2026-08-14T23:15:32.540Z"
+    closed_at: "2026-08-14T23:15:32.540Z"
   GATE_IMAGE_001:
     status: open
     blocks: mage_production_profile
@@ -99,28 +101,28 @@ gates:
     blocks: selectable_production_execution_profiles
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-pod-and-volume-lifecycle-gate"
     owner: VF-9-20
-    last_run: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
-    result: open_cp07_live_eu_ro_1_echo_choices_read_only_model_fit_and_pair_lock_unproven
-    checked_at: "2026-08-14T15:38:43.448Z"
-    blocker: "CP-06 proved selected-versus-actual RTX 4090 identity for Mage. CP-07 found three current Secure EU-RO-1 Echo candidates, but Echo model fit, real warm-up, user GPU selection, atomic pair locking, inheritance, and locked-GPU recreation remain unproven."
+    last_run: "evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json"
+    result: open_mage_4090_and_echo_5090_fit_proven_pair_lock_and_session_recreation_unproven
+    checked_at: "2026-08-14T23:15:32.540Z"
+    blocker: "CP-06 proved Mage RTX 4090 identity; CP-07 proved Echo RTX 5090 identity, 32 GB fit with stage offload, offline warm-up, and fresh-Pod samples. Atomic pair locking, inheritance, and next-session exact recreation remain unproven."
   GATE_RUNPOD_001:
     status: open
     blocks: live_runpod_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-pod-and-volume-lifecycle-gate"
     owner: VF-9-20
-    last_run: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
-    result: open_cp07_zero_compute_one_mage_volume_confirmed_echo_lifecycle_unproven
-    checked_at: "2026-08-14T15:38:43.448Z"
-    blocker: "The read-only CP-07 audit confirms zero compute, exactly one retained 50 GB Mage volume, and no Echo volume. Echo image publication, isolated volume preparation, fresh-Pod sample lifecycle, final zero-Pod/two-volume proof, and the full two-lane session lifecycle remain unproven."
+    last_run: "evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json"
+    result: open_two_isolated_volumes_and_fresh_echo_pod_lifecycle_proven_full_global_session_unproven
+    checked_at: "2026-08-14T23:15:32.540Z"
+    blocker: "CP-07 proved immutable Echo publication, isolated sealed volume preparation, fresh-Pod 2/4/6 lifecycle, exact cleanup, and zero-Pod/two-volume final state. The full two-lane global-session waiter and independent-lane behavior remain unproven."
   GATE_COST_001:
     status: open
     blocks: measured_unit_economics_claim
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#production-slo-targets"
     owner: VF-9-20
-    last_run: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
-    result: open_cp07_current_rates_and_retention_price_known_paid_timings_and_settlement_unproven
-    checked_at: "2026-08-14T15:38:43.448Z"
-    blocker: "CP-06 settled at $0.34927155333571136. CP-07 current GPU rates and the $3.50/month proposed 50 GB Echo retention rate are pinned at $0 preflight cost, but paid preparation/sample timings, settled finite cost, and representative 30-minute two-lane economics remain unproven."
+    last_run: "evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json"
+    result: open_cp07_bounded_cost_under_cap_last_sample_settlement_and_representative_two_lane_economics_pending
+    checked_at: "2026-08-14T23:31:35.811Z"
+    blocker: "CP-07 has $1.114263966170256 settled plus a $0.279125 conservative last-sample bound under the $6 cap, and the retained Echo volume is $3.50/month. Final billing settlement and representative 30-minute two-lane cost attribution remain open."
   GATE_UI_001:
     status: closed
     blocks: visual_system_lock

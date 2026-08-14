@@ -1,0 +1,132 @@
+{
+  "schema_version": "videoforge.cp07-final-qualification/v1",
+  "checkpoint": "CP-07",
+  "status": "technical_qualification_passed_crop_user_review_pending",
+  "checked_at": "2026-08-14T23:29:29.812Z",
+  "runtime_profile": {
+    "id": "videoforge_echo_v3_flash_turbo_fp8_v1",
+    "label": "EchoMimicV3-Flash Turbo FP8",
+    "upstream_turbo_checkpoint_claimed": false,
+    "precision": "float8_e4m3fn_dynamic_activation_weight",
+    "inference_steps": 8,
+    "fps": 25
+  },
+  "lineage": {
+    "source_revision": "antgroup/echomimic_v3@7e89489ca51c0d008fc1963ec6c03fc5bd0b9397",
+    "flash_revision": "BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249",
+    "flash_safetensors_sha256": "sha256:5ebdbb2fc709108bf2a1728fd92eb2874804e4bc0324e92a2cd55425968c85a4",
+    "wan_revision": "alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP@fc913c34361f4ec879e2f9c78b4f11ae50a937d1",
+    "audio_revision": "TencentGameMate/chinese-wav2vec2-base@3991242c806928916fff4a8c0e4f76acf661b743"
+  },
+  "immutable_image": {
+    "source_commit": "7b6647ab4bc0265ad6ae4c9bdc30a98259ce380e",
+    "publication_run_id": 31846645317,
+    "digest": "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:2da621771387ca52a8110d0f94c86dda1d140ec584bea86ddecfda263f5406fe"
+  },
+  "volume": {
+    "region": "EU-RO-1",
+    "size_gb": 50,
+    "id_sha256": "sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f",
+    "manifest_sha256": "sha256:c868241d1c6ebee2645c41161d00e046839eaaafa7b994c340d8d010202098c8",
+    "ordinary_boot_downloaded_model_bytes": 0,
+    "ordinary_boot_material_quantization_performed": false,
+    "ordinary_boot_registry_access_allowed": false,
+    "ongoing_retention_usd_per_month": 3.5
+  },
+  "gpu": {
+    "offering_id": "NVIDIA GeForce RTX 5090",
+    "actual_name": "NVIDIA GeForce RTX 5090",
+    "region": "EU-RO-1",
+    "secure_cloud": true,
+    "rate_usd_per_hour": 0.99,
+    "advertised_vram_gb": 32,
+    "observed_total_memory_bytes": 33680326656,
+    "compute_capability": "12.0",
+    "torch_version": "2.7.1+cu128",
+    "cuda_version": "12.8"
+  },
+  "samples": [
+    {
+      "duration_seconds": 2,
+      "path": "outputs/cp07-echo-flash-turbo-fp8/cp07-owned-2s/cp07-owned-2s.mp4",
+      "sha256": "sha256:cad08d84a9ae563cd9edf7b08eec638c9278adf4d0f1173a492f3da2e40f6a51",
+      "bytes": 316199,
+      "width": 1024,
+      "height": 560,
+      "fps": 25,
+      "video_duration_ms": 2000,
+      "audio_duration_ms": 2000,
+      "av_duration_delta_ms": 0,
+      "volume_verify_ms": 32594,
+      "model_load_ms": 49547,
+      "real_warmup_ms": 26867,
+      "model_ready_to_local_output_ms": 159456
+    },
+    {
+      "duration_seconds": 4,
+      "path": "outputs/cp07-echo-flash-turbo-fp8/cp07-owned-4s/cp07-owned-4s.mp4",
+      "sha256": "sha256:686b2eef4d2f1281b36779940b24531d5446c5852aac64a5bde6ab1884dae5df",
+      "bytes": 603056,
+      "width": 1024,
+      "height": 560,
+      "fps": 25,
+      "video_duration_ms": 4000,
+      "audio_duration_ms": 4000,
+      "av_duration_delta_ms": 0,
+      "volume_verify_ms": 34252,
+      "model_load_ms": 49318,
+      "real_warmup_ms": 26725,
+      "model_ready_to_local_output_ms": 411692
+    },
+    {
+      "duration_seconds": 6,
+      "path": "outputs/cp07-echo-flash-turbo-fp8/cp07-owned-6s/cp07-owned-6s.mp4",
+      "sha256": "sha256:057650dd5e4f2fe59100e8cc7f925427ec991599e15947317fd314980ee103b1",
+      "bytes": 732892,
+      "width": 1024,
+      "height": 560,
+      "fps": 25,
+      "video_duration_ms": 6000,
+      "audio_duration_ms": 6000,
+      "av_duration_delta_ms": 0,
+      "volume_verify_ms": 33004,
+      "model_load_ms": 67033,
+      "real_warmup_ms": 27078,
+      "worker_inference_ms": 812904,
+      "worker_request_total_ms": 813300,
+      "model_ready_to_local_output_ms": 817112
+    }
+  ],
+  "cost": {
+    "finite_cap_usd": 6,
+    "settled_snapshot_usd": 1.114263966170256,
+    "settled_snapshot_records": 20,
+    "settled_snapshot_checked_at": "2026-08-14T23:31:35.811Z",
+    "last_sample_settlement_pending": true,
+    "last_sample_conservative_elapsed_upper_bound_usd": 0.279125,
+    "cumulative_conservative_upper_bound_usd": 1.5791250000000001,
+    "ongoing_volume_billing_excluded": true
+  },
+  "resource_audit": {
+    "pods": 0,
+    "private_templates": 0,
+    "endpoints": 0,
+    "active_serverless_workers": 0,
+    "network_volumes": 2,
+    "mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "echo_volume_id_sha256": "sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f"
+  },
+  "crop_proposal": {
+    "native_geometry": "1024x560",
+    "full_16_9": {
+      "crop": "992:558:16:0",
+      "scale": "1920:1080"
+    },
+    "split_8_9": {
+      "crop": "496:558:280:0",
+      "scale": "960:1080"
+    },
+    "activated": false,
+    "required_next_action": "user_review_and_explicit_approval"
+  }
+}

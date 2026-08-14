@@ -5,10 +5,11 @@ last_updated: "2026-08-14"
 source_of_truth: project-context
 # CP-00 through CP-06 are complete. CP-06 settled at $0.34927155333571136 under its $3 cap, the
 # user accepted visual quality, and the live read-only re-audit proved zero compute plus exactly the
-# intended retained 50 GB Mage volume. CP-07 published its immutable Echo image and created the
-# approved retained 50 GB Echo volume, then halted before samples because the first preparation
-# terminal result was invalid. The provider-free CUDA-preparation correction is green; revised
-# delete/recreate/image-publish authority is pending. Zero Pods/templates/endpoints/workers remain.
+# intended retained 50 GB Mage volume. CP-07 prepared and sealed the isolated 50 GB Echo volume,
+# published the final immutable Echo Flash Turbo FP8 image, and produced exact native 2/4/6-second
+# samples on fresh RTX 5090 Pods. Zero Pods/templates/endpoints/workers remain and both intended
+# volumes are retained. Technical qualification passed; renderer crops remain inactive pending the
+# user's review and explicit approval.
 current_selected_profile: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
 current_selected_brief: tasks/VF-9-24R.md
 
@@ -210,7 +211,6 @@ open_gates:
   GATE_AVATAR_001: echomimic_v3_flash_exact_avatar_fit_speed_quality
   GATE_AVATAR_002: global_rejection_threshold_to_be_set_after_bakeoff
   GATE_AVATAR_003: historical_avatarforcing_commercial_license
-  GATE_AVATAR_004: verify_echomimic_source_weights_license_and_runtime_manifest
   GATE_IMAGE_001: reproduce_mage_speed_and_quality
   GATE_IMAGE_002: exact_checkpoint_terms_risk_user_accepted
   GATE_STYLE_002: verify_mage_adherence_across_styles
@@ -220,6 +220,7 @@ open_gates:
   GATE_COST_001: measure_boot_generation_cpu_and_delete_cost
 
 closed_gates:
+  GATE_AVATAR_004: exact_echo_fp8_manifest_offline_boot_and_samples_qualified_2026_08_14
   GATE_UI_001: user_approved_live_chrome_shell_2026_08_09
   GATE_LLM_001: runware_deepseek_0731_qualified_2026_08_11
   GATE_STYLE_001: runware_gemini_style_analysis_qualified_2026_08_11

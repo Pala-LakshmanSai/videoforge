@@ -65,10 +65,9 @@ Every row below is `APPROVED` by the user and recorded in this planning session 
 
 | ID | Evidence needed | Consequence |
 |---|---|---|
-| `GATE_AVATAR_001` | **OPEN:** one native EchoMimicV3-Flash Elias sample and the later 12–20-clip exact-avatar suite remain unreviewed/unrun | No EchoMimicV3-Flash production profile |
+| `GATE_AVATAR_001` | **OPEN — READY FOR USER REVIEW:** exact native 2/4/6-second EchoMimicV3-Flash Turbo FP8 Elias samples passed technical contracts; user crop/quality review and the later 12–20-clip exact-avatar suite remain | No EchoMimicV3-Flash production profile |
 | `GATE_AVATAR_002` | **OPEN:** user has not approved a global Echo rejection/demotion threshold after full bakeoff | No automatic global demotion behavior; no fallback is active |
 | `GATE_AVATAR_003` | **OPEN — HISTORICAL/NONBLOCKING:** pinned AvatarForcing code README says Apache-2.0; pinned root `LICENSE.txt` names RollingForcing and prohibits commercial/production use; pinned public weights card has no license. Evidence: `evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license/` | Blocks only claims that historical AvatarForcing commercial permission was unambiguous; authorizes no dispatch and does not block Echo work |
-| `GATE_AVATAR_004` | **OPEN — PREFLIGHT PASS:** exact Echo source, Flash weights, Wan base, and audio encoder revisions are public, ungated, and license-pinned; the separate Echo FP8 persistent-volume artifact/manifest and offline normal boot are not yet qualified | Blocks an Echo production profile until one-time preparation, exact checksum verification, no-cross-mount enforcement, and offline Pod boot reproduce the approved runtime |
 | `GATE_IMAGE_001` | **OPEN:** CP-06 proved eight exact Mage INT8 ConvRot/4-step/guidance-1/1280×720 outputs across two fresh Pods, but user quality review and the 40-prompt/300-image suite remain | No Mage production profile |
 | `GATE_IMAGE_002` | **OPEN — USER-ACCEPTED RISK:** public Comfy-Org weights/revision are now exact and accessible; historical Microsoft terms remain ambiguous | Does not block qualification, but blocks any VideoForge claim that Mage commercial permission is unambiguous |
 | `GATE_STYLE_002` | **OPEN:** CP-06 covered multiple styles but did not generate the same content across default plus four styles | Prompt-only style adherence remains unproven |
@@ -84,6 +83,7 @@ Every row below is `APPROVED` by the user and recorded in this planning session 
 | `GATE_UI_001` | **PASS** — the user explicitly accepted the final medium/minimal fixture shell on 2026-08-09; the approved visual system is frozen unless later user feedback or a verified regression reopens it | `evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit/` |
 | `GATE_LLM_001` | **PASS** — live Runware model search resolved canonical AIR `deepseek:v4@flash` to `DeepSeek-V4-Flash-0731`; 40 strict-schema scenes across five styles passed exact IDs, roles, literal anchors, forbidden-output checks, and the cost target | `evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification/` |
 | `GATE_STYLE_001` | **PASS** — canonical AIR `google:gemini@3.5-flash` passed seven owned/synthetic multi-reference sets for strict exact-shape output, canonical semantic validation, content separation, uncertainty/outliers, alias binding, crop guidance, bounded retry, latency, privacy disclosure, and cost | `evidence/gates/GATE_STYLE_001/2026-08-10-runware-gemini-style-qualification/` |
+| `GATE_AVATAR_004` | **PASS** — exact pinned Echo Flash/Wan/audio lineage was prepared into the owned FP8 artifact, sealed on the isolated 50 GB Echo volume, loaded offline with no runtime download or quantization, passed real warm-up, and produced native 2/4/6-second clips | `evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json` |
 
 ## Proposed values and approved targets awaiting evidence
 

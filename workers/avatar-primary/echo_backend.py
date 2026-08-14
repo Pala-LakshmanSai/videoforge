@@ -144,8 +144,7 @@ class EchoPreparedBackend:
             stream.setsampwidth(2)
             stream.setframerate(16_000)
             samples = [
-                int(1_200 * math.sin(2 * math.pi * 220 * index / 16_000))
-                for index in range(16_000)
+                int(1_200 * math.sin(2 * math.pi * 220 * index / 16_000)) for index in range(16_000)
             ]
             stream.writeframes(struct.pack("<16000h", *samples))
         self.generate(

@@ -148,18 +148,18 @@ class Cp07WorkerTest(unittest.TestCase):
 
     def test_runtime_uses_an_explicit_single_cuda_device_for_fp8_restore(self) -> None:
         source = (ROOT / "echo_backend.py").read_text()
-        self.assertIn('torch.cuda.device_count() != 1', source)
+        self.assertIn("torch.cuda.device_count() != 1", source)
         self.assertIn('torch.device("cuda", torch.cuda.current_device())', source)
 
     def test_real_warmup_audio_exceeds_loudness_block_and_is_not_silent(self) -> None:
         source = (ROOT / "echo_backend.py").read_text()
-        self.assertIn('for index in range(16_000)', source)
-        self.assertIn('math.sin(2 * math.pi * 220', source)
+        self.assertIn("for index in range(16_000)", source)
+        self.assertIn("math.sin(2 * math.pi * 220", source)
 
     def test_qualification_uses_submit_and_poll_for_long_gpu_inference(self) -> None:
         source = (ROOT / "echo_api.py").read_text()
-        self.assertIn('asyncio.create_task(_run_generation(job_id, value))', source)
-        self.assertIn('videoforge.echo-qualification-accepted/v1', source)
+        self.assertIn("asyncio.create_task(_run_generation(job_id, value))", source)
+        self.assertIn("videoforge.echo-qualification-accepted/v1", source)
         self.assertIn('@app.get("/generate/{job_id}")', source)
 
     def test_fp8_preparation_requires_cuda_89_or_newer(self) -> None:
