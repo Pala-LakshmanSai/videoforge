@@ -33,7 +33,11 @@ sys.modules.setdefault("fastapi", types.SimpleNamespace(FastAPI=_FakeFastApi))
 import echo_prepare_service as prepare_service  # noqa: E402
 from echo_job import EchoQualificationJob  # noqa: E402
 from echo_runtime import EchoRuntime  # noqa: E402
-from prepare_echo_volume import CONFIRMATION, prepare  # noqa: E402
+from prepare_echo_volume import (  # noqa: E402
+    CONFIRMATION,
+    preparation_download_environment,
+    prepare,
+)
 from prepare_fp8_artifact import require_fp8_preparation_device  # noqa: E402
 from scratch import create_scratch  # noqa: E402
 from span_contract import EchoSpanJob, inference_frame_count, trim_filter, validate_output_probe  # noqa: E402
@@ -222,6 +226,26 @@ class Cp07WorkerTest(unittest.TestCase):
                         confirmation=CONFIRMATION,
                     )
 
+    def test_preparation_clears_import_time_offline_flags_only_inside_exact_mode(self) -> None:
+        names = ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE", "DIFFUSERS_OFFLINE")
+        with patch.dict(
+            os.environ,
+            {
+                "VIDEOFORGE_ECHO_PREPARATION": "1",
+                **{name: "1" for name in names},
+            },
+            clear=True,
+        ):
+            with preparation_download_environment():
+                for name in names:
+                    self.assertNotIn(name, os.environ)
+            for name in names:
+                self.assertEqual(os.environ[name], "1")
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "ECHO_PREPARATION_MODE_REQUIRED"):
+                with preparation_download_environment():
+                    pass
+
     def test_preparation_service_exposes_only_hashed_volume_identity(self) -> None:
         marker = {"manifest_sha256": "sha256:" + "f" * 64}
         with (
@@ -261,6 +285,7 @@ class Cp07WorkerTest(unittest.TestCase):
             "@sha256:c16f4c749e2d9e96878875cdf6cc45cddda1d1a36fddd371dd6f2360f1b6e2a2", dockerfile
         )
         self.assertIn("HF_HUB_OFFLINE=1", dockerfile)
+        self.assertIn("enable_preparation_downloads()", active)
         self.assertIn(
             "PYTHONPATH=/opt/videoforge:/opt/videoforge/src:/opt/echomimic_v3", dockerfile
         )

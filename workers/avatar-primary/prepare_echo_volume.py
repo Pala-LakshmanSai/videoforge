@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import shutil
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -60,6 +61,25 @@ REPOSITORIES = (
         ["config.json", "preprocessor_config.json", "pytorch_model.bin"],
     ),
 )
+OFFLINE_ENVIRONMENT = ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE", "DIFFUSERS_OFFLINE")
+
+
+@contextmanager
+def preparation_download_environment():
+    """Expose networked model preparation only inside the exact preparation process."""
+    if os.environ.get("VIDEOFORGE_ECHO_PREPARATION") != "1":
+        raise RuntimeError("ECHO_PREPARATION_MODE_REQUIRED")
+    previous = {name: os.environ.get(name) for name in OFFLINE_ENVIRONMENT}
+    try:
+        for name in OFFLINE_ENVIRONMENT:
+            os.environ.pop(name, None)
+        yield
+    finally:
+        for name, value in previous.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
 
 
 def _volume_hash(volume_id: str) -> str:
@@ -107,14 +127,11 @@ def prepare(
         return verify_model_root(model_root, expected_volume_id_hash=volume_id_hash)
     if any(model_root.iterdir()):
         raise RuntimeError("ECHO_VOLUME_NOT_EMPTY")
-    try:
-        from huggingface_hub import snapshot_download
-    except Exception as error:
-        raise RuntimeError("ECHO_PREPARATION_DOWNLOAD_TOOL_UNAVAILABLE") from error
-    previous = {name: os.environ.get(name) for name in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE")}
-    try:
-        os.environ["HF_HUB_OFFLINE"] = "0"
-        os.environ["TRANSFORMERS_OFFLINE"] = "0"
+    with preparation_download_environment():
+        try:
+            from huggingface_hub import snapshot_download
+        except Exception as error:
+            raise RuntimeError("ECHO_PREPARATION_DOWNLOAD_TOOL_UNAVAILABLE") from error
         for repository, revision, relative, patterns in REPOSITORIES:
             snapshot_download(
                 repo_id=repository,
@@ -136,12 +153,6 @@ def prepare(
             ):
                 raise RuntimeError("ECHO_PREPARATION_SOURCE_MISMATCH")
         report = prepare_fp8_artifact(model_root)
-    finally:
-        for name, value in previous.items():
-            if value is None:
-                os.environ.pop(name, None)
-            else:
-                os.environ[name] = value
     files = _collect_files(model_root)
     indexed = {str(item["path"]): item for item in files}
     actual_source_bytes = sum(int(item["bytes"]) for item in files if item["role"] == "source")
