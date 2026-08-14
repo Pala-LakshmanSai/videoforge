@@ -10,7 +10,10 @@ import {
   CP06_PHASE_B_EXTERNAL_CAP_USD,
   CP06_PHASE_B_GPU,
   CP06_PHASE_B_INTERNAL_STOP_USD,
+  CP06_PHASE_B_COMFYUI_REVISION,
+  CP06_PHASE_B_MODEL_ID,
   CP06_PHASE_B_MODEL_BYTES,
+  CP06_PHASE_B_MODEL_REVISION,
   CP06_PHASE_B_REGION,
   CP06_PHASE_B_TEMPLATE_NAME,
   CP06_PHASE_B_VOLUME_NAME,
@@ -363,6 +366,28 @@ describe("CP-06 Phase B Pod orchestrator", () => {
     );
     expect(new Set(evidence.samples.map((sample) => sample.podIdHash)).size).toBe(2);
     expect(port.calls.filter((call) => call === "sample-spend-guard")).toHaveLength(8);
+    expect(evidence.model).toEqual({
+      id: CP06_PHASE_B_MODEL_ID,
+      revision: CP06_PHASE_B_MODEL_REVISION,
+      precision: "int8-convrot",
+      comfyUiRevision: CP06_PHASE_B_COMFYUI_REVISION,
+    });
+    expect(evidence.positivePodReadiness).toEqual([
+      expect.objectContaining({
+        modelReadyMs: 93_000,
+        readyPeakVramBytes: 20_000_000_000,
+        measurementStatus: "measured",
+      }),
+      expect.objectContaining({
+        modelReadyMs: 93_000,
+        readyPeakVramBytes: 20_000_000_000,
+        measurementStatus: "measured",
+      }),
+    ]);
+    expect(evidence.attempts.every((attempt) => attempt.timingStatus === "measured")).toBe(true);
+    expect(
+      evidence.attempts.every((attempt) => attempt.createMs !== null && attempt.deleteMs !== null),
+    ).toBe(true);
     expect(port.pods).toEqual([]);
     expect(port.templates).toEqual([]);
     expect(port.volumes).toHaveLength(1);
@@ -444,6 +469,49 @@ describe("CP-06 Phase B Pod orchestrator", () => {
 
     expect(port.calls.slice(0, 3)).toEqual(["account", "offering", "inventory"]);
     expect(port.calls).not.toContain("create-volume");
+  });
+
+  it("hydrates legacy completed evidence without fabricating unavailable ready metrics", async () => {
+    const { journalPath } = await fixture();
+    const port = new FakePodPort();
+    await runCp06MagePhaseB(port, config(journalPath));
+    const records = (await readFile(journalPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .filter((record) => record.event !== "model_ready_confirmed");
+    const handoff = records.find((record) => record.event === "handoff_complete");
+    const legacyEvidence = handoff?.evidence as Record<string, unknown>;
+    delete legacyEvidence.model;
+    delete legacyEvidence.positivePodReadiness;
+    for (const attempt of legacyEvidence.attempts as Record<string, unknown>[]) {
+      delete attempt.createMs;
+      delete attempt.deleteMs;
+      delete attempt.timingStatus;
+    }
+    records.forEach((record, index) => {
+      record.sequence = index + 1;
+    });
+    await writeFile(journalPath, `${records.map((record) => JSON.stringify(record)).join("\n")}\n`);
+    port.calls.length = 0;
+
+    const evidence = await runCp06MagePhaseB(port, config(journalPath));
+
+    expect(evidence.model.revision).toBe(CP06_PHASE_B_MODEL_REVISION);
+    expect(evidence.positivePodReadiness).toEqual([
+      expect.objectContaining({
+        modelReadyMs: null,
+        readyPeakVramBytes: null,
+        measurementStatus: "unavailable_legacy_journal",
+      }),
+      expect.objectContaining({
+        modelReadyMs: null,
+        readyPeakVramBytes: null,
+        measurementStatus: "unavailable_legacy_journal",
+      }),
+    ]);
+    expect(evidence.attempts.every((attempt) => attempt.timingStatus === "measured")).toBe(true);
+    expect(port.calls.slice(0, 3)).toEqual(["account", "offering", "inventory"]);
   });
 
   it("records conservative cost and completes cleanup when provider billing lags", async () => {

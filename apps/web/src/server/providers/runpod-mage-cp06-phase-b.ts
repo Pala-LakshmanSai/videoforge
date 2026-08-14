@@ -14,6 +14,7 @@ export const CP06_PHASE_B_VOLUME_SIZE_GB = 50;
 export const CP06_PHASE_B_VOLUME_RATE_USD_PER_GB_MONTH = 0.07;
 export const CP06_PHASE_B_VOLUME_NAME = "videoforge-mage-cp06-model-volume-eu-ro-1-50gb";
 export const CP06_PHASE_B_TEMPLATE_NAME = "videoforge-mage-cp06-template";
+export const CP06_PHASE_B_MODEL_ID = "Comfy-Org/Mage-Flow";
 export const CP06_PHASE_B_MODEL_REVISION = "d8c99241f6fa80fbd453014234af2bf337ea21e6";
 export const CP06_PHASE_B_COMFYUI_REVISION = "26d7f8556822d9d08c2d3e1878636ac3b4969af9";
 export const CP06_PHASE_B_MODEL_BYTES = 13_379_919_280;
@@ -368,6 +369,12 @@ export interface Cp06PhaseBEvidence {
   readonly gpu: typeof CP06_PHASE_B_GPU;
   readonly region: typeof CP06_PHASE_B_REGION;
   readonly rateUsdPerHour: number;
+  readonly model: {
+    readonly id: typeof CP06_PHASE_B_MODEL_ID;
+    readonly revision: typeof CP06_PHASE_B_MODEL_REVISION;
+    readonly precision: "int8-convrot";
+    readonly comfyUiRevision: typeof CP06_PHASE_B_COMFYUI_REVISION;
+  };
   readonly volume: {
     readonly idHash: Hash;
     readonly name: typeof CP06_PHASE_B_VOLUME_NAME;
@@ -383,6 +390,16 @@ export interface Cp06PhaseBEvidence {
     readonly accountedCostUsd: number;
     readonly settledCostUsd: number | null;
     readonly costBasis: "settled" | "conservative_elapsed";
+    readonly createMs: number | null;
+    readonly deleteMs: number | null;
+    readonly timingStatus: "measured" | "unavailable_legacy_journal";
+  }[];
+  readonly positivePodReadiness: readonly {
+    readonly attemptId: string;
+    readonly podIdHash: Hash;
+    readonly modelReadyMs: number | null;
+    readonly readyPeakVramBytes: number | null;
+    readonly measurementStatus: "measured" | "unavailable_legacy_journal";
   }[];
   readonly samples: readonly Cp06SanitizedSampleEvidence[];
   readonly contactSheet: Cp06ContactSheetResult;
@@ -949,6 +966,120 @@ const journalStageEvidence = (journal: Cp06IntentAttemptJournal, stage: string):
   journal.all().find((record) => record.event === "stage_complete" && record.stage === stage)
     ?.evidence;
 
+const journalDurationMs = (start: JournalRecord | undefined, end: JournalRecord): number | null => {
+  if (start === undefined) return null;
+  const startMs = new Date(start.at).getTime();
+  const endMs = new Date(end.at).getTime();
+  const duration = endMs - startMs;
+  return Number.isSafeInteger(duration) && duration >= 0 ? duration : null;
+};
+
+const attemptEvidenceFromJournal = (
+  journal: Cp06IntentAttemptJournal,
+): Cp06PhaseBEvidence["attempts"] => {
+  const records = journal.all();
+  return records
+    .map((record, absenceIndex) => ({ record, absenceIndex }))
+    .filter(({ record }) => record.event === "pod_absence_confirmed")
+    .map(({ record, absenceIndex }) => {
+      const preceding = records.slice(0, absenceIndex + 1);
+      const acknowledged = [...preceding]
+        .reverse()
+        .find(
+          (candidate) =>
+            candidate.event === "pod_create_acknowledged" && candidate.podId === record.podId,
+        );
+      const createIntent = [...preceding]
+        .reverse()
+        .find(
+          (candidate) =>
+            candidate.event === "pod_create_intent" &&
+            candidate.attemptId === record.attemptId &&
+            candidate.sequence < (acknowledged?.sequence ?? Number.POSITIVE_INFINITY),
+        );
+      const deleteIntent = [...preceding]
+        .reverse()
+        .find(
+          (candidate) =>
+            candidate.event === "pod_delete_intent" && candidate.podId === record.podId,
+        );
+      const createMs = acknowledged ? journalDurationMs(createIntent, acknowledged) : null;
+      const deleteMs = journalDurationMs(deleteIntent, record);
+      const settledCostMicroUsd =
+        record.settledCostMicroUsd === null || record.settledCostMicroUsd === undefined
+          ? null
+          : Number(record.settledCostMicroUsd);
+      return {
+        attemptId: String(record.attemptId),
+        role: record.role as AttemptRole,
+        podIdHash: String(record.podIdHash) as Hash,
+        accountedCostUsd:
+          Number(record.accountedCostMicroUsd ?? record.settledCostMicroUsd ?? 0) / 1_000_000,
+        settledCostUsd: settledCostMicroUsd === null ? null : settledCostMicroUsd / 1_000_000,
+        costBasis: (record.costBasis ??
+          (settledCostMicroUsd === null ? "conservative_elapsed" : "settled")) as
+          | "settled"
+          | "conservative_elapsed",
+        createMs,
+        deleteMs,
+        timingStatus:
+          createMs === null || deleteMs === null ? "unavailable_legacy_journal" : "measured",
+      } as const;
+    })
+    .filter(
+      (attempt, index, attempts) =>
+        attempts.findIndex((candidate) => candidate.podIdHash === attempt.podIdHash) === index,
+    );
+};
+
+const readinessEvidenceFromJournal = (
+  journal: Cp06IntentAttemptJournal,
+  samples: readonly Cp06SanitizedSampleEvidence[],
+): Cp06PhaseBEvidence["positivePodReadiness"] =>
+  (["positive1", "positive2"] as const).map((role, index) => {
+    const podIdHash = samples[index * 4]?.podIdHash;
+    if (!podIdHash) throw new Cp06PhaseBError("CP06_SAMPLE_MATRIX_INCOMPLETE");
+    const ready = [...journal.all()]
+      .reverse()
+      .find(
+        (record) =>
+          record.event === "model_ready_confirmed" &&
+          record.attemptId === CP06_PHASE_B_ATTEMPTS[role].attemptId &&
+          record.podIdHash === podIdHash,
+      );
+    const modelReadyMs = Number(ready?.modelReadyMs);
+    const readyPeakVramBytes = Number(ready?.readyPeakVramBytes);
+    const measured =
+      ready !== undefined &&
+      Number.isSafeInteger(modelReadyMs) &&
+      modelReadyMs > 0 &&
+      Number.isSafeInteger(readyPeakVramBytes) &&
+      readyPeakVramBytes > 0;
+    return {
+      attemptId: CP06_PHASE_B_ATTEMPTS[role].attemptId,
+      podIdHash,
+      modelReadyMs: measured ? modelReadyMs : null,
+      readyPeakVramBytes: measured ? readyPeakVramBytes : null,
+      measurementStatus: measured ? "measured" : "unavailable_legacy_journal",
+    } as const;
+  });
+
+const enrichEvidenceFromJournal = (
+  evidence: Omit<Cp06PhaseBEvidence, "model" | "attempts" | "positivePodReadiness"> &
+    Partial<Pick<Cp06PhaseBEvidence, "model" | "attempts" | "positivePodReadiness">>,
+  journal: Cp06IntentAttemptJournal,
+): Cp06PhaseBEvidence => ({
+  ...evidence,
+  model: {
+    id: CP06_PHASE_B_MODEL_ID,
+    revision: CP06_PHASE_B_MODEL_REVISION,
+    precision: "int8-convrot",
+    comfyUiRevision: CP06_PHASE_B_COMFYUI_REVISION,
+  },
+  attempts: attemptEvidenceFromJournal(journal),
+  positivePodReadiness: readinessEvidenceFromJournal(journal, evidence.samples),
+});
+
 const hasUnresolvedCreateIntent = (
   journal: Cp06IntentAttemptJournal,
   intentEvent: string,
@@ -968,6 +1099,7 @@ const assertCompletedHandoff = (
   value: unknown,
   config: Cp06PhaseBConfig,
   inventory: Cp06InventoryObservation,
+  journal: Cp06IntentAttemptJournal,
 ): Cp06PhaseBEvidence => {
   const evidence = value as Cp06PhaseBEvidence;
   if (
@@ -990,7 +1122,7 @@ const assertCompletedHandoff = (
   }
   assertVolume(inventory.volumes[0] as Cp06VolumeObservation);
   assertSampleMatrix(evidence.samples);
-  return evidence;
+  return enrichEvidenceFromJournal(evidence, journal);
 };
 
 export async function runCp06MagePhaseB(
@@ -1016,7 +1148,7 @@ export async function runCp06MagePhaseB(
 
   const initialInventory = await port.inspectInventory();
   if (completed !== undefined) {
-    return assertCompletedHandoff(completed, config, initialInventory);
+    return assertCompletedHandoff(completed, config, initialInventory, journal);
   }
   const restartPods: { readonly pod: Cp06PodObservation; readonly role: AttemptRole }[] = [];
   let unexpectedPodPresent = false;
@@ -1249,6 +1381,13 @@ export async function runCp06MagePhaseB(
         ) {
           throw new Cp06PhaseBError("CP06_MODEL_READY_INVALID");
         }
+        await journal.append("model_ready_confirmed", {
+          attemptId: intent.attemptId,
+          podIdHash: sha256(pod.podId),
+          manifestSha256: ready.manifestSha256,
+          modelReadyMs: ready.modelReadyMs,
+          readyPeakVramBytes: ready.peakVramBytes,
+        });
         const batch: Cp06SanitizedSampleEvidence[] = [];
         for (const [index, prompt] of prompts.entries()) {
           const futureRuntimeSeconds = futureRuntimeSecondsAfter(role);
@@ -1335,22 +1474,7 @@ export async function runCp06MagePhaseB(
   ) {
     throw new Cp06PhaseBError("CP06_SPEND_CAP_EXCEEDED");
   }
-  const attempts = journal
-    .all()
-    .filter((record) => record.event === "pod_absence_confirmed")
-    .map((record) => ({
-      attemptId: String(record.attemptId),
-      role: record.role as AttemptRole,
-      podIdHash: String(record.podIdHash) as Hash,
-      accountedCostUsd: Number(record.accountedCostMicroUsd) / 1_000_000,
-      settledCostUsd:
-        record.settledCostMicroUsd === null ? null : Number(record.settledCostMicroUsd) / 1_000_000,
-      costBasis: record.costBasis as "settled" | "conservative_elapsed",
-    }))
-    .filter(
-      (attempt, index, values) =>
-        values.findIndex((candidate) => candidate.podIdHash === attempt.podIdHash) === index,
-    );
+  const attempts = attemptEvidenceFromJournal(journal);
   const settledSpendUsd = attempts.every((attempt) => attempt.settledCostUsd !== null)
     ? attempts.reduce((sum, attempt) => sum + (attempt.settledCostUsd ?? 0), 0)
     : null;
@@ -1362,6 +1486,12 @@ export async function runCp06MagePhaseB(
     gpu: CP06_PHASE_B_GPU,
     region: CP06_PHASE_B_REGION,
     rateUsdPerHour: offering.rateUsdPerHour,
+    model: {
+      id: CP06_PHASE_B_MODEL_ID,
+      revision: CP06_PHASE_B_MODEL_REVISION,
+      precision: "int8-convrot",
+      comfyUiRevision: CP06_PHASE_B_COMFYUI_REVISION,
+    },
     volume: {
       idHash: sha256(volume.id),
       name: CP06_PHASE_B_VOLUME_NAME,
@@ -1371,6 +1501,7 @@ export async function runCp06MagePhaseB(
       manifestSha256,
     },
     attempts,
+    positivePodReadiness: readinessEvidenceFromJournal(journal, allSamples),
     samples: allSamples,
     contactSheet,
     budgetAccountedSpendUsd,

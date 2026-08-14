@@ -135,6 +135,10 @@ describe("CP-06 live adapter provider-free boundary", () => {
   it("reconstructs an exact open Pod and prep manifest in a fresh process", async () => {
     const files = await fixture();
     let nowIso = "2026-08-14T08:40:00.000Z";
+    let generationResponse = new Response(JSON.stringify({ ok: true, result: {} }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
     const journal = await Cp06IntentAttemptJournal.open(files.journalPath);
     await journal.append("volume_ready", {
       volumeId: "volume_cp06",
@@ -212,11 +216,7 @@ describe("CP-06 live adapter provider-free boundary", () => {
       now: () => new Date(nowIso),
       sleep: async () => undefined,
       assertAccount: async () => ({ accountIdHash: CP06_PHASE_B_ACCOUNT_HASH }),
-      fetch: async () =>
-        new Response(JSON.stringify({ ok: true, result: {} }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
+      fetch: async () => generationResponse,
     });
 
     const inventory = await adapter.inspectInventory();
@@ -255,6 +255,23 @@ describe("CP-06 live adapter provider-free boundary", () => {
         cropCategory: "full-16:9",
       }),
     ).rejects.toMatchObject({ code: "CP06_GENERATION_RESULT_REJECTED" });
+    generationResponse = new Response(
+      JSON.stringify({ detail: { code: "MAGE_COMFY_TRANSPORT_FAILED" } }),
+      { status: 422, headers: { "content-type": "application/json" } },
+    );
+    await expect(
+      adapter.generateOwnedSample("pod_restarted", {
+        sampleId: "cp06-owned-01",
+        positivePrompt: "owned prompt",
+        negativePrompt: "text",
+        seed: 1,
+        subjectCategory: "people",
+        styleCategory: "documentary",
+        cropCategory: "full-16:9",
+      }),
+    ).rejects.toMatchObject({
+      code: "CP06_GENERATION_FAILED_HTTP_422_MAGE_COMFY_TRANSPORT_FAILED",
+    });
     await expect(adapter.deletePod("pod_restarted")).resolves.toEqual({
       absenceProven: true,
       settledCostUsd: 0.03,

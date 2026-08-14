@@ -1037,7 +1037,19 @@ export class RunPodCp06LiveAdapter implements Cp06PodNativePort {
         ),
       ),
     });
-    if (!response.ok) throw new Cp06PhaseBError("CP06_GENERATION_FAILED");
+    if (!response.ok) {
+      let workerCode = "UNSPECIFIED";
+      try {
+        const failure = record(await response.json());
+        const detail = record(failure?.detail);
+        if (typeof detail?.code === "string" && /^[A-Z0-9_]{1,120}$/.test(detail.code)) {
+          workerCode = detail.code;
+        }
+      } catch {
+        // Status plus a fixed fallback remains safe and actionable.
+      }
+      throw new Cp06PhaseBError(`CP06_GENERATION_FAILED_HTTP_${response.status}_${workerCode}`);
+    }
     const envelope = record(await response.json());
     if (envelope === null || this.volume === null || this.preparedManifest === null) {
       throw new Cp06PhaseBError("CP06_GENERATION_AUTHORITY_MISSING");

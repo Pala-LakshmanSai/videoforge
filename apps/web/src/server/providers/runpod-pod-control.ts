@@ -343,7 +343,7 @@ export class RunPodPodControlClient {
           typeof candidate === "string" &&
           candidate.length > 0 &&
           candidate.length <= 500 &&
-          /^[A-Za-z0-9 _.,:;/'"()\[\]{}+-]+$/u.test(candidate)
+          /^[A-Za-z0-9 _.,:;/'"()[\]{}+-]+$/u.test(candidate)
         ) {
           providerMessage = candidate;
         }
