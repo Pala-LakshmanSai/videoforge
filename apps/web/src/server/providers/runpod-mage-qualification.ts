@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { loadRunPodApiKeyFromKeychain } from "./keychain";
+import { loadSujalRunPodApiKeyFromKeychain } from "./keychain";
+import { assertSujalRunPodAccount } from "./runpod-account";
 import {
   RunPodControlClient,
   RunPodDrainGuard,
@@ -36,7 +37,10 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
 
 const requiredImage = (): string => {
   const value = process.env.VIDEOFORGE_RUNPOD_IMAGE;
-  if (!value || !/^ghcr\.io\/pala-lakshmansai\/videoforge-mage@sha256:[a-f0-9]{64}$/u.test(value)) {
+  if (
+    !value ||
+    !/^ghcr\.io\/pala-lakshmansai\/videoforge-mage-cp06@sha256:[a-f0-9]{64}$/u.test(value)
+  ) {
     throw new Error("VIDEOFORGE_RUNPOD_IMAGE_INVALID");
   }
   return value;
@@ -106,7 +110,8 @@ const outputRoot = resolve(
   process.env.VIDEOFORGE_QUALIFICATION_OUTPUT_ROOT ?? ".videoforge/vf-9-13",
 );
 await mkdir(outputRoot, { recursive: true });
-const apiKey = await loadRunPodApiKeyFromKeychain();
+const apiKey = await loadSujalRunPodApiKeyFromKeychain();
+await assertSujalRunPodAccount(apiKey);
 const control = new RunPodControlClient({ apiKey });
 const guard = new RunPodDrainGuard();
 const overallStartedMs = Date.now();

@@ -11,11 +11,12 @@ export const FIXTURE_IMAGE_RESULT_VERSION = "videoforge.fixture-image-result/v1"
 export const FIXTURE_IMAGE_ACCEPTANCE_VERSION = "videoforge.fixture-image-acceptance/v1" as const;
 export const MAGE_IMAGE_RESULT_VERSION = "videoforge.mage-durable-image-result/v1" as const;
 export const MAGE_IMAGE_ACCEPTANCE_VERSION = "videoforge.mage-image-acceptance/v1" as const;
-export const LOCKED_MAGE_IMAGE =
-  "ghcr.io/pala-lakshmansai/videoforge-mage@sha256:ee844a242956a376466fa233f05e3bb6ffdcf71a645f5b27241331e5e295a89c" as const;
+export const LOCKED_MAGE_IMAGE = "unpublished:videoforge-mage-cp06-int8" as const;
 export const LOCKED_MAGE_MODEL_REVISION = "d8c99241f6fa80fbd453014234af2bf337ea21e6" as const;
-export const LOCKED_MAGE_SOURCE_REVISION = "1108f2ac5e412b27accb0e5d51c90ef2ba39784d" as const;
+export const LOCKED_MAGE_SOURCE_REVISION = "26d7f8556822d9d08c2d3e1878636ac3b4969af9" as const;
 export const LOCKED_MAGE_GPU = "NVIDIA GeForce RTX 4090" as const;
+export const LOCKED_MAGE_GPU_CHOICES = ["NVIDIA RTX PRO 4500 Blackwell", LOCKED_MAGE_GPU] as const;
+export type LockedMageGpu = (typeof LOCKED_MAGE_GPU_CHOICES)[number];
 
 type Row = Record<string, unknown>;
 type Layout = "IMAGE_FULL" | "SPLIT_RIGHT_IMAGE";
@@ -138,11 +139,11 @@ export interface MageImageResult
   extends Omit<FixtureImageResult, "schemaVersion" | "fixtureModel" | "technicalValidation"> {
   readonly schemaVersion: typeof MAGE_IMAGE_RESULT_VERSION;
   readonly providerModel: {
-    readonly provider: "runpod_serverless";
+    readonly provider: "runpod_pod";
     readonly image: typeof LOCKED_MAGE_IMAGE;
     readonly modelRevision: typeof LOCKED_MAGE_MODEL_REVISION;
     readonly sourceRevision: typeof LOCKED_MAGE_SOURCE_REVISION;
-    readonly gpu: typeof LOCKED_MAGE_GPU;
+    readonly gpu: LockedMageGpu;
   };
   readonly technicalValidation: {
     readonly decoder: "png-structural-v1";
@@ -335,7 +336,7 @@ export interface MageDurableResultInput {
   readonly image: typeof LOCKED_MAGE_IMAGE;
   readonly modelRevision: typeof LOCKED_MAGE_MODEL_REVISION;
   readonly sourceRevision: typeof LOCKED_MAGE_SOURCE_REVISION;
-  readonly gpu: typeof LOCKED_MAGE_GPU;
+  readonly gpu: LockedMageGpu;
   readonly seed: number;
   readonly positivePromptHash: Sha256Digest;
   readonly negativePromptHash: Sha256Digest;
@@ -379,7 +380,7 @@ export function buildMageImageResult(
     input.image !== LOCKED_MAGE_IMAGE ||
     input.modelRevision !== LOCKED_MAGE_MODEL_REVISION ||
     input.sourceRevision !== LOCKED_MAGE_SOURCE_REVISION ||
-    input.gpu !== LOCKED_MAGE_GPU ||
+    !LOCKED_MAGE_GPU_CHOICES.includes(input.gpu) ||
     input.positivePromptHash !== authority.compiledPrompt.positivePromptSha256 ||
     input.negativePromptHash !== authority.compiledPrompt.negativePromptSha256 ||
     input.outputSha256 !== binarySha256 ||
@@ -434,7 +435,7 @@ export function buildMageImageResult(
     positivePromptHash: input.positivePromptHash,
     negativePromptHash: input.negativePromptHash,
     providerModel: Object.freeze({
-      provider: "runpod_serverless" as const,
+      provider: "runpod_pod" as const,
       image: input.image,
       modelRevision: input.modelRevision,
       sourceRevision: input.sourceRevision,

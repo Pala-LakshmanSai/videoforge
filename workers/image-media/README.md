@@ -20,9 +20,11 @@ avatar span. It never sends the full voiceover to an avatar worker.
 
 A future HTTP/RunPod adapter may expose the same `worker-health/v1` payload, but it must not change `model_state` to `ready` until the exact pinned model is actually loaded.
 
-`mage_production.py` defines the locked Mage-Flow-Turbo job/result boundary without loading or
-downloading weights. It admits only exact model revision
-`395402ba3ef110c96e70d01abe4d178dbe4e01a5` and fails closed on any mismatch.
-The pinned source patch removes its otherwise mandatory Gaussian-Shading watermark to preserve
-VideoForge's no-watermark output rule. Refusal placeholders must never be accepted as generated
-assets.
+The CP-06 Mage Pod path is VideoForge-owned and exact: `Comfy-Org/Mage-Flow` revision
+`d8c99241f6fa80fbd453014234af2bf337ea21e6`, INT8 ConvRot, stock ComfyUI revision
+`26d7f8556822d9d08c2d3e1878636ac3b4969af9`, four steps, guidance 1.0, and 1280x720.
+`prepare_mage_volume.py` is the only model-download entrypoint. Ordinary boot requires offline
+environment flags, verifies the sealed three-file manifest and exact VideoForge volume identity,
+checks the actual single NVIDIA GPU, performs a real warm-up, and reports `ready` only afterward.
+The 20 GiB allocation is derived from 13,379,919,280 exact model bytes plus 8,094,917,200 bytes of
+operational headroom. The Mage volume is never shared with Echo or ImageForge.

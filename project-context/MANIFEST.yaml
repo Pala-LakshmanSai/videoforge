@@ -3,9 +3,8 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-14"
 source_of_truth: project-context
-# CP-00 through CP-05 are complete provider-free. CP-06 has one exact selected next brief, but it is
-# not started and selection grants no provider, credential, cloud, download, GPU, publication,
-# retained-volume, or spend authority.
+# CP-00 through CP-05 are complete provider-free. CP-06 Phase A is active at $0; selection grants no
+# cloud mutation, model download, GPU, publication, retained-volume, or spend authority.
 current_selected_profile: cp06_mage_int8_persistent_runpod
 current_selected_brief: tasks/VF-9-24Q.md
 
@@ -182,6 +181,7 @@ approved_decisions:
   DEC_RENDER_001: direct_ffmpeg_cloud_run_production_mac_dev_parity
   DEC_RENDER_002: no_remotion_or_hyperframes_in_mvp
   DEC_HOSTING_001: scale_to_zero_cloudflare_neon_r2_cloud_run_control_plane
+  DEC_BUILD_001: github_standard_hosted_heavy_builds_no_mac_dependency
   DEC_AUTH_001: unique_single_use_email_bound_verified_invite_admission
   DEC_TENANCY_001: one_global_shared_equal_rights_app_scope
   DEC_DB_001: additive_postgres_sql_repository_contracts_pglite_tests_only

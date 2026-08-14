@@ -2,6 +2,12 @@ name: mage-image
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish the smoke-tested immutable image to GHCR"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -17,22 +23,51 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Reclaim only disposable hosted-runner tool space
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          for target in /usr/local/lib/android /usr/share/dotnet /opt/ghc; do
+            if [[ -e "$target" ]]; then
+              sudo rm -rf -- "$target"
+            fi
+          done
+          docker system prune --all --force
+          df -h /
+
+      - name: Build and smoke pinned CP-06 Mage INT8 Pod worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RUNNER_ARCH" = "X64"
+          image="videoforge-mage-cp06:${GITHUB_SHA}"
+          docker build --file workers/image-media/Dockerfile.mage --tag "$image" workers/image-media
+          docker run --rm --entrypoint python "$image" -c \
+            'import torch; from videoforge_image_media import MAGE_MODEL_REVISION, MAGE_SOURCE_REVISION; assert MAGE_MODEL_REVISION == "d8c99241f6fa80fbd453014234af2bf337ea21e6"; assert MAGE_SOURCE_REVISION == "26d7f8556822d9d08c2d3e1878636ac3b4969af9"; print("mage-int8-comfy-import-ok")'
+          docker run --rm --entrypoint python "$image" -c \
+            'import mage_api; h=mage_api.runtime.health(); assert h["phase"] == "process" and h["model"]["status"] == "loading"; print("mage-truthful-health-ok")'
+          docker run --rm --entrypoint python "$image" -m compileall -q /opt/comfyui /opt/videoforge
+          image_id="$(docker image inspect --format='{{.Id}}' "$image")"
+          echo "LOCAL_IMAGE=$image" >> "$GITHUB_ENV"
+          echo "image_id=$image_id" >> "$GITHUB_STEP_SUMMARY"
+          echo "publication_requested=${{ inputs.publish }}" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Authenticate GHCR
+        if: ${{ inputs.publish }}
         shell: bash
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
-      - name: Build, smoke, and publish pinned Mage candidate
+
+      - name: Publish smoke-tested immutable image
+        if: ${{ inputs.publish }}
         shell: bash
         run: |
           set -euo pipefail
           owner="${GITHUB_REPOSITORY_OWNER,,}"
-          image="ghcr.io/${owner}/videoforge-mage:${GITHUB_SHA}"
-          docker build --file workers/image-media/Dockerfile.mage --tag "$image" workers/image-media
-          docker run --rm --entrypoint python "$image" -c \
-            'import runpod, torch; from videoforge_image_media import MAGE_MODEL_REVISION, MAGE_SOURCE_REVISION; assert MAGE_MODEL_REVISION == "d8c99241f6fa80fbd453014234af2bf337ea21e6"; assert MAGE_SOURCE_REVISION == "1108f2ac5e412b27accb0e5d51c90ef2ba39784d"; print("mage-comfy-import-ok")'
-          docker run --rm --entrypoint python "$image" -c \
-            'import sys; sys.path.insert(0, "/opt/videoforge"); import mage_handler; observed=[]; mage_handler.runpod.serverless.start=lambda config: observed.append(config); mage_handler.start_worker(); assert len(observed) == 1 and callable(observed[0]["handler"]); print("mage-handler-registration-ok")'
-          docker run --rm --entrypoint python "$image" -m compileall -q /opt/comfyui /opt/videoforge
+          image="ghcr.io/${owner}/videoforge-mage-cp06:${GITHUB_SHA}"
+          docker tag "$LOCAL_IMAGE" "$image"
           docker push "$image"
           docker inspect --format='image={{index .RepoDigests 0}}' "$image" >> "$GITHUB_STEP_SUMMARY"

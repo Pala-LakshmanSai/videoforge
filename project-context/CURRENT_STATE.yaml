@@ -1,20 +1,48 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T05:39:44Z"
+updated_at: "2026-08-14T07:18:58Z"
 
-phase: cp05_complete_cp06_selected_not_started
-implementation_authorized_in_current_task: false
+phase: cp06_hosted_build_preflight
+implementation_authorized_in_current_task: true
 current_milestone: exact_mage_int8_persistent_runpod_volume
-current_task: null
+current_task: VF-9-24Q
 current_wave: cp06_mage_int8_persistent_runpod
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
+task_stage: read_only_preflight
+application_code_changes_authorized: true
+provider_calls_authorized: true
+maximum_external_spend_usd: 0
+provider_authority:
+  mode: read_only
+  provider: runpod
+  cap_usd: 0
+  authorized_by_user_at: "2026-08-14T05:54:18Z"
+  non_transferable: true
+  allowed_operations:
+    - inventory_lookup
+    - rate_lookup
+    - quota_lookup
+    - resource_identity_lookup
+    - resource_absence_lookup
+runpod_account_scope:
+  owner: sujal
+  account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
+  forbidden_account: demo9_imageforge
+  identity_check: required_before_inventory_or_mutation
+credential_access_authorized: true
+remote_or_cloud_mutations_authorized: false
+model_downloads_authorized: false
+worker_image_publication_authorized: false
+sample_output_publication_authorized: false
+gpu_use_authorized: false
+mage_volume_retention_authorized: false
 
 repository:
   initialized: true
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: main
+  branch: codex/cp06-mage-int8
   base_commit: "af1723f548f5a10ff4caee1fa24c161fbb2eca9f"
   planning_handoff_commit: "0e5eee22e4d51150fc358fe853f607e1f41d73c9"
   cp01_activation_commit: "7ef2461"
@@ -49,13 +77,13 @@ live_development:
   server_state: stopped
   dev_server_pid: null
   owner_task_id: null
-  health_checked_at: "2026-08-14T05:39:44Z"
+  health_checked_at: "2026-08-14T07:18:58Z"
   chrome_route: null
   fixture_scenario: cp05_complete_fixture_mvp
   provider_mode: fixture
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-24Q is selected next but not started. At rest all provider, credential, cloud, download, publication, GPU, volume-retention, and spend authority remains false/$0."
+  provider_authority_scope: "VF-9-24Q CP-06 read-only preflight only: RunPod inventory/rate/quota/resource identity/absence lookups at $0. No mutation, download, publication, GPU use, retained-volume billing, or spend."
   worker_image: null
   last_user_checkpoint:
     result: accepted
@@ -147,24 +175,35 @@ completed_tasks:
 active_ownership: []
 
 blocked_tasks: []
-in_progress_checkpoint: null
+in_progress_checkpoint: CP-06
 
 recommended_next_task:
   task_id: VF-9-24Q
   checkpoint: CP-06
   milestone: exact_mage_int8_persistent_runpod_volume
-  status: ready_for_user_selection_not_started
+  status: in_progress_read_only_preflight
   dependency_status: cp05_complete_green_provider_free
-  authorization_status: at_rest_not_authorized
+  authorization_status: read_only_preflight_authorized
+  task_stage: read_only_preflight
   provider_authority:
-    mode: none
+    mode: read_only
+    provider: runpod
+    cap_usd: 0
+    authorized_by_user_at: "2026-08-14T05:54:18Z"
+    non_transferable: true
+    allowed_operations:
+      - inventory_lookup
+      - rate_lookup
+      - quota_lookup
+      - resource_identity_lookup
+      - resource_absence_lookup
   read_profile: cp06_mage_int8_persistent_runpod
   task_brief: tasks/VF-9-24Q.md
   goal: "After the exact CP-06 prompt, complete local/read-only Phase A at $0, then stop for a separately explicit exact numeric Phase B authorization."
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
+  credential_access_authorized: true
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
@@ -175,7 +214,7 @@ recommended_next_task:
   mage_volume_size_gib: null
   mage_volume_rate_usd_per_gb_month: null
   ongoing_retention_charge_usd_per_month: null
-  application_code_changes_authorized: false
+  application_code_changes_authorized: true
   prerequisite_evidence: "evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json"
   required_handoff:
     - "Preserve the completed CP-01 through CP-05 evidence and active vNext cutover."
@@ -188,6 +227,43 @@ recommended_next_task:
     - "During Phase A: any cloud mutation, model-byte download, image/container publication, GPU use, Pod/template/volume creation, retained-volume billing, or spend."
     - "During Phase B: any mutation from an unresolved/ambiguous/conflicting cap, an old cap, or authority missing explicit current-chat approval, the exact GPU offering/rate, volume size/rate, ongoing-retention consent, or explicit scopes. Unambiguous $3/USD 3/3.00 wording is normalized to numeric 3.0."
     - "Any production gate closure, live profile promotion, volume-capacity assumption, model/GPU substitution, repair, or fallback."
+
+cp06_phase_a:
+  status: hosted_build_only_pending
+  evidence: "evidence/acceptance/VF-9-24Q/cp06-read-only-preflight/preflight.json"
+  imageforge_source_commit: "1a6204e7b9387a4d26b5fbbb176506d670949fba"
+  model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
+  comfyui_revision: "26d7f8556822d9d08c2d3e1878636ac3b4969af9"
+  exact_model_bytes: 13379919280
+  proposed_volume_size_gib: 20
+  proposed_volume_headroom_bytes: 8094917200
+  proposed_volume_rate_usd_per_gb_month: 0.07
+  proposed_ongoing_retention_charge_usd_per_month: 1.4
+  runpod_account_owner: sujal
+  runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
+  runpod_account_identity_verified: true
+  runpod_inventory_checked_at: "2026-08-14T07:18:58.218Z"
+  runpod_pods: 0
+  runpod_endpoints: 0
+  runpod_templates: 0
+  runpod_network_volumes: 0
+  gpu_choices:
+    - offering_id: "NVIDIA RTX PRO 4500 Blackwell"
+      rate_usd_per_hour: 0.72
+      availability: HIGH
+    - offering_id: "NVIDIA GeForce RTX 4090"
+      rate_usd_per_hour: 0.74
+      availability: HIGH
+  local_tests: passed
+  local_container_build: waived_by_user_use_github_standard_hosted_runner
+  hosted_container_build: pending_public_ubuntu_24_04_x64_publish_false
+  github_repository_visibility: public
+  larger_paid_runner_authorized: false
+  hosted_artifact_or_cache_retention: false
+  phase_b_authorization_request_ready: false
+  external_spend_usd: 0
+  provider_resources_created: 0
+  paid_compute_shutdown: no_paid_compute_started_colima_stopped_original_8gib_config_restored
 
 cp01_completion:
   status: complete_provider_free_reaudited_after_persisted_authority_fix

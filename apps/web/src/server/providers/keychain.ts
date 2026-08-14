@@ -25,7 +25,10 @@ export async function loadRunwareApiKeyFromKeychain(): Promise<string> {
   }
 }
 
-export async function loadRunPodApiKeyFromKeychain(): Promise<string> {
+export const SUJAL_RUNPOD_ACCOUNT_ID_SHA256 =
+  "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c" as const;
+
+export async function loadSujalRunPodApiKeyFromKeychain(): Promise<string> {
   try {
     const result = await execFileAsync(
       "/usr/bin/security",
@@ -36,6 +39,6 @@ export async function loadRunPodApiKeyFromKeychain(): Promise<string> {
     if (key.length < 20 || /\s/u.test(key)) throw new Error("invalid");
     return key;
   } catch {
-    throw new Error("RUNPOD_KEYCHAIN_CREDENTIAL_UNAVAILABLE");
+    throw new Error("SUJAL_RUNPOD_KEYCHAIN_CREDENTIAL_UNAVAILABLE");
   }
 }

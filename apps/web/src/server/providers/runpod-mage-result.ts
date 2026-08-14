@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
 
-export const MAGE_CANDIDATE_IMAGE =
-  "ghcr.io/pala-lakshmansai/videoforge-mage@sha256:ee844a242956a376466fa233f05e3bb6ffdcf71a645f5b27241331e5e295a89c";
+export const MAGE_CANDIDATE_IMAGE = "unpublished:videoforge-mage-cp06-int8";
 export const MAGE_MODEL_REVISION = "d8c99241f6fa80fbd453014234af2bf337ea21e6";
-export const MAGE_SOURCE_REVISION = "1108f2ac5e412b27accb0e5d51c90ef2ba39784d";
+export const MAGE_SOURCE_REVISION = "26d7f8556822d9d08c2d3e1878636ac3b4969af9";
 export const MAGE_GPU = "NVIDIA GeForce RTX 4090";
+export const MAGE_GPU_CHOICES = ["NVIDIA RTX PRO 4500 Blackwell", MAGE_GPU] as const;
+export type MageGpu = (typeof MAGE_GPU_CHOICES)[number];
 
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,159}$/u;
@@ -28,7 +29,10 @@ export interface MageResultAuthority {
   readonly image: typeof MAGE_CANDIDATE_IMAGE;
   readonly modelRevision: typeof MAGE_MODEL_REVISION;
   readonly sourceRevision: typeof MAGE_SOURCE_REVISION;
-  readonly gpu: typeof MAGE_GPU;
+  readonly gpu: MageGpu;
+  readonly podIdHash: `sha256:${string}`;
+  readonly volumeIdHash: `sha256:${string}`;
+  readonly volumeManifestSha256: `sha256:${string}`;
   readonly maximumCostUsd: number;
 }
 
@@ -96,42 +100,40 @@ const validateRuntime = (
     runtime,
     [
       "schema_version",
-      "network_volume_attached",
-      "handler_received_unix_ms",
-      "handler_completed_unix_ms",
+      "pod_id_hash",
+      "volume_id_hash",
+      "worker_image_digest",
+      "model_revision",
+      "comfyui_revision",
+      "precision",
       "bootstrap",
-      "comfy_start",
       "gpu",
     ],
     "MAGE_RUNTIME_EVIDENCE_INVALID",
   );
   if (
-    runtime.schema_version !== "videoforge.mage-runtime-evidence/v1" ||
-    runtime.network_volume_attached !== false
+    runtime.schema_version !== "videoforge.mage-runtime-evidence/v2" ||
+    runtime.pod_id_hash !== authority.podIdHash ||
+    runtime.volume_id_hash !== authority.volumeIdHash ||
+    runtime.worker_image_digest !== authority.image ||
+    runtime.model_revision !== authority.modelRevision ||
+    runtime.comfyui_revision !== authority.sourceRevision ||
+    runtime.precision !== "int8-convrot"
   ) {
     throw new MageResultError("MAGE_RUNTIME_EVIDENCE_INVALID");
   }
-  const received = integer(
-    runtime.handler_received_unix_ms,
-    1,
-    Number.MAX_SAFE_INTEGER,
-    "MAGE_TIMING_INVALID",
-  );
-  const completed = integer(
-    runtime.handler_completed_unix_ms,
-    received,
-    Number.MAX_SAFE_INTEGER,
-    "MAGE_TIMING_INVALID",
-  );
-  if (completed - received > 3_600_000) throw new MageResultError("MAGE_TIMING_INVALID");
 
   const bootstrap = record(runtime.bootstrap, "MAGE_BOOTSTRAP_EVIDENCE_INVALID");
   exactKeys(
     bootstrap,
     [
       "schema_version",
+      "manifest_sha256",
       "model_revision",
-      "cache_hit",
+      "comfyui_revision",
+      "precision",
+      "downloaded_model_bytes",
+      "registry_access_allowed",
       "started_unix_ms",
       "completed_unix_ms",
       "duration_ms",
@@ -139,9 +141,13 @@ const validateRuntime = (
     "MAGE_BOOTSTRAP_EVIDENCE_INVALID",
   );
   if (
-    bootstrap.schema_version !== "videoforge.mage-bootstrap/v1" ||
+    bootstrap.schema_version !== "videoforge.mage-bootstrap/v2" ||
+    bootstrap.manifest_sha256 !== authority.volumeManifestSha256 ||
     bootstrap.model_revision !== authority.modelRevision ||
-    typeof bootstrap.cache_hit !== "boolean" ||
+    bootstrap.comfyui_revision !== authority.sourceRevision ||
+    bootstrap.precision !== "int8-convrot" ||
+    bootstrap.downloaded_model_bytes !== 0 ||
+    bootstrap.registry_access_allowed !== false ||
     duration(bootstrap.duration_ms) !==
       integer(bootstrap.completed_unix_ms, 1, Number.MAX_SAFE_INTEGER, "MAGE_TIMING_INVALID") -
         integer(bootstrap.started_unix_ms, 1, Number.MAX_SAFE_INTEGER, "MAGE_TIMING_INVALID")
@@ -149,34 +155,57 @@ const validateRuntime = (
     throw new MageResultError("MAGE_BOOTSTRAP_EVIDENCE_INVALID");
   }
 
-  const comfy = record(runtime.comfy_start, "MAGE_COMFY_EVIDENCE_INVALID");
-  exactKeys(
-    comfy,
-    ["schema_version", "source_revision", "started_unix_ms", "completed_unix_ms", "duration_ms"],
-    "MAGE_COMFY_EVIDENCE_INVALID",
-  );
-  if (
-    comfy.schema_version !== "videoforge.mage-comfy-start/v1" ||
-    comfy.source_revision !== authority.sourceRevision ||
-    duration(comfy.duration_ms) !==
-      integer(comfy.completed_unix_ms, 1, Number.MAX_SAFE_INTEGER, "MAGE_TIMING_INVALID") -
-        integer(comfy.started_unix_ms, 1, Number.MAX_SAFE_INTEGER, "MAGE_TIMING_INVALID")
-  ) {
-    throw new MageResultError("MAGE_COMFY_EVIDENCE_INVALID");
-  }
-
   const gpu = record(runtime.gpu, "MAGE_GPU_EVIDENCE_INVALID");
   exactKeys(
     gpu,
-    ["name", "total_memory_bytes", "cuda_version", "torch_version"],
+    [
+      "available",
+      "approved",
+      "device_count",
+      "name",
+      "offering_id",
+      "total_memory_bytes",
+      "memory_allocated_bytes",
+      "memory_reserved_bytes",
+      "peak_memory_allocated_bytes",
+      "peak_memory_reserved_bytes",
+      "cuda_version",
+      "torch_version",
+    ],
     "MAGE_GPU_EVIDENCE_INVALID",
   );
   if (
     gpu.name !== authority.gpu ||
-    integer(gpu.total_memory_bytes, 24_000_000_000, 27_000_000_000, "MAGE_GPU_EVIDENCE_INVALID") <
-      1 ||
+    gpu.offering_id !== authority.gpu ||
+    gpu.available !== true ||
+    gpu.approved !== true ||
+    gpu.device_count !== 1 ||
+    integer(
+      gpu.total_memory_bytes,
+      16_380 * 1024 * 1024,
+      Number.MAX_SAFE_INTEGER,
+      "MAGE_GPU_EVIDENCE_INVALID",
+    ) < 1 ||
+    integer(gpu.memory_allocated_bytes, 0, Number.MAX_SAFE_INTEGER, "MAGE_GPU_EVIDENCE_INVALID") <
+      0 ||
+    integer(gpu.memory_reserved_bytes, 0, Number.MAX_SAFE_INTEGER, "MAGE_GPU_EVIDENCE_INVALID") <
+      0 ||
+    integer(
+      gpu.peak_memory_allocated_bytes,
+      0,
+      Number.MAX_SAFE_INTEGER,
+      "MAGE_GPU_EVIDENCE_INVALID",
+    ) < 0 ||
+    integer(
+      gpu.peak_memory_reserved_bytes,
+      0,
+      Number.MAX_SAFE_INTEGER,
+      "MAGE_GPU_EVIDENCE_INVALID",
+    ) < 0 ||
     typeof gpu.cuda_version !== "string" ||
-    typeof gpu.torch_version !== "string"
+    !gpu.cuda_version.startsWith("13.") ||
+    typeof gpu.torch_version !== "string" ||
+    !gpu.torch_version.startsWith("2.11.0+cu130")
   ) {
     throw new MageResultError("MAGE_GPU_EVIDENCE_INVALID");
   }
@@ -193,10 +222,13 @@ export const acceptMageResult = (
     !ID.test(authority.sceneId) ||
     !SHA256.test(authority.promptSha256) ||
     !SHA256.test(authority.negativePromptSha256) ||
+    !SHA256.test(authority.podIdHash) ||
+    !SHA256.test(authority.volumeIdHash) ||
+    !SHA256.test(authority.volumeManifestSha256) ||
     authority.image !== MAGE_CANDIDATE_IMAGE ||
     authority.modelRevision !== MAGE_MODEL_REVISION ||
     authority.sourceRevision !== MAGE_SOURCE_REVISION ||
-    authority.gpu !== MAGE_GPU ||
+    !MAGE_GPU_CHOICES.includes(authority.gpu) ||
     !Number.isFinite(authority.maximumCostUsd) ||
     authority.maximumCostUsd <= 0 ||
     !Number.isFinite(reportedCostUsd) ||

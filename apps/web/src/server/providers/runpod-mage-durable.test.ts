@@ -3,6 +3,7 @@ import { deflateSync } from "node:zlib";
 
 import {
   LOCKED_MAGE_GPU,
+  LOCKED_MAGE_GPU_CHOICES,
   LOCKED_MAGE_IMAGE,
   LOCKED_MAGE_MODEL_REVISION,
   LOCKED_MAGE_SOURCE_REVISION,
@@ -143,6 +144,9 @@ const providerAuthority: MageResultAuthority = {
   modelRevision: LOCKED_MAGE_MODEL_REVISION,
   sourceRevision: LOCKED_MAGE_SOURCE_REVISION,
   gpu: LOCKED_MAGE_GPU,
+  podIdHash: `sha256:${"c".repeat(64)}`,
+  volumeIdHash: `sha256:${"d".repeat(64)}`,
+  volumeManifestSha256: `sha256:${"e".repeat(64)}`,
   maximumCostUsd: 0.05,
 };
 
@@ -165,30 +169,38 @@ const envelope = (): Record<string, unknown> => ({
     generation_duration_ms: 4_756,
     output_base64: media.toString("base64"),
     runtime_evidence: {
-      schema_version: "videoforge.mage-runtime-evidence/v1",
-      network_volume_attached: false,
-      handler_received_unix_ms: 1_000_000,
-      handler_completed_unix_ms: 1_014_000,
+      schema_version: "videoforge.mage-runtime-evidence/v2",
+      pod_id_hash: providerAuthority.podIdHash,
+      volume_id_hash: providerAuthority.volumeIdHash,
+      worker_image_digest: LOCKED_MAGE_IMAGE,
+      model_revision: LOCKED_MAGE_MODEL_REVISION,
+      comfyui_revision: LOCKED_MAGE_SOURCE_REVISION,
+      precision: "int8-convrot",
       bootstrap: {
-        schema_version: "videoforge.mage-bootstrap/v1",
+        schema_version: "videoforge.mage-bootstrap/v2",
+        manifest_sha256: providerAuthority.volumeManifestSha256,
         model_revision: LOCKED_MAGE_MODEL_REVISION,
-        cache_hit: false,
+        comfyui_revision: LOCKED_MAGE_SOURCE_REVISION,
+        precision: "int8-convrot",
+        downloaded_model_bytes: 0,
+        registry_access_allowed: false,
         started_unix_ms: 900_000,
         completed_unix_ms: 950_000,
         duration_ms: 50_000,
       },
-      comfy_start: {
-        schema_version: "videoforge.mage-comfy-start/v1",
-        source_revision: LOCKED_MAGE_SOURCE_REVISION,
-        started_unix_ms: 950_001,
-        completed_unix_ms: 958_001,
-        duration_ms: 8_000,
-      },
       gpu: {
+        available: true,
+        approved: true,
+        device_count: 1,
         name: LOCKED_MAGE_GPU,
+        offering_id: LOCKED_MAGE_GPU,
         total_memory_bytes: 25_386_352_640,
-        cuda_version: "12.8",
-        torch_version: "2.9.1+cu128",
+        memory_allocated_bytes: 12_000_000_000,
+        memory_reserved_bytes: 14_000_000_000,
+        peak_memory_allocated_bytes: 18_000_000_000,
+        peak_memory_reserved_bytes: 20_000_000_000,
+        cuda_version: "13.0",
+        torch_version: "2.11.0+cu130",
       },
     },
   },
@@ -221,6 +233,28 @@ describe("durable Mage composition", () => {
       providerModel: { image: LOCKED_MAGE_IMAGE, gpu: LOCKED_MAGE_GPU },
       qualityReview: review,
     });
+  });
+
+  it("persists the exact alternate preflight GPU selected by provider authority", () => {
+    const selectedGpu = LOCKED_MAGE_GPU_CHOICES[0];
+    const selectedEnvelope = envelope();
+    const gpu = (
+      (selectedEnvelope.result as Record<string, unknown>).runtime_evidence as Record<
+        string,
+        unknown
+      >
+    ).gpu as Record<string, unknown>;
+    gpu.name = selectedGpu;
+    gpu.offering_id = selectedGpu;
+    const observed = composeDurableMageResult(
+      selectedEnvelope,
+      { ...providerAuthority, gpu: selectedGpu },
+      durableAuthority,
+      0.03,
+      objectKey,
+      review,
+    );
+    expect(observed.result.providerModel.gpu).toBe(selectedGpu);
   });
 
   it("rejects authority drift, provider-byte drift, and failed visual review before persistence", () => {

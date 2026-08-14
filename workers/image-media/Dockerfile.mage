@@ -1,28 +1,66 @@
-FROM pytorch/pytorch@sha256:7b324d212a4450795b49edba9949b7cdc72429148a64e974334bfe5774d51385
+# syntax=docker/dockerfile:1.7
+FROM python:3.11-slim-bookworm@sha256:28255a3ace7eb4c48bc1b57b90af29e1bc82b4fd6c60614a8e3dce61b87ff941
 
-ARG MAGE_SOURCE_REVISION=1108f2ac5e412b27accb0e5d51c90ef2ba39784d
+LABEL org.opencontainers.image.title="VideoForge Mage Pod Worker" \
+      org.opencontainers.image.version="cp06-int8-v1" \
+      ai.videoforge.lane="mage_image" \
+      ai.videoforge.model="Comfy-Org/Mage-Flow" \
+      ai.videoforge.model-revision="d8c99241f6fa80fbd453014234af2bf337ea21e6" \
+      ai.videoforge.precision="int8-convrot" \
+      ai.videoforge.comfyui-revision="26d7f8556822d9d08c2d3e1878636ac3b4969af9" \
+      ai.videoforge.output="1280x720-steps4-guidance1"
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git \
-    && rm -rf /var/lib/apt/lists/*
-RUN git clone --filter=blob:none https://github.com/Comfy-Org/ComfyUI.git /opt/comfyui \
-    && git -C /opt/comfyui checkout --detach "$MAGE_SOURCE_REVISION" \
-    && test "$(git -C /opt/comfyui rev-parse HEAD)" = "$MAGE_SOURCE_REVISION" \
-    && rm -rf /opt/comfyui/.git
-
-COPY requirements.mage.txt /opt/videoforge/requirements.mage.txt
-RUN python -m pip install --no-cache-dir -r /opt/comfyui/requirements.txt \
-    && python -m pip install --no-cache-dir -r /opt/videoforge/requirements.mage.txt
-
-COPY src /opt/videoforge/src
-COPY mage_bootstrap.py mage_handler.py mage-entrypoint.py /opt/videoforge/
-
-ENV COMFY_ROOT=/opt/comfyui \
-    MAGE_MODEL_ROOT=/models/mage-flow-turbo \
-    MAGE_SOURCE_REVISION=1108f2ac5e412b27accb0e5d51c90ef2ba39784d \
-    HF_HOME=/models/.cache \
-    HF_HUB_DISABLE_TELEMETRY=1 \
-    PYTHONPATH=/opt/videoforge/src:/opt/videoforge \
-    PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1 \
+    DIFFUSERS_OFFLINE=1 \
+    HF_HOME=/workspace/.cache/huggingface \
+    MAGE_MODEL_ROOT=/workspace/mage-model \
+    COMFY_ROOT=/opt/comfyui \
+    PYTHONPATH=/opt/videoforge/src:/opt/videoforge
 
 WORKDIR /opt/videoforge
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends \
+      gcc git libc6-dev libgl1 libglib2.0-0 libgomp1 libnuma1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && python --version | grep -Eq '^Python 3\.11\.' \
+    && python -m pip install --no-cache-dir --no-deps \
+      'https://download.pytorch.org/whl/cu130/torch-2.11.0%2Bcu130-cp311-cp311-manylinux_2_28_x86_64.whl#sha256=225b22e0a4e36ea573d3a68796e6816a160616f67e8b8c55683a88bf7777f4cd'
+
+ARG COMFYUI_REVISION=26d7f8556822d9d08c2d3e1878636ac3b4969af9
+RUN git clone --filter=blob:none https://github.com/comfyanonymous/ComfyUI.git /opt/comfyui \
+    && git -C /opt/comfyui checkout --detach "${COMFYUI_REVISION}" \
+    && test "$(git -C /opt/comfyui rev-parse HEAD)" = "${COMFYUI_REVISION}" \
+    && rm -rf /opt/comfyui/.git
+
+RUN python -m pip install --no-cache-dir \
+      'https://download.pytorch.org/whl/cu130/torchvision-0.26.0%2Bcu130-cp311-cp311-manylinux_2_28_x86_64.whl#sha256=3b53e3b611561e03ac261d06cb3f38782120ad9e0b4cd9f01549799097c713a6' \
+      'https://download.pytorch.org/whl/cu130/torchaudio-2.11.0%2Bcu130-cp311-cp311-manylinux_2_28_x86_64.whl#sha256=f6e1e3ab31abfa81f5c8801a0eab769d5308514dc644bb39dcf0a9057f364f16' \
+    && python -c "import torch; assert torch.__version__.startswith('2.11.0+cu130')"
+
+RUN printf 'torch==2.11.0+cu130\ntorchvision==0.26.0+cu130\ntorchaudio==2.11.0+cu130\n' > /tmp/comfy-constraints.txt \
+    && python -m pip install --no-cache-dir --constraint /tmp/comfy-constraints.txt \
+      --requirement /opt/comfyui/requirements.txt \
+    && rm /tmp/comfy-constraints.txt
+
+COPY verify_comfyui_nodes.py ./verify_comfyui_nodes.py
+RUN python /opt/videoforge/verify_comfyui_nodes.py
+
+COPY requirements.mage.txt ./requirements.mage.txt
+RUN python -m pip install --no-cache-dir --requirement requirements.mage.txt \
+    && python -m pip check
+
+COPY src ./src
+COPY mage_api.py mage_bootstrap.py mage-entrypoint.py mage_runtime.py mage_volume.py \
+     prepare_mage_volume.py ./
+
+EXPOSE 8000
+HEALTHCHECK --interval=5s --timeout=3s --start-period=300s --retries=60 \
+  CMD python -c "import json,urllib.request; r=json.load(urllib.request.urlopen('http://127.0.0.1:8000/v1/health',timeout=2)); assert r['process']['status']=='ok' and r['phase']=='ready' and r['model']['status']=='ready'" || exit 1
+
 ENTRYPOINT ["python", "/opt/videoforge/mage-entrypoint.py"]

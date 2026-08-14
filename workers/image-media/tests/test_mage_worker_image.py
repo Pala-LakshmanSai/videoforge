@@ -1,8 +1,8 @@
-import importlib.util
+import hashlib
 import json
+import os
 import sys
 import tempfile
-import threading
 import types
 import unittest
 from pathlib import Path
@@ -10,111 +10,160 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
-sys.modules.setdefault(
-    "runpod",
-    types.SimpleNamespace(
-        serverless=types.SimpleNamespace(progress_update=lambda *_: None, start=lambda *_: None)
-    ),
-)
-spec = importlib.util.spec_from_file_location("mage_worker_handler", ROOT / "mage_handler.py")
-assert spec and spec.loader
-handler = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(handler)
+
+import mage_volume as volume  # noqa: E402
+from mage_bootstrap import bootstrap  # noqa: E402
+from mage_runtime import MageRuntime  # noqa: E402
+from prepare_mage_volume import CONFIRMATION, prepare  # noqa: E402
+
+
+def make_volume(root: Path, *, lane: str = volume.MAGE_LANE) -> dict[str, object]:
+    for item in volume.MAGE_MODEL_FILES:
+        path = root / item.path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("wb") as stream:
+            stream.truncate(item.bytes)
+    body = volume.manifest_body(
+        volume_id_hash="sha256:" + hashlib.sha256(b"cp06-volume").hexdigest(),
+        prepared_at="2026-08-14T00:00:00Z",
+    )
+    body["lane"] = lane
+    marker = volume.seal_manifest(body)
+    (root / volume.MAGE_MARKER_NAME).write_text(json.dumps(marker), encoding="utf-8")
+    return marker
 
 
 class MageWorkerImageTest(unittest.TestCase):
-    def test_image_is_pinned_comfy_bf16_without_flash_route(self) -> None:
+    def test_image_is_exact_int8_persistent_pod_contract(self) -> None:
         dockerfile = (ROOT / "Dockerfile.mage").read_text(encoding="utf-8")
+        node_verifier = (ROOT / "verify_comfyui_nodes.py").read_text(encoding="utf-8")
         workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
             encoding="utf-8"
         )
-        self.assertIn(
-            "7b324d212a4450795b49edba9949b7cdc72429148a64e974334bfe5774d51385", dockerfile
+        for exact in (
+            "d8c99241f6fa80fbd453014234af2bf337ea21e6",
+            "26d7f8556822d9d08c2d3e1878636ac3b4969af9",
+            "int8-convrot",
+            "torch-2.11.0%2Bcu130",
+            "python:3.11-slim-bookworm@sha256:28255a3ace7eb4c48bc1b57b90af29e1bc82b4fd6c60614a8e3dce61b87ff941",
+        ):
+            self.assertIn(exact, dockerfile + workflow)
+        active = "\n".join(
+            (ROOT / name).read_text(encoding="utf-8")
+            for name in (
+                "Dockerfile.mage",
+                "mage-entrypoint.py",
+                "mage_api.py",
+                "mage_bootstrap.py",
+                "mage_runtime.py",
+            )
         )
-        self.assertIn("1108f2ac5e412b27accb0e5d51c90ef2ba39784d", dockerfile)
-        self.assertIn("Comfy-Org/ComfyUI", dockerfile)
-        self.assertNotIn("flash_attn", dockerfile + workflow)
-        self.assertNotIn("microsoft/Mage", dockerfile)
-        self.assertIn(
-            "--disable-metadata", (ROOT / "mage-entrypoint.py").read_text(encoding="utf-8")
+        self.assertNotIn("runpod.serverless", active)
+        self.assertNotIn("hf_hub_download", active)
+        self.assertIn("HF_HUB_OFFLINE=1", dockerfile)
+        self.assertIn("comfy_extras.nodes_mage", node_verifier)
+        self.assertNotIn("init_extra_nodes", node_verifier)
+
+    def test_exact_three_file_manifest_and_headroom(self) -> None:
+        self.assertEqual(volume.MAGE_MODEL_BYTES, 13_379_919_280)
+        self.assertEqual(volume.MAGE_VOLUME_SIZE_GIB, 20)
+        self.assertEqual(volume.MAGE_HEADROOM_BYTES, 8_094_917_200)
+        self.assertEqual(
+            [item.path for item in volume.MAGE_MODEL_FILES],
+            [
+                "diffusion_models/mage_flow_turbo_int8_convrot.safetensors",
+                "text_encoders/qwen3vl_4b_bf16.safetensors",
+                "vae/mage_flow_vae_bf16.safetensors",
+            ],
         )
-        self.assertFalse((ROOT / "Dockerfile.mage-flash").exists())
-        self.assertFalse((ROOT / "mage-no-watermark.patch").exists())
 
-    def test_model_marker_and_hashes_fail_closed(self) -> None:
-        from mage_bootstrap import FILES, verify_model_root
-        from videoforge_image_media import MAGE_MODEL_ID, MAGE_MODEL_REVISION
-
+    def test_volume_verifier_accepts_only_exact_owned_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            marker = {
-                "model_id": MAGE_MODEL_ID,
-                "model_revision": MAGE_MODEL_REVISION,
-                "files": [{"path": p, "bytes": s, "sha256": d} for p, s, d in FILES],
-            }
-            (root / ".videoforge-model.json").write_text(json.dumps(marker), encoding="utf-8")
-            with self.assertRaisesRegex(RuntimeError, "MAGE_MODEL_FILE_INVALID"):
-                verify_model_root(root)
+            marker = make_volume(root)
+            with patch.object(
+                volume,
+                "sha256_file",
+                side_effect=[item.sha256 for item in volume.MAGE_MODEL_FILES],
+            ):
+                observed = volume.verify_model_root(
+                    root, expected_volume_id_hash=marker["volume_id_hash"]
+                )
+            self.assertEqual(observed["precision"], "int8-convrot")
 
-    def test_cancel_and_unknown_failure_fail_closed(self) -> None:
-        with patch.object(handler, "ensure_model") as ensure:
-            self.assertEqual(
-                handler.handler({"input": {"cancel_requested": True}}),
-                {"ok": False, "error_code": "MAGE_INFERENCE_CANCELLED"},
-            )
-        ensure.assert_not_called()
-        self.assertEqual(
-            handler.handler({"input": {}}),
-            {"ok": False, "error_code": "MAGE_INLINE_JOB_SHAPE_INVALID"},
+    def test_missing_wrong_and_cross_lane_volumes_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            make_volume(root, lane="echo_avatar")
+            with self.assertRaisesRegex(volume.MageVolumeError, "MAGE_VOLUME_LANE_MISMATCH"):
+                volume.verify_model_root(root)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            make_volume(root)
+            (root / volume.MAGE_MODEL_FILES[0].path).unlink()
+            with self.assertRaisesRegex(volume.MageVolumeError, "MAGE_VOLUME_FILE_SET_MISMATCH"):
+                volume.verify_model_root(root)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            make_volume(root)
+            extra = root / "vae" / "foreign.safetensors"
+            extra.write_bytes(b"foreign")
+            with self.assertRaisesRegex(volume.MageVolumeError, "MAGE_VOLUME_FILE_SET_MISMATCH"):
+                volume.verify_model_root(root)
+
+    def test_preparation_requires_exact_confirmation_before_network_import(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaisesRegex(RuntimeError, "MAGE_PREPARATION_CONFIRMATION_INVALID"):
+                prepare(
+                    Path(temporary),
+                    volume_id="volume_cp06",
+                    volume_size_gib=20,
+                    confirmation=CONFIRMATION + "_WRONG",
+                )
+
+    def test_normal_boot_requires_offline_mode_and_never_downloads(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            model_root = Path(temporary) / "model"
+            comfy_root = Path(temporary) / "comfy"
+            model_root.mkdir()
+            with patch.dict(os.environ, {}, clear=True):
+                with self.assertRaisesRegex(
+                    volume.MageVolumeError, "MAGE_OFFLINE_RUNTIME_REQUIRED"
+                ):
+                    bootstrap(model_root, comfy_root)
+
+    def test_actual_gpu_identity_memory_and_cuda_are_checked(self) -> None:
+        fake_properties = types.SimpleNamespace(total_memory=24 * 1024**3)
+        fake_torch = types.SimpleNamespace(
+            __version__="2.11.0+cu130",
+            version=types.SimpleNamespace(cuda="13.0"),
+            cuda=types.SimpleNamespace(
+                is_available=lambda: True,
+                device_count=lambda: 1,
+                get_device_name=lambda _index: "NVIDIA GeForce RTX 4090",
+                get_device_properties=lambda _index: fake_properties,
+            ),
         )
-
-    def test_success_includes_worker_timing_and_gpu_evidence(self) -> None:
-        result = {"output_sha256": "sha256:" + "1" * 64}
-        timing = {"schema_version": "videoforge.mage-runtime-evidence/v1"}
+        runtime = MageRuntime()
         with (
-            patch.object(handler, "ensure_model"),
-            patch.object(handler, "run_inline_job", return_value=result),
-            patch.object(handler, "runtime_evidence", return_value=timing),
+            patch.dict(sys.modules, {"torch": fake_torch}),
+            patch.dict(
+                os.environ,
+                {"VIDEOFORGE_MAGE_GPU_OFFERING_ID": "NVIDIA GeForce RTX 4090"},
+            ),
         ):
-            job = {
-                "mode": "INLINE_QUALIFICATION_V1",
-                "attempt_id": "vf9_07_test",
-                "model_revision": handler.MAGE_MODEL_REVISION,
-                "items": [
-                    {
-                        "scene_id": "scene_001",
-                        "positive_prompt": "Owned documentary photograph",
-                        "positive_prompt_sha256": "sha256:867e3df4876b59a17bf752caa8726645f76e06856ec099224b4b7cb79a943017",
-                        "negative_prompt": "visible text, logo",
-                        "negative_prompt_sha256": "sha256:cf07ec903e03427d3f9aa4ae6379a549cb65d26fe0083b3ca495e086ad643e5a",
-                        "seed": 1234,
-                        "width": 1280,
-                        "height": 720,
-                    }
-                ],
-            }
-            observed = handler.handler({"input": job})
-        self.assertTrue(observed["ok"])
-        self.assertEqual(observed["result"]["runtime_evidence"], timing)
+            runtime.verify_gpu()
+        self.assertTrue(runtime.gpu["approved"])
+        self.assertEqual(runtime.gpu["offering_id"], "NVIDIA GeForce RTX 4090")
 
-    def test_progress_heartbeat_is_ordered(self) -> None:
-        phases: list[str] = []
-        seen = threading.Event()
-
-        def progress(_event, phase: str) -> None:
-            phases.append(phase)
-            if "heartbeat" in phase:
-                seen.set()
-
-        def operation() -> str:
-            self.assertTrue(seen.wait(timeout=1))
-            return "accepted"
-
-        with patch.object(handler.runpod.serverless, "progress_update", side_effect=progress):
-            result = handler.run_with_heartbeat({}, operation, interval_seconds=0.01)
-        self.assertEqual(result, "accepted")
-        self.assertEqual(phases[0], "inference_mage_started")
-        self.assertEqual(phases[-1], "output_mage_validated")
+    def test_health_is_not_ready_until_real_warmup_finishes(self) -> None:
+        runtime = MageRuntime()
+        self.assertEqual(runtime.health()["model"]["status"], "loading")
+        runtime.transition("warmup")
+        self.assertEqual(runtime.health()["model"]["status"], "loading")
+        runtime.transition("ready")
+        runtime.ready = True
+        self.assertEqual(runtime.health()["model"]["status"], "ready")
 
 
 if __name__ == "__main__":

@@ -8,7 +8,8 @@ import {
   startSshAvatarPrivateTransfer,
   type AvatarPrivateTransfer,
 } from "./avatar-private-transfer";
-import { loadRunPodApiKeyFromKeychain } from "./keychain";
+import { loadSujalRunPodApiKeyFromKeychain } from "./keychain";
+import { assertSujalRunPodAccount } from "./runpod-account";
 import { safeAvatarFailureEvidence, safeAvatarSuccessEvidence } from "./runpod-avatar-result";
 import {
   RunPodControlClient,
@@ -230,7 +231,8 @@ if (source.byteLength > 2 * 1024 * 1024 || audio.byteLength > 2 * 1024 * 1024) {
   throw new Error("QUALIFICATION_INPUT_TOO_LARGE");
 }
 
-const apiKey = await loadRunPodApiKeyFromKeychain();
+const apiKey = await loadSujalRunPodApiKeyFromKeychain();
+await assertSujalRunPodAccount(apiKey);
 const control = new RunPodControlClient({ apiKey });
 const guard = new RunPodDrainGuard();
 const initialInventory = await control.inventory();

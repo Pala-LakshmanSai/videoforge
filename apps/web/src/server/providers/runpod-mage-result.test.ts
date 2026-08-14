@@ -7,6 +7,7 @@ import {
   acceptMageResult,
   MAGE_CANDIDATE_IMAGE,
   MAGE_GPU,
+  MAGE_GPU_CHOICES,
   MAGE_MODEL_REVISION,
   MAGE_SOURCE_REVISION,
   safeMageFailureCode,
@@ -63,6 +64,9 @@ const authority: MageResultAuthority = {
   modelRevision: MAGE_MODEL_REVISION,
   sourceRevision: MAGE_SOURCE_REVISION,
   gpu: MAGE_GPU,
+  podIdHash: `sha256:${"c".repeat(64)}`,
+  volumeIdHash: `sha256:${"d".repeat(64)}`,
+  volumeManifestSha256: `sha256:${"e".repeat(64)}`,
   maximumCostUsd: 0.1,
 };
 
@@ -87,30 +91,38 @@ const validEnvelope = (): Record<string, unknown> => {
       generation_duration_ms: 23_728,
       output_base64: output.toString("base64"),
       runtime_evidence: {
-        schema_version: "videoforge.mage-runtime-evidence/v1",
-        network_volume_attached: false,
-        handler_received_unix_ms: 1_000_000,
-        handler_completed_unix_ms: 1_037_053,
+        schema_version: "videoforge.mage-runtime-evidence/v2",
+        pod_id_hash: authority.podIdHash,
+        volume_id_hash: authority.volumeIdHash,
+        worker_image_digest: authority.image,
+        model_revision: MAGE_MODEL_REVISION,
+        comfyui_revision: MAGE_SOURCE_REVISION,
+        precision: "int8-convrot",
         bootstrap: {
-          schema_version: "videoforge.mage-bootstrap/v1",
+          schema_version: "videoforge.mage-bootstrap/v2",
+          manifest_sha256: authority.volumeManifestSha256,
           model_revision: MAGE_MODEL_REVISION,
-          cache_hit: false,
+          comfyui_revision: MAGE_SOURCE_REVISION,
+          precision: "int8-convrot",
+          downloaded_model_bytes: 0,
+          registry_access_allowed: false,
           started_unix_ms: 800_000,
           completed_unix_ms: 900_190,
           duration_ms: 100_190,
         },
-        comfy_start: {
-          schema_version: "videoforge.mage-comfy-start/v1",
-          source_revision: MAGE_SOURCE_REVISION,
-          started_unix_ms: 900_191,
-          completed_unix_ms: 908_708,
-          duration_ms: 8_517,
-        },
         gpu: {
+          available: true,
+          approved: true,
+          device_count: 1,
           name: MAGE_GPU,
+          offering_id: MAGE_GPU,
           total_memory_bytes: 25_386_352_640,
-          cuda_version: "12.8",
-          torch_version: "2.9.1+cu128",
+          memory_allocated_bytes: 12_000_000_000,
+          memory_reserved_bytes: 14_000_000_000,
+          peak_memory_allocated_bytes: 18_000_000_000,
+          peak_memory_reserved_bytes: 20_000_000_000,
+          cuda_version: "13.0",
+          torch_version: "2.11.0+cu130",
         },
       },
     },
@@ -127,6 +139,20 @@ describe("Mage candidate result acceptance", () => {
       model_revision: MAGE_MODEL_REVISION,
       reported_cost_usd: 0.0280524074,
     });
+  });
+
+  it("accepts either exact preflight GPU when runtime evidence matches authority", () => {
+    const selectedGpu = MAGE_GPU_CHOICES[0];
+    const value = validEnvelope();
+    const gpu = (
+      (value.result as Record<string, unknown>).runtime_evidence as Record<string, unknown>
+    ).gpu as Record<string, unknown>;
+    gpu.name = selectedGpu;
+    gpu.offering_id = selectedGpu;
+    const accepted = acceptMageResult(value, { ...authority, gpu: selectedGpu }, 0.02);
+    expect(
+      (accepted.evidence.runtime_evidence as { gpu: { offering_id: string } }).gpu,
+    ).toMatchObject({ offering_id: selectedGpu });
   });
 
   it("rejects lineage, hash, PNG profile, GPU, timing, and cost drift", () => {

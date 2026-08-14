@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { loadRunPodApiKeyFromKeychain } from "./keychain";
+import { loadSujalRunPodApiKeyFromKeychain } from "./keychain";
+import { assertSujalRunPodAccount } from "./runpod-account";
 import {
   RunPodControlClient,
   RunPodDrainGuard,
@@ -122,7 +123,8 @@ const reviewPath = resolve(
 );
 await mkdir(resolve(outputRoot, "outputs"), { recursive: true });
 
-const apiKey = await loadRunPodApiKeyFromKeychain();
+const apiKey = await loadSujalRunPodApiKeyFromKeychain();
+await assertSujalRunPodAccount(apiKey);
 const control = new RunPodControlClient({ apiKey });
 const guard = new RunPodDrainGuard();
 const startedMs = Date.now();
@@ -223,6 +225,9 @@ const runItem = async (item: MageMatrixItem, attempt: 1 | 2): Promise<void> => {
       modelRevision: MAGE_MODEL_REVISION,
       sourceRevision: MAGE_SOURCE_REVISION,
       gpu: MAGE_GPU,
+      podIdHash: `sha256:${"0".repeat(64)}`,
+      volumeIdHash: `sha256:${"0".repeat(64)}`,
+      volumeManifestSha256: `sha256:${"0".repeat(64)}`,
       maximumCostUsd: spendCapUsd,
     },
     reportedSpendUsd,

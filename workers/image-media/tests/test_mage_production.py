@@ -107,8 +107,13 @@ class MageProductionContractTest(unittest.TestCase):
     def test_public_identity_and_all_weight_hashes_are_exact(self) -> None:
         self.assertEqual(mage.MAGE_MODEL_ID, "Comfy-Org/Mage-Flow")
         self.assertEqual(mage.MAGE_MODEL_REVISION, "d8c99241f6fa80fbd453014234af2bf337ea21e6")
-        self.assertEqual(mage.MAGE_SOURCE_REVISION, "1108f2ac5e412b27accb0e5d51c90ef2ba39784d")
-        self.assertEqual(mage.MAGE_TRANSFORMER_BYTES, 8_231_536_760)
+        self.assertEqual(mage.MAGE_SOURCE_REVISION, "26d7f8556822d9d08c2d3e1878636ac3b4969af9")
+        self.assertEqual(mage.MAGE_TRANSFORMER_FILENAME, "mage_flow_turbo_int8_convrot.safetensors")
+        self.assertEqual(mage.MAGE_TRANSFORMER_BYTES, 4_159_146_840)
+        self.assertEqual(
+            mage.MAGE_TRANSFORMER_SHA256,
+            "327c3967a5190ea52e453ec3dd81ba168e37a2a0ff2c763aa3e9260bbbe1913c",
+        )
         self.assertEqual(mage.MAGE_TEXT_ENCODER_BYTES, 8_875_719_384)
         self.assertEqual(mage.MAGE_VAE_BYTES, 345_053_056)
         self.assertEqual(
@@ -118,6 +123,8 @@ class MageProductionContractTest(unittest.TestCase):
         self.assertEqual(
             mage.MAGE_VAE_SHA256, "34e076dc1e8a15321e1e07be5111d59cf16dd10b804b7c7e20b4de29013427e0"
         )
+        self.assertEqual(mage.MAGE_REPOSITORY_BYTE_CEILING, 13_379_919_280)
+        self.assertEqual(mage.MAGE_DTYPE, "int8-convrot")
 
     def test_graph_matches_only_proven_comfy_path(self) -> None:
         graph = mage.build_workflow(mage.MageInlineJob.from_value(inline()))

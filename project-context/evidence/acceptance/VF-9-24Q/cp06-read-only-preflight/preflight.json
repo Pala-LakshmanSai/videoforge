@@ -1,0 +1,124 @@
+{
+  "schema_version": "videoforge.cp06-read-only-preflight/v1",
+  "task_id": "VF-9-24Q",
+  "checkpoint": "CP-06",
+  "status": "HOSTED_BUILD_ONLY_PENDING",
+  "checked_at": "2026-08-14T07:18:58Z",
+  "authority": {
+    "mode": "read_only",
+    "provider": "runpod",
+    "cap_usd": 0,
+    "cloud_mutations": 0,
+    "model_downloads": 0,
+    "image_publications": 0,
+    "gpu_use": false,
+    "retained_volume_billing_started": false
+  },
+  "imageforge_source": {
+    "path": "/Volumes/ESD-USB/ImageForge",
+    "commit": "1a6204e7b9387a4d26b5fbbb176506d670949fba",
+    "working_tree_clean": true
+  },
+  "model_manifest": {
+    "model_id": "Comfy-Org/Mage-Flow",
+    "revision": "d8c99241f6fa80fbd453014234af2bf337ea21e6",
+    "precision": "int8-convrot",
+    "comfyui_revision": "26d7f8556822d9d08c2d3e1878636ac3b4969af9",
+    "steps": 4,
+    "guidance": 1.0,
+    "width": 1280,
+    "height": 720,
+    "total_bytes": 13379919280,
+    "files": [
+      {
+        "path": "diffusion_models/mage_flow_turbo_int8_convrot.safetensors",
+        "bytes": 4159146840,
+        "sha256": "327c3967a5190ea52e453ec3dd81ba168e37a2a0ff2c763aa3e9260bbbe1913c"
+      },
+      {
+        "path": "text_encoders/qwen3vl_4b_bf16.safetensors",
+        "bytes": 8875719384,
+        "sha256": "36f3ff447ef59201722e8f9ce6020c9819fdcfba6aa2608c4e09b1c0ce114e34"
+      },
+      {
+        "path": "vae/mage_flow_vae_bf16.safetensors",
+        "bytes": 345053056,
+        "sha256": "34e076dc1e8a15321e1e07be5111d59cf16dd10b804b7c7e20b4de29013427e0"
+      }
+    ],
+    "metadata_source": "https://huggingface.co/api/models/Comfy-Org/Mage-Flow/tree/d8c99241f6fa80fbd453014234af2bf337ea21e6?recursive=true&expand=true",
+    "model_bytes_downloaded": 0
+  },
+  "derived_volume": {
+    "proposed_size_gib": 20,
+    "allocation_bytes": 21474836480,
+    "headroom_bytes": 8094917200,
+    "headroom_gib": 7.538979128,
+    "headroom_percent_of_capacity": 37.69489564,
+    "runpod_standard_network_volume_rate_usd_per_gb_month": 0.07,
+    "estimated_ongoing_charge_usd_per_month": 1.4,
+    "pricing_source": "https://docs.runpod.io/storage/network-volumes"
+  },
+  "runpod_read_only": {
+    "checked_at": "2026-08-14T07:18:58.218Z",
+    "account_owner": "sujal",
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "account_identity_verified": true,
+    "forbidden_account": "demo9_imageforge",
+    "region": "EU-RO-1",
+    "network_volume_types": ["STANDARD"],
+    "pods": 0,
+    "running_pods": 0,
+    "endpoints": 0,
+    "templates": 0,
+    "network_volumes": 0,
+    "short_gpu_choice_list": [
+      {
+        "offering_id": "NVIDIA RTX PRO 4500 Blackwell",
+        "display_name": "RTX PRO 4500",
+        "memory_gb": 32,
+        "secure_usd_per_hour": 0.72,
+        "availability": "HIGH",
+        "max_count": 8
+      },
+      {
+        "offering_id": "NVIDIA GeForce RTX 4090",
+        "display_name": "RTX 4090",
+        "memory_gb": 24,
+        "secure_usd_per_hour": 0.74,
+        "availability": "HIGH",
+        "max_count": 8
+      }
+    ],
+    "catalog_source": "https://api.runpod.io/v2/catalog/gpus?include=AVAILABILITY&product=POD&count=1&cloud=SECURE&minCudaVersion=13.0"
+  },
+  "local_verification": {
+    "focused_mage_python": "14_passed",
+    "all_worker_suites": "passed_6_suites",
+    "python_lint": "passed_75_files",
+    "control_plane_build": "passed",
+    "mage_web_acceptance": "6_passed",
+    "web_typecheck": "passed",
+    "context_validation_before_code": "passed",
+    "dockerfile_sha256": "39679d604c0e7a9a7848591f6c24e1025d5ce5f0097bd9395c2d279c39091792",
+    "linux_amd64_container_build": "waived_local_by_user_hosted_build_pending",
+    "container_build_failure_basis": "Historical local attempts exhausted macOS storage and then exceeded the 16 GB host memory envelope under amd64 emulation. DEC_BUILD_001 now requires a standard public GitHub-hosted x64 runner instead.",
+    "local_image_id": null,
+    "local_image_published": false,
+    "colima_state": "stopped_original_8gib_configuration_restored",
+    "cp06_disposable_build_residue_removed": true
+  },
+  "hosted_build_only": {
+    "repository": "Pala-LakshmanSai/videoforge",
+    "repository_visibility": "public",
+    "workflow": ".github/workflows/mage-image.yml",
+    "runner": "ubuntu-24.04",
+    "runner_architecture": "X64",
+    "publish": false,
+    "larger_paid_runner_authorized": false,
+    "artifact_or_cache_upload": false,
+    "status": "PENDING"
+  },
+  "phase_b_authorization_request_ready": false,
+  "blocker": "Push the Phase A source to GitHub and obtain a green public standard-runner build/smoke with publish=false."
+}

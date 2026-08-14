@@ -317,7 +317,8 @@ wrong Pod/volume/GPU, independent lane drain, final playable MP4s, canonical ver
 
 ## CP-06 — Exact Mage INT8 on persistent RunPod volume
 
-**Status:** selected next as `VF-9-24Q`; not started; at-rest authority is false/`$0`.
+**Status:** `VF-9-24Q` Phase A active at `$0`; hosted build-only qualification pending. Phase B
+mutation, publication, download, GPU, retained-volume, and spend authority remain false.
 
 **Outcome:** VideoForge generates real images through the exact current ImageForge Mage contract and
 can reuse a new Mage-only volume from fresh Pods.
@@ -329,7 +330,8 @@ can reuse a new Mage-only volume from fresh Pods.
   ImageForge mechanics exactly at `1a6204e7b9387a4d26b5fbbb176506d670949fba`. Do not copy the
   stale ImageForge README BF16 claim or its preparation script's unpinned `revision=None`; the
   VideoForge path requires the pinned INT8 profile and byte-exact three-file manifest.
-- Build/publish an immutable Mage worker image; create a separately authorized VideoForge Mage
+- Build and smoke on a standard public GitHub-hosted x64 runner without publication in Phase A;
+  publish an immutable Mage worker image only in Phase B; create a separately authorized VideoForge Mage
   volume sized from verified manifest + headroom; prepare/checksum it once.
 - Wire live EU-RO-1 inventory, exact choice, volume-pinned Pod create, actual identity verification,
   local/R2 output transfer, delete, absence proof, and retained-volume reuse.
@@ -347,6 +349,7 @@ GPU, resource creation, or retained-volume charge. Phase B requires a later comp
 containing a positive numeric cumulative cap through handoff, one exact live GPU offering/rate, one
 byte-derived volume size/rate, separate consent for its ongoing post-handoff retention charge, and
 explicit mutation/download/publication/GPU scopes. No `$3` or other cap is implied.
+`DEC_BUILD_001` keeps heavyweight verification off the user's Mac and does not broaden Phase B.
 **Done artifact:** user-visible real Mage images and reproducible fresh-Pod evidence.
 
 ## CP-07 — Exact Echo FP8 on persistent RunPod volume and crop lock

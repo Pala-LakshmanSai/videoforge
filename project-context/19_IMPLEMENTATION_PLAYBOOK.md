@@ -21,13 +21,20 @@ Production whisper.cpp word transcription and FFmpeg render/probe use pinned Clo
 through authenticated REST with private R2 artifacts. Mac execution is development/provider-free
 parity only and never production evidence.
 
+Heavy x86 container builds and storage/RAM-intensive verification run on the public repository's
+standard GitHub-hosted `ubuntu-24.04` runner, not on the user's Mac. Build-only workflows use
+ephemeral runner storage, upload no image/model/output artifact or cache, and publish nothing.
+Larger billed runners require separate authority. Production services, workers, models, and retained
+data must be hosted and must never depend on the user's Mac. This is `DEC_BUILD_001`.
+
 `21_IMPLEMENTATION_EXECUTION_PLAN.md` owns task order and safe parallelism. `CURRENT_STATE.yaml` selects the next wave.
 
 ## First-session order
 
 Implementation starts only when the user authorizes it.
 
-1. Initialize a **private** Git repository. Do not publish third-party Ranga/UI research assets, private style references, generated outputs, secrets, or model weights.
+1. Initialize a Git repository. It may be public under `DEC_BUILD_001`; never publish third-party
+   Ranga/UI research assets, private style references, generated outputs, secrets, or model weights.
 2. Create the contract-first monorepo described in `12_DEVELOPMENT_PLAN.md`.
 3. Add `.env.example` with names/placeholders only; real provider mode remains disabled.
 4. Implement these stable root commands before feature work:
@@ -94,6 +101,11 @@ profile/brief, update both selectors, validate them, and continue local work in 
 not turn missing selectors into a user round trip. Missing paid authority blocks only the first
 external mutation or paid action, not local inspection, implementation, tests, image builds that do
 not publish, or the prompt's explicitly authorized read-only inventory/rate preflight.
+
+For CP-06, the `mage-image` workflow's default `publish=false` path is Phase A build-only
+qualification on a standard public runner. `publish=true` is a separate Phase B mutation and may run
+only after its exact authorization is persisted. Never fall back to local x86 emulation on the
+user's Mac when the hosted build fails; fix the hosted workflow or source instead.
 
 ## Repository/deployable shape
 

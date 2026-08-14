@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { loadRunPodApiKeyFromKeychain } from "./keychain";
+import { loadSujalRunPodApiKeyFromKeychain } from "./keychain";
+import { assertSujalRunPodAccount } from "./runpod-account";
 import {
   RunPodControlClient,
   RunPodDrainGuard,
@@ -47,7 +48,8 @@ const balance = async (apiKey: string): Promise<number> => {
 };
 
 await mkdir(evidenceRoot, { recursive: true });
-const apiKey = await loadRunPodApiKeyFromKeychain();
+const apiKey = await loadSujalRunPodApiKeyFromKeychain();
+await assertSujalRunPodAccount(apiKey);
 const control = new RunPodControlClient({ apiKey });
 const guard = new RunPodDrainGuard();
 const startedAt = new Date().toISOString();

@@ -1,6 +1,5 @@
 import {
   buildMageImageResult,
-  LOCKED_MAGE_GPU,
   LOCKED_MAGE_IMAGE,
   LOCKED_MAGE_MODEL_REVISION,
   LOCKED_MAGE_SOURCE_REVISION,
@@ -48,7 +47,7 @@ export const composeDurableMageResult = (
       image: LOCKED_MAGE_IMAGE,
       modelRevision: LOCKED_MAGE_MODEL_REVISION,
       sourceRevision: LOCKED_MAGE_SOURCE_REVISION,
-      gpu: LOCKED_MAGE_GPU,
+      gpu: providerAuthority.gpu,
       seed: evidence.seed,
       positivePromptHash: evidence.positive_prompt_sha256 as `sha256:${string}`,
       negativePromptHash: evidence.negative_prompt_sha256 as `sha256:${string}`,
