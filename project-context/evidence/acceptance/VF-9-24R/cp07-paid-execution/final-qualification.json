@@ -2,7 +2,7 @@
   "schema_version": "videoforge.cp07-final-qualification/v1",
   "checkpoint": "CP-07",
   "status": "technical_qualification_passed_crop_user_review_pending",
-  "checked_at": "2026-08-14T23:29:29.812Z",
+  "checked_at": "2026-08-14T23:32:50.044Z",
   "runtime_profile": {
     "id": "videoforge_echo_v3_flash_turbo_fp8_v1",
     "label": "EchoMimicV3-Flash Turbo FP8",
