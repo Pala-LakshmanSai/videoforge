@@ -838,26 +838,38 @@ export async function runCp07PhaseB(options: {
   let manifestSha256: string | null = null;
   try {
     template = await client.createTemplate(options.imageDigest);
-    const prepAuthority: PodAuthority = {
-      name: "videoforge-echo-cp07-prep-a01",
-      templateId: template.id,
-      imageDigest: options.imageDigest,
-      volumeId: volume.id,
-      volumeIdHash: sha256(volume.id),
-      mode: "prepare",
-    };
-    const prepMaximumSeconds = 5_100;
-    assertCp07CumulativeReservation(conservativeCostUsd, prepMaximumSeconds);
-    activePod = await client.createPod(prepAuthority);
-    const prepHealth = await pollWorker(
-      activePod.id,
-      prepMaximumSeconds,
-      (health) => health.phase === "ready" || health.phase === "failed",
+    const prepEvidencePath = path.join(
+      options.artifactRoot,
+      "preparation-terminal-attempt-3.private.json",
     );
-    await writePrivate(
-      path.join(options.artifactRoot, "preparation-terminal-attempt-3.private.json"),
-      Buffer.from(`${JSON.stringify(prepHealth, null, 2)}\n`),
-    );
+    let prepHealth: JsonRecord | null = null;
+    try {
+      prepHealth = record(JSON.parse(await readFile(prepEvidencePath, "utf8")));
+      if (prepHealth === null) throw new Error("invalid preparation evidence object");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw new Cp07PhaseBError("CP07_LOCAL_PREPARATION_EVIDENCE_INVALID");
+      }
+    }
+    if (prepHealth === null) {
+      const prepAuthority: PodAuthority = {
+        name: "videoforge-echo-cp07-prep-a01",
+        templateId: template.id,
+        imageDigest: options.imageDigest,
+        volumeId: volume.id,
+        volumeIdHash: sha256(volume.id),
+        mode: "prepare",
+      };
+      const prepMaximumSeconds = 5_100;
+      assertCp07CumulativeReservation(conservativeCostUsd, prepMaximumSeconds);
+      activePod = await client.createPod(prepAuthority);
+      prepHealth = await pollWorker(
+        activePod.id,
+        prepMaximumSeconds,
+        (health) => health.phase === "ready" || health.phase === "failed",
+      );
+      await writePrivate(prepEvidencePath, Buffer.from(`${JSON.stringify(prepHealth, null, 2)}\n`));
+    }
     const prepVolume = record(prepHealth.volume);
     const prepModel = record(prepHealth.model);
     if (
@@ -873,11 +885,13 @@ export async function runCp07PhaseB(options: {
       throw new Cp07PhaseBError("CP07_PREPARATION_RESULT_INVALID");
     }
     manifestSha256 = prepVolume.manifest_sha256;
-    const prepDeletion = await deleteOwnedPod(client, activePod);
-    deletionEvidence.push(prepDeletion);
-    conservativeCostUsd += prepDeletion.elapsedCostUpperBoundUsd;
-    assertCp07ObservedCost(conservativeCostUsd);
-    activePod = null;
+    if (activePod !== null) {
+      const prepDeletion = await deleteOwnedPod(client, activePod);
+      deletionEvidence.push(prepDeletion);
+      conservativeCostUsd += prepDeletion.elapsedCostUpperBoundUsd;
+      assertCp07ObservedCost(conservativeCostUsd);
+      activePod = null;
+    }
 
     for (const durationSeconds of [2, 4, 6] as const) {
       const sampleId = `cp07-owned-${durationSeconds}s`;
