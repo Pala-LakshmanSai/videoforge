@@ -166,6 +166,7 @@ class EchoRuntime:
         self.phase = "process"
         self.phase_timings_ms: dict[str, int] = {}
         self.error_code: str | None = None
+        self.error_detail: str | None = None
         self.ready = False
         self.bootstrap_evidence: dict[str, object] | None = None
         self.load_evidence: dict[str, object] | None = None
@@ -209,7 +210,10 @@ class EchoRuntime:
             self.phase_timings_ms.setdefault("ready", 0)
             self.ready = True
         except Exception as error:
-            self.error_code = str(error)[:120] if str(error) else "ECHO_WORKER_BOOT_FAILED"
+            detail = str(error) if str(error) else "ECHO_WORKER_BOOT_FAILED"
+            self.error_code = detail[:120]
+            if os.environ.get("VIDEOFORGE_ECHO_QUALIFICATION_ERROR_DETAIL") == "1":
+                self.error_detail = detail[:4_000]
             self.transition("error")
 
     @staticmethod
@@ -395,4 +399,5 @@ class EchoRuntime:
             "gpu": self.gpu,
             "phase_timings_ms": timings,
             "error_code": self.error_code,
+            "error_detail": self.error_detail,
         }
