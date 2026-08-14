@@ -221,7 +221,12 @@ export const acceptMageResult = (
   value: unknown,
   authority: MageResultAuthority,
   reportedCostUsd: number,
+  imageMode: "live_immutable" | "provider_free_fixture" = "live_immutable",
 ): AcceptedMageResult => {
+  const imageAccepted =
+    imageMode === "live_immutable"
+      ? IMMUTABLE_MAGE_IMAGE.test(authority.image)
+      : authority.image === MAGE_CANDIDATE_IMAGE;
   if (
     !ID.test(authority.attemptId) ||
     !ID.test(authority.sceneId) ||
@@ -230,7 +235,7 @@ export const acceptMageResult = (
     !SHA256.test(authority.podIdHash) ||
     !SHA256.test(authority.volumeIdHash) ||
     !SHA256.test(authority.volumeManifestSha256) ||
-    !IMMUTABLE_MAGE_IMAGE.test(authority.image) ||
+    !imageAccepted ||
     authority.modelRevision !== MAGE_MODEL_REVISION ||
     authority.sourceRevision !== MAGE_SOURCE_REVISION ||
     !MAGE_GPU_CHOICES.includes(authority.gpu) ||

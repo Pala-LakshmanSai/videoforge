@@ -32,7 +32,12 @@ export const composeDurableMageResult = (
   ) {
     throw new TypeError("MAGE_DURABLE_AUTHORITY_MISMATCH");
   }
-  const accepted = acceptMageResult(envelope, providerAuthority, reportedCostUsd);
+  const accepted = acceptMageResult(
+    envelope,
+    providerAuthority,
+    reportedCostUsd,
+    "provider_free_fixture",
+  );
   const evidence = accepted.evidence as {
     readonly seed: number;
     readonly positive_prompt_sha256: string;
