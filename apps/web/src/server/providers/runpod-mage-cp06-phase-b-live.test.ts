@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   CP06_PHASE_B_ACCOUNT_HASH,
@@ -378,9 +378,24 @@ describe("CP-06 live adapter provider-free boundary", () => {
       assertAccount: async () => ({ accountIdHash: CP06_PHASE_B_ACCOUNT_HASH }),
     });
 
-    await expect(
-      adapter.listPodsByExactName(CP06_PHASE_B_ATTEMPTS.positive1.name),
-    ).rejects.toMatchObject({ code: "CP06_POD_NAME_AMBIGUOUS" });
+    const originalAppend = Cp06IntentAttemptJournal.prototype.append;
+    let preDeleteJournalFailed = false;
+    const appendSpy = vi
+      .spyOn(Cp06IntentAttemptJournal.prototype, "append")
+      .mockImplementation(async function (this: Cp06IntentAttemptJournal, event, fields) {
+        if (event === "pod_delete_intent" && !preDeleteJournalFailed) {
+          preDeleteJournalFailed = true;
+          throw new Error("local journal interruption");
+        }
+        return originalAppend.call(this, event, fields);
+      });
+    try {
+      await expect(
+        adapter.listPodsByExactName(CP06_PHASE_B_ATTEMPTS.positive1.name),
+      ).rejects.toMatchObject({ code: "CP06_POD_NAME_AMBIGUOUS" });
+    } finally {
+      appendSpy.mockRestore();
+    }
     expect(deleted).toEqual(["pod_duplicate_1", "pod_duplicate_2"]);
     const records = (await readFile(files.journalPath, "utf8"))
       .trim()

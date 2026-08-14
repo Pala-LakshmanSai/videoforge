@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   CP06_PHASE_B_ACCOUNT_HASH,
@@ -19,6 +19,7 @@ import {
   CP06_REPRESENTATIVE_PROMPTS,
   Cp06IntentAttemptJournal,
   Cp06PhaseBError,
+  buildCp06PodIntent,
   runCp06MagePhaseB,
   type Cp06ContactSheetResult,
   type Cp06PhaseBConfig,
@@ -54,6 +55,7 @@ class FakePodPort implements Cp06PodNativePort {
   failOnSampleId: string | null = null;
   ambiguousCreateRole: Cp06PodIntent["role"] | null = null;
   deleteFailure = false;
+  readonly deleteFailurePodIds = new Set<string>();
   billingSettled = true;
 
   async assertAccountIdentity(): Promise<{ readonly accountIdHash: string }> {
@@ -244,7 +246,9 @@ class FakePodPort implements Cp06PodNativePort {
     readonly settledCostUsd: number | null;
   }> {
     this.calls.push(`delete-pod:${podId}`);
-    if (this.deleteFailure) throw new Error("delete response lost");
+    if (this.deleteFailure || this.deleteFailurePodIds.has(podId)) {
+      throw new Error("delete response lost");
+    }
     this.deletedPodIds.push(podId);
     const index = this.pods.findIndex((pod) => pod.podId === podId);
     if (index >= 0) this.pods.splice(index, 1);
@@ -485,6 +489,33 @@ describe("CP-06 Phase B Pod orchestrator", () => {
     expect(port.pods).toEqual([]);
   });
 
+  it("attempts every validated restart Pod even when the first cleanup is unresolved", async () => {
+    const { journalPath } = await fixture();
+    const port = new FakePodPort();
+    const volume = await port.createVolume();
+    const template = await port.createPodTemplate();
+    const first: Cp06PodObservation = {
+      ...buildCp06PodIntent("positive1", IMAGE, template.id, volume.id),
+      podId: "pod_restart_unresolved_1",
+    };
+    const second: Cp06PodObservation = {
+      ...buildCp06PodIntent("positive2", IMAGE, template.id, volume.id),
+      podId: "pod_restart_cleaned_2",
+    };
+    port.pods.push(first, second);
+    port.deleteFailurePodIds.add(first.podId);
+    port.calls.length = 0;
+
+    await expect(runCp06MagePhaseB(port, config(journalPath))).rejects.toMatchObject({
+      code: "CP06_RESTART_POD_CLEANUP_INCOMPLETE",
+    });
+
+    expect(port.calls).toContain(`delete-pod:${first.podId}`);
+    expect(port.calls).toContain(`delete-pod:${second.podId}`);
+    expect(port.absentPodIds).toContain(second.podId);
+    expect(port.pods.map((pod) => pod.podId)).toEqual([first.podId]);
+  });
+
   it("fails before mutation on account, rate, or authority drift", async () => {
     const first = await fixture();
     const wrongAccount = new FakePodPort();
@@ -548,6 +579,38 @@ describe("CP-06 Phase B Pod orchestrator", () => {
       .map((line) => JSON.parse(line) as Record<string, unknown>);
     expect(records.at(-1)).toMatchObject({ event: "pod_delete_ack_unknown" });
     expect(records.some((record) => record.event === "handoff_complete")).toBe(false);
+  });
+
+  it("deletes and proves absence even when the pre-delete journal intent cannot be persisted", async () => {
+    const { journalPath } = await fixture();
+    const port = new FakePodPort();
+    const originalAppend = Cp06IntentAttemptJournal.prototype.append;
+    let failed = false;
+    const appendSpy = vi
+      .spyOn(Cp06IntentAttemptJournal.prototype, "append")
+      .mockImplementation(async function (this: Cp06IntentAttemptJournal, event, fields) {
+        if (event === "pod_delete_intent" && !failed) {
+          failed = true;
+          throw new Error("journal unavailable");
+        }
+        return originalAppend.call(this, event, fields);
+      });
+    try {
+      await expect(runCp06MagePhaseB(port, config(journalPath))).rejects.toMatchObject({
+        code: "CP06_POD_CLEANUP_EVIDENCE_INCOMPLETE",
+      });
+    } finally {
+      appendSpy.mockRestore();
+    }
+
+    expect(port.deletedPodIds).toHaveLength(1);
+    expect(port.absentPodIds).toEqual(port.deletedPodIds);
+    expect(port.pods).toEqual([]);
+    const records = (await readFile(journalPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+    expect(records.some((record) => record.event === "pod_absence_confirmed")).toBe(true);
   });
 
   it("does not repeat volume or template creation after an unresolved prior create intent", async () => {

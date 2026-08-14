@@ -386,6 +386,10 @@ export class RunPodCp06LiveAdapter implements Cp06PodNativePort {
           accountedCostMicroUsd: accruedCostMicroUsd,
           reason: "exact_name_ambiguity",
         });
+      } catch {
+        // Provider cleanup must still run; confirmed absence is recorded afterward when possible.
+      }
+      try {
         const deletion = await this.deletePod(pod.id);
         await this.confirmPodAbsent(pod.id);
         const settledCostMicroUsd =

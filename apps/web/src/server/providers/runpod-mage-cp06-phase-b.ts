@@ -696,12 +696,17 @@ const cleanupPod = async (
     pod.rateCeilingUsdPerHour,
   );
   const accruedCostMicroUsd = usdToMicro(accruedCostUsd, "CP06_ACCRUED_COST_INVALID");
-  await journal.append("pod_delete_intent", {
-    attemptId: pod.attemptId,
-    podId: pod.podId,
-    podIdHash: sha256(pod.podId),
-    accountedCostMicroUsd: accruedCostMicroUsd,
-  });
+  let preDeleteIntentPersistenceFailed = false;
+  try {
+    await journal.append("pod_delete_intent", {
+      attemptId: pod.attemptId,
+      podId: pod.podId,
+      podIdHash: sha256(pod.podId),
+      accountedCostMicroUsd: accruedCostMicroUsd,
+    });
+  } catch {
+    preDeleteIntentPersistenceFailed = true;
+  }
   let deletion: Awaited<ReturnType<Cp06PodNativePort["deletePod"]>>;
   try {
     deletion = await port.deletePod(pod.podId);
@@ -743,6 +748,9 @@ const cleanupPod = async (
         ? "settled"
         : "conservative_elapsed",
   });
+  if (preDeleteIntentPersistenceFailed) {
+    throw new Cp06PhaseBError("CP06_POD_CLEANUP_EVIDENCE_INCOMPLETE");
+  }
 };
 
 const runPodStage = async <T>(
@@ -993,11 +1001,38 @@ export async function runCp06MagePhaseB(
   if (completed !== undefined) {
     return assertCompletedHandoff(completed, config, initialInventory);
   }
+  const restartPods: { readonly pod: Cp06PodObservation; readonly role: AttemptRole }[] = [];
+  let unexpectedPodPresent = false;
+  let restartIdentityMismatch = false;
   for (const pod of initialInventory.pods) {
     const role = exactAttemptFor(pod);
-    if (role === null) throw new Cp06PhaseBError("CP06_UNEXPECTED_POD_PRESENT");
-    assertRestartPodSafeToDelete(pod, role, config.workerImageDigest);
-    await cleanupPod(port, journal, pod);
+    if (role === null) {
+      unexpectedPodPresent = true;
+      continue;
+    }
+    try {
+      assertRestartPodSafeToDelete(pod, role, config.workerImageDigest);
+      restartPods.push({ pod, role });
+    } catch {
+      restartIdentityMismatch = true;
+    }
+  }
+  let restartCleanupFailed = false;
+  for (const { pod } of restartPods) {
+    try {
+      await cleanupPod(port, journal, pod);
+    } catch {
+      restartCleanupFailed = true;
+    }
+  }
+  if (restartCleanupFailed) {
+    throw new Cp06PhaseBError("CP06_RESTART_POD_CLEANUP_INCOMPLETE");
+  }
+  if (unexpectedPodPresent) {
+    throw new Cp06PhaseBError("CP06_UNEXPECTED_POD_PRESENT");
+  }
+  if (restartIdentityMismatch) {
+    throw new Cp06PhaseBError("CP06_RESTART_POD_IDENTITY_MISMATCH");
   }
   if ((await port.inspectInventory()).pods.length !== 0) {
     throw new Cp06PhaseBError("CP06_ZERO_PODS_NOT_PROVEN");
