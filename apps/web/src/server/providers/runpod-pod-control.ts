@@ -246,6 +246,10 @@ const prepEntrypoint = Object.freeze([
   "python",
   "/opt/videoforge/mage_prepare_service.py",
 ] as const);
+const runtimeImageEntrypoint = Object.freeze([
+  "python",
+  "/opt/videoforge/mage-entrypoint.py",
+] as const);
 const prepStartCommand = Object.freeze([] as const);
 
 const magePodBody = (
@@ -990,7 +994,13 @@ export class RunPodPodControlClient {
       value?.allowedCudaVersions !== undefined &&
         !exactStringArray(value.allowedCudaVersions, ["13.0"]),
     );
-    mismatch("dockerEntrypoint", !exactStringArray(value?.dockerEntrypoint, expectedEntrypoint));
+    mismatch(
+      "dockerEntrypoint",
+      !exactStringArray(value?.dockerEntrypoint, expectedEntrypoint) &&
+        (!allowNormalizedReadOmissions ||
+          mode !== "runtime" ||
+          !exactStringArray(value?.dockerEntrypoint, runtimeImageEntrypoint)),
+    );
     mismatch(
       "dockerStartCmd",
       !exactStringArray(value?.dockerStartCmd, expectedStartCommand) &&
