@@ -131,11 +131,13 @@ class Cp07WorkerTest(unittest.TestCase):
 
     def test_prepared_fp8_state_is_installed_before_pipeline_gpu_move(self) -> None:
         source = (ROOT / "echo_backend.py").read_text()
+        meta = source.index("with init_empty_weights():")
         load = source.index("state = torch.load(prepared, map_location=self.device")
         assign = source.index(
             "pipeline.transformer.load_state_dict(state, strict=True, assign=True)"
         )
         move = source.index("pipeline.to(device=self.device)")
+        self.assertLess(meta, load)
         self.assertLess(load, assign)
         self.assertLess(assign, move)
 

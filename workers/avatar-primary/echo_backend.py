@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 import wave
 from pathlib import Path
@@ -27,6 +28,7 @@ class EchoPreparedBackend:
             import infer_flash as upstream
             import torch
             import torchao
+            from accelerate import init_empty_weights
             from omegaconf import OmegaConf
             from transformers import AutoTokenizer, Wav2Vec2FeatureExtractor
             from src.wav2vec2 import Wav2Vec2Model
@@ -48,17 +50,18 @@ class EchoPreparedBackend:
             str(audio), local_files_only=True
         )
         self.device = upstream.set_multi_gpus_devices(1, 1)
-        transformer = upstream.WanTransformer.from_pretrained(
-            str(
-                base
-                / config["transformer_additional_kwargs"].get("transformer_subpath", "transformer")
-            ),
-            transformer_additional_kwargs=OmegaConf.to_container(
-                config["transformer_additional_kwargs"]
-            ),
-            low_cpu_mem_usage=True,
-            torch_dtype=torch.bfloat16,
+        transformer_root = base / config["transformer_additional_kwargs"].get(
+            "transformer_subpath", "transformer"
         )
+        transformer_config = json.loads((transformer_root / "config.json").read_text())
+        transformer_kwargs = OmegaConf.to_container(config["transformer_additional_kwargs"])
+        mapping = transformer_kwargs.get("dict_mapping", {})
+        for source_key, destination_key in mapping.items():
+            transformer_kwargs[destination_key] = transformer_config[source_key]
+        with init_empty_weights():
+            transformer = upstream.WanTransformer.from_config(
+                transformer_config, **transformer_kwargs
+            )
         vae = upstream.AutoencoderKLWan.from_pretrained(
             str(base / config["vae_kwargs"].get("vae_subpath", "vae")),
             additional_kwargs=OmegaConf.to_container(config["vae_kwargs"]),

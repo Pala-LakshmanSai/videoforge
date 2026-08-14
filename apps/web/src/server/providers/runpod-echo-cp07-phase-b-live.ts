@@ -17,7 +17,7 @@ export const CP07_GPU_RATE_USD_PER_HOUR = 0.99;
 export const CP07_GPU_VRAM_GB = 32;
 export const CP07_REGION = "EU-RO-1";
 export const CP07_CAP_USD = 6;
-export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 4.195393;
+export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 4.723393;
 export const CP07_POD_LIFECYCLE_RESERVE_SECONDS = 120;
 export const CP07_VOLUME_ATTACHMENT_SETTLE_MS = 30_000;
 export const CP07_CAPACITY_RETRY_DELAY_MS = 30_000;
@@ -925,7 +925,7 @@ export async function runCp07PhaseB(options: {
         wavPath,
         paddedDurationSeconds,
       );
-      const sampleMaximumSeconds = 1_800;
+      const sampleMaximumSeconds = 1_200;
       assertCp07CumulativeReservation(conservativeCostUsd, sampleMaximumSeconds);
       const workerToken = randomBytes(32).toString("base64url");
       const authority: PodAuthority = {
