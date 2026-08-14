@@ -30,11 +30,9 @@ from span_contract import (
 SHA256 = re.compile(r"^sha256:[a-f0-9]{64}$")
 IMAGE_DIGEST = re.compile(r"^ghcr\.io/pala-lakshmansai/videoforge-echo-cp07@sha256:[a-f0-9]{64}$")
 SUPPORTED_GPU_NAMES = {
-    "NVIDIA GeForce RTX 4090": ("4090", 24_000),
-    "NVIDIA GeForce RTX 5090": ("5090", 31_000),
-    "NVIDIA A100 80GB PCIe": ("A100", 79_000),
-    "NVIDIA A100-SXM4-80GB": ("A100", 79_000),
-    "NVIDIA RTX PRO 6000 Blackwell Server Edition": ("RTX PRO 6000", 94_000),
+    "NVIDIA GeForce RTX 4090": ("4090", 24_000, (8, 9)),
+    "NVIDIA GeForce RTX 5090": ("5090", 31_000, (12, 0)),
+    "NVIDIA RTX PRO 6000 Blackwell Server Edition": ("RTX PRO 6000", 94_000, (12, 0)),
 }
 MAX_OUTPUT_BYTES = 128 * 1024 * 1024
 
@@ -236,9 +234,14 @@ class EchoRuntime:
         actual = torch.cuda.get_device_name(0)
         properties = torch.cuda.get_device_properties(0)
         offering = os.environ.get("VIDEOFORGE_ECHO_GPU_OFFERING_ID", "")
-        expected_fragment, minimum_mb = SUPPORTED_GPU_NAMES[offering]
+        expected_fragment, minimum_mb, expected_capability = SUPPORTED_GPU_NAMES[offering]
         total_mb = properties.total_memory // (1024 * 1024)
-        if expected_fragment.upper() not in actual.upper() or total_mb < minimum_mb:
+        capability = tuple(torch.cuda.get_device_capability(0))
+        if (
+            expected_fragment.upper() not in actual.upper()
+            or total_mb < minimum_mb
+            or capability != expected_capability
+        ):
             raise RuntimeError("ECHO_GPU_OFFERING_MISMATCH")
         self.gpu = {
             "available": True,
@@ -249,6 +252,7 @@ class EchoRuntime:
             "total_memory_bytes": properties.total_memory,
             "cuda_version": str(torch.version.cuda or ""),
             "torch_version": str(torch.__version__),
+            "compute_capability": f"{capability[0]}.{capability[1]}",
         }
 
     @staticmethod

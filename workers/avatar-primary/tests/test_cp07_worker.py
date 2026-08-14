@@ -103,6 +103,7 @@ def make_volume(root: Path, *, lane: str = volume.ECHO_LANE) -> dict[str, object
         prepared_state_sha256=prepared_hash,
         prepared_state_bytes=prepared.stat().st_size,
         quantized_linear_count=10,
+        actual_source_bytes=volume.ECHO_SELECTED_RUNTIME_BLOB_BYTES,
     )
     body["lane"] = lane
     manifest = volume.seal_manifest(body)
@@ -123,10 +124,11 @@ class Cp07WorkerTest(unittest.TestCase):
     def test_exact_pinned_lineage_bytes_and_derived_capacity(self) -> None:
         self.assertEqual(
             sum(item.bytes for item in volume.ECHO_REQUIRED_SOURCE_FILES),
-            volume.ECHO_SELECTED_SOURCE_BYTES,
+            volume.ECHO_SELECTED_RUNTIME_BLOB_BYTES,
         )
         self.assertEqual(volume.ECHO_VOLUME_SIZE_GB, 50)
-        self.assertEqual(volume.ECHO_MINIMUM_POST_PREPARATION_HEADROOM_BYTES, 22_077_682_265)
+        self.assertEqual(volume.ECHO_PINNED_SMALL_CONFIG_MAX_BYTES, 50_000_000)
+        self.assertEqual(volume.ECHO_MINIMUM_POST_PREPARATION_HEADROOM_BYTES, 22_027_682_265)
         self.assertEqual(volume.ECHO_TORCH_VERSION, "2.7.1")
         self.assertEqual(volume.ECHO_TORCHAO_VERSION, "0.11.0")
 

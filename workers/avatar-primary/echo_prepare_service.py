@@ -8,7 +8,11 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from echo_volume import ECHO_SELECTED_SOURCE_BYTES, ECHO_VOLUME_SIZE_GB
+from echo_volume import (
+    ECHO_PINNED_SMALL_CONFIG_MAX_BYTES,
+    ECHO_SELECTED_RUNTIME_BLOB_BYTES,
+    ECHO_VOLUME_SIZE_GB,
+)
 from prepare_echo_volume import prepare
 
 app = FastAPI(title="VideoForge Echo CP-07 preparation", docs_url=None, redoc_url=None)
@@ -53,7 +57,8 @@ async def health() -> dict[str, object]:
         "phase": state["phase"],
         "model": {
             "id": "EchoMimicV3-Flash",
-            "selected_source_bytes": ECHO_SELECTED_SOURCE_BYTES,
+            "selected_runtime_blob_bytes": ECHO_SELECTED_RUNTIME_BLOB_BYTES,
+            "pinned_small_config_max_bytes": ECHO_PINNED_SMALL_CONFIG_MAX_BYTES,
             "precision": "float8_e4m3fn_dynamic_activation_weight",
         },
         "volume": {

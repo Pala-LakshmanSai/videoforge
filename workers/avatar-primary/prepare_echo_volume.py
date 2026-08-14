@@ -13,9 +13,11 @@ from echo_volume import (
     ECHO_FLASH_REVISION,
     ECHO_MANIFEST_NAME,
     ECHO_MARKER_NAME,
+    ECHO_PINNED_SMALL_CONFIG_MAX_BYTES,
     ECHO_PREPARATION_REPORT_PATH,
     ECHO_PREPARED_STATE_PATH,
     ECHO_REQUIRED_SOURCE_FILES,
+    ECHO_SELECTED_RUNTIME_BLOB_BYTES,
     ECHO_VOLUME_SIZE_GB,
     ECHO_WAN_REVISION,
     canonical_json,
@@ -32,7 +34,10 @@ REPOSITORIES = (
         "BadToBest/EchoMimicV3",
         ECHO_FLASH_REVISION,
         "source/flash",
-        ["echomimicv3-flash-pro/*"],
+        [
+            "echomimicv3-flash-pro/config.json",
+            "echomimicv3-flash-pro/diffusion_pytorch_model.safetensors",
+        ],
     ),
     (
         "alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP",
@@ -40,22 +45,19 @@ REPOSITORIES = (
         "source/base",
         [
             "*.json",
-            "*.pth",
-            "*.safetensors",
+            "Wan2.1_VAE.pth",
+            "diffusion_pytorch_model.safetensors",
             "google/umt5-xxl/*",
             "xlm-roberta-large/*",
-            "tokenizer/*",
-            "text_encoder/*",
-            "image_encoder/*",
-            "transformer/*",
-            "vae/*",
+            "models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth",
+            "models_t5_umt5-xxl-enc-bf16.pth",
         ],
     ),
     (
         "TencentGameMate/chinese-wav2vec2-base",
         ECHO_AUDIO_REVISION,
         "source/audio",
-        ["*.json", "*.txt", "*.bin", "*.safetensors"],
+        ["config.json", "preprocessor_config.json", "pytorch_model.bin"],
     ),
 )
 
@@ -142,6 +144,13 @@ def prepare(
                 os.environ[name] = value
     files = _collect_files(model_root)
     indexed = {str(item["path"]): item for item in files}
+    actual_source_bytes = sum(int(item["bytes"]) for item in files if item["role"] == "source")
+    if (
+        not ECHO_SELECTED_RUNTIME_BLOB_BYTES
+        <= actual_source_bytes
+        <= (ECHO_SELECTED_RUNTIME_BLOB_BYTES + ECHO_PINNED_SMALL_CONFIG_MAX_BYTES)
+    ):
+        raise RuntimeError("ECHO_PREPARATION_SOURCE_BYTE_BUDGET_EXCEEDED")
     prepared = indexed.get(ECHO_PREPARED_STATE_PATH)
     if prepared is None or ECHO_PREPARATION_REPORT_PATH not in indexed:
         raise RuntimeError("ECHO_PREPARATION_ARTIFACT_MISSING")
@@ -152,6 +161,7 @@ def prepare(
         prepared_state_sha256=str(prepared["sha256"]),
         prepared_state_bytes=int(prepared["bytes"]),
         quantized_linear_count=int(report["quantized_linear_count"]),
+        actual_source_bytes=actual_source_bytes,
     )
     sealed = seal_manifest(body)
     manifest_path = model_root / ECHO_MANIFEST_NAME

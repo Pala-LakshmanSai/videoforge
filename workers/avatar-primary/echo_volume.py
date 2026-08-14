@@ -19,10 +19,14 @@ ECHO_TORCH_VERSION: Final = "2.7.1"
 ECHO_TORCHAO_VERSION: Final = "0.11.0"
 ECHO_VOLUME_SIZE_GB: Final = 50
 ECHO_REQUESTED_VOLUME_BYTES: Final = ECHO_VOLUME_SIZE_GB * 1_000_000_000
-ECHO_SELECTED_SOURCE_BYTES: Final = 23_922_317_735
+ECHO_SELECTED_RUNTIME_BLOB_BYTES: Final = 23_922_317_735
+ECHO_PINNED_SMALL_CONFIG_MAX_BYTES: Final = 50_000_000
 ECHO_PREPARED_ARTIFACT_MAX_BYTES: Final = 4_000_000_000
 ECHO_MINIMUM_POST_PREPARATION_HEADROOM_BYTES: Final = (
-    ECHO_REQUESTED_VOLUME_BYTES - ECHO_SELECTED_SOURCE_BYTES - ECHO_PREPARED_ARTIFACT_MAX_BYTES
+    ECHO_REQUESTED_VOLUME_BYTES
+    - ECHO_SELECTED_RUNTIME_BLOB_BYTES
+    - ECHO_PINNED_SMALL_CONFIG_MAX_BYTES
+    - ECHO_PREPARED_ARTIFACT_MAX_BYTES
 )
 ECHO_MARKER_NAME: Final = ".videoforge-echo-fp8-volume.json"
 ECHO_MANIFEST_NAME: Final = "manifest.json"
@@ -183,6 +187,7 @@ def manifest_body(
     prepared_state_sha256: str,
     prepared_state_bytes: int,
     quantized_linear_count: int,
+    actual_source_bytes: int,
 ) -> dict[str, object]:
     return {
         "schema_version": ECHO_VOLUME_SCHEMA,
@@ -220,7 +225,10 @@ def manifest_body(
         },
         "volume_id_hash": volume_id_hash,
         "requested_volume_size_gb": ECHO_VOLUME_SIZE_GB,
-        "selected_source_bytes": ECHO_SELECTED_SOURCE_BYTES,
+        "selected_runtime_blob_bytes": ECHO_SELECTED_RUNTIME_BLOB_BYTES,
+        "pinned_small_config_max_bytes": ECHO_PINNED_SMALL_CONFIG_MAX_BYTES,
+        "actual_source_bytes": actual_source_bytes,
+        "actual_small_config_bytes": actual_source_bytes - ECHO_SELECTED_RUNTIME_BLOB_BYTES,
         "prepared_artifact_max_bytes": ECHO_PREPARED_ARTIFACT_MAX_BYTES,
         "minimum_post_preparation_headroom_bytes": ECHO_MINIMUM_POST_PREPARATION_HEADROOM_BYTES,
         "prepared_at": prepared_at,
@@ -249,7 +257,8 @@ def validate_manifest_shape(value: object) -> dict[str, object]:
         "precision": ECHO_PRECISION,
         "source_lineage": source_lineage(),
         "requested_volume_size_gb": ECHO_VOLUME_SIZE_GB,
-        "selected_source_bytes": ECHO_SELECTED_SOURCE_BYTES,
+        "selected_runtime_blob_bytes": ECHO_SELECTED_RUNTIME_BLOB_BYTES,
+        "pinned_small_config_max_bytes": ECHO_PINNED_SMALL_CONFIG_MAX_BYTES,
         "prepared_artifact_max_bytes": ECHO_PREPARED_ARTIFACT_MAX_BYTES,
         "minimum_post_preparation_headroom_bytes": ECHO_MINIMUM_POST_PREPARATION_HEADROOM_BYTES,
     }
@@ -265,6 +274,8 @@ def validate_manifest_shape(value: object) -> dict[str, object]:
         "volume_id_hash",
         "prepared_at",
         "files",
+        "actual_source_bytes",
+        "actual_small_config_bytes",
     }
     if set(manifest) != expected_keys:
         raise EchoVolumeError("ECHO_VOLUME_MANIFEST_INVALID")
@@ -290,6 +301,16 @@ def validate_manifest_shape(value: object) -> dict[str, object]:
     _sha256(volume_hash.removeprefix("sha256:"))
     if not isinstance(manifest.get("prepared_at"), str) or not manifest["prepared_at"]:
         raise EchoVolumeError("ECHO_VOLUME_MANIFEST_INVALID")
+    actual_source_bytes = manifest.get("actual_source_bytes")
+    actual_small_config_bytes = manifest.get("actual_small_config_bytes")
+    if (
+        not isinstance(actual_source_bytes, int)
+        or not ECHO_SELECTED_RUNTIME_BLOB_BYTES
+        <= actual_source_bytes
+        <= ECHO_SELECTED_RUNTIME_BLOB_BYTES + ECHO_PINNED_SMALL_CONFIG_MAX_BYTES
+        or actual_small_config_bytes != actual_source_bytes - ECHO_SELECTED_RUNTIME_BLOB_BYTES
+    ):
+        raise EchoVolumeError("ECHO_VOLUME_SOURCE_BYTES_INVALID")
     quantization = manifest.get("quantization")
     if not isinstance(quantization, dict) or set(quantization) != {
         "algorithm",

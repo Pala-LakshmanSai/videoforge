@@ -78,9 +78,10 @@ describe("CP-07 read-only preflight", () => {
       provider_mutations: 0,
       inventory: { pods: 0, network_volumes: 1, echo_volume_exists: false },
       echo_artifact: {
-        selected_source_bytes: 23_922_317_735,
+        selected_runtime_blob_bytes: 23_922_317_735,
+        pinned_small_config_max_bytes: 50_000_000,
         proposed_volume_size_gb: 50,
-        minimum_post_preparation_headroom_bytes: 22_077_682_265,
+        minimum_post_preparation_headroom_bytes: 22_027_682_265,
       },
       volume_pricing: { proposed_ongoing_charge_usd_per_month: 3.5 },
     });

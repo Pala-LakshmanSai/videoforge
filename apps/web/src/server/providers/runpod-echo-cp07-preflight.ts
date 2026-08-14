@@ -7,14 +7,13 @@ export const CP07_ECHO_VOLUME_SIZE_GB = 50 as const;
 export const CP07_ECHO_VOLUME_RATE_USD_PER_GB_MONTH = 0.07 as const;
 export const CP07_ECHO_VOLUME_MONTHLY_USD = 3.5 as const;
 export const CP07_SELECTED_SOURCE_BYTES = 23_922_317_735 as const;
+export const CP07_PINNED_SMALL_CONFIG_MAX_BYTES = 50_000_000 as const;
 export const CP07_PREPARED_ARTIFACT_MAX_BYTES = 4_000_000_000 as const;
-export const CP07_MINIMUM_HEADROOM_BYTES = 22_077_682_265 as const;
+export const CP07_MINIMUM_HEADROOM_BYTES = 22_027_682_265 as const;
 
 const ALLOWED_GPU_IDS = new Set([
   "NVIDIA GeForce RTX 4090",
   "NVIDIA GeForce RTX 5090",
-  "NVIDIA A100 80GB PCIe",
-  "NVIDIA A100-SXM4-80GB",
   "NVIDIA RTX PRO 6000 Blackwell Server Edition",
 ]);
 const AVAILABILITY = new Set(["LOW", "MEDIUM", "HIGH"]);
@@ -173,7 +172,8 @@ export async function runCp07ReadOnlyPreflight(input: {
       echo_volume_exists: false,
     },
     echo_artifact: {
-      selected_source_bytes: CP07_SELECTED_SOURCE_BYTES,
+      selected_runtime_blob_bytes: CP07_SELECTED_SOURCE_BYTES,
+      pinned_small_config_max_bytes: CP07_PINNED_SMALL_CONFIG_MAX_BYTES,
       prepared_artifact_max_bytes: CP07_PREPARED_ARTIFACT_MAX_BYTES,
       proposed_volume_size_gb: CP07_ECHO_VOLUME_SIZE_GB,
       minimum_post_preparation_headroom_bytes: CP07_MINIMUM_HEADROOM_BYTES,
