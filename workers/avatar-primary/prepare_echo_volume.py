@@ -28,7 +28,7 @@ from echo_volume import (
 )
 from prepare_fp8_artifact import prepare_fp8_artifact
 
-CONFIRMATION = "DOWNLOAD_AND_PREPARE_EXACT_VIDEOFORGE_ECHO_FP8"
+CONFIRMATION = "DOWNLOAD_AND_PREPARE_EXACT_VIDEOFORGE_ECHO_FLASH_TURBO_FP8"
 REPOSITORIES = (
     (
         "BadToBest/EchoMimicV3",
@@ -170,7 +170,7 @@ def prepare(
     os.chmod(temporary, 0o400)
     temporary.replace(manifest_path)
     completion = {
-        "schema_version": "videoforge.echo-fp8-volume-completion/v1",
+        "schema_version": "videoforge.echo-flash-turbo-fp8-volume-completion/v1",
         "manifest_sha256": sealed["manifest_sha256"],
     }
     marker_temporary = model_root / f"{ECHO_MARKER_NAME}.tmp"
@@ -181,7 +181,9 @@ def prepare(
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Prepare one exact VideoForge Echo FP8 volume")
+    parser = argparse.ArgumentParser(
+        description="Prepare one exact VideoForge EchoMimicV3-Flash Turbo FP8 volume"
+    )
     parser.add_argument("--model-root", type=Path, required=True)
     parser.add_argument("--volume-id", required=True)
     parser.add_argument("--volume-size-gb", type=int, required=True)

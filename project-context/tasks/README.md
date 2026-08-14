@@ -16,7 +16,7 @@ spend remain false/`$0`. The prior `VF-9-24I` paid FP8 sample path is superseded
 ceiling is historical and non-transferable.
 
 The approved future lifecycle uses two different persistent `EU-RO-1` model volumes and two
-disposable Pods: exact ImageForge Mage INT8 ConvRot and EchoMimicV3-Flash FP8. Live compatible GPU
+disposable Pods: exact ImageForge Mage INT8 ConvRot and EchoMimicV3-Flash Turbo FP8. Live compatible GPU
 selection is independent per lane. Ordinary boot downloads no model files. Delete Pods after
 durable outputs and retain only explicitly approved volumes. The exact CP-06 prompt activates only
 `VF-9-24Q` Phase A local/read-only preflight at `$0`; a later complete numeric authorization is

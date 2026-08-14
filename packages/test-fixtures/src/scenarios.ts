@@ -167,7 +167,7 @@ function baseSnapshot(): FixtureSnapshot {
           state: "RUNNING",
           completed: 48,
           total: 52,
-          action: "EchoMimicV3-Flash: clip 49/52",
+          action: "EchoMimicV3-Flash Turbo FP8: clip 49/52",
         },
       },
       stages: [
@@ -781,7 +781,7 @@ const scenarios = {
         state: "STARTING",
         completed: 0,
         total: 52,
-        action: "EchoMimicV3-Flash worker: model loading",
+        action: "EchoMimicV3-Flash Turbo FP8 worker: model loading",
       };
       const generation = snapshot.project.stages.find((stage) => stage.id === "generation");
       if (generation) {

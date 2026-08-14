@@ -17,7 +17,7 @@ def bootstrap(model_root: Path) -> dict[str, object]:
     manifest = verify_model_root(model_root, expected_volume_id_hash=expected_volume_hash)
     completed = time.time()
     result = {
-        "schema_version": "videoforge.echo-fp8-bootstrap/v1",
+        "schema_version": "videoforge.echo-flash-turbo-fp8-bootstrap/v1",
         "manifest_sha256": manifest["manifest_sha256"],
         "precision": manifest["precision"],
         "downloaded_model_bytes": 0,

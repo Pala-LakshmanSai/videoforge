@@ -110,7 +110,7 @@ warm. With no waiter at active-lane completion, delete it independently; the vol
 
 ### Echo avatar lane
 
-EchoMimicV3-Flash is the sole active avatar generator. The profile pins
+EchoMimicV3-Flash Turbo FP8 is the sole active avatar generator profile. It pins
 `antgroup/echomimic_v3@7e89489ca51c0d008fc1963ec6c03fc5bd0b9397`, Flash weights
 `BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249`, its Wan base/audio encoder,
 and the VideoForge-prepared FP8 artifact. Compatible transformer linears use

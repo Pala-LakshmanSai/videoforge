@@ -17,7 +17,7 @@ or Google plus one unique single-use code bound to the same verified email. Wait
 the session GPU pair and are orchestration-inert until promotion. A waiter may keep an existing lane
 Pod warm but never create/recreate one.
 
-Mage INT8 ConvRot and EchoMimicV3-Flash FP8 have separate persistent EU-RO-1 volumes, worker images,
+Mage INT8 ConvRot and EchoMimicV3-Flash Turbo FP8 have separate persistent EU-RO-1 volumes, worker images,
 and at most one disposable Pod per lane. Idle-session first Generate locks two exact live GPU
 offerings and starts both Pods concurrently. Missing lanes recreate only after next-project
 activation on the same GPU after revalidation. Full drain means zero Pods and two retained volumes.

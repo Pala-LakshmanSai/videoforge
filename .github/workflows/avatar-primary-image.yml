@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: "Publish the smoke-tested immutable CP-07 Echo image to GHCR"
+        description: "Publish the smoke-tested immutable CP-07 Echo Flash Turbo FP8 image to GHCR"
         required: true
         type: boolean
         default: false
@@ -37,12 +37,12 @@ jobs:
           done
           docker system prune --all --force
 
-      - name: Build and smoke immutable CP-07 Echo FP8 Pod worker
+      - name: Build and smoke immutable CP-07 Echo Flash Turbo FP8 Pod worker
         shell: bash
         run: |
           set -euo pipefail
           test "$RUNNER_ARCH" = "X64"
-          image="videoforge-echo-cp07:${GITHUB_SHA}"
+          image="videoforge-echo-flash-turbo-cp07:${GITHUB_SHA}"
           docker build --tag "$image" workers/avatar-primary
           docker run --rm --entrypoint python "$image" -c \
             'import torch, torchao; import echo_api, echo_volume, span_contract; assert torch.__version__.split("+")[0] == "2.7.1"; assert torchao.__version__ == "0.11.0"; assert echo_api.runtime.health()["model"]["status"] == "loading"; print("echo-cp07-import-health-ok")'
@@ -66,10 +66,10 @@ jobs:
         run: |
           set -euo pipefail
           owner="${GITHUB_REPOSITORY_OWNER,,}"
-          image="ghcr.io/${owner}/videoforge-echo-cp07:${GITHUB_SHA}"
+          image="ghcr.io/${owner}/videoforge-echo-flash-turbo-cp07:${GITHUB_SHA}"
           docker tag "$LOCAL_IMAGE" "$image"
           docker push "$image"
           immutable_image="$(docker inspect --format='{{index .RepoDigests 0}}' "$image")"
-          [[ "$immutable_image" =~ ^ghcr\.io/[a-z0-9_-]+/videoforge-echo-cp07@sha256:[a-f0-9]{64}$ ]]
+          [[ "$immutable_image" =~ ^ghcr\.io/[a-z0-9_-]+/videoforge-echo-flash-turbo-cp07@sha256:[a-f0-9]{64}$ ]]
           echo "immutable_image=$immutable_image" >> "$GITHUB_OUTPUT"
           echo "immutable_image=$immutable_image" >> "$GITHUB_STEP_SUMMARY"

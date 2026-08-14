@@ -176,9 +176,13 @@ fixture stays default and BF16 attempts remain historical.
 
 ## EchoMimicV3-Flash
 
-Sole active avatar path under `DEC_AVATAR_007` and precision recovery `DEC_AVATAR_008`. Native
-output only; new repair/fallback bindings are `null`. Fixture remains default and no production
-profile is eligible.
+Sole active avatar path under `DEC_AVATAR_007` and precision recovery `DEC_AVATAR_008`. The active
+runtime profile is `EchoMimicV3-Flash Turbo FP8` (`videoforge_echo_v3_flash_turbo_fp8_v1`). Turbo
+is the VideoForge name for the official accelerated 8-step `EchoMimicV3-Flash` /
+`echomimicv3-flash-pro` lineage plus owned FP8 preparation; first-party verification found no
+separately published Turbo checkpoint. Exact upstream identifiers and hashes below remain unchanged.
+Native output only; new repair/fallback bindings are `null`. Fixture remains default and no
+production profile is eligible.
 
 - Source: `antgroup/echomimic_v3@7e89489ca51c0d008fc1963ec6c03fc5bd0b9397`, Apache-2.0.
 - Flash weights: `BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249`, Apache-2.0; exact Flash safetensors SHA-256 `5ebdbb2fc709108bf2a1728fd92eb2874804e4bc0324e92a2cd55425968c85a4`.

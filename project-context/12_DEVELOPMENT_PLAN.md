@@ -39,7 +39,7 @@ image publication, or spend task needs explicit bounded authority.
 - The first accepted Generate while truly idle selects and atomically locks one exact live Mage/Echo
   GPU pair for the global generation session. Waiting projects inherit it and cannot select or
   switch GPUs.
-- Mage INT8 ConvRot and EchoMimicV3-Flash FP8 use different persistent `EU-RO-1` model volumes,
+- Mage INT8 ConvRot and EchoMimicV3-Flash Turbo FP8 use different persistent `EU-RO-1` model volumes,
   different worker images, and at most one disposable Pod per lane. Volumes never share or become
   routine-cleanup targets.
 - Mage and Echo may run concurrently only for the active project. Waiting entries are inert: no GPU

@@ -4,9 +4,9 @@ updated_at: "2026-08-14T15:45:33Z"
 
 phase: cp07_phase_a_complete_awaiting_paid_authority
 implementation_authorized_in_current_task: true
-current_milestone: exact_echo_fp8_persistent_runtime_crop_lock
+current_milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
 current_task: VF-9-24R
-current_wave: cp07_echo_fp8_persistent_runpod_crop_lock
+current_wave: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 task_stage: awaiting_paid_authority
 application_code_changes_authorized: true
@@ -211,7 +211,7 @@ in_progress_checkpoint: CP-07
 recommended_next_task:
   task_id: VF-9-24R
   checkpoint: CP-07
-  milestone: exact_echo_fp8_persistent_runtime_crop_lock
+  milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
   status: phase_a_complete_awaiting_paid_authority
   dependency_status: cp06_complete_green_settled_visual_accepted
   authorization_status: provider_free_and_read_only_zero_cap
@@ -228,7 +228,7 @@ recommended_next_task:
       - quota_lookup
       - resource_identity_lookup
       - resource_absence_lookup
-  read_profile: cp07_echo_fp8_persistent_runpod_crop_lock
+  read_profile: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
   task_brief: tasks/VF-9-24R.md
   goal: "Request one combined CP-07 paid proposal approval; do not mutate before exact approval."
   provider_calls_authorized: true
@@ -244,7 +244,7 @@ recommended_next_task:
   prerequisite_evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json"
   required_handoff:
     - "Preserve CP-06 exact digest, accepted outputs, settled cost, zero compute, and retained 50 GB Mage volume."
-    - "Build only the exact VideoForge-owned Echo FP8 prepared-artifact/offline short-span path from pinned first-party lineage."
+    - "Build only the exact VideoForge-owned EchoMimicV3-Flash Turbo FP8 prepared-artifact/offline short-span path from pinned first-party lineage; Turbo is the VideoForge profile alias for the official 8-step Flash/flash-pro bytes, not a substituted checkpoint."
     - "Use read-only RunPod access at $0 only for Sujal identity, EU-RO-1 GPU inventory/rates, volume pricing, and absence."
     - "Stop before publication, model download/preparation, volume/Pod creation, GPU allocation, billing, or spend."
   prohibited_in_task:
@@ -260,6 +260,10 @@ cp07_phase_a:
   safety_fix_commit: "75c852bb891dbe205ee43d2b73e74765bc336373"
   source_revision: "antgroup/echomimic_v3@7e89489ca51c0d008fc1963ec6c03fc5bd0b9397"
   flash_revision: "BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249"
+  upstream_model_id: "EchoMimicV3-Flash"
+  runtime_profile_id: "videoforge_echo_v3_flash_turbo_fp8_v1"
+  runtime_profile_label: "EchoMimicV3-Flash Turbo FP8"
+  upstream_turbo_checkpoint_claimed: false
   wan_revision: "alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP@fc913c34361f4ec879e2f9c78b4f11ae50a937d1"
   audio_revision: "TencentGameMate/chinese-wav2vec2-base@3991242c806928916fff4a8c0e4f76acf661b743"
   selected_runtime_blob_bytes: 23922317735
@@ -269,7 +273,8 @@ cp07_phase_a:
   minimum_post_preparation_headroom_bytes: 22027682265
   proposed_volume_rate_usd_per_gb_month: 0.07
   proposed_ongoing_retention_charge_usd_per_month: 3.5
-  immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-cp07:75c852bb891dbe205ee43d2b73e74765bc336373"
+  capacity_growth_policy: "50 GB remains sufficient under current byte bounds. If exact preparation exceeds a bound, stop before mutation, derive the next exact GB size and current recurring rate, and request changed approval; never silently enlarge retained billing."
+  immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:<source-commit-before-publication>"
   image_published: false
   image_digest: null
   local_container_build_executed: false
@@ -587,7 +592,7 @@ approved_mvp_architecture:
       volume: retained_50gb_eu_ro_1_manifest_verified
       pod: absent_after_two_fresh_pod_qualification
     echo_avatar:
-      model: EchoMimicV3-Flash-FP8
+      model: EchoMimicV3-Flash-Turbo-FP8
       precision: fp8_prepared_from_pinned_first_party_lineage
       volume: separate_persistent_not_created
       pod: session_scoped_disposable_not_created
@@ -618,9 +623,9 @@ activation_handoff:
   status: cp07_provider_free_read_only_preflight_active
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Load cp07_echo_fp8_persistent_runpod_crop_lock and tasks/VF-9-24R.md; read only the CP-07 roadmap section and pinned Echo preflight."
+    - "Load cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock and tasks/VF-9-24R.md; read only the CP-07 roadmap section and pinned Echo preflight."
     - "Preserve CP-06 runtime digest, accepted visual evidence, settled cost, zero compute, and the retained Mage-only 50 GB volume."
-    - "Complete only local Echo FP8 artifact/offline/warm-up/short-span/scratch/immutable-image preflight plus authorized read-only Sujal RunPod lookups at $0."
+    - "Complete only local EchoMimicV3-Flash Turbo FP8 artifact/offline/warm-up/short-span/scratch/immutable-image preflight plus authorized read-only Sujal RunPod lookups at $0."
     - "Ask once for complete paid authority after local validation and fresh GPU/rate/volume-pricing evidence; do not invent a cap."
   stop_conditions:
     - "Any Sujal identity mismatch, ambiguous provider state, credential exposure, or read operation outside the allowlist."

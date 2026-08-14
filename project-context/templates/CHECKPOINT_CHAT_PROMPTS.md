@@ -106,7 +106,7 @@ After approval, publish the immutable VideoForge worker; create and prepare only
 ## CP-07 implementation prompt
 
 ```text
-Work on VideoForge checkpoint CP-07 only: Exact EchoMimicV3-Flash FP8 persistent-volume runtime and renderer crop lock.
+Work on VideoForge checkpoint CP-07 only: Exact EchoMimicV3-Flash Turbo FP8 persistent-volume runtime and renderer crop lock.
 
 Use concise, factual updates. Read mandatory context, CP-07 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md, and pinned Echo preflight evidence. Verify CP-06 is green. If the CP-07 task brief/read profile or selectors are missing, create, select, and validate the narrow provider-free activation records and continue in this chat.
 

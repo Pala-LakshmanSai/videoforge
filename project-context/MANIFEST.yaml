@@ -7,7 +7,7 @@ source_of_truth: project-context
 # user accepted visual quality, and the live read-only re-audit proved zero compute plus exactly the
 # intended retained 50 GB Mage volume. CP-07 provider-free/read-only preflight is active; paid
 # mutation remains unauthorized.
-current_selected_profile: cp07_echo_fp8_persistent_runpod_crop_lock
+current_selected_profile: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
 current_selected_brief: tasks/VF-9-24R.md
 
 mandatory_read:
@@ -30,7 +30,7 @@ target_profile_word_budget: 10000
 # Historical task briefs remain evidence but are intentionally not active read profiles. Create one
 # narrow profile/brief when each future checkpoint becomes current.
 read_profiles:
-  cp07_echo_fp8_persistent_runpod_crop_lock:
+  cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock:
     - tasks/VF-9-24R.md
     - 08_MODELS_AND_PROVIDERS.md
     - 19_IMPLEMENTATION_PLAYBOOK.md

@@ -16,7 +16,7 @@ COPY src /opt/videoforge/src
 COPY echo_api.py echo_backend.py echo_bootstrap.py echo-entrypoint.py echo_job.py echo_prepare_service.py echo_runtime.py echo_volume.py prepare_echo_volume.py prepare_fp8_artifact.py scratch.py span_contract.py /opt/videoforge/
 
 ENV ECHOMIMIC_ROOT=/opt/echomimic_v3 \
-    ECHO_MODEL_ROOT=/runpod-volume/echo-fp8 \
+    ECHO_MODEL_ROOT=/runpod-volume/echo-flash-turbo-fp8 \
     ECHO_SCRATCH_ROOT=/run/videoforge/echo-scratch \
     HF_HOME=/tmp/hf-cache \
     HF_HUB_OFFLINE=1 \

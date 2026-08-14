@@ -230,7 +230,7 @@ Only step 5 makes that version selectable. Published v1 remains selectable while
 
 - Slice only scheduled spans, adding small context padding for coarticulation.
 - Preserve exact EDL trim points so padding never changes timeline length.
-- Use the pinned EchoMimicV3-Flash FP8 runtime on its own disposable `EU-RO-1` Pod and retained Echo
+- Use the pinned EchoMimicV3-Flash Turbo FP8 runtime on its own disposable `EU-RO-1` Pod and retained Echo
   model volume. The worker treats verified model files as immutable/read-only application data and
   writes scratch/results elsewhere; provider-enforced read-only mounting is not assumed.
 - Verify the exact Echo volume manifest, load the FP8 runtime, and emit authoritative `model_ready` before sending any avatar task.

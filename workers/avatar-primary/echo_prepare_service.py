@@ -10,12 +10,17 @@ from fastapi import FastAPI
 
 from echo_volume import (
     ECHO_PINNED_SMALL_CONFIG_MAX_BYTES,
+    ECHO_RUNTIME_PROFILE_ID,
+    ECHO_RUNTIME_PROFILE_LABEL,
     ECHO_SELECTED_RUNTIME_BLOB_BYTES,
+    ECHO_UPSTREAM_MODEL_ID,
     ECHO_VOLUME_SIZE_GB,
 )
 from prepare_echo_volume import prepare
 
-app = FastAPI(title="VideoForge Echo CP-07 preparation", docs_url=None, redoc_url=None)
+app = FastAPI(
+    title="VideoForge Echo Flash Turbo FP8 CP-07 preparation", docs_url=None, redoc_url=None
+)
 started = time.monotonic()
 state: dict[str, object] = {"phase": "starting", "error_code": None}
 
@@ -26,7 +31,7 @@ def _run() -> None:
     try:
         state["phase"] = "preparing"
         manifest = prepare(
-            Path(os.environ.get("ECHO_MODEL_ROOT", "/runpod-volume/echo-fp8")),
+            Path(os.environ.get("ECHO_MODEL_ROOT", "/runpod-volume/echo-flash-turbo-fp8")),
             volume_id=volume_id,
             volume_size_gb=ECHO_VOLUME_SIZE_GB,
             confirmation=confirmation,
@@ -52,11 +57,13 @@ async def startup() -> None:
 @app.get("/health")
 async def health() -> dict[str, object]:
     return {
-        "schema_version": "videoforge.echo-fp8-preparation-health/v1",
-        "service": "videoforge-echo-cp07-preparation",
+        "schema_version": "videoforge.echo-flash-turbo-fp8-preparation-health/v1",
+        "service": "videoforge-echo-flash-turbo-cp07-preparation",
         "phase": state["phase"],
         "model": {
-            "id": "EchoMimicV3-Flash",
+            "id": ECHO_RUNTIME_PROFILE_LABEL,
+            "runtime_profile_id": ECHO_RUNTIME_PROFILE_ID,
+            "upstream_model_id": ECHO_UPSTREAM_MODEL_ID,
             "selected_runtime_blob_bytes": ECHO_SELECTED_RUNTIME_BLOB_BYTES,
             "pinned_small_config_max_bytes": ECHO_PINNED_SMALL_CONFIG_MAX_BYTES,
             "precision": "float8_e4m3fn_dynamic_activation_weight",

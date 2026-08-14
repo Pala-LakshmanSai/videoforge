@@ -8,7 +8,7 @@ Read when: starting/resuming coding, handing work between chats/agents, running 
 Development must feel continuous and inspectable: the user can keep one stable Chrome tab open, see each working increment through hot reload, and report breakage while it is introduced. Backend/model uncertainty is isolated behind fixtures and adapters rather than blocking the visible app.
 
 The active production target has exactly two independent GPU lanes: ImageForge-aligned Mage-Flow
-INT8 ConvRot and EchoMimicV3-Flash FP8. Each has its own persistent `EU-RO-1` model volume and its
+INT8 ConvRot and EchoMimicV3-Flash Turbo FP8. Each has its own persistent `EU-RO-1` model volume and its
 own disposable Pod. No model volume, Pod, manifest, cache, lock, or adoption path is shared.
 
 MVP application state is global and shared for 5–10 admitted users: one catalog, project list,
@@ -112,7 +112,7 @@ user's Mac when the hosted build fails; fix the hosted workflow or source instea
 ```text
 apps/web/                  React/Vite UI + same-origin Hono Worker API
 workers/image-media/       Python: target Mage INT8 Pod service and existing fixture adapters
-workers/avatar-primary/    Python: target EchoMimicV3-Flash FP8 Pod service
+workers/avatar-primary/    Python: target EchoMimicV3-Flash Turbo FP8 Pod service
 workers/media-local/       Shared ASR/render contract: Cloud Run Job production + Mac dev parity
 packages/contracts/        JSON Schema, Zod/Pydantic generation, fixtures
 packages/config/           Versioned non-secret runtime profiles

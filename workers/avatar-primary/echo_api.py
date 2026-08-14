@@ -7,7 +7,7 @@ from fastapi import Body, FastAPI, Header, HTTPException
 
 from echo_runtime import EchoRuntime
 
-app = FastAPI(title="VideoForge Echo CP-07 Pod", docs_url=None, redoc_url=None)
+app = FastAPI(title="VideoForge Echo Flash Turbo FP8 CP-07 Pod", docs_url=None, redoc_url=None)
 runtime = EchoRuntime()
 
 

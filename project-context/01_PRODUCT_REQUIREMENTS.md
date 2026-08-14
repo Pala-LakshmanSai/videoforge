@@ -74,7 +74,7 @@ Generation-session input, required only when no session is locked:
   disposable Pod never deletes either model volume.
 - Compatibility-filtered live GPU inventory and independent Mage/Echo selection while the global session is idle. Its first accepted Generate atomically pins the exact pair and price snapshots for the session; queued projects inherit them. No automatic switching, per-user pair, parallel session, or silent substitution is allowed.
 - Mage image generation uses the ImageForge-compatible active contract: `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6`, pinned ComfyUI, `int8-convrot`, four steps, guidance `1.0`, and 1280×720 output.
-- Avatar generation uses the pinned EchoMimicV3-Flash FP8 runtime and only the scheduler-selected speech spans.
+- Avatar generation uses the pinned EchoMimicV3-Flash Turbo FP8 runtime profile and only the scheduler-selected speech spans.
 - Per-project estimated and actual cost, with hard enforcement.
 - Shared global Avatar Hub with named profiles, one-time source upload, immutable ready versions, crop/rights validation, optional explicit compatibility tests, archive/version controls, and required project selection.
 - Shared global Image Styles Hub with retained references visible to accepted users, one-time multimodal analysis, rights/provider-retention disclosure, human review, immutable published versions, duplicate/test/archive, durable cover fallback, and a non-deletable built-in default.

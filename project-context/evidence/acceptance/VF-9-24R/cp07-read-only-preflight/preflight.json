@@ -33,6 +33,10 @@
     "echo_volume_exists": false
   },
   "source_lineage": {
+    "runtime_profile_id": "videoforge_echo_v3_flash_turbo_fp8_v1",
+    "runtime_profile_label": "EchoMimicV3-Flash Turbo FP8",
+    "upstream_model_id": "EchoMimicV3-Flash",
+    "upstream_turbo_checkpoint_claimed": false,
     "source": "antgroup/echomimic_v3@7e89489ca51c0d008fc1963ec6c03fc5bd0b9397",
     "source_infer_flash_sha256": "16db024008d85d3421cfe59988ce6d917e8e29d13cc959cc99fd9c82b6ea99ae",
     "source_config_sha256": "21fe4409b664385a1c1cc5c23d92506ffb05ef3c374a18de9df67b715dca07e9",
@@ -60,7 +64,7 @@
     "completion_marker_written_last": true
   },
   "immutable_image_definition": {
-    "target": "ghcr.io/pala-lakshmansai/videoforge-echo-cp07:75c852bb891dbe205ee43d2b73e74765bc336373",
+    "target": "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:<source-commit-before-publication>",
     "base": "pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime@sha256:c16f4c749e2d9e96878875cdf6cc45cddda1d1a36fddd371dd6f2360f1b6e2a2",
     "published": false,
     "digest": null,
@@ -69,7 +73,8 @@
   "volume_pricing": {
     "source": "https://docs.runpod.io/storage/network-volumes",
     "standard_network_volume_rate_usd_per_gb_month": 0.07,
-    "proposed_ongoing_charge_usd_per_month": 3.5
+    "proposed_ongoing_charge_usd_per_month": 3.5,
+    "capacity_growth_policy": "50 GB remains sufficient under current byte bounds. If exact preparation exceeds a bound, stop before mutation, derive the next exact GB size and current recurring rate, and request changed approval; never silently enlarge retained billing."
   },
   "gpu_candidates": [
     {

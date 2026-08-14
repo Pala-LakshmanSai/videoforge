@@ -208,7 +208,7 @@ RunPod volumes are the accepted fixed cost and remain when Pods are deleted:
 - `EU-RO-1` Mage volume: separate manifest-sized allocation containing only the exact prepared
   Mage-Flow-Turbo INT8 ConvRot runtime and manifest.
 - `EU-RO-1` Echo volume: a different manifest-sized allocation containing only the exact prepared
-  EchoMimicV3-Flash FP8 runtime and manifest.
+  EchoMimicV3-Flash Turbo FP8 runtime and manifest.
 - Never merge, cross-mount, or delete either approved volume merely to reduce its fixed charge.
 - One-time preparation/download/verification cost is tracked separately from normal project cost;
   ordinary Pod boot must perform no model download.

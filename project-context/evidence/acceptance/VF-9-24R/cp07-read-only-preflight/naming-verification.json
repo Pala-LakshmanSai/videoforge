@@ -1,0 +1,29 @@
+{
+  "schema_version": "videoforge.cp07-echo-runtime-naming-verification/v1",
+  "checked_at": "2026-08-14",
+  "status": "verified_provider_free",
+  "runtime_profile_id": "videoforge_echo_v3_flash_turbo_fp8_v1",
+  "runtime_profile_label": "EchoMimicV3-Flash Turbo FP8",
+  "upstream_model_id": "EchoMimicV3-Flash",
+  "upstream_weight_directory": "echomimicv3-flash-pro",
+  "upstream_turbo_checkpoint_found": false,
+  "profile_semantics": "VideoForge label for official accelerated 8-step EchoMimicV3-Flash lineage plus owned float8_e4m3fn dynamic activation-and-weight preparation",
+  "model_substitution": false,
+  "upstream_revisions_changed": false,
+  "source_revision": "antgroup/echomimic_v3@7e89489ca51c0d008fc1963ec6c03fc5bd0b9397",
+  "flash_revision": "BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249",
+  "flash_safetensors_sha256": "5ebdbb2fc709108bf2a1728fd92eb2874804e4bc0324e92a2cd55425968c85a4",
+  "first_party_facts": {
+    "inference_steps": 8,
+    "face_mask_required": false,
+    "claimed_minimum_vram_gb": 12,
+    "maximum_geometry": "768x768"
+  },
+  "sources": [
+    "https://github.com/antgroup/echomimic_v3/tree/7e89489ca51c0d008fc1963ec6c03fc5bd0b9397",
+    "https://huggingface.co/BadToBest/EchoMimicV3/tree/311e176905a8c4c24b240b530488fe636ce4d249"
+  ],
+  "external_spend_usd": 0,
+  "provider_mutations": 0,
+  "model_downloads": 0
+}

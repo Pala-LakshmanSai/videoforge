@@ -471,7 +471,7 @@ function localProviderAcceptance(
       model:
         candidate.kind === "IMAGE"
           ? "Mage-Flow INT8 ConvRot fixture contract"
-          : "EchoMimicV3-Flash FP8 fixture contract",
+          : "EchoMimicV3-Flash Turbo FP8 fixture contract",
     }),
     promptLineage: Object.freeze({
       promptHash: `sha256:${createHash("sha256").update(candidate.taskKey).digest("hex")}`,

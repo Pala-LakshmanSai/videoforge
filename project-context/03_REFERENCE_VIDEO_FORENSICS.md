@@ -101,7 +101,7 @@ The source mixes real/UGC/stock/archive footage and occasionally contains webpag
 
 The recurring pixel-stable presenter background, natural mid-phoneme starts, body motion, and short appearances support VideoForge's use of a reusable source image plus independently generated selected speech spans. They do not reveal the channel's private production method.
 
-VideoForge therefore sends only the deterministic 2–6-second scheduled spans to the active EchoMimicV3-Flash FP8 lane, with a seven-second maximum only for the opening sentence. Do not claim that VRAM grows linearly with clip duration; duration, peak memory, and throughput remain measured properties of the exact Echo runtime. AvatarForcing, MuseTalk, and SkyReels are historical evidence/replay paths only and are not active generation, repair, or fallback routes.
+VideoForge therefore sends only the deterministic 2–6-second scheduled spans to the active EchoMimicV3-Flash Turbo FP8 lane, with a seven-second maximum only for the opening sentence. Do not claim that VRAM grows linearly with clip duration; duration, peak memory, and throughput remain measured properties of the exact Echo runtime. AvatarForcing, MuseTalk, and SkyReels are historical evidence/replay paths only and are not active generation, repair, or fallback routes.
 
 ## Relationship to the Image Styles Hub
 

@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "videoforge-avatar-primary-worker"
 version = "0.0.0"
-description = "VideoForge EchoMimicV3-Flash primary worker boundary"
+description = "VideoForge EchoMimicV3-Flash Turbo FP8 primary worker boundary"
 requires-python = ">=3.12,<3.13"
 dependencies = []
 

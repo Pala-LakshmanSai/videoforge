@@ -17,7 +17,10 @@ from echo_volume import (
     ECHO_AUDIO_REVISION,
     ECHO_FLASH_REVISION,
     ECHO_PRECISION,
+    ECHO_RUNTIME_PROFILE_ID,
+    ECHO_RUNTIME_PROFILE_LABEL,
     ECHO_SOURCE_REVISION,
+    ECHO_UPSTREAM_MODEL_ID,
     ECHO_WAN_REVISION,
 )
 from scratch import create_scratch
@@ -28,7 +31,9 @@ from span_contract import (
 )
 
 SHA256 = re.compile(r"^sha256:[a-f0-9]{64}$")
-IMAGE_DIGEST = re.compile(r"^ghcr\.io/pala-lakshmansai/videoforge-echo-cp07@sha256:[a-f0-9]{64}$")
+IMAGE_DIGEST = re.compile(
+    r"^ghcr\.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:[a-f0-9]{64}$"
+)
 SUPPORTED_GPU_NAMES = {
     "NVIDIA GeForce RTX 4090": ("4090", 24_000, (8, 9)),
     "NVIDIA GeForce RTX 5090": ("5090", 31_000, (12, 0)),
@@ -177,7 +182,9 @@ class EchoRuntime:
         try:
             self.verify_runtime_identity()
             self.transition("volume_verify")
-            model_root = Path(os.environ.get("ECHO_MODEL_ROOT", "/runpod-volume/echo-fp8"))
+            model_root = Path(
+                os.environ.get("ECHO_MODEL_ROOT", "/runpod-volume/echo-flash-turbo-fp8")
+            )
             self.bootstrap_evidence = await asyncio.to_thread(bootstrap, model_root)
             self.transition("gpu_verify")
             await asyncio.to_thread(self.verify_gpu)
@@ -220,7 +227,7 @@ class EchoRuntime:
         if os.environ.get("VIDEOFORGE_ECHO_GPU_OFFERING_ID") not in SUPPORTED_GPU_NAMES:
             raise RuntimeError("ECHO_GPU_OFFERING_INVALID")
         if Path(os.environ.get("ECHO_SCRATCH_ROOT", "/run/videoforge/echo-scratch")).is_relative_to(
-            Path(os.environ.get("ECHO_MODEL_ROOT", "/runpod-volume/echo-fp8"))
+            Path(os.environ.get("ECHO_MODEL_ROOT", "/runpod-volume/echo-flash-turbo-fp8"))
         ):
             raise RuntimeError("ECHO_SCRATCH_CROSS_MOUNT_FORBIDDEN")
 
@@ -270,7 +277,7 @@ class EchoRuntime:
             raise RuntimeError("ECHO_WORKER_NOT_READY")
         job = EchoQualificationJob.from_value(value)
         span = job.span_job()
-        model_root = Path(os.environ.get("ECHO_MODEL_ROOT", "/runpod-volume/echo-fp8"))
+        model_root = Path(os.environ.get("ECHO_MODEL_ROOT", "/runpod-volume/echo-flash-turbo-fp8"))
         scratch_root = Path(os.environ.get("ECHO_SCRATCH_ROOT", "/run/videoforge/echo-scratch"))
         async with self.generation_lock:
             scratch = create_scratch(span, scratch_root=scratch_root, model_root=model_root)
@@ -341,7 +348,8 @@ class EchoRuntime:
 
     def runtime_evidence(self) -> dict[str, object]:
         return {
-            "schema_version": "videoforge.echo-fp8-runtime-evidence/v1",
+            "schema_version": "videoforge.echo-flash-turbo-fp8-runtime-evidence/v1",
+            "runtime_profile_id": ECHO_RUNTIME_PROFILE_ID,
             "pod_id_hash": "sha256:"
             + hashlib.sha256(os.environ.get("RUNPOD_POD_ID", "local").encode()).hexdigest(),
             "volume_id_hash": os.environ.get("VIDEOFORGE_ECHO_VOLUME_ID_HASH"),
@@ -364,15 +372,17 @@ class EchoRuntime:
         if self.phase not in {"ready", "error"}:
             timings[self.phase] = round((time.monotonic() - self.phase_started) * 1_000)
         return {
-            "schema_version": "videoforge.echo-fp8-worker-health/v1",
-            "service": "videoforge-echo-cp07-pod",
+            "schema_version": "videoforge.echo-flash-turbo-fp8-worker-health/v1",
+            "service": "videoforge-echo-flash-turbo-cp07-pod",
             "process": {
                 "status": "ok",
                 "uptime_ms": round((time.monotonic() - self.started) * 1_000),
             },
             "phase": self.phase,
             "model": {
-                "id": "EchoMimicV3-Flash",
+                "id": ECHO_RUNTIME_PROFILE_LABEL,
+                "runtime_profile_id": ECHO_RUNTIME_PROFILE_ID,
+                "upstream_model_id": ECHO_UPSTREAM_MODEL_ID,
                 "precision": ECHO_PRECISION,
                 "status": "ready"
                 if self.ready

@@ -1,7 +1,10 @@
-# CP-07 EchoMimicV3-Flash FP8 Pod worker
+# CP-07 EchoMimicV3-Flash Turbo FP8 Pod worker
 
-The active container is a persistent Pod service, not Serverless. It pins the first-party Echo source,
-Flash, Wan base, audio encoder, Torch, and TorchAO. A separately authorized preparation command
+The active container is a persistent Pod service, not Serverless. `EchoMimicV3-Flash Turbo FP8` is
+the VideoForge runtime-profile label for the accelerated official 8-step `EchoMimicV3-Flash` /
+`echomimicv3-flash-pro` lineage plus the owned FP8 preparation; it is not a substituted upstream
+checkpoint. It pins the first-party Echo source, Flash, Wan base, audio encoder, Torch, and TorchAO.
+A separately authorized preparation command
 downloads the pinned source files, derives the VideoForge-owned FP8 state, reopens it with
 `weights_only=True`, hashes every source/prepared byte, and writes the completion marker last.
 
@@ -19,5 +22,5 @@ validates the native 25 fps MP4 A/V contract, and cleans scratch on success or f
 python3 -m unittest discover -s tests
 ```
 
-Immutable publish target: `ghcr.io/pala-lakshmansai/videoforge-echo-cp07@sha256:<digest>`.
+Immutable publish target: `ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:<digest>`.
 The workflow defaults to `publish=false`; publication is a separate paid-phase mutation.

@@ -1,7 +1,7 @@
 # VideoForge completion checkpoints
 
-Status: authoritative completion roadmap; `CP-00` through `CP-06` complete; `CP-07` is unselected
-and unauthorized
+Status: authoritative completion roadmap; `CP-00` through `CP-06` complete; `CP-07` provider-free
+work is active and external mutation/paid execution is unauthorized
 Read when: choosing the next implementation chat, checking project truth, or auditing completion.
 
 ## MVP destination
@@ -147,7 +147,7 @@ flowchart LR
   C3 --> C4["CP-04 Three-composition work plan"]
   C4 --> C5["CP-05 Provider-free complete MVP orchestration"]
   C5 --> C6["CP-06 Mage INT8 on RunPod"]
-  C6 --> C7["CP-07 Echo FP8 on RunPod + crop lock"]
+  C6 --> C7["CP-07 Echo Flash Turbo FP8 on RunPod + crop lock"]
   C7 --> C8["CP-08 Durable hosted staging"]
   C8 --> C9["CP-09 Real single-video E2E"]
   C9 --> C10["CP-10 Real shared-queue E2E"]
@@ -362,13 +362,16 @@ Current proof: `evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json` plus
 `settlement-reaudit.json`. CP-06 completion does not close broader production image/style/GPU/
 RunPod/cost gates.
 
-## CP-07 — Exact Echo FP8 on persistent RunPod volume and crop lock
+## CP-07 — Exact EchoMimicV3-Flash Turbo FP8 on persistent RunPod volume and crop lock
 
 **Outcome:** VideoForge produces native Echo short clips from the owned avatar and locks the renderer
 only after user review.
 
-- Build the prepared FP8 artifact from pinned first-party Echo/Flash/Wan/audio lineage; ordinary Pod
-  boot verifies/loads it from a distinct Echo-only volume and performs a true warm-up. No first-job
+- Build the `EchoMimicV3-Flash Turbo FP8` runtime profile from pinned first-party
+  `EchoMimicV3-Flash` / `echomimicv3-flash-pro`, Wan, and audio lineage. Turbo names the VideoForge
+  accelerated 8-step plus owned-FP8 profile; it does not claim or substitute a separate upstream
+  Turbo checkpoint. Ordinary Pod boot verifies/loads it from a distinct Echo-only volume and
+  performs a true warm-up. No first-job
   quantization, model download, Long Video CFG, full voiceover, third-party pickle, repair, fallback,
   or Mage mount.
 - Implement strict short-span request/padding/trim/output contracts and clean per-project scratch.

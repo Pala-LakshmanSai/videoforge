@@ -7,9 +7,11 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Final
 
-ECHO_VOLUME_SCHEMA: Final = "videoforge.echo-fp8-volume-manifest/v1"
+ECHO_VOLUME_SCHEMA: Final = "videoforge.echo-flash-turbo-fp8-volume-manifest/v1"
 ECHO_LANE: Final = "echo_avatar"
-ECHO_MODEL_ID: Final = "EchoMimicV3-Flash"
+ECHO_UPSTREAM_MODEL_ID: Final = "EchoMimicV3-Flash"
+ECHO_RUNTIME_PROFILE_ID: Final = "videoforge_echo_v3_flash_turbo_fp8_v1"
+ECHO_RUNTIME_PROFILE_LABEL: Final = "EchoMimicV3-Flash Turbo FP8"
 ECHO_SOURCE_REVISION: Final = "7e89489ca51c0d008fc1963ec6c03fc5bd0b9397"
 ECHO_FLASH_REVISION: Final = "311e176905a8c4c24b240b530488fe636ce4d249"
 ECHO_WAN_REVISION: Final = "fc913c34361f4ec879e2f9c78b4f11ae50a937d1"
@@ -28,9 +30,9 @@ ECHO_MINIMUM_POST_PREPARATION_HEADROOM_BYTES: Final = (
     - ECHO_PINNED_SMALL_CONFIG_MAX_BYTES
     - ECHO_PREPARED_ARTIFACT_MAX_BYTES
 )
-ECHO_MARKER_NAME: Final = ".videoforge-echo-fp8-volume.json"
+ECHO_MARKER_NAME: Final = ".videoforge-echo-flash-turbo-fp8-volume.json"
 ECHO_MANIFEST_NAME: Final = "manifest.json"
-ECHO_PREPARED_STATE_PATH: Final = "prepared/echo-transformer-fp8-state.pt"
+ECHO_PREPARED_STATE_PATH: Final = "prepared/echo-flash-turbo-transformer-fp8-state.pt"
 ECHO_PREPARATION_REPORT_PATH: Final = "prepared/quantization.json"
 
 
@@ -194,7 +196,9 @@ def manifest_body(
         "owner": "videoforge",
         "lane": ECHO_LANE,
         "region": "EU-RO-1",
-        "model_id": ECHO_MODEL_ID,
+        "model_id": ECHO_RUNTIME_PROFILE_LABEL,
+        "runtime_profile_id": ECHO_RUNTIME_PROFILE_ID,
+        "upstream_model_id": ECHO_UPSTREAM_MODEL_ID,
         "precision": ECHO_PRECISION,
         "source_lineage": source_lineage(),
         "toolchain": {
@@ -253,7 +257,9 @@ def validate_manifest_shape(value: object) -> dict[str, object]:
         "owner": "videoforge",
         "lane": ECHO_LANE,
         "region": "EU-RO-1",
-        "model_id": ECHO_MODEL_ID,
+        "model_id": ECHO_RUNTIME_PROFILE_LABEL,
+        "runtime_profile_id": ECHO_RUNTIME_PROFILE_ID,
+        "upstream_model_id": ECHO_UPSTREAM_MODEL_ID,
         "precision": ECHO_PRECISION,
         "source_lineage": source_lineage(),
         "requested_volume_size_gb": ECHO_VOLUME_SIZE_GB,
@@ -389,7 +395,7 @@ def verify_model_root(
         raise EchoVolumeError("ECHO_VOLUME_MANIFEST_INVALID") from error
     validated = validate_manifest_shape(manifest)
     if marker != {
-        "schema_version": "videoforge.echo-fp8-volume-completion/v1",
+        "schema_version": "videoforge.echo-flash-turbo-fp8-volume-completion/v1",
         "manifest_sha256": validated["manifest_sha256"],
     }:
         raise EchoVolumeError("ECHO_VOLUME_COMPLETION_MARKER_INVALID")

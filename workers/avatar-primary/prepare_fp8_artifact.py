@@ -80,7 +80,7 @@ def prepare_fp8_artifact(model_root: Path) -> dict[str, object]:
         raise RuntimeError("ECHO_PREPARATION_WEIGHTS_ONLY_REOPEN_FAILED")
     temporary.replace(destination)
     report = {
-        "schema_version": "videoforge.echo-fp8-preparation/v1",
+        "schema_version": "videoforge.echo-flash-turbo-fp8-preparation/v1",
         "source_revision": ECHO_SOURCE_REVISION,
         "flash_revision": ECHO_FLASH_REVISION,
         "wan_revision": ECHO_WAN_REVISION,

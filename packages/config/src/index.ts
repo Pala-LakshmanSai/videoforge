@@ -158,7 +158,7 @@ const LANE_EXPECTATIONS = {
   },
   avatar_primary: {
     selectorLabel: "Avatar generation",
-    modelDisplayName: "EchoMimicV3-Flash FP8",
+    modelDisplayName: "EchoMimicV3-Flash Turbo FP8",
     modelId: "EchoMimicV3-Flash",
     modelRole: "AVATAR_PRIMARY",
     processDisplayName: "Generate avatar clips",

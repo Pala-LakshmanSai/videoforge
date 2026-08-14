@@ -1,6 +1,6 @@
 # Avatar Hub
 
-Status: VF-5-01/VF-5-02 durable fixture acceptance complete; EchoMimicV3-Flash is sole active avatar path
+Status: VF-5-01/VF-5-02 durable fixture acceptance complete; EchoMimicV3-Flash Turbo FP8 is sole active avatar path
 Read when: implementing reusable avatars, avatar source upload/validation, project avatar selection, or avatar-source provenance.
 
 ## Product contract
@@ -34,7 +34,7 @@ execution/callback/cost lineage. These tasks close no Avatar/model/GPU gate.
 - The project revision pins the parent profile, exact version, canonical profile hash, runtime source asset/checksum, preparation/validation profiles, exact compatibility state at preflight, and matching immutable terminal evidence when one exists.
 - Replacing a source image creates a new version. It never mutates an existing ready version or any queued/running/reviewed/approved project.
 - Renaming or archiving the parent does not change a version hash. Archived profiles remain resolvable for historical projects but disappear from new-project selection.
-- One generated avatar clip serves both output layouts after the active EchoMimicV3-Flash full/split crop pair is measured and approved. Historical AvatarForcing/SkyReels crops do not authorize an Echo crop; that active crop remains a gate.
+- One generated avatar clip serves both output layouts after the active EchoMimicV3-Flash Turbo FP8 full/split crop pair is measured and approved. Historical AvatarForcing/SkyReels crops do not authorize an Echo crop; that active crop remains a gate.
 - Only scheduled voiceover spans are sent to avatar workers. The Hub never causes the full voiceover to be sent.
 - Creating or selecting an avatar uses no LLM. A ready avatar adds no per-video model call beyond the avatar clips the timeline already requires.
 
@@ -83,7 +83,7 @@ flowchart LR
     D --> E["Approve and add to Hub"]
     E --> F["Selectable in Create Project"]
     E --> G{"Optional quick test?"}
-    G -- "Yes" --> H["EchoMimicV3-Flash standard clips"]
+    G -- "Yes" --> H["EchoMimicV3-Flash Turbo FP8 standard clips"]
     H --> I["Review full and split compatibility"]
 ```
 
@@ -101,7 +101,7 @@ Detailed behavior:
 7. Offer—not require—an explicit short compatibility test. Show its exact one-time estimate before
    starting. No GPU starts merely because the profile was saved or selected. The actor-audited test
    serializes behind the global video session and cannot start while a video is active or waiting.
-8. If requested after global qualification, EchoMimicV3-Flash FP8 generates three short standard
+8. If requested after global qualification, EchoMimicV3-Flash Turbo FP8 generates three short standard
    clips covering ordinary speech, visible labials/teeth, and pauses/subtle head motion using owned
    test-audio fixtures. It uses one exact live Echo GPU under a bounded profile-test lease, cleans
    up that Pod independently, and never changes a video session GPU pair or starts Mage. Any
@@ -252,7 +252,7 @@ owner/admin tier.
 - Creating the parent, uploading, validating metadata, and selecting a ready avatar requires no LLM and no recurring subscription.
 - An optional three-clip compatibility test is a one-time, separately estimated RunPod charge owned by `AVATAR_PROFILE_VERSION`, not by a video project. Initial planning target is at or below $0.20; the exact value remains part of `GATE_AVATAR_001` evidence.
 - A ready avatar adds only a small database/R2 lookup to ordinary project preflight. It does not increase the 30-minute per-video generation range.
-- Reusing the same source avoids repeated uploads and can reuse safe source preprocessing. It does **not** eliminate EchoMimicV3-Flash inference required for each video's unique selected speech spans.
+- Reusing the same source avoids repeated uploads and can reuse safe source preprocessing. It does **not** eliminate EchoMimicV3-Flash Turbo FP8 inference required for each video's unique selected speech spans.
 - When an idle-session Generate activates the first video, its Echo FP8 Pod may start concurrently
   with Mage, attach the already-populated Echo volume, verify the pinned manifest, and load while
   the active video's Cloud Run ASR/timeline/span preparation continues. A queued Generate starts no
@@ -271,7 +271,7 @@ owner/admin tier.
   globally unavailable versions. Compatibility states only change warning strength under the
   proposed optional-test policy.
 - v1 remains selectable while v2 is open; approving v2 never mutates a revision pinned to v1.
-- The exact source/version/hash in the project revision reaches the pinned EchoMimicV3-Flash FP8 runtime only after authoritative model readiness; repair/quality bindings are `null`.
+- The exact source/version/hash in the project revision reaches the pinned EchoMimicV3-Flash Turbo FP8 runtime only after authoritative model readiness; repair/quality bindings are `null`.
 - A new-avatar round trip from Create Project preserves every other input and verified upload handle.
 - One-time test spend is visible and separate; ready-avatar reuse causes zero onboarding/test calls.
 - Admission boundary, equal-rights actor audit, canonical-global-sentinel, private signed-URL,

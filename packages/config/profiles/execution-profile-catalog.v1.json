@@ -80,7 +80,7 @@
       "lane": "avatar_primary",
       "selector_label": "Avatar generation",
       "model": {
-        "display_name": "EchoMimicV3-Flash FP8",
+        "display_name": "EchoMimicV3-Flash Turbo FP8",
         "model_id": "EchoMimicV3-Flash",
         "role": "AVATAR_PRIMARY",
         "qualification_state": "BENCHMARK_REQUIRED"

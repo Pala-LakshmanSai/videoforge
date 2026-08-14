@@ -26,7 +26,7 @@ VideoForge has two isolated model lanes:
 | Lane | Exact active model | Durable model storage | Disposable compute |
 |---|---|---|---|
 | Images | ImageForge's current `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6` INT8 ConvRot profile, pinned ComfyUI, 4 steps, guidance 1.0, 1280×720 | Mage-only persistent `EU-RO-1` network volume | Mage-only Pod |
-| Avatar | EchoMimicV3-Flash FP8 from pinned first-party source/weights/base/audio lineage | Different Echo-only persistent `EU-RO-1` network volume | Echo-only Pod |
+| Avatar | EchoMimicV3-Flash Turbo FP8 from pinned first-party source/weights/base/audio lineage | Different Echo-only persistent `EU-RO-1` network volume | Echo-only Pod |
 
 Never share or cross-adopt a volume, Pod, manifest, cache, lock, or runtime between lanes. The Mage
 volume is approved at 50 GB from its verified exact manifest plus explicit headroom; the Echo
@@ -161,7 +161,7 @@ remain unauthorized pending one exact combined approval.
 | Image prompts | Runware DeepSeek V4 Flash 0731 |
 | Style analysis | Runware Gemini 3.5 Flash, only when explicitly analyzing a new style draft |
 | Images | Exact ImageForge Mage-Flow INT8 ConvRot profile |
-| Avatar | EchoMimicV3-Flash FP8, short selected spans only |
+| Avatar | EchoMimicV3-Flash Turbo FP8, short selected spans only |
 | Avatar repair/fallback | `null` |
 | Timing | Pinned `whisper.cpp base.en` in Cloud Run Jobs; same path on Mac for development |
 | Render | Direct FFmpeg in Cloud Run Jobs; same path on Mac for development |

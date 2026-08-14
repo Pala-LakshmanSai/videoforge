@@ -25,7 +25,7 @@ Do not add music or sound effects in MVP unless the user later approves a separa
 
 ### `AVATAR_FULL`
 
-Avatar occupies the full 1920×1080 frame. The active EchoMimicV3-Flash FP8 render profile must pin the accepted native geometry, frame rate, deterministic centered crop, and scale after the exact sample is approved. That active Echo crop remains an open gate; do not infer it from an older avatar model.
+Avatar occupies the full 1920×1080 frame. The active EchoMimicV3-Flash Turbo FP8 render profile must pin the accepted native geometry, frame rate, deterministic centered crop, and scale after the exact sample is approved. That active Echo crop remains an open gate; do not infer it from an older avatar model.
 
 The following coordinates are historical replay contracts only. They preserve already-recorded manifests and are not valid active Echo profiles.
 

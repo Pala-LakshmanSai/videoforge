@@ -19,7 +19,7 @@ The production lane locks are:
 | Lane | Exact model/runtime | Persistent resource |
 |---|---|---|
 | `mage_image` | `Comfy-Org/Mage-Flow` revision `d8c99241f6fa80fbd453014234af2bf337ea21e6`, `int8-convrot`, ComfyUI, 4 steps, guidance 1.0, 1280×720 | Dedicated Mage model volume in `EU-RO-1` plus a disposable Mage Pod |
-| `echo_avatar` | Pinned EchoMimicV3-Flash FP8 contract | Dedicated Echo model volume in `EU-RO-1` plus a disposable Echo Pod |
+| `echo_avatar` | Pinned EchoMimicV3-Flash Turbo FP8 contract | Dedicated Echo model volume in `EU-RO-1` plus a disposable Echo Pod |
 
 The volumes and Pods are never shared, cross-mounted, cross-adopted, or substituted across lanes.
 When idle, the first accepted Generate action atomically opens one singleton global generation
@@ -305,7 +305,7 @@ Every attempt records:
 - QA defect enum, score/notes, accepted asset ID.
 - Parent attempt and retry/supersession reason.
 
-EchoMimicV3-Flash FP8 attempts always reference the same exact pinned Avatar Profile runtime source,
+EchoMimicV3-Flash Turbo FP8 attempts always reference the same exact pinned Avatar Profile runtime source,
 selected materialized span audio, Echo model/checkpoint/container, Echo-only volume manifest, and
 Echo renderer source profile. The active production contract contains no AvatarForcing, SkyReels,
 or MuseTalk repair/fallback dispatch. Historical attempts retain their original lineage and names

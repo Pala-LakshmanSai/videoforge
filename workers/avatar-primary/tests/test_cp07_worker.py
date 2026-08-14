@@ -111,7 +111,7 @@ def make_volume(root: Path, *, lane: str = volume.ECHO_LANE) -> dict[str, object
     (root / volume.ECHO_MARKER_NAME).write_text(
         json.dumps(
             {
-                "schema_version": "videoforge.echo-fp8-volume-completion/v1",
+                "schema_version": "videoforge.echo-flash-turbo-fp8-volume-completion/v1",
                 "manifest_sha256": manifest["manifest_sha256"],
             }
         ),
@@ -131,6 +131,9 @@ class Cp07WorkerTest(unittest.TestCase):
         self.assertEqual(volume.ECHO_MINIMUM_POST_PREPARATION_HEADROOM_BYTES, 22_027_682_265)
         self.assertEqual(volume.ECHO_TORCH_VERSION, "2.7.1")
         self.assertEqual(volume.ECHO_TORCHAO_VERSION, "0.11.0")
+        self.assertEqual(volume.ECHO_UPSTREAM_MODEL_ID, "EchoMimicV3-Flash")
+        self.assertEqual(volume.ECHO_RUNTIME_PROFILE_LABEL, "EchoMimicV3-Flash Turbo FP8")
+        self.assertEqual(volume.ECHO_RUNTIME_PROFILE_ID, "videoforge_echo_v3_flash_turbo_fp8_v1")
 
     def test_volume_verifies_exact_manifest_and_weights_only_policy(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -147,6 +150,8 @@ class Cp07WorkerTest(unittest.TestCase):
                 )
             self.assertEqual(observed["toolchain"]["load_policy"], "weights_only_true")
             self.assertFalse(observed["runtime"]["first_request_quantization"])
+            self.assertEqual(observed["upstream_model_id"], "EchoMimicV3-Flash")
+            self.assertEqual(observed["model_id"], "EchoMimicV3-Flash Turbo FP8")
 
     def test_missing_cross_lane_extra_and_mutated_volumes_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -226,7 +231,7 @@ class Cp07WorkerTest(unittest.TestCase):
         )
         self.assertIn("HF_HUB_OFFLINE=1", dockerfile)
         self.assertIn("default: false", workflow)
-        self.assertIn("videoforge-echo-cp07", workflow)
+        self.assertIn("videoforge-echo-flash-turbo-cp07", workflow)
         self.assertNotIn("runpod.serverless", active)
         self.assertNotIn("snapshot_download", active)
         self.assertNotIn("hf_hub_download", active)
