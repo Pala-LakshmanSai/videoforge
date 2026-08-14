@@ -21,6 +21,6 @@ substitution. Current byte bounds still derive 50 GB with 22,027,682,265 bytes m
 If preparation exceeds a bound, execution stops before mutation and replaces the proposal with the
 next exact size and current retained-volume rate for explicit approval.
 
-`CI=1 TURBO_FORCE=true pnpm verify` passed against current safety-fix context commit
-`b7afb69efa2e31003f1b4408f51508ea38c05b3c`, including 28/28 forced package tasks, 285 web tests,
+`CI=1 TURBO_FORCE=true pnpm verify` passed against current Turbo-profile context commit
+`5d38739a5f53f6b0e67d6cbf1950ba29c7645061`, including 28/28 forced package tasks, 285 web tests,
 226 control-plane tests, all worker suites, Cloudflare runtime parity, and 42 installed-Chrome tests.

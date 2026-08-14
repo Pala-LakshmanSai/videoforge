@@ -7,7 +7,7 @@
   "implementation_commit": "c89acef78d4a4bbbbac118ca9c658b6180d68fc8",
   "safety_fix_commit": "75c852bb891dbe205ee43d2b73e74765bc336373",
   "turbo_profile_commit": "4a8c0c2d7f440dd2f649fc03d9cf86a6a3ab618b",
-  "verified_context_commit": "b7afb69efa2e31003f1b4408f51508ea38c05b3c",
+  "verified_context_commit": "5d38739a5f53f6b0e67d6cbf1950ba29c7645061",
   "external_spend_usd": 0,
   "provider_mutations": 0,
   "cp06_prerequisite": {
@@ -146,7 +146,7 @@
     "context_validation": "passed",
     "secret_scan": "passed",
     "canonical_verify": "passed_CI_1_TURBO_FORCE_true_pnpm_verify",
-    "canonical_verify_checked_at": "2026-08-14T15:45:33Z",
+    "canonical_verify_checked_at": "2026-08-14T16:50:24Z",
     "installed_chrome": "42_passed",
     "cloudflare_runtime_parity": "1_passed"
   },
