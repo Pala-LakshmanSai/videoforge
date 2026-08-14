@@ -26,6 +26,6 @@ The CP-06 Mage Pod path is VideoForge-owned and exact: `Comfy-Org/Mage-Flow` rev
 `prepare_mage_volume.py` is the only model-download entrypoint. Ordinary boot requires offline
 environment flags, verifies the sealed three-file manifest and exact VideoForge volume identity,
 checks the actual single NVIDIA GPU, performs a real warm-up, and reports `ready` only afterward.
-The RunPod request is 20 GB (the provider API and billing unit), derived from 13,379,919,280 exact
-model bytes plus at least 6,620,080,720 bytes (6.17 GiB) of headroom. It does not claim the mounted
+The RunPod request is 50 GB (the provider API and billing unit), derived from 13,379,919,280 exact
+model bytes plus at least 36,620,080,720 bytes (34.11 GiB) of headroom. It does not claim the mounted
 filesystem exposes an exact binary capacity. The Mage volume is never shared with Echo or ImageForge.

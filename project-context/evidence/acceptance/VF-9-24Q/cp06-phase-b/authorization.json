@@ -6,6 +6,9 @@
   "authorized_by_user_at": "2026-08-14T08:19:32Z",
   "user_authorization_text": "I authorize the complete CP-06 Phase B scope above on Sujal RunPod using RTX 4090 at no more than $0.74/hour, retaining the 20 GiB volume at $1.40/month, with a $3 cumulative handoff cap.",
   "additional_user_volume_note": "you can even use 50gb network voume if that makes more sense",
+  "final_user_storage_decision_at": "2026-08-14T08:27:44Z",
+  "final_user_storage_decision_text": "i want you to choose the correct storage now only, again if the storage is not enough, we've to buy new network volume and load the model again. so, i don't have any constraint on volume, i'm happy to pay for network volume if it's required",
+  "final_user_50gb_confirmation_text": "yea, go with 50GB that's much better",
   "resolved_authority": {
     "account_owner": "sujal",
     "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
@@ -13,9 +16,9 @@
     "model_id": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
     "gpu_offering_id": "NVIDIA GeForce RTX 4090",
     "gpu_rate_ceiling_usd_per_hour": 0.74,
-    "volume_size_gb": 20,
+    "volume_size_gb": 50,
     "volume_rate_usd_per_gb_month": 0.07,
-    "ongoing_retention_charge_usd_per_month": 1.4,
+    "ongoing_retention_charge_usd_per_month": 3.5,
     "maximum_cumulative_external_spend_usd": 3.0,
     "volume_retention_authorized": true,
     "operations": [
@@ -32,11 +35,11 @@
     ]
   },
   "volume_resolution": {
-    "chosen_size_gb": 20,
+    "chosen_size_gb": 50,
     "exact_model_bytes": 13379919280,
-    "minimum_headroom_bytes": 6620080720,
-    "minimum_headroom_gib": 6.165430695,
-    "reason": "The provider-requested 20 GB is sufficient and minimizes retained billing; the optional 50 GB allowance is not needed.",
+    "minimum_headroom_bytes": 36620080720,
+    "minimum_headroom_gib": 34.105107859,
+    "reason": "The 50 GB request leaves durable staging and operational headroom and follows the user's explicit confirmation to avoid buying and reloading a replacement network volume.",
     "official_api_source": "https://docs.runpod.io/api-reference/network-volumes/POST/networkvolumes",
     "official_api_integer_range": "0 <= x <= 4000"
   },

@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T08:19:32Z"
+updated_at: "2026-08-14T08:27:44Z"
 
 phase: cp06_phase_b_bounded_mutation
 implementation_authorized_in_current_task: true
@@ -22,7 +22,7 @@ provider_authority:
   resources:
     - videoforge-mage-cp06-worker-image
     - videoforge-mage-cp06-template
-    - videoforge-mage-cp06-model-volume-eu-ro-1-20gb
+    - videoforge-mage-cp06-model-volume-eu-ro-1-50gb
     - videoforge-mage-cp06-pod-attempts
     - videoforge-mage-cp06-owned-samples
   authorized_operations:
@@ -96,7 +96,7 @@ live_development:
   provider_mode: sandbox
   provider_calls_authorized: true
   authorized_spend_usd: 3.0
-  provider_authority_scope: "VF-9-24Q CP-06 Phase B only on Sujal RunPod: exact RTX 4090 at no more than $0.74/hour, one retained 20 GB STANDARD EU-RO-1 Mage volume at $0.07/GB/month ($1.40/month), exact Mage INT8 download/preparation, immutable worker/template publication, two fresh Pods, at least eight private owned samples, Pod deletion and zero-Pod proof; cumulative finite-action cap $3.00."
+  provider_authority_scope: "VF-9-24Q CP-06 Phase B only on Sujal RunPod: exact RTX 4090 at no more than $0.74/hour, one retained 50 GB STANDARD EU-RO-1 Mage volume at $0.07/GB/month ($3.50/month), exact Mage INT8 download/preparation, immutable worker/template publication, two fresh Pods, at least eight private owned samples, Pod deletion and zero-Pod proof; cumulative finite-action cap $3.00."
   worker_image: null
   last_user_checkpoint:
     result: accepted
@@ -208,7 +208,7 @@ recommended_next_task:
     resources:
       - videoforge-mage-cp06-worker-image
       - videoforge-mage-cp06-template
-      - videoforge-mage-cp06-model-volume-eu-ro-1-20gb
+      - videoforge-mage-cp06-model-volume-eu-ro-1-50gb
       - videoforge-mage-cp06-pod-attempts
       - videoforge-mage-cp06-owned-samples
     authorized_operations:
@@ -236,9 +236,9 @@ recommended_next_task:
   mage_volume_retention_authorized: true
   mage_gpu_offering_id: "NVIDIA GeForce RTX 4090"
   mage_gpu_rate_usd_per_hour: 0.74
-  mage_volume_size_gb: 20
+  mage_volume_size_gb: 50
   mage_volume_rate_usd_per_gb_month: 0.07
-  ongoing_retention_charge_usd_per_month: 1.4
+  ongoing_retention_charge_usd_per_month: 3.5
   application_code_changes_authorized: true
   prerequisite_evidence: "evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json"
   required_handoff:
@@ -305,15 +305,18 @@ cp06_phase_b:
   authorized_by_user_at: "2026-08-14T08:19:32Z"
   user_authorization_text: "I authorize the complete CP-06 Phase B scope above on Sujal RunPod using RTX 4090 at no more than $0.74/hour, retaining the 20 GiB volume at $1.40/month, with a $3 cumulative handoff cap."
   additional_user_volume_note: "you can even use 50gb network voume if that makes more sense"
-  resolved_volume_choice_gb: 20
-  resolved_volume_choice_basis: "Exact model bytes plus at least 6.17 GiB headroom fit the provider-requested 20 GB; official current REST API accepts integer GB sizes from 0 through 4000, so 50 GB is unnecessary."
+  final_user_storage_decision_at: "2026-08-14T08:27:44Z"
+  final_user_storage_decision_text: "i want you to choose the correct storage now only, again if the storage is not enough, we've to buy new network volume and load the model again. so, i don't have any constraint on volume, i'm happy to pay for network volume if it's required"
+  final_user_50gb_confirmation_text: "yea, go with 50GB that's much better"
+  resolved_volume_choice_gb: 50
+  resolved_volume_choice_basis: "The exact 13,379,919,280 model bytes leave at least 36,620,080,720 bytes (34.11 GiB) for download staging and operational headroom; the user explicitly confirmed 50 GB to avoid a replacement volume and repeat model load."
   runpod_account_owner: sujal
   runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   gpu_offering_id: "NVIDIA GeForce RTX 4090"
   gpu_rate_ceiling_usd_per_hour: 0.74
-  volume_size_gb: 20
+  volume_size_gb: 50
   volume_rate_usd_per_gb_month: 0.07
-  ongoing_retention_charge_usd_per_month: 1.4
+  ongoing_retention_charge_usd_per_month: 3.5
   maximum_cumulative_external_spend_usd: 3.0
   external_spend_usd: 0
   provider_mutations_started: false
@@ -533,7 +536,7 @@ activation_handoff:
     - "Load cp06_mage_int8_persistent_runpod and tasks/VF-9-24Q.md; read only the CP-06 roadmap section."
     - "Preserve the verified green CP-01 through CP-05 evidence and vNext boundary."
     - "Preserve Phase A code commit 912427b5bd8a7afb4f68233072990d3c39e64cc6, hosted build run 31781650276, and canonical CI run 31781645263."
-    - "Phase B exact authorization is recorded at 2026-08-14T08:19:32Z with RTX 4090 <= $0.74/hour, 20 GB at $1.40/month retained, and a $3 finite-action cap."
+    - "Phase B exact authorization is recorded at 2026-08-14T08:19:32Z with RTX 4090 <= $0.74/hour and a $3 finite-action cap; the user's final storage confirmation at 2026-08-14T08:27:44Z resolves the retained volume to 50 GB at $3.50/month."
   stop_conditions:
     - "Any Sujal identity mismatch, RTX 4090 rate above $0.74/hour, unavailable approved capacity, resource ambiguity, scope expansion, or risk of exceeding the $3 finite-action cap."
     - "Any schema reinterpretation, legacy dispatch reachability, Echo work, cross-account action, or production promotion."

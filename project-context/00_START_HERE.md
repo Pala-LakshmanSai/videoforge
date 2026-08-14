@@ -59,7 +59,7 @@ The earlier Serverless/ephemeral `VF-9-24I` paid retry is superseded and non-exe
 no MP4. Its evidence, failed attempts, measured costs, and final zero-resource observations remain
 historical truth; its former `$8` ceiling does not authorize the new two-volume/two-Pod lifecycle.
 CP-06 Phase B is authorized only on Sujal RunPod with RTX 4090 at no more than `$0.74/hour`, one
-retained 20 GB STANDARD Mage volume at `$1.40/month`, the exact bounded mutation/download/
+retained 50 GB STANDARD Mage volume at `$3.50/month`, the exact bounded mutation/download/
 publication/GPU/sample/cleanup scope, and a `$3` cumulative handoff cap. No Echo or production
 promotion is authorized.
 
@@ -133,10 +133,11 @@ paid compute, or spend was used or proven. Hosted production proof remains open 
 `VF-9-24Q` CP-06 Phase A is complete at code commit
 `912427b5bd8a7afb4f68233072990d3c39e64cc6`. Public standard-runner Mage build/smoke run
 `31781650276` and all-lane CI run `31781645263` passed with publication disabled. The `$0`
-preflight derived the exact 13,379,919,280 model bytes, a provider-requested 20 GB volume, current GPU/rate
-choices, and independently verified Sujal's account with zero resources. The user subsequently
-authorized the exact bounded Phase B scope, RTX 4090 ceiling, retained-volume charge, and `$3`
-finite-action cap. The final pre-mutation recheck still found zero resources and no paid compute.
+preflight derived the exact 13,379,919,280 model bytes and independently verified Sujal's account
+with zero resources. The user subsequently authorized the exact bounded Phase B scope, RTX 4090
+ceiling, retained-volume charge, and `$3` finite-action cap, then explicitly confirmed a 50 GB
+volume at `$3.50/month` to avoid a replacement volume and repeat model load. The final pre-mutation
+recheck still found zero resources and no paid compute.
 
 No VideoForge persistent model volume exists yet. Phase B provisioning/preparation is authorized,
 but must remain fail-closed behind the exact Sujal identity, resource, rate, and spend checks.

@@ -21,6 +21,8 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    outputs:
+      immutable_image: ${{ steps.publish.outputs.immutable_image }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -62,6 +64,7 @@ jobs:
         run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
 
       - name: Publish smoke-tested immutable image
+        id: publish
         if: ${{ inputs.publish }}
         shell: bash
         run: |
@@ -70,4 +73,7 @@ jobs:
           image="ghcr.io/${owner}/videoforge-mage-cp06:${GITHUB_SHA}"
           docker tag "$LOCAL_IMAGE" "$image"
           docker push "$image"
-          docker inspect --format='image={{index .RepoDigests 0}}' "$image" >> "$GITHUB_STEP_SUMMARY"
+          immutable_image="$(docker inspect --format='{{index .RepoDigests 0}}' "$image")"
+          [[ "$immutable_image" =~ ^ghcr\.io/[a-z0-9_-]+/videoforge-mage-cp06@sha256:[a-f0-9]{64}$ ]]
+          echo "immutable_image=$immutable_image" >> "$GITHUB_OUTPUT"
+          echo "immutable_image=$immutable_image" >> "$GITHUB_STEP_SUMMARY"

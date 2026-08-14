@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   acceptMageResult,
-  MAGE_CANDIDATE_IMAGE,
   MAGE_GPU,
+  MAGE_IMAGE_REPOSITORY,
   MAGE_GPU_CHOICES,
   MAGE_MODEL_REVISION,
   MAGE_SOURCE_REVISION,
@@ -60,7 +60,7 @@ const authority: MageResultAuthority = {
   seed: 1234,
   width: 1280,
   height: 720,
-  image: MAGE_CANDIDATE_IMAGE,
+  image: `${MAGE_IMAGE_REPOSITORY}@sha256:${"f".repeat(64)}`,
   modelRevision: MAGE_MODEL_REVISION,
   sourceRevision: MAGE_SOURCE_REVISION,
   gpu: MAGE_GPU,
@@ -184,6 +184,13 @@ describe("Mage candidate result acceptance", () => {
     expect(() => acceptMageResult(validEnvelope(), authority, 0.11)).toThrow(
       "MAGE_AUTHORITY_INVALID",
     );
+    expect(() =>
+      acceptMageResult(
+        validEnvelope(),
+        { ...authority, image: "unpublished:videoforge-mage-cp06-int8" },
+        0.02,
+      ),
+    ).toThrow("MAGE_AUTHORITY_INVALID");
   });
 
   it("rejects unknown envelope/result fields and noncanonical base64", () => {

@@ -13,7 +13,7 @@ MAGE_MODEL_ID: Final = "Comfy-Org/Mage-Flow"
 MAGE_MODEL_REVISION: Final = "d8c99241f6fa80fbd453014234af2bf337ea21e6"
 MAGE_PRECISION: Final = "int8-convrot"
 MAGE_COMFYUI_REVISION: Final = "26d7f8556822d9d08c2d3e1878636ac3b4969af9"
-MAGE_VOLUME_SIZE_GB: Final = 20
+MAGE_VOLUME_SIZE_GB: Final = 50
 # RunPod's network-volume REST contract and billing use integer GB. This is a
 # requested provider size, not a claim that the mounted filesystem reports an
 # exact binary capacity.

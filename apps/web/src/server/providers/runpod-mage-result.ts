@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 export const MAGE_CANDIDATE_IMAGE = "unpublished:videoforge-mage-cp06-int8";
+export const MAGE_IMAGE_REPOSITORY = "ghcr.io/pala-lakshmansai/videoforge-mage-cp06";
 export const MAGE_MODEL_REVISION = "d8c99241f6fa80fbd453014234af2bf337ea21e6";
 export const MAGE_SOURCE_REVISION = "26d7f8556822d9d08c2d3e1878636ac3b4969af9";
 export const MAGE_GPU = "NVIDIA GeForce RTX 4090";
@@ -8,6 +9,10 @@ export const MAGE_GPU_CHOICES = ["NVIDIA RTX PRO 4500 Blackwell", MAGE_GPU] as c
 export type MageGpu = (typeof MAGE_GPU_CHOICES)[number];
 
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
+const IMMUTABLE_MAGE_IMAGE = new RegExp(
+  `^${MAGE_IMAGE_REPOSITORY.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}@sha256:[a-f0-9]{64}$`,
+  "u",
+);
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,159}$/u;
 const PNG = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
@@ -26,7 +31,7 @@ export interface MageResultAuthority {
   readonly seed: number;
   readonly width: 1280;
   readonly height: 720;
-  readonly image: typeof MAGE_CANDIDATE_IMAGE;
+  readonly image: string;
   readonly modelRevision: typeof MAGE_MODEL_REVISION;
   readonly sourceRevision: typeof MAGE_SOURCE_REVISION;
   readonly gpu: MageGpu;
@@ -225,7 +230,7 @@ export const acceptMageResult = (
     !SHA256.test(authority.podIdHash) ||
     !SHA256.test(authority.volumeIdHash) ||
     !SHA256.test(authority.volumeManifestSha256) ||
-    authority.image !== MAGE_CANDIDATE_IMAGE ||
+    !IMMUTABLE_MAGE_IMAGE.test(authority.image) ||
     authority.modelRevision !== MAGE_MODEL_REVISION ||
     authority.sourceRevision !== MAGE_SOURCE_REVISION ||
     !MAGE_GPU_CHOICES.includes(authority.gpu) ||
