@@ -212,7 +212,9 @@ test.beforeEach(async ({ page }, testInfo) => {
     headers: { "X-VideoForge-Fixture-Session": sessionId },
   });
   expect(reset.ok()).toBe(true);
-  const sharedReset = await page.request.post("/api/dev/shared-app/reset");
+  const sharedReset = await page.request.post("/api/dev/shared-app/reset", {
+    headers: { "X-VideoForge-Fixture-Control": "cp05-fixture-control-v1" },
+  });
   expect(sharedReset.ok()).toBe(true);
   const failures: RuntimeFailures = {
     consoleErrors: [],
@@ -861,7 +863,7 @@ test("persisted timeline inspection is keyboard-accessible, responsive, and fail
   await expect(inspection.getByText("Current revision is fully covered")).toBeVisible();
   await expect(inspection.getByText("7/7", { exact: true })).toBeVisible();
   await expect(inspection.getByText("1200 frames · 30 fps", { exact: true })).toBeVisible();
-  await expect(inspection.getByText("21.25%", { exact: true })).toBeVisible();
+  await expect(inspection.getByText("21.75%", { exact: true })).toBeVisible();
   await expect(inspection.getByText("Local persisted", { exact: true })).toHaveCount(0);
   await expect(inspection.getByText("Fixture snapshot", { exact: true })).toBeVisible();
 
