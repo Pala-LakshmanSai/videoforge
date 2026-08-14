@@ -87,6 +87,51 @@ describe("CP-06 live adapter provider-free boundary", () => {
     });
   });
 
+  it("proves the exact GHCR digest through an anonymous public-pull token flow", async () => {
+    const files = await fixture();
+    const calls: { url: string; authorization: string | null }[] = [];
+    const digest = IMAGE.split("@")[1] ?? "";
+    const adapter = new RunPodCp06LiveAdapter({
+      apiKey: "k".repeat(32),
+      podClient: emptyPodClient(),
+      inventoryClient: { inventory: async () => ({}) } as never,
+      artifactRoot: files.artifactRoot,
+      journalPath: files.journalPath,
+      workerImageDigest: IMAGE,
+      assertAccount: async () => ({ accountIdHash: CP06_PHASE_B_ACCOUNT_HASH }),
+      fetch: async (input, init) => {
+        const url = String(input);
+        const headers = new Headers(init?.headers);
+        calls.push({ url, authorization: headers.get("authorization") });
+        if (url.startsWith("https://ghcr.io/token?")) {
+          return new Response(JSON.stringify({ token: "anonymous-public-pull-token" }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (headers.get("authorization") === null) {
+          return new Response(null, {
+            status: 401,
+            headers: {
+              "www-authenticate":
+                'Bearer realm="https://ghcr.io/token",service="ghcr.io",scope="repository:pala-lakshmansai/videoforge-mage-cp06:pull"',
+            },
+          });
+        }
+        return new Response(null, {
+          status: 200,
+          headers: { "docker-content-digest": digest },
+        });
+      },
+    });
+
+    await expect(adapter.assertWorkerImagePubliclyPullable(IMAGE)).resolves.toBeUndefined();
+    expect(calls).toHaveLength(3);
+    expect(calls[0]?.authorization).toBeNull();
+    expect(calls[1]?.authorization).toBeNull();
+    expect(calls[2]?.authorization).toBe("Bearer anonymous-public-pull-token");
+  });
+
   it("reconstructs an exact open Pod and prep manifest in a fresh process", async () => {
     const files = await fixture();
     let nowIso = "2026-08-14T08:40:00.000Z";
@@ -342,6 +387,65 @@ describe("CP-06 live adapter provider-free boundary", () => {
       .split("\n")
       .map((line) => JSON.parse(line) as Record<string, unknown>);
     expect(records.filter((record) => record.event === "pod_absence_confirmed")).toHaveLength(2);
+  });
+
+  it("continues duplicate cleanup after the first exact Pod cannot be proven absent", async () => {
+    const files = await fixture();
+    const pods = ["pod_unresolved_1", "pod_cleaned_2"].map(
+      (id): RunPodMagePod => ({
+        id,
+        idHash: hash(id),
+        name: CP06_PHASE_B_ATTEMPTS.positive1.name,
+        templateId: "template_cp06",
+        image: IMAGE,
+        networkVolumeIdHash: hash("volume_cp06"),
+        dataCenterId: CP06_PHASE_B_REGION,
+        gpuTypeId: CP06_PHASE_B_GPU,
+        costPerHourUsd: 0.74,
+        desiredStatus: "RUNNING",
+        lastStartedAt: "2026-08-14T08:30:00.000Z",
+      }),
+    );
+    const attempted: string[] = [];
+    const podClient = {
+      findMageNetworkVolumeByName: async () => ({ id: "volume_cp06" }),
+      findMagePodTemplateByName: async () => ({ id: "template_cp06" }),
+      listMagePodsByExactName: async () => pods,
+      deleteMagePodAndConfirmAbsent: async (podId: string) => {
+        attempted.push(podId);
+        if (podId === "pod_unresolved_1") throw new Error("absence unproven");
+      },
+      confirmMagePodAbsent: async () => true,
+      settledMagePodBillingStable: async () => {
+        throw new Error("billing lag");
+      },
+    } as unknown as RunPodPodControlClient;
+    const adapter = new RunPodCp06LiveAdapter({
+      apiKey: "k".repeat(32),
+      podClient,
+      inventoryClient: { inventory: async () => ({}) } as never,
+      artifactRoot: files.artifactRoot,
+      journalPath: files.journalPath,
+      workerImageDigest: IMAGE,
+      now: () => new Date("2026-08-14T08:40:00.000Z"),
+      sleep: async () => undefined,
+      assertAccount: async () => ({ accountIdHash: CP06_PHASE_B_ACCOUNT_HASH }),
+    });
+
+    await expect(
+      adapter.listPodsByExactName(CP06_PHASE_B_ATTEMPTS.positive1.name),
+    ).rejects.toMatchObject({ code: "CP06_POD_DUPLICATE_CLEANUP_INCOMPLETE" });
+    expect(attempted).toEqual(["pod_unresolved_1", "pod_cleaned_2"]);
+    const records = (await readFile(files.journalPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+    expect(records.some((record) => record.event === "pod_absence_unknown")).toBe(true);
+    expect(
+      records.some(
+        (record) => record.event === "pod_absence_confirmed" && record.podId === "pod_cleaned_2",
+      ),
+    ).toBe(true);
   });
 
   it("persists final evidence idempotently with mode 0600", async () => {

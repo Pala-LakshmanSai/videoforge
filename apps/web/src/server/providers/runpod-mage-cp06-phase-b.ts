@@ -268,6 +268,7 @@ export interface Cp06PodNativePort {
   assertAccountIdentity(expectedAccountIdHash: string): Promise<{ readonly accountIdHash: string }>;
   getOffering(offeringId: string, region: string): Promise<Cp06OfferingObservation>;
   inspectInventory(): Promise<Cp06InventoryObservation>;
+  assertWorkerImagePubliclyPullable(imageDigest: string): Promise<void>;
   reconcileVolumesByExactName(name: string): Promise<readonly Cp06VolumeObservation[]>;
   createVolume(input: {
     readonly name: typeof CP06_PHASE_B_VOLUME_NAME;
@@ -923,6 +924,21 @@ const journalStageEvidence = (journal: Cp06IntentAttemptJournal, stage: string):
   journal.all().find((record) => record.event === "stage_complete" && record.stage === stage)
     ?.evidence;
 
+const hasUnresolvedCreateIntent = (
+  journal: Cp06IntentAttemptJournal,
+  intentEvent: string,
+  resolvedEvent: string,
+): boolean => {
+  const records = journal.all();
+  let intentIndex = -1;
+  let resolvedIndex = -1;
+  records.forEach((record, index) => {
+    if (record.event === intentEvent) intentIndex = index;
+    if (record.event === resolvedEvent) resolvedIndex = index;
+  });
+  return intentIndex > resolvedIndex;
+};
+
 const assertCompletedHandoff = (
   value: unknown,
   config: Cp06PhaseBConfig,
@@ -986,11 +1002,15 @@ export async function runCp06MagePhaseB(
   if ((await port.inspectInventory()).pods.length !== 0) {
     throw new Cp06PhaseBError("CP06_ZERO_PODS_NOT_PROVEN");
   }
+  await port.assertWorkerImagePubliclyPullable(config.workerImageDigest);
   assertBudgetForRemainingPlan(journal, offering.rateUsdPerHour);
 
   let matchingVolumes = await port.reconcileVolumesByExactName(CP06_PHASE_B_VOLUME_NAME);
   if (matchingVolumes.length > 1) throw new Cp06PhaseBError("CP06_VOLUME_CREATE_AMBIGUOUS");
   if (matchingVolumes.length === 0) {
+    if (hasUnresolvedCreateIntent(journal, "volume_create_intent", "volume_ready")) {
+      throw new Cp06PhaseBError("CP06_VOLUME_CREATE_AMBIGUOUS");
+    }
     await journal.append("volume_create_intent", {
       name: CP06_PHASE_B_VOLUME_NAME,
       sizeGb: CP06_PHASE_B_VOLUME_SIZE_GB,
@@ -1023,6 +1043,9 @@ export async function runCp06MagePhaseB(
   );
   if (matchingTemplates.length > 1) throw new Cp06PhaseBError("CP06_TEMPLATE_CREATE_AMBIGUOUS");
   if (matchingTemplates.length === 0) {
+    if (hasUnresolvedCreateIntent(journal, "template_create_intent", "template_ready")) {
+      throw new Cp06PhaseBError("CP06_TEMPLATE_CREATE_AMBIGUOUS");
+    }
     await journal.append("template_create_intent", {
       name: CP06_PHASE_B_TEMPLATE_NAME,
       imageDigest: config.workerImageDigest,

@@ -85,6 +85,10 @@ class FakePodPort implements Cp06PodNativePort {
     return { pods: [...this.pods], volumes: [...this.volumes] };
   }
 
+  async assertWorkerImagePubliclyPullable(): Promise<void> {
+    this.calls.push("public-image");
+  }
+
   async reconcileVolumesByExactName(name: string): Promise<readonly Cp06VolumeObservation[]> {
     this.calls.push("reconcile-volume");
     return this.volumes.filter((volume) => volume.name === name);
@@ -314,6 +318,8 @@ describe("CP-06 Phase B Pod orchestrator", () => {
       "positive1",
       "positive2",
     ]);
+    expect(port.calls.indexOf("public-image")).toBeGreaterThan(port.calls.indexOf("inventory"));
+    expect(port.calls.indexOf("public-image")).toBeLessThan(port.calls.indexOf("create-volume"));
     expect(port.createdIntents[0]?.entrypointOverride).toEqual([
       "python",
       "/opt/videoforge/mage_prepare_service.py",
@@ -542,6 +548,36 @@ describe("CP-06 Phase B Pod orchestrator", () => {
       .map((line) => JSON.parse(line) as Record<string, unknown>);
     expect(records.at(-1)).toMatchObject({ event: "pod_delete_ack_unknown" });
     expect(records.some((record) => record.event === "handoff_complete")).toBe(false);
+  });
+
+  it("does not repeat volume or template creation after an unresolved prior create intent", async () => {
+    const volumeFixture = await fixture();
+    const volumeJournal = await Cp06IntentAttemptJournal.open(volumeFixture.journalPath);
+    await volumeJournal.append("volume_create_intent", {
+      name: CP06_PHASE_B_VOLUME_NAME,
+      sizeGb: CP06_PHASE_B_VOLUME_SIZE_GB,
+    });
+    const volumePort = new FakePodPort();
+
+    await expect(
+      runCp06MagePhaseB(volumePort, config(volumeFixture.journalPath)),
+    ).rejects.toMatchObject({ code: "CP06_VOLUME_CREATE_AMBIGUOUS" });
+    expect(volumePort.calls).not.toContain("create-volume");
+
+    const templateFixture = await fixture();
+    const templateJournal = await Cp06IntentAttemptJournal.open(templateFixture.journalPath);
+    await templateJournal.append("template_create_intent", {
+      name: CP06_PHASE_B_TEMPLATE_NAME,
+      imageDigest: IMAGE,
+    });
+    const templatePort = new FakePodPort();
+    await templatePort.createVolume();
+    templatePort.calls.length = 0;
+
+    await expect(
+      runCp06MagePhaseB(templatePort, config(templateFixture.journalPath)),
+    ).rejects.toMatchObject({ code: "CP06_TEMPLATE_CREATE_AMBIGUOUS" });
+    expect(templatePort.calls).not.toContain("create-template");
   });
 
   it("rejects unsafe journal symlinks", async () => {

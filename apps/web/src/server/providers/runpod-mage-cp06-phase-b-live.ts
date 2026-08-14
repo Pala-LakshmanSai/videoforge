@@ -50,6 +50,9 @@ import {
 
 const CATALOG_URL =
   "https://api.runpod.io/v2/catalog/gpus?include=AVAILABILITY&product=POD&count=1&cloud=SECURE&minCudaVersion=13.0";
+const GHCR_REPOSITORY = "pala-lakshmansai/videoforge-mage-cp06";
+const GHCR_TOKEN_REALM = "https://ghcr.io/token";
+const GHCR_PULL_SCOPE = `repository:${GHCR_REPOSITORY}:pull`;
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 const PROXY = /^https:\/\/[A-Za-z0-9_-]+-8000\.proxy\.runpod\.net$/u;
@@ -363,6 +366,7 @@ export class RunPodCp06LiveAdapter implements Cp06PodNativePort {
     pods: readonly RunPodMagePod[],
   ): Promise<never> {
     const journal = await Cp06IntentAttemptJournal.open(this.options.journalPath, this.now);
+    let unresolvedPods = 0;
     for (const pod of pods) {
       const observed = toPodObservation(pod, intent);
       this.intents.set(pod.id, intent);
@@ -374,31 +378,50 @@ export class RunPodCp06LiveAdapter implements Cp06PodNativePort {
         intent.rateCeilingUsdPerHour,
       );
       const accruedCostMicroUsd = Math.ceil(accruedCostUsd * 1_000_000);
-      await journal.append("pod_delete_intent", {
-        attemptId: intent.attemptId,
-        podId: pod.id,
-        podIdHash: hash(pod.id),
-        accountedCostMicroUsd: accruedCostMicroUsd,
-        reason: "exact_name_ambiguity",
-      });
-      const deletion = await this.deletePod(pod.id);
-      await this.confirmPodAbsent(pod.id);
-      const settledCostMicroUsd =
-        deletion.settledCostUsd === null ? null : Math.ceil(deletion.settledCostUsd * 1_000_000);
-      const accountedCostMicroUsd = Math.max(accruedCostMicroUsd, settledCostMicroUsd ?? 0);
-      await journal.append("pod_absence_confirmed", {
-        attemptId: intent.attemptId,
-        role: intent.role,
-        podId: pod.id,
-        podIdHash: hash(pod.id),
-        accountedCostMicroUsd,
-        settledCostMicroUsd,
-        costBasis:
-          settledCostMicroUsd !== null && settledCostMicroUsd >= accruedCostMicroUsd
-            ? "settled"
-            : "conservative_elapsed",
-        reason: "exact_name_ambiguity",
-      });
+      try {
+        await journal.append("pod_delete_intent", {
+          attemptId: intent.attemptId,
+          podId: pod.id,
+          podIdHash: hash(pod.id),
+          accountedCostMicroUsd: accruedCostMicroUsd,
+          reason: "exact_name_ambiguity",
+        });
+        const deletion = await this.deletePod(pod.id);
+        await this.confirmPodAbsent(pod.id);
+        const settledCostMicroUsd =
+          deletion.settledCostUsd === null ? null : Math.ceil(deletion.settledCostUsd * 1_000_000);
+        const accountedCostMicroUsd = Math.max(accruedCostMicroUsd, settledCostMicroUsd ?? 0);
+        await journal.append("pod_absence_confirmed", {
+          attemptId: intent.attemptId,
+          role: intent.role,
+          podId: pod.id,
+          podIdHash: hash(pod.id),
+          accountedCostMicroUsd,
+          settledCostMicroUsd,
+          costBasis:
+            settledCostMicroUsd !== null && settledCostMicroUsd >= accruedCostMicroUsd
+              ? "settled"
+              : "conservative_elapsed",
+          reason: "exact_name_ambiguity",
+        });
+      } catch {
+        unresolvedPods += 1;
+        try {
+          await journal.append("pod_absence_unknown", {
+            attemptId: intent.attemptId,
+            role: intent.role,
+            podId: pod.id,
+            podIdHash: hash(pod.id),
+            accountedCostMicroUsd: accruedCostMicroUsd,
+            reason: "exact_name_ambiguity",
+          });
+        } catch {
+          // The next exact Pod must still be cleaned even when local evidence persistence fails.
+        }
+      }
+    }
+    if (unresolvedPods > 0) {
+      throw new Cp06PhaseBError("CP06_POD_DUPLICATE_CLEANUP_INCOMPLETE");
     }
     throw new Cp06PhaseBError("CP06_POD_NAME_AMBIGUOUS");
   }
@@ -575,6 +598,69 @@ export class RunPodCp06LiveAdapter implements Cp06PodNativePort {
       pods: [...this.activePods.values()],
       volumes: this.volume === null ? [] : [this.volume],
     };
+  }
+
+  async assertWorkerImagePubliclyPullable(imageDigest: string): Promise<void> {
+    if (imageDigest !== this.options.workerImageDigest) {
+      throw new Cp06PhaseBError("CP06_PUBLIC_IMAGE_DIGEST_INVALID");
+    }
+    const digest = imageDigest.slice(imageDigest.indexOf("@") + 1);
+    if (!SHA256.test(digest)) throw new Cp06PhaseBError("CP06_PUBLIC_IMAGE_DIGEST_INVALID");
+    const manifestUrl = `https://ghcr.io/v2/${GHCR_REPOSITORY}/manifests/${digest}`;
+    const manifestHeaders = {
+      accept:
+        "application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json",
+    };
+    const anonymous = await this.fetch(manifestUrl, {
+      method: "HEAD",
+      headers: manifestHeaders,
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
+    });
+    let manifest = anonymous;
+    if (anonymous.status === 401) {
+      const challenge = anonymous.headers.get("www-authenticate");
+      if (challenge === null || !challenge.startsWith("Bearer ")) {
+        throw new Cp06PhaseBError("CP06_PUBLIC_IMAGE_AUTH_INVALID");
+      }
+      const parameters = new Map<string, string>();
+      for (const match of challenge.matchAll(/([a-z]+)="([^"]+)"/gu)) {
+        const key = match[1];
+        const value = match[2];
+        if (key === undefined || value === undefined || parameters.has(key)) {
+          throw new Cp06PhaseBError("CP06_PUBLIC_IMAGE_AUTH_INVALID");
+        }
+        parameters.set(key, value);
+      }
+      if (
+        parameters.size !== 3 ||
+        parameters.get("realm") !== GHCR_TOKEN_REALM ||
+        parameters.get("service") !== "ghcr.io" ||
+        parameters.get("scope") !== GHCR_PULL_SCOPE
+      ) {
+        throw new Cp06PhaseBError("CP06_PUBLIC_IMAGE_AUTH_INVALID");
+      }
+      const tokenUrl = new URL(GHCR_TOKEN_REALM);
+      tokenUrl.searchParams.set("service", "ghcr.io");
+      tokenUrl.searchParams.set("scope", GHCR_PULL_SCOPE);
+      const tokenResponse = await this.fetch(tokenUrl, {
+        signal: AbortSignal.timeout(30_000),
+      });
+      const tokenBody = record(tokenResponse.ok ? await tokenResponse.json() : null);
+      const token = tokenBody?.token;
+      if (typeof token !== "string" || token.length < 20 || /\s/u.test(token)) {
+        throw new Cp06PhaseBError("CP06_PUBLIC_IMAGE_TOKEN_INVALID");
+      }
+      manifest = await this.fetch(manifestUrl, {
+        method: "HEAD",
+        headers: { ...manifestHeaders, authorization: `Bearer ${token}` },
+        redirect: "error",
+        signal: AbortSignal.timeout(30_000),
+      });
+    }
+    if (!manifest.ok || manifest.headers.get("docker-content-digest") !== digest) {
+      throw new Cp06PhaseBError("CP06_PUBLIC_IMAGE_PULL_UNPROVEN");
+    }
   }
 
   async reconcileVolumesByExactName(name: string): Promise<readonly Cp06VolumeObservation[]> {
