@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T18:00:37Z"
+updated_at: "2026-08-14T18:29:16Z"
 
 phase: cp07_phase_b_awaiting_revised_paid_authority
 implementation_authorized_in_current_task: true
@@ -126,6 +126,7 @@ repository:
   cp07_image_import_fix_commit: "237b108819432b4bea3d7b3cb5e6bff039749cc1"
   cp07_fp8_preparation_gpu_fix_commit: "d51c0a1"
   cp07_invalid_volume_replacement_guard_commit: "16cd30a"
+  cp07_cumulative_cap_guard_commit: "1310b72"
   last_good_commit: "5d38739a5f53f6b0e67d6cbf1950ba29c7645061"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
@@ -355,6 +356,7 @@ cp07_phase_a:
   proposed_revised_image_target_approved: false
   fp8_preparation_gpu_fix_commit: "d51c0a1"
   invalid_volume_replacement_guard_commit: "16cd30a"
+  cumulative_cap_guard_commit: "1310b72"
   revised_local_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/revised-local-preflight.json"
   image_published: true
   image_digest: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:e53842b5b9e8115e576f6d98337c228d584651fa50df0d15e086d417f60258e8"
@@ -387,10 +389,10 @@ cp07_phase_a:
   external_spend_usd: null
   external_spend_state: pending_provider_settlement
   conservative_reserved_finite_spend_upper_bound_usd: 1.11
-  proposed_maximum_additional_pod_cost_usd: 2.775
-  proposed_maximum_cumulative_finite_estimate_usd: 3.885
+  proposed_maximum_additional_pod_cost_usd: 2.812
+  proposed_maximum_cumulative_finite_estimate_usd: 3.922
   latest_user_supplied_cap_usd: 4
-  proposed_cap_margin_usd: 0.115
+  proposed_cap_margin_usd: 0.078
   provider_mutations: 5
   local_tests: passed
   canonical_verify: passed
