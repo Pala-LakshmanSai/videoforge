@@ -35,7 +35,7 @@ gates:
     owner: VF-9-24R
     last_run: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
     result: open_cp07_local_artifact_and_offline_contracts_passed_paid_volume_boot_and_samples_pending
-    checked_at: "2026-08-14T15:24:53.555Z"
+    checked_at: "2026-08-14T15:38:43.448Z"
     blocker: "The exact local prepared-artifact, manifest, offline-boot, real-warm-up, short-span, scratch, and immutable-image contracts pass. The image is unpublished and no Echo volume, prepared artifact, real Pod boot, or 2/4/6-second MP4 exists yet."
   GATE_IMAGE_001:
     status: open
@@ -101,7 +101,7 @@ gates:
     owner: VF-9-20
     last_run: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
     result: open_cp07_live_eu_ro_1_echo_choices_read_only_model_fit_and_pair_lock_unproven
-    checked_at: "2026-08-14T15:24:53.555Z"
+    checked_at: "2026-08-14T15:38:43.448Z"
     blocker: "CP-06 proved selected-versus-actual RTX 4090 identity for Mage. CP-07 found three current Secure EU-RO-1 Echo candidates, but Echo model fit, real warm-up, user GPU selection, atomic pair locking, inheritance, and locked-GPU recreation remain unproven."
   GATE_RUNPOD_001:
     status: open
@@ -110,7 +110,7 @@ gates:
     owner: VF-9-20
     last_run: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
     result: open_cp07_zero_compute_one_mage_volume_confirmed_echo_lifecycle_unproven
-    checked_at: "2026-08-14T15:24:53.555Z"
+    checked_at: "2026-08-14T15:38:43.448Z"
     blocker: "The read-only CP-07 audit confirms zero compute, exactly one retained 50 GB Mage volume, and no Echo volume. Echo image publication, isolated volume preparation, fresh-Pod sample lifecycle, final zero-Pod/two-volume proof, and the full two-lane session lifecycle remain unproven."
   GATE_COST_001:
     status: open
@@ -119,7 +119,7 @@ gates:
     owner: VF-9-20
     last_run: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
     result: open_cp07_current_rates_and_retention_price_known_paid_timings_and_settlement_unproven
-    checked_at: "2026-08-14T15:24:53.555Z"
+    checked_at: "2026-08-14T15:38:43.448Z"
     blocker: "CP-06 settled at $0.34927155333571136. CP-07 current GPU rates and the $3.50/month proposed 50 GB Echo retention rate are pinned at $0 preflight cost, but paid preparation/sample timings, settled finite cost, and representative 30-minute two-lane economics remain unproven."
   GATE_UI_001:
     status: closed

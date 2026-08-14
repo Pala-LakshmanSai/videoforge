@@ -145,7 +145,8 @@ exactly the intended retained 50 GB Mage volume. Proof is in
 `evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json` and its `settlement-reaudit.json`.
 
 `VF-9-24R`/`CP-07` Phase A is green at implementation commit
-`c89acef78d4a4bbbbac118ca9c658b6180d68fc8`. The exact VideoForge-owned Echo FP8 prepared-artifact,
+`c89acef78d4a4bbbbac118ca9c658b6180d68fc8` plus safety fix
+`75c852bb891dbe205ee43d2b73e74765bc336373`. The exact VideoForge-owned Echo FP8 prepared-artifact,
 offline boot, real warm-up, short-span, isolated-scratch, immutable-image, and crop-proposal
 boundaries pass locally. A current `$0` Sujal read-only audit shows zero compute, exactly the retained
 50 GB Mage volume, no Echo volume, three eligible Secure `EU-RO-1` GPU choices, and a 50 GB Echo

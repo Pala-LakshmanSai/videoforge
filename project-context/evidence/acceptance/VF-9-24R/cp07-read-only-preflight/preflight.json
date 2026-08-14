@@ -2,9 +2,10 @@
   "schema_version": "videoforge.cp07-phase-a-evidence/v1",
   "checkpoint": "CP-07",
   "task_id": "VF-9-24R",
-  "checked_at": "2026-08-14T15:24:53.555Z",
+  "checked_at": "2026-08-14T15:38:43.448Z",
   "status": "provider_free_preflight_passed_awaiting_paid_authority",
   "implementation_commit": "c89acef78d4a4bbbbac118ca9c658b6180d68fc8",
+  "safety_fix_commit": "75c852bb891dbe205ee43d2b73e74765bc336373",
   "verified_context_commit": "73fba9ab06b06cb80b536597269a78a034f76517",
   "external_spend_usd": 0,
   "provider_mutations": 0,
@@ -21,7 +22,7 @@
     "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   },
   "inventory": {
-    "checked_at": "2026-08-14T15:24:53.555Z",
+    "checked_at": "2026-08-14T15:38:43.448Z",
     "pods": 0,
     "endpoints": 0,
     "private_templates": 0,
@@ -41,10 +42,11 @@
     "audio": "TencentGameMate/chinese-wav2vec2-base@3991242c806928916fff4a8c0e4f76acf661b743"
   },
   "artifact_definition": {
-    "selected_runtime_bytes": 23922317735,
+    "selected_runtime_blob_bytes": 23922317735,
+    "pinned_small_config_max_bytes": 50000000,
     "prepared_artifact_max_bytes": 4000000000,
     "proposed_volume_size_gb": 50,
-    "minimum_post_preparation_headroom_bytes": 22077682265,
+    "minimum_post_preparation_headroom_bytes": 22027682265,
     "precision": "float8_e4m3fn_dynamic_activation_weight",
     "remaining_tensor_dtype": "bfloat16",
     "torch": "2.7.1",
@@ -58,7 +60,7 @@
     "completion_marker_written_last": true
   },
   "immutable_image_definition": {
-    "target": "ghcr.io/pala-lakshmansai/videoforge-echo-cp07:c89acef78d4a4bbbbac118ca9c658b6180d68fc8",
+    "target": "ghcr.io/pala-lakshmansai/videoforge-echo-cp07:75c852bb891dbe205ee43d2b73e74765bc336373",
     "base": "pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime@sha256:c16f4c749e2d9e96878875cdf6cc45cddda1d1a36fddd371dd6f2360f1b6e2a2",
     "published": false,
     "digest": null,
@@ -137,12 +139,10 @@
     "vnext_dispatch_firewall": "passed",
     "context_validation": "passed",
     "secret_scan": "passed",
-    "canonical_verify": "passed_CI_1_TURBO_FORCE_true_pnpm_verify",
-    "canonical_verify_checked_at": "2026-08-14T15:33:22Z",
-    "installed_chrome": "42_passed",
-    "cloudflare_runtime_parity": "1_passed"
+    "canonical_verify": "pending_for_current_safety_fix",
+    "prior_canonical_verify_commit": "73fba9ab06b06cb80b536597269a78a034f76517"
   },
-  "read_only_preflight_evidence_sha256": "sha256:b0f6b938dad890a0a79dbc5f2356bc7375486afec80556b28aea7f2d6b7ffbf6",
+  "read_only_preflight_evidence_sha256": "sha256:a7f7eea08857b9abc83d17af0402501d4a4b57feb0663171bfa6705fbe53ead0",
   "paid_execution_authorized": false,
   "echo_crop_activated": false,
   "remaining_gates": [
