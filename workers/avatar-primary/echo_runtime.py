@@ -37,6 +37,7 @@ IMAGE_DIGEST = re.compile(
 SUPPORTED_GPU_NAMES = {
     "NVIDIA GeForce RTX 4090": ("4090", 24_000, (8, 9)),
     "NVIDIA GeForce RTX 5090": ("5090", 31_000, (12, 0)),
+    "NVIDIA L4": ("NVIDIA L4", 22_000, (8, 9)),
     "NVIDIA RTX PRO 6000 Blackwell Server Edition": ("RTX PRO 6000", 94_000, (12, 0)),
 }
 MAX_OUTPUT_BYTES = 128 * 1024 * 1024

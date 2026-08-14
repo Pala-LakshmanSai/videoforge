@@ -32,7 +32,7 @@ class _FakeFastApi:
 sys.modules.setdefault("fastapi", types.SimpleNamespace(FastAPI=_FakeFastApi))
 import echo_prepare_service as prepare_service  # noqa: E402
 from echo_job import EchoQualificationJob  # noqa: E402
-from echo_runtime import EchoRuntime  # noqa: E402
+from echo_runtime import SUPPORTED_GPU_NAMES, EchoRuntime  # noqa: E402
 from prepare_echo_volume import (  # noqa: E402
     CONFIRMATION,
     preparation_download_environment,
@@ -126,6 +126,9 @@ def make_volume(root: Path, *, lane: str = volume.ECHO_LANE) -> dict[str, object
 
 
 class Cp07WorkerTest(unittest.TestCase):
+    def test_l4_runtime_identity_is_exact_and_bounded(self) -> None:
+        self.assertEqual(SUPPORTED_GPU_NAMES["NVIDIA L4"], ("NVIDIA L4", 22_000, (8, 9)))
+
     def test_fp8_preparation_requires_cuda_89_or_newer(self) -> None:
         class FakeCuda:
             available = True

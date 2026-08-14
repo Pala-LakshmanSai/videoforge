@@ -502,10 +502,7 @@ class RunPodCp07Client {
           break;
         }
         await this.deleteCandidatePods(candidates);
-        if (
-          error instanceof Cp07PhaseBError &&
-          error.code === "CP07_PROVIDER_MUTATION_AMBIGUOUS"
-        ) {
+        if (error instanceof Cp07PhaseBError && error.code === "CP07_PROVIDER_MUTATION_AMBIGUOUS") {
           throw new Cp07PhaseBError("CP07_POD_CREATE_AMBIGUOUS_CLEANED");
         }
         throw error;
@@ -943,6 +940,10 @@ export async function runCp07PhaseB(options: {
         activePod.id,
         sampleMaximumSeconds,
         (candidate) => candidate.phase === "ready" || candidate.phase === "error",
+      );
+      await writePrivate(
+        path.join(sampleDirectory, `model-ready-${Date.now()}.private.json`),
+        Buffer.from(`${JSON.stringify(health, null, 2)}\n`),
       );
       const model = record(health.model);
       const gpu = record(health.gpu);
