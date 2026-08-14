@@ -79,7 +79,7 @@ const providerNormalizedEnvironment = (value: unknown): JsonRecord | null => {
     (typeof publicKey !== "string" ||
       publicKey.length < 1 ||
       publicKey.length > 65_536 ||
-      /[\0\r\n]/u.test(publicKey))
+      /\0/u.test(publicKey))
   ) {
     return null;
   }
