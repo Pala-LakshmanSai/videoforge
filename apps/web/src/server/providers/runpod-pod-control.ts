@@ -139,6 +139,8 @@ export class RunPodPodControlError extends Error {
     readonly code: string,
     readonly resourceId?: string,
     readonly resourceIds?: readonly string[],
+    readonly providerStatus?: number,
+    readonly providerMessage?: string,
   ) {
     super(code);
     this.name = "RunPodPodControlError";
@@ -302,8 +304,27 @@ export class RunPodPodControlClient {
       if (response.status === 401 || response.status === 403) {
         throw new RunPodPodControlError("RUNPOD_AUTH_REJECTED");
       }
+      let providerMessage: string | undefined;
+      try {
+        const errorBody = record(JSON.parse(await response.text()));
+        const candidate = errorBody?.error ?? errorBody?.message;
+        if (
+          typeof candidate === "string" &&
+          candidate.length > 0 &&
+          candidate.length <= 500 &&
+          /^[A-Za-z0-9 _.,:;/'"()\[\]{}+-]+$/u.test(candidate)
+        ) {
+          providerMessage = candidate;
+        }
+      } catch {
+        // The HTTP status still distinguishes a definite provider rejection from ambiguity.
+      }
       throw new RunPodPodControlError(
         method === "GET" ? "RUNPOD_POD_READ_FAILED" : "RUNPOD_POD_MUTATION_FAILED",
+        undefined,
+        undefined,
+        response.status,
+        providerMessage,
       );
     }
     if (response.status === 204) return null;

@@ -787,9 +787,17 @@ const runPodStage = async <T>(
     } else {
       try {
         pod = await port.createPod(intent);
-      } catch {
+      } catch (createError) {
         const recovered = await port.listPodsByExactName(intent.name);
-        if (recovered.length !== 1) throw new Cp06PhaseBError("CP06_POD_CREATE_AMBIGUOUS");
+        if (recovered.length !== 1) {
+          const definiteProviderRejection =
+            createError !== null &&
+            typeof createError === "object" &&
+            "code" in createError &&
+            createError.code === "RUNPOD_POD_MUTATION_FAILED";
+          if (recovered.length === 0 && definiteProviderRejection) throw createError;
+          throw new Cp06PhaseBError("CP06_POD_CREATE_AMBIGUOUS");
+        }
         pod = recovered[0] ?? null;
       }
     }
