@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T08:27:44Z"
+updated_at: "2026-08-14T09:15:12Z"
 
 phase: cp06_phase_b_bounded_mutation
 implementation_authorized_in_current_task: true
@@ -84,7 +84,8 @@ repository:
   cp06_phase_a_code_commit: "912427b5bd8a7afb4f68233072990d3c39e64cc6"
   cp06_phase_b_controller_commit: "1c257497055ad42b78d3020a2113f8ea0cf876c8"
   cp06_phase_b_safety_fix_commit: "6664d26f7594fe5ba6fd3896ff5f26075764d93f"
-  last_good_commit: "6664d26f7594fe5ba6fd3896ff5f26075764d93f"
+  cp06_phase_b_cleanup_invariant_fix_commit: "58512071586855b96d64e812f9c443d3db51b1dd"
+  last_good_commit: "58512071586855b96d64e812f9c443d3db51b1dd"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -307,7 +308,8 @@ cp06_phase_b:
   status: authorized_pre_mutation
   controller_commit: "1c257497055ad42b78d3020a2113f8ea0cf876c8"
   safety_fix_commit: "6664d26f7594fe5ba6fd3896ff5f26075764d93f"
-  controller_validation: passed_49_focused_tests_9_worker_tests_lint_node_workerd_context_secret_format_diff
+  cleanup_invariant_fix_commit: "58512071586855b96d64e812f9c443d3db51b1dd"
+  controller_validation: passed_51_focused_tests_9_worker_tests_lint_node_workerd_context_secret_format_diff_independent_safety_audit_pass
   evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/authorization.json"
   authorized_by_user_at: "2026-08-14T08:19:32Z"
   user_authorization_text: "I authorize the complete CP-06 Phase B scope above on Sujal RunPod using RTX 4090 at no more than $0.74/hour, retaining the 20 GiB volume at $1.40/month, with a $3 cumulative handoff cap."
