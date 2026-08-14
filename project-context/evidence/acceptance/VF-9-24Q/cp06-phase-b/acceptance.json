@@ -8,6 +8,7 @@
     "branch": "codex/cp06-mage-int8",
     "runtime_source_commit": "563ba1ab7b083c1457ab4a9504d82bd6f9d886b9",
     "handoff_content_commit": "1c1d664d443af14b8f8e21cac4064cb237131d5e",
+    "authority_closure_commit": "ad2915bf570e2db53245ff8e780a3f703d4abf56",
     "mage_publish_run_id": 31796627338,
     "mage_publish_result": "success",
     "verify_run_id": 31796618907,
