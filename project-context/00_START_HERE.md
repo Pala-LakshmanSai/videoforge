@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-06 complete; CP-07 is unselected and unauthorized
+Status: CP-00 through CP-06 complete; CP-07 provider-free/read-only preflight active
 Context schema: `1.5`  
 Last updated: `2026-08-14`
 
@@ -143,6 +143,13 @@ quality. A later authorized `$0` read-only Sujal audit settled all 15 exact Pod 
 `$0.34927155333571136` under the `$3` cap and proved zero Pods/endpoints/templates/workers plus
 exactly the intended retained 50 GB Mage volume. Proof is in
 `evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json` and its `settlement-reaudit.json`.
+
+`VF-9-24R`/`CP-07` is selected for bounded local and read-only preflight at a `$0` external-spend
+cap. It may implement and test the exact VideoForge-owned Echo FP8 prepared-artifact, offline boot,
+real warm-up, short-span, isolated-scratch, immutable-image, and crop-proposal boundaries, and may
+read Sujal RunPod `EU-RO-1` account/inventory/rates/volume pricing without exposing credentials.
+Remote mutation, image/output publication, model download/preparation, new volume billing, Pod/GPU
+allocation, spend, and active renderer crops remain unauthorized.
 
 ## Locked active providers
 

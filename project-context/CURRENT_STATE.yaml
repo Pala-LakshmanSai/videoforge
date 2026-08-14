@@ -1,40 +1,50 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T14:41:47Z"
+updated_at: "2026-08-14T14:52:33Z"
 
-phase: cp06_complete_stopped_before_cp07
-implementation_authorized_in_current_task: false
-current_milestone: exact_mage_int8_persistent_runpod_volume
-current_task: null
-current_wave: cp06_mage_int8_persistent_runpod
+phase: cp07_provider_free_read_only_preflight
+implementation_authorized_in_current_task: true
+current_milestone: exact_echo_fp8_persistent_runtime_crop_lock
+current_task: VF-9-24R
+current_wave: cp07_echo_fp8_persistent_runpod_crop_lock
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: completion_handoff
-application_code_changes_authorized: false
-provider_calls_authorized: false
+task_stage: read_only_preflight
+application_code_changes_authorized: true
+provider_calls_authorized: true
 maximum_external_spend_usd: 0
 provider_authority:
-  mode: none
+  mode: read_only
+  provider: runpod
   cap_usd: 0
-  consumed_phase_b_authority: cp06_phase_b
+  authorized_at: "2026-08-14T14:52:33Z"
+  source: current_cp07_user_prompt
+  non_transferable: true
+  allowed_operations:
+    - account_identity_lookup
+    - inventory_lookup
+    - rate_lookup
+    - volume_pricing_lookup
+    - resource_absence_lookup
 runpod_account_scope:
   owner: sujal
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_inventory_or_mutation
-credential_access_authorized: false
+credential_access_authorized: true
 remote_or_cloud_mutations_authorized: false
 model_downloads_authorized: false
 worker_image_publication_authorized: false
 sample_output_publication_authorized: false
 gpu_use_authorized: false
 mage_volume_retention_authorized: true
+echo_volume_retention_authorized: false
 
 repository:
   initialized: true
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/cp06-mage-int8
+  branch: codex/cp07-echo-fp8
   base_commit: "af1723f548f5a10ff4caee1fa24c161fbb2eca9f"
   planning_handoff_commit: "0e5eee22e4d51150fc358fe853f607e1f41d73c9"
   cp01_activation_commit: "7ef2461"
@@ -85,9 +95,9 @@ live_development:
   chrome_route: null
   fixture_scenario: cp05_complete_fixture_mvp
   provider_mode: fixture
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   authorized_spend_usd: 0
-  provider_authority_scope: "CP-06 is complete and its read-only settlement-audit authority is consumed. Only the approved 50 GB Mage-volume retention continues at $3.50/month; credentials, provider calls, mutation, GPU use, and new spend are unauthorized. CP-07 requires new explicit authority."
+  provider_authority_scope: "CP-07 local/read-only preflight only at $0: Sujal identity, EU-RO-1 Echo-compatible GPU inventory/rates, volume pricing, and absence. No mutation, publication, model download, GPU allocation, new volume billing, or spend. The retained Mage volume remains untouched."
   worker_image: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
   last_user_checkpoint:
     result: accepted
@@ -184,54 +194,59 @@ completed_tasks:
     settlement_reaudit_evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json"
     settled_external_spend_usd: 0.34927155333571136
     ongoing_retained_volume_usd_per_month: 3.5
-active_ownership: []
+active_ownership:
+  - task_id: VF-9-24R
+    checkpoint: CP-07
+    owner: current_chat
+    stage: read_only_preflight
+    external_spend_cap_usd: 0
 
 blocked_tasks: []
-in_progress_checkpoint: null
+in_progress_checkpoint: CP-07
 
 recommended_next_task:
-  task_id: VF-9-24Q
-  checkpoint: CP-06
-  milestone: exact_mage_int8_persistent_runpod_volume
-  status: complete_passed_stopped_before_cp07
-  dependency_status: cp05_complete_green_provider_free
-  authorization_status: consumed_historical_volume_retention_only
-  task_stage: completion_handoff
+  task_id: VF-9-24R
+  checkpoint: CP-07
+  milestone: exact_echo_fp8_persistent_runtime_crop_lock
+  status: active_provider_free_read_only_preflight
+  dependency_status: cp06_complete_green_settled_visual_accepted
+  authorization_status: provider_free_and_read_only_zero_cap
+  task_stage: read_only_preflight
   provider_authority:
-    mode: none
+    mode: read_only
+    provider: runpod
     cap_usd: 0
-    consumed_phase_b_authority: cp06_phase_b
-  read_profile: cp06_mage_int8_persistent_runpod
-  task_brief: tasks/VF-9-24Q.md
-  goal: "Preserve the passed CP-06 handoff and stop before unselected CP-07."
-  provider_calls_authorized: false
+    non_transferable: true
+    authorized_by_user_at: "2026-08-14T14:52:33Z"
+    allowed_operations:
+      - inventory_lookup
+      - rate_lookup
+      - quota_lookup
+      - resource_identity_lookup
+      - resource_absence_lookup
+  read_profile: cp07_echo_fp8_persistent_runpod_crop_lock
+  task_brief: tasks/VF-9-24R.md
+  goal: "Complete CP-07 local Echo FP8/offline/span preflight and stop before external mutation."
+  provider_calls_authorized: true
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
+  credential_access_authorized: true
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
   gpu_use_authorized: false
-  mage_volume_retention_authorized: true
-  mage_gpu_offering_id: "NVIDIA GeForce RTX 4090"
-  mage_gpu_rate_usd_per_hour: 0.74
-  mage_volume_size_gb: 50
-  mage_volume_rate_usd_per_gb_month: 0.07
-  ongoing_retention_charge_usd_per_month: 3.5
-  application_code_changes_authorized: false
-  prerequisite_evidence: "evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json"
+  mage_volume_retention_authorized: false
+  application_code_changes_authorized: true
+  prerequisite_evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json"
   required_handoff:
-    - "Preserve the completed CP-01 through CP-05 evidence and active vNext cutover."
-    - "Phase A is complete at code commit 912427b5bd8a7afb4f68233072990d3c39e64cc6 with green hosted build-only and canonical CI evidence."
-    - "Preserve the exact CP-06 digest, retained volume, outputs, zero-compute proof, and sanitized acceptance evidence."
-    - "Preserve user visual approval and settled billing for all 15 exact Pod hashes in the settlement re-audit evidence."
-    - "Do not reuse the consumed Phase B mutation/spend authority; only the approved $3.50/month volume retention continues."
-    - "The consumed live controller has no ambient credential loader or directly executable entrypoint at commit 3b2575d72e307545564f51d374070ffa4e20bad7; any future provider operation requires new explicit authority and a separately introduced audited entrypoint."
+    - "Preserve CP-06 exact digest, accepted outputs, settled cost, zero compute, and retained 50 GB Mage volume."
+    - "Build only the exact VideoForge-owned Echo FP8 prepared-artifact/offline short-span path from pinned first-party lineage."
+    - "Use read-only RunPod access at $0 only for Sujal identity, EU-RO-1 GPU inventory/rates, volume pricing, and absence."
+    - "Stop before publication, model download/preparation, volume/Pod creation, GPU allocation, billing, or spend."
   prohibited_in_task:
-    - "Any CP-06 action merely because this brief is selected; the exact CP-06 prompt must activate Phase A."
-    - "During Phase A: any cloud mutation, model-byte download, image/container publication, GPU use, Pod/template/volume creation, retained-volume billing, or spend."
-    - "During Phase B: any mutation from an unresolved/ambiguous/conflicting cap, an old cap, or authority missing explicit current-chat approval, the exact GPU offering/rate, volume size/rate, ongoing-retention consent, or explicit scopes. Unambiguous $3/USD 3/3.00 wording is normalized to numeric 3.0."
-    - "Any production gate closure, live profile promotion, volume-capacity assumption, model/GPU substitution, repair, or fallback."
+    - "Any remote mutation, image/output publication, model download/preparation, GPU allocation, retained Echo-volume billing, or spend before a complete current-chat paid approval."
+    - "Any fallback, repair, model substitution, Long Video CFG, full-voiceover job, uncarded pickle, Mage mount, or cross-mount."
+    - "Any active Echo crop before owned native samples are measured and the user explicitly approves the proposed crop pair."
 
 cp06_phase_a:
   status: complete_phase_b_authorized
@@ -537,21 +552,20 @@ blocking_gates_for_production:
 progress_snapshot:
   estimate_kind: checkpoint_truth_no_percent_claim
   completed_checkpoint: CP-06_passed_settled_visual_accepted
-  next_checkpoint: CP-07_unselected_requires_new_brief_profile_and_authority
+  active_checkpoint: CP-07_provider_free_read_only_preflight
+  next_boundary: CP-07_external_mutation_requires_combined_paid_authority
   full_production_mvp_implemented_percent: null
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: cp06_complete_stopped_before_cp07
+  status: cp07_provider_free_read_only_preflight_active
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Load cp06_mage_int8_persistent_runpod and tasks/VF-9-24Q.md; read only the CP-06 roadmap section."
-    - "Preserve the verified green CP-01 through CP-05 evidence and vNext boundary."
-    - "Preserve runtime source commit 563ba1ab7b083c1457ab4a9504d82bd6f9d886b9, exact GHCR digest 0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69, and the sanitized CP-06 acceptance evidence."
-    - "Preserve the user's accepted visual-quality decision and settlement-reaudit evidence: all 15 exact Pod hashes settled at $0.34927155333571136 under the $3 cap."
-    - "Preserve the 2026-08-14T14:24:10.715Z live inventory proof of zero Pods/endpoints/templates/workers and exactly one intended retained 50 GB Mage volume at $3.50/month."
-    - "Do not reuse the completed Phase B authority for new samples, CP-07, Echo, production promotion, or any new provider mutation."
-    - "The historical CP-06 live adapter remains injectable for provider-free tests, but its ambient keychain loader and direct CLI entrypoint were removed at commit 3b2575d72e307545564f51d374070ffa4e20bad7."
+    - "Load cp07_echo_fp8_persistent_runpod_crop_lock and tasks/VF-9-24R.md; read only the CP-07 roadmap section and pinned Echo preflight."
+    - "Preserve CP-06 runtime digest, accepted visual evidence, settled cost, zero compute, and the retained Mage-only 50 GB volume."
+    - "Complete only local Echo FP8 artifact/offline/warm-up/short-span/scratch/immutable-image preflight plus authorized read-only Sujal RunPod lookups at $0."
+    - "Ask once for complete paid authority after local validation and fresh GPU/rate/volume-pricing evidence; do not invent a cap."
   stop_conditions:
-    - "Any Sujal identity mismatch, RTX 4090 rate above $0.74/hour, unavailable approved capacity, resource ambiguity, scope expansion, or risk of exceeding the $3 finite-action cap."
-    - "Any schema reinterpretation, legacy dispatch reachability, Echo work, cross-account action, or production promotion."
+    - "Any Sujal identity mismatch, ambiguous provider state, credential exposure, or read operation outside the allowlist."
+    - "Any mutation, publication, model download, GPU allocation, new volume billing, or spend before complete current-chat approval."
+    - "Any fallback, repair, substitute model, Long Video CFG, full-voiceover job, unsafe pickle, cross-mount, or active crop before user approval."
