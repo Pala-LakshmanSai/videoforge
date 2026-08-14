@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T19:19:12Z"
+updated_at: "2026-08-14T19:21:36Z"
 
 phase: cp07_phase_b_third_paid_execution_authorized
 implementation_authorized_in_current_task: true
@@ -377,7 +377,7 @@ cp07_phase_a:
   runpod_active_serverless_workers: 0
   runpod_network_volumes: 2
   echo_volume_exists: true
-  echo_volume_id_sha256: "sha256:2f75d125465a7f407ceed80624694a3578c7f6fcf3bd81d2b17182bd1d15a261"
+  echo_volume_id_sha256: "sha256:44f609c51269a96b7050eaaa0a9003c9c72c00f5581f976d122fcc94a7eadd08"
   echo_volume_state: incomplete_or_unverified
   gpu_choices:
     - offering_id: "NVIDIA GeForce RTX 4090"
@@ -399,7 +399,7 @@ cp07_phase_a:
   proposed_maximum_cumulative_finite_estimate_usd: 3.902225
   latest_user_supplied_cap_usd: 6
   proposed_cap_margin_usd: 2.097775
-  provider_mutations: 21
+  provider_mutations: 26
   local_tests: passed
   canonical_verify: passed
   canonical_verify_commit: "5d38739a5f53f6b0e67d6cbf1950ba29c7645061"
@@ -429,6 +429,8 @@ cp07_phase_a:
   rtx4090_allocation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4090-allocation-failure.json"
   rtx5090_allocation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-5090-allocation-failure.json"
   adaptive_gpu_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/adaptive-gpu-preflight.json"
+  rtx_pro_4500_pre_settle_allocation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4500-allocation-failure.json"
+  volume_attachment_settle_delay_ms: 30000
   pre_mutation_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/pre-mutation-preflight.json"
   approved_gpu_priority:
     - offering_id: "NVIDIA RTX PRO 4500 Blackwell"

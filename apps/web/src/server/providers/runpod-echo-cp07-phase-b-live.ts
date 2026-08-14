@@ -19,12 +19,13 @@ export const CP07_REGION = "EU-RO-1";
 export const CP07_CAP_USD = 6;
 export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 1.166225;
 export const CP07_POD_LIFECYCLE_RESERVE_SECONDS = 120;
+export const CP07_VOLUME_ATTACHMENT_SETTLE_MS = 30_000;
 export const CP07_VOLUME_NAME = "videoforge-echo-cp07-model-volume-eu-ro-1-50gb";
 export const CP07_VOLUME_SIZE_GB = 50;
 export const CP06_MAGE_VOLUME_ID_HASH =
   "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 export const CP07_INVALID_ECHO_VOLUME_ID_HASH =
-  "sha256:2f75d125465a7f407ceed80624694a3578c7f6fcf3bd81d2b17182bd1d15a261";
+  "sha256:44f609c51269a96b7050eaaa0a9003c9c72c00f5581f976d122fcc94a7eadd08";
 export const CP07_TEMPLATE_NAME = "videoforge-echo-flash-turbo-cp07-template";
 export const CP07_MODEL_ROOT = "/runpod-volume/echo-flash-turbo-fp8";
 export const CP07_VOLUME_MOUNT = "/runpod-volume";
@@ -819,6 +820,18 @@ export async function runCp07PhaseB(options: {
   const volume = await client.createVolume();
   if (sha256(volume.id) === CP07_INVALID_ECHO_VOLUME_ID_HASH) {
     throw new Cp07PhaseBError("CP07_RECREATED_VOLUME_IDENTITY_REUSED");
+  }
+  await sleep(CP07_VOLUME_ATTACHMENT_SETTLE_MS);
+  const settledVolumes = await client.listVolumes();
+  const settledEcho = settledVolumes.find((candidate) => candidate.id === volume.id);
+  if (
+    settledVolumes.length !== 2 ||
+    settledEcho === undefined ||
+    settledEcho.name !== CP07_VOLUME_NAME ||
+    settledEcho.size !== CP07_VOLUME_SIZE_GB ||
+    settledEcho.dataCenterId !== CP07_REGION
+  ) {
+    throw new Cp07PhaseBError("CP07_REPLACEMENT_VOLUME_NOT_SETTLED");
   }
   let template: ProviderTemplate | null = null;
   let activePod: ProviderPod | null = null;

@@ -8,6 +8,7 @@ import {
   CP07_REGION,
   CP07_PRIOR_CONSERVATIVE_SPEND_USD,
   CP07_VOLUME_NAME,
+  CP07_VOLUME_ATTACHMENT_SETTLE_MS,
 } from "./runpod-echo-cp07-phase-b-live";
 
 const exactVolumes = () =>
@@ -27,6 +28,9 @@ const exactVolumes = () =>
   ] as const;
 
 describe("CP-07 invalid Echo volume replacement boundary", () => {
+  it("uses a bounded provider attachment-settle delay before Pod creation", () => {
+    expect(CP07_VOLUME_ATTACHMENT_SETTLE_MS).toBe(30_000);
+  });
   it("selects only the exact retained invalid Echo volume beside the exact Mage volume", () => {
     expect(assertCp07ReplacementInventory(exactVolumes())).toBe(CP07_INVALID_ECHO_VOLUME_ID_HASH);
   });
