@@ -976,6 +976,12 @@ export class RunPodPodControlClient {
       "env",
       !environmentConfirmed && (!allowNormalizedReadOmissions || value?.env !== undefined),
     );
+    if (!environmentConfirmed && mode === "prepare") {
+      const observedEnvironment = providerNormalizedEnvironment(value?.env);
+      for (const [key, expected] of Object.entries(prepEnvironment(authority.networkVolumeId))) {
+        mismatch(`env.${key}`, observedEnvironment?.[key] !== expected);
+      }
+    }
     mismatch(
       "endpointId",
       value?.endpointId !== null &&
