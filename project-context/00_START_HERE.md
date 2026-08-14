@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-06 complete; CP-07 halted before samples on preparation mismatch
+Status: CP-00 through CP-06 complete; CP-07 corrected locally and awaiting revised paid authority
 Context schema: `1.5`  
 Last updated: `2026-08-14`
 
@@ -29,9 +29,11 @@ VideoForge has two isolated model lanes:
 | Avatar | EchoMimicV3-Flash Turbo FP8 from pinned first-party source/weights/base/audio lineage | Different Echo-only persistent `EU-RO-1` network volume | Echo-only Pod |
 
 Never share or cross-adopt a volume, Pod, manifest, cache, lock, or runtime between lanes. The Mage
-volume is approved and qualified at 50 GB. The separate 50 GB Echo capacity is approved and now
-retained at `$3.50/month`, but its first preparation terminal result was rejected and its manifest
-remains unverified. Persistent-volume pricing is accepted.
+volume is approved and qualified at 50 GB. The separate 50 GB Echo capacity is retained at
+`$3.50/month`, but its first preparation terminal result was rejected and its manifest remains
+unverified. A provider-free correction now moves the transformer to a compatible preparation GPU
+before TorchAO FP8 conversion. The exact invalid Echo volume must be deleted and recreated only
+after revised approval. Persistent-volume pricing is accepted.
 
 When no generation session exists, the first user explicitly selects one exact live compatible
 Secure Cloud offering for Mage and one for Echo. The first atomically accepted Generate locks that
@@ -63,7 +65,8 @@ CP-06 Phase B completed only on Sujal RunPod with RTX 4090 at `$0.74/hour`. The 
 prepared on one retained 50 GB STANDARD volume at `$3.50/month`; eight private outputs came from two
 fresh sequential Pods. All Pods, endpoints, templates, and workers are absent. The conservative
 checkpoint account is `$1.110002` under the `$3` cap; RunPod billing remains partial and is not
-misreported as settled. No Echo, new sample run, or production promotion is authorized.
+misreported as settled. CP-07's current Echo volume is unverified; no revised paid retry or
+production promotion is authorized.
 
 `VF-9-24L` completed the global-shared-MVP audit, every-fifth-frame Ranga recheck, architecture
 reconciliation, and balanced completion roadmap. `VF-9-24K`/`CP-01` then completed at implementation
@@ -151,10 +154,13 @@ boundaries pass locally. Paid authority then published immutable image digest
 `ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:e53842b5b9e8115e576f6d98337c228d584651fa50df0d15e086d417f60258e8`
 and created the approved retained Echo volume on RTX 4090 at `$0.74/hour`. The first preparation
 terminal result was rejected as `CP07_PREPARATION_RESULT_INVALID`; its exact worker error was not
-preserved, so the mandatory mismatch/ambiguity stop fired before any sample. Current proof shows
-zero Pods/templates/endpoints/workers and exactly the isolated Mage and Echo volumes. Echo remains
-unqualified, no MP4 exists, billing is unsettled under a conservative `$1.11` finite bound, and no
-renderer crop is active.
+preserved, so the mandatory mismatch/ambiguity stop fired before any sample. Provider-free fix
+`d51c0a1` now performs TorchAO FP8 conversion only after moving the transformer to a compatible
+CUDA GPU; replacement guard `16cd30a` can target only the exact known invalid Echo volume while
+preserving the Mage volume. Revised publish/delete/recreate/prepare/sample authority is pending.
+Current proof shows zero Pods/templates/endpoints/workers and exactly the isolated Mage and Echo
+volumes. Echo remains unqualified, no MP4 exists, billing is unsettled under a conservative `$1.11`
+finite bound, and no renderer crop is active.
 
 ## Locked active providers
 

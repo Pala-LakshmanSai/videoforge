@@ -7,7 +7,8 @@ source_of_truth: project-context
 # user accepted visual quality, and the live read-only re-audit proved zero compute plus exactly the
 # intended retained 50 GB Mage volume. CP-07 published its immutable Echo image and created the
 # approved retained 50 GB Echo volume, then halted before samples because the first preparation
-# terminal result was invalid and ambiguous. Zero Pods/templates/endpoints/workers remain.
+# terminal result was invalid. The provider-free CUDA-preparation correction is green; revised
+# delete/recreate/image-publish authority is pending. Zero Pods/templates/endpoints/workers remain.
 current_selected_profile: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
 current_selected_brief: tasks/VF-9-24R.md
 
