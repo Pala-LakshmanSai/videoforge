@@ -60,7 +60,10 @@ type AttemptRole = keyof typeof CP06_PHASE_B_ATTEMPTS;
 type Hash = `sha256:${string}`;
 
 export class Cp06PhaseBError extends Error {
-  constructor(readonly code: string) {
+  constructor(
+    readonly code: string,
+    readonly detail?: string,
+  ) {
     super(code);
     this.name = "Cp06PhaseBError";
   }
@@ -855,26 +858,26 @@ const runPodStage = async <T>(
 
 const assertSample = (sample: Cp06SampleResult, prompt: Cp06RepresentativePrompt): void => {
   assertSafeObjectKey(sample.outputObjectKey);
-  if (
-    sample.sampleId !== prompt.sampleId ||
-    !SHA256.test(sample.outputSha256) ||
-    !SHA256.test(sample.positivePromptSha256) ||
-    !SHA256.test(sample.negativePromptSha256) ||
-    sample.positivePromptSha256 !== sha256(prompt.positivePrompt) ||
-    sample.negativePromptSha256 !== sha256(prompt.negativePrompt) ||
-    !Number.isSafeInteger(sample.bytes) ||
-    sample.bytes < 45 ||
-    sample.width !== 1280 ||
-    sample.height !== 720 ||
-    sample.mediaType !== "image/png" ||
-    !Number.isSafeInteger(sample.inferenceMs) ||
-    sample.inferenceMs < 1 ||
-    !Number.isSafeInteger(sample.uploadMs) ||
-    sample.uploadMs < 0 ||
-    !Number.isSafeInteger(sample.peakVramBytes) ||
-    sample.peakVramBytes < 1
-  ) {
-    throw new Cp06PhaseBError("CP06_SAMPLE_EVIDENCE_INVALID");
+  const mismatches = [
+    ["sampleId", sample.sampleId !== prompt.sampleId],
+    ["outputSha256", !SHA256.test(sample.outputSha256)],
+    ["positivePromptSha256", !SHA256.test(sample.positivePromptSha256)],
+    ["negativePromptSha256", !SHA256.test(sample.negativePromptSha256)],
+    ["positivePromptLineage", sample.positivePromptSha256 !== sha256(prompt.positivePrompt)],
+    ["negativePromptLineage", sample.negativePromptSha256 !== sha256(prompt.negativePrompt)],
+    ["bytes", !Number.isSafeInteger(sample.bytes) || sample.bytes < 45],
+    ["width", sample.width !== 1280],
+    ["height", sample.height !== 720],
+    ["mediaType", sample.mediaType !== "image/png"],
+    ["inferenceMs", !Number.isSafeInteger(sample.inferenceMs) || sample.inferenceMs < 1],
+    ["uploadMs", !Number.isSafeInteger(sample.uploadMs) || sample.uploadMs < 0],
+    ["peakVramBytes", !Number.isSafeInteger(sample.peakVramBytes) || sample.peakVramBytes < 1],
+  ].filter((entry) => entry[1]);
+  if (mismatches.length > 0) {
+    throw new Cp06PhaseBError(
+      "CP06_SAMPLE_EVIDENCE_INVALID",
+      mismatches.map((entry) => entry[0]).join(","),
+    );
   }
 };
 
