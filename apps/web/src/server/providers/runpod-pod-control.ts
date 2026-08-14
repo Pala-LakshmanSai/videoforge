@@ -1069,7 +1069,7 @@ export class RunPodPodControlClient {
           : Object.keys(record(value?.env) ?? {})
               .sort()
               .join("|");
-      const timestampShape = `last:${typeof value?.lastStartedAt}:${String(value?.lastStartedAt)};created:${typeof value?.createdAt}:${String(value?.createdAt)}`;
+      const timestampShape = `entrypoint:${JSON.stringify(value?.dockerEntrypoint)};start:${JSON.stringify(value?.dockerStartCmd)};last:${typeof value?.lastStartedAt}:${String(value?.lastStartedAt)};created:${typeof value?.createdAt}:${String(value?.createdAt)}`;
       throw new RunPodPodControlError(
         "RUNPOD_MAGE_POD_IDENTITY_UNCONFIRMED",
         resourceId,
