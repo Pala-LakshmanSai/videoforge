@@ -44,6 +44,18 @@ const emptyPodClient = () =>
   }) as unknown as RunPodPodControlClient;
 
 describe("CP-06 live adapter provider-free boundary", () => {
+  it("has no ambient credential loader or directly executable provider path", async () => {
+    const source = await readFile(
+      path.resolve(process.cwd(), "src/server/providers/runpod-mage-cp06-phase-b-live.ts"),
+      "utf8",
+    );
+
+    expect(source).not.toContain("loadSujalRunPodApiKeyFromKeychain");
+    expect(source).not.toContain("process.env");
+    expect(source).not.toContain("process.argv");
+    expect(source).not.toContain("export async function main");
+  });
+
   it("parses only the exact observed v2 RTX 4090 catalog shape", async () => {
     const files = await fixture();
     const adapter = new RunPodCp06LiveAdapter({

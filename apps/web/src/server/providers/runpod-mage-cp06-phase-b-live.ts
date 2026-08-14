@@ -1,12 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { deflateSync, inflateSync } from "node:zlib";
 
-import { loadSujalRunPodApiKeyFromKeychain } from "./keychain";
 import { assertSujalRunPodAccount } from "./runpod-account";
-import { RunPodControlClient } from "./runpod-control";
 import {
   CP06_PHASE_B_ATTEMPTS,
   CP06_PHASE_B_ACCOUNT_HASH,
@@ -1231,31 +1228,4 @@ export async function persistCp06PhaseBEvidence(
   await mkdir(path.dirname(filePath), { recursive: true, mode: 0o700 });
   await chmod(path.dirname(filePath), 0o700);
   await writeExactArtifact(filePath, Buffer.from(`${JSON.stringify(evidence, null, 2)}\n`, "utf8"));
-}
-
-export async function main(): Promise<void> {
-  const imageDigest = process.env.VIDEOFORGE_CP06_WORKER_IMAGE_DIGEST;
-  if (!imageDigest) throw new Cp06PhaseBError("CP06_WORKER_IMAGE_DIGEST_REQUIRED");
-  const apiKey = await loadSujalRunPodApiKeyFromKeychain();
-  const root = path.resolve(process.cwd(), ".videoforge", "cp06-phase-b");
-  const port = new RunPodCp06LiveAdapter({
-    apiKey,
-    podClient: new RunPodPodControlClient({ apiKey }),
-    inventoryClient: new RunPodControlClient({ apiKey }),
-    artifactRoot: path.join(root, "outputs"),
-    journalPath: path.join(root, "intent-attempt-journal.jsonl"),
-    workerImageDigest: imageDigest,
-  });
-  const evidence = await runCp06MagePhaseB(port, {
-    workerImageDigest: imageDigest,
-    journalPath: path.join(root, "intent-attempt-journal.jsonl"),
-    externalCapUsd: CP06_PHASE_B_EXTERNAL_CAP_USD,
-    internalStopUsd: CP06_PHASE_B_INTERNAL_STOP_USD,
-  });
-  await persistCp06PhaseBEvidence(path.join(root, "evidence.json"), evidence);
-  process.stdout.write(`${JSON.stringify(evidence)}\n`);
-}
-
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await main();
 }
