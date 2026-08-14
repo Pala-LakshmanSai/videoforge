@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T15:25:38Z"
+updated_at: "2026-08-14T15:33:22Z"
 
 phase: cp07_phase_a_complete_awaiting_paid_authority
 implementation_authorized_in_current_task: true
@@ -84,7 +84,8 @@ repository:
   cp06_settled_reaudit_verify_commit: "efee7a11bf1a0b07f551a7fcfcc4948fe54609dd"
   cp07_activation_commit: "aff5f0a"
   cp07_phase_a_code_commit: "c89acef78d4a4bbbbac118ca9c658b6180d68fc8"
-  last_good_commit: "efee7a11bf1a0b07f551a7fcfcc4948fe54609dd"
+  cp07_phase_a_evidence_commit: "73fba9ab06b06cb80b536597269a78a034f76517"
+  last_good_commit: "73fba9ab06b06cb80b536597269a78a034f76517"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -294,7 +295,10 @@ cp07_phase_a:
   external_spend_usd: 0
   provider_mutations: 0
   local_tests: passed
-  canonical_verify: pending_after_context_evidence_commit
+  canonical_verify: passed
+  canonical_verify_commit: "73fba9ab06b06cb80b536597269a78a034f76517"
+  canonical_verify_checked_at: "2026-08-14T15:33:22Z"
+  installed_chrome_tests: 42
   paid_execution_authorized: false
   echo_crop_activated: false
 
