@@ -12,12 +12,12 @@ import { fetchCp07Catalog } from "./runpod-echo-cp07-preflight";
 
 export const CP07_ACCOUNT_HASH =
   "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c";
-export const CP07_GPU = "NVIDIA L4";
-export const CP07_GPU_RATE_USD_PER_HOUR = 0.49;
-export const CP07_GPU_VRAM_GB = 24;
+export const CP07_GPU = "NVIDIA GeForce RTX 5090";
+export const CP07_GPU_RATE_USD_PER_HOUR = 0.99;
+export const CP07_GPU_VRAM_GB = 32;
 export const CP07_REGION = "EU-RO-1";
 export const CP07_CAP_USD = 6;
-export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 2.260559;
+export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 2.644393;
 export const CP07_POD_LIFECYCLE_RESERVE_SECONDS = 120;
 export const CP07_VOLUME_ATTACHMENT_SETTLE_MS = 30_000;
 export const CP07_CAPACITY_RETRY_DELAY_MS = 30_000;
