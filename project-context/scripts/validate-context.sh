@@ -116,7 +116,6 @@ live_state = state["live_development"] || {}
 %w[expected_url server_state dev_server_pid owner_task_id health_checked_at chrome_route fixture_scenario provider_mode provider_calls_authorized authorized_spend_usd last_user_checkpoint].each do |field|
   errors << "CURRENT_STATE live_development is missing #{field}" unless live_state.key?(field)
 end
-errors << "CURRENT_STATE must default to fixture provider mode before implementation" unless live_state["provider_mode"] == "fixture"
 checkpoint = live_state["last_user_checkpoint"] || {}
 %w[result commit route scenario checked_at feedback_refs].each do |field|
   errors << "CURRENT_STATE last_user_checkpoint is missing #{field}" unless checkpoint.key?(field)
@@ -125,20 +124,106 @@ end
 recommended_task = state["recommended_next_task"] || {}
 recommended_profile = recommended_task["read_profile"]
 errors << "CURRENT_STATE recommended next task names an unknown read profile: #{recommended_profile}" unless (manifest["read_profiles"] || {}).key?(recommended_profile)
+selected_profile = manifest["current_selected_profile"]
+selected_brief = manifest["current_selected_brief"]
+recommended_brief = recommended_task["task_brief"]
+errors << "MANIFEST current_selected_profile and CURRENT_STATE recommended_next_task.read_profile differ" unless selected_profile == recommended_profile
+errors << "MANIFEST current_selected_brief and CURRENT_STATE recommended_next_task.task_brief differ" unless selected_brief == recommended_brief
+if selected_brief
+  errors << "selected task brief is missing: #{selected_brief}" unless root.join(selected_brief).file?
+  errors << "selected read profile #{selected_profile} does not include selected task brief #{selected_brief}" unless Array(manifest.dig("read_profiles", selected_profile)).include?(selected_brief)
+elsif recommended_task["task_id"] || current_task
+  errors << "an active or recommended task requires a selected task brief"
+end
+errors << "CURRENT_STATE live_development.provider_calls_authorized differs from recommended task" unless live_state["provider_calls_authorized"] == recommended_task["provider_calls_authorized"]
 if recommended_task["provider_calls_authorized"] == false
+  authority = recommended_task["provider_authority"] || {}
+  errors << "CURRENT_STATE provider-free next task must have provider_authority.mode none" unless authority["mode"] == "none"
   errors << "CURRENT_STATE provider-free next task must default to $0 external spend" unless recommended_task["maximum_external_spend_usd"] == 0
+  errors << "CURRENT_STATE provider-free next task must use fixture mode" unless live_state["provider_mode"] == "fixture"
+  errors << "CURRENT_STATE provider-free next task live spend must be $0" unless live_state["authorized_spend_usd"] == 0
+  %w[remote_or_cloud_mutations_authorized credential_access_authorized model_downloads_authorized worker_image_publication_authorized sample_output_publication_authorized gpu_use_authorized mage_volume_retention_authorized].each do |field|
+    errors << "CURRENT_STATE provider-free next task cannot authorize #{field}" unless recommended_task[field] == false
+  end
+  if recommended_task["checkpoint"] == "CP-06" && recommended_task["authorization_status"] == "at_rest_not_authorized"
+    errors << "CURRENT_STATE idle CP-06 cannot authorize application code" unless recommended_task["application_code_changes_authorized"] == false
+    errors << "CURRENT_STATE idle CP-06 cannot be the current task" unless state["current_task"].nil? && state["in_progress_checkpoint"].nil? && state["implementation_authorized_in_current_task"] == false
+    %w[mage_gpu_offering_id mage_gpu_rate_usd_per_hour mage_volume_size_gib mage_volume_rate_usd_per_gb_month ongoing_retention_charge_usd_per_month].each do |field|
+      errors << "CURRENT_STATE idle CP-06 must leave #{field} unset" unless recommended_task[field].nil?
+    end
+  end
 elsif recommended_task["provider_calls_authorized"] == true
   authority = recommended_task["provider_authority"] || {}
+  mode = authority["mode"]
   cap = recommended_task["maximum_external_spend_usd"]
-  errors << "CURRENT_STATE live provider task requires a positive numeric cap" unless cap.is_a?(Numeric) && cap.positive?
-  errors << "CURRENT_STATE live provider task requires an exact provider" unless authority["provider"].is_a?(String) && !authority["provider"].empty?
-  errors << "CURRENT_STATE live provider task requires an exact model_id" unless authority["model_id"].is_a?(String) && !authority["model_id"].empty?
-  errors << "CURRENT_STATE live provider cap must be explicitly non-transferable" unless authority["non_transferable"] == true
-  errors << "CURRENT_STATE live provider cap disagrees with provider_authority" unless authority["cap_usd"] == cap
-  errors << "CURRENT_STATE live provider task requires an authorization timestamp" unless authority["authorized_by_user_at"].is_a?(String) && !authority["authorized_by_user_at"].empty?
-  errors << "CURRENT_STATE live provider task cap must match live_development" unless live_state["authorized_spend_usd"] == cap
+  errors << "CURRENT_STATE provider authority mode must be read_only or paid" unless %w[read_only paid].include?(mode)
+  errors << "CURRENT_STATE provider task requires an exact provider" unless authority["provider"].is_a?(String) && !authority["provider"].empty?
+  errors << "CURRENT_STATE provider authority must be explicitly non-transferable" unless authority["non_transferable"] == true
+  errors << "CURRENT_STATE provider cap disagrees with provider_authority" unless authority["cap_usd"] == cap
+  errors << "CURRENT_STATE provider task requires an authorization timestamp" unless authority["authorized_by_user_at"].is_a?(String) && !authority["authorized_by_user_at"].empty?
+  errors << "CURRENT_STATE provider task cap must match live_development" unless live_state["authorized_spend_usd"] == cap
+  errors << "CURRENT_STATE active provider task must match current_task" unless state["current_task"] == recommended_task["task_id"]
+  errors << "CURRENT_STATE active provider task must match in_progress_checkpoint" unless state["in_progress_checkpoint"] == recommended_task["checkpoint"]
+  errors << "CURRENT_STATE active provider task requires top-level implementation authority" unless state["implementation_authorized_in_current_task"] == true
+  if mode == "read_only"
+    allowed_read_operations = %w[inventory_lookup rate_lookup quota_lookup resource_identity_lookup resource_absence_lookup]
+    operations = Array(authority["allowed_operations"])
+    errors << "CURRENT_STATE read-only provider task requires allowlisted operations" if operations.empty? || (operations - allowed_read_operations).any?
+    errors << "CURRENT_STATE read-only provider task must have a numeric $0 cap" unless cap.is_a?(Numeric) && cap.zero?
+    errors << "CURRENT_STATE read-only provider task must keep fixture mode" unless live_state["provider_mode"] == "fixture"
+    errors << "CURRENT_STATE read-only provider task requires credential access" unless recommended_task["credential_access_authorized"] == true
+    errors << "CURRENT_STATE read-only provider task requires task_stage read_only_preflight" unless recommended_task["task_stage"] == "read_only_preflight"
+    errors << "CURRENT_STATE read-only provider task requires application-code authority" unless recommended_task["application_code_changes_authorized"] == true
+    errors << "CURRENT_STATE read-only provider task cannot authorize remote mutation" unless recommended_task["remote_or_cloud_mutations_authorized"] == false
+    errors << "CURRENT_STATE read-only provider task cannot authorize model downloads" unless recommended_task["model_downloads_authorized"] == false
+    %w[worker_image_publication_authorized sample_output_publication_authorized gpu_use_authorized mage_volume_retention_authorized].each do |field|
+      errors << "CURRENT_STATE read-only provider task cannot authorize #{field}" unless recommended_task[field] == false
+    end
+  elsif mode == "paid"
+    errors << "CURRENT_STATE paid provider task requires a positive numeric cap" unless cap.is_a?(Numeric) && cap.positive?
+    errors << "CURRENT_STATE paid provider task requires exact model_id" unless authority["model_id"].is_a?(String) && !authority["model_id"].empty?
+    resources = Array(authority["resources"])
+    errors << "CURRENT_STATE paid provider task requires at least four unique exact resources" unless resources.length >= 4 && resources.all? { |value| value.is_a?(String) && !value.empty? } && resources.uniq.length == resources.length
+    errors << "CURRENT_STATE paid provider task cannot remain in fixture mode" unless %w[sandbox staging production].include?(live_state["provider_mode"])
+    errors << "CURRENT_STATE paid provider task requires authorized operations" unless authority["authorized_operations"].is_a?(Array) && !authority["authorized_operations"].empty?
+    errors << "CURRENT_STATE paid provider task requires task_stage bounded_mutation" unless recommended_task["task_stage"] == "bounded_mutation"
+    errors << "CURRENT_STATE paid provider task requires application-code authority" unless recommended_task["application_code_changes_authorized"] == true
+
+    if recommended_task["checkpoint"] == "CP-06"
+      expected_model = "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
+      allowed_operations = %w[publish_worker_image create_mage_template create_mage_volume download_prepare_mage_volume create_mage_pod generate_owned_samples publish_owned_sample_outputs delete_mage_pod verify_zero_pods retain_mage_volume]
+      operations = Array(authority["authorized_operations"])
+      errors << "CURRENT_STATE CP-06 paid authority requires the exact Mage INT8 model" unless authority["model_id"] == expected_model
+      errors << "CURRENT_STATE CP-06 paid authority requires the exact bounded operation set" unless operations.sort == allowed_operations.sort
+      errors << "CURRENT_STATE CP-06 paid authority requires sandbox provider mode" unless live_state["provider_mode"] == "sandbox"
+      %w[credential_access_authorized remote_or_cloud_mutations_authorized model_downloads_authorized worker_image_publication_authorized sample_output_publication_authorized gpu_use_authorized mage_volume_retention_authorized].each do |field|
+        errors << "CURRENT_STATE CP-06 paid authority requires #{field}" unless recommended_task[field] == true
+      end
+      errors << "CURRENT_STATE CP-06 paid authority requires exact Mage GPU offering" unless recommended_task["mage_gpu_offering_id"].is_a?(String) && !recommended_task["mage_gpu_offering_id"].empty?
+      %w[mage_gpu_rate_usd_per_hour mage_volume_size_gib mage_volume_rate_usd_per_gb_month ongoing_retention_charge_usd_per_month].each do |field|
+        value = recommended_task[field]
+        errors << "CURRENT_STATE CP-06 paid authority requires positive numeric #{field}" unless value.is_a?(Numeric) && value.positive?
+      end
+    end
+  end
 else
   errors << "CURRENT_STATE recommended next task must explicitly declare provider_calls_authorized"
+end
+
+placeholder_files = [
+  repository_root.join("AGENTS.md"),
+  root.join("templates/CHECKPOINT_CHAT_PROMPTS.md"),
+  root.join("19_IMPLEMENTATION_PLAYBOOK.md"),
+  root.join("21_IMPLEMENTATION_EXECUTION_PLAN.md"),
+  root.join("templates/IMPLEMENTATION_TASK_BRIEF.md"),
+  root.join("scripts/validate-context.sh")
+]
+forbidden_cap_markers = ["<" + "CAP_USD" + ">", "CAP" + "-$"]
+placeholder_files.each do |path|
+  next unless path.file?
+  forbidden_cap_markers.each do |marker|
+    errors << "#{path.relative_path_from(repository_root)} contains forbidden spend placeholder #{marker}" if File.read(path).include?(marker)
+  end
 end
 
 declared_paths = Array(manifest["mandatory_read"])

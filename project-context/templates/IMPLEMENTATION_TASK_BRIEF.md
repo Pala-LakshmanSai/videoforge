@@ -48,13 +48,20 @@ Name the `MANIFEST.yaml` profile and any one extra file genuinely needed.
 
 ## Safety and budget
 
-- `provider_calls_authorized: false` by default; absence means no calls.
-- `remote_or_cloud_mutations_authorized: false` by default.
-- `credential_access_authorized: false` by default.
-- `model_downloads_authorized: false` by default.
-- `application_code_changes_authorized: false` until the user selects/authorizes the task.
-- Exact provider/model if authorized.
-- Maximum test spend (default `$0`).
+- Checkpoint implementation request and timestamp; this may authorize bounded local code/context
+  changes and provider-free activation without authorizing external execution.
+- `provider_authority.mode: none | read_only | paid` (`none` by default).
+- `provider_calls_authorized: false` in `none`; `true` only for recorded `read_only` or `paid` scope.
+- `read_only` scope: exact provider, allowlisted inventory/rate operations, existing-credential
+  access, authorization timestamp, `remote_or_cloud_mutations_authorized: false`,
+  `model_downloads_authorized: false`, publication/GPU/retention flags false, and cap `0`.
+- `paid` scope: exact provider/model/resources/operations, positive numeric maximum cumulative
+  spend, non-transferable flag, authorization timestamp, and matching current-state cap.
+- Exact selected GPU offering ID/name and current rate/ceiling when applicable.
+- Derived volume capacity, recurring retained-volume rate, and explicit retention consent when
+  applicable. State separately that recurring billing is outside the finite checkpoint-action cap.
+- One combined paid-authorization proposal after local/read-only preflight; record the user's exact
+  approval. Ask again only for changed scope/rate/cap/capacity or cap risk.
 - Exact disposable-Pod deletion and provider-absence requirement.
 - Expected persistent-volume retention or separately authorized deletion requirement.
 - Private-data/asset constraints.

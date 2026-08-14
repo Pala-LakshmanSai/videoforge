@@ -1,12 +1,12 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T04:02:33Z"
+updated_at: "2026-08-14T05:39:44Z"
 
-phase: cp05_complete_stopped_before_cp06
+phase: cp05_complete_cp06_selected_not_started
 implementation_authorized_in_current_task: false
 current_milestone: exact_mage_int8_persistent_runpod_volume
 current_task: null
-current_wave: checkpoint_roadmap
+current_wave: cp06_mage_int8_persistent_runpod
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 
 repository:
@@ -39,7 +39,8 @@ repository:
   cp05_foundation_runtime_fix_commit: "e7337aaf71275dec081663b222eb8cde42936989"
   cp05_read_serialization_fix_commit: "68e4f03c664c1146946ee440a1fdb15e5fb209d0"
   cp05_audit_harness_commit: "58395225d9f2e11ac556e6b67f186b1fb5502336"
-  last_good_commit: "58395225d9f2e11ac556e6b67f186b1fb5502336"
+  cp05_reaudit_record_commit: "d2285117c17a3f6dd37b84e9dd441fd6fe7aa1d0"
+  last_good_commit: "d2285117c17a3f6dd37b84e9dd441fd6fe7aa1d0"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -48,13 +49,13 @@ live_development:
   server_state: stopped
   dev_server_pid: null
   owner_task_id: null
-  health_checked_at: "2026-08-14T04:02:33Z"
+  health_checked_at: "2026-08-14T05:39:44Z"
   chrome_route: null
   fixture_scenario: cp05_complete_fixture_mvp
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "No active task. CP-06 requires new explicit authority; provider calls, credentials, cloud mutation, model downloads, GPUs, and spend remain forbidden."
+  provider_authority_scope: "VF-9-24Q is selected next but not started. At rest all provider, credential, cloud, download, publication, GPU, volume-retention, and spend authority remains false/$0."
   worker_image: null
   last_user_checkpoint:
     result: accepted
@@ -140,6 +141,7 @@ completed_tasks:
     foundation_runtime_fix_commit: "e7337aaf71275dec081663b222eb8cde42936989"
     read_serialization_fix_commit: "68e4f03c664c1146946ee440a1fdb15e5fb209d0"
     audit_harness_commit: "58395225d9f2e11ac556e6b67f186b1fb5502336"
+    reaudit_record_commit: "d2285117c17a3f6dd37b84e9dd441fd6fe7aa1d0"
     evidence: "evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json"
     external_spend_usd: 0
 active_ownership: []
@@ -148,29 +150,43 @@ blocked_tasks: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: null
+  task_id: VF-9-24Q
   checkpoint: CP-06
   milestone: exact_mage_int8_persistent_runpod_volume
-  status: stopped_awaiting_explicit_authority
+  status: ready_for_user_selection_not_started
   dependency_status: cp05_complete_green_provider_free
-  authorization_status: not_authorized
-  read_profile: checkpoint_roadmap
-  task_brief: null
-  goal: "Do not start CP-06 until a new exact brief, spend cap, and explicit provider/cloud authority exist."
+  authorization_status: at_rest_not_authorized
+  provider_authority:
+    mode: none
+  read_profile: cp06_mage_int8_persistent_runpod
+  task_brief: tasks/VF-9-24Q.md
+  goal: "After the exact CP-06 prompt, complete local/read-only Phase A at $0, then stop for a separately explicit exact numeric Phase B authorization."
   provider_calls_authorized: false
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
   credential_access_authorized: false
   model_downloads_authorized: false
+  worker_image_publication_authorized: false
+  sample_output_publication_authorized: false
+  gpu_use_authorized: false
+  mage_volume_retention_authorized: false
+  mage_gpu_offering_id: null
+  mage_gpu_rate_usd_per_hour: null
+  mage_volume_size_gib: null
+  mage_volume_rate_usd_per_gb_month: null
+  ongoing_retention_charge_usd_per_month: null
   application_code_changes_authorized: false
   prerequisite_evidence: "evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json"
   required_handoff:
     - "Preserve the completed CP-01 through CP-05 evidence and active vNext cutover."
-    - "Refresh CURRENT_STATE and create a narrow CP-06 task brief before any implementation."
+    - "When the exact CP-06 prompt arrives, set task_stage=read_only_preflight and provider_authority.mode=read_only: local changes plus allowlisted read-only metadata/inventory/rate/absence calls at $0."
+    - "End Phase A with exact GPU offering/rate, byte-derived volume size/rate, proposed finite handoff cap, and separately stated ongoing volume-retention charge; wait for one complete later authorization."
+    - "Before Phase B mutation, persist the exact positive numeric cap, exact offering/rate, exact volume size/rate, ongoing-retention consent, and explicit mutation/download/publication/GPU authority."
     - "Keep all hosted-production/provider gates false; local CP-05 evidence does not prove production."
   prohibited_in_task:
-    - "Any CP-06 or successor implementation without a new explicit user request."
-    - "Any provider call, credential access, cloud mutation, model download, real Pod/template/volume creation, image publication, or spend."
+    - "Any CP-06 action merely because this brief is selected; the exact CP-06 prompt must activate Phase A."
+    - "During Phase A: any cloud mutation, model-byte download, image/container publication, GPU use, Pod/template/volume creation, retained-volume billing, or spend."
+    - "During Phase B: any mutation from an unresolved/ambiguous/conflicting cap, an old cap, or authority missing explicit current-chat approval, the exact GPU offering/rate, volume size/rate, ongoing-retention consent, or explicit scopes. Unambiguous $3/USD 3/3.00 wording is normalized to numeric 3.0."
     - "Any production gate closure, live profile promotion, volume-capacity assumption, model/GPU substitution, repair, or fallback."
 
 cp01_completion:
@@ -291,6 +307,7 @@ cp05_completion:
   foundation_runtime_fix_commit: "e7337aaf71275dec081663b222eb8cde42936989"
   read_serialization_fix_commit: "68e4f03c664c1146946ee440a1fdb15e5fb209d0"
   audit_harness_commit: "58395225d9f2e11ac556e6b67f186b1fb5502336"
+  reaudit_record_commit: "d2285117c17a3f6dd37b84e9dd441fd6fe7aa1d0"
   evidence: "evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json"
   projects_queued: 4
   waiting_projects_removed: 1
@@ -374,16 +391,18 @@ blocking_gates_for_production:
 progress_snapshot:
   estimate_kind: checkpoint_truth_no_percent_claim
   completed_checkpoint: CP-05
-  next_checkpoint: CP-06_not_authorized_not_started
+  next_checkpoint: CP-06_selected_not_authorized_not_started
   full_production_mvp_implemented_percent: null
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: stopped_before_cp06
+  status: cp06_brief_selected_waiting_for_exact_prompt
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Load checkpoint_roadmap only; no task brief is selected."
+    - "Load cp06_mage_int8_persistent_runpod and tasks/VF-9-24Q.md; read only the CP-06 roadmap section."
     - "Preserve the verified green CP-01 through CP-05 evidence and vNext boundary."
+    - "The exact CP-06 prompt activates read_only_preflight only; it does not authorize Phase B mutation or spend."
   stop_conditions:
-    - "Any CP-06 or successor implementation without new explicit authority and a refreshed brief."
-    - "Any provider call, cloud mutation, credential need, model download, spend, schema reinterpretation, legacy dispatch reachability, or production promotion."
+    - "Any CP-06 work before the exact CP-06 prompt, or any successor work."
+    - "Any Phase A mutation, download, publication, GPU, resource creation, retention charge, or spend."
+    - "Any Phase B action before one complete exact numeric authorization defined by VF-9-24Q, or any schema reinterpretation, legacy dispatch reachability, or production promotion."

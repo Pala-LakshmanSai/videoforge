@@ -143,6 +143,20 @@ Run the exact `DEC_IMAGE_001` profile: `Comfy-Org/Mage-Flow` revision
 `d8c99241f6fa80fbd453014234af2bf337ea21e6`, pinned stock headless ComfyUI, INT8 ConvRot, four
 steps, guidance 1.0, and 1280×720 output. Earlier BF16 attempts do not qualify this profile.
 
+### CP-06 bounded runtime qualification
+
+CP-06 proves the exact runtime and persistent-volume lifecycle with at
+least eight representative owned prompts spanning people/hands, material texture, indoor and wide
+scenes, split-safe framing, and more than one pinned style, distributed across at least two fresh
+Pods. CP-06 must satisfy the manifest, offline boot, identity, output, timing, cost, deletion, and
+retained-volume checks below, but it does not close the full image/style quality gates.
+
+### CP-11 full image and style qualification
+
+The 40-prompt breadth and 300-image workload below belong to CP-11 qualification. They do not block
+the bounded CP-06 runtime checkpoint. `GATE_IMAGE_001` and `GATE_STYLE_002` remain open after CP-06
+until their full CP-11 evidence and required user review exist.
+
 At least 40 prompts covering:
 
 - People/skin.

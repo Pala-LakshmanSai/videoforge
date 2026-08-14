@@ -1,6 +1,6 @@
 # Source index
 
-Status: evidence map; current Mage INT8/ImageForge, Cloud Run Jobs, Better Auth, and Pod architecture refreshed 2026-08-13; EchoMimicV3-Flash sources refreshed 2026-08-12; older sources are historical
+Status: evidence map; current Mage INT8/ImageForge refreshed 2026-08-14; Cloud Run Jobs, Better Auth, and Pod architecture refreshed 2026-08-13; EchoMimicV3-Flash sources refreshed 2026-08-12; older sources are historical
 Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 
 ## Official model/provider sources
@@ -16,13 +16,21 @@ Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 - Historical Gemini 3.6 Flash analyzer-comparison source: [ai.google.dev/gemini-api/docs/models/gemini-3.6-flash](https://ai.google.dev/gemini-api/docs/models/gemini-3.6-flash)
 - Active Mage model repository and pinned revision: [Comfy-Org/Mage-Flow at
   `d8c99241`](https://huggingface.co/Comfy-Org/Mage-Flow/tree/d8c99241f6fa80fbd453014234af2bf337ea21e6)
-- Active Mage runtime evidence was audited from the user's local ImageForge `v0.2.3` source at
-  commit `1a6204e`; refresh that source before CP-06 rather than assuming it remains current. It is
-  not the earlier
-  VideoForge BF16 worker: `/Volumes/ESD-USB/ImageForge/worker/src/imageforge_worker/constants.py`,
-  `model_profiles.py`, `inference/mageflow.py`, `worker/Dockerfile`, and
-  `worker/scripts/prepare_mageflow_volume.py`. These pin `int8-convrot`, the required ComfyUI model
-  files, 4 steps, guidance `1.0`, `1280x720`, offline loading, warm-up, and volume preparation.
+- CP-06 source precedence is fixed. VideoForge `DEC_IMAGE_001` and its normative model/RunPod
+  documents own product behavior. Executable runtime mechanics may be adapted from the user's local
+  ImageForge source exactly at commit `1a6204e7b9387a4d26b5fbbb176506d670949fba`, verified as the
+  checkout head on 2026-08-14; a newer ImageForge commit is not silently adopted. Relevant files are
+  `/Volumes/ESD-USB/ImageForge/worker/src/imageforge_worker/constants.py`, `model_profiles.py`,
+  `inference/mageflow.py`, `health.py`, `worker/Dockerfile`, and
+  `worker/scripts/prepare_mageflow_volume.py`. The executable snapshot selects `int8-convrot`,
+  Mage revision `d8c99241f6fa80fbd453014234af2bf337ea21e6`, ComfyUI revision
+  `26d7f8556822d9d08c2d3e1878636ac3b4969af9`, the exact three ComfyUI model files, four steps,
+  guidance `1.0`, `1280x720`, offline loading, and warm-up.
+- Known ImageForge drift must not be copied unchanged: `worker/README.md` says BF16 although the
+  executable constants/profile select INT8 ConvRot, and `prepare_mageflow_volume.py` defaults
+  `--revision` to `None`. VideoForge must require the pinned revision and a byte-exact three-file
+  size/hash manifest. The approximate README total `13.4 GB` is not capacity evidence; CP-06 Phase A
+  derives exact bytes plus explicit headroom before proposing a volume size.
 - ImageForge Pod/volume/live-inventory/queue implementation references:
   `/Volumes/ESD-USB/ImageForge/docs/RUNPOD_OPERATIONS.md`,
   `/Volumes/ESD-USB/ImageForge/src-tauri/src/native/gpu_inventory.rs`, `gpu_pod.rs`,

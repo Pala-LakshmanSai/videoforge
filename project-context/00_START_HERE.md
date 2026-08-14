@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-05 complete provider-free; stopped before CP-06
+Status: CP-00 through CP-05 complete provider-free; CP-06 brief selected, not started or authorized
 Context schema: `1.5`  
 Last updated: `2026-08-14`
 
@@ -127,7 +127,17 @@ provider-free legacy replay. Exact proof is
 This remains provider-free local Mac/Linux evidence only: no Cloud Run deployment, private
 production R2, hosted Linux media runtime, provider call, credential use, model download/change,
 image publication, GPU, paid compute, or spend was used or proven. Hosted production proof remains
-open until CP-08. CP-06 is neither authorized nor started.
+open until CP-08. `VF-9-24Q` is the selected CP-06 brief, but selection grants no authority and
+CP-06 is not started.
+
+The exact CP-06 prompt activates only a `$0` local/read-only preflight: local worker work, public
+metadata, and read-only RunPod inventory/rates/absence using the existing credential. It cannot
+create or mutate resources, download model bytes, publish images/containers, use a GPU, retain a
+volume, or spend. That preflight must derive exact model bytes/headroom and show one exact current
+GPU offering/rate plus one exact volume size/rate. A later, separate authorization must give a
+positive numeric finite cap through handoff, approve those exact GPU and volume values, approve the
+ongoing retained-volume charge after handoff, and explicitly authorize mutation/download/
+publication/GPU scopes. There is no default `$3` cap.
 
 No VideoForge persistent model volume exists yet. Future provisioning/preparation is a separate
 explicitly authorized provider task after contracts and offline workers are green.

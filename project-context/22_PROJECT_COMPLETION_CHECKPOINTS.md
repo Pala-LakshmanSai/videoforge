@@ -1,6 +1,6 @@
 # VideoForge completion checkpoints
 
-Status: authoritative completion roadmap; checkpoints `CP-00` through `CP-05` complete; stopped before `CP-06`
+Status: authoritative completion roadmap; `CP-00` through `CP-05` complete; `CP-06` brief selected but not started or authorized
 Read when: choosing the next implementation chat, checking project truth, or auditing completion.
 
 ## MVP destination
@@ -292,8 +292,9 @@ Current re-audit evidence:
 ## CP-05 — Provider-free complete MVP orchestration and legacy cutover
 
 **Status:** complete provider-free under `VF-9-24P` at audited code head
-`8bfd0529e9cac4773d1f0b67629cc10f97aed313`; canonical and installed-Chrome acceptance passed;
-stopped before CP-06 with `$0` external spend.
+`58395225d9f2e11ac556e6b67f186b1fb5502336`, recorded by handoff commit
+`d2285117c17a3f6dd37b84e9dd441fd6fe7aa1d0`; canonical and installed-Chrome acceptance passed;
+CP-06 remains unstarted with `$0` external spend.
 
 **Outcome:** the entire application works in fixture mode before any new GPU spend.
 
@@ -316,24 +317,36 @@ wrong Pod/volume/GPU, independent lane drain, final playable MP4s, canonical ver
 
 ## CP-06 — Exact Mage INT8 on persistent RunPod volume
 
+**Status:** selected next as `VF-9-24Q`; not started; at-rest authority is false/`$0`.
+
 **Outcome:** VideoForge generates real images through the exact current ImageForge Mage contract and
 can reuse a new Mage-only volume from fresh Pods.
 
 - Adapt the current `/Volumes/ESD-USB/ImageForge/worker` implementation: exact Mage revision,
   ComfyUI revision, INT8 ConvRot file set, four steps, guidance 1.0, 1280×720, local-files-only
   verification, GPU check, real warm-up, and truthful health. Copy no ImageForge resource ID/secret.
+- Source precedence is VideoForge `DEC_IMAGE_001` and its normative domain files, then executable
+  ImageForge mechanics exactly at `1a6204e7b9387a4d26b5fbbb176506d670949fba`. Do not copy the
+  stale ImageForge README BF16 claim or its preparation script's unpinned `revision=None`; the
+  VideoForge path requires the pinned INT8 profile and byte-exact three-file manifest.
 - Build/publish an immutable Mage worker image; create a separately authorized VideoForge Mage
   volume sized from verified manifest + headroom; prepare/checksum it once.
 - Wire live EU-RO-1 inventory, exact choice, volume-pinned Pod create, actual identity verification,
   local/R2 output transfer, delete, absence proof, and retained-volume reuse.
-- Run representative owned prompts through at least two fresh Pods.
+- Run at least eight representative owned prompts across the required subject/style/crop categories,
+  distributed across at least two fresh Pods.
 
 **Proof:** exact manifest/hashes/revisions/image digest, registry-disabled normal boot, wrong/missing
 volume failure, PNG probes/hashes/contact sheet, create→model-ready/inference/upload/delete timings,
 VRAM/rate/cost, zero Pods, retained Mage volume.
 
-**Authority:** requires explicit credentials, cloud mutation/model download/image publication, fixed
-volume billing, and a bounded setup/sample cap written in that checkpoint brief.
+**Authority:** two explicit phases defined by `tasks/VF-9-24Q.md`. The pasted CP-06 prompt starts
+only Phase A local/read-only preflight at `$0`: public metadata plus read-only RunPod inventory,
+rates, and absence using the existing credential; no mutation, model-byte download, publication,
+GPU, resource creation, or retained-volume charge. Phase B requires a later complete authorization
+containing a positive numeric cumulative cap through handoff, one exact live GPU offering/rate, one
+byte-derived volume size/rate, separate consent for its ongoing post-handoff retention charge, and
+explicit mutation/download/publication/GPU scopes. No `$3` or other cap is implied.
 **Done artifact:** user-visible real Mage images and reproducible fresh-Pod evidence.
 
 ## CP-07 — Exact Echo FP8 on persistent RunPod volume and crop lock

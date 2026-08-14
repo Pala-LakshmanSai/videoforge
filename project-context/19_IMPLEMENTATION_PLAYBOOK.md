@@ -88,6 +88,13 @@ This order is binding. Do not jump directly from historical scripts to another p
 Every real-provider task is bounded by one exact brief. Volume creation/preparation and ordinary Pod
 generation are different mutations and require explicit authority for the one being performed.
 
+For `CP-06` through `CP-12`, a pasted checkpoint implementation prompt is also provider-free
+activation authority. If its selected profile or brief does not exist yet, create the narrow
+profile/brief, update both selectors, validate them, and continue local work in the same chat. Do
+not turn missing selectors into a user round trip. Missing paid authority blocks only the first
+external mutation or paid action, not local inspection, implementation, tests, image builds that do
+not publish, or the prompt's explicitly authorized read-only inventory/rate preflight.
+
 ## Repository/deployable shape
 
 ```text
@@ -122,7 +129,25 @@ authorized one-time preparation tool may populate model files.
 | `staging` | Explicit account-mutation and task caps | Isolated production-like Cloudflare/Neon/R2/OAuth acceptance after VF-1-06 |
 | `production` | Global/project caps | Only after gates, credentials, and deployment approval |
 
-Default is `fixture`. A task brief must explicitly set `provider_calls_authorized: true`, a maximum USD spend, exact provider/model, and cleanup evidence before real calls. Absence means **no external call and $0 authorization**.
+Default is `fixture`. Provider authority has three explicit modes:
+
+- `none`: `provider_calls_authorized: false`, no credential access, no external call, and `$0`.
+- `read_only`: `provider_calls_authorized: true`, a named provider and allowlisted inventory/rate
+  operations through already configured credentials, no secret output, no remote mutation,
+  publication, model download, compute allocation, or spend, and a numeric cap of `0`.
+- `paid`: `provider_calls_authorized: true`, a positive numeric finite-action cap, exact provider and
+  model/resource scope, non-transferable authority, user-authorization timestamp, cleanup evidence,
+  and every selected rate/resource identity required by the checkpoint.
+
+The implementation prompts for paid checkpoints authorize bounded local work plus only their named
+`read_only` preflight. After local preflight, present one combined paid proposal and ask once. It
+must name every mutation, the exact selected GPU offering and current rate when applicable, the
+derived volume capacity and recurring retained-volume rate when applicable, explicit retention
+consent, a numeric maximum cumulative checkpoint spend, estimates, and stop conditions. The finite
+cap covers actions through checkpoint handoff; continuing retained-volume billing is separate and
+must be disclosed and approved. Approval of the exact proposal is then recorded in the task brief
+and `CURRENT_STATE.yaml`; no second confirmation is needed unless the selected offering becomes
+unavailable, its rate changes beyond the approved ceiling, scope expands, or the cap may be crossed.
 Standing local authority in `CURRENT_STATE.yaml` may advance only exact dependency-ready
 provider-free briefs through its recorded terminal task. It never implies sandbox/staging/provider
 activation, credentials, remote publication, or external spend.

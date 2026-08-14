@@ -17,6 +17,25 @@ Use heading/range searches to extract narrow sections. Stay within `MANIFEST.yam
 
 The prompt pack is an entrypoint, not higher authority. Reconcile stale prompt conflicts. Every implementation or audit handoff must state checkpoint, commit, validations, remaining gates, provider/spend state, and paid-compute shutdown state.
 
+## Paid-checkpoint bootstrap and authority
+
+When the user pastes or clearly invokes an implementation prompt for `CP-06` through `CP-12`, that
+request authorizes the prompt's bounded provider-free activation, local code/context work, tests,
+and narrowly scoped read-only inventory/rate lookups through already configured credentials. If the
+selected task brief or read profile is missing, create and select the narrow checkpoint brief/profile
+first, validate the context, and continue in the same chat. Missing selectors are not a reason to
+return the work to the user.
+
+That initial request does not authorize remote mutation, publication, model download, paid compute,
+or spend. Complete all safe local work and the authorized read-only preflight, then stop only at the
+first external mutation or paid boundary. Ask once with a combined proposal containing the exact
+operations, numeric finite-action spend cap, selected GPU offering and current rate when applicable,
+derived volume size, recurring retained-volume rate and retention consent when applicable, and stop
+conditions. The finite cap covers checkpoint actions through handoff; ongoing retained-volume
+billing is disclosed and approved separately. After the user approves that exact proposal, record
+the authority and continue without another confirmation unless scope, rate, capacity, or cap risk
+changes.
+
 Before doing any VideoForge work:
 
 1. Read `project-context/00_START_HERE.md`.

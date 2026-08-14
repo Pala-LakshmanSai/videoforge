@@ -3,10 +3,11 @@ project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-14"
 source_of_truth: project-context
-# CP-00 through CP-05 are complete provider-free. Work is stopped before CP-06; no successor task
-# is selected or authorized.
-current_selected_profile: checkpoint_roadmap
-current_selected_brief: null
+# CP-00 through CP-05 are complete provider-free. CP-06 has one exact selected next brief, but it is
+# not started and selection grants no provider, credential, cloud, download, GPU, publication,
+# retained-volume, or spend authority.
+current_selected_profile: cp06_mage_int8_persistent_runpod
+current_selected_brief: tasks/VF-9-24Q.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -28,6 +29,12 @@ target_profile_word_budget: 10000
 # Historical task briefs remain evidence but are intentionally not active read profiles. Create one
 # narrow profile/brief when each future checkpoint becomes current.
 read_profiles:
+  cp06_mage_int8_persistent_runpod:
+    - tasks/VF-9-24Q.md
+    - 08_MODELS_AND_PROVIDERS.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 17_SOURCE_INDEX.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   cp05_complete_fixture_mvp:
     - 22_PROJECT_COMPLETION_CHECKPOINTS.md
     - tasks/VF-9-24P.md

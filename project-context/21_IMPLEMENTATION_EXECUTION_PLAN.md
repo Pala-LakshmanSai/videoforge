@@ -14,6 +14,21 @@ Default is fixture mode, `$0`, no external mutation. No old task cap transfers f
 particular, historical Serverless/Echo attempts, endpoint resources, temporary volumes, and their
 former `$8` authority are evidence only.
 
+For `CP-06` through `CP-12`, the user's checkpoint implementation request starts a two-stage task:
+
+1. **Provider-free activation and preflight.** Create/select a missing narrow brief/read profile,
+   update and validate the selectors, implement and test all bounded local work, and perform only
+   the prompt's allowlisted read-only inventory/rate queries through existing credentials. This
+   stage permits no mutation, publication, model download, compute allocation, or spend.
+2. **Paid execution.** At the first external mutation or paid boundary, make one combined request
+   for the exact operations, exact selected offering/rate, numeric finite-action cap, derived volume
+   size and recurring retention price/consent when relevant, and stop conditions. Record approval
+   in the brief and current state, then execute without asking again unless that approved proposal
+   changes or the cap is at risk.
+
+A missing profile, brief, or paid authorization does not block safe stage-one work. A missing prior
+checkpoint dependency or irreconcilable source/identity conflict still blocks promotion.
+
 ## Required checkpoint order
 
 1. `CP-00`: context, reference, and roadmap lock.
@@ -74,7 +89,8 @@ parallel project execution, fallback, repair, or model substitution enters MVP.
 - Update `CURRENT_STATE.yaml` and create one small green checkpoint commit before selecting the next
   checkpoint.
 
-Stop on missing authority, cap risk, stale/unavailable selected GPU, cross-volume/model identity,
-runtime model download, ambiguous provider mutation without reconciliation, unverified durable
-output, Pod absence failure, unexpected volume deletion, schema/context failure, or dependency
-drift.
+Stop external execution at missing paid authority, cap risk, stale/unavailable selected GPU,
+cross-volume/model identity, runtime model download, ambiguous provider mutation without
+reconciliation, unverified durable output, Pod absence failure, unexpected volume deletion,
+schema/context failure, or dependency drift. Continue safe provider-free work when only paid
+authority is missing.

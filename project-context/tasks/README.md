@@ -9,15 +9,16 @@ rollback, and required next-state update. Product behavior remains authoritative
 ledger and primary domain files. Completed briefs remain historical traceability; they do not grant
 new provider authority.
 
-Current checkpoint: `VF-9-24J`, completed context-only isolated model-lane architecture reset. The
-proposed `VF-9-24K` provider-free contract/fixture implementation is paused until explicit user
-application-implementation authority. The prior
-`VF-9-24I` paid FP8 sample path is superseded and produced no reviewable MP4. Its former `$8`
-ceiling is historical and non-transferable. No current provider call, cloud mutation, credential
-access, model download, Pod/template/volume creation, or spend is authorized.
+`CP-00` through `CP-05` are complete provider-free. `VF-9-24Q` is the exact selected next brief for
+`CP-06`, but it is not started and selection grants no authority. At rest, provider calls,
+credentials, cloud mutation, model downloads, publication, GPU use, retained-volume billing, and
+spend remain false/`$0`. The prior `VF-9-24I` paid FP8 sample path is superseded and its former `$8`
+ceiling is historical and non-transferable.
 
 The approved future lifecycle uses two different persistent `EU-RO-1` model volumes and two
 disposable Pods: exact ImageForge Mage INT8 ConvRot and EchoMimicV3-Flash FP8. Live compatible GPU
 selection is independent per lane. Ordinary boot downloads no model files. Delete Pods after
-durable outputs and retain both volumes. If authorized, `VF-9-24K` implements only the versioned
-`$0` contracts/fixtures for that lifecycle; real resources require a later explicit task and cap.
+durable outputs and retain only explicitly approved volumes. The exact CP-06 prompt activates only
+`VF-9-24Q` Phase A local/read-only preflight at `$0`; a later complete numeric authorization is
+required for Phase B mutation. See that brief for the exact finite-cap, GPU, volume, ongoing
+retention, and scope fields. No default cap is inferred.
