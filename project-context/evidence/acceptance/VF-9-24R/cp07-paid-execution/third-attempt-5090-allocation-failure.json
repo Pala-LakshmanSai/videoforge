@@ -1,0 +1,26 @@
+{
+  "schema_version": "videoforge.cp07-allocation-failure/v1",
+  "checkpoint": "CP-07",
+  "attempt": "third-sequence-rtx5090-allocation",
+  "provider_result": "HTTP 500 during createPod before a Pod identity was returned",
+  "controller_error_code": "CP07_PROVIDER_MUTATION_FAILED",
+  "gpu": {
+    "offering_id": "NVIDIA GeForce RTX 5090",
+    "rate_usd_per_hour": 0.99,
+    "availability": "LOW"
+  },
+  "replacement_volume_created": {
+    "id_sha256": "sha256:2f75d125465a7f407ceed80624694a3578c7f6fcf3bd81d2b17182bd1d15a261",
+    "size_gb": 50,
+    "pod_ever_attached": false
+  },
+  "cleanup": {
+    "checked_at": "2026-08-14T19:18:22.552Z",
+    "pods": 0,
+    "private_templates": 0,
+    "endpoints": 0,
+    "active_serverless_workers": 0,
+    "cleanup_certain": true
+  },
+  "new_billing_rows": 0
+}
