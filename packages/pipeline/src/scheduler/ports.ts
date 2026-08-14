@@ -22,9 +22,5 @@ export {
   type MaterializedSelectedSpan,
 } from "./work-plan.js";
 
-export {
-  deterministicTimelineScheduler,
-  scheduleTimeline,
-  SUPPORTED_SCHEDULER_CONFIG,
-  SUPPORTED_SCHEDULER_VERSION,
-} from "./scheduler.js";
+export { deterministicTimelineScheduler, scheduleTimeline } from "./scheduler.js";
+export { SUPPORTED_SCHEDULER_CONFIG, SUPPORTED_SCHEDULER_VERSION } from "./config.js";

@@ -611,7 +611,7 @@ export class SharedAppFixtureStore {
       const foundations = bundle?.receipts;
       if (bundle !== undefined && activeProject !== undefined) {
         if (["BOOTING", "PREPARING"].includes(activeProject.stage))
-          await this.#artifacts.persist(bundle.foundationArtifacts);
+          await this.#artifacts.persistFoundations(bundle);
       }
       let materialized: ProviderFreeMaterializedReceipts | undefined;
       if (bundle !== undefined && activeProject?.stage === "GENERATING") {

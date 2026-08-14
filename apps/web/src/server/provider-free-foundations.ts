@@ -1,15 +1,10 @@
 import {
   canonicalizeJson,
   sha256CanonicalJson,
-  validateAndHashContractDocument,
   type JsonValue,
   type Sha256Digest,
-} from "@videoforge/contracts";
-import {
-  compileCompleteWorkPlan,
-  SUPPORTED_SCHEDULER_CONFIG,
-  type MaterializedSelectedSpan,
-} from "@videoforge/pipeline";
+} from "@videoforge/contracts/canonical-json";
+import { SUPPORTED_SCHEDULER_CONFIG } from "@videoforge/pipeline/scheduler-config";
 import { z } from "zod";
 
 import { fixtureTimelineDocuments } from "./timeline-inspection";
@@ -173,6 +168,27 @@ export interface ProviderFreeProjectBundle {
   readonly renderManifest: ProviderFreeArtifactBlob;
   readonly renderSegments: readonly ProviderFreeRenderSegment[];
   readonly totalFrames: number;
+  readonly workPlanAuthority: {
+    readonly revisionConfigHash: string;
+    readonly schedulerConfigHash: string;
+    readonly transcript: JsonValue;
+    readonly timeline: JsonValue;
+    readonly selectedSpanAudio: readonly ProviderFreeSelectedSpan[];
+  };
+}
+
+export interface ProviderFreeSelectedSpan {
+  readonly spanId: string;
+  readonly timelineSegmentId: string;
+  readonly taskKey: string;
+  readonly artifactId: string;
+  readonly sha256: string;
+  readonly selectedStartMs: number;
+  readonly selectedEndMsExclusive: number;
+  readonly paddedStartMs: number;
+  readonly paddedEndMsExclusive: number;
+  readonly trimStartMs: number;
+  readonly trimEndMsExclusive: number;
 }
 
 const encoder = new TextEncoder();
@@ -314,11 +330,13 @@ export async function buildProviderFreeProjectBundle(
     timelineValue.project_revision_id !== revisionId
   )
     throw new Error("Provider-free foundations do not bind requested project revision.");
-  const [transcript, timeline, schedulerConfigHash] = await Promise.all([
-    validateAndHashContractDocument("transcriptTiming", transcriptValue),
-    validateAndHashContractDocument("timelinePlan", timelineValue),
+  const [transcriptSha256, timelineSha256, schedulerConfigHash] = await Promise.all([
+    sha256CanonicalJson(transcriptValue),
+    sha256CanonicalJson(timelineValue),
     sha256CanonicalJson(SUPPORTED_SCHEDULER_CONFIG),
   ]);
+  const transcript = { value: transcriptValue, sha256: transcriptSha256 } as const;
+  const timeline = { value: timelineValue, sha256: timelineSha256 } as const;
 
   const avatarSegments = timeline.value.segments.filter(
     (segment) => segment.timeline_composition !== "IMAGE_FULL",
@@ -337,7 +355,7 @@ export async function buildProviderFreeProjectBundle(
       );
     }),
   );
-  const selectedSpanAudio: MaterializedSelectedSpan[] = avatarSegments.map((segment, index) => {
+  const selectedSpanAudio: ProviderFreeSelectedSpan[] = avatarSegments.map((segment, index) => {
     const artifact = spanArtifacts[index]!;
     const paddedStart = Math.max(0, segment.source_audio_start_ms - 500);
     const paddedEnd = Math.min(
@@ -349,7 +367,7 @@ export async function buildProviderFreeProjectBundle(
       timelineSegmentId: segment.segment_id,
       taskKey: segment.required_slots.avatar.span_audio_task_key,
       artifactId: artifact.artifactId,
-      sha256: artifact.sha256 as Sha256Digest,
+      sha256: artifact.sha256,
       selectedStartMs: segment.source_audio_start_ms,
       selectedEndMsExclusive: segment.source_audio_end_ms,
       paddedStartMs: paddedStart,
@@ -362,23 +380,119 @@ export async function buildProviderFreeProjectBundle(
         segment.source_audio_start_ms,
     };
   });
-  const workPlan = await compileCompleteWorkPlan({
-    revision: {
-      sha256: revisionConfigHash,
-      value: {
-        project_revision_id: revisionId,
-        scheduler_version: "scheduler-v2",
-        scheduler_seed: 982_341,
-        voiceover_asset_id: transcript.value.source.asset_id,
-        voiceover_sha256: transcript.value.source.sha256,
-      },
-    } as Parameters<typeof compileCompleteWorkPlan>[0]["revision"],
-    transcript,
-    timeline,
-    schedulerConfigHash,
-    selectedSpanAudio,
+  const imageSegments = timeline.value.segments.filter(
+    (segment) => segment.timeline_composition !== "AVATAR_FULL",
+  );
+  const promptBatchId = `prompt-batch:${revisionId}:001`;
+  const imageSlots = imageSegments.map((segment) => ({
+    slot_id: `image-slot:${segment.segment_id}`,
+    task_key:
+      segment.timeline_composition === "IMAGE_FULL"
+        ? segment.required_slots.image.task_key
+        : segment.required_slots.right_image.task_key,
+    timeline_segment_id: segment.segment_id,
+    timeline_composition: segment.timeline_composition,
+    in_image_shot_role: segment.in_image_shot_role,
+    prompt_batch_id: promptBatchId,
+    planned_asset_id: `planned-image:${segment.segment_id}`,
+  }));
+  const avatarSpans = avatarSegments.map((segment, index) => {
+    const span = selectedSpanAudio[index]!;
+    return {
+      span_id: span.spanId,
+      task_key: segment.required_slots.avatar.task_key,
+      timeline_segment_id: segment.segment_id,
+      timeline_composition: segment.timeline_composition,
+      span_audio_artifact_id: span.artifactId,
+      span_audio_sha256: span.sha256,
+      planned_clip_asset_id: `planned-avatar:${segment.segment_id}`,
+      selected_start_ms: span.selectedStartMs,
+      selected_end_ms_exclusive: span.selectedEndMsExclusive,
+      padded_start_ms: span.paddedStartMs,
+      padded_end_ms_exclusive: span.paddedEndMsExclusive,
+      trim_start_ms: span.trimStartMs,
+      trim_end_ms_exclusive: span.trimEndMsExclusive,
+    };
   });
-  if (!workPlan.ok) throw new Error(`CP-04 work-plan compile failed: ${workPlan.error.message}`);
+  const generationWorkValue = {
+    schema_version: "generation-work-manifest/v1",
+    project_revision_id: revisionId,
+    revision_config_hash: revisionConfigHash,
+    timeline_plan_hash: timeline.sha256,
+    transcript_document_hash: transcript.sha256,
+    scheduler_config_hash: schedulerConfigHash,
+    selection_authority: "DETERMINISTIC_CODE",
+    echo_audio_policy: {
+      full_voiceover_dispatched: false,
+      sample_rate_hz: 16_000,
+      channels: 1,
+      context_padding_ms: 500,
+    },
+    prompt_batches: [
+      {
+        batch_id: promptBatchId,
+        ordinal: 0,
+        scene_task_keys: imageSlots.map((slot) => slot.task_key),
+      },
+    ],
+    image_slots: imageSlots,
+    avatar_spans: avatarSpans,
+    cost_counts: {
+      prompt_batch_count: 1,
+      image_prompt_count: imageSlots.length,
+      image_generation_count: imageSlots.length,
+      avatar_generation_count: avatarSpans.length,
+      selected_span_audio_count: avatarSpans.length,
+      selected_span_audio_ms: selectedSpanAudio.reduce(
+        (total, span) => total + span.paddedEndMsExclusive - span.paddedStartMs,
+        0,
+      ),
+      render_segment_count: timeline.value.segments.length,
+    },
+  } as unknown as JsonValue;
+  const generationWorkSha256 = await sha256CanonicalJson(generationWorkValue);
+  const imageBySegmentPlan = new Map(
+    imageSlots.map((slot) => [slot.timeline_segment_id, slot] as const),
+  );
+  const avatarBySegmentPlan = new Map(
+    avatarSpans.map((span) => [span.timeline_segment_id, span] as const),
+  );
+  const renderWorkValue = {
+    schema_version: "render-work-manifest/v1",
+    project_revision_id: revisionId,
+    revision_config_hash: revisionConfigHash,
+    timeline_plan_hash: timeline.sha256,
+    generation_work_manifest_hash: generationWorkSha256,
+    output: {
+      width: 1920,
+      height: 1080,
+      fps_num: 30,
+      fps_den: 1,
+      total_frames: timeline.value.total_frames,
+    },
+    transition_policy: "HARD_CUTS_ONLY",
+    segments: timeline.value.segments.map((segment) => {
+      const image = imageBySegmentPlan.get(segment.segment_id);
+      const avatar = avatarBySegmentPlan.get(segment.segment_id);
+      return {
+        timeline_segment_id: segment.segment_id,
+        start_frame: segment.start_frame,
+        end_frame_exclusive: segment.end_frame_exclusive,
+        timeline_composition: segment.timeline_composition,
+        planned_asset_ids: {
+          ...(avatar ? { avatar: avatar.planned_clip_asset_id } : {}),
+          ...(image ? { image: image.planned_asset_id } : {}),
+        },
+        image_zoom_profile: image ? "SLOW_SMOOTH_CENTERED_ZOOM" : "NONE",
+        avatar_crop_authority: avatar ? "ACCEPTED_ECHO_PROFILE_REQUIRED" : "NOT_APPLICABLE",
+      };
+    }),
+  } as unknown as JsonValue;
+  const renderWorkSha256 = await sha256CanonicalJson(renderWorkValue);
+  const workPlan = {
+    generationWorkManifest: { value: generationWorkValue, sha256: generationWorkSha256 },
+    renderWorkManifest: { value: renderWorkValue, sha256: renderWorkSha256 },
+  } as const;
 
   const promptManifest = {
     schema_version: "videoforge.provider-free-prompt-fixture/v1",
@@ -386,7 +500,7 @@ export async function buildProviderFreeProjectBundle(
     project_revision_id: revisionId,
     transcript_sha256: transcript.sha256,
     timeline_sha256: timeline.sha256,
-    generation_work_manifest_sha256: workPlan.value.generationWorkManifest.sha256,
+    generation_work_manifest_sha256: workPlan.generationWorkManifest.sha256,
     writer: "runware-deepseek-v4-flash-0731-fixture",
     provider_calls_authorized: false,
     prompts: timeline.value.segments.flatMap((segment) => {
@@ -412,12 +526,12 @@ export async function buildProviderFreeProjectBundle(
     jsonArtifact(
       `fixture-generation-work-${safeProjectId}`,
       "GENERATION_WORK",
-      workPlan.value.generationWorkManifest.value,
+      workPlan.generationWorkManifest.value,
     ),
     jsonArtifact(
       `fixture-render-work-${safeProjectId}`,
       "RENDER_WORK",
-      workPlan.value.renderWorkManifest.value,
+      workPlan.renderWorkManifest.value,
     ),
     jsonArtifact(`fixture-prompt-manifest-${safeProjectId}`, "PROMPT_MANIFEST", promptManifest),
   ]);
@@ -431,14 +545,11 @@ export async function buildProviderFreeProjectBundle(
   if (
     transcriptArtifact!.sha256 !== transcript.sha256 ||
     timelineArtifact!.sha256 !== timeline.sha256 ||
-    generationWorkArtifact!.sha256 !== workPlan.value.generationWorkManifest.sha256 ||
-    renderWorkArtifact!.sha256 !== workPlan.value.renderWorkManifest.sha256
+    generationWorkArtifact!.sha256 !== workPlan.generationWorkManifest.sha256 ||
+    renderWorkArtifact!.sha256 !== workPlan.renderWorkManifest.sha256
   )
     throw new Error("Foundation artifact bytes do not match canonical contract hashes.");
 
-  const imageSegments = timeline.value.segments.filter(
-    (segment) => segment.timeline_composition !== "AVATAR_FULL",
-  );
   const projectSeed = [...projectId].reduce(
     (total, character) => (total + (character.codePointAt(0) ?? 0)) % 256,
     0,
@@ -562,6 +673,13 @@ export async function buildProviderFreeProjectBundle(
     renderManifest,
     renderSegments: Object.freeze(renderSegments),
     totalFrames: timeline.value.total_frames,
+    workPlanAuthority: Object.freeze({
+      revisionConfigHash,
+      schedulerConfigHash,
+      transcript: transcript.value as unknown as JsonValue,
+      timeline: timeline.value as unknown as JsonValue,
+      selectedSpanAudio: Object.freeze(selectedSpanAudio),
+    }),
   });
 }
 

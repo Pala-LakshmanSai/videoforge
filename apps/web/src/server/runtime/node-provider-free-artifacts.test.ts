@@ -17,6 +17,7 @@ describe("Node provider-free artifact runtime", () => {
     try {
       const bundle = await buildProviderFreeProjectBundle("node-render-probe");
       const runtime = createNodeProviderFreeArtifactRuntime(root);
+      await runtime.persistFoundations(bundle);
       const mage = await runtime.laneReceipt(bundle, "mage_image");
       const echo = await runtime.laneReceipt(bundle, "echo_avatar");
       expect(mage.artifactCount).toBeGreaterThan(1);

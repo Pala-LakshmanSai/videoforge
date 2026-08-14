@@ -9,7 +9,8 @@ import {
 import type { ProjectRevisionDocumentRef, TimelinePlanDocumentRef } from "../documents.js";
 import type { TranscriptDocumentRef } from "../transcript/types.js";
 import { pipelineFailure, pipelineSuccess, type PipelineResult } from "../errors.js";
-import { SUPPORTED_SCHEDULER_CONFIG, validateTimelineSemantics } from "./scheduler.js";
+import { SUPPORTED_SCHEDULER_CONFIG } from "./config.js";
+import { validateTimelineSemantics } from "./scheduler.js";
 
 export interface MaterializedSelectedSpan {
   readonly spanId: string;

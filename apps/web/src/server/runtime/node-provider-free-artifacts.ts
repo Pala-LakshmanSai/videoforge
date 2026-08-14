@@ -7,6 +7,8 @@ import type {
   ProviderFreeLaneOutputReceipt,
   ProviderFreeRenderReceipt,
 } from "@videoforge/control-plane/provider-free-orchestration";
+import { validateAndHashContractDocument } from "@videoforge/contracts";
+import { compileCompleteWorkPlan } from "@videoforge/pipeline/scheduler";
 
 import type { ProviderFreeArtifactRuntime } from "../provider-free-artifact-runtime";
 import type {
@@ -81,6 +83,7 @@ function segmentFilter(
 }
 
 export function createNodeProviderFreeArtifactRuntime(root: string): ProviderFreeArtifactRuntime {
+  const verifiedFoundations = new Set<string>();
   async function persist(artifacts: readonly ProviderFreeArtifactBlob[]): Promise<void> {
     for (const artifact of artifacts) {
       if (digest(artifact.bytes) !== artifact.sha256)
@@ -102,6 +105,43 @@ export function createNodeProviderFreeArtifactRuntime(root: string): ProviderFre
 
   return {
     persist,
+    async persistFoundations(bundle) {
+      if (!verifiedFoundations.has(bundle.projectId)) {
+        const authority = bundle.workPlanAuthority;
+        const [transcript, timeline] = await Promise.all([
+          validateAndHashContractDocument("transcriptTiming", authority.transcript),
+          validateAndHashContractDocument("timelinePlan", authority.timeline),
+        ]);
+        const compiled = await compileCompleteWorkPlan({
+          revision: {
+            sha256: authority.revisionConfigHash,
+            value: {
+              project_revision_id: bundle.revisionId,
+              scheduler_version: "scheduler-v2",
+              scheduler_seed: 982_341,
+              voiceover_asset_id: transcript.value.source.asset_id,
+              voiceover_sha256: transcript.value.source.sha256,
+            },
+          } as Parameters<typeof compileCompleteWorkPlan>[0]["revision"],
+          transcript,
+          timeline,
+          schedulerConfigHash: authority.schedulerConfigHash as `sha256:${string}`,
+          selectedSpanAudio: authority.selectedSpanAudio as Parameters<
+            typeof compileCompleteWorkPlan
+          >[0]["selectedSpanAudio"],
+        });
+        if (!compiled.ok)
+          throw new Error(`CP-04 work-plan compile failed: ${compiled.error.message}`);
+        if (
+          compiled.value.generationWorkManifest.sha256 !==
+            bundle.receipts.generationWorkManifestSha256 ||
+          compiled.value.renderWorkManifest.sha256 !== bundle.receipts.renderWorkManifestSha256
+        )
+          throw new Error("Workerd-safe work manifests differ from proven CP-04 compiler output.");
+        verifiedFoundations.add(bundle.projectId);
+      }
+      await persist(bundle.foundationArtifacts);
+    },
     async laneReceipt(bundle, lane): Promise<ProviderFreeLaneOutputReceipt> {
       const output = lane === "mage_image" ? bundle.mage : bundle.echo;
       await persist(output.artifacts);

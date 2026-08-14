@@ -12,6 +12,14 @@
     "./legacy-replay": {
       "types": "./dist/src/legacy-replay/index.d.ts",
       "import": "./dist/src/legacy-replay/index.js"
+    },
+    "./scheduler": {
+      "types": "./dist/src/scheduler/ports.d.ts",
+      "import": "./dist/src/scheduler/ports.js"
+    },
+    "./scheduler-config": {
+      "types": "./dist/src/scheduler/config.d.ts",
+      "import": "./dist/src/scheduler/config.js"
     }
   },
   "files": [

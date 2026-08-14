@@ -11,6 +11,7 @@ import type {
 
 export interface ProviderFreeArtifactRuntime {
   persist(artifacts: readonly ProviderFreeArtifactBlob[]): Promise<void>;
+  persistFoundations(bundle: ProviderFreeProjectBundle): Promise<void>;
   laneReceipt(
     bundle: ProviderFreeProjectBundle,
     lane: "mage_image" | "echo_avatar",
@@ -68,6 +69,10 @@ export class MemoryProviderFreeArtifactRuntime implements ProviderFreeArtifactRu
       artifactCount: output.artifacts.length,
       durable: true as const,
     });
+  }
+
+  async persistFoundations(bundle: ProviderFreeProjectBundle): Promise<void> {
+    await this.persist(bundle.foundationArtifacts);
   }
 
   async render(bundle: ProviderFreeProjectBundle): Promise<ProviderFreeRenderReceipt> {

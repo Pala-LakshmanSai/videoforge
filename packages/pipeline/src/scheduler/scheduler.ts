@@ -13,51 +13,12 @@ import {
   type PipelineResult,
 } from "../errors.js";
 import type { SchedulerPort, SchedulerRequest } from "./ports.js";
+import {
+  SCHEDULER_SHOT_ROLES,
+  SUPPORTED_SCHEDULER_CONFIG,
+  SUPPORTED_SCHEDULER_VERSION,
+} from "./config.js";
 import { SeededVariation } from "./random.js";
-
-export const SUPPORTED_SCHEDULER_VERSION = "scheduler-v2";
-
-const SHOT_ROLES = Object.freeze([
-  "ENVIRONMENTAL_WIDE",
-  "HUMAN_MEDIUM",
-  "HANDS_ACTION",
-  "OBJECT_EVIDENCE",
-  "MACRO_DETAIL",
-  "REACTION_RESULT",
-] as const);
-
-/**
- * Exact behavior-bearing scheduler inputs. Keep this document immutable for scheduler-v2; changing
- * any value requires a new scheduler version so durable plans can be replayed byte-for-byte.
- */
-export const SUPPORTED_SCHEDULER_CONFIG = Object.freeze({
-  schema_version: "deterministic-timeline-scheduler-config/v2",
-  output_fps_num: 30,
-  output_fps_den: 1,
-  image_minimum_ms: 3_000,
-  image_maximum_ms: 7_000,
-  avatar_minimum_ms: 2_000,
-  avatar_maximum_ms: 6_000,
-  opener_maximum_ms: 7_000,
-  desired_opener_minimum_ms: 4_000,
-  desired_opener_maximum_ms: 6_000,
-  minimum_avatar_start_delta_ms: 11_000,
-  maximum_avatar_start_delta_ms: 23_000,
-  desired_avatar_start_delta_minimum_ms: 14_000,
-  desired_avatar_start_delta_maximum_ms: 20_000,
-  desired_avatar_duration_minimum_ms: 3_400,
-  desired_avatar_duration_maximum_ms: 4_100,
-  avatar_duration_jitter_minimum_ms: -600,
-  avatar_duration_jitter_maximum_ms: 600,
-  avatar_duration_score_weight: 0.7,
-  avatar_coverage_score_weight: 0.2,
-  avatar_coverage_pace_score_weight: 5,
-  avatar_balance_score_weight: 0.35,
-  target_avatar_ratio_minimum: 0.21,
-  target_avatar_ratio_maximum: 0.22,
-  selected_span_context_padding_ms: 500,
-  shot_roles: SHOT_ROLES,
-});
 
 const OUTPUT_FPS = SUPPORTED_SCHEDULER_CONFIG.output_fps_num;
 const IMAGE_MINIMUM_MS = SUPPORTED_SCHEDULER_CONFIG.image_minimum_ms;
@@ -70,7 +31,7 @@ const MAXIMUM_AVATAR_START_DELTA_MS = SUPPORTED_SCHEDULER_CONFIG.maximum_avatar_
 
 type TimelineSegment = TimelinePlanDocument["segments"][number];
 type TimelineComposition = TimelineSegment["timeline_composition"];
-type ShotRole = (typeof SHOT_ROLES)[number];
+type ShotRole = (typeof SCHEDULER_SHOT_ROLES)[number];
 
 interface WordRange {
   readonly startIndex: number;
@@ -462,7 +423,8 @@ function phraseText(transcript: TranscriptTimingDocument, range: WordRange): str
 
 function shotRoleFor(phrase: string, imageOrdinal: number, rotationOffset: number): ShotRole {
   return (
-    lexicalShotRole(phrase) ?? SHOT_ROLES[(rotationOffset + imageOrdinal) % SHOT_ROLES.length]!
+    lexicalShotRole(phrase) ??
+    SCHEDULER_SHOT_ROLES[(rotationOffset + imageOrdinal) % SCHEDULER_SHOT_ROLES.length]!
   );
 }
 
@@ -472,7 +434,7 @@ function createTimelineSegments(
   variation: SeededVariation,
 ): readonly TimelineSegment[] {
   const transcript = request.transcript.value;
-  const rotationOffset = variation.index("shot-role-rotation", SHOT_ROLES.length);
+  const rotationOffset = variation.index("shot-role-rotation", SCHEDULER_SHOT_ROLES.length);
   let imageOrdinal = 0;
 
   return ranges.map((range, index) => {
