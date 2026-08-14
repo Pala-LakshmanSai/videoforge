@@ -11,7 +11,7 @@ from mage_volume import (
     MAGE_MODEL_FILES,
     MAGE_MODEL_ID,
     MAGE_MODEL_REVISION,
-    MAGE_VOLUME_SIZE_GIB,
+    MAGE_VOLUME_SIZE_GB,
     canonical_json,
     manifest_body,
     seal_manifest,
@@ -28,17 +28,17 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument("--model-root", required=True, type=Path)
     parser.add_argument("--volume-id", required=True)
-    parser.add_argument("--volume-size-gib", required=True, type=int)
+    parser.add_argument("--volume-size-gb", required=True, type=int)
     parser.add_argument("--confirm-download", required=True)
     return parser.parse_args()
 
 
 def prepare(
-    model_root: Path, *, volume_id: str, volume_size_gib: int, confirmation: str
+    model_root: Path, *, volume_id: str, volume_size_gb: int, confirmation: str
 ) -> dict[str, object]:
     if confirmation != CONFIRMATION:
         raise RuntimeError("MAGE_PREPARATION_CONFIRMATION_INVALID")
-    if volume_size_gib != MAGE_VOLUME_SIZE_GIB:
+    if volume_size_gb != MAGE_VOLUME_SIZE_GB:
         raise RuntimeError("MAGE_VOLUME_SIZE_MISMATCH")
     if (
         not volume_id
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     observed = prepare(
         arguments.model_root,
         volume_id=arguments.volume_id,
-        volume_size_gib=arguments.volume_size_gib,
+        volume_size_gb=arguments.volume_size_gb,
         confirmation=arguments.confirm_download,
     )
     print(observed["manifest_sha256"])

@@ -1,0 +1,35 @@
+{
+  "schema_version": "videoforge.cp06-phase-b-live-preflight/v1",
+  "task_id": "VF-9-24Q",
+  "checkpoint": "CP-06",
+  "status": "PASS_PRE_MUTATION",
+  "identity_checked_at": "2026-08-14T08:20:16.828Z",
+  "account": {
+    "owner": "sujal",
+    "id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "matched_pinned_identity": true
+  },
+  "inventory": {
+    "pods": 0,
+    "running_pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "network_volumes": 0,
+    "active_serverless_workers": 0
+  },
+  "catalog_checked_at": "2026-08-14T08:21:08.400Z",
+  "offering": {
+    "display_name": "NVIDIA GeForce RTX 4090",
+    "gpu_type_id": "RTX 4090",
+    "memory_gb": 24,
+    "secure": true,
+    "secure_price_usd_per_hour": 0.74,
+    "global_availability": "HIGH",
+    "data_center_id": "EU-RO-1",
+    "data_center_availability": "HIGH",
+    "maximum_secure_count": 8
+  },
+  "mutations_performed": 0,
+  "external_spend_usd": 0,
+  "credentials_printed_or_persisted": false
+}

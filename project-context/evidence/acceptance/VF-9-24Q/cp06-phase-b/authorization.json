@@ -1,0 +1,46 @@
+{
+  "schema_version": "videoforge.cp06-phase-b-authorization/v1",
+  "task_id": "VF-9-24Q",
+  "checkpoint": "CP-06",
+  "status": "AUTHORIZED_PRE_MUTATION",
+  "authorized_by_user_at": "2026-08-14T08:19:32Z",
+  "user_authorization_text": "I authorize the complete CP-06 Phase B scope above on Sujal RunPod using RTX 4090 at no more than $0.74/hour, retaining the 20 GiB volume at $1.40/month, with a $3 cumulative handoff cap.",
+  "additional_user_volume_note": "you can even use 50gb network voume if that makes more sense",
+  "resolved_authority": {
+    "account_owner": "sujal",
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "forbidden_account": "demo9_imageforge",
+    "model_id": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "gpu_offering_id": "NVIDIA GeForce RTX 4090",
+    "gpu_rate_ceiling_usd_per_hour": 0.74,
+    "volume_size_gb": 20,
+    "volume_rate_usd_per_gb_month": 0.07,
+    "ongoing_retention_charge_usd_per_month": 1.4,
+    "maximum_cumulative_external_spend_usd": 3.0,
+    "volume_retention_authorized": true,
+    "operations": [
+      "publish_worker_image",
+      "create_mage_template",
+      "create_mage_volume",
+      "download_prepare_mage_volume",
+      "create_mage_pod",
+      "generate_owned_samples",
+      "publish_owned_sample_outputs",
+      "delete_mage_pod",
+      "verify_zero_pods",
+      "retain_mage_volume"
+    ]
+  },
+  "volume_resolution": {
+    "chosen_size_gb": 20,
+    "exact_model_bytes": 13379919280,
+    "minimum_headroom_bytes": 6620080720,
+    "minimum_headroom_gib": 6.165430695,
+    "reason": "The provider-requested 20 GB is sufficient and minimizes retained billing; the optional 50 GB allowance is not needed.",
+    "official_api_source": "https://docs.runpod.io/api-reference/network-volumes/POST/networkvolumes",
+    "official_api_integer_range": "0 <= x <= 4000"
+  },
+  "external_spend_usd": 0,
+  "provider_mutations_started": false,
+  "resources_created": 0
+}

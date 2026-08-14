@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-05 complete provider-free; CP-06 Phase A complete, waiting exact Phase B authorization
+Status: CP-00 through CP-05 complete provider-free; CP-06 Phase B authorized, pre-mutation
 Context schema: `1.5`  
 Last updated: `2026-08-14`
 
@@ -58,9 +58,10 @@ four minutes is a comparison baseline, not a measured VideoForge result.
 The earlier Serverless/ephemeral `VF-9-24I` paid retry is superseded and non-executable. It produced
 no MP4. Its evidence, failed attempts, measured costs, and final zero-resource observations remain
 historical truth; its former `$8` ceiling does not authorize the new two-volume/two-Pod lifecycle.
-Only the CP-06 allowlisted read-only RunPod inventory/rate/absence calls and credential access at
-`$0` are currently authorized. Model download, publication, GPU use, Pod/template/volume creation,
-retained-volume billing, and spend are not authorized.
+CP-06 Phase B is authorized only on Sujal RunPod with RTX 4090 at no more than `$0.74/hour`, one
+retained 20 GB STANDARD Mage volume at `$1.40/month`, the exact bounded mutation/download/
+publication/GPU/sample/cleanup scope, and a `$3` cumulative handoff cap. No Echo or production
+promotion is authorized.
 
 `VF-9-24L` completed the global-shared-MVP audit, every-fifth-frame Ranga recheck, architecture
 reconciliation, and balanced completion roadmap. `VF-9-24K`/`CP-01` then completed at implementation
@@ -132,15 +133,13 @@ paid compute, or spend was used or proven. Hosted production proof remains open 
 `VF-9-24Q` CP-06 Phase A is complete at code commit
 `912427b5bd8a7afb4f68233072990d3c39e64cc6`. Public standard-runner Mage build/smoke run
 `31781650276` and all-lane CI run `31781645263` passed with publication disabled. The `$0`
-preflight derived the exact 13,379,919,280 model bytes, a 20 GiB volume proposal, current GPU/rate
-choices, and independently verified Sujal's account with zero resources. It created nothing and
-used no GPU or paid compute. A later, separate authorization must give a
-positive numeric finite cap through handoff, approve those exact GPU and volume values, approve the
-ongoing retained-volume charge after handoff, and explicitly authorize mutation/download/
-publication/GPU scopes. There is no default `$3` cap.
+preflight derived the exact 13,379,919,280 model bytes, a provider-requested 20 GB volume, current GPU/rate
+choices, and independently verified Sujal's account with zero resources. The user subsequently
+authorized the exact bounded Phase B scope, RTX 4090 ceiling, retained-volume charge, and `$3`
+finite-action cap. The final pre-mutation recheck still found zero resources and no paid compute.
 
-No VideoForge persistent model volume exists yet. Future provisioning/preparation is a separate
-explicitly authorized provider task after contracts and offline workers are green.
+No VideoForge persistent model volume exists yet. Phase B provisioning/preparation is authorized,
+but must remain fail-closed behind the exact Sujal identity, resource, rate, and spend checks.
 
 ## Locked active providers
 

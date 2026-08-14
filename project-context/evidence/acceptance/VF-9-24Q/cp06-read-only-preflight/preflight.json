@@ -50,11 +50,11 @@
     "model_bytes_downloaded": 0
   },
   "derived_volume": {
-    "proposed_size_gib": 20,
+    "proposed_size_gb": 20,
     "allocation_bytes": 21474836480,
-    "headroom_bytes": 8094917200,
-    "headroom_gib": 7.538979128,
-    "headroom_percent_of_capacity": 37.69489564,
+    "minimum_headroom_bytes": 6620080720,
+    "minimum_headroom_gib": 6.165430695,
+    "minimum_headroom_percent_of_requested_capacity": 33.1004036,
     "runpod_standard_network_volume_rate_usd_per_gb_month": 0.07,
     "estimated_ongoing_charge_usd_per_month": 1.4,
     "pricing_source": "https://docs.runpod.io/storage/network-volumes"
@@ -145,5 +145,5 @@
     "required_aggregate": "PASS"
   },
   "phase_b_authorization_request_ready": true,
-  "blocker": "One complete current-chat Phase B authorization with exact GPU/rate, 20 GiB volume rate and retention consent, explicit mutation/download/publication/GPU scopes, and a user-supplied positive numeric cumulative spend cap."
+  "blocker": "One complete current-chat Phase B authorization with exact GPU/rate, provider-requested 20 GB volume rate and retention consent, explicit mutation/download/publication/GPU scopes, and a user-supplied positive numeric cumulative spend cap."
 }

@@ -317,8 +317,8 @@ wrong Pod/volume/GPU, independent lane drain, final playable MP4s, canonical ver
 
 ## CP-06 — Exact Mage INT8 on persistent RunPod volume
 
-**Status:** `VF-9-24Q` Phase A complete and green at `$0`; waiting for one exact Phase B
-authorization. Mutation, publication, download, GPU, retained-volume, and spend authority remain false.
+**Status:** `VF-9-24Q` Phase A complete and green; exact Phase B bounded mutation is authorized on
+Sujal RunPod with RTX 4090, a retained 20 GB Mage volume, and a `$3` handoff cap.
 
 **Outcome:** VideoForge generates real images through the exact current ImageForge Mage contract and
 can reuse a new Mage-only volume from fresh Pods.

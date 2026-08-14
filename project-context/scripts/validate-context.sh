@@ -148,7 +148,7 @@ if recommended_task["provider_calls_authorized"] == false
   if recommended_task["checkpoint"] == "CP-06" && recommended_task["authorization_status"] == "at_rest_not_authorized"
     errors << "CURRENT_STATE idle CP-06 cannot authorize application code" unless recommended_task["application_code_changes_authorized"] == false
     errors << "CURRENT_STATE idle CP-06 cannot be the current task" unless state["current_task"].nil? && state["in_progress_checkpoint"].nil? && state["implementation_authorized_in_current_task"] == false
-    %w[mage_gpu_offering_id mage_gpu_rate_usd_per_hour mage_volume_size_gib mage_volume_rate_usd_per_gb_month ongoing_retention_charge_usd_per_month].each do |field|
+    %w[mage_gpu_offering_id mage_gpu_rate_usd_per_hour mage_volume_size_gb mage_volume_rate_usd_per_gb_month ongoing_retention_charge_usd_per_month].each do |field|
       errors << "CURRENT_STATE idle CP-06 must leave #{field} unset" unless recommended_task[field].nil?
     end
   end
@@ -200,7 +200,7 @@ elsif recommended_task["provider_calls_authorized"] == true
         errors << "CURRENT_STATE CP-06 paid authority requires #{field}" unless recommended_task[field] == true
       end
       errors << "CURRENT_STATE CP-06 paid authority requires exact Mage GPU offering" unless recommended_task["mage_gpu_offering_id"].is_a?(String) && !recommended_task["mage_gpu_offering_id"].empty?
-      %w[mage_gpu_rate_usd_per_hour mage_volume_size_gib mage_volume_rate_usd_per_gb_month ongoing_retention_charge_usd_per_month].each do |field|
+      %w[mage_gpu_rate_usd_per_hour mage_volume_size_gb mage_volume_rate_usd_per_gb_month ongoing_retention_charge_usd_per_month].each do |field|
         value = recommended_task[field]
         errors << "CURRENT_STATE CP-06 paid authority requires positive numeric #{field}" unless value.is_a?(Numeric) && value.positive?
       end

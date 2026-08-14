@@ -1,41 +1,53 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T08:02:43Z"
+updated_at: "2026-08-14T08:19:32Z"
 
-phase: cp06_phase_a_complete_waiting_phase_b_authorization
+phase: cp06_phase_b_bounded_mutation
 implementation_authorized_in_current_task: true
 current_milestone: exact_mage_int8_persistent_runpod_volume
 current_task: VF-9-24Q
 current_wave: cp06_mage_int8_persistent_runpod
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: read_only_preflight
+task_stage: bounded_mutation
 application_code_changes_authorized: true
 provider_calls_authorized: true
-maximum_external_spend_usd: 0
+maximum_external_spend_usd: 3.0
 provider_authority:
-  mode: read_only
+  mode: paid
   provider: runpod
-  cap_usd: 0
-  authorized_by_user_at: "2026-08-14T05:54:18Z"
+  cap_usd: 3.0
+  authorized_by_user_at: "2026-08-14T08:19:32Z"
   non_transferable: true
-  allowed_operations:
-    - inventory_lookup
-    - rate_lookup
-    - quota_lookup
-    - resource_identity_lookup
-    - resource_absence_lookup
+  model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
+  resources:
+    - videoforge-mage-cp06-worker-image
+    - videoforge-mage-cp06-template
+    - videoforge-mage-cp06-model-volume-eu-ro-1-20gb
+    - videoforge-mage-cp06-pod-attempts
+    - videoforge-mage-cp06-owned-samples
+  authorized_operations:
+    - publish_worker_image
+    - create_mage_template
+    - create_mage_volume
+    - download_prepare_mage_volume
+    - create_mage_pod
+    - generate_owned_samples
+    - publish_owned_sample_outputs
+    - delete_mage_pod
+    - verify_zero_pods
+    - retain_mage_volume
 runpod_account_scope:
   owner: sujal
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_inventory_or_mutation
 credential_access_authorized: true
-remote_or_cloud_mutations_authorized: false
-model_downloads_authorized: false
-worker_image_publication_authorized: false
-sample_output_publication_authorized: false
-gpu_use_authorized: false
-mage_volume_retention_authorized: false
+remote_or_cloud_mutations_authorized: true
+model_downloads_authorized: true
+worker_image_publication_authorized: true
+sample_output_publication_authorized: true
+gpu_use_authorized: true
+mage_volume_retention_authorized: true
 
 repository:
   initialized: true
@@ -81,10 +93,10 @@ live_development:
   health_checked_at: "2026-08-14T07:18:58Z"
   chrome_route: null
   fixture_scenario: cp05_complete_fixture_mvp
-  provider_mode: fixture
+  provider_mode: sandbox
   provider_calls_authorized: true
-  authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-24Q CP-06 read-only preflight only: RunPod inventory/rate/quota/resource identity/absence lookups at $0. No mutation, download, publication, GPU use, retained-volume billing, or spend."
+  authorized_spend_usd: 3.0
+  provider_authority_scope: "VF-9-24Q CP-06 Phase B only on Sujal RunPod: exact RTX 4090 at no more than $0.74/hour, one retained 20 GB STANDARD EU-RO-1 Mage volume at $0.07/GB/month ($1.40/month), exact Mage INT8 download/preparation, immutable worker/template publication, two fresh Pods, at least eight private owned samples, Pod deletion and zero-Pod proof; cumulative finite-action cap $3.00."
   worker_image: null
   last_user_checkpoint:
     result: accepted
@@ -182,39 +194,51 @@ recommended_next_task:
   task_id: VF-9-24Q
   checkpoint: CP-06
   milestone: exact_mage_int8_persistent_runpod_volume
-  status: phase_a_complete_waiting_phase_b_authorization
+  status: phase_b_authorized_bounded_mutation
   dependency_status: cp05_complete_green_provider_free
-  authorization_status: phase_b_exact_numeric_authorization_required
-  task_stage: read_only_preflight
+  authorization_status: exact_current_chat_authorization_recorded
+  task_stage: bounded_mutation
   provider_authority:
-    mode: read_only
+    mode: paid
     provider: runpod
-    cap_usd: 0
-    authorized_by_user_at: "2026-08-14T05:54:18Z"
+    cap_usd: 3.0
+    authorized_by_user_at: "2026-08-14T08:19:32Z"
     non_transferable: true
-    allowed_operations:
-      - inventory_lookup
-      - rate_lookup
-      - quota_lookup
-      - resource_identity_lookup
-      - resource_absence_lookup
+    model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
+    resources:
+      - videoforge-mage-cp06-worker-image
+      - videoforge-mage-cp06-template
+      - videoforge-mage-cp06-model-volume-eu-ro-1-20gb
+      - videoforge-mage-cp06-pod-attempts
+      - videoforge-mage-cp06-owned-samples
+    authorized_operations:
+      - publish_worker_image
+      - create_mage_template
+      - create_mage_volume
+      - download_prepare_mage_volume
+      - create_mage_pod
+      - generate_owned_samples
+      - publish_owned_sample_outputs
+      - delete_mage_pod
+      - verify_zero_pods
+      - retain_mage_volume
   read_profile: cp06_mage_int8_persistent_runpod
   task_brief: tasks/VF-9-24Q.md
-  goal: "After the exact CP-06 prompt, complete local/read-only Phase A at $0, then stop for a separately explicit exact numeric Phase B authorization."
+  goal: "Complete exact Mage INT8 persistent-volume qualification under the recorded $3 Phase B cap, delete every Pod, prove zero paid compute, retain only the approved Mage volume, and show the owned samples."
   provider_calls_authorized: true
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
+  maximum_external_spend_usd: 3.0
+  remote_or_cloud_mutations_authorized: true
   credential_access_authorized: true
-  model_downloads_authorized: false
-  worker_image_publication_authorized: false
-  sample_output_publication_authorized: false
-  gpu_use_authorized: false
-  mage_volume_retention_authorized: false
-  mage_gpu_offering_id: null
-  mage_gpu_rate_usd_per_hour: null
-  mage_volume_size_gib: null
-  mage_volume_rate_usd_per_gb_month: null
-  ongoing_retention_charge_usd_per_month: null
+  model_downloads_authorized: true
+  worker_image_publication_authorized: true
+  sample_output_publication_authorized: true
+  gpu_use_authorized: true
+  mage_volume_retention_authorized: true
+  mage_gpu_offering_id: "NVIDIA GeForce RTX 4090"
+  mage_gpu_rate_usd_per_hour: 0.74
+  mage_volume_size_gb: 20
+  mage_volume_rate_usd_per_gb_month: 0.07
+  ongoing_retention_charge_usd_per_month: 1.4
   application_code_changes_authorized: true
   prerequisite_evidence: "evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json"
   required_handoff:
@@ -236,8 +260,8 @@ cp06_phase_a:
   model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
   comfyui_revision: "26d7f8556822d9d08c2d3e1878636ac3b4969af9"
   exact_model_bytes: 13379919280
-  proposed_volume_size_gib: 20
-  proposed_volume_headroom_bytes: 8094917200
+  proposed_volume_size_gb: 20
+  proposed_volume_minimum_headroom_bytes: 6620080720
   proposed_volume_rate_usd_per_gb_month: 0.07
   proposed_ongoing_retention_charge_usd_per_month: 1.4
   runpod_account_owner: sujal
@@ -274,6 +298,27 @@ cp06_phase_a:
   external_spend_usd: 0
   provider_resources_created: 0
   paid_compute_shutdown: no_paid_compute_started_colima_stopped_original_8gib_config_restored
+
+cp06_phase_b:
+  status: authorized_pre_mutation
+  evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/authorization.json"
+  authorized_by_user_at: "2026-08-14T08:19:32Z"
+  user_authorization_text: "I authorize the complete CP-06 Phase B scope above on Sujal RunPod using RTX 4090 at no more than $0.74/hour, retaining the 20 GiB volume at $1.40/month, with a $3 cumulative handoff cap."
+  additional_user_volume_note: "you can even use 50gb network voume if that makes more sense"
+  resolved_volume_choice_gb: 20
+  resolved_volume_choice_basis: "Exact model bytes plus at least 6.17 GiB headroom fit the provider-requested 20 GB; official current REST API accepts integer GB sizes from 0 through 4000, so 50 GB is unnecessary."
+  runpod_account_owner: sujal
+  runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
+  gpu_offering_id: "NVIDIA GeForce RTX 4090"
+  gpu_rate_ceiling_usd_per_hour: 0.74
+  volume_size_gb: 20
+  volume_rate_usd_per_gb_month: 0.07
+  ongoing_retention_charge_usd_per_month: 1.4
+  maximum_cumulative_external_spend_usd: 3.0
+  external_spend_usd: 0
+  provider_mutations_started: false
+  resources_created: 0
+  paid_compute_shutdown: no_paid_compute_started
 
 cp01_completion:
   status: complete_provider_free_reaudited_after_persisted_authority_fix
@@ -477,18 +522,18 @@ blocking_gates_for_production:
 progress_snapshot:
   estimate_kind: checkpoint_truth_no_percent_claim
   completed_checkpoint: CP-05
-  next_checkpoint: CP-06_phase_b_waiting_exact_authorization
+  next_checkpoint: CP-06_phase_b_bounded_mutation_active
   full_production_mvp_implemented_percent: null
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: cp06_phase_a_complete_waiting_phase_b_authorization
+  status: cp06_phase_b_authorized_pre_mutation
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Load cp06_mage_int8_persistent_runpod and tasks/VF-9-24Q.md; read only the CP-06 roadmap section."
     - "Preserve the verified green CP-01 through CP-05 evidence and vNext boundary."
     - "Preserve Phase A code commit 912427b5bd8a7afb4f68233072990d3c39e64cc6, hosted build run 31781650276, and canonical CI run 31781645263."
-    - "Do not begin Phase B until one complete exact numeric authorization defined by VF-9-24Q is recorded."
+    - "Phase B exact authorization is recorded at 2026-08-14T08:19:32Z with RTX 4090 <= $0.74/hour, 20 GB at $1.40/month retained, and a $3 finite-action cap."
   stop_conditions:
-    - "Any new Phase A mutation, download, publication, GPU, resource creation, retention charge, or spend."
-    - "Any Phase B action before one complete exact numeric authorization defined by VF-9-24Q, or any schema reinterpretation, legacy dispatch reachability, or production promotion."
+    - "Any Sujal identity mismatch, RTX 4090 rate above $0.74/hour, unavailable approved capacity, resource ambiguity, scope expansion, or risk of exceeding the $3 finite-action cap."
+    - "Any schema reinterpretation, legacy dispatch reachability, Echo work, cross-account action, or production promotion."

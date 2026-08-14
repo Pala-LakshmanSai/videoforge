@@ -66,8 +66,8 @@ class MageWorkerImageTest(unittest.TestCase):
 
     def test_exact_three_file_manifest_and_headroom(self) -> None:
         self.assertEqual(volume.MAGE_MODEL_BYTES, 13_379_919_280)
-        self.assertEqual(volume.MAGE_VOLUME_SIZE_GIB, 20)
-        self.assertEqual(volume.MAGE_HEADROOM_BYTES, 8_094_917_200)
+        self.assertEqual(volume.MAGE_VOLUME_SIZE_GB, 20)
+        self.assertEqual(volume.MAGE_MINIMUM_HEADROOM_BYTES, 6_620_080_720)
         self.assertEqual(
             [item.path for item in volume.MAGE_MODEL_FILES],
             [
@@ -117,7 +117,7 @@ class MageWorkerImageTest(unittest.TestCase):
                 prepare(
                     Path(temporary),
                     volume_id="volume_cp06",
-                    volume_size_gib=20,
+                    volume_size_gb=20,
                     confirmation=CONFIRMATION + "_WRONG",
                 )
 

@@ -13,8 +13,11 @@ MAGE_MODEL_ID: Final = "Comfy-Org/Mage-Flow"
 MAGE_MODEL_REVISION: Final = "d8c99241f6fa80fbd453014234af2bf337ea21e6"
 MAGE_PRECISION: Final = "int8-convrot"
 MAGE_COMFYUI_REVISION: Final = "26d7f8556822d9d08c2d3e1878636ac3b4969af9"
-MAGE_VOLUME_SIZE_GIB: Final = 20
-MAGE_VOLUME_BYTES: Final = MAGE_VOLUME_SIZE_GIB * 1024**3
+MAGE_VOLUME_SIZE_GB: Final = 20
+# RunPod's network-volume REST contract and billing use integer GB. This is a
+# requested provider size, not a claim that the mounted filesystem reports an
+# exact binary capacity.
+MAGE_REQUESTED_VOLUME_BYTES: Final = MAGE_VOLUME_SIZE_GB * 1_000_000_000
 MAGE_MARKER_NAME: Final = ".videoforge-mage-volume.json"
 
 
@@ -43,7 +46,7 @@ MAGE_MODEL_FILES: Final = (
     ),
 )
 MAGE_MODEL_BYTES: Final = sum(item.bytes for item in MAGE_MODEL_FILES)
-MAGE_HEADROOM_BYTES: Final = MAGE_VOLUME_BYTES - MAGE_MODEL_BYTES
+MAGE_MINIMUM_HEADROOM_BYTES: Final = MAGE_REQUESTED_VOLUME_BYTES - MAGE_MODEL_BYTES
 
 
 class MageVolumeError(RuntimeError):
@@ -74,9 +77,9 @@ def manifest_body(*, volume_id_hash: str, prepared_at: str) -> dict[str, object]
         "precision": MAGE_PRECISION,
         "comfyui_revision": MAGE_COMFYUI_REVISION,
         "volume_id_hash": volume_id_hash,
-        "volume_size_gib": MAGE_VOLUME_SIZE_GIB,
+        "requested_volume_size_gb": MAGE_VOLUME_SIZE_GB,
         "model_bytes": MAGE_MODEL_BYTES,
-        "headroom_bytes": MAGE_HEADROOM_BYTES,
+        "minimum_headroom_bytes": MAGE_MINIMUM_HEADROOM_BYTES,
         "prepared_at": prepared_at,
         "files": [
             {"path": item.path, "bytes": item.bytes, "sha256": item.sha256}
@@ -106,9 +109,9 @@ def validate_manifest_shape(value: object) -> dict[str, object]:
         "model_revision": MAGE_MODEL_REVISION,
         "precision": MAGE_PRECISION,
         "comfyui_revision": MAGE_COMFYUI_REVISION,
-        "volume_size_gib": MAGE_VOLUME_SIZE_GIB,
+        "requested_volume_size_gb": MAGE_VOLUME_SIZE_GB,
         "model_bytes": MAGE_MODEL_BYTES,
-        "headroom_bytes": MAGE_HEADROOM_BYTES,
+        "minimum_headroom_bytes": MAGE_MINIMUM_HEADROOM_BYTES,
         "files": [
             {"path": item.path, "bytes": item.bytes, "sha256": item.sha256}
             for item in MAGE_MODEL_FILES

@@ -18,5 +18,5 @@ No provider mutation, model download, image publication, GPU use, retained-volum
 external spend occurred.
 
 Phase B may begin only after one complete current-chat authorization supplies the exact GPU/rate,
-20 GiB volume rate and ongoing retention consent, all required mutation/download/publication/GPU
+provider-requested 20 GB volume rate and ongoing retention consent, all required mutation/download/publication/GPU
 scopes, and a positive numeric maximum cumulative external spend through the CP-06 handoff.
