@@ -1,7 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-05 complete; CP-06 runtime/cleanup is `READY_FOR_USER_REVIEW`; provider
-billing settlement is pending
+Status: CP-00 through CP-06 complete; CP-07 is unselected and unauthorized
 Context schema: `1.5`  
 Last updated: `2026-08-14`
 
@@ -134,14 +133,16 @@ The CP-05 proof remains provider-free local Mac/Linux evidence only: no Cloud Ru
 private production R2, hosted Linux media runtime, model download/change, image publication, GPU,
 paid compute, or spend was used or proven. Hosted production proof remains open until CP-08.
 
-`VF-9-24Q` CP-06 runtime and cleanup are `READY_FOR_USER_REVIEW`; the brief's settled-cost handoff
-remains pending on RunPod. Runtime source commit
+`VF-9-24Q` CP-06 is complete. Runtime source commit
 `563ba1ab7b083c1457ab4a9504d82bd6f9d886b9` published immutable digest
 `ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69`
 in successful GitHub run `31796627338`. The exact 13,379,919,280-byte manifest was prepared once on
 the retained volume; missing and wrong-volume boots failed closed; eight 1280x720 PNGs were produced
-across two distinct fresh Pods with 31.755s and 42.144s model-ready times. Sanitized proof is
-`evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json`. Only the user can approve visual quality.
+across two distinct fresh Pods with 31.755s and 42.144s model-ready times. The user accepted visual
+quality. A later authorized `$0` read-only Sujal audit settled all 15 exact Pod hashes at
+`$0.34927155333571136` under the `$3` cap and proved zero Pods/endpoints/templates/workers plus
+exactly the intended retained 50 GB Mage volume. Proof is in
+`evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json` and its `settlement-reaudit.json`.
 
 ## Locked active providers
 

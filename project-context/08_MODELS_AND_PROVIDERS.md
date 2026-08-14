@@ -169,9 +169,10 @@ Official runtime sources: [Comfy-Org Mage-Flow weights](https://huggingface.co/C
 and [ComfyUI](https://github.com/Comfy-Org/ComfyUI). Historical Microsoft sources remain terms
 evidence only and are not the runtime implementation.
 
-CP-06 is `READY_FOR_USER_REVIEW`; proof is
-`evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json`. Production quality/style, two-lane, and
-30-minute cost gates remain open. Fixture stays default; BF16 attempts remain historical.
+CP-06 passed: quality accepted; `$0.34927155333571136` settled under `$3`; live inventory
+proved zero compute and the intended retained volume. Proof: `evidence/acceptance/VF-9-24Q/`
+`cp06-phase-b/acceptance.json` plus `settlement-reaudit.json`. Broader production gates remain open;
+fixture stays default and BF16 attempts remain historical.
 
 ## EchoMimicV3-Flash
 

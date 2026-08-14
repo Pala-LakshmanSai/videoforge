@@ -1,0 +1,82 @@
+{
+  "schema_version": "videoforge.cp06-read-only-settlement-audit/v1",
+  "task_id": "VF-9-24Q",
+  "checkpoint": "CP-06",
+  "status": "PASS",
+  "checked_at": "2026-08-14T14:24:11.956Z",
+  "authorization": {
+    "authorized_by_user_at": "2026-08-14T14:20:07Z",
+    "user_text": "I authorize credential access for a read-only Sujal RunPod billing and inventory audit at $0, with no mutations.",
+    "cap_usd": 0,
+    "credential_access": "authorized_for_this_audit_only",
+    "provider_mutations": 0,
+    "external_spend_usd": 0,
+    "authority_commit": "ee2dc44e54dd589581d77f89b2ba9723086bc261"
+  },
+  "source_evidence": {
+    "path": "project-context/evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json",
+    "sha256": "sha256:ec2e2a764e5bf69a8479cbabaad77fbb94c947cbd387990ea193cd03298e859d",
+    "private_journal_sha256": "sha256:78c4fcb3ad5df00aad080f1464d098c9da698c6a967a9313d2783d1f191ef13c",
+    "contact_sheet_sha256": "sha256:159540fb645b7738209909449898ffdedb67c9305b0564b5a740400267e69e6d"
+  },
+  "account": {
+    "owner": "sujal",
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "identity_match": true
+  },
+  "billing": {
+    "window_start": "2026-08-14T09:00:00.000Z",
+    "window_end": "2026-08-14T14:23:46.082Z",
+    "stable_observations_per_pod": 2,
+    "exact_pod_count": 15,
+    "billing_record_count": 16,
+    "time_billed_ms": 1682267,
+    "settled_spend_usd": 0.34927155333571136,
+    "authorized_cap_usd": 3.0,
+    "under_cap": true,
+    "pods": [
+      ["sha256:f263a1496bab3998175eaa21d7f33a963550ea465c361504636327a53d7fbcff", 1, 0.014658167026937008, 71310],
+      ["sha256:ab76d95b79ac7904f3abb839eb8c1816d256a36ad31f6e14bb5bf7efe3dd9811", 1, 0.022995295003056526, 111869],
+      ["sha256:12febaf6d12230a8770cf6d2c90bc3551944f46c0ff7843610781ae96faa4520", 1, 0.02464076690375805, 119874],
+      ["sha256:e7031dc90acd67dc69285210e99710dc2f98f5affb96a356a315e000e91eb1ab", 1, 0.02554979862179607, 121481],
+      ["sha256:7893dcbfb6e01d7f00ac4411f424be905e9052f156403dfe7a3d117b84bdcf3a", 1, 0.027889843680895865, 132865],
+      ["sha256:250d088a1606aff45b74d067196ce248b7f88f77cd2f827c192c7c8bbc8b9ebe", 1, 0.02661821059882641, 129494],
+      ["sha256:1c5f9476d66eb186524811228a3bb36eaee3c0f6c6a18edbb9261982a840c430", 2, 0.03046401555184275, 145388],
+      ["sha256:7cc1d0250dc7565a942e5578c69fa5894a516713bd22dd8d681a4c93caf00ad7", 1, 0.026994993910193443, 131327],
+      ["sha256:942a4b6ccc8ef42a422214ff7d04ef1e0bb73251feda7d9cfc1d8cad9ef2c37b", 1, 0.024006834253668785, 116790],
+      ["sha256:046f73cfe7096c87f2a571bcf3e866e0f0d8b08ed5feadef247ec2b4fd1633aa", 1, 0.013624081504531205, 63464],
+      ["sha256:bae20d4e0a5b3aa150726209d9866c4e5c5d2443d76626e44375ddc5146acc7d", 1, 0.029948892653919756, 142882],
+      ["sha256:29ea42e8fc5536c6ee40961c9c394f7df5e3afea59db380d9023f06acb1d085d", 1, 0.027430566027760506, 133446],
+      ["sha256:135159ce903eab3ede28281923742e0cdc0588b85a64320a70a13c3cf7911bd1", 1, 0.00494792778044939, 24071],
+      ["sha256:eff9fc60f3f00b27a6d8d10585768af036ca56221171c58baf45022456c47200", 1, 0.009633772075176239, 46867],
+      ["sha256:4d2952fae6855ed1e3fd39d08cafb9cae4162c0b41caeef95c84e0a29ba549af", 1, 0.03986838774289936, 191139]
+    ],
+    "pod_tuple_fields": ["pod_id_sha256", "record_count", "amount_usd", "time_billed_ms"]
+  },
+  "inventory": {
+    "checked_at": "2026-08-14T14:24:10.715Z",
+    "pods": 0,
+    "running_pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "network_volumes": 1,
+    "retained_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "retained_volume_size_gb": 50,
+    "intended_retained_volume_match": true,
+    "paid_compute_shutdown": true
+  },
+  "visual_review": {
+    "accepted_by": "user",
+    "accepted_at": "2026-08-14T14:20:07Z",
+    "user_text": "yeah the quality of the images is good",
+    "quality_accepted": true
+  },
+  "gates": {
+    "checkpoint_cost_handoff": "passed_settled_under_cap",
+    "visual_quality": "passed_user_accepted",
+    "technical_runtime_and_cleanup": "passed",
+    "cp06": "passed",
+    "cp07": "unselected_and_unauthorized"
+  }
+}

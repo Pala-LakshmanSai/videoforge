@@ -1,35 +1,27 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T14:20:07Z"
+updated_at: "2026-08-14T14:32:37Z"
 
-phase: cp06_visual_approved_read_only_billing_audit_authorized
+phase: cp06_complete_stopped_before_cp07
 implementation_authorized_in_current_task: false
 current_milestone: exact_mage_int8_persistent_runpod_volume
-current_task: VF-9-24Q
+current_task: null
 current_wave: cp06_mage_int8_persistent_runpod
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: read_only_settlement_audit
+task_stage: completion_handoff
 application_code_changes_authorized: false
-provider_calls_authorized: true
+provider_calls_authorized: false
 maximum_external_spend_usd: 0
 provider_authority:
-  mode: read_only
-  provider: runpod
+  mode: none
   cap_usd: 0
-  authorized_by_user_at: "2026-08-14T14:20:07Z"
-  non_transferable: true
-  allowed_operations:
-    - account_identity_lookup
-    - pod_billing_lookup
-    - resource_inventory_lookup
-    - resource_absence_lookup
   consumed_phase_b_authority: cp06_phase_b
 runpod_account_scope:
   owner: sujal
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_inventory_or_mutation
-credential_access_authorized: true
+credential_access_authorized: false
 remote_or_cloud_mutations_authorized: false
 model_downloads_authorized: false
 worker_image_publication_authorized: false
@@ -92,9 +84,9 @@ live_development:
   chrome_route: null
   fixture_scenario: cp05_complete_fixture_mvp
   provider_mode: fixture
-  provider_calls_authorized: true
+  provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "CP-06 $0 read-only settlement audit only: Sujal account identity, exact historical Pod billing, resource inventory, and absence lookups. No mutation, publication, GPU use, or new spend. The Phase B mutation authority remains consumed."
+  provider_authority_scope: "CP-06 is complete and its read-only settlement-audit authority is consumed. Only the approved 50 GB Mage-volume retention continues at $3.50/month; credentials, provider calls, mutation, GPU use, and new spend are unauthorized. CP-07 requires new explicit authority."
   worker_image: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
   last_user_checkpoint:
     result: accepted
@@ -183,38 +175,38 @@ completed_tasks:
     reaudit_record_commit: "d2285117c17a3f6dd37b84e9dd441fd6fe7aa1d0"
     evidence: "evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json"
     external_spend_usd: 0
+  - task_id: VF-9-24Q
+    status: complete_cp06_exact_mage_int8_settled_visual_accepted
+    runtime_source_commit: "563ba1ab7b083c1457ab4a9504d82bd6f9d886b9"
+    authority_latch_commit: "3b2575d72e307545564f51d374070ffa4e20bad7"
+    evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
+    settlement_reaudit_evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json"
+    settled_external_spend_usd: 0.34927155333571136
+    ongoing_retained_volume_usd_per_month: 3.5
 active_ownership: []
 
 blocked_tasks: []
-in_progress_checkpoint: CP-06
+in_progress_checkpoint: null
 
 recommended_next_task:
   task_id: VF-9-24Q
   checkpoint: CP-06
   milestone: exact_mage_int8_persistent_runpod_volume
-  status: visual_approved_read_only_billing_audit_authorized
+  status: complete_passed_stopped_before_cp07
   dependency_status: cp05_complete_green_provider_free
   authorization_status: consumed_historical_volume_retention_only
-  task_stage: read_only_settlement_audit
+  task_stage: completion_handoff
   provider_authority:
-    mode: read_only
-    provider: runpod
+    mode: none
     cap_usd: 0
-    authorized_by_user_at: "2026-08-14T14:20:07Z"
-    non_transferable: true
-    allowed_operations:
-      - account_identity_lookup
-      - pod_billing_lookup
-      - resource_inventory_lookup
-      - resource_absence_lookup
     consumed_phase_b_authority: cp06_phase_b
   read_profile: cp06_mage_int8_persistent_runpod
   task_brief: tasks/VF-9-24Q.md
-  goal: "Review the completed CP-06 real Mage outputs; technical qualification, cleanup, and retained-volume proof are complete."
-  provider_calls_authorized: true
+  goal: "Preserve the passed CP-06 handoff and stop before unselected CP-07."
+  provider_calls_authorized: false
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: true
+  credential_access_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
@@ -231,7 +223,7 @@ recommended_next_task:
     - "Preserve the completed CP-01 through CP-05 evidence and active vNext cutover."
     - "Phase A is complete at code commit 912427b5bd8a7afb4f68233072990d3c39e64cc6 with green hosted build-only and canonical CI evidence."
     - "Preserve the exact CP-06 digest, retained volume, outputs, zero-compute proof, and sanitized acceptance evidence."
-    - "Show the contact sheet for user visual review and keep billing settlement explicitly pending until RunPod reports all attempts."
+    - "Preserve user visual approval and settled billing for all 15 exact Pod hashes in the settlement re-audit evidence."
     - "Do not reuse the consumed Phase B mutation/spend authority; only the approved $3.50/month volume retention continues."
     - "The consumed live controller has no ambient credential loader or directly executable entrypoint at commit 3b2575d72e307545564f51d374070ffa4e20bad7; any future provider operation requires new explicit authority and a separately introduced audited entrypoint."
   prohibited_in_task:
@@ -287,7 +279,7 @@ cp06_phase_a:
   paid_compute_shutdown: no_paid_compute_started_colima_stopped_original_8gib_config_restored
 
 cp06_phase_b:
-  status: runtime_and_cleanup_ready_for_user_review_billing_settlement_pending
+  status: complete_passed_settled_visual_accepted
   controller_commit: "1c257497055ad42b78d3020a2113f8ea0cf876c8"
   safety_fix_commit: "6664d26f7594fe5ba6fd3896ff5f26075764d93f"
   cleanup_invariant_fix_commit: "58512071586855b96d64e812f9c443d3db51b1dd"
@@ -297,6 +289,7 @@ cp06_phase_b:
   worker_image_publish_run_id: 31796627338
   controller_validation: passed_60_focused_typescript_16_mage_python_web_typecheck_canonical_28_tasks_worker_suites_context_schema_secret_scan_and_42_installed_chrome
   evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
+  settlement_reaudit_evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json"
   authorized_by_user_at: "2026-08-14T08:19:32Z"
   user_authorization_text: "I authorize the complete CP-06 Phase B scope above on Sujal RunPod using RTX 4090 at no more than $0.74/hour, retaining the 20 GiB volume at $1.40/month, with a $3 cumulative handoff cap."
   additional_user_volume_note: "you can even use 50gb network voume if that makes more sense"
@@ -320,13 +313,16 @@ cp06_phase_b:
   final_positive_pod_count: 2
   final_positive_pods_distinct: true
   conservative_accounted_spend_usd: 1.110002
-  settled_external_spend_usd: null
-  billing_status: partial_5_of_15_attempts_observed
-  handoff_cost_status: pending_provider_settlement_required_by_brief
+  settled_external_spend_usd: 0.34927155333571136
+  billing_status: stable_15_of_15_exact_pods_16_records
+  handoff_cost_status: passed_settled_under_3_usd_cap
+  billing_time_ms: 1682267
+  billing_stable_observations_per_pod: 2
+  billing_reaudit_checked_at: "2026-08-14T14:24:11.956Z"
   partial_billing_amount_usd: 0.11843864619731903
   provider_mutations_started: true
   provider_resources_created_during_checkpoint: true
-  final_inventory_checked_at: "2026-08-14T11:52:23.413Z"
+  final_inventory_checked_at: "2026-08-14T14:24:10.715Z"
   final_runpod_pods: 0
   final_runpod_endpoints: 0
   final_runpod_templates: 0
@@ -539,20 +535,20 @@ blocking_gates_for_production:
 
 progress_snapshot:
   estimate_kind: checkpoint_truth_no_percent_claim
-  completed_checkpoint: CP-06_runtime_and_cleanup_ready_for_user_review
-  next_checkpoint: CP-06_user_visual_quality_review_and_provider_billing_settlement
+  completed_checkpoint: CP-06_passed_settled_visual_accepted
+  next_checkpoint: CP-07_unselected_requires_new_brief_profile_and_authority
   full_production_mvp_implemented_percent: null
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: cp06_ready_for_user_review_billing_settlement_pending
+  status: cp06_complete_stopped_before_cp07
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Load cp06_mage_int8_persistent_runpod and tasks/VF-9-24Q.md; read only the CP-06 roadmap section."
     - "Preserve the verified green CP-01 through CP-05 evidence and vNext boundary."
     - "Preserve runtime source commit 563ba1ab7b083c1457ab4a9504d82bd6f9d886b9, exact GHCR digest 0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69, and the sanitized CP-06 acceptance evidence."
-    - "Show the ignored private contact sheet and eight PNGs to the user; technical status is READY_FOR_USER_REVIEW and only the user can approve visual quality."
-    - "Preserve zero Pods/endpoints/templates/workers and exactly one retained 50 GB Mage volume at $3.50/month. RunPod billing is partial; do not replace the conservative $1.110002 upper bound with the currently incomplete provider amount."
+    - "Preserve the user's accepted visual-quality decision and settlement-reaudit evidence: all 15 exact Pod hashes settled at $0.34927155333571136 under the $3 cap."
+    - "Preserve the 2026-08-14T14:24:10.715Z live inventory proof of zero Pods/endpoints/templates/workers and exactly one intended retained 50 GB Mage volume at $3.50/month."
     - "Do not reuse the completed Phase B authority for new samples, CP-07, Echo, production promotion, or any new provider mutation."
     - "The historical CP-06 live adapter remains injectable for provider-free tests, but its ambient keychain loader and direct CLI entrypoint were removed at commit 3b2575d72e307545564f51d374070ffa4e20bad7."
   stop_conditions:

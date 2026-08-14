@@ -147,7 +147,7 @@ if recommended_task["provider_calls_authorized"] == false
   end
   if recommended_task["mage_volume_retention_authorized"] == true
     valid_retention_only = recommended_task["checkpoint"] == "CP-06" &&
-      recommended_task["task_stage"] == "user_review" &&
+      %w[user_review completion_handoff].include?(recommended_task["task_stage"]) &&
       recommended_task["authorization_status"] == "consumed_historical_volume_retention_only" &&
       recommended_task["ongoing_retention_charge_usd_per_month"].is_a?(Numeric) &&
       recommended_task["ongoing_retention_charge_usd_per_month"].positive?
