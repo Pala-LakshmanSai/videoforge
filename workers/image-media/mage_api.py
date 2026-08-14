@@ -5,7 +5,7 @@ import hmac
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Body, FastAPI, Header, HTTPException
 
 from mage_runtime import MageRuntime
 from videoforge_image_media.mage_production import MageContractError
@@ -41,7 +41,7 @@ async def health() -> dict[str, object]:
 
 @app.post("/v1/generate")
 async def generate(
-    value: object, authorization: str | None = Header(default=None)
+    value: object = Body(...), authorization: str | None = Header(default=None)
 ) -> dict[str, object]:
     authorize(authorization)
     try:

@@ -1,3 +1,4 @@
+import ast
 import hashlib
 import json
 import os
@@ -35,6 +36,17 @@ def make_volume(root: Path, *, lane: str = volume.MAGE_LANE) -> dict[str, object
 
 
 class MageWorkerImageTest(unittest.TestCase):
+    def test_generate_contract_accepts_json_body_not_query_value(self) -> None:
+        tree = ast.parse((ROOT / "mage_api.py").read_text(encoding="utf-8"))
+        generate = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.AsyncFunctionDef) and node.name == "generate"
+        )
+        value_default = generate.args.defaults[0]
+        self.assertIsInstance(value_default, ast.Call)
+        self.assertEqual(value_default.func.id, "Body")
+
     def test_image_is_exact_int8_persistent_pod_contract(self) -> None:
         dockerfile = (ROOT / "Dockerfile.mage").read_text(encoding="utf-8")
         node_verifier = (ROOT / "verify_comfyui_nodes.py").read_text(encoding="utf-8")
