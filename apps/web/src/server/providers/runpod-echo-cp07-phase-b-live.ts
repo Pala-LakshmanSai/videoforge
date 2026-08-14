@@ -15,11 +15,12 @@ export const CP07_ACCOUNT_HASH =
 export const CP07_GPU = "NVIDIA GeForce RTX 5090";
 export const CP07_GPU_RATE_USD_PER_HOUR = 0.99;
 export const CP07_GPU_VRAM_GB = 32;
+export const CP07_CUDA_ALLOC_CONF = "expandable_segments:True";
 export const CP07_REGION = "EU-RO-1";
 export const CP07_CAP_USD = 6;
-// Settled live audit was $0.385678 across 10 deleted Pods; this also reserves the final
-// not-yet-settled 5090 warm-up attempt while every Pod is independently absent.
-export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 0.7;
+// Settled live audit was $0.385678 across 10 deleted Pods; this also reserves both
+// not-yet-settled 5090 warm-up attempts while every Pod is independently absent.
+export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 0.9;
 export const CP07_POD_LIFECYCLE_RESERVE_SECONDS = 120;
 export const CP07_VOLUME_ATTACHMENT_SETTLE_MS = 30_000;
 export const CP07_CAPACITY_RETRY_DELAY_MS = 30_000;
@@ -447,6 +448,7 @@ class RunPodCp07Client {
       ECHO_MODEL_ROOT: CP07_MODEL_ROOT,
       ECHO_SCRATCH_ROOT: "/run/videoforge/echo-scratch",
       HF_HUB_OFFLINE: "1",
+      PYTORCH_CUDA_ALLOC_CONF: CP07_CUDA_ALLOC_CONF,
       TRANSFORMERS_OFFLINE: "1",
       VIDEOFORGE_ECHO_GPU_OFFERING_ID: CP07_GPU,
       VIDEOFORGE_ECHO_QUALIFICATION_ERROR_DETAIL: "1",

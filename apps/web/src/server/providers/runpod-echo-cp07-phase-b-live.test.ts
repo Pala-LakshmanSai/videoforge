@@ -7,6 +7,7 @@ import {
   CP07_INVALID_ECHO_VOLUME_ID_HASH,
   CP07_CAPACITY_RETRY_DELAY_MS,
   CP07_CAPACITY_RETRY_LIMIT,
+  CP07_CUDA_ALLOC_CONF,
   CP07_REGION,
   CP07_PRIOR_CONSERVATIVE_SPEND_USD,
   CP07_VOLUME_NAME,
@@ -104,14 +105,18 @@ describe("CP-07 invalid Echo volume replacement boundary", () => {
 });
 
 describe("CP-07 cumulative finite-cost boundary", () => {
+  it("enables expandable CUDA segments for the exact 32 GB qualification GPU", () => {
+    expect(CP07_CUDA_ALLOC_CONF).toBe("expandable_segments:True");
+  });
+
   it("includes the prior attempt and Pod lifecycle reserve in every reservation", () => {
-    expect(CP07_PRIOR_CONSERVATIVE_SPEND_USD).toBe(0.7);
+    expect(CP07_PRIOR_CONSERVATIVE_SPEND_USD).toBe(0.9);
     const sample = assertCp07CumulativeReservation(0, 1_200);
     const sampleTwo = assertCp07CumulativeReservation(sample, 1_200);
     const sampleThree = assertCp07CumulativeReservation(sample + sampleTwo, 1_200);
     const cumulative = CP07_PRIOR_CONSERVATIVE_SPEND_USD + sample + sampleTwo + sampleThree;
-    expect(cumulative).toBeCloseTo(1.789, 6);
-    expect(6 - cumulative).toBeCloseTo(4.211, 6);
+    expect(cumulative).toBeCloseTo(1.989, 6);
+    expect(6 - cumulative).toBeCloseTo(4.011, 6);
   });
 
   it("rejects a next Pod whose reservation could cross the cumulative cap", () => {
