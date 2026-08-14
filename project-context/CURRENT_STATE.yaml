@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T17:55:03Z"
+updated_at: "2026-08-14T18:00:37Z"
 
 phase: cp07_phase_b_halted_preparation_terminal_mismatch
 implementation_authorized_in_current_task: true
@@ -315,10 +315,11 @@ recommended_next_task:
   required_handoff:
     - "Preserve CP-06 exact digest, accepted outputs, settled cost, zero compute, and retained 50 GB Mage volume."
     - "Build only the exact VideoForge-owned EchoMimicV3-Flash Turbo FP8 prepared-artifact/offline short-span path from pinned first-party lineage; Turbo is the VideoForge profile alias for the official 8-step Flash/flash-pro bytes, not a substituted checkpoint."
-    - "Use read-only RunPod access at $0 only for Sujal identity, EU-RO-1 GPU inventory/rates, volume pricing, and absence."
-    - "Stop before publication, model download/preparation, volume/Pod creation, GPU allocation, billing, or spend."
+    - "Preserve the public immutable Echo image digest and retained but unverified 50 GB Echo volume at $3.50/month."
+    - "Preserve the preparation mismatch, unsettled billing, zero samples, inactive crops, and independent zero-compute/two-volume proof."
+    - "Do not retry or inspect the volume through paid compute until a revised exact proposal is approved."
   prohibited_in_task:
-    - "Any remote mutation, image/output publication, model download/preparation, GPU allocation, retained Echo-volume billing, or spend before a complete current-chat paid approval."
+    - "Any further remote mutation, volume inspection through paid compute, preparation retry, or sample Pod after the recorded terminal mismatch without a revised exact approval."
     - "Any fallback, repair, model substitution, Long Video CFG, full-voiceover job, uncarded pickle, Mage mount, or cross-mount."
     - "Any active Echo crop before owned native samples are measured and the user explicitly approves the proposed crop pair."
 
@@ -408,7 +409,7 @@ cp07_phase_a:
   preparation_manifest_verified: false
   sample_pods_started: 0
   sample_outputs: 0
-  final_cleanup_checked_at: "2026-08-14T17:55:03.850Z"
+  final_cleanup_checked_at: "2026-08-14T18:00:37.809Z"
   final_runpod_pods: 0
   final_runpod_templates: 0
   final_runpod_endpoints: 0

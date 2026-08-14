@@ -32,7 +32,7 @@
   "sample_outputs": 0,
   "crop_activated": false,
   "cleanup_audit": {
-    "checked_at": "2026-08-14T17:55:03.850Z",
+    "checked_at": "2026-08-14T18:00:37.809Z",
     "pods": 0,
     "running_pods": 0,
     "private_templates": 0,

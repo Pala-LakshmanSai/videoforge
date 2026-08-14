@@ -5,8 +5,9 @@ last_updated: "2026-08-14"
 source_of_truth: project-context
 # CP-00 through CP-06 are complete. CP-06 settled at $0.34927155333571136 under its $3 cap, the
 # user accepted visual quality, and the live read-only re-audit proved zero compute plus exactly the
-# intended retained 50 GB Mage volume. CP-07 provider-free/read-only preflight is active; paid
-# mutation remains unauthorized.
+# intended retained 50 GB Mage volume. CP-07 published its immutable Echo image and created the
+# approved retained 50 GB Echo volume, then halted before samples because the first preparation
+# terminal result was invalid and ambiguous. Zero Pods/templates/endpoints/workers remain.
 current_selected_profile: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
 current_selected_brief: tasks/VF-9-24R.md
 

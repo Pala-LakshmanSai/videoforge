@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-06 complete; CP-07 Phase A green and awaiting paid authority
+Status: CP-00 through CP-06 complete; CP-07 halted before samples on preparation mismatch
 Context schema: `1.5`  
 Last updated: `2026-08-14`
 
@@ -29,9 +29,9 @@ VideoForge has two isolated model lanes:
 | Avatar | EchoMimicV3-Flash Turbo FP8 from pinned first-party source/weights/base/audio lineage | Different Echo-only persistent `EU-RO-1` network volume | Echo-only Pod |
 
 Never share or cross-adopt a volume, Pod, manifest, cache, lock, or runtime between lanes. The Mage
-volume is approved at 50 GB from its verified exact manifest plus explicit headroom; the Echo
-capacity remains unapproved and must be derived independently before provisioning.
-Persistent-volume pricing is accepted.
+volume is approved and qualified at 50 GB. The separate 50 GB Echo capacity is approved and now
+retained at `$3.50/month`, but its first preparation terminal result was rejected and its manifest
+remains unverified. Persistent-volume pricing is accepted.
 
 When no generation session exists, the first user explicitly selects one exact live compatible
 Secure Cloud offering for Mage and one for Echo. The first atomically accepted Generate locks that
@@ -47,8 +47,7 @@ waiting when a lane finishes, delete that exact Pod immediately and prove absenc
 for the other lane or final render. A later waiting entry never recreates a missing Pod early; the
 next active project may recreate it only on the same locked GPU after fresh availability/rate
 revalidation. The session unlocks only after active and waiting work are empty and both Pods are
-proven absent. Each separately qualified model volume remains; currently only the Mage volume has
-been created.
+proven absent. Both isolated 50 GB volumes now exist; only Mage is qualified.
 
 Production word transcription and final FFmpeg render/probe run as scale-to-zero Cloud Run Jobs
 over private R2. The same pinned media path runs on the Mac only for development parity. The ideal
@@ -148,11 +147,14 @@ exactly the intended retained 50 GB Mage volume. Proof is in
 `c89acef78d4a4bbbbac118ca9c658b6180d68fc8` plus safety fix
 `75c852bb891dbe205ee43d2b73e74765bc336373`. The exact VideoForge-owned Echo FP8 prepared-artifact,
 offline boot, real warm-up, short-span, isolated-scratch, immutable-image, and crop-proposal
-boundaries pass locally. A current `$0` Sujal read-only audit shows zero compute, exactly the retained
-50 GB Mage volume, no Echo volume, three eligible Secure `EU-RO-1` GPU choices, and a 50 GB Echo
-volume proposal at `$3.50/month`. Remote mutation, image/output publication, model
-download/preparation, new volume billing, Pod/GPU allocation, spend, and active renderer crops
-remain unauthorized pending one exact combined approval.
+boundaries pass locally. Paid authority then published immutable image digest
+`ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:e53842b5b9e8115e576f6d98337c228d584651fa50df0d15e086d417f60258e8`
+and created the approved retained Echo volume on RTX 4090 at `$0.74/hour`. The first preparation
+terminal result was rejected as `CP07_PREPARATION_RESULT_INVALID`; its exact worker error was not
+preserved, so the mandatory mismatch/ambiguity stop fired before any sample. Current proof shows
+zero Pods/templates/endpoints/workers and exactly the isolated Mage and Echo volumes. Echo remains
+unqualified, no MP4 exists, billing is unsettled under a conservative `$1.11` finite bound, and no
+renderer crop is active.
 
 ## Locked active providers
 
@@ -179,8 +181,9 @@ and Echo Long Video CFG remain historical evidence only. They authorize no activ
 - Exactly one active video; waiting entries do no CPU/GPU work until atomic promotion.
 - All admitted users have equal shared access; only waiting queue entries may move or be removed.
 - API-only RunPod control; exact create/delete intent and fail-closed ambiguity reconciliation.
-- At most one disposable Pod per lane initially. Delete Pods; CP-06 retains only the qualified Mage
-  volume; the distinct Echo volume does not exist until separately authorized and prepared.
+- At most one disposable Pod per lane initially. Delete Pods; retain the qualified Mage volume and
+  the distinct but currently unverified Echo volume. Never dispatch from the Echo volume until its
+  exact prepared manifest qualifies.
 - Private inputs, outputs, credentials, and model bytes never enter Git or public images.
 - Technical success is `READY_FOR_USER_REVIEW`; only the user approves visual quality.
 
