@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T18:29:16Z"
+updated_at: "2026-08-14T18:34:10Z"
 
 phase: cp07_phase_b_awaiting_revised_paid_authority
 implementation_authorized_in_current_task: true
@@ -363,7 +363,8 @@ cp07_phase_a:
   local_container_build_executed: false
   runpod_account_owner: sujal
   runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
-  runpod_inventory_checked_at: "2026-08-14T18:12:00.626Z"
+  runpod_inventory_checked_at: "2026-08-14T18:34:10.033Z"
+  runpod_revised_read_only_evidence: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/revised-refresh-2026-08-14T183410Z.json"
   runpod_inventory_evidence_sha256: "sha256:48d469866a3a1fb3c0ca1310d9d30b4d2cc0fb52a8d37c19da4076006d31340c"
   runpod_pods: 0
   runpod_endpoints: 0
@@ -376,7 +377,7 @@ cp07_phase_a:
   gpu_choices:
     - offering_id: "NVIDIA GeForce RTX 4090"
       rate_usd_per_hour: 0.74
-      availability: MEDIUM
+      availability: HIGH
       vram_gb: 24
     - offering_id: "NVIDIA GeForce RTX 5090"
       rate_usd_per_hour: 0.99
