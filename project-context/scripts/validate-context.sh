@@ -166,6 +166,10 @@ elsif recommended_task["provider_calls_authorized"] == true
   authority = recommended_task["provider_authority"] || {}
   mode = authority["mode"]
   cap = recommended_task["maximum_external_spend_usd"]
+  read_only_settlement_audit = mode == "read_only" &&
+    recommended_task["checkpoint"] == "CP-06" &&
+    recommended_task["task_stage"] == "read_only_settlement_audit" &&
+    recommended_task["authorization_status"] == "consumed_historical_volume_retention_only"
   errors << "CURRENT_STATE provider authority mode must be read_only or paid" unless %w[read_only paid].include?(mode)
   errors << "CURRENT_STATE provider task requires an exact provider" unless authority["provider"].is_a?(String) && !authority["provider"].empty?
   errors << "CURRENT_STATE provider authority must be explicitly non-transferable" unless authority["non_transferable"] == true
@@ -174,20 +178,41 @@ elsif recommended_task["provider_calls_authorized"] == true
   errors << "CURRENT_STATE provider task cap must match live_development" unless live_state["authorized_spend_usd"] == cap
   errors << "CURRENT_STATE active provider task must match current_task" unless state["current_task"] == recommended_task["task_id"]
   errors << "CURRENT_STATE active provider task must match in_progress_checkpoint" unless state["in_progress_checkpoint"] == recommended_task["checkpoint"]
-  errors << "CURRENT_STATE active provider task requires top-level implementation authority" unless state["implementation_authorized_in_current_task"] == true
+  if read_only_settlement_audit
+    errors << "CURRENT_STATE settlement audit cannot authorize top-level implementation" unless state["implementation_authorized_in_current_task"] == false
+  else
+    errors << "CURRENT_STATE active provider task requires top-level implementation authority" unless state["implementation_authorized_in_current_task"] == true
+  end
   if mode == "read_only"
-    allowed_read_operations = %w[inventory_lookup rate_lookup quota_lookup resource_identity_lookup resource_absence_lookup]
     operations = Array(authority["allowed_operations"])
-    errors << "CURRENT_STATE read-only provider task requires allowlisted operations" if operations.empty? || (operations - allowed_read_operations).any?
+    allowed_read_operations = if read_only_settlement_audit
+      %w[account_identity_lookup pod_billing_lookup resource_inventory_lookup resource_absence_lookup]
+    else
+      %w[inventory_lookup rate_lookup quota_lookup resource_identity_lookup resource_absence_lookup]
+    end
+    errors << "CURRENT_STATE read-only provider task requires the exact allowlisted operations" unless operations.sort == allowed_read_operations.sort
     errors << "CURRENT_STATE read-only provider task must have a numeric $0 cap" unless cap.is_a?(Numeric) && cap.zero?
     errors << "CURRENT_STATE read-only provider task must keep fixture mode" unless live_state["provider_mode"] == "fixture"
     errors << "CURRENT_STATE read-only provider task requires credential access" unless recommended_task["credential_access_authorized"] == true
-    errors << "CURRENT_STATE read-only provider task requires task_stage read_only_preflight" unless recommended_task["task_stage"] == "read_only_preflight"
-    errors << "CURRENT_STATE read-only provider task requires application-code authority" unless recommended_task["application_code_changes_authorized"] == true
+    expected_read_only_stage = read_only_settlement_audit ? "read_only_settlement_audit" : "read_only_preflight"
+    errors << "CURRENT_STATE read-only provider task has the wrong task_stage" unless recommended_task["task_stage"] == expected_read_only_stage
+    if read_only_settlement_audit
+      errors << "CURRENT_STATE settlement audit cannot authorize application code" unless recommended_task["application_code_changes_authorized"] == false
+    else
+      errors << "CURRENT_STATE read-only preflight requires application-code authority" unless recommended_task["application_code_changes_authorized"] == true
+    end
     errors << "CURRENT_STATE read-only provider task cannot authorize remote mutation" unless recommended_task["remote_or_cloud_mutations_authorized"] == false
     errors << "CURRENT_STATE read-only provider task cannot authorize model downloads" unless recommended_task["model_downloads_authorized"] == false
-    %w[worker_image_publication_authorized sample_output_publication_authorized gpu_use_authorized mage_volume_retention_authorized].each do |field|
+    %w[worker_image_publication_authorized sample_output_publication_authorized gpu_use_authorized].each do |field|
       errors << "CURRENT_STATE read-only provider task cannot authorize #{field}" unless recommended_task[field] == false
+    end
+    if read_only_settlement_audit
+      valid_retention = recommended_task["mage_volume_retention_authorized"] == true &&
+        recommended_task["ongoing_retention_charge_usd_per_month"].is_a?(Numeric) &&
+        recommended_task["ongoing_retention_charge_usd_per_month"].positive?
+      errors << "CURRENT_STATE settlement audit must preserve exact approved Mage-volume retention" unless valid_retention
+    else
+      errors << "CURRENT_STATE read-only preflight cannot authorize Mage-volume retention" unless recommended_task["mage_volume_retention_authorized"] == false
     end
   elsif mode == "paid"
     errors << "CURRENT_STATE paid provider task requires a positive numeric cap" unless cap.is_a?(Numeric) && cap.positive?

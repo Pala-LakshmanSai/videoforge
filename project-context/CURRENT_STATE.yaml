@@ -1,27 +1,35 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T13:15:15Z"
+updated_at: "2026-08-14T14:20:07Z"
 
-phase: cp06_ready_for_user_review_billing_settlement_pending
+phase: cp06_visual_approved_read_only_billing_audit_authorized
 implementation_authorized_in_current_task: false
 current_milestone: exact_mage_int8_persistent_runpod_volume
 current_task: VF-9-24Q
 current_wave: cp06_mage_int8_persistent_runpod
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: user_review
+task_stage: read_only_settlement_audit
 application_code_changes_authorized: false
-provider_calls_authorized: false
+provider_calls_authorized: true
 maximum_external_spend_usd: 0
 provider_authority:
-  mode: none
+  mode: read_only
+  provider: runpod
   cap_usd: 0
+  authorized_by_user_at: "2026-08-14T14:20:07Z"
+  non_transferable: true
+  allowed_operations:
+    - account_identity_lookup
+    - pod_billing_lookup
+    - resource_inventory_lookup
+    - resource_absence_lookup
   consumed_phase_b_authority: cp06_phase_b
 runpod_account_scope:
   owner: sujal
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_inventory_or_mutation
-credential_access_authorized: false
+credential_access_authorized: true
 remote_or_cloud_mutations_authorized: false
 model_downloads_authorized: false
 worker_image_publication_authorized: false
@@ -84,9 +92,9 @@ live_development:
   chrome_route: null
   fixture_scenario: cp05_complete_fixture_mvp
   provider_mode: fixture
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   authorized_spend_usd: 0
-  provider_authority_scope: "CP-06 Phase B finite-action authority is consumed. Only the already approved 50 GB Mage-volume retention continues at $3.50/month; no provider call, mutation, publication, GPU use, or new spend is authorized."
+  provider_authority_scope: "CP-06 $0 read-only settlement audit only: Sujal account identity, exact historical Pod billing, resource inventory, and absence lookups. No mutation, publication, GPU use, or new spend. The Phase B mutation authority remains consumed."
   worker_image: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
   last_user_checkpoint:
     result: accepted
@@ -184,21 +192,29 @@ recommended_next_task:
   task_id: VF-9-24Q
   checkpoint: CP-06
   milestone: exact_mage_int8_persistent_runpod_volume
-  status: ready_for_user_review_billing_settlement_pending
+  status: visual_approved_read_only_billing_audit_authorized
   dependency_status: cp05_complete_green_provider_free
   authorization_status: consumed_historical_volume_retention_only
-  task_stage: user_review
+  task_stage: read_only_settlement_audit
   provider_authority:
-    mode: none
+    mode: read_only
+    provider: runpod
     cap_usd: 0
+    authorized_by_user_at: "2026-08-14T14:20:07Z"
+    non_transferable: true
+    allowed_operations:
+      - account_identity_lookup
+      - pod_billing_lookup
+      - resource_inventory_lookup
+      - resource_absence_lookup
     consumed_phase_b_authority: cp06_phase_b
   read_profile: cp06_mage_int8_persistent_runpod
   task_brief: tasks/VF-9-24Q.md
   goal: "Review the completed CP-06 real Mage outputs; technical qualification, cleanup, and retained-volume proof are complete."
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
+  credential_access_authorized: true
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
@@ -318,7 +334,9 @@ cp06_phase_b:
   final_network_volumes: 1
   retained_resources: exact_one_50gb_mage_network_volume
   paid_compute_shutdown: all_pods_templates_endpoints_workers_absent
-  visual_quality: pending_user_review
+  visual_quality: approved_by_user
+  visual_quality_approved_at: "2026-08-14T14:20:07Z"
+  visual_quality_user_text: "yeah the quality of the images is good"
 
 cp01_completion:
   status: complete_provider_free_reaudited_after_persisted_authority_fix
