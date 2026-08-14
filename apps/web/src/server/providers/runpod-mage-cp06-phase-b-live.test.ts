@@ -144,6 +144,8 @@ describe("CP-06 live adapter provider-free boundary", () => {
       volumeId: "volume_cp06",
       volumeIdHash: hash("volume_cp06"),
     });
+    await journal.append("template_ready", { templateId: "template_old" });
+    await journal.append("template_absence_confirmed", { templateId: "template_old" });
     await journal.append("template_ready", { templateId: "template_cp06" });
     await journal.append("stage_complete", { stage: "prep", evidence: MANIFEST });
     await journal.append("pod_create_intent", {

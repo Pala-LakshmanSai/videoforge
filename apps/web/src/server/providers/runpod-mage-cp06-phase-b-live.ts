@@ -477,11 +477,19 @@ export class RunPodCp06LiveAdapter implements Cp06PodNativePort {
     if (providerTemplate !== null) {
       const recorded = [...records]
         .reverse()
-        .find((candidate) => candidate.event === "template_ready")?.templateId;
+        .find((candidate) => candidate.event === "template_ready");
       const absence = [...records]
         .reverse()
-        .find((candidate) => candidate.event === "template_absence_confirmed");
-      if (absence !== undefined || (recorded !== undefined && recorded !== providerTemplate.id)) {
+        .find(
+          (candidate) =>
+            candidate.event === "template_absence_confirmed" &&
+            candidate.templateId === providerTemplate.id,
+        );
+      if (
+        (absence !== undefined &&
+          (finite(absence.sequence) ?? 0) > (finite(recorded?.sequence) ?? 0)) ||
+        (recorded?.templateId !== undefined && recorded.templateId !== providerTemplate.id)
+      ) {
         throw new Cp06PhaseBError("CP06_JOURNAL_TEMPLATE_IDENTITY_MISMATCH");
       }
       this.template = {
