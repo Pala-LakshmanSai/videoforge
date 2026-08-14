@@ -1,8 +1,8 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T18:57:39Z"
+updated_at: "2026-08-14T19:07:57Z"
 
-phase: cp07_phase_b_awaiting_third_revised_paid_authority
+phase: cp07_phase_b_third_paid_execution_authorized
 implementation_authorized_in_current_task: true
 current_milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
 current_task: VF-9-24R
@@ -17,14 +17,14 @@ provider_authority:
   mode: paid
   provider: runpod
   cap_usd: 4
-  authorized_at: "2026-08-14T18:37:19Z"
-  source: current_cp07_exact_revised_user_authorization
+  authorized_at: "2026-08-14T19:07:57Z"
+  source: current_cp07_exact_third_user_authorization
   non_transferable: true
-  execution_halted: true
-  halt_reason: "Provider-free correction f6c952a is green, but its new image plus deletion/recreation of the second invalid Echo volume were not in the last approved proposal."
+  execution_halted: false
+  halt_reason: null
   model_id: "EchoMimicV3-Flash Turbo FP8@videoforge_echo_v3_flash_turbo_fp8_v1"
   resources:
-    - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:d51c0a1"
+    - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:f6c952a6b5979d94f788410b6e4c093cc50ee2b7"
     - "runpod:EU-RO-1:echo-only-network-volume:50GB"
     - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 4090:1x:maximum-$0.74/hour"
     - "BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249#echomimicv3-flash-pro"
@@ -69,11 +69,11 @@ runpod_account_scope:
   forbidden_account: demo9_imageforge
   identity_check: required_before_inventory_or_mutation
 credential_access_authorized: true
-remote_or_cloud_mutations_authorized: false
-model_downloads_authorized: false
-worker_image_publication_authorized: false
+remote_or_cloud_mutations_authorized: true
+model_downloads_authorized: true
+worker_image_publication_authorized: true
 sample_output_publication_authorized: false
-gpu_use_authorized: false
+gpu_use_authorized: true
 mage_volume_retention_authorized: true
 echo_volume_retention_authorized: true
 
@@ -406,10 +406,10 @@ cp07_phase_a:
   canonical_verify_checked_at: "2026-08-14T16:50:24Z"
   installed_chrome_tests: 42
   paid_execution_authorized: true
-  paid_execution_authorized_at: "2026-08-14T18:37:19Z"
+  paid_execution_authorized_at: "2026-08-14T19:07:57Z"
   paid_execution_cap_usd: 4
-  paid_execution_halted: true
-  revised_paid_authority_required: true
+  paid_execution_halted: false
+  revised_paid_authority_required: false
   revised_paid_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/revised-authorization.json"
   image_publication_attempts: 3
   last_image_publication_run_id: 31829638252
@@ -418,6 +418,7 @@ cp07_phase_a:
   last_preparation_result: failed_offline_constant_retained_before_pinned_snapshot_download
   last_preparation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/preparation-attempt-2-failure.json"
   third_local_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-local-preflight.json"
+  third_paid_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-authorization.json"
   proposed_third_image_source_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:f6c952a6b5979d94f788410b6e4c093cc50ee2b7"
   selected_gpu_offering_id: "NVIDIA GeForce RTX 4090"
   selected_gpu_rate_usd_per_hour: 0.74
