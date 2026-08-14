@@ -251,6 +251,50 @@ describe("RunPod Pod-native CP-06 control", () => {
     });
   });
 
+  it("accepts RunPod's sparse normalized template read shape but rejects unsafe defaults", async () => {
+    const sparseTemplate = {
+      id: "template_cp06_01",
+      category: "NVIDIA",
+      containerDiskInGb: 50,
+      env: expectedStaticEnvironment,
+      imageName: image,
+      name: "vf_cp06_mage_int8_template",
+      ports: [CP06_MAGE_HTTP_PORT],
+      volumeMountPath: CP06_MAGE_NETWORK_VOLUME_MOUNT_PATH,
+    };
+    const sparseClient = new RunPodPodControlClient({
+      apiKey: key,
+      fetch: async () => response([sparseTemplate]),
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      sparseClient.findMagePodTemplateByName("vf_cp06_mage_int8_template", image),
+    ).resolves.toEqual({
+      id: "template_cp06_01",
+      idHash: "sha256:92fb3e5520e49f8d43ad3a75075c25491227c965fa4a5b0440723a98e927f0f4",
+    });
+
+    for (const unsafe of [
+      { isPublic: true },
+      { isServerless: true },
+      { dockerEntrypoint: ["sh"] },
+      { dockerStartCmd: ["sleep", "infinity"] },
+      { volumeInGb: 1 },
+    ]) {
+      const unsafeClient = new RunPodPodControlClient({
+        apiKey: key,
+        fetch: async () => response([{ ...sparseTemplate, ...unsafe }]),
+        baseUrl: "http://127.0.0.1:43123",
+      });
+      await expect(
+        unsafeClient.findMagePodTemplateByName("vf_cp06_mage_int8_template", image),
+      ).rejects.toMatchObject({
+        code: "RUNPOD_MAGE_TEMPLATE_IDENTITY_UNCONFIRMED",
+        resourceId: "template_cp06_01",
+      });
+    }
+  });
+
   it("creates an exact Secure EU-RO-1 RTX 4090 Pod with the owned volume", async () => {
     const fetch = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body)) as Record<string, unknown>;

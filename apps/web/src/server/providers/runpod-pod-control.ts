@@ -1023,13 +1023,14 @@ export class RunPodPodControlClient {
       value.imageName !== expectedImageDigest ||
       value.category !== "NVIDIA" ||
       value.containerDiskInGb !== 50 ||
-      value.isPublic !== false ||
-      value.isServerless !== false ||
-      !exactStringArray(value.dockerEntrypoint, []) ||
-      !exactStringArray(value.dockerStartCmd, []) ||
+      (value.isPublic !== undefined && value.isPublic !== false) ||
+      (value.isServerless !== undefined && value.isServerless !== false) ||
+      (value.dockerEntrypoint !== undefined &&
+        !exactStringArray(value.dockerEntrypoint, [])) ||
+      (value.dockerStartCmd !== undefined && !exactStringArray(value.dockerStartCmd, [])) ||
       !exactStaticEnvironment(value.env) ||
       !exactStringArray(value.ports, [CP06_MAGE_HTTP_PORT]) ||
-      value.volumeInGb !== 0 ||
+      (value.volumeInGb !== undefined && value.volumeInGb !== 0) ||
       value.volumeMountPath !== CP06_MAGE_NETWORK_VOLUME_MOUNT_PATH
     ) {
       throw new RunPodPodControlError("RUNPOD_MAGE_TEMPLATE_IDENTITY_UNCONFIRMED", resourceId);
