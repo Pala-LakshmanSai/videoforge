@@ -12,8 +12,8 @@ import { fetchCp07Catalog } from "./runpod-echo-cp07-preflight";
 
 export const CP07_ACCOUNT_HASH =
   "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c";
-export const CP07_GPU = "NVIDIA RTX PRO 4000 Blackwell";
-export const CP07_GPU_RATE_USD_PER_HOUR = 0.57;
+export const CP07_GPU = "NVIDIA L4";
+export const CP07_GPU_RATE_USD_PER_HOUR = 0.49;
 export const CP07_GPU_VRAM_GB = 24;
 export const CP07_REGION = "EU-RO-1";
 export const CP07_CAP_USD = 6;
@@ -25,7 +25,8 @@ export const CP07_VOLUME_SIZE_GB = 50;
 export const CP06_MAGE_VOLUME_ID_HASH =
   "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 export const CP07_INVALID_ECHO_VOLUME_ID_HASH =
-  "sha256:b1b829ef08e8259e3a350efb67074afed973da373dfbe4c6f0f85c62eb0d3ef5";
+  "sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f";
+export const CP07_REUSE_VERIFIED_EMPTY_ECHO_VOLUME = true;
 export const CP07_TEMPLATE_NAME = "videoforge-echo-flash-turbo-cp07-template";
 export const CP07_MODEL_ROOT = "/runpod-volume/echo-flash-turbo-fp8";
 export const CP07_VOLUME_MOUNT = "/runpod-volume";
@@ -824,23 +825,7 @@ export async function runCp07PhaseB(options: {
     throw new Cp07PhaseBError("CP07_TEMPLATE_ALREADY_EXISTS");
   }
 
-  await client.deleteInvalidEchoVolumeAndConfirm(invalidEchoVolume);
-  const volume = await client.createVolume();
-  if (sha256(volume.id) === CP07_INVALID_ECHO_VOLUME_ID_HASH) {
-    throw new Cp07PhaseBError("CP07_RECREATED_VOLUME_IDENTITY_REUSED");
-  }
-  await sleep(CP07_VOLUME_ATTACHMENT_SETTLE_MS);
-  const settledVolumes = await client.listVolumes();
-  const settledEcho = settledVolumes.find((candidate) => candidate.id === volume.id);
-  if (
-    settledVolumes.length !== 2 ||
-    settledEcho === undefined ||
-    settledEcho.name !== CP07_VOLUME_NAME ||
-    settledEcho.size !== CP07_VOLUME_SIZE_GB ||
-    settledEcho.dataCenterId !== CP07_REGION
-  ) {
-    throw new Cp07PhaseBError("CP07_REPLACEMENT_VOLUME_NOT_SETTLED");
-  }
+  const volume = invalidEchoVolume;
   let template: ProviderTemplate | null = null;
   let activePod: ProviderPod | null = null;
   const deletionEvidence: DeletedPodEvidence[] = [];

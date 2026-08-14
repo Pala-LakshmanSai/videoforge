@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T19:25:30Z"
+updated_at: "2026-08-14T19:28:30Z"
 
 phase: cp07_phase_b_third_paid_execution_authorized
 implementation_authorized_in_current_task: true
@@ -26,7 +26,7 @@ provider_authority:
   resources:
     - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:f6c952a6b5979d94f788410b6e4c093cc50ee2b7"
     - "runpod:EU-RO-1:echo-only-network-volume:50GB"
-    - "runpod:EU-RO-1:secure:NVIDIA RTX PRO 4000 Blackwell:1x:maximum-$0.57/hour"
+    - "runpod:EU-RO-1:secure:NVIDIA L4:1x:maximum-$0.49/hour"
     - "BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249#echomimicv3-flash-pro"
   authorized_operations:
     - push_exact_cp07_branch_commits
@@ -377,7 +377,7 @@ cp07_phase_a:
   runpod_active_serverless_workers: 0
   runpod_network_volumes: 2
   echo_volume_exists: true
-  echo_volume_id_sha256: "sha256:b1b829ef08e8259e3a350efb67074afed973da373dfbe4c6f0f85c62eb0d3ef5"
+  echo_volume_id_sha256: "sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f"
   echo_volume_state: incomplete_or_unverified
   gpu_choices:
     - offering_id: "NVIDIA GeForce RTX 4090"
@@ -395,11 +395,11 @@ cp07_phase_a:
   external_spend_usd: 0.05622458457946777
   external_spend_state: current_attempt_settled_prior_attempt_conservatively_bounded
   conservative_reserved_finite_spend_upper_bound_usd: 1.1662245845794678
-  proposed_maximum_additional_pod_cost_usd: 2.166
-  proposed_maximum_cumulative_finite_estimate_usd: 3.332225
+  proposed_maximum_additional_pod_cost_usd: 1.862
+  proposed_maximum_cumulative_finite_estimate_usd: 3.028225
   latest_user_supplied_cap_usd: 6
-  proposed_cap_margin_usd: 2.667775
-  provider_mutations: 36
+  proposed_cap_margin_usd: 2.971775
+  provider_mutations: 41
   local_tests: passed
   canonical_verify: passed
   canonical_verify_commit: "5d38739a5f53f6b0e67d6cbf1950ba29c7645061"
@@ -421,10 +421,10 @@ cp07_phase_a:
   third_local_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-local-preflight.json"
   third_paid_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-authorization.json"
   proposed_third_image_source_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:f6c952a6b5979d94f788410b6e4c093cc50ee2b7"
-  selected_gpu_offering_id: "NVIDIA RTX PRO 4000 Blackwell"
-  selected_gpu_rate_usd_per_hour: 0.57
+  selected_gpu_offering_id: "NVIDIA L4"
+  selected_gpu_rate_usd_per_hour: 0.49
   selected_gpu_vram_gb: 24
-  selected_gpu_availability: MEDIUM
+  selected_gpu_availability: LOW
   unattended_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/unattended-authority.json"
   rtx4090_allocation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4090-allocation-failure.json"
   rtx5090_allocation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-5090-allocation-failure.json"
@@ -432,11 +432,13 @@ cp07_phase_a:
   rtx_pro_4500_pre_settle_allocation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4500-allocation-failure.json"
   rtx_pro_4500_post_settle_allocation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4500-allocation-failure-after-settle.json"
   rtx_pro_4500_no_instances_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4500-no-instances.json"
+  rtx_pro_4000_no_instances_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4000-no-instances.json"
+  reuse_verified_empty_echo_volume: true
   volume_attachment_settle_delay_ms: 30000
   pre_mutation_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/pre-mutation-preflight.json"
   approved_gpu_priority:
-    - offering_id: "NVIDIA RTX PRO 4000 Blackwell"
-      maximum_rate_usd_per_hour: 0.57
+    - offering_id: "NVIDIA L4"
+      maximum_rate_usd_per_hour: 0.49
   approved_echo_volume_size_gb: 50
   approved_echo_volume_retention_usd_per_month: 3.5
   proposed_revised_operations:

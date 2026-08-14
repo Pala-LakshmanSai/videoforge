@@ -14,6 +14,7 @@ export const CP07_MINIMUM_HEADROOM_BYTES = 22_027_682_265 as const;
 const ALLOWED_GPU_IDS = new Set([
   "NVIDIA GeForce RTX 4090",
   "NVIDIA GeForce RTX 5090",
+  "NVIDIA L4",
   "NVIDIA RTX PRO 4000 Blackwell",
   "NVIDIA RTX PRO 4500 Blackwell",
   "NVIDIA RTX PRO 6000 Blackwell Server Edition",

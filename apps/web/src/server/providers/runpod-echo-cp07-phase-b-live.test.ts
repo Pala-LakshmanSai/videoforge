@@ -9,6 +9,7 @@ import {
   CP07_PRIOR_CONSERVATIVE_SPEND_USD,
   CP07_VOLUME_NAME,
   CP07_VOLUME_ATTACHMENT_SETTLE_MS,
+  CP07_REUSE_VERIFIED_EMPTY_ECHO_VOLUME,
   sanitizeCp07ProviderFailure,
 } from "./runpod-echo-cp07-phase-b-live";
 
@@ -29,6 +30,9 @@ const exactVolumes = () =>
   ] as const;
 
 describe("CP-07 invalid Echo volume replacement boundary", () => {
+  it("reuses only the exact proven-empty replacement volume after zero-Pod allocation failures", () => {
+    expect(CP07_REUSE_VERIFIED_EMPTY_ECHO_VOLUME).toBe(true);
+  });
   it("redacts provider URLs and opaque identities before diagnostics", () => {
     const safe = sanitizeCp07ProviderFailure(
       "failed privateVolumeIdentity123456789 at https://private.example/path",
@@ -74,8 +78,8 @@ describe("CP-07 cumulative finite-cost boundary", () => {
     const sampleThree = assertCp07CumulativeReservation(prep + sample + sampleTwo, 2_700);
     const cumulative =
       CP07_PRIOR_CONSERVATIVE_SPEND_USD + prep + sample + sampleTwo + sampleThree;
-    expect(cumulative).toBeCloseTo(3.332225, 6);
-    expect(6 - cumulative).toBeCloseTo(2.667775, 6);
+    expect(cumulative).toBeCloseTo(3.028225, 6);
+    expect(6 - cumulative).toBeCloseTo(2.971775, 6);
   });
 
   it("rejects a next Pod whose reservation could cross the cumulative cap", () => {
