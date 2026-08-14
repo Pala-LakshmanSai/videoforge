@@ -63,11 +63,11 @@ describe("CP-07 cumulative finite-cost boundary", () => {
     const cumulative =
       CP07_PRIOR_CONSERVATIVE_SPEND_USD + prep + sample + sampleTwo + sampleThree;
     expect(cumulative).toBeCloseTo(3.978225, 6);
-    expect(4 - cumulative).toBeCloseTo(0.021775, 6);
+    expect(6 - cumulative).toBeCloseTo(2.021775, 6);
   });
 
   it("rejects a next Pod whose reservation could cross the cumulative cap", () => {
-    expect(() => assertCp07CumulativeReservation(2.88, 60)).toThrow("CP07_CUMULATIVE_CAP_RISK");
+    expect(() => assertCp07CumulativeReservation(4.88, 60)).toThrow("CP07_CUMULATIVE_CAP_RISK");
   });
 
   it.each([

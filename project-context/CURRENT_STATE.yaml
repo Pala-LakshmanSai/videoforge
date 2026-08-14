@@ -1,6 +1,6 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T19:07:57Z"
+updated_at: "2026-08-14T19:13:22Z"
 
 phase: cp07_phase_b_third_paid_execution_authorized
 implementation_authorized_in_current_task: true
@@ -12,11 +12,11 @@ task_stage: bounded_mutation
 application_code_changes_authorized: true
 provider_calls_authorized: true
 read_only_provider_calls_authorized: true
-maximum_external_spend_usd: 4
+maximum_external_spend_usd: 6
 provider_authority:
   mode: paid
   provider: runpod
-  cap_usd: 4
+  cap_usd: 6
   authorized_at: "2026-08-14T19:07:57Z"
   source: current_cp07_exact_third_user_authorization
   non_transferable: true
@@ -397,8 +397,8 @@ cp07_phase_a:
   conservative_reserved_finite_spend_upper_bound_usd: 1.1662245845794678
   proposed_maximum_additional_pod_cost_usd: 2.812
   proposed_maximum_cumulative_finite_estimate_usd: 3.978225
-  latest_user_supplied_cap_usd: 4
-  proposed_cap_margin_usd: 0.021775
+  latest_user_supplied_cap_usd: 6
+  proposed_cap_margin_usd: 2.021775
   provider_mutations: 11
   local_tests: passed
   canonical_verify: passed
@@ -407,7 +407,8 @@ cp07_phase_a:
   installed_chrome_tests: 42
   paid_execution_authorized: true
   paid_execution_authorized_at: "2026-08-14T19:07:57Z"
-  paid_execution_cap_usd: 4
+  paid_execution_cap_usd: 6
+  cap_extension_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/cap-extension-authorization.json"
   paid_execution_halted: false
   revised_paid_authority_required: false
   revised_paid_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/revised-authorization.json"
