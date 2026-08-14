@@ -553,6 +553,8 @@ export class RunPodCp06LiveAdapter implements Cp06PodNativePort {
       .find((candidate) => candidate?.id === CP06_PHASE_B_REGION);
     const securePrice = finite(price?.secure);
     const memoryGb = finite(gpu?.memory);
+    const available = (value: unknown): boolean =>
+      value === "LOW" || value === "MEDIUM" || value === "HIGH";
     if (
       !gpu ||
       !dataCenter ||
@@ -563,8 +565,8 @@ export class RunPodCp06LiveAdapter implements Cp06PodNativePort {
       securePrice === null ||
       memoryGb === null ||
       memoryGb < 24 ||
-      gpu.availability !== "HIGH" ||
-      dataCenter.availability !== "HIGH" ||
+      !available(gpu.availability) ||
+      !available(dataCenter.availability) ||
       finite(maximumCount?.secure) === null ||
       (finite(maximumCount?.secure) ?? 0) < 1
     ) {
