@@ -1025,8 +1025,7 @@ export class RunPodPodControlClient {
       value.containerDiskInGb !== 50 ||
       (value.isPublic !== undefined && value.isPublic !== false) ||
       (value.isServerless !== undefined && value.isServerless !== false) ||
-      (value.dockerEntrypoint !== undefined &&
-        !exactStringArray(value.dockerEntrypoint, [])) ||
+      (value.dockerEntrypoint !== undefined && !exactStringArray(value.dockerEntrypoint, [])) ||
       (value.dockerStartCmd !== undefined && !exactStringArray(value.dockerStartCmd, [])) ||
       !exactStaticEnvironment(value.env) ||
       !exactStringArray(value.ports, [CP06_MAGE_HTTP_PORT]) ||
