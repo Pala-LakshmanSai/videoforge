@@ -293,6 +293,18 @@ afterEach(async () => {
 });
 
 describe("CP-06 Phase B Pod orchestrator", () => {
+  it("reserves one maximum runtime for repeated intents of the same logical attempt", async () => {
+    const { journalPath } = await fixture();
+    const journal = await Cp06IntentAttemptJournal.open(journalPath);
+    for (let index = 0; index < 5; index += 1) {
+      await journal.append("pod_create_intent", {
+        attemptId: "vf-9-24q-cp06-prep-a01",
+        reservationMicroUsd: 370_000,
+      });
+    }
+    expect(journal.accountedCostMicroUsd()).toBe(370_000);
+  });
+
   it("runs exact prep, two fail-closed negatives, and eight samples split 4+4 over fresh Pods", async () => {
     const { journalPath } = await fixture();
     const port = new FakePodPort();

@@ -496,9 +496,17 @@ export class Cp06IntentAttemptJournal {
   }
 
   accountedCostMicroUsd(): number {
-    const reserved = this.records
-      .filter((record) => record.event === "pod_create_intent")
-      .reduce((sum, record) => sum + Number(record.reservationMicroUsd ?? 0), 0);
+    const perAttemptReservation = new Map<string, number>();
+    for (const record of this.records) {
+      if (record.event !== "pod_create_intent") continue;
+      const attemptKey = String(record.attemptId ?? `sequence:${record.sequence}`);
+      const reservation = Number(record.reservationMicroUsd ?? 0);
+      perAttemptReservation.set(
+        attemptKey,
+        Math.max(perAttemptReservation.get(attemptKey) ?? 0, reservation),
+      );
+    }
+    const reserved = [...perAttemptReservation.values()].reduce((sum, cost) => sum + cost, 0);
     const perPod = new Map<string, number>();
     for (const record of this.records) {
       if (record.event !== "pod_delete_intent" && record.event !== "pod_absence_confirmed")
