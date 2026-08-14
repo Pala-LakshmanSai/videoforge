@@ -998,8 +998,9 @@ export class RunPodPodControlClient {
       "dockerEntrypoint",
       !exactStringArray(value?.dockerEntrypoint, expectedEntrypoint) &&
         (!allowNormalizedReadOmissions ||
-          mode !== "runtime" ||
-          !exactStringArray(value?.dockerEntrypoint, runtimeImageEntrypoint)),
+          (value?.dockerEntrypoint !== undefined &&
+            (mode !== "runtime" ||
+              !exactStringArray(value.dockerEntrypoint, runtimeImageEntrypoint)))),
     );
     mismatch(
       "dockerStartCmd",

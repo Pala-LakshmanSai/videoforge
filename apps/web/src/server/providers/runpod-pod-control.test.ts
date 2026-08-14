@@ -345,6 +345,31 @@ describe("RunPod Pod-native CP-06 control", () => {
     });
   });
 
+  it("accepts RunPod omitting the entrypoint from an expanded Pod read", async () => {
+    const fetch = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      if (init?.method === "POST") return response({ id: "pod_cp06_01" });
+      const sparsePod = pod();
+      delete (sparsePod as { dockerEntrypoint?: unknown }).dockerEntrypoint;
+      return response({
+        ...sparsePod,
+        imageName: image,
+        env: undefined,
+        lastStartedAt: "2026-08-14 08:00:00.000 +0000 UTC",
+      });
+    });
+    const client = new RunPodPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.createMagePod({ ...authority, workerToken: "t".repeat(40) }),
+    ).resolves.toMatchObject({
+      id: "pod_cp06_01",
+      desiredStatus: "RUNNING",
+    });
+  });
+
   it("creates a dedicated prep-service Pod with the exact raw volume authority", async () => {
     const prepEntrypoint = ["python", "/opt/videoforge/mage_prepare_service.py"];
     let postedEnvironment: unknown;
