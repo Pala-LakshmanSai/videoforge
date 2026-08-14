@@ -35,7 +35,7 @@ test("CI exposes five bounded lanes and one fail-closed aggregate", () => {
 test("CI owns tools and suites only in their responsible lanes", () => {
   assert.equal(workflow.match(/install --with-deps chrome/gu)?.length, 1);
   assert.equal(workflow.match(/install --with-deps chromium/gu)?.length, 1);
-  assert.equal(workflow.match(/apt-get install --yes ffmpeg/gu)?.length, 1);
+  assert.equal(workflow.match(/apt-get install --yes ffmpeg/gu)?.length, 2);
   assert.equal(workflow.includes("pnpm verify\n"), false);
   for (const command of [
     "pnpm ci:static",
