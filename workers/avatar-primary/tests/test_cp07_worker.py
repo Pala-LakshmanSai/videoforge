@@ -151,6 +151,12 @@ class Cp07WorkerTest(unittest.TestCase):
         self.assertIn('for index in range(16_000)', source)
         self.assertIn('math.sin(2 * math.pi * 220', source)
 
+    def test_qualification_uses_submit_and_poll_for_long_gpu_inference(self) -> None:
+        source = (ROOT / "echo_api.py").read_text()
+        self.assertIn('asyncio.create_task(_run_generation(job_id, value))', source)
+        self.assertIn('videoforge.echo-qualification-accepted/v1', source)
+        self.assertIn('@app.get("/generate/{job_id}")', source)
+
     def test_fp8_preparation_requires_cuda_89_or_newer(self) -> None:
         class FakeCuda:
             available = True

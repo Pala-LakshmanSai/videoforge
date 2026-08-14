@@ -18,9 +18,9 @@ export const CP07_GPU_VRAM_GB = 32;
 export const CP07_CUDA_ALLOC_CONF = "expandable_segments:True";
 export const CP07_REGION = "EU-RO-1";
 export const CP07_CAP_USD = 6;
-// Settled live audit was $0.385678 across 10 deleted Pods; this also reserves both
-// not-yet-settled 5090 warm-up attempts while every Pod is independently absent.
-export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 0.9;
+// Settled live audit was $0.385678 across 10 deleted Pods; this also reserves the
+// not-yet-settled 5090 qualification attempts while every Pod is independently absent.
+export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 1.1;
 export const CP07_POD_LIFECYCLE_RESERVE_SECONDS = 120;
 export const CP07_VOLUME_ATTACHMENT_SETTLE_MS = 30_000;
 export const CP07_CAPACITY_RETRY_DELAY_MS = 30_000;
@@ -43,6 +43,7 @@ const REST = "https://rest.runpod.io/v1";
 const CATALOG_IMAGE_REPOSITORY = "pala-lakshmansai/videoforge-echo-flash-turbo-cp07";
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,190}$/u;
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
+const QUALIFICATION_JOB_ID = /^[A-Za-z0-9_-]{32}$/u;
 const PROXY = /^https:\/\/[A-Za-z0-9_-]+-8000\.proxy\.runpod\.net$/u;
 const execFileAsync = promisify(execFile);
 
@@ -737,6 +738,48 @@ const pollWorker = async (
   throw new Cp07PhaseBError(last ? "CP07_WORKER_TERMINAL_TIMEOUT" : "CP07_WORKER_UNREACHABLE");
 };
 
+const pollGeneration = async (
+  podId: string,
+  workerToken: string,
+  jobId: string,
+  timeoutSeconds: number,
+): Promise<JsonRecord> => {
+  if (!QUALIFICATION_JOB_ID.test(jobId) || timeoutSeconds < 1) {
+    throw new Cp07PhaseBError("CP07_GENERATION_POLL_INPUT_INVALID");
+  }
+  const deadline = Date.now() + timeoutSeconds * 1_000;
+  while (Date.now() <= deadline) {
+    const response = await fetch(`${proxyUrl(podId)}/generate/${jobId}`, {
+      headers: { authorization: `Bearer ${workerToken}` },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) throw new Cp07PhaseBError(`CP07_GENERATION_POLL_HTTP_${response.status}`);
+    const status = record(await response.json());
+    if (
+      status?.schema_version !== "videoforge.echo-qualification-status/v1" ||
+      status.job_id !== jobId
+    ) {
+      throw new Cp07PhaseBError("CP07_GENERATION_STATUS_INVALID");
+    }
+    if (status.status === "complete") {
+      const result = record(status.result);
+      if (result === null) throw new Cp07PhaseBError("CP07_GENERATION_RESULT_INVALID");
+      return result;
+    }
+    if (status.status === "failed") {
+      throw new Cp07PhaseBError(
+        "CP07_GENERATION_FAILED",
+        sanitizeCp07ProviderFailure(String(status.error_code ?? "ECHO_GENERATION_FAILED")),
+      );
+    }
+    if (status.status !== "running") {
+      throw new Cp07PhaseBError("CP07_GENERATION_STATUS_INVALID");
+    }
+    await sleep(3_000);
+  }
+  throw new Cp07PhaseBError("CP07_GENERATION_TIMEOUT");
+};
+
 const writePrivate = async (filePath: string, bytes: Buffer): Promise<void> => {
   await mkdir(path.dirname(filePath), { recursive: true, mode: 0o700 });
   await writeFile(filePath, bytes, { mode: 0o600, flag: "wx" });
@@ -950,9 +993,12 @@ export async function runCp07PhaseB(options: {
         workerToken,
       };
       activePod = await client.createPod(authority);
+      const sampleDeadline = Date.now() + sampleMaximumSeconds * 1_000;
+      const remainingSampleSeconds = (): number =>
+        Math.max(1, Math.floor((sampleDeadline - Date.now()) / 1_000));
       const health = await pollWorker(
         activePod.id,
-        sampleMaximumSeconds,
+        remainingSampleSeconds(),
         (candidate) => candidate.phase === "ready" || candidate.phase === "error",
       );
       await writePrivate(
@@ -1005,14 +1051,28 @@ export async function runCp07PhaseB(options: {
           "content-type": "application/json",
         },
         body: canonicalizeJson(request),
-        signal: AbortSignal.timeout(sampleMaximumSeconds * 1_000),
+        signal: AbortSignal.timeout(30_000),
       });
-      if (!response.ok) {
+      if (response.status !== 202) {
         const failure = Buffer.from((await response.text()).slice(0, 20_000));
         await writePrivate(path.join(sampleDirectory, "failure.private.txt"), failure);
         throw new Cp07PhaseBError(`CP07_GENERATION_HTTP_${response.status}`);
       }
-      const result = record(await response.json());
+      const accepted = record(await response.json());
+      if (
+        accepted?.schema_version !== "videoforge.echo-qualification-accepted/v1" ||
+        accepted.status !== "running" ||
+        typeof accepted.job_id !== "string" ||
+        !QUALIFICATION_JOB_ID.test(accepted.job_id)
+      ) {
+        throw new Cp07PhaseBError("CP07_GENERATION_ACCEPTANCE_INVALID");
+      }
+      const result = await pollGeneration(
+        activePod.id,
+        workerToken,
+        accepted.job_id,
+        remainingSampleSeconds(),
+      );
       const outputBase64 = result?.output_base64;
       if (
         result?.schema_version !== "videoforge.echo-qualification-result/v1" ||
