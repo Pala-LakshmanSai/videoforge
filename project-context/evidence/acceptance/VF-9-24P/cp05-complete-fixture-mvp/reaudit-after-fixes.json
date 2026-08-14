@@ -1,0 +1,136 @@
+{
+  "schema_version": "videoforge.cp05-reaudit/v1",
+  "task_id": "VF-9-24P",
+  "checkpoint": "CP-05",
+  "status": "PASS_PROVIDER_FREE_COMPLETE_FIXTURE_MVP_REAUDITED",
+  "recorded_at": "2026-08-14T04:02:33Z",
+  "audited_code_head": "58395225d9f2e11ac556e6b67f186b1fb5502336",
+  "history_preserved": {
+    "original_acceptance": "project-context/evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/acceptance.json",
+    "audit_fix_commit": "0db21f80361f7c115a4100e3ab1df0a7372f2ce8",
+    "foundation_runtime_fix_commit": "e7337aaf71275dec081663b222eb8cde42936989",
+    "read_serialization_fix_commit": "68e4f03c664c1146946ee440a1fdb15e5fb209d0",
+    "audit_harness_commit": "58395225d9f2e11ac556e6b67f186b1fb5502336"
+  },
+  "dependency": {
+    "cp01_through_cp04_committed_in_head_ancestry": true,
+    "cp01_authority_commit": "522ed6112d39e0bcbd03955ad753b79cef2fdb6d",
+    "cp02_audit_fix_commit": "5747e7b4e9c1d41564663afb1c0c0ad7272efe5b",
+    "cp03_audit_fix_commit": "a6a924856a58c233eadd8af402fbf78c6c821b97",
+    "cp04_local_render_profile_fix_commit": "cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690"
+  },
+  "fixed_audit_findings": {
+    "dynamic_project_outputs": "Each project materializes transcript, scheduler-v2 timeline, CP-04 generation/render work manifests, prompt fixture, selected-span WAVs, synthetic lane media, resolved render manifest, and a direct FFmpeg MP4.",
+    "foundation_authority": "Node persistence validates transcript and timeline contracts, compiles the proven CP-04 work plan, and rejects any Workerd-safe mirror hash difference before persistence.",
+    "absent_lane_recreation": "A fresh exact locked-GPU validation receipt is required before an absent synthetic lane may be recreated after next-project activation.",
+    "transactionality": "Rejected queue/orchestrator mutations roll back exact shared state; asynchronous mutations serialize; GET reads wait for committed state.",
+    "dev_control_boundary": "Reset, invite, recover, and callback routes require the fixed local fixture-control marker; recovery/callback additionally require admission; normal advance is admitted v1 API only."
+  },
+  "global_mvp_invariants": {
+    "one_shared_equal_rights_app": true,
+    "gated_one_time_admission": true,
+    "singleton_session": true,
+    "gpu_selection_only_while_truly_idle": true,
+    "immutable_session_pair": true,
+    "global_waiting_only_reorder_remove": true,
+    "one_active_video": true,
+    "independent_lane_shutdown_at_zero_demand": true,
+    "waiter_can_keep_only_existing_pod_warm": true,
+    "absent_lane_recreated_only_after_next_project_activation": true,
+    "no_silent_substitution": true,
+    "queue_drain_zero_pods": true,
+    "separate_retained_volumes": true,
+    "close_and_unlock_only_after_both_absences": true,
+    "cross_project_artifact_scratch_callback_leak_rejected": true
+  },
+  "acceptance_journey": {
+    "projects_enqueued": 4,
+    "waiting_projects_removed": 1,
+    "projects_completed": 3,
+    "reorder_remove_waiting": "PASSED",
+    "crash_restart": "PASSED",
+    "stale_callback": "REJECTED",
+    "wrong_pod_gpu_volume": "REJECTED",
+    "independent_lane_drain": "PASSED",
+    "final_playback": "PASSED_INSTALLED_CHROME_DESKTOP_AND_COMPACT",
+    "final_download_exact_bytes": "PASSED"
+  },
+  "final_mp4s": [
+    {
+      "project_id": "cp05-project-1",
+      "sha256": "sha256:f0e8a81f0676debad6ac16e79111142b6a91f7cc715a499af466a0cd8eeeefce",
+      "byte_size": 4101991
+    },
+    {
+      "project_id": "cp05-project-2",
+      "sha256": "sha256:9515ca9b00c78a2506b515f25e49b0e323bc76d1cf3e16bcf376a92a6fd2459d",
+      "byte_size": 4099102
+    },
+    {
+      "project_id": "cp05-project-4",
+      "sha256": "sha256:fa81022d8f9f3fdd98ba237c417c8a22df8f09f6cc22db6f9eb4dd4b80a32786",
+      "byte_size": 4132730
+    }
+  ],
+  "final_mp4_common_probe": {
+    "renderer": "DIRECT_FFMPEG",
+    "duration_ms": 40000,
+    "total_frames": 1200,
+    "width": 1920,
+    "height": 1080,
+    "fps": "30/1",
+    "video_codec": "h264",
+    "audio_codec": "aac",
+    "audio_sample_rate_hz": 48000,
+    "audio_channels": 1,
+    "distinct_hash_count": 3
+  },
+  "legacy_cutover": {
+    "active_runtime_scan": "PASSED_62_FILES",
+    "vnext_dispatch_firewall": "PASSED",
+    "active_serverless_auto_old_bf16_avatarforcing_musetalk_skyreels_repair_quality_fallback_or_historical_crop_path": false,
+    "historical_replay": "PROVIDER_FREE_NON_DISPATCHING",
+    "old_migrations_evidence_and_v1_bytes_preserved": true
+  },
+  "validation": {
+    "focused_provider_free_orchestration": "3_PASSED",
+    "focused_web": "78_PASSED",
+    "web_full": "228_PASSED",
+    "control_plane_full": "226_PASSED",
+    "pipeline_full": "120_PASSED",
+    "workerd_runtime_parity": "1_PASSED",
+    "installed_chrome": "42_PASSED_DESKTOP_AND_COMPACT",
+    "cp05_installed_chrome": "2_PASSED_DESKTOP_AND_COMPACT",
+    "canonical_verify": "PASSED_CI_TURBO_FORCE_AT_5839522",
+    "package_graph": "28_OF_28_SUCCESSFUL",
+    "context_validation": "PASSED",
+    "contract_sync": "PASSED_66_CANONICAL_FILES",
+    "secret_scan": "PASSED_1109_TRACKED_FILES",
+    "dependency_audit": "NO_KNOWN_VULNERABILITIES"
+  },
+  "provider_and_spend": {
+    "provider_calls_authorized": false,
+    "provider_calls": 0,
+    "credentials_accessed": false,
+    "cloud_mutations": 0,
+    "model_downloads": 0,
+    "image_publications": 0,
+    "gpu_used": false,
+    "external_spend_usd": 0,
+    "paid_compute_started": false,
+    "live_provider_inventory_refreshed": false,
+    "paid_compute_shutdown": "NO_PAID_COMPUTE_STARTED"
+  },
+  "claims_not_proven": [
+    "Hosted Cloudflare, Neon, R2, Workflow, or Cloud Run execution",
+    "Live provider model, GPU, rate, cost, Pod, or retained-volume state",
+    "Production credentials or provider integration",
+    "Production end-to-end completion"
+  ],
+  "next_checkpoint": {
+    "checkpoint": "CP-06",
+    "dependency_safe_to_start": true,
+    "authorized": false,
+    "started": false
+  }
+}
