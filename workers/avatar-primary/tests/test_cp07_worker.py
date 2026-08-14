@@ -136,10 +136,15 @@ class Cp07WorkerTest(unittest.TestCase):
         assign = source.index(
             "pipeline.transformer.load_state_dict(state, strict=True, assign=True)"
         )
-        move = source.index("pipeline.to(device=self.device)")
+        move = source.index("pipeline.enable_model_cpu_offload(device=self.device)")
         self.assertLess(meta, load)
         self.assertLess(load, assign)
         self.assertLess(assign, move)
+
+    def test_runtime_offloads_non_active_pipeline_components_between_gpu_stages(self) -> None:
+        source = (ROOT / "echo_backend.py").read_text()
+        self.assertIn("pipeline.enable_model_cpu_offload(device=self.device)", source)
+        self.assertNotIn("pipeline.to(device=self.device)", source)
 
     def test_runtime_uses_an_explicit_single_cuda_device_for_fp8_restore(self) -> None:
         source = (ROOT / "echo_backend.py").read_text()

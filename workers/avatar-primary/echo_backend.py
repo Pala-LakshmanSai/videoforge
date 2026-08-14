@@ -111,7 +111,7 @@ class EchoPreparedBackend:
         missing, unexpected = pipeline.transformer.load_state_dict(state, strict=True, assign=True)
         if missing or unexpected:
             raise RuntimeError("ECHO_PREPARED_STATE_LOAD_MISMATCH")
-        pipeline.to(device=self.device)
+        pipeline.enable_model_cpu_offload(device=self.device)
         coefficients = upstream.get_teacache_coefficients(str(base))
         if coefficients is not None:
             pipeline.transformer.enable_teacache(
