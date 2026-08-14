@@ -6,7 +6,7 @@
   "status": "provider_free_preflight_passed_awaiting_paid_authority",
   "implementation_commit": "c89acef78d4a4bbbbac118ca9c658b6180d68fc8",
   "safety_fix_commit": "75c852bb891dbe205ee43d2b73e74765bc336373",
-  "verified_context_commit": "73fba9ab06b06cb80b536597269a78a034f76517",
+  "verified_context_commit": "b7afb69efa2e31003f1b4408f51508ea38c05b3c",
   "external_spend_usd": 0,
   "provider_mutations": 0,
   "cp06_prerequisite": {
@@ -139,8 +139,10 @@
     "vnext_dispatch_firewall": "passed",
     "context_validation": "passed",
     "secret_scan": "passed",
-    "canonical_verify": "pending_for_current_safety_fix",
-    "prior_canonical_verify_commit": "73fba9ab06b06cb80b536597269a78a034f76517"
+    "canonical_verify": "passed_CI_1_TURBO_FORCE_true_pnpm_verify",
+    "canonical_verify_checked_at": "2026-08-14T15:45:33Z",
+    "installed_chrome": "42_passed",
+    "cloudflare_runtime_parity": "1_passed"
   },
   "read_only_preflight_evidence_sha256": "sha256:a7f7eea08857b9abc83d17af0402501d4a4b57feb0663171bfa6705fbe53ead0",
   "paid_execution_authorized": false,

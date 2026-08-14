@@ -11,7 +11,6 @@ compute, one retained Mage volume, and absence of an Echo volume. It does not pr
 build, published digest, model preparation, Echo volume, GPU compatibility, inference, MP4 output,
 crop acceptance, settled paid cost, or production readiness.
 
-Before the safety fix, `CI=1 TURBO_FORCE=true pnpm verify` passed against context commit
-`73fba9ab06b06cb80b536597269a78a034f76517`, including 28/28 forced package tasks, 285 web tests,
+`CI=1 TURBO_FORCE=true pnpm verify` passed against current safety-fix context commit
+`b7afb69efa2e31003f1b4408f51508ea38c05b3c`, including 28/28 forced package tasks, 285 web tests,
 226 control-plane tests, all worker suites, Cloudflare runtime parity, and 42 installed-Chrome tests.
-Current canonical verification is recorded only after the safety-fix context commit passes.
