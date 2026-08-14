@@ -206,6 +206,7 @@ test.beforeEach(async ({ page }, testInfo) => {
   const sessionId = fixtureSessionId(testInfo);
   await page.setExtraHTTPHeaders({
     "X-VideoForge-Fixture-Session": sessionId,
+    "X-VideoForge-Fixture-Control": "cp05-fixture-control-v1",
   });
   const reset = await page.request.post("/api/dev/fixture-session/reset", {
     headers: { "X-VideoForge-Fixture-Session": sessionId },

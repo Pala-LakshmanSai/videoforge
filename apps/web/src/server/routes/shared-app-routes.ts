@@ -3,8 +3,10 @@ import { ProviderFreeOrchestrationError } from "@videoforge/control-plane/provid
 
 import type { FixtureRuntime } from "../fixture-runtime";
 import { apiProblem, problemResponse } from "../problem";
-import { providerFreeFixtureMp4Bytes } from "../provider-free-fixture-mp4";
 import { SharedFixtureError } from "../shared-app-fixture";
+
+const FIXTURE_CONTROL_HEADER = "x-videoforge-fixture-control";
+const FIXTURE_CONTROL_VALUE = "cp05-fixture-control-v1";
 
 function failure(error: unknown): Response {
   if (error instanceof SharedFixtureError || error instanceof ProviderFreeOrchestrationError) {
@@ -23,11 +25,27 @@ function failure(error: unknown): Response {
 
 export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): void {
   app.post("/api/dev/shared-app/reset", (c) => {
+    if (c.req.header(FIXTURE_CONTROL_HEADER) !== FIXTURE_CONTROL_VALUE)
+      return problemResponse(
+        apiProblem(
+          "FIXTURE_CONTROL_REQUIRED",
+          403,
+          "Fixture control is required",
+          "Global reset is available only to the explicit local acceptance harness.",
+          false,
+        ),
+      );
     runtime.sharedApp.reset();
     return c.json({ ok: true, providerCallsAuthorized: false, authorizedSpendUsd: 0 });
   });
   app.post("/api/dev/shared-app/invites", async (c) => {
     try {
+      if (c.req.header(FIXTURE_CONTROL_HEADER) !== FIXTURE_CONTROL_VALUE)
+        throw new SharedFixtureError(
+          "FIXTURE_CONTROL_REQUIRED",
+          403,
+          "Invite issuance is available only to the explicit local acceptance harness.",
+        );
       const body = (await c.req.json()) as { email?: string };
       const issued = await runtime.sharedApp.issueInvite(body.email ?? "");
       return c.json({
@@ -41,16 +59,13 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     }
   });
 
-  app.post("/api/dev/shared-app/advance", async (c) => {
-    try {
-      return c.json(await runtime.sharedApp.advance());
-    } catch (error) {
-      return failure(error);
-    }
-  });
-
   app.post("/api/dev/shared-app/recover", (c) => {
     try {
+      if (c.req.header(FIXTURE_CONTROL_HEADER) !== FIXTURE_CONTROL_VALUE)
+        throw new SharedFixtureError("FIXTURE_CONTROL_REQUIRED", 403, "Fixture control required.");
+      const session = runtime.resolveSession(c);
+      if (!session.ok) return session.response;
+      runtime.sharedApp.assertAdmitted(session.id);
       runtime.sharedApp.recover();
       return c.json({ ok: true, providerCallsAuthorized: false, authorizedSpendUsd: 0 });
     } catch (error) {
@@ -60,6 +75,11 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
 
   app.post("/api/dev/shared-app/callback", async (c) => {
     try {
+      if (c.req.header(FIXTURE_CONTROL_HEADER) !== FIXTURE_CONTROL_VALUE)
+        throw new SharedFixtureError("FIXTURE_CONTROL_REQUIRED", 403, "Fixture control required.");
+      const session = runtime.resolveSession(c);
+      if (!session.ok) return session.response;
+      runtime.sharedApp.assertAdmitted(session.id);
       const body = (await c.req.json()) as Parameters<
         typeof runtime.sharedApp.acceptLaneCallback
       >[0];
@@ -120,6 +140,17 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     }
   });
 
+  app.post("/api/v1/shared-app/advance", async (c) => {
+    const session = runtime.resolveSession(c);
+    if (!session.ok) return session.response;
+    try {
+      runtime.sharedApp.assertAdmitted(session.id);
+      return c.json(await runtime.sharedApp.advance());
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
   app.get("/api/v1/shared-app/projects/:projectId", (c) => {
     try {
       return c.json(runtime.sharedApp.projectOrchestration(c.req.param("projectId")));
@@ -128,7 +159,7 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     }
   });
 
-  app.get("/api/v1/shared-app/projects/:projectId/download", (c) => {
+  app.get("/api/v1/shared-app/projects/:projectId/download", async (c) => {
     try {
       const project = runtime.sharedApp.projectOrchestration(c.req.param("projectId"));
       if (project.finalAsset === null || project.stage !== "READY_FOR_REVIEW") {
@@ -151,7 +182,8 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
       );
       c.header("x-videoforge-sha256", project.finalAsset.sha256);
       c.header("x-videoforge-artifact-kind", "provider-free-final-mp4");
-      return c.body(providerFreeFixtureMp4Bytes().buffer as ArrayBuffer);
+      const bytes = await runtime.sharedApp.finalMp4(project.projectId);
+      return c.body(bytes.buffer as ArrayBuffer);
     } catch (error) {
       return failure(error);
     }

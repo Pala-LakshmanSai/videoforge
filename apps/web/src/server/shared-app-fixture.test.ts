@@ -118,6 +118,28 @@ describe("shared fixture admission", () => {
 });
 
 describe("shared fixture singleton queue", () => {
+  it("rolls back every queue mutation when orchestration rejects an enqueue", async () => {
+    const store = new SharedAppFixtureStore();
+    await admit(store, 1);
+    const pair = selectedPair(store);
+    store.startOrEnqueue({
+      sessionId: "browser-1",
+      projectId: "duplicate",
+      title: "Original",
+      ...pair,
+    });
+    const before = store.exportSnapshot();
+    expect(() =>
+      store.startOrEnqueue({
+        sessionId: "browser-1",
+        projectId: "duplicate",
+        title: "Rejected duplicate",
+      }),
+    ).toThrowError(/already present/);
+    expect(store.exportSnapshot()).toBe(before);
+    expect(store.view("browser-1").queue.map((entry) => entry.title)).toEqual(["Original"]);
+  });
+
   it("admits 10 equal users and permits only one concurrent idle start", async () => {
     const store = new SharedAppFixtureStore();
     for (let serial = 1; serial <= 10; serial += 1)
@@ -237,6 +259,7 @@ describe("shared fixture singleton queue", () => {
       "waiting-a",
       "waiting-b",
     ]);
+    expect(new Set(completed.map((project) => project.finalAsset?.sha256)).size).toBe(3);
     expect(
       final.orchestration.events
         .filter((event) => event.kind === "FINAL_MP4_DURABLE")
@@ -252,9 +275,50 @@ describe("shared fixture singleton queue", () => {
       });
       expect(project.cost.actualExternalSpendUsd).toBe(0);
       expect(project.cost.reportedMicroUsd).toBe(project.cost.settledMicroUsd);
+      await expect(store.finalMp4(project.projectId)).resolves.toHaveLength(
+        project.finalAsset!.byteSize,
+      );
     }
     expect(
       final.orchestration.projects.find((project) => project.projectId === "remove-me")?.stage,
     ).toBe("REMOVED");
+  });
+
+  it("revalidates exact locked GPUs before recreating independently absent lanes", async () => {
+    const store = new SharedAppFixtureStore();
+    await admit(store, 1);
+    store.startOrEnqueue({
+      sessionId: "browser-1",
+      projectId: "active",
+      title: "Active",
+      ...selectedPair(store),
+    });
+    for (let index = 0; index < 40; index += 1) {
+      const mage = store.view("browser-1").orchestration.session?.lanes.mage_image.attempts.at(-1);
+      if (mage?.phase === "ABSENCE_VERIFIED") break;
+      await store.advance();
+    }
+    expect(
+      store.view("browser-1").orchestration.session?.lanes.mage_image.attempts.at(-1)?.phase,
+    ).toBe("ABSENCE_VERIFIED");
+    store.startOrEnqueue({
+      sessionId: "browser-1",
+      projectId: "late",
+      title: "Late waiter",
+    });
+    for (let index = 0; index < 40; index += 1) {
+      if (store.view("browser-1").orchestration.session?.activeProjectId === "late") break;
+      await store.advance();
+    }
+    const promoted = store.view("browser-1").orchestration;
+    expect(promoted.session?.activeProjectId).toBe("late");
+    const recreated = promoted.session!.lanes.mage_image.attempts.at(-1)!;
+    expect(recreated.attemptId).toMatch(/-2$/u);
+    expect(recreated.gpuValidationId).toMatch(/^fixture-gpu-validation-/u);
+    expect(
+      promoted.events.some(
+        (event) => event.kind === "GPU_REVALIDATED_FOR_RECREATE" && event.lane === "mage_image",
+      ),
+    ).toBe(true);
   });
 });

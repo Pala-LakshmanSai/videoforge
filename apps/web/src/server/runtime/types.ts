@@ -3,6 +3,7 @@ import type { Hono } from "hono";
 
 import type { LocalSliceRunner } from "../local/types";
 import type { SharedAppPersistence } from "../shared-app-persistence";
+import type { ProviderFreeArtifactRuntime } from "../provider-free-artifact-runtime";
 
 export type RuntimeEnvironment = "development" | "test" | "production";
 export type RuntimePlatform = "node" | "cloudflare";
@@ -37,6 +38,7 @@ export interface ApiRuntimeBindings {
   readonly platform: RuntimePlatform;
   readonly fixturePreview?: FixturePreviewBinding;
   readonly fixtureSharedAppPersistence?: SharedAppPersistence;
+  readonly fixtureProviderFreeArtifacts?: ProviderFreeArtifactRuntime;
   readonly localRunner?: LocalSliceRunner;
   readonly localAppFactory?: LocalApiAppFactory;
   readonly sandboxAppFactory?: LocalApiAppFactory;

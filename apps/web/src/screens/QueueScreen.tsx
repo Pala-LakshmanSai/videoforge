@@ -307,7 +307,10 @@ export function QueueScreen() {
                       <strong>{project.title}</strong>
                       <small>
                         1920×1080 · H.264/AAC · {(project.finalAsset!.byteSize / 1024).toFixed(1)}{" "}
-                        KB
+                        KB ·{" "}
+                        {project.finalAsset!.renderer === "DIRECT_FFMPEG"
+                          ? "Direct FFmpeg"
+                          : "Workerd-safe fixture"}
                       </small>
                     </div>
                   </div>

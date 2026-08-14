@@ -7,6 +7,7 @@ import { createNodeFixturePreviewBinding } from "./server/runtime/node-fixture-p
 import { createNodeRuntimeConfiguration } from "./server/runtime/node";
 import { resolveNodeSandboxDataRoot } from "./server/runtime/node-sandbox";
 import { createNodeSharedAppPersistence } from "./server/runtime/node-shared-app-persistence";
+import { createNodeProviderFreeArtifactRuntime } from "./server/runtime/node-provider-free-artifacts";
 import { createRunwareRuntime } from "./server/providers/runware-runtime";
 
 export const FIXTURE_API_HOST = "127.0.0.1";
@@ -42,6 +43,12 @@ const app = createApiApp({
       mode === "fixture"
         ? createNodeSharedAppPersistence(
             path.join(WORKSPACE_ROOT, ".videoforge", "shared-app-fixture.json"),
+          )
+        : undefined,
+    fixtureProviderFreeArtifacts:
+      mode === "fixture"
+        ? createNodeProviderFreeArtifactRuntime(
+            path.join(WORKSPACE_ROOT, ".videoforge", "provider-free-artifacts"),
           )
         : undefined,
     localRunner,

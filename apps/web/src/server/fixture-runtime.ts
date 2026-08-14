@@ -12,6 +12,7 @@ import { FixtureSessionStore } from "./fixture-session";
 import { idempotentMutation } from "./mutation";
 import { SharedAppFixtureStore } from "./shared-app-fixture";
 import type { SharedAppPersistence } from "./shared-app-persistence";
+import type { ProviderFreeArtifactRuntime } from "./provider-free-artifact-runtime";
 
 export class FixtureRuntime {
   readonly sessions: FixtureSessionStore;
@@ -21,9 +22,10 @@ export class FixtureRuntime {
     readonly environment: string,
     readonly commit: string,
     sharedAppPersistence?: SharedAppPersistence,
+    providerFreeArtifacts?: ProviderFreeArtifactRuntime,
   ) {
     this.sessions = new FixtureSessionStore(environment);
-    this.sharedApp = new SharedAppFixtureStore(sharedAppPersistence);
+    this.sharedApp = new SharedAppFixtureStore(sharedAppPersistence, providerFreeArtifacts);
   }
 
   resolveSession(c: Context) {

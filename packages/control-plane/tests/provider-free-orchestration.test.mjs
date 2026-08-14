@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
 import {
@@ -13,8 +14,85 @@ const PAIR = Object.freeze({
 const FOUNDATIONS = Object.freeze({
   transcriptSha256: `sha256:${"a".repeat(64)}`,
   timelineSha256: `sha256:${"b".repeat(64)}`,
-  promptManifestSha256: `sha256:${"c".repeat(64)}`,
+  generationWorkManifestSha256: `sha256:${"c".repeat(64)}`,
+  renderWorkManifestSha256: `sha256:${"d".repeat(64)}`,
+  promptManifestSha256: `sha256:${"e".repeat(64)}`,
 });
+
+function digest(label) {
+  return `sha256:${createHash("sha256").update(label).digest("hex")}`;
+}
+
+function materialized(orchestrator) {
+  const state = orchestrator.snapshot();
+  const projectId = state.session?.activeProjectId;
+  if (!projectId) return undefined;
+  const project = state.projects.find((candidate) => candidate.projectId === projectId);
+  if (project?.stage === "GENERATING" && project.barriers.mageOutputSha256 === null)
+    return {
+      mageOutput: {
+        projectId,
+        lane: "mage_image",
+        manifestSha256: digest(`${projectId}:mage`),
+        artifactCount: 6,
+        durable: true,
+      },
+    };
+  if (project?.stage === "GENERATING" && project.barriers.echoOutputSha256 === null)
+    return {
+      echoOutput: {
+        projectId,
+        lane: "echo_avatar",
+        manifestSha256: digest(`${projectId}:echo`),
+        artifactCount: 2,
+        durable: true,
+      },
+    };
+  if (project?.stage === "RENDERING")
+    return {
+      render: {
+        projectId,
+        renderManifestSha256: digest(`${projectId}:render-manifest`),
+        artifactId: `fixture-final-${projectId}`,
+        finalMp4Sha256: digest(`${projectId}:final-mp4`),
+        byteSize: 12_345,
+        durationMs: 40_000,
+        totalFrames: 1_200,
+        width: 1920,
+        height: 1080,
+        audioCodec: "aac",
+        videoCodec: "h264",
+        durable: true,
+        renderer: "DIRECT_FFMPEG",
+      },
+    };
+  return undefined;
+}
+
+function freshRevalidation(overrides = {}) {
+  const observedAt = new Date(Date.now() - 100).toISOString();
+  const expiresAt = new Date(Date.now() + 60_000).toISOString();
+  return {
+    mage: {
+      validationId: "fixture-validation-mage",
+      lockedReceiptId: PAIR.mage.receiptId,
+      gpuSku: PAIR.mage.gpuSku,
+      observedAt,
+      expiresAt,
+      providerCallsAuthorized: false,
+      ...overrides.mage,
+    },
+    echo: {
+      validationId: "fixture-validation-echo",
+      lockedReceiptId: PAIR.echo.receiptId,
+      gpuSku: PAIR.echo.gpuSku,
+      observedAt,
+      expiresAt,
+      providerCallsAuthorized: false,
+      ...overrides.echo,
+    },
+  };
+}
 
 function start(orchestrator, projectId = "project-1") {
   orchestrator.startSession({
@@ -27,7 +105,12 @@ function start(orchestrator, projectId = "project-1") {
 
 async function advanceUntil(orchestrator, waiting, predicate, maximum = 80) {
   for (let index = 0; index < maximum; index += 1) {
-    const result = await orchestrator.advance(waiting(), FOUNDATIONS);
+    const result = await orchestrator.advance(
+      waiting(),
+      FOUNDATIONS,
+      freshRevalidation(),
+      materialized(orchestrator),
+    );
     if (predicate(result, orchestrator.snapshot())) return result;
   }
   assert.fail("Provider-free orchestration did not converge within bounded advances.");
@@ -163,13 +246,52 @@ test("late waiter cannot recreate an absent lane until atomic project promotion"
   await advanceUntil(
     orchestrator,
     () => ["project-late"],
-    (result) => result.promotedProjectId === "project-late",
+    (_result, state) =>
+      state.projects.find((project) => project.projectId === "project-active")?.stage ===
+      "RENDERING",
   );
+  const beforeRejectedPromotion = orchestrator.snapshot();
+  await assert.rejects(
+    () => orchestrator.advance(["project-late"], FOUNDATIONS),
+    (error) =>
+      error instanceof ProviderFreeOrchestrationError && error.code === "GPU_REVALIDATION_REQUIRED",
+  );
+  assert.deepEqual(orchestrator.snapshot(), beforeRejectedPromotion);
+  await assert.rejects(
+    () =>
+      orchestrator.advance(
+        ["project-late"],
+        FOUNDATIONS,
+        freshRevalidation({ mage: { gpuSku: "wrong-gpu" } }),
+      ),
+    (error) =>
+      error instanceof ProviderFreeOrchestrationError && error.code === "GPU_REVALIDATION_REQUIRED",
+  );
+  assert.deepEqual(orchestrator.snapshot(), beforeRejectedPromotion);
+
+  const result = await orchestrator.advance(
+    ["project-late"],
+    FOUNDATIONS,
+    freshRevalidation(),
+    materialized(orchestrator),
+  );
+  assert.equal(result.promotedProjectId, "project-late");
   const promoted = orchestrator.snapshot().session;
   assert.equal(promoted?.activeProjectId, "project-late");
   assert.equal(promoted?.lanes.mage_image.attempts.length, 2);
   assert.equal(promoted?.lanes.mage_image.attempts.at(-1)?.phase, "CREATING");
   assert.equal(promoted?.lanes.mage_image.attempts.at(-1)?.originProjectId, "project-late");
+  assert.equal(
+    promoted?.lanes.mage_image.attempts.at(-1)?.gpuValidationId,
+    "fixture-validation-mage",
+  );
+  assert.ok(
+    orchestrator
+      .snapshot()
+      .events.some(
+        (event) => event.kind === "GPU_REVALIDATED_FOR_RECREATE" && event.lane === "mage_image",
+      ),
+  );
 });
 
 test("cancellation settles current synthetic cost and promotes no waiting work early", async () => {

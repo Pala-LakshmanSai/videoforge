@@ -57,6 +57,8 @@ const orchestrationLaneSchema = z
           phase: podPhaseSchema,
           callbackSequence: z.number().int().nonnegative(),
           createdAt: z.string(),
+          gpuValidationId: z.string(),
+          gpuValidatedAt: z.string(),
           containerReadyAt: z.string().nullable(),
           volumeReadyAt: z.string().nullable(),
           modelLoadingAt: z.string().nullable(),
@@ -118,6 +120,8 @@ const orchestrationProjectSchema = z
       .object({
         transcriptSha256: z.string().nullable(),
         timelineSha256: z.string().nullable(),
+        generationWorkManifestSha256: z.string().nullable(),
+        renderWorkManifestSha256: z.string().nullable(),
         promptManifestSha256: z.string().nullable(),
         mageOutputSha256: z.string().nullable(),
         echoOutputSha256: z.string().nullable(),
@@ -142,9 +146,11 @@ const orchestrationProjectSchema = z
         contentType: z.literal("video/mp4"),
         width: z.literal(1920),
         height: z.literal(1080),
-        durationMs: z.literal(1000),
+        durationMs: z.number().int().positive(),
+        totalFrames: z.number().int().positive(),
         audioCodec: z.literal("aac"),
         videoCodec: z.literal("h264"),
+        renderer: z.enum(["DIRECT_FFMPEG", "WORKERD_SAFE_FIXTURE"]),
         downloadPath: z.string(),
       })
       .strict()

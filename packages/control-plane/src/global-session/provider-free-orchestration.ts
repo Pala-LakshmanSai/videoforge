@@ -26,6 +26,20 @@ export interface ProviderFreeGpuPair {
   readonly echo: { readonly receiptId: string; readonly gpuSku: string };
 }
 
+export interface ProviderFreeGpuRevalidationReceipt {
+  readonly validationId: string;
+  readonly lockedReceiptId: string;
+  readonly gpuSku: string;
+  readonly observedAt: string;
+  readonly expiresAt: string;
+  readonly providerCallsAuthorized: false;
+}
+
+export interface ProviderFreeGpuRevalidationPair {
+  readonly mage: ProviderFreeGpuRevalidationReceipt;
+  readonly echo: ProviderFreeGpuRevalidationReceipt;
+}
+
 export interface ProviderFreePodAttempt {
   readonly attemptId: string;
   readonly podId: string;
@@ -33,6 +47,8 @@ export interface ProviderFreePodAttempt {
   phase: ProviderFreePodPhase;
   callbackSequence: number;
   readonly createdAt: string;
+  readonly gpuValidationId: string;
+  readonly gpuValidatedAt: string;
   containerReadyAt: string | null;
   volumeReadyAt: string | null;
   modelLoadingAt: string | null;
@@ -65,6 +81,8 @@ export interface ProviderFreeProjectState {
   readonly barriers: {
     transcriptSha256: string | null;
     timelineSha256: string | null;
+    generationWorkManifestSha256: string | null;
+    renderWorkManifestSha256: string | null;
     promptManifestSha256: string | null;
     mageOutputSha256: string | null;
     echoOutputSha256: string | null;
@@ -85,9 +103,11 @@ export interface ProviderFreeProjectState {
     contentType: "video/mp4";
     width: 1920;
     height: 1080;
-    durationMs: 1000;
+    durationMs: number;
+    totalFrames: number;
     audioCodec: "aac";
     videoCodec: "h264";
+    renderer: "DIRECT_FFMPEG" | "WORKERD_SAFE_FIXTURE";
     downloadPath: string;
   };
 }
@@ -127,7 +147,39 @@ export interface ProviderFreeAdvanceResult {
 export interface ProviderFreeFoundationReceipts {
   readonly transcriptSha256: string;
   readonly timelineSha256: string;
+  readonly generationWorkManifestSha256: string;
+  readonly renderWorkManifestSha256: string;
   readonly promptManifestSha256: string;
+}
+
+export interface ProviderFreeLaneOutputReceipt {
+  readonly projectId: string;
+  readonly lane: ProviderFreeLane;
+  readonly manifestSha256: string;
+  readonly artifactCount: number;
+  readonly durable: true;
+}
+
+export interface ProviderFreeRenderReceipt {
+  readonly projectId: string;
+  readonly renderManifestSha256: string;
+  readonly artifactId: string;
+  readonly finalMp4Sha256: string;
+  readonly byteSize: number;
+  readonly durationMs: number;
+  readonly totalFrames: number;
+  readonly width: 1920;
+  readonly height: 1080;
+  readonly audioCodec: "aac";
+  readonly videoCodec: "h264";
+  readonly durable: true;
+  readonly renderer: "DIRECT_FFMPEG" | "WORKERD_SAFE_FIXTURE";
+}
+
+export interface ProviderFreeMaterializedReceipts {
+  readonly mageOutput?: ProviderFreeLaneOutputReceipt;
+  readonly echoOutput?: ProviderFreeLaneOutputReceipt;
+  readonly render?: ProviderFreeRenderReceipt;
 }
 
 export class ProviderFreeOrchestrationError extends Error {
@@ -140,8 +192,6 @@ export class ProviderFreeOrchestrationError extends Error {
   }
 }
 
-const FINAL_MP4_SHA256 = "sha256:fa27620397740bb5c47b8402b47cf0f5d90074246d3feb16e65b6498b81a2c37";
-const FINAL_MP4_BYTE_SIZE = 9764;
 const SIMULATED_PROJECT_COST_MICRO_USD = 880_000;
 
 function now(): string {
@@ -189,6 +239,8 @@ function createAttempt(
   projectId: string,
   attemptNumber: number,
   at: string,
+  gpuValidationId: string,
+  gpuValidatedAt: string,
 ): ProviderFreePodAttempt {
   return {
     attemptId: `fixture-attempt-${lane}-${attemptNumber}`,
@@ -197,6 +249,8 @@ function createAttempt(
     phase: "CREATING",
     callbackSequence: 0,
     createdAt: at,
+    gpuValidationId,
+    gpuValidatedAt,
     containerReadyAt: null,
     volumeReadyAt: null,
     modelLoadingAt: null,
@@ -229,6 +283,8 @@ function createProject(
     barriers: {
       transcriptSha256: null,
       timelineSha256: null,
+      generationWorkManifestSha256: null,
+      renderWorkManifestSha256: null,
       promptManifestSha256: null,
       mageOutputSha256: null,
       echoOutputSha256: null,
@@ -299,7 +355,9 @@ export class ProviderFreeMvpOrchestrator {
           volumeManifestSha256:
             "sha256:4f5589227925824fa055e0df49d095a5801fd058cb05241ceee41bd77968f384",
           selectedGpuSku: input.gpuPair.mage.gpuSku,
-          attempts: [createAttempt("mage_image", input.projectId, 1, at)],
+          attempts: [
+            createAttempt("mage_image", input.projectId, 1, at, input.gpuPair.mage.receiptId, at),
+          ],
         },
         echo_avatar: {
           lane: "echo_avatar",
@@ -307,7 +365,9 @@ export class ProviderFreeMvpOrchestrator {
           volumeManifestSha256:
             "sha256:48104a7917f6835512fc71dd68f4bb4773257f934640873716e2fe17771d157a",
           selectedGpuSku: input.gpuPair.echo.gpuSku,
-          attempts: [createAttempt("echo_avatar", input.projectId, 1, at)],
+          attempts: [
+            createAttempt("echo_avatar", input.projectId, 1, at, input.gpuPair.echo.receiptId, at),
+          ],
         },
       },
     };
@@ -396,7 +456,10 @@ export class ProviderFreeMvpOrchestrator {
     this.record("CALLBACK_ACCEPTED", input.projectId, input.lane, now());
   }
 
-  cancelActive(waitingProjectIds: readonly string[]): ProviderFreeAdvanceResult {
+  cancelActive(
+    waitingProjectIds: readonly string[],
+    gpuRevalidation?: ProviderFreeGpuRevalidationPair,
+  ): ProviderFreeAdvanceResult {
     const session = this.requireSession();
     const project = this.requireActiveProject(session);
     const at = now();
@@ -415,12 +478,14 @@ export class ProviderFreeMvpOrchestrator {
       }
     }
     this.record("ACTIVE_CANCELLED", project.projectId, null, at);
-    return this.finishOrPromote(project.projectId, waitingProjectIds, at);
+    return this.finishOrPromote(project.projectId, waitingProjectIds, at, gpuRevalidation);
   }
 
   async advance(
     waitingProjectIds: readonly string[],
     foundations?: ProviderFreeFoundationReceipts,
+    gpuRevalidation?: ProviderFreeGpuRevalidationPair,
+    materialized?: ProviderFreeMaterializedReceipts,
   ): Promise<ProviderFreeAdvanceResult> {
     const session = this.requireSession();
     if (session.state === "DRAINING") return this.advanceDrain(session);
@@ -446,6 +511,8 @@ export class ProviderFreeMvpOrchestrator {
       project.workStartedAt = at;
       project.barriers.transcriptSha256 = foundations.transcriptSha256;
       project.barriers.timelineSha256 = foundations.timelineSha256;
+      project.barriers.generationWorkManifestSha256 = foundations.generationWorkManifestSha256;
+      project.barriers.renderWorkManifestSha256 = foundations.renderWorkManifestSha256;
       project.barriers.promptManifestSha256 = foundations.promptManifestSha256;
       project.cost.reportedMicroUsd = 200_000;
       for (const laneName of ["mage_image", "echo_avatar"] as const) {
@@ -466,13 +533,15 @@ export class ProviderFreeMvpOrchestrator {
 
     if (project.stage === "GENERATING") {
       if (project.barriers.mageOutputSha256 === null) {
-        project.barriers.mageOutputSha256 = await sha256(`${project.projectId}:mage-assets:v1`);
+        const receipt = this.requireLaneOutput(project, "mage_image", materialized?.mageOutput);
+        project.barriers.mageOutputSha256 = receipt.manifestSha256;
         project.cost.reportedMicroUsd = 500_000;
         this.completeLane(session, project, "mage_image", waitingProjectIds.length > 0);
         return this.result("MAGE_DURABLE");
       }
       if (project.barriers.echoOutputSha256 === null) {
-        project.barriers.echoOutputSha256 = await sha256(`${project.projectId}:echo-assets:v1`);
+        const receipt = this.requireLaneOutput(project, "echo_avatar", materialized?.echoOutput);
+        project.barriers.echoOutputSha256 = receipt.manifestSha256;
         project.cost.reportedMicroUsd = 800_000;
         this.completeLane(session, project, "echo_avatar", waitingProjectIds.length > 0);
         project.stage = "RENDERING";
@@ -482,28 +551,30 @@ export class ProviderFreeMvpOrchestrator {
 
     if (project.stage === "RENDERING") {
       const at = now();
-      project.barriers.renderManifestSha256 = await sha256(
-        `${project.projectId}:resolved-render-manifest:v1`,
-      );
-      project.barriers.finalMp4Sha256 = FINAL_MP4_SHA256;
+      this.validatePromotion(waitingProjectIds, gpuRevalidation, at);
+      const render = this.requireRender(project, materialized?.render);
+      project.barriers.renderManifestSha256 = render.renderManifestSha256;
+      project.barriers.finalMp4Sha256 = render.finalMp4Sha256;
       project.cost.reportedMicroUsd = SIMULATED_PROJECT_COST_MICRO_USD;
       project.cost.settledMicroUsd = SIMULATED_PROJECT_COST_MICRO_USD;
       project.finalAsset = {
-        artifactId: `fixture-final-mp4-${project.projectId}`,
-        sha256: FINAL_MP4_SHA256,
-        byteSize: FINAL_MP4_BYTE_SIZE,
+        artifactId: render.artifactId,
+        sha256: render.finalMp4Sha256,
+        byteSize: render.byteSize,
         contentType: "video/mp4",
-        width: 1920,
-        height: 1080,
-        durationMs: 1000,
-        audioCodec: "aac",
-        videoCodec: "h264",
+        width: render.width,
+        height: render.height,
+        durationMs: render.durationMs,
+        totalFrames: render.totalFrames,
+        audioCodec: render.audioCodec,
+        videoCodec: render.videoCodec,
+        renderer: render.renderer,
         downloadPath: `/api/v1/shared-app/projects/${encodeURIComponent(project.projectId)}/download`,
       };
       project.stage = "READY_FOR_REVIEW";
       project.completedAt = at;
       this.record("FINAL_MP4_DURABLE", project.projectId, null, at);
-      return this.finishOrPromote(project.projectId, waitingProjectIds, at);
+      return this.finishOrPromote(project.projectId, waitingProjectIds, at, gpuRevalidation);
     }
 
     throw new ProviderFreeOrchestrationError(
@@ -520,6 +591,7 @@ export class ProviderFreeMvpOrchestrator {
     completedProjectId: string,
     waitingProjectIds: readonly string[],
     at: string,
+    gpuRevalidation?: ProviderFreeGpuRevalidationPair,
   ): ProviderFreeAdvanceResult {
     const session = this.requireSession();
     const promotedProjectId = waitingProjectIds[0] ?? null;
@@ -543,13 +615,8 @@ export class ProviderFreeMvpOrchestrator {
       };
     }
 
-    const promoted = this.requireProject(promotedProjectId);
-    if (promoted.stage !== "WAITING") {
-      throw new ProviderFreeOrchestrationError(
-        "PROMOTION_NOT_WAITING",
-        "Only first inert waiting project may be promoted.",
-      );
-    }
+    const promoted = this.validatePromotion(waitingProjectIds, gpuRevalidation, at);
+    if (promoted === null) throw new Error("Validated promotion unexpectedly has no project.");
     promoted.stage = "PREPARING";
     promoted.activatedAt = at;
     session.activeProjectId = promotedProjectId;
@@ -557,9 +624,20 @@ export class ProviderFreeMvpOrchestrator {
       const lane = laneFor(session, laneName);
       const attempt = latestAttempt(lane);
       if (attempt.phase === "ABSENCE_VERIFIED") {
+        const validation = gpuRevalidation?.[laneName === "mage_image" ? "mage" : "echo"];
+        if (validation === undefined)
+          throw new Error("Validated absent lane unexpectedly has no GPU revalidation.");
         lane.attempts.push(
-          createAttempt(laneName, promotedProjectId, lane.attempts.length + 1, at),
+          createAttempt(
+            laneName,
+            promotedProjectId,
+            lane.attempts.length + 1,
+            at,
+            validation.validationId,
+            validation.observedAt,
+          ),
         );
+        this.record("GPU_REVALIDATED_FOR_RECREATE", promotedProjectId, laneName, at);
       } else if (attempt.phase === "WARM") {
         // Existing exact warm Pod stays ready. No waiter work happened before this activation.
       } else {
@@ -577,6 +655,109 @@ export class ProviderFreeMvpOrchestrator {
       promotedProjectId,
       sessionClosed: false,
     };
+  }
+
+  private requireLaneOutput(
+    project: ProviderFreeProjectState,
+    lane: ProviderFreeLane,
+    receipt: ProviderFreeLaneOutputReceipt | undefined,
+  ): ProviderFreeLaneOutputReceipt {
+    if (
+      receipt === undefined ||
+      receipt.projectId !== project.projectId ||
+      receipt.lane !== lane ||
+      receipt.durable !== true ||
+      receipt.artifactCount < 1 ||
+      !Number.isSafeInteger(receipt.artifactCount) ||
+      !/^sha256:[0-9a-f]{64}$/u.test(receipt.manifestSha256)
+    ) {
+      throw new ProviderFreeOrchestrationError(
+        "DURABLE_LANE_OUTPUT_REQUIRED",
+        `Exact durable ${lane} output receipt is required before its barrier may complete.`,
+      );
+    }
+    return receipt;
+  }
+
+  private requireRender(
+    project: ProviderFreeProjectState,
+    receipt: ProviderFreeRenderReceipt | undefined,
+  ): ProviderFreeRenderReceipt {
+    if (
+      receipt === undefined ||
+      receipt.projectId !== project.projectId ||
+      receipt.durable !== true ||
+      !/^sha256:[0-9a-f]{64}$/u.test(receipt.renderManifestSha256) ||
+      !/^sha256:[0-9a-f]{64}$/u.test(receipt.finalMp4Sha256) ||
+      receipt.artifactId.length === 0 ||
+      !Number.isSafeInteger(receipt.byteSize) ||
+      receipt.byteSize < 1 ||
+      !Number.isSafeInteger(receipt.durationMs) ||
+      receipt.durationMs < 1 ||
+      !Number.isSafeInteger(receipt.totalFrames) ||
+      receipt.totalFrames < 1 ||
+      receipt.width !== 1920 ||
+      receipt.height !== 1080 ||
+      receipt.audioCodec !== "aac" ||
+      receipt.videoCodec !== "h264"
+    ) {
+      throw new ProviderFreeOrchestrationError(
+        "DURABLE_RENDER_REQUIRED",
+        "Exact content-addressed render manifest and playable MP4 receipt are required.",
+      );
+    }
+    return receipt;
+  }
+
+  private validatePromotion(
+    waitingProjectIds: readonly string[],
+    gpuRevalidation: ProviderFreeGpuRevalidationPair | undefined,
+    at: string,
+  ): ProviderFreeProjectState | null {
+    const promotedProjectId = waitingProjectIds[0] ?? null;
+    if (promotedProjectId === null) return null;
+    const promoted = this.requireProject(promotedProjectId);
+    if (promoted.stage !== "WAITING") {
+      throw new ProviderFreeOrchestrationError(
+        "PROMOTION_NOT_WAITING",
+        "Only first inert waiting project may be promoted.",
+      );
+    }
+    const session = this.requireSession();
+    const checkedAt = Date.parse(at);
+    for (const laneName of ["mage_image", "echo_avatar"] as const) {
+      const lane = laneFor(session, laneName);
+      const attempt = latestAttempt(lane);
+      if (attempt.phase === "WARM") continue;
+      if (attempt.phase !== "ABSENCE_VERIFIED") {
+        throw new ProviderFreeOrchestrationError(
+          "LANE_PROMOTION_UNSAFE",
+          `Lane ${laneName} is neither warm nor absent at project promotion.`,
+        );
+      }
+      const validation = gpuRevalidation?.[laneName === "mage_image" ? "mage" : "echo"];
+      const locked = session.gpuPair[laneName === "mage_image" ? "mage" : "echo"];
+      const observedAt = Date.parse(validation?.observedAt ?? "");
+      const expiresAt = Date.parse(validation?.expiresAt ?? "");
+      if (
+        validation === undefined ||
+        validation.providerCallsAuthorized !== false ||
+        validation.validationId.length === 0 ||
+        validation.lockedReceiptId !== locked.receiptId ||
+        validation.gpuSku !== locked.gpuSku ||
+        !Number.isFinite(observedAt) ||
+        !Number.isFinite(expiresAt) ||
+        observedAt > checkedAt ||
+        checkedAt - observedAt > 60_000 ||
+        expiresAt <= checkedAt
+      ) {
+        throw new ProviderFreeOrchestrationError(
+          "GPU_REVALIDATION_REQUIRED",
+          `Absent ${laneName} lane requires a fresh exact fake-inventory GPU revalidation before recreation.`,
+        );
+      }
+    }
+    return promoted;
   }
 
   private advanceBoot(
@@ -817,10 +998,14 @@ export class ProviderFreeMvpOrchestrator {
         );
       }
       for (const attempt of lane.attempts) {
-        if (attempt.originProjectId.length === 0) {
+        if (
+          attempt.originProjectId.length === 0 ||
+          attempt.gpuValidationId.length === 0 ||
+          !Number.isFinite(Date.parse(attempt.gpuValidatedAt))
+        ) {
           throw new ProviderFreeOrchestrationError(
             "POD_ORIGIN_MISSING",
-            "Every synthetic Pod attempt must bind one active-project origin.",
+            "Every synthetic Pod attempt must bind one active-project origin and GPU validation.",
           );
         }
       }

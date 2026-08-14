@@ -83,6 +83,9 @@ async function request<T>(
     headers: {
       "Content-Type": "application/json",
       ...(fixtureSession ? { "x-videoforge-fixture-session": fixtureSession } : {}),
+      ...(path.startsWith("/api/dev/")
+        ? { "x-videoforge-fixture-control": "cp05-fixture-control-v1" }
+        : {}),
       ...init?.headers,
     },
   });
@@ -202,7 +205,7 @@ export const api = {
     ),
   advanceSharedOrchestration: (scenario: ScenarioId) =>
     request<{ event: string; completedProjectId: string | null; promotedProjectId: string | null }>(
-      `/api/dev/shared-app/advance${query(scenario)}`,
+      `/api/v1/shared-app/advance${query(scenario)}`,
       { method: "POST" },
       (value) =>
         value as {

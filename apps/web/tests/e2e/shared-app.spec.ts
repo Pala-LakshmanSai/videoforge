@@ -5,16 +5,25 @@ test("CP-02 shares admission, one GPU pair, and one queue across browser session
 }) => {
   const contextA = await browser.newContext({
     baseURL: "http://localhost:4173",
-    extraHTTPHeaders: { "X-VideoForge-Fixture-Session": "cp02-chrome-a" },
+    extraHTTPHeaders: {
+      "X-VideoForge-Fixture-Session": "cp02-chrome-a",
+      "X-VideoForge-Fixture-Control": "cp05-fixture-control-v1",
+    },
   });
   let emailPassword = "";
   const contextB = await browser.newContext({
     baseURL: "http://localhost:4173",
-    extraHTTPHeaders: { "X-VideoForge-Fixture-Session": "cp02-chrome-b" },
+    extraHTTPHeaders: {
+      "X-VideoForge-Fixture-Session": "cp02-chrome-b",
+      "X-VideoForge-Fixture-Control": "cp05-fixture-control-v1",
+    },
   });
   const contextC = await browser.newContext({
     baseURL: "http://localhost:4173",
-    extraHTTPHeaders: { "X-VideoForge-Fixture-Session": "cp02-chrome-returning" },
+    extraHTTPHeaders: {
+      "X-VideoForge-Fixture-Session": "cp02-chrome-returning",
+      "X-VideoForge-Fixture-Control": "cp05-fixture-control-v1",
+    },
   });
   try {
     expect((await contextA.request.post("/api/dev/shared-app/reset")).ok()).toBe(true);

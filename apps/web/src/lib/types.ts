@@ -338,6 +338,8 @@ export interface SharedOrchestrationSession {
           | "DELETE_REQUESTED"
           | "ABSENCE_VERIFIED";
         callbackSequence: number;
+        gpuValidationId: string;
+        gpuValidatedAt: string;
         absenceReceiptSha256: string | null;
       }>;
     }
@@ -362,6 +364,8 @@ export interface SharedOrchestrationProject {
   barriers: Record<
     | "transcriptSha256"
     | "timelineSha256"
+    | "generationWorkManifestSha256"
+    | "renderWorkManifestSha256"
     | "promptManifestSha256"
     | "mageOutputSha256"
     | "echoOutputSha256"
@@ -383,9 +387,11 @@ export interface SharedOrchestrationProject {
     contentType: "video/mp4";
     width: 1920;
     height: 1080;
-    durationMs: 1000;
+    durationMs: number;
+    totalFrames: number;
     audioCodec: "aac";
     videoCodec: "h264";
+    renderer: "DIRECT_FFMPEG" | "WORKERD_SAFE_FIXTURE";
     downloadPath: string;
   } | null;
 }

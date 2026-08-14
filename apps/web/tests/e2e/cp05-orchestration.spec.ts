@@ -60,7 +60,12 @@ async function shared(request: APIRequestContext) {
       projects: Array<{
         projectId: string;
         stage: string;
-        finalAsset: null | { sha256: string; byteSize: number; downloadPath: string };
+        finalAsset: null | {
+          sha256: string;
+          byteSize: number;
+          downloadPath: string;
+          renderer: string;
+        };
       }>;
     };
   };
@@ -71,15 +76,24 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
 }, testInfo) => {
   const contextA = await browser.newContext({
     baseURL: "http://localhost:4173",
-    extraHTTPHeaders: { "X-VideoForge-Fixture-Session": "cp05-chrome-a" },
+    extraHTTPHeaders: {
+      "X-VideoForge-Fixture-Session": "cp05-chrome-a",
+      "X-VideoForge-Fixture-Control": "cp05-fixture-control-v1",
+    },
   });
   const contextB = await browser.newContext({
     baseURL: "http://localhost:4173",
-    extraHTTPHeaders: { "X-VideoForge-Fixture-Session": "cp05-chrome-b" },
+    extraHTTPHeaders: {
+      "X-VideoForge-Fixture-Session": "cp05-chrome-b",
+      "X-VideoForge-Fixture-Control": "cp05-fixture-control-v1",
+    },
   });
   const contextC = await browser.newContext({
     baseURL: "http://localhost:4173",
-    extraHTTPHeaders: { "X-VideoForge-Fixture-Session": "cp05-chrome-c" },
+    extraHTTPHeaders: {
+      "X-VideoForge-Fixture-Session": "cp05-chrome-c",
+      "X-VideoForge-Fixture-Control": "cp05-fixture-control-v1",
+    },
   });
   const contexts = [contextA, contextB, contextC] as const;
   const consoleErrors: string[] = [];
@@ -180,7 +194,7 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
     for (let index = 0; index < 80; index += 1) {
       state = await shared(contextA.request);
       if (state.orchestration.session === null) break;
-      const advanced = await contextA.request.post("/api/dev/shared-app/advance");
+      const advanced = await contextA.request.post(`/api/v1/shared-app/advance?fixture=${FIXTURE}`);
       expect(advanced.ok()).toBe(true);
     }
     state = await shared(contextC.request);
@@ -194,6 +208,10 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
       "cp05-project-2",
       "cp05-project-4",
     ]);
+    expect(new Set(completed.map((project) => project.finalAsset!.sha256)).size).toBe(3);
+    expect(completed.every((project) => project.finalAsset!.renderer === "DIRECT_FFMPEG")).toBe(
+      true,
+    );
 
     await pageA.reload();
     await expect(pageA.getByRole("heading", { name: "Last session closed" })).toBeVisible();
@@ -220,7 +238,7 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
         height: video.videoHeight,
       };
     });
-    expect(playback.duration).toBe(1);
+    expect(playback.duration).toBeGreaterThanOrEqual(39.9);
     expect(playback.currentTime).toBeGreaterThan(0);
     expect(playback.width).toBe(1920);
     expect(playback.height).toBe(1080);

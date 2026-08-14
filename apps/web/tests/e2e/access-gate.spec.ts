@@ -1,7 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
 test.beforeEach(async ({ request }) => {
-  const response = await request.post("/api/dev/shared-app/reset");
+  const response = await request.post("/api/dev/shared-app/reset", {
+    headers: { "X-VideoForge-Fixture-Control": "cp05-fixture-control-v1" },
+  });
   expect(response.ok()).toBe(true);
 });
 

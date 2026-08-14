@@ -7,54 +7,54 @@ const FIXTURE_PHRASES = Object.freeze([
     startMs: 240,
     endMs: 4_300,
     sourceStartMs: 0,
-    sourceEndMs: 4_500,
+    sourceEndMs: 4_700,
     layout: "AVATAR_FULL" as const,
     text: "Start with the field spot and the weight in your hands.",
   },
   {
     startMs: 4_700,
     endMs: 10_900,
-    sourceStartMs: 4_500,
-    sourceEndMs: 11_000,
+    sourceStartMs: 4_700,
+    sourceEndMs: 11_300,
     layout: "IMAGE_FULL" as const,
     text: "A creamy yellow patch usually means it ripened on the ground.",
   },
   {
     startMs: 11_300,
     endMs: 17_900,
-    sourceStartMs: 11_000,
-    sourceEndMs: 18_000,
+    sourceStartMs: 11_300,
+    sourceEndMs: 18_300,
     layout: "IMAGE_FULL" as const,
     text: "The melon should feel heavy for its size.",
   },
   {
     startMs: 18_300,
     endMs: 24_300,
-    sourceStartMs: 18_000,
-    sourceEndMs: 24_500,
+    sourceStartMs: 18_300,
+    sourceEndMs: 24_800,
     layout: "IMAGE_FULL" as const,
     text: "Look for a dry stem and a firm even surface.",
   },
   {
     startMs: 24_800,
     endMs: 28_300,
-    sourceStartMs: 24_500,
-    sourceEndMs: 28_500,
+    sourceStartMs: 24_800,
+    sourceEndMs: 28_800,
     layout: "AVATAR_SPLIT_IMAGE" as const,
     text: "Compare the signs together before choosing.",
   },
   {
     startMs: 28_800,
     endMs: 34_300,
-    sourceStartMs: 28_500,
-    sourceEndMs: 34_500,
+    sourceStartMs: 28_800,
+    sourceEndMs: 34_800,
     layout: "IMAGE_FULL" as const,
     text: "A hollow sound can support what you already observed.",
   },
   {
     startMs: 34_800,
     endMs: 39_500,
-    sourceStartMs: 34_500,
+    sourceStartMs: 34_800,
     sourceEndMs: 40_000,
     layout: "IMAGE_FULL" as const,
     text: "Simple physical evidence is more useful than a single tap.",
@@ -64,6 +64,7 @@ const FIXTURE_PHRASES = Object.freeze([
 interface TimelineProjectIdentity {
   readonly id: string;
   readonly revisionId: string;
+  readonly revisionConfigHash?: string;
   readonly stages?: readonly { readonly id: string; readonly status: string }[];
 }
 
@@ -134,7 +135,9 @@ export function fixtureTimelineDocuments(project: TimelineProjectIdentity): {
   const timeline = {
     schema_version: "timeline-plan/v1",
     project_revision_id: project.revisionId,
-    revision_config_hash: "sha256:89bc38845a41ed0070eca069ac19e36ccab65688e0997d2b791f2200e4c00586",
+    revision_config_hash:
+      project.revisionConfigHash ??
+      "sha256:89bc38845a41ed0070eca069ac19e36ccab65688e0997d2b791f2200e4c00586",
     scheduler_version: "scheduler-v2",
     seed: 982_341,
     output_fps_num: 30,

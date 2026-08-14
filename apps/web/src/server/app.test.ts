@@ -140,6 +140,7 @@ function withFixtureSession(
   return {
     ...headers,
     "x-videoforge-fixture-session": sessionId,
+    "x-videoforge-fixture-control": "cp05-fixture-control-v1",
   };
 }
 
@@ -180,7 +181,7 @@ describe("fixture API", () => {
       blockers: [],
       timing: { sourceDurationMs: 40_000, phraseCount: 7, coverage: "COMPLETE" },
       plan: { totalFrames: 1_200, sourceStartMs: 0, sourceEndMs: 40_000 },
-      selectedAvatar: { count: 2, coveragePercent: 21.25 },
+      selectedAvatar: { count: 2, coveragePercent: 21.75 },
     });
     const documents = fixtureTimelineDocuments({
       id: "project_fixture_001",
@@ -1534,7 +1535,10 @@ describe("CP-02 shared app fixture API", () => {
     for (const user of users) {
       const inviteResponse = await isolatedApp.request("/api/dev/shared-app/invites", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "x-videoforge-fixture-control": "cp05-fixture-control-v1",
+        },
         body: JSON.stringify({ email: user.email }),
       });
       expect(inviteResponse.status).toBe(200);
@@ -1606,13 +1610,49 @@ describe("CP-02 shared app fixture API", () => {
 });
 
 describe("CP-05 provider-free complete MVP API", () => {
+  it("keeps fixture controls explicit and orchestration mutations behind admission", async () => {
+    const isolatedApp = createApiApp();
+    expect(
+      (await isolatedApp.request("/api/dev/shared-app/reset", { method: "POST" })).status,
+    ).toBe(403);
+    expect(
+      (
+        await isolatedApp.request("/api/dev/shared-app/invites", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: "blocked@example.test" }),
+        })
+      ).status,
+    ).toBe(403);
+    const unadmitted = withFixtureSession("cp05-unadmitted");
+    expect(
+      (
+        await isolatedApp.request("/api/dev/shared-app/recover", {
+          method: "POST",
+          headers: unadmitted,
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await isolatedApp.request("/api/v1/shared-app/advance?fixture=invite_sign_in", {
+          method: "POST",
+          headers: unadmitted,
+        })
+      ).status,
+    ).toBe(403);
+  });
+
   it("rejects foreign callbacks and returns three playable checksum-bound MP4 downloads", async () => {
     const isolatedApp = createApiApp();
     const fixtureSession = "cp05-api";
     const email = "cp05@example.test";
     const inviteResponse = await isolatedApp.request("/api/dev/shared-app/invites", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-videoforge-fixture-control": "cp05-fixture-control-v1",
+      },
       body: JSON.stringify({ email }),
     });
     const invite = (await inviteResponse.json()) as {
@@ -1706,10 +1746,13 @@ describe("CP-05 provider-free complete MVP API", () => {
         })
       ).json()) as { orchestration: { session: object | null } };
       if (view.orchestration.session === null) break;
-      const advanced = await isolatedApp.request("/api/dev/shared-app/advance", {
-        method: "POST",
-        headers: withFixtureSession(fixtureSession),
-      });
+      const advanced = await isolatedApp.request(
+        "/api/v1/shared-app/advance?fixture=invite_sign_in",
+        {
+          method: "POST",
+          headers: withFixtureSession(fixtureSession),
+        },
+      );
       expect(advanced.status).toBe(200);
     }
 

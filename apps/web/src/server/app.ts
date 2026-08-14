@@ -36,7 +36,12 @@ export function createApiApp(options: CreateApiAppOptions): Hono {
   }
 
   const app = new Hono();
-  const runtime = new FixtureRuntime(environment, commit, bindings.fixtureSharedAppPersistence);
+  const runtime = new FixtureRuntime(
+    environment,
+    commit,
+    bindings.fixtureSharedAppPersistence,
+    bindings.fixtureProviderFreeArtifacts,
+  );
 
   registerAccessMiddleware(app, environment, runtime.sessions, runtime.sharedApp);
   registerSystemRoutes(app, runtime);
