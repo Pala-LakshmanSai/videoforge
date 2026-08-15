@@ -196,65 +196,23 @@ test("uses an explicit provider-free local fixture profile without legacy runtim
   });
 });
 
-test("locks the qualified Echo Flash Turbo FP8 full and split crop geometry", async () => {
-  const echoCandidates = CANDIDATES.map((candidate) =>
-    candidate.kind === "AVATAR_CLIP"
-      ? {
-          ...candidate,
-          rendererSourceProfile: "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
-        }
-      : candidate,
-  );
-  const providerCandidates = PROVIDER_CANDIDATES.map((candidate) =>
-    candidate.kind === "AVATAR_CLIP"
-      ? {
-          ...candidate,
-          rendererSourceProfile: "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
-        }
-      : candidate,
-  );
+test("active vNext boundary rejects every non-fixture renderer identity before resolution", async () => {
   const { timeline } = await canonicalInputs();
-  const acceptedAssets = requireSuccess(
-    resolveVNextProviderAcceptedAssets({
+  for (const rendererSourceProfile of [
+    "avatarforcing-centered-832x480p25-v1",
+    "skyreels-centered-960x960p25-v2",
+    "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
+  ]) {
+    const rejected = resolveVNextProviderAcceptedAssets({
       timeline,
       requiredTaskKeys: collectRequiredAssetTaskKeys(timeline.value),
-      candidates: providerCandidates,
-    }),
-  );
-  const request = await requestWith(echoCandidates);
-  const manifest = requireSuccess(
-    await planVNextResolvedRenderManifest({ ...request, acceptedAssets }),
-  ).value;
-  const full = manifest.segments.find((segment) => segment.timeline_composition === "AVATAR_FULL");
-  const split = manifest.segments.find(
-    (segment) => segment.timeline_composition === "AVATAR_SPLIT_IMAGE",
-  );
-
-  assert.deepEqual(full?.render, {
-    avatar_source_profile: "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
-    avatar_crop: "992:558:16:0",
-    avatar_scale: "1920:1080",
-    avatar_fps: "30:round=near",
-  });
-  assert.deepEqual(split?.render, {
-    avatar_source_profile: "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
-    avatar_crop: "496:558:280:0",
-    avatar_scale: "960:1080",
-    avatar_fps: "30:round=near",
-    right_image_scale: "960:1080",
-    right_image_zoom_profile: "split-right-zoom-v3",
-  });
-});
-
-test("active vNext boundary rejects historical renderer identities before resolution", async () => {
-  const { timeline } = await canonicalInputs();
-  const rejected = resolveVNextProviderAcceptedAssets({
-    timeline,
-    requiredTaskKeys: collectRequiredAssetTaskKeys(timeline.value),
-    candidates: PROVIDER_CANDIDATES,
-  });
-  assert.equal(rejected.ok, false);
-  assert.equal(rejected.error.code, "RENDER_PROFILE_MISMATCH");
+      candidates: PROVIDER_CANDIDATES.map((candidate) =>
+        candidate.kind === "AVATAR_CLIP" ? { ...candidate, rendererSourceProfile } : candidate,
+      ),
+    });
+    assert.equal(rejected.ok, false);
+    assert.equal(rejected.error.code, "RENDER_PROFILE_MISMATCH");
+  }
 
   const localCandidates = PROVIDER_CANDIDATES.map((candidate) =>
     candidate.kind === "AVATAR_CLIP"

@@ -313,11 +313,48 @@ class DuplicateRejectingHash < Hash
     super
   end
 end
+json_documents = {}
 json_files.each do |path|
   begin
-    JSON.parse(File.read(path), object_class: DuplicateRejectingHash)
+    json_documents[path] = JSON.parse(File.read(path), object_class: DuplicateRejectingHash)
   rescue StandardError => e
     errors << "#{Pathname.new(path).relative_path_from(root)}: JSON parse failed: #{e.message}"
+  end
+end
+
+# Evidence links either resolve in the current tree or explicitly identify an immutable Git object.
+# Deleted checkpoint files stay archived in Git; an unqualified missing path is never valid lineage.
+evidence_reference_count = 0
+walk_json_strings = lambda do |value, &block|
+  case value
+  when Hash
+    value.each_value { |child| walk_json_strings.call(child, &block) }
+  when Array
+    value.each { |child| walk_json_strings.call(child, &block) }
+  when String
+    block.call(value)
+  end
+end
+current_evidence_pattern = %r{\A(?:project-context/)?evidence/[A-Za-z0-9_./-]+\.(?:json|md|csv|ya?ml|txt)\z}
+historical_evidence_pattern = %r{\Agit:([0-9a-f]{40}):(project-context/evidence/[A-Za-z0-9_./-]+\.(?:json|md|csv|ya?ml|txt))\z}
+structured_documents = json_documents.merge(
+  manifest_path.to_s => manifest,
+  state_path.to_s => state,
+  gates_path.to_s => gates
+)
+structured_documents.each do |source_path, document|
+  walk_json_strings.call(document) do |value|
+    if (match = value.match(historical_evidence_pattern))
+      evidence_reference_count += 1
+      commit = match[1]
+      historical_path = match[2]
+      _output, exists = git_result(repository_root, "cat-file", "-e", "#{commit}:#{historical_path}")
+      errors << "#{Pathname.new(source_path).relative_path_from(root)}: missing commit-qualified evidence #{value}" unless exists
+    elsif value.match?(current_evidence_pattern)
+      evidence_reference_count += 1
+      resolved = value.start_with?("project-context/") ? repository_root.join(value) : root.join(value)
+      errors << "#{Pathname.new(source_path).relative_path_from(root)}: missing current-tree evidence #{value}; use a commit-qualified git:<40-hex-commit>:project-context/evidence/... reference for deleted history" unless resolved.file?
+    end
   end
 end
 
@@ -413,7 +450,33 @@ begin
   production_schema = JSON.parse(File.read(root.join("evidence/production_manifest.schema.json")))
   planning_cost = JSON.parse(File.read(root.join("evidence/planning_cost_model.json")))
   errors << "project-revision schema must enforce the $2.00 MVP cap ceiling" unless revision_schema.dig("properties", "spend_cap_usd", "maximum") == 2
-  errors << "planning cost model and request/revision cap ceiling differ" unless planning_cost.dig("targets", "mvp_contract_cap_max") == 2 && planning_cost.dig("targets", "default_hard_cap") == 1.5
+  errors << "planning cost model must carry the V2 schema" unless planning_cost["schema_version"] == "videoforge.planning-cost-model/v2"
+  errors << "planning cost model must leave Serverless economics open" unless planning_cost["status"] == "serverless_v2_economics_unqualified" && planning_cost.dig("serverless_economics", "gate") == "GATE_ECONOMICS_001" && planning_cost.dig("serverless_economics", "status") == "open_unqualified"
+  errors << "planning cost target must match DEC_COST_001" unless planning_cost.dig("decision_envelope", "decision_id") == "DEC_COST_001" && planning_cost.dig("decision_envelope", "representative_30m_variable_target_max_usd") == 1
+  errors << "planning cost hard ceiling and request/revision cap differ" unless planning_cost.dig("decision_envelope", "representative_30m_variable_hard_ceiling_usd") == 2
+  errors << "planning cost model must exclude retained volumes from variable per-video cost" unless planning_cost.dig("decision_envelope", "fixed_retained_model_volume_billing_included") == false && planning_cost.dig("fixed_retained_storage", "included_in_variable_per_video_envelope") == false
+  errors << "planning cost model retained-volume record differs from the two sealed 50 GB volumes" unless planning_cost.dig("fixed_retained_storage", "volume_count") == 2 && planning_cost.dig("fixed_retained_storage", "volume_size_gb_each") == 50 && planning_cost.dig("fixed_retained_storage", "recorded_usd_per_month_total") == 7
+
+  exact_cp04_evidence = "project-context/evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/acceptance.json"
+  cp04_acceptance = JSON.parse(File.read(repository_root.join(exact_cp04_evidence)))
+  cp04_fixture = cp04_acceptance["owned_long_voiceover"] || {}
+  reference_job = planning_cost["reference_job"] || {}
+  errors << "planning cost reference job must pin the retained CP-04 canonical scheduler fixture" unless reference_job["evidence"] == exact_cp04_evidence && reference_job["scope"].to_s.include?("not production provider-cost evidence")
+  errors << "planning cost reference job differs from retained CP-04 timing and coverage" unless reference_job["duration_seconds"] == cp04_fixture["source_duration_ms"].to_i / 1000 && reference_job["avatar_coverage_percent"] == cp04_fixture["avatar_coverage_percent"] && reference_job["visible_avatar_output_seconds"] == 378.9
+  errors << "planning cost reference job differs from retained CP-04 work cardinality" unless reference_job["avatar_span_count"] == cp04_fixture["avatar_span_count"] && reference_job["selected_padded_span_audio_seconds"] == cp04_fixture.dig("selected_span_audio", "total_padded_ms").to_i / 1000.0 && reference_job["image_count"] == cp04_fixture["image_slot_count"]
+
+  soulx_observation = planning_cost.dig("retained_historical_observations", "soulx_pro_rtx4090_pod_vf_9_24u") || {}
+  exact_soulx_model = "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
+  exact_soulx_evidence = "project-context/evidence/acceptance/VF-9-24U/acceptance.json"
+  errors << "planning cost model must pin the exact SoulX Pro runtime" unless planning_cost.dig("active_model_lanes", "soulx", "exact_model") == exact_soulx_model
+  errors << "planning cost model must pin the retained SoulX observation evidence" unless soulx_observation["evidence"] == exact_soulx_evidence && repository_root.join(exact_soulx_evidence).file?
+  errors << "planning cost model must label the SoulX Pod sample as historical and unqualified for Serverless" unless soulx_observation["scope"].to_s.include?("Historical manual-Pod qualification observation only") && soulx_observation["sample_extrapolation_status"] == "planning_observation_not_serverless_or_end_to_end_acceptance" && soulx_observation["settled_external_spend_usd"].nil?
+  errors << "planning cost model invents a current Serverless rate or measured representative cost" unless planning_cost.dig("serverless_economics", "current_rate_usd_per_second").nil? && planning_cost.dig("serverless_economics", "representative_30m_measured_variable_cost_usd").nil?
+
+  removed_runtime_tokens = ["Echo" + "Mimic", "Avatar" + "Forcing", "Muse" + "Talk", "Sky" + "Reels"]
+  planning_text = JSON.generate(planning_cost)
+  errors << "planning cost model contains a removed runtime" if removed_runtime_tokens.any? { |token| planning_text.downcase.include?(token.downcase) }
+  errors << "planning cost model contains a fallback reserve" if planning_text.match?(/fallback.{0,30}reserve|reserve.{0,30}fallback/i)
   [
     ["project-revision", revision_schema.dig("properties", "avatar_binding")],
     ["production-manifest", production_schema.dig("properties", "avatar_binding")]
@@ -431,14 +494,28 @@ rescue StandardError => e
 end
 
 begin
-  render_schema_text = File.read(root.join("evidence/resolved_render_manifest.schema.json"))
-  errors << "resolved-render schema is missing the AvatarForcing source profile" unless render_schema_text.include?("avatarforcing-centered-832x480p25-v1")
-  errors << "resolved-render schema is missing the SkyReels source profile" unless render_schema_text.include?("skyreels-centered-960x960p25-v2")
+  render_schema = JSON.parse(File.read(root.join("evidence/resolved_render_manifest.schema.json")))
   invalid_profile_crop = JSON.parse(File.read(root.join("evidence/fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json")))
   invalid_render = invalid_profile_crop.dig("segments", 0, "render") || {}
-  errors << "negative avatar profile/crop fixture no longer exercises the mismatch" unless invalid_render["avatar_source_profile"] == "skyreels-centered-960x960p25-v2" && invalid_render["avatar_crop"] == "832:468:0:6"
+  full_render = render_schema.dig("$defs", "avatarFull", "properties", "render") || {}
+  matching_crop_rule = Array(full_render["allOf"]).find do |rule|
+    rule.dig("if", "properties", "avatar_source_profile", "const") == invalid_render["avatar_source_profile"]
+  end
+  expected_crop = matching_crop_rule&.dig("then", "properties", "avatar_crop", "const")
+  errors << "negative avatar profile/crop fixture no longer exercises a recognized profile with mismatched crop" unless expected_crop && expected_crop != invalid_render["avatar_crop"]
+
+  fixture_readme = File.read(root.join("evidence/fixtures/README.md"))
+  errors << "pre-V2 fixture contracts must remain explicitly replay-only and assigned to V2-04/V2-05 quarantine" unless fixture_readme.include?("replay-only") && fixture_readme.include?("V2-04") && fixture_readme.include?("V2-05") && fixture_readme.include?("without rewriting these bytes")
+
+  active_render_boundary = File.read(repository_root.join("packages/pipeline/src/render/vnext-boundary.ts"))
+  active_render_ports = File.read(repository_root.join("packages/pipeline/src/render/ports.ts"))
+  local_fixture_profile = "local-fixture-centered-832x480p25-v1"
+  active_render_text = [active_render_boundary, active_render_ports].join("\n")
+  removed_runtime_tokens = ["Echo" + "Mimic", "Avatar" + "Forcing", "Muse" + "Talk", "Sky" + "Reels"]
+  errors << "active vNext render boundary must explicitly allow the provider-free local fixture" unless active_render_boundary.include?(local_fixture_profile)
+  errors << "active vNext render boundary or ports expose a removed runtime/profile" if removed_runtime_tokens.any? { |token| active_render_text.downcase.include?(token.downcase) }
 rescue StandardError => e
-  errors << "avatar renderer source-profile validation failed: #{e.message}"
+  errors << "historical avatar renderer replay-quarantine validation failed: #{e.message}"
 end
 
 start_text = File.read(root.join("00_START_HERE.md"))
@@ -585,6 +662,7 @@ end
 
 puts "VideoForge context validation"
 puts "  JSON files: #{json_files.length}"
+puts "  evidence references: #{evidence_reference_count}"
 puts "  read profiles: #{(manifest["read_profiles"] || {}).length}"
 puts "  decisions: #{manifest_decisions.length}"
 puts "  gates: #{manifest_gates.length}"

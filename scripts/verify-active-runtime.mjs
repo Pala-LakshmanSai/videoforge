@@ -90,6 +90,20 @@ for (const file of await filesBelow("apps/web/src")) {
 }
 
 const activeRenderPorts = await readFile("packages/pipeline/src/render/ports.ts", "utf8");
+const activeRenderBoundary = await readFile(
+  "packages/pipeline/src/render/vnext-boundary.ts",
+  "utf8",
+);
+for (const removedAvatarRuntime of ["EchoMimic", "echomimic", "VNEXT_ECHO"]) {
+  if (
+    activeRenderPorts.includes(removedAvatarRuntime) ||
+    activeRenderBoundary.includes(removedAvatarRuntime)
+  ) {
+    failures.push(
+      `active render boundary still exposes removed avatar runtime ${removedAvatarRuntime}`,
+    );
+  }
+}
 for (const legacyExport of [
   "resolveAcceptedAssets,",
   "resolveProviderAcceptedAssets,",

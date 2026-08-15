@@ -2,8 +2,8 @@
 
 These small owned/synthetic fixtures preserve the currently implemented pre-V2 machine contracts.
 They remain documentation and replay/cross-language inputs, not the active Serverless-v3 production
-shape or real IDs. V2-01 through V2-05 add new fixtures and firewall the global-session/Pod-era
-schemas without rewriting these bytes.
+shape or real IDs. V2-04 defines the new Serverless-v3 contracts and V2-05 firewalls the
+global-session/Pod-era schemas without rewriting these bytes.
 
 - `avatar_profile_version.valid.json` is the immutable reusable source payload selected by the project.
 - `create_project_request.valid.json` validates the historical request shape and carries only the

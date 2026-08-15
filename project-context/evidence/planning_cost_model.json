@@ -1,74 +1,72 @@
 {
-  "schema_version": "1.5",
+  "schema_version": "videoforge.planning-cost-model/v2",
   "checked_at": "2026-08-15",
   "currency": "USD",
-  "warning": "Planning assumptions only. Fresh CP-07 exact Echo measurements supersede the legacy avatar and whole-video targets below; exact total cost requires a representative end-to-end production run.",
+  "status": "serverless_v2_economics_unqualified",
+  "scope": "Decision envelope plus retained historical observations. This file contains no current provider rate or inventory claim.",
   "reference_job": {
+    "scope": "Retained provider-free canonical scheduler fixture; not production provider-cost evidence.",
+    "evidence": "project-context/evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/acceptance.json",
     "duration_seconds": 1800,
-    "avatar_share": 0.22,
-    "avatar_output_seconds": 396,
-    "avatar_fps": 25,
-    "avatar_frames": 9900,
-    "image_count_range": [220, 320],
-    "typical_image_count": 300
+    "avatar_coverage_percent": 21.05,
+    "visible_avatar_output_seconds": 378.9,
+    "avatar_span_count": 103,
+    "selected_padded_span_audio_seconds": 481.32,
+    "image_count": 342
   },
-  "rates": {
-    "runware_deepseek_input_per_million": 0.076,
-    "runware_deepseek_output_per_million": 0.153,
-    "runware_deepseek_cached_input_per_million": 0.014,
-    "runware_gemini_3_5_flash_input_per_million": 1.5,
-    "runware_gemini_3_5_flash_output_per_million": 9.0,
-    "runpod_serverless_flex_rtx4090_per_second": 0.00031,
-    "runpod_hourly_pod_rtx4090": 0.69,
-    "runpod_hourly_pod_rtx5090": 0.99,
-    "runpod_hourly_pod_l40s": 0.99,
-    "runpod_hourly_pod_rtx6000_ada": 0.84,
-    "runpod_hourly_pod_a100_pcie_80": 1.39,
-    "runpod_network_storage_per_gb_month_under_1tb": 0.07,
-    "r2_standard_per_gb_month": 0.015,
-    "r2_free_gb_month": 10
+  "decision_envelope": {
+    "decision_id": "DEC_COST_001",
+    "representative_30m_variable_target_max_usd": 1.0,
+    "representative_30m_variable_hard_ceiling_usd": 2.0,
+    "fixed_retained_model_volume_billing_included": false,
+    "failed_attempt_cost_must_be_reported": true
   },
-  "targets": {
-    "one_time_image_style_analysis": [0.03, 0.07],
-    "one_time_image_style_first_attempt_gate_max": 0.08,
-    "one_time_image_style_with_approved_retry_gate_max": 0.15,
-    "ready_style_per_video_vision_cost": 0,
-    "ready_avatar_profile_per_video_onboarding_cost": 0,
-    "optional_one_time_avatar_profile_compatibility_test_max": 0.20,
-    "runware_prompts": [0.005, 0.015],
-    "mage_images": [0.12, 0.25],
-    "avatarforcing": [0.20, 0.51],
-    "conditional_fallback_reserve": [0.10, 0.35],
-    "render_qa": [0.06, 0.15],
-    "fast_path_total": [0.40, 0.98],
-    "normal_planning_total": [0.50, 1.30],
-    "default_hard_cap": 1.50,
-    "mvp_contract_cap_max": 2.00,
-    "user_goal_ceiling_range": [1.0, 2.0],
-    "p50_end_to_end_minutes": 30,
-    "p90_end_to_end_minutes": 45,
-    "legacy_cost_and_latency_targets_status": "invalidated_by_cp07_exact_echo_measurement"
-  },
-  "measured_cp07_echo_rtx5090": {
-    "evidence": "evidence/acceptance/VF-9-24R/cp07-current-rules-round-2/acceptance.json",
-    "rate_usd_per_hour": 0.99,
-    "reference_visible_avatar_output_seconds": 378.9,
-    "reference_selected_padded_span_audio_seconds": 481.32,
-    "reference_selected_span_count": 103,
-    "four_second_sample": {
-      "model_ready_ms": 282597,
-      "inference_ms": 409768,
-      "inference_cost_usd": 0.1126862,
-      "compute_seconds_per_padded_input_second": 91.0595555556
+  "active_model_lanes": {
+    "mage": {
+      "exact_model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+      "serverless_qualification_status": "open"
     },
-    "six_second_sample": {
-      "model_ready_ms": 113746,
-      "inference_ms": 821438,
-      "inference_cost_usd": 0.22589545,
-      "compute_seconds_per_padded_input_second": 126.3750769231
-    },
-    "projected_echo_only_single_warm_pod_cost_usd": [12.1, 16.85],
-    "projected_echo_only_generation_hours": [12.2, 17.0],
-    "projection_status": "empirical_not_settled_full_video"
+    "soulx": {
+      "exact_model": "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro",
+      "serverless_qualification_status": "open"
+    }
+  },
+  "retained_historical_observations": {
+    "soulx_pro_rtx4090_pod_vf_9_24u": {
+      "scope": "Historical manual-Pod qualification observation only; not a Serverless rate, settled cost, or production-length measurement.",
+      "evidence": "project-context/evidence/acceptance/VF-9-24U/acceptance.json",
+      "immutable_image": "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b",
+      "manifest_sha256": "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+      "gpu": "NVIDIA GeForce RTX 4090",
+      "observed_pod_rate_usd_per_hour": 0.74,
+      "pod_start_to_model_ready_ms": 672035,
+      "worker_inference_10s_ms": 20268,
+      "sample_extrapolated_30m_avatar_lane_usd": 0.40203785517777774,
+      "sample_extrapolation_status": "planning_observation_not_serverless_or_end_to_end_acceptance",
+      "settled_external_spend_usd": null
+    }
+  },
+  "fixed_retained_storage": {
+    "scope": "Previously approved retained billing recorded by the repository; not a live provider-rate refresh.",
+    "volume_count": 2,
+    "volume_size_gb_each": 50,
+    "recorded_usd_per_month_each": 3.5,
+    "recorded_usd_per_month_total": 7.0,
+    "included_in_variable_per_video_envelope": false
+  },
+  "serverless_economics": {
+    "gate": "GATE_ECONOMICS_001",
+    "status": "open_unqualified",
+    "required_evidence": [
+      "fresh authorized read-only rate and inventory snapshot before paid activation",
+      "exact Mage and SoulX Serverless cold and warm worker timings",
+      "representative production-length accepted output",
+      "settled itemized variable cost including failed or duplicate attempts",
+      "queue delay reported separately from billed worker time"
+    ],
+    "current_rate_usd_per_second": null,
+    "representative_30m_measured_variable_cost_usd": null,
+    "p50_end_to_end_minutes": null,
+    "p90_end_to_end_minutes": null
   }
 }

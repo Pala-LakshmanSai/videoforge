@@ -10,7 +10,7 @@
     "checkpoint": "CP-02",
     "result": "PASS",
     "commit": "5747e7b4e9c1d41564663afb1c0c0ad7272efe5b",
-    "evidence": "project-context/evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json"
+    "evidence": "git:c9529eaf54eb13e814edc2b14afb8d659ca7d224:project-context/evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json"
   },
   "scope_and_authority": {
     "bounded_to_cp03": true,
@@ -90,8 +90,8 @@
     "separate_retained_volumes": "PASS_CONTRACT_ONLY_NOT_CREATED",
     "no_active_serverless_auto_avatarforcing_musetalk_skyreels_repair_fallback": "PASS",
     "no_cross_project_artifact_scratch_callback_leak": "PASS",
-    "cp01_evidence": "project-context/evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-after-authority-fix.json",
-    "cp02_evidence": "project-context/evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json"
+    "cp01_evidence": "git:5c7e77951fc217047147fef10d09d30b7a7cfdd5:project-context/evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-after-authority-fix.json",
+    "cp02_evidence": "git:c9529eaf54eb13e814edc2b14afb8d659ca7d224:project-context/evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json"
   },
   "validations": {
     "focused_transcript_worker": "31 passed",
