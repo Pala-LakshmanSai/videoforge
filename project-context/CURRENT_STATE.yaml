@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-15T12:01:57Z"
+updated_at: "2026-08-15T12:02:44Z"
 
 phase: serverless_v2_roadmap_reset_complete_awaiting_independent_audit
 implementation_authorized_in_current_task: false
@@ -44,7 +44,7 @@ repository:
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
   branch: codex/serverless-v2-roadmap
-  last_good_commit: "8215c66"
+  last_good_commit: "af50d55"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -120,6 +120,7 @@ roadmap_state:
 
 context_cleanup:
   decision: DEC_CONTEXT_001
+  handoff_commit: af50d55
   active_task_briefs: VF-10-00_VF-10-00A_and_VF-10-01_through_VF-10-13_only
   archive: git_history_only
   evidence_policy: retain_only_active_v2_foundations_decisions_gates_artifact_identities_and_acceptance_contracts
@@ -222,7 +223,7 @@ recommended_next_task:
   checkpoint: V2-00
   milestone: serverless_v2_roadmap_reset_audit
   status: ready_for_independent_read_only_audit
-  dependency_status: v2_00_cleanup_validated_awaiting_handoff_commit
+  dependency_status: v2_00_cleanup_committed_awaiting_independent_audit
   authorization_status: provider_free_read_only_audit_no_implementation
   task_stage: ready_for_independent_audit
   provider_authority:
