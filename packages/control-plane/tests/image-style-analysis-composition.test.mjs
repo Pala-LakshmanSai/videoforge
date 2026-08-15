@@ -26,8 +26,16 @@ import {
   withMigratedDatabase,
 } from "./support/pglite.mjs";
 
-const SCOPE_A = Object.freeze({ workspaceId: IDS.workspaceA, actorUserId: IDS.userA });
-const SCOPE_B = Object.freeze({ workspaceId: IDS.workspaceB, actorUserId: IDS.userB });
+const SCOPE_A = Object.freeze({
+  accountId: IDS.accountA,
+  workspaceId: IDS.workspaceA,
+  actorUserId: IDS.userA,
+});
+const SCOPE_B = Object.freeze({
+  accountId: IDS.accountB,
+  workspaceId: IDS.workspaceB,
+  actorUserId: IDS.userB,
+});
 const MODEL_REVISION = "qualified-2026-08-11";
 const NOW = Date.parse("2026-08-11T04:00:00.000Z");
 

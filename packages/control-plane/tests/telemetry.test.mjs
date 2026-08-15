@@ -436,7 +436,7 @@ test("LocalWorkflowTransport instruments actual driver dispatch and isolates sin
     const repositories = createPGliteControlPlaneRepositories(context.executor);
     const first = localReservation(90_000);
     const firstReservation = await repositories.execution.reserveTaskAttempt(
-      { workspaceId: IDS.workspaceA },
+      { accountId: IDS.accountA, workspaceId: IDS.workspaceA },
       first,
     );
     assert.equal(firstReservation.ok, true);
@@ -514,7 +514,7 @@ test("LocalWorkflowTransport instruments actual driver dispatch and isolates sin
 
     const second = localReservation(90_100, 2);
     const secondReservation = await repositories.execution.reserveTaskAttempt(
-      { workspaceId: IDS.workspaceA },
+      { accountId: IDS.accountA, workspaceId: IDS.workspaceA },
       second,
     );
     assert.equal(secondReservation.ok, true);

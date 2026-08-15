@@ -17,8 +17,16 @@ const REVISION_LOOKUP = Object.freeze({
 function createWorkspaceIsolationFixture() {
   return Object.freeze({
     behaviorId: "explicit-workspace-isolation",
-    primaryScope: Object.freeze({ workspaceId: IDS.workspaceA, actorUserId: IDS.userA }),
-    secondaryScope: Object.freeze({ workspaceId: IDS.workspaceB, actorUserId: IDS.userB }),
+    primaryScope: Object.freeze({
+      accountId: IDS.accountA,
+      workspaceId: IDS.workspaceA,
+      actorUserId: IDS.userA,
+    }),
+    secondaryScope: Object.freeze({
+      accountId: IDS.accountB,
+      workspaceId: IDS.workspaceB,
+      actorUserId: IDS.userB,
+    }),
     revisionLookup: REVISION_LOOKUP,
   });
 }

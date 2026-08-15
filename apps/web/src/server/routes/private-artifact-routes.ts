@@ -13,8 +13,13 @@ import { apiProblem, problemResponse } from "../problem";
 
 export const MAX_ARTIFACT_METADATA_BODY_BYTES = 64 * 1_024;
 
+/** The server's own grant must name a bounded tenant; a blank or oversized value is a server bug. */
+function isBoundedTenantIdentifier(value: string): boolean {
+  return value.length > 0 && value.length <= 160 && /^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(value);
+}
+
 export type ArtifactRequestAuthorization =
-  | { readonly ok: true; readonly workspaceId: string }
+  | { readonly ok: true; readonly accountId: string; readonly workspaceId: string }
   | { readonly ok: false; readonly response: Response };
 
 export interface ArtifactAuthorizationRequest {
@@ -360,7 +365,12 @@ async function authorizeAndRead(
   options: PrivateArtifactControlPlaneAppOptions,
   initiate: boolean,
 ): Promise<
-  | { readonly ok: true; readonly body: JsonRecord; readonly workspaceId: string }
+  | {
+      readonly ok: true;
+      readonly body: JsonRecord;
+      readonly accountId: string;
+      readonly workspaceId: string;
+    }
   | { readonly ok: false; readonly response: Response }
 > {
   const authorization = await options.authorize({
@@ -370,9 +380,8 @@ async function authorizeAndRead(
   });
   if (!authorization.ok) return authorization;
   if (
-    authorization.workspaceId.length === 0 ||
-    authorization.workspaceId.length > 160 ||
-    !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(authorization.workspaceId)
+    !isBoundedTenantIdentifier(authorization.workspaceId) ||
+    !isBoundedTenantIdentifier(authorization.accountId)
   ) {
     return {
       ok: false,
@@ -400,6 +409,7 @@ async function authorizeAndRead(
   return {
     ok: true,
     body: metadata.value,
+    accountId: authorization.accountId,
     workspaceId: authorization.workspaceId,
   };
 }

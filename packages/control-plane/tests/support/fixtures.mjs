@@ -1,6 +1,8 @@
 import { FIXED_TIME, sha256, uuid } from "./pglite.mjs";
 
 export const IDS = Object.freeze({
+  accountA: uuid(901),
+  accountB: uuid(902),
   workspaceA: uuid(1),
   workspaceB: uuid(2),
   userA: uuid(11),
@@ -95,19 +97,43 @@ async function insertBinaryAsset(executor, { id, workspaceId, kind, objectKey, s
   );
 }
 
-export async function seedIdentity(executor) {
-  await executor.query(
-    `INSERT INTO workspaces (id, name, normalized_name)
-     VALUES ($1, 'Owned Workspace A', 'owned workspace a'),
-            ($2, 'Owned Workspace B', 'owned workspace b')`,
-    [IDS.workspaceA, IDS.workspaceB],
+/** True once migration 0018 has introduced tenant ownership; false on a pre-V2 chain. */
+async function hasTenantScope(executor) {
+  const result = await executor.query(
+    `SELECT to_regclass('public.accounts') IS NOT NULL AS present`,
   );
+  return result.rows[0]?.present === true;
+}
+
+export async function seedIdentity(executor) {
   await executor.query(
     `INSERT INTO users (id, email, normalized_email, display_name)
      VALUES ($1, 'owner-a@example.test', 'owner-a@example.test', 'Owner A'),
             ($2, 'owner-b@example.test', 'owner-b@example.test', 'Owner B')`,
     [IDS.userA, IDS.userB],
   );
+
+  if (await hasTenantScope(executor)) {
+    await executor.query(
+      `INSERT INTO accounts (id, scope_kind, owner_user_id, normalized_email, status)
+       VALUES ($1, 'USER', $3, 'owner-a@example.test', 'ACTIVE'),
+              ($2, 'USER', $4, 'owner-b@example.test', 'ACTIVE')`,
+      [IDS.accountA, IDS.accountB, IDS.userA, IDS.userB],
+    );
+    await executor.query(
+      `INSERT INTO workspaces (id, name, normalized_name, account_id, is_default)
+       VALUES ($1, 'Owned Workspace A', 'owned workspace a', $3, true),
+              ($2, 'Owned Workspace B', 'owned workspace b', $4, true)`,
+      [IDS.workspaceA, IDS.workspaceB, IDS.accountA, IDS.accountB],
+    );
+  } else {
+    await executor.query(
+      `INSERT INTO workspaces (id, name, normalized_name)
+       VALUES ($1, 'Owned Workspace A', 'owned workspace a'),
+              ($2, 'Owned Workspace B', 'owned workspace b')`,
+      [IDS.workspaceA, IDS.workspaceB],
+    );
+  }
   await executor.query(
     `INSERT INTO memberships (id, workspace_id, user_id, normalized_name, role, status)
      VALUES ($1, $2, $3, 'owner', 'ADMIN', 'ACTIVE'),

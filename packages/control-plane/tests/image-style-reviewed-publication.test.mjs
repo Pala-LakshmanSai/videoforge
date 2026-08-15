@@ -32,8 +32,16 @@ import {
   withMigratedDatabase,
 } from "./support/pglite.mjs";
 
-const SCOPE_A = Object.freeze({ workspaceId: IDS.workspaceA, actorUserId: IDS.userA });
-const SCOPE_B = Object.freeze({ workspaceId: IDS.workspaceB, actorUserId: IDS.userB });
+const SCOPE_A = Object.freeze({
+  accountId: IDS.accountA,
+  workspaceId: IDS.workspaceA,
+  actorUserId: IDS.userA,
+});
+const SCOPE_B = Object.freeze({
+  accountId: IDS.accountB,
+  workspaceId: IDS.workspaceB,
+  actorUserId: IDS.userB,
+});
 const MODEL_REVISION = "qualified-2026-08-11";
 const COMPLETED_AT = "2026-08-11T06:06:00.000Z";
 const PUBLISHED_AT = "2026-08-11T06:07:00.000Z";
@@ -428,7 +436,7 @@ test("rejects stale, changed, malformed, cross-workspace, and actor-forged publi
     await rejectsService(
       () =>
         service.getReviewSnapshot(
-          { workspaceId: IDS.workspaceA, actorUserId: "" },
+          { accountId: IDS.accountA, workspaceId: IDS.workspaceA, actorUserId: "" },
           reviewLookup(fixture),
         ),
       "INPUT_INVALID",
@@ -436,7 +444,12 @@ test("rejects stale, changed, malformed, cross-workspace, and actor-forged publi
     await rejectsService(
       () =>
         service.getReviewSnapshot(
-          { workspaceId: IDS.workspaceA, actorUserId: IDS.userA, reviewerUserId: IDS.userB },
+          {
+            accountId: IDS.accountA,
+            workspaceId: IDS.workspaceA,
+            actorUserId: IDS.userA,
+            reviewerUserId: IDS.userB,
+          },
           reviewLookup(fixture),
         ),
       "AUTHORIZATION_REQUIRED",

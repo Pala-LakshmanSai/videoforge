@@ -7,8 +7,16 @@ import { createPGliteControlPlaneRepositories } from "../../dist/src/adapters/pg
 import { IDS, HASHES, seedLockedProjects } from "./fixtures.mjs";
 import { createMigratedDatabase, FIXED_TIME, sha256, uuid } from "./pglite.mjs";
 
-const PRIMARY_SCOPE = Object.freeze({ workspaceId: IDS.workspaceA, actorUserId: IDS.userA });
-const SECONDARY_SCOPE = Object.freeze({ workspaceId: IDS.workspaceB, actorUserId: IDS.userB });
+const PRIMARY_SCOPE = Object.freeze({
+  accountId: IDS.accountA,
+  workspaceId: IDS.workspaceA,
+  actorUserId: IDS.userA,
+});
+const SECONDARY_SCOPE = Object.freeze({
+  accountId: IDS.accountB,
+  workspaceId: IDS.workspaceB,
+  actorUserId: IDS.userB,
+});
 const OWNER_REVISION_A = Object.freeze({
   ownerType: "PROJECT_REVISION",
   ownerId: IDS.revisionA,

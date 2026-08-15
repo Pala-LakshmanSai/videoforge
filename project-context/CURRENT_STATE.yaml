@@ -1,12 +1,12 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-15T13:30:33Z"
+updated_at: "2026-08-15T21:40:00Z"
 
-phase: serverless_v2_implementation_ready
+phase: serverless_v2_implementation_in_progress
 implementation_authorized_in_current_task: false
-current_milestone: tenant_private_identity_and_data_cutover
+current_milestone: tenant_private_artifacts_signed_transfer_and_scratch
 current_task: null
-current_wave: v2_01_ready
+current_wave: v2_02_ready
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 task_stage: ready_for_user_invocation
 application_code_changes_authorized: false
@@ -47,7 +47,7 @@ repository:
   branch_upstream: null
   branch_published: false
   last_good_commit: "56be2feb76bc24d1c28f28fb0151b33ea9b7956d"
-  last_good_commit_note: "Last fully verified predecessor commit; its child is the V2-00 revalidation commit that only pins the context validator's UTF-8 encoding and records this verification."
+  last_good_commit_note: "Predecessor of the V2-00 revalidation commit. The V2-01 tenant cutover commit is its descendant and is recorded under verification.verified_commit."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -108,8 +108,8 @@ roadmap_state:
   prompt_pack: templates/CHECKPOINT_CHAT_PROMPTS.md
   active_series: V2-00_through_V2-13
   V2-00: complete_green_independently_audited
-  V2-01: ready_for_user_invocation
-  V2-02: blocked_on_V2-01
+  V2-01: complete_green_pending_independent_audit
+  V2-02: ready_for_user_invocation
   V2-03: blocked_on_V2-02
   V2-04: blocked_on_V2-03
   V2-05: blocked_on_V2-04
@@ -224,12 +224,12 @@ active_ownership: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-10-01
-  checkpoint: V2-01
-  milestone: tenant_private_identity_and_data_cutover
+  task_id: VF-10-02
+  checkpoint: V2-02
+  milestone: tenant_private_artifacts_signed_transfer_and_scratch
   status: ready_for_user_invocation
-  dependency_status: v2_00_independent_audit_green
-  authorization_status: awaiting_explicit_v2_01_implementation_request
+  dependency_status: v2_01_complete_green_pending_independent_audit
+  authorization_status: awaiting_explicit_v2_02_implementation_request
   task_stage: ready_for_user_invocation
   provider_authority:
     mode: none
@@ -241,9 +241,9 @@ recommended_next_task:
     resources: []
     authorized_operations: []
     allowed_operations: []
-  read_profile: v2_01_tenant_private_identity
-  task_brief: tasks/VF-10-01.md
-  goal: "Replace active global equal-rights ownership with one admitted account mapped to one default workspace and prove tenant-private metadata isolation."
+  read_profile: v2_02_private_artifacts
+  task_brief: tasks/VF-10-02.md
+  goal: "Give every tenant artifact one private object-key, reservation, signed-transfer, receipt, and job-scratch contract before any production storage service is connected."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -258,7 +258,7 @@ recommended_next_task:
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: false
-  prerequisite_evidence: evidence/acceptance/VF-10-00A/2026-08-15-final-audit/acceptance.json
+  prerequisite_evidence: evidence/acceptance/VF-10-01/2026-08-15-tenant-cutover/acceptance.json
 
 verification:
   state: passed
@@ -290,3 +290,29 @@ verification:
   provider_or_spend_used_for_v2_00: false
   remote_mutation_used_for_v2_00: false
   paid_compute_started_for_v2_00: false
+  completed_for_v2_01:
+    evidence: evidence/acceptance/VF-10-01/2026-08-15-tenant-cutover/acceptance.json
+    commands:
+      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 234/234; pipeline 120/120; web 313/313; contracts 71/71; provider-sandbox 43/43; test-fixtures 12/12; Cloudflare 1/1; installed Chrome 44/44)"
+      - "node --test packages/control-plane/tests/tenant-private-scope.test.mjs: PASS (8/8)"
+      - "pnpm --filter @videoforge/web test:chrome: PASS (44/44, includes the new two-account tenant-isolation journey)"
+      - "pnpm context:validate: PASS (103 JSON files; 31 profiles; 41 decisions; 19 gates)"
+      - "pnpm contracts:check: PASS (66 canonical files synchronized)"
+      - "pnpm verify:active-runtime: PASS (62 active files)"
+      - "pnpm format:check: PASS"
+      - "pnpm secret:scan: PASS (864 tracked files)"
+      - "git diff --check: PASS"
+    delivered:
+      - "Additive migration 0018 adds account ownership to 55 tenant tables with composite scope keys, 20 tenant read views, and 59 declared RLS policies."
+      - "Ownership is derived by the database from the authorized parent row, so a client-supplied owner is overwritten rather than honoured."
+      - "Pre-V2 rows are adopted by a reserved LEGACY account that no identity can authenticate into; pre-V2 admissions receive fresh empty accounts."
+      - "WorkspaceScope carries an unforgeable trusted-principal brand, and the unit of work binds videoforge.account_id for the whole transaction."
+      - "Invite redemption atomically creates exactly one account, one default workspace, and one membership."
+      - "Built-in presets are the only globally readable records and reject every update and delete."
+    not_delivered_by_design:
+      - "Tenant-private artifact keys, signed transfer, receipts, and job scratch remain V2-02."
+      - "The superseded global equal-rights queue is untouched and is replaced in V2-03."
+      - "The declared RLS policies are unproven behaviourally: PGlite connects as a superuser and bypasses row level security, so the write guard and tenant views carry the local proof and hosted enforcement waits for V2-06."
+  provider_or_spend_used_for_v2_01: false
+  remote_mutation_used_for_v2_01: false
+  paid_compute_started_for_v2_01: false

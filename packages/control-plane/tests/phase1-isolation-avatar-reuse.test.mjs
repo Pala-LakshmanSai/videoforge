@@ -11,8 +11,16 @@ import { HASHES, IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import { FIXED_TIME, sha256, uuid, withMigratedDatabase } from "./support/pglite.mjs";
 
 const NOW = Date.parse("2026-08-10T13:00:00.000Z");
-const SCOPE_A = Object.freeze({ workspaceId: IDS.workspaceA, actorUserId: IDS.userA });
-const SCOPE_B = Object.freeze({ workspaceId: IDS.workspaceB, actorUserId: IDS.userB });
+const SCOPE_A = Object.freeze({
+  accountId: IDS.accountA,
+  workspaceId: IDS.workspaceA,
+  actorUserId: IDS.userA,
+});
+const SCOPE_B = Object.freeze({
+  accountId: IDS.accountB,
+  workspaceId: IDS.workspaceB,
+  actorUserId: IDS.userB,
+});
 
 function session(token, workspaceId, userId, email) {
   return Object.freeze({
@@ -31,7 +39,11 @@ function session(token, workspaceId, userId, email) {
 
 function access(workspaceId, membershipId, userId, email) {
   return Object.freeze({
-    workspace: Object.freeze({ workspaceId, status: "ACTIVE" }),
+    workspace: Object.freeze({
+      workspaceId,
+      accountId: `account_for_${workspaceId}`,
+      status: "ACTIVE",
+    }),
     identity: Object.freeze({ userId, normalizedEmail: email, status: "ACTIVE" }),
     invitation: Object.freeze({ workspaceId, normalizedEmail: email, status: "ACCEPTED" }),
     membership: Object.freeze({

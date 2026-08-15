@@ -49,7 +49,11 @@ const CLAIM_HASH = sha256("fixture-image-claim");
 const INPUT_HASH = sha256("fixture-image-input");
 const TIMELINE_HASH = sha256("fixture-image-timeline");
 const TRANSCRIPT_HASH = sha256("fixture-image-transcript");
-const SCOPE = Object.freeze({ workspaceId: IDS.workspaceA, actorUserId: IDS.userA });
+const SCOPE = Object.freeze({
+  accountId: IDS.accountA,
+  workspaceId: IDS.workspaceA,
+  actorUserId: IDS.userA,
+});
 
 const compiledPrompt = compileImagePrompt({
   writerOutput: {
@@ -766,7 +770,7 @@ test("fixture image acceptance rejects claim, cancellation, workspace, media, li
         expected = "CANCELLED";
       }
       if (mode === "workspace") {
-        scope = { workspaceId: IDS.workspaceB, actorUserId: IDS.userB };
+        scope = { accountId: IDS.accountB, workspaceId: IDS.workspaceB, actorUserId: IDS.userB };
         expected = "WORKSPACE_MISMATCH";
       }
       if (mode === "media") {

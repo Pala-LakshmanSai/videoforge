@@ -82,7 +82,7 @@ async function withContext(work) {
 
 async function reserve(repositories, command) {
   const result = await repositories.execution.reserveTaskAttempt(
-    { workspaceId: IDS.workspaceA },
+    { accountId: IDS.accountA, workspaceId: IDS.workspaceA },
     command,
   );
   assert.equal(result.ok, true);
@@ -176,7 +176,7 @@ test("ambiguous acknowledgement is quarantined and never blindly redispatched", 
     assert.equal(dispatches, 1);
 
     const reconciled = await repositories.execution.reconcileDispatch(
-      { workspaceId: IDS.workspaceA },
+      { accountId: IDS.accountA, workspaceId: IDS.workspaceA },
       {
         idempotencyKey: "workflow-local:reconcile:not-dispatched",
         taskId: command.task.taskId,
@@ -213,7 +213,7 @@ test("ambiguous acknowledgement is quarantined and never blindly redispatched", 
     assert.equal(redelivery.kind, "DELIVERED");
     assert.equal(dispatches, 2);
     const facts = await repositories.execution.resolveRecoveryTaskFacts(
-      { workspaceId: IDS.workspaceA },
+      { accountId: IDS.accountA, workspaceId: IDS.workspaceA },
       { taskId: command.task.taskId },
     );
     assert.equal(facts.ok, true);
@@ -376,7 +376,7 @@ test("ambiguous CANCEL transport preserves the prior dispatch state and cancella
       [command.dispatchOutbox.outboxId, FIXED_TIME],
     );
     const cancellation = await repositories.execution.requestCancellation(
-      { workspaceId: IDS.workspaceA },
+      { accountId: IDS.accountA, workspaceId: IDS.workspaceA },
       {
         idempotencyKey: "workflow-local:cancel:ambiguous",
         target: "ATTEMPT",
@@ -439,7 +439,7 @@ test("execution claims are single-use before costly local work starts", async ()
     const command = reservation(20_300);
     const reserved = await reserve(repositories, command);
     const acknowledged = await repositories.execution.recordDispatchAcknowledged(
-      { workspaceId: IDS.workspaceA },
+      { accountId: IDS.accountA, workspaceId: IDS.workspaceA },
       {
         idempotencyKey: "workflow-local:claim:acknowledged",
         taskId: command.task.taskId,
@@ -459,19 +459,19 @@ test("execution claims are single-use before costly local work starts", async ()
       claimedAt: secondsAfter(2),
     };
     const first = await repositories.execution.claimExecution(
-      { workspaceId: IDS.workspaceA },
+      { accountId: IDS.accountA, workspaceId: IDS.workspaceA },
       claim,
     );
     assert.equal(first.ok, true);
     assert.equal(first.value.replayed, false);
     const replay = await repositories.execution.claimExecution(
-      { workspaceId: IDS.workspaceA },
+      { accountId: IDS.accountA, workspaceId: IDS.workspaceA },
       claim,
     );
     assert.equal(replay.ok, true);
     assert.equal(replay.value.replayed, true);
     const duplicate = await repositories.execution.claimExecution(
-      { workspaceId: IDS.workspaceA },
+      { accountId: IDS.accountA, workspaceId: IDS.workspaceA },
       { ...claim, idempotencyKey: "workflow-local:claim:duplicate", claimedAt: secondsAfter(3) },
     );
     assert.equal(duplicate.ok, false);
@@ -482,7 +482,7 @@ test("execution claims are single-use before costly local work starts", async ()
 
 test("mutation receipts preserve exact results and reject changed or cross-operation retries", async () => {
   await withContext(async ({ executor, repositories }) => {
-    const scope = { workspaceId: IDS.workspaceA };
+    const scope = { accountId: IDS.accountA, workspaceId: IDS.workspaceA };
     const reservedCommand = reservation(20_320, 20);
     const reserved = await reserve(repositories, reservedCommand);
     const reservationReplay = await repositories.execution.reserveTaskAttempt(
@@ -748,15 +748,15 @@ test("unit-of-work scope mismatch taints and rolls back even when its failure is
   await withContext(async ({ executor, repositories }) => {
     const command = reservation(20_450, 30);
     const result = await repositories.unitOfWork.execute(
-      { workspaceId: IDS.workspaceA },
+      { accountId: IDS.accountA, workspaceId: IDS.workspaceA },
       async (transactionRepositories) => {
         const reserved = await transactionRepositories.execution.reserveTaskAttempt(
-          { workspaceId: IDS.workspaceA },
+          { accountId: IDS.accountA, workspaceId: IDS.workspaceA },
           command,
         );
         assert.equal(reserved.ok, true);
         const crossWorkspace = await transactionRepositories.projects.archiveProject(
-          { workspaceId: IDS.workspaceB, actorUserId: IDS.userB },
+          { accountId: IDS.accountB, workspaceId: IDS.workspaceB, actorUserId: IDS.userB },
           {
             idempotencyKey: "workflow-local:uow:cross-workspace",
             projectId: IDS.projectB,
@@ -831,7 +831,7 @@ test("signed callback receipt, event append, and nonce claim commit together", a
     };
     const unsigned = {
       receiptId: uuid(20_412),
-      scope: { workspaceId: IDS.workspaceA },
+      scope: { accountId: IDS.accountA, workspaceId: IDS.workspaceA },
       taskId: command.task.taskId,
       attemptId: command.attempt.attemptId,
       callbackKind: "worker_progress",

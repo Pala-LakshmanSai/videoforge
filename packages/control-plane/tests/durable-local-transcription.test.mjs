@@ -13,7 +13,11 @@ import { createPGliteControlPlaneRepositories } from "../dist/src/adapters/index
 import { HASHES, IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import { FIXED_TIME, sha256, uuid, withMigratedDatabase } from "./support/pglite.mjs";
 
-const SCOPE = Object.freeze({ workspaceId: IDS.workspaceA, actorUserId: IDS.userA });
+const SCOPE = Object.freeze({
+  accountId: IDS.accountA,
+  workspaceId: IDS.workspaceA,
+  actorUserId: IDS.userA,
+});
 const MODEL_HASH = sha256("pinned-local-whisper-base-en-v1");
 
 const diagnosticJson = (value) =>

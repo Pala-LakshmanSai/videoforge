@@ -22,7 +22,11 @@ import {
   withMigratedDatabase,
 } from "./support/pglite.mjs";
 
-const SCOPE = Object.freeze({ workspaceId: IDS.workspaceA, actorUserId: IDS.userA });
+const SCOPE = Object.freeze({
+  accountId: IDS.accountA,
+  workspaceId: IDS.workspaceA,
+  actorUserId: IDS.userA,
+});
 const TRANSCRIPT_ID = uuid(32_001);
 const TRANSCRIPT_ASSET_ID = uuid(32_002);
 const TRANSCRIPT_INPUT_HASH = sha256("vf-2-03-transcript-input");

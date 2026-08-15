@@ -12,6 +12,29 @@ const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 const MAX_SERIALIZED_SNAPSHOT_BYTES = 128 * 1_024 * 1_024;
 const MAX_SECRET_SCAN_NODES = 1_000_000;
 
+/**
+ * Migration 0018 seeds the reserved SYSTEM and LEGACY scope rows into every database, so they are
+ * schema baseline rather than tenant metadata. Excluding them keeps a freshly migrated destination
+ * restorable and keeps two databases comparable without re-inserting rows that already exist.
+ */
+const RESERVED_SCOPE_ROW_FILTERS = Object.freeze({
+  accounts: `source.id NOT IN (
+    'ffffffff-ffff-4fff-8fff-000000000001'::uuid,
+    'ffffffff-ffff-4fff-8fff-000000000002'::uuid
+  )`,
+  workspaces: `source.id NOT IN (
+    'ffffffff-ffff-4fff-8fff-000000000011'::uuid,
+    'ffffffff-ffff-4fff-8fff-000000000012'::uuid
+  )`,
+  users: `source.id <> 'ffffffff-ffff-4fff-8fff-000000000021'::uuid`,
+  memberships: `source.id <> 'ffffffff-ffff-4fff-8fff-000000000031'::uuid`,
+} satisfies Partial<Record<RelationalTableName, string>>);
+
+function reservedScopeFilter(tableName: RelationalTableName): string {
+  const predicate = (RESERVED_SCOPE_ROW_FILTERS as Partial<Record<string, string>>)[tableName];
+  return predicate === undefined ? "" : ` WHERE ${predicate}`;
+}
+
 const DEFERRED_COLUMNS = Object.freeze({
   assets: Object.freeze(["project_id", "project_revision_id", "source_attempt_id"]),
   attempts: Object.freeze(["parent_attempt_id"]),
@@ -22,6 +45,7 @@ const DEFERRED_COLUMNS = Object.freeze({
 
 const RESTORE_INSERT_ORDER = Object.freeze([
   "users",
+  "accounts",
   "invite_codes",
   "auth_identity_bindings",
   "invite_redemptions",
@@ -393,7 +417,7 @@ async function exportFromExecutor(executor: SqlExecutor): Promise<MetadataSnapsh
   for (const [ordinal, tableName] of RELATIONAL_TABLE_NAMES.entries()) {
     const result = await executor.query<RowJson>(
       `SELECT to_jsonb(source)::text AS row_json
-         FROM ${qualifiedTable(tableName)} AS source
+         FROM ${qualifiedTable(tableName)} AS source${reservedScopeFilter(tableName)}
         ORDER BY to_jsonb(source)::text`,
     );
     const rows = result.rows.map((row) => row.row_json);
@@ -693,7 +717,8 @@ async function countDataRows(executor: SqlExecutor): Promise<number> {
   let total = 0;
   for (const tableName of RELATIONAL_TABLE_NAMES) {
     const result = await executor.query<CountRow>(
-      `SELECT count(*)::text AS count FROM ${qualifiedTable(tableName)}`,
+      `SELECT count(*)::text AS count
+         FROM ${qualifiedTable(tableName)} AS source${reservedScopeFilter(tableName)}`,
     );
     const count = Number(result.rows[0]?.count ?? "NaN");
     if (!Number.isSafeInteger(count) || count < 0) {

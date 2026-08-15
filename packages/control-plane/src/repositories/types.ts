@@ -7,19 +7,54 @@ export interface JsonObject {
 
 export type EntityId = string;
 export type WorkspaceId = EntityId;
+export type AccountId = EntityId;
 export type UtcTimestamp = string;
 export type Sha256 = `sha256:${string}`;
 export type Currency = "USD";
 export type MicroUsd = bigint;
 
-/** Every repository operation is scoped before any entity identifier is considered. */
+declare const trustedPrincipalBrand: unique symbol;
+
+/**
+ * Every repository operation is scoped before any entity identifier is considered.
+ *
+ * The brand is unforgeable from request data: only `trustedTenantScope`, which the server calls
+ * with values derived from the authenticated session, can produce one. A client-supplied account,
+ * workspace, or owner field therefore cannot reach a repository, let alone grant access.
+ */
 export interface WorkspaceScope {
+  readonly accountId: AccountId;
   readonly workspaceId: WorkspaceId;
+  readonly [trustedPrincipalBrand]: true;
 }
 
 /** Use for commands whose actor must be derived from authenticated server state. */
 export interface WorkspaceActorScope extends WorkspaceScope {
   readonly actorUserId: EntityId;
+}
+
+/** Identifiers are opaque at this boundary; only shape and bounds are checked here. */
+const TENANT_IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
+
+/**
+ * Mints the trusted tenant scope for one authenticated principal.
+ *
+ * Callers must pass values the server itself resolved — the account bound to the session and that
+ * account's default workspace — never values read from a request body, query string, or header.
+ */
+export function trustedTenantScope(accountId: AccountId, workspaceId: WorkspaceId): WorkspaceScope {
+  if (!TENANT_IDENTIFIER_PATTERN.test(accountId) || !TENANT_IDENTIFIER_PATTERN.test(workspaceId)) {
+    throw new RangeError("a trusted tenant scope requires bounded account and workspace ids");
+  }
+  return Object.freeze({ accountId, workspaceId }) as WorkspaceScope;
+}
+
+/** Adds the authenticated actor to an already-trusted tenant scope. */
+export function trustedTenantActorScope(
+  scope: WorkspaceScope,
+  actorUserId: EntityId,
+): WorkspaceActorScope {
+  return Object.freeze({ ...scope, actorUserId }) as WorkspaceActorScope;
 }
 
 declare const deterministicIdempotencyKeyBrand: unique symbol;

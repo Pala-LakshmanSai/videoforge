@@ -38,7 +38,11 @@ const INPUT_HASH = sha256("fixture-avatar-input");
 const TIMELINE_HASH = sha256("fixture-avatar-timeline");
 const TRANSCRIPT_HASH = sha256("fixture-avatar-transcript");
 const SPAN_HASH = sha256("fixture-avatar-span-audio");
-const SCOPE = Object.freeze({ workspaceId: IDS.workspaceA, actorUserId: IDS.userA });
+const SCOPE = Object.freeze({
+  accountId: IDS.accountA,
+  workspaceId: IDS.workspaceA,
+  actorUserId: IDS.userA,
+});
 const MEDIA_PREFIX = Buffer.concat([
   Buffer.from([0, 0, 0, 24]),
   Buffer.from("ftypisom", "ascii"),
@@ -528,7 +532,7 @@ test("Avatar acceptance rejects claim, cancellation, workspace, media, lineage, 
         expected = "CANCELLED";
       }
       if (mode === "workspace") {
-        scope = { workspaceId: IDS.workspaceB, actorUserId: IDS.userB };
+        scope = { accountId: IDS.accountB, workspaceId: IDS.workspaceB, actorUserId: IDS.userB };
         expected = "WORKSPACE_MISMATCH";
       }
       if (mode === "media") {

@@ -18,8 +18,16 @@ import {
   withMigratedDatabase,
 } from "./support/pglite.mjs";
 
-const SCOPE_A = Object.freeze({ workspaceId: IDS.workspaceA, actorUserId: IDS.userA });
-const SCOPE_B = Object.freeze({ workspaceId: IDS.workspaceB, actorUserId: IDS.userB });
+const SCOPE_A = Object.freeze({
+  accountId: IDS.accountA,
+  workspaceId: IDS.workspaceA,
+  actorUserId: IDS.userA,
+});
+const SCOPE_B = Object.freeze({
+  accountId: IDS.accountB,
+  workspaceId: IDS.workspaceB,
+  actorUserId: IDS.userB,
+});
 const PROFILE_PAYLOAD = JSON.parse(
   readFileSync(
     new URL("../../../project-context/evidence/default_image_style_v1.json", import.meta.url),

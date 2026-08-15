@@ -115,6 +115,20 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     return c.json(runtime.sharedApp.view(session.id));
   });
 
+  /**
+   * The tenant scope bound to the caller's own session. It is derived from the admitted identity,
+   * so a session can only ever read its own account and default workspace.
+   */
+  app.get("/api/v1/shared-app/tenant", (c) => {
+    const session = runtime.resolveSession(c);
+    if (!session.ok) return session.response;
+    const tenant = runtime.sharedApp.tenant(session.id);
+    if (tenant === null) {
+      return c.json({ error: { code: "WORKSPACE_ACCESS_REQUIRED" } }, 403);
+    }
+    return c.json(tenant);
+  });
+
   app.post("/api/v1/shared-app/generate", async (c) => {
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;

@@ -53,6 +53,8 @@ export function createPhase1PrivateArtifactApp(options: Phase1PrivateArtifactApp
       }
       return {
         ok: true,
+        // Both fields come from the durable authorization row, never from the request headers.
+        accountId: authorization.value.workspace.accountId,
         workspaceId: authorization.value.workspace.workspaceId,
       };
     },

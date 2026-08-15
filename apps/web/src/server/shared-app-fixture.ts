@@ -90,10 +90,26 @@ export class SharedFixtureError extends Error {
   }
 }
 
+/** One admitted identity owns exactly one account and one default workspace (DEC_TENANCY_002). */
+export interface FixtureTenantScope {
+  readonly accountId: string;
+  readonly workspaceId: string;
+}
+
+/** Deterministic per-identity scope. Distinct emails can never collide onto one tenant. */
+function fixtureTenantScope(email: string): FixtureTenantScope {
+  const slug = email.replaceAll(/[^a-z0-9]+/gu, "-").replaceAll(/^-+|-+$/gu, "");
+  return Object.freeze({
+    accountId: `account-${slug}`,
+    workspaceId: `workspace-${slug}`,
+  });
+}
+
 interface Admission {
   readonly email: string;
   readonly method: FixtureAuthMethod;
   readonly credentialHash: string;
+  readonly tenant: FixtureTenantScope;
 }
 
 interface Invite {
@@ -336,10 +352,16 @@ export class SharedAppFixtureStore {
           email,
           method: "EMAIL_PASSWORD" as const,
           credentialHash: "fixture-bootstrap-identity",
+          tenant: fixtureTenantScope(email),
         });
       this.#state.admissions.set(email, admission);
       this.#state.sessionAdmissions.set(sessionId, admission);
     });
+  }
+
+  /** The tenant scope bound to one session, or null when the session is not admitted. */
+  tenant(sessionId: string): FixtureTenantScope | null {
+    return this.#state.sessionAdmissions.get(sessionId)?.tenant ?? null;
   }
 
   async authenticate(input: {
@@ -350,7 +372,12 @@ export class SharedAppFixtureStore {
     googleAccountEmail?: string;
     googleAssertion?: string;
     inviteCode?: string;
-  }): Promise<{ outcome: "ADMITTED" | "RETURNING"; email: string; rights: "EQUAL" }> {
+  }): Promise<{
+    outcome: "ADMITTED" | "RETURNING";
+    email: string;
+    rights: "EQUAL";
+    tenant: FixtureTenantScope;
+  }> {
     return this.commitAsync(async () => {
       const email = normalizedEmail(input.email);
       const presentedCredential =
@@ -392,7 +419,7 @@ export class SharedAppFixtureStore {
           );
         }
         this.#state.sessionAdmissions.set(input.sessionId, existing);
-        return { outcome: "RETURNING", email, rights: "EQUAL" };
+        return { outcome: "RETURNING", email, rights: "EQUAL", tenant: existing.tenant };
       }
       if (!input.inviteCode) {
         throw new SharedFixtureError("INVITE_REQUIRED", 403, "A one-time invite code is required.");
@@ -421,11 +448,13 @@ export class SharedAppFixtureStore {
         email,
         method: input.method,
         credentialHash: presentedCredentialHash,
+        // DEC_TENANCY_002: admission creates exactly one private account and default workspace.
+        tenant: fixtureTenantScope(email),
       });
       invite.consumed = true;
       this.#state.admissions.set(email, admission);
       this.#state.sessionAdmissions.set(input.sessionId, admission);
-      return { outcome: "ADMITTED", email, rights: "EQUAL" };
+      return { outcome: "ADMITTED", email, rights: "EQUAL", tenant: admission.tenant };
     });
   }
 

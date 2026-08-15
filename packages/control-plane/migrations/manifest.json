@@ -102,6 +102,12 @@
       "name": "cp02_admission_fk_lock",
       "filename": "0017_cp02_admission_fk_lock.sql",
       "sha256": "sha256:3a46e87ed02809fffebe7d7243ca3940dfbb85b3cba51a7f3d7e7c740836f53a"
+    },
+    {
+      "version": 18,
+      "name": "tenant_private_scope",
+      "filename": "0018_tenant_private_scope.sql",
+      "sha256": "sha256:86ae2a665d047202187aa1a2d0bd918664327a8b7b989a41c6e77c9ca22a7f45"
     }
   ]
 }

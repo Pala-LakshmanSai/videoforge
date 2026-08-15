@@ -132,7 +132,11 @@ export function snapshotWorkspaceAccessRecord(value: unknown): WorkspaceAccessRe
     "membership",
   ]);
   if (record === null) return null;
-  const workspace = snapshotExactPlainRecord(record.workspace, ["workspaceId", "status"]);
+  const workspace = snapshotExactPlainRecord(record.workspace, [
+    "accountId",
+    "workspaceId",
+    "status",
+  ]);
   const identity = snapshotExactPlainRecord(record.identity, [
     "userId",
     "normalizedEmail",
@@ -161,6 +165,7 @@ export function snapshotWorkspaceAccessRecord(value: unknown): WorkspaceAccessRe
   const membershipStatus = enumValue(membership.status, MEMBERSHIP_STATUSES);
   if (
     !authIdentifier(workspace.workspaceId) ||
+    !authIdentifier(workspace.accountId) ||
     workspaceStatus === null ||
     !authIdentifier(identity.userId) ||
     !isNormalizedAuthEmail(identity.normalizedEmail) ||
@@ -182,7 +187,11 @@ export function snapshotWorkspaceAccessRecord(value: unknown): WorkspaceAccessRe
   }
 
   return Object.freeze({
-    workspace: Object.freeze({ workspaceId: workspace.workspaceId, status: workspaceStatus }),
+    workspace: Object.freeze({
+      workspaceId: workspace.workspaceId,
+      accountId: workspace.accountId,
+      status: workspaceStatus,
+    }),
     identity: Object.freeze({
       userId: identity.userId,
       normalizedEmail: identity.normalizedEmail,

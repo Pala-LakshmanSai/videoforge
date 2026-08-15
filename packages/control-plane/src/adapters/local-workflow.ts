@@ -13,6 +13,7 @@ import type {
   Sha256,
   WorkspaceScope,
 } from "../repositories/types.js";
+import { trustedTenantScope } from "../repositories/types.js";
 import {
   NoopTelemetryAdapter,
   TelemetryStream,
@@ -474,7 +475,7 @@ export class LocalWorkflowTransport {
         let acknowledgement: ProviderDispatchAcknowledgement | null = null;
         if (outbox.kind === "DISPATCH") {
           const result = await repositories.execution.recordDispatchAcknowledged(
-            { workspaceId: outbox.workspaceId },
+            trustedTenantScope(outbox.accountId, outbox.workspaceId),
             {
               idempotencyKey: deliveryMutationKey(outbox, "ACKNOWLEDGED"),
               taskId: outbox.taskId,
@@ -504,7 +505,7 @@ export class LocalWorkflowTransport {
         let ambiguity: ProviderDispatchAckUnknown | null = null;
         if (outbox.kind === "DISPATCH") {
           const result = await repositories.execution.recordDispatchAckUnknown(
-            { workspaceId: outbox.workspaceId },
+            trustedTenantScope(outbox.accountId, outbox.workspaceId),
             {
               idempotencyKey: deliveryMutationKey(outbox, "ACKNOWLEDGEMENT_UNKNOWN"),
               taskId: outbox.taskId,
@@ -634,7 +635,7 @@ function snapshotCallbackSignatureInput(
   const payload = JSON.parse(strictCanonicalJson(sourceEvent.payload)) as JsonObject;
   return {
     receiptId: input.receiptId,
-    scope: { workspaceId: input.scope.workspaceId },
+    scope: trustedTenantScope(input.scope.accountId, input.scope.workspaceId),
     taskId: input.taskId,
     attemptId: input.attemptId,
     callbackKind: input.callbackKind,

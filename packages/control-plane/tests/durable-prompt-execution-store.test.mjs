@@ -42,7 +42,11 @@ const TIMELINE_HASH = sha256("prompt-store-timeline");
 const TRANSCRIPT_HASH = sha256("prompt-store-transcript");
 const TRANSCRIPT_INPUT_HASH = sha256("prompt-store-transcript-input");
 const TIMELINE_INPUT_HASH = sha256("prompt-store-timeline-input");
-const SCOPE = Object.freeze({ workspaceId: IDS.workspaceA, actorUserId: IDS.userA });
+const SCOPE = Object.freeze({
+  accountId: IDS.accountA,
+  workspaceId: IDS.workspaceA,
+  actorUserId: IDS.userA,
+});
 
 const STYLE_PROFILE = Object.freeze({
   prompt_profile: Object.freeze({
@@ -413,7 +417,11 @@ test("store rejects stale claim, cancellation, and cross-workspace access before
       "CLAIM_STALE",
     );
     await rejectsCode(
-      () => service.execute({ workspaceId: IDS.workspaceB, actorUserId: IDS.userB }, command()),
+      () =>
+        service.execute(
+          { accountId: IDS.accountB, workspaceId: IDS.workspaceB, actorUserId: IDS.userB },
+          command(),
+        ),
       "REPOSITORY_FAILURE",
     );
     await context.executor.query(
@@ -532,7 +540,7 @@ test("migrations 0009-0017 upgrade live migration-0008 prompt authority and exec
     }
     await seedPromptAuthority(executor, { initializeInputHash: false });
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [9, 10, 11, 12, 13, 14, 15, 16, 17]);
+    assert.deepEqual(upgraded.appliedVersions, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18]);
     await initializePromptInputHash(executor);
     const result = await execute(executor);
     assert.equal(result.replayed, false);

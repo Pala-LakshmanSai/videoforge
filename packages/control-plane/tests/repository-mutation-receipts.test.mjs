@@ -38,7 +38,7 @@ test("repository mutation receipts are workspace-scoped exact-key authorities", 
       "23505",
     );
 
-    await insertReceipt(executor, { workspaceId: IDS.workspaceB });
+    await insertReceipt(executor, { accountId: IDS.accountB, workspaceId: IDS.workspaceB });
     const rows = await executor.query(
       `SELECT workspace_id, idempotency_key, operation, input_hash, result_codec, result_hash
          FROM repository_mutation_receipts

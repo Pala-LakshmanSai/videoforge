@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: V2-00 complete and independently green; V2-01 ready for explicit implementation invocation
+Status: V2-01 complete and green; V2-02 ready for explicit implementation invocation
 Context schema: `2.0`
 Last updated: `2026-08-15`
 
@@ -114,10 +114,24 @@ and evidence selection, not source-footage motion.
 
 ## Current handoff
 
-The V2 roadmap/context reset and its independent V2-00 audit are complete and green at `806edba`,
-and a later V2-00 re-audit reran the full suite and every context check green, repairing only the
-context validator's non-UTF-8 locale crash.
-`CURRENT_STATE.yaml` selects V2-01 as the next checkpoint, ready only when the user explicitly
+V2-00 and its independent audit are green. V2-01 is now complete and green: additive migration
+`0018_tenant_private_scope.sql` gives projects, revisions, assets, Avatar Profiles/versions, Image
+Styles/versions, queue entries, attempts, outputs, costs, approvals, and audits an `account_id`
+joined to `workspaces (account_id, id)`, so a cross-tenant row cannot be represented. Ownership is
+derived by the database from the already-authorized parent row, which means a client-supplied owner
+is overwritten rather than honoured. Pre-V2 rows are adopted by a reserved LEGACY account that no
+identity can authenticate into, and pre-V2 admissions receive fresh empty accounts instead. Every
+repository call now requires an unforgeable trusted principal, and each unit of work binds
+`videoforge.account_id` for its whole transaction. Invite redemption atomically creates exactly one
+account, one default workspace, and one membership. Built-in presets are the only globally readable
+records and reject every update and delete. The approved UI geometry is unchanged.
+
+Row level security is declared on every tenant table but is not behaviourally proven: PGlite
+connects as a superuser and bypasses it, so the local proof comes from the tenant write guard and
+the `videoforge_tenant_*` views. Hosted enforcement waits for V2-06. `GATE_TENANCY_001` therefore
+stays open pending tenant-private artifacts (V2-02) and that hosted proof.
+
+`CURRENT_STATE.yaml` selects V2-02 as the next checkpoint, ready only when the user explicitly
 invokes its provider-free implementation prompt. This handoff does not itself authorize application
 implementation. All prior provider authorities are consumed and cannot be reused. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git

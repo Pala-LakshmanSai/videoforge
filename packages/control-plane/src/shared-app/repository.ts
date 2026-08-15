@@ -1,5 +1,5 @@
 import { normalizedAuthEmailValue } from "../auth/validation.js";
-import type { TransactionalSqlExecutor } from "../database/ports.js";
+import type { SqlExecutor, TransactionalSqlExecutor } from "../database/ports.js";
 
 export type SharedAdmissionProblemCode =
   | "AUTH_IDENTITY_CONFLICT"
@@ -34,6 +34,11 @@ export interface RedeemInviteCommand {
   readonly admissionId: string;
   readonly redemptionId: string;
   readonly identityBindingId: string;
+  /** The one private tenant this admission owns. DEC_TENANCY_002 allows exactly one. */
+  readonly accountId: string;
+  /** The single default workspace created with that account. */
+  readonly workspaceId: string;
+  readonly membershipId: string;
   readonly userId: string;
   readonly email: string;
   readonly emailVerified: boolean;
@@ -49,12 +54,16 @@ export interface SharedAdmissionResult {
   readonly admissionId: string;
   readonly normalizedEmail: string;
   readonly authMethod: SharedAuthMethod;
+  /** The trusted tenant scope this session may act in. Never taken from a client field. */
+  readonly accountId: string;
+  readonly workspaceId: string;
 }
 
 interface AdmissionRow extends Record<string, unknown> {
   readonly id: string;
   readonly normalized_email: string;
   readonly auth_methods: string[];
+  readonly account_id: string;
 }
 
 interface InviteRow extends Record<string, unknown> {
@@ -62,6 +71,37 @@ interface InviteRow extends Record<string, unknown> {
   readonly intended_normalized_email: string;
   readonly state: "ACTIVE" | "CONSUMED" | "REVOKED";
   readonly expires_at: string;
+}
+
+interface AccountRow extends Record<string, unknown> {
+  readonly id: string;
+}
+
+interface DefaultWorkspaceRow extends Record<string, unknown> {
+  readonly id: string;
+}
+
+/**
+ * Resolves the one default workspace an account owns. A returning login never carries its own
+ * workspace, so the server derives it from the admitted account instead of trusting the request.
+ */
+async function resolveDefaultWorkspaceId(
+  executor: SqlExecutor,
+  accountId: string,
+): Promise<string> {
+  const result = await executor.query<DefaultWorkspaceRow>(
+    `SELECT id FROM workspaces
+      WHERE account_id = $1 AND is_default AND status = 'ACTIVE'`,
+    [accountId],
+  );
+  const workspaceId = result.rows[0]?.id;
+  if (workspaceId === undefined) {
+    throw new SharedAdmissionError(
+      "AUTH_IDENTITY_CONFLICT",
+      "Admitted account has no active default workspace.",
+    );
+  }
+  return workspaceId;
 }
 
 function normalizedEmail(value: string): string {
@@ -96,7 +136,7 @@ export class SharedAdmissionRepository {
     const email = normalizedEmail(command.email);
     return this.database.transaction(async (transaction) => {
       const returning = await transaction.query<AdmissionRow>(
-        `SELECT id, normalized_email, auth_methods
+        `SELECT id, normalized_email, auth_methods, account_id
            FROM app_admissions
           WHERE user_id = $1 AND status = 'ADMITTED'`,
         [command.userId],
@@ -117,6 +157,8 @@ export class SharedAdmissionRepository {
           admissionId: existing.id,
           normalizedEmail: existing.normalized_email,
           authMethod: command.authMethod,
+          accountId: existing.account_id,
+          workspaceId: await resolveDefaultWorkspaceId(transaction, existing.account_id),
         });
       }
 
@@ -157,14 +199,46 @@ export class SharedAdmissionRepository {
         );
       }
 
+      // One admitted identity owns exactly one account and one default workspace. An identity that
+      // already owns one — an upgraded installation, or a re-admission — adopts it rather than
+      // creating a second private tenant.
+      const owned = await transaction.query<AccountRow>(
+        `SELECT id FROM accounts WHERE owner_user_id = $1 AND scope_kind = 'USER'`,
+        [command.userId],
+      );
+      const ownedAccountId = owned.rows[0]?.id;
+      const accountId = ownedAccountId ?? command.accountId;
+      let workspaceId = command.workspaceId;
+
       try {
+        if (ownedAccountId === undefined) {
+          await transaction.query(
+            `INSERT INTO accounts (id, scope_kind, owner_user_id, normalized_email, status)
+             VALUES ($1, 'USER', $2, $3, 'ACTIVE')`,
+            [accountId, command.userId, email],
+          );
+          await transaction.query(
+            `INSERT INTO workspaces (id, name, normalized_name, status, account_id, is_default)
+             VALUES ($1, $2, $3, 'ACTIVE', $4, true)`,
+            [workspaceId, `Workspace ${accountId}`, `workspace ${accountId}`, accountId],
+          );
+          await transaction.query(
+            `INSERT INTO memberships (
+               id, workspace_id, user_id, normalized_name, role, status, version
+             ) VALUES ($1, $2, $3, $4, 'ADMIN', 'ACTIVE', 1)`,
+            [command.membershipId, workspaceId, command.userId, `owner ${accountId}`],
+          );
+        } else {
+          workspaceId = await resolveDefaultWorkspaceId(transaction, accountId);
+        }
         await transaction.query(
           `INSERT INTO auth_identity_bindings (
-             id, user_id, normalized_email, auth_method, provider_subject_sha256,
+             id, account_id, user_id, normalized_email, auth_method, provider_subject_sha256,
              email_verified_at, bound_at
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [
             command.identityBindingId,
+            accountId,
             command.userId,
             email,
             command.authMethod,
@@ -175,11 +249,12 @@ export class SharedAdmissionRepository {
         );
         await transaction.query(
           `INSERT INTO invite_redemptions (
-             id, invite_code_id, user_id, normalized_email, auth_method,
+             id, account_id, invite_code_id, user_id, normalized_email, auth_method,
              verifier_sha256, redeemed_at
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [
             command.redemptionId,
+            accountId,
             row.id,
             command.userId,
             email,
@@ -190,11 +265,12 @@ export class SharedAdmissionRepository {
         );
         await transaction.query(
           `INSERT INTO app_admissions (
-             id, user_id, normalized_email, email_verified_at, invite_redemption_id,
+             id, account_id, user_id, normalized_email, email_verified_at, invite_redemption_id,
              auth_methods, status, version, admitted_at
-           ) VALUES ($1, $2, $3, $4, $5, ARRAY[$6]::text[], 'ADMITTED', 1, $7)`,
+           ) VALUES ($1, $2, $3, $4, $5, $6, ARRAY[$7]::text[], 'ADMITTED', 1, $8)`,
           [
             command.admissionId,
+            accountId,
             command.userId,
             email,
             command.emailVerifiedAt,
@@ -235,6 +311,8 @@ export class SharedAdmissionRepository {
         admissionId: command.admissionId,
         normalizedEmail: email,
         authMethod: command.authMethod,
+        accountId,
+        workspaceId,
       });
     });
   }

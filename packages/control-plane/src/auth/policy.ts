@@ -93,6 +93,7 @@ function isExactActiveAccess(
   return (
     access.workspace.workspaceId === requestedWorkspaceId &&
     access.workspace.status === "ACTIVE" &&
+    authIdentifier(access.workspace.accountId) &&
     access.identity.userId === session.userId &&
     access.identity.normalizedEmail === session.normalizedEmail &&
     access.identity.status === "ACTIVE" &&
@@ -118,6 +119,7 @@ function freezeAuthorization(
   });
   const workspace = Object.freeze({
     workspaceId: access.workspace.workspaceId,
+    accountId: access.workspace.accountId,
     membershipId: access.membership.membershipId,
     role: access.membership.role,
   });

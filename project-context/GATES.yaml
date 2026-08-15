@@ -9,8 +9,20 @@ gates:
     blocks: v2_02_and_all_hosted_or_provider_work
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatetenancy001-accountworkspace-privacy"
     owner: V2-01
-    last_run: null
-    result: open_not_implemented
+    last_run: evidence/acceptance/VF-10-01/2026-08-15-tenant-cutover/acceptance.json
+    last_run_at: "2026-08-15"
+    result: metadata_isolation_green_artifacts_and_hosted_enforcement_open
+    satisfied_locally:
+      - additive_account_workspace_migration_0018
+      - composite_database_ownership_on_every_tenant_table
+      - trusted_server_principal_required_by_every_repository_call
+      - tenant_private_repositories_apis_events_and_searches
+      - explicit_immutable_builtin_versus_workspace_preset_split
+      - two_account_negative_matrix_including_guessed_ids_hashes_and_stale_sessions
+      - installed_chrome_two_account_isolation
+    still_open:
+      - tenant_private_artifact_keys_and_signed_transfer_belong_to_V2_02
+      - declared_rls_policies_are_unproven_until_a_non_superuser_role_runs_them_in_V2_06
 
   GATE_STORAGE_001:
     status: open

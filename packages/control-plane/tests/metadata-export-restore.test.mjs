@@ -16,7 +16,7 @@ import { DurableRecoveryCoordinator } from "../dist/src/recovery/index.js";
 import { HASHES, IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import { createMigratedDatabase, FIXED_TIME, sha256, uuid } from "./support/pglite.mjs";
 
-const SCOPE = Object.freeze({ workspaceId: IDS.workspaceA });
+const SCOPE = Object.freeze({ accountId: IDS.accountA, workspaceId: IDS.workspaceA });
 const TASK_ID = uuid(40_001);
 const ATTEMPT_ID = uuid(40_002);
 const COST_ID = uuid(40_003);
@@ -170,11 +170,25 @@ function expectSnapshotError(error, code) {
   return true;
 }
 
+// Migration 0018 seeds the reserved SYSTEM and LEGACY scope rows into every migrated database, so
+// they are schema baseline rather than restorable tenant metadata.
+const RESERVED_SCOPE_ROW_FILTER = Object.freeze({
+  accounts:
+    " WHERE id NOT IN ('ffffffff-ffff-4fff-8fff-000000000001'," +
+    "'ffffffff-ffff-4fff-8fff-000000000002')",
+  workspaces:
+    " WHERE id NOT IN ('ffffffff-ffff-4fff-8fff-000000000011'," +
+    "'ffffffff-ffff-4fff-8fff-000000000012')",
+  users: " WHERE id <> 'ffffffff-ffff-4fff-8fff-000000000021'",
+  memberships: " WHERE id <> 'ffffffff-ffff-4fff-8fff-000000000031'",
+});
+
 async function totalDataRows(executor) {
   let total = 0;
   for (const tableName of RELATIONAL_TABLE_NAMES) {
     const result = await executor.query(
-      `SELECT count(*)::text AS count FROM public."${tableName}"`,
+      `SELECT count(*)::text AS count FROM public."${tableName}"` +
+        (RESERVED_SCOPE_ROW_FILTER[tableName] ?? ""),
     );
     total += Number(result.rows[0].count);
   }
@@ -193,7 +207,7 @@ test("the same metadata snapshot restores exactly, resumes idempotently, and rem
     const serialized = serializeMetadataSnapshot(first);
     assert.equal(serializeMetadataSnapshot(second), serialized);
     assert.equal(second.snapshotSha256, first.snapshotSha256);
-    assert.equal(first.migrationLedger.length, 17);
+    assert.equal(first.migrationLedger.length, 18);
     assert.equal(first.tables.length, RELATIONAL_TABLE_NAMES.length);
     for (const requiredTable of [
       "memberships",

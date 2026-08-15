@@ -18,6 +18,8 @@ import {
   type RepositoryResult,
   type Sha256,
   type WorkspaceActorScope,
+  trustedTenantActorScope,
+  trustedTenantScope,
 } from "../repositories/types.js";
 import type { ControlPlaneRepositories } from "../repositories/unit-of-work.js";
 import {
@@ -137,7 +139,7 @@ const COMMAND_KEYS = [
   "styleId",
   "versionId",
 ] as const;
-const SCOPE_KEYS = ["actorUserId", "workspaceId"] as const;
+const SCOPE_KEYS = ["accountId", "actorUserId", "workspaceId"] as const;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/u;
 
@@ -201,9 +203,10 @@ function timestamp(value: unknown, label: string): string {
 
 function scopeSnapshot(value: WorkspaceActorScope): WorkspaceActorScope {
   const snapshot = exactPlainRecord(value, SCOPE_KEYS, "AUTHORIZATION_REQUIRED", "Actor scope");
+  const accountId = boundedText(snapshot.accountId, "accountId", 160);
   const workspaceId = boundedText(snapshot.workspaceId, "workspaceId", 160);
   const actorUserId = boundedText(snapshot.actorUserId, "actorUserId", 160);
-  return Object.freeze({ workspaceId, actorUserId });
+  return trustedTenantActorScope(trustedTenantScope(accountId, workspaceId), actorUserId);
 }
 
 function lookupSnapshot(value: ImageStyleReviewLookup): ImageStyleReviewLookup {

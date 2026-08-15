@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { canonicalizeJson, validateContract } from "@videoforge/contracts";
 
 import type { SqlExecutor, TransactionalSqlExecutor } from "../database/ports.js";
+import { TENANT_PRINCIPAL_SETTING } from "../database/vocabulary.js";
 import type * as ArtifactContracts from "../repositories/artifacts.js";
 import type * as EventContracts from "../repositories/events.js";
 import type * as ExecutionContracts from "../repositories/execution.js";
@@ -726,6 +727,7 @@ function mapCostEvent(row: Row): EventContracts.CostEventRecord {
 function mapOutbox(row: Row): ExecutionContracts.OutboxRecord {
   return {
     outboxId: stringValue(row.id, "outbox.id"),
+    accountId: stringValue(row.account_id, "outbox.account_id"),
     workspaceId: stringValue(row.workspace_id, "outbox.workspace_id"),
     taskId: stringValue(row.task_id, "outbox.task_id"),
     attemptId: stringValue(row.attempt_id, "outbox.attempt_id"),
@@ -7406,9 +7408,26 @@ interface UnitOfWorkScopeGuard {
   failure: RepositoryResult<never, string, string, string> | null;
 }
 
-function guardedWorkspaceId(scope: unknown): string | null {
+/**
+ * Binds the trusted principal to the database session for the rest of the transaction.
+ *
+ * The tenant write guard rejects any row whose derived owner disagrees with this value, and the
+ * `videoforge_tenant_*` views return nothing outside it, so a repository that reached a foreign
+ * workspace through an application bug fails at the database rather than returning data.
+ */
+export async function bindTenantPrincipal(
+  executor: SqlExecutor,
+  scope: WorkspaceScope,
+): Promise<void> {
+  await executor.query(`SELECT set_config($1, $2, true)`, [
+    TENANT_PRINCIPAL_SETTING,
+    scope.accountId,
+  ]);
+}
+
+function guardedScopeField(scope: unknown, field: "accountId" | "workspaceId"): string | null {
   if (typeof scope !== "object" || scope === null || Array.isArray(scope)) return null;
-  const descriptor = Object.getOwnPropertyDescriptor(scope, "workspaceId");
+  const descriptor = Object.getOwnPropertyDescriptor(scope, field);
   return descriptor !== undefined && "value" in descriptor && typeof descriptor.value === "string"
     ? descriptor.value
     : null;
@@ -7416,7 +7435,7 @@ function guardedWorkspaceId(scope: unknown): string | null {
 
 function scopeGuardedRepository<Repository extends object>(
   repository: Repository,
-  workspaceId: string,
+  scope: WorkspaceScope,
   guard: UnitOfWorkScopeGuard,
 ): Repository {
   const cached = new Map<PropertyKey, unknown>();
@@ -7427,10 +7446,13 @@ function scopeGuardedRepository<Repository extends object>(
       const existing = cached.get(property);
       if (existing !== undefined) return existing;
       const wrapped = async (...parameters: unknown[]): Promise<unknown> => {
-        if (guardedWorkspaceId(parameters[0]) !== workspaceId) {
+        if (
+          guardedScopeField(parameters[0], "workspaceId") !== scope.workspaceId ||
+          guardedScopeField(parameters[0], "accountId") !== scope.accountId
+        ) {
           const failure = invariant(
             "CROSS_WORKSPACE_REFERENCE",
-            "unit-of-work repository calls must use the bound workspace scope",
+            "unit-of-work repository calls must use the bound tenant scope",
           );
           guard.failure ??= failure;
           return failure;
@@ -7445,18 +7467,18 @@ function scopeGuardedRepository<Repository extends object>(
 
 function createScopeGuardedSession(
   session: RepositorySession,
-  workspaceId: string,
+  scope: WorkspaceScope,
   guard: UnitOfWorkScopeGuard,
 ): RepositorySession {
   return {
-    identity: scopeGuardedRepository(session.identity, workspaceId, guard),
-    artifacts: scopeGuardedRepository(session.artifacts, workspaceId, guard),
-    avatarProfiles: scopeGuardedRepository(session.avatarProfiles, workspaceId, guard),
-    events: scopeGuardedRepository(session.events, workspaceId, guard),
-    execution: scopeGuardedRepository(session.execution, workspaceId, guard),
-    imageStyles: scopeGuardedRepository(session.imageStyles, workspaceId, guard),
-    projects: scopeGuardedRepository(session.projects, workspaceId, guard),
-    timing: scopeGuardedRepository(session.timing, workspaceId, guard),
+    identity: scopeGuardedRepository(session.identity, scope, guard),
+    artifacts: scopeGuardedRepository(session.artifacts, scope, guard),
+    avatarProfiles: scopeGuardedRepository(session.avatarProfiles, scope, guard),
+    events: scopeGuardedRepository(session.events, scope, guard),
+    execution: scopeGuardedRepository(session.execution, scope, guard),
+    imageStyles: scopeGuardedRepository(session.imageStyles, scope, guard),
+    projects: scopeGuardedRepository(session.projects, scope, guard),
+    timing: scopeGuardedRepository(session.timing, scope, guard),
   };
 }
 
@@ -7495,11 +7517,8 @@ export function createPGliteControlPlaneRepositories(
               atomic: directAtomic,
             },
           );
-          const transactionSession = createScopeGuardedSession(
-            receiptSession,
-            scope.workspaceId,
-            guard,
-          );
+          await bindTenantPrincipal(transaction, scope);
+          const transactionSession = createScopeGuardedSession(receiptSession, scope, guard);
           const result = await work(transactionSession);
           if (guard.failure !== null) {
             throw new TypedTransactionRollback(guard.failure);

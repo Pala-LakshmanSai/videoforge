@@ -13,8 +13,16 @@ import { createPGliteControlPlaneRepositories } from "../dist/src/adapters/index
 import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import { createMigratedDatabase, FIXED_TIME, sha256, uuid } from "./support/pglite.mjs";
 
-const SCOPE_A = Object.freeze({ workspaceId: IDS.workspaceA, actorUserId: IDS.userA });
-const SCOPE_B = Object.freeze({ workspaceId: IDS.workspaceB, actorUserId: IDS.userB });
+const SCOPE_A = Object.freeze({
+  accountId: IDS.accountA,
+  workspaceId: IDS.workspaceA,
+  actorUserId: IDS.userA,
+});
+const SCOPE_B = Object.freeze({
+  accountId: IDS.accountB,
+  workspaceId: IDS.workspaceB,
+  actorUserId: IDS.userB,
+});
 const MAX_REFERENCE_BYTES = 20 * 1024 * 1024;
 
 const STYLE = Object.freeze({

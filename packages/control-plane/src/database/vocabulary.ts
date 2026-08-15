@@ -2,6 +2,7 @@ export const MIGRATION_TABLE_NAME = "videoforge_schema_migrations" as const;
 
 export const RELATIONAL_TABLE_NAMES = [
   "users",
+  "accounts",
   "app_admissions",
   "workspaces",
   "memberships",
@@ -68,6 +69,46 @@ export const RELATIONAL_TABLE_NAMES = [
 ] as const;
 
 export type RelationalTableName = (typeof RELATIONAL_TABLE_NAMES)[number];
+
+/**
+ * Tenant read views filter on the trusted principal recorded in `videoforge.account_id`. Preset
+ * views additionally expose the immutable `scope_kind = 'SYSTEM'` built-ins.
+ */
+export const TENANT_VIEW_NAMES = [
+  "videoforge_tenant_assets",
+  "videoforge_tenant_attempts",
+  "videoforge_tenant_avatar_profile_versions",
+  "videoforge_tenant_avatar_profiles",
+  "videoforge_tenant_cost_events",
+  "videoforge_tenant_durable_generation_outputs",
+  "videoforge_tenant_generation_tasks",
+  "videoforge_tenant_global_queue_audits",
+  "videoforge_tenant_global_queue_entries",
+  "videoforge_tenant_global_session_cost_events",
+  "videoforge_tenant_global_session_events",
+  "videoforge_tenant_image_style_versions",
+  "videoforge_tenant_image_styles",
+  "videoforge_tenant_project_inputs",
+  "videoforge_tenant_project_revisions",
+  "videoforge_tenant_projects",
+  "videoforge_tenant_qa_results",
+  "videoforge_tenant_render_jobs",
+  "videoforge_tenant_workflow_events",
+  "videoforge_tenant_workflow_instances",
+] as const;
+
+export type TenantViewName = (typeof TENANT_VIEW_NAMES)[number];
+
+/** The reserved scopes migration 0018 seeds into every database. */
+export const RESERVED_SYSTEM_ACCOUNT_ID = "ffffffff-ffff-4fff-8fff-000000000001" as const;
+export const RESERVED_LEGACY_ACCOUNT_ID = "ffffffff-ffff-4fff-8fff-000000000002" as const;
+export const RESERVED_SYSTEM_WORKSPACE_ID = "ffffffff-ffff-4fff-8fff-000000000011" as const;
+/** Author of the built-in catalog. It owns no account, so no login can resolve to it. */
+export const RESERVED_SYSTEM_USER_ID = "ffffffff-ffff-4fff-8fff-000000000021" as const;
+export const RESERVED_LEGACY_WORKSPACE_ID = "ffffffff-ffff-4fff-8fff-000000000012" as const;
+
+/** The session setting every application transaction binds to its trusted principal. */
+export const TENANT_PRINCIPAL_SETTING = "videoforge.account_id" as const;
 
 export const GLOBAL_SESSION_LANES = ["mage_image", "echo_avatar"] as const;
 export type GlobalSessionLane = (typeof GLOBAL_SESSION_LANES)[number];

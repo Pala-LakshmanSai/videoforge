@@ -7,6 +7,7 @@ import {
   applyMigrations,
   MIGRATION_TABLE_NAME,
   RELATIONAL_TABLE_NAMES,
+  TENANT_VIEW_NAMES,
 } from "../dist/src/index.js";
 import { loadMigrationSources, PGliteExecutor, sha256 } from "./support/pglite.mjs";
 
@@ -205,7 +206,7 @@ test("a hostile search_path cannot relocate migration objects outside public", a
     );
     assert.deepEqual(
       publicTables.rows.map((row) => row.table_name),
-      [...RELATIONAL_TABLE_NAMES, MIGRATION_TABLE_NAME].sort(),
+      [...RELATIONAL_TABLE_NAMES, ...TENANT_VIEW_NAMES, MIGRATION_TABLE_NAME].sort(),
     );
 
     const hostileObjects = await executor.query(

@@ -1,0 +1,142 @@
+{
+  "schema_version": "videoforge.v2-01-tenant-cutover/v1",
+  "task_id": "VF-10-01",
+  "checkpoint": "V2-01",
+  "milestone": "tenant_private_identity_and_data_cutover",
+  "result": "PASS",
+  "recorded_at_utc": "2026-08-15T21:40:00Z",
+  "predecessor": {
+    "checkpoint": "V2-00",
+    "evidence": "evidence/acceptance/VF-10-00A/2026-08-15-final-audit/acceptance.json",
+    "audited_commit": "806edba2a83087add93902ff2b937bd8c564a746",
+    "state": "green"
+  },
+  "schema_change": {
+    "migration": "0018_tenant_private_scope.sql",
+    "version": 18,
+    "additive_only": true,
+    "committed_migrations_rewritten": false,
+    "tenant_owned_tables": 55,
+    "tenant_read_views": 20,
+    "rls_policies": 59,
+    "reserved_scopes": {
+      "system_account_id": "ffffffff-ffff-4fff-8fff-000000000001",
+      "legacy_account_id": "ffffffff-ffff-4fff-8fff-000000000002",
+      "system_workspace_id": "ffffffff-ffff-4fff-8fff-000000000011",
+      "legacy_workspace_id": "ffffffff-ffff-4fff-8fff-000000000012",
+      "system_catalog_user_id": "ffffffff-ffff-4fff-8fff-000000000021"
+    }
+  },
+  "ownership_model": {
+    "columns_added": "account_id on projects, revisions, assets, Avatar Profiles/versions, Image Styles/versions, queue entries, dispatch authorizations, attempts, outputs, costs, approvals, and audits",
+    "constraint": "composite foreign key (account_id, workspace_id) -> workspaces (account_id, id) on every tenant table",
+    "closure": "existing workspace-composite child keys plus the new scope key make a cross-tenant row unrepresentable",
+    "derivation": "account_id is derived by database trigger from the already-authorized parent row; a supplied value is overwritten, never honoured",
+    "immutability": "moving a row to another tenant's workspace raises 55000",
+    "builtins": "scope_kind SYSTEM records exist only inside the reserved system account, are globally readable, and reject UPDATE and DELETE"
+  },
+  "backfill": {
+    "pre_v2_workspaces": "adopted by the reserved LEGACY account",
+    "pre_v2_rows": "inherit the legacy scope through their workspace",
+    "legacy_and_system_accounts": "status NON_LOGIN with no owner_user_id, so no identity can ever authenticate into them",
+    "pre_v2_admissions": "receive a fresh empty USER account and default workspace rather than the legacy scope"
+  },
+  "trusted_principal": {
+    "type": "WorkspaceScope carries accountId plus an unforgeable brand",
+    "constructor": "trustedTenantScope / trustedTenantActorScope only",
+    "client_supplied_owner": "cannot typecheck into a repository call and is overwritten at the database if it reaches SQL",
+    "session_binding": "the unit of work sets videoforge.account_id from the principal for the whole transaction",
+    "scope_guard": "unit-of-work repository calls must match both the bound account and workspace",
+    "auth_boundary": "WorkspaceAccessRecord and the granted authorization now carry the account read from the durable row"
+  },
+  "identity_binding": {
+    "decision": "DEC_AUTH_001 plus DEC_TENANCY_002",
+    "behaviour": "invite redemption atomically creates one account, one default workspace, and one membership",
+    "upgrade": "an identity that already owns an account adopts it instead of creating a second tenant",
+    "returning_login": "resolves its workspace from the admitted account, never from the request"
+  },
+  "rls_truth": {
+    "declared": "every tenant table enables and forces row level security and declares its tenant policy",
+    "behavioural_proof_in_pglite": false,
+    "reason": "PGlite connects as a superuser, which bypasses row level security regardless of FORCE",
+    "enforced_and_proven_instead": "the tenant write guard trigger and the videoforge_tenant_* views, both of which apply to the table owner",
+    "production_boundary": "the declared policies govern the non-superuser application role on Neon and remain unproven until V2-06 hosted staging"
+  },
+  "validation": {
+    "canonical_verify": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "uncached_tasks": "28/28",
+      "control_plane": "234/234",
+      "pipeline": "120/120",
+      "web": "313/313",
+      "contracts": "71/71",
+      "provider_sandbox": "43/43",
+      "test_fixtures": "12/12",
+      "cloudflare_parity": "1/1",
+      "installed_chrome": "44/44"
+    },
+    "consecutive_green_verify_runs": 2,
+    "observed_flake": {
+      "run": "one earlier canonical verify reported control-plane 233/234",
+      "identified_test": null,
+      "reason_not_identified": "the failing subtest name was not captured before the run was repeated",
+      "reproduced": false,
+      "context": "the host disk was under 1.4 GiB free at the time; PGlite writes temporary data directories",
+      "disposition": "not reproduced in two consecutive full verify runs or in a standalone control-plane run (234/234 each); recorded rather than dismissed"
+    },
+    "new_tests": [
+      "packages/control-plane/tests/tenant-private-scope.test.mjs (8/8)",
+      "apps/web/tests/e2e/tenant-isolation.spec.ts (1/1, installed Chrome)"
+    ],
+    "context_validate": "PASS; 103 JSON files; 31 profiles; 41 decisions; 19 gates",
+    "contracts_check": "PASS; 66 canonical files synchronized",
+    "active_runtime": "PASS; 62 active files",
+    "format_check": "PASS",
+    "secret_scan": "PASS; 864 tracked files",
+    "git_diff_check": "PASS"
+  },
+  "adversarial_matrix": {
+    "derived_ownership": "a supplied foreign account is replaced by the derived owner",
+    "ownership_immutability": "an account change and a cross-workspace move are both rejected",
+    "write_guard": "account B writing into account A's workspace is rejected with 42501",
+    "read_isolation": "six tenant surfaces return zero foreign rows for both accounts",
+    "guessed_identifier": "another tenant's exact primary key returns nothing",
+    "content_hash_existence": "another tenant's exact SHA-256 returns nothing",
+    "search": "tenant search returns only owned rows",
+    "stale_session": "an unbound or unknown principal sees nothing and cannot write",
+    "builtin_visibility": "both accounts read the built-in; neither reads the other's private preset",
+    "forged_builtin": "creating a SYSTEM record outside the reserved account is rejected with 23514",
+    "upgrade_path": "a 17-migration database upgrades to 18 with pre-V2 rows in the inaccessible legacy scope",
+    "installed_chrome": "two invited Chrome accounts hold distinct account and workspace identifiers, read only their own scope, and never observe the other's identifiers; an unadmitted session is denied without revealing either"
+  },
+  "ui_truth": {
+    "geometry_preserved": true,
+    "approved_visual_system_changed": false,
+    "evidence": "installed Chrome 44/44 including the full shell, density, dock, disclosure, and hub suites"
+  },
+  "scope_boundaries": {
+    "storage_provider_composition": "not started; belongs to V2-02",
+    "queue_and_admission_redesign": "not started; the superseded global equal-rights queue remains and belongs to V2-03",
+    "serverless_transport": "not started; belongs to V2-04",
+    "private_artifact_routes": "carry the derived account but remain uncomposed into the live runtime until V2-02"
+  },
+  "external_truth": {
+    "provider_calls_made": false,
+    "credential_accessed": false,
+    "cloud_mutation_performed": false,
+    "model_downloads": false,
+    "worker_image_publication": false,
+    "gpu_workers_started": false,
+    "paid_compute_started": false,
+    "external_spend_usd": 0,
+    "retained_volume_mutation": false,
+    "retained_volume_monthly_usd": 7.0,
+    "retained_volume_note": "The two 50 GB Mage and SoulX volumes remain billed as fixed infrastructure and were not touched by this checkpoint.",
+    "provider_resource_truth_remains_stale_snapshot": true
+  },
+  "gate_effect": {
+    "GATE_TENANCY_001": "metadata half satisfied locally: additive migration, composite database ownership, private repositories and APIs, built-in split, and the two-account negative matrix all pass provider-free. The gate stays OPEN until tenant-private artifacts (V2-02) and hosted enforcement of the declared RLS policies (V2-06) are proven."
+  },
+  "next_checkpoint": "V2-02"
+}

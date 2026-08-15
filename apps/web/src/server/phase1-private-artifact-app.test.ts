@@ -52,7 +52,7 @@ function session(
 
 function access(workspaceId: string, userId: string, email: string): WorkspaceAccessRecord {
   return {
-    workspace: { workspaceId, status: "ACTIVE" },
+    workspace: { workspaceId, accountId: `account_for_${workspaceId}`, status: "ACTIVE" },
     identity: { userId, normalizedEmail: email, status: "ACTIVE" },
     invitation: { workspaceId, normalizedEmail: email, status: "ACCEPTED" },
     membership: {

@@ -12,7 +12,7 @@ import { DurableRecoveryCoordinator } from "../dist/src/recovery/index.js";
 import { HASHES, IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import { createMigratedDatabase, FIXED_TIME, sha256, uuid } from "./support/pglite.mjs";
 
-const SCOPE = Object.freeze({ workspaceId: IDS.workspaceA });
+const SCOPE = Object.freeze({ accountId: IDS.accountA, workspaceId: IDS.workspaceA });
 const OWNER = Object.freeze({
   ownerType: "PROJECT_REVISION",
   ownerId: IDS.revisionA,

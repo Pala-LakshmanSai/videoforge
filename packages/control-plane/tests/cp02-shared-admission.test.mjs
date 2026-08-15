@@ -12,13 +12,28 @@ import { createMigratedDatabase, sha256, uuid } from "./support/pglite.mjs";
 const NOW = "2026-08-13T13:20:00.000Z";
 const EXPIRES = "2026-08-13T14:20:00.000Z";
 
+const ADMITTED_USER = uuid(130_050);
+const ADMITTED_EMAIL = "admitted-owner@example.test";
+
+/** The admitted identity is new, because redemption itself creates its account and workspace. */
+async function seedAdmissionCandidate(executor) {
+  await executor.query(
+    `INSERT INTO users (id, email, normalized_email, display_name)
+     VALUES ($1, $2, $2, 'Admitted Owner')`,
+    [ADMITTED_USER, ADMITTED_EMAIL],
+  );
+}
+
 function command(overrides = {}) {
   return {
     admissionId: uuid(130_001),
     redemptionId: uuid(130_002),
     identityBindingId: uuid(130_003),
-    userId: IDS.userA,
-    email: "owner-a@example.test",
+    accountId: uuid(130_007),
+    workspaceId: uuid(130_008),
+    membershipId: uuid(130_009),
+    userId: ADMITTED_USER,
+    email: ADMITTED_EMAIL,
     emailVerified: true,
     emailVerifiedAt: NOW,
     authMethod: "EMAIL_PASSWORD",
@@ -41,10 +56,11 @@ test("verified email admission atomically consumes one email-bound invite and re
   const database = await createMigratedDatabase();
   try {
     await seedLockedProjects(database.executor);
+    await seedAdmissionCandidate(database.executor);
     const repository = new SharedAdmissionRepository(database.executor);
     await repository.issueInvite({
       inviteId: uuid(130_010),
-      intendedEmail: "Owner-A@Example.Test",
+      intendedEmail: "Admitted-Owner@Example.Test",
       verifierSha256: sha256("invite-owner-a"),
       createdAt: NOW,
       expiresAt: EXPIRES,
@@ -54,8 +70,10 @@ test("verified email admission atomically consumes one email-bound invite and re
     assert.deepEqual(admitted, {
       outcome: "ADMITTED",
       admissionId: uuid(130_001),
-      normalizedEmail: "owner-a@example.test",
+      normalizedEmail: ADMITTED_EMAIL,
       authMethod: "EMAIL_PASSWORD",
+      accountId: uuid(130_007),
+      workspaceId: uuid(130_008),
     });
     const returning = await repository.redeemInvite(
       command({
@@ -91,10 +109,11 @@ test("unverified, mismatched, expired, revoked, and malformed invites fail witho
   const database = await createMigratedDatabase();
   try {
     await seedLockedProjects(database.executor);
+    await seedAdmissionCandidate(database.executor);
     const repository = new SharedAdmissionRepository(database.executor);
     await repository.issueInvite({
       inviteId: uuid(130_020),
-      intendedEmail: "owner-a@example.test",
+      intendedEmail: ADMITTED_EMAIL,
       verifierSha256: sha256("invite-policy"),
       createdAt: NOW,
       expiresAt: EXPIRES,
@@ -177,10 +196,11 @@ test("same-code concurrent redemption produces one admission and one redemption"
   const database = await createMigratedDatabase();
   try {
     await seedLockedProjects(database.executor);
+    await seedAdmissionCandidate(database.executor);
     const repository = new SharedAdmissionRepository(database.executor);
     await repository.issueInvite({
       inviteId: uuid(130_030),
-      intendedEmail: "owner-a@example.test",
+      intendedEmail: ADMITTED_EMAIL,
       verifierSha256: sha256("invite-race"),
       createdAt: NOW,
       expiresAt: EXPIRES,

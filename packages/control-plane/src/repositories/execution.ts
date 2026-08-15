@@ -74,6 +74,8 @@ export type AttemptRecord = NonUnknownAttemptRecord | UnknownAttemptRecord;
 
 export interface OutboxRecord {
   readonly outboxId: EntityId;
+  /** Derived by the database from the owning workspace; never supplied by a caller. */
+  readonly accountId: EntityId;
   readonly workspaceId: EntityId;
   readonly taskId: EntityId;
   readonly attemptId: EntityId;

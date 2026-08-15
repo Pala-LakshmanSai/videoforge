@@ -22,6 +22,7 @@ import PROFILE from "../../../../packages/contracts/generated/fixtures/default_i
 import { createImageStyleEditApiApp } from "./image-style-edit-app";
 
 const NOW = "2026-08-11T08:00:00.000Z";
+const ACCOUNT_A = "account_style_api_a";
 const WORKSPACE_A = "workspace_style_api_a";
 const WORKSPACE_B = "workspace_style_api_b";
 const USER_A = "user_style_api_a";
@@ -46,7 +47,7 @@ function session(): { readonly sessionToken: string; readonly session: AuthSessi
 
 function access(): WorkspaceAccessRecord {
   return {
-    workspace: { workspaceId: WORKSPACE_A, status: "ACTIVE" },
+    workspace: { workspaceId: WORKSPACE_A, accountId: ACCOUNT_A, status: "ACTIVE" },
     identity: {
       userId: USER_A,
       normalizedEmail: "style-api-a@example.test",
@@ -151,7 +152,7 @@ describe("Image Style edit API", () => {
     });
     expect(edit).toHaveBeenCalledOnce();
     expect(edit).toHaveBeenCalledWith(
-      { workspaceId: WORKSPACE_A, actorUserId: USER_A },
+      { accountId: ACCOUNT_A, workspaceId: WORKSPACE_A, actorUserId: USER_A },
       expect.objectContaining({
         styleId: "style_api_a",
         versionId: "version_api_a",

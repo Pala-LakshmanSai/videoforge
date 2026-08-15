@@ -2,6 +2,8 @@ import {
   ImageStyleDerivedArtifactEditService,
   ImageStyleDerivedEditError,
   PGliteImageStyleDerivedEditPersistence,
+  trustedTenantActorScope,
+  trustedTenantScope,
   type EditedImageStyleProfile,
   type ImageStyleDerivedEditErrorCode,
   type TransactionalSqlExecutor,
@@ -243,10 +245,13 @@ export function createImageStyleEditApiApp(options: ImageStyleEditApiAppOptions)
 
     try {
       const edited = await options.editService.edit(
-        {
-          workspaceId: authorization.value.workspace.workspaceId,
-          actorUserId: authorization.value.principal.userId,
-        },
+        trustedTenantActorScope(
+          trustedTenantScope(
+            authorization.value.workspace.accountId,
+            authorization.value.workspace.workspaceId,
+          ),
+          authorization.value.principal.userId,
+        ),
         {
           styleId,
           versionId,

@@ -14,6 +14,7 @@ import type {
   Sha256,
   WorkspaceActorScope,
 } from "../repositories/types.js";
+import { trustedTenantActorScope, trustedTenantScope } from "../repositories/types.js";
 
 export type ImageStyleDerivedEditErrorCode =
   | "AUTHORIZATION_REQUIRED"
@@ -183,7 +184,7 @@ const COMMAND_KEYS = [
   "styleId",
   "versionId",
 ] as const;
-const SCOPE_KEYS = ["actorUserId", "workspaceId"] as const;
+const SCOPE_KEYS = ["accountId", "actorUserId", "workspaceId"] as const;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/u;
 const DETACHED_ANALYSIS = Object.freeze({
@@ -307,10 +308,10 @@ function sha256(value: unknown, label: string): Sha256 {
 
 function scopeSnapshot(value: WorkspaceActorScope): WorkspaceActorScope {
   const snapshot = exactPlainRecord(value, SCOPE_KEYS, "AUTHORIZATION_REQUIRED", "Actor scope");
-  return Object.freeze({
-    workspaceId: boundedText(snapshot.workspaceId, "workspaceId", 160),
-    actorUserId: boundedText(snapshot.actorUserId, "actorUserId", 160),
-  });
+  const accountId = boundedText(snapshot.accountId, "accountId", 160);
+  const workspaceId = boundedText(snapshot.workspaceId, "workspaceId", 160);
+  const actorUserId = boundedText(snapshot.actorUserId, "actorUserId", 160);
+  return trustedTenantActorScope(trustedTenantScope(accountId, workspaceId), actorUserId);
 }
 
 interface ValidCommand extends Omit<EditImageStyleProfileCommand, "candidateProfile"> {

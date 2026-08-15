@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MIGRATION_TABLE_NAME, RELATIONAL_TABLE_NAMES } from "../dist/src/index.js";
+import {
+  MIGRATION_TABLE_NAME,
+  RELATIONAL_TABLE_NAMES,
+  TENANT_VIEW_NAMES,
+} from "../dist/src/index.js";
 import { withMigratedDatabase } from "./support/pglite.mjs";
 
 const REQUIRED_CUSTOM_INDEXES = [
@@ -153,11 +157,24 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
       `SELECT table_name
          FROM information_schema.tables
         WHERE table_schema = 'public'
+          AND table_type = 'BASE TABLE'
         ORDER BY table_name`,
     );
     assert.deepEqual(
       tables.rows.map((row) => row.table_name),
       [...RELATIONAL_TABLE_NAMES, MIGRATION_TABLE_NAME].sort(),
+    );
+
+    const views = await executor.query(
+      `SELECT table_name
+         FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_type = 'VIEW'
+        ORDER BY table_name`,
+    );
+    assert.deepEqual(
+      views.rows.map((row) => row.table_name),
+      [...TENANT_VIEW_NAMES].sort(),
     );
 
     const indexes = await executor.query(
@@ -200,9 +217,45 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
           AND namespace.nspname = 'public'
         ORDER BY tgname`,
     );
+    const triggerNames = new Set(triggers.rows.map((row) => row.tgname));
     assert.deepEqual(
-      triggers.rows.map((row) => row.tgname),
+      REQUIRED_TRIGGERS.filter((name) => triggerNames.has(name)),
       REQUIRED_TRIGGERS,
     );
+
+    // Every tenant-owned table carries the ownership guard and declares its production RLS policy.
+    const guarded = await executor.query(
+      `SELECT relation.relname AS table_name,
+              relation.relrowsecurity AS rls_enabled,
+              relation.relforcerowsecurity AS rls_forced,
+              EXISTS (
+                SELECT 1 FROM pg_trigger guard
+                 WHERE guard.tgrelid = relation.oid
+                   AND guard.tgname = relation.relname || '_tenant_write_guard'
+              ) AS has_write_guard,
+              EXISTS (
+                SELECT 1 FROM pg_policy policy
+                 WHERE policy.polrelid = relation.oid
+                   AND policy.polname = relation.relname || '_tenant_rls'
+              ) AS has_policy
+         FROM pg_class relation
+         JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+         JOIN pg_attribute owner
+           ON owner.attrelid = relation.oid
+          AND owner.attname = 'account_id'
+          AND owner.attnum > 0
+          AND NOT owner.attisdropped
+        WHERE namespace.nspname = 'public'
+          AND relation.relkind = 'r'
+          AND relation.relname <> 'accounts'
+        ORDER BY relation.relname`,
+    );
+    assert.ok(guarded.rows.length >= 55, "every tenant table must be discoverable");
+    for (const row of guarded.rows) {
+      assert.ok(row.rls_enabled, `${row.table_name} must enable row level security`);
+      assert.ok(row.rls_forced, `${row.table_name} must force row level security`);
+      assert.ok(row.has_write_guard, `${row.table_name} must carry the tenant write guard`);
+      assert.ok(row.has_policy, `${row.table_name} must declare its tenant policy`);
+    }
   });
 });

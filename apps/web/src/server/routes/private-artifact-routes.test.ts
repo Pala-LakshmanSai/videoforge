@@ -12,6 +12,7 @@ import {
   MAX_ARTIFACT_METADATA_BODY_BYTES,
 } from "./private-artifact-routes";
 
+const ACCOUNT_ID = "account_001";
 const WORKSPACE_ID = "workspace_001";
 
 function signed(operation: SignedArtifactOperation["operation"]): SignedArtifactOperation {
@@ -80,6 +81,7 @@ describe("private artifact Hono control-plane boundary", () => {
       controlPlane,
       authorize: (request) => ({
         ok: true,
+        accountId: ACCOUNT_ID,
         workspaceId: request.headers.get("x-workspace-id") ?? "",
       }),
     });
@@ -177,7 +179,7 @@ describe("private artifact Hono control-plane boundary", () => {
     });
     const options = {
       controlPlane,
-      authorize: () => ({ ok: true as const, workspaceId: WORKSPACE_ID }),
+      authorize: () => ({ ok: true as const, accountId: ACCOUNT_ID, workspaceId: WORKSPACE_ID }),
     };
     Object.defineProperty(options, "directTransfer", {
       enumerable: true,
@@ -237,7 +239,7 @@ describe("private artifact Hono control-plane boundary", () => {
 
     const app = createPrivateArtifactControlPlaneApp({
       controlPlane,
-      authorize: () => ({ ok: true, workspaceId: WORKSPACE_ID }),
+      authorize: () => ({ ok: true, accountId: ACCOUNT_ID, workspaceId: WORKSPACE_ID }),
     });
     const mismatch = await app.fetch(
       jsonRequest(
@@ -272,7 +274,7 @@ describe("private artifact Hono control-plane boundary", () => {
     const controlPlane = fakeControlPlane();
     const app = createPrivateArtifactControlPlaneApp({
       controlPlane,
-      authorize: () => ({ ok: true, workspaceId: WORKSPACE_ID }),
+      authorize: () => ({ ok: true, accountId: ACCOUNT_ID, workspaceId: WORKSPACE_ID }),
     });
     const body = JSON.stringify({ workspaceId: WORKSPACE_ID, objectKey, expiresInMs: 60_000 });
     const chunked = new Request("https://videoforge.local/api/v1/artifacts/sign/download", {
@@ -306,7 +308,7 @@ describe("private artifact Hono control-plane boundary", () => {
     } as unknown as ArtifactControlPlanePort;
     const invalidApp = createPrivateArtifactControlPlaneApp({
       controlPlane: invalidControlPlane,
-      authorize: () => ({ ok: true, workspaceId: WORKSPACE_ID }),
+      authorize: () => ({ ok: true, accountId: ACCOUNT_ID, workspaceId: WORKSPACE_ID }),
     });
     const invalidResponse = await invalidApp.fetch(
       jsonRequest("/api/v1/artifacts/sign/download", {

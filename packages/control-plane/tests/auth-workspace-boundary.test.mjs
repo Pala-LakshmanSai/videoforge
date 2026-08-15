@@ -9,6 +9,7 @@ import {
 } from "../dist/src/auth/index.js";
 
 const NOW = Date.parse("2026-08-10T09:00:00.000Z");
+const ACCOUNT_FOR = (workspaceId) => `account_for_${workspaceId}`;
 const WORKSPACE_A = "workspace_auth_a";
 const WORKSPACE_B = "workspace_auth_b";
 const WORKSPACE_ARCHIVED = "workspace_auth_archived";
@@ -48,7 +49,11 @@ function accessRecord({
   role = "MEMBER",
 }) {
   return Object.freeze({
-    workspace: Object.freeze({ workspaceId, status: workspaceStatus }),
+    workspace: Object.freeze({
+      workspaceId,
+      accountId: ACCOUNT_FOR(workspaceId),
+      status: workspaceStatus,
+    }),
     identity: Object.freeze({ userId, normalizedEmail: email, status: userStatus }),
     invitation: Object.freeze({
       workspaceId,
@@ -216,6 +221,7 @@ test("an accepted invitation plus active identity, workspace, membership, and se
       },
       workspace: {
         workspaceId: WORKSPACE_A,
+        accountId: ACCOUNT_FOR(WORKSPACE_A),
         membershipId: "membership_workspace_auth_a_user_active",
         role: "MEMBER",
       },
@@ -442,6 +448,7 @@ test("reviewer identity is session-derived and every client-supplied reviewer fi
         },
         workspace: {
           workspaceId: WORKSPACE_A,
+          accountId: ACCOUNT_FOR(WORKSPACE_A),
           membershipId: "membership_workspace_auth_a_user_active",
           role: "MEMBER",
         },

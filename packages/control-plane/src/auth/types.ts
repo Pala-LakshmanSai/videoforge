@@ -45,6 +45,8 @@ export interface SignInInvitationRecord {
 export interface WorkspaceAccessRecord {
   readonly workspace: {
     readonly workspaceId: string;
+    /** The owning account, read from the durable row. A request can never supply it. */
+    readonly accountId: string;
     readonly status: AuthWorkspaceStatus;
   };
   readonly identity: {
@@ -121,6 +123,8 @@ export interface GrantedWorkspaceAuthorization {
     };
     readonly workspace: {
       readonly workspaceId: string;
+      /** Trusted tenant owner derived from durable state, never from the request. */
+      readonly accountId: string;
       readonly membershipId: string;
       readonly role: AuthMembershipRole;
     };
