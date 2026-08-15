@@ -5,8 +5,8 @@ build-backend = "hatchling.build"
 [project]
 name = "videoforge-avatar-primary-worker"
 version = "0.0.0"
-description = "VideoForge EchoMimicV3-Flash Turbo FP8 primary worker boundary"
-requires-python = ">=3.12,<3.13"
+description = "VideoForge exact SoulX-FlashHead Pro BF16 primary Pod worker"
+requires-python = ">=3.11,<3.13"
 dependencies = []
 
 [tool.hatch.build.targets.wheel]

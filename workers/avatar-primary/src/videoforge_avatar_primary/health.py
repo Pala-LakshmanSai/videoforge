@@ -14,7 +14,7 @@ class WorkerHealth(TypedDict):
 
 
 def health_payload() -> WorkerHealth:
-    """Return a non-secret process health payload without loading EchoMimic."""
+    """Return the provider-free fixture health payload without loading SoulX."""
     return {
         "schema_version": "worker-health/v1",
         "worker_id": "avatar-primary",

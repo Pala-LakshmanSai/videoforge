@@ -1,28 +1,16 @@
-# CP-07 EchoMimicV3-Flash Turbo FP8 Pod worker
+# SoulX-FlashHead Pro Pod worker
 
-The active container is a persistent Pod service, not Serverless. `EchoMimicV3-Flash Turbo FP8` is
-the VideoForge runtime-profile label for the accelerated official 8-step `EchoMimicV3-Flash` /
-`echomimicv3-flash-pro` lineage plus the owned FP8 preparation; it is not a substituted upstream
-checkpoint. It pins the first-party Echo source, Flash, Wan base, audio encoder, Torch, and TorchAO.
-A separately authorized preparation command
-downloads the pinned source files, derives the VideoForge-owned FP8 state, reopens it with
-`weights_only=True`, hashes every source/prepared byte, and writes the completion marker last.
-Preparation explicitly requires a CUDA GPU with compute capability 8.9 or newer, moves the loaded
-BF16 transformer to that GPU, synchronizes it, and only then invokes TorchAO's FP8 transform.
+This is VideoForge's exact single-GPU SoulX-FlashHead Pro BF16 qualification runtime. It pins the
+official source, Pro checkpoint, Wan VAE, Facebook wav2vec encoder, base image, dependencies, and
+FlashAttention wheel. The model-only 50 GB EU-RO-1 volume is prepared once from exact SHA-256
+records and sealed with a deterministic manifest.
 
-Ordinary boot is offline. It mounts only the Echo volume, verifies the complete exact manifest,
-loads the prepared FP8 state, performs one real inference-path warm-up, and reports `model_ready`
-only afterward. Model download, first-request material quantization, Long Video CFG, full voiceover,
-repair, fallback, and Mage/cross-volume mounts are forbidden.
+Normal runtime boot is offline. It verifies every model byte, loads Pro, performs a real compiled
+inference warm-up, and only then reports ready. Generation uses the official native 512x512/25 fps
+Pro profile: four distilled steps, shift 5, color correction 1.0, seed 42, streaming audio, and no
+face detector, repair, restoration, upscaler, substitute model, runtime download, or first-request
+compile. Output is trimmed deterministically to the exact audio-frame contract and encoded H.264
+yuv420p plus AAC.
 
-The qualification API accepts only owned, checksum-bound 2/4/6-second selected spans with the
-scheduler's exact 500 ms context-padding and trim lineage. It writes to a project/revision/span/
-attempt-isolated scratch root outside the model mount, trims padding back to the selected duration,
-validates the native 25 fps MP4 A/V contract, and cleans scratch on success or failure.
-
-```sh
-python3 -m unittest discover -s tests
-```
-
-Immutable publish target: `ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:<digest>`.
-The workflow defaults to `publish=false`; publication is a separate paid-phase mutation.
+Immutable publish target:
+`ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:<digest>`.

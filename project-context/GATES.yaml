@@ -39,6 +39,16 @@ gates:
     result: pass_exact_manifest_sealed_echo_volume_offline_boot_real_warmup_and_native_samples
     checked_at: "2026-08-14T23:15:32.540Z"
     closed_at: "2026-08-14T23:15:32.540Z"
+    active_effect: historical_superseded_by_dec_avatar_010_no_echo_dispatch
+  GATE_AVATAR_005:
+    status: open
+    blocks: soulx_flashhead_pro_production_profile_and_renderer_crop
+    acceptance: "tasks/VF-9-24S.md#required-evidence-and-handoff"
+    owner: VF-9-24S
+    last_run: null
+    result: open_exact_soulx_pro_manifest_offline_runtime_sample_and_user_review_required
+    checked_at: "2026-08-15T06:55:16.869Z"
+    blocker: "Live preflight proves zero compute and both retained 50 GB volumes. The exact SoulX Pro image, clean replacement volume, offline warm-up, 10.12-second MP4, lifecycle cost, cleanup, and user visual review remain unproven."
   GATE_IMAGE_001:
     status: open
     blocks: mage_production_profile

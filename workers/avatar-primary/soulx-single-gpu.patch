@@ -1,0 +1,67 @@
+diff --git a/flash_head/src/modules/flash_head_model.py b/flash_head/src/modules/flash_head_model.py
+--- a/flash_head/src/modules/flash_head_model.py
++++ b/flash_head/src/modules/flash_head_model.py
+@@ -8,12 +8,6 @@ from diffusers import ModelMixin
+ from diffusers.configuration_utils import ConfigMixin, register_to_config
+ import torch.cuda.amp as amp
+ import torch.distributed as dist
+-from xfuser.core.distributed import (
+-    get_sequence_parallel_rank,
+-    get_sequence_parallel_world_size,
+-    get_sp_group,
+-)
+-from xfuser.core.long_ctx_attention import xFuserLongContextAttention
+ try:
+     import flash_attn_interface
+     FLASH_ATTN_3_AVAILABLE = True
+@@ -31,6 +25,17 @@ try:
+     SAGE_ATTN_AVAILABLE = True
+ except ModuleNotFoundError:
+     SAGE_ATTN_AVAILABLE = False
++
++if dist.is_initialized():
++    from xfuser.core.distributed import (
++        get_sequence_parallel_rank,
++        get_sequence_parallel_world_size,
++        get_sp_group,
++    )
++    from xfuser.core.long_ctx_attention import xFuserLongContextAttention
++else:
++    get_sequence_parallel_rank = get_sequence_parallel_world_size = get_sp_group = None
++    xFuserLongContextAttention = None
+     
+     
+ def flash_attention(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, num_heads: int, compatibility_mode=False):
+diff --git a/flash_head/src/pipeline/flash_head_pipeline.py b/flash_head/src/pipeline/flash_head_pipeline.py
+--- a/flash_head/src/pipeline/flash_head_pipeline.py
++++ b/flash_head/src/pipeline/flash_head_pipeline.py
+@@ -13,7 +13,6 @@ from transformers import Wav2Vec2FeatureExtractor
+ from flash_head.src.modules.flash_head_model import WanModelAudioProject
+ from flash_head.audio_analysis.wav2vec2 import Wav2Vec2Model
+ from flash_head.utils.utils import match_and_blend_colors_torch, resize_and_centercrop
+-from flash_head.utils.facecrop import process_image
+ 
+ # compile models to speedup inference
+ COMPILE_MODEL = True
+@@ -25,6 +24,7 @@ def get_cond_image_dict(cond_image_path_or_dir, use_face_crop):
+     def get_image(cond_image_path, use_face_crop):
+         if use_face_crop:
+             try:
++                from flash_head.utils.facecrop import process_image
+                 image = process_image(cond_image_path)
+                 return image
+             except Exception as e:
+diff --git a/flash_head/wan/modules/vae.py b/flash_head/wan/modules/vae.py
+--- a/flash_head/wan/modules/vae.py
++++ b/flash_head/wan/modules/vae.py
+@@ -947,7 +947,9 @@ def _video_vae(
+         model = WanVAE_(**cfg)
+ 
+     # load checkpoint
+-    model.load_state_dict(torch.load(pretrained_path, map_location=device), assign=True)
++    model.load_state_dict(
++        torch.load(pretrained_path, map_location=device, weights_only=True), assign=True
++    )
+ 
+     return model
+ 
