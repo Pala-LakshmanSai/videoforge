@@ -1,0 +1,121 @@
+{
+  "schema_version": "videoforge.soulx-flashhead-pro-vf924s-acceptance/v1",
+  "task_id": "VF-9-24S",
+  "checkpoint": "CP-07-replacement-qualification",
+  "completed_at": "2026-08-15T07:55:09.960Z",
+  "status": "technical_pass_awaiting_user_visual_review",
+  "authority": {
+    "provider": "runpod",
+    "account_owner": "sujal",
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "finite_cap_usd": 4,
+    "consumed": true
+  },
+  "lineage": {
+    "source": "Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2",
+    "model": "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro",
+    "audio_encoder": "facebook/wav2vec2-base-960h@22aad52d435eb6dbaf354bdad9b0da84ce7d6156",
+    "selected_payload_bytes": 6916084703,
+    "manifest_sha256": "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626"
+  },
+  "settings": {
+    "profile": "videoforge_soulx_flashhead_pro_bf16_v1",
+    "model_type": "pro",
+    "precision": "bfloat16",
+    "width": 512,
+    "height": 512,
+    "fps": 25,
+    "sampling_steps": 4,
+    "shift": 5,
+    "color_correction_strength": 1.0,
+    "seed": 42,
+    "torch_compile": true,
+    "audio_encode_mode": "stream",
+    "face_crop": false,
+    "repair_or_enhancement": null
+  },
+  "image": {
+    "source_commit": "4d4f3500619d7599fe3f02792f2c41dcd2ab1b87",
+    "publication_run_id": 31872702205,
+    "digest": "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b"
+  },
+  "input": {
+    "image_path": "elias yoder(sampe avatar).png",
+    "image_sha256": "sha256:34ca7513d6e34af3fa37d2e05afa8d2f81cab9ff587c2a12d047002abc7c75e3",
+    "audio_path": ".videoforge/vf-9-21/audio.wav",
+    "audio_sha256": "sha256:ee4f007c5c5770a404a1fe7eb008ed7c9964acb47c34677374131ab509f26076"
+  },
+  "gpu": {
+    "offering_id": "NVIDIA GeForce RTX 4090",
+    "display_name": "RTX 4090",
+    "region": "EU-RO-1",
+    "secure_cloud": true,
+    "availability": "HIGH",
+    "rate_usd_per_hour": 0.74,
+    "advertised_vram_gb": 24,
+    "observed_vram_bytes": 25261047808,
+    "compute_capability": "8.9",
+    "peak_inference_vram_bytes": 9660950528
+  },
+  "timings_ms": {
+    "manifest_verify": 9578,
+    "model_load": 3758,
+    "compile_warmup": 176343,
+    "model_ready_from_service_start": 189786,
+    "source_and_base_prepare": 564,
+    "inference": 22892,
+    "encode_and_mux": 988,
+    "upload_poll_retrieval": 31166
+  },
+  "output": {
+    "path": "outputs/soulx-flashhead-pro/vf-9-24s/elias-10.12s/soulx-flashhead-pro-elias-10.12s.mp4",
+    "sha256": "sha256:32e99fa32282ab87e02d8cf16532cec82ca9757957a30a008c3bef8b9fe656a7",
+    "bytes": 3164185,
+    "codec": "h264",
+    "audio_codec": "aac",
+    "width": 512,
+    "height": 512,
+    "fps": 25,
+    "frames": 253,
+    "video_duration_seconds": 10.12,
+    "audio_duration_seconds": 10.12,
+    "format_duration_seconds": 10.12,
+    "av_duration_delta_seconds": 0
+  },
+  "failed_closed_attempt": {
+    "reason": "TorchInductor compiler missing during mandatory warm-up",
+    "corrective_action": "added build-essential and pinned CC/CXX paths, then rebuilt and smoke-tested the immutable image",
+    "model_volume_mutated_after_seal": false,
+    "cleanup_proven_at": "2026-08-15T07:42:27.069Z"
+  },
+  "cost": {
+    "finite_cap_usd": 4,
+    "failed_attempt_conservative_usd": 0.2,
+    "successful_pod_upper_bound_usd": 0.075645,
+    "cumulative_conservative_usd": 0.275645,
+    "settled_usd_observed": 0,
+    "settlement_status": "provider_billing_rows_pending_as_of_2026-08-15T07:58:33.913Z",
+    "ongoing_soulx_volume_usd_per_month_excluded_from_cap": 3.5
+  },
+  "volumes": {
+    "deleted_echo_volume_id_sha256": "sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f",
+    "retained_soulx_volume_id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+    "retained_soulx_volume_size_gb": 50,
+    "preserved_mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "cross_mount": false
+  },
+  "final_resource_audit": {
+    "checked_at": "2026-08-15T07:55:09.960Z",
+    "pods": 0,
+    "private_templates": 0,
+    "endpoints": 0,
+    "active_serverless_workers": 0,
+    "network_volumes": 2,
+    "echo_volume_present": false
+  },
+  "gate": {
+    "id": "GATE_AVATAR_005",
+    "technical_result": "pass",
+    "remaining": "user visual review and any later production-suite or renderer-crop activation"
+  }
+}

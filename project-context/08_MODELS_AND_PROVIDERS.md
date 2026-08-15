@@ -176,13 +176,13 @@ fixture stays default and BF16 attempts remain historical.
 
 ## EchoMimicV3-Flash
 
-Sole active avatar path under `DEC_AVATAR_007` and precision recovery `DEC_AVATAR_008`. The active
-runtime profile is `EchoMimicV3-Flash Turbo FP8` (`videoforge_echo_v3_flash_turbo_fp8_v1`). Turbo
+Superseded and non-dispatchable under `DEC_AVATAR_010`. The former runtime profile was
+`EchoMimicV3-Flash Turbo FP8` (`videoforge_echo_v3_flash_turbo_fp8_v1`). Turbo
 is the VideoForge name for the official accelerated 8-step `EchoMimicV3-Flash` /
 `echomimicv3-flash-pro` lineage plus owned FP8 preparation; first-party verification found no
 separately published Turbo checkpoint. Exact upstream identifiers and hashes below remain unchanged.
-Native output only; new repair/fallback bindings are `null`. Fixture remains default and no
-production profile is eligible.
+Native output only; new repair/fallback bindings are `null`. The exact Echo network volume was
+deleted during VF-9-24S. These details remain historical evidence only.
 
 - Source: `antgroup/echomimic_v3@7e89489ca51c0d008fc1963ec6c03fc5bd0b9397`, Apache-2.0.
 - Flash weights: `BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249`, Apache-2.0; exact Flash safetensors SHA-256 `5ebdbb2fc709108bf2a1728fd92eb2874804e4bc0324e92a2cd55425968c85a4`.
@@ -205,26 +205,23 @@ production profile is eligible.
 The upstream `GPU_memory_mode=sequential_cpu_offload` argument is parsed but never enables offload.
 VideoForge makes no CPU-offload claim.
 
-Echo owns a different persistent `EU-RO-1` network volume and a different disposable Pod. Its
-capacity is likewise not yet approved and must be manifest-derived with explicit headroom. It never
-shares or cross-mounts the Mage volume. An explicitly authorized one-time preparation
+Echo formerly owned a different persistent `EU-RO-1` network volume and a different disposable Pod.
+It never shared or cross-mounted the Mage volume. Its explicitly authorized one-time preparation
 job downloads and verifies the pinned source/Flash/base/audio-encoder files, prepares the
 VideoForge-owned FP8 runtime without an uncarded third-party pickle, records source and derived
 hashes plus the exact TorchAO/runtime toolchain, and writes a completion marker only after
 independent verification. The exact serialized FP8 artifact and manifest remain gate-controlled.
 
-A normal Echo Pod boot mounts only the Echo volume, verifies its complete manifest, and loads the
+A historical normal Echo Pod boot mounted only the Echo volume, verified its complete manifest, and loaded the
 model to the global session's exact Echo GPU without downloading model bytes or resolving a network
 model repository. Missing, mutated, cross-mounted, or incomplete content fails closed. Private
 avatar and audio inputs remain outside the model volume. After the active video's Echo clips become
 durable, keep the existing Pod warm-idle only when a waiter already exists; otherwise delete it
 immediately. A missing Pod is recreated only when the next video activates, after exact
-same-offering revalidation. The Echo volume remains as accepted fixed-cost infrastructure.
+same-offering revalidation. This operational path is disabled and the Echo volume no longer exists.
 
-`GATE_AVATAR_004` read-only preflight found all pinned source artifacts public, ungated, and
-license-labeled. It remains open until the dedicated persistent volume contains the exact prepared
-FP8 manifest and a normal offline Pod boot reproduces it without cross-mounting or downloading.
-`GATE_AVATAR_001` remains open until native sample review and later full qualification.
+`GATE_AVATAR_004` later closed on the historical technical proof. `GATE_AVATAR_001` remains an open
+historical production-suite record but cannot reactivate Echo.
 
 No first-party FP8 checkpoint is published. A third-party `fp8wo` pickle exists without a model
 card or declared license and is not used. VideoForge's one-time controlled preparation derives its
@@ -233,6 +230,22 @@ prepared bytes, procedure, and manifest must pass the gate before use; this avoi
 uncarded pickle payload.
 
 Official sources: [pinned source](https://github.com/antgroup/echomimic_v3/tree/7e89489ca51c0d008fc1963ec6c03fc5bd0b9397), [pinned Flash weights](https://huggingface.co/BadToBest/EchoMimicV3/tree/311e176905a8c4c24b240b530488fe636ce4d249), [pinned base](https://huggingface.co/alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP/tree/fc913c34361f4ec879e2f9c78b4f11ae50a937d1), and [pinned audio encoder](https://huggingface.co/TencentGameMate/chinese-wav2vec2-base/tree/3991242c806928916fff4a8c0e4f76acf661b743). Evidence: `evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight/`.
+
+## SoulX-FlashHead Pro
+
+The only proposed active avatar runtime under `DEC_AVATAR_010` is exact SoulX-FlashHead Pro. It is
+technically qualified but remains blocked from production dispatch and renderer-crop activation
+until user visual review under `GATE_AVATAR_005`.
+
+- Source: `Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2`.
+- Weights: `Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro`; exact Pro safetensors and Wan VAE only.
+- Audio encoder: `facebook/wav2vec2-base-960h@22aad52d435eb6dbaf354bdad9b0da84ce7d6156`; safetensors only.
+- Runtime: BF16, 512x512, 25 fps, four distilled steps, shift 5, color correction 1.0, deterministic seed 42, streaming audio, Torch compile, no face crop, repair, enhancement, fallback, or substitute.
+- Exact selected payload: `6,916,084,703` bytes; manifest SHA-256 `995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626`.
+- Immutable image: `ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b`.
+- Storage: isolated retained 50 GB SoulX-only `EU-RO-1` volume at `$3.50/month`; ordinary runtime boot verifies and loads offline with no download or Mage cross-mount.
+- Qualification: fresh Secure RTX 4090 at `$0.74/hour`; model-ready `189.786s`, 10.12-second inference `22.892s`, peak inference VRAM `9,660,950,528` bytes, exact 253-frame H.264/AAC output, and zero compute after deletion.
+- Evidence: `evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json`.
 
 ## Historical avatar paths
 
@@ -275,7 +288,7 @@ pinned Cloud Run whisper.cpp contract fails a measured accuracy/timing gate.
 |---|---|
 | LongCat Avatar 1.5 | User-reaffirmed exclusion: diffusion runtime/cost breaks the target budget |
 | Hallo3/Hallo2 | Far slower than the fast-avatar budget path; unattributed ranking screenshot is not authoritative |
-| SoulX FlashHead | Not selected; EchoMimicV3-Flash is sole active avatar path |
+| EchoMimicV3-Flash | Historical, non-dispatchable, and removed from operational storage under `DEC_AVATAR_010` |
 | InfiniteTalk | Future research only under a new explicit user decision; no active ladder or fallback exists |
 | Remotion | Does not improve image/avatar pixels or relevance; FFmpeg is enough |
 | HyperFrames | Motion-graphics/text strengths conflict with hard rules; cloud minute cost is wasteful here |

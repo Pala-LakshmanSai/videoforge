@@ -45,10 +45,10 @@ gates:
     blocks: soulx_flashhead_pro_production_profile_and_renderer_crop
     acceptance: "tasks/VF-9-24S.md#required-evidence-and-handoff"
     owner: VF-9-24S
-    last_run: null
-    result: open_exact_soulx_pro_manifest_offline_runtime_sample_and_user_review_required
-    checked_at: "2026-08-15T06:55:16.869Z"
-    blocker: "Live preflight proves zero compute and both retained 50 GB volumes. The exact SoulX Pro image, clean replacement volume, offline warm-up, 10.12-second MP4, lifecycle cost, cleanup, and user visual review remain unproven."
+    last_run: "evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json"
+    result: open_technical_qualification_passed_sample_ready_for_user_visual_review
+    checked_at: "2026-08-15T07:55:09.960Z"
+    blocker: "Exact SoulX Pro manifest, isolated volume, offline fresh-Pod warm-up, 10.12-second MP4, lifecycle timing/cost, Echo-volume removal, and zero-compute/two-volume cleanup passed. Only user visual review and any later production-suite or SoulX renderer-crop activation remain open."
   GATE_IMAGE_001:
     status: open
     blocks: mage_production_profile
@@ -111,28 +111,28 @@ gates:
     blocks: selectable_production_execution_profiles
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-pod-and-volume-lifecycle-gate"
     owner: VF-9-20
-    last_run: "evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json"
-    result: open_mage_4090_and_echo_5090_fit_proven_pair_lock_and_session_recreation_unproven
-    checked_at: "2026-08-14T23:15:32.540Z"
-    blocker: "CP-06 proved Mage RTX 4090 identity; CP-07 proved Echo RTX 5090 identity, 32 GB fit with stage offload, offline warm-up, and fresh-Pod samples. Atomic pair locking, inheritance, and next-session exact recreation remain unproven."
+    last_run: "evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json"
+    result: open_mage_and_soulx_rtx4090_fit_proven_pair_lock_and_session_recreation_unproven
+    checked_at: "2026-08-15T07:55:09.960Z"
+    blocker: "CP-06 proved Mage RTX 4090 identity and VF-9-24S proved exact SoulX Pro RTX 4090 identity, fit, offline warm-up, and fresh-Pod output. Atomic pair locking, inheritance, and next-session exact recreation remain unproven."
   GATE_RUNPOD_001:
     status: open
     blocks: live_runpod_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-pod-and-volume-lifecycle-gate"
     owner: VF-9-20
-    last_run: "evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json"
-    result: open_two_isolated_volumes_and_fresh_echo_pod_lifecycle_proven_full_global_session_unproven
-    checked_at: "2026-08-14T23:15:32.540Z"
-    blocker: "CP-07 proved immutable Echo publication, isolated sealed volume preparation, fresh-Pod 2/4/6 lifecycle, exact cleanup, and zero-Pod/two-volume final state. The full two-lane global-session waiter and independent-lane behavior remain unproven."
+    last_run: "evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json"
+    result: open_two_isolated_volumes_and_fresh_soulx_pod_lifecycle_proven_full_global_session_unproven
+    checked_at: "2026-08-15T07:55:09.960Z"
+    blocker: "VF-9-24S proved immutable SoulX publication, isolated sealed volume preparation, fresh-Pod generation, exact cleanup, and zero-Pod/two-volume final state after removing Echo. The full two-lane global-session waiter and independent-lane behavior remain unproven."
   GATE_COST_001:
     status: open
     blocks: measured_unit_economics_claim
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#production-slo-targets"
     owner: VF-9-20
-    last_run: "evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json"
-    result: open_cp07_bounded_cost_under_cap_last_sample_settlement_and_representative_two_lane_economics_pending
-    checked_at: "2026-08-14T23:31:35.811Z"
-    blocker: "CP-07 has $1.114263966170256 settled plus a $0.279125 conservative last-sample bound under the $6 cap, and the retained Echo volume is $3.50/month. Final billing settlement and representative 30-minute two-lane cost attribution remain open."
+    last_run: "evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json"
+    result: open_soulx_bounded_cost_under_cap_settlement_and_representative_two_lane_economics_pending
+    checked_at: "2026-08-15T07:58:33.913Z"
+    blocker: "VF-9-24S is conservatively bounded at $0.275645 under the $4 cap and the retained SoulX volume is $3.50/month, but RunPod billing rows had not settled at the immediate audit. Final settlement and representative 30-minute two-lane cost attribution remain open."
   GATE_UI_001:
     status: closed
     blocks: visual_system_lock

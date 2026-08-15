@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-07 complete; CP-08 requires separate activation
+Status: CP-00 through CP-07 complete; exact SoulX replacement sample awaits user review; CP-08 requires separate activation
 Context schema: `1.5`  
 Last updated: `2026-08-14`
 
@@ -26,16 +26,16 @@ VideoForge has two isolated model lanes:
 | Lane | Exact active model | Durable model storage | Disposable compute |
 |---|---|---|---|
 | Images | ImageForge's current `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6` INT8 ConvRot profile, pinned ComfyUI, 4 steps, guidance 1.0, 1280×720 | Mage-only persistent `EU-RO-1` network volume | Mage-only Pod |
-| Avatar | EchoMimicV3-Flash Turbo FP8 from pinned first-party source/weights/base/audio lineage | Different Echo-only persistent `EU-RO-1` network volume | Echo-only Pod |
+| Avatar | Exact `Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro`, BF16, four distilled steps | Different SoulX-only persistent `EU-RO-1` network volume | SoulX-only Pod |
 
 Never share or cross-adopt a volume, Pod, manifest, cache, lock, or runtime between lanes. The Mage
-volume is approved and qualified at 50 GB. The separate 50 GB Echo volume is also prepared,
-manifest-sealed, qualified, and retained at `$3.50/month`. Ordinary Echo boot is offline and loads
-the exact prepared FP8 artifact without runtime download or first-request quantization. Persistent-
+volume is approved and qualified at 50 GB. The former Echo volume was deleted. Its 50 GB SoulX-only
+replacement is manifest-sealed, technically qualified, and retained at `$3.50/month`. Ordinary
+SoulX boot is offline and loads the exact Pro BF16 artifact without runtime download. Persistent-
 volume pricing is accepted.
 
 When no generation session exists, the first user explicitly selects one exact live compatible
-Secure Cloud offering for Mage and one for Echo. The first atomically accepted Generate locks that
+Secure Cloud offering for Mage and one for SoulX. The first atomically accepted Generate locks that
 pair for the session and starts both required Pods concurrently. Exactly one video is active. New
 projects join the shared queue and inherit the locked pair; waiting projects are orchestration-inert
 until promoted after the active video is terminal.
@@ -48,7 +48,8 @@ waiting when a lane finishes, delete that exact Pod immediately and prove absenc
 for the other lane or final render. A later waiting entry never recreates a missing Pod early; the
 next active project may recreate it only on the same locked GPU after fresh availability/rate
 revalidation. The session unlocks only after active and waiting work are empty and both Pods are
-proven absent. Both isolated 50 GB volumes now exist; only Mage is qualified.
+proven absent. Both isolated 50 GB volumes now exist; Mage is accepted and SoulX technical
+qualification passed, with user visual review still open.
 
 Production word transcription and final FFmpeg render/probe run as scale-to-zero Cloud Run Jobs
 over private R2. The same pinned media path runs on the Mac only for development parity. The ideal
@@ -63,9 +64,11 @@ historical truth; its former `$8` ceiling does not authorize the new two-volume/
 CP-06 Phase B completed only on Sujal RunPod with RTX 4090 at `$0.74/hour`. The exact Mage model is
 prepared on one retained 50 GB STANDARD volume at `$3.50/month`; eight private outputs came from two
 fresh sequential Pods. All Pods, endpoints, templates, and workers are absent. The conservative
-checkpoint account is `$1.110002` under the `$3` cap; RunPod billing remains partial and is not
-misreported as settled. CP-07's current Echo volume is unverified; no revised paid retry or
-production promotion is authorized.
+checkpoint account was later settled at `$0.34927155333571136` under the `$3` cap. VF-9-24S then
+deleted the exact Echo volume, prepared exact SoulX Pro on a clean 50 GB replacement, and generated
+the 10.12-second review sample. Its conservative finite cost is `$0.275645` under the `$4` cap;
+immediate billing rows were still pending, so this is not misreported as settled. No production
+promotion or SoulX renderer crop is authorized before user visual review.
 
 `VF-9-24L` completed the global-shared-MVP audit, every-fifth-frame Ranga recheck, architecture
 reconciliation, and balanced completion roadmap. `VF-9-24K`/`CP-01` then completed at implementation
@@ -161,7 +164,7 @@ split crop `496:558:280:0` to 960x1080. The later full exact-avatar production s
 | Image prompts | Runware DeepSeek V4 Flash 0731 |
 | Style analysis | Runware Gemini 3.5 Flash, only when explicitly analyzing a new style draft |
 | Images | Exact ImageForge Mage-Flow INT8 ConvRot profile |
-| Avatar | EchoMimicV3-Flash Turbo FP8, short selected spans only |
+| Avatar | Exact SoulX-FlashHead Pro BF16, short selected spans only; technical sample ready for user review |
 | Avatar repair/fallback | `null` |
 | Timing | Pinned `whisper.cpp base.en` in Cloud Run Jobs; same path on Mac for development |
 | Render | Direct FFmpeg in Cloud Run Jobs; same path on Mac for development |
@@ -173,14 +176,14 @@ and Echo Long Video CFG remain historical evidence only. They authorize no activ
 
 - Project selects an exact ready stored Avatar Profile version; no project-local avatar upload.
 - Project pins an immutable published Image Style; ordinary generation makes no style vision call.
-- Send Echo only scheduler-selected short spans, normally 2–6 seconds; opener maximum 7 seconds.
-- One native Echo clip serves full and split layouts after measured crop acceptance.
+- Send SoulX only scheduler-selected short spans, normally 2–6 seconds; opener maximum 7 seconds.
+- One native SoulX clip serves full and split layouts only after measured crop acceptance.
 - Deterministic code owns timing/layout. Fully automatic assembly returns the final MP4.
 - Exactly one active video; waiting entries do no CPU/GPU work until atomic promotion.
 - All admitted users have equal shared access; only waiting queue entries may move or be removed.
 - API-only RunPod control; exact create/delete intent and fail-closed ambiguity reconciliation.
 - At most one disposable Pod per lane initially. Delete Pods; retain the qualified Mage volume and
-  the distinct qualified Echo volume. Never cross-mount or cross-adopt either lane volume.
+  the distinct SoulX-only volume. Never cross-mount or cross-adopt either lane volume.
 - Private inputs, outputs, credentials, and model bytes never enter Git or public images.
 - Technical success is `READY_FOR_USER_REVIEW`; only the user approves visual quality.
 

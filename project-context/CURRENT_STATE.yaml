@@ -1,83 +1,45 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-15T06:55:16Z"
+updated_at: "2026-08-15T07:58:33Z"
 
-phase: soulx_flashhead_pro_replacement_qualification
-implementation_authorized_in_current_task: true
-current_milestone: exact_soulx_flashhead_pro_persistent_runtime_sample_qualification
+phase: soulx_flashhead_pro_sample_ready_for_user_review
+implementation_authorized_in_current_task: false
+current_milestone: soulx_flashhead_pro_visual_review
 current_task: VF-9-24S
 current_wave: soulx_flashhead_pro_replacement_qualification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: bounded_mutation
-application_code_changes_authorized: true
-provider_calls_authorized: true
-read_only_provider_calls_authorized: true
-maximum_external_spend_usd: 4
+task_stage: user_review
+application_code_changes_authorized: false
+provider_calls_authorized: false
+read_only_provider_calls_authorized: false
+maximum_external_spend_usd: 0
 provider_authority:
-  mode: paid
-  provider: runpod
-  cap_usd: 4
+  mode: none
+  provider: null
+  cap_usd: 0
   authorized_at: "2026-08-15T06:40:00Z"
   source: current_vf_9_24s_user_authorization
   non_transferable: true
-  execution_halted: false
-  halt_reason: null
-  model_id: "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
-  resources:
-    - "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s:23ce47f0b9425298daac8b40e359ef2f69878d5d"
-    - "runpod:EU-RO-1:delete-exact-echo-volume:sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f"
-    - "runpod:EU-RO-1:soulx-only-network-volume:50GB:$3.50/month"
-    - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 4090:1x:$0.74/hour"
-    - "Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2"
-    - "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
-    - "facebook/wav2vec2-base-960h@22aad52d435eb6dbaf354bdad9b0da84ce7d6156"
-  authorized_operations:
-    - push_exact_vf_9_24s_branch_commits
-    - publish_soulx_flashhead_pro_worker_image
-    - delete_exact_echo_volume_after_identity_audit
-    - create_fresh_50gb_soulx_only_volume_in_eu_ro_1
-    - create_temporary_private_soulx_template
-    - create_one_rtx_4090_preparation_pod_then_delete
-    - download_verify_and_seal_exact_pinned_soulx_pro_lineage
-    - create_one_fresh_offline_rtx_4090_runtime_pod_then_delete
-    - generate_and_retrieve_one_owned_10_12_second_sample
-    - delete_temporary_private_soulx_template
-    - verify_zero_compute_and_two_retained_volumes
-    - retain_soulx_only_volume_at_3_50_usd_per_month
-    - settle_or_conservatively_bound_finite_cost
-  allowed_operations:
-    - account_identity_lookup
-    - inventory_lookup
-    - rate_lookup
-    - volume_pricing_lookup
-    - resource_absence_lookup
-    - push_exact_vf_9_24s_branch_commits
-    - publish_soulx_flashhead_pro_worker_image
-    - delete_exact_echo_volume_after_identity_audit
-    - create_fresh_50gb_soulx_only_volume_in_eu_ro_1
-    - create_temporary_private_soulx_template
-    - create_one_rtx_4090_preparation_pod_then_delete
-    - download_verify_and_seal_exact_pinned_soulx_pro_lineage
-    - create_one_fresh_offline_rtx_4090_runtime_pod_then_delete
-    - generate_and_retrieve_one_owned_10_12_second_sample
-    - delete_temporary_private_soulx_template
-    - verify_zero_compute_and_two_retained_volumes
-    - retain_soulx_only_volume_at_3_50_usd_per_month
-    - settle_or_conservatively_bound_finite_cost
+  execution_halted: true
+  halt_reason: consumed_after_successful_sample_and_cleanup
+  model_id: null
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
 runpod_account_scope:
   owner: sujal
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_inventory_or_mutation
-credential_access_authorized: true
-remote_or_cloud_mutations_authorized: true
-model_downloads_authorized: true
-worker_image_publication_authorized: true
+credential_access_authorized: false
+remote_or_cloud_mutations_authorized: false
+model_downloads_authorized: false
+worker_image_publication_authorized: false
 sample_output_publication_authorized: false
-gpu_use_authorized: true
-mage_volume_retention_authorized: true
+gpu_use_authorized: false
+mage_volume_retention_authorized: false
 echo_volume_retention_authorized: false
-soulx_volume_retention_authorized: true
+soulx_volume_retention_authorized: false
 
 repository:
   initialized: true
@@ -132,6 +94,9 @@ repository:
   cp07_fp8_preparation_gpu_fix_commit: "d51c0a1"
   cp07_invalid_volume_replacement_guard_commit: "16cd30a"
   cp07_cumulative_cap_guard_commit: "1310b72"
+  soulx_activation_commit: "23ce47fea7dd5dd329b85027ae36db53438a7cd6"
+  soulx_controller_commit: "2e424d45fee38f4b76ac4e36ae0490c9ce5b4c38"
+  soulx_runtime_compiler_fix_commit: "4d4f3500619d7599fe3f02792f2c41dcd2ab1b87"
   last_good_commit: "17ad36010f52be3725bb49a9ce6414e350363fb5"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
@@ -144,10 +109,10 @@ live_development:
   health_checked_at: "2026-08-14T07:18:58Z"
   chrome_route: null
   fixture_scenario: cp05_complete_fixture_mvp
-  provider_mode: sandbox
-  provider_calls_authorized: true
-  authorized_spend_usd: 4
-  provider_authority_scope: "VF-9-24S only: exact SoulX-FlashHead Pro replacement qualification on Sujal RunPod under the current $4 finite cap; delete every temporary Pod/template and retain only the isolated 50 GB SoulX volume plus the unchanged Mage volume."
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: "VF-9-24S paid authority consumed after exact SoulX sample retrieval and verified zero-compute cleanup. No further provider operation is authorized."
   worker_image: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
   last_user_checkpoint:
     result: accepted
@@ -247,9 +212,9 @@ completed_tasks:
 active_ownership:
   - task_id: VF-9-24S
     checkpoint: CP-07-replacement-qualification
-    owner: current_chat
-    stage: bounded_mutation
-    external_spend_cap_usd: 4
+    owner: user
+    stage: visual_review
+    external_spend_cap_usd: 0
 
 blocked_tasks: []
 in_progress_checkpoint: CP-07-replacement-qualification
@@ -257,78 +222,56 @@ in_progress_checkpoint: CP-07-replacement-qualification
 recommended_next_task:
   task_id: VF-9-24S
   checkpoint: CP-07-replacement-qualification
-  milestone: exact_soulx_flashhead_pro_persistent_runtime_sample_qualification
-  status: active
+  milestone: soulx_flashhead_pro_visual_review
+  status: technical_pass_sample_ready_for_user_review
   dependency_status: cp06_complete_green_settled_visual_accepted
-  authorization_status: bounded_paid_operations_authorized
-  task_stage: bounded_mutation
+  authorization_status: paid_authority_consumed_no_further_provider_action
+  task_stage: user_review
   provider_authority:
-    mode: paid
-    provider: runpod
-    cap_usd: 4
+    mode: none
+    provider: null
+    cap_usd: 0
     non_transferable: true
     authorized_by_user_at: "2026-08-15T06:40:00Z"
-    model_id: "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
-    resources:
-      - "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s:23ce47f0b9425298daac8b40e359ef2f69878d5d"
-      - "runpod:EU-RO-1:delete-exact-echo-volume:sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f"
-      - "runpod:EU-RO-1:soulx-only-network-volume:50GB:$3.50/month"
-      - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 4090:1x:$0.74/hour"
-    authorized_operations:
-      - publish_soulx_flashhead_pro_worker_image
-      - delete_exact_echo_volume_after_identity_audit
-      - create_and_retain_fresh_50gb_soulx_only_volume
-      - prepare_exact_pinned_model_on_one_rtx_4090_pod_then_delete
-      - run_one_owned_10_12_second_sample_on_one_fresh_offline_rtx_4090_pod_then_delete
-      - retrieve_private_sample_and_verify_evidence
-      - delete_temporary_template_and_verify_zero_compute_two_volumes
-    allowed_operations:
-      - account_identity_lookup
-      - inventory_lookup
-      - rate_lookup
-      - volume_pricing_lookup
-      - resource_identity_lookup
-      - resource_absence_lookup
-      - publish_soulx_flashhead_pro_worker_image
-      - delete_exact_echo_volume_after_identity_audit
-      - create_and_retain_fresh_50gb_soulx_only_volume
-      - prepare_exact_pinned_model_on_one_rtx_4090_pod_then_delete
-      - run_one_owned_10_12_second_sample_on_one_fresh_offline_rtx_4090_pod_then_delete
-      - retrieve_private_sample_and_verify_evidence
-      - delete_temporary_template_and_verify_zero_compute_two_volumes
+    model_id: null
+    resources: []
+    authorized_operations: []
+    allowed_operations: []
   read_profile: soulx_flashhead_pro_replacement_qualification
   task_brief: tasks/VF-9-24S.md
-  goal: "Replace the non-dispatchable Echo runtime with exact official SoulX-FlashHead Pro and deliver one owned 10.12-second reviewable native sample under the $4 cap."
-  provider_calls_authorized: true
-  read_only_provider_calls_authorized: true
-  maximum_external_spend_usd: 4
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
-  model_downloads_authorized: true
-  worker_image_publication_authorized: true
+  goal: "Review the delivered exact SoulX-FlashHead Pro 10.12-second native sample; no provider action or crop activation is authorized."
+  provider_calls_authorized: false
+  read_only_provider_calls_authorized: false
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
+  model_downloads_authorized: false
+  worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: true
-  mage_volume_retention_authorized: true
+  gpu_use_authorized: false
+  mage_volume_retention_authorized: false
   echo_volume_retention_authorized: false
-  soulx_volume_retention_authorized: true
+  soulx_volume_retention_authorized: false
   retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
-  application_code_changes_authorized: true
+  application_code_changes_authorized: false
   prerequisite_evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json"
   required_handoff:
     - "Preserve CP-06 exact digest, accepted outputs, settled cost, zero compute, and retained 50 GB Mage volume."
     - "Retain historical Echo evidence as immutable truth while deleting only the exact verified Echo volume and removing Echo from active dispatch."
     - "Use exact pinned first-party SoulX-FlashHead Pro BF16 lineage, four distilled steps, shift 5, native 512x512 at 25 fps, deterministic seed 42, offline runtime, and no enhancement or repair."
-    - "Deliver exact 253-frame/10.12-second H.264/AAC MP4, hashes/probe, lifecycle timings, cost, manifest, and final zero-compute/two-volume proof."
+    - "Review exact 253-frame/10.12-second H.264/AAC MP4; hashes/probe, lifecycle timings, cost, manifest, and final zero-compute/two-volume proof are recorded."
   prohibited_in_task:
     - "Any model substitution, repair, upscaler, face restoration, Mage mount, cross-mount, uncarded pickle, or automatic GPU fallback."
     - "Any cumulative finite spend above $4.00, changed RTX 4090 rate above $0.74/hour, uncertain resource identity, failed output, or uncertain cleanup."
     - "Any production dispatch or renderer crop activation before the user reviews and accepts the SoulX sample."
 
 vf_9_24s:
-  status: provider_free_green_awaiting_immutable_image_publication
+  status: technical_pass_sample_ready_for_user_visual_review
   activation_commit: "23ce47f0b9425298daac8b40e359ef2f69878d5d"
+  controller_commit: "2e424d45fee38f4b76ac4e36ae0490c9ce5b4c38"
+  runtime_compiler_fix_commit: "4d4f3500619d7599fe3f02792f2c41dcd2ab1b87"
   source_revision: "Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2"
   model_revision: "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
   wav2vec_revision: "facebook/wav2vec2-base-960h@22aad52d435eb6dbaf354bdad9b0da84ce7d6156"
@@ -341,8 +284,47 @@ vf_9_24s:
   selected_gpu_availability: HIGH
   maximum_cumulative_external_spend_usd: 4
   exact_echo_volume_id_sha256_to_delete: "sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f"
+  echo_volume_deleted: true
+  retained_soulx_volume_id_sha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be"
   mage_volume_id_sha256_to_preserve: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
-  immutable_image_source_target: "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s:23ce47f0b9425298daac8b40e359ef2f69878d5d"
+  first_published_image_digest: "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:4cc37b7ff8d701791fc10d3e209ac5abd33b27409281773c50e98bb93b09d243"
+  first_publication_run_id: 31871849389
+  corrected_immutable_image_digest: "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b"
+  corrected_publication_run_id: 31872702205
+  manifest_sha256: "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626"
+  first_runtime_attempt_result: failed_closed_missing_c_compiler_during_torchinductor_warmup
+  first_runtime_attempt_cleanup_proven_at: "2026-08-15T07:42:27.069Z"
+  model_volume_mutated_after_seal: false
+  sample_path: "outputs/soulx-flashhead-pro/vf-9-24s/elias-10.12s/soulx-flashhead-pro-elias-10.12s.mp4"
+  sample_sha256: "sha256:32e99fa32282ab87e02d8cf16532cec82ca9757957a30a008c3bef8b9fe656a7"
+  sample_bytes: 3164185
+  sample_frames: 253
+  sample_duration_seconds: 10.12
+  sample_video_duration_seconds: 10.12
+  sample_audio_duration_seconds: 10.12
+  sample_av_duration_delta_seconds: 0
+  manifest_verify_ms: 9578
+  model_load_ms: 3758
+  compile_warmup_ms: 176343
+  model_ready_ms: 189786
+  source_and_base_prepare_ms: 564
+  inference_ms: 22892
+  encode_and_mux_ms: 988
+  upload_poll_retrieval_ms: 31166
+  peak_inference_vram_bytes: 9660950528
+  observed_gpu_vram_bytes: 25261047808
+  successful_pod_elapsed_cost_upper_bound_usd: 0.075645
+  failed_attempt_conservative_usd: 0.2
+  conservative_cumulative_external_spend_usd: 0.275645
+  settled_external_spend_usd_observed: 0
+  settlement_status: provider_billing_rows_pending_as_of_2026_08_15T07_58_33_913Z
+  final_resource_audit_checked_at: "2026-08-15T07:55:09.960Z"
+  final_pods: 0
+  final_private_templates: 0
+  final_endpoints: 0
+  final_active_workers: 0
+  final_network_volumes: 2
+  evidence: "evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json"
   local_tests: passed
   canonical_verify: passed
   canonical_verify_commit: "23ce47f0b9425298daac8b40e359ef2f69878d5d"
@@ -809,6 +791,7 @@ approved_mvp_architecture:
 
 blocking_gates_for_production:
   - GATE_AVATAR_001
+  - GATE_AVATAR_005
   - GATE_IMAGE_001
   - GATE_STYLE_002
   - GATE_GPU_001
@@ -818,20 +801,20 @@ blocking_gates_for_production:
 progress_snapshot:
   estimate_kind: checkpoint_truth_no_percent_claim
   completed_checkpoint: CP-07_exact_echo_runtime_and_renderer_crop_lock
-  active_checkpoint: null
-  next_boundary: CP-08_requires_explicit_activation
+  active_checkpoint: CP-07_replacement_sample_visual_review
+  next_boundary: user_visual_review_then_separate_crop_or_cp08_activation
   full_production_mvp_implemented_percent: null
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: cp07_complete_crop_locked
+  status: soulx_pro_sample_ready_for_user_visual_review
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Load cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock and tasks/VF-9-24R.md; read only the CP-07 roadmap section and pinned Echo preflight."
+    - "Load soulx_flashhead_pro_replacement_qualification and tasks/VF-9-24S.md."
     - "Preserve CP-06 runtime digest, accepted visual evidence, settled cost, zero compute, and the retained 50 GB Mage volume."
-    - "Preserve CP-07 final Echo digest, sealed 50 GB Echo volume, exact 2/4/6-second outputs, and final zero-compute/two-volume audit."
-    - "Preserve renderer source profile echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1 and the user-accepted full/split crops."
+    - "Preserve historical CP-07 Echo evidence, but do not dispatch Echo; its exact operational volume was deleted."
+    - "Preserve the corrected SoulX immutable digest, sealed 50 GB SoulX volume, exact 10.12-second sample, conservative cost, and zero-compute/two-volume audit."
+    - "Await user visual review before any SoulX production profile or renderer crop becomes active."
   stop_conditions:
-    - "Any Sujal identity mismatch, ambiguous provider state, credential exposure, or read operation outside the allowlist."
-    - "Any further mutation, publication, model download, GPU allocation, or finite spend under the consumed CP-07 authority."
-    - "Any fallback, repair, substitute model, Long Video CFG, full-voiceover job, unsafe pickle, cross-mount, or crop drift."
+    - "Any further provider read, mutation, publication, model download, GPU allocation, or finite spend under the consumed VF-9-24S authority."
+    - "Any fallback, repair, substitute model, unsafe pickle, Mage cross-mount, Echo reactivation, or premature SoulX crop activation."
