@@ -1,0 +1,70 @@
+{
+  "schema_version": "videoforge.v2-00-independent-audit/v1",
+  "task_id": "VF-10-00A",
+  "checkpoint": "V2-00",
+  "result": "PASS",
+  "recorded_at_utc": "2026-08-15T12:50:31Z",
+  "audited_commit": "806edba2a83087add93902ff2b937bd8c564a746",
+  "findings": {
+    "p0": [],
+    "p1": [],
+    "p2": []
+  },
+  "verified_repairs": [
+    "The mutable planning cost model is V2-only, uses the exact CP-04 reference workload, preserves the historical SoulX Pro RTX 4090 Pod observation as historical evidence, and leaves Serverless economics open.",
+    "Every active current-tree or commit-qualified evidence reference resolves.",
+    "Legacy renderer contracts remain immutable replay-only evidence while the active vNext boundary rejects removed runtimes.",
+    "PGlite test-file concurrency is bounded at four without retries, sleeps, or assertion weakening.",
+    "The local branch has no upstream and the repository records that unpublished branch state explicitly."
+  ],
+  "validation": {
+    "repair_turn_forced_verify_runs": 2,
+    "independent_forced_verify": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "uncached_tasks": "28/28",
+      "control_plane": "226/226",
+      "pipeline": "120/120",
+      "web": "313/313",
+      "cloudflare_parity": "1/1",
+      "installed_chrome": "42/42"
+    },
+    "control_plane_focused": "226/226",
+    "context_validate": "PASS; 102 JSON; 36 structured evidence references; 31 profiles; 41 decisions; 19 gates",
+    "contracts_check": "PASS; 66 canonical files synchronized",
+    "active_runtime": "PASS; 62 active files",
+    "format_check": "PASS",
+    "secret_scan": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "handoff_tree_validation": {
+    "recorded_at_utc": "2026-08-15T13:06:36Z",
+    "selected_next_checkpoint": "V2-01",
+    "command": "CI=1 TURBO_FORCE=true pnpm verify",
+    "exit_code": 0,
+    "uncached_tasks": "28/28",
+    "control_plane": "226/226",
+    "pipeline": "120/120",
+    "web": "313/313",
+    "cloudflare_parity": "1/1",
+    "installed_chrome": "42/42",
+    "listeners_after_verification": []
+  },
+  "repository_truth": {
+    "branch": "codex/serverless-v2-roadmap",
+    "branch_upstream": null,
+    "working_tree_at_audit": "clean",
+    "local_listeners_after_verification": []
+  },
+  "external_truth": {
+    "credential_accessed": false,
+    "provider_calls_made": false,
+    "cloud_mutation_performed": false,
+    "gpu_workers_started": false,
+    "external_spend_usd": 0,
+    "live_provider_state_refreshed": false,
+    "provider_resource_truth_remains_stale_snapshot": true
+  },
+  "production_gate_truth": "All production gates remain open; this audit proves V2-00 completion and V2-01 readiness only.",
+  "next_checkpoint": "V2-01"
+}

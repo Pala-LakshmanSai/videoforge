@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: Serverless V2 roadmap reset complete; awaiting independent V2-00 audit
+Status: V2-00 complete and independently green; V2-01 ready for explicit implementation invocation
 Context schema: `2.0`
 Last updated: `2026-08-15`
 
@@ -114,12 +114,13 @@ and evidence selection, not source-footage motion.
 
 ## Current handoff
 
-The V2 roadmap/context reset is complete. `CURRENT_STATE.yaml` selects the independent V2-00 audit
-next; V2-01 remains blocked until that audit is green. The audit is `$0`, provider-free, read-only,
-and does not authorize application implementation. All prior provider authorities are consumed
-and cannot be reused. The new ordered checkpoints and copy-ready implementation/audit prompts
-supersede every removed planning file. Git history records removed briefs; only evidence required by
-active foundations and gates remains in the working tree.
+The V2 roadmap/context reset and its independent V2-00 audit are complete and green at `806edba`.
+`CURRENT_STATE.yaml` selects V2-01 as the next checkpoint, ready only when the user explicitly
+invokes its provider-free implementation prompt. This handoff does not itself authorize application
+implementation. All prior provider authorities are consumed and cannot be reused. The ordered
+checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
+history records removed briefs; only evidence required by active foundations and gates remains in
+the working tree.
 
 ## Context navigation
 

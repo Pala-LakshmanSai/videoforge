@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-15"
 source_of_truth: project-context
 
-current_selected_profile: v2_00_roadmap_reset_audit
-current_selected_brief: tasks/VF-10-00A.md
+current_selected_profile: v2_01_tenant_private_identity
+current_selected_brief: tasks/VF-10-01.md
 
 mandatory_read:
   - 00_START_HERE.md
