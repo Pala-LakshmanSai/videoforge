@@ -1,5 +1,5 @@
 schema_version: "2.0"
-updated_at: "2026-08-15"
+updated_at: "2026-08-16"
 evidence_root: "evidence/gates"
 
 # This registry contains only active V2 gates and accepted foundations still used by V2.
@@ -30,9 +30,9 @@ gates:
     blocks: production_artifact_transfer
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatestorage001-private-r2-and-scratch"
     owner: V2-02
-    last_run: evidence/acceptance/VF-10-02/2026-08-15-private-artifacts/acceptance.json
-    last_run_at: "2026-08-15"
-    result: provider_free_contract_green_real_private_r2_composition_unproven
+    last_run: evidence/acceptance/VF-10-02/2026-08-16-private-artifacts-reaudit/acceptance.json
+    last_run_at: "2026-08-16"
+    result: provider_free_contract_independently_audited_green_real_private_r2_composition_unproven
     satisfied_locally:
       - immutable_trusted_tenant_project_revision_lane_job_artifact_keys
       - exact_short_lived_method_path_type_length_checksum_ports
@@ -42,6 +42,7 @@ gates:
       - both_model_mounts_pinned_application_read_only_at_runpod_volume
       - job_keyed_local_scratch_with_path_symlink_cross_mount_guards
       - cleanup_on_success_failure_cancel_timeout_signal_and_refresh
+      - superseded_raw_key_route_is_explicit_fixture_only_and_fail_closed
     still_open:
       - real_private_r2_composition_credentials_and_hosted_behavior_belong_to_V2_06
 

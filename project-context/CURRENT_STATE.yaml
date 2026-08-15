@@ -1,14 +1,14 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-15T18:18:31Z"
+updated_at: "2026-08-15T19:20:00Z"
 
 phase: serverless_v2_implementation_in_progress
 implementation_authorized_in_current_task: false
-current_milestone: tenant_private_artifacts_signed_transfer_and_scratch
+current_milestone: fair_two_slot_admission_queue_and_concurrency_locks
 current_task: null
-current_wave: v2_02_implementation_green_audit_pending
+current_wave: v2_03_ready_for_user_invocation
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: implementation_complete_pending_independent_audit
+task_stage: ready_for_user_invocation
 application_code_changes_authorized: false
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -46,8 +46,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "701cd0c91860fa4b518b47f8890be3a8f75aa7ba"
-  last_good_commit_note: "V2-02 provider-free tenant artifact, exact transfer-port, durable receipt, and scratch-isolation implementation; canonical verification green, independent audit pending."
+  last_good_commit: "69d9e7037b40c1b295a2ccc686d122ab3530a9f0"
+  last_good_commit_note: "V2-02 provider-free tenant artifact and scratch isolation repairs; independently re-audited green with canonical verification."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -109,8 +109,8 @@ roadmap_state:
   active_series: V2-00_through_V2-13
   V2-00: complete_green_independently_audited
   V2-01: complete_green_independently_reaudited
-  V2-02: implementation_green_independent_audit_pending
-  V2-03: blocked_on_V2-02_independent_audit
+  V2-02: complete_green_independently_reaudited
+  V2-03: ready_for_user_invocation
   V2-04: blocked_on_V2-03
   V2-05: blocked_on_V2-04
   V2-06: blocked_on_V2-05
@@ -135,8 +135,8 @@ reusable_foundations:
     status: provider_free_baseline_green_preserve_design
     proof: evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json
   private_artifact_routes:
-    status: v3_tenant_exact_port_and_receipt_contract_green_real_r2_not_composed
-    proof: evidence/acceptance/VF-10-02/2026-08-15-private-artifacts/acceptance.json
+    status: v3_tenant_exact_port_and_receipt_contract_independently_audited_green_real_r2_not_composed
+    proof: evidence/acceptance/VF-10-02/2026-08-16-private-artifacts-reaudit/acceptance.json
   word_transcript:
     status: pinned_word_level_whisper_cpp_contract_green
     proof: evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json
@@ -224,13 +224,13 @@ active_ownership: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-10-02
-  checkpoint: V2-02
-  milestone: tenant_private_artifacts_signed_transfer_and_scratch
-  status: ready_for_independent_audit
-  dependency_status: v2_02_implementation_green_unreviewed
-  authorization_status: awaiting_explicit_read_only_v2_02_audit_request
-  task_stage: implementation_complete_pending_independent_audit
+  task_id: VF-10-03
+  checkpoint: V2-03
+  milestone: fair_two_slot_admission_queue_and_concurrency_locks
+  status: ready_for_user_invocation
+  dependency_status: v2_02_complete_green_independently_reaudited
+  authorization_status: awaiting_explicit_v2_03_implementation_request
+  task_stage: ready_for_user_invocation
   provider_authority:
     mode: none
     provider: null
@@ -241,9 +241,9 @@ recommended_next_task:
     resources: []
     authorized_operations: []
     allowed_operations: []
-  read_profile: v2_02_private_artifacts
-  task_brief: tasks/VF-10-02.md
-  goal: "Independently audit trusted artifact identity, exact ports, durable receipts, non-enumeration, and scratch cleanup before V2-03."
+  read_profile: v2_03_fair_admission
+  task_brief: tasks/VF-10-03.md
+  goal: "Implement provider-free fair per-account admission with one active workload per account and two different accounts globally."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -258,14 +258,14 @@ recommended_next_task:
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: false
-  prerequisite_evidence: evidence/acceptance/VF-10-01/2026-08-15-tenant-cutover-reaudit/acceptance.json
+  prerequisite_evidence: evidence/acceptance/VF-10-02/2026-08-16-private-artifacts-reaudit/acceptance.json
 
 verification:
   state: passed
-  verified_commit: "701cd0c91860fa4b518b47f8890be3a8f75aa7ba"
-  verified_commit_note: "V2-02 provider-free implementation is canonical-green with trusted artifact identity, exact ports, durable receipts, fake-R2 adversarial proof, and both-lane scratch isolation; independent audit is pending."
+  verified_commit: "69d9e7037b40c1b295a2ccc686d122ab3530a9f0"
+  verified_commit_note: "V2-02 trusted artifact identity, canonical scoped ports/receipts, durable retention/deletion guards, non-enumeration, legacy raw-key firewall, and both-lane scratch isolation independently re-audited green."
   predecessor_verified_commit: "714b21978f2720682269e45ca46f674e052893c3"
-  independent_audit_evidence: null
+  independent_audit_evidence: evidence/acceptance/VF-10-02/2026-08-16-private-artifacts-reaudit/acceptance.json
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
@@ -321,28 +321,32 @@ verification:
   remote_mutation_used_for_v2_01: false
   paid_compute_started_for_v2_01: false
   completed_for_v2_02:
-    evidence: evidence/acceptance/VF-10-02/2026-08-15-private-artifacts/acceptance.json
-    implementation_commit: "701cd0c91860fa4b518b47f8890be3a8f75aa7ba"
+    evidence: evidence/acceptance/VF-10-02/2026-08-16-private-artifacts-reaudit/acceptance.json
+    implementation_commit: "69d9e7037b40c1b295a2ccc686d122ab3530a9f0"
     commands:
-      - "node --test packages/control-plane/tests/tenant-artifact-persistence.test.mjs packages/control-plane/tests/tenant-artifact-plane.test.mjs: PASS (8/8)"
-      - "node --test packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs: PASS"
+      - "node --test packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/tenant-artifact-persistence.test.mjs packages/control-plane/tests/tenant-artifact-plane.test.mjs: PASS (15/15)"
+      - "pnpm --filter @videoforge/control-plane test: PASS (243/243)"
       - "pnpm --filter @videoforge/contracts test: PASS (TypeScript 77/77; Python 61/61)"
       - "pnpm python:lint: PASS"
       - "pnpm test:workers: PASS (6 explicit Python 3.12 suites)"
-      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 242/242; pipeline 120/120; web 314/314; contracts 77/77 TypeScript and 61/61 Python; provider-sandbox 43/43; test-fixtures 12/12; Cloudflare 1/1; installed Chrome 44/44)"
-      - "pnpm context:validate: PASS (115 JSON files; 45 structured evidence references; 31 profiles; 41 decisions; 19 gates)"
+      - "pnpm --filter @videoforge/web exec vitest run src/server/routes/private-artifact-routes.test.ts src/server/phase1-private-artifact-app.test.ts: PASS (6/6)"
+      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 243/243; web 315/315; contracts 77/77 TypeScript and 61/61 Python; Cloudflare 1/1; installed Chrome 44/44)"
+      - "pnpm context:validate: PASS (116 JSON files; 47 structured evidence references; 31 profiles; 41 decisions; 19 gates)"
       - "pnpm contracts:check: PASS (75 canonical files synchronized)"
-      - "pnpm secret:scan: PASS"
+      - "pnpm secret:scan: PASS (895 tracked files)"
       - "git diff --check: PASS"
     delivered:
-      - "Additive migration 0019 persists exact tenant artifact reservations and immutable commit receipts with RLS, tenant views, expiry, retention, deletion ownership, hash, and probe metadata."
+      - "Additive migrations 0019 and 0020 persist exact tenant artifact reservations and immutable commit receipts with full lineage key enforcement, RLS, tenant views, expiry, retention, deletion ownership, hash, and probe metadata."
       - "Three canonical v3 schemas have synchronized TypeScript/Python validators and positive/negative fixtures."
-      - "The fake-R2 boundary derives keys from trusted identity, scopes ports by method/path/type/length/checksum, bounds replay, and exposes no list/copy/move/global-hash API."
-      - "Both active lanes pin /runpod-volume application-read-only and route caches/temp/config/locks/outputs to job-local scratch with traversal, symlink, cross-mount, crash, refresh, and terminal cleanup proof."
+      - "Runtime ports and receipts conform to the canonical v3 wire schemas, including retention facts on receipts."
+      - "The fake-R2 boundary derives keys from trusted identity, scopes ports by principal/method/path/type/length/checksum/expiry/use count, prevents immutable replacement, and exposes no list/copy/move/global-hash API."
+      - "The superseded raw-key application route is explicit fixture-only and fails closed without its literal construction firewall."
+      - "Both active lane I/O factories accept only scoped ports, pin /runpod-volume application-read-only policy, and route caches/temp/config/locks/outputs to job-local scratch with traversal, ancestor/internal symlink, cross-mount, crash, refresh, and terminal cleanup proof."
     not_delivered_by_design:
       - "No real R2, credentials, cloud/provider call, deployment, worker allocation, model/volume mutation, or spend occurred."
       - "Real private R2 composition and non-superuser hosted RLS remain V2-06 gates."
-      - "V2-03 fair admission was not started."
+      - "No Serverless worker image or endpoint was built, published, allocated, or qualified; /runpod-volume read-only attachment remains lane proof."
+      - "V2-03 fair admission was not started and requires a separate explicit request."
   provider_or_spend_used_for_v2_02: false
   remote_mutation_used_for_v2_02: false
   paid_compute_started_for_v2_02: false

@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: V2-02 provider-free implementation green; independent audit pending before V2-03
+Status: V2-02 complete and independently re-audited green; V2-03 ready for explicit implementation invocation
 Context schema: `2.0`
 Last updated: `2026-08-15`
 
@@ -128,22 +128,27 @@ reads and mutations returning non-revealing not-found responses. Invite redempti
 account, one default workspace, and one membership. Built-in presets are the only globally readable
 records and reject every update and delete. The approved UI geometry is unchanged.
 
-V2-02 adds append-only migration `0019_tenant_artifact_receipts.sql`, canonical v3 artifact identity,
-transfer-port, and commit-receipt contracts, and a fake-R2 adapter with no list/copy/move/global-hash
-surface. Object keys derive only from trusted account/workspace/project/revision/lane/job/artifact
-identity. Exact method/path/type/length/checksum ports are short-lived and bounded-replay; durable
-receipts bind hashes, probes, retention, and deletion ownership. Both model lanes pin
-`/runpod-volume` as application-read-only and route every mutable cache/output to job-local scratch,
-with path, symlink, cross-mount, and all-terminal-path cleanup negatives. This is provider-free proof,
-not real R2 or hosted proof.
+V2-02 is complete and independently re-audited green. Append-only migrations
+`0019_tenant_artifact_receipts.sql` and `0020_tenant_artifact_isolation_repair.sql` provide canonical
+v3 artifact identity, transfer-port, and commit-receipt contracts plus exact database key and
+retention enforcement. The fake-R2 adapter has no list/copy/move/global-hash surface and cannot
+replace an accepted immutable key. Object keys derive only from trusted
+account/workspace/project/revision/lane/job/artifact identity. Exact
+method/path/type/length/checksum ports are short-lived and bounded-replay; durable receipts bind
+hashes, probes, retention, and deletion ownership. The superseded raw-key route is fixture-only and
+fails construction without its explicit legacy firewall. Both model lanes accept scoped ports,
+pin `/runpod-volume` as application-read-only policy, and route every mutable cache/output to
+job-local scratch with path, ancestor/internal symlink, cross-mount, crash, refresh, and every
+terminal-path cleanup negative. This remains provider-free proof, not real R2, hosted RLS, or
+published Serverless-worker proof.
 
 Row level security is declared on every tenant table but is not behaviourally proven: PGlite
 connects as a superuser and bypasses it, so the local proof comes from the tenant write guard and
 the `videoforge_tenant_*` views. Hosted enforcement waits for V2-06. `GATE_TENANCY_001` and
 `GATE_STORAGE_001` therefore remain open only for their hosted/non-superuser/real-R2 proof.
 
-`CURRENT_STATE.yaml` keeps V2-02 selected for its read-only independent audit. V2-03 remains blocked
-until that audit is green and explicitly invoked. This handoff does not authorize V2-03 implementation.
+`CURRENT_STATE.yaml` selects V2-03 as safe for an explicit provider-free implementation request.
+V2-03 implementation has not started, and this handoff does not authorize it.
 All prior provider authorities are consumed and cannot be reused. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in

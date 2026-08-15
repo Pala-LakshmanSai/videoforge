@@ -1,0 +1,117 @@
+{
+  "schema_version": "videoforge.v2-02-independent-reaudit/v1",
+  "task_id": "VF-10-02",
+  "checkpoint": "V2-02",
+  "result": "PASS",
+  "audited_commit": "69d9e7037b40c1b295a2ccc686d122ab3530a9f0",
+  "recorded_at_utc": "2026-08-15T19:20:00Z",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": []
+  },
+  "predecessor": {
+    "checkpoint": "V2-01",
+    "result": "PASS",
+    "evidence": "evidence/acceptance/VF-10-01/2026-08-15-tenant-cutover-reaudit/acceptance.json",
+    "audited_commit": "714b21978f2720682269e45ca46f674e052893c3"
+  },
+  "repairs_verified": {
+    "canonical_wire_contracts": "Runtime upload/download ports and durable commit receipts use the exact additive v3 snake_case schemas; receipts include retention_class and retain_until and both runtime shapes validate through the synchronized contract authority.",
+    "trusted_object_identity": "The application derives the immutable object key from trusted account, workspace, project, revision, lane, job, and artifact identity. Additive migration 0020 independently reconstructs that complete key and rejects every mismatch.",
+    "least_scope_ports": "Capabilities bind reservation, principal, method, exact path, content type, content length, checksum, expiry, and bounded uses. Forgery, replay, expiry, partial bytes, length drift, and hash drift fail closed.",
+    "durable_receipts": "Receipts are immutable, reservation-bound, callback-idempotent, expiry checked at commit, tenant-scoped by receipt hash, and preserve hash, technical probe, retention, and deletion-owner facts.",
+    "non_enumeration": "The active v3 plane exposes no list, copy, move, or global hash lookup. Identical tenant filenames and hashes do not collide or reveal existence; an accepted immutable key cannot be replaced.",
+    "retention_and_deletion": "The fake adapter and database reject foreign deletion, deletion before retain_until, and LEGAL_HOLD deletion. Only one owned tombstone is allowed.",
+    "legacy_firewall": "The superseded raw-key route is retained only as an explicitly composed fixture and fails construction without the literal legacyFixtureOnly firewall. The exported active control-plane contract is v3 tenant identity; no global raw-key production route remains live.",
+    "worker_ports_and_scratch": "Mage and SoulX worker I/O factories accept only exact scoped v3 GET/PUT ports. /runpod-volume is application-read-only policy, while caches, config, temp, locks, and outputs remain under one job-local scratch tree.",
+    "filesystem_negatives": "Traversal, internal and ancestor symlinks, simulated different-device mounts, exact model-volume paths, crash leftovers, and success, failure, cancel, timeout, signal, and refresh cleanup are covered and green."
+  },
+  "validation": {
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "tasks": "28/28",
+      "control_plane": "243/243",
+      "web": "315/315",
+      "cloudflare": "1/1",
+      "installed_chrome": "44/44"
+    },
+    "browser_flake_diagnostic": {
+      "failed_command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "failed_exit_code": 1,
+      "failed_result": "All non-browser gates passed; installed Chrome 43/44. The unrelated CP-02 fixture journey retained a transient active-entry banner.",
+      "targeted_command": "CI=1 pnpm --filter @videoforge/web test:chrome -- tests/e2e/shared-app.spec.ts --grep 'CP-02 shares one GPU pair'",
+      "targeted_exit_code": 0,
+      "targeted_result": "2/2 across both configured Chrome projects",
+      "final_canonical_command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "final_canonical_exit_code": 0,
+      "final_canonical_result": "28/28 tasks and installed Chrome 44/44"
+    },
+    "artifact_and_migration_matrix": {
+      "command": "node --test packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/tenant-artifact-persistence.test.mjs packages/control-plane/tests/tenant-artifact-plane.test.mjs",
+      "exit_code": 0,
+      "tests": "15/15"
+    },
+    "control_plane": {
+      "command": "pnpm --filter @videoforge/control-plane test",
+      "exit_code": 0,
+      "tests": "243/243"
+    },
+    "contracts": {
+      "command": "pnpm --filter @videoforge/contracts test",
+      "exit_code": 0,
+      "typescript": "77/77",
+      "python": "61/61"
+    },
+    "worker_filesystem": {
+      "command": "pnpm python:lint && pnpm test:workers",
+      "exit_code": 0,
+      "suites": "6/6"
+    },
+    "legacy_route_firewall": {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/server/routes/private-artifact-routes.test.ts src/server/phase1-private-artifact-app.test.ts",
+      "exit_code": 0,
+      "tests": "6/6"
+    },
+    "context_contracts_and_secrets": {
+      "commands": [
+        "pnpm context:validate",
+        "pnpm contracts:check",
+        "pnpm secret:scan",
+        "git diff --check"
+      ],
+      "exit_codes": [0, 0, 0, 0]
+    }
+  },
+  "unproven_claims": [
+    "No real R2 API, bucket, binding, signed URL, multipart lifecycle, or hosted two-account behavior was exercised; fake-R2 proves only the local port contract.",
+    "PGlite runs as a superuser, so non-superuser hosted PostgreSQL RLS enforcement remains unproven until V2-06.",
+    "The provider-neutral Mage and SoulX I/O factories prove policy and filesystem behavior, not a built or published Serverless worker image or a running endpoint.",
+    "Application-level read-only treatment of /runpod-volume is proven locally; an actual read-only Serverless volume attachment remains a lane qualification gate.",
+    "Live provider resources were not refreshed because credential and provider access were forbidden."
+  ],
+  "external_truth": {
+    "provider_mode": "fixture",
+    "provider_calls_made": false,
+    "credentials_accessed": false,
+    "cloud_mutation_performed": false,
+    "external_spend_usd": 0,
+    "paid_compute_started": false,
+    "workers_allocated": 0,
+    "worker_or_endpoint_mutation": false,
+    "model_or_volume_mutation": false,
+    "real_r2_proven": false,
+    "live_provider_inventory_refreshed": false,
+    "last_known_provider_snapshot_at": "2026-08-15T09:56:02.932Z",
+    "last_known_pods": 0,
+    "last_known_serverless_workers_active_plus_flex": 0,
+    "retained_volumes": 2,
+    "ongoing_retained_volume_usd_per_month": 7.0
+  },
+  "next_checkpoint": {
+    "checkpoint": "V2-03",
+    "safe_to_start": true,
+    "authorization": "V2-03 remains unstarted and requires an explicit provider-free implementation request. No provider, credential, cloud mutation, worker, or spend authority exists."
+  }
+}
