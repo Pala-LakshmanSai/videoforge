@@ -20,7 +20,7 @@ export const CP07_REGION = "EU-RO-1";
 export const CP07_CAP_USD = 6;
 // Settled live audit was $0.385678 across 10 deleted Pods; this also reserves the
 // not-yet-settled 5090 qualification attempts while every Pod is independently absent.
-export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 1.579125;
+export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 1.8555;
 export const CP07_POD_LIFECYCLE_RESERVE_SECONDS = 120;
 export const CP07_VOLUME_ATTACHMENT_SETTLE_MS = 30_000;
 export const CP07_CAPACITY_RETRY_DELAY_MS = 30_000;
