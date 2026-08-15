@@ -263,6 +263,8 @@ export interface SharedQueueEntry {
   title: string;
   state: "ACTIVE" | "WAITING";
   actor: string;
+  accountId: string;
+  workspaceId: string;
   position: number;
   createdAt: string;
 }
@@ -285,6 +287,8 @@ export interface SharedAppState {
     id: string;
     operation: "START" | "ADD" | "MOVE" | "REMOVE";
     actor: string;
+    accountId: string;
+    workspaceId: string;
     oldOrder: string[];
     newOrder: string[];
     oldVersion: number;

@@ -118,6 +118,39 @@ describe("shared fixture admission", () => {
 });
 
 describe("shared fixture singleton queue", () => {
+  it("does not expose persisted pre-tenant fixture records after upgrade", async () => {
+    const store = new SharedAppFixtureStore();
+    await admit(store, 1);
+    store.startOrEnqueue({
+      sessionId: "browser-1",
+      projectId: "legacy-project",
+      title: "Legacy Project",
+      ...selectedPair(store),
+    });
+    const legacy = JSON.parse(store.exportSnapshot()) as {
+      projectOwners?: unknown;
+      queue: Array<Record<string, unknown>>;
+      audits: Array<Record<string, unknown>>;
+    };
+    delete legacy.projectOwners;
+    for (const entry of legacy.queue) {
+      delete entry.accountId;
+      delete entry.workspaceId;
+    }
+    for (const audit of legacy.audits) {
+      delete audit.accountId;
+      delete audit.workspaceId;
+    }
+
+    const restored = new SharedAppFixtureStore(
+      new MemorySharedAppPersistence(JSON.stringify(legacy)),
+    ).view("browser-1");
+    expect(restored.queue).toEqual([]);
+    expect(restored.audits).toEqual([]);
+    expect(restored.orchestration.projects).toEqual([]);
+    expect(restored.orchestration.session).toBeNull();
+  });
+
   it("rolls back every queue mutation when orchestration rejects an enqueue", async () => {
     const store = new SharedAppFixtureStore();
     await admit(store, 1);
@@ -161,9 +194,12 @@ describe("shared fixture singleton queue", () => {
     expect(outcomes.filter((result) => result.outcome === "QUEUED")).toHaveLength(9);
     const view = store.view("browser-10");
     expect(view.rights).toBe("EQUAL");
-    expect(view.queue).toHaveLength(10);
-    expect(view.queue[0]?.state).toBe("ACTIVE");
+    expect(view.queue).toHaveLength(1);
+    expect(view.queue[0]).toMatchObject({ projectId: "project-10", state: "WAITING" });
+    expect(view.orchestration.projects).toHaveLength(1);
+    expect(view.audits.every((audit) => audit.actor === "user-10@example.test")).toBe(true);
     expect(view.canSelectGpuPair).toBe(false);
+    expect(view.session?.queueVersion).toBe(1);
     expect(view.session?.gpuPair.image.receiptId).toBe(pair.imageReceiptId);
   });
 
@@ -177,38 +213,41 @@ describe("shared fixture singleton queue", () => {
     store.startOrEnqueue({ sessionId: "browser-2", projectId: "waiting-a", title: "Waiting A" });
     store.startOrEnqueue({ sessionId: "browser-1", projectId: "waiting-b", title: "Waiting B" });
     const before = store.view("browser-2");
-    const active = before.queue[0]!;
-    const waitingB = before.queue[2]!;
+    const active = store.view("browser-1").queue.find((entry) => entry.projectId === "active")!;
+    const waitingB = store
+      .view("browser-1")
+      .queue.find((entry) => entry.projectId === "waiting-b")!;
+    const waitingA = before.queue.find((entry) => entry.projectId === "waiting-a")!;
     expect(() =>
-      store.reorder({ sessionId: "browser-2", entryId: waitingB.id, toPosition: 2, ifMatch: 1 }),
+      store.reorder({ sessionId: "browser-2", entryId: waitingA.id, toPosition: 1, ifMatch: 0 }),
     ).toThrowError(/Queue changed/);
     expect(() =>
       store.remove({
         sessionId: "browser-2",
         entryId: active.id,
-        ifMatch: before.session!.queueVersion,
+        ifMatch: 3,
       }),
-    ).toThrowError(/Active entries/);
-    store.reorder({
-      sessionId: "browser-2",
-      entryId: waitingB.id,
-      toPosition: 2,
-      ifMatch: before.session!.queueVersion,
-    });
+    ).toThrowError(/not found/);
+    expect(() =>
+      store.reorder({
+        sessionId: "browser-2",
+        entryId: waitingB.id,
+        toPosition: 2,
+        ifMatch: 3,
+      }),
+    ).toThrowError(/not found/);
     const moved = store.view("browser-1");
-    const moveAudit = moved.audits.at(-1)!;
-    expect(moveAudit.actor).toBe("user-2@example.test");
-    expect(moveAudit.oldOrder).not.toEqual(moveAudit.newOrder);
-    const waitingA = moved.queue.find((entry) => entry.projectId === "waiting-a")!;
     store.remove({
       sessionId: "browser-1",
-      entryId: waitingA.id,
+      entryId: waitingB.id,
       ifMatch: moved.session!.queueVersion,
     });
     const restored = new SharedAppFixtureStore(persistence).view("browser-2");
-    expect(restored.queue.map((entry) => entry.projectId)).toEqual(["active", "waiting-b"]);
-    expect(restored.session?.gpuPair).toEqual(moved.session?.gpuPair);
-    expect(restored.audits.at(-1)?.operation).toBe("REMOVE");
+    expect(restored.queue.map((entry) => entry.projectId)).toEqual(["waiting-a"]);
+    expect(restored.orchestration.projects.map((project) => project.projectId)).toEqual([
+      "waiting-a",
+    ]);
+    expect(restored.audits.every((audit) => audit.actor === "user-2@example.test")).toBe(true);
   });
 
   it("runs three ordered provider-free projects through restart to playable final MP4 barriers", async () => {
@@ -237,10 +276,10 @@ describe("shared fixture singleton queue", () => {
     });
 
     store = new SharedAppFixtureStore(persistence);
-    store.recover();
+    store.recover("browser-1");
     expect(store.view("browser-1").orchestration.session?.recoveryCount).toBe(1);
     for (let index = 0; index < 80 && store.view("browser-1").orchestration.session; index += 1) {
-      await store.advance();
+      await store.advance("browser-1");
     }
     const final = store.view("browser-1");
     expect(final.session).toBeNull();
@@ -275,7 +314,7 @@ describe("shared fixture singleton queue", () => {
       });
       expect(project.cost.actualExternalSpendUsd).toBe(0);
       expect(project.cost.reportedMicroUsd).toBe(project.cost.settledMicroUsd);
-      await expect(store.finalMp4(project.projectId)).resolves.toHaveLength(
+      await expect(store.finalMp4("browser-1", project.projectId)).resolves.toHaveLength(
         project.finalAsset!.byteSize,
       );
     }
@@ -296,7 +335,7 @@ describe("shared fixture singleton queue", () => {
     for (let index = 0; index < 40; index += 1) {
       const mage = store.view("browser-1").orchestration.session?.lanes.mage_image.attempts.at(-1);
       if (mage?.phase === "ABSENCE_VERIFIED") break;
-      await store.advance();
+      await store.advance("browser-1");
     }
     expect(
       store.view("browser-1").orchestration.session?.lanes.mage_image.attempts.at(-1)?.phase,
@@ -308,7 +347,7 @@ describe("shared fixture singleton queue", () => {
     });
     for (let index = 0; index < 40; index += 1) {
       if (store.view("browser-1").orchestration.session?.activeProjectId === "late") break;
-      await store.advance();
+      await store.advance("browser-1");
     }
     const promoted = store.view("browser-1").orchestration;
     expect(promoted.session?.activeProjectId).toBe("late");

@@ -187,6 +187,8 @@ const sharedAppSchema = z
           title: z.string(),
           state: z.enum(["ACTIVE", "WAITING"]),
           actor: z.string(),
+          accountId: z.string(),
+          workspaceId: z.string(),
           position: z.number().int().positive(),
           createdAt: z.string(),
         })
@@ -198,6 +200,8 @@ const sharedAppSchema = z
           id: z.string(),
           operation: z.enum(["START", "ADD", "MOVE", "REMOVE"]),
           actor: z.string(),
+          accountId: z.string(),
+          workspaceId: z.string(),
           oldOrder: z.array(z.string()),
           newOrder: z.array(z.string()),
           oldVersion: z.number().int().nonnegative(),

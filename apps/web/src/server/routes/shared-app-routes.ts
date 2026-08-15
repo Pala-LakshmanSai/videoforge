@@ -66,7 +66,7 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
       const session = runtime.resolveSession(c);
       if (!session.ok) return session.response;
       runtime.sharedApp.assertAdmitted(session.id);
-      runtime.sharedApp.recover();
+      runtime.sharedApp.recover(session.id);
       return c.json({ ok: true, providerCallsAuthorized: false, authorizedSpendUsd: 0 });
     } catch (error) {
       return failure(error);
@@ -82,8 +82,8 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
       runtime.sharedApp.assertAdmitted(session.id);
       const body = (await c.req.json()) as Parameters<
         typeof runtime.sharedApp.acceptLaneCallback
-      >[0];
-      runtime.sharedApp.acceptLaneCallback(body);
+      >[1];
+      runtime.sharedApp.acceptLaneCallback(session.id, body);
       return c.json({ ok: true, providerCallsAuthorized: false, authorizedSpendUsd: 0 });
     } catch (error) {
       return failure(error);
@@ -159,26 +159,29 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
     try {
-      runtime.sharedApp.assertAdmitted(session.id);
-      return c.json(await runtime.sharedApp.advance());
+      return c.json(await runtime.sharedApp.advance(session.id));
     } catch (error) {
       return failure(error);
     }
   });
 
   app.get("/api/v1/shared-app/projects/:projectId", async (c) => {
+    const session = runtime.resolveSession(c);
+    if (!session.ok) return session.response;
     try {
       await runtime.sharedApp.waitForSettled();
-      return c.json(runtime.sharedApp.projectOrchestration(c.req.param("projectId")));
+      return c.json(runtime.sharedApp.projectOrchestration(session.id, c.req.param("projectId")));
     } catch (error) {
       return failure(error);
     }
   });
 
   app.get("/api/v1/shared-app/projects/:projectId/download", async (c) => {
+    const session = runtime.resolveSession(c);
+    if (!session.ok) return session.response;
     try {
       await runtime.sharedApp.waitForSettled();
-      const project = runtime.sharedApp.projectOrchestration(c.req.param("projectId"));
+      const project = runtime.sharedApp.projectOrchestration(session.id, c.req.param("projectId"));
       if (project.finalAsset === null || project.stage !== "READY_FOR_REVIEW") {
         return problemResponse(
           apiProblem(
@@ -199,7 +202,7 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
       );
       c.header("x-videoforge-sha256", project.finalAsset.sha256);
       c.header("x-videoforge-artifact-kind", "provider-free-final-mp4");
-      const bytes = await runtime.sharedApp.finalMp4(project.projectId);
+      const bytes = await runtime.sharedApp.finalMp4(session.id, project.projectId);
       return c.body(bytes.buffer as ArrayBuffer);
     } catch (error) {
       return failure(error);

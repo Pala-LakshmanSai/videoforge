@@ -21,7 +21,9 @@ import {
   RESERVED_SYSTEM_WORKSPACE_ID,
   TENANT_PRINCIPAL_SETTING,
   applyMigrations,
+  trustedTenantScope,
 } from "../dist/src/index.js";
+import { createPGliteControlPlaneRepositories } from "../dist/src/adapters/index.js";
 import { PGlite } from "@electric-sql/pglite";
 import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import {
@@ -243,7 +245,7 @@ test("a guessed identifier, hash, or existence probe reveals nothing across acco
   });
 });
 
-test("a stale or absent principal sees nothing and cannot write", async () => {
+test("an absent principal sees no tenant rows and every repository call requires an owned scope", async () => {
   await withMigratedDatabase(async ({ executor }) => {
     await seedTwoAccounts(executor);
 
@@ -254,8 +256,32 @@ test("a stale or absent principal sees nothing and cannot write", async () => {
     );
     assert.deepEqual(unbound.rows[0], { projects: 0, assets: 0 });
 
-    // A session bound to a deleted or never-existing account is equally empty, and its writes are
-    // rejected rather than silently retargeted.
+    const repositories = createPGliteControlPlaneRepositories(executor);
+    const unscoped = await repositories.artifacts.resolveExact(undefined, IDS.voiceoverA);
+    assert.deepEqual(unscoped, {
+      ok: false,
+      kind: "INVARIANT_VIOLATION",
+      code: "CROSS_WORKSPACE_REFERENCE",
+      message: "a trusted account and workspace are required",
+    });
+
+    const forged = trustedTenantScope(IDS.accountB, IDS.workspaceA);
+    const mismatched = await repositories.artifacts.resolveExact(forged, IDS.voiceoverA);
+    assert.equal(mismatched.ok, false);
+    assert.equal(mismatched.kind, "INVARIANT_VIOLATION");
+    assert.equal(mismatched.code, "CROSS_WORKSPACE_REFERENCE");
+
+    const accountB = trustedTenantScope(IDS.accountB, IDS.workspaceB);
+    const foreignArtifact = await repositories.artifacts.resolveExact(accountB, IDS.voiceoverA);
+    assert.deepEqual(foreignArtifact, {
+      ok: false,
+      kind: "NOT_FOUND",
+      entity: "ASSET",
+      id: IDS.voiceoverA,
+    });
+
+    // A database session bound to a deleted or never-existing account is equally empty, and its
+    // writes are rejected rather than silently retargeted.
     await asPrincipal(executor, FOREIGN_ACCOUNT, async () => {
       const stale = await executor.query(
         `SELECT count(*)::int AS visible FROM videoforge_tenant_projects`,

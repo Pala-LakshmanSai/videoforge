@@ -128,9 +128,9 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
       expect(response.ok()).toBe(true);
     }
 
-    let state = await shared(contextB.request);
+    let state = await shared(contextA.request);
     const fourth = state.queue.find((entry) => entry.projectId === "cp05-project-4")!;
-    const moved = await contextB.request.patch(
+    const moved = await contextA.request.patch(
       `/api/v1/shared-app/queue/${fourth.id}?fixture=${FIXTURE}`,
       { data: { toPosition: 2, queueVersion: state.session!.queueVersion } },
     );
@@ -144,6 +144,8 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
     expect((await shared(contextA.request)).queue.map((entry) => entry.projectId)).toEqual([
       "cp05-project-1",
       "cp05-project-4",
+    ]);
+    expect((await shared(contextB.request)).queue.map((entry) => entry.projectId)).toEqual([
       "cp05-project-2",
     ]);
     expect((await contextA.request.post("/api/dev/shared-app/recover")).ok()).toBe(true);
@@ -181,8 +183,7 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
     ).toBe(409);
 
     const pageA = await contextA.newPage();
-    const pageB = await contextB.newPage();
-    for (const page of [pageA, pageB]) {
+    for (const page of [pageA]) {
       page.on("console", (message) => {
         if (message.type() === "error")
           consoleErrors.push(`${message.text()} @ ${message.location().url}`);
@@ -193,19 +194,35 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
       await expect(page.getByText("$0 fixture", { exact: true })).toBeVisible();
     }
 
-    for (let index = 0; index < 80; index += 1) {
-      state = await shared(contextA.request);
-      if (state.orchestration.session === null) break;
-      const advanced = await contextA.request.post(`/api/v1/shared-app/advance?fixture=${FIXTURE}`);
-      expect(advanced.ok()).toBe(true);
+    for (let index = 0; index < 100; index += 1) {
+      const tenantStates = await Promise.all(contexts.map((context) => shared(context.request)));
+      let ownerIndex = tenantStates.findIndex(
+        (tenantState) =>
+          tenantState.orchestration.session !== null &&
+          tenantState.orchestration.session.activeProjectId !== null,
+      );
+      if (ownerIndex === -1) {
+        ownerIndex = tenantStates.findIndex(
+          (tenantState) => tenantState.orchestration.session !== null,
+        );
+      }
+      if (ownerIndex === -1) break;
+      const advanced = await contexts[ownerIndex]!.request.post(
+        `/api/v1/shared-app/advance?fixture=${FIXTURE}`,
+      );
+      if (!advanced.ok()) {
+        throw new Error(`advance failed ${advanced.status()}: ${await advanced.text()}`);
+      }
     }
-    state = await shared(contextC.request);
-    expect(state.orchestration.session).toBeNull();
-    expect(state.queue).toEqual([]);
-    const completed = state.orchestration.projects.filter(
-      (project) => project.stage === "READY_FOR_REVIEW",
+    const finalStates = await Promise.all(contexts.map((context) => shared(context.request)));
+    expect(finalStates.every((tenantState) => tenantState.orchestration.session === null)).toBe(
+      true,
     );
-    expect(completed.map((project) => project.projectId)).toEqual([
+    expect(finalStates.every((tenantState) => tenantState.queue.length === 0)).toBe(true);
+    const completed = finalStates.flatMap((tenantState) =>
+      tenantState.orchestration.projects.filter((project) => project.stage === "READY_FOR_REVIEW"),
+    );
+    expect(completed.map((project) => project.projectId).sort()).toEqual([
       "cp05-project-1",
       "cp05-project-2",
       "cp05-project-4",
@@ -219,7 +236,7 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
     await expect(pageA.getByRole("heading", { name: "Last session closed" })).toBeVisible();
     await expect(pageA.getByRole("heading", { name: "Provider-free final MP4s" })).toBeVisible();
     const videos = pageA.locator("video");
-    await expect(videos).toHaveCount(3);
+    await expect(videos).toHaveCount(2);
     const playback = await videos.first().evaluate(async (element) => {
       const video = element as HTMLVideoElement;
       video.muted = true;
@@ -267,14 +284,8 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
       expect(await readFile(downloadPath!)).toEqual(bytes);
     }
 
-    const pageC = await contextC.newPage();
-    pageC.on("console", (message) => {
-      if (message.type() === "error")
-        consoleErrors.push(`${message.text()} @ ${message.location().url}`);
-    });
-    await pageC.goto(`/?fixture=${FIXTURE}`);
-    await expect(pageC.getByRole("heading", { name: "Last session closed" })).toBeVisible();
-    await expect(pageC.locator("video")).toHaveCount(3);
+    const foreignDownload = await contextB.request.get(completed[0]!.finalAsset!.downloadPath);
+    expect(foreignDownload.status()).toBe(404);
     expect(consoleErrors).toEqual([]);
   } finally {
     await Promise.all(contexts.map((context) => context.close()));

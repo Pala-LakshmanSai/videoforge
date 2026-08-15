@@ -1029,15 +1029,20 @@ test("terminal attempts are unclaimable and recovery snapshots stay one-query bo
     assert.equal(overflowResult.kind, "CONFLICT");
     assert.equal(overflowResult.code, "STATE_CONFLICT");
 
-    let queryCount = 0;
+    let recoveryQueryCount = 0;
     const countingExecutor = {
       execute: (sql) => context.executor.execute(sql),
-      query(sql, parameters) {
-        queryCount += 1;
-        assert.match(sql, /WITH target_task AS/);
-        return context.executor.query(sql, parameters);
-      },
-      transaction: (work) => context.executor.transaction(work),
+      query: (sql, parameters) => context.executor.query(sql, parameters),
+      transaction: (work) =>
+        context.executor.transaction((transaction) =>
+          work({
+            execute: (sql) => transaction.execute(sql),
+            query(sql, parameters) {
+              if (/WITH target_task AS/u.test(sql)) recoveryQueryCount += 1;
+              return transaction.query(sql, parameters);
+            },
+          }),
+        ),
     };
     const countingRepositories = createPGliteControlPlaneRepositories(countingExecutor);
     const countingRecovery = new DurableRecoveryCoordinator(countingRepositories, {
@@ -1046,7 +1051,7 @@ test("terminal attempts are unclaimable and recovery snapshots stay one-query bo
       },
     });
     const snapshot = ok(await countingRecovery.inspect(SCOPE, bounded.task.taskId));
-    assert.equal(queryCount, 1);
+    assert.equal(recoveryQueryCount, 1);
     assert.equal(snapshot.attemptCount, 32);
     assert.equal(snapshot.activeAttemptCount, 32);
   } finally {

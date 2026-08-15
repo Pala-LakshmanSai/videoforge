@@ -1618,7 +1618,7 @@ describe("CP-02 shared app fixture API", () => {
       canSelectGpuPair: false,
       providerCallsAuthorized: false,
       authorizedSpendUsd: 0,
-      queue: [{ state: "ACTIVE" }, { state: "WAITING" }],
+      queue: [{ projectId: "cp02-project-2", state: "WAITING" }],
     });
   });
 });

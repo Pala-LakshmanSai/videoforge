@@ -7482,6 +7482,94 @@ function createScopeGuardedSession(
   };
 }
 
+async function validateBoundTenantScope(
+  executor: SqlExecutor,
+  scope: WorkspaceScope,
+): Promise<RepositoryResult<never, string, string, string> | null> {
+  const accountId = guardedScopeField(scope, "accountId");
+  const workspaceId = guardedScopeField(scope, "workspaceId");
+  if (accountId === null || workspaceId === null) {
+    return invariant("CROSS_WORKSPACE_REFERENCE", "a trusted account and workspace are required");
+  }
+  const workspace = await one(
+    executor,
+    "SELECT id FROM workspaces WHERE account_id = $1 AND id = $2",
+    [accountId, workspaceId],
+  );
+  return workspace === null
+    ? invariant(
+        "CROSS_WORKSPACE_REFERENCE",
+        "the authenticated account does not own the requested workspace",
+      )
+    : null;
+}
+
+function createTenantBoundRootSession(database: TransactionalSqlExecutor): RepositorySession {
+  const repositoryNames = [
+    "identity",
+    "artifacts",
+    "avatarProfiles",
+    "events",
+    "execution",
+    "imageStyles",
+    "projects",
+    "timing",
+  ] as const satisfies readonly (keyof RepositorySession)[];
+  const session = {} as Record<keyof RepositorySession, object>;
+  for (const repositoryName of repositoryNames) {
+    session[repositoryName] = new Proxy(
+      {},
+      {
+        get(_target, property) {
+          if (typeof property !== "string") return undefined;
+          return async (...parameters: unknown[]): Promise<unknown> => {
+            if (
+              guardedScopeField(parameters[0], "accountId") === null ||
+              guardedScopeField(parameters[0], "workspaceId") === null
+            ) {
+              return invariant(
+                "CROSS_WORKSPACE_REFERENCE",
+                "a trusted account and workspace are required",
+              );
+            }
+            const invocationParameters = decodeReceiptValue(
+              encodeReceiptValue(parameters),
+            ) as unknown[];
+            const scope = invocationParameters[0] as WorkspaceScope;
+            return database.transaction(async (transaction) => {
+              const accountId = guardedScopeField(scope, "accountId");
+              if (accountId === null) {
+                return invariant(
+                  "CROSS_WORKSPACE_REFERENCE",
+                  "a trusted account and workspace are required",
+                );
+              }
+              await bindTenantPrincipal(transaction, scope);
+              const scopeFailure = await validateBoundTenantScope(transaction, scope);
+              if (scopeFailure !== null) return scopeFailure;
+              const directAtomic: AtomicRunner = { run: (operation) => operation(transaction) };
+              const transactionSession = createReceiptWrappedSession(
+                directTransactionalExecutor(transaction),
+                { executor: transaction, atomic: directAtomic },
+              );
+              const member = transactionSession[repositoryName][
+                property as keyof (typeof transactionSession)[typeof repositoryName]
+              ] as unknown;
+              if (typeof member !== "function") return member;
+              return Reflect.apply(
+                member,
+                transactionSession[repositoryName],
+                invocationParameters,
+              );
+            });
+          };
+        },
+      },
+    );
+  }
+  return session as unknown as RepositorySession;
+}
+
 class TypedTransactionRollback extends Error {
   public constructor(public readonly result: RepositoryResult<unknown, string, string, string>) {
     super("typed repository transaction rollback");
@@ -7497,13 +7585,7 @@ class TypedTransactionRollback extends Error {
 export function createPGliteControlPlaneRepositories(
   database: TransactionalSqlExecutor,
 ): ControlPlaneRepositories {
-  const rootAtomic: AtomicRunner = {
-    run: (work) => database.transaction(work),
-  };
-  const session = createReceiptWrappedSession(database, {
-    executor: database,
-    atomic: rootAtomic,
-  });
+  const session = createTenantBoundRootSession(database);
   const unitOfWork: RepositoryUnitOfWork = {
     async execute(scope, work) {
       try {
@@ -7518,6 +7600,8 @@ export function createPGliteControlPlaneRepositories(
             },
           );
           await bindTenantPrincipal(transaction, scope);
+          const scopeFailure = await validateBoundTenantScope(transaction, scope);
+          if (scopeFailure !== null) throw new TypedTransactionRollback(scopeFailure);
           const transactionSession = createScopeGuardedSession(receiptSession, scope, guard);
           const result = await work(transactionSession);
           if (guard.failure !== null) {

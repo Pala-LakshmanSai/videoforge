@@ -43,6 +43,8 @@ export interface SharedQueueEntry {
   readonly title: string;
   readonly state: SharedQueueState;
   readonly actor: string;
+  readonly accountId: string;
+  readonly workspaceId: string;
   readonly position: number;
   readonly createdAt: string;
 }
@@ -51,6 +53,8 @@ export interface SharedQueueAudit {
   readonly id: string;
   readonly operation: "START" | "ADD" | "MOVE" | "REMOVE";
   readonly actor: string;
+  readonly accountId: string;
+  readonly workspaceId: string;
   readonly oldOrder: readonly string[];
   readonly newOrder: readonly string[];
   readonly oldVersion: number;
@@ -126,9 +130,10 @@ interface MutableState {
   invites: Map<string, Invite>;
   sessionId: string | null;
   pair: LockedGpuPair | null;
-  queueVersion: number;
+  queueVersions: Map<string, number>;
   queue: SharedQueueEntry[];
   audits: SharedQueueAudit[];
+  projectOwners: Map<string, FixtureTenantScope>;
   orchestration: ProviderFreeOrchestrationState;
 }
 
@@ -272,9 +277,10 @@ export class SharedAppFixtureStore {
       invites: new Map(),
       sessionId: null,
       pair: null,
-      queueVersion: 0,
+      queueVersions: new Map(),
       queue: [],
       audits: [],
+      projectOwners: new Map(),
       orchestration: new ProviderFreeMvpOrchestrator().snapshot(),
     };
   }
@@ -287,8 +293,10 @@ export class SharedAppFixtureStore {
       sessionId: string | null;
       pair: LockedGpuPair | null;
       queueVersion: number;
+      queueVersions?: [string, number][];
       queue: SharedQueueEntry[];
       audits: SharedQueueAudit[];
+      projectOwners?: [string, FixtureTenantScope][];
       orchestration?: ProviderFreeOrchestrationState;
     };
     return {
@@ -296,6 +304,8 @@ export class SharedAppFixtureStore {
       admissions: new Map(value.admissions.map((item) => [item.email, item])),
       sessionAdmissions: new Map(value.sessionAdmissions),
       invites: new Map(value.invites.map((item) => [item.codeHash, item])),
+      queueVersions: new Map(value.queueVersions ?? []),
+      projectOwners: new Map(value.projectOwners ?? []),
       orchestration:
         value.orchestration === undefined
           ? new ProviderFreeMvpOrchestrator().snapshot()
@@ -309,6 +319,8 @@ export class SharedAppFixtureStore {
       admissions: [...this.#state.admissions.values()],
       sessionAdmissions: [...this.#state.sessionAdmissions.entries()],
       invites: [...this.#state.invites.values()],
+      queueVersions: [...this.#state.queueVersions.entries()],
+      projectOwners: [...this.#state.projectOwners.entries()],
       orchestration: this.#orchestrator.snapshot(),
     });
   }
@@ -460,6 +472,49 @@ export class SharedAppFixtureStore {
 
   view(sessionId: string): SharedAppView {
     const admission = this.#state.sessionAdmissions.get(sessionId);
+    const tenant = admission?.tenant;
+    const owns = (owner: FixtureTenantScope | undefined) =>
+      tenant !== undefined &&
+      owner?.accountId === tenant.accountId &&
+      owner.workspaceId === tenant.workspaceId;
+    const queue = positions(this.#state.queue.filter((entry) => owns(entry)));
+    const snapshot = this.#orchestrator.snapshot();
+    const ownedProjectIds = new Set(
+      snapshot.projects
+        .filter((project) => owns(this.#state.projectOwners.get(project.projectId)))
+        .map((project) => project.projectId),
+    );
+    const filterSession = (candidate: ProviderFreeOrchestrationState["session"]) => {
+      if (candidate === null) return null;
+      const attempts = Object.values(candidate.lanes).flatMap((lane) => lane.attempts);
+      const ownsCandidateActive =
+        candidate.activeProjectId !== null && ownedProjectIds.has(candidate.activeProjectId);
+      if (
+        !ownsCandidateActive &&
+        !attempts.some((attempt) => ownedProjectIds.has(attempt.originProjectId))
+      )
+        return null;
+      const filtered = structuredClone(candidate);
+      for (const lane of Object.values(filtered.lanes)) {
+        const ownedAttempts = lane.attempts.filter((attempt) =>
+          ownedProjectIds.has(attempt.originProjectId),
+        );
+        lane.attempts.splice(0, lane.attempts.length, ...ownedAttempts);
+      }
+      if (filtered.activeProjectId !== null && !ownedProjectIds.has(filtered.activeProjectId)) {
+        filtered.activeProjectId = null;
+      }
+      return filtered;
+    };
+    const orchestration: ProviderFreeOrchestrationState = {
+      ...snapshot,
+      session: filterSession(snapshot.session),
+      lastClosedSession: filterSession(snapshot.lastClosedSession),
+      projects: snapshot.projects.filter((project) => ownedProjectIds.has(project.projectId)),
+      events: snapshot.events.filter(
+        (event) => event.projectId !== null && ownedProjectIds.has(event.projectId),
+      ),
+    };
     return {
       rights: "EQUAL",
       admission: {
@@ -469,16 +524,16 @@ export class SharedAppFixtureStore {
       },
       inventory: liveOffers(),
       session:
-        this.#state.sessionId && this.#state.pair
+        admission !== undefined && queue.length > 0 && this.#state.sessionId && this.#state.pair
           ? {
-              id: this.#state.sessionId,
-              queueVersion: this.#state.queueVersion,
-              gpuPair: this.#state.pair,
+              id: `fixture-${admission.tenant.accountId}`,
+              queueVersion: this.queueVersion(admission),
+              gpuPair: { ...this.#state.pair, lockedAt: queue[0]!.createdAt },
             }
           : null,
-      queue: this.#state.queue,
-      audits: this.#state.audits,
-      orchestration: this.#orchestrator.snapshot(),
+      queue,
+      audits: this.#state.audits.filter((audit) => owns(audit)),
+      orchestration,
       canSelectGpuPair: this.#state.sessionId === null && this.#state.queue.length === 0,
       providerCallsAuthorized: false,
       authorizedSpendUsd: 0,
@@ -497,9 +552,10 @@ export class SharedAppFixtureStore {
     avatarReceiptId?: string;
   }): { outcome: "STARTED" | "QUEUED"; queueVersion: number } {
     return this.commit(() => {
-      const actor = this.requireAdmission(input.sessionId).email;
+      const admission = this.requireAdmission(input.sessionId);
+      const actor = admission.email;
       const oldOrder = currentOrder(this.#state.queue);
-      const oldVersion = this.#state.queueVersion;
+      const oldVersion = this.queueVersion(admission);
       let operation: SharedQueueAudit["operation"];
       let outcome: "STARTED" | "QUEUED";
       let gpuPair: LockedGpuPair | null = null;
@@ -533,7 +589,7 @@ export class SharedAppFixtureStore {
         outcome = "QUEUED";
       }
       const queueEntryId = crypto.randomUUID();
-      this.#state.queueVersion += 1;
+      this.incrementQueueVersion(admission.tenant);
       this.#state.queue = positions([
         ...this.#state.queue,
         {
@@ -542,10 +598,13 @@ export class SharedAppFixtureStore {
           title: input.title,
           state: outcome === "STARTED" ? "ACTIVE" : "WAITING",
           actor,
+          accountId: admission.tenant.accountId,
+          workspaceId: admission.tenant.workspaceId,
           position: 0,
           createdAt: new Date().toISOString(),
         },
       ]);
+      this.#state.projectOwners.set(input.projectId, admission.tenant);
       if (outcome === "STARTED") {
         if (gpuPair === null) throw new Error("Started fixture session is missing its GPU pair.");
         this.#orchestrator.startSession({
@@ -566,8 +625,8 @@ export class SharedAppFixtureStore {
       } else {
         this.#orchestrator.addWaiting(queueEntryId, input.projectId, input.title);
       }
-      this.audit(operation, actor, oldOrder, oldVersion);
-      return { outcome, queueVersion: this.#state.queueVersion };
+      this.audit(operation, admission, oldOrder, oldVersion);
+      return { outcome, queueVersion: this.queueVersion(admission) };
     });
   }
 
@@ -578,14 +637,15 @@ export class SharedAppFixtureStore {
     ifMatch: number;
   }): void {
     this.commit(() => {
-      const actor = this.requireAdmission(input.sessionId).email;
-      this.requireVersion(input.ifMatch);
+      const admission = this.requireAdmission(input.sessionId);
       const oldOrder = currentOrder(this.#state.queue);
-      const oldVersion = this.#state.queueVersion;
+      const oldVersion = this.queueVersion(admission);
       const index = this.#state.queue.findIndex((entry) => entry.id === input.entryId);
       const entry = this.#state.queue[index];
       if (!entry)
         throw new SharedFixtureError("QUEUE_ENTRY_NOT_FOUND", 404, "Queue entry not found.");
+      this.assertOwner(admission, entry);
+      this.requireVersion(admission, input.ifMatch);
       if (entry.state !== "WAITING")
         throw new SharedFixtureError(
           "ACTIVE_QUEUE_ENTRY_IMMUTABLE",
@@ -593,28 +653,44 @@ export class SharedAppFixtureStore {
           "Active entries cannot move.",
         );
       const waiting = this.#state.queue.filter(
-        (item) => item.state === "WAITING" && item.id !== entry.id,
+        (item) =>
+          item.state === "WAITING" &&
+          item.id !== entry.id &&
+          item.accountId === admission.tenant.accountId &&
+          item.workspaceId === admission.tenant.workspaceId,
       );
-      const target = Math.max(0, Math.min(waiting.length, input.toPosition - 2));
+      const ownedActiveCount = this.#state.queue.filter(
+        (item) =>
+          item.state === "ACTIVE" &&
+          item.accountId === admission.tenant.accountId &&
+          item.workspaceId === admission.tenant.workspaceId,
+      ).length;
+      const target = Math.max(0, Math.min(waiting.length, input.toPosition - ownedActiveCount - 1));
       waiting.splice(target, 0, entry);
-      this.#state.queue = positions([
-        ...this.#state.queue.filter((item) => item.state === "ACTIVE"),
-        ...waiting,
-      ]);
-      this.#state.queueVersion += 1;
-      this.audit("MOVE", actor, oldOrder, oldVersion);
+      const ownedWaitingSlots = this.#state.queue
+        .map((item, slot) => ({ item, slot }))
+        .filter(({ item }) => waiting.some((ownedEntry) => ownedEntry.id === item.id))
+        .map(({ slot }) => slot);
+      const reorderedQueue = [...this.#state.queue];
+      for (const [ownedIndex, slot] of ownedWaitingSlots.entries()) {
+        reorderedQueue[slot] = waiting[ownedIndex]!;
+      }
+      this.#state.queue = positions(reorderedQueue);
+      this.incrementQueueVersion(admission.tenant);
+      this.audit("MOVE", admission, oldOrder, oldVersion);
     });
   }
 
   remove(input: { sessionId: string; entryId: string; ifMatch: number }): void {
     this.commit(() => {
-      const actor = this.requireAdmission(input.sessionId).email;
-      this.requireVersion(input.ifMatch);
+      const admission = this.requireAdmission(input.sessionId);
       const oldOrder = currentOrder(this.#state.queue);
-      const oldVersion = this.#state.queueVersion;
+      const oldVersion = this.queueVersion(admission);
       const entry = this.#state.queue.find((item) => item.id === input.entryId);
       if (!entry)
         throw new SharedFixtureError("QUEUE_ENTRY_NOT_FOUND", 404, "Queue entry not found.");
+      this.assertOwner(admission, entry);
+      this.requireVersion(admission, input.ifMatch);
       if (entry.state !== "WAITING")
         throw new SharedFixtureError(
           "ACTIVE_QUEUE_ENTRY_IMMUTABLE",
@@ -623,13 +699,14 @@ export class SharedAppFixtureStore {
         );
       this.#state.queue = positions(this.#state.queue.filter((item) => item.id !== input.entryId));
       this.#orchestrator.removeWaiting(entry.projectId);
-      this.#state.queueVersion += 1;
-      this.audit("REMOVE", actor, oldOrder, oldVersion);
+      this.incrementQueueVersion(admission.tenant);
+      this.audit("REMOVE", admission, oldOrder, oldVersion);
     });
   }
 
-  async advance(): Promise<ProviderFreeAdvanceResult> {
+  async advance(sessionId: string): Promise<ProviderFreeAdvanceResult> {
     return this.commitAsync(async () => {
+      this.assertActiveOwner(this.requireAdmission(sessionId));
       const waitingProjectIds = this.#state.queue
         .filter((entry) => entry.state === "WAITING")
         .map((entry) => entry.projectId);
@@ -671,7 +748,7 @@ export class SharedAppFixtureStore {
 
   cancelActive(sessionId: string): ProviderFreeAdvanceResult {
     return this.commit(() => {
-      this.requireAdmission(sessionId);
+      this.assertActiveOwner(this.requireAdmission(sessionId));
       const waitingProjectIds = this.#state.queue
         .filter((entry) => entry.state === "WAITING")
         .map((entry) => entry.projectId);
@@ -684,23 +761,33 @@ export class SharedAppFixtureStore {
     });
   }
 
-  recover(): void {
-    this.commit(() => this.#orchestrator.recover());
+  recover(sessionId: string): void {
+    this.commit(() => {
+      this.assertActiveOwner(this.requireAdmission(sessionId));
+      this.#orchestrator.recover();
+    });
   }
 
-  acceptLaneCallback(input: {
-    sessionId: string;
-    projectId: string;
-    lane: ProviderFreeLane;
-    podId: string;
-    gpuSku: string;
-    volumeId: string;
-    sequence: number;
-  }): void {
-    this.commit(() => this.#orchestrator.acceptLaneCallback(input));
+  acceptLaneCallback(
+    authSessionId: string,
+    input: {
+      sessionId: string;
+      projectId: string;
+      lane: ProviderFreeLane;
+      podId: string;
+      gpuSku: string;
+      volumeId: string;
+      sequence: number;
+    },
+  ): void {
+    this.commit(() => {
+      this.assertProjectOwner(this.requireAdmission(authSessionId), input.projectId);
+      this.#orchestrator.acceptLaneCallback(input);
+    });
   }
 
-  projectOrchestration(projectId: string): ProviderFreeProjectState {
+  projectOrchestration(sessionId: string, projectId: string): ProviderFreeProjectState {
+    this.assertProjectOwner(this.requireAdmission(sessionId), projectId);
     return this.#orchestrator.project(projectId);
   }
 
@@ -708,7 +795,8 @@ export class SharedAppFixtureStore {
     this.requireAdmission(sessionId);
   }
 
-  async finalMp4(projectId: string): Promise<Uint8Array> {
+  async finalMp4(sessionId: string, projectId: string): Promise<Uint8Array> {
+    this.assertProjectOwner(this.requireAdmission(sessionId), projectId);
     const project = this.#orchestrator.project(projectId);
     if (project.stage !== "READY_FOR_REVIEW" || project.finalAsset === null)
       throw new SharedFixtureError(
@@ -746,7 +834,13 @@ export class SharedAppFixtureStore {
     }
     this.#state.queue = positions(this.#state.queue);
     if (result.completedProjectId !== null || result.promotedProjectId !== null) {
-      this.#state.queueVersion += 1;
+      const changedTenants = new Map<string, FixtureTenantScope>();
+      for (const projectId of [result.completedProjectId, result.promotedProjectId]) {
+        if (projectId === null) continue;
+        const tenant = this.#state.projectOwners.get(projectId);
+        if (tenant !== undefined) changedTenants.set(this.tenantKey(tenant), tenant);
+      }
+      for (const tenant of changedTenants.values()) this.incrementQueueVersion(tenant);
     }
     if (result.sessionClosed) {
       if (this.#state.queue.length !== 0) {
@@ -848,8 +942,21 @@ export class SharedAppFixtureStore {
     return admission;
   }
 
-  private requireVersion(ifMatch: number): void {
-    if (ifMatch !== this.#state.queueVersion) {
+  private tenantKey(tenant: FixtureTenantScope): string {
+    return `${tenant.accountId}\u0000${tenant.workspaceId}`;
+  }
+
+  private queueVersion(admission: Admission): number {
+    return this.#state.queueVersions.get(this.tenantKey(admission.tenant)) ?? 0;
+  }
+
+  private incrementQueueVersion(tenant: FixtureTenantScope): void {
+    const key = this.tenantKey(tenant);
+    this.#state.queueVersions.set(key, (this.#state.queueVersions.get(key) ?? 0) + 1);
+  }
+
+  private requireVersion(admission: Admission, ifMatch: number): void {
+    if (ifMatch !== this.queueVersion(admission)) {
       throw new SharedFixtureError(
         "QUEUE_VERSION_CONFLICT",
         409,
@@ -858,20 +965,77 @@ export class SharedAppFixtureStore {
     }
   }
 
+  private assertOwner(admission: Admission, entry: SharedQueueEntry): void {
+    if (
+      entry.accountId !== admission.tenant.accountId ||
+      entry.workspaceId !== admission.tenant.workspaceId
+    ) {
+      throw new SharedFixtureError("QUEUE_ENTRY_NOT_FOUND", 404, "Queue entry not found.");
+    }
+  }
+
+  private assertProjectOwner(admission: Admission, projectId: string): void {
+    const owner = this.#state.projectOwners.get(projectId);
+    if (
+      owner?.accountId !== admission.tenant.accountId ||
+      owner.workspaceId !== admission.tenant.workspaceId
+    ) {
+      throw new SharedFixtureError("PROJECT_NOT_FOUND", 404, "Project not found.");
+    }
+  }
+
+  private assertActiveOwner(admission: Admission): void {
+    const session = this.#orchestrator.snapshot().session;
+    if (session === null) {
+      throw new SharedFixtureError("PROJECT_NOT_FOUND", 404, "Project not found.");
+    }
+    if (session.activeProjectId !== null) {
+      this.assertProjectOwner(admission, session.activeProjectId);
+      return;
+    }
+    const candidateProjectIds = [
+      ...Object.values(session.lanes).flatMap((lane) =>
+        lane.attempts.map((attempt) => attempt.originProjectId),
+      ),
+    ];
+    if (
+      !candidateProjectIds.some((projectId) => {
+        const owner = this.#state.projectOwners.get(projectId);
+        return (
+          owner?.accountId === admission.tenant.accountId &&
+          owner.workspaceId === admission.tenant.workspaceId
+        );
+      })
+    ) {
+      throw new SharedFixtureError("PROJECT_NOT_FOUND", 404, "Project not found.");
+    }
+  }
+
   private audit(
     operation: SharedQueueAudit["operation"],
-    actor: string,
+    admission: Admission,
     oldOrder: string[],
     oldVersion: number,
   ): void {
+    const ownedIds = new Set(
+      this.#state.queue
+        .filter(
+          (entry) =>
+            entry.accountId === admission.tenant.accountId &&
+            entry.workspaceId === admission.tenant.workspaceId,
+        )
+        .map((entry) => entry.id),
+    );
     this.#state.audits.push({
       id: crypto.randomUUID(),
       operation,
-      actor,
-      oldOrder,
-      newOrder: currentOrder(this.#state.queue),
+      actor: admission.email,
+      accountId: admission.tenant.accountId,
+      workspaceId: admission.tenant.workspaceId,
+      oldOrder: oldOrder.filter((id) => ownedIds.has(id)),
+      newOrder: currentOrder(this.#state.queue).filter((id) => ownedIds.has(id)),
       oldVersion,
-      newVersion: this.#state.queueVersion,
+      newVersion: this.queueVersion(admission),
       occurredAt: new Date().toISOString(),
     });
   }

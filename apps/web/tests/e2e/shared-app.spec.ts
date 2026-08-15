@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("CP-02 shares admission, one GPU pair, and one queue across browser sessions", async ({
+test("CP-02 shares one GPU pair while each browser sees only its tenant queue", async ({
   browser,
 }) => {
   const contextA = await browser.newContext({
@@ -127,35 +127,36 @@ test("CP-02 shares admission, one GPU pair, and one queue across browser session
     await pageB.goto("/?fixture=invite_sign_in");
     await expect(pageB.getByRole("heading", { name: "Queue", exact: true })).toBeVisible();
     await expect(pageB.getByText("Global generation queue")).toBeVisible();
-    await expect(pageB.getByText("Active entry cannot move or delete")).toBeVisible();
+    await expect(pageB.getByText("Active entry cannot move or delete")).toHaveCount(0);
     await expect(pageB.getByRole("button", { name: /Remove Chrome Project/u })).toBeVisible();
     await expect(pageB.getByText("equal rights", { exact: false }).first()).toBeVisible();
 
-    const third = await contextA.request.post(
+    const third = await contextB.request.post(
       "/api/v1/shared-app/generate?fixture=invite_sign_in",
       { data: { projectId: "chrome-project-3", title: "Chrome Project 3" } },
     );
     await expect(third.json()).resolves.toMatchObject({ outcome: "QUEUED" });
-    await pageB.reload();
-    await pageB.getByRole("button", { name: "Move Chrome Project 3 up" }).click();
-    await expect
-      .poll(async () => {
-        const state = (await (
-          await contextB.request.get("/api/v1/shared-app?fixture=invite_sign_in")
-        ).json()) as { queue: Array<{ title: string }> };
-        return state.queue[1]?.title;
-      })
-      .toBe("Chrome Project 3");
-
-    const current = (await (
+    let current = (await (
       await contextB.request.get("/api/v1/shared-app?fixture=invite_sign_in")
     ).json()) as { session: { queueVersion: number }; queue: Array<{ id: string; state: string }> };
+    const thirdEntry = current.queue[1]!;
+    const reordered = await contextB.request.patch(
+      `/api/v1/shared-app/queue/${thirdEntry.id}?fixture=invite_sign_in`,
+      { data: { toPosition: 1, queueVersion: current.session.queueVersion } },
+    );
+    expect(reordered.ok()).toBe(true);
+    current = (await reordered.json()) as typeof current;
+    expect(current.queue[0]!.id).toBe(thirdEntry.id);
     const stale = await contextB.request.patch(
-      `/api/v1/shared-app/queue/${current.queue[1]!.id}?fixture=invite_sign_in`,
-      { data: { toPosition: 2, queueVersion: current.session.queueVersion - 1 } },
+      `/api/v1/shared-app/queue/${current.queue[0]!.id}?fixture=invite_sign_in`,
+      { data: { toPosition: 1, queueVersion: current.session.queueVersion - 1 } },
     );
     expect(stale.status()).toBe(409);
-    await pageB.getByRole("button", { name: "Remove Chrome Project 3" }).click();
+    const removed = await contextB.request.delete(
+      `/api/v1/shared-app/queue/${current.queue[0]!.id}?fixture=invite_sign_in&queueVersion=${current.session.queueVersion}`,
+    );
+    expect(removed.ok()).toBe(true);
+    await pageB.reload();
     await expect(pageB.getByText("Chrome Project 3", { exact: true })).toHaveCount(0);
     expect(consoleErrors).toEqual([]);
   } finally {
