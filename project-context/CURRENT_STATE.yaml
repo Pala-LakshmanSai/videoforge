@@ -1,15 +1,15 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-15T07:58:33Z"
+updated_at: "2026-08-15T08:44:57Z"
 
-phase: soulx_flashhead_pro_sample_ready_for_user_review
-implementation_authorized_in_current_task: false
-current_milestone: soulx_flashhead_pro_visual_review
-current_task: VF-9-24S
+phase: soulx_flashhead_pro_second_sample_awaiting_paid_authorization
+implementation_authorized_in_current_task: true
+current_milestone: soulx_flashhead_pro_second_sample_crop_economics
+current_task: VF-9-24T
 current_wave: soulx_flashhead_pro_replacement_qualification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: user_review
-application_code_changes_authorized: false
+task_stage: awaiting_paid_authorization
+application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
 maximum_external_spend_usd: 0
@@ -17,11 +17,11 @@ provider_authority:
   mode: none
   provider: null
   cap_usd: 0
-  authorized_at: "2026-08-15T06:40:00Z"
-  source: current_vf_9_24s_user_authorization
+  authorized_by_user_at: null
+  source: vf_9_24t_read_only_preflight_consumed
   non_transferable: true
-  execution_halted: true
-  halt_reason: consumed_after_successful_sample_and_cleanup
+  execution_halted: false
+  halt_reason: null
   model_id: null
   resources: []
   authorized_operations: []
@@ -113,7 +113,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-24S paid authority consumed after exact SoulX sample retrieval and verified zero-compute cleanup. No further provider operation is authorized."
+  provider_authority_scope: "VF-9-24T read-only preflight completed at $0. No further provider call is authorized until the user supplies and approves a numeric finite cap for the exact proposal."
   worker_image: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
   last_user_checkpoint:
     result: accepted
@@ -211,36 +211,36 @@ completed_tasks:
     settled_external_spend_usd: 0.34927155333571136
     ongoing_retained_volume_usd_per_month: 3.5
 active_ownership:
-  - task_id: VF-9-24S
+  - task_id: VF-9-24T
     checkpoint: CP-07-replacement-qualification
-    owner: user
-    stage: visual_review
+    owner: current_chat
+    stage: awaiting_paid_authorization
     external_spend_cap_usd: 0
 
 blocked_tasks: []
 in_progress_checkpoint: CP-07-replacement-qualification
 
 recommended_next_task:
-  task_id: VF-9-24S
+  task_id: VF-9-24T
   checkpoint: CP-07-replacement-qualification
-  milestone: soulx_flashhead_pro_visual_review
-  status: technical_pass_sample_ready_for_user_review
+  milestone: soulx_flashhead_pro_second_sample_crop_economics
+  status: provider_free_preflight_complete_awaiting_paid_authorization
   dependency_status: cp06_complete_green_settled_visual_accepted
-  authorization_status: paid_authority_consumed_no_further_provider_action
-  task_stage: user_review
+  authorization_status: new_paid_authority_required
+  task_stage: awaiting_paid_authorization
   provider_authority:
     mode: none
     provider: null
     cap_usd: 0
     non_transferable: true
-    authorized_by_user_at: "2026-08-15T06:40:00Z"
+    authorized_by_user_at: null
     model_id: null
     resources: []
     authorized_operations: []
     allowed_operations: []
-  read_profile: soulx_flashhead_pro_replacement_qualification
-  task_brief: tasks/VF-9-24S.md
-  goal: "Review the delivered exact SoulX-FlashHead Pro 10.12-second native sample; no provider action or crop activation is authorized."
+  read_profile: soulx_flashhead_pro_second_sample_crop_economics
+  task_brief: tasks/VF-9-24T.md
+  goal: "Preflight one different exact 10.00-second SoulX Pro sample, two review-only crop previews, exact Pod-start/model-ready/generation timing, and 30-minute avatar economics."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -256,17 +256,47 @@ recommended_next_task:
   retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
-  application_code_changes_authorized: false
+  application_code_changes_authorized: true
   prerequisite_evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json"
   required_handoff:
     - "Preserve CP-06 exact digest, accepted outputs, settled cost, zero compute, and retained 50 GB Mage volume."
     - "Retain historical Echo evidence as immutable truth while deleting only the exact verified Echo volume and removing Echo from active dispatch."
     - "Use exact pinned first-party SoulX-FlashHead Pro BF16 lineage, four distilled steps, shift 5, native 512x512 at 25 fps, deterministic seed 42, offline runtime, and no enhancement or repair."
-    - "Review exact 253-frame/10.12-second H.264/AAC MP4; hashes/probe, lifecycle timings, cost, manifest, and final zero-compute/two-volume proof are recorded."
+    - "Generate one different exact 10.00-second native sample and local full/split crop previews only after new paid authority."
+    - "Record exact provider Pod-start to model-ready, generation, lifecycle, cleanup, and measured 30-minute avatar cost projection."
   prohibited_in_task:
     - "Any model substitution, repair, upscaler, face restoration, Mage mount, cross-mount, uncarded pickle, or automatic GPU fallback."
-    - "Any cumulative finite spend above $4.00, changed RTX 4090 rate above $0.74/hour, uncertain resource identity, failed output, or uncertain cleanup."
-    - "Any production dispatch or renderer crop activation before the user reviews and accepts the SoulX sample."
+    - "Any paid operation before a new combined authorization with a user-supplied numeric finite cap."
+    - "Any production dispatch or renderer crop activation before the user reviews and accepts the new previews."
+
+vf_9_24t:
+  status: provider_free_preflight_complete_awaiting_paid_authorization
+  source_task: VF-9-24S
+  avatar_image_sha256: "sha256:34ca7513d6e34af3fa37d2e05afa8d2f81cab9ff587c2a12d047002abc7c75e3"
+  source_voiceover_sha256: "sha256:4b5c404ea6a042ca5e82ef64f238d7866f2fb770967b953e593abdadcf6c7fc4"
+  selected_audio_sha256: "sha256:7409fb7411829f0e2313d70346d477c86f5255733ea39a8afdc0668be86592c8"
+  selected_audio_duration_seconds: 10
+  selected_audio_source_interval_seconds: [118.6, 128.1]
+  trailing_zero_padding_seconds: 0.5
+  full_crop_filter: "crop=512:288:0:112,scale=1920:1080:flags=lanczos,fps=30:round=near"
+  split_crop_filter: "crop=448:504:32:4,scale=960:1080:flags=lanczos,fps=30:round=near"
+  crops_review_only: true
+  exact_work_plan_avatar_spans: 103
+  exact_work_plan_padded_model_input_seconds: 481.32
+  exact_work_plan_visible_avatar_seconds: 378.82
+  retained_soulx_volume_id_sha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be"
+  retained_soulx_volume_size_gb: 50
+  ongoing_soulx_volume_rate_usd_per_month: 3.5
+  paid_execution_authorized: false
+  maximum_cumulative_external_spend_usd: 0
+  read_only_preflight_checked_at: "2026-08-15T08:37:40.043Z"
+  read_only_preflight_evidence: "evidence/acceptance/VF-9-24T/preflight.json"
+  selected_gpu_offering_id: "NVIDIA GeForce RTX 4090"
+  selected_gpu_rate_usd_per_hour: 0.74
+  selected_gpu_vram_gb: 24
+  selected_gpu_availability: HIGH
+  conservative_maximum_pod_cost_usd: 0.641334
+  canonical_verify: passed
 
 vf_9_24s:
   status: technical_pass_sample_ready_for_user_visual_review

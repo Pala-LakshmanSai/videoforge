@@ -25,9 +25,12 @@ Do not add music or sound effects in MVP unless the user later approves a separa
 
 ### `AVATAR_FULL`
 
-Avatar occupies the full 1920×1080 frame. The active EchoMimicV3-Flash Turbo FP8 render profile must pin the accepted native geometry, frame rate, deterministic centered crop, and scale after the exact sample is approved. That active Echo crop remains an open gate; do not infer it from an older avatar model.
+Avatar occupies the full 1920×1080 frame. SoulX-FlashHead Pro is the only proposed active avatar
+runtime. Its review-only full preview uses the exact 512x512/25 fps native result with
+`crop=512:288:0:112,scale=1920:1080,fps=30:round=near`. This crop does not become an active renderer
+profile until the user approves the exact sample and crop under `GATE_AVATAR_005`.
 
-The following coordinates are historical replay contracts only. They preserve already-recorded manifests and are not valid active Echo profiles.
+The following coordinates are historical replay contracts only. They preserve already-recorded manifests and are not valid active SoulX profiles.
 
 Historical AvatarForcing 832×480/25 fps replay uses `avatarforcing-centered-832x480p25-v1`:
 
@@ -41,7 +44,7 @@ Historical SkyReels 960×960/25 fps replay uses `skyreels-centered-960x960p25-v2
 crop=960:540:0:210,scale=1920:1080
 ```
 
-Do not route an Echo asset through either historical crop. Every accepted asset records its exact source profile; renderer schema validation rejects a mismatched model/profile/crop pair.
+Do not route a SoulX asset through either historical crop. Every accepted asset records its exact source profile; renderer schema validation rejects a mismatched model/profile/crop pair.
 
 Avatar source requirements are enforced when a reusable Avatar Profile version is approved in the Avatar Hub: horizontally centered, direct-to-camera, eye-level, tight head-and-shoulders or medium close shot, natural setting, and suitable for restrained motion. A project always uses the exact pinned runtime source/checksum; upscaled full-screen detail remains an acceptance gate.
 
@@ -65,7 +68,11 @@ Recommended zoom envelope:
 
 ### `AVATAR_SPLIT_IMAGE`
 
-Use the same accepted centered Echo clip that would serve full-screen; never generate a layout-specific second avatar clip. The active full/split crop pair must be measured from the same approved native Echo output and pinned together. Until that gate closes, no active Echo split crop exists.
+Use the same accepted centered SoulX clip that would serve full-screen; never generate a
+layout-specific second avatar clip. Its review-only split-panel preview uses
+`crop=448:504:32:4,scale=960:1080,fps=30:round=near`. The full/split pair must be measured from the
+same approved native SoulX output and pinned together. Until the user approves it, no active SoulX
+split crop exists.
 
 Historical AvatarForcing replay profile:
 
@@ -89,7 +96,7 @@ crop=480:540:240:210,scale=960:1080
 
 ### Avatar frame-rate conversion
 
-The active Echo sample must establish its native frame rate and approved conversion profile before production integration. If the accepted native output is 25 fps, convert it directly with ordinary FFmpeg nearest-timestamp frame duplication/resampling (the equivalent of `fps=30:round=near`) before layout. Historical AvatarForcing and SkyReels 25 fps manifests retain that same replay rule:
+The active SoulX sample must establish its native frame rate and approved conversion profile before production integration. The proposed 25 fps output converts directly with ordinary FFmpeg nearest-timestamp frame duplication/resampling (the equivalent of `fps=30:round=near`) before layout. Historical AvatarForcing and SkyReels 25 fps manifests retain that same replay rule:
 
 - Preserve duration and timeline boundaries exactly.
 - Do not use optical flow, frame interpolation, or another AI model.
@@ -109,7 +116,7 @@ The active Echo sample must establish its native frame rate and approved convers
 - Every output frame has exactly one visual composition; no gaps and no overlaps.
 - No silent visual montage; narration drives the entire edit.
 
-These limits reproduce the measured reference cadence and bound independent Echo work units. They do not establish or imply that VRAM consumption scales linearly with clip duration; only measured runtime evidence may support a memory claim.
+These limits reproduce the measured reference cadence and bound independent SoulX work units. They do not establish or imply that VRAM consumption scales linearly with clip duration; only measured runtime evidence may support a memory claim.
 
 ## Built-in default visual language
 
@@ -145,10 +152,10 @@ Before delivery verify:
 
 - Exact duration matches source audio within the accepted mux tolerance.
 - Constant 1920×1080/30 fps and `yuv420p`.
-- The accepted Echo native-to-30-fps conversion has no duration change, drift, or unacceptable visible cadence; historical AvatarForcing/SkyReels replay retains the same check.
+- The accepted SoulX native-to-30-fps conversion has no duration change, drift, or unacceptable visible cadence; historical AvatarForcing/SkyReels replay retains the same check.
 - Audio/video starts at zero; no drift or missing tail.
 - Exactly one EDL segment covers every frame.
-- Full and split crop geometry matches the accepted model-specific source profile; active Echo output is blocked until its measured profile is approved, and a model/profile/crop mismatch is rejected.
+- Full and split crop geometry matches the accepted model-specific source profile; active SoulX output is blocked until its measured profile is approved, and a model/profile/crop mismatch is rejected.
 - Both `IMAGE_FULL` and the right image in `AVATAR_SPLIT_IMAGE` have the required subtle eased zoom;
   neither is static, neither oscillates around its center, and neither exhibits integer-crop shake.
 - Every image attempt and content-addressed prompt manifest points to the revision's pinned Image Style version/effective prompt hash; `production-manifest/v2` binds that prompt manifest plus the pinned Avatar Profile binding to the renderer-only resolved-render manifest and final MP4.

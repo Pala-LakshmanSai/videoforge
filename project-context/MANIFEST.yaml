@@ -1,7 +1,7 @@
 schema_version: "1.5"
 project: VideoForge
 phase_source: CURRENT_STATE.yaml
-last_updated: "2026-08-14"
+last_updated: "2026-08-15"
 source_of_truth: project-context
 # CP-00 through CP-06 are complete. CP-06 settled at $0.34927155333571136 under its $3 cap, the
 # user accepted visual quality, and the live read-only re-audit proved zero compute plus exactly the
@@ -10,8 +10,8 @@ source_of_truth: project-context
 # samples on fresh RTX 5090 Pods. Zero Pods/templates/endpoints/workers remain and both intended
 # volumes are retained. The user accepted and activated the exact full and split renderer crops;
 # CP-07 is complete. The later full exact-avatar suite remains a separate open production gate.
-current_selected_profile: soulx_flashhead_pro_replacement_qualification
-current_selected_brief: tasks/VF-9-24S.md
+current_selected_profile: soulx_flashhead_pro_second_sample_crop_economics
+current_selected_brief: tasks/VF-9-24T.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -33,6 +33,12 @@ target_profile_word_budget: 10000
 # Historical task briefs remain evidence but are intentionally not active read profiles. Create one
 # narrow profile/brief when each future checkpoint becomes current.
 read_profiles:
+  soulx_flashhead_pro_second_sample_crop_economics:
+    - tasks/VF-9-24T.md
+    - 08_MODELS_AND_PROVIDERS.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 02_OUTPUT_VIDEO_SPEC.md
+    - 16_CONTEXT_MAINTENANCE.md
   soulx_flashhead_pro_replacement_qualification:
     - tasks/VF-9-24S.md
     - 08_MODELS_AND_PROVIDERS.md

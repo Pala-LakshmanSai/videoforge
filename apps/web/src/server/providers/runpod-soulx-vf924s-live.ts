@@ -14,6 +14,7 @@ const MAGE_VOLUME_HASH = "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f357677
 const ECHO_VOLUME_HASH = "sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f";
 const ECHO_VOLUME_NAME = "videoforge-echo-cp07-model-volume-eu-ro-1-50gb";
 const SOULX_VOLUME_NAME = "videoforge-soulx-flashhead-pro-vf924s-eu-ro-1-50gb";
+const SOULX_VOLUME_HASH = "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
 const TEMPLATE_NAME = "videoforge-soulx-flashhead-pro-vf924s-template";
 const IMAGE_PATTERN =
   /^ghcr\.io\/pala-lakshmansai\/videoforge-soulx-flashhead-pro-vf924s@sha256:[a-f0-9]{64}$/u;
@@ -81,6 +82,7 @@ interface Pod {
   readonly name: string;
   readonly startedAt: string;
   readonly costPerHour: number;
+  readonly startedAtSource: "lastStartedAt" | "createdAt" | "clientRequestedAt";
 }
 
 interface DeletedPod {
@@ -223,7 +225,11 @@ class RunPodClient {
     return selected;
   }
 
-  async createTemplate(imageDigest: string): Promise<Template> {
+  async createTemplate(
+    imageDigest: string,
+    templateName = TEMPLATE_NAME,
+    taskId = "VF-9-24S",
+  ): Promise<Template> {
     const created = record(
       await this.request("POST", "/templates", {
         category: "NVIDIA",
@@ -240,9 +246,9 @@ class RunPodClient {
         imageName: imageDigest,
         isPublic: false,
         isServerless: false,
-        name: TEMPLATE_NAME,
+        name: templateName,
         ports: ["8000/http"],
-        readme: "VideoForge exact SoulX-FlashHead Pro VF-9-24S Pod worker",
+        readme: `VideoForge exact SoulX-FlashHead Pro ${taskId} Pod worker`,
         volumeInGb: 0,
         volumeMountPath: "/runpod-volume",
       }),
@@ -250,7 +256,7 @@ class RunPodClient {
     if (typeof created?.id !== "string" || !ID.test(created.id)) {
       throw new Error("VF924S_TEMPLATE_CREATE_INVALID");
     }
-    const exact = (await this.listTemplates()).filter((item) => item.name === TEMPLATE_NAME);
+    const exact = (await this.listTemplates()).filter((item) => item.name === templateName);
     if (exact.length !== 1 || exact[0]?.id !== created.id || exact[0].imageName !== imageDigest) {
       throw new Error("VF924S_TEMPLATE_CREATE_IDENTITY_UNCONFIRMED");
     }
@@ -273,6 +279,7 @@ class RunPodClient {
     readonly volume: Volume;
     readonly mode: "prepare" | "runtime";
     readonly token?: string;
+    readonly requireProviderStartedAt?: boolean;
   }): Promise<Pod> {
     const requestedAt = new Date().toISOString();
     const body = {
@@ -328,7 +335,14 @@ class RunPodClient {
       const machine = record(item?.machine);
       const volume = record(item?.networkVolume);
       const cost = finite(item?.adjustedCostPerHr ?? item?.costPerHr);
-      const startedAt = normalizeTime(item?.lastStartedAt ?? item?.createdAt ?? requestedAt);
+      const providerLastStartedAt = normalizeTime(item?.lastStartedAt);
+      const providerCreatedAt = normalizeTime(item?.createdAt);
+      const startedAt = providerLastStartedAt ?? providerCreatedAt ?? requestedAt;
+      const startedAtSource = providerLastStartedAt
+        ? "lastStartedAt"
+        : providerCreatedAt
+          ? "createdAt"
+          : "clientRequestedAt";
       if (
         item?.name === input.name &&
         item.templateId === input.templateId &&
@@ -342,9 +356,10 @@ class RunPodClient {
         cost !== null &&
         cost > 0 &&
         cost <= GPU_RATE &&
-        startedAt !== null
+        startedAt !== null &&
+        (!input.requireProviderStartedAt || startedAtSource === "lastStartedAt")
       ) {
-        return { id: podId, name: input.name, startedAt, costPerHour: cost };
+        return { id: podId, name: input.name, startedAt, costPerHour: cost, startedAtSource };
       }
       await sleep(1_000);
     }
@@ -483,29 +498,214 @@ const assertPublicImage = async (imageDigest: string): Promise<void> => {
   }
 };
 
+const probeMedia = async (mediaPath: string): Promise<JsonRecord> => {
+  const { stdout } = await execFileAsync("ffprobe", [
+    "-v",
+    "error",
+    "-count_frames",
+    "-show_entries",
+    "stream=codec_type,codec_name,width,height,r_frame_rate,duration,nb_read_frames:format=duration,size",
+    "-of",
+    "json",
+    mediaPath,
+  ]);
+  const probe = record(JSON.parse(stdout));
+  if (!probe || !Array.isArray(probe.streams)) throw new Error("VF924S_OUTPUT_PROBE_INVALID");
+  return probe;
+};
+
+const assertMediaContract = (
+  probe: JsonRecord,
+  expected: {
+    readonly width: number;
+    readonly height: number;
+    readonly fps: string;
+    readonly frames: number;
+  },
+): JsonRecord => {
+  const streams = Array.isArray(probe.streams) ? probe.streams.map(record) : [];
+  const video = streams.find((stream) => stream?.codec_type === "video");
+  const audio = streams.find((stream) => stream?.codec_type === "audio");
+  const format = record(probe.format);
+  const videoDuration = finite(video?.duration);
+  const audioDuration = finite(audio?.duration);
+  const formatDuration = finite(format?.duration);
+  const frames = finite(video?.nb_read_frames);
+  if (
+    video?.codec_name !== "h264" ||
+    video.width !== expected.width ||
+    video.height !== expected.height ||
+    video.r_frame_rate !== expected.fps ||
+    frames !== expected.frames ||
+    audio?.codec_name !== "aac" ||
+    videoDuration === null ||
+    audioDuration === null ||
+    formatDuration === null ||
+    Math.abs(videoDuration - 10) > 0.001 ||
+    Math.abs(audioDuration - 10) > 0.04 ||
+    Math.abs(formatDuration - 10) > 0.04 ||
+    Math.abs(videoDuration - audioDuration) > 0.04
+  ) {
+    throw new Error("VF924T_MEDIA_CONTRACT_MISMATCH");
+  }
+  return {
+    width: expected.width,
+    height: expected.height,
+    fps: expected.fps,
+    frames,
+    video_duration_seconds: videoDuration,
+    audio_duration_seconds: audioDuration,
+    format_duration_seconds: formatDuration,
+    av_duration_delta_seconds: Math.abs(videoDuration - audioDuration),
+  };
+};
+
+const renderCropPreview = async (
+  sourcePath: string,
+  outputPath: string,
+  filter: string,
+  expected: {
+    readonly width: number;
+    readonly height: number;
+    readonly fps: string;
+    readonly frames: number;
+  },
+): Promise<JsonRecord> => {
+  await execFileAsync("ffmpeg", [
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-n",
+    "-i",
+    sourcePath,
+    "-vf",
+    filter,
+    "-c:v",
+    "libx264",
+    "-preset",
+    "slow",
+    "-crf",
+    "15",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "192k",
+    "-ar",
+    "48000",
+    "-ac",
+    "2",
+    "-movflags",
+    "+faststart",
+    outputPath,
+  ]);
+  const bytes = await readFile(outputPath);
+  const probe = await probeMedia(outputPath);
+  return {
+    path: outputPath,
+    sha256: sha256(bytes),
+    bytes: bytes.length,
+    probe,
+    media_contract: assertMediaContract(probe, expected),
+  };
+};
+
+export function projectSoulXAvatarEconomics(input: {
+  readonly outputDurationSeconds: number;
+  readonly generationWallMs: number;
+  readonly podStartToReadyMs: number;
+  readonly rateUsdPerHour: number;
+  readonly paddedAvatarSeconds?: number;
+  readonly spanCount?: number;
+}): JsonRecord {
+  const paddedAvatarSeconds = input.paddedAvatarSeconds ?? 481.32;
+  const spanCount = input.spanCount ?? 103;
+  if (
+    !Number.isFinite(input.outputDurationSeconds) ||
+    input.outputDurationSeconds <= 0 ||
+    !Number.isFinite(input.generationWallMs) ||
+    input.generationWallMs <= 0 ||
+    !Number.isFinite(input.podStartToReadyMs) ||
+    input.podStartToReadyMs < 0 ||
+    !Number.isFinite(input.rateUsdPerHour) ||
+    input.rateUsdPerHour <= 0 ||
+    !Number.isFinite(paddedAvatarSeconds) ||
+    paddedAvatarSeconds <= 0 ||
+    !Number.isSafeInteger(spanCount) ||
+    spanCount <= 0
+  ) {
+    throw new Error("VF924T_ECONOMICS_INPUT_INVALID");
+  }
+  const measuredRequests = paddedAvatarSeconds / input.outputDurationSeconds;
+  const generationProjectedMs = measuredRequests * input.generationWallMs;
+  const warmBatchedGpuMs = input.podStartToReadyMs + generationProjectedMs;
+  const warmBatchedCostUsd = (warmBatchedGpuMs / 3_600_000) * input.rateUsdPerHour;
+  return {
+    basis: "one measured cold boot plus linear measured 10-second request wall-time",
+    padded_avatar_seconds: paddedAvatarSeconds,
+    span_count: spanCount,
+    measured_request_equivalents: measuredRequests,
+    pod_start_to_ready_ms: input.podStartToReadyMs,
+    generation_projected_ms: generationProjectedMs,
+    warm_batched_gpu_ms: warmBatchedGpuMs,
+    warm_batched_gpu_minutes: warmBatchedGpuMs / 60_000,
+    warm_batched_gpu_cost_usd: warmBatchedCostUsd,
+    excludes: [
+      "retained-volume billing",
+      "Mage image generation",
+      "Whisper transcription",
+      "Cloud Run rendering/storage/egress",
+      "settled-provider rounding",
+    ],
+    uncertainty:
+      "The production work plan has 103 separate spans; per-request overhead and duration-dependent chunk rounding require a full-work-plan benchmark before this becomes a settled production cost.",
+  };
+}
+
 export async function runSoulXVf924s(input: {
   readonly imageDigest: string;
   readonly sourceImagePath: string;
   readonly sourceAudioPath: string;
   readonly artifactRoot: string;
+  readonly taskId?: "VF-9-24S" | "VF-9-24T";
+  readonly finiteCapUsd?: number;
+  readonly outputBasename?: string;
+  readonly renderCropPreviews?: boolean;
 }): Promise<JsonRecord> {
+  const taskId = input.taskId ?? "VF-9-24S";
+  const isSecondSample = taskId === "VF-9-24T";
+  const finiteCapUsd = input.finiteCapUsd ?? FINITE_CAP_USD;
+  const priorConservativeUsd = isSecondSample ? 0 : PRIOR_FAILED_ATTEMPT_CONSERVATIVE_USD;
+  const templateName = isSecondSample
+    ? "videoforge-soulx-flashhead-pro-vf924t-template"
+    : TEMPLATE_NAME;
+  const outputBasename =
+    input.outputBasename ??
+    (isSecondSample
+      ? "soulx-flashhead-pro-elias-second-10.00s.mp4"
+      : "soulx-flashhead-pro-elias-10.12s.mp4");
   if (
     !IMAGE_PATTERN.test(input.imageDigest) ||
     !path.isAbsolute(input.sourceImagePath) ||
     !path.isAbsolute(input.sourceAudioPath) ||
-    !path.isAbsolute(input.artifactRoot)
+    !path.isAbsolute(input.artifactRoot) ||
+    !Number.isFinite(finiteCapUsd) ||
+    finiteCapUsd <= 0 ||
+    path.basename(outputBasename) !== outputBasename ||
+    !outputBasename.endsWith(".mp4")
   ) {
     throw new Error("VF924S_INPUT_INVALID");
   }
   const reservation =
-    PRIOR_FAILED_ATTEMPT_CONSERVATIVE_USD +
-    ((PREP_TIMEOUT_SECONDS +
+    priorConservativeUsd +
+    (((isSecondSample ? 0 : PREP_TIMEOUT_SECONDS) +
       RUNTIME_READY_TIMEOUT_SECONDS +
       GENERATION_TIMEOUT_SECONDS +
-      POD_LIFECYCLE_RESERVE_SECONDS * 2) /
+      POD_LIFECYCLE_RESERVE_SECONDS * (isSecondSample ? 1 : 2)) /
       3_600) *
       GPU_RATE;
-  if (reservation > FINITE_CAP_USD) throw new Error("VF924S_CAP_RISK");
+  if (reservation > finiteCapUsd) throw new Error("VF924S_CAP_RISK");
 
   const apiKey = await loadSujalRunPodApiKeyFromKeychain();
   const account = await assertSujalRunPodAccount(apiKey);
@@ -533,13 +733,16 @@ export async function runSoulXVf924s(input: {
       item.size === VOLUME_SIZE_GB &&
       item.dataCenterId === REGION,
   );
+  const exactSoulX = existingSoulX === undefined ? undefined : sha256(existingSoulX.id);
   if (
     startingPods.length !== 0 ||
     startingTemplates.length !== 0 ||
     startingVolumes.length !== 2 ||
     mage?.size !== 50 ||
-    (echo === undefined && existingSoulX === undefined) ||
-    (echo !== undefined && existingSoulX !== undefined)
+    (isSecondSample
+      ? echo !== undefined || exactSoulX !== SOULX_VOLUME_HASH
+      : (echo === undefined && existingSoulX === undefined) ||
+        (echo !== undefined && existingSoulX !== undefined))
   ) {
     throw new Error("VF924S_STARTING_INVENTORY_MISMATCH");
   }
@@ -553,13 +756,14 @@ export async function runSoulXVf924s(input: {
   let generationResult: JsonRecord | null = null;
   try {
     if (existingSoulX === undefined) {
+      if (isSecondSample) throw new Error("VF924T_SOULX_VOLUME_ABSENT");
       if (echo === undefined) throw new Error("VF924S_ECHO_VOLUME_ABSENT");
       await client.deleteVolume(echo);
       soulxVolume = await client.createVolume();
     } else {
       soulxVolume = existingSoulX;
     }
-    template = await client.createTemplate(input.imageDigest);
+    template = await client.createTemplate(input.imageDigest, templateName, taskId);
 
     if (existingSoulX === undefined) {
       activePod = await client.createPod({
@@ -589,21 +793,30 @@ export async function runSoulXVf924s(input: {
 
     const workerToken = randomBytes(32).toString("base64url");
     activePod = await client.createPod({
-      name: "videoforge-soulx-vf924s-sample",
+      name: isSecondSample
+        ? "videoforge-soulx-vf924t-second-sample"
+        : "videoforge-soulx-vf924s-sample",
       templateId: template.id,
       imageDigest: input.imageDigest,
       volume: soulxVolume,
       mode: "runtime",
       token: workerToken,
+      requireProviderStartedAt: isSecondSample,
     });
     runtimeHealth = await pollHealth(
       activePod.id,
       RUNTIME_READY_TIMEOUT_SECONDS,
       "videoforge.soulx-flashhead-pro-worker-health/v1",
     );
+    const modelReadyObservedAt = new Date().toISOString();
+    const podStartedToModelReadyMs = Math.max(
+      0,
+      new Date(modelReadyObservedAt).getTime() - new Date(activePod.startedAt).getTime(),
+    );
     if (`sha256:${runtimeHealth.manifest_sha256}` !== MANIFEST_SHA256) {
       throw new Error("VF924S_RUNTIME_MANIFEST_MISMATCH");
     }
+    const runtimePod = activePod;
     const [sourceBytes, audioBytes] = await Promise.all([
       readFile(input.sourceImagePath),
       readFile(input.sourceAudioPath),
@@ -651,32 +864,65 @@ export async function runSoulXVf924s(input: {
       throw new Error("VF924S_OUTPUT_HASH_MISMATCH");
     }
     await mkdir(input.artifactRoot, { recursive: true, mode: 0o700 });
-    const outputPath = path.join(input.artifactRoot, "soulx-flashhead-pro-elias-10.12s.mp4");
+    const outputPath = path.join(input.artifactRoot, outputBasename);
     await writeFile(outputPath, outputBytes, { flag: "wx", mode: 0o600 });
     await chmod(outputPath, 0o600);
-    const { stdout } = await execFileAsync("ffprobe", [
-      "-v",
-      "error",
-      "-count_frames",
-      "-show_entries",
-      "stream=codec_type,codec_name,width,height,r_frame_rate,duration,nb_read_frames:format=duration,size",
-      "-of",
-      "json",
-      outputPath,
-    ]);
-    const probe = record(JSON.parse(stdout));
-    if (!probe || !Array.isArray(probe.streams)) throw new Error("VF924S_OUTPUT_PROBE_INVALID");
+    const probe = await probeMedia(outputPath);
+    const nativeMediaContract = isSecondSample
+      ? assertMediaContract(probe, { width: 512, height: 512, fps: "25/1", frames: 250 })
+      : null;
+    if (
+      isSecondSample &&
+      (generationResult.duration_seconds !== 10 || generationResult.frame_count !== 250)
+    ) {
+      throw new Error("VF924T_WORKER_OUTPUT_CONTRACT_MISMATCH");
+    }
     const uploadAndPollMs = Date.now() - uploadStarted;
     const outputSummary = {
       path: outputPath,
       sha256: sha256(outputBytes),
       bytes: outputBytes.length,
       probe,
+      media_contract: nativeMediaContract,
       worker_result: { ...generationResult, output_base64: undefined },
       upload_poll_retrieval_ms: uploadAndPollMs,
     };
-    deletions.push(await deletePodEvidence(client, activePod));
+    const generationWallMs = uploadAndPollMs;
+    const workerDurationSeconds = finite(generationResult.duration_seconds);
+    deletions.push(await deletePodEvidence(client, runtimePod));
     activePod = null;
+    const cropPreviews =
+      isSecondSample && input.renderCropPreviews === true
+        ? {
+            full: await renderCropPreview(
+              outputPath,
+              path.join(
+                input.artifactRoot,
+                "soulx-flashhead-pro-elias-second-10.00s-full-16x9.mp4",
+              ),
+              "crop=512:288:0:112,scale=1920:1080:flags=lanczos,fps=30:round=near",
+              { width: 1920, height: 1080, fps: "30/1", frames: 300 },
+            ),
+            split: await renderCropPreview(
+              outputPath,
+              path.join(
+                input.artifactRoot,
+                "soulx-flashhead-pro-elias-second-10.00s-split-8x9.mp4",
+              ),
+              "crop=448:504:32:4,scale=960:1080:flags=lanczos,fps=30:round=near",
+              { width: 960, height: 1080, fps: "30/1", frames: 300 },
+            ),
+          }
+        : null;
+    const economics =
+      isSecondSample && workerDurationSeconds !== null
+        ? projectSoulXAvatarEconomics({
+            outputDurationSeconds: workerDurationSeconds,
+            generationWallMs,
+            podStartToReadyMs: podStartedToModelReadyMs,
+            rateUsdPerHour: runtimePod.costPerHour,
+          })
+        : null;
     await client.deleteTemplate(template.id);
     template = null;
 
@@ -698,11 +944,13 @@ export async function runSoulXVf924s(input: {
     const settled = deletions.reduce((sum, item) => sum + (item.settled_cost_usd ?? 0), 0);
     const conservative = deletions.reduce(
       (sum, item) => sum + (item.settled_cost_usd ?? item.elapsed_cost_upper_bound_usd),
-      PRIOR_FAILED_ATTEMPT_CONSERVATIVE_USD,
+      priorConservativeUsd,
     );
-    if (conservative > FINITE_CAP_USD) throw new Error("VF924S_FINAL_CAP_BREACH");
+    if (conservative > finiteCapUsd) throw new Error("VF924S_FINAL_CAP_BREACH");
     const evidence: JsonRecord = {
-      schema_version: "videoforge.soulx-flashhead-pro-vf924s-qualification/v1",
+      schema_version: isSecondSample
+        ? "videoforge.soulx-flashhead-pro-vf924t-second-sample/v1"
+        : "videoforge.soulx-flashhead-pro-vf924s-qualification/v1",
       completed_at: new Date().toISOString(),
       account: { owner: "sujal", account_id_sha256: ACCOUNT_HASH },
       image_digest: input.imageDigest,
@@ -716,12 +964,21 @@ export async function runSoulXVf924s(input: {
       },
       preparation_health: preparationHealth,
       runtime_health: runtimeHealth,
+      lifecycle_timing: {
+        provider_pod_started_at: runtimePod.startedAt,
+        provider_pod_started_at_source: runtimePod.startedAtSource,
+        model_ready_observed_at: modelReadyObservedAt,
+        pod_start_to_model_ready_ms: podStartedToModelReadyMs,
+        generation_submit_to_retrieval_ms: generationWallMs,
+      },
       output: outputSummary,
+      crop_previews: cropPreviews,
+      avatar_economics_projection: economics,
       pod_deletions: deletions,
       finite_cost: {
-        cap_usd: FINITE_CAP_USD,
+        cap_usd: finiteCapUsd,
         settled_usd_observed: settled,
-        prior_failed_attempt_conservative_usd: PRIOR_FAILED_ATTEMPT_CONSERVATIVE_USD,
+        prior_failed_attempt_conservative_usd: priorConservativeUsd,
         conservative_usd: conservative,
       },
       final_resource_audit: {

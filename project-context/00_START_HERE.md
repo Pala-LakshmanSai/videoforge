@@ -1,8 +1,8 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-07 complete; exact SoulX replacement sample awaits user review; CP-08 requires separate activation
+Status: CP-00 through CP-07 complete; second SoulX sample/crop/economics preflight complete; awaiting paid authorization
 Context schema: `1.5`  
-Last updated: `2026-08-14`
+Last updated: `2026-08-15`
 
 VideoForge is an invite-only voiceover-to-video app for 5–10 teammates. Input: title, final
 voiceover, exact ready Avatar Profile version, and immutable Image Style version. Output: a fully
@@ -67,8 +67,12 @@ fresh sequential Pods. All Pods, endpoints, templates, and workers are absent. T
 checkpoint account was later settled at `$0.34927155333571136` under the `$3` cap. VF-9-24S then
 deleted the exact Echo volume, prepared exact SoulX Pro on a clean 50 GB replacement, and generated
 the 10.12-second review sample. Its conservative finite cost is `$0.275645` under the `$4` cap;
-immediate billing rows were still pending, so this is not misreported as settled. No production
-promotion or SoulX renderer crop is authorized before user visual review.
+immediate billing rows were still pending, so this is not misreported as settled. `VF-9-24T` now
+preflights a different exact 10.00-second sentence, native/full/split review outputs, exact Pod-start
+to model-ready and generation timing, and a measured 30-minute avatar cost projection. Its read-only
+preflight completed at `$0`; that authority is consumed and no Pod, template, GPU, download,
+publication, or paid operation is currently authorized. No production promotion or SoulX renderer
+crop is authorized before user review.
 
 `VF-9-24L` completed the global-shared-MVP audit, every-fifth-frame Ranga recheck, architecture
 reconciliation, and balanced completion roadmap. `VF-9-24K`/`CP-01` then completed at implementation

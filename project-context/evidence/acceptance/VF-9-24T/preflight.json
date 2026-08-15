@@ -1,0 +1,129 @@
+{
+  "schema_version": "videoforge.soulx-flashhead-pro-vf924t-preflight/v1",
+  "task_id": "VF-9-24T",
+  "checkpoint": "CP-07-replacement-qualification",
+  "checked_at": "2026-08-15T08:37:40.043Z",
+  "authority": {
+    "mode": "read_only",
+    "maximum_external_spend_usd": 0,
+    "provider_mutations": 0,
+    "paid_execution_authorized": false
+  },
+  "account": {
+    "owner": "sujal",
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
+  },
+  "inventory": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "network_volumes": [
+      {
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "purpose": "soulx_flashhead_pro"
+      },
+      {
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "purpose": "mage_int8"
+      }
+    ]
+  },
+  "gpu": {
+    "offering_id": "NVIDIA GeForce RTX 4090",
+    "display_name": "RTX 4090",
+    "region": "EU-RO-1",
+    "secure_cloud": true,
+    "availability": "HIGH",
+    "rate_usd_per_hour": 0.74,
+    "vram_gb": 24
+  },
+  "runtime": {
+    "source_revision": "Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2",
+    "model_revision": "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro",
+    "wav2vec_revision": "facebook/wav2vec2-base-960h@22aad52d435eb6dbaf354bdad9b0da84ce7d6156",
+    "immutable_image_digest": "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b",
+    "manifest_sha256": "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+    "retained_volume_id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+    "retained_volume_size_gb": 50,
+    "retained_volume_recurring_usd_per_month": 3.5,
+    "settings": {
+      "model_type": "pro",
+      "precision": "bfloat16",
+      "width": 512,
+      "height": 512,
+      "fps": 25,
+      "sampling_steps": 4,
+      "shift": 5,
+      "color_correction_strength": 1,
+      "seed": 42,
+      "torch_compile": true,
+      "audio_encode_mode": "stream",
+      "face_crop": false,
+      "repair_or_enhancement": false
+    }
+  },
+  "sample": {
+    "avatar_image_sha256": "sha256:34ca7513d6e34af3fa37d2e05afa8d2f81cab9ff587c2a12d047002abc7c75e3",
+    "source_voiceover_sha256": "sha256:4b5c404ea6a042ca5e82ef64f238d7866f2fb770967b953e593abdadcf6c7fc4",
+    "selected_sentence": "It came from a man who spent his whole life fighting one thistle in one fence row and finally taught me how it is actually done.",
+    "source_interval_seconds": [118.6, 128.1],
+    "trailing_zero_padding_seconds": 0.5,
+    "audio_sha256": "sha256:7409fb7411829f0e2313d70346d477c86f5255733ea39a8afdc0668be86592c8",
+    "audio_duration_seconds": 10,
+    "audio_codec": "pcm_s16le",
+    "audio_sample_rate_hz": 16000,
+    "audio_channels": 1,
+    "audio_bytes": 320278
+  },
+  "review_only_crops": {
+    "full": "crop=512:288:0:112,scale=1920:1080:flags=lanczos,fps=30:round=near",
+    "split": "crop=448:504:32:4,scale=960:1080:flags=lanczos,fps=30:round=near",
+    "renderer_activation_authorized": false
+  },
+  "economics_fixture": {
+    "source": "artifacts/cp04-long-owned-work-plan/generation-work-manifest.json",
+    "avatar_span_count": 103,
+    "padded_model_input_seconds": 481.32,
+    "visible_avatar_seconds": 378.82
+  },
+  "paid_boundary": {
+    "exact_operations": [
+      "create one temporary private Pod template from the existing immutable image digest",
+      "create one fresh offline RTX 4090 EU-RO-1 Pod mounting only the retained SoulX volume",
+      "verify the sealed manifest and run the existing real compile warm-up",
+      "generate and privately retrieve one native exact 10.00-second sample",
+      "delete and prove absence of the Pod before local crop rendering",
+      "render two local review-only crop previews",
+      "delete and prove absence of the temporary template",
+      "prove zero compute and exactly two retained volumes",
+      "read settled billing when available"
+    ],
+    "runtime_ready_timeout_seconds": 1800,
+    "generation_timeout_seconds": 1200,
+    "lifecycle_reserve_seconds": 120,
+    "conservative_maximum_pod_cost_usd": 0.641334,
+    "user_supplied_numeric_finite_cap_required": true,
+    "prohibited": [
+      "model or volume download/preparation/mutation",
+      "image publication",
+      "fallback or model substitution",
+      "repair, enhancement, or upscaling",
+      "Mage mount or cross-mount",
+      "production dispatch or crop activation"
+    ]
+  },
+  "local_validation": {
+    "context_validator": "passed",
+    "typecheck": "passed",
+    "lint": "passed",
+    "vitest": "312 passed",
+    "controller_requires_provider_lastStartedAt": true,
+    "controller_deletes_pod_before_local_crop_render": true,
+    "exact_native_contract": "512x512 H.264/AAC, 250 frames, 10.00 seconds",
+    "exact_full_preview_contract": "1920x1080 H.264/AAC, 300 frames, 10.00 seconds",
+    "exact_split_preview_contract": "960x1080 H.264/AAC, 300 frames, 10.00 seconds"
+  }
+}
