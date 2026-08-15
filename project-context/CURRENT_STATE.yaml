@@ -24,7 +24,7 @@ provider_authority:
   halt_reason: null
   model_id: "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
   resources:
-    - "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s:<source-commit-pending>"
+    - "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s:23ce47f0b9425298daac8b40e359ef2f69878d5d"
     - "runpod:EU-RO-1:delete-exact-echo-volume:sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f"
     - "runpod:EU-RO-1:soulx-only-network-volume:50GB:$3.50/month"
     - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 4090:1x:$0.74/hour"
@@ -270,7 +270,7 @@ recommended_next_task:
     authorized_by_user_at: "2026-08-15T06:40:00Z"
     model_id: "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
     resources:
-      - "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s:<source-commit-pending>"
+      - "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s:23ce47f0b9425298daac8b40e359ef2f69878d5d"
       - "runpod:EU-RO-1:delete-exact-echo-volume:sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f"
       - "runpod:EU-RO-1:soulx-only-network-volume:50GB:$3.50/month"
       - "runpod:EU-RO-1:secure:NVIDIA GeForce RTX 4090:1x:$0.74/hour"
@@ -325,6 +325,36 @@ recommended_next_task:
     - "Any model substitution, repair, upscaler, face restoration, Mage mount, cross-mount, uncarded pickle, or automatic GPU fallback."
     - "Any cumulative finite spend above $4.00, changed RTX 4090 rate above $0.74/hour, uncertain resource identity, failed output, or uncertain cleanup."
     - "Any production dispatch or renderer crop activation before the user reviews and accepts the SoulX sample."
+
+vf_9_24s:
+  status: provider_free_green_awaiting_immutable_image_publication
+  activation_commit: "23ce47f0b9425298daac8b40e359ef2f69878d5d"
+  source_revision: "Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2"
+  model_revision: "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
+  wav2vec_revision: "facebook/wav2vec2-base-960h@22aad52d435eb6dbaf354bdad9b0da84ce7d6156"
+  selected_runtime_blob_bytes: 6916084703
+  volume_size_gb: 50
+  ongoing_retention_charge_usd_per_month: 3.5
+  selected_gpu_offering_id: "NVIDIA GeForce RTX 4090"
+  selected_gpu_rate_usd_per_hour: 0.74
+  selected_gpu_vram_gb: 24
+  selected_gpu_availability: HIGH
+  maximum_cumulative_external_spend_usd: 4
+  exact_echo_volume_id_sha256_to_delete: "sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f"
+  mage_volume_id_sha256_to_preserve: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
+  immutable_image_source_target: "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s:23ce47f0b9425298daac8b40e359ef2f69878d5d"
+  local_tests: passed
+  canonical_verify: passed
+  canonical_verify_commit: "23ce47f0b9425298daac8b40e359ef2f69878d5d"
+  installed_chrome_tests: 42
+  runpod_account_owner: sujal
+  runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
+  read_only_inventory_checked_at: "2026-08-15T06:55:16.869Z"
+  read_only_starting_pods: 0
+  read_only_starting_templates: 0
+  read_only_starting_endpoints: 0
+  read_only_starting_active_workers: 0
+  read_only_starting_volumes: 2
 
 cp07_phase_a:
   status: corrected_provider_free_awaiting_revised_paid_authority
