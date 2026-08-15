@@ -8,35 +8,40 @@ current_milestone: soulx_flashhead_pro_new_avatar_timed_sample
 current_task: VF-9-24U
 current_wave: soulx_flashhead_pro_replacement_qualification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: awaiting_exact_paid_authorization
+task_stage: bounded_mutation
 application_code_changes_authorized: true
-provider_calls_authorized: false
-read_only_provider_calls_authorized: false
-maximum_external_spend_usd: 0
+provider_calls_authorized: true
+read_only_provider_calls_authorized: true
+maximum_external_spend_usd: 3
 provider_authority:
-  mode: none
-  provider: null
-  cap_usd: 0
-  authorized_by_user_at: null
-  source: vf_9_24u_provider_free_preflight_only
+  mode: paid
+  provider: runpod_sujal
+  cap_usd: 3
+  authorized_by_user_at: "2026-08-15T09:41:03Z"
+  source: explicit_user_message_approve_vf_9_24u_exact_operations_cap_3
   non_transferable: true
   execution_halted: false
   halt_reason: null
-  model_id: null
-  resources: []
-  authorized_operations: []
-  allowed_operations: []
+  model_id: "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
+  resources:
+    - "immutable_image:ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b"
+    - "retained_volume:sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be"
+    - "gpu:NVIDIA_GeForce_RTX_4090:EU-RO-1:0.74_usd_per_hour"
+    - "temporary_private_template:videoforge-soulx-flashhead-pro-vf924u-template"
+    - "temporary_pod:videoforge-soulx-vf924u-new-avatar-sample"
+  authorized_operations: [template_create_delete, pod_create_generate_delete, manifest_verify, warmup, private_output_retrieval, read_only_billing_and_inventory]
+  allowed_operations: [exact_vf_9_24u_proposal_only]
 runpod_account_scope:
   owner: sujal
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_inventory_or_mutation
-credential_access_authorized: false
-remote_or_cloud_mutations_authorized: false
+credential_access_authorized: true
+remote_or_cloud_mutations_authorized: true
 model_downloads_authorized: false
 worker_image_publication_authorized: false
 sample_output_publication_authorized: false
-gpu_use_authorized: false
+gpu_use_authorized: true
 mage_volume_retention_authorized: false
 echo_volume_retention_authorized: false
 soulx_volume_retention_authorized: true
@@ -110,10 +115,10 @@ live_development:
   health_checked_at: "2026-08-14T07:18:58Z"
   chrome_route: null
   fixture_scenario: cp05_complete_fixture_mvp
-  provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-24U provider-free and read-only preflight only. New-avatar paid execution requires one exact numeric-cap authorization."
+  provider_mode: sandbox
+  provider_calls_authorized: true
+  authorized_spend_usd: 3
+  provider_authority_scope: "VF-9-24U exact paid operations only, authorized 2026-08-15T09:41:03Z under a $3 cumulative finite cap."
   worker_image: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
   last_user_checkpoint:
     result: accepted
@@ -214,8 +219,8 @@ active_ownership:
   - task_id: VF-9-24U
     checkpoint: CP-07-replacement-qualification
     owner: current_chat
-    stage: awaiting_exact_paid_authorization
-    external_spend_cap_usd: 0
+    stage: bounded_mutation
+    external_spend_cap_usd: 3
 
 blocked_tasks: []
 in_progress_checkpoint: CP-07-replacement-qualification
@@ -224,32 +229,37 @@ recommended_next_task:
   task_id: VF-9-24U
   checkpoint: CP-07-replacement-qualification
   milestone: soulx_flashhead_pro_new_avatar_timed_sample
-  status: provider_free_preflight_complete_awaiting_exact_paid_authorization
+  status: exact_paid_execution_authorized
   dependency_status: cp06_complete_green_settled_visual_accepted
-  authorization_status: exact_paid_authority_required
-  task_stage: awaiting_exact_paid_authorization
+  authorization_status: exact_paid_authority_recorded
+  task_stage: bounded_mutation
   provider_authority:
-    mode: none
-    provider: null
-    cap_usd: 0
+    mode: paid
+    provider: runpod_sujal
+    cap_usd: 3
     non_transferable: true
-    authorized_by_user_at: null
-    model_id: null
-    resources: []
-    authorized_operations: []
-    allowed_operations: []
+    authorized_by_user_at: "2026-08-15T09:41:03Z"
+    model_id: "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
+    resources:
+      - "immutable_image:ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b"
+      - "retained_volume:sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be"
+      - "gpu:NVIDIA_GeForce_RTX_4090:EU-RO-1:0.74_usd_per_hour"
+      - "temporary_private_template:videoforge-soulx-flashhead-pro-vf924u-template"
+      - "temporary_pod:videoforge-soulx-vf924u-new-avatar-sample"
+    authorized_operations: [template_create_delete, pod_create_generate_delete, manifest_verify, warmup, private_output_retrieval, read_only_billing_and_inventory]
+    allowed_operations: [exact_vf_9_24u_proposal_only]
   read_profile: soulx_flashhead_pro_new_avatar_timed_sample
   task_brief: tasks/VF-9-24U.md
   goal: "Generate the third exact 10.00-second voiceover sample with the new owned avatar, capture exact fresh-Pod readiness and generation timing, render both Ranga-style compositions, and project 30-minute avatar cost."
-  provider_calls_authorized: false
-  read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
+  provider_calls_authorized: true
+  read_only_provider_calls_authorized: true
+  maximum_external_spend_usd: 3
+  remote_or_cloud_mutations_authorized: true
+  credential_access_authorized: true
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: false
+  gpu_use_authorized: true
   mage_volume_retention_authorized: false
   echo_volume_retention_authorized: false
   soulx_volume_retention_authorized: true
@@ -270,7 +280,7 @@ recommended_next_task:
     - "Any production dispatch or renderer crop activation before the user reviews and accepts the new previews."
 
 vf_9_24u:
-  status: provider_free_preflight_complete_awaiting_exact_paid_authorization
+  status: exact_paid_execution_authorized
   source_task: VF-9-24T
   avatar_image_sha256: "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83"
   avatar_source_geometry: [1672, 941]
@@ -294,8 +304,10 @@ vf_9_24u:
   retained_soulx_volume_size_gb: 50
   ongoing_soulx_volume_rate_usd_per_month: 3.5
   conservative_maximum_new_pod_cost_usd: 0.641334
-  paid_execution_authorized: false
-  maximum_external_spend_usd: 0
+  paid_execution_authorized: true
+  paid_execution_authorized_at: "2026-08-15T09:41:03Z"
+  maximum_external_spend_usd: 3
+  authority_evidence: "evidence/acceptance/VF-9-24U/authority.json"
   preflight_checked_at: "2026-08-15T09:31:33.996Z"
   preflight_evidence: "evidence/acceptance/VF-9-24U/preflight.json"
   canonical_verify: passed

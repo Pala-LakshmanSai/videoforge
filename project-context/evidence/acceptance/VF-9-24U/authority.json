@@ -1,0 +1,37 @@
+{
+  "schema_version": "videoforge.provider-authority/v1",
+  "task_id": "VF-9-24U",
+  "authorized_at": "2026-08-15T09:41:03Z",
+  "authorized_by": "user_current_chat",
+  "provider": "runpod_sujal",
+  "maximum_cumulative_finite_external_spend_usd": 3,
+  "ongoing_retained_volume_billing_excluded_from_cap": true,
+  "retained_soulx_volume_size_gb": 50,
+  "retained_soulx_volume_rate_usd_per_month": 3.5,
+  "gpu": {
+    "offering": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "vram_gb": 24,
+    "maximum_approved_rate_usd_per_hour": 0.74
+  },
+  "authorized_operations": [
+    "create one temporary private template from the existing immutable SoulX image digest",
+    "create one fresh RTX 4090 EU-RO-1 Pod mounting only the retained SoulX volume",
+    "verify the sealed manifest and run the existing real compile warm-up",
+    "generate and privately retrieve the exact VF-9-24U 10.00-second native sample",
+    "persist timing evidence before cleanup and local composition rendering",
+    "delete and prove absence of the Pod",
+    "render the two local review-only compositions",
+    "delete and prove absence of the temporary template",
+    "read exact billing when available",
+    "prove zero compute and exactly two retained volumes"
+  ],
+  "forbidden": [
+    "model download or preparation",
+    "volume mutation",
+    "image publication",
+    "model substitution, repair, enhancement, fallback, or cross-mount",
+    "renderer profile activation before user review"
+  ],
+  "verbatim_user_approval": "Approve VF-9-24U exact operations; maximum cumulative finite external spend: $3"
+}
