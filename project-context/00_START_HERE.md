@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: V2-01 complete and green; V2-02 ready for explicit implementation invocation
+Status: V2-01 complete and independently re-audited green; V2-02 safe and ready for explicit implementation invocation
 Context schema: `2.0`
 Last updated: `2026-08-15`
 
@@ -114,15 +114,17 @@ and evidence selection, not source-footage motion.
 
 ## Current handoff
 
-V2-00 and its independent audit are green. V2-01 is now complete and green: additive migration
+V2-00 and its independent audit are green. V2-01 is complete and independently re-audited green: additive migration
 `0018_tenant_private_scope.sql` gives projects, revisions, assets, Avatar Profiles/versions, Image
 Styles/versions, queue entries, attempts, outputs, costs, approvals, and audits an `account_id`
 joined to `workspaces (account_id, id)`, so a cross-tenant row cannot be represented. Ownership is
 derived by the database from the already-authorized parent row, which means a client-supplied owner
 is overwritten rather than honoured. Pre-V2 rows are adopted by a reserved LEGACY account that no
 identity can authenticate into, and pre-V2 admissions receive fresh empty accounts instead. Every
-repository call now requires an unforgeable trusted principal, and each unit of work binds
-`videoforge.account_id` for its whole transaction. Invite redemption atomically creates exactly one
+repository call now snapshots its inputs, binds `videoforge.account_id`, and validates the account's
+ownership of the workspace in the same transaction. The active shared-app fixture also projects
+tenant-local queue metadata, audits, orchestration, costs, outputs, and downloads, with foreign
+reads and mutations returning non-revealing not-found responses. Invite redemption atomically creates exactly one
 account, one default workspace, and one membership. Built-in presets are the only globally readable
 records and reject every update and delete. The approved UI geometry is unchanged.
 

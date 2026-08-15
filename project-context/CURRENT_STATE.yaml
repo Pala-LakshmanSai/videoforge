@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-15T21:40:00Z"
+updated_at: "2026-08-15T17:47:54Z"
 
 phase: serverless_v2_implementation_in_progress
 implementation_authorized_in_current_task: false
@@ -56,7 +56,7 @@ live_development:
   server_state: stopped
   dev_server_pid: null
   owner_task_id: null
-  health_checked_at: "2026-08-15T13:06:36Z"
+  health_checked_at: "2026-08-15T17:47:54Z"
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
@@ -108,7 +108,7 @@ roadmap_state:
   prompt_pack: templates/CHECKPOINT_CHAT_PROMPTS.md
   active_series: V2-00_through_V2-13
   V2-00: complete_green_independently_audited
-  V2-01: complete_green_pending_independent_audit
+  V2-01: complete_green_independently_reaudited
   V2-02: ready_for_user_invocation
   V2-03: blocked_on_V2-02
   V2-04: blocked_on_V2-03
@@ -228,7 +228,7 @@ recommended_next_task:
   checkpoint: V2-02
   milestone: tenant_private_artifacts_signed_transfer_and_scratch
   status: ready_for_user_invocation
-  dependency_status: v2_01_complete_green_pending_independent_audit
+  dependency_status: v2_01_complete_green_independently_reaudited
   authorization_status: awaiting_explicit_v2_02_implementation_request
   task_stage: ready_for_user_invocation
   provider_authority:
@@ -258,14 +258,14 @@ recommended_next_task:
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: false
-  prerequisite_evidence: evidence/acceptance/VF-10-01/2026-08-15-tenant-cutover/acceptance.json
+  prerequisite_evidence: evidence/acceptance/VF-10-01/2026-08-15-tenant-cutover-reaudit/acceptance.json
 
 verification:
   state: passed
-  verified_commit: "b4e39703b3cfc07bfa53d69b140f4ccc26181a2c"
-  verified_commit_note: "V2-01 tenant-private identity and data cutover; verified green twice before commit."
+  verified_commit: "714b21978f2720682269e45ca46f674e052893c3"
+  verified_commit_note: "V2-01 tenant cutover repair: every repository call validates account/workspace ownership in its bound transaction, and active shared-app paths are tenant private; independently re-audited green."
   predecessor_verified_commit: "806edba2a83087add93902ff2b937bd8c564a746"
-  independent_audit_evidence: evidence/acceptance/VF-10-00A/2026-08-15-final-audit/acceptance.json
+  independent_audit_evidence: evidence/acceptance/VF-10-01/2026-08-15-tenant-cutover-reaudit/acceptance.json
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
@@ -293,9 +293,9 @@ verification:
   remote_mutation_used_for_v2_00: false
   paid_compute_started_for_v2_00: false
   completed_for_v2_01:
-    evidence: evidence/acceptance/VF-10-01/2026-08-15-tenant-cutover/acceptance.json
+    evidence: evidence/acceptance/VF-10-01/2026-08-15-tenant-cutover-reaudit/acceptance.json
     commands:
-      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 234/234; pipeline 120/120; web 313/313; contracts 71/71; provider-sandbox 43/43; test-fixtures 12/12; Cloudflare 1/1; installed Chrome 44/44)"
+      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 234/234; pipeline 120/120; web 314/314; contracts 71/71; provider-sandbox 43/43; test-fixtures 12/12; Cloudflare 1/1; installed Chrome 44/44)"
       - "node --test packages/control-plane/tests/tenant-private-scope.test.mjs: PASS (8/8)"
       - "pnpm --filter @videoforge/web test:chrome: PASS (44/44, includes the new two-account tenant-isolation journey)"
       - "pnpm context:validate: PASS (103 JSON files; 31 profiles; 41 decisions; 19 gates)"
@@ -311,9 +311,11 @@ verification:
       - "WorkspaceScope carries an unforgeable trusted-principal brand, and the unit of work binds videoforge.account_id for the whole transaction."
       - "Invite redemption atomically creates exactly one account, one default workspace, and one membership."
       - "Built-in presets are the only globally readable records and reject every update and delete."
+      - "Every direct repository method and unit of work binds the account principal and validates the account/workspace relationship in the same transaction before querying an entity identifier."
+      - "The active shared-app fixture projects tenant-local queue positions/versions, audits, orchestration, cost, output, and download metadata; foreign read and mutation routes return non-revealing not-found responses."
     not_delivered_by_design:
       - "Tenant-private artifact keys, signed transfer, receipts, and job scratch remain V2-02."
-      - "The superseded global equal-rights queue is untouched and is replaced in V2-03."
+      - "V2-03 still replaces the underlying singleton fixture scheduler with the approved two-account fair-admission model; V2-01 now secures its current read and mutation surfaces without claiming that redesign."
       - "The declared RLS policies are unproven behaviourally: PGlite connects as a superuser and bypasses row level security, so the write guard and tenant views carry the local proof and hosted enforcement waits for V2-06."
   provider_or_spend_used_for_v2_01: false
   remote_mutation_used_for_v2_01: false

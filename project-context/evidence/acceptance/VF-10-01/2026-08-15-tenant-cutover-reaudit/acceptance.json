@@ -1,0 +1,93 @@
+{
+  "schema_version": "videoforge.v2-01-independent-reaudit/v1",
+  "task_id": "VF-10-01",
+  "checkpoint": "V2-01",
+  "result": "PASS",
+  "audited_commit": "714b21978f2720682269e45ca46f674e052893c3",
+  "recorded_at_utc": "2026-08-15T17:47:54Z",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": []
+  },
+  "predecessor": {
+    "checkpoint": "V2-00",
+    "result": "PASS",
+    "evidence": "evidence/acceptance/VF-10-00A/2026-08-15-final-audit/acceptance.json",
+    "audited_commit": "806edba2a83087add93902ff2b937bd8c564a746"
+  },
+  "repairs_verified": {
+    "repository_boundary": "Every direct repository method and unit of work snapshots its inputs, binds videoforge.account_id, and validates that the account owns the workspace in the same transaction before any entity identifier is queried.",
+    "forged_scope": "A syntactically valid account-B/workspace-A scope returns CROSS_WORKSPACE_REFERENCE; account B resolving account A's exact artifact returns the same typed ASSET not-found as an unknown identifier.",
+    "active_fixture_reads": "Shared-app queue rows, positions, versions, audits, projects, events, lane attempts, costs, outputs, final assets, and closed-session data are projected to the admitted tenant.",
+    "active_fixture_writes": "Queue reorder/delete, active cancellation, advance, recovery, callbacks, project status, and final MP4 download all authorize the caller before mutation or disclosure and return non-revealing not-found failures across tenants.",
+    "pre_v2_fixture_state": "Persisted fixture records without tenant ownership fields restore as inaccessible and are not inferred into the current tenant.",
+    "builtins": "Only immutable SYSTEM preset rows remain globally readable; user-created preset rows remain tenant private.",
+    "migration_chain": "Committed migrations remain unchanged. Fresh application, 0017-to-0018 upgrade/backfill, metadata export/restore, and reopened repository use pass. Pre-V2 rows remain in the non-login LEGACY scope.",
+    "signed_url": "Private artifact route and composed two-account tests reject foreign reservation, completion receipt, signed transfer, metadata, and content access. No object-store provider was called."
+  },
+  "validation": {
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "tasks": "28/28",
+      "control_plane": "234/234",
+      "pipeline": "120/120",
+      "web": "314/314",
+      "cloudflare": "1/1",
+      "installed_chrome": "44/44"
+    },
+    "tenant_database_matrix": {
+      "command": "node --test packages/control-plane/tests/tenant-private-scope.test.mjs packages/control-plane/tests/migration-upgrade.test.mjs packages/control-plane/tests/metadata-export-restore.test.mjs",
+      "exit_code": 0,
+      "tests": "12/12"
+    },
+    "installed_chrome_isolation": {
+      "command": "CI=1 pnpm --filter @videoforge/web test:chrome -- tenant-isolation.spec.ts",
+      "exit_code": 0,
+      "tests": "2/2",
+      "browser_channel": "installed Google Chrome",
+      "proof": "Two admitted browser contexts create private records; foreign status, download, queue reorder/delete, cancel, and advance return 404 and response bodies omit the foreign account, workspace, project title, and identifiers."
+    },
+    "focused_regressions": {
+      "command": "node --test --test-name-pattern='absent principal|terminal attempts are unclaimable|mutation receipts preserve exact' packages/control-plane/tests/tenant-private-scope.test.mjs packages/control-plane/tests/durable-mock-recovery.test.mjs packages/control-plane/tests/workflow-adapter-local.test.mjs",
+      "exit_code": 0,
+      "tests": "3/3"
+    },
+    "focused_signed_artifact_routes": {
+      "command": "pnpm --dir apps/web exec vitest run src/server/routes/private-artifact-routes.test.ts src/server/phase1-private-artifact-app.test.ts",
+      "exit_code": 0,
+      "tests": "5/5"
+    }
+  },
+  "database_truth": {
+    "pglite_superuser_limit": "PGlite's superuser connection can issue privileged raw table SQL and bypass PostgreSQL RLS. This is migration/test administration, not an exported repository or API path.",
+    "application_path_proof": "All exported PGlite repository operations now execute only through the transaction-bound account/workspace validator. Tenant views expose no rows without a principal. Production RLS remains declared for the future non-superuser hosted application role.",
+    "hosted_rls_status": "Unproven until V2-06; GATE_TENANCY_001 remains open for hosted RLS plus the V2-02 artifact plane."
+  },
+  "external_truth": {
+    "provider_calls_made": false,
+    "credentials_accessed": false,
+    "cloud_mutation_performed": false,
+    "external_spend_usd": 0,
+    "paid_compute_started": false,
+    "worker_or_endpoint_mutation": false,
+    "live_provider_inventory_refreshed": false,
+    "last_known_provider_snapshot_at": "2026-08-15T09:56:02.932Z",
+    "last_known_pods": 0,
+    "last_known_serverless_workers_active_plus_flex": 0,
+    "retained_volumes": 2,
+    "ongoing_retained_volume_usd_per_month": 7.0,
+    "local_dev_server_after_validation": "stopped; no TCP listener on 127.0.0.1:4173"
+  },
+  "missing_proof": [
+    "Hosted non-superuser PostgreSQL RLS enforcement remains V2-06.",
+    "Real tenant-private object storage and signed-transfer composition remains V2-02.",
+    "Live provider resource state was deliberately not refreshed because this repair used no credentials or provider calls; CURRENT_STATE retains the timestamped last-known snapshot."
+  ],
+  "next_checkpoint": {
+    "checkpoint": "V2-02",
+    "safe_to_start": true,
+    "authorization": "Still requires an explicit V2-02 implementation request; no provider, credential, cloud mutation, or spend authority exists."
+  }
+}
