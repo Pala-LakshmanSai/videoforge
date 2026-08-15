@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-15T11:23:14Z"
+updated_at: "2026-08-15T11:23:54Z"
 
 phase: serverless_v2_roadmap_reset_complete_awaiting_independent_audit
 implementation_authorized_in_current_task: false
@@ -45,7 +45,8 @@ repository:
   branch: codex/soulx-flashhead-pro-vf924s
   base_commit: "122fb679389bdcb40b1700d2ba3c0f8f7ac66360"
   planning_base_commit: "79c3be6"
-  last_good_commit: "79c3be6"
+  planning_handoff_commit: "8215c66"
+  last_good_commit: "8215c66"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -249,7 +250,7 @@ recommended_next_task:
   checkpoint: V2-00
   milestone: serverless_v2_roadmap_reset_audit
   status: ready_for_independent_read_only_audit
-  dependency_status: local_reset_validated_awaiting_handoff_commit
+  dependency_status: v2_00_committed_awaiting_independent_audit
   authorization_status: provider_free_read_only_audit_no_implementation
   task_stage: ready_for_independent_audit
   provider_authority:
