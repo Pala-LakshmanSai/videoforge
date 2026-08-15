@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-07 complete; corrected Ranga-style SoulX crops ready for review; second-sample timing retry awaiting revised paid authorization
+Status: CP-00 through CP-07 complete; new-avatar SoulX timed-sample preflight complete; awaiting exact paid authorization
 Context schema: `1.5`  
 Last updated: `2026-08-15`
 
@@ -71,8 +71,10 @@ immediate billing rows were still pending, so this is not misreported as settled
 produced a different valid 10.00-second native sample, but its first controller did not persist exact
 timings before a local AAC-duration verifier false-positive. Provider compute was deleted. The
 corrected review outputs now match the intended Ranga grammar: a source-aware wide full frame and a
-finished avatar-left/image-right split, never isolated crop thumbnails. One timing-only retry needs
-revised paid authority; no Pod, template, GPU, download, publication, or paid operation is currently
+finished avatar-left/image-right split, never isolated crop thumbnails. `VF-9-24U` now binds the new
+1672x941 owned avatar and a third natural-pause-bounded 10.00-second voiceover span for one fresh
+timed RTX 4090 sample in both compositions. Its local and read-only preflight passed with zero
+compute; no Pod, template, GPU mutation, download, publication, or paid operation is currently
 authorized. No production promotion or SoulX renderer crop is authorized before user review.
 
 `VF-9-24L` completed the global-shared-MVP audit, every-fifth-frame Ranga recheck, architecture

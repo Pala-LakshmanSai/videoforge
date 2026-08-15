@@ -32,6 +32,7 @@ const RUNTIME_READY_TIMEOUT_SECONDS = 1_800;
 const GENERATION_TIMEOUT_SECONDS = 1_200;
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,190}$/u;
 const PROXY = /^https:\/\/[A-Za-z0-9_-]+-8000\.proxy\.runpod\.net$/u;
+const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const execFileAsync = promisify(execFile);
 
 type JsonRecord = Record<string, unknown>;
@@ -605,7 +606,12 @@ const renderRangaFullPreview = async (
   nativePath: string,
   sourceImagePath: string,
   outputPath: string,
+  profile: "elias-wide-v1" | "source-16x9-v1",
 ): Promise<JsonRecord> => {
+  const backgroundFilter =
+    profile === "source-16x9-v1"
+      ? "[0:v]scale=1920:1080:flags=lanczos,fps=30[bg];"
+      : "[0:v]crop=2500:1406:30:0,scale=1920:1080:flags=lanczos,fps=30[bg];";
   await execFileAsync("ffmpeg", [
     "-hide_banner",
     "-loglevel",
@@ -620,7 +626,7 @@ const renderRangaFullPreview = async (
     "-i",
     nativePath,
     "-filter_complex",
-    "[0:v]crop=2500:1406:30:0,scale=1920:1080:flags=lanczos,fps=30[bg];" +
+    backgroundFilter +
       "[1:v]scale=1080:1080:flags=lanczos,fps=30,format=rgba[fg];" +
       "color=white:s=1080x1080:r=30:d=10,format=gray," +
       "geq=lum='if(lt(X,32),255*X/32,if(gt(X,W-33),255*(W-1-X)/32,255))'[mask];" +
@@ -723,24 +729,34 @@ export async function runSoulXVf924s(input: {
   readonly sourceImagePath: string;
   readonly sourceAudioPath: string;
   readonly artifactRoot: string;
-  readonly taskId?: "VF-9-24S" | "VF-9-24T";
+  readonly taskId?: "VF-9-24S" | "VF-9-24T" | "VF-9-24U";
   readonly finiteCapUsd?: number;
   readonly outputBasename?: string;
   readonly renderCropPreviews?: boolean;
   readonly splitContextImagePath?: string;
+  readonly fullPreviewProfile?: "elias-wide-v1" | "source-16x9-v1";
+  readonly expectedSourceImageSha256?: string;
+  readonly expectedSourceAudioSha256?: string;
+  readonly expectedSplitContextImageSha256?: string;
 }): Promise<JsonRecord> {
   const taskId = input.taskId ?? "VF-9-24S";
   const isSecondSample = taskId === "VF-9-24T";
+  const isThirdSample = taskId === "VF-9-24U";
+  const isTimedSample = isSecondSample || isThirdSample;
   const finiteCapUsd = input.finiteCapUsd ?? FINITE_CAP_USD;
-  const priorConservativeUsd = isSecondSample ? 0 : PRIOR_FAILED_ATTEMPT_CONSERVATIVE_USD;
-  const templateName = isSecondSample
-    ? "videoforge-soulx-flashhead-pro-vf924t-template"
-    : TEMPLATE_NAME;
+  const priorConservativeUsd = isTimedSample ? 0 : PRIOR_FAILED_ATTEMPT_CONSERVATIVE_USD;
+  const templateName = isThirdSample
+    ? "videoforge-soulx-flashhead-pro-vf924u-template"
+    : isSecondSample
+      ? "videoforge-soulx-flashhead-pro-vf924t-template"
+      : TEMPLATE_NAME;
   const outputBasename =
     input.outputBasename ??
-    (isSecondSample
-      ? "soulx-flashhead-pro-elias-second-10.00s.mp4"
-      : "soulx-flashhead-pro-elias-10.12s.mp4");
+    (isThirdSample
+      ? "soulx-flashhead-pro-new-avatar-third-10.00s.mp4"
+      : isSecondSample
+        ? "soulx-flashhead-pro-elias-second-10.00s.mp4"
+        : "soulx-flashhead-pro-elias-10.12s.mp4");
   if (
     !IMAGE_PATTERN.test(input.imageDigest) ||
     !path.isAbsolute(input.sourceImagePath) ||
@@ -748,6 +764,14 @@ export async function runSoulXVf924s(input: {
     !path.isAbsolute(input.artifactRoot) ||
     (input.renderCropPreviews === true &&
       (!input.splitContextImagePath || !path.isAbsolute(input.splitContextImagePath))) ||
+    (isTimedSample &&
+      (!input.expectedSourceImageSha256 ||
+        !SHA256.test(input.expectedSourceImageSha256) ||
+        !input.expectedSourceAudioSha256 ||
+        !SHA256.test(input.expectedSourceAudioSha256) ||
+        !input.expectedSplitContextImageSha256 ||
+        !SHA256.test(input.expectedSplitContextImageSha256))) ||
+    (isThirdSample && input.fullPreviewProfile !== "source-16x9-v1") ||
     !Number.isFinite(finiteCapUsd) ||
     finiteCapUsd <= 0 ||
     path.basename(outputBasename) !== outputBasename ||
@@ -757,13 +781,30 @@ export async function runSoulXVf924s(input: {
   }
   const reservation =
     priorConservativeUsd +
-    (((isSecondSample ? 0 : PREP_TIMEOUT_SECONDS) +
+    (((isTimedSample ? 0 : PREP_TIMEOUT_SECONDS) +
       RUNTIME_READY_TIMEOUT_SECONDS +
       GENERATION_TIMEOUT_SECONDS +
-      POD_LIFECYCLE_RESERVE_SECONDS * (isSecondSample ? 1 : 2)) /
+      POD_LIFECYCLE_RESERVE_SECONDS * (isTimedSample ? 1 : 2)) /
       3_600) *
       GPU_RATE;
   if (reservation > finiteCapUsd) throw new Error("VF924S_CAP_RISK");
+
+  const [sourceBytes, audioBytes, splitContextBytes] = await Promise.all([
+    readFile(input.sourceImagePath),
+    readFile(input.sourceAudioPath),
+    input.renderCropPreviews === true && input.splitContextImagePath
+      ? readFile(input.splitContextImagePath)
+      : Promise.resolve(null),
+  ]);
+  if (
+    isTimedSample &&
+    (sha256(sourceBytes) !== input.expectedSourceImageSha256 ||
+      sha256(audioBytes) !== input.expectedSourceAudioSha256 ||
+      splitContextBytes === null ||
+      sha256(splitContextBytes) !== input.expectedSplitContextImageSha256)
+  ) {
+    throw new Error("VF924T_INPUT_HASH_MISMATCH");
+  }
 
   const apiKey = await loadSujalRunPodApiKeyFromKeychain();
   const account = await assertSujalRunPodAccount(apiKey);
@@ -797,7 +838,7 @@ export async function runSoulXVf924s(input: {
     startingTemplates.length !== 0 ||
     startingVolumes.length !== 2 ||
     mage?.size !== 50 ||
-    (isSecondSample
+    (isTimedSample
       ? echo !== undefined || exactSoulX !== SOULX_VOLUME_HASH
       : (echo === undefined && existingSoulX === undefined) ||
         (echo !== undefined && existingSoulX !== undefined))
@@ -814,7 +855,7 @@ export async function runSoulXVf924s(input: {
   let generationResult: JsonRecord | null = null;
   try {
     if (existingSoulX === undefined) {
-      if (isSecondSample) throw new Error("VF924T_SOULX_VOLUME_ABSENT");
+      if (isTimedSample) throw new Error("VF924T_SOULX_VOLUME_ABSENT");
       if (echo === undefined) throw new Error("VF924S_ECHO_VOLUME_ABSENT");
       await client.deleteVolume(echo);
       soulxVolume = await client.createVolume();
@@ -851,15 +892,17 @@ export async function runSoulXVf924s(input: {
 
     const workerToken = randomBytes(32).toString("base64url");
     activePod = await client.createPod({
-      name: isSecondSample
-        ? "videoforge-soulx-vf924t-second-sample"
-        : "videoforge-soulx-vf924s-sample",
+      name: isThirdSample
+        ? "videoforge-soulx-vf924u-new-avatar-sample"
+        : isSecondSample
+          ? "videoforge-soulx-vf924t-second-sample"
+          : "videoforge-soulx-vf924s-sample",
       templateId: template.id,
       imageDigest: input.imageDigest,
       volume: soulxVolume,
       mode: "runtime",
       token: workerToken,
-      requireProviderStartedAt: isSecondSample,
+      requireProviderStartedAt: isTimedSample,
     });
     runtimeHealth = await pollHealth(
       activePod.id,
@@ -875,10 +918,6 @@ export async function runSoulXVf924s(input: {
       throw new Error("VF924S_RUNTIME_MANIFEST_MISMATCH");
     }
     const runtimePod = activePod;
-    const [sourceBytes, audioBytes] = await Promise.all([
-      readFile(input.sourceImagePath),
-      readFile(input.sourceAudioPath),
-    ]);
     const uploadStarted = Date.now();
     const submit = record(
       await (
@@ -926,11 +965,11 @@ export async function runSoulXVf924s(input: {
     await writeFile(outputPath, outputBytes, { flag: "wx", mode: 0o600 });
     await chmod(outputPath, 0o600);
     const probe = await probeMedia(outputPath);
-    const nativeMediaContract = isSecondSample
+    const nativeMediaContract = isTimedSample
       ? assertMediaContract(probe, { width: 512, height: 512, fps: "25/1", frames: 250 })
       : null;
     if (
-      isSecondSample &&
+      isTimedSample &&
       (generationResult.duration_seconds !== 10 || generationResult.frame_count !== 250)
     ) {
       throw new Error("VF924T_WORKER_OUTPUT_CONTRACT_MISMATCH");
@@ -947,9 +986,12 @@ export async function runSoulXVf924s(input: {
     };
     const generationWallMs = uploadAndPollMs;
     const workerDurationSeconds = finite(generationResult.duration_seconds);
-    if (isSecondSample) {
+    if (isTimedSample) {
       const partialEvidence = {
-        schema_version: "videoforge.soulx-flashhead-pro-vf924t-runtime-partial/v1",
+        schema_version: isThirdSample
+          ? "videoforge.soulx-flashhead-pro-vf924u-runtime-partial/v1"
+          : "videoforge.soulx-flashhead-pro-vf924t-runtime-partial/v1",
+        task_id: taskId,
         recorded_at: new Date().toISOString(),
         account_id_sha256: ACCOUNT_HASH,
         image_digest: input.imageDigest,
@@ -973,12 +1015,13 @@ export async function runSoulXVf924s(input: {
     deletions.push(await deletePodEvidence(client, runtimePod));
     activePod = null;
     const cropPreviews =
-      isSecondSample && input.renderCropPreviews === true
+      isTimedSample && input.renderCropPreviews === true
         ? {
             full: await renderRangaFullPreview(
               outputPath,
               input.sourceImagePath,
               path.join(input.artifactRoot, "ranga-style-full-16x9-corrected.mp4"),
+              input.fullPreviewProfile ?? "elias-wide-v1",
             ),
             split: await renderRangaSplitPreview(
               outputPath,
@@ -988,7 +1031,7 @@ export async function runSoulXVf924s(input: {
           }
         : null;
     const economics =
-      isSecondSample && workerDurationSeconds !== null
+      isTimedSample && workerDurationSeconds !== null
         ? projectSoulXAvatarEconomics({
             outputDurationSeconds: workerDurationSeconds,
             generationWallMs,
@@ -1021,9 +1064,17 @@ export async function runSoulXVf924s(input: {
     );
     if (conservative > finiteCapUsd) throw new Error("VF924S_FINAL_CAP_BREACH");
     const evidence: JsonRecord = {
-      schema_version: isSecondSample
-        ? "videoforge.soulx-flashhead-pro-vf924t-second-sample/v1"
-        : "videoforge.soulx-flashhead-pro-vf924s-qualification/v1",
+      schema_version: isThirdSample
+        ? "videoforge.soulx-flashhead-pro-vf924u-new-avatar-sample/v1"
+        : isSecondSample
+          ? "videoforge.soulx-flashhead-pro-vf924t-second-sample/v1"
+          : "videoforge.soulx-flashhead-pro-vf924s-qualification/v1",
+      task_id: taskId,
+      inputs: {
+        source_image_sha256: sha256(sourceBytes),
+        source_audio_sha256: sha256(audioBytes),
+        split_context_image_sha256: splitContextBytes === null ? null : sha256(splitContextBytes),
+      },
       completed_at: new Date().toISOString(),
       account: { owner: "sujal", account_id_sha256: ACCOUNT_HASH },
       image_digest: input.imageDigest,

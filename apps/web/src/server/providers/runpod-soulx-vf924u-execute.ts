@@ -3,36 +3,36 @@ import path from "node:path";
 import { runSoulXVf924s } from "./runpod-soulx-vf924s-live";
 
 const repositoryRoot = path.resolve(process.cwd(), "../..");
-const finiteCapUsd = Number(process.env.VF924T_FINITE_CAP_USD);
+const finiteCapUsd = Number(process.env.VF924U_FINITE_CAP_USD);
 if (!Number.isFinite(finiteCapUsd) || finiteCapUsd <= 0) {
-  throw new Error("VF924T_FINITE_CAP_REQUIRED");
+  throw new Error("VF924U_FINITE_CAP_REQUIRED");
 }
 
 const evidence = await runSoulXVf924s({
-  taskId: "VF-9-24T",
+  taskId: "VF-9-24U",
   finiteCapUsd,
-  imageDigest: process.env.VF924T_SOULX_IMAGE_DIGEST ?? "",
-  sourceImagePath: path.join(repositoryRoot, "elias yoder(sampe avatar).png"),
+  imageDigest: process.env.VF924U_SOULX_IMAGE_DIGEST ?? "",
+  sourceImagePath: path.join(repositoryRoot, ".videoforge/private/vf-9-24u/new-avatar-sample.png"),
   sourceAudioPath: path.join(
     repositoryRoot,
-    ".videoforge/private/vf-9-24t/soulx-second-10.00s.wav",
+    ".videoforge/private/vf-9-24u/new-avatar-third-10.00s.wav",
   ),
   artifactRoot: path.join(
     repositoryRoot,
-    "outputs/soulx-flashhead-pro/vf-9-24t/elias-second-10.00s/measurement-retry",
+    "outputs/soulx-flashhead-pro/vf-9-24u/new-avatar-third-10.00s",
   ),
-  outputBasename: "soulx-flashhead-pro-elias-second-10.00s.mp4",
+  outputBasename: "soulx-flashhead-pro-new-avatar-third-10.00s.mp4",
   renderCropPreviews: true,
-  fullPreviewProfile: "elias-wide-v1",
+  fullPreviewProfile: "source-16x9-v1",
   expectedSourceImageSha256:
-    "sha256:34ca7513d6e34af3fa37d2e05afa8d2f81cab9ff587c2a12d047002abc7c75e3",
+    "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83",
   expectedSourceAudioSha256:
-    "sha256:7409fb7411829f0e2313d70346d477c86f5255733ea39a8afdc0668be86592c8",
+    "sha256:51765f504d1a241af1aa05040cd06bbf377768bc3b2806000191f23855e577cb",
   expectedSplitContextImageSha256:
-    "sha256:89772111e65a413c96bd94c740b1c3223b8c7e697444632c96322cf75180b1d9",
+    "sha256:844a98770bf2772becebc3dc71f3dd609fa0392295ef96d745cbdcb0ecb70f97",
   splitContextImagePath: path.join(
     repositoryRoot,
-    "apps/web/.videoforge/cp06-phase-b/outputs/samples/cp06-owned-03.png",
+    "apps/web/.videoforge/cp06-phase-b/outputs/samples/cp06-owned-04.png",
   ),
 });
 
