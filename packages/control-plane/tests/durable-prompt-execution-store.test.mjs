@@ -540,7 +540,7 @@ test("migrations 0009-0017 upgrade live migration-0008 prompt authority and exec
     }
     await seedPromptAuthority(executor, { initializeInputHash: false });
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+    assert.deepEqual(upgraded.appliedVersions, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
     await initializePromptInputHash(executor);
     const result = await execute(executor);
     assert.equal(result.replayed, false);

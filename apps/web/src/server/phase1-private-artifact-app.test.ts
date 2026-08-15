@@ -151,6 +151,7 @@ describe("Phase 1 private artifact composition", () => {
       maximumSignatureTtlMs: 5 * 60 * 1_000,
     });
     const app = createPhase1PrivateArtifactApp({
+      legacyFixtureOnly: true,
       authorization: authorization(),
       controlPlane: store.controlPlane,
     });

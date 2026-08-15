@@ -27,12 +27,13 @@ New migrations begin after the existing migration sequence. The planned ownershi
 
 - `0018_tenant_private_scope.sql`
 - `0019_tenant_artifact_receipts.sql`
-- `0020_fair_generation_admission.sql`
-- `0021_serverless_attempts_and_outbox.sql`
-- `0022_serverless_cost_and_reconciliation.sql`
+- `0020_tenant_artifact_isolation_repair.sql`
+- `0021_fair_generation_admission.sql`
+- `0022_serverless_attempts_and_outbox.sql`
+- `0023_serverless_cost_and_reconciliation.sql`
 
-V2-02 implemented `0019_tenant_artifact_receipts.sql` first because checkpoint order controls the
-append-only migration sequence; later planned filenames moved forward without rewriting history.
+V2-02 implemented `0019_tenant_artifact_receipts.sql` and the additive independent-audit repair
+`0020_tenant_artifact_isolation_repair.sql`; later planned filenames moved forward without rewriting history.
 Exact future filenames may change only inside their implementation checkpoint before release. Never edit or
 renumber committed migrations `0014`–`0017` to make the new architecture appear implemented.
 

@@ -29,6 +29,8 @@ export interface ArtifactAuthorizationRequest {
 }
 
 export interface PrivateArtifactControlPlaneAppOptions {
+  /** Explicit fixture-only firewall. V2 production must use trusted artifact identity v3. */
+  readonly legacyFixtureOnly: true;
   /** Metadata-only storage facet. The byte-carrying direct-transfer facet is deliberately absent. */
   readonly controlPlane: ArtifactControlPlanePort;
   readonly authorize: (
@@ -447,6 +449,9 @@ async function sign(
 export function createPrivateArtifactControlPlaneApp(
   options: PrivateArtifactControlPlaneAppOptions,
 ): Hono {
+  if (options.legacyFixtureOnly !== true) {
+    throw new Error("LEGACY_RAW_ARTIFACT_KEY_ROUTE_FORBIDDEN");
+  }
   const app = new Hono();
   app.post("/api/v1/artifacts/sign/initiate", (c) =>
     sign(c, options, true, "INITIATE", (body) =>

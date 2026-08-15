@@ -45,32 +45,36 @@ export interface ArtifactReservation {
 
 /** Secret-bearing ephemeral capability. Persist `reservation`, never this value. */
 export interface ArtifactTransferPort {
-  readonly schemaVersion: "artifact-transfer-port/v3";
-  readonly reservation: ArtifactReservation;
+  readonly schema_version: "artifact-transfer-port/v3";
+  readonly reservation_id: string;
+  readonly account_id: string;
+  readonly workspace_id: string;
   readonly method: ArtifactPortMethod;
   readonly path: string;
-  readonly contentType: string;
-  readonly contentLength: number;
-  readonly checksumSha256: Sha256;
-  readonly expiresAt: string;
-  readonly maxUses: number;
-  readonly capability: string;
+  readonly content_type: string;
+  readonly content_length: number;
+  readonly checksum_sha256: Sha256;
+  readonly expires_at: string;
+  readonly max_uses: number;
+  readonly capability_handle: string;
 }
 
 export interface ArtifactCommitReceipt {
-  readonly schemaVersion: "artifact-commit-receipt/v3";
-  readonly receiptId: string;
-  readonly reservationId: string;
-  readonly accountId: string;
-  readonly workspaceId: string;
-  readonly objectKey: string;
-  readonly callbackId: string;
-  readonly contentType: string;
-  readonly contentLength: number;
-  readonly checksumSha256: Sha256;
+  readonly schema_version: "artifact-commit-receipt/v3";
+  readonly receipt_id: string;
+  readonly reservation_id: string;
+  readonly account_id: string;
+  readonly workspace_id: string;
+  readonly object_key: string;
+  readonly callback_id: string;
+  readonly content_type: string;
+  readonly content_length: number;
+  readonly checksum_sha256: Sha256;
   readonly probe: Readonly<Record<string, boolean | number | string | null>>;
-  readonly committedAt: string;
-  readonly receiptSha256: Sha256;
+  readonly retention_class: ArtifactRetentionClass;
+  readonly retain_until: string | null;
+  readonly committed_at: string;
+  readonly receipt_sha256: Sha256;
 }
 
 export class ArtifactPortError extends Error {
@@ -242,16 +246,18 @@ export class FakeR2ArtifactPlane {
       .update(canonical(reservation))
       .digest("hex");
     return Object.freeze({
-      schemaVersion: "artifact-transfer-port/v3",
-      reservation,
+      schema_version: "artifact-transfer-port/v3",
+      reservation_id: reservation.reservationId,
+      account_id: reservation.accountId,
+      workspace_id: reservation.workspaceId,
       method,
       path: `/${objectKey}`,
-      contentType: options.contentType,
-      contentLength: options.contentLength,
-      checksumSha256: options.checksumSha256,
-      expiresAt,
-      maxUses,
-      capability,
+      content_type: options.contentType,
+      content_length: options.contentLength,
+      checksum_sha256: options.checksumSha256,
+      expires_at: expiresAt,
+      max_uses: maxUses,
+      capability_handle: capability,
     });
   }
 
@@ -266,14 +272,26 @@ export class FakeR2ArtifactPlane {
       readonly now: Date;
     },
   ): ReservationState {
-    const state = this.#reservations.get(port.reservation.reservationId);
-    if (state === undefined || state.reservation !== port.reservation || state.revoked)
-      throw new ArtifactPortError("ARTIFACT_NOT_FOUND");
+    const state = this.#reservations.get(port.reservation_id);
+    if (state === undefined || state.revoked) throw new ArtifactPortError("ARTIFACT_NOT_FOUND");
     const expected = createHmac("sha256", this.#secret)
       .update(canonical(state.reservation))
       .digest();
-    const supplied = Buffer.from(port.capability, "hex");
+    const supplied = Buffer.from(port.capability_handle, "hex");
     if (supplied.byteLength !== expected.byteLength || !timingSafeEqual(supplied, expected))
+      throw new ArtifactPortError("ARTIFACT_NOT_FOUND");
+    if (
+      port.schema_version !== "artifact-transfer-port/v3" ||
+      port.account_id !== state.reservation.accountId ||
+      port.workspace_id !== state.reservation.workspaceId ||
+      port.method !== state.reservation.method ||
+      port.path !== `/${state.reservation.objectKey}` ||
+      port.content_type !== state.reservation.contentType ||
+      port.content_length !== state.reservation.contentLength ||
+      port.checksum_sha256 !== state.reservation.checksumSha256 ||
+      port.expires_at !== state.reservation.expiresAt ||
+      port.max_uses !== state.reservation.maxUses
+    )
       throw new ArtifactPortError("ARTIFACT_NOT_FOUND");
     if (request.now.getTime() >= Date.parse(state.reservation.expiresAt))
       throw new ArtifactPortError("PORT_EXPIRED");
@@ -306,6 +324,9 @@ export class FakeR2ArtifactPlane {
       throw new ArtifactPortError("LENGTH_MISMATCH");
     if (digest(request.body) !== request.checksumSha256)
       throw new ArtifactPortError("HASH_MISMATCH");
+    const existing = this.#objects.get(state.reservation.objectKey);
+    if (existing !== undefined && !existing.deleted)
+      throw new ArtifactPortError("ARTIFACT_ALREADY_EXISTS");
     this.#objects.set(state.reservation.objectKey, {
       ownerAccountId: state.reservation.accountId,
       ownerWorkspaceId: state.reservation.workspaceId,
@@ -339,23 +360,25 @@ export class FakeR2ArtifactPlane {
     const stored = this.#ownedObject(scope, state.reservation.objectKey);
     if (stored.committed || stored.deleted) throw new ArtifactPortError("STALE_RECEIPT");
     const receiptBody = {
-      reservationId,
-      accountId: scope.accountId,
-      workspaceId: scope.workspaceId,
-      objectKey: state.reservation.objectKey,
-      callbackId: checkedIdentifier(callbackId, "callback_id"),
-      contentType: stored.contentType,
-      contentLength: stored.bytes.byteLength,
-      checksumSha256: stored.checksumSha256,
+      reservation_id: reservationId,
+      account_id: scope.accountId,
+      workspace_id: scope.workspaceId,
+      object_key: state.reservation.objectKey,
+      callback_id: checkedIdentifier(callbackId, "callback_id"),
+      content_type: stored.contentType,
+      content_length: stored.bytes.byteLength,
+      checksum_sha256: stored.checksumSha256,
       probe,
-      committedAt: now.toISOString(),
+      retention_class: state.reservation.retentionClass,
+      retain_until: state.reservation.retainUntil,
+      committed_at: now.toISOString(),
     };
     const receiptSha256 = digest(new TextEncoder().encode(canonical(receiptBody)));
     const receipt: ArtifactCommitReceipt = Object.freeze({
-      schemaVersion: "artifact-commit-receipt/v3",
-      receiptId: `receipt_${receiptSha256.slice(7, 47)}`,
+      schema_version: "artifact-commit-receipt/v3",
+      receipt_id: `receipt_${receiptSha256.slice(7, 47)}`,
       ...receiptBody,
-      receiptSha256,
+      receipt_sha256: receiptSha256,
     });
     stored.committed = true;
     state.receipt = receipt;

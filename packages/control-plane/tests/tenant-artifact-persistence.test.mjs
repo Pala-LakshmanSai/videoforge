@@ -17,6 +17,11 @@ async function insertReservation(executor, overrides = {}) {
     revisionId: IDS.revisionA,
     key,
     deletionOwner: IDS.accountA,
+    lane: "INPUT",
+    jobId: "job-a",
+    artifactId: "artifact-a",
+    retentionClass: "PROJECT",
+    retainUntil: "2099-02-01T00:00:00Z",
     ...overrides,
   };
   return executor.query(
@@ -25,17 +30,22 @@ async function insertReservation(executor, overrides = {}) {
        lane, job_id, artifact_id, object_key, method, content_type, content_length,
        checksum_sha256, expires_at, max_uses, retention_class, retain_until,
        deletion_owner_account_id, created_at
-     ) VALUES ($1, $2, $3, $4, $5, NULL, 'INPUT', 'job-a', 'artifact-a', $6,
-               'PUT', 'audio/wav', 128, $7, '2099-01-01T00:10:00Z', 1, 'PROJECT',
-               '2099-02-01T00:00:00Z', $8, '2099-01-01T00:00:00Z')`,
+     ) VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9,
+               'PUT', 'audio/wav', 128, $10, '2099-01-01T00:10:00Z', 1, $11,
+               $12, $13, '2099-01-01T00:00:00Z')`,
     [
       values.id,
       values.accountId,
       values.workspaceId,
       values.projectId,
       values.revisionId,
+      values.lane,
+      values.jobId,
+      values.artifactId,
       values.key,
       sha256("artifact-a"),
+      values.retentionClass,
+      values.retainUntil,
       values.deletionOwner,
     ],
   );
@@ -97,6 +107,16 @@ test("forged keys, cross-tenant ownership, stale receipts, and duplicate callbac
       insertReservation(executor, { id: uuid(9212), deletionOwner: IDS.accountB }),
       "23514",
     );
+    await expectDatabaseError(
+      insertReservation(executor, {
+        id: uuid(9215),
+        key: key.replace(
+          "/lane/input/job/job-a/artifact/artifact-a",
+          "/lane/render/job/other-job/artifact/other-artifact",
+        ),
+      }),
+      "23514",
+    );
     await insertReservation(executor);
     await expectDatabaseError(
       executor.query(
@@ -152,5 +172,50 @@ test("forged keys, cross-tenant ownership, stale receipts, and duplicate callbac
       ),
       "23505",
     );
+
+    await expectDatabaseError(
+      executor.query(
+        `UPDATE artifact_receipts
+            SET deleted_at = '2099-01-01T00:06:00Z', deletion_reason = 'before retention'
+          WHERE id = $1`,
+        [RECEIPT],
+      ),
+      "23514",
+    );
+
+    const reservationB = uuid(9216);
+    const receiptB = uuid(9217);
+    const keyB = `tenant/${IDS.accountB}/workspace/${IDS.workspaceB}/project/${IDS.projectB}/revision/${IDS.revisionB}/lane/input/job/job-a/artifact/artifact-a`;
+    await executor.query("SELECT set_config('videoforge.account_id', $1, false)", [IDS.accountB]);
+    await insertReservation(executor, {
+      id: reservationB,
+      accountId: IDS.accountB,
+      workspaceId: IDS.workspaceB,
+      projectId: IDS.projectB,
+      revisionId: IDS.revisionB,
+      key: keyB,
+      deletionOwner: IDS.accountB,
+    });
+    await executor.query(
+      `INSERT INTO artifact_receipts (
+         id, account_id, workspace_id, reservation_id, callback_id, object_key,
+         content_type, content_length, checksum_sha256, receipt_sha256, committed_at
+       ) VALUES ($1, $2, $3, $4, 'callback-a', $5, 'audio/wav', 128, $6, $7,
+                 '2099-01-01T00:05:00Z')`,
+      [
+        receiptB,
+        IDS.accountB,
+        IDS.workspaceB,
+        reservationB,
+        keyB,
+        sha256("artifact-a"),
+        sha256("receipt"),
+      ],
+    );
+    const sameHash = await executor.query(
+      "SELECT count(*)::int AS count FROM artifact_receipts WHERE receipt_sha256 = $1",
+      [sha256("receipt")],
+    );
+    assert.equal(sameHash.rows[0].count, 2);
   });
 });

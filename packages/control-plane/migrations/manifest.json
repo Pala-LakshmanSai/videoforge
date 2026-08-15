@@ -114,6 +114,12 @@
       "name": "tenant_artifact_receipts",
       "filename": "0019_tenant_artifact_receipts.sql",
       "sha256": "sha256:e645ad8f894e0324dfe4c696ab02c27e941d0882f841371a9b5d51ded655eb51"
+    },
+    {
+      "version": 20,
+      "name": "tenant_artifact_isolation_repair",
+      "filename": "0020_tenant_artifact_isolation_repair.sql",
+      "sha256": "sha256:28b8b2ae977db0949712cd7b647942fbb325cf5ee953b47637661717825b45fd"
     }
   ]
 }

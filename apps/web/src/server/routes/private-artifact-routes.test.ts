@@ -75,9 +75,19 @@ const objectKey =
   `${"a".repeat(64)}.bin`;
 
 describe("private artifact Hono control-plane boundary", () => {
+  it("is fail-closed unless an isolated fixture explicitly enables the legacy raw-key surface", () => {
+    expect(() =>
+      createPrivateArtifactControlPlaneApp({
+        controlPlane: fakeControlPlane(),
+        authorize: () => ({ ok: true, accountId: ACCOUNT_ID, workspaceId: WORKSPACE_ID }),
+      } as never),
+    ).toThrow("LEGACY_RAW_ARTIFACT_KEY_ROUTE_FORBIDDEN");
+  });
+
   it("routes all signing operations through the metadata-only facet", async () => {
     const controlPlane = fakeControlPlane();
     const app = createPrivateArtifactControlPlaneApp({
+      legacyFixtureOnly: true,
       controlPlane,
       authorize: (request) => ({
         ok: true,
@@ -178,6 +188,7 @@ describe("private artifact Hono control-plane boundary", () => {
       throw new Error("direct transfer facet must remain unreachable");
     });
     const options = {
+      legacyFixtureOnly: true as const,
       controlPlane,
       authorize: () => ({ ok: true as const, accountId: ACCOUNT_ID, workspaceId: WORKSPACE_ID }),
     };
@@ -212,6 +223,7 @@ describe("private artifact Hono control-plane boundary", () => {
   it("authorizes before body reads and rejects workspace mismatches and oversized metadata", async () => {
     const controlPlane = fakeControlPlane();
     const unauthorized = createPrivateArtifactControlPlaneApp({
+      legacyFixtureOnly: true,
       controlPlane,
       authorize: () => ({
         ok: false,
@@ -238,6 +250,7 @@ describe("private artifact Hono control-plane boundary", () => {
     expect(bodyAccess).not.toHaveBeenCalled();
 
     const app = createPrivateArtifactControlPlaneApp({
+      legacyFixtureOnly: true,
       controlPlane,
       authorize: () => ({ ok: true, accountId: ACCOUNT_ID, workspaceId: WORKSPACE_ID }),
     });
@@ -273,6 +286,7 @@ describe("private artifact Hono control-plane boundary", () => {
   it("rejects ambiguous framing and non-exact adapter output", async () => {
     const controlPlane = fakeControlPlane();
     const app = createPrivateArtifactControlPlaneApp({
+      legacyFixtureOnly: true,
       controlPlane,
       authorize: () => ({ ok: true, accountId: ACCOUNT_ID, workspaceId: WORKSPACE_ID }),
     });
@@ -307,6 +321,7 @@ describe("private artifact Hono control-plane boundary", () => {
       }),
     } as unknown as ArtifactControlPlanePort;
     const invalidApp = createPrivateArtifactControlPlaneApp({
+      legacyFixtureOnly: true,
       controlPlane: invalidControlPlane,
       authorize: () => ({ ok: true, accountId: ACCOUNT_ID, workspaceId: WORKSPACE_ID }),
     });

@@ -13,6 +13,7 @@ const WORKSPACE_HEADER = "x-videoforge-workspace-id";
 const BEARER_PREFIX = "Bearer ";
 
 export interface Phase1PrivateArtifactAppOptions {
+  readonly legacyFixtureOnly: true;
   readonly authorization: Pick<AuthWorkspaceBoundary, "authorizeWorkspace">;
   readonly controlPlane: ArtifactControlPlanePort;
 }
@@ -43,6 +44,7 @@ function authProblemResponse(problem: AuthProblem): Response {
  */
 export function createPhase1PrivateArtifactApp(options: Phase1PrivateArtifactAppOptions): Hono {
   return createPrivateArtifactControlPlaneApp({
+    legacyFixtureOnly: options.legacyFixtureOnly,
     controlPlane: options.controlPlane,
     authorize: async ({ headers }) => {
       const authorization = await options.authorization.authorizeWorkspace(

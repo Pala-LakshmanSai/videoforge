@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
 
+import { validateContract } from "../../contracts/dist/src/index.js";
 import {
   ArtifactPortError,
   deriveArtifactObjectKey,
@@ -41,9 +42,9 @@ function options(overrides = {}) {
 function uploadRequest(port, body = bytes, overrides = {}) {
   return {
     path: port.path,
-    contentType: port.contentType,
-    contentLength: port.contentLength,
-    checksumSha256: port.checksumSha256,
+    contentType: port.content_type,
+    contentLength: port.content_length,
+    checksumSha256: port.checksum_sha256,
     body,
     now: NOW,
     ...overrides,
@@ -69,7 +70,7 @@ test("exact upload ports reject forged scope, method, path, type, length, hash, 
   const plane = new FakeR2ArtifactPlane(new Uint8Array(32).fill(7));
   const port = plane.reserveUpload(identity(scopeA, "exact"), options());
   expectCode("ARTIFACT_NOT_FOUND", () =>
-    plane.upload({ ...port, capability: "00".repeat(32) }, uploadRequest(port)),
+    plane.upload({ ...port, capability_handle: "00".repeat(32) }, uploadRequest(port)),
   );
   expectCode("PORT_SCOPE_MISMATCH", () =>
     plane.upload(
@@ -109,7 +110,7 @@ test("partial uploads never commit; expired uncommitted objects are cleaned afte
   plane.upload(crashed, uploadRequest(crashed));
   assert.equal(plane.cleanupOrphans(LATER), 1);
   expectCode("STALE_RECEIPT", () =>
-    plane.commitUpload(scopeA, crashed.reservation.reservationId, "callback-crash", {}, LATER),
+    plane.commitUpload(scopeA, crashed.reservation_id, "callback-crash", {}, LATER),
   );
 });
 
@@ -119,22 +120,45 @@ test("commit receipts are durable and idempotent for one callback but reject sta
   plane.upload(port, uploadRequest(port));
   const receipt = plane.commitUpload(
     scopeA,
-    port.reservation.reservationId,
+    port.reservation_id,
     "callback-1",
     { width: 1280, height: 720, decoded: true },
     NOW,
   );
-  assert.equal(
-    plane.commitUpload(scopeA, port.reservation.reservationId, "callback-1", {}, NOW),
-    receipt,
-  );
+  assert.equal(plane.commitUpload(scopeA, port.reservation_id, "callback-1", {}, NOW), receipt);
   expectCode("DUPLICATE_CALLBACK", () =>
-    plane.commitUpload(scopeA, port.reservation.reservationId, "callback-2", {}, NOW),
+    plane.commitUpload(scopeA, port.reservation_id, "callback-2", {}, NOW),
   );
   expectCode("ARTIFACT_NOT_FOUND", () =>
-    plane.commitUpload(scopeB, port.reservation.reservationId, "callback-1", {}, NOW),
+    plane.commitUpload(scopeB, port.reservation_id, "callback-1", {}, NOW),
   );
-  assert.match(receipt.receiptSha256, /^sha256:[0-9a-f]{64}$/u);
+  assert.match(receipt.receipt_sha256, /^sha256:[0-9a-f]{64}$/u);
+  assert.equal(receipt.retention_class, "PROJECT");
+  assert.equal(validateContract("artifactTransferPortV3", port).success, true);
+  assert.equal(validateContract("artifactCommitReceiptV3", receipt).success, true);
+});
+
+test("an accepted immutable object cannot be replaced by a later reservation", () => {
+  const plane = new FakeR2ArtifactPlane(new Uint8Array(32).fill(12));
+  const first = plane.reserveUpload(identity(scopeA, "immutable"), options());
+  plane.upload(first, uploadRequest(first));
+  plane.commitUpload(scopeA, first.reservation_id, "callback-immutable", {}, NOW);
+  const replacementBytes = new TextEncoder().encode("replacement bytes are forbidden");
+  const replacementHash = `sha256:${createHash("sha256").update(replacementBytes).digest("hex")}`;
+  const replacement = plane.reserveUpload(
+    identity(scopeA, "immutable"),
+    options({
+      contentLength: replacementBytes.byteLength,
+      checksumSha256: replacementHash,
+      now: new Date(NOW.getTime() + 1_000),
+    }),
+  );
+  expectCode("ARTIFACT_ALREADY_EXISTS", () =>
+    plane.upload(
+      replacement,
+      uploadRequest(replacement, replacementBytes, { now: new Date(NOW.getTime() + 1_000) }),
+    ),
+  );
 });
 
 test("two concurrent tenants with identical logical names cannot read, delete, copy, move, list, or dedup-discover", () => {
@@ -143,16 +167,16 @@ test("two concurrent tenants with identical logical names cannot read, delete, c
   const portB = plane.reserveUpload(identity(scopeB, "concurrent"), options());
   plane.upload(portA, uploadRequest(portA));
   plane.upload(portB, uploadRequest(portB));
-  plane.commitUpload(scopeA, portA.reservation.reservationId, "callback-a", {}, NOW);
-  plane.commitUpload(scopeB, portB.reservation.reservationId, "callback-b", {}, NOW);
+  plane.commitUpload(scopeA, portA.reservation_id, "callback-a", {}, NOW);
+  plane.commitUpload(scopeB, portB.reservation_id, "callback-b", {}, NOW);
 
   const downloadA = plane.reserveDownload(identity(scopeA, "concurrent"), options({ maxUses: 2 }));
   assert.deepEqual(
     plane.download(downloadA, {
       path: downloadA.path,
-      contentType: downloadA.contentType,
-      contentLength: downloadA.contentLength,
-      checksumSha256: downloadA.checksumSha256,
+      contentType: downloadA.content_type,
+      contentLength: downloadA.content_length,
+      checksumSha256: downloadA.checksum_sha256,
       now: NOW,
     }),
     bytes,
@@ -176,7 +200,7 @@ test("deletion is owner-scoped and retention-bound", () => {
     options({ retainUntil: LATER.toISOString() }),
   );
   plane.upload(upload, uploadRequest(upload));
-  plane.commitUpload(scopeA, upload.reservation.reservationId, "callback-retained", {}, NOW);
+  plane.commitUpload(scopeA, upload.reservation_id, "callback-retained", {}, NOW);
   const deletion = plane.reserveDelete(
     identity(scopeA, "retained"),
     options({ retainUntil: LATER.toISOString() }),
@@ -184,9 +208,9 @@ test("deletion is owner-scoped and retention-bound", () => {
   expectCode("RETENTION_ACTIVE", () =>
     plane.delete(scopeA, deletion, {
       path: deletion.path,
-      contentType: deletion.contentType,
-      contentLength: deletion.contentLength,
-      checksumSha256: deletion.checksumSha256,
+      contentType: deletion.content_type,
+      contentLength: deletion.content_length,
+      checksumSha256: deletion.checksum_sha256,
       now: NOW,
     }),
   );

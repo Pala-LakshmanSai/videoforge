@@ -207,7 +207,7 @@ test("the same metadata snapshot restores exactly, resumes idempotently, and rem
     const serialized = serializeMetadataSnapshot(first);
     assert.equal(serializeMetadataSnapshot(second), serialized);
     assert.equal(second.snapshotSha256, first.snapshotSha256);
-    assert.equal(first.migrationLedger.length, 19);
+    assert.equal(first.migrationLedger.length, 20);
     assert.equal(first.tables.length, RELATIONAL_TABLE_NAMES.length);
     for (const requiredTable of [
       "memberships",
