@@ -97,7 +97,8 @@ repository:
   soulx_activation_commit: "23ce47fea7dd5dd329b85027ae36db53438a7cd6"
   soulx_controller_commit: "2e424d45fee38f4b76ac4e36ae0490c9ce5b4c38"
   soulx_runtime_compiler_fix_commit: "4d4f3500619d7599fe3f02792f2c41dcd2ab1b87"
-  last_good_commit: "17ad36010f52be3725bb49a9ce6414e350363fb5"
+  soulx_qualification_handoff_commit: "6698d6bf9e2f402fb0abaf758ad492dec0b1247e"
+  last_good_commit: "6698d6bf9e2f402fb0abaf758ad492dec0b1247e"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -327,7 +328,7 @@ vf_9_24s:
   evidence: "evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json"
   local_tests: passed
   canonical_verify: passed
-  canonical_verify_commit: "23ce47f0b9425298daac8b40e359ef2f69878d5d"
+  canonical_verify_commit: "6698d6bf9e2f402fb0abaf758ad492dec0b1247e"
   installed_chrome_tests: 42
   runpod_account_owner: sujal
   runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
