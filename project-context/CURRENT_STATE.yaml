@@ -1,14 +1,14 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-15T09:56:02.932Z"
+updated_at: "2026-08-15T10:07:36Z"
 
-phase: soulx_flashhead_pro_new_avatar_sample_ready_for_user_review
+phase: serverless_v2_roadmap_reset
 implementation_authorized_in_current_task: true
-current_milestone: soulx_flashhead_pro_new_avatar_timed_sample
-current_task: VF-9-24U
-current_wave: soulx_flashhead_pro_replacement_qualification
+current_milestone: production_serverless_architecture_and_checkpoint_replan
+current_task: VF-10-00
+current_wave: serverless_v2_planning
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: ready_for_user_review
+task_stage: context_and_roadmap_reconciliation
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -211,23 +211,23 @@ completed_tasks:
     settled_external_spend_usd: 0.34927155333571136
     ongoing_retained_volume_usd_per_month: 3.5
 active_ownership:
-  - task_id: VF-9-24U
-    checkpoint: CP-07-replacement-qualification
+  - task_id: VF-10-00
+    checkpoint: V2-00
     owner: current_chat
-    stage: ready_for_user_review
+    stage: context_and_roadmap_reconciliation
     external_spend_cap_usd: 0
 
 blocked_tasks: []
-in_progress_checkpoint: CP-07-replacement-qualification
+in_progress_checkpoint: V2-00
 
 recommended_next_task:
-  task_id: VF-9-24U
-  checkpoint: CP-07-replacement-qualification
-  milestone: soulx_flashhead_pro_new_avatar_timed_sample
-  status: technical_pass_outputs_ready_for_user_review
-  dependency_status: cp06_complete_green_settled_visual_accepted
-  authorization_status: exact_paid_authority_consumed_and_closed
-  task_stage: ready_for_user_review
+  task_id: VF-10-00
+  checkpoint: V2-00
+  milestone: production_serverless_architecture_and_checkpoint_replan
+  status: in_progress
+  dependency_status: current_repository_and_paid_model_qualification_evidence_available
+  authorization_status: provider_free_context_replan_only
+  task_stage: context_and_roadmap_reconciliation
   provider_authority:
     mode: none
     provider: null
@@ -238,9 +238,9 @@ recommended_next_task:
     resources: []
     authorized_operations: []
     allowed_operations: []
-  read_profile: soulx_flashhead_pro_new_avatar_timed_sample
-  task_brief: tasks/VF-9-24U.md
-  goal: "Generate the third exact 10.00-second voiceover sample with the new owned avatar, capture exact fresh-Pod readiness and generation timing, render both Ranga-style compositions, and project 30-minute avatar cost."
+  read_profile: serverless_v2_roadmap_reset
+  task_brief: tasks/VF-10-00.md
+  goal: "Replace the obsolete manual-Pod/global-shared checkpoint roadmap and prompt pack with a current-state-based multi-tenant scale-to-zero Serverless production roadmap."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -256,18 +256,17 @@ recommended_next_task:
   retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
-  application_code_changes_authorized: true
+  application_code_changes_authorized: false
   prerequisite_evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json"
   required_handoff:
-    - "Preserve CP-06 exact digest, accepted outputs, settled cost, zero compute, and retained 50 GB Mage volume."
-    - "Retain historical Echo evidence as immutable truth while deleting only the exact verified Echo volume and removing Echo from active dispatch."
-    - "Use exact pinned first-party SoulX-FlashHead Pro BF16 lineage, four distilled steps, shift 5, native 512x512 at 25 fps, deterministic seed 42, offline runtime, and no enhancement or repair."
-    - "Generate one different exact 10.00-second native sample and local full/split crop previews only after new paid authority."
-    - "Record exact provider Pod-start to model-ready, generation, lifecycle, cleanup, and measured 30-minute avatar cost projection."
+    - "Preserve reusable completed implementation and immutable provider evidence; do not restart proven media/model work."
+    - "Supersede global-shared data, one global session, manual Pod lifecycle, and Pod-bound dispatch authority."
+    - "Define dependency-safe checkpoints from current state through production release, with implementation and independent-audit prompts for every checkpoint."
+    - "Keep the Ranga-derived deterministic visual grammar measurable and provider-free until later bounded activation."
   prohibited_in_task:
-    - "Any model substitution, repair, upscaler, face restoration, Mage mount, cross-mount, uncarded pickle, or automatic GPU fallback."
-    - "Any paid operation before a new combined authorization with a user-supplied numeric finite cap."
-    - "Any production dispatch or renderer crop activation before the user reviews and accepts the new previews."
+    - "Application implementation, credential access, provider mutation, image publication, endpoint creation, GPU allocation, model download, or spend."
+    - "Deletion of immutable historical evidence or completed task briefs."
+    - "Treating unverified current prices, availability, or Serverless compatibility as accepted facts."
 
 vf_9_24u:
   status: technical_pass_outputs_ready_for_user_review

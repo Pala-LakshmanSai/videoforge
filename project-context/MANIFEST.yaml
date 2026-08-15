@@ -10,8 +10,8 @@ source_of_truth: project-context
 # samples on fresh RTX 5090 Pods. Zero Pods/templates/endpoints/workers remain and both intended
 # volumes are retained. The user accepted and activated the exact full and split renderer crops;
 # CP-07 is complete. The later full exact-avatar suite remains a separate open production gate.
-current_selected_profile: soulx_flashhead_pro_new_avatar_timed_sample
-current_selected_brief: tasks/VF-9-24U.md
+current_selected_profile: serverless_v2_roadmap_reset
+current_selected_brief: tasks/VF-10-00.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -33,6 +33,13 @@ target_profile_word_budget: 10000
 # Historical task briefs remain evidence but are intentionally not active read profiles. Create one
 # narrow profile/brief when each future checkpoint becomes current.
 read_profiles:
+  serverless_v2_roadmap_reset:
+    - tasks/VF-10-00.md
+    - 15_DECISIONS_AND_OPEN_GATES.md
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 03_REFERENCE_VIDEO_FORENSICS.md
+    - 16_CONTEXT_MAINTENANCE.md
+    - 22_PROJECT_COMPLETION_CHECKPOINTS.md
   soulx_flashhead_pro_new_avatar_timed_sample:
     - tasks/VF-9-24U.md
     - 08_MODELS_AND_PROVIDERS.md
