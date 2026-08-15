@@ -44,6 +44,7 @@ jobs:
           test "$RUNNER_ARCH" = "X64"
           image="videoforge-soulx-flashhead-pro-vf924s:${GITHUB_SHA}"
           docker build --tag "$image" workers/avatar-primary
+          docker run --rm --entrypoint /bin/sh "$image" -c 'test -x /usr/bin/gcc && test -x /usr/bin/g++'
           docker run --rm --entrypoint python "$image" -c \
             'import torch, flash_attn; import soulx_api, soulx_volume; assert torch.__version__.split("+")[0] == "2.7.1"; assert soulx_api.runtime.health()["state"] == "loading"; assert soulx_volume.expected_manifest()["total_bytes"] == 6916084703; print("soulx-vf924s-import-health-ok")'
           docker run --rm --entrypoint python "$image" -m compileall -q /opt/soulx-flashhead /opt/videoforge

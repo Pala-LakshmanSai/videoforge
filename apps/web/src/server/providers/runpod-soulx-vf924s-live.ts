@@ -24,6 +24,7 @@ const GPU_RATE = 0.74;
 const GPU_VRAM_GB = 24;
 const VOLUME_SIZE_GB = 50;
 const FINITE_CAP_USD = 4;
+const PRIOR_FAILED_ATTEMPT_CONSERVATIVE_USD = 0.2;
 const POD_LIFECYCLE_RESERVE_SECONDS = 120;
 const PREP_TIMEOUT_SECONDS = 1_800;
 const RUNTIME_READY_TIMEOUT_SECONDS = 1_800;
@@ -497,12 +498,13 @@ export async function runSoulXVf924s(input: {
     throw new Error("VF924S_INPUT_INVALID");
   }
   const reservation =
+    PRIOR_FAILED_ATTEMPT_CONSERVATIVE_USD +
     ((PREP_TIMEOUT_SECONDS +
       RUNTIME_READY_TIMEOUT_SECONDS +
       GENERATION_TIMEOUT_SECONDS +
       POD_LIFECYCLE_RESERVE_SECONDS * 2) /
       3_600) *
-    GPU_RATE;
+      GPU_RATE;
   if (reservation > FINITE_CAP_USD) throw new Error("VF924S_CAP_RISK");
 
   const apiKey = await loadSujalRunPodApiKeyFromKeychain();
@@ -525,14 +527,19 @@ export async function runSoulXVf924s(input: {
   const startingVolumes = await client.listVolumes();
   const mage = startingVolumes.find((item) => sha256(item.id) === MAGE_VOLUME_HASH);
   const echo = startingVolumes.find((item) => sha256(item.id) === ECHO_VOLUME_HASH);
+  const existingSoulX = startingVolumes.find(
+    (item) =>
+      item.name === SOULX_VOLUME_NAME &&
+      item.size === VOLUME_SIZE_GB &&
+      item.dataCenterId === REGION,
+  );
   if (
     startingPods.length !== 0 ||
     startingTemplates.length !== 0 ||
     startingVolumes.length !== 2 ||
     mage?.size !== 50 ||
-    echo?.name !== ECHO_VOLUME_NAME ||
-    echo.size !== 50 ||
-    echo.dataCenterId !== REGION
+    (echo === undefined && existingSoulX === undefined) ||
+    (echo !== undefined && existingSoulX !== undefined)
   ) {
     throw new Error("VF924S_STARTING_INVENTORY_MISMATCH");
   }
@@ -545,27 +552,40 @@ export async function runSoulXVf924s(input: {
   let runtimeHealth: JsonRecord | null = null;
   let generationResult: JsonRecord | null = null;
   try {
-    await client.deleteVolume(echo);
-    soulxVolume = await client.createVolume();
+    if (existingSoulX === undefined) {
+      if (echo === undefined) throw new Error("VF924S_ECHO_VOLUME_ABSENT");
+      await client.deleteVolume(echo);
+      soulxVolume = await client.createVolume();
+    } else {
+      soulxVolume = existingSoulX;
+    }
     template = await client.createTemplate(input.imageDigest);
 
-    activePod = await client.createPod({
-      name: "videoforge-soulx-vf924s-prepare",
-      templateId: template.id,
-      imageDigest: input.imageDigest,
-      volume: soulxVolume,
-      mode: "prepare",
-    });
-    preparationHealth = await pollHealth(
-      activePod.id,
-      PREP_TIMEOUT_SECONDS,
-      "videoforge.soulx-flashhead-pro-preparation-health/v1",
-    );
-    if (`sha256:${preparationHealth.manifest_sha256}` !== MANIFEST_SHA256) {
-      throw new Error("VF924S_PREPARED_MANIFEST_MISMATCH");
+    if (existingSoulX === undefined) {
+      activePod = await client.createPod({
+        name: "videoforge-soulx-vf924s-prepare",
+        templateId: template.id,
+        imageDigest: input.imageDigest,
+        volume: soulxVolume,
+        mode: "prepare",
+      });
+      preparationHealth = await pollHealth(
+        activePod.id,
+        PREP_TIMEOUT_SECONDS,
+        "videoforge.soulx-flashhead-pro-preparation-health/v1",
+      );
+      if (`sha256:${preparationHealth.manifest_sha256}` !== MANIFEST_SHA256) {
+        throw new Error("VF924S_PREPARED_MANIFEST_MISMATCH");
+      }
+      deletions.push(await deletePodEvidence(client, activePod));
+      activePod = null;
+    } else {
+      preparationHealth = {
+        state: "reused_after_compiler_only_runtime_failure",
+        volume_id_sha256: sha256(existingSoulX.id),
+        runtime_manifest_reverification_required: true,
+      };
     }
-    deletions.push(await deletePodEvidence(client, activePod));
-    activePod = null;
 
     const workerToken = randomBytes(32).toString("base64url");
     activePod = await client.createPod({
@@ -678,7 +698,7 @@ export async function runSoulXVf924s(input: {
     const settled = deletions.reduce((sum, item) => sum + (item.settled_cost_usd ?? 0), 0);
     const conservative = deletions.reduce(
       (sum, item) => sum + (item.settled_cost_usd ?? item.elapsed_cost_upper_bound_usd),
-      0,
+      PRIOR_FAILED_ATTEMPT_CONSERVATIVE_USD,
     );
     if (conservative > FINITE_CAP_USD) throw new Error("VF924S_FINAL_CAP_BREACH");
     const evidence: JsonRecord = {
@@ -701,6 +721,7 @@ export async function runSoulXVf924s(input: {
       finite_cost: {
         cap_usd: FINITE_CAP_USD,
         settled_usd_observed: settled,
+        prior_failed_attempt_conservative_usd: PRIOR_FAILED_ATTEMPT_CONSERVATIVE_USD,
         conservative_usd: conservative,
       },
       final_resource_audit: {

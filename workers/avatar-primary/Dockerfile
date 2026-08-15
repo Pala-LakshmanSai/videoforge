@@ -1,7 +1,7 @@
 FROM pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime@sha256:c16f4c749e2d9e96878875cdf6cc45cddda1d1a36fddd371dd6f2360f1b6e2a2
 
 ARG SOULX_SOURCE_REVISION=9bc03de06bb0de82cd6bc477804512ae06144bf2
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg git ca-certificates curl \
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential ffmpeg git ca-certificates curl \
     && rm -rf /var/lib/apt/lists/* \
     && git clone --filter=blob:none https://github.com/Soul-AILab/SoulX-FlashHead.git /opt/soulx-flashhead \
     && git -C /opt/soulx-flashhead checkout --detach "$SOULX_SOURCE_REVISION" \
@@ -30,6 +30,8 @@ COPY soulx_api.py soulx-entrypoint.py soulx_prepare_service.py soulx_runtime.py 
 
 ENV SOULX_MODEL_ROOT=/runpod-volume/soulx-flashhead-pro \
     SOULX_SCRATCH_ROOT=/run/videoforge/soulx-scratch \
+    CC=/usr/bin/gcc \
+    CXX=/usr/bin/g++ \
     HF_HOME=/tmp/hf-cache \
     HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1 \

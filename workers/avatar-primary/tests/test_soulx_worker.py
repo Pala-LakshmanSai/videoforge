@@ -35,6 +35,8 @@ class SoulXContractTest(unittest.TestCase):
     def test_runtime_is_offline_and_echo_is_not_in_active_image(self) -> None:
         dockerfile = (WORKER_ROOT / "Dockerfile").read_text()
         self.assertIn("HF_HUB_OFFLINE=1", dockerfile)
+        self.assertIn("build-essential", dockerfile)
+        self.assertIn("CC=/usr/bin/gcc", dockerfile)
         self.assertIn("SoulX-FlashHead.git", dockerfile)
         self.assertIn("weights_only=True", (WORKER_ROOT / "soulx-single-gpu.patch").read_text())
         self.assertNotIn("echomimic", dockerfile.lower())
