@@ -7,6 +7,8 @@ export const RELATIONAL_TABLE_NAMES = [
   "workspaces",
   "memberships",
   "assets",
+  "artifact_reservations",
+  "artifact_receipts",
   "execution_profiles",
   "avatar_profiles",
   "avatar_profile_versions",
@@ -76,6 +78,8 @@ export type RelationalTableName = (typeof RELATIONAL_TABLE_NAMES)[number];
  */
 export const TENANT_VIEW_NAMES = [
   "videoforge_tenant_assets",
+  "videoforge_tenant_artifact_receipts",
+  "videoforge_tenant_artifact_reservations",
   "videoforge_tenant_attempts",
   "videoforge_tenant_avatar_profile_versions",
   "videoforge_tenant_avatar_profiles",

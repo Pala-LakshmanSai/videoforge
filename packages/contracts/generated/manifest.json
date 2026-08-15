@@ -3,6 +3,24 @@
   "canonical_root": "project-context/evidence",
   "files": [
     {
+      "source": "project-context/evidence/artifact_object_identity_v3.schema.json",
+      "destination": "generated/schemas/artifact_object_identity_v3.schema.json",
+      "bytes": 1255,
+      "sha256": "sha256:6c733caaeaa508e29f122930ae55815b99c0ada7cf0896a29f29525843c56c4c"
+    },
+    {
+      "source": "project-context/evidence/artifact_transfer_port_v3.schema.json",
+      "destination": "generated/schemas/artifact_transfer_port_v3.schema.json",
+      "bytes": 1521,
+      "sha256": "sha256:251fbcfbc9d14ed918b1478e5c287e7c282fdcef2a3278f32da038287d5cc898"
+    },
+    {
+      "source": "project-context/evidence/artifact_commit_receipt_v3.schema.json",
+      "destination": "generated/schemas/artifact_commit_receipt_v3.schema.json",
+      "bytes": 1877,
+      "sha256": "sha256:95a4020c2f75b4136887392ccfb7f94250d8435b096584124f496003949fa8f5"
+    },
+    {
       "source": "project-context/evidence/admitted_identity.schema.json",
       "destination": "generated/schemas/admitted_identity.schema.json",
       "bytes": 1510,
@@ -133,6 +151,42 @@
       "destination": "generated/schemas/render_job_result.schema.json",
       "bytes": 3672,
       "sha256": "sha256:6d0097b02139fc8a6d54a89ebf174506c895f5c09952b5d7f43d632f0168e113"
+    },
+    {
+      "source": "project-context/evidence/fixtures/artifact_object_identity_v3.valid.json",
+      "destination": "generated/fixtures/artifact_object_identity_v3.valid.json",
+      "bytes": 359,
+      "sha256": "sha256:6aec563e55ee7e279e499f26ba22b0a84c8a9ff6928941ab0b2a06995e569e33"
+    },
+    {
+      "source": "project-context/evidence/fixtures/artifact_object_identity_v3.invalid.raw_key.json",
+      "destination": "generated/fixtures/artifact_object_identity_v3.invalid.raw_key.json",
+      "bytes": 274,
+      "sha256": "sha256:f097ad6c0d2992ce77a2823a0a4dd1e093e86b81ab7871277aaa558b83f8af9e"
+    },
+    {
+      "source": "project-context/evidence/fixtures/artifact_transfer_port_v3.valid.json",
+      "destination": "generated/fixtures/artifact_transfer_port_v3.valid.json",
+      "bytes": 537,
+      "sha256": "sha256:04cc8a9bd18def112edacbc7dae81824250a2c8b7b78aa69905308369e0dbe75"
+    },
+    {
+      "source": "project-context/evidence/fixtures/artifact_transfer_port_v3.invalid.broad.json",
+      "destination": "generated/fixtures/artifact_transfer_port_v3.invalid.broad.json",
+      "bytes": 418,
+      "sha256": "sha256:74a2485128ab3d393671bb88a7492afdbd8d1cdaf44a170252e5f1f54c273f0c"
+    },
+    {
+      "source": "project-context/evidence/fixtures/artifact_commit_receipt_v3.valid.json",
+      "destination": "generated/fixtures/artifact_commit_receipt_v3.valid.json",
+      "bytes": 694,
+      "sha256": "sha256:79f64e018f578dbb37ac3bf06b363a8e7e78dda01d047a110e33316f079b3565"
+    },
+    {
+      "source": "project-context/evidence/fixtures/artifact_commit_receipt_v3.invalid.url.json",
+      "destination": "generated/fixtures/artifact_commit_receipt_v3.invalid.url.json",
+      "bytes": 714,
+      "sha256": "sha256:99fdfc57c4cc59542298ef4af8b5e4f1f6f368dc1911693df99a47d1a62d17aa"
     },
     {
       "source": "project-context/evidence/fixtures/admitted_identity.valid.json",
@@ -395,8 +449,8 @@
     {
       "source": "project-context/evidence/contract-index.v1.json",
       "destination": "generated/contract-index.v1.json",
-      "bytes": 6785,
-      "sha256": "sha256:3d8768bfe2f7a70a2ea632d36881119475cea6df310b79b232c03028e73147f9"
+      "bytes": 7745,
+      "sha256": "sha256:be148cbb9ef75a933711b3c85013042d00e297cec0810dede8c7d99d25dd799c"
     }
   ]
 }

@@ -52,6 +52,18 @@ class CanonicalContractDocument(RootModel[dict[str, Any]]):
         return validate_contract(cls.contract_name, value)
 
 
+class ArtifactObjectIdentityV3Document(CanonicalContractDocument):
+    contract_name = "artifactObjectIdentityV3"
+
+
+class ArtifactTransferPortV3Document(CanonicalContractDocument):
+    contract_name = "artifactTransferPortV3"
+
+
+class ArtifactCommitReceiptV3Document(CanonicalContractDocument):
+    contract_name = "artifactCommitReceiptV3"
+
+
 class AvatarProfileVersionDocument(CanonicalContractDocument):
     contract_name = "avatarProfileVersion"
 
@@ -137,6 +149,9 @@ class RenderJobResultDocument(CanonicalContractDocument):
 
 
 CONTRACT_MODELS: dict[ContractName, type[BaseModel]] = {
+    "artifactObjectIdentityV3": ArtifactObjectIdentityV3Document,
+    "artifactTransferPortV3": ArtifactTransferPortV3Document,
+    "artifactCommitReceiptV3": ArtifactCommitReceiptV3Document,
     "admittedIdentity": AdmittedIdentityDocument,
     "avatarProfileVersion": AvatarProfileVersionDocument,
     "createProjectRequest": CreateProjectRequest,

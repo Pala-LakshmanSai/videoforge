@@ -39,7 +39,7 @@ def load_fixture(filename: str) -> Any:
 
 def test_all_canonical_schemas_compile() -> None:
     assert set(CONTRACT_NAMES) == set(CONTRACT_VALIDATORS)
-    assert len(CONTRACT_NAMES) == 22
+    assert len(CONTRACT_NAMES) == 25
 
 
 def test_fixture_matrix_covers_every_synchronized_fixture() -> None:

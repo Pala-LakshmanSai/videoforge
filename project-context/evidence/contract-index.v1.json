@@ -2,6 +2,30 @@
   "schema_version": "contract-index/v1",
   "contracts": [
     {
+      "name": "artifactObjectIdentityV3",
+      "schema": "artifact_object_identity_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/artifact_object_identity_v3.valid.json", "expected": true},
+        {"path": "fixtures/artifact_object_identity_v3.invalid.raw_key.json", "expected": false}
+      ]
+    },
+    {
+      "name": "artifactTransferPortV3",
+      "schema": "artifact_transfer_port_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/artifact_transfer_port_v3.valid.json", "expected": true},
+        {"path": "fixtures/artifact_transfer_port_v3.invalid.broad.json", "expected": false}
+      ]
+    },
+    {
+      "name": "artifactCommitReceiptV3",
+      "schema": "artifact_commit_receipt_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/artifact_commit_receipt_v3.valid.json", "expected": true},
+        {"path": "fixtures/artifact_commit_receipt_v3.invalid.url.json", "expected": false}
+      ]
+    },
+    {
       "name": "admittedIdentity",
       "schema": "admitted_identity.schema.json",
       "fixtures": [

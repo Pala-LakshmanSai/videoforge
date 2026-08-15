@@ -108,6 +108,12 @@
       "name": "tenant_private_scope",
       "filename": "0018_tenant_private_scope.sql",
       "sha256": "sha256:86ae2a665d047202187aa1a2d0bd918664327a8b7b989a41c6e77c9ca22a7f45"
+    },
+    {
+      "version": 19,
+      "name": "tenant_artifact_receipts",
+      "filename": "0019_tenant_artifact_receipts.sql",
+      "sha256": "sha256:e645ad8f894e0324dfe4c696ab02c27e941d0882f841371a9b5d51ded655eb51"
     }
   ]
 }

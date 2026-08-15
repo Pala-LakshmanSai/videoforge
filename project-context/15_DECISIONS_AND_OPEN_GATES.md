@@ -62,8 +62,8 @@ Every row below is `APPROVED` by the user and recorded in this planning session 
 
 | ID | Evidence needed | Consequence |
 |---|---|---|
-| `GATE_TENANCY_001` | **OPEN:** additive account/default-workspace migration, composite DB ownership, private repositories/APIs/events, built-in/system split, and two-account negative matrix | No hosted multi-user or provider dispatch |
-| `GATE_STORAGE_001` | **OPEN:** tenant-private R2 keys, least-privilege signed URLs, durable object verification, lifecycle/redaction, and isolated job scratch | No production media upload/download or worker artifact path |
+| `GATE_TENANCY_001` | **OPEN — LOCAL CONTRACT GREEN:** account/default-workspace, composite ownership, private application paths, tenant-derived artifact ports/receipts, and two-account negatives pass locally; non-superuser hosted RLS remains V2-06 | No hosted multi-user or provider dispatch |
+| `GATE_STORAGE_001` | **OPEN — PROVIDER-FREE CONTRACT GREEN:** exact tenant keys/ports, durable receipts, retention/deletion ownership, redaction, and isolated scratch pass; real private R2 composition remains V2-06 | No production media upload/download or real worker artifact transfer |
 | `GATE_QUEUE_001` | **OPEN:** serializable one-active-provider-workload/account and two-workload/global admission, ordinary video caps, video-over-preview priority, fair cross-account rotation, private reorder/cancel, crash/race recovery, and 1/2/5/10-user simulation | No production dispatch or concurrency claim |
 | `GATE_SERVERLESS_CONTRACT_001` | **OPEN:** v3 Serverless schemas/fixtures, old-Pod firewall, predispatch/outbox/post-assignment authority, ambiguity/status/webhook/result-expiry recovery, at-most-one accepted output, timeout and no-purge proof | No endpoint publication or `/run` request |
 | `GATE_HOSTING_001` | **OPEN:** isolated staging Better Auth/Neon/private R2/Cloudflare Workflow/Cloud Run Jobs, migration/restore, security, cost, and installed-Chrome acceptance | No production deployment |

@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: V2-01 complete and independently re-audited green; V2-02 safe and ready for explicit implementation invocation
+Status: V2-02 provider-free implementation green; independent audit pending before V2-03
 Context schema: `2.0`
 Last updated: `2026-08-15`
 
@@ -128,14 +128,23 @@ reads and mutations returning non-revealing not-found responses. Invite redempti
 account, one default workspace, and one membership. Built-in presets are the only globally readable
 records and reject every update and delete. The approved UI geometry is unchanged.
 
+V2-02 adds append-only migration `0019_tenant_artifact_receipts.sql`, canonical v3 artifact identity,
+transfer-port, and commit-receipt contracts, and a fake-R2 adapter with no list/copy/move/global-hash
+surface. Object keys derive only from trusted account/workspace/project/revision/lane/job/artifact
+identity. Exact method/path/type/length/checksum ports are short-lived and bounded-replay; durable
+receipts bind hashes, probes, retention, and deletion ownership. Both model lanes pin
+`/runpod-volume` as application-read-only and route every mutable cache/output to job-local scratch,
+with path, symlink, cross-mount, and all-terminal-path cleanup negatives. This is provider-free proof,
+not real R2 or hosted proof.
+
 Row level security is declared on every tenant table but is not behaviourally proven: PGlite
 connects as a superuser and bypasses it, so the local proof comes from the tenant write guard and
-the `videoforge_tenant_*` views. Hosted enforcement waits for V2-06. `GATE_TENANCY_001` therefore
-stays open pending tenant-private artifacts (V2-02) and that hosted proof.
+the `videoforge_tenant_*` views. Hosted enforcement waits for V2-06. `GATE_TENANCY_001` and
+`GATE_STORAGE_001` therefore remain open only for their hosted/non-superuser/real-R2 proof.
 
-`CURRENT_STATE.yaml` selects V2-02 as the next checkpoint, ready only when the user explicitly
-invokes its provider-free implementation prompt. This handoff does not itself authorize application
-implementation. All prior provider authorities are consumed and cannot be reused. The ordered
+`CURRENT_STATE.yaml` keeps V2-02 selected for its read-only independent audit. V2-03 remains blocked
+until that audit is green and explicitly invoked. This handoff does not authorize V2-03 implementation.
+All prior provider authorities are consumed and cannot be reused. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in
 the working tree.

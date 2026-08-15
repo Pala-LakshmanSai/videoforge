@@ -26,12 +26,14 @@ The V2 implementation adds, rather than rewrites:
 New migrations begin after the existing migration sequence. The planned ownership is:
 
 - `0018_tenant_private_scope.sql`
-- `0019_fair_generation_admission.sql`
-- `0020_serverless_attempts_and_outbox.sql`
-- `0021_tenant_artifact_receipts.sql`
+- `0019_tenant_artifact_receipts.sql`
+- `0020_fair_generation_admission.sql`
+- `0021_serverless_attempts_and_outbox.sql`
 - `0022_serverless_cost_and_reconciliation.sql`
 
-Exact filenames may change only inside their implementation checkpoint before release. Never edit or
+V2-02 implemented `0019_tenant_artifact_receipts.sql` first because checkpoint order controls the
+append-only migration sequence; later planned filenames moved forward without rewriting history.
+Exact future filenames may change only inside their implementation checkpoint before release. Never edit or
 renumber committed migrations `0014`–`0017` to make the new architecture appear implemented.
 
 Target versioned machine contracts are:
@@ -41,8 +43,9 @@ Target versioned machine contracts are:
 - `serverless-provenance-receipt/v1`
 - `production-manifest/v3`
 
-They are targets until schemas, positive/negative fixtures, cross-language validators, migration
-tests, and provider-free orchestration tests pass and the contract index selects them.
+V2-02 additionally selects `artifact-object-identity/v3`, `artifact-transfer-port/v3`, and
+`artifact-commit-receipt/v3`. Their TypeScript/Python fixtures and provider-free storage tests pass.
+The Serverless and production-manifest contracts above remain targets until their checkpoints pass.
 
 ## Tenant and authorization model
 

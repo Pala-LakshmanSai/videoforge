@@ -65,6 +65,8 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "projects",
   "project_inputs",
   "project_revisions",
+  "artifact_reservations",
+  "artifact_receipts",
   "transcripts",
   "transcript_words",
   "transcript_sentences",

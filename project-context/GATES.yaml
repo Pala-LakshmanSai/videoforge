@@ -11,7 +11,7 @@ gates:
     owner: V2-01
     last_run: evidence/acceptance/VF-10-01/2026-08-15-tenant-cutover/acceptance.json
     last_run_at: "2026-08-15"
-    result: metadata_isolation_green_artifacts_and_hosted_enforcement_open
+    result: metadata_and_artifact_isolation_green_hosted_rls_enforcement_open
     satisfied_locally:
       - additive_account_workspace_migration_0018
       - composite_database_ownership_on_every_tenant_table
@@ -20,8 +20,9 @@ gates:
       - explicit_immutable_builtin_versus_workspace_preset_split
       - two_account_negative_matrix_including_guessed_ids_hashes_and_stale_sessions
       - installed_chrome_two_account_isolation
+      - tenant_derived_artifact_keys_exact_ports_and_durable_receipts
+      - job_local_scratch_and_terminal_cleanup_for_both_lanes
     still_open:
-      - tenant_private_artifact_keys_and_signed_transfer_belong_to_V2_02
       - declared_rls_policies_are_unproven_until_a_non_superuser_role_runs_them_in_V2_06
 
   GATE_STORAGE_001:
@@ -29,8 +30,20 @@ gates:
     blocks: production_artifact_transfer
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatestorage001-private-r2-and-scratch"
     owner: V2-02
-    last_run: null
-    result: open_existing_provider_free_routes_not_production_composed
+    last_run: evidence/acceptance/VF-10-02/2026-08-15-private-artifacts/acceptance.json
+    last_run_at: "2026-08-15"
+    result: provider_free_contract_green_real_private_r2_composition_unproven
+    satisfied_locally:
+      - immutable_trusted_tenant_project_revision_lane_job_artifact_keys
+      - exact_short_lived_method_path_type_length_checksum_ports
+      - single_use_or_bounded_replay_expiry_and_revocation
+      - durable_commit_receipts_hash_probe_retention_and_owned_deletion
+      - non_enumerating_no_copy_move_or_cross_tenant_dedup_surface
+      - both_model_mounts_pinned_application_read_only_at_runpod_volume
+      - job_keyed_local_scratch_with_path_symlink_cross_mount_guards
+      - cleanup_on_success_failure_cancel_timeout_signal_and_refresh
+    still_open:
+      - real_private_r2_composition_credentials_and_hosted_behavior_belong_to_V2_06
 
   GATE_QUEUE_001:
     status: open

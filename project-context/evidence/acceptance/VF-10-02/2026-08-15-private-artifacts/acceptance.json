@@ -1,0 +1,43 @@
+{
+  "schema_version": "videoforge-checkpoint-acceptance/v1",
+  "checkpoint": "V2-02",
+  "task_id": "VF-10-02",
+  "status": "IMPLEMENTATION_GREEN_INDEPENDENT_AUDIT_PENDING",
+  "implementation_commit": null,
+  "provider_mode": "fixture",
+  "external_spend_usd": 0,
+  "credentials_accessed": false,
+  "provider_calls": 0,
+  "cloud_mutations": 0,
+  "workers_allocated": 0,
+  "paid_compute_started": false,
+  "real_r2_proven": false,
+  "delivered": [
+    "0019_tenant_artifact_receipts.sql",
+    "artifact-object-identity/v3",
+    "artifact-transfer-port/v3",
+    "artifact-commit-receipt/v3",
+    "trusted tenant-derived immutable keys",
+    "method/path/type/length/checksum/expiry/replay scoped ports",
+    "durable hash/probe/retention/deletion receipts",
+    "non-enumerating fake-R2 adapter",
+    "application-read-only /runpod-volume policy for Mage and SoulX",
+    "job-local scratch with terminal and refresh cleanup"
+  ],
+  "focused_commands": [
+    {"command": "node --test packages/control-plane/tests/tenant-artifact-persistence.test.mjs packages/control-plane/tests/tenant-artifact-plane.test.mjs", "exit": 0, "result": "8/8"},
+    {"command": "pnpm --filter @videoforge/contracts test", "exit": 0, "result": "TypeScript 77/77; Python 61/61"},
+    {"command": "pnpm python:lint", "exit": 0, "result": "PASS"},
+    {"command": "pnpm test:workers", "exit": 0, "result": "6 suites PASS"},
+    {"command": "CI=1 TURBO_FORCE=true pnpm verify", "exit": 0, "result": "28/28 uncached tasks; control-plane 242/242; pipeline 120/120; web 314/314; TypeScript contracts 77/77; Python contracts 61/61; provider-sandbox 43/43; test-fixtures 12/12; Cloudflare 1/1; installed Chrome 44/44"},
+    {"command": "pnpm context:validate", "exit": 0, "result": "115 JSON files; 46 structured evidence references; 31 profiles; 41 decisions; 19 gates"},
+    {"command": "pnpm contracts:check", "exit": 0, "result": "75 canonical files synchronized"},
+    {"command": "pnpm secret:scan", "exit": 0, "result": "PASS"},
+    {"command": "git diff --check", "exit": 0, "result": "PASS"}
+  ],
+  "remaining_gates": [
+    "independent V2-02 audit",
+    "real private R2 composition at V2-06",
+    "non-superuser hosted RLS at V2-06"
+  ]
+}

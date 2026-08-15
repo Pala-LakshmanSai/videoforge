@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/artifact-object-identity-v3.json",
+  "title": "VideoForge trusted artifact object identity v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "account_id", "workspace_id", "project_id", "project_revision_id", "lane", "job_id", "artifact_id", "object_key"],
+  "properties": {
+    "schema_version": {"const": "artifact-object-identity/v3"},
+    "account_id": {"$ref": "#/$defs/id"},
+    "workspace_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "project_revision_id": {"$ref": "#/$defs/id"},
+    "lane": {"enum": ["INPUT", "MAGE_IMAGE", "SOULX_AVATAR", "RENDER", "PROVENANCE"]},
+    "job_id": {"$ref": "#/$defs/id"},
+    "artifact_id": {"$ref": "#/$defs/id"},
+    "object_key": {"type": "string", "minLength": 1, "maxLength": 1400, "pattern": "^tenant/[A-Za-z0-9._:-]+/workspace/[A-Za-z0-9._:-]+/project/[A-Za-z0-9._:-]+/revision/[A-Za-z0-9._:-]+/lane/(input|mage-image|soulx-avatar|render|provenance)/job/[A-Za-z0-9._:-]+/artifact/[A-Za-z0-9._:-]+$"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"}
+  }
+}

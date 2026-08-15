@@ -30,7 +30,7 @@ const loadFixture = async (filename) =>
   JSON.parse(await readFile(path.join(fixtureRoot, filename), "utf8"));
 
 test("all canonical schemas compile and expose stable IDs", () => {
-  assert.equal(contractNames.length, 22);
+  assert.equal(contractNames.length, 25);
   for (const contractName of contractNames) {
     assert.match(contractSchemaIds[contractName], /^https:\/\/videoforge\.local\/schemas\//);
     assert.equal(typeof contractValidators[contractName], "function");

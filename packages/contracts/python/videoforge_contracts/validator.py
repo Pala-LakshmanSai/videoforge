@@ -10,6 +10,9 @@ from referencing import Registry, Resource
 from ._schema_documents import SCHEMA_DOCUMENTS
 
 ContractName = Literal[
+    "artifactObjectIdentityV3",
+    "artifactTransferPortV3",
+    "artifactCommitReceiptV3",
     "admittedIdentity",
     "avatarProfileVersion",
     "createProjectRequest",
@@ -35,6 +38,9 @@ ContractName = Literal[
 ]
 
 CONTRACT_NAMES: tuple[ContractName, ...] = (
+    "artifactObjectIdentityV3",
+    "artifactTransferPortV3",
+    "artifactCommitReceiptV3",
     "admittedIdentity",
     "avatarProfileVersion",
     "createProjectRequest",
