@@ -228,11 +228,14 @@ Waiting entries dispatch neither CPU nor GPU work.
 ## Budget and historical boundary
 
 Track reserved, reported, and settled cost per lane, project, and global session. Shared boot/deletion
-cost attribution must be deterministic and auditable. For a representative 30-minute output, total
-variable per-video cost targets at most $1.00 and has a hard MVP ceiling of $2.00. Reject a project or
-additional work that would exceed its cap; keep accepted persistent-volume cost visible as separate
-fixed infrastructure and do not amortize it by idling Pods. Provider balance/capacity failures are
-visible and cannot loop creates. The global limit is one Mage Pod plus one Echo Pod in one session.
+cost attribution must be deterministic and auditable. The former target of at most `$1.00` and hard
+MVP ceiling of `$2.00` for a representative 30-minute output is not achieved by the exact CP-07 Echo
+runtime: fresh RTX 5090 measurements project `$12.10-$16.85` for the Echo lane alone when one Pod stays
+warm across the accepted fixture's 481.32 seconds of padded span audio. Treat the old target as an open product-cost
+gate, not an admission default. Reject a project or additional work that would exceed its explicit
+current cap; keep accepted persistent-volume cost visible as separate fixed infrastructure and do not
+amortize it by idling Pods. Provider balance/capacity failures are visible and cannot loop creates.
+The global limit is one Mage Pod plus one Echo Pod in one session.
 
 The former Serverless `/run`, `workersMin`/`workersMax`, endpoint queue, FlashBoot, automatic drain,
 GPU priority list, and shared image/media endpoint design is historical only. AvatarForcing,

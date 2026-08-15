@@ -1,27 +1,27 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-15T02:46:08Z"
+updated_at: "2026-08-15T04:15:08Z"
 
-phase: cp07_post_completion_10s_benchmark_authorized
+phase: cp07_complete_post_timing_calibration
 implementation_authorized_in_current_task: true
 current_milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
 current_task: VF-9-24R
 current_wave: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: bounded_mutation
+task_stage: complete
 application_code_changes_authorized: true
-provider_calls_authorized: true
+provider_calls_authorized: false
 read_only_provider_calls_authorized: true
-maximum_external_spend_usd: 6
+maximum_external_spend_usd: 0
 provider_authority:
-  mode: paid
-  provider: runpod
-  cap_usd: 6
+  mode: none
+  provider: null
+  cap_usd: 0
   authorized_at: "2026-08-14T19:07:57Z"
   source: current_cp07_10s_benchmark_user_authorization
   non_transferable: true
-  execution_halted: false
-  halt_reason: null
+  execution_halted: true
+  halt_reason: consumed_after_cp07_current_rules_round_2
   model_id: "EchoMimicV3-Flash Turbo FP8@videoforge_echo_v3_flash_turbo_fp8_v1"
   resources:
     - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:2da621771387ca52a8110d0f94c86dda1d140ec584bea86ddecfda263f5406fe"
@@ -80,12 +80,12 @@ runpod_account_scope:
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_inventory_or_mutation
-credential_access_authorized: true
-remote_or_cloud_mutations_authorized: true
+credential_access_authorized: false
+remote_or_cloud_mutations_authorized: false
 model_downloads_authorized: false
 worker_image_publication_authorized: false
 sample_output_publication_authorized: false
-gpu_use_authorized: true
+gpu_use_authorized: false
 mage_volume_retention_authorized: false
 echo_volume_retention_authorized: false
 
@@ -157,7 +157,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "CP-07 bounded paid operations are complete. No further provider call, mutation, allocation, or spend is authorized; retained Mage and Echo billing consent remains recorded."
+  provider_authority_scope: "CP-07 and its post-completion current-rules timing calibration are complete. No further provider call, mutation, allocation, or spend is authorized; retained Mage and Echo billing consent remains recorded."
   worker_image: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
   last_user_checkpoint:
     result: accepted
@@ -487,6 +487,22 @@ cp07_phase_a:
   crop_acceptance_evidence: "evidence/acceptance/VF-9-24R/cp07-crop-lock/acceptance.json"
   proposed_full_crop: "992:558:16:0 -> 1920x1080"
   proposed_split_crop: "496:558:280:0 -> 960x1080"
+  current_rules_round_2_evidence: "evidence/acceptance/VF-9-24R/cp07-current-rules-round-2/acceptance.json"
+  current_rules_round_2_sentence: "The leaves are what the plant put up this season to catch sun."
+  current_rules_round_2_output_sha256: "sha256:2b4d2ecbf850d3654481a8a0e59738ae1cb4968b3c8c61c7d8721331e06974e4"
+  current_rules_round_2_model_ready_ms: 282597
+  current_rules_round_2_inference_ms: 409768
+  current_rules_round_2_conservative_cost_upper_bound_usd: 0.209275
+  current_rules_round_2_settlement_status: pending_provider_billing_lag
+  latest_cleanup_checked_at: "2026-08-15T04:15:08.080Z"
+  latest_runpod_pods: 0
+  latest_runpod_templates: 0
+  latest_runpod_endpoints: 0
+  latest_runpod_active_serverless_workers: 0
+  latest_runpod_network_volumes: 2
+  measured_echo_only_30m_projection_usd: [12.1, 16.85]
+  measured_echo_only_30m_projection_hours: [12.2, 17.0]
+  legacy_1_to_2_usd_whole_video_target_status: invalidated_by_cp07_measurement
 
 cp06_phase_a:
   status: complete_phase_b_authorized

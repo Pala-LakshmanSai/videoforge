@@ -1,8 +1,8 @@
 {
-  "schema_version": "1.4",
-  "checked_at": "2026-08-08",
+  "schema_version": "1.5",
+  "checked_at": "2026-08-15",
   "currency": "USD",
-  "warning": "Planning assumptions only; runtime must fetch/configure current prices and Phase 0 replaces model throughput assumptions",
+  "warning": "Planning assumptions only. Fresh CP-07 exact Echo measurements supersede the legacy avatar and whole-video targets below; exact total cost requires a representative end-to-end production run.",
   "reference_job": {
     "duration_seconds": 1800,
     "avatar_share": 0.22,
@@ -46,6 +46,29 @@
     "mvp_contract_cap_max": 2.00,
     "user_goal_ceiling_range": [1.0, 2.0],
     "p50_end_to_end_minutes": 30,
-    "p90_end_to_end_minutes": 45
+    "p90_end_to_end_minutes": 45,
+    "legacy_cost_and_latency_targets_status": "invalidated_by_cp07_exact_echo_measurement"
+  },
+  "measured_cp07_echo_rtx5090": {
+    "evidence": "evidence/acceptance/VF-9-24R/cp07-current-rules-round-2/acceptance.json",
+    "rate_usd_per_hour": 0.99,
+    "reference_visible_avatar_output_seconds": 378.9,
+    "reference_selected_padded_span_audio_seconds": 481.32,
+    "reference_selected_span_count": 103,
+    "four_second_sample": {
+      "model_ready_ms": 282597,
+      "inference_ms": 409768,
+      "inference_cost_usd": 0.1126862,
+      "compute_seconds_per_padded_input_second": 91.0595555556
+    },
+    "six_second_sample": {
+      "model_ready_ms": 113746,
+      "inference_ms": 821438,
+      "inference_cost_usd": 0.22589545,
+      "compute_seconds_per_padded_input_second": 126.3750769231
+    },
+    "projected_echo_only_single_warm_pod_cost_usd": [12.1, 16.85],
+    "projected_echo_only_generation_hours": [12.2, 17.0],
+    "projection_status": "empirical_not_settled_full_video"
   }
 }

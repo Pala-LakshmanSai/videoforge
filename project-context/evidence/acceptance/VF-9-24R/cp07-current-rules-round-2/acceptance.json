@@ -1,0 +1,84 @@
+{
+  "schema_version": "videoforge.cp07-current-rules-round-2/v1",
+  "checkpoint": "CP-07",
+  "completed_at": "2026-08-15T04:15:08.080Z",
+  "purpose": "Fresh-Pod timing and cost calibration using a different owned voiceover sentence without changing scheduler-v2 or the exact CP-07 runtime contract.",
+  "selected_input": {
+    "source": "sampe voiceover.mp3",
+    "source_offset_seconds": [86.6, 90.6],
+    "core_duration_seconds": 4,
+    "post_context_seconds": 0.5,
+    "text": "The leaves are what the plant put up this season to catch sun.",
+    "padded_audio_sha256": "sha256:7136f5fde8de261e71ea837acdaa06de2991c78e76351db7517dddbc89925ec7",
+    "selection_note": "A distinct sentence from the prior opening sample; the current deterministic scheduler/runtime rules were preserved."
+  },
+  "runtime": {
+    "profile_id": "videoforge_echo_v3_flash_turbo_fp8_v1",
+    "image_digest": "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:2da621771387ca52a8110d0f94c86dda1d140ec584bea86ddecfda263f5406fe",
+    "manifest_sha256": "sha256:c868241d1c6ebee2645c41161d00e046839eaaafa7b994c340d8d010202098c8",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "region": "EU-RO-1",
+    "rate_usd_per_hour": 0.99,
+    "vram_gb": 32,
+    "pod_id_sha256": "sha256:31a4085c3eeb71a2d9ed96c78d24b5ec14b650d6da931a309423c4a7e97081e1"
+  },
+  "timings_ms": {
+    "pod_started_to_model_ready": 282597,
+    "volume_verify": 30382,
+    "gpu_verify": 862,
+    "prepared_model_load": 56264,
+    "real_inference_path_warmup": 29725,
+    "inference": 409768,
+    "worker_request_total": 410723,
+    "controller_request_total": 414959,
+    "delete_and_absence_confirmation": 75537,
+    "pod_start_to_deleted": 700220
+  },
+  "output": {
+    "path": "outputs/cp07-echo-flash-turbo-fp8/cp07-current-rules-round-2/cp07-owned-4s/cp07-owned-4s.mp4",
+    "sha256": "sha256:2b4d2ecbf850d3654481a8a0e59738ae1cb4968b3c8c61c7d8721331e06974e4",
+    "bytes": 597058,
+    "video": "H.264 1024x560 25fps",
+    "audio": "AAC",
+    "duration_ms": 4000,
+    "audio_duration_ms": 4000,
+    "video_duration_ms": 4000,
+    "av_duration_delta_ms": 0
+  },
+  "cost": {
+    "ready_phase_rate_derived_usd": 0.077714175,
+    "inference_rate_derived_usd": 0.1126862,
+    "observed_pod_lifetime_rate_derived_usd": 0.1925605,
+    "pod_conservative_upper_bound_usd": 0.209275,
+    "prior_cumulative_conservative_upper_bound_usd": 1.8555,
+    "new_cumulative_conservative_upper_bound_usd": 2.064775,
+    "authorized_cap_usd": 6,
+    "settled_cost_usd": null,
+    "settlement_status": "provider_billing_row_not_present_at_2026-08-15T04:14:58.955Z"
+  },
+  "cost_calibration": {
+    "reference_video_duration_seconds": 1800,
+    "measured_avatar_share": 0.2105,
+    "visible_avatar_output_seconds": 378.9,
+    "selected_padded_span_audio_seconds": 481.32,
+    "selected_span_count": 103,
+    "measured_4s_compute_seconds_per_padded_input_second": 91.0595555556,
+    "measured_6s_compute_seconds_per_padded_input_second": 126.3750769231,
+    "echo_only_inference_cost_range_usd": [12.0529, 16.7274],
+    "echo_only_single_warm_pod_cost_range_usd": [12.1, 16.85],
+    "echo_only_generation_wall_time_range_hours": [12.2, 17.0],
+    "status": "empirical_projection_not_full_video_settlement",
+    "note": "One Echo Pod remains warm for all avatar spans in a video. Projection uses the accepted CP-04 fixture's exact 481.32 seconds of padded span audio, because Echo generates the padded inputs before deterministic trim. This invalidates the older 1 to 2 USD whole-video planning target for this exact runtime at the measured RTX 5090 rate and throughput."
+  },
+  "cleanup": {
+    "checked_at": "2026-08-15T04:15:08.080Z",
+    "pods": 0,
+    "running_pods": 0,
+    "private_templates": 0,
+    "endpoints": 0,
+    "active_serverless_workers": 0,
+    "network_volumes": 2,
+    "retained_volume_size_gb_each": 50,
+    "isolated_mage_and_echo_volumes": true
+  }
+}
