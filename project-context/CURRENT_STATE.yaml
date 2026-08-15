@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-15T11:23:54Z"
+updated_at: "2026-08-15T12:01:57Z"
 
 phase: serverless_v2_roadmap_reset_complete_awaiting_independent_audit
 implementation_authorized_in_current_task: false
@@ -18,7 +18,7 @@ provider_authority:
   mode: none
   provider: null
   cap_usd: 0
-  source: all_prior_paid_authorities_consumed_and_non_transferable
+  source: no_current_provider_authority
   non_transferable: true
   resources: []
   authorized_operations: []
@@ -30,6 +30,7 @@ model_downloads_authorized: false
 worker_image_publication_authorized: false
 sample_output_publication_authorized: false
 gpu_use_authorized: false
+retained_volume_mutation_authorized: false
 
 runpod_account_scope:
   owner: sujal
@@ -42,13 +43,10 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/soulx-flashhead-pro-vf924s
-  base_commit: "122fb679389bdcb40b1700d2ba3c0f8f7ac66360"
-  planning_base_commit: "79c3be6"
-  planning_handoff_commit: "8215c66"
+  branch: codex/serverless-v2-roadmap
   last_good_commit: "8215c66"
   working_tree_expected: clean_except_ignored_private_inputs
-  start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
+  start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
 live_development:
   expected_url: "http://localhost:4173"
@@ -61,14 +59,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "No active provider authority. Historical CP/VF-9 authority cannot transfer to V2."
-  last_user_checkpoint:
-    result: accepted
-    commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
-    route: "file:///Users/lakshmansai/Downloads/videoforge-local-owned-slice-smooth-v3.mp4"
-    scenario: local_owned_short_slice
-    checked_at: "2026-08-10T03:06:39Z"
-    feedback_refs: [DEC_OUTPUT_003]
+  provider_authority_scope: "No active provider authority; every external V2 checkpoint requires its own exact current authority."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -126,7 +117,12 @@ roadmap_state:
   V2-11: blocked_on_V2-10
   V2-12: blocked_on_V2-11
   V2-13: blocked_on_V2-12
-  former_CP_00_through_CP_12: retired_active_planning_historical_evidence_only
+
+context_cleanup:
+  decision: DEC_CONTEXT_001
+  active_task_briefs: VF-10-00_VF-10-00A_and_VF-10-01_through_VF-10-13_only
+  archive: git_history_only
+  evidence_policy: retain_only_active_v2_foundations_decisions_gates_artifact_identities_and_acceptance_contracts
 
 reusable_foundations:
   ui:
@@ -136,10 +132,10 @@ reusable_foundations:
     status: provider_free_workspace_prefixed_foundation_green_production_r2_not_composed
     proof: apps/web/src/server/routes/private-artifact-routes.ts
   word_transcript:
-    status: cp03_complete_pinned_whisper_cpp_contract
+    status: pinned_word_level_whisper_cpp_contract_green
     proof: evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json
   scheduler:
-    status: cp04_complete_preserve_scheduler_v2
+    status: deterministic_scheduler_v2_three_composition_contract_green
     proof: evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/reaudit-after-fixes.json
     canonical_30m_metrics:
       frames: 54000
@@ -154,7 +150,7 @@ reusable_foundations:
     status: provider_free_direct_ffmpeg_chrome_playback_green
     proof: evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json
   fixture_orchestration:
-    status: cp05_complete_but_global_session_and_manual_pod_semantics_superseded
+    status: provider_free_orchestration_foundation_green_requires_v2_tenant_and_serverless_composition
     proof: evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json
 
 model_runtime_evidence:
@@ -181,7 +177,7 @@ model_runtime_evidence:
     ongoing_volume_usd_per_month: 3.5
     pod_start_to_model_ready_ms: 672035
     worker_inference_10s_ms: 20268
-    projected_30m_avatar_gpu_cost_at_historical_074_rate_usd: 0.40203785517777774
+    pod_projected_30m_avatar_gpu_cost_at_observed_074_rate_usd: 0.40203785517777774
     settled_external_spend_usd: null
     visual_crop_approval: pending
     commercial_and_publication_terms_evidence: pending
@@ -189,7 +185,7 @@ model_runtime_evidence:
 
 last_known_provider_resource_truth:
   checked_at: "2026-08-15T09:56:02.932Z"
-  basis: consumed_VF_9_24U_read_only_inventory_and_cleanup
+  basis: last_authorized_read_only_inventory_and_cleanup
   current_live_refresh_permitted_now: false
   stale_until_future_authorized_read_only_preflight: true
   pods: 0
@@ -200,30 +196,6 @@ last_known_provider_resource_truth:
   intended_volumes: [mage_50gb, soulx_50gb]
   ongoing_retained_volume_usd_per_month_total: 7.0
   note: "Zero workers means zero GPU compute, not zero fixed retained-volume billing."
-
-superseded_active_architecture:
-  items:
-    - one_global_equal_rights_catalog
-    - singleton_generation_session_and_one_global_active_video
-    - cross_user_manual_queue_order
-    - selected_gpu_pair_and_manual_pod_start_stop_delete
-    - pod_bound_v2_dispatch_envelope
-    - global_r2_prefixes
-    - mage_workspace_mount
-    - echo_avatar_runtime_and_volume
-    - repair_fallback_and_auto_gpu_paths
-    - serverless_v1_historical_attempts
-  implementation_rule: add_v3_migrations_contracts_and_firewalls_never_rewrite_history
-
-completed_provider_history:
-  cp06_mage:
-    status: complete_settled_visual_accepted
-    external_spend_usd: 0.34927155333571136
-  cp07_echo:
-    status: historical_complete_then_runtime_removed_and_volume_deleted
-  vf_9_24s_to_u_soulx:
-    status: technical_pass_outputs_ready_for_review_authority_consumed
-    settlement_status: pending_not_relabelled_settled
 
 blocking_gates_for_production:
   - GATE_TENANCY_001
@@ -250,7 +222,7 @@ recommended_next_task:
   checkpoint: V2-00
   milestone: serverless_v2_roadmap_reset_audit
   status: ready_for_independent_read_only_audit
-  dependency_status: v2_00_committed_awaiting_independent_audit
+  dependency_status: v2_00_cleanup_validated_awaiting_handoff_commit
   authorization_status: provider_free_read_only_audit_no_implementation
   task_stage: ready_for_independent_audit
   provider_authority:
@@ -275,9 +247,7 @@ recommended_next_task:
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
   gpu_use_authorized: false
-  mage_volume_retention_authorized: false
-  echo_volume_retention_authorized: false
-  soulx_volume_retention_authorized: false
+  retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
@@ -286,13 +256,13 @@ recommended_next_task:
 
 verification:
   state: passed
-  completed_for_v2_00:
-    - "CI=1 TURBO_FORCE=true pnpm verify"
-    - "pnpm context:validate"
+  completed_for_v2_00_cleanup:
+    - "CI=1 TURBO_FORCE=true pnpm verify (28/28 package tasks, 42/42 installed-Chrome journeys)"
+    - "pnpm context:validate (102 JSON files, 31 profiles, 41 decisions, 19 gates)"
     - "pnpm format:check"
     - "pnpm secret:scan"
     - "git diff --check"
-    - "focused V2 prompt, selector, gate, contradiction, and duplicate-YAML-key assertions"
+    - "focused V2 prompt, selector, gate, contradiction, task allowlist, evidence allowlist, and duplicate-YAML-key assertions"
   provider_or_spend_used_for_v2_00: false
   remote_mutation_used_for_v2_00: false
   paid_compute_started_for_v2_00: false

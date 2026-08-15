@@ -126,19 +126,34 @@ Pass in isolated staging:
 
 The user's Mac is not a production dependency.
 
-## Preserved model evidence
+## Accepted model foundations
 
-Historical evidence remains truthful:
+The active lane gates depend on these exact foundations:
 
-- CP-06/VF-9-24Q proved the exact Mage INT8 ConvRot artifact on its isolated 50 GB volume, offline
+- Mage qualification proved the exact Mage INT8 ConvRot artifact on its isolated 50 GB volume, offline
   fresh-Pod reuse, eight valid 1280x720 outputs, guarded cleanup, and zero Pods.
-- VF-9-24S/U proved the exact SoulX-FlashHead Pro artifact on its isolated 50 GB volume, offline
+- SoulX qualification proved the exact SoulX-FlashHead Pro artifact on its isolated 50 GB volume, offline
   fresh-Pod warm-up, owned native 10-second-class outputs, timing/cost records, and zero Pods.
-- EchoMimic qualifications are immutable history but Echo is non-dispatchable and its operational
-  volume was removed.
 
 These do not close either Serverless lane gate. The existing two volumes are reused, not recreated,
 unless a future explicitly authorized destructive decision changes that fact.
+
+## `GATE_IMAGE_002` — Mage terms risk record
+
+The exact selected Mage code and weight sources, access state, hashes, and unresolved terms metadata
+must remain recorded. This gate does not block the user's accepted use, but it permanently blocks a
+claim that commercial permission is unambiguous unless new first-party evidence resolves it.
+
+## `GATE_LLM_001` — prompt provider qualification
+
+The exact Runware DeepSeek profile remains accepted only while its strict schema, literal-relevance,
+forbidden-output, latency, privacy, and cost evidence stays reproducible.
+
+## `GATE_STYLE_001` — style analyzer qualification
+
+The exact Runware Gemini profile remains accepted only for explicit one-time draft-style analysis
+and only while its strict output, semantic-validation, uncertainty, privacy, latency, and cost
+evidence stays reproducible. It is never an ordinary per-project generation call.
 
 ## `GATE_IMAGE_001` — Mage production quality
 
@@ -201,7 +216,7 @@ SoulX-only 50 GB `EU-RO-1` volume:
 - exact source/weights/audio/runtime manifest and best approved Pro settings;
 - `/runpod-volume` offline/read-only contract, unique job scratch, unchanged pre/post hashes;
 - deliberate `RUNPOD_INIT_TIMEOUT` and cold start below the documented seven-minute unhealthy
-  threshold, addressing the historical 672-second Pod start-to-ready risk;
+  threshold, addressing the measured 672-second bounded-worker start-to-ready risk;
 - real warm-up and authoritative `MODEL_READY`;
 - representative owned avatars, phonemes, head motion, facial hair/hats, backgrounds, ordinary 2-6
   second scheduler spans plus the bounded seven-second opener, padding/trim, exact A/V duration, and
@@ -224,7 +239,7 @@ commercial permission is clearer than the source artifacts establish.
 
 ## Scheduler and Ranga style gate
 
-The existing CP-04 scheduler baseline is preserved. Regression/property tests enforce:
+The accepted deterministic-scheduler baseline is preserved. Regression/property tests enforce:
 
 - only three compositions;
 - frame 0 full avatar;

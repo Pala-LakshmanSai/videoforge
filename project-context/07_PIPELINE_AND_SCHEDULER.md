@@ -1,6 +1,6 @@
 # Pipeline and deterministic scheduler
 
-Status: CP-03/CP-04 planning foundations accepted; tenant-fair Serverless integration pending
+Status: transcript and deterministic-scheduler foundations accepted; tenant-fair Serverless integration pending
 Read when: implementing transcript alignment, scheduling, generation, dispatch, or final assembly.
 
 ## Critical path
@@ -73,7 +73,7 @@ runs the same entrypoint only for development/provider-free parity.
 - Greedy decoding, English, `--max-len 1 --split-on-word`, best-of 1, beam size 1.
 - Persist exact executable/model/config hashes, original/normalized audio hashes, millisecond word
   starts/ends, FFprobe duration, and chunk receipt lineage.
-- For long audio, preserve CP-03 deterministic overlap/reconciliation and replay rules. Monotonic,
+- For long audio, preserve deterministic overlap/reconciliation and recovery rules. Monotonic,
   complete word coverage is mandatory.
 - The normal web client sends `optional_script: null`, so ASR wording is canonical. If a versioned API
   client supplies a script, deterministic dynamic programming aligns it to ASR timing; no AI timing
@@ -130,7 +130,7 @@ Pinned two-video evidence defines the target band:
 - mean visual change 4.0–4.8 seconds and median 3.6–4.7 seconds;
 - literal narration evidence and meaningful varied shot roles.
 
-CP-04's 30-minute fixture remains the regression anchor: 54,000 frames, 394 segments, 21.05%
+The accepted 30-minute scheduler fixture remains the regression anchor: 54,000 frames, 394 segments, 21.05%
 avatar, 103 appearances (3.433/minute), 3.679-second mean avatar span, 4.569-second mean segment, 81
 frames full/split difference, 342 image slots, and six shot roles with complete word/source/frame
 coverage. Do not rebuild or loosen this scheduler for the architecture transition.
@@ -205,8 +205,8 @@ writes to job-local scratch, verifies/loads/warms offline, processes spans seque
 each clip's decode/frame-rate/duration/A-V relationship, uploads to exact tenant R2 keys, and writes a
 signed receipt. Verify the sealed manifest again before exit.
 
-EchoMimicV3-Flash, Long Video CFG, repair, enhancement, face crop, alternate model/precision, and
-cross-mount are forbidden. Two simultaneous SoulX workers require explicit concurrent-read and
+Alternate runtimes, long-form generation modes, repair, enhancement, face crop, alternate precision,
+and cross-mount are forbidden. Two simultaneous SoulX workers require explicit concurrent-read and
 quality qualification.
 
 Deterministic media checks establish `READY_FOR_USER_REVIEW`, not subjective quality. Users may flag
@@ -260,7 +260,7 @@ A valid final output becomes `READY_FOR_REVIEW`. Technical checks cannot approve
 anatomy, pseudo-text, identity, lip sync, or style. Explicit user approval creates immutable
 `production-manifest/v3` binding approval actor/time, tenant/revision/timeline, generation/render
 manifests, accepted Serverless provenance receipts, exact provider attempts/cost snapshot,
-avatar/style/model profiles, QA, and final SHA-256. Historical v2 manifests remain replay-only.
+avatar/style/model profiles, QA, and final SHA-256. Inactive manifest versions cannot resolve new work.
 Preview/download URLs are short-lived and tenant-authorized.
 
 Terminal workflow releases the account/global admission lease only after lane attempts, callbacks,

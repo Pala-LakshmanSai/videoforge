@@ -35,21 +35,8 @@ selection. This profile does not become active until the user approves the exact
 `GATE_SERVERLESS_SOULX_001`; every later Avatar Profile must store its own measured source-to-native
 mapping.
 
-The following coordinates are historical replay contracts only. They preserve already-recorded manifests and are not valid active SoulX profiles.
-
-Historical AvatarForcing 832×480/25 fps replay uses `avatarforcing-centered-832x480p25-v1`:
-
-```text
-crop=832:468:0:6,scale=1920:1080
-```
-
-Historical SkyReels 960×960/25 fps replay uses `skyreels-centered-960x960p25-v2`:
-
-```text
-crop=960:540:0:210,scale=1920:1080
-```
-
-Do not route a SoulX asset through either historical crop. Every accepted asset records its exact source profile; renderer schema validation rejects a mismatched model/profile/crop pair.
+Every accepted asset records its exact source profile; renderer schema validation rejects a
+mismatched model/profile/crop pair. No crop from an inactive runtime is a valid SoulX profile.
 
 Avatar source requirements are enforced when a reusable Avatar Profile version is approved in the Avatar Hub: horizontally centered, direct-to-camera, eye-level, tight head-and-shoulders or medium close shot, natural setting, and suitable for restrained motion. A project always uses the exact pinned runtime source/checksum; upscaled full-screen detail remains an acceptance gate.
 
@@ -67,7 +54,7 @@ Recommended zoom envelope:
 - `ffmpeg-render-v3` uses per-frame floating-point source-corner coordinates with cubic
   interpolation rather than integer crop stepping. This keeps the centered movement continuous at
   subpixel precision; an alternative implementation must prove equivalent monotonic, jitter-free
-  motion. `ffmpeg-render-v1` and `v2` remain replay-only profiles for historical manifests.
+  motion. Only the active render profile may resolve a new production manifest.
 - Center crop by default. Do not pan, parallax, shake, punch, track a face, or allow frame-to-frame
   crop-direction reversals.
 
@@ -81,18 +68,6 @@ the right. Never present the isolated 960x1080 panel as the finished split crop.
 must be measured from the same approved native SoulX output and pinned together. Until the user
 approves it, no active SoulX split composition exists.
 
-Historical AvatarForcing replay profile:
-
-```text
-crop=416:468:208:6,scale=960:1080
-```
-
-Historical SkyReels replay profile:
-
-```text
-crop=480:540:240:210,scale=960:1080
-```
-
 - Avatar: x=0 through 959.
 - Image: x=960 through 1919.
 - Clean central seam.
@@ -103,7 +78,9 @@ crop=480:540:240:210,scale=960:1080
 
 ### Avatar frame-rate conversion
 
-The active SoulX sample must establish its native frame rate and approved conversion profile before production integration. The proposed 25 fps output converts directly with ordinary FFmpeg nearest-timestamp frame duplication/resampling (the equivalent of `fps=30:round=near`) before layout. Historical AvatarForcing and SkyReels 25 fps manifests retain that same replay rule:
+The active SoulX sample must establish its native frame rate and approved conversion profile before
+production integration. The proposed 25 fps output converts directly with ordinary FFmpeg
+nearest-timestamp frame duplication/resampling (the equivalent of `fps=30:round=near`) before layout:
 
 - Preserve duration and timeline boundaries exactly.
 - Do not use optical flow, frame interpolation, or another AI model.
@@ -159,7 +136,7 @@ Before delivery verify:
 
 - Exact duration matches source audio within the accepted mux tolerance.
 - Constant 1920×1080/30 fps and `yuv420p`.
-- The accepted SoulX native-to-30-fps conversion has no duration change, drift, or unacceptable visible cadence; historical AvatarForcing/SkyReels replay retains the same check.
+- The accepted SoulX native-to-30-fps conversion has no duration change, drift, or unacceptable visible cadence.
 - Audio/video starts at zero; no drift or missing tail.
 - Exactly one EDL segment covers every frame.
 - Full and split crop geometry matches the accepted model-specific source profile; active SoulX output is blocked until its measured profile is approved, and a model/profile/crop mismatch is rejected.
@@ -168,6 +145,6 @@ Before delivery verify:
 - Every image attempt and content-addressed prompt manifest points to the revision's pinned Image
   Style version/effective prompt hash; active `production-manifest/v3` binds that prompt manifest,
   tenant lineage, accepted Serverless receipts, and the pinned Avatar Profile to the renderer-only
-  resolved render manifest and final MP4. Historical v2 manifests remain replay-only.
+  resolved render manifest and final MP4. Inactive manifest versions cannot resolve new work.
 - No intermediate filename, debugging text, subtitle stream, extra audio stream, or metadata leak.
 - MP4 is seekable and plays in the user's Chrome.

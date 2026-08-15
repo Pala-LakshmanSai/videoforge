@@ -5,9 +5,10 @@ Read when: selecting work, checking dependencies, or deciding what may be reused
 
 ## Canonical sequence
 
-`22_PROJECT_COMPLETION_CHECKPOINTS.md` is the authoritative roadmap. The former checkpoint series is
-retired as active planning; its commits, migrations, evidence, and accepted outputs remain immutable
-history. `CURRENT_STATE.yaml` selects one exact v2 checkpoint, task brief, and read profile.
+`22_PROJECT_COMPLETION_CHECKPOINTS.md` is the authoritative roadmap. Only V2 task briefs live in the
+working tree; Git history records removed planning files. Committed migrations and evidence required
+by active foundations/gates remain immutable. `CURRENT_STATE.yaml` selects one exact V2 checkpoint,
+task brief, and read profile.
 
 ```text
 V2-00  architecture, reference, and roadmap reset
@@ -56,10 +57,10 @@ required visual acceptance.
 
 ## Execution discipline
 
-Work contract-first and provider-free. Use additive migrations and v3 contracts; never rewrite old
-migrations or reinterpret historical evidence as current authority. The live cutover must make old
-global-session, manual-Pod, Pod-bound dispatch, Echo, fallback, repair, Auto-GPU, and cross-tenant
-paths unreachable in ordinary production while retaining replay-only history.
+Work contract-first and provider-free. Use additive migrations and v3 contracts; never rewrite
+committed migrations or reinterpret foundation evidence as current authority. The live cutover must
+make every superseded global-session, manual-compute, Pod-bound dispatch, alternate-runtime,
+fallback/repair, automatic-GPU, and cross-tenant path unreachable in ordinary production.
 
 Every checkpoint ends with focused negative tests, canonical verification, context/schema
 validation, `git diff --check`, real Chrome acceptance when behavior is visible, truthful gates, a

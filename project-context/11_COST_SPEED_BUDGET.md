@@ -81,15 +81,15 @@ The application reserves against a conservative bound before dispatch and reconc
 afterward. The retained-volume fee is disclosed separately and is never hidden inside or amortized
 into one project's variable cost.
 
-## Preserved Pod-era measurements
+## Accepted artifact-runtime measurements
 
 These are valuable engineering baselines, not Serverless results:
 
-- Mage CP-06 proved the exact 13,379,919,280-byte INT8 ConvRot artifact, offline load, two fresh RTX
+- Mage qualification proved the exact 13,379,919,280-byte INT8 ConvRot artifact, offline load, two fresh RTX
   4090 Pods, eight 1280×720 outputs, and zero compute after cleanup. Recorded readiness observations
   included 31.755 and 42.144 seconds; the qualification's conservative total accounting was
   `$1.110002`, not a representative per-video bill.
-- SoulX VF-9-24S/U proved the exact 6,916,084,703-byte Pro runtime, sealed volume, offline RTX 4090
+- SoulX qualification proved the exact 6,916,084,703-byte Pro runtime, sealed volume, offline RTX 4090
   load, owned 10.12/10-second native outputs, and zero compute after cleanup. A measured worker run
   recorded 20.268 seconds inference plus 0.894 seconds encode/mux for 10 seconds of audio. The fresh
   Pod observation recorded 672.035 seconds from provider start to `model_ready`, while worker-internal

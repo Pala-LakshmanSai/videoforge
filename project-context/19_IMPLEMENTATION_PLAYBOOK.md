@@ -22,8 +22,9 @@ The production target is:
 - existing isolated 50 GB `EU-RO-1` Mage and SoulX volumes at `/runpod-volume`, treated read-only;
 - deterministic word-timed Ranga-style scheduler and direct FFmpeg output.
 
-RTX 5090 is not fallback until each lane qualifies it. Echo/manual-Pod production transport is
-historical. The two prepared volumes are reused; V2 work does not recreate or redownload them.
+RTX 5090 is not fallback until each lane qualifies it. No superseded manual-compute or alternate-
+runtime transport is active. The two prepared volumes are reused; V2 work does not recreate or
+redownload them.
 
 ## Start every task narrowly
 
@@ -37,8 +38,9 @@ historical. The two prepared volumes are reused; V2 work does not recreate or re
 7. Implement the smallest coherent vertical slice, validate it, inspect in real Chrome when visible,
    update context/current state, and make one green commit.
 
-Historical task briefs/evidence are immutable. The new V2 roadmap/prompt pack supersedes their active
-order without deleting audit history.
+Only V2 task briefs live in the working tree. Git history records removed planning files; retain
+repository evidence only when an active foundation, gate, artifact identity, cost fact, or audit
+depends on it.
 
 ## Implementation order
 

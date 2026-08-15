@@ -46,7 +46,7 @@ profile and never analyzes references.
 - No tools, search, code interpreter, vision, or long reasoning.
 - Store request/profile hashes plus provider-reported usage and cost.
 
-`VF-3-01` passed exact model search and a 40-scene/five-style relevance/schema suite. The accepted
+The accepted qualification passed exact model search and a 40-scene/five-style relevance/schema suite. Its
 run cost `$0.00085053`; cumulative qualification was `$0.00243598`. A conservative 30-minute prompt
 workload is cents or less, so prompt relevance must not be degraded to save fractions of a cent.
 
@@ -92,9 +92,9 @@ Exact sealed runtime files:
   `34e076dc1e8a15321e1e07be5111d59cf16dd10b804b7c7e20b4de29013427e0`,
   `345,053,056` bytes.
 
-The earlier BF16 transformer is historical/non-dispatchable. Never resolve `main` at runtime.
+The superseded BF16 transformer is non-dispatchable. Never resolve `main` at runtime.
 
-### Preserved CP-06 evidence
+### Accepted Mage artifact foundation
 
 - Immutable Pod image:
   `ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69`.
@@ -107,8 +107,7 @@ The earlier BF16 transformer is historical/non-dispatchable. Never resolve `main
   and failed closed on missing/wrong manifest. The user accepted visual quality.
 - Settled finite qualification cost: `$0.34927155333571136`; final audit proved zero compute and the
   retained Mage volume.
-- Evidence: `evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json` and
-  `settlement-reaudit.json`.
+- Exact acceptance and settlement evidence is indexed by `CURRENT_STATE.yaml.model_runtime_evidence.mage`.
 
 This is strong artifact/Pod proof. It does not establish that the Pod image is a valid Serverless
 worker image/template or that two Flex workers can safely read the volume concurrently. The Mage
@@ -117,7 +116,7 @@ then prove offline cold/warm jobs, signed R2 I/O, timeout/cancel/recovery, max-t
 manifest immutability, cost, and scale-to-zero.
 
 Mage license metadata remains ambiguous: the indexed Comfy-Org page and pinned Microsoft repository
-show MIT, while historical Microsoft prose describes research-only/not intended for product or
+show MIT, while upstream Microsoft prose describes research-only/not intended for product or
 service deployment. The user accepted this risk on 2026-08-11. Preserve the ambiguity and never
 claim clearly established commercial permission.
 
@@ -133,10 +132,10 @@ Only active/proposed avatar runtime:
 - Runtime profile: `videoforge_soulx_flashhead_pro_bf16_v1`.
 - BF16, 512x512, 25 fps, four distilled steps, shift 5, color correction 1.0, deterministic seed 42,
   streaming audio, Torch compile, no face crop.
-- No repair, enhancement, fallback, Long Video CFG, substitute model, alternate precision, or full
+- No repair, enhancement, fallback, alternate long-form mode, substitute model, alternate precision, or full
   voiceover dispatch.
 
-### Preserved VF-9-24S/U evidence
+### Accepted SoulX artifact foundation
 
 - Immutable Pod image:
   `ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b`.
@@ -144,7 +143,7 @@ Only active/proposed avatar runtime:
 - Sealed manifest SHA-256:
   `995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626`.
 - Existing isolated retained SoulX-only 50 GB volume in `EU-RO-1`; recorded retained rate
-  `$3.50/month`; former Echo volume absent.
+  `$3.50/month`; exactly the Mage and SoulX volumes remain.
 - Fresh Secure RTX 4090 Pod proof at the then-current `$0.74/hour`: 24 GB advertised VRAM,
   `9,660,950,528` peak inference bytes, model ready 189.786s from service start, and 10.12-second
   inference 22.892s. Output was exact 253-frame 512x512 H.264/AAC with zero A/V delta.
@@ -156,8 +155,8 @@ Only active/proposed avatar runtime:
 - Final audits proved zero Pods/templates/endpoints/workers and exactly the retained Mage/SoulX
   volumes. The original qualification cost bound was `$0.275645`; immediate settlement rows were
   pending and must not be relabelled settled.
-- Evidence: `evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json` and subsequent
-  VF-9-24T/U timing/composition evidence.
+- Exact acceptance, timing, and composition evidence is indexed by
+  `CURRENT_STATE.yaml.model_runtime_evidence.soulx`.
 
 The exact model and volume are prepared; do not download or prepare them again. A Serverless handler
 image/template is still unqualified. SoulX's measured 672.035-second provider-start-to-ready case
@@ -170,19 +169,10 @@ recovery, cost, and scale-to-zero before production binding.
 One native clip serves full and split. Crop profiles are versioned against the exact Avatar Profile
 source geometry/checksum and require review; do not apply a crop from a different source image.
 
-## EchoMimicV3-Flash
+## Inactive model boundary
 
-EchoMimicV3-Flash Turbo FP8 is superseded and non-dispatchable. Its exact volume was deleted during
-VF-9-24S and replaced by the SoulX-only volume. Do not restore, cross-adopt, or use its image,
-manifest, crops, or model files.
-
-## Historical avatar paths
-
-AvatarForcing, MuseTalk, SkyReels, and their permission/failure evidence are history only. There is
-no active repair/fallback ladder.
-
-LongCat Avatar 1.5, InfiniteTalk, Hallo, AI B-roll video models, HyperFrames, and Remotion are outside
-the active model path. A future comparison requires a new explicit decision, exact license/access,
+No alternate avatar runtime, repair/fallback ladder, enhancement model, or AI B-roll video model is
+part of the active system. A future comparison requires a new explicit decision, exact license/access,
 same-input A/B, timing/VRAM/cost/failure evidence, and no silent production substitution.
 
 ## Hosted word timing and rendering
@@ -191,7 +181,7 @@ Timing model is pinned `whisper.cpp ggml-base.en`:
 
 - normalize an analysis derivative to 16 kHz mono PCM;
 - English greedy decode, `--max-len 1 --split-on-word`, best-of 1, beam size 1;
-- preserve CP-03 deterministic long-file chunk overlap/reconciliation and exact executable hashes.
+- preserve deterministic long-file chunk overlap/reconciliation and exact executable hashes.
 
 Production uses authenticated scale-to-zero Cloud Run Jobs over tenant-private immutable R2
 manifests. A second mode runs pinned FFmpeg/FFprobe for final rendering. These jobs have no RunPod

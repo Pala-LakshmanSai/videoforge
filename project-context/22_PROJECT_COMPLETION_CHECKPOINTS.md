@@ -2,9 +2,9 @@
 
 Status: authoritative replacement roadmap from the exact 2026-08-15 repository state
 
-The former `CP-00` through `CP-12` roadmap is retired as active planning. Its completed commits,
-task briefs, paid-provider evidence, hashes, costs, and audit files remain immutable history; they
-are not instructions for new work. New implementation proceeds only through `V2-00`–`V2-13`.
+Only `V2-00` through `V2-13` are active. Only their briefs belong in the working tree; Git history
+records removed planning files. Retain repository evidence only when an active foundation, gate,
+artifact identity, cost fact, or audit depends on it.
 
 ## Production destination
 
@@ -119,14 +119,13 @@ qualified all-5090 configuration would be about `$6.32/hour`, not a mixed-fallba
   controller routes, and UI Start/Stop/GPU-selection semantics in ordinary production.
 - Global user-created Avatar/Image Style/project/result catalogs and query paths that treat creator
   identity as audit-only metadata.
-- Active lane/model names that still say `echo_avatar` or Echo when the runtime is SoulX.
+- Active lane/model names that do not identify the exact SoulX runtime.
 - Mage `/workspace` volume paths and any mutable model-volume scratch/cache writes.
-- Historical Serverless endpoints, Auto GPU routing, EchoMimic, AvatarForcing, MuseTalk, SkyReels,
-  repair/fallback routes, and old images. Keep them replay-only; do not reinterpret their bytes or
-  authority.
+- Any superseded endpoint, automatic-GPU route, inactive runtime, repair/fallback route, or obsolete
+  image. These remain unreachable from ordinary production.
 
-Add new migrations/contracts and prove cutover. Never rewrite old migrations or delete historical
-evidence merely to make the new architecture look clean.
+Add new migrations/contracts and prove cutover. Never rewrite committed migrations. Keep only the
+evidence required by active foundations and gates.
 
 ## Locked Ranga similarity contract
 
@@ -181,15 +180,19 @@ V2-05, but checkpoint promotion remains serial so shared contracts and paid auth
 **Outcome:** Every active planning source describes the same tenant-private, two-slot,
 scale-to-zero Serverless destination and the entirely new checkpoint sequence.
 
-- Preserve completed implementation and provider evidence; retire only obsolete active planning.
-- Supersede the global-data, one-session, manual-Pod, Pod-bound dispatch decisions.
+- Keep only V2 task briefs in `project-context/tasks/`; Git history records removed planning files.
+- Remove dangling references to removed briefs/checkpoints/profiles from active context, selectors,
+  validators, and source indexes. Keep evidence only when an active foundation, gate, artifact
+  identity, cost fact, or audit depends on it.
+- Supersede the global-data, one-session, manual-compute, and Pod-bound dispatch decisions.
 - Replace the checkpoint and prompt packs, selectors, implementation plan, acceptance routing,
   cost/operations summaries, and current handoff.
 - Pin official Serverless sources and Ranga metrics; leave changing prices/availability as fresh
   activation-time checks.
 
-**Proof:** context/schema validation, contradiction scan, clean commit, copy-ready prompts, and an
-independent read-only audit.
+**Proof:** context/schema validation; a contradiction/dangling-reference scan proving only V2 task
+briefs remain and no obsolete checkpoint selector or validator branch is active; clean commit;
+copy-ready prompts; and an independent read-only audit.
 
 **Authority:** local planning/context only; `$0`; no credentials or provider mutation.
 
@@ -200,7 +203,7 @@ the only globally readable product records.
 
 - Add immutable `account_id` and `workspace_id` ownership to projects, revisions, assets, Avatar
   Profiles/versions, Image Styles/versions, queue jobs, attempts, outputs, costs, approvals, and
-  audits. Backfill historical rows into an explicit legacy/system scope without granting users
+  audits. Backfill pre-V2 rows into an explicit legacy/system scope without granting users
   cross-tenant access.
 - Add database constraints and RLS-equivalent/query-guard enforcement. Every repository method
   requires a trusted principal; no client-supplied owner field grants access.
@@ -279,10 +282,10 @@ queue-based Serverless lane jobs without knowing the eventual worker identity in
   provenance receipt records worker ID when exposed, runtime GPU/driver/CUDA probes, intended
   volume/manifest, model-ready evidence, timings, and output hashes. Do not call this provider
   hardware attestation; RunPod does not document that guarantee.
-- Replace Pod envelopes/events with Serverless request/attempt/output contracts. Preserve old Pod
-  schemas as replay-only.
-- Replace CP-06-specific context-authority validation with checkpoint-generic V2 read-only/paid
-  authority validation while retaining strict non-transferable operations/resources/rates/caps.
+- Replace Pod envelopes/events with Serverless request/attempt/output contracts. Quarantine
+  superseded schemas behind read-only compatibility tests; they cannot authorize v3 dispatch.
+- Enforce checkpoint-generic V2 read-only/paid authority validation while retaining strict
+  non-transferable operations/resources/rates/caps.
 - Persist a transactional outbox and unique dispatch token before `/run`. RunPod creates the job ID
   and documents no client idempotency key or exactly-once billing guarantee. Enforce at most one
   accepted output per token; bound, expose, reconcile, and charge any duplicate compute to an
@@ -302,8 +305,8 @@ queue-based Serverless lane jobs without knowing the eventual worker identity in
 - Measure lane-specific init/execution/TTL envelopes: provider TTL begins at submission and covers
   provider queue, cold start, handler execution, and its output upload; it does not cover control-plane
   reconciliation. Set a separate bounded reconciliation deadline inside the approximately 30-minute
-  async-result window. Treat SoulX's historical 672-second Pod start-to-ready measurement as a
-  warning, not a Serverless timeout value.
+  async-result window. Treat SoulX's measured 672-second bounded-worker start-to-ready observation
+  as a warning, not a Serverless timeout value.
 
 **Proof:** schemas, migrations, TypeScript/Python parity, adversarial ownership/authority tests,
 durable replay, cost conservation, zero provider calls, and canonical verification.
@@ -313,15 +316,15 @@ durable replay, cost conservation, zero provider calls, and canonical verificati
 **Outcome:** every application path uses the tenant/fair-queue/Serverless-v3 contracts with fake
 transport; ordinary production can no longer reach the global-session or manual-Pod runtime.
 
-- Add migrations and adapters that supersede the immutable `generation_sessions`, global queue,
-  Pod-lifecycle, Pod-bound envelope, and GPU-pair contracts without rewriting historical migrations.
+- Add migrations and adapters that supersede the committed `generation_sessions`, global queue,
+  Pod-lifecycle, Pod-bound envelope, and GPU-pair contracts without rewriting committed migrations.
 - Compose V2 tenant repositories, private artifacts, admission/outbox, lane orchestration, signed
   receipts, cost reservations, recovery, and fake Mage/SoulX handlers end to end.
 - Preserve the approved UI design while removing Start/Stop/Delete Pod and per-project GPU choices.
   Show private factual queue/stage/retry/cancel/cost state only.
-- Extend the active-runtime and dispatch firewalls so production builds reject legacy global-session
-  routes, Pod creation/controllers, `/workspace` model mounts, Echo/fallback names, broad R2 keys,
-  and unadmitted Serverless dispatch.
+- Extend the active-runtime and dispatch firewalls so production builds reject superseded global-
+  session routes, Pod creation/controllers, `/workspace` model mounts, inactive-runtime/fallback
+  aliases, broad R2 keys, and unadmitted Serverless dispatch.
 - Prove worker/job isolation, accepted-unit resume, unknown-ack reconciliation, cancellation, process
   restart, and two tenant projects at every provider-free barrier.
 
@@ -422,8 +425,8 @@ concurrent paid runs.
   images/avatar, rendering, completed/failed. Provider state is not durability truth.
 - Preserve successful units across retries; never regenerate accepted images/clips after unrelated
   failure.
-- Remove live ordinary-production access to manual Pod controllers and legacy global-session paths;
-  keep historical replay/tests isolated.
+- Remove live ordinary-production access to manual Pod controllers and superseded global-session
+  paths; quarantine compatibility fixtures from production imports and dispatch.
 
 **Proof:** provider-free two-tenant full journeys first, then one bounded 30–90-second real hosted
 project, exact manifests/cost ledger/recovery, real Chrome playback/download, no cross-tenant
@@ -536,7 +539,8 @@ Each implementation chat works on exactly one selected checkpoint and must:
 4. Add focused positive, negative, race/restart, and ownership tests proportional to the checkpoint.
 5. Run context/schema checks, focused suites, canonical verification, and real Chrome for visible
    behavior.
-6. Preserve private/model/credential bytes outside Git and retain immutable historical evidence.
+6. Preserve private/model/credential bytes outside Git and retain only evidence required by active
+   foundations, gates, artifact identities, cost facts, or audits.
 7. Record exact evidence, remaining gates, provider/spend state, and zero-worker/endpoint/volume
    truth where applicable.
 8. Update `CURRENT_STATE.yaml`, commit one green handoff, and stop before the next checkpoint.

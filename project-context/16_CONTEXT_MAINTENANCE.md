@@ -30,11 +30,16 @@ Precedence is:
 
 Use `templates/NEW_CHAT_BOOTSTRAP.md` for a paste-ready prompt.
 
+Only V2 task briefs belong in `project-context/tasks/`. Git history records removed planning files;
+do not restore them as working-tree context. Keep repository evidence only when an active foundation,
+gate, artifact identity, cost fact, or audit depends on it. Every removal must also clear dangling
+references from active context, selectors, validators, manifests, and source indexes.
+
 ## When a decision changes
 
 In the same commit/task:
 
-1. Add or update its row in `15_DECISIONS_AND_OPEN_GATES.md`; mark the prior decision superseded rather than erasing history when useful.
+1. Add or update its normative row in `15_DECISIONS_AND_OPEN_GATES.md`; Git records the prior text.
 2. Update `MANIFEST.yaml` approved decision/open gate.
 3. Update the single primary domain file.
 4. Update every directly affected cost, plan, contract, and acceptance file.
@@ -100,7 +105,7 @@ Reference-video measurements and user-approved aesthetic decisions are relativel
 - Preserve source URL, timestamp, rights status, checksum.
 - Third-party reference images remain local/private and git-ignored.
 - These private files are `local_optional`: a fresh private clone/context validator must warn rather than fail when they are absent, and app builds/tests use owned/synthetic fixtures.
-- Never treat historical screenshots as current decisions.
+- Never treat superseded screenshots as current decisions.
 - If an asset is replaced, update its manifest/checksum and README.
 
 ## Implementation docs

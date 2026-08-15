@@ -8,15 +8,15 @@
     "mode": "IMMUTABLE_PROFILE_ONLY",
     "default_option_label": "Fixture",
     "raw_gpu_mutation_allowed": false,
-    "production_gate_id": "GATE_GPU_001"
+    "production_gate_id": "GATE_SERVERLESS_CONTRACT_001"
   },
   "lanes": [
     {
       "lane": "image_media",
       "selector_label": "Image generation",
       "model": {
-        "display_name": "Mage-Flow Turbo",
-        "model_id": "microsoft/Mage-Flow-Turbo",
+        "display_name": "Mage-Flow Turbo INT8 ConvRot",
+        "model_id": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
         "role": "IMAGE_GENERATOR",
         "qualification_state": "BENCHMARK_REQUIRED"
       },
@@ -56,23 +56,7 @@
           "planned_priority": 1,
           "selectable": false,
           "status": "BENCHMARK_REQUIRED",
-          "gate_id": "GATE_GPU_001"
-        },
-        {
-          "candidate_id": "mage-rtx-5090",
-          "label": "RTX 5090",
-          "planned_priority": 2,
-          "selectable": false,
-          "status": "BENCHMARK_REQUIRED",
-          "gate_id": "GATE_GPU_001"
-        },
-        {
-          "candidate_id": "mage-l40s",
-          "label": "L40S",
-          "planned_priority": 3,
-          "selectable": false,
-          "status": "BENCHMARK_REQUIRED",
-          "gate_id": "GATE_GPU_001"
+          "gate_id": "GATE_SERVERLESS_MAGE_001"
         }
       ]
     },
@@ -80,8 +64,8 @@
       "lane": "avatar_primary",
       "selector_label": "Avatar generation",
       "model": {
-        "display_name": "EchoMimicV3-Flash Turbo FP8",
-        "model_id": "EchoMimicV3-Flash",
+        "display_name": "SoulX-FlashHead Pro",
+        "model_id": "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro",
         "role": "AVATAR_PRIMARY",
         "qualification_state": "BENCHMARK_REQUIRED"
       },
@@ -116,28 +100,12 @@
       ],
       "planned_candidates": [
         {
-          "candidate_id": "echomimic-rtx-4090",
+          "candidate_id": "soulx-flashhead-pro-rtx-4090",
           "label": "RTX 4090",
           "planned_priority": 1,
           "selectable": false,
           "status": "BENCHMARK_REQUIRED",
-          "gate_id": "GATE_GPU_001"
-        },
-        {
-          "candidate_id": "echomimic-l40s",
-          "label": "L40S",
-          "planned_priority": 2,
-          "selectable": false,
-          "status": "BENCHMARK_REQUIRED",
-          "gate_id": "GATE_GPU_001"
-        },
-        {
-          "candidate_id": "echomimic-rtx-6000-ada",
-          "label": "RTX 6000 Ada",
-          "planned_priority": 3,
-          "selectable": false,
-          "status": "BENCHMARK_REQUIRED",
-          "gate_id": "GATE_GPU_001"
+          "gate_id": "GATE_SERVERLESS_SOULX_001"
         }
       ]
     }

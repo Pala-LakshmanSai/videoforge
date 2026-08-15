@@ -8,12 +8,11 @@ Read when: activating, implementing, auditing, or handing off one checkpoint.
 The exact checkpoint acceptance contract lives in `22_PROJECT_COMPLETION_CHECKPOINTS.md`.
 `CURRENT_STATE.yaml` selects one current checkpoint, narrow read profile, and task brief. The brief
 owns file scope, dependencies, authority, evidence, rollback, cleanup, and stop conditions. If the
-matching selector records are absent, create and validate narrow records before implementation; do
-not load unrelated history.
+matching selector records are absent, create and validate narrow records before implementation.
 
-The former checkpoint series, manual-Pod runtime, global session, and prior provider approvals are
-historical only. Preserve their bytes and evidence, but never use an old cap, resource grant, or
-acceptance as authority for a v2 operation.
+Only V2 task briefs belong in the working tree; Git history records removed planning files. No prior
+cap, resource grant, or acceptance authorizes a V2 operation. Retain evidence only when an active
+foundation, gate, artifact identity, cost fact, or audit depends on it.
 
 ## Required order
 

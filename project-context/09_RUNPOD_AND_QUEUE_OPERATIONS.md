@@ -11,10 +11,10 @@ endpoint queue is execution backpressure only. It does not decide which account 
 exactly-once execution, own recovery, or authorize another job.
 
 The exact Mage INT8 ConvRot runtime and exact SoulX-FlashHead Pro runtime already have isolated,
-sealed 50 GB `EU-RO-1` network volumes and successful bounded disposable-Pod evidence. Preserve
-their manifests, hashes, samples, timings, and cost records. That evidence proves the model bytes and
-Pod-era offline boot path; it does **not** prove a Serverless handler, template, endpoint, concurrent
-read safety, autoscaling, or production dispatch. EchoMimic is historical and non-dispatchable.
+sealed 50 GB `EU-RO-1` network volumes and successful bounded worker evidence. Keep their manifests,
+hashes, samples, timings, and cost records because the active lane gates depend on them. That evidence
+proves the model bytes and offline boot path; it does **not** prove a Serverless handler, template,
+endpoint, concurrent-read safety, autoscaling, or production dispatch.
 
 No planning or provider-free checkpoint may mutate RunPod. Endpoint/template publication, live
 requests, paid workers, or volume changes require the exact external-checkpoint authority.

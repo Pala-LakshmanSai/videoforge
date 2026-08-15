@@ -4,7 +4,7 @@ Use exactly one implementation prompt at a time and complete checkpoints in orde
 handoff, use the paired audit prompt in a separate read-only chat. Do not paste the whole file.
 
 Every prompt assumes `/Users/lakshmansai/Documents/videoforge`. A checkpoint request authorizes only
-the operations stated in that prompt. Historical provider approval, spend caps, credentials, and
+the operations stated in that prompt. Prior provider approval, spend caps, credentials, and
 resources grant no authority. External checkpoints always finish provider-free work first and stop
 once for one exact combined proposal before mutation or spend; the user supplies the numeric maximum
 cumulative finite spend.
@@ -14,15 +14,15 @@ cumulative finite spend.
 ```text
 Work on VideoForge checkpoint V2-00 only: architecture, reference, and roadmap reset.
 
-Use concise, factual updates. Read AGENTS.md, project-context/00_START_HERE.md, MANIFEST.yaml, CURRENT_STATE.yaml, only the selected read profile/task brief, and V2-00 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md. If the narrow V2-00 brief/profile is missing, create, select, and validate it first. Audit current HEAD before editing; preserve completed code, migrations, evidence, model artifacts, and accepted outputs.
+Use concise, factual updates. Read AGENTS.md, project-context/00_START_HERE.md, MANIFEST.yaml, CURRENT_STATE.yaml, only the selected read profile/task brief, and V2-00 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md. If the narrow V2-00 brief/profile is missing, create, select, and validate it first. Audit current HEAD before editing; preserve completed code, committed migrations, exact active model artifacts, accepted outputs, and only evidence required by active foundations or gates.
 
 This authorizes local context/planning changes only. Do not access credentials, call providers, mutate remote resources, publish, deploy, download models, allocate workers, or spend: $0.
 
 Replace every active roadmap and reusable checkpoint prompt with the V2-00 through V2-13 sequence. Reconcile the active decisions, architecture, queue, storage, model/provider, cost, testing, gates, and current-state selectors around: tenant-private data; one active video/account; two different accounts active globally; fair durable admission; two queue-based RunPod Serverless endpoints in EU-RO-1; existing separate sealed Mage and SoulX 50 GB volumes at /runpod-volume; workersMin=0; private R2 artifacts; job-local scratch; no ordinary GPU/Pod controls; preserved UI, transcript, scheduler, renderer, and Ranga grammar.
 
-Mark old global-session, manual-Pod, Pod-bound authority, cross-user catalogs, Echo, Auto/fallback/repair, and historical Serverless paths as superseded or replay-only without deleting history. Pin official Serverless semantics: no exactly-once promise, at-most-one accepted canonical output, observable duplicate-compute/cost risk, durable outbox plus /status reconciliation before the 30-minute async-result expiry, measured TTL/execution/init timeouts, and no routine queue purge.
+Remove obsolete checkpoint/task/profile files from the working tree so only V2 task briefs remain; Git history records the removed planning files. Remove every dangling reference to them from active context, selectors, validators, and source indexes. Keep only evidence required by an active foundation, gate, artifact identity, cost fact, or audit. Make superseded global-session, manual-compute, Pod-bound authority, cross-user catalog, automatic-GPU, alternate-runtime, and fallback/repair paths non-operative. Do not rewrite committed migrations. Pin official Serverless semantics: no exactly-once promise, at-most-one accepted canonical output, observable duplicate-compute/cost risk, durable outbox plus /status reconciliation before the 30-minute async-result expiry, measured TTL/execution/init timeouts, and no routine queue purge.
 
-Run context/schema validators, contradiction scans, focused doc checks, and git diff --check. Update CURRENT_STATE truthfully, record $0/no-provider/no-worker state, make one bounded green commit, and hand off exact commands/exits, commit, remaining gates, and next checkpoint. Do not implement V2-01 application code.
+Run context/schema validators, contradiction scans, a task-directory allowlist check, a dangling-reference scan across active docs/selectors/validators/source indexes, focused doc checks, and git diff --check. Update CURRENT_STATE truthfully, record $0/no-provider/no-worker state, make one bounded green commit, and hand off exact commands/exits, commit, remaining gates, and next checkpoint. Do not implement V2-01 application code.
 ```
 
 ## V2-00 independent audit
@@ -30,7 +30,7 @@ Run context/schema validators, contradiction scans, focused doc checks, and git 
 ```text
 Independently audit VideoForge V2-00 at current HEAD. Read AGENTS.md, the three startup files, the exact selected brief/profile, V2-00 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md, the diff, and handoff evidence. Read-only only: do not edit, commit, access credentials, call providers, mutate resources, or spend.
 
-Verify all active planning sources agree on V2-00 through V2-13, tenant privacy, per-account=1/global=2 fair admission, two scale-to-zero Serverless lanes, existing isolated volumes, private artifacts/scratch, preserved foundations/UI/Ranga rules, and correct non-exactly-once RunPod handling. Search for contradictory active global-session, manual-Pod, Echo, GPU-selector, cross-tenant, /workspace, fallback, or old-checkpoint instructions; historical evidence may remain only when clearly non-operative.
+Verify all active planning sources agree on V2-00 through V2-13, tenant privacy, per-account=1/global=2 fair admission, two scale-to-zero Serverless lanes, existing isolated volumes, private artifacts/scratch, preserved foundations/UI/Ranga rules, and correct non-exactly-once RunPod handling. Prove only V2 task briefs exist in the working tree and no removed checkpoint/task/profile identifier or dangling file reference remains in active context, selectors, validator branches, or source indexes. Exact immutable artifact identifiers may retain embedded legacy labels only when an active artifact identity or gate requires them. Search for contradictory active global-session, manual-compute, GPU-selector, cross-tenant, /workspace, inactive-runtime, automatic-GPU, or fallback/repair instructions. Confirm retained evidence is required by an active foundation, gate, artifact identity, cost fact, or audit.
 
 Return PASS or FAIL, evidence-backed P0/P1/P2 findings with file:line references, commands/exits, unproven claims, CURRENT_STATE truth, provider/spend/worker truth, and whether V2-01 is safe. Do not repair anything; missing proof is FAIL.
 ```
@@ -44,7 +44,7 @@ Use concise, factual updates. Read mandatory startup context, CURRENT_STATE's se
 
 This authorizes bounded local application, schema, test, and context changes only. No credentials, providers, cloud mutation, deployment, model work, GPU/workers, or spend: $0.
 
-Implement additive account_id/workspace_id ownership for projects, revisions, assets, Avatar Profiles/versions, Image Styles/versions, queue/jobs, attempts, outputs, costs, approvals, and audits. Backfill historical data into an explicit inaccessible legacy/system scope. Require a trusted server principal for every repository/API operation; a client-supplied owner never grants access. Enforce database constraints plus query/RLS-equivalent guards. Bind each invite-only identity to one account/default workspace. User-created hubs and results are private; only explicit immutable built-ins are globally readable.
+Implement additive account_id/workspace_id ownership for projects, revisions, assets, Avatar Profiles/versions, Image Styles/versions, queue/jobs, attempts, outputs, costs, approvals, and audits. Backfill pre-V2 data into an explicit inaccessible legacy/system scope. Require a trusted server principal for every repository/API operation; a client-supplied owner never grants access. Enforce database constraints plus query/RLS-equivalent guards. Bind each invite-only identity to one account/default workspace. User-created hubs and results are private; only explicit immutable built-ins are globally readable.
 
 Preserve current UI geometry while making libraries, searches, routes, settings, costs, and status tenant-scoped. Prove fresh/upgrade/restore migrations and a two-account adversarial matrix for read/write/update/delete/search, guessed IDs, hashes/existence, stale sessions, signed-URL requests, audit reads, and built-in visibility. Run focused tests, canonical verification, secret scan, context/schema validators, git diff --check, and installed-Chrome two-account isolation.
 
@@ -56,7 +56,7 @@ Update evidence/gates/CURRENT_STATE, state exact provider/spend/worker truth, co
 ```text
 Independently audit VideoForge V2-01 at current HEAD. Read mandatory context, selected brief/profile, V2-01 acceptance, diff/migrations, and evidence. Read-only: no edits, credentials, provider calls, cloud mutation, or spend.
 
-Verify V2-00 is green; all user-created records and every repository/API/query path require trusted account/workspace scope; historical rows are not exposed; built-ins alone are global; migrations work fresh/upgrade/restore; and cross-tenant metadata, existence, cost, status, output, preset, audit, and signed-URL access fail. Inspect actual tests and installed-Chrome isolation proof rather than accepting summaries.
+Verify V2-00 is green; all user-created records and every repository/API/query path require trusted account/workspace scope; pre-V2 rows are not exposed; built-ins alone are global; migrations work fresh/upgrade/restore; and cross-tenant metadata, existence, cost, status, output, preset, audit, and signed-URL access fail. Inspect actual tests and installed-Chrome isolation proof rather than accepting summaries.
 
 Return PASS/FAIL, P0/P1/P2 findings with exact references, commands/exits, missing proof, CURRENT_STATE/provider/spend/worker truth, and whether V2-02 is safe. Do not fix findings.
 ```
@@ -82,7 +82,7 @@ Run migrations, TypeScript/Python fixture parity, focused/canonical tests, secre
 ```text
 Independently audit VideoForge V2-02 at current HEAD. Read mandatory context, the exact V2-02 brief/profile and acceptance, implementation diff, schemas, tests, and evidence. Perform no edits, credential access, provider calls, mutations, or spend.
 
-Verify trusted tenant-derived object identity, least-scope expiring ports, durable commit receipts, non-enumeration, checksum/length enforcement, retention/deletion ownership, /runpod-volume read-only policy, job-local scratch, terminal cleanup, and path/symlink/cross-mount negatives. Confirm no real R2 proof is claimed from fakes and no historical global key remains live.
+Verify trusted tenant-derived object identity, least-scope expiring ports, durable commit receipts, non-enumeration, checksum/length enforcement, retention/deletion ownership, /runpod-volume read-only policy, job-local scratch, terminal cleanup, and path/symlink/cross-mount negatives. Confirm no real R2 proof is claimed from fakes and no superseded global key remains live.
 
 Return PASS/FAIL, prioritized exact findings, commands/exits, unproven claims, CURRENT_STATE/provider/spend/worker truth, and V2-03 safety. Do not repair.
 ```
@@ -122,11 +122,11 @@ Read mandatory context, selected brief/profile, official pinned RunPod Serverles
 
 This authorizes bounded local application/worker/schema/context work only. Do not access credentials, call RunPod, create endpoints, publish images, touch volumes, allocate workers, or spend: $0.
 
-Create additive v3 endpoint deployment, pre-dispatch authority, dispatch outbox, request attempt, provider assignment, signed VideoForge provenance receipt, progress, durable output receipt, cancellation, reconciliation, and cost contracts with TypeScript/Python parity. Bind tenant/revision/lane batch, endpoint/config/image/model/volume hashes, input hashes, deadline, and spend ceiling before dispatch. After a unique RunPod job ID is returned or reconciled, persist its assignment to the token/attempt before accepting status/output. Record worker ID when exposed, runtime GPU/driver/CUDA probes, intended region/volume, ready timings, and output hashes in a separate signed provenance receipt. Do not call this provider hardware attestation. Generalize the context validator's historical CP-06-only provider-authority branches into strict V2 checkpoint-generic read-only/paid validation without weakening exact operations/resources/rates/cap checks.
+Create additive v3 endpoint deployment, pre-dispatch authority, dispatch outbox, request attempt, provider assignment, signed VideoForge provenance receipt, progress, durable output receipt, cancellation, reconciliation, and cost contracts with TypeScript/Python parity. Bind tenant/revision/lane batch, endpoint/config/image/model/volume hashes, input hashes, deadline, and spend ceiling before dispatch. After a unique RunPod job ID is returned or reconciled, persist its assignment to the token/attempt before accepting status/output. Record worker ID when exposed, runtime GPU/driver/CUDA probes, intended region/volume, ready timings, and output hashes in a separate signed provenance receipt. Do not call this provider hardware attestation. Enforce strict checkpoint-generic V2 read-only/paid authority validation without weakening exact operations/resources/rates/cap checks.
 
 Persist a stable dispatch token/outbox before fake /run. Never promise exactly once or no duplicate billing: accept at most one canonical durable output and expose bounded duplicate compute/cost. Reconcile fake /status before the 30-minute result window expires; a signed R2 receipt is truth and webhooks are advisory. Measure/pin TTL, execution timeout, init timeout, scaler, idle, polling, and retry contracts; TTL includes queued/running life. Model workersMin=0 as zero Active workers and autoscaled Flex; workersMax counts Active+Flex. Forbid routine /purge-queue.
 
-Test fake /run/status/cancel, response loss before/after provider acceptance, duplicate delivery/execution/output, webhook loss/replay, stale/forged callbacks, worker death, timeout/TTL, cancellation races, restart, accepted-unit resume, cost conservation, and tenant/endpoint/volume/GPU mismatches. Preserve Pod contracts as replay-only. Run migrations, fixture parity, focused/canonical tests, validators, and diff check. Update evidence/gates/CURRENT_STATE, state $0/no-provider/no-worker truth, commit, and stop before V2-05.
+Test fake /run/status/cancel, response loss before/after provider acceptance, duplicate delivery/execution/output, webhook loss/replay, stale/forged callbacks, worker death, timeout/TTL, cancellation races, restart, accepted-unit resume, cost conservation, and tenant/endpoint/volume/GPU mismatches. Quarantine superseded Pod schemas behind read-only compatibility tests; they cannot authorize v3 dispatch. Run migrations, fixture parity, focused/canonical tests, validators, and diff check. Update evidence/gates/CURRENT_STATE, state $0/no-provider/no-worker truth, commit, and stop before V2-05.
 ```
 
 ## V2-04 independent audit
@@ -134,7 +134,7 @@ Test fake /run/status/cancel, response loss before/after provider acceptance, du
 ```text
 Independently audit VideoForge V2-04 at current HEAD. Read mandatory context, exact V2-04 profile/brief and acceptance, official pinned semantics, schemas/migrations/diff, tests, and evidence. Read-only: no edits, credentials, provider calls, mutations, or spend.
 
-Verify two-phase authority, outbox-before-/run, stable token, persisted unique `provider_assignment` before status/output acceptance, separate signed observed-fact receipt, /status reconciliation, 30-minute result-window handling, at-most-one accepted output, visible duplicate-compute/cost risk, measured timeout/scaler contracts, correct min/max worker meaning, cancellation/restart, and an enforced no-purge rule. Confirm replay-only Pod schemas cannot authorize v3 dispatch and adversarial tenant/endpoint/image/volume/GPU/cost cases fail closed.
+Verify two-phase authority, outbox-before-/run, stable token, persisted unique `provider_assignment` before status/output acceptance, separate signed observed-fact receipt, /status reconciliation, 30-minute result-window handling, at-most-one accepted output, visible duplicate-compute/cost risk, measured timeout/scaler contracts, correct min/max worker meaning, cancellation/restart, and an enforced no-purge rule. Confirm superseded Pod schemas are quarantined and cannot authorize v3 dispatch, and adversarial tenant/endpoint/image/volume/GPU/cost cases fail closed.
 
 Return PASS/FAIL, exact prioritized findings, commands/exits, unproven claims, CURRENT_STATE/provider/spend/worker truth, and V2-05 safety. Do not repair.
 ```
@@ -150,7 +150,7 @@ This authorizes local application/worker/UI/context changes only. No credentials
 
 Wire tenant-private identity/artifacts, fair two-slot admission, existing transcript/scheduler/prompt/render foundations, and fake Mage/SoulX Serverless v3 lane batches into the complete app. Each admitted video owns independent stage state; CPU preparation begins only after admission; each exact lane dispatches only after its manifest and authority are durable. Preserve accepted units across bounded retries. Show factual private states such as queued, preparing, waiting for worker, initializing, generating images/avatar, rendering, complete, failed, and canceled.
 
-Make legacy global session, shared catalogs, Pod create/delete/controllers, user GPU selectors, Echo, old Serverless, Auto routing, fallback/repair/substitution, broad object keys, and cross-tenant callbacks unreachable from ordinary production imports, routes, flags, and build output. Keep explicitly isolated replay fixtures only. No fake state may look live.
+Make superseded global session, shared catalogs, Pod create/delete/controllers, user GPU selectors, inactive runtimes/endpoints, automatic-GPU routing, fallback/repair/substitution, broad object keys, and cross-tenant callbacks unreachable from ordinary production imports, routes, flags, and build output. Quarantine compatibility fixtures from production imports and dispatch. No fake state may look live.
 
 Prove two tenant projects active concurrently plus waiting projects, lane independence, response loss/duplicate delivery, restart/cancel, accepted-unit resume, asset barriers, exact renderer output, cross-tenant negatives, cost attribution, and zero fake workers after drain. Run import/firewall scans, focused/canonical verification, migrations, secret scan, validators, diff check, and installed-Chrome two-account journeys. Update evidence/gates/CURRENT_STATE, record $0/no-provider/no-worker truth, commit, and stop before V2-06.
 ```
@@ -160,7 +160,7 @@ Prove two tenant projects active concurrently plus waiting projects, lane indepe
 ```text
 Independently audit VideoForge V2-05 at current HEAD. Read mandatory context, selected records, V2-05 acceptance, diff/build graph, tests, and Chrome evidence. Read-only only; no edits, credentials, providers, mutation, or spend.
 
-Verify the active app uses tenant-private v3 paths end to end, admits at most two different accounts, dispatches no waiting work, preserves successful units, reports truthful states/costs, renders the three locked compositions, and drains fake workers. Prove ordinary production cannot import or route to manual Pod/global session/GPU selector/Echo/legacy Serverless/Auto/fallback/repair/broad-key paths; fixture/replay code must be isolated and visibly non-live.
+Verify the active app uses tenant-private v3 paths end to end, admits at most two different accounts, dispatches no waiting work, preserves successful units, reports truthful states/costs, renders the three locked compositions, and drains fake workers. Prove ordinary production cannot import or route to manual Pod/global session/GPU selector/inactive-runtime/superseded-Serverless/automatic-GPU/fallback/repair/broad-key paths; compatibility fixtures must be quarantined and visibly non-live.
 
 Return PASS/FAIL, P0/P1/P2 exact findings, commands/exits, unproven claims, CURRENT_STATE/provider/spend/worker truth, and V2-06 safety. Do not fix.
 ```
@@ -360,7 +360,7 @@ First complete threat model and tenant-boundary review; dependency/container/sec
 
 Before any production mutation or paid smoke, ask once with a combined proposal listing every exact deploy/promote/domain/DNS/OAuth/secret/email/config/smoke/rollback/delete/retain operation; accounts/projects/regions/resource sizes/images/endpoints/volumes/GPU/current rates; finite estimate and all recurring charges/retention consent; stop conditions; and request my numeric maximum cumulative finite external spend. Do not invent or reuse a cap. Record exact approval and stop on any change or cap risk.
 
-After approval, promote only pinned artifacts. Prove deployment and rollback, two invited users' private Chrome journeys, one bounded generation, playback/download, restart/reconcile, backup/restore, alerts, cancel, queue drain, next-job readiness, settled finite cost, ongoing charges, no pending provider jobs, and both endpoints at workers=0 with exactly the intended retained volumes/resources. Archive or firewall obsolete entrypoints without deleting history. Update final evidence/gates/CURRENT_STATE, commit, and hand back production with operator URLs/runbooks and honest remaining risks. Push only if explicitly requested.
+After approval, promote only pinned artifacts. Prove deployment and rollback, two invited users' private Chrome journeys, one bounded generation, playback/download, restart/reconcile, backup/restore, alerts, cancel, queue drain, next-job readiness, settled finite cost, ongoing charges, no pending provider jobs, and both endpoints at workers=0 with exactly the intended retained volumes/resources. Remove obsolete entrypoints from production imports/routes or enforce the runtime firewall; Git history records deleted code and planning files. Retain evidence only when an active release foundation, gate, artifact identity, cost fact, or audit depends on it. Update final evidence/gates/CURRENT_STATE, commit, and hand back production with operator URLs/runbooks and honest remaining risks. Push only if explicitly requested.
 ```
 
 ## V2-13 independent audit

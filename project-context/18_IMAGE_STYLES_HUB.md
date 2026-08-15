@@ -135,8 +135,8 @@ Archived styles remain resolvable by old revisions but disappear from new select
 - publication atomically pins the exact current artifact and reviewer; editor is not silently
   treated as reviewer.
 
-Existing VF-7-07/08/09 provider-free artifacts remain reusable. Their prior canonical-global scope
-is historical; V2 migrations add tenant ownership without rewriting their bytes.
+Existing accepted provider-free style artifacts remain reusable. V2 migrations add tenant ownership
+without rewriting their immutable bytes.
 
 ## Default built-in style
 

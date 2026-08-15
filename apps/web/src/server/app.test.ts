@@ -211,7 +211,10 @@ describe("fixture API", () => {
       provider_mode: "fixture",
       provider_calls_authorized: false,
       maximum_external_spend_usd: 0,
-      selection_policy: { raw_gpu_mutation_allowed: false, production_gate_id: "GATE_GPU_001" },
+      selection_policy: {
+        raw_gpu_mutation_allowed: false,
+        production_gate_id: "GATE_SERVERLESS_CONTRACT_001",
+      },
     });
     expect(body.lanes).toHaveLength(2);
     for (const lane of body.lanes) {
@@ -679,11 +682,18 @@ describe("fixture API", () => {
     expect(exact.status).toBe(200);
   });
 
-  it("rejects unknown or cross-lane execution profile overrides", async () => {
-    for (const execution_profile_overrides of [
-      { image_media_profile_id: "exec_fixture_unknown_v1" },
-      { image_media_profile_id: "exec_fixture_avatar_primary_v1" },
-    ]) {
+  it("rejects unknown or cross-lane execution profile overrides with the active lane gate", async () => {
+    const invalidProfileCases: ReadonlyArray<
+      readonly [
+        Readonly<Record<string, string>>,
+        "GATE_SERVERLESS_MAGE_001" | "GATE_SERVERLESS_SOULX_001",
+      ]
+    > = [
+      [{ image_media_profile_id: "exec_fixture_unknown_v1" }, "GATE_SERVERLESS_MAGE_001"],
+      [{ image_media_profile_id: "exec_fixture_avatar_primary_v1" }, "GATE_SERVERLESS_MAGE_001"],
+      [{ avatar_primary_profile_id: "exec_fixture_unknown_v1" }, "GATE_SERVERLESS_SOULX_001"],
+    ];
+    for (const [execution_profile_overrides, gateId] of invalidProfileCases) {
       const response = await app.request(
         "/api/v1/projects/preflight?fixture=project_create_ready",
         {
@@ -694,7 +704,11 @@ describe("fixture API", () => {
       );
       expect(response.status).toBe(409);
       await expect(response.json()).resolves.toMatchObject({
-        error: { code: "EXECUTION_PROFILE_NOT_AVAILABLE", retryable: false },
+        error: {
+          code: "EXECUTION_PROFILE_NOT_AVAILABLE",
+          detail: expect.stringContaining(gateId),
+          retryable: false,
+        },
       });
     }
   });

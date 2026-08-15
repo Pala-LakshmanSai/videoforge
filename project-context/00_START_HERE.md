@@ -76,23 +76,22 @@ workers after drain and continue billing only for the two explicitly retained vo
 
 ## Preserved green foundations
 
-- CP-03: exact word-level whisper.cpp contract, deterministic chunk overlap/reconciliation, durable
+- Word timing: exact word-level whisper.cpp contract, deterministic chunk overlap/reconciliation, durable
   receipts/replay, and real Linux FFmpeg/whisper.cpp parity.
-- CP-04: deterministic `scheduler-v2`, exact 30 fps coverage, three-composition manifests, natural
+- Scheduling: deterministic `scheduler-v2`, exact 30 fps coverage, three-composition manifests, natural
   word/clause cuts, selected-span audio, and provider-free Chrome playback.
-- CP-05: complete provider-free fixture orchestration, recovery/cancellation/fail-closed evidence,
+- Fixture orchestration: complete provider-free recovery/cancellation/fail-closed evidence,
   useful UI shell, and final MP4 playback/download. Its singleton global-session and manual-Pod
   semantics are superseded, not production truth.
-- CP-06: exact Mage INT8 runtime and sealed 50 GB volume, accepted visual quality, valid offline Pod
-  proof, and zero-compute settlement. Pod qualification does not prove Serverless compatibility.
-- VF-9-24S/U: exact SoulX Pro runtime and sealed 50 GB volume, valid offline Pod samples,
+- Mage foundation: exact INT8 runtime and sealed 50 GB volume, accepted visual quality, valid offline
+  worker proof, and zero-compute settlement. Bounded worker qualification does not prove Serverless compatibility.
+- SoulX foundation: exact Pro runtime and sealed 50 GB volume, valid offline worker samples,
   source-aware full/split review outputs, measured RTX 4090 behavior, and zero compute. The latest
   Avatar Profile visual/crop approval remains open. Pod proof does not prove Serverless handler,
   endpoint, scale-to-zero, concurrency, or recovery behavior.
 
-EchoMimicV3-Flash, AvatarForcing, MuseTalk, SkyReels, Long Video CFG, repair paths, and all model
-substitutions are historical/non-dispatchable. The former Echo volume was deleted and replaced by
-the isolated SoulX volume. Do not reconstruct or use Echo.
+No inactive avatar runtime, repair route, model substitute, or alternate volume is dispatchable.
+Only the exact Mage and SoulX lanes named above belong to the active production plan.
 
 ## Locked editorial contract
 
@@ -107,7 +106,7 @@ The pinned Ranga studies remain the style target, while respecting VideoForge's 
 - narration relevance is literal, shot roles vary deterministically, and every cut follows a natural
   word/clause boundary rather than a randomized duration.
 
-CP-04's owned 30-minute fixture already reached 21.05% avatar, 3.433 appearances/minute, 3.679-second
+The scheduler's owned 30-minute fixture already reached 21.05% avatar, 3.433 appearances/minute, 3.679-second
 mean avatar span, and 4.569-second mean scene duration. Preserve it. Remaining quality work is
 literal image relevance, per-avatar crop/lip/background review, authentic-feeling imagery, and real
 full-length acceptance. Ranga uses moving stock/UGC; stills plus zoom can match composition, cadence,
@@ -117,10 +116,10 @@ and evidence selection, not source-footage motion.
 
 The V2 roadmap/context reset is complete. `CURRENT_STATE.yaml` selects the independent V2-00 audit
 next; V2-01 remains blocked until that audit is green. The audit is `$0`, provider-free, read-only,
-and does not authorize application implementation. Old CP-06/CP-07/VF-9-24 authorities are consumed
+and does not authorize application implementation. All prior provider authorities are consumed
 and cannot be reused. The new ordered checkpoints and copy-ready implementation/audit prompts
-supersede the old active checkpoint plan. Historical briefs and evidence remain immutable
-provenance.
+supersede every removed planning file. Git history records removed briefs; only evidence required by
+active foundations and gates remains in the working tree.
 
 ## Context navigation
 

@@ -48,8 +48,10 @@ export interface ExecutionProfileSelectionPolicy {
   readonly mode: "IMMUTABLE_PROFILE_ONLY";
   readonly default_option_label: "Fixture";
   readonly raw_gpu_mutation_allowed: false;
-  readonly production_gate_id: "GATE_GPU_001";
+  readonly production_gate_id: "GATE_SERVERLESS_CONTRACT_001";
 }
+
+export type ServerlessLaneGateId = "GATE_SERVERLESS_MAGE_001" | "GATE_SERVERLESS_SOULX_001";
 
 export interface LaneModelMetadata {
   readonly display_name: string;
@@ -94,7 +96,7 @@ export interface BenchmarkRequiredGpuCandidate {
   readonly planned_priority: number;
   readonly selectable: false;
   readonly status: "BENCHMARK_REQUIRED";
-  readonly gate_id: "GATE_GPU_001";
+  readonly gate_id: ServerlessLaneGateId;
 }
 
 export interface PrimaryLaneCatalogEntry {
@@ -149,21 +151,25 @@ const PROFILE_ID_FIELD_BY_LANE: Readonly<Record<WorkerLane, keyof ExecutionProfi
 const LANE_EXPECTATIONS = {
   image_media: {
     selectorLabel: "Image generation",
-    modelDisplayName: "Mage-Flow Turbo",
-    modelId: "microsoft/Mage-Flow-Turbo",
+    modelDisplayName: "Mage-Flow Turbo INT8 ConvRot",
+    modelId: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
     modelRole: "IMAGE_GENERATOR",
     processDisplayName: "Generate images",
     parallelWith: "avatar_primary",
-    candidateLabels: ["RTX 4090", "RTX 5090", "L40S"],
+    candidateGateId: "GATE_SERVERLESS_MAGE_001",
+    candidateIds: ["mage-rtx-4090"],
+    candidateLabels: ["RTX 4090"],
   },
   avatar_primary: {
     selectorLabel: "Avatar generation",
-    modelDisplayName: "EchoMimicV3-Flash Turbo FP8",
-    modelId: "EchoMimicV3-Flash",
+    modelDisplayName: "SoulX-FlashHead Pro",
+    modelId: "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro",
     modelRole: "AVATAR_PRIMARY",
     processDisplayName: "Generate avatar clips",
     parallelWith: "image_media",
-    candidateLabels: ["RTX 4090", "L40S", "RTX 6000 Ada"],
+    candidateGateId: "GATE_SERVERLESS_SOULX_001",
+    candidateIds: ["soulx-flashhead-pro-rtx-4090"],
+    candidateLabels: ["RTX 4090"],
   },
 } as const;
 
@@ -438,7 +444,7 @@ function parseSelectionPolicy(value: unknown, path: string): ExecutionProfileSel
     ),
     production_gate_id: literalAt(
       input.production_gate_id,
-      "GATE_GPU_001",
+      "GATE_SERVERLESS_CONTRACT_001",
       `${path}.production_gate_id`,
     ),
   });
@@ -548,6 +554,7 @@ function parseFixtureProfileSelectorOption(
 
 function parseBenchmarkRequiredGpuCandidate(
   value: unknown,
+  gateId: ServerlessLaneGateId,
   path: string,
 ): BenchmarkRequiredGpuCandidate {
   const input = objectAt(value, path);
@@ -562,7 +569,7 @@ function parseBenchmarkRequiredGpuCandidate(
     planned_priority: positiveIntegerAt(input.planned_priority, `${path}.planned_priority`),
     selectable: literalAt(input.selectable, false, `${path}.selectable`),
     status: literalAt(input.status, "BENCHMARK_REQUIRED", `${path}.status`),
-    gate_id: literalAt(input.gate_id, "GATE_GPU_001", `${path}.gate_id`),
+    gate_id: literalAt(input.gate_id, gateId, `${path}.gate_id`),
   });
 }
 
@@ -592,7 +599,11 @@ function parsePrimaryLaneCatalogEntry(value: unknown, path: string): PrimaryLane
 
   const candidates = arrayAt(input.planned_candidates, `${path}.planned_candidates`).map(
     (candidate, index) =>
-      parseBenchmarkRequiredGpuCandidate(candidate, `${path}.planned_candidates[${index}]`),
+      parseBenchmarkRequiredGpuCandidate(
+        candidate,
+        expected.candidateGateId,
+        `${path}.planned_candidates[${index}]`,
+      ),
   );
   if (candidates.length !== expected.candidateLabels.length) {
     fail(
@@ -606,6 +617,12 @@ function parsePrimaryLaneCatalogEntry(value: unknown, path: string): PrimaryLane
       fail(`${path}.planned_candidates`, `duplicate candidate_id ${candidate.candidate_id}`);
     }
     candidateIds.add(candidate.candidate_id);
+    if (candidate.candidate_id !== expected.candidateIds[index]) {
+      fail(
+        `${path}.planned_candidates[${index}].candidate_id`,
+        `expected ${expected.candidateIds[index]}`,
+      );
+    }
     if (candidate.label !== expected.candidateLabels[index]) {
       fail(
         `${path}.planned_candidates[${index}].label`,

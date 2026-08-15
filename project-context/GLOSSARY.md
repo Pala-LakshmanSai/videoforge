@@ -43,7 +43,6 @@ and artifact acceptance. Do not shorten them into ambiguous fields.
 | **Zero-worker drain** | Provider evidence that both worker classes (`Active + Flex`) total zero and no queued/running endpoint jobs remain; retained-volume billing is reported separately | Operations |
 | **Technical acceptance** | Deterministic decode/duration/format/geometry/hash checks; it does not mean a human liked the pixels | QA |
 | **Creative acceptance** | Explicit human approval or a separately approved future visual-QA policy | QA/user |
-| **Historical global session** | Replay-only CP-era singleton/manual-Pod contract; it is not V2 admission, queue, or provider authority | Historical compatibility |
 
 Rules:
 
@@ -55,5 +54,3 @@ Rules:
   qualification before it can enter a GPU fallback list.
 - RunPod does not promise exactly-once execution or billing. VideoForge promises at most one accepted
   output and records any duplicate compute/cost.
-- The former global-session, GPU-pair, warm-waiter, Pod-lifecycle, Echo, and shared-catalog terms are
-  historical schema/evidence labels only.

@@ -1,6 +1,6 @@
 # Avatar Hub
 
-Status: provider-free lifecycle/UI foundation and SoulX Pod-era technical sample exist; V2 tenant/
+Status: provider-free lifecycle/UI foundation and SoulX bounded-worker technical sample exist; V2 tenant/
 R2/Serverless production activation remains open
 Read when: implementing reusable avatars, private source handling, project selection, compatibility
 tests, SoulX dispatch, or renderer crop profiles.
@@ -25,8 +25,8 @@ The only proposed active avatar model is exact SoulX-FlashHead Pro:
 - ordinary Serverless mount `/runpod-volume`, offline/read-only model contract, one RTX 4090 GPU;
 - best approved Pro settings, no repair/fallback/model substitution.
 
-EchoMimic, AvatarForcing, MuseTalk, and SkyReels are historical and non-dispatchable. Their crops or
-samples do not authorize a SoulX production profile.
+No crop, sample, or compatibility result from an inactive runtime authorizes a SoulX production
+profile.
 
 ## Invariants
 
@@ -118,10 +118,11 @@ an unqualified RTX 5090, or activate a profile/crop automatically.
 
 ## SoulX renderer profiles
 
-The Pod-era VF-9-24T/U evidence includes technically valid Ranga-style full and split composition
-candidates made from one native SoulX output. Treat those filters/hashes as review evidence, not
-active production configuration, until `GATE_SERVERLESS_SOULX_001` and the explicit human crop
-decision pass.
+The accepted bounded-worker evidence includes technically valid Ranga-style full and split
+composition candidates made from one native SoulX output. Their exact filters/hashes are indexed by
+`CURRENT_STATE.yaml.model_runtime_evidence.soulx`; treat them as review evidence, not active
+production configuration, until `GATE_SERVERLESS_SOULX_001` and the explicit human crop decision
+pass.
 
 The active renderer contract, once approved, must pin:
 
@@ -213,7 +214,7 @@ SoulX runtime. Serverless workers treat it read-only, redirect cache/temp/locks 
 upload only to exact tenant reservations, and scrub scratch after the attempt.
 
 Archive hides a profile from new selection but preserves old revision resolution. A source referenced
-by queued/running/review work cannot be deleted. Later explicit erasure warns that historical
+by queued/running/review work cannot be deleted. Later explicit erasure warns that affected
 revisions become non-regenerable and retains only minimum lawful hash/audit facts. Account deletion
 does not authorize deletion or mutation of the shared infrastructure model volume.
 
@@ -223,9 +224,9 @@ Creating/validating a profile is local/hosted CPU plus private storage. A ready 
 database/R2 lookup to generation and avoids repeated upload/preprocessing; it does not eliminate
 SoulX inference for new speech.
 
-Optional tests are separately estimated Serverless work. Historical Pod evidence measured roughly
-20.268 seconds inference plus 0.894 seconds encode/mux for a 10-second sample, but historical total
-cold readiness reached 672.035 seconds and is not a Serverless estimate. Current Flex rate, startup,
+Optional tests are separately estimated Serverless work. Accepted bounded-worker evidence measured
+roughly 20.268 seconds inference plus 0.894 seconds encode/mux for a 10-second sample, but total cold
+readiness reached 672.035 seconds and is not a Serverless estimate. Current Flex rate, startup,
 model-ready, inference, upload, possible duplicate exposure, and fixed volume billing are reported
 separately.
 

@@ -209,9 +209,9 @@ Preserve and extend:
 - the current React product surfaces and accessibility/Chrome acceptance baseline;
 - additive Postgres migrations, immutable revision/version patterns, actor audit, and fail-closed
   repository style;
-- CP-03 transcript/word timing and R2 media ports;
-- CP-04 deterministic scheduler and immutable generation/render manifests;
-- CP-05 provider-free orchestration/recovery patterns after adapting them to tenant/fair Serverless
+- transcript/word timing and R2 media ports;
+- deterministic scheduler and immutable generation/render manifests;
+- provider-free orchestration/recovery patterns after adapting them to tenant/fair Serverless
   semantics;
 - exact prepared Mage and SoulX models/volumes and their Pod qualification evidence.
 

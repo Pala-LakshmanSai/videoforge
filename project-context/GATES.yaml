@@ -2,8 +2,7 @@ schema_version: "2.0"
 updated_at: "2026-08-15"
 evidence_root: "evidence/gates"
 
-# V2 gates are active release blockers. Historical gates retain stable evidence identifiers but
-# explicitly cannot authorize the retired manual-Pod, Echo, repair, or fallback architecture.
+# This registry contains only active V2 gates and accepted foundations still used by V2.
 gates:
   GATE_TENANCY_001:
     status: open
@@ -109,52 +108,6 @@ gates:
     last_run: null
     result: open_security_release_and_operations_proof_pending
 
-  GATE_AVATAR_001:
-    status: open
-    blocks: historical_echo_primary_production_claim_only
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
-    owner: historical
-    last_run: "evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json"
-    result: historical_open_full_echo_suite_unrun_echo_now_non_dispatchable
-    active_effect: none_superseded_by_soulx_and_v2_serverless_gates
-
-  GATE_AVATAR_002:
-    status: open
-    blocks: historical_automatic_avatar_demotion_claim_only
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
-    owner: historical
-    last_run: null
-    result: historical_open_no_global_demotion_threshold
-    active_effect: none_no_fallback_or_repair_active
-
-  GATE_AVATAR_003:
-    status: open
-    blocks: historical_avatarforcing_clear_commercial_permission_claim_only
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
-    owner: historical
-    last_run: "evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license"
-    result: historical_open_conflicting_terms_avatarforcing_non_dispatchable
-    active_effect: none
-
-  GATE_AVATAR_004:
-    status: closed
-    blocks: historical_echo_manifest_claim_only
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
-    owner: historical
-    last_run: "evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json"
-    result: pass_historical_echo_artifact_and_native_samples
-    closed_at: "2026-08-14T23:15:32.540Z"
-    active_effect: none_echo_volume_deleted_and_runtime_non_dispatchable
-
-  GATE_AVATAR_005:
-    status: open
-    blocks: historical_soulx_pod_profile_activation_only
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
-    owner: historical
-    last_run: "evidence/acceptance/VF-9-24U/acceptance.json"
-    result: historical_pod_technical_pass_visual_crop_review_open
-    active_effect: subsumed_by_GATE_SERVERLESS_SOULX_001
-
   GATE_IMAGE_001:
     status: open
     blocks: production_image_quality_and_release
@@ -167,7 +120,7 @@ gates:
   GATE_IMAGE_002:
     status: open
     blocks: unambiguous_mage_commercial_permission_claim
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateimage002-mage-terms-risk-record"
     owner: historical_risk_record
     last_run: "evidence/gates/GATE_IMAGE_002/2026-08-11-huggingface-mage-access-license"
     result: open_user_accepted_terms_risk_no_clear_permission_claim
@@ -175,7 +128,7 @@ gates:
   GATE_LLM_001:
     status: closed
     blocks: runware_prompt_profile
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatellm001-prompt-provider-qualification"
     owner: historical
     last_run: "evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification"
     result: pass
@@ -184,7 +137,7 @@ gates:
   GATE_STYLE_001:
     status: closed
     blocks: custom_style_analysis
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatestyle001-style-analyzer-qualification"
     owner: historical
     last_run: "evidence/gates/GATE_STYLE_001/2026-08-10-runware-gemini-style-qualification"
     result: pass
@@ -197,42 +150,6 @@ gates:
     owner: V2-12
     last_run: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
     result: open_five_style_production_suite_pending
-
-  GATE_FALLBACK_001:
-    status: open
-    blocks: historical_skyreels_dispatch_only
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
-    owner: historical
-    last_run: "evidence/acceptance/VF-9-19/avatar-fallback-qualification"
-    result: historical_open_no_output_fallback_non_dispatchable
-    active_effect: none
-
-  GATE_GPU_001:
-    status: open
-    blocks: historical_manual_pod_pair_lock_claim_only
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
-    owner: historical
-    last_run: "evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json"
-    result: pod_rtx4090_fit_proven_serverless_per_lane_gpu_qualification_pending
-    active_effect: subsumed_by_serverless_lane_gates
-
-  GATE_RUNPOD_001:
-    status: open
-    blocks: historical_manual_pod_global_session_claim_only
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
-    owner: historical
-    last_run: "evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json"
-    result: isolated_pod_and_volume_proof_only
-    active_effect: subsumed_by_serverless_contract_and_lane_gates
-
-  GATE_COST_001:
-    status: open
-    blocks: historical_pod_extrapolation_as_unit_economics_claim
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateeconomics001-production-length-speedcost"
-    owner: V2-12
-    last_run: "evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json"
-    result: pod_bounded_cost_only_representative_serverless_settlement_pending
-    active_effect: subsumed_by_GATE_ECONOMICS_001
 
   GATE_UI_001:
     status: closed

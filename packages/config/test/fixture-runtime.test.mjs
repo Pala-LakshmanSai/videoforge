@@ -51,12 +51,19 @@ test("catalog exposes one explicit Fixture option per primary lane and no candid
   assert.equal(executionProfileCatalog.provider_calls_authorized, false);
   assert.equal(executionProfileCatalog.maximum_external_spend_usd, 0);
   assert.equal(executionProfileCatalog.selection_policy.raw_gpu_mutation_allowed, false);
-  assert.equal(executionProfileCatalog.selection_policy.production_gate_id, "GATE_GPU_001");
+  assert.equal(
+    executionProfileCatalog.selection_policy.production_gate_id,
+    "GATE_SERVERLESS_CONTRACT_001",
+  );
   assert.deepEqual(executionProfileCatalog.lanes.map((entry) => entry.lane).sort(), [
     "avatar_primary",
     "image_media",
   ]);
 
+  const expectedGateByLane = {
+    image_media: "GATE_SERVERLESS_MAGE_001",
+    avatar_primary: "GATE_SERVERLESS_SOULX_001",
+  };
   for (const lane of executionProfileCatalog.lanes) {
     assert.equal(lane.selector_options.length, 1);
     const [option] = lane.selector_options;
@@ -73,17 +80,31 @@ test("catalog exposes one explicit Fixture option per primary lane and no candid
     for (const candidate of lane.planned_candidates) {
       assert.equal(candidate.selectable, false);
       assert.equal(candidate.status, "BENCHMARK_REQUIRED");
-      assert.equal(candidate.gate_id, "GATE_GPU_001");
+      assert.equal(candidate.gate_id, expectedGateByLane[lane.lane]);
     }
   }
 
   assert.deepEqual(
     executionProfileCatalog.lanes[0].planned_candidates.map((candidate) => candidate.label),
-    ["RTX 4090", "RTX 5090", "L40S"],
+    ["RTX 4090"],
   );
   assert.deepEqual(
     executionProfileCatalog.lanes[1].planned_candidates.map((candidate) => candidate.label),
-    ["RTX 4090", "L40S", "RTX 6000 Ada"],
+    ["RTX 4090"],
+  );
+  assert.equal(executionProfileCatalog.lanes[0].model.display_name, "Mage-Flow Turbo INT8 ConvRot");
+  assert.equal(
+    executionProfileCatalog.lanes[0].model.model_id,
+    "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+  );
+  assert.equal(executionProfileCatalog.lanes[1].model.display_name, "SoulX-FlashHead Pro");
+  assert.equal(
+    executionProfileCatalog.lanes[1].model.model_id,
+    "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro",
+  );
+  assert.equal(
+    executionProfileCatalog.lanes[1].planned_candidates[0].candidate_id,
+    "soulx-flashhead-pro-rtx-4090",
   );
   assert.equal(JSON.stringify(executionProfileCatalog).includes('"AVAILABLE"'), false);
 });
@@ -128,6 +149,13 @@ test("runtime validators reject provider, spend, GPU, and candidate-selectabilit
   selectableCandidateLeak.lanes[0].planned_candidates[0].selectable = true;
   assert.throws(
     () => parseExecutionProfileCatalog(selectableCandidateLeak, fixtureRuntimeProfileSet),
+    RuntimeConfigValidationError,
+  );
+
+  const wrongLaneGate = clone(rawCatalog);
+  wrongLaneGate.lanes[1].planned_candidates[0].gate_id = "GATE_SERVERLESS_MAGE_001";
+  assert.throws(
+    () => parseExecutionProfileCatalog(wrongLaneGate, fixtureRuntimeProfileSet),
     RuntimeConfigValidationError,
   );
 

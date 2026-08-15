@@ -15,6 +15,10 @@ For each task:
 
 Use heading/range searches to extract narrow sections. Stay within `MANIFEST.yaml`'s profile word budget. Repository truth replaces cross-chat memory and reattached PDFs. Never ask the user to reattach material already stored here.
 
+Only active V2 task briefs belong in `project-context/tasks/`. Git commit history is the archive for
+removed planning/checkpoint files; do not restore them into the working tree. Keep repository
+evidence only when an active foundation, gate, artifact identity, cost fact, or audit depends on it.
+
 The prompt pack is an entrypoint, not higher authority. Reconcile stale prompt conflicts. Every implementation or audit handoff must state checkpoint, commit, validations, remaining gates, provider/spend state, and paid-compute shutdown state.
 
 ## Paid-checkpoint bootstrap and authority

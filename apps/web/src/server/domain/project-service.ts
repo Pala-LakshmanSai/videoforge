@@ -23,6 +23,11 @@ import { VERIFIED_FIXTURE_VOICEOVER_HANDLE } from "./voiceover-service";
 
 export const FIXTURE_ESTIMATED_COST_USD = 0.88;
 
+const EXECUTION_PROFILE_GATE_BY_LANE = {
+  image_media: "GATE_SERVERLESS_MAGE_001",
+  avatar_primary: "GATE_SERVERLESS_SOULX_001",
+} as const;
+
 type FixtureMutationOperation = "PROJECT_CREATE" | "PROJECT_PREFLIGHT";
 
 const PROJECT_INPUT_PROBLEM_CODES: ReadonlySet<string> = new Set([
@@ -287,7 +292,7 @@ export function semanticProjectPreflight(
             "EXECUTION_PROFILE_NOT_AVAILABLE",
             409,
             "Selected compute profile is not available",
-            `Choose a tested ${lane.replaceAll("_", " ")} execution profile. Planned GPUs remain unavailable until GATE_GPU_001 passes.`,
+            `Choose a tested ${lane.replaceAll("_", " ")} execution profile. The production candidate remains unavailable until ${EXECUTION_PROFILE_GATE_BY_LANE[lane]} passes.`,
             false,
           ),
         ),

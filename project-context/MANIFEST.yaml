@@ -182,6 +182,7 @@ context_validator: scripts/validate-context.sh
 schema_validator: scripts/validate-schemas.sh
 
 hard_rules:
+  - only_v2_task_briefs_in_working_tree_git_history_is_archive
   - tenant_private_user_created_data_database_enforced
   - explicit_builtins_are_only_global_product_records
   - one_account_one_default_workspace_in_v2
@@ -214,18 +215,12 @@ hard_rules:
 
 approved_decisions:
   DEC_AUTH_001: invite_only_verified_email_identity
-  DEC_AVATAR_001: historical_avatarforcing_primary_superseded
-  DEC_AVATAR_002: historical_musetalk_repair_superseded
-  DEC_AVATAR_003: historical_skyreels_fallback_superseded
   DEC_AVATAR_004: one_native_clip_two_layouts
   DEC_AVATAR_005: tenant_private_reusable_avatar_hub
-  DEC_AVATAR_006: historical_avatarforcing_risk_authority_consumed
-  DEC_AVATAR_007: historical_echo_native_path_superseded
-  DEC_AVATAR_008: historical_echo_turbo_fp8_path_superseded
-  DEC_AVATAR_009: historical_echo_crop_acceptance_only
-  DEC_AVATAR_010: exact_soulx_flashhead_pro_only_proposed_avatar_runtime
+  DEC_AVATAR_010: exact_soulx_flashhead_pro_only_avatar_runtime
   DEC_BUILD_001: hosted_linux_heavy_builds_no_mac_dependency
   DEC_CONTRACT_001: typescript_only_jcs_authority
+  DEC_CONTEXT_001: v2_only_working_context_git_history_archive
   DEC_COST_001: representative_30m_variable_target_1_usd_hard_ceiling_2_usd
   DEC_DB_001: additive_postgres_contracts_pglite_tests_neon_production
   DEC_DISPATCH_001: two_phase_serverless_authority_at_most_one_accepted_output
@@ -239,12 +234,9 @@ approved_decisions:
   DEC_OUTPUT_002: hard_cuts_no_graphics_text_or_transitions
   DEC_OUTPUT_003: subtle_centered_jitter_free_zoom
   DEC_QUEUE_001: postgres_authoritative_runpod_transport
-  DEC_QUEUE_002: historical_singleton_global_queue_superseded
   DEC_QUEUE_003: fair_one_per_account_two_global_admission
   DEC_RENDER_001: direct_ffmpeg_cloud_run_production
   DEC_RENDER_002: no_remotion_or_hyperframes
-  DEC_RUNPOD_001: historical_serverless_attempts_only
-  DEC_RUNPOD_002: historical_disposable_pod_architecture_superseded
   DEC_RUNPOD_003: two_scale_to_zero_serverless_lanes_existing_volumes
   DEC_SCHEDULER_001: seeded_deterministic_bounded_variation
   DEC_SCHEDULER_002: approximately_22_percent_avatar_even_full_split
@@ -256,7 +248,6 @@ approved_decisions:
   DEC_STYLE_005: optional_keywords_explicit_toggle
   DEC_STYLE_006: traits_not_reference_content
   DEC_STYLE_007: preserve_and_detach_manual_edit_provenance
-  DEC_TENANCY_001: historical_global_equal_rights_scope_superseded
   DEC_TENANCY_002: tenant_private_one_default_workspace
   DEC_TIMING_001: whisper_cpp_cloud_run_production
   DEC_UX_001: fixture_first_real_chrome
@@ -266,22 +257,14 @@ approved_decisions:
   DEC_UX_005: preserve_ui_remove_manual_compute_controls
 
 open_gates:
-  GATE_AVATAR_001: historical_echo_full_suite_open_nonblocking
-  GATE_AVATAR_002: historical_avatar_demotion_threshold_open_nonblocking
-  GATE_AVATAR_003: historical_avatarforcing_terms_open_nonblocking
-  GATE_AVATAR_005: historical_soulx_pod_visual_crop_review_open
   GATE_CONCURRENCY_001: v2_multi_user_load_and_recovery
-  GATE_COST_001: historical_pod_cost_not_production_economics
   GATE_E2E_001: real_short_hosted_project
   GATE_ECONOMICS_001: representative_serverless_speed_and_settled_cost
-  GATE_FALLBACK_001: historical_fallback_failure_nonblocking
-  GATE_GPU_001: historical_pod_gpu_proof_only
   GATE_HOSTING_001: hosted_control_and_cpu_plane
   GATE_IMAGE_001: mage_full_quality_suite
   GATE_IMAGE_002: mage_terms_ambiguity
   GATE_QUEUE_001: fair_durable_admission
   GATE_RANGA_001: real_human_editorial_quality
-  GATE_RUNPOD_001: historical_manual_pod_lifecycle_only
   GATE_SECURITY_001: production_security_release_operations
   GATE_SERVERLESS_CONTRACT_001: provider_free_v3_transport
   GATE_SERVERLESS_MAGE_001: exact_mage_endpoint
@@ -292,7 +275,6 @@ open_gates:
   GATE_TENANCY_001: account_workspace_privacy
 
 closed_gates:
-  GATE_AVATAR_004: historical_echo_artifact_manifest_pass
   GATE_LLM_001: runware_deepseek_pass
   GATE_STYLE_001: runware_gemini_style_analysis_pass
   GATE_UI_001: accepted_ui_system_pass

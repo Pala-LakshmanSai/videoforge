@@ -104,8 +104,7 @@ The recurring pixel-stable presenter background, natural mid-phoneme starts, bod
 VideoForge therefore sends only the deterministic scheduled short spans to the proposed exact
 SoulX-FlashHead Pro lane: normally 2–6 seconds, with a seven-second maximum only for the opener. Do
 not claim VRAM or throughput scales linearly with duration; those remain measured properties of the
-exact runtime. EchoMimic, AvatarForcing, MuseTalk, and SkyReels are historical evidence/replay paths
-only and are not active generation, repair, or fallback routes.
+exact runtime. No inactive generation, repair, or fallback route is part of the production plan.
 
 ## Relationship to the Image Styles Hub
 
