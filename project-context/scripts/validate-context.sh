@@ -3,7 +3,7 @@ set -euo pipefail
 
 context_dir="$(cd "$(dirname "$0")/.." && pwd)"
 
-ruby - "$context_dir" <<'RUBY'
+ruby -E UTF-8 - "$context_dir" <<'RUBY'
 require "yaml"
 require "json"
 require "csv"

@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-15T13:06:36Z"
+updated_at: "2026-08-15T13:30:33Z"
 
 phase: serverless_v2_implementation_ready
 implementation_authorized_in_current_task: false
@@ -46,7 +46,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "806edba2a83087add93902ff2b937bd8c564a746"
+  last_good_commit: "56be2feb76bc24d1c28f28fb0151b33ea9b7956d"
+  last_good_commit_note: "Last fully verified predecessor commit; its child is the V2-00 revalidation commit that only pins the context validator's UTF-8 encoding and records this verification."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -274,6 +275,18 @@ verification:
     - "git diff --check"
     - "Independent exact-lineage, evidence-path, active-export, branch-upstream, listener, task-allowlist, and contradiction assertions."
     - "Final selected V2-01 handoff tree: CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
+  revalidation_2026_08_15_locale:
+    reason: "V2-00 re-audit found project-context/scripts/validate-context.sh crashed under a non-UTF-8 shell locale (Ruby File.read raised 'invalid byte sequence in US-ASCII'); the validator now pins ruby -E UTF-8."
+    scope: local_context_validator_portability_only
+    commands:
+      - "git diff --check: PASS"
+      - "pnpm context:validate: PASS under LC_CTYPE=C (103 JSON files; 39 structured evidence references; 31 profiles; 41 decisions; 19 gates)"
+      - "pnpm contracts:check: PASS (66 canonical files synchronized)"
+      - "pnpm verify:active-runtime: PASS (62 active files)"
+      - "pnpm format:check: PASS"
+      - "pnpm secret:scan: PASS (864 tracked files)"
+      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; installed Chrome 42/42)"
+      - "Task-directory allowlist, dangling-reference, and contradiction scans: PASS"
   provider_or_spend_used_for_v2_00: false
   remote_mutation_used_for_v2_00: false
   paid_compute_started_for_v2_00: false

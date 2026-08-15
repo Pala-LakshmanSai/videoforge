@@ -3,8 +3,8 @@
 `CURRENT_STATE.yaml.recommended_next_task` selects exactly one brief. A fresh chat must not choose a
 different checkpoint because it appears parallelizable.
 
-Active production work uses `VF-10-00A` and `VF-10-01` through `VF-10-13`, matching V2-00 through
-V2-13 in `22_PROJECT_COMPLETION_CHECKPOINTS.md`. Only V2 task briefs belong in this directory. Git
+Active production work uses `VF-10-00`, its audit brief `VF-10-00A`, and `VF-10-01` through
+`VF-10-13`, matching V2-00 through V2-13 in `22_PROJECT_COMPLETION_CHECKPOINTS.md`. Only V2 task briefs belong in this directory. Git
 history records removed planning files; evidence required by active foundations and gates remains
 under `project-context/evidence/` and grants no provider authority, resource permission, or spend.
 

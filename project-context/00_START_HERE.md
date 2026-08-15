@@ -114,7 +114,9 @@ and evidence selection, not source-footage motion.
 
 ## Current handoff
 
-The V2 roadmap/context reset and its independent V2-00 audit are complete and green at `806edba`.
+The V2 roadmap/context reset and its independent V2-00 audit are complete and green at `806edba`,
+and a later V2-00 re-audit reran the full suite and every context check green, repairing only the
+context validator's non-UTF-8 locale crash.
 `CURRENT_STATE.yaml` selects V2-01 as the next checkpoint, ready only when the user explicitly
 invokes its provider-free implementation prompt. This handoff does not itself authorize application
 implementation. All prior provider authorities are consumed and cannot be reused. The ordered
