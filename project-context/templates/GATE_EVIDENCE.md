@@ -14,9 +14,9 @@
 - Git commit:
 - Container digest:
 - Model/checkpoint hash:
-- Worker image/template digest:
+- Worker image and Serverless template/endpoint/config digest:
 - Model lane/revision/precision/manifest hash:
-- Persistent volume ID/region/capacity/mount (redacted or hashed where required):
+- Exact existing volume ID/region/capacity/mount and pre/post manifest (redacted or hashed):
 - Live inventory receipt, selected offering, actual GPU, region, and rate:
 - Input fixture IDs and hashes:
 
@@ -25,15 +25,18 @@
 - Real calls authorized by:
 - Maximum authorized spend:
 - Reserved/reported/settled cost:
-- Pod delete/absence evidence:
-- Expected retained-volume identity/state evidence:
+- Provider jobs/cancellation/reconciliation and zero-worker-after-drain evidence:
+- Expected retained endpoint/volume identities, state, and recurring charges:
+- Possible duplicate-compute/cost evidence:
 
 ## Procedure
 
 - Commands:
-- Cold Pod-to-`model_ready` runs:
-- Reattached-volume Pod-to-`model_ready` runs:
-- Container/volume-verify/model-load/warm-up/inference/upload/delete timings:
+- Cold queue-to-worker and worker-to-`model_ready` runs:
+- Warm worker-to-`model_ready`/first-item runs:
+- Assignment/container/volume-verify/model-load/warm-up/inference/upload/idle/drain timings:
+- `/status` reconciliation and durable signed provenance receipt:
+- Exact init/execution/TTL/idle/scaler/worker-bound configuration:
 - Fault/retry cases:
 
 ## Results

@@ -1,224 +1,189 @@
 # Engineering best practices
 
-Status: required implementation discipline  
-Read when: writing or reviewing application/worker code.
+Status: binding implementation rules for VideoForge V2
+Read when: implementing any application, worker, data, provider, security, or operations checkpoint.
 
-## Keep intelligence narrow
+## Preserve proven foundations
 
-- AI writes image prompts and media pixels; a multimodal analyzer may derive a reusable Image Style only when an explicit new draft style version is analyzed.
-- Code controls timing, timeline composition, state, permissions, budgets, retries, lineage, and rendering.
-- Do not add an LLM call when deterministic parsing/validation answers the question.
-- Never re-run style vision analysis during an ordinary project or for each generated image.
-- Do not add an automatic enhancement stage without a measured acceptance gain.
+Extend the existing UI, immutable revision model, word transcript, deterministic scheduler,
+renderer-neutral timeline, FFmpeg renderer, fixture adapters, Mage runtime, and SoulX runtime. Do not
+rebuild a green foundation merely because hosting changes.
 
-## Version everything that affects output
+Historical global-session/manual-Pod contracts and evidence remain immutable and replayable. New V2
+behavior is additive: tenant scope, fair admission, Serverless v3 transport, and hosted artifacts.
+Never relabel old Pod evidence as Serverless acceptance.
 
-Persist:
+## Tenant isolation is structural
 
-- EDL/schema/scheduler versions.
-- System prompt, permanent guardrail, and selected style-profile version.
-- Selected Image Style ID/version/profile hash, analyzer/prompt/schema version, scene-writer/compiler versions, prompt components, extra-keyword text/toggle, permanent guardrail version, exact final positive/negative strings, and hashes of their exact UTF-8 bytes.
-- Selected Avatar Profile parent/version/profile hash, canonical runtime source asset/checksum, source-preparation/validation versions, compatibility state at preflight, and matching immutable terminal evidence when one exists.
-- Exact lane/model profile, model repo revision, every required model-file path/checksum, and the
-  canonical persistent-volume manifest hash.
-- Container digest and CUDA/PyTorch/FFmpeg versions.
-- Inference settings, seed, generation-session ID, queue-entry/version, session-selected live-
-  inventory receipt and exact GPU SKU/ID/rate for each lane, `EU-RO-1` volume binding, actual Pod
-  identity, and actual GPU observed after create.
-- Input/output checksums and parent lineage.
+- Derive account/workspace from the authenticated server session; never trust a client tenant ID.
+- Carry `account_id` and `workspace_id` on every owned row and enforce composite foreign keys.
+- Scope every repository read/write and every object-key construction by tenant.
+- Return indistinguishable not-found/unauthorized responses to prevent enumeration.
+- User Avatar Profiles, Image Styles, projects, inputs, results, queue rows, costs, and audit trails
+  are private. Only explicit immutable built-in presets are system-visible.
+- Test isolation at repository, API, signed-URL, queue, callback, R2, log, and cache/scratch layers.
+- Do not place tenant IDs, signed URLs, raw provider bodies, voiceover text, or source-image data in
+  ordinary logs.
 
-An accepted render must be explainable and reproducible from its manifest.
+## Keep intelligence narrow and deterministic
 
-## Idempotency first
+- DeepSeek writes image prompts only.
+- Gemini vision analyzes references only when a user explicitly creates/analyzes a draft Image Style.
+- Word timestamps and the seeded scheduler decide timing/layout; neither an LLM nor GPU worker does.
+- Allowed compositions remain full avatar, full image, and avatar-left/image-right split.
+- Hard cuts only; no captions, text overlays, lower thirds, borders, watermarks, title cards, motion
+  graphics, or decorative transitions.
+- Every AI still uses the approved subtle deterministic zoom.
 
-- Every externally billed action has a deterministic idempotency key.
-- Reserve budget and create the attempt/outbox atomically.
-- Callbacks are duplicate-safe, ordered, signed, and tied to one attempt.
-- Retry the smallest failed unit.
-- Never interpret a timeout as proof that the provider did nothing; reconcile before dispatching again.
-- Application idempotency does not imply provider at-most-once billing. Use `DISPATCH_ACK_UNKNOWN`, a worker-side single execution claim before model load, and one accepted-result invariant.
+## Version every output-affecting fact
 
-## Immutable artifacts
+Pin immutable project revision, voiceover hash/probe, transcript/timeline, scheduler version/seed,
+Avatar Profile version/source hash, Image Style version/profile hash, prompt compiler, runtime
+profile, model/weights, container digest, volume manifest, crop, renderer, and output settings.
 
-- Never overwrite accepted R2 objects.
-- Use content hashes and attempt IDs.
-- Project changes create revisions.
-- Published Image Style versions never mutate; edits create a new version while existing project revisions remain pinned. Parent style archive/default/active-version state remains outside the immutable profile payload.
-- Ready Avatar Profile versions never mutate; replacing source pixels creates a new version while parent rename/archive/active-version state stays outside the immutable payload. Workers receive only the revision-pinned binding and never resolve `latest`.
-- Failed/repaired derivatives keep parent pointers.
-- Each exact active model has one separately provisioned persistent-volume identity. Mage and Echo
-  volume IDs, manifests, caches, locks, and adoption paths are never interchangeable. A new Pod may
-  adopt only its own exact model profile's volume after manifest verification.
+External attempt lineage additionally pins endpoint/template, dispatch token, provider job ID when
+assigned, GPU policy/actual GPU, rate/timeouts, artifact reservations, receipts, timings, and cost.
+Live availability and signed URLs are attempt state, not creative revision fields.
+
+TypeScript remains the RFC 8785/JCS canonicalization authority. Python validates schemas, signatures,
+semantic bindings, and exact hashes but treats the canonical JSON hash as opaque.
+
+## Idempotency without false exactly-once claims
+
+- Persist business mutation and outbox intent in one database transaction before any external call.
+- Give each logical operation and provider attempt separate stable IDs and a unique dispatch token.
+- A timeout is ambiguous, not proof the provider did nothing. Reconcile before replacement.
+- RunPod `/run` does not provide a documented exactly-once/billing guarantee. Enforce at most one
+  **accepted output** with current-assignment compare-and-swap; record bounded possible duplicate
+  compute/cost rather than claiming it cannot occur.
+- Provider callback, provider status, worker receipt, durable artifact, accepted application state,
+  and settled cost are separate facts.
+- Late/duplicate/superseded results are quarantined; they never silently overwrite accepted bytes.
+
+## Fair, bounded admission
+
+- Postgres owns fairness. RunPod's endpoint queue is backpressure only.
+- Enforce one active provider workload per account and two from different accounts globally in one
+  serializable admission transaction with a locked capacity/fairness row. Ordinary videos retain the
+  one/account and two/global caps; explicit preset previews use those same slots only after every
+  eligible video head.
+- Preserve stable order inside an account unless its owner reorders waiting entries; always rotate
+  fairly across eligible account heads.
+- Users see and mutate only their own waiting rows; reordering cannot bypass another account's turn.
+- Waiting work creates no provider/CPU request. Only admitted work may materialize dispatch outbox.
+- Do not increase global or per-endpoint concurrency above two without new evidence and a decision.
+
+## Immutable artifacts and tenant R2
+
+- Large inputs/results live in private R2; database rows store exact keys, hashes, probes, and state.
+- The server constructs tenant prefixes. Never accept an arbitrary client object key or URL.
+- Signed URLs are short-lived, least privilege, exact-method, content-type/size/checksum bounded,
+  tenant-authorized, and redacted from logs/database after expiry.
+- Upload completion is not durability. Reopen/head the exact object, verify size/hash/media, then
+  commit its receipt.
+- Use content-addressed or attempt-unique keys; never overwrite an accepted object.
+- Built-in preset media uses an explicit system prefix and contains no user data.
+
+## Serverless worker design
+
+- Keep separate immutable Mage and SoulX images/templates/endpoints. Do not create one shared
+  image/media endpoint or import both model stacks into one worker.
+- Each endpoint uses `workersMin=0`, `workersMax=2`, one GPU, and RTX 4090 only until a lane-specific
+  RTX 5090 qualification passes.
+- Ordinary boot loads only from the lane's existing isolated 50 GB `EU-RO-1` volume mounted at
+  `/runpod-volume`. No download, repair, compilation into the volume, quantization, or cross-mount.
+- Treat `/runpod-volume` as application-read-only even if the provider mount is writable. Redirect
+  cache/config/temp/locks to a unique job-local scratch directory and compare pre/post manifests.
+- Validate envelope, tenant, signature/hash, expiry, endpoint/model/volume, limits, and artifact
+  reservations before expensive model load where possible.
+- Load once per worker, perform a real warm-up, and process one admitted video's bounded lane batch.
+- Upload item outputs directly to exact tenant reservations, emit an application-signed provenance
+  receipt, then scrub scratch. The receipt is not provider hardware/billing attestation.
+- Never use RunPod queue purge. Cancel only an exact authorized provider job.
+
+## Timeouts and recovery
+
+- Measure and set request TTL, execution timeout, handler deadline, idle timeout, and
+  `RUNPOD_INIT_TIMEOUT`; do not inherit defaults blindly.
+- TTL includes provider queue plus execution. A too-short TTL can remove running work.
+- Persist normalized status because asynchronous provider results expire after 30 minutes.
+- Poll exact provider job status. Webhooks are latency hints, not the sole truth.
+- Bound retries by class and cost. A new provider attempt requires a new token and resolved prior
+  ambiguity.
+- Recovery after control-plane restart reads database/outbox/assignment/artifact truth first, then
+  reconciles providers. It never reconstructs authority from a log or UI state.
 
 ## Truthful asynchronous UX
 
-- Server state is authoritative.
-- Disable duplicate action immediately.
-- When no global generation session is open, show fresh Mage/Echo GPU selection. Once the first
-  Generate wins the session lock, hide/lock selectors for everyone and show only Add to queue.
-- Show one shared queue and one active project. Waiting move/delete conflicts surface their current
-  optimistic version; active entries never masquerade as deletable or movable.
-- Distinguish inventory refreshing, Pod creating, volume attached, container ready, volume manifest
-  verified, model loading, warming up, model ready, generating, uploading, durable, Pod deleting,
-  Pod absent, retrying, blocked, cancelling, and complete.
-- Percentages derive from real completed/total units and versioned stage weights.
-- ETA shows confidence/range until measured history exists.
-- Never hide a cost-producing retry.
+Show distinct states for account waiting, fair admission, preparing, dispatch pending/ambiguous,
+provider queue, worker initializing, volume verified, model loading/warming/ready, generating,
+uploading, artifact verifying, rendering, cancelling, retrying, blocked, failed, and complete.
 
-## Bounded concurrency and cost
+Do not show manual Pod/GPU controls. Users click Generate once and the platform owns lifecycle. Do not
+call a worker ready from container health, a task complete from provider `COMPLETED`, or compute zero
+from an application label. Show private queue/capacity facts without exposing other tenants.
 
-- At most one singleton global generation session, one active project, and one paid disposable Pod
-  per model lane are authorized. This is a Mage Pod and an Echo Pod, not two replicas of one lane.
-- Only the first accepted idle Generate selects the exact Mage/Echo pair. Open the session, bind
-  both receipt-validated choices, reserve the first task, and append its queue entry atomically.
-  All later waiting entries inherit that pair; do not build per-user pairs, switching, or parallel
-  project dispatch.
-- Enforce global/project/daily caps; estimate before creation and reconcile measured runtime.
-- Judge GPUs by model-ready time and cost per accepted output, not hourly rate alone.
-- A waiting row may keep an already-running exact Pod warm but cannot create/recreate a Pod or claim
-  work. With no waiter when active lane work finishes, delete and prove absence immediately, even if
-  the other lane or final Cloud Run render is unfinished. Only after the current video is terminal
-  and the next row is promoted may an absent lane recreate on the same session GPU after
-  revalidation; never substitute. Retain both intended model volumes.
-- Close the session and unlock GPU selection only after no active/waiting entry remains and both
-  Pods are proven absent. Do not add fairness schedulers, user priorities, or speculative idle
-  timers to MVP.
+## Cost and cleanup
 
-## Stable adapters, simple implementations
+- Reserve before dispatch; reconcile estimate, provider report, possible duplicate exposure,
+  settled amount, and refund per attempt/project.
+- Judge a GPU by cold/warm cost per accepted output, not hourly rate alone.
+- Scale workers to zero after demand and independently verify zero total workers (`Active + Flex`)
+  and zero endpoint jobs after paid
+  acceptance.
+- Zero workers is not zero fixed cost: report the two retained 50 GB volumes and ongoing `$7/month`
+  planning rate separately.
+- Never delete or mutate a model volume during ordinary cancellation, project cleanup, account
+  erasure, or endpoint scale-down.
 
-Define narrow interfaces for:
+## Security and secrets
 
-- Prompt provider.
-- Reference-style analyzer.
-- Image generator.
-- Avatar generator.
-- Compute dispatcher.
-- Artifact store.
-- Renderer.
+- Browser bundles receive no RunPod, R2, database, signing, Runware, Cloud Run, or admin credential.
+- Use least-privilege service identities, separate staging/production resources, key rotation, and
+  redaction tests.
+- Raw invite codes are never stored; verified-email redemption is atomic and replay-safe.
+- Internal callbacks authenticate before expensive parsing where practical, enforce body/type/size
+  limits, validate nonce/expiry/assignment, and reject cross-tenant or stale attempts.
+- Apply CSRF/origin protection, secure cookies, upload sniffing, decompression limits, and media
+  probing. Treat filenames and media metadata as untrusted.
+- Never print secrets while running doctor, tests, provider preflight, or evidence collection.
 
-Only one production implementation per interface is needed now. The boundary exists to make a later measured swap possible, not to build a speculative multi-provider router.
+## Hosted CPU workers
 
-## External response validation
+Whisper.cpp and FFmpeg run as pinned scale-to-zero Cloud Run Jobs in production, using tenant R2
+reservations/receipts. They have no RunPod credential or model-volume mount. The same entrypoints may
+run locally for provider-free parity, but production cannot depend on the user's Mac.
 
-- Treat provider output as untrusted.
-- Validate JSON schema, IDs, counts, media decode, dimensions, duration, hash, and expected object prefix.
-- Enforce maximum sizes/durations.
-- Treat reference-image pixels and visible text as untrusted data, never instructions; use browser-side bounded sRGB re-encoding/EXIF removal plus independent server checks for magic bytes, raster metadata, decompression limits, dimensions, and checksum.
-- Normalize/cap project extra image keywords as data and reject hard-rule conflicts without another LLM call. Run the same validator over analyzer output and user-edited style clauses before publication; only soft creative conflicts warn.
-- Sanitize filenames and FFmpeg arguments; use argument arrays, not shell-concatenated user text.
-- Never fetch arbitrary internal/private URLs supplied by a user.
+## Testing before optimization
 
-## Secrets and access
+Use schema/negative fixtures, PGlite migration/constraint tests, repository isolation tests,
+property-based scheduler checks, fake Serverless transport, fault injection, worker unit/smoke tests,
+real Workerd parity, installed-Chrome journeys, and then bounded live qualification. A fixture pass
+does not prove a live provider; a live sample does not prove concurrency/security/economics.
 
-- Secrets are server-side environment/bindings only.
-- Use per-environment credentials and rotate them.
-- Short-lived signed URLs, scoped callback tokens, HMAC replay protection.
-- Support Better Auth email/password and Google identity. A new identity must redeem an invite once
-  during signup; persist the admission so later sign-ins never ask again. Store only secure invite
-  verifiers, redeem atomically, rate-limit attempts, and never log raw codes. Keep reusable-versus-
-  single-use code policy and email-verification policy explicitly unresolved until chosen.
-- Every admitted user has equal rights to the one global catalog, queue, and results. Do not create
-  MVP roles, tenant routing, owner-only queue controls, or private per-user results. Derive and audit
-  actor identity for every mutation.
-- Avoid logging voiceover URLs, tokens, or raw provider authorization headers.
-- Avoid logging Avatar Profile pixels, signed source/thumbnail URLs, EXIF/GPS, likeness metadata, or
-  private asset hashes. Require global admission plus image-use and likeness-animation attestations;
-  never place private avatar assets in public fixtures/builds/analytics.
-- Avoid logging style-reference bytes, EXIF/GPS, signed URLs, or full analyzer payloads; send EXIF-stripped normalized derivatives only after explicit Runware non-ZDR/non-confidential disclosure consent.
-- Distinguish deletion of VideoForge/R2 copies from provider-side retention/deletion. Never imply that one button erases data outside VideoForge unless the provider confirms it.
-- Keep research-only third-party frames out of public builds and final assets.
-- Do not claim ordinary Runware processing is zero-data-retention; record rights/retention and use the lowest officially available retention mode.
-
-## Worker design
-
-- Prebuilt, digest-pinned containers; no runtime `pip install`, source compilation, or model
-  download during ordinary Pod boot.
-- Keep large weights on two distinct persistent `EU-RO-1` network volumes: one exact Mage INT8
-  volume and one exact Echo FP8 volume. Treat verified model files as immutable/read-only in the
-  worker during jobs, write scratch/results elsewhere, and verify for mutation; do not assume a
-  provider-enforced read-only mount.
-- Normal boot fails closed on a missing, extra, corrupt, wrong-revision, wrong-profile, or
-  cross-model volume manifest. Only separately authorized one-time preparation may populate or
-  change model files.
-- Process/container health is not readiness. Emit authoritative `model_ready` only after the exact
-  volume, manifest, runtime, actual GPU, load, and bounded warm-up all pass.
-- Emit heartbeat/progress between items.
-- Check cancellation between items.
-- Upload/checkpoint each item so chunk retry resumes missing work.
-- Never stack Mage and Echo in one container, Pod, volume, cache, or process.
-- A successful worker makes outputs durable before cleanup authorizes deletion of its Pod. Pod
-  deletion eligibility then depends on remaining generation-session lane demand. Pod deletion and
-  post-delete absence are journaled separately from retained-volume health.
-
-## Hosted CPU worker design
-
-- Run production whisper.cpp transcription and deterministic FFmpeg render/probe as authenticated
-  Cloud Run Jobs invoked through REST. Use private content-addressed R2 inputs/outputs; no large
-  media passes through the control-plane request body.
-- Pin one media-worker container toolchain and contract. Mac development executes the same
-  versions/entrypoint provider-free for parity; it is not production evidence.
-- Record Cloud Run job/revision/execution identity, region, CPU, memory, timeout, input/output
-  manifests, timings, retries, and cost. Accept output only after checksum and media/JSON validation.
-- Benchmark region and sizing before production promotion. Respect current job quotas and pricing;
-  never assume the free tier or one region's capacity.
-- Give the CPU worker no RunPod credential, model-volume access, or GPU task claim. Its execution
-  never creates or retains a Mage/Echo Pod.
-
-## Database practice
-
-- Explicit migrations reviewed in source control.
-- Foreign keys and unique idempotency constraints.
-- Transactions for state transitions/outbox/budget.
-- Append-only events/cost ledger.
-- Optimistic version or lease for concurrent project edits. Global waiting-queue move/delete uses
-  one compare-and-swap queue version and append-only actor audit.
-- Bind style/reference/version, Avatar Profile/version/source/thumbnail/compatibility, project, and
-  result queries to the one configured global app scope. Existing `workspace_id` fields remain only
-  for v1 byte/replay compatibility, not MVP tenant routing.
-- Store timestamps in UTC. Canonical output timeline boundaries are integer `start_frame/end_frame_exclusive`; source-audio/word boundaries are integer milliseconds or samples, never float seconds.
-
-## Media determinism
-
-- Compile all durations to output-frame counts.
-- Define rounding policy once.
-- No gap/overlap after conversion.
-- Every allowed avatar renderer source profile has pixel-level crop/rate golden tests; a model/profile/crop mismatch fails schema validation.
-- Pin FFmpeg and capture the actual command/filtergraph in the manifest.
-- Do not burn UI/debug/status text into video.
-
-## Tests before optimization
-
-- Unit/golden tests for scheduler and contracts.
-- Small real model fixtures for worker smoke.
-- Fault injection for provider ambiguity.
-- Chrome E2E for human workflows.
-- Measure cold and warm paths separately.
-- Optimize only the observed bottleneck after correctness and output quality.
+Quality optimization follows measured output/timing/cost evidence. Do not add AI decision calls,
+always-on workers, model fallbacks, speculative caches, or concurrency to solve an unmeasured issue.
 
 ## Repository discipline
 
-- Preserve unrelated user changes.
-- Narrow commits with descriptive scope.
-- Never commit secrets, full downloaded reference videos, model weights, or private output.
-- Never commit user style references, private avatar pixels/thumbnails/test clips, or generated private previews; automated fixtures must be owned, synthetic, or explicitly redistributable.
-- CI artifacts tie to an exact commit and digest.
-- Update this context pack in the same change as an approved decision.
-- Repository visibility defaults private unless the user explicitly overrides it. The current
-  repository is public by the user's 2026-08-11 decision. Optional third-party planning assets must
-  not be required for builds/tests; use owned/synthetic fixtures.
-- Keep `CURRENT_STATE.yaml` as the replace-in-place handoff snapshot and follow `19_IMPLEMENTATION_PLAYBOOK.md` for stable Chrome/dev-server behavior.
+- Keep provider-free mode default and fail closed when production bindings are absent.
+- Use small green commits; preserve unrelated user work.
+- Never commit secrets, signed URLs, private user media, third-party reference assets, model weights,
+  or provider responses containing sensitive fields.
+- Heavy x86 container builds run on approved hosted runners, not the user's Mac, and publish nothing
+  unless the checkpoint explicitly authorizes publication.
+- Every context/contract change passes context and schema validators. Every implementation handoff
+  records checkpoint, commit, validations, remaining gates, provider/spend state, and compute
+  shutdown state in `CURRENT_STATE.yaml`.
 
 ## Observability
 
-Minimum structured fields: global app scope, authenticated actor, generation session, queue
-entry/version, optional project/revision or Avatar Profile/version/assessment, task, attempt, lane,
-lane-demand snapshot, exact model profile, container digest, volume/manifest identity, inventory
-receipt, session-requested/actual GPU, Pod identity, Cloud Run execution identity where applicable,
-stage, event sequence, elapsed, reserved/measured cost, durable-result receipt, delete/absence
-evidence, and error code. Logs are useful only when they can reconstruct a failure without exposing
-secrets.
+Structured events use opaque IDs and include checkpoint, account/workspace hash or internal ID,
+revision/request/task/attempt, lane, dispatch token hash, provider job ID hash, endpoint/runtime/
+manifest IDs, state transition, duration, byte counts, cost class, and error code. Never log raw media,
+voiceover content, prompts beyond approved redacted diagnostics, credentials, or signed URL queries.
 
-Alert on stuck queue/session leases, optimistic-version conflict spikes, ambiguous create/delete
-reconciliation, cross-volume or manifest mismatch, repeated model OOM, rising rejection rate,
-budget blocks, provider balance, and paid Pods that remain after their session-lane demand reaches
-zero. A retained intended model volume is expected, not a leaked Pod.
+Metrics cover admission latency, per-account wait, starvation, queue depth, worker count, cold/warm
+readiness, inference/upload/render, accepted/rejected artifacts, retries/ambiguity, possible duplicate
+cost, spend, zero-worker drain, and volume-manifest drift. Alerts point to exact attempts and bounded
+runbooks; they never authorize automatic destructive repair.

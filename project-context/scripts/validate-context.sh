@@ -16,7 +16,32 @@ errors = []
 warnings = []
 
 def load_yaml(path, errors)
-  YAML.safe_load(File.read(path), aliases: true)
+  text = File.read(path)
+  document = Psych.parse_stream(text)
+
+  scan_mapping = lambda do |node|
+    case node
+    when Psych::Nodes::Mapping
+      seen = {}
+      node.children.each_slice(2) do |key_node, value_node|
+        if key_node.is_a?(Psych::Nodes::Scalar)
+          key = key_node.value
+          line = key_node.start_line + 1
+          if seen.key?(key)
+            errors << "#{path}: duplicate YAML key #{key.inspect} at line #{line} (first at line #{seen.fetch(key)})"
+          else
+            seen[key] = line
+          end
+        end
+        scan_mapping.call(value_node)
+      end
+    when Psych::Nodes::Sequence, Psych::Nodes::Document, Psych::Nodes::Stream
+      node.children.each { |child| scan_mapping.call(child) }
+    end
+  end
+  scan_mapping.call(document)
+
+  YAML.safe_load(text, aliases: true)
 rescue StandardError => e
   errors << "#{path}: YAML parse failed: #{e.message}"
   {}

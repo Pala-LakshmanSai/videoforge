@@ -1,221 +1,374 @@
-# Checkpoint chat prompts
+# VideoForge v2 checkpoint chat prompts
 
-Use one implementation prompt at a time, in order. Do not paste the whole file into a chat. After
-the implementation chat finishes, open a separate audit chat and paste the audit prompt at the end
-of this file with the same checkpoint ID.
+Use exactly one implementation prompt at a time and complete checkpoints in order. After its
+handoff, use the paired audit prompt in a separate read-only chat. Do not paste the whole file.
 
-Every prompt assumes repository `/Users/lakshmansai/Documents/videoforge`. Paste the selected prompt
-unchanged. For `CP-06` through `CP-12`, the prompt itself authorizes bounded provider-free
-activation/local work and its named read-only inventory/rate preflight, but no mutation, model
-download, paid compute, or spend. The implementation chat completes that safe preflight and then
-asks once for the exact GPU/resource choice, a numeric finite-action cap, and any recurring retained
-resource billing that needs consent. No cap from another checkpoint or chat transfers.
+Every prompt assumes `/Users/lakshmansai/Documents/videoforge`. A checkpoint request authorizes only
+the operations stated in that prompt. Historical provider approval, spend caps, credentials, and
+resources grant no authority. External checkpoints always finish provider-free work first and stop
+once for one exact combined proposal before mutation or spend; the user supplies the numeric maximum
+cumulative finite spend.
 
-## CP-01 implementation prompt
+## V2-00 implementation — architecture and roadmap reset
 
 ```text
-Work on VideoForge checkpoint CP-01 only: Global-session vNext contracts and legacy dispatch firewall.
+Work on VideoForge checkpoint V2-00 only: architecture, reference, and roadmap reset.
 
-Use caveman updates: brief, factual, development-focused. First read AGENTS.md, project-context/00_START_HERE.md, MANIFEST.yaml, CURRENT_STATE.yaml, the selected read profile/task brief, and the CP-01 section of project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md. Audit current HEAD and dependencies before editing. If CP-00 is not committed/green or context conflicts, stop and reconcile; do not guess.
+Use concise, factual updates. Read AGENTS.md, project-context/00_START_HERE.md, MANIFEST.yaml, CURRENT_STATE.yaml, only the selected read profile/task brief, and V2-00 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md. If the narrow V2-00 brief/profile is missing, create, select, and validate it first. Audit current HEAD before editing; preserve completed code, migrations, evidence, model artifacts, and accepted outputs.
 
-This message authorizes bounded application/context code changes for CP-01 only. Provider calls, credentials, cloud/remote mutations, model downloads, image publication, GPU use, and spend are not authorized: $0.
+This authorizes local context/planning changes only. Do not access credentials, call providers, mutate remote resources, publish, deploy, download models, allocate workers, or spend: $0.
 
-Implement versioned provider-free contracts, additive persistence, valid/invalid fixtures, and tests for the singleton global generation session, immutable session GPU pair, live inventory receipts/rate ceilings, global queue entry/version, isolated Mage/Echo volume manifests, lane demand, Pod lifecycle/model-ready/delete/absence, durable outputs, and cost. Preserve v1 bytes, old migrations, and historical evidence. Add a production dispatch/import firewall so Serverless /run, endpoints, workersMin/Max, Auto GPU, AvatarForcing, MuseTalk, SkyReels, repair/fallback, and legacy worker registries cannot reach vNext paid dispatch.
+Replace every active roadmap and reusable checkpoint prompt with the V2-00 through V2-13 sequence. Reconcile the active decisions, architecture, queue, storage, model/provider, cost, testing, gates, and current-state selectors around: tenant-private data; one active video/account; two different accounts active globally; fair durable admission; two queue-based RunPod Serverless endpoints in EU-RO-1; existing separate sealed Mage and SoulX 50 GB volumes at /runpod-volume; workersMin=0; private R2 artifacts; job-local scratch; no ordinary GPU/Pod controls; preserved UI, transcript, scheduler, renderer, and Ranga grammar.
 
-Prove concurrent idle-start has one winner; waiting-only reorder/remove; cross-volume, stale GPU, wrong actual GPU, false model-ready, ambiguous create/delete, false stop, and routine volume deletion fail closed. Keep fixture mode default. Use small green commits. Run focused tests, migration fresh/upgrade/restore, schema parity, verify:fast, canonical pnpm verify, secret scan, context/schema validators, diff check, and real Chrome only if visible state changes.
+Mark old global-session, manual-Pod, Pod-bound authority, cross-user catalogs, Echo, Auto/fallback/repair, and historical Serverless paths as superseded or replay-only without deleting history. Pin official Serverless semantics: no exactly-once promise, at-most-one accepted canonical output, observable duplicate-compute/cost risk, durable outbox plus /status reconciliation before the 30-minute async-result expiry, measured TTL/execution/init timeouts, and no routine queue purge.
 
-At handoff: update CURRENT_STATE and context, record exact commands/evidence/commit, keep all gates honest, server stopped unless I am reviewing, and confirm no provider call/resource/spend. Do not start CP-02.
+Run context/schema validators, contradiction scans, focused doc checks, and git diff --check. Update CURRENT_STATE truthfully, record $0/no-provider/no-worker state, make one bounded green commit, and hand off exact commands/exits, commit, remaining gates, and next checkpoint. Do not implement V2-01 application code.
 ```
 
-## CP-02 implementation prompt
+## V2-00 independent audit
 
 ```text
-Work on VideoForge checkpoint CP-02 only: Shared admission, simple global queue, and idle-only GPU UX.
+Independently audit VideoForge V2-00 at current HEAD. Read AGENTS.md, the three startup files, the exact selected brief/profile, V2-00 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md, the diff, and handoff evidence. Read-only only: do not edit, commit, access credentials, call providers, mutate resources, or spend.
 
-Use caveman updates. Read AGENTS.md, mandatory context, CURRENT_STATE's exact selected profile/brief, and CP-02 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md. Verify CP-01 is committed and green. Do not work around an incomplete dependency.
+Verify all active planning sources agree on V2-00 through V2-13, tenant privacy, per-account=1/global=2 fair admission, two scale-to-zero Serverless lanes, existing isolated volumes, private artifacts/scratch, preserved foundations/UI/Ranga rules, and correct non-exactly-once RunPod handling. Search for contradictory active global-session, manual-Pod, Echo, GPU-selector, cross-tenant, /workspace, fallback, or old-checkpoint instructions; historical evidence may remain only when clearly non-operative.
 
-This message authorizes bounded local application/context changes for CP-02. External provider calls, real OAuth/email, credentials, deployment/cloud mutation, model download, GPU use, and spend are prohibited: $0.
-
-Implement one global shared app boundary for 5-10 admitted users with equal rights. Add provider-free email/password and Google auth fixtures plus the one-time invite-admission boundary; existing admitted users are never prompted again. Enforce the locked policy: one unique single-use code per intended email, verified email before access, Google verified email equality, and atomic code consumption/admission. Implement the durable singleton generation session and global queue: first idle Generate atomically locks the two receipt-bound GPU selections; while active/queued, selectors are locked and everyone only sees Add to queue plus the locked pair/rates. All admitted users may add, optimistic-reorder, or remove WAITING entries; active entries cannot move/delete. Record actor and old/new order. No roles, multi-workspace UI, advanced fairness, per-user Pod pairs, GPU switching, or parallel projects.
-
-Reuse ImageForge's current live selector presentation/receipt-recheck ideas, not its Tauri/device-local queue. Test invite races/replay, concurrent idle starts, queue-version conflicts, restart/recovery, and 10 simultaneous users. Preserve accepted UI geometry. Verify in real Chrome with multiple sessions. Run all focused and canonical checks, update context/CURRENT_STATE, commit one bounded milestone, and stop before CP-03. No provider calls/resources/spend.
+Return PASS or FAIL, evidence-backed P0/P1/P2 findings with file:line references, commands/exits, unproven claims, CURRENT_STATE truth, provider/spend/worker truth, and whether V2-01 is safe. Do not repair anything; missing proof is FAIL.
 ```
 
-## CP-03 implementation prompt
+## V2-01 implementation — tenant-private identity and data
 
 ```text
-Work on VideoForge checkpoint CP-03 only: Production-grade word transcript.
+Work on VideoForge checkpoint V2-01 only: tenant-private identity and data cutover.
 
-Use caveman updates. Read mandatory context, CURRENT_STATE's selected brief/profile, and CP-03 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md. Confirm CP-02 is green. Start by auditing the existing whisper.cpp/word-timing implementation; promote it instead of rebuilding it.
+Use concise, factual updates. Read mandatory startup context, CURRENT_STATE's selected brief/profile, and V2-01 in the authoritative checkpoint file. Create/select a missing narrow brief/profile and validate it. Verify the committed V2-00 audit is green; stop on dependency or context conflict.
 
-This message authorizes bounded local application/worker/context code for CP-03 only. No cloud deployment, provider credentials/calls, paid API, GPU, model download, or spend: $0. The existing pinned local whisper model may be used; adding/changing a model requires asking.
+This authorizes bounded local application, schema, test, and context changes only. No credentials, providers, cloud mutation, deployment, model work, GPU/workers, or spend: $0.
 
-Containerize identical Mac-development and future Cloud Run Job behavior for probe/hash, normalization, 30-minute-class audio, deterministic chunk overlap/reconciliation, word/phrase timestamps, durable receipt/idempotency/restart, and R2-port fixtures. Preserve original voiceover for final render. Add compact transcript inspection only if needed; do not redesign the UI.
+Implement additive account_id/workspace_id ownership for projects, revisions, assets, Avatar Profiles/versions, Image Styles/versions, queue/jobs, attempts, outputs, costs, approvals, and audits. Backfill historical data into an explicit inaccessible legacy/system scope. Require a trusted server principal for every repository/API operation; a client-supplied owner never grants access. Enforce database constraints plus query/RLS-equivalent guards. Bind each invite-only identity to one account/default workspace. User-created hubs and results are private; only explicit immutable built-ins are globally readable.
 
-Test owned short, noisy, silence, malformed, and long fixtures; monotonic words, bounded timestamps, phrase/audio coverage, chunk boundaries, replay/restart, and Mac/container contract parity. Manually spot-check owned timing. Run focused/canonical checks and real Chrome if UI changes. Update CURRENT_STATE/evidence/context, commit, and stop before CP-04. Do not claim hosted production until CP-08.
+Preserve current UI geometry while making libraries, searches, routes, settings, costs, and status tenant-scoped. Prove fresh/upgrade/restore migrations and a two-account adversarial matrix for read/write/update/delete/search, guessed IDs, hashes/existence, stale sessions, signed-URL requests, audit reads, and built-in visibility. Run focused tests, canonical verification, secret scan, context/schema validators, git diff --check, and installed-Chrome two-account isolation.
+
+Update evidence/gates/CURRENT_STATE, state exact provider/spend/worker truth, commit one green checkpoint, and stop before V2-02.
 ```
 
-## CP-04 implementation prompt
+## V2-01 independent audit
 
 ```text
-Work on VideoForge checkpoint CP-04 only: Three-composition scheduler and complete work plan.
+Independently audit VideoForge V2-01 at current HEAD. Read mandatory context, selected brief/profile, V2-01 acceptance, diff/migrations, and evidence. Read-only: no edits, credentials, provider calls, cloud mutation, or spend.
 
-Use caveman updates. Read mandatory context, selected profile/brief, CP-04 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md, and the locked Ranga reference metrics. Verify CP-03 is green. Audit and extend the existing deterministic scheduler; do not replace working foundations.
+Verify V2-00 is green; all user-created records and every repository/API/query path require trusted account/workspace scope; historical rows are not exposed; built-ins alone are global; migrations work fresh/upgrade/restore; and cross-tenant metadata, existence, cost, status, output, preset, audit, and signed-URL access fail. Inspect actual tests and installed-Chrome isolation proof rather than accepting summaries.
 
-This message authorizes local application/pipeline/context changes only. No external provider calls, credentials, model downloads, GPU use, cloud mutation, or spend: $0.
-
-Produce exact 30fps/source-time coverage for IMAGE_FULL, AVATAR_FULL, and AVATAR_SPLIT_IMAGE. Enforce no gaps/overlaps/word cuts, 21-22% avatar target, near-even full/split cumulative shares, normal 2-6 second avatar spans, seven-second opener maximum, hard cuts, slow image zoom requirement, and deterministic varied shot roles. Materialize padded selected-span WAVs with trim metadata, image slots, prompt batches, artifact IDs, cost counts, and immutable work/render manifests. Never send full voiceover to Echo; no LLM selects timing/layout.
-
-Test long and boundary-heavy owned fixtures, deterministic replay, exact coverage, zero missing/duplicate work, playable span WAVs, and a visible timeline inspection. Run focused/canonical checks and Chrome if visible. Update evidence/context/CURRENT_STATE, commit, and stop before CP-05.
+Return PASS/FAIL, P0/P1/P2 findings with exact references, commands/exits, missing proof, CURRENT_STATE/provider/spend/worker truth, and whether V2-02 is safe. Do not fix findings.
 ```
 
-## CP-05 implementation prompt
+## V2-02 implementation — private artifacts, R2 ports, and scratch
 
 ```text
-Work on VideoForge checkpoint CP-05 only: Provider-free complete MVP orchestration and legacy cutover.
+Work on VideoForge checkpoint V2-02 only: tenant-private artifacts, R2 port contracts, and scratch isolation.
 
-Use caveman updates. Read mandatory context, selected brief/profile, and CP-05 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md. Verify CP-01 through CP-04 are committed and green.
+Read mandatory context, the selected narrow profile/brief, and V2-02 acceptance. Verify V2-01 is committed and independently green. If selectors are missing, create/select/validate them before editing.
 
-This authorizes bounded local application/worker/context changes. No credentials, provider/cloud calls, model downloads, image publication, GPU use, or spend: $0.
+This authorizes provider-free local application/worker/schema/context work only. No credentials, real R2/cloud/provider calls, deployment, worker allocation, model/volume mutation, or spend: $0.
 
-Wire the proven transcript/scheduler/FFmpeg foundations to fake-backed live inventory, paired GPU lock, singleton session, global queue, two synthetic Pod lanes, truthful container/volume/load/warmup/model-ready states, prompt fixtures, durable asset barriers, cost, independent lane drain/delete/absence, recovery/cancel, final MP4 playback/download. Run one active video at a time. A waiter may keep an existing synthetic Pod warm but may not start work or recreate an absent one; recreate only after next-project activation. With no waiter at lane completion, delete immediately; close/unlock only after both absences.
+Add additive v3 artifact contracts and persistence. Derive immutable object keys from trusted account/workspace/project/revision/lane/job/artifact identity; never accept a raw client key. Implement short-lived method/path/content-type/content-length/checksum scoped upload/download ports, single-use or bounded replay policy, durable commit receipts, expiry, retention, deletion ownership, and hash/probe metadata. Prevent enumeration and cross-tenant copy/move/dedup disclosure.
 
-Cut the active app to vNext and quarantine Serverless, old BF16 Mage, Auto, AvatarForcing/MuseTalk/SkyReels, repair/quality/fallback, and historical crops behind provider-free legacy replay. Preserve old migrations/evidence/v1 bytes.
+Define worker inputs as scoped ports only. Keep both model volumes read-only at /runpod-volume. Route mutable caches and outputs to job-keyed local scratch; deny symlink/path traversal/cross-mount access; erase scratch on success, failure, cancel, timeout, signal, and refresh. Add fake-R2 and filesystem adversarial tests for forged keys, URL replay/expiry, length/hash mismatch, partial upload, stale receipt, duplicate callback, crash cleanup, symlink escape, and two concurrent tenants with identical filenames.
 
-Acceptance: three queued synthetic projects; reorder/remove waiting; crash/restart; stale callback; wrong Pod/GPU/volume; independent drain; final playable MP4s; negative legacy import scan; canonical verify and real Chrome multi-session journey. Update CURRENT_STATE/context/evidence, make bounded green commit(s), server stopped, and stop before CP-06.
+Run migrations, TypeScript/Python fixture parity, focused/canonical tests, secret scan, validators, and git diff --check. Update evidence/gates/CURRENT_STATE, state $0/no-provider/no-worker truth, commit, and stop before V2-03.
 ```
 
-## CP-06 implementation prompt
+## V2-02 independent audit
 
 ```text
-Work on VideoForge checkpoint CP-06 only: Exact Mage INT8 on a persistent RunPod volume.
+Independently audit VideoForge V2-02 at current HEAD. Read mandatory context, the exact V2-02 brief/profile and acceptance, implementation diff, schemas, tests, and evidence. Perform no edits, credential access, provider calls, mutations, or spend.
 
-Use concise, factual updates. Read mandatory context, CP-06 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md, and the current /Volumes/ESD-USB/ImageForge worker source. Verify CP-05 is green. If the CP-06 task brief/read profile or selectors are missing, create the narrow brief/profile, select them in MANIFEST.yaml and CURRENT_STATE.yaml, validate them, and continue in this chat. Do not stop merely because activation records were absent.
+Verify trusted tenant-derived object identity, least-scope expiring ports, durable commit receipts, non-enumeration, checksum/length enforcement, retention/deletion ownership, /runpod-volume read-only policy, job-local scratch, terminal cleanup, and path/symlink/cross-mount negatives. Confirm no real R2 proof is claimed from fakes and no historical global key remains live.
 
-This request authorizes bounded provider-free CP-06 activation, local application/worker/context changes, local builds/tests, and narrowly scoped RunPod inventory and rate queries through already configured credentials. Before Phase A work, set implementation_authorized_in_current_task=true, current_task=VF-9-24Q, and in_progress_checkpoint=CP-06. Record task_stage=read_only_preflight; application_code_changes_authorized=true; provider_calls_authorized=true; maximum_external_spend_usd=0; provider_authority with mode=read_only, provider=runpod, cap_usd=0, this prompt's timestamp, non_transferable=true, and allowed_operations=[inventory_lookup, rate_lookup, quota_lookup, resource_identity_lookup, resource_absence_lookup]; and matching live_development calls/spend fields while provider_mode remains fixture. Credential access is true only for those calls; every mutation/download/publication/GPU/retention flag remains false. Read-only calls may return EU-RO-1 compatible GPU offerings, identifiers, availability, rates, network-volume pricing, and absence proof only. They must not print secrets or create/change/delete/publish/download/allocate anything. No registry publication, RunPod mutation, model download, GPU allocation, image publication, or paid action is authorized yet. Never copy, adopt, or delete ImageForge resource IDs, volumes, Pods, secrets, or outputs.
-
-Resolve known ImageForge source drift during local preflight: VideoForge DEC_IMAGE_001 and normative model/RunPod documents remain product authority. For reusable mechanics, worker/README.md says BF16, while src/imageforge_worker/constants.py and the tested runtime/health contract select int8-convrot; scripts/prepare_mageflow_volume.py also defaults --revision to None while runtime constants pin d8c99241f6fa80fbd453014234af2bf337ea21e6. Within ImageForge, tested generation/runtime code plus locked container inputs outrank the one-time preparation helper and README prose. Reconcile every adapted VideoForge layer before publication, require exact pinned revisions, and stop promotion if executable runtime sources conflict.
-
-Adapt the exact current Mage INT8 ConvRot contract: Comfy-Org/Mage-Flow revision d8c99241f6fa80fbd453014234af2bf337ea21e6, pinned ComfyUI revision, exact three-file set, 4 steps, guidance 1.0, 1280x720, byte manifest and headroom derivation, local-files-only verification, actual GPU check, real warm-up, and truthful health. Finish the VideoForge-owned worker, preparation tool, negative tests, immutable image definition, and local verification before the external boundary.
-
-Then make one combined authorization request. Present the exact publish/create/prepare/Pod/sample/delete operations; immutable image target; exact selected compatible GPU offering and current rate or a short exact choice list; derived EU-RO-1 Mage volume size; current recurring retained-volume rate; finite checkpoint cost estimate; stop conditions; and a requested numeric maximum cumulative external spend through handoff. Ask for the GPU choice, volume size approval, explicit consent to retain the volume at its ongoing rate, and paid execution authorization in that single request. The finite cap excludes continuing retained-volume billing. Do not choose a cap for me. Accept an unambiguous current-chat amount such as $3, USD 3, or 3.00 and normalize it to numeric 3.0; reject only missing, conflicting, stale, or placeholder authority. After approval, record task_stage=bounded_mutation and provider_authority.mode=paid. Before mutation, persist provider=runpod; model_id=Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot; exact resource targets; authorized_operations=[publish_worker_image, create_mage_template, create_mage_volume, download_prepare_mage_volume, create_mage_pod, generate_owned_samples, publish_owned_sample_outputs, delete_mage_pod, delete_mage_template, verify_zero_pods, retain_mage_volume]; authorization timestamp; non_transferable=true; numeric cap; and set application-code, credential, mutation, model-download, worker-image-publication, sample-output-publication, GPU-use, and Mage-volume-retention authority true. Set live_development.provider_mode=sandbox and persist mage_gpu_offering_id, mage_gpu_rate_usd_per_hour, mage_volume_size_gb, mage_volume_rate_usd_per_gb_month, and ongoing_retention_charge_usd_per_month in CURRENT_STATE. Then continue without asking again unless scope, rate, capacity, availability, or cap risk changes.
-
-After approval, publish the immutable VideoForge worker; create and prepare only the approved Mage-only EU-RO-1 volume; create, verify, and delete fresh Pods on only the selected GPU; and run at least eight representative owned prompts across required subject/style/crop categories through at least two fresh Pods. Return PNGs/contact sheet, hashes/probes, image/manifest/digest/GPU/rate/VRAM, create-to-model-ready/inference/upload/delete timings, settled finite-action cost, ongoing retained-volume rate, and independent zero-Pod proof. Ordinary boot must pass with model registries blocked and wrong/missing volume must fail. Stop immediately on cap risk, ambiguity, mismatch, failed output, or uncertain cleanup. Update evidence/gates/context/CURRENT_STATE and commit. Do not start Echo or leave any Pod running.
+Return PASS/FAIL, prioritized exact findings, commands/exits, unproven claims, CURRENT_STATE/provider/spend/worker truth, and V2-03 safety. Do not repair.
 ```
 
-## CP-07 implementation prompt
+## V2-03 implementation — fair queue and two active slots
 
 ```text
-Work on VideoForge checkpoint CP-07 only: Exact EchoMimicV3-Flash Turbo FP8 persistent-volume runtime and renderer crop lock.
+Work on VideoForge checkpoint V2-03 only: fair per-account queue and two global active slots.
 
-Use concise, factual updates. Read mandatory context, CP-07 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md, and pinned Echo preflight evidence. Verify CP-06 is green. If the CP-07 task brief/read profile or selectors are missing, create, select, and validate the narrow provider-free activation records and continue in this chat.
+Read mandatory context, selected brief/profile, and V2-03 acceptance. Verify V2-02 is committed and green; create/select/validate missing narrow activation records before editing.
 
-This request authorizes bounded provider-free CP-07 activation, local application/worker/context changes, local builds/tests, and read-only RunPod EU-RO-1 GPU inventory/rates and network-volume pricing through already configured credentials. The read-only scope has a $0 cap and may not print secrets or mutate, publish, download, allocate, or spend. No image publication, volume mutation, model download/preparation, Pod/GPU allocation, or paid action is authorized yet. No fallback, repair, model substitution, Long Video CFG, full-voiceover job, uncarded pickle, or cross-mount.
+This authorizes local provider-free application/schema/UI/context work only. No credentials, providers, cloud mutation, GPU/workers, or spend: $0.
 
-Complete local preflight first: build the VideoForge-prepared FP8 artifact definition from pinned first-party Flash/Wan/audio lineage; implement exact short-span padding/trim/output contracts, project-isolated scratch, offline manifest verification, real warm-up semantics, negative tests, and immutable image definition. Normal Pod boot must load only from a separate Echo-only EU-RO-1 volume with no runtime download or first-request quantization.
+Replace active singleton-session/manual shared ordering with account-owned durable queue entries, a database-enforced one-active-provider-workload-per-account lock, and exactly two global capacity leases held by different accounts. Ordinary video work therefore remains capped at one active video/account and two active videos globally. Represent explicit Mage/SoulX preset previews as separate tenant-owned requests using the same locks/slots; they are eligible only when no video head is eligible and never alter the video fairness cursor. Use deterministic fair account rotation. A user may reorder/cancel only their own waiting entries without changing account rotation or another account's order. Promotion, cancel, retry, terminal release, lease expiry/reclamation, and restart reconstruction must be atomic and auditable. Waiting work performs no ASR, prompt, storage mutation, GPU dispatch, render, or other provider action.
 
-Then ask once with a combined proposal containing the exact publish/create/prepare/Pod/sample/delete operations, artifact lineage, immutable image target, exact selected compatible GPU offering/current rate or short exact choice list, derived Echo volume size, recurring retained-volume rate, finite checkpoint estimate, stop conditions, and requested numeric maximum cumulative external spend through handoff. In the same request ask for the GPU choice, volume approval, explicit consent to retain it at the ongoing rate, and paid execution authorization. The finite cap excludes continuing retained-volume billing. Do not invent a cap. Record approval and continue without another confirmation unless the proposal changes or cap risk appears.
+Users may view, cancel, or reorder only their own waiting projects; their reorder cannot jump another account in fair rotation. Active work cannot be moved. Preserve the UI design while showing private factual queue/stage state; remove ordinary GPU selection and Pod Start/Stop/Delete concepts.
 
-After approval, publish the image; create/prepare only the approved Echo volume; run owned 2, 4, and 6 second avatar samples through fresh Pods on only the selected GPU; delete every Pod; and retain the volume. Show playable MP4s with hashes/ffprobe/A-V duration, GPU/rate/VRAM, manifest/digest, cold/warm model-ready/inference/upload/delete timings, settled finite-action cost, ongoing volume rate, and zero-Pod/two-volume proof. Measure native geometry and propose Echo-only full/split crops; do not activate crops until I review/approve them. Stop on ambiguity, mismatch, cap risk, output failure, or uncertain cleanup. Update gates/evidence/context/CURRENT_STATE, commit, and leave no Pod running.
+Prove simultaneous submits from 5-10 accounts, same-account double-submit, two different-account winners, no third slot, video-over-preview priority, preview capacity/account locking, video-account starvation bounds (previews may intentionally wait while any video head is eligible), owned reorder/cancel without fair-rotation drift, release/retry, lease theft/expiry, crash between promotion and commit, restart, stale actor/version, and two-account Chrome journeys. Run focused/canonical tests, migration checks, validators, and diff check. Update evidence/gates/CURRENT_STATE, record $0/no-provider/no-worker truth, commit, and stop before V2-04.
 ```
 
-## CP-08 implementation prompt
+## V2-03 independent audit
 
 ```text
-Work on VideoForge checkpoint CP-08 only: Durable hosted staging, invite auth, storage, workflow, and CPU jobs.
+Independently audit VideoForge V2-03 at current HEAD. Read mandatory context, selected V2-03 records, acceptance, migrations/diff, and evidence. Read-only only; no edits, credentials, providers, mutations, or spend.
 
-Use concise, factual updates. Read mandatory context and CP-08 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md. Verify CP-07 is accepted. If the CP-08 task brief/read profile or selectors are missing, create, select, and validate the narrow provider-free activation records and continue in this chat.
+Verify database truth enforces one active provider workload/account and two workloads globally from different accounts; ordinary videos remain capped at one/account and two globally. Verify explicit preset previews share the same locks/slots, never outrank any eligible video, never alter the video fairness cursor, and create no work before admission. Verify deterministic video-account rotation, atomic promotion/release/recovery, and tenant-only reorder/cancel without account-rotation drift. Inspect high-contention and crash tests plus real-Chrome private queue proof. Confirm UI has no ordinary GPU/Pod controls.
 
-This request authorizes bounded provider-free CP-08 activation, local application/worker/context changes, local builds/tests, and narrowly scoped read-only account inventory/rate queries through already configured Cloudflare, Neon, Google, email, and Google Cloud credentials. Read-only calls may inspect existing resource identities, compatible regions/quotas, and current rates only; they must not print secrets, mutate resources/configuration, deploy, send email, allocate compute, or spend. No cloud mutation or paid action is authorized yet. RunPod GPU work is not authorized by this prompt.
-
-Deploy private staging: Cloudflare UI/API/Workflow, Neon Postgres, private R2, Better Auth email/password + Google, the locked one-time invite admission policy, and a scale-to-zero Cloud Run Job containing whisper.cpp + FFmpeg. One global shared app, all admitted users equal rights. Jobs use official API invocation, exact R2 inputs/outputs, idempotency, progress/poll/reconcile/cancel, long timeout, and no GPU-lane work. Benchmark representative audio/render before choosing region/vCPU/RAM/timeout. Keep fixture mode safe/default and live GPU dispatch disabled.
-
-Complete all local contracts, adapters, deployment manifests, rollback plan, provider-free tests, and exact resource/cost preflight before the external boundary. Then ask once with a combined proposal naming every create/change/deploy/secret/OAuth/email operation, exact account/project/region/sizing choices and current rates, recurring storage/database/domain charges and retention consent, finite checkpoint estimate, stop conditions, and requested numeric maximum cumulative external spend through handoff. Do not invent a cap. Record approval and continue without another confirmation unless scope, price, sizing, or cap risk changes.
-
-After approval, deploy only the approved resources. Prove signup/login/reset/admission, migration/backup/restore, restart recovery, signed URL/large transfer, CPU job replay/cancel/timeout, artifact hash/probe, secret isolation, and production-mode composition without process-local claims. Run canonical checks and real Chrome staging acceptance. Record current prices, settled finite-action spend, ongoing charges, evidence, deployment/rollback, context/CURRENT_STATE, and commit. Stop before CP-09.
+Return PASS/FAIL, P0/P1/P2 findings with references, commands/exits, missing proof, CURRENT_STATE/provider/spend/worker truth, and V2-04 safety. Do not fix.
 ```
 
-## CP-09 implementation prompt
+## V2-04 implementation — provider-free Serverless v3 transport and recovery
 
 ```text
-Work on VideoForge checkpoint CP-09 only: One real automatic VideoForge video.
+Work on VideoForge checkpoint V2-04 only: provider-free Serverless v3 transport, authority, outbox, receipts, and recovery.
 
-Use concise, factual updates. Read mandatory context and CP-09 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md. Verify exact Mage/Echo profiles, Echo crops, and hosted staging are accepted. If the CP-09 task brief/read profile or selectors are missing, create, select, and validate the narrow provider-free activation records and continue in this chat.
+Read mandatory context, selected brief/profile, official pinned RunPod Serverless sources, and V2-04 acceptance. Verify V2-03 is committed and green. Create/select/validate missing narrow records before implementation.
 
-This request authorizes bounded provider-free CP-09 activation, local application/context changes and tests, owned-input preparation, and read-only current RunPod/hosted-service inventory and rate queries through already configured credentials. The read-only scope has a $0 cap and permits no secret output, mutation, publication, model download, API generation, Pod/job allocation, or spend. No real run is authorized yet. No unbounded retry, fallback, repair, model substitution, or GPU substitution.
+This authorizes bounded local application/worker/schema/context work only. Do not access credentials, call RunPod, create endpoints, publish images, touch volumes, allocate workers, or spend: $0.
 
-Use one owned 60-90 second input. While truly idle, select exact Mage/Echo GPUs and atomically open one session. Run hosted ASR/scheduler/prompts while both Pods boot; use only real Runware, qualified Mage INT8, Echo FP8 short spans, R2 barriers, approved crop, and Cloud Run FFmpeg. No fixture asset or manual edit. Delete a lane immediately if it finishes with no queued demand. Download/show the final 1080p MP4.
+Create additive v3 endpoint deployment, pre-dispatch authority, dispatch outbox, request attempt, provider assignment, signed VideoForge provenance receipt, progress, durable output receipt, cancellation, reconciliation, and cost contracts with TypeScript/Python parity. Bind tenant/revision/lane batch, endpoint/config/image/model/volume hashes, input hashes, deadline, and spend ceiling before dispatch. After a unique RunPod job ID is returned or reconciled, persist its assignment to the token/attempt before accepting status/output. Record worker ID when exposed, runtime GPU/driver/CUDA probes, intended region/volume, ready timings, and output hashes in a separate signed provenance receipt. Do not call this provider hardware attestation. Generalize the context validator's historical CP-06-only provider-authority branches into strict V2 checkpoint-generic read-only/paid validation without weakening exact operations/resources/rates/cap checks.
 
-Complete owned-input validation, local dry run, exact work counts, shutdown plan, and duration-based estimate first. Then ask once with a combined proposal naming every paid provider operation, the exact selected Mage/Echo GPU offerings and current rates or a short exact choice list, hosted-service rates, input duration/work counts, finite estimate, stop conditions, and requested numeric maximum cumulative spend through handoff. State the already-approved retained-volume rates separately. Ask for the exact GPU pair and paid run authorization together. Do not invent a cap. Record approval and continue without another confirmation unless the proposal changes or cap risk appears.
+Persist a stable dispatch token/outbox before fake /run. Never promise exactly once or no duplicate billing: accept at most one canonical durable output and expose bounded duplicate compute/cost. Reconcile fake /status before the 30-minute result window expires; a signed R2 receipt is truth and webhooks are advisory. Measure/pin TTL, execution timeout, init timeout, scaler, idle, polling, and retry contracts; TTL includes queued/running life. Model workersMin=0 as zero Active workers and autoscaled Flex; workersMax counts Active+Flex. Forbid routine /purge-queue.
 
-After approval, run once within the exact proposal. Return immutable end-to-end lineage, actual Pod/GPU/volume/model identities, every timing/cost component, final hash/ffprobe, Chrome play/seek/download result, zero-Pod proof, and retained-volume proof. Stop on first serious failure, mismatch, cap risk, or uncertain cleanup. Ask for my quality decision before promotion. Update gates/evidence/context/CURRENT_STATE and commit; do not start CP-10.
+Test fake /run/status/cancel, response loss before/after provider acceptance, duplicate delivery/execution/output, webhook loss/replay, stale/forged callbacks, worker death, timeout/TTL, cancellation races, restart, accepted-unit resume, cost conservation, and tenant/endpoint/volume/GPU mismatches. Preserve Pod contracts as replay-only. Run migrations, fixture parity, focused/canonical tests, validators, and diff check. Update evidence/gates/CURRENT_STATE, state $0/no-provider/no-worker truth, commit, and stop before V2-05.
 ```
 
-## CP-10 implementation prompt
+## V2-04 independent audit
 
 ```text
-Work on VideoForge checkpoint CP-10 only: Real shared-session queue MVP.
+Independently audit VideoForge V2-04 at current HEAD. Read mandatory context, exact V2-04 profile/brief and acceptance, official pinned semantics, schemas/migrations/diff, tests, and evidence. Read-only: no edits, credentials, provider calls, mutations, or spend.
 
-Use concise, factual updates. Read mandatory context and CP-10 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md. Verify CP-09 output is accepted. If the CP-10 task brief/read profile or selectors are missing, create, select, and validate the narrow provider-free activation records and continue in this chat.
+Verify two-phase authority, outbox-before-/run, stable token, persisted unique `provider_assignment` before status/output acceptance, separate signed observed-fact receipt, /status reconciliation, 30-minute result-window handling, at-most-one accepted output, visible duplicate-compute/cost risk, measured timeout/scaler contracts, correct min/max worker meaning, cancellation/restart, and an enforced no-purge rule. Confirm replay-only Pod schemas cannot authorize v3 dispatch and adversarial tenant/endpoint/image/volume/GPU/cost cases fail closed.
 
-This request authorizes bounded provider-free CP-10 activation, local application/context work and tests, preparation of 2-3 owned short projects, and read-only current GPU/hosted-service inventory and rate queries through already configured credentials. The read-only scope has a $0 cap and permits no secret output, mutation, generation call, Pod/job allocation, or spend. No live session is authorized yet. No GPU/model/rate substitution or extra Pod pair.
-
-Prove the exact MVP: first idle user selects both GPUs; other users only enqueue; all see one global queue and locked pair; waiting entries can be reordered/removed by any admitted user; active cannot. Run one video at a time. Waiting entries perform no ASR, prompt, model, render, or Pod-create work. They may keep an existing lane Pod warm. Prove independent lane deletion when no waiter, late enqueue after one lane absence without early recreation, same-session GPU recreation only after the next project activates and revalidates, unavailable GPU blocker, final queue drain, both-Pod absence, retained volumes, and unlocked next session.
-
-Complete provider-free queue/race/fault validation and the exact bounded session estimate first. Then ask once with a combined proposal naming every paid provider operation, exact selected Mage/Echo GPU offerings and current rates or a short exact choice list, project durations/work counts, hosted-service rates, finite session estimate, stop conditions, and requested numeric maximum cumulative spend through handoff. State retained-volume rates separately. Ask for the exact GPU pair and live session authorization together. Do not invent a cap. Record approval and continue without another confirmation unless scope/rates/availability/cap risk change.
-
-After approval, use multi-session real Chrome plus durable event/cost lineage. Prove no duplicate work/Pod, no cross-project scratch/callback/R2 leak, one final MP4 per project, restart recovery, and correct boot/project/idle/cpu/storage cost attribution. Stop on cap risk, mismatch, ambiguity, or uncertain cleanup. Update evidence/context/CURRENT_STATE, commit, and leave zero Pods.
+Return PASS/FAIL, exact prioritized findings, commands/exits, unproven claims, CURRENT_STATE/provider/spend/worker truth, and V2-05 safety. Do not repair.
 ```
 
-## CP-11 implementation prompt
+## V2-05 implementation — provider-free cutover and runtime firewall
 
 ```text
-Work on VideoForge checkpoint CP-11 only: 5-10-user reliability, quality, speed, and 30-minute cost qualification.
+Work on VideoForge checkpoint V2-05 only: provider-free application cutover, truthful UI, and runtime firewall.
 
-Use concise, factual updates. Read mandatory context and CP-11 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md. Verify CP-10 is accepted. If the CP-11 task brief/read profile or selectors are missing, create, select, and validate the narrow provider-free activation records and continue in this chat.
+Read mandatory context, selected brief/profile, and V2-05 acceptance. Verify V2-04 is committed and green. If activation selectors are absent, create/select/validate the narrow records first.
 
-This request authorizes bounded provider-free CP-11 activation, local application/context work and tests, and read-only provider inventory/rate queries through already configured credentials. The read-only scope has a $0 cap and permits no secret output, mutation, generation call, Pod/job allocation, or spend. Split paid testing into named waves; no wave cap carries forward. Keep one global session, one active video, one Pod per lane, no fallback/repair, and no advanced fairness.
+This authorizes local application/worker/UI/context changes only. No credentials, provider calls, cloud mutation, publication, model/volume work, GPU/workers, or spend: $0.
 
-Run provider-free 1/2/5/10-user race/fault/security tests first. Then separately qualify Mage 40 prompts and representative 220-320-image workload, Echo 12-20 exact-avatar clips, and one representative 30-minute or equivalently accounted long-form video. Measure queue wait; cold/warm boot/model-ready; accepted throughput; reject/retry; Cloud Run ASR/render; R2; p50/p90; session boot, project inference, idle, and fixed storage costs. Target <=$1 variable cost and evaluate hard $2 ceiling honestly.
+Wire tenant-private identity/artifacts, fair two-slot admission, existing transcript/scheduler/prompt/render foundations, and fake Mage/SoulX Serverless v3 lane batches into the complete app. Each admitted video owns independent stage state; CPU preparation begins only after admission; each exact lane dispatches only after its manifest and authority are durable. Preserve accepted units across bounded retries. Show factual private states such as queued, preparing, waiting for worker, initializing, generating images/avatar, rendering, complete, failed, and canceled.
 
-Complete all provider-free tests and prepare every paid wave's exact inputs/work counts before its boundary. For each wave, ask once with a combined proposal naming the operations, exact selected GPU offering(s)/current rates or short exact choice list, hosted-service rates, estimate, stop conditions, and requested numeric maximum cumulative spend for that wave through its handoff. State retained-volume rates separately. Ask for exact choices and paid-wave authorization together; do not invent a cap. After approval, run that wave without another confirmation unless its proposal changes or cap risk appears, then stop for user review before proposing the next wave.
+Make legacy global session, shared catalogs, Pod create/delete/controllers, user GPU selectors, Echo, old Serverless, Auto routing, fallback/repair/substitution, broad object keys, and cross-tenant callbacks unreachable from ordinary production imports, routes, flags, and build output. Keep explicitly isolated replay fixtures only. No fake state may look live.
 
-Return contact sheets/clips/full MP4, hashes/probes, raw benchmark tables, actual rates/VRAM, all gates, quality decision points, and zero-Pod/two-volume proof after every paid wave. Tune only from measurements. Update context/CURRENT_STATE/evidence and commit an honest go/no-go. Do not release production.
+Prove two tenant projects active concurrently plus waiting projects, lane independence, response loss/duplicate delivery, restart/cancel, accepted-unit resume, asset barriers, exact renderer output, cross-tenant negatives, cost attribution, and zero fake workers after drain. Run import/firewall scans, focused/canonical verification, migrations, secret scan, validators, diff check, and installed-Chrome two-account journeys. Update evidence/gates/CURRENT_STATE, record $0/no-provider/no-worker truth, commit, and stop before V2-06.
 ```
 
-## CP-12 implementation prompt
+## V2-05 independent audit
 
 ```text
-Work on VideoForge checkpoint CP-12 only: Production release and operating proof.
+Independently audit VideoForge V2-05 at current HEAD. Read mandatory context, selected records, V2-05 acceptance, diff/build graph, tests, and Chrome evidence. Read-only only; no edits, credentials, providers, mutation, or spend.
 
-Use concise, factual updates. Read mandatory context and CP-12 in project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md. Verify every required gate is closed or explicitly accepted by the user and CP-11 is green. If the CP-12 task brief/read profile or selectors are missing, create, select, and validate the narrow provider-free activation records and continue in this chat.
+Verify the active app uses tenant-private v3 paths end to end, admits at most two different accounts, dispatches no waiting work, preserves successful units, reports truthful states/costs, renders the three locked compositions, and drains fake workers. Prove ordinary production cannot import or route to manual Pod/global session/GPU selector/Echo/legacy Serverless/Auto/fallback/repair/broad-key paths; fixture/replay code must be isolated and visibly non-live.
 
-This request authorizes bounded provider-free CP-12 activation, local release/context/runbook changes and tests, and narrowly scoped read-only production account/inventory/rate queries through already configured credentials. The read-only scope has a $0 cap and permits no secret output, deployment, DNS/OAuth/secret/resource mutation, generation call, Pod/job allocation, or spend. No production activation is authorized yet. Do not expand features.
-
-Promote pinned staging artifacts/config to production. Configure domain, OAuth, locked invite operations, secrets, backups, retention, monitoring, cost/Pod alerts, rollback, and incident runbooks. Run real Chrome signup/login, idle GPU selection, enqueue/reorder/remove, one bounded generation, playback/download, restart/reconcile, automatic independent lane shutdown, queue drain, and next-session unlock. Archive/quarantine obsolete active entrypoints without rewriting history.
-
-Complete canonical CI, release manifest, exact mutation/rollback plan, smoke inputs, read-only inventory/rates, and finite estimate first. Then ask once with a combined proposal naming every production mutation and smoke operation, exact accounts/projects/regions/resource sizing and rates, exact GPU pair/current rates or short exact choice list, recurring service/retention charges, stop conditions, and requested numeric maximum cumulative release spend through handoff. Ask for exact choices, recurring-charge consent, and production activation together. Do not invent a cap. Record approval and continue without another confirmation unless scope, rates, availability, or cap risk changes.
-
-After approval, prove deployment and rollback, security/restore drill, invited-user acceptance, output hash/probe, settled finite-action cost, ongoing charges, zero Pods, and exactly two retained intended volumes. Document invite issue/revoke, blocked-session repair, ambiguous Pod reconciliation, secret rotation, restore, and separately authorized volume deletion. Update final context/CURRENT_STATE, commit/push only if explicitly requested, and hand back a usable production MVP.
+Return PASS/FAIL, P0/P1/P2 exact findings, commands/exits, unproven claims, CURRENT_STATE/provider/spend/worker truth, and V2-06 safety. Do not fix.
 ```
 
-## Independent audit prompt for any checkpoint
+## V2-06 implementation — hosted production-shaped staging
 
 ```text
-Independently audit VideoForge checkpoint <CP-ID> at the current repository HEAD. Do not implement fixes, edit files, call paid providers, access credentials, mutate cloud resources, or spend money.
+Work on VideoForge checkpoint V2-06 only: hosted auth, Neon, R2, Cloudflare orchestration, and Cloud Run CPU media staging.
 
-Read AGENTS.md, project-context/00_START_HERE.md, MANIFEST.yaml, CURRENT_STATE.yaml, the exact selected read profile/task brief, the <CP-ID> section of project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md, and the implementation handoff/evidence. Treat fixture/local success as provider-free only. Preserve history and private inputs.
+Read mandatory context, selected brief/profile, V2-06 acceptance, and pinned official service sources. Verify V2-05 is committed and green. Create/select/validate missing narrow activation records.
 
-Verify dependency completion, scope/authority, actual diff/commits, contracts/migrations, relevant focused tests, canonical verification, context/schema validators, secret scan, and real Chrome evidence when visible behavior changed. For paid checkpoints, verify recorded immutable provider evidence: exact model/container/volume/GPU/rate, timings, hashes/probes, settled cost versus cap, Pod delete/absence proof, and intended retained volumes. Do not perform a live provider check unless I separately authorize credential access and a read-only audit.
+This request authorizes provider-free activation, bounded local application/infrastructure/context work, local tests/builds, and narrowly scoped read-only identity/quota/region/current-rate lookups through already configured Cloudflare, Neon, Google, and email credentials at a $0 cap. Do not print secrets. No resource/config/secret/OAuth/DNS mutation, deployment, email delivery, paid request, retention change, or spend is authorized yet. RunPod calls are not authorized.
 
-Specifically audit the global MVP invariants: one shared equal-rights app; gated one-time admission; one singleton session; GPU selection only while truly idle; immutable session pair; global waiting-only reorder/remove; one active video; independent lane shutdown at zero demand; no silent substitution; queue-drain zero Pods; separate retained volumes; no active Serverless/Auto/AvatarForcing/MuseTalk/SkyReels/repair/fallback path; and no cross-project artifact/scratch/callback leak.
+First finish production adapters/manifests for Cloudflare-hosted app/API and durable orchestration, Better Auth email/password plus Google and atomic invite admission, Neon PostgreSQL, private tenant R2, and scale-to-zero Cloud Run Jobs containing pinned whisper.cpp and FFmpeg/FFprobe. Implement least-privilege secrets, signed artifact ports, migrations/rollback, callbacks plus polling, restart/replay/cancel/expiry/retention, backups, observability, and exact local/container parity. Keep GPU transport fake and disabled.
 
-Return:
-1. PASS or FAIL for <CP-ID>.
-2. Evidence-backed P0/P1/P2 findings with exact file:line or artifact references.
-3. Commands actually run and exit codes.
-4. Claims not proven.
-5. Whether CURRENT_STATE is truthful and the next checkpoint is safe to start.
+Before any external mutation or paid use, ask once with one combined proposal listing every exact create/change/deploy/secret/OAuth/email/test/delete/retain operation; account/project/region/domain/resource sizing; current finite and recurring rates; intended retained resources; rollback/cleanup; estimate and stop conditions; and request that I supply a numeric maximum cumulative finite external spend. Do not invent a cap or reuse authority. Record approval and proceed only while the proposal remains exact; stop on drift or cap risk.
 
-Do not praise or repair. If any required proof is missing, fail the checkpoint clearly.
+After approval, deploy only the approved staging resources. Prove two real invited accounts with isolated DB rows/objects, auth/reset/admission negatives, migration/backup/restore, signed large transfer, hosted owned ASR/render, restart/replay/cancel/timeout, durable hashes/probes, secret isolation, no Mac dependency, and real-Chrome staging. Record immutable deployment/config identities, timings, settled finite cost, ongoing charges, rollback, and zero RunPod workers. Update evidence/gates/CURRENT_STATE, commit, and stop before V2-07.
+```
+
+## V2-06 independent audit
+
+```text
+Independently audit VideoForge V2-06 at current HEAD using repository and supplied immutable deployment evidence only. Read mandatory context, exact V2-06 records/acceptance, diff, tests, and handoff. Do not edit, access credentials, make live provider calls, mutate resources, or spend; a separate explicit read-only audit grant would be required for live verification.
+
+Verify bounded checkpoint-specific authority and cap, exact approved versus actual resources/rates/recurring charges, tenant-isolated Better Auth/Neon/R2, least-privilege secrets, hosted Cloudflare orchestration, scale-to-zero Cloud Run ASR/render parity, durable recovery/cancel/backup/restore, Chrome proof, and RunPod-disabled/zero-worker truth. Local fixtures cannot prove deployment.
+
+Return PASS/FAIL, P0/P1/P2 findings with exact references, commands/exits, unproven live claims, CURRENT_STATE and spend truth, rollback state, and V2-07 safety. Do not repair.
+```
+
+## V2-07 implementation — Mage Serverless qualification
+
+```text
+Work on VideoForge checkpoint V2-07 only: exact Mage-Flow INT8 ConvRot Serverless qualification on the existing sealed Mage volume.
+
+Read mandatory context, selected brief/profile, V2-07 acceptance, exact prior Mage manifest/evidence, and pinned official RunPod Serverless sources. Verify V2-06 is committed and green. Create/select/validate missing narrow records.
+
+This request authorizes provider-free activation, local worker/application/context changes, local builds/tests, and narrowly scoped read-only RunPod EU-RO-1 inventory, resource-identity, quota, and current-rate lookups through configured credentials at $0. Do not print secrets. No publication, endpoint/template mutation, model download/preparation, volume mutation, GPU job, worker allocation, or spend is authorized yet. The existing Mage-only 50 GB volume remains retained and must not be deleted, rebuilt, cross-mounted, or written.
+
+First convert the exact qualified Mage runtime into a queue handler for one complete video image batch. Use only /runpod-volume, offline sealed-manifest verification, real initialization warm-up, application-read-only model files, job-local scratch, scoped R2 ports, durable per-unit resume, v3 authority/provenance receipt, terminal cleanup, and no runtime download/quantization. Build immutable image definition and negative tests for wrong bytes/path/volume/GPU/region, writes, cache escape, malformed authority, duplicate delivery, cancel, timeout, and two readers.
+
+Pin the initial endpoint to EU-RO-1, exact Mage volume, exact immutable image digest, RTX 4090 only, one GPU/Flex worker, workersMin=0, workersMax=1, and measured scaler/idle/TTL/execution/RUNPOD_INIT_TIMEOUT values. Qualify one worker first; then apply a separately hashed workersMax=2 configuration only for the bounded concurrent-reader proof. Before publication, endpoint mutation, or GPU use, ask once with one combined proposal containing exact publish/create-or-update/submit/status/cancel/scale-down/retain/delete-if-failed operations; both staged endpoint configs; artifact lineage; endpoint/config/image/volume/model/GPU identity; current rates and existing volume charge stated separately; finite estimate; cleanup/rollback; stop conditions; and request my numeric maximum cumulative finite spend. Do not invent or reuse a cap.
+
+After exact approval, publish and qualify only that proposal. Run owned samples plus a realistic complete image batch, cold and warm, and two simultaneous read-only workers. Prove outputs durable before provider expiry, status reconciliation, cancellation/duplicate behavior, unchanged volume hash, no model-volume writes, peak VRAM, init/load/warm/inference/upload timings, settled cost, and independent workers=0 after drain while the endpoint and both intended volumes remain. Stop on mismatch, cap risk, failed output, uncertain cleanup, or unplanned duplicate compute. Update evidence/gates/CURRENT_STATE, commit, and stop before V2-08.
+```
+
+## V2-07 independent audit
+
+```text
+Independently audit VideoForge V2-07 at current HEAD from repository and immutable paid-run evidence. Read mandatory context, exact V2-07 records/acceptance, Mage lineage, diff/tests, authority, and handoff. No edits, credentials, live provider calls, mutations, or spend.
+
+Verify the exact sealed Mage bytes and existing volume were neither rebuilt nor written; /runpod-volume and local scratch contracts; immutable image/endpoint/config; staged RTX 4090-only EU-RO-1 Flex qualification at min=0/max=1 before the separately hashed max=2 concurrent-reader configuration; measured timeouts; complete-batch handling; outputs/receipts/status reconciliation; at-most-one acceptance and duplicate-cost visibility; actual rates/cost versus cap; unchanged two-volume inventory; and workers=0 after drain. Fixture proof cannot substitute for the real run.
+
+Return PASS/FAIL, exact prioritized findings, commands/exits, unproven claims, CURRENT_STATE/spend/worker truth, and V2-08 safety. Do not repair.
+```
+
+## V2-08 implementation — SoulX Serverless qualification
+
+```text
+Work on VideoForge checkpoint V2-08 only: exact SoulX-FlashHead Pro BF16 Serverless qualification on the existing sealed SoulX volume.
+
+Read mandatory context, selected brief/profile, V2-08 acceptance, exact prior SoulX manifest/evidence, review-only Avatar Profile/crop evidence, first-party code/weights terms, and pinned official RunPod sources. Verify V2-07 is committed and green. Create/select/validate missing narrow records.
+
+This request authorizes provider-free activation, local worker/application/context work, local builds/tests, and narrowly scoped read-only RunPod EU-RO-1 inventory/resource/quota/current-rate queries through configured credentials at $0. Do not print secrets. No publication, endpoint mutation, model download/preparation, volume mutation, GPU job, allocation, or spend is authorized yet. The existing separate SoulX-only 50 GB volume must remain sealed, retained, unmodified, and never cross-mounted.
+
+First resolve and record exact first-party code/weights access, commercial-use, hosted-service, redistribution, and container-publication terms; do not publish or claim production clearance while GATE_SOULX_LICENSE_001 is ambiguous. Then wrap the exact qualified Pro BF16 runtime as one complete-avatar-lane queue handler. Use /runpod-volume, offline manifest verification, real load/compile warm-up, exact selected-span padding/trim/A-V/output contracts, source-specific full/split review candidates that activate only after explicit approval, scoped R2 ports, resumable durable clips, v3 authority/provenance receipt, job-local scratch, and terminal cleanup. No enhancement, repair, fallback, substitute, runtime download, full-voiceover request, or model-volume cache write.
+
+Pin the initial endpoint to EU-RO-1, exact SoulX volume/image/model, RTX 4090 only, one GPU/Flex worker, workersMin=0, workersMax=1, and measured scaler/idle/TTL/execution/RUNPOD_INIT_TIMEOUT values; account for the previously long cold initialization rather than inheriting defaults. Qualify one worker first, then use a separately hashed workersMax=2 configuration only for bounded concurrent-reader proof. Before any publication, endpoint change, or GPU use, ask once with the exact combined proposal: publish/create-or-update/submit/status/cancel/scale-down/retain/delete-if-failed operations; both staged configs; lineage and endpoint/config/image/volume/GPU identities; current rates and existing retained charge separately; samples/batch; estimate; cleanup/rollback; stop conditions; and a numeric maximum cumulative finite spend supplied by me. Do not invent or reuse a cap.
+
+After exact approval, run owned 2/4/6/approximately-10-second clips and a realistic lane batch, cold/warm and two simultaneous read-only workers. Show playable native/full/split MP4s and require explicit visual approval of each active Avatar Profile composition. Record hashes/ffprobe/A-V duration, durable receipts, init/load/compile/inference/upload timings, VRAM, duplicate/cancel/status behavior, unchanged volume hash, settled cost, and independent workers=0 after drain with both intended volumes retained. Stop on mismatch, bad output, cap risk, uncertain cleanup, or unplanned duplicate compute. Update evidence/gates/CURRENT_STATE, commit, and stop before V2-09.
+```
+
+## V2-08 independent audit
+
+```text
+Independently audit VideoForge V2-08 at current HEAD from repository and immutable paid-run evidence. Read mandatory context, exact V2-08 records/acceptance, SoulX lineage/crop approval, diff/tests, authority, and handoff. No edits, credentials, live provider calls, mutations, or spend.
+
+Verify exact first-party deployability evidence or explicit unresolved-risk decision, exact Pro BF16 bytes and existing SoulX volume, no write/download/cross-mount, /runpod-volume plus isolated scratch, exact span/A-V contracts, immutable endpoint/config/image, staged RTX 4090 EU-RO-1 min=0/max=1 then separately hashed max=2 with measured long-init handling, playable sample and realistic batch proof, two readers, visual crop approval, receipts/status reconciliation, duplicate-cost visibility, actual cost versus cap, two retained unchanged volumes, and workers=0. Technical output without required visual approval is FAIL.
+
+Return PASS/FAIL, P0/P1/P2 exact findings, commands/exits, missing proof, CURRENT_STATE/spend/worker truth, and V2-09 safety. Do not repair.
+```
+
+## V2-09 implementation — short real hosted end-to-end project
+
+```text
+Work on VideoForge checkpoint V2-09 only: one short real hosted end-to-end project.
+
+Read mandatory context, selected brief/profile, V2-09 acceptance, and accepted V2-07/V2-08 endpoint evidence. Verify V2-08 is committed, independently green, and visually approved. Create/select/validate missing narrow records.
+
+This request authorizes provider-free activation, bounded local app/context changes and tests, owned short-input preparation, and narrowly scoped read-only current inventory/rate/resource-identity lookups through configured hosted-service and RunPod credentials at $0. Do not print secrets. No mutation, deployment, generation request, GPU/CPU job, or spend is authorized yet. No fallback, repair, model/GPU substitution, or manual edit.
+
+First run the complete provider-free dry journey and freeze one owned approximately 60-90 second input, tenant/revision, word transcript, scheduler-v2 manifest, prompt/image/avatar work counts, R2 paths, exact endpoint authorities, cost estimate, failure/cancel plan, and final render contract. Use the qualified Mage and SoulX endpoints, real prompt provider only if explicitly included, hosted ASR/render, private R2, durable barriers, status reconciliation, and no operator intervention after Generate.
+
+Before the first live call, ask once with a combined proposal naming every exact provider request and any config mutation; account/region/endpoints/config/image/volume/model/GPU identities; current per-service rates; work counts; finite estimate; existing recurring charges separately; cleanup/rollback; stop conditions; and request my numeric maximum cumulative finite spend. Do not invent/reuse a cap. Record exact approval and stop if anything changes.
+
+After approval, run once. Show the playable 1080p MP4 in real Chrome with download/seek proof, immutable lineage, hashes/ffprobe/A-V/frame duration, actual worker/GPU identities, all stage/cold/warm/inference/upload/render timings, retries or duplicate compute, itemized settled cost, cross-tenant negative proof, and both endpoints at workers=0 after drain with only intended retained resources. Ask for the user's visual acceptance before promotion. Update evidence/gates/CURRENT_STATE, commit, and stop before V2-10.
+```
+
+## V2-09 independent audit
+
+```text
+Independently audit VideoForge V2-09 at current HEAD from repository and immutable live-run evidence. Read mandatory context, exact V2-09 records/acceptance, predecessor endpoint approvals, diff/tests, authority, output, and handoff. No edits, credentials, live calls, mutations, or spend.
+
+Verify one owned short project completed through real hosted auth/storage/ASR/scheduler/prompts/Mage/SoulX/barrier/render without fixture assets or manual edits; exact identities and lineage; private tenant access; playable technical output; actual timings/cost versus approved cap; duplicate/retry accounting; user visual decision; and workers=0 after drain. Local or partial-provider proof is insufficient.
+
+Return PASS/FAIL, exact findings, commands/exits, unproven claims, CURRENT_STATE/spend/worker truth, and V2-10 safety. Do not repair.
+```
+
+## V2-10 implementation — real 3-5 minute Ranga-style pilot
+
+```text
+Work on VideoForge checkpoint V2-10 only: one real 3-5 minute Ranga-style automatic pilot.
+
+Read mandatory context, selected brief/profile, V2-10 acceptance, exact pinned Ranga forensic/visual evidence, and the visually accepted V2-09 run. Verify V2-09 is committed and independently green. Create/select/validate missing narrow records.
+
+This request authorizes provider-free activation, bounded local app/context/test work, owned-input preparation, and narrowly scoped read-only current inventory/rate/resource-identity lookups through configured credentials at $0. Do not print secrets. No mutation, deployment, provider generation, worker/job allocation, or spend is authorized yet. Do not change scheduler timing/layout with an LLM, add B-roll video, repair/fallback/substitute models, or manually edit the final.
+
+First freeze one owned final 3-5 minute voiceover, exact tenant/revision/Profile/Style versions, scheduler-v2 work manifest, prompt/image/avatar counts, composition/crop contracts, R2 lineage, expected timings/cost, review rubric, shutdown, and rollback. Preserve the current deterministic grammar: frame-zero full avatar; normal 2-6 second spans; 21-22% avatar; near-even full/split; near-strict alternation; clean speaker-left 50/50 split; first evidence around 3-6 seconds; first split by 18 seconds; hard cuts; slow centered image zoom; no prohibited graphics.
+
+Before the first live provider call, ask once with an exact combined proposal listing all generation/ASR/render/storage operations and any mutation; exact accounts, regions, endpoint/config/image/volume/model/GPU identities and current rates; work counts; estimate; recurring charges separately; cleanup/rollback; stop conditions; and request my numeric maximum cumulative finite external spend. Do not invent or reuse a cap. Record approval and continue only while exact.
+
+After approval, generate without operator editing. Review every cut and asset for direct literal evidence, documentary realism, crop, lips/head/background, pacing, zoom, A/V, and prohibited graphics. Produce metric report and contact sheets; semantic score target mean >=1.8 with no zero in the opening minute or critical claims and zero accepted pseudo-text/logo/anatomy/style defects. Show the playable final in real Chrome, hashes/probes, full timings, retries/duplicate compute, settled itemized cost, and independent workers=0 after drain. Obtain explicit user visual acceptance. Update evidence/gates/CURRENT_STATE, commit, and stop before V2-11.
+```
+
+## V2-10 independent audit
+
+```text
+Independently audit VideoForge V2-10 at current HEAD from repository, pinned Ranga evidence, and immutable run/review artifacts. Read mandatory context, exact V2-10 records/acceptance, authority, output, metrics, and handoff. No edits, credentials, live provider calls, mutations, or spend.
+
+Verify the final is a real automatic 3-5 minute owned project with no fixture/manual edit; deterministic composition/cadence/geometry metrics; literal-evidence score and defect rubric; exact profile/style/crop lineage; playable A/V proof; actual timing/cost/cap accounting; user visual acceptance; tenant isolation; and workers=0 after drain. Do not claim identical Ranga natural motion from still-image zoom.
+
+Return PASS/FAIL, P0/P1/P2 exact findings, commands/exits, missing proof, CURRENT_STATE/spend/worker truth, and V2-11 safety. Do not repair.
+```
+
+## V2-11 implementation — concurrency, fairness, autoscaling, and recovery
+
+```text
+Work on VideoForge checkpoint V2-11 only: two-user concurrency, 5-10-user fairness, autoscaling, and recovery proof.
+
+Read mandatory context, selected brief/profile, and V2-11 acceptance. Verify V2-10 is committed, independently green, and visually accepted. Create/select/validate missing narrow records.
+
+This request authorizes provider-free activation, bounded local app/context/tests, preparation of owned short projects, and narrowly scoped read-only hosted/RunPod inventory, identity, quota, and current-rate lookups through configured credentials at $0. Do not print secrets. No mutation, deployment, live request, worker allocation, or spend is authorized yet. Do not rely on RunPod queue fairness or use /purge-queue.
+
+First pass provider-free 1/2/5/10-account contention, fair rotation, same-account serialization, two-global-slot, no-third-slot, restart, lease expiry, response-loss, duplicate-delivery, worker-death, cancel/timeout, stale webhook, R2 receipt, retry resume, and cost-conservation tests. Freeze two real simultaneous owned projects plus additional queued fixtures, exact work counts, fault injection points, endpoint timeout/scaler bounds, budget estimate, stop-dispatch and cleanup plan.
+
+Before any live call or config mutation, ask once with one combined proposal naming exact endpoint/config changes if any, submissions/status/cancel/fault operations, accounts/regions/images/volumes/models/GPU offerings/current rates, project counts/durations/work, finite estimate, existing recurring charges separately, rollback/cleanup, stop conditions, and request my numeric maximum cumulative finite external spend. Do not invent or reuse a cap. Record exact approval; stop on proposal drift or cap risk.
+
+After approval, prove two different accounts generate concurrently while each account remains at one active workload and ordinary video work remains at one active video/account; all further demand rotates fairly and previews never outrank eligible videos. Demonstrate endpoint scaling within bounds with locked `REQUEST_COUNT=1`, no waiting-work dispatch, recovery from the named failures, at-most-one accepted output with any duplicate compute/cost visible, per-tenant artifacts/costs, valid outputs, and real-Chrome private status. Reconcile durable receipts within result windows. End with zero endpoint jobs, zero total workers (`Active + Flex`), no pending provider work, intended resources only, and settled itemized cost. Update evidence/gates/CURRENT_STATE, commit, and stop before V2-12.
+```
+
+## V2-11 independent audit
+
+```text
+Independently audit VideoForge V2-11 at current HEAD from repository and immutable load/fault evidence. Read mandatory context, exact V2-11 records/acceptance, tests, authority, outputs, raw event/cost tables, and handoff. No edits, credentials, live calls, mutations, or spend.
+
+Verify two different accounts truly ran concurrently; one-active-workload/account and two-global limits; fair 5-10-account video rotation plus lower-priority preview behavior; owned reorder/cancel without rotation drift; zero waiting dispatch; exact `0→1→2→0` endpoint scaling with locked `REQUEST_COUNT=1`; no more than four total workers (`Active + Flex`) across both endpoints; measured timeouts; recovery from each required fault; durable receipts/status reconciliation; no exactly-once claim; canonical-output and duplicate-cost accounting; tenant isolation; actual cost versus cap; no pending endpoint jobs; and zero total workers (`Active + Flex`) after drain. Synthetic contention cannot prove the live portion.
+
+Return PASS/FAIL, exact prioritized findings, commands/exits, unproven claims, CURRENT_STATE/spend/worker truth, and V2-12 safety. Do not repair.
+```
+
+## V2-12 implementation — production-length quality, speed, and economics
+
+```text
+Work on VideoForge checkpoint V2-12 only: representative 20-30 minute quality, speed, and economics qualification.
+
+Read mandatory context, selected brief/profile, V2-12 acceptance, pinned Ranga metrics, and all accepted live benchmark evidence. Verify V2-11 is committed and independently green. Create/select/validate missing narrow records.
+
+This request authorizes provider-free activation, bounded local benchmark/context/test work, preparation of one owned production-length project and quality suites, and narrowly scoped read-only current provider inventory/rate/resource lookups through configured credentials at $0. Do not print secrets. No mutation, generation, worker allocation, or spend is authorized yet. RTX 4090 remains the qualified production GPU; RTX 5090 is not fallback and cannot enter either endpoint list without its own exact compatibility/quality/timing/VRAM/cost proposal and approval.
+
+First freeze the representative 20-30 minute voiceover, exact manifests and work counts, exact Mage 40-prompt/300-image subject/style/crop quality suite, same-content five-style suite, representative SoulX avatar/crop/span suite, expected concurrency, stage SLOs, cost model, Ranga review rubric, fault bounds, cleanup, and stop conditions. Use measured Serverless billing across initialization, execution, and idle rather than Pod rates or optimistic arithmetic. Separate variable generation cost from retained-volume and other fixed monthly charges.
+
+Before the production-length 4090 run, ask once with an exact combined proposal naming every provider request/config mutation, exact endpoints/images/volumes/models/regions/GPU/current rates, input duration/work counts, estimate, recurring charges separately, rollback/cleanup, stop conditions, and request my numeric maximum cumulative finite external spend. Do not invent/reuse a cap. If evidence later justifies an optional 5090 comparison, treat it as a separate bounded qualification proposal with its own user-supplied numeric cap and explicit endpoint isolation; never silently substitute it or combine unapproved work.
+
+After each approved wave, return raw p50/p90 and wall-clock cold/warm init/load/inference/upload/ASR/render timings, throughput, VRAM, retry/duplicate cost, quality contact sheets/clips/final MP4, hashes/probes, Ranga metrics, actual rate, settled itemized variable cost, fixed monthly charges, zero endpoint jobs, and zero total workers (`Active + Flex`) after drain. Evaluate the <=$1 representative 30-minute variable target and $2 hard ceiling honestly; do not lower accepted quality or hide fixed/duplicate costs to pass. Obtain explicit quality/economics go/no-go, update evidence/gates/CURRENT_STATE, commit, and stop before V2-13.
+```
+
+## V2-12 independent audit
+
+```text
+Independently audit VideoForge V2-12 at current HEAD from repository and immutable production-length benchmark evidence. Read mandatory context, exact V2-12 records/acceptance, raw outputs/tables, authorities, quality decisions, and handoff. No edits, credentials, live calls, mutations, or spend.
+
+Verify representative 20-30 minute scope and work counts; actual Serverless billing and current rates; cold/warm p50/p90 timing; Mage/SoulX and final-video quality; Ranga metrics; retries/duplicate compute; fixed versus variable cost; honest <=$1 target/$2 ceiling result; user quality/economics decision; and workers=0. If 5090 was used, require independent exact-lane compatibility, endpoint isolation, explicit authority/cap, quality parity, VRAM/timing/cost proof, and no automatic fallback.
+
+Return PASS/FAIL, P0/P1/P2 exact findings, commands/exits, missing proof, CURRENT_STATE/spend/worker truth, and V2-13 safety. Do not repair.
+```
+
+## V2-13 implementation — security, production release, and operations
+
+```text
+Work on VideoForge checkpoint V2-13 only: security hardening, production release, and operating proof.
+
+Read mandatory context, selected brief/profile, V2-13 acceptance, accepted security/cost/quality evidence, and release source pins. Verify V2-12 is committed, independently green, and explicitly approved. Create/select/validate missing narrow records. Do not expand product features.
+
+This request authorizes provider-free activation, bounded local security/release/runbook/context changes, tests, and narrowly scoped read-only production identity/inventory/quota/current-rate lookups through configured credentials at $0. Do not print secrets. No deploy, DNS/OAuth/secret/resource mutation, email, provider request, worker allocation, or spend is authorized yet.
+
+First complete threat model and tenant-boundary review; dependency/container/secret scans; CSP/CSRF/session/rate-limit/invite/quota/abuse controls; least-privilege credentials; database/R2 backups and restore drills; data retention/deletion; audit/cost/queue/endpoint alerts; SLO dashboards; incident, secret-rotation, lost-callback, stuck-request, duplicate-cost, provider-outage, rollback, and volume-disaster runbooks. Pin release artifacts/config and exact smoke/rollback plan. Ordinary production must expose no manual Pod/GPU controls or legacy runtime.
+
+Before any production mutation or paid smoke, ask once with a combined proposal listing every exact deploy/promote/domain/DNS/OAuth/secret/email/config/smoke/rollback/delete/retain operation; accounts/projects/regions/resource sizes/images/endpoints/volumes/GPU/current rates; finite estimate and all recurring charges/retention consent; stop conditions; and request my numeric maximum cumulative finite external spend. Do not invent or reuse a cap. Record exact approval and stop on any change or cap risk.
+
+After approval, promote only pinned artifacts. Prove deployment and rollback, two invited users' private Chrome journeys, one bounded generation, playback/download, restart/reconcile, backup/restore, alerts, cancel, queue drain, next-job readiness, settled finite cost, ongoing charges, no pending provider jobs, and both endpoints at workers=0 with exactly the intended retained volumes/resources. Archive or firewall obsolete entrypoints without deleting history. Update final evidence/gates/CURRENT_STATE, commit, and hand back production with operator URLs/runbooks and honest remaining risks. Push only if explicitly requested.
+```
+
+## V2-13 independent audit
+
+```text
+Independently audit VideoForge V2-13 at current HEAD and supplied immutable production evidence. Read mandatory context, exact V2-13 records/acceptance, security/release artifacts, authority, smoke evidence, and handoff. Read-only only: no edits, credential access, live provider calls, mutations, email, or spend unless a separate exact read-only audit is explicitly authorized.
+
+Verify every predecessor/gate, tenant isolation, auth/session/invite controls, secrets and least privilege, dependencies/images, quotas/abuse limits, backups/restores, retention/deletion, observability/alerts/SLOs, incident/rollback drills, pinned deployment, real-Chrome invited-user smoke, output lineage/cost, recurring-charge disclosure, legacy runtime firewall, no pending jobs, and workers=0 with only intended retained resources. Missing production proof is FAIL, not deferred success.
+
+Return final PASS/FAIL, evidence-backed P0/P1/P2 findings with exact references, commands/exits, unproven claims, CURRENT_STATE/provider/spend/worker truth, rollback readiness, and whether VideoForge is production ready. Do not repair or praise.
 ```

@@ -19,15 +19,16 @@ The prompt pack is an entrypoint, not higher authority. Reconcile stale prompt c
 
 ## Paid-checkpoint bootstrap and authority
 
-When the user pastes or clearly invokes an implementation prompt for `CP-06` through `CP-12`, that
+When the user pastes or clearly invokes an implementation prompt for `V2-06` through `V2-13`, that
 request authorizes the prompt's bounded provider-free activation, local code/context work, tests,
 and narrowly scoped read-only inventory/rate lookups through already configured credentials. If the
 selected task brief or read profile is missing, create and select the narrow checkpoint brief/profile
 first, validate the context, and continue in the same chat. Missing selectors are not a reason to
 return the work to the user.
 
-That initial request does not authorize remote mutation, publication, model download, paid compute,
-or spend. Complete all safe local work and the authorized read-only preflight, then stop only at the
+That initial request does not authorize remote mutation, image or endpoint publication, retained-
+resource mutation, model download, paid compute, or spend. Complete all safe local work and the
+authorized read-only preflight, then stop only at the
 first external mutation or paid boundary. Ask once with a combined proposal containing the exact
 operations, numeric finite-action spend cap, selected GPU offering and current rate when applicable,
 derived volume size, recurring retained-volume rate and retention consent when applicable, and stop
@@ -48,6 +49,16 @@ Non-negotiable output rule: VideoForge must never add motion graphics, text over
 Image styles are reusable, immutable published versions. The built-in default is `documentary_stock_v1`. Reference-image vision analysis runs only when a new draft style version is explicitly analyzed—never for each video or generated image. Project revisions pin `image_style_version_id`, `style_profile_hash`, `extra_prompt_keywords`, and `apply_extra_prompt_keywords`.
 
 Avatars are reusable workspace presets. Ordinary project creation must select an exact ready `avatar_profile_version_id` from the Avatar Hub; never add a per-project avatar upload bypass. Project revisions pin the resolved Avatar Profile/version/hash, canonical runtime source asset/checksum, and exact compatibility state/evidence snapshot used at preflight.
+
+V2 is tenant-private: one admitted account owns one default workspace; user-created projects,
+presets, media, jobs, costs, and results are private, and only explicit immutable built-ins are
+globally readable. Postgres admits at most one active provider workload per account and two
+different accounts globally; ordinary videos retain one/account and two/global caps, while explicit
+preset previews use the same slots below every eligible video. Ordinary users never choose GPUs or
+start/stop Pods. Production targets two queue-based
+RunPod Serverless lanes at `workersMin=0`, each using only its existing sealed 50 GB EU-RO-1 volume
+at `/runpod-volume`; no runtime download, cross-mount, model-volume writes, or unqualified GPU
+fallback is allowed.
 
 When the user changes a decision, update the context pack in the same change. Follow `project-context/16_CONTEXT_MAINTENANCE.md`; do not leave contradictory copies. Do not silently convert an unresolved benchmark gate into a confirmed fact.
 

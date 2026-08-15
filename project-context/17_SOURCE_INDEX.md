@@ -1,6 +1,6 @@
 # Source index
 
-Status: evidence map; current Mage INT8/ImageForge refreshed 2026-08-14; Cloud Run Jobs, Better Auth, and Pod architecture refreshed 2026-08-13; EchoMimicV3-Flash sources refreshed 2026-08-12; older sources are historical
+Status: evidence map; RunPod Serverless V2 sources refreshed 2026-08-15; Mage/SoulX exact runtime evidence refreshed 2026-08-15; older Pod/Echo sources are historical
 Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 
 ## Official model/provider sources
@@ -31,21 +31,37 @@ Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
   `--revision` to `None`. VideoForge must require the pinned revision and a byte-exact three-file
   size/hash manifest. The approximate README total `13.4 GB` is not capacity evidence; CP-06 Phase A
   derives exact bytes plus explicit headroom before proposing a volume size.
-- ImageForge Pod/volume/live-inventory/queue implementation references:
+- Historical ImageForge Pod/volume/live-inventory/queue implementation references:
   `/Volumes/ESD-USB/ImageForge/docs/RUNPOD_OPERATIONS.md`,
   `/Volumes/ESD-USB/ImageForge/src-tauri/src/native/gpu_inventory.rs`, `gpu_pod.rs`,
   `profile_control.rs`, and `queue.rs`; worker references live under
   `/Volumes/ESD-USB/ImageForge/worker/`, especially `scripts/prepare_mageflow_volume.py`,
   `src/imageforge_worker/model_profiles.py`, `health.py`, `coordination.py`, and
-  `inference/mageflow.py`. Reuse verified inventory, exact choice, lifecycle, offline readiness,
-  lease, and Mage runtime mechanics where contracts match. Do not copy ImageForge's per-device
-  ownership model or reuse its resource IDs, credentials, production volume, or app-specific queue
-  policy.
+  `inference/mageflow.py`. Reuse only exact Mage runtime, manifest, offline-readiness, and read-only
+  inventory mechanics where V2 contracts match. Do not copy its Pod lifecycle, device ownership,
+  leases, queue policy, resource IDs, credentials, or production volume.
+
+### Historical Echo sources — evidence only; no dispatch authority
+
 - EchoMimicV3 pinned source: [antgroup/echomimic_v3 at `7e89489`](https://github.com/antgroup/echomimic_v3/tree/7e89489ca51c0d008fc1963ec6c03fc5bd0b9397)
 - EchoMimicV3-Flash pinned weights: [BadToBest/EchoMimicV3 at `311e176`](https://huggingface.co/BadToBest/EchoMimicV3/tree/311e176905a8c4c24b240b530488fe636ce4d249)
 - EchoMimic Wan base: [Wan2.1-Fun-V1.1-1.3B-InP at `fc913c3`](https://huggingface.co/alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP/tree/fc913c34361f4ec879e2f9c78b4f11ae50a937d1)
 - EchoMimic audio encoder: [chinese-wav2vec2-base at `3991242`](https://huggingface.co/TencentGameMate/chinese-wav2vec2-base/tree/3991242c806928916fff4a8c0e4f76acf661b743)
 - EchoMimic exact access/license/runtime manifest: `evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight/`
+
+### Active proposed SoulX source — production gates open
+
+- Active proposed avatar source: [Soul-AILab/SoulX-FlashHead at
+  `9bc03de0`](https://github.com/Soul-AILab/SoulX-FlashHead/tree/9bc03de06bb0de82cd6bc477804512ae06144bf2)
+- Active proposed avatar weights: [Soul-AILab/SoulX-FlashHead-1_3B at
+  `59119b6c`](https://huggingface.co/Soul-AILab/SoulX-FlashHead-1_3B/tree/59119b6c681230c3eeee157e224ae1941746711e)
+- SoulX audio encoder: [facebook/wav2vec2-base-960h at
+  `22aad52d`](https://huggingface.co/facebook/wav2vec2-base-960h/tree/22aad52d435eb6dbaf354bdad9b0da84ce7d6156)
+- Exact SoulX Pod-era runtime/volume/sample evidence:
+  `evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json` and
+  `evidence/acceptance/VF-9-24U/acceptance.json`. These sources do not prove Serverless compatibility
+  or close the SoulX license gate.
+
 ### Historical avatar candidates — evidence only; no dispatch authority
 
 - AvatarForcing pinned code revision: [KlingAIResearch/AvatarForcing at `63b73e6`](https://github.com/KlingAIResearch/AvatarForcing/tree/63b73e6c0f7bb42180ca6d7e1bf11c1de1a80b39)
@@ -59,14 +75,45 @@ Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 
 ## Official infrastructure sources
 
-- RunPod GPU/storage pricing: [runpod.io/pricing](https://www.runpod.io/pricing)
-- RunPod network-volume Pod lifecycle: [Manage Pods](https://docs.runpod.io/pods/manage-pods)
-- RunPod Pod API used for exact create/reconcile/delete:
+- RunPod Serverless pricing and per-second Flex/Active semantics:
+  [docs.runpod.io/serverless/pricing](https://docs.runpod.io/serverless/pricing)
+- RunPod endpoint configuration, including `workersMin`, `workersMax`, GPU count/types, idle timeout,
+  execution timeout, request TTL, scaling, and FlashBoot:
+  [Endpoint configurations](https://docs.runpod.io/serverless/endpoints/endpoint-configurations)
+- RunPod endpoint creation API:
+  [POST `/endpoints`](https://docs.runpod.io/api-reference/endpoints/POST/endpoints)
+- RunPod asynchronous request/status/cancel behavior:
+  [Send requests](https://docs.runpod.io/serverless/endpoints/send-requests)
+- RunPod `/status`, `/cancel`, `/retry`, and endpoint-wide `/purge-queue` operation semantics:
+  [Operation reference](https://docs.runpod.io/serverless/endpoints/operation-reference)
+- RunPod normalized job states and timing fields:
+  [Job states](https://docs.runpod.io/serverless/endpoints/job-states)
+- RunPod handler contract:
+  [Handler functions](https://docs.runpod.io/serverless/workers/handler-functions)
+- RunPod worker lifecycle and Active/Flex terminology:
+  [Worker overview](https://docs.runpod.io/serverless/workers/overview)
+- RunPod endpoint-queue boundary:
+  [Endpoint overview](https://docs.runpod.io/serverless/endpoints/overview)
+- RunPod cold-start optimization and `RUNPOD_INIT_TIMEOUT` guidance:
+  [Optimize Serverless workers](https://docs.runpod.io/serverless/development/optimization)
+- RunPod network volumes, Serverless mount `/runpod-volume`, data-center constraint, price, and
+  concurrent-write warning:
+  [Network volumes](https://docs.runpod.io/storage/network-volumes)
+- RunPod Serverless storage behavior:
+  [Storage overview](https://docs.runpod.io/serverless/storage/overview)
+- RunPod worker cleanup and temporary-file guidance:
+  [Worker cleanup](https://docs.runpod.io/serverless/development/cleanup)
+- RunPod retained endpoint-log behavior:
+  [Serverless logs](https://docs.runpod.io/serverless/development/logs)
+- RunPod Serverless template/endpoint CLI boundary:
+  [runpodctl Serverless](https://docs.runpod.io/runpodctl/reference/runpodctl-serverless)
+- RunPod public GPU/storage overview: [runpod.io/pricing](https://www.runpod.io/pricing)
+- Historical disposable-Pod lifecycle: [Manage Pods](https://docs.runpod.io/pods/manage-pods)
+- Historical Pod API used by CP-06/VF-9-24S/U create/reconcile/delete evidence:
   [create](https://docs.runpod.io/api-reference/pods/POST/pods),
   [read](https://docs.runpod.io/api-reference/pods/GET/pods/podId), and
   [delete](https://docs.runpod.io/api-reference/pods/DELETE/pods/podId)
-- RunPod live GPU availability: [GraphQL manage Pods](https://docs.runpod.io/sdks/graphql/manage-pods)
-- RunPod network volumes: [docs.runpod.io/storage/network-volumes](https://docs.runpod.io/storage/network-volumes)
+- Historical Pod live-GPU availability: [GraphQL manage Pods](https://docs.runpod.io/sdks/graphql/manage-pods)
 - Cloud Run Jobs creation/configuration for pinned CPU media workers: [Create jobs](https://cloud.google.com/run/docs/create-jobs)
 - Cloud Run Job execution through console, CLI, client libraries, or REST `jobs.run`: [Execute jobs](https://cloud.google.com/run/docs/execute/jobs)
 - Current Cloud Run usage pricing and region dependence: [Cloud Run pricing](https://cloud.google.com/run/pricing)
@@ -139,12 +186,23 @@ All three paths are optional local evidence and are not VideoForge build depende
 - LongCat quality research informed the avatar study, but per-video cost excluded it from default.
 - AI-video model research remains deferred because the user chose image-only MVP.
 - Runware Gemini 3.5 Flash is the provisional one-time Image Style analyzer because it supports several images and strict JSON through the same Runware account; Gemini 3.1 Flash Lite is cheaper but not preferred before a style-fidelity A/B.
-- Historical RunPod Serverless endpoint/worker-count sources supported an earlier architecture
-  that is now superseded. They are not active VideoForge deployment authority.
+- RunPod Serverless is the active V2 compute target. Official docs establish provider API/config
+  semantics, not VideoForge tenant fairness, exactly-once execution/billing, signed provenance, or
+  production acceptance. VideoForge supplies those application contracts and qualifies both lanes.
+- The provider documents asynchronous results as available for 30 minutes, request TTL as including
+  queue plus execution, webhook delivery as bounded rather than a durable application ledger, and a
+  seven-minute unhealthy-worker cold-start threshold unless initialization timeout is configured.
+  These are why VideoForge polls/persists status, measures every timeout, and does not treat webhooks
+  or defaults as sole truth.
+- RunPod's network-volume documentation warns that concurrent writes can corrupt data and does not
+  establish an application read-only mount guarantee. VideoForge therefore redirects scratch/cache,
+  enforces no writes below `/runpod-volume`, records pre/post hashes, and requires two-reader
+  qualification before endpoint concurrency two.
 
 ## Citation/freshness rule
 
 Use primary/official sources for technical claims. Treat live GPU availability and price as an
-expiring observation that must be refreshed and revalidated before each Pod create. For a future
+expiring observation that must be refreshed before every paid Serverless qualification/configuration
+proposal and bounded by its approved rate/cap. For a future
 model/price/license/API question, browse again rather than treating this snapshot as permanently
 current.

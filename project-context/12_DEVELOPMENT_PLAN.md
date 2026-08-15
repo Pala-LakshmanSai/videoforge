@@ -1,79 +1,86 @@
 # Development plan
 
-Status: compact roadmap index; implementation and provider activation remain checkpoint-gated
-Read when: opening a coding chat, sequencing work, assigning ownership, or accepting a milestone.
+Status: compact index for the VideoForge v2 production roadmap
+Read when: selecting work, checking dependencies, or deciding what may be reused.
 
 ## Canonical sequence
 
-`22_PROJECT_COMPLETION_CHECKPOINTS.md` is the authoritative balanced roadmap from `CP-00` through
-`CP-12`. This file intentionally does not maintain a competing phase list. `CURRENT_STATE.yaml`
-selects the exact current task and read profile; its task brief controls scope, authority, evidence,
-and stop conditions.
-
-Implement checkpoints in order:
+`22_PROJECT_COMPLETION_CHECKPOINTS.md` is the authoritative roadmap. The former checkpoint series is
+retired as active planning; its commits, migrations, evidence, and accepted outputs remain immutable
+history. `CURRENT_STATE.yaml` selects one exact v2 checkpoint, task brief, and read profile.
 
 ```text
-CP-00 context/reference lock
-CP-01 vNext contracts + legacy dispatch firewall
-CP-02 shared admission + global queue + idle GPU UX
-CP-03 hosted word transcript contract
-CP-04 deterministic three-composition work plan
-CP-05 provider-free complete MVP orchestration
-CP-06 exact Mage INT8 persistent-volume lane
-CP-07 exact Echo FP8 persistent-volume lane + crop lock
-CP-08 durable hosted staging + Cloud Run CPU jobs
-CP-09 one real automatic video
-CP-10 real shared-session queue
-CP-11 5–10-user quality/cost/recovery qualification
-CP-12 production release
+V2-00  architecture, reference, and roadmap reset
+V2-01  tenant-private identity and data
+V2-02  tenant-private artifacts, R2 ports, and scratch isolation
+V2-03  fair per-account queue and two global active slots
+V2-04  provider-free Serverless v3 transport, authority, outbox, and recovery
+V2-05  provider-free application cutover, truthful UI, and runtime firewall
+V2-06  hosted auth, Neon, R2, Cloudflare, and Cloud Run staging
+V2-07  Mage Serverless qualification on the existing sealed Mage volume
+V2-08  SoulX Serverless qualification on the existing sealed SoulX volume
+V2-09  one short real hosted end-to-end project
+V2-10  one real 3-5 minute Ranga-style pilot
+V2-11  two-user concurrency, fair queue, autoscaling, and recovery
+V2-12  20-30 minute quality, speed, and economics qualification
+V2-13  security hardening, production release, and operations proof
 ```
 
-No later checkpoint may implement around an incomplete dependency. Fixture/local evidence never
-proves a production provider path. Every provider, credential, cloud mutation, model download,
-image publication, or spend task needs explicit bounded authority.
+Implement in order. Do not make a later checkpoint compensate for an incomplete predecessor.
+Provider-free evidence never proves a live provider path, and technical output does not replace a
+required visual acceptance.
 
-## Locked MVP shape
+## Production destination
 
-- One global shared app for 5–10 admitted users with equal rights, one catalog/results surface, one
-  manually ordered queue, and exactly one active project.
-- The first accepted Generate while truly idle selects and atomically locks one exact live Mage/Echo
-  GPU pair for the global generation session. Waiting projects inherit it and cannot select or
-  switch GPUs.
-- Mage INT8 ConvRot and EchoMimicV3-Flash Turbo FP8 use different persistent `EU-RO-1` model volumes,
-  different worker images, and at most one disposable Pod per lane. Volumes never share or become
-  routine-cleanup targets.
-- Mage and Echo may run concurrently only for the active project. Waiting entries are inert: no GPU
-  inference, CPU work, prompt generation, or artifact mutation begins before activation.
-- Waiting work may keep an already-running lane Pod warm. If a lane Pod was deleted, enqueueing does
-  not recreate it; the next project activation recreates it on the same session GPU after fresh
-  availability/rate revalidation. No substitution.
-- With no waiting project when a lane finishes, delete that Pod immediately without waiting for the
-  other lane or final render. Session close and GPU unlock require no active/waiting entry and both
-  Pods independently proven absent. Both model volumes remain.
-- Production word transcription and final FFmpeg render/probe run as scale-to-zero Cloud Run Jobs
-  over private R2 artifacts. Mac execution is development parity only.
-- Thirty-minute variable generation targets `≤$1.00` and has a hard MVP ceiling of `$2.00`.
-  Retained-volume fixed billing is reported separately.
+- Private invited product for 5-10 people. Each account has one default workspace and can see only
+  its own user-created presets, projects, assets, jobs, costs, and outputs. Explicit built-in
+  defaults are the only globally readable product records.
+- At most one active provider workload per account and two from different accounts globally;
+  ordinary videos therefore remain capped at one/account and two globally. A durable account-fair
+  queue selects work. Explicit preset previews use the same slots and are eligible only after all
+  video heads. Users may reorder/cancel only their own waiting entries without changing account
+  rotation or another account's order. Waiting work causes no provider action.
+- Two independent RunPod queue Serverless endpoints in `EU-RO-1`: Mage-Flow INT8 ConvRot and
+  SoulX-FlashHead Pro BF16. Each endpoint uses its existing separate sealed 50 GB volume mounted at
+  `/runpod-volume`, one GPU per Flex worker, `workersMin=0`, and a qualified bounded maximum.
+- Ordinary users never select GPUs or start/stop Pods. The application admits jobs; RunPod creates
+  and removes Flex workers from demand. Endpoint deployment choices belong to operators.
+- Private R2 carries tenant-scoped inputs and outputs. Model volumes are application-read-only and
+  never contain user media. Every request uses job-keyed local scratch erased on all terminal paths.
+- Preserve the existing word transcript, deterministic three-composition scheduler, prompt/style
+  system, renderer, UI design language, and qualified model bytes. Replace active ownership,
+  queueing, dispatch, storage, and production hosting around them.
+- Preserve the Ranga edit grammar: full avatar, full image, and clean avatar-left/image-right split;
+  hard cuts; subtle centered image zoom; no captions, titles, overlays, borders, motion graphics,
+  watermarks, or decorative transitions.
 
-## Implementation discipline
+## Execution discipline
 
-Work contract-first and provider-free by default. Preserve historical migrations, v1 fixtures,
-attempt evidence, and accepted UI/render work. Add vNext replacements, prove the cutover, then
-quarantine Serverless endpoints, `Auto`/priority GPU routing, BF16 Mage, repair/fallback roles, and
-historical avatar runtimes. Never reinterpret old bytes as new production authority.
+Work contract-first and provider-free. Use additive migrations and v3 contracts; never rewrite old
+migrations or reinterpret historical evidence as current authority. The live cutover must make old
+global-session, manual-Pod, Pod-bound dispatch, Echo, fallback, repair, Auto-GPU, and cross-tenant
+paths unreachable in ordinary production while retaining replay-only history.
 
-Each checkpoint ends with focused failure tests, canonical verification, real Chrome acceptance for
-visible behavior, honest gate status, a small green commit, refreshed `CURRENT_STATE.yaml`, and a
-copy-ready handoff. Paid RunPod work additionally records exact GPU/rate, Pod/volume/model identity,
-boot/model-ready/inference/upload/delete timings, cost, output hashes/probes, and independent Pod
-absence. Use `templates/CHECKPOINT_CHAT_PROMPTS.md` to start and audit each checkpoint.
+Every checkpoint ends with focused negative tests, canonical verification, context/schema
+validation, `git diff --check`, real Chrome acceptance when behavior is visible, truthful gates, a
+small green commit, and refreshed `CURRENT_STATE.yaml`. Handoffs state the exact commit, commands and
+exits, unresolved gates, provider/spend state, and active-worker truth.
 
-## Safe implementation parallelism
+For external checkpoints, finish local work and allowlisted read-only price/inventory preflight at
+`$0` first. Before the first external mutation or paid request, obtain one exact combined approval
+covering operations, resource identities/configuration, current rates, recurring charges, cleanup,
+stop conditions, and a numeric maximum cumulative finite spend supplied by the user. Authority is
+checkpoint-specific and never transfers. Stop on proposal drift or cap risk.
 
-Agent work may parallelize only across disjoint files after shared contracts lock—for example Mage
-worker versus Echo worker. Runtime project execution does not parallelize across queue entries.
-Serialize shared schemas, migrations, session/queue state, root UI, provider mutations, context,
-integration commits, and release decisions through one owner.
+RunPod delivery is not exactly once. Persist the outbox/dispatch token before `/run`, reconcile
+`/status` into a durable signed R2 receipt within the 30-minute async-result window, accept at most
+one canonical output, and expose bounded duplicate-compute/cost risk. Never use queue purge as
+ordinary recovery. TTL, execution timeout, initialization timeout, scaling, and idle policy must be
+derived from measurements rather than defaults.
 
-AI B-roll video, advanced fairness, per-user Pod pairs, role systems, multi-tenancy, GPU switching,
-parallel projects, and repair/fallback models are post-MVP decisions, not hidden work in this plan.
+## Safe parallelism
+
+After v3 contracts lock, disjoint Mage and SoulX worker modules may be developed in parallel.
+Serialize migrations, tenant/queue state, transport contracts, root UI, provider mutations,
+production configuration, integration commits, and checkpoint promotion through one owner. Runtime
+may execute two videos only when they belong to different accounts and both hold valid global slots.

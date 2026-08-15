@@ -1,329 +1,281 @@
 # Pipeline and deterministic scheduler
 
-Status: approved production flow and initial scheduling algorithm  
-Read when: implementing transcript alignment, EDL compilation, prompt dispatch, parallel work, or final assembly.
+Status: CP-03/CP-04 planning foundations accepted; tenant-fair Serverless integration pending
+Read when: implementing transcript alignment, scheduling, generation, dispatch, or final assembly.
 
-## Critical-path flow
+## Critical path
 
-There is one global generation session and exactly one active video. When no session is open, the
-first accepted Generate selects one fresh exact GPU offering for each model, opens the session, and
-activates that video. While a video is active, every later Generate only appends an immutable
-waiting entry which inherits the session's GPU pair. A waiting project performs no transcription,
-scheduling, prompt/span preparation, Pod creation, or inference until the current video reaches a
-terminal state and that waiting entry is atomically activated.
-
-After the last active video becomes terminal and no waiting entry remains, drain/cancel both lanes
-as needed, delete every remaining Pod independently, prove both absent, close the session, and only
-then expose fresh GPU selection again. The two model volumes remain.
-
-The queue is global and shared. Every admitted user may append a project and may move or delete any
-waiting entry using optimistic queue versions; the authenticated actor and before/after state are
-audited. Creator identity gives no ownership priority. The active entry cannot be moved or removed
-through waiting-queue controls; its dedicated cancellation contract is separate.
+A durable database scheduler admits at most one active video per account and two globally. Waiting
+projects are private to their account and perform no hosted CPU or GPU work. The RunPod endpoint
+queues receive only already-admitted exact jobs; they do not decide fairness.
 
 ```mermaid
 flowchart TD
-    P["Decode/probe/hash + pinned avatar/style + upload reservation + GPUs/cap"] --> A["Idle-session Generate: freeze revision and activate one video"]
-    A --> B["Durable voiceover upload"]
-    A --> M0["Create Mage Pod in EU-RO-1 and attach retained Mage volume"]
-    A --> E0["Create Echo Pod in EU-RO-1 and attach retained Echo volume"]
-    M0 --> M1["Verify exact Mage volume manifest and load INT8 model"]
-    E0 --> E1["Verify exact Echo volume manifest and load FP8 model"]
-    M1 --> MR["Authoritative Mage model_ready"]
-    E1 --> ER["Authoritative Echo model_ready"]
-    B --> C["Cloud Run Job: whisper.cpp ASR; legacy script alignment when supplied"]
-    C --> D["Sentence and word timing"]
-    D --> E["Seeded deterministic timeline scheduler"]
-    E --> F["Immutable timeline plan + validation"]
-    F --> G["Runware prompt batches"]
-    F --> H["Selected avatar span slicing + manifest"]
-    G --> I0["Durable Mage work ready"]
-    H --> J0["Durable Echo work ready"]
-    MR --> I["Dispatch Mage image batches"]
-    I0 --> I
-    ER --> J["Dispatch EchoMimicV3-Flash span batches"]
-    J0 --> J
-    I --> ID["Images durable; keep warm-idle for an existing waiter or delete if none"]
-    J --> JD["Avatar clips durable; keep warm-idle for an existing waiter or delete if none"]
-    J --> K["Deterministic technical QA"]
-    ID --> N["Accepted-asset barrier"]
-    K --> N
-    N --> R["Resolved render manifest"]
-    R --> O["Cloud Run Job: FFmpeg compile/render"]
-    O --> TQ["Technical QA"]
-    TQ --> Q["Ready + manifest"]
+    P["Tenant preflight: probe, hash, avatar/style, cap, durable private R2 voiceover"] --> Q["Private durable queue"]
+    Q --> A["Fair DB admission: one/account, two global"]
+    A --> T["Cloud Run whisper.cpp word timing"]
+    T --> S["Deterministic scheduler-v2"]
+    S --> WM["Immutable generation and render work manifests"]
+    WM --> D["DeepSeek prompt batches and selected-span audio"]
+    D --> MI["Predispatch Mage authority/outbox"]
+    D --> SI["Predispatch SoulX authority/outbox"]
+    MI --> ME["Mage Serverless /run whole-video image job"]
+    SI --> SE["SoulX Serverless /run short-span batch job"]
+    ME --> MR["Signed tenant R2 images and receipt"]
+    SE --> SR["Signed tenant R2 avatar clips and receipt"]
+    MR --> B["Accepted-asset barrier"]
+    SR --> B
+    B --> RM["Resolved render manifest"]
+    RM --> F["Cloud Run FFmpeg render and FFprobe"]
+    F --> R["Ready for review"]
+    R --> AP["Explicit approval and private download"]
 ```
 
-For the one active video, Pod attachment/model loading and hosted CPU preparation may overlap.
-Critical-path time is:
+After admission, derivative preparation/transcription/scheduling/prompt/span preparation may overlap
+Serverless worker initialization when exact dependencies allow. Critical-path time is measured, not
+assumed:
 
 ```text
-Generate preflight
-+ max(durable upload + Cloud Run ASR + scheduler + prompt/span preparation,
-      Mage Pod create + volume verify + model load,
-      Echo Pod create + volume verify + model load)
-+ max(remaining Mage generation,
-      remaining Echo generation + clip QA)
-+ final render + technical QA
+queue wait
++ durable input/preparation
++ max(Mage worker initialization + remaining Mage inference,
+       SoulX worker initialization + remaining SoulX inference and clip QA)
++ final render/probe
 ```
 
-Never report image time plus avatar time as if the lanes were sequential. Container health, an open HTTP port, or a mounted volume is not model readiness. A lane may dispatch generation only after the exact Pod reports authoritative `model_ready` for its pinned container, model manifest, volume, and selected GPU.
+Do not add image and avatar lane times as if sequential. A healthy handler is not `model_ready`.
+Every stage transition requires the exact durable predecessor receipts and tenant-bound identities.
 
-Image Style reference analysis is deliberately outside this critical path. A project may start only with a published pinned style version; it reads the stored profile and makes no Gemini vision call.
+## 1. Ingest and admission
 
-## Stage details
+- Validate title 1–240 characters and English voiceover 10 seconds–60 minutes, at most 1 GB, using
+  server-side MIME/magic-byte/decode/duration/channel/sample-rate checks.
+- Derive the account/default-workspace from the authenticated session. Resolve only an account-owned
+  `READY` Avatar Profile version and published Image Style version, or an explicit global built-in.
+  Foreign, archived-for-new-use, or mismatched IDs fail without revealing existence.
+- Locally probe/hash audio, reserve its exact private R2 object, durably upload the validated original,
+  and verify the object receipt/hash. Preserve those original bytes for final audio.
+- Freeze an immutable revision containing the verified voiceover asset/receipt/hash, selected
+  versions/hashes, `scheduler-v2`, compiler versions, seed, output contract, and spend cap.
+- Generate is idempotent at the VideoForge command boundary: duplicate browser submission returns the
+  existing private queue item. It does not imply provider exactly-once behavior.
+- Enqueue privately. A serializable fair-admission transaction activates it only when the account has
+  no active provider workload and fewer than two different accounts hold global workload leases.
+- Before admission, do no ASR, prompt generation, span slicing, Serverless dispatch, or render work.
+- Only after admission may the pipeline make the 16 kHz mono PCM analysis derivative.
 
-### 1. Ingest
+## 2. Word timing
 
-- Enforce the MVP input envelope: English voiceover, 10 seconds–60 minutes, at most 1 GB; title
-  1–240 characters; supported decodable audio; exact globally available `READY` Avatar Profile
-  version; and published Image Style version.
-- Before the single Generate mutation, locally decode/probe/hash the voiceover and freeze its
-  checksum/metadata plus a resumable R2 upload reservation, immutable creative revision, exact ready
-  avatar/style bindings, model-volume preparation evidence, and budget reservation. If the global
-  generation session is idle, Generate also carries independent fresh Mage/Echo GPU choices,
-  atomically opens the session, activates this revision, and may start both disposable Pods
-  concurrently. Mage and Echo attach different retained model volumes.
-- If a session is already open, Generate omits GPU fields and only appends the revision as a
-  waiting entry inheriting the immutable session pair. Storage admission may finish, but no ASR,
-  timeline, prompt/span preparation, Pod action, or inference for that project starts before it is
-  the sole active entry.
-- For the active entry, continue durable voiceover upload, Cloud Run ASR, timeline, prompts, and
-  span slicing while required Pods boot. The immutable checksum/upload identity exists before
-  provider mutation; no inference task may dispatch until its exact R2 input assets pass their
-  durable barrier.
-- Probe the audio with FFprobe.
-- Normalize a temporary analysis copy to 16 kHz mono PCM; preserve the original for final output.
-- Resolve the selected Avatar Profile version, verify it is `READY`, available in the global
-  shared catalog, and belongs to an `ACTIVE` parent, then pin its canonical profile hash plus
-  runtime source asset/checksum. A previously selected v1 remains valid after v2 becomes active;
-  do not re-upload or silently upgrade/replace it during project ingest.
-- Validate that the selected Image Style version is published and available in the global shared
-  catalog; snapshot its RFC-8785-canonical profile hash.
-- Normalize/cap optional extra image keywords and persist both text and apply toggle. A false toggle means no provider/generator receives the text.
-- Hash every input and create an immutable revision.
+Use pinned `whisper.cpp ggml-base.en`, not Groq, Deepgram, WhisperX, or an LLM. Production invokes an
+authenticated scale-to-zero Cloud Run Job with an immutable tenant R2 input/output manifest; the Mac
+runs the same entrypoint only for development/provider-free parity.
 
-### 2. Hosted word timing with Mac development parity
+- Greedy decoding, English, `--max-len 1 --split-on-word`, best-of 1, beam size 1.
+- Persist exact executable/model/config hashes, original/normalized audio hashes, millisecond word
+  starts/ends, FFprobe duration, and chunk receipt lineage.
+- For long audio, preserve CP-03 deterministic overlap/reconciliation and replay rules. Monotonic,
+  complete word coverage is mandatory.
+- The normal web client sends `optional_script: null`, so ASR wording is canonical. If a versioned API
+  client supplies a script, deterministic dynamic programming aligns it to ASR timing; no AI timing
+  decision is added.
 
-Use pinned `whisper.cpp base.en`, not Groq/Deepgram. Production invokes an authenticated,
-scale-to-zero Cloud Run Job against immutable R2 input/output manifests. It never requires or
-keeps either model Pod alive. The local Mac runs the same pinned contract only for development and
-provider-free parity; local success is not production execution evidence.
+## 3. Natural candidate boundaries
 
-- Local M4 development parity: Metal + FlashAttention, greedy decode, one segment per word using
-  the proven QuickCut approach.
-- Production: pinned CPU/memory/timeout/concurrency remain benchmark-gated, and accepted word JSON
-  returns to the canonical private R2 prefix with checksum/shape validation and attempt lineage.
-- Normalize audio once.
-- Persist millisecond word starts/ends and true FFprobe duration.
+Create candidate boundaries from transcript punctuation, measured pauses, conjunctions, sentence
+structure, and bounded duration. Each candidate contains start/end milliseconds, exact word range,
+phrase, sentence ID, word count, pause before/after, and adjacent context.
 
-The first-shell web client does not expose an exact-script field and submits `optional_script: null`, so ASR wording is canonical on that path. For backward-compatible versioned API clients that supply a non-null exact script, normalize its tokens and sequence-align ASR words to the script with deterministic dynamic programming. Keep matched times, interpolate unmatched script tokens, and retain the supplied wording as canonical. Do not add WhisperX unless evaluation shows visible boundary error above roughly 250 ms.
+Duration never selects an arbitrary cut. Prefer a full stop and the next good comma/full-stop/pause
+that remains within the legal window. If no short sentence exists, use the best clause/pause boundary;
+only then use the nearest legal word boundary with a deterministic penalty. Never cut inside a word,
+breath, or meaningful phrase. This is deterministic code and needs no LLM.
 
-### 3. Sentence/phrase boundaries
+## 4. Timeline scheduler
 
-Create candidate boundaries from punctuation, pauses, conjunctions, and maximum duration. Every candidate carries:
+Preserve accepted `scheduler-v2`. A versioned PRNG derives only from
+`project_revision_id + scheduler_version + user_seed`. Same inputs/version/seed produce identical
+frame boundaries, compositions, asset slots, and shot roles.
 
-- Start/end milliseconds.
-- Exact phrase.
-- Word count.
-- Sentence ID.
-- Pause before/after.
-- Adjacent context.
+Algorithm:
 
-### 4. Timeline composition scheduler
+1. Start frame 0 with `AVATAR_FULL` on a natural 2–6-second phrase. A strong complete opening sentence
+   may use 4–7 seconds.
+2. Target the next avatar start 14–20 seconds later, then rank legal word/clause boundaries by pause,
+   syntax, coverage pace, and distance. Time is a bounded target, not the cut authority.
+3. Alternate `AVATAR_FULL` and `AVATAR_SPLIT_IMAGE` strictly.
+4. Maintain 21–22% total avatar coverage and near-equal full/split cumulative frames.
+5. Fill uncovered narration with 3–7-second `IMAGE_FULL` scenes at natural clause/sentence boundaries.
+   Merge residual image scenes below 2.5 seconds; split scenes above 8 seconds where semantics permit.
+6. Make one literal right-panel image task for every split unless an exact matching accepted adjacent
+   image is intentionally reused.
+7. Assign one deterministic `in_image_shot_role` per image slot from the accepted varied rotation,
+   with lexical overrides for people/actions, object evidence, wide setting, macro detail, or result.
+8. Convert to canonical 30 fps integer `start_frame` and exclusive `end_frame_exclusive`; retain
+   source audio milliseconds/samples separately.
+9. Emit and validate `timeline-plan/v1`: exact composition slots/task keys, no generated asset IDs,
+   total duration, coverage/order, alternation, bounds, and percentages.
+10. Fail closed unless avatar frames are 21–22%, full/split cumulative difference is at most seven
+    seconds, every word/source/frame interval is covered once, and all image scenes are legal.
 
-Use a versioned seeded PRNG derived from `project_revision_id + scheduler_version + user_seed`. The same input/version/seed must produce the same timeline plan.
+No LLM chooses timing, composition, crop, or boundaries.
 
-Active `scheduler-v2` algorithm:
+### Ranga-close acceptance
 
-1. Begin with `AVATAR_FULL` at 00:00, selecting a natural 2–6 second phrase; allow 4–7 seconds for a strong cold open when a complete sentence needs it.
-2. Choose the next target avatar start 14–20 seconds after the prior start.
-3. Rank exact word boundaries near phrase/clause boundaries. A bounded coverage-pace term prevents
-   sparse or silence-heavy transcripts from drifting below the locked target; deterministic opener
-   alternatives avoid greedy boundary dead ends.
-4. Alternate `AVATAR_FULL` and `AVATAR_SPLIT_IMAGE`.
-5. Maintain running coverage and bias later choices toward 21–22% total avatar and near-equal full/split time.
-6. Avoid cutting inside a word, on a sharp breath, or across a meaningful pause.
-7. Fill uncovered regions with 3–7 second `IMAGE_FULL` scenes at clause/sentence boundaries.
-8. Merge residual image scenes below 2.5 seconds; split those above 8 seconds where semantics permit.
-9. Create one dedicated relevant right-panel image task for every split segment unless a clearly matching adjacent accepted image is explicitly reused.
-10. Assign every image slot one `in_image_shot_role` from the versioned seeded rotation, with deterministic lexical overrides when narration clearly asks for hands/action, an object, a wide setting, macro evidence, or a result.
-11. Convert boundaries to canonical 30 fps integer `start_frame` and exclusive `end_frame_exclusive`; retain source-audio milliseconds/samples separately.
-12. Emit and validate `timeline-plan/v1`: composition-specific required slots/task keys, no generated asset IDs, exact coverage/order/percentages/duration bounds/layout alternation.
-13. Fail closed unless avatar frames are within 21–22%, full/split cumulative frame difference is
-    at most seven seconds, every word/source/frame interval is covered once, and every remaining
-    image range partitions into legal 3–7-second scenes.
+Pinned two-video evidence defines the target band:
 
-No LLM is called during this algorithm.
+- frame 0 full avatar; first literal evidence 3–6 seconds; first split by 18 seconds;
+- full and split strict alternation (reference 148/149 transitions, 99.33%);
+- total avatar 21–22%; mean avatar span 3.5–4.0 seconds; typical 2–6 seconds;
+- 3.3–3.7 avatar appearances/minute and median non-avatar gap 10–13 seconds;
+- mean visual change 4.0–4.8 seconds and median 3.6–4.7 seconds;
+- literal narration evidence and meaningful varied shot roles.
 
-After selected-span audio is materialized, deterministic code compiles two additional immutable
-JCS documents before any generation can be dispatched:
+CP-04's 30-minute fixture remains the regression anchor: 54,000 frames, 394 segments, 21.05%
+avatar, 103 appearances (3.433/minute), 3.679-second mean avatar span, 4.569-second mean segment, 81
+frames full/split difference, 342 image slots, and six shot roles with complete word/source/frame
+coverage. Do not rebuild or loosen this scheduler for the architecture transition.
 
-- `generation-work-manifest/v1` binds the timeline/transcript/config hashes, 25–50-scene prompt
-  batches, every image slot and planned artifact ID, every short Echo task and its 16 kHz mono
-  padded WAV/trim lineage, plus exact cost cardinalities. `full_voiceover_dispatched` must be false.
-- `render-work-manifest/v1` binds every exclusive 30 fps interval to planned image/avatar assets,
-  locks `HARD_CUTS_ONLY`, requires `SLOW_SMOOTH_CENTERED_ZOOM` for every image-containing segment,
-  and requires accepted Echo crop authority before later resolution.
+For human relevance review, score each image 2=directly depicts the narrated claim, 1=contextually
+supports it, 0=generic/unrelated. Production-length sample target is mean at least 1.8, with no 0 in
+the opening minute or a critical claim. Reject visible pseudo-text/logo/anatomy/style defects.
 
-Missing, duplicate, cross-revision, full-voiceover, transition, zoom, slot, count, or hash drift is a
-hard validation failure. These planning manifests do not authorize provider work.
+## 5. Generation work manifests
 
-Normal avatar appearances have a hard 2–6-second envelope. Only the opening sentence may use the bounded 4–7-second exception. This edit rule follows measured reference cadence and creates bounded independent Echo work units; it is not evidence that VRAM scales linearly with audio duration.
+Before provider dispatch, compile immutable JCS documents:
 
-Expected 30-minute envelope:
+- `generation-work-manifest/v1` binds tenant/workspace/project/revision/transcript/timeline/config
+  hashes; 25–50-scene prompt batches; every image slot/planned artifact; every short SoulX task and
+  its 16 kHz mono padded WAV/trim lineage; exact cost cardinalities; and
+  `full_voiceover_dispatched=false`.
+- `render-work-manifest/v1` binds every exclusive frame interval to planned image/avatar assets,
+  locks `HARD_CUTS_ONLY`, requires `SLOW_SMOOTH_CENTERED_ZOOM` for image-containing segments, and
+  requires an accepted avatar source/crop profile before resolution.
 
-- Total avatar: about 396 seconds.
-- Full avatar: about 198 seconds.
-- Split avatar: about 198 seconds.
-- Avatar appearances: roughly 100–110.
-- Full-image assets plus split companions: roughly 220–320, often near 300.
+Missing/duplicate/cross-tenant/cross-revision/full-voiceover/transition/slot/count/hash drift is a
+hard failure. Planning manifests authorize no provider work by themselves.
 
-These are targets, not hard-coded counts. Speech boundaries win over hitting an exact count.
+## 6. Image prompt compilation
 
-### 5. Prompt batches
+- Batch 25–50 image scenes. DeepSeek receives the sanitized title once, each exact phrase/shot role
+  and concise context, plus the pinned style planner guidance once.
+- Preserve compact accepted continuity state between batches; no extra continuity LLM call.
+- Validate strict JSON and exact scene IDs. Retry only missing/invalid items once, then block or use an
+  explicitly defined deterministic prompt fallback.
+- Trusted code compiles scene core + crop guidance + immutable style suffix + enabled extra keywords
+  + permanent guardrails. Store components and exact submitted UTF-8/hash.
+- Never send disabled extra keywords, private style references, Ranga research frames, or another
+  account's data.
 
-- Build batches of 25–50 image scenes.
-- Give Runware the sanitized project title once per batch; give each item its exact phrase, assigned `in_image_shot_role`, and concise adjacent context.
-- Give DeepSeek the pinned style's compact planner guidance once per batch.
-- Carry the compact accepted continuity state from one batch into the next; do not add a separate continuity LLM call.
-- Keep the full selected style suffix, optional enabled extra keywords, and permanent guardrails in code. Never send project extra keywords to DeepSeek.
-- Validate strict JSON and scene IDs.
-- Retry only missing/invalid items once; then show a blocker or deterministic fallback prompt.
-- Persist each valid batch immediately instead of waiting for all prompts. Dispatch it as soon as the Mage Pod has also produced authoritative `model_ready` evidence.
+## 7. Mage image generation
 
-### 6. Image generation
+Use only the exact Mage profile:
 
-- Use the exact ImageForge-compatible active contract: `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6`, pinned ComfyUI, `int8-convrot`, four steps, guidance `1.0`, and 1280×720 output.
-- Mount the dedicated retained Mage model volume on the selected disposable `EU-RO-1` Mage Pod.
-  Treat verified model files as immutable/read-only in the worker, write scratch/results elsewhere,
-  verify the content-addressed manifest before and after the ordinary job, load the model, and emit
-  authoritative `model_ready` before accepting a generation dispatch. Do not assume RunPod provides
-  a read-only mount flag.
-- Compile every prompt from scene core + crop guidance + pinned style suffix + enabled extra keywords + permanent guardrails. Store writer/compiler versions, components, exact final positive/negative UTF-8 strings, and hashes of the exact submitted bytes.
-- Keep a model resident while processing the project's batches.
-- Generate every Mage asset at 1280×720. For split companions, prompt for the pinned 8:9 safe area and record the renderer's deterministic crop from the same locked output profile.
-- Upload each result immediately with checksum and metadata.
-- Record prompt, seed, latency, GPU, peak VRAM, and actual cost.
-- Do not run a mandatory upscaler or multimodal QA stage. Use inexpensive deterministic checks and human review for obvious failures.
-- After every required Mage output for the active video is durable, inspect only the global waiting
-  queue. If at least one waiting entry exists, keep an already-running Mage Pod `model_ready` but
-  idle; it may not claim or prepare waiting-project work. If there is no waiting entry, drain and
-  delete the Mage Pod immediately and retain its model volume, without waiting for Echo or final
-  render. If Mage was deleted and a project is appended later while the current video is still
-  active, do not recreate it early; recreate on that project's activation only, after revalidating
-  the same session-locked Mage offering, with no substitution.
+- `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6`;
+- pinned `Comfy-Org/ComfyUI@26d7f8556822d9d08c2d3e1878636ac3b4969af9`;
+- INT8 ConvRot, four steps, guidance 1.0, 1280x720, text-to-image.
 
-### Separate Image Style creation workflow
+For one admitted video, persist a predispatch authority/outbox record then submit one bounded
+whole-video image job to the Mage queue endpoint. The handler mounts only the existing sealed
+Mage-only volume at `/runpod-volume`, redirects cache/temp/output to job-local scratch, verifies the
+manifest, loads offline, warms up, and processes the exact image work manifest sequentially while
+resident. It uploads every result immediately to its exact private R2 object and writes a signed
+completion receipt containing hashes, size/shape, prompt/seed, GPU, VRAM, timings, attempt, and cost
+observations. Verify the model manifest again before successful exit.
 
-Style creation/update is not a numbered video-production stage:
+No runtime download, model resolution, upscaler, reference conditioning, LoRA, BF16 substitute,
+other volume, or auto-repair is permitted. Two simultaneously admitted videos may occupy two Mage
+Flex workers only after concurrent-read qualification; handler concurrency stays one.
 
-1. Browser-normalize private reference derivatives, upload them, independently verify them server-side, and record disclosure/rights/retention.
-2. Run one version-scoped idempotent Runware Gemini 3.5 Flash multi-image analysis.
-3. Validate untrusted `image-style-analyzer-output/v1`, apply the deterministic hard-rule validator, and assemble trusted `image-style-profile/v1`; surface per-trait support, outliers, and uncertainty.
-4. User reviews/edits and may explicitly request a small Mage test.
-5. Atomically publish the immutable version and move the parent active-version pointer.
+## 8. SoulX avatar generation
 
-Only step 5 makes that version selectable. Published v1 remains selectable while v2 is drafted/analyzed; updates never mutate a queued/running/ready project's pinned version.
+Use only exact SoulX-FlashHead Pro:
 
-### 7. Avatar generation and QA authority
+- source `Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2`;
+- weights `Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro`;
+- BF16, 512x512, 25 fps, four distilled steps, shift 5, color correction 1.0, seed 42, streaming audio,
+  Torch compile, no face crop/repair/enhancement/fallback/substitute.
 
-- Slice only scheduled spans, adding small context padding for coarticulation.
-- Preserve exact EDL trim points so padding never changes timeline length.
-- Use the pinned EchoMimicV3-Flash Turbo FP8 runtime on its own disposable `EU-RO-1` Pod and retained Echo
-  model volume. The worker treats verified model files as immutable/read-only application data and
-  writes scratch/results elsewhere; provider-enforced read-only mounting is not assumed.
-- Verify the exact Echo volume manifest, load the FP8 runtime, and emit authoritative `model_ready` before sending any avatar task.
-- Send the pinned Avatar Profile runtime source + span audio + restrained prompt to EchoMimicV3-Flash only after both the durable span manifest and Echo `model_ready` evidence exist.
-- Generate one clip per span and reuse it for both layouts.
-- Process multiple spans per resident worker/chunk.
-- After every required Echo clip for the active video is durable, keep an already-running Echo Pod
-  `model_ready` but idle only when at least one global waiting entry exists. It may not claim or
-  prepare waiting-project work. With no waiting entry, drain and delete it immediately, retain its
-  model volume, and do not wait for Mage or final render. If Echo was deleted and a project is
-  appended later while the current video is still active, recreate only after that project becomes
-  active, revalidating the exact session-locked Echo offering and never substituting it.
+Materialize only scheduled span WAVs. Add deterministic coarticulation padding, retain exact trim
+sample/frame lineage, and ensure padding never changes the timeline. Never send the full voiceover.
+One generated native clip serves both full and split compositions.
 
-MVP acceptance authority:
+Persist a predispatch authority/outbox record then submit one bounded whole-video span-batch job to
+the SoulX endpoint. Its handler mounts only the sealed SoulX volume at `/runpod-volume`, redirects all
+writes to job-local scratch, verifies/loads/warms offline, processes spans sequentially, validates
+each clip's decode/frame-rate/duration/A-V relationship, uploads to exact tenant R2 keys, and writes a
+signed receipt. Verify the sealed manifest again before exit.
 
-- Deterministic decode, duration, frame-rate, crop, checksum, and A/V checks may auto-pass.
-- After the global EchoMimicV3-Flash model/container/GPU suite has been accepted, a technically valid primary result becomes the selected draft clip so production does not require 100+ mandatory clicks. Optional per-profile compatibility evidence is separate.
-- The user can inspect/flag any clip. Subjective identity/body/background/motion/detail failure is never silently inferred by a general visual-QA model in MVP.
-- A future local lip metric may be added only after its own documented gate; until then, `LIP_ONLY` versus `WHOLE_FRAME` is an explicit user/reviewer classification.
+EchoMimicV3-Flash, Long Video CFG, repair, enhancement, face crop, alternate model/precision, and
+cross-mount are forbidden. Two simultaneous SoulX workers require explicit concurrent-read and
+quality qualification.
 
-Active sample-first rule:
+Deterministic media checks establish `READY_FOR_USER_REVIEW`, not subjective quality. Users may flag
+lip sync or whole-frame identity/motion/background/detail. Any retry is a new costed authorized
+attempt; there is no silent fallback.
 
-1. Deterministic checks establish only technical validity.
-2. Native output becomes `READY_FOR_USER_REVIEW`; only the user decides subjective quality.
-3. Poor output stops. No retry, repair, fallback, tuning, or substitution without new authority.
+## 9. Provider dispatch and recovery
 
-### 8. Asset barrier and compilation
+Before each `/run`, transactionally store endpoint/image/model/volume/input/output identities,
+dispatch token, request hash, attempt, budget reservation, TTL, execution/init timeout, and outbox
+state. After `/run`, bind the exact provider job ID and later actual worker/GPU evidence.
 
-The timeline becomes renderable only when every required slot points to one selected technically valid asset, an explicitly user-accepted replacement, or an explicit user-approved placeholder. Bind those assets/checksums, the original voiceover checksum, revision/timeline hashes, fixed output profile, and total frames into immutable `resolved-render-manifest/v1`; do not mutate the pre-generation timeline plan. Validate both manifests and artifact hashes before dispatch.
+RunPod does not promise client idempotency or exactly-once billing. An ambiguous POST is reconciled,
+not blindly repeated. A deliberate repeat creates a new attempt/reservation; accept at most one exact
+result and expose duplicate-compute/cost risk.
 
-The production renderer is an authenticated scale-to-zero Cloud Run Job running pinned FFmpeg and
-FFprobe against immutable private R2 manifests. The Mac uses the same entrypoint only for
-development/provider-free parity. The production job:
+Poll `/status`. Treat webhooks only as hints and require the bound job plus a VideoForge-signed R2
+receipt. Copy/verify durable outputs immediately because async result retrieval expires after 30
+minutes. TTL includes queue time and can remove running jobs; set TTL, execution timeout, and
+`RUNPOD_INIT_TIMEOUT` from measured bounded evidence. Never purge the endpoint queue.
 
-- Apply fixed avatar crops.
-- Apply the accepted asset's measured EchoMimicV3-Flash source profile only after user sample
-  approval. No Echo dimensions, frame rate, or crop are pre-seeded from a historical model; any
-  valid native geometry blocks profile creation until measured crop rules are user-approved. No
-  optical flow.
-- Apply eased centered image zoom.
-- Build exact-duration 1080p30 segments.
-- Join with hard cuts.
-- Mux the original voiceover.
-- Perform two-pass loudness normalization only if needed.
-- Encode one Chrome-compatible MP4.
+Cancellation stops undispatched stages, sends cancellation only for exact bound jobs, and continues
+reconciliation until no callback can revive the attempt. Failure/cancel still records cost and
+cleans local scratch. Scale-to-zero is provider autoscaling; the product does not create/delete Pods.
 
-### 9. Technical QA and delivery
+## 10. Asset barrier and render
 
-Use FFprobe and deterministic assertions for format, duration, stream count, coverage, geometry, A/V start/end, and decode. Store the final checksum and expose a short-lived signed preview at the automatic `READY_FOR_REVIEW` terminal without pretending technical QA detected generated-pixel anatomy, pseudo-text, relevance, or style defects. Explicit user review records `APPROVED`; only then create immutable `production-manifest/v2` binding the approval plus revision, timeline, resolved-render manifest, prompt manifest, attempt index, QA manifest, cost-ledger snapshot, selected avatar/style/model profiles, and final output, and issue the approved download bundle.
+The timeline becomes renderable only when every required slot points to one selected technically
+valid checksum-bound artifact, an explicitly accepted replacement, or an explicitly approved
+placeholder. Create immutable `resolved-render-manifest/v1` binding tenant/revision/timeline,
+original voiceover, exact assets, avatar source/crop profile, output profile, and total frames.
 
-## Parallelization rules
+An authenticated scale-to-zero Cloud Run Job runs pinned FFmpeg/FFprobe against exact private R2
+objects. It:
 
-- Only the first accepted idle-session Generate may select GPUs and start the disposable Mage and
-  Echo Pods concurrently in `EU-RO-1`; this is not an optional Faster-mode warm-up. A Generate
-  during the open session appends a waiting project only and inherits the pair.
-- Exactly one video owns pipeline execution. Waiting entries perform no ASR, scheduling,
-  prompt/span preparation, Pod create/recreate, or inference until atomic activation after the
-  prior video is terminal.
-- Mage and Echo always mount separate retained model volumes. Neither Pod may write mutable project inputs/results to a model volume.
-- For the active video, start the Cloud Run ASR Job after its durable voiceover barrier. Continue
-  timeline, prompt-batch, selected-span slicing, and manifest preparation while required Pods
-  attach volumes, verify caches, and load models.
-- Prompt generation and avatar dispatch begin together after EDL creation.
-- A prepared task waits at a durable barrier until its own lane reports authoritative `model_ready`; readiness in one lane never authorizes dispatch to the other.
-- Mage starts each validated prompt batch immediately after its two prerequisites—durable batch and Mage `model_ready`—exist.
-- Avatar clip QA occurs as clips arrive. No repair or fallback model is active; a failed Echo clip stops for user direction.
-- Prepare resolved-manifest inputs and filtergraph incrementally. When a lane's active-video assets
-  are durable, keep its existing Pod warm but idle only if a waiting entry already exists;
-  otherwise drain/delete it and prove absence independently without waiting for the other lane or
-  final render.
-- Pod deletion never deletes the retained Mage/Echo volume. A later active video recreates only a
-  missing required Pod; that Pod verifies and loads the already-present pinned model bytes instead
-  of downloading them again.
-- A Pod deleted before a waiter appears is not recreated during the current video. When the next
-  video activates, recreate it only on the same session GPU after fresh exact-offering
-  revalidation; unavailable blocks and never substitutes. After a fully drained/closed session, a
-  future first project selects a new pair.
-- When the active video is terminal and there is no waiter, reconcile both lanes to proven Pod
-  absence before closing the session and unlocking GPU selection; terminal failure or cancellation
-  does not leave paid compute running.
-- Trigger a fresh Cloud Run FFmpeg render/probe Job when the active video's barrier closes.
-- Fetch/validate the selected style during preflight; do not insert analysis into the project critical path.
+- applies the exact source-aware SoulX full/split crop profile only after that Avatar Profile's
+  visual approval; the latest sample outputs do not yet establish production crop acceptance;
+- uses the same native avatar clip for either layout;
+- applies eased centered zoom to each image-containing segment;
+- builds exact 1080p30 segments and joins them with hard cuts;
+- muxes the original voiceover and uses loudness normalization only if needed;
+- encodes one Chrome-compatible H.264/AAC MP4 and verifies streams, frames, geometry, decode, A/V
+  start/end, duration, and coverage.
 
-## Simplifications intentionally retained
+The renderer adds no caption/title/text/graphic/border/watermark/transition. A slow image zoom is the
+only permitted motion treatment.
 
-- No AI layout planner.
-- No AI B-roll video.
-- No separate forced-alignment model.
-- No per-image vision QA API.
-- No automatic subjective whole-frame avatar classifier; user/reviewer rejection stops the affected work and does not activate a hidden repair, retry, or fallback route.
-- No per-video reference-style vision call; a ready published style is reused as data.
-- No automatic Style LoRA training or reference-conditioned image stage.
-- No enhancement/upscale stage unless the bakeoff proves it changes visible full-screen quality enough to justify cost.
-- No second avatar generation for split layout.
-- No browser compositor.
-- Retry only the failed unit.
+## 11. Review and delivery
+
+A valid final output becomes `READY_FOR_REVIEW`. Technical checks cannot approve relevance,
+anatomy, pseudo-text, identity, lip sync, or style. Explicit user approval creates immutable
+`production-manifest/v3` binding approval actor/time, tenant/revision/timeline, generation/render
+manifests, accepted Serverless provenance receipts, exact provider attempts/cost snapshot,
+avatar/style/model profiles, QA, and final SHA-256. Historical v2 manifests remain replay-only.
+Preview/download URLs are short-lived and tenant-authorized.
+
+Terminal workflow releases the account/global admission lease only after lane attempts, callbacks,
+artifacts, and cost records reconcile. New fair work may then be admitted. Workers scale to zero
+automatically; operations independently verifies zero queued/running jobs and zero Active/Flex
+workers when drained while retaining only the two sealed model volumes.
+
+## Style workflow outside the video critical path
+
+New Image Style analysis is version-scoped and account-private:
+
+1. Browser-normalize authorized references; server-verify and store tenant-private derivatives.
+2. Record rights and plain Runware retention/non-ZDR disclosure consent.
+3. Run one idempotent Gemini 3.5 Flash analysis and validate untrusted structured output.
+4. User reviews/edits and may explicitly request a separately estimated Mage test.
+5. Publish one immutable version; keep prior versions usable for pinned work.
+
+Ordinary project generation reads the stored style profile and performs no reference vision call.

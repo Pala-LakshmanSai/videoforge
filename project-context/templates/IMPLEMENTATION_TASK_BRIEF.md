@@ -58,12 +58,19 @@ Name the `MANIFEST.yaml` profile and any one extra file genuinely needed.
 - `paid` scope: exact provider/model/resources/operations, positive numeric maximum cumulative
   spend, non-transferable flag, authorization timestamp, and matching current-state cap.
 - Exact selected GPU offering ID/name and current rate/ceiling when applicable.
-- Derived volume capacity, recurring retained-volume rate, and explicit retention consent when
-  applicable. State separately that recurring billing is outside the finite checkpoint-action cap.
+- Exact endpoint/config/image/model/region/volume identities, scaler, handler concurrency,
+  worker bounds, and measured init/execution/TTL/idle settings when Serverless-facing.
+- Existing retained-volume identity, capacity, recurring rate, and consent; any proposed retained-
+  resource change requires separate exact approval. State that recurring billing is outside the
+  finite checkpoint-action cap.
 - One combined paid-authorization proposal after local/read-only preflight; record the user's exact
   approval. Ask again only for changed scope/rate/cap/capacity or cap risk.
-- Exact disposable-Pod deletion and provider-absence requirement.
-- Expected persistent-volume retention or separately authorized deletion requirement.
+- Persist outbox/dispatch authority before `/run`; accept at most one canonical output and record
+  possible duplicate compute/cost. Never promise provider exactly-once execution or billing.
+- Exact request cancellation/reconciliation, zero pending jobs, scale-down to zero workers, and
+  independent provider-state proof. Report fixed retained-volume billing separately.
+- Endpoint-wide queue purge, model-volume mutation, cross-mount, runtime download, and unqualified
+  GPU fallback are forbidden unless a later explicit decision changes the architecture.
 - Private-data/asset constraints.
 
 ## Rollback

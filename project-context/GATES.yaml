@@ -1,149 +1,244 @@
-schema_version: "1.0"
-updated_at: "2026-08-14"
+schema_version: "2.0"
+updated_at: "2026-08-15"
 evidence_root: "evidence/gates"
 
+# V2 gates are active release blockers. Historical gates retain stable evidence identifiers but
+# explicitly cannot authorize the retired manual-Pod, Echo, repair, or fallback architecture.
 gates:
+  GATE_TENANCY_001:
+    status: open
+    blocks: v2_02_and_all_hosted_or_provider_work
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatetenancy001-accountworkspace-privacy"
+    owner: V2-01
+    last_run: null
+    result: open_not_implemented
+
+  GATE_STORAGE_001:
+    status: open
+    blocks: production_artifact_transfer
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatestorage001-private-r2-and-scratch"
+    owner: V2-02
+    last_run: null
+    result: open_existing_provider_free_routes_not_production_composed
+
+  GATE_QUEUE_001:
+    status: open
+    blocks: serverless_dispatch
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatequeue001-fair-durable-admission"
+    owner: V2-03
+    last_run: null
+    result: open_global_singleton_queue_still_active_in_code
+
+  GATE_SERVERLESS_CONTRACT_001:
+    status: open
+    blocks: endpoint_publication_or_run
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlesscontract001-provider-free-transport"
+    owner: V2-04
+    last_run: null
+    result: open_v3_contracts_not_implemented
+
+  GATE_HOSTING_001:
+    status: open
+    blocks: hosted_production_claim
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatehosting001-hosted-controlcpu-plane"
+    owner: V2-06
+    last_run: null
+    result: open_hosted_auth_neon_r2_cloudflare_cloud_run_unproven
+
+  GATE_SERVERLESS_MAGE_001:
+    status: open
+    blocks: mage_serverless_dispatch
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlessmage001-mage-endpoint"
+    owner: V2-07
+    last_run: "evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json"
+    result: open_pod_artifact_proof_preserved_serverless_handler_endpoint_concurrency_pending
+
+  GATE_SERVERLESS_SOULX_001:
+    status: open
+    blocks: soulx_serverless_dispatch_and_crop_activation
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlesssoulx001-soulx-endpoint"
+    owner: V2-08
+    last_run: "evidence/acceptance/VF-9-24U/acceptance.json"
+    result: open_pod_technical_proof_preserved_visual_crop_and_serverless_proof_pending
+
+  GATE_SOULX_LICENSE_001:
+    status: open
+    blocks: soulx_production_deployability_claim
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatesoulxlicense001-deployability-record"
+    owner: V2-08
+    last_run: null
+    result: open_first_party_code_and_weights_commercial_publication_terms_unrecorded
+
+  GATE_E2E_001:
+    status: open
+    blocks: integrated_production_claim
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatee2e001-real-integrated-project"
+    owner: V2-09
+    last_run: null
+    result: open_no_real_hosted_end_to_end_project
+
+  GATE_RANGA_001:
+    status: open
+    blocks: ranga_close_and_production_length_quality_claim
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateranga001-human-editorial-quality"
+    owner: V2-10_and_V2-12
+    last_run: null
+    result: open_scheduler_metrics_close_human_real_project_review_pending
+
+  GATE_CONCURRENCY_001:
+    status: open
+    blocks: five_to_ten_user_readiness_claim
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateconcurrency001-5-10-user-behavior"
+    owner: V2-11
+    last_run: null
+    result: open_no_live_two_user_or_five_to_ten_account_proof
+
+  GATE_ECONOMICS_001:
+    status: open
+    blocks: production_unit_economics_claim
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateeconomics001-production-length-speedcost"
+    owner: V2-12
+    last_run: null
+    result: open_no_representative_serverless_settled_cost
+
+  GATE_SECURITY_001:
+    status: open
+    blocks: production_release
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatesecurity001-production-security"
+    owner: V2-13
+    last_run: null
+    result: open_security_release_and_operations_proof_pending
+
   GATE_AVATAR_001:
     status: open
-    blocks: avatar_primary_production_profile
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#echomimicv3-flash-exact-avatar-suite"
-    owner: VF-9-24
+    blocks: historical_echo_primary_production_claim_only
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
+    owner: historical
     last_run: "evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json"
-    result: open_cp07_native_samples_and_crops_user_accepted_full_suite_unrun
-    checked_at: "2026-08-15T02:46:08Z"
-    blocker: "The user accepted the exact full and split crops from the qualified native Echo Flash Turbo FP8 sample. The later 12-20-clip exact-avatar suite remains open, so no production profile is active yet."
+    result: historical_open_full_echo_suite_unrun_echo_now_non_dispatchable
+    active_effect: none_superseded_by_soulx_and_v2_serverless_gates
+
   GATE_AVATAR_002:
     status: open
-    blocks: automatic_global_avatar_primary_demotion
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#echomimicv3-flash-exact-avatar-suite"
-    owner: user
+    blocks: historical_automatic_avatar_demotion_claim_only
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
+    owner: historical
     last_run: null
-    result: open_no_user_approved_global_demotion_threshold
+    result: historical_open_no_global_demotion_threshold
+    active_effect: none_no_fallback_or_repair_active
+
   GATE_AVATAR_003:
     status: open
-    blocks: unambiguous_avatarforcing_commercial_permission_claim
-    acceptance: "08_MODELS_AND_PROVIDERS.md#historical-avatar-paths"
-    owner: VF-3-10
+    blocks: historical_avatarforcing_clear_commercial_permission_claim_only
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
+    owner: historical
     last_run: "evidence/gates/GATE_AVATAR_003/2026-08-11-avatarforcing-access-license"
-    result: open_user_accepted_risk_for_locked_model_qualification
-    checked_at: "2026-08-11T14:53:50Z"
-    blocker: "Official README Apache-2.0 labeling conflicts with a committed academic-only/non-commercial LICENSE.txt that names RollingForcing, while the official weights repository declares no license."
-    user_risk_acceptance: "2026-08-11: user explicitly directed proceeding with the locked AvatarForcing ladder for YouTube use despite the unresolved terms evidence; no clear-commercial-permission claim is allowed."
-    active_effect: historical_nonblocking_no_new_avatarforcing_dispatch
+    result: historical_open_conflicting_terms_avatarforcing_non_dispatchable
+    active_effect: none
+
   GATE_AVATAR_004:
     status: closed
-    blocks: echomimic_fp8_persistent_volume_runtime_without_exact_manifest
-    acceptance: "08_MODELS_AND_PROVIDERS.md#echomimicv3-flash"
-    owner: VF-9-24R
+    blocks: historical_echo_manifest_claim_only
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
+    owner: historical
     last_run: "evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json"
-    result: pass_exact_manifest_sealed_echo_volume_offline_boot_real_warmup_and_native_samples
-    checked_at: "2026-08-14T23:15:32.540Z"
+    result: pass_historical_echo_artifact_and_native_samples
     closed_at: "2026-08-14T23:15:32.540Z"
-    active_effect: historical_superseded_by_dec_avatar_010_no_echo_dispatch
+    active_effect: none_echo_volume_deleted_and_runtime_non_dispatchable
+
   GATE_AVATAR_005:
     status: open
-    blocks: soulx_flashhead_pro_production_profile_and_renderer_crop
-    acceptance: "tasks/VF-9-24U.md#required-handoff"
-    owner: VF-9-24U
+    blocks: historical_soulx_pod_profile_activation_only
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
+    owner: historical
     last_run: "evidence/acceptance/VF-9-24U/acceptance.json"
-    result: open_technical_pass_new_avatar_full_and_split_outputs_ready_for_user_visual_review
-    checked_at: "2026-08-15T09:56:02.932Z"
-    blocker: "The exact new-avatar timed sample passed, both compositions are playable, and zero compute is independently proven. User visual approval remains required before renderer profile activation."
+    result: historical_pod_technical_pass_visual_crop_review_open
+    active_effect: subsumed_by_GATE_SERVERLESS_SOULX_001
+
   GATE_IMAGE_001:
     status: open
-    blocks: mage_production_profile
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#mage-acceptance-suite"
-    owner: VF-9-20
+    blocks: production_image_quality_and_release
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateimage001-mage-production-quality"
+    owner: V2-12
     last_run: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
-    result: open_cp06_runtime_passed_user_review_and_40_prompt_300_image_suite_pending
-    checked_at: "2026-08-14T11:52:23.413Z"
-    blocker: "CP-06 proved eight real 1280x720 outputs across two fresh Pods, but only the user can approve visual quality and the required 40-prompt/300-image production quality suite remains unrun."
+    result: pod_runtime_and_user_sample_acceptance_passed_40_prompt_300_image_suite_pending
+    active_effect: feeds_GATE_RANGA_001_and_GATE_ECONOMICS_001
+
   GATE_IMAGE_002:
     status: open
-    blocks: unambiguous_mage_checkpoint_commercial_permission_claim
-    acceptance: "08_MODELS_AND_PROVIDERS.md#mage-flow-turbo"
-    owner: VF-3-08
+    blocks: unambiguous_mage_commercial_permission_claim
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
+    owner: historical_risk_record
     last_run: "evidence/gates/GATE_IMAGE_002/2026-08-11-huggingface-mage-access-license"
-    result: open_user_accepted_risk_for_locked_model_qualification
-    checked_at: "2026-08-11T04:03:03Z"
-    blocker: "CP-06 qualified the exact public Comfy-Org INT8 ConvRot manifest and Pod/runtime compatibility. Historical Microsoft sources still combine MIT labeling with research-only deployment guidance, so clear commercial permission remains unproven."
-    user_risk_acceptance: "2026-08-11: user explicitly directed proceeding with locked Mage-Flow-Turbo for YouTube use despite unresolved terms/access metadata; no clear-commercial-permission claim is allowed."
+    result: open_user_accepted_terms_risk_no_clear_permission_claim
+
   GATE_LLM_001:
     status: closed
-    blocks: runware_prompt_production_profile
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#runwaredeepseek-gate"
-    owner: VF-3-01
+    blocks: runware_prompt_profile
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
+    owner: historical
     last_run: "evidence/gates/GATE_LLM_001/2026-08-10-runware-deepseek-qualification"
     result: pass
     closed_at: "2026-08-11T02:33:18Z"
-    canonical_air: "deepseek:v4@flash"
-    provider_model_name: "DeepSeek-V4-Flash-0731"
-    cumulative_qualification_spend_usd: 0.00243598
+
   GATE_STYLE_001:
     status: closed
-    blocks: custom_reference_style_analysis
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#image-style-analyzer-and-compiler-gate"
-    owner: VF-3-02
+    blocks: custom_style_analysis
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
+    owner: historical
     last_run: "evidence/gates/GATE_STYLE_001/2026-08-10-runware-gemini-style-qualification"
     result: pass
     closed_at: "2026-08-11T03:18:48Z"
-    canonical_air: "google:gemini@3.5-flash"
-    provider_model_name: "Gemini 3.5 Flash"
-    cumulative_qualification_spend_usd: 0.407604
+
   GATE_STYLE_002:
     status: open
-    blocks: custom_prompt_only_style_claim
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#image-style-analyzer-and-compiler-gate"
-    owner: VF-9-20
+    blocks: five_style_production_adherence_and_release
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatestyle002-five-style-adherence"
+    owner: V2-12
     last_run: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
-    result: open_cp06_multiple_styles_are_not_same_content_five_style_proof
-    checked_at: "2026-08-14T11:52:23.413Z"
+    result: open_five_style_production_suite_pending
+
   GATE_FALLBACK_001:
     status: open
-    blocks: automatic_skyreels_dispatch
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#historical-fallback-gate"
-    owner: VF-9-20
+    blocks: historical_skyreels_dispatch_only
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
+    owner: historical
     last_run: "evidence/acceptance/VF-9-19/avatar-fallback-qualification"
-    result: open_no_skyreels_output_after_three_bounded_resumes
-    active_effect: historical_nonblocking_no_fallback_dispatch
+    result: historical_open_no_output_fallback_non_dispatchable
+    active_effect: none
+
   GATE_GPU_001:
     status: open
-    blocks: selectable_production_execution_profiles
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-pod-and-volume-lifecycle-gate"
-    owner: VF-9-20
+    blocks: historical_manual_pod_pair_lock_claim_only
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
+    owner: historical
     last_run: "evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json"
-    result: open_mage_and_soulx_rtx4090_fit_proven_pair_lock_and_session_recreation_unproven
-    checked_at: "2026-08-15T07:55:09.960Z"
-    blocker: "CP-06 proved Mage RTX 4090 identity and VF-9-24S proved exact SoulX Pro RTX 4090 identity, fit, offline warm-up, and fresh-Pod output. Atomic pair locking, inheritance, and next-session exact recreation remain unproven."
+    result: pod_rtx4090_fit_proven_serverless_per_lane_gpu_qualification_pending
+    active_effect: subsumed_by_serverless_lane_gates
+
   GATE_RUNPOD_001:
     status: open
-    blocks: live_runpod_dispatch
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#runpod-pod-and-volume-lifecycle-gate"
-    owner: VF-9-20
+    blocks: historical_manual_pod_global_session_claim_only
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#preserved-model-evidence"
+    owner: historical
     last_run: "evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json"
-    result: open_two_isolated_volumes_and_fresh_soulx_pod_lifecycle_proven_full_global_session_unproven
-    checked_at: "2026-08-15T07:55:09.960Z"
-    blocker: "VF-9-24S proved immutable SoulX publication, isolated sealed volume preparation, fresh-Pod generation, exact cleanup, and zero-Pod/two-volume final state after removing Echo. The full two-lane global-session waiter and independent-lane behavior remain unproven."
+    result: isolated_pod_and_volume_proof_only
+    active_effect: subsumed_by_serverless_contract_and_lane_gates
+
   GATE_COST_001:
     status: open
-    blocks: measured_unit_economics_claim
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#production-slo-targets"
-    owner: VF-9-20
+    blocks: historical_pod_extrapolation_as_unit_economics_claim
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateeconomics001-production-length-speedcost"
+    owner: V2-12
     last_run: "evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json"
-    result: open_soulx_bounded_cost_under_cap_settlement_and_representative_two_lane_economics_pending
-    checked_at: "2026-08-15T07:58:33.913Z"
-    blocker: "VF-9-24S is conservatively bounded at $0.275645 under the $4 cap and the retained SoulX volume is $3.50/month, but RunPod billing rows had not settled at the immediate audit. Final settlement and representative 30-minute two-lane cost attribution remain open."
+    result: pod_bounded_cost_only_representative_serverless_settlement_pending
+    active_effect: subsumed_by_GATE_ECONOMICS_001
+
   GATE_UI_001:
     status: closed
     blocks: visual_system_lock
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#ui-shell-presentation-gate"
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#ui-and-chrome-acceptance"
     owner: user
     last_run: "evidence/gates/GATE_UI_001/2026-08-09-stabilization-audit"
-    result: pass
+    result: pass_preserve_ui_and_replace_infrastructure_controls_only
     closed_at: "2026-08-09T14:06:18Z"
-    latest_refinement:
-      task_id: VF-UI-DENSITY-002
-      status: technically_verified_current_baseline
-      implementation_commit: cd67b2bd82dea432a901dabe9afc4c958f3bb80a
-      regression_evidence: apps/web/tests/e2e/shell.spec.ts
-      note: "The user-directed 2026-08-10 compact-density/disclosure refinement did not reopen the closed presentation gate."

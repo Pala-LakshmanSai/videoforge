@@ -1,17 +1,11 @@
-schema_version: "1.5"
+schema_version: "2.0"
 project: VideoForge
 phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-15"
 source_of_truth: project-context
-# CP-00 through CP-06 are complete. CP-06 settled at $0.34927155333571136 under its $3 cap, the
-# user accepted visual quality, and the live read-only re-audit proved zero compute plus exactly the
-# intended retained 50 GB Mage volume. CP-07 prepared and sealed the isolated 50 GB Echo volume,
-# published the final immutable Echo Flash Turbo FP8 image, and produced exact native 2/4/6-second
-# samples on fresh RTX 5090 Pods. Zero Pods/templates/endpoints/workers remain and both intended
-# volumes are retained. The user accepted and activated the exact full and split renderer crops;
-# CP-07 is complete. The later full exact-avatar suite remains a separate open production gate.
-current_selected_profile: serverless_v2_roadmap_reset
-current_selected_brief: tasks/VF-10-00.md
+
+current_selected_profile: v2_00_roadmap_reset_audit
+current_selected_brief: tasks/VF-10-00A.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -28,77 +22,98 @@ derived_indexes:
   - MANIFEST.yaml
   - 00_START_HERE.md
 conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
-target_profile_word_budget: 10000
+target_profile_word_budget: 15000
 
-# Historical task briefs remain evidence but are intentionally not active read profiles. Create one
-# narrow profile/brief when each future checkpoint becomes current.
 read_profiles:
-  serverless_v2_roadmap_reset:
-    - tasks/VF-10-00.md
+  v2_00_roadmap_reset_audit:
+    - tasks/VF-10-00A.md
     - 15_DECISIONS_AND_OPEN_GATES.md
-    - 06_SYSTEM_ARCHITECTURE.md
-    - 03_REFERENCE_VIDEO_FORENSICS.md
-    - 16_CONTEXT_MAINTENANCE.md
     - 22_PROJECT_COMPLETION_CHECKPOINTS.md
-  soulx_flashhead_pro_new_avatar_timed_sample:
-    - tasks/VF-9-24U.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 02_OUTPUT_VIDEO_SPEC.md
-    - 16_CONTEXT_MAINTENANCE.md
-  soulx_flashhead_pro_second_sample_crop_economics:
-    - tasks/VF-9-24T.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 02_OUTPUT_VIDEO_SPEC.md
-    - 16_CONTEXT_MAINTENANCE.md
-  soulx_flashhead_pro_replacement_qualification:
-    - tasks/VF-9-24S.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - 02_OUTPUT_VIDEO_SPEC.md
-    - 16_CONTEXT_MAINTENANCE.md
-  cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock:
-    - tasks/VF-9-24R.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-    - 02_OUTPUT_VIDEO_SPEC.md
-    - evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight/README.md
-    - evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight/source-manifest.json
-  cp06_mage_int8_persistent_runpod:
-    - tasks/VF-9-24Q.md
-    - 08_MODELS_AND_PROVIDERS.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 17_SOURCE_INDEX.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-  cp05_complete_fixture_mvp:
-    - 22_PROJECT_COMPLETION_CHECKPOINTS.md
-    - tasks/VF-9-24P.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
-    - 19_IMPLEMENTATION_PLAYBOOK.md
-  cp04_three_composition_scheduler:
-    - 22_PROJECT_COMPLETION_CHECKPOINTS.md
-    - tasks/VF-9-24O.md
-    - 07_PIPELINE_AND_SCHEDULER.md
-    - references/ranga/README.md
-    - references/ranga/every-fifth-frame-audit.json
-    - evidence/reference_metrics.json
-  cp03_word_transcript:
-    - 22_PROJECT_COMPLETION_CHECKPOINTS.md
-    - tasks/VF-9-24N.md
-  cp02_shared_admission_queue_ui:
-    - 22_PROJECT_COMPLETION_CHECKPOINTS.md
-    - tasks/VF-9-24M.md
-  cp01_global_session_contracts:
-    - 22_PROJECT_COMPLETION_CHECKPOINTS.md
-    - tasks/VF-9-24K.md
-  cp00_context_roadmap_handoff:
-    - 22_PROJECT_COMPLETION_CHECKPOINTS.md
-    - references/ranga/README.md
-    - references/ranga/every-fifth-frame-audit.json
     - templates/CHECKPOINT_CHAT_PROMPTS.md
-    - tasks/VF-9-24L.md
+  v2_01_tenant_private_identity:
+    - tasks/VF-10-01.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 15_DECISIONS_AND_OPEN_GATES.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+  v2_02_private_artifacts:
+    - tasks/VF-10-02.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 13_ENGINEERING_BEST_PRACTICES.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+  v2_03_fair_admission:
+    - tasks/VF-10-03.md
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 10_DATA_AND_API_CONTRACTS.md
+  v2_04_serverless_v3_contracts:
+    - tasks/VF-10-04.md
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 13_ENGINEERING_BEST_PRACTICES.md
+  v2_05_provider_free_cutover:
+    - tasks/VF-10-05.md
+    - 05_UI_UX_SPEC.md
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+  v2_06_hosted_staging:
+    - tasks/VF-10-06.md
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+  v2_07_mage_serverless:
+    - tasks/VF-10-07.md
+    - 08_MODELS_AND_PROVIDERS.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 11_COST_SPEED_BUDGET.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+  v2_08_soulx_serverless:
+    - tasks/VF-10-08.md
+    - 08_MODELS_AND_PROVIDERS.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 11_COST_SPEED_BUDGET.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - 20_AVATAR_HUB.md
+  v2_09_short_live_e2e:
+    - tasks/VF-10-09.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+  v2_10_ranga_pilot:
+    - tasks/VF-10-10.md
+    - 03_REFERENCE_VIDEO_FORENSICS.md
+    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - references/ranga/README.md
+    - evidence/reference_metrics.json
+  v2_11_concurrency_resilience:
+    - tasks/VF-10-11.md
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+  v2_12_quality_economics:
+    - tasks/VF-10-12.md
+    - 03_REFERENCE_VIDEO_FORENSICS.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 08_MODELS_AND_PROVIDERS.md
+    - 11_COST_SPEED_BUDGET.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+  v2_13_release_operations:
+    - tasks/VF-10-13.md
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 13_ENGINEERING_BEST_PRACTICES.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   checkpoint_roadmap:
     - 22_PROJECT_COMPLETION_CHECKPOINTS.md
     - templates/CHECKPOINT_CHAT_PROMPTS.md
@@ -152,135 +167,132 @@ read_profiles:
   release_ops:
     - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
     - 11_COST_SPEED_BUDGET.md
+    - 13_ENGINEERING_BEST_PRACTICES.md
   context_update:
     - 15_DECISIONS_AND_OPEN_GATES.md
     - 16_CONTEXT_MAINTENANCE.md
     - GATES.yaml
-
-hard_rules:
-  - no_motion_graphics
-  - no_text_overlays_or_captions
-  - no_decorative_transitions
-  - hard_cuts_only
-  - slow_smooth_image_zoom_required
-  - no_llm_composition_selection
-  - no_full_voiceover_avatar_generation
-  - one_avatar_clip_serves_both_layouts
-  - one_global_shared_equal_rights_app_scope
-  - unique_single_use_email_bound_invite_admission
-  - one_global_generation_session_and_one_active_video
-  - waiting_projects_orchestration_inert_until_promotion
-  - waiting_project_may_keep_existing_pod_warm_but_never_recreate
-  - runpod_api_automation_only
-  - separate_persistent_model_volume_per_exact_model_lane
-  - never_share_or_cross_adopt_model_volumes_or_pods
-  - independent_live_exact_gpu_selection_per_lane
-  - one_disposable_pod_per_lane_initially
-  - delete_pods_and_prove_absence_when_lane_drains
-  - retain_both_intended_model_volumes
-  - ordinary_pod_boot_downloads_no_model_files
-  - production_asr_and_render_use_cloud_run_jobs
-  - live_chrome_during_development
-  - published_image_style_version_pinned_per_project_revision
-  - no_style_vision_call_during_ordinary_video_production
-  - project_requires_ready_stored_avatar_profile_no_inline_avatar_upload
-  - avatar_profile_version_and_runtime_source_pinned_per_project_revision
-  - private_inputs_outputs_credentials_and_model_bytes_never_enter_git
-
-approved_decisions:
-  DEC_SCOPE_001: image_only_broll_mvp
-  DEC_OUTPUT_001: "full_avatar | full_image | split_avatar_left_image_right"
-  DEC_OUTPUT_002: hard_cuts_no_motion_graphics_text_or_decorative_transitions
-  DEC_OUTPUT_003: every_ai_image_has_subtle_centered_jitter_free_zoom_in
-  DEC_LLM_001: runware_deepseek_v4_flash_0731
-  DEC_LLM_002: deepseek_writes_production_image_prompts_only
-  DEC_STYLE_001: reusable_global_image_styles_hub
-  DEC_STYLE_002: documentary_stock_v1_builtin_default
-  DEC_STYLE_003: runware_gemini_3_5_flash_one_time_style_analysis
-  DEC_STYLE_004: immutable_published_style_version_pinned_to_project
-  DEC_STYLE_005: optional_extra_image_keywords_explicit_toggle
-  DEC_STYLE_006: extract_shared_visual_traits_not_reference_content
-  DEC_STYLE_007: manual_edits_preserve_and_detach_analyzer_evidence
-  DEC_IMAGE_001: exact_imageforge_mage_flow_int8_convrot_pinned_comfyui_4step_guidance1_1280x720
-  DEC_IMAGE_002: user_accepts_unresolved_mage_terms_risk_locked_model_proceeds
-  DEC_IMAGE_003: locked_mage_turbo_strict_review_and_one_rejection_retry
-  DEC_AVATAR_001: superseded_avatarforcing_primary_historical_replay_only
-  DEC_AVATAR_002: superseded_musetalk_lip_only_repair_historical_replay_only
-  DEC_AVATAR_003: superseded_skyreels_v3_fallback_historical_replay_only
-  DEC_AVATAR_004: one_clip_two_deterministic_crops
-  DEC_AVATAR_005: reusable_global_avatar_hub_exact_ready_version_no_inline_upload
-  DEC_AVATAR_006: superseded_avatarforcing_ladder_historical_authority_only
-  DEC_AVATAR_007: echomimic_v3_flash_native_only_no_repair_or_fallback
-  DEC_AVATAR_008: echomimic_v3_flash_fp8_short_selected_spans_no_long_video_cfg
-  DEC_AVATAR_009: accepted_echo_turbo_fp8_full_and_split_renderer_crops
-  DEC_AVATAR_010: soulx_flashhead_pro_replaces_echo_pending_exact_sample_review
-  DEC_TIMING_001: whisper_cpp_base_en_cloud_run_production_mac_dev_parity
-  DEC_CONTRACT_001: typescript_only_jcs_python_exact_bytes_and_schema_validation
-  DEC_SCHEDULER_001: seeded_deterministic_bounded_variation
-  DEC_SCHEDULER_002: target_22_percent_avatar_half_full_half_split
-  DEC_RENDER_001: direct_ffmpeg_cloud_run_production_mac_dev_parity
-  DEC_RENDER_002: no_remotion_or_hyperframes_in_mvp
-  DEC_HOSTING_001: scale_to_zero_cloudflare_neon_r2_cloud_run_control_plane
-  DEC_BUILD_001: github_standard_hosted_heavy_builds_no_mac_dependency
-  DEC_AUTH_001: unique_single_use_email_bound_verified_invite_admission
-  DEC_TENANCY_001: one_global_shared_equal_rights_app_scope
-  DEC_DB_001: additive_postgres_sql_repository_contracts_pglite_tests_only
-  DEC_QUEUE_001: postgres_authoritative_runpod_execution_transport
-  DEC_QUEUE_002: one_global_session_one_active_video_inert_waiters_shared_manual_queue
-  DEC_RUNPOD_001: superseded_serverless_endpoints_first_historical_only
-  DEC_RUNPOD_002: two_isolated_persistent_volumes_session_scoped_disposable_pods
-  DEC_COST_001: representative_30_minute_variable_target_1_usd_hard_ceiling_2_usd
-  DEC_UX_001: fixture_first_live_chrome_hot_reload
-  DEC_UX_002: compact_100_percent_production_console_fixed_base_scale_only_macos_like_dock
-  DEC_UX_003: visual_presets_with_on_demand_reference_and_audit_details
-  DEC_UX_004: visible_layered_surface_separation_with_20_16_page_rhythm_and_12px_disclosures
-
-open_gates:
-  GATE_AVATAR_001: echomimic_v3_flash_exact_avatar_fit_speed_quality
-  GATE_AVATAR_002: global_rejection_threshold_to_be_set_after_bakeoff
-  GATE_AVATAR_003: historical_avatarforcing_commercial_license
-  GATE_AVATAR_005: qualify_soulx_flashhead_pro_exact_manifest_offline_runtime_and_sample
-  GATE_IMAGE_001: reproduce_mage_speed_and_quality
-  GATE_IMAGE_002: exact_checkpoint_terms_risk_user_accepted
-  GATE_STYLE_002: verify_mage_adherence_across_styles
-  GATE_FALLBACK_001: historical_skyreels_benchmark_not_active
-  GATE_GPU_001: qualify_independent_live_exact_gpu_choices
-  GATE_RUNPOD_001: verify_two_volume_session_pod_lifecycle
-  GATE_COST_001: measure_boot_generation_cpu_and_delete_cost
-
-closed_gates:
-  GATE_AVATAR_004: exact_echo_fp8_manifest_offline_boot_and_samples_qualified_2026_08_14
-  GATE_UI_001: user_approved_live_chrome_shell_2026_08_09
-  GATE_LLM_001: runware_deepseek_0731_qualified_2026_08_11
-  GATE_STYLE_001: runware_gemini_style_analysis_qualified_2026_08_11
-
-deferred:
-  - ai_broll_video
-  - stock_footage_search
-  - performance_bank_dubbing
-  - mobile_full_editor
-  - advanced_timeline_editor
-  - automatic_visual_qa_model
-  - automatic_style_lora_training
-  - reference_conditioned_image_generation
-  - remotion
-  - hyperframes
-  - roles_and_multi_tenancy
-  - per_user_pod_pairs
-  - parallel_projects
-  - advanced_queue_fairness
-
-root_loaders:
-  - ../AGENTS.md
-  - ../CLAUDE.md
 
 maintenance: 16_CONTEXT_MAINTENANCE.md
 current_state: CURRENT_STATE.yaml
 gate_registry: GATES.yaml
 glossary: GLOSSARY.md
 implementation_playbook: 19_IMPLEMENTATION_PLAYBOOK.md
-execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-completion_roadmap: 22_PROJECT_COMPLETION_CHECKPOINTS.md
-checkpoint_prompts: templates/CHECKPOINT_CHAT_PROMPTS.md
 context_validator: scripts/validate-context.sh
 schema_validator: scripts/validate-schemas.sh
+
+hard_rules:
+  - tenant_private_user_created_data_database_enforced
+  - explicit_builtins_are_only_global_product_records
+  - one_account_one_default_workspace_in_v2
+  - one_active_video_per_account_two_different_accounts_globally
+  - preset_preview_uses_same_capacity_and_never_outranks_eligible_video
+  - waiting_work_provider_inert_until_database_admission
+  - fair_account_rotation_owned_waiter_reorder_cancel_only
+  - two_queue_serverless_endpoints_eu_ro_1
+  - workers_min_zero_max_two_one_gpu_handler_concurrency_one
+  - rtx4090_only_until_each_lane_independently_qualifies_5090
+  - existing_separate_sealed_50gb_model_volume_per_lane
+  - model_volumes_mount_only_at_runpod_volume_and_never_cross_mount
+  - runtime_model_download_quantization_and_mutable_resolution_forbidden
+  - tenant_private_r2_and_job_local_scratch_only
+  - outbox_before_run_status_reconciliation_and_signed_provenance_receipt
+  - at_most_one_accepted_output_duplicate_compute_cost_visible
+  - no_exactly_once_provider_or_billing_claim
+  - no_routine_endpoint_queue_purge
+  - ordinary_users_have_no_gpu_or_pod_lifecycle_controls
+  - zero_workers_required_after_drain_fixed_volume_billing_reported_separately
+  - no_motion_graphics_text_overlays_captions_borders_or_watermarks
+  - no_decorative_transitions_hard_cuts_only
+  - slow_smooth_centered_image_zoom_required
+  - no_llm_timing_or_composition_selection
+  - no_full_voiceover_avatar_dispatch
+  - one_native_avatar_clip_serves_both_layouts
+  - production_asr_and_render_use_scale_to_zero_cloud_run_jobs
+  - published_image_style_and_avatar_profile_versions_pinned_per_revision
+  - private_inputs_outputs_credentials_and_model_bytes_never_enter_git
+
+approved_decisions:
+  DEC_AUTH_001: invite_only_verified_email_identity
+  DEC_AVATAR_001: historical_avatarforcing_primary_superseded
+  DEC_AVATAR_002: historical_musetalk_repair_superseded
+  DEC_AVATAR_003: historical_skyreels_fallback_superseded
+  DEC_AVATAR_004: one_native_clip_two_layouts
+  DEC_AVATAR_005: tenant_private_reusable_avatar_hub
+  DEC_AVATAR_006: historical_avatarforcing_risk_authority_consumed
+  DEC_AVATAR_007: historical_echo_native_path_superseded
+  DEC_AVATAR_008: historical_echo_turbo_fp8_path_superseded
+  DEC_AVATAR_009: historical_echo_crop_acceptance_only
+  DEC_AVATAR_010: exact_soulx_flashhead_pro_only_proposed_avatar_runtime
+  DEC_BUILD_001: hosted_linux_heavy_builds_no_mac_dependency
+  DEC_CONTRACT_001: typescript_only_jcs_authority
+  DEC_COST_001: representative_30m_variable_target_1_usd_hard_ceiling_2_usd
+  DEC_DB_001: additive_postgres_contracts_pglite_tests_neon_production
+  DEC_DISPATCH_001: two_phase_serverless_authority_at_most_one_accepted_output
+  DEC_HOSTING_001: cloudflare_neon_r2_cloud_run_scale_to_zero
+  DEC_IMAGE_001: exact_mage_flow_int8_convrot_profile
+  DEC_IMAGE_002: mage_terms_risk_accepted_no_clear_permission_claim
+  DEC_IMAGE_003: strict_mage_review_one_same_scene_retry
+  DEC_LLM_001: runware_deepseek_v4_flash_0731
+  DEC_LLM_002: deepseek_image_prompts_only
+  DEC_OUTPUT_001: full_avatar_full_image_split_only
+  DEC_OUTPUT_002: hard_cuts_no_graphics_text_or_transitions
+  DEC_OUTPUT_003: subtle_centered_jitter_free_zoom
+  DEC_QUEUE_001: postgres_authoritative_runpod_transport
+  DEC_QUEUE_002: historical_singleton_global_queue_superseded
+  DEC_QUEUE_003: fair_one_per_account_two_global_admission
+  DEC_RENDER_001: direct_ffmpeg_cloud_run_production
+  DEC_RENDER_002: no_remotion_or_hyperframes
+  DEC_RUNPOD_001: historical_serverless_attempts_only
+  DEC_RUNPOD_002: historical_disposable_pod_architecture_superseded
+  DEC_RUNPOD_003: two_scale_to_zero_serverless_lanes_existing_volumes
+  DEC_SCHEDULER_001: seeded_deterministic_bounded_variation
+  DEC_SCHEDULER_002: approximately_22_percent_avatar_even_full_split
+  DEC_SCOPE_001: image_only_broll
+  DEC_STYLE_001: tenant_private_immutable_image_styles
+  DEC_STYLE_002: documentary_stock_v1_default
+  DEC_STYLE_003: one_time_runware_gemini_style_analysis
+  DEC_STYLE_004: immutable_style_version_pinned
+  DEC_STYLE_005: optional_keywords_explicit_toggle
+  DEC_STYLE_006: traits_not_reference_content
+  DEC_STYLE_007: preserve_and_detach_manual_edit_provenance
+  DEC_TENANCY_001: historical_global_equal_rights_scope_superseded
+  DEC_TENANCY_002: tenant_private_one_default_workspace
+  DEC_TIMING_001: whisper_cpp_cloud_run_production
+  DEC_UX_001: fixture_first_real_chrome
+  DEC_UX_002: preserve_compact_production_console
+  DEC_UX_003: visual_presets_and_audit_details
+  DEC_UX_004: visible_layered_surface_spacing
+  DEC_UX_005: preserve_ui_remove_manual_compute_controls
+
+open_gates:
+  GATE_AVATAR_001: historical_echo_full_suite_open_nonblocking
+  GATE_AVATAR_002: historical_avatar_demotion_threshold_open_nonblocking
+  GATE_AVATAR_003: historical_avatarforcing_terms_open_nonblocking
+  GATE_AVATAR_005: historical_soulx_pod_visual_crop_review_open
+  GATE_CONCURRENCY_001: v2_multi_user_load_and_recovery
+  GATE_COST_001: historical_pod_cost_not_production_economics
+  GATE_E2E_001: real_short_hosted_project
+  GATE_ECONOMICS_001: representative_serverless_speed_and_settled_cost
+  GATE_FALLBACK_001: historical_fallback_failure_nonblocking
+  GATE_GPU_001: historical_pod_gpu_proof_only
+  GATE_HOSTING_001: hosted_control_and_cpu_plane
+  GATE_IMAGE_001: mage_full_quality_suite
+  GATE_IMAGE_002: mage_terms_ambiguity
+  GATE_QUEUE_001: fair_durable_admission
+  GATE_RANGA_001: real_human_editorial_quality
+  GATE_RUNPOD_001: historical_manual_pod_lifecycle_only
+  GATE_SECURITY_001: production_security_release_operations
+  GATE_SERVERLESS_CONTRACT_001: provider_free_v3_transport
+  GATE_SERVERLESS_MAGE_001: exact_mage_endpoint
+  GATE_SERVERLESS_SOULX_001: exact_soulx_endpoint_and_crop_review
+  GATE_SOULX_LICENSE_001: soulx_deployability_terms
+  GATE_STORAGE_001: private_r2_and_scratch
+  GATE_STYLE_002: five_style_production_adherence
+  GATE_TENANCY_001: account_workspace_privacy
+
+closed_gates:
+  GATE_AVATAR_004: historical_echo_artifact_manifest_pass
+  GATE_LLM_001: runware_deepseek_pass
+  GATE_STYLE_001: runware_gemini_style_analysis_pass
+  GATE_UI_001: accepted_ui_system_pass

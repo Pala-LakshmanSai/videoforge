@@ -1,45 +1,41 @@
-schema_version: "1.0"
-context_schema_version: "1.5"
-updated_at: "2026-08-15T10:07:36Z"
+schema_version: "2.0"
+context_schema_version: "2.0"
+updated_at: "2026-08-15T11:23:14Z"
 
-phase: serverless_v2_roadmap_reset
-implementation_authorized_in_current_task: true
-current_milestone: production_serverless_architecture_and_checkpoint_replan
-current_task: VF-10-00
-current_wave: serverless_v2_planning
+phase: serverless_v2_roadmap_reset_complete_awaiting_independent_audit
+implementation_authorized_in_current_task: false
+current_milestone: serverless_v2_roadmap_reset_audit
+current_task: null
+current_wave: v2_context_handoff
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: context_and_roadmap_reconciliation
-application_code_changes_authorized: true
+task_stage: ready_for_independent_audit
+application_code_changes_authorized: false
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
 maximum_external_spend_usd: 0
+
 provider_authority:
   mode: none
   provider: null
   cap_usd: 0
-  authorized_by_user_at: "2026-08-15T09:41:03Z"
-  source: vf_9_24u_exact_paid_authority_consumed_and_closed
+  source: all_prior_paid_authorities_consumed_and_non_transferable
   non_transferable: true
-  execution_halted: false
-  halt_reason: null
-  model_id: null
   resources: []
   authorized_operations: []
   allowed_operations: []
-runpod_account_scope:
-  owner: sujal
-  account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
-  forbidden_account: demo9_imageforge
-  identity_check: required_before_inventory_or_mutation
+
 credential_access_authorized: false
 remote_or_cloud_mutations_authorized: false
 model_downloads_authorized: false
 worker_image_publication_authorized: false
 sample_output_publication_authorized: false
 gpu_use_authorized: false
-mage_volume_retention_authorized: false
-echo_volume_retention_authorized: false
-soulx_volume_retention_authorized: true
+
+runpod_account_scope:
+  owner: sujal
+  account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
+  forbidden_account: demo9_imageforge
+  identity_check: required_before_any_future_inventory_or_mutation
 
 repository:
   initialized: true
@@ -48,57 +44,8 @@ repository:
   published: true
   branch: codex/soulx-flashhead-pro-vf924s
   base_commit: "122fb679389bdcb40b1700d2ba3c0f8f7ac66360"
-  planning_handoff_commit: "0e5eee22e4d51150fc358fe853f607e1f41d73c9"
-  cp01_activation_commit: "7ef2461"
-  cp01_implementation_commit: "9ee3267fb0c1ccf0a275a723d0ccf6dee4ad57b7"
-  cp01_audit_fix_activation_commit: "234a8901d16f61b3d206d17f0f9db8d99f0afcbc"
-  cp01_audit_fix_commit: "0e90f3b637949711aecda6acc5b9e0bd51ae3202"
-  cp01_dispatch_authority_fix_commit: "522ed6112d39e0bcbd03955ad753b79cef2fdb6d"
-  cp02_implementation_commit: "91ed5470f2d93e3cac577c70b7396c03bb42f870"
-  cp02_audit_fix_commit: "5747e7b4e9c1d41564663afb1c0c0ad7272efe5b"
-  cp03_activation_commit: "e2541b4ccf69d74c818b020b500e5f7b318b400b"
-  cp03_implementation_commit: "4ac1df8872db50820ad3b95979572c907bf1631f"
-  cp03_audit_fix_commit: "a6a924856a58c233eadd8af402fbf78c6c821b97"
-  cp04_activation_commit: "8d0e49e"
-  cp04_implementation_commit: "ca9b816f1bd196654e03633264560050729b020a"
-  cp04_audit_fix_commit: "e857cfa1d8bce6ecfdd51f600378790aeedd28f2"
-  cp04_local_render_profile_fix_commit: "cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690"
-  cp05_activation_commit: "6c841b8c5ed4c7e11cdf786a0f43faf90e1914bc"
-  cp05_implementation_commit: "426156b0c30a469fb2eb786de8adb4566b8d8b22"
-  cp05_workerd_boundary_fix_commit: "55ee5caf5b742ab54f9e59198b1ab9be1a327e12"
-  cp05_chrome_download_proof_commit: "8bfd0529e9cac4773d1f0b67629cc10f97aed313"
-  cp05_audit_fix_commit: "0db21f80361f7c115a4100e3ab1df0a7372f2ce8"
-  cp05_foundation_runtime_fix_commit: "e7337aaf71275dec081663b222eb8cde42936989"
-  cp05_read_serialization_fix_commit: "68e4f03c664c1146946ee440a1fdb15e5fb209d0"
-  cp05_audit_harness_commit: "58395225d9f2e11ac556e6b67f186b1fb5502336"
-  cp05_reaudit_record_commit: "d2285117c17a3f6dd37b84e9dd441fd6fe7aa1d0"
-  cp06_phase_a_code_commit: "912427b5bd8a7afb4f68233072990d3c39e64cc6"
-  cp06_phase_b_controller_commit: "1c257497055ad42b78d3020a2113f8ea0cf876c8"
-  cp06_phase_b_safety_fix_commit: "6664d26f7594fe5ba6fd3896ff5f26075764d93f"
-  cp06_phase_b_cleanup_invariant_fix_commit: "58512071586855b96d64e812f9c443d3db51b1dd"
-  cp06_runtime_source_commit: "563ba1ab7b083c1457ab4a9504d82bd6f9d886b9"
-  cp06_handoff_content_commit: "1c1d664d443af14b8f8e21cac4064cb237131d5e"
-  cp06_authority_closure_commit: "ad2915bf570e2db53245ff8e780a3f703d4abf56"
-  cp06_hosted_verify_commit: "e17a6fb631f2cbc5e9b89a1bb1453744151df8a4"
-  cp06_hosted_verify_run_id: 31799220381
-  cp06_consumed_authority_latch_commit: "3b2575d72e307545564f51d374070ffa4e20bad7"
-  cp06_local_reaudit_verify_commit: "f70ed54a6f458d784a8e31cf6e1c1d9bc764997e"
-  cp06_settled_reaudit_verify_commit: "efee7a11bf1a0b07f551a7fcfcc4948fe54609dd"
-  cp07_activation_commit: "aff5f0a"
-  cp07_phase_a_code_commit: "c89acef78d4a4bbbbac118ca9c658b6180d68fc8"
-  cp07_phase_a_safety_fix_commit: "75c852bb891dbe205ee43d2b73e74765bc336373"
-  cp07_phase_a_evidence_commit: "b7afb69efa2e31003f1b4408f51508ea38c05b3c"
-  cp07_turbo_profile_commit: "4a8c0c2d7f440dd2f649fc03d9cf86a6a3ab618b"
-  cp07_turbo_profile_context_commit: "5d38739a5f53f6b0e67d6cbf1950ba29c7645061"
-  cp07_image_import_fix_commit: "237b108819432b4bea3d7b3cb5e6bff039749cc1"
-  cp07_fp8_preparation_gpu_fix_commit: "d51c0a1"
-  cp07_invalid_volume_replacement_guard_commit: "16cd30a"
-  cp07_cumulative_cap_guard_commit: "1310b72"
-  soulx_activation_commit: "23ce47fea7dd5dd329b85027ae36db53438a7cd6"
-  soulx_controller_commit: "2e424d45fee38f4b76ac4e36ae0490c9ce5b4c38"
-  soulx_runtime_compiler_fix_commit: "4d4f3500619d7599fe3f02792f2c41dcd2ab1b87"
-  soulx_qualification_handoff_commit: "6698d6bf9e2f402fb0abaf758ad492dec0b1247e"
-  last_good_commit: "6698d6bf9e2f402fb0abaf758ad492dec0b1247e"
+  planning_base_commit: "79c3be6"
+  last_good_commit: "79c3be6"
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD and every newer commit; never reset historical evidence."
 
@@ -107,14 +54,13 @@ live_development:
   server_state: stopped
   dev_server_pid: null
   owner_task_id: null
-  health_checked_at: "2026-08-14T07:18:58Z"
+  health_checked_at: "2026-08-15T09:56:02.932Z"
   chrome_route: null
-  fixture_scenario: cp05_complete_fixture_mvp
+  fixture_scenario: v2_00_roadmap_reset_audit
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "VF-9-24U paid authority is consumed and closed. The sample is ready for user review; no provider call is authorized."
-  worker_image: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
+  provider_authority_scope: "No active provider authority. Historical CP/VF-9 authority cannot transfer to V2."
   last_user_checkpoint:
     result: accepted
     commit: "7aa4ba7b4c0582dbbabff72aeb8d01451b1e3864"
@@ -123,124 +69,202 @@ live_development:
     checked_at: "2026-08-10T03:06:39Z"
     feedback_refs: [DEC_OUTPUT_003]
 
-historical_provider_checkpoint:
-  task_id: VF-9-24I
-  status: superseded_no_reviewable_mp4
-  architecture: serverless_ephemeral_or_temporary_cache
-  former_authorized_ceiling_usd: 8
-  authority_active: false
-  evidence: "evidence/acceptance/VF-9-24I/elias-echomimic-v3-flash-fp8-rtx"
-  last_committed_settled_spend_usd: 1.9623834279
-  later_current_state_recorded_live_balance_delta_usd: 4.229342856
-  spend_note: "Historical observations only; CP-00 did not refresh provider state."
-  reviewable_output: null
-  last_known_cleanup:
-    running_pods: 0
-    network_volumes: 0
-    checked_at: "2026-08-13T06:09:06.660Z"
-    basis: "Read-only RunPod inventory then showed zero Pods/endpoints/active workers/volumes. This is timestamped history, not a current live refresh."
+v2_destination:
+  users: 5_to_10_invited_accounts
+  account_workspace_model: one_login_one_account_one_default_workspace
+  tenant_visibility: user_created_private_explicit_builtins_global_read_only
+  admission: one_active_provider_workload_per_account_two_different_accounts_globally
+  video_admission_guarantee: at_most_one_active_video_per_account_two_active_videos_globally
+  preset_preview_admission: explicit_lower_priority_same_slots_never_outranks_eligible_video
+  fairness: deterministic_account_rotation_owned_waiter_reorder_cancel_only
+  ordinary_compute_controls: none
+  runpod_region: EU-RO-1
+  endpoints:
+    mage:
+      mode: queue_serverless
+      workers_min: 0
+      workers_max: 2
+      scaler: REQUEST_COUNT
+      scaler_value: 1
+      handler_concurrency: 1
+      gpu_count: 1
+      allowed_gpu_types_before_separate_qualification: [NVIDIA_GeForce_RTX_4090]
+      retained_volume_size_gb: 50
+      mount: /runpod-volume
+    soulx:
+      mode: queue_serverless
+      workers_min: 0
+      workers_max: 2
+      scaler: REQUEST_COUNT
+      scaler_value: 1
+      handler_concurrency: 1
+      gpu_count: 1
+      allowed_gpu_types_before_separate_qualification: [NVIDIA_GeForce_RTX_4090]
+      retained_volume_size_gb: 50
+      mount: /runpod-volume
+  artifact_plane: tenant_private_r2
+  mutable_worker_data: job_local_scratch_erased_on_all_terminal_paths
+  model_volume_policy: sealed_manifest_verified_read_only_by_application_no_cross_mount
+  runpod_delivery_truth: at_most_one_accepted_output_duplicate_compute_and_cost_observable
 
-completed_tasks:
-  - task_id: VF-9-22
-    status: complete_echo_source_and_manifest_preflight
-    implementation_commit: "e2f4a8ff6baa34b49c0e48d24a1e7a5f2f4e52f3"
-    external_spend_usd: 0
-  - task_id: VF-9-23
-    status: complete_historical_serverless_worker
-    implementation_commit: "f0829b930e5cf9084312da030f1807a6e269b06f"
-    external_spend_usd: 0
-  - task_id: VF-9-24A_to_VF-9-24I
-    status: historical_attempt_lineage_superseded
-    reviewable_output: null
-    evidence_root: "evidence/acceptance"
-  - task_id: VF-9-24J
-    status: complete_isolated_volume_architecture_reset
-    implementation_commit: "29b288e07207848af598d2f7dd1af62d6f9c9a9f"
-    external_spend_usd: 0
-  - task_id: VF-9-24L
-    status: complete_cp00_context_reference_roadmap_lock
-    implementation_commit: "0e5eee22e4d51150fc358fe853f607e1f41d73c9"
-    external_spend_usd: 0
-  - task_id: VF-9-24K
-    status: complete_cp01_global_session_contracts_and_dispatch_firewall_reaudited_after_authority_fix
-    implementation_commit: "9ee3267fb0c1ccf0a275a723d0ccf6dee4ad57b7"
-    audit_fix_commit: "0e90f3b637949711aecda6acc5b9e0bd51ae3202"
-    dispatch_authority_fix_commit: "522ed6112d39e0bcbd03955ad753b79cef2fdb6d"
-    evidence: "evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-after-authority-fix.json"
-    external_spend_usd: 0
-  - task_id: VF-9-24M
-    status: complete_cp02_shared_admission_global_queue_idle_gpu_ux_reaudited
-    implementation_commit: "91ed5470f2d93e3cac577c70b7396c03bb42f870"
-    audit_fix_commit: "5747e7b4e9c1d41564663afb1c0c0ad7272efe5b"
-    evidence: "evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json"
-    external_spend_usd: 0
-  - task_id: VF-9-24N
-    status: complete_cp03_production_grade_word_transcript_provider_free_reaudited
-    activation_commit: "e2541b4ccf69d74c818b020b500e5f7b318b400b"
-    implementation_commit: "4ac1df8872db50820ad3b95979572c907bf1631f"
-    audit_fix_commit: "a6a924856a58c233eadd8af402fbf78c6c821b97"
-    evidence: "evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json"
-    external_spend_usd: 0
-  - task_id: VF-9-24O
-    status: complete_cp04_three_composition_scheduler_and_work_plan_provider_free_reaudited
-    activation_commit: "8d0e49e"
-    implementation_commit: "ca9b816f1bd196654e03633264560050729b020a"
-    audit_fix_commit: "e857cfa1d8bce6ecfdd51f600378790aeedd28f2"
-    local_render_profile_fix_commit: "cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690"
-    evidence: "evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/reaudit-after-fixes.json"
-    external_spend_usd: 0
-  - task_id: VF-9-24P
-    status: complete_cp05_provider_free_complete_mvp_orchestration_and_legacy_cutover_reaudited
-    activation_commit: "6c841b8c5ed4c7e11cdf786a0f43faf90e1914bc"
-    implementation_commit: "426156b0c30a469fb2eb786de8adb4566b8d8b22"
-    workerd_boundary_fix_commit: "55ee5caf5b742ab54f9e59198b1ab9be1a327e12"
-    chrome_download_proof_commit: "8bfd0529e9cac4773d1f0b67629cc10f97aed313"
-    audit_fix_commit: "0db21f80361f7c115a4100e3ab1df0a7372f2ce8"
-    foundation_runtime_fix_commit: "e7337aaf71275dec081663b222eb8cde42936989"
-    read_serialization_fix_commit: "68e4f03c664c1146946ee440a1fdb15e5fb209d0"
-    audit_harness_commit: "58395225d9f2e11ac556e6b67f186b1fb5502336"
-    reaudit_record_commit: "d2285117c17a3f6dd37b84e9dd441fd6fe7aa1d0"
-    evidence: "evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json"
-    external_spend_usd: 0
-  - task_id: VF-9-24Q
-    status: complete_cp06_exact_mage_int8_settled_visual_accepted
-    runtime_source_commit: "563ba1ab7b083c1457ab4a9504d82bd6f9d886b9"
-    authority_latch_commit: "3b2575d72e307545564f51d374070ffa4e20bad7"
-    evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
-    settlement_reaudit_evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json"
-    settled_external_spend_usd: 0.34927155333571136
-    ongoing_retained_volume_usd_per_month: 3.5
-active_ownership:
-  - task_id: VF-10-00
-    checkpoint: V2-00
-    owner: current_chat
-    stage: context_and_roadmap_reconciliation
-    external_spend_cap_usd: 0
+roadmap_state:
+  authoritative_file: 22_PROJECT_COMPLETION_CHECKPOINTS.md
+  prompt_pack: templates/CHECKPOINT_CHAT_PROMPTS.md
+  active_series: V2-00_through_V2-13
+  V2-00: complete_locally_awaiting_independent_read_only_audit
+  V2-01: blocked_on_green_V2-00_audit
+  V2-02: blocked_on_V2-01
+  V2-03: blocked_on_V2-02
+  V2-04: blocked_on_V2-03
+  V2-05: blocked_on_V2-04
+  V2-06: blocked_on_V2-05
+  V2-07: blocked_on_V2-06
+  V2-08: blocked_on_V2-07
+  V2-09: blocked_on_V2-08
+  V2-10: blocked_on_V2-09
+  V2-11: blocked_on_V2-10
+  V2-12: blocked_on_V2-11
+  V2-13: blocked_on_V2-12
+  former_CP_00_through_CP_12: retired_active_planning_historical_evidence_only
 
-blocked_tasks: []
-in_progress_checkpoint: V2-00
+reusable_foundations:
+  ui:
+    status: provider_free_baseline_green_preserve_design
+    proof: evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json
+  private_artifact_routes:
+    status: provider_free_workspace_prefixed_foundation_green_production_r2_not_composed
+    proof: apps/web/src/server/routes/private-artifact-routes.ts
+  word_transcript:
+    status: cp03_complete_pinned_whisper_cpp_contract
+    proof: evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json
+  scheduler:
+    status: cp04_complete_preserve_scheduler_v2
+    proof: evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/reaudit-after-fixes.json
+    canonical_30m_metrics:
+      frames: 54000
+      segments: 394
+      image_slots: 342
+      avatar_appearances: 103
+      avatar_coverage_percent: 21.05
+      avatar_appearances_per_minute: 3.433
+      mean_avatar_span_seconds: 3.679
+      mean_scene_seconds: 4.569
+  renderer:
+    status: provider_free_direct_ffmpeg_chrome_playback_green
+    proof: evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json
+  fixture_orchestration:
+    status: cp05_complete_but_global_session_and_manual_pod_semantics_superseded
+    proof: evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json
+
+model_runtime_evidence:
+  mage:
+    status: pod_qualified_visual_accepted_serverless_unqualified
+    exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
+    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
+    manifest_sha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b"
+    selected_model_bytes: 13379919280
+    retained_volume_id_sha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
+    retained_volume_size_gb: 50
+    ongoing_volume_usd_per_month: 3.5
+    settled_qualification_cost_usd: 0.34927155333571136
+    evidence: evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json
+  soulx:
+    status: pod_technical_pass_serverless_visual_crop_license_and_settlement_gates_open
+    exact_source: "Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2"
+    exact_model: "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
+    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b"
+    manifest_sha256: "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626"
+    selected_model_bytes: 6916084703
+    retained_volume_id_sha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be"
+    retained_volume_size_gb: 50
+    ongoing_volume_usd_per_month: 3.5
+    pod_start_to_model_ready_ms: 672035
+    worker_inference_10s_ms: 20268
+    projected_30m_avatar_gpu_cost_at_historical_074_rate_usd: 0.40203785517777774
+    settled_external_spend_usd: null
+    visual_crop_approval: pending
+    commercial_and_publication_terms_evidence: pending
+    evidence: evidence/acceptance/VF-9-24U/acceptance.json
+
+last_known_provider_resource_truth:
+  checked_at: "2026-08-15T09:56:02.932Z"
+  basis: consumed_VF_9_24U_read_only_inventory_and_cleanup
+  current_live_refresh_permitted_now: false
+  stale_until_future_authorized_read_only_preflight: true
+  pods: 0
+  private_templates: 0
+  endpoints: 0
+  total_serverless_workers_active_plus_flex: 0
+  network_volumes: 2
+  intended_volumes: [mage_50gb, soulx_50gb]
+  ongoing_retained_volume_usd_per_month_total: 7.0
+  note: "Zero workers means zero GPU compute, not zero fixed retained-volume billing."
+
+superseded_active_architecture:
+  items:
+    - one_global_equal_rights_catalog
+    - singleton_generation_session_and_one_global_active_video
+    - cross_user_manual_queue_order
+    - selected_gpu_pair_and_manual_pod_start_stop_delete
+    - pod_bound_v2_dispatch_envelope
+    - global_r2_prefixes
+    - mage_workspace_mount
+    - echo_avatar_runtime_and_volume
+    - repair_fallback_and_auto_gpu_paths
+    - serverless_v1_historical_attempts
+  implementation_rule: add_v3_migrations_contracts_and_firewalls_never_rewrite_history
+
+completed_provider_history:
+  cp06_mage:
+    status: complete_settled_visual_accepted
+    external_spend_usd: 0.34927155333571136
+  cp07_echo:
+    status: historical_complete_then_runtime_removed_and_volume_deleted
+  vf_9_24s_to_u_soulx:
+    status: technical_pass_outputs_ready_for_review_authority_consumed
+    settlement_status: pending_not_relabelled_settled
+
+blocking_gates_for_production:
+  - GATE_TENANCY_001
+  - GATE_STORAGE_001
+  - GATE_QUEUE_001
+  - GATE_SERVERLESS_CONTRACT_001
+  - GATE_HOSTING_001
+  - GATE_SERVERLESS_MAGE_001
+  - GATE_SERVERLESS_SOULX_001
+  - GATE_SOULX_LICENSE_001
+  - GATE_E2E_001
+  - GATE_RANGA_001
+  - GATE_CONCURRENCY_001
+  - GATE_ECONOMICS_001
+  - GATE_SECURITY_001
+  - GATE_IMAGE_001
+  - GATE_STYLE_002
+
+active_ownership: []
+in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-10-00
+  task_id: VF-10-00A
   checkpoint: V2-00
-  milestone: production_serverless_architecture_and_checkpoint_replan
-  status: in_progress
-  dependency_status: current_repository_and_paid_model_qualification_evidence_available
-  authorization_status: provider_free_context_replan_only
-  task_stage: context_and_roadmap_reconciliation
+  milestone: serverless_v2_roadmap_reset_audit
+  status: ready_for_independent_read_only_audit
+  dependency_status: local_reset_validated_awaiting_handoff_commit
+  authorization_status: provider_free_read_only_audit_no_implementation
+  task_stage: ready_for_independent_audit
   provider_authority:
     mode: none
     provider: null
     cap_usd: 0
     non_transferable: true
-    authorized_by_user_at: "2026-08-15T09:41:03Z"
+    authorized_by_user_at: null
     model_id: null
     resources: []
     authorized_operations: []
     allowed_operations: []
-  read_profile: serverless_v2_roadmap_reset
-  task_brief: tasks/VF-10-00.md
-  goal: "Replace the obsolete manual-Pod/global-shared checkpoint roadmap and prompt pack with a current-state-based multi-tenant scale-to-zero Serverless production roadmap."
+  read_profile: v2_00_roadmap_reset_audit
+  task_brief: tasks/VF-10-00A.md
+  goal: "Independently audit the V2-00 context, roadmap, prompts, gates, selectors, and contradictions before V2-01 implementation."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -252,689 +276,22 @@ recommended_next_task:
   gpu_use_authorized: false
   mage_volume_retention_authorized: false
   echo_volume_retention_authorized: false
-  soulx_volume_retention_authorized: true
-  retained_volume_billing_consent_recorded: true
+  soulx_volume_retention_authorized: false
+  existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: false
-  prerequisite_evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json"
-  required_handoff:
-    - "Preserve reusable completed implementation and immutable provider evidence; do not restart proven media/model work."
-    - "Supersede global-shared data, one global session, manual Pod lifecycle, and Pod-bound dispatch authority."
-    - "Define dependency-safe checkpoints from current state through production release, with implementation and independent-audit prompts for every checkpoint."
-    - "Keep the Ranga-derived deterministic visual grammar measurable and provider-free until later bounded activation."
-  prohibited_in_task:
-    - "Application implementation, credential access, provider mutation, image publication, endpoint creation, GPU allocation, model download, or spend."
-    - "Deletion of immutable historical evidence or completed task briefs."
-    - "Treating unverified current prices, availability, or Serverless compatibility as accepted facts."
+  prerequisite_evidence: "V2-00 handoff commit plus green local context/schema validation"
 
-vf_9_24u:
-  status: technical_pass_outputs_ready_for_user_review
-  source_task: VF-9-24T
-  avatar_image_sha256: "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83"
-  avatar_source_geometry: [1672, 941]
-  source_voiceover_sha256: "sha256:4b5c404ea6a042ca5e82ef64f238d7866f2fb770967b953e593abdadcf6c7fc4"
-  selected_audio_sha256: "sha256:51765f504d1a241af1aa05040cd06bbf377768bc3b2806000191f23855e577cb"
-  selected_audio_duration_seconds: 10
-  selected_audio_source_interval_seconds: [223.43, 233.1]
-  trailing_zero_padding_seconds: 0.33
-  full_renderer_profile: soulx-pro-ranga-full-source-composite-v1
-  full_source_background_filter: "scale=1920:1080:flags=lanczos,fps=30"
-  full_native_overlay_filter: "scale=1080:1080:flags=lanczos,fps=30,overlay=420:0"
-  full_native_overlay_horizontal_feather_pixels: 32
-  split_renderer_profile: soulx-pro-ranga-split-composite-v1
-  split_avatar_panel_filter: "crop=448:504:32:4,scale=960:1080:flags=lanczos,fps=30"
-  split_context_image_sha256: "sha256:844a98770bf2772becebc3dc71f3dd609fa0392295ef96d745cbdcb0ecb70f97"
-  selected_gpu_offering_id: "NVIDIA GeForce RTX 4090"
-  selected_gpu_rate_usd_per_hour: 0.74
-  selected_gpu_vram_gb: 24
-  selected_gpu_availability: HIGH
-  retained_soulx_volume_id_sha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be"
-  retained_soulx_volume_size_gb: 50
-  ongoing_soulx_volume_rate_usd_per_month: 3.5
-  conservative_maximum_new_pod_cost_usd: 0.641334
-  paid_execution_authorized: false
-  paid_execution_authorized_at: "2026-08-15T09:41:03Z"
-  maximum_external_spend_usd: 3
-  paid_authority_consumed_and_closed_at: "2026-08-15T09:56:02.932Z"
-  authority_evidence: "evidence/acceptance/VF-9-24U/authority.json"
-  preflight_checked_at: "2026-08-15T09:31:33.996Z"
-  preflight_evidence: "evidence/acceptance/VF-9-24U/preflight.json"
-  canonical_verify: passed
-  installed_chrome: passed_42_of_42
-  web_unit_tests: passed_313_of_313
-  provider_free_validation_checked_at: "2026-08-15T09:39:19Z"
-  starting_pods: 0
-  starting_private_templates: 0
-  starting_endpoints: 0
-  starting_active_workers: 0
-  starting_network_volumes: 2
-  provider_pod_started_at: "2026-08-15T09:42:32.048Z"
-  provider_pod_started_at_source: lastStartedAt
-  pod_start_to_model_ready_ms: 672035
-  worker_manifest_verify_ms: 8763
-  worker_model_load_ms: 3896
-  worker_compile_warmup_ms: 160873
-  worker_model_ready_ms: 173672
-  generation_submit_to_retrieval_ms: 26673
-  worker_inference_ms: 20268
-  worker_encode_and_mux_ms: 894
-  peak_inference_vram_bytes: 9662785536
-  native_output_sha256: "sha256:db70cd410062572052313278f12d67393aba213ca607fa3a3b9e3f6aad948bf1"
-  full_output_sha256: "sha256:da31d87c2389769272733ff50a9114d4507a36aced1ebe48480c9ccf486de241"
-  split_output_sha256: "sha256:f0b02351e38e2e8570e4e586b314da30813bb0a0eb09a567912bba9725b74993"
-  projected_30_minute_video_avatar_gpu_minutes: 32.59766393333333
-  projected_30_minute_video_avatar_gpu_cost_usd: 0.40203785517777774
-  settled_external_spend_usd: null
-  conservative_external_spend_upper_bound_usd: 0.168967
-  final_pods: 0
-  final_private_templates: 0
-  final_endpoints: 0
-  final_active_workers: 0
-  final_network_volumes: 2
-  final_inventory_checked_at: "2026-08-15T09:56:02.932Z"
-  acceptance_evidence: "evidence/acceptance/VF-9-24U/acceptance.json"
-
-vf_9_24t:
-  status: partial_output_awaiting_measurement_retry_authority
-  source_task: VF-9-24S
-  avatar_image_sha256: "sha256:34ca7513d6e34af3fa37d2e05afa8d2f81cab9ff587c2a12d047002abc7c75e3"
-  source_voiceover_sha256: "sha256:4b5c404ea6a042ca5e82ef64f238d7866f2fb770967b953e593abdadcf6c7fc4"
-  selected_audio_sha256: "sha256:7409fb7411829f0e2313d70346d477c86f5255733ea39a8afdc0668be86592c8"
-  selected_audio_duration_seconds: 10
-  selected_audio_source_interval_seconds: [118.6, 128.1]
-  trailing_zero_padding_seconds: 0.5
-  full_renderer_profile: soulx-pro-ranga-full-source-composite-v1
-  full_source_geometry: [2560, 1406]
-  full_source_background_filter: "crop=2500:1406:30:0,scale=1920:1080:flags=lanczos,fps=30"
-  full_native_overlay_filter: "scale=1080:1080:flags=lanczos,fps=30,overlay=420:0"
-  full_native_overlay_horizontal_feather_pixels: 32
-  split_renderer_profile: soulx-pro-ranga-split-composite-v1
-  split_avatar_panel_filter: "crop=448:504:32:4,scale=960:1080:flags=lanczos,fps=30"
-  split_final_composition: "avatar panel x=0..959; narration-relevant image x=960..1919; clean seam; no border or label"
-  crops_review_only: true
-  corrected_crop_evidence: "evidence/acceptance/VF-9-24T/ranga-crop-correction.json"
-  exact_work_plan_avatar_spans: 103
-  exact_work_plan_padded_model_input_seconds: 481.32
-  exact_work_plan_visible_avatar_seconds: 378.82
-  retained_soulx_volume_id_sha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be"
-  retained_soulx_volume_size_gb: 50
-  ongoing_soulx_volume_rate_usd_per_month: 3.5
-  paid_execution_authorized: false
-  paid_execution_authorized_at: "2026-08-15T08:47:34Z"
-  maximum_cumulative_external_spend_usd: 4
-  read_only_preflight_checked_at: "2026-08-15T08:37:40.043Z"
-  read_only_preflight_evidence: "evidence/acceptance/VF-9-24T/preflight.json"
-  selected_gpu_offering_id: "NVIDIA GeForce RTX 4090"
-  selected_gpu_rate_usd_per_hour: 0.74
-  selected_gpu_vram_gb: 24
-  selected_gpu_availability: HIGH
-  conservative_maximum_pod_cost_usd: 0.641334
-  canonical_verify: passed
-  first_attempt_pod_id_sha256: "sha256:0893d968a68baf799da96200da752d9353e60c161a8962a2e8cabf3cbd1c6a07"
-  first_attempt_native_output_sha256: "sha256:ca317d6acd346f62b50e5522a67f849749f8c04d52e65b2c21a1352fb1c8d6f5"
-  first_attempt_native_output_valid: true
-  first_attempt_failure: local_crop_aac_padding_verifier_false_positive_after_pod_deletion
-  first_attempt_exact_lifecycle_timing_persisted: false
-  first_attempt_settled_cost_usd: null
-  first_attempt_conservative_cost_upper_bound_usd: 0.641334
-  first_attempt_final_pods: 0
-  first_attempt_final_private_templates: 0
-  first_attempt_final_endpoints: 0
-  first_attempt_final_active_workers: 0
-  first_attempt_final_network_volumes: 2
-  first_attempt_evidence: "evidence/acceptance/VF-9-24T/first-attempt-partial.json"
-  corrected_controller_persists_runtime_evidence_before_cleanup_and_crops: true
-  revised_paid_authority_required_for_one_measurement_retry: true
-
-vf_9_24s:
-  status: technical_pass_sample_ready_for_user_visual_review
-  activation_commit: "23ce47f0b9425298daac8b40e359ef2f69878d5d"
-  controller_commit: "2e424d45fee38f4b76ac4e36ae0490c9ce5b4c38"
-  runtime_compiler_fix_commit: "4d4f3500619d7599fe3f02792f2c41dcd2ab1b87"
-  source_revision: "Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2"
-  model_revision: "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
-  wav2vec_revision: "facebook/wav2vec2-base-960h@22aad52d435eb6dbaf354bdad9b0da84ce7d6156"
-  selected_runtime_blob_bytes: 6916084703
-  volume_size_gb: 50
-  ongoing_retention_charge_usd_per_month: 3.5
-  selected_gpu_offering_id: "NVIDIA GeForce RTX 4090"
-  selected_gpu_rate_usd_per_hour: 0.74
-  selected_gpu_vram_gb: 24
-  selected_gpu_availability: HIGH
-  maximum_cumulative_external_spend_usd: 4
-  exact_echo_volume_id_sha256_to_delete: "sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f"
-  echo_volume_deleted: true
-  retained_soulx_volume_id_sha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be"
-  mage_volume_id_sha256_to_preserve: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
-  first_published_image_digest: "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:4cc37b7ff8d701791fc10d3e209ac5abd33b27409281773c50e98bb93b09d243"
-  first_publication_run_id: 31871849389
-  corrected_immutable_image_digest: "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b"
-  corrected_publication_run_id: 31872702205
-  manifest_sha256: "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626"
-  first_runtime_attempt_result: failed_closed_missing_c_compiler_during_torchinductor_warmup
-  first_runtime_attempt_cleanup_proven_at: "2026-08-15T07:42:27.069Z"
-  model_volume_mutated_after_seal: false
-  sample_path: "outputs/soulx-flashhead-pro/vf-9-24s/elias-10.12s/soulx-flashhead-pro-elias-10.12s.mp4"
-  sample_sha256: "sha256:32e99fa32282ab87e02d8cf16532cec82ca9757957a30a008c3bef8b9fe656a7"
-  sample_bytes: 3164185
-  sample_frames: 253
-  sample_duration_seconds: 10.12
-  sample_video_duration_seconds: 10.12
-  sample_audio_duration_seconds: 10.12
-  sample_av_duration_delta_seconds: 0
-  manifest_verify_ms: 9578
-  model_load_ms: 3758
-  compile_warmup_ms: 176343
-  model_ready_ms: 189786
-  source_and_base_prepare_ms: 564
-  inference_ms: 22892
-  encode_and_mux_ms: 988
-  upload_poll_retrieval_ms: 31166
-  peak_inference_vram_bytes: 9660950528
-  observed_gpu_vram_bytes: 25261047808
-  successful_pod_elapsed_cost_upper_bound_usd: 0.075645
-  failed_attempt_conservative_usd: 0.2
-  conservative_cumulative_external_spend_usd: 0.275645
-  settled_external_spend_usd_observed: 0
-  settlement_status: provider_billing_rows_pending_as_of_2026_08_15T07_58_33_913Z
-  final_resource_audit_checked_at: "2026-08-15T07:55:09.960Z"
-  final_pods: 0
-  final_private_templates: 0
-  final_endpoints: 0
-  final_active_workers: 0
-  final_network_volumes: 2
-  evidence: "evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json"
-  local_tests: passed
-  canonical_verify: passed
-  canonical_verify_commit: "6698d6bf9e2f402fb0abaf758ad492dec0b1247e"
-  installed_chrome_tests: 42
-  runpod_account_owner: sujal
-  runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
-  read_only_inventory_checked_at: "2026-08-15T06:55:16.869Z"
-  read_only_starting_pods: 0
-  read_only_starting_templates: 0
-  read_only_starting_endpoints: 0
-  read_only_starting_active_workers: 0
-  read_only_starting_volumes: 2
-
-cp07_phase_a:
-  status: corrected_provider_free_awaiting_revised_paid_authority
-  evidence: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/preflight.json"
-  activation_commit: "aff5f0a"
-  implementation_commit: "c89acef78d4a4bbbbac118ca9c658b6180d68fc8"
-  safety_fix_commit: "75c852bb891dbe205ee43d2b73e74765bc336373"
-  source_revision: "antgroup/echomimic_v3@7e89489ca51c0d008fc1963ec6c03fc5bd0b9397"
-  flash_revision: "BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249"
-  upstream_model_id: "EchoMimicV3-Flash"
-  runtime_profile_id: "videoforge_echo_v3_flash_turbo_fp8_v1"
-  runtime_profile_label: "EchoMimicV3-Flash Turbo FP8"
-  upstream_turbo_checkpoint_claimed: false
-  wan_revision: "alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP@fc913c34361f4ec879e2f9c78b4f11ae50a937d1"
-  audio_revision: "TencentGameMate/chinese-wav2vec2-base@3991242c806928916fff4a8c0e4f76acf661b743"
-  selected_runtime_blob_bytes: 23922317735
-  pinned_small_config_max_bytes: 50000000
-  prepared_artifact_max_bytes: 4000000000
-  proposed_volume_size_gb: 50
-  minimum_post_preparation_headroom_bytes: 22027682265
-  proposed_volume_rate_usd_per_gb_month: 0.07
-  proposed_ongoing_retention_charge_usd_per_month: 3.5
-  capacity_growth_policy: "50 GB remains sufficient under current byte bounds. If exact preparation exceeds a bound, stop before mutation, derive the next exact GB size and current recurring rate, and request changed approval; never silently enlarge retained billing."
-  immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:2da621771387ca52a8110d0f94c86dda1d140ec584bea86ddecfda263f5406fe"
-  proposed_revised_immutable_image_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:d51c0a1"
-  proposed_revised_image_target_approved: true
-  fp8_preparation_gpu_fix_commit: "d51c0a1"
-  invalid_volume_replacement_guard_commit: "16cd30a"
-  cumulative_cap_guard_commit: "1310b72"
-  preparation_offline_import_fix_commit: "f6c952a"
-  third_attempt_volume_and_cap_guard_commit: "d23fa10"
-  revised_local_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/revised-local-preflight.json"
-  image_published: true
-  image_digest: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:2da621771387ca52a8110d0f94c86dda1d140ec584bea86ddecfda263f5406fe"
-  local_container_build_executed: false
-  runpod_account_owner: sujal
-  runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
-  runpod_inventory_checked_at: "2026-08-14T23:32:50.044Z"
-  runpod_revised_read_only_evidence: "evidence/acceptance/VF-9-24R/cp07-read-only-preflight/revised-refresh-2026-08-14T183410Z.json"
-  runpod_inventory_evidence_sha256: "sha256:48d469866a3a1fb3c0ca1310d9d30b4d2cc0fb52a8d37c19da4076006d31340c"
-  runpod_pods: 0
-  runpod_endpoints: 0
-  runpod_templates: 0
-  runpod_active_serverless_workers: 0
-  runpod_network_volumes: 2
-  echo_volume_exists: true
-  echo_volume_id_sha256: "sha256:cc4160b3ade65a0d715eb993e0a05c330703013adf10f1e50ff270d6b917440f"
-  echo_volume_state: prepared_sealed_offline_boot_and_samples_qualified
-  gpu_choices:
-    - offering_id: "NVIDIA GeForce RTX 4090"
-      rate_usd_per_hour: 0.74
-      availability: LOW
-      vram_gb: 24
-    - offering_id: "NVIDIA GeForce RTX 5090"
-      rate_usd_per_hour: 0.99
-      availability: LOW
-      vram_gb: 32
-    - offering_id: "NVIDIA RTX PRO 6000 Blackwell Server Edition"
-      rate_usd_per_hour: 2.09
-      availability: LOW
-      vram_gb: 96
-  external_spend_usd: 1.114263966170256
-  external_spend_state: settled_snapshot_plus_last_sample_conservative_bound
-  conservative_reserved_finite_spend_upper_bound_usd: 1.5791250000000001
-  proposed_maximum_additional_pod_cost_usd: 0
-  proposed_maximum_cumulative_finite_estimate_usd: 1.5791250000000001
-  latest_user_supplied_cap_usd: 6
-  proposed_cap_margin_usd: 4.420875
-  provider_mutations: 49
-  local_tests: passed
-  canonical_verify: passed
-  canonical_verify_commit: "17ad36010f52be3725bb49a9ce6414e350363fb5"
-  canonical_verify_checked_at: "2026-08-14T23:29:58Z"
-  installed_chrome_tests: 42
-  paid_execution_authorized: true
-  paid_execution_authorized_at: "2026-08-14T19:07:57Z"
-  paid_execution_cap_usd: 6
-  cap_extension_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/cap-extension-authorization.json"
-  paid_execution_halted: false
-  revised_paid_authority_required: false
-  revised_paid_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/revised-authorization.json"
-  image_publication_attempts: 4
-  last_image_publication_run_id: 31846645317
-  last_image_publication_result: success_public_digest_pinned
-  preparation_attempts: 3
-  last_preparation_result: worker_ready_volume_sealed_local_evidence_path_conflict
-  last_preparation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/preparation-attempt-2-failure.json"
-  third_local_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-local-preflight.json"
-  third_paid_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-authorization.json"
-  proposed_third_image_source_target: "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07:f6c952a6b5979d94f788410b6e4c093cc50ee2b7"
-  selected_gpu_offering_id: "NVIDIA GeForce RTX 5090"
-  selected_gpu_rate_usd_per_hour: 0.99
-  selected_gpu_vram_gb: 32
-  selected_gpu_availability: LOW
-  unattended_authority_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/unattended-authority.json"
-  rtx4090_allocation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4090-allocation-failure.json"
-  rtx5090_allocation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-5090-allocation-failure.json"
-  adaptive_gpu_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/adaptive-gpu-preflight.json"
-  rtx_pro_4500_pre_settle_allocation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4500-allocation-failure.json"
-  rtx_pro_4500_post_settle_allocation_failure_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4500-allocation-failure-after-settle.json"
-  rtx_pro_4500_no_instances_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4500-no-instances.json"
-  rtx_pro_4000_no_instances_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/third-attempt-4000-no-instances.json"
-  preparation_attempt_3_local_evidence_conflict: "evidence/acceptance/VF-9-24R/cp07-paid-execution/preparation-attempt-3-local-evidence-conflict.json"
-  reuse_verified_empty_echo_volume: true
-  volume_attachment_settle_delay_ms: 30000
-  pre_mutation_preflight_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/pre-mutation-preflight.json"
-  approved_gpu_priority:
-    - offering_id: "NVIDIA GeForce RTX 5090"
-      maximum_rate_usd_per_hour: 0.99
-  approved_echo_volume_size_gb: 50
-  approved_echo_volume_retention_usd_per_month: 3.5
-  proposed_revised_operations:
-    - publish_corrected_echo_worker_image_f6c952a
-    - delete_exact_invalid_echo_volume_after_hash_locked_two_volume_audit
-    - create_fresh_echo_volume_50gb_eu_ro_1
-    - create_temporary_private_echo_template
-    - download_verify_and_prepare_exact_pinned_echo_lineage
-    - create_fresh_rtx_4090_preparation_pod_then_delete
-    - create_fresh_rtx_4090_sample_pods_for_owned_2_4_6_second_samples_then_delete_each
-    - delete_temporary_private_echo_template
-    - retain_only_prepared_echo_volume_at_3_50_usd_per_month
-    - verify_zero_compute_and_exact_two_isolated_volumes
-    - settle_or_conservatively_bound_cumulative_finite_cost
-    - propose_but_do_not_activate_echo_full_and_split_crops
-  preparation_result: sealed_manifest_verified_offline_boot_qualified
-  preparation_manifest_verified: true
-  preparation_manifest_sha256: "sha256:c868241d1c6ebee2645c41161d00e046839eaaafa7b994c340d8d010202098c8"
-  sample_pods_started: 3
-  sample_outputs: 3
-  final_qualification_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json"
-  final_cleanup_checked_at: "2026-08-14T23:32:50.044Z"
-  final_cleanup_evidence: "evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json"
-  final_runpod_pods: 0
-  final_runpod_templates: 0
-  final_runpod_endpoints: 0
-  final_runpod_active_serverless_workers: 0
-  final_runpod_network_volumes: 2
-  echo_crop_activated: true
-  echo_crop_review_status: user_accepted_good_enough_2026_08_15
-  echo_renderer_source_profile: "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1"
-  crop_acceptance_evidence: "evidence/acceptance/VF-9-24R/cp07-crop-lock/acceptance.json"
-  proposed_full_crop: "992:558:16:0 -> 1920x1080"
-  proposed_split_crop: "496:558:280:0 -> 960x1080"
-  current_rules_round_2_evidence: "evidence/acceptance/VF-9-24R/cp07-current-rules-round-2/acceptance.json"
-  current_rules_round_2_sentence: "The leaves are what the plant put up this season to catch sun."
-  current_rules_round_2_output_sha256: "sha256:2b4d2ecbf850d3654481a8a0e59738ae1cb4968b3c8c61c7d8721331e06974e4"
-  current_rules_round_2_model_ready_ms: 282597
-  current_rules_round_2_inference_ms: 409768
-  current_rules_round_2_conservative_cost_upper_bound_usd: 0.209275
-  current_rules_round_2_settlement_status: pending_provider_billing_lag
-  latest_cleanup_checked_at: "2026-08-15T04:15:08.080Z"
-  latest_runpod_pods: 0
-  latest_runpod_templates: 0
-  latest_runpod_endpoints: 0
-  latest_runpod_active_serverless_workers: 0
-  latest_runpod_network_volumes: 2
-  measured_echo_only_30m_projection_usd: [12.1, 16.85]
-  measured_echo_only_30m_projection_hours: [12.2, 17.0]
-  legacy_1_to_2_usd_whole_video_target_status: invalidated_by_cp07_measurement
-
-cp06_phase_a:
-  status: complete_phase_b_authorized
-  evidence: "evidence/acceptance/VF-9-24Q/cp06-read-only-preflight/preflight.json"
-  imageforge_source_commit: "1a6204e7b9387a4d26b5fbbb176506d670949fba"
-  model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
-  comfyui_revision: "26d7f8556822d9d08c2d3e1878636ac3b4969af9"
-  exact_model_bytes: 13379919280
-  proposed_volume_size_gb: 20
-  proposed_volume_minimum_headroom_bytes: 6620080720
-  proposed_volume_rate_usd_per_gb_month: 0.07
-  proposed_ongoing_retention_charge_usd_per_month: 1.4
-  runpod_account_owner: sujal
-  runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
-  runpod_account_identity_verified: true
-  runpod_inventory_checked_at: "2026-08-14T08:02:43.977Z"
-  runpod_pods: 0
-  runpod_endpoints: 0
-  runpod_templates: 0
-  runpod_network_volumes: 0
-  gpu_choices:
-    - offering_id: "NVIDIA RTX PRO 4500 Blackwell"
-      rate_usd_per_hour: 0.72
-      availability: HIGH
-    - offering_id: "NVIDIA GeForce RTX 4090"
-      rate_usd_per_hour: 0.74
-      availability: HIGH
-  local_tests: passed
-  local_container_build: waived_by_user_use_github_standard_hosted_runner
-  hosted_container_build: passed_public_ubuntu_24_04_x64_publish_false
-  hosted_build_commit: "912427b5bd8a7afb4f68233072990d3c39e64cc6"
-  hosted_build_run_id: 31781650276
-  hosted_build_url: "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/31781650276"
-  hosted_build_wall_seconds: 154
-  hosted_build_publication: skipped
-  canonical_ci_run_id: 31781645263
-  canonical_ci_url: "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/31781645263"
-  canonical_ci: passed_all_five_lanes_and_required_aggregate
-  installed_chrome: 42_passed_desktop_and_compact
-  github_repository_visibility: public
-  larger_paid_runner_authorized: false
-  hosted_artifact_or_cache_retention: false
-  phase_b_authorization_request_ready: true
-  external_spend_usd: 0
-  provider_resources_created: 0
-  paid_compute_shutdown: no_paid_compute_started_colima_stopped_original_8gib_config_restored
-
-cp06_phase_b:
-  status: complete_passed_settled_visual_accepted
-  controller_commit: "1c257497055ad42b78d3020a2113f8ea0cf876c8"
-  safety_fix_commit: "6664d26f7594fe5ba6fd3896ff5f26075764d93f"
-  cleanup_invariant_fix_commit: "58512071586855b96d64e812f9c443d3db51b1dd"
-  consumed_authority_latch_commit: "3b2575d72e307545564f51d374070ffa4e20bad7"
-  runtime_source_commit: "563ba1ab7b083c1457ab4a9504d82bd6f9d886b9"
-  worker_image_digest: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
-  worker_image_publish_run_id: 31796627338
-  controller_validation: passed_60_focused_typescript_16_mage_python_web_typecheck_canonical_28_tasks_worker_suites_context_schema_secret_scan_and_42_installed_chrome
-  evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
-  settlement_reaudit_evidence: "evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json"
-  authorized_by_user_at: "2026-08-14T08:19:32Z"
-  user_authorization_text: "I authorize the complete CP-06 Phase B scope above on Sujal RunPod using RTX 4090 at no more than $0.74/hour, retaining the 20 GiB volume at $1.40/month, with a $3 cumulative handoff cap."
-  additional_user_volume_note: "you can even use 50gb network voume if that makes more sense"
-  final_user_storage_decision_at: "2026-08-14T08:27:44Z"
-  final_user_storage_decision_text: "i want you to choose the correct storage now only, again if the storage is not enough, we've to buy new network volume and load the model again. so, i don't have any constraint on volume, i'm happy to pay for network volume if it's required"
-  final_user_50gb_confirmation_text: "yea, go with 50GB that's much better"
-  resolved_volume_choice_gb: 50
-  resolved_volume_choice_basis: "The exact 13,379,919,280 model bytes leave at least 36,620,080,720 bytes (34.11 GiB) for download staging and operational headroom; the user explicitly confirmed 50 GB to avoid a replacement volume and repeat model load."
-  runpod_account_owner: sujal
-  runpod_account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
-  gpu_offering_id: "NVIDIA GeForce RTX 4090"
-  gpu_rate_ceiling_usd_per_hour: 0.74
-  volume_size_gb: 50
-  volume_rate_usd_per_gb_month: 0.07
-  ongoing_retention_charge_usd_per_month: 3.5
-  maximum_cumulative_external_spend_usd: 3.0
-  model_manifest_sha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b"
-  retained_volume_id_sha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
-  output_count: 8
-  output_dimensions: 1280x720
-  final_positive_pod_count: 2
-  final_positive_pods_distinct: true
-  conservative_accounted_spend_usd: 1.110002
-  settled_external_spend_usd: 0.34927155333571136
-  billing_status: stable_15_of_15_exact_pods_16_records
-  handoff_cost_status: passed_settled_under_3_usd_cap
-  billing_time_ms: 1682267
-  billing_stable_observations_per_pod: 2
-  billing_reaudit_checked_at: "2026-08-14T14:24:11.956Z"
-  partial_billing_amount_usd: 0.11843864619731903
-  provider_mutations_started: true
-  provider_resources_created_during_checkpoint: true
-  final_inventory_checked_at: "2026-08-14T14:24:10.715Z"
-  final_runpod_pods: 0
-  final_runpod_endpoints: 0
-  final_runpod_templates: 0
-  final_active_serverless_workers: 0
-  final_network_volumes: 1
-  retained_resources: exact_one_50gb_mage_network_volume
-  paid_compute_shutdown: all_pods_templates_endpoints_workers_absent
-  visual_quality: approved_by_user
-  visual_quality_approved_at: "2026-08-14T14:20:07Z"
-  visual_quality_user_text: "yeah the quality of the images is good"
-
-cp01_completion:
-  status: complete_provider_free_reaudited_after_persisted_authority_fix
-  implementation_commit: "9ee3267fb0c1ccf0a275a723d0ccf6dee4ad57b7"
-  audit_fix_commit: "0e90f3b637949711aecda6acc5b9e0bd51ae3202"
-  dispatch_authority_fix_commit: "522ed6112d39e0bcbd03955ad753b79cef2fdb6d"
-  evidence: "evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-after-authority-fix.json"
-  canonical_verify: passed_at_dispatch_authority_fix_commit
-  provider_calls: 0
-  provider_resources_created: 0
-  external_spend_usd: 0
-  live_provider_inventory_refreshed: false
-  paid_compute_shutdown: no_paid_compute_started
-  local_server: stopped_no_4173_or_8787_listener
-
-cp02_completion:
-  status: complete_provider_free_reaudited_after_fixes
-  implementation_commit: "91ed5470f2d93e3cac577c70b7396c03bb42f870"
-  audit_fix_commit: "5747e7b4e9c1d41564663afb1c0c0ad7272efe5b"
-  evidence: "evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json"
-  focused_control_plane: 16_passed
-  control_plane_full: 223_passed
-  web_unit: 225_passed
-  installed_chrome: 40_passed_desktop_and_compact
-  canonical_verify: passed_ci_turbo_force
-  provider_calls: 0
-  provider_resources_created: 0
-  external_spend_usd: 0
-  live_provider_inventory_refreshed: false
-  paid_compute_shutdown: no_paid_compute_started
-  local_server: stopped_no_4173_or_4174_listener
-
-cp03_completion:
-  status: complete_provider_free_reaudited_after_fixes
-  activation_commit: "e2541b4ccf69d74c818b020b500e5f7b318b400b"
-  implementation_commit: "4ac1df8872db50820ad3b95979572c907bf1631f"
-  audit_fix_commit: "a6a924856a58c233eadd8af402fbf78c6c821b97"
-  evidence: "evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json"
-  promoted_worker: workers/image-media/src/videoforge_image_media/jobs/transcribe
-  media_cpu_entrypoint: workers/media-local
-  long_fixture_duration_ms: 1800000
-  long_fixture_words: 3309
-  long_fixture_phrases: 615
-  long_fixture_chunks: 4
-  restart_recovered_chunks: 4
-  focused_transcript_worker: 31_passed
-  focused_media_local: 10_passed
-  focused_durable_control_plane: 8_passed
-  canonical_verify: passed_ci_turbo_force
-  control_plane_full: 223_passed
-  web_unit: 221_passed
-  installed_chrome: 40_passed_desktop_and_compact
-  local_linux_actual_media: passed_linux_arm64_network_none
-  local_linux_image_id: "sha256:0919e0bc421ae8684c2c3274dc6a298873f3ee710d0c1b3d0e2aaf1b812ef5c7"
-  mac_linux_transcript_and_semantic_receipt_parity: passed_short_noisy_long
-  active_runtime_firewall: passed_57_files_echo_only_no_auto_repair_fallback_or_serverless_import
-  provider_calls: 0
-  provider_resources_created: 0
-  external_spend_usd: 0
-  model_downloaded_or_changed: false
-  live_provider_inventory_refreshed: false
-  hosted_production_proven: false_waits_for_cp08
-  paid_compute_shutdown: no_paid_compute_started_colima_stopped
-  local_server: stopped_no_4173_listener
-
-cp04_completion:
-  status: complete_provider_free_reaudited_after_fixes
-  activation_commit: "8d0e49e"
-  implementation_commit: "ca9b816f1bd196654e03633264560050729b020a"
-  audit_fix_commit: "e857cfa1d8bce6ecfdd51f600378790aeedd28f2"
-  local_render_profile_fix_commit: "cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690"
-  evidence: "evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/reaudit-after-fixes.json"
-  scheduler_version: scheduler-v2
-  long_fixture_duration_ms: 1800000
-  long_fixture_total_frames: 54000
-  long_fixture_segments: 394
-  long_fixture_avatar_coverage_percent: 21.05
-  long_fixture_full_split_difference_frames: 81
-  long_fixture_selected_span_wavs: 103
-  long_fixture_image_slots: 342
-  long_fixture_prompt_batches: 7
-  long_fixture_shot_roles: 6
-  missing_or_duplicate_work: 0
-  full_voiceover_dispatched_to_echo: false
-  focused_pipeline: 119_passed
-  focused_contracts_typescript: 71_passed
-  focused_contracts_python: 55_passed
-  focused_durable_timeline: 4_passed
-  focused_web: 91_passed
-  installed_local_chrome: 1_passed_real_audio_render_approve_download_playback
-  installed_fixture_chrome: 40_passed_desktop_and_compact
-  canonical_verify: passed_ci_turbo_force
-  control_plane_full: 223_passed
-  web_unit: 222_passed
-  active_runtime_firewall: passed_57_files_echo_only_no_auto_repair_fallback_or_serverless_import
-  adversarial_scheduler_binding: passed_wrong_config_hash_word_cut_and_duplicate_work_rejected
-  active_local_avatar_profile: local_fixture_only_no_avatarforcing_identity
-  provider_calls: 0
-  provider_resources_created: 0
-  external_spend_usd: 0
-  credentials_accessed: false
-  model_downloaded_or_changed: false
-  gpu_used: false
-  cloud_mutations: 0
-  live_provider_inventory_refreshed: false
-  hosted_production_proven: false_waits_for_cp08
-  paid_compute_shutdown: no_paid_compute_started
-  local_server: stopped_no_4173_or_4174_listener
-
-cp05_completion:
-  status: complete_provider_free_fixture_mvp_and_legacy_cutover_reaudited
-  activation_commit: "6c841b8c5ed4c7e11cdf786a0f43faf90e1914bc"
-  implementation_commit: "426156b0c30a469fb2eb786de8adb4566b8d8b22"
-  workerd_boundary_fix_commit: "55ee5caf5b742ab54f9e59198b1ab9be1a327e12"
-  chrome_download_proof_commit: "8bfd0529e9cac4773d1f0b67629cc10f97aed313"
-  audit_fix_commit: "0db21f80361f7c115a4100e3ab1df0a7372f2ce8"
-  foundation_runtime_fix_commit: "e7337aaf71275dec081663b222eb8cde42936989"
-  read_serialization_fix_commit: "68e4f03c664c1146946ee440a1fdb15e5fb209d0"
-  audit_harness_commit: "58395225d9f2e11ac556e6b67f186b1fb5502336"
-  reaudit_record_commit: "d2285117c17a3f6dd37b84e9dd441fd6fe7aa1d0"
-  evidence: "evidence/acceptance/VF-9-24P/cp05-complete-fixture-mvp/reaudit-after-fixes.json"
-  projects_queued: 4
-  waiting_projects_removed: 1
-  projects_completed: 3
-  active_video_limit: 1
-  crash_restart_recovery_count: 1
-  stale_wrong_pod_gpu_volume_callbacks_rejected: true
-  final_lane_state: both_absence_verified_before_close_and_unlock
-  waiter_policy: existing_warm_allowed_no_work_no_absent_recreation_before_activation
-  final_mp4_count: 3
-  distinct_final_mp4_hashes: 3
-  final_mp4_sha256:
-    - "sha256:f0e8a81f0676debad6ac16e79111142b6a91f7cc715a499af466a0cd8eeeefce"
-    - "sha256:9515ca9b00c78a2506b515f25e49b0e323bc76d1cf3e16bcf376a92a6fd2459d"
-    - "sha256:fa81022d8f9f3fdd98ba237c417c8a22df8f09f6cc22db6f9eb4dd4b80a32786"
-  final_mp4_probe: direct_ffmpeg_h264_aac_1920x1080_30fps_40000ms_each
-  final_mp4_renderer: DIRECT_FFMPEG
-  cp03_contract_validation_and_cp04_compiler_parity: passed_before_node_persistence
-  absent_lane_gpu_revalidation: fresh_exact_receipt_required_before_recreation
-  failed_queue_mutation_rollback: passed_no_split_brain
-  orchestration_reads: serialized_behind_async_commit
-  simulated_cost_micro_usd_per_project: 880000
-  actual_external_spend_usd: 0
-  focused_orchestration: 3_passed
-  web_unit: 228_passed
-  control_plane_full: 226_passed
-  pipeline_full: 120_passed
-  workerd_runtime: 1_passed
-  installed_chrome: 42_passed_desktop_and_compact
-  canonical_verify: passed_ci_turbo_force_at_5839522
-  active_runtime_firewall: passed_62_files_vnext_only_no_legacy_dispatch
-  provider_calls: 0
-  provider_resources_created: 0
-  credentials_accessed: false
-  model_downloaded_or_changed: false
-  image_publications: 0
-  gpu_used: false
-  cloud_mutations: 0
-  live_provider_inventory_refreshed: false
-  hosted_production_proven: false_waits_for_cp08
-  paid_compute_shutdown: no_paid_compute_started
-  local_server: stopped_no_4173_or_4174_listener
-
-approved_mvp_architecture:
-  app_scope: one_global_shared_equal_rights
-  admitted_users: 5_to_10
-  signup: unique_single_use_email_bound_invite_with_verified_email
-  queue: one_global_manually_ordered_waiting_queue
-  active_projects: 1
-  waiting_execution: orchestration_inert_until_promotion
-  gpu_selection: idle_only_independent_live_exact_offering_per_lane
-  session_pair: immutable_until_full_drain
-  region: EU-RO-1
-  volume_capacity_status: mage_50gb_prepared_and_verified_echo_not_created
-  lanes:
-    mage_image:
-      model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6"
-      precision: int8-convrot
-      volume: retained_50gb_eu_ro_1_manifest_verified
-      pod: absent_after_two_fresh_pod_qualification
-    echo_avatar:
-      model: EchoMimicV3-Flash-Turbo-FP8
-      precision: fp8_prepared_from_pinned_first_party_lineage
-      volume: separate_persistent_not_created
-      pod: session_scoped_disposable_not_created
-  lane_retention: waiter_may_keep_existing_pod_warm_never_recreate
-  lane_recreation: next_project_activation_same_gpu_after_revalidation
-  media_cpu: cloud_run_jobs_whisper_cpp_and_ffmpeg_r2_mac_dev_parity
-  cleanup: cp06_zero_compute_proven_retain_mage_volume_echo_volume_future_separate_authority
-  cost: representative_30_minute_variable_target_1_usd_hard_ceiling_2_usd_fixed_volumes_separate
-
-blocking_gates_for_production:
-  - GATE_AVATAR_001
-  - GATE_AVATAR_005
-  - GATE_IMAGE_001
-  - GATE_STYLE_002
-  - GATE_GPU_001
-  - GATE_RUNPOD_001
-  - GATE_COST_001
-
-progress_snapshot:
-  estimate_kind: checkpoint_truth_no_percent_claim
-  completed_checkpoint: CP-07_exact_echo_runtime_and_renderer_crop_lock
-  active_checkpoint: CP-07_replacement_sample_visual_review
-  next_boundary: user_visual_review_then_separate_crop_or_cp08_activation
-  full_production_mvp_implemented_percent: null
-  production_end_to_end_proven: false
-
-activation_handoff:
-  status: soulx_pro_sample_ready_for_user_visual_review
-  exact_resume:
-    - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
-    - "Load soulx_flashhead_pro_replacement_qualification and tasks/VF-9-24S.md."
-    - "Preserve CP-06 runtime digest, accepted visual evidence, settled cost, zero compute, and the retained 50 GB Mage volume."
-    - "Preserve historical CP-07 Echo evidence, but do not dispatch Echo; its exact operational volume was deleted."
-    - "Preserve the corrected SoulX immutable digest, sealed 50 GB SoulX volume, exact 10.12-second sample, conservative cost, and zero-compute/two-volume audit."
-    - "Await user visual review before any SoulX production profile or renderer crop becomes active."
-  stop_conditions:
-    - "Any further provider read, mutation, publication, model download, GPU allocation, or finite spend under the consumed VF-9-24S authority."
-    - "Any fallback, repair, substitute model, unsafe pickle, Mage cross-mount, Echo reactivation, or premature SoulX crop activation."
+verification:
+  state: passed
+  completed_for_v2_00:
+    - "CI=1 TURBO_FORCE=true pnpm verify"
+    - "pnpm context:validate"
+    - "pnpm format:check"
+    - "pnpm secret:scan"
+    - "git diff --check"
+    - "focused V2 prompt, selector, gate, contradiction, and duplicate-YAML-key assertions"
+  provider_or_spend_used_for_v2_00: false
+  remote_mutation_used_for_v2_00: false
+  paid_compute_started_for_v2_00: false

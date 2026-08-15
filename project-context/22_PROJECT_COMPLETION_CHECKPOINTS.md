@@ -1,504 +1,548 @@
-# VideoForge completion checkpoints
+# VideoForge v2 production checkpoints
 
-Status: authoritative completion roadmap; `CP-00` through `CP-06` complete; `CP-07` provider-free
-work is active and external mutation/paid execution is unauthorized
-Read when: choosing the next implementation chat, checking project truth, or auditing completion.
+Status: authoritative replacement roadmap from the exact 2026-08-15 repository state
 
-## MVP destination
+The former `CP-00` through `CP-12` roadmap is retired as active planning. Its completed commits,
+task briefs, paid-provider evidence, hashes, costs, and audit files remain immutable history; they
+are not instructions for new work. New implementation proceeds only through `V2-00`–`V2-13`.
 
-VideoForge becomes one shared, invite-only application for 5–10 people. All admitted users see and
-can operate the same projects, queue, Avatar Hub, Image Styles, GPU session, and results. The first
-user who starts work while the system is truly idle selects one exact live Mage GPU and one exact
-live Echo GPU. That pair remains locked for the global generation session. While a video is active
-or another project is queued, every user sees **Add to queue** instead of GPU selectors. Any admitted
-user may reorder or remove waiting entries.
+## Production destination
 
-Only one video is active at a time in MVP. Its Mage and Echo lanes still run concurrently. A waiting
-project may keep an already-running lane Pod model-ready, so the next project avoids another boot,
-but cannot recreate a missing Pod or start work. If no project is waiting, the lane Pod is deleted
-as soon as its active-video work is durable—even while the other lane is still working. After the
-active video and entire queue drain, both Pods must be proven absent. The separate Mage and Echo
-model volumes remain.
+VideoForge is a private, production-hosted video factory for 5–10 invited people. In V2, one login
+maps to one account and one default workspace; team/shared-workspace membership is deferred. Up to
+two different accounts may produce one video each concurrently. A second project from the same
+account waits in a durable fair queue. Users see only their own projects, presets, source media,
+jobs, costs, and outputs; globally supplied built-in presets remain readable by all admitted users.
 
-Production word transcription and final FFmpeg render run in a scale-to-zero Cloud Run Job. The
-same container logic runs locally on the Mac for development; the production app never depends on
-the user's Mac being online.
+Ordinary production has no manual GPU or Pod controls. It uses two independent queue-based RunPod
+Serverless endpoints in `EU-RO-1`:
 
-The fully automatic input/output boundary is:
+| Lane | Exact retained model | Endpoint target |
+|---|---|---|
+| Images | Mage-Flow INT8 ConvRot on its existing sealed 50 GB Mage-only volume | Flex workers `0–2`, one NVIDIA GeForce RTX 4090 per worker |
+| Avatar | SoulX-FlashHead Pro BF16 on its existing sealed 50 GB SoulX-only volume | Flex workers `0–2`, one NVIDIA GeForce RTX 4090 per worker |
 
-```text
-voiceover + ready Avatar Profile + published Image Style + title/settings
-    → word transcript
-    → deterministic three-composition timeline
-    → Mage stills + Echo short avatar spans
-    → direct FFmpeg assembly
-    → downloadable 1920×1080 H.264/AAC MP4 ready for user review
-```
+The application controls fair admission and dispatch; RunPod controls worker creation and
+scale-down. Each lane starts with one resumable complete-batch attempt for a video. A bounded
+classified replacement may use a new attempt/token only after the prior attempt is terminal or
+uniquely reconciled, and carries every unresolved item as one batch; accepted items are not
+regenerated and the controller does not create parallel per-scene provider jobs.
+The two model volumes are runtime-read-only application data, mount only at `/runpod-volume`, never
+cross-mount, and never hold mutable user media. Inputs and outputs use tenant-isolated private object
+storage; each worker uses job-keyed local scratch and erases it on every terminal path.
 
-No Premiere work, manual timeline alignment, captions, titles, overlays, motion graphics, borders,
-watermarks, decorative transitions, repair model, fallback avatar model, or silent GPU substitution
-is part of MVP.
+The output remains deterministic: full avatar, full image, or avatar-left/image-right split; hard
+cuts only; subtle centered image zoom; no captions, titles, overlays, borders, motion graphics, or
+decorative transitions. The current `$1.00` representative 30-minute variable-cost target and
+`$2.00` hard ceiling remain. The two retained-volume charges are fixed infrastructure reported
+separately.
 
-## Exact project state at CP-00
+As of this reset, RunPod's public Flex planning rates are approximately `$1.10/hour` for RTX 4090
+and `$1.58/hour` for RTX 5090; Serverless bills worker initialization, execution, and idle seconds.
+Two 50 GB network volumes are `$7/month` combined at `$0.07/GB/month`, even with zero workers.
+Rates and inventory must be refreshed read-only before every paid activation. With both lanes at
+max `2`, the all-4090 instantaneous ceiling is four workers or about `$4.40/hour`; a future fully
+qualified all-5090 configuration would be about `$6.32/hour`, not a mixed-fallback `$5.36/hour`.
+
+## Exact current state
 
 ### Done and reusable
 
-- Accepted compact UI shell, project/progress/review surfaces, Avatar Hub, Image Styles Hub, and
-  provider-free real-Chrome journeys.
-- Real local `whisper.cpp base.en` word timings, canonical word/phrase records, selected-span audio
-  slicing, and long-form timing foundations.
-- Deterministic scheduler foundations for `IMAGE_FULL`, `AVATAR_FULL`, and
-  `AVATAR_SPLIT_IMAGE`; 2–6-second normal avatar spans, seven-second opener maximum, and 21–22%
-  avatar target.
-- Direct FFmpeg walking slice with hard cuts, accepted slow still-image zoom, H.264/AAC output,
-  probing, checksum, and local playback/download evidence.
-- Additive PostgreSQL migrations/repository contracts, PGlite contract tests, attempts, claims,
-  outbox, cost, cancellation, and recovery foundations.
-- Runware DeepSeek prompt generation and Gemini one-time Image Style analysis qualifications.
-- Immutable Avatar Profile/Image Style versioning, prompt/style provenance, accepted-asset barriers,
-  render manifests, and result-lineage foundations.
-- Echo first-party source/weight/base/audio lineage preflight and historical FP8 experiments.
-- Two complete Ranga references already measured. The 2026-08-13 every-fifth-native-frame recheck
-  classified 15,685 samples and corroborated the existing cadence; it did not change scheduler
-  bounds.
-- Context now locks exact Mage INT8 ConvRot, Echo FP8 short-span generation, two isolated retained
-  volumes, and API-created Pods.
+- **UI foundation:** the compact application shell, Avatar Hub, Image Styles Hub, Create Project,
+  queue/progress/review/download surfaces, responsive layouts, and installed-Chrome fixture journeys
+  are implemented and green. Preserve the visual system; change tenancy truth and live statuses,
+  not the product's design language.
+- **Database foundation:** additive PostgreSQL migrations, repository contracts, recovery ledgers,
+  deterministic timing, immutable revisions, preset pinning, and PGlite network-free tests exist.
+- **Invite foundation:** provider-free unique email-bound invite redemption, verified identity
+  binding, race rejection, and admission tests exist. Production Better Auth/Neon deployment does
+  not.
+- **Word transcript:** pinned `whisper.cpp 1.8.4 base.en`, exact media normalization, 30-minute
+  chunk/reconciliation, word timestamps, durable receipts, replay, restart recovery, and the shared
+  local/container entrypoint are implemented.
+- **Ranga scheduler:** `scheduler-v2` already produces the three exact compositions, word-boundary
+  spans, deterministic variation, 21–22% avatar coverage, near-even full/split duration, selected
+  span audio, prompt batches, generation manifests, and render manifests. The 30-minute fixture is
+  close to the references: 21.05% avatar, 3.433 appearances/minute, 3.679-second mean avatar span,
+  and a 2.7-second full/split difference. Do not rebuild it.
+- **Prompt/style path:** qualified Runware DeepSeek prompt writing, qualified one-time Gemini style
+  analysis, deterministic prompt compilation, immutable Image Style versions, and the built-in
+  `documentary_stock_v1` profile exist.
+- **Mage model lane:** exact Mage-Flow INT8 ConvRot bytes are sealed on the retained 50 GB
+  `EU-RO-1` Mage volume. The immutable worker image and RTX 4090 Pod runtime were qualified with
+  eight owned 1280×720 images, offline manifest verification, real warm-up, timings, hashes, cost,
+  and zero-compute cleanup.
+- **SoulX model lane:** exact SoulX-FlashHead Pro BF16 bytes are sealed on the separate retained
+  50 GB `EU-RO-1` SoulX volume. The immutable worker image and RTX 4090 Pod runtime were technically
+  qualified offline with native/full/split owned samples, timings, hashes, cost, and zero-compute
+  cleanup. Production Avatar Profile visual/crop acceptance and first-party commercial-use terms
+  evidence remain open gates.
+- **Renderer:** deterministic direct FFmpeg/FFprobe assembly, exact duration/frame contracts,
+  hard-cut grammar, image zoom, Chrome-compatible MP4, download, and local parity exist.
+- **Fixture orchestration:** complete provider-free single-session orchestration, recovery,
+  cancellation, durable barriers, cost accounting, playback, and negative dispatch tests exist.
+- **Resource truth at this reset:** zero Pods, endpoints, templates, and active workers were last
+  independently proven; exactly the two intended 50 GB model volumes remain. Refresh before any
+  provider activation.
 
-### Not done
+### Incomplete or unproven
 
-- No vNext machine contracts for the global generation session, immutable session GPU pair,
-  retained volumes, Pod attempts/readiness/deletion, queue revision, or lane demand.
-- No production signup/login. Existing auth is a plan/fixture, not email/password + Google +
-  one-time invite admission.
-- No durable global queue allowing all admitted users to add, reorder, and remove waiting projects.
-- No live GPU inventory/selector or Pod controller in the application.
-- No exact VideoForge Mage INT8 worker image, prepared Mage volume, or accepted real Mage sample.
-- No exact prepared Echo FP8 worker image, prepared Echo volume, native accepted Echo MP4, or
-  user-approved Echo crop profile.
-- No production Neon, private R2, Cloudflare Workflow, Better Auth, Cloud Run Job, or deployment
-  composition.
-- No real automatic end-to-end MP4 through the selected models and persistent volumes.
-- No 5–10-user queue/load/recovery proof, measured 30-minute unit economics, or production release.
+- Tenant ownership is not the active architecture. Current global catalogs and equal-rights access
+  must become account/workspace-private with database-enforced authorization.
+- The active queue is one global session with one video. It does not implement one active video per
+  account, two global active slots, or fair rotation between accounts.
+- Current dispatch authority binds a Pod before work. Serverless requires pre-dispatch endpoint
+  authority, a persisted post-assignment binding to the exact provider job ID, and a separate
+  VideoForge-signed provenance receipt for observed runtime/output facts; RunPod does not provide a
+  documented hardware-attestation guarantee.
+- Mage and SoulX images are Pod/API services, not production Serverless queue handlers. Mage still
+  has active `/workspace` assumptions; both need exact `/runpod-volume` compatibility and job-local
+  scratch/output behavior.
+- No immutable Mage or SoulX Serverless image/endpoint is published or qualified. RTX 5090 is not an
+  allowed fallback until each exact runtime passes separate compatibility and economics evidence.
+- Production Cloudflare hosting, Better Auth integration, Neon persistence, private R2, signed URLs,
+  Cloud Run ASR/render Jobs, secrets, callbacks, and observability are not deployed end to end.
+- No automatic real video has completed through the hosted multi-tenant system.
+- No two-user live Serverless concurrency, fair queue, worker death, duplicate delivery, timeout,
+  response-loss, cancellation, or zero-worker-after-drain proof exists.
+- The full Mage quality/style suite, SoulX Avatar Profile suite, production-length Ranga review, and
+  representative all-in cost/SLO sample are still open.
+- Production security, backup/restore, incident response, alerts, quotas, release rollback, and
+  operator runbooks are incomplete.
 
-The last recorded read-only RunPod inventory in `CURRENT_STATE.yaml` was zero Pods and zero volumes
-at `2026-08-13T06:09:06.660Z`. CP-00 did not refresh credentials or provider state and makes no
-claim newer than that timestamp.
+### Active architecture that must be superseded or quarantined
 
-### Active code that must be replaced or quarantined
+- `generation_sessions.singleton_key='GLOBAL'`, one-active global queue constraints, inherited GPU
+  pairs, session GPU selectors/revalidations, lane warm-retention demand, and manual queue reorder by
+  unrelated users.
+- `pod_lifecycle_attempts`, Pod create/delete events, exact Pod-bound job envelopes, manual Pod
+  controller routes, and UI Start/Stop/GPU-selection semantics in ordinary production.
+- Global user-created Avatar/Image Style/project/result catalogs and query paths that treat creator
+  identity as audit-only metadata.
+- Active lane/model names that still say `echo_avatar` or Echo when the runtime is SoulX.
+- Mage `/workspace` volume paths and any mutable model-volume scratch/cache writes.
+- Historical Serverless endpoints, Auto GPU routing, EchoMimic, AvatarForcing, MuseTalk, SkyReels,
+  repair/fallback routes, and old images. Keep them replay-only; do not reinterpret their bytes or
+  authority.
 
-Do not delete these first; add vNext replacements, cut active dispatch over, prove replay/tests, then
-move legacy-only code behind an explicit historical boundary.
+Add new migrations/contracts and prove cutover. Never rewrite old migrations or delete historical
+evidence merely to make the new architecture look clean.
 
-- `apps/web/src/server/providers/runpod-control.ts`: Serverless `/run`, endpoints,
-  `workersMin`/`workersMax`, FlashBoot, and routine volume create/delete semantics.
-- `packages/config/profiles/*.json` and project UI/types: static `Auto`/priority GPU profiles and old
-  repair/quality roles.
-- `workers/image-media/**`: old Mage BF16 revision/runtime, Serverless handler, boot-time
-  acquisition/repair, and mixed GPU/CPU responsibilities.
-- `workers/avatar-primary/**`: first-request quantization, model acquisition/bootstrap after `/run`,
-  and non-authoritative Pod readiness.
-- `workers/avatar-repair/**`, `workers/avatar-quality/**`, and active AvatarForcing/MuseTalk/SkyReels
-  routes/contracts/UI: historical replay only.
-- Renderer profile tables pinned to historical AvatarForcing/SkyReels geometry. Echo geometry stays
-  unset until CP-07 produces a native clip and the user approves the measured crop.
-- Process-local fixture sessions, single-local-project assumptions, and global FIFO without a
-  durable singleton session/optimistic queue revision.
+## Locked Ranga similarity contract
 
-Never rewrite old migrations, v1 fixture bytes, paid-attempt evidence, or historical task briefs.
+Two complete pinned references establish the edit target:
 
-## Locked simple global-session rules
+- 21.63–21.76% total avatar time.
+- Approximately equal full and split avatar time.
+- 3.742–3.745-second mean avatar appearance; normal range 2–6 seconds.
+- About 3.47 avatar appearances/minute and 10–13-second median non-avatar gaps.
+- Full avatar at frame zero; first literal full evidence around 3–6 seconds; first split by 18
+  seconds.
+- Nearly strict full/split alternation, clean 50/50 seam, speaker left, physical evidence right.
+- Mean visual-change interval target 4.0–4.8 seconds.
+- Literal evidence progression: environment, person/action, hands, object, macro detail, result.
+- Hard cuts; no border, captions, branding, graphic callouts, title cards, or decorative effects.
 
-1. Exactly one non-closed generation session exists globally.
-2. `can_select_gpu_pair` is server truth and becomes true only when the queue is empty, no project
-   is active, both Pods are absent, and no create/delete outcome is unresolved.
-3. The first atomically accepted Generate while idle binds both fresh inventory receipts, exact GPU
-   offerings, rate ceilings, exact lane volumes/manifests, and the first project.
-4. Concurrent idle starts have one winner. Every loser sees the newly active session and may enqueue.
-5. While the session is open, GPU selectors are locked for everyone. New projects inherit the exact
-   pair; the app never silently switches GPU, rate, model, volume, region, or precision.
-6. One project is active at a time. Waiting order is global and manually adjustable by any admitted
-   user. Only `WAITING` entries may move or be removed; every mutation records actor and old/new
-   order and uses an optimistic queue version.
-7. Mage and Echo run concurrently for the active project, but a queued project does not begin until
-   the current video is terminal. Advanced cross-project pipelining and fairness engines are deferred.
-8. A lane Pod stays warm if at least one waiting project remains. If no project is waiting when that
-   lane finishes, delete it immediately without waiting for the other lane.
-9. If a project is added after one lane already deleted but the other lane keeps the session open,
-   that waiting row remains inert. Only after the current video is terminal and the next project is
-   atomically promoted may the missing lane be recreated on the same session GPU after fresh
-   availability and rate revalidation. Unavailable or more-expensive capacity blocks visibly; no
-   substitution.
-10. The session closes only after active and waiting work are empty and both exact Pods are proven
-    absent. The two designated volumes are never routine-cleanup targets.
-11. Model Pods never store project inputs/results on their volumes. Every project/attempt gets
-    isolated R2 paths and clean scratch; workers clear prompts, audio, decoded frames, history,
-    temporary URLs, and RNG/request state before accepting another project.
-12. Thirty-minute variable generation cost targets `≤$1.00` and may never exceed the MVP hard cap
-    of `$2.00` without a later versioned decision. Fixed retained-volume billing is reported
-    separately. Session boot, project inference, idle, retry, CPU, and storage cost stay distinct.
+Deterministic checks enforce geometry/cadence. Human review scores literal relevance and visual
+quality: `2=direct exact evidence`, `1=relevant context`, `0=generic/unrelated`. Qualification
+targets mean `>=1.8`, no zero in the opening minute or critical instructional claims, and zero
+accepted pseudo-text/logo/anatomy/style defects. Per-avatar crops require exact profile evidence and
+user approval; no universal crop is silently imposed.
 
-## Checkpoint dependency map
+Ranga uses real moving footage while VideoForge currently uses AI stills with slow zoom. VideoForge
+can closely match composition, cadence, evidence choice, and documentary appearance, but cannot
+claim identical natural camera/subject motion. A separate later experiment—not hidden scope—would
+be required to add stock or generated B-roll video.
 
-```mermaid
-flowchart LR
-  C0["CP-00 Context + reference lock"] --> C1["CP-01 vNext contracts + dispatch firewall"]
-  C1 --> C2["CP-02 Shared access + global queue UI"]
-  C2 --> C3["CP-03 Production word transcript"]
-  C3 --> C4["CP-04 Three-composition work plan"]
-  C4 --> C5["CP-05 Provider-free complete MVP orchestration"]
-  C5 --> C6["CP-06 Mage INT8 on RunPod"]
-  C6 --> C7["CP-07 Echo Flash Turbo FP8 on RunPod + crop lock"]
-  C7 --> C8["CP-08 Durable hosted staging"]
-  C8 --> C9["CP-09 Real single-video E2E"]
-  C9 --> C10["CP-10 Real shared-queue E2E"]
-  C10 --> C11["CP-11 Load, quality, cost, recovery"]
-  C11 --> C12["CP-12 Production release"]
+## Dependency map
+
+```text
+V2-00 roadmap reset
+  -> V2-01 tenant-private identity and data cutover
+  -> V2-02 tenant-private artifacts, signed transfer, and scratch
+  -> V2-03 fair two-slot admission and queue
+  -> V2-04 Serverless v3 authority, transport, outbox, and recovery contracts
+  -> V2-05 provider-free runtime cutover, UI truth, and firewall
+  -> V2-06 hosted staging foundation and CPU media jobs
+  -> V2-07 Mage Serverless lane on the existing Mage volume
+  -> V2-08 SoulX Serverless lane on the existing SoulX volume
+  -> V2-09 one short real integrated hosted project
+  -> V2-10 one real 3–5-minute Ranga-style automatic video
+  -> V2-11 two-user concurrency, autoscaling, and recovery proof
+  -> V2-12 production-length quality, speed, and economics qualification
+  -> V2-13 security hardening, production release, and operating proof
 ```
 
-Do checkpoints in order. A later chat may audit ahead, but may not implement around an incomplete
-dependency.
-
-## CP-00 — Context, reference, and roadmap lock
-
-**Outcome:** everyone starts from one accurate architecture and completion sequence.
-
-- Audit code, tests, active/historical runtimes, current provider truth, ImageForge patterns,
-  supplied visual analysis, and saved Ranga evidence.
-- Recheck both full reference videos at every fifth native frame without retaining downloaded videos.
-- Lock the global session, shared/equal access, invite-gated signup, Cloud Run CPU runner, queue
-  behavior, two isolated volumes, independent lane shutdown, and 30-minute cost target.
-- Save this roadmap and the checkpoint prompt pack. Reconcile all active context summaries.
-
-**Proof:** context/schema validators, decision/manifest consistency, clean diff, no application code,
-no provider call, no private/reference video committed.
-
-**Authority:** local context-only, `$0`.
-**Done artifact:** authoritative roadmap plus exact next task `VF-9-24K`.
-
-## CP-01 — Global-session vNext contracts and legacy dispatch firewall
-
-**Status:** complete provider-free after independent re-audit at fix commit
-`0e90f3b637949711aecda6acc5b9e0bd51ae3202`; no provider or production gate was exercised.
-
-**Outcome:** old Serverless/v1 bytes cannot reach paid dispatch, and every new lifecycle fact has a
-versioned provider-free contract.
-
-- Add vNext contracts/fixtures for admitted user, singleton generation session, session GPU pair,
-  inventory receipt/rate ceiling, queue entry/version, exact lane volume manifest, lane demand,
-  Pod create/readiness/delete attempts, durable results, cost, and final absence.
-- Add additive migrations/repository vocabulary; keep every historical migration and v1 byte exact.
-- Prove one winner for concurrent idle starts, immutable session pair, waiting-only reorder/remove,
-  cross-volume rejection, stale GPU rejection, container-ready ≠ model-ready, create/delete
-  ambiguity, false stop, and routine-volume-deletion rejection.
-- Add a build/import dispatch firewall: new production composition cannot import Serverless,
-  endpoint worker counts, `Auto`, repair/fallback, or legacy worker registries.
-
-**Proof:** TypeScript/Python schema parity, valid/invalid fixtures, migration fresh/upgrade/restore,
-focused tests, canonical provider-free verification, negative import scan.
-
-**Authority used:** explicit bounded application/context authority from 2026-08-13;
-provider/cloud/credential/model-download authority remained false and spend was `$0`.
-**Done artifact:** one restored synthetic global session reaches both lane-absent/volumes-retained
-terminal state; exact re-audit proof is
-`evidence/acceptance/VF-9-24K/cp01-global-session-contracts/reaudit-acceptance.json`. It additionally
-proves exact artifact-lineage binding, disabled canonical paid composition, transitive legacy scan,
-and fail-closed zero-row lifecycle mutations.
-
-## CP-02 — Shared admission, simple global queue, and idle-only GPU UX
-
-**Status:** complete and independently re-audited provider-free on 2026-08-13 under `VF-9-24M`.
-Implementation commit `91ed5470f2d93e3cac577c70b7396c03bb42f870`; audit-fix commit
-`5747e7b4e9c1d41564663afb1c0c0ad7272efe5b`. Evidence:
-`evidence/acceptance/VF-9-24M/cp02-shared-admission-queue/reaudit-after-fixes.json`. CP-03 remains
-unselected and not started.
-
-**Outcome:** 5–10 people can enter one shared app and safely control one visible queue without
-redesigning the accepted UI.
-
-- Implement Better Auth provider-free composition for email/password and Google fixture flows.
-  New identities must complete the one-time invite challenge before an admitted session exists;
-  existing admitted identities are never challenged again.
-- Keep all admitted users equal. One global catalog/queue replaces role and multi-workspace UX.
-- Implement the durable singleton session and global queue: add, optimistic reorder, remove waiting,
-  live position/update, actor audit, concurrent mutation conflict, restart recovery.
-- Implement fresh two-lane GPU menus only in truthful idle state. First Generate locks the pair;
-  active/queued state replaces both selectors with **Add to queue** and the visible locked pair/rates.
-- Reuse ImageForge's current selector presentation and receipt/final-revalidation principles, not
-  its device-local queue or Tauri ownership model.
-
-**Proof:** signup/login/admission fixtures, invite replay/race/expired/revoked cases, two simultaneous
-idle starts, 10-user add/reorder/remove simulation, no lost project, selectors never leak into an
-active session, real Chrome acceptance.
-
-**Authority:** local/provider-free `$0`. Real OAuth, email sender, Neon, or deployment waits for CP-08.
-**Done artifact:** accepted UI supports a shared synthetic session and queue.
-
-The locked admission policy is one unique single-use code per invited person, bound to the intended
-email. Email/password must verify that email before first app access; Google must return the same
-verified email. Code consumption and admission binding are atomic. Returning admitted identities
-never see the challenge again.
-
-## CP-03 — Production-grade word transcript
-
-**Status:** complete provider-free and re-audited after fixes under `VF-9-24N` at implementation
-commit `4ac1df8872db50820ad3b95979572c907bf1631f` plus audit-fix commit
-`a6a924856a58c233eadd8af402fbf78c6c821b97`. Exact evidence:
-`evidence/acceptance/VF-9-24N/cp03-word-transcript/reaudit-after-fixes.json`. Real owned media passed
-on Mac and a local Linux/arm64 deploy image with network disabled; successful transcript and
-semantic receipt hashes matched exactly. No Cloud Run deployment,
-credential access, provider call, model download/change, GPU use, or spend occurred. Hosted Cloud
-Run/private R2 production proof remains open until CP-08. CP-04 is not selected or authorized.
-
-**Outcome:** a 30-minute voiceover becomes a durable, restart-safe, word-level transcript usable by
-the scheduler.
-
-- Promote the existing `whisper.cpp base.en` implementation; do not rebuild it or add paid ASR.
-- Containerize identical Mac/Cloud Run Job behavior, media probe/hash, normalization, long-audio
-  chunking with overlap reconciliation, word/phrase timestamps, retry/recovery, and R2 receipts.
-- Preserve the original audio as render truth; normalized audio is analysis/span input only.
-- Show a compact transcript/timing inspector without redesigning the app.
-
-**Proof:** owned short/noisy/long fixtures, exact monotonic non-overlapping words, bounded phrase
-coverage, chunk-boundary tests, restart/replay, manual spot-check, Mac/container byte-contract parity.
-
-**Authority:** provider-free local/container work `$0`; no Cloud Run deployment yet.
-**Done artifact:** owned 30-minute-class voiceover produces a verified durable transcript/work receipt.
-
-## CP-04 — Three-composition scheduler and complete work plan
-
-**Status:** complete and independently re-audited provider-free under `VF-9-24O` at implementation
-commit `ca9b816f1bd196654e03633264560050729b020a`, audit-fix commit
-`e857cfa1d8bce6ecfdd51f600378790aeedd28f2`, and local-render binding fix
-`cf7a843fea8535bbc4fb1dc6b516ac2dbe5e9690`; stopped before CP-05 with `$0` external spend.
-
-**Outcome:** the transcript deterministically becomes every timed image slot and short Echo span.
-
-- Finish/polish—not replace—the seeded scheduler for `IMAGE_FULL`, `AVATAR_FULL`, and
-  `AVATAR_SPLIT_IMAGE`.
-- Enforce frame/source-time coverage, no gaps/overlaps/word cuts, 21–22% avatar target, near-even
-  full/split shares, 2–6-second normal spans, seven-second opener maximum, and varied literal
-  image shot roles.
-- Materialize padded selected-span WAVs, exact trim metadata, prompt batches, image slots, required
-  artifact IDs, cost counts, and an immutable render/work manifest.
-- No LLM chooses composition/timing; no full voiceover goes to Echo.
-
-**Proof:** complete Ranga-derived invariants, long-audio fixtures, deterministic replay, timeline
-visualizer, playable span WAVs, zero missing/duplicate work, exact 30 fps coverage.
-Current re-audit evidence:
-`evidence/acceptance/VF-9-24O/cp04-three-composition-scheduler/reaudit-after-fixes.json`.
-
-**Authority:** local/provider-free `$0`.
-**Done artifact:** one owned long voiceover has an inspectable complete three-composition plan.
-
-## CP-05 — Provider-free complete MVP orchestration and legacy cutover
-
-**Status:** complete provider-free under `VF-9-24P` at audited code head
-`58395225d9f2e11ac556e6b67f186b1fb5502336`, recorded by handoff commit
-`d2285117c17a3f6dd37b84e9dd441fd6fe7aa1d0`; canonical and installed-Chrome acceptance passed;
-CP-06 is complete: user visual quality is accepted, all 15 exact Pod hashes settled under cap, all
-paid compute is absent, and one approved 50 GB Mage volume remains.
-
-**Outcome:** the entire application works in fixture mode before any new GPU spend.
-
-- Implement fake-backed live inventory, exact paired selection, singleton session, Pod create/read,
-  truthful readiness, work, durable output, independent delete, and absence proof.
-- Wire CP-03/04, Runware fixture prompts, synthetic Mage/Echo workers, R2/local artifact barriers,
-  direct FFmpeg, queue progress, costs, final playback/download, cancellation/recovery.
-- Exercise one active project at a time and a waiting queue. A waiter may keep an existing lane Pod
-  warm but never start work or recreate it; with no waiter at active-lane completion, delete the Pod;
-  close/unlock only after both absences.
-- Switch active application imports/config/UI vocabulary to vNext. Quarantine old Serverless,
-  BF16 Mage, AvatarForcing/MuseTalk/SkyReels, repair/quality, `Auto`, and old crops behind explicit
-  provider-free historical replay. Do not delete historical evidence/migrations.
-
-**Proof:** three synthetic queued projects, reorder/remove waiting, crash/restart, stale callbacks,
-wrong Pod/volume/GPU, independent lane drain, final playable MP4s, canonical verification and real Chrome.
-
-**Authority:** local/provider-free `$0`, no credentials or model download.
-**Done artifact:** complete automatic fixture MVP with no active legacy dispatch path.
-
-## CP-06 — Exact Mage INT8 on persistent RunPod volume
-
-**Status:** complete under `VF-9-24Q`.
-The exact model is on one
-retained 50 GB Mage volume; eight 1280x720 PNGs came from two fresh sequential RTX 4090 Pods; every
-Pod and template was deleted and proven absent. The user accepted visual quality. A later authorized
-read-only audit settled all 15 exact Pod hashes at `$0.34927155333571136` under the `$3` cap and
-reconfirmed zero compute plus exactly the intended retained volume.
-
-**Outcome:** VideoForge generates real images through the exact current ImageForge Mage contract and
-can reuse a new Mage-only volume from fresh Pods.
-
-- Adapt the current `/Volumes/ESD-USB/ImageForge/worker` implementation: exact Mage revision,
-  ComfyUI revision, INT8 ConvRot file set, four steps, guidance 1.0, 1280×720, local-files-only
-  verification, GPU check, real warm-up, and truthful health. Copy no ImageForge resource ID/secret.
-- Source precedence is VideoForge `DEC_IMAGE_001` and its normative domain files, then executable
-  ImageForge mechanics exactly at `1a6204e7b9387a4d26b5fbbb176506d670949fba`. Do not copy the
-  stale ImageForge README BF16 claim or its preparation script's unpinned `revision=None`; the
-  VideoForge path requires the pinned INT8 profile and byte-exact three-file manifest.
-- Build and smoke on a standard public GitHub-hosted x64 runner without publication in Phase A;
-  publish an immutable Mage worker image only in Phase B; create a separately authorized VideoForge Mage
-  volume sized from verified manifest + headroom; prepare/checksum it once.
-- Wire live EU-RO-1 inventory, exact choice, volume-pinned Pod create, actual identity verification,
-  local/R2 output transfer, delete, absence proof, and retained-volume reuse.
-- Run at least eight representative owned prompts across the required subject/style/crop categories,
-  distributed across at least two fresh Pods.
-
-**Proof:** exact manifest/hashes/revisions/image digest, registry-disabled normal boot, wrong/missing
-volume failure, PNG probes/hashes/contact sheet, create→model-ready/inference/upload/delete timings,
-VRAM/rate/cost, zero Pods, retained Mage volume.
-
-**Authority:** two explicit phases defined by `tasks/VF-9-24Q.md`. The pasted CP-06 prompt starts
-only Phase A local/read-only preflight at `$0`: public metadata plus read-only RunPod inventory,
-rates, and absence using the existing credential; no mutation, model-byte download, publication,
-GPU, resource creation, or retained-volume charge. Phase B requires a later complete authorization
-containing a positive numeric cumulative cap through handoff, one exact live GPU offering/rate, one
-byte-derived volume size/rate, separate consent for its ongoing post-handoff retention charge, and
-explicit mutation/download/publication/GPU scopes. No `$3` or other cap is implied.
-`DEC_BUILD_001` keeps heavyweight verification off the user's Mac and does not broaden Phase B.
-**Done artifact:** user-visible real Mage images and reproducible fresh-Pod evidence.
-
-Current proof: `evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json` plus
-`settlement-reaudit.json`. CP-06 completion does not close broader production image/style/GPU/
-RunPod/cost gates.
-
-## CP-07 — Exact EchoMimicV3-Flash Turbo FP8 on persistent RunPod volume and crop lock
-
-**Outcome:** VideoForge produces native Echo short clips from the owned avatar and locks the renderer
-only after user review.
-
-- Build the `EchoMimicV3-Flash Turbo FP8` runtime profile from pinned first-party
-  `EchoMimicV3-Flash` / `echomimicv3-flash-pro`, Wan, and audio lineage. Turbo names the VideoForge
-  accelerated 8-step plus owned-FP8 profile; it does not claim or substitute a separate upstream
-  Turbo checkpoint. Ordinary Pod boot verifies/loads it from a distinct Echo-only volume and
-  performs a true warm-up. No first-job
-  quantization, model download, Long Video CFG, full voiceover, third-party pickle, repair, fallback,
-  or Mage mount.
-- Implement strict short-span request/padding/trim/output contracts and clean per-project scratch.
-- Create/prepare the separately authorized Echo volume, publish the worker image, and run owned
-  avatar clips at 2, 4, and 6 seconds through fresh Pods.
-- Measure native size/FPS/audio/timing/VRAM. Propose full/split crops from this exact output only;
-  user approves or rejects. Never inherit historical AvatarForcing geometry.
-
-**Proof:** playable MP4s shown to user, hashes/ffprobe/A-V duration, lip/identity/body/background
-review, manifest/digest, cold/warm model-ready and inference timings, exact rate/cost, zero Pods,
-both intended volumes retained and isolated.
-
-**Authority:** separate explicit credentials/cloud/model/image-publish/volume billing and bounded cap.
-**Done artifact:** accepted native Echo profile plus user-approved renderer crop, or an honest blocked gate.
-
-## CP-08 — Durable hosted staging, auth, and CPU jobs
-
-**Outcome:** the app no longer depends on one process or the user's Mac.
-
-- Deploy private staging composition: Cloudflare Worker UI/API/Workflow, Neon Postgres, private R2,
-  Better Auth email/password + Google, invite admission, and Cloud Run Job `whisper.cpp + FFmpeg`.
-- Use a single global data boundary while retaining project/attempt object scoping, signed URLs,
-  replay protection, secret isolation, migration/restore, and actor audit.
-- Cloudflare Workflow invokes/polls/cancels Cloud Run Jobs through the official API; jobs pull exact
-  R2 inputs, produce validated artifacts, and scale to zero. Choose region/vCPU/RAM/timeout only from
-  a representative benchmark; do not hard-code an unmeasured cheapest profile.
-- Keep fixture mode as the safe default and GPU dispatch disabled until explicit staging activation.
-
-**Proof:** admission/login/reset, restart/recovery, migration/backup/restore, multipart long-audio and
-large-MP4 transfers, CPU job idempotency/cancel/timeout, hash/probe, signed-URL expiry, secrets scan.
-
-**Authority:** explicit Cloudflare/Neon/Google/Cloud Run credentials and cloud mutation; verify current
-prices first. No RunPod sample is implicit.
-**Done artifact:** invite-only durable staging completes provider-free videos with hosted ASR/render.
-
-## CP-09 — One real automatic VideoForge video
-
-**Outcome:** one owned voiceover produces one real automatic three-composition MP4 in staging.
-
-- Select exact live GPUs while idle; atomically open the session and start both qualified Pods while
-  hosted ASR/scheduling/prompt work runs.
-- Use only real Runware prompts, CP-06 Mage, CP-07 Echo, durable R2 barriers, accepted crop, and
-  Cloud Run FFmpeg. No fixture substitution or manual edit.
-- Stop a lane immediately if it finishes with no waiting project; prove both Pods absent after final
-  output; retain both volumes.
-- Show/download/play/seek the final MP4 and exact cost/timing lineage.
-
-**Proof:** 60–90-second first run, immutable input→transcript→timeline→prompt→asset→render lineage,
-actual GPUs/volumes/manifests, output probe/hash, Chrome playback/download, settled cost, absence proof,
-and user quality review.
-
-**Authority:** explicit per-run cap; stop on first failed gate/output rather than unbounded retry.
-**Done artifact:** first real reviewable VideoForge MP4 accepted or precisely rejected by the user.
-
-## CP-10 — Real shared-session queue MVP
-
-**Outcome:** multiple users/projects reuse one locked GPU pair and the system shuts itself down.
-
-- With 2–3 owned projects, prove one idle user selects the pair and concurrent users only enqueue.
-- Prove all admitted users see the same queue/pair/progress and can reorder/remove waiting entries;
-  active work is immutable.
-- Run projects sequentially; reuse model-ready Pods while the queue remains. Attribute session boot,
-  per-project compute, idle, CPU, and storage cost truthfully.
-- Exercise a lane finishing with and without waiting work, late enqueue after one lane absence, no
-  early recreation, same-GPU recreation only after next-project activation, unavailable selected
-  GPU, queue drain, both-Pod absence, and unlocked next session.
-
-**Proof:** durable event/attempt lineage across restart, no duplicate Pod/project, no cross-project
-scratch/callback/artifact leak, final MP4 per project, real Chrome multi-session views, zero Pods and
-two retained volumes.
-
-**Authority:** explicit session cap based on selected rates and project durations.
-**Done artifact:** the functional shared MVP required by the user.
-
-## CP-11 — 5–10-user reliability, quality, speed, and cost qualification
-
-**Outcome:** replace hopeful claims with measured operating limits while keeping the simple MVP.
-
-- Simulate 1/2/5/10 authenticated users for concurrent signup/admission, idle-start race, enqueue,
-  reorder/remove conflicts, SSE/poll recovery, cancellation boundary, crash/restart, stale GPU,
-  lost callback, ambiguous create/delete, no capacity, cost cap, and isolation.
-- Run Mage's representative 40-prompt suite then a 220–320-image long-form workload; run Echo's
-  12–20-clip exact-avatar suite. Review contact sheets/clips before any promotion.
-- Complete at least one representative 30-minute or equivalently accounted long-form run. Measure
-  queue wait, cold/warm boot, model-ready, accepted throughput, rejection/retry, CPU render, R2
-  transfer, p50/p90, and every cost component.
-- Tune only measured GPU choices, chunk sizes, timeouts, and retention. Keep one global session,
-  one active video, one Pod/lane, and no fallback for MVP.
-
-**Proof:** repeatable benchmark/evidence pack, user quality decision, all production gates honestly
-closed or blocked, variable 30-minute target `≤$1` and hard `$2` evaluated, fixed volumes separate.
-
-**Authority:** paid work is divided into separately capped waves with user review between waves.
-**Done artifact:** qualified GPU/cost/quality table and production go/no-go.
-
-## CP-12 — Production release and operating proof
-
-**Outcome:** an invited non-developer can use the app without a developer or leaked GPU spend.
-
-- Promote pinned staging artifacts/config to production; configure domain, OAuth, invite operations,
-  secrets, backups, retention, monitoring, alerts, budgets, rollback, and incident runbooks.
-- Run production signup/login, idle selection, queue, generation, playback/download, recovery, and
-  automatic lane shutdown journeys in real Chrome.
-- Document how to issue/revoke invites, inspect/repair a blocked session, reconcile uncertain Pod
-  state, restore data, rotate secrets, and deliberately delete a model volume only under separate
-  destructive authority.
-- Archive/quarantine obsolete runtime entrypoints and update every root README/context selector.
-
-**Proof:** canonical CI, deployment/rollback, security/restore drill, invited-user acceptance,
-production cost alert, zero Pods after queue drain, exact two retained volumes, user approval.
-
-**Authority:** explicit production activation and a bounded release smoke cap.
-**Done artifact:** usable production MVP plus operator runbook.
+Do not implement around an incomplete predecessor. V2-07 and V2-08 have disjoint worker code after
+V2-05, but checkpoint promotion remains serial so shared contracts and paid authority cannot drift.
+
+## V2-00 — Architecture, reference, and roadmap reset
+
+**Outcome:** Every active planning source describes the same tenant-private, two-slot,
+scale-to-zero Serverless destination and the entirely new checkpoint sequence.
+
+- Preserve completed implementation and provider evidence; retire only obsolete active planning.
+- Supersede the global-data, one-session, manual-Pod, Pod-bound dispatch decisions.
+- Replace the checkpoint and prompt packs, selectors, implementation plan, acceptance routing,
+  cost/operations summaries, and current handoff.
+- Pin official Serverless sources and Ranga metrics; leave changing prices/availability as fresh
+  activation-time checks.
+
+**Proof:** context/schema validation, contradiction scan, clean commit, copy-ready prompts, and an
+independent read-only audit.
+
+**Authority:** local planning/context only; `$0`; no credentials or provider mutation.
+
+## V2-01 — Tenant-private identity and data cutover
+
+**Outcome:** Every normal user can access only their account/workspace data; built-in defaults are
+the only globally readable product records.
+
+- Add immutable `account_id` and `workspace_id` ownership to projects, revisions, assets, Avatar
+  Profiles/versions, Image Styles/versions, queue jobs, attempts, outputs, costs, approvals, and
+  audits. Backfill historical rows into an explicit legacy/system scope without granting users
+  cross-tenant access.
+- Add database constraints and RLS-equivalent/query-guard enforcement. Every repository method
+  requires a trusted principal; no client-supplied owner field grants access.
+- Keep invite-only Better Auth semantics, but bind admission to exactly one account/workspace.
+- Change user-created Avatar and Image Style Hubs to tenant-private. Built-in default records use an
+  explicit immutable global scope.
+- Change project/result/settings routes, searches, signed-URL requests, audit reads, and UI fixtures
+  to tenant scope.
+
+**Proof:** fresh/upgrade/restore migrations; two-account read/write/delete/hash-existence negative
+matrix; forged-ID and stale-session tests; installed Chrome showing separate libraries; zero
+provider calls.
+
+**Stop:** any route or query can observe another tenant's metadata, object existence, cost, status,
+or URL.
+
+## V2-02 — Tenant-private artifacts, signed transfer, and scratch
+
+**Outcome:** voiceovers, source portraits, generated assets, lane receipts, previews, and final MP4s
+have one tenant-owned private-storage contract before any production service is connected.
+
+- Reuse the existing workspace-prefixed private-artifact routes and two-account negative tests;
+  promote them into the active V2 repository/port boundary instead of creating a second upload path.
+- Define opaque tenant/workspace/project/revision object keys, immutable content hashes, MIME and
+  byte limits, retention state, and ownership rows. Object-key possession never grants access.
+- Issue short-lived URLs scoped to one object key, method, content type, byte range, checksum, and
+  principal. Never persist query signatures or reveal cross-tenant object existence.
+- Make direct multipart upload, worker input download, worker output upload, final download,
+  expiry/revocation, retry, and orphan cleanup deterministic and auditable.
+- Define lane-local job scratch and cache variables. Mutable tenant bytes never touch either model
+  volume; terminal cleanup runs for success, failure, cancel, timeout, and worker refresh.
+- Keep the storage adapter provider-free in this checkpoint. Real private R2 composition belongs to
+  V2-06 and cannot be inferred from passing port tests.
+
+**Proof:** fresh/upgrade/restore schemas; two-account upload/download/delete/existence matrix;
+forged key/URL/method/MIME/size/hash/expiry tests; interrupted multipart and orphan recovery;
+scratch cleanup tests; zero provider calls.
+
+## V2-03 — Fair two-slot admission, queue, and concurrency locks
+
+**Outcome:** up to two different accounts produce concurrently; each account has at most one active
+provider workload, which preserves at most one active video/account and two active videos globally,
+with a durable fair queue for later work.
+
+- Replace the singleton global session and manually ordered shared queue with account-owned queue
+  entries, a database-enforced per-account active-job lock, and a global two-slot capacity lease.
+- Use deterministic round-robin/fair rotation across accounts. One account's waiting entries cannot
+  occupy both global slots. A user may cancel or reorder only their own waiting entries; this never
+  changes the account-level fair rotation or another account's order.
+- Represent explicit Mage/SoulX `preset_preview` work as tenant-owned lower-priority requests using
+  the same account lock and two slots. A preview is eligible only when no video head is eligible and
+  never changes the video fairness cursor.
+- Make promotion, cancellation, terminal release, retry ownership, and slot reclamation atomic and
+  restart-safe. Waiting work performs no provider action before admission.
+- Remove ordinary GPU selectors and Pod Start/Stop/Delete controls. Endpoint configuration is an
+  operator-owned immutable deployment choice, not a per-project user decision.
+- Preserve the existing UI design while showing private queued/active jobs and factual stages.
+
+**Proof:** high-contention PGlite/Postgres race tests, crash/restart reconstruction, fairness across
+5–10 accounts, same-account double-submit rejection, two-account concurrent activation, no third
+slot, preview/video priority and capacity cases, cancellation/release, and two-user Chrome journeys
+at `$0`.
+
+## V2-04 — Serverless v3 authority, transport, outbox, and recovery
+
+**Outcome:** provider-free contracts safely connect a tenant-owned admitted video to two
+queue-based Serverless lane jobs without knowing the eventual worker identity in advance.
+
+- Define immutable endpoint deployment records: endpoint identity/hash, endpoint-configuration
+  hash, exact worker-image digest, allowed GPU list, `EU-RO-1`, one exact lane volume/manifest,
+  min/max workers, scaler, handler concurrency, idle/init/execution timeout, TTL, and version.
+- Implement two-phase authority. Pre-dispatch binds tenant, revision, lane batch, endpoint/config,
+  runtime/volume, payload hash, deadline, and spend ceiling. After RunPod returns a job ID—or bounded
+  reconciliation proves one unique assignment—persist a `provider_assignment` joining that job ID to
+  the predispatch token and attempt before status/output acceptance. A separate signed VideoForge
+  provenance receipt records worker ID when exposed, runtime GPU/driver/CUDA probes, intended
+  volume/manifest, model-ready evidence, timings, and output hashes. Do not call this provider
+  hardware attestation; RunPod does not document that guarantee.
+- Replace Pod envelopes/events with Serverless request/attempt/output contracts. Preserve old Pod
+  schemas as replay-only.
+- Replace CP-06-specific context-authority validation with checkpoint-generic V2 read-only/paid
+  authority validation while retaining strict non-transferable operations/resources/rates/caps.
+- Persist a transactional outbox and unique dispatch token before `/run`. RunPod creates the job ID
+  and documents no client idempotency key or exactly-once billing guarantee. Enforce at most one
+  accepted output per token; bound, expose, reconcile, and charge any duplicate compute to an
+  incident budget. Never blindly resubmit after an unknown acknowledgement.
+- Start each video/lane with one resumable complete-batch attempt. A bounded classified replacement
+  uses a new token only after the prior attempt is terminal or uniquely reconciled and carries all
+  unresolved items as one batch. Poll `/status` until the durable signed receipt and output are
+  stored; the provider's approximately 30-minute async-result window and limited webhook retry are
+  not durability truth.
+- Implement private R2 port contracts with short-lived tenant/path/method/content-length scoped
+  URLs. Never send broad bucket credentials to clients or store inputs/results on model volumes.
+- Use `/runpod-volume` only for sealed model reads and job-keyed local scratch for mutable files;
+  erase scratch on success, failure, cancellation, timeout, and worker refresh.
+- Add fake `/run`, `/status`, `/cancel`, progress, webhook/replay, duplicate delivery, unknown
+  acknowledgement, timeout, TTL expiry, and worker-death transport tests. Ordinary application code
+  must never call endpoint-wide `/purge-queue`.
+- Measure lane-specific init/execution/TTL envelopes: provider TTL begins at submission and covers
+  provider queue, cold start, handler execution, and its output upload; it does not cover control-plane
+  reconciliation. Set a separate bounded reconciliation deadline inside the approximately 30-minute
+  async-result window. Treat SoulX's historical 672-second Pod start-to-ready measurement as a
+  warning, not a Serverless timeout value.
+
+**Proof:** schemas, migrations, TypeScript/Python parity, adversarial ownership/authority tests,
+durable replay, cost conservation, zero provider calls, and canonical verification.
+
+## V2-05 — Provider-free Serverless cutover, UI truth, and runtime firewall
+
+**Outcome:** every application path uses the tenant/fair-queue/Serverless-v3 contracts with fake
+transport; ordinary production can no longer reach the global-session or manual-Pod runtime.
+
+- Add migrations and adapters that supersede the immutable `generation_sessions`, global queue,
+  Pod-lifecycle, Pod-bound envelope, and GPU-pair contracts without rewriting historical migrations.
+- Compose V2 tenant repositories, private artifacts, admission/outbox, lane orchestration, signed
+  receipts, cost reservations, recovery, and fake Mage/SoulX handlers end to end.
+- Preserve the approved UI design while removing Start/Stop/Delete Pod and per-project GPU choices.
+  Show private factual queue/stage/retry/cancel/cost state only.
+- Extend the active-runtime and dispatch firewalls so production builds reject legacy global-session
+  routes, Pod creation/controllers, `/workspace` model mounts, Echo/fallback names, broad R2 keys,
+  and unadmitted Serverless dispatch.
+- Prove worker/job isolation, accepted-unit resume, unknown-ack reconciliation, cancellation, process
+  restart, and two tenant projects at every provider-free barrier.
+
+**Proof:** canonical contracts and migration tests, provider-free full journeys, adversarial runtime
+firewall, installed-Chrome two-account acceptance, no legacy production dispatch, and zero provider
+calls.
+
+## V2-06 — Hosted staging foundation and CPU media jobs
+
+**Outcome:** a private staging application runs independently of the user's Mac with production
+auth, tenant database/storage, durable orchestration, word transcription, and FFmpeg rendering.
+
+- Deploy the existing app/API to the selected Cloudflare environment, Better Auth with email and
+  Google plus atomic invite admission, Neon PostgreSQL, and private R2.
+- Apply the V2 migrations and tenant query boundary. Use environment-scoped secrets and least
+  privilege.
+- Deploy the pinned `whisper.cpp` and FFmpeg/FFprobe containers as scale-to-zero Cloud Run Jobs.
+  Prove the same contract/hash behavior as local parity.
+- Implement durable callback/poll reconciliation, signed artifact exchange, stage checkpoints,
+  cancellation, expiry, retention, and restart recovery.
+- Keep GPU transport fake/disabled in staging until V2-07/V2-08 activation.
+
+**Proof:** two real invited accounts with isolated data and objects, production-auth negative suite,
+real hosted ASR/render of owned fixtures, restart/replay, no Mac dependency, infrastructure cost
+evidence, and real Chrome staging acceptance.
+
+**Authority:** provider-free work first; stop once before any hosting mutation or paid service use
+with one exact bounded activation proposal.
+
+## V2-07 — Mage Serverless lane on the existing volume
+
+**Outcome:** the exact qualified Mage runtime processes a complete video image batch through one
+scale-to-zero queue endpoint using the existing sealed Mage volume.
+
+- Convert the existing runtime into a queue handler; do not download, rebuild, or mutate model
+  bytes. Replace `/workspace` model paths with exact `/runpod-volume` paths.
+- Verify the sealed manifest before model load, perform real warm-up during worker initialization,
+  keep runtime model files read-only by application policy, and use local job scratch only.
+- Consume the exact V2 lane-batch envelope, download private inputs by scoped URL, resume accepted
+  units, generate all required images, upload each durable output with metadata/hash, and emit the
+  signed VideoForge provenance receipt for the complete batch.
+- Publish one immutable Serverless worker image. Create one queue endpoint restricted to
+  `EU-RO-1`, the exact Mage volume, one GPU/worker, RTX 4090 only initially, min workers `0`,
+  request-count scaler `1`, and handler concurrency `1`. Qualify at max workers `1`, then apply the
+  separately hashed max `2` configuration only for the bounded concurrent-reader proof.
+- Measure safe init/execution/TTL/idle settings and FlashBoot behavior. Qualify cold/warm starts,
+  two simultaneous workers reading the same volume, manifest hashes before/after, timeout/cancel/
+  duplicate delivery, output durability, scale-down to zero, and current Flex cost.
+
+**Proof:** exact image/endpoint/config/volume/manifest identities, 1280×720 samples and one realistic
+batch, hashes/probes, init/load/warm/inference/upload timings, peak VRAM, settled cost, two-worker
+read-only concurrency, zero endpoint jobs and zero total workers (`Active + Flex`) after drain,
+unchanged two-volume inventory, and the continuing fixed storage charge reported separately.
+
+**Authority:** local work/read-only inventory first; one combined proposal before publication,
+endpoint mutation, GPU use, or spend. RTX 5090 remains forbidden until separately qualified.
+
+## V2-08 — SoulX Serverless lane on the existing volume
+
+**Outcome:** the exact qualified SoulX-FlashHead Pro runtime processes all selected avatar spans for
+one video through one scale-to-zero queue endpoint using the existing sealed SoulX volume.
+
+- Wrap the current exact Pro BF16 runtime as a queue handler; no model download, volume mutation,
+  repair, enhancement, fallback, or substitution.
+- Verify `/runpod-volume`, sealed manifest, real load/compile warm-up, one-worker concurrency, exact
+  short-span padding/trim/output contracts, job-isolated scratch, and complete lane batching.
+- Upload every native clip durably and return exact trim/crop/profile plus worker/GPU/timing/output
+  lineage in the signed VideoForge provenance receipt before the batch is accepted.
+- Resolve and record first-party code/weights access, commercial-use, redistribution, and container
+  publication terms before calling the runtime production-cleared. Do not silently inherit Mage's
+  separately accepted terms risk.
+- Publish one immutable Serverless image and create one queue endpoint with the same staged
+  `EU-RO-1`, one GPU, RTX 4090-only, min `0`, max `1` then max `2`, request-count `1`, and handler
+  concurrency `1` policy as Mage, using only the SoulX volume.
+- Qualify cold/warm start, two simultaneous read-only workers, span resume, cancellation, timeout,
+  duplicate delivery, 2/4/6/10-second samples, scale-down, and current Flex cost.
+
+**Proof:** playable native/full/split clips, hashes/ffprobe/A-V duration, exact endpoint/image/
+manifest/volume identity, cold/warm/init/load/compile/inference/upload timings, VRAM, settled cost,
+zero endpoint jobs and zero total workers (`Active + Flex`) after drain, and user approval of each
+Avatar Profile's full/split composition before
+activation.
+
+## V2-09 — Integrated multi-tenant production pipeline
+
+**Outcome:** one owned short project proves the hosted app can automatically carry an admitted
+private voiceover to a durable reviewable MP4 through the exact live pipeline before longer or
+concurrent paid runs.
+
+- Connect production auth, tenant repositories, fair admission, private R2, ASR, existing
+  transcript, existing `scheduler-v2`, DeepSeek prompt batches, Mage lane batch, SoulX lane batch,
+  asset barrier, FFmpeg render, QA, review, approval, and download.
+- Start CPU preparation immediately after admission. Dispatch each GPU lane only when its exact
+  work manifest and pre-dispatch authority are durable.
+- Run Mage and SoulX concurrently for this one video while keeping tenant/revision lineage exact.
+  The global two-slot contracts remain enabled, but live two-user load belongs to V2-11.
+- Persist truthful progress: queued, waiting for GPU, worker starting, model loading, generating
+  images/avatar, rendering, completed/failed. Provider state is not durability truth.
+- Preserve successful units across retries; never regenerate accepted images/clips after unrelated
+  failure.
+- Remove live ordinary-production access to manual Pod controllers and legacy global-session paths;
+  keep historical replay/tests isolated.
+
+**Proof:** provider-free two-tenant full journeys first, then one bounded 30–90-second real hosted
+project, exact manifests/cost ledger/recovery, real Chrome playback/download, no cross-tenant
+visibility, and zero endpoint jobs plus zero total workers (`Active + Flex`) after drain. Endpoint
+configurations and two retained volumes may remain; their fixed charges are stated separately.
+
+## V2-10 — One real automatic Ranga-style video
+
+**Outcome:** one owned 3–5-minute project completes without operator intervention and passes cut-by-
+cut Ranga-style and technical review.
+
+- Use a real final voiceover, ready tenant-owned Avatar Profile, and published Image Style.
+- Review every cut and asset for literal relevance, documentary realism, crop, lips/head/background,
+  pacing, image zoom, exact A/V, and prohibited graphics.
+- Enforce the deterministic and statistical Ranga metrics, including opening rhythm, 21–22% avatar,
+  mean span/appearance rate, visual-change cadence, clean split, and shot-role diversity.
+- Require semantic score mean `>=1.8`, no zero in opening/critical claims, and zero accepted visible
+  pseudo-text/logo/anatomy/style defects.
+- Record complete wall-clock, stage, cold/warm, provider, retry, render, storage, and cost evidence.
+
+**Proof:** playable final MP4 in real Chrome, production manifest, hashes/probes, contact sheets,
+metric report, itemized cost, user visual decision, and drained zero-worker proof.
+
+## V2-11 — Two-user concurrency, autoscaling, and recovery proof
+
+**Outcome:** the production-shaped system safely runs two different users concurrently, queues all
+additional demand fairly, and scales both endpoints back to zero.
+
+- Exercise 5–10 signed-in accounts, two active projects, same-account second jobs, and multiple
+  waiting accounts. Verify round-robin fairness and private UI/state.
+- Prove each endpoint scales `0→1→2→0`; at most four total GPU workers can exist across two lanes.
+  No app action manually starts or stops a Pod.
+- Test worker death, unhealthy init, capacity delay, duplicate delivery, callback loss, timeout,
+  TTL expiry, cancel-before-start, cancel-running, partial success, provider 429/5xx, database
+  restart, object-store delay, and control-plane redeploy.
+- Verify at most one output is accepted per dispatch token, duplicate compute is detected and
+  itemized, and cancellation never terminates a worker that may be processing another authorized
+  job. Do not claim exactly-once provider execution or billing.
+- Measure queue delay separately from execution; keep the locked `REQUEST_COUNT=1` scaler and tune
+  only the shortest safe idle timeout from evidence. Any scaler-policy change requires a new
+  decision, context update, and requalification.
+
+**Proof:** adversarial provider-free suite plus bounded live two-user run, fairness metrics, P70/P90/
+P98 queue/execution/cold-start data, exact billing, zero leaked jobs/workers, and two retained
+volumes.
+
+## V2-12 — Production-length quality, speed, and economics qualification
+
+**Outcome:** representative evidence—not sample extrapolation—shows whether VideoForge meets its
+quality, throughput, and cost targets.
+
+- Run the full Mage 40-prompt/300-image style/relevance suite and exact SoulX Avatar Profile suite.
+- Run one owned 20–30-minute Ranga-style video and at least ten representative completed jobs for
+  cold/warm p50/p90 evidence.
+- Review every image/clip/cut of the production-length bakeoff with the locked semantic and defect
+  rubric; retain immutable release regression evidence.
+- Measure all variable components: prompt/style calls, worker start/init/load/warm/inference/idle,
+  retries, ASR, object storage/operations, rendering, and transfer. Report fixed volume/container
+  costs separately.
+- Optimize container import/startup, FlashBoot, sequential item execution, lossless transfer
+  overhead, idle timeout, and durable retry behavior without changing model/quality contracts.
+  `REQUEST_COUNT=1`, Mage 1280x720 output, and complete-batch attempt cardinality remain locked; any
+  change requires a new decision, context update, and requalification.
+- Keep the representative 30-minute target `<= $1.00` and hard ceiling `<= $2.00`. If evidence
+  misses either, stop release and present the measured dominant costs plus bounded alternatives;
+  never hide fixed or failed-attempt cost.
+
+**Proof:** accepted full-length MP4, immutable evidence pack, settled itemized cost, p50/p90 speed,
+quality scores, rejection/retry rates, queue-delay separation, and user acceptance.
+
+**Optional RTX 5090 gate:** only after the RTX 4090 baseline, independently qualify each lane's
+exact image, model, volume, VRAM, output parity, cold/warm timing, availability, and settled cost.
+RunPod GPU lists are automatic fallback lists, so a GPU is never added to production merely because
+it is compatible or currently available.
+
+## V2-13 — Security hardening, production release, and operating proof
+
+**Outcome:** VideoForge is safely operable by the invited 5–10-person team without developer or
+manual GPU intervention.
+
+- Complete OWASP-oriented auth/session/CSRF/CORS/CSP/rate-limit/SSRF/upload/decompression-bomb/
+  signed-URL/webhook/secrets/log-redaction tests and cross-tenant penetration matrix.
+- Add structured tenant/job/request/lane metrics, traces, cost guards, alerts, dashboards, queue and
+  endpoint saturation warnings, zero-worker drain alerts, and audit exports.
+- Prove backup/restore, migration rollback/roll-forward, artifact retention/erasure, disaster
+  recovery, endpoint/image rollback, and immutable configuration history.
+- Add global hourly/cumulative spend stops, per-project cap enforcement, provider balance/capacity
+  blockers, and operator-only aggregate analytics with separate authorization.
+- Finish accessibility/responsive/cross-browser real-Chrome acceptance while preserving the
+  approved UI. Remove fixture/developer controls from production builds.
+- Write concise operator runbooks for invite management, incidents, stuck jobs, provider outage,
+  billing anomaly, endpoint rollback, model-volume protection, and release rollback.
+- Deploy production, run one final private project, verify playback/download, and prove both
+  endpoints have zero jobs and zero total workers (`Active + Flex`) after drain.
+
+**Proof:** independent security/release audit with no P0/P1 findings, green CI and browser matrix,
+restore drill, alerts/runbooks, immutable release manifest, exact production URL/commit/images/
+endpoint configs, final cost, zero endpoint jobs, zero total workers (`Active + Flex`), two retained
+isolated volumes, and user sign-off.
 
 ## Every-checkpoint completion contract
 
-A checkpoint is not complete because code exists. Its implementation chat must:
+Each implementation chat works on exactly one selected checkpoint and must:
 
-1. Re-read current `CURRENT_STATE.yaml` and this roadmap; stop if its dependency is not accepted.
-2. Create/refine one exact task brief and narrow read profile before implementation.
-3. State application/provider/cloud/credential/model-download authority and dollar cap explicitly.
-4. Keep fixture/provider mode safe by default and preserve private inputs.
-5. Add focused failure tests before broad verification; use real Chrome for visible changes.
-6. Record evidence, output hashes/probes, timings/costs where applicable, and honest open gates.
-7. For any paid RunPod checkpoint, delete/reconcile every Pod and independently prove absence before
-   handoff; preserve only the two approved model volumes after they exist.
-8. Update context and `CURRENT_STATE.yaml`, make a small green commit, and leave a copy-ready next
-   handoff. Never let a passing fixture claim production proof.
+1. Read mandatory context, its exact new brief/profile, and only the needed domain evidence.
+2. Verify the predecessor is accepted; never implement around an incomplete dependency.
+3. Start provider-free. For any external mutation or spend, finish local work/read-only preflight,
+   then ask once with exact operations, resources, current rates, recurring costs, stop conditions,
+   and a user-supplied numeric finite cap.
+4. Add focused positive, negative, race/restart, and ownership tests proportional to the checkpoint.
+5. Run context/schema checks, focused suites, canonical verification, and real Chrome for visible
+   behavior.
+6. Preserve private/model/credential bytes outside Git and retain immutable historical evidence.
+7. Record exact evidence, remaining gates, provider/spend state, and zero-worker/endpoint/volume
+   truth where applicable.
+8. Update `CURRENT_STATE.yaml`, commit one green handoff, and stop before the next checkpoint.
+9. Run the checkpoint's independent audit prompt in a separate chat. Audit does not fix; any P0/P1
+   finding returns to the same checkpoint for repair and re-audit.
 
-Use `templates/CHECKPOINT_CHAT_PROMPTS.md` for the implementation and audit prompts.
+Provider qualification never equals production integration. Fixture evidence never equals hosted
+proof. Technical validity never equals user visual approval. A persistent endpoint configuration is
+not active compute; an active worker is billed compute and must scale to zero after queue drain.

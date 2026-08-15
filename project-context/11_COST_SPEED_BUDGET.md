@@ -1,270 +1,197 @@
 # Cost, speed, and capacity budget
 
-Status: planning envelope; replace blocked rows with CP-11 measurements
-Read when: showing estimates, choosing GPU profiles, changing avatar share, adding a stage, or approving fallback.
+Status: V2 planning envelope; live Serverless unit economics remain an acceptance gate
+Read when: estimating a video, configuring endpoint capacity/timeouts, changing a model or stage,
+or presenting paid authority.
 
-Architecture decision updated: 2026-08-13. Rate examples were last checked 2026-08-10. Prices and
-inventory change; production refreshes inventory when opening a global generation session and
-revalidates the session's exact lane offering before every Pod create.
+Prices and availability change. Refresh official pricing and exact compatible `EU-RO-1` inventory
+read-only at each paid checkpoint. A document snapshot is never dispatch authority.
 
-## Current reference rates
+## Current planning references
 
-Runware DeepSeek V4 Flash:
+RunPod Serverless pricing pages list Flex billing by the second for startup, execution, and idle time,
+rounded to whole seconds. Current planning examples checked for this V2 reset:
 
-- $0.076/M input.
-- $0.153/M output.
-- $0.014/M cached input.
+- RTX 4090 PRO Flex: approximately `$0.00031/second` = `$1.116/hour`.
+- RTX 5090 PRO Flex: approximately `$0.00044/second` = `$1.584/hour`.
+- Network volume storage below 1 TB: `$0.07/GB-month`.
 
-Runware Gemini 3.5 Flash style analyzer:
+Only RTX 4090 is in the initial Mage and SoulX endpoint allowlists. The RTX 5090 row is comparison
+data, not a fallback or dispatch option; each lane must qualify it independently before activation.
 
-- $1.50/M text/image/video input below 200k.
-- $9.00/M output/thinking below 200k.
-- Runs only when a user explicitly analyzes a new draft Image Style version.
+`workersMin=0` means no always-on Active worker charge, but each autoscaled Flex worker bills from
+startup through execution and any retained idle period. `workersMax=2` is a capacity ceiling per
+endpoint, not a reservation and not a promise of availability.
 
-RunPod on-demand Pods are the approved GPU lifecycle. Recorded planning examples, not current quotes:
+Other planning references:
 
-- RTX 4090 24 GB: $0.69/hour.
-- RTX 5090 32 GB: $0.99/hour.
-- L40S 48 GB: $0.99/hour.
-- RTX 6000 Ada 48 GB: $0.84/hour.
-- A100 PCIe 80 GB: $1.39/hour.
+- Runware DeepSeek V4 Flash: `$0.076/M` input, `$0.153/M` output, `$0.014/M` cached input.
+- Runware Gemini 3.5 Flash style analyzer: `$1.50/M` input and `$9.00/M` output/thinking below
+  200k, used only when explicitly analyzing a new draft style.
+- Cloudflare R2 Standard: first 10 GB-month free, then `$0.015/GB-month`; direct egress free under
+  the recorded pricing page. Operations still count.
+- Cloud Run, Cloudflare, and Neon pricing/allowances remain deployment-time measurements, not a
+  permanent `$0` promise.
 
-When the app is truly idle, fetch live compatible inventory and exact rates independently for Mage
-and Echo. The first accepted Generate selects and locks one exact pair for the singleton global
-session. Waiting projects inherit it; there is no per-project selection or mid-session switch. Pin
-the receipts/rate ceilings and actual GPUs. A lane Pod may stay warm only if it is already running
-and waiting projects exist. A deleted lane is not recreated merely because a project enters the
-queue; recreate it only when the next project becomes active, using the same session GPU after fresh
-availability/rate revalidation.
+## Fixed retained infrastructure
 
-RunPod network storage standard under 1 TB: $0.07/GB-month.
+VideoForge already retains two isolated 50 GB `EU-RO-1` model volumes:
 
-VideoForge intentionally retains two different `EU-RO-1` model volumes: Mage INT8 ConvRot and Echo
-FP8. No capacity is approved yet. Each allocation must be derived from that lane's verified manifest
-plus explicit operational headroom before provisioning. At the recorded rate, fixed monthly cost is
-`(mage_allocated_gb + echo_allocated_gb) × $0.07`; actual allocation and billing must be read from
-RunPod. This fixed cost is explicitly accepted and is not a target for removal, sharing, or
-per-project optimization.
+| Volume | Size | Recorded monthly rate | Purpose |
+|---|---:|---:|---|
+| Mage-only | 50 GB | `$3.50/month` | Exact Mage INT8 ConvRot sealed runtime |
+| SoulX-only | 50 GB | `$3.50/month` | Exact SoulX-FlashHead Pro sealed runtime |
+| **Total** | **100 GB** | **`$7.00/month`** | Fixed, outside per-video variable cost |
 
-Cloudflare R2 Standard:
+Zero endpoint workers does not stop this `$7.00/month` storage billing. Normal generation may not
+resize, repair, prepare, merge, cross-mount, or delete either volume. Any change is separately
+authorized and reports its new recurring rate before mutation.
 
-- 10 GB-month free.
-- Then $0.015/GB-month.
-- Direct egress free.
+## Representative 30-minute workload
 
-## 30-minute workload
-
-Ranga-style target:
+Pinned Ranga-style planning basis:
 
 ```text
-final duration = 1,800 seconds
-avatar share = 22%
-avatar output = 396 seconds
-avatar frames at 25 fps = 9,900
+final duration                         1,800 seconds
+avatar share                           approximately 21-22%
+visible avatar output at 22%           396 seconds
+exact accepted fixture appearances     103
+exact accepted fixture padded audio    481.32 seconds
+likely generated images                approximately 220-320
 ```
 
-Likely images: approximately 220–320 including split companions, often near 300.
+The scheduler, not an LLM or worker, determines these counts. Full and split compositions reuse one
+native SoulX clip; rendering two crops must not trigger two avatar generations.
 
-## Runware prompt cost
+## Variable GPU cost formula
 
-Conservative example:
+For each endpoint attempt:
 
 ```text
-10,000 input × $0.076 / 1,000,000 = $0.00076
-30,000 output × $0.153 / 1,000,000 = $0.00459
-total = $0.00535
+billed_seconds = startup + execution + provider_idle_billed_seconds
+attempt_cost = billed_seconds * current_flex_rate_per_second
+video_gpu_cost = accepted_attempts + failed_attempts + possible_duplicate_compute
 ```
 
-Planning range: $0.005–$0.015. The cost is too small to justify weaker prompts or complicated provider routing.
+Track Mage and SoulX separately. Include cold initialization, model load/warm-up, every batch item,
+upload, retry, cancellation tail, and ambiguous/duplicate exposure. Do not calculate from inference
+time alone. Do not divide an unaccepted output into a misleading low cost-per-video claim.
 
-Measured qualification on 2026-08-11 (`VF-3-01`):
+The application reserves against a conservative bound before dispatch and reconciles provider facts
+afterward. The retained-volume fee is disclosed separately and is never hidden inside or amortized
+into one project's variable cost.
 
-- Final accepted strict-schema run: 40 scenes across five style blocks for `$0.00085053`.
-- Total task spend including two earlier recorded five-batch attempts: `$0.00243598`.
-- The final run and cumulative task spend remained below the `$0.02` run target and the
-  non-transferable `$1` DeepSeek qualification cap, respectively.
-- These are qualification measurements, not a production invoice; keep runtime cost collection
-  and the broader project planning range.
+## Preserved Pod-era measurements
 
-## One-time Image Style cost
+These are valuable engineering baselines, not Serverless results:
 
-A ready published style adds no Gemini call to a project. Its compact guidance slightly increases the DeepSeek batch prefix but remains inside the existing $0.005–$0.015 project prompt range.
+- Mage CP-06 proved the exact 13,379,919,280-byte INT8 ConvRot artifact, offline load, two fresh RTX
+  4090 Pods, eight 1280×720 outputs, and zero compute after cleanup. Recorded readiness observations
+  included 31.755 and 42.144 seconds; the qualification's conservative total accounting was
+  `$1.110002`, not a representative per-video bill.
+- SoulX VF-9-24S/U proved the exact 6,916,084,703-byte Pro runtime, sealed volume, offline RTX 4090
+  load, owned 10.12/10-second native outputs, and zero compute after cleanup. A measured worker run
+  recorded 20.268 seconds inference plus 0.894 seconds encode/mux for 10 seconds of audio. The fresh
+  Pod observation recorded 672.035 seconds from provider start to `model_ready`, while worker-internal
+  manifest/load/compile/warm-up readiness totaled 173.672 seconds. A prior extrapolation put the
+  avatar lane near `$0.402` at the then-Pod `$0.74/hour` rate, but it is not Serverless economics.
 
-Original planning estimate for creating one style from 3–8 references with Runware Gemini 3.5 Flash:
+Do not transfer Pod rates, boot behavior, image cache assumptions, or settlement to Serverless.
+Serverless handler import, volume attachment, concurrency, startup billing, endpoint idle time, and
+Flex rate must be measured again.
 
-```text
-first analysis = approximately $0.03–$0.07 once per style
-one reconciled retry may approximately double the analysis portion
-optional three-image Mage test = explicit separate estimate; cold boot may dominate
-```
+## Prompt, style, and preset cost
 
-Measured qualification on 2026-08-11 (`VF-3-02`):
+Production prompt writing remains small relative to GPU work. Existing DeepSeek qualification kept a
+40-scene accepted run at `$0.00085053` and all development attempts for that task at `$0.00243598`.
+Retain a conservative `$0.005-$0.015` 30-minute prompt allowance until production usage replaces it.
 
-- Qualified `mediaResolution: medium` and `thinkingLevel: low`.
-- Accepted first-analysis range: `$0.031974–$0.037442`; every first analysis stayed below `$0.08`.
-- Accepted retry totals: `$0.066977` and `$0.075869`, both below `$0.15`.
-- Cumulative task spend including development probes/failures: `$0.407604`, below the
-  non-transferable `$3` qualification cap.
+A ready published Image Style adds no Gemini call to ordinary generation. Creating/analyzing a new
+style is a separate user-triggered action with its own estimate, idempotency, and cost owner. Existing
+qualification observed roughly `$0.032-$0.0375` for first analysis and below `$0.076` with one
+bounded retry.
 
-This is a reusable global-catalog asset cost, not part of a 30-minute video's generation cap. Runtime must keep
-provider-reported usage/cost and ordinary ready-style video generation at zero Gemini calls.
+A ready Avatar Profile adds no onboarding inference to ordinary lookup. Each video's selected speech
+still requires SoulX generation. Optional per-profile compatibility tests are separately estimated
+and never charged to a video project.
 
-## Avatar Hub cost
+No repair or fallback model reserve is active. Any retry beyond the documented same-model bounded
+policy, substitute, quality pass, upscaler, or AI-video stage requires a new decision and estimate.
 
-Creating a named Avatar Profile, uploading/validating its source, and selecting a ready version uses no LLM and no mandatory GPU call. Its private image/thumbnail storage is small. Reusing it avoids repeated upload/setup but does not remove EchoMimicV3-Flash compute for each video's unique scheduled speech.
+## CPU, storage, and orchestration cost
 
-An optional user-triggered three-clip compatibility test is a separate one-time Avatar Profile version cost, never part of a video's generation cap. Initial planning target is at or below $0.20 because a cold worker boot may dominate a few seconds of output; show the exact execution-profile estimate first and replace this target with `GATE_AVATAR_001` measurements. Merely saving or selecting a profile must never start a worker.
+Pinned whisper.cpp transcription and deterministic FFmpeg render/probe run in scale-to-zero Cloud
+Run Jobs over private R2. Measure CPU, memory, execution, operation, and transfer cost per accepted
+project. Local Mac runs are development parity and cannot establish hosted cost.
 
-## Mage image cost
+R2 stores tenant-private inputs, intermediates, results, and receipts. A 30-minute H.264 final at
+8-12 Mbps is roughly 1.8-2.7 GB before intermediates. The 10 GB free allowance holds only a few
+complete videos; apply the approved intermediate/final lifecycle and show storage state rather than
+silently deleting results.
 
-User expectation to reproduce: about 300 images in five generation minutes after load. The user's
-current ImageForge experience reaches model-ready in roughly 3–4 minutes; that is a user-reported
-baseline, not a measured VideoForge result. VideoForge's ideal target is at or below 2 minutes from
-Pod start request to `model_ready` after the one-time volume preparation.
+Cloudflare Workflows/Workers and Neon may initially fit published free allowances, but production
+acceptance measures actual 5-10-user operations, database/storage usage, and alert thresholds.
 
-Illustrative only, using the recorded $0.69/hour RTX 4090 Pod example:
+## Per-video budget
 
-```text
-4 min start/load + 5 min generation = 9 min
-9/60 × $0.69 = $0.1035
+| Component | V2 state |
+|---|---|
+| DeepSeek prompts | Planning `$0.005-$0.015`; qualified small runs exist |
+| Mage Serverless | Unmeasured on live queue endpoint |
+| SoulX Serverless | Unmeasured on live queue endpoint |
+| Cloud Run ASR/render | Hosted cost unmeasured |
+| R2/Cloudflare/Neon variable share | Unmeasured; expected small |
+| Repair/fallback | None active |
+| **Total variable 30-minute generation** | **Target <=`$1.00`; hard MVP ceiling <=`$2.00`; open gate** |
 
-2 min target start/load + 5 min generation = 7 min
-7/60 × $0.69 = $0.0805
-```
+The target and ceiling exclude the continuing `$7.00/month` volumes. A production profile cannot
+claim this budget until representative cold/warm, concurrent, failed, and recovered runs settle.
+If the conservative predispatch estimate exceeds the active project cap or the `$2.00` product
+ceiling, reject before provider mutation unless a later explicit decision changes the ceiling.
 
-These are arithmetic illustrations, not a VideoForge cost claim. The exact Mage INT8 ConvRot,
-4-step, guidance-1.0, 1280×720 volume/Pod profile remains gated until cold and warm Pod runs measure
-create, volume attach, container ready, manifest verify, model load, generation, and deletion.
+## Speed and readiness budget
 
-## EchoMimicV3-Flash cost qualification
+Measure queue wait separately from active service time. Initial acceptance objectives:
 
-No accepted Echo runtime/cost exists. Historical BF16 and FP8 attempts produced no accepted MP4 and
-remain attempt evidence, not production unit economics or approval of a long-video path.
-
-The approved production target is a dedicated Echo FP8 volume and disposable Pod processing only
-scheduled short spans. One-time volume preparation is measured separately from ordinary projects.
-For every qualification record session-selected/actual GPU and rate; Pod create, volume attach,
-container-ready, manifest verification, model-ready, generation, encode, upload, and Pod deletion
-times; peak VRAM/disk; and exact settled cost. Cleanup means zero Pods while the two approved model
-volumes remain intact. Only later representative cold/warm evidence may establish
-production unit economics.
-
-Every one percentage point of avatar share equals 18 output seconds or 450 frames at 25 fps. With a fast avatar engine this is affordable, but the scheduler still targets the measured 21–22% style rather than maximizing avatar.
-
-## Fallback cost
-
-No active repair/fallback reserve exists. Any retry, repair, or fallback requires new user authority
-and separate cost evidence.
-
-Measured qualification observations through VF-9-20 are not production unit economics: three Mage
-technical runs cost `$0.0280524074`, `$0.0235054352`, and `$0.0308072963`, but all outputs failed
-strict visual review; the 40-prompt matrix produced no PNG and cost `$0`. SkyReels bounded attempts
-cost `$0.0502363111`, `$1.2642676444`, `$0.6784048000`, and `$0.5263056722`, with no output. These
-failed/partial charges must not replace the planning ranges or close `GATE_COST_001`.
-
-## Render and ASR
-
-- Production whisper.cpp transcription and FFmpeg render/probe run as scale-to-zero Cloud Run Jobs
-  over private R2 artifacts. Their variable CPU, memory, execution, transfer, and operation cost is
-  measured separately; Mac execution is development parity only.
-- Start transcription while the active project's GPU Pods boot. Final render never occupies or
-  retains a Mage/Echo Pod. Cloud Run region and sizing remain benchmark-gated.
-- If waiting work exists when a lane finishes, its already-running Pod may stay warm but cannot
-  process that work until the next project becomes active. With no waiting work, delete immediately
-  even if the other lane or CPU render continues. After queue drain, both Pods must be absent.
-
-## Expected marginal total
-
-| Component | 30-minute target |
+| Stage | Objective |
 |---|---:|
-| Reuse of ready Avatar Profile | $0 onboarding/test call; normal EchoMimicV3-Flash row still applies |
-| Reuse of ready Image Style | $0 vision; negligible added DeepSeek tokens |
-| Runware prompts | $0.005–$0.015 |
-| Cloud Run word ASR | no paid API; variable CPU/R2 cost unmeasured |
-| Mage images | unmeasured on the selected INT8 ConvRot disposable-Pod profile |
-| EchoMimicV3-Flash | unmeasured; production estimate blocked |
-| Avatar repair/fallback | none active |
-| Cloud Run FFmpeg/render QA | variable CPU/R2 cost unmeasured |
-| R2 operations/storage allocation | $0–$0.03 initially |
-| **Total variable 30-minute generation** | **target ≤$1.00; unmeasured; blocked by `GATE_COST_001`** |
+| Admission transaction/outbox commit | p95 <=1 second under 10-user test |
+| Dispatch-to-provider assignment | measured and bounded; no silent retry |
+| Cold worker start to `MODEL_READY` | each lane below RunPod's documented 7-minute unhealthy threshold |
+| Warm worker job start | p95 <=15 seconds before item work |
+| Transcript/timeline/prompt preparation | overlap GPU cold start where dependencies permit |
+| Final Cloud Run render/probe | measured separately; no GPU retention |
+| Active-service 30-minute video p50 | <=30 minutes after admission |
+| Active-service 30-minute video p90 | <=45 minutes after admission |
 
-The two retained model-volume charges are fixed infrastructure cost and do not consume a project's
-variable generation cap. The 30-minute target is at most `$1.00`; the hard MVP ceiling is `$2.00`.
-Dispatch must reject projected variable spend above `$2.00` unless a later versioned user decision
-changes it. Replace blocked rows only with measured session-GPU, Cloud Run, R2, model-manifest, and
-lifecycle costs.
+Historical SoulX's 672-second Pod start-to-ready misses the seven-minute cold target and is a
+specific Serverless risk. Qualify container startup and `RUNPOD_INIT_TIMEOUT`; do not hide the gap by
+starting an always-on worker.
 
-## Fixed monthly cost
+Do not declare p50/p90 from one sample. Record at least 10 representative accepted runs spanning cold
+and warm starts, both endpoints, and the approved compositions. Report:
 
-Required control-plane subscription: $0 while the currently published Cloudflare/Neon allowances
-suffice. Cloud Run Jobs add no intentionally always-on CPU worker, but executions are variable video
-cost. Alert before exhaustion and re-estimate if pricing/allowances change; do not promise permanent
-free service.
+- application wait, RunPod queue wait, initialization, inference, upload, render, and end-to-end;
+- actual worker/GPU/rate and billed seconds;
+- cost per accepted output and per final video;
+- failures, retries, possible duplicate compute, and cancelled tail;
+- zero-worker proof after drain and continuing volume billing.
 
-Avatar Profiles and Image Styles add no subscription or always-on compute. They reuse private R2; styles also reuse the Runware balance. A few normalized references or avatar source derivatives are usually only a few megabytes; show storage/retention but do not add a paid database tier.
+## Capacity and fairness economics
 
-RunPod volumes are the accepted fixed cost and remain when Pods are deleted:
+Application admission allows one active provider workload per account and two from different
+accounts globally. Ordinary videos remain capped at one/account and two globally. Explicit preset
+previews consume the same slots at lower priority than every eligible video. Each endpoint has
+`workersMax=2`, permitting two admitted workloads to use separate workers when both need that lane.
+RunPod's endpoint queue is not the fairness mechanism; only DB-admitted jobs are sent.
 
-- `EU-RO-1` Mage volume: separate manifest-sized allocation containing only the exact prepared
-  Mage-Flow-Turbo INT8 ConvRot runtime and manifest.
-- `EU-RO-1` Echo volume: a different manifest-sized allocation containing only the exact prepared
-  EchoMimicV3-Flash Turbo FP8 runtime and manifest.
-- Never merge, cross-mount, or delete either approved volume merely to reduce its fixed charge.
-- One-time preparation/download/verification cost is tracked separately from normal project cost;
-  ordinary Pod boot must perform no model download.
-
-Do not copy whole model repositories with duplicate BF16/FP8/unused artifacts. Store only the pinned
-source lineage and exact prepared runtime files required by each model. Provider account minimum
-top-ups, if any, are account-policy cash flow rather than app fixed cost and must be checked before
-setup.
-
-## Storage capacity
-
-A 30-minute H.264 final around 8–12 Mbps is roughly 1.8–2.7 GB before intermediate assets. R2's free 10 GB holds only a few complete projects. Use lifecycle deletion for temporary assets and show final-retention choice. Beyond free, 50 GB-month of Standard storage is about $0.60 after the free allowance, so storage remains small but not zero.
-
-Style references and private Avatar Profile source/thumbnail assets share that allowance. Default to short disposable-derivative retention and explicit original retention; do not silently delete a published style, active avatar source, or lineage needed to explain an output.
-
-## Speed budget
-
-Cold, no-fallback target:
-
-| Stage | Goal |
-|---|---:|
-| Upload + Cloud Run ASR + timeline | 2–5 min, network dependent; unproven |
-| Mage Pod start → model-ready | ideal ≤2 min; unproven |
-| 220–320 images | ≤5–8 min after load |
-| Echo Pod start → model-ready | ideal ≤2 min; unproven |
-| Avatar generation | ≤6–20 min, benchmark dependent |
-| Cloud Run final render + technical QA | 3–8 min; unproven |
-| **End-to-end p50** | **≤30 min isolated service time** |
-| **End-to-end p90** | **≤45 min isolated service time** |
-
-The user's reported ImageForge model-ready baseline is 3–4 minutes. It is comparison context only,
-not VideoForge evidence and not a relaxation of the ideal ≤2-minute target. Measure request-to-Pod,
-volume attach, container ready, manifest verified, model loaded, and `model_ready` separately for
-both cold and warm trials.
-
-Both lanes may start in parallel for the one active project while upload/Cloud Run ASR/timeline
-preparation advances. Waiting projects remain inert; there is no cross-project pipelining.
-
-Style analysis is not in this table because project creation requires an already published style. Creating a new style is a separate asynchronous action; once published it does not change video-production p50/p90.
-
-Avatar Profile creation and optional compatibility testing are also outside this table. A ready profile adds only a metadata/object lookup to project preflight.
-
-The SLO excludes time waiting behind already queued projects and is not valid from one demo. Report cold/warm service-time p50/p90 after at least 10 representative completed jobs, and report queue wait separately for 1/2/5/10 concurrent users.
-
-## Queue economics
-
-- One global session serves exactly one active project at a time with at most one Mage Pod and one
-  Echo Pod. Waiting entries never run chunks or CPU work.
-- Waiting work may keep an already-running lane Pod warm. It never recreates an absent lane; that
-  happens only after the next queue entry becomes active and the exact session offering revalidates.
-- No round-robin/fairness engine, per-user Pod pair, GPU switch, or parallel project execution enters
-  MVP. Any admitted user may manually reorder/remove waiting entries.
-- Attribute session boot, active-project inference, warm idle, retry, Cloud Run CPU, R2, and fixed
-  volume cost separately. Zero waiting/active work requires both Pods to be deleted and absent.
-- Record cost per accepted output, not just GPU hourly price; a cheaper slow GPU can cost more after retries and wall time.
+Benchmark 1, 2, 5, and 10 simultaneous accounts. Report per-account wait, starvation checks, worker
+count, cold-start amplification, throughput, and cost. Scale limits may be lowered when economics or
+volume read safety fail; they may not be raised beyond two without a new capacity/security decision.
 
 ## Budget-change rule
 
-Any new mandatory model, enhancement pass, multimodal QA call, upscaler, AI-video stage, Style LoRA/reference-conditioning stage, or separate worker must update this file with measured marginal and fixed cost before it enters MVP.
+Any mandatory model, enhancement pass, multimodal QA call, upscaler, AI-video stage, extra endpoint,
+always-on worker, larger volume, or higher concurrency must update this file with current recurring,
+per-attempt, and representative-video cost before activation. A paid checkpoint proposal states exact
+operations, current GPU/rate, fixed storage effect, finite spend cap, stop conditions, and cleanup.

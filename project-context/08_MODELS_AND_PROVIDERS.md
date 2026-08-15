@@ -1,306 +1,213 @@
 # Models and providers
 
-Status: user-approved ladder plus explicit benchmark gates  
+Status: exact model choices locked; Serverless lane qualifications pending
 Read when: building a worker, pinning dependencies, estimating cost, or proposing a model change.
 
-Prices and provider capabilities below are time-sensitive. EchoMimicV3-Flash source/license/access state was refreshed on 2026-08-12; Runware/Mage and historical AvatarForcing facts retain their recorded check dates. Runtime code stores current rates/configuration rather than hard-coding this document.
+Rates and provider behavior are time-sensitive. Refresh official sources and live account
+configuration before any mutation or paid proposal. Do not hard-code planning rates as provider
+truth. Existing Pod evidence proves specific artifacts and samples; it does not prove queue-based
+Serverless startup, concurrency, timeout, scale-to-zero, or billing behavior.
 
-## Global GPU session and CPU boundary
+## Active compute boundary
 
-MVP has one global generation session and exactly one active video. When no session is open, the
-first accepted Generate request presents fresh compatible inventory and binds one exact Mage GPU
-and one exact Echo GPU. While the session is open, every admitted user's later project inherits
-that immutable pair and enters the shared waiting queue; GPU selectors are unavailable. A waiting
-project performs no transcription, scheduling, prompt/span preparation, Pod action, or inference
-until the current video is terminal and the project becomes the sole active entry.
+Production target:
 
-After a lane finishes the active video, an already-running Pod may remain `model_ready` but idle
-only when a waiting entry already exists. With no waiter, delete that lane's Pod immediately and
-independently, even while the other lane or final render continues. If a waiter arrives after the
-Pod was deleted, do not recreate early: on next-video activation, revalidate and recreate only the
-same session-locked GPU. Unavailable blocks the lane; no GPU/model/precision/volume substitution is
-allowed. Persistent model volumes remain.
+- one Mage queue-based RunPod Serverless endpoint in `EU-RO-1`;
+- one SoulX queue-based RunPod Serverless endpoint in `EU-RO-1`;
+- `workersMin=0`, `workersMax=2`, `REQUEST_COUNT=1`, handler concurrency 1, one GPU per worker;
+- RTX 4090 only until each lane separately qualifies RTX 5090;
+- one existing sealed 50 GB volume per lane mounted only at `/runpod-volume`;
+- model volumes immutable/read-only by application policy, with all job writes redirected to local
+  scratch and accepted outputs uploaded to tenant-private R2;
+- normal startup downloads no model, resolves no mutable repository, and performs no quantization.
 
-When the final video is terminal and the waiting queue is empty, reconcile both lanes to proven Pod
-absence before closing the session and exposing fresh selectors. Failure or cancellation is not an
-exception; no paid Pod survives a fully drained session.
+RunPod's queue is not the product scheduler. Postgres admits one active provider workload/account and
+two globally from different accounts; ordinary videos retain one/account and two/global caps. Each
+video/lane starts with one bounded whole-video batch attempt. A classified replacement may use a new
+token only after the prior attempt is terminal or uniquely reconciled and batches all unresolved
+items; accepted items are not regenerated. Users never choose GPUs, start/stop Pods, or manage
+workers.
 
-Production word transcription and final FFmpeg render/probe run as authenticated scale-to-zero
-Cloud Run Jobs against the canonical private R2 namespace. The Mac runs the same pinned media
-contract only for development/provider-free parity and is never the shared production executor.
+RunPod `/run` does not document client idempotency, exactly-once execution, or zero duplicate billing.
+Persist dispatch authority/outbox before POST, bind the returned job, reconcile `/status`, accept one
+signed R2 result, and record duplicate-compute/cost exposure. Async provider results expire after 30
+minutes; webhook delivery alone is never durable truth. TTL includes queue time and may remove a
+running job. Execution/init timeouts must be measured and finite.
 
 ## Runware DeepSeek V4 Flash 0731
 
-Approved purpose: batched project image-prompt writing only. This model is text-only on Runware; it consumes a compact saved style profile and never analyzes reference images.
+Approved purpose: batched project image-prompt writing only. It consumes a compact stored style
+profile and never analyzes references.
 
 - Provider: Runware.
-- Public API alias: `deepseek-v4-flash`.
-- Qualified canonical Runware AIR ID: `deepseek:v4@flash`.
-- User-approved checkpoint name: DeepSeek V4 Flash 0731.
-- Thinking: explicitly `off` even though Runware currently documents it as the default.
-- Output: `outputFormat: JSON` with strict `jsonSchema`.
-- Temperature: 0.2 initial.
-- Top-p: 0.9 initial.
-- Include provider-reported usage and cost.
-- Do not enable tools, search, code interpreter, or long reasoning.
+- Canonical AIR: `deepseek:v4@flash`; public alias `deepseek-v4-flash` is not the immutable lock.
+- Qualified name/version: `DeepSeek-V4-Flash-0731`, version 4, architecture `deepseek_v4`.
+- Thinking off, JSON output with strict schema, temperature 0.2, top-p 0.9.
+- No tools, search, code interpreter, vision, or long reasoning.
+- Store request/profile hashes plus provider-reported usage and cost.
 
-Current documented Runware prices:
-
-- Input: $0.076 per million tokens.
-- Output: $0.153 per million tokens.
-- Cached input: $0.014 per million tokens.
-
-A conservative 30-minute workload of 10k input and 30k output is approximately $0.00535. Even a less efficient workload remains around one cent. Do not downgrade prompt relevance to save a fraction of a cent.
-
-`VF-3-01` closed `GATE_LLM_001` on 2026-08-11. Live authenticated Runware
-`modelSearch` resolved the canonical AIR `deepseek:v4@flash` to exactly one curated public result
-named `DeepSeek-V4-Flash-0731` (`version: 4`, architecture `deepseek_v4`), and all generation
-requests pinned that AIR rather than the mutable public alias. Native generation responses did not
-echo a model/version field, so the provider model-search record and its response hash remain part
-of the lock evidence. The final 40-scene/five-style strict-schema run passed every ID, role,
-literal-relevance, forbidden-output, identity, and cost criterion at `$0.00085053`; cumulative
-qualification spend including earlier recorded attempts was `$0.00243598`.
-
-Official sources: [Runware DeepSeek-V4-Flash API](https://runware.ai/docs/models/deepseek-v4-flash), [Runware model search](https://runware.ai/docs/platform/model-search), and [Runware platform model identifiers](https://runware.ai/docs/platform/introduction).
+`VF-3-01` passed exact model search and a 40-scene/five-style relevance/schema suite. The accepted
+run cost `$0.00085053`; cumulative qualification was `$0.00243598`. A conservative 30-minute prompt
+workload is cents or less, so prompt relevance must not be degraded to save fractions of a cent.
 
 ## Runware Gemini 3.5 Flash
 
-Qualified purpose: one-time multi-reference Image Style analysis when a user explicitly analyzes a new draft style version. `GATE_STYLE_001` closed on 2026-08-11.
+Approved purpose: one explicit, version-scoped analysis when a user creates a new draft Image Style.
+Ordinary video generation makes no call.
 
-- Provider/API: Runware, same account/key/SDK selected for DeepSeek.
-- Native API model ID: `google-gemini-3-5-flash`; Runware SDK/AIR alias: `google:gemini@3.5-flash`.
-- Input: 1–12 normalized reference images in one request; 3–8 recommended.
-- Output: untrusted `image-style-analyzer-output/v1` through `outputFormat: JSON` and strict `jsonSchema`; trusted code validates it and assembles the stored `image-style-profile/v1` payload/provenance.
-- Qualified mode: `mediaResolution: medium`, `thinkingLevel: low`, temperature 0.1, top-p 0.9, maximum 6000 tokens.
-- Include provider-reported usage/cost and store exact request/profile hashes.
-- Normal project generation makes no call to this model.
+- API model `google-gemini-3-5-flash`; Runware AIR `google:gemini@3.5-flash`.
+- 1–12 normalized authorized references; 3–8 recommended.
+- `mediaResolution=medium`, `thinkingLevel=low`, temperature 0.1, top-p 0.9, at most 6000 tokens.
+- Validate untrusted `image-style-analyzer-output/v1`, then assemble trusted
+  `image-style-profile/v1` with deterministic range/cardinality checks.
+- Bind account/workspace/style/version and exact input/output/request hashes.
 
-Current documented Runware prices:
+`GATE_STYLE_001` passed seven synthetic sets. Measured first analysis was `$0.031974–$0.037442`;
+accepted two-attempt totals were `$0.066977` and `$0.075869`. This is separate from a video's cap.
 
-- Text/image/video input: $1.50 per million tokens below 200k.
-- Output/thinking: $9.00 per million tokens below 200k.
-- Measured accepted first-analysis cost: $0.031974–$0.037442 across the seven synthetic sets; accepted two-attempt totals were $0.066977 and $0.075869. This is once per analyzed style, not per video.
-
-The accepted provider-facing schema keeps exact properties, types, required fields, enums, and
-closed-object boundaries. Gemini rejected the larger fully constrained schema, so trusted local
-canonical validation remains authoritative for range/cardinality constraints. The qualified request
-also omits provider seed because the documented unsigned Runware range was not portable through
-this Google generation path. Cumulative VF-3-02 qualification spend was `$0.407604` under its `$3`
-cap; ordinary video creation still performs zero analyzer calls.
-
-Why not use Gemini 3.1 Flash Lite by default: it is substantially cheaper, but extracting subtle shared treatment while excluding recurring reference content is a quality-sensitive one-time task. The additional few cents are amortized across every project that reuses the style. The VideoForge-specific seven-set qualification passed Gemini 3.5 Flash, so no fallback A/B is currently required.
-
-Runware advertises no LLM training on prompts/outputs, but zero-data-retention is enterprise-only. Its standard terms/privacy posture may store inputs, treats uploads as non-confidential, and grants service-related rights broad enough that VideoForge must not describe standard processing as ZDR or confidential. Require disclosure consent, use only owned/synthetic qualification images, send browser-normalized derivatives over short-lived signed URLs, minimize content, record user rights, distinguish VideoForge deletion from provider retention/deletion, and never send the private Ranga frames.
-
-If the analyzer repeatedly fails style/content separation, A/B only the analyzer against direct Gemini 3.6 Flash. Do not disturb DeepSeek, Mage, the scheduler, or avatar architecture.
-
-Official sources: [Runware Gemini 3.5 Flash](https://runware.ai/docs/models/google-gemini-3-5-flash), [Runware LLM security](https://runware.ai/llm-api), [Runware terms](https://runware.ai/terms), and [Runware privacy](https://runware.ai/privacy).
+Runware standard processing is not described as confidential or zero-data-retention. Require plain
+disclosure/rights consent, send only account-authorized normalized derivatives through exact
+short-lived signed URLs, minimize content, and distinguish VideoForge deletion from provider
+retention. Never send Ranga research frames.
 
 ## Mage-Flow-Turbo
 
-Approved purpose: every original B-roll still.
+Only active image runtime:
 
-- Runtime weights: `Comfy-Org/Mage-Flow` at
-  `d8c99241f6fa80fbd453014234af2bf337ea21e6`, loaded through pinned headless ComfyUI.
-- Model family: 4B.
-- Mode: Turbo, 4 denoising steps, CFG 1.0.
-- Runtime profile: INT8 ConvRot, matching the user's current ImageForge model path.
-- Output: 1280×720.
-- Native variable resolution: official card describes 512–2048 and up to 4:1.
-- Official A100 card result: about 0.59 seconds at 1024² and about 18–20 GB peak memory.
-- GPU: selected independently from freshly queried, model-compatible live inventory only by the
-  request that opens an idle global session; all queued projects inherit it. Public inventory is
-  not compatibility evidence; only qualified choices are exposed.
+- Weights: `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6`.
+- ComfyUI: `Comfy-Org/ComfyUI@26d7f8556822d9d08c2d3e1878636ac3b4969af9`.
+- Mode: Turbo, four denoising steps, guidance/CFG 1.0.
+- Precision/profile: INT8 ConvRot; 1280x720 text-to-image.
+- PyTorch attention; no FlashAttention, diffusers/Microsoft runtime, watermark/refusal patch,
+  upscaler, reference conditioning, LoRA, or edit model.
+- Graph: `CLIPLoader.type=mage` and latent from `TextEncodeMageFlowEdit`; EmptySD3 is invalid.
 
-The 1280×720 lock replaces the earlier resolution/BF16 candidates. Final 1080p detail and split-safe
-framing remain acceptance checks, but they do not authorize a silent resolution, precision, or model
-change. Use packed batches only if the exact ImageForge runtime remains stable. Do not add an
-upscaler until blind final-frame evaluation proves a material improvement.
+Exact sealed runtime files:
 
-The separate `microsoft/Mage-Flow-Edit-Turbo` model is not needed in the normal MVP. Add it only if the user later approves reference editing/outpainting.
+- `diffusion_models/mage_flow_turbo_int8_convrot.safetensors`;
+- `text_encoders/qwen3vl_4b_bf16.safetensors`, SHA-256
+  `36f3ff447ef59201722e8f9ce6020c9819fdcfba6aa2608c4e09b1c0ce114e34`,
+  `8,875,719,384` bytes;
+- `vae/mage_flow_vae_bf16.safetensors`, SHA-256
+  `34e076dc1e8a15321e1e07be5111d59cf16dd10b804b7c7e20b4de29013427e0`,
+  `345,053,056` bytes.
 
-Mage receives a text prompt compiled from the selected style profile; it does not receive the style's reference images in MVP. Prompt-derived styling is intentionally simple/cheap but must pass `GATE_STYLE_002`. Do not silently introduce reference conditioning or LoRA training if a distinctive style fails.
+The earlier BF16 transformer is historical/non-dispatchable. Never resolve `main` at runtime.
 
-The exact current ImageForge runtime is stock `Comfy-Org/ComfyUI` at
-`26d7f8556822d9d08c2d3e1878636ac3b4969af9`, using PyTorch attention. No FlashAttention, diffusers,
-Microsoft package, watermark patch, or refusal patch is part of this path. The exact graph uses
-`CLIPLoader.type=mage` and the latent emitted by `TextEncodeMageFlowEdit`; an EmptySD3 latent is invalid.
+### Preserved CP-06 evidence
 
-The exact normal-runtime file set at the immutable public revision is
-`diffusion_models/mage_flow_turbo_int8_convrot.safetensors`,
-`text_encoders/qwen3vl_4b_bf16.safetensors`, and `vae/mage_flow_vae_bf16.safetensors`.
-Existing evidence records the Qwen encoder as
-`sha256:36f3ff447ef59201722e8f9ce6020c9819fdcfba6aa2608c4e09b1c0ce114e34`
-(`8,875,719,384` bytes), and VAE
-`sha256:34e076dc1e8a15321e1e07be5111d59cf16dd10b804b7c7e20b4de29013427e0`
-(`345,053,056` bytes). The earlier BF16 transformer was
-`sha256:6df47df3d7efc9ebdad075b87b3e9e4f74d09dca672d592271788f0ee27ab97d`
-(`8,231,536,760` bytes), but it is historical and is not part of the selected normal-runtime file
-set. The one-time preparation gate must record the INT8 transformer's exact size and SHA-256 before
-writing the complete marker. Never resolve mutable `main` at runtime.
+- Immutable Pod image:
+  `ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69`.
+- Sealed manifest SHA-256:
+  `cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b`.
+- Exact selected model bytes: `13,379,919,280`.
+- Existing retained volume: `videoforge-mage-cp06-model-volume-eu-ro-1-50gb`, isolated 50 GB in
+  `EU-RO-1`; recorded retained rate `$3.50/month`.
+- Two fresh RTX 4090 Pods loaded offline in 31.755s and 42.144s, produced eight valid 1280x720 PNGs,
+  and failed closed on missing/wrong manifest. The user accepted visual quality.
+- Settled finite qualification cost: `$0.34927155333571136`; final audit proved zero compute and the
+  retained Mage volume.
+- Evidence: `evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json` and
+  `settlement-reaudit.json`.
 
-Mage owns one dedicated, persistent `EU-RO-1` network volume and uses disposable Pods. CP-06
-verified `13,379,919,280` exact model bytes, and the user approved a 50 GB STANDARD volume at
-`$3.50/month`, leaving at least `36,620,080,720` decimal bytes (`34.11 GiB`) for download staging
-and operational headroom. The volume is not shared with or mounted by Echo. An explicitly
-authorized one-time preparation job
-downloads the three exact pinned ComfyUI-format runtime files, records every path, size, SHA-256,
-configuration and revisions, then writes a completion marker after verification. CP-06 prepared the
-manifest once. Two RTX 4090 Pods booted offline from that volume, produced eight
-1280x720 PNGs, and became ready in 31.755s/42.144s. Both negative boots failed closed. All compute
-is absent; the 50 GB volume remains at `$3.50/month`.
+This is strong artifact/Pod proof. It does not establish that the Pod image is a valid Serverless
+worker image/template or that two Flex workers can safely read the volume concurrently. The Mage
+Serverless checkpoint must adapt/publish an immutable handler image without changing model bytes,
+then prove offline cold/warm jobs, signed R2 I/O, timeout/cancel/recovery, max-two concurrency,
+manifest immutability, cost, and scale-to-zero.
 
-A normal Mage Pod boot mounts that volume, verifies the complete manifest, and loads the model to the
-global session's exact Mage GPU without downloading model bytes or resolving a network model
-repository. Missing, mutated, cross-mounted, or incomplete content fails closed. Inputs and outputs
-are separate mutable job artifacts; they never enter the model volume. After the active video's
-Mage outputs become durable, keep the existing Pod warm-idle only when a waiter already exists;
-otherwise delete it immediately. A missing Pod is recreated only when the next video activates,
-after exact same-offering revalidation. The volume remains as accepted fixed-cost infrastructure.
+Mage license metadata remains ambiguous: the indexed Comfy-Org page and pinned Microsoft repository
+show MIT, while historical Microsoft prose describes research-only/not intended for product or
+service deployment. The user accepted this risk on 2026-08-11. Preserve the ambiguity and never
+claim clearly established commercial permission.
 
-Terms evidence remains ambiguous. The indexed official model page reports MIT. Microsoft's public
-`microsoft/Mage` source repository at `76bec2bb3818863f470de7e867c2dc7f1d0bfd83` has an MIT
-`LICENSE` and labels Mage-Flow MIT, while the same README describes the models as research-only/not
-intended for product or service deployment. The user explicitly accepted this unresolved risk on
-2026-08-11 and authorized continuing the locked Mage model. Evidence must retain the ambiguity and
-cannot claim clear commercial permission.
+## SoulX-FlashHead Pro avatar lane
 
-Official runtime sources: [Comfy-Org Mage-Flow weights](https://huggingface.co/Comfy-Org/Mage-Flow)
-and [ComfyUI](https://github.com/Comfy-Org/ComfyUI). Historical Microsoft sources remain terms
-evidence only and are not the runtime implementation.
+Only active/proposed avatar runtime:
 
-CP-06 passed: quality accepted; `$0.34927155333571136` settled under `$3`; live inventory
-proved zero compute and the intended retained volume. Proof: `evidence/acceptance/VF-9-24Q/`
-`cp06-phase-b/acceptance.json` plus `settlement-reaudit.json`. Broader production gates remain open;
-fixture stays default and BF16 attempts remain historical.
+- Source: `Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2`.
+- Weights: `Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro`;
+  exact Pro safetensors and Wan VAE only.
+- Audio encoder: `facebook/wav2vec2-base-960h@22aad52d435eb6dbaf354bdad9b0da84ce7d6156`;
+  safetensors only.
+- Runtime profile: `videoforge_soulx_flashhead_pro_bf16_v1`.
+- BF16, 512x512, 25 fps, four distilled steps, shift 5, color correction 1.0, deterministic seed 42,
+  streaming audio, Torch compile, no face crop.
+- No repair, enhancement, fallback, Long Video CFG, substitute model, alternate precision, or full
+  voiceover dispatch.
+
+### Preserved VF-9-24S/U evidence
+
+- Immutable Pod image:
+  `ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b`.
+- Exact selected payload: `6,916,084,703` bytes.
+- Sealed manifest SHA-256:
+  `995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626`.
+- Existing isolated retained SoulX-only 50 GB volume in `EU-RO-1`; recorded retained rate
+  `$3.50/month`; former Echo volume absent.
+- Fresh Secure RTX 4090 Pod proof at the then-current `$0.74/hour`: 24 GB advertised VRAM,
+  `9,660,950,528` peak inference bytes, model ready 189.786s from service start, and 10.12-second
+  inference 22.892s. Output was exact 253-frame 512x512 H.264/AAC with zero A/V delta.
+- A later 1672x941-source run measured provider start-to-ready 672.035s and 10-second inference
+  20.268s and produced source-aware full/split outputs for review. Production visual/crop approval
+  remains open. The difference between
+  service-ready and provider-start timing is retained; neither is generalized as Serverless cold
+  start.
+- Final audits proved zero Pods/templates/endpoints/workers and exactly the retained Mage/SoulX
+  volumes. The original qualification cost bound was `$0.275645`; immediate settlement rows were
+  pending and must not be relabelled settled.
+- Evidence: `evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json` and subsequent
+  VF-9-24T/U timing/composition evidence.
+
+The exact model and volume are prepared; do not download or prepare them again. A Serverless handler
+image/template is still unqualified. SoulX's measured 672.035-second provider-start-to-ready case
+exceeds RunPod's documented seven-minute unhealthy-worker threshold. The Serverless checkpoint must
+set and validate a finite `RUNPOD_INIT_TIMEOUT`, optimize only packaging/startup without changing
+model/settings, and prove actual queue-to-worker/model-ready behavior. It must also prove two
+concurrent read-only-by-app workers, exact short-span padding/trim, signed R2 I/O, cancellation,
+recovery, cost, and scale-to-zero before production binding.
+
+One native clip serves full and split. Crop profiles are versioned against the exact Avatar Profile
+source geometry/checksum and require review; do not apply a crop from a different source image.
 
 ## EchoMimicV3-Flash
 
-Superseded and non-dispatchable under `DEC_AVATAR_010`. The former runtime profile was
-`EchoMimicV3-Flash Turbo FP8` (`videoforge_echo_v3_flash_turbo_fp8_v1`). Turbo
-is the VideoForge name for the official accelerated 8-step `EchoMimicV3-Flash` /
-`echomimicv3-flash-pro` lineage plus owned FP8 preparation; first-party verification found no
-separately published Turbo checkpoint. Exact upstream identifiers and hashes below remain unchanged.
-Native output only; new repair/fallback bindings are `null`. The exact Echo network volume was
-deleted during VF-9-24S. These details remain historical evidence only.
-
-- Source: `antgroup/echomimic_v3@7e89489ca51c0d008fc1963ec6c03fc5bd0b9397`, Apache-2.0.
-- Flash weights: `BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249`, Apache-2.0; exact Flash safetensors SHA-256 `5ebdbb2fc709108bf2a1728fd92eb2874804e4bc0324e92a2cd55425968c85a4`.
-- Base: `alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP@fc913c34361f4ec879e2f9c78b4f11ae50a937d1`, Apache-2.0.
-- Audio encoder: `TencentGameMate/chinese-wav2vec2-base@3991242c806928916fff4a8c0e4f76acf661b743`, MIT.
-- Exact selected runtime bytes: `23,922,317,735` decimal bytes before small configs/source/dependencies.
-- Runtime profile: a VideoForge-prepared FP8 artifact derived from the pinned first-party Flash
-  safetensors with a pinned TorchAO toolchain; compatible transformer linear operations use
-  `float8_e4m3fn` dynamic activation-and-weight quantization and remaining tensors stay BF16.
-- Sampling remains 8 steps, `Flow_Unipc`, 25 fps, seed 43, TeaCache threshold 0.1, and empty negative
-  prompt unless a later accepted model-profile decision supersedes it.
-- No Long Video CFG. Echo receives only the scheduler's short selected speech spans, never the full
-  voiceover or a replacement long-video workload.
-- Input: canonical runtime image from exact Avatar Profile version, selected speech span, restrained prompt.
-- One native clip serves both layouts after a measured renderer crop profile is approved.
-- GPU: selected independently from freshly queried, Echo-compatible live inventory only by the
-  request that opens an idle global session; queued projects inherit it. Selected and actual GPU
-  identity must match the immutable session/attempt profile.
-
-The upstream `GPU_memory_mode=sequential_cpu_offload` argument is parsed but never enables offload.
-VideoForge makes no CPU-offload claim.
-
-Echo formerly owned a different persistent `EU-RO-1` network volume and a different disposable Pod.
-It never shared or cross-mounted the Mage volume. Its explicitly authorized one-time preparation
-job downloads and verifies the pinned source/Flash/base/audio-encoder files, prepares the
-VideoForge-owned FP8 runtime without an uncarded third-party pickle, records source and derived
-hashes plus the exact TorchAO/runtime toolchain, and writes a completion marker only after
-independent verification. The exact serialized FP8 artifact and manifest remain gate-controlled.
-
-A historical normal Echo Pod boot mounted only the Echo volume, verified its complete manifest, and loaded the
-model to the global session's exact Echo GPU without downloading model bytes or resolving a network
-model repository. Missing, mutated, cross-mounted, or incomplete content fails closed. Private
-avatar and audio inputs remain outside the model volume. After the active video's Echo clips become
-durable, keep the existing Pod warm-idle only when a waiter already exists; otherwise delete it
-immediately. A missing Pod is recreated only when the next video activates, after exact
-same-offering revalidation. This operational path is disabled and the Echo volume no longer exists.
-
-`GATE_AVATAR_004` later closed on the historical technical proof. `GATE_AVATAR_001` remains an open
-historical production-suite record but cannot reactivate Echo.
-
-No first-party FP8 checkpoint is published. A third-party `fp8wo` pickle exists without a model
-card or declared license and is not used. VideoForge's one-time controlled preparation derives its
-own FP8 runtime from the pinned Apache-2.0 Flash safetensors using pinned BSD-3-Clause TorchAO. The
-prepared bytes, procedure, and manifest must pass the gate before use; this avoids executing an
-uncarded pickle payload.
-
-Official sources: [pinned source](https://github.com/antgroup/echomimic_v3/tree/7e89489ca51c0d008fc1963ec6c03fc5bd0b9397), [pinned Flash weights](https://huggingface.co/BadToBest/EchoMimicV3/tree/311e176905a8c4c24b240b530488fe636ce4d249), [pinned base](https://huggingface.co/alibaba-pai/Wan2.1-Fun-V1.1-1.3B-InP/tree/fc913c34361f4ec879e2f9c78b4f11ae50a937d1), and [pinned audio encoder](https://huggingface.co/TencentGameMate/chinese-wav2vec2-base/tree/3991242c806928916fff4a8c0e4f76acf661b743). Evidence: `evidence/gates/GATE_AVATAR_004/2026-08-12-echomimic-v3-flash-preflight/`.
-
-## SoulX-FlashHead Pro
-
-The only proposed active avatar runtime under `DEC_AVATAR_010` is exact SoulX-FlashHead Pro. It is
-technically qualified but remains blocked from production dispatch and renderer-crop activation
-until user visual review under `GATE_AVATAR_005`.
-
-- Source: `Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2`.
-- Weights: `Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro`; exact Pro safetensors and Wan VAE only.
-- Audio encoder: `facebook/wav2vec2-base-960h@22aad52d435eb6dbaf354bdad9b0da84ce7d6156`; safetensors only.
-- Runtime: BF16, 512x512, 25 fps, four distilled steps, shift 5, color correction 1.0, deterministic seed 42, streaming audio, Torch compile, no face crop, repair, enhancement, fallback, or substitute.
-- Exact selected payload: `6,916,084,703` bytes; manifest SHA-256 `995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626`.
-- Immutable image: `ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b`.
-- Storage: isolated retained 50 GB SoulX-only `EU-RO-1` volume at `$3.50/month`; ordinary runtime boot verifies and loads offline with no download or Mage cross-mount.
-- Qualification: fresh Secure RTX 4090 at `$0.74/hour`; model-ready `189.786s`, 10.12-second inference `22.892s`, peak inference VRAM `9,660,950,528` bytes, exact 253-frame H.264/AAC output, and zero compute after deletion.
-- Evidence: `evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json`.
+EchoMimicV3-Flash Turbo FP8 is superseded and non-dispatchable. Its exact volume was deleted during
+VF-9-24S and replaced by the SoulX-only volume. Do not restore, cross-adopt, or use its image,
+manifest, crops, or model files.
 
 ## Historical avatar paths
 
-AvatarForcing, MuseTalk, and SkyReels remain immutable history/replay evidence only. `VF-9-21`
-preserves `$0.4496891390` spend, failures, artifacts, and commits. `GATE_AVATAR_003` remains an open
-historical permission record and blocks clear permission claims, but it does not block Echo work.
-No new dispatch, fallback, repair, or production binding may use these models without a new explicit
-user decision.
+AvatarForcing, MuseTalk, SkyReels, and their permission/failure evidence are history only. There is
+no active repair/fallback ladder.
 
-## Hosted CPU word timing and rendering
+LongCat Avatar 1.5, InfiniteTalk, Hallo, AI B-roll video models, HyperFrames, and Remotion are outside
+the active model path. A future comparison requires a new explicit decision, exact license/access,
+same-input A/B, timing/VRAM/cost/failure evidence, and no silent production substitution.
 
-Approved model: `whisper.cpp` `ggml-base.en`.
+## Hosted word timing and rendering
 
-Proven QuickCut-style settings on the user's M4:
+Timing model is pinned `whisper.cpp ggml-base.en`:
 
-- Normalize to 16 kHz mono PCM WAV.
-- `--max-len 1 --split-on-word` for word-like segments.
-- English, greedy decoding, `--best-of 1`, `--beam-size 1`.
-- 8 threads, Metal and FlashAttention locally.
-- Do not enable VAD on the known local build; prior reference testing recorded a Metal crash.
+- normalize an analysis derivative to 16 kHz mono PCM;
+- English greedy decode, `--max-len 1 --split-on-word`, best-of 1, beam size 1;
+- preserve CP-03 deterministic long-file chunk overlap/reconciliation and exact executable hashes.
 
-Short-file measurements in the local QuickCut repo imply about a minute or less for 30 minutes on
-the M4; this is a projection, not a direct 30-minute measurement. That Mac path is development
-parity only.
+Production uses authenticated scale-to-zero Cloud Run Jobs over tenant-private immutable R2
+manifests. A second mode runs pinned FFmpeg/FFprobe for final rendering. These jobs have no RunPod
+credential or model-volume access. The Mac executes the same entrypoints only for development parity.
+Cloud Run region/resources/timeout, representative 30-minute cost/runtime, and hosted identity remain
+checkpoint-gated.
 
-Production invokes a pinned Cloud Run Job media worker through authenticated `jobs.run`. One job
-mode executes whisper.cpp word timing and deterministic optional-script reconciliation; another
-executes pinned FFmpeg render/probe. Both consume immutable R2 manifest pointers/checksums, publish
-only to the expected private global prefix, and require output checksum/media-or-JSON validation
-before acceptance. They have no RunPod credential, model-volume mount, or GPU-lane claim. Cloud Run
-region, CPU, memory, timeout, concurrency, representative 30-minute runtime, and cost remain
-benchmark-gated.
+## Provider and model-change rule
 
-Groq Whisper, Deepgram, WhisperX, and browser-side WebGPU ASR are excluded from MVP unless the
-pinned Cloud Run whisper.cpp contract fails a measured accuracy/timing gate.
+No agent swaps a model, GPU class, precision, steps, scheduler, source revision, worker image, volume,
+or provider because an alternative appears faster/cheaper. A change requires:
 
-## Models deliberately not in the normal path
-
-| Model/tool | Reason |
-|---|---|
-| LongCat Avatar 1.5 | User-reaffirmed exclusion: diffusion runtime/cost breaks the target budget |
-| Hallo3/Hallo2 | Far slower than the fast-avatar budget path; unattributed ranking screenshot is not authoritative |
-| EchoMimicV3-Flash | Historical, non-dispatchable, and removed from operational storage under `DEC_AVATAR_010` |
-| InfiniteTalk | Future research only under a new explicit user decision; no active ladder or fallback exists |
-| Remotion | Does not improve image/avatar pixels or relevance; FFmpeg is enough |
-| HyperFrames | Motion-graphics/text strengths conflict with hard rules; cloud minute cost is wasteful here |
-| AI B-roll video models | Deferred from MVP by user decision |
-| Style LoRA trainers/reference-conditioned image models | Not needed unless the prompt-only Image Style gate fails and the user approves the measured extension |
-
-## Model-change rule
-
-No agent swaps a locked model because a newer one looks impressive. A change requires:
-
-1. User approval.
-2. Exact license/access check.
-3. Same-input A/B on VideoForge acceptance fixtures.
-4. Cold and warm runtime, VRAM, accepted-output cost, and failure-rate evidence.
-5. Updates to `MANIFEST.yaml`, this file, costs, tests, and the decision log.
+1. explicit user approval and a bounded task;
+2. exact license/access/source check;
+3. same owned-input A/B against current accepted outputs;
+4. cold/warm timing, VRAM, throughput, output quality, failure/recovery, concurrent-reader, and cost
+   evidence on the exact lane;
+5. immutable publication/manifest evidence and updated decision/context/contracts/tests;
+6. zero-worker/cleanup proof and a separately disclosed retained-storage effect.

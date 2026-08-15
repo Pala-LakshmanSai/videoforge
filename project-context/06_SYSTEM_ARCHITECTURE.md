@@ -1,234 +1,247 @@
 # System architecture
 
-Status: recommended MVP architecture  
-Read when: creating the repository, services, deployment, security, storage, or orchestration.
+Status: approved Serverless v2 target; provider deployment not yet proven
+Read when: implementing services, deployment, security, storage, tenancy, or orchestration.
 
 ## Architecture principle
 
-Use a small scale-to-zero control plane, one global shared app scope, and two isolated
-API-controlled RunPod Pod lanes. Postgres is editorial and operational truth. Private R2 holds
-production inputs and outputs. The two persistent model volumes are intentional fixed-cost
-infrastructure. A waiting project may keep an already-running lane Pod warm, but cannot create or
-recreate one. With no waiter when active lane work finishes, the Pod is deleted.
+Use a small scale-to-zero control plane, database-owned tenant admission/fairness, private durable
+artifacts, and two isolated queue-based RunPod Serverless model lanes. Users never manage Pods or
+workers. Postgres is editorial/operational truth; private R2 is artifact truth; RunPod job state is
+provider observation, not the sole recovery record.
 
-Mage owns one volume and its Pods. Echo owns a different volume and its Pods. A later Pod may
-reattach only its own model's volume. Cross-model Pod, volume, preparation marker, manifest, cache,
-lease, worker identity, or reconciliation adoption is forbidden.
+Each admitted account has one default workspace. All user-created data belongs to that
+account/workspace. Only explicit built-ins are global. The server derives ownership from the
+authenticated session and database relationships on every read/write; client-supplied ownership,
+R2 keys, provider job IDs, or callbacks cannot grant access.
 
 ## Recommended stack
 
-| Layer | Choice | Reason |
+| Layer | Choice | Responsibility |
 |---|---|---|
-| Web UI | React + TypeScript + Vite | Fast HMR and fixture-first Chrome development |
-| UI data | TanStack Query + Router | Explicit server state and typed routes |
-| Styling | Tailwind + Radix/shadcn primitives + custom tokens | Accessible base with custom visual identity |
-| Web + API | One Cloudflare Worker: React assets + same-origin Hono `/api/*` | One deployable/origin and direct bindings |
-| Orchestration | Cloudflare Workflows | Durable waits and reconciliation without an always-on app server |
-| Database | Neon Postgres | Durable relational truth with scale-to-zero |
-| Database tests | Additive PostgreSQL SQL and repository contracts; PGlite only for local/CI | Real constraint behavior without treating fixtures as production truth |
-| Auth | Better Auth email/password + Google OAuth, followed by one-time invite-code admission at signup | Closed-team access without MVP roles or tenant administration |
-| Artifacts | Private R2 plus verified local download | Durable job data outside model volumes |
-| Prompt/style providers | Runware DeepSeek V4 Flash 0731; Gemini 3.5 Flash for new style analysis | Existing locked provider decisions |
-| GPU compute | Two independent RunPod Pod lanes and two persistent `EU-RO-1` volumes | Fast offline loads and immediate per-lane shutdown |
-| ASR/render | Cloud Run Jobs running pinned whisper.cpp/FFmpeg; same container/entrypoint on Mac for development | Scale to zero in production and never occupy a GPU lane |
-| Contracts | Zod in TypeScript; Pydantic in Python | Validate every boundary |
-| Repository/registry | Private pnpm/Turborepo monorepo; immutable private worker images | Shared contracts and pinned deployments |
+| Web UI | React + TypeScript + Vite | Existing compact UI, responsive private product flows |
+| UI data | TanStack Query + Router | Typed server state and routes |
+| Styling | Tailwind + Radix/shadcn + existing custom tokens | Accessible existing visual system |
+| Web + API | Cloudflare Worker, Hono `/api/*` | Same-origin UI/API, auth checks, signed transfers |
+| Durable orchestration | Cloudflare Workflows plus transactional Postgres outbox | State machine, waits, retries, reconciliation |
+| Database | Neon Postgres | Identity, tenant data, fairness/admission, attempts, costs, audit |
+| Auth | Better Auth email/password + Google OAuth + atomic invite admission | Closed access and one default workspace |
+| Artifacts | Private Cloudflare R2 | Tenant-prefixed immutable inputs/outputs/receipts/manifests |
+| Image prompt/style | Runware DeepSeek V4 Flash 0731; Gemini 3.5 Flash only for new style analysis | Existing pinned provider choices |
+| GPU | Two RunPod queue-based Serverless endpoints in `EU-RO-1` | Mage images; SoulX avatar spans |
+| Model storage | Two existing isolated sealed 50 GB RunPod network volumes | Read-only-by-app offline model loading |
+| ASR/render | Scale-to-zero Cloud Run Jobs | Pinned whisper.cpp and FFmpeg/FFprobe |
+| Contracts | Zod TypeScript + Pydantic Python | Validate every trust boundary |
+| Repository | Public pnpm/Turborepo source; digest-pinned worker images; no private bytes or model weights in Git | Shared contracts and reproducible builds |
 
-Cloudflare and Neon allowances and current provider prices must be rechecked at deployment. The
-promise is $0 control-plane cost only while measured use stays inside current allowances, not “free
-forever.” The user explicitly accepts persistent-volume billing. Optimize disposable Pod runtime;
-do not replace volumes with repeated model downloads. PGlite remains test infrastructure, never
-production or recovery truth.
+PGlite remains local/CI evidence only. Hosted production must use actual PostgreSQL constraint and
+transaction behavior. Provider allowances/prices are time-sensitive and rechecked before any paid
+or deployment mutation.
 
 ## Logical topology
 
 ```mermaid
 flowchart TB
-    B["User's Chrome"] --> APP["Cloudflare Worker: UI + API"]
-    APP --> AUTH["Better Auth + global admission"]
-    APP --> PG["Neon Postgres: global catalog + queue + generation session"]
-    APP --> R2["Private R2: global shared artifacts"]
+    U["Authenticated browser"] --> APP["Cloudflare Worker UI and API"]
+    APP --> AUTH["Better Auth and invite admission"]
+    APP --> PG["Neon Postgres tenant and orchestration truth"]
+    APP --> R2["Private R2 tenant artifacts"]
     APP --> WF["Cloudflare Workflow"]
-    WF --> RW["Runware prompt/style calls"]
-    WF --> MC["Mage lane controller"] --> MP["Disposable Mage Pod"]
-    MV["Mage-only EU-RO-1 volume"] --> MP
-    WF --> EC["Echo lane controller"] --> EP["Disposable Echo Pod"]
-    EV["Echo-only EU-RO-1 volume"] --> EP
-    MP --> R2
-    EP --> R2
-    WF --> CPU["Cloud Run Job: whisper.cpp + FFmpeg"] --> R2
+    WF --> ADMIT["Fair DB admission one per account two global"]
+    WF --> RW["Runware prompt and style calls"]
+    ADMIT --> ME["Mage queue endpoint workersMin 0 max 2"]
+    ADMIT --> SE["SoulX queue endpoint workersMin 0 max 2"]
+    MV["Existing sealed Mage 50 GB volume"] -->|"/runpod-volume"| ME
+    SV["Existing sealed SoulX 50 GB volume"] -->|"/runpod-volume"| SE
+    ME --> R2
+    SE --> R2
+    WF --> CPU["Cloud Run whisper.cpp and FFmpeg jobs"] --> R2
     R2 --> APP
 ```
 
-There is no edge between a Pod and the other model's volume, and no Serverless endpoint queue in the
-active GPU topology.
+There is no model-volume sharing, cross-mount, runtime model download, global user-artifact prefix,
+direct browser-to-provider credential path, or manual Pod lifecycle in the active topology.
 
-## Global access, queue, and generation session
+## Tenant and storage boundaries
 
-MVP has one shared catalog, project list, queue, usage view, and result library for 5–10 admitted
-users. Every admitted user has the same application rights. There are no workspace roles,
-per-customer tenants, private per-user queues, or owner-only project actions in MVP. Actor identity
-is still recorded for every mutation.
+- Admission creates exactly one default workspace transactionally with the user record.
+- Every account-owned table carries account/workspace ownership through composite foreign keys or an
+  equally strong database-enforced relationship. Repositories scope all operations to the
+  authenticated account/workspace.
+- Built-ins use explicit global ownership and are read-only; a nullable owner alone is insufficient
+  without a constrained type/discriminator and tests.
+- R2 keys are server-issued and include account/workspace/project/revision/attempt identity. Signed
+  upload/download URLs are short-lived and restricted to an exact object, size/type contract, and
+  method. Completion rechecks hash, media shape, and ownership.
+- Provider payloads receive only bounded short-lived object access. Provider URLs and callback fields
+  are untrusted input.
+- Job scratch is local, unique to exact job/attempt, quota-bounded, and removed in `finally`. No user
+  input, output, cache, log, or temporary artifact is written to `/runpod-volume`.
+- Logs and metrics use opaque IDs and never contain credentials, signed URLs, raw invite codes,
+  voiceover text, or private media.
 
-A new user signs up with email/password or Google, then completes one invite-code check in that same
-signup flow. Each code is unique, single-use, and bound to one intended email. Email/password access
-requires verified email; Google must return the same verified email. Successful admission and code
-consumption are atomic and durably bound to the user; ordinary future sign-ins never ask for the
-invite again. Codes are stored only as secure verifiers and never written raw to logs, analytics,
-URLs, or audit payloads.
+## Product admission and fair queue
 
-GPU selection is session-scoped, not user- or project-scoped. With no open generation session, the
-first accepted Generate request shows fresh compatible Mage and Echo inventory, carries one exact
-receipt-bound choice for each lane, and atomically opens the singleton global generation session.
-While that session has an active project or any waiting entry, GPU selectors are locked/hidden for
-everyone. Every later Generate only adds its revision to the shared queue and inherits the exact
-session pair. No mid-session switching or substitution is allowed.
+The product scheduler, not RunPod, admits work:
 
-MVP runs one project at a time. Any admitted user may reorder or remove waiting entries using
-optimistic versions; the server derives the actor and appends an audit event. An active entry cannot
-be moved or deleted through queue controls; only the dedicated project-cancellation contract may
-affect it. Advanced fairness, parallel project execution, per-user Pod pairs, and per-user priority
-are deferred.
+1. Generate freezes an immutable tenant-owned video revision, or an explicit Hub action freezes one
+   preset-preview request; either creates an account-local waiting row.
+2. A serializable transaction selects eligible work only when that account has no active provider
+   workload and fewer than two different accounts hold global workload leases.
+3. Eligible video account heads always precede previews. Fair account rotation chooses the
+   least-recently-admitted eligible account; FIFO applies within that account unless its owner changed
+   its own waiting order. Preview rotation is separate and never mutates the video cursor.
+4. The transaction creates a `provider_workload_lease` plus exact stage attempts. No hosted or
+   provider work may start before this commit.
+5. Terminal reconciliation releases the lease, advances only the applicable fairness cursor, and
+   promotes another eligible account.
 
-## Model lanes
+Unique/partial constraints and locked selection must enforce one active provider workload per
+account and two workloads globally from different accounts under races, restarts, and duplicate
+requests. This also preserves one active video/account and two active videos globally. A user may
+inspect/reorder/cancel only their own waiting work. UI position is privacy-safe and cannot expose
+another account's identity/project.
+The RunPod endpoint queue is only transport backlog after product admission; it must never become
+the fairness mechanism. `/purge-queue` is forbidden in ordinary operation.
 
-### Mage image lane
+An explicit Mage or SoulX `preset_preview` is a separate tenant-owned request, not a hidden video.
+It uses the same two global capacity slots and the same one-active-provider-workload/account lock,
+but is eligible only when no video queue head is eligible. It cannot coexist with another active
+workload from its account, outrank a waiting video, or create provider work before its locked
+admission transaction. This preserves the one-video/account and two-video/global upper bounds while
+keeping optional Hub tests safe and lower priority.
 
-Mage generates every original B-roll still through the exact ImageForge INT8 ConvRot contract:
+## Serverless model lanes
 
-- `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6` through pinned headless
-  `Comfy-Org/ComfyUI@26d7f8556822d9d08c2d3e1878636ac3b4969af9`.
-- Precision `int8-convrot`, four steps, CFG/guidance `1.0`, 1280×720, text-to-image only.
-- Required files: `diffusion_models/mage_flow_turbo_int8_convrot.safetensors`,
-  `text_encoders/qwen3vl_4b_bf16.safetensors`, and `vae/mage_flow_vae_bf16.safetensors`.
+Both queue endpoints are restricted to `EU-RO-1` and configured independently:
 
-Its dedicated persistent `EU-RO-1` volume holds only the pinned cache, prepared runtime, and
-verification evidence. A generation session creates or reuses at most one Mage Pod using the
-immutable Mage worker image and the session's exact Mage GPU choice. It processes bounded image
-chunks and uploads outputs only for the active project. A waiter may retain the already-running Pod
-warm. With no waiter at active-lane completion, delete it independently; the volume remains.
+| Setting | Mage | SoulX |
+|---|---:|---:|
+| `workersMin` | 0 | 0 |
+| `workersMax` | 2 | 2 |
+| scaling | `REQUEST_COUNT` | `REQUEST_COUNT` |
+| scaler value | 1 | 1 |
+| handler concurrency | 1 | 1 |
+| GPU/worker | 1 | 1 |
+| initial GPU type | RTX 4090 only | RTX 4090 only |
+| network volume mount | Mage-only at `/runpod-volume` | SoulX-only at `/runpod-volume` |
 
-### Echo avatar lane
+`workersMin=0` means no always-on Active worker; autoscaled jobs use Flex workers.
+`workersMax` counts Active plus Flex workers. RTX 5090 is not configured as a fallback until the
+exact endpoint lane passes compatibility, output, VRAM, cold/warm, concurrent-reader, recovery, and
+cost qualification. If multiple types are listed, RunPod may select any of them.
 
-EchoMimicV3-Flash Turbo FP8 is the sole active avatar generator profile. It pins
-`antgroup/echomimic_v3@7e89489ca51c0d008fc1963ec6c03fc5bd0b9397`, Flash weights
-`BadToBest/EchoMimicV3@311e176905a8c4c24b240b530488fe636ce4d249`, its Wan base/audio encoder,
-and the VideoForge-prepared FP8 artifact. Compatible transformer linears use
-`float8_e4m3fn` dynamic activation-and-weight quantization; other tensors stay BF16. Echo receives
-only short scheduler-selected voiceover spans and the exact Avatar Profile runtime image.
+Each worker image is immutable and lane-specific. Startup:
 
-Echo has a different persistent `EU-RO-1` volume and worker image. A generation session creates or
-reuses at most one Echo Pod using the session's exact Echo GPU choice. It uploads clips only for the
-active project. A waiter may retain the already-running Pod warm. With no waiter at active-lane
-completion, delete it independently; the Echo volume remains. It never mounts the Mage volume.
+1. Validate image/handler identity and required non-secret configuration.
+2. Set every framework cache/temp path to job-local/container scratch, never the volume.
+3. Verify exact volume identity, sealed completion marker, full file path/size/SHA-256 manifest, and
+   model/runtime configuration with network model registries unavailable.
+4. Load only the exact pinned model and run a real GPU warm-up.
+5. Report `model_ready` with image digest, manifest digest, actual GPU/VRAM, worker identity, and
+   measured timestamps. A process health response is not model readiness.
 
-Initially, each lane permits at most one Pod, so total GPU concurrency is at most two while only one
-project executes. The first accepted Generate may start both required Pods concurrently while the
-CPU transcription/timeline path advances. Inference waits for `model_ready` and its immutable lane
-work plan. A lane deletes its Pod immediately when active lane work finishes with no waiting entry,
-without waiting for the other lane or final render. A later waiter is inert and never recreates the
-missing Pod. Only after the current video is terminal and that waiter is atomically promoted may the
-controller revalidate and recreate the missing Pod on the same exact session GPU; unavailable means
-blocked, never substituted. A waiter may keep an already-running Pod warm. The session closes and
-GPU selection unlocks only after no active/waiting entry remains and both Pods are proven absent.
+Each admitted video starts with one bounded whole-video batch attempt per required lane. The Mage
+attempt processes its image work manifest; the SoulX attempt processes only scheduler-selected short
+audio spans, never a full voiceover. At most one current attempt exists per video/lane. After a prior
+attempt is terminal or uniquely reconciled, a bounded classified replacement may use a new
+attempt/token containing all unresolved lane items as one batch; accepted items are never regenerated
+and the controller never fragments work into parallel per-scene requests. Sequential work inside one
+handler reuses the resident model. Handler concurrency remains one. With two admitted workloads,
+RunPod may create two workers on each endpoint, bounded by `workersMax=2`. Two readers of the same
+sealed volume must pass an exact concurrency/hash/inference qualification before production.
 
-## Preparation, boot, and artifacts
+RunPod does not document a read-only mount flag. Application policy, filesystem permissions where
+available, redirected caches, pre/post manifest verification, and zero-write tests enforce
+immutability. Any manifest drift stops the job and endpoint dispatch; no repair or re-preparation is
+performed during ordinary generation.
 
-Each model volume is prepared once in a separately authorized setup operation. Preparation downloads
-only pinned sources, derives the approved runtime, records every path/size/hash/configuration and
-toolchain identity, independently verifies the mounted result, and writes the completion marker
-last. A partial preparation never becomes ready and one lane cannot prepare the other lane's volume.
+## Dispatch authority and RunPod limitations
 
-Ordinary project boots download no model bytes and resolve no model repository. A Pod mounts its
-already-prepared volume and reports these truthful phases:
+Every external job uses a two-phase authority record:
 
-1. `container_ready`: the expected container and health API run.
-2. `volume_ready`: exact lane volume, complete marker, and manifest verify.
-3. `model_loading`: verified bytes load to the selected GPU; inference is rejected.
-4. `model_ready`: exact identities and a real GPU warm-up pass.
+1. **Predispatch:** transactionally reserve budget, persist endpoint/image/model/volume/input/output
+   identities, unique dispatch token, request hash, attempt ordinal, expiration policy, and outbox
+   intent before a provider POST.
+2. **Post-assignment:** bind the exact returned or uniquely reconciled provider job ID to the token
+   and attempt before accepting status/output. Record later worker/GPU/model-ready/timing/output facts
+   in the separate VideoForge-signed provenance receipt. Accept an output only when its assignment,
+   predispatch tuple, and expected private R2 receipt/checksum all match.
 
-The model-loading path must work with model registries unavailable. Missing, changed, incomplete, or
-cross-mounted content fails closed. Authenticated R2/control-plane access remains available for job
-data and events.
+RunPod `/run` returns a job ID but does not document client idempotency, exactly-once execution, or
+exactly-once billing. On an ambiguous POST, do not blindly resubmit. Reconcile durable outbox/provider
+state and make any deliberate retry a new, cost-reserved attempt while accepting at most one result.
+Record possible duplicate compute/cost instead of claiming it is impossible.
 
-Voiceover, avatar inputs, prompts, outputs, previews, logs, and renders live in the single private
-R2 app namespace, never model volumes. Accepted outputs require size, checksum, and media
-validation. Final download uses a temporary file, resume where supported, verification, and atomic
-promotion. Production whisper.cpp transcription and deterministic FFmpeg render/probe run as
-REST-executed Cloud Run Jobs using R2 artifacts. The Mac runs the same pinned media path only for
-development and provider-free parity. Cloud Run region, CPU, memory, timeout, and concurrency remain
-benchmark-gated; the CPU runner never boots or occupies either GPU lane.
+Poll `/status` as the authoritative provider observation. A webhook has limited retries and no
+documented signature guarantee, so treat it as a hint and validate it against the bound job plus a
+VideoForge-signed durable R2 receipt. RunPod async result retention is 30 minutes; never depend on
+retrieving it later. Store accepted artifacts and receipts in R2 immediately.
 
-## Reusable assets and style analysis
+TTL begins at submission, includes queue time, and may remove a running job. Execution timeout and
+initialization timeout must be set above measured worst cases with finite bounds. The measured SoulX
+Pod start-to-ready result of 672.035 seconds exceeds RunPod's documented seven-minute unhealthy
+cold-start threshold, so `RUNPOD_INIT_TIMEOUT` and image/startup optimization require explicit
+Serverless qualification. Provider defaults are not silently accepted.
 
-Avatar Hub retains a private original plus deterministic, metadata-stripped runtime/thumbnail
-derivatives and binds projects to an immutable ready version. Browser claims never replace
-server-side magic-byte, dimension, size, checksum, metadata, consent, and safe-area validation. Any
-needed production media preparation uses the Cloud Run CPU boundary, not a GPU model lane; Mac
-execution is development parity only.
+Cancellation prevents new dispatch, calls exact job cancellation where valid, continues status/R2
+reconciliation, records incurred cost, and reaches terminal state only when no accepted callback can
+revive the attempt. Endpoint queue purge cannot be used because it affects unrelated tenants/jobs.
 
-New draft Image Style analysis is a control-plane Runware Gemini workflow, not a Pod lane or normal
-project step. It verifies normalized private derivatives, validates the structured profile, and waits
-for publication. A ready style is immutable Postgres/R2 data and incurs no per-project analysis.
+## CPU/media and artifact flow
 
-## Control-plane responsibilities
+Production voiceover timing and rendering run as authenticated scale-to-zero Cloud Run Jobs. They
+consume immutable tenant-scoped R2 manifests and write only exact expected tenant-scoped results.
+They have no RunPod credentials or volume access. The same pinned entrypoints run locally for
+provider-free development parity, which is not hosted evidence.
 
-- Authenticate, perform one-time global admission, validate uploads, and create immutable revisions.
-- Manage versioned Avatar Profiles and Image Styles and their exact project pins.
-- Run signed R2 transfers, Cloud Run Job ASR/render integration, scheduling, and Runware batches.
-- Atomically create the singleton generation session from the first idle Generate and its two fresh,
-  exact GPU choices; make later projects inherit that pair.
-- Serialize one active project, version the global queue, and audit every waiting-entry move/delete.
-- Reserve budget and record lane-scoped create/delete intents before provider mutation.
-- Verify exact Pod, volume, image, model, GPU, worker, and attempt identity.
-- Reconcile missing events and ambiguous provider responses without speculative create/delete.
-- Let a waiter retain only an already-running Pod. Otherwise delete after active-lane completion and
-  prove absence independently. Never let a waiter recreate a missing Pod; retain both volumes.
-- Compile only after the accepted-artifact barrier and expose truthful progress/cost.
+The original voiceover is durably uploaded and checksum-bound before the revision can freeze or enter
+the queue. After admission, normalization/transcription/scheduling/prompt compilation produce exact
+lane manifests and input barriers; GPU dispatch cannot begin earlier. Once both exact lane requests
+are dispatchable, their worker initialization/inference may overlap. Compilation requires every
+planned asset to be accepted and checksum-bound. Final download is short-lived, verified, and
+tenant-authorized.
 
-The control plane never performs model inference or a long render. Postgres stores admission,
-generation-session, queue, workflow, create/delete attempt, provider identity, actor-audit, and
-result-manifest truth; provider state/logs are not recovery truth.
+## Preserved components and superseded components
 
-## GPU choice and cost
+Preserve and extend:
 
-When no generation session is open, refresh live, `EU-RO-1` volume-compatible, qualified inventory
-independently for each model. The first accepted Generate explicitly chooses one exact offering per
-lane and locks both into the singleton session. Record selected and actual GPU, receipt/rate,
-volume/DC, image digest, model manifest, and compatibility evidence. All queued work inherits the
-pair. While the session is open there is no GPU switching, second pair, or silent fallback.
+- the current React product surfaces and accessibility/Chrome acceptance baseline;
+- additive Postgres migrations, immutable revision/version patterns, actor audit, and fail-closed
+  repository style;
+- CP-03 transcript/word timing and R2 media ports;
+- CP-04 deterministic scheduler and immutable generation/render manifests;
+- CP-05 provider-free orchestration/recovery patterns after adapting them to tenant/fair Serverless
+  semantics;
+- exact prepared Mage and SoulX models/volumes and their Pod qualification evidence.
 
-Generate is bounded authority to open or join the global session and create only its required Pods.
-Active-lane completion plus the waiting-only warm hint controls retention, never an idle timer. A
-waiter cannot create work or a missing Pod. Ambiguous create/delete outcomes reconcile against exact
-provider identity and fail closed: no speculative duplicate Pod and no false “stopped” state.
+Supersede in active code/contracts/UI:
 
-## Historical paths
+- singleton global generation session and global equal-rights catalogs;
+- one global manually ordered queue and cross-user mutation;
+- user-facing GPU selectors, selected GPU pairs, manual Pod create/recreate/delete, warm-for-waiter,
+  and session-unlock behavior;
+- Pod HTTP entrypoints, `/workspace` model paths, global R2 prefixes, and global GPU-pair widgets;
+- schemas/repos named around `global-generation-session/v2` or `pod-worker-job-envelope/v2` at the
+  production boundary. Preserve migration history; replace behavior additively with tenant,
+  admission, endpoint-job, and receipt contracts.
 
-The former Serverless-first `/run`, endpoint queue, `workersMin`/`workersMax`, FlashBoot, shared
-image/media endpoint, and endpoint-profile design is historical planning only. AvatarForcing,
-MuseTalk, and SkyReels are historical/replay evidence only, not active lanes, fallbacks, repairs, or
-volume-sharing precedent. Reintroduction requires a new decision, brief, compatibility gate, and
-cost authorization.
+Pod qualification proves model/runtime correctness on that Pod image and volume. It does not prove
+Serverless template compatibility, handler lifecycle, timeout, queue behavior, scale-to-zero,
+concurrent reads, worker cleanup, or Serverless cost.
 
-## Renderer and output boundary
+## Security, recovery, and operations
 
-Direct FFmpeg provides the required hard cuts, crops, scales, slow still-image zoom, and audio mux.
-Remotion adds an unnecessary browser layer; HyperFrames centers the prohibited motion-graphics/text
-output class. Keep a renderer interface, but use FFmpeg now.
-
-## Security, scale, and recovery
-
-- Keep RunPod, Runware, database, R2, OAuth, invite-code pepper/verifiers, and Cloud Run credentials
-  server-only. Use short-lived signed object URLs, admission checks, and signed replay-protected
-  worker events.
-- Validate MIME, size, checksum, duration, and media decode; never pass arbitrary URLs to FFmpeg or
-  leak provider payloads/secrets. Treat avatar likenesses and style references as private.
-- Size MVP for 5–10 equal admitted users in one global app scope. The hard initial limit is one
-  active project and one Pod per lane; any increase needs a new measured decision. Do not add
-  roles, tenant routing, fairness scheduling, per-user pairs, shared model volumes, Redis,
-  Kubernetes, or Temporal preemptively.
-- Postgres plus R2 artifacts/manifests are recovery truth. Pin images and preparation hashes, retain
-  each volume between Pods, and keep it reproducible from pinned sources.
-- Reconcile exact Pod IDs before adoption, cancellation, or deletion. Lost create cannot authorize a
-  second create; lost delete cannot be reported stopped until absence is proven.
+- Secrets remain server-only and are separated by minimum provider scope. Rotate without changing
+  model/artifact identity.
+- Verify MIME/magic bytes, size, duration, decode, path containment, hashes, and object ownership.
+  Never give FFmpeg arbitrary URLs or arguments.
+- Postgres plus signed R2 receipts/manifests recover every workflow after process loss. Provider
+  callbacks are replay-safe and cannot change tenant/attempt identity.
+- Budget reservation precedes dispatch; actual provider billing is reconciled separately. A cap can
+  block future work but cannot undo incurred or duplicate provider work.
+- Monitor queue age, fairness lag, cold/model-ready time, inference throughput, errors/retries,
+  duplicate-risk events, R2 failures, worker count, endpoint configuration drift, cost, and zero-idle
+  state without logging private content.
+- Production handoff proves no Active workers (`workersMin=0`), zero Flex workers/jobs after drain,
+  and exactly the two intended retained model volumes. Endpoint existence is not ongoing GPU spend.

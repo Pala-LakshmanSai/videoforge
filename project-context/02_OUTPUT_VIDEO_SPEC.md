@@ -32,7 +32,8 @@ source, the renderer crops `2500x1406+30+0`, scales that background to 1920x1080
 512x512/25 fps SoulX result to 1080x1080, and overlays it at `x=420,y=0` with a 32-pixel horizontal
 alpha feather at both edges. The result converts to 30 fps with ordinary nearest-timestamp frame
 selection. This profile does not become active until the user approves the exact preview under
-`GATE_AVATAR_005`; every later Avatar Profile must store its own measured source-to-native mapping.
+`GATE_SERVERLESS_SOULX_001`; every later Avatar Profile must store its own measured source-to-native
+mapping.
 
 The following coordinates are historical replay contracts only. They preserve already-recorded manifests and are not valid active SoulX profiles.
 
@@ -164,6 +165,9 @@ Before delivery verify:
 - Full and split crop geometry matches the accepted model-specific source profile; active SoulX output is blocked until its measured profile is approved, and a model/profile/crop mismatch is rejected.
 - Both `IMAGE_FULL` and the right image in `AVATAR_SPLIT_IMAGE` have the required subtle eased zoom;
   neither is static, neither oscillates around its center, and neither exhibits integer-crop shake.
-- Every image attempt and content-addressed prompt manifest points to the revision's pinned Image Style version/effective prompt hash; `production-manifest/v2` binds that prompt manifest plus the pinned Avatar Profile binding to the renderer-only resolved-render manifest and final MP4.
+- Every image attempt and content-addressed prompt manifest points to the revision's pinned Image
+  Style version/effective prompt hash; active `production-manifest/v3` binds that prompt manifest,
+  tenant lineage, accepted Serverless receipts, and the pinned Avatar Profile to the renderer-only
+  resolved render manifest and final MP4. Historical v2 manifests remain replay-only.
 - No intermediate filename, debugging text, subtitle stream, extra audio stream, or metadata leak.
 - MP4 is seekable and plays in the user's Chrome.
