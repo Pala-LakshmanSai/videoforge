@@ -183,6 +183,42 @@ test("forged keys, cross-tenant ownership, stale receipts, and duplicate callbac
       "23514",
     );
 
+    const legalHoldReservation = uuid(9218);
+    const legalHoldReceipt = uuid(9219);
+    const legalHoldKey = key.replace("artifact/artifact-a", "artifact/legal-hold");
+    await insertReservation(executor, {
+      id: legalHoldReservation,
+      key: legalHoldKey,
+      artifactId: "legal-hold",
+      retentionClass: "LEGAL_HOLD",
+      retainUntil: null,
+    });
+    await executor.query(
+      `INSERT INTO artifact_receipts (
+         id, account_id, workspace_id, reservation_id, callback_id, object_key,
+         content_type, content_length, checksum_sha256, receipt_sha256, committed_at
+       ) VALUES ($1, $2, $3, $4, 'callback-legal-hold', $5, 'audio/wav', 128, $6, $7,
+                 '2099-01-01T00:05:00Z')`,
+      [
+        legalHoldReceipt,
+        IDS.accountA,
+        IDS.workspaceA,
+        legalHoldReservation,
+        legalHoldKey,
+        sha256("artifact-a"),
+        sha256("legal-hold-receipt"),
+      ],
+    );
+    await expectDatabaseError(
+      executor.query(
+        `UPDATE artifact_receipts
+            SET deleted_at = '2100-01-01T00:00:00Z', deletion_reason = 'legal hold'
+          WHERE id = $1`,
+        [legalHoldReceipt],
+      ),
+      "23514",
+    );
+
     const reservationB = uuid(9216);
     const receiptB = uuid(9217);
     const keyB = `tenant/${IDS.accountB}/workspace/${IDS.workspaceB}/project/${IDS.projectB}/revision/${IDS.revisionB}/lane/input/job/job-a/artifact/artifact-a`;

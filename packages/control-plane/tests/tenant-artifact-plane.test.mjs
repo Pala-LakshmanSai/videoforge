@@ -72,6 +72,12 @@ test("exact upload ports reject forged scope, method, path, type, length, hash, 
   expectCode("ARTIFACT_NOT_FOUND", () =>
     plane.upload({ ...port, capability_handle: "00".repeat(32) }, uploadRequest(port)),
   );
+  expectCode("ARTIFACT_NOT_FOUND", () =>
+    plane.upload({ ...port, method: "GET" }, uploadRequest(port)),
+  );
+  expectCode("ARTIFACT_NOT_FOUND", () =>
+    plane.upload({ ...port, content_type: "text/plain" }, uploadRequest(port)),
+  );
   expectCode("PORT_SCOPE_MISMATCH", () =>
     plane.upload(
       port,
@@ -211,6 +217,26 @@ test("deletion is owner-scoped and retention-bound", () => {
       contentType: deletion.content_type,
       contentLength: deletion.content_length,
       checksumSha256: deletion.checksum_sha256,
+      now: NOW,
+    }),
+  );
+
+  const legalHoldUpload = plane.reserveUpload(
+    identity(scopeA, "legal-hold"),
+    options({ retentionClass: "LEGAL_HOLD" }),
+  );
+  plane.upload(legalHoldUpload, uploadRequest(legalHoldUpload));
+  plane.commitUpload(scopeA, legalHoldUpload.reservation_id, "callback-legal-hold", {}, NOW);
+  const legalHoldDeletion = plane.reserveDelete(
+    identity(scopeA, "legal-hold"),
+    options({ retentionClass: "LEGAL_HOLD" }),
+  );
+  expectCode("RETENTION_ACTIVE", () =>
+    plane.delete(scopeA, legalHoldDeletion, {
+      path: legalHoldDeletion.path,
+      contentType: legalHoldDeletion.content_type,
+      contentLength: legalHoldDeletion.content_length,
+      checksumSha256: legalHoldDeletion.checksum_sha256,
       now: NOW,
     }),
   );

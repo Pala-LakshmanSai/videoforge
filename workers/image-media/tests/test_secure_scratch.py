@@ -101,6 +101,25 @@ class SecureScratchTest(unittest.TestCase):
                     now=now,
                 )
 
+        for field, value in (
+            ("content_length", -1),
+            ("checksum_sha256", "sha256:not-a-digest"),
+            ("max_uses", 4),
+        ):
+            malformed = self.scoped_port("GET")
+            malformed[field] = value
+            with tempfile.TemporaryDirectory() as temporary:
+                with self.assertRaisesRegex(ScratchIsolationError, "WORKER_ARTIFACT_PORT_INVALID"):
+                    mage_worker_io(
+                        root=Path(temporary).resolve(),
+                        account_id="account-a",
+                        workspace_id="workspace-a",
+                        job_id="job-scoped",
+                        input_ports=(malformed,),
+                        output_ports=(self.scoped_port("PUT"),),
+                        now=now,
+                    )
+
     def test_context_cleanup_runs_on_success_and_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
