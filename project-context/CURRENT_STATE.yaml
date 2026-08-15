@@ -262,7 +262,9 @@ recommended_next_task:
 
 verification:
   state: passed
-  verified_commit: "806edba2a83087add93902ff2b937bd8c564a746"
+  verified_commit: "b4e39703b3cfc07bfa53d69b140f4ccc26181a2c"
+  verified_commit_note: "V2-01 tenant-private identity and data cutover; verified green twice before commit."
+  predecessor_verified_commit: "806edba2a83087add93902ff2b937bd8c564a746"
   independent_audit_evidence: evidence/acceptance/VF-10-00A/2026-08-15-final-audit/acceptance.json
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
