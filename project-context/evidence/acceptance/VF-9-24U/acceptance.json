@@ -1,0 +1,81 @@
+{
+  "schema_version": "videoforge.soulx-flashhead-pro-vf924u-acceptance/v1",
+  "task_id": "VF-9-24U",
+  "result": "technical_pass_ready_for_user_visual_review",
+  "completed_at": "2026-08-15T09:55:44.438Z",
+  "final_inventory_checked_at": "2026-08-15T09:56:02.932Z",
+  "runtime": {
+    "model_revision": "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro",
+    "image_digest": "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b",
+    "manifest_sha256": "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+    "manifest_total_bytes": 6916084703,
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "rate_usd_per_hour": 0.74,
+    "vram_gb": 24,
+    "peak_inference_vram_bytes": 9662785536
+  },
+  "timings_ms": {
+    "pod_start_to_model_ready": 672035,
+    "worker_manifest_verify": 8763,
+    "worker_model_load": 3896,
+    "worker_compile_warmup": 160873,
+    "worker_model_ready": 173672,
+    "generation_submit_to_retrieval": 26673,
+    "source_and_base_prepare": 525,
+    "inference": 20268,
+    "encode_and_mux": 894
+  },
+  "outputs": {
+    "native": {
+      "path": "outputs/soulx-flashhead-pro/vf-9-24u/new-avatar-third-10.00s/soulx-flashhead-pro-new-avatar-third-10.00s.mp4",
+      "sha256": "sha256:db70cd410062572052313278f12d67393aba213ca607fa3a3b9e3f6aad948bf1",
+      "bytes": 1796677,
+      "geometry": "512x512",
+      "fps": 25,
+      "frames": 250,
+      "video_duration_seconds": 10,
+      "audio_duration_seconds": 10
+    },
+    "full": {
+      "path": "outputs/soulx-flashhead-pro/vf-9-24u/new-avatar-third-10.00s/ranga-style-full-16x9-corrected.mp4",
+      "sha256": "sha256:da31d87c2389769272733ff50a9114d4507a36aced1ebe48480c9ccf486de241",
+      "bytes": 6129069,
+      "geometry": "1920x1080",
+      "fps": 30,
+      "frames": 300,
+      "video_duration_seconds": 10,
+      "audio_duration_seconds": 10
+    },
+    "split": {
+      "path": "outputs/soulx-flashhead-pro/vf-9-24u/new-avatar-third-10.00s/ranga-style-split-composite-16x9-corrected.mp4",
+      "sha256": "sha256:f0b02351e38e2e8570e4e586b314da30813bb0a0eb09a567912bba9725b74993",
+      "bytes": 6980593,
+      "geometry": "1920x1080",
+      "fps": 30,
+      "frames": 300,
+      "video_duration_seconds": 10,
+      "audio_duration_seconds": 10
+    }
+  },
+  "economics": {
+    "authorized_cap_usd": 3,
+    "settled_external_spend_usd": null,
+    "settlement_status": "provider_billing_not_yet_observed",
+    "conservative_finite_cost_upper_bound_usd": 0.168967,
+    "projected_30_minute_video_avatar_gpu_minutes": 32.59766393333333,
+    "projected_30_minute_video_avatar_gpu_cost_usd": 0.40203785517777774,
+    "ongoing_soulx_volume_usd_per_month": 3.5
+  },
+  "cleanup": {
+    "pod_absence_proven": true,
+    "pods": 0,
+    "private_templates": 0,
+    "endpoints": 0,
+    "active_serverless_workers": 0,
+    "network_volumes": 2,
+    "retained_soulx_volume_size_gb": 50,
+    "retained_mage_volume_size_gb": 50
+  },
+  "remaining_gate": "user_visual_review_before_renderer_profile_activation"
+}
