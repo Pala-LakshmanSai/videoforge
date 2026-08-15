@@ -46,8 +46,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "56be2feb76bc24d1c28f28fb0151b33ea9b7956d"
-  last_good_commit_note: "Predecessor of the V2-00 revalidation commit. The V2-01 tenant cutover commit is its descendant and is recorded under verification.verified_commit."
+  last_good_commit: "701cd0c91860fa4b518b47f8890be3a8f75aa7ba"
+  last_good_commit_note: "V2-02 provider-free tenant artifact, exact transfer-port, durable receipt, and scratch-isolation implementation; canonical verification green, independent audit pending."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -262,10 +262,10 @@ recommended_next_task:
 
 verification:
   state: passed
-  verified_commit: "714b21978f2720682269e45ca46f674e052893c3"
-  verified_commit_note: "V2-01 tenant cutover repair: every repository call validates account/workspace ownership in its bound transaction, and active shared-app paths are tenant private; independently re-audited green."
-  predecessor_verified_commit: "806edba2a83087add93902ff2b937bd8c564a746"
-  independent_audit_evidence: evidence/acceptance/VF-10-01/2026-08-15-tenant-cutover-reaudit/acceptance.json
+  verified_commit: "701cd0c91860fa4b518b47f8890be3a8f75aa7ba"
+  verified_commit_note: "V2-02 provider-free implementation is canonical-green with trusted artifact identity, exact ports, durable receipts, fake-R2 adversarial proof, and both-lane scratch isolation; independent audit is pending."
+  predecessor_verified_commit: "714b21978f2720682269e45ca46f674e052893c3"
+  independent_audit_evidence: null
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
@@ -322,7 +322,7 @@ verification:
   paid_compute_started_for_v2_01: false
   completed_for_v2_02:
     evidence: evidence/acceptance/VF-10-02/2026-08-15-private-artifacts/acceptance.json
-    implementation_commit: null
+    implementation_commit: "701cd0c91860fa4b518b47f8890be3a8f75aa7ba"
     commands:
       - "node --test packages/control-plane/tests/tenant-artifact-persistence.test.mjs packages/control-plane/tests/tenant-artifact-plane.test.mjs: PASS (8/8)"
       - "node --test packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs: PASS"
@@ -330,7 +330,7 @@ verification:
       - "pnpm python:lint: PASS"
       - "pnpm test:workers: PASS (6 explicit Python 3.12 suites)"
       - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 242/242; pipeline 120/120; web 314/314; contracts 77/77 TypeScript and 61/61 Python; provider-sandbox 43/43; test-fixtures 12/12; Cloudflare 1/1; installed Chrome 44/44)"
-      - "pnpm context:validate: PASS (115 JSON files; 46 structured evidence references; 31 profiles; 41 decisions; 19 gates)"
+      - "pnpm context:validate: PASS (115 JSON files; 45 structured evidence references; 31 profiles; 41 decisions; 19 gates)"
       - "pnpm contracts:check: PASS (75 canonical files synchronized)"
       - "pnpm secret:scan: PASS"
       - "git diff --check: PASS"
