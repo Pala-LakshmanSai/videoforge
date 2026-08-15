@@ -19,10 +19,14 @@ const evidence = await runSoulXVf924s({
   ),
   artifactRoot: path.join(
     repositoryRoot,
-    "outputs/soulx-flashhead-pro/vf-9-24t/elias-second-10.00s",
+    "outputs/soulx-flashhead-pro/vf-9-24t/elias-second-10.00s/measurement-retry",
   ),
   outputBasename: "soulx-flashhead-pro-elias-second-10.00s.mp4",
   renderCropPreviews: true,
+  splitContextImagePath: path.join(
+    repositoryRoot,
+    "apps/web/.videoforge/cp06-phase-b/outputs/samples/cp06-owned-03.png",
+  ),
 });
 
 process.stdout.write(

@@ -43,12 +43,12 @@ gates:
   GATE_AVATAR_005:
     status: open
     blocks: soulx_flashhead_pro_production_profile_and_renderer_crop
-    acceptance: "tasks/VF-9-24S.md#required-evidence-and-handoff"
-    owner: VF-9-24S
-    last_run: "evidence/acceptance/VF-9-24S/soulx-flashhead-pro/acceptance.json"
-    result: open_technical_qualification_passed_sample_ready_for_user_visual_review
-    checked_at: "2026-08-15T07:55:09.960Z"
-    blocker: "Exact SoulX Pro manifest, isolated volume, offline fresh-Pod warm-up, 10.12-second MP4, lifecycle timing/cost, Echo-volume removal, and zero-compute/two-volume cleanup passed. Only user visual review and any later production-suite or SoulX renderer-crop activation remain open."
+    acceptance: "tasks/VF-9-24T.md#corrected-ranga-style-composition-previews"
+    owner: VF-9-24T
+    last_run: "evidence/acceptance/VF-9-24T/ranga-crop-correction.json"
+    result: open_technical_qualification_passed_corrected_ranga_style_compositions_ready_for_user_visual_review
+    checked_at: "2026-08-15T09:10:15Z"
+    blocker: "Exact SoulX Pro runtime qualification passed. The corrected source-aware full-frame and completed 50/50 split-composite previews are locally validated and await user visual approval before renderer activation; the VF-9-24T exact timing retry also remains open."
   GATE_IMAGE_001:
     status: open
     blocks: mage_production_profile

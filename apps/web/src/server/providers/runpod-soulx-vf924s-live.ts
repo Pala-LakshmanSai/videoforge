@@ -542,9 +542,9 @@ const assertMediaContract = (
     audioDuration === null ||
     formatDuration === null ||
     Math.abs(videoDuration - 10) > 0.001 ||
-    Math.abs(audioDuration - 10) > 0.04 ||
-    Math.abs(formatDuration - 10) > 0.04 ||
-    Math.abs(videoDuration - audioDuration) > 0.04
+    Math.abs(audioDuration - 10) > 0.01 ||
+    Math.abs(formatDuration - 10) > 0.01 ||
+    Math.abs(videoDuration - audioDuration) > 0.01
   ) {
     throw new Error("VF924T_MEDIA_CONTRACT_MISMATCH");
   }
@@ -560,46 +560,31 @@ const assertMediaContract = (
   };
 };
 
-const renderCropPreview = async (
-  sourcePath: string,
-  outputPath: string,
-  filter: string,
-  expected: {
-    readonly width: number;
-    readonly height: number;
-    readonly fps: string;
-    readonly frames: number;
-  },
-): Promise<JsonRecord> => {
-  await execFileAsync("ffmpeg", [
-    "-hide_banner",
-    "-loglevel",
-    "error",
-    "-n",
-    "-i",
-    sourcePath,
-    "-vf",
-    filter,
-    "-c:v",
-    "libx264",
-    "-preset",
-    "slow",
-    "-crf",
-    "15",
-    "-pix_fmt",
-    "yuv420p",
-    "-c:a",
-    "aac",
-    "-b:a",
-    "192k",
-    "-ar",
-    "48000",
-    "-ac",
-    "2",
-    "-movflags",
-    "+faststart",
-    outputPath,
-  ]);
+const previewOutputArgs = (outputPath: string): string[] => [
+  "-c:v",
+  "libx264",
+  "-preset",
+  "slow",
+  "-crf",
+  "15",
+  "-pix_fmt",
+  "yuv420p",
+  "-c:a",
+  "aac",
+  "-b:a",
+  "192k",
+  "-ar",
+  "48000",
+  "-ac",
+  "2",
+  "-t",
+  "10.000",
+  "-movflags",
+  "+faststart",
+  outputPath,
+];
+
+const summarizePreview = async (outputPath: string): Promise<JsonRecord> => {
   const bytes = await readFile(outputPath);
   const probe = await probeMedia(outputPath);
   return {
@@ -607,8 +592,78 @@ const renderCropPreview = async (
     sha256: sha256(bytes),
     bytes: bytes.length,
     probe,
-    media_contract: assertMediaContract(probe, expected),
+    media_contract: assertMediaContract(probe, {
+      width: 1920,
+      height: 1080,
+      fps: "30/1",
+      frames: 300,
+    }),
   };
+};
+
+const renderRangaFullPreview = async (
+  nativePath: string,
+  sourceImagePath: string,
+  outputPath: string,
+): Promise<JsonRecord> => {
+  await execFileAsync("ffmpeg", [
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-n",
+    "-loop",
+    "1",
+    "-framerate",
+    "30",
+    "-i",
+    sourceImagePath,
+    "-i",
+    nativePath,
+    "-filter_complex",
+    "[0:v]crop=2500:1406:30:0,scale=1920:1080:flags=lanczos,fps=30[bg];" +
+      "[1:v]scale=1080:1080:flags=lanczos,fps=30,format=rgba[fg];" +
+      "color=white:s=1080x1080:r=30:d=10,format=gray," +
+      "geq=lum='if(lt(X,32),255*X/32,if(gt(X,W-33),255*(W-1-X)/32,255))'[mask];" +
+      "[fg][mask]alphamerge[fgf];[bg][fgf]overlay=420:0:shortest=1[v]",
+    "-map",
+    "[v]",
+    "-map",
+    "1:a:0",
+    ...previewOutputArgs(outputPath),
+  ]);
+  return summarizePreview(outputPath);
+};
+
+const renderRangaSplitPreview = async (
+  nativePath: string,
+  contextImagePath: string,
+  outputPath: string,
+): Promise<JsonRecord> => {
+  await execFileAsync("ffmpeg", [
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-n",
+    "-i",
+    nativePath,
+    "-loop",
+    "1",
+    "-framerate",
+    "30",
+    "-i",
+    contextImagePath,
+    "-filter_complex",
+    "[0:v]crop=448:504:32:4,scale=960:1080:flags=lanczos,fps=30[left];" +
+      "[1:v]scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos," +
+      "crop=960:1080,zoompan=z=min(zoom+0.000133333\\,1.04):d=300:s=960x1080:fps=30[right];" +
+      "[left][right]hstack=inputs=2[v]",
+    "-map",
+    "[v]",
+    "-map",
+    "0:a:0",
+    ...previewOutputArgs(outputPath),
+  ]);
+  return summarizePreview(outputPath);
 };
 
 export function projectSoulXAvatarEconomics(input: {
@@ -672,6 +727,7 @@ export async function runSoulXVf924s(input: {
   readonly finiteCapUsd?: number;
   readonly outputBasename?: string;
   readonly renderCropPreviews?: boolean;
+  readonly splitContextImagePath?: string;
 }): Promise<JsonRecord> {
   const taskId = input.taskId ?? "VF-9-24S";
   const isSecondSample = taskId === "VF-9-24T";
@@ -690,6 +746,8 @@ export async function runSoulXVf924s(input: {
     !path.isAbsolute(input.sourceImagePath) ||
     !path.isAbsolute(input.sourceAudioPath) ||
     !path.isAbsolute(input.artifactRoot) ||
+    (input.renderCropPreviews === true &&
+      (!input.splitContextImagePath || !path.isAbsolute(input.splitContextImagePath))) ||
     !Number.isFinite(finiteCapUsd) ||
     finiteCapUsd <= 0 ||
     path.basename(outputBasename) !== outputBasename ||
@@ -889,28 +947,43 @@ export async function runSoulXVf924s(input: {
     };
     const generationWallMs = uploadAndPollMs;
     const workerDurationSeconds = finite(generationResult.duration_seconds);
+    if (isSecondSample) {
+      const partialEvidence = {
+        schema_version: "videoforge.soulx-flashhead-pro-vf924t-runtime-partial/v1",
+        recorded_at: new Date().toISOString(),
+        account_id_sha256: ACCOUNT_HASH,
+        image_digest: input.imageDigest,
+        retained_soulx_volume_id_sha256: SOULX_VOLUME_HASH,
+        pod_id_sha256: sha256(runtimePod.id),
+        provider_pod_started_at: runtimePod.startedAt,
+        provider_pod_started_at_source: runtimePod.startedAtSource,
+        model_ready_observed_at: modelReadyObservedAt,
+        pod_start_to_model_ready_ms: podStartedToModelReadyMs,
+        generation_submit_to_retrieval_ms: generationWallMs,
+        runtime_health: runtimeHealth,
+        worker_result: { ...generationResult, output_base64: undefined },
+        output: outputSummary,
+      };
+      await writeFile(
+        path.join(input.artifactRoot, "runtime-partial.json"),
+        `${JSON.stringify(partialEvidence, null, 2)}\n`,
+        { flag: "wx", mode: 0o600 },
+      );
+    }
     deletions.push(await deletePodEvidence(client, runtimePod));
     activePod = null;
     const cropPreviews =
       isSecondSample && input.renderCropPreviews === true
         ? {
-            full: await renderCropPreview(
+            full: await renderRangaFullPreview(
               outputPath,
-              path.join(
-                input.artifactRoot,
-                "soulx-flashhead-pro-elias-second-10.00s-full-16x9.mp4",
-              ),
-              "crop=512:288:0:112,scale=1920:1080:flags=lanczos,fps=30:round=near",
-              { width: 1920, height: 1080, fps: "30/1", frames: 300 },
+              input.sourceImagePath,
+              path.join(input.artifactRoot, "ranga-style-full-16x9-corrected.mp4"),
             ),
-            split: await renderCropPreview(
+            split: await renderRangaSplitPreview(
               outputPath,
-              path.join(
-                input.artifactRoot,
-                "soulx-flashhead-pro-elias-second-10.00s-split-8x9.mp4",
-              ),
-              "crop=448:504:32:4,scale=960:1080:flags=lanczos,fps=30:round=near",
-              { width: 960, height: 1080, fps: "30/1", frames: 300 },
+              input.splitContextImagePath as string,
+              path.join(input.artifactRoot, "ranga-style-split-composite-16x9-corrected.mp4"),
             ),
           }
         : null;

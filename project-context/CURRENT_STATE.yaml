@@ -1,60 +1,42 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-15T08:47:34Z"
+updated_at: "2026-08-15T09:17:38Z"
 
-phase: soulx_flashhead_pro_second_sample_paid_execution
+phase: soulx_flashhead_pro_second_sample_partial_output_awaiting_measurement_retry_authority
 implementation_authorized_in_current_task: true
 current_milestone: soulx_flashhead_pro_second_sample_crop_economics
 current_task: VF-9-24T
 current_wave: soulx_flashhead_pro_replacement_qualification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: bounded_mutation
+task_stage: awaiting_corrected_crop_review_and_revised_paid_authorization
 application_code_changes_authorized: true
-provider_calls_authorized: true
+provider_calls_authorized: false
 read_only_provider_calls_authorized: false
-maximum_external_spend_usd: 4
+maximum_external_spend_usd: 0
 provider_authority:
-  mode: paid
-  provider: runpod
-  cap_usd: 4
-  authorized_by_user_at: "2026-08-15T08:47:34Z"
-  source: current_chat_exact_vf_9_24t_authorization
+  mode: none
+  provider: null
+  cap_usd: 0
+  authorized_by_user_at: null
+  source: vf_9_24t_first_attempt_authority_consumed_after_local_crop_verifier_failure
   non_transferable: true
   execution_halted: false
   halt_reason: null
-  model_id: "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
-  resources:
-    - "runpod-account:sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
-    - "gpu:NVIDIA GeForce RTX 4090@EU-RO-1@$0.74/hour"
-    - "volume:sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be@50GB@$3.50/month"
-    - "image:ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b"
-    - "avatar:sha256:34ca7513d6e34af3fa37d2e05afa8d2f81cab9ff587c2a12d047002abc7c75e3"
-    - "audio:sha256:7409fb7411829f0e2313d70346d477c86f5255733ea39a8afdc0668be86592c8"
-  authorized_operations: &vf_9_24t_paid_operations
-    - create_private_template
-    - create_soulx_pod
-    - mount_retained_soulx_volume
-    - verify_sealed_manifest
-    - generate_owned_sample
-    - retrieve_private_sample
-    - delete_soulx_pod
-    - render_local_crop_previews
-    - delete_private_template
-    - read_pod_billing
-    - verify_zero_compute
-    - retain_soulx_volume
-  allowed_operations: *vf_9_24t_paid_operations
+  model_id: null
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
 runpod_account_scope:
   owner: sujal
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_inventory_or_mutation
-credential_access_authorized: true
-remote_or_cloud_mutations_authorized: true
+credential_access_authorized: false
+remote_or_cloud_mutations_authorized: false
 model_downloads_authorized: false
 worker_image_publication_authorized: false
 sample_output_publication_authorized: false
-gpu_use_authorized: true
+gpu_use_authorized: false
 mage_volume_retention_authorized: false
 echo_volume_retention_authorized: false
 soulx_volume_retention_authorized: true
@@ -128,10 +110,10 @@ live_development:
   health_checked_at: "2026-08-14T07:18:58Z"
   chrome_route: null
   fixture_scenario: cp05_complete_fixture_mvp
-  provider_mode: sandbox
-  provider_calls_authorized: true
-  authorized_spend_usd: 4
-  provider_authority_scope: "VF-9-24T exact one-template/one-Pod SoulX second sample, private retrieval, immediate Pod/template deletion, local crop previews, billing read, zero-compute proof, and retained SoulX volume only."
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: "VF-9-24T first exact one-Pod authority is consumed. Valid native and corrected local crop outputs exist, but exact lifecycle timing was not persisted before a local crop verifier false-positive; one additional measurement Pod requires revised authority."
   worker_image: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
   last_user_checkpoint:
     result: accepted
@@ -232,8 +214,8 @@ active_ownership:
   - task_id: VF-9-24T
     checkpoint: CP-07-replacement-qualification
     owner: current_chat
-    stage: bounded_mutation
-    external_spend_cap_usd: 4
+    stage: awaiting_corrected_crop_review_and_revised_paid_authorization
+    external_spend_cap_usd: 0
 
 blocked_tasks: []
 in_progress_checkpoint: CP-07-replacement-qualification
@@ -242,38 +224,32 @@ recommended_next_task:
   task_id: VF-9-24T
   checkpoint: CP-07-replacement-qualification
   milestone: soulx_flashhead_pro_second_sample_crop_economics
-  status: exact_paid_execution_authorized
+  status: partial_output_awaiting_measurement_retry_authority
   dependency_status: cp06_complete_green_settled_visual_accepted
-  authorization_status: exact_paid_authority_active
-  task_stage: bounded_mutation
+  authorization_status: first_paid_authority_consumed_revised_authority_required
+  task_stage: awaiting_corrected_crop_review_and_revised_paid_authorization
   provider_authority:
-    mode: paid
-    provider: runpod
-    cap_usd: 4
+    mode: none
+    provider: null
+    cap_usd: 0
     non_transferable: true
-    authorized_by_user_at: "2026-08-15T08:47:34Z"
-    model_id: "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
-    resources:
-      - "runpod-account:sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
-      - "gpu:NVIDIA GeForce RTX 4090@EU-RO-1@$0.74/hour"
-      - "volume:sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be@50GB@$3.50/month"
-      - "image:ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b"
-      - "avatar:sha256:34ca7513d6e34af3fa37d2e05afa8d2f81cab9ff587c2a12d047002abc7c75e3"
-      - "audio:sha256:7409fb7411829f0e2313d70346d477c86f5255733ea39a8afdc0668be86592c8"
-    authorized_operations: *vf_9_24t_paid_operations
-    allowed_operations: *vf_9_24t_paid_operations
+    authorized_by_user_at: null
+    model_id: null
+    resources: []
+    authorized_operations: []
+    allowed_operations: []
   read_profile: soulx_flashhead_pro_second_sample_crop_economics
   task_brief: tasks/VF-9-24T.md
   goal: "Preflight one different exact 10.00-second SoulX Pro sample, two review-only crop previews, exact Pod-start/model-ready/generation timing, and 30-minute avatar economics."
-  provider_calls_authorized: true
+  provider_calls_authorized: false
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 4
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: true
+  gpu_use_authorized: false
   mage_volume_retention_authorized: false
   echo_volume_retention_authorized: false
   soulx_volume_retention_authorized: true
@@ -294,7 +270,7 @@ recommended_next_task:
     - "Any production dispatch or renderer crop activation before the user reviews and accepts the new previews."
 
 vf_9_24t:
-  status: exact_paid_execution_authorized
+  status: partial_output_awaiting_measurement_retry_authority
   source_task: VF-9-24S
   avatar_image_sha256: "sha256:34ca7513d6e34af3fa37d2e05afa8d2f81cab9ff587c2a12d047002abc7c75e3"
   source_voiceover_sha256: "sha256:4b5c404ea6a042ca5e82ef64f238d7866f2fb770967b953e593abdadcf6c7fc4"
@@ -302,16 +278,23 @@ vf_9_24t:
   selected_audio_duration_seconds: 10
   selected_audio_source_interval_seconds: [118.6, 128.1]
   trailing_zero_padding_seconds: 0.5
-  full_crop_filter: "crop=512:288:0:112,scale=1920:1080:flags=lanczos,fps=30:round=near"
-  split_crop_filter: "crop=448:504:32:4,scale=960:1080:flags=lanczos,fps=30:round=near"
+  full_renderer_profile: soulx-pro-ranga-full-source-composite-v1
+  full_source_geometry: [2560, 1406]
+  full_source_background_filter: "crop=2500:1406:30:0,scale=1920:1080:flags=lanczos,fps=30"
+  full_native_overlay_filter: "scale=1080:1080:flags=lanczos,fps=30,overlay=420:0"
+  full_native_overlay_horizontal_feather_pixels: 32
+  split_renderer_profile: soulx-pro-ranga-split-composite-v1
+  split_avatar_panel_filter: "crop=448:504:32:4,scale=960:1080:flags=lanczos,fps=30"
+  split_final_composition: "avatar panel x=0..959; narration-relevant image x=960..1919; clean seam; no border or label"
   crops_review_only: true
+  corrected_crop_evidence: "evidence/acceptance/VF-9-24T/ranga-crop-correction.json"
   exact_work_plan_avatar_spans: 103
   exact_work_plan_padded_model_input_seconds: 481.32
   exact_work_plan_visible_avatar_seconds: 378.82
   retained_soulx_volume_id_sha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be"
   retained_soulx_volume_size_gb: 50
   ongoing_soulx_volume_rate_usd_per_month: 3.5
-  paid_execution_authorized: true
+  paid_execution_authorized: false
   paid_execution_authorized_at: "2026-08-15T08:47:34Z"
   maximum_cumulative_external_spend_usd: 4
   read_only_preflight_checked_at: "2026-08-15T08:37:40.043Z"
@@ -322,6 +305,21 @@ vf_9_24t:
   selected_gpu_availability: HIGH
   conservative_maximum_pod_cost_usd: 0.641334
   canonical_verify: passed
+  first_attempt_pod_id_sha256: "sha256:0893d968a68baf799da96200da752d9353e60c161a8962a2e8cabf3cbd1c6a07"
+  first_attempt_native_output_sha256: "sha256:ca317d6acd346f62b50e5522a67f849749f8c04d52e65b2c21a1352fb1c8d6f5"
+  first_attempt_native_output_valid: true
+  first_attempt_failure: local_crop_aac_padding_verifier_false_positive_after_pod_deletion
+  first_attempt_exact_lifecycle_timing_persisted: false
+  first_attempt_settled_cost_usd: null
+  first_attempt_conservative_cost_upper_bound_usd: 0.641334
+  first_attempt_final_pods: 0
+  first_attempt_final_private_templates: 0
+  first_attempt_final_endpoints: 0
+  first_attempt_final_active_workers: 0
+  first_attempt_final_network_volumes: 2
+  first_attempt_evidence: "evidence/acceptance/VF-9-24T/first-attempt-partial.json"
+  corrected_controller_persists_runtime_evidence_before_cleanup_and_crops: true
+  revised_paid_authority_required_for_one_measurement_retry: true
 
 vf_9_24s:
   status: technical_pass_sample_ready_for_user_visual_review
