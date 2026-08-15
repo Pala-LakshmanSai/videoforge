@@ -9,9 +9,9 @@ gates:
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#echomimicv3-flash-exact-avatar-suite"
     owner: VF-9-24
     last_run: "evidence/acceptance/VF-9-24R/cp07-paid-execution/final-qualification.json"
-    result: open_cp07_native_samples_ready_for_user_crop_and_quality_review_full_suite_unrun
-    checked_at: "2026-08-14T23:15:32.540Z"
-    blocker: "Exact native 2/4/6-second Echo Flash Turbo FP8 clips passed technical contracts. User crop/quality review and the later 12-20-clip exact-avatar suite remain open, so no production profile is active."
+    result: open_cp07_native_samples_and_crops_user_accepted_full_suite_unrun
+    checked_at: "2026-08-15T02:46:08Z"
+    blocker: "The user accepted the exact full and split crops from the qualified native Echo Flash Turbo FP8 sample. The later 12-20-clip exact-avatar suite remains open, so no production profile is active yet."
   GATE_AVATAR_002:
     status: open
     blocks: automatic_global_avatar_primary_demotion

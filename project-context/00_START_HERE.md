@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: CP-00 through CP-06 complete; CP-07 corrected locally and awaiting revised paid authority
+Status: CP-00 through CP-07 complete; CP-08 requires separate activation
 Context schema: `1.5`  
 Last updated: `2026-08-14`
 
@@ -29,11 +29,10 @@ VideoForge has two isolated model lanes:
 | Avatar | EchoMimicV3-Flash Turbo FP8 from pinned first-party source/weights/base/audio lineage | Different Echo-only persistent `EU-RO-1` network volume | Echo-only Pod |
 
 Never share or cross-adopt a volume, Pod, manifest, cache, lock, or runtime between lanes. The Mage
-volume is approved and qualified at 50 GB. The separate 50 GB Echo capacity is retained at
-`$3.50/month`, but its first preparation terminal result was rejected and its manifest remains
-unverified. A provider-free correction now moves the transformer to a compatible preparation GPU
-before TorchAO FP8 conversion. The exact invalid Echo volume must be deleted and recreated only
-after revised approval. Persistent-volume pricing is accepted.
+volume is approved and qualified at 50 GB. The separate 50 GB Echo volume is also prepared,
+manifest-sealed, qualified, and retained at `$3.50/month`. Ordinary Echo boot is offline and loads
+the exact prepared FP8 artifact without runtime download or first-request quantization. Persistent-
+volume pricing is accepted.
 
 When no generation session exists, the first user explicitly selects one exact live compatible
 Secure Cloud offering for Mage and one for Echo. The first atomically accepted Generate locks that
@@ -146,21 +145,14 @@ quality. A later authorized `$0` read-only Sujal audit settled all 15 exact Pod 
 exactly the intended retained 50 GB Mage volume. Proof is in
 `evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json` and its `settlement-reaudit.json`.
 
-`VF-9-24R`/`CP-07` Phase A is green at implementation commit
-`c89acef78d4a4bbbbac118ca9c658b6180d68fc8` plus safety fix
-`75c852bb891dbe205ee43d2b73e74765bc336373`. The exact VideoForge-owned Echo FP8 prepared-artifact,
-offline boot, real warm-up, short-span, isolated-scratch, immutable-image, and crop-proposal
-boundaries pass locally. Paid authority then published immutable image digest
-`ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:e53842b5b9e8115e576f6d98337c228d584651fa50df0d15e086d417f60258e8`
-and created the approved retained Echo volume on RTX 4090 at `$0.74/hour`. The first preparation
-terminal result was rejected as `CP07_PREPARATION_RESULT_INVALID`; its exact worker error was not
-preserved, so the mandatory mismatch/ambiguity stop fired before any sample. Provider-free fix
-`d51c0a1` now performs TorchAO FP8 conversion only after moving the transformer to a compatible
-CUDA GPU; replacement guard `16cd30a` can target only the exact known invalid Echo volume while
-preserving the Mage volume. Revised publish/delete/recreate/prepare/sample authority is pending.
-Current proof shows zero Pods/templates/endpoints/workers and exactly the isolated Mage and Echo
-volumes. Echo remains unqualified, no MP4 exists, billing is unsettled under a conservative `$1.11`
-finite bound, and no renderer crop is active.
+`VF-9-24R`/`CP-07` is complete. Final immutable image digest
+`ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:2da621771387ca52a8110d0f94c86dda1d140ec584bea86ddecfda263f5406fe`
+loads sealed manifest `sha256:c868241d1c6ebee2645c41161d00e046839eaaafa7b994c340d8d010202098c8`
+from the isolated 50 GB Echo volume. Fresh RTX 5090 Pods produced exact native 2/4/6-second clips;
+every Pod and temporary template was deleted. The final audit proves zero compute and exactly the
+retained Mage and Echo volumes. The user accepted renderer source profile
+`echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1`: full crop `992:558:16:0` to 1920x1080 and
+split crop `496:558:280:0` to 960x1080. The later full exact-avatar production suite remains open.
 
 ## Locked active providers
 
@@ -188,8 +180,7 @@ and Echo Long Video CFG remain historical evidence only. They authorize no activ
 - All admitted users have equal shared access; only waiting queue entries may move or be removed.
 - API-only RunPod control; exact create/delete intent and fail-closed ambiguity reconciliation.
 - At most one disposable Pod per lane initially. Delete Pods; retain the qualified Mage volume and
-  the distinct but currently unverified Echo volume. Never dispatch from the Echo volume until its
-  exact prepared manifest qualifies.
+  the distinct qualified Echo volume. Never cross-mount or cross-adopt either lane volume.
 - Private inputs, outputs, credentials, and model bytes never enter Git or public images.
 - Technical success is `READY_FOR_USER_REVIEW`; only the user approves visual quality.
 

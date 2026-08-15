@@ -1,7 +1,7 @@
 {
   "schema_version": "videoforge.cp07-final-qualification/v1",
   "checkpoint": "CP-07",
-  "status": "technical_qualification_passed_crop_user_review_pending",
+  "status": "complete_crop_user_accepted",
   "checked_at": "2026-08-14T23:32:50.044Z",
   "runtime_profile": {
     "id": "videoforge_echo_v3_flash_turbo_fp8_v1",
@@ -126,7 +126,9 @@
       "crop": "496:558:280:0",
       "scale": "960:1080"
     },
-    "activated": false,
-    "required_next_action": "user_review_and_explicit_approval"
+    "activated": true,
+    "renderer_source_profile": "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
+    "acceptance_evidence": "project-context/evidence/acceptance/VF-9-24R/cp07-crop-lock/acceptance.json",
+    "required_next_action": null
   }
 }

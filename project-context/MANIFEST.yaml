@@ -8,8 +8,8 @@ source_of_truth: project-context
 # intended retained 50 GB Mage volume. CP-07 prepared and sealed the isolated 50 GB Echo volume,
 # published the final immutable Echo Flash Turbo FP8 image, and produced exact native 2/4/6-second
 # samples on fresh RTX 5090 Pods. Zero Pods/templates/endpoints/workers remain and both intended
-# volumes are retained. Technical qualification passed; renderer crops remain inactive pending the
-# user's review and explicit approval.
+# volumes are retained. The user accepted and activated the exact full and split renderer crops;
+# CP-07 is complete. The later full exact-avatar suite remains a separate open production gate.
 current_selected_profile: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
 current_selected_brief: tasks/VF-9-24R.md
 
@@ -186,6 +186,7 @@ approved_decisions:
   DEC_AVATAR_006: superseded_avatarforcing_ladder_historical_authority_only
   DEC_AVATAR_007: echomimic_v3_flash_native_only_no_repair_or_fallback
   DEC_AVATAR_008: echomimic_v3_flash_fp8_short_selected_spans_no_long_video_cfg
+  DEC_AVATAR_009: accepted_echo_turbo_fp8_full_and_split_renderer_crops
   DEC_TIMING_001: whisper_cpp_base_en_cloud_run_production_mac_dev_parity
   DEC_CONTRACT_001: typescript_only_jcs_python_exact_bytes_and_schema_validation
   DEC_SCHEDULER_001: seeded_deterministic_bounded_variation

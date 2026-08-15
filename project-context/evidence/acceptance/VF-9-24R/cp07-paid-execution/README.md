@@ -11,6 +11,6 @@ owned FP8 preparation; no separate upstream Turbo checkpoint is claimed. Ordinar
 sealed manifest from the Echo-only volume with zero downloaded model bytes, no material
 quantization, and registry access disabled.
 
-The proposed renderer crops are `992:558:16:0` for full 16:9 and `496:558:280:0` for the 8:9 split
-avatar panel. They are not activated. CP-07 remains at `READY_FOR_USER_CROP_REVIEW` until the user
-reviews the playable MP4s and explicitly approves or changes both crops.
+The renderer crops are `992:558:16:0` for full 16:9 and `496:558:280:0` for the 8:9 split avatar
+panel. The user accepted both as good enough on 2026-08-15, and the active vNext renderer locks them
+under `echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1`. CP-07 is complete.

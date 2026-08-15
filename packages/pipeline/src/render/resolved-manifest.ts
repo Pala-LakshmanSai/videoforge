@@ -68,6 +68,20 @@ const AVATAR_GEOMETRY = {
       avatar_fps: "30:round=near",
     },
   },
+  "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1": {
+    AVATAR_FULL: {
+      avatar_source_profile: "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
+      avatar_crop: "992:558:16:0",
+      avatar_scale: "1920:1080",
+      avatar_fps: "30:round=near",
+    },
+    AVATAR_SPLIT_IMAGE: {
+      avatar_source_profile: "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
+      avatar_crop: "496:558:280:0",
+      avatar_scale: "960:1080",
+      avatar_fps: "30:round=near",
+    },
+  },
 } as const;
 
 type AvatarSourceProfile = keyof typeof AVATAR_GEOMETRY;

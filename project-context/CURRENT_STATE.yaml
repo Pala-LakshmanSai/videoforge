@@ -1,27 +1,27 @@
 schema_version: "1.0"
 context_schema_version: "1.5"
-updated_at: "2026-08-14T23:32:50Z"
+updated_at: "2026-08-15T02:46:08Z"
 
-phase: cp07_ready_for_user_crop_review
+phase: cp07_post_completion_10s_benchmark_authorized
 implementation_authorized_in_current_task: true
 current_milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
 current_task: VF-9-24R
 current_wave: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: user_review
+task_stage: bounded_mutation
 application_code_changes_authorized: true
-provider_calls_authorized: false
+provider_calls_authorized: true
 read_only_provider_calls_authorized: true
 maximum_external_spend_usd: 6
 provider_authority:
-  mode: none
+  mode: paid
   provider: runpod
-  cap_usd: 0
+  cap_usd: 6
   authorized_at: "2026-08-14T19:07:57Z"
-  source: current_cp07_exact_third_user_authorization
+  source: current_cp07_10s_benchmark_user_authorization
   non_transferable: true
-  execution_halted: true
-  halt_reason: bounded_cp07_provider_operations_complete_no_further_mutation_authorized
+  execution_halted: false
+  halt_reason: null
   model_id: "EchoMimicV3-Flash Turbo FP8@videoforge_echo_v3_flash_turbo_fp8_v1"
   resources:
     - "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:2da621771387ca52a8110d0f94c86dda1d140ec584bea86ddecfda263f5406fe"
@@ -43,6 +43,12 @@ provider_authority:
     - verify_zero_pods
     - verify_two_isolated_volumes
     - retain_echo_volume
+    - create_temporary_private_echo_template_for_10s_benchmark
+    - create_fresh_rtx_5090_pods_for_4s_and_6s_inputs
+    - retrieve_private_4s_and_6s_outputs
+    - delete_each_benchmark_pod_immediately
+    - delete_benchmark_template
+    - verify_zero_compute_and_two_retained_volumes
   allowed_operations:
     - account_identity_lookup
     - inventory_lookup
@@ -63,6 +69,12 @@ provider_authority:
     - verify_zero_pods
     - verify_two_isolated_volumes
     - retain_echo_volume
+    - create_temporary_private_echo_template_for_10s_benchmark
+    - create_fresh_rtx_5090_pods_for_4s_and_6s_inputs
+    - retrieve_private_4s_and_6s_outputs
+    - delete_each_benchmark_pod_immediately
+    - delete_benchmark_template
+    - verify_zero_compute_and_two_retained_volumes
 runpod_account_scope:
   owner: sujal
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
@@ -70,12 +82,12 @@ runpod_account_scope:
   identity_check: required_before_inventory_or_mutation
 credential_access_authorized: true
 remote_or_cloud_mutations_authorized: true
-model_downloads_authorized: true
-worker_image_publication_authorized: true
+model_downloads_authorized: false
+worker_image_publication_authorized: false
 sample_output_publication_authorized: false
 gpu_use_authorized: true
-mage_volume_retention_authorized: true
-echo_volume_retention_authorized: true
+mage_volume_retention_authorized: false
+echo_volume_retention_authorized: false
 
 repository:
   initialized: true
@@ -246,20 +258,20 @@ active_ownership:
   - task_id: VF-9-24R
     checkpoint: CP-07
     owner: current_chat
-    stage: user_crop_review
-    external_spend_cap_usd: 6
+    stage: complete
+    external_spend_cap_usd: 0
 
 blocked_tasks: []
-in_progress_checkpoint: CP-07
+in_progress_checkpoint: null
 
 recommended_next_task:
   task_id: VF-9-24R
   checkpoint: CP-07
   milestone: exact_echo_flash_turbo_fp8_persistent_runtime_crop_lock
-  status: technical_qualification_passed_awaiting_user_crop_review
+  status: complete_crop_locked
   dependency_status: cp06_complete_green_settled_visual_accepted
   authorization_status: bounded_paid_operations_completed
-  task_stage: user_review
+  task_stage: complete
   provider_authority:
     mode: none
     provider: null
@@ -305,7 +317,7 @@ recommended_next_task:
       - retain_echo_volume
   read_profile: cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock
   task_brief: tasks/VF-9-24R.md
-  goal: "User reviews the exact native 2/4/6-second samples and explicitly approves or changes the proposed inactive full/split crop pair."
+  goal: "CP-07 complete; preserve the qualified runtime, retained Echo volume, exact samples, accepted crop profile, and zero-compute state."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: true
   maximum_external_spend_usd: 0
@@ -326,8 +338,8 @@ recommended_next_task:
     - "Preserve CP-06 exact digest, accepted outputs, settled cost, zero compute, and retained 50 GB Mage volume."
     - "Build only the exact VideoForge-owned EchoMimicV3-Flash Turbo FP8 prepared-artifact/offline short-span path from pinned first-party lineage; Turbo is the VideoForge profile alias for the official 8-step Flash/flash-pro bytes, not a substituted checkpoint."
     - "Preserve final immutable Echo digest sha256:2da621771387ca52a8110d0f94c86dda1d140ec584bea86ddecfda263f5406fe and sealed manifest sha256:c868241d1c6ebee2645c41161d00e046839eaaafa7b994c340d8d010202098c8."
-    - "Preserve the exact 2/4/6-second MP4s, hashes/probes, inactive crop proposal, and final zero-compute/two-volume proof."
-    - "Do not activate either Echo crop until the user explicitly approves it. Do not perform further provider mutations under the consumed CP-07 authority."
+    - "Preserve the exact 2/4/6-second MP4s, hashes/probes, accepted crop profile, and final zero-compute/two-volume proof."
+    - "Preserve the user-accepted full crop 992:558:16:0 and split crop 496:558:280:0. Do not perform further provider mutations under the consumed CP-07 authority."
   prohibited_in_task:
     - "Any further remote mutation, volume inspection through paid compute, preparation retry, or sample Pod after the recorded terminal mismatch without a revised exact approval."
     - "Any fallback, repair, model substitution, Long Video CFG, full-voiceover job, uncarded pickle, Mage mount, or cross-mount."
@@ -469,8 +481,10 @@ cp07_phase_a:
   final_runpod_endpoints: 0
   final_runpod_active_serverless_workers: 0
   final_runpod_network_volumes: 2
-  echo_crop_activated: false
-  echo_crop_review_status: awaiting_explicit_user_approval
+  echo_crop_activated: true
+  echo_crop_review_status: user_accepted_good_enough_2026_08_15
+  echo_renderer_source_profile: "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1"
+  crop_acceptance_evidence: "evidence/acceptance/VF-9-24R/cp07-crop-lock/acceptance.json"
   proposed_full_crop: "992:558:16:0 -> 1920x1080"
   proposed_split_crop: "496:558:280:0 -> 960x1080"
 
@@ -776,21 +790,21 @@ blocking_gates_for_production:
 
 progress_snapshot:
   estimate_kind: checkpoint_truth_no_percent_claim
-  completed_checkpoint: CP-06_passed_settled_visual_accepted
-  active_checkpoint: CP-07_technical_qualification_passed_user_crop_review_pending
-  next_boundary: CP-07_user_explicit_crop_approval_or_change
+  completed_checkpoint: CP-07_exact_echo_runtime_and_renderer_crop_lock
+  active_checkpoint: null
+  next_boundary: CP-08_requires_explicit_activation
   full_production_mvp_implemented_percent: null
   production_end_to_end_proven: false
 
 activation_handoff:
-  status: cp07_ready_for_user_crop_review
+  status: cp07_complete_crop_locked
   exact_resume:
     - "Read AGENTS.md, 00_START_HERE.md, MANIFEST.yaml, and this file."
     - "Load cp07_echo_flash_turbo_fp8_persistent_runpod_crop_lock and tasks/VF-9-24R.md; read only the CP-07 roadmap section and pinned Echo preflight."
     - "Preserve CP-06 runtime digest, accepted visual evidence, settled cost, zero compute, and the retained 50 GB Mage volume."
     - "Preserve CP-07 final Echo digest, sealed 50 GB Echo volume, exact 2/4/6-second outputs, and final zero-compute/two-volume audit."
-    - "Show the native samples and proposed inactive crop pair; activate crops only after the user explicitly approves or changes them."
+    - "Preserve renderer source profile echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1 and the user-accepted full/split crops."
   stop_conditions:
     - "Any Sujal identity mismatch, ambiguous provider state, credential exposure, or read operation outside the allowlist."
     - "Any further mutation, publication, model download, GPU allocation, or finite spend under the consumed CP-07 authority."
-    - "Any fallback, repair, substitute model, Long Video CFG, full-voiceover job, unsafe pickle, cross-mount, or active crop before user approval."
+    - "Any fallback, repair, substitute model, Long Video CFG, full-voiceover job, unsafe pickle, cross-mount, or crop drift."

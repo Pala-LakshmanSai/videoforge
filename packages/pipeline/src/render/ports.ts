@@ -25,6 +25,7 @@ export {
   resolveVNextAcceptedAssets,
   resolveVNextProviderAcceptedAssets,
   vNextResolvedRenderManifestPlanner,
+  VNEXT_ECHO_AVATAR_SOURCE_PROFILE,
   VNEXT_PROVIDER_FREE_AVATAR_SOURCE_PROFILE,
   SUPPORTED_RENDER_PROFILE_VERSION,
 } from "./vnext-boundary.js";

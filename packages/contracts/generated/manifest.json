@@ -77,8 +77,8 @@
     {
       "source": "project-context/evidence/resolved_render_manifest.schema.json",
       "destination": "generated/schemas/resolved_render_manifest.schema.json",
-      "bytes": 8011,
-      "sha256": "sha256:2907b580115263d5adea196f30fa6a35ef611fb3507e14baa7b9092b2d923fd7"
+      "bytes": 8669,
+      "sha256": "sha256:08bdc5b8cd364f79083694920ddd8ebabc9a4b942924d297fe3eecf3e01dfb2e"
     },
     {
       "source": "project-context/evidence/production_manifest.schema.json",

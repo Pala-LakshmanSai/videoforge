@@ -20,7 +20,7 @@ export const CP07_REGION = "EU-RO-1";
 export const CP07_CAP_USD = 6;
 // Settled live audit was $0.385678 across 10 deleted Pods; this also reserves the
 // not-yet-settled 5090 qualification attempts while every Pod is independently absent.
-export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 1.3;
+export const CP07_PRIOR_CONSERVATIVE_SPEND_USD = 1.579125;
 export const CP07_POD_LIFECYCLE_RESERVE_SECONDS = 120;
 export const CP07_VOLUME_ATTACHMENT_SETTLE_MS = 30_000;
 export const CP07_CAPACITY_RETRY_DELAY_MS = 30_000;
@@ -35,6 +35,8 @@ export const CP07_REUSE_VERIFIED_EMPTY_ECHO_VOLUME = true;
 export const CP07_TEMPLATE_NAME = "videoforge-echo-flash-turbo-cp07-template";
 export const CP07_MODEL_ROOT = "/runpod-volume/echo-flash-turbo-fp8";
 export const CP07_VOLUME_MOUNT = "/runpod-volume";
+export const CP07_PREPARED_MANIFEST_SHA256 =
+  "sha256:c868241d1c6ebee2645c41161d00e046839eaaafa7b994c340d8d010202098c8";
 export const CP07_PREP_CONFIRMATION = "DOWNLOAD_AND_PREPARE_EXACT_VIDEOFORGE_ECHO_FLASH_TURBO_FP8";
 export const CP07_IMAGE =
   /^ghcr\.io\/pala-lakshmansai\/videoforge-echo-flash-turbo-cp07@sha256:[a-f0-9]{64}$/u;
@@ -859,8 +861,20 @@ export async function runCp07PhaseB(options: {
   readonly sourceImagePath: string;
   readonly sourceAudioPath: string;
   readonly artifactRoot: string;
+  readonly preparedManifestSha256?: string;
+  readonly sampleDurations?: readonly (2 | 4 | 6)[];
 }): Promise<JsonRecord> {
-  if (!CP07_IMAGE.test(options.imageDigest) || !path.isAbsolute(options.artifactRoot)) {
+  const sampleDurations = options.sampleDurations ?? ([2, 4, 6] as const);
+  if (
+    !CP07_IMAGE.test(options.imageDigest) ||
+    !path.isAbsolute(options.artifactRoot) ||
+    sampleDurations.length === 0 ||
+    sampleDurations.length > 3 ||
+    new Set(sampleDurations).size !== sampleDurations.length ||
+    sampleDurations.some((duration) => ![2, 4, 6].includes(duration)) ||
+    (options.preparedManifestSha256 !== undefined &&
+      options.preparedManifestSha256 !== CP07_PREPARED_MANIFEST_SHA256)
+  ) {
     throw new Cp07PhaseBError("CP07_EXECUTION_INPUT_INVALID");
   }
   const apiKey = await loadSujalRunPodApiKeyFromKeychain();
@@ -911,65 +925,70 @@ export async function runCp07PhaseB(options: {
   const sourceBytes = await readFile(options.sourceImagePath);
   const sourceHash = sha256(sourceBytes);
   const samples: JsonRecord[] = [];
-  let manifestSha256: string | null = null;
+  let manifestSha256: string | null = options.preparedManifestSha256 ?? null;
   try {
     template = await client.createTemplate(options.imageDigest);
-    const prepEvidencePath = path.join(
-      options.artifactRoot,
-      "preparation-terminal-attempt-3.private.json",
-    );
-    let prepHealth: JsonRecord | null = null;
-    try {
-      prepHealth = record(JSON.parse(await readFile(prepEvidencePath, "utf8")));
-      if (prepHealth === null) throw new Error("invalid preparation evidence object");
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-        throw new Cp07PhaseBError("CP07_LOCAL_PREPARATION_EVIDENCE_INVALID");
+    if (manifestSha256 === null) {
+      const prepEvidencePath = path.join(
+        options.artifactRoot,
+        "preparation-terminal-attempt-3.private.json",
+      );
+      let prepHealth: JsonRecord | null = null;
+      try {
+        prepHealth = record(JSON.parse(await readFile(prepEvidencePath, "utf8")));
+        if (prepHealth === null) throw new Error("invalid preparation evidence object");
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+          throw new Cp07PhaseBError("CP07_LOCAL_PREPARATION_EVIDENCE_INVALID");
+        }
+      }
+      if (prepHealth === null) {
+        const prepAuthority: PodAuthority = {
+          name: "videoforge-echo-cp07-prep-a01",
+          templateId: template.id,
+          imageDigest: options.imageDigest,
+          volumeId: volume.id,
+          volumeIdHash: sha256(volume.id),
+          mode: "prepare",
+        };
+        const prepMaximumSeconds = 5_100;
+        assertCp07CumulativeReservation(conservativeCostUsd, prepMaximumSeconds);
+        activePod = await client.createPod(prepAuthority);
+        prepHealth = await pollWorker(
+          activePod.id,
+          prepMaximumSeconds,
+          (health) => health.phase === "ready" || health.phase === "failed",
+        );
+        await writePrivate(
+          prepEvidencePath,
+          Buffer.from(`${JSON.stringify(prepHealth, null, 2)}\n`),
+        );
+      }
+      const prepVolume = record(prepHealth.volume);
+      const prepModel = record(prepHealth.model);
+      if (
+        prepHealth.schema_version !== "videoforge.echo-flash-turbo-fp8-preparation-health/v1" ||
+        prepHealth.phase !== "ready" ||
+        prepHealth.error_code !== null ||
+        prepModel?.runtime_profile_id !== "videoforge_echo_v3_flash_turbo_fp8_v1" ||
+        prepVolume?.requested_size_gb !== CP07_VOLUME_SIZE_GB ||
+        prepVolume.volume_id_sha256 !== sha256(volume.id) ||
+        typeof prepVolume.manifest_sha256 !== "string" ||
+        !SHA256.test(prepVolume.manifest_sha256)
+      ) {
+        throw new Cp07PhaseBError("CP07_PREPARATION_RESULT_INVALID");
+      }
+      manifestSha256 = prepVolume.manifest_sha256;
+      if (activePod !== null) {
+        const prepDeletion = await deleteOwnedPod(client, activePod);
+        deletionEvidence.push(prepDeletion);
+        conservativeCostUsd += prepDeletion.elapsedCostUpperBoundUsd;
+        assertCp07ObservedCost(conservativeCostUsd);
+        activePod = null;
       }
     }
-    if (prepHealth === null) {
-      const prepAuthority: PodAuthority = {
-        name: "videoforge-echo-cp07-prep-a01",
-        templateId: template.id,
-        imageDigest: options.imageDigest,
-        volumeId: volume.id,
-        volumeIdHash: sha256(volume.id),
-        mode: "prepare",
-      };
-      const prepMaximumSeconds = 5_100;
-      assertCp07CumulativeReservation(conservativeCostUsd, prepMaximumSeconds);
-      activePod = await client.createPod(prepAuthority);
-      prepHealth = await pollWorker(
-        activePod.id,
-        prepMaximumSeconds,
-        (health) => health.phase === "ready" || health.phase === "failed",
-      );
-      await writePrivate(prepEvidencePath, Buffer.from(`${JSON.stringify(prepHealth, null, 2)}\n`));
-    }
-    const prepVolume = record(prepHealth.volume);
-    const prepModel = record(prepHealth.model);
-    if (
-      prepHealth.schema_version !== "videoforge.echo-flash-turbo-fp8-preparation-health/v1" ||
-      prepHealth.phase !== "ready" ||
-      prepHealth.error_code !== null ||
-      prepModel?.runtime_profile_id !== "videoforge_echo_v3_flash_turbo_fp8_v1" ||
-      prepVolume?.requested_size_gb !== CP07_VOLUME_SIZE_GB ||
-      prepVolume.volume_id_sha256 !== sha256(volume.id) ||
-      typeof prepVolume.manifest_sha256 !== "string" ||
-      !SHA256.test(prepVolume.manifest_sha256)
-    ) {
-      throw new Cp07PhaseBError("CP07_PREPARATION_RESULT_INVALID");
-    }
-    manifestSha256 = prepVolume.manifest_sha256;
-    if (activePod !== null) {
-      const prepDeletion = await deleteOwnedPod(client, activePod);
-      deletionEvidence.push(prepDeletion);
-      conservativeCostUsd += prepDeletion.elapsedCostUpperBoundUsd;
-      assertCp07ObservedCost(conservativeCostUsd);
-      activePod = null;
-    }
 
-    for (const durationSeconds of [2, 4, 6] as const) {
+    for (const durationSeconds of sampleDurations) {
       const sampleId = `cp07-owned-${durationSeconds}s`;
       const sampleDirectory = path.join(options.artifactRoot, sampleId);
       await mkdir(sampleDirectory, { recursive: true, mode: 0o700 });
@@ -1000,6 +1019,11 @@ export async function runCp07PhaseB(options: {
         activePod.id,
         remainingSampleSeconds(),
         (candidate) => candidate.phase === "ready" || candidate.phase === "error",
+      );
+      const modelReadyObservedAt = new Date().toISOString();
+      const podStartedToModelReadyMs = Math.max(
+        0,
+        new Date(modelReadyObservedAt).getTime() - new Date(activePod.startedAt).getTime(),
       );
       await writePrivate(
         path.join(sampleDirectory, `model-ready-${Date.now()}.private.json`),
@@ -1106,6 +1130,9 @@ export async function runCp07PhaseB(options: {
         output_bytes: output.length,
         probe,
         model_ready_health: health,
+        pod_started_at: activePod.startedAt,
+        model_ready_observed_at: modelReadyObservedAt,
+        pod_started_to_model_ready_ms: podStartedToModelReadyMs,
         generation_result: { ...result, output_base64: "[private output omitted]" },
         request_total_ms: Date.now() - generationStarted,
       });

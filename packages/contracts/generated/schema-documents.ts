@@ -3960,13 +3960,15 @@ export const canonicalSchemaDocuments = {
                 "enum": [
                   "local-fixture-centered-832x480p25-v1",
                   "avatarforcing-centered-832x480p25-v1",
-                  "skyreels-centered-960x960p25-v2"
+                  "skyreels-centered-960x960p25-v2",
+                  "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1"
                 ]
               },
               "avatar_crop": {
                 "enum": [
                   "832:468:0:6",
-                  "960:540:0:210"
+                  "960:540:0:210",
+                  "992:558:16:0"
                 ]
               },
               "avatar_scale": {
@@ -4021,6 +4023,22 @@ export const canonicalSchemaDocuments = {
                   "properties": {
                     "avatar_crop": {
                       "const": "960:540:0:210"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "avatar_source_profile": {
+                      "const": "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "avatar_crop": {
+                      "const": "992:558:16:0"
                     }
                   }
                 }
@@ -4151,13 +4169,15 @@ export const canonicalSchemaDocuments = {
                 "enum": [
                   "local-fixture-centered-832x480p25-v1",
                   "avatarforcing-centered-832x480p25-v1",
-                  "skyreels-centered-960x960p25-v2"
+                  "skyreels-centered-960x960p25-v2",
+                  "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1"
                 ]
               },
               "avatar_crop": {
                 "enum": [
                   "416:468:208:6",
-                  "480:540:240:210"
+                  "480:540:240:210",
+                  "496:558:280:0"
                 ]
               },
               "avatar_scale": {
@@ -4222,6 +4242,22 @@ export const canonicalSchemaDocuments = {
                   "properties": {
                     "avatar_crop": {
                       "const": "480:540:240:210"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "avatar_source_profile": {
+                      "const": "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "avatar_crop": {
+                      "const": "496:558:280:0"
                     }
                   }
                 }

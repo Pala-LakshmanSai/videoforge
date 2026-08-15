@@ -16,12 +16,19 @@ import {
 } from "./resolved-manifest.js";
 
 export const VNEXT_PROVIDER_FREE_AVATAR_SOURCE_PROFILE = "local-fixture-centered-832x480p25-v1";
+export const VNEXT_ECHO_AVATAR_SOURCE_PROFILE =
+  "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1";
+
+const VNEXT_AVATAR_SOURCE_PROFILES: ReadonlySet<string> = new Set([
+  VNEXT_PROVIDER_FREE_AVATAR_SOURCE_PROFILE,
+  VNEXT_ECHO_AVATAR_SOURCE_PROFILE,
+]);
 
 function legacyProfileFailure(path: readonly (string | number)[]): PipelineFailure {
   return {
     code: "RENDER_PROFILE_MISMATCH",
     message:
-      "Active vNext rendering accepts only the explicit provider-free local fixture profile until CP-07 publishes an Echo crop profile.",
+      "Active vNext rendering accepts only the explicit local fixture or qualified CP-07 Echo crop profile.",
     path,
   };
 }
@@ -30,7 +37,8 @@ function hasOnlyVNextAvatarProfiles(candidates: readonly AcceptedAssetBinding[])
   return candidates.every(
     (candidate) =>
       candidate.kind !== "AVATAR_CLIP" ||
-      candidate.rendererSourceProfile === VNEXT_PROVIDER_FREE_AVATAR_SOURCE_PROFILE,
+      (candidate.rendererSourceProfile !== undefined &&
+        VNEXT_AVATAR_SOURCE_PROFILES.has(candidate.rendererSourceProfile)),
   );
 }
 

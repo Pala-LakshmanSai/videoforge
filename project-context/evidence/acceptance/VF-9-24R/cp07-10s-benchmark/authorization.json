@@ -1,0 +1,32 @@
+{
+  "schema_version": "videoforge.cp07-10s-benchmark-authorization/v1",
+  "checkpoint": "CP-07",
+  "authorized_at": "2026-08-15T02:46:08Z",
+  "user_request": "Now I want you to run sample inputs on my model with rtx 4090 or 5090, and also record how long it takes the model to get to ready state from the time pod was started, and how much generation is taking. Do for around 10s sample inputs. And show me the mp4 output here. Get it done, make no questions asked, no mistakes",
+  "normalized_execution": {
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "region": "EU-RO-1",
+    "rate_usd_per_hour": 0.99,
+    "reason_4090_not_selected": "Prior exact-runtime RTX 4090 real warm-up failed measured 24 GB VRAM fit; RTX 5090 passed with the FP8 transformer unchanged.",
+    "sample_durations_seconds": [4, 6],
+    "total_sample_duration_seconds": 10,
+    "single_span_limit_preserved_seconds": 6,
+    "fresh_pod_per_sample": true,
+    "immutable_image": "ghcr.io/pala-lakshmansai/videoforge-echo-flash-turbo-cp07@sha256:2da621771387ca52a8110d0f94c86dda1d140ec584bea86ddecfda263f5406fe",
+    "prepared_manifest_sha256": "sha256:c868241d1c6ebee2645c41161d00e046839eaaafa7b994c340d8d010202098c8",
+    "cumulative_finite_spend_cap_usd": 6,
+    "prior_conservative_bound_usd": 1.579125,
+    "ongoing_echo_volume_rate_usd_per_month": 3.5
+  },
+  "authorized_operations": [
+    "create_temporary_private_echo_template",
+    "create_fresh_rtx_5090_pod_for_4_second_input",
+    "retrieve_private_4_second_mp4",
+    "delete_4_second_pod_and_prove_absence",
+    "create_fresh_rtx_5090_pod_for_6_second_input",
+    "retrieve_private_6_second_mp4",
+    "delete_6_second_pod_and_prove_absence",
+    "delete_temporary_private_echo_template",
+    "verify_zero_compute_and_exact_two_retained_volumes"
+  ]
+}
