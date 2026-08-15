@@ -1,0 +1,45 @@
+{
+  "schema_version": "videoforge.soulx-flashhead-pro-vf924t-authorization/v1",
+  "task_id": "VF-9-24T",
+  "authorized_at": "2026-08-15T08:47:34Z",
+  "source": "current_chat",
+  "maximum_cumulative_finite_external_spend_usd": 4,
+  "ongoing_retained_volume_billing_excluded_from_finite_cap": true,
+  "retained_soulx_volume": {
+    "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+    "size_gb": 50,
+    "recurring_usd_per_month": 3.5,
+    "retention_approved": true
+  },
+  "gpu": {
+    "offering_id": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "rate_usd_per_hour": 0.74,
+    "vram_gb": 24
+  },
+  "model_id": "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro",
+  "immutable_image_digest": "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b",
+  "authorized_operations": [
+    "create_private_template",
+    "create_soulx_pod",
+    "mount_retained_soulx_volume",
+    "verify_sealed_manifest",
+    "generate_owned_sample",
+    "retrieve_private_sample",
+    "delete_soulx_pod",
+    "render_local_crop_previews",
+    "delete_private_template",
+    "read_pod_billing",
+    "verify_zero_compute",
+    "retain_soulx_volume"
+  ],
+  "prohibited_operations": [
+    "model_download_or_preparation",
+    "network_volume_mutation",
+    "worker_image_publication",
+    "fallback_or_model_substitution",
+    "repair_enhancement_or_upscaling",
+    "mage_mount_or_cross_mount",
+    "production_dispatch_or_crop_activation"
+  ]
+}
