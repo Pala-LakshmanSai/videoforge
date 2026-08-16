@@ -387,7 +387,10 @@ test("an upgraded database keeps pre-V2 rows in the inaccessible legacy scope", 
     await seedLockedProjects(executor);
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [18, 19, 20, 21]);
+    assert.deepEqual(
+      upgraded.appliedVersions,
+      sources.slice(17).map((item) => item.version),
+    );
 
     // Every historical workspace now belongs to the legacy account.
     const adopted = await executor.query(
