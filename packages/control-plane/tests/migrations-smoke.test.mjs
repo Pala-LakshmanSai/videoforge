@@ -80,7 +80,7 @@ test("global-session vNext upgrades the complete legacy chain without rewriting 
 
     const upgraded = await applyMigrations(executor, sources);
 
-    assert.deepEqual(upgraded.appliedVersions, [14, 15, 16, 17, 18, 19, 20]);
+    assert.deepEqual(upgraded.appliedVersions, [14, 15, 16, 17, 18, 19, 20, 21]);
     assert.deepEqual(
       upgraded.alreadyAppliedVersions,
       Array.from({ length: 13 }, (_, index) => index + 1),
@@ -177,7 +177,7 @@ test("later durable migrations upgrade the five-migration baseline", async () =>
     const upgraded = await applyMigrations(executor, sources);
     assert.deepEqual(
       upgraded.appliedVersions,
-      [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+      [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
     );
     assert.deepEqual(upgraded.alreadyAppliedVersions, [1, 2, 3, 4, 5]);
     const legacy = await executor.query(
@@ -215,7 +215,7 @@ test("later durable migrations upgrade the five-migration baseline", async () =>
     assert.deepEqual(replay.appliedVersions, []);
     assert.deepEqual(
       replay.alreadyAppliedVersions,
-      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
     );
   } finally {
     await database.close();
@@ -246,7 +246,10 @@ test("reference-contract migration upgrades a clean seven-migration database", a
     }
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+    assert.deepEqual(
+      upgraded.appliedVersions,
+      [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    );
     assert.deepEqual(upgraded.alreadyAppliedVersions, [1, 2, 3, 4, 5, 6, 7]);
   } finally {
     await database.close();
@@ -395,7 +398,7 @@ test("style artifact migration backfills only accepted analyzer profiles as immu
     await executor.execute("COMMIT");
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+    assert.deepEqual(upgraded.appliedVersions, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]);
     const root = await executor.query(
       `SELECT version.root_profile_artifact_id, version.current_profile_artifact_id,
               version.profile_revision, artifact.origin, artifact.profile_hash,

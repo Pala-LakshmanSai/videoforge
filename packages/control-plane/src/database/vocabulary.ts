@@ -25,6 +25,10 @@ export const RELATIONAL_TABLE_NAMES = [
   "projects",
   "project_inputs",
   "project_revisions",
+  "generation_requests",
+  "preset_preview_requests",
+  "provider_workload_leases",
+  "generation_queue_audits",
   "transcripts",
   "transcript_words",
   "transcript_sentences",
@@ -68,6 +72,8 @@ export const RELATIONAL_TABLE_NAMES = [
   "invite_codes",
   "invite_redemptions",
   "global_queue_audits",
+  "global_generation_capacity",
+  "account_queue_heads",
 ] as const;
 
 export type RelationalTableName = (typeof RELATIONAL_TABLE_NAMES)[number];
@@ -78,6 +84,7 @@ export type RelationalTableName = (typeof RELATIONAL_TABLE_NAMES)[number];
  */
 export const TENANT_VIEW_NAMES = [
   "videoforge_tenant_assets",
+  "videoforge_tenant_account_queue_heads",
   "videoforge_tenant_artifact_receipts",
   "videoforge_tenant_artifact_reservations",
   "videoforge_tenant_attempts",
@@ -86,6 +93,10 @@ export const TENANT_VIEW_NAMES = [
   "videoforge_tenant_cost_events",
   "videoforge_tenant_durable_generation_outputs",
   "videoforge_tenant_generation_tasks",
+  "videoforge_tenant_generation_requests",
+  "videoforge_tenant_preset_preview_requests",
+  "videoforge_tenant_provider_workload_leases",
+  "videoforge_tenant_generation_queue_audits",
   "videoforge_tenant_global_queue_audits",
   "videoforge_tenant_global_queue_entries",
   "videoforge_tenant_global_session_cost_events",

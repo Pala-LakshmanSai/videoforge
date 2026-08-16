@@ -1,5 +1,6 @@
 export * from "./backup/index.js";
 export * from "./artifact-plane.js";
+export * from "./admission/index.js";
 export * from "./avatars/index.js";
 export * from "./database/index.js";
 export * from "./images/index.js";

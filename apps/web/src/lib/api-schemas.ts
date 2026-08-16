@@ -9,6 +9,7 @@ import {
   type HealthResponse,
   type ImageStyle,
   type SharedAppState,
+  type PrivateFairQueueState,
   type ProjectDetail,
   type ProjectSummary,
   type RegisteredVoiceover,
@@ -237,6 +238,51 @@ const sharedAppSchema = z
 
 export function parseSharedAppResponse(value: unknown): SharedAppState {
   return sharedAppSchema.parse(value);
+}
+
+const privateFairQueueSchema = z
+  .object({
+    schemaVersion: z.literal("videoforge.private-fair-queue/v1"),
+    queueVersion: z.number().int().nonnegative(),
+    capacity: z
+      .object({
+        totalSlots: z.literal(2),
+        ownedActive: z.union([z.literal(0), z.literal(1)]),
+        accountActiveLimit: z.literal(1),
+        otherAccountDetailsVisible: z.literal(false),
+      })
+      .strict(),
+    requests: z.array(
+      z
+        .object({
+          id: z.string(),
+          projectId: z.string(),
+          title: z.string(),
+          kind: z.literal("VIDEO"),
+          state: z.enum(["ACTIVE", "WAITING"]),
+          stage: z.string(),
+          accountPosition: z.number().int().positive(),
+          version: z.number().int().nonnegative(),
+          canReorder: z.boolean(),
+          canCancel: z.boolean(),
+          createdAt: z.string(),
+        })
+        .strict(),
+    ),
+    fairness: z
+      .object({
+        policy: z.literal("DETERMINISTIC_ACCOUNT_ROTATION"),
+        reorderScope: z.literal("ACCOUNT_ONLY"),
+        previewsBelowEligibleVideos: z.literal(true),
+      })
+      .strict(),
+    providerCallsAuthorized: z.literal(false),
+    authorizedSpendUsd: z.literal(0),
+  })
+  .strict();
+
+export function parsePrivateFairQueueResponse(value: unknown): PrivateFairQueueState {
+  return privateFairQueueSchema.parse(value);
 }
 
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;

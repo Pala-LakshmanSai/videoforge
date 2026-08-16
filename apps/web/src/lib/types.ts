@@ -269,6 +269,37 @@ export interface SharedQueueEntry {
   createdAt: string;
 }
 
+export interface PrivateFairQueueState {
+  schemaVersion: "videoforge.private-fair-queue/v1";
+  queueVersion: number;
+  capacity: {
+    totalSlots: 2;
+    ownedActive: 0 | 1;
+    accountActiveLimit: 1;
+    otherAccountDetailsVisible: false;
+  };
+  requests: Array<{
+    id: string;
+    projectId: string;
+    title: string;
+    kind: "VIDEO";
+    state: "ACTIVE" | "WAITING";
+    stage: string;
+    accountPosition: number;
+    version: number;
+    canReorder: boolean;
+    canCancel: boolean;
+    createdAt: string;
+  }>;
+  fairness: {
+    policy: "DETERMINISTIC_ACCOUNT_ROTATION";
+    reorderScope: "ACCOUNT_ONLY";
+    previewsBelowEligibleVideos: true;
+  };
+  providerCallsAuthorized: false;
+  authorizedSpendUsd: 0;
+}
+
 export interface SharedAppState {
   rights: "EQUAL";
   admission: {

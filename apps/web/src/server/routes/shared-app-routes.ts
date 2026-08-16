@@ -115,6 +115,49 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     return c.json(runtime.sharedApp.view(session.id));
   });
 
+  app.get("/api/v2/queue", async (c) => {
+    const session = runtime.resolveSession(c);
+    if (!session.ok) return session.response;
+    await runtime.sharedApp.waitForSettled();
+    try {
+      return c.json(runtime.sharedApp.privateFairQueueView(session.id));
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
+  app.patch("/api/v2/queue/:entryId", async (c) => {
+    const session = runtime.resolveSession(c);
+    if (!session.ok) return session.response;
+    try {
+      const body = (await c.req.json()) as { toPosition: number; version: number };
+      runtime.sharedApp.reorder({
+        sessionId: session.id,
+        entryId: c.req.param("entryId"),
+        toPosition: body.toPosition,
+        ifMatch: body.version,
+      });
+      return c.json(runtime.sharedApp.privateFairQueueView(session.id));
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
+  app.delete("/api/v2/queue/:entryId", async (c) => {
+    const session = runtime.resolveSession(c);
+    if (!session.ok) return session.response;
+    try {
+      runtime.sharedApp.remove({
+        sessionId: session.id,
+        entryId: c.req.param("entryId"),
+        ifMatch: Number(c.req.query("version")),
+      });
+      return c.json(runtime.sharedApp.privateFairQueueView(session.id));
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
   /**
    * The tenant scope bound to the caller's own session. It is derived from the admitted identity,
    * so a session can only ever read its own account and default workspace.

@@ -28,6 +28,7 @@ import type {
   UsageSummary,
   RegisteredVoiceover,
   SharedAppState,
+  PrivateFairQueueState,
 } from "./types";
 import {
   parseAvatarsResponse,
@@ -40,6 +41,7 @@ import {
   parseRegisteredVoiceoverResponse,
   parseStylesResponse,
   parseSharedAppResponse,
+  parsePrivateFairQueueResponse,
   parseTimelineInspectionResponse,
   parseUsageResponse,
 } from "./api-schemas";
@@ -177,10 +179,30 @@ export const api = {
       undefined,
       parseSharedAppResponse,
     ),
-  sharedGenerate: (
-    body: { projectId: string; title: string; imageReceiptId?: string; avatarReceiptId?: string },
+  privateFairQueue: (scenario: ScenarioId) =>
+    request<PrivateFairQueueState>(
+      `/api/v2/queue${query(scenario)}`,
+      undefined,
+      parsePrivateFairQueueResponse,
+    ),
+  reorderPrivateQueue: (
+    entryId: string,
+    toPosition: number,
+    version: number,
     scenario: ScenarioId,
   ) =>
+    request<PrivateFairQueueState>(
+      `/api/v2/queue/${encodeURIComponent(entryId)}${query(scenario)}`,
+      { method: "PATCH", body: JSON.stringify({ toPosition, version }) },
+      parsePrivateFairQueueResponse,
+    ),
+  cancelPrivateWaiting: (entryId: string, version: number, scenario: ScenarioId) =>
+    request<PrivateFairQueueState>(
+      `/api/v2/queue/${encodeURIComponent(entryId)}?fixture=${encodeURIComponent(scenario)}&version=${version}`,
+      { method: "DELETE" },
+      parsePrivateFairQueueResponse,
+    ),
+  sharedGenerate: (body: { projectId: string; title: string }, scenario: ScenarioId) =>
     request<{ outcome: "STARTED" | "QUEUED"; queueVersion: number }>(
       `/api/v1/shared-app/generate${query(scenario)}`,
       { method: "POST", body: JSON.stringify(body) },

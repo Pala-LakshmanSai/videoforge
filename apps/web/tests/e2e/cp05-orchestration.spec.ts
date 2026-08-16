@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
 
 import { expect, test, type APIRequestContext, type BrowserContext } from "@playwright/test";
 
@@ -73,7 +72,7 @@ async function shared(request: APIRequestContext) {
 
 test("CP-05 completes three serial $0 projects across sessions with exact drain and MP4 playback", async ({
   browser,
-}, testInfo) => {
+}) => {
   test.setTimeout(90_000);
   const contextA = await browser.newContext({
     baseURL: "http://localhost:4173",
@@ -189,9 +188,9 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
           consoleErrors.push(`${message.text()} @ ${message.location().url}`);
       });
       await page.goto(`/?fixture=${FIXTURE}`);
-      await expect(page.getByRole("heading", { name: "Synthetic lane truth" })).toBeVisible();
-      await expect(page.getByText("Creating", { exact: true }).first()).toBeVisible();
-      await expect(page.getByText("$0 fixture", { exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Your generation queue" })).toBeVisible();
+      await expect(page.getByText("Private fair admission", { exact: true })).toBeVisible();
+      await expect(page.getByText(/GPU|Pod|RunPod/u)).toHaveCount(0);
     }
 
     for (let index = 0; index < 100; index += 1) {
@@ -233,38 +232,13 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
     );
 
     await pageA.reload();
-    await expect(pageA.getByRole("heading", { name: "Last session closed" })).toBeVisible();
-    await expect(pageA.getByRole("heading", { name: "Provider-free final MP4s" })).toBeVisible();
-    const videos = pageA.locator("video");
-    await expect(videos).toHaveCount(2);
-    const playback = await videos.first().evaluate(async (element) => {
-      const video = element as HTMLVideoElement;
-      video.muted = true;
-      await new Promise<void>((resolve, reject) => {
-        if (video.readyState >= 1) return resolve();
-        video.addEventListener("loadedmetadata", () => resolve(), { once: true });
-        video.addEventListener("error", () => reject(new Error("MP4 metadata failed")), {
-          once: true,
-        });
-      });
-      await video.play();
-      await new Promise((resolve) => setTimeout(resolve, 150));
-      video.pause();
-      return {
-        duration: video.duration,
-        currentTime: video.currentTime,
-        width: video.videoWidth,
-        height: video.videoHeight,
-      };
-    });
-    expect(playback.duration).toBeGreaterThanOrEqual(39.9);
-    expect(playback.currentTime).toBeGreaterThan(0);
-    expect(playback.width).toBe(1920);
-    expect(playback.height).toBe(1080);
+    await expect(pageA.getByRole("heading", { name: "Your generation queue" })).toBeVisible();
+    await expect(pageA.getByText(/^Idle\. Generate adds a private waiting request/u)).toBeVisible();
+    await expect(pageA.getByText(/GPU|Pod|RunPod/u)).toHaveCount(0);
 
-    const downloadLink = pageA.getByRole("link", { name: "Download MP4" }).first();
-    const downloadHref = await downloadLink.getAttribute("href");
-    expect(downloadHref).toBe(completed[0]!.finalAsset!.downloadPath + `?fixture=${FIXTURE}`);
+    // CP-05 fixture output remains durable and downloadable, but V2-03 no longer exposes the
+    // legacy shared-session compute panel on the ordinary user's private queue screen.
+    const downloadHref = completed[0]!.finalAsset!.downloadPath + `?fixture=${FIXTURE}`;
     const downloadResponse = await contextA.request.get(downloadHref!);
     expect(downloadResponse.ok()).toBe(true);
     expect(downloadResponse.headers()["content-disposition"]).toContain("attachment;");
@@ -277,13 +251,6 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
     expect(`sha256:${createHash("sha256").update(bytes).digest("hex")}`).toBe(
       completed[0]!.finalAsset!.sha256,
     );
-    if (testInfo.project.name === "desktop-chrome") {
-      const [download] = await Promise.all([pageA.waitForEvent("download"), downloadLink.click()]);
-      const downloadPath = await download.path();
-      expect(downloadPath).not.toBeNull();
-      expect(await readFile(downloadPath!)).toEqual(bytes);
-    }
-
     const foreignDownload = await contextB.request.get(completed[0]!.finalAsset!.downloadPath);
     expect(foreignDownload.status()).toBe(404);
     expect(consoleErrors).toEqual([]);

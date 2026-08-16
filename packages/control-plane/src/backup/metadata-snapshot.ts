@@ -46,6 +46,7 @@ const DEFERRED_COLUMNS = Object.freeze({
 const RESTORE_INSERT_ORDER = Object.freeze([
   "users",
   "accounts",
+  "account_queue_heads",
   "invite_codes",
   "auth_identity_bindings",
   "invite_redemptions",
@@ -65,6 +66,11 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "projects",
   "project_inputs",
   "project_revisions",
+  "generation_requests",
+  "preset_preview_requests",
+  "provider_workload_leases",
+  "global_generation_capacity",
+  "generation_queue_audits",
   "artifact_reservations",
   "artifact_receipts",
   "transcripts",
@@ -268,7 +274,7 @@ function normalizeKey(key: string): string {
 
 function isSecretBearingKey(key: string): boolean {
   const normalized = normalizeKey(key);
-  if (normalized.endsWith("_hash")) return false;
+  if (normalized.endsWith("_hash") || normalized.endsWith("_sha256")) return false;
   return /(^|_)(?:api_key|authorization|callback_token|cancel_token|cookie|credential|password|private_key|refresh_token|secret|session_token|signed_url|token|uri|url)(?:_|$)/u.test(
     normalized,
   );
@@ -657,6 +663,28 @@ async function insertTable(
 ): Promise<number> {
   const table = tableSnapshot(snapshot, tableName);
   if (table.rowCount === 0) return 0;
+  if (tableName === "global_generation_capacity") {
+    const result = await executor.query(
+      `UPDATE ${qualifiedTable(tableName)} AS target
+          SET active_lease_count = source.active_lease_count,
+              schedule_sequence = source.schedule_sequence,
+              video_fair_cursor = source.video_fair_cursor,
+              preview_fair_cursor = source.preview_fair_cursor,
+              version = source.version,
+              updated_at = source.updated_at
+         FROM jsonb_populate_recordset(NULL::${qualifiedTable(tableName)}, $1::jsonb) AS source
+        WHERE target.singleton = source.singleton`,
+      [rowsDocument(table)],
+    );
+    if (result.affectedRows !== table.rowCount) {
+      throw snapshotProblem(
+        "METADATA_RESTORE_VERIFICATION_FAILED",
+        `Table ${tableName} restored ${String(result.affectedRows)} of ${String(table.rowCount)} rows.`,
+        "Discard the destination and retry into a fresh migrated database.",
+      );
+    }
+    return result.affectedRows;
+  }
   const deferred = DEFERRED_COLUMNS[tableName as keyof typeof DEFERRED_COLUMNS] as
     | readonly string[]
     | undefined;
@@ -718,6 +746,9 @@ async function restoreDeferredColumns(
 async function countDataRows(executor: SqlExecutor): Promise<number> {
   let total = 0;
   for (const tableName of RELATIONAL_TABLE_NAMES) {
+    // Migration 0021 seeds this singleton. Its cursors remain portable data, but the baseline row
+    // does not make an otherwise fresh migrated restore destination dirty.
+    if (tableName === "global_generation_capacity") continue;
     const result = await executor.query<CountRow>(
       `SELECT count(*)::text AS count
          FROM ${qualifiedTable(tableName)} AS source${reservedScopeFilter(tableName)}`,

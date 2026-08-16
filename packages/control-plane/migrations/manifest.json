@@ -120,6 +120,12 @@
       "name": "tenant_artifact_isolation_repair",
       "filename": "0020_tenant_artifact_isolation_repair.sql",
       "sha256": "sha256:28b8b2ae977db0949712cd7b647942fbb325cf5ee953b47637661717825b45fd"
+    },
+    {
+      "version": 21,
+      "name": "fair_generation_admission",
+      "filename": "0021_fair_generation_admission.sql",
+      "sha256": "sha256:cc8ba6fea1f5c65033da9569191fa339a9404f9b582655425362efa3b233cc72"
     }
   ]
 }

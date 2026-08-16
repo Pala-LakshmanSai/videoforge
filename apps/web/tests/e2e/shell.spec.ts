@@ -695,16 +695,8 @@ test("Create Project uses exact visual presets and never exposes project-local a
   await expect(avatarOptions).not.toBeVisible();
   await expect(avatarPicker).toBeFocused();
 
-  const imageCompute = page.getByLabel("Image and media GPU offer", { exact: true });
-  await imageCompute.press("ArrowDown");
-  await expect(
-    page.getByRole("listbox", { name: "Image and media GPU offer options" }),
-  ).toBeVisible();
-  await expect(page.getByRole("option", { name: /RTX 4090/ })).toBeFocused();
-  await expect(page.getByRole("option", { name: /RTX A6000/ })).toBeEnabled();
-  await expect(page.getByText(/Secure Cloud · EU-RO-1 · receipt/u).first()).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(imageCompute).toBeFocused();
+  await expect(page.getByText("Automatic fair admission", { exact: true })).toBeVisible();
+  await expect(page.getByLabel(/GPU offer/u)).toHaveCount(0);
 
   const keywordSummary = page.locator("summary.disclosure-summary").filter({
     hasText: "Image keywords",

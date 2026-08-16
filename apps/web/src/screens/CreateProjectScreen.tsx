@@ -6,7 +6,6 @@ import { AlertTriangle, ArrowRight, Check, FileAudio, ImagePlus, UserPlus, X } f
 import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "../components/PageHeader";
 import { Button, Disclosure, Panel } from "../components/ui";
-import { SharedGpuPairSelect } from "../features/project-create/SharedGpuPairSelect";
 import { VisualPresetSelect } from "../features/project-create/VisualPresetSelect";
 import { useProjectDraft } from "../features/project-create/useProjectDraft";
 import { ActionToast, NoticeBanner, noticeForScope } from "../features/shared/FixtureFeedback";
@@ -43,12 +42,10 @@ export function CreateProjectScreen() {
     queryKey: ["bootstrap", scenario],
     queryFn: () => api.bootstrap(scenario),
   });
-  const sharedApp = useQuery({
-    queryKey: ["shared-app", scenario],
-    queryFn: () => api.sharedApp(scenario),
+  const privateQueue = useQuery({
+    queryKey: ["private-fair-queue", scenario],
+    queryFn: () => api.privateFairQueue(scenario),
   });
-  const [imageReceiptId, setImageReceiptId] = useState("");
-  const [avatarReceiptId, setAvatarReceiptId] = useState("");
   const compute = useQuery({
     queryKey: ["execution-profiles", scenario],
     queryFn: () => api.executionProfiles(scenario),
@@ -118,18 +115,6 @@ export function CreateProjectScreen() {
       },
     }));
   }, [avatarLane, draft.executionProfileOverrides, imageLane, setDraft]);
-
-  useEffect(() => {
-    const inventory = sharedApp.data?.inventory ?? [];
-    const imageOffers = inventory.filter((offer) => offer.lane === "image_media");
-    const avatarOffers = inventory.filter((offer) => offer.lane === "avatar_primary");
-    if (!imageOffers.some((offer) => offer.receiptId === imageReceiptId)) {
-      setImageReceiptId(imageOffers[0]?.receiptId ?? "");
-    }
-    if (!avatarOffers.some((offer) => offer.receiptId === avatarReceiptId)) {
-      setAvatarReceiptId(avatarOffers[0]?.receiptId ?? "");
-    }
-  }, [avatarReceiptId, imageReceiptId, sharedApp.data?.inventory]);
 
   useEffect(() => {
     const assetId = draft.voiceoverAssetId;
@@ -222,23 +207,16 @@ export function CreateProjectScreen() {
     title: draft.title,
     voiceoverAssetId: draft.voiceoverAssetId,
   });
-  const gpuPairReady = Boolean(sharedApp.data?.session || (imageReceiptId && avatarReceiptId));
-  const canSubmit = submitBlockers.length === 0 && sharedApp.isSuccess && gpuPairReady;
+  const canSubmit = submitBlockers.length === 0 && privateQueue.isSuccess;
   const primaryBlocker =
     submitBlockers[0] ??
-    (!sharedApp.isSuccess
+    (!privateQueue.isSuccess
       ? {
-          message: "Shared GPU state is unavailable.",
-          code: "SHARED_GPU_PENDING",
-          target: "gpu-pair-selectors",
+          message: "Private queue state is unavailable.",
+          code: "FAIR_QUEUE_PENDING",
+          target: "fair-admission-state",
         }
-      : !gpuPairReady
-        ? {
-            message: "Select both live GPU offers.",
-            code: "GPU_PAIR_REQUIRED",
-            target: "gpu-pair-selectors",
-          }
-        : undefined);
+      : undefined);
   const create = useMutation({
     mutationFn: async () => {
       setSubmittedError(null);
@@ -255,8 +233,6 @@ export function CreateProjectScreen() {
         {
           projectId: result.id || "project_fixture_001",
           title: payload.title,
-          imageReceiptId: sharedApp.data?.session ? undefined : imageReceiptId,
-          avatarReceiptId: sharedApp.data?.session ? undefined : avatarReceiptId,
         },
         scenario,
       );
@@ -572,21 +548,24 @@ export function CreateProjectScreen() {
                 <h3 id="create-run">Run</h3>
               </header>
               <div className="create-section-grid">
-                {sharedApp.data ? (
-                  <SharedGpuPairSelect
-                    shared={sharedApp.data}
-                    imageReceiptId={imageReceiptId}
-                    avatarReceiptId={avatarReceiptId}
-                    onImageChange={setImageReceiptId}
-                    onAvatarChange={setAvatarReceiptId}
-                  />
-                ) : sharedApp.isError ? (
+                {privateQueue.data ? (
+                  <div className="compute-lock field-wide" id="fair-admission-state">
+                    <div>
+                      <span>Automatic fair admission</span>
+                      <strong>One active video for your account</strong>
+                    </div>
+                    <small>
+                      Two private global slots rotate deterministically across eligible accounts.
+                      Waiting work performs no preparation or provider action.
+                    </small>
+                  </div>
+                ) : privateQueue.isError ? (
                   <div className="validation validation-danger field-wide" role="alert">
-                    Shared GPU state is unavailable. Reload after the local API is healthy.
+                    Private queue state is unavailable. Reload after the local API is healthy.
                   </div>
                 ) : (
                   <div className="validation field-wide" role="status">
-                    Loading shared GPU state…
+                    Loading private queue state…
                   </div>
                 )}
                 <div className="field field-wide">
@@ -686,7 +665,7 @@ export function CreateProjectScreen() {
             >
               {create.isPending
                 ? "Creating project…"
-                : sharedApp.data?.session
+                : privateQueue.data?.requests.length
                   ? "Add to queue"
                   : "Generate video"}
               <ArrowRight size={16} />

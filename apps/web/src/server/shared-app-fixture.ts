@@ -83,6 +83,37 @@ export interface SharedAppView {
   readonly authorizedSpendUsd: 0;
 }
 
+export interface PrivateFairQueueView {
+  readonly schemaVersion: "videoforge.private-fair-queue/v1";
+  readonly queueVersion: number;
+  readonly capacity: {
+    readonly totalSlots: 2;
+    readonly ownedActive: 0 | 1;
+    readonly accountActiveLimit: 1;
+    readonly otherAccountDetailsVisible: false;
+  };
+  readonly requests: readonly {
+    readonly id: string;
+    readonly projectId: string;
+    readonly title: string;
+    readonly kind: "VIDEO";
+    readonly state: "ACTIVE" | "WAITING";
+    readonly stage: string;
+    readonly accountPosition: number;
+    readonly version: number;
+    readonly canReorder: boolean;
+    readonly canCancel: boolean;
+    readonly createdAt: string;
+  }[];
+  readonly fairness: {
+    readonly policy: "DETERMINISTIC_ACCOUNT_ROTATION";
+    readonly reorderScope: "ACCOUNT_ONLY";
+    readonly previewsBelowEligibleVideos: true;
+  };
+  readonly providerCallsAuthorized: false;
+  readonly authorizedSpendUsd: 0;
+}
+
 export class SharedFixtureError extends Error {
   constructor(
     readonly code: string,
@@ -540,6 +571,52 @@ export class SharedAppFixtureStore {
     };
   }
 
+  privateFairQueueView(sessionId: string): PrivateFairQueueView {
+    const admission = this.requireAdmission(sessionId);
+    const owns = (entry: SharedQueueEntry) =>
+      entry.accountId === admission.tenant.accountId &&
+      entry.workspaceId === admission.tenant.workspaceId;
+    const snapshot = this.#orchestrator.snapshot();
+    const owned = positions(this.#state.queue.filter(owns));
+    return Object.freeze({
+      schemaVersion: "videoforge.private-fair-queue/v1" as const,
+      queueVersion: this.queueVersion(admission),
+      capacity: Object.freeze({
+        totalSlots: 2 as const,
+        ownedActive: (owned.some((entry) => entry.state === "ACTIVE") ? 1 : 0) as 0 | 1,
+        accountActiveLimit: 1 as const,
+        otherAccountDetailsVisible: false as const,
+      }),
+      requests: Object.freeze(
+        owned.map((entry) => {
+          const stage =
+            snapshot.projects.find((project) => project.projectId === entry.projectId)?.stage ??
+            entry.state;
+          return Object.freeze({
+            id: entry.id,
+            projectId: entry.projectId,
+            title: entry.title,
+            kind: "VIDEO" as const,
+            state: entry.state,
+            stage,
+            accountPosition: entry.position,
+            version: this.queueVersion(admission),
+            canReorder: entry.state === "WAITING",
+            canCancel: entry.state === "WAITING",
+            createdAt: entry.createdAt,
+          });
+        }),
+      ),
+      fairness: Object.freeze({
+        policy: "DETERMINISTIC_ACCOUNT_ROTATION" as const,
+        reorderScope: "ACCOUNT_ONLY" as const,
+        previewsBelowEligibleVideos: true as const,
+      }),
+      providerCallsAuthorized: false as const,
+      authorizedSpendUsd: 0 as const,
+    });
+  }
+
   async waitForSettled(): Promise<void> {
     await this.#asyncMutationTail;
   }
@@ -561,24 +638,16 @@ export class SharedAppFixtureStore {
       let gpuPair: LockedGpuPair | null = null;
       if (this.#state.sessionId === null && this.#state.queue.length === 0) {
         const offers = liveOffers();
+        // Endpoint/runtime choice is operator-owned. Ordinary Generate never accepts a GPU or Pod
+        // lifecycle selection; the provider-free fixture resolves its immutable synthetic lanes.
         const image = offers.find(
-          (offer) => offer.lane === "image_media" && offer.receiptId === input.imageReceiptId,
+          (offer) => offer.lane === "image_media" && offer.gpuSku === "NVIDIA RTX 4090",
         );
         const avatar = offers.find(
-          (offer) => offer.lane === "avatar_primary" && offer.receiptId === input.avatarReceiptId,
+          (offer) => offer.lane === "avatar_primary" && offer.gpuSku === "NVIDIA RTX 4090",
         );
-        if (
-          !image ||
-          !avatar ||
-          Date.parse(image.expiresAt) <= Date.now() ||
-          Date.parse(avatar.expiresAt) <= Date.now()
-        ) {
-          throw new SharedFixtureError(
-            "GPU_RECEIPT_STALE",
-            409,
-            "Refresh and select both current GPU offers.",
-          );
-        }
+        if (!image || !avatar)
+          throw new Error("provider-free fixture lane configuration is missing");
         this.#state.sessionId = crypto.randomUUID();
         gpuPair = Object.freeze({ image, avatar, lockedAt: new Date().toISOString() });
         this.#state.pair = gpuPair;

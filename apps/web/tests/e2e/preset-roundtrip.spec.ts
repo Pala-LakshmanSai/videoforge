@@ -273,23 +273,8 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
   await expect(page.getByRole("radiogroup", { name: "Avatar Profile options" })).not.toBeVisible();
   await expect(avatarSummary).toBeFocused();
 
-  for (const name of ["Image and media GPU offer", "Avatar GPU offer"] as const) {
-    const trigger = page.getByLabel(name, { exact: true });
-    await expect(trigger).toBeVisible();
-    await expect(trigger).toContainText("NVIDIA RTX 4090");
-    await expect(trigger).toContainText("$0.34/hr");
-    await trigger.click();
-    const listbox = page.getByRole("listbox", { name: `${name} options` });
-    await expect(listbox).toBeVisible();
-    await expect(listbox.getByRole("option", { name: /RTX 4090/u })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    await expect(listbox.getByRole("option", { name: /RTX A6000/u })).toBeEnabled();
-    await expect(listbox.getByText(/Secure Cloud · EU-RO-1 · receipt/u).first()).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(trigger).toBeFocused();
-  }
+  await expect(page.getByText("Automatic fair admission", { exact: true })).toBeVisible();
+  await expect(page.getByLabel(/GPU offer/u)).toHaveCount(0);
   await expect(page.locator("select")).toHaveCount(0);
 
   await page.getByLabel("Video title").fill(title);

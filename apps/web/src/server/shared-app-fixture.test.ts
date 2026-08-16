@@ -118,6 +118,35 @@ describe("shared fixture admission", () => {
 });
 
 describe("shared fixture singleton queue", () => {
+  it("projects a private V2-03 queue with automatic compute policy and no tenant/compute details", async () => {
+    const store = new SharedAppFixtureStore();
+    await admit(store, 1);
+    await admit(store, 2);
+    store.startOrEnqueue({
+      sessionId: "browser-1",
+      projectId: "private-a",
+      title: "Private A",
+    });
+    store.startOrEnqueue({
+      sessionId: "browser-2",
+      projectId: "private-b",
+      title: "Private B",
+    });
+
+    const viewA = store.privateFairQueueView("browser-1");
+    const viewB = store.privateFairQueueView("browser-2");
+    expect(viewA.requests.map((request) => request.projectId)).toEqual(["private-a"]);
+    expect(viewB.requests.map((request) => request.projectId)).toEqual(["private-b"]);
+    expect(viewA.capacity).toEqual({
+      totalSlots: 2,
+      ownedActive: 1,
+      accountActiveLimit: 1,
+      otherAccountDetailsVisible: false,
+    });
+    expect(JSON.stringify(viewA)).not.toMatch(/gpu|pod|runpod|accountId|workspaceId/iu);
+    expect(JSON.stringify(viewB)).not.toContain("private-a");
+  });
+
   it("does not expose persisted pre-tenant fixture records after upgrade", async () => {
     const store = new SharedAppFixtureStore();
     await admit(store, 1);

@@ -170,8 +170,8 @@ function expectSnapshotError(error, code) {
   return true;
 }
 
-// Migration 0018 seeds the reserved SYSTEM and LEGACY scope rows into every migrated database, so
-// they are schema baseline rather than restorable tenant metadata.
+// Migrations seed reserved scopes and the fair-capacity singleton into every migrated database, so
+// these rows are schema baseline rather than evidence that a restore destination contains tenants.
 const RESERVED_SCOPE_ROW_FILTER = Object.freeze({
   accounts:
     " WHERE id NOT IN ('ffffffff-ffff-4fff-8fff-000000000001'," +
@@ -181,6 +181,7 @@ const RESERVED_SCOPE_ROW_FILTER = Object.freeze({
     "'ffffffff-ffff-4fff-8fff-000000000012')",
   users: " WHERE id <> 'ffffffff-ffff-4fff-8fff-000000000021'",
   memberships: " WHERE id <> 'ffffffff-ffff-4fff-8fff-000000000031'",
+  global_generation_capacity: " WHERE false",
 });
 
 async function totalDataRows(executor) {
@@ -207,7 +208,7 @@ test("the same metadata snapshot restores exactly, resumes idempotently, and rem
     const serialized = serializeMetadataSnapshot(first);
     assert.equal(serializeMetadataSnapshot(second), serialized);
     assert.equal(second.snapshotSha256, first.snapshotSha256);
-    assert.equal(first.migrationLedger.length, 20);
+    assert.equal(first.migrationLedger.length, 21);
     assert.equal(first.tables.length, RELATIONAL_TABLE_NAMES.length);
     for (const requiredTable of [
       "memberships",

@@ -1,92 +1,61 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import {
-  AlertTriangle,
-  ArrowDown,
-  ArrowRight,
-  ArrowUp,
-  Download,
-  Plus,
-  RefreshCw,
-  Trash2,
-  Video,
-} from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Plus, Trash2, Video } from "lucide-react";
+
 import { PageHeader } from "../components/PageHeader";
 import { Badge, Button, EmptyState, Metric, Panel, ProgressBar } from "../components/ui";
-import { humanize, statusTone } from "../features/shared/status";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
 
 export function QueueScreen() {
   const scenario = currentScenario();
-  const query = useQuery({
+  const bootstrap = useQuery({
     queryKey: ["bootstrap", scenario],
     queryFn: () => api.bootstrap(scenario),
   });
-  const shared = useQuery({
-    queryKey: ["shared-app", scenario],
-    queryFn: () => api.sharedApp(scenario),
+  const queue = useQuery({
+    queryKey: ["private-fair-queue", scenario],
+    queryFn: () => api.privateFairQueue(scenario),
   });
   const queueMutation = useMutation({
-    mutationFn: (action: { entryId: string; kind: "UP" | "DOWN" | "REMOVE"; position: number }) => {
-      const version = shared.data?.session?.queueVersion;
+    mutationFn: (action: { entryId: string; kind: "UP" | "DOWN" | "CANCEL"; position: number }) => {
+      const version = queue.data?.queueVersion;
       if (version === undefined) throw new Error("Queue version unavailable.");
-      return action.kind === "REMOVE"
-        ? api.removeSharedQueue(action.entryId, version, scenario)
-        : api.reorderSharedQueue(
+      return action.kind === "CANCEL"
+        ? api.cancelPrivateWaiting(action.entryId, version, scenario)
+        : api.reorderPrivateQueue(
             action.entryId,
             action.position + (action.kind === "UP" ? -1 : 1),
             version,
             scenario,
           );
     },
-    onSuccess: () => void shared.refetch(),
+    onSuccess: (data) => queue.refetch().then(() => data),
   });
-  const advanceMutation = useMutation({
-    mutationFn: () => api.advanceSharedOrchestration(scenario),
-    onSuccess: () => void shared.refetch(),
-  });
-  const cancelMutation = useMutation({
-    mutationFn: () => api.cancelSharedActive(scenario),
-    onSuccess: () => void shared.refetch(),
-  });
-  const projects = query.data?.projects ?? [];
-  const running = projects.filter((project) => project.status === "RUNNING").length;
-  const attention = projects.filter((project) => project.status === "NEEDS_ATTENTION").length;
-  const complete = projects.filter((project) =>
-    ["READY_FOR_REVIEW", "APPROVED"].includes(project.status),
-  ).length;
-  const orchestrationProjects = shared.data?.orchestration.projects ?? [];
-  const completedFixtureProjects = orchestrationProjects.filter(
-    (project) => project.stage === "READY_FOR_REVIEW" && project.finalAsset !== null,
-  );
-  const activeOrchestrationProject = orchestrationProjects.find((project) =>
-    ["BOOTING", "PREPARING", "GENERATING", "RENDERING"].includes(project.stage),
-  );
 
-  if (query.isPending) {
+  if (bootstrap.isPending || queue.isPending) {
     return (
       <>
         <PageHeader title="Queue" />
-        <Panel heading="Loading projects">
+        <Panel heading="Loading your private queue">
           <div className="empty-state" aria-busy="true">
             <span className="spinner" aria-hidden="true" />
-            <p>Connecting to the authoritative queue…</p>
+            <p>Reading durable admission state…</p>
           </div>
         </Panel>
       </>
     );
   }
-  if (query.isError) {
+  if (bootstrap.isError || queue.isError || !queue.data) {
     return (
       <>
         <PageHeader title="Queue" />
         <EmptyState
           icon={<AlertTriangle />}
           title="Queue unavailable"
-          body="The local API did not return project data. No empty queue is being inferred."
+          body="No fallback position or cross-account state is being inferred."
           action={
-            <Button variant="secondary" onClick={() => void query.refetch()}>
+            <Button variant="secondary" onClick={() => void queue.refetch()}>
               Retry load
             </Button>
           }
@@ -94,6 +63,13 @@ export function QueueScreen() {
       </>
     );
   }
+
+  const projects = bootstrap.data?.projects ?? [];
+  const active = queue.data.requests.filter((request) => request.state === "ACTIVE").length;
+  const waiting = queue.data.requests.filter((request) => request.state === "WAITING").length;
+  const complete = projects.filter((project) =>
+    ["READY_FOR_REVIEW", "APPROVED"].includes(project.status),
+  ).length;
 
   return (
     <>
@@ -111,77 +87,56 @@ export function QueueScreen() {
         }
       />
       <div className="grid grid-4 queue-overview">
-        <Metric
-          label="Active"
-          value={String(
-            shared.data?.queue.filter((entry) => entry.state === "ACTIVE").length ?? running,
-          )}
-          tone="info"
-        />
-        <Metric
-          label="Queued"
-          value={String(
-            shared.data?.queue.filter((entry) => entry.state === "WAITING").length ??
-              projects.filter((project) => project.status === "QUEUED").length,
-          )}
-        />
-        <Metric
-          label="Needs attention"
-          value={String(attention)}
-          tone={attention ? "warning" : "success"}
-        />
+        <Metric label="Your active" value={String(active)} tone="info" />
+        <Metric label="Your waiting" value={String(waiting)} />
+        <Metric label="Account limit" value="1" detail="active workload" />
         <Metric label="Ready" value={String(complete)} tone="success" />
       </div>
+
       <Panel
         className="queue-panel"
-        eyebrow="One shared boundary"
-        heading="Global generation queue"
+        eyebrow="Private fair admission"
+        heading="Your generation queue"
       >
-        {shared.isError ? (
-          <div className="validation validation-danger" role="alert">
-            Global queue unavailable. Refresh before changing order.
-          </div>
-        ) : shared.isPending ? (
-          <div className="empty-state" aria-busy="true">
-            <span className="spinner" />
-            <p>Loading global queue…</p>
-          </div>
-        ) : shared.data.queue.length === 0 ? (
-          <p>Idle. The next Generate locks both selected GPU receipts for everyone.</p>
+        <div className="notice" role="status">
+          Two global slots rotate deterministically across eligible accounts. This view exposes only
+          your projects; your reorder never changes another account&apos;s turn.
+        </div>
+        {queue.data.requests.length === 0 ? (
+          <p>
+            Idle. Generate adds a private waiting request; preparation begins only after admission.
+          </p>
         ) : (
-          <div className="queue-list" aria-label="Global generation queue">
-            {shared.data.queue.map((entry) => (
-              <article className="queue-card" key={entry.id}>
+          <div className="queue-list" aria-label="Your private generation queue">
+            {queue.data.requests.map((request) => (
+              <article className="queue-card" key={request.id}>
                 <div className="queue-card__identity">
                   <span className="project-icon">
                     <Video size={18} />
                   </span>
                   <div>
-                    <strong>{entry.title}</strong>
-                    <small>
-                      {entry.actor} · equal rights ·{" "}
-                      {orchestrationProjects.find(
-                        (project) => project.projectId === entry.projectId,
-                      )?.stage ?? entry.state}
-                    </small>
+                    <strong>{request.title}</strong>
+                    <small>{request.stage.replaceAll("_", " ")}</small>
                   </div>
                 </div>
                 <div className="queue-card__status">
-                  <Badge tone={entry.state === "ACTIVE" ? "info" : "neutral"}>{entry.state}</Badge>
-                  <span>Position {entry.position}</span>
+                  <Badge tone={request.state === "ACTIVE" ? "info" : "neutral"}>
+                    {request.state}
+                  </Badge>
+                  <span>Your order {request.accountPosition}</span>
                 </div>
                 <div className="queue-card__facts">
-                  {entry.state === "WAITING" ? (
+                  {request.canReorder ? (
                     <>
                       <Button
                         variant="secondary"
-                        aria-label={`Move ${entry.title} up`}
-                        disabled={entry.position <= 2 || queueMutation.isPending}
+                        aria-label={`Move ${request.title} up in your queue`}
+                        disabled={request.accountPosition <= 1 || queueMutation.isPending}
                         onClick={() =>
                           queueMutation.mutate({
-                            entryId: entry.id,
+                            entryId: request.id,
                             kind: "UP",
-                            position: entry.position,
+                            position: request.accountPosition,
                           })
                         }
                       >
@@ -189,15 +144,16 @@ export function QueueScreen() {
                       </Button>
                       <Button
                         variant="secondary"
-                        aria-label={`Move ${entry.title} down`}
+                        aria-label={`Move ${request.title} down in your queue`}
                         disabled={
-                          entry.position >= shared.data.queue.length || queueMutation.isPending
+                          request.accountPosition >= queue.data.requests.length ||
+                          queueMutation.isPending
                         }
                         onClick={() =>
                           queueMutation.mutate({
-                            entryId: entry.id,
+                            entryId: request.id,
                             kind: "DOWN",
-                            position: entry.position,
+                            position: request.accountPosition,
                           })
                         }
                       >
@@ -205,13 +161,13 @@ export function QueueScreen() {
                       </Button>
                       <Button
                         variant="secondary"
-                        aria-label={`Remove ${entry.title}`}
-                        disabled={queueMutation.isPending}
+                        aria-label={`Cancel waiting project ${request.title}`}
+                        disabled={!request.canCancel || queueMutation.isPending}
                         onClick={() =>
                           queueMutation.mutate({
-                            entryId: entry.id,
-                            kind: "REMOVE",
-                            position: entry.position,
+                            entryId: request.id,
+                            kind: "CANCEL",
+                            position: request.accountPosition,
                           })
                         }
                       >
@@ -219,7 +175,7 @@ export function QueueScreen() {
                       </Button>
                     </>
                   ) : (
-                    <small>Active entry cannot move or delete</small>
+                    <small>Active work cannot be moved.</small>
                   )}
                 </div>
               </article>
@@ -232,104 +188,7 @@ export function QueueScreen() {
           </div>
         ) : null}
       </Panel>
-      {shared.data?.orchestration.session ? (
-        <Panel className="queue-panel" eyebrow="$0 fixture" heading="Synthetic lane truth">
-          <div className="grid grid-2">
-            {(["mage_image", "echo_avatar"] as const).map((laneName) => {
-              const lane = shared.data.orchestration.session!.lanes[laneName];
-              const attempt = lane.attempts.at(-1)!;
-              return (
-                <article className="queue-card" key={laneName}>
-                  <div className="queue-card__identity">
-                    <div>
-                      <strong>{laneName.replaceAll("_", " ")}</strong>
-                      <small>{lane.selectedGpuSku}</small>
-                    </div>
-                  </div>
-                  <div className="queue-card__status">
-                    <Badge tone={attempt.phase === "ABSENCE_VERIFIED" ? "success" : "info"}>
-                      {humanize(attempt.phase)}
-                    </Badge>
-                    <span>{lane.volumeId}</span>
-                  </div>
-                  <div className="queue-card__facts">
-                    <small>
-                      Attempt {lane.attempts.length} · callback {attempt.callbackSequence}
-                    </small>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-          <div className="button-row">
-            <Button
-              variant="secondary"
-              disabled={advanceMutation.isPending}
-              onClick={() => advanceMutation.mutate()}
-            >
-              <RefreshCw size={16} />
-              Advance $0 fixture
-            </Button>
-            {activeOrchestrationProject ? (
-              <Button
-                variant="secondary"
-                disabled={cancelMutation.isPending}
-                onClick={() => cancelMutation.mutate()}
-              >
-                Cancel active
-              </Button>
-            ) : null}
-          </div>
-          {advanceMutation.isError || cancelMutation.isError ? (
-            <div className="validation validation-danger" role="alert">
-              {(advanceMutation.error ?? cancelMutation.error)?.message}
-            </div>
-          ) : null}
-        </Panel>
-      ) : shared.data?.orchestration.lastClosedSession ? (
-        <Panel className="queue-panel" eyebrow="$0 fixture" heading="Last session closed">
-          <p>
-            Both synthetic Pods absent. Mage and Echo volumes retained. GPU pair unlocked after
-            queue drain.
-          </p>
-        </Panel>
-      ) : null}
-      {completedFixtureProjects.length > 0 ? (
-        <Panel className="queue-panel" heading="Provider-free final MP4s">
-          <div className="grid grid-2">
-            {completedFixtureProjects.map((project) => {
-              const download = `${project.finalAsset!.downloadPath}?fixture=${encodeURIComponent(scenario)}`;
-              const source = `${download}&inline=1`;
-              return (
-                <article className="queue-card" key={project.projectId}>
-                  <div className="queue-card__identity">
-                    <div>
-                      <strong>{project.title}</strong>
-                      <small>
-                        1920×1080 · H.264/AAC · {(project.finalAsset!.byteSize / 1024).toFixed(1)}{" "}
-                        KB ·{" "}
-                        {project.finalAsset!.renderer === "DIRECT_FFMPEG"
-                          ? "Direct FFmpeg"
-                          : "Workerd-safe fixture"}
-                      </small>
-                    </div>
-                  </div>
-                  <video
-                    controls
-                    preload="metadata"
-                    src={source}
-                    aria-label={`${project.title} final MP4`}
-                  />
-                  <a className="button button-secondary" href={download}>
-                    <Download size={16} />
-                    Download MP4
-                  </a>
-                </article>
-              );
-            })}
-          </div>
-        </Panel>
-      ) : null}
+
       <Panel className="queue-panel" heading="Projects">
         {projects.length === 0 ? (
           <EmptyState
@@ -346,8 +205,7 @@ export function QueueScreen() {
               </Link>
             }
           />
-        ) : null}
-        {projects.length ? (
+        ) : (
           <div className="queue-list">
             {projects.map((project) => {
               const percent = project.total
@@ -367,37 +225,24 @@ export function QueueScreen() {
                     </span>
                     <div>
                       <strong>{project.title}</strong>
-                      <small>
-                        {project.owner} · {project.mode.replaceAll("_", " ")}
-                      </small>
+                      <small>{project.stage}</small>
                     </div>
                   </div>
+                  <div className="queue-card__progress">
+                    <ProgressBar value={percent} label={`${project.title} progress`} />
+                    <span>{percent}%</span>
+                  </div>
                   <div className="queue-card__status">
-                    <Badge tone={statusTone(project.status)}>
+                    <Badge tone={project.status === "FAILED" ? "danger" : "neutral"}>
                       {project.status.replaceAll("_", " ")}
                     </Badge>
-                    <span>{humanize(project.stage)}</span>
-                  </div>
-                  <div className="queue-card__progress">
-                    <strong>{percent}%</strong>
-                    <ProgressBar value={percent} label={`${project.title} progress`} />
-                  </div>
-                  <div className="queue-card__facts">
-                    <span>
-                      <small>ETA</small>
-                      <strong>{project.eta}</strong>
-                    </span>
-                    <span>
-                      <small>Cost</small>
-                      <strong>${project.actualCost.toFixed(2)}</strong>
-                    </span>
-                    <ArrowRight size={20} aria-hidden="true" />
+                    <span>{project.eta}</span>
                   </div>
                 </Link>
               );
             })}
           </div>
-        ) : null}
+        )}
       </Panel>
     </>
   );

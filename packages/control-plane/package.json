@@ -21,6 +21,10 @@
       "types": "./dist/src/adapters/index.d.ts",
       "import": "./dist/src/adapters/index.js"
     },
+    "./admission": {
+      "types": "./dist/src/admission/index.d.ts",
+      "import": "./dist/src/admission/index.js"
+    },
     "./repositories": {
       "types": "./dist/src/repositories/index.d.ts",
       "import": "./dist/src/repositories/index.js"
