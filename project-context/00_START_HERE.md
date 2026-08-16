@@ -1,7 +1,7 @@
 # VideoForge: start here
 
-Status: V2-04 provider-free Serverless v3 contracts repaired and same-chat re-audited green;
-V2-05 runtime, UI, and installed-Chrome journeys green; compatibility executor quarantined, not removed
+Status: V2-05 tenant-private provider-free cutover complete and same-chat re-audited green;
+V2-06 hosted staging is ready but not started and has no active external authority
 Context schema: `2.0`
 Last updated: `2026-08-16`
 
@@ -203,7 +203,7 @@ pass. Superseded Pod schemas are read-only compatibility evidence and cannot aut
 Canonical verification passed 28/28 package tasks and 44/44 installed-Chrome tests. No credential,
 provider call, endpoint/image/volume mutation, worker, GPU, or spend occurred.
 
-V2-05 is in progress and provider-free. Additive migration `0028_v2_05_runtime_cutover.sql` gives
+V2-05 is complete and provider-free. Additive migration `0028_v2_05_runtime_cutover.sql` gives
 every admitted video independent durable stage state, per-lane state, append-only accepted units,
 append-only runtime events, and a superseded-contract registry whose write fence rejects ordinary
 production writes to `generation_sessions`, the session GPU pair tables, `global_queue_entries`,
@@ -218,18 +218,19 @@ live attempts and `$0` settled cost, and proves queued inertness, lane independe
 acknowledgement, duplicate-execution visibility, restart reconstruction, cancellation fencing, and
 non-revealing cross-tenant negatives. `pnpm ci:static` now also runs the V2-05 runtime firewall.
 
-The application now serves that truth: Generate registers the durable runtime, the private
-fair-queue view reports each owned video's factual stage and lane facts, two owned-video routes
-advance and cancel exactly one video, and installed Chrome proves a two-account journey with queued
-inertness, independent progress to completion, non-revealing cross-tenant refusal, and no GPU or Pod
-control anywhere in the approved surface. Every superseded global-session HTTP surface now requires
-explicit fixture control, and the firewall asserts that gate.
+The application now serves that truth end to end: Generate registers the durable runtime, private
+queue views report factual owned stages and lane facts, waiting work remains inert, and finalization
+requires a live tenant-private render receipt whose SHA-256, bytes, H.264/AAC probe, project,
+revision, and render manifest all agree. Installed Chrome proves two accounts, the three locked
+compositions, real 1920x1080 MP4 download/playback, cross-tenant refusal, and zero fake jobs/workers
+after drain. V2 routes cannot call the compatibility orchestrator. The emitted production worker is
+import-free and fails API traffic closed pending V2-06 hosted adapters, while its client bundle
+contains no v1 shared-app route, manual Pod/GPU selector, inactive Echo route, repair override, or
+fallback vocabulary. Local compatibility fixtures remain explicitly gated and the production UI
+visibly says fixtures are not live.
 
-Outstanding before V2-05 can be called complete: the compatibility global-session executor is still
-in build output, because it still carries the only proven final-MP4 render, playback, and download
-evidence, which the V2-05 runtime does not yet reproduce; and the superseded view schema still
-declares GPU offer, locked-pair, and orchestration fields that nothing reads and no ordinary route
-returns.
+V2-06 is the next checkpoint and is not started. It may begin only under a new implementation
+request. No provider, credential, cloud mutation, GPU, worker, or spend authority is active.
 All prior provider authorities are consumed and cannot be reused. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in

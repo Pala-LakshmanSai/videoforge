@@ -1,10 +1,10 @@
 // @vitest-environment node
 
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 
 import { createApiApp } from "../app";
 import { NodeFairAdmission } from "../runtime/node-fair-admission";
@@ -19,6 +19,7 @@ const FIXTURE_CONTROL = { "X-VideoForge-Fixture-Control": "v2-provider-free-fixt
 
 async function composedApp() {
   const dataDir = await mkdtemp(path.join(tmpdir(), "videoforge-video-runtime-routes-"));
+  onTestFinished(() => rm(dataDir, { force: true, recursive: true }));
   const fairAdmission = new NodeFairAdmission(path.join(dataDir, "pglite"), migrationsDir);
   await fairAdmission.reset();
   return createApiApp({

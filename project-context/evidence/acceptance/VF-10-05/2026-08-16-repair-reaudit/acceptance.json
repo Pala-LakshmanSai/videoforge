@@ -1,0 +1,86 @@
+{
+  "schema_version": "videoforge.v2-05-repair-reaudit/v1",
+  "task_id": "VF-10-05",
+  "checkpoint": "V2-05",
+  "result": "PASS",
+  "audit_independence": "SAME_CHAT_REPAIR_REAUDIT_NOT_INDEPENDENT",
+  "implementation_commit": "3c117f2",
+  "recorded_at_utc": "2026-08-16T17:33:14Z",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": []
+  },
+  "acceptance": {
+    "tenant_private_v3_end_to_end": "PASS_EXACT_ACCOUNT_WORKSPACE_PROJECT_REVISION_ARTIFACT_RECEIPTS_AND_PRIVATE_FINAL_DOWNLOAD",
+    "admission": "PASS_ONE_ACTIVE_PER_ACCOUNT_TWO_DIFFERENT_ACCOUNTS_GLOBAL_THIRD_WAITS",
+    "waiting_work_inert": "PASS_NO_PREPARATION_LANE_JOB_OR_RENDER_BEFORE_ADMISSION",
+    "successful_units_preserved": "PASS_APPEND_ONLY_ACCEPTED_UNITS_RETRY_ONLY_REMAINING",
+    "truthful_state_and_cost": "PASS_DURABLE_OBSERVED_STAGES_SYNTHETIC_PROVIDER_FREE_ZERO_AUTHORITY_ZERO_SETTLED_COST",
+    "locked_compositions": "PASS_AVATAR_FULL_IMAGE_FULL_AVATAR_SPLIT_IMAGE_HARD_CUTS_AND_IMAGE_ZOOM",
+    "final_mp4": "PASS_RECEIPT_BOUND_1920X1080_H264_AAC_SHA256_DOWNLOAD_AND_INSTALLED_CHROME_PLAYBACK",
+    "fake_worker_drain": "PASS_ZERO_ACTIVE_JOBS_ZERO_ACTIVE_WORKERS_ZERO_LIVE_ATTEMPTS_AFTER_DRAIN",
+    "production_quarantine": "PASS_IMPORT_FREE_FAIL_CLOSED_PRODUCTION_WORKER_AND_BUNDLE_TOKEN_SCAN",
+    "compatibility_visibility": "PASS_LOCAL_FIXTURE_CONTROL_ONLY_AND_PRODUCTION_BANNER_FIXTURES_NOT_LIVE"
+  },
+  "forbidden_path_proof": {
+    "manual_pod": "ABSENT_FROM_PRODUCTION_WORKER_AND_CLIENT_BUNDLES",
+    "global_session": "ABSENT_FROM_PRODUCTION_WORKER_AND_CLIENT_BUNDLES_AND_V2_ROUTE_BLOCK",
+    "gpu_selector": "ABSENT_FROM_PRODUCTION_WORKER_AND_CLIENT_BUNDLES",
+    "inactive_runtime": "ABSENT_FROM_PRODUCTION_WORKER_AND_CLIENT_BUNDLES",
+    "superseded_serverless": "DATABASE_WRITE_FENCED_AND_ABSENT_FROM_ACTIVE_V2_ROUTE_BLOCK",
+    "automatic_gpu": "NO_ORDINARY_COMPUTE_SELECTION_API_OR_UI",
+    "fallback": "ABSENT_FROM_PRODUCTION_WORKER_BUNDLE",
+    "repair": "REMOVED_FROM_CREATE_PROJECT_INPUT_AND_PRODUCTION_CLIENT",
+    "broad_key": "ACTIVE_RUNTIME_FIREWALL_REQUIRES_TRUSTED_TENANT_LINEAGE"
+  },
+  "validation": {
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0
+    },
+    "runtime_firewall": {
+      "command": "pnpm verify:v2-05-firewall",
+      "exit_code": 0
+    },
+    "production_bundle": {
+      "command": "pnpm --filter @videoforge/web build:cloudflare",
+      "exit_code": 0
+    },
+    "installed_chrome_v2_05": {
+      "command": "pnpm --filter @videoforge/web test:chrome -- tests/e2e/v2-05-runtime.spec.ts tests/e2e/tenant-isolation.spec.ts tests/e2e/shared-app.spec.ts",
+      "exit_code": 0,
+      "tests": "6/6"
+    },
+    "focused_control_plane": {
+      "command": "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/v2-05-runtime-cutover.test.mjs",
+      "exit_code": 0,
+      "tests": "9/9"
+    }
+  },
+  "unproven": [
+    "Hosted production auth, Neon non-superuser RLS, R2, Cloud Run transcription/render, deployment, and independent-of-Mac operation belong to V2-06.",
+    "Live RunPod Serverless Mage and SoulX delivery, billing, concurrency, cancellation, and physical scale-to-zero remain later checkpoints.",
+    "The last provider inventory is stale and was not refreshed because this repair had no credential or provider-read authority.",
+    "This audit is a same-chat repair re-audit, not an independent fresh-chat audit."
+  ],
+  "resource_truth": {
+    "current_provider_mode": "fixture",
+    "provider_authority": "none",
+    "credentials_used": false,
+    "provider_calls": 0,
+    "cloud_mutations": 0,
+    "workers_started": 0,
+    "gpu_seconds": 0,
+    "external_spend_usd": 0,
+    "fake_active_jobs_after_drain": 0,
+    "fake_active_workers_after_drain": 0,
+    "last_known_real_pods": 0,
+    "last_known_real_serverless_workers_active_plus_flex": 0,
+    "last_known_inventory_checked_at": "2026-08-15T09:56:02.932Z",
+    "live_inventory_refreshed": false,
+    "retained_volumes": 2,
+    "ongoing_retained_volume_usd_per_month": 7.0
+  },
+  "v2_06_safety": "SAFE_TO_START_LOCAL_PROVIDER_FREE_WORK_ONLY_UNDER_A_NEW_IMPLEMENTATION_REQUEST; NO_EXTERNAL_AUTHORITY_EXISTS"
+}

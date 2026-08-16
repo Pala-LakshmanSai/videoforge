@@ -1,10 +1,10 @@
 // @vitest-environment node
 
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 
 import { NodeFairAdmission } from "./node-fair-admission";
 
@@ -16,6 +16,7 @@ const migrationsDir = path.resolve(
 describe("active Node fair-admission composition", () => {
   it("uses the migrated repository for two-account activation, replay, reorder, and cancel", async () => {
     const dataDir = await mkdtemp(path.join(tmpdir(), "videoforge-node-fair-admission-"));
+    onTestFinished(() => rm(dataDir, { force: true, recursive: true }));
     const admission = new NodeFairAdmission(path.join(dataDir, "pglite"), migrationsDir);
     await admission.reset();
     const tenantA = { accountId: "fixture-a", workspaceId: "fixture-a-workspace" };

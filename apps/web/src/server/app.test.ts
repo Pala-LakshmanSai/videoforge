@@ -1608,7 +1608,7 @@ describe("quarantined shared-app compatibility fixture API", () => {
     });
     await expect(sharedResponse.json()).resolves.toMatchObject({
       rights: "EQUAL",
-      canSelectGpuPair: false,
+      canSelectGpuPair: true,
       providerCallsAuthorized: false,
       authorizedSpendUsd: 0,
       queue: [],
