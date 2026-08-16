@@ -150,6 +150,12 @@
       "name": "serverless_v2_04_audit_repairs",
       "filename": "0025_serverless_v2_04_audit_repairs.sql",
       "sha256": "sha256:ca7b5e5beac8433909adbb1b698a55af9acb5432e43abac8ae393b21ca97f29f"
+    },
+    {
+      "version": 26,
+      "name": "serverless_result_window_and_cancellation_fence",
+      "filename": "0026_serverless_result_window_and_cancellation_fence.sql",
+      "sha256": "sha256:f63d756f9113f8660b004fa133b9bb116d3893da9ee7e5c808aef482e847b126"
     }
   ]
 }

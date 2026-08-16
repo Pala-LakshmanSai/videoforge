@@ -127,6 +127,7 @@ export interface PredispatchCommit {
   readonly authority: PredispatchAuthorityRecord;
   readonly deadlineAt: string;
   readonly reconciliationDeadlineAt: string;
+  readonly requestTtlSeconds: number;
 }
 
 export type DispatchOutcome =
@@ -190,6 +191,9 @@ interface AttemptRow extends Record<string, unknown> {
   readonly possible_duplicate_cost_usd: string;
   readonly version: number;
   readonly created_at: string;
+  readonly ttl_expires_at: string | null;
+  readonly provider_terminal_observed_at: string | null;
+  readonly provider_result_expires_at: string | null;
 }
 
 interface AssignmentRow extends Record<string, unknown> {
@@ -527,6 +531,7 @@ export class ServerlessDispatchService {
       authority,
       deadlineAt,
       reconciliationDeadlineAt,
+      requestTtlSeconds: deployment.request_ttl_seconds,
     });
   }
 
@@ -597,7 +602,11 @@ export class ServerlessDispatchService {
             SET state = 'DISPATCHING', submitted_at = $2, ttl_expires_at = $3,
                 version = version + 1, updated_at = $2
           WHERE id = $1`,
-        [input.commit.attemptId, input.now, input.commit.deadlineAt],
+        [
+          input.commit.attemptId,
+          input.now,
+          isoPlusSeconds(input.now, input.commit.requestTtlSeconds),
+        ],
       );
     });
 
@@ -845,11 +854,24 @@ export class ServerlessDispatchService {
         ],
       );
       if (input.advisorySource === "POLL_STATUS") {
+        const providerTerminal = ["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"].includes(
+          input.providerStatus,
+        );
         await transaction.query(
           `UPDATE serverless_attempts
-              SET state = $2, version = version + 1, updated_at = $3
+              SET state = $2,
+                  provider_terminal_observed_at = CASE
+                    WHEN $4 AND provider_terminal_observed_at IS NULL THEN $3::timestamptz
+                    ELSE provider_terminal_observed_at
+                  END,
+                  provider_result_expires_at = CASE
+                    WHEN $4 AND provider_result_expires_at IS NULL
+                      THEN $3::timestamptz + interval '1800 seconds'
+                    ELSE provider_result_expires_at
+                  END,
+                  version = version + 1, updated_at = $3
             WHERE id = $1 AND state NOT IN ('SUCCEEDED', 'PERMANENT_FAILED', 'CANCELLED')`,
-          [input.attemptId, input.attemptState, input.observedAt],
+          [input.attemptId, input.attemptState, input.observedAt, providerTerminal],
         );
       }
     });
@@ -876,6 +898,18 @@ export class ServerlessDispatchService {
     if (assignment === null) {
       await this.#quarantine(scope, input, attempt, "QUARANTINED_UNBOUND", "no current assignment");
       return "QUARANTINED_UNBOUND";
+    }
+    if (
+      !["ASSIGNED", "IN_QUEUE", "IN_PROGRESS", "UPLOADING", "RECONCILING"].includes(attempt.state)
+    ) {
+      await this.#quarantine(
+        scope,
+        input,
+        attempt,
+        attempt.state === "SUCCEEDED" ? "QUARANTINED_DUPLICATE" : "QUARANTINED_SUPERSEDED",
+        `attempt state ${attempt.state} cannot accept output`,
+      );
+      return attempt.state === "SUCCEEDED" ? "QUARANTINED_DUPLICATE" : "QUARANTINED_SUPERSEDED";
     }
     const deployment = await this.#database.query<EndpointDeploymentRow>(
       `SELECT * FROM serverless_endpoint_deployments WHERE id = $1`,
@@ -938,6 +972,20 @@ export class ServerlessDispatchService {
 
     await this.#database.transaction(async (transaction) => {
       await assertScope(transaction, scope);
+      const locked = await transaction.query<{ state: string } & Record<string, unknown>>(
+        `SELECT state FROM serverless_attempts WHERE id = $1 FOR UPDATE`,
+        [attempt.id],
+      );
+      if (
+        !["ASSIGNED", "IN_QUEUE", "IN_PROGRESS", "UPLOADING", "RECONCILING"].includes(
+          locked.rows[0]?.state ?? "",
+        )
+      ) {
+        throw new ServerlessDispatchError(
+          "DISPATCH_NOT_PERMITTED",
+          "The attempt became terminal or cancelling before output acceptance committed.",
+        );
+      }
       await this.#insertProvenance(transaction, scope, attempt, assignment.id, input);
       await transaction.query(
         `INSERT INTO serverless_output_receipts (
@@ -1133,11 +1181,6 @@ export class ServerlessDispatchService {
     const distinctJobs = new Set(
       matching.map((receipt) => receipt.provider_job_id).filter((id): id is string => id !== null),
     );
-    const resultWindowExpiresAt = isoPlusSeconds(
-      attempt.created_at,
-      PROVIDER_RESULT_WINDOW_SECONDS,
-    );
-
     let outcome: ReconciliationOutcome;
     if (existing !== null) {
       outcome = "TERMINAL_CONFIRMED";
@@ -1145,8 +1188,7 @@ export class ServerlessDispatchService {
       outcome = "UNIQUE_ASSIGNMENT_PROVED";
     } else if (
       distinctJobs.size === 0 &&
-      (Date.parse(input.now) >= Date.parse(attempt.reconciliation_deadline_at) ||
-        Date.parse(input.now) >= Date.parse(resultWindowExpiresAt))
+      Date.parse(input.now) >= Date.parse(attempt.reconciliation_deadline_at)
     ) {
       // Nothing durable exists and the bounded window closed. The provider documents no way to ask
       // "did my token create a job", so uniqueness cannot be proved and dispatch stops.
@@ -1175,7 +1217,9 @@ export class ServerlessDispatchService {
 
     const assignment = existing ?? (await this.currentAssignment(input.attemptId));
     let statusPolls = 0;
-    if (assignment !== null && Date.parse(input.now) < Date.parse(resultWindowExpiresAt)) {
+    const statusDeadline =
+      attempt.provider_result_expires_at ?? attempt.ttl_expires_at ?? attempt.deadline_at;
+    if (assignment !== null && Date.parse(input.now) < Date.parse(statusDeadline)) {
       const snapshot = input.endpoint.status(assignment.provider_job_id);
       if (snapshot.id !== assignment.provider_job_id) {
         throw new ServerlessDispatchError(
@@ -1195,9 +1239,17 @@ export class ServerlessDispatchService {
       });
     }
 
-    const reconciliationDeadlineAt = new Date(
-      Math.min(Date.parse(input.now) + 60_000, Date.parse(resultWindowExpiresAt)),
-    ).toISOString();
+    const refreshedAttempt = await this.attempt(input.attemptId);
+    const reconciliationUpperBound =
+      refreshedAttempt.provider_result_expires_at ??
+      refreshedAttempt.ttl_expires_at ??
+      refreshedAttempt.deadline_at;
+    const reconciliationDeadlineAt =
+      outcome === "AMBIGUOUS_STOP"
+        ? input.now
+        : new Date(
+            Math.min(Date.parse(input.now) + 60_000, Date.parse(reconciliationUpperBound)),
+          ).toISOString();
 
     await this.#database.transaction(async (transaction) => {
       await assertScope(transaction, scope);
@@ -1285,15 +1337,18 @@ export class ServerlessDispatchService {
     const attempt = await this.attempt(input.attemptId);
     const assignment = await this.currentAssignment(input.attemptId);
 
-    await this.#database.transaction(async (transaction) => {
+    const cancellationStarted = await this.#database.transaction(async (transaction) => {
       await assertScope(transaction, scope);
-      await transaction.query(
+      const updated = await transaction.query(
         `UPDATE serverless_attempts
             SET state = 'CANCELLING', version = version + 1, updated_at = $2
           WHERE id = $1 AND state NOT IN ('SUCCEEDED', 'PERMANENT_FAILED', 'CANCELLED')`,
         [attempt.id, input.now],
       );
+      return updated.affectedRows === 1;
     });
+
+    if (!cancellationStarted) return { providerTerminalState: null };
 
     let providerTerminalState: FakeProviderStatus | null = null;
     if (assignment !== null) {

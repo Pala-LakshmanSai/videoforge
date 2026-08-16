@@ -121,6 +121,7 @@ const REQUIRED_TRIGGERS = [
   "serverless_dispatch_outbox_validate",
   "serverless_endpoint_deployments_retire_only",
   "serverless_output_receipts_append_only",
+  "serverless_output_receipts_acceptance_fence",
   "serverless_predispatch_authorities_append_only",
   "serverless_progress_events_append_only",
   "serverless_provenance_receipts_append_only",

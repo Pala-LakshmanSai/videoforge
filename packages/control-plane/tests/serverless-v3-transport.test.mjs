@@ -751,6 +751,69 @@ test("a response lost after provider acceptance reconciles to one unique assignm
   });
 });
 
+test("TTL starts at provider submission and result retention starts at observed completion", async () => {
+  await seeded(async ({ executor, admission, service }) => {
+    const requestId = await admitVideo(admission, actorA(), 800_105, IDS.projectA, IDS.revisionA);
+    const commit = await service.commitPredispatch(
+      scopeA(),
+      predispatchInput(810_105, scopeA(), {
+        projectId: IDS.projectA,
+        revisionId: IDS.revisionA,
+        requestId,
+      }),
+    );
+    const transport = endpoint();
+    const outcome = await dispatch(service, scopeA(), commit, transport, 820_105, t(600));
+
+    const submitted = await service.attempt(commit.attemptId);
+    assert.equal(new Date(submitted.ttl_expires_at).toISOString(), t(4200));
+
+    // More than 30 minutes after local attempt creation, an assigned non-terminal job remains
+    // pollable because the provider result-retention clock has not started yet.
+    await service.reconcile(scopeA(), {
+      reconciliationId: uuid(850_105),
+      attemptId: commit.attemptId,
+      assignmentId: uuid(851_105),
+      outboxId: commit.outboxId,
+      trigger: "POLL_DEADLINE",
+      durableReceipts: [],
+      endpoint: transport,
+      possibleDuplicateComputeUsd: 0,
+      now: t(1900),
+    });
+    let progress = await executor.query(
+      `SELECT count(*)::int AS total FROM serverless_progress_events WHERE attempt_id = $1`,
+      [commit.attemptId],
+    );
+    assert.equal(progress.rows[0].total, 1);
+
+    transport.execute(outcome.providerJobId, (execution, workerId) =>
+      receiptFor(commit, { providerJobId: outcome.providerJobId, workerId, nonce: execution }),
+    );
+    await service.reconcile(scopeA(), {
+      reconciliationId: uuid(852_105),
+      attemptId: commit.attemptId,
+      assignmentId: uuid(853_105),
+      outboxId: commit.outboxId,
+      trigger: "RESULT_WINDOW_EXPIRY_RISK",
+      durableReceipts: transport.provenanceReceiptsFor(commit.dispatchToken),
+      endpoint: transport,
+      possibleDuplicateComputeUsd: 0,
+      now: t(2000),
+    });
+
+    const completed = await service.attempt(commit.attemptId);
+    assert.equal(new Date(completed.provider_terminal_observed_at).toISOString(), t(2000));
+    assert.equal(new Date(completed.provider_result_expires_at).toISOString(), t(3800));
+
+    progress = await executor.query(
+      `SELECT count(*)::int AS total FROM serverless_progress_events WHERE attempt_id = $1`,
+      [commit.attemptId],
+    );
+    assert.equal(progress.rows[0].total, 2);
+  });
+});
+
 // ---------------------------------------------------------------------------------------------
 // Duplicate execution, duplicate delivery, and duplicate output
 // ---------------------------------------------------------------------------------------------
@@ -1126,6 +1189,57 @@ test("cancellation targets the exact owned job, promises no refund, and loses a 
       [commit.attemptId],
     );
     assert.equal(total.rows[0].total, 1);
+  });
+});
+
+test("a signed receipt produced before cancellation cannot revive a terminally cancelled attempt", async () => {
+  await seeded(async ({ executor, admission, service }) => {
+    const requestId = await admitVideo(admission, actorA(), 800_111, IDS.projectA, IDS.revisionA);
+    const commit = await service.commitPredispatch(
+      scopeA(),
+      predispatchInput(810_111, scopeA(), {
+        projectId: IDS.projectA,
+        revisionId: IDS.revisionA,
+        requestId,
+      }),
+    );
+    const transport = endpoint();
+    const outcome = await dispatch(service, scopeA(), commit, transport, 820_111);
+    transport.execute(outcome.providerJobId, (execution, workerId) =>
+      receiptFor(commit, { providerJobId: outcome.providerJobId, workerId, nonce: execution }),
+    );
+    const [receipt] = transport.provenanceReceiptsFor(commit.dispatchToken);
+
+    const cancelled = await service.cancel(scopeA(), {
+      cancellationId: uuid(860_111),
+      attemptId: commit.attemptId,
+      requestedBy: "OWNER_ACCOUNT",
+      endpoint: transport,
+      settledCostUsd: 0.01,
+      now: t(100),
+    });
+    assert.equal(cancelled.providerTerminalState, "COMPLETED");
+    assert.equal((await service.attempt(commit.attemptId)).state, "CANCELLED");
+
+    assert.equal(
+      await service.acceptOutput(scopeA(), {
+        outputReceiptId: uuid(840_111),
+        provenanceRowId: uuid(841_111),
+        attemptId: commit.attemptId,
+        receipt,
+        artifactCommitReceiptSha256: sha256("commit-receipt"),
+        artifacts: [],
+        now: t(110),
+      }),
+      "QUARANTINED_SUPERSEDED",
+    );
+    assert.equal((await service.attempt(commit.attemptId)).state, "CANCELLED");
+    const accepted = await executor.query(
+      `SELECT count(*)::int AS total FROM serverless_output_receipts
+        WHERE attempt_id = $1 AND acceptance = 'ACCEPTED_CANONICAL'`,
+      [commit.attemptId],
+    );
+    assert.equal(accepted.rows[0].total, 0);
   });
 });
 
