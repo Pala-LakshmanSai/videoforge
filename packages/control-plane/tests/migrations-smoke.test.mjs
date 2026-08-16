@@ -6,6 +6,7 @@ import { PGlite } from "@electric-sql/pglite";
 import {
   applyMigrations,
   MIGRATION_TABLE_NAME,
+  NON_PORTABLE_TABLE_NAMES,
   RELATIONAL_TABLE_NAMES,
   SCHEMA_REGISTRY_TABLE_NAMES,
 } from "../dist/src/index.js";
@@ -43,7 +44,12 @@ test("a fresh PGlite database applies the committed migration chain idempotently
     );
     assert.deepEqual(
       inventory.rows.map((row) => row.table_name),
-      [...RELATIONAL_TABLE_NAMES, ...SCHEMA_REGISTRY_TABLE_NAMES, MIGRATION_TABLE_NAME].sort(),
+      [
+        ...RELATIONAL_TABLE_NAMES,
+        ...SCHEMA_REGISTRY_TABLE_NAMES,
+        ...NON_PORTABLE_TABLE_NAMES,
+        MIGRATION_TABLE_NAME,
+      ].sort(),
     );
   } finally {
     await database.close();

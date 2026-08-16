@@ -21,6 +21,14 @@
       "types": "./dist/src/adapters/index.d.ts",
       "import": "./dist/src/adapters/index.js"
     },
+    "./postgres": {
+      "types": "./dist/src/adapters/postgres.d.ts",
+      "import": "./dist/src/adapters/postgres.js"
+    },
+    "./vocabulary": {
+      "types": "./dist/src/database/vocabulary.d.ts",
+      "import": "./dist/src/database/vocabulary.js"
+    },
     "./admission": {
       "types": "./dist/src/admission/index.d.ts",
       "import": "./dist/src/admission/index.js"

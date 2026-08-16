@@ -1,0 +1,66 @@
+{
+  "schema_version": "videoforge-v2-06-activation/v1",
+  "checkpoint": "V2-06",
+  "authority": {
+    "mode": "PROPOSAL_REQUIRED",
+    "maximum_cumulative_finite_external_spend_usd": null,
+    "approved_at": null,
+    "non_transferable": true
+  },
+  "cloudflare": {
+    "account_id_sha256": "__V2_06_CLOUDFLARE_ACCOUNT_ID_SHA256__",
+    "worker": "videoforge-v2-06-staging",
+    "workflow": "videoforge-v2-06-staging-video",
+    "r2_bucket": "videoforge-v2-06-staging-private",
+    "r2_location": "__V2_06_R2_LOCATION__",
+    "domain": "__V2_06_STAGING_DOMAIN__",
+    "retention_rules": "PROPOSAL_REQUIRED",
+    "rate_snapshot": null
+  },
+  "neon": {
+    "organization_id_sha256": "__V2_06_NEON_ORGANIZATION_ID_SHA256__",
+    "project": "videoforge-v2-06-staging",
+    "region": "__V2_06_NEON_REGION__",
+    "postgres_version": "__V2_06_POSTGRES_VERSION__",
+    "compute": "__V2_06_NEON_COMPUTE__",
+    "restore_window": "PROPOSAL_REQUIRED",
+    "rate_snapshot": null
+  },
+  "google_cloud": {
+    "project_id": "__V2_06_GCP_PROJECT_ID__",
+    "region": "__V2_06_GCP_REGION__",
+    "artifact_repository": "videoforge-v2-06-cpu",
+    "media_image_digest": "__V2_06_MEDIA_IMAGE_DIGEST__",
+    "asr_job": "videoforge-v2-06-asr-staging",
+    "render_job": "videoforge-v2-06-render-staging",
+    "invoker_service_account": "videoforge-v2-06-worker-invoker",
+    "job_service_account": "videoforge-v2-06-cpu-job",
+    "rate_snapshot": null
+  },
+  "auth_email": {
+    "google_oauth_client": "CREATE_OR_UPDATE_PROPOSAL_REQUIRED",
+    "oauth_redirect_uri": "__V2_06_GOOGLE_REDIRECT_URI__",
+    "email_sender_identity": "__V2_06_EMAIL_SENDER_IDENTITY__",
+    "email_test_delivery": "PROPOSAL_REQUIRED"
+  },
+  "gpu": {
+    "transport": "FAKE_DISABLED",
+    "runpod_calls": 0,
+    "workers": 0
+  },
+  "official_sources": [
+    "https://developers.cloudflare.com/workflows/get-started/guide/",
+    "https://developers.cloudflare.com/workflows/reference/limits/",
+    "https://developers.cloudflare.com/r2/api/s3/presigned-urls/",
+    "https://developers.cloudflare.com/r2/pricing/",
+    "https://developers.cloudflare.com/workers/configuration/secrets/",
+    "https://neon.com/docs/serverless/serverless-driver",
+    "https://neon.com/pricing",
+    "https://better-auth.com/docs/reference/options",
+    "https://better-auth.com/docs/concepts/database",
+    "https://better-auth.com/docs/concepts/hooks",
+    "https://cloud.google.com/run/docs/create-jobs",
+    "https://docs.cloud.google.com/run/docs/execute/jobs",
+    "https://cloud.google.com/run/pricing"
+  ]
+}

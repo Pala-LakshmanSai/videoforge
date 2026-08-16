@@ -1,0 +1,48 @@
+.hosted-stage {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background: #0b0d10;
+  color: #f5f3ee;
+}
+
+.hosted-stage section {
+  width: min(42rem, 100%);
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1.5rem, 5vw, 3rem);
+  border: 1px solid #34383f;
+  border-radius: 1rem;
+  background: #15181d;
+}
+
+.hosted-stage label,
+.hosted-stage dl {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.hosted-stage input,
+.hosted-stage button {
+  min-height: 2.75rem;
+  border: 1px solid #565c66;
+  border-radius: 0.55rem;
+  padding: 0.65rem 0.8rem;
+  color: inherit;
+  background: #20242a;
+}
+
+.hosted-stage div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.hosted-stage dt {
+  color: #aeb5bf;
+}
+.hosted-stage dd {
+  margin: 0 0 0.7rem;
+  overflow-wrap: anywhere;
+}

@@ -2,6 +2,7 @@ import type { SqlExecutor, TransactionalSqlExecutor } from "../database/ports.js
 import {
   MIGRATION_MANIFEST,
   MIGRATION_TABLE_NAME,
+  NON_PORTABLE_TABLE_NAMES,
   RELATIONAL_TABLE_NAMES,
   SCHEMA_REGISTRY_TABLE_NAMES,
   type RelationalTableName,
@@ -134,6 +135,8 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "video_runtime_lane_states",
   "video_runtime_accepted_units",
   "video_runtime_events",
+  "hosted_cpu_job_attempts",
+  "hosted_cpu_job_events",
 ] satisfies readonly RelationalTableName[]);
 
 const RESTORE_INSERT_TABLES = new Set<RelationalTableName>(RESTORE_INSERT_ORDER);
@@ -369,6 +372,7 @@ async function assertExpectedSchema(executor: SqlExecutor): Promise<void> {
   const expected = [
     ...RELATIONAL_TABLE_NAMES,
     ...SCHEMA_REGISTRY_TABLE_NAMES,
+    ...NON_PORTABLE_TABLE_NAMES,
     MIGRATION_TABLE_NAME,
   ].sort();
   const actual = tables.rows.map((row) => row.table_name);

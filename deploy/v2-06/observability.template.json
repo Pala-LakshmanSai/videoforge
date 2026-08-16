@@ -1,0 +1,42 @@
+{
+  "schema_version": "videoforge-v2-06-observability/v1",
+  "logs": {
+    "cloudflare_invocation_logs": true,
+    "secret_values": false,
+    "email_addresses": false,
+    "signed_urls": false,
+    "retention": "ACCOUNT_PLAN_DERIVED"
+  },
+  "alerts": [
+    {
+      "id": "workflow-terminal-failure",
+      "condition": "hosted_cpu_terminal_failure_count > 0",
+      "window_minutes": 5
+    },
+    {
+      "id": "workflow-reconciliation-backlog",
+      "condition": "hosted_cpu_reconciling_age_seconds > 300",
+      "window_minutes": 5
+    },
+    {
+      "id": "cloud-run-timeout",
+      "condition": "cloud_run_job_timeout_count > 0",
+      "window_minutes": 5
+    },
+    {
+      "id": "auth-admission-rejection-spike",
+      "condition": "hosted_auth_rejection_count > 10",
+      "window_minutes": 5
+    },
+    {
+      "id": "retention-cleanup-failure",
+      "condition": "retention_due_oldest_age_seconds > 90000",
+      "window_minutes": 30
+    }
+  ],
+  "evidence": {
+    "deployment_ids_required": true,
+    "configuration_hashes_required": true,
+    "cost_snapshot_required": true
+  }
+}

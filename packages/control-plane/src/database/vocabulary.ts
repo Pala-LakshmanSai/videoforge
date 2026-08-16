@@ -90,6 +90,8 @@ export const RELATIONAL_TABLE_NAMES = [
   "video_runtime_lane_states",
   "video_runtime_accepted_units",
   "video_runtime_events",
+  "hosted_cpu_job_attempts",
+  "hosted_cpu_job_events",
 ] as const;
 
 export type RelationalTableName = (typeof RELATIONAL_TABLE_NAMES)[number];
@@ -101,6 +103,15 @@ export type RelationalTableName = (typeof RELATIONAL_TABLE_NAMES)[number];
 export const SCHEMA_REGISTRY_TABLE_NAMES = ["superseded_runtime_contracts"] as const;
 
 export type SchemaRegistryTableName = (typeof SCHEMA_REGISTRY_TABLE_NAMES)[number];
+
+/** Hosted auth rows contain credentials/tokens and rely on Neon native backup/PITR. */
+export const NON_PORTABLE_TABLE_NAMES = [
+  "hosted_auth_users",
+  "hosted_auth_accounts",
+  "hosted_auth_sessions",
+  "hosted_auth_verifications",
+  "hosted_auth_links",
+] as const;
 
 /**
  * The V2-05 runtime supersedes these contracts. Their rows stay readable as compatibility

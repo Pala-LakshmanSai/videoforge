@@ -3,7 +3,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
-const root = path.join(repositoryRoot, "apps/web/dist-cloudflare");
+const bundleDirectory = process.env.VIDEOFORGE_BUNDLE_DIR ?? "dist-cloudflare";
+if (!/^dist-[a-z0-9-]+$/u.test(bundleDirectory)) throw new Error("Invalid bundle directory.");
+const root = path.join(repositoryRoot, "apps/web", bundleDirectory);
 const forbidden = [
   "/api/v1/shared-app",
   "cp05-fixture-control-v1",

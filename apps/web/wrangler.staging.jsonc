@@ -1,0 +1,44 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "videoforge-v2-06-staging",
+  "compatibility_date": "2026-08-16",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "./worker/production-index.ts",
+  "assets": {
+    "directory": "./dist-staging/client",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+  "placement": { "mode": "smart" },
+  "triggers": { "crons": ["17 2 * * *"] },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": { "enabled": true, "invocation_logs": true },
+  },
+  "r2_buckets": [
+    {
+      "binding": "PRIVATE_ARTIFACTS",
+      "bucket_name": "videoforge-v2-06-staging-private",
+    },
+  ],
+  "workflows": [
+    {
+      "binding": "VIDEO_WORKFLOW",
+      "name": "videoforge-v2-06-staging-video",
+      "class_name": "HostedVideoWorkflow",
+    },
+  ],
+  "vars": {
+    "VIDEOFORGE_ENVIRONMENT": "production",
+    "VIDEOFORGE_PROVIDER_MODE": "staging",
+    "VIDEOFORGE_PUBLIC_ORIGIN": "__V2_06_STAGING_HTTPS_ORIGIN__",
+    "VIDEOFORGE_R2_BUCKET_NAME": "videoforge-v2-06-staging-private",
+    "VIDEOFORGE_R2_REGION": "auto",
+    "GCP_PROJECT_ID": "__V2_06_GCP_PROJECT_ID__",
+    "GCP_REGION": "__V2_06_GCP_REGION__",
+    "GCP_ASR_JOB_NAME": "videoforge-v2-06-asr-staging",
+    "GCP_RENDER_JOB_NAME": "videoforge-v2-06-render-staging",
+  },
+}

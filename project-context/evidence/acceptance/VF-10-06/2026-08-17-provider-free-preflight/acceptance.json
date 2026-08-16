@@ -1,0 +1,138 @@
+{
+  "schema_version": "videoforge.v2-06-provider-free-preflight/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "result": "PASS_LOCAL_PROVIDER_FREE_AWAITING_EXACT_ACTIVATION_INPUTS",
+  "recorded_at_utc": "2026-08-16T19:06:19Z",
+  "predecessor": {
+    "checkpoint": "V2-05",
+    "verified_commit": "3c117f204844da9c984d233477933ee4c0f304dd",
+    "is_ancestor_of_starting_head": true,
+    "starting_head": "b4d5b8acb9a7785ccd1d2440818db269c2f1712f",
+    "acceptance": "evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json"
+  },
+  "local_foundation": {
+    "hosted_auth": "BETTER_AUTH_EMAIL_PASSWORD_GOOGLE_ENCRYPTED_OAUTH_ATOMIC_INVITE_ADMISSION",
+    "database": "NEON_SERVERLESS_POSTGRES_ADAPTER_MIGRATION_0029_RUNTIME_GRANTS_BACKUP_RESTORE",
+    "artifacts": "PRIVATE_TENANT_R2_EXACT_SIGV4_PORTS_CALLBACK_BYTE_HASH_VERIFICATION_RETENTION",
+    "orchestration": "CLOUDFLARE_WORKFLOW_OUTBOX_FIRST_CALLBACK_HINT_AUTHORITATIVE_POLL_RECONCILE_CANCEL_EXPIRY_REPLAY",
+    "cpu_jobs": "CLOUD_RUN_JOBS_CPU_ONLY_SCALE_TO_ZERO_MAX_RETRIES_ZERO_PINNED_IMAGE_TEMPLATES",
+    "application": "CLOUDFLARE_WORKER_HOSTED_STATUS_AUTH_TENANT_CPU_ATTEMPT_AND_STATIC_ROUTES",
+    "observability": "REDACTED_LOG_POLICY_BOUNDED_ALERT_TEMPLATE_AND_IMMUTABLE_IDENTITIES_REQUIRED",
+    "gpu_transport": "FAKE_DISABLED",
+    "migration_sha256": "sha256:201c1edd47894c2a0d41e422c8ac93af4887421f11b497c37c2d8d85b332dbd6"
+  },
+  "container_proof": {
+    "published": false,
+    "linux_amd64_local_image_id": "sha256:47029534aef350fea5e2ce767b9df043ca0c71668ea8b45144a7558923106377",
+    "linux_arm64_native_smoke_image_id": "sha256:88321325162ee6c2837d0200aa5370cafcaaf43713d465ec063232c05b2806f2",
+    "python": "3.12.13",
+    "whisper_cpp": "1.8.4",
+    "whisper_source_sha256": "sha256:b26f30e52c095ccb75da40b168437736605eb280de57381887bf9e2b65f31e66",
+    "ffmpeg": "8.1.2",
+    "ffprobe": "8.1.2",
+    "native_tool_smoke": "PASS",
+    "missing_authority_exit": 2,
+    "missing_authority_result": "FAIL_CLOSED"
+  },
+  "read_only_inventory": {
+    "cloudflare": {
+      "authenticated": false,
+      "cli": "WRANGLER_PRESENT_NOT_AUTHENTICATED",
+      "dashboard": "LOGIN_REQUIRED",
+      "account_plan_region_domain_and_quota": "UNAVAILABLE"
+    },
+    "neon": {
+      "authenticated": false,
+      "cli": "NOT_INSTALLED",
+      "dashboard": "LOGIN_REQUIRED",
+      "organization_plan_region_postgres_version_and_quota": "UNAVAILABLE"
+    },
+    "google_cloud": {
+      "authenticated": true,
+      "account_label_sha256": "sha256:abff69f3f42f72388a6f8c036e3fd42f6fa72af93a511966566f5504508e220f",
+      "project_id": "gen-lang-client-0893746131",
+      "project_number": "470728157475",
+      "project_name": "bulk image generator",
+      "billing_estimate_august_1_through_16_2026": "INR_0.00",
+      "cloud_run_jobs": "NONE_VISIBLE",
+      "cloud_run_admin_api": "NOT_ENABLED_BY_THIS_TASK",
+      "artifact_registry_api": "DISABLED",
+      "google_auth_platform": "NOT_CONFIGURED",
+      "oauth_clients": "NONE_VISIBLE"
+    },
+    "email": {
+      "provider": null,
+      "sender_identity": null,
+      "configured_credentials_found": false,
+      "status": "USER_SELECTION_REQUIRED"
+    }
+  },
+  "published_rate_snapshot": {
+    "as_of": "2026-08-17",
+    "cloudflare_workers": "FREE_100000_REQUESTS_PER_DAY_10MS_CPU_PER_INVOCATION; PAID_MINIMUM_USD_5_PER_MONTH",
+    "cloudflare_workflows": "FREE_3000_STEPS_PER_DAY_1GB; PAID_500000_STEPS_PER_MONTH_INCLUDED_THEN_USD_0.80_PER_100000_STEPS_AND_USD_0.20_PER_GB_MONTH_OVER_1GB",
+    "cloudflare_r2_standard": "USD_0.015_PER_GB_MONTH_USD_4.50_PER_MILLION_CLASS_A_USD_0.36_PER_MILLION_CLASS_B_WITH_10GB_1M_A_10M_B_MONTHLY_FREE",
+    "neon_launch": "USD_0.106_PER_CU_HOUR_USD_0.35_PER_GB_MONTH_STORAGE_USD_0.20_PER_GB_MONTH_HISTORY_USD_0.002_PER_BRANCH_HOUR",
+    "cloud_run_tier_1_jobs": "USD_0.000018_PER_VCPU_SECOND_USD_0.000002_PER_GIB_SECOND_MINIMUM_60_SECONDS",
+    "cloud_run_manifest_minimum_if_free_tier_exhausted": {
+      "asr_2_vcpu_4_gib_usd": 0.00264,
+      "render_4_vcpu_8_gib_usd": 0.00528
+    },
+    "artifact_registry": "FIRST_0.5_GIB_MONTH_FREE_THEN_ABOUT_USD_0.10_PER_GIB_MONTH",
+    "google_internet_egress": "FIRST_1_GIB_MONTH_FREE_TO_MOST_DESTINATIONS_THEN_USD_0.12_PER_GIB_THROUGH_1_TIB"
+  },
+  "official_sources": [
+    "https://developers.cloudflare.com/workers/platform/pricing/",
+    "https://developers.cloudflare.com/workflows/reference/pricing/",
+    "https://developers.cloudflare.com/r2/pricing/",
+    "https://neon.com/pricing",
+    "https://cloud.google.com/run/pricing",
+    "https://cloud.google.com/artifact-registry/pricing",
+    "https://cloud.google.com/vpc/pricing"
+  ],
+  "validation": {
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "tasks": "28/28",
+      "control_plane": "303/303",
+      "pipeline": "120/120",
+      "web": "324/324 plus 1 skipped",
+      "installed_chrome": "44/44",
+      "cloudflare_local": "1/1"
+    },
+    "focused_migrations_auth_and_postgres": "PASS",
+    "hosted_adapter_tests": "4/4_PASS",
+    "python_worker_suites": "6_SUITES_PASS",
+    "staging_build_and_bundle_firewall": "PASS",
+    "wrangler_dry_run": "PASS_NO_UPLOAD",
+    "deployment_validator": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "resource_truth": {
+    "external_mutations": 0,
+    "deployments": 0,
+    "email_deliveries": 0,
+    "paid_requests": 0,
+    "external_spend_usd": 0,
+    "runpod_calls": 0,
+    "runpod_workers_started": 0,
+    "live_runpod_inventory_refreshed": false,
+    "last_known_runpod_workers": 0,
+    "last_known_runpod_inventory_is_stale": true,
+    "gpu_transport": "FAKE_DISABLED"
+  },
+  "activation_blockers": [
+    "Cloudflare dashboard sign-in is required for exact account, plan, workers.dev/custom domain, R2 location, and quota facts.",
+    "Neon dashboard sign-in is required for exact organization, plan, region, PostgreSQL version, compute, restore window, and quota facts.",
+    "The email delivery provider and verified sender identity/domain are not selected.",
+    "The user must confirm whether Google project gen-lang-client-0893746131 is the intended V2-06 staging project.",
+    "A numeric maximum cumulative finite external spend has not been supplied and no mutation proposal has been approved."
+  ],
+  "unproven": [
+    "No hosted account, Neon database, R2 bucket, Worker, Workflow, Artifact Registry repository, Cloud Run Job, OAuth client, secret, DNS record, email, backup, restore, or staging deployment exists from this task.",
+    "Hosted non-superuser RLS, two real invited accounts, live private R2 isolation, signed large transfer, owned ASR/render, restart/replay/cancel/timeout, secret isolation, backup/restore, no-Mac operation, real-Chrome staging, settled cost, and hosted zero-compute are not yet proven.",
+    "The combined external mutation proposal cannot be exact until the read-only activation blockers are resolved."
+  ]
+}

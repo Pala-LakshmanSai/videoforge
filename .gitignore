@@ -53,6 +53,7 @@ node_modules/
 .tools/
 .videoforge/
 dist/
+dist-staging/
 dist-cloudflare/
 .turbo/
 .wrangler/

@@ -168,6 +168,12 @@
       "name": "v2_05_runtime_cutover",
       "filename": "0028_v2_05_runtime_cutover.sql",
       "sha256": "sha256:1f11c162182e733e944195f5bdcae162600e1586c49d4b66e51f5b305dbe2512"
+    },
+    {
+      "version": 29,
+      "name": "v2_06_hosted_foundation",
+      "filename": "0029_v2_06_hosted_foundation.sql",
+      "sha256": "sha256:201c1edd47894c2a0d41e422c8ac93af4887421f11b497c37c2d8d85b332dbd6"
     }
   ]
 }

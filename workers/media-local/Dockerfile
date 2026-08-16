@@ -26,7 +26,7 @@ RUN apt-get update \
       -DWHISPER_BUILD_SERVER=OFF \
     && cmake --build /src/build --config Release --target whisper-cli --parallel 4
 
-FROM mwader/static-ffmpeg@sha256:735f84b905e00d5c618b667f0b053f83b1096f5fc404c607e6134bf2275a0e0a AS ffmpeg-static
+FROM mwader/static-ffmpeg@sha256:33f770f812cbfc3de96c547157fc9faf8bd95a36481753439ffa761045167585 AS ffmpeg-static
 
 FROM python@sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2
 
@@ -56,10 +56,10 @@ ENV LANG=C \
     PYTHONPATH=/opt/videoforge/packages/contracts/python:/opt/videoforge/workers/image-media/src:/opt/videoforge/workers/media-local/src
 
 LABEL org.opencontainers.image.title="VideoForge media-local" \
-      org.opencontainers.image.version="cp-03-whisper.cpp-1.8.4-ffmpeg-8.1.1" \
+      org.opencontainers.image.version="v2-06-whisper.cpp-1.8.4-ffmpeg-8.1.2" \
       videoforge.whisper_cpp_source_sha256="b26f30e52c095ccb75da40b168437736605eb280de57381887bf9e2b65f31e66" \
       videoforge.model_in_image="false"
 
 WORKDIR /work
 USER 65532:65532
-ENTRYPOINT ["python", "-m", "videoforge_media_local.cli"]
+ENTRYPOINT ["python", "-m", "videoforge_media_local.cloud_job"]

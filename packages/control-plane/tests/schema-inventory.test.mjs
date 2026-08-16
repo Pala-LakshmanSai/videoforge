@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   MIGRATION_TABLE_NAME,
+  NON_PORTABLE_TABLE_NAMES,
   RELATIONAL_TABLE_NAMES,
   SCHEMA_REGISTRY_TABLE_NAMES,
   TENANT_VIEW_NAMES,
@@ -28,6 +29,9 @@ const REQUIRED_CUSTOM_INDEXES = [
   "generation_requests_fair_head_idx",
   "generation_requests_one_active_video_per_account_uq",
   "generation_tasks_ready_idx",
+  "hosted_auth_sessions_user_idx",
+  "hosted_cpu_job_execution_uq",
+  "hosted_cpu_job_reconcile_idx",
   "image_generation_acceptances_prompt_idx",
   "image_style_versions_open_draft_uq",
   "image_style_versions_published_hash_uq",
@@ -64,7 +68,7 @@ const REQUIRED_CUSTOM_INDEXES = [
   "users_active_email_uq",
   "workflow_events_attempt_sequence_uq",
   "workflow_instances_external_id_uq",
-  "workspaces_active_name_uq",
+  "workspaces_account_active_name_uq",
 ].sort();
 
 const REQUIRED_TRIGGERS = [
@@ -188,7 +192,12 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
     );
     assert.deepEqual(
       tables.rows.map((row) => row.table_name),
-      [...RELATIONAL_TABLE_NAMES, ...SCHEMA_REGISTRY_TABLE_NAMES, MIGRATION_TABLE_NAME].sort(),
+      [
+        ...RELATIONAL_TABLE_NAMES,
+        ...SCHEMA_REGISTRY_TABLE_NAMES,
+        ...NON_PORTABLE_TABLE_NAMES,
+        MIGRATION_TABLE_NAME,
+      ].sort(),
     );
 
     const views = await executor.query(
