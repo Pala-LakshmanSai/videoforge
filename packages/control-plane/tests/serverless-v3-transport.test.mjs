@@ -152,16 +152,19 @@ function receiptFor(commit, options = {}) {
       upload_ms: 3000,
       total_ms: 62_200,
     },
-    items: [
-      {
-        item_id: "scene-1",
-        state: "SUCCEEDED",
-        output_object_key: `${commit.outputPrefix ?? "tenant/x"}/artifact/scene-1`,
-        output_sha256: sha256("scene-1"),
-        output_bytes: 812_345,
-        probe: { width: 1280, height: 720 },
-      },
-    ],
+    items:
+      options.items ??
+      Array.from({ length: 3 }, (_, index) => {
+        const itemId = `scene-${index + 1}`;
+        return {
+          item_id: itemId,
+          state: "SUCCEEDED",
+          output_object_key: `${commit.outputPrefix}/artifact/${itemId}`,
+          output_sha256: sha256(itemId),
+          output_bytes: 812_345 + index,
+          probe: { width: 1280, height: 720, frame: index + 1 },
+        };
+      }),
     scratch_cleanup: {
       terminal_reason: "SUCCESS",
       removed: options.scratchRemoved ?? true,
@@ -223,6 +226,67 @@ async function dispatch(service, scope, commit, transport, serial, now = t(2)) {
     holderSha256: sha256(`holder-${serial}`),
     now,
   });
+}
+
+async function persistOutputArtifactReceipts(executor, commit, receipt, serial) {
+  const attempt = await executor.query(
+    `SELECT account_id, workspace_id, project_id, project_revision_id, lane, output_prefix
+       FROM serverless_attempts WHERE id = $1`,
+    [commit.attemptId],
+  );
+  const bound = attempt.rows[0];
+  await executor.query(`SELECT set_config('videoforge.account_id', $1, false)`, [bound.account_id]);
+  const hashes = [];
+  for (const [index, item] of receipt.items.entries()) {
+    const reservationId = uuid(serial + index * 2);
+    const receiptId = uuid(serial + index * 2 + 1);
+    const receiptSha256 = sha256(`artifact-commit-${serial}-${index}`);
+    await executor.query(
+      `INSERT INTO artifact_reservations (
+         id, account_id, workspace_id, project_id, project_revision_id, lane, job_id, artifact_id,
+         object_key, method, content_type, content_length, checksum_sha256, expires_at, max_uses,
+         used_count, state, retention_class, deletion_owner_account_id, created_at, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'PUT', 'image/png', $10, $11, $12, 1, 1,
+                 'COMMITTED', 'PROJECT', $2, $13, $14)`,
+      [
+        reservationId,
+        bound.account_id,
+        bound.workspace_id,
+        bound.project_id,
+        bound.project_revision_id,
+        bound.lane === "mage_image" ? "MAGE_IMAGE" : "SOULX_AVATAR",
+        commit.attemptId,
+        item.item_id,
+        item.output_object_key,
+        item.output_bytes,
+        item.output_sha256,
+        t(600),
+        t(1),
+        t(100),
+      ],
+    );
+    await executor.query(
+      `INSERT INTO artifact_receipts (
+         id, account_id, workspace_id, reservation_id, callback_id, object_key, content_type,
+         content_length, checksum_sha256, probe, receipt_sha256, committed_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, 'image/png', $7, $8, $9::jsonb, $10, $11)`,
+      [
+        receiptId,
+        bound.account_id,
+        bound.workspace_id,
+        reservationId,
+        `callback-${serial}-${index}`,
+        item.output_object_key,
+        item.output_bytes,
+        item.output_sha256,
+        JSON.stringify(item.probe),
+        receiptSha256,
+        t(110),
+      ],
+    );
+    hashes.push(receiptSha256);
+  }
+  return hashes;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -503,14 +567,11 @@ test("fake run, status, and cancel bind exactly one provider job before any outp
     assert.equal(transport.status(outcome.providerJobId).status, "IN_QUEUE");
 
     transport.execute(outcome.providerJobId, (execution, workerId) =>
-      receiptFor(
-        { ...commit, outputPrefix: `tenant/${IDS.accountA}` },
-        {
-          providerJobId: outcome.providerJobId,
-          workerId,
-          nonce: execution,
-        },
-      ),
+      receiptFor(commit, {
+        providerJobId: outcome.providerJobId,
+        workerId,
+        nonce: execution,
+      }),
     );
     assert.equal(transport.status(outcome.providerJobId).status, "COMPLETED");
 
@@ -525,19 +586,18 @@ test("fake run, status, and cancel bind exactly one provider job before any outp
     });
 
     const [receipt] = transport.provenanceReceiptsFor(commit.dispatchToken);
+    const artifactCommitReceiptSha256s = await persistOutputArtifactReceipts(
+      executor,
+      commit,
+      receipt,
+      890_003,
+    );
     const acceptance = await service.acceptOutput(scopeA(), {
       outputReceiptId: uuid(840_003),
       provenanceRowId: uuid(841_003),
       attemptId: commit.attemptId,
       receipt,
-      artifactCommitReceiptSha256: sha256("commit-receipt"),
-      artifacts: [
-        {
-          item_id: "scene-1",
-          object_key: `${commit.attemptId}`,
-          checksum_sha256: sha256("scene-1"),
-        },
-      ],
+      artifactCommitReceiptSha256s,
       now: t(130),
     });
     assert.equal(acceptance, "ACCEPTED_CANONICAL");
@@ -607,6 +667,114 @@ test("authoritative status requires the exact persisted provider assignment", as
           AND constraint_type = 'FOREIGN KEY'`,
     );
     assert.equal(exactForeignKey.rows[0].total, 1);
+  });
+});
+
+test("canonical output requires a complete exact join between signed items and durable artifact receipts", async () => {
+  await seeded(async ({ executor, admission, service }) => {
+    const requestId = await admitVideo(admission, actorA(), 800_203, IDS.projectA, IDS.revisionA);
+    const commit = await service.commitPredispatch(
+      scopeA(),
+      predispatchInput(810_203, scopeA(), {
+        projectId: IDS.projectA,
+        revisionId: IDS.revisionA,
+        requestId,
+      }),
+    );
+    const transport = endpoint();
+    const outcome = await dispatch(service, scopeA(), commit, transport, 820_203);
+    transport.execute(outcome.providerJobId, (execution, workerId) =>
+      receiptFor(commit, { providerJobId: outcome.providerJobId, workerId, nonce: execution }),
+    );
+    const [receipt] = transport.provenanceReceiptsFor(commit.dispatchToken);
+    const artifactCommitReceiptSha256s = await persistOutputArtifactReceipts(
+      executor,
+      commit,
+      receipt,
+      890_203,
+    );
+    const input = {
+      provenanceRowId: uuid(891_203),
+      attemptId: commit.attemptId,
+      receipt,
+      artifactCommitReceiptSha256s,
+      now: t(130),
+    };
+
+    await assert.rejects(
+      service.acceptOutput(scopeA(), {
+        ...input,
+        outputReceiptId: uuid(892_203),
+        artifactCommitReceiptSha256s: artifactCommitReceiptSha256s.slice(0, 2),
+      }),
+      (error) =>
+        error instanceof ServerlessDispatchError && error.code === "ARTIFACT_RECEIPT_MISMATCH",
+    );
+    await assert.rejects(
+      service.acceptOutput(scopeA(), {
+        ...input,
+        outputReceiptId: uuid(893_203),
+        artifactCommitReceiptSha256s: [
+          artifactCommitReceiptSha256s[0],
+          artifactCommitReceiptSha256s[1],
+          sha256("forged-or-foreign-artifact-receipt"),
+        ],
+      }),
+      (error) =>
+        error instanceof ServerlessDispatchError && error.code === "ARTIFACT_RECEIPT_MISMATCH",
+    );
+
+    const checksumMismatch = receiptFor(commit, {
+      providerJobId: outcome.providerJobId,
+      nonce: 2,
+      items: receipt.items.map((item, index) =>
+        index === 0 ? { ...item, output_sha256: sha256("forged-output") } : item,
+      ),
+    });
+    await assert.rejects(
+      service.acceptOutput(scopeA(), {
+        ...input,
+        outputReceiptId: uuid(894_203),
+        provenanceRowId: uuid(895_203),
+        receipt: checksumMismatch,
+      }),
+      (error) =>
+        error instanceof ServerlessDispatchError && error.code === "ARTIFACT_RECEIPT_MISMATCH",
+    );
+
+    const probeMismatch = receiptFor(commit, {
+      providerJobId: outcome.providerJobId,
+      nonce: 3,
+      items: receipt.items.map((item, index) =>
+        index === 1 ? { ...item, probe: { ...item.probe, width: 640 } } : item,
+      ),
+    });
+    await assert.rejects(
+      service.acceptOutput(scopeA(), {
+        ...input,
+        outputReceiptId: uuid(896_203),
+        provenanceRowId: uuid(897_203),
+        receipt: probeMismatch,
+      }),
+      (error) =>
+        error instanceof ServerlessDispatchError && error.code === "ARTIFACT_RECEIPT_MISMATCH",
+    );
+
+    assert.equal(
+      await service.acceptOutput(scopeA(), {
+        ...input,
+        outputReceiptId: uuid(898_203),
+      }),
+      "ACCEPTED_CANONICAL",
+    );
+    const stored = await executor.query(
+      `SELECT jsonb_array_length(artifacts) AS artifact_count,
+              jsonb_array_length(artifact_commit_receipt_sha256s) AS receipt_count
+         FROM serverless_output_receipts
+        WHERE attempt_id = $1 AND acceptance = 'ACCEPTED_CANONICAL'`,
+      [commit.attemptId],
+    );
+    assert.deepEqual(stored.rows, [{ artifact_count: 3, receipt_count: 3 }]);
   });
 });
 
@@ -731,7 +899,7 @@ test("a response lost after provider acceptance reconciles to one unique assignm
       possibleDuplicateComputeUsd: 0,
       now: t(300),
     });
-    assert.equal(reconciled, "UNIQUE_ASSIGNMENT_PROVED");
+    assert.equal(reconciled, "TERMINAL_CONFIRMED");
 
     const assignment = await service.currentAssignment(commit.attemptId);
     assert.equal(assignment.provider_job_id, "mage-0001");
@@ -764,6 +932,8 @@ test("TTL starts at provider submission and result retention starts at observed 
     );
     const transport = endpoint();
     const outcome = await dispatch(service, scopeA(), commit, transport, 820_105, t(600));
+    assert.equal(outcome.kind, "ASSIGNED");
+    assert.equal(outcome.providerJobId, "mage-0001");
 
     const submitted = await service.attempt(commit.attemptId);
     assert.equal(new Date(submitted.ttl_expires_at).toISOString(), t(4200));
@@ -781,12 +951,22 @@ test("TTL starts at provider submission and result retention starts at observed 
       possibleDuplicateComputeUsd: 0,
       now: t(1900),
     });
+    assert.equal((await service.currentAssignment(commit.attemptId)).provider_job_id, "mage-0001");
+    let reconciliations = await executor.query(
+      `SELECT outcome, status_polls FROM serverless_reconciliations WHERE id = $1`,
+      [uuid(850_105)],
+    );
+    assert.deepEqual(reconciliations.rows, [
+      { outcome: "UNIQUE_ASSIGNMENT_PROVED", status_polls: 1 },
+    ]);
     let progress = await executor.query(
       `SELECT count(*)::int AS total FROM serverless_progress_events WHERE attempt_id = $1`,
       [commit.attemptId],
     );
     assert.equal(progress.rows[0].total, 1);
 
+    // Completion can happen immediately before TTL and still be discovered on the first poll after
+    // TTL. The provider result-retention horizon is terminal observation plus 30 minutes.
     transport.execute(outcome.providerJobId, (execution, workerId) =>
       receiptFor(commit, { providerJobId: outcome.providerJobId, workerId, nonce: execution }),
     );
@@ -799,18 +979,62 @@ test("TTL starts at provider submission and result retention starts at observed 
       durableReceipts: transport.provenanceReceiptsFor(commit.dispatchToken),
       endpoint: transport,
       possibleDuplicateComputeUsd: 0,
-      now: t(2000),
+      now: t(4201),
     });
 
     const completed = await service.attempt(commit.attemptId);
-    assert.equal(new Date(completed.provider_terminal_observed_at).toISOString(), t(2000));
-    assert.equal(new Date(completed.provider_result_expires_at).toISOString(), t(3800));
+    assert.equal(new Date(completed.provider_terminal_observed_at).toISOString(), t(4201));
+    assert.equal(new Date(completed.provider_result_expires_at).toISOString(), t(6001));
+    reconciliations = await executor.query(
+      `SELECT outcome, status_polls FROM serverless_reconciliations WHERE id = $1`,
+      [uuid(852_105)],
+    );
+    assert.deepEqual(reconciliations.rows, [{ outcome: "TERMINAL_CONFIRMED", status_polls: 1 }]);
 
     progress = await executor.query(
       `SELECT count(*)::int AS total FROM serverless_progress_events WHERE attempt_id = $1`,
       [commit.attemptId],
     );
     assert.equal(progress.rows[0].total, 2);
+  });
+});
+
+test("an assigned job with no terminal observation stops at the TTL plus result-window bound", async () => {
+  await seeded(async ({ executor, admission, service }) => {
+    const requestId = await admitVideo(admission, actorA(), 800_205, IDS.projectA, IDS.revisionA);
+    const commit = await service.commitPredispatch(
+      scopeA(),
+      predispatchInput(810_205, scopeA(), {
+        projectId: IDS.projectA,
+        revisionId: IDS.revisionA,
+        requestId,
+      }),
+    );
+    const transport = endpoint();
+    await dispatch(service, scopeA(), commit, transport, 820_205, t(600));
+
+    const result = await service.reconcile(scopeA(), {
+      reconciliationId: uuid(850_205),
+      attemptId: commit.attemptId,
+      assignmentId: uuid(851_205),
+      outboxId: commit.outboxId,
+      trigger: "RESULT_WINDOW_EXPIRY_RISK",
+      durableReceipts: [],
+      endpoint: transport,
+      possibleDuplicateComputeUsd: 0.02,
+      now: t(6000),
+    });
+    assert.equal(result, "AMBIGUOUS_STOP");
+    const reconciliation = await executor.query(
+      `SELECT outcome, status_polls, new_dispatch_permitted, deadline_at
+         FROM serverless_reconciliations WHERE id = $1`,
+      [uuid(850_205)],
+    );
+    assert.equal(reconciliation.rows[0].outcome, "AMBIGUOUS_STOP");
+    assert.equal(reconciliation.rows[0].status_polls, 0);
+    assert.equal(reconciliation.rows[0].new_dispatch_permitted, false);
+    assert.equal(new Date(reconciliation.rows[0].deadline_at).toISOString(), t(6000));
+    assert.equal((await service.attempt(commit.attemptId)).state, "PERMANENT_FAILED");
   });
 });
 
@@ -839,14 +1063,19 @@ test("duplicate provider execution yields at most one accepted output and visibl
     const receipts = transport.provenanceReceiptsFor(commit.dispatchToken);
     assert.equal(receipts.length, 2, "the provider ran the accepted job twice");
     assert.equal(transport.status(outcome.providerJobId).executionCount, 2);
+    const artifactCommitReceiptSha256s = await persistOutputArtifactReceipts(
+      executor,
+      commit,
+      receipts[0],
+      890_006,
+    );
 
     const first = await service.acceptOutput(scopeA(), {
       outputReceiptId: uuid(840_006),
       provenanceRowId: uuid(841_006),
       attemptId: commit.attemptId,
       receipt: receipts[0],
-      artifactCommitReceiptSha256: sha256("commit-receipt"),
-      artifacts: [],
+      artifactCommitReceiptSha256s,
       now: t(130),
     });
     const second = await service.acceptOutput(scopeA(), {
@@ -854,8 +1083,7 @@ test("duplicate provider execution yields at most one accepted output and visibl
       provenanceRowId: uuid(843_006),
       attemptId: commit.attemptId,
       receipt: receipts[1],
-      artifactCommitReceiptSha256: sha256("commit-receipt"),
-      artifacts: [],
+      artifactCommitReceiptSha256s,
       now: t(140),
     });
     assert.equal(first, "ACCEPTED_CANONICAL");
@@ -903,6 +1131,12 @@ test("replaying an identical delivery is idempotent and never promotes a second 
       receiptFor(commit, { providerJobId: outcome.providerJobId, workerId, nonce: execution }),
     );
     const [receipt] = transport.provenanceReceiptsFor(commit.dispatchToken);
+    const artifactCommitReceiptSha256s = await persistOutputArtifactReceipts(
+      executor,
+      commit,
+      receipt,
+      890_007,
+    );
 
     assert.equal(
       await service.acceptOutput(scopeA(), {
@@ -910,8 +1144,7 @@ test("replaying an identical delivery is idempotent and never promotes a second 
         provenanceRowId: uuid(841_007),
         attemptId: commit.attemptId,
         receipt,
-        artifactCommitReceiptSha256: sha256("commit-receipt"),
-        artifacts: [],
+        artifactCommitReceiptSha256s,
         now: t(130),
       }),
       "ACCEPTED_CANONICAL",
@@ -922,8 +1155,7 @@ test("replaying an identical delivery is idempotent and never promotes a second 
         provenanceRowId: uuid(843_007),
         attemptId: commit.attemptId,
         receipt,
-        artifactCommitReceiptSha256: sha256("commit-receipt"),
-        artifacts: [],
+        artifactCommitReceiptSha256s,
         now: t(140),
       }),
       "QUARANTINED_DUPLICATE",
@@ -975,14 +1207,19 @@ test("webhook loss changes nothing and a replayed or forged callback never becom
       observedAt: t(120),
     });
     const [receipt] = transport.provenanceReceiptsFor(commit.dispatchToken);
+    const artifactCommitReceiptSha256s = await persistOutputArtifactReceipts(
+      executor,
+      commit,
+      receipt,
+      890_008,
+    );
     assert.equal(
       await service.acceptOutput(scopeA(), {
         outputReceiptId: uuid(840_008),
         provenanceRowId: uuid(841_008),
         attemptId: commit.attemptId,
         receipt,
-        artifactCommitReceiptSha256: sha256("commit-receipt"),
-        artifacts: [],
+        artifactCommitReceiptSha256s,
         now: t(130),
       }),
       "ACCEPTED_CANONICAL",
@@ -1227,8 +1464,7 @@ test("a signed receipt produced before cancellation cannot revive a terminally c
         provenanceRowId: uuid(841_111),
         attemptId: commit.attemptId,
         receipt,
-        artifactCommitReceiptSha256: sha256("commit-receipt"),
-        artifacts: [],
+        artifactCommitReceiptSha256s: [],
         now: t(110),
       }),
       "QUARANTINED_SUPERSEDED",
@@ -1248,7 +1484,7 @@ test("a signed receipt produced before cancellation cannot revive a terminally c
 // ---------------------------------------------------------------------------------------------
 
 test("restart reconstruction resumes in-flight transport without inventing provider facts", async () => {
-  await seeded(async ({ admission, service }) => {
+  await seeded(async ({ executor, admission, service }) => {
     const requestId = await admitVideo(admission, actorA(), 800_012, IDS.projectA, IDS.revisionA);
     const commit = await service.commitPredispatch(
       scopeA(),
@@ -1270,14 +1506,19 @@ test("restart reconstruction resumes in-flight transport without inventing provi
       receiptFor(commit, { providerJobId: outcome.providerJobId, workerId, nonce: execution }),
     );
     const [receipt] = transport.provenanceReceiptsFor(commit.dispatchToken);
+    const artifactCommitReceiptSha256s = await persistOutputArtifactReceipts(
+      executor,
+      commit,
+      receipt,
+      890_012,
+    );
     assert.equal(
       await service.acceptOutput(scopeA(), {
         outputReceiptId: uuid(840_012),
         provenanceRowId: uuid(841_012),
         attemptId: commit.attemptId,
         receipt,
-        artifactCommitReceiptSha256: sha256("commit-receipt"),
-        artifacts: [],
+        artifactCommitReceiptSha256s,
         now: t(200),
       }),
       "ACCEPTED_CANONICAL",
@@ -1482,8 +1723,7 @@ test("foreign tenants, wrong endpoints, mutated volumes, and unqualified GPUs al
 
     const base = {
       attemptId: commit.attemptId,
-      artifactCommitReceiptSha256: sha256("commit-receipt"),
-      artifacts: [],
+      artifactCommitReceiptSha256s: [],
       now: t(200),
     };
     // A receipt signed for another tenant is quarantined as foreign.

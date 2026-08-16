@@ -71,8 +71,8 @@
     {
       "source": "project-context/evidence/serverless_output_receipt_v3.schema.json",
       "destination": "generated/schemas/serverless_output_receipt_v3.schema.json",
-      "bytes": 2886,
-      "sha256": "sha256:430fdc5a117b1e1cf144e8b373293c90b45f138eff7f02c5b64a3b7b0e2949cb"
+      "bytes": 3622,
+      "sha256": "sha256:ae146dde8c1f43228a70448adb0a0ad6e261335701e6befc673c2e5205c4e8c8"
     },
     {
       "source": "project-context/evidence/serverless_cancellation_v3.schema.json",
@@ -395,14 +395,14 @@
     {
       "source": "project-context/evidence/fixtures/serverless_output_receipt_v3.valid.json",
       "destination": "generated/fixtures/serverless_output_receipt_v3.valid.json",
-      "bytes": 963,
-      "sha256": "sha256:6a1345dc6dfd14171fdb895340ec940cdd5ecffae726c21dec19b151af3a0572"
+      "bytes": 1180,
+      "sha256": "sha256:0057277d3c9ae46162d35b855de856664bdcd3b7a321895fbe38ec02eb14d3fb"
     },
     {
       "source": "project-context/evidence/fixtures/serverless_output_receipt_v3.invalid.webhook_truth.json",
       "destination": "generated/fixtures/serverless_output_receipt_v3.invalid.webhook_truth.json",
-      "bytes": 954,
-      "sha256": "sha256:6f73b4f049b31b1d40fb704f4b67938e2df507a04f5ef44097ad32348f4c442d"
+      "bytes": 1171,
+      "sha256": "sha256:743fd0c00af4c02b74ea218bd97f5a25b869f2bec2759af3d027d0b6739b0abb"
     },
     {
       "source": "project-context/evidence/fixtures/serverless_cancellation_v3.valid.json",

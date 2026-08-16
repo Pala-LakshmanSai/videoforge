@@ -156,6 +156,12 @@
       "name": "serverless_result_window_and_cancellation_fence",
       "filename": "0026_serverless_result_window_and_cancellation_fence.sql",
       "sha256": "sha256:f63d756f9113f8660b004fa133b9bb116d3893da9ee7e5c808aef482e847b126"
+    },
+    {
+      "version": 27,
+      "name": "serverless_output_binding_and_result_discovery",
+      "filename": "0027_serverless_output_binding_and_result_discovery.sql",
+      "sha256": "sha256:6f586eb56f23ce053c0b375aeb6f19782f20acaa8aa5ad7c61fef07d8a3a69c0"
     }
   ]
 }

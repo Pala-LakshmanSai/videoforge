@@ -2168,6 +2168,7 @@ export const canonicalSchemaDocuments = {
       "artifacts",
       "provenance_receipt_sha256",
       "artifact_commit_receipt_sha256",
+      "artifact_commit_receipt_sha256s",
       "accepted_at",
       "version"
     ],
@@ -2236,7 +2237,8 @@ export const canonicalSchemaDocuments = {
             "object_key",
             "content_length",
             "checksum_sha256",
-            "probe"
+            "probe",
+            "artifact_commit_receipt_sha256"
           ],
           "properties": {
             "item_id": {
@@ -2255,6 +2257,9 @@ export const canonicalSchemaDocuments = {
             },
             "probe": {
               "$ref": "#/$defs/probe"
+            },
+            "artifact_commit_receipt_sha256": {
+              "$ref": "#/$defs/sha256"
             }
           }
         }
@@ -2263,7 +2268,17 @@ export const canonicalSchemaDocuments = {
         "$ref": "#/$defs/sha256"
       },
       "artifact_commit_receipt_sha256": {
-        "$ref": "#/$defs/sha256"
+        "$ref": "#/$defs/sha256",
+        "description": "Canonical SHA-256 of the sorted artifact_commit_receipt_sha256s manifest."
+      },
+      "artifact_commit_receipt_sha256s": {
+        "type": "array",
+        "minItems": 0,
+        "maxItems": 4096,
+        "uniqueItems": true,
+        "items": {
+          "$ref": "#/$defs/sha256"
+        }
       },
       "accepted_at": {
         "$ref": "#/$defs/utc"
@@ -2273,6 +2288,29 @@ export const canonicalSchemaDocuments = {
         "minimum": 1
       }
     },
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "acceptance": {
+              "const": "ACCEPTED_CANONICAL"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "artifacts": {
+              "type": "array",
+              "minItems": 1
+            },
+            "artifact_commit_receipt_sha256s": {
+              "type": "array",
+              "minItems": 1
+            }
+          }
+        }
+      }
+    ],
     "$defs": {
       "id": {
         "type": "string",

@@ -29,6 +29,7 @@ export type ServerlessLane = "mage_image" | "soulx_avatar";
 export type ServerlessDispatchErrorCode =
   | "ASSIGNMENT_CONFLICT"
   | "ASSIGNMENT_REQUIRED"
+  | "ARTIFACT_RECEIPT_MISMATCH"
   | "ATTEMPT_NOT_FOUND"
   | "CALLBACK_UNAUTHENTICATED"
   | "DEPLOYMENT_NOT_FOUND"
@@ -124,6 +125,7 @@ export interface PredispatchCommit {
   readonly outboxId: string;
   readonly endpointIdSha256: Sha256;
   readonly requestBodySha256: Sha256;
+  readonly outputPrefix: string;
   readonly authority: PredispatchAuthorityRecord;
   readonly deadlineAt: string;
   readonly reconciliationDeadlineAt: string;
@@ -185,6 +187,7 @@ interface AttemptRow extends Record<string, unknown> {
   readonly state: string;
   readonly dispatch_token_sha256: Sha256;
   readonly item_count: number;
+  readonly output_prefix: string;
   readonly deadline_at: string;
   readonly reconciliation_deadline_at: string;
   readonly possible_duplicate_executions: number;
@@ -528,6 +531,7 @@ export class ServerlessDispatchService {
       outboxId: input.outboxId,
       endpointIdSha256: deployment.endpoint_id_sha256,
       requestBodySha256,
+      outputPrefix: input.outputPrefix,
       authority,
       deadlineAt,
       reconciliationDeadlineAt,
@@ -618,6 +622,12 @@ export class ServerlessDispatchService {
         requestBodySha256: input.requestBodySha256,
         envelope: input.envelope,
       });
+      if (typeof response.id !== "string" || response.id.length === 0) {
+        throw new ServerlessDispatchError(
+          "ASSIGNMENT_CONFLICT",
+          "The provider run response did not contain a usable job identifier.",
+        );
+      }
       providerJobId = response.id;
     } catch (error) {
       if (!(error instanceof FakeTransportError)) throw error;
@@ -888,8 +898,7 @@ export class ServerlessDispatchService {
       readonly provenanceRowId: string;
       readonly attemptId: string;
       readonly receipt: ProvenanceReceipt;
-      readonly artifactCommitReceiptSha256: Sha256;
-      readonly artifacts: readonly Readonly<Record<string, unknown>>[];
+      readonly artifactCommitReceiptSha256s: readonly Sha256[];
       readonly now: string;
     },
   ): Promise<OutputAcceptance> {
@@ -987,13 +996,23 @@ export class ServerlessDispatchService {
         );
       }
       await this.#insertProvenance(transaction, scope, attempt, assignment.id, input);
+      const artifacts = await this.#validatedOutputArtifacts(
+        transaction,
+        scope,
+        attempt,
+        input.receipt,
+        input.artifactCommitReceiptSha256s,
+      );
+      const artifactCommitManifestSha256 = canonicalSha256({
+        artifact_commit_receipt_sha256s: [...input.artifactCommitReceiptSha256s].sort(),
+      });
       await transaction.query(
         `INSERT INTO serverless_output_receipts (
            id, account_id, workspace_id, project_revision_id, attempt_id, assignment_id, lane,
            acceptance, durable_truth_source, artifacts, provenance_receipt_sha256,
-           artifact_commit_receipt_sha256, accepted_at
+           artifact_commit_receipt_sha256, artifact_commit_receipt_sha256s, accepted_at
          ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'ACCEPTED_CANONICAL', 'SIGNED_PRIVATE_R2_RECEIPT',
-                   $8::jsonb, $9, $10, $11)`,
+                   $8::jsonb, $9, $10, $11::jsonb, $12)`,
         [
           input.outputReceiptId,
           scope.accountId,
@@ -1002,9 +1021,10 @@ export class ServerlessDispatchService {
           attempt.id,
           assignment.id,
           attempt.lane,
-          JSON.stringify(input.artifacts),
+          JSON.stringify(artifacts),
           input.receipt.receipt_sha256,
-          input.artifactCommitReceiptSha256,
+          artifactCommitManifestSha256,
+          JSON.stringify([...input.artifactCommitReceiptSha256s].sort()),
           input.now,
         ],
       );
@@ -1016,6 +1036,103 @@ export class ServerlessDispatchService {
       );
     });
     return "ACCEPTED_CANONICAL";
+  }
+
+  async #validatedOutputArtifacts(
+    executor: SqlExecutor,
+    scope: WorkspaceScope,
+    attempt: AttemptRow,
+    receipt: ProvenanceReceipt,
+    receiptSha256s: readonly Sha256[],
+  ): Promise<readonly Readonly<Record<string, unknown>>[]> {
+    const uniqueReceiptHashes = new Set(receiptSha256s);
+    const uniqueItems = new Set(receipt.items.map((item) => item.item_id));
+    if (
+      receiptSha256s.length !== attempt.item_count ||
+      uniqueReceiptHashes.size !== attempt.item_count ||
+      receipt.items.length !== attempt.item_count ||
+      uniqueItems.size !== attempt.item_count ||
+      receipt.items.some(
+        (item) =>
+          item.state !== "SUCCEEDED" ||
+          item.output_object_key === null ||
+          item.output_sha256 === null ||
+          !Number.isSafeInteger(item.output_bytes) ||
+          item.output_bytes < 0,
+      )
+    ) {
+      throw new ServerlessDispatchError(
+        "ARTIFACT_RECEIPT_MISMATCH",
+        "Canonical output requires one successful signed item and one unique commit receipt per batch item.",
+      );
+    }
+
+    const result = await executor.query<
+      {
+        receipt_sha256: Sha256;
+        object_key: string;
+        content_length: string;
+        checksum_sha256: Sha256;
+        probe: Readonly<Record<string, boolean | number | string | null>>;
+        artifact_id: string;
+        project_revision_id: string;
+        lane: string;
+        job_id: string;
+      } & Record<string, unknown>
+    >(
+      `SELECT receipt.receipt_sha256, receipt.object_key, receipt.content_length,
+              receipt.checksum_sha256, receipt.probe, reservation.artifact_id,
+              reservation.project_revision_id, reservation.lane, reservation.job_id
+         FROM artifact_receipts AS receipt
+         JOIN artifact_reservations AS reservation
+           ON reservation.account_id = receipt.account_id
+          AND reservation.workspace_id = receipt.workspace_id
+          AND reservation.id = receipt.reservation_id
+        WHERE receipt.account_id = $1
+          AND receipt.workspace_id = $2
+          AND receipt.receipt_sha256 IN (SELECT jsonb_array_elements_text($3::jsonb))
+          AND receipt.deleted_at IS NULL`,
+      [scope.accountId, scope.workspaceId, JSON.stringify(receiptSha256s)],
+    );
+    if (result.rows.length !== attempt.item_count) {
+      throw new ServerlessDispatchError(
+        "ARTIFACT_RECEIPT_MISMATCH",
+        "Every canonical artifact must resolve to one live tenant-owned durable commit receipt.",
+      );
+    }
+
+    const expectedLane = attempt.lane === "mage_image" ? "MAGE_IMAGE" : "SOULX_AVATAR";
+    const byItem = new Map(receipt.items.map((item) => [item.item_id, item]));
+    const artifacts = result.rows.map((row) => {
+      const signed = byItem.get(row.artifact_id);
+      if (
+        signed === undefined ||
+        row.project_revision_id !== attempt.project_revision_id ||
+        row.lane !== expectedLane ||
+        row.job_id !== attempt.id ||
+        row.object_key !== `${attempt.output_prefix}/artifact/${row.artifact_id}` ||
+        signed.output_object_key !== row.object_key ||
+        signed.output_sha256 !== row.checksum_sha256 ||
+        signed.output_bytes !== Number(row.content_length) ||
+        canonicalSha256(signed.probe) !== canonicalSha256(row.probe)
+      ) {
+        throw new ServerlessDispatchError(
+          "ARTIFACT_RECEIPT_MISMATCH",
+          "Durable artifact identity, lineage, checksum, bytes, or probe differs from the signed worker facts.",
+        );
+      }
+      return {
+        item_id: row.artifact_id,
+        object_key: row.object_key,
+        content_length: Number(row.content_length),
+        checksum_sha256: row.checksum_sha256,
+        probe: row.probe,
+        artifact_commit_receipt_sha256: row.receipt_sha256,
+      } as const;
+    });
+    return artifacts.sort((left, right) =>
+      String(left.item_id).localeCompare(String(right.item_id)),
+    );
   }
 
   async #insertProvenance(
@@ -1074,7 +1191,7 @@ export class ServerlessDispatchService {
     input: {
       readonly outputReceiptId: string;
       readonly receipt: ProvenanceReceipt;
-      readonly artifactCommitReceiptSha256: Sha256;
+      readonly artifactCommitReceiptSha256s: readonly Sha256[];
       readonly now: string;
     },
     attempt: AttemptRow,
@@ -1089,9 +1206,10 @@ export class ServerlessDispatchService {
         `INSERT INTO serverless_output_receipts (
            id, account_id, workspace_id, project_revision_id, attempt_id, assignment_id, lane,
            acceptance, durable_truth_source, artifacts, provenance_receipt_sha256,
-           artifact_commit_receipt_sha256, quarantine_reason, accepted_at
+           artifact_commit_receipt_sha256, artifact_commit_receipt_sha256s,
+           quarantine_reason, accepted_at
          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'SIGNED_PRIVATE_R2_RECEIPT', '[]'::jsonb, $9,
-                   $10, $11, $12)`,
+                   $10, $11::jsonb, $12, $13)`,
         [
           input.outputReceiptId,
           scope.accountId,
@@ -1102,7 +1220,10 @@ export class ServerlessDispatchService {
           attempt.lane,
           acceptance,
           input.receipt.receipt_sha256,
-          input.artifactCommitReceiptSha256,
+          canonicalSha256({
+            artifact_commit_receipt_sha256s: [...input.artifactCommitReceiptSha256s].sort(),
+          }),
+          JSON.stringify([...input.artifactCommitReceiptSha256s].sort()),
           reason,
           input.now,
         ],
@@ -1183,7 +1304,7 @@ export class ServerlessDispatchService {
     );
     let outcome: ReconciliationOutcome;
     if (existing !== null) {
-      outcome = "TERMINAL_CONFIRMED";
+      outcome = "UNIQUE_ASSIGNMENT_PROVED";
     } else if (distinctJobs.size === 1) {
       outcome = "UNIQUE_ASSIGNMENT_PROVED";
     } else if (
@@ -1199,7 +1320,7 @@ export class ServerlessDispatchService {
       outcome = "AMBIGUOUS_STOP";
     }
 
-    if (outcome === "UNIQUE_ASSIGNMENT_PROVED") {
+    if (existing === null && outcome === "UNIQUE_ASSIGNMENT_PROVED") {
       const [providerJobId] = [...distinctJobs];
       const receipt = matching.find((candidate) => candidate.provider_job_id === providerJobId);
       await this.#bindAssignment(scope, {
@@ -1218,7 +1339,8 @@ export class ServerlessDispatchService {
     const assignment = existing ?? (await this.currentAssignment(input.attemptId));
     let statusPolls = 0;
     const statusDeadline =
-      attempt.provider_result_expires_at ?? attempt.ttl_expires_at ?? attempt.deadline_at;
+      attempt.provider_result_expires_at ??
+      isoPlusSeconds(attempt.ttl_expires_at ?? attempt.deadline_at, PROVIDER_RESULT_WINDOW_SECONDS);
     if (assignment !== null && Date.parse(input.now) < Date.parse(statusDeadline)) {
       const snapshot = input.endpoint.status(assignment.provider_job_id);
       if (snapshot.id !== assignment.provider_job_id) {
@@ -1228,6 +1350,9 @@ export class ServerlessDispatchService {
         );
       }
       statusPolls = 1;
+      outcome = ["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"].includes(snapshot.status)
+        ? "TERMINAL_CONFIRMED"
+        : "UNIQUE_ASSIGNMENT_PROVED";
       await this.recordPolledStatus(scope, {
         eventId: input.reconciliationId,
         attemptId: attempt.id,
@@ -1237,19 +1362,31 @@ export class ServerlessDispatchService {
         itemsCompleted: 0,
         observedAt: input.now,
       });
+    } else if (assignment !== null) {
+      // A provider job was bound, but neither terminal state nor output was durably observed before
+      // the latest possible TTL-plus-result-retention boundary. No replacement can be proven safe.
+      outcome = "AMBIGUOUS_STOP";
     }
 
     const refreshedAttempt = await this.attempt(input.attemptId);
     const reconciliationUpperBound =
       refreshedAttempt.provider_result_expires_at ??
-      refreshedAttempt.ttl_expires_at ??
-      refreshedAttempt.deadline_at;
+      isoPlusSeconds(
+        refreshedAttempt.ttl_expires_at ?? refreshedAttempt.deadline_at,
+        PROVIDER_RESULT_WINDOW_SECONDS,
+      );
     const reconciliationDeadlineAt =
       outcome === "AMBIGUOUS_STOP"
         ? input.now
         : new Date(
             Math.min(Date.parse(input.now) + 60_000, Date.parse(reconciliationUpperBound)),
           ).toISOString();
+
+    const durableOutput = await this.#database.query(
+      `SELECT 1 FROM serverless_output_receipts
+        WHERE attempt_id = $1 AND acceptance = 'ACCEPTED_CANONICAL'`,
+      [input.attemptId],
+    );
 
     await this.#database.transaction(async (transaction) => {
       await assertScope(transaction, scope);
@@ -1280,7 +1417,7 @@ export class ServerlessDispatchService {
           outcome,
           statusPolls,
           existing !== null ? 1 : distinctJobs.size,
-          matching.length > 0,
+          durableOutput.rows.length > 0,
           1,
           input.possibleDuplicateComputeUsd,
           outcome === "NO_ASSIGNMENT_PROVED",
