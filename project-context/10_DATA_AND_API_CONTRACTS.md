@@ -44,7 +44,11 @@ V2-04 implemented `0023_serverless_attempts_and_outbox.sql` and
 `0024_serverless_cost_and_reconciliation.sql`; additive independent-audit repair
 `0025_serverless_v2_04_audit_repairs.sql` makes the exact same-attempt provider assignment mandatory
 for every progress row and permits a terminal zero-duration reconciliation record at the exact
-provider-result expiry boundary.
+provider-result expiry boundary. Additive repair
+`0026_serverless_result_window_and_cancellation_fence.sql` starts request TTL at provider `/run`
+submission, persists the first authoritative terminal observation and its 30-minute result window,
+and prevents canonical output acceptance after cancellation or another terminal state at both the
+service transaction and database-trigger boundaries.
 Exact future filenames may change only inside their implementation checkpoint before release. Never edit or
 renumber committed migrations `0014`–`0017` to make the new architecture appear implemented.
 

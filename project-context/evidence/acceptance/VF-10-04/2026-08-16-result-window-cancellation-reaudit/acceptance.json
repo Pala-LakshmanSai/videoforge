@@ -1,0 +1,78 @@
+{
+  "schema_version": "videoforge.v2-04-result-window-cancellation-reaudit/v1",
+  "task_id": "VF-10-04",
+  "checkpoint": "V2-04",
+  "result": "PASS",
+  "audit_independence": "SAME_CHAT_REAUDIT_NOT_INDEPENDENT",
+  "failed_audited_head": "d5825158073a5e255133a20ccfce560d60ae3f3f",
+  "repair_commit": "2f530885fc6aed61688427c324e26606d8d5eac3",
+  "recorded_at_utc": "2026-08-16T11:26:05Z",
+  "scope": {
+    "checkpoint": "V2-04_ONLY",
+    "v2_05_started": false,
+    "provider_free": true,
+    "external_spend_usd": 0
+  },
+  "corrected_findings": {
+    "provider_clocks": "Request TTL now starts when /run is submitted. The first authoritative terminal /status observation and its 1800-second result window are persisted; attempt creation no longer starts either provider clock.",
+    "cancellation_acceptance_race": "Only ASSIGNED, IN_QUEUE, IN_PROGRESS, UPLOADING, or RECONCILING attempts may accept canonical output. Acceptance and cancellation lock the same attempt row, and migration 0026 adds a database trigger as the final fail-closed fence.",
+    "claim_correction": "The earlier acceptance record's attempt-created-at result-window claim is superseded. This repair-chat re-audit is explicitly not represented as an independent second audit."
+  },
+  "adversarial_results": {
+    "delayed_run_submission_ttl": "PASS_TTL_FROM_SUBMISSION",
+    "nonterminal_after_attempt_age_1800": "PASS_STATUS_STILL_POLLED",
+    "terminal_observation_result_window": "PASS_PERSISTED_1800_SECONDS",
+    "signed_receipt_created_before_cancellation_delivered_after": "PASS_QUARANTINED_NO_CANONICAL_OUTPUT",
+    "acceptance_cancellation_serialization": "PASS_APPLICATION_LOCK_AND_DATABASE_TRIGGER",
+    "foreign_tenant_endpoint_image_volume_gpu_cost": "PASS_FAIL_CLOSED",
+    "superseded_pod_authority": "PASS_QUARANTINED",
+    "queue_purge": "PASS_ABSENT"
+  },
+  "validation": {
+    "focused_v2_04": {
+      "command": "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/serverless-v3-transport.test.mjs packages/control-plane/tests/serverless-v3-legacy-quarantine.test.mjs packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs packages/control-plane/tests/migration-hardening.test.mjs packages/control-plane/tests/metadata-export-restore.test.mjs",
+      "exit_code": 0,
+      "tests": "51/51"
+    },
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "tasks": "28/28",
+      "control_plane": "287/287",
+      "pipeline": "120/120",
+      "web": "317/317",
+      "provider_sandbox": "43/43",
+      "cloudflare": "1/1",
+      "installed_chrome": "44/44"
+    }
+  },
+  "current_truth": {
+    "provider_mode": "fixture",
+    "provider_authority": "none",
+    "provider_calls_made": false,
+    "credentials_accessed": false,
+    "cloud_mutation_performed": false,
+    "external_spend_usd": 0,
+    "paid_compute_started": false,
+    "workers_allocated": 0,
+    "live_provider_inventory_refreshed": false,
+    "last_known_provider_snapshot_at": "2026-08-15T09:56:02.932Z",
+    "last_known_pods": 0,
+    "last_known_endpoints": 0,
+    "last_known_serverless_workers_active_plus_flex": 0,
+    "retained_volumes": 2,
+    "ongoing_retained_volume_usd_per_month": 7.0
+  },
+  "unproven": [
+    "Live RunPod result timestamps, delivery, duplicate execution, cancellation, billing, concurrency, and zero-worker drain were not exercised.",
+    "Hosted R2 and non-superuser Neon RLS remain later proof gates.",
+    "V2-05 active-runtime composition has not started."
+  ],
+  "next_checkpoint": {
+    "checkpoint": "V2-05",
+    "safe_to_start_provider_free": true,
+    "started": false,
+    "provider_calls_authorized": false,
+    "maximum_external_spend_usd": 0
+  }
+}
