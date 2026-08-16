@@ -143,7 +143,7 @@ terminal-path cleanup negative. This remains provider-free proof, not real R2, h
 published Serverless-worker proof.
 
 V2-03 implementation at audited HEAD `9fe0cfa3d470247e0b91eae50b012bd69ec34696` failed its first
-independent audit. The four bounded findings are repaired at `d9d95fbed2c99e812e2eab7016b7888cb96e19c0`
+independent audit. The four bounded findings are repaired at `277a2ca8af6b6289cf78652ccd9b29c3475cd308`
 and await a fresh independent re-audit. Additive migrations `0021_fair_generation_admission.sql`
 and `0022_v2_03_admission_audit_repairs.sql` plus the fair-admission
 repository persist tenant-owned video and Mage/SoulX preview requests, deterministic account
@@ -160,7 +160,9 @@ Generate and Queue routes now use the same PGlite-backed `FairAdmissionRepositor
 migration chain; installed Chrome proves two different accounts active at the same time. The
 ordinary Queue/Create UI exposes only private factual queue state and no GPU or Pod lifecycle
 controls. The previous global-session fixture remains only for downstream provider-free media
-execution and recovery compatibility; it is no longer admission or queue truth.
+execution and recovery compatibility; it is no longer admission or queue truth. Durable terminal
+release promotes the next fair request while that compatibility executor retains its serial media
+lifecycle, so earlier fixture recovery evidence remains valid without becoming admission truth.
 
 Row level security is declared on every tenant table but is not behaviourally proven: PGlite
 connects as a superuser and bypasses it, so the local proof comes from the tenant write guard and

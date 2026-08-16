@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-16T04:54:41Z"
+updated_at: "2026-08-16T05:14:00Z"
 
 phase: serverless_v2_independent_reaudit_pending
 implementation_authorized_in_current_task: false
@@ -46,7 +46,7 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "d9d95fbed2c99e812e2eab7016b7888cb96e19c0"
+  last_good_commit: "277a2ca8af6b6289cf78652ccd9b29c3475cd308"
   last_good_commit_note: "V2-03 provider-free independent-audit repairs green; fresh independent re-audit pending."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
@@ -228,7 +228,7 @@ recommended_next_task:
   checkpoint: V2-03
   milestone: fair_two_slot_admission_queue_and_concurrency_locks
   status: ready_for_independent_reaudit
-  dependency_status: v2_03_audit_repairs_green_at_d9d95fbed2c99e812e2eab7016b7888cb96e19c0
+  dependency_status: v2_03_audit_repairs_green_at_277a2ca8af6b6289cf78652ccd9b29c3475cd308
   authorization_status: read_only_audit_only_no_fix_authority
   task_stage: independent_reaudit
   provider_authority:
@@ -243,7 +243,7 @@ recommended_next_task:
     allowed_operations: []
   read_profile: v2_03_fair_admission
   task_brief: tasks/VF-10-03.md
-  goal: "Independently re-audit the bounded V2-03 repairs at d9d95fbed2c99e812e2eab7016b7888cb96e19c0 without fixing findings or advancing V2-04."
+  goal: "Independently re-audit the bounded V2-03 repairs at 277a2ca8af6b6289cf78652ccd9b29c3475cd308 without fixing findings or advancing V2-04."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -262,7 +262,7 @@ recommended_next_task:
 
 verification:
   state: audit_repairs_passed_independent_reaudit_pending
-  verified_commit: "d9d95fbed2c99e812e2eab7016b7888cb96e19c0"
+  verified_commit: "277a2ca8af6b6289cf78652ccd9b29c3475cd308"
   verified_commit_note: "V2-03 active-runtime fair admission, preview ownership, concurrency/idempotency, reconstruction audit, and distribution repairs green; fresh independent re-audit pending."
   predecessor_verified_commit: "69d9e7037b40c1b295a2ccc686d122ab3530a9f0"
   independent_audit_evidence: null
@@ -354,7 +354,7 @@ verification:
     evidence: evidence/acceptance/VF-10-03/2026-08-16-independent-audit-repairs/acceptance.json
     implementation_commit: "9f78dc24aa91415e043715b41722eca4e305fcfe"
     failed_audit_commit: "9fe0cfa3d470247e0b91eae50b012bd69ec34696"
-    repair_commit: "d9d95fbed2c99e812e2eab7016b7888cb96e19c0"
+    repair_commit: "277a2ca8af6b6289cf78652ccd9b29c3475cd308"
     independent_audit_status: repairs_complete_awaiting_fresh_reaudit
     commands:
       - "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/metadata-export-restore.test.mjs packages/control-plane/tests/fair-admission.test.mjs packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs: PASS (24/24 repair suite)"
@@ -368,7 +368,7 @@ verification:
       - "pnpm contracts:check: PASS (75 canonical files synchronized)"
       - "pnpm verify:active-runtime: PASS (62 active files)"
       - "pnpm format:check: PASS"
-      - "pnpm secret:scan: PASS (904 tracked files)"
+      - "pnpm secret:scan: PASS (905 tracked files)"
       - "git diff --check: PASS"
       - "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/metadata-export-restore.test.mjs packages/control-plane/tests/fair-admission.test.mjs packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs: PASS (19/19)"
       - "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/durable-prompt-execution-store.test.mjs packages/control-plane/tests/tenant-private-scope.test.mjs packages/control-plane/tests/fair-admission.test.mjs packages/control-plane/tests/schema-inventory.test.mjs: PASS (22/22)"
@@ -392,6 +392,7 @@ verification:
       - "Ten-account simultaneous load proves two distinct winners, no third slot, complete account rotations, same-account locking, preview deferral, and zero task/outbox creation while waiting."
       - "Ordinary Queue/Create UI shows private factual queue state and automatic admission with no GPU selection or Pod Start/Stop/Delete concepts; two-account Chrome proves non-enumerating ownership."
       - "The active Node Generate and Queue routes compose the committed migration chain and FairAdmissionRepository through PGlite, replacing singleton admission truth while retaining legacy fixture orchestration only downstream."
+      - "Durable terminal settlement releases capacity and promotes the next fair request while the provider-free compatibility executor preserves its serial downstream media lifecycle."
       - "Generate idempotency replays exact duplicates and rejects changed work, concurrent cancel/promote is serialized, and 1/2/5-account distributions prove 1/2/2 active slots with no same-account double activation."
       - "Mage and SoulX preview requests persist exact owned-workspace or immutable built-in preset-version lineage; foreign preset versions fail non-enumerating before enqueue."
       - "Restart reconstruction appends a SYSTEM RECONSTRUCT capacity audit for every correction, including stale nonzero capacity repaired to zero."

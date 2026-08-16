@@ -5,7 +5,7 @@
   "result": "PASS",
   "independent_audit_status": "REPAIR_COMPLETE_AWAITING_FRESH_INDEPENDENT_REAUDIT",
   "failed_audited_head": "9fe0cfa3d470247e0b91eae50b012bd69ec34696",
-  "repair_commit": "d9d95fbed2c99e812e2eab7016b7888cb96e19c0",
+  "repair_commit": "277a2ca8af6b6289cf78652ccd9b29c3475cd308",
   "recorded_at_utc": "2026-08-16T04:54:41Z",
   "scope": {
     "checkpoint": "V2-03_ONLY",
@@ -14,7 +14,7 @@
     "unrelated_changes": false
   },
   "repairs": {
-    "active_runtime_admission": "The active Node Generate route now enqueues through the PGlite-backed FairAdmissionRepository using the full committed migration chain. Generate replay is idempotent, and the Queue list/reorder/cancel routes read and mutate the same durable admission state. The legacy provider-free orchestrator remains downstream fixture media execution/recovery compatibility only and is no longer admission or queue truth.",
+    "active_runtime_admission": "The active Node Generate route now enqueues through the PGlite-backed FairAdmissionRepository using the full committed migration chain. Generate replay is idempotent, and the Queue list/reorder/cancel routes read and mutate the same durable admission state. Durable terminal settlement releases capacity and promotes the next fair request while the legacy provider-free orchestrator remains serial downstream fixture media execution/recovery compatibility only and is no longer admission or queue truth.",
     "concurrency_and_distribution": "Tests cover exact duplicate Generate replay and conflicting idempotency reuse, transactionally serialized concurrent cancel versus promote, and explicit one-, two-, and five-account distributions. The resulting active/waiting counts are 1/0, 2/0, and 2/3 respectively, with distinct active accounts and no same-account double activation.",
     "preview_ownership": "Migration 0022 persists exact preview source lineage and lane-specific composite foreign keys. Enqueue resolves only a caller-owned workspace preset version or an immutable SYSTEM built-in exact version; a foreign version fails non-enumerating before a request is inserted.",
     "reconstruction_audit": "Restart reconstruction appends a SYSTEM RECONSTRUCT capacity audit whenever persisted capacity is corrected, including a stale nonzero count repaired to zero active leases."
@@ -71,7 +71,7 @@
       "context": "118 JSON files; 50 structured evidence references; 31 profiles; 41 decisions; 19 gates",
       "contracts": "75 canonical files synchronized",
       "active_runtime": "62 files",
-      "secret_scan": "904 tracked files"
+      "secret_scan": "905 tracked files"
     },
     "canonical": {
       "command": "CI=1 TURBO_FORCE=true pnpm verify",
