@@ -235,11 +235,7 @@ export function verifyProvenanceReceipt(
       "The receipt names a different attempt.",
     );
   }
-  if (
-    expectation.providerJobId !== null &&
-    receipt.provider_job_id !== null &&
-    receipt.provider_job_id !== expectation.providerJobId
-  ) {
+  if (expectation.providerJobId !== null && receipt.provider_job_id !== expectation.providerJobId) {
     throw new ReceiptVerificationError(
       "RECEIPT_JOB_MISMATCH",
       "The receipt names a different provider job than the current assignment.",

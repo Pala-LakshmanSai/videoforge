@@ -118,7 +118,7 @@ function receiptFor(commit, options = {}) {
     deployment: {
       deployment_id: DEPLOYMENT.deploymentId,
       endpoint_id_sha256: DEPLOYMENT.endpointIdSha256,
-      container_digest: DEPLOYMENT.workerImageDigest,
+      container_digest: options.containerDigest ?? DEPLOYMENT.workerImageDigest,
       intended_region: "EU-RO-1",
       intended_volume_id_sha256: options.volumeIdSha256 ?? DEPLOYMENT.volumeIdSha256,
       model_manifest_sha256: DEPLOYMENT.modelManifestSha256,
@@ -303,6 +303,24 @@ test("checkpoint-generic V2 authority keeps exact read-only, paid, resource, rat
     modelId: "Comfy-Org/Mage-Flow",
   };
   assert.equal(validateV2ProviderAuthority(paid).mode, "paid");
+  assert.throws(
+    () =>
+      validateV2ProviderAuthority({
+        ...paid,
+        resources: ["junk:a", "junk:b", "junk:c", "junk:d"],
+      }),
+    (error) =>
+      error instanceof ServerlessAuthorityError && error.code === "AUTHORITY_RESOURCES_INVALID",
+  );
+  assert.throws(
+    () =>
+      validateV2ProviderAuthority({
+        ...paid,
+        rateSnapshot: [{ ...paid.rateSnapshot[0], resourceId: "gpu:not-authorized" }],
+      }),
+    (error) =>
+      error instanceof ServerlessAuthorityError && error.code === "AUTHORITY_RATE_SNAPSHOT_INVALID",
+  );
   assert.throws(
     () => validateV2ProviderAuthority({ ...paid, resources: paid.resources.slice(0, 3) }),
     (error) =>
@@ -499,6 +517,7 @@ test("fake run, status, and cancel bind exactly one provider job before any outp
     await service.recordPolledStatus(scopeA(), {
       eventId: uuid(830_003),
       attemptId: commit.attemptId,
+      providerJobId: outcome.providerJobId,
       providerStatus: "COMPLETED",
       attemptState: "UPLOADING",
       itemsCompleted: 3,
@@ -543,6 +562,54 @@ test("fake run, status, and cancel bind exactly one provider job before any outp
   });
 });
 
+test("authoritative status requires the exact persisted provider assignment", async () => {
+  await seeded(async ({ executor, admission, service }) => {
+    const requestId = await admitVideo(admission, actorA(), 800_103, IDS.projectA, IDS.revisionA);
+    const commit = await service.commitPredispatch(
+      scopeA(),
+      predispatchInput(810_103, scopeA(), {
+        projectId: IDS.projectA,
+        revisionId: IDS.revisionA,
+        requestId,
+      }),
+    );
+
+    await assert.rejects(
+      service.recordPolledStatus(scopeA(), {
+        eventId: uuid(830_103),
+        attemptId: commit.attemptId,
+        providerJobId: "attacker-job",
+        providerStatus: "COMPLETED",
+        attemptState: "ASSIGNED",
+        itemsCompleted: 0,
+        observedAt: t(30),
+      }),
+      (error) => error instanceof ServerlessDispatchError && error.code === "ASSIGNMENT_REQUIRED",
+    );
+    const progress = await executor.query(
+      `SELECT count(*)::int AS total FROM serverless_progress_events WHERE attempt_id = $1`,
+      [commit.attemptId],
+    );
+    assert.equal(progress.rows[0].total, 0);
+    const assignmentColumn = await executor.query(
+      `SELECT is_nullable FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'serverless_progress_events'
+          AND column_name = 'assignment_id'`,
+    );
+    assert.equal(assignmentColumn.rows[0].is_nullable, "NO");
+    const exactForeignKey = await executor.query(
+      `SELECT count(*)::int AS total
+         FROM information_schema.table_constraints
+        WHERE table_schema = 'public'
+          AND table_name = 'serverless_progress_events'
+          AND constraint_name = 'serverless_progress_events_exact_assignment_fk'
+          AND constraint_type = 'FOREIGN KEY'`,
+    );
+    assert.equal(exactForeignKey.rows[0].total, 1);
+  });
+});
+
 // ---------------------------------------------------------------------------------------------
 // Response loss before and after provider acceptance
 // ---------------------------------------------------------------------------------------------
@@ -576,11 +643,11 @@ test("a response lost before provider acceptance never resubmits blindly and sto
       attemptId: commit.attemptId,
       assignmentId: uuid(851_004),
       outboxId: commit.outboxId,
-      trigger: "DISPATCH_ACK_UNKNOWN",
+      trigger: "RESULT_WINDOW_EXPIRY_RISK",
       durableReceipts: [],
-      statusPolls: 6,
+      endpoint: transport,
       possibleDuplicateComputeUsd: 0.03,
-      now: t(2000),
+      now: t(1800),
     });
     assert.equal(outcomeAtDeadline, "AMBIGUOUS_STOP");
 
@@ -589,13 +656,17 @@ test("a response lost before provider acceptance never resubmits blindly and sto
     assert.equal(Number(attempt.possible_duplicate_cost_usd), 0.03);
 
     const reconciliation = await executor.query(
-      `SELECT outcome, new_dispatch_permitted, queue_purge_used
+      `SELECT outcome, new_dispatch_permitted, queue_purge_used, status_polls,
+              provider_result_window_seconds, deadline_at
          FROM serverless_reconciliations WHERE attempt_id = $1`,
       [commit.attemptId],
     );
     assert.equal(reconciliation.rows[0].outcome, "AMBIGUOUS_STOP");
     assert.equal(reconciliation.rows[0].new_dispatch_permitted, false);
     assert.equal(reconciliation.rows[0].queue_purge_used, false);
+    assert.equal(Number(reconciliation.rows[0].status_polls), 0);
+    assert.equal(reconciliation.rows[0].provider_result_window_seconds, 1800);
+    assert.equal(new Date(reconciliation.rows[0].deadline_at).toISOString(), t(1800));
 
     const ledger = await executor.query(
       `SELECT possible_duplicate_usd FROM serverless_cost_ledgers WHERE attempt_id = $1`,
@@ -628,6 +699,27 @@ test("a response lost after provider acceptance reconciles to one unique assignm
       receiptFor(commit, { providerJobId: "mage-0001", workerId, nonce: execution }),
     );
 
+    const [signedReceipt] = transport.provenanceReceiptsForTokenHash(commit.dispatchTokenSha256);
+    const forgedReceipt = {
+      ...signedReceipt,
+      worker_id: "attacker-worker",
+      provider_job_id: "attacker-job",
+      signature: { ...signedReceipt.signature, value: "00".repeat(32) },
+    };
+    const forged = await service.reconcile(scopeA(), {
+      reconciliationId: uuid(849_005),
+      attemptId: commit.attemptId,
+      assignmentId: uuid(849_105),
+      outboxId: commit.outboxId,
+      trigger: "DISPATCH_ACK_UNKNOWN",
+      durableReceipts: [forgedReceipt],
+      endpoint: transport,
+      possibleDuplicateComputeUsd: 0,
+      now: t(250),
+    });
+    assert.equal(forged, "NO_ASSIGNMENT_PROVED");
+    assert.equal(await service.currentAssignment(commit.attemptId), null);
+
     const reconciled = await service.reconcile(scopeA(), {
       reconciliationId: uuid(850_005),
       attemptId: commit.attemptId,
@@ -635,7 +727,7 @@ test("a response lost after provider acceptance reconciles to one unique assignm
       outboxId: commit.outboxId,
       trigger: "DISPATCH_ACK_UNKNOWN",
       durableReceipts: transport.provenanceReceiptsForTokenHash(commit.dispatchTokenSha256),
-      statusPolls: 3,
+      endpoint: transport,
       possibleDuplicateComputeUsd: 0,
       now: t(300),
     });
@@ -649,6 +741,13 @@ test("a response lost after provider acceptance reconciles to one unique assignm
     );
     assert.equal(source.rows[0].assignment_source, "BOUNDED_RECONCILIATION");
     assert.equal(source.rows[0].worker_id, "worker-mage-0001-1");
+    const reconciliation = await executor.query(
+      `SELECT status_polls, deadline_at
+         FROM serverless_reconciliations WHERE id = $1`,
+      [uuid(850_005)],
+    );
+    assert.equal(Number(reconciliation.rows[0].status_polls), 1);
+    assert.ok(Date.parse(reconciliation.rows[0].deadline_at) <= Date.parse(t(1800)));
   });
 });
 
@@ -806,6 +905,7 @@ test("webhook loss changes nothing and a replayed or forged callback never becom
     await service.recordPolledStatus(scopeA(), {
       eventId: uuid(830_008),
       attemptId: commit.attemptId,
+      providerJobId: outcome.providerJobId,
       providerStatus: "COMPLETED",
       attemptState: "UPLOADING",
       itemsCompleted: 3,
@@ -951,6 +1051,7 @@ for (const [fault, providerStatus, label] of [
       await service.recordPolledStatus(scopeA(), {
         eventId: uuid(serial + 30_000),
         attemptId: commit.attemptId,
+        providerJobId: outcome.providerJobId,
         providerStatus,
         attemptState: "RETRYABLE_FAILED",
         itemsCompleted: 0,
@@ -1307,6 +1408,29 @@ test("foreign tenants, wrong endpoints, mutated volumes, and unqualified GPUs al
           providerJobId: outcome.providerJobId,
           manifestAfter: sha256("mutated-volume-manifest"),
           mutationDetected: true,
+        }),
+      }),
+      "QUARANTINED_SUPERSEDED",
+    );
+    // A signed receipt cannot omit the exact job after assignment.
+    assert.equal(
+      await service.acceptOutput(scopeA(), {
+        ...base,
+        outputReceiptId: uuid(884_115),
+        provenanceRowId: uuid(885_115),
+        receipt: receiptFor(commit, { providerJobId: null }),
+      }),
+      "QUARANTINED_SUPERSEDED",
+    );
+    // A different worker image digest is never accepted.
+    assert.equal(
+      await service.acceptOutput(scopeA(), {
+        ...base,
+        outputReceiptId: uuid(884_215),
+        provenanceRowId: uuid(885_215),
+        receipt: receiptFor(commit, {
+          providerJobId: outcome.providerJobId,
+          containerDigest: sha256("wrong-worker-image"),
         }),
       }),
       "QUARANTINED_SUPERSEDED",

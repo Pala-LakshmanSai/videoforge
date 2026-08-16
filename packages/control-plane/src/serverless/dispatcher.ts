@@ -189,6 +189,7 @@ interface AttemptRow extends Record<string, unknown> {
   readonly possible_duplicate_executions: number;
   readonly possible_duplicate_cost_usd: string;
   readonly version: number;
+  readonly created_at: string;
 }
 
 interface AssignmentRow extends Record<string, unknown> {
@@ -734,6 +735,7 @@ export class ServerlessDispatchService {
     input: {
       readonly eventId: string;
       readonly attemptId: string;
+      readonly providerJobId: string;
       readonly providerStatus: FakeProviderStatus;
       readonly attemptState: string;
       readonly itemsCompleted: number;
@@ -776,6 +778,7 @@ export class ServerlessDispatchService {
     await this.#recordProgress(scope, {
       eventId: input.eventId,
       attemptId: input.attemptId,
+      providerJobId: input.delivery.providerJobId,
       providerStatus: input.delivery.status,
       attemptState: input.attemptState,
       itemsCompleted: input.itemsCompleted,
@@ -789,6 +792,7 @@ export class ServerlessDispatchService {
     input: {
       readonly eventId: string;
       readonly attemptId: string;
+      readonly providerJobId: string;
       readonly providerStatus: FakeProviderStatus;
       readonly attemptState: string;
       readonly itemsCompleted: number;
@@ -798,6 +802,18 @@ export class ServerlessDispatchService {
   ): Promise<void> {
     const attempt = await this.attempt(input.attemptId);
     const assignment = await this.currentAssignment(input.attemptId);
+    if (assignment === null) {
+      throw new ServerlessDispatchError(
+        "ASSIGNMENT_REQUIRED",
+        "Provider status cannot become authoritative before assignment.",
+      );
+    }
+    if (assignment.provider_job_id !== input.providerJobId) {
+      throw new ServerlessDispatchError(
+        "ASSIGNMENT_CONFLICT",
+        "Provider status names a job that is not the current assignment.",
+      );
+    }
     await this.#database.transaction(async (transaction) => {
       await assertScope(transaction, scope);
       const next = await transaction.query<{ next: string } & Record<string, unknown>>(
@@ -817,7 +833,7 @@ export class ServerlessDispatchService {
           scope.workspaceId,
           attempt.project_revision_id,
           input.attemptId,
-          assignment?.id ?? null,
+          assignment.id,
           Number(next.rows[0]?.next ?? 1),
           input.advisorySource,
           input.advisorySource === "POLL_STATUS",
@@ -1068,18 +1084,58 @@ export class ServerlessDispatchService {
         | "RESULT_WINDOW_EXPIRY_RISK"
         | "OWNER_CANCELLATION";
       readonly durableReceipts: readonly ProvenanceReceipt[];
-      readonly statusPolls: number;
+      readonly endpoint: Pick<FakeServerlessEndpoint, "status">;
       readonly possibleDuplicateComputeUsd: number;
       readonly now: string;
     },
   ): Promise<ReconciliationOutcome> {
     const attempt = await this.attempt(input.attemptId);
     const existing = await this.currentAssignment(input.attemptId);
-    const matching = input.durableReceipts.filter(
-      (receipt) => digestUtf8(receipt.dispatch_token) === attempt.dispatch_token_sha256,
+    const deployment = await this.#database.query<EndpointDeploymentRow>(
+      `SELECT * FROM serverless_endpoint_deployments WHERE id = $1`,
+      [attempt.deployment_id],
     );
+    const bound = deployment.rows[0];
+    if (bound === undefined) {
+      throw new ServerlessDispatchError("DEPLOYMENT_NOT_FOUND", "The bound deployment is missing.");
+    }
+    const storedNonces = await this.#database.query<
+      { receipt_nonce: string } & Record<string, unknown>
+    >(`SELECT receipt_nonce FROM serverless_provenance_receipts WHERE attempt_id = $1`, [
+      attempt.id,
+    ]);
+    const seenNonces = new Set(storedNonces.rows.map((row) => Number(row.receipt_nonce)));
+    const matching: ProvenanceReceipt[] = [];
+    for (const receipt of input.durableReceipts) {
+      if (receipt.provider_job_id === null) continue;
+      try {
+        verifyProvenanceReceipt(this.#signer, receipt, {
+          dispatchTokenSha256: attempt.dispatch_token_sha256,
+          attemptId: attempt.id,
+          providerJobId: receipt.provider_job_id,
+          accountId: scope.accountId,
+          workspaceId: scope.workspaceId,
+          deploymentId: bound.id,
+          endpointIdSha256: bound.endpoint_id_sha256,
+          containerDigest: bound.worker_image_digest,
+          volumeIdSha256: bound.volume_id_sha256,
+          volumeManifestSha256: bound.volume_manifest_sha256,
+          modelManifestSha256: bound.model_manifest_sha256,
+          gpuAllowlist: ["NVIDIA GeForce RTX 4090"],
+          seenNonces,
+        });
+        matching.push(receipt);
+        seenNonces.add(receipt.receipt_nonce);
+      } catch (error) {
+        if (!(error instanceof ReceiptVerificationError)) throw error;
+      }
+    }
     const distinctJobs = new Set(
       matching.map((receipt) => receipt.provider_job_id).filter((id): id is string => id !== null),
+    );
+    const resultWindowExpiresAt = isoPlusSeconds(
+      attempt.created_at,
+      PROVIDER_RESULT_WINDOW_SECONDS,
     );
 
     let outcome: ReconciliationOutcome;
@@ -1089,7 +1145,8 @@ export class ServerlessDispatchService {
       outcome = "UNIQUE_ASSIGNMENT_PROVED";
     } else if (
       distinctJobs.size === 0 &&
-      Date.parse(input.now) >= Date.parse(attempt.reconciliation_deadline_at)
+      (Date.parse(input.now) >= Date.parse(attempt.reconciliation_deadline_at) ||
+        Date.parse(input.now) >= Date.parse(resultWindowExpiresAt))
     ) {
       // Nothing durable exists and the bounded window closed. The provider documents no way to ask
       // "did my token create a job", so uniqueness cannot be proved and dispatch stops.
@@ -1116,6 +1173,32 @@ export class ServerlessDispatchService {
       });
     }
 
+    const assignment = existing ?? (await this.currentAssignment(input.attemptId));
+    let statusPolls = 0;
+    if (assignment !== null && Date.parse(input.now) < Date.parse(resultWindowExpiresAt)) {
+      const snapshot = input.endpoint.status(assignment.provider_job_id);
+      if (snapshot.id !== assignment.provider_job_id) {
+        throw new ServerlessDispatchError(
+          "ASSIGNMENT_CONFLICT",
+          "The status response does not match the current provider assignment.",
+        );
+      }
+      statusPolls = 1;
+      await this.recordPolledStatus(scope, {
+        eventId: input.reconciliationId,
+        attemptId: attempt.id,
+        providerJobId: assignment.provider_job_id,
+        providerStatus: snapshot.status,
+        attemptState: "RECONCILING",
+        itemsCompleted: 0,
+        observedAt: input.now,
+      });
+    }
+
+    const reconciliationDeadlineAt = new Date(
+      Math.min(Date.parse(input.now) + 60_000, Date.parse(resultWindowExpiresAt)),
+    ).toISOString();
+
     await this.#database.transaction(async (transaction) => {
       await assertScope(transaction, scope);
       const next = await transaction.query<{ next: string } & Record<string, unknown>>(
@@ -1140,10 +1223,10 @@ export class ServerlessDispatchService {
           Number(next.rows[0]?.next ?? 1),
           input.trigger,
           input.now,
-          isoPlusSeconds(input.now, 60),
+          reconciliationDeadlineAt,
           PROVIDER_RESULT_WINDOW_SECONDS,
           outcome,
-          input.statusPolls,
+          statusPolls,
           existing !== null ? 1 : distinctJobs.size,
           matching.length > 0,
           1,
