@@ -15,7 +15,13 @@ import {
   VNextPodDispatchFirewall,
 } from "../dist/src/global-session/production-dispatch.js";
 import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
-import { createMigratedDatabase, expectDatabaseError, sha256, uuid } from "./support/pglite.mjs";
+import {
+  createMigratedDatabase,
+  enableLegacyCompatibilityFixture,
+  expectDatabaseError,
+  sha256,
+  uuid,
+} from "./support/pglite.mjs";
 
 const NOW = "2026-08-13T10:00:00.000Z";
 const LATER = "2026-08-13T10:01:00.000Z";
@@ -250,6 +256,7 @@ async function seedGlobalFoundation(executor, repository) {
 
 test("one synthetic global session fails closed, drains both Pods, retains volumes, and restores", async () => {
   const source = await createMigratedDatabase();
+  await enableLegacyCompatibilityFixture(source.executor);
   let destination;
   try {
     const repository = new GlobalSessionRepository(source.executor);
@@ -991,6 +998,7 @@ test("one synthetic global session fails closed, drains both Pods, retains volum
 
     const serialized = serializeMetadataSnapshot(await exportMetadataSnapshot(source.executor));
     destination = await createMigratedDatabase();
+    await enableLegacyCompatibilityFixture(destination.executor);
     const restored = await restoreMetadataSnapshot(destination.executor, serialized);
     assert.ok(restored.restoredRows > 0);
     assert.deepEqual(

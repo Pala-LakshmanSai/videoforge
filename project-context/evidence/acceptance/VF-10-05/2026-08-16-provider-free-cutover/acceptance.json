@@ -1,0 +1,98 @@
+{
+  "schema_version": "videoforge.v2-05-provider-free-cutover/v1",
+  "task_id": "VF-10-05",
+  "checkpoint": "V2-05",
+  "result": "PARTIAL_RUNTIME_CUTOVER_GREEN_UI_CUTOVER_INCOMPLETE",
+  "audit_independence": "SAME_CHAT_IMPLEMENTATION_NO_AUDIT_CLAIMED",
+  "predecessor_verified_commit": "8457519",
+  "recorded_at_utc": "2026-08-16T00:00:00Z",
+  "scope": {
+    "checkpoint": "V2-05_ONLY",
+    "v2_06_started": false,
+    "provider_free": true,
+    "credentials_used": false,
+    "cloud_mutation": false,
+    "workers_or_gpu_used": false,
+    "external_spend_usd": 0
+  },
+  "delivered": {
+    "migration": "Additive migration 0028 persists per-video runtime stage state, independent lane state, append-only accepted units, append-only runtime events, and a superseded-contract registry with a write fence over generation_sessions, session_gpu_bindings, session_gpu_revalidations, global_queue_entries, compute_run_plans, pod_lifecycle_attempts, pod_dispatch_authorizations, and durable_generation_outputs.",
+    "admission_gate": "A runtime row can only leave QUEUED when its generation request carries a durable admission, so CPU preparation, lane dispatch, and render are database-fenced behind fair admission rather than application convention.",
+    "lane_dispatch_gate": "A lane may bind an attempt only when its own durable items manifest exists, exactly one predispatch authority row exists for that attempt, the attempt belongs to the same tenant lane and revision, and the attempt covers exactly the unaccepted planned units.",
+    "accepted_unit_resume": "Accepted units are append-only facts of the video and lane, joined to live tenant artifact commit receipts inside the attempt output prefix, so a bounded retry generates only the remaining units and can never discard accepted output.",
+    "asset_barrier": "Render cannot begin until every lane state is SUCCEEDED, and a complete video requires a durable render manifest plus final output hash.",
+    "truthful_states": "The runtime exposes QUEUED, PREPARING, WAITING_FOR_WORKER, INITIALIZING, GENERATING_IMAGES, GENERATING_AVATAR, RENDERING, COMPLETE, FAILED, and CANCELED as durable observations, each carrying providerCallsAuthorized=false and authorizedSpendUsd=0. No state is synthesized ahead of a durable fact.",
+    "application_composition": "apps/web/src/server/runtime/node-video-runtime.ts composes the migrated PGlite control plane, FairAdmissionRepository, VideoRuntimeService, ServerlessDispatchService, the fake per-lane Serverless v3 transports, the existing provider-free transcript/scheduler/prompt foundations, and tenant-private artifact commit receipts into one end-to-end provider-free video lifecycle.",
+    "runtime_firewall": "scripts/verify-v2-05-runtime-firewall.mjs (wired into pnpm ci:static) proves the active runtime graph names no superseded table, GPU pair, Pod lifecycle control, queue purge, /workspace model mount, or compatibility escape hatch; that object keys derive only from trusted tenant lineage; that migration 0028 fences every registered superseded contract; and that no production source outside the explicit compatibility allowlist writes a superseded table."
+  },
+  "proofs": {
+    "queued_video_is_inert": "PASS_DATABASE_FAIL_CLOSED",
+    "two_tenant_videos_concurrent_plus_waiting": "PASS_TWO_SLOTS_DISTINCT_ACCOUNTS_THIRD_REFUSED",
+    "lane_independence": "PASS_AVATAR_SUCCEEDS_WHILE_IMAGE_RETRIES",
+    "dispatch_requires_manifest_and_authority": "PASS_FAIL_CLOSED",
+    "accepted_unit_resume_across_bounded_retry": "PASS_ONLY_REMAINING_UNIT_REGENERATED",
+    "response_loss_and_duplicate_delivery": "PASS_UNKNOWN_ACK_NEVER_BINDS_LANE_DUPLICATE_COMPUTE_VISIBLE",
+    "restart_reconstruction": "PASS_DURABLE_ROWS_ONLY",
+    "owner_cancellation": "PASS_TERMINAL_AND_FENCED",
+    "asset_barrier": "PASS_DATABASE_FAIL_CLOSED",
+    "cross_tenant_negatives": "PASS_NON_REVEALING_NOT_FOUND",
+    "cost_attribution": "PASS_SETTLED_ZERO_USD_PER_TENANT",
+    "zero_fake_workers_after_drain": "PASS_NO_LIVE_ATTEMPTS",
+    "superseded_contract_writes": "PASS_FENCED_READABLE_ONLY"
+  },
+  "validation": {
+    "focused_v2_05": {
+      "command": "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/v2-05-runtime-cutover.test.mjs",
+      "exit_code": 0,
+      "tests": "9/9"
+    },
+    "application_runtime": {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/server/runtime/node-video-runtime.test.ts",
+      "exit_code": 0,
+      "tests": "2/2"
+    },
+    "migrations_and_restore": {
+      "command": "node --test packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs packages/control-plane/tests/metadata-export-restore.test.mjs",
+      "exit_code": 0,
+      "tests": "11/11"
+    },
+    "runtime_firewall": {
+      "command": "pnpm verify:v2-05-firewall",
+      "exit_code": 0
+    },
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "tasks": "28/28",
+      "control_plane": "298/298",
+      "pipeline": "120/120",
+      "web": "319/319",
+      "contracts": "TypeScript and Python parity suites pass",
+      "provider_sandbox": "43/43",
+      "test_fixtures": "12/12",
+      "installed_chrome": "44/44"
+    },
+    "static": {
+      "command": "pnpm ci:static (format:check, verify:graph, verify:vnext-dispatch-firewall, verify:v2-05-firewall, contracts:check, context:validate, secret:scan, audit:dependencies)",
+      "exit_code": 0,
+      "context_validation": "31 read profiles; 41 decisions; 19 gates; 172 JSON files",
+      "secret_scan": "PASS (1024 tracked files)",
+      "active_runtime": "PASS (62 active files)"
+    }
+  },
+  "not_delivered_by_design": [
+    "The approved Queue, Project, and Review surfaces still read the superseded provider-free global-session fixture projection. The new runtime is exposed through the application runtime composition and its tests, not yet through the ordinary UI routes, so the installed-Chrome two-account journeys still exercise the V2-03 fixture projection rather than the V2-05 runtime.",
+    "The superseded global-session compatibility executor remains importable inside apps/web/src/server/shared-app-fixture.ts. It is fenced at the database boundary and excluded from the V2-05 active runtime graph, but it is not yet removed from the application's build output.",
+    "GPU offer inventory and locked-pair fields remain on the legacy shared-app view schema; they are not read by the V2-05 runtime and expose no compute control, but the field removal belongs with the UI cutover above.",
+    "Hosted R2, non-superuser Neon row level security, published worker images or endpoints, live Serverless delivery, lane timing, billing, and physical worker drain remain later checkpoints."
+  ],
+  "current_truth": {
+    "provider_mode": "fixture",
+    "provider_authority": "none",
+    "provider_calls": 0,
+    "workers_started": 0,
+    "gpu_seconds": 0,
+    "external_spend_usd": 0,
+    "retained_volume_billing_usd_per_month": 7.0
+  }
+}

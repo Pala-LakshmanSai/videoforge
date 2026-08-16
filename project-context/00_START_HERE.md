@@ -1,7 +1,7 @@
 # VideoForge: start here
 
 Status: V2-04 provider-free Serverless v3 contracts repaired and same-chat re-audited green;
-V2-05 selected but not started
+V2-05 runtime cutover and firewall green, UI cutover and installed-Chrome journeys outstanding
 Context schema: `2.0`
 Last updated: `2026-08-16`
 
@@ -203,8 +203,26 @@ pass. Superseded Pod schemas are read-only compatibility evidence and cannot aut
 Canonical verification passed 28/28 package tasks and 44/44 installed-Chrome tests. No credential,
 provider call, endpoint/image/volume mutation, worker, GPU, or spend occurred.
 
-`CURRENT_STATE.yaml` selects V2-05 as ready but not started. Its separate implementation request is
-required before application/runtime cutover work begins.
+V2-05 is in progress and provider-free. Additive migration `0028_v2_05_runtime_cutover.sql` gives
+every admitted video independent durable stage state, per-lane state, append-only accepted units,
+append-only runtime events, and a superseded-contract registry whose write fence rejects ordinary
+production writes to `generation_sessions`, the session GPU pair tables, `global_queue_entries`,
+`compute_run_plans`, the Pod lifecycle and dispatch tables, and `durable_generation_outputs`, while
+leaving those rows readable as compatibility evidence. A runtime leaves `QUEUED` only behind a
+durable admission, a lane binds an attempt only with its own durable items manifest plus exactly one
+predispatch authority and coverage of exactly the unaccepted planned units, accepted units are
+append-only facts of the video joined to live tenant artifact commit receipts, and render is fenced
+behind every lane succeeding. The application composition carries two tenants' videos concurrently
+through preparation, both exact lane batches, the asset barrier, render, and completion with zero
+live attempts and `$0` settled cost, and proves queued inertness, lane independence, unknown
+acknowledgement, duplicate-execution visibility, restart reconstruction, cancellation fencing, and
+non-revealing cross-tenant negatives. `pnpm ci:static` now also runs the V2-05 runtime firewall.
+
+Outstanding before V2-05 can be called complete: the approved Queue/Project/Review surfaces and the
+installed-Chrome two-account journeys still read the superseded global-session fixture projection,
+that compatibility executor is still importable from the web application even though it is fenced in
+the database and excluded from the active runtime graph, and the legacy GPU offer and locked-pair
+fields still exist on that superseded view schema.
 All prior provider authorities are consumed and cannot be reused. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in

@@ -63,8 +63,9 @@ gates:
       - ten_account_contention_no_third_slot_and_bounded_video_starvation
       - waiting_rows_create_zero_provider_or_preparation_work
       - private_two_account_installed_chrome_without_compute_controls
+      - v2_05_admission_gated_per_video_runtime_state_proves_two_concurrent_tenants_plus_waiters
     still_open:
-      - full_application_runtime_cutover_waits_for_v2_05
+      - v2_05_ui_cutover_of_the_queue_surfaces_to_the_new_runtime
 
   GATE_SERVERLESS_CONTRACT_001:
     status: open
@@ -86,8 +87,10 @@ gates:
       - nonterminal_assignment_polling_through_ttl_plus_result_window
       - timeout_ttl_cancel_restart_resume_and_cost_conservation_fault_matrix
       - superseded_pod_schemas_quarantined_read_only_and_queue_purge_forbidden
+      - v2_05_application_runtime_composes_admission_preparation_lane_dispatch_acceptance_and_render
+      - v2_05_database_fence_rejects_ordinary_writes_to_every_superseded_global_session_and_pod_contract
     still_open:
-      - full_application_runtime_cutover_waits_for_v2_05
+      - v2_05_ui_cutover_and_installed_chrome_two_account_journeys_still_read_the_superseded_fixture_projection
       - live_endpoint_image_volume_worker_delivery_timing_billing_and_drain_proof_wait_for_later_checkpoints
 
   GATE_HOSTING_001:

@@ -112,11 +112,32 @@ export class NodeFairAdmission implements ApplicationFairAdmission {
     return { executor, repository };
   }
 
+  /**
+   * The durable V2 control plane behind this application. The V2-05 video runtime attaches to the
+   * same database so admission, lane dispatch, and stage truth can never disagree.
+   */
+  async access(): Promise<{
+    readonly executor: TransactionalSqlExecutor;
+    readonly repository: FairAdmissionRepository;
+  }> {
+    return this.#ready;
+  }
+
+  identifiers(tenant: FixtureTenantScope, publicProjectId: string) {
+    return ids(tenant, publicProjectId);
+  }
+
+  tenantScope(tenant: FixtureTenantScope) {
+    return this.scope(tenant);
+  }
+
   async reset(): Promise<void> {
     const { executor } = await this.#ready;
     await executor.transaction(async (transaction) => {
       await transaction.execute(
-        `TRUNCATE serverless_cost_events, serverless_cost_ledgers, serverless_reconciliations,
+        `TRUNCATE video_runtime_events, video_runtime_accepted_units, video_runtime_lane_states,
+                  video_runtime_states, artifact_receipts, artifact_reservations,
+                  serverless_cost_events, serverless_cost_ledgers, serverless_reconciliations,
                   serverless_cancellations, serverless_output_receipts,
                   serverless_provenance_receipts, serverless_progress_events,
                   serverless_provider_assignments, serverless_dispatch_outbox,

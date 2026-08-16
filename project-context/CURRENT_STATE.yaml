@@ -2,14 +2,14 @@ schema_version: "2.0"
 context_schema_version: "2.0"
 updated_at: "2026-08-16T13:17:08Z"
 
-phase: serverless_v2_v2_04_complete
-implementation_authorized_in_current_task: false
+phase: serverless_v2_v2_05_in_progress
+implementation_authorized_in_current_task: true
 current_milestone: provider_free_runtime_cutover
-current_task: null
-current_wave: v2_05_ready_not_started
+current_task: VF-10-05
+current_wave: v2_05_provider_free_cutover_in_progress
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: complete
-application_code_changes_authorized: false
+task_stage: in_progress
+application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
 maximum_external_spend_usd: 0
@@ -112,7 +112,7 @@ roadmap_state:
   V2-02: complete_green_independently_reaudited
   V2-03: complete_green_independently_reaudited
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
-  V2-05: ready_not_started
+  V2-05: in_progress_runtime_and_firewall_green_ui_cutover_and_chrome_journeys_outstanding
   V2-06: blocked_on_V2-05
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
@@ -220,17 +220,22 @@ blocking_gates_for_production:
   - GATE_IMAGE_001
   - GATE_STYLE_002
 
-active_ownership: []
-in_progress_checkpoint: null
+active_ownership:
+  - task_id: VF-10-05
+    checkpoint: V2-05
+    scope: local_application_worker_ui_and_context_changes_only
+    provider_calls_authorized: false
+    maximum_external_spend_usd: 0
+in_progress_checkpoint: V2-05
 
 recommended_next_task:
   task_id: VF-10-05
   checkpoint: V2-05
   milestone: provider_free_runtime_cutover
-  status: ready_not_started
+  status: in_progress
   dependency_status: v2_04_complete_green_repaired_same_chat_reaudit_provider_free
-  authorization_status: awaiting_separate_v2_05_implementation_request
-  task_stage: not_started
+  authorization_status: v2_05_implementation_requested_local_provider_free_only
+  task_stage: in_progress
   provider_authority:
     mode: none
     provider: null
@@ -257,7 +262,7 @@ recommended_next_task:
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
-  application_code_changes_authorized: false
+  application_code_changes_authorized: true
   prerequisite_evidence: evidence/acceptance/VF-10-04/2026-08-16-output-binding-result-discovery-repair/acceptance.json
 
 verification:
@@ -447,3 +452,27 @@ verification:
   provider_or_spend_used_for_v2_04: false
   remote_mutation_used_for_v2_04: false
   paid_compute_started_for_v2_04: false
+  in_progress_for_v2_05:
+    evidence: evidence/acceptance/VF-10-05/2026-08-16-provider-free-cutover/acceptance.json
+    status: runtime_cutover_and_firewall_green_ui_cutover_outstanding
+    commands:
+      - "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/v2-05-runtime-cutover.test.mjs: PASS (9/9)"
+      - "pnpm --filter @videoforge/web exec vitest run src/server/runtime/node-video-runtime.test.ts: PASS (2/2)"
+      - "node --test packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs packages/control-plane/tests/metadata-export-restore.test.mjs: PASS (11/11)"
+      - "pnpm verify:v2-05-firewall: PASS (3 active runtime files; 8 fenced superseded contracts)"
+    delivered:
+      - "Additive migration 0028 persists independent per-video stage state, per-lane state, append-only accepted units, append-only runtime events, and a superseded-contract registry with a production write fence."
+      - "A video runtime leaves QUEUED only behind a durable admission, so CPU preparation and every lane dispatch are database-fenced rather than convention."
+      - "A lane binds an attempt only with its own durable items manifest, exactly one predispatch authority, matching tenant/revision/lane, and coverage of exactly the unaccepted planned units."
+      - "Accepted units are append-only video facts joined to live tenant artifact commit receipts, so bounded retries resume and can never discard accepted output."
+      - "Render is fenced behind every lane succeeding; COMPLETE requires a durable render manifest and final output hash."
+      - "The application runtime composes fair admission, tenant-private artifacts, Serverless v3 dispatch, fake lane transports, and the existing transcript/scheduler/prompt/render foundations into one provider-free lifecycle for two tenants concurrently."
+      - "Proven: queued inertness, lane independence, unknown acknowledgement, duplicate execution visibility, restart reconstruction, cancellation fencing, cross-tenant non-revealing negatives, $0 settled cost attribution, and zero live attempts after drain."
+      - "pnpm ci:static now runs the V2-05 runtime firewall alongside the vNext dispatch firewall."
+    outstanding_for_v2_05_completion:
+      - "The approved Queue/Project/Review surfaces and installed-Chrome two-account journeys still read the superseded global-session fixture projection; the UI cutover to the V2-05 runtime is not done."
+      - "The compatibility global-session executor is fenced in the database and excluded from the active runtime graph, but is still importable from apps/web/src/server/shared-app-fixture.ts and therefore still present in build output."
+      - "Legacy GPU offer and locked-pair fields remain on the superseded shared-app view schema pending that UI cutover."
+  provider_or_spend_used_for_v2_05: false
+  remote_mutation_used_for_v2_05: false
+  paid_compute_started_for_v2_05: false

@@ -50,6 +50,17 @@ export async function createMigratedDatabase(dataDir) {
   return { database, executor, sources };
 }
 
+/**
+ * Opens the V2-05 compatibility window for one test session.
+ *
+ * Migration 0028 fences every superseded global-session and Pod contract against ordinary writes.
+ * Only compatibility evidence may replay them, and only by setting this session flag explicitly,
+ * which production code never does.
+ */
+export async function enableLegacyCompatibilityFixture(executor) {
+  await executor.query(`SELECT set_config('videoforge.legacy_compatibility_fixture', 'on', false)`);
+}
+
 export async function withMigratedDatabase(work) {
   const postgresUrl = process.env.VIDEOFORGE_TEST_POSTGRES_URL;
   if (postgresUrl !== undefined && postgresUrl.length > 0) {

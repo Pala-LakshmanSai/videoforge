@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   MIGRATION_TABLE_NAME,
   RELATIONAL_TABLE_NAMES,
+  SCHEMA_REGISTRY_TABLE_NAMES,
   TENANT_VIEW_NAMES,
 } from "../dist/src/index.js";
 import { withMigratedDatabase } from "./support/pglite.mjs";
@@ -187,7 +188,7 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
     );
     assert.deepEqual(
       tables.rows.map((row) => row.table_name),
-      [...RELATIONAL_TABLE_NAMES, MIGRATION_TABLE_NAME].sort(),
+      [...RELATIONAL_TABLE_NAMES, ...SCHEMA_REGISTRY_TABLE_NAMES, MIGRATION_TABLE_NAME].sort(),
     );
 
     const views = await executor.query(

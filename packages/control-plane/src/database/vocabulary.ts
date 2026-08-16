@@ -86,9 +86,39 @@ export const RELATIONAL_TABLE_NAMES = [
   "serverless_reconciliations",
   "serverless_cost_ledgers",
   "serverless_cost_events",
+  "video_runtime_states",
+  "video_runtime_lane_states",
+  "video_runtime_accepted_units",
+  "video_runtime_events",
 ] as const;
 
 export type RelationalTableName = (typeof RELATIONAL_TABLE_NAMES)[number];
+
+/**
+ * Schema registries seeded by migrations. They carry no tenant data and are never exported,
+ * restored, or written by application code.
+ */
+export const SCHEMA_REGISTRY_TABLE_NAMES = ["superseded_runtime_contracts"] as const;
+
+export type SchemaRegistryTableName = (typeof SCHEMA_REGISTRY_TABLE_NAMES)[number];
+
+/**
+ * The V2-05 runtime supersedes these contracts. Their rows stay readable as compatibility
+ * evidence, and their write fence rejects every ordinary production insert, update, and delete.
+ */
+export const SUPERSEDED_RUNTIME_CONTRACT_TABLES = [
+  "generation_sessions",
+  "session_gpu_bindings",
+  "session_gpu_revalidations",
+  "global_queue_entries",
+  "compute_run_plans",
+  "pod_lifecycle_attempts",
+  "pod_dispatch_authorizations",
+  "durable_generation_outputs",
+] as const satisfies readonly RelationalTableName[];
+
+/** Compatibility fixtures set this to replay superseded Pod-era evidence. Production never does. */
+export const LEGACY_COMPATIBILITY_SETTING = "videoforge.legacy_compatibility_fixture" as const;
 
 /**
  * Tenant read views filter on the trusted principal recorded in `videoforge.account_id`. Preset
@@ -131,6 +161,10 @@ export const TENANT_VIEW_NAMES = [
   "videoforge_tenant_serverless_provenance_receipts",
   "videoforge_tenant_serverless_provider_assignments",
   "videoforge_tenant_serverless_reconciliations",
+  "videoforge_tenant_video_runtime_accepted_units",
+  "videoforge_tenant_video_runtime_events",
+  "videoforge_tenant_video_runtime_lane_states",
+  "videoforge_tenant_video_runtime_states",
   "videoforge_tenant_workflow_events",
   "videoforge_tenant_workflow_instances",
 ] as const;

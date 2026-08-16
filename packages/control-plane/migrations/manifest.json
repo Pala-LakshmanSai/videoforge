@@ -162,6 +162,12 @@
       "name": "serverless_output_binding_and_result_discovery",
       "filename": "0027_serverless_output_binding_and_result_discovery.sql",
       "sha256": "sha256:6f586eb56f23ce053c0b375aeb6f19782f20acaa8aa5ad7c61fef07d8a3a69c0"
+    },
+    {
+      "version": 28,
+      "name": "v2_05_runtime_cutover",
+      "filename": "0028_v2_05_runtime_cutover.sql",
+      "sha256": "sha256:1f11c162182e733e944195f5bdcae162600e1586c49d4b66e51f5b305dbe2512"
     }
   ]
 }

@@ -3,6 +3,7 @@ import {
   MIGRATION_MANIFEST,
   MIGRATION_TABLE_NAME,
   RELATIONAL_TABLE_NAMES,
+  SCHEMA_REGISTRY_TABLE_NAMES,
   type RelationalTableName,
 } from "../database/index.js";
 
@@ -129,6 +130,10 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "global_session_cost_events",
   "global_session_events",
   "global_queue_audits",
+  "video_runtime_states",
+  "video_runtime_lane_states",
+  "video_runtime_accepted_units",
+  "video_runtime_events",
 ] satisfies readonly RelationalTableName[]);
 
 const RESTORE_INSERT_TABLES = new Set<RelationalTableName>(RESTORE_INSERT_ORDER);
@@ -361,7 +366,11 @@ async function assertExpectedSchema(executor: SqlExecutor): Promise<void> {
         AND table_type = 'BASE TABLE'
       ORDER BY table_name`,
   );
-  const expected = [...RELATIONAL_TABLE_NAMES, MIGRATION_TABLE_NAME].sort();
+  const expected = [
+    ...RELATIONAL_TABLE_NAMES,
+    ...SCHEMA_REGISTRY_TABLE_NAMES,
+    MIGRATION_TABLE_NAME,
+  ].sort();
   const actual = tables.rows.map((row) => row.table_name);
   if (actual.length !== expected.length || actual.some((name, index) => name !== expected[index])) {
     throw snapshotProblem(

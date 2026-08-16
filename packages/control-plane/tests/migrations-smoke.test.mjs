@@ -7,6 +7,7 @@ import {
   applyMigrations,
   MIGRATION_TABLE_NAME,
   RELATIONAL_TABLE_NAMES,
+  SCHEMA_REGISTRY_TABLE_NAMES,
 } from "../dist/src/index.js";
 import { HASHES, IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import {
@@ -42,7 +43,7 @@ test("a fresh PGlite database applies the committed migration chain idempotently
     );
     assert.deepEqual(
       inventory.rows.map((row) => row.table_name),
-      [...RELATIONAL_TABLE_NAMES, MIGRATION_TABLE_NAME].sort(),
+      [...RELATIONAL_TABLE_NAMES, ...SCHEMA_REGISTRY_TABLE_NAMES, MIGRATION_TABLE_NAME].sort(),
     );
   } finally {
     await database.close();
