@@ -1,0 +1,115 @@
+{
+  "schema_version": "videoforge.v2-03-independent-reaudit/v1",
+  "task_id": "VF-10-03",
+  "checkpoint": "V2-03",
+  "result": "PASS",
+  "audited_commit": "268e26cb6cc28880854d6ca5d4290da05ee502e8",
+  "recorded_at_utc": "2026-08-16T06:07:58Z",
+  "findings": { "p0": [], "p1": [], "p2": [] },
+  "resolved_prior_findings": {
+    "real_postgresql_semantics": "The complete 13-test fair-admission suite now runs unchanged against disposable PostgreSQL 16 with a pooled multi-connection executor and four-way test concurrency. It covers the two global slots, distinct-account locks, trigger bypass, ten-account rotation, preview priority and cursor isolation, cancel/promote races, rollback-on-crash, expiry, reconstruction, retry, and wait distributions.",
+    "focused_chrome_command": "The recorded command now names the real shared-app test file and current V2-03 title; it passed in desktop and compact installed Chrome."
+  },
+  "database_truth": {
+    "one_active_provider_workload_per_account": "PASS",
+    "two_active_workloads_globally_from_different_accounts": "PASS",
+    "ordinary_video_caps_one_per_account_two_global": "PASS",
+    "preview_shared_locks_and_slots": "PASS",
+    "video_priority_over_preview": "PASS",
+    "preview_does_not_move_video_cursor": "PASS",
+    "waiting_work_creates_no_task_or_outbox": "PASS",
+    "deterministic_video_account_rotation": "PASS",
+    "atomic_promotion_release_retry_and_recovery": "PASS",
+    "tenant_only_reorder_cancel_without_rotation_drift": "PASS"
+  },
+  "ui_truth": {
+    "installed_chrome": "PASS",
+    "desktop_and_compact_tests": "2/2",
+    "ordinary_gpu_controls": false,
+    "ordinary_pod_controls": false,
+    "private_queue_state": "PASS"
+  },
+  "validation": {
+    "real_postgresql": {
+      "command": "pnpm test:v2-03:postgres",
+      "exit_code": 0,
+      "postgresql": "16-alpine local disposable container; pooled multi-connection transactions",
+      "tests": "13/13"
+    },
+    "control_plane": {
+      "command": "pnpm --filter @videoforge/control-plane test",
+      "exit_code": 0,
+      "tests": "256/256"
+    },
+    "focused_installed_chrome": {
+      "command": "CI=1 pnpm --filter @videoforge/web exec playwright test tests/e2e/shared-app.spec.ts --grep 'V2-03 shows two accounts'",
+      "exit_code": 0,
+      "tests": "2/2"
+    },
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "tasks": "28/28",
+      "control_plane": "256/256",
+      "pipeline": "120/120",
+      "web": "317/317",
+      "cloudflare": "1/1",
+      "installed_chrome": "44/44"
+    },
+    "context_and_contracts": {
+      "commands": [
+        "pnpm context:validate",
+        "project-context/scripts/validate-context.sh",
+        "project-context/scripts/validate-schemas.sh",
+        "pnpm contracts:check",
+        "pnpm verify:active-runtime",
+        "pnpm secret:scan"
+      ],
+      "exit_codes": [0, 0, 0, 0, 0, 0],
+      "context": "119 JSON files; 51 structured evidence references; 31 profiles; 41 decisions; 19 gates",
+      "contracts": "75 canonical files synchronized",
+      "active_runtime": "62 files",
+      "secret_scan": "907 tracked files"
+    },
+    "static": {
+      "commands": [
+        "pnpm lint:root",
+        "pnpm --filter @videoforge/control-plane lint",
+        "pnpm --filter @videoforge/control-plane typecheck",
+        "pnpm format:check",
+        "git diff --check"
+      ],
+      "exit_codes": [0, 0, 0, 0, 0]
+    }
+  },
+  "missing_proof": [
+    "Hosted Neon non-superuser RLS and production deployment remain V2-06 gates, not V2-03 acceptance.",
+    "No live Serverless endpoint, worker, delivery, billing, or drain behavior was exercised; those remain later checkpoints."
+  ],
+  "external_truth": {
+    "provider_mode": "fixture",
+    "provider_calls_made": false,
+    "credentials_accessed": false,
+    "cloud_mutation_performed": false,
+    "external_spend_usd": 0,
+    "paid_compute_started": false,
+    "workers_allocated": 0,
+    "worker_or_endpoint_mutation": false,
+    "model_or_volume_mutation": false,
+    "local_disposable_postgresql_used": true,
+    "live_provider_inventory_refreshed": false,
+    "last_known_provider_snapshot_at": "2026-08-15T09:56:02.932Z",
+    "last_known_pods": 0,
+    "last_known_endpoints": 0,
+    "last_known_serverless_workers_active_plus_flex": 0,
+    "retained_volumes": 2,
+    "ongoing_retained_volume_usd_per_month": 7.0
+  },
+  "next_checkpoint": {
+    "checkpoint": "V2-04",
+    "safe_to_start": true,
+    "started": false,
+    "provider_free": true,
+    "authorization": "V2-04 requires a separate implementation request. No provider, credential, cloud mutation, worker, or spend authority exists."
+  }
+}

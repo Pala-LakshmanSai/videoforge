@@ -52,7 +52,7 @@
       "tests": "1/1"
     },
     "focused_installed_chrome": {
-      "command": "CI=1 pnpm --filter @videoforge/web test:chrome -- --grep 'two accounts hold separate active queue slots'",
+      "command": "CI=1 pnpm --filter @videoforge/web exec playwright test tests/e2e/shared-app.spec.ts --grep 'V2-03 shows two accounts'",
       "exit_code": 0,
       "tests": "2/2"
     },

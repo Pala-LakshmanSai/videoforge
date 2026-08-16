@@ -1,14 +1,14 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-16T05:14:00Z"
+updated_at: "2026-08-16T06:07:58Z"
 
-phase: serverless_v2_independent_reaudit_pending
+phase: serverless_v2_v2_04_ready
 implementation_authorized_in_current_task: false
-current_milestone: fair_two_slot_admission_queue_and_concurrency_locks
+current_milestone: serverless_v3_authority_transport_outbox_and_recovery_contracts
 current_task: null
-current_wave: v2_03_independent_reaudit_ready
+current_wave: v2_04_ready_not_started
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: independent_reaudit
+task_stage: not_started
 application_code_changes_authorized: false
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -46,8 +46,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "fa01480fe6b4356ce986a6bd105b72a04ebdca8a"
-  last_good_commit_note: "V2-03 provider-free independent-audit repairs green; fresh independent re-audit pending."
+  last_good_commit: "268e26cb6cc28880854d6ca5d4290da05ee502e8"
+  last_good_commit_note: "V2-03 complete, provider-free, real-PostgreSQL proven, and independently re-audited PASS."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -110,8 +110,8 @@ roadmap_state:
   V2-00: complete_green_independently_audited
   V2-01: complete_green_independently_reaudited
   V2-02: complete_green_independently_reaudited
-  V2-03: audit_repairs_complete_green_awaiting_independent_reaudit
-  V2-04: blocked_on_independent_V2-03_reaudit
+  V2-03: complete_green_independently_reaudited
+  V2-04: ready_not_started
   V2-05: blocked_on_V2-04
   V2-06: blocked_on_V2-05
   V2-07: blocked_on_V2-06
@@ -224,13 +224,13 @@ active_ownership: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-10-03
-  checkpoint: V2-03
-  milestone: fair_two_slot_admission_queue_and_concurrency_locks
-  status: ready_for_independent_reaudit
-  dependency_status: v2_03_audit_repairs_green_at_fa01480fe6b4356ce986a6bd105b72a04ebdca8a
-  authorization_status: read_only_audit_only_no_fix_authority
-  task_stage: independent_reaudit
+  task_id: VF-10-04
+  checkpoint: V2-04
+  milestone: serverless_v3_authority_transport_outbox_and_recovery_contracts
+  status: ready_not_started
+  dependency_status: v2_03_complete_green_independently_reaudited_at_268e26cb6cc28880854d6ca5d4290da05ee502e8
+  authorization_status: awaiting_separate_implementation_request
+  task_stage: not_started
   provider_authority:
     mode: none
     provider: null
@@ -241,9 +241,9 @@ recommended_next_task:
     resources: []
     authorized_operations: []
     allowed_operations: []
-  read_profile: v2_03_fair_admission
-  task_brief: tasks/VF-10-03.md
-  goal: "Independently re-audit the bounded V2-03 repairs at fa01480fe6b4356ce986a6bd105b72a04ebdca8a without fixing findings or advancing V2-04."
+  read_profile: v2_04_serverless_v3_contracts
+  task_brief: tasks/VF-10-04.md
+  goal: "Await a separate V2-04 implementation request; then implement only provider-free Serverless v3 authority, transport, outbox, receipts, and recovery contracts."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -258,14 +258,14 @@ recommended_next_task:
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: false
-  prerequisite_evidence: evidence/acceptance/VF-10-03/2026-08-16-independent-audit-repairs/acceptance.json
+  prerequisite_evidence: evidence/acceptance/VF-10-03/2026-08-16-independent-reaudit/acceptance.json
 
 verification:
-  state: audit_repairs_passed_independent_reaudit_pending
-  verified_commit: "fa01480fe6b4356ce986a6bd105b72a04ebdca8a"
-  verified_commit_note: "V2-03 active-runtime fair admission, preview ownership, concurrency/idempotency, reconstruction audit, and distribution repairs green; fresh independent re-audit pending."
+  state: v2_03_complete_green_independently_reaudited
+  verified_commit: "268e26cb6cc28880854d6ca5d4290da05ee502e8"
+  verified_commit_note: "V2-03 passes native PostgreSQL 16 multi-connection admission proof, canonical provider-free verification, and real installed-Chrome acceptance."
   predecessor_verified_commit: "69d9e7037b40c1b295a2ccc686d122ab3530a9f0"
-  independent_audit_evidence: null
+  independent_audit_evidence: evidence/acceptance/VF-10-03/2026-08-16-independent-reaudit/acceptance.json
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
@@ -351,17 +351,23 @@ verification:
   remote_mutation_used_for_v2_02: false
   paid_compute_started_for_v2_02: false
   completed_for_v2_03:
-    evidence: evidence/acceptance/VF-10-03/2026-08-16-independent-audit-repairs/acceptance.json
+    evidence: evidence/acceptance/VF-10-03/2026-08-16-independent-reaudit/acceptance.json
     implementation_commit: "9f78dc24aa91415e043715b41722eca4e305fcfe"
     failed_audit_commit: "9fe0cfa3d470247e0b91eae50b012bd69ec34696"
     repair_commit: "fa01480fe6b4356ce986a6bd105b72a04ebdca8a"
-    independent_audit_status: repairs_complete_awaiting_fresh_reaudit
+    reaudited_commit: "268e26cb6cc28880854d6ca5d4290da05ee502e8"
+    independent_audit_status: pass
     commands:
+      - "pnpm test:v2-03:postgres: PASS (13/13 on disposable PostgreSQL 16 with pooled multi-connection transactions and four-way test concurrency)"
+      - "CI=1 pnpm --filter @videoforge/web exec playwright test tests/e2e/shared-app.spec.ts --grep 'V2-03 shows two accounts': PASS (2/2 desktop and compact installed Chrome)"
+      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 256/256; pipeline 120/120; web 317/317; Cloudflare 1/1; installed Chrome 44/44)"
+      - "pnpm context:validate and project-context/scripts/validate-context.sh: PASS (119 JSON files; 51 structured evidence references; 31 profiles; 41 decisions; 19 gates)"
+      - "project-context/scripts/validate-schemas.sh, pnpm contracts:check, pnpm verify:active-runtime, pnpm format:check, pnpm secret:scan, and git diff --check: PASS"
       - "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/metadata-export-restore.test.mjs packages/control-plane/tests/fair-admission.test.mjs packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs: PASS (24/24 repair suite)"
       - "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/durable-prompt-execution-store.test.mjs packages/control-plane/tests/tenant-private-scope.test.mjs packages/control-plane/tests/fair-admission.test.mjs packages/control-plane/tests/schema-inventory.test.mjs: PASS (27/27 upgrade suite)"
       - "pnpm --filter @videoforge/web exec vitest run src/server/runtime/node-fair-admission.test.ts: PASS (1/1)"
       - "pnpm --filter @videoforge/web test: PASS (317/317 web tests)"
-      - "CI=1 pnpm --filter @videoforge/web test:chrome -- --grep 'two accounts hold separate active queue slots': PASS (2/2 desktop and compact installed Chrome)"
+      - "CI=1 pnpm --filter @videoforge/web exec playwright test tests/e2e/shared-app.spec.ts --grep 'V2-03 shows two accounts': PASS (2/2 desktop and compact installed Chrome)"
       - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 256/256; pipeline 120/120; web 317/317; Cloudflare 1/1; installed Chrome 44/44)"
       - "pnpm context:validate and project-context/scripts/validate-context.sh: PASS (118 JSON files; 50 structured evidence references; 31 profiles; 41 decisions; 19 gates)"
       - "project-context/scripts/validate-schemas.sh: PASS"
@@ -397,7 +403,7 @@ verification:
       - "Mage and SoulX preview requests persist exact owned-workspace or immutable built-in preset-version lineage; foreign preset versions fail non-enumerating before enqueue."
       - "Restart reconstruction appends a SYSTEM RECONSTRUCT capacity audit for every correction, including stale nonzero capacity repaired to zero."
     not_delivered_by_design:
-      - "The first independent V2-03 audit failed at 9fe0cfa3d470247e0b91eae50b012bd69ec34696; a fresh independent audit of the repair commit is still required, and V2-04 remains blocked."
+      - "The first independent V2-03 audit failed at 9fe0cfa3d470247e0b91eae50b012bd69ec34696; its repairs and the added native PostgreSQL proof are accepted by the passing re-audit at 268e26cb6cc28880854d6ca5d4290da05ee502e8."
       - "Serverless v3 transport composition remains V2-05 after V2-04 contracts; the legacy provider-free orchestrator remains only as downstream media execution/recovery compatibility and is no longer admission truth."
       - "Hosted Neon/non-superuser RLS behavior remains V2-06 proof."
       - "No credentials, providers, cloud mutation, GPU/workers, model/volume mutation, or spend occurred."
