@@ -5,7 +5,7 @@
   "result": "PASS",
   "independent_audit_status": "REPAIR_COMPLETE_AWAITING_FRESH_INDEPENDENT_REAUDIT",
   "failed_audited_head": "9fe0cfa3d470247e0b91eae50b012bd69ec34696",
-  "repair_commit": "277a2ca8af6b6289cf78652ccd9b29c3475cd308",
+  "repair_commit": "fa01480fe6b4356ce986a6bd105b72a04ebdca8a",
   "recorded_at_utc": "2026-08-16T04:54:41Z",
   "scope": {
     "checkpoint": "V2-03_ONLY",

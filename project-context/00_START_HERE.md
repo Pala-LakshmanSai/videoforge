@@ -143,7 +143,7 @@ terminal-path cleanup negative. This remains provider-free proof, not real R2, h
 published Serverless-worker proof.
 
 V2-03 implementation at audited HEAD `9fe0cfa3d470247e0b91eae50b012bd69ec34696` failed its first
-independent audit. The four bounded findings are repaired at `277a2ca8af6b6289cf78652ccd9b29c3475cd308`
+independent audit. The four bounded findings are repaired at `fa01480fe6b4356ce986a6bd105b72a04ebdca8a`
 and await a fresh independent re-audit. Additive migrations `0021_fair_generation_admission.sql`
 and `0022_v2_03_admission_audit_repairs.sql` plus the fair-admission
 repository persist tenant-owned video and Mage/SoulX preview requests, deterministic account
