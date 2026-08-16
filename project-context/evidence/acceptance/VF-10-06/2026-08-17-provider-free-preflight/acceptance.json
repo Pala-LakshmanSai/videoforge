@@ -3,6 +3,7 @@
   "task_id": "VF-10-06",
   "checkpoint": "V2-06",
   "result": "PASS_LOCAL_PROVIDER_FREE_AWAITING_EXACT_ACTIVATION_INPUTS",
+  "implementation_commit": "118a5459110193487b2e0879275f549ce021f8d1",
   "recorded_at_utc": "2026-08-16T19:06:19Z",
   "predecessor": {
     "checkpoint": "V2-05",

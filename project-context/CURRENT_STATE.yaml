@@ -58,8 +58,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "3c117f2"
-  last_good_commit_note: "V2-05 complete: tenant-private v3 admission, fake Serverless lanes, accepted-unit preservation, receipt-bound direct-FFmpeg final MP4, private download/playback, truthful zero-cost/drain facts, and compile-isolated production bundles pass. Hosted adapters remain V2-06."
+  last_good_commit: "118a545"
+  last_good_commit_note: "V2-06 provider-free hosted staging foundation: Better Auth composition, Neon migration/runtime grants, private R2 signed ports, Cloudflare durable orchestration, and pinned CPU-only Cloud Run Job adapters pass canonical local/container verification. No hosted deployment or external mutation is claimed."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -509,7 +509,7 @@ verification:
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
     status: provider_free_local_foundation_green_awaiting_exact_activation_inputs
-    implementation_commit: PENDING_LOCAL_GREEN_COMMIT
+    implementation_commit: "118a5459110193487b2e0879275f549ce021f8d1"
     evidence: evidence/acceptance/VF-10-06/2026-08-17-provider-free-preflight/acceptance.json
     commands:
       - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 303/303; pipeline 120/120; web 324/324 plus 1 skipped; Cloudflare 1/1; installed Chrome 44/44)"
