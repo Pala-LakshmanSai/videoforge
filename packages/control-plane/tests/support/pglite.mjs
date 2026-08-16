@@ -51,6 +51,11 @@ export async function createMigratedDatabase(dataDir) {
 }
 
 export async function withMigratedDatabase(work) {
+  const postgresUrl = process.env.VIDEOFORGE_TEST_POSTGRES_URL;
+  if (postgresUrl !== undefined && postgresUrl.length > 0) {
+    const { withPostgresDatabase } = await import("./postgres.mjs");
+    return withPostgresDatabase(postgresUrl, work);
+  }
   const context = await createMigratedDatabase();
   try {
     return await work(context);

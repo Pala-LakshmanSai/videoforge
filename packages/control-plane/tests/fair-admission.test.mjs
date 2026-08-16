@@ -536,12 +536,15 @@ test("a crash after promotion mutations but before commit leaves no lease, curso
         WHERE capacity.singleton AND request.id = $1`,
       [uuid(15_001)],
     );
-    assert.deepEqual(truth.rows[0], {
-      active_lease_count: 0,
-      video_fair_cursor: 0,
-      state: "WAITING",
-      version: 1,
-    });
+    assert.deepEqual(
+      { ...truth.rows[0], video_fair_cursor: Number(truth.rows[0].video_fair_cursor) },
+      {
+        active_lease_count: 0,
+        video_fair_cursor: 0,
+        state: "WAITING",
+        version: 1,
+      },
+    );
   });
 });
 

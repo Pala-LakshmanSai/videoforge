@@ -38,6 +38,7 @@
     "test:chrome": "pnpm --filter @videoforge/web test:chrome",
     "test:cloudflare-runtime": "pnpm --filter @videoforge/web test:cloudflare",
     "test:local-slice": "node scripts/test-local-slice.mjs",
+    "test:v2-03:postgres": "node scripts/test-v2-03-postgres.mjs",
     "test:scripts": "node --test scripts/tests/*.test.mjs",
     "test:workers": "node scripts/test-workers.mjs",
     "typecheck": "turbo run typecheck",
