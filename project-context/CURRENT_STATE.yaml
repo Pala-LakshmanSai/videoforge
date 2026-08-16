@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-16T07:43:48Z"
+updated_at: "2026-08-16T09:40:05Z"
 
 phase: serverless_v2_v2_04_complete
 implementation_authorized_in_current_task: false
@@ -46,8 +46,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "713f52453fcc2d20100075ecd4bec847d396af28"
-  last_good_commit_note: "V2-04 complete and provider-free: Serverless v3 contracts, migrations, fake transport/recovery, TypeScript/Python parity, canonical verification, and installed Chrome pass."
+  last_good_commit: "9da626cae846a524f282a1fa36be52455a60b03e"
+  last_good_commit_note: "V2-04 independent-audit repairs close receipt, assignment, paid-authority, and result-window trust gaps; provider-free focused and canonical verification pass."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -111,7 +111,7 @@ roadmap_state:
   V2-01: complete_green_independently_reaudited
   V2-02: complete_green_independently_reaudited
   V2-03: complete_green_independently_reaudited
-  V2-04: complete_green_provider_free
+  V2-04: complete_green_independently_reaudited_provider_free
   V2-05: ready_not_started
   V2-06: blocked_on_V2-05
   V2-07: blocked_on_V2-06
@@ -228,7 +228,7 @@ recommended_next_task:
   checkpoint: V2-05
   milestone: provider_free_runtime_cutover
   status: ready_not_started
-  dependency_status: v2_04_complete_green_provider_free
+  dependency_status: v2_04_complete_green_independently_reaudited_provider_free
   authorization_status: awaiting_separate_v2_05_implementation_request
   task_stage: not_started
   provider_authority:
@@ -258,14 +258,14 @@ recommended_next_task:
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: false
-  prerequisite_evidence: evidence/acceptance/VF-10-04/2026-08-16-serverless-v3-contracts/acceptance.json
+  prerequisite_evidence: evidence/acceptance/VF-10-04/2026-08-16-independent-audit-repairs/acceptance.json
 
 verification:
-  state: v2_04_complete_green_provider_free
-  verified_commit: "713f52453fcc2d20100075ecd4bec847d396af28"
-  verified_commit_note: "V2-04 passes canonical schemas/migrations, TypeScript/Python parity, adversarial fake transport/recovery/cost proof, and installed-Chrome regression acceptance."
+  state: v2_04_complete_green_independently_reaudited_provider_free
+  verified_commit: "9da626cae846a524f282a1fa36be52455a60b03e"
+  verified_commit_note: "V2-04 repair closes all five independent-audit findings and passes migrations/restore, exact signed reconciliation, assignment-gated status/output, authority/rate, result-window, parity, canonical, and installed-Chrome proof."
   predecessor_verified_commit: "268e26cb6cc28880854d6ca5d4290da05ee502e8"
-  acceptance_evidence: evidence/acceptance/VF-10-04/2026-08-16-serverless-v3-contracts/acceptance.json
+  acceptance_evidence: evidence/acceptance/VF-10-04/2026-08-16-independent-audit-repairs/acceptance.json
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
@@ -411,20 +411,24 @@ verification:
   remote_mutation_used_for_v2_03: false
   paid_compute_started_for_v2_03: false
   completed_for_v2_04:
-    evidence: evidence/acceptance/VF-10-04/2026-08-16-serverless-v3-contracts/acceptance.json
+    evidence: evidence/acceptance/VF-10-04/2026-08-16-independent-audit-repairs/acceptance.json
     implementation_commit: "713f52453fcc2d20100075ecd4bec847d396af28"
+    failed_audited_head: "698f96ffd527df0e05e570687b93d2eb594a5c08"
+    repair_commit: "9da626cae846a524f282a1fa36be52455a60b03e"
+    independent_reaudit_status: pass
     commands:
-      - "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/serverless-v3-transport.test.mjs packages/control-plane/tests/serverless-v3-legacy-quarantine.test.mjs: PASS (28/28)"
+      - "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/serverless-v3-transport.test.mjs packages/control-plane/tests/serverless-v3-legacy-quarantine.test.mjs: PASS (29/29)"
+      - "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/serverless-v3-transport.test.mjs packages/control-plane/tests/serverless-v3-legacy-quarantine.test.mjs packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs packages/control-plane/tests/migration-hardening.test.mjs packages/control-plane/tests/metadata-export-restore.test.mjs: PASS (49/49)"
       - "pnpm --filter @videoforge/contracts test: PASS (TypeScript 111/111; Python 95/95)"
       - "pnpm test:workers: PASS (6 explicit Python 3.12 suites)"
-      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 284/284; pipeline 120/120; web 317/317; contracts 111/111 TypeScript and 95/95 Python; provider-sandbox 43/43; Cloudflare 1/1; installed Chrome 44/44)"
+      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 285/285; pipeline 120/120; web 317/317; contracts 111/111 TypeScript and 95/95 Python; provider-sandbox 43/43; Cloudflare 1/1; installed Chrome 44/44)"
       - "pnpm context:validate and project-context/scripts/validate-context.sh: PASS (168 JSON files; 54 structured evidence references; 31 profiles; 41 decisions; 19 gates)"
       - "project-context/scripts/validate-schemas.sh: PASS"
       - "pnpm contracts:check: PASS (123 canonical files synchronized)"
       - "pnpm verify:active-runtime: PASS (62 active files; Serverless remains outside active runtime until V2-05)"
       - "pnpm format:check, pnpm secret:scan, and git diff --check: PASS"
     delivered:
-      - "Additive migrations 0023 and 0024 persist endpoint deployments, predispatch authorities, stable dispatch tokens, outbox rows, attempts, provider assignments, signed provenance and output receipts, progress, cancellation, reconciliation, and cost ledgers/events."
+      - "Additive migrations 0023 and 0024 persist endpoint deployments, predispatch authorities, stable dispatch tokens, outbox rows, attempts, provider assignments, signed provenance and output receipts, progress, cancellation, reconciliation, and cost ledgers/events; audit repair 0025 makes exact same-attempt assignment mandatory for progress."
       - "Fourteen canonical v3/v1 schemas and positive/negative fixtures synchronize to strict TypeScript and Python validators."
       - "Predispatch authority binds exact tenant, revision, lane batch, endpoint/config, image/model/volume, input/request hashes, deadline, and spend ceiling before transport."
       - "The fake transport persists a unique RunPod job assignment before accepting status or output and treats signed private output receipts as durable truth while webhooks remain advisory."
@@ -432,6 +436,7 @@ verification:
       - "At most one canonical durable output is accepted; duplicate compute and cost remain explicit, and no exactly-once execution or billing promise exists."
       - "workersMin=0 means zero retained Active workers, autoscaling uses Flex, workersMax counts Active plus Flex, TTL covers queue and running life, and ordinary queue purge is absent."
       - "Superseded Pod schemas remain readable only in compatibility tests and fail the v3 dispatch firewall."
+      - "Independent re-audit rejects forged reconciliation receipts, status without an exact assignment, signed null-job output receipts, wrong worker images, junk resources, unrelated rates, and ambiguous work at the exact 1800-second result-window boundary."
     not_delivered_by_design:
       - "V2-05 still must compose these contracts into the active application/runtime path and quarantine active global-session/manual-Pod compatibility paths."
       - "Hosted R2 and non-superuser Neon RLS, published images/endpoints, live Serverless delivery, lane timing, billing, concurrency, and zero-worker drain remain later gates."

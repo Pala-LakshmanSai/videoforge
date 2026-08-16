@@ -1,0 +1,111 @@
+{
+  "schema_version": "videoforge.v2-04-independent-audit-repairs/v1",
+  "task_id": "VF-10-04",
+  "checkpoint": "V2-04",
+  "result": "PASS",
+  "reaudit_status": "PASS_AFTER_REPAIR",
+  "failed_audited_head": "698f96ffd527df0e05e570687b93d2eb594a5c08",
+  "original_implementation_commit": "713f52453fcc2d20100075ecd4bec847d396af28",
+  "repair_commit": "9da626cae846a524f282a1fa36be52455a60b03e",
+  "recorded_at_utc": "2026-08-16T09:40:05Z",
+  "scope": {
+    "checkpoint": "V2-04_ONLY",
+    "v2_05_started": false,
+    "finding_count": 5,
+    "provider_free": true,
+    "unrelated_changes": false
+  },
+  "repairs": {
+    "signed_reconciliation_truth": "Bounded reconciliation verifies the VideoForge signature and every tenant, attempt, token, deployment, image, model, volume, region, GPU, scratch, and nonce fact before a receipt may prove a unique provider assignment. Forged and malformed receipts are ignored as non-truth and cannot mint an assignment.",
+    "assignment_before_status": "Every polled or webhook observation requires the exact current provider job assignment in the service. Additive migration 0025 makes assignment_id non-null and adds a same-tenant, same-attempt composite foreign key.",
+    "output_job_binding": "When an assignment exists, provenance verification now requires exact provider_job_id equality and rejects a signed null job identifier.",
+    "paid_authority_binding": "Checkpoint-generic paid RunPod authority requires typed endpoint, volume, image, and GPU resources. Every unique rate record must name an exact authorized resource; unrelated rates and junk resource sets fail closed.",
+    "result_window_and_status": "Reconciliation derives the 1800-second result expiry from the persisted attempt creation time, binds any uniquely proven assignment before calling exact /status, records measured poll counts rather than caller claims, caps its deadline at result expiry, and terminally stops ambiguous work at the boundary without purge or blind resend."
+  },
+  "adversarial_reaudit": {
+    "forged_reconciliation_receipt": "PASS_REJECTED_NO_ASSIGNMENT",
+    "status_without_assignment": "PASS_REJECTED_SERVICE_AND_DATABASE",
+    "status_for_wrong_job": "PASS_REJECTED",
+    "signed_output_receipt_with_null_job": "PASS_QUARANTINED",
+    "wrong_worker_image": "PASS_QUARANTINED",
+    "junk_paid_resources": "PASS_REJECTED",
+    "unrelated_rate_resource": "PASS_REJECTED",
+    "result_window_exact_1800_seconds": "PASS_AMBIGUOUS_STOP_ZERO_POLLS",
+    "signed_assignment_recovery_before_expiry": "PASS_ONE_MEASURED_STATUS_POLL",
+    "legacy_pod_dispatch": "PASS_REJECTED",
+    "routine_queue_purge": "PASS_ABSENT"
+  },
+  "validation": {
+    "repair_migration_transport_restore": {
+      "command": "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/serverless-v3-transport.test.mjs packages/control-plane/tests/serverless-v3-legacy-quarantine.test.mjs packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs packages/control-plane/tests/migration-hardening.test.mjs packages/control-plane/tests/metadata-export-restore.test.mjs",
+      "exit_code": 0,
+      "tests": "49/49"
+    },
+    "contract_parity": {
+      "command": "pnpm --filter @videoforge/contracts test",
+      "exit_code": 0,
+      "typescript": "111/111",
+      "python": "95/95"
+    },
+    "worker_python": {
+      "command": "pnpm test:workers",
+      "exit_code": 0,
+      "result": "PASS_6_SUITES"
+    },
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "tasks": "28/28",
+      "control_plane": "285/285",
+      "pipeline": "120/120",
+      "web": "317/317",
+      "contracts_typescript": "111/111",
+      "contracts_python": "95/95",
+      "provider_sandbox": "43/43",
+      "cloudflare": "1/1",
+      "installed_chrome": "44/44"
+    },
+    "context_and_static": {
+      "commands": [
+        "pnpm context:validate",
+        "project-context/scripts/validate-context.sh",
+        "project-context/scripts/validate-schemas.sh",
+        "pnpm contracts:check",
+        "pnpm verify:active-runtime",
+        "pnpm format:check",
+        "pnpm secret:scan",
+        "git diff --check"
+      ],
+      "exit_codes": [0, 0, 0, 0, 0, 0, 0, 0]
+    }
+  },
+  "external_truth": {
+    "provider_mode": "fixture",
+    "provider_calls_made": false,
+    "credentials_accessed": false,
+    "cloud_mutation_performed": false,
+    "external_spend_usd": 0,
+    "paid_compute_started": false,
+    "workers_allocated": 0,
+    "endpoint_or_image_published": false,
+    "model_or_volume_mutation": false,
+    "live_provider_inventory_refreshed": false,
+    "last_known_provider_snapshot_at": "2026-08-15T09:56:02.932Z",
+    "last_known_pods": 0,
+    "last_known_endpoints": 0,
+    "last_known_serverless_workers_active_plus_flex": 0,
+    "retained_volumes": 2,
+    "ongoing_retained_volume_usd_per_month": 7.0
+  },
+  "remaining_gates": [
+    "V2-05 still requires a separate implementation request to compose these repaired contracts into the active provider-free application/runtime path.",
+    "Hosted R2, Neon non-superuser RLS, published endpoint/image behavior, live Serverless delivery, lane timing and billing measurement, concurrency, and zero-worker drain remain later gates."
+  ],
+  "next_checkpoint": {
+    "checkpoint": "V2-05",
+    "safe_to_start": true,
+    "started": false,
+    "provider_free": true,
+    "authorization": "No V2-05 implementation was performed; a separate request remains required."
+  }
+}

@@ -5,6 +5,13 @@
   "result": "PASS",
   "base_commit": "3b0ea326f5d20472c4b962b15a718b22e5d61bfe",
   "implementation_commit": "713f52453fcc2d20100075ecd4bec847d396af28",
+  "independent_audit": {
+    "failed_audited_head": "698f96ffd527df0e05e570687b93d2eb594a5c08",
+    "finding_count": 5,
+    "repair_commit": "9da626cae846a524f282a1fa36be52455a60b03e",
+    "reaudit_result": "PASS",
+    "superseding_evidence": "../2026-08-16-independent-audit-repairs/acceptance.json"
+  },
   "recorded_at_utc": "2026-08-16T07:43:48Z",
   "contract_truth": {
     "predispatch_authority_and_outbox_before_run": "PASS",

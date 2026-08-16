@@ -32,6 +32,7 @@ New migrations begin after the existing migration sequence. The planned ownershi
 - `0022_v2_03_admission_audit_repairs.sql`
 - `0023_serverless_attempts_and_outbox.sql`
 - `0024_serverless_cost_and_reconciliation.sql`
+- `0025_serverless_v2_04_audit_repairs.sql`
 
 V2-02 implemented `0019_tenant_artifact_receipts.sql` and the additive independent-audit repair
 `0020_tenant_artifact_isolation_repair.sql`; later planned filenames moved forward without rewriting history.
@@ -39,6 +40,11 @@ V2-03 implemented `0021_fair_generation_admission.sql` and additive independent-
 `0022_v2_03_admission_audit_repairs.sql`; later planned filenames moved forward again without
 rewriting history. The repair binds every preview to one exact owned or immutable SYSTEM Mage Image
 Style/SoulX Avatar Profile version using composite source lineage.
+V2-04 implemented `0023_serverless_attempts_and_outbox.sql` and
+`0024_serverless_cost_and_reconciliation.sql`; additive independent-audit repair
+`0025_serverless_v2_04_audit_repairs.sql` makes the exact same-attempt provider assignment mandatory
+for every progress row and permits a terminal zero-duration reconciliation record at the exact
+provider-result expiry boundary.
 Exact future filenames may change only inside their implementation checkpoint before release. Never edit or
 renumber committed migrations `0014`–`0017` to make the new architecture appear implemented.
 

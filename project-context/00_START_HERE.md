@@ -1,6 +1,7 @@
 # VideoForge: start here
 
-Status: V2-04 provider-free Serverless v3 contracts green; V2-05 selected but not started
+Status: V2-04 provider-free Serverless v3 contracts independently re-audited green after repair;
+V2-05 selected but not started
 Context schema: `2.0`
 Last updated: `2026-08-16`
 
@@ -169,8 +170,13 @@ connects as a superuser and bypasses it, so the local proof comes from the tenan
 the `videoforge_tenant_*` views. Hosted enforcement waits for V2-06. `GATE_TENANCY_001` and
 `GATE_STORAGE_001` therefore remain open only for their hosted/non-superuser/real-R2 proof.
 
-V2-04 is complete and provider-free. Additive migrations `0023_serverless_attempts_and_outbox.sql`
-and `0024_serverless_cost_and_reconciliation.sql`, canonical TypeScript/Python v3 contracts, and the
+V2-04 is complete, repaired, and provider-free. Its first independent audit at
+`698f96ffd527df0e05e570687b93d2eb594a5c08` failed five trust-boundary checks; repair commit
+`9da626cae846a524f282a1fa36be52455a60b03e` closes them with additive migration
+`0025_serverless_v2_04_audit_repairs.sql`, exact assignment-gated status, verified reconciliation
+receipts, exact non-null output job binding, typed paid resources/rate membership, and enforced
+provider-result-window polling. Additive migrations `0023_serverless_attempts_and_outbox.sql` and
+`0024_serverless_cost_and_reconciliation.sql`, canonical TypeScript/Python v3 contracts, and the
 fake transport bind exact tenant/revision/lane/endpoint/config/image/model/volume/input/deadline/spend
 facts before dispatch. A stable token and outbox exist before fake `/run`; provider assignment is
 durable before status or output acceptance. Signed VideoForge provenance and private output receipts,
