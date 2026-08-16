@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: V2-03 provider-free implementation green; independent audit required before V2-04
+Status: V2-03 provider-free audit repairs green; fresh independent re-audit required before V2-04
 Context schema: `2.0`
 Last updated: `2026-08-16`
 
@@ -142,26 +142,33 @@ job-local scratch with path, ancestor/internal symlink, cross-mount, crash, refr
 terminal-path cleanup negative. This remains provider-free proof, not real R2, hosted RLS, or
 published Serverless-worker proof.
 
-V2-03 implementation is green at `9f78dc24aa91415e043715b41722eca4e305fcfe` and awaits an
-independent audit. Additive migration `0021_fair_generation_admission.sql` and the fair-admission
+V2-03 implementation at audited HEAD `9fe0cfa3d470247e0b91eae50b012bd69ec34696` failed its first
+independent audit. The four bounded findings are repaired at `d9d95fbed2c99e812e2eab7016b7888cb96e19c0`
+and await a fresh independent re-audit. Additive migrations `0021_fair_generation_admission.sql`
+and `0022_v2_03_admission_audit_repairs.sql` plus the fair-admission
 repository persist tenant-owned video and Mage/SoulX preview requests, deterministic account
 last-served rotation, one active provider workload/account, and exactly two distinct-account global
 leases. Videos always outrank previews; previews use a separate cursor. Owned waiting reorder/cancel,
 retry, terminal release, lease heartbeat/expiry, reclamation, restart reconstruction, stale-version
 fencing, and append-only audits are atomic. Ten-account contention yields exactly two winners, no
-third slot, and complete video-account rotations before previews. Waiting rows create no task,
-outbox, artifact, ASR, render, or provider work. The ordinary Queue/Create UI now exposes only
-private factual queue state and no GPU or Pod lifecycle controls. The previous provider-free
-global-session implementation remains quarantined as v1 fixture compatibility until V2-05 composes
-the full runtime onto V2-03 admission and V2-04 transport contracts.
+third slot, and complete video-account rotations before previews; explicit 1-, 2-, and 5-account
+reports cover boundary distributions. Duplicate Generate replays idempotently, concurrent
+cancel/promote is serialized, preview requests pin an owned or immutable built-in exact preset
+version, and every reconstruction capacity correction is audited, including stale nonzero to zero.
+Waiting rows create no task, outbox, artifact, ASR, render, or provider work. The active Node
+Generate and Queue routes now use the same PGlite-backed `FairAdmissionRepository` and committed
+migration chain; installed Chrome proves two different accounts active at the same time. The
+ordinary Queue/Create UI exposes only private factual queue state and no GPU or Pod lifecycle
+controls. The previous global-session fixture remains only for downstream provider-free media
+execution and recovery compatibility; it is no longer admission or queue truth.
 
 Row level security is declared on every tenant table but is not behaviourally proven: PGlite
 connects as a superuser and bypasses it, so the local proof comes from the tenant write guard and
 the `videoforge_tenant_*` views. Hosted enforcement waits for V2-06. `GATE_TENANCY_001` and
 `GATE_STORAGE_001` therefore remain open only for their hosted/non-superuser/real-R2 proof.
 
-`CURRENT_STATE.yaml` selects a read-only V2-03 independent audit. V2-04 is not yet selected and must
-not start before that audit accepts the implementation commit.
+`CURRENT_STATE.yaml` selects a read-only fresh V2-03 independent re-audit. V2-04 is not yet selected
+and must not start before that audit accepts the repaired implementation.
 All prior provider authorities are consumed and cannot be reused. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in

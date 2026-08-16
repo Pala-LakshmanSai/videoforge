@@ -1,0 +1,116 @@
+{
+  "schema_version": "videoforge.v2-03-independent-audit-repairs/v1",
+  "task_id": "VF-10-03",
+  "checkpoint": "V2-03",
+  "result": "PASS",
+  "independent_audit_status": "REPAIR_COMPLETE_AWAITING_FRESH_INDEPENDENT_REAUDIT",
+  "failed_audited_head": "9fe0cfa3d470247e0b91eae50b012bd69ec34696",
+  "repair_commit": "d9d95fbed2c99e812e2eab7016b7888cb96e19c0",
+  "recorded_at_utc": "2026-08-16T04:54:41Z",
+  "scope": {
+    "checkpoint": "V2-03_ONLY",
+    "v2_04_started": false,
+    "finding_count": 4,
+    "unrelated_changes": false
+  },
+  "repairs": {
+    "active_runtime_admission": "The active Node Generate route now enqueues through the PGlite-backed FairAdmissionRepository using the full committed migration chain. Generate replay is idempotent, and the Queue list/reorder/cancel routes read and mutate the same durable admission state. The legacy provider-free orchestrator remains downstream fixture media execution/recovery compatibility only and is no longer admission or queue truth.",
+    "concurrency_and_distribution": "Tests cover exact duplicate Generate replay and conflicting idempotency reuse, transactionally serialized concurrent cancel versus promote, and explicit one-, two-, and five-account distributions. The resulting active/waiting counts are 1/0, 2/0, and 2/3 respectively, with distinct active accounts and no same-account double activation.",
+    "preview_ownership": "Migration 0022 persists exact preview source lineage and lane-specific composite foreign keys. Enqueue resolves only a caller-owned workspace preset version or an immutable SYSTEM built-in exact version; a foreign version fails non-enumerating before a request is inserted.",
+    "reconstruction_audit": "Restart reconstruction appends a SYSTEM RECONSTRUCT capacity audit whenever persisted capacity is corrected, including a stale nonzero count repaired to zero active leases."
+  },
+  "acceptance_matrix": {
+    "duplicate_generate": "An identical idempotency key and payload replays the original request without a duplicate row or duplicate audit; changed work under that key returns IDEMPOTENCY_CONFLICT.",
+    "concurrent_cancel_promote": "Concurrent owned cancel and promotion serialize without a leaked lease, double activation, or inconsistent capacity.",
+    "one_account": { "accounts": 1, "active": 1, "waiting": 0 },
+    "two_accounts": { "accounts": 2, "active": 2, "waiting": 0 },
+    "five_accounts": { "accounts": 5, "active": 2, "waiting": 3 },
+    "ten_accounts": "Existing contention proof remains: exactly two distinct-account winners, no third slot, and complete video-account rotations before previews.",
+    "preview_scope": "Owned workspace and immutable SYSTEM versions bind successfully; a foreign workspace preset version returns NOT_FOUND.",
+    "zero_active_reconstruction": "A stale nonzero capacity row reconstructed with no active leases becomes zero and gains an append-only SYSTEM RECONSTRUCT audit row.",
+    "installed_chrome": "Desktop and compact journeys prove that two admitted accounts can each hold one ACTIVE request concurrently while seeing only their own queue state."
+  },
+  "validation": {
+    "focused_control_plane": {
+      "command": "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/metadata-export-restore.test.mjs packages/control-plane/tests/fair-admission.test.mjs packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs",
+      "exit_code": 0,
+      "tests": "24/24"
+    },
+    "migration_upgrade": {
+      "command": "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/durable-prompt-execution-store.test.mjs packages/control-plane/tests/tenant-private-scope.test.mjs packages/control-plane/tests/fair-admission.test.mjs packages/control-plane/tests/schema-inventory.test.mjs",
+      "exit_code": 0,
+      "tests": "27/27"
+    },
+    "web_unit": {
+      "command": "pnpm --filter @videoforge/web test",
+      "exit_code": 0,
+      "tests": "317/317"
+    },
+    "node_runtime_composition": {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/server/runtime/node-fair-admission.test.ts",
+      "exit_code": 0,
+      "tests": "1/1"
+    },
+    "focused_installed_chrome": {
+      "command": "CI=1 pnpm --filter @videoforge/web test:chrome -- --grep 'two accounts hold separate active queue slots'",
+      "exit_code": 0,
+      "tests": "2/2"
+    },
+    "context_contracts_and_diff": {
+      "commands": [
+        "pnpm context:validate",
+        "project-context/scripts/validate-context.sh",
+        "project-context/scripts/validate-schemas.sh",
+        "pnpm contracts:check",
+        "pnpm verify:active-runtime",
+        "pnpm format:check",
+        "pnpm secret:scan",
+        "git diff --check"
+      ],
+      "exit_codes": [0, 0, 0, 0, 0, 0, 0, 0],
+      "context": "118 JSON files; 50 structured evidence references; 31 profiles; 41 decisions; 19 gates",
+      "contracts": "75 canonical files synchronized",
+      "active_runtime": "62 files",
+      "secret_scan": "904 tracked files"
+    },
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "tasks": "28/28",
+      "control_plane": "256/256",
+      "pipeline": "120/120",
+      "web": "317/317",
+      "cloudflare": "1/1",
+      "installed_chrome": "44/44"
+    }
+  },
+  "remaining_gates": [
+    "A fresh independent V2-03 audit must accept the repair before V2-04 may start.",
+    "PGlite exercises committed PostgreSQL migrations and transactions locally; hosted Neon non-superuser RLS remains V2-06 proof.",
+    "Serverless v3 transport composition remains V2-05 after V2-04 contracts.",
+    "No live provider endpoint, worker, delivery, or drain behavior was exercised; those remain later checkpoint gates."
+  ],
+  "external_truth": {
+    "provider_mode": "fixture",
+    "provider_calls_made": false,
+    "credentials_accessed": false,
+    "cloud_mutation_performed": false,
+    "external_spend_usd": 0,
+    "paid_compute_started": false,
+    "workers_allocated": 0,
+    "worker_or_endpoint_mutation": false,
+    "model_or_volume_mutation": false,
+    "live_provider_inventory_refreshed": false,
+    "last_known_provider_snapshot_at": "2026-08-15T09:56:02.932Z",
+    "last_known_pods": 0,
+    "last_known_serverless_workers_active_plus_flex": 0,
+    "retained_volumes": 2,
+    "ongoing_retained_volume_usd_per_month": 7.0
+  },
+  "next_checkpoint": {
+    "checkpoint": "V2-03_INDEPENDENT_REAUDIT",
+    "safe_to_start": true,
+    "v2_04_safe_to_start": false,
+    "authorization": "Read-only independent re-audit of the V2-03 repair. No fix, provider, credential, cloud mutation, worker, or spend authority exists."
+  }
+}
