@@ -9,6 +9,7 @@ import { resolveNodeSandboxDataRoot } from "./server/runtime/node-sandbox";
 import { createNodeSharedAppPersistence } from "./server/runtime/node-shared-app-persistence";
 import { createNodeProviderFreeArtifactRuntime } from "./server/runtime/node-provider-free-artifacts";
 import { NodeFairAdmission } from "./server/runtime/node-fair-admission";
+import { NodeVideoRuntime } from "./server/runtime/node-video-runtime";
 import { createRunwareRuntime } from "./server/providers/runware-runtime";
 
 export const FIXTURE_API_HOST = "127.0.0.1";
@@ -35,6 +36,13 @@ if (mode === "local" || mode === "sandbox") {
         })
       : createLocalMediaPipelineRunner();
 }
+const fixtureFairAdmission =
+  mode === "fixture"
+    ? new NodeFairAdmission(
+        path.join(WORKSPACE_ROOT, ".videoforge", "fair-admission-pglite"),
+        path.join(WORKSPACE_ROOT, "packages", "control-plane", "migrations"),
+      )
+    : undefined;
 const app = createApiApp({
   configuration,
   bindings: {
@@ -52,13 +60,11 @@ const app = createApiApp({
             path.join(WORKSPACE_ROOT, ".videoforge", "provider-free-artifacts"),
           )
         : undefined,
-    fixtureFairAdmission:
-      mode === "fixture"
-        ? new NodeFairAdmission(
-            path.join(WORKSPACE_ROOT, ".videoforge", "fair-admission-pglite"),
-            path.join(WORKSPACE_ROOT, "packages", "control-plane", "migrations"),
-          )
-        : undefined,
+    fixtureFairAdmission: fixtureFairAdmission,
+    // The V2-05 runtime attaches to the same durable control plane as admission, so admission and
+    // per-video stage truth can never disagree.
+    fixtureVideoRuntime:
+      fixtureFairAdmission === undefined ? undefined : new NodeVideoRuntime(fixtureFairAdmission),
     localRunner,
     localAppFactory: mode === "local" ? createLocalApiApp : undefined,
     sandboxAppFactory: mode === "sandbox" ? createLocalApiApp : undefined,

@@ -105,7 +105,16 @@ export class NodeVideoRuntime {
     const dispatch = new ServerlessDispatchService(executor, this.#signer);
     const runtime = new VideoRuntimeService(executor);
     this.#prepared ??= (async () => {
-      for (const lane of LANES) await dispatch.publishEndpointDeployment(DEPLOYMENTS[lane]);
+      // Endpoint deployments are operator configuration and survive tenant resets, so publishing is
+      // idempotent: an already published lane is reused rather than duplicated on restart.
+      for (const lane of LANES) {
+        const existing = await dispatch
+          .activeDeployment(lane)
+          .then((row) => row.id)
+          .catch(() => null);
+        if (existing === DEPLOYMENTS[lane].deploymentId) continue;
+        await dispatch.publishEndpointDeployment(DEPLOYMENTS[lane]);
+      }
     })();
     await this.#prepared;
     return { executor, dispatch, runtime };
@@ -238,16 +247,26 @@ export class NodeVideoRuntime {
     return this.#project(publicProjectId, view);
   }
 
-  /** Every video this account owns. A foreign account is never revealed, not even as a count. */
+  /**
+   * The durable state of each named owned video, keyed back to its public project identifier. A
+   * foreign account is never revealed, not even as a count, and a video without a durable runtime
+   * row is absent rather than reported with an invented stage.
+   */
   async listOwned(
     tenant: FixtureTenantScope,
-    publicProjectIds: ReadonlyMap<string, string>,
+    publicProjectIds: readonly string[],
   ): Promise<readonly VideoRuntimeStageView[]> {
     const { runtime } = await this.#services();
-    const owned = await runtime.listOwned(this.#admission.tenantScope(tenant));
-    return owned.map((view) =>
-      this.#project(publicProjectIds.get(view.generationRequestId) ?? view.projectId, view),
-    );
+    const scope = this.#admission.tenantScope(tenant);
+    const owned = await runtime.listOwned(scope);
+    const byRuntimeId = new Map(owned.map((view) => [view.runtimeId, view]));
+    const resolved: VideoRuntimeStageView[] = [];
+    for (const publicProjectId of publicProjectIds) {
+      const value = this.#admission.identifiers(tenant, publicProjectId);
+      const view = byRuntimeId.get(uuid(`runtime:${value.requestId}`));
+      if (view !== undefined) resolved.push(this.#project(publicProjectId, view));
+    }
+    return Object.freeze(resolved);
   }
 
   /** Zero live attempts and zero fake workers must remain once every owned video drains. */

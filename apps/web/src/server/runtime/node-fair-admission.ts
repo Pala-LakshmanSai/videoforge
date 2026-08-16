@@ -131,6 +131,10 @@ export class NodeFairAdmission implements ApplicationFairAdmission {
     return this.scope(tenant);
   }
 
+  /**
+   * Clears tenant data between acceptance runs. Operator-owned endpoint deployments are deliberately
+   * preserved: they are configuration, not tenant state, and a published lane must survive a reset.
+   */
   async reset(): Promise<void> {
     const { executor } = await this.#ready;
     await executor.transaction(async (transaction) => {
@@ -142,7 +146,7 @@ export class NodeFairAdmission implements ApplicationFairAdmission {
                   serverless_provenance_receipts, serverless_progress_events,
                   serverless_provider_assignments, serverless_dispatch_outbox,
                   serverless_predispatch_authorities, serverless_attempts,
-                  serverless_endpoint_deployments, generation_queue_audits,
+                  generation_queue_audits,
                   provider_workload_leases, preset_preview_requests, generation_requests,
                   account_queue_heads;
          UPDATE global_generation_capacity

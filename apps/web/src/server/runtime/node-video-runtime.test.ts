@@ -89,7 +89,7 @@ describe("V2-05 application runtime cutover", () => {
       expect(stages.at(-1)).toBe("COMPLETE");
     }
 
-    const ownedA = await runtime.listOwned(tenantA, new Map());
+    const ownedA = await runtime.listOwned(tenantA, ["a-active", "a-waiting"]);
     expect(ownedA).toHaveLength(2);
     expect(ownedA.every((view) => view.providerCallsAuthorized === false)).toBe(true);
     expect(ownedA.every((view) => view.authorizedSpendUsd === 0)).toBe(true);
@@ -97,7 +97,7 @@ describe("V2-05 application runtime cutover", () => {
     expect(ownedA.some((view) => view.stage === "COMPLETE")).toBe(true);
 
     // Account B observes only its own video.
-    const ownedB = await runtime.listOwned(tenantB, new Map());
+    const ownedB = await runtime.listOwned(tenantB, ["b-active"]);
     expect(ownedB).toHaveLength(1);
     expect(ownedB[0]!.stage).toBe("COMPLETE");
 

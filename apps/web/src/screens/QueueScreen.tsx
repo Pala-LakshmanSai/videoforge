@@ -6,6 +6,7 @@ import { PageHeader } from "../components/PageHeader";
 import { Badge, Button, EmptyState, Metric, Panel, ProgressBar } from "../components/ui";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
+import { videoStageLabel } from "../features/shared/status";
 
 export function QueueScreen() {
   const scenario = currentScenario();
@@ -119,7 +120,7 @@ export function QueueScreen() {
                   </span>
                   <div>
                     <strong>{request.title}</strong>
-                    <small>{request.stage.replaceAll("_", " ")}</small>
+                    <small>{videoStageLabel(request.stage)}</small>
                   </div>
                 </div>
                 <div className="queue-card__status">

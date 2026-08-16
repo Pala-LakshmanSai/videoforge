@@ -290,6 +290,19 @@ export interface PrivateFairQueueState {
     canReorder: boolean;
     canCancel: boolean;
     createdAt: string;
+    /** V2-05 per-video runtime facts; absent until a durable runtime row exists. */
+    lanes?: Array<{
+      lane: "mage_image" | "soulx_avatar";
+      state: string;
+      plannedItemCount: number;
+      acceptedItemCount: number;
+      attemptOrdinal: number;
+      maxAttemptOrdinal: number;
+      currentAttemptId: string | null;
+      itemsManifestSha256: string | null;
+    }>;
+    terminalReason?: string | null;
+    settledCostUsd?: 0;
   }>;
   fairness: {
     policy: "DETERMINISTIC_ACCOUNT_ROTATION";

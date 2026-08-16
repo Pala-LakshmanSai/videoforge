@@ -266,6 +266,25 @@ const privateFairQueueSchema = z
           canReorder: z.boolean(),
           canCancel: z.boolean(),
           createdAt: z.string(),
+          // V2-05 per-video runtime facts. They are absent until a durable runtime row exists.
+          lanes: z
+            .array(
+              z
+                .object({
+                  lane: z.enum(["mage_image", "soulx_avatar"]),
+                  state: z.string(),
+                  plannedItemCount: z.number().int().nonnegative(),
+                  acceptedItemCount: z.number().int().nonnegative(),
+                  attemptOrdinal: z.number().int().nonnegative(),
+                  maxAttemptOrdinal: z.number().int().positive(),
+                  currentAttemptId: z.string().nullable(),
+                  itemsManifestSha256: z.string().nullable(),
+                })
+                .strict(),
+            )
+            .optional(),
+          terminalReason: z.string().nullable().optional(),
+          settledCostUsd: z.literal(0).optional(),
         })
         .strict(),
     ),

@@ -14,11 +14,14 @@ import { SharedAppFixtureStore } from "./shared-app-fixture";
 import type { SharedAppPersistence } from "./shared-app-persistence";
 import type { ProviderFreeArtifactRuntime } from "./provider-free-artifact-runtime";
 import type { ApplicationFairAdmission } from "./fair-admission-runtime";
+import type { ApplicationVideoRuntime } from "./video-runtime-port";
 
 export class FixtureRuntime {
   readonly sessions: FixtureSessionStore;
   readonly sharedApp: SharedAppFixtureStore;
   readonly fairAdmission: ApplicationFairAdmission | undefined;
+  /** V2-05 per-video runtime truth. Absent runtime means no stage state is reported at all. */
+  readonly videoRuntime: ApplicationVideoRuntime | undefined;
 
   constructor(
     readonly environment: string,
@@ -26,10 +29,12 @@ export class FixtureRuntime {
     sharedAppPersistence?: SharedAppPersistence,
     providerFreeArtifacts?: ProviderFreeArtifactRuntime,
     fairAdmission?: ApplicationFairAdmission,
+    videoRuntime?: ApplicationVideoRuntime,
   ) {
     this.sessions = new FixtureSessionStore(environment);
     this.sharedApp = new SharedAppFixtureStore(sharedAppPersistence, providerFreeArtifacts);
     this.fairAdmission = fairAdmission;
+    this.videoRuntime = videoRuntime;
   }
 
   resolveSession(c: Context) {

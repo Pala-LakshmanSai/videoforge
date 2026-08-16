@@ -5,6 +5,7 @@ import type { LocalSliceRunner } from "../local/types";
 import type { SharedAppPersistence } from "../shared-app-persistence";
 import type { ProviderFreeArtifactRuntime } from "../provider-free-artifact-runtime";
 import type { ApplicationFairAdmission } from "../fair-admission-runtime";
+import type { ApplicationVideoRuntime } from "../video-runtime-port";
 
 export type RuntimeEnvironment = "development" | "test" | "production";
 export type RuntimePlatform = "node" | "cloudflare";
@@ -41,6 +42,7 @@ export interface ApiRuntimeBindings {
   readonly fixtureSharedAppPersistence?: SharedAppPersistence;
   readonly fixtureProviderFreeArtifacts?: ProviderFreeArtifactRuntime;
   readonly fixtureFairAdmission?: ApplicationFairAdmission;
+  readonly fixtureVideoRuntime?: ApplicationVideoRuntime;
   readonly localRunner?: LocalSliceRunner;
   readonly localAppFactory?: LocalApiAppFactory;
   readonly sandboxAppFactory?: LocalApiAppFactory;

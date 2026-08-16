@@ -4,11 +4,23 @@ import { ProviderFreeOrchestrationError } from "@videoforge/control-plane/provid
 import type { FixtureRuntime } from "../fixture-runtime";
 import { apiProblem, problemResponse } from "../problem";
 import { SharedFixtureError } from "../shared-app-fixture";
+import { VideoRuntimeError } from "@videoforge/control-plane/runtime";
 
 const FIXTURE_CONTROL_HEADER = "x-videoforge-fixture-control";
 const FIXTURE_CONTROL_VALUE = "cp05-fixture-control-v1";
 
 function failure(error: unknown): Response {
+  if (error instanceof VideoRuntimeError) {
+    return problemResponse(
+      apiProblem(
+        error.code,
+        error.code === "RUNTIME_NOT_FOUND" ? 404 : 409,
+        "Video runtime request rejected",
+        error.message,
+        false,
+      ),
+    );
+  }
   if (error instanceof SharedFixtureError || error instanceof ProviderFreeOrchestrationError) {
     return problemResponse(
       apiProblem(
@@ -21,6 +33,38 @@ function failure(error: unknown): Response {
     );
   }
   throw error;
+}
+
+/**
+ * Projects the caller's private fair-queue view with the V2-05 runtime's factual stage per video.
+ *
+ * When no runtime is bound, the queue reports only admission state. The runtime never invents a
+ * stage for a video it does not own a durable row for.
+ */
+async function withVideoRuntimeStages(runtime: FixtureRuntime, sessionId: string) {
+  const view = runtime.sharedApp.privateFairQueueView(sessionId);
+  const tenant = runtime.sharedApp.tenant(sessionId);
+  if (runtime.videoRuntime === undefined || tenant === null) return view;
+  const owned = await runtime.videoRuntime.listOwned(
+    tenant,
+    view.requests.map((request) => request.projectId),
+  );
+  const stageByProject = new Map(owned.map((video) => [video.publicProjectId, video]));
+  return {
+    ...view,
+    requests: view.requests.map((request) => {
+      const video = stageByProject.get(request.projectId);
+      return video === undefined
+        ? request
+        : {
+            ...request,
+            stage: video.stage,
+            lanes: video.lanes,
+            terminalReason: video.terminalReason,
+            settledCostUsd: video.settledCostUsd,
+          };
+    }),
+  };
 }
 
 export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): void {
@@ -129,7 +173,7 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
           await runtime.fairAdmission.listOwned(tenant, email),
         );
       }
-      return c.json(runtime.sharedApp.privateFairQueueView(session.id));
+      return c.json(await withVideoRuntimeStages(runtime, session.id));
     } catch (error) {
       return failure(error);
     }
@@ -235,9 +279,53 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
           admission: admitted,
         });
         runtime.sharedApp.reconcileFairAdmission(session.id, admitted.snapshot);
+        if (runtime.videoRuntime !== undefined) {
+          await runtime.videoRuntime.register(tenant, body.projectId);
+        }
         return c.json(result);
       }
       return c.json(runtime.sharedApp.startOrEnqueue({ sessionId: session.id, ...body }));
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
+  /**
+   * Advances one owned admitted video by exactly one durable step and returns its factual state.
+   * Progress is driven by the caller; no state is reported before the database accepts it.
+   */
+  app.post("/api/v2/videos/:projectId/advance", async (c) => {
+    const session = runtime.resolveSession(c);
+    if (!session.ok) return session.response;
+    try {
+      const tenant = runtime.sharedApp.tenant(session.id);
+      if (runtime.videoRuntime === undefined || tenant === null) {
+        throw new SharedFixtureError(
+          "VIDEO_RUNTIME_UNAVAILABLE",
+          404,
+          "No durable video runtime is bound to this deployment.",
+        );
+      }
+      return c.json(await runtime.videoRuntime.advance(tenant, c.req.param("projectId")));
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
+  /** Cancels one owned video. A foreign or unknown video is a non-revealing not-found. */
+  app.post("/api/v2/videos/:projectId/cancel", async (c) => {
+    const session = runtime.resolveSession(c);
+    if (!session.ok) return session.response;
+    try {
+      const tenant = runtime.sharedApp.tenant(session.id);
+      if (runtime.videoRuntime === undefined || tenant === null) {
+        throw new SharedFixtureError(
+          "VIDEO_RUNTIME_UNAVAILABLE",
+          404,
+          "No durable video runtime is bound to this deployment.",
+        );
+      }
+      return c.json(await runtime.videoRuntime.cancel(tenant, c.req.param("projectId")));
     } catch (error) {
       return failure(error);
     }
