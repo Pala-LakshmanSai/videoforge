@@ -1,15 +1,15 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-16T02:48:09Z"
+updated_at: "2026-08-16T03:31:28Z"
 
-phase: serverless_v2_implementation_in_progress
-implementation_authorized_in_current_task: true
+phase: serverless_v2_independent_audit_pending
+implementation_authorized_in_current_task: false
 current_milestone: fair_two_slot_admission_queue_and_concurrency_locks
-current_task: VF-10-03
-current_wave: v2_03_provider_free_implementation
+current_task: null
+current_wave: v2_03_independent_audit_ready
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: implementation
-application_code_changes_authorized: true
+task_stage: independent_audit
+application_code_changes_authorized: false
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
 maximum_external_spend_usd: 0
@@ -46,8 +46,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "69d9e7037b40c1b295a2ccc686d122ab3530a9f0"
-  last_good_commit_note: "V2-02 provider-free tenant artifact and scratch isolation repairs; independently re-audited green with canonical verification."
+  last_good_commit: "9f78dc24aa91415e043715b41722eca4e305fcfe"
+  last_good_commit_note: "V2-03 provider-free fair admission implementation green with canonical verification; independent audit pending."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -110,8 +110,8 @@ roadmap_state:
   V2-00: complete_green_independently_audited
   V2-01: complete_green_independently_reaudited
   V2-02: complete_green_independently_reaudited
-  V2-03: implementation_in_progress
-  V2-04: blocked_on_V2-03
+  V2-03: implementation_complete_green_awaiting_independent_audit
+  V2-04: blocked_on_independent_V2-03_audit
   V2-05: blocked_on_V2-04
   V2-06: blocked_on_V2-05
   V2-07: blocked_on_V2-06
@@ -220,23 +220,17 @@ blocking_gates_for_production:
   - GATE_IMAGE_001
   - GATE_STYLE_002
 
-active_ownership:
-  - task_id: VF-10-03
-    checkpoint: V2-03
-    scope: fair_two_slot_admission_queue_and_concurrency_locks
-    base_commit: f220feeddc9c2d789da3655e121dd8f407b36a1c
-    provider_mode: fixture
-    maximum_external_spend_usd: 0
-in_progress_checkpoint: V2-03
+active_ownership: []
+in_progress_checkpoint: null
 
 recommended_next_task:
   task_id: VF-10-03
   checkpoint: V2-03
   milestone: fair_two_slot_admission_queue_and_concurrency_locks
-  status: implementation_in_progress
-  dependency_status: v2_02_complete_green_independently_reaudited
-  authorization_status: explicit_provider_free_v2_03_request_received_2026_08_16
-  task_stage: implementation
+  status: ready_for_independent_audit
+  dependency_status: v2_03_implementation_green_at_9f78dc24aa91415e043715b41722eca4e305fcfe
+  authorization_status: read_only_audit_only_no_fix_authority
+  task_stage: independent_audit
   provider_authority:
     mode: none
     provider: null
@@ -249,7 +243,7 @@ recommended_next_task:
     allowed_operations: []
   read_profile: v2_03_fair_admission
   task_brief: tasks/VF-10-03.md
-  goal: "Implement provider-free fair per-account admission with one active workload per account and two different accounts globally."
+  goal: "Independently audit V2-03 fair per-account admission, private queue UI, atomic recovery, and zero-provider truth without fixing findings."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -263,15 +257,15 @@ recommended_next_task:
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
-  application_code_changes_authorized: true
-  prerequisite_evidence: evidence/acceptance/VF-10-02/2026-08-16-private-artifacts-reaudit/acceptance.json
+  application_code_changes_authorized: false
+  prerequisite_evidence: evidence/acceptance/VF-10-03/2026-08-16-fair-admission/acceptance.json
 
 verification:
-  state: passed
-  verified_commit: "69d9e7037b40c1b295a2ccc686d122ab3530a9f0"
-  verified_commit_note: "V2-02 trusted artifact identity, canonical scoped ports/receipts, durable retention/deletion guards, non-enumeration, legacy raw-key firewall, and both-lane scratch isolation independently re-audited green."
-  predecessor_verified_commit: "714b21978f2720682269e45ca46f674e052893c3"
-  independent_audit_evidence: evidence/acceptance/VF-10-02/2026-08-16-private-artifacts-reaudit/acceptance.json
+  state: implementation_passed_independent_audit_pending
+  verified_commit: "9f78dc24aa91415e043715b41722eca4e305fcfe"
+  verified_commit_note: "V2-03 durable fair admission, atomic capacity/recovery, inert waiting work, private queue UI, and provider-free contention proof green; independent audit pending."
+  predecessor_verified_commit: "69d9e7037b40c1b295a2ccc686d122ab3530a9f0"
+  independent_audit_evidence: null
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
@@ -352,7 +346,41 @@ verification:
       - "No real R2, credentials, cloud/provider call, deployment, worker allocation, model/volume mutation, or spend occurred."
       - "Real private R2 composition and non-superuser hosted RLS remain V2-06 gates."
       - "No Serverless worker image or endpoint was built, published, allocated, or qualified; /runpod-volume read-only attachment remains lane proof."
-      - "V2-03 fair admission was not started and requires a separate explicit request."
+      - "V2-03 was outside V2-02 scope; it is now implemented at 9f78dc24aa91415e043715b41722eca4e305fcfe and awaits independent audit."
   provider_or_spend_used_for_v2_02: false
   remote_mutation_used_for_v2_02: false
   paid_compute_started_for_v2_02: false
+  completed_for_v2_03:
+    evidence: evidence/acceptance/VF-10-03/2026-08-16-fair-admission/acceptance.json
+    implementation_commit: "9f78dc24aa91415e043715b41722eca4e305fcfe"
+    independent_audit_status: pending
+    commands:
+      - "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/metadata-export-restore.test.mjs packages/control-plane/tests/fair-admission.test.mjs packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs: PASS (19/19)"
+      - "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/durable-prompt-execution-store.test.mjs packages/control-plane/tests/tenant-private-scope.test.mjs packages/control-plane/tests/fair-admission.test.mjs packages/control-plane/tests/schema-inventory.test.mjs: PASS (22/22)"
+      - "pnpm --filter @videoforge/web typecheck && pnpm --filter @videoforge/web lint && pnpm --filter @videoforge/web test: PASS (316/316 web tests)"
+      - "CI=1 pnpm --filter @videoforge/web test:chrome: PASS (44/44 across desktop and compact installed Chrome)"
+      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 251/251; web 316/316; Cloudflare 1/1; installed Chrome 44/44)"
+      - "pnpm context:validate: PASS before final handoff update"
+      - "project-context/scripts/validate-context.sh: PASS before final handoff update"
+      - "project-context/scripts/validate-schemas.sh: PASS before final handoff update"
+      - "pnpm contracts:check: PASS (75 canonical files synchronized)"
+      - "pnpm verify:active-runtime: PASS (62 active files)"
+      - "pnpm format:check: PASS"
+      - "pnpm secret:scan: PASS"
+      - "git diff --check: PASS"
+    delivered:
+      - "Additive migration 0021 persists account queue heads, tenant-owned video/preview requests, exactly two capacity slots, per-account leases, and append-only audit rows with tenant guards/RLS/views."
+      - "Database indexes/triggers enforce one active video and provider workload per account, two active slots held by different accounts, exact lease versions, and atomic capacity release."
+      - "Deterministic last-served rotation selects eligible account heads; every eligible video outranks previews, whose separate cursor cannot alter video fairness."
+      - "Owned waiting reorder/cancel leaves cross-account cursors unchanged; foreign actors, stale request versions, stolen lease tokens, stale lease versions, and active movement fail closed."
+      - "Promotion, terminal release plus next promotion, retry, expiry reclamation, crash rollback, restart reconstruction, and metadata restore are atomic and auditable."
+      - "Ten-account simultaneous load proves two distinct winners, no third slot, complete account rotations, same-account locking, preview deferral, and zero task/outbox creation while waiting."
+      - "Ordinary Queue/Create UI shows private factual queue state and automatic admission with no GPU selection or Pod Start/Stop/Delete concepts; two-account Chrome proves non-enumerating ownership."
+    not_delivered_by_design:
+      - "Independent V2-03 audit has not run; V2-04 remains blocked."
+      - "Full application-runtime cutover from the quarantined v1 provider-free global-session fixture to fair admission plus Serverless v3 waits for V2-05 after V2-04 contracts."
+      - "Hosted Neon/non-superuser RLS behavior remains V2-06 proof."
+      - "No credentials, providers, cloud mutation, GPU/workers, model/volume mutation, or spend occurred."
+  provider_or_spend_used_for_v2_03: false
+  remote_mutation_used_for_v2_03: false
+  paid_compute_started_for_v2_03: false

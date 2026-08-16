@@ -1,0 +1,109 @@
+{
+  "schema_version": "videoforge.v2-03-implementation/v1",
+  "task_id": "VF-10-03",
+  "checkpoint": "V2-03",
+  "result": "PASS",
+  "audit_status": "PENDING_INDEPENDENT_AUDIT",
+  "implementation_commit": "9f78dc24aa91415e043715b41722eca4e305fcfe",
+  "recorded_at_utc": "2026-08-16T03:31:28Z",
+  "predecessor": {
+    "checkpoint": "V2-02",
+    "result": "PASS",
+    "evidence": "evidence/acceptance/VF-10-02/2026-08-16-private-artifacts-reaudit/acceptance.json",
+    "audited_commit": "69d9e7037b40c1b295a2ccc686d122ab3530a9f0"
+  },
+  "delivered": {
+    "durable_admission": "Additive migration 0021 adds tenant-owned video and Mage/SoulX preset-preview requests, durable account fairness heads, a two-slot capacity singleton, per-account/slot leases, optimistic versions, append-only audits, tenant guards, RLS, and private views.",
+    "database_invariants": "PostgreSQL triggers and partial unique indexes enforce one active provider workload per account, one active video per account, two active slots, different-account slot ownership, lease identity/version fencing, and exact capacity increments/releases.",
+    "fairness": "Promotion selects one eligible head per account by durable last-served sequence with deterministic account/request tie breaks. Every eligible video outranks every preview; preview promotion updates only its separate cursor.",
+    "owned_mutations": "Only the bound account/workspace may list, reorder, cancel, or retry a request. Reorder changes only that account's waiting order and leaves both fair cursors unchanged; stale versions and foreign actors fail closed.",
+    "atomic_recovery": "Promotion, terminal release plus next promotion, retry, expiry reclamation, and restart reconstruction are transactional and audited. Injected failure after promotion mutations but before commit rolls back request, cursor, and lease state.",
+    "waiting_is_inert": "Waiting and retry-wait requests create no generation task, outbox, artifact reservation, provider dispatch, render, ASR, or storage mutation.",
+    "private_ui": "The ordinary Queue and Create surfaces use a private V2 queue projection, automatic operator-owned compute policy, account-local reorder/cancel, and no GPU selector or Pod Start/Stop/Delete concepts.",
+    "restore": "Metadata export/restore treats the seeded capacity singleton as schema baseline while preserving its exact cursors/version and reconstructing active leases before restoring the exact capacity row. Exact snapshots remain idempotent after reopen."
+  },
+  "acceptance_matrix": {
+    "simultaneous_accounts": "Ten accounts concurrently enqueue two videos and one preview each. Ten simultaneous promoters yield exactly two different-account winners and no third slot; each ten-video rotation contains all ten accounts before any account receives a third turn.",
+    "same_account_double_submit": "Multiple same-account waiting requests persist while the active-request and active-lease constraints allow only one active workload for that account.",
+    "video_over_preview": "All twenty video heads promote before the first preview; preview admission does not move the video cursor.",
+    "preview_capacity": "Previews use the same account and slot lease table, so they cannot share an account with active video work or exceed two global slots.",
+    "ownership_and_versions": "Owned reorder/cancel preserves fair rotation; foreign mutation returns non-revealing not-found; active movement and stale request/lease versions fail.",
+    "release_retry_expiry_restart": "Terminal release atomically promotes the next fair head, failed work retries with an incremented ordinal, owner-token theft fails, expired leases reclaim, and reconstruction returns exactly two distinct accounts.",
+    "crash": "A synthetic crash between promotion mutations and transaction commit leaves capacity 0, cursor 0, request WAITING/version 1, and no lease.",
+    "chrome": "Two admitted accounts see only their own projects and factual stages, cannot mutate one another's rows, and see no GPU, Pod, RunPod, receipt, account ID, or workspace ID details across desktop and compact Chrome."
+  },
+  "validation": {
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "tasks": "28/28",
+      "control_plane": "251/251",
+      "web": "316/316",
+      "cloudflare": "1/1",
+      "installed_chrome": "44/44"
+    },
+    "fair_admission_and_migrations": {
+      "command": "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/metadata-export-restore.test.mjs packages/control-plane/tests/fair-admission.test.mjs packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs",
+      "exit_code": 0,
+      "tests": "19/19"
+    },
+    "migration_upgrade_repairs": {
+      "command": "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/durable-prompt-execution-store.test.mjs packages/control-plane/tests/tenant-private-scope.test.mjs packages/control-plane/tests/fair-admission.test.mjs packages/control-plane/tests/schema-inventory.test.mjs",
+      "exit_code": 0,
+      "tests": "22/22"
+    },
+    "web": {
+      "commands": [
+        "pnpm --filter @videoforge/web typecheck",
+        "pnpm --filter @videoforge/web lint",
+        "pnpm --filter @videoforge/web test",
+        "CI=1 pnpm --filter @videoforge/web test:chrome"
+      ],
+      "exit_codes": [0, 0, 0, 0],
+      "unit_tests": "316/316",
+      "chrome_tests": "44/44"
+    },
+    "context_contracts_and_diff": {
+      "commands": [
+        "pnpm context:validate",
+        "project-context/scripts/validate-context.sh",
+        "project-context/scripts/validate-schemas.sh",
+        "pnpm contracts:check",
+        "pnpm verify:active-runtime",
+        "pnpm format:check",
+        "pnpm secret:scan",
+        "git diff --check"
+      ],
+      "exit_codes": [0, 0, 0, 0, 0, 0, 0, 0]
+    }
+  },
+  "remaining_gates": [
+    "Independent V2-03 audit has not run; V2-04 remains blocked until that audit accepts this implementation commit.",
+    "PGlite exercises the committed PostgreSQL migration and transaction contracts locally; hosted Neon/non-superuser RLS behavior remains V2-06 proof.",
+    "The superseded provider-free global-session implementation remains only as v1 fixture compatibility for earlier recovery/render evidence. Full application-runtime composition onto fair admission and the Serverless v3 transport belongs to V2-05 after V2-04 contracts exist.",
+    "No live endpoint, provider worker, external concurrency, worker-death, duplicate-delivery, or zero-worker-after-live-drain behavior was exercised; those remain V2-07 through V2-11 gates."
+  ],
+  "external_truth": {
+    "provider_mode": "fixture",
+    "provider_calls_made": false,
+    "credentials_accessed": false,
+    "cloud_mutation_performed": false,
+    "external_spend_usd": 0,
+    "paid_compute_started": false,
+    "workers_allocated": 0,
+    "worker_or_endpoint_mutation": false,
+    "model_or_volume_mutation": false,
+    "live_provider_inventory_refreshed": false,
+    "last_known_provider_snapshot_at": "2026-08-15T09:56:02.932Z",
+    "last_known_pods": 0,
+    "last_known_serverless_workers_active_plus_flex": 0,
+    "retained_volumes": 2,
+    "ongoing_retained_volume_usd_per_month": 7.0
+  },
+  "next_checkpoint": {
+    "checkpoint": "V2-03_INDEPENDENT_AUDIT",
+    "safe_to_start": true,
+    "v2_04_safe_to_start": false,
+    "authorization": "Read-only independent audit of implementation commit 9f78dc24aa91415e043715b41722eca4e305fcfe. No provider, credential, cloud mutation, worker, or spend authority exists."
+  }
+}

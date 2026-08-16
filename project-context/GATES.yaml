@@ -51,8 +51,21 @@ gates:
     blocks: serverless_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatequeue001-fair-durable-admission"
     owner: V2-03
-    last_run: null
-    result: open_global_singleton_queue_still_active_in_code
+    last_run: evidence/acceptance/VF-10-03/2026-08-16-fair-admission/acceptance.json
+    last_run_at: "2026-08-16"
+    result: provider_free_implementation_green_awaiting_independent_audit
+    satisfied_locally:
+      - durable_tenant_owned_video_and_preset_preview_requests
+      - database_enforced_one_active_workload_per_account_and_two_distinct_account_slots
+      - deterministic_account_rotation_with_video_over_preview_priority
+      - owned_waiter_reorder_cancel_and_stale_version_fencing
+      - atomic_promotion_release_retry_expiry_reclamation_and_restart_reconstruction
+      - ten_account_contention_no_third_slot_and_bounded_video_starvation
+      - waiting_rows_create_zero_provider_or_preparation_work
+      - private_two_account_installed_chrome_without_compute_controls
+    still_open:
+      - independent_v2_03_audit
+      - full_application_runtime_cutover_waits_for_v2_05
 
   GATE_SERVERLESS_CONTRACT_001:
     status: open
@@ -115,8 +128,16 @@ gates:
     blocks: five_to_ten_user_readiness_claim
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateconcurrency001-5-10-user-behavior"
     owner: V2-11
-    last_run: null
-    result: open_no_live_two_user_or_five_to_ten_account_proof
+    last_run: evidence/acceptance/VF-10-03/2026-08-16-fair-admission/acceptance.json
+    last_run_at: "2026-08-16"
+    result: local_admission_contention_green_live_serverless_concurrency_unproven
+    satisfied_locally:
+      - ten_account_fair_rotation_with_two_distinct_winners_and_no_third_slot
+      - same_account_double_submit_and_preview_capacity_locking
+      - two_account_private_installed_chrome
+    still_open:
+      - live_endpoint_max_two_workers_failure_isolation_and_bounded_services
+      - zero_workers_after_live_drain
 
   GATE_ECONOMICS_001:
     status: open
