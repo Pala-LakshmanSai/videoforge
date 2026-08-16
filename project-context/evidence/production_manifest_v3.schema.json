@@ -1,0 +1,304 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/production-manifest-v3.json",
+  "title": "VideoForge Production Manifest v3",
+  "description": "Immutable provenance index for one rendered project revision, extended with the Serverless v3 endpoint deployment, attempt, assignment, provenance-receipt, output-receipt, and cost lineage. VideoForge accepts at most one canonical output per attempt and never claims provider exactly-once execution or billing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "project_id", "project_revision_id", "created_at", "revision_config_hash", "timeline_plan", "resolved_render_manifest", "prompt_manifest", "attempt_index", "qa_manifest", "cost_ledger_snapshot", "avatar_binding", "style_binding", "model_bindings", "cost_summary", "creative_approval", "final_output", "serverless_lineage"],
+  "properties": {
+    "schema_version": {"const": "production-manifest/v3"},
+    "project_id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "project_revision_id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "created_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"},
+    "revision_config_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "timeline_plan": {"$ref": "#/$defs/pointer"},
+    "resolved_render_manifest": {"$ref": "#/$defs/pointer"},
+    "prompt_manifest": {"$ref": "#/$defs/pointer"},
+    "attempt_index": {"$ref": "#/$defs/pointer"},
+    "qa_manifest": {"$ref": "#/$defs/pointer"},
+    "cost_ledger_snapshot": {"$ref": "#/$defs/pointer"},
+    "avatar_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["avatar_profile_id", "avatar_profile_version_id", "avatar_display_name_snapshot", "avatar_profile_hash", "runtime_source_asset_id", "runtime_source_sha256", "source_preparation_version", "source_validation_profile_version", "compatibility_state_at_preflight", "compatibility_evidence"],
+      "properties": {
+        "avatar_profile_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "avatar_profile_version_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "avatar_display_name_snapshot": {"type": "string", "minLength": 1, "maxLength": 120, "pattern": ".*\\S.*"},
+        "avatar_profile_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "runtime_source_asset_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "runtime_source_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "source_preparation_version": {"type": "string", "minLength": 1, "maxLength": 160},
+        "source_validation_profile_version": {"type": "string", "minLength": 1, "maxLength": 160},
+        "compatibility_state_at_preflight": {"type": "string", "enum": ["UNTESTED", "RUNNING", "PASSED", "FAILED", "STALE", "CANCELLED"]},
+        "compatibility_evidence": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["assessment_id", "assessment_hash", "status", "model_profile_id", "assessed_at"],
+              "properties": {
+                "assessment_id": {"type": "string", "minLength": 1, "maxLength": 160},
+                "assessment_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+                "status": {"type": "string", "enum": ["PASSED", "FAILED", "STALE", "CANCELLED"]},
+                "model_profile_id": {"type": "string", "minLength": 1, "maxLength": 160},
+                "assessed_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"}
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "compatibility_state_at_preflight": {"enum": ["UNTESTED", "RUNNING"]}
+            },
+            "required": ["compatibility_state_at_preflight"]
+          },
+          "then": {
+            "properties": {
+              "compatibility_evidence": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "compatibility_state_at_preflight": {"const": "PASSED"}
+            }
+          },
+          "then": {
+            "properties": {
+              "compatibility_evidence": {
+                "type": "object",
+                "properties": {
+                  "status": {"const": "PASSED"}
+                },
+                "required": ["status"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "compatibility_state_at_preflight": {"const": "FAILED"}
+            }
+          },
+          "then": {
+            "properties": {
+              "compatibility_evidence": {
+                "type": "object",
+                "properties": {
+                  "status": {"const": "FAILED"}
+                },
+                "required": ["status"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "compatibility_state_at_preflight": {"const": "STALE"}
+            }
+          },
+          "then": {
+            "properties": {
+              "compatibility_evidence": {
+                "type": "object",
+                "properties": {
+                  "status": {"const": "STALE"}
+                },
+                "required": ["status"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "compatibility_state_at_preflight": {"const": "CANCELLED"}
+            }
+          },
+          "then": {
+            "properties": {
+              "compatibility_evidence": {
+                "type": "object",
+                "properties": {
+                  "status": {"const": "CANCELLED"}
+                },
+                "required": ["status"]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "style_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image_style_version_id", "style_profile_hash"],
+      "properties": {
+        "image_style_version_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "style_profile_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "model_bindings": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "provider", "model_id", "revision_or_profile", "execution_profile_id", "artifact_digest"],
+        "properties": {
+          "role": {"type": "string", "enum": ["PROMPT_WRITER", "STYLE_ANALYZER", "IMAGE_GENERATOR", "AVATAR_PRIMARY", "AVATAR_REPAIR", "AVATAR_QUALITY", "ASR", "RENDERER"]},
+          "provider": {"type": "string", "minLength": 1, "maxLength": 120},
+          "model_id": {"type": "string", "minLength": 1, "maxLength": 240},
+          "revision_or_profile": {"type": "string", "minLength": 1, "maxLength": 240},
+          "execution_profile_id": {"type": ["string", "null"], "minLength": 1, "maxLength": 160},
+          "artifact_digest": {"type": ["string", "null"], "pattern": "^(?:sha256:)?[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "cost_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency", "reported_total_usd", "settled_total_usd"],
+      "properties": {
+        "currency": {"const": "USD"},
+        "reported_total_usd": {"type": "number", "minimum": 0},
+        "settled_total_usd": {"type": ["number", "null"], "minimum": 0}
+      }
+    },
+    "creative_approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "reviewer_user_id", "approved_at"],
+      "properties": {
+        "state": {"const": "APPROVED"},
+        "reviewer_user_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "approved_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"}
+      }
+    },
+    "final_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_id", "sha256", "bytes", "total_frames", "output_profile_version"],
+      "properties": {
+        "asset_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "bytes": {"type": "integer", "minimum": 1},
+        "total_frames": {"type": "integer", "minimum": 1},
+        "output_profile_version": {"enum": ["ffmpeg-render-v1", "ffmpeg-render-v2", "ffmpeg-render-v3"]}
+      }
+    },
+    "serverless_lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deployments", "attempts", "cost", "guarantees"],
+      "properties": {
+        "deployments": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["deployment_id", "lane", "endpoint_id_sha256", "endpoint_config_sha256", "container_digest", "volume_id_sha256", "model_manifest_sha256", "region"],
+            "properties": {
+              "deployment_id": {"$ref": "#/$defs/serverlessId"},
+              "lane": {"enum": ["mage_image", "soulx_avatar"]},
+              "endpoint_id_sha256": {"$ref": "#/$defs/serverlessSha256"},
+              "endpoint_config_sha256": {"$ref": "#/$defs/serverlessSha256"},
+              "container_digest": {"$ref": "#/$defs/serverlessSha256"},
+              "volume_id_sha256": {"$ref": "#/$defs/serverlessSha256"},
+              "model_manifest_sha256": {"$ref": "#/$defs/serverlessSha256"},
+              "region": {"const": "EU-RO-1"}
+            }
+          }
+        },
+        "attempts": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["attempt_id", "dispatch_token", "lane", "attempt_ordinal", "provider_job_id", "assignment_id", "provenance_receipt_sha256", "output_receipt_id", "accepted_item_count"],
+            "properties": {
+              "attempt_id": {"$ref": "#/$defs/serverlessId"},
+              "dispatch_token": {"type": "string", "minLength": 32, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$"},
+              "lane": {"enum": ["mage_image", "soulx_avatar"]},
+              "attempt_ordinal": {"type": "integer", "minimum": 1, "maximum": 3},
+              "provider_job_id": {
+                "oneOf": [
+                  {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$"},
+                  {"type": "null"}
+                ]
+              },
+              "assignment_id": {
+                "oneOf": [
+                  {"$ref": "#/$defs/serverlessId"},
+                  {"type": "null"}
+                ]
+              },
+              "provenance_receipt_sha256": {
+                "oneOf": [
+                  {"$ref": "#/$defs/serverlessSha256"},
+                  {"type": "null"}
+                ]
+              },
+              "output_receipt_id": {
+                "oneOf": [
+                  {"$ref": "#/$defs/serverlessId"},
+                  {"type": "null"}
+                ]
+              },
+              "accepted_item_count": {"type": "integer", "minimum": 0, "maximum": 4096}
+            }
+          }
+        },
+        "cost": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ledger_sha256", "settled_usd", "possible_duplicate_usd", "fixed_retained_volume_usd_excluded"],
+          "properties": {
+            "ledger_sha256": {"$ref": "#/$defs/serverlessSha256"},
+            "settled_usd": {"type": "number", "minimum": 0, "maximum": 1000},
+            "possible_duplicate_usd": {"type": "number", "minimum": 0, "maximum": 1000},
+            "fixed_retained_volume_usd_excluded": {"const": true}
+          }
+        },
+        "guarantees": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["at_most_one_accepted_output_per_attempt", "provider_exactly_once_execution_claimed", "provider_exactly_once_billing_claimed", "queue_purge_used"],
+          "properties": {
+            "at_most_one_accepted_output_per_attempt": {"const": true},
+            "provider_exactly_once_execution_claimed": {"const": false},
+            "provider_exactly_once_billing_claimed": {"const": false},
+            "queue_purge_used": {"const": false}
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_id", "sha256"],
+      "properties": {
+        "asset_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "serverlessId": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "serverlessSha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

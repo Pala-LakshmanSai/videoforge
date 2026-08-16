@@ -45,6 +45,226 @@ export const canonicalContractRegistry = {
       ]
     },
     {
+      "name": "serverlessEndpointDeploymentV3",
+      "schema": "serverless_endpoint_deployment_v3.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/serverless_endpoint_deployment_v3.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/serverless_endpoint_deployment_v3.invalid.unqualified_gpu.json",
+          "expected": false
+        },
+        {
+          "path": "fixtures/serverless_endpoint_deployment_v3.invalid.retained_worker.json",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "serverlessPredispatchAuthorityV3",
+      "schema": "serverless_predispatch_authority_v3.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/serverless_predispatch_authority_v3.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/serverless_predispatch_authority_v3.invalid.purge_operation.json",
+          "expected": false
+        },
+        {
+          "path": "fixtures/serverless_predispatch_authority_v3.invalid.uncapped_spend.json",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "serverlessDispatchOutboxV3",
+      "schema": "serverless_dispatch_outbox_v3.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/serverless_dispatch_outbox_v3.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/serverless_dispatch_outbox_v3.invalid.blind_resubmit.json",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "serverlessRequestAttemptV3",
+      "schema": "serverless_request_attempt_v3.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/serverless_request_attempt_v3.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/serverless_request_attempt_v3.invalid.exactly_once_claim.json",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "serverlessProviderAssignmentV3",
+      "schema": "serverless_provider_assignment_v3.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/serverless_provider_assignment_v3.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/serverless_provider_assignment_v3.invalid.webhook_self_assignment.json",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "serverlessWorkerJobEnvelopeV3",
+      "schema": "serverless_worker_job_envelope_v3.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/serverless_worker_job_envelope_v3.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/serverless_worker_job_envelope_v3.invalid.volume_write.json",
+          "expected": false
+        },
+        {
+          "path": "fixtures/serverless_worker_job_envelope_v3.invalid.pod_lifecycle.json",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "serverlessProvenanceReceiptV1",
+      "schema": "serverless_provenance_receipt_v1.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/serverless_provenance_receipt_v1.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/serverless_provenance_receipt_v1.invalid.hardware_attestation_claim.json",
+          "expected": false
+        },
+        {
+          "path": "fixtures/serverless_provenance_receipt_v1.invalid.volume_mutation.json",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "serverlessProgressEventV3",
+      "schema": "serverless_progress_event_v3.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/serverless_progress_event_v3.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/serverless_progress_event_v3.invalid.authoritative_webhook.json",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "serverlessOutputReceiptV3",
+      "schema": "serverless_output_receipt_v3.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/serverless_output_receipt_v3.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/serverless_output_receipt_v3.invalid.webhook_truth.json",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "serverlessCancellationV3",
+      "schema": "serverless_cancellation_v3.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/serverless_cancellation_v3.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/serverless_cancellation_v3.invalid.endpoint_purge.json",
+          "expected": false
+        },
+        {
+          "path": "fixtures/serverless_cancellation_v3.invalid.refund_promise.json",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "serverlessReconciliationV3",
+      "schema": "serverless_reconciliation_v3.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/serverless_reconciliation_v3.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/serverless_reconciliation_v3.invalid.ambiguous_redispatch.json",
+          "expected": false
+        },
+        {
+          "path": "fixtures/serverless_reconciliation_v3.invalid.queue_purge.json",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "serverlessCostLedgerV3",
+      "schema": "serverless_cost_ledger_v3.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/serverless_cost_ledger_v3.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/serverless_cost_ledger_v3.invalid.retained_volume_included.json",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "generationAdmissionV3",
+      "schema": "generation_admission_v3.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/generation_admission_v3.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/generation_admission_v3.invalid.over_admitted.json",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "productionManifestV3",
+      "schema": "production_manifest_v3.schema.json",
+      "fixtures": [
+        {
+          "path": "fixtures/production_manifest_v3.valid.json",
+          "expected": true
+        },
+        {
+          "path": "fixtures/production_manifest_v3.invalid.exactly_once_billing_claim.json",
+          "expected": false
+        }
+      ]
+    },
+    {
       "name": "admittedIdentity",
       "schema": "admitted_identity.schema.json",
       "fixtures": [

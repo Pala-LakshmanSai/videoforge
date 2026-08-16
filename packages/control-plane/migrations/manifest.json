@@ -132,6 +132,18 @@
       "name": "v2_03_admission_audit_repairs",
       "filename": "0022_v2_03_admission_audit_repairs.sql",
       "sha256": "sha256:77176c28695e2e4372ed05e3b179b989de7476dee37859cfaa6d0c782d00bbf0"
+    },
+    {
+      "version": 23,
+      "name": "serverless_attempts_and_outbox",
+      "filename": "0023_serverless_attempts_and_outbox.sql",
+      "sha256": "sha256:e447dc061bb8fc447f6f2e8ba4ec9ba37ac1f1e47b0fbb461e5c55230b04d29e"
+    },
+    {
+      "version": 24,
+      "name": "serverless_cost_and_reconciliation",
+      "filename": "0024_serverless_cost_and_reconciliation.sql",
+      "sha256": "sha256:2b7dc30dca4cfcf02098091169568295bfbf28ee8c36877a191a8f9155eb3231"
     }
   ]
 }

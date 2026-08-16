@@ -116,8 +116,14 @@ export class NodeFairAdmission implements ApplicationFairAdmission {
     const { executor } = await this.#ready;
     await executor.transaction(async (transaction) => {
       await transaction.execute(
-        `TRUNCATE generation_queue_audits, provider_workload_leases,
-                  preset_preview_requests, generation_requests, account_queue_heads;
+        `TRUNCATE serverless_cost_events, serverless_cost_ledgers, serverless_reconciliations,
+                  serverless_cancellations, serverless_output_receipts,
+                  serverless_provenance_receipts, serverless_progress_events,
+                  serverless_provider_assignments, serverless_dispatch_outbox,
+                  serverless_predispatch_authorities, serverless_attempts,
+                  serverless_endpoint_deployments, generation_queue_audits,
+                  provider_workload_leases, preset_preview_requests, generation_requests,
+                  account_queue_heads;
          UPDATE global_generation_capacity
             SET active_lease_count = 0, schedule_sequence = 0, video_fair_cursor = 0,
                 preview_fair_cursor = 0, version = version + 1, updated_at = now()

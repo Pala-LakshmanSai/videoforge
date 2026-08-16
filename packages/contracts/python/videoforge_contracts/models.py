@@ -64,6 +64,62 @@ class ArtifactCommitReceiptV3Document(CanonicalContractDocument):
     contract_name = "artifactCommitReceiptV3"
 
 
+class ServerlessEndpointDeploymentV3Document(CanonicalContractDocument):
+    contract_name = "serverlessEndpointDeploymentV3"
+
+
+class ServerlessPredispatchAuthorityV3Document(CanonicalContractDocument):
+    contract_name = "serverlessPredispatchAuthorityV3"
+
+
+class ServerlessDispatchOutboxV3Document(CanonicalContractDocument):
+    contract_name = "serverlessDispatchOutboxV3"
+
+
+class ServerlessRequestAttemptV3Document(CanonicalContractDocument):
+    contract_name = "serverlessRequestAttemptV3"
+
+
+class ServerlessProviderAssignmentV3Document(CanonicalContractDocument):
+    contract_name = "serverlessProviderAssignmentV3"
+
+
+class ServerlessWorkerJobEnvelopeV3Document(CanonicalContractDocument):
+    contract_name = "serverlessWorkerJobEnvelopeV3"
+
+
+class ServerlessProvenanceReceiptV1Document(CanonicalContractDocument):
+    contract_name = "serverlessProvenanceReceiptV1"
+
+
+class ServerlessProgressEventV3Document(CanonicalContractDocument):
+    contract_name = "serverlessProgressEventV3"
+
+
+class ServerlessOutputReceiptV3Document(CanonicalContractDocument):
+    contract_name = "serverlessOutputReceiptV3"
+
+
+class ServerlessCancellationV3Document(CanonicalContractDocument):
+    contract_name = "serverlessCancellationV3"
+
+
+class ServerlessReconciliationV3Document(CanonicalContractDocument):
+    contract_name = "serverlessReconciliationV3"
+
+
+class ServerlessCostLedgerV3Document(CanonicalContractDocument):
+    contract_name = "serverlessCostLedgerV3"
+
+
+class GenerationAdmissionV3Document(CanonicalContractDocument):
+    contract_name = "generationAdmissionV3"
+
+
+class ProductionManifestV3Document(CanonicalContractDocument):
+    contract_name = "productionManifestV3"
+
+
 class AvatarProfileVersionDocument(CanonicalContractDocument):
     contract_name = "avatarProfileVersion"
 
@@ -152,6 +208,20 @@ CONTRACT_MODELS: dict[ContractName, type[BaseModel]] = {
     "artifactObjectIdentityV3": ArtifactObjectIdentityV3Document,
     "artifactTransferPortV3": ArtifactTransferPortV3Document,
     "artifactCommitReceiptV3": ArtifactCommitReceiptV3Document,
+    "serverlessEndpointDeploymentV3": ServerlessEndpointDeploymentV3Document,
+    "serverlessPredispatchAuthorityV3": ServerlessPredispatchAuthorityV3Document,
+    "serverlessDispatchOutboxV3": ServerlessDispatchOutboxV3Document,
+    "serverlessRequestAttemptV3": ServerlessRequestAttemptV3Document,
+    "serverlessProviderAssignmentV3": ServerlessProviderAssignmentV3Document,
+    "serverlessWorkerJobEnvelopeV3": ServerlessWorkerJobEnvelopeV3Document,
+    "serverlessProvenanceReceiptV1": ServerlessProvenanceReceiptV1Document,
+    "serverlessProgressEventV3": ServerlessProgressEventV3Document,
+    "serverlessOutputReceiptV3": ServerlessOutputReceiptV3Document,
+    "serverlessCancellationV3": ServerlessCancellationV3Document,
+    "serverlessReconciliationV3": ServerlessReconciliationV3Document,
+    "serverlessCostLedgerV3": ServerlessCostLedgerV3Document,
+    "generationAdmissionV3": GenerationAdmissionV3Document,
+    "productionManifestV3": ProductionManifestV3Document,
     "admittedIdentity": AdmittedIdentityDocument,
     "avatarProfileVersion": AvatarProfileVersionDocument,
     "createProjectRequest": CreateProjectRequest,

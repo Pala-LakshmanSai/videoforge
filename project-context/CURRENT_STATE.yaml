@@ -1,14 +1,14 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-16T06:07:58Z"
+updated_at: "2026-08-16T07:43:48Z"
 
-phase: serverless_v2_v2_04_ready
+phase: serverless_v2_v2_04_complete
 implementation_authorized_in_current_task: false
-current_milestone: serverless_v3_authority_transport_outbox_and_recovery_contracts
+current_milestone: provider_free_runtime_cutover
 current_task: null
-current_wave: v2_04_ready_not_started
+current_wave: v2_05_ready_not_started
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: not_started
+task_stage: complete
 application_code_changes_authorized: false
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -111,8 +111,8 @@ roadmap_state:
   V2-01: complete_green_independently_reaudited
   V2-02: complete_green_independently_reaudited
   V2-03: complete_green_independently_reaudited
-  V2-04: ready_not_started
-  V2-05: blocked_on_V2-04
+  V2-04: complete_green_provider_free
+  V2-05: ready_not_started
   V2-06: blocked_on_V2-05
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
@@ -224,12 +224,12 @@ active_ownership: []
 in_progress_checkpoint: null
 
 recommended_next_task:
-  task_id: VF-10-04
-  checkpoint: V2-04
-  milestone: serverless_v3_authority_transport_outbox_and_recovery_contracts
+  task_id: VF-10-05
+  checkpoint: V2-05
+  milestone: provider_free_runtime_cutover
   status: ready_not_started
-  dependency_status: v2_03_complete_green_independently_reaudited_at_268e26cb6cc28880854d6ca5d4290da05ee502e8
-  authorization_status: awaiting_separate_implementation_request
+  dependency_status: v2_04_complete_green_provider_free
+  authorization_status: awaiting_separate_v2_05_implementation_request
   task_stage: not_started
   provider_authority:
     mode: none
@@ -241,9 +241,9 @@ recommended_next_task:
     resources: []
     authorized_operations: []
     allowed_operations: []
-  read_profile: v2_04_serverless_v3_contracts
-  task_brief: tasks/VF-10-04.md
-  goal: "Await a separate V2-04 implementation request; then implement only provider-free Serverless v3 authority, transport, outbox, receipts, and recovery contracts."
+  read_profile: v2_05_provider_free_cutover
+  task_brief: tasks/VF-10-05.md
+  goal: "Compose the complete application through tenant-private, fair-admission, and fake Serverless v3 runtime contracts while quarantining manual-Pod/global-session production paths; provider-free only."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -258,14 +258,14 @@ recommended_next_task:
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: false
-  prerequisite_evidence: evidence/acceptance/VF-10-03/2026-08-16-independent-reaudit/acceptance.json
+  prerequisite_evidence: evidence/acceptance/VF-10-04/2026-08-16-serverless-v3-contracts/acceptance.json
 
 verification:
-  state: v2_03_complete_green_independently_reaudited
-  verified_commit: "268e26cb6cc28880854d6ca5d4290da05ee502e8"
-  verified_commit_note: "V2-03 passes native PostgreSQL 16 multi-connection admission proof, canonical provider-free verification, and real installed-Chrome acceptance."
-  predecessor_verified_commit: "69d9e7037b40c1b295a2ccc686d122ab3530a9f0"
-  independent_audit_evidence: evidence/acceptance/VF-10-03/2026-08-16-independent-reaudit/acceptance.json
+  state: v2_04_complete_green_provider_free
+  verified_commit: pending_v2_04_implementation_commit
+  verified_commit_note: "V2-04 passes canonical schemas/migrations, TypeScript/Python parity, adversarial fake transport/recovery/cost proof, and installed-Chrome regression acceptance."
+  predecessor_verified_commit: "268e26cb6cc28880854d6ca5d4290da05ee502e8"
+  acceptance_evidence: evidence/acceptance/VF-10-04/2026-08-16-serverless-v3-contracts/acceptance.json
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
@@ -410,3 +410,32 @@ verification:
   provider_or_spend_used_for_v2_03: false
   remote_mutation_used_for_v2_03: false
   paid_compute_started_for_v2_03: false
+  completed_for_v2_04:
+    evidence: evidence/acceptance/VF-10-04/2026-08-16-serverless-v3-contracts/acceptance.json
+    implementation_commit: pending_v2_04_implementation_commit
+    commands:
+      - "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/serverless-v3-transport.test.mjs packages/control-plane/tests/serverless-v3-legacy-quarantine.test.mjs: PASS (28/28)"
+      - "pnpm --filter @videoforge/contracts test: PASS (TypeScript 111/111; Python 95/95)"
+      - "pnpm test:workers: PASS (6 explicit Python 3.12 suites)"
+      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 284/284; pipeline 120/120; web 317/317; contracts 111/111 TypeScript and 95/95 Python; provider-sandbox 43/43; Cloudflare 1/1; installed Chrome 44/44)"
+      - "pnpm context:validate and project-context/scripts/validate-context.sh: PASS (168 JSON files; 54 structured evidence references; 31 profiles; 41 decisions; 19 gates)"
+      - "project-context/scripts/validate-schemas.sh: PASS"
+      - "pnpm contracts:check: PASS (123 canonical files synchronized)"
+      - "pnpm verify:active-runtime: PASS (62 active files; Serverless remains outside active runtime until V2-05)"
+      - "pnpm format:check, pnpm secret:scan, and git diff --check: PASS"
+    delivered:
+      - "Additive migrations 0023 and 0024 persist endpoint deployments, predispatch authorities, stable dispatch tokens, outbox rows, attempts, provider assignments, signed provenance and output receipts, progress, cancellation, reconciliation, and cost ledgers/events."
+      - "Fourteen canonical v3/v1 schemas and positive/negative fixtures synchronize to strict TypeScript and Python validators."
+      - "Predispatch authority binds exact tenant, revision, lane batch, endpoint/config, image/model/volume, input/request hashes, deadline, and spend ceiling before transport."
+      - "The fake transport persists a unique RunPod job assignment before accepting status or output and treats signed private output receipts as durable truth while webhooks remain advisory."
+      - "Unknown acknowledgement, response loss, duplicate delivery/execution/output, callback replay/forgery, worker death, timeout, TTL, cancellation races, restart, replacement, accepted-unit resume, and cost conservation pass adversarial tests."
+      - "At most one canonical durable output is accepted; duplicate compute and cost remain explicit, and no exactly-once execution or billing promise exists."
+      - "workersMin=0 means zero retained Active workers, autoscaling uses Flex, workersMax counts Active plus Flex, TTL covers queue and running life, and ordinary queue purge is absent."
+      - "Superseded Pod schemas remain readable only in compatibility tests and fail the v3 dispatch firewall."
+    not_delivered_by_design:
+      - "V2-05 still must compose these contracts into the active application/runtime path and quarantine active global-session/manual-Pod compatibility paths."
+      - "Hosted R2 and non-superuser Neon RLS, published images/endpoints, live Serverless delivery, lane timing, billing, concurrency, and zero-worker drain remain later gates."
+      - "No credentials, provider calls, cloud mutation, endpoint or image publication, volume mutation, worker/GPU allocation, model download, or spend occurred."
+  provider_or_spend_used_for_v2_04: false
+  remote_mutation_used_for_v2_04: false
+  paid_compute_started_for_v2_04: false

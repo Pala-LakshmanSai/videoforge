@@ -1,0 +1,118 @@
+{
+  "schema_version": "videoforge.v2-04-serverless-v3-contracts/v1",
+  "task_id": "VF-10-04",
+  "checkpoint": "V2-04",
+  "result": "PASS",
+  "base_commit": "3b0ea326f5d20472c4b962b15a718b22e5d61bfe",
+  "recorded_at_utc": "2026-08-16T07:43:48Z",
+  "contract_truth": {
+    "predispatch_authority_and_outbox_before_run": "PASS",
+    "exact_endpoint_and_request_hash_checked_before_transport": "PASS",
+    "unique_provider_assignment_before_status_or_output": "PASS",
+    "signed_private_r2_receipt_is_durable_truth": "PASS",
+    "webhooks_are_advisory": "PASS",
+    "at_most_one_canonical_output": "PASS",
+    "duplicate_compute_and_cost_remain_visible": "PASS",
+    "provider_exactly_once_execution_claimed": false,
+    "provider_exactly_once_billing_claimed": false,
+    "accepted_unit_resume_excludes_accepted_items": "PASS",
+    "queue_purge_available_to_ordinary_transport": false,
+    "superseded_pod_schemas_dispatchable": false,
+    "provenance_is_provider_hardware_attestation": false
+  },
+  "fault_matrix": {
+    "fake_run_status_cancel": "PASS",
+    "response_loss_before_acceptance": "PASS",
+    "response_loss_after_acceptance": "PASS",
+    "duplicate_delivery_execution_and_output": "PASS",
+    "webhook_loss_replay_forgery_and_staleness": "PASS",
+    "worker_death": "PASS",
+    "execution_timeout": "PASS",
+    "ttl_expiry_including_running_life": "PASS",
+    "cancellation_races": "PASS",
+    "restart_reconstruction": "PASS",
+    "cost_conservation": "PASS",
+    "tenant_endpoint_volume_and_gpu_mismatch": "PASS"
+  },
+  "timeout_and_scaler_contract": {
+    "workers_min": 0,
+    "workers_min_semantics": "ZERO_RETAINED_ACTIVE_WORKERS",
+    "autoscaled_worker_type": "FLEX",
+    "workers_max": 2,
+    "workers_max_scope": "ACTIVE_PLUS_FLEX",
+    "scaler": "REQUEST_COUNT_1",
+    "handler_concurrency": 1,
+    "idle_timeout_seconds": 5,
+    "init_timeout_seconds": 900,
+    "execution_timeout_seconds": 2400,
+    "request_ttl_seconds": 3600,
+    "request_ttl_scope": "PROVIDER_QUEUE_PLUS_EXECUTION_PLUS_OUTPUT_UPLOAD",
+    "reconciliation_deadline_seconds": 1500,
+    "provider_result_window_seconds": 1800,
+    "polling_interval_seconds": 5,
+    "evidence_class": "PROVISIONAL_PROVIDER_FREE_BOUND_REQUIRES_LANE_MEASUREMENT"
+  },
+  "validation": {
+    "focused_control_plane": {
+      "command": "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/serverless-v3-transport.test.mjs packages/control-plane/tests/serverless-v3-legacy-quarantine.test.mjs",
+      "exit_code": 0,
+      "tests": "28/28"
+    },
+    "worker_python": {
+      "command": "pnpm test:workers",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "result": "PASS",
+      "package_tasks": "28/28",
+      "control_plane_tests": "284/284",
+      "web_tests": "317/317",
+      "installed_chrome_tests": "44/44",
+      "cloudflare_tests": "1/1"
+    },
+    "context_and_static": {
+      "commands": [
+        "pnpm context:validate",
+        "project-context/scripts/validate-context.sh",
+        "project-context/scripts/validate-schemas.sh",
+        "pnpm contracts:check",
+        "pnpm verify:active-runtime",
+        "pnpm format:check",
+        "pnpm secret:scan",
+        "git diff --check"
+      ],
+      "exit_codes": [0, 0, 0, 0, 0, 0, 0, 0]
+    }
+  },
+  "external_truth": {
+    "provider_mode": "fixture",
+    "provider_calls_made": false,
+    "credentials_accessed": false,
+    "cloud_mutation_performed": false,
+    "external_spend_usd": 0,
+    "paid_compute_started": false,
+    "workers_allocated": 0,
+    "endpoint_or_image_published": false,
+    "model_or_volume_mutation": false,
+    "live_provider_inventory_refreshed": false,
+    "last_known_provider_snapshot_at": "2026-08-15T09:56:02.932Z",
+    "last_known_pods": 0,
+    "last_known_endpoints": 0,
+    "last_known_serverless_workers_active_plus_flex": 0,
+    "retained_volumes": 2,
+    "ongoing_retained_volume_usd_per_month": 7.0
+  },
+  "remaining_gates": [
+    "V2-05 must compose these contracts into the active provider-free application/runtime path.",
+    "Hosted R2, Neon non-superuser RLS, published endpoint/image behavior, live Serverless delivery, lane timeout measurement, billing, and worker drain remain later gates."
+  ],
+  "next_checkpoint": {
+    "checkpoint": "V2-05",
+    "started": false,
+    "provider_free": true,
+    "authorization": "No V2-05 implementation was performed in this checkpoint."
+  }
+}

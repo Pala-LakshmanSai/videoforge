@@ -266,6 +266,3373 @@ export const canonicalSchemaDocuments = {
       }
     }
   },
+  "serverlessEndpointDeploymentV3": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/serverless-endpoint-deployment-v3.json",
+    "title": "VideoForge immutable Serverless endpoint deployment record v3",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "deployment_id",
+      "lane",
+      "endpoint_profile_id",
+      "endpoint_id_sha256",
+      "endpoint_config_sha256",
+      "worker_image_digest",
+      "model_manifest_sha256",
+      "region",
+      "volume_id_sha256",
+      "volume_manifest_sha256",
+      "volume_mount",
+      "volume_size_gb",
+      "gpu_allowlist",
+      "gpu_count_per_worker",
+      "worker_count_min",
+      "worker_count_max",
+      "worker_ceiling_scope",
+      "retained_active_workers",
+      "scaler_type",
+      "scaler_value",
+      "handler_concurrency",
+      "idle_timeout_seconds",
+      "init_timeout_seconds",
+      "execution_timeout_seconds",
+      "request_ttl_seconds",
+      "request_ttl_scope",
+      "reconciliation_deadline_seconds",
+      "provider_result_window_seconds",
+      "polling_interval_seconds",
+      "retry_policy",
+      "timeout_evidence",
+      "deployment_version",
+      "created_at",
+      "record_sha256"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "serverless-endpoint-deployment/v3"
+      },
+      "deployment_id": {
+        "$ref": "#/$defs/id"
+      },
+      "lane": {
+        "enum": [
+          "mage_image",
+          "soulx_avatar"
+        ]
+      },
+      "endpoint_profile_id": {
+        "$ref": "#/$defs/id"
+      },
+      "endpoint_id_sha256": {
+        "$ref": "#/$defs/sha256"
+      },
+      "endpoint_config_sha256": {
+        "$ref": "#/$defs/sha256"
+      },
+      "worker_image_digest": {
+        "$ref": "#/$defs/sha256"
+      },
+      "model_manifest_sha256": {
+        "$ref": "#/$defs/sha256"
+      },
+      "region": {
+        "const": "EU-RO-1"
+      },
+      "volume_id_sha256": {
+        "$ref": "#/$defs/sha256"
+      },
+      "volume_manifest_sha256": {
+        "$ref": "#/$defs/sha256"
+      },
+      "volume_mount": {
+        "const": "/runpod-volume"
+      },
+      "volume_size_gb": {
+        "const": 50
+      },
+      "gpu_allowlist": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 1,
+        "uniqueItems": true,
+        "items": {
+          "enum": [
+            "NVIDIA GeForce RTX 4090"
+          ]
+        }
+      },
+      "gpu_count_per_worker": {
+        "const": 1
+      },
+      "worker_count_min": {
+        "const": 0
+      },
+      "worker_count_max": {
+        "const": 2
+      },
+      "worker_ceiling_scope": {
+        "const": "ACTIVE_PLUS_FLEX"
+      },
+      "retained_active_workers": {
+        "const": 0
+      },
+      "scaler_type": {
+        "const": "REQUEST_COUNT"
+      },
+      "scaler_value": {
+        "const": 1
+      },
+      "handler_concurrency": {
+        "const": 1
+      },
+      "idle_timeout_seconds": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 3600
+      },
+      "init_timeout_seconds": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 3600
+      },
+      "execution_timeout_seconds": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 7200
+      },
+      "request_ttl_seconds": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10800
+      },
+      "request_ttl_scope": {
+        "const": "PROVIDER_QUEUE_PLUS_EXECUTION_PLUS_OUTPUT_UPLOAD"
+      },
+      "reconciliation_deadline_seconds": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1500
+      },
+      "provider_result_window_seconds": {
+        "const": 1800
+      },
+      "polling_interval_seconds": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 60
+      },
+      "retry_policy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "max_replacement_attempts",
+          "requires_prior_attempt_terminal_or_reconciled",
+          "blind_resubmit_permitted"
+        ],
+        "properties": {
+          "max_replacement_attempts": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2
+          },
+          "requires_prior_attempt_terminal_or_reconciled": {
+            "const": true
+          },
+          "blind_resubmit_permitted": {
+            "const": false
+          }
+        }
+      },
+      "timeout_evidence": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source",
+          "measured_at",
+          "evidence_path",
+          "provider_defaults_accepted"
+        ],
+        "properties": {
+          "source": {
+            "enum": [
+              "MEASURED_LANE_EVIDENCE",
+              "PROVISIONAL_PROVIDER_FREE_BOUND"
+            ]
+          },
+          "measured_at": {
+            "$ref": "#/$defs/utc"
+          },
+          "evidence_path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 400
+          },
+          "provider_defaults_accepted": {
+            "const": false
+          }
+        }
+      },
+      "deployment_version": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "created_at": {
+        "$ref": "#/$defs/utc"
+      },
+      "record_sha256": {
+        "$ref": "#/$defs/sha256"
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "utc": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      }
+    }
+  },
+  "serverlessPredispatchAuthorityV3": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/serverless-predispatch-authority-v3.json",
+    "title": "VideoForge Serverless predispatch authority v3",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "authority_id",
+      "dispatch_token",
+      "checkpoint_id",
+      "authority_mode",
+      "non_transferable",
+      "allowed_operations",
+      "authorized_operations",
+      "tenant",
+      "work",
+      "deployment",
+      "inputs",
+      "limits",
+      "spend",
+      "committed_at",
+      "authority_sha256"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "serverless-predispatch-authority/v3"
+      },
+      "authority_id": {
+        "$ref": "#/$defs/id"
+      },
+      "dispatch_token": {
+        "type": "string",
+        "minLength": 32,
+        "maxLength": 200,
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      },
+      "checkpoint_id": {
+        "type": "string",
+        "pattern": "^V2-(?:0[0-9]|1[0-3])$"
+      },
+      "authority_mode": {
+        "enum": [
+          "provider_free_fixture",
+          "read_only",
+          "paid"
+        ]
+      },
+      "non_transferable": {
+        "const": true
+      },
+      "allowed_operations": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 3,
+        "uniqueItems": true,
+        "items": {
+          "enum": [
+            "serverless_run",
+            "serverless_status",
+            "serverless_cancel"
+          ]
+        }
+      },
+      "authorized_operations": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 3,
+        "uniqueItems": true,
+        "items": {
+          "enum": [
+            "serverless_run",
+            "serverless_status",
+            "serverless_cancel"
+          ]
+        }
+      },
+      "tenant": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "account_id",
+          "workspace_id"
+        ],
+        "properties": {
+          "account_id": {
+            "$ref": "#/$defs/id"
+          },
+          "workspace_id": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      },
+      "work": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "project_id",
+          "project_revision_id",
+          "generation_request_id",
+          "task_id",
+          "attempt_id",
+          "lane",
+          "lane_batch_ordinal",
+          "items_manifest_sha256",
+          "item_count"
+        ],
+        "properties": {
+          "project_id": {
+            "$ref": "#/$defs/id"
+          },
+          "project_revision_id": {
+            "$ref": "#/$defs/id"
+          },
+          "generation_request_id": {
+            "$ref": "#/$defs/id"
+          },
+          "task_id": {
+            "$ref": "#/$defs/id"
+          },
+          "attempt_id": {
+            "$ref": "#/$defs/id"
+          },
+          "lane": {
+            "enum": [
+              "mage_image",
+              "soulx_avatar"
+            ]
+          },
+          "lane_batch_ordinal": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "items_manifest_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "item_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          }
+        }
+      },
+      "deployment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "deployment_id",
+          "endpoint_id_sha256",
+          "endpoint_config_sha256",
+          "worker_image_digest",
+          "model_manifest_sha256",
+          "volume_id_sha256",
+          "volume_manifest_sha256",
+          "region",
+          "volume_mount",
+          "gpu_allowlist"
+        ],
+        "properties": {
+          "deployment_id": {
+            "$ref": "#/$defs/id"
+          },
+          "endpoint_id_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "endpoint_config_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "worker_image_digest": {
+            "$ref": "#/$defs/sha256"
+          },
+          "model_manifest_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "volume_id_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "volume_manifest_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "region": {
+            "const": "EU-RO-1"
+          },
+          "volume_mount": {
+            "const": "/runpod-volume"
+          },
+          "gpu_allowlist": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "NVIDIA GeForce RTX 4090"
+              ]
+            }
+          }
+        }
+      },
+      "inputs": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "input_manifest_sha256",
+          "request_body_sha256",
+          "output_prefix",
+          "max_input_bytes",
+          "max_output_bytes"
+        ],
+        "properties": {
+          "input_manifest_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "request_body_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "output_prefix": {
+            "$ref": "#/$defs/objectKey"
+          },
+          "max_input_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10737418240
+          },
+          "max_output_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10737418240
+          }
+        }
+      },
+      "limits": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "deadline_at",
+          "request_ttl_seconds",
+          "execution_timeout_seconds",
+          "init_timeout_seconds",
+          "reconciliation_deadline_at",
+          "provider_result_window_seconds"
+        ],
+        "properties": {
+          "deadline_at": {
+            "$ref": "#/$defs/utc"
+          },
+          "request_ttl_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10800
+          },
+          "execution_timeout_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7200
+          },
+          "init_timeout_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3600
+          },
+          "reconciliation_deadline_at": {
+            "$ref": "#/$defs/utc"
+          },
+          "provider_result_window_seconds": {
+            "const": 1800
+          }
+        }
+      },
+      "spend": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ceiling_usd",
+          "reservation_usd",
+          "rate_source",
+          "rate_checked_at",
+          "fixed_retained_volume_usd_excluded"
+        ],
+        "properties": {
+          "ceiling_usd": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 2
+          },
+          "reservation_usd": {
+            "$ref": "#/$defs/usd"
+          },
+          "rate_source": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 400
+          },
+          "rate_checked_at": {
+            "$ref": "#/$defs/utc"
+          },
+          "fixed_retained_volume_usd_excluded": {
+            "const": true
+          }
+        }
+      },
+      "committed_at": {
+        "$ref": "#/$defs/utc"
+      },
+      "authority_sha256": {
+        "$ref": "#/$defs/sha256"
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "utc": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      },
+      "usd": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000
+      },
+      "objectKey": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1400,
+        "pattern": "^tenant/[A-Za-z0-9._:/-]+$"
+      }
+    }
+  },
+  "serverlessDispatchOutboxV3": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/serverless-dispatch-outbox-v3.json",
+    "title": "VideoForge transactional Serverless dispatch outbox row v3",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "outbox_id",
+      "dispatch_token",
+      "authority_sha256",
+      "request_body_sha256",
+      "state",
+      "send_attempt_count",
+      "max_send_attempts",
+      "lease",
+      "created_at",
+      "updated_at",
+      "version"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "serverless-dispatch-outbox/v3"
+      },
+      "outbox_id": {
+        "$ref": "#/$defs/id"
+      },
+      "dispatch_token": {
+        "type": "string",
+        "minLength": 32,
+        "maxLength": 200,
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      },
+      "authority_sha256": {
+        "$ref": "#/$defs/sha256"
+      },
+      "request_body_sha256": {
+        "$ref": "#/$defs/sha256"
+      },
+      "state": {
+        "enum": [
+          "READY_TO_DISPATCH",
+          "LEASED",
+          "SENT",
+          "DISPATCH_ACK_UNKNOWN",
+          "ASSIGNED",
+          "TERMINAL",
+          "DEAD_LETTER"
+        ]
+      },
+      "send_attempt_count": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "max_send_attempts": {
+        "const": 1
+      },
+      "lease": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "lease_id",
+              "holder_sha256",
+              "leased_at",
+              "lease_expires_at"
+            ],
+            "properties": {
+              "lease_id": {
+                "$ref": "#/$defs/id"
+              },
+              "holder_sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "leased_at": {
+                "$ref": "#/$defs/utc"
+              },
+              "lease_expires_at": {
+                "$ref": "#/$defs/utc"
+              }
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "created_at": {
+        "$ref": "#/$defs/utc"
+      },
+      "updated_at": {
+        "$ref": "#/$defs/utc"
+      },
+      "version": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "utc": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      }
+    }
+  },
+  "serverlessRequestAttemptV3": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/serverless-request-attempt-v3.json",
+    "title": "VideoForge Serverless request attempt v3",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "attempt_id",
+      "dispatch_token",
+      "tenant",
+      "lane",
+      "attempt_ordinal",
+      "state",
+      "items",
+      "timings",
+      "duplicate_exposure",
+      "exactly_once_execution_claimed",
+      "exactly_once_billing_claimed",
+      "version"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "serverless-request-attempt/v3"
+      },
+      "attempt_id": {
+        "$ref": "#/$defs/id"
+      },
+      "dispatch_token": {
+        "type": "string",
+        "minLength": 32,
+        "maxLength": 200,
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      },
+      "tenant": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "account_id",
+          "workspace_id"
+        ],
+        "properties": {
+          "account_id": {
+            "$ref": "#/$defs/id"
+          },
+          "workspace_id": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      },
+      "lane": {
+        "enum": [
+          "mage_image",
+          "soulx_avatar"
+        ]
+      },
+      "attempt_ordinal": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 3
+      },
+      "state": {
+        "enum": [
+          "PLANNED",
+          "OUTBOXED",
+          "DISPATCHING",
+          "ASSIGNED",
+          "IN_QUEUE",
+          "IN_PROGRESS",
+          "UPLOADING",
+          "RECONCILING",
+          "SUCCEEDED",
+          "RETRYABLE_FAILED",
+          "PERMANENT_FAILED",
+          "CANCELLING",
+          "CANCELLED"
+        ]
+      },
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 4096,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "item_id",
+            "kind",
+            "input_sha256",
+            "output_object_key",
+            "state"
+          ],
+          "properties": {
+            "item_id": {
+              "$ref": "#/$defs/id"
+            },
+            "kind": {
+              "enum": [
+                "IMAGE_SCENE",
+                "AVATAR_SPAN"
+              ]
+            },
+            "input_sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "output_object_key": {
+              "$ref": "#/$defs/objectKey"
+            },
+            "state": {
+              "enum": [
+                "PENDING",
+                "ACCEPTED",
+                "FAILED",
+                "CARRIED_FORWARD"
+              ]
+            }
+          }
+        }
+      },
+      "timings": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "submitted_at",
+          "ttl_expires_at",
+          "deadline_at",
+          "reconciliation_deadline_at",
+          "terminal_at"
+        ],
+        "properties": {
+          "submitted_at": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/utc"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ttl_expires_at": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/utc"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "deadline_at": {
+            "$ref": "#/$defs/utc"
+          },
+          "reconciliation_deadline_at": {
+            "$ref": "#/$defs/utc"
+          },
+          "terminal_at": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/utc"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "duplicate_exposure": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "possible_duplicate_executions",
+          "possible_duplicate_cost_usd",
+          "bounded",
+          "operator_visible"
+        ],
+        "properties": {
+          "possible_duplicate_executions": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8
+          },
+          "possible_duplicate_cost_usd": {
+            "$ref": "#/$defs/usd"
+          },
+          "bounded": {
+            "const": true
+          },
+          "operator_visible": {
+            "const": true
+          }
+        }
+      },
+      "exactly_once_execution_claimed": {
+        "const": false
+      },
+      "exactly_once_billing_claimed": {
+        "const": false
+      },
+      "version": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "utc": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      },
+      "usd": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000
+      },
+      "objectKey": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1400,
+        "pattern": "^tenant/[A-Za-z0-9._:/-]+$"
+      }
+    }
+  },
+  "serverlessProviderAssignmentV3": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/serverless-provider-assignment-v3.json",
+    "title": "VideoForge Serverless provider job assignment v3",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "assignment_id",
+      "dispatch_token",
+      "attempt_id",
+      "provider_job_id",
+      "provider_job_id_sha256",
+      "assignment_source",
+      "worker_id",
+      "assigned_at",
+      "is_current",
+      "superseded_at",
+      "version"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "serverless-provider-assignment/v3"
+      },
+      "assignment_id": {
+        "$ref": "#/$defs/id"
+      },
+      "dispatch_token": {
+        "type": "string",
+        "minLength": 32,
+        "maxLength": 200,
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      },
+      "attempt_id": {
+        "$ref": "#/$defs/id"
+      },
+      "provider_job_id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200,
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      },
+      "provider_job_id_sha256": {
+        "$ref": "#/$defs/sha256"
+      },
+      "assignment_source": {
+        "enum": [
+          "RUN_RESPONSE",
+          "BOUNDED_RECONCILIATION"
+        ]
+      },
+      "worker_id": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "assigned_at": {
+        "$ref": "#/$defs/utc"
+      },
+      "is_current": {
+        "type": "boolean"
+      },
+      "superseded_at": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/utc"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "version": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "utc": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      }
+    }
+  },
+  "serverlessWorkerJobEnvelopeV3": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/serverless-worker-job-envelope-v3.json",
+    "title": "VideoForge Serverless worker job envelope v3",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema",
+      "dispatch_token",
+      "tenant",
+      "work",
+      "runtime",
+      "artifacts",
+      "limits",
+      "policy",
+      "authority_sha256",
+      "signature"
+    ],
+    "properties": {
+      "schema": {
+        "const": "serverless-worker-job-envelope/v3"
+      },
+      "dispatch_token": {
+        "type": "string",
+        "minLength": 32,
+        "maxLength": 200,
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      },
+      "tenant": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "account_id",
+          "workspace_id"
+        ],
+        "properties": {
+          "account_id": {
+            "$ref": "#/$defs/id"
+          },
+          "workspace_id": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      },
+      "work": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "project_revision_id",
+          "generation_request_id",
+          "task_id",
+          "attempt_id",
+          "lane",
+          "items_manifest_sha256",
+          "item_count"
+        ],
+        "properties": {
+          "project_revision_id": {
+            "$ref": "#/$defs/id"
+          },
+          "generation_request_id": {
+            "$ref": "#/$defs/id"
+          },
+          "task_id": {
+            "$ref": "#/$defs/id"
+          },
+          "attempt_id": {
+            "$ref": "#/$defs/id"
+          },
+          "lane": {
+            "enum": [
+              "mage_image",
+              "soulx_avatar"
+            ]
+          },
+          "items_manifest_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "item_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          }
+        }
+      },
+      "runtime": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "endpoint_profile_id",
+          "deployment_id",
+          "container_digest",
+          "model_manifest_sha256",
+          "volume_id_sha256",
+          "volume_mount",
+          "volume_write_policy",
+          "scratch_root_policy",
+          "gpu_allowlist",
+          "region"
+        ],
+        "properties": {
+          "endpoint_profile_id": {
+            "$ref": "#/$defs/id"
+          },
+          "deployment_id": {
+            "$ref": "#/$defs/id"
+          },
+          "container_digest": {
+            "$ref": "#/$defs/sha256"
+          },
+          "model_manifest_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "volume_id_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "volume_mount": {
+            "const": "/runpod-volume"
+          },
+          "volume_write_policy": {
+            "const": "APPLICATION_READ_ONLY"
+          },
+          "scratch_root_policy": {
+            "const": "JOB_LOCAL_SCRATCH_OUTSIDE_MODEL_VOLUME"
+          },
+          "gpu_allowlist": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "NVIDIA GeForce RTX 4090"
+              ]
+            }
+          },
+          "region": {
+            "const": "EU-RO-1"
+          }
+        }
+      },
+      "artifacts": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "input_manifest_sha256",
+          "output_prefix",
+          "transfer_port_reservation_ids"
+        ],
+        "properties": {
+          "input_manifest_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "output_prefix": {
+            "$ref": "#/$defs/objectKey"
+          },
+          "transfer_port_reservation_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4096,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/id"
+            }
+          }
+        }
+      },
+      "limits": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expires_at",
+          "max_items",
+          "max_input_bytes",
+          "max_output_bytes",
+          "execution_timeout_seconds",
+          "init_timeout_seconds"
+        ],
+        "properties": {
+          "expires_at": {
+            "$ref": "#/$defs/utc"
+          },
+          "max_items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "max_input_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10737418240
+          },
+          "max_output_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10737418240
+          },
+          "execution_timeout_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7200
+          },
+          "init_timeout_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3600
+          }
+        }
+      },
+      "policy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "model_download_permitted",
+          "volume_mutation_permitted",
+          "pod_lifecycle_permitted",
+          "queue_purge_permitted"
+        ],
+        "properties": {
+          "model_download_permitted": {
+            "const": false
+          },
+          "volume_mutation_permitted": {
+            "const": false
+          },
+          "pod_lifecycle_permitted": {
+            "const": false
+          },
+          "queue_purge_permitted": {
+            "const": false
+          }
+        }
+      },
+      "authority_sha256": {
+        "$ref": "#/$defs/sha256"
+      },
+      "signature": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "algorithm",
+          "key_id",
+          "value"
+        ],
+        "properties": {
+          "algorithm": {
+            "const": "HMAC-SHA256"
+          },
+          "key_id": {
+            "$ref": "#/$defs/id"
+          },
+          "value": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "utc": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      },
+      "objectKey": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1400,
+        "pattern": "^tenant/[A-Za-z0-9._:/-]+$"
+      }
+    }
+  },
+  "serverlessProvenanceReceiptV1": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/serverless-provenance-receipt-v1.json",
+    "title": "VideoForge application-signed Serverless provenance receipt v1",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "receipt_id",
+      "attestation_scope",
+      "dispatch_token",
+      "attempt_id",
+      "provider_job_id",
+      "worker_id",
+      "tenant",
+      "lane",
+      "deployment",
+      "runtime_probe",
+      "volume_verification",
+      "model_ready_evidence",
+      "timings",
+      "items",
+      "scratch_cleanup",
+      "receipt_nonce",
+      "issued_at",
+      "receipt_sha256",
+      "signature"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "serverless-provenance-receipt/v1"
+      },
+      "receipt_id": {
+        "$ref": "#/$defs/id"
+      },
+      "attestation_scope": {
+        "const": "VIDEOFORGE_APPLICATION_SIGNED_FACTS_NOT_PROVIDER_HARDWARE_ATTESTATION"
+      },
+      "dispatch_token": {
+        "type": "string",
+        "minLength": 32,
+        "maxLength": 200,
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      },
+      "attempt_id": {
+        "$ref": "#/$defs/id"
+      },
+      "provider_job_id": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "worker_id": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "tenant": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "account_id",
+          "workspace_id"
+        ],
+        "properties": {
+          "account_id": {
+            "$ref": "#/$defs/id"
+          },
+          "workspace_id": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      },
+      "lane": {
+        "enum": [
+          "mage_image",
+          "soulx_avatar"
+        ]
+      },
+      "deployment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "deployment_id",
+          "endpoint_id_sha256",
+          "container_digest",
+          "intended_region",
+          "intended_volume_id_sha256",
+          "model_manifest_sha256"
+        ],
+        "properties": {
+          "deployment_id": {
+            "$ref": "#/$defs/id"
+          },
+          "endpoint_id_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "container_digest": {
+            "$ref": "#/$defs/sha256"
+          },
+          "intended_region": {
+            "const": "EU-RO-1"
+          },
+          "intended_volume_id_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "model_manifest_sha256": {
+            "$ref": "#/$defs/sha256"
+          }
+        }
+      },
+      "runtime_probe": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "gpu_name",
+          "gpu_count",
+          "gpu_uuid_sha256",
+          "driver_version",
+          "cuda_version",
+          "probe_source"
+        ],
+        "properties": {
+          "gpu_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "gpu_count": {
+            "const": 1
+          },
+          "gpu_uuid_sha256": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/sha256"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "driver_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "cuda_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "probe_source": {
+            "const": "WORKER_RUNTIME_SELF_REPORT"
+          }
+        }
+      },
+      "volume_verification": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "manifest_sha256_before",
+          "manifest_sha256_after",
+          "mutation_detected",
+          "cross_mount_detected"
+        ],
+        "properties": {
+          "manifest_sha256_before": {
+            "$ref": "#/$defs/sha256"
+          },
+          "manifest_sha256_after": {
+            "$ref": "#/$defs/sha256"
+          },
+          "mutation_detected": {
+            "const": false
+          },
+          "cross_mount_detected": {
+            "const": false
+          }
+        }
+      },
+      "model_ready_evidence": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "state",
+          "warmup_completed",
+          "warmup_output_sha256"
+        ],
+        "properties": {
+          "state": {
+            "const": "MODEL_READY"
+          },
+          "warmup_completed": {
+            "const": true
+          },
+          "warmup_output_sha256": {
+            "$ref": "#/$defs/sha256"
+          }
+        }
+      },
+      "timings": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "allocation_ms",
+          "container_ready_ms",
+          "volume_verified_ms",
+          "model_load_ms",
+          "warmup_ms",
+          "first_inference_ms",
+          "upload_ms",
+          "total_ms"
+        ],
+        "properties": {
+          "allocation_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "container_ready_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "volume_verified_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "model_load_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "warmup_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "first_inference_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "upload_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "total_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          }
+        }
+      },
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 4096,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "item_id",
+            "state",
+            "output_object_key",
+            "output_sha256",
+            "output_bytes",
+            "probe"
+          ],
+          "properties": {
+            "item_id": {
+              "$ref": "#/$defs/id"
+            },
+            "state": {
+              "enum": [
+                "SUCCEEDED",
+                "FAILED"
+              ]
+            },
+            "output_object_key": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/objectKey"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "output_sha256": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/sha256"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "output_bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10737418240
+            },
+            "probe": {
+              "$ref": "#/$defs/probe"
+            }
+          }
+        }
+      },
+      "scratch_cleanup": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "terminal_reason",
+          "removed",
+          "scratch_on_model_volume"
+        ],
+        "properties": {
+          "terminal_reason": {
+            "enum": [
+              "SUCCESS",
+              "FAILURE",
+              "CANCEL",
+              "TIMEOUT",
+              "SIGNAL",
+              "REFRESH"
+            ]
+          },
+          "removed": {
+            "const": true
+          },
+          "scratch_on_model_volume": {
+            "const": false
+          }
+        }
+      },
+      "receipt_nonce": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 9007199254740991
+      },
+      "issued_at": {
+        "$ref": "#/$defs/utc"
+      },
+      "receipt_sha256": {
+        "$ref": "#/$defs/sha256"
+      },
+      "signature": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "algorithm",
+          "key_id",
+          "value"
+        ],
+        "properties": {
+          "algorithm": {
+            "const": "HMAC-SHA256"
+          },
+          "key_id": {
+            "$ref": "#/$defs/id"
+          },
+          "value": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "utc": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      },
+      "objectKey": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1400,
+        "pattern": "^tenant/[A-Za-z0-9._:/-]+$"
+      },
+      "probe": {
+        "type": "object",
+        "maxProperties": 64,
+        "additionalProperties": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "serverlessProgressEventV3": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/serverless-progress-event-v3.json",
+    "title": "VideoForge Serverless progress observation v3",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "event_id",
+      "dispatch_token",
+      "attempt_id",
+      "assignment_id",
+      "sequence",
+      "advisory_source",
+      "authoritative",
+      "provider_status",
+      "attempt_state",
+      "items_completed",
+      "items_total",
+      "observed_at"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "serverless-progress-event/v3"
+      },
+      "event_id": {
+        "$ref": "#/$defs/id"
+      },
+      "dispatch_token": {
+        "type": "string",
+        "minLength": 32,
+        "maxLength": 200,
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      },
+      "attempt_id": {
+        "$ref": "#/$defs/id"
+      },
+      "assignment_id": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/id"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "sequence": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1000000
+      },
+      "advisory_source": {
+        "enum": [
+          "POLL_STATUS",
+          "WEBHOOK"
+        ]
+      },
+      "authoritative": {
+        "type": "boolean"
+      },
+      "provider_status": {
+        "enum": [
+          "IN_QUEUE",
+          "IN_PROGRESS",
+          "COMPLETED",
+          "FAILED",
+          "CANCELLED",
+          "TIMED_OUT"
+        ]
+      },
+      "attempt_state": {
+        "enum": [
+          "ASSIGNED",
+          "IN_QUEUE",
+          "IN_PROGRESS",
+          "UPLOADING",
+          "RECONCILING",
+          "SUCCEEDED",
+          "RETRYABLE_FAILED",
+          "PERMANENT_FAILED",
+          "CANCELLING",
+          "CANCELLED"
+        ]
+      },
+      "items_completed": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 4096
+      },
+      "items_total": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 4096
+      },
+      "observed_at": {
+        "$ref": "#/$defs/utc"
+      }
+    },
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "advisory_source": {
+              "const": "WEBHOOK"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "authoritative": {
+              "const": false
+            }
+          }
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "advisory_source": {
+              "const": "POLL_STATUS"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "authoritative": {
+              "const": true
+            }
+          }
+        }
+      }
+    ],
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "utc": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      }
+    }
+  },
+  "serverlessOutputReceiptV3": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/serverless-output-receipt-v3.json",
+    "title": "VideoForge durable Serverless output receipt v3",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "output_receipt_id",
+      "dispatch_token",
+      "attempt_id",
+      "assignment_id",
+      "tenant",
+      "lane",
+      "acceptance",
+      "durable_truth_source",
+      "artifacts",
+      "provenance_receipt_sha256",
+      "artifact_commit_receipt_sha256",
+      "accepted_at",
+      "version"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "serverless-output-receipt/v3"
+      },
+      "output_receipt_id": {
+        "$ref": "#/$defs/id"
+      },
+      "dispatch_token": {
+        "type": "string",
+        "minLength": 32,
+        "maxLength": 200,
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      },
+      "attempt_id": {
+        "$ref": "#/$defs/id"
+      },
+      "assignment_id": {
+        "$ref": "#/$defs/id"
+      },
+      "tenant": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "account_id",
+          "workspace_id"
+        ],
+        "properties": {
+          "account_id": {
+            "$ref": "#/$defs/id"
+          },
+          "workspace_id": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      },
+      "lane": {
+        "enum": [
+          "mage_image",
+          "soulx_avatar"
+        ]
+      },
+      "acceptance": {
+        "enum": [
+          "ACCEPTED_CANONICAL",
+          "QUARANTINED_DUPLICATE",
+          "QUARANTINED_FOREIGN",
+          "QUARANTINED_SUPERSEDED",
+          "QUARANTINED_UNBOUND"
+        ]
+      },
+      "durable_truth_source": {
+        "const": "SIGNED_PRIVATE_R2_RECEIPT"
+      },
+      "artifacts": {
+        "type": "array",
+        "minItems": 0,
+        "maxItems": 4096,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "item_id",
+            "object_key",
+            "content_length",
+            "checksum_sha256",
+            "probe"
+          ],
+          "properties": {
+            "item_id": {
+              "$ref": "#/$defs/id"
+            },
+            "object_key": {
+              "$ref": "#/$defs/objectKey"
+            },
+            "content_length": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10737418240
+            },
+            "checksum_sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "probe": {
+              "$ref": "#/$defs/probe"
+            }
+          }
+        }
+      },
+      "provenance_receipt_sha256": {
+        "$ref": "#/$defs/sha256"
+      },
+      "artifact_commit_receipt_sha256": {
+        "$ref": "#/$defs/sha256"
+      },
+      "accepted_at": {
+        "$ref": "#/$defs/utc"
+      },
+      "version": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "utc": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      },
+      "objectKey": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1400,
+        "pattern": "^tenant/[A-Za-z0-9._:/-]+$"
+      },
+      "probe": {
+        "type": "object",
+        "maxProperties": 64,
+        "additionalProperties": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "serverlessCancellationV3": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/serverless-cancellation-v3.json",
+    "title": "VideoForge Serverless cancellation record v3",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "cancellation_id",
+      "dispatch_token",
+      "attempt_id",
+      "assignment_id",
+      "requested_by",
+      "target_scope",
+      "local_intent_committed_at",
+      "provider_cancel_called",
+      "provider_terminal_state",
+      "settled_cost_usd",
+      "possible_unrefunded_cost_usd",
+      "refund_promised",
+      "completed_at"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "serverless-cancellation/v3"
+      },
+      "cancellation_id": {
+        "$ref": "#/$defs/id"
+      },
+      "dispatch_token": {
+        "type": "string",
+        "minLength": 32,
+        "maxLength": 200,
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      },
+      "attempt_id": {
+        "$ref": "#/$defs/id"
+      },
+      "assignment_id": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/id"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "requested_by": {
+        "enum": [
+          "OWNER_ACCOUNT",
+          "SYSTEM_DEADLINE",
+          "SYSTEM_TTL_EXPIRY",
+          "SYSTEM_SPEND_CEILING"
+        ]
+      },
+      "target_scope": {
+        "const": "EXACT_OWNED_PROVIDER_JOB_ID"
+      },
+      "local_intent_committed_at": {
+        "$ref": "#/$defs/utc"
+      },
+      "provider_cancel_called": {
+        "type": "boolean"
+      },
+      "provider_terminal_state": {
+        "oneOf": [
+          {
+            "enum": [
+              "COMPLETED",
+              "FAILED",
+              "CANCELLED",
+              "TIMED_OUT"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "settled_cost_usd": {
+        "$ref": "#/$defs/usd"
+      },
+      "possible_unrefunded_cost_usd": {
+        "$ref": "#/$defs/usd"
+      },
+      "refund_promised": {
+        "const": false
+      },
+      "completed_at": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/utc"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "utc": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      },
+      "usd": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000
+      }
+    }
+  },
+  "serverlessReconciliationV3": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/serverless-reconciliation-v3.json",
+    "title": "VideoForge bounded Serverless reconciliation record v3",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "reconciliation_id",
+      "dispatch_token",
+      "attempt_id",
+      "trigger",
+      "started_at",
+      "deadline_at",
+      "provider_result_window_seconds",
+      "outcome",
+      "evidence",
+      "possible_duplicate_compute_usd",
+      "new_dispatch_permitted",
+      "queue_purge_used",
+      "completed_at"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "serverless-reconciliation/v3"
+      },
+      "reconciliation_id": {
+        "$ref": "#/$defs/id"
+      },
+      "dispatch_token": {
+        "type": "string",
+        "minLength": 32,
+        "maxLength": 200,
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      },
+      "attempt_id": {
+        "$ref": "#/$defs/id"
+      },
+      "trigger": {
+        "enum": [
+          "DISPATCH_ACK_UNKNOWN",
+          "POLL_DEADLINE",
+          "RESTART",
+          "WEBHOOK_ADVISORY",
+          "RESULT_WINDOW_EXPIRY_RISK",
+          "OWNER_CANCELLATION"
+        ]
+      },
+      "started_at": {
+        "$ref": "#/$defs/utc"
+      },
+      "deadline_at": {
+        "$ref": "#/$defs/utc"
+      },
+      "provider_result_window_seconds": {
+        "const": 1800
+      },
+      "outcome": {
+        "enum": [
+          "UNIQUE_ASSIGNMENT_PROVED",
+          "NO_ASSIGNMENT_PROVED",
+          "TERMINAL_CONFIRMED",
+          "AMBIGUOUS_STOP"
+        ]
+      },
+      "evidence": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status_polls",
+          "assignments_observed",
+          "durable_output_present",
+          "cost_events_observed"
+        ],
+        "properties": {
+          "status_polls": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "assignments_observed": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8
+          },
+          "durable_output_present": {
+            "type": "boolean"
+          },
+          "cost_events_observed": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          }
+        }
+      },
+      "possible_duplicate_compute_usd": {
+        "$ref": "#/$defs/usd"
+      },
+      "new_dispatch_permitted": {
+        "type": "boolean"
+      },
+      "queue_purge_used": {
+        "const": false
+      },
+      "completed_at": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/utc"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "outcome": {
+              "const": "AMBIGUOUS_STOP"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "new_dispatch_permitted": {
+              "const": false
+            }
+          }
+        }
+      }
+    ],
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "utc": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      },
+      "usd": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000
+      }
+    }
+  },
+  "serverlessCostLedgerV3": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/serverless-cost-ledger-v3.json",
+    "title": "VideoForge Serverless attempt cost ledger v3",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "ledger_id",
+      "dispatch_token",
+      "attempt_id",
+      "owner",
+      "entries",
+      "ceiling_usd",
+      "estimated_usd",
+      "reserved_usd",
+      "reported_usd",
+      "possible_duplicate_usd",
+      "settled_usd",
+      "refunded_usd",
+      "fixed_retained_volume_usd_excluded",
+      "updated_at",
+      "version"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "serverless-cost-ledger/v3"
+      },
+      "ledger_id": {
+        "$ref": "#/$defs/id"
+      },
+      "dispatch_token": {
+        "type": "string",
+        "minLength": 32,
+        "maxLength": 200,
+        "pattern": "^[A-Za-z0-9._:-]+$"
+      },
+      "attempt_id": {
+        "$ref": "#/$defs/id"
+      },
+      "owner": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "account_id",
+          "workspace_id",
+          "owner_type",
+          "owner_id"
+        ],
+        "properties": {
+          "account_id": {
+            "$ref": "#/$defs/id"
+          },
+          "workspace_id": {
+            "$ref": "#/$defs/id"
+          },
+          "owner_type": {
+            "enum": [
+              "PROJECT_REVISION",
+              "IMAGE_STYLE_VERSION",
+              "AVATAR_PROFILE_VERSION"
+            ]
+          },
+          "owner_id": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      },
+      "entries": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 512,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entry_id",
+            "kind",
+            "amount_usd",
+            "rate_source",
+            "rate_checked_at",
+            "confidence",
+            "recorded_at"
+          ],
+          "properties": {
+            "entry_id": {
+              "$ref": "#/$defs/id"
+            },
+            "kind": {
+              "enum": [
+                "ESTIMATE",
+                "RESERVATION",
+                "PROVIDER_REPORT",
+                "POSSIBLE_DUPLICATE",
+                "SETTLED",
+                "REFUND"
+              ]
+            },
+            "amount_usd": {
+              "$ref": "#/$defs/usd"
+            },
+            "rate_source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 400
+            },
+            "rate_checked_at": {
+              "$ref": "#/$defs/utc"
+            },
+            "confidence": {
+              "enum": [
+                "MEASURED",
+                "PROVIDER_REPORTED",
+                "ESTIMATED",
+                "AMBIGUOUS"
+              ]
+            },
+            "recorded_at": {
+              "$ref": "#/$defs/utc"
+            }
+          }
+        }
+      },
+      "ceiling_usd": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "maximum": 2
+      },
+      "estimated_usd": {
+        "$ref": "#/$defs/usd"
+      },
+      "reserved_usd": {
+        "$ref": "#/$defs/usd"
+      },
+      "reported_usd": {
+        "$ref": "#/$defs/usd"
+      },
+      "possible_duplicate_usd": {
+        "$ref": "#/$defs/usd"
+      },
+      "settled_usd": {
+        "$ref": "#/$defs/usd"
+      },
+      "refunded_usd": {
+        "$ref": "#/$defs/usd"
+      },
+      "fixed_retained_volume_usd_excluded": {
+        "const": true
+      },
+      "updated_at": {
+        "$ref": "#/$defs/utc"
+      },
+      "version": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "utc": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      },
+      "usd": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000
+      }
+    }
+  },
+  "generationAdmissionV3": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/generation-admission-v3.json",
+    "title": "VideoForge fair generation admission record v3",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "admission_id",
+      "tenant",
+      "request_kind",
+      "request_id",
+      "project_revision_id",
+      "preset_version_id",
+      "lease",
+      "fairness",
+      "global_active_lease_count",
+      "account_active_lease_count",
+      "provider_work_materialized",
+      "admitted_at",
+      "version"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "generation-admission/v3"
+      },
+      "admission_id": {
+        "$ref": "#/$defs/id"
+      },
+      "tenant": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "account_id",
+          "workspace_id"
+        ],
+        "properties": {
+          "account_id": {
+            "$ref": "#/$defs/id"
+          },
+          "workspace_id": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      },
+      "request_kind": {
+        "enum": [
+          "VIDEO",
+          "PRESET_PREVIEW"
+        ]
+      },
+      "request_id": {
+        "$ref": "#/$defs/id"
+      },
+      "project_revision_id": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/id"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "preset_version_id": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/id"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "lease": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lease_id",
+          "slot",
+          "owner_token_sha256",
+          "acquired_at",
+          "expires_at"
+        ],
+        "properties": {
+          "lease_id": {
+            "$ref": "#/$defs/id"
+          },
+          "slot": {
+            "enum": [
+              1,
+              2
+            ]
+          },
+          "owner_token_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "acquired_at": {
+            "$ref": "#/$defs/utc"
+          },
+          "expires_at": {
+            "$ref": "#/$defs/utc"
+          }
+        }
+      },
+      "fairness": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "video_cursor",
+          "preview_cursor",
+          "last_served_sequence",
+          "transport_queue_is_not_admission_truth"
+        ],
+        "properties": {
+          "video_cursor": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "preview_cursor": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "last_served_sequence": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "transport_queue_is_not_admission_truth": {
+            "const": true
+          }
+        }
+      },
+      "global_active_lease_count": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 2
+      },
+      "account_active_lease_count": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "provider_work_materialized": {
+        "type": "boolean"
+      },
+      "admitted_at": {
+        "$ref": "#/$defs/utc"
+      },
+      "version": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "$defs": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "utc": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      }
+    }
+  },
+  "productionManifestV3": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://videoforge.local/schemas/production-manifest-v3.json",
+    "title": "VideoForge Production Manifest v3",
+    "description": "Immutable provenance index for one rendered project revision, extended with the Serverless v3 endpoint deployment, attempt, assignment, provenance-receipt, output-receipt, and cost lineage. VideoForge accepts at most one canonical output per attempt and never claims provider exactly-once execution or billing.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "project_id",
+      "project_revision_id",
+      "created_at",
+      "revision_config_hash",
+      "timeline_plan",
+      "resolved_render_manifest",
+      "prompt_manifest",
+      "attempt_index",
+      "qa_manifest",
+      "cost_ledger_snapshot",
+      "avatar_binding",
+      "style_binding",
+      "model_bindings",
+      "cost_summary",
+      "creative_approval",
+      "final_output",
+      "serverless_lineage"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "production-manifest/v3"
+      },
+      "project_id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "project_revision_id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "created_at": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+      },
+      "revision_config_hash": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "timeline_plan": {
+        "$ref": "#/$defs/pointer"
+      },
+      "resolved_render_manifest": {
+        "$ref": "#/$defs/pointer"
+      },
+      "prompt_manifest": {
+        "$ref": "#/$defs/pointer"
+      },
+      "attempt_index": {
+        "$ref": "#/$defs/pointer"
+      },
+      "qa_manifest": {
+        "$ref": "#/$defs/pointer"
+      },
+      "cost_ledger_snapshot": {
+        "$ref": "#/$defs/pointer"
+      },
+      "avatar_binding": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "avatar_profile_id",
+          "avatar_profile_version_id",
+          "avatar_display_name_snapshot",
+          "avatar_profile_hash",
+          "runtime_source_asset_id",
+          "runtime_source_sha256",
+          "source_preparation_version",
+          "source_validation_profile_version",
+          "compatibility_state_at_preflight",
+          "compatibility_evidence"
+        ],
+        "properties": {
+          "avatar_profile_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "avatar_profile_version_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "avatar_display_name_snapshot": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": ".*\\S.*"
+          },
+          "avatar_profile_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "runtime_source_asset_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "runtime_source_sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "source_preparation_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "source_validation_profile_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "compatibility_state_at_preflight": {
+            "type": "string",
+            "enum": [
+              "UNTESTED",
+              "RUNNING",
+              "PASSED",
+              "FAILED",
+              "STALE",
+              "CANCELLED"
+            ]
+          },
+          "compatibility_evidence": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "assessment_id",
+                  "assessment_hash",
+                  "status",
+                  "model_profile_id",
+                  "assessed_at"
+                ],
+                "properties": {
+                  "assessment_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "assessment_hash": {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "PASSED",
+                      "FAILED",
+                      "STALE",
+                      "CANCELLED"
+                    ]
+                  },
+                  "model_profile_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "assessed_at": {
+                    "type": "string",
+                    "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "compatibility_state_at_preflight": {
+                  "enum": [
+                    "UNTESTED",
+                    "RUNNING"
+                  ]
+                }
+              },
+              "required": [
+                "compatibility_state_at_preflight"
+              ]
+            },
+            "then": {
+              "properties": {
+                "compatibility_evidence": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "compatibility_state_at_preflight": {
+                  "const": "PASSED"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "compatibility_evidence": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "const": "PASSED"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "compatibility_state_at_preflight": {
+                  "const": "FAILED"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "compatibility_evidence": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "const": "FAILED"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "compatibility_state_at_preflight": {
+                  "const": "STALE"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "compatibility_evidence": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "const": "STALE"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "compatibility_state_at_preflight": {
+                  "const": "CANCELLED"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "compatibility_evidence": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "const": "CANCELLED"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "style_binding": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "image_style_version_id",
+          "style_profile_hash"
+        ],
+        "properties": {
+          "image_style_version_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "style_profile_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        }
+      },
+      "model_bindings": {
+        "type": "array",
+        "minItems": 4,
+        "maxItems": 12,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "provider",
+            "model_id",
+            "revision_or_profile",
+            "execution_profile_id",
+            "artifact_digest"
+          ],
+          "properties": {
+            "role": {
+              "type": "string",
+              "enum": [
+                "PROMPT_WRITER",
+                "STYLE_ANALYZER",
+                "IMAGE_GENERATOR",
+                "AVATAR_PRIMARY",
+                "AVATAR_REPAIR",
+                "AVATAR_QUALITY",
+                "ASR",
+                "RENDERER"
+              ]
+            },
+            "provider": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "model_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            },
+            "revision_or_profile": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            },
+            "execution_profile_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "artifact_digest": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^(?:sha256:)?[0-9a-f]{64}$"
+            }
+          }
+        }
+      },
+      "cost_summary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "currency",
+          "reported_total_usd",
+          "settled_total_usd"
+        ],
+        "properties": {
+          "currency": {
+            "const": "USD"
+          },
+          "reported_total_usd": {
+            "type": "number",
+            "minimum": 0
+          },
+          "settled_total_usd": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          }
+        }
+      },
+      "creative_approval": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "state",
+          "reviewer_user_id",
+          "approved_at"
+        ],
+        "properties": {
+          "state": {
+            "const": "APPROVED"
+          },
+          "reviewer_user_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "approved_at": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+          }
+        }
+      },
+      "final_output": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asset_id",
+          "sha256",
+          "bytes",
+          "total_frames",
+          "output_profile_version"
+        ],
+        "properties": {
+          "asset_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "total_frames": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "output_profile_version": {
+            "enum": [
+              "ffmpeg-render-v1",
+              "ffmpeg-render-v2",
+              "ffmpeg-render-v3"
+            ]
+          }
+        }
+      },
+      "serverless_lineage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "deployments",
+          "attempts",
+          "cost",
+          "guarantees"
+        ],
+        "properties": {
+          "deployments": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 2,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "deployment_id",
+                "lane",
+                "endpoint_id_sha256",
+                "endpoint_config_sha256",
+                "container_digest",
+                "volume_id_sha256",
+                "model_manifest_sha256",
+                "region"
+              ],
+              "properties": {
+                "deployment_id": {
+                  "$ref": "#/$defs/serverlessId"
+                },
+                "lane": {
+                  "enum": [
+                    "mage_image",
+                    "soulx_avatar"
+                  ]
+                },
+                "endpoint_id_sha256": {
+                  "$ref": "#/$defs/serverlessSha256"
+                },
+                "endpoint_config_sha256": {
+                  "$ref": "#/$defs/serverlessSha256"
+                },
+                "container_digest": {
+                  "$ref": "#/$defs/serverlessSha256"
+                },
+                "volume_id_sha256": {
+                  "$ref": "#/$defs/serverlessSha256"
+                },
+                "model_manifest_sha256": {
+                  "$ref": "#/$defs/serverlessSha256"
+                },
+                "region": {
+                  "const": "EU-RO-1"
+                }
+              }
+            }
+          },
+          "attempts": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "attempt_id",
+                "dispatch_token",
+                "lane",
+                "attempt_ordinal",
+                "provider_job_id",
+                "assignment_id",
+                "provenance_receipt_sha256",
+                "output_receipt_id",
+                "accepted_item_count"
+              ],
+              "properties": {
+                "attempt_id": {
+                  "$ref": "#/$defs/serverlessId"
+                },
+                "dispatch_token": {
+                  "type": "string",
+                  "minLength": 32,
+                  "maxLength": 200,
+                  "pattern": "^[A-Za-z0-9._:-]+$"
+                },
+                "lane": {
+                  "enum": [
+                    "mage_image",
+                    "soulx_avatar"
+                  ]
+                },
+                "attempt_ordinal": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 3
+                },
+                "provider_job_id": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "^[A-Za-z0-9._:-]+$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "assignment_id": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/serverlessId"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "provenance_receipt_sha256": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/serverlessSha256"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "output_receipt_id": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/serverlessId"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "accepted_item_count": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4096
+                }
+              }
+            }
+          },
+          "cost": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ledger_sha256",
+              "settled_usd",
+              "possible_duplicate_usd",
+              "fixed_retained_volume_usd_excluded"
+            ],
+            "properties": {
+              "ledger_sha256": {
+                "$ref": "#/$defs/serverlessSha256"
+              },
+              "settled_usd": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000
+              },
+              "possible_duplicate_usd": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000
+              },
+              "fixed_retained_volume_usd_excluded": {
+                "const": true
+              }
+            }
+          },
+          "guarantees": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "at_most_one_accepted_output_per_attempt",
+              "provider_exactly_once_execution_claimed",
+              "provider_exactly_once_billing_claimed",
+              "queue_purge_used"
+            ],
+            "properties": {
+              "at_most_one_accepted_output_per_attempt": {
+                "const": true
+              },
+              "provider_exactly_once_execution_claimed": {
+                "const": false
+              },
+              "provider_exactly_once_billing_claimed": {
+                "const": false
+              },
+              "queue_purge_used": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "$defs": {
+      "pointer": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asset_id",
+          "sha256"
+        ],
+        "properties": {
+          "asset_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        }
+      },
+      "serverlessId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      },
+      "serverlessSha256": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      }
+    }
+  },
   "admittedIdentity": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://videoforge.local/schemas/admitted-identity-v2.json",

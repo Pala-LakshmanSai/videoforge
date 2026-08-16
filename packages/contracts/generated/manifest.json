@@ -21,6 +21,90 @@
       "sha256": "sha256:95a4020c2f75b4136887392ccfb7f94250d8435b096584124f496003949fa8f5"
     },
     {
+      "source": "project-context/evidence/serverless_endpoint_deployment_v3.schema.json",
+      "destination": "generated/schemas/serverless_endpoint_deployment_v3.schema.json",
+      "bytes": 4306,
+      "sha256": "sha256:1d49ad69278c923c62823203a9211354608abb0b600618fb5c9a9b5f26492309"
+    },
+    {
+      "source": "project-context/evidence/serverless_predispatch_authority_v3.schema.json",
+      "destination": "generated/schemas/serverless_predispatch_authority_v3.schema.json",
+      "bytes": 5958,
+      "sha256": "sha256:4e2c2a6c7f428d136b66ae2e12cc3bac14132edbca8511b5a53ee33bf5dd2096"
+    },
+    {
+      "source": "project-context/evidence/serverless_dispatch_outbox_v3.schema.json",
+      "destination": "generated/schemas/serverless_dispatch_outbox_v3.schema.json",
+      "bytes": 2009,
+      "sha256": "sha256:9933184830891b7bf7895507a34131c36708e45c482d230213895f779ef0312e"
+    },
+    {
+      "source": "project-context/evidence/serverless_request_attempt_v3.schema.json",
+      "destination": "generated/schemas/serverless_request_attempt_v3.schema.json",
+      "bytes": 3789,
+      "sha256": "sha256:70628ca7b6017861aff3211181222cc758bba35c61f926311110fe254eb32d6c"
+    },
+    {
+      "source": "project-context/evidence/serverless_provider_assignment_v3.schema.json",
+      "destination": "generated/schemas/serverless_provider_assignment_v3.schema.json",
+      "bytes": 1747,
+      "sha256": "sha256:7e3c25ad3cb7144a214c8e490d37e92c7493b82617065d9e3bd9bb7e296b9850"
+    },
+    {
+      "source": "project-context/evidence/serverless_worker_job_envelope_v3.schema.json",
+      "destination": "generated/schemas/serverless_worker_job_envelope_v3.schema.json",
+      "bytes": 5054,
+      "sha256": "sha256:8863963de463ff665fe04ccff70e2d4b3212b7f30029a13f9d7ff347195ac962"
+    },
+    {
+      "source": "project-context/evidence/serverless_provenance_receipt_v1.schema.json",
+      "destination": "generated/schemas/serverless_provenance_receipt_v1.schema.json",
+      "bytes": 7138,
+      "sha256": "sha256:ca35cc67d469fdcdc9ae840fa301a47d4d2928df178fef0d7857dcc29aa52f88"
+    },
+    {
+      "source": "project-context/evidence/serverless_progress_event_v3.schema.json",
+      "destination": "generated/schemas/serverless_progress_event_v3.schema.json",
+      "bytes": 2235,
+      "sha256": "sha256:1e1676e0f7f3b611136e6a72c27ec7ceaa5d53ed6b6d1dec97fffa8afb2aa103"
+    },
+    {
+      "source": "project-context/evidence/serverless_output_receipt_v3.schema.json",
+      "destination": "generated/schemas/serverless_output_receipt_v3.schema.json",
+      "bytes": 2886,
+      "sha256": "sha256:430fdc5a117b1e1cf144e8b373293c90b45f138eff7f02c5b64a3b7b0e2949cb"
+    },
+    {
+      "source": "project-context/evidence/serverless_cancellation_v3.schema.json",
+      "destination": "generated/schemas/serverless_cancellation_v3.schema.json",
+      "bytes": 1961,
+      "sha256": "sha256:49305058413ce6a7f37be373ed860e80d7617632238e5880781e0492534f42ee"
+    },
+    {
+      "source": "project-context/evidence/serverless_reconciliation_v3.schema.json",
+      "destination": "generated/schemas/serverless_reconciliation_v3.schema.json",
+      "bytes": 2585,
+      "sha256": "sha256:d80114a3cfa1e857d5f233e526c3fe5fe295fc77145ae40ab9d6ff0c3d9d68a7"
+    },
+    {
+      "source": "project-context/evidence/serverless_cost_ledger_v3.schema.json",
+      "destination": "generated/schemas/serverless_cost_ledger_v3.schema.json",
+      "bytes": 2877,
+      "sha256": "sha256:55cc0a657ee304f98edb4dbe3f628256951a121af1980336461d04118838e630"
+    },
+    {
+      "source": "project-context/evidence/generation_admission_v3.schema.json",
+      "destination": "generated/schemas/generation_admission_v3.schema.json",
+      "bytes": 2788,
+      "sha256": "sha256:64c7c27d093e0432bac5efacc010e8259b68008afd32fe21c6f163c0217f5bfe"
+    },
+    {
+      "source": "project-context/evidence/production_manifest_v3.schema.json",
+      "destination": "generated/schemas/production_manifest_v3.schema.json",
+      "bytes": 13338,
+      "sha256": "sha256:83d7d350990bc2b6a80d0efb1e5dff94ac4ab45e3f707e369d0805d0cc0f05c2"
+    },
+    {
       "source": "project-context/evidence/admitted_identity.schema.json",
       "destination": "generated/schemas/admitted_identity.schema.json",
       "bytes": 1510,
@@ -187,6 +271,210 @@
       "destination": "generated/fixtures/artifact_commit_receipt_v3.invalid.url.json",
       "bytes": 714,
       "sha256": "sha256:99fdfc57c4cc59542298ef4af8b5e4f1f6f368dc1911693df99a47d1a62d17aa"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_endpoint_deployment_v3.valid.json",
+      "destination": "generated/fixtures/serverless_endpoint_deployment_v3.valid.json",
+      "bytes": 1885,
+      "sha256": "sha256:f7dcc887bd4fdb08ef048988cc35aa9592c22ab1f7963d9d0b04808cbcba6460"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_endpoint_deployment_v3.invalid.unqualified_gpu.json",
+      "destination": "generated/fixtures/serverless_endpoint_deployment_v3.invalid.unqualified_gpu.json",
+      "bytes": 1885,
+      "sha256": "sha256:405306cfaed37071c852b4f3f769591a3728a70dc33b23bc01c694342f3193e8"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_endpoint_deployment_v3.invalid.retained_worker.json",
+      "destination": "generated/fixtures/serverless_endpoint_deployment_v3.invalid.retained_worker.json",
+      "bytes": 1885,
+      "sha256": "sha256:b1adf1a4102804560951c94a0d99f4defa5f33b12f290c1d32620115907933ed"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_predispatch_authority_v3.valid.json",
+      "destination": "generated/fixtures/serverless_predispatch_authority_v3.valid.json",
+      "bytes": 2454,
+      "sha256": "sha256:1bd683f4842d03b262642c36f5c99bbd1a30295be4376f3417db46730d4efca2"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_predispatch_authority_v3.invalid.purge_operation.json",
+      "destination": "generated/fixtures/serverless_predispatch_authority_v3.invalid.purge_operation.json",
+      "bytes": 2420,
+      "sha256": "sha256:b6c0ec068f6b4dacab3c2b8715556fd93eb9990ef528ba7b00a575433cc34c64"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_predispatch_authority_v3.invalid.uncapped_spend.json",
+      "destination": "generated/fixtures/serverless_predispatch_authority_v3.invalid.uncapped_spend.json",
+      "bytes": 2452,
+      "sha256": "sha256:b9f18b931eaa366c9fcf95372cf94463d5c9e65b1530c7832ac90edf97946a0d"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_dispatch_outbox_v3.valid.json",
+      "destination": "generated/fixtures/serverless_dispatch_outbox_v3.valid.json",
+      "bytes": 508,
+      "sha256": "sha256:e222874b8fa760b43f1c3e36eb9aca462ca1872ba8be31d92bd1e86b34f435aa"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_dispatch_outbox_v3.invalid.blind_resubmit.json",
+      "destination": "generated/fixtures/serverless_dispatch_outbox_v3.invalid.blind_resubmit.json",
+      "bytes": 511,
+      "sha256": "sha256:b76b85fc1ad92ee205e72e47cfa316442ed3d173f826785cd7d6941a0c1494dc"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_request_attempt_v3.valid.json",
+      "destination": "generated/fixtures/serverless_request_attempt_v3.valid.json",
+      "bytes": 1006,
+      "sha256": "sha256:4474140d2ea514bb26a66903072955a17d1d42fadb4bfc171b47b3fa114e95e1"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_request_attempt_v3.invalid.exactly_once_claim.json",
+      "destination": "generated/fixtures/serverless_request_attempt_v3.invalid.exactly_once_claim.json",
+      "bytes": 1004,
+      "sha256": "sha256:1e6cd265cc5eaa974b68c4cc94bcb12acf8d9335464334cebca787126ad66ce4"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_provider_assignment_v3.valid.json",
+      "destination": "generated/fixtures/serverless_provider_assignment_v3.valid.json",
+      "bytes": 462,
+      "sha256": "sha256:f2207d51c1e525ce75d0cf385d808f826d87261fdf1e3ec0523fb746650409ba"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_provider_assignment_v3.invalid.webhook_self_assignment.json",
+      "destination": "generated/fixtures/serverless_provider_assignment_v3.invalid.webhook_self_assignment.json",
+      "bytes": 463,
+      "sha256": "sha256:0013d58e8b44addd9a0e610460387fe616835f2ffb30372683e99c7529904b44"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_worker_job_envelope_v3.valid.json",
+      "destination": "generated/fixtures/serverless_worker_job_envelope_v3.valid.json",
+      "bytes": 1861,
+      "sha256": "sha256:5d0b373f28ccf733cf43798363589eb9f418fcc90ec6939a883d975e81552b3f"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_worker_job_envelope_v3.invalid.volume_write.json",
+      "destination": "generated/fixtures/serverless_worker_job_envelope_v3.invalid.volume_write.json",
+      "bytes": 1850,
+      "sha256": "sha256:0f09f5ce71534e690b1e47586245fa15058c21cafe2d00d8b77002b776e47699"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_worker_job_envelope_v3.invalid.pod_lifecycle.json",
+      "destination": "generated/fixtures/serverless_worker_job_envelope_v3.invalid.pod_lifecycle.json",
+      "bytes": 1860,
+      "sha256": "sha256:a4bdec266f3a92cbe02462ec1a6c02ec144f68c7ff8ce2df26bc237a673a58f1"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_provenance_receipt_v1.valid.json",
+      "destination": "generated/fixtures/serverless_provenance_receipt_v1.valid.json",
+      "bytes": 2502,
+      "sha256": "sha256:81b6df16d61d5ea4b0d0a8954a556f3db7a2a799fcd398bc753f9dc756f6a0d5"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_provenance_receipt_v1.invalid.hardware_attestation_claim.json",
+      "destination": "generated/fixtures/serverless_provenance_receipt_v1.invalid.hardware_attestation_claim.json",
+      "bytes": 2469,
+      "sha256": "sha256:b865449a77449558c1cd140b8d0a88c4ce159689c124ed45181b09cd075a3368"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_provenance_receipt_v1.invalid.volume_mutation.json",
+      "destination": "generated/fixtures/serverless_provenance_receipt_v1.invalid.volume_mutation.json",
+      "bytes": 2501,
+      "sha256": "sha256:ae91829cab12a8967f8ad64f3379e79a827d12d078c255bb16dd1454d7b2df87"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_progress_event_v3.valid.json",
+      "destination": "generated/fixtures/serverless_progress_event_v3.valid.json",
+      "bytes": 405,
+      "sha256": "sha256:649a25885480319582667257d5b555e7a10effc4abb64227200550bd07267514"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_progress_event_v3.invalid.authoritative_webhook.json",
+      "destination": "generated/fixtures/serverless_progress_event_v3.invalid.authoritative_webhook.json",
+      "bytes": 401,
+      "sha256": "sha256:4d48f7072c56f2e4cb26c8580c67c50dd252b494c54c60c7595f3b70b597fd65"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_output_receipt_v3.valid.json",
+      "destination": "generated/fixtures/serverless_output_receipt_v3.valid.json",
+      "bytes": 963,
+      "sha256": "sha256:6a1345dc6dfd14171fdb895340ec940cdd5ecffae726c21dec19b151af3a0572"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_output_receipt_v3.invalid.webhook_truth.json",
+      "destination": "generated/fixtures/serverless_output_receipt_v3.invalid.webhook_truth.json",
+      "bytes": 954,
+      "sha256": "sha256:6f73b4f049b31b1d40fb704f4b67938e2df507a04f5ef44097ad32348f4c442d"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_cancellation_v3.valid.json",
+      "destination": "generated/fixtures/serverless_cancellation_v3.valid.json",
+      "bytes": 525,
+      "sha256": "sha256:ee7218b16d178e26993e7f3a3f39dffd9d69f6bcb6120584dcd3f4e3fe1bd752"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_cancellation_v3.invalid.endpoint_purge.json",
+      "destination": "generated/fixtures/serverless_cancellation_v3.invalid.endpoint_purge.json",
+      "bytes": 518,
+      "sha256": "sha256:244f4c9b2383095f70e9033a0b79ebe0eaacf9457c399630b4ed283fe40ce4de"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_cancellation_v3.invalid.refund_promise.json",
+      "destination": "generated/fixtures/serverless_cancellation_v3.invalid.refund_promise.json",
+      "bytes": 524,
+      "sha256": "sha256:aa06774c4a06da61e508d05d53e2499d40499ebed2e3f9b746758ba684f25cb0"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_reconciliation_v3.valid.json",
+      "destination": "generated/fixtures/serverless_reconciliation_v3.valid.json",
+      "bytes": 609,
+      "sha256": "sha256:7734eb90a8a13b95c64ef6933cb312d994a19224e17588d3fd6f98547b822467"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_reconciliation_v3.invalid.ambiguous_redispatch.json",
+      "destination": "generated/fixtures/serverless_reconciliation_v3.invalid.ambiguous_redispatch.json",
+      "bytes": 598,
+      "sha256": "sha256:c7164de0c69a17333a93efa872d28dce62ef1c7156a5f7abdad06108d84571c2"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_reconciliation_v3.invalid.queue_purge.json",
+      "destination": "generated/fixtures/serverless_reconciliation_v3.invalid.queue_purge.json",
+      "bytes": 608,
+      "sha256": "sha256:5bf8d19db3c052bf6215f3a050ca870b903e042e7619773f78031ad9198bc579"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_cost_ledger_v3.valid.json",
+      "destination": "generated/fixtures/serverless_cost_ledger_v3.valid.json",
+      "bytes": 984,
+      "sha256": "sha256:31da4f1a954f95ff213fb4fd3e3320c90f07274da5799bbcecbd05a5ae3300ff"
+    },
+    {
+      "source": "project-context/evidence/fixtures/serverless_cost_ledger_v3.invalid.retained_volume_included.json",
+      "destination": "generated/fixtures/serverless_cost_ledger_v3.invalid.retained_volume_included.json",
+      "bytes": 985,
+      "sha256": "sha256:d6c9c6770a3a03d8706f062dbdb83337ce9e9478b334473211e7e13591444a2c"
+    },
+    {
+      "source": "project-context/evidence/fixtures/generation_admission_v3.valid.json",
+      "destination": "generated/fixtures/generation_admission_v3.valid.json",
+      "bytes": 731,
+      "sha256": "sha256:e58794519cd346bd7f87fbfe051bc3340c263c6cf319f648fc404502ec883c0c"
+    },
+    {
+      "source": "project-context/evidence/fixtures/generation_admission_v3.invalid.over_admitted.json",
+      "destination": "generated/fixtures/generation_admission_v3.invalid.over_admitted.json",
+      "bytes": 731,
+      "sha256": "sha256:9162c7726565153cab46b8d6f01ea28de1822a4dcb0c6af6b34005410b909009"
+    },
+    {
+      "source": "project-context/evidence/fixtures/production_manifest_v3.valid.json",
+      "destination": "generated/fixtures/production_manifest_v3.valid.json",
+      "bytes": 5190,
+      "sha256": "sha256:2b708ab82f186d5dcbaf1de7a4102ad0875484f130d69c0eee568b8ac244d8c1"
+    },
+    {
+      "source": "project-context/evidence/fixtures/production_manifest_v3.invalid.exactly_once_billing_claim.json",
+      "destination": "generated/fixtures/production_manifest_v3.invalid.exactly_once_billing_claim.json",
+      "bytes": 5189,
+      "sha256": "sha256:7f223ec279fcc64abe9599cbbb79b49b434ceff27d339ca72339ebd3c679f646"
     },
     {
       "source": "project-context/evidence/fixtures/admitted_identity.valid.json",
@@ -449,8 +737,8 @@
     {
       "source": "project-context/evidence/contract-index.v1.json",
       "destination": "generated/contract-index.v1.json",
-      "bytes": 7745,
-      "sha256": "sha256:be148cbb9ef75a933711b3c85013042d00e297cec0810dede8c7d99d25dd799c"
+      "bytes": 13079,
+      "sha256": "sha256:dc1c8da11b0c15c7b8110fb73af7f218307d25a85170c52d17862ccc0350b162"
     }
   ]
 }

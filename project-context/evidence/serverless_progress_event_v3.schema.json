@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/serverless-progress-event-v3.json",
+  "title": "VideoForge Serverless progress observation v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "event_id", "dispatch_token", "attempt_id", "assignment_id", "sequence", "advisory_source", "authoritative", "provider_status", "attempt_state", "items_completed", "items_total", "observed_at"],
+  "properties": {
+    "schema_version": {"const": "serverless-progress-event/v3"},
+    "event_id": {"$ref": "#/$defs/id"},
+    "dispatch_token": {"type": "string", "minLength": 32, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$"},
+    "attempt_id": {"$ref": "#/$defs/id"},
+    "assignment_id": {
+      "oneOf": [
+        {"$ref": "#/$defs/id"},
+        {"type": "null"}
+      ]
+    },
+    "sequence": {"type": "integer", "minimum": 1, "maximum": 1000000},
+    "advisory_source": {"enum": ["POLL_STATUS", "WEBHOOK"]},
+    "authoritative": {"type": "boolean"},
+    "provider_status": {"enum": ["IN_QUEUE", "IN_PROGRESS", "COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"]},
+    "attempt_state": {"enum": ["ASSIGNED", "IN_QUEUE", "IN_PROGRESS", "UPLOADING", "RECONCILING", "SUCCEEDED", "RETRYABLE_FAILED", "PERMANENT_FAILED", "CANCELLING", "CANCELLED"]},
+    "items_completed": {"type": "integer", "minimum": 0, "maximum": 4096},
+    "items_total": {"type": "integer", "minimum": 1, "maximum": 4096},
+    "observed_at": {"$ref": "#/$defs/utc"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "advisory_source": {"const": "WEBHOOK"}
+        }
+      },
+      "then": {
+        "properties": {
+          "authoritative": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "advisory_source": {"const": "POLL_STATUS"}
+        }
+      },
+      "then": {
+        "properties": {
+          "authoritative": {"const": true}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"}
+  }
+}

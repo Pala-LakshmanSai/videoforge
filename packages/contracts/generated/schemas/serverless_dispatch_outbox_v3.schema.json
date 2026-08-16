@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/serverless-dispatch-outbox-v3.json",
+  "title": "VideoForge transactional Serverless dispatch outbox row v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "outbox_id", "dispatch_token", "authority_sha256", "request_body_sha256", "state", "send_attempt_count", "max_send_attempts", "lease", "created_at", "updated_at", "version"],
+  "properties": {
+    "schema_version": {"const": "serverless-dispatch-outbox/v3"},
+    "outbox_id": {"$ref": "#/$defs/id"},
+    "dispatch_token": {"type": "string", "minLength": 32, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$"},
+    "authority_sha256": {"$ref": "#/$defs/sha256"},
+    "request_body_sha256": {"$ref": "#/$defs/sha256"},
+    "state": {"enum": ["READY_TO_DISPATCH", "LEASED", "SENT", "DISPATCH_ACK_UNKNOWN", "ASSIGNED", "TERMINAL", "DEAD_LETTER"]},
+    "send_attempt_count": {"type": "integer", "minimum": 0, "maximum": 1},
+    "max_send_attempts": {"const": 1},
+    "lease": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["lease_id", "holder_sha256", "leased_at", "lease_expires_at"],
+          "properties": {
+            "lease_id": {"$ref": "#/$defs/id"},
+            "holder_sha256": {"$ref": "#/$defs/sha256"},
+            "leased_at": {"$ref": "#/$defs/utc"},
+            "lease_expires_at": {"$ref": "#/$defs/utc"}
+          }
+        },
+        {"type": "null"}
+      ]
+    },
+    "created_at": {"$ref": "#/$defs/utc"},
+    "updated_at": {"$ref": "#/$defs/utc"},
+    "version": {"type": "integer", "minimum": 1}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"}
+  }
+}

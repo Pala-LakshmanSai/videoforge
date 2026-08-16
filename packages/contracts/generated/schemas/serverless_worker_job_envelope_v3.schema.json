@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/serverless-worker-job-envelope-v3.json",
+  "title": "VideoForge Serverless worker job envelope v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "dispatch_token", "tenant", "work", "runtime", "artifacts", "limits", "policy", "authority_sha256", "signature"],
+  "properties": {
+    "schema": {"const": "serverless-worker-job-envelope/v3"},
+    "dispatch_token": {"type": "string", "minLength": 32, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$"},
+    "tenant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["account_id", "workspace_id"],
+      "properties": {
+        "account_id": {"$ref": "#/$defs/id"},
+        "workspace_id": {"$ref": "#/$defs/id"}
+      }
+    },
+    "work": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_revision_id", "generation_request_id", "task_id", "attempt_id", "lane", "items_manifest_sha256", "item_count"],
+      "properties": {
+        "project_revision_id": {"$ref": "#/$defs/id"},
+        "generation_request_id": {"$ref": "#/$defs/id"},
+        "task_id": {"$ref": "#/$defs/id"},
+        "attempt_id": {"$ref": "#/$defs/id"},
+        "lane": {"enum": ["mage_image", "soulx_avatar"]},
+        "items_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "item_count": {"type": "integer", "minimum": 1, "maximum": 4096}
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["endpoint_profile_id", "deployment_id", "container_digest", "model_manifest_sha256", "volume_id_sha256", "volume_mount", "volume_write_policy", "scratch_root_policy", "gpu_allowlist", "region"],
+      "properties": {
+        "endpoint_profile_id": {"$ref": "#/$defs/id"},
+        "deployment_id": {"$ref": "#/$defs/id"},
+        "container_digest": {"$ref": "#/$defs/sha256"},
+        "model_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "volume_id_sha256": {"$ref": "#/$defs/sha256"},
+        "volume_mount": {"const": "/runpod-volume"},
+        "volume_write_policy": {"const": "APPLICATION_READ_ONLY"},
+        "scratch_root_policy": {"const": "JOB_LOCAL_SCRATCH_OUTSIDE_MODEL_VOLUME"},
+        "gpu_allowlist": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["NVIDIA GeForce RTX 4090"]}
+        },
+        "region": {"const": "EU-RO-1"}
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_manifest_sha256", "output_prefix", "transfer_port_reservation_ids"],
+      "properties": {
+        "input_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "output_prefix": {"$ref": "#/$defs/objectKey"},
+        "transfer_port_reservation_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/id"}
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expires_at", "max_items", "max_input_bytes", "max_output_bytes", "execution_timeout_seconds", "init_timeout_seconds"],
+      "properties": {
+        "expires_at": {"$ref": "#/$defs/utc"},
+        "max_items": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "max_input_bytes": {"type": "integer", "minimum": 1, "maximum": 10737418240},
+        "max_output_bytes": {"type": "integer", "minimum": 1, "maximum": 10737418240},
+        "execution_timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 7200},
+        "init_timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 3600}
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_download_permitted", "volume_mutation_permitted", "pod_lifecycle_permitted", "queue_purge_permitted"],
+      "properties": {
+        "model_download_permitted": {"const": false},
+        "volume_mutation_permitted": {"const": false},
+        "pod_lifecycle_permitted": {"const": false},
+        "queue_purge_permitted": {"const": false}
+      }
+    },
+    "authority_sha256": {"$ref": "#/$defs/sha256"},
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "key_id", "value"],
+      "properties": {
+        "algorithm": {"const": "HMAC-SHA256"},
+        "key_id": {"$ref": "#/$defs/id"},
+        "value": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"},
+    "objectKey": {"type": "string", "minLength": 1, "maxLength": 1400, "pattern": "^tenant/[A-Za-z0-9._:/-]+$"}
+  }
+}

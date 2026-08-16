@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/serverless-output-receipt-v3.json",
+  "title": "VideoForge durable Serverless output receipt v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "output_receipt_id", "dispatch_token", "attempt_id", "assignment_id", "tenant", "lane", "acceptance", "durable_truth_source", "artifacts", "provenance_receipt_sha256", "artifact_commit_receipt_sha256", "accepted_at", "version"],
+  "properties": {
+    "schema_version": {"const": "serverless-output-receipt/v3"},
+    "output_receipt_id": {"$ref": "#/$defs/id"},
+    "dispatch_token": {"type": "string", "minLength": 32, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$"},
+    "attempt_id": {"$ref": "#/$defs/id"},
+    "assignment_id": {"$ref": "#/$defs/id"},
+    "tenant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["account_id", "workspace_id"],
+      "properties": {
+        "account_id": {"$ref": "#/$defs/id"},
+        "workspace_id": {"$ref": "#/$defs/id"}
+      }
+    },
+    "lane": {"enum": ["mage_image", "soulx_avatar"]},
+    "acceptance": {"enum": ["ACCEPTED_CANONICAL", "QUARANTINED_DUPLICATE", "QUARANTINED_FOREIGN", "QUARANTINED_SUPERSEDED", "QUARANTINED_UNBOUND"]},
+    "durable_truth_source": {"const": "SIGNED_PRIVATE_R2_RECEIPT"},
+    "artifacts": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["item_id", "object_key", "content_length", "checksum_sha256", "probe"],
+        "properties": {
+          "item_id": {"$ref": "#/$defs/id"},
+          "object_key": {"$ref": "#/$defs/objectKey"},
+          "content_length": {"type": "integer", "minimum": 0, "maximum": 10737418240},
+          "checksum_sha256": {"$ref": "#/$defs/sha256"},
+          "probe": {"$ref": "#/$defs/probe"}
+        }
+      }
+    },
+    "provenance_receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "artifact_commit_receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "accepted_at": {"$ref": "#/$defs/utc"},
+    "version": {"type": "integer", "minimum": 1}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"},
+    "objectKey": {"type": "string", "minLength": 1, "maxLength": 1400, "pattern": "^tenant/[A-Za-z0-9._:/-]+$"},
+    "probe": {
+      "type": "object",
+      "maxProperties": 64,
+      "additionalProperties": {
+        "oneOf": [
+          {"type": "boolean"},
+          {"type": "number"},
+          {"type": "string"},
+          {"type": "null"}
+        ]
+      }
+    }
+  }
+}

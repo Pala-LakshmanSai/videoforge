@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/serverless-cost-ledger-v3.json",
+  "title": "VideoForge Serverless attempt cost ledger v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "ledger_id", "dispatch_token", "attempt_id", "owner", "entries", "ceiling_usd", "estimated_usd", "reserved_usd", "reported_usd", "possible_duplicate_usd", "settled_usd", "refunded_usd", "fixed_retained_volume_usd_excluded", "updated_at", "version"],
+  "properties": {
+    "schema_version": {"const": "serverless-cost-ledger/v3"},
+    "ledger_id": {"$ref": "#/$defs/id"},
+    "dispatch_token": {"type": "string", "minLength": 32, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$"},
+    "attempt_id": {"$ref": "#/$defs/id"},
+    "owner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["account_id", "workspace_id", "owner_type", "owner_id"],
+      "properties": {
+        "account_id": {"$ref": "#/$defs/id"},
+        "workspace_id": {"$ref": "#/$defs/id"},
+        "owner_type": {"enum": ["PROJECT_REVISION", "IMAGE_STYLE_VERSION", "AVATAR_PROFILE_VERSION"]},
+        "owner_id": {"$ref": "#/$defs/id"}
+      }
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["entry_id", "kind", "amount_usd", "rate_source", "rate_checked_at", "confidence", "recorded_at"],
+        "properties": {
+          "entry_id": {"$ref": "#/$defs/id"},
+          "kind": {"enum": ["ESTIMATE", "RESERVATION", "PROVIDER_REPORT", "POSSIBLE_DUPLICATE", "SETTLED", "REFUND"]},
+          "amount_usd": {"$ref": "#/$defs/usd"},
+          "rate_source": {"type": "string", "minLength": 1, "maxLength": 400},
+          "rate_checked_at": {"$ref": "#/$defs/utc"},
+          "confidence": {"enum": ["MEASURED", "PROVIDER_REPORTED", "ESTIMATED", "AMBIGUOUS"]},
+          "recorded_at": {"$ref": "#/$defs/utc"}
+        }
+      }
+    },
+    "ceiling_usd": {"type": "number", "exclusiveMinimum": 0, "maximum": 2},
+    "estimated_usd": {"$ref": "#/$defs/usd"},
+    "reserved_usd": {"$ref": "#/$defs/usd"},
+    "reported_usd": {"$ref": "#/$defs/usd"},
+    "possible_duplicate_usd": {"$ref": "#/$defs/usd"},
+    "settled_usd": {"$ref": "#/$defs/usd"},
+    "refunded_usd": {"$ref": "#/$defs/usd"},
+    "fixed_retained_volume_usd_excluded": {"const": true},
+    "updated_at": {"$ref": "#/$defs/utc"},
+    "version": {"type": "integer", "minimum": 1}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"},
+    "usd": {"type": "number", "minimum": 0, "maximum": 1000}
+  }
+}

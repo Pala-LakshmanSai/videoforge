@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: V2-03 provider-free audit repairs green; fresh independent re-audit required before V2-04
+Status: V2-04 provider-free Serverless v3 contracts green; V2-05 selected but not started
 Context schema: `2.0`
 Last updated: `2026-08-16`
 
@@ -143,8 +143,8 @@ terminal-path cleanup negative. This remains provider-free proof, not real R2, h
 published Serverless-worker proof.
 
 V2-03 implementation at audited HEAD `9fe0cfa3d470247e0b91eae50b012bd69ec34696` failed its first
-independent audit. The four bounded findings are repaired at `fa01480fe6b4356ce986a6bd105b72a04ebdca8a`
-and await a fresh independent re-audit. Additive migrations `0021_fair_generation_admission.sql`
+independent audit. The four bounded findings were repaired at `fa01480fe6b4356ce986a6bd105b72a04ebdca8a`
+and independently re-audited green at `268e26cb6cc28880854d6ca5d4290da05ee502e8`. Additive migrations `0021_fair_generation_admission.sql`
 and `0022_v2_03_admission_audit_repairs.sql` plus the fair-admission
 repository persist tenant-owned video and Mage/SoulX preview requests, deterministic account
 last-served rotation, one active provider workload/account, and exactly two distinct-account global
@@ -169,8 +169,19 @@ connects as a superuser and bypasses it, so the local proof comes from the tenan
 the `videoforge_tenant_*` views. Hosted enforcement waits for V2-06. `GATE_TENANCY_001` and
 `GATE_STORAGE_001` therefore remain open only for their hosted/non-superuser/real-R2 proof.
 
-`CURRENT_STATE.yaml` selects a read-only fresh V2-03 independent re-audit. V2-04 is not yet selected
-and must not start before that audit accepts the repaired implementation.
+V2-04 is complete and provider-free. Additive migrations `0023_serverless_attempts_and_outbox.sql`
+and `0024_serverless_cost_and_reconciliation.sql`, canonical TypeScript/Python v3 contracts, and the
+fake transport bind exact tenant/revision/lane/endpoint/config/image/model/volume/input/deadline/spend
+facts before dispatch. A stable token and outbox exist before fake `/run`; provider assignment is
+durable before status or output acceptance. Signed VideoForge provenance and private output receipts,
+bounded unknown-ack reconciliation, advisory webhooks, cancellation/restart/TTL recovery, accepted-unit
+resume, cost conservation, and at-most-one canonical output with visible duplicate compute/cost all
+pass. Superseded Pod schemas are read-only compatibility evidence and cannot authorize v3 dispatch.
+Canonical verification passed 28/28 package tasks and 44/44 installed-Chrome tests. No credential,
+provider call, endpoint/image/volume mutation, worker, GPU, or spend occurred.
+
+`CURRENT_STATE.yaml` selects V2-05 as ready but not started. Its separate implementation request is
+required before application/runtime cutover work begins.
 All prior provider authorities are consumed and cannot be reused. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in

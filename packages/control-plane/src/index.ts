@@ -8,6 +8,7 @@ export * from "./global-session/index.js";
 export * from "./shared-app/index.js";
 export * from "./recovery/index.js";
 export * from "./repositories/index.js";
+export * from "./serverless/index.js";
 export * from "./prompts/index.js";
 export * from "./styles/index.js";
 export * from "./telemetry/index.js";

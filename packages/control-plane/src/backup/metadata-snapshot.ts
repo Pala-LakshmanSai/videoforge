@@ -71,6 +71,18 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "provider_workload_leases",
   "global_generation_capacity",
   "generation_queue_audits",
+  "serverless_endpoint_deployments",
+  "serverless_attempts",
+  "serverless_predispatch_authorities",
+  "serverless_dispatch_outbox",
+  "serverless_provider_assignments",
+  "serverless_progress_events",
+  "serverless_provenance_receipts",
+  "serverless_output_receipts",
+  "serverless_cancellations",
+  "serverless_reconciliations",
+  "serverless_cost_ledgers",
+  "serverless_cost_events",
   "artifact_reservations",
   "artifact_receipts",
   "transcripts",
@@ -698,7 +710,9 @@ async function insertTable(
       ? " ORDER BY owner_type, owner_id, sequence"
       : tableName === "workflow_events"
         ? " ORDER BY aggregate_type, aggregate_id, sequence"
-        : "";
+        : tableName === "serverless_cost_events"
+          ? " ORDER BY attempt_id, sequence"
+          : "";
   const result = await executor.query(
     `INSERT INTO ${qualifiedTable(tableName)}
      SELECT * FROM jsonb_populate_recordset(NULL::${qualifiedTable(tableName)}, ${source})${orderedSource}`,

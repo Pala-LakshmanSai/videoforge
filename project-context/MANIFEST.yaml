@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-16"
 source_of_truth: project-context
 
-current_selected_profile: v2_04_serverless_v3_contracts
-current_selected_brief: tasks/VF-10-04.md
+current_selected_profile: v2_05_provider_free_cutover
+current_selected_brief: tasks/VF-10-05.md
 
 mandatory_read:
   - 00_START_HERE.md

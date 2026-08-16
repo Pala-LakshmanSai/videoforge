@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/serverless-provenance-receipt-v1.json",
+  "title": "VideoForge application-signed Serverless provenance receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "receipt_id", "attestation_scope", "dispatch_token", "attempt_id", "provider_job_id", "worker_id", "tenant", "lane", "deployment", "runtime_probe", "volume_verification", "model_ready_evidence", "timings", "items", "scratch_cleanup", "receipt_nonce", "issued_at", "receipt_sha256", "signature"],
+  "properties": {
+    "schema_version": {"const": "serverless-provenance-receipt/v1"},
+    "receipt_id": {"$ref": "#/$defs/id"},
+    "attestation_scope": {"const": "VIDEOFORGE_APPLICATION_SIGNED_FACTS_NOT_PROVIDER_HARDWARE_ATTESTATION"},
+    "dispatch_token": {"type": "string", "minLength": 32, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$"},
+    "attempt_id": {"$ref": "#/$defs/id"},
+    "provider_job_id": {
+      "oneOf": [
+        {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$"},
+        {"type": "null"}
+      ]
+    },
+    "worker_id": {
+      "oneOf": [
+        {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$"},
+        {"type": "null"}
+      ]
+    },
+    "tenant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["account_id", "workspace_id"],
+      "properties": {
+        "account_id": {"$ref": "#/$defs/id"},
+        "workspace_id": {"$ref": "#/$defs/id"}
+      }
+    },
+    "lane": {"enum": ["mage_image", "soulx_avatar"]},
+    "deployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deployment_id", "endpoint_id_sha256", "container_digest", "intended_region", "intended_volume_id_sha256", "model_manifest_sha256"],
+      "properties": {
+        "deployment_id": {"$ref": "#/$defs/id"},
+        "endpoint_id_sha256": {"$ref": "#/$defs/sha256"},
+        "container_digest": {"$ref": "#/$defs/sha256"},
+        "intended_region": {"const": "EU-RO-1"},
+        "intended_volume_id_sha256": {"$ref": "#/$defs/sha256"},
+        "model_manifest_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "runtime_probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gpu_name", "gpu_count", "gpu_uuid_sha256", "driver_version", "cuda_version", "probe_source"],
+      "properties": {
+        "gpu_name": {"type": "string", "minLength": 1, "maxLength": 200},
+        "gpu_count": {"const": 1},
+        "gpu_uuid_sha256": {
+          "oneOf": [
+            {"$ref": "#/$defs/sha256"},
+            {"type": "null"}
+          ]
+        },
+        "driver_version": {"type": "string", "minLength": 1, "maxLength": 64},
+        "cuda_version": {"type": "string", "minLength": 1, "maxLength": 64},
+        "probe_source": {"const": "WORKER_RUNTIME_SELF_REPORT"}
+      }
+    },
+    "volume_verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest_sha256_before", "manifest_sha256_after", "mutation_detected", "cross_mount_detected"],
+      "properties": {
+        "manifest_sha256_before": {"$ref": "#/$defs/sha256"},
+        "manifest_sha256_after": {"$ref": "#/$defs/sha256"},
+        "mutation_detected": {"const": false},
+        "cross_mount_detected": {"const": false}
+      }
+    },
+    "model_ready_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "warmup_completed", "warmup_output_sha256"],
+      "properties": {
+        "state": {"const": "MODEL_READY"},
+        "warmup_completed": {"const": true},
+        "warmup_output_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "timings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allocation_ms", "container_ready_ms", "volume_verified_ms", "model_load_ms", "warmup_ms", "first_inference_ms", "upload_ms", "total_ms"],
+      "properties": {
+        "allocation_ms": {"type": "integer", "minimum": 0, "maximum": 86400000},
+        "container_ready_ms": {"type": "integer", "minimum": 0, "maximum": 86400000},
+        "volume_verified_ms": {"type": "integer", "minimum": 0, "maximum": 86400000},
+        "model_load_ms": {"type": "integer", "minimum": 0, "maximum": 86400000},
+        "warmup_ms": {"type": "integer", "minimum": 0, "maximum": 86400000},
+        "first_inference_ms": {"type": "integer", "minimum": 0, "maximum": 86400000},
+        "upload_ms": {"type": "integer", "minimum": 0, "maximum": 86400000},
+        "total_ms": {"type": "integer", "minimum": 0, "maximum": 86400000}
+      }
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["item_id", "state", "output_object_key", "output_sha256", "output_bytes", "probe"],
+        "properties": {
+          "item_id": {"$ref": "#/$defs/id"},
+          "state": {"enum": ["SUCCEEDED", "FAILED"]},
+          "output_object_key": {
+            "oneOf": [
+              {"$ref": "#/$defs/objectKey"},
+              {"type": "null"}
+            ]
+          },
+          "output_sha256": {
+            "oneOf": [
+              {"$ref": "#/$defs/sha256"},
+              {"type": "null"}
+            ]
+          },
+          "output_bytes": {"type": "integer", "minimum": 0, "maximum": 10737418240},
+          "probe": {"$ref": "#/$defs/probe"}
+        }
+      }
+    },
+    "scratch_cleanup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["terminal_reason", "removed", "scratch_on_model_volume"],
+      "properties": {
+        "terminal_reason": {"enum": ["SUCCESS", "FAILURE", "CANCEL", "TIMEOUT", "SIGNAL", "REFRESH"]},
+        "removed": {"const": true},
+        "scratch_on_model_volume": {"const": false}
+      }
+    },
+    "receipt_nonce": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+    "issued_at": {"$ref": "#/$defs/utc"},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "key_id", "value"],
+      "properties": {
+        "algorithm": {"const": "HMAC-SHA256"},
+        "key_id": {"$ref": "#/$defs/id"},
+        "value": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"},
+    "objectKey": {"type": "string", "minLength": 1, "maxLength": 1400, "pattern": "^tenant/[A-Za-z0-9._:/-]+$"},
+    "probe": {
+      "type": "object",
+      "maxProperties": 64,
+      "additionalProperties": {
+        "oneOf": [
+          {"type": "boolean"},
+          {"type": "number"},
+          {"type": "string"},
+          {"type": "null"}
+        ]
+      }
+    }
+  }
+}

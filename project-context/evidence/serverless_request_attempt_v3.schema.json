@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/serverless-request-attempt-v3.json",
+  "title": "VideoForge Serverless request attempt v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "attempt_id", "dispatch_token", "tenant", "lane", "attempt_ordinal", "state", "items", "timings", "duplicate_exposure", "exactly_once_execution_claimed", "exactly_once_billing_claimed", "version"],
+  "properties": {
+    "schema_version": {"const": "serverless-request-attempt/v3"},
+    "attempt_id": {"$ref": "#/$defs/id"},
+    "dispatch_token": {"type": "string", "minLength": 32, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$"},
+    "tenant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["account_id", "workspace_id"],
+      "properties": {
+        "account_id": {"$ref": "#/$defs/id"},
+        "workspace_id": {"$ref": "#/$defs/id"}
+      }
+    },
+    "lane": {"enum": ["mage_image", "soulx_avatar"]},
+    "attempt_ordinal": {"type": "integer", "minimum": 1, "maximum": 3},
+    "state": {"enum": ["PLANNED", "OUTBOXED", "DISPATCHING", "ASSIGNED", "IN_QUEUE", "IN_PROGRESS", "UPLOADING", "RECONCILING", "SUCCEEDED", "RETRYABLE_FAILED", "PERMANENT_FAILED", "CANCELLING", "CANCELLED"]},
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["item_id", "kind", "input_sha256", "output_object_key", "state"],
+        "properties": {
+          "item_id": {"$ref": "#/$defs/id"},
+          "kind": {"enum": ["IMAGE_SCENE", "AVATAR_SPAN"]},
+          "input_sha256": {"$ref": "#/$defs/sha256"},
+          "output_object_key": {"$ref": "#/$defs/objectKey"},
+          "state": {"enum": ["PENDING", "ACCEPTED", "FAILED", "CARRIED_FORWARD"]}
+        }
+      }
+    },
+    "timings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["submitted_at", "ttl_expires_at", "deadline_at", "reconciliation_deadline_at", "terminal_at"],
+      "properties": {
+        "submitted_at": {
+          "oneOf": [
+            {"$ref": "#/$defs/utc"},
+            {"type": "null"}
+          ]
+        },
+        "ttl_expires_at": {
+          "oneOf": [
+            {"$ref": "#/$defs/utc"},
+            {"type": "null"}
+          ]
+        },
+        "deadline_at": {"$ref": "#/$defs/utc"},
+        "reconciliation_deadline_at": {"$ref": "#/$defs/utc"},
+        "terminal_at": {
+          "oneOf": [
+            {"$ref": "#/$defs/utc"},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "duplicate_exposure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["possible_duplicate_executions", "possible_duplicate_cost_usd", "bounded", "operator_visible"],
+      "properties": {
+        "possible_duplicate_executions": {"type": "integer", "minimum": 0, "maximum": 8},
+        "possible_duplicate_cost_usd": {"$ref": "#/$defs/usd"},
+        "bounded": {"const": true},
+        "operator_visible": {"const": true}
+      }
+    },
+    "exactly_once_execution_claimed": {"const": false},
+    "exactly_once_billing_claimed": {"const": false},
+    "version": {"type": "integer", "minimum": 1}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"},
+    "usd": {"type": "number", "minimum": 0, "maximum": 1000},
+    "objectKey": {"type": "string", "minLength": 1, "maxLength": 1400, "pattern": "^tenant/[A-Za-z0-9._:/-]+$"}
+  }
+}

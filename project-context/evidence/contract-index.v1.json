@@ -26,6 +26,124 @@
       ]
     },
     {
+      "name": "serverlessEndpointDeploymentV3",
+      "schema": "serverless_endpoint_deployment_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/serverless_endpoint_deployment_v3.valid.json", "expected": true},
+        {"path": "fixtures/serverless_endpoint_deployment_v3.invalid.unqualified_gpu.json", "expected": false},
+        {"path": "fixtures/serverless_endpoint_deployment_v3.invalid.retained_worker.json", "expected": false}
+      ]
+    },
+    {
+      "name": "serverlessPredispatchAuthorityV3",
+      "schema": "serverless_predispatch_authority_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/serverless_predispatch_authority_v3.valid.json", "expected": true},
+        {"path": "fixtures/serverless_predispatch_authority_v3.invalid.purge_operation.json", "expected": false},
+        {"path": "fixtures/serverless_predispatch_authority_v3.invalid.uncapped_spend.json", "expected": false}
+      ]
+    },
+    {
+      "name": "serverlessDispatchOutboxV3",
+      "schema": "serverless_dispatch_outbox_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/serverless_dispatch_outbox_v3.valid.json", "expected": true},
+        {"path": "fixtures/serverless_dispatch_outbox_v3.invalid.blind_resubmit.json", "expected": false}
+      ]
+    },
+    {
+      "name": "serverlessRequestAttemptV3",
+      "schema": "serverless_request_attempt_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/serverless_request_attempt_v3.valid.json", "expected": true},
+        {"path": "fixtures/serverless_request_attempt_v3.invalid.exactly_once_claim.json", "expected": false}
+      ]
+    },
+    {
+      "name": "serverlessProviderAssignmentV3",
+      "schema": "serverless_provider_assignment_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/serverless_provider_assignment_v3.valid.json", "expected": true},
+        {"path": "fixtures/serverless_provider_assignment_v3.invalid.webhook_self_assignment.json", "expected": false}
+      ]
+    },
+    {
+      "name": "serverlessWorkerJobEnvelopeV3",
+      "schema": "serverless_worker_job_envelope_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/serverless_worker_job_envelope_v3.valid.json", "expected": true},
+        {"path": "fixtures/serverless_worker_job_envelope_v3.invalid.volume_write.json", "expected": false},
+        {"path": "fixtures/serverless_worker_job_envelope_v3.invalid.pod_lifecycle.json", "expected": false}
+      ]
+    },
+    {
+      "name": "serverlessProvenanceReceiptV1",
+      "schema": "serverless_provenance_receipt_v1.schema.json",
+      "fixtures": [
+        {"path": "fixtures/serverless_provenance_receipt_v1.valid.json", "expected": true},
+        {"path": "fixtures/serverless_provenance_receipt_v1.invalid.hardware_attestation_claim.json", "expected": false},
+        {"path": "fixtures/serverless_provenance_receipt_v1.invalid.volume_mutation.json", "expected": false}
+      ]
+    },
+    {
+      "name": "serverlessProgressEventV3",
+      "schema": "serverless_progress_event_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/serverless_progress_event_v3.valid.json", "expected": true},
+        {"path": "fixtures/serverless_progress_event_v3.invalid.authoritative_webhook.json", "expected": false}
+      ]
+    },
+    {
+      "name": "serverlessOutputReceiptV3",
+      "schema": "serverless_output_receipt_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/serverless_output_receipt_v3.valid.json", "expected": true},
+        {"path": "fixtures/serverless_output_receipt_v3.invalid.webhook_truth.json", "expected": false}
+      ]
+    },
+    {
+      "name": "serverlessCancellationV3",
+      "schema": "serverless_cancellation_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/serverless_cancellation_v3.valid.json", "expected": true},
+        {"path": "fixtures/serverless_cancellation_v3.invalid.endpoint_purge.json", "expected": false},
+        {"path": "fixtures/serverless_cancellation_v3.invalid.refund_promise.json", "expected": false}
+      ]
+    },
+    {
+      "name": "serverlessReconciliationV3",
+      "schema": "serverless_reconciliation_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/serverless_reconciliation_v3.valid.json", "expected": true},
+        {"path": "fixtures/serverless_reconciliation_v3.invalid.ambiguous_redispatch.json", "expected": false},
+        {"path": "fixtures/serverless_reconciliation_v3.invalid.queue_purge.json", "expected": false}
+      ]
+    },
+    {
+      "name": "serverlessCostLedgerV3",
+      "schema": "serverless_cost_ledger_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/serverless_cost_ledger_v3.valid.json", "expected": true},
+        {"path": "fixtures/serverless_cost_ledger_v3.invalid.retained_volume_included.json", "expected": false}
+      ]
+    },
+    {
+      "name": "generationAdmissionV3",
+      "schema": "generation_admission_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/generation_admission_v3.valid.json", "expected": true},
+        {"path": "fixtures/generation_admission_v3.invalid.over_admitted.json", "expected": false}
+      ]
+    },
+    {
+      "name": "productionManifestV3",
+      "schema": "production_manifest_v3.schema.json",
+      "fixtures": [
+        {"path": "fixtures/production_manifest_v3.valid.json", "expected": true},
+        {"path": "fixtures/production_manifest_v3.invalid.exactly_once_billing_claim.json", "expected": false}
+      ]
+    },
+    {
       "name": "admittedIdentity",
       "schema": "admitted_identity.schema.json",
       "fixtures": [
@@ -36,7 +154,9 @@
     {
       "name": "avatarProfileVersion",
       "schema": "avatar_profile_version.schema.json",
-      "fixtures": [{"path": "fixtures/avatar_profile_version.valid.json", "expected": true}]
+      "fixtures": [
+        {"path": "fixtures/avatar_profile_version.valid.json", "expected": true}
+      ]
     },
     {
       "name": "createProjectRequest",
@@ -52,10 +172,7 @@
       "schema": "durable_timing_lineage.schema.json",
       "fixtures": [
         {"path": "fixtures/durable_timing_lineage.valid.json", "expected": true},
-        {
-          "path": "fixtures/durable_timing_lineage.invalidated.valid.json",
-          "expected": true
-        }
+        {"path": "fixtures/durable_timing_lineage.invalidated.valid.json", "expected": true}
       ]
     },
     {
@@ -63,16 +180,15 @@
       "schema": "global_generation_session.schema.json",
       "fixtures": [
         {"path": "fixtures/global_generation_session.valid.json", "expected": true},
-        {
-          "path": "fixtures/global_generation_session.invalid.routine_volume_delete.json",
-          "expected": false
-        }
+        {"path": "fixtures/global_generation_session.invalid.routine_volume_delete.json", "expected": false}
       ]
     },
     {
       "name": "imageStyleProfile",
       "schema": "image_style_profile.schema.json",
-      "fixtures": [{"path": "default_image_style_v1.json", "expected": true}]
+      "fixtures": [
+        {"path": "default_image_style_v1.json", "expected": true}
+      ]
     },
     {
       "name": "imageStyleAnalyzerOutput",
@@ -92,26 +208,22 @@
       "schema": "project_revision_config.schema.json",
       "fixtures": [
         {"path": "fixtures/project_revision_config.valid.json", "expected": true},
-        {
-          "path": "fixtures/project_revision_config.invalid.compatibility_mismatch.json",
-          "expected": false
-        }
+        {"path": "fixtures/project_revision_config.invalid.compatibility_mismatch.json", "expected": false}
       ]
     },
     {
       "name": "timelinePlan",
       "schema": "timeline_plan.schema.json",
-      "fixtures": [{"path": "fixtures/timeline_plan.valid.json", "expected": true}]
+      "fixtures": [
+        {"path": "fixtures/timeline_plan.valid.json", "expected": true}
+      ]
     },
     {
       "name": "generationWorkManifest",
       "schema": "generation_work_manifest.schema.json",
       "fixtures": [
         {"path": "fixtures/generation_work_manifest.valid.json", "expected": true},
-        {
-          "path": "fixtures/generation_work_manifest.invalid.full_voiceover.json",
-          "expected": false
-        }
+        {"path": "fixtures/generation_work_manifest.invalid.full_voiceover.json", "expected": false}
       ]
     },
     {
@@ -127,30 +239,23 @@
       "schema": "resolved_render_manifest.schema.json",
       "fixtures": [
         {"path": "fixtures/resolved_render_manifest.valid.json", "expected": true},
-        {
-          "path": "fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json",
-          "expected": false
-        }
+        {"path": "fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json", "expected": false}
       ]
     },
     {
       "name": "productionManifest",
       "schema": "production_manifest.schema.json",
-      "fixtures": [{"path": "fixtures/production_manifest.valid.json", "expected": true}]
+      "fixtures": [
+        {"path": "fixtures/production_manifest.valid.json", "expected": true}
+      ]
     },
     {
       "name": "podWorkerJobEnvelope",
       "schema": "pod_worker_job_envelope.schema.json",
       "fixtures": [
         {"path": "fixtures/pod_worker_job_envelope.valid.json", "expected": true},
-        {
-          "path": "fixtures/pod_worker_job_envelope.invalid.legacy_dispatch.json",
-          "expected": false
-        },
-        {
-          "path": "fixtures/pod_worker_job_envelope.invalid.cross_session.json",
-          "expected": false
-        }
+        {"path": "fixtures/pod_worker_job_envelope.invalid.legacy_dispatch.json", "expected": false},
+        {"path": "fixtures/pod_worker_job_envelope.invalid.cross_session.json", "expected": false}
       ]
     },
     {

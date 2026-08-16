@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/serverless-endpoint-deployment-v3.json",
+  "title": "VideoForge immutable Serverless endpoint deployment record v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "deployment_id", "lane", "endpoint_profile_id", "endpoint_id_sha256", "endpoint_config_sha256", "worker_image_digest", "model_manifest_sha256", "region", "volume_id_sha256", "volume_manifest_sha256", "volume_mount", "volume_size_gb", "gpu_allowlist", "gpu_count_per_worker", "worker_count_min", "worker_count_max", "worker_ceiling_scope", "retained_active_workers", "scaler_type", "scaler_value", "handler_concurrency", "idle_timeout_seconds", "init_timeout_seconds", "execution_timeout_seconds", "request_ttl_seconds", "request_ttl_scope", "reconciliation_deadline_seconds", "provider_result_window_seconds", "polling_interval_seconds", "retry_policy", "timeout_evidence", "deployment_version", "created_at", "record_sha256"],
+  "properties": {
+    "schema_version": {"const": "serverless-endpoint-deployment/v3"},
+    "deployment_id": {"$ref": "#/$defs/id"},
+    "lane": {"enum": ["mage_image", "soulx_avatar"]},
+    "endpoint_profile_id": {"$ref": "#/$defs/id"},
+    "endpoint_id_sha256": {"$ref": "#/$defs/sha256"},
+    "endpoint_config_sha256": {"$ref": "#/$defs/sha256"},
+    "worker_image_digest": {"$ref": "#/$defs/sha256"},
+    "model_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "region": {"const": "EU-RO-1"},
+    "volume_id_sha256": {"$ref": "#/$defs/sha256"},
+    "volume_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "volume_mount": {"const": "/runpod-volume"},
+    "volume_size_gb": {"const": 50},
+    "gpu_allowlist": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "uniqueItems": true,
+      "items": {"enum": ["NVIDIA GeForce RTX 4090"]}
+    },
+    "gpu_count_per_worker": {"const": 1},
+    "worker_count_min": {"const": 0},
+    "worker_count_max": {"const": 2},
+    "worker_ceiling_scope": {"const": "ACTIVE_PLUS_FLEX"},
+    "retained_active_workers": {"const": 0},
+    "scaler_type": {"const": "REQUEST_COUNT"},
+    "scaler_value": {"const": 1},
+    "handler_concurrency": {"const": 1},
+    "idle_timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 3600},
+    "init_timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 3600},
+    "execution_timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 7200},
+    "request_ttl_seconds": {"type": "integer", "minimum": 1, "maximum": 10800},
+    "request_ttl_scope": {"const": "PROVIDER_QUEUE_PLUS_EXECUTION_PLUS_OUTPUT_UPLOAD"},
+    "reconciliation_deadline_seconds": {"type": "integer", "minimum": 1, "maximum": 1500},
+    "provider_result_window_seconds": {"const": 1800},
+    "polling_interval_seconds": {"type": "integer", "minimum": 1, "maximum": 60},
+    "retry_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_replacement_attempts", "requires_prior_attempt_terminal_or_reconciled", "blind_resubmit_permitted"],
+      "properties": {
+        "max_replacement_attempts": {"type": "integer", "minimum": 0, "maximum": 2},
+        "requires_prior_attempt_terminal_or_reconciled": {"const": true},
+        "blind_resubmit_permitted": {"const": false}
+      }
+    },
+    "timeout_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "measured_at", "evidence_path", "provider_defaults_accepted"],
+      "properties": {
+        "source": {"enum": ["MEASURED_LANE_EVIDENCE", "PROVISIONAL_PROVIDER_FREE_BOUND"]},
+        "measured_at": {"$ref": "#/$defs/utc"},
+        "evidence_path": {"type": "string", "minLength": 1, "maxLength": 400},
+        "provider_defaults_accepted": {"const": false}
+      }
+    },
+    "deployment_version": {"type": "integer", "minimum": 1},
+    "created_at": {"$ref": "#/$defs/utc"},
+    "record_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"}
+  }
+}

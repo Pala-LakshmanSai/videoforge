@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/serverless-provider-assignment-v3.json",
+  "title": "VideoForge Serverless provider job assignment v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "assignment_id", "dispatch_token", "attempt_id", "provider_job_id", "provider_job_id_sha256", "assignment_source", "worker_id", "assigned_at", "is_current", "superseded_at", "version"],
+  "properties": {
+    "schema_version": {"const": "serverless-provider-assignment/v3"},
+    "assignment_id": {"$ref": "#/$defs/id"},
+    "dispatch_token": {"type": "string", "minLength": 32, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$"},
+    "attempt_id": {"$ref": "#/$defs/id"},
+    "provider_job_id": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$"},
+    "provider_job_id_sha256": {"$ref": "#/$defs/sha256"},
+    "assignment_source": {"enum": ["RUN_RESPONSE", "BOUNDED_RECONCILIATION"]},
+    "worker_id": {
+      "oneOf": [
+        {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$"},
+        {"type": "null"}
+      ]
+    },
+    "assigned_at": {"$ref": "#/$defs/utc"},
+    "is_current": {"type": "boolean"},
+    "superseded_at": {
+      "oneOf": [
+        {"$ref": "#/$defs/utc"},
+        {"type": "null"}
+      ]
+    },
+    "version": {"type": "integer", "minimum": 1}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"}
+  }
+}
