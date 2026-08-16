@@ -46,8 +46,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "3c219dd6a006dc22e6cddae3314fc79c8c2b5ea8"
-  last_good_commit_note: "V2-04 complete artifact-commit binding and post-TTL terminal-discovery repairs pass provider-free focused and canonical verification; the re-audit was performed in the repair chat and is not claimed independent."
+  last_good_commit: "260b3ea"
+  last_good_commit_note: "V2-05 admission-gated per-video runtime, lane dispatch gates, accepted-unit resume, render barrier, and superseded-contract firewall pass focused and canonical verification (28/28). The UI cutover and installed-Chrome journeys against the new runtime are still outstanding."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -453,6 +453,7 @@ verification:
   remote_mutation_used_for_v2_04: false
   paid_compute_started_for_v2_04: false
   in_progress_for_v2_05:
+    implementation_commit: "260b3ea"
     evidence: evidence/acceptance/VF-10-05/2026-08-16-provider-free-cutover/acceptance.json
     status: runtime_cutover_and_firewall_green_ui_cutover_outstanding
     commands:
