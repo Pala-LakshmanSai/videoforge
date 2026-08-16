@@ -135,33 +135,8 @@ export class NodeFairAdmission implements ApplicationFairAdmission {
   ) {
     const value = ids(tenant, publicProjectId);
     const now = new Date().toISOString();
+    await this.ensureFixtureTenant(executor, tenant, actorEmail);
     await executor.transaction(async (transaction) => {
-      await transaction.query(
-        `INSERT INTO users (id, email, normalized_email, display_name)
-         VALUES ($1, $2, $2, $3) ON CONFLICT (id) DO NOTHING`,
-        [value.userId, actorEmail, `Fixture ${actorEmail}`],
-      );
-      await transaction.query(
-        `INSERT INTO accounts (id, scope_kind, owner_user_id, normalized_email, status)
-         VALUES ($1, 'USER', $2, $3, 'ACTIVE') ON CONFLICT (id) DO NOTHING`,
-        [value.accountId, value.userId, actorEmail],
-      );
-      await transaction.query(
-        `INSERT INTO workspaces (id, name, normalized_name, account_id, is_default)
-         VALUES ($1, $2, $3, $4, true) ON CONFLICT (id) DO NOTHING`,
-        [value.workspaceId, `Fixture ${actorEmail}`, `fixture ${actorEmail}`, value.accountId],
-      );
-      await transaction.query(
-        `INSERT INTO memberships (id, workspace_id, account_id, user_id, normalized_name, role, status)
-         VALUES ($1, $2, $3, $4, $5, 'ADMIN', 'ACTIVE') ON CONFLICT (id) DO NOTHING`,
-        [
-          value.membershipId,
-          value.workspaceId,
-          value.accountId,
-          value.userId,
-          `owner ${actorEmail}`,
-        ],
-      );
       for (const [assetId, kind, objectKey] of [
         [value.avatarOriginalId, "AVATAR_ORIGINAL", "avatar-original"],
         [value.avatarRuntimeId, "AVATAR_RUNTIME", "avatar-runtime"],
@@ -299,6 +274,42 @@ export class NodeFairAdmission implements ApplicationFairAdmission {
     return value;
   }
 
+  private async ensureFixtureTenant(
+    executor: PGliteExecutor,
+    tenant: FixtureTenantScope,
+    actorEmail: string,
+  ): Promise<void> {
+    const value = ids(tenant);
+    await executor.transaction(async (transaction) => {
+      await transaction.query(
+        `INSERT INTO users (id, email, normalized_email, display_name)
+         VALUES ($1, $2, $2, $3) ON CONFLICT (id) DO NOTHING`,
+        [value.userId, actorEmail, `Fixture ${actorEmail}`],
+      );
+      await transaction.query(
+        `INSERT INTO accounts (id, scope_kind, owner_user_id, normalized_email, status)
+         VALUES ($1, 'USER', $2, $3, 'ACTIVE') ON CONFLICT (id) DO NOTHING`,
+        [value.accountId, value.userId, actorEmail],
+      );
+      await transaction.query(
+        `INSERT INTO workspaces (id, name, normalized_name, account_id, is_default)
+         VALUES ($1, $2, $3, $4, true) ON CONFLICT (id) DO NOTHING`,
+        [value.workspaceId, `Fixture ${actorEmail}`, `fixture ${actorEmail}`, value.accountId],
+      );
+      await transaction.query(
+        `INSERT INTO memberships (id, workspace_id, account_id, user_id, normalized_name, role, status)
+         VALUES ($1, $2, $3, $4, $5, 'ADMIN', 'ACTIVE') ON CONFLICT (id) DO NOTHING`,
+        [
+          value.membershipId,
+          value.workspaceId,
+          value.accountId,
+          value.userId,
+          `owner ${actorEmail}`,
+        ],
+      );
+    });
+  }
+
   private scope(tenant: FixtureTenantScope) {
     const value = ids(tenant);
     return trustedTenantScope(value.accountId, value.workspaceId);
@@ -336,13 +347,15 @@ export class NodeFairAdmission implements ApplicationFairAdmission {
         now,
         auditId: crypto.randomUUID(),
       });
-      await repository.promoteNext({
-        leaseId: crypto.randomUUID(),
-        auditId: crypto.randomUUID(),
-        ownerTokenSha256: sha256(crypto.randomUUID()) as `sha256:${string}`,
-        now,
-        expiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
-      });
+      if (queued.state === "WAITING") {
+        await repository.promoteNext({
+          leaseId: crypto.randomUUID(),
+          auditId: crypto.randomUUID(),
+          ownerTokenSha256: sha256(crypto.randomUUID()) as `sha256:${string}`,
+          now,
+          expiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+        });
+      }
       const owned = await repository.listOwned(this.scope(input.tenant));
       const item = owned.find((candidate) => candidate.requestId === queued.requestId);
       if (item === undefined) throw new Error("durable fair admission lost the enqueued request");
@@ -357,10 +370,50 @@ export class NodeFairAdmission implements ApplicationFairAdmission {
     }
   }
 
-  async listOwned(tenant: FixtureTenantScope) {
+  async listOwned(tenant: FixtureTenantScope, actorEmail: string) {
     try {
-      const { repository } = await this.#ready;
+      const { executor, repository } = await this.#ready;
+      await this.ensureFixtureTenant(executor, tenant, actorEmail);
       return snapshot(await repository.listOwned(this.scope(tenant)));
+    } catch (error) {
+      this.translate(error);
+    }
+  }
+
+  async settleSucceeded(input: Parameters<ApplicationFairAdmission["settleSucceeded"]>[0]) {
+    try {
+      const { executor, repository } = await this.#ready;
+      const requestId = ids(input.tenant, input.publicProjectId).requestId;
+      const lease = await executor.query<{
+        id: string;
+        owner_token_sha256: `sha256:${string}`;
+        version: number;
+      }>(
+        `SELECT id, owner_token_sha256, version
+           FROM provider_workload_leases
+          WHERE generation_request_id = $1 AND state = 'ACTIVE'`,
+        [requestId],
+      );
+      const active = lease.rows[0];
+      if (active !== undefined) {
+        const now = new Date().toISOString();
+        await repository.settleAndPromote({
+          leaseId: active.id,
+          ownerTokenSha256: active.owner_token_sha256,
+          expectedLeaseVersion: active.version,
+          terminalState: "SUCCEEDED",
+          auditId: crypto.randomUUID(),
+          now,
+          nextPromotion: {
+            leaseId: crypto.randomUUID(),
+            auditId: crypto.randomUUID(),
+            ownerTokenSha256: sha256(crypto.randomUUID()) as `sha256:${string}`,
+            now,
+            expiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+          },
+        });
+      }
+      return snapshot(await repository.listOwned(this.scope(input.tenant)));
     } catch (error) {
       this.translate(error);
     }

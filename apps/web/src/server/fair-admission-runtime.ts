@@ -13,7 +13,14 @@ export interface ApplicationFairAdmission {
     readonly version: number;
     readonly snapshot: readonly FairAdmissionSnapshotItem[];
   }>;
-  listOwned(tenant: FixtureTenantScope): Promise<readonly FairAdmissionSnapshotItem[]>;
+  listOwned(
+    tenant: FixtureTenantScope,
+    actorEmail: string,
+  ): Promise<readonly FairAdmissionSnapshotItem[]>;
+  settleSucceeded(input: {
+    readonly tenant: FixtureTenantScope;
+    readonly publicProjectId: string;
+  }): Promise<readonly FairAdmissionSnapshotItem[]>;
   reorderOwned(input: {
     readonly tenant: FixtureTenantScope;
     readonly actorEmail: string;

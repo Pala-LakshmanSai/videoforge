@@ -42,6 +42,7 @@ export interface SharedQueueEntry {
   readonly projectId: string;
   readonly title: string;
   readonly state: SharedQueueState;
+  readonly admissionState: "ACTIVE" | "WAITING";
   readonly actor: string;
   readonly accountId: string;
   readonly workspaceId: string;
@@ -333,14 +334,20 @@ export class SharedAppFixtureStore {
       pair: LockedGpuPair | null;
       queueVersion: number;
       queueVersions?: [string, number][];
-      queue: Array<SharedQueueEntry & { requestVersion?: number }>;
+      queue: Array<
+        SharedQueueEntry & { requestVersion?: number; admissionState?: "ACTIVE" | "WAITING" }
+      >;
       audits: SharedQueueAudit[];
       projectOwners?: [string, FixtureTenantScope][];
       orchestration?: ProviderFreeOrchestrationState;
     };
     return {
       ...value,
-      queue: value.queue.map((entry) => ({ ...entry, requestVersion: entry.requestVersion ?? 1 })),
+      queue: value.queue.map((entry) => ({
+        ...entry,
+        requestVersion: entry.requestVersion ?? 1,
+        admissionState: entry.admissionState ?? entry.state,
+      })),
       admissions: new Map(value.admissions.map((item) => [item.email, item])),
       sessionAdmissions: new Map(value.sessionAdmissions),
       invites: new Map(value.invites.map((item) => [item.codeHash, item])),
@@ -592,7 +599,7 @@ export class SharedAppFixtureStore {
       queueVersion: this.queueVersion(admission),
       capacity: Object.freeze({
         totalSlots: 2 as const,
-        ownedActive: (owned.some((entry) => entry.state === "ACTIVE") ? 1 : 0) as 0 | 1,
+        ownedActive: (owned.some((entry) => entry.admissionState === "ACTIVE") ? 1 : 0) as 0 | 1,
         accountActiveLimit: 1 as const,
         otherAccountDetailsVisible: false as const,
       }),
@@ -606,12 +613,12 @@ export class SharedAppFixtureStore {
             projectId: entry.projectId,
             title: entry.title,
             kind: "VIDEO" as const,
-            state: entry.state,
+            state: entry.admissionState,
             stage,
             accountPosition: entry.position,
             version: entry.requestVersion,
-            canReorder: entry.state === "WAITING",
-            canCancel: entry.state === "WAITING",
+            canReorder: entry.admissionState === "WAITING",
+            canCancel: entry.admissionState === "WAITING",
             createdAt: entry.createdAt,
           });
         }),
@@ -662,17 +669,22 @@ export class SharedAppFixtureStore {
       const oldVersion = this.queueVersion(admission);
       let gpuPair: LockedGpuPair | null = null;
       const accountAlreadyActive = this.#state.queue.some(
-        (entry) => entry.state === "ACTIVE" && entry.accountId === admission.tenant.accountId,
+        (entry) =>
+          entry.admissionState === "ACTIVE" && entry.accountId === admission.tenant.accountId,
       );
       const activeAccounts = new Set(
         this.#state.queue
-          .filter((entry) => entry.state === "ACTIVE")
+          .filter((entry) => entry.admissionState === "ACTIVE")
           .map((entry) => entry.accountId),
       );
-      const admitted =
+      const fairlyAdmitted =
         input.admission === undefined
           ? !accountAlreadyActive && activeAccounts.size < 2
           : input.admission.state !== "WAITING";
+      const startsDownstream =
+        input.admission === undefined
+          ? fairlyAdmitted
+          : this.#orchestrator.snapshot().session === null;
       if (this.#state.sessionId === null) {
         const offers = liveOffers();
         // Endpoint/runtime choice is operator-owned. Ordinary Generate never accepts a GPU or Pod
@@ -689,8 +701,8 @@ export class SharedAppFixtureStore {
         gpuPair = Object.freeze({ image, avatar, lockedAt: new Date().toISOString() });
         this.#state.pair = gpuPair;
       }
-      const operation: SharedQueueAudit["operation"] = admitted ? "START" : "ADD";
-      const outcome: "STARTED" | "QUEUED" = admitted ? "STARTED" : "QUEUED";
+      const operation: SharedQueueAudit["operation"] = startsDownstream ? "START" : "ADD";
+      const outcome: "STARTED" | "QUEUED" = fairlyAdmitted ? "STARTED" : "QUEUED";
       const queueEntryId = input.admission?.requestId ?? crypto.randomUUID();
       this.incrementQueueVersion(admission.tenant);
       this.#state.queue = positions([
@@ -699,7 +711,8 @@ export class SharedAppFixtureStore {
           id: queueEntryId,
           projectId: input.projectId,
           title: input.title,
-          state: admitted ? "ACTIVE" : "WAITING",
+          state: startsDownstream ? "ACTIVE" : "WAITING",
+          admissionState: fairlyAdmitted ? "ACTIVE" : "WAITING",
           actor,
           accountId: admission.tenant.accountId,
           workspaceId: admission.tenant.workspaceId,
@@ -760,7 +773,7 @@ export class SharedAppFixtureStore {
             if (item === undefined) return entry;
             return {
               ...entry,
-              state: item.state === "WAITING" ? ("WAITING" as const) : ("ACTIVE" as const),
+              admissionState: item.state === "WAITING" ? ("WAITING" as const) : ("ACTIVE" as const),
               position: Number(item.queueOrder),
               requestVersion: item.version,
             };

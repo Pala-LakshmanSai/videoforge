@@ -122,10 +122,11 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     await runtime.sharedApp.waitForSettled();
     try {
       const tenant = runtime.sharedApp.tenant(session.id);
-      if (runtime.fairAdmission !== undefined && tenant !== null) {
+      const email = runtime.sharedApp.view(session.id).admission.email;
+      if (runtime.fairAdmission !== undefined && tenant !== null && email !== null) {
         runtime.sharedApp.reconcileFairAdmission(
           session.id,
-          await runtime.fairAdmission.listOwned(tenant),
+          await runtime.fairAdmission.listOwned(tenant, email),
         );
       }
       return c.json(runtime.sharedApp.privateFairQueueView(session.id));
@@ -256,7 +257,22 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
     try {
-      return c.json(await runtime.sharedApp.advance(session.id));
+      const result = await runtime.sharedApp.advance(session.id);
+      const tenant = runtime.sharedApp.tenant(session.id);
+      if (
+        runtime.fairAdmission !== undefined &&
+        tenant !== null &&
+        result.completedProjectId !== null
+      ) {
+        runtime.sharedApp.reconcileFairAdmission(
+          session.id,
+          await runtime.fairAdmission.settleSucceeded({
+            tenant,
+            publicProjectId: result.completedProjectId,
+          }),
+        );
+      }
+      return c.json(result);
     } catch (error) {
       return failure(error);
     }

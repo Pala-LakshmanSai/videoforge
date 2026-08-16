@@ -20,6 +20,9 @@ describe("active Node fair-admission composition", () => {
     await admission.reset();
     const tenantA = { accountId: "fixture-a", workspaceId: "fixture-a-workspace" };
     const tenantB = { accountId: "fixture-b", workspaceId: "fixture-b-workspace" };
+    const tenantC = { accountId: "fixture-c", workspaceId: "fixture-c-workspace" };
+
+    await expect(admission.listOwned(tenantC, "c@example.test")).resolves.toEqual([]);
 
     const activeA = await admission.enqueueVideo({
       tenant: tenantA,
@@ -70,6 +73,11 @@ describe("active Node fair-admission composition", () => {
       expectedVersion: reorderedWaiting.version,
     });
     expect(cancelled.map((item) => item.requestId)).toEqual([activeA.requestId]);
+    const settled = await admission.settleSucceeded({
+      tenant: tenantA,
+      publicProjectId: "a-active",
+    });
+    expect(settled).toEqual([]);
     await expect(
       admission.reorderOwned({
         tenant: tenantB,
