@@ -120,6 +120,30 @@ for (const root of productionRoots) {
   }
 }
 
+// Every superseded global-session surface must be gated behind explicit fixture control, so no
+// ordinary production route, flag, or UI action can reach one.
+const sharedAppRoutes = await readFile("apps/web/src/server/routes/shared-app-routes.ts", "utf8");
+const SUPERSEDED_ROUTES = [
+  'app.get("/api/v1/shared-app"',
+  'app.post("/api/v1/shared-app/cancel"',
+  'app.post("/api/v1/shared-app/advance"',
+  'app.get("/api/v1/shared-app/projects/:projectId"',
+  'app.get("/api/v1/shared-app/projects/:projectId/download"',
+  'app.patch("/api/v1/shared-app/queue/:entryId"',
+  'app.delete("/api/v1/shared-app/queue/:entryId"',
+];
+for (const route of SUPERSEDED_ROUTES) {
+  const start = sharedAppRoutes.indexOf(route);
+  if (start < 0) continue;
+  const body = sharedAppRoutes.slice(start, start + 400);
+  if (!body.includes("supersededSurface(c)")) {
+    failures.push(`superseded route is reachable without fixture control: ${route}`);
+  }
+}
+if (!sharedAppRoutes.includes("function supersededSurface(")) {
+  failures.push("the superseded-surface gate is missing from the shared application routes");
+}
+
 // The compatibility escape hatch may never be set by application code.
 for (const root of productionRoots) {
   for (const file of await filesBelow(root)) {
@@ -137,5 +161,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `V2-05 runtime firewall verified (${String(ACTIVE_RUNTIME_FILES.length)} active runtime files, ${String(SUPERSEDED_TABLES.length)} fenced superseded contracts): no global session, Pod lifecycle, GPU selector, broad key, or compatibility escape hatch is reachable from the active runtime.`,
+  `V2-05 runtime firewall verified (${String(ACTIVE_RUNTIME_FILES.length)} active runtime files, ${String(SUPERSEDED_TABLES.length)} fenced superseded contracts, ${String(SUPERSEDED_ROUTES.length)} fixture-gated superseded routes): no global session, Pod lifecycle, GPU selector, broad key, or compatibility escape hatch is reachable from ordinary production paths.`,
 );

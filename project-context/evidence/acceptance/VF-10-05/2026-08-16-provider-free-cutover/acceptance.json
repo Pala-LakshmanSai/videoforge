@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-05-provider-free-cutover/v1",
   "task_id": "VF-10-05",
   "checkpoint": "V2-05",
-  "result": "PARTIAL_RUNTIME_CUTOVER_GREEN_UI_CUTOVER_INCOMPLETE",
+  "result": "RUNTIME_AND_UI_CUTOVER_GREEN_LEGACY_EXECUTOR_QUARANTINED_NOT_REMOVED",
   "audit_independence": "SAME_CHAT_IMPLEMENTATION_NO_AUDIT_CLAIMED",
   "predecessor_verified_commit": "8457519",
   "recorded_at_utc": "2026-08-16T00:00:00Z",
@@ -23,7 +23,9 @@
     "asset_barrier": "Render cannot begin until every lane state is SUCCEEDED, and a complete video requires a durable render manifest plus final output hash.",
     "truthful_states": "The runtime exposes QUEUED, PREPARING, WAITING_FOR_WORKER, INITIALIZING, GENERATING_IMAGES, GENERATING_AVATAR, RENDERING, COMPLETE, FAILED, and CANCELED as durable observations, each carrying providerCallsAuthorized=false and authorizedSpendUsd=0. No state is synthesized ahead of a durable fact.",
     "application_composition": "apps/web/src/server/runtime/node-video-runtime.ts composes the migrated PGlite control plane, FairAdmissionRepository, VideoRuntimeService, ServerlessDispatchService, the fake per-lane Serverless v3 transports, the existing provider-free transcript/scheduler/prompt foundations, and tenant-private artifact commit receipts into one end-to-end provider-free video lifecycle.",
-    "runtime_firewall": "scripts/verify-v2-05-runtime-firewall.mjs (wired into pnpm ci:static) proves the active runtime graph names no superseded table, GPU pair, Pod lifecycle control, queue purge, /workspace model mount, or compatibility escape hatch; that object keys derive only from trusted tenant lineage; that migration 0028 fences every registered superseded contract; and that no production source outside the explicit compatibility allowlist writes a superseded table."
+    "runtime_firewall": "scripts/verify-v2-05-runtime-firewall.mjs (wired into pnpm ci:static) proves the active runtime graph names no superseded table, GPU pair, Pod lifecycle control, queue purge, /workspace model mount, or compatibility escape hatch; that object keys derive only from trusted tenant lineage; that migration 0028 fences every registered superseded contract; and that no production source outside the explicit compatibility allowlist writes a superseded table.",
+    "application_surface": "Generating a video registers its durable runtime; the private fair-queue view reports each owned video's factual stage and lane facts from the control plane instead of the superseded global-session projection; two owned-video routes advance and cancel exactly one video; and the approved queue design is unchanged apart from the stage sub-label now reading the runtime vocabulary. No compute control was introduced.",
+    "superseded_route_gate": "Every superseded global-session surface (view, cancel, advance, project orchestration, download, and the v1 queue mutations) now requires explicit fixture control, so no ordinary production route, flag, or UI action reaches one. The firewall asserts the gate on each route."
   },
   "proofs": {
     "queued_video_is_inert": "PASS_DATABASE_FAIL_CLOSED",
@@ -38,7 +40,9 @@
     "cross_tenant_negatives": "PASS_NON_REVEALING_NOT_FOUND",
     "cost_attribution": "PASS_SETTLED_ZERO_USD_PER_TENANT",
     "zero_fake_workers_after_drain": "PASS_NO_LIVE_ATTEMPTS",
-    "superseded_contract_writes": "PASS_FENCED_READABLE_ONLY"
+    "superseded_contract_writes": "PASS_FENCED_READABLE_ONLY",
+    "installed_chrome_two_account_runtime_journey": "PASS_46_46_INCLUDING_TWO_NEW_V2_05_JOURNEYS",
+    "ui_reports_only_factual_stages": "PASS_NO_GPU_OR_POD_CONTROL_VISIBLE"
   },
   "validation": {
     "focused_v2_05": {
@@ -66,11 +70,10 @@
       "tasks": "28/28",
       "control_plane": "298/298",
       "pipeline": "120/120",
-      "web": "319/319",
-      "contracts": "TypeScript and Python parity suites pass",
+      "web": "321/321",
       "provider_sandbox": "43/43",
       "test_fixtures": "12/12",
-      "installed_chrome": "44/44"
+      "installed_chrome": "46/46"
     },
     "static": {
       "command": "pnpm ci:static (format:check, verify:graph, verify:vnext-dispatch-firewall, verify:v2-05-firewall, contracts:check, context:validate, secret:scan, audit:dependencies)",
@@ -78,12 +81,17 @@
       "context_validation": "31 read profiles; 41 decisions; 19 gates; 172 JSON files",
       "secret_scan": "PASS (1024 tracked files)",
       "active_runtime": "PASS (62 active files)"
+    },
+    "application_routes": {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/server/routes/video-runtime-routes.test.ts src/server/runtime/node-video-runtime.test.ts",
+      "exit_code": 0,
+      "tests": "4/4"
     }
   },
   "not_delivered_by_design": [
-    "The approved Queue, Project, and Review surfaces still read the superseded provider-free global-session fixture projection. The new runtime is exposed through the application runtime composition and its tests, not yet through the ordinary UI routes, so the installed-Chrome two-account journeys still exercise the V2-03 fixture projection rather than the V2-05 runtime.",
-    "The superseded global-session compatibility executor remains importable inside apps/web/src/server/shared-app-fixture.ts. It is fenced at the database boundary and excluded from the V2-05 active runtime graph, but it is not yet removed from the application's build output.",
-    "GPU offer inventory and locked-pair fields remain on the legacy shared-app view schema; they are not read by the V2-05 runtime and expose no compute control, but the field removal belongs with the UI cutover above.",
+    "The superseded global-session compatibility executor still exists in the application build output. It is fenced at the database boundary, excluded from the V2-05 active runtime graph, and every one of its HTTP surfaces now requires explicit fixture control, but the code itself is retained because it still carries the only proven final-MP4 render, playback, and download evidence. Removing it belongs with the checkpoint that reproduces that evidence on the V2-05 runtime.",
+    "The superseded shared-app view still declares GPU offer inventory, locked-pair, and orchestration fields. They are unreachable from ordinary production paths and no screen reads them, but the schema and type deletion waits for the executor removal above.",
+    "The V2-05 runtime completes a video against a durable render manifest and final output hash; it does not yet produce the reviewable MP4 artifact and download route that the compatibility executor still provides.",
     "Hosted R2, non-superuser Neon row level security, published worker images or endpoints, live Serverless delivery, lane timing, billing, and physical worker drain remain later checkpoints."
   ],
   "current_truth": {

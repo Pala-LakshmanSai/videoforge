@@ -46,7 +46,7 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "260b3ea"
+  last_good_commit: "3b75b43"
   last_good_commit_note: "V2-05 admission-gated per-video runtime, lane dispatch gates, accepted-unit resume, render barrier, and superseded-contract firewall pass focused and canonical verification (28/28). The UI cutover and installed-Chrome journeys against the new runtime are still outstanding."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
@@ -112,7 +112,7 @@ roadmap_state:
   V2-02: complete_green_independently_reaudited
   V2-03: complete_green_independently_reaudited
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
-  V2-05: in_progress_runtime_and_firewall_green_ui_cutover_and_chrome_journeys_outstanding
+  V2-05: in_progress_runtime_ui_and_chrome_green_legacy_executor_quarantined_not_removed
   V2-06: blocked_on_V2-05
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
@@ -460,7 +460,9 @@ verification:
       - "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/v2-05-runtime-cutover.test.mjs: PASS (9/9)"
       - "pnpm --filter @videoforge/web exec vitest run src/server/runtime/node-video-runtime.test.ts: PASS (2/2)"
       - "node --test packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs packages/control-plane/tests/metadata-export-restore.test.mjs: PASS (11/11)"
-      - "pnpm verify:v2-05-firewall: PASS (3 active runtime files; 8 fenced superseded contracts)"
+      - "pnpm verify:v2-05-firewall: PASS (3 active runtime files; 8 fenced superseded contracts; 7 fixture-gated superseded routes)"
+      - "pnpm --filter @videoforge/web exec vitest run src/server/routes/video-runtime-routes.test.ts src/server/runtime/node-video-runtime.test.ts: PASS (4/4)"
+      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 298/298; pipeline 120/120; web 321/321; provider-sandbox 43/43; installed Chrome 46/46)"
     delivered:
       - "Additive migration 0028 persists independent per-video stage state, per-lane state, append-only accepted units, append-only runtime events, and a superseded-contract registry with a production write fence."
       - "A video runtime leaves QUEUED only behind a durable admission, so CPU preparation and every lane dispatch are database-fenced rather than convention."
@@ -470,10 +472,14 @@ verification:
       - "The application runtime composes fair admission, tenant-private artifacts, Serverless v3 dispatch, fake lane transports, and the existing transcript/scheduler/prompt/render foundations into one provider-free lifecycle for two tenants concurrently."
       - "Proven: queued inertness, lane independence, unknown acknowledgement, duplicate execution visibility, restart reconstruction, cancellation fencing, cross-tenant non-revealing negatives, $0 settled cost attribution, and zero live attempts after drain."
       - "pnpm ci:static now runs the V2-05 runtime firewall alongside the vNext dispatch firewall."
+      - "Generate registers the durable runtime, and the private fair-queue view reports each owned video's factual stage and lane facts from the control plane instead of the superseded projection."
+      - "Two owned-video routes advance and cancel exactly one video; the approved queue design is unchanged apart from the stage sub-label vocabulary."
+      - "Every superseded global-session surface requires explicit fixture control, and the firewall asserts that gate on each of the seven routes."
+      - "Installed Chrome proves a two-account V2-05 journey: queued inertness, both accounts advancing independently to COMPLETE, non-revealing cross-tenant refusal, durable lane facts, and no GPU or Pod control anywhere in the surface."
     outstanding_for_v2_05_completion:
-      - "The approved Queue/Project/Review surfaces and installed-Chrome two-account journeys still read the superseded global-session fixture projection; the UI cutover to the V2-05 runtime is not done."
-      - "The compatibility global-session executor is fenced in the database and excluded from the active runtime graph, but is still importable from apps/web/src/server/shared-app-fixture.ts and therefore still present in build output."
-      - "Legacy GPU offer and locked-pair fields remain on the superseded shared-app view schema pending that UI cutover."
+      - "The compatibility global-session executor is still in build output. It is database-fenced, outside the active runtime graph, and every superseded HTTP surface now requires explicit fixture control, but it still carries the only proven final-MP4 render, playback, and download evidence."
+      - "The V2-05 runtime completes against a durable render manifest and final output hash; it does not yet produce the reviewable MP4 artifact and download route the compatibility executor provides."
+      - "Legacy GPU offer, locked-pair, and orchestration fields remain declared on the superseded shared-app view schema; nothing reads them and no ordinary route returns them."
   provider_or_spend_used_for_v2_05: false
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false

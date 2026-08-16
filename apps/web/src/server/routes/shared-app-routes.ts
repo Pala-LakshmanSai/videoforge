@@ -1,4 +1,4 @@
-import type { Hono } from "hono";
+import type { Context, Hono } from "hono";
 import { ProviderFreeOrchestrationError } from "@videoforge/control-plane/provider-free-orchestration";
 
 import type { FixtureRuntime } from "../fixture-runtime";
@@ -65,6 +65,27 @@ async function withVideoRuntimeStages(runtime: FixtureRuntime, sessionId: string
           };
     }),
   };
+}
+
+/**
+ * Superseded global-session and Pod-era surfaces.
+ *
+ * V2-05 replaced them with the per-video runtime. They survive only as the provider-free
+ * compatibility harness for downstream media execution and MP4 review evidence, so every one of
+ * them now requires explicit fixture control: no ordinary production flow, route, or UI action can
+ * reach a superseded surface.
+ */
+function supersededSurface(c: Context): Response | null {
+  if (c.req.header(FIXTURE_CONTROL_HEADER) === FIXTURE_CONTROL_VALUE) return null;
+  return problemResponse(
+    apiProblem(
+      "SUPERSEDED_SURFACE_NOT_AVAILABLE",
+      404,
+      "Superseded surface",
+      "This global-session surface was superseded by the V2-05 per-video runtime.",
+      false,
+    ),
+  );
 }
 
 export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): void {
@@ -154,6 +175,8 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
   });
 
   app.get("/api/v1/shared-app", async (c) => {
+    const superseded = supersededSurface(c);
+    if (superseded !== null) return superseded;
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
     await runtime.sharedApp.waitForSettled();
@@ -332,6 +355,8 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
   });
 
   app.post("/api/v1/shared-app/cancel", (c) => {
+    const superseded = supersededSurface(c);
+    if (superseded !== null) return superseded;
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
     try {
@@ -342,6 +367,8 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
   });
 
   app.post("/api/v1/shared-app/advance", async (c) => {
+    const superseded = supersededSurface(c);
+    if (superseded !== null) return superseded;
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
     try {
@@ -367,6 +394,8 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
   });
 
   app.get("/api/v1/shared-app/projects/:projectId", async (c) => {
+    const superseded = supersededSurface(c);
+    if (superseded !== null) return superseded;
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
     try {
@@ -378,6 +407,8 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
   });
 
   app.get("/api/v1/shared-app/projects/:projectId/download", async (c) => {
+    const superseded = supersededSurface(c);
+    if (superseded !== null) return superseded;
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
     try {
@@ -411,6 +442,8 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
   });
 
   app.patch("/api/v1/shared-app/queue/:entryId", async (c) => {
+    const superseded = supersededSurface(c);
+    if (superseded !== null) return superseded;
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
     try {
@@ -428,6 +461,8 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
   });
 
   app.delete("/api/v1/shared-app/queue/:entryId", async (c) => {
+    const superseded = supersededSurface(c);
+    if (superseded !== null) return superseded;
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
     try {

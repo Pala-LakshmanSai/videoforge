@@ -1,7 +1,7 @@
 # VideoForge: start here
 
 Status: V2-04 provider-free Serverless v3 contracts repaired and same-chat re-audited green;
-V2-05 runtime cutover and firewall green, UI cutover and installed-Chrome journeys outstanding
+V2-05 runtime, UI, and installed-Chrome journeys green; compatibility executor quarantined, not removed
 Context schema: `2.0`
 Last updated: `2026-08-16`
 
@@ -218,11 +218,18 @@ live attempts and `$0` settled cost, and proves queued inertness, lane independe
 acknowledgement, duplicate-execution visibility, restart reconstruction, cancellation fencing, and
 non-revealing cross-tenant negatives. `pnpm ci:static` now also runs the V2-05 runtime firewall.
 
-Outstanding before V2-05 can be called complete: the approved Queue/Project/Review surfaces and the
-installed-Chrome two-account journeys still read the superseded global-session fixture projection,
-that compatibility executor is still importable from the web application even though it is fenced in
-the database and excluded from the active runtime graph, and the legacy GPU offer and locked-pair
-fields still exist on that superseded view schema.
+The application now serves that truth: Generate registers the durable runtime, the private
+fair-queue view reports each owned video's factual stage and lane facts, two owned-video routes
+advance and cancel exactly one video, and installed Chrome proves a two-account journey with queued
+inertness, independent progress to completion, non-revealing cross-tenant refusal, and no GPU or Pod
+control anywhere in the approved surface. Every superseded global-session HTTP surface now requires
+explicit fixture control, and the firewall asserts that gate.
+
+Outstanding before V2-05 can be called complete: the compatibility global-session executor is still
+in build output, because it still carries the only proven final-MP4 render, playback, and download
+evidence, which the V2-05 runtime does not yet reproduce; and the superseded view schema still
+declares GPU offer, locked-pair, and orchestration fields that nothing reads and no ordinary route
+returns.
 All prior provider authorities are consumed and cannot be reused. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in
