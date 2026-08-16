@@ -33,6 +33,8 @@ New migrations begin after the existing migration sequence. The planned ownershi
 - `0023_serverless_attempts_and_outbox.sql`
 - `0024_serverless_cost_and_reconciliation.sql`
 - `0025_serverless_v2_04_audit_repairs.sql`
+- `0026_serverless_result_window_and_cancellation_fence.sql`
+- `0027_serverless_output_binding_and_result_discovery.sql`
 
 V2-02 implemented `0019_tenant_artifact_receipts.sql` and the additive independent-audit repair
 `0020_tenant_artifact_isolation_repair.sql`; later planned filenames moved forward without rewriting history.
@@ -49,6 +51,13 @@ provider-result expiry boundary. Additive repair
 submission, persists the first authoritative terminal observation and its 30-minute result window,
 and prevents canonical output acceptance after cancellation or another terminal state at both the
 service transaction and database-trigger boundaries.
+Additive repair `0027_serverless_output_binding_and_result_discovery.sql` makes canonical output a
+complete relational join: every attempt item must have one unique live tenant-owned artifact commit
+receipt whose revision, lane, job, item, object key, bytes, checksum, and probe exactly match one
+successful item in the separately signed VideoForge provenance receipt. The service derives stored
+artifact rows from those receipts instead of trusting caller-supplied rows. An assigned job is not
+called terminal until `/status` observes a terminal state; before that observation it remains
+discoverable through the worst-case request-TTL-plus-1800-second result horizon.
 Exact future filenames may change only inside their implementation checkpoint before release. Never edit or
 renumber committed migrations `0014`–`0017` to make the new architecture appear implemented.
 

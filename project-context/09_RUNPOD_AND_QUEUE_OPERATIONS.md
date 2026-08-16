@@ -164,6 +164,12 @@ it may not inherit an unsafe default or call the Pod timing a Serverless result.
 - Set `RUNPOD_INIT_TIMEOUT` from measured container/model initialization and a finite stop policy.
 - Asynchronous RunPod results are retained for only 30 minutes. Persist accepted state and artifact
   receipts immediately; recovery must not depend on reading an old provider result later.
+- A persisted assignment is not terminal evidence. Poll its exact `/status/{provider_job_id}` through
+  the request-TTL-plus-1800-second worst-case discovery horizon until the first terminal observation.
+  Once terminal is observed, persist that observation and use its exact plus-1800-second expiry.
+- Canonical output requires one live tenant-owned artifact commit receipt per batch item, exact-matched
+  to the separately signed successful provenance item by revision, lane, job, item, key, bytes, hash,
+  and probe. Neither caller-authored artifact JSON nor a detached receipt hash is authority.
 
 ## Status, callback, and durable completion
 

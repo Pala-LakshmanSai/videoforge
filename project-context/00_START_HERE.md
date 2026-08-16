@@ -181,12 +181,22 @@ revive a cancelled attempt. Repair commit `2f530885fc6aed61688427c324e26606d8d5e
 adds migration `0026_serverless_result_window_and_cancellation_fence.sql`, starts request TTL at
 provider submission, persists terminal observation/result expiry, and serializes cancellation and
 canonical output acceptance with an application lock plus database trigger. Its provider-free
-same-chat re-audit passes; no separate-agent independence is claimed. Additive migrations
+same-chat re-audit passes; no separate-agent independence is claimed. A subsequent independent
+audit at `8d14fda8a4510866590c95684b345143a1612182` found two remaining semantic gaps: incomplete or
+caller-authored artifact rows could be accepted behind one detached commit-receipt hash, and an
+assignment was called terminal without observing `/status` while terminal discovery stopped at TTL.
+Repair `3c219dd6a006dc22e6cddae3314fc79c8c2b5ea8` adds migration
+`0027_serverless_output_binding_and_result_discovery.sql`, derives every canonical artifact from one
+live tenant-owned commit receipt per batch item, exact-matches those facts to the separate signed
+provenance items, and polls assigned jobs through the worst-case TTL-plus-1800-second horizon until
+terminal observation. Its provider-free same-chat re-audit passes; no independent repair audit is
+claimed. Additive migrations
 `0023_serverless_attempts_and_outbox.sql` and
 `0024_serverless_cost_and_reconciliation.sql`, canonical TypeScript/Python v3 contracts, and the
 fake transport bind exact tenant/revision/lane/endpoint/config/image/model/volume/input/deadline/spend
 facts before dispatch. A stable token and outbox exist before fake `/run`; provider assignment is
-durable before status or output acceptance. Signed VideoForge provenance and private output receipts,
+durable before status or output acceptance. Separate signed VideoForge provenance and exact
+tenant-artifact commit receipts,
 bounded unknown-ack reconciliation, advisory webhooks, cancellation/restart/TTL recovery, accepted-unit
 resume, cost conservation, and at-most-one canonical output with visible duplicate compute/cost all
 pass. Superseded Pod schemas are read-only compatibility evidence and cannot authorize v3 dispatch.

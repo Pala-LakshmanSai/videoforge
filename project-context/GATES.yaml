@@ -71,7 +71,7 @@ gates:
     blocks: endpoint_publication_or_run
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlesscontract001-provider-free-transport"
     owner: V2-04
-    last_run: evidence/acceptance/VF-10-04/2026-08-16-serverless-v3-contracts/acceptance.json
+    last_run: evidence/acceptance/VF-10-04/2026-08-16-output-binding-result-discovery-repair/acceptance.json
     last_run_at: "2026-08-16"
     result: provider_free_v3_contract_green_live_serverless_and_runtime_cutover_unproven
     satisfied_locally:
@@ -82,6 +82,8 @@ gates:
       - signed_provenance_and_durable_output_receipts_with_typescript_python_parity
       - bounded_unknown_ack_status_reconciliation_and_advisory_webhook_handling
       - at_most_one_canonical_output_with_duplicate_compute_and_cost_exposure
+      - complete_signed_item_to_tenant_artifact_commit_receipt_join
+      - nonterminal_assignment_polling_through_ttl_plus_result_window
       - timeout_ttl_cancel_restart_resume_and_cost_conservation_fault_matrix
       - superseded_pod_schemas_quarantined_read_only_and_queue_purge_forbidden
     still_open:

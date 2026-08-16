@@ -1,0 +1,88 @@
+{
+  "schema_version": "videoforge.v2-04-output-binding-result-discovery-repair/v1",
+  "task_id": "VF-10-04",
+  "checkpoint": "V2-04",
+  "result": "PASS",
+  "audit_independence": "SAME_CHAT_REAUDIT_NOT_INDEPENDENT",
+  "failed_audited_head": "8d14fda8a4510866590c95684b345143a1612182",
+  "repair_commit": "3c219dd6a006dc22e6cddae3314fc79c8c2b5ea8",
+  "recorded_at_utc": "2026-08-16T13:17:08Z",
+  "scope": {
+    "checkpoint": "V2-04_ONLY",
+    "v2_05_started": false,
+    "provider_free": true,
+    "external_spend_usd": 0
+  },
+  "corrected_findings": {
+    "complete_checksum_bound_output": "Canonical acceptance no longer accepts caller-authored artifact rows or one unattached receipt hash. It resolves exactly item_count live tenant-owned artifact commit receipts, derives the output rows, and exact-matches revision, lane, job, item, key, bytes, checksum, and probe to one separately signed successful provenance item per batch item.",
+    "database_bypass_fence": "Additive migration 0027 persists the exact receipt-hash manifest and replaces the canonical-output trigger with the same batch-completeness, signed-item, artifact-receipt, ownership, lineage, checksum, byte-count, and probe joins.",
+    "status_and_result_discovery": "A persisted assignment is not called terminal until an authoritative status poll observes a terminal provider state. Before terminal observation, polling remains eligible through request TTL plus the 1800-second worst-case result-retention horizon; after observation, the exact persisted observation-plus-1800-second boundary applies.",
+    "durable_output_truth": "Reconciliation's durable_output_present fact now queries an accepted canonical output row instead of treating a provenance receipt as the output itself."
+  },
+  "adversarial_results": {
+    "incomplete_batch_artifact_receipts": "PASS_FAIL_CLOSED",
+    "forged_or_foreign_artifact_receipt_hash": "PASS_FAIL_CLOSED",
+    "signed_checksum_mismatch": "PASS_FAIL_CLOSED",
+    "signed_probe_mismatch": "PASS_FAIL_CLOSED",
+    "nonterminal_assignment_not_called_terminal": "PASS",
+    "terminal_discovered_after_ttl": "PASS_RESULT_WINDOW_STARTED_FROM_OBSERVATION",
+    "no_terminal_by_ttl_plus_1800": "PASS_AMBIGUOUS_STOP_NO_REDISPATCH",
+    "foreign_tenant_endpoint_image_volume_gpu_cost": "PASS_FAIL_CLOSED",
+    "superseded_pod_authority": "PASS_QUARANTINED",
+    "queue_purge": "PASS_ABSENT"
+  },
+  "validation": {
+    "focused_v2_04": {
+      "command": "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/serverless-v3-transport.test.mjs packages/control-plane/tests/serverless-v3-legacy-quarantine.test.mjs packages/control-plane/tests/migrations-smoke.test.mjs packages/control-plane/tests/schema-inventory.test.mjs packages/control-plane/tests/migration-hardening.test.mjs packages/control-plane/tests/metadata-export-restore.test.mjs",
+      "exit_code": 0,
+      "tests": "53/53"
+    },
+    "contract_parity": {
+      "command": "pnpm --filter @videoforge/contracts build && pnpm --filter @videoforge/contracts test",
+      "exit_code": 0,
+      "typescript": "111/111",
+      "python": "95/95"
+    },
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "tasks": "28/28",
+      "control_plane": "289/289",
+      "pipeline": "120/120",
+      "web": "317/317",
+      "provider_sandbox": "43/43",
+      "cloudflare": "1/1",
+      "installed_chrome": "44/44"
+    }
+  },
+  "current_truth": {
+    "provider_mode": "fixture",
+    "provider_authority": "none",
+    "provider_calls_made": false,
+    "credentials_accessed": false,
+    "cloud_mutation_performed": false,
+    "external_spend_usd": 0,
+    "paid_compute_started": false,
+    "workers_allocated": 0,
+    "live_provider_inventory_refreshed": false,
+    "last_known_provider_snapshot_at": "2026-08-15T09:56:02.932Z",
+    "last_known_pods": 0,
+    "last_known_endpoints": 0,
+    "last_known_serverless_workers_active_plus_flex": 0,
+    "retained_volumes": 2,
+    "ongoing_retained_volume_usd_per_month": 7.0
+  },
+  "unproven": [
+    "Live RunPod result timestamps, delivery, duplicate execution, cancellation, billing, concurrency, and zero-worker drain were not exercised.",
+    "Hosted R2 and non-superuser Neon RLS remain later proof gates.",
+    "Lane-specific Serverless init, execution, TTL, and scaler behavior remain later measured gates; V2-04 preserves provisional provider-free bounds only.",
+    "V2-05 active-runtime composition has not started."
+  ],
+  "next_checkpoint": {
+    "checkpoint": "V2-05",
+    "safe_to_start_provider_free": true,
+    "started": false,
+    "provider_calls_authorized": false,
+    "maximum_external_spend_usd": 0
+  }
+}
