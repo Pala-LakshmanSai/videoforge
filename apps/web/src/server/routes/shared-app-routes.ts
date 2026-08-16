@@ -24,7 +24,7 @@ function failure(error: unknown): Response {
 }
 
 export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): void {
-  app.post("/api/dev/shared-app/reset", (c) => {
+  app.post("/api/dev/shared-app/reset", async (c) => {
     if (c.req.header(FIXTURE_CONTROL_HEADER) !== FIXTURE_CONTROL_VALUE)
       return problemResponse(
         apiProblem(
@@ -35,6 +35,7 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
           false,
         ),
       );
+    if (runtime.fairAdmission !== undefined) await runtime.fairAdmission.reset();
     runtime.sharedApp.reset();
     return c.json({ ok: true, providerCallsAuthorized: false, authorizedSpendUsd: 0 });
   });
@@ -120,6 +121,13 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     if (!session.ok) return session.response;
     await runtime.sharedApp.waitForSettled();
     try {
+      const tenant = runtime.sharedApp.tenant(session.id);
+      if (runtime.fairAdmission !== undefined && tenant !== null) {
+        runtime.sharedApp.reconcileFairAdmission(
+          session.id,
+          await runtime.fairAdmission.listOwned(tenant),
+        );
+      }
       return c.json(runtime.sharedApp.privateFairQueueView(session.id));
     } catch (error) {
       return failure(error);
@@ -131,12 +139,27 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     if (!session.ok) return session.response;
     try {
       const body = (await c.req.json()) as { toPosition: number; version: number };
-      runtime.sharedApp.reorder({
-        sessionId: session.id,
-        entryId: c.req.param("entryId"),
-        toPosition: body.toPosition,
-        ifMatch: body.version,
-      });
+      const tenant = runtime.sharedApp.tenant(session.id);
+      const email = runtime.sharedApp.view(session.id).admission.email;
+      if (runtime.fairAdmission !== undefined && tenant !== null && email !== null) {
+        runtime.sharedApp.reconcileFairAdmission(
+          session.id,
+          await runtime.fairAdmission.reorderOwned({
+            tenant,
+            actorEmail: email,
+            requestId: c.req.param("entryId"),
+            expectedVersion: body.version,
+            toPosition: body.toPosition,
+          }),
+        );
+      } else {
+        runtime.sharedApp.reorder({
+          sessionId: session.id,
+          entryId: c.req.param("entryId"),
+          toPosition: body.toPosition,
+          ifMatch: body.version,
+        });
+      }
       return c.json(runtime.sharedApp.privateFairQueueView(session.id));
     } catch (error) {
       return failure(error);
@@ -147,11 +170,25 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
     try {
-      runtime.sharedApp.remove({
-        sessionId: session.id,
-        entryId: c.req.param("entryId"),
-        ifMatch: Number(c.req.query("version")),
-      });
+      const tenant = runtime.sharedApp.tenant(session.id);
+      const email = runtime.sharedApp.view(session.id).admission.email;
+      if (runtime.fairAdmission !== undefined && tenant !== null && email !== null) {
+        runtime.sharedApp.reconcileFairAdmission(
+          session.id,
+          await runtime.fairAdmission.cancelOwned({
+            tenant,
+            actorEmail: email,
+            requestId: c.req.param("entryId"),
+            expectedVersion: Number(c.req.query("version")),
+          }),
+        );
+      } else {
+        runtime.sharedApp.remove({
+          sessionId: session.id,
+          entryId: c.req.param("entryId"),
+          ifMatch: Number(c.req.query("version")),
+        });
+      }
       return c.json(runtime.sharedApp.privateFairQueueView(session.id));
     } catch (error) {
       return failure(error);
@@ -172,7 +209,7 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     return c.json(tenant);
   });
 
-  app.post("/api/v1/shared-app/generate", async (c) => {
+  app.post("/api/v2/generation-requests", async (c) => {
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
     try {
@@ -182,6 +219,23 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
         imageReceiptId?: string;
         avatarReceiptId?: string;
       };
+      const tenant = runtime.sharedApp.tenant(session.id);
+      const email = runtime.sharedApp.view(session.id).admission.email;
+      if (runtime.fairAdmission !== undefined && tenant !== null && email !== null) {
+        const admitted = await runtime.fairAdmission.enqueueVideo({
+          tenant,
+          actorEmail: email,
+          publicProjectId: body.projectId,
+          title: body.title,
+        });
+        const result = runtime.sharedApp.startOrEnqueue({
+          sessionId: session.id,
+          ...body,
+          admission: admitted,
+        });
+        runtime.sharedApp.reconcileFairAdmission(session.id, admitted.snapshot);
+        return c.json(result);
+      }
       return c.json(runtime.sharedApp.startOrEnqueue({ sessionId: session.id, ...body }));
     } catch (error) {
       return failure(error);

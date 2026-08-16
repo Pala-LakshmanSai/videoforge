@@ -13,19 +13,23 @@ import { idempotentMutation } from "./mutation";
 import { SharedAppFixtureStore } from "./shared-app-fixture";
 import type { SharedAppPersistence } from "./shared-app-persistence";
 import type { ProviderFreeArtifactRuntime } from "./provider-free-artifact-runtime";
+import type { ApplicationFairAdmission } from "./fair-admission-runtime";
 
 export class FixtureRuntime {
   readonly sessions: FixtureSessionStore;
   readonly sharedApp: SharedAppFixtureStore;
+  readonly fairAdmission: ApplicationFairAdmission | undefined;
 
   constructor(
     readonly environment: string,
     readonly commit: string,
     sharedAppPersistence?: SharedAppPersistence,
     providerFreeArtifacts?: ProviderFreeArtifactRuntime,
+    fairAdmission?: ApplicationFairAdmission,
   ) {
     this.sessions = new FixtureSessionStore(environment);
     this.sharedApp = new SharedAppFixtureStore(sharedAppPersistence, providerFreeArtifacts);
+    this.fairAdmission = fairAdmission;
   }
 
   resolveSession(c: Context) {

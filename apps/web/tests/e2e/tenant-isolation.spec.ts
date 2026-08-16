@@ -119,7 +119,7 @@ test("two invited accounts hold separate private tenants in installed Chrome", a
       [contextB, "tenant-b-waiting", "Tenant B private waiting", false],
     ] as const) {
       const generated = await context.request.post(
-        "/api/v1/shared-app/generate?fixture=invite_sign_in",
+        "/api/v2/generation-requests?fixture=invite_sign_in",
         {
           data: {
             projectId,

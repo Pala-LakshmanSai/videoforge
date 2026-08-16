@@ -19,6 +19,7 @@
     "typecheck": "tsc --noEmit && tsc --project tsconfig.worker.json --noEmit"
   },
   "dependencies": {
+    "@electric-sql/pglite": "0.5.4",
     "@hono/node-server": "2.1.0",
     "@radix-ui/react-dialog": "1.1.15",
     "@radix-ui/react-progress": "1.1.7",

@@ -8,6 +8,7 @@ import { createNodeRuntimeConfiguration } from "./server/runtime/node";
 import { resolveNodeSandboxDataRoot } from "./server/runtime/node-sandbox";
 import { createNodeSharedAppPersistence } from "./server/runtime/node-shared-app-persistence";
 import { createNodeProviderFreeArtifactRuntime } from "./server/runtime/node-provider-free-artifacts";
+import { NodeFairAdmission } from "./server/runtime/node-fair-admission";
 import { createRunwareRuntime } from "./server/providers/runware-runtime";
 
 export const FIXTURE_API_HOST = "127.0.0.1";
@@ -49,6 +50,13 @@ const app = createApiApp({
       mode === "fixture"
         ? createNodeProviderFreeArtifactRuntime(
             path.join(WORKSPACE_ROOT, ".videoforge", "provider-free-artifacts"),
+          )
+        : undefined,
+    fixtureFairAdmission:
+      mode === "fixture"
+        ? new NodeFairAdmission(
+            path.join(WORKSPACE_ROOT, ".videoforge", "fair-admission-pglite"),
+            path.join(WORKSPACE_ROOT, "packages", "control-plane", "migrations"),
           )
         : undefined,
     localRunner,

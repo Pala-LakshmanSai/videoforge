@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   MetadataSnapshotError,
+  MIGRATION_MANIFEST,
   RELATIONAL_TABLE_NAMES,
   exportMetadataSnapshot,
   restoreMetadataSnapshot,
@@ -208,7 +209,7 @@ test("the same metadata snapshot restores exactly, resumes idempotently, and rem
     const serialized = serializeMetadataSnapshot(first);
     assert.equal(serializeMetadataSnapshot(second), serialized);
     assert.equal(second.snapshotSha256, first.snapshotSha256);
-    assert.equal(first.migrationLedger.length, 21);
+    assert.equal(first.migrationLedger.length, MIGRATION_MANIFEST.length);
     assert.equal(first.tables.length, RELATIONAL_TABLE_NAMES.length);
     for (const requiredTable of [
       "memberships",

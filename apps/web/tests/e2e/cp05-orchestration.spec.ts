@@ -114,7 +114,7 @@ test("CP-05 completes three serial $0 projects across sessions with exact drain 
     for (let index = 1; index <= 4; index += 1) {
       const context = contexts[(index - 1) % contexts.length]!;
       const response = await context.request.post(
-        `/api/v1/shared-app/generate?fixture=${FIXTURE}`,
+        `/api/v2/generation-requests?fixture=${FIXTURE}`,
         {
           data: {
             projectId: `cp05-project-${index}`,

@@ -1594,7 +1594,7 @@ describe("CP-02 shared app fixture API", () => {
     )!.receiptId;
     const starts = await Promise.all(
       users.map((user, index) =>
-        isolatedApp.request("/api/v1/shared-app/generate?fixture=invite_sign_in", {
+        isolatedApp.request("/api/v2/generation-requests?fixture=invite_sign_in", {
           method: "POST",
           headers: withFixtureSession(user.session, { "content-type": "application/json" }),
           body: JSON.stringify({
@@ -1609,7 +1609,7 @@ describe("CP-02 shared app fixture API", () => {
     const outcomes = (await Promise.all(starts.map((response) => response.json()))) as Array<{
       outcome: string;
     }>;
-    expect(outcomes.map((item) => item.outcome).sort()).toEqual(["QUEUED", "STARTED"]);
+    expect(outcomes.map((item) => item.outcome).sort()).toEqual(["STARTED", "STARTED"]);
     const sharedResponse = await isolatedApp.request("/api/v1/shared-app?fixture=invite_sign_in", {
       headers: withFixtureSession(users[1]!.session),
     });
@@ -1618,7 +1618,7 @@ describe("CP-02 shared app fixture API", () => {
       canSelectGpuPair: false,
       providerCallsAuthorized: false,
       authorizedSpendUsd: 0,
-      queue: [{ projectId: "cp02-project-2", state: "WAITING" }],
+      queue: [{ projectId: "cp02-project-2", state: "ACTIVE" }],
     });
   });
 });
@@ -1703,7 +1703,7 @@ describe("CP-05 provider-free complete MVP API", () => {
     )!.receiptId;
     for (let index = 1; index <= 3; index += 1) {
       const generated = await isolatedApp.request(
-        "/api/v1/shared-app/generate?fixture=invite_sign_in",
+        "/api/v2/generation-requests?fixture=invite_sign_in",
         {
           method: "POST",
           headers: withFixtureSession(fixtureSession, { "content-type": "application/json" }),

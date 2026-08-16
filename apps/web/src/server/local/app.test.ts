@@ -659,7 +659,7 @@ describe("local walking-slice API", () => {
     const avatarReceiptId = view.inventory.find(
       (offer) => offer.lane === "avatar_primary",
     )?.receiptId;
-    const generated = await app.request("/api/v1/shared-app/generate", {
+    const generated = await app.request("/api/v2/generation-requests", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

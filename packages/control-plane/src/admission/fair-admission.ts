@@ -21,6 +21,7 @@ export type FairRequestState =
 
 export type FairAdmissionErrorCode =
   | "EXPECTED_VERSION_MISMATCH"
+  | "IDEMPOTENCY_CONFLICT"
   | "INVALID_LEASE_EXPIRY"
   | "INVALID_REORDER"
   | "INVALID_STATE_TRANSITION"
@@ -133,6 +134,12 @@ interface RequestVersionRow extends Record<string, unknown> {
   readonly created_by_user_id: string;
   readonly state: FairRequestState;
   readonly version: number;
+}
+
+interface PreviewPresetRow extends Record<string, unknown> {
+  readonly account_id: string;
+  readonly workspace_id: string;
+  readonly scope_kind: "WORKSPACE" | "SYSTEM";
 }
 
 function bigint(value: bigint | string | number): bigint {
@@ -482,6 +489,49 @@ export class FairAdmissionRepository {
       await assertScope(transaction, scope);
       await ensureAccountHead(transaction, scope.accountId);
       const before = await capacityForUpdate(transaction);
+      const replay = await transaction.query<
+        RequestVersionRow & {
+          queue_order: bigint | string;
+          available_at: string;
+          attempt_ordinal: number;
+          project_id: string;
+          project_revision_id: string;
+        }
+      >(
+        `SELECT id, account_id, workspace_id, created_by_user_id, state, version,
+                queue_order, available_at::text, attempt_ordinal, project_id, project_revision_id
+           FROM generation_requests
+          WHERE account_id = $1 AND idempotency_key = $2
+          FOR UPDATE`,
+        [scope.accountId, command.idempotencyKey],
+      );
+      const existing = replay.rows[0];
+      if (existing !== undefined) {
+        if (
+          existing.id !== command.requestId ||
+          existing.workspace_id !== scope.workspaceId ||
+          existing.created_by_user_id !== scope.actorUserId ||
+          existing.project_id !== command.projectId ||
+          existing.project_revision_id !== command.projectRevisionId
+        ) {
+          throw new FairAdmissionError(
+            "IDEMPOTENCY_CONFLICT",
+            "The idempotency key is already bound to different generation work.",
+          );
+        }
+        return Object.freeze({
+          requestKind: "VIDEO" as const,
+          requestId: existing.id,
+          state: existing.state,
+          queueOrder: bigint(existing.queue_order),
+          version: existing.version,
+          attemptOrdinal: existing.attempt_ordinal,
+          availableAt: existing.available_at,
+          leaseId: null,
+          leaseSlot: null,
+          leaseExpiresAt: null,
+        });
+      }
       const order = await nextQueueOrder(transaction, "generation_requests", scope.accountId);
       const inserted = await transaction.query<
         RequestVersionRow & {
@@ -550,6 +600,69 @@ export class FairAdmissionRepository {
       await assertScope(transaction, scope);
       await ensureAccountHead(transaction, scope.accountId);
       const before = await capacityForUpdate(transaction);
+      const presetTable =
+        command.lane === "MAGE" ? "image_style_versions" : "avatar_profile_versions";
+      const preset = await transaction.query<PreviewPresetRow>(
+        `SELECT account_id, workspace_id, scope_kind
+           FROM ${presetTable}
+          WHERE id = $1
+            AND ((account_id = $2 AND workspace_id = $3 AND scope_kind = 'WORKSPACE')
+              OR (account_id = 'ffffffff-ffff-4fff-8fff-000000000001'::uuid
+                  AND scope_kind = 'SYSTEM'))
+          ORDER BY CASE WHEN account_id = $2 THEN 0 ELSE 1 END
+          LIMIT 1`,
+        [command.presetVersionId, scope.accountId, scope.workspaceId],
+      );
+      const resolvedPreset = preset.rows[0];
+      if (resolvedPreset === undefined) {
+        throw new FairAdmissionError(
+          "NOT_FOUND",
+          "Owned or immutable system preset version was not found.",
+        );
+      }
+      const replay = await transaction.query<
+        RequestVersionRow & {
+          queue_order: bigint | string;
+          available_at: string;
+          attempt_ordinal: number;
+          lane: "MAGE" | "SOULX";
+          preset_version_id: string;
+        }
+      >(
+        `SELECT id, account_id, workspace_id, created_by_user_id, state, version,
+                queue_order, available_at::text, attempt_ordinal, lane, preset_version_id
+           FROM preset_preview_requests
+          WHERE account_id = $1 AND idempotency_key = $2
+          FOR UPDATE`,
+        [scope.accountId, command.idempotencyKey],
+      );
+      const existing = replay.rows[0];
+      if (existing !== undefined) {
+        if (
+          existing.id !== command.requestId ||
+          existing.workspace_id !== scope.workspaceId ||
+          existing.created_by_user_id !== scope.actorUserId ||
+          existing.lane !== command.lane ||
+          existing.preset_version_id !== command.presetVersionId
+        ) {
+          throw new FairAdmissionError(
+            "IDEMPOTENCY_CONFLICT",
+            "The idempotency key is already bound to different preview work.",
+          );
+        }
+        return Object.freeze({
+          requestKind: "PRESET_PREVIEW" as const,
+          requestId: existing.id,
+          state: existing.state,
+          queueOrder: bigint(existing.queue_order),
+          version: existing.version,
+          attemptOrdinal: existing.attempt_ordinal,
+          availableAt: existing.available_at,
+          leaseId: null,
+          leaseSlot: null,
+          leaseExpiresAt: null,
+        });
+      }
       const order = await nextQueueOrder(transaction, "preset_preview_requests", scope.accountId);
       const inserted = await transaction.query<
         RequestVersionRow & {
@@ -559,9 +672,14 @@ export class FairAdmissionRepository {
         }
       >(
         `INSERT INTO preset_preview_requests (
-           id, account_id, workspace_id, lane, preset_version_id, created_by_user_id,
+           id, account_id, workspace_id, lane, preset_version_id,
+           preset_account_id, preset_workspace_id, preset_scope_kind,
+           mage_image_style_version_id, soulx_avatar_profile_version_id, created_by_user_id,
            state, queue_order, available_at, idempotency_key, created_at, updated_at
-         ) VALUES ($1, $2, $3, $4, $5, $6, 'WAITING', $7, $8, $9, $10, $10)
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
+                   CASE WHEN $4 = 'MAGE' THEN $5::uuid END,
+                   CASE WHEN $4 = 'SOULX' THEN $5::uuid END,
+                   $9, 'WAITING', $10, $11, $12, $13, $13)
          RETURNING id, account_id, workspace_id, created_by_user_id, state, version,
                    queue_order, available_at::text, attempt_ordinal`,
         [
@@ -570,6 +688,9 @@ export class FairAdmissionRepository {
           scope.workspaceId,
           command.lane,
           command.presetVersionId,
+          resolvedPreset.account_id,
+          resolvedPreset.workspace_id,
+          resolvedPreset.scope_kind,
           scope.actorUserId,
           order,
           command.availableAt ?? command.now,
@@ -699,6 +820,19 @@ export class FairAdmissionRepository {
       );
       const currentIndex = waiting.rows.findIndex((row) => row.id === input.requestId);
       if (currentIndex < 0) {
+        const owned = await transaction.query<{ present: boolean } & Record<string, unknown>>(
+          `SELECT EXISTS (
+             SELECT 1 FROM ${table}
+              WHERE account_id = $1 AND workspace_id = $2 AND id = $3
+           ) AS present`,
+          [scope.accountId, scope.workspaceId, input.requestId],
+        );
+        if (owned.rows[0]?.present === true) {
+          throw new FairAdmissionError(
+            "INVALID_STATE_TRANSITION",
+            "Only owned waiting requests may be reordered.",
+          );
+        }
         throw new FairAdmissionError("NOT_FOUND", "Owned waiting request was not found.");
       }
       const target = waiting.rows[currentIndex];
@@ -1173,13 +1307,40 @@ export class FairAdmissionRepository {
       }
       const after = await capacityForUpdate(transaction);
       const auditLease = active.rows[0];
-      if (input.auditId !== undefined && auditLease !== undefined) {
-        await bindPrincipal(transaction, auditLease.account_id);
+      if (input.auditId !== undefined && before.active_lease_count !== active.rows.length) {
+        const auditIdentity =
+          auditLease ??
+          (
+            await transaction.query<
+              {
+                account_id: string;
+                workspace_id: string;
+                actor_user_id: string;
+              } & Record<string, unknown>
+            >(
+              `SELECT account.id AS account_id, workspace.id AS workspace_id,
+                      membership.user_id AS actor_user_id
+                 FROM accounts account
+                 JOIN workspaces workspace ON workspace.account_id = account.id AND workspace.is_default
+                 JOIN memberships membership ON membership.workspace_id = workspace.id
+                  AND membership.status = 'ACTIVE'
+                WHERE account.scope_kind = 'SYSTEM'
+                ORDER BY membership.created_at, membership.id
+                LIMIT 1`,
+            )
+          ).rows[0];
+        if (auditIdentity === undefined) {
+          throw new Error("capacity reconstruction repair requires an audit identity");
+        }
+        const actorUserId =
+          auditLease?.created_by_user_id ??
+          (auditIdentity as { readonly actor_user_id: string }).actor_user_id;
+        await bindPrincipal(transaction, auditIdentity.account_id);
         await appendAudit(transaction, {
           auditId: input.auditId,
-          accountId: auditLease.account_id,
-          workspaceId: auditLease.workspace_id,
-          actorUserId: auditLease.created_by_user_id,
+          accountId: auditIdentity.account_id,
+          workspaceId: auditIdentity.workspace_id,
+          actorUserId,
           operation: "RECONSTRUCT",
           requestKind: "CAPACITY",
           requestId: null,

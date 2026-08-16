@@ -126,6 +126,12 @@
       "name": "fair_generation_admission",
       "filename": "0021_fair_generation_admission.sql",
       "sha256": "sha256:cc8ba6fea1f5c65033da9569191fa339a9404f9b582655425362efa3b233cc72"
+    },
+    {
+      "version": 22,
+      "name": "v2_03_admission_audit_repairs",
+      "filename": "0022_v2_03_admission_audit_repairs.sql",
+      "sha256": "sha256:77176c28695e2e4372ed05e3b179b989de7476dee37859cfaa6d0c782d00bbf0"
     }
   ]
 }

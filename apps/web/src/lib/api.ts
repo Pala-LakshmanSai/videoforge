@@ -204,7 +204,7 @@ export const api = {
     ),
   sharedGenerate: (body: { projectId: string; title: string }, scenario: ScenarioId) =>
     request<{ outcome: "STARTED" | "QUEUED"; queueVersion: number }>(
-      `/api/v1/shared-app/generate${query(scenario)}`,
+      `/api/v2/generation-requests${query(scenario)}`,
       { method: "POST", body: JSON.stringify(body) },
       (value) => value as { outcome: "STARTED" | "QUEUED"; queueVersion: number },
     ),

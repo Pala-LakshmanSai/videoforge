@@ -41,6 +41,7 @@ export function createApiApp(options: CreateApiAppOptions): Hono {
     commit,
     bindings.fixtureSharedAppPersistence,
     bindings.fixtureProviderFreeArtifacts,
+    bindings.fixtureFairAdmission,
   );
 
   registerAccessMiddleware(app, environment, runtime.sessions, runtime.sharedApp);

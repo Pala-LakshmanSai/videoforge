@@ -117,7 +117,7 @@ describe("shared fixture admission", () => {
   });
 });
 
-describe("shared fixture singleton queue", () => {
+describe("shared fixture fair two-slot queue", () => {
   it("projects a private V2-03 queue with automatic compute policy and no tenant/compute details", async () => {
     const store = new SharedAppFixtureStore();
     await admit(store, 1);
@@ -143,6 +143,7 @@ describe("shared fixture singleton queue", () => {
       accountActiveLimit: 1,
       otherAccountDetailsVisible: false,
     });
+    expect(viewB.capacity.ownedActive).toBe(1);
     expect(JSON.stringify(viewA)).not.toMatch(/gpu|pod|runpod|accountId|workspaceId/iu);
     expect(JSON.stringify(viewB)).not.toContain("private-a");
   });
@@ -180,7 +181,7 @@ describe("shared fixture singleton queue", () => {
     expect(restored.orchestration.session).toBeNull();
   });
 
-  it("rolls back every queue mutation when orchestration rejects an enqueue", async () => {
+  it("replays duplicate Generate without duplicating queue or orchestration state", async () => {
     const store = new SharedAppFixtureStore();
     await admit(store, 1);
     const pair = selectedPair(store);
@@ -191,18 +192,18 @@ describe("shared fixture singleton queue", () => {
       ...pair,
     });
     const before = store.exportSnapshot();
-    expect(() =>
+    expect(
       store.startOrEnqueue({
         sessionId: "browser-1",
         projectId: "duplicate",
         title: "Rejected duplicate",
-      }),
-    ).toThrowError(/already present/);
+      }).outcome,
+    ).toBe("STARTED");
     expect(store.exportSnapshot()).toBe(before);
     expect(store.view("browser-1").queue.map((entry) => entry.title)).toEqual(["Original"]);
   });
 
-  it("admits 10 equal users and permits only one concurrent idle start", async () => {
+  it("admits 10 equal users and permits exactly two different-account starts", async () => {
     const store = new SharedAppFixtureStore();
     for (let serial = 1; serial <= 10; serial += 1)
       await admit(store, serial, serial === 10 ? "GOOGLE" : "EMAIL_PASSWORD");
@@ -219,8 +220,8 @@ describe("shared fixture singleton queue", () => {
         ),
       ),
     );
-    expect(outcomes.filter((result) => result.outcome === "STARTED")).toHaveLength(1);
-    expect(outcomes.filter((result) => result.outcome === "QUEUED")).toHaveLength(9);
+    expect(outcomes.filter((result) => result.outcome === "STARTED")).toHaveLength(2);
+    expect(outcomes.filter((result) => result.outcome === "QUEUED")).toHaveLength(8);
     const view = store.view("browser-10");
     expect(view.rights).toBe("EQUAL");
     expect(view.queue).toHaveLength(1);

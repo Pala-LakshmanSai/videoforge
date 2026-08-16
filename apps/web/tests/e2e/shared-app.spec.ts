@@ -50,7 +50,7 @@ test("V2-03 shows two accounts only their factual fair-queue state without compu
       [contextB, "fair-b-second", "Account B second"],
     ] as const) {
       const generated = await context.request.post(
-        "/api/v1/shared-app/generate?fixture=invite_sign_in",
+        "/api/v2/generation-requests?fixture=invite_sign_in",
         { data: { projectId, title } },
       );
       expect(generated.ok()).toBe(true);
@@ -67,6 +67,7 @@ test("V2-03 shows two accounts only their factual fair-queue state without compu
         projectId: string;
         state: "ACTIVE" | "WAITING";
         accountPosition: number;
+        version: number;
       }>;
     };
     const safeB = (await safeBResponse.json()) as typeof safeA;
@@ -78,6 +79,8 @@ test("V2-03 shows two accounts only their factual fair-queue state without compu
       "fair-b-waiting",
       "fair-b-second",
     ]);
+    expect(safeA.requests.filter((request) => request.state === "ACTIVE")).toHaveLength(1);
+    expect(safeB.requests.filter((request) => request.state === "ACTIVE")).toHaveLength(1);
     for (const body of [await safeAResponse.text(), await safeBResponse.text()]) {
       expect(body).not.toMatch(/gpu|pod|runpod|receiptId|accountId|workspaceId/iu);
       expect(body).toContain('"totalSlots":2');
@@ -87,7 +90,7 @@ test("V2-03 shows two accounts only their factual fair-queue state without compu
     const foreign = safeA.requests.find((request) => request.projectId === "fair-a-waiting")!;
     const foreignMutation = await contextB.request.patch(
       `/api/v2/queue/${foreign.id}?fixture=invite_sign_in`,
-      { data: { toPosition: 1, version: safeB.queueVersion } },
+      { data: { toPosition: 1, version: foreign.version } },
     );
     expect(foreignMutation.status()).toBe(404);
     expect(await foreignMutation.text()).not.toContain("Account A");
@@ -95,20 +98,21 @@ test("V2-03 shows two accounts only their factual fair-queue state without compu
     const activeA = safeA.requests.find((request) => request.state === "ACTIVE")!;
     const activeMutation = await contextA.request.patch(
       `/api/v2/queue/${activeA.id}?fixture=invite_sign_in`,
-      { data: { toPosition: 2, version: safeA.queueVersion } },
+      { data: { toPosition: 2, version: activeA.version } },
     );
     expect(activeMutation.status()).toBe(409);
 
     const secondB = safeB.requests.find((request) => request.projectId === "fair-b-second")!;
     const reordered = await contextB.request.patch(
       `/api/v2/queue/${secondB.id}?fixture=invite_sign_in`,
-      { data: { toPosition: 1, version: safeB.queueVersion } },
+      { data: { toPosition: 1, version: secondB.version } },
     );
     expect(reordered.ok()).toBe(true);
     const reorderedBody = (await reordered.json()) as typeof safeB;
-    expect(reorderedBody.requests[0]?.projectId).toBe("fair-b-second");
+    expect(reorderedBody.requests[0]?.state).toBe("ACTIVE");
+    expect(reorderedBody.requests[1]?.projectId).toBe("fair-b-second");
     const cancelled = await contextB.request.delete(
-      `/api/v2/queue/${secondB.id}?fixture=invite_sign_in&version=${reorderedBody.queueVersion}`,
+      `/api/v2/queue/${secondB.id}?fixture=invite_sign_in&version=${reorderedBody.requests[1]!.version}`,
     );
     expect(cancelled.ok()).toBe(true);
 

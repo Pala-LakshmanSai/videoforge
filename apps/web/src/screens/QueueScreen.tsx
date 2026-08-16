@@ -18,15 +18,18 @@ export function QueueScreen() {
     queryFn: () => api.privateFairQueue(scenario),
   });
   const queueMutation = useMutation({
-    mutationFn: (action: { entryId: string; kind: "UP" | "DOWN" | "CANCEL"; position: number }) => {
-      const version = queue.data?.queueVersion;
-      if (version === undefined) throw new Error("Queue version unavailable.");
+    mutationFn: (action: {
+      entryId: string;
+      kind: "UP" | "DOWN" | "CANCEL";
+      position: number;
+      version: number;
+    }) => {
       return action.kind === "CANCEL"
-        ? api.cancelPrivateWaiting(action.entryId, version, scenario)
+        ? api.cancelPrivateWaiting(action.entryId, action.version, scenario)
         : api.reorderPrivateQueue(
             action.entryId,
             action.position + (action.kind === "UP" ? -1 : 1),
-            version,
+            action.version,
             scenario,
           );
     },
@@ -137,6 +140,7 @@ export function QueueScreen() {
                             entryId: request.id,
                             kind: "UP",
                             position: request.accountPosition,
+                            version: request.version,
                           })
                         }
                       >
@@ -154,6 +158,7 @@ export function QueueScreen() {
                             entryId: request.id,
                             kind: "DOWN",
                             position: request.accountPosition,
+                            version: request.version,
                           })
                         }
                       >
@@ -168,6 +173,7 @@ export function QueueScreen() {
                             entryId: request.id,
                             kind: "CANCEL",
                             position: request.accountPosition,
+                            version: request.version,
                           })
                         }
                       >

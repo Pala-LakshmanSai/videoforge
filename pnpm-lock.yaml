@@ -36,6 +36,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@electric-sql/pglite':
+        specifier: 0.5.4
+        version: 0.5.4
       '@hono/node-server':
         specifier: 2.1.0
         version: 2.1.0(hono@4.13.1)

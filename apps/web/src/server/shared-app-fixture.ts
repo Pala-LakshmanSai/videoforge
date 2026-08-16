@@ -47,6 +47,14 @@ export interface SharedQueueEntry {
   readonly workspaceId: string;
   readonly position: number;
   readonly createdAt: string;
+  readonly requestVersion: number;
+}
+
+export interface FairAdmissionSnapshotItem {
+  readonly requestId: string;
+  readonly state: "WAITING" | "ADMITTED" | "ACTIVE" | "CANCELLING";
+  readonly queueOrder: bigint;
+  readonly version: number;
 }
 
 export interface SharedQueueAudit {
@@ -325,13 +333,14 @@ export class SharedAppFixtureStore {
       pair: LockedGpuPair | null;
       queueVersion: number;
       queueVersions?: [string, number][];
-      queue: SharedQueueEntry[];
+      queue: Array<SharedQueueEntry & { requestVersion?: number }>;
       audits: SharedQueueAudit[];
       projectOwners?: [string, FixtureTenantScope][];
       orchestration?: ProviderFreeOrchestrationState;
     };
     return {
       ...value,
+      queue: value.queue.map((entry) => ({ ...entry, requestVersion: entry.requestVersion ?? 1 })),
       admissions: new Map(value.admissions.map((item) => [item.email, item])),
       sessionAdmissions: new Map(value.sessionAdmissions),
       invites: new Map(value.invites.map((item) => [item.codeHash, item])),
@@ -600,7 +609,7 @@ export class SharedAppFixtureStore {
             state: entry.state,
             stage,
             accountPosition: entry.position,
-            version: this.queueVersion(admission),
+            version: entry.requestVersion,
             canReorder: entry.state === "WAITING",
             canCancel: entry.state === "WAITING",
             createdAt: entry.createdAt,
@@ -627,16 +636,44 @@ export class SharedAppFixtureStore {
     title: string;
     imageReceiptId?: string;
     avatarReceiptId?: string;
+    admission?: {
+      readonly requestId: string;
+      readonly state: "WAITING" | "ADMITTED" | "ACTIVE" | "CANCELLING";
+      readonly version: number;
+    };
   }): { outcome: "STARTED" | "QUEUED"; queueVersion: number } {
     return this.commit(() => {
       const admission = this.requireAdmission(input.sessionId);
+      const replay = this.#state.queue.find(
+        (entry) =>
+          entry.accountId === admission.tenant.accountId &&
+          entry.workspaceId === admission.tenant.workspaceId &&
+          entry.projectId === input.projectId &&
+          (input.admission === undefined || entry.id === input.admission.requestId),
+      );
+      if (replay !== undefined) {
+        return {
+          outcome: replay.state === "ACTIVE" ? "STARTED" : "QUEUED",
+          queueVersion: this.queueVersion(admission),
+        };
+      }
       const actor = admission.email;
       const oldOrder = currentOrder(this.#state.queue);
       const oldVersion = this.queueVersion(admission);
-      let operation: SharedQueueAudit["operation"];
-      let outcome: "STARTED" | "QUEUED";
       let gpuPair: LockedGpuPair | null = null;
-      if (this.#state.sessionId === null && this.#state.queue.length === 0) {
+      const accountAlreadyActive = this.#state.queue.some(
+        (entry) => entry.state === "ACTIVE" && entry.accountId === admission.tenant.accountId,
+      );
+      const activeAccounts = new Set(
+        this.#state.queue
+          .filter((entry) => entry.state === "ACTIVE")
+          .map((entry) => entry.accountId),
+      );
+      const admitted =
+        input.admission === undefined
+          ? !accountAlreadyActive && activeAccounts.size < 2
+          : input.admission.state !== "WAITING";
+      if (this.#state.sessionId === null) {
         const offers = liveOffers();
         // Endpoint/runtime choice is operator-owned. Ordinary Generate never accepts a GPU or Pod
         // lifecycle selection; the provider-free fixture resolves its immutable synthetic lanes.
@@ -651,13 +688,10 @@ export class SharedAppFixtureStore {
         this.#state.sessionId = crypto.randomUUID();
         gpuPair = Object.freeze({ image, avatar, lockedAt: new Date().toISOString() });
         this.#state.pair = gpuPair;
-        operation = "START";
-        outcome = "STARTED";
-      } else {
-        operation = "ADD";
-        outcome = "QUEUED";
       }
-      const queueEntryId = crypto.randomUUID();
+      const operation: SharedQueueAudit["operation"] = admitted ? "START" : "ADD";
+      const outcome: "STARTED" | "QUEUED" = admitted ? "STARTED" : "QUEUED";
+      const queueEntryId = input.admission?.requestId ?? crypto.randomUUID();
       this.incrementQueueVersion(admission.tenant);
       this.#state.queue = positions([
         ...this.#state.queue,
@@ -665,29 +699,31 @@ export class SharedAppFixtureStore {
           id: queueEntryId,
           projectId: input.projectId,
           title: input.title,
-          state: outcome === "STARTED" ? "ACTIVE" : "WAITING",
+          state: admitted ? "ACTIVE" : "WAITING",
           actor,
           accountId: admission.tenant.accountId,
           workspaceId: admission.tenant.workspaceId,
           position: 0,
           createdAt: new Date().toISOString(),
+          requestVersion: input.admission?.version ?? 1,
         },
       ]);
       this.#state.projectOwners.set(input.projectId, admission.tenant);
-      if (outcome === "STARTED") {
-        if (gpuPair === null) throw new Error("Started fixture session is missing its GPU pair.");
+      if (this.#orchestrator.snapshot().session === null) {
+        const pair = gpuPair ?? this.#state.pair;
+        if (pair === null) throw new Error("Started fixture session is missing its GPU pair.");
         this.#orchestrator.startSession({
           queueEntryId,
           projectId: input.projectId,
           title: input.title,
           gpuPair: {
             mage: {
-              receiptId: gpuPair.image.receiptId,
-              gpuSku: gpuPair.image.gpuSku,
+              receiptId: pair.image.receiptId,
+              gpuSku: pair.image.gpuSku,
             },
             echo: {
-              receiptId: gpuPair.avatar.receiptId,
-              gpuSku: gpuPair.avatar.gpuSku,
+              receiptId: pair.avatar.receiptId,
+              gpuSku: pair.avatar.gpuSku,
             },
           },
         });
@@ -696,6 +732,41 @@ export class SharedAppFixtureStore {
       }
       this.audit(operation, admission, oldOrder, oldVersion);
       return { outcome, queueVersion: this.queueVersion(admission) };
+    });
+  }
+
+  reconcileFairAdmission(sessionId: string, snapshot: readonly FairAdmissionSnapshotItem[]): void {
+    this.commit(() => {
+      const admission = this.requireAdmission(sessionId);
+      const truth = new Map(snapshot.map((item) => [item.requestId, item]));
+      const owned = this.#state.queue.filter(
+        (entry) =>
+          entry.accountId === admission.tenant.accountId &&
+          entry.workspaceId === admission.tenant.workspaceId,
+      );
+      for (const entry of owned.filter((candidate) => !truth.has(candidate.id))) {
+        if (entry.state === "WAITING") this.#orchestrator.removeWaiting(entry.projectId);
+      }
+      this.#state.queue = positions(
+        this.#state.queue
+          .filter(
+            (entry) =>
+              entry.accountId !== admission.tenant.accountId ||
+              entry.workspaceId !== admission.tenant.workspaceId ||
+              truth.has(entry.id),
+          )
+          .map((entry) => {
+            const item = truth.get(entry.id);
+            if (item === undefined) return entry;
+            return {
+              ...entry,
+              state: item.state === "WAITING" ? ("WAITING" as const) : ("ACTIVE" as const),
+              position: Number(item.queueOrder),
+              requestVersion: item.version,
+            };
+          })
+          .sort((left, right) => left.position - right.position),
+      );
     });
   }
 
@@ -714,7 +785,16 @@ export class SharedAppFixtureStore {
       if (!entry)
         throw new SharedFixtureError("QUEUE_ENTRY_NOT_FOUND", 404, "Queue entry not found.");
       this.assertOwner(admission, entry);
-      this.requireVersion(admission, input.ifMatch);
+      if (
+        input.ifMatch !== entry.requestVersion &&
+        input.ifMatch !== this.queueVersion(admission)
+      ) {
+        throw new SharedFixtureError(
+          "QUEUE_VERSION_MISMATCH",
+          409,
+          "Queue changed. Refresh before changing your order.",
+        );
+      }
       if (entry.state !== "WAITING")
         throw new SharedFixtureError(
           "ACTIVE_QUEUE_ENTRY_IMMUTABLE",
@@ -735,7 +815,7 @@ export class SharedAppFixtureStore {
           item.workspaceId === admission.tenant.workspaceId,
       ).length;
       const target = Math.max(0, Math.min(waiting.length, input.toPosition - ownedActiveCount - 1));
-      waiting.splice(target, 0, entry);
+      waiting.splice(target, 0, { ...entry, requestVersion: entry.requestVersion + 1 });
       const ownedWaitingSlots = this.#state.queue
         .map((item, slot) => ({ item, slot }))
         .filter(({ item }) => waiting.some((ownedEntry) => ownedEntry.id === item.id))
@@ -759,7 +839,16 @@ export class SharedAppFixtureStore {
       if (!entry)
         throw new SharedFixtureError("QUEUE_ENTRY_NOT_FOUND", 404, "Queue entry not found.");
       this.assertOwner(admission, entry);
-      this.requireVersion(admission, input.ifMatch);
+      if (
+        input.ifMatch !== entry.requestVersion &&
+        input.ifMatch !== this.queueVersion(admission)
+      ) {
+        throw new SharedFixtureError(
+          "QUEUE_VERSION_MISMATCH",
+          409,
+          "Queue changed. Refresh before changing your order.",
+        );
+      }
       if (entry.state !== "WAITING")
         throw new SharedFixtureError(
           "ACTIVE_QUEUE_ENTRY_IMMUTABLE",

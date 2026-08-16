@@ -27,11 +27,11 @@ function video(serial, projectId, revisionId, now = FIXED_TIME) {
   };
 }
 
-function preview(serial, now = FIXED_TIME) {
+function preview(serial, presetVersionId, now = FIXED_TIME) {
   return {
     requestId: uuid(serial),
     lane: serial % 2 === 0 ? "MAGE" : "SOULX",
-    presetVersionId: uuid(serial + 300_000),
+    presetVersionId,
     idempotencyKey: `preview-${serial}`,
     now,
     auditId: uuid(serial + 100_000),
@@ -246,9 +246,51 @@ test("two different accounts win exactly two slots; same-account double submit a
   });
 });
 
+test("duplicate Generate replays one durable request and conflicts on changed work", async () => {
+  await seeded(async ({ executor, repository }) => {
+    const command = video(10_101, IDS.projectA, IDS.revisionA);
+    const first = await repository.enqueueVideo(actorA(), command);
+    const replay = await repository.enqueueVideo(actorA(), command);
+    assert.deepEqual(replay, first);
+    await assert.rejects(
+      repository.enqueueVideo(actorA(), { ...command, requestId: uuid(10_102) }),
+      (error) => error instanceof FairAdmissionError && error.code === "IDEMPOTENCY_CONFLICT",
+    );
+    const rows = await executor.query(
+      `SELECT count(*)::int AS requests,
+              (SELECT count(*)::int FROM generation_queue_audits WHERE operation = 'ENQUEUE') AS audits
+         FROM generation_requests`,
+    );
+    assert.deepEqual(rows.rows[0], { requests: 1, audits: 1 });
+  });
+});
+
+test("preview admission resolves an exact owned preset and rejects a foreign tenant version", async () => {
+  await seeded(async ({ executor, repository }) => {
+    await assert.rejects(
+      repository.enqueuePreview(actorA(), preview(10_111, IDS.avatarVersionB)),
+      (error) => error instanceof FairAdmissionError && error.code === "NOT_FOUND",
+    );
+    const queued = await repository.enqueuePreview(actorA(), preview(10_112, IDS.styleVersionA));
+    const binding = await executor.query(
+      `SELECT preset_account_id, preset_workspace_id, preset_scope_kind,
+              mage_image_style_version_id, soulx_avatar_profile_version_id
+         FROM preset_preview_requests WHERE id = $1`,
+      [queued.requestId],
+    );
+    assert.deepEqual(binding.rows[0], {
+      preset_account_id: IDS.accountA,
+      preset_workspace_id: IDS.workspaceA,
+      preset_scope_kind: "WORKSPACE",
+      mage_image_style_version_id: IDS.styleVersionA,
+      soulx_avatar_profile_version_id: null,
+    });
+  });
+});
+
 test("eligible video heads always outrank previews and preview promotion never moves the video cursor", async () => {
   await seeded(async ({ executor, repository }) => {
-    await repository.enqueuePreview(actorA(), preview(11_001));
+    await repository.enqueuePreview(actorA(), preview(11_001, IDS.avatarVersionA));
     await repository.enqueueVideo(actorB(), video(11_002, IDS.projectB, IDS.revisionB));
 
     const videoWinner = await repository.promoteNext(promotion(21_001));
@@ -332,7 +374,7 @@ test("owned reorder and cancel preserve cross-account cursor; active work cannot
         auditId: uuid(112_012),
         now: t(5),
       }),
-      (error) => error instanceof FairAdmissionError && error.code === "NOT_FOUND",
+      (error) => error instanceof FairAdmissionError && error.code === "INVALID_STATE_TRANSITION",
     );
     assert.equal(
       (await repository.listOwned(trustedTenantScope(IDS.accountB, IDS.workspaceB))).length,
@@ -412,6 +454,65 @@ test("lease ownership/version theft fails; expiry reclamation and restart recons
       `SELECT active_lease_count FROM global_generation_capacity WHERE singleton`,
     );
     assert.equal(capacity.rows[0].active_lease_count, 2);
+  });
+});
+
+test("zero-lease restart reconstruction repairs stale capacity with a SYSTEM audit", async () => {
+  await seeded(async ({ executor, repository }) => {
+    await executor.query(
+      `UPDATE global_generation_capacity SET active_lease_count = 1 WHERE singleton`,
+    );
+    const auditId = uuid(114_101);
+    const rebuilt = await repository.reconstruct({ now: t(12), auditId });
+    assert.deepEqual(rebuilt, { activeLeaseCount: 0, accountIds: [] });
+    const repaired = await executor.query(
+      `SELECT capacity.active_lease_count, audit.request_kind, audit.operation,
+              audit.detail->>'activeLeaseCount' AS audited_count,
+              account.scope_kind
+         FROM global_generation_capacity capacity
+         JOIN generation_queue_audits audit ON audit.id = $1
+         JOIN accounts account ON account.id = audit.account_id
+        WHERE capacity.singleton`,
+      [auditId],
+    );
+    assert.deepEqual(repaired.rows[0], {
+      active_lease_count: 0,
+      request_kind: "CAPACITY",
+      operation: "RECONSTRUCT",
+      audited_count: "0",
+      scope_kind: "SYSTEM",
+    });
+  });
+});
+
+test("concurrent cancel-versus-promote remains atomic and never over-admits", async () => {
+  await seeded(async ({ executor, repository }) => {
+    await repository.enqueueVideo(actorA(), video(14_101, IDS.projectA, IDS.revisionA));
+    const waitingB = await repository.enqueueVideo(
+      actorB(),
+      video(14_102, IDS.projectB, IDS.revisionB),
+    );
+    const activeA = await repository.promoteNext(promotion(24_101, t(1), t(61)));
+    assert.ok(activeA);
+    const race = await Promise.allSettled([
+      repository.cancelOwned(actorB(), {
+        requestKind: "VIDEO",
+        requestId: waitingB.requestId,
+        expectedVersion: waitingB.version,
+        auditId: uuid(114_102),
+        now: t(2),
+      }),
+      repository.promoteNext(promotion(24_102, t(2), t(62))),
+    ]);
+    assert.ok(race.some((result) => result.status === "fulfilled"));
+    const truth = await executor.query(
+      `SELECT capacity.active_lease_count,
+              (SELECT count(DISTINCT account_id)::int
+                 FROM provider_workload_leases WHERE state = 'ACTIVE') AS active_accounts
+         FROM global_generation_capacity capacity WHERE singleton`,
+    );
+    assert.ok(truth.rows[0].active_lease_count <= 2);
+    assert.equal(truth.rows[0].active_lease_count, truth.rows[0].active_accounts);
   });
 });
 
@@ -495,7 +596,10 @@ test("ten-account simultaneous load rotates every video account before a second 
           scope,
           video(500_000 + index * 10 + 2, account.projectId, account.revisionId),
         ),
-        repository.enqueuePreview(scope, preview(500_000 + index * 10 + 3)),
+        repository.enqueuePreview(
+          scope,
+          preview(500_000 + index * 10 + 3, account.avatarVersionId),
+        ),
       );
     }
     await Promise.all(enqueue);
@@ -570,4 +674,42 @@ test("ten-account simultaneous load rotates every video account before a second 
     );
     assert.deepEqual(waitingProviderWork.rows[0], { tasks: 0, outbox: 0 });
   });
+});
+
+test("1/2/5-account wait-distribution simulations report exact two-slot behavior", async () => {
+  const reports = [];
+  for (const accountCount of [1, 2, 5]) {
+    await withMigratedDatabase(async ({ executor }) => {
+      const accounts = [];
+      for (let index = 1; index <= accountCount; index += 1) {
+        accounts.push(await seedFairAccount(executor, 20 + accountCount * 10 + index));
+      }
+      const repository = new FairAdmissionRepository(executor);
+      for (const [index, account] of accounts.entries()) {
+        await repository.enqueueVideo(
+          trustedTenantActorScope(
+            trustedTenantScope(account.accountId, account.workspaceId),
+            account.userId,
+          ),
+          video(800_000 + accountCount * 100 + index, account.projectId, account.revisionId),
+        );
+      }
+      await Promise.all(
+        accounts.map((_, index) =>
+          repository.promoteNext(promotion(810_000 + accountCount * 100 + index, t(1), t(61))),
+        ),
+      );
+      const distribution = await executor.query(
+        `SELECT count(*) FILTER (WHERE state = 'ADMITTED')::int AS active,
+                count(*) FILTER (WHERE state = 'WAITING')::int AS waiting
+           FROM generation_requests`,
+      );
+      reports.push({ accountCount, ...distribution.rows[0] });
+    });
+  }
+  assert.deepEqual(reports, [
+    { accountCount: 1, active: 1, waiting: 0 },
+    { accountCount: 2, active: 2, waiting: 0 },
+    { accountCount: 5, active: 2, waiting: 3 },
+  ]);
 });
