@@ -15,7 +15,7 @@ const migrationsDir = path.resolve(
   "../../../../../packages/control-plane/migrations",
 );
 
-const FIXTURE_CONTROL = { "X-VideoForge-Fixture-Control": "cp05-fixture-control-v1" };
+const FIXTURE_CONTROL = { "X-VideoForge-Fixture-Control": "v2-provider-free-fixture-v1" };
 
 async function composedApp() {
   const dataDir = await mkdtemp(path.join(tmpdir(), "videoforge-video-runtime-routes-"));
@@ -45,7 +45,7 @@ async function admit(app: Awaited<ReturnType<typeof composedApp>>, email: string
     body: JSON.stringify({ email }),
   });
   const issued = (await invite.json()) as { code: string; emailPassword: string };
-  const authenticated = await app.request("/api/v1/shared-app/authenticate", {
+  const authenticated = await app.request("/api/v2/auth/fixture", {
     method: "POST",
     headers,
     body: JSON.stringify({
@@ -130,13 +130,15 @@ describe("V2-05 runtime-backed queue routes", () => {
     expect(observed).toContain("RENDERING");
     expect(observed.at(-1)).toBe("COMPLETE");
 
+    // Terminal work releases admission capacity and leaves the active queue. Its exact private MP4
+    // remains durable and downloadable only by the owner.
     const finished = await queue(app, alice);
-    expect(finished.requests[0]!.stage).toBe("COMPLETE");
-    expect(finished.requests[0]!.lanes?.map((lane) => lane.lane)).toEqual([
-      "mage_image",
-      "soulx_avatar",
-    ]);
-    expect(finished.requests[0]!.lanes?.every((lane) => lane.state === "SUCCEEDED")).toBe(true);
+    expect(finished.requests).toEqual([]);
+    const download = await app.request("/api/v2/videos/alice-one/download", { headers: alice });
+    expect(download.status).toBe(200);
+    expect(download.headers.get("content-type")).toBe("video/mp4");
+    expect(download.headers.get("x-videoforge-artifact-kind")).toBe("tenant-private-final-mp4");
+    expect((await download.arrayBuffer()).byteLength).toBeGreaterThan(9_000);
 
     // Bob's own video is untouched and still queued; he can never address Alice's video.
     const bobQueue = await queue(app, bob);
@@ -147,6 +149,9 @@ describe("V2-05 runtime-backed queue routes", () => {
       headers: bob,
     });
     expect(foreign.status).toBe(404);
+    expect((await app.request("/api/v2/videos/alice-one/download", { headers: bob })).status).toBe(
+      404,
+    );
   }, 120_000);
 
   it("cancels an owned video and refuses every later advance", async () => {
@@ -174,6 +179,6 @@ describe("V2-05 runtime-backed queue routes", () => {
       headers: carol,
     });
     expect(late.status).toBe(409);
-    expect((await queue(app, carol)).requests[0]!.stage).toBe("CANCELED");
+    expect((await queue(app, carol)).requests).toEqual([]);
   }, 60_000);
 });

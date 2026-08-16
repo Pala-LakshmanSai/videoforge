@@ -206,14 +206,14 @@ test.beforeEach(async ({ page }, testInfo) => {
   const sessionId = fixtureSessionId(testInfo);
   await page.setExtraHTTPHeaders({
     "X-VideoForge-Fixture-Session": sessionId,
-    "X-VideoForge-Fixture-Control": "cp05-fixture-control-v1",
+    "X-VideoForge-Fixture-Control": "v2-provider-free-fixture-v1",
   });
   const reset = await page.request.post("/api/dev/fixture-session/reset", {
     headers: { "X-VideoForge-Fixture-Session": sessionId },
   });
   expect(reset.ok()).toBe(true);
   const sharedReset = await page.request.post("/api/dev/shared-app/reset", {
-    headers: { "X-VideoForge-Fixture-Control": "cp05-fixture-control-v1" },
+    headers: { "X-VideoForge-Fixture-Control": "v2-provider-free-fixture-v1" },
   });
   expect(sharedReset.ok()).toBe(true);
   const failures: RuntimeFailures = {

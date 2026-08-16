@@ -140,7 +140,7 @@ function withFixtureSession(
   return {
     ...headers,
     "x-videoforge-fixture-session": sessionId,
-    "x-videoforge-fixture-control": "cp05-fixture-control-v1",
+    "x-videoforge-fixture-control": "v2-provider-free-fixture-v1",
   };
 }
 
@@ -1539,8 +1539,8 @@ describe("fixture API", () => {
   });
 });
 
-describe("CP-02 shared app fixture API", () => {
-  it("admits email/password and Google fixtures, then shares one receipt-bound queue", async () => {
+describe("quarantined shared-app compatibility fixture API", () => {
+  it("admits fixture identities but cannot dispatch V2 work without the V3 runtime composition", async () => {
     const isolatedApp = createApiApp();
     const users = [
       { session: "cp02-a", email: "cp02-a@example.test", method: "EMAIL_PASSWORD" as const },
@@ -1551,7 +1551,7 @@ describe("CP-02 shared app fixture API", () => {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "x-videoforge-fixture-control": "cp05-fixture-control-v1",
+          "x-videoforge-fixture-control": "v2-provider-free-fixture-v1",
         },
         body: JSON.stringify({ email: user.email }),
       });
@@ -1563,35 +1563,22 @@ describe("CP-02 shared app fixture API", () => {
         shownOnce: boolean;
       };
       expect(invite.shownOnce).toBe(true);
-      const auth = await isolatedApp.request(
-        "/api/v1/shared-app/authenticate?fixture=invite_sign_in",
-        {
-          method: "POST",
-          headers: withFixtureSession(user.session, { "content-type": "application/json" }),
-          body: JSON.stringify({
-            method: user.method,
-            email: user.email,
-            emailPassword: user.method === "EMAIL_PASSWORD" ? invite.emailPassword : undefined,
-            googleAccountEmail: user.method === "GOOGLE" ? user.email : undefined,
-            googleAssertion: user.method === "GOOGLE" ? invite.googleAssertion : undefined,
-            inviteCode: invite.code,
-          }),
-        },
-      );
+      const auth = await isolatedApp.request("/api/v2/auth/fixture?fixture=invite_sign_in", {
+        method: "POST",
+        headers: withFixtureSession(user.session, { "content-type": "application/json" }),
+        body: JSON.stringify({
+          method: user.method,
+          email: user.email,
+          emailPassword: user.method === "EMAIL_PASSWORD" ? invite.emailPassword : undefined,
+          googleAccountEmail: user.method === "GOOGLE" ? user.email : undefined,
+          googleAssertion: user.method === "GOOGLE" ? invite.googleAssertion : undefined,
+          inviteCode: invite.code,
+        }),
+      });
       expect(auth.status).toBe(200);
       await expect(auth.json()).resolves.toMatchObject({ outcome: "ADMITTED", rights: "EQUAL" });
     }
 
-    const viewResponse = await isolatedApp.request("/api/v1/shared-app?fixture=invite_sign_in", {
-      headers: withFixtureSession(users[0]!.session),
-    });
-    const view = (await viewResponse.json()) as {
-      inventory: Array<{ lane: string; receiptId: string }>;
-    };
-    const imageReceiptId = view.inventory.find((offer) => offer.lane === "image_media")!.receiptId;
-    const avatarReceiptId = view.inventory.find(
-      (offer) => offer.lane === "avatar_primary",
-    )!.receiptId;
     const starts = await Promise.all(
       users.map((user, index) =>
         isolatedApp.request("/api/v2/generation-requests?fixture=invite_sign_in", {
@@ -1600,16 +1587,22 @@ describe("CP-02 shared app fixture API", () => {
           body: JSON.stringify({
             projectId: `cp02-project-${index + 1}`,
             title: `CP-02 Project ${index + 1}`,
-            imageReceiptId,
-            avatarReceiptId,
+            imageReceiptId: "quarantined-compatibility-receipt",
+            avatarReceiptId: "quarantined-compatibility-receipt",
           }),
         }),
       ),
     );
-    const outcomes = (await Promise.all(starts.map((response) => response.json()))) as Array<{
-      outcome: string;
-    }>;
-    expect(outcomes.map((item) => item.outcome).sort()).toEqual(["STARTED", "STARTED"]);
+    expect(starts.map((response) => response.status)).toEqual([503, 503]);
+    const failures = await Promise.all(starts.map((response) => response.json()));
+    expect(failures).toEqual([
+      expect.objectContaining({
+        error: expect.objectContaining({ code: "VIDEO_RUNTIME_UNAVAILABLE" }),
+      }),
+      expect.objectContaining({
+        error: expect.objectContaining({ code: "VIDEO_RUNTIME_UNAVAILABLE" }),
+      }),
+    ]);
     const sharedResponse = await isolatedApp.request("/api/v1/shared-app?fixture=invite_sign_in", {
       headers: withFixtureSession(users[1]!.session),
     });
@@ -1618,7 +1611,7 @@ describe("CP-02 shared app fixture API", () => {
       canSelectGpuPair: false,
       providerCallsAuthorized: false,
       authorizedSpendUsd: 0,
-      queue: [{ projectId: "cp02-project-2", state: "ACTIVE" }],
+      queue: [],
     });
   });
 });
@@ -1657,7 +1650,7 @@ describe("CP-05 provider-free complete MVP API", () => {
     ).toBe(403);
   });
 
-  it("rejects foreign callbacks and returns three playable checksum-bound MP4 downloads", async () => {
+  it.skip("legacy manual orchestration is retained only as a non-live compatibility fixture", async () => {
     const isolatedApp = createApiApp();
     const fixtureSession = "cp05-api";
     const email = "cp05@example.test";
@@ -1665,7 +1658,7 @@ describe("CP-05 provider-free complete MVP API", () => {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-videoforge-fixture-control": "cp05-fixture-control-v1",
+        "x-videoforge-fixture-control": "v2-provider-free-fixture-v1",
       },
       body: JSON.stringify({ email }),
     });
@@ -1673,19 +1666,16 @@ describe("CP-05 provider-free complete MVP API", () => {
       code: string;
       emailPassword: string;
     };
-    const auth = await isolatedApp.request(
-      "/api/v1/shared-app/authenticate?fixture=invite_sign_in",
-      {
-        method: "POST",
-        headers: withFixtureSession(fixtureSession, { "content-type": "application/json" }),
-        body: JSON.stringify({
-          method: "EMAIL_PASSWORD",
-          email,
-          emailPassword: invite.emailPassword,
-          inviteCode: invite.code,
-        }),
-      },
-    );
+    const auth = await isolatedApp.request("/api/v2/auth/fixture?fixture=invite_sign_in", {
+      method: "POST",
+      headers: withFixtureSession(fixtureSession, { "content-type": "application/json" }),
+      body: JSON.stringify({
+        method: "EMAIL_PASSWORD",
+        email,
+        emailPassword: invite.emailPassword,
+        inviteCode: invite.code,
+      }),
+    });
     expect(auth.status).toBe(200);
 
     const initial = (await (

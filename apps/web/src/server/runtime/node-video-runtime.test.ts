@@ -103,6 +103,8 @@ describe("V2-05 application runtime cutover", () => {
 
     const drain = await runtime.drainProof();
     expect(drain.liveAttempts).toBe(0);
+    expect(drain.activeJobs).toBe(0);
+    expect(drain.activeWorkers).toBe(0);
     expect(drain.settledCostUsd).toBe(0);
     expect(drain.acceptedJobs).toBeGreaterThan(0);
   }, 120_000);

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
+  AlertTriangle,
   Aperture,
   BookOpen,
   CircleGauge,
@@ -391,6 +392,13 @@ export function AppShell({ children }: PropsWithChildren) {
                 {health.data?.status === "ok" ? "healthy" : health.isError ? "offline" : "checking"}
               </Badge>
             </div>
+
+            {import.meta.env.PROD ? (
+              <div className="top-health top-health-degraded" role="status">
+                <AlertTriangle size={16} aria-hidden="true" />
+                <Badge tone="warning">Hosted runtime unavailable · fixtures are not live</Badge>
+              </div>
+            ) : null}
 
             {fixtureControlsEnabled ? (
               <Disclosure

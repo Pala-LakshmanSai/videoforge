@@ -1,7 +1,8 @@
 import * as Switch from "@radix-ui/react-switch";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { createProjectRequestSchema, validateOutputRuleKeywords } from "@videoforge/contracts";
+import { createProjectRequestSchema } from "@videoforge/contracts/create-project";
+import { validateOutputRuleKeywords } from "@videoforge/contracts/output-rules";
 import { AlertTriangle, ArrowRight, Check, FileAudio, ImagePlus, UserPlus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "../components/PageHeader";

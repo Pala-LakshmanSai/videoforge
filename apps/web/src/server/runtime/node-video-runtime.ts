@@ -16,6 +16,10 @@ import {
 } from "@videoforge/control-plane";
 
 import { buildProviderFreeProjectBundle } from "../provider-free-foundations";
+import {
+  MemoryProviderFreeArtifactRuntime,
+  type ProviderFreeArtifactRuntime,
+} from "../provider-free-artifact-runtime";
 import type { FixtureTenantScope } from "../shared-app-fixture";
 import type { NodeFairAdmission } from "./node-fair-admission";
 
@@ -31,7 +35,7 @@ const LANES: readonly ServerlessLane[] = Object.freeze(["mage_image", "soulx_ava
 
 const RATE_SOURCE = "https://docs.runpod.io/serverless/pricing";
 
-function sha256(label: string): Sha256 {
+function sha256(label: string | Uint8Array): Sha256 {
   return `sha256:${createHash("sha256").update(label).digest("hex")}`;
 }
 
@@ -84,16 +88,22 @@ export interface VideoRuntimeStageView {
   readonly providerCallsAuthorized: false;
   readonly authorizedSpendUsd: 0;
   readonly settledCostUsd: 0;
+  readonly executionEvidence: "SYNTHETIC_PROVIDER_FREE";
 }
 
 export class NodeVideoRuntime {
   readonly #admission: NodeFairAdmission;
+  readonly #artifacts: ProviderFreeArtifactRuntime;
   readonly #signer = new ProvenanceReceiptSigner("videoforge-v2-05-worker", Buffer.alloc(32, 5));
   readonly #endpoints = new Map<ServerlessLane, FakeServerlessEndpoint>();
   #prepared: Promise<void> | null = null;
 
-  constructor(admission: NodeFairAdmission) {
+  constructor(
+    admission: NodeFairAdmission,
+    artifacts: ProviderFreeArtifactRuntime = new MemoryProviderFreeArtifactRuntime(),
+  ) {
     this.#admission = admission;
+    this.#artifacts = artifacts;
   }
 
   async #services(): Promise<{
@@ -166,6 +176,7 @@ export class NodeVideoRuntime {
     }
     if (view.stage === "PREPARING") {
       const bundle = await buildProviderFreeProjectBundle(publicProjectId);
+      await this.#artifacts.persistFoundations(bundle);
       view = await runtime.completePreparation(scope, {
         runtimeId,
         preparationManifestSha256: bundle.receipts.generationWorkManifestSha256 as Sha256,
@@ -207,6 +218,7 @@ export class NodeVideoRuntime {
           pendingLane.itemsManifestSha256 ??
           sha256(`${pendingLane.lane}:${plannedItemIds.join("|")}`),
         projectId: value.projectId,
+        publicProjectId,
         revisionId: value.revisionId,
         requestId: value.requestId,
       });
@@ -224,9 +236,34 @@ export class NodeVideoRuntime {
     }
 
     const bundle = await buildProviderFreeProjectBundle(publicProjectId);
+    const rendered = await this.#artifacts.render(bundle);
+    if (
+      rendered.renderManifestSha256 !== bundle.renderManifest.sha256 ||
+      rendered.projectId !== publicProjectId ||
+      !rendered.durable
+    ) {
+      throw new Error("the final render receipt does not match the exact durable render authority");
+    }
+    const bytes = await this.#artifacts.read(rendered.finalMp4Sha256);
+    if (
+      bytes === null ||
+      sha256(bytes) !== rendered.finalMp4Sha256 ||
+      bytes.length !== rendered.byteSize
+    ) {
+      throw new Error("the final MP4 bytes do not match the durable render receipt");
+    }
+    const receiptSha256 = await this.#persistFinalRenderReceipt({
+      executor,
+      scope,
+      runtimeId,
+      projectId: value.projectId,
+      revisionId: value.revisionId,
+      rendered,
+    });
     view = await runtime.completeRender(scope, {
       runtimeId,
-      finalOutputSha256: bundle.renderManifest.sha256 as Sha256,
+      finalOutputSha256: rendered.finalMp4Sha256 as Sha256,
+      finalOutputReceiptSha256: receiptSha256,
       now: now(),
     });
     return this.#project(publicProjectId, view);
@@ -269,9 +306,31 @@ export class NodeVideoRuntime {
     return Object.freeze(resolved);
   }
 
+  async readFinal(
+    tenant: FixtureTenantScope,
+    publicProjectId: string,
+  ): Promise<{ bytes: Uint8Array; sha256: string; contentType: "video/mp4" } | null> {
+    const { runtime } = await this.#services();
+    const scope = this.#admission.tenantScope(tenant);
+    const value = this.#admission.identifiers(tenant, publicProjectId);
+    const view = await runtime.view(scope, uuid(`runtime:${value.requestId}`));
+    if (view.stage !== "COMPLETE" || view.finalOutputSha256 === null) return null;
+    const bytes = await this.#artifacts.read(view.finalOutputSha256);
+    if (bytes === null || sha256(bytes) !== view.finalOutputSha256) {
+      throw new Error("the durable final MP4 is missing or corrupt");
+    }
+    return Object.freeze({
+      bytes,
+      sha256: view.finalOutputSha256,
+      contentType: "video/mp4" as const,
+    });
+  }
+
   /** Zero live attempts and zero fake workers must remain once every owned video drains. */
   async drainProof(): Promise<{
     readonly liveAttempts: number;
+    readonly activeJobs: number;
+    readonly activeWorkers: number;
     readonly acceptedJobs: number;
     readonly settledCostUsd: 0;
   }> {
@@ -281,9 +340,18 @@ export class NodeVideoRuntime {
         WHERE state NOT IN ('SUCCEEDED', 'PERMANENT_FAILED', 'CANCELLED')`,
     );
     let acceptedJobs = 0;
-    for (const lane of LANES) acceptedJobs += this.#endpoint(lane).acceptedJobCount();
+    let activeJobs = 0;
+    let activeWorkers = 0;
+    for (const lane of LANES) {
+      const endpoint = this.#endpoint(lane);
+      acceptedJobs += endpoint.acceptedJobCount();
+      activeJobs += endpoint.activeJobCount();
+      activeWorkers += endpoint.activeWorkerCount();
+    }
     return Object.freeze({
       liveAttempts: Number(live.rows[0]?.count ?? "0"),
+      activeJobs,
+      activeWorkers,
       acceptedJobs,
       settledCostUsd: 0 as const,
     });
@@ -310,6 +378,7 @@ export class NodeVideoRuntime {
     readonly itemIds: readonly string[];
     readonly itemsManifestSha256: Sha256;
     readonly projectId: string;
+    readonly publicProjectId: string;
     readonly revisionId: string;
     readonly requestId: string;
   }): Promise<VideoRuntimeView> {
@@ -376,8 +445,14 @@ export class NodeVideoRuntime {
 
     const assignment = await dispatch.currentAssignment(attemptId);
     if (assignment === null) throw new Error("provider-free dispatch produced no assignment");
+    await runtime.observeLaneProgress(scope, {
+      runtimeId: input.runtimeId,
+      lane,
+      observed: "GENERATING",
+      now: new Date().toISOString(),
+    });
     let signed: ProvenanceReceipt | undefined;
-    endpoint.execute(assignment.provider_job_id, () => {
+    const terminal = endpoint.execute(assignment.provider_job_id, () => {
       signed = this.#sign({
         commit,
         lane,
@@ -388,13 +463,24 @@ export class NodeVideoRuntime {
       });
       return signed;
     });
-    if (signed === undefined) throw new Error("the fake worker produced no signed receipt");
-    await runtime.observeLaneProgress(scope, {
-      runtimeId: input.runtimeId,
-      lane,
-      observed: "GENERATING",
-      now: new Date().toISOString(),
+    await dispatch.recordPolledStatus(scope, {
+      eventId: uuid(`poll:${attemptId}:terminal`),
+      attemptId,
+      providerJobId: assignment.provider_job_id,
+      providerStatus: terminal.status,
+      attemptState: terminal.status === "COMPLETED" ? "UPLOADING" : terminal.status,
+      itemsCompleted: terminal.status === "COMPLETED" ? input.itemIds.length : 0,
+      observedAt: new Date().toISOString(),
     });
+    if (terminal.status !== "COMPLETED") {
+      throw new Error(`the fake Serverless job terminated as ${terminal.status}`);
+    }
+    if (signed === undefined) throw new Error("the fake worker produced no signed receipt");
+
+    const artifactBundle = await buildProviderFreeProjectBundle(input.publicProjectId);
+    await this.#artifacts.persist(
+      lane === "mage_image" ? artifactBundle.mage.artifacts : artifactBundle.echo.artifacts,
+    );
 
     const commitHashes = await this.#persistCommitReceipts(input.executor, attemptId, signed);
     await dispatch.acceptOutput(scope, {
@@ -502,6 +588,100 @@ export class NodeVideoRuntime {
     });
   }
 
+  async #persistFinalRenderReceipt(input: {
+    readonly executor: TransactionalSqlExecutor;
+    readonly scope: WorkspaceScope;
+    readonly runtimeId: string;
+    readonly projectId: string;
+    readonly revisionId: string;
+    readonly rendered: {
+      readonly finalMp4Sha256: string;
+      readonly renderManifestSha256: string;
+      readonly byteSize: number;
+      readonly durationMs: number;
+      readonly totalFrames: number;
+      readonly width: number;
+      readonly height: number;
+      readonly audioCodec: string;
+      readonly videoCodec: string;
+      readonly renderer: string;
+    };
+  }): Promise<Sha256> {
+    const reservationId = uuid(`render-reservation:${input.runtimeId}`);
+    const receiptId = uuid(`render-receipt:${input.runtimeId}`);
+    const objectKey = `tenant/${input.scope.accountId}/workspace/${input.scope.workspaceId}/project/${input.projectId}/revision/${input.revisionId}/lane/render/job/${input.runtimeId}/artifact/final-mp4`;
+    const receiptSha256 = sha256(
+      JSON.stringify({
+        accountId: input.scope.accountId,
+        workspaceId: input.scope.workspaceId,
+        projectId: input.projectId,
+        revisionId: input.revisionId,
+        objectKey,
+        ...input.rendered,
+      }),
+    );
+    const now = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + 60 * 60_000).toISOString();
+    await input.executor.transaction(async (transaction) => {
+      await transaction.query(`SELECT set_config('videoforge.account_id', $1, true)`, [
+        input.scope.accountId,
+      ]);
+      await transaction.query(
+        `INSERT INTO artifact_reservations (
+           id, account_id, workspace_id, project_id, project_revision_id, lane, job_id,
+           artifact_id, object_key, method, content_type, content_length, checksum_sha256,
+           expires_at, max_uses, used_count, state, retention_class, deletion_owner_account_id,
+           created_at, updated_at
+         ) VALUES ($1, $2, $3, $4, $5, 'RENDER', $6, 'final-mp4', $7, 'PUT', 'video/mp4',
+                   $8, $9, $10, 1, 1, 'COMMITTED', 'FINAL', $2, $11, $11)
+         ON CONFLICT (id) DO NOTHING`,
+        [
+          reservationId,
+          input.scope.accountId,
+          input.scope.workspaceId,
+          input.projectId,
+          input.revisionId,
+          input.runtimeId,
+          objectKey,
+          input.rendered.byteSize,
+          input.rendered.finalMp4Sha256,
+          expiresAt,
+          now,
+        ],
+      );
+      await transaction.query(
+        `INSERT INTO artifact_receipts (
+           id, account_id, workspace_id, reservation_id, callback_id, object_key, content_type,
+           content_length, checksum_sha256, probe, receipt_sha256, committed_at
+         ) VALUES ($1, $2, $3, $4, $5, $6, 'video/mp4', $7, $8, $9::jsonb, $10, $11)
+         ON CONFLICT (id) DO NOTHING`,
+        [
+          receiptId,
+          input.scope.accountId,
+          input.scope.workspaceId,
+          reservationId,
+          `render:${input.runtimeId}`,
+          objectKey,
+          input.rendered.byteSize,
+          input.rendered.finalMp4Sha256,
+          JSON.stringify({
+            render_manifest_sha256: input.rendered.renderManifestSha256,
+            duration_ms: input.rendered.durationMs,
+            total_frames: input.rendered.totalFrames,
+            width: input.rendered.width,
+            height: input.rendered.height,
+            audio_codec: input.rendered.audioCodec,
+            video_codec: input.rendered.videoCodec,
+            renderer: input.rendered.renderer,
+          }),
+          receiptSha256,
+          now,
+        ],
+      );
+    });
+    return receiptSha256;
+  }
+
   /** Commits the tenant-private artifact receipts the fake worker's upload produced. */
   async #persistCommitReceipts(
     executor: TransactionalSqlExecutor,
@@ -595,6 +775,7 @@ export class NodeVideoRuntime {
       providerCallsAuthorized: false as const,
       authorizedSpendUsd: 0 as const,
       settledCostUsd: 0 as const,
+      executionEvidence: "SYNTHETIC_PROVIDER_FREE" as const,
     });
   }
 }

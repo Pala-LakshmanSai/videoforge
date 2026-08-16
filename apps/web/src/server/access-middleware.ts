@@ -41,7 +41,7 @@ export function registerAccessMiddleware(
     if (!resolved.ok) return resolved.response;
     if (
       c.req.path === "/api/v1/bootstrap" ||
-      c.req.path === "/api/v1/shared-app/authenticate" ||
+      c.req.path === "/api/v2/auth/fixture" ||
       c.req.path === "/api/v1/shared-app"
     ) {
       await next();

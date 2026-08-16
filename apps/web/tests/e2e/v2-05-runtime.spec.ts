@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { expect, test, type BrowserContext } from "@playwright/test";
 
 /**
@@ -19,19 +21,16 @@ async function admit(context: BrowserContext, email: string, method: "EMAIL_PASS
     emailPassword: string;
     googleAssertion: string;
   };
-  const response = await context.request.post(
-    `/api/v1/shared-app/authenticate?fixture=${FIXTURE}`,
-    {
-      data: {
-        method,
-        email,
-        emailPassword: method === "EMAIL_PASSWORD" ? invite.emailPassword : undefined,
-        googleAccountEmail: method === "GOOGLE" ? email : undefined,
-        googleAssertion: method === "GOOGLE" ? invite.googleAssertion : undefined,
-        inviteCode: invite.code,
-      },
+  const response = await context.request.post(`/api/v2/auth/fixture?fixture=${FIXTURE}`, {
+    data: {
+      method,
+      email,
+      emailPassword: method === "EMAIL_PASSWORD" ? invite.emailPassword : undefined,
+      googleAccountEmail: method === "GOOGLE" ? email : undefined,
+      googleAssertion: method === "GOOGLE" ? invite.googleAssertion : undefined,
+      inviteCode: invite.code,
     },
-  );
+  });
   expect(response.ok()).toBe(true);
 }
 
@@ -40,26 +39,33 @@ async function drive(
   context: BrowserContext,
   projectId: string,
   maximumSteps = 12,
-): Promise<string[]> {
+): Promise<{ stages: string[]; finalOutputSha256: string | null }> {
   const observed: string[] = [];
+  let finalOutputSha256: string | null = null;
   for (let step = 0; step < maximumSteps; step += 1) {
     const response = await context.request.post(
       `/api/v2/videos/${projectId}/advance?fixture=${FIXTURE}`,
     );
-    expect(response.ok()).toBe(true);
+    if (!response.ok()) {
+      throw new Error(`advance failed ${response.status()}: ${await response.text()}`);
+    }
     const state = (await response.json()) as {
       stage: string;
       providerCallsAuthorized: boolean;
       authorizedSpendUsd: number;
       settledCostUsd: number;
+      finalOutputSha256: string | null;
+      executionEvidence: string;
     };
     expect(state.providerCallsAuthorized).toBe(false);
     expect(state.authorizedSpendUsd).toBe(0);
     expect(state.settledCostUsd).toBe(0);
+    expect(state.executionEvidence).toBe("SYNTHETIC_PROVIDER_FREE");
+    finalOutputSha256 = state.finalOutputSha256;
     observed.push(state.stage);
     if (["COMPLETE", "FAILED", "CANCELED"].includes(state.stage)) break;
   }
-  return observed;
+  return { stages: observed, finalOutputSha256 };
 }
 
 test("V2-05 carries two accounts' videos through factual private runtime stages", async ({
@@ -70,7 +76,7 @@ test("V2-05 carries two accounts' videos through factual private runtime stages"
     baseURL: "http://localhost:4173",
     extraHTTPHeaders: {
       "X-VideoForge-Fixture-Session": session,
-      "X-VideoForge-Fixture-Control": "cp05-fixture-control-v1",
+      "X-VideoForge-Fixture-Control": "v2-provider-free-fixture-v1",
     },
   });
   const contextA = await browser.newContext(options("v2-05-runtime-a"));
@@ -100,26 +106,28 @@ test("V2-05 carries two accounts' videos through factual private runtime stages"
     await expect(queuedList).toContainText("Queued");
 
     // Both accounts advance independently through the same durable stage vocabulary.
-    const stagesA = await drive(contextA, "v2-05-a-active");
-    const stagesB = await drive(contextB, "v2-05-b-active");
-    for (const stages of [stagesA, stagesB]) {
+    const resultA = await drive(contextA, "v2-05-a-active");
+    const resultB = await drive(contextB, "v2-05-b-active");
+    for (const { stages, finalOutputSha256 } of [resultA, resultB]) {
       expect(stages[0]).toBe("PREPARING");
       expect(stages).toContain("WAITING_FOR_WORKER");
       expect(stages).toContain("RENDERING");
       expect(stages.at(-1)).toBe("COMPLETE");
+      expect(finalOutputSha256).toMatch(/^sha256:[0-9a-f]{64}$/u);
     }
 
     await queuedPage.reload();
-    await expect(queuedList).toContainText("Complete");
+    await expect(
+      queuedPage.getByText(/^Idle\. Generate adds a private waiting request/u),
+    ).toBeVisible();
     // The approved queue surface still exposes no compute control of any kind.
     await expect(queuedPage.getByText(/GPU|Pod|RunPod/u)).toHaveCount(0);
 
     // Account B sees only its own video, in its own factual state.
     const pageB = await contextB.newPage();
     await pageB.goto(`/?fixture=${FIXTURE}`);
-    const listB = pageB.getByLabel("Your private generation queue");
-    await expect(listB).toContainText("Account B runtime");
-    await expect(listB).not.toContainText("Account A runtime");
+    await expect(pageB.getByText(/^Idle\. Generate adds a private waiting request/u)).toBeVisible();
+    await expect(pageB.getByText("Account A runtime")).toHaveCount(0);
 
     // Neither account can address the other's video, and the refusal reveals nothing.
     const foreign = await contextB.request.post(
@@ -129,7 +137,7 @@ test("V2-05 carries two accounts' videos through factual private runtime stages"
     const foreignBody = await foreign.text();
     expect(foreignBody).not.toContain("runtime-a@example.test");
 
-    // Every owned video reports the durable lane facts behind its stage.
+    // Terminal admission entries drain, while each exact tenant-private MP4 remains durable.
     const queueA = (await (
       await contextA.request.get(`/api/v2/queue?fixture=${FIXTURE}`)
     ).json()) as {
@@ -143,11 +151,52 @@ test("V2-05 carries two accounts' videos through factual private runtime stages"
     };
     expect(queueA.providerCallsAuthorized).toBe(false);
     expect(queueA.authorizedSpendUsd).toBe(0);
-    const ownedA = queueA.requests.find((request) => request.projectId === "v2-05-a-active");
-    expect(ownedA?.stage).toBe("COMPLETE");
-    expect(ownedA?.lanes?.map((lane) => lane.lane)).toEqual(["mage_image", "soulx_avatar"]);
-    expect(ownedA?.lanes?.every((lane) => lane.state === "SUCCEEDED")).toBe(true);
-    expect(ownedA?.lanes?.every((lane) => lane.acceptedItemCount > 0)).toBe(true);
+    expect(queueA.requests).toEqual([]);
+
+    const download = await contextA.request.get(
+      `/api/v2/videos/v2-05-a-active/download?fixture=${FIXTURE}`,
+    );
+    expect(download.ok()).toBe(true);
+    expect(download.headers()["content-type"]).toBe("video/mp4");
+    expect(download.headers()["x-videoforge-artifact-kind"]).toBe("tenant-private-final-mp4");
+    const bytes = await download.body();
+    expect(bytes.byteLength).toBeGreaterThan(10_000);
+    const downloadedSha256 = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+    expect(downloadedSha256).toBe(resultA.finalOutputSha256);
+    expect(download.headers()["x-videoforge-sha256"]).toBe(downloadedSha256);
+
+    // Installed Chrome decodes the V3 artifact itself; this is not a manifest-only completion.
+    const playback = await queuedPage.evaluate(async (source) => {
+      const video = document.createElement("video");
+      video.muted = true;
+      video.src = source;
+      document.body.append(video);
+      await new Promise<void>((resolve, reject) => {
+        video.addEventListener("loadedmetadata", () => resolve(), { once: true });
+        video.addEventListener("error", () => reject(new Error("MP4 decode failed")), {
+          once: true,
+        });
+      });
+      await video.play();
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const facts = {
+        width: video.videoWidth,
+        height: video.videoHeight,
+        duration: video.duration,
+        currentTime: video.currentTime,
+      };
+      video.remove();
+      return facts;
+    }, `/api/v2/videos/v2-05-a-active/download?fixture=${FIXTURE}&inline=1`);
+    expect(playback.width).toBe(1920);
+    expect(playback.height).toBe(1080);
+    expect(playback.duration).toBeGreaterThan(9);
+    expect(playback.currentTime).toBeGreaterThan(0);
+
+    const foreignDownload = await contextB.request.get(
+      `/api/v2/videos/v2-05-a-active/download?fixture=${FIXTURE}`,
+    );
+    expect(foreignDownload.status()).toBe(404);
   } finally {
     await contextA.close();
     await contextB.close();

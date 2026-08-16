@@ -21,7 +21,6 @@ export const projectDraftSchema = z.object({
     .object({
       image_media_profile_id: z.string().min(1).max(160).optional(),
       avatar_primary_profile_id: z.string().min(1).max(160).optional(),
-      avatar_repair_profile_id: z.string().min(1).max(160).optional(),
       avatar_quality_profile_id: z.string().min(1).max(160).optional(),
     })
     .nullable(),

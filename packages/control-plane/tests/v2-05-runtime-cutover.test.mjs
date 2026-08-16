@@ -78,6 +78,65 @@ function laneOf(view, lane) {
   return view.lanes.find((candidate) => candidate.lane === lane);
 }
 
+async function persistFinalRenderReceipt(
+  executor,
+  { runtimeId, renderManifestSha256, finalOutputSha256 },
+) {
+  const reservationId = uuid(5_900);
+  const receiptId = uuid(5_901);
+  const receiptSha256 = sha256(`final-receipt-${runtimeId}`);
+  const objectKey = `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}/revision/${IDS.revisionA}/lane/render/job/${runtimeId}/artifact/final-mp4`;
+  await executor.transaction(async (transaction) => {
+    await transaction.query(`SELECT set_config('videoforge.account_id', $1, true)`, [IDS.accountA]);
+    await transaction.query(
+      `INSERT INTO artifact_reservations (
+         id, account_id, workspace_id, project_id, project_revision_id, lane, job_id,
+         artifact_id, object_key, method, content_type, content_length, checksum_sha256,
+         expires_at, max_uses, used_count, state, retention_class, deletion_owner_account_id,
+         created_at, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, 'RENDER', $6, 'final-mp4', $7, 'PUT', 'video/mp4',
+                 4096, $8, $9, 1, 1, 'COMMITTED', 'FINAL', $2, $10, $10)`,
+      [
+        reservationId,
+        IDS.accountA,
+        IDS.workspaceA,
+        IDS.projectA,
+        IDS.revisionA,
+        runtimeId,
+        objectKey,
+        finalOutputSha256,
+        at(600),
+        at(250),
+      ],
+    );
+    await transaction.query(
+      `INSERT INTO artifact_receipts (
+         id, account_id, workspace_id, reservation_id, callback_id, object_key, content_type,
+         content_length, checksum_sha256, probe, receipt_sha256, committed_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, 'video/mp4', 4096, $7, $8::jsonb, $9, $10)`,
+      [
+        receiptId,
+        IDS.accountA,
+        IDS.workspaceA,
+        reservationId,
+        `render:${runtimeId}`,
+        objectKey,
+        finalOutputSha256,
+        JSON.stringify({
+          render_manifest_sha256: renderManifestSha256,
+          width: 1920,
+          height: 1080,
+          video_codec: "h264",
+          audio_codec: "aac",
+        }),
+        receiptSha256,
+        at(255),
+      ],
+    );
+  });
+  return receiptSha256;
+}
+
 /** Prepares one admitted video: CPU preparation output plus one exact manifest per lane. */
 async function prepare(runtime, scope, runtimeId, plans, now = at(2)) {
   await runtime.beginPreparation(scope, { runtimeId, now });
@@ -649,14 +708,22 @@ test("render waits for every lane, and a complete provider-free journey drains t
       itemIds: avatarItems,
       endpoint: soulxEndpoint,
     });
+    const renderManifestSha256 = sha256(`render-${runtimeId}`);
+    const finalOutputSha256 = sha256(`final-${runtimeId}`);
     await runtime.beginRender(scopeA(), {
       runtimeId,
-      renderManifestSha256: sha256(`render-${runtimeId}`),
+      renderManifestSha256,
       now: at(200),
+    });
+    const finalOutputReceiptSha256 = await persistFinalRenderReceipt(executor, {
+      runtimeId,
+      renderManifestSha256,
+      finalOutputSha256,
     });
     const complete = await runtime.completeRender(scopeA(), {
       runtimeId,
-      finalOutputSha256: sha256(`final-${runtimeId}`),
+      finalOutputSha256,
+      finalOutputReceiptSha256,
       now: at(260),
     });
     assert.equal(complete.stage, "COMPLETE");
@@ -666,6 +733,8 @@ test("render waits for every lane, and a complete provider-free journey drains t
     // Every fake job is terminal and no worker remains after drain.
     for (const endpoint of [mageEndpoint, soulxEndpoint]) {
       assert.equal(endpoint.acceptedJobCount(), 1);
+      assert.equal(endpoint.activeJobCount(), 0);
+      assert.equal(endpoint.activeWorkerCount(), 0);
     }
     const live = await executor.query(
       `SELECT count(*)::text AS count FROM serverless_attempts

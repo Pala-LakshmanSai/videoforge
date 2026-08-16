@@ -3996,11 +3996,6 @@ export const canonicalSchemaDocuments = {
             "minLength": 1,
             "maxLength": 160
           },
-          "avatar_repair_profile_id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 160
-          },
           "avatar_quality_profile_id": {
             "type": "string",
             "minLength": 1,

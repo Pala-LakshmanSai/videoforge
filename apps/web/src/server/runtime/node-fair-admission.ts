@@ -412,6 +412,10 @@ export class NodeFairAdmission implements ApplicationFairAdmission {
   }
 
   async settleSucceeded(input: Parameters<ApplicationFairAdmission["settleSucceeded"]>[0]) {
+    return this.settleTerminal({ ...input, terminalState: "SUCCEEDED" });
+  }
+
+  async settleTerminal(input: Parameters<ApplicationFairAdmission["settleTerminal"]>[0]) {
     try {
       const { executor, repository } = await this.#ready;
       const requestId = ids(input.tenant, input.publicProjectId).requestId;
@@ -432,7 +436,7 @@ export class NodeFairAdmission implements ApplicationFairAdmission {
           leaseId: active.id,
           ownerTokenSha256: active.owner_token_sha256,
           expectedLeaseVersion: active.version,
-          terminalState: "SUCCEEDED",
+          terminalState: input.terminalState,
           auditId: crypto.randomUUID(),
           now,
           nextPromotion: {

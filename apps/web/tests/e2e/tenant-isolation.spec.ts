@@ -12,7 +12,7 @@ test("two invited accounts hold separate private tenants in installed Chrome", a
     baseURL: "http://localhost:4173",
     extraHTTPHeaders: {
       "X-VideoForge-Fixture-Session": session,
-      "X-VideoForge-Fixture-Control": "cp05-fixture-control-v1",
+      "X-VideoForge-Fixture-Control": "v2-provider-free-fixture-v1",
     },
   });
   const contextA = await browser.newContext(headers("v2-01-tenant-a"));
@@ -37,19 +37,16 @@ test("two invited accounts hold separate private tenants in installed Chrome", a
         googleAssertion: string;
       };
 
-      const auth = await context.request.post(
-        "/api/v1/shared-app/authenticate?fixture=invite_sign_in",
-        {
-          data: {
-            method,
-            email,
-            emailPassword: method === "EMAIL_PASSWORD" ? invite.emailPassword : undefined,
-            googleAccountEmail: method === "GOOGLE" ? email : undefined,
-            googleAssertion: method === "GOOGLE" ? invite.googleAssertion : undefined,
-            inviteCode: invite.code,
-          },
+      const auth = await context.request.post("/api/v2/auth/fixture?fixture=invite_sign_in", {
+        data: {
+          method,
+          email,
+          emailPassword: method === "EMAIL_PASSWORD" ? invite.emailPassword : undefined,
+          googleAccountEmail: method === "GOOGLE" ? email : undefined,
+          googleAssertion: method === "GOOGLE" ? invite.googleAssertion : undefined,
+          inviteCode: invite.code,
         },
-      );
+      });
       expect(auth.ok()).toBe(true);
       const admitted = (await auth.json()) as {
         outcome: string;
@@ -78,100 +75,59 @@ test("two invited accounts hold separate private tenants in installed Chrome", a
       [contextA, tenantA],
       [contextB, tenantB],
     ] as const) {
-      const own = await context.request.get("/api/v1/shared-app/tenant?fixture=invite_sign_in");
+      const own = await context.request.get("/api/v2/tenant?fixture=invite_sign_in");
       expect(own.ok()).toBe(true);
       expect(await own.json()).toEqual(expected);
     }
 
     // An unadmitted session receives the same non-revealing denial for every scope.
-    const anonymous = await contextAnonymous.request.get(
-      "/api/v1/shared-app/tenant?fixture=invite_sign_in",
-    );
+    const anonymous = await contextAnonymous.request.get("/api/v2/tenant?fixture=invite_sign_in");
     expect(anonymous.status()).toBe(403);
     const anonymousBody = await anonymous.text();
     expect(anonymousBody).not.toContain(tenantA.accountId);
     expect(anonymousBody).not.toContain(tenantB.accountId);
 
-    // Neither browser session can observe the other account's identifiers anywhere in its own view.
-    for (const [context, foreign] of [
-      [contextA, tenantB],
-      [contextB, tenantA],
-    ] as const) {
-      const view = await context.request.get("/api/v1/shared-app?fixture=invite_sign_in");
-      expect(view.ok()).toBe(true);
-      const body = await view.text();
-      expect(body).not.toContain(foreign.accountId);
-      expect(body).not.toContain(foreign.workspaceId);
-    }
-
-    const inventory = (await (
-      await contextA.request.get("/api/v1/shared-app?fixture=invite_sign_in")
-    ).json()) as { inventory: Array<{ lane: string; receiptId: string }> };
-    const imageReceiptId = inventory.inventory.find(
-      (offer) => offer.lane === "image_media",
-    )!.receiptId;
-    const avatarReceiptId = inventory.inventory.find(
-      (offer) => offer.lane === "avatar_primary",
-    )!.receiptId;
-    for (const [context, projectId, title, receipts] of [
-      [contextA, "tenant-a-active", "Tenant A private active", true],
-      [contextA, "tenant-a-waiting", "Tenant A private waiting", false],
-      [contextB, "tenant-b-waiting", "Tenant B private waiting", false],
+    for (const [context, projectId, title] of [
+      [contextA, "tenant-a-active", "Tenant A private active"],
+      [contextA, "tenant-a-waiting", "Tenant A private waiting"],
+      [contextB, "tenant-b-active", "Tenant B private active"],
     ] as const) {
       const generated = await context.request.post(
         "/api/v2/generation-requests?fixture=invite_sign_in",
         {
-          data: {
-            projectId,
-            title,
-            imageReceiptId: receipts ? imageReceiptId : undefined,
-            avatarReceiptId: receipts ? avatarReceiptId : undefined,
-          },
+          data: { projectId, title },
         },
       );
       expect(generated.ok()).toBe(true);
     }
 
-    const viewA = (await (
-      await contextA.request.get("/api/v1/shared-app?fixture=invite_sign_in")
-    ).json()) as {
-      session: { queueVersion: number };
-      queue: Array<{ id: string; projectId: string }>;
-      orchestration: { projects: Array<{ projectId: string }> };
+    const queueAResponse = await contextA.request.get("/api/v2/queue?fixture=invite_sign_in");
+    const queueBResponse = await contextB.request.get("/api/v2/queue?fixture=invite_sign_in");
+    const queueA = (await queueAResponse.json()) as {
+      requests: Array<{ id: string; projectId: string; version: number }>;
     };
-    const viewBText = await (
-      await contextB.request.get("/api/v1/shared-app?fixture=invite_sign_in")
-    ).text();
-    expect(viewA.queue.map((entry) => entry.projectId)).toEqual([
+    const queueBText = await queueBResponse.text();
+    expect(queueA.requests.map((entry) => entry.projectId)).toEqual([
       "tenant-a-active",
       "tenant-a-waiting",
     ]);
-    expect(viewA.orchestration.projects.map((project) => project.projectId)).toEqual([
-      "tenant-a-active",
-      "tenant-a-waiting",
-    ]);
-    expect(viewBText).toContain("tenant-b-waiting");
-    expect(viewBText).not.toContain("tenant-a-active");
-    expect(viewBText).not.toContain("tenant-a-waiting");
-    expect(viewBText).not.toContain("tenant-a@example.test");
+    expect(queueBText).toContain("tenant-b-active");
+    expect(queueBText).not.toContain("tenant-a-active");
+    expect(queueBText).not.toContain(tenantA.accountId);
+    expect(queueBText).not.toContain(tenantA.workspaceId);
+    expect(await queueAResponse.text()).not.toContain(tenantB.accountId);
 
-    const foreignWaiting = viewA.queue.find((entry) => entry.projectId === "tenant-a-waiting")!;
+    const foreignWaiting = queueA.requests.find((entry) => entry.projectId === "tenant-a-waiting")!;
     for (const response of [
-      await contextB.request.get(
-        "/api/v1/shared-app/projects/tenant-a-active?fixture=invite_sign_in",
-      ),
-      await contextB.request.get(
-        "/api/v1/shared-app/projects/tenant-a-active/download?fixture=invite_sign_in",
-      ),
-      await contextB.request.patch(
-        `/api/v1/shared-app/queue/${foreignWaiting.id}?fixture=invite_sign_in`,
-        { data: { toPosition: 2, queueVersion: viewA.session.queueVersion } },
-      ),
+      await contextB.request.get("/api/v2/videos/tenant-a-active/download?fixture=invite_sign_in"),
+      await contextB.request.patch(`/api/v2/queue/${foreignWaiting.id}?fixture=invite_sign_in`, {
+        data: { toPosition: 2, version: foreignWaiting.version },
+      }),
       await contextB.request.delete(
-        `/api/v1/shared-app/queue/${foreignWaiting.id}?fixture=invite_sign_in&queueVersion=${viewA.session.queueVersion}`,
+        `/api/v2/queue/${foreignWaiting.id}?fixture=invite_sign_in&version=${foreignWaiting.version}`,
       ),
-      await contextB.request.post("/api/v1/shared-app/cancel?fixture=invite_sign_in"),
-      await contextB.request.post("/api/v1/shared-app/advance?fixture=invite_sign_in"),
+      await contextB.request.post("/api/v2/videos/tenant-a-active/cancel?fixture=invite_sign_in"),
+      await contextB.request.post("/api/v2/videos/tenant-a-active/advance?fixture=invite_sign_in"),
     ]) {
       expect(response.status()).toBe(404);
       const body = await response.text();
@@ -180,11 +136,7 @@ test("two invited accounts hold separate private tenants in installed Chrome", a
       expect(body).not.toContain(tenantA.workspaceId);
     }
 
-    const ownStatus = await contextA.request.get(
-      "/api/v1/shared-app/projects/tenant-a-active?fixture=invite_sign_in",
-    );
-    expect(ownStatus.ok()).toBe(true);
-    expect(await ownStatus.text()).toContain("tenant-a-active");
+    expect(queueAResponse.ok()).toBe(true);
 
     // The approved shell still renders for both accounts with no console error.
     for (const context of [contextA, contextB]) {

@@ -51,6 +51,7 @@ export type VideoRuntimeErrorCode =
   | "PREPARATION_REQUIRED"
   | "ADMISSION_REQUIRED"
   | "STAGE_CONFLICT"
+  | "FINAL_OUTPUT_RECEIPT_INVALID"
   | "TENANT_SCOPE_MISMATCH"
   | "UNIT_NOT_PLANNED";
 
@@ -581,6 +582,7 @@ export class VideoRuntimeService {
     input: {
       readonly runtimeId: string;
       readonly finalOutputSha256: Sha256;
+      readonly finalOutputReceiptSha256: Sha256;
       readonly now: string;
     },
   ): Promise<VideoRuntimeView> {
@@ -591,6 +593,53 @@ export class VideoRuntimeService {
         throw new VideoRuntimeError(
           "STAGE_CONFLICT",
           `A final output requires the RENDERING stage, not ${runtime.stage}.`,
+        );
+      }
+      const receipt = await transaction.query<
+        {
+          checksum_sha256: Sha256;
+          receipt_sha256: Sha256;
+          account_id: string;
+          workspace_id: string;
+          project_id: string;
+          project_revision_id: string;
+          lane: string;
+          retention_class: string;
+          deleted_at: string | null;
+          probe: Record<string, unknown>;
+        } & Record<string, unknown>
+      >(
+        `SELECT ar.checksum_sha256, ar.receipt_sha256, ar.account_id, ar.workspace_id,
+                reservation.project_id, reservation.project_revision_id, reservation.lane,
+                reservation.retention_class, ar.deleted_at, ar.probe
+           FROM artifact_receipts ar
+           JOIN artifact_reservations reservation
+             ON reservation.account_id = ar.account_id
+            AND reservation.workspace_id = ar.workspace_id
+            AND reservation.id = ar.reservation_id
+          WHERE ar.receipt_sha256 = $1`,
+        [input.finalOutputReceiptSha256],
+      );
+      const final = receipt.rows[0];
+      if (
+        final === undefined ||
+        final.account_id !== scope.accountId ||
+        final.workspace_id !== scope.workspaceId ||
+        final.project_id !== runtime.project_id ||
+        final.project_revision_id !== runtime.project_revision_id ||
+        final.lane !== "RENDER" ||
+        final.retention_class !== "FINAL" ||
+        final.deleted_at !== null ||
+        final.checksum_sha256 !== input.finalOutputSha256 ||
+        final.probe["render_manifest_sha256"] !== runtime.render_manifest_sha256 ||
+        final.probe["width"] !== 1920 ||
+        final.probe["height"] !== 1080 ||
+        final.probe["video_codec"] !== "h264" ||
+        final.probe["audio_codec"] !== "aac"
+      ) {
+        throw new VideoRuntimeError(
+          "FINAL_OUTPUT_RECEIPT_INVALID",
+          "The final output is not bound to one live tenant-private render receipt.",
         );
       }
       await transaction.query(
@@ -609,7 +658,10 @@ export class VideoRuntimeService {
         fromState: "RENDERING",
         toState: "COMPLETE",
         reason: "FINAL_OUTPUT_DURABLE",
-        detail: { final_output_sha256: input.finalOutputSha256 },
+        detail: {
+          final_output_sha256: input.finalOutputSha256,
+          final_output_receipt_sha256: input.finalOutputReceiptSha256,
+        },
         occurredAt: input.now,
       });
     });

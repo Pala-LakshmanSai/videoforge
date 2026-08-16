@@ -21,6 +21,11 @@ export interface ApplicationFairAdmission {
     readonly tenant: FixtureTenantScope;
     readonly publicProjectId: string;
   }): Promise<readonly FairAdmissionSnapshotItem[]>;
+  settleTerminal(input: {
+    readonly tenant: FixtureTenantScope;
+    readonly publicProjectId: string;
+    readonly terminalState: "SUCCEEDED" | "FAILED" | "CANCELLED";
+  }): Promise<readonly FairAdmissionSnapshotItem[]>;
   reorderOwned(input: {
     readonly tenant: FixtureTenantScope;
     readonly actorEmail: string;

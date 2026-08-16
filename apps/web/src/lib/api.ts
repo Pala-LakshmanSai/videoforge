@@ -27,7 +27,6 @@ import type {
   TimelineInspection,
   UsageSummary,
   RegisteredVoiceover,
-  SharedAppState,
   PrivateFairQueueState,
 } from "./types";
 import {
@@ -40,7 +39,6 @@ import {
   parseProjectsResponse,
   parseRegisteredVoiceoverResponse,
   parseStylesResponse,
-  parseSharedAppResponse,
   parsePrivateFairQueueResponse,
   parseTimelineInspectionResponse,
   parseUsageResponse,
@@ -86,7 +84,7 @@ async function request<T>(
       "Content-Type": "application/json",
       ...(fixtureSession ? { "x-videoforge-fixture-session": fixtureSession } : {}),
       ...(path.startsWith("/api/dev/")
-        ? { "x-videoforge-fixture-control": "cp05-fixture-control-v1" }
+        ? { "x-videoforge-fixture-control": "v2-provider-free-fixture-v1" }
         : {}),
       ...init?.headers,
     },
@@ -169,15 +167,9 @@ export const api = {
     scenario: ScenarioId,
   ) =>
     request<{ outcome: "ADMITTED" | "RETURNING"; email: string; rights: "EQUAL" }>(
-      `/api/v1/shared-app/authenticate${query(scenario)}`,
+      `/api/v2/auth/fixture${query(scenario)}`,
       { method: "POST", body: JSON.stringify(body) },
       (value) => value as { outcome: "ADMITTED" | "RETURNING"; email: string; rights: "EQUAL" },
-    ),
-  sharedApp: (scenario: ScenarioId) =>
-    request<SharedAppState>(
-      `/api/v1/shared-app${query(scenario)}`,
-      undefined,
-      parseSharedAppResponse,
     ),
   privateFairQueue: (scenario: ScenarioId) =>
     request<PrivateFairQueueState>(
@@ -207,45 +199,6 @@ export const api = {
       `/api/v2/generation-requests${query(scenario)}`,
       { method: "POST", body: JSON.stringify(body) },
       (value) => value as { outcome: "STARTED" | "QUEUED"; queueVersion: number },
-    ),
-  reorderSharedQueue: (
-    entryId: string,
-    toPosition: number,
-    queueVersion: number,
-    scenario: ScenarioId,
-  ) =>
-    request<SharedAppState>(
-      `/api/v1/shared-app/queue/${encodeURIComponent(entryId)}${query(scenario)}`,
-      { method: "PATCH", body: JSON.stringify({ toPosition, queueVersion }) },
-      parseSharedAppResponse,
-    ),
-  removeSharedQueue: (entryId: string, queueVersion: number, scenario: ScenarioId) =>
-    request<SharedAppState>(
-      `/api/v1/shared-app/queue/${encodeURIComponent(entryId)}?fixture=${encodeURIComponent(scenario)}&queueVersion=${queueVersion}`,
-      { method: "DELETE" },
-      parseSharedAppResponse,
-    ),
-  advanceSharedOrchestration: (scenario: ScenarioId) =>
-    request<{ event: string; completedProjectId: string | null; promotedProjectId: string | null }>(
-      `/api/v1/shared-app/advance${query(scenario)}`,
-      { method: "POST" },
-      (value) =>
-        value as {
-          event: string;
-          completedProjectId: string | null;
-          promotedProjectId: string | null;
-        },
-    ),
-  cancelSharedActive: (scenario: ScenarioId) =>
-    request<{ event: string; completedProjectId: string | null; promotedProjectId: string | null }>(
-      `/api/v1/shared-app/cancel${query(scenario)}`,
-      { method: "POST" },
-      (value) =>
-        value as {
-          event: string;
-          completedProjectId: string | null;
-          promotedProjectId: string | null;
-        },
     ),
   health: (scenario?: ScenarioId) =>
     request<HealthResponse>(

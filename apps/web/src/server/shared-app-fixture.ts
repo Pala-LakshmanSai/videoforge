@@ -423,6 +423,11 @@ export class SharedAppFixtureStore {
     return this.#state.sessionAdmissions.get(sessionId)?.tenant ?? null;
   }
 
+  identity(sessionId: string): { readonly email: string; readonly tenant: FixtureTenantScope } {
+    const admission = this.requireAdmission(sessionId);
+    return Object.freeze({ email: admission.email, tenant: admission.tenant });
+  }
+
   async authenticate(input: {
     sessionId: string;
     method: FixtureAuthMethod;
@@ -592,7 +597,6 @@ export class SharedAppFixtureStore {
     const owns = (entry: SharedQueueEntry) =>
       entry.accountId === admission.tenant.accountId &&
       entry.workspaceId === admission.tenant.workspaceId;
-    const snapshot = this.#orchestrator.snapshot();
     const owned = positions(this.#state.queue.filter(owns));
     return Object.freeze({
       schemaVersion: "videoforge.private-fair-queue/v1" as const,
@@ -605,9 +609,7 @@ export class SharedAppFixtureStore {
       }),
       requests: Object.freeze(
         owned.map((entry) => {
-          const stage =
-            snapshot.projects.find((project) => project.projectId === entry.projectId)?.stage ??
-            entry.state;
+          const stage = entry.admissionState;
           return Object.freeze({
             id: entry.id,
             projectId: entry.projectId,
@@ -748,18 +750,62 @@ export class SharedAppFixtureStore {
     });
   }
 
+  /**
+   * Records only the private V2 admission projection. It deliberately cannot select a GPU, create
+   * a global session, or start the superseded compatibility orchestrator.
+   */
+  trackV2Request(input: {
+    readonly sessionId: string;
+    readonly projectId: string;
+    readonly title: string;
+    readonly admission: {
+      readonly requestId: string;
+      readonly state: "WAITING" | "ADMITTED" | "ACTIVE" | "CANCELLING";
+      readonly version: number;
+    };
+  }): { readonly outcome: "STARTED" | "QUEUED"; readonly queueVersion: number } {
+    return this.commit(() => {
+      const admission = this.requireAdmission(input.sessionId);
+      const replay = this.#state.queue.find((entry) => entry.id === input.admission.requestId);
+      if (replay !== undefined) {
+        this.assertOwner(admission, replay);
+        return {
+          outcome: replay.admissionState === "WAITING" ? "QUEUED" : "STARTED",
+          queueVersion: this.queueVersion(admission),
+        };
+      }
+      const oldOrder = currentOrder(this.#state.queue);
+      const oldVersion = this.queueVersion(admission);
+      const active = input.admission.state !== "WAITING";
+      this.incrementQueueVersion(admission.tenant);
+      this.#state.queue = positions([
+        ...this.#state.queue,
+        {
+          id: input.admission.requestId,
+          projectId: input.projectId,
+          title: input.title,
+          state: active ? "ACTIVE" : "WAITING",
+          admissionState: active ? "ACTIVE" : "WAITING",
+          actor: admission.email,
+          accountId: admission.tenant.accountId,
+          workspaceId: admission.tenant.workspaceId,
+          position: 0,
+          createdAt: new Date().toISOString(),
+          requestVersion: input.admission.version,
+        },
+      ]);
+      this.audit(active ? "START" : "ADD", admission, oldOrder, oldVersion);
+      return {
+        outcome: active ? "STARTED" : "QUEUED",
+        queueVersion: this.queueVersion(admission),
+      };
+    });
+  }
+
   reconcileFairAdmission(sessionId: string, snapshot: readonly FairAdmissionSnapshotItem[]): void {
     this.commit(() => {
       const admission = this.requireAdmission(sessionId);
       const truth = new Map(snapshot.map((item) => [item.requestId, item]));
-      const owned = this.#state.queue.filter(
-        (entry) =>
-          entry.accountId === admission.tenant.accountId &&
-          entry.workspaceId === admission.tenant.workspaceId,
-      );
-      for (const entry of owned.filter((candidate) => !truth.has(candidate.id))) {
-        if (entry.state === "WAITING") this.#orchestrator.removeWaiting(entry.projectId);
-      }
       this.#state.queue = positions(
         this.#state.queue
           .filter(

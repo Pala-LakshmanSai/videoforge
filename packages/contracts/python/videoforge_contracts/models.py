@@ -14,7 +14,6 @@ class ExecutionProfileOverrides(BaseModel):
 
     image_media_profile_id: str | None = None
     avatar_primary_profile_id: str | None = None
-    avatar_repair_profile_id: str | None = None
     avatar_quality_profile_id: str | None = None
 
 

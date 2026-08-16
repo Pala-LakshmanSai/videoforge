@@ -10,7 +10,6 @@ export const executionProfileOverridesSchema = z
   .object({
     image_media_profile_id: identifierSchema.optional(),
     avatar_primary_profile_id: identifierSchema.optional(),
-    avatar_repair_profile_id: identifierSchema.optional(),
     avatar_quality_profile_id: identifierSchema.optional(),
   })
   .strict()

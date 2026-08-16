@@ -251,6 +251,16 @@ export class FakeServerlessEndpoint {
     return this.#jobs.size;
   }
 
+  activeJobCount(): number {
+    return [...this.#jobs.values()].filter(
+      (job) => job.status === "IN_QUEUE" || job.status === "IN_PROGRESS",
+    ).length;
+  }
+
+  activeWorkerCount(): number {
+    return [...this.#jobs.values()].filter((job) => job.status === "IN_PROGRESS").length;
+  }
+
   totalBilledSeconds(): number {
     return [...this.#jobs.values()].reduce((total, job) => total + job.billedSeconds, 0);
   }

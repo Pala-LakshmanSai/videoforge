@@ -35,6 +35,13 @@ export interface ApplicationVideoState {
   readonly providerCallsAuthorized: false;
   readonly authorizedSpendUsd: 0;
   readonly settledCostUsd: 0;
+  readonly executionEvidence: "SYNTHETIC_PROVIDER_FREE";
+}
+
+export interface ApplicationFinalVideoArtifact {
+  readonly bytes: Uint8Array;
+  readonly sha256: string;
+  readonly contentType: "video/mp4";
 }
 
 /**
@@ -53,8 +60,14 @@ export interface ApplicationVideoRuntime {
     tenant: FixtureTenantScope,
     publicProjectIds: readonly string[],
   ): Promise<readonly ApplicationVideoState[]>;
+  readFinal(
+    tenant: FixtureTenantScope,
+    publicProjectId: string,
+  ): Promise<ApplicationFinalVideoArtifact | null>;
   drainProof(): Promise<{
     readonly liveAttempts: number;
+    readonly activeJobs: number;
+    readonly activeWorkers: number;
     readonly acceptedJobs: number;
     readonly settledCostUsd: 0;
   }>;

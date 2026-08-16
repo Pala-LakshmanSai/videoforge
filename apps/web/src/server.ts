@@ -43,6 +43,12 @@ const fixtureFairAdmission =
         path.join(WORKSPACE_ROOT, "packages", "control-plane", "migrations"),
       )
     : undefined;
+const fixtureProviderFreeArtifacts =
+  mode === "fixture"
+    ? createNodeProviderFreeArtifactRuntime(
+        path.join(WORKSPACE_ROOT, ".videoforge", "provider-free-artifacts"),
+      )
+    : undefined;
 const app = createApiApp({
   configuration,
   bindings: {
@@ -54,17 +60,14 @@ const app = createApiApp({
             path.join(WORKSPACE_ROOT, ".videoforge", "shared-app-fixture.json"),
           )
         : undefined,
-    fixtureProviderFreeArtifacts:
-      mode === "fixture"
-        ? createNodeProviderFreeArtifactRuntime(
-            path.join(WORKSPACE_ROOT, ".videoforge", "provider-free-artifacts"),
-          )
-        : undefined,
+    fixtureProviderFreeArtifacts,
     fixtureFairAdmission: fixtureFairAdmission,
     // The V2-05 runtime attaches to the same durable control plane as admission, so admission and
     // per-video stage truth can never disagree.
     fixtureVideoRuntime:
-      fixtureFairAdmission === undefined ? undefined : new NodeVideoRuntime(fixtureFairAdmission),
+      fixtureFairAdmission === undefined || fixtureProviderFreeArtifacts === undefined
+        ? undefined
+        : new NodeVideoRuntime(fixtureFairAdmission, fixtureProviderFreeArtifacts),
     localRunner,
     localAppFactory: mode === "local" ? createLocalApiApp : undefined,
     sandboxAppFactory: mode === "sandbox" ? createLocalApiApp : undefined,

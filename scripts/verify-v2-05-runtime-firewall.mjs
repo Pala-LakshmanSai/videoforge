@@ -7,8 +7,9 @@ import path from "node:path";
  * The cutover runtime — per-video stage state, fair admission, and Serverless v3 lane dispatch —
  * must be reachable without touching any superseded contract. This scan proves the active runtime
  * graph names no global session, Pod lifecycle, user GPU selector, shared catalog, broad object
- * key, or compatibility-fixture escape hatch, and that the database fence covers every superseded
- * table the migration registers.
+ * key, or compatibility-fixture escape hatch. The deployable production worker is a separate
+ * compile-time graph that imports no fixture or superseded runtime; V2-06 will replace its current
+ * fail-closed handler with hosted tenant-private adapters.
  */
 const failures = [];
 
@@ -17,6 +18,9 @@ const ACTIVE_RUNTIME_FILES = [
   "packages/control-plane/src/runtime/index.ts",
   "apps/web/src/server/runtime/node-video-runtime.ts",
 ];
+
+const PRODUCTION_ENTRY = "apps/web/worker/production-index.ts";
+const PRODUCTION_CONFIG = "apps/web/wrangler.production.jsonc";
 
 const SUPERSEDED_TABLES = [
   "generation_sessions",
@@ -120,8 +124,8 @@ for (const root of productionRoots) {
   }
 }
 
-// Every superseded global-session surface must be gated behind explicit fixture control, so no
-// ordinary production route, flag, or UI action can reach one.
+// Compatibility routes remain local evidence only. A literal header is not the production
+// boundary: the deployable Worker must compile from a separate entry that cannot import them.
 const sharedAppRoutes = await readFile("apps/web/src/server/routes/shared-app-routes.ts", "utf8");
 const SUPERSEDED_ROUTES = [
   'app.get("/api/v1/shared-app"',
@@ -144,6 +148,55 @@ if (!sharedAppRoutes.includes("function supersededSurface(")) {
   failures.push("the superseded-surface gate is missing from the shared application routes");
 }
 
+const productionEntry = await readFile(PRODUCTION_ENTRY, "utf8");
+const productionConfig = await readFile(PRODUCTION_CONFIG, "utf8");
+if (/^\s*import\s/mu.test(productionEntry)) {
+  failures.push("the V2-05 production entry must not import any fixture or runtime module");
+}
+for (const token of FORBIDDEN_RUNTIME_TOKENS) {
+  if (productionEntry.includes(token)) {
+    failures.push(`the production entry names superseded runtime vocabulary: ${token}`);
+  }
+}
+if (!productionConfig.includes('"main": "./worker/production-index.ts"')) {
+  failures.push("the production Wrangler graph does not select the quarantined production entry");
+}
+const webPackage = await readFile("apps/web/package.json", "utf8");
+if (!webPackage.includes("verify-v2-05-production-bundle.mjs")) {
+  failures.push("the production build does not scan its emitted Worker bundle");
+}
+
+// The active V2 request blocks may call only fair admission and per-video runtime operations. They
+// must never call the old session/orchestrator/GPU projection even inside the local fixture app.
+const v2Start = sharedAppRoutes.indexOf('app.get("/api/v2/queue"');
+const v2End = sharedAppRoutes.indexOf('app.post("/api/v1/shared-app/cancel"');
+const v2Routes = sharedAppRoutes.slice(v2Start, v2End);
+if (v2Start < 0 || v2End < 0 || v2End <= v2Start) {
+  failures.push("the exact V2 route block could not be resolved");
+} else {
+  for (const token of [
+    "startOrEnqueue(",
+    "cancelActive(",
+    ".advance(session.id)",
+    "projectOrchestration(",
+    "finalMp4(",
+    "gpuPair",
+    "selectedGpuSku",
+    "inventory",
+  ]) {
+    if (v2Routes.includes(token)) failures.push(`the active V2 route block calls ${token}`);
+  }
+  for (const required of [
+    "trackV2Request(",
+    "videoRuntime.advance(",
+    "videoRuntime.cancel(",
+    "videoRuntime.readFinal(",
+    "settleTerminal(",
+  ]) {
+    if (!v2Routes.includes(required)) failures.push(`the active V2 route block lacks ${required}`);
+  }
+}
+
 // The compatibility escape hatch may never be set by application code.
 for (const root of productionRoots) {
   for (const file of await filesBelow(root)) {
@@ -161,5 +214,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `V2-05 runtime firewall verified (${String(ACTIVE_RUNTIME_FILES.length)} active runtime files, ${String(SUPERSEDED_TABLES.length)} fenced superseded contracts, ${String(SUPERSEDED_ROUTES.length)} fixture-gated superseded routes): no global session, Pod lifecycle, GPU selector, broad key, or compatibility escape hatch is reachable from ordinary production paths.`,
+  `V2-05 runtime firewall verified (${String(ACTIVE_RUNTIME_FILES.length)} active runtime files, ${String(SUPERSEDED_TABLES.length)} fenced superseded contracts, compile-isolated production entry, and exact V2 route block): no global session, Pod lifecycle, GPU selector, broad key, or compatibility escape hatch is reachable from ordinary production paths.`,
 );

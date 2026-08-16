@@ -10,19 +10,16 @@ async function admit(context: BrowserContext, email: string, method: "EMAIL_PASS
     emailPassword: string;
     googleAssertion: string;
   };
-  const response = await context.request.post(
-    "/api/v1/shared-app/authenticate?fixture=invite_sign_in",
-    {
-      data: {
-        method,
-        email,
-        emailPassword: method === "EMAIL_PASSWORD" ? invite.emailPassword : undefined,
-        googleAccountEmail: method === "GOOGLE" ? email : undefined,
-        googleAssertion: method === "GOOGLE" ? invite.googleAssertion : undefined,
-        inviteCode: invite.code,
-      },
+  const response = await context.request.post("/api/v2/auth/fixture?fixture=invite_sign_in", {
+    data: {
+      method,
+      email,
+      emailPassword: method === "EMAIL_PASSWORD" ? invite.emailPassword : undefined,
+      googleAccountEmail: method === "GOOGLE" ? email : undefined,
+      googleAssertion: method === "GOOGLE" ? invite.googleAssertion : undefined,
+      inviteCode: invite.code,
     },
-  );
+  });
   expect(response.ok()).toBe(true);
 }
 
@@ -33,7 +30,7 @@ test("V2-03 shows two accounts only their factual fair-queue state without compu
     baseURL: "http://localhost:4173",
     extraHTTPHeaders: {
       "X-VideoForge-Fixture-Session": session,
-      "X-VideoForge-Fixture-Control": "cp05-fixture-control-v1",
+      "X-VideoForge-Fixture-Control": "v2-provider-free-fixture-v1",
     },
   });
   const contextA = await browser.newContext(options("v2-03-fair-a"));
@@ -111,10 +108,11 @@ test("V2-03 shows two accounts only their factual fair-queue state without compu
     const reorderedBody = (await reordered.json()) as typeof safeB;
     expect(reorderedBody.requests[0]?.state).toBe("ACTIVE");
     expect(reorderedBody.requests[1]?.projectId).toBe("fair-b-second");
+    const reorderedSecondB = reorderedBody.requests.find((request) => request.id === secondB.id)!;
     const cancelled = await contextB.request.delete(
-      `/api/v2/queue/${secondB.id}?fixture=invite_sign_in&version=${reorderedBody.requests[1]!.version}`,
+      `/api/v2/queue/${secondB.id}?fixture=invite_sign_in&version=${reorderedSecondB.version}`,
     );
-    expect(cancelled.ok()).toBe(true);
+    expect(cancelled.ok(), await cancelled.text()).toBe(true);
 
     for (const [context, ownTitle, foreignTitle] of [
       [contextA, "Account A active", "Account B waiting"],

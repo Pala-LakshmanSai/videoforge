@@ -7,7 +7,7 @@ import { SharedFixtureError } from "../shared-app-fixture";
 import { VideoRuntimeError } from "@videoforge/control-plane/runtime";
 
 const FIXTURE_CONTROL_HEADER = "x-videoforge-fixture-control";
-const FIXTURE_CONTROL_VALUE = "cp05-fixture-control-v1";
+const FIXTURE_CONTROL_VALUE = "v2-provider-free-fixture-v1";
 
 function failure(error: unknown): Response {
   if (error instanceof VideoRuntimeError) {
@@ -156,7 +156,7 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     }
   });
 
-  app.post("/api/v1/shared-app/authenticate", async (c) => {
+  app.post("/api/v2/auth/fixture", async (c) => {
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
     try {
@@ -188,12 +188,11 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     if (!session.ok) return session.response;
     await runtime.sharedApp.waitForSettled();
     try {
-      const tenant = runtime.sharedApp.tenant(session.id);
-      const email = runtime.sharedApp.view(session.id).admission.email;
-      if (runtime.fairAdmission !== undefined && tenant !== null && email !== null) {
+      const identity = runtime.sharedApp.identity(session.id);
+      if (runtime.fairAdmission !== undefined) {
         runtime.sharedApp.reconcileFairAdmission(
           session.id,
-          await runtime.fairAdmission.listOwned(tenant, email),
+          await runtime.fairAdmission.listOwned(identity.tenant, identity.email),
         );
       }
       return c.json(await withVideoRuntimeStages(runtime, session.id));
@@ -207,26 +206,24 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     if (!session.ok) return session.response;
     try {
       const body = (await c.req.json()) as { toPosition: number; version: number };
-      const tenant = runtime.sharedApp.tenant(session.id);
-      const email = runtime.sharedApp.view(session.id).admission.email;
-      if (runtime.fairAdmission !== undefined && tenant !== null && email !== null) {
+      const identity = runtime.sharedApp.identity(session.id);
+      if (runtime.fairAdmission !== undefined) {
         runtime.sharedApp.reconcileFairAdmission(
           session.id,
           await runtime.fairAdmission.reorderOwned({
-            tenant,
-            actorEmail: email,
+            tenant: identity.tenant,
+            actorEmail: identity.email,
             requestId: c.req.param("entryId"),
             expectedVersion: body.version,
             toPosition: body.toPosition,
           }),
         );
       } else {
-        runtime.sharedApp.reorder({
-          sessionId: session.id,
-          entryId: c.req.param("entryId"),
-          toPosition: body.toPosition,
-          ifMatch: body.version,
-        });
+        throw new SharedFixtureError(
+          "FAIR_ADMISSION_UNAVAILABLE",
+          503,
+          "The tenant-private fair admission runtime is unavailable.",
+        );
       }
       return c.json(runtime.sharedApp.privateFairQueueView(session.id));
     } catch (error) {
@@ -238,24 +235,23 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
     try {
-      const tenant = runtime.sharedApp.tenant(session.id);
-      const email = runtime.sharedApp.view(session.id).admission.email;
-      if (runtime.fairAdmission !== undefined && tenant !== null && email !== null) {
+      const identity = runtime.sharedApp.identity(session.id);
+      if (runtime.fairAdmission !== undefined) {
         runtime.sharedApp.reconcileFairAdmission(
           session.id,
           await runtime.fairAdmission.cancelOwned({
-            tenant,
-            actorEmail: email,
+            tenant: identity.tenant,
+            actorEmail: identity.email,
             requestId: c.req.param("entryId"),
             expectedVersion: Number(c.req.query("version")),
           }),
         );
       } else {
-        runtime.sharedApp.remove({
-          sessionId: session.id,
-          entryId: c.req.param("entryId"),
-          ifMatch: Number(c.req.query("version")),
-        });
+        throw new SharedFixtureError(
+          "FAIR_ADMISSION_UNAVAILABLE",
+          503,
+          "The tenant-private fair admission runtime is unavailable.",
+        );
       }
       return c.json(runtime.sharedApp.privateFairQueueView(session.id));
     } catch (error) {
@@ -267,7 +263,7 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
    * The tenant scope bound to the caller's own session. It is derived from the admitted identity,
    * so a session can only ever read its own account and default workspace.
    */
-  app.get("/api/v1/shared-app/tenant", (c) => {
+  app.get("/api/v2/tenant", (c) => {
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
     const tenant = runtime.sharedApp.tenant(session.id);
@@ -287,27 +283,29 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
         imageReceiptId?: string;
         avatarReceiptId?: string;
       };
-      const tenant = runtime.sharedApp.tenant(session.id);
-      const email = runtime.sharedApp.view(session.id).admission.email;
-      if (runtime.fairAdmission !== undefined && tenant !== null && email !== null) {
+      const identity = runtime.sharedApp.identity(session.id);
+      if (runtime.fairAdmission !== undefined && runtime.videoRuntime !== undefined) {
         const admitted = await runtime.fairAdmission.enqueueVideo({
-          tenant,
-          actorEmail: email,
+          tenant: identity.tenant,
+          actorEmail: identity.email,
           publicProjectId: body.projectId,
           title: body.title,
         });
-        const result = runtime.sharedApp.startOrEnqueue({
+        const result = runtime.sharedApp.trackV2Request({
           sessionId: session.id,
-          ...body,
+          projectId: body.projectId,
+          title: body.title,
           admission: admitted,
         });
         runtime.sharedApp.reconcileFairAdmission(session.id, admitted.snapshot);
-        if (runtime.videoRuntime !== undefined) {
-          await runtime.videoRuntime.register(tenant, body.projectId);
-        }
+        await runtime.videoRuntime.register(identity.tenant, body.projectId);
         return c.json(result);
       }
-      return c.json(runtime.sharedApp.startOrEnqueue({ sessionId: session.id, ...body }));
+      throw new SharedFixtureError(
+        "VIDEO_RUNTIME_UNAVAILABLE",
+        503,
+        "The tenant-private video runtime is unavailable.",
+      );
     } catch (error) {
       return failure(error);
     }
@@ -329,7 +327,18 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
           "No durable video runtime is bound to this deployment.",
         );
       }
-      return c.json(await runtime.videoRuntime.advance(tenant, c.req.param("projectId")));
+      const state = await runtime.videoRuntime.advance(tenant, c.req.param("projectId"));
+      if (state.stage === "COMPLETE" && runtime.fairAdmission !== undefined) {
+        runtime.sharedApp.reconcileFairAdmission(
+          session.id,
+          await runtime.fairAdmission.settleTerminal({
+            tenant,
+            publicProjectId: c.req.param("projectId"),
+            terminalState: "SUCCEEDED",
+          }),
+        );
+      }
+      return c.json(state);
     } catch (error) {
       return failure(error);
     }
@@ -348,7 +357,57 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
           "No durable video runtime is bound to this deployment.",
         );
       }
-      return c.json(await runtime.videoRuntime.cancel(tenant, c.req.param("projectId")));
+      const state = await runtime.videoRuntime.cancel(tenant, c.req.param("projectId"));
+      if (runtime.fairAdmission !== undefined) {
+        runtime.sharedApp.reconcileFairAdmission(
+          session.id,
+          await runtime.fairAdmission.settleTerminal({
+            tenant,
+            publicProjectId: c.req.param("projectId"),
+            terminalState: "CANCELLED",
+          }),
+        );
+      }
+      return c.json(state);
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
+  app.get("/api/v2/videos/:projectId/download", async (c) => {
+    const session = runtime.resolveSession(c);
+    if (!session.ok) return session.response;
+    try {
+      const tenant = runtime.sharedApp.tenant(session.id);
+      if (runtime.videoRuntime === undefined || tenant === null) {
+        throw new SharedFixtureError(
+          "VIDEO_RUNTIME_UNAVAILABLE",
+          404,
+          "No durable video runtime is bound to this deployment.",
+        );
+      }
+      const artifact = await runtime.videoRuntime.readFinal(tenant, c.req.param("projectId"));
+      if (artifact === null) {
+        return problemResponse(
+          apiProblem(
+            "PROJECT_DOWNLOAD_NOT_READY",
+            409,
+            "Final MP4 is not ready",
+            "The exact tenant-private final render must complete before download.",
+            false,
+          ),
+        );
+      }
+      const safeProjectId = c.req.param("projectId").replaceAll(/[^A-Za-z0-9._-]/gu, "-");
+      c.header("content-type", artifact.contentType);
+      c.header("content-length", String(artifact.bytes.length));
+      c.header(
+        "content-disposition",
+        `${c.req.query("inline") === "1" ? "inline" : "attachment"}; filename="videoforge-${safeProjectId}.mp4"`,
+      );
+      c.header("x-videoforge-sha256", artifact.sha256);
+      c.header("x-videoforge-artifact-kind", "tenant-private-final-mp4");
+      return c.body(artifact.bytes.buffer as ArrayBuffer);
     } catch (error) {
       return failure(error);
     }
