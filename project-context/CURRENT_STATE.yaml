@@ -46,8 +46,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "268e26cb6cc28880854d6ca5d4290da05ee502e8"
-  last_good_commit_note: "V2-03 complete, provider-free, real-PostgreSQL proven, and independently re-audited PASS."
+  last_good_commit: "713f52453fcc2d20100075ecd4bec847d396af28"
+  last_good_commit_note: "V2-04 complete and provider-free: Serverless v3 contracts, migrations, fake transport/recovery, TypeScript/Python parity, canonical verification, and installed Chrome pass."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -262,7 +262,7 @@ recommended_next_task:
 
 verification:
   state: v2_04_complete_green_provider_free
-  verified_commit: pending_v2_04_implementation_commit
+  verified_commit: "713f52453fcc2d20100075ecd4bec847d396af28"
   verified_commit_note: "V2-04 passes canonical schemas/migrations, TypeScript/Python parity, adversarial fake transport/recovery/cost proof, and installed-Chrome regression acceptance."
   predecessor_verified_commit: "268e26cb6cc28880854d6ca5d4290da05ee502e8"
   acceptance_evidence: evidence/acceptance/VF-10-04/2026-08-16-serverless-v3-contracts/acceptance.json
@@ -412,7 +412,7 @@ verification:
   paid_compute_started_for_v2_03: false
   completed_for_v2_04:
     evidence: evidence/acceptance/VF-10-04/2026-08-16-serverless-v3-contracts/acceptance.json
-    implementation_commit: pending_v2_04_implementation_commit
+    implementation_commit: "713f52453fcc2d20100075ecd4bec847d396af28"
     commands:
       - "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/serverless-v3-transport.test.mjs packages/control-plane/tests/serverless-v3-legacy-quarantine.test.mjs: PASS (28/28)"
       - "pnpm --filter @videoforge/contracts test: PASS (TypeScript 111/111; Python 95/95)"

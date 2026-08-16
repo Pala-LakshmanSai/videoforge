@@ -4,6 +4,7 @@
   "checkpoint": "V2-04",
   "result": "PASS",
   "base_commit": "3b0ea326f5d20472c4b962b15a718b22e5d61bfe",
+  "implementation_commit": "713f52453fcc2d20100075ecd4bec847d396af28",
   "recorded_at_utc": "2026-08-16T07:43:48Z",
   "contract_truth": {
     "predispatch_authority_and_outbox_before_run": "PASS",
