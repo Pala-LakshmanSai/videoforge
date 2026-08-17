@@ -66,6 +66,10 @@ TO :"runtime_role";
 
 GRANT SELECT ON workspaces TO :"runtime_role";
 
+-- Render plans are activation-owned immutable provenance.  The hosted runtime may read the exact
+-- tenant/revision plan but never inserts, updates, or deletes one.
+GRANT SELECT ON hosted_render_plans TO :"runtime_role";
+
 GRANT SELECT, INSERT ON
   media_worker_input_objects,
   hosted_cpu_job_events,

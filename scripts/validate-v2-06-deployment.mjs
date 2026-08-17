@@ -79,6 +79,14 @@ if ("secrets" in wrangler)
 const neonRuntimeGrants = await read("deploy/v2-06/neon-runtime-grants.sql");
 if (!neonRuntimeGrants.includes('GRANT SELECT ON workspaces TO :"runtime_role";'))
   fail("hosted tenant workspace read grant is missing");
+if (!neonRuntimeGrants.includes('GRANT SELECT ON hosted_render_plans TO :"runtime_role";'))
+  fail("immutable hosted render-plan read grant is missing");
+if (
+  /GRANT\s+[^;\n]*(?:INSERT|UPDATE|DELETE)[^;\n]*\bON\s+hosted_render_plans\b/iu.test(
+    neonRuntimeGrants,
+  )
+)
+  fail("hosted render plans must never be writable by the runtime role");
 if (
   !neonRuntimeGrants.includes('ALTER ROLE :"runtime_role"') ||
   !neonRuntimeGrants.includes("NOBYPASSRLS") ||
@@ -212,7 +220,7 @@ if (
   !tenantPresetSeed.includes("V2_06_AVATAR_RIGHTS_CONFIRM=YES") ||
   !tenantPresetSeed.includes("DEFAULT_AVATAR_ENVELOPE_HASH") ||
   !tenantPresetSeed.includes("DEFAULT_STYLE_PROFILE_HASH") ||
-  !tenantPresetSeed.includes("migration head 34") ||
+  !tenantPresetSeed.includes("migration head 35") ||
   !tenantPresetSeed.includes("SET LOCAL videoforge.account_id") ||
   !tenantPresetSeed.includes("ON CONFLICT (id) DO NOTHING") ||
   !tenantPresetSeed.includes(
@@ -268,7 +276,7 @@ if (
   !backupScript.includes("refusing to overwrite") ||
   !restoreScript.includes("RESTORE_DRILL_CONFIRM") ||
   !restoreScript.includes("RESTORE_TARGET_LABEL") ||
-  !restoreScript.includes("migration head 34") ||
+  !restoreScript.includes("migration head 35") ||
   !configRenderer.includes("refusing to overwrite the tracked template") ||
   !configRenderer.includes("__V2_06_PERSONAL_WORKER_RELEASE_MANIFEST_JSON__") ||
   !configRenderer.includes('const stagingBuildRoot = resolve(root, "apps/web/dist-staging")') ||
@@ -284,13 +292,13 @@ if (
   !configRenderer.includes("no non-empty regular client asset") ||
   !configRenderer.includes("is missing; run pnpm --filter @videoforge/web build:staging first") ||
   !configRenderer.includes("rendered config must be written outside the repository") ||
-  !rollbackRunbook.includes("Keep migrations 0029-0034 applied") ||
+  !rollbackRunbook.includes("Keep migrations 0029-0035 applied") ||
   rollbackRunbook.includes("Keep migrations 0029-0032 applied")
 )
   fail("backup/restore encryption guard or forward-only rollback contract drifted");
 
 const manifest = JSON.parse(await read("packages/control-plane/migrations/manifest.json"));
-for (const version of [29, 30, 31, 32, 33, 34]) {
+for (const version of [29, 30, 31, 32, 33, 34, 35]) {
   const entry = manifest.migrations.find((candidate) => candidate.version === version);
   if (!entry) fail(`migration ${version} is absent`);
   const migration = await read(`packages/control-plane/migrations/${entry.filename}`);

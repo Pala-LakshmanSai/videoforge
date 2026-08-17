@@ -29,11 +29,11 @@ guidance; it is not evidence that rollback has been exercised.
 4. Restore the previously recorded immutable desktop release manifest. A desktop downgrade is
    permitted only when its minimum protocol remains accepted; retain the prior Windows/macOS trust
    metadata and exact hashes.
-5. Keep migrations 0029-0034 applied. They are additive; do not down-migrate auth, tenant, device,
+5. Keep migrations 0029-0035 applied. They are additive; do not down-migrate auth, tenant, device,
    lease, upload-authority, receipt, or review rows. Apply only a separately reviewed forward repair.
 6. Retain the encrypted database backup and private R2 objects for the separately approved retention
    period. Delete them only through the recorded cleanup operation after `restore-drill.sh` verifies
-   migration head 34. Successful final objects are deleted only by the authenticated user-facing
+   migration head 35. Successful final objects are deleted only by the authenticated user-facing
    Delete operation; rollback never performs automatic final-output deletion.
 7. Record Cloudflare Worker version, desktop release/checksums/trust identities, migration hash, R2
    inventory hash, active lease count, personal-worker provider CPU spend (`$0` expected), finite

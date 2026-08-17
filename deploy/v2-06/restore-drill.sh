@@ -55,8 +55,8 @@ pg_restore --exit-on-error --single-transaction --no-owner --no-privileges \
   --dbname "$RESTORE_DATABASE_URL" "$decrypted_backup"
 migration_version=$(psql "$RESTORE_DATABASE_URL" --no-psqlrc --tuples-only --no-align --command \
   "SELECT max(version)::text FROM public.videoforge_schema_migrations;")
-if [ "$migration_version" != "34" ]; then
-  echo "restore drill migration head is $migration_version, expected 34" >&2
+if [ "$migration_version" != "35" ]; then
+  echo "restore drill migration head is $migration_version, expected 35" >&2
   exit 1
 fi
-echo "restore drill verified migration head 34 on disposable target"
+echo "restore drill verified migration head 35 on disposable target"

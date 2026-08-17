@@ -96,7 +96,7 @@ videoforge-v2-06-staging-private`. Wildcard origins and headers are forbidden.
   the worker connects; there is no first-run model download or user configuration. Scratch is
   removed after terminal completion.
 - Rollback deploys the previously recorded Cloudflare Worker version and prior immutable desktop release
-  manifest. Schema migrations 0029-0034 are additive and retained. Successful final video objects are
+  manifest. Schema migrations 0029-0035 are additive and retained. Successful final video objects are
   not time-deleted; the user-facing Delete operation owns durable R2 deletion. Only failed/cancelled
   transient attempt objects use bounded retention. Auth/session tables rely on Neon native PITR rather
   than the portable metadata export because they contain secret-bearing values.
@@ -150,7 +150,7 @@ session admission, seed its exact private activation presets with
 `seed-tenant-presets.mjs`. The utility requires a separate migration-owner URL, an explicit
 `V2_06_SEED_CONFIRM=YES`, an explicit avatar-rights confirmation, three existing tenant-owned
 `VERIFIED` avatar assets (original, runtime, thumbnail), and one fixed `V2_06_SEED_AT` timestamp.
-It refuses the hosted runtime role, missing/foreign/unverified assets, non-head-34 databases, and
+It refuses the hosted runtime role, missing/foreign/unverified assets, non-head-35 databases, and
 conflicting immutable rows. Re-running the same command is safe only when every deterministic row
 already matches; it never deletes rows or creates media bytes.
 
