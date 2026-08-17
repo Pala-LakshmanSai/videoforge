@@ -26,4 +26,4 @@ Name: "{userprograms}\VideoForge Worker"; Filename: "{app}\{#WorkerExe}"; Workin
 Filename: "{app}\{#WorkerExe}"; Description: "Connect this computer to VideoForge"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
-Filename: "{cmd}"; Parameters: "/C taskkill /IM \"{#WorkerExe}\" /F"; Flags: runhidden; RunOnceId: "StopWorker"
+Filename: "{cmd}"; Parameters: "/C taskkill /IM ""{#WorkerExe}"" /F"; Flags: runhidden; RunOnceId: "StopWorker"

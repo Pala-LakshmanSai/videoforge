@@ -154,6 +154,12 @@ const personalWorkerSource = await read(
 );
 if (/^from \./mu.test(personalWorkerSource))
   fail("frozen worker entry still depends on package-relative imports");
+const windowsInstaller = await read("apps/media-worker-desktop/windows-installer.iss");
+if (
+  !windowsInstaller.includes('Parameters: "/C taskkill /IM ""{#WorkerExe}"" /F"') ||
+  /Parameters:.*\\"/u.test(windowsInstaller)
+)
+  fail("Windows uninstall command must use Inno Setup doubled-quote escaping");
 const releaseWorkflow = await read(".github/workflows/media-worker-release.yml");
 if (
   !releaseWorkflow.includes("publish_release:") ||
