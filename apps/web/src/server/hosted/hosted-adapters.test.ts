@@ -165,10 +165,7 @@ describe("V2-06 hosted adapters", () => {
     ).toBe(false);
     expect(hasExactResultObjectMetadata({ size: 128 }, 128)).toBe(false);
     expect(
-      hasExactResultObjectMetadata(
-        { size: 128, httpMetadata: { contentType: "text/plain" } },
-        128,
-      ),
+      hasExactResultObjectMetadata({ size: 128, httpMetadata: { contentType: "text/plain" } }, 128),
     ).toBe(false);
   });
 });
