@@ -1,0 +1,176 @@
+{
+  "schema_version": "videoforge.v2-06-personal-worker-conversion-reaudit/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "result": "FAIL_FULL_CHECKPOINT_LOCAL_PERSONAL_WORKER_IMPLEMENTATION_PASS",
+  "audit_independence": "SAME_CHAT_REPAIR_EVIDENCE_NOT_INDEPENDENT",
+  "predecessor_commit": "281e669fabdeb58e9aba4643c024a811727d027a",
+  "implementation_commit": "db0d45edb1fa1696219e9aca5e4e66f60acc161f",
+  "recorded_at_utc": "2026-08-17T09:05:16Z",
+  "scope_boundary": "Repository implementation and provider-free validation only. No credentials were accessed, no provider mutation or deployment was made, no installer was signed or published, no email was sent, no paid request was issued, and no live resource was changed.",
+  "acceptance_authority": {
+    "checkpoint_reference": "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:335-361",
+    "read_only_inventory_authorized": true,
+    "read_only_providers": ["Cloudflare", "Neon", "Google Cloud", "RunPod"],
+    "remote_mutation_authorized": false,
+    "paid_compute_authorized": false,
+    "maximum_current_authorized_external_spend_usd": 0,
+    "user_stated_future_test_cap_usd": 3,
+    "future_cap_status": "NOT_OPERATION_AUTHORITY_UNTIL_AN_EXACT_COMBINED_PROPOSAL_IS_APPROVED",
+    "email_provider": "NONE",
+    "google_project_candidate": "gen-lang-client-0893746131"
+  },
+  "implemented": [
+    "Migration 0032 binds enrollments, devices, inputs, leases, and events to exact account/workspace ownership with forced RLS and stale-lease fencing.",
+    "The hosted personal-worker protocol uses PKCE browser approval, a separately scoped device-token secret, OS-keychain credentials, exact-version and bundle gates, same-tenant claims, fresh private-R2 ports, streaming integrity checks, cancellation, revocation, and late-result rejection.",
+    "Cloudflare Workflow reconciles durable personal-worker leases and no active hosted path or deployment template dispatches Cloud Run CPU work.",
+    "The Windows and macOS worker starts at login, uses outbound HTTPS only, streams files, renews leases, kills media process groups on cancel, holds sleep only during active work, and removes scratch in finally.",
+    "Manual authenticated output deletion removes only the exact issued primary/result R2 keys and records deletion truth; successful video outputs are never auto-deleted.",
+    "A manual native release workflow builds Windows x64 and macOS universal2 packages and fails closed on signing, notarization, immutable release, manifest, and hash gates. It has not been run or published."
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [
+      {
+        "id": "V2_06_HOSTED_PRODUCT_JOURNEY_INCOMPLETE",
+        "references": [
+          "apps/web/src/main.tsx:27-32",
+          "apps/web/src/hosted/HostedStagingApp.tsx:93-115",
+          "apps/web/src/server/hosted/app.ts:452-533"
+        ],
+        "detail": "The deployed build still selects the small hosted auth/status/worker-setup shell instead of the complete product router. The exact Delete-to-R2 API exists, but Library has no hosted Delete action and the ordinary project-to-playback journey is not composed in the hosted runtime."
+      },
+      {
+        "id": "V2_06_SIGNED_INSTALLERS_UNPROVEN",
+        "references": [
+          ".github/workflows/media-worker-release.yml:1-44",
+          ".github/workflows/media-worker-release.yml:153-219",
+          ".github/workflows/media-worker-release.yml:258"
+        ],
+        "detail": "No Windows package has been Authenticode-signed and no macOS app has been Developer-ID signed, notarized, stapled, installed, or published. Unsigned packages do not meet the promised simple setup experience."
+      },
+      {
+        "id": "V2_06_LIVE_HOSTED_ACCEPTANCE_UNPROVEN",
+        "references": [
+          "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:335-361",
+          "project-context/CURRENT_STATE.yaml:535"
+        ],
+        "detail": "No immutable hosted evidence proves real two-account Better Auth, Neon non-superuser RLS, tenant-private R2, Cloudflare orchestration, personal-worker isolation, recovery/cancel, durable backup/restore, rollback, or the full journey in real hosted Chrome. Local fixtures cannot prove deployment."
+      },
+      {
+        "id": "V2_06_CURRENT_RESOURCES_RATES_AND_ZERO_WORKER_TRUTH_UNPROVEN",
+        "references": [
+          "project-context/CURRENT_STATE.yaml:223-236",
+          "project-context/CURRENT_STATE.yaml:568-580"
+        ],
+        "detail": "The signed-in browser became unavailable to automation, so exact current Cloudflare, Neon, Google, R2, and RunPod resources, rates, quotas, recurring charges, and RunPod-disabled/zero-worker truth were not refreshed."
+      }
+    ],
+    "P2": [
+      {
+        "id": "V2_06_REAL_DEVICE_PARITY_AND_LIFECYCLE_UNPROVEN",
+        "references": [
+          "workers/media-local/src/videoforge_media_local/personal_execution.py:252-316",
+          "apps/media-worker-desktop",
+          "project-context/14_TESTING_AND_VERIFICATION.md"
+        ],
+        "detail": "No real Windows or macOS evidence covers install, pairing, autostart/reboot, sleep, offline/reconnect, cancel, stale lease/result, streamed R2, update/remove, ASR/render parity, or 30-minute render performance."
+      },
+      {
+        "id": "V2_06_REAUDIT_NOT_INDEPENDENT",
+        "references": [
+          "project-context/tasks/VF-10-06.md"
+        ],
+        "detail": "This audit was performed in the same task that implemented the repair and therefore cannot satisfy an independent audit gate."
+      }
+    ]
+  },
+  "validation": {
+    "canonical_first_attempt": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 1,
+      "reason": "New enrollment RLS and field-classification contract failures exposed by 13 control-plane tests; repaired at the schema/contract boundary."
+    },
+    "canonical_second_attempt": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 1,
+      "reason": "The existing native fair-admission integration exceeded its 15-second test timeout under the parallel canonical load. A standalone retry also exposed a full local disk."
+    },
+    "local_recovery": {
+      "command": "pnpm store prune",
+      "exit_code": 0,
+      "effect": "Removed 24639 cache files, 539 MB, and 550 cached packages. Source files were not removed; packages are recoverable by reinstall."
+    },
+    "canonical_final": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "tasks": "28/28",
+      "web": "330/330 plus 1 skipped",
+      "pipeline": "120/120",
+      "cloudflare_local": "1/1",
+      "worker_suites": "6/6",
+      "installed_chrome_fixture": "44/44",
+      "chrome_caveat": "Installed local Chrome fixture evidence only; not hosted staging Chrome proof."
+    },
+    "context": {
+      "command": "pnpm context:validate",
+      "exit_code": 0,
+      "json": 178,
+      "evidence_references": 63,
+      "profiles": 31,
+      "decisions": 42,
+      "gates": 19
+    },
+    "deployment_contract": {
+      "command": "node scripts/validate-v2-06-deployment.mjs",
+      "exit_code": 0
+    },
+    "secret_scan": {
+      "command": "pnpm secret:scan",
+      "exit_code": 0,
+      "tracked_files": 1077
+    },
+    "python_lint": {"command": "pnpm python:lint", "exit_code": 0},
+    "format": {"command": "pnpm format:check", "exit_code": 0},
+    "diff": {"command": "git diff --check", "exit_code": 0}
+  },
+  "current_state_and_spend_truth": {
+    "external_mutations": 0,
+    "deployments": 0,
+    "installer_builds": 0,
+    "installer_publications": 0,
+    "email_deliveries": 0,
+    "paid_requests": 0,
+    "external_spend_usd": 0,
+    "cloud_run_jobs_required_by_current_architecture": 0,
+    "personal_worker_provider_compute_usd": 0,
+    "runpod_calls": 0,
+    "runpod_workers_started": 0,
+    "gpu_transport": "FAKE_DISABLED",
+    "live_inventory_refreshed": false,
+    "last_known_runpod_truth": "STALE_2026_08_15_ZERO_WORKERS_TWO_RETAINED_50GB_VOLUMES_USD_7_PER_MONTH_TOTAL"
+  },
+  "unproven_live_claims": [
+    "exact current Cloudflare, Neon, Google, R2, and RunPod resources, regions, rates, quotas, and recurring charges",
+    "current RunPod-disabled and zero-worker truth",
+    "signed immutable Windows and macOS release identities, URLs, sizes, hashes, and protocol compatibility",
+    "two-account Better Auth and Neon non-superuser tenant isolation",
+    "private R2 exact-object transfer and explicit deletion",
+    "Cloudflare Workflow deployment, lease recovery, cancellation, and hosted durability",
+    "real device ASR/render parity and performance",
+    "backup, restore drill, rollback, and full hosted Chrome journey"
+  ],
+  "rollback_state": {
+    "live_rollback_required": false,
+    "reason": "No deployment or live mutation was made.",
+    "local_code_rollback": "Revert db0d45edb1fa1696219e9aca5e4e66f60acc161f or return to predecessor 281e669fabdeb58e9aba4643c024a811727d027a.",
+    "runbook": "deploy/v2-06/rollback.md",
+    "hosted_execution": "NOT_LIVE_PROVEN"
+  },
+  "successor_safety": {
+    "v2_07": "BLOCKED_ON_ACCEPTED_V2_06",
+    "runpod_activation_authorized": false,
+    "gpu_workers_authorized": false,
+    "safe_to_begin_v2_07": false
+  }
+}

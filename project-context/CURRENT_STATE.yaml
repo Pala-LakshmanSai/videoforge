@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-17T08:16:34Z"
+updated_at: "2026-08-17T09:05:16Z"
 
 phase: serverless_v2_v2_06_personal_worker_conversion_verification_in_progress
 implementation_authorized_in_current_task: true
@@ -65,8 +65,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "9fe8c76"
-  last_good_commit_note: "V2-06 local hosted CPU submission repair: authenticated tenant-scoped submission now persists exact attempts, output authority, immutable job spec, outbox state, and Workflow launch; staging config selection, ambiguous dispatch, cancellation polling, and primary-output verification are repaired. This remains local proof; hosted acceptance is unproven."
+  last_good_commit: "db0d45e"
+  last_good_commit_note: "V2-06 personal-worker conversion: hosted CPU ASR/render now leases only to an exact account/workspace-bound Windows or macOS worker, with PKCE pairing, OS-keychain credentials, streaming private-R2 transfers, cancellation/recovery fencing, manual output deletion, and fail-closed signed-release gates. Canonical local verification passes; signed releases and hosted/device acceptance remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -315,11 +315,11 @@ recommended_next_task:
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_personal_worker_conversion_uncommitted_verification_in_progress_full_acceptance_blocked
-  verified_commit: "9fe8c76d420f2b81bdedac813d6681656462afd7"
-  verified_commit_note: "V2-06 hosted CPU submission composition and staging config selection pass canonical local verification. The same-chat evidence is not independent, full hosted product/Chrome acceptance remains blocked, and authorized read-only inventory is in progress."
+  state: v2_06_personal_worker_conversion_locally_verified_full_acceptance_blocked
+  verified_commit: "db0d45edb1fa1696219e9aca5e4e66f60acc161f"
+  verified_commit_note: "The provider-free personal-worker implementation passes canonical verification. Same-chat re-audit evidence is not independent; signed installers, hosted product composition, live provider inventory, real device parity, and hosted Chrome acceptance remain blocked."
   predecessor_verified_commit: "3c117f204844da9c984d233477933ee4c0f304dd"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-submission-repair/acceptance.json
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-personal-worker-conversion-reaudit/acceptance.json
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
@@ -534,10 +534,17 @@ verification:
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
     status: personal_worker_conversion_locally_green_hosted_acceptance_blocked
-    implementation_commit: null
+    implementation_commit: "db0d45edb1fa1696219e9aca5e4e66f60acc161f"
     predecessor_commit: "9fe8c76d420f2b81bdedac813d6681656462afd7"
-    evidence: null
-    commands: []
+    evidence: evidence/acceptance/VF-10-06/2026-08-17-personal-worker-conversion-reaudit/acceptance.json
+    commands:
+      - "CI=1 TURBO_FORCE=true pnpm verify (exit 0; 28/28 tasks; web 330/330 plus 1 skipped; pipeline 120/120; Cloudflare-local 1/1; installed-Chrome fixture 44/44)"
+      - "pnpm context:validate (exit 0; JSON 178; evidence refs 63; profiles 31; decisions 42; gates 19)"
+      - "node scripts/validate-v2-06-deployment.mjs (exit 0)"
+      - "pnpm secret:scan (exit 0; 1077 tracked files)"
+      - "pnpm python:lint (exit 0)"
+      - "pnpm format:check (exit 0)"
+      - "git diff --check (exit 0)"
     delivered:
       - "Migration 0032 adds account/workspace-bound worker enrollments, devices, exact input objects, one active lease per attempt/device, append-only events, row-level security, and stale-lease fencing while preserving historical Cloud Run rows for rollback."
       - "The hosted API uses PKCE enrollment, one explicit authenticated approval, OS-keychain-scoped device tokens, heartbeat/update gating, exact same-account claims, fresh R2 GET/PUT ports, streaming output verification, cancellation, revocation, and late-result rejection."
@@ -550,7 +557,6 @@ verification:
       - "The desktop cancellation monitor is a real class method, renews the five-minute lease while work is active, kills the entire media process group on cancel, and is covered against the class-indentation regression."
       - "Cloud Run configuration, secrets, deployment templates, and production dispatch are removed from the active V2-06 path; historical adapter and evidence remain only for rollback/audit."
     remaining_gates:
-      - "Record immutable same-chat repair/re-audit evidence; it will not count as an independent audit."
       - "The hosted UI remains an auth/status/worker-setup shell. The complete ordinary product router, project/artifact journey, playback, and Library wiring for the implemented explicit Delete-to-R2 API are not yet composed in the hosted runtime."
       - "Production-grade Windows code signing and macOS Developer ID signing/notarization require external identities and protected release credentials; unsigned packages do not satisfy the promised simple installer UX."
       - "The immutable release workflow and manifest contract exist locally, but exact published URLs, byte sizes, SHA-256 hashes, signing identities, protocol minimum, and execution-bundle hash remain unproven until one signed release is built and published."
