@@ -92,9 +92,9 @@
     "google_oauth_project_and_client_created": true,
     "neon_migration_head": 35,
     "cloudflare_worker_deployed_from_current_activation_commit": true,
-    "cloudflare_deployment_version_id": "51746943-aa3d-41a3-b60f-3ce6ce70b6a4",
-    "cloudflare_deployment_commit": "0650acd503241e0443a8d5d8e2aae540313bef07",
-    "cloudflare_deployment_config_sha256": "sha256:90dac992fc3d6f13b0d7a4d0be49e95fdc38103698db10f1dcb6356048d1d77e",
+    "cloudflare_deployment_version_id": "553cbbd2-6907-48c6-a57d-2cd576e097bd",
+    "cloudflare_deployment_commit": "0855028794a902946cd7f9feb3d7ada38a6f949b",
+    "cloudflare_deployment_config_sha256": "sha256:f398d7264419bed929ffab3e40dde1040f3ce440d73e891f4022856abcd3069d",
     "deployment_proof": "2026-08-17-live-activation-authority/deployment-proof.json",
     "hosted_chrome_acceptance_complete": false,
     "checkpoint_pass": false

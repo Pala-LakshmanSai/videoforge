@@ -1,0 +1,86 @@
+{
+  "schema_version": "videoforge.v2-06-post-repair-live-audit/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-17T17:29:00Z",
+  "audit_method": "Fresh read-only post-repair audit of repository HEAD/working tree, canonical provider-free verification, recorded deployment handoff, and non-mutating staging inspection. No credential values were accessed or recorded; no provider mutation, resource mutation, GPU/RunPod action, or spend was performed.",
+  "result": "FAIL_FULL_CHECKPOINT_ACCEPTANCE_PENDING_LIVE_USER_DEVICE_PROOF",
+  "findings": [
+    {
+      "id": "V2-06-P1-001",
+      "priority": "P1",
+      "status": "OPEN",
+      "finding": "The full V2-06 checkpoint cannot pass yet: real Google callback/two-account Chrome acceptance, paired Windows/macOS lifecycle and media-parity proof, durable Workflow execution/recovery, explicit output deletion, rollback exercise, and post-acceptance billing observation remain unproven.",
+      "references": [
+        "project-context/CURRENT_STATE.yaml:646-652",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-17-live-activation-authority/deployment-proof.json:72-90",
+        "project-context/tasks/VF-10-06.md:213-215"
+      ],
+      "why_not_repaired": "These are live acceptance observations, not safely inferable from local fixtures or deployment metadata. The staging browser reached Google consent for lakshmansai121@gmail.com; the final consent action was not taken because it would transmit the user's name/email to the staging origin without action-time confirmation."
+    },
+    {
+      "id": "V2-06-P2-001",
+      "priority": "P2",
+      "status": "OPEN",
+      "finding": "Provider-free fixture and installed-Chrome evidence is correctly green but cannot substitute for hosted/provider/device proof.",
+      "references": [
+        "project-context/CURRENT_STATE.yaml:620-630",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-17-live-activation-authority/deployment-proof.json:5-6",
+        "project-context/tasks/VF-10-06.md:206-215"
+      ],
+      "why_not_repaired": "The evidence boundary is intentional and must remain truthful; changing labels would create a false deployment claim."
+    },
+    {
+      "id": "V2-06-P2-002",
+      "priority": "P2",
+      "status": "OPEN",
+      "finding": "Rollback is recorded as available from the prior Worker version with forward-only migrations, but a live rollback/restore exercise is not recorded.",
+      "references": [
+        "project-context/evidence/acceptance/VF-10-06/2026-08-17-live-activation-authority/acceptance.json:110-115",
+        "deploy/v2-06/rollback.md"
+      ],
+      "why_not_repaired": "Executing rollback would mutate the live Worker and requires a separately bounded operation; it is not implied by the current audit request."
+    }
+  ],
+  "p0_findings": [],
+  "verification_commands": [
+    { "command": "CI=1 TURBO_FORCE=true pnpm verify", "exit_code": 0, "result": "all package/control-plane/web/script/Python suites green; installed Chrome fixture 44/44" },
+    { "command": "node --test scripts/tests/v2-06-owned-render-fixture.test.mjs", "exit_code": 0, "result": "9/9 passed, including immutable R2 failure reconciliation" },
+    { "command": "pnpm validate:v2-06-deployment", "exit_code": 0, "result": "provider-free templates fail closed and are internally consistent" },
+    { "command": "pnpm context:validate", "exit_code": 0, "result": "context valid; JSON 185, evidence refs 69, profiles 31, decisions 42, gates 19" },
+    { "command": "pnpm format:check", "exit_code": 0, "result": "all files formatted" },
+    { "command": "pnpm secret:scan", "exit_code": 0, "result": "tracked-file secret scan passed" },
+    { "command": "GET /api/v2/hosted/status on recorded staging origin", "exit_code": 0, "result": "HTTP 200; deployment commit 0855028794a902946cd7f9feb3d7ada38a6f949b; GPU DISABLED_FAKE_ONLY; provider CPU spend $0" },
+    { "command": "wrangler workflows list", "exit_code": 0, "result": "videoforge-v2-06-staging-video / HostedVideoWorkflow" },
+    { "command": "wrangler secret list --format json", "exit_code": 0, "result": "exact eight-name allowlist; values not recorded" },
+    { "command": "deploy/v2-06/verify-r2-private-state.sh", "exit_code": 0, "result": "private Standard bucket; public dev URL disabled; no final-object expiry; multipart abort only" },
+    { "command": "live Neon runtime grant verifier", "exit_code": 0, "result": "migration 35/35; FORCE RLS complete; exact grants; hosted_render_plans SELECT-only" }
+  ],
+  "current_state_and_spend_truth": {
+    "cloudflare_worker": "videoforge-v2-06-staging",
+    "cloudflare_version": "553cbbd2-6907-48c6-a57d-2cd576e097bd",
+    "cloudflare_workflow": "videoforge-v2-06-staging-video / HostedVideoWorkflow",
+    "neon_project_id": "ancient-morning-99567618",
+    "r2_bucket": "videoforge-v2-06-staging-private",
+    "new_external_spend_usd": 0,
+    "finite_test_cap_usd": 3,
+    "finite_test_cap_remaining_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "provider_cpu_spend_usd": 0,
+    "runpod_pods_endpoints_workers": 0,
+    "runpod_retained_volumes": 2,
+    "runpod_retained_storage_usd_per_month": 7,
+    "runpod_storage_separate_from_v2_06": true,
+    "successful_final_video_auto_delete": false
+  },
+  "rollback_state": {
+    "current_cloudflare_version": "553cbbd2-6907-48c6-a57d-2cd576e097bd",
+    "prior_version_recorded_in_authority": "f3d3ecdc-7abf-4d9b-9208-a64e1552aa5f",
+    "schema_policy": "FORWARD_ONLY_KEEP_MIGRATIONS_0029_THROUGH_0035",
+    "live_exercise": false
+  },
+  "successor_safety": {
+    "v2_07_safe_to_begin": false,
+    "reason": "V2-06 full acceptance remains open; no RunPod/GPU authority was granted."
+  }
+}
