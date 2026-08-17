@@ -10,6 +10,29 @@ export interface HostedCpuSubmission {
   readonly objects: readonly { readonly receiptId: string; readonly uri: string }[];
 }
 
+/**
+ * A render submission is never accepted as a client-created job.  It must be
+ * an exact, tenant-owned plan persisted with the locked project revision.
+ * Keeping this check next to the wire parser makes both the handoff route and
+ * the generic CPU submission route apply the same fail-closed rule.
+ */
+export function exactHostedRenderSubmission(
+  value: unknown,
+  projectId?: string,
+  projectRevisionId?: string,
+): HostedCpuSubmission | null {
+  const submission = exactHostedCpuSubmission(value);
+  if (
+    !submission ||
+    submission.kind !== "RENDER" ||
+    (projectId !== undefined && submission.projectId !== projectId) ||
+    (projectRevisionId !== undefined && submission.projectRevisionId !== projectRevisionId)
+  ) {
+    return null;
+  }
+  return submission;
+}
+
 export function canonicalJson(value: unknown): string {
   if (value === undefined || typeof value === "function" || typeof value === "symbol") {
     throw new TypeError("Hosted canonical JSON cannot contain non-JSON values.");

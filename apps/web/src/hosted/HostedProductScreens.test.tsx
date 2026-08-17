@@ -43,41 +43,139 @@ describe("hosted product journey", () => {
     expect(screen.getByText(/GPU transport disabled during V2-06 staging/u)).toBeInTheDocument();
   });
 
-  it("shows completed ASR without inventing a final render", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        Response.json({
-          project: {
-            id: "11111111-1111-4111-8111-111111111111",
-            title: "Private project",
-            created_at: "2026-08-17T10:00:00.000Z",
-            revision_id: "22222222-2222-4222-8222-222222222222",
-            revision_state: "LOCKED",
-          },
-          attempts: [
-            {
-              id: "33333333-3333-4333-8333-333333333333",
-              kind: "ASR",
-              state: "SUCCEEDED",
-              version: 3,
-              created_at: "2026-08-17T10:00:00.000Z",
-              updated_at: "2026-08-17T10:01:00.000Z",
-              terminal_at: "2026-08-17T10:01:00.000Z",
-              output_checksum_sha256: `sha256:${"a".repeat(64)}`,
-              approved_at: null,
-              preview_url: null,
-            },
-          ],
-          gpu_transport: "DISABLED_FAKE_ONLY",
-        }),
-      ),
-    );
+  it("fails closed when ASR succeeds without an exact render plan", async () => {
+    const detail = {
+      project: {
+        id: "11111111-1111-4111-8111-111111111111",
+        title: "Private project",
+        created_at: "2026-08-17T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [
+        {
+          id: "33333333-3333-4333-8333-333333333333",
+          kind: "ASR" as const,
+          state: "SUCCEEDED",
+          version: 3,
+          created_at: "2026-08-17T10:00:00.000Z",
+          updated_at: "2026-08-17T10:01:00.000Z",
+          terminal_at: "2026-08-17T10:01:00.000Z",
+          output_checksum_sha256: `sha256:${"a".repeat(64)}`,
+          approved_at: null,
+          preview_url: null,
+        },
+      ],
+      gpu_transport: "DISABLED_FAKE_ONLY" as const,
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/render"))
+        return Response.json({ error: { code: "HOSTED_RENDER_PLAN_NOT_READY" } }, { status: 409 });
+      return Response.json(detail);
+    });
+    vi.stubGlobal("fetch", fetchMock);
     renderHosted(<HostedProjectScreen projectId="11111111-1111-4111-8111-111111111111" />);
 
-    expect(await screen.findByText("Transcription complete.")).toBeInTheDocument();
-    expect(screen.getByText(/no fake final video is being claimed/u)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/render is waiting for the exact project plan/u),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/HOSTED_RENDER_PLAN_NOT_READY/u)).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/v2/cpu-attempts"))).toBe(
+      false,
+    );
     expect(screen.queryByRole("link", { name: "Review video" })).not.toBeInTheDocument();
+  });
+
+  it("hands a successful ASR result to the owned render attempt", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const revisionId = "22222222-2222-4222-8222-222222222222";
+    const asrId = "33333333-3333-4333-8333-333333333333";
+    const renderId = "44444444-4444-4444-8444-444444444444";
+    const renderSubmission = {
+      schema_version: "videoforge-hosted-cpu-submission/v1",
+      idempotency_key: `project-${projectId}-render-v1`,
+      project_id: projectId,
+      project_revision_id: revisionId,
+      kind: "RENDER",
+      input_document: {
+        schema_version: "render-job-input/v1",
+        output: { result_uri: "vf-local-run://placeholder/output.mp4" },
+      },
+      objects: [
+        {
+          artifact_receipt_id: "55555555-5555-4555-8555-555555555555",
+          uri: `vf-local://objects/sha256/cc/${"c".repeat(64)}.mp4`,
+        },
+      ],
+    };
+    let renderSubmitted = false;
+    const detail = () => ({
+      project: {
+        id: projectId,
+        title: "Private project",
+        created_at: "2026-08-17T10:00:00.000Z",
+        revision_id: revisionId,
+        revision_state: "LOCKED",
+      },
+      attempts: [
+        {
+          id: asrId,
+          kind: "ASR" as const,
+          state: "SUCCEEDED",
+          version: 3,
+          created_at: "2026-08-17T10:00:00.000Z",
+          updated_at: "2026-08-17T10:01:00.000Z",
+          terminal_at: "2026-08-17T10:01:00.000Z",
+          output_checksum_sha256: `sha256:${"a".repeat(64)}`,
+          approved_at: null,
+          preview_url: null,
+        },
+        ...(renderSubmitted
+          ? [
+              {
+                id: renderId,
+                kind: "RENDER" as const,
+                state: "OUTBOXED",
+                version: 1,
+                created_at: "2026-08-17T10:02:00.000Z",
+                updated_at: "2026-08-17T10:02:00.000Z",
+                terminal_at: null,
+                output_checksum_sha256: null,
+                approved_at: null,
+                preview_url: null,
+              },
+            ]
+          : []),
+      ],
+      gpu_transport: "DISABLED_FAKE_ONLY" as const,
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/render"))
+        return Response.json({
+          schema_version: "videoforge-hosted-render-handoff/v1",
+          project_id: projectId,
+          project_revision_id: revisionId,
+          asr_attempt_id: asrId,
+          cpu_submission: renderSubmission,
+        });
+      if (path.endsWith("/api/v2/cpu-attempts")) {
+        renderSubmitted = true;
+        expect(JSON.parse(String(init?.body))).toEqual(renderSubmission);
+        return Response.json({ id: renderId, state: "OUTBOXED" }, { status: 202 });
+      }
+      return Response.json(detail());
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect(await screen.findByText("Render final video")).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(([input]) => String(input).endsWith("/render")),
+    ).toBe(true);
+    expect(
+      fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/v2/cpu-attempts")),
+    ).toBe(true);
   });
 
   it("reports only measured personal-worker and retained-object facts", async () => {

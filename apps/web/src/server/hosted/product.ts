@@ -7,7 +7,10 @@ import type {
 import { sha256 } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { HostedR2Signer } from "./r2";
-import { canonicalJson } from "./submission";
+import {
+  canonicalJson,
+  exactHostedRenderSubmission,
+} from "./submission";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -131,6 +134,13 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
       durationMs: Number(voiceover.duration_ms),
     },
   };
+}
+
+function parseRenderHandoff(value: unknown): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  if (Object.keys(record).length !== 1 || typeof record.asr_attempt_id !== "string") return null;
+  return UUID.test(record.asr_attempt_id) ? record.asr_attempt_id : null;
 }
 
 function checksumFromR2(value?: ArrayBuffer): string | null {
@@ -645,6 +655,107 @@ async function commitProject(
   }
 }
 
+/**
+ * Advance the ordinary product journey after ASR.  The browser supplies only
+ * the successful ASR attempt identity; the render submission itself must come
+ * from the locked revision's tenant-owned, immutable render plan.  The route
+ * deliberately does not synthesize a plan or create an attempt when that plan
+ * is absent.  The returned submission is then sent through the generic CPU
+ * submission endpoint, which applies the same plan equality check before it
+ * owns/outboxes the render attempt.
+ */
+async function renderHandoff(
+  request: Request,
+  projectId: string,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return response({ error: { code: "HOSTED_RENDER_HANDOFF_REJECTED" } }, 400);
+  }
+  const asrAttemptId = parseRenderHandoff(body);
+  if (!asrAttemptId)
+    return response({ error: { code: "HOSTED_RENDER_HANDOFF_REJECTED" } }, 400);
+
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const state = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<{
+        revision_id: string;
+        revision_state: string;
+        revision_config_payload: unknown;
+        asr_attempt_id: string | null;
+      }>(
+        `SELECT revision.id AS revision_id, revision.status AS revision_state,
+                revision.revision_config_payload,
+                asr.id AS asr_attempt_id
+           FROM projects AS project
+           JOIN project_revisions AS revision
+             ON revision.account_id = project.account_id
+            AND revision.workspace_id = project.workspace_id
+            AND revision.project_id = project.id
+           LEFT JOIN hosted_cpu_job_attempts AS asr
+             ON asr.account_id = project.account_id
+            AND asr.workspace_id = project.workspace_id
+            AND asr.project_id = project.id
+            AND asr.project_revision_id = revision.id
+            AND asr.id = $4
+            AND asr.kind = 'ASR'
+            AND asr.state = 'SUCCEEDED'
+          WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
+          LIMIT 1`,
+        [scope.account_id, scope.workspace_id, projectId, asrAttemptId],
+      );
+      return result.rows[0] ?? null;
+    });
+    if (!state) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+    if (state.revision_state !== "LOCKED")
+      return response({ error: { code: "HOSTED_PROJECT_NOT_READY" } }, 409);
+    if (!state.asr_attempt_id)
+      return response({ error: { code: "HOSTED_ASR_NOT_SUCCEEDED" } }, 409);
+
+    const revisionPayload = state.revision_config_payload;
+    const renderPlan =
+      typeof revisionPayload === "object" &&
+      revisionPayload !== null &&
+      !Array.isArray(revisionPayload)
+        ? (revisionPayload as Record<string, unknown>).hosted_render_submission
+        : null;
+    const submission = exactHostedRenderSubmission(
+      renderPlan,
+      projectId,
+      state.revision_id,
+    );
+    if (!submission)
+      return response({ error: { code: "HOSTED_RENDER_PLAN_NOT_READY" } }, 409);
+
+    return response(
+      {
+        schema_version: "videoforge-hosted-render-handoff/v1",
+        project_id: projectId,
+        project_revision_id: state.revision_id,
+        asr_attempt_id: asrAttemptId,
+        cpu_submission: renderPlan,
+      },
+      202,
+    );
+  } finally {
+    await pool.end();
+  }
+}
+
 async function projects(
   request: Request,
   config: HostedRuntimeConfiguration,
@@ -921,6 +1032,9 @@ export async function handleHostedProductRequest(
   const commit = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/commit$/u.exec(url.pathname);
   if (request.method === "POST" && commit)
     return commitProject(request, commit[1]!, environment, config, executionContext);
+  const render = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/render$/u.exec(url.pathname);
+  if (request.method === "POST" && render)
+    return renderHandoff(request, render[1]!, config, executionContext);
   const review = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/review$/u.exec(url.pathname);
   if (request.method === "POST" && review)
     return approveReview(request, review[1]!, config, executionContext);

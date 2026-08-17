@@ -5,7 +5,12 @@ import { createNeonExecutor, createNeonPool } from "./neon";
 import { handlePersonalWorkerRequest } from "./personal-worker";
 import { handleHostedProductRequest } from "./product";
 import { HostedR2Signer } from "./r2";
-import { bindHostedCpuInputDocument, canonicalJson, exactHostedCpuSubmission } from "./submission";
+import {
+  bindHostedCpuInputDocument,
+  canonicalJson,
+  exactHostedCpuSubmission,
+  exactHostedRenderSubmission,
+} from "./submission";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
@@ -276,8 +281,8 @@ async function handleCpuSubmission(
         "videoforge.account_id",
         scope.account_id,
       ]);
-      const lineage = await transaction.query(
-        `SELECT 1
+      const lineage = await transaction.query<{ revision_config_payload: unknown }>(
+        `SELECT revision.revision_config_payload
            FROM projects AS project
            JOIN project_revisions AS revision
              ON revision.account_id = project.account_id
@@ -288,6 +293,22 @@ async function handleCpuSubmission(
         [scope.account_id, scope.workspace_id, submission.projectId, submission.projectRevisionId],
       );
       if (!lineage.rows[0]) return null;
+      if (submission.kind === "RENDER") {
+        const revisionPayload = lineage.rows[0].revision_config_payload;
+        const configuredPlan =
+          typeof revisionPayload === "object" &&
+          revisionPayload !== null &&
+          !Array.isArray(revisionPayload)
+            ? exactHostedRenderSubmission(
+                (revisionPayload as Record<string, unknown>).hosted_render_submission,
+                submission.projectId,
+                submission.projectRevisionId,
+              )
+            : null;
+        if (!configuredPlan || canonicalJson(configuredPlan) !== canonicalJson(submission)) {
+          return null;
+        }
+      }
       const receiptIds = submission.objects.map((object) => object.receiptId);
       const artifacts = await transaction.query<OwnedArtifactRow>(
         `SELECT receipt.id, receipt.object_key, receipt.content_type, receipt.content_length,

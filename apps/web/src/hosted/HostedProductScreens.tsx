@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Check, Download, FileAudio, RefreshCw, ShieldCheck, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "../components/PageHeader";
 import { Badge, Button, EmptyState, Metric, Panel } from "../components/ui";
 
@@ -301,6 +301,37 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     queryFn: () => readJson<ProjectDetailResponse>(`/api/v2/hosted/projects/${projectId}`),
     refetchInterval: 5_000,
   });
+  const asr = [...(query.data?.attempts ?? [])]
+    .reverse()
+    .find((attempt) => attempt.kind === "ASR");
+  const render = [...(query.data?.attempts ?? [])]
+    .reverse()
+    .find((attempt) => attempt.kind === "RENDER");
+  const renderHandoffAttempt = useRef<string | null>(null);
+  const renderHandoff = useMutation({
+    mutationFn: async (asrAttemptId: string) => {
+      const handoff = await readJson<{ cpu_submission: unknown }>(
+        `/api/v2/hosted/projects/${projectId}/render`,
+        { method: "POST", body: JSON.stringify({ asr_attempt_id: asrAttemptId }) },
+      );
+      return readJson(`/api/v2/cpu-attempts`, {
+        method: "POST",
+        body: JSON.stringify(handoff.cpu_submission),
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
+  });
+  useEffect(() => {
+    if (
+      asr?.state !== "SUCCEEDED" ||
+      render ||
+      renderHandoffAttempt.current === asr.id
+    ) {
+      return;
+    }
+    renderHandoffAttempt.current = asr.id;
+    renderHandoff.mutate(asr.id);
+  }, [asr?.id, asr?.state, render?.id, renderHandoff]);
   const cancel = useMutation({
     mutationFn: (attemptId: string) =>
       readJson(`/api/v2/cpu-attempts/${attemptId}`, { method: "POST", body: "{}" }),
@@ -325,7 +356,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         }
       />
     );
-  const render = [...query.data.attempts].reverse().find((attempt) => attempt.kind === "RENDER");
   return (
     <>
       <PageHeader
@@ -387,12 +417,27 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           ))}
         </div>
       </Panel>
-      {query.data.attempts.some(
-        (attempt) => attempt.kind === "ASR" && attempt.state === "SUCCEEDED",
-      ) && !render ? (
+      {asr?.state === "SUCCEEDED" && !render ? (
         <div className="notice" role="status">
-          <strong>Transcription complete.</strong> Image and avatar GPU lanes remain intentionally
-          disabled until V2-07 and V2-08; no fake final video is being claimed.
+          <strong>
+            {renderHandoff.isError
+              ? "Transcription complete; render is waiting for the exact project plan."
+              : renderHandoff.isPending
+                ? "Transcription complete; preparing the owned render attempt."
+                : "Transcription complete; render handoff is queued."}
+          </strong>
+          {renderHandoff.isError ? <span> {renderHandoff.error.message}</span> : null}
+          {renderHandoff.isError ? (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                renderHandoffAttempt.current = null;
+                if (asr) renderHandoff.mutate(asr.id);
+              }}
+            >
+              Retry render handoff
+            </Button>
+          ) : null}
         </div>
       ) : null}
       <Button variant="secondary" onClick={() => void query.refetch()}>

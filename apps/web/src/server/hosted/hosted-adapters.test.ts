@@ -16,6 +16,7 @@ import {
   bindHostedCpuInputDocument,
   canonicalJson,
   exactHostedCpuSubmission,
+  exactHostedRenderSubmission,
   whisperModelUri,
 } from "./submission";
 
@@ -358,5 +359,37 @@ describe("V2-06 hosted adapters", () => {
         "44444444-4444-4444-8444-444444444444",
       ),
     ).toThrow(/exact job kind/u);
+  });
+
+  it("accepts only an exact revision-owned render plan", () => {
+    const renderPlan = {
+      schema_version: "videoforge-hosted-cpu-submission/v1",
+      idempotency_key: "owned-render-request-0001",
+      project_id: "11111111-1111-4111-8111-111111111111",
+      project_revision_id: "22222222-2222-4222-8222-222222222222",
+      kind: "RENDER",
+      input_document: {
+        schema_version: "render-job-input/v1",
+        output: { result_uri: "vf-local-run://placeholder/output.mp4" },
+      },
+      objects: [
+        {
+          artifact_receipt_id: "33333333-3333-4333-8333-333333333333",
+          uri: `vf-local://objects/sha256/cc/${"c".repeat(64)}.mp4`,
+        },
+      ],
+    };
+    expect(
+      exactHostedRenderSubmission(
+        renderPlan,
+        renderPlan.project_id,
+        renderPlan.project_revision_id,
+      ),
+    ).toMatchObject({ kind: "RENDER", projectId: renderPlan.project_id });
+    expect(exactHostedRenderSubmission({ ...renderPlan, kind: "ASR" })).toBeNull();
+    expect(
+      exactHostedRenderSubmission(renderPlan, "44444444-4444-4444-8444-444444444444"),
+    ).toBeNull();
+    expect(exactHostedRenderSubmission({ ...renderPlan, extra: true })).toBeNull();
   });
 });
