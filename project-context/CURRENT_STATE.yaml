@@ -1,8 +1,8 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-17T09:22:02Z"
+updated_at: "2026-08-17T10:58:50Z"
 
-phase: serverless_v2_v2_06_personal_worker_conversion_verification_in_progress
+phase: serverless_v2_v2_06_hosted_activation_blocked
 implementation_authorized_in_current_task: true
 current_milestone: hosted_staging_and_personal_media_workers
 current_task: VF-10-06
@@ -65,8 +65,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "db0d45e"
-  last_good_commit_note: "V2-06 personal-worker conversion: hosted CPU ASR/render now leases only to an exact account/workspace-bound Windows or macOS worker, with PKCE pairing, OS-keychain credentials, streaming private-R2 transfers, cancellation/recovery fencing, manual output deletion, and fail-closed signed-release gates. Canonical local verification passes; signed releases and hosted/device acceptance remain unproven."
+  last_good_commit: "ee508d0e620286b4a693f5a158e4b921bac53712"
+  last_good_commit_note: "V2-06 local hosted-router hardening: admitted staging users mount the real router; tenant Queue/Library/Settings and explicit R2 deletion are composed; browser writes are same-origin; personal-CPU project admission is database-serialized; submission compensation and release gates fail closed. Canonical local verification passes; the full hosted journey, signed releases, live tenant/device acceptance, backup/restore, and hosted Chrome remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -281,7 +281,7 @@ recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
   milestone: hosted_staging_and_personal_media_workers
-  status: personal_worker_conversion_verification_in_progress
+  status: local_hardening_green_hosted_activation_blocked
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
   authorization_status: read_only_inventory_only_no_mutation_or_spend
   task_stage: read_only_preflight
@@ -315,7 +315,7 @@ recommended_next_task:
       - resource_absence_lookup
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
-  goal: "Finish and verify the provider-free personal-worker conversion, then prepare one exact combined hosted/signing activation proposal before any mutation or spend; GPU transport stays fake."
+  goal: "Obtain the missing external signing/account inputs, then approve one exact combined hosted activation proposal before any mutation or spend; GPU transport stays fake."
   provider_calls_authorized: true
   read_only_provider_calls_authorized: true
   maximum_external_spend_usd: 0
@@ -333,11 +333,11 @@ recommended_next_task:
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_personal_worker_conversion_locally_verified_full_acceptance_blocked
-  verified_commit: "db0d45edb1fa1696219e9aca5e4e66f60acc161f"
-  verified_commit_note: "The provider-free personal-worker implementation passes canonical verification. Same-chat re-audit evidence is not independent; signed installers, hosted product composition, live provider inventory, real device parity, and hosted Chrome acceptance remain blocked."
+  state: v2_06_hosted_router_hardening_locally_verified_full_acceptance_blocked
+  verified_commit: "ee508d0e620286b4a693f5a158e4b921bac53712"
+  verified_commit_note: "Provider-free hosted-router hardening passes canonical verification. Same-chat re-audit evidence is not independent; the complete hosted generation journey, signed installers, live tenant/device parity, backup/restore, and hosted Chrome acceptance remain blocked."
   predecessor_verified_commit: "3c117f204844da9c984d233477933ee4c0f304dd"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-personal-worker-conversion-reaudit/acceptance.json
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-router-hardening-reaudit/acceptance.json
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."

@@ -1,0 +1,169 @@
+{
+  "schema_version": "videoforge.v2-06-hosted-router-hardening-reaudit/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "result": "FAIL_FULL_CHECKPOINT_LOCAL_HARDENING_PASS",
+  "audit_independence": "SAME_CHAT_REPAIR_EVIDENCE_NOT_INDEPENDENT",
+  "predecessor_commit": "0dd22b9c6ad2977031e4c96701f8aa2f1172c5ed",
+  "implementation_commit": "ee508d0e620286b4a693f5a158e4b921bac53712",
+  "recorded_at_utc": "2026-08-17T10:58:50Z",
+  "scope_boundary": "Repository and supplied immutable deployment evidence only. No credentials were read, no live provider call or mutation was made, no resource was deployed, no installer was signed or published, no email was sent, no paid request was issued, and no spend was incurred in this repair/re-audit.",
+  "acceptance_authority": {
+    "checkpoint_reference": "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:335-361",
+    "read_only_inventory_authorized": true,
+    "read_only_providers": ["Cloudflare", "Neon", "Google Cloud", "RunPod"],
+    "remote_mutation_authorized": false,
+    "paid_compute_authorized": false,
+    "maximum_current_authorized_external_spend_usd": 0,
+    "user_stated_future_test_cap_usd": 3,
+    "future_cap_status": "NOT_OPERATION_AUTHORITY_UNTIL_AN_EXACT_COMBINED_PROPOSAL_IS_APPROVED",
+    "email_provider": "NONE",
+    "google_project_candidate": "gen-lang-client-0893746131"
+  },
+  "repairs_verified": [
+    "The staging build now authenticates before mounting the real TanStack product router instead of replacing it with the hosted status shell.",
+    "Hosted Queue, Library, Settings, worker enrollment, cancellation, short-lived private-R2 downloads, and explicit permanent output deletion are tenant-scoped and fail closed without hosted dependencies.",
+    "Browser writes for CPU submission, cancellation, and output deletion require the configured same origin.",
+    "Migration 0033 serializes personal-CPU project admission and enforces one active project per account and two globally while allowing same-project stages and reconciliation attempts.",
+    "Submission preparation now compensates before dispatch on R2 or Workflow failure, and deadline expiry preserves the submitted-at database invariant.",
+    "The Neon runtime grant includes only the workspace read needed by hosted session scope; tenant reads set the account principal transaction-locally.",
+    "R2 download ports permit the intended one-hour maximum while upload ports retain the fifteen-minute maximum and bind a safe content-disposition filename.",
+    "The release workflow signs, notarizes, staples, validates, and Gatekeeper-assesses the final macOS disk image, then removes transient signing material.",
+    "A local installed-Chrome hosted-router test proves auth gating, real product-shell mounting, Queue, Library, Settings, and manual Delete wiring against mocked hosted APIs. It is not deployment proof."
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [
+      {
+        "id": "V2_06_HOSTED_PRODUCT_API_JOURNEY_INCOMPLETE",
+        "references": [
+          "apps/web/src/server/hosted/app.ts:838-890",
+          "apps/web/src/main.tsx:27-40",
+          "apps/web/src/hosted/HostedStagingApp.tsx:84-99"
+        ],
+        "detail": "The real product router is mounted after hosted authentication, but the hosted adapter composes only status, tenant, personal-worker, Queue, Library, CPU-attempt, and manual-delete routes. Create Project, presets, project/review, usage/cost, and the complete generation-to-playback APIs still return HOSTED_ROUTE_NOT_COMPOSED. V2-06 therefore has no complete hosted product journey."
+      },
+      {
+        "id": "V2_06_SIGNED_NATIVE_RELEASES_UNPROVEN",
+        "references": [
+          ".github/workflows/media-worker-release.yml:175-248",
+          "scripts/validate-v2-06-deployment.mjs"
+        ],
+        "detail": "The fail-closed Windows signing and final-DMG signing/notarization contract is present, but no Windows Authenticode release or macOS Developer-ID/notarized release was built, installed, or published. The user has no Apple Developer Program membership, so compliant macOS publication is currently externally blocked."
+      },
+      {
+        "id": "V2_06_LIVE_HOSTED_ACCEPTANCE_UNPROVEN",
+        "references": [
+          "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:335-361",
+          "project-context/evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json"
+        ],
+        "detail": "No immutable evidence proves a deployed Cloudflare Worker/Workflow, real Better Auth admission, Neon non-superuser RLS, tenant-private R2, two-account/device isolation, real personal-worker claim/render/result, durable offline/restart/cancel recovery, backup/restore, rollback, or the full journey in hosted Chrome. Local fixtures cannot prove deployment."
+      }
+    ],
+    "P2": [
+      {
+        "id": "V2_06_REAL_DEVICE_PARITY_AND_LIFECYCLE_UNPROVEN",
+        "references": [
+          "apps/media-worker-desktop",
+          "workers/media-local/src/videoforge_media_local/personal_execution.py",
+          "project-context/14_TESTING_AND_VERIFICATION.md"
+        ],
+        "detail": "No real Windows 10/11 x64 or macOS evidence covers signed install, one-click pairing, autostart/reboot, sleep, offline/reconnect, cancellation, stale leases/results, streaming R2, update/remove, ASR/render parity, or the canonical 30-minute workload."
+      },
+      {
+        "id": "V2_06_CLOUD_RUN_PARITY_SUPERSEDED",
+        "references": [
+          "project-context/15_DECISIONS_AND_OPEN_QUESTIONS.md",
+          "project-context/tasks/VF-10-06.md"
+        ],
+        "detail": "Scale-to-zero Cloud Run ASR/render parity is no longer an acceptance requirement after DEC_PERSONAL_WORKER_001. Historical Cloud Run material is rollback-only; the active architecture requires zero hosted CPU jobs and account-owned Windows/macOS workers."
+      },
+      {
+        "id": "V2_06_REAUDIT_NOT_INDEPENDENT",
+        "references": ["project-context/tasks/VF-10-06.md"],
+        "detail": "This audit was performed in the same task as the repairs and cannot satisfy the independent acceptance gate."
+      }
+    ]
+  },
+  "validation": {
+    "focused_admission_and_auth": {
+      "command": "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/hosted-cpu-admission-guard.test.mjs packages/control-plane/tests/hosted-auth-foundation.test.mjs",
+      "exit_code": 0,
+      "tests": "11/11"
+    },
+    "hosted_components_and_api": {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/hosted/HostedStagingApp.test.tsx src/screens/LibraryScreen.hosted.test.tsx src/screens/QueueScreen.hosted.test.tsx src/server/hosted/hosted-adapters.test.ts",
+      "exit_code": 0,
+      "tests": "14/14"
+    },
+    "local_hosted_chrome": {
+      "command": "pnpm --filter @videoforge/web test:hosted-chrome",
+      "exit_code": 0,
+      "tests": "1/1",
+      "caveat": "Installed Chrome with mocked local hosted APIs; not live hosted acceptance."
+    },
+    "deployment_contract": {
+      "command": "pnpm validate:v2-06-deployment",
+      "exit_code": 0
+    },
+    "staging_build": {
+      "command": "pnpm --filter @videoforge/web build:staging",
+      "exit_code": 0
+    },
+    "canonical_final": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "web": "334 passed, 1 intentional skip",
+      "installed_chrome": "44/44",
+      "note": "All canonical packages and tasks passed. Vitest maxWorkers=2 prevents three concurrent PGlite WASM suites from exhausting the local runtime; no test was skipped to obtain this pass."
+    },
+    "diff": {"command": "git diff --check", "exit_code": 0}
+  },
+  "approved_versus_actual_resources_and_rates": {
+    "approved_current_operations": "Read-only account/inventory/quota/rate/region/resource lookups only; no mutation and USD 0 current cap.",
+    "cloudflare_actual": "Workers Free, no payment method, no Worker project, no Workflow, and no active R2 subscription at the last supplied immutable inventory. R2 displayed 10 GB-month Standard free and USD 0.015 per additional GB-month.",
+    "neon_actual": "Free at USD 0/month; one dormant unrelated project; no VideoForge staging project.",
+    "google_actual": "The signed-in identity lacked resourcemanager.projects.get on gen-lang-client-0893746131; no VideoForge OAuth project or client was created.",
+    "runpod_actual": "Zero Pods, owned endpoints, Active/Flex workers, private templates, and clusters. Two intended 50 GB EU-RO-1 volumes remain at USD 3.50/month each, USD 7/month total. Current-day GPU, CPU, and Serverless compute were USD 0 at the immutable inventory time.",
+    "personal_cpu_actual": "No hosted CPU worker or Cloud Run job exists or is required by the active architecture; provider CPU compute is USD 0, while user-device electricity/time remains unmeasured.",
+    "new_spend_this_repair_usd": 0
+  },
+  "unproven_live_claims": [
+    "current Cloudflare, Neon, Google, and RunPod state after the supplied immutable inventory timestamps",
+    "deployed Better Auth and two invited accounts",
+    "Neon runtime-role least privilege and non-superuser RLS behavior",
+    "private R2 upload/download/delete and exact tenant isolation",
+    "deployed Cloudflare Workflow orchestration and durable recovery",
+    "signed immutable Windows/macOS releases and real-device parity",
+    "backup/restore drill, deployment rollback, and full hosted Chrome journey"
+  ],
+  "current_state_and_spend_truth": {
+    "external_mutations_this_repair": 0,
+    "deployments_this_repair": 0,
+    "installer_builds_this_repair": 0,
+    "installer_publications_this_repair": 0,
+    "paid_requests_this_repair": 0,
+    "external_spend_this_repair_usd": 0,
+    "cloud_run_jobs_required_by_current_architecture": 0,
+    "personal_worker_provider_compute_usd": 0,
+    "gpu_transport": "FAKE_DISABLED",
+    "runpod_workers": 0,
+    "runpod_compute_usd": 0,
+    "ongoing_runpod_retained_volume_usd_per_month": 7,
+    "cloudflare_recurring_usd_per_month": 0,
+    "neon_recurring_usd_per_month": 0
+  },
+  "rollback_state": {
+    "live_rollback_required": false,
+    "reason": "No deployment or live mutation was made.",
+    "local_code_rollback": "Revert ee508d0e620286b4a693f5a158e4b921bac53712 or return to predecessor 0dd22b9c6ad2977031e4c96701f8aa2f1172c5ed.",
+    "runbook": "deploy/v2-06/rollback.md",
+    "hosted_execution": "NOT_LIVE_PROVEN"
+  },
+  "successor_safety": {
+    "v2_07": "BLOCKED_ON_ACCEPTED_V2_06",
+    "runpod_activation_authorized": false,
+    "gpu_workers_authorized": false,
+    "safe_to_begin_v2_07": false
+  }
+}
