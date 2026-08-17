@@ -1,7 +1,87 @@
-import { validateContract } from "@videoforge/contracts";
+import type { RenderJobInputDocument } from "@videoforge/contracts/generated/contract-types.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const LOCAL_OBJECT = /^vf-local:\/\/objects\/sha256\/[0-9a-f]{2}\/([0-9a-f]{64})\.[a-z0-9]{1,10}$/u;
+const JOB_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/u;
+const SHA256 = /^sha256:[0-9a-f]{64}$/u;
+const RUN_MP4 =
+  /^vf-local-run:\/\/[A-Za-z0-9][A-Za-z0-9._:-]*\/[A-Za-z0-9][A-Za-z0-9._:-]*\/[A-Za-z0-9][A-Za-z0-9._-]{0,159}\.mp4$/u;
+const FILENAME = /^[A-Za-z0-9][A-Za-z0-9._-]*\.mp4$/u;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const hasExactKeys = (value: Record<string, unknown>, keys: readonly string[]): boolean =>
+  Object.keys(value).sort().join(",") === [...keys].sort().join(",");
+
+const isBoundedId = (value: unknown): value is string =>
+  typeof value === "string" && value.length >= 1 && value.length <= 160 && JOB_ID.test(value);
+
+const isSha256 = (value: unknown): value is string =>
+  typeof value === "string" && SHA256.test(value);
+
+const isObjectUri = (value: unknown): value is string =>
+  typeof value === "string" && LOCAL_OBJECT.test(value);
+
+const isStringWithLength = (value: unknown, minimum: number, maximum: number): value is string =>
+  typeof value === "string" &&
+  Array.from(value).length >= minimum &&
+  Array.from(value).length <= maximum;
+
+/** Exact structural equivalent of the generated render-job-input/v1 schema. */
+const isRenderJobInputDocument = (value: unknown): value is RenderJobInputDocument => {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      "schema_version",
+      "project_revision_id",
+      "attempt_id",
+      "resolved_render_manifest",
+      "assets",
+      "output",
+      "tools",
+      "cancel_token",
+    ]) ||
+    value.schema_version !== "render-job-input/v1" ||
+    !isBoundedId(value.project_revision_id) ||
+    !isBoundedId(value.attempt_id) ||
+    !isRecord(value.resolved_render_manifest) ||
+    !hasExactKeys(value.resolved_render_manifest, ["asset_id", "sha256", "artifact_uri"]) ||
+    !isBoundedId(value.resolved_render_manifest.asset_id) ||
+    !isSha256(value.resolved_render_manifest.sha256) ||
+    !isObjectUri(value.resolved_render_manifest.artifact_uri) ||
+    !Array.isArray(value.assets) ||
+    value.assets.length < 2 ||
+    value.assets.length > 20000 ||
+    !isRecord(value.output) ||
+    !hasExactKeys(value.output, ["result_uri", "filename"]) ||
+    typeof value.output.result_uri !== "string" ||
+    !RUN_MP4.test(value.output.result_uri) ||
+    !isStringWithLength(value.output.filename, 5, 160) ||
+    !FILENAME.test(value.output.filename) ||
+    !isRecord(value.tools) ||
+    !hasExactKeys(value.tools, ["ffmpeg_version", "ffprobe_version"]) ||
+    !isStringWithLength(value.tools.ffmpeg_version, 1, 80) ||
+    !isStringWithLength(value.tools.ffprobe_version, 1, 80) ||
+    !isStringWithLength(value.cancel_token, 32, 512)
+  ) {
+    return false;
+  }
+  for (const asset of value.assets) {
+    if (
+      !isRecord(asset) ||
+      !hasExactKeys(asset, ["asset_id", "sha256", "artifact_uri", "kind"]) ||
+      !isBoundedId(asset.asset_id) ||
+      !isSha256(asset.sha256) ||
+      !isObjectUri(asset.artifact_uri) ||
+      typeof asset.kind !== "string" ||
+      !["VOICEOVER", "AVATAR_CLIP", "IMAGE"].includes(asset.kind)
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
 
 export interface HostedCpuSubmission {
   readonly idempotencyKey: string;
@@ -97,11 +177,11 @@ export function exactHostedCpuSubmission(value: unknown): HostedCpuSubmission | 
     objects.push({ receiptId: object.artifact_receipt_id, uri: object.uri });
   }
   if (record.kind === "RENDER") {
-    const renderInput = validateContract("renderJobInput", record.input_document);
-    if (!renderInput.success) return null;
-    if (renderInput.data.project_revision_id !== record.project_revision_id) return null;
+    if (!isRenderJobInputDocument(record.input_document)) return null;
+    const renderInput = record.input_document as RenderJobInputDocument;
+    if (renderInput.project_revision_id !== record.project_revision_id) return null;
 
-    const requiredObjects = [renderInput.data.resolved_render_manifest, ...renderInput.data.assets];
+    const requiredObjects = [renderInput.resolved_render_manifest, ...renderInput.assets];
     if (new Set(requiredObjects.map((object) => object.artifact_uri)).size !== objects.length) {
       return null;
     }
@@ -148,8 +228,7 @@ export function bindHostedCpuInputDocument(
       : `vf-local-run://${projectRevisionId}/${attemptId}/videoforge-output.mp4`;
   if (kind === "RENDER") outputRecord.filename = "videoforge-output.mp4";
   if (kind === "RENDER") {
-    const validated = validateContract("renderJobInput", bound);
-    if (!validated.success) {
+    if (!isRenderJobInputDocument(bound)) {
       throw new TypeError("Hosted CPU input document does not match its exact job contract.");
     }
   }
