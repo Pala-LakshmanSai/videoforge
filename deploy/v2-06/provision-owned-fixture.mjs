@@ -92,7 +92,9 @@ function activationAvatarIdentity(scope) {
 function resolveExecutable(command) {
   const candidates = command.includes(path.sep)
     ? [command]
-    : (process.env.PATH ?? "").split(path.delimiter).map((directory) => path.join(directory, command));
+    : (process.env.PATH ?? "")
+        .split(path.delimiter)
+        .map((directory) => path.join(directory, command));
   for (const candidate of candidates) {
     try {
       const stat = statSync(candidate);
@@ -563,7 +565,11 @@ function assertMigrationUrl(databaseUrl) {
   if (decodeURIComponent(url.username).toLowerCase() === "videoforge_v2_06_runtime")
     throw new Error("owned fixture provisioner refuses the hosted runtime role");
   const endpointId = url.hostname.match(/^(ep-[a-z0-9-]+?)(?:-pooler)?(?:\.c-[a-z0-9-]+)?\./u)?.[1];
-  if (!APPROVED_NEON_HOST_PATTERN.test(url.hostname) || !endpointId || !APPROVED_NEON_ENDPOINT_ID_PATTERN.test(endpointId))
+  if (
+    !APPROVED_NEON_HOST_PATTERN.test(url.hostname) ||
+    !endpointId ||
+    !APPROVED_NEON_ENDPOINT_ID_PATTERN.test(endpointId)
+  )
     throw new Error(
       `V2_06_MIGRATION_DATABASE_URL must target the approved ${APPROVED_NEON_PROJECT_NAME} Neon endpoint`,
     );

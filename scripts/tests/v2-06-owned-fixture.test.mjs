@@ -162,7 +162,13 @@ test("R2 forwards the complete signed Request for PUT/GET/HEAD", async () => {
           return signed;
         },
       };
-      await r2Request(client, signed.url, method, {}, method === "PUT" ? Buffer.from("fixture") : undefined);
+      await r2Request(
+        client,
+        signed.url,
+        method,
+        {},
+        method === "PUT" ? Buffer.from("fixture") : undefined,
+      );
     }
   } finally {
     globalThis.fetch = originalFetch;
