@@ -1,9 +1,12 @@
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(new URL("../..", import.meta.url).pathname);
 const templatePath = resolve(root, "apps/web/wrangler.staging.jsonc");
+const stagingBuildRoot = resolve(root, "apps/web/dist-staging");
+const workerBundlePath = resolve(stagingBuildRoot, "videoforge_v2_06_staging/index.js");
+const assetsDirectory = resolve(stagingBuildRoot, "client");
 const fail = (message) => {
   throw new Error(`V2-06 staging config renderer: ${message}`);
 };
@@ -106,6 +109,24 @@ for (const platform of ["windows", "macos"]) {
 }
 const releaseJson = JSON.stringify(release);
 
+const requireBuildArtifact = async (path, kind) => {
+  let metadata;
+  try {
+    metadata = await stat(path);
+  } catch {
+    fail(`${kind} is missing; run pnpm --filter @videoforge/web build:staging first`);
+  }
+  if (
+    (kind === "Worker bundle" && !metadata.isFile()) ||
+    (kind === "staging assets directory" && !metadata.isDirectory())
+  )
+    fail(`${kind} has the wrong type; run pnpm --filter @videoforge/web build:staging again`);
+  if (metadata.size === 0 && kind === "Worker bundle")
+    fail("Worker bundle is empty; run `pnpm --filter @videoforge/web build:staging` again");
+};
+await requireBuildArtifact(workerBundlePath, "Worker bundle");
+await requireBuildArtifact(assetsDirectory, "staging assets directory");
+
 const parseJsonc = (source) => JSON.parse(source.replace(/,\s*([}\]])/gu, "$1"));
 const template = parseJsonc(await readFile(templatePath, "utf8"));
 const replacements = new Map([
@@ -122,10 +143,18 @@ function replace(value) {
   return value;
 }
 const rendered = replace(template);
+// The rendered file lives outside the repository. Relative main/assets paths
+// would resolve against /tmp and deploy the wrong tree (or fail after a
+// partial provider action), so point Wrangler at the Vite output explicitly.
+rendered.main = workerBundlePath;
+rendered.no_bundle = true;
+rendered.assets = { ...rendered.assets, directory: assetsDirectory };
 const renderedJson = `${JSON.stringify(rendered, null, 2)}\n`;
 if (/__V2_06_[A-Z0-9_]+__/u.test(renderedJson)) fail("unresolved deployment placeholder remains");
 const output = resolve(args.get("output"));
 if (output === templatePath) fail("refusing to overwrite the tracked template");
+if (output === root || output.startsWith(`${root}/`))
+  fail("rendered config must be written outside the repository");
 await writeFile(output, renderedJson, { encoding: "utf8", mode: 0o600, flag: "wx" });
 const sha256 = createHash("sha256").update(renderedJson).digest("hex");
 console.log(`Rendered ${output} (sha256:${sha256})`);

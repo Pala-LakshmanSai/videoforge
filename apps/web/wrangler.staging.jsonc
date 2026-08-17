@@ -4,6 +4,7 @@
   "account_id": "__V2_06_CLOUDFLARE_ACCOUNT_ID__",
   "compatibility_date": "2026-08-16",
   "compatibility_flags": ["nodejs_compat"],
+  "no_bundle": true,
   "main": "./worker/production-index.ts",
   "assets": {
     "directory": "./dist-staging/client",

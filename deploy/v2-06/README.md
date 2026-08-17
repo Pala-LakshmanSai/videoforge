@@ -1,21 +1,76 @@
 # V2-06 staging deployment inputs
 
 Provider-free state only. Nothing in this directory authorizes deployment or resource creation.
+The following sequence is the activation runbook after the exact V2-06 proposal, finite spend cap,
+and provider mutation approval have been recorded. It deliberately keeps the rendered config and
+all secret values outside Git.
 
-Render an activation-specific Wrangler file outside Git only after the exact activation proposal is
-approved. The renderer refuses unresolved placeholders and never overwrites the tracked template:
+## Build, render, deploy, and verify
+
+Run from the repository root on the exact clean commit that is being activated. The renderer refuses
+to proceed until the Vite-built Worker module and client asset directory exist and are non-empty at
+their fixed staging output paths. It then replaces the source-relative paths with absolute paths and
+sets `no_bundle: true`; this is required because the rendered file is stored in `/tmp`, while the
+Worker's generated module imports live beside the built bundle in the repository.
 
 ```sh
+set -eu
+
+pnpm --filter @videoforge/web build:staging
+DEPLOYED_COMMIT=$(git rev-parse HEAD)
+CONFIG=/tmp/videoforge-v2-06-staging.wrangler.json
+
 node deploy/v2-06/render-staging-config.mjs \
   --account-id <32-hex-cloudflare-account-id> \
   --origin https://<exact-worker-origin> \
-  --commit <deployed-git-sha> \
+  --commit "$DEPLOYED_COMMIT" \
   --release-manifest-file <immutable-release-manifest.json> \
-  --output /tmp/videoforge-v2-06-staging.wrangler.json
+  --output "$CONFIG"
+
+node -e '
+  const fs = require("node:fs");
+  const c = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+  if (c.no_bundle !== true || !c.main.startsWith(process.cwd() + "/apps/web/dist-staging/") ||
+      c.assets?.directory !== process.cwd() + "/apps/web/dist-staging/client") process.exit(1);
+  if (!fs.statSync(c.main).isFile() || !fs.statSync(c.assets.directory).isDirectory()) process.exit(1);
+' "$CONFIG"
+
+# Upload exactly the eight required secrets through Wrangler's secret store.
+# Each FILE is mode 0600 and contains one value; never put values in this config,
+# shell history, logs, or evidence.
+for entry in \
+  DATABASE_URL:/secure/videoforge/DATABASE_URL \
+  BETTER_AUTH_SECRET:/secure/videoforge/BETTER_AUTH_SECRET \
+  GOOGLE_CLIENT_ID:/secure/videoforge/GOOGLE_CLIENT_ID \
+  GOOGLE_CLIENT_SECRET:/secure/videoforge/GOOGLE_CLIENT_SECRET \
+  R2_ACCESS_KEY_ID:/secure/videoforge/R2_ACCESS_KEY_ID \
+  R2_SECRET_ACCESS_KEY:/secure/videoforge/R2_SECRET_ACCESS_KEY \
+  WORKFLOW_CALLBACK_SECRET:/secure/videoforge/WORKFLOW_CALLBACK_SECRET \
+  MEDIA_WORKER_TOKEN_SECRET:/secure/videoforge/MEDIA_WORKER_TOKEN_SECRET; do
+  name=${entry%%:*}; file=${entry#*:}
+  pnpm --filter @videoforge/web exec wrangler secret put "$name" --config "$CONFIG" <"$file"
+done
+
+pnpm --filter @videoforge/web exec wrangler deploy --config "$CONFIG"
 ```
 
-Use that rendered file for deploy and retain its printed SHA-256 with the deployment evidence. Never
-commit the rendered file when it contains a release manifest or provider-specific identity.
+Record the renderer's config SHA-256, deployed Worker version ID, `DEPLOYED_COMMIT`, release
+manifest SHA-256, and the exact `/tmp` config path. Keep the mode-0600 config only for the approved
+rollback window, then delete that exact file. Do not upload `EMAIL_DELIVERY_*` because email auth
+was not selected; the optional pair must be absent unless separately approved.
+
+The R2 browser policy is verified against the same rendered config (the verifier accepts an absolute
+`WRANGLER_CONFIG` path):
+
+```sh
+EXPECTED_ORIGIN=https://<exact-worker-origin> \
+WRANGLER_CONFIG="$CONFIG" \
+  deploy/v2-06/verify-r2-cors.sh videoforge-v2-06-staging-private
+```
+
+Retain the command exit code and exact live policy output with the deployment evidence. A successful
+local `build:staging` or renderer run is not hosted proof; the Worker URL, real Chrome journey, and
+provider inventory must be captured separately.
 
 - `media-worker-release.template.json` is the fail-closed Windows/macOS release manifest. Activation
   replaces it only with immutable installer URLs, exact sizes/checksums, disclosed ImageForge-style

@@ -19,6 +19,8 @@ if (wrangler.name !== "videoforge-v2-06-staging") fail("unexpected Worker name")
 if (wrangler.account_id !== "__V2_06_CLOUDFLARE_ACCOUNT_ID__")
   fail("staging deploy must pin the approved Cloudflare account placeholder");
 if (wrangler.vars?.VIDEOFORGE_PROVIDER_MODE !== "staging") fail("Worker must be staging-only");
+if (wrangler.no_bundle !== true)
+  fail("staging deploy must use the Vite-built Worker module graph without rebundling");
 if (wrangler.vars?.VIDEOFORGE_COMMIT !== "__V2_06_DEPLOYED_COMMIT__")
   fail("staging deploy must record an immutable source commit");
 if (wrangler.r2_buckets?.[0]?.binding !== "PRIVATE_ARTIFACTS") fail("private R2 binding missing");
@@ -209,6 +211,12 @@ if (
   !restoreScript.includes("migration head 34") ||
   !configRenderer.includes("refusing to overwrite the tracked template") ||
   !configRenderer.includes("__V2_06_PERSONAL_WORKER_RELEASE_MANIFEST_JSON__") ||
+  !configRenderer.includes('const stagingBuildRoot = resolve(root, "apps/web/dist-staging")') ||
+  !configRenderer.includes('resolve(stagingBuildRoot, "videoforge_v2_06_staging/index.js")') ||
+  !configRenderer.includes('resolve(stagingBuildRoot, "client")') ||
+  !configRenderer.includes("rendered.no_bundle = true") ||
+  !configRenderer.includes("is missing; run pnpm --filter @videoforge/web build:staging first") ||
+  !configRenderer.includes("rendered config must be written outside the repository") ||
   !rollbackRunbook.includes("Keep migrations 0029-0034 applied") ||
   rollbackRunbook.includes("Keep migrations 0029-0032 applied")
 )

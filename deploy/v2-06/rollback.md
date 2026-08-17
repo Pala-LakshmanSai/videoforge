@@ -7,17 +7,21 @@ guidance; it is not evidence that rollback has been exercised.
    manifest hash, migration head, and active lease count. Do not delete R2, Neon, releases, or
    installer assets while leases may be active.
 2. Stop new claims by deploying the recorded fail-closed Worker version or the prior immutable
-   Worker version. For the Cloudflare CLI, inspect first and confirm the exact target explicitly:
+   Worker version. Use the mode-0600 rendered config captured with that deployment; the tracked
+   `apps/web/wrangler.staging.jsonc` intentionally still contains placeholders and is not a live
+   rollback config. Inspect first and confirm the exact target explicitly:
 
    ```sh
-   cd apps/web
-   pnpm exec wrangler deployments list --config wrangler.staging.jsonc
-   ROLLBACK_CONFIRM=YES pnpm exec wrangler rollback <recorded-prior-version-id> \
-     --config wrangler.staging.jsonc
+   CONFIG=/secure/videoforge/v2-06/<recorded-rendered-config>.json
+   pnpm --filter @videoforge/web exec wrangler deployments list --config "$CONFIG"
+   ROLLBACK_CONFIRM=YES pnpm --filter @videoforge/web exec wrangler rollback \
+     <recorded-prior-version-id> --config "$CONFIG"
    ```
 
    The `ROLLBACK_CONFIRM=YES` marker is an operator reminder; Wrangler's own confirmation remains
    authoritative. Verify the active deployment version after the command before reopening claims.
+   If the prior config is unavailable, stop: re-rendering with a different commit is a new
+   activation and requires fresh approval and evidence.
 
 3. Revoke only the affected account-owned device credentials, mark their exact active leases
    cancelled, and let the database fence every late completion. Never kill unrelated user processes.

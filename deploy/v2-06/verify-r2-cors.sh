@@ -14,8 +14,12 @@ esac
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 config_file=${WRANGLER_CONFIG:-wrangler.staging.jsonc}
-if [ ! -f "$repo_root/apps/web/$config_file" ]; then
-  echo "Wrangler config not found: $repo_root/apps/web/$config_file" >&2
+case "$config_file" in
+  /*) config_path=$config_file ;;
+  *) config_path=$repo_root/apps/web/$config_file ;;
+esac
+if [ ! -f "$config_path" ]; then
+  echo "Wrangler config not found: $config_path" >&2
   exit 2
 fi
 
@@ -23,6 +27,6 @@ result_file=$(mktemp "${TMPDIR:-/tmp}/videoforge-v2-06-cors.XXXXXX")
 trap 'rm -f "$result_file"' EXIT HUP INT TERM
 (
   cd "$repo_root/apps/web"
-  pnpm exec wrangler r2 bucket cors list "$bucket" --config "$config_file"
+  pnpm exec wrangler r2 bucket cors list "$bucket" --config "$config_path"
 ) >"$result_file"
 node "$repo_root/deploy/v2-06/verify-r2-cors.mjs" --origin "$EXPECTED_ORIGIN" <"$result_file"
