@@ -29,8 +29,9 @@ mutation.
 
 The workflow pins FFmpeg/FFprobe 8.1.2, whisper.cpp 1.8.4, and the exact `ggml-base.en` model. It
 verifies source/archive hashes, tool versions, required render filters, libx264, and the model hash
-before freezing either app. Windows x64 runtime DLLs are bundled beside `whisper-cli.exe`; the macOS
-worker and tools are built as universal2 binaries from the exact whisper.cpp commit and exact Intel
-and Apple Silicon FFmpeg inputs. The worker verifies the
+before freezing either app. The macOS workflow also fails closed unless every Mach-O file inside
+the app verifies as both arm64 and x86_64. Windows x64 runtime DLLs are bundled beside
+`whisper-cli.exe`; the macOS worker and tools are built as universal2 binaries from the exact
+whisper.cpp commit and exact Intel and Apple Silicon FFmpeg inputs. The worker verifies the
 model again at startup and against every ASR job contract. No first-run model download, runtime
 provider discovery, or user configuration occurs.

@@ -152,6 +152,22 @@ jobs:
           VIDEOFORGE_WORKER_TARGET_ARCH: ${{ runner.os == 'macOS' && 'universal2' || '' }}
         run: pyinstaller --noconfirm apps/media-worker-desktop/videoforge-worker.spec
 
+      - name: Require universal2 for every macOS Mach-O in the app
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="dist/VideoForge Worker.app"
+          test -d "$app"
+          found=0
+          while IFS= read -r -d '' candidate; do
+            if /usr/bin/file "$candidate" | /usr/bin/grep -q 'Mach-O'; then
+              found=1
+              /usr/bin/lipo -verify_arch arm64 x86_64 "$candidate"
+            fi
+          done < <(/usr/bin/find "$app" -type f -print0)
+          test "$found" = "1"
+
       - name: Seal macOS beta app with ImageForge-style ad-hoc signature
         if: runner.os == 'macOS' && inputs.signed_release == false
         shell: bash
