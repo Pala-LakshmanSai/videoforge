@@ -204,6 +204,12 @@
       "name": "v2_06_hosted_product_journey",
       "filename": "0034_v2_06_hosted_product_journey.sql",
       "sha256": "sha256:c6f094570e5290327f9c6a0d73e91aab0625491814ba51da080b82e9cc7224f3"
+    },
+    {
+      "version": 35,
+      "name": "v2_06_hosted_render_plans",
+      "filename": "0035_v2_06_hosted_render_plans.sql",
+      "sha256": "sha256:b65e624a4bad7ed680bc9de4a8620c50b2ef2b1e407fde25aa3d8cd047a0ffc3"
     }
   ]
 }

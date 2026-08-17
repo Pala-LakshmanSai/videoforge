@@ -281,31 +281,46 @@ async function handleCpuSubmission(
         "videoforge.account_id",
         scope.account_id,
       ]);
-      const lineage = await transaction.query<{ revision_config_payload: unknown }>(
-        `SELECT revision.revision_config_payload
+      const lineage = await transaction.query<{
+        render_plan_schema_version: string | null;
+        render_plan_payload: unknown;
+        render_plan_payload_sha256: string | null;
+      }>(
+        `SELECT render_plan.schema_version AS render_plan_schema_version,
+                render_plan.payload AS render_plan_payload,
+                render_plan.payload_sha256 AS render_plan_payload_sha256
            FROM projects AS project
            JOIN project_revisions AS revision
              ON revision.account_id = project.account_id
             AND revision.workspace_id = project.workspace_id
             AND revision.project_id = project.id
+           LEFT JOIN hosted_render_plans AS render_plan
+             ON render_plan.account_id = revision.account_id
+            AND render_plan.workspace_id = revision.workspace_id
+            AND render_plan.project_id = revision.project_id
+            AND render_plan.project_revision_id = revision.id
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
             AND revision.id = $4 AND revision.status = 'LOCKED'`,
         [scope.account_id, scope.workspace_id, submission.projectId, submission.projectRevisionId],
       );
       if (!lineage.rows[0]) return null;
       if (submission.kind === "RENDER") {
-        const revisionPayload = lineage.rows[0].revision_config_payload;
         const configuredPlan =
-          typeof revisionPayload === "object" &&
-          revisionPayload !== null &&
-          !Array.isArray(revisionPayload)
+          lineage.rows[0].render_plan_schema_version === "videoforge-hosted-cpu-submission/v1"
             ? exactHostedRenderSubmission(
-                (revisionPayload as Record<string, unknown>).hosted_render_submission,
+                lineage.rows[0].render_plan_payload,
                 submission.projectId,
                 submission.projectRevisionId,
               )
             : null;
-        if (!configuredPlan || canonicalJson(configuredPlan) !== canonicalJson(submission)) {
+        const configuredPlanHash = configuredPlan
+          ? await sha256(canonicalJson(lineage.rows[0].render_plan_payload))
+          : null;
+        if (
+          !configuredPlan ||
+          configuredPlanHash !== lineage.rows[0].render_plan_payload_sha256 ||
+          canonicalJson(configuredPlan) !== canonicalJson(submission)
+        ) {
           return null;
         }
       }

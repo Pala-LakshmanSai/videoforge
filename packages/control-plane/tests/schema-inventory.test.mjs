@@ -102,6 +102,10 @@ const REQUIRED_TRIGGERS = [
   "hosted_project_create_requests_tenant_account_derived",
   "hosted_project_create_requests_tenant_write_guard",
   "hosted_project_create_requests_validate_ready",
+  "hosted_render_plans_append_only",
+  "hosted_render_plans_tenant_account_derived",
+  "hosted_render_plans_tenant_write_guard",
+  "hosted_render_plans_validate_lineage",
   "hosted_project_reviews_append_only",
   "hosted_project_reviews_tenant_account_derived",
   "hosted_project_reviews_tenant_write_guard",
@@ -159,6 +163,8 @@ const REQUIRED_TRIGGERS = [
 
 const REQUIRED_FOREIGN_KEY_FRAGMENTS = [
   "FOREIGN KEY (workspace_id, project_id, project_revision_id) REFERENCES project_revisions",
+  "FOREIGN KEY (account_id, workspace_id, project_id) REFERENCES projects",
+  "FOREIGN KEY (account_id, workspace_id, project_revision_id) REFERENCES project_revisions",
   "FOREIGN KEY (workspace_id, source_attempt_id) REFERENCES attempts",
   "FOREIGN KEY (workspace_id, id, active_version_id) REFERENCES avatar_profile_versions",
   "FOREIGN KEY (workspace_id, id, active_version_id) REFERENCES image_style_versions",

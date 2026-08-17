@@ -691,17 +691,26 @@ async function renderHandoff(
       const result = await transaction.query<{
         revision_id: string;
         revision_state: string;
-        revision_config_payload: unknown;
+        render_plan_schema_version: string | null;
+        render_plan_payload: unknown;
+        render_plan_payload_sha256: string | null;
         asr_attempt_id: string | null;
       }>(
         `SELECT revision.id AS revision_id, revision.status AS revision_state,
-                revision.revision_config_payload,
+                render_plan.schema_version AS render_plan_schema_version,
+                render_plan.payload AS render_plan_payload,
+                render_plan.payload_sha256 AS render_plan_payload_sha256,
                 asr.id AS asr_attempt_id
            FROM projects AS project
            JOIN project_revisions AS revision
              ON revision.account_id = project.account_id
             AND revision.workspace_id = project.workspace_id
             AND revision.project_id = project.id
+           LEFT JOIN hosted_render_plans AS render_plan
+             ON render_plan.account_id = revision.account_id
+            AND render_plan.workspace_id = revision.workspace_id
+            AND render_plan.project_id = revision.project_id
+            AND render_plan.project_revision_id = revision.id
            LEFT JOIN hosted_cpu_job_attempts AS asr
              ON asr.account_id = project.account_id
             AND asr.workspace_id = project.workspace_id
@@ -722,15 +731,17 @@ async function renderHandoff(
     if (!state.asr_attempt_id)
       return response({ error: { code: "HOSTED_ASR_NOT_SUCCEEDED" } }, 409);
 
-    const revisionPayload = state.revision_config_payload;
     const renderPlan =
-      typeof revisionPayload === "object" &&
-      revisionPayload !== null &&
-      !Array.isArray(revisionPayload)
-        ? (revisionPayload as Record<string, unknown>).hosted_render_submission
+      state.render_plan_schema_version === "videoforge-hosted-cpu-submission/v1"
+        ? state.render_plan_payload
         : null;
     const submission = exactHostedRenderSubmission(renderPlan, projectId, state.revision_id);
-    if (!submission) return response({ error: { code: "HOSTED_RENDER_PLAN_NOT_READY" } }, 409);
+    if (
+      !submission ||
+      (await sha256(canonicalJson(renderPlan))) !== state.render_plan_payload_sha256
+    ) {
+      return response({ error: { code: "HOSTED_RENDER_PLAN_NOT_READY" } }, 409);
+    }
 
     return response(
       {
