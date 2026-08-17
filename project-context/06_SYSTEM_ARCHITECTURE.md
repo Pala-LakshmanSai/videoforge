@@ -30,7 +30,7 @@ R2 keys, provider job IDs, or callbacks cannot grant access.
 | Image prompt/style | Runware DeepSeek V4 Flash 0731; Gemini 3.5 Flash only for new style analysis | Existing pinned provider choices |
 | GPU | Two RunPod queue-based Serverless endpoints in `EU-RO-1` | Mage images; SoulX avatar spans |
 | Model storage | Two existing isolated sealed 50 GB RunPod network volumes | Read-only-by-app offline model loading |
-| ASR/render | Scale-to-zero Cloud Run Jobs | Pinned whisper.cpp and FFmpeg/FFprobe |
+| ASR/render | Tenant-owned Windows/macOS personal worker | Pinned whisper.cpp and FFmpeg/FFprobe; outbound HTTPS only |
 | Contracts | Zod TypeScript + Pydantic Python | Validate every trust boundary |
 | Repository | Public pnpm/Turborepo source; digest-pinned worker images; no private bytes or model weights in Git | Shared contracts and reproducible builds |
 
@@ -55,7 +55,7 @@ flowchart TB
     SV["Existing sealed SoulX 50 GB volume"] -->|"/runpod-volume"| SE
     ME --> R2
     SE --> R2
-    WF --> CPU["Cloud Run whisper.cpp and FFmpeg jobs"] --> R2
+    WF --> CPU["Tenant-owned personal worker: whisper.cpp and FFmpeg"] --> R2
     R2 --> APP
 ```
 
@@ -190,9 +190,10 @@ revive the attempt. Endpoint queue purge cannot be used because it affects unrel
 
 ## CPU/media and artifact flow
 
-Production voiceover timing and rendering run as authenticated scale-to-zero Cloud Run Jobs. They
-consume immutable tenant-scoped R2 manifests and write only exact expected tenant-scoped results.
-They have no RunPod credentials or volume access. The same pinned entrypoints run locally for
+Production voiceover timing and rendering run on an authenticated account-owned Windows/macOS
+personal worker. It claims only exact leases for its paired account/workspace, consumes fresh
+tenant-scoped R2 ports, and writes only exact expected tenant-scoped results. It has no database,
+R2, RunPod, Runware, Google, admin credential, or model-volume access. The same pinned entrypoints run in
 provider-free development parity, which is not hosted evidence.
 
 The original voiceover is durably uploaded and checksum-bound before the revision can freeze or enter

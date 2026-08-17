@@ -395,3 +395,194 @@ test("hosted CPU callbacks bind exact execution/object facts and replay without 
     assert.deepEqual(retention.rows, [{ deleted: true, kind: "RETENTION_DELETED" }]);
   });
 });
+
+test("personal workers are tenant-bound, single-leased, and queued cancellation stays valid", async () => {
+  await withMigratedDatabase(async ({ executor }) => {
+    await seedLockedProjects(executor);
+    const cancelledAttempt = uuid(1_300_001);
+    const leasedAttempt = uuid(1_300_002);
+    const enrollment = uuid(1_300_003);
+    const device = uuid(1_300_004);
+    const lease = uuid(1_300_005);
+    const installation = uuid(1_300_006);
+    const objectKey = (attempt) =>
+      `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}/revision/${IDS.revisionA}/lane/render/job/${attempt}/artifact/result`;
+
+    await executor.query(`SELECT set_config('videoforge.account_id', $1, false)`, [IDS.accountA]);
+    for (const attempt of [cancelledAttempt, leasedAttempt]) {
+      await executor.query(
+        `INSERT INTO hosted_cpu_job_attempts (
+           id, account_id, workspace_id, project_id, project_revision_id, kind, state,
+           request_sha256, job_spec_object_key, job_spec_content_length,
+           job_spec_checksum_sha256, result_object_key, image_digest,
+           callback_token_sha256, deadline_at, execution_backend, execution_bundle_sha256,
+           created_at, updated_at
+         ) VALUES (
+           $1,$2,$3,$4,$5,'RENDER','OUTBOXED',$6,$7,128,$8,$9,$10,$11,$12,
+           'PERSONAL_WORKER',$13,$14,$14
+         )`,
+        [
+          attempt,
+          IDS.accountA,
+          IDS.workspaceA,
+          IDS.projectA,
+          IDS.revisionA,
+          sha256(`request-${attempt}`),
+          objectKey(attempt).replace("result", "job-spec"),
+          sha256(`spec-${attempt}`),
+          objectKey(attempt),
+          sha256("execution-bundle"),
+          sha256(`callback-${attempt}`),
+          LATER,
+          sha256("execution-bundle"),
+          FIXED_TIME,
+        ],
+      );
+    }
+
+    const queuedCancellation = await executor.query(
+      `UPDATE hosted_cpu_job_attempts
+          SET state = 'CANCELLED', cancellation_requested_at = now(),
+              submitted_at = COALESCE(submitted_at, now()), terminal_at = now(),
+              retain_until = GREATEST(deadline_at, now() + interval '30 minutes'), version = version + 1
+        WHERE id = $1 AND state = 'OUTBOXED'
+      RETURNING state, submitted_at IS NOT NULL AS submitted`,
+      [cancelledAttempt],
+    );
+    assert.deepEqual(queuedCancellation.rows, [{ state: "CANCELLED", submitted: true }]);
+
+    await executor.query(
+      `INSERT INTO media_worker_enrollments (
+         id, display_name, platform, architecture, worker_version, protocol_version,
+         execution_bundle_sha256, installation_id, pkce_challenge, poll_token_sha256, credential_token_sha256,
+         state, account_id, workspace_id, expires_at, approved_at, created_at
+       ) VALUES ($1,'Editing PC','WINDOWS','X86_64','0.1.0',1,'sha256:${"b".repeat(64)}',$2,$3,$4,$5,
+                 'APPROVED',$6,$7,$8,$9,$9)`,
+      [
+        enrollment,
+        installation,
+        "a".repeat(43),
+        sha256("poll"),
+        sha256("device-token"),
+        IDS.accountA,
+        IDS.workspaceA,
+        LATER,
+        FIXED_TIME,
+      ],
+    );
+    await executor.query(
+      `INSERT INTO media_worker_devices (
+         id, account_id, workspace_id, enrollment_id, display_name, platform, architecture,
+         worker_version, protocol_version, execution_bundle_sha256, installation_id, credential_token_sha256, status,
+         last_seen_at, created_at, updated_at
+       ) VALUES ($1,$2,$3,$4,'Editing PC','WINDOWS','X86_64','0.1.0',1,
+                 'sha256:${"b".repeat(64)}',$5,$6,'BUSY',$7,$7,$7)`,
+      [
+        device,
+        IDS.accountA,
+        IDS.workspaceA,
+        enrollment,
+        installation,
+        sha256("device-token"),
+        FIXED_TIME,
+      ],
+    );
+    await executor.query(
+      `INSERT INTO media_worker_leases (
+         id, account_id, workspace_id, attempt_id, device_id, lease_token_sha256, state,
+         lease_expires_at, last_heartbeat_at, claimed_at, created_at, updated_at
+       ) VALUES ($1,$2,$3,$4,$5,$6,'RUNNING',$7,$8,$8,$8,$8)`,
+      [
+        lease,
+        IDS.accountA,
+        IDS.workspaceA,
+        leasedAttempt,
+        device,
+        sha256("lease-token"),
+        LATER,
+        FIXED_TIME,
+      ],
+    );
+    await expectDatabaseError(
+      executor.query(
+        `INSERT INTO media_worker_leases (
+           id, account_id, workspace_id, attempt_id, device_id, lease_token_sha256, state,
+           lease_expires_at, last_heartbeat_at, claimed_at
+         ) VALUES ($1,$2,$3,$4,$5,$6,'RUNNING',$7,$8,$8)`,
+        [
+          uuid(1_300_007),
+          IDS.accountA,
+          IDS.workspaceA,
+          leasedAttempt,
+          device,
+          sha256("other-lease-token"),
+          LATER,
+          FIXED_TIME,
+        ],
+      ),
+      "23505",
+    );
+
+    await executor.query(`SELECT set_config('videoforge.account_id', '', false)`);
+    const authenticated = await executor.query(
+      `SELECT * FROM videoforge_media_worker_device_scope($1)`,
+      [sha256("device-token")],
+    );
+    assert.equal(authenticated.rows.length, 1);
+    assert.equal(authenticated.rows[0].account_id, IDS.accountA);
+    const forged = await executor.query(`SELECT * FROM videoforge_media_worker_device_scope($1)`, [
+      sha256("forged-device-token"),
+    ]);
+    assert.deepEqual(forged.rows, []);
+
+    const foreignEnrollment = uuid(1_300_008);
+    await executor.query(
+      `INSERT INTO media_worker_enrollments (
+         id, display_name, platform, architecture, worker_version, protocol_version,
+         execution_bundle_sha256, installation_id, pkce_challenge, poll_token_sha256,
+         credential_token_sha256, state, account_id, workspace_id, expires_at, approved_at, created_at
+       ) VALUES ($1,'Foreign Mac','MACOS','AARCH64','0.1.0',1,'sha256:${"b".repeat(64)}',$2,$3,$4,$5,
+                 'APPROVED',$6,$7,$8,$9,$9)`,
+      [
+        foreignEnrollment,
+        uuid(1_300_009),
+        "c".repeat(43),
+        sha256("foreign-poll"),
+        sha256("foreign-device-token"),
+        IDS.accountB,
+        IDS.workspaceB,
+        LATER,
+        FIXED_TIME,
+      ],
+    );
+    await executor.query(`SELECT set_config('videoforge.account_id', $1, false)`, [IDS.accountA]);
+    await expectDatabaseError(
+      executor.query(
+        `INSERT INTO media_worker_devices (
+           id, account_id, workspace_id, enrollment_id, display_name, platform, architecture,
+           worker_version, protocol_version, execution_bundle_sha256, installation_id,
+           credential_token_sha256, status
+         ) VALUES ($1,$2,$3,$4,'Forged','MACOS','AARCH64','0.1.0',1,
+                   'sha256:${"b".repeat(64)}',$5,$6,'OFFLINE')`,
+        [
+          uuid(1_300_010),
+          IDS.accountA,
+          IDS.workspaceA,
+          foreignEnrollment,
+          uuid(1_300_011),
+          sha256("forged-foreign-device"),
+        ],
+      ),
+      "23503",
+    );
+
+    await executor.query(`SELECT set_config('videoforge.account_id', $1, false)`, [IDS.accountB]);
+    await expectDatabaseError(
+      executor.query(
+        `UPDATE media_worker_devices SET display_name = 'Cross tenant' WHERE id = $1`,
+        [device],
+      ),
+      "42501",
+    );
+  });
+});

@@ -30,8 +30,11 @@ Other planning references:
   200k, used only when explicitly analyzing a new draft style.
 - Cloudflare R2 Standard: first 10 GB-month free, then `$0.015/GB-month`; direct egress free under
   the recorded pricing page. Operations still count.
-- Cloud Run, Cloudflare, and Neon pricing/allowances remain deployment-time measurements, not a
+- Cloudflare, Neon, R2, Runware, and RunPod pricing/allowances remain deployment-time measurements, not a
   permanent `$0` promise.
+- Personal-worker ASR/render has `$0` provider compute cost, but consumes the user's electricity,
+  device time, storage, and network. Those are disclosed separately and are never used to claim the
+  complete video costs `$0`.
 
 ## Fixed retained infrastructure
 
@@ -139,7 +142,7 @@ acceptance measures actual 5-10-user operations, database/storage usage, and ale
 | DeepSeek prompts | Planning `$0.005-$0.015`; qualified small runs exist |
 | Mage Serverless | Unmeasured on live queue endpoint |
 | SoulX Serverless | Unmeasured on live queue endpoint |
-| Cloud Run ASR/render | Hosted cost unmeasured |
+| Personal-worker ASR/render | `$0` provider compute; device time/electricity and real 30-minute runtime unmeasured |
 | R2/Cloudflare/Neon variable share | Unmeasured; expected small |
 | Repair/fallback | None active |
 | **Total variable 30-minute generation** | **Target <=`$1.00`; hard MVP ceiling <=`$2.00`; open gate** |
@@ -160,7 +163,7 @@ Measure queue wait separately from active service time. Initial acceptance objec
 | Cold worker start to `MODEL_READY` | each lane below RunPod's documented 7-minute unhealthy threshold |
 | Warm worker job start | p95 <=15 seconds before item work |
 | Transcript/timeline/prompt preparation | overlap GPU cold start where dependencies permit |
-| Final Cloud Run render/probe | measured separately; no GPU retention |
+| Final personal-worker render/probe | measured per supported OS/device class; no GPU retention |
 | Active-service 30-minute video p50 | <=30 minutes after admission |
 | Active-service 30-minute video p90 | <=45 minutes after admission |
 

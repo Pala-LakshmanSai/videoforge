@@ -11,10 +11,10 @@ Each layer proves only itself:
 2. **Unit/property:** deterministic logic, scheduler invariants, cost/time calculations.
 3. **Database/repository:** additive PostgreSQL migrations under PGlite, constraints, transactions,
    tenant ownership, fairness, recovery.
-4. **Provider-free integration:** fake Runware/Cloud Run/RunPod/R2, outbox, ambiguity, callbacks,
+4. **Provider-free integration:** fake Runware/personal-worker/RunPod/R2, outbox, ambiguity, leases,
    artifact validation, fault recovery.
 5. **Runtime smoke:** exact immutable worker image boots with synthetic/local fixtures; no provider.
-6. **Hosted staging:** real auth, Neon, private R2, Cloudflare orchestration, Cloud Run Jobs.
+6. **Hosted staging:** real auth, Neon, private R2, Cloudflare orchestration, and signed installed personal workers.
 7. **Bounded live Serverless:** exact endpoint/model/volume/GPU, owned inputs, measured spend,
    durable outputs, and zero-worker proof.
 8. **Real Chrome/E2E:** user journey through production-like services and playable final MP4.
@@ -118,8 +118,8 @@ Pass in isolated staging:
 - private R2 storage gate and production-like lifecycle;
 - Cloudflare Worker/Workflow durable orchestration, restart/resume, secret binding, and alarm/error
   handling;
-- pinned Cloud Run whisper.cpp and FFmpeg jobs using tenant R2 receipts, no RunPod credential or
-  model-volume access;
+- pinned Windows/macOS personal-worker whisper.cpp and FFmpeg execution using tenant R2 receipts,
+  no database/provider credential or model-volume access, and exact tenant/lease fencing;
 - same-origin application/API, secure cookies, CSRF/origin controls, rate limits, redaction, and
   installed-Chrome user journey;
 - measured CPU/R2/Workflow timing and cost.
@@ -289,7 +289,7 @@ Using an owned short project through the actual app:
 4. run hosted ASR, deterministic schedule/prompts/span materialization;
 5. dispatch exact Mage/SoulX whole-video jobs through their Serverless endpoints;
 6. accept only verified signed receipts and durable tenant artifacts;
-7. render/probe in Cloud Run;
+7. render/probe on the same account's paired personal worker;
 8. review/play/download the final MP4 in installed Chrome;
 9. restart the control plane during at least one non-destructive stage and recover;
 10. prove zero endpoint jobs, zero total workers (`Active + Flex`), and both retained volumes after
@@ -307,7 +307,7 @@ Pass staged tests with 1, 2, 5, and 10 distinct accounts:
 - fair promotion/no starvation and per-account queue order;
 - each endpoint remains at two or fewer workers and the shared lane volume remains unchanged;
 - cancellation/failure of one tenant does not mutate or expose another;
-- status/event fan-out, database connections, Workflow instances, Cloud Run jobs, R2, and browser UI
+- status/event fan-out, database connections, Workflow instances, personal-worker leases, R2, and browser UI
   remain bounded and truthful;
 - all jobs settle and endpoints drain to zero endpoint jobs and zero total workers (`Active + Flex`).
 

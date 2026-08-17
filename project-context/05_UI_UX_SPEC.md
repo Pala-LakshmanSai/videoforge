@@ -170,6 +170,16 @@ the only persistent applied-state indicator.
 
 - Account identity/default workspace, credential connection health without values, invite/admission
   support state, retention controls, and output defaults.
+- A `Local worker` card shows `Not installed`, `Connecting`, `Online`, `Busy`, `Offline`, or
+  `Update required`, plus last seen/version and only `Reconnect`/`Remove` management. Offer the
+  detected Windows or Mac installer first but keep both links visible because user-agent detection
+  is a convenience, not authority. Pairing is one `Connect this computer` confirmation in the
+  signed-in browser; never ask for a URL, code, key, model, port, or path.
+- Generate is blocked only when the account has no compatible online worker and links directly to
+  this card. Offline stage truth is `Waiting for your computer`. Never display another tenant's
+  device or borrow its capacity.
+- Approved videos remain in private R2 until explicit **Delete** confirmation. That action deletes
+  the exact durable R2 object; downloading never triggers automatic deletion.
 - No provider console instructions, GPU selectors, Pod lifecycle, endpoint purge, volume mutation,
   model download/preparation, cross-mount, or fallback controls.
 - Operations-only technical details may show immutable Mage/SoulX manifests, `EU-RO-1`, fixed

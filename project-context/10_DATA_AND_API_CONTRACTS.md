@@ -35,6 +35,11 @@ New migrations begin after the existing migration sequence. The planned ownershi
 - `0025_serverless_v2_04_audit_repairs.sql`
 - `0026_serverless_result_window_and_cancellation_fence.sql`
 - `0027_serverless_output_binding_and_result_discovery.sql`
+- `0028_v2_05_runtime_cutover.sql`
+- `0029_v2_06_hosted_foundation.sql`
+- `0030_v2_06_hosted_upload_authority.sql`
+- `0031_v2_06_tenant_insert_guard.sql`
+- `0032_v2_06_personal_media_workers.sql`
 
 V2-02 implemented `0019_tenant_artifact_receipts.sql` and the additive independent-audit repair
 `0020_tenant_artifact_isolation_repair.sql`; later planned filenames moved forward without rewriting history.
@@ -58,6 +63,13 @@ successful item in the separately signed VideoForge provenance receipt. The serv
 artifact rows from those receipts instead of trusting caller-supplied rows. An assigned job is not
 called terminal until `/status` observes a terminal state; before that observation it remains
 discoverable through the worst-case request-TTL-plus-1800-second result horizon.
+V2-05 and V2-06 continue the additive history. Migration `0028` binds active per-video runtime
+state; `0029` adds hosted identity/workflow/CPU-attempt state; `0030` adds checksum-bound output
+authority; and `0031` closes tenant insert-scope gaps. Migration `0032` preserves historical hosted
+CPU attempts for rollback while adding `execution_backend`, immutable execution-bundle identity,
+tenant-bound personal-worker enrollments/devices/input objects/leases/events, one-live-lease
+constraints, RLS, append-only events, and device-authenticated helper functions. Existing migration
+bytes are never rewritten to disguise the Cloud Run-to-personal-worker decision change.
 Exact future filenames may change only inside their implementation checkpoint before release. Never edit or
 renumber committed migrations `0014`–`0017` to make the new architecture appear implemented.
 
@@ -110,13 +122,16 @@ signed-URL issue, queue mutation, callback acceptance, and download also passes 
 | `provider_workload_leases` | Current admitted video or preset-preview slot; unique while active per account and bounded to two different accounts globally |
 | `account_queue_heads` | Per-account eligible head and last-served/fairness state |
 | `pipeline_tasks` | CPU, prompt, Mage, SoulX, and render tasks for an admitted revision |
+| `hosted_cpu_job_attempts` / `hosted_cpu_job_events` | Provider-neutral ASR/render attempts, execution backend/bundle, deadlines, lifecycle, and append-only recovery truth |
+| `media_worker_enrollments` / `media_worker_devices` | One-time PKCE browser pairing and account/workspace-owned installed-device identity, protocol/tool state, heartbeat, and revocation |
+| `media_worker_input_objects` / `media_worker_leases` / `media_worker_events` | Exact attempt inputs, current device/nonce/expiry fence, and append-only claim/renew/cancel/result/recovery history |
 | `serverless_attempts` | Logical lane attempt, exact endpoint/runtime/volume/GPU policy, provider job state, timings, and terminal result |
 | `dispatch_outbox` | Persisted request token/hash and leased send/reconciliation state |
 | `provider_assignments` | Post-assignment binding from one persisted dispatch token to one RunPod job ID |
 | `artifact_reservations` | Exact tenant object keys, method, checksum/size/type bounds, expiry, and attempt ownership |
 | `artifact_receipts` | Durable object validation and accepted application-signed provenance receipt |
 | `cost_events` | Estimated, reserved, reported, possible-duplicate, settled, refunded, and fixed-cost-excluded amounts |
-| `workflow_instances` | Cloudflare orchestration plus exact Cloud Run/RunPod child attempts and recovery cursor |
+| `workflow_instances` | Cloudflare orchestration plus exact personal-worker/RunPod child attempts and recovery cursor |
 | `actor_audit_events` | Append-only tenant actor/action/target/version/result trail |
 
 Large media and provider payloads live in private R2, not Postgres. Postgres stores immutable object
@@ -403,11 +418,14 @@ an idempotency key, and optimistic revision token. Generate freezes the current 
 a private waiting request only after the original voiceover has a durable checksum-verified private
 R2 receipt bound into that revision; it does not promise immediate provider dispatch.
 
-## Cloud Run CPU jobs
+## Personal CPU media workers
 
-Whisper transcription and FFmpeg render/probe remain scale-to-zero Cloud Run Jobs in production.
-They use the same tenant artifact reservation/receipt rules, have no RunPod credential or model-volume
-mount, and cannot keep a GPU worker alive. Local Mac execution is development parity only.
+Whisper transcription and FFmpeg render/probe run on an account-owned Windows/macOS worker in
+production. Enrollment, device, input-object, lease, and append-only event rows bind every claim to
+the same account/workspace and exact attempt. A device token grants only heartbeat/claim/renew/
+cancel/fresh-port/result capabilities; every late or stale result is fenced by the current lease.
+The worker uses the same tenant artifact reservation/receipt rules, has no database, reusable R2,
+RunPod, Runware, Google, admin credential, or model-volume mount, and cannot keep a GPU worker alive.
 
 ## Cost ownership
 
@@ -427,6 +445,8 @@ project, and do not become zero when endpoint workers reach zero.
 - A source used by a queued/running revision cannot be removed. Later erasure may make historical
   revisions non-regenerable and must say so explicitly.
 - Job scratch is ephemeral and removed after each attempt; it is never recovery state.
+- Successful final videos remain durable until an explicit authenticated user Delete removes the
+  exact owned R2 object. Download is never deletion and no automatic delete-after-download exists.
 - Serverless workers scale to zero after demand, subject to provider reconciliation.
 - The Mage and SoulX model volumes are retained until a separately authorized exact destructive
   operation. Ordinary completion, cancellation, worker cleanup, account deletion, or project

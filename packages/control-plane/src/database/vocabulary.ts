@@ -93,6 +93,11 @@ export const RELATIONAL_TABLE_NAMES = [
   "hosted_cpu_job_attempts",
   "hosted_cpu_upload_authorities",
   "hosted_cpu_job_events",
+  "media_worker_enrollments",
+  "media_worker_devices",
+  "media_worker_input_objects",
+  "media_worker_leases",
+  "media_worker_events",
 ] as const;
 
 export type RelationalTableName = (typeof RELATIONAL_TABLE_NAMES)[number];

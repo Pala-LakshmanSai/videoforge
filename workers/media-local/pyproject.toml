@@ -5,12 +5,15 @@ build-backend = "hatchling.build"
 [project]
 name = "videoforge-media-local-worker"
 version = "0.0.0"
-description = "Shared provider-free CPU media entrypoint for Mac and future Cloud Run Jobs"
+description = "Provider-free ASR/render core and zero-configuration personal media worker"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "videoforge-contracts",
   "videoforge-image-media-worker",
 ]
+
+[project.scripts]
+videoforge-personal-worker = "videoforge_media_local.personal_worker:main"
 
 [tool.uv.sources]
 videoforge-contracts = { workspace = true }

@@ -26,22 +26,21 @@
     "restore_window": "PROPOSAL_REQUIRED",
     "rate_snapshot": null
   },
-  "google_cloud": {
-    "project_id": "__V2_06_GCP_PROJECT_ID__",
-    "region": "__V2_06_GCP_REGION__",
-    "artifact_repository": "videoforge-v2-06-cpu",
-    "media_image_digest": "__V2_06_MEDIA_IMAGE_DIGEST__",
-    "asr_job": "videoforge-v2-06-asr-staging",
-    "render_job": "videoforge-v2-06-render-staging",
-    "invoker_service_account": "videoforge-v2-06-worker-invoker",
-    "job_service_account": "videoforge-v2-06-cpu-job",
-    "rate_snapshot": null
+  "personal_media_workers": {
+    "provider_compute": "NONE",
+    "provider_compute_spend_usd": 0,
+    "supported_platforms": ["WINDOWS_X64", "MACOS_UNIVERSAL2"],
+    "windows_setup": "SIGNED_PUBLICATION_REQUIRED",
+    "macos_dmg": "SIGNED_NOTARIZED_PUBLICATION_REQUIRED",
+    "release_manifest": "deploy/v2-06/media-worker-release.template.json",
+    "tool_bundle": "PINNED_SHA256_REQUIRED",
+    "runtime_configuration_by_user": "NONE"
   },
   "auth_email": {
     "google_oauth_client": "CREATE_OR_UPDATE_PROPOSAL_REQUIRED",
     "oauth_redirect_uri": "__V2_06_GOOGLE_REDIRECT_URI__",
-    "email_sender_identity": "__V2_06_EMAIL_SENDER_IDENTITY__",
-    "email_test_delivery": "PROPOSAL_REQUIRED"
+    "email_sender_identity": "OPTIONAL_NOT_SELECTED",
+    "email_test_delivery": "NOT_APPLICABLE_UNLESS_EMAIL_AUTH_IS_ACTIVATED"
   },
   "gpu": {
     "transport": "FAKE_DISABLED",
@@ -58,9 +57,6 @@
     "https://neon.com/pricing",
     "https://better-auth.com/docs/reference/options",
     "https://better-auth.com/docs/concepts/database",
-    "https://better-auth.com/docs/concepts/hooks",
-    "https://cloud.google.com/run/docs/create-jobs",
-    "https://docs.cloud.google.com/run/docs/execute/jobs",
-    "https://cloud.google.com/run/pricing"
+    "https://better-auth.com/docs/concepts/hooks"
   ]
 }

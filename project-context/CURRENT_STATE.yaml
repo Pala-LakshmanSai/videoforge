@@ -1,14 +1,14 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-17T06:24:24Z"
+updated_at: "2026-08-17T08:16:34Z"
 
-phase: serverless_v2_v2_06_submission_repair_green_read_only_inventory_in_progress
+phase: serverless_v2_v2_06_personal_worker_conversion_verification_in_progress
 implementation_authorized_in_current_task: true
-current_milestone: hosted_staging_and_cpu_jobs
+current_milestone: hosted_staging_and_personal_media_workers
 current_task: VF-10-06
-current_wave: v2_06_hosted_submission_repair_and_inventory
+current_wave: v2_06_personal_worker_conversion
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: read_only_preflight
+task_stage: provider_free_implementation_and_verification
 application_code_changes_authorized: true
 provider_calls_authorized: true
 read_only_provider_calls_authorized: true
@@ -93,6 +93,18 @@ v2_destination:
   preset_preview_admission: explicit_lower_priority_same_slots_never_outranks_eligible_video
   fairness: deterministic_account_rotation_owned_waiter_reorder_cancel_only
   ordinary_compute_controls: none
+  cpu_media_execution:
+    mode: tenant_owned_personal_worker
+    supported_platforms: [windows_x86_64, macos_universal2]
+    setup: detected_installer_plus_both_links_one_browser_confirmation_no_configuration
+    startup: automatic_at_os_login
+    network: outbound_https_only
+    credential_storage: os_native_keychain
+    claim_scope: exact_authenticated_account_and_workspace_only
+    offline_truth: waiting_for_your_computer
+    provider_compute_cost_usd: 0
+    final_output_retention: durable_until_explicit_authenticated_user_delete
+    external_release_gates: [windows_code_signing, macos_developer_id_notarization, immutable_release_publication]
   runpod_region: EU-RO-1
   endpoints:
     mage:
@@ -132,7 +144,7 @@ roadmap_state:
   V2-03: complete_green_independently_reaudited
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
-  V2-06: local_repair_green_hosted_acceptance_blocked
+  V2-06: personal_worker_conversion_locally_green_hosted_acceptance_blocked
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
@@ -242,7 +254,7 @@ blocking_gates_for_production:
 active_ownership:
   - task_id: VF-10-06
     checkpoint: V2-06
-    scope: local_hosted_submission_repair_and_read_only_provider_inventory
+    scope: local_personal_worker_conversion_context_reconciliation_and_verification
     provider_calls_authorized: true
     maximum_external_spend_usd: 0
 in_progress_checkpoint: V2-06
@@ -250,8 +262,8 @@ in_progress_checkpoint: V2-06
 recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
-  milestone: hosted_staging_and_cpu_jobs
-  status: local_submission_repair_green_read_only_inventory_in_progress
+  milestone: hosted_staging_and_personal_media_workers
+  status: personal_worker_conversion_verification_in_progress
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
   authorization_status: read_only_inventory_only_no_mutation_or_spend
   task_stage: read_only_preflight
@@ -285,7 +297,7 @@ recommended_next_task:
       - resource_absence_lookup
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
-  goal: "Complete the authorized read-only inventory, choose the missing email path, and prepare one exact combined activation proposal capped at the user-stated USD 3 before any mutation or spend; GPU transport stays fake."
+  goal: "Finish and verify the provider-free personal-worker conversion, then prepare one exact combined hosted/signing activation proposal before any mutation or spend; GPU transport stays fake."
   provider_calls_authorized: true
   read_only_provider_calls_authorized: true
   maximum_external_spend_usd: 0
@@ -303,7 +315,7 @@ recommended_next_task:
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_hosted_submission_repair_green_inventory_in_progress_full_acceptance_blocked
+  state: v2_06_personal_worker_conversion_uncommitted_verification_in_progress_full_acceptance_blocked
   verified_commit: "9fe8c76d420f2b81bdedac813d6681656462afd7"
   verified_commit_note: "V2-06 hosted CPU submission composition and staging config selection pass canonical local verification. The same-chat evidence is not independent, full hosted product/Chrome acceptance remains blocked, and authorized read-only inventory is in progress."
   predecessor_verified_commit: "3c117f204844da9c984d233477933ee4c0f304dd"
@@ -521,42 +533,41 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: hosted_submission_repair_green_read_only_inventory_in_progress
-    implementation_commit: "9fe8c76d420f2b81bdedac813d6681656462afd7"
-    evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-submission-repair/acceptance.json
-    commands:
-      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 303/303; pipeline 120/120; web 326/326 plus 1 skipped; Cloudflare 1/1; installed Chrome fixture 44/44)"
-      - "Focused PostgreSQL adapter, migration, hosted-auth, callback, retention, and schema-inventory tests: PASS"
-      - "Hosted Cloud Run/R2/submission adapter tests: PASS (8/8)"
-      - "pnpm test:workers: PASS (6 explicit Python 3.12 suites)"
-      - "Staging build, V2-05 production bundle quarantine, V2-06 deployment validation, and Wrangler dry run: PASS"
-      - "Pinned linux/amd64 image build and native linux/arm64 tool/fail-closed smoke: PASS"
+    status: personal_worker_conversion_locally_green_hosted_acceptance_blocked
+    implementation_commit: null
+    predecessor_commit: "9fe8c76d420f2b81bdedac813d6681656462afd7"
+    evidence: null
+    commands: []
     delivered:
-      - "Better Auth email/password and Google composition persists encrypted OAuth material and admits only a verified invited identity through one atomic first-session transaction."
-      - "Neon uses a one-connection serverless PostgreSQL adapter, additive migration 0029, tenant-scoped CPU rows, exact callbacks, least-privilege runtime grants, and bounded backup/restore scripts."
-      - "Private R2 upload URLs sign the exact tenant key and declared checksum; required upload headers expose content length, content type, and checksum, while durable completion independently verifies exact length, type, and bytes before acceptance."
-      - "Cloudflare Workflow persists outbox state before one Cloud Run dispatch, reconciles ambiguous acknowledgement without blind resend, polls authoritatively, and fences restart, replay, cancel, expiry, and retention."
-      - "CPU-only scale-to-zero Cloud Run Job templates use maxRetries zero and the pinned whisper.cpp 1.8.4 plus FFmpeg/FFprobe 8.1.2 container."
-      - "The staging Worker, hosted auth UI, secret allowlist, observability template, rollback, and activation record are fail-closed until exact approved values replace placeholders."
-      - "Hosted-auth expiry tests use clock-relative boundaries; Cloud Run workers now reject absent, non-regular, symlinked, byte-mismatched, or hash-mismatched primary output instead of reporting success."
-      - "Hosted callback acceptance rejects result objects whose stored length or content type differs before hashing and accepting exact bytes."
-      - "Migration 0030 adds one exact-idempotent output authority per attempt/object and rejects callback-token, lifecycle, deadline, tenant/project/revision/attempt lineage, type, length, or checksum drift before signing."
-      - "Cloud Run workers request upload ports only after output bytes exist; R2 SigV4 now binds content length, content type, and checksum, and the worker rejects any returned-header mismatch."
-      - "Authenticated tenant-scoped POST /api/v2/cpu-attempts now creates exact-idempotent attempts, primary/result upload authorities, immutable checksum-bound job specs, durable outbox state, and Cloudflare Workflow launches."
-      - "Staging builds now select wrangler.staging.jsonc; ambiguous dispatch persists submitted_at before reconciliation, cancellation polling uses the callback bearer token, and callbacks verify the exact primary R2 output checksum before success."
+      - "Migration 0032 adds account/workspace-bound worker enrollments, devices, exact input objects, one active lease per attempt/device, append-only events, row-level security, and stale-lease fencing while preserving historical Cloud Run rows for rollback."
+      - "The hosted API uses PKCE enrollment, one explicit authenticated approval, OS-keychain-scoped device tokens, heartbeat/update gating, exact same-account claims, fresh R2 GET/PUT ports, streaming output verification, cancellation, revocation, and late-result rejection."
+      - "Cloudflare Workflow now reconciles durable personal-worker leases and requeues expired work; active hosted code and deployment templates no longer dispatch Cloud Run."
+      - "The hosted setup surface detects the likely OS as a convenience, always offers Windows and Mac downloads, shows truthful device states, and never exposes raw tenant IDs or configuration secrets."
+      - "The Python desktop worker supports Windows and macOS only, starts at login, keeps the device credential in Windows Credential Manager or macOS Keychain, holds a sleep assertion only during active work, streams large outputs without loading the full MP4 in memory, kills process groups on cancel, and erases job scratch in finally."
+      - "A manual native release workflow builds Windows x64 and macOS universal2 artifacts, records exact hashes/sizes, contains fail-closed signing/notarization gates, and can publish a new non-replaceable public GitHub Release plus hosted manifest only when signed_release and publish_release are explicitly selected; no release has been built, signed, notarized, or published."
+      - "OUTBOXED cancellation now becomes terminal CANCELLED with submitted/terminal/retention facts, fixing the migration-0029 constraint violation that the former CANCEL_REQUESTED transition caused."
+      - "Successful final outputs have no automatic deletion policy. DELETE /api/v2/cpu-attempts/:id/output authenticates the owner, removes exactly the issued primary/result R2 keys, and appends durable deletion truth; the ordinary Library Delete button still waits on full hosted product-router composition."
+      - "The desktop cancellation monitor is a real class method, renews the five-minute lease while work is active, kills the entire media process group on cancel, and is covered against the class-indentation regression."
+      - "Cloud Run configuration, secrets, deployment templates, and production dispatch are removed from the active V2-06 path; historical adapter and evidence remain only for rollback/audit."
     remaining_gates:
-      - "Read-only provider inventory is authorized and in progress; Cloudflare sign-in is currently awaiting user completion before exact account, plan, region, domain, quota, rate, and resource facts can be captured."
-      - "The email provider and verified sender identity/domain must be selected."
-      - "The visible Google project gen-lang-client-0893746131 must be confirmed as the intended staging target."
-      - "The user supplied a USD 3 maximum future V2-06 test cap, but it is not operation authority until one exact combined mutation proposal is issued and approved."
-      - "The staged UI remains an activation and auth/status shell. The CPU submission route exists, but the complete ordinary project, artifact-ingest, submission, result, and playback journey is not yet composed."
-      - "All live hosted proofs, billing settlement, real-Chrome staging, rollback, and zero-compute closure remain unproven; complete route composition plus exact activation approval are still required."
+      - "Record immutable same-chat repair/re-audit evidence; it will not count as an independent audit."
+      - "The hosted UI remains an auth/status/worker-setup shell. The complete ordinary product router, project/artifact journey, playback, and Library wiring for the implemented explicit Delete-to-R2 API are not yet composed in the hosted runtime."
+      - "Production-grade Windows code signing and macOS Developer ID signing/notarization require external identities and protected release credentials; unsigned packages do not satisfy the promised simple installer UX."
+      - "The immutable release workflow and manifest contract exist locally, but exact published URLs, byte sizes, SHA-256 hashes, signing identities, protocol minimum, and execution-bundle hash remain unproven until one signed release is built and published."
+      - "Real installed Windows and macOS proof must cover pairing, tenant isolation, autostart/reboot, sleep, offline/reconnect, cancellation, stale lease/result, streamed R2, tool parity, update/remove, and recovery."
+      - "Hosted Better Auth/Neon/R2/Cloudflare, non-superuser RLS, backup/restore, rollback, two-account isolation, real Chrome, exact live rates/charges, and current RunPod zero-worker truth remain unproven; the signed-in dashboard browser was unavailable to automation during this handoff."
+      - "The user-selected email provider is NONE, so initial hosted auth is Google-only. Google Cloud Run is no longer needed; Google OAuth still needs an approved client/origin configuration."
+      - "The user supplied a USD 3 maximum future V2-06 test cap, but it is not operation authority until one exact combined mutation/publication proposal is issued and approved."
     resource_truth:
       external_mutations: 0
       deployments: 0
+      installer_builds: 0
+      installer_publications: 0
       email_deliveries: 0
       paid_requests: 0
       external_spend_usd: 0
+      cloud_run_jobs_required_by_current_architecture: 0
+      personal_worker_provider_compute_usd: 0
       runpod_calls: 0
       runpod_workers_started: 0
       live_runpod_inventory_refreshed: false

@@ -2,7 +2,7 @@ import { createHostedAuth, type HostedExecutionContext } from "./auth";
 import { hostedRuntimeConfiguration, type HostedRuntimeEnvironment } from "./configuration";
 import { deriveCallbackToken, sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
-import { HostedR2Signer } from "./r2";
+import { handlePersonalWorkerRequest } from "./personal-worker";
 import {
   bindHostedCpuInputDocument,
   canonicalJson,
@@ -11,57 +11,6 @@ import {
 } from "./submission";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
-const SHA256 = /^sha256:[0-9a-f]{64}$/u;
-const EXECUTION =
-  /^projects\/[a-z][a-z0-9-]{4,62}\/locations\/[a-z0-9-]+\/jobs\/[a-z][a-z0-9-]{0,62}\/executions\/[A-Za-z0-9._-]+$/u;
-
-export function hasExactResultObjectMetadata(
-  object: { readonly size: number; readonly httpMetadata?: { readonly contentType?: string } },
-  expectedLength: number,
-): boolean {
-  return object.size === expectedLength && object.httpMetadata?.contentType === "application/json";
-}
-
-function checksumFromR2(value: ArrayBuffer | undefined): string | null {
-  if (!value || value.byteLength !== 32) return null;
-  return `sha256:${[...new Uint8Array(value)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("")}`;
-}
-
-interface CpuUploadAuthorityRequest {
-  readonly source: "PRIMARY_RESULT_OUTPUT" | "RESULT_DOCUMENT";
-  readonly objectKey: string;
-  readonly contentType: string;
-  readonly contentLength: number;
-  readonly checksumSha256: string;
-}
-
-export function exactCpuUploadAuthorityRequest(value: unknown): CpuUploadAuthorityRequest | null {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
-  const record = value as Record<string, unknown>;
-  if (
-    Object.keys(record).sort().join(",") !==
-      "checksum_sha256,content_length,content_type,object_key,schema_version,source" ||
-    record.schema_version !== "videoforge-cloud-run-upload-authority/v1" ||
-    !["PRIMARY_RESULT_OUTPUT", "RESULT_DOCUMENT"].includes(String(record.source)) ||
-    typeof record.object_key !== "string" ||
-    typeof record.content_type !== "string" ||
-    !Number.isSafeInteger(record.content_length) ||
-    (record.content_length as number) < 1 ||
-    typeof record.checksum_sha256 !== "string" ||
-    !SHA256.test(record.checksum_sha256)
-  ) {
-    return null;
-  }
-  return {
-    source: record.source as CpuUploadAuthorityRequest["source"],
-    objectKey: record.object_key,
-    contentType: record.content_type,
-    contentLength: record.content_length as number,
-    checksumSha256: record.checksum_sha256,
-  };
-}
 
 function json(value: unknown, status = 200): Response {
   return Response.json(value, {
@@ -73,237 +22,6 @@ function json(value: unknown, status = 200): Response {
       "x-videoforge-runtime": "hosted-v2-06",
     },
   });
-}
-
-function exactCallback(value: unknown): {
-  status: "SUCCEEDED" | "FAILED" | "CANCELLED";
-  executionName: string;
-  resultObjectKey: string | null;
-  resultContentLength: number | null;
-  resultChecksumSha256: string | null;
-} | null {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
-  const keys = Object.keys(value).sort();
-  if (
-    keys.join(",") !==
-    "execution_name,result_checksum_sha256,result_content_length,result_object_key,schema_version,status"
-  )
-    return null;
-  const record = value as Record<string, unknown>;
-  if (
-    record.schema_version !== "videoforge-cloud-run-callback/v1" ||
-    !["SUCCEEDED", "FAILED", "CANCELLED"].includes(String(record.status)) ||
-    typeof record.execution_name !== "string" ||
-    !EXECUTION.test(record.execution_name) ||
-    (record.result_checksum_sha256 !== null &&
-      (typeof record.result_checksum_sha256 !== "string" ||
-        !SHA256.test(record.result_checksum_sha256))) ||
-    (record.status === "SUCCEEDED" &&
-      (typeof record.result_object_key !== "string" ||
-        typeof record.result_content_length !== "number" ||
-        !Number.isSafeInteger(record.result_content_length) ||
-        record.result_content_length < 1 ||
-        typeof record.result_checksum_sha256 !== "string")) ||
-    (record.status !== "SUCCEEDED" &&
-      (record.result_object_key !== null ||
-        record.result_content_length !== null ||
-        record.result_checksum_sha256 !== null))
-  )
-    return null;
-  return {
-    status: record.status as "SUCCEEDED" | "FAILED" | "CANCELLED",
-    executionName: record.execution_name,
-    resultObjectKey: record.result_object_key as string | null,
-    resultContentLength: record.result_content_length as number | null,
-    resultChecksumSha256: record.result_checksum_sha256 as string | null,
-  };
-}
-
-async function handleCpuCallback(
-  request: Request,
-  environment: HostedRuntimeEnvironment,
-  attemptId: string,
-): Promise<Response> {
-  if (!UUID.test(attemptId)) return json({ error: { code: "CALLBACK_REJECTED" } }, 404);
-  const length = Number(request.headers.get("content-length") ?? "0");
-  if (!Number.isFinite(length) || length < 1 || length > 1_048_576) {
-    return json({ error: { code: "CALLBACK_REJECTED" } }, 400);
-  }
-  const authorization = request.headers.get("authorization");
-  if (!authorization?.startsWith("Bearer ") || authorization.length > 512) {
-    return json({ error: { code: "CALLBACK_REJECTED" } }, 401);
-  }
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: { code: "CALLBACK_REJECTED" } }, 400);
-  }
-  const callback = exactCallback(body);
-  if (!callback) return json({ error: { code: "CALLBACK_REJECTED" } }, 400);
-  const tokenSha256 = await sha256(authorization.slice("Bearer ".length));
-  const factsSha256 = await sha256(
-    JSON.stringify({
-      execution_name: callback.executionName,
-      result_checksum_sha256: callback.resultChecksumSha256,
-      result_content_length: callback.resultContentLength,
-      result_object_key: callback.resultObjectKey,
-      schema_version: "videoforge-cloud-run-callback/v1",
-      status: callback.status,
-    }),
-  );
-  const config = hostedRuntimeConfiguration(environment);
-  const pool = createNeonPool(config.neon.databaseUrl);
-  try {
-    let receiptSha256: string | null = null;
-    if (callback.status === "SUCCEEDED") {
-      const bucket = environment.PRIVATE_ARTIFACTS;
-      if (
-        !bucket ||
-        !callback.resultObjectKey ||
-        !callback.resultChecksumSha256 ||
-        callback.resultContentLength === null
-      ) {
-        return json({ error: { code: "CALLBACK_REJECTED" } }, 404);
-      }
-      const primary = await pool.query(
-        `SELECT * FROM videoforge_hosted_cpu_expected_primary_output($1, $2)`,
-        [attemptId, tokenSha256],
-      );
-      if (primary.rows.length !== 1) {
-        return json({ error: { code: "CALLBACK_REJECTED" } }, 404);
-      }
-      const expectedPrimary = primary.rows[0]!;
-      const primaryObject = await bucket.head(expectedPrimary.object_key);
-      if (
-        !primaryObject ||
-        primaryObject.size !== Number(expectedPrimary.content_length) ||
-        primaryObject.httpMetadata?.contentType !== expectedPrimary.content_type ||
-        checksumFromR2(primaryObject.checksums?.sha256) !== expectedPrimary.checksum_sha256
-      ) {
-        return json({ error: { code: "CALLBACK_REJECTED" } }, 404);
-      }
-      const object = await bucket.get(callback.resultObjectKey);
-      if (!object) return json({ error: { code: "CALLBACK_REJECTED" } }, 404);
-      if (!hasExactResultObjectMetadata(object, callback.resultContentLength)) {
-        return json({ error: { code: "CALLBACK_REJECTED" } }, 404);
-      }
-      const bytes = await object.arrayBuffer();
-      if (bytes.byteLength !== callback.resultContentLength)
-        return json({ error: { code: "CALLBACK_REJECTED" } }, 404);
-      const binaryHash = await sha256Bytes(bytes);
-      if (binaryHash !== callback.resultChecksumSha256)
-        return json({ error: { code: "CALLBACK_REJECTED" } }, 404);
-      receiptSha256 = await sha256(
-        JSON.stringify({
-          attempt_id: attemptId,
-          content_length: callback.resultContentLength,
-          object_key: callback.resultObjectKey,
-          result_checksum_sha256: callback.resultChecksumSha256,
-        }),
-      );
-    }
-    const accepted = await pool.query(
-      `SELECT videoforge_accept_hosted_cpu_callback($1, $2, $3, $4, $5, $6, $7, $8, $9, now()) AS accepted`,
-      [
-        attemptId,
-        tokenSha256,
-        callback.executionName,
-        callback.status,
-        callback.resultObjectKey,
-        callback.resultContentLength,
-        callback.resultChecksumSha256,
-        receiptSha256,
-        factsSha256,
-      ],
-    );
-    if (accepted.rows[0]?.accepted !== true)
-      return json({ error: { code: "CALLBACK_REJECTED" } }, 404);
-    // The durable row is the callback hint. Polling remains authoritative, so
-    // acceptance never depends on transient Workflow event delivery.
-    return json({ accepted: true }, 202);
-  } finally {
-    await pool.end();
-  }
-}
-
-async function handleCpuUploadPort(
-  request: Request,
-  environment: HostedRuntimeEnvironment,
-  attemptId: string,
-): Promise<Response> {
-  if (!UUID.test(attemptId)) return json({ error: { code: "UPLOAD_AUTHORITY_REJECTED" } }, 404);
-  const length = Number(request.headers.get("content-length") ?? "0");
-  if (!Number.isFinite(length) || length < 1 || length > 16_384) {
-    return json({ error: { code: "UPLOAD_AUTHORITY_REJECTED" } }, 400);
-  }
-  const authorization = request.headers.get("authorization");
-  if (!authorization?.startsWith("Bearer ") || authorization.length > 512) {
-    return json({ error: { code: "UPLOAD_AUTHORITY_REJECTED" } }, 401);
-  }
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: { code: "UPLOAD_AUTHORITY_REJECTED" } }, 400);
-  }
-  const authority = exactCpuUploadAuthorityRequest(body);
-  if (!authority) return json({ error: { code: "UPLOAD_AUTHORITY_REJECTED" } }, 400);
-  const config = hostedRuntimeConfiguration(environment);
-  const pool = createNeonPool(config.neon.databaseUrl);
-  try {
-    const authorized = await pool.query(
-      `SELECT videoforge_authorize_hosted_cpu_upload($1,$2,$3,$4,$5,$6,$7,now()) AS authorized`,
-      [
-        attemptId,
-        await sha256(authorization.slice("Bearer ".length)),
-        authority.source,
-        authority.objectKey,
-        authority.contentType,
-        authority.contentLength,
-        authority.checksumSha256,
-      ],
-    );
-    if (authorized.rows[0]?.authorized !== true) {
-      return json({ error: { code: "UPLOAD_AUTHORITY_REJECTED" } }, 404);
-    }
-    const port = await new HostedR2Signer(config.r2).sign({
-      method: "PUT",
-      objectKey: authority.objectKey,
-      contentType: authority.contentType,
-      contentLength: authority.contentLength,
-      checksumSha256: authority.checksumSha256,
-      lifetimeSeconds: 300,
-    });
-    return json({ schema_version: "videoforge-cloud-run-upload-port/v1", ...port });
-  } finally {
-    await pool.end();
-  }
-}
-
-async function handleCpuCancellationProbe(
-  request: Request,
-  environment: HostedRuntimeEnvironment,
-  attemptId: string,
-): Promise<Response> {
-  if (!UUID.test(attemptId)) return json({ cancelled: true }, 404);
-  const authorization = request.headers.get("authorization");
-  if (!authorization?.startsWith("Bearer ") || authorization.length > 512) {
-    return json({ cancelled: true }, 401);
-  }
-  const config = hostedRuntimeConfiguration(environment);
-  const pool = createNeonPool(config.neon.databaseUrl);
-  try {
-    const result = await pool.query(
-      `SELECT videoforge_hosted_cpu_cancellation_requested($1, $2) AS cancelled`,
-      [attemptId, await sha256(authorization.slice("Bearer ".length))],
-    );
-    const cancelled = result.rows[0]?.cancelled;
-    if (typeof cancelled !== "boolean") return json({ cancelled: true }, 404);
-    return json({ cancelled });
-  } finally {
-    await pool.end();
-  }
 }
 
 interface OwnedArtifactRow extends Record<string, unknown> {
@@ -342,10 +60,7 @@ async function handleCpuSubmission(
     const scope = scopeResult.rows[0];
     if (!scope) return json({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, 403);
 
-    const imageDigest =
-      submission.kind === "ASR"
-        ? config.cloudRun.asrImageDigest
-        : config.cloudRun.renderImageDigest;
+    const imageDigest = config.mediaWorkerRelease.executionBundleSha256;
     const requestSha256 = await sha256(canonicalJson(submission));
     const executor = createNeonExecutor(pool);
     const prepared = await executor.transaction(async (transaction) => {
@@ -427,47 +142,32 @@ async function handleCpuSubmission(
         attemptId,
       );
       const artifactById = new Map(artifacts.rows.map((artifact) => [artifact.id, artifact]));
-      const signer = new HostedR2Signer(config.r2);
-      const objects = await Promise.all(
-        submission.objects.map(async (object) => {
-          const artifact = artifactById.get(object.receiptId)!;
-          const port = await signer.sign({
-            method: "GET",
-            objectKey: artifact.object_key,
-            contentType: artifact.content_type,
-            contentLength: Number(artifact.content_length),
-            checksumSha256: artifact.checksum_sha256,
-            lifetimeSeconds: 900,
-          });
-          return {
-            uri: object.uri,
-            url: port.url,
-            sha256: artifact.checksum_sha256,
-            bytes: Number(artifact.content_length),
-          };
-        }),
-      );
+      const objects = submission.objects.map((object) => {
+        const artifact = artifactById.get(object.receiptId)!;
+        return {
+          uri: object.uri,
+          object_key: artifact.object_key,
+          content_type: artifact.content_type,
+          sha256: artifact.checksum_sha256,
+          bytes: Number(artifact.content_length),
+        };
+      });
       const primaryType = submission.kind === "ASR" ? "application/json" : "video/mp4";
       const primaryMax = submission.kind === "ASR" ? 16 * 1024 ** 2 : 10 * 1024 ** 3;
-      const signBase = `${config.publicOrigin}/api/v2/internal/cloud-run/upload-port/${attemptId}`;
       const jobSpec = {
-        schema_version: "videoforge-cloud-run-job-spec/v1",
+        schema_version: "videoforge-personal-worker-job-template/v1",
         attempt_id: attemptId,
         kind: submission.kind,
-        expires_at: new Date(Date.now() + 86_400_000).toISOString(),
         input_document: inputDocument,
-        objects,
         outputs: [
           {
             source: "PRIMARY_RESULT_OUTPUT",
             object_key: primaryKey,
-            sign_url: signBase,
             content_type: primaryType,
             max_bytes: primaryMax,
           },
         ],
-        result: { object_key: resultKey, sign_url: signBase, max_bytes: 1_048_576 },
-        cancellation_url: `${config.publicOrigin}/api/v2/internal/cloud-run/cancelled/${attemptId}`,
+        result: { object_key: resultKey, max_bytes: 1_048_576 },
         tooling: {
           whisper_model_uri:
             submission.kind === "ASR"
@@ -493,8 +193,10 @@ async function handleCpuSubmission(
              id, account_id, workspace_id, project_id, project_revision_id, kind, state,
              submission_idempotency_key, request_sha256, job_spec_object_key,
              job_spec_content_length, job_spec_checksum_sha256, result_object_key,
-             result_max_bytes, image_digest, callback_token_sha256, deadline_at
-           ) VALUES ($1,$2,$3,$4,$5,$6,'PLANNED',$7,$8,$9,$10,$11,$12,1048576,$13,$14,now() + interval '24 hours')`,
+             result_max_bytes, image_digest, callback_token_sha256, deadline_at,
+             execution_backend, execution_bundle_sha256
+           ) VALUES ($1,$2,$3,$4,$5,$6,'PLANNED',$7,$8,$9,$10,$11,$12,1048576,$13,$14,
+                     now() + interval '24 hours','PERSONAL_WORKER',$13)`,
           [
             attemptId,
             scope.account_id,
@@ -530,6 +232,25 @@ async function handleCpuSubmission(
             resultKey,
           ],
         );
+        for (const object of objects) {
+          await transaction.query(
+            `INSERT INTO media_worker_input_objects (
+               id, account_id, workspace_id, attempt_id, uri, object_key, content_type,
+               content_length, checksum_sha256
+             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+            [
+              crypto.randomUUID(),
+              scope.account_id,
+              scope.workspace_id,
+              attemptId,
+              object.uri,
+              object.object_key,
+              object.content_type,
+              object.bytes,
+              object.sha256,
+            ],
+          );
+        }
       }
       return {
         attemptId,
@@ -673,7 +394,11 @@ async function handleCpuAttemptApi(
           version: number;
         }>(
           `UPDATE hosted_cpu_job_attempts
-              SET state = 'CANCEL_REQUESTED', cancellation_requested_at = now(), poll_after = now(),
+              SET state = CASE WHEN state = 'OUTBOXED' THEN 'CANCELLED' ELSE 'CANCEL_REQUESTED' END,
+                  cancellation_requested_at = now(), poll_after = now(),
+                  submitted_at = COALESCE(submitted_at, now()),
+                  terminal_at = CASE WHEN state = 'OUTBOXED' THEN now() ELSE terminal_at END,
+                  retain_until = CASE WHEN state = 'OUTBOXED' THEN GREATEST(deadline_at, now() + interval '30 minutes') ELSE retain_until END,
                   version = version + 1, updated_at = now()
             WHERE id = $1 AND state IN ('OUTBOXED', 'SUBMITTED', 'RUNNING', 'RECONCILING')
           RETURNING id, account_id, workspace_id, state, version`,
@@ -685,7 +410,7 @@ async function handleCpuAttemptApi(
           `INSERT INTO hosted_cpu_job_events (
              id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
            ) SELECT md5($1 || ':cancel:' || (COALESCE(max(sequence), 0) + 1)::text)::uuid,
-                    $2, $3, $1, COALESCE(max(sequence), 0) + 1, 'CANCEL_REQUESTED',
+                    $2, $3, $1, COALESCE(max(sequence), 0) + 1, $5,
                     $4, now()
                FROM hosted_cpu_job_events
               WHERE account_id = $2 AND workspace_id = $3 AND attempt_id = $1`,
@@ -693,7 +418,8 @@ async function handleCpuAttemptApi(
             attemptId,
             changed.account_id,
             changed.workspace_id,
-            await sha256(`CANCEL_REQUESTED:${attemptId}`),
+            await sha256(`${changed.state}:${attemptId}`),
+            changed.state,
           ],
         );
         return changed;
@@ -718,6 +444,93 @@ async function handleCpuAttemptApi(
     );
     if (!result.rows[0]) return json({ error: { code: "CPU_ATTEMPT_NOT_FOUND" } }, 404);
     return json({ schema_version: "videoforge-hosted-cpu-attempt/v1", ...result.rows[0] });
+  } finally {
+    await pool.end();
+  }
+}
+
+async function handleCpuOutputDelete(
+  request: Request,
+  environment: HostedRuntimeEnvironment,
+  config: ReturnType<typeof hostedRuntimeConfiguration>,
+  executionContext: HostedExecutionContext,
+  attemptId: string,
+): Promise<Response> {
+  if (!UUID.test(attemptId)) return json({ error: { code: "CPU_ATTEMPT_NOT_FOUND" } }, 404);
+  const bucket = environment.PRIVATE_ARTIFACTS;
+  if (!bucket) return json({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const session = await hostedSession(request, config, pool, executionContext);
+    if (!session?.user?.id) return json({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
+    const scope = await pool.query(`SELECT account_id FROM videoforge_hosted_session_scope($1)`, [
+      session.session.token,
+    ]);
+    const accountId = scope.rows[0]?.account_id;
+    if (typeof accountId !== "string")
+      return json({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, 403);
+    await pool.query("SELECT set_config($1, $2, false)", ["videoforge.account_id", accountId]);
+    const owned = await pool.query<{
+      state: string;
+      retention_deleted_at: string | null;
+      object_key: string | null;
+    }>(
+      `SELECT attempt.state, attempt.retention_deleted_at, authority.object_key
+         FROM hosted_cpu_job_attempts AS attempt
+         LEFT JOIN hosted_cpu_upload_authorities AS authority
+           ON authority.account_id = attempt.account_id
+          AND authority.workspace_id = attempt.workspace_id
+          AND authority.attempt_id = attempt.id
+          AND authority.issued_at IS NOT NULL
+        WHERE attempt.id = $1 AND attempt.state = 'SUCCEEDED'
+        ORDER BY authority.source`,
+      [attemptId],
+    );
+    if (owned.rows.length === 0)
+      return json({ error: { code: "CPU_ATTEMPT_OUTPUT_NOT_FOUND" } }, 404);
+    if (owned.rows[0]?.retention_deleted_at !== null) return new Response(null, { status: 204 });
+    const keys = owned.rows
+      .map((row) => row.object_key)
+      .filter((key): key is string => typeof key === "string")
+      .sort();
+    if (keys.length !== 2) return json({ error: { code: "CPU_ATTEMPT_OUTPUT_INCOMPLETE" } }, 409);
+    await bucket.delete(keys);
+    const factsSha256 = await sha256(
+      canonicalJson({
+        attempt_id: attemptId,
+        deleted_keys: keys,
+        reason: "EXPLICIT_USER_DELETE",
+        schema_version: "videoforge-explicit-output-deletion/v1",
+      }),
+    );
+    await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        accountId,
+      ]);
+      const changed = await transaction.query<{
+        account_id: string;
+        workspace_id: string;
+      }>(
+        `UPDATE hosted_cpu_job_attempts
+            SET retention_deleted_at = now(), version = version + 1, updated_at = now()
+          WHERE id = $1 AND state = 'SUCCEEDED' AND retention_deleted_at IS NULL
+        RETURNING account_id, workspace_id`,
+        [attemptId],
+      );
+      const row = changed.rows[0];
+      if (!row) return;
+      await transaction.query(
+        `INSERT INTO hosted_cpu_job_events (
+           id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
+         ) SELECT md5($1 || ':explicit-delete:' || (COALESCE(max(sequence), 0) + 1)::text)::uuid,
+                  $2, $3, $1, COALESCE(max(sequence), 0) + 1, 'RETENTION_DELETED', $4, now()
+             FROM hosted_cpu_job_events
+            WHERE account_id = $2 AND workspace_id = $3 AND attempt_id = $1`,
+        [attemptId, row.account_id, row.workspace_id, factsSha256],
+      );
+    });
+    return new Response(null, { status: 204 });
   } finally {
     await pool.end();
   }
@@ -749,24 +562,12 @@ export async function handleHostedRequest(
     return json({ error: { code: "HOSTED_CONFIGURATION_INVALID", retryable: false } }, 503);
   }
   const url = new URL(request.url);
-  if (
-    request.method === "POST" &&
-    url.pathname.startsWith("/api/v2/internal/cloud-run/callback/")
-  ) {
-    return handleCpuCallback(request, environment, url.pathname.split("/").at(-1) ?? "");
-  }
-  if (
-    request.method === "POST" &&
-    url.pathname.startsWith("/api/v2/internal/cloud-run/upload-port/")
-  ) {
-    return handleCpuUploadPort(request, environment, url.pathname.split("/").at(-1) ?? "");
-  }
-  if (
-    request.method === "GET" &&
-    url.pathname.startsWith("/api/v2/internal/cloud-run/cancelled/")
-  ) {
-    return handleCpuCancellationProbe(request, environment, url.pathname.split("/").at(-1) ?? "");
-  }
+  const personalWorkerResponse = await handlePersonalWorkerRequest(
+    request,
+    environment,
+    executionContext,
+  );
+  if (personalWorkerResponse) return personalWorkerResponse;
   if (url.pathname.startsWith("/api/auth/")) {
     const pool = createNeonPool(config.neon.databaseUrl);
     try {
@@ -784,7 +585,10 @@ export async function handleHostedRequest(
       database: "NEON_POSTGRES_REQUIRED",
       artifact_plane: "PRIVATE_R2_REQUIRED",
       orchestration: "CLOUDFLARE_WORKFLOW_REQUIRED",
-      cpu_jobs: "CLOUD_RUN_JOBS_REQUIRED",
+      cpu_jobs: "ACCOUNT_OWNED_PERSONAL_WORKER_REQUIRED",
+      supported_worker_platforms: ["WINDOWS", "MACOS"],
+      provider_cpu_spend: "$0",
+      authentication: config.email ? ["GOOGLE", "EMAIL_PASSWORD"] : ["GOOGLE"],
     });
   }
   if (request.method === "GET" && url.pathname === "/api/v2/tenant") {
@@ -796,6 +600,16 @@ export async function handleHostedRequest(
   const attemptMatch = /^\/api\/v2\/cpu-attempts\/([0-9a-f-]+)$/u.exec(url.pathname);
   if (attemptMatch && (request.method === "GET" || request.method === "POST")) {
     return handleCpuAttemptApi(request, config, executionContext, attemptMatch[1]!);
+  }
+  const outputDeleteMatch = /^\/api\/v2\/cpu-attempts\/([0-9a-f-]+)\/output$/u.exec(url.pathname);
+  if (outputDeleteMatch && request.method === "DELETE") {
+    return handleCpuOutputDelete(
+      request,
+      environment,
+      config,
+      executionContext,
+      outputDeleteMatch[1]!,
+    );
   }
   if (url.pathname.startsWith("/api/")) {
     return json(

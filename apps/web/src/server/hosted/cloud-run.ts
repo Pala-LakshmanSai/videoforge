@@ -1,5 +1,3 @@
-import type { HostedRuntimeConfiguration } from "./configuration";
-
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const CLOUD_RUN_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
 
@@ -13,6 +11,15 @@ interface ServiceAccountKey {
 interface AccessToken {
   readonly value: string;
   readonly expiresAtMs: number;
+}
+
+/** Historical V2-06 adapter retained only for rollback/source evidence. */
+export interface LegacyCloudRunConfiguration {
+  readonly projectId: string;
+  readonly region: string;
+  readonly asrJobName: string;
+  readonly renderJobName: string;
+  readonly serviceAccountJson: string;
 }
 
 function base64Url(value: Uint8Array | string): string {
@@ -108,14 +115,11 @@ export function executionNamesForAttempt(
 
 export class CloudRunJobsClient {
   readonly #key: ServiceAccountKey;
-  readonly #config: HostedRuntimeConfiguration["cloudRun"];
+  readonly #config: LegacyCloudRunConfiguration;
   readonly #fetch: typeof fetch;
   #accessToken: AccessToken | null = null;
 
-  constructor(
-    config: HostedRuntimeConfiguration["cloudRun"],
-    fetchImplementation: typeof fetch = fetch,
-  ) {
+  constructor(config: LegacyCloudRunConfiguration, fetchImplementation: typeof fetch = fetch) {
     this.#config = config;
     this.#key = serviceAccount(config.serviceAccountJson);
     this.#fetch = fetchImplementation;

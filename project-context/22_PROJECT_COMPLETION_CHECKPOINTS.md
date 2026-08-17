@@ -101,7 +101,7 @@ qualified all-5090 configuration would be about `$6.32/hour`, not a mixed-fallba
 - No immutable Mage or SoulX Serverless image/endpoint is published or qualified. RTX 5090 is not an
   allowed fallback until each exact runtime passes separate compatibility and economics evidence.
 - Production Cloudflare hosting, Better Auth integration, Neon persistence, private R2, signed URLs,
-  Cloud Run ASR/render Jobs, secrets, callbacks, and observability are not deployed end to end.
+  signed personal-worker ASR/render releases, secrets, leases, and observability are not deployed end to end.
 - No automatic real video has completed through the hosted multi-tenant system.
 - No two-user live Serverless concurrency, fair queue, worker death, duplicate delivery, timeout,
   response-loss, cancellation, or zero-worker-after-drain proof exists.
@@ -332,24 +332,30 @@ transport; ordinary production can no longer reach the global-session or manual-
 firewall, installed-Chrome two-account acceptance, no legacy production dispatch, and zero provider
 calls.
 
-## V2-06 — Hosted staging foundation and CPU media jobs
+## V2-06 — Hosted staging foundation and personal media workers
 
-**Outcome:** a private staging application runs independently of the user's Mac with production
-auth, tenant database/storage, durable orchestration, word transcription, and FFmpeg rendering.
+**Outcome:** a private staging application runs with production auth, tenant database/storage,
+durable orchestration, and account-owned Windows/macOS workers for word transcription and FFmpeg
+rendering. The hosted control plane is independent of the operator's Mac; each account's CPU stages
+intentionally wait for that account's paired computer.
 
 - Deploy the existing app/API to the selected Cloudflare environment, Better Auth with email and
   Google plus atomic invite admission, Neon PostgreSQL, and private R2.
 - Apply the V2 migrations and tenant query boundary. Use environment-scoped secrets and least
   privilege.
-- Deploy the pinned `whisper.cpp` and FFmpeg/FFprobe containers as scale-to-zero Cloud Run Jobs.
-  Prove the same contract/hash behavior as local parity.
-- Implement durable callback/poll reconciliation, signed artifact exchange, stage checkpoints,
-  cancellation, expiry, retention, and restart recovery.
+- Release a signed Windows x64 installer and signed/notarized macOS universal DMG containing pinned
+  whisper.cpp, FFmpeg/FFprobe, and the exact execution bundle. Installation starts the worker at
+  login; pairing is one authenticated browser confirmation with no copied code or configuration.
+- Implement tenant-bound enrollment, device credentials, heartbeat, exact one-device leases, fresh
+  signed artifact exchange, stage checkpoints, cancellation, stale-lease fencing/requeue, streamed
+  output, explicit user deletion of durable results, and control-plane/device restart recovery.
 - Keep GPU transport fake/disabled in staging until V2-07/V2-08 activation.
 
-**Proof:** two real invited accounts with isolated data and objects, production-auth negative suite,
-real hosted ASR/render of owned fixtures, restart/replay, no Mac dependency, infrastructure cost
-evidence, and real Chrome staging acceptance.
+**Proof:** two real invited accounts with isolated data, objects, devices, and leases; production-auth
+negative suite; signed Windows and notarized macOS install/autostart/update/remove proof; real hosted
+ASR/render of owned fixtures; offline/reconnect/restart/replay/cancel/stale-result proof; streaming R2
+hash parity; backup/restore; exact provider and user-device cost truth; and real Chrome staging
+acceptance. Local fixtures or unsigned packages cannot prove deployment/release.
 
 **Authority:** provider-free work first; stop once before any hosting mutation or paid service use
 with one exact bounded activation proposal.
@@ -422,7 +428,8 @@ concurrent paid runs.
 - Run Mage and SoulX concurrently for this one video while keeping tenant/revision lineage exact.
   The global two-slot contracts remain enabled, but live two-user load belongs to V2-11.
 - Persist truthful progress: queued, waiting for GPU, worker starting, model loading, generating
-  images/avatar, rendering, completed/failed. Provider state is not durability truth.
+  images/avatar, waiting for your computer, rendering, completed/failed. Provider/device state is
+  not durability truth.
 - Preserve successful units across retries; never regenerate accepted images/clips after unrelated
   failure.
 - Remove live ordinary-production access to manual Pod controllers and superseded global-session
@@ -432,6 +439,8 @@ concurrent paid runs.
 project, exact manifests/cost ledger/recovery, real Chrome playback/download, no cross-tenant
 visibility, and zero endpoint jobs plus zero total workers (`Active + Flex`) after drain. Endpoint
 configurations and two retained volumes may remain; their fixed charges are stated separately.
+The exact account-owned worker, lease, installer/tool identities, and recovery events are part of
+the proof.
 
 ## V2-10 — One real automatic Ranga-style video
 
@@ -462,6 +471,9 @@ additional demand fairly, and scales both endpoints back to zero.
 - Test worker death, unhealthy init, capacity delay, duplicate delivery, callback loss, timeout,
   TTL expiry, cancel-before-start, cancel-running, partial success, provider 429/5xx, database
   restart, object-store delay, and control-plane redeploy.
+- Test both personal-worker platforms for device offline/reconnect, reboot/autostart, sleep/wake,
+  stale lease/result rejection, device revocation, mandatory update, scratch cleanup, and isolation:
+  no account may claim work on another account's computer.
 - Verify at most one output is accepted per dispatch token, duplicate compute is detected and
   itemized, and cancellation never terminates a worker that may be processing another authorized
   job. Do not claim exactly-once provider execution or billing.
@@ -486,6 +498,9 @@ quality, throughput, and cost targets.
 - Measure all variable components: prompt/style calls, worker start/init/load/warm/inference/idle,
   retries, ASR, object storage/operations, rendering, and transfer. Report fixed volume/container
   costs separately.
+- Report personal-worker CPU provider cost as `$0` while measuring Windows/macOS wall time and
+  disclosing user electricity, device occupancy, disk, and network separately; never present local
+  compute as making the complete video free.
 - Optimize container import/startup, FlashBoot, sequential item execution, lossless transfer
   overhead, idle timeout, and durable retry behavior without changing model/quality contracts.
   `REQUEST_COUNT=1`, Mage 1280x720 output, and complete-batch attempt cardinality remain locked; any
@@ -512,7 +527,11 @@ manual GPU intervention.
 - Add structured tenant/job/request/lane metrics, traces, cost guards, alerts, dashboards, queue and
   endpoint saturation warnings, zero-worker drain alerts, and audit exports.
 - Prove backup/restore, migration rollback/roll-forward, artifact retention/erasure, disaster
-  recovery, endpoint/image rollback, and immutable configuration history.
+  recovery, endpoint/image rollback, personal-worker protocol/release rollback, explicit final-R2
+  deletion, and immutable configuration history.
+- Prove Windows code signing and macOS Developer ID signing/notarization, immutable installer/tool
+  hashes and SBOM/provenance, protected release credentials, mandatory security updates, enrollment
+  replay resistance, device revocation, lease fencing, and uninstall cleanup.
 - Add global hourly/cumulative spend stops, per-project cap enforcement, provider balance/capacity
   blockers, and operator-only aggregate analytics with separate authorization.
 - Finish accessibility/responsive/cross-browser real-Chrome acceptance while preserving the
@@ -525,7 +544,7 @@ manual GPU intervention.
 **Proof:** independent security/release audit with no P0/P1 findings, green CI and browser matrix,
 restore drill, alerts/runbooks, immutable release manifest, exact production URL/commit/images/
 endpoint configs, final cost, zero endpoint jobs, zero total workers (`Active + Flex`), two retained
-isolated volumes, and user sign-off.
+isolated volumes, signed Windows/macOS release identities, and user sign-off.
 
 ## Every-checkpoint completion contract
 

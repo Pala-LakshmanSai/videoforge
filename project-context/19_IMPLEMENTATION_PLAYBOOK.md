@@ -13,7 +13,7 @@ The production target is:
 
 - invite-only Better Auth with one default private workspace per account;
 - Cloudflare Worker/Workflow control plane, Neon Postgres, private tenant R2;
-- pinned Cloud Run Jobs for whisper.cpp and FFmpeg;
+- signed tenant-owned Windows/macOS workers for pinned whisper.cpp and FFmpeg;
 - Postgres fair admission: one active provider workload/account and two globally from different
   accounts; videos retain one/account and two/global caps, and explicit previews use the same slots
   below every eligible video;
@@ -54,7 +54,7 @@ The dependency order is binding even if exact checkpoint labels change:
    firewall.
 6. Cut application/runtime/UI provider-free paths fully to V2; remove manual GPU/Pod controls and
    prove failure/restart/cancellation states.
-7. Deploy/qualify isolated hosted auth/Neon/R2/Cloudflare/Cloud Run staging.
+7. Deploy/qualify isolated hosted auth/Neon/R2/Cloudflare staging plus signed personal workers.
 8. Publish/configure/qualify Mage Serverless against the existing Mage volume under exact authority.
 9. Publish/configure/qualify SoulX Serverless against the existing SoulX volume under exact authority.
 10. Run one owned short integrated Generate-to-MP4 project in installed Chrome.
@@ -91,7 +91,8 @@ Canonical verify never contacts providers or proves hosted/live gates.
 apps/web/                  React/Vite UI + same-origin Cloudflare API
 workers/image-media/       Mage runtime + RunPod Serverless handler + fixture adapter
 workers/avatar-primary/    SoulX runtime + RunPod Serverless handler + fixture adapter
-workers/media-local/       Whisper/FFmpeg contract: Cloud Run production + local parity
+workers/media-local/       Provider-neutral Whisper/FFmpeg execution core + personal-worker adapter
+apps/media-worker-desktop/ Native Windows/macOS packaging, signing, release manifest, and autostart
 packages/contracts/        JSON Schema, TypeScript/Python parity, fixtures
 packages/config/           Versioned non-secret runtime/endpoint profiles
 packages/test-fixtures/    Owned/synthetic deterministic assets

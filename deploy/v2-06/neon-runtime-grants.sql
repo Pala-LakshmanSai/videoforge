@@ -18,21 +18,17 @@ TO :"runtime_role";
 
 GRANT EXECUTE ON FUNCTION public.videoforge_hosted_session_scope(text)
 TO :"runtime_role";
-GRANT EXECUTE ON FUNCTION public.videoforge_accept_hosted_cpu_callback(
-  uuid, text, text, text, text, bigint, text, text, text, timestamptz
-)
-TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_authorize_hosted_cpu_upload(
   uuid, text, text, text, text, bigint, text, timestamptz
 )
 TO :"runtime_role";
-GRANT EXECUTE ON FUNCTION public.videoforge_find_hosted_cpu_submission(
-  text, text, uuid, uuid, text, text, text
-)
-TO :"runtime_role";
-GRANT EXECUTE ON FUNCTION public.videoforge_hosted_cpu_cancellation_requested(uuid, text)
-TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_hosted_cpu_expected_primary_output(uuid, text)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_media_worker_device_scope(text)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_media_worker_enrollment_poll(uuid, text, timestamptz)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_media_worker_enrollment_consume(uuid, text)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_due_hosted_cpu_retention(integer)
 TO :"runtime_role";
@@ -42,7 +38,10 @@ TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON
   hosted_cpu_job_attempts,
   hosted_cpu_upload_authorities,
-  hosted_cpu_job_events,
+  media_worker_enrollments,
+  media_worker_devices,
+  media_worker_input_objects,
+  media_worker_leases,
   projects,
   project_inputs,
   project_revisions,
@@ -81,6 +80,11 @@ GRANT SELECT, INSERT, UPDATE ON
   workflow_events,
   outbox,
   cost_events
+TO :"runtime_role";
+
+GRANT SELECT, INSERT ON
+  hosted_cpu_job_events,
+  media_worker_events
 TO :"runtime_role";
 
 GRANT DELETE ON

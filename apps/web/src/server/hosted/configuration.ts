@@ -41,12 +41,7 @@ export interface HostedRuntimeEnvironment {
   readonly VIDEOFORGE_PUBLIC_ORIGIN?: string;
   readonly VIDEOFORGE_R2_BUCKET_NAME?: string;
   readonly VIDEOFORGE_R2_REGION?: string;
-  readonly GCP_PROJECT_ID?: string;
-  readonly GCP_REGION?: string;
-  readonly GCP_ASR_JOB_NAME?: string;
-  readonly GCP_RENDER_JOB_NAME?: string;
-  readonly GCP_ASR_IMAGE_DIGEST?: string;
-  readonly GCP_RENDER_IMAGE_DIGEST?: string;
+  readonly MEDIA_WORKER_RELEASE_MANIFEST_JSON?: string;
   readonly DATABASE_URL?: string;
   readonly BETTER_AUTH_SECRET?: string;
   readonly GOOGLE_CLIENT_ID?: string;
@@ -54,10 +49,10 @@ export interface HostedRuntimeEnvironment {
   readonly R2_ACCOUNT_ID?: string;
   readonly R2_ACCESS_KEY_ID?: string;
   readonly R2_SECRET_ACCESS_KEY?: string;
-  readonly GCP_RUN_INVOKER_SERVICE_ACCOUNT_JSON?: string;
   readonly EMAIL_DELIVERY_ENDPOINT?: string;
   readonly EMAIL_DELIVERY_API_KEY?: string;
   readonly WORKFLOW_CALLBACK_SECRET?: string;
+  readonly MEDIA_WORKER_TOKEN_SECRET?: string;
 }
 
 export interface HostedRuntimeConfiguration {
@@ -76,20 +71,19 @@ export interface HostedRuntimeConfiguration {
     readonly googleClientId: string;
     readonly googleClientSecret: string;
   };
-  readonly cloudRun: {
-    readonly projectId: string;
-    readonly region: string;
-    readonly asrJobName: string;
-    readonly renderJobName: string;
-    readonly asrImageDigest: string;
-    readonly renderImageDigest: string;
-    readonly serviceAccountJson: string;
+  readonly mediaWorkerRelease: {
+    readonly version: string;
+    readonly minimumProtocolVersion: number;
+    readonly executionBundleSha256: string;
+    readonly windows: { readonly url: string; readonly sha256: string; readonly sizeBytes: number };
+    readonly macos: { readonly url: string; readonly sha256: string; readonly sizeBytes: number };
   };
   readonly email: {
     readonly endpoint: string;
     readonly apiKey: string;
-  };
+  } | null;
   readonly workflowCallbackSecret: string;
+  readonly mediaWorkerTokenSecret: string;
   toJSON(): {
     readonly schemaVersion: "videoforge-hosted-configuration/v1";
     readonly credentials: "REDACTED";
@@ -117,18 +111,11 @@ const REQUIRED = [
   "R2_ACCOUNT_ID",
   "R2_ACCESS_KEY_ID",
   "R2_SECRET_ACCESS_KEY",
-  "GCP_RUN_INVOKER_SERVICE_ACCOUNT_JSON",
-  "EMAIL_DELIVERY_ENDPOINT",
-  "EMAIL_DELIVERY_API_KEY",
   "WORKFLOW_CALLBACK_SECRET",
+  "MEDIA_WORKER_TOKEN_SECRET",
   "VIDEOFORGE_PUBLIC_ORIGIN",
   "VIDEOFORGE_R2_BUCKET_NAME",
-  "GCP_PROJECT_ID",
-  "GCP_REGION",
-  "GCP_ASR_JOB_NAME",
-  "GCP_RENDER_JOB_NAME",
-  "GCP_ASR_IMAGE_DIGEST",
-  "GCP_RENDER_IMAGE_DIGEST",
+  "MEDIA_WORKER_RELEASE_MANIFEST_JSON",
 ] as const;
 
 function required(source: HostedRuntimeEnvironment, key: (typeof REQUIRED)[number]): string {
@@ -158,6 +145,71 @@ function httpsOrigin(value: string, key: string): string {
   return parsed.pathname === "/" ? parsed.origin : parsed.toString().replace(/\/$/u, "");
 }
 
+function releaseFile(value: unknown, platform: "windows" | "macos") {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new HostedConfigurationError(`Media worker ${platform} release is malformed.`, [
+      "MEDIA_WORKER_RELEASE_MANIFEST_JSON",
+    ]);
+  }
+  const file = value as Record<string, unknown>;
+  if (
+    Object.keys(file).sort().join(",") !== "sha256,size_bytes,url" ||
+    typeof file.url !== "string" ||
+    typeof file.sha256 !== "string" ||
+    !/^sha256:[0-9a-f]{64}$/u.test(file.sha256) ||
+    !Number.isSafeInteger(file.size_bytes) ||
+    Number(file.size_bytes) < 1
+  ) {
+    throw new HostedConfigurationError(`Media worker ${platform} release is malformed.`, [
+      "MEDIA_WORKER_RELEASE_MANIFEST_JSON",
+    ]);
+  }
+  return Object.freeze({
+    url: httpsOrigin(file.url, `media worker ${platform} URL`),
+    sha256: file.sha256,
+    sizeBytes: Number(file.size_bytes),
+  });
+}
+
+function mediaWorkerRelease(value: string): HostedRuntimeConfiguration["mediaWorkerRelease"] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new HostedConfigurationError("Media worker release manifest is not valid JSON.", [
+      "MEDIA_WORKER_RELEASE_MANIFEST_JSON",
+    ]);
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new HostedConfigurationError("Media worker release manifest is malformed.", [
+      "MEDIA_WORKER_RELEASE_MANIFEST_JSON",
+    ]);
+  }
+  const record = parsed as Record<string, unknown>;
+  if (
+    Object.keys(record).sort().join(",") !==
+      "execution_bundle_sha256,macos,minimum_protocol_version,schema_version,version,windows" ||
+    record.schema_version !== "videoforge-media-worker-release/v1" ||
+    typeof record.version !== "string" ||
+    !/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/u.test(record.version) ||
+    !Number.isSafeInteger(record.minimum_protocol_version) ||
+    Number(record.minimum_protocol_version) < 1 ||
+    typeof record.execution_bundle_sha256 !== "string" ||
+    !/^sha256:[0-9a-f]{64}$/u.test(record.execution_bundle_sha256)
+  ) {
+    throw new HostedConfigurationError("Media worker release manifest is malformed.", [
+      "MEDIA_WORKER_RELEASE_MANIFEST_JSON",
+    ]);
+  }
+  return Object.freeze({
+    version: record.version,
+    minimumProtocolVersion: Number(record.minimum_protocol_version),
+    executionBundleSha256: record.execution_bundle_sha256,
+    windows: releaseFile(record.windows, "windows"),
+    macos: releaseFile(record.macos, "macos"),
+  });
+}
+
 export function hostedRuntimeConfiguration(
   source: HostedRuntimeEnvironment,
 ): HostedRuntimeConfiguration {
@@ -180,10 +232,16 @@ export function hostedRuntimeConfiguration(
     required(source, "VIDEOFORGE_PUBLIC_ORIGIN"),
     "VIDEOFORGE_PUBLIC_ORIGIN",
   );
-  const emailEndpoint = httpsOrigin(
-    required(source, "EMAIL_DELIVERY_ENDPOINT"),
-    "EMAIL_DELIVERY_ENDPOINT",
-  );
+  const hasEmailEndpoint =
+    typeof source.EMAIL_DELIVERY_ENDPOINT === "string" && source.EMAIL_DELIVERY_ENDPOINT.length > 0;
+  const hasEmailKey =
+    typeof source.EMAIL_DELIVERY_API_KEY === "string" && source.EMAIL_DELIVERY_API_KEY.length > 0;
+  if (hasEmailEndpoint !== hasEmailKey) {
+    throw new HostedConfigurationError(
+      "Email delivery endpoint and key must either both be configured or both be absent.",
+      ["EMAIL_DELIVERY_ENDPOINT", "EMAIL_DELIVERY_API_KEY"],
+    );
+  }
   const databaseUrl = required(source, "DATABASE_URL");
   if (!/^postgres(?:ql)?:\/\//u.test(databaseUrl)) {
     throw new HostedConfigurationError("DATABASE_URL must be a PostgreSQL URL.", ["DATABASE_URL"]);
@@ -201,12 +259,11 @@ export function hostedRuntimeConfiguration(
       ["WORKFLOW_CALLBACK_SECRET"],
     );
   }
-  const asrImageDigest = required(source, "GCP_ASR_IMAGE_DIGEST");
-  const renderImageDigest = required(source, "GCP_RENDER_IMAGE_DIGEST");
-  if (![asrImageDigest, renderImageDigest].every((value) => /^sha256:[0-9a-f]{64}$/u.test(value))) {
+  const mediaWorkerTokenSecret = required(source, "MEDIA_WORKER_TOKEN_SECRET");
+  if (mediaWorkerTokenSecret.length < 32 || mediaWorkerTokenSecret === workflowCallbackSecret) {
     throw new HostedConfigurationError(
-      "Cloud Run image identities must be immutable SHA-256 digests.",
-      ["GCP_ASR_IMAGE_DIGEST", "GCP_RENDER_IMAGE_DIGEST"],
+      "MEDIA_WORKER_TOKEN_SECRET must contain at least 32 characters and differ from callback authority.",
+      ["MEDIA_WORKER_TOKEN_SECRET"],
     );
   }
   const redacted = Object.freeze({
@@ -231,20 +288,16 @@ export function hostedRuntimeConfiguration(
       accessKeyId: required(source, "R2_ACCESS_KEY_ID"),
       secretAccessKey: required(source, "R2_SECRET_ACCESS_KEY"),
     }),
-    cloudRun: Object.freeze({
-      projectId: required(source, "GCP_PROJECT_ID"),
-      region: required(source, "GCP_REGION"),
-      asrJobName: required(source, "GCP_ASR_JOB_NAME"),
-      renderJobName: required(source, "GCP_RENDER_JOB_NAME"),
-      asrImageDigest,
-      renderImageDigest,
-      serviceAccountJson: required(source, "GCP_RUN_INVOKER_SERVICE_ACCOUNT_JSON"),
-    }),
-    email: Object.freeze({
-      endpoint: emailEndpoint,
-      apiKey: required(source, "EMAIL_DELIVERY_API_KEY"),
-    }),
+    mediaWorkerRelease: mediaWorkerRelease(required(source, "MEDIA_WORKER_RELEASE_MANIFEST_JSON")),
+    email:
+      hasEmailEndpoint && hasEmailKey
+        ? Object.freeze({
+            endpoint: httpsOrigin(source.EMAIL_DELIVERY_ENDPOINT!, "EMAIL_DELIVERY_ENDPOINT"),
+            apiKey: source.EMAIL_DELIVERY_API_KEY!,
+          })
+        : null,
     workflowCallbackSecret,
+    mediaWorkerTokenSecret,
     toJSON: () => redacted,
   });
 }

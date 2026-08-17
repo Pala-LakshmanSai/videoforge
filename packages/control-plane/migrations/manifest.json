@@ -186,6 +186,12 @@
       "name": "v2_06_hosted_submission",
       "filename": "0031_v2_06_hosted_submission.sql",
       "sha256": "sha256:450d19592707f14469fa76d14b7dbc4505ef290b1572e5572c6b63e3114c5ea5"
+    },
+    {
+      "version": 32,
+      "name": "v2_06_personal_media_workers",
+      "filename": "0032_v2_06_personal_media_workers.sql",
+      "sha256": "sha256:baefa1ce06f8625b32b12194792dcced2374ba05da359a08a359315ab5115c17"
     }
   ]
 }

@@ -24,7 +24,8 @@ foundation, gate, artifact identity, cost fact, or audit depends on it.
 5. `V2-04`: implement provider-free Serverless v3 authority, transport, outbox, receipts, and
    recovery.
 6. `V2-05`: cut the app to the provider-free v3 runtime and remove live manual-Pod/GPU controls.
-7. `V2-06`: deploy private hosted staging with auth, Neon, R2, Cloudflare, and Cloud Run CPU jobs.
+7. `V2-06`: deploy private hosted staging with auth, Neon, R2, Cloudflare, and signed tenant-owned
+   Windows/macOS personal media workers.
 8. `V2-07`: qualify Mage Serverless using the existing sealed Mage-only volume.
 9. `V2-08`: qualify SoulX Serverless using the existing sealed SoulX-only volume.
 10. `V2-09`: run one short real hosted end-to-end project.

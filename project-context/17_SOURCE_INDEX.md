@@ -84,10 +84,8 @@ Read when: verifying a claim, refreshing prices/licenses, or tracing a decision.
 - RunPod Serverless template/endpoint CLI boundary:
   [runpodctl Serverless](https://docs.runpod.io/runpodctl/reference/runpodctl-serverless)
 - RunPod public GPU/storage overview: [runpod.io/pricing](https://www.runpod.io/pricing)
-- Cloud Run Jobs creation/configuration for pinned CPU media workers: [Create jobs](https://cloud.google.com/run/docs/create-jobs)
-- Cloud Run Job execution through console, CLI, client libraries, or REST `jobs.run`: [Execute jobs](https://cloud.google.com/run/docs/execute/jobs)
-- Current Cloud Run usage pricing and region dependence: [Cloud Run pricing](https://cloud.google.com/run/pricing)
-- Current Cloud Run job/resource/CPU/memory/execution limits and regional quotas: [Cloud Run quotas and limits](https://cloud.google.com/run/quotas)
+- Historical Cloud Run sources remain only as audit/rollback references; Cloud Run is not an active
+  V2-06 production dependency after `DEC_PERSONAL_WORKER_001`.
 - Better Auth email/password, social-provider, signup, and sign-in primitives: [Basic usage](https://better-auth.com/docs/basic-usage)
 - Better Auth email verification configuration and social-email behavior: [Email](https://better-auth.com/docs/concepts/email)
 - Cloudflare React SPA + API in one Vite Worker: [developers.cloudflare.com/workers/vite-plugin/tutorial](https://developers.cloudflare.com/workers/vite-plugin/tutorial/)
@@ -141,9 +139,9 @@ All three paths are optional local evidence and are not VideoForge build depende
 
 - HyperFrames is an HTML/CSS/Chrome/FFmpeg compositor whose motion-graphics/text strengths are irrelevant here; direct FFmpeg is leaner.
 - Remotion similarly does not improve avatar/image realism or voiceover relevance for this grammar.
-- Cloud Run Jobs is the selected scale-to-zero production boundary for whisper.cpp transcription and
-  FFmpeg render/probe. Official docs support authenticated REST execution; exact region, CPU,
-  memory, timeout, throughput, and cost remain benchmark-gated against current pricing/quotas.
+- Signed account-owned Windows/macOS workers are the selected production boundary for whisper.cpp
+  transcription and FFmpeg render/probe. Exact OS signing identities, bundled tool hashes, protocol
+  version, installer behavior, device security, runtime, and recovery remain V2-06 gates.
 - Better Auth supplies email/password, verified-email, and Google identity primitives. VideoForge's
   unique single-use email-bound invite, secure verifier, and atomic redemption are app-owned
   contracts; the cited Better Auth pages do not define that policy.

@@ -17,7 +17,7 @@ V2-02  tenant-private artifacts, R2 ports, and scratch isolation
 V2-03  fair per-account queue and two global active slots
 V2-04  provider-free Serverless v3 transport, authority, outbox, and recovery
 V2-05  provider-free application cutover, truthful UI, and runtime firewall
-V2-06  hosted auth, Neon, R2, Cloudflare, and Cloud Run staging
+V2-06  hosted auth, Neon, R2, Cloudflare, and signed tenant-owned Windows/macOS media workers
 V2-07  Mage Serverless qualification on the existing sealed Mage volume
 V2-08  SoulX Serverless qualification on the existing sealed SoulX volume
 V2-09  one short real hosted end-to-end project

@@ -183,11 +183,11 @@ Timing model is pinned `whisper.cpp ggml-base.en`:
 - English greedy decode, `--max-len 1 --split-on-word`, best-of 1, beam size 1;
 - preserve deterministic long-file chunk overlap/reconciliation and exact executable hashes.
 
-Production uses authenticated scale-to-zero Cloud Run Jobs over tenant-private immutable R2
-manifests. A second mode runs pinned FFmpeg/FFprobe for final rendering. These jobs have no RunPod
-credential or model-volume access. The Mac executes the same entrypoints only for development parity.
-Cloud Run region/resources/timeout, representative 30-minute cost/runtime, and hosted identity remain
-checkpoint-gated.
+Production uses an authenticated account-owned Windows/macOS personal worker over fresh tenant-
+private immutable R2 ports. A second mode runs pinned FFmpeg/FFprobe for final rendering. The worker
+has no database, reusable R2, RunPod, Runware, Google, admin credential, or model-volume access.
+Exact Windows/macOS tool hashes, signed installer identities, representative 30-minute runtime,
+offline/recovery behavior, and protocol/update compatibility remain checkpoint-gated.
 
 ## Provider and model-change rule
 

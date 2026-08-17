@@ -1,4 +1,4 @@
-"""Cloud Run-compatible CPU media entrypoint promoted from the provider-free local slice."""
+"""Provider-neutral CPU media core with personal-worker and historical Cloud Run adapters."""
 
 from videoforge_image_media.jobs.transcribe import (
     ChunkReconciliationError,

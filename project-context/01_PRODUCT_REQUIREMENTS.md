@@ -141,7 +141,7 @@ fallback, or model substitution is active.
 ## Acceptance boundary
 
 Production-ready means hosted identity/ownership, Neon truth, private R2, Cloudflare orchestration,
-Cloud Run media jobs, both RunPod Serverless lanes, one complete real project, two-user concurrency,
+signed tenant-owned Windows/macOS media workers, both RunPod Serverless lanes, one complete real project, two-user concurrency,
 5–10-account fairness/recovery, production-length quality/cost evidence, monitoring/runbooks, and
 independent zero-worker proof all pass. Local fixtures, Pod samples, model-volume presence, or a
 playable short MP4 alone do not prove this boundary.

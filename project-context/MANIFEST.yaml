@@ -1,7 +1,7 @@
 schema_version: "2.0"
 project: VideoForge
 phase_source: CURRENT_STATE.yaml
-last_updated: "2026-08-16"
+last_updated: "2026-08-17"
 source_of_truth: project-context
 
 current_selected_profile: v2_06_hosted_staging
@@ -59,9 +59,11 @@ read_profiles:
     - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_06_hosted_staging:
     - tasks/VF-10-06.md
+    - 05_UI_UX_SPEC.md
     - 06_SYSTEM_ARCHITECTURE.md
-    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
     - 10_DATA_AND_API_CONTRACTS.md
+    - 11_COST_SPEED_BUDGET.md
+    - 14_TESTING_AND_ACCEPTANCE.md
     - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_07_mage_serverless:
     - tasks/VF-10-07.md
@@ -209,7 +211,9 @@ hard_rules:
   - no_llm_timing_or_composition_selection
   - no_full_voiceover_avatar_dispatch
   - one_native_avatar_clip_serves_both_layouts
-  - production_asr_and_render_use_scale_to_zero_cloud_run_jobs
+  - production_asr_and_render_use_tenant_owned_windows_or_macos_personal_worker
+  - personal_worker_outbound_https_only_tenant_bound_leases_no_provider_credentials
+  - successful_final_video_deleted_from_r2_only_on_explicit_user_delete
   - published_image_style_and_avatar_profile_versions_pinned_per_revision
   - private_inputs_outputs_credentials_and_model_bytes_never_enter_git
 
@@ -224,7 +228,7 @@ approved_decisions:
   DEC_COST_001: representative_30m_variable_target_1_usd_hard_ceiling_2_usd
   DEC_DB_001: additive_postgres_contracts_pglite_tests_neon_production
   DEC_DISPATCH_001: two_phase_serverless_authority_at_most_one_accepted_output
-  DEC_HOSTING_001: cloudflare_neon_r2_cloud_run_scale_to_zero
+  DEC_HOSTING_001: superseded_cloud_run_hosting_decision_history
   DEC_IMAGE_001: exact_mage_flow_int8_convrot_profile
   DEC_IMAGE_002: mage_terms_risk_accepted_no_clear_permission_claim
   DEC_IMAGE_003: strict_mage_review_one_same_scene_retry
@@ -235,8 +239,9 @@ approved_decisions:
   DEC_OUTPUT_003: subtle_centered_jitter_free_zoom
   DEC_QUEUE_001: postgres_authoritative_runpod_transport
   DEC_QUEUE_003: fair_one_per_account_two_global_admission
-  DEC_RENDER_001: direct_ffmpeg_cloud_run_production
+  DEC_RENDER_001: superseded_cloud_run_render_decision_history
   DEC_RENDER_002: no_remotion_or_hyperframes
+  DEC_PERSONAL_WORKER_001: tenant_owned_windows_macos_asr_render_worker
   DEC_RUNPOD_003: two_scale_to_zero_serverless_lanes_existing_volumes
   DEC_SCHEDULER_001: seeded_deterministic_bounded_variation
   DEC_SCHEDULER_002: approximately_22_percent_avatar_even_full_split
@@ -249,7 +254,7 @@ approved_decisions:
   DEC_STYLE_006: traits_not_reference_content
   DEC_STYLE_007: preserve_and_detach_manual_edit_provenance
   DEC_TENANCY_002: tenant_private_one_default_workspace
-  DEC_TIMING_001: whisper_cpp_cloud_run_production
+  DEC_TIMING_001: superseded_cloud_run_timing_decision_history
   DEC_UX_001: fixture_first_real_chrome
   DEC_UX_002: preserve_compact_production_console
   DEC_UX_003: visual_presets_and_audit_details

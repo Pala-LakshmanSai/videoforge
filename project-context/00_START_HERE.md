@@ -1,9 +1,9 @@
 # VideoForge: start here
 
-Status: V2-06 local hosted-submission repair is green and read-only provider inventory is active;
-full hosted staging acceptance is blocked, and no mutation or spend authority is active
+Status: V2-06 personal-media-worker conversion is locally implemented; full hosted and signed-
+installer acceptance is blocked, and no remote mutation or spend authority is active
 Context schema: `2.0`
-Last updated: `2026-08-16`
+Last updated: `2026-08-17`
 
 VideoForge is an invite-only voiceover-to-video product for 5–10 people. Each admitted account has
 one default workspace. User-created projects, queues, Avatar Profiles, Image Styles, media, manifests,
@@ -43,8 +43,12 @@ an unqualified fallback: RunPod may place work on any GPU type configured for an
 
 Private R2 is the durable artifact plane. Keys are account/workspace/project/attempt scoped, accepted
 objects are checksum-bound, and signed URLs are short-lived. Model volumes never hold user media.
-Cloud Run Jobs remain the production target for pinned whisper.cpp transcription and FFmpeg
-render/probe; the Mac path is development parity only. Hosted deployment is still unproven.
+Pinned whisper.cpp transcription and FFmpeg render/probe run on an account-owned Windows or macOS
+personal media worker. The worker installs like a normal desktop application, pairs once through the
+already-authenticated browser, starts at login, uses outbound HTTPS only, and receives no database,
+R2, RunPod, Runware, Google, or admin credential. If that account's worker is offline, its job waits
+truthfully for the computer; it never borrows another tenant's device. Hosted deployment and signed
+installer acceptance are still unproven.
 
 ## Admission, queue, and authority
 

@@ -1,11 +1,16 @@
 import { createAuthClient } from "better-auth/react";
 import { useEffect, useState } from "react";
+import { MediaWorkerSetup } from "./MediaWorkerSetup";
 
 interface Tenant {
   readonly account_id: string;
   readonly workspace_id: string;
   readonly workspace_name: string;
   readonly user: { readonly email: string; readonly name: string };
+}
+
+interface HostedStatus {
+  readonly authentication: readonly ("GOOGLE" | "EMAIL_PASSWORD")[];
 }
 
 const authClient = createAuthClient({ baseURL: window.location.origin, basePath: "/api/auth" });
@@ -23,6 +28,7 @@ export function HostedStagingApp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [status, setStatus] = useState<HostedStatus | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -37,6 +43,13 @@ export function HostedStagingApp() {
 
   useEffect(() => {
     void refresh();
+    void fetch("/api/v2/hosted/status", { headers: { accept: "application/json" } })
+      .then((response) => {
+        if (!response.ok) throw new Error("Hosted status failed.");
+        return response.json() as Promise<HostedStatus>;
+      })
+      .then(setStatus)
+      .catch(() => setMessage("Hosted staging is unavailable. No local fallback was used."));
   }, []);
 
   async function signIn() {
@@ -85,19 +98,16 @@ export function HostedStagingApp() {
           <h1>{scope.workspace_name}</h1>
           <p>Signed in as {scope.user.email}</p>
           <dl>
-            <dt>Account</dt>
-            <dd>{scope.account_id}</dd>
-            <dt>Workspace</dt>
-            <dd>{scope.workspace_id}</dd>
             <dt>Database</dt>
             <dd>Neon tenant scope active</dd>
             <dt>Artifacts</dt>
             <dd>Private R2 signed ports</dd>
             <dt>CPU media</dt>
-            <dd>Cloud Run Jobs, scale to zero</dd>
+            <dd>Your connected Windows or Mac · $0 provider CPU cost</dd>
             <dt>GPU</dt>
             <dd>Disabled · fixture transport only</dd>
           </dl>
+          <MediaWorkerSetup />
           <button type="button" onClick={() => void authClient.signOut().then(refresh)}>
             Sign out
           </button>
@@ -111,31 +121,7 @@ export function HostedStagingApp() {
         <p>V2-06 private staging</p>
         <h1>Enter VideoForge</h1>
         <p>Only pre-invited, verified accounts are admitted.</p>
-        <label>
-          Email
-          <input
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </label>
-        <label>
-          Password
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </label>
         <div>
-          <button type="button" onClick={() => void signIn()}>
-            Sign in
-          </button>
-          <button type="button" onClick={() => void signUp()}>
-            Create invited account
-          </button>
           <button
             type="button"
             onClick={() =>
@@ -147,10 +133,40 @@ export function HostedStagingApp() {
           >
             Continue with Google
           </button>
-          <button type="button" onClick={() => void resetPassword()}>
-            Reset password
-          </button>
         </div>
+        {status?.authentication.includes("EMAIL_PASSWORD") ? (
+          <>
+            <label>
+              Email
+              <input
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </label>
+            <label>
+              Password
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </label>
+            <div>
+              <button type="button" onClick={() => void signIn()}>
+                Sign in with email
+              </button>
+              <button type="button" onClick={() => void signUp()}>
+                Create invited account
+              </button>
+              <button type="button" onClick={() => void resetPassword()}>
+                Reset password
+              </button>
+            </div>
+          </>
+        ) : null}
         {message ? <p role="status">{message}</p> : null}
       </section>
     </main>

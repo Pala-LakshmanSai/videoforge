@@ -2,13 +2,16 @@
 
 Rollback is an approved operation, not ambient authority.
 
-1. Stop new browser traffic by deploying the recorded prior Worker version or the fail-closed
-   hosted configuration. Do not delete R2, Neon, or Artifact Registry while jobs may be active.
-2. Cancel only the exact recorded Cloud Run executions, then wait for every execution to become
-   terminal. Cloud Run Jobs remain scale-to-zero and retain no running instances while idle.
-3. Restore the two previously recorded Cloud Run Job manifests and prior immutable image digest.
-4. Keep migration 0029 applied. It is additive; do not down-migrate auth, tenant, or receipt rows.
+1. Stop new claims by deploying the recorded prior Worker version or the fail-closed hosted
+   configuration. Do not delete R2, Neon, releases, or installer assets while leases may be active.
+2. Revoke only the affected account-owned device credentials, mark their exact active leases
+   cancelled, and let the database fence every late completion. Never kill unrelated user processes.
+3. Restore the previously recorded Cloudflare Worker version and prior immutable signed desktop
+   release manifest. A desktop downgrade is permitted only when its protocol remains accepted.
+4. Keep migrations 0029-0032 applied. They are additive; do not down-migrate auth, tenant, device,
+   lease, or receipt rows.
 5. Retain the encrypted database backup and private R2 objects for the separately approved retention
    period. Delete them only through the recorded cleanup operation after the restore drill passes.
-6. Record Worker version, job revisions, image digest, migration hash, R2 inventory hash, active
-   execution count, finite settled cost, and remaining recurring storage before declaring rollback.
+6. Record Cloudflare Worker version, desktop release/checksums/signing identities, migration hash, R2
+   inventory hash, active lease count, provider CPU spend ($0 expected), finite settled cost, and
+   remaining recurring storage before declaring rollback.

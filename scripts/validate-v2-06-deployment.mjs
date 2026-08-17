@@ -30,19 +30,19 @@ if (JSON.stringify(wrangler.triggers?.crons) !== JSON.stringify(["17 2 * * *"]))
 if (wrangler.assets?.directory !== "./dist-staging/client")
   fail("staging assets must exclude server build artifacts");
 if (
-  wrangler.vars?.GCP_ASR_IMAGE_DIGEST !== "__V2_06_ASR_IMAGE_SHA256__" ||
-  wrangler.vars?.GCP_RENDER_IMAGE_DIGEST !== "__V2_06_RENDER_IMAGE_SHA256__"
+  wrangler.vars?.MEDIA_WORKER_RELEASE_MANIFEST_JSON !==
+  "__V2_06_PERSONAL_WORKER_RELEASE_MANIFEST_JSON__"
 )
-  fail("Cloud Run image identity placeholders drifted");
+  fail("personal worker release identity placeholder drifted");
+if (Object.keys(wrangler.vars ?? {}).some((key) => key.startsWith("GCP_")))
+  fail("retired Google Cloud compute configuration remains active");
 
 const expectedSecrets = [
   "BETTER_AUTH_SECRET",
   "DATABASE_URL",
-  "EMAIL_DELIVERY_API_KEY",
-  "EMAIL_DELIVERY_ENDPOINT",
-  "GCP_RUN_INVOKER_SERVICE_ACCOUNT_JSON",
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
+  "MEDIA_WORKER_TOKEN_SECRET",
   "R2_ACCESS_KEY_ID",
   "R2_ACCOUNT_ID",
   "R2_SECRET_ACCESS_KEY",
@@ -52,6 +52,11 @@ const secretAllowlist = JSON.parse(await read("deploy/v2-06/secrets.allowlist.js
 const actualSecrets = [...(secretAllowlist.required ?? [])].sort();
 if (JSON.stringify(actualSecrets) !== JSON.stringify(expectedSecrets))
   fail("least-privilege secret allowlist drifted");
+if (
+  JSON.stringify([...(secretAllowlist.optional_together ?? [])].sort()) !==
+  JSON.stringify(["EMAIL_DELIVERY_API_KEY", "EMAIL_DELIVERY_ENDPOINT"])
+)
+  fail("optional email secret pair drifted");
 if ("secrets" in wrangler)
   fail("Wrangler config must not contain a nonstandard or secret-bearing secrets field");
 
@@ -65,19 +70,41 @@ if (
 if (activation.authority?.maximum_cumulative_finite_external_spend_usd !== null)
   fail("template must not invent a spend cap");
 
+const releaseTemplate = JSON.parse(await read("deploy/v2-06/media-worker-release.template.json"));
+if (
+  releaseTemplate.schema_version !== "videoforge-media-worker-release/v1" ||
+  releaseTemplate.minimum_protocol_version !== 1 ||
+  !String(releaseTemplate.windows?.url).startsWith("https://") ||
+  !String(releaseTemplate.macos?.url).startsWith("https://")
+)
+  fail("personal worker release template drifted");
 for (const path of [
-  "deploy/v2-06/cloud-run-asr.job.yaml",
-  "deploy/v2-06/cloud-run-render.job.yaml",
+  "apps/media-worker-desktop/videoforge-worker.spec",
+  "apps/media-worker-desktop/windows-installer.iss",
+  "workers/media-local/src/videoforge_media_local/personal_worker.py",
+  ".github/workflows/media-worker-release.yml",
 ]) {
-  const manifest = await read(path);
-  if (!manifest.includes("__V2_06_MEDIA_IMAGE_DIGEST_URI__") || /:\s*latest\b/u.test(manifest))
-    fail(`${path} is not digest-gated`);
-  if (!manifest.includes("serviceAccountName: __V2_06_CPU_JOB_SERVICE_ACCOUNT__"))
-    fail(`${path} lacks the job-only identity placeholder`);
-  if (!manifest.includes("maxRetries: 0"))
-    fail(`${path} must not create an untracked duplicate-cost retry`);
-  if (/gpu|runpod/iu.test(manifest)) fail(`${path} must stay CPU-only and RunPod-free`);
+  if ((await read(path)).trim().length < 100) fail(`${path} is incomplete`);
 }
+const personalWorkerSource = await read(
+  "workers/media-local/src/videoforge_media_local/personal_worker.py",
+);
+if (/^from \./mu.test(personalWorkerSource))
+  fail("frozen worker entry still depends on package-relative imports");
+const releaseWorkflow = await read(".github/workflows/media-worker-release.yml");
+if (
+  !releaseWorkflow.includes("publish_release:") ||
+  !releaseWorkflow.includes("inputs.signed_release") ||
+  !releaseWorkflow.includes("gh release create")
+)
+  fail("signed immutable worker publication gate is incomplete");
+const hostedApp = await read("apps/web/src/server/hosted/app.ts");
+if (
+  !hostedApp.includes("handleCpuOutputDelete(") ||
+  !hostedApp.includes('request.method === "DELETE"') ||
+  !hostedApp.includes('reason: "EXPLICIT_USER_DELETE"')
+)
+  fail("explicit owned-output R2 deletion route is absent");
 
 const observability = JSON.parse(await read("deploy/v2-06/observability.template.json"));
 if (observability.logs?.secret_values !== false || observability.logs?.signed_urls !== false)
@@ -93,7 +120,7 @@ for (const path of [
 }
 
 const manifest = JSON.parse(await read("packages/control-plane/migrations/manifest.json"));
-for (const version of [29, 30, 31]) {
+for (const version of [29, 30, 31, 32]) {
   const entry = manifest.migrations.find((candidate) => candidate.version === version);
   if (!entry) fail(`migration ${version} is absent`);
   const migration = await read(`packages/control-plane/migrations/${entry.filename}`);
@@ -109,7 +136,9 @@ const combined = [
 ].join("\n");
 if (/RUNPOD_API_KEY|api\.runpod\.(?:io|ai)|\/purge-queue/iu.test(combined))
   fail("RunPod transport entered V2-06 hosted surfaces");
+if (/GCP_RUN_INVOKER|run\.googleapis\.com|CloudRunJobsClient/u.test(combined))
+  fail("retired Google Cloud compute transport entered active V2-06 surfaces");
 
 console.log(
-  "V2-06 provider-free deployment templates are fail-closed, CPU-only, and internally consistent.",
+  "V2-06 provider-free deployment templates are fail-closed, personal-worker-only, and internally consistent.",
 );

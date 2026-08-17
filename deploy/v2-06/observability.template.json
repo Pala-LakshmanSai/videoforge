@@ -19,8 +19,8 @@
       "window_minutes": 5
     },
     {
-      "id": "cloud-run-timeout",
-      "condition": "cloud_run_job_timeout_count > 0",
+      "id": "personal-worker-lease-expiry",
+      "condition": "personal_worker_expired_lease_count > 0",
       "window_minutes": 5
     },
     {

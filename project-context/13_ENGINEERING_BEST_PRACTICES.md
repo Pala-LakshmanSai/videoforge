@@ -138,7 +138,7 @@ from an application label. Show private queue/capacity facts without exposing ot
 
 ## Security and secrets
 
-- Browser bundles receive no RunPod, R2, database, signing, Runware, Cloud Run, or admin credential.
+- Browser bundles receive no RunPod, R2, database, signing, Runware, personal-worker, or admin credential.
 - Use least-privilege service identities, separate staging/production resources, key rotation, and
   redaction tests.
 - Raw invite codes are never stored; verified-email redemption is atomic and replay-safe.
@@ -148,11 +148,15 @@ from an application label. Show private queue/capacity facts without exposing ot
   probing. Treat filenames and media metadata as untrusted.
 - Never print secrets while running doctor, tests, provider preflight, or evidence collection.
 
-## Hosted CPU workers
+## Personal CPU media workers
 
-Whisper.cpp and FFmpeg run as pinned scale-to-zero Cloud Run Jobs in production, using tenant R2
-reservations/receipts. They have no RunPod credential or model-volume mount. The same entrypoints may
-run locally for provider-free parity, but production cannot depend on the user's Mac.
+Whisper.cpp and FFmpeg run in the signed account-owned Windows/macOS worker, using tenant R2
+reservations/receipts and fresh lease-scoped ports. The device credential lives only in Windows
+Credential Manager or macOS Keychain and grants no database, reusable R2, RunPod, Runware, Google,
+signing, or admin access. The worker uses outbound HTTPS only, runs one job at a time, starts at
+login, fences stale leases/results, streams large outputs, and erases scratch on every terminal path.
+The hosted control plane never depends on the operator's development Mac; an account's CPU stages
+intentionally depend on one of that account's paired devices being online.
 
 ## Testing before optimization
 

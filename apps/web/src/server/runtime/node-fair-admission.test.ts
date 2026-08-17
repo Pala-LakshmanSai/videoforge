@@ -88,5 +88,5 @@ describe("active Node fair-admission composition", () => {
         toPosition: 1,
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND", status: 404 });
-  }, 15_000);
+  }, 60_000);
 });

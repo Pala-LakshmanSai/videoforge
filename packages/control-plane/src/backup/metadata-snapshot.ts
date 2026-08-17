@@ -55,6 +55,8 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "app_admissions",
   "workspaces",
   "memberships",
+  "media_worker_enrollments",
+  "media_worker_devices",
   "assets",
   "execution_profiles",
   "avatar_profiles",
@@ -136,8 +138,11 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "video_runtime_accepted_units",
   "video_runtime_events",
   "hosted_cpu_job_attempts",
+  "media_worker_input_objects",
+  "media_worker_leases",
   "hosted_cpu_upload_authorities",
   "hosted_cpu_job_events",
+  "media_worker_events",
 ] satisfies readonly RelationalTableName[]);
 
 const RESTORE_INSERT_TABLES = new Set<RelationalTableName>(RESTORE_INSERT_ORDER);
@@ -301,6 +306,10 @@ function isSecretBearingKey(key: string): boolean {
   );
 }
 
+function isPortableReferenceKey(tableName: RelationalTableName, key: string): boolean {
+  return tableName === "media_worker_input_objects" && normalizeKey(key) === "uri";
+}
+
 function rejectSecretBearingJson(tableName: RelationalTableName, rowJson: string): void {
   let parsed: unknown;
   try {
@@ -344,7 +353,7 @@ function rejectSecretBearingJson(tableName: RelationalTableName, rowJson: string
     if (typeof current.value !== "object" || current.value === null) continue;
     for (const [key, value] of Object.entries(current.value)) {
       const path = `${current.path}.${key}`;
-      if (isSecretBearingKey(key)) {
+      if (isSecretBearingKey(key) && !isPortableReferenceKey(tableName, key)) {
         throw snapshotProblem(
           "METADATA_SECRET_BYTES_FORBIDDEN",
           `Secret-bearing metadata field ${path} cannot enter a portable snapshot.`,
@@ -392,7 +401,10 @@ async function assertExpectedSchema(executor: SqlExecutor): Promise<void> {
       ORDER BY table_name, ordinal_position`,
   );
   const forbidden = columns.rows.find(
-    (column) => column.data_type === "bytea" || isSecretBearingKey(column.column_name),
+    (column) =>
+      column.data_type === "bytea" ||
+      (isSecretBearingKey(column.column_name) &&
+        !isPortableReferenceKey(column.table_name as RelationalTableName, column.column_name)),
   );
   if (forbidden !== undefined) {
     throw snapshotProblem(

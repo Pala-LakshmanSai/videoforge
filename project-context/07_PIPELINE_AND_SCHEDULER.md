@@ -13,7 +13,7 @@ queues receive only already-admitted exact jobs; they do not decide fairness.
 flowchart TD
     P["Tenant preflight: probe, hash, avatar/style, cap, durable private R2 voiceover"] --> Q["Private durable queue"]
     Q --> A["Fair DB admission: one/account, two global"]
-    A --> T["Cloud Run whisper.cpp word timing"]
+    A --> T["Paired personal worker: whisper.cpp word timing"]
     T --> S["Deterministic scheduler-v2"]
     S --> WM["Immutable generation and render work manifests"]
     WM --> D["DeepSeek prompt batches and selected-span audio"]
@@ -26,7 +26,7 @@ flowchart TD
     MR --> B["Accepted-asset barrier"]
     SR --> B
     B --> RM["Resolved render manifest"]
-    RM --> F["Cloud Run FFmpeg render and FFprobe"]
+    RM --> F["Paired personal worker: FFmpeg render and FFprobe"]
     F --> R["Ready for review"]
     R --> AP["Explicit approval and private download"]
 ```
@@ -66,9 +66,10 @@ Every stage transition requires the exact durable predecessor receipts and tenan
 
 ## 2. Word timing
 
-Use pinned `whisper.cpp ggml-base.en`, not Groq, Deepgram, WhisperX, or an LLM. Production invokes an
-authenticated scale-to-zero Cloud Run Job with an immutable tenant R2 input/output manifest; the Mac
-runs the same entrypoint only for development/provider-free parity.
+Use pinned `whisper.cpp ggml-base.en`, not Groq, Deepgram, WhisperX, or an LLM. Production grants an
+exact time-bounded lease to an authenticated worker paired with the same account/workspace. The
+worker obtains fresh immutable tenant R2 input ports only at claim time and has no reusable R2 or
+provider credential. Windows and macOS run the same execution contract.
 
 - Greedy decoding, English, `--max-len 1 --split-on-word`, best-of 1, beam size 1.
 - Persist exact executable/model/config hashes, original/normalized audio hashes, millisecond word
@@ -239,8 +240,8 @@ valid checksum-bound artifact, an explicitly accepted replacement, or an explici
 placeholder. Create immutable `resolved-render-manifest/v1` binding tenant/revision/timeline,
 original voiceover, exact assets, avatar source/crop profile, output profile, and total frames.
 
-An authenticated scale-to-zero Cloud Run Job runs pinned FFmpeg/FFprobe against exact private R2
-objects. It:
+The exact authenticated tenant-owned personal-worker lease runs pinned FFmpeg/FFprobe against fresh
+private R2 ports. It:
 
 - applies the exact source-aware SoulX full/split crop profile only after that Avatar Profile's
   visual approval; the latest sample outputs do not yet establish production crop acceptance;

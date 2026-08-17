@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { CloudRunJobsClient, executionNamesForAttempt } from "./cloud-run";
-import { exactCpuUploadAuthorityRequest, hasExactResultObjectMetadata } from "./app";
+import {
+  exactCpuUploadAuthorityRequest,
+  hasExactResultObjectMetadata,
+} from "./legacy-cloud-run-contract";
 import {
   HostedConfigurationError,
   hostedRuntimeConfiguration,
@@ -49,12 +52,22 @@ function environment(): HostedRuntimeEnvironment {
     VIDEOFORGE_PROVIDER_MODE: "staging",
     VIDEOFORGE_PUBLIC_ORIGIN: "https://staging.videoforge.example.test",
     VIDEOFORGE_R2_BUCKET_NAME: "videoforge-v2-06-staging-private",
-    GCP_PROJECT_ID: "videoforge-staging-project",
-    GCP_REGION: "asia-south1",
-    GCP_ASR_JOB_NAME: "videoforge-v2-06-asr-staging",
-    GCP_RENDER_JOB_NAME: "videoforge-v2-06-render-staging",
-    GCP_ASR_IMAGE_DIGEST: `sha256:${"a".repeat(64)}`,
-    GCP_RENDER_IMAGE_DIGEST: `sha256:${"b".repeat(64)}`,
+    MEDIA_WORKER_RELEASE_MANIFEST_JSON: JSON.stringify({
+      schema_version: "videoforge-media-worker-release/v1",
+      version: "0.1.0",
+      minimum_protocol_version: 1,
+      execution_bundle_sha256: `sha256:${"a".repeat(64)}`,
+      windows: {
+        url: "https://downloads.example.test/videoforge-worker-0.1.0.exe",
+        sha256: `sha256:${"b".repeat(64)}`,
+        size_bytes: 1024,
+      },
+      macos: {
+        url: "https://downloads.example.test/videoforge-worker-0.1.0.dmg",
+        sha256: `sha256:${"c".repeat(64)}`,
+        size_bytes: 2048,
+      },
+    }),
     DATABASE_URL: "postgresql://fixture:fixture@fixture.example.test/videoforge?sslmode=require",
     BETTER_AUTH_SECRET: "fixture-better-auth-secret-00000000000000000001",
     GOOGLE_CLIENT_ID: "fixture-google-client.apps.example.test",
@@ -62,10 +75,10 @@ function environment(): HostedRuntimeEnvironment {
     R2_ACCOUNT_ID: "fixture-cloudflare-account-id",
     R2_ACCESS_KEY_ID: "fixture-r2-access-key-id",
     R2_SECRET_ACCESS_KEY: "fixture-r2-secret-access-key",
-    GCP_RUN_INVOKER_SERVICE_ACCOUNT_JSON: "fixture-service-account-json",
     EMAIL_DELIVERY_ENDPOINT: "https://email.example.test/v1/send",
     EMAIL_DELIVERY_API_KEY: "fixture-email-api-key",
     WORKFLOW_CALLBACK_SECRET: "fixture-workflow-callback-secret-00000000000001",
+    MEDIA_WORKER_TOKEN_SECRET: "fixture-media-worker-token-secret-000000000000002",
   };
 }
 
@@ -112,9 +125,16 @@ describe("V2-06 hosted adapters", () => {
       source.R2_SECRET_ACCESS_KEY,
       source.EMAIL_DELIVERY_API_KEY,
       source.WORKFLOW_CALLBACK_SECRET,
+      source.MEDIA_WORKER_TOKEN_SECRET,
     ]) {
       expect(serialized).not.toContain(value);
     }
+    expect(() =>
+      hostedRuntimeConfiguration({
+        ...source,
+        MEDIA_WORKER_TOKEN_SECRET: source.WORKFLOW_CALLBACK_SECRET,
+      }),
+    ).toThrow(HostedConfigurationError);
   });
 
   it("signs only exact tenant R2 paths with bounded methods and expiry", async () => {
@@ -155,9 +175,17 @@ describe("V2-06 hosted adapters", () => {
     ).rejects.toThrow(/exact tenant lineage/u);
   });
 
-  it("rejects malformed Cloud Run service identities before any request", () => {
-    const config = hostedRuntimeConfiguration(environment());
-    expect(() => new CloudRunJobsClient(config.cloudRun)).toThrow(/valid JSON/u);
+  it("keeps the historical Cloud Run adapter fail-closed for rollback evidence", () => {
+    expect(
+      () =>
+        new CloudRunJobsClient({
+          projectId: "legacy-project",
+          region: "asia-south1",
+          asrJobName: "legacy-asr",
+          renderJobName: "legacy-render",
+          serviceAccountJson: "not-json",
+        }),
+    ).toThrow(/valid JSON/u);
   });
 
   it("accepts only exact JSON result-object metadata before hashing bytes", () => {

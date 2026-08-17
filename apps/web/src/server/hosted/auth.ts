@@ -13,7 +13,7 @@ interface HostedEmailMessage {
 }
 
 async function deliverEmail(
-  config: HostedRuntimeConfiguration["email"],
+  config: NonNullable<HostedRuntimeConfiguration["email"]>,
   message: HostedEmailMessage,
 ): Promise<void> {
   const response = await fetch(config.endpoint, {
@@ -33,6 +33,7 @@ export function createHostedAuth(input: {
   readonly executionContext: HostedExecutionContext;
 }) {
   const { config, executionContext, pool } = input;
+  const emailDelivery = config.email;
   return betterAuth({
     appName: "VideoForge",
     baseURL: config.publicOrigin,
@@ -40,39 +41,43 @@ export function createHostedAuth(input: {
     secret: config.auth.secret,
     database: pool,
     trustedOrigins: [config.publicOrigin],
-    emailAndPassword: {
-      enabled: true,
-      requireEmailVerification: true,
-      autoSignIn: false,
-      minPasswordLength: 12,
-      maxPasswordLength: 128,
-      revokeSessionsOnPasswordReset: true,
-      resetPasswordTokenExpiresIn: 900,
-      sendResetPassword: async ({ user, url }) => {
-        executionContext.waitUntil(
-          deliverEmail(config.email, {
-            kind: "RESET_PASSWORD",
-            recipient: user.email,
-            actionUrl: url,
-          }),
-        );
-      },
-    },
-    emailVerification: {
-      expiresIn: 900,
-      sendOnSignUp: true,
-      sendOnSignIn: true,
-      autoSignInAfterVerification: false,
-      sendVerificationEmail: async ({ user, url }) => {
-        executionContext.waitUntil(
-          deliverEmail(config.email, {
-            kind: "VERIFY_EMAIL",
-            recipient: user.email,
-            actionUrl: url,
-          }),
-        );
-      },
-    },
+    emailAndPassword: emailDelivery
+      ? {
+          enabled: true,
+          requireEmailVerification: true,
+          autoSignIn: false,
+          minPasswordLength: 12,
+          maxPasswordLength: 128,
+          revokeSessionsOnPasswordReset: true,
+          resetPasswordTokenExpiresIn: 900,
+          sendResetPassword: async ({ user, url }) => {
+            executionContext.waitUntil(
+              deliverEmail(emailDelivery, {
+                kind: "RESET_PASSWORD",
+                recipient: user.email,
+                actionUrl: url,
+              }),
+            );
+          },
+        }
+      : { enabled: false },
+    emailVerification: emailDelivery
+      ? {
+          expiresIn: 900,
+          sendOnSignUp: true,
+          sendOnSignIn: true,
+          autoSignInAfterVerification: false,
+          sendVerificationEmail: async ({ user, url }) => {
+            executionContext.waitUntil(
+              deliverEmail(emailDelivery, {
+                kind: "VERIFY_EMAIL",
+                recipient: user.email,
+                actionUrl: url,
+              }),
+            );
+          },
+        }
+      : undefined,
     socialProviders: {
       google: {
         clientId: config.auth.googleClientId,
