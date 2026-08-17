@@ -1,0 +1,138 @@
+{
+  "schema_version": "videoforge.v2-06-hosted-submission-repair/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "result": "FAIL_FULL_CHECKPOINT_LOCAL_SUBMISSION_REPAIR_PASS",
+  "audit_independence": "SAME_CHAT_REPAIR_EVIDENCE_NOT_INDEPENDENT",
+  "implementation_commit": "9fe8c76d420f2b81bdedac813d6681656462afd7",
+  "recorded_at_utc": "2026-08-17T06:24:24Z",
+  "scope_boundary": "Local implementation and provider-free validation plus a newly granted read-only provider inventory. No remote mutation, deployment, secret change, email delivery, paid request, or spend is authorized or performed by this record.",
+  "repaired_findings": [
+    "Authenticated tenant-scoped POST /api/v2/cpu-attempts now creates an exact-idempotent CPU attempt, output authorities, checksum-bound immutable job spec, durable outbox state, and Cloudflare Workflow launch.",
+    "Submission binds the locked project revision, owned committed input artifact, server-derived callback token, exact primary output, pinned image digest, and Whisper model checksum.",
+    "Cloudflare staging builds now select wrangler.staging.jsonc instead of silently inheriting the production environment configuration.",
+    "Ambiguous dispatch records submitted_at before RECONCILING, cancellation polling uses the callback bearer token and exact cancel_token field, and success callbacks require the exact primary R2 output metadata and checksum."
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [
+      {
+        "id": "V2_06_HOSTED_ACCEPTANCE_UNPROVEN",
+        "references": [
+          "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:335",
+          "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:346",
+          "project-context/evidence/acceptance/VF-10-06/2026-08-17-provider-free-preflight/acceptance.json"
+        ],
+        "detail": "No immutable hosted evidence yet proves Better Auth, non-superuser Neon RLS, private R2, Cloudflare Workflow, scale-to-zero Cloud Run ASR/render parity, real tenant isolation, recovery/cancel/retention, backup/restore, costs, rollback, no-Mac operation, or real Chrome acceptance. Local fixtures cannot prove deployment."
+      },
+      {
+        "id": "V2_06_HOSTED_PRODUCT_JOURNEY_INCOMPLETE",
+        "references": [
+          "apps/web/src/server/hosted/app.ts",
+          "apps/web/src/hosted/HostedStagingApp.tsx"
+        ],
+        "detail": "The precise hosted CPU submission gap is repaired, but the staging UI remains an auth/status shell and the complete ordinary project, artifact-ingest, submission, result, and playback journey is not yet composed and proven in hosted Chrome."
+      },
+      {
+        "id": "V2_06_CURRENT_RESOURCE_AND_ZERO_WORKER_TRUTH_PENDING",
+        "references": [
+          "project-context/CURRENT_STATE.yaml",
+          "project-context/evidence/acceptance/VF-10-06/2026-08-17-upload-authority-repair-reaudit/acceptance.json"
+        ],
+        "detail": "Read-only inventory was newly authorized, but provider sign-in and inventory collection are still in progress. Current resources, rates, recurring charges, Cloud Run zero instances, and RunPod-disabled/zero-worker truth remain unproven until immutable read-only snapshots are captured."
+      }
+    ],
+    "P2": [
+      {
+        "id": "V2_06_ROLLBACK_ONLY_DECLARED",
+        "references": [
+          "deploy/v2-06/rollback.md",
+          "deploy/v2-06/backup.sh",
+          "deploy/v2-06/restore-drill.sh"
+        ],
+        "detail": "Rollback, backup, and restore are locally specified and validated but have no hosted execution evidence."
+      }
+    ]
+  },
+  "validation": {
+    "focused": {
+      "command": "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/v2-06-hosted-auth.test.mjs packages/control-plane/tests/schema-inventory.test.mjs && pnpm --filter @videoforge/web exec vitest run src/server/hosted/hosted-adapters.test.ts && pnpm test:workers",
+      "exit_code": 0,
+      "control_plane_hosted_and_schema": "4/4",
+      "hosted_adapters": "8/8",
+      "worker_suites": "6/6"
+    },
+    "deployment_validation": {
+      "command": "pnpm validate:v2-06-deployment && pnpm --filter @videoforge/web build:staging",
+      "exit_code": 0,
+      "staging_environment_selected": "videoforge_v2_06_staging"
+    },
+    "canonical_first_attempt": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 1,
+      "reason": "Prettier reported three changed files; no test failure."
+    },
+    "canonical_after_format": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "tasks": "28/28",
+      "control_plane": "303/303",
+      "pipeline": "120/120",
+      "web": "328/328 plus 1 skipped",
+      "cloudflare_local": "1/1",
+      "installed_chrome_fixture": "44/44",
+      "worker_suites": "6/6"
+    },
+    "diff_check": {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  },
+  "checkpoint_authority": {
+    "read_only_inventory_authorized": true,
+    "read_only_providers": [
+      "Cloudflare",
+      "Neon",
+      "Google Cloud",
+      "RunPod"
+    ],
+    "remote_mutation_authorized": false,
+    "paid_compute_authorized": false,
+    "maximum_current_authorized_external_spend_usd": 0,
+    "user_stated_future_v2_06_test_cap_usd": 3,
+    "future_cap_status": "NOT_OPERATION_AUTHORITY_UNTIL_EXACT_COMBINED_PROPOSAL_IS_APPROVED",
+    "email_provider": "NONE",
+    "google_project_candidate": "gen-lang-client-0893746131",
+    "google_project_confirmation": "PENDING_READ_ONLY_METADATA_REVIEW",
+    "browser_sign_in_assistance_authorized": true
+  },
+  "current_state_and_spend_truth": {
+    "external_mutations_this_repair": 0,
+    "deployments_this_repair": 0,
+    "email_deliveries_this_repair": 0,
+    "paid_requests_this_repair": 0,
+    "external_spend_usd_this_repair": 0,
+    "runpod_mutations_this_repair": 0,
+    "runpod_workers_started_this_repair": 0,
+    "gpu_transport": "FAKE_DISABLED",
+    "live_inventory_collection": "IN_PROGRESS_AWAITING_PROVIDER_SIGN_IN"
+  },
+  "unproven_live_claims": [
+    "exact deployed resources, regions, rates, quotas, and recurring charges",
+    "Cloudflare Worker and Workflow deployment/configuration",
+    "Better Auth email and Google production behavior",
+    "Neon non-superuser RLS and tenant isolation",
+    "private R2 isolation and exact-object behavior",
+    "Cloud Run ASR/render image identity, scale-to-zero, parity, recovery, cancellation, and cost",
+    "two real invited accounts and real Chrome staging journey",
+    "backup, restore drill, retention deletion, and rollback",
+    "RunPod-disabled and zero-worker current truth"
+  ],
+  "rollback_state": "LOCAL_RUNBOOKS_AND_SCRIPTS_ONLY_NOT_LIVE_PROVEN",
+  "successor_safety": {
+    "v2_07": "BLOCKED_ON_ACCEPTED_V2_06",
+    "runpod_activation_authorized": false,
+    "gpu_workers_authorized": false,
+    "safe_to_begin_v2_07": false
+  }
+}

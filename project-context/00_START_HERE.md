@@ -1,7 +1,7 @@
 # VideoForge: start here
 
-Status: V2-06 provider-free output-authority repair is green; full hosted staging acceptance is blocked,
-and no external, credential, provider-call, mutation, or spend authority is active
+Status: V2-06 local hosted-submission repair is green and read-only provider inventory is active;
+full hosted staging acceptance is blocked, and no mutation or spend authority is active
 Context schema: `2.0`
 Last updated: `2026-08-16`
 
@@ -229,14 +229,15 @@ contains no v1 shared-app route, manual Pod/GPU selector, inactive Echo route, r
 fallback vocabulary. Local compatibility fixtures remain explicitly gated and the production UI
 visibly says fixtures are not live.
 
-V2-06 local adapters and deployment templates exist, but the deployed two-account product proof is
+V2-06 local adapters, hosted CPU submission, and deployment templates exist, but the deployed two-account product proof is
 not complete. Output uploads now require callback-token authorization and exact durable
 tenant/project/revision/attempt, key, type, length, and checksum facts before R2 signing. The staging
 surface is still an activation/auth/status shell rather than the full product and CPU-job submission
 route graph. A separate explicit read-only audit grant is required before refreshing any
-live provider fact. Any deployment, remote mutation, email delivery, or spend requires one exact
-bounded activation proposal and approval. No provider, credential, cloud mutation, GPU, worker, or
-spend authority is active.
+live provider fact. Read-only Cloudflare, Neon, Google Cloud, and RunPod inventory is authorized as
+of 2026-08-17. Any deployment, remote mutation, email delivery, or spend still requires one exact
+bounded activation proposal and approval; the user-stated USD 3 future test cap is not operation
+authority by itself. No cloud mutation, GPU, worker, or spend authority is active.
 All prior provider authorities are consumed and cannot be reused. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in

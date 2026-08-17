@@ -1,30 +1,49 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-17T04:36:11Z"
+updated_at: "2026-08-17T06:24:24Z"
 
-phase: serverless_v2_v2_06_upload_authority_repair_green_hosted_acceptance_blocked
-implementation_authorized_in_current_task: false
+phase: serverless_v2_v2_06_submission_repair_green_read_only_inventory_in_progress
+implementation_authorized_in_current_task: true
 current_milestone: hosted_staging_and_cpu_jobs
 current_task: VF-10-06
-current_wave: v2_06_upload_authority_repair_reaudit
+current_wave: v2_06_hosted_submission_repair_and_inventory
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: hosted_activation_blocked
-application_code_changes_authorized: false
-provider_calls_authorized: false
-read_only_provider_calls_authorized: false
+task_stage: read_only_preflight
+application_code_changes_authorized: true
+provider_calls_authorized: true
+read_only_provider_calls_authorized: true
 maximum_external_spend_usd: 0
 
 provider_authority:
-  mode: none
-  provider: null
+  mode: read_only
+  provider: cloudflare+neon+google_cloud+runpod
   cap_usd: 0
-  source: no_active_external_authority
+  source: user_grant_2026_08_17
   non_transferable: true
-  resources: []
-  authorized_operations: []
-  allowed_operations: []
+  authorized_by_user_at: "2026-08-17"
+  resources:
+    - cloudflare_account
+    - neon_account
+    - google_project_gen_lang_client_0893746131
+    - runpod_account_sujal
+  authorized_operations:
+    - account_identity_lookup
+    - inventory_lookup
+    - quota_lookup
+    - rate_lookup
+    - region_lookup
+    - resource_identity_lookup
+    - resource_absence_lookup
+  allowed_operations:
+    - account_identity_lookup
+    - inventory_lookup
+    - quota_lookup
+    - rate_lookup
+    - region_lookup
+    - resource_identity_lookup
+    - resource_absence_lookup
 
-credential_access_authorized: false
+credential_access_authorized: true
 remote_or_cloud_mutations_authorized: false
 model_downloads_authorized: false
 worker_image_publication_authorized: false
@@ -46,8 +65,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "dc25ef5"
-  last_good_commit_note: "V2-06 local upload-authority repair: migration 0030 binds callback-token, tenant/project/revision/attempt lineage, exact object key, type, length, and checksum before a short-lived R2 PUT; SigV4 binds all three upload headers and the worker verifies them. This is provider-free local proof only; hosted deployment and full application acceptance remain unproven."
+  last_good_commit: "9fe8c76"
+  last_good_commit_note: "V2-06 local hosted CPU submission repair: authenticated tenant-scoped submission now persists exact attempts, output authority, immutable job spec, outbox state, and Workflow launch; staging config selection, ambiguous dispatch, cancellation polling, and primary-output verification are repaired. This remains local proof; hosted acceptance is unproven."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -61,9 +80,9 @@ live_development:
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
   provider_mode: fixture
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   authorized_spend_usd: 0
-  provider_authority_scope: "None. A new explicit read-only grant is required even for live inventory; mutation or spend additionally requires one exact bounded proposal and approval."
+  provider_authority_scope: "Read-only inventory is authorized for Cloudflare, Neon, Google Cloud, and RunPod. No mutation or spend is authorized; the user-stated USD 3 future test cap becomes usable only after an exact combined proposal is approved."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -223,8 +242,8 @@ blocking_gates_for_production:
 active_ownership:
   - task_id: VF-10-06
     checkpoint: V2-06
-    scope: completed_provider_free_upload_authority_repair_and_same_chat_reaudit_only
-    provider_calls_authorized: false
+    scope: local_hosted_submission_repair_and_read_only_provider_inventory
+    provider_calls_authorized: true
     maximum_external_spend_usd: 0
 in_progress_checkpoint: V2-06
 
@@ -232,28 +251,46 @@ recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
   milestone: hosted_staging_and_cpu_jobs
-  status: local_repair_green_hosted_acceptance_blocked
+  status: local_submission_repair_green_read_only_inventory_in_progress
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
-  authorization_status: no_active_external_or_credential_authority
-  task_stage: hosted_activation_blocked
+  authorization_status: read_only_inventory_only_no_mutation_or_spend
+  task_stage: read_only_preflight
   provider_authority:
-    mode: none
-    provider: null
+    mode: read_only
+    provider: cloudflare+neon+google_cloud+runpod
     cap_usd: 0
     non_transferable: true
-    authorized_by_user_at: null
+    authorized_by_user_at: "2026-08-17"
     model_id: null
-    resources: []
-    authorized_operations: []
-    allowed_operations: []
+    resources:
+      - cloudflare_account
+      - neon_account
+      - google_project_gen_lang_client_0893746131
+      - runpod_account_sujal
+    authorized_operations:
+      - account_identity_lookup
+      - inventory_lookup
+      - quota_lookup
+      - rate_lookup
+      - region_lookup
+      - resource_identity_lookup
+      - resource_absence_lookup
+    allowed_operations:
+      - account_identity_lookup
+      - inventory_lookup
+      - quota_lookup
+      - rate_lookup
+      - region_lookup
+      - resource_identity_lookup
+      - resource_absence_lookup
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
-  goal: "Obtain a separate explicit read-only audit grant for current provider facts, then prepare one exact combined activation proposal before any mutation or spend; GPU transport stays fake."
-  provider_calls_authorized: false
-  read_only_provider_calls_authorized: false
+  goal: "Complete the authorized read-only inventory, choose the missing email path, and prepare one exact combined activation proposal capped at the user-stated USD 3 before any mutation or spend; GPU transport stays fake."
+  provider_calls_authorized: true
+  read_only_provider_calls_authorized: true
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
+  credential_access_authorized: true
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
@@ -262,15 +299,15 @@ recommended_next_task:
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
-  application_code_changes_authorized: false
+  application_code_changes_authorized: true
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_upload_authority_repair_green_full_hosted_acceptance_blocked
-  verified_commit: "dc25ef5ab12ec1beab3749caaf4c02f07775ce3d"
-  verified_commit_note: "V2-06 checksum-bound output authorization passes canonical local verification. The same-chat re-audit is not independent, and full hosted acceptance remains blocked by incomplete product/job route composition and absent live deployment proof."
+  state: v2_06_hosted_submission_repair_green_inventory_in_progress_full_acceptance_blocked
+  verified_commit: "9fe8c76d420f2b81bdedac813d6681656462afd7"
+  verified_commit_note: "V2-06 hosted CPU submission composition and staging config selection pass canonical local verification. The same-chat evidence is not independent, full hosted product/Chrome acceptance remains blocked, and authorized read-only inventory is in progress."
   predecessor_verified_commit: "3c117f204844da9c984d233477933ee4c0f304dd"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-upload-authority-repair-reaudit/acceptance.json
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-submission-repair/acceptance.json
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
@@ -484,13 +521,13 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: upload_authority_repair_green_hosted_acceptance_blocked
-    implementation_commit: "dc25ef5ab12ec1beab3749caaf4c02f07775ce3d"
-    evidence: evidence/acceptance/VF-10-06/2026-08-17-upload-authority-repair-reaudit/acceptance.json
+    status: hosted_submission_repair_green_read_only_inventory_in_progress
+    implementation_commit: "9fe8c76d420f2b81bdedac813d6681656462afd7"
+    evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-submission-repair/acceptance.json
     commands:
       - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 303/303; pipeline 120/120; web 326/326 plus 1 skipped; Cloudflare 1/1; installed Chrome fixture 44/44)"
       - "Focused PostgreSQL adapter, migration, hosted-auth, callback, retention, and schema-inventory tests: PASS"
-      - "Hosted Cloud Run/R2 adapter tests: PASS (6/6)"
+      - "Hosted Cloud Run/R2/submission adapter tests: PASS (8/8)"
       - "pnpm test:workers: PASS (6 explicit Python 3.12 suites)"
       - "Staging build, V2-05 production bundle quarantine, V2-06 deployment validation, and Wrangler dry run: PASS"
       - "Pinned linux/amd64 image build and native linux/arm64 tool/fail-closed smoke: PASS"
@@ -505,12 +542,14 @@ verification:
       - "Hosted callback acceptance rejects result objects whose stored length or content type differs before hashing and accepting exact bytes."
       - "Migration 0030 adds one exact-idempotent output authority per attempt/object and rejects callback-token, lifecycle, deadline, tenant/project/revision/attempt lineage, type, length, or checksum drift before signing."
       - "Cloud Run workers request upload ports only after output bytes exist; R2 SigV4 now binds content length, content type, and checksum, and the worker rejects any returned-header mismatch."
+      - "Authenticated tenant-scoped POST /api/v2/cpu-attempts now creates exact-idempotent attempts, primary/result upload authorities, immutable checksum-bound job specs, durable outbox state, and Cloudflare Workflow launches."
+      - "Staging builds now select wrangler.staging.jsonc; ambiguous dispatch persists submitted_at before reconciliation, cancellation polling uses the callback bearer token, and callbacks verify the exact primary R2 output checksum before success."
     remaining_gates:
-      - "Cloudflare and Neon sign-in is required for exact read-only account, plan, region, domain, quota, and current-rate facts."
+      - "Read-only provider inventory is authorized and in progress; Cloudflare sign-in is currently awaiting user completion before exact account, plan, region, domain, quota, rate, and resource facts can be captured."
       - "The email provider and verified sender identity/domain must be selected."
       - "The visible Google project gen-lang-client-0893746131 must be confirmed as the intended staging target."
-      - "No combined external mutation proposal has been issued because those inputs are missing, and no numeric cumulative finite spend cap exists."
-      - "The staged UI/API is an activation and auth/status shell. Most existing product APIs still return HOSTED_ROUTE_NOT_COMPOSED, and no hosted route creates a CPU attempt/job spec/upload-authority set and launches its Workflow."
+      - "The user supplied a USD 3 maximum future V2-06 test cap, but it is not operation authority until one exact combined mutation proposal is issued and approved."
+      - "The staged UI remains an activation and auth/status shell. The CPU submission route exists, but the complete ordinary project, artifact-ingest, submission, result, and playback journey is not yet composed."
       - "All live hosted proofs, billing settlement, real-Chrome staging, rollback, and zero-compute closure remain unproven; complete route composition plus exact activation approval are still required."
     resource_truth:
       external_mutations: 0
