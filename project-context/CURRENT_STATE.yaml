@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-17T17:11:46Z"
+updated_at: "2026-08-17T17:36:31Z"
 
 phase: serverless_v2_v2_06_live_activation_in_progress
 implementation_authorized_in_current_task: true
@@ -84,8 +84,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "0855028794a902946cd7f9feb3d7ada38a6f949b"
-  last_good_commit_note: "V2-06 local product journey, activation preflight, exact Neon runtime grants, R2 failure reconciliation, and hosted staging deployment are green at this implementation commit. Live status, private-R2 state, secret allowlist, migration head, FORCE RLS, and SELECT-only render-plan grants are recorded; hosted Chrome, native Windows/macOS, paired-device parity, durable Workflow behavior, and full checkpoint acceptance remain unproven."
+  last_good_commit: "0245c100e5e20ee1f0ebf262e046f7f3c32bbb13"
+  last_good_commit_note: "V2-06 local product journey, activation preflight, exact Neon runtime grants, R2 failure reconciliation orchestration, and hosted staging deployment are green at this implementation commit. Live status, private-R2 state, secret allowlist, migration head, FORCE RLS, and SELECT-only render-plan grants are recorded; hosted Chrome, native Windows/macOS, paired-device parity, durable Workflow behavior, and full checkpoint acceptance remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -596,7 +596,7 @@ verification:
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
     status: live_deployment_complete_hosted_device_acceptance_pending
-    implementation_commit: "0855028794a902946cd7f9feb3d7ada38a6f949b"
+    implementation_commit: "0245c100e5e20ee1f0ebf262e046f7f3c32bbb13"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
     evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
     live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
@@ -622,17 +622,17 @@ verification:
       - "pnpm --filter @videoforge/web exec vitest run src/server/runtime/node-fair-admission.test.ts (exit 0; 5/5)"
       - "CI=1 TURBO_FORCE=true pnpm verify after hosted product journey completion (exit 0; all package/worker suites; Cloudflare-local 1/1; installed-Chrome fixture 44/44)"
       - "pnpm context:validate after hosted product journey record (exit 0; JSON 183; evidence refs 67; profiles 31; decisions 42; gates 19)"
-      - "pnpm --filter @videoforge/web build:staging (exit 0; current activation commit 0855028794a902946cd7f9feb3d7ada38a6f949b)"
-      - "wrangler deploy with rendered V2-06 staging config (exit 0; version 553cbbd2-6907-48c6-a57d-2cd576e097bd)"
-      - "GET /api/v2/hosted/status on the deployed origin (HTTP 200; commit 0855028794a902946cd7f9feb3d7ada38a6f949b; GPU transport DISABLED_FAKE_ONLY; provider CPU spend $0)"
+      - "pnpm --filter @videoforge/web build:staging (exit 0; current activation commit 0245c100e5e20ee1f0ebf262e046f7f3c32bbb13)"
+      - "wrangler deploy with rendered V2-06 staging config (exit 0; version 054910bd-00a2-4503-bc2f-1c2d0e364f59)"
+      - "GET /api/v2/hosted/status on the deployed origin (HTTP 200; commit 0245c100e5e20ee1f0ebf262e046f7f3c32bbb13; GPU transport DISABLED_FAKE_ONLY; provider CPU spend $0)"
       - "wrangler workflows list (exit 0; videoforge-v2-06-staging-video / HostedVideoWorkflow)"
       - "wrangler secret list --format json (exit 0; exact 8-name allowlist; values not recorded)"
       - "deploy/v2-06/verify-r2-private-state.sh ... (exit 0; private Standard bucket, public dev URL disabled, no final-object expiry, multipart abort only)"
       - "live Neon runtime grant verifier (exit 0; migration 35/35, FORCE RLS complete, exact table/function grants, hosted_render_plans SELECT-only)"
       - "CI=1 TURBO_FORCE=true pnpm verify final post-repair run (exit 0; all package/worker suites; installed-Chrome fixture 44/44)"
-      - "node --test scripts/tests/v2-06-owned-render-fixture.test.mjs (exit 0; 9/9, including immutable R2 failure reconciliation)"
+      - "node --test scripts/tests/v2-06-owned-render-fixture.test.mjs (exit 0; 10/10, including injected partial-failure orchestration and immutable R2 failure reconciliation)"
       - "pnpm validate:v2-06-deployment final post-repair run (exit 0)"
-      - "pnpm context:validate final post-repair run (exit 0; JSON 186; evidence refs 69; profiles 31; decisions 42; gates 19)"
+      - "pnpm context:validate final post-repair run (exit 0; JSON 186; evidence refs 70; profiles 31; decisions 42; gates 19; no warning)"
       - "pnpm format:check, pnpm secret:scan, and git diff --check final post-repair run (exit 0)"
       - "Fresh post-repair read-only audit (no P0; P1 hosted/device acceptance remains unproven; P2 handoff was committed after audit)"
     delivered:
@@ -673,16 +673,16 @@ verification:
       runpod_workers_started: 0
       live_runpod_inventory_refreshed: true
       cloudflare:
-        checked_at: "2026-08-17T17:11:46Z"
+        checked_at: "2026-08-17T17:36:31Z"
         account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
         workers_plan: FREE
         payment_method_on_file: true
         workers_after_confirmed_cleanup: 1
         workflows: 1
         worker_name: videoforge-v2-06-staging
-        worker_deployment_version_id: 553cbbd2-6907-48c6-a57d-2cd576e097bd
-        worker_deployment_commit: 0855028794a902946cd7f9feb3d7ada38a6f949b
-        worker_deployment_config_sha256: sha256:f398d7264419bed929ffab3e40dde1040f3ce440d73e891f4022856abcd3069d
+        worker_deployment_version_id: 054910bd-00a2-4503-bc2f-1c2d0e364f59
+        worker_deployment_commit: 0245c100e5e20ee1f0ebf262e046f7f3c32bbb13
+        worker_deployment_config_sha256: sha256:ece4752ad98c927d3d55459327617ade074fcfdf1e8542e075d68d4e4297fcc2
         workflow_name: videoforge-v2-06-staging-video
         workflow_class: HostedVideoWorkflow
         r2_subscription_active: true
@@ -691,7 +691,7 @@ verification:
         r2_standard_free_storage_gb_month: 10
         r2_standard_overage_usd_per_gb_month: 0.015
       neon:
-        checked_at: "2026-08-17T17:11:46Z"
+        checked_at: "2026-08-17T17:36:31Z"
         organization_id_sha256: "sha256:1a80a1978aaf55071ebade555193753126029390191658a7f700bbd06ea07044"
         plan: FREE
         recurring_usd_per_month: 0

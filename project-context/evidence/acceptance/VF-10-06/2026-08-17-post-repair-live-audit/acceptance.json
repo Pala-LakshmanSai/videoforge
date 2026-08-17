@@ -3,6 +3,7 @@
   "task_id": "VF-10-06",
   "checkpoint": "V2-06",
   "recorded_at_utc": "2026-08-17T17:29:00Z",
+  "follow_up_at_utc": "2026-08-17T17:36:31Z",
   "audit_method": "Fresh read-only post-repair audit of repository HEAD/working tree, canonical provider-free verification, recorded deployment handoff, and non-mutating staging inspection. No credential values were accessed or recorded; no provider mutation, resource mutation, GPU/RunPod action, or spend was performed.",
   "result": "FAIL_FULL_CHECKPOINT_ACCEPTANCE_PENDING_LIVE_USER_DEVICE_PROOF",
   "findings": [
@@ -44,24 +45,24 @@
     {
       "id": "V2-06-P2-003",
       "priority": "P2",
-      "status": "OPEN",
+      "status": "RESOLVED_AFTER_AUDIT",
       "finding": "The R2 failure-reconciliation test exercises the exported receipt helper, not an injected ensureR2 failure through the CLI main path.",
       "references": [
         "deploy/v2-06/provision-owned-render-fixture.mjs:1772-1785",
         "scripts/tests/v2-06-owned-render-fixture.test.mjs:237-275"
       ],
-      "why_not_repaired": "The production catch path is covered by direct code inspection and the helper's deterministic/idempotent test; adding a main-path integration harness would require introducing provider/DB seams and does not change the already fail-closed live behavior."
+      "resolution": "Extracted the production upload catch path into uploadR2RowsWithReconciliation, added injected partial-failure coverage, and redeployed it in 054910bd-00a2-4503-bc2f-1c2d0e364f59. Focused suite is now 10/10."
     }
   ],
   "p0_findings": [],
   "verification_commands": [
     { "command": "CI=1 TURBO_FORCE=true pnpm verify", "exit_code": 0, "result": "all package/control-plane/web/script/Python suites green; installed Chrome fixture 44/44" },
-    { "command": "node --test scripts/tests/v2-06-owned-render-fixture.test.mjs", "exit_code": 0, "result": "9/9 passed, including immutable R2 failure reconciliation" },
+    { "command": "node --test scripts/tests/v2-06-owned-render-fixture.test.mjs", "exit_code": 0, "result": "10/10 passed, including injected partial-failure orchestration and immutable R2 reconciliation" },
     { "command": "pnpm validate:v2-06-deployment", "exit_code": 0, "result": "provider-free templates fail closed and are internally consistent" },
-    { "command": "pnpm context:validate", "exit_code": 0, "result": "context valid; JSON 186, evidence refs 69, profiles 31, decisions 42, gates 19" },
+    { "command": "pnpm context:validate", "exit_code": 0, "result": "context valid; JSON 186, evidence refs 70, profiles 31, decisions 42, gates 19; no warning" },
     { "command": "pnpm format:check", "exit_code": 0, "result": "all files formatted" },
     { "command": "pnpm secret:scan", "exit_code": 0, "result": "tracked-file secret scan passed" },
-    { "command": "GET /api/v2/hosted/status on recorded staging origin", "exit_code": 0, "result": "HTTP 200; deployment commit 0855028794a902946cd7f9feb3d7ada38a6f949b; GPU DISABLED_FAKE_ONLY; provider CPU spend $0" },
+    { "command": "GET /api/v2/hosted/status on recorded staging origin", "exit_code": 0, "result": "HTTP 200; deployment commit 0245c100e5e20ee1f0ebf262e046f7f3c32bbb13; GPU DISABLED_FAKE_ONLY; provider CPU spend $0" },
     { "command": "wrangler workflows list", "exit_code": 0, "result": "videoforge-v2-06-staging-video / HostedVideoWorkflow" },
     { "command": "wrangler secret list --format json", "exit_code": 0, "result": "exact eight-name allowlist; values not recorded" },
     { "command": "deploy/v2-06/verify-r2-private-state.sh", "exit_code": 0, "result": "private Standard bucket; public dev URL disabled; no final-object expiry; multipart abort only" },
@@ -69,7 +70,7 @@
   ],
   "current_state_and_spend_truth": {
     "cloudflare_worker": "videoforge-v2-06-staging",
-    "cloudflare_version": "553cbbd2-6907-48c6-a57d-2cd576e097bd",
+    "cloudflare_version": "054910bd-00a2-4503-bc2f-1c2d0e364f59",
     "cloudflare_workflow": "videoforge-v2-06-staging-video / HostedVideoWorkflow",
     "neon_project_id": "ancient-morning-99567618",
     "r2_bucket": "videoforge-v2-06-staging-private",
@@ -85,7 +86,7 @@
     "successful_final_video_auto_delete": false
   },
   "rollback_state": {
-    "current_cloudflare_version": "553cbbd2-6907-48c6-a57d-2cd576e097bd",
+    "current_cloudflare_version": "054910bd-00a2-4503-bc2f-1c2d0e364f59",
     "prior_version_recorded_in_authority": "f3d3ecdc-7abf-4d9b-9208-a64e1552aa5f",
     "schema_policy": "FORWARD_ONLY_KEEP_MIGRATIONS_0029_THROUGH_0035",
     "live_exercise": false
@@ -96,7 +97,10 @@
   },
   "post_audit_repairs": {
     "handoff_commit": "56166e2",
+    "code_repair_commit": "0245c100e5e20ee1f0ebf262e046f7f3c32bbb13",
+    "redeployed_version": "054910bd-00a2-4503-bc2f-1c2d0e364f59",
+    "redeployed_config_sha256": "sha256:ece4752ad98c927d3d55459327617ade074fcfdf1e8542e075d68d4e4297fcc2",
     "working_tree_clean_after_commit": true,
-    "resolved_finding": "The audit's uncommitted-handoff P2 was fixed by committing the complete context/evidence handoff; live acceptance findings remain intentionally open."
+    "resolved_finding": "The audit's uncommitted-handoff P2 was fixed by committing the complete context/evidence handoff, and the R2 orchestration coverage P2 was fixed and redeployed; live hosted/device acceptance findings remain intentionally open."
   }
 }

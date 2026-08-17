@@ -2,17 +2,17 @@
   "schema_version": "videoforge.v2-06-live-deployment-proof/v1",
   "task_id": "VF-10-06",
   "checkpoint": "V2-06",
-  "recorded_at_utc": "2026-08-17T17:11:46Z",
+  "recorded_at_utc": "2026-08-17T17:36:31Z",
   "scope_boundary": "Non-secret deployment and grant facts captured after the approved bounded activation. No credential values are recorded. This file does not claim hosted Chrome, native-device, or full checkpoint acceptance.",
   "repository": {
     "branch": "codex/serverless-v2-roadmap",
-    "commit": "0855028794a902946cd7f9feb3d7ada38a6f949b",
-    "config_sha256": "sha256:f398d7264419bed929ffab3e40dde1040f3ce440d73e891f4022856abcd3069d"
+    "commit": "0245c100e5e20ee1f0ebf262e046f7f3c32bbb13",
+    "config_sha256": "sha256:ece4752ad98c927d3d55459327617ade074fcfdf1e8542e075d68d4e4297fcc2"
   },
   "cloudflare": {
     "account_id": "f9254d773a3426fcb469451b1f965d8c",
     "worker": "videoforge-v2-06-staging",
-    "deployment_version_id": "553cbbd2-6907-48c6-a57d-2cd576e097bd",
+    "deployment_version_id": "054910bd-00a2-4503-bc2f-1c2d0e364f59",
     "workflow": "videoforge-v2-06-staging-video",
     "workflow_class": "HostedVideoWorkflow",
     "r2_bucket": "videoforge-v2-06-staging-private",
@@ -21,7 +21,7 @@
     "status_endpoint": {
       "path": "/api/v2/hosted/status",
       "http_status": 200,
-      "commit": "0855028794a902946cd7f9feb3d7ada38a6f949b",
+      "commit": "0245c100e5e20ee1f0ebf262e046f7f3c32bbb13",
       "environment": "staging",
       "gpu_transport": "DISABLED_FAKE_ONLY",
       "database": "NEON_POSTGRES_REQUIRED",
