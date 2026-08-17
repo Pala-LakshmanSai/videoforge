@@ -158,3 +158,32 @@ Use `--dry-run` first. The normal command is documented in the script's `--help`
 database URL in the environment; it is never written to the generated catalog rows or evidence.
 This seed is a V2-06 CPU acceptance fixture only. It does not create GPU presets, RunPod work, or
 pre-composed render outputs, and it does not authorize V2-07.
+
+## Owned render fixture plan
+
+`provision-owned-render-fixture.mjs` is the bounded, default-dry-run planner for the hosted
+owned-render acceptance fixture. It reads only the immutable provider-free
+`artifacts/local-media` owned short slice, verifies the canonical local evidence and complete
+voiceover/avatar/image/manifest/output bytes, rewrites the manifest to deterministic actual
+tenant/project/revision IDs, and creates a complete `render-job-input/v1` plus exact
+`hosted_render_submission` plan. The plan uses tenant-scoped R2 object-key lineage and is limited
+to `lakshmansai121@gmail.com` and `demo9gss@gmail.com`.
+
+```sh
+V2_06_TENANT_EMAIL=lakshmansai121@gmail.com \
+V2_06_SEED_AT=2026-08-17T12:00:00Z \
+node deploy/v2-06/provision-owned-render-fixture.mjs --dry-run
+```
+
+The current implementation deliberately fails closed at the cross-provider live boundary until a
+separately reviewed DB/R2 compensation runbook exists. It has no delete, repair, GPU, or provider
+generation operation. Any future live extension must retain three explicit confirmations
+(`V2_06_RENDER_FIXTURE_CONFIRM`, `V2_06_RENDER_FIXTURE_R2_CONFIRM`, and
+`V2_06_RENDER_FIXTURE_DB_CONFIRM`), the Neon driver rooted at `apps/web`, aws4fetch SigV4, exact
+R2 byte verification, one Neon transaction, and an idempotent append-only mutation receipt.
+Local fixture evidence remains local proof only; it cannot prove hosted deployment.
+
+The emitted preview intentionally exposes both `revisionConfigBase`/`revision_config_hash` and a
+derived `hosted_render_submission`. It is not a persistable revision payload: hashing the full
+payload would create a manifest-to-revision-hash cycle. Resolving that immutable hash domain and
+the cross-provider compensation protocol is a prerequisite for any live mutation.

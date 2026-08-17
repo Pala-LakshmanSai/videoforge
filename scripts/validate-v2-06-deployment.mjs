@@ -203,6 +203,7 @@ const restoreScript = await read("deploy/v2-06/restore-drill.sh");
 const rollbackRunbook = await read("deploy/v2-06/rollback.md");
 const configRenderer = await read("deploy/v2-06/render-staging-config.mjs");
 const tenantPresetSeed = await read("deploy/v2-06/seed-tenant-presets.mjs");
+const ownedRenderFixture = await read("deploy/v2-06/provision-owned-render-fixture.mjs");
 const ownedFixtureProvisioner = await read("deploy/v2-06/provision-owned-fixture.mjs");
 if (
   tenantPresetSeed.length < 1000 ||
@@ -229,6 +230,23 @@ if (
   /\b(?:DROP|DELETE)\s+/iu.test(tenantPresetSeed)
 )
   fail("tenant-owned activation preset seed is not fail-closed and idempotent");
+if (
+  ownedRenderFixture.length < 8_000 ||
+  !ownedRenderFixture.includes("render-job-input/v1") ||
+  !ownedRenderFixture.includes("hosted_render_submission") ||
+  !ownedRenderFixture.includes("local_short_slice_owned_001") ||
+  !ownedRenderFixture.includes("V2_06_RENDER_FIXTURE_CONFIRM") ||
+  !ownedRenderFixture.includes("V2_06_RENDER_FIXTURE_R2_CONFIRM") ||
+  !ownedRenderFixture.includes("V2_06_RENDER_FIXTURE_DB_CONFIRM") ||
+  !ownedRenderFixture.includes("createRequire") ||
+  !ownedRenderFixture.includes("@neondatabase/serverless") ||
+  !ownedRenderFixture.includes("aws4fetch") ||
+  !ownedRenderFixture.includes("database_mutation=SKIPPED_DRY_RUN") ||
+  !ownedRenderFixture.includes("R2_ACCOUNT_ID") ||
+  /DROP\s+TABLE|DELETE\s+FROM|client\.delete\s*\(/iu.test(ownedRenderFixture) ||
+  /RUNPOD_API_KEY\s*[:=]|run\.googleapis\.com|CloudRunJobsClient/u.test(ownedRenderFixture)
+)
+  fail("owned render fixture planner is not a bounded default-dry-run plan");
 if (
   ownedFixtureProvisioner.length < 1000 ||
   !ownedFixtureProvisioner.includes("V2_06_OWNED_FIXTURE_CONFIRM=YES") ||
