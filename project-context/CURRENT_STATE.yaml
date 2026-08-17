@@ -46,8 +46,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "72ab157"
-  last_good_commit_note: "V2-06 local audit repair: hosted-auth expiry tests are time-relative, Cloud Run workers fail closed unless the primary output exactly matches declared bytes/hash, and R2 uploads require the declared checksum. This is provider-free local proof only; hosted deployment and full application acceptance remain unproven."
+  last_good_commit: "f6b164a"
+  last_good_commit_note: "V2-06 local audit repair: hosted-auth expiry tests are time-relative; Cloud Run workers validate primary bytes/hash; R2 uploads require the declared checksum; hosted callback acceptance validates result length, JSON content type, and bytes. This is provider-free local proof only; hosted deployment and full application acceptance remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -267,7 +267,7 @@ recommended_next_task:
 
 verification:
   state: v2_06_local_repair_green_full_hosted_acceptance_blocked
-  verified_commit: "72ab157205137f432852b4ee71d9f64183039e2c"
+  verified_commit: "f6b164a8b10e26fb1e14a1353584c0dcc3e528b0"
   verified_commit_note: "V2-06 provider-free audit repairs pass canonical local verification. The same-chat re-audit is not independent, and full hosted acceptance remains blocked by incomplete product-route composition and absent live deployment proof."
   predecessor_verified_commit: "3c117f204844da9c984d233477933ee4c0f304dd"
   acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-local-repair-reaudit/acceptance.json
@@ -485,12 +485,12 @@ verification:
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
     status: local_repair_green_hosted_acceptance_blocked
-    implementation_commit: "72ab157205137f432852b4ee71d9f64183039e2c"
+    implementation_commit: "f6b164a8b10e26fb1e14a1353584c0dcc3e528b0"
     evidence: evidence/acceptance/VF-10-06/2026-08-17-local-repair-reaudit/acceptance.json
     commands:
-      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 303/303; pipeline 120/120; web 324/324 plus 1 skipped; Cloudflare 1/1; installed Chrome 44/44)"
+      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 303/303; pipeline 120/120; web 325/325 plus 1 skipped; Cloudflare 1/1; installed Chrome 44/44)"
       - "Focused PostgreSQL adapter, migration, hosted-auth, callback, retention, and schema-inventory tests: PASS"
-      - "Hosted Cloud Run/R2 adapter tests: PASS (4/4)"
+      - "Hosted Cloud Run/R2 adapter tests: PASS (5/5)"
       - "pnpm test:workers: PASS (6 explicit Python 3.12 suites)"
       - "Staging build, V2-05 production bundle quarantine, V2-06 deployment validation, and Wrangler dry run: PASS"
       - "Pinned linux/amd64 image build and native linux/arm64 tool/fail-closed smoke: PASS"
@@ -502,6 +502,7 @@ verification:
       - "CPU-only scale-to-zero Cloud Run Job templates use maxRetries zero and the pinned whisper.cpp 1.8.4 plus FFmpeg/FFprobe 8.1.2 container."
       - "The staging Worker, hosted auth UI, secret allowlist, observability template, rollback, and activation record are fail-closed until exact approved values replace placeholders."
       - "Hosted-auth expiry tests use clock-relative boundaries; Cloud Run workers now reject absent, non-regular, symlinked, byte-mismatched, or hash-mismatched primary output instead of reporting success."
+      - "Hosted callback acceptance rejects result objects whose stored length or content type differs before hashing and accepting exact bytes."
     remaining_gates:
       - "Cloudflare and Neon sign-in is required for exact read-only account, plan, region, domain, quota, and current-rate facts."
       - "The email provider and verified sender identity/domain must be selected."

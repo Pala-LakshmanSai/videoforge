@@ -4,13 +4,14 @@
   "checkpoint": "V2-06",
   "result": "PASS_LOCAL_PROVIDER_FREE_REPAIR_ONLY_FULL_HOSTED_ACCEPTANCE_BLOCKED",
   "audit_independence": "SAME_CHAT_REPAIR_AND_REAUDIT_NOT_INDEPENDENT",
-  "implementation_commit": "72ab157205137f432852b4ee71d9f64183039e2c",
+  "implementation_commit": "f6b164a8b10e26fb1e14a1353584c0dcc3e528b0",
   "recorded_at_utc": "2026-08-17T04:04:24Z",
   "repaired_findings": [
     "Hosted-auth expiry tests now derive valid and expired invite times from the test clock.",
     "Cloud Run ASR/render execution rejects missing, non-regular, symlinked, byte-mismatched, and SHA-256-mismatched primary output before upload or success.",
     "R2 upload authorization signs the declared SHA-256 checksum and exposes required length, content type, and checksum headers; durable completion verifies exact object length, type, and bytes.",
-    "The Cloud Run credential parser avoids a literal delimiter that the tracked-file secret scanner correctly treats as suspicious."
+    "The Cloud Run credential parser avoids a literal delimiter that the tracked-file secret scanner correctly treats as suspicious.",
+    "Hosted callback acceptance rejects R2 result objects unless stored length and JSON content type match before hashing exact bytes."
   ],
   "validation": {
     "canonical": {
@@ -19,7 +20,7 @@
       "tasks": "28/28",
       "control_plane": "303/303",
       "pipeline": "120/120",
-      "web": "324/324 plus 1 skipped",
+      "web": "325/325 plus 1 skipped",
       "installed_chrome": "44/44",
       "cloudflare_local": "1/1",
       "worker_suites": "6 suites pass"
@@ -32,7 +33,7 @@
     "focused_hosted_adapters": {
       "command": "pnpm --filter @videoforge/web exec vitest run src/server/hosted/hosted-adapters.test.ts",
       "exit_code": 0,
-      "tests": "4/4"
+      "tests": "5/5"
     },
     "worker_tests": {
       "command": "pnpm test:workers",
