@@ -7,8 +7,9 @@
  * exact owned R2 objects are uploaded only when missing, verified byte-for-byte, and then one
  * Neon transaction creates the tenant/project/revision/assets/reservations/receipts/render-plan/
  * mutation-receipt lineage. There is deliberately no delete, repair, GPU, or provider-generation
- * path. A database failure intentionally leaves already verified R2 objects in place for audit;
- * no compensation delete is attempted.
+ * path. A database or R2 failure intentionally leaves already verified R2 objects in place for
+ * audit and records an append-only reconcile receipt; no automatic compensation delete is
+ * attempted.
  */
 
 import { createHash } from "node:crypto";
@@ -959,6 +960,104 @@ function buildR2UploadIntent(plan) {
   });
 }
 
+function buildR2FailureReceipt(plan, intent) {
+  const resultPayload = {
+    schema_version: "videoforge-owned-render-fixture-r2-failure/v1",
+    fixture_id: FIXTURE_ID,
+    fixture_non_production: true,
+    status: "R2_UPLOAD_FAILED",
+    tenant_email: plan.scope.email,
+    account_id: plan.scope.account_id,
+    workspace_id: plan.scope.workspace_id,
+    project_id: plan.projectId,
+    revision_id: plan.revisionId,
+    r2_upload_intent_idempotency_key: intent.idempotencyKey,
+    authority: plan.authority,
+    r2_budget: plan.r2Budget,
+    cleanup: {
+      required: true,
+      automatic_delete: false,
+      scope: "exact_expected_fixture_objects_only",
+      action: "EXPLICIT_MANUAL_R2_DELETE_AFTER_AUDIT",
+    },
+    // A failure can happen after a successful PUT but before its verification response is known.
+    // Keep every expected key auditable without claiming an unsafe per-object state.
+    r2_objects: plan.rows.map((row) => ({
+      role: row.name,
+      object_key: row.objectKey,
+      sha256: row.digest,
+      content_type: row.contentType,
+      bytes: row.bytes.length,
+      state: "RECONCILE_REQUIRED",
+    })),
+    seed_at: plan.seedAt,
+  };
+  const inputPayload = {
+    operation: "R2_UPLOAD_FAILURE",
+    r2_upload_intent_input_hash: intent.inputHash,
+    payload: resultPayload,
+  };
+  return Object.freeze({
+    idempotencyKey: `${intent.idempotencyKey}-failure-v1`,
+    operation: "v2_06_owned_render_fixture_r2_failure",
+    inputHash: canonicalHash(inputPayload),
+    resultHash: canonicalHash(resultPayload),
+    resultPayload: Object.freeze(resultPayload),
+  });
+}
+
+async function ensureR2FailureReceipt(client, plan, intent) {
+  const receipt = buildR2FailureReceipt(plan, intent);
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT set_config($1, $2, true)", [
+      "videoforge.account_id",
+      plan.scope.account_id,
+    ]);
+    await client.query(
+      `INSERT INTO repository_mutation_receipts (
+         workspace_id, idempotency_key, operation, input_hash, result_codec,
+         result_payload, result_hash, created_at
+       ) VALUES ($1,$2,$3,$4,'repository-result/v1',$5::jsonb,$6,$7)
+       ON CONFLICT (workspace_id, idempotency_key) DO NOTHING`,
+      [
+        plan.scope.workspace_id,
+        receipt.idempotencyKey,
+        receipt.operation,
+        receipt.inputHash,
+        JSON.stringify(receipt.resultPayload),
+        receipt.resultHash,
+        plan.seedAt,
+      ],
+    );
+    const result = await client.query(
+      `SELECT workspace_id::text AS workspace_id, idempotency_key, operation, input_hash,
+              result_codec, result_payload, result_hash, created_at
+         FROM repository_mutation_receipts
+        WHERE workspace_id = $1 AND idempotency_key = $2`,
+      [plan.scope.workspace_id, receipt.idempotencyKey],
+    );
+    const row = result.rows[0];
+    if (
+      !row ||
+      row.workspace_id !== plan.scope.workspace_id ||
+      row.idempotency_key !== receipt.idempotencyKey ||
+      row.operation !== receipt.operation ||
+      row.input_hash !== receipt.inputHash ||
+      row.result_codec !== "repository-result/v1" ||
+      row.result_hash !== receipt.resultHash
+    )
+      error("R2 failure receipt is not an exact idempotent match");
+    exactJson(row.result_payload, receipt.resultPayload, "R2 failure receipt payload");
+    exactTime(row.created_at, plan.seedAt, "R2 failure receipt created_at");
+    await client.query("COMMIT");
+    return receipt;
+  } catch (cause) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw cause;
+  }
+}
+
 async function ensureR2UploadIntent(client, plan) {
   const intent = buildR2UploadIntent(plan);
   try {
@@ -1670,7 +1769,21 @@ async function main(argv = process.argv.slice(2)) {
     plan.r2UploadIntent = await ensureR2UploadIntent(client, plan);
     const r2 = makeR2(r2Config);
     const r2States = {};
-    for (const row of plan.rows) r2States[row.name] = await ensureR2(r2, r2Config, row);
+    try {
+      for (const row of plan.rows) r2States[row.name] = await ensureR2(r2, r2Config, row);
+    } catch (cause) {
+      let failureReceipt;
+      try {
+        failureReceipt = await ensureR2FailureReceipt(client, plan, plan.r2UploadIntent);
+      } catch {
+        error("R2 upload failed and its immutable failure receipt could not be persisted");
+      }
+      error(
+        "R2 upload failed; immutable failure receipt " +
+          failureReceipt.idempotencyKey +
+          " records the exact expected-object cleanup scope and no automatic delete was attempted",
+      );
+    }
 
     try {
       await client.query("BEGIN");
@@ -1756,8 +1869,10 @@ export {
   assertR2PlanCaps,
   assertProviderConfig,
   buildR2UploadIntent,
+  buildR2FailureReceipt,
   buildAsrSubmission,
   ensureR2,
+  ensureR2FailureReceipt,
   planFixture,
   r2Request,
   validateRenderInput,

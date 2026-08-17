@@ -13,7 +13,10 @@ import {
   assertApprovedSourceLocation,
   assertMigrationLedgerRows,
   assertR2PlanCaps,
+  buildR2FailureReceipt,
+  buildR2UploadIntent,
   canonicalHash,
+  ensureR2FailureReceipt,
   planFixture,
   ensureR2,
   r2Request,
@@ -229,4 +232,45 @@ test("R2 conditional create is race-safe and exact after a concurrent winner", a
   assert.equal(state, "REUSED_EXACT_RACE");
   assert.equal(putHeaders?.get("if-none-match"), "*");
   assert.equal(calls, 4);
+});
+
+test("R2 partial failure records an immutable reconcile receipt without automatic deletion", async () => {
+  const fixture = await verifyLocalFixture();
+  const plan = planFixture(fixture, scope, "2026-08-17T12:00:00Z");
+  plan.sourceRenderInputSha256 = fixture.inputHash;
+  plan.sourceEvidenceSha256 = fixture.evidenceHash;
+  const intent = buildR2UploadIntent(plan);
+  const expected = buildR2FailureReceipt(plan, intent);
+  const queries = [];
+  const client = {
+    async query(sql, params = []) {
+      queries.push({ sql, params });
+      if (sql.startsWith("SELECT workspace_id::text AS workspace_id")) {
+        return {
+          rows: [
+            {
+              workspace_id: plan.scope.workspace_id,
+              idempotency_key: expected.idempotencyKey,
+              operation: expected.operation,
+              input_hash: expected.inputHash,
+              result_codec: "repository-result/v1",
+              result_payload: expected.resultPayload,
+              result_hash: expected.resultHash,
+              created_at: plan.seedAt,
+            },
+          ],
+        };
+      }
+      return { rows: [] };
+    },
+  };
+  const recorded = await ensureR2FailureReceipt(client, plan, intent);
+  assert.equal(recorded.idempotencyKey, expected.idempotencyKey);
+  assert.equal(recorded.resultPayload.status, "R2_UPLOAD_FAILED");
+  assert.equal(recorded.resultPayload.cleanup.automatic_delete, false);
+  assert.equal(recorded.resultPayload.cleanup.required, true);
+  assert.equal(recorded.resultPayload.r2_objects.length, MAX_R2_OBJECT_COUNT);
+  assert.ok(recorded.resultPayload.r2_objects.every((row) => row.state === "RECONCILE_REQUIRED"));
+  assert.ok(queries.some(({ sql }) => sql.includes("INSERT INTO repository_mutation_receipts")));
+  assert.ok(queries.some(({ sql }) => sql === "COMMIT"));
 });

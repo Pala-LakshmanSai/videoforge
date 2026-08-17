@@ -300,8 +300,10 @@ and uses the driver rooted at `apps/web`. It forwards the complete aws4fetch-sig
 `fetch`, uploads only missing exact tenant objects, verifies HEAD metadata and GET bytes/hash/type,
 then commits one Neon transaction at migration head 35. Existing objects and rows are accepted
 only when every immutable fact matches; no object, row, output, GPU, or provider-generated media
-is deleted or overwritten. If Neon fails after R2 verification, the exact orphan objects remain
-detectable for audit and the transaction is rolled back.
+is deleted or overwritten. If R2 fails partway through, an append-only failure receipt records the
+exact expected-object cleanup scope with `automatic_delete=false`; if Neon fails after R2
+verification, the exact orphan objects remain detectable for audit and the transaction is rolled
+back. Cleanup is explicit/manual and never an automatic final-video deletion.
 
 The transaction stores the base `revision_config_payload` and its hash on the locked revision;
 the rewritten manifest pins that hash, while `hosted_render_plans` stores the exact RENDER
