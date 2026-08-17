@@ -15,22 +15,6 @@ on:
         description: Exact prefixed SHA-256 of bundled ggml-base.en.bin
         required: true
         type: string
-      windows_tool_bundle_url:
-        description: Immutable URL for the preverified Windows x64 tool zip
-        required: true
-        type: string
-      windows_tool_bundle_sha256:
-        description: Hex SHA-256 of the Windows tool zip
-        required: true
-        type: string
-      macos_tool_bundle_url:
-        description: Immutable URL for the preverified macOS universal2 tool zip
-        required: true
-        type: string
-      macos_tool_bundle_sha256:
-        description: Hex SHA-256 of the macOS tool zip
-        required: true
-        type: string
       signed_release:
         description: Optional production upgrade to Authenticode and Developer ID notarization
         required: true
@@ -63,12 +47,8 @@ jobs:
         include:
           - label: windows-x64
             os: windows-2022
-            tool_url: windows_tool_bundle_url
-            tool_sha: windows_tool_bundle_sha256
           - label: macos-universal2
             os: macos-14
-            tool_url: macos_tool_bundle_url
-            tool_sha: macos_tool_bundle_sha256
     runs-on: ${{ matrix.os }}
     environment: media-worker-release
     steps:
@@ -85,59 +65,57 @@ jobs:
           CONTROL_PLANE_ORIGIN: ${{ inputs.control_plane_origin }}
           EXECUTION_BUNDLE_SHA256: ${{ inputs.execution_bundle_sha256 }}
           WHISPER_MODEL_SHA256: ${{ inputs.whisper_model_sha256 }}
-          TOOL_URL: ${{ inputs[matrix.tool_url] }}
-          TOOL_SHA256: ${{ inputs[matrix.tool_sha] }}
         run: |
           import os
           import re
           from urllib.parse import urlsplit
-          for name in ("CONTROL_PLANE_ORIGIN", "TOOL_URL"):
+          for name in ("CONTROL_PLANE_ORIGIN",):
               value = os.environ[name]
               parsed = urlsplit(value)
               if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
                   raise SystemExit(f"{name} must be a credential-free HTTPS URL")
-          if not re.fullmatch(r"[0-9a-f]{64}", os.environ["TOOL_SHA256"]):
-              raise SystemExit("TOOL_SHA256 must be exact lowercase hex")
           if not re.fullmatch(r"sha256:[0-9a-f]{64}", os.environ["EXECUTION_BUNDLE_SHA256"]):
               raise SystemExit("EXECUTION_BUNDLE_SHA256 must be exact prefixed lowercase hex")
           if not re.fullmatch(r"sha256:[0-9a-f]{64}", os.environ["WHISPER_MODEL_SHA256"]):
               raise SystemExit("WHISPER_MODEL_SHA256 must be exact prefixed lowercase hex")
 
-      - name: Download and verify exact tool bundle
-        shell: python
-        env:
-          TOOL_URL: ${{ inputs[matrix.tool_url] }}
-          TOOL_SHA256: ${{ inputs[matrix.tool_sha] }}
-          WHISPER_MODEL_SHA256: ${{ inputs.whisper_model_sha256 }}
+      - name: Build pinned whisper.cpp CLI for macOS universal2
+        if: runner.os == 'macOS'
+        shell: bash
         run: |
-          import hashlib
-          import os
-          import shutil
-          import urllib.request
-          import zipfile
-          from pathlib import Path
-          archive = Path("tool-bundle.zip")
-          with urllib.request.urlopen(os.environ["TOOL_URL"], timeout=120) as source, archive.open("wb") as output:
-              shutil.copyfileobj(source, output, length=1024 * 1024)
-          actual = hashlib.sha256(archive.read_bytes()).hexdigest()
-          if actual != os.environ["TOOL_SHA256"]:
-              raise SystemExit("tool bundle checksum mismatch")
-          with zipfile.ZipFile(archive) as bundle:
-              for member in bundle.infolist():
-                  target = (Path("worker-resources") / member.filename).resolve()
-                  if not target.is_relative_to(Path("worker-resources").resolve()):
-                      raise SystemExit("tool bundle contains an unsafe path")
-              bundle.extractall("worker-resources")
-          required = ["ffmpeg", "ffprobe", "whisper-cli", "ggml-base.en.bin"]
-          if os.name == "nt":
-              required[:3] = [f"{name}.exe" for name in required[:3]]
-          missing = [name for name in required if not (Path("worker-resources/bin") / name).is_file()]
-          if missing:
-              raise SystemExit(f"tool bundle is incomplete: {', '.join(missing)}")
-          model = Path("worker-resources/bin/ggml-base.en.bin")
-          expected_model = os.environ.get("WHISPER_MODEL_SHA256", "").removeprefix("sha256:")
-          if hashlib.sha256(model.read_bytes()).hexdigest() != expected_model:
-              raise SystemExit("bundled whisper model checksum mismatch")
+          git init whisper-src
+          git -C whisper-src remote add origin https://github.com/ggml-org/whisper.cpp.git
+          git -C whisper-src fetch --depth 1 origin 9386f239401074690479731c1e41683fbbeac557
+          test "$(git -C whisper-src rev-parse FETCH_HEAD)" = "9386f239401074690479731c1e41683fbbeac557"
+          git -C whisper-src checkout --detach FETCH_HEAD
+          cmake -S whisper-src -B whisper-build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+            -DGGML_METAL=ON \
+            -DGGML_NATIVE=OFF \
+            -DGGML_OPENMP=OFF \
+            -DWHISPER_BUILD_TESTS=OFF \
+            -DWHISPER_BUILD_EXAMPLES=ON \
+            -DWHISPER_BUILD_SERVER=OFF
+          cmake --build whisper-build --config Release --target whisper-cli --parallel 3
+
+      - name: Assemble and verify exact Windows media tools
+        if: runner.os == 'Windows'
+        shell: python
+        run: >-
+          python apps/media-worker-desktop/prepare_release_tools.py
+          --platform windows
+          --output worker-resources/bin
+
+      - name: Assemble and verify exact macOS media tools
+        if: runner.os == 'macOS'
+        shell: python
+        run: >-
+          python apps/media-worker-desktop/prepare_release_tools.py
+          --platform macos
+          --macos-whisper-cli whisper-build/bin/whisper-cli
+          --output worker-resources/bin
 
       - name: Build pinned worker configuration
         shell: bash
