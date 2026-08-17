@@ -52,7 +52,7 @@ export class HostedR2Signer {
       throw new TypeError("R2 object key is not exact tenant lineage.");
     if (
       !Number.isSafeInteger(input.contentLength) ||
-      input.contentLength < 0 ||
+      input.contentLength < 1 ||
       input.contentLength > 10 * 1024 ** 3
     ) {
       throw new RangeError("R2 content length is outside the bounded artifact contract.");

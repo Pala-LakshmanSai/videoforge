@@ -11,6 +11,7 @@ import {
   type HostedRuntimeEnvironment,
 } from "./configuration";
 import { HostedR2Signer } from "./r2";
+import { supportedWorkerPlatform } from "./personal-worker";
 import {
   bindHostedCpuInputDocument,
   canonicalJson,
@@ -221,6 +222,25 @@ describe("V2-06 hosted adapters", () => {
         lifetimeSeconds: 300,
       }),
     ).rejects.toThrow(/exact tenant lineage/u);
+    await expect(
+      new HostedR2Signer(config.r2).sign({
+        method: "PUT",
+        objectKey:
+          "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/input/job/job-a/artifact/artifact-a",
+        contentType: "application/json",
+        contentLength: 0,
+        checksumSha256: `sha256:${"a".repeat(64)}`,
+        lifetimeSeconds: 300,
+      }),
+    ).rejects.toThrow(/content length/u);
+  });
+
+  it("keeps worker enrollment aligned with the published native platforms", () => {
+    expect(supportedWorkerPlatform("WINDOWS", "X86_64")).toBe(true);
+    expect(supportedWorkerPlatform("WINDOWS", "AARCH64")).toBe(false);
+    expect(supportedWorkerPlatform("MACOS", "X86_64")).toBe(true);
+    expect(supportedWorkerPlatform("MACOS", "AARCH64")).toBe(true);
+    expect(supportedWorkerPlatform("LINUX", "X86_64")).toBe(false);
   });
 
   it("keeps the historical Cloud Run adapter fail-closed for rollback evidence", () => {

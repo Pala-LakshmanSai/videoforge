@@ -58,6 +58,13 @@ interface HostedQueueRow extends Record<string, unknown> {
   readonly updated_at: Date | string;
 }
 
+function checksumFromR2(value?: ArrayBuffer): string | null {
+  if (!value || value.byteLength !== 32) return null;
+  return `sha256:${[...new Uint8Array(value)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
 async function handleHostedQueue(
   request: Request,
   config: ReturnType<typeof hostedRuntimeConfiguration>,
@@ -199,7 +206,8 @@ async function handleHostedLibrary(
       if (
         !object ||
         object.size !== contentLength ||
-        object.httpMetadata?.contentType !== "video/mp4"
+        object.httpMetadata?.contentType !== "video/mp4" ||
+        checksumFromR2(object.checksums?.sha256) !== output.checksum_sha256
       ) {
         continue;
       }

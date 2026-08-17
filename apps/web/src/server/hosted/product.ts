@@ -747,7 +747,12 @@ async function projectDetail(
         typeof value.output_checksum_sha256 === "string"
       ) {
         const object = await environment.PRIVATE_ARTIFACTS?.head(value.object_key);
-        if (object && object.size === Number(value.content_length)) {
+        if (
+          object &&
+          object.size === Number(value.content_length) &&
+          object.httpMetadata?.contentType === "video/mp4" &&
+          checksumFromR2(object.checksums?.sha256) === value.output_checksum_sha256
+        ) {
           previewUrl = (
             await signer.sign({
               method: "GET",
@@ -809,6 +814,7 @@ async function approveReview(
             AND authority.workspace_id = attempt.workspace_id
             AND authority.attempt_id = attempt.id
             AND authority.source = 'PRIMARY_RESULT_OUTPUT'
+            AND authority.issued_at IS NOT NULL
           WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
             AND attempt.project_id = $3 AND attempt.id = $4
             AND attempt.kind = 'RENDER' AND attempt.state = 'SUCCEEDED'

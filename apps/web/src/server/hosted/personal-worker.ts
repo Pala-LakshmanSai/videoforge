@@ -12,6 +12,14 @@ import { HostedR2Signer } from "./r2";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const TOKEN = /^[0-9a-f]{64}$/u;
+const WORKER_VERSION = /^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/u;
+
+export function supportedWorkerPlatform(platform: unknown, architecture: unknown): boolean {
+  return (
+    (platform === "WINDOWS" && architecture === "X86_64") ||
+    (platform === "MACOS" && (architecture === "X86_64" || architecture === "AARCH64"))
+  );
+}
 
 function json(value: unknown, status = 200): Response {
   return Response.json(value, {
@@ -75,6 +83,7 @@ interface DeviceScope {
   readonly deviceId: string;
   readonly accountId: string;
   readonly workspaceId: string;
+  readonly status: "OFFLINE" | "ONLINE" | "BUSY" | "UPDATE_REQUIRED" | "REVOKED";
   readonly protocolVersion: number;
   readonly executionBundleSha256: string;
 }
@@ -91,6 +100,7 @@ async function deviceScope(request: Request, pool: HostedNeonPool): Promise<Devi
         deviceId: String(row.device_id),
         accountId: String(row.account_id),
         workspaceId: String(row.workspace_id),
+        status: String(row.status) as DeviceScope["status"],
         protocolVersion: Number(row.protocol_version),
         executionBundleSha256: String(row.execution_bundle_sha256),
       }
@@ -108,10 +118,9 @@ function exactEnrollment(value: unknown) {
     row.display_name.trim() !== row.display_name ||
     row.display_name.length < 1 ||
     row.display_name.length > 120 ||
-    !["WINDOWS", "MACOS"].includes(String(row.platform)) ||
-    !["X86_64", "AARCH64"].includes(String(row.architecture)) ||
+    !supportedWorkerPlatform(row.platform, row.architecture) ||
     typeof row.worker_version !== "string" ||
-    !/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/u.test(row.worker_version) ||
+    !WORKER_VERSION.test(row.worker_version) ||
     !Number.isSafeInteger(row.protocol_version) ||
     Number(row.protocol_version) < 1 ||
     typeof row.execution_bundle_sha256 !== "string" ||
@@ -570,12 +579,13 @@ async function heartbeat(request: Request, config: HostedRuntimeConfiguration) {
       Object.keys(row).sort().join(",") !==
         "architecture,execution_bundle_sha256,platform,protocol_version,schema_version,worker_version" ||
       row.schema_version !== "videoforge-media-worker-heartbeat/v1" ||
-      !["WINDOWS", "MACOS"].includes(String(row.platform)) ||
-      !["X86_64", "AARCH64"].includes(String(row.architecture)) ||
+      !supportedWorkerPlatform(row.platform, row.architecture) ||
       typeof row.worker_version !== "string" ||
+      !WORKER_VERSION.test(row.worker_version) ||
       typeof row.execution_bundle_sha256 !== "string" ||
       !SHA256.test(row.execution_bundle_sha256) ||
-      !Number.isSafeInteger(row.protocol_version)
+      !Number.isSafeInteger(row.protocol_version) ||
+      Number(row.protocol_version) < 1
     ) {
       return json({ error: { code: "MEDIA_WORKER_HEARTBEAT_REJECTED" } }, 400);
     }
@@ -673,6 +683,24 @@ async function claim(
   try {
     const scope = await deviceScope(request, pool);
     if (!scope) return json({ error: { code: "MEDIA_WORKER_UNAUTHORIZED" } }, 401);
+    if (scope.status !== "ONLINE") {
+      return json({ error: { code: "MEDIA_WORKER_HEARTBEAT_REQUIRED" } }, 409);
+    }
+    await pool.query("SELECT set_config($1, $2, false)", [
+      "videoforge.account_id",
+      scope.accountId,
+    ]);
+    const heartbeat = await pool.query(
+      `SELECT 1
+         FROM media_worker_devices
+        WHERE id = $1 AND account_id = $2 AND workspace_id = $3
+          AND status = 'ONLINE'
+          AND last_seen_at >= now() - interval '90 seconds'`,
+      [scope.deviceId, scope.accountId, scope.workspaceId],
+    );
+    if (!heartbeat.rows[0]) {
+      return json({ error: { code: "MEDIA_WORKER_HEARTBEAT_REQUIRED" } }, 409);
+    }
     if (scope.protocolVersion < config.mediaWorkerRelease.minimumProtocolVersion) {
       return json({ error: { code: "MEDIA_WORKER_UPDATE_REQUIRED" } }, 409);
     }
@@ -860,11 +888,13 @@ async function leaseHeartbeat(
          FROM hosted_cpu_job_attempts AS attempt
         WHERE lease.id = $1 AND attempt.id = lease.attempt_id
           AND attempt.state IN ('RUNNING', 'CANCEL_REQUESTED')
+          AND lease.lease_expires_at > now()
           AND (attempt.deadline_at > now() OR attempt.state = 'CANCEL_REQUESTED')
       RETURNING attempt.state`,
       [leaseId],
     );
-    const state = String(result.rows[0]?.state ?? "CANCEL_REQUESTED");
+    if (!result.rows[0]) return json({ error: { code: "MEDIA_WORKER_LEASE_STALE" } }, 409);
+    const state = String(result.rows[0].state);
     return json({
       schema_version: "videoforge-personal-worker-lease-heartbeat/v1",
       cancel_requested: state === "CANCEL_REQUESTED",
@@ -1087,12 +1117,15 @@ async function completeLease(
         attemptState === "CANCEL_REQUESTED" || completion.status === "CANCELLED"
           ? "CANCELLED"
           : String(completion.status);
-      await transaction.query(
+      const leaseUpdated = await transaction.query(
         `UPDATE media_worker_leases
             SET state = $2, completed_at = now(), failure_code = $3, updated_at = now()
-          WHERE id = $1 AND state IN ('CLAIMED', 'RUNNING', 'COMPLETING')`,
+          WHERE id = $1 AND state IN ('CLAIMED', 'RUNNING', 'COMPLETING')
+            AND lease_expires_at > now()
+        RETURNING id`,
         [leaseId, state, state === "FAILED" ? String(completion.failure_code) : null],
       );
+      if (!leaseUpdated.rows[0]) return null;
       await transaction.query(
         `UPDATE hosted_cpu_job_attempts
             SET state = $2, terminal_at = now(),
