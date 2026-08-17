@@ -3,9 +3,18 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
+  APPROVED_CLOUDFLARE_ACCOUNT_ID,
+  APPROVED_R2_BUCKET,
+  APPROVED_R2_REGION,
   EXPECTED_SOURCE_SHA256,
+  assertMigrationUrl,
+  assertR2Config,
+  buildAssets,
+  buildOrphanInventory,
   parseManifestRow,
   pngDimensions,
+  r2ObjectUrl,
+  r2Request,
   stripPngMetadata,
 } from "../../deploy/v2-06/provision-owned-fixture.mjs";
 
@@ -17,6 +26,72 @@ test("owned fixture manifest is pinned to the repository-authored source", () =>
   );
   assert.equal(row.sha256, EXPECTED_SOURCE_SHA256);
   assert.equal(row.rightsBasis, "owned_synthetic_fixture");
+  assert.equal(row.purpose, "Reusable Avatar Hub thumbnail");
+});
+
+test("owned assets use canonical tenant-private Avatar Hub keys and stable orphan inventory", () => {
+  const scope = {
+    account_id: "11111111-1111-4111-8111-111111111111",
+    workspace_id: "22222222-2222-4222-8222-222222222222",
+  };
+  const files = {
+    ORIGINAL: {
+      kind: "AVATAR_ORIGINAL",
+      contentType: "image/png",
+      bytes: Buffer.from("original"),
+      width: 1536,
+      height: 1536,
+      durationMs: null,
+      extension: "png",
+    },
+    RUNTIME: {
+      kind: "AVATAR_RUNTIME",
+      contentType: "video/mp4",
+      bytes: Buffer.from("runtime"),
+      width: 832,
+      height: 480,
+      durationMs: 1000,
+      extension: "mp4",
+      runtimeFrameSha256: "sha256:" + "a".repeat(64),
+      toolchain: {
+        ffmpeg_version: "8.1.1",
+        ffmpeg_sha256: "sha256:" + "b".repeat(64),
+        ffprobe_version: "8.1.1",
+        ffprobe_sha256: "sha256:" + "c".repeat(64),
+      },
+    },
+    THUMBNAIL: {
+      kind: "AVATAR_THUMBNAIL",
+      contentType: "image/png",
+      bytes: Buffer.from("thumbnail"),
+      width: 512,
+      height: 512,
+      durationMs: null,
+      extension: "png",
+    },
+  };
+  const assets = buildAssets({
+    scope,
+    files,
+    sourceManifest: {
+      sha256: EXPECTED_SOURCE_SHA256,
+      sourceKind: "repository_source_authored_svg",
+      rightsBasis: "owned_synthetic_fixture",
+      purpose: "Reusable Avatar Hub thumbnail",
+    },
+  });
+  for (const role of ["ORIGINAL", "RUNTIME", "THUMBNAIL"]) {
+    assert.match(
+      assets[role].objectKey,
+      /^tenant\/[^/]+\/workspace\/[^/]+\/avatar-profile\/[^/]+\/version\/[^/]+\/(?:original|canonical|thumbnail)\/[^/]+$/u,
+    );
+    assert.doesNotMatch(assets[role].objectKey, /project|fixture/u);
+  }
+  assert.equal(assets.RUNTIME.storageRole, "canonical");
+  const first = buildOrphanInventory(scope, assets);
+  const second = buildOrphanInventory(scope, assets);
+  assert.deepEqual(first, second);
+  assert.equal(first.automatic_delete, false);
 });
 
 test("PNG metadata stripping keeps only canonical image chunks", () => {
@@ -62,4 +137,76 @@ test("CLI refuses partial live confirmations before provider/database access", (
   });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /refusing R2 mutation/u);
+});
+
+test("R2 forwards the complete signed Request for PUT/GET/HEAD", async () => {
+  const originalFetch = globalThis.fetch;
+  const seen = [];
+  globalThis.fetch = async (request) => {
+    seen.push(request);
+    return new Response(null, { status: 200 });
+  };
+  try {
+    for (const method of ["PUT", "GET", "HEAD"]) {
+      const signed = new Request("https://example.invalid/object", {
+        method,
+        headers: {
+          Authorization: "AWS4-HMAC-SHA256 Credential=test",
+          "x-amz-content-sha256": "UNSIGNED-PAYLOAD",
+        },
+        body: method === "PUT" ? "fixture" : undefined,
+      });
+      const client = {
+        sign: async (_url, init) => {
+          assert.equal(init.method, method);
+          return signed;
+        },
+      };
+      await r2Request(client, signed.url, method, {}, method === "PUT" ? Buffer.from("fixture") : undefined);
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.equal(seen.length, 3);
+  for (const request of seen) {
+    assert.match(request.headers.get("authorization"), /^AWS4-HMAC-SHA256/u);
+    assert.equal(request.headers.get("x-amz-content-sha256"), "UNSIGNED-PAYLOAD");
+  }
+});
+
+test("wrong R2 and Neon resources fail closed before any request", () => {
+  assert.doesNotThrow(() =>
+    assertR2Config({
+      accountId: APPROVED_CLOUDFLARE_ACCOUNT_ID,
+      bucket: APPROVED_R2_BUCKET,
+      region: APPROVED_R2_REGION,
+      accessKeyId: "redacted",
+      secretAccessKey: "redacted",
+    }),
+  );
+  assert.throws(
+    () =>
+      assertR2Config({
+        accountId: "00000000000000000000000000000000",
+        bucket: APPROVED_R2_BUCKET,
+        region: APPROVED_R2_REGION,
+      }),
+    /approved V2-06/u,
+  );
+  assert.throws(
+    () => r2ObjectUrl("00000000000000000000000000000000", APPROVED_R2_BUCKET, "object"),
+    /approved V2-06/u,
+  );
+  assert.doesNotThrow(() =>
+    assertMigrationUrl(
+      "postgresql://migration-owner:example@ep-approved1234-pooler.ap-southeast-1.aws.neon.tech/neondb",
+    ),
+  );
+  assert.throws(
+    () =>
+      assertMigrationUrl(
+        "postgresql://migration-owner:example@ep-unrelated1234-pooler.us-east-2.aws.neon.tech/neondb",
+      ),
+    /approved .*Neon endpoint/u,
+  );
 });

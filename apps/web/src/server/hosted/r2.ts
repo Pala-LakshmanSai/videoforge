@@ -3,7 +3,7 @@ import { AwsClient } from "aws4fetch";
 import type { HostedRuntimeConfiguration } from "./configuration";
 
 const EXACT_KEY =
-  /^tenant\/[A-Za-z0-9._:-]+\/workspace\/[A-Za-z0-9._:-]+\/project\/[A-Za-z0-9._:-]+\/revision\/[A-Za-z0-9._:-]+\/lane\/(?:input|mage-image|soulx-avatar|render|provenance)\/job\/[A-Za-z0-9._:-]+\/artifact\/[A-Za-z0-9._:-]+$/u;
+  /^(?:tenant\/[A-Za-z0-9._:-]+\/workspace\/[A-Za-z0-9._:-]+\/project\/[A-Za-z0-9._:-]+\/revision\/[A-Za-z0-9._:-]+\/lane\/(?:input|mage-image|soulx-avatar|render|provenance)\/job\/[A-Za-z0-9._:-]+\/artifact\/[A-Za-z0-9._:-]+|tenant\/[A-Za-z0-9._:-]+\/workspace\/[A-Za-z0-9._:-]+\/avatar-profile\/[A-Za-z0-9._:-]+\/version\/[A-Za-z0-9._:-]+\/(?:original|canonical|thumbnail)\/[A-Za-z0-9._:-]+)$/u;
 
 function checksumHeader(value: string): string {
   const bytes = value

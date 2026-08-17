@@ -236,6 +236,22 @@ describe("V2-06 hosted adapters", () => {
     ).rejects.toThrow(/content length/u);
   });
 
+  it("accepts exact Avatar Hub profile-version storage keys", async () => {
+    const config = hostedRuntimeConfiguration(environment());
+    const port = await new HostedR2Signer(config.r2).sign({
+      method: "PUT",
+      objectKey:
+        "tenant/account-a/workspace/workspace-a/avatar-profile/profile-a/version/version-a/canonical/canonical.mp4",
+      contentType: "video/mp4",
+      contentLength: 128,
+      checksumSha256: `sha256:${"a".repeat(64)}`,
+      lifetimeSeconds: 300,
+      now: new Date("2026-08-16T00:00:00.000Z"),
+    });
+    expect(port.method).toBe("PUT");
+    expect(port.url).toContain("avatar-profile");
+  });
+
   it("keeps worker enrollment aligned with the published native platforms", () => {
     expect(supportedWorkerPlatform("WINDOWS", "X86_64")).toBe(true);
     expect(supportedWorkerPlatform("WINDOWS", "AARCH64")).toBe(false);

@@ -25,7 +25,7 @@ import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { lstatSync } from "node:fs";
+import { lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -49,7 +49,25 @@ const MANIFEST_PATH = path.join(ROOT, MANIFEST_RELATIVE);
 const EXPECTED_SOURCE_SHA256 = "e3b25f5244dc6d3db553b1926fab7bbffa6333b85201afd079f51cd1f0b64edd";
 const EXPECTED_SOURCE_KIND = "repository_source_authored_svg";
 const EXPECTED_RIGHTS = "owned_synthetic_fixture";
+const EXPECTED_PURPOSE = "Reusable Avatar Hub thumbnail";
 const ALLOWED_EMAILS = new Set(["lakshmansai121@gmail.com", "demo9gss@gmail.com"]);
+const APPROVED_CLOUDFLARE_ACCOUNT_ID = "f9254d773a3426fcb469451b1f965d8c";
+const APPROVED_R2_BUCKET = "videoforge-v2-06-staging-private";
+const APPROVED_R2_REGION = "auto";
+const APPROVED_NEON_PROJECT_NAME = "videoforge-v2-06-staging";
+// No VideoForge Neon project exists in the immutable current inventory. Until the
+// approved project is created, only the proposed Singapore endpoint shape is
+// accepted; unrelated projects/regions fail closed.
+const APPROVED_NEON_HOST_PATTERN =
+  /^ep-[a-z0-9-]{8,80}(?:-pooler)?(?:\.c-[a-z0-9-]+)?\.ap-southeast-1\.aws\.neon\.tech$/u;
+const APPROVED_NEON_ENDPOINT_ID_PATTERN = /^ep-[a-z0-9-]{8,80}$/u;
+const PINNED_FFMPEG_VERSION = "8.1.1";
+const PINNED_FFPROBE_VERSION = "8.1.1";
+const AVATAR_STORAGE_ROLE = Object.freeze({
+  ORIGINAL: "original",
+  RUNTIME: "canonical",
+  THUMBNAIL: "thumbnail",
+});
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const TIMESTAMP = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?Z$/u;
@@ -62,6 +80,43 @@ function canonicalize(value) {
 
 function hashBytes(value) {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+function activationAvatarIdentity(scope) {
+  return Object.freeze({
+    profileId: deterministicUuid(`videoforge:v2-06:${scope.account_id}:avatar:activation`),
+    versionId: deterministicUuid(`videoforge:v2-06:${scope.account_id}:avatar:activation:v1`),
+  });
+}
+
+function resolveExecutable(command) {
+  const candidates = command.includes(path.sep)
+    ? [command]
+    : (process.env.PATH ?? "").split(path.delimiter).map((directory) => path.join(directory, command));
+  for (const candidate of candidates) {
+    try {
+      const stat = statSync(candidate);
+      if (!stat.isFile() || (stat.mode & 0o111) === 0) continue;
+      return realpathSync(candidate);
+    } catch {
+      // Continue through PATH without exposing the host's paths in output.
+    }
+  }
+  throw new Error(`${command} executable is unavailable`);
+}
+
+function pinnedToolIdentity(command, expectedVersion) {
+  const executable = resolveExecutable(command);
+  const versionOutput = runBinary(executable, ["-version"], `${command} version probe`);
+  const match = versionOutput.match(new RegExp(`^${command} version ([^\\s]+)`, "mu"));
+  if (!match || match[1] !== expectedVersion)
+    throw new Error(`${command} must be exactly version ${expectedVersion}`);
+  return Object.freeze({
+    name: command,
+    version: match[1],
+    sha256: hashBytes(readFileSync(executable)),
+    executable,
+  });
 }
 
 function deterministicUuid(label) {
@@ -129,16 +184,17 @@ function parseManifestRow(source) {
   if (!row) throw new Error("pinned avatar fixture is absent from asset_manifest.csv");
   const fields = row.split(",");
   if (fields.length < 5) throw new Error("pinned avatar manifest row is malformed");
-  const [relativePath, sha256, sourceKind, rightsBasis] = fields;
+  const [relativePath, sha256, sourceKind, rightsBasis, purpose] = fields;
   if (
     relativePath !== `../${SOURCE_RELATIVE}` ||
     sha256 !== EXPECTED_SOURCE_SHA256 ||
     sourceKind !== EXPECTED_SOURCE_KIND ||
-    rightsBasis !== EXPECTED_RIGHTS
+    rightsBasis !== EXPECTED_RIGHTS ||
+    purpose !== EXPECTED_PURPOSE
   ) {
     throw new Error("pinned avatar manifest provenance or checksum drifted");
   }
-  return Object.freeze({ relativePath, sha256, sourceKind, rightsBasis });
+  return Object.freeze({ relativePath, sha256, sourceKind, rightsBasis, purpose });
 }
 
 async function readPinnedSource() {
@@ -236,9 +292,11 @@ async function rasterizeOwnedFixture() {
     );
     const framePath = path.join(temporary, "runtime-frame.png");
     const runtimePath = path.join(temporary, "runtime.mp4");
+    const ffmpeg = pinnedToolIdentity("ffmpeg", PINNED_FFMPEG_VERSION);
+    const ffprobe = pinnedToolIdentity("ffprobe", PINNED_FFPROBE_VERSION);
     await writeFile(framePath, runtimeFrame, { mode: 0o600 });
     runBinary(
-      "ffmpeg",
+      ffmpeg.executable,
       [
         "-v",
         "error",
@@ -294,7 +352,7 @@ async function rasterizeOwnedFixture() {
     );
     const probe = JSON.parse(
       runBinary(
-        "ffprobe",
+        ffprobe.executable,
         [
           "-v",
           "error",
@@ -322,11 +380,18 @@ async function rasterizeOwnedFixture() {
       throw new Error("owned fixture raster dimensions drifted");
     const stream = probe.streams?.[0];
     if (
+      probe.streams?.length !== 1 ||
+      typeof probe.format?.format_name !== "string" ||
+      !probe.format.format_name.split(",").includes("mp4") ||
       stream?.codec_name !== "h264" ||
       stream.width !== 832 ||
       stream.height !== 480 ||
       stream.pix_fmt !== "yuv420p" ||
-      Number(stream.nb_frames) !== 25
+      Number(stream.nb_frames) !== 25 ||
+      !Number.isFinite(Number(probe.format.duration)) ||
+      !Number.isFinite(Number(stream.duration)) ||
+      Math.abs(Number(probe.format.duration) - 1) > 1e-9 ||
+      Math.abs(Number(stream.duration) - 1) > 1e-9
     )
       throw new Error("owned fixture runtime video probe is not exact");
     const tags = { ...(probe.format?.tags ?? {}), ...(stream.tags ?? {}) };
@@ -357,6 +422,12 @@ async function rasterizeOwnedFixture() {
         durationMs: 1000,
         extension: "mp4",
         runtimeFrameSha256: hashBytes(runtimeFrame),
+        toolchain: Object.freeze({
+          ffmpeg_version: ffmpeg.version,
+          ffmpeg_sha256: ffmpeg.sha256,
+          ffprobe_version: ffprobe.version,
+          ffprobe_sha256: ffprobe.sha256,
+        }),
       }),
       THUMBNAIL: Object.freeze({
         kind: "AVATAR_THUMBNAIL",
@@ -374,19 +445,22 @@ async function rasterizeOwnedFixture() {
   }
 }
 
-function buildAssets({ scope, files, sourceManifest, lineage = {} }) {
+function buildAssets({ scope, files, sourceManifest }) {
   const assets = {};
+  const avatar = activationAvatarIdentity(scope);
   for (const role of ROLE_ORDER) {
     const file = files[role];
     const assetId = deterministicUuid(`videoforge:v2-06:owned-fixture:${scope.account_id}:${role}`);
-    const objectKey = lineage.projectId
-      ? `tenant/${scope.account_id}/workspace/${scope.workspace_id}/project/${lineage.projectId}` +
-        `/revision/${lineage.revisionId}/lane/soulx-avatar/job/owned-fixture-v2-06/artifact/${role.toLowerCase()}`
-      : `tenant/${scope.account_id}/workspace/${scope.workspace_id}/fixture/avatar/v2-06/` +
-        `${role.toLowerCase()}.${file.extension}`;
+    const storageRole = AVATAR_STORAGE_ROLE[role];
+    const objectKey =
+      `tenant/${scope.account_id}/workspace/${scope.workspace_id}/avatar-profile/${avatar.profileId}` +
+      `/version/${avatar.versionId}/${storageRole}/${storageRole}.${file.extension}`;
     assets[role] = Object.freeze({
       role,
       assetId,
+      avatarProfileId: avatar.profileId,
+      avatarVersionId: avatar.versionId,
+      storageRole,
       objectKey,
       kind: file.kind,
       state: "VERIFIED",
@@ -409,7 +483,12 @@ function buildAssets({ scope, files, sourceManifest, lineage = {} }) {
         source_provenance: sourceManifest.rightsBasis,
         source_sha256: `sha256:${sourceManifest.sha256}`,
         source_kind: sourceManifest.sourceKind,
+        source_purpose: sourceManifest.purpose,
+        avatar_profile_id: avatar.profileId,
+        avatar_profile_version_id: avatar.versionId,
+        avatar_storage_role: storageRole,
         derived_runtime_frame_sha256: file.runtimeFrameSha256 ?? null,
+        toolchain: file.toolchain ?? null,
         no_metadata: true,
       },
     });
@@ -483,6 +562,11 @@ function assertMigrationUrl(databaseUrl) {
     throw new Error("V2_06_MIGRATION_DATABASE_URL must use postgres:// or postgresql://");
   if (decodeURIComponent(url.username).toLowerCase() === "videoforge_v2_06_runtime")
     throw new Error("owned fixture provisioner refuses the hosted runtime role");
+  const endpointId = url.hostname.match(/^(ep-[a-z0-9-]+?)(?:-pooler)?(?:\.c-[a-z0-9-]+)?\./u)?.[1];
+  if (!APPROVED_NEON_HOST_PATTERN.test(url.hostname) || !endpointId || !APPROVED_NEON_ENDPOINT_ID_PATTERN.test(endpointId))
+    throw new Error(
+      `V2_06_MIGRATION_DATABASE_URL must target the approved ${APPROVED_NEON_PROJECT_NAME} Neon endpoint`,
+    );
 }
 
 async function ensureAssets(client, scope, assets, seedAt) {
@@ -763,158 +847,7 @@ async function ensurePresetRows(client, scope, assets, seedAt) {
   return plan;
 }
 
-function artifactFacts({ scope, assets, lineage, seedAt }) {
-  if (!lineage.projectId && !lineage.revisionId) return [];
-  if (!lineage.projectId || !lineage.revisionId)
-    throw new Error("project_id and revision_id must be supplied together for artifact receipts");
-  return ROLE_ORDER.map((role) => {
-    const asset = assets[role];
-    const artifactId = role.toLowerCase();
-    const objectKey =
-      `tenant/${scope.account_id}/workspace/${scope.workspace_id}/project/${lineage.projectId}` +
-      `/revision/${lineage.revisionId}/lane/soulx-avatar/job/owned-fixture-v2-06/artifact/${artifactId}`;
-    const probe = {
-      schema_version: "videoforge-owned-fixture-probe/v1",
-      fixture_non_production: true,
-      role,
-      content_type: asset.contentType,
-      width: asset.width,
-      height: asset.height,
-      duration_ms: asset.durationMs,
-      no_metadata: true,
-      source_sha256: `sha256:${EXPECTED_SOURCE_SHA256}`,
-    };
-    const reservationId = deterministicUuid(
-      `videoforge:v2-06:owned-fixture:${scope.account_id}:${lineage.projectId}:${lineage.revisionId}:${role}:reservation`,
-    );
-    const receiptId = deterministicUuid(
-      `videoforge:v2-06:owned-fixture:${scope.account_id}:${lineage.projectId}:${lineage.revisionId}:${role}:receipt`,
-    );
-    const callbackId = `owned-fixture-v2-06-${role.toLowerCase()}`;
-    const receiptSha256 = sha256Canonical({
-      schema_version: "videoforge-owned-fixture-receipt/v1",
-      reservation_id: reservationId,
-      receipt_id: receiptId,
-      account_id: scope.account_id,
-      workspace_id: scope.workspace_id,
-      project_id: lineage.projectId,
-      revision_id: lineage.revisionId,
-      object_key: objectKey,
-      content_type: asset.contentType,
-      content_length: asset.contentLength,
-      checksum_sha256: asset.checksumSha256,
-      probe,
-      committed_at: seedAt,
-    });
-    return Object.freeze({
-      role,
-      asset,
-      artifactId,
-      objectKey,
-      reservationId,
-      receiptId,
-      callbackId,
-      probe,
-      receiptSha256,
-    });
-  });
-}
-
-async function ensureArtifactRows(client, scope, facts, seedAt) {
-  if (facts.length === 0) return;
-  for (const fact of facts) {
-    const lineage = fact.objectKey.match(
-      /^tenant\/[^/]+\/workspace\/[^/]+\/project\/([^/]+)\/revision\/([^/]+)\//u,
-    );
-    if (!lineage) throw new Error("artifact key lost trusted project/revision lineage");
-    await client.query(
-      `INSERT INTO artifact_reservations (
-         id, account_id, workspace_id, project_id, project_revision_id, asset_id,
-         lane, job_id, artifact_id, object_key, method, content_type, content_length,
-         checksum_sha256, expires_at, max_uses, used_count, state, retention_class,
-         retain_until, deletion_owner_account_id, created_at, updated_at
-       ) VALUES ($1,$2,$3,$4,$5,$6,'SOULX_AVATAR','owned-fixture-v2-06',$7,$8,'PUT',$9,$10,$11,
-                 $12::timestamptz + interval '7 days',1,0,'ISSUED','FINAL',NULL,$2,$12,$12)
-       ON CONFLICT (id) DO NOTHING`,
-      [
-        fact.reservationId,
-        scope.account_id,
-        scope.workspace_id,
-        lineage[1],
-        lineage[2],
-        fact.asset.assetId,
-        fact.artifactId,
-        fact.objectKey,
-        fact.asset.contentType,
-        fact.asset.contentLength,
-        fact.asset.checksumSha256,
-        seedAt,
-      ],
-    );
-    await client.query(
-      `INSERT INTO artifact_receipts (
-         id, account_id, workspace_id, reservation_id, callback_id, object_key,
-         content_type, content_length, checksum_sha256, probe, receipt_sha256, committed_at
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12)
-       ON CONFLICT (id) DO NOTHING`,
-      [
-        fact.receiptId,
-        scope.account_id,
-        scope.workspace_id,
-        fact.reservationId,
-        fact.callbackId,
-        fact.objectKey,
-        fact.asset.contentType,
-        fact.asset.contentLength,
-        fact.asset.checksumSha256,
-        JSON.stringify(fact.probe),
-        fact.receiptSha256,
-        seedAt,
-      ],
-    );
-    await client.query(
-      `UPDATE artifact_reservations
-          SET state = 'COMMITTED', used_count = 1, updated_at = $1
-        WHERE id = $2 AND state = 'ISSUED'`,
-      [seedAt, fact.reservationId],
-    );
-    const rows = await client.query(
-      `SELECT reservation.id::text AS reservation_id, reservation.account_id::text AS account_id,
-              reservation.workspace_id::text AS workspace_id, reservation.project_id::text AS project_id,
-              reservation.project_revision_id::text AS project_revision_id, reservation.asset_id::text AS asset_id,
-              reservation.object_key, reservation.content_type, reservation.content_length::text AS content_length,
-              reservation.checksum_sha256, reservation.state, reservation.used_count,
-              receipt.id::text AS receipt_id, receipt.callback_id, receipt.receipt_sha256,
-              receipt.content_length::text AS receipt_content_length, receipt.checksum_sha256 AS receipt_checksum,
-              receipt.probe
-         FROM artifact_reservations AS reservation
-         JOIN artifact_receipts AS receipt ON receipt.reservation_id = reservation.id
-        WHERE reservation.id = $1`,
-      [fact.reservationId],
-    );
-    const row = rows.rows[0];
-    if (
-      !row ||
-      row.account_id !== scope.account_id ||
-      row.workspace_id !== scope.workspace_id ||
-      row.object_key !== fact.objectKey ||
-      row.content_type !== fact.asset.contentType ||
-      Number(row.content_length) !== fact.asset.contentLength ||
-      row.checksum_sha256 !== fact.asset.checksumSha256 ||
-      row.state !== "COMMITTED" ||
-      Number(row.used_count) !== 1 ||
-      row.receipt_id !== fact.receiptId ||
-      row.callback_id !== fact.callbackId ||
-      row.receipt_sha256 !== fact.receiptSha256 ||
-      Number(row.receipt_content_length) !== fact.asset.contentLength ||
-      row.receipt_checksum !== fact.asset.checksumSha256
-    )
-      throw new Error(`${fact.role} artifact reservation/receipt is not an exact match`);
-    exactRecord(parseJsonb(row.probe), fact.probe, `${fact.role} artifact probe`);
-  }
-}
-
-async function ensureAuditRow(client, scope, assets, facts, plan, seedAt, sourceManifest) {
+async function ensureAuditRow(client, scope, assets, plan, seedAt, sourceManifest, inventory) {
   const resultPayload = {
     schema_version: "videoforge-owned-fixture-provision-result/v1",
     fixture_non_production: true,
@@ -948,13 +881,7 @@ async function ensureAuditRow(client, scope, assets, facts, plan, seedAt, source
       image_style_version_id: plan.styleVersionId,
       style_profile_hash: plan.styleProfileHash,
     },
-    artifact_receipts: facts.map((fact) => ({
-      role: fact.role,
-      reservation_id: fact.reservationId,
-      receipt_id: fact.receiptId,
-      object_key: fact.objectKey,
-      receipt_sha256: fact.receiptSha256,
-    })),
+    orphan_inventory: inventory,
     seed_at: seedAt,
   };
   const inputPayload = {
@@ -964,7 +891,7 @@ async function ensureAuditRow(client, scope, assets, facts, plan, seedAt, source
     account_id: scope.account_id,
     workspace_id: scope.workspace_id,
     assets: ROLE_ORDER.map((role) => [role, assets[role].checksumSha256]),
-    artifact_receipts: facts.map((fact) => [fact.role, fact.receiptSha256]),
+    object_keys: ROLE_ORDER.map((role) => [role, assets[role].objectKey]),
     preset_hashes: [plan.avatarProfileHash, plan.styleProfileHash],
     seed_at: seedAt,
   };
@@ -1015,7 +942,18 @@ function base64Sha256(digest) {
   return Buffer.from(digest.slice("sha256:".length), "hex").toString("base64");
 }
 
+function assertR2Config(config) {
+  if (
+    config.accountId !== APPROVED_CLOUDFLARE_ACCOUNT_ID ||
+    config.bucket !== APPROVED_R2_BUCKET ||
+    config.region !== APPROVED_R2_REGION
+  )
+    throw new Error("R2 configuration is not the approved V2-06 private staging resource");
+}
+
 function r2ObjectUrl(accountId, bucket, objectKey) {
+  if (accountId !== APPROVED_CLOUDFLARE_ACCOUNT_ID || bucket !== APPROVED_R2_BUCKET)
+    throw new Error("R2 object URL is outside the approved V2-06 private staging resource");
   return `https://${accountId}.r2.cloudflarestorage.com/${encodeURIComponent(bucket)}/${objectKey
     .split("/")
     .map(encodeURIComponent)
@@ -1026,9 +964,31 @@ async function r2Request(client, url, method, headers = {}, body = undefined) {
   const signed = await client.sign(url, {
     method,
     headers,
+    body,
     aws: { signQuery: false, allHeaders: true },
   });
-  return fetch(signed.url, { method, headers, body });
+  return fetch(signed);
+}
+
+function buildOrphanInventory(scope, assets) {
+  return Object.freeze({
+    schema_version: "videoforge-owned-fixture-orphan-inventory/v1",
+    account_id: scope.account_id,
+    workspace_id: scope.workspace_id,
+    scope: "expected_avatar_profile_keys_only",
+    automatic_delete: false,
+    entries: Object.freeze(
+      ROLE_ORDER.map((role) =>
+        Object.freeze({
+          role,
+          object_key: assets[role].objectKey,
+          asset_id: assets[role].assetId,
+          checksum_sha256: assets[role].checksumSha256,
+          state: "DB_BOUND_EXACT_OBJECT",
+        }),
+      ),
+    ),
+  });
 }
 
 async function verifyR2Object(client, url, asset) {
@@ -1050,7 +1010,8 @@ async function verifyR2Object(client, url, asset) {
   }
 }
 
-async function ensureR2Objects(config, assets) {
+async function ensureR2Objects(config, assets, scope) {
+  assertR2Config(config);
   const client = new AwsClient({
     accessKeyId: config.accessKeyId,
     secretAccessKey: config.secretAccessKey,
@@ -1080,6 +1041,7 @@ async function ensureR2Objects(config, assets) {
     }
     await verifyR2Object(client, url, asset);
   }
+  return buildOrphanInventory(scope, assets);
 }
 
 function printHelp() {
@@ -1099,9 +1061,9 @@ Required environment for live mutation:
   V2_06_R2_ACCESS_KEY_ID           bucket-scoped R2 key
   V2_06_R2_SECRET_ACCESS_KEY       bucket-scoped R2 secret
 
-Optional artifact lineage (required to create reservation/receipt rows):
-  V2_06_OWNED_FIXTURE_PROJECT_ID
-  V2_06_OWNED_FIXTURE_REVISION_ID
+The fixture is Avatar Hub-only. It never creates project artifact reservations or receipts.
+R2/DB ordering records tenant assets and presets before R2 writes; reruns are idempotent.
+The committed audit includes a deterministic expected-key orphan inventory and never deletes.
 
 The source is fixed to ${SOURCE_RELATIVE}; its manifest row is checked before rasterization.
 Raster output is marked staging-only and compatibility UNTESTED. No GPU/provider generation occurs.
@@ -1118,14 +1080,8 @@ async function loadInputs(options) {
     envOr(options, "seed_at", "V2_06_OWNED_FIXTURE_SEED_AT", "2026-08-17T00:00:00Z"),
     "V2_06_OWNED_FIXTURE_SEED_AT",
   );
-  const projectId = envOr(options, "project_id", "V2_06_OWNED_FIXTURE_PROJECT_ID");
-  const revisionId = envOr(options, "revision_id", "V2_06_OWNED_FIXTURE_REVISION_ID");
-  if ((projectId && !revisionId) || (!projectId && revisionId))
-    throw new Error("project_id and revision_id must be supplied together");
-  if (projectId) requireUuid(projectId, "V2_06_OWNED_FIXTURE_PROJECT_ID");
-  if (revisionId) requireUuid(revisionId, "V2_06_OWNED_FIXTURE_REVISION_ID");
   const raster = await rasterizeOwnedFixture();
-  return Object.freeze({ email, seedAt, projectId, revisionId, raster });
+  return Object.freeze({ email, seedAt, raster });
 }
 
 async function main(argv = process.argv.slice(2)) {
@@ -1140,9 +1096,7 @@ async function main(argv = process.argv.slice(2)) {
     source_sha256: `sha256:${EXPECTED_SOURCE_SHA256}`,
     tenant_email: inputs.email,
     seed_at: inputs.seedAt,
-    artifact_lineage: inputs.projectId
-      ? "REQUESTED"
-      : "NOT_REQUESTED_SCHEMA_REQUIRES_PROJECT_REVISION",
+    avatar_storage: "AVATAR_HUB_CANONICAL_PROFILE_VERSION_KEYS",
     files: Object.fromEntries(
       ROLE_ORDER.map((role) => {
         const file = inputs.raster.files[role];
@@ -1179,8 +1133,9 @@ async function main(argv = process.argv.slice(2)) {
       process.env.V2_06_R2_SECRET_ACCESS_KEY,
       "V2_06_R2_SECRET_ACCESS_KEY",
     ),
-    region: process.env.V2_06_R2_REGION ?? "auto",
+    region: process.env.V2_06_R2_REGION ?? APPROVED_R2_REGION,
   };
+  assertR2Config(r2Config);
   const { Pool } = createRequire(path.join(ROOT, "apps/web/package.json"))(
     "@neondatabase/serverless",
   );
@@ -1191,68 +1146,71 @@ async function main(argv = process.argv.slice(2)) {
       scope,
       files: inputs.raster.files,
       sourceManifest: inputs.raster.manifest,
-      lineage: { projectId: inputs.projectId, revisionId: inputs.revisionId },
     });
-    await ensureR2Objects(r2Config, assets);
-    const facts = artifactFacts({
-      scope,
-      assets,
-      lineage: { projectId: inputs.projectId, revisionId: inputs.revisionId },
-      seedAt: inputs.seedAt,
-    });
-    const client = await pool.connect();
+    let plan;
+    const seedClient = await pool.connect();
     try {
-      await client.query("BEGIN");
-      await ensureAssets(client, scope, assets, inputs.seedAt);
-      const plan = await ensurePresetRows(client, scope, assets, inputs.seedAt);
-      await ensureArtifactRows(client, scope, facts, inputs.seedAt);
-      const audit = await ensureAuditRow(
-        client,
+      await seedClient.query("BEGIN");
+      await ensureAssets(seedClient, scope, assets, inputs.seedAt);
+      plan = await ensurePresetRows(seedClient, scope, assets, inputs.seedAt);
+      await seedClient.query("COMMIT");
+    } catch (error) {
+      await seedClient.query("ROLLBACK");
+      throw error;
+    } finally {
+      seedClient.release();
+    }
+    const orphanInventory = await ensureR2Objects(r2Config, assets, scope);
+    let audit;
+    const auditClient = await pool.connect();
+    try {
+      await auditClient.query("BEGIN");
+      audit = await ensureAuditRow(
+        auditClient,
         scope,
         assets,
-        facts,
         plan,
         inputs.seedAt,
         inputs.raster.manifest,
+        orphanInventory,
       );
-      await client.query("COMMIT");
-      console.log(
-        JSON.stringify(
-          {
-            ...preview,
-            mutation: "COMMITTED",
-            account_id: scope.account_id,
-            workspace_id: scope.workspace_id,
-            assets: Object.fromEntries(
-              ROLE_ORDER.map((role) => [
-                role,
-                { asset_id: assets[role].assetId, checksum_sha256: assets[role].checksumSha256 },
-              ]),
-            ),
-            presets: {
-              avatar_profile_version_id: plan.avatarVersionId,
-              avatar_profile_hash: plan.avatarProfileHash,
-              image_style_version_id: plan.styleVersionId,
-              style_profile_hash: plan.styleProfileHash,
-            },
-            artifact_receipts: facts.map((fact) => ({
-              role: fact.role,
-              reservation_id: fact.reservationId,
-              receipt_id: fact.receiptId,
-              receipt_sha256: fact.receiptSha256,
-            })),
-            audit,
-          },
-          null,
-          2,
-        ),
-      );
+      await auditClient.query("COMMIT");
     } catch (error) {
-      await client.query("ROLLBACK");
+      await auditClient.query("ROLLBACK");
       throw error;
     } finally {
-      client.release();
+      auditClient.release();
     }
+    console.log(
+      JSON.stringify(
+        {
+          ...preview,
+          mutation: "COMMITTED",
+          account_id: scope.account_id,
+          workspace_id: scope.workspace_id,
+          assets: Object.fromEntries(
+            ROLE_ORDER.map((role) => [
+              role,
+              {
+                asset_id: assets[role].assetId,
+                object_key: assets[role].objectKey,
+                checksum_sha256: assets[role].checksumSha256,
+              },
+            ]),
+          ),
+          presets: {
+            avatar_profile_version_id: plan.avatarVersionId,
+            avatar_profile_hash: plan.avatarProfileHash,
+            image_style_version_id: plan.styleVersionId,
+            style_profile_hash: plan.styleProfileHash,
+          },
+          orphan_inventory: orphanInventory,
+          audit,
+        },
+        null,
+        2,
+      ),
+    );
   } finally {
     await pool.end();
   }
@@ -1260,14 +1218,23 @@ async function main(argv = process.argv.slice(2)) {
 
 export {
   ALLOWED_EMAILS,
+  APPROVED_CLOUDFLARE_ACCOUNT_ID,
+  APPROVED_NEON_HOST_PATTERN,
+  APPROVED_R2_BUCKET,
+  APPROVED_R2_REGION,
   EXPECTED_SOURCE_SHA256,
   SOURCE_PATH,
+  assertMigrationUrl,
+  assertR2Config,
   buildAssets,
+  buildOrphanInventory,
   canonicalize,
   deterministicUuid,
   parseArgs,
   parseManifestRow,
   pngDimensions,
+  r2ObjectUrl,
+  r2Request,
   stripPngMetadata,
 };
 
