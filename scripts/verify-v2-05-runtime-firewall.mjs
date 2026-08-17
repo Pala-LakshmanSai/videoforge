@@ -8,8 +8,8 @@ import path from "node:path";
  * must be reachable without touching any superseded contract. This scan proves the active runtime
  * graph names no global session, Pod lifecycle, user GPU selector, shared catalog, broad object
  * key, or compatibility-fixture escape hatch. The deployable production worker is a separate
- * compile-time graph that imports no fixture or superseded runtime; V2-06 will replace its current
- * fail-closed handler with hosted tenant-private adapters.
+ * compile-time graph whose direct imports are limited to the V2-06 hosted tenant-private adapters;
+ * the emitted-bundle scan below this source-level firewall rejects transitive fixture vocabulary.
  */
 const failures = [];
 
@@ -150,8 +150,26 @@ if (!sharedAppRoutes.includes("function supersededSurface(")) {
 
 const productionEntry = await readFile(PRODUCTION_ENTRY, "utf8");
 const productionConfig = await readFile(PRODUCTION_CONFIG, "utf8");
-if (/^\s*import\s/mu.test(productionEntry)) {
-  failures.push("the V2-05 production entry must not import any fixture or runtime module");
+const allowedProductionImports = new Set([
+  "../src/server/hosted/app",
+  "../src/server/hosted/configuration",
+  "../src/server/hosted/retention",
+  "./hosted-workflow",
+]);
+const productionImports = [
+  ...productionEntry.matchAll(
+    /^\s*(?:import|export)\s+(?:type\s+)?(?:[^"']+?\s+from\s+)?["']([^"']+)["'];?\s*$/gmu,
+  ),
+].map((match) => match[1]);
+for (const moduleName of productionImports) {
+  if (!allowedProductionImports.has(moduleName)) {
+    failures.push(`the V2-06 production entry imports a non-hosted module: ${moduleName}`);
+  }
+}
+for (const moduleName of allowedProductionImports) {
+  if (!productionImports.includes(moduleName)) {
+    failures.push(`the V2-06 production entry is missing hosted module: ${moduleName}`);
+  }
 }
 for (const token of FORBIDDEN_RUNTIME_TOKENS) {
   if (productionEntry.includes(token)) {
@@ -214,5 +232,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `V2-05 runtime firewall verified (${String(ACTIVE_RUNTIME_FILES.length)} active runtime files, ${String(SUPERSEDED_TABLES.length)} fenced superseded contracts, compile-isolated production entry, and exact V2 route block): no global session, Pod lifecycle, GPU selector, broad key, or compatibility escape hatch is reachable from ordinary production paths.`,
+  `V2-05 runtime firewall verified (${String(ACTIVE_RUNTIME_FILES.length)} active runtime files, ${String(SUPERSEDED_TABLES.length)} fenced superseded contracts, hosted-only V2-06 production entry, and exact V2 route block): no global session, Pod lifecycle, GPU selector, broad key, or compatibility escape hatch is reachable from ordinary production paths.`,
 );
