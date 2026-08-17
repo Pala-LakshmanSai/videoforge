@@ -202,6 +202,32 @@ const backupScript = await read("deploy/v2-06/backup.sh");
 const restoreScript = await read("deploy/v2-06/restore-drill.sh");
 const rollbackRunbook = await read("deploy/v2-06/rollback.md");
 const configRenderer = await read("deploy/v2-06/render-staging-config.mjs");
+const tenantPresetSeed = await read("deploy/v2-06/seed-tenant-presets.mjs");
+if (
+  tenantPresetSeed.length < 1000 ||
+  !tenantPresetSeed.includes("V2_06_MIGRATION_DATABASE_URL") ||
+  !tenantPresetSeed.includes("V2_06_SEED_CONFIRM=YES") ||
+  !tenantPresetSeed.includes("V2_06_AVATAR_RIGHTS_CONFIRM=YES") ||
+  !tenantPresetSeed.includes("DEFAULT_AVATAR_ENVELOPE_HASH") ||
+  !tenantPresetSeed.includes("DEFAULT_STYLE_PROFILE_HASH") ||
+  !tenantPresetSeed.includes("migration head 34") ||
+  !tenantPresetSeed.includes("SET LOCAL videoforge.account_id") ||
+  !tenantPresetSeed.includes("ON CONFLICT (id) DO NOTHING") ||
+  !tenantPresetSeed.includes(
+    "all three avatar assets must already be tenant-owned VERIFIED bytes",
+  ) ||
+  !tenantPresetSeed.includes(
+    "existing deterministic avatar version is not an exact immutable match",
+  ) ||
+  !tenantPresetSeed.includes(
+    "existing deterministic style version is not an exact immutable match",
+  ) ||
+  !tenantPresetSeed.includes(
+    "existing deterministic avatar asset links are not exact immutable matches",
+  ) ||
+  /\b(?:DROP|DELETE)\s+/iu.test(tenantPresetSeed)
+)
+  fail("tenant-owned activation preset seed is not fail-closed and idempotent");
 if (
   !backupScript.includes("BACKUP_PASSPHRASE_FILE") ||
   !backupScript.includes("openssl enc -aes-256-cbc -pbkdf2") ||
