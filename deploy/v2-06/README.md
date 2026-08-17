@@ -136,13 +136,13 @@ Live use requires the three independent confirmations
 bucket-scoped R2 key supplied only through the environment. The Neon connection
 is made with the installed driver resolved from `apps/web`; `psql` is not used.
 The transaction is exact-idempotent and writes tenant-scoped assets, READY /
-PUBLISHED preset rows, and one append-only mutation receipt. Pass both
-`V2_06_OWNED_FIXTURE_PROJECT_ID` and `V2_06_OWNED_FIXTURE_REVISION_ID` only
-after a real tenant project lineage exists; the schema requires that lineage
-for `artifact_reservations` and `artifact_receipts`, so the provisioner refuses
-partial IDs and reports artifact rows as not requested when omitted. This
-fixture is staging-only, not provider or compatibility proof, and does not
-authorize V2-07.
+PUBLISHED preset rows, and one append-only mutation receipt. The provisioner
+is Avatar Hub-only and never accepts project or revision IDs,
+creates project artifact reservations/receipts, overwrites objects, or deletes
+objects. It commits the exact tenant asset and preset rows before R2 writes, so
+a later R2 failure leaves a deterministic expected-key orphan inventory for
+audit and an idempotent rerun. This fixture is staging-only, not provider or
+compatibility proof, and does not authorize V2-07.
 
 The hosted catalog intentionally returns only the authenticated account's own `READY` Avatar Profile
 and `PUBLISHED` Image Style versions. After each invited Google identity has completed its first
