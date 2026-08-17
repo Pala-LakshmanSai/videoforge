@@ -7,10 +7,7 @@ import type {
 import { sha256 } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { HostedR2Signer } from "./r2";
-import {
-  canonicalJson,
-  exactHostedRenderSubmission,
-} from "./submission";
+import { canonicalJson, exactHostedRenderSubmission } from "./submission";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -680,8 +677,7 @@ async function renderHandoff(
     return response({ error: { code: "HOSTED_RENDER_HANDOFF_REJECTED" } }, 400);
   }
   const asrAttemptId = parseRenderHandoff(body);
-  if (!asrAttemptId)
-    return response({ error: { code: "HOSTED_RENDER_HANDOFF_REJECTED" } }, 400);
+  if (!asrAttemptId) return response({ error: { code: "HOSTED_RENDER_HANDOFF_REJECTED" } }, 400);
 
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
@@ -733,13 +729,8 @@ async function renderHandoff(
       !Array.isArray(revisionPayload)
         ? (revisionPayload as Record<string, unknown>).hosted_render_submission
         : null;
-    const submission = exactHostedRenderSubmission(
-      renderPlan,
-      projectId,
-      state.revision_id,
-    );
-    if (!submission)
-      return response({ error: { code: "HOSTED_RENDER_PLAN_NOT_READY" } }, 409);
+    const submission = exactHostedRenderSubmission(renderPlan, projectId, state.revision_id);
+    if (!submission) return response({ error: { code: "HOSTED_RENDER_PLAN_NOT_READY" } }, 409);
 
     return response(
       {

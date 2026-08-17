@@ -301,9 +301,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     queryFn: () => readJson<ProjectDetailResponse>(`/api/v2/hosted/projects/${projectId}`),
     refetchInterval: 5_000,
   });
-  const asr = [...(query.data?.attempts ?? [])]
-    .reverse()
-    .find((attempt) => attempt.kind === "ASR");
+  const asr = [...(query.data?.attempts ?? [])].reverse().find((attempt) => attempt.kind === "ASR");
   const render = [...(query.data?.attempts ?? [])]
     .reverse()
     .find((attempt) => attempt.kind === "RENDER");
@@ -322,11 +320,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
   });
   useEffect(() => {
-    if (
-      asr?.state !== "SUCCEEDED" ||
-      render ||
-      renderHandoffAttempt.current === asr.id
-    ) {
+    if (asr?.state !== "SUCCEEDED" || render || renderHandoffAttempt.current === asr.id) {
       return;
     }
     renderHandoffAttempt.current = asr.id;
