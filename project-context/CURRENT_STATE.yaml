@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-17T11:42:35Z"
+updated_at: "2026-08-17T11:44:06Z"
 
 phase: serverless_v2_v2_06_hosted_activation_blocked
 implementation_authorized_in_current_task: true
@@ -65,8 +65,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "ee508d0e620286b4a693f5a158e4b921bac53712"
-  last_good_commit_note: "V2-06 local hosted-router hardening: admitted staging users mount the real router; tenant Queue/Library/Settings and explicit R2 deletion are composed; browser writes are same-origin; personal-CPU project admission is database-serialized; submission compensation and release gates fail closed. Canonical local verification passes; the full hosted journey, signed releases, live tenant/device acceptance, backup/restore, and hosted Chrome remain unproven."
+  last_good_commit: "65e76aa6388d75e19d8b3f200dee5ad8cdf1a569"
+  last_good_commit_note: "V2-06 ImageForge-style beta distribution: macOS is ad-hoc sealed and DMG-verified, Windows is an unsigned beta, immutable manifests disclose exact platform trust, and paid signing is optional. Canonical local verification passes; installers have not been built/published and the full hosted/device journey, backup/restore, and hosted Chrome remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -339,11 +339,11 @@ recommended_next_task:
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_hosted_router_hardening_locally_verified_full_acceptance_blocked
-  verified_commit: "ee508d0e620286b4a693f5a158e4b921bac53712"
-  verified_commit_note: "Provider-free hosted-router hardening passes canonical verification. Same-chat re-audit evidence is not independent; the complete hosted generation journey, immutable installer publication/native install, live tenant/device parity, backup/restore, and hosted Chrome acceptance remain blocked."
+  state: v2_06_imageforge_beta_distribution_locally_verified_full_acceptance_blocked
+  verified_commit: "65e76aa6388d75e19d8b3f200dee5ad8cdf1a569"
+  verified_commit_note: "The ImageForge-style beta distribution path passes canonical verification. Same-chat re-audit evidence is not independent; actual installer builds/publication/native install, the complete hosted generation journey, live tenant/device parity, backup/restore, and hosted Chrome acceptance remain blocked."
   predecessor_verified_commit: "3c117f204844da9c984d233477933ee4c0f304dd"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-router-hardening-reaudit/acceptance.json
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-imageforge-beta-distribution-reaudit/acceptance.json
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."

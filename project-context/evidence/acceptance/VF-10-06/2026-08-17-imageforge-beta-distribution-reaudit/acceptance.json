@@ -1,0 +1,145 @@
+{
+  "schema_version": "videoforge.v2-06-imageforge-beta-distribution-reaudit/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "result": "FAIL_FULL_CHECKPOINT_LOCAL_IMAGEFORGE_BETA_PATH_PASS",
+  "audit_independence": "SAME_CHAT_REPAIR_EVIDENCE_NOT_INDEPENDENT",
+  "predecessor_commit": "a0a9027bae6bb8316ccacf22e76b34de8bebf220",
+  "implementation_commit": "65e76aa6388d75e19d8b3f200dee5ad8cdf1a569",
+  "recorded_at_utc": "2026-08-17T11:44:06Z",
+  "scope_boundary": "Local repositories, the installed ImageForge application, and supplied immutable provider evidence only. No credential access, live provider call, release workflow, publication, deployment, paid request, mutation, or spend occurred.",
+  "decision": {
+    "selected_distribution": "IMAGEFORGE_STYLE_BETA",
+    "windows": "UNSIGNED_BETA",
+    "macos": "AD_HOC_BETA",
+    "macos_notarization": "NOT_REQUIRED_BY_SELECTED_PRODUCT_DECISION",
+    "windows_authenticode": "NOT_REQUIRED_BY_SELECTED_PRODUCT_DECISION",
+    "optional_future_upgrades": ["AUTHENTICODE_SIGNED", "DEVELOPER_ID_NOTARIZED"],
+    "warning_free_behavior_promised": false
+  },
+  "imageforge_reference_observation": {
+    "target": "/Applications/ImageForge.app",
+    "repository_configuration": "/Volumes/ESD-USB/ImageForge/src-tauri/tauri.conf.json",
+    "source_truth": "ImageForge declares macOS signingIdentity '-' and hardenedRuntime false; release metadata calls it ad-hoc signed and not notarized.",
+    "commands": [
+      {
+        "command": "codesign --verify --deep --strict --verbose=2 /Applications/ImageForge.app",
+        "exit_code": 0,
+        "result": "valid on disk and satisfies its Designated Requirement"
+      },
+      {
+        "command": "codesign -dv --verbose=4 /Applications/ImageForge.app",
+        "exit_code": 0,
+        "result": "flags=adhoc, Signature=adhoc, TeamIdentifier=not set, sealed resources present"
+      },
+      {
+        "command": "spctl --assess --type execute --verbose=4 /Applications/ImageForge.app",
+        "exit_code": 3,
+        "result": "rejected because the ad-hoc application is not Apple-trusted/notarized"
+      }
+    ],
+    "interpretation": "The user's trouble-free ImageForge installation is compatible with a correctly sealed ad-hoc beta on this Mac, but it does not prove warning-free behavior on every clean Mac."
+  },
+  "implemented": [
+    "The manual release workflow explicitly ad-hoc seals the macOS app when signed_release is false and verifies its deep/strict seal and Signature=adhoc fact.",
+    "The workflow verifies the generated DMG, mounts it read-only, and verifies the installed app seal before accepting the artifact.",
+    "Immutable release facts and hosted manifests carry platform-specific trust values: UNSIGNED_BETA, AD_HOC_BETA, AUTHENTICODE_SIGNED, or DEVELOPER_ID_NOTARIZED.",
+    "Hosted configuration rejects missing, unknown, or platform-swapped trust values and returns the exact trust value to the authenticated setup UI.",
+    "The setup UI labels the Mac download ImageForge-style beta and the Windows download Beta.",
+    "Immutable beta publication no longer requires Apple or Windows signing secrets; the optional signed/notarized upgrade path remains fail-closed and separately identified.",
+    "V2-06 and V2-13 acceptance records now require clean-download native behavior, exact trust metadata, hashes, protocol, and execution-bundle identity instead of mandatory paid signing."
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [
+      {
+        "id": "V2_06_BETA_INSTALLERS_NOT_BUILT_OR_PUBLISHED",
+        "references": [
+          ".github/workflows/media-worker-release.yml",
+          "apps/media-worker-desktop/README.md",
+          "deploy/v2-06/media-worker-release.template.json"
+        ],
+        "detail": "The workflow and trust contract are locally green, but no pinned Windows/macOS tool bundle was supplied, no native release workflow was run, and no immutable installer URLs, sizes, hashes, or real clean-download behavior exist yet."
+      },
+      {
+        "id": "V2_06_LIVE_HOSTED_AND_DEVICE_ACCEPTANCE_UNPROVEN",
+        "references": [
+          "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md",
+          "project-context/tasks/VF-10-06.md"
+        ],
+        "detail": "No deployed two-account Better Auth/Neon/R2/Cloudflare Workflow journey, complete hosted creation-to-playback API, real Windows/macOS worker pairing/parity/recovery, backup/restore, rollback, or hosted Chrome proof exists."
+      }
+    ],
+    "P2": [
+      {
+        "id": "BETA_OS_WARNING_BEHAVIOR_DEVICE_DEPENDENT",
+        "references": [
+          "/Volumes/ESD-USB/ImageForge/docs/QA_LOG.md",
+          "apps/media-worker-desktop/README.md"
+        ],
+        "detail": "ImageForge works without trouble on the user's current Mac, but spctl rejects its ad-hoc app. VideoForge must record actual clean-download behavior on the target Windows and Mac instead of promising no warning."
+      },
+      {
+        "id": "V2_06_REAUDIT_NOT_INDEPENDENT",
+        "references": ["project-context/tasks/VF-10-06.md"],
+        "detail": "This re-audit was performed in the same task as the implementation and cannot satisfy the independent checkpoint audit gate."
+      }
+    ]
+  },
+  "validation": {
+    "workflow_yaml": {
+      "command": "ruby -e 'require yaml; YAML.load_file(\".github/workflows/media-worker-release.yml\")'",
+      "exit_code": 0
+    },
+    "focused_web": {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/hosted/MediaWorkerSetup.test.tsx src/server/hosted/hosted-adapters.test.ts",
+      "exit_code": 0,
+      "tests": "10/10"
+    },
+    "web_typecheck": {"command": "pnpm --filter @videoforge/web typecheck", "exit_code": 0},
+    "deployment_contract": {"command": "pnpm validate:v2-06-deployment", "exit_code": 0},
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "web": "334 passed, 1 intentional skip",
+      "installed_chrome_fixture": "44/44",
+      "caveat": "Provider-free/local fixture proof only; no installer was built or installed by this command."
+    },
+    "context": {
+      "commands": ["pnpm context:validate", "project-context/scripts/validate-context.sh"],
+      "exit_code": 0,
+      "json_files": 181,
+      "evidence_references": 67,
+      "profiles": 31,
+      "decisions": 42,
+      "gates": 19
+    },
+    "format": {"command": "pnpm format:check", "exit_code": 0},
+    "diff": {"command": "git diff --check", "exit_code": 0}
+  },
+  "current_state_and_spend_truth": {
+    "apple_membership_required": false,
+    "windows_signing_certificate_required": false,
+    "installer_builds": 0,
+    "installer_publications": 0,
+    "provider_calls": 0,
+    "external_mutations": 0,
+    "new_external_spend_usd": 0,
+    "gpu_transport": "FAKE_DISABLED",
+    "runpod_workers": 0,
+    "runpod_compute_usd": 0,
+    "ongoing_runpod_retained_volume_usd_per_month": 7
+  },
+  "rollback_state": {
+    "live_rollback_required": false,
+    "reason": "No live release or provider mutation occurred.",
+    "local_code_rollback": "Revert 65e76aa6388d75e19d8b3f200dee5ad8cdf1a569 or return to a0a9027bae6bb8316ccacf22e76b34de8bebf220.",
+    "release_rollback": "NOT_APPLICABLE_NO_RELEASE_PUBLISHED"
+  },
+  "successor_safety": {
+    "v2_07": "BLOCKED_ON_ACCEPTED_V2_06",
+    "safe_to_begin_v2_07": false,
+    "runpod_activation_authorized": false,
+    "gpu_workers_authorized": false
+  }
+}
