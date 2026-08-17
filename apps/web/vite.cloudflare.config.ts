@@ -8,7 +8,12 @@ export default defineConfig(({ command }) => ({
     tanstackRouter({ target: "react", autoCodeSplitting: true }),
     react(),
     cloudflare({
-      configPath: command === "build" ? "./wrangler.production.jsonc" : "./wrangler.jsonc",
+      configPath:
+        process.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging"
+          ? "./wrangler.staging.jsonc"
+          : command === "build"
+            ? "./wrangler.production.jsonc"
+            : "./wrangler.jsonc",
     }),
   ],
   server: {

@@ -39,7 +39,13 @@ async function discoverResult(
   maximum: number,
 ): Promise<{ length: number; checksum: string; receipt: string } | null> {
   const object = await environment.PRIVATE_ARTIFACTS?.get(objectKey);
-  if (!object || object.size < 1 || object.size > maximum) return null;
+  if (
+    !object ||
+    object.size < 1 ||
+    object.size > maximum ||
+    object.httpMetadata?.contentType !== "application/json"
+  )
+    return null;
   const bytes = await object.arrayBuffer();
   if (bytes.byteLength !== object.size) return null;
   try {
@@ -232,7 +238,7 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
         await step.do("persist ambiguous Cloud Run dispatch", async () =>
           withAttempt(this.env, params, async (_attempt, query) => {
             await query.query(
-              `UPDATE hosted_cpu_job_attempts SET state = 'RECONCILING', poll_after = now(), version = version + 1, updated_at = now() WHERE id = $1`,
+              `UPDATE hosted_cpu_job_attempts SET state = 'RECONCILING', submitted_at = COALESCE(submitted_at, now()), poll_after = now(), version = version + 1, updated_at = now() WHERE id = $1`,
               [params.attemptId],
             );
             await appendEvent(query, params, "REPLAYED", await sha256(dispatch.reason));

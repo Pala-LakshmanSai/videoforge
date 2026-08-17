@@ -18,7 +18,7 @@ Provider-free state only. Nothing in this directory authorizes deployment or res
   FFmpeg/FFprobe 8.1.2 are inside the image. The exact `ggml-base.en` object is downloaded through a
   short-lived private R2 port into job scratch and must match its pinned SHA-256 before use.
 - Rollback deploys the previously recorded Worker version and job manifests. Schema migrations
-  0029-0030 are additive and retained. Staging objects are deleted only through tenant retention records after
+  0029-0031 are additive and retained. Staging objects are deleted only through tenant retention records after
   backup/restore evidence and explicit approval; auth/session tables rely on Neon native PITR rather
   than the portable metadata export because they contain secret-bearing values.
 - `backup.sh` creates a new mode-0600 logical backup and prints only its SHA-256; `restore-drill.sh`

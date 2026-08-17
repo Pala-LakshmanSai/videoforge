@@ -32,6 +32,7 @@ const REQUIRED_CUSTOM_INDEXES = [
   "hosted_auth_sessions_user_idx",
   "hosted_cpu_job_execution_uq",
   "hosted_cpu_job_reconcile_idx",
+  "hosted_cpu_job_submission_idempotency_uq",
   "image_generation_acceptances_prompt_idx",
   "image_style_versions_open_draft_uq",
   "image_style_versions_published_hash_uq",

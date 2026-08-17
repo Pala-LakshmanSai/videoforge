@@ -40,5 +40,7 @@
     "GCP_REGION": "__V2_06_GCP_REGION__",
     "GCP_ASR_JOB_NAME": "videoforge-v2-06-asr-staging",
     "GCP_RENDER_JOB_NAME": "videoforge-v2-06-render-staging",
+    "GCP_ASR_IMAGE_DIGEST": "__V2_06_ASR_IMAGE_SHA256__",
+    "GCP_RENDER_IMAGE_DIGEST": "__V2_06_RENDER_IMAGE_SHA256__",
   },
 }

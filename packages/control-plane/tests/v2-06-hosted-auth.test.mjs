@@ -253,6 +253,33 @@ test("hosted CPU callbacks bind exact execution/object facts and replay without 
       upload,
     );
     assert.equal(replayedUpload.rows[0].authorized, true);
+    const expectedPrimary = await executor.query(
+      `SELECT * FROM videoforge_hosted_cpu_expected_primary_output($1, $2)`,
+      [attempt, sha256(`callback-${attempt}`)],
+    );
+    assert.deepEqual(expectedPrimary.rows, [
+      {
+        object_key: primaryKey,
+        content_type: "video/mp4",
+        content_length: 2048,
+        checksum_sha256: sha256("primary-output"),
+      },
+    ]);
+    const activeCancellation = await executor.query(
+      `SELECT videoforge_hosted_cpu_cancellation_requested($1, $2) AS cancelled`,
+      [attempt, sha256(`callback-${attempt}`)],
+    );
+    assert.equal(activeCancellation.rows[0].cancelled, false);
+    const requestedCancellation = await executor.query(
+      `SELECT videoforge_hosted_cpu_cancellation_requested($1, $2) AS cancelled`,
+      [cancelledAttempt, sha256(`callback-${cancelledAttempt}`)],
+    );
+    assert.equal(requestedCancellation.rows[0].cancelled, true);
+    const forgedCancellation = await executor.query(
+      `SELECT videoforge_hosted_cpu_cancellation_requested($1, $2) AS cancelled`,
+      [cancelledAttempt, sha256("forged")],
+    );
+    assert.equal(forgedCancellation.rows[0].cancelled, null);
     const changedUpload = await executor.query(
       `SELECT videoforge_authorize_hosted_cpu_upload($1,$2,$3,$4,$5,$6,$7,$8) AS authorized`,
       [...upload.slice(0, 6), sha256("changed-output"), FIXED_TIME],

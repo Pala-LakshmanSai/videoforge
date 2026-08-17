@@ -8,7 +8,11 @@ export interface HostedWorkflowBinding {
 }
 
 export interface HostedR2BucketBinding {
-  head(key: string): Promise<unknown | null>;
+  head(key: string): Promise<{
+    readonly size: number;
+    readonly httpMetadata?: { readonly contentType?: string };
+    readonly checksums?: { readonly sha256?: ArrayBuffer };
+  } | null>;
   get(key: string): Promise<{
     readonly size: number;
     readonly httpMetadata?: { readonly contentType?: string };
@@ -41,6 +45,8 @@ export interface HostedRuntimeEnvironment {
   readonly GCP_REGION?: string;
   readonly GCP_ASR_JOB_NAME?: string;
   readonly GCP_RENDER_JOB_NAME?: string;
+  readonly GCP_ASR_IMAGE_DIGEST?: string;
+  readonly GCP_RENDER_IMAGE_DIGEST?: string;
   readonly DATABASE_URL?: string;
   readonly BETTER_AUTH_SECRET?: string;
   readonly GOOGLE_CLIENT_ID?: string;
@@ -75,6 +81,8 @@ export interface HostedRuntimeConfiguration {
     readonly region: string;
     readonly asrJobName: string;
     readonly renderJobName: string;
+    readonly asrImageDigest: string;
+    readonly renderImageDigest: string;
     readonly serviceAccountJson: string;
   };
   readonly email: {
@@ -119,6 +127,8 @@ const REQUIRED = [
   "GCP_REGION",
   "GCP_ASR_JOB_NAME",
   "GCP_RENDER_JOB_NAME",
+  "GCP_ASR_IMAGE_DIGEST",
+  "GCP_RENDER_IMAGE_DIGEST",
 ] as const;
 
 function required(source: HostedRuntimeEnvironment, key: (typeof REQUIRED)[number]): string {
@@ -191,6 +201,14 @@ export function hostedRuntimeConfiguration(
       ["WORKFLOW_CALLBACK_SECRET"],
     );
   }
+  const asrImageDigest = required(source, "GCP_ASR_IMAGE_DIGEST");
+  const renderImageDigest = required(source, "GCP_RENDER_IMAGE_DIGEST");
+  if (![asrImageDigest, renderImageDigest].every((value) => /^sha256:[0-9a-f]{64}$/u.test(value))) {
+    throw new HostedConfigurationError(
+      "Cloud Run image identities must be immutable SHA-256 digests.",
+      ["GCP_ASR_IMAGE_DIGEST", "GCP_RENDER_IMAGE_DIGEST"],
+    );
+  }
   const redacted = Object.freeze({
     schemaVersion: "videoforge-hosted-configuration/v1" as const,
     credentials: "REDACTED" as const,
@@ -218,6 +236,8 @@ export function hostedRuntimeConfiguration(
       region: required(source, "GCP_REGION"),
       asrJobName: required(source, "GCP_ASR_JOB_NAME"),
       renderJobName: required(source, "GCP_RENDER_JOB_NAME"),
+      asrImageDigest,
+      renderImageDigest,
       serviceAccountJson: required(source, "GCP_RUN_INVOKER_SERVICE_ACCOUNT_JSON"),
     }),
     email: Object.freeze({

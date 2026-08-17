@@ -355,9 +355,10 @@ def _validated_primary_output(scratch: Path, result: object) -> bytes:
 
 
 class CancellationMonitor:
-    def __init__(self, url: str | None, marker: Path) -> None:
+    def __init__(self, url: str | None, marker: Path, token: str) -> None:
         self._url = url
         self._marker = marker
+        self._token = token
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
 
@@ -373,7 +374,10 @@ class CancellationMonitor:
     def _run(self) -> None:
         while not self._stop.wait(2):
             try:
-                with urllib.request.urlopen(self._url, timeout=5) as response:
+                request = urllib.request.Request(
+                    self._url, headers={"authorization": f"Bearer {self._token}"}
+                )
+                with urllib.request.urlopen(request, timeout=5) as response:
                     state = json.loads(response.read(4096))
                 if state == {"cancelled": True}:
                     self._marker.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -410,9 +414,11 @@ def run(spec: CloudJobSpec, callback_url: str, callback_token: str) -> int:
             _download(item.url, _local_path(scratch, item.uri), item.size, item.sha256)
         input_path = scratch / "job-input.json"
         input_path.write_bytes(_canonical(spec.input_document))
-        cancellation_token = str(spec.input_document.get("cancellation_token", spec.attempt_id))
+        cancellation_token = str(spec.input_document.get("cancel_token", spec.attempt_id))
         monitor = CancellationMonitor(
-            spec.cancellation_url, cancellation_marker(scratch, cancellation_token)
+            spec.cancellation_url,
+            cancellation_marker(scratch, cancellation_token),
+            callback_token,
         )
         monitor.start()
         model_path = _local_path(scratch, spec.tooling["whisper_model_uri"])

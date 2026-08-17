@@ -180,6 +180,12 @@
       "name": "v2_06_hosted_upload_authority",
       "filename": "0030_v2_06_hosted_upload_authority.sql",
       "sha256": "sha256:437e99cabb1d75e85e531b3729f527dfe6145ae606afe79373217666010ee17d"
+    },
+    {
+      "version": 31,
+      "name": "v2_06_hosted_submission",
+      "filename": "0031_v2_06_hosted_submission.sql",
+      "sha256": "sha256:450d19592707f14469fa76d14b7dbc4505ef290b1572e5572c6b63e3114c5ea5"
     }
   ]
 }

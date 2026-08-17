@@ -9,6 +9,12 @@ const fail = (message) => {
 const parseJsonc = (source) => JSON.parse(source.replace(/,\s*([}\]])/gu, "$1"));
 
 const wrangler = parseJsonc(await read("apps/web/wrangler.staging.jsonc"));
+const viteConfiguration = await read("apps/web/vite.cloudflare.config.ts");
+if (
+  !viteConfiguration.includes('VITE_VIDEOFORGE_PROVIDER_MODE === "staging"') ||
+  !viteConfiguration.includes('"./wrangler.staging.jsonc"')
+)
+  fail("staging build is not bound to its hosted Worker configuration");
 if (wrangler.name !== "videoforge-v2-06-staging") fail("unexpected Worker name");
 if (wrangler.vars?.VIDEOFORGE_PROVIDER_MODE !== "staging") fail("Worker must be staging-only");
 if (wrangler.r2_buckets?.[0]?.binding !== "PRIVATE_ARTIFACTS") fail("private R2 binding missing");
@@ -23,6 +29,11 @@ if (JSON.stringify(wrangler.triggers?.crons) !== JSON.stringify(["17 2 * * *"]))
   fail("bounded retention cron drifted");
 if (wrangler.assets?.directory !== "./dist-staging/client")
   fail("staging assets must exclude server build artifacts");
+if (
+  wrangler.vars?.GCP_ASR_IMAGE_DIGEST !== "__V2_06_ASR_IMAGE_SHA256__" ||
+  wrangler.vars?.GCP_RENDER_IMAGE_DIGEST !== "__V2_06_RENDER_IMAGE_SHA256__"
+)
+  fail("Cloud Run image identity placeholders drifted");
 
 const expectedSecrets = [
   "BETTER_AUTH_SECRET",
@@ -81,11 +92,14 @@ for (const path of [
   if ((await read(path)).trim().length < 100) fail(`${path} is incomplete`);
 }
 
-const migration = await read("packages/control-plane/migrations/0029_v2_06_hosted_foundation.sql");
 const manifest = JSON.parse(await read("packages/control-plane/migrations/manifest.json"));
-const entry = manifest.migrations.at(-1);
-const actualHash = `sha256:${createHash("sha256").update(migration).digest("hex")}`;
-if (entry?.version !== 29 || entry?.sha256 !== actualHash) fail("migration 0029 hash is stale");
+for (const version of [29, 30, 31]) {
+  const entry = manifest.migrations.find((candidate) => candidate.version === version);
+  if (!entry) fail(`migration ${version} is absent`);
+  const migration = await read(`packages/control-plane/migrations/${entry.filename}`);
+  const actualHash = `sha256:${createHash("sha256").update(migration).digest("hex")}`;
+  if (entry.sha256 !== actualHash) fail(`migration ${version} hash is stale`);
+}
 
 const combined = [
   JSON.stringify(wrangler),

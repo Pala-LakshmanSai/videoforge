@@ -8,6 +8,12 @@ import {
   type HostedRuntimeEnvironment,
 } from "./configuration";
 import { HostedR2Signer } from "./r2";
+import {
+  bindHostedCpuInputDocument,
+  canonicalJson,
+  exactHostedCpuSubmission,
+  whisperModelUri,
+} from "./submission";
 
 function environment(): HostedRuntimeEnvironment {
   return {
@@ -47,6 +53,8 @@ function environment(): HostedRuntimeEnvironment {
     GCP_REGION: "asia-south1",
     GCP_ASR_JOB_NAME: "videoforge-v2-06-asr-staging",
     GCP_RENDER_JOB_NAME: "videoforge-v2-06-render-staging",
+    GCP_ASR_IMAGE_DIGEST: `sha256:${"a".repeat(64)}`,
+    GCP_RENDER_IMAGE_DIGEST: `sha256:${"b".repeat(64)}`,
     DATABASE_URL: "postgresql://fixture:fixture@fixture.example.test/videoforge?sslmode=require",
     BETTER_AUTH_SECRET: "fixture-better-auth-secret-00000000000000000001",
     GOOGLE_CLIENT_ID: "fixture-google-client.apps.example.test",
@@ -188,5 +196,71 @@ describe("V2-06 hosted adapters", () => {
     expect(exactCpuUploadAuthorityRequest({ ...exact, extra: true })).toBeNull();
     expect(exactCpuUploadAuthorityRequest({ ...exact, content_length: 0 })).toBeNull();
     expect(exactCpuUploadAuthorityRequest({ ...exact, checksum_sha256: "sha256:nope" })).toBeNull();
+  });
+
+  it("binds an exact idempotent hosted CPU submission to server-owned lineage", () => {
+    const modelHash = `sha256:${"c".repeat(64)}`;
+    const input = {
+      schema_version: "asr-job-input/v1",
+      project_revision_id: "client-value-is-not-authority",
+      attempt_id: "client-value-is-not-authority",
+      model: { sha256: modelHash },
+      output: { result_uri: "client-value-is-not-authority" },
+      cancel_token: "client-value-is-not-authority",
+    };
+    const submission = exactHostedCpuSubmission({
+      schema_version: "videoforge-hosted-cpu-submission/v1",
+      idempotency_key: "owned-asr-request-0001",
+      project_id: "11111111-1111-4111-8111-111111111111",
+      project_revision_id: "22222222-2222-4222-8222-222222222222",
+      kind: "ASR",
+      input_document: input,
+      objects: [
+        {
+          artifact_receipt_id: "33333333-3333-4333-8333-333333333333",
+          uri: `vf-local://objects/sha256/cc/${"c".repeat(64)}.bin`,
+        },
+      ],
+    });
+    expect(submission).not.toBeNull();
+    const bound = bindHostedCpuInputDocument(
+      submission!.inputDocument,
+      "ASR",
+      submission!.projectRevisionId,
+      "44444444-4444-4444-8444-444444444444",
+    );
+    expect(bound).toMatchObject({
+      project_revision_id: submission!.projectRevisionId,
+      attempt_id: "44444444-4444-4444-8444-444444444444",
+      cancel_token: "44444444-4444-4444-8444-444444444444",
+      output: {
+        result_uri:
+          "vf-local-run://22222222-2222-4222-8222-222222222222/44444444-4444-4444-8444-444444444444/asr-result.json",
+      },
+    });
+    expect(whisperModelUri(bound)).toBe(`vf-local://objects/sha256/cc/${"c".repeat(64)}.bin`);
+    expect(canonicalJson({ z: 1, a: { y: 2, x: 3 } })).toBe('{"a":{"x":3,"y":2},"z":1}');
+  });
+
+  it("rejects rebinding and malformed hosted CPU submission facts", () => {
+    expect(
+      exactHostedCpuSubmission({
+        schema_version: "videoforge-hosted-cpu-submission/v1",
+        idempotency_key: "short",
+        project_id: "not-a-uuid",
+        project_revision_id: "not-a-uuid",
+        kind: "ASR",
+        input_document: {},
+        objects: [],
+      }),
+    ).toBeNull();
+    expect(() =>
+      bindHostedCpuInputDocument(
+        { schema_version: "render-job-input/v1", output: {} },
+        "ASR",
+        "22222222-2222-4222-8222-222222222222",
+        "44444444-4444-4444-8444-444444444444",
+      ),
+    ).toThrow(/exact job kind/u);
   });
 });
