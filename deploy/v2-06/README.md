@@ -111,6 +111,39 @@ videoforge-v2-06-staging-private`. Wildcard origins and headers are forbidden.
 
 ## Tenant-owned activation presets
 
+### Repository-authored owned staging fixture
+
+`provision-owned-fixture.mjs` is the only supported way to turn the tracked
+`apps/web/public/fixtures/avatar/amish-farm-host.svg` into tenant-owned staging
+bytes. It verifies the immutable `asset_manifest.csv` row, rasterizes fixed
+1536px original, 832x480 25-frame runtime, and 512px thumbnail outputs, strips
+PNG ancillary metadata, probes the runtime, and labels every row
+`V2-06 owned staging fixture` with compatibility `UNTESTED`. It never calls a
+provider or GPU and never overwrites or deletes an existing R2 object.
+
+The command is dry-run/provider-free by default:
+
+```sh
+V2_06_OWNED_FIXTURE_EMAIL=lakshmansai121@gmail.com \
+V2_06_OWNED_FIXTURE_SEED_AT=2026-08-17T00:00:00Z \
+node deploy/v2-06/provision-owned-fixture.mjs --dry-run
+```
+
+Live use requires the three independent confirmations
+`V2_06_OWNED_FIXTURE_CONFIRM=YES`,
+`V2_06_OWNED_FIXTURE_R2_CONFIRM=YES`, and
+`V2_06_OWNED_FIXTURE_DATABASE_CONFIRM=YES`, a migration-owner Neon URL, and a
+bucket-scoped R2 key supplied only through the environment. The Neon connection
+is made with the installed driver resolved from `apps/web`; `psql` is not used.
+The transaction is exact-idempotent and writes tenant-scoped assets, READY /
+PUBLISHED preset rows, and one append-only mutation receipt. Pass both
+`V2_06_OWNED_FIXTURE_PROJECT_ID` and `V2_06_OWNED_FIXTURE_REVISION_ID` only
+after a real tenant project lineage exists; the schema requires that lineage
+for `artifact_reservations` and `artifact_receipts`, so the provisioner refuses
+partial IDs and reports artifact rows as not requested when omitted. This
+fixture is staging-only, not provider or compatibility proof, and does not
+authorize V2-07.
+
 The hosted catalog intentionally returns only the authenticated account's own `READY` Avatar Profile
 and `PUBLISHED` Image Style versions. After each invited Google identity has completed its first
 session admission, seed its exact private activation presets with

@@ -203,6 +203,7 @@ const restoreScript = await read("deploy/v2-06/restore-drill.sh");
 const rollbackRunbook = await read("deploy/v2-06/rollback.md");
 const configRenderer = await read("deploy/v2-06/render-staging-config.mjs");
 const tenantPresetSeed = await read("deploy/v2-06/seed-tenant-presets.mjs");
+const ownedFixtureProvisioner = await read("deploy/v2-06/provision-owned-fixture.mjs");
 if (
   tenantPresetSeed.length < 1000 ||
   !tenantPresetSeed.includes("V2_06_MIGRATION_DATABASE_URL") ||
@@ -228,6 +229,21 @@ if (
   /\b(?:DROP|DELETE)\s+/iu.test(tenantPresetSeed)
 )
   fail("tenant-owned activation preset seed is not fail-closed and idempotent");
+if (
+  ownedFixtureProvisioner.length < 1000 ||
+  !ownedFixtureProvisioner.includes("V2_06_OWNED_FIXTURE_CONFIRM=YES") ||
+  !ownedFixtureProvisioner.includes("V2_06_OWNED_FIXTURE_R2_CONFIRM=YES") ||
+  !ownedFixtureProvisioner.includes("V2_06_OWNED_FIXTURE_DATABASE_CONFIRM=YES") ||
+  !ownedFixtureProvisioner.includes("owned_synthetic_fixture") ||
+  !ownedFixtureProvisioner.includes("source_manifest_sha256") ||
+  !ownedFixtureProvisioner.includes("ON CONFLICT (id) DO NOTHING") ||
+  !ownedFixtureProvisioner.includes("repository_mutation_receipts") ||
+  !ownedFixtureProvisioner.includes("artifact_reservations") ||
+  !ownedFixtureProvisioner.includes("artifact_receipts") ||
+  /\b(?:DROP|DELETE)\s+/iu.test(ownedFixtureProvisioner) ||
+  /runpod|run\.googleapis|cloudrun/iu.test(ownedFixtureProvisioner)
+)
+  fail("owned synthetic fixture provisioner is not fail-closed, tenant-bound, and provider-free");
 if (
   !backupScript.includes("BACKUP_PASSPHRASE_FILE") ||
   !backupScript.includes("openssl enc -aes-256-cbc -pbkdf2") ||
