@@ -1,0 +1,115 @@
+{
+  "schema_version": "videoforge.v2-06-live-activation-authority/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-17T15:53:24Z",
+  "result": "AUTHORITY_AND_PREFLIGHT_RECORDED_ACTIVATION_IN_PROGRESS",
+  "authority": {
+    "user_confirmations": [
+      "APPROVE V2-06 LIVE ACTIVATION",
+      "CONFIRM",
+      "ROTATE ALL AND CLEANUP"
+    ],
+    "maximum_cumulative_finite_external_test_spend_usd": 3,
+    "cloudflare_r2_recurring_ceiling_usd_per_month": 2,
+    "non_transferable": true,
+    "email_provider": "NONE",
+    "google_test_users": [
+      "lakshmansai121@gmail.com",
+      "demo9gss@gmail.com"
+    ],
+    "allowed": [
+      "activate and configure the exact V2-06 Cloudflare Worker, Workflow, and private R2 bucket",
+      "activate and configure the exact V2-06 Neon project, migration owner, runtime role, migrations, backup, and disposable restore drill",
+      "create and configure the exact Google-only V2-06 OAuth client and two test users",
+      "publish and test the immutable Windows unsigned beta and macOS ad-hoc beta worker release",
+      "provision the two exact owned tenant fixtures and perform bounded hosted Chrome acceptance",
+      "rotate exposed V2-06 credentials and remove only the disposable restore-test database"
+    ],
+    "forbidden": [
+      "RunPod mutation",
+      "GPU work",
+      "V2-07 activation",
+      "email delivery",
+      "automatic deletion of successful final videos",
+      "spend above the finite cap or R2 recurring ceiling"
+    ]
+  },
+  "approved_resources": {
+    "cloudflare": {
+      "account_id": "f9254d773a3426fcb469451b1f965d8c",
+      "worker": "videoforge-v2-06-staging",
+      "workflow": "videoforge-v2-06-staging-video",
+      "r2_bucket": "videoforge-v2-06-staging-private",
+      "r2_region": "auto",
+      "origin": "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
+    },
+    "neon": {
+      "organization": "org-gentle-wave-89733808",
+      "project": "videoforge-v2-06-staging",
+      "project_id": "ancient-morning-99567618",
+      "branch_id": "br-floral-hill-az7ib4ir",
+      "compute_id": "ep-sparkling-dew-azjhkwg6",
+      "region": "aws-ap-southeast-1",
+      "postgres_version": 17,
+      "database": "neondb",
+      "runtime_role": "videoforge_v2_06_runtime"
+    },
+    "google": {
+      "project_name": "VideoForge V2-06 Staging",
+      "project_id": "videoforge-v2-06-staging-0817",
+      "oauth_redirect_uri": "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/auth/callback/google",
+      "audience": "EXTERNAL_TESTING"
+    },
+    "runpod": {
+      "account": "sujal",
+      "allowed_compute_resources": 0,
+      "allowed_mutations": 0,
+      "retained_volume_count": 2,
+      "retained_storage_usd_per_month": 7
+    }
+  },
+  "rate_and_spend_truth": {
+    "cloudflare_workers_plan": "FREE",
+    "r2_standard_free_storage_gb_month": 10,
+    "r2_standard_overage_usd_per_gb_month": 0.015,
+    "r2_base_charge_usd_per_month": 0,
+    "neon_plan": "FREE",
+    "neon_base_charge_usd_per_month": 0,
+    "google_oauth_and_project_base_charge_usd_per_month": 0,
+    "personal_worker_provider_compute_usd": 0,
+    "new_external_spend_observed_usd": 0,
+    "finite_test_cap_remaining_usd": 3,
+    "existing_runpod_retained_storage_usd_per_month": 7,
+    "runpod_storage_is_separate_from_new_v2_06_spend": true
+  },
+  "activation_state_at_record": {
+    "native_release_published": true,
+    "native_release_tag": "media-worker-v0.1.0",
+    "cloudflare_r2_subscription_active": true,
+    "cloudflare_private_bucket_created": true,
+    "neon_project_created": true,
+    "google_oauth_project_and_client_created": true,
+    "neon_migration_head": 35,
+    "cloudflare_worker_deployed_from_current_activation_commit": false,
+    "hosted_chrome_acceptance_complete": false,
+    "checkpoint_pass": false
+  },
+  "credential_cleanup": {
+    "cloudflare_exposed_r2_key": "DELETED_AFTER_REPLACEMENT_READ_TEST",
+    "neon_exposed_owner_password": "ROTATED_AND_NEW_LOGIN_VERIFIED",
+    "google_old_oauth_secret": "DISABLED",
+    "google_replacement_oauth_secret": "ENABLED",
+    "disposable_restore_database": "DROPPED_AFTER_COMPLETED_DRILL",
+    "secret_values_recorded": false
+  },
+  "rollback_state": {
+    "prior_cloudflare_worker_version_id": "f3d3ecdc-7abf-4d9b-9208-a64e1552aa5f",
+    "schema_policy": "FORWARD_ONLY_KEEP_MIGRATIONS_0029_THROUGH_0035",
+    "successful_final_objects": "KEEP_UNTIL_EXPLICIT_AUTHENTICATED_DELETE"
+  },
+  "v2_07_safety": {
+    "safe_to_begin": false,
+    "reason": "V2-06 live deployment and acceptance are still in progress; no RunPod or GPU authority was granted."
+  }
+}

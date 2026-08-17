@@ -1,50 +1,69 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-17T12:35:36Z"
+updated_at: "2026-08-17T15:53:24Z"
 
-phase: serverless_v2_v2_06_live_activation_approval_boundary
+phase: serverless_v2_v2_06_live_activation_in_progress
 implementation_authorized_in_current_task: true
 current_milestone: hosted_staging_and_personal_media_workers
 current_task: VF-10-06
 current_wave: v2_06_personal_worker_conversion
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_product_journey_green_live_activation_blocked
+task_stage: live_activation_in_progress_independent_acceptance_blocked
 application_code_changes_authorized: true
 provider_calls_authorized: true
-read_only_provider_calls_authorized: true
-maximum_external_spend_usd: 0
+read_only_provider_calls_authorized: false
+maximum_external_spend_usd: 3
 
 provider_authority:
-  mode: read_only
-  provider: cloudflare+neon+google_cloud+runpod
-  cap_usd: 0
-  source: user_grant_2026_08_17
+  mode: paid
+  provider: cloudflare+neon+google_cloud+github
+  cap_usd: 3
+  recurring_r2_ceiling_usd_per_month: 2
+  source: user_approve_v2_06_live_activation_confirm_and_rotate_all_2026_08_17
   non_transferable: true
   authorized_by_user_at: "2026-08-17"
   resources:
-    - cloudflare_account
-    - neon_account
-    - google_project_gen_lang_client_0893746131
-    - runpod_account_sujal
+    - cloudflare_account_f9254d773a3426fcb469451b1f965d8c
+    - cloudflare_worker_videoforge_v2_06_staging
+    - cloudflare_workflow_videoforge_v2_06_staging_video
+    - cloudflare_r2_bucket_videoforge_v2_06_staging_private
+    - neon_project_ancient_morning_99567618
+    - google_project_videoforge_v2_06_staging_0817
+    - github_release_media_worker_v0_1_0
   authorized_operations:
-    - account_identity_lookup
-    - inventory_lookup
-    - quota_lookup
-    - rate_lookup
-    - region_lookup
-    - resource_identity_lookup
-    - resource_absence_lookup
+    - exact_v2_06_worker_workflow_and_private_r2_activation
+    - exact_v2_06_neon_migration_runtime_role_backup_and_restore_drill
+    - exact_google_only_oauth_activation_for_two_test_users
+    - immutable_personal_worker_release_and_native_acceptance
+    - exact_owned_fixture_provisioning_and_hosted_chrome_acceptance
+    - exposed_v2_06_credential_rotation_and_disposable_restore_database_cleanup
   allowed_operations:
-    - account_identity_lookup
-    - inventory_lookup
-    - quota_lookup
-    - rate_lookup
-    - region_lookup
-    - resource_identity_lookup
-    - resource_absence_lookup
+    - exact_v2_06_worker_workflow_and_private_r2_activation
+    - exact_v2_06_neon_migration_runtime_role_backup_and_restore_drill
+    - exact_google_only_oauth_activation_for_two_test_users
+    - immutable_personal_worker_release_and_native_acceptance
+    - exact_owned_fixture_provisioning_and_hosted_chrome_acceptance
+    - exposed_v2_06_credential_rotation_and_disposable_restore_database_cleanup
+  rate_snapshot:
+    - resource_id: cloudflare_r2_standard_storage_overage
+      billing_unit: gb_month_above_10_gb_free
+      usd_per_unit: 0.015
+      checked_at: "2026-08-17"
+    - resource_id: cloudflare_workers_free_base
+      billing_unit: month
+      usd_per_unit: 0
+      checked_at: "2026-08-17"
+    - resource_id: neon_free_base
+      billing_unit: month
+      usd_per_unit: 0
+      checked_at: "2026-08-17"
+    - resource_id: google_oauth_project_base
+      billing_unit: month
+      usd_per_unit: 0
+      checked_at: "2026-08-17"
 
 credential_access_authorized: true
-remote_or_cloud_mutations_authorized: false
+remote_or_cloud_mutations_authorized: true
 model_downloads_authorized: false
 worker_image_publication_authorized: false
 sample_output_publication_authorized: false
@@ -79,10 +98,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: fixture
+  provider_mode: staging
   provider_calls_authorized: true
-  authorized_spend_usd: 0
-  provider_authority_scope: "Read-only inventory is authorized for Cloudflare, Neon, Google Cloud, and RunPod. No mutation or spend is authorized; the user-stated USD 3 future test cap becomes usable only after an exact combined proposal is approved."
+  authorized_spend_usd: 3
+  provider_authority_scope: "The user approved the exact bounded V2-06 live activation, confirmed its combined mutation plan, and set a USD 3 finite test cap plus a USD 2/month R2 ceiling. RunPod remains read-only with no compute or mutation authority."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -150,7 +169,7 @@ roadmap_state:
   V2-03: complete_green_independently_reaudited
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
-  V2-06: provider_free_product_journey_green_live_activation_blocked
+  V2-06: live_activation_in_progress_independent_acceptance_blocked
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
@@ -278,54 +297,73 @@ blocking_gates_for_production:
 active_ownership:
   - task_id: VF-10-06
     checkpoint: V2-06
-    scope: local_personal_worker_conversion_context_reconciliation_and_verification
+    scope: exact_v2_06_live_activation_hardening_deployment_and_acceptance
     provider_calls_authorized: true
-    maximum_external_spend_usd: 0
+    maximum_external_spend_usd: 3
 in_progress_checkpoint: V2-06
 
 recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
   milestone: hosted_staging_and_personal_media_workers
-  status: local_hardening_green_hosted_activation_blocked
+  status: live_activation_in_progress_independent_acceptance_blocked
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
-  authorization_status: read_only_inventory_only_no_mutation_or_spend
-  task_stage: read_only_preflight
+  authorization_status: bounded_v2_06_live_activation_approved
+  task_stage: bounded_mutation
   provider_authority:
-    mode: read_only
-    provider: cloudflare+neon+google_cloud+runpod
-    cap_usd: 0
+    mode: paid
+    provider: cloudflare+neon+google_cloud+github
+    cap_usd: 3
+    recurring_r2_ceiling_usd_per_month: 2
     non_transferable: true
     authorized_by_user_at: "2026-08-17"
     model_id: null
     resources:
-      - cloudflare_account
-      - neon_account
-      - google_project_gen_lang_client_0893746131
-      - runpod_account_sujal
+      - cloudflare_account_f9254d773a3426fcb469451b1f965d8c
+      - cloudflare_worker_videoforge_v2_06_staging
+      - cloudflare_workflow_videoforge_v2_06_staging_video
+      - cloudflare_r2_bucket_videoforge_v2_06_staging_private
+      - neon_project_ancient_morning_99567618
+      - google_project_videoforge_v2_06_staging_0817
+      - github_release_media_worker_v0_1_0
     authorized_operations:
-      - account_identity_lookup
-      - inventory_lookup
-      - quota_lookup
-      - rate_lookup
-      - region_lookup
-      - resource_identity_lookup
-      - resource_absence_lookup
+      - exact_v2_06_worker_workflow_and_private_r2_activation
+      - exact_v2_06_neon_migration_runtime_role_backup_and_restore_drill
+      - exact_google_only_oauth_activation_for_two_test_users
+      - immutable_personal_worker_release_and_native_acceptance
+      - exact_owned_fixture_provisioning_and_hosted_chrome_acceptance
+      - exposed_v2_06_credential_rotation_and_disposable_restore_database_cleanup
     allowed_operations:
-      - account_identity_lookup
-      - inventory_lookup
-      - quota_lookup
-      - rate_lookup
-      - region_lookup
-      - resource_identity_lookup
-      - resource_absence_lookup
+      - exact_v2_06_worker_workflow_and_private_r2_activation
+      - exact_v2_06_neon_migration_runtime_role_backup_and_restore_drill
+      - exact_google_only_oauth_activation_for_two_test_users
+      - immutable_personal_worker_release_and_native_acceptance
+      - exact_owned_fixture_provisioning_and_hosted_chrome_acceptance
+      - exposed_v2_06_credential_rotation_and_disposable_restore_database_cleanup
+    rate_snapshot:
+      - resource_id: cloudflare_r2_standard_storage_overage
+        billing_unit: gb_month_above_10_gb_free
+        usd_per_unit: 0.015
+        checked_at: "2026-08-17"
+      - resource_id: cloudflare_workers_free_base
+        billing_unit: month
+        usd_per_unit: 0
+        checked_at: "2026-08-17"
+      - resource_id: neon_free_base
+        billing_unit: month
+        usd_per_unit: 0
+        checked_at: "2026-08-17"
+      - resource_id: google_oauth_project_base
+        billing_unit: month
+        usd_per_unit: 0
+        checked_at: "2026-08-17"
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
-  goal: "Obtain the missing external signing/account inputs, then approve one exact combined hosted activation proposal before any mutation or spend; GPU transport stays fake."
+  goal: "Finish the approved exact V2-06 hosted activation and independent acceptance within the USD 3 finite cap and USD 2/month R2 ceiling; GPU transport stays fake and disabled."
   provider_calls_authorized: true
-  read_only_provider_calls_authorized: true
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
+  read_only_provider_calls_authorized: false
+  maximum_external_spend_usd: 3
+  remote_or_cloud_mutations_authorized: true
   credential_access_authorized: true
   model_downloads_authorized: false
   worker_image_publication_authorized: false
@@ -557,12 +595,13 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: provider_free_product_journey_green_live_activation_blocked
-    implementation_commit: "d552ee21d5675afcfe515ea41aef25c676a17055"
+    status: live_activation_in_progress_independent_acceptance_blocked
+    implementation_commit: "1882652"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
     evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
     live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
     runpod_live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
+    live_activation_authority_evidence: evidence/acceptance/VF-10-06/2026-08-17-live-activation-authority/acceptance.json
     commands:
       - "CI=1 TURBO_FORCE=true pnpm verify (exit 0; 28/28 tasks; web 330/330 plus 1 skipped; pipeline 120/120; Cloudflare-local 1/1; installed-Chrome fixture 44/44)"
       - "pnpm context:validate (exit 0; JSON 178; evidence refs 63; profiles 31; decisions 42; gates 19)"
@@ -587,7 +626,7 @@ verification:
       - "Cloudflare Workflow now reconciles durable personal-worker leases and requeues expired work; active hosted code and deployment templates no longer dispatch Cloud Run."
       - "The hosted setup surface detects the likely OS as a convenience, always offers Windows and Mac downloads, shows truthful device states, and never exposes raw tenant IDs or configuration secrets."
       - "The Python desktop worker supports Windows and macOS only, starts at login, keeps the device credential in Windows Credential Manager or macOS Keychain, holds a sleep assertion only during active work, streams large outputs without loading the full MP4 in memory, kills process groups on cancel, and erases job scratch in finally."
-      - "A manual native release workflow builds Windows x64 and macOS universal2 artifacts, records exact hashes/sizes/trust modes, ad-hoc seals and verifies the Mac beta app/DMG, preserves optional signing/notarization upgrades, and can publish a new non-replaceable public GitHub Release plus hosted manifest; no release has been built or published."
+      - "The immutable media-worker-v0.1.0 GitHub Release is published from d100acc2b7a44a1c38b134cc3d478869d7bd467c with exact Windows unsigned-beta and macOS ad-hoc-beta hashes, sizes, trust modes, protocol, execution-bundle hash, and pinned tool/model identities."
       - "OUTBOXED cancellation now becomes terminal CANCELLED with submitted/terminal/retention facts, fixing the migration-0029 constraint violation that the former CANCEL_REQUESTED transition caused."
       - "Successful final outputs have no automatic deletion policy. DELETE /api/v2/cpu-attempts/:id/output authenticates the owner, removes exactly the issued primary/result R2 keys, and appends durable deletion truth; the ordinary Library Delete button still waits on full hosted product-router composition."
       - "The desktop cancellation monitor is a real class method, renews the five-minute lease while work is active, kills the entire media process group on cancel, and is covered against the class-indentation regression."
@@ -598,18 +637,17 @@ verification:
       - "The active authentication decision is invite-only Google verified-email identity. Email/password and email delivery remain disabled because the user selected email provider NONE."
     remaining_gates:
       - "The user explicitly selected the ImageForge beta precedent: Windows unsigned beta and macOS ad-hoc sealed/non-notarized beta. Authenticode and Developer ID/notarization are optional future upgrades, not checkpoint blockers; warning-free behavior is not promised on every OS/device."
-      - "The immutable release workflow and manifest contract exist locally, but exact published URLs, byte sizes, SHA-256 hashes, trust identities, protocol minimum, execution-bundle hash, and clean-download native behavior remain unproven until a release is built, published, and tested."
       - "Real installed Windows and macOS proof must cover pairing, tenant isolation, autostart/reboot, sleep, offline/reconnect, cancellation, stale lease/result, streamed R2, tool parity, update/remove, and recovery."
-      - "Hosted Better Auth/Neon/R2/Cloudflare, non-superuser RLS, backup/restore, rollback, two-account isolation, and real Chrome remain unproven. Cloudflare, Neon, and RunPod inventory is refreshed; RunPod has zero compute resources and exactly the two approved retained volumes at USD 7/month total."
-      - "The user-selected email provider is NONE, so hosted auth is Google-only and email/password stays disabled. Google Cloud Run is not needed. The signed-in Google account lacks resourcemanager.projects.get on candidate gen-lang-client-0893746131, and no dedicated VideoForge OAuth project exists."
+      - "Hosted Worker/Workflow, Better Auth, two-account isolation, owned ASR/render, recovery, deletion, rollback, and real Chrome remain unproven. Neon migration head 35, forced RLS/read-only render-plan runtime grants, R2 credential rotation, Neon owner rotation, Google OAuth secret rotation, and the prior backup/restore drill are live-proven."
+      - "The user-selected email provider is NONE, so hosted auth is Google-only and email/password stays disabled. Dedicated Google project videoforge-v2-06-staging-0817 and its exact redirect/client exist; live two-user callback acceptance remains pending."
       - "The user has Windows x64 and Mac test devices. Apple Developer Program membership is absent and no longer required for the selected ImageForge-style beta release; native clean-download/install evidence must record any actual warning or bypass behavior."
-      - "The user supplied a USD 3 maximum future V2-06 test cap, but it is not operation authority until one exact combined mutation/publication proposal is issued and approved."
+      - "The exact combined V2-06 activation was approved with a USD 3 finite test cap and USD 2/month R2 ceiling; spend and recurring truth must be rechecked after acceptance."
     resource_truth:
-      external_mutations: 3
-      external_mutation_scope: "User-confirmed permanent deletion of exactly three unrelated one-year-old Cloudflare Workers: collabio-cloudflare-worker, my-first-worker, and young-breeze-d587."
+      external_mutations: bounded_v2_06_activation_in_progress
+      external_mutation_scope: "Three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence."
       deployments: 0
-      installer_builds: 0
-      installer_publications: 0
+      installer_builds: 1
+      installer_publications: 1
       email_deliveries: 0
       paid_requests: 0
       external_spend_usd: 0
@@ -623,10 +661,10 @@ verification:
         checked_at: "2026-08-17T09:22:02Z"
         account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
         workers_plan: FREE
-        payment_method_on_file: false
-        workers_after_confirmed_cleanup: 0
+        payment_method_on_file: true
+        workers_after_confirmed_cleanup: 1
         workflows: 0
-        r2_subscription_active: false
+        r2_subscription_active: true
         r2_due_now_usd: 0
         r2_due_monthly_base_usd: 0
         r2_standard_free_storage_gb_month: 10
@@ -636,7 +674,10 @@ verification:
         organization_id_sha256: "sha256:1a80a1978aaf55071ebade555193753126029390191658a7f700bbd06ea07044"
         plan: FREE
         recurring_usd_per_month: 0
-        projects: 1
+        videoforge_project_created: true
+        videoforge_project_id: ancient-morning-99567618
+        videoforge_project_region: AWS_AP_SOUTHEAST_1_SINGAPORE
+        videoforge_migration_head: 35
         existing_project_name: project01
         existing_project_id_sha256: "sha256:b2478263abd2d0e2f015734a9de2512c8b13044ad179fcee940ab82f402b619a"
         existing_project_region: AWS_US_EAST_2_OHIO
@@ -647,10 +688,10 @@ verification:
         free_project_compute_hours: 100
       google_cloud:
         checked_at: "2026-08-17T09:22:02Z"
-        candidate_project: gen-lang-client-0893746131
-        candidate_access: DENIED_MISSING_RESOURCEMANAGER_PROJECTS_GET
-        accessible_projects: 6
-        dedicated_videoforge_project: false
+        dedicated_videoforge_project: true
+        project_id: videoforge-v2-06-staging-0817
+        oauth_audience: EXTERNAL_TESTING
+        test_users: 2
       runpod:
         checked_at: "2026-08-17T10:05:45Z"
         account_label: sujal
