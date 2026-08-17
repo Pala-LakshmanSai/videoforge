@@ -223,8 +223,8 @@ model_runtime_evidence:
 last_known_provider_resource_truth:
   checked_at: "2026-08-15T09:56:02.932Z"
   basis: last_authorized_read_only_inventory_and_cleanup
-  current_live_refresh_permitted_now: false
-  stale_until_future_authorized_read_only_preflight: true
+  current_live_refresh_permitted_now: true
+  stale_until_current_authorized_read_only_inventory_succeeds: true
   pods: 0
   private_templates: 0
   endpoints: 0
