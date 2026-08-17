@@ -55,9 +55,28 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        if: runner.os == 'Windows'
         with:
           python-version: "3.12.10"
           cache: pip
+
+      - name: Install pinned official Python universal2 runtime
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          package="${RUNNER_TEMP}/python-3.12.10-macos11.pkg"
+          curl --fail --location --silent --show-error \
+            https://www.python.org/ftp/python/3.12.10/python-3.12.10-macos11.pkg \
+            --output "$package"
+          echo "8373e58da4ea146b3eb1c1f9834f19a319440b6b679b06050b1f9ee3237aa8e4  $package" \
+            | shasum -a 256 --check
+          sudo installer -pkg "$package" -target /
+          python_bin="/Library/Frameworks/Python.framework/Versions/3.12/bin"
+          "$python_bin/python3" -c \
+            'import platform; assert platform.python_version() == "3.12.10"'
+          /usr/bin/lipo "$python_bin/python3" -verify_arch arm64 x86_64
+          echo "$python_bin" >> "$GITHUB_PATH"
 
       - name: Validate bounded release inputs
         shell: python
@@ -147,6 +166,38 @@ jobs:
           python -m pip install --disable-pip-version-check -e packages/contracts
           python -m pip install --disable-pip-version-check --no-deps -e workers/image-media
           python -m pip install --disable-pip-version-check --no-deps -e workers/media-local
+
+      - name: Fuse pinned macOS native wheels into universal2 binaries
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          wheels="${RUNNER_TEMP}/videoforge-x86-wheels"
+          extracted="${RUNNER_TEMP}/videoforge-x86-wheels-extracted"
+          mkdir -p "$wheels" "$extracted"
+          python -m pip download --disable-pip-version-check \
+            --only-binary=:all: \
+            --platform macosx_10_12_x86_64 \
+            --python-version 3.12 \
+            --implementation cp \
+            --abi cp312 \
+            --no-deps \
+            "pydantic-core==2.33.2" \
+            "rpds-py==2026.6.3" \
+            --dest "$wheels"
+          for wheel in "$wheels"/*.whl; do
+            unzip -q "$wheel" -d "$extracted"
+          done
+          site_packages="$(python -c 'import site; print(site.getsitepackages()[0])')"
+          while IFS= read -r -d '' x86_binary; do
+            relative="${x86_binary#${extracted}/}"
+            arm_binary="${site_packages}/${relative}"
+            test -f "$arm_binary"
+            universal_binary="${arm_binary}.universal2"
+            /usr/bin/lipo -create "$arm_binary" "$x86_binary" -output "$universal_binary"
+            /bin/mv "$universal_binary" "$arm_binary"
+            /usr/bin/lipo "$arm_binary" -verify_arch arm64 x86_64
+          done < <(/usr/bin/find "$extracted" -type f -name '*.so' -print0)
 
       - name: Run personal worker unit tests
         shell: bash
