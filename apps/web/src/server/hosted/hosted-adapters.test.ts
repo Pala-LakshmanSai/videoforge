@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { CloudRunJobsClient, executionNamesForAttempt } from "./cloud-run";
-import { hasExactResultObjectMetadata } from "./app";
+import { exactCpuUploadAuthorityRequest, hasExactResultObjectMetadata } from "./app";
 import {
   HostedConfigurationError,
   hostedRuntimeConfiguration,
@@ -127,8 +127,10 @@ describe("V2-06 hosted adapters", () => {
     );
     expect(port.url).toContain("X-Amz-Expires=300");
     expect(decodeURIComponent(port.url)).toContain(
-      "X-Amz-SignedHeaders=host;x-amz-checksum-sha256",
+      "X-Amz-SignedHeaders=content-length;content-type;host;x-amz-checksum-sha256",
     );
+    expect(port.requiredHeaders["content-length"]).toBe("128");
+    expect(port.requiredHeaders["content-type"]).toBe("application/json");
     expect(port.requiredHeaders["x-amz-checksum-sha256"]).toBe(
       "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqo=",
     );
@@ -167,5 +169,24 @@ describe("V2-06 hosted adapters", () => {
     expect(
       hasExactResultObjectMetadata({ size: 128, httpMetadata: { contentType: "text/plain" } }, 128),
     ).toBe(false);
+  });
+
+  it("parses only exact checksum-bound Cloud Run upload requests", () => {
+    const exact = {
+      schema_version: "videoforge-cloud-run-upload-authority/v1",
+      source: "PRIMARY_RESULT_OUTPUT",
+      object_key:
+        "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/render/job/job-a/artifact/output-a",
+      content_type: "video/mp4",
+      content_length: 1024,
+      checksum_sha256: `sha256:${"a".repeat(64)}`,
+    };
+    expect(exactCpuUploadAuthorityRequest(exact)).toMatchObject({
+      source: "PRIMARY_RESULT_OUTPUT",
+      contentLength: 1024,
+    });
+    expect(exactCpuUploadAuthorityRequest({ ...exact, extra: true })).toBeNull();
+    expect(exactCpuUploadAuthorityRequest({ ...exact, content_length: 0 })).toBeNull();
+    expect(exactCpuUploadAuthorityRequest({ ...exact, checksum_sha256: "sha256:nope" })).toBeNull();
   });
 });

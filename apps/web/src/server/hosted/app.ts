@@ -2,6 +2,7 @@ import { createHostedAuth, type HostedExecutionContext } from "./auth";
 import { hostedRuntimeConfiguration, type HostedRuntimeEnvironment } from "./configuration";
 import { sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
+import { HostedR2Signer } from "./r2";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -13,6 +14,40 @@ export function hasExactResultObjectMetadata(
   expectedLength: number,
 ): boolean {
   return object.size === expectedLength && object.httpMetadata?.contentType === "application/json";
+}
+
+interface CpuUploadAuthorityRequest {
+  readonly source: "PRIMARY_RESULT_OUTPUT" | "RESULT_DOCUMENT";
+  readonly objectKey: string;
+  readonly contentType: string;
+  readonly contentLength: number;
+  readonly checksumSha256: string;
+}
+
+export function exactCpuUploadAuthorityRequest(value: unknown): CpuUploadAuthorityRequest | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  if (
+    Object.keys(record).sort().join(",") !==
+      "checksum_sha256,content_length,content_type,object_key,schema_version,source" ||
+    record.schema_version !== "videoforge-cloud-run-upload-authority/v1" ||
+    !["PRIMARY_RESULT_OUTPUT", "RESULT_DOCUMENT"].includes(String(record.source)) ||
+    typeof record.object_key !== "string" ||
+    typeof record.content_type !== "string" ||
+    !Number.isSafeInteger(record.content_length) ||
+    (record.content_length as number) < 1 ||
+    typeof record.checksum_sha256 !== "string" ||
+    !SHA256.test(record.checksum_sha256)
+  ) {
+    return null;
+  }
+  return {
+    source: record.source as CpuUploadAuthorityRequest["source"],
+    objectKey: record.object_key,
+    contentType: record.content_type,
+    contentLength: record.content_length as number,
+    checksumSha256: record.checksum_sha256,
+  };
 }
 
 function json(value: unknown, status = 200): Response {
@@ -157,6 +192,60 @@ async function handleCpuCallback(
     // The durable row is the callback hint. Polling remains authoritative, so
     // acceptance never depends on transient Workflow event delivery.
     return json({ accepted: true }, 202);
+  } finally {
+    await pool.end();
+  }
+}
+
+async function handleCpuUploadPort(
+  request: Request,
+  environment: HostedRuntimeEnvironment,
+  attemptId: string,
+): Promise<Response> {
+  if (!UUID.test(attemptId)) return json({ error: { code: "UPLOAD_AUTHORITY_REJECTED" } }, 404);
+  const length = Number(request.headers.get("content-length") ?? "0");
+  if (!Number.isFinite(length) || length < 1 || length > 16_384) {
+    return json({ error: { code: "UPLOAD_AUTHORITY_REJECTED" } }, 400);
+  }
+  const authorization = request.headers.get("authorization");
+  if (!authorization?.startsWith("Bearer ") || authorization.length > 512) {
+    return json({ error: { code: "UPLOAD_AUTHORITY_REJECTED" } }, 401);
+  }
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: { code: "UPLOAD_AUTHORITY_REJECTED" } }, 400);
+  }
+  const authority = exactCpuUploadAuthorityRequest(body);
+  if (!authority) return json({ error: { code: "UPLOAD_AUTHORITY_REJECTED" } }, 400);
+  const config = hostedRuntimeConfiguration(environment);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const authorized = await pool.query(
+      `SELECT videoforge_authorize_hosted_cpu_upload($1,$2,$3,$4,$5,$6,$7,now()) AS authorized`,
+      [
+        attemptId,
+        await sha256(authorization.slice("Bearer ".length)),
+        authority.source,
+        authority.objectKey,
+        authority.contentType,
+        authority.contentLength,
+        authority.checksumSha256,
+      ],
+    );
+    if (authorized.rows[0]?.authorized !== true) {
+      return json({ error: { code: "UPLOAD_AUTHORITY_REJECTED" } }, 404);
+    }
+    const port = await new HostedR2Signer(config.r2).sign({
+      method: "PUT",
+      objectKey: authority.objectKey,
+      contentType: authority.contentType,
+      contentLength: authority.contentLength,
+      checksumSha256: authority.checksumSha256,
+      lifetimeSeconds: 300,
+    });
+    return json({ schema_version: "videoforge-cloud-run-upload-port/v1", ...port });
   } finally {
     await pool.end();
   }
@@ -315,6 +404,12 @@ export async function handleHostedRequest(
     url.pathname.startsWith("/api/v2/internal/cloud-run/callback/")
   ) {
     return handleCpuCallback(request, environment, url.pathname.split("/").at(-1) ?? "");
+  }
+  if (
+    request.method === "POST" &&
+    url.pathname.startsWith("/api/v2/internal/cloud-run/upload-port/")
+  ) {
+    return handleCpuUploadPort(request, environment, url.pathname.split("/").at(-1) ?? "");
   }
   if (url.pathname.startsWith("/api/auth/")) {
     const pool = createNeonPool(config.neon.databaseUrl);

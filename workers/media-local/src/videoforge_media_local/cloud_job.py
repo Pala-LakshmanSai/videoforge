@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
@@ -67,7 +68,8 @@ class RemoteObject:
 @dataclass(frozen=True)
 class RemoteOutput:
     source: str
-    url: str
+    object_key: str
+    sign_url: str
     content_type: str
     max_bytes: int
 
@@ -81,7 +83,7 @@ class CloudJobSpec:
     objects: tuple[RemoteObject, ...]
     outputs: tuple[RemoteOutput, ...]
     result_object_key: str
-    result_upload_url: str
+    result_sign_url: str
     result_max_bytes: int
     cancellation_url: str | None
     tooling: dict[str, str]
@@ -138,15 +140,18 @@ def parse_spec(value: object) -> CloudJobSpec:
     for item in value["outputs"]:
         if not isinstance(item, dict) or set(item) != {
             "source",
-            "url",
+            "object_key",
+            "sign_url",
             "content_type",
             "max_bytes",
         }:
             raise ValueError("Cloud job output is malformed")
         if (
             item["source"] not in {"PRIMARY_RESULT_OUTPUT"}
-            or not isinstance(item["url"], str)
-            or not item["url"].startswith("https://")
+            or not isinstance(item["object_key"], str)
+            or not _R2_KEY.fullmatch(item["object_key"])
+            or not isinstance(item["sign_url"], str)
+            or not item["sign_url"].startswith("https://")
             or not isinstance(item["content_type"], str)
             or not re.fullmatch(r"[a-z0-9.+-]+/[a-z0-9.+-]+", item["content_type"])
             or not isinstance(item["max_bytes"], int)
@@ -154,17 +159,23 @@ def parse_spec(value: object) -> CloudJobSpec:
         ):
             raise ValueError("Cloud job output authority is invalid")
         outputs.append(
-            RemoteOutput(item["source"], item["url"], item["content_type"], item["max_bytes"])
+            RemoteOutput(
+                item["source"],
+                item["object_key"],
+                item["sign_url"],
+                item["content_type"],
+                item["max_bytes"],
+            )
         )
 
     result = value["result"]
     if (
         not isinstance(result, dict)
-        or set(result) != {"object_key", "upload_url", "max_bytes"}
+        or set(result) != {"object_key", "sign_url", "max_bytes"}
         or not isinstance(result["object_key"], str)
         or not _R2_KEY.fullmatch(result["object_key"])
-        or not isinstance(result["upload_url"], str)
-        or not result["upload_url"].startswith("https://")
+        or not isinstance(result["sign_url"], str)
+        or not result["sign_url"].startswith("https://")
         or not isinstance(result["max_bytes"], int)
         or not 0 < result["max_bytes"] <= 1024**2
     ):
@@ -198,7 +209,7 @@ def parse_spec(value: object) -> CloudJobSpec:
         objects=tuple(objects),
         outputs=tuple(outputs),
         result_object_key=result["object_key"],
-        result_upload_url=result["upload_url"],
+        result_sign_url=result["sign_url"],
         result_max_bytes=result["max_bytes"],
         cancellation_url=cancellation_url,
         tooling=tooling,
@@ -244,12 +255,76 @@ def _download(url: str, destination: Path, expected_size: int, expected_sha256: 
         raise ValueError("Downloaded object did not match durable facts")
 
 
-def _put(url: str, content_type: str, payload: bytes, maximum: int) -> None:
+def _upload_port(
+    sign_url: str,
+    callback_token: str,
+    source: str,
+    object_key: str,
+    content_type: str,
+    payload: bytes,
+) -> tuple[str, dict[str, str]]:
+    checksum = _sha256_bytes(payload)
+    request = urllib.request.Request(
+        sign_url,
+        data=_canonical(
+            {
+                "schema_version": "videoforge-cloud-run-upload-authority/v1",
+                "source": source,
+                "object_key": object_key,
+                "content_type": content_type,
+                "content_length": len(payload),
+                "checksum_sha256": checksum,
+            }
+        ),
+        method="POST",
+        headers={
+            "authorization": f"Bearer {callback_token}",
+            "content-type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        if response.status != 200:
+            raise ValueError("Cloud job upload authority was not accepted")
+        document = json.loads(response.read(16_384))
+    if not isinstance(document, dict) or set(document) != {
+        "schema_version",
+        "method",
+        "url",
+        "requiredHeaders",
+        "expiresAt",
+        "contentType",
+        "contentLength",
+        "checksumSha256",
+    }:
+        raise ValueError("Cloud job upload port is malformed")
+    headers = document["requiredHeaders"]
+    expected_checksum_header = base64.b64encode(bytes.fromhex(checksum[7:])).decode("ascii")
+    if (
+        document["schema_version"] != "videoforge-cloud-run-upload-port/v1"
+        or document["method"] != "PUT"
+        or not isinstance(document["url"], str)
+        or not document["url"].startswith("https://")
+        or document["contentType"] != content_type
+        or document["contentLength"] != len(payload)
+        or document["checksumSha256"] != checksum
+        or not isinstance(headers, dict)
+        or set(headers) != {"content-length", "content-type", "x-amz-checksum-sha256"}
+        or headers["content-length"] != str(len(payload))
+        or headers["content-type"] != content_type
+        or headers["x-amz-checksum-sha256"] != expected_checksum_header
+    ):
+        raise ValueError("Cloud job upload port does not match exact output facts")
+    return document["url"], {str(key): str(value) for key, value in headers.items()}
+
+
+def _put(
+    url: str, content_type: str, payload: bytes, maximum: int, required_headers: dict[str, str]
+) -> None:
     if not 0 < len(payload) <= maximum:
         raise ValueError("Upload exceeded its exact bound")
-    request = urllib.request.Request(
-        url, data=payload, method="PUT", headers={"content-type": content_type}
-    )
+    if required_headers.get("content-type") != content_type:
+        raise ValueError("Upload port content type is inconsistent")
+    request = urllib.request.Request(url, data=payload, method="PUT", headers=required_headers)
     with urllib.request.urlopen(request, timeout=120) as response:
         if response.status < 200 or response.status >= 300:
             raise ValueError("Artifact upload failed")
@@ -394,14 +469,38 @@ def run(spec: CloudJobSpec, callback_url: str, callback_token: str) -> int:
             for output in spec.outputs:
                 if output.source != "PRIMARY_RESULT_OUTPUT":
                     raise ValueError("Unsupported Cloud job output source")
-                _put(
-                    output.url,
+                primary_payload = _validated_primary_output(scratch, result)
+                upload_url, upload_headers = _upload_port(
+                    output.sign_url,
+                    callback_token,
+                    output.source,
+                    output.object_key,
                     output.content_type,
-                    _validated_primary_output(scratch, result),
+                    primary_payload,
+                )
+                _put(
+                    upload_url,
+                    output.content_type,
+                    primary_payload,
                     output.max_bytes,
+                    upload_headers,
                 )
             payload = _canonical(result)
-            _put(spec.result_upload_url, "application/json", payload, spec.result_max_bytes)
+            result_upload_url, result_upload_headers = _upload_port(
+                spec.result_sign_url,
+                callback_token,
+                "RESULT_DOCUMENT",
+                spec.result_object_key,
+                "application/json",
+                payload,
+            )
+            _put(
+                result_upload_url,
+                "application/json",
+                payload,
+                spec.result_max_bytes,
+                result_upload_headers,
+            )
             result_facts = {
                 "result_object_key": spec.result_object_key,
                 "result_content_length": len(payload),

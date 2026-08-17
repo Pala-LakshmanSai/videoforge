@@ -22,6 +22,10 @@ GRANT EXECUTE ON FUNCTION public.videoforge_accept_hosted_cpu_callback(
   uuid, text, text, text, text, bigint, text, text, text, timestamptz
 )
 TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_authorize_hosted_cpu_upload(
+  uuid, text, text, text, text, bigint, text, timestamptz
+)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_due_hosted_cpu_retention(integer)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_finish_hosted_cpu_retention(uuid, text)
@@ -29,6 +33,7 @@ TO :"runtime_role";
 
 GRANT SELECT, INSERT, UPDATE ON
   hosted_cpu_job_attempts,
+  hosted_cpu_upload_authorities,
   hosted_cpu_job_events,
   projects,
   project_inputs,

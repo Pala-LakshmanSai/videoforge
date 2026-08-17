@@ -174,6 +174,12 @@
       "name": "v2_06_hosted_foundation",
       "filename": "0029_v2_06_hosted_foundation.sql",
       "sha256": "sha256:201c1edd47894c2a0d41e422c8ac93af4887421f11b497c37c2d8d85b332dbd6"
+    },
+    {
+      "version": 30,
+      "name": "v2_06_hosted_upload_authority",
+      "filename": "0030_v2_06_hosted_upload_authority.sql",
+      "sha256": "sha256:437e99cabb1d75e85e531b3729f527dfe6145ae606afe79373217666010ee17d"
     }
   ]
 }

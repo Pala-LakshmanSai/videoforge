@@ -200,7 +200,78 @@ test("hosted CPU callbacks bind exact execution/object facts and replay without 
         ],
       );
     }
+    const primaryKey = resultKey.replace("result-a", "primary-a");
+    for (const [ordinal, id, source, objectKey, contentType, maxBytes] of [
+      [1, attempt, "PRIMARY_RESULT_OUTPUT", primaryKey, "video/mp4", 4096],
+      [2, attempt, "RESULT_DOCUMENT", resultKey, "application/json", 1048576],
+      [
+        3,
+        cancelledAttempt,
+        "RESULT_DOCUMENT",
+        resultKey.replace(attempt, cancelledAttempt),
+        "application/json",
+        1048576,
+      ],
+    ]) {
+      await executor.query(
+        `INSERT INTO hosted_cpu_upload_authorities (
+           id, account_id, workspace_id, attempt_id, source, object_key,
+           content_type, max_bytes, created_at
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          uuid(1_210_000 + ordinal),
+          IDS.accountA,
+          IDS.workspaceA,
+          id,
+          source,
+          objectKey,
+          contentType,
+          maxBytes,
+          FIXED_TIME,
+        ],
+      );
+    }
     await executor.query(`SELECT set_config('videoforge.account_id', '', false)`);
+
+    const upload = [
+      attempt,
+      sha256(`callback-${attempt}`),
+      "PRIMARY_RESULT_OUTPUT",
+      primaryKey,
+      "video/mp4",
+      2048,
+      sha256("primary-output"),
+      FIXED_TIME,
+    ];
+    const authorizedUpload = await executor.query(
+      `SELECT videoforge_authorize_hosted_cpu_upload($1,$2,$3,$4,$5,$6,$7,$8) AS authorized`,
+      upload,
+    );
+    assert.equal(authorizedUpload.rows[0].authorized, true);
+    const replayedUpload = await executor.query(
+      `SELECT videoforge_authorize_hosted_cpu_upload($1,$2,$3,$4,$5,$6,$7,$8) AS authorized`,
+      upload,
+    );
+    assert.equal(replayedUpload.rows[0].authorized, true);
+    const changedUpload = await executor.query(
+      `SELECT videoforge_authorize_hosted_cpu_upload($1,$2,$3,$4,$5,$6,$7,$8) AS authorized`,
+      [...upload.slice(0, 6), sha256("changed-output"), FIXED_TIME],
+    );
+    assert.equal(changedUpload.rows[0].authorized, false);
+    const cancelledUpload = await executor.query(
+      `SELECT videoforge_authorize_hosted_cpu_upload($1,$2,$3,$4,$5,$6,$7,$8) AS authorized`,
+      [
+        cancelledAttempt,
+        sha256(`callback-${cancelledAttempt}`),
+        "RESULT_DOCUMENT",
+        resultKey.replace(attempt, cancelledAttempt),
+        "application/json",
+        512,
+        sha256("late-result"),
+        FIXED_TIME,
+      ],
+    );
+    assert.equal(cancelledUpload.rows[0].authorized, false);
 
     const callback = [
       attempt,

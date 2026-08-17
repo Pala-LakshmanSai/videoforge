@@ -72,9 +72,8 @@ export class HostedR2Signer {
       `${this.#endpoint}/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`,
     );
     target.searchParams.set("X-Amz-Expires", String(input.lifetimeSeconds));
-    // R2/S3 query signing preserves the checksum header but deliberately excludes browser-managed
-    // content-length/content-type headers. The caller must send the returned checksum header; the
-    // durable completion path independently verifies exact length, type, and bytes before acceptance.
+    // Hosted CPU uploads are not browser uploads. Bind length, type, and checksum into the query
+    // signature so R2 rejects any drift from the durable upload authority.
     const headers =
       input.method === "PUT"
         ? {
@@ -86,7 +85,11 @@ export class HostedR2Signer {
     const signed = await this.#client.sign(target, {
       method: input.method,
       headers,
-      aws: { signQuery: true, datetime: now.toISOString().replace(/[-:]|\.\d{3}/gu, "") },
+      aws: {
+        signQuery: true,
+        allHeaders: input.method === "PUT",
+        datetime: now.toISOString().replace(/[-:]|\.\d{3}/gu, ""),
+      },
     });
     return Object.freeze({
       method: input.method,

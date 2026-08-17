@@ -136,6 +136,7 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "video_runtime_accepted_units",
   "video_runtime_events",
   "hosted_cpu_job_attempts",
+  "hosted_cpu_upload_authorities",
   "hosted_cpu_job_events",
 ] satisfies readonly RelationalTableName[]);
 

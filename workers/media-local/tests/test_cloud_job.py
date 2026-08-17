@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import base64
+import json
 import unittest
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
 from videoforge_media_local.cloud_job import (
     _local_path,
     _sha256_bytes,
+    _upload_port,
     _validated_primary_output,
     parse_spec,
 )
@@ -29,10 +33,18 @@ def valid_spec() -> dict[str, object]:
                 "bytes": 128,
             }
         ],
-        "outputs": [],
+        "outputs": [
+            {
+                "source": "PRIMARY_RESULT_OUTPUT",
+                "object_key": "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/input/job/attempt-a/artifact/primary-a",
+                "sign_url": "https://videoforge.example.test/api/v2/internal/cloud-run/upload-port/attempt-a",
+                "content_type": "application/json",
+                "max_bytes": 1048576,
+            }
+        ],
         "result": {
             "object_key": "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/input/job/attempt-a/artifact/result-a",
-            "upload_url": "https://r2.example.test/exact-result?signature=redacted",
+            "sign_url": "https://videoforge.example.test/api/v2/internal/cloud-run/upload-port/attempt-a",
             "max_bytes": 1048576,
         },
         "cancellation_url": "https://videoforge.example.test/cancel/attempt-a",
@@ -84,6 +96,61 @@ class CloudJobSpecTests(unittest.TestCase):
         drifted["tooling"]["ffprobe_version"] = "8.1.1"  # type: ignore[index]
         with self.assertRaises(ValueError):
             parse_spec(drifted)
+
+    def test_upload_port_requires_exact_checksum_bound_headers(self) -> None:
+        payload = b"owned-render-output"
+        checksum = _sha256_bytes(payload)
+        checksum_header = base64.b64encode(bytes.fromhex(checksum[7:])).decode("ascii")
+        response_document = {
+            "schema_version": "videoforge-cloud-run-upload-port/v1",
+            "method": "PUT",
+            "url": "https://r2.example.test/exact-output?signature=redacted",
+            "requiredHeaders": {
+                "content-length": str(len(payload)),
+                "content-type": "video/mp4",
+                "x-amz-checksum-sha256": checksum_header,
+            },
+            "expiresAt": "2026-08-17T00:05:00.000Z",
+            "contentType": "video/mp4",
+            "contentLength": len(payload),
+            "checksumSha256": checksum,
+        }
+
+        class Response:
+            status = 200
+
+            def __enter__(self):  # type: ignore[no-untyped-def]
+                return self
+
+            def __exit__(self, *_args):  # type: ignore[no-untyped-def]
+                return False
+
+            def read(self, _maximum: int) -> bytes:
+                return json.dumps(response_document).encode("utf-8")
+
+        with patch("urllib.request.urlopen", return_value=Response()):
+            url, headers = _upload_port(
+                "https://videoforge.example.test/upload-authority",
+                "callback-token",
+                "PRIMARY_RESULT_OUTPUT",
+                "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/render/job/attempt-a/artifact/output-a",
+                "video/mp4",
+                payload,
+            )
+        self.assertEqual(url, response_document["url"])
+        self.assertEqual(headers["x-amz-checksum-sha256"], checksum_header)
+
+        response_document["requiredHeaders"]["x-amz-checksum-sha256"] = "wrong"
+        with patch("urllib.request.urlopen", return_value=Response()):
+            with self.assertRaisesRegex(ValueError, "exact output facts"):
+                _upload_port(
+                    "https://videoforge.example.test/upload-authority",
+                    "callback-token",
+                    "PRIMARY_RESULT_OUTPUT",
+                    "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/render/job/attempt-a/artifact/output-a",
+                    "video/mp4",
+                    payload,
+                )
 
     def test_primary_output_requires_exact_regular_bytes(self) -> None:
         import tempfile
