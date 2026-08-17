@@ -12,6 +12,7 @@
     "worker": "videoforge-v2-06-staging",
     "workflow": "videoforge-v2-06-staging-video",
     "r2_bucket": "videoforge-v2-06-staging-private",
+    "r2_storage_class": "STANDARD",
     "r2_location": "__V2_06_R2_LOCATION__",
     "domain": "__V2_06_STAGING_DOMAIN__",
     "retention_rules": "PROPOSAL_REQUIRED",
@@ -46,6 +47,35 @@
     "transport": "FAKE_DISABLED",
     "runpod_calls": 0,
     "workers": 0
+  },
+  "spend_truth": {
+    "finite_external_spend_usd": null,
+    "cloudflare_worker_compute_usd": 0,
+    "neon_compute_usd": 0,
+    "r2_storage_and_operations_usd": 0,
+    "personal_worker_provider_compute_usd": 0,
+    "runpod_compute_usd": 0,
+    "runpod_retained_storage_usd_per_month": "RECORDED_SEPARATELY",
+    "user_device_electricity_and_occupancy": "NOT_PROVIDER_BILLED",
+    "evidence_required_before_zero_claim": [
+      "provider_billing_snapshot",
+      "active_worker_count",
+      "r2_usage_snapshot",
+      "neon_compute_snapshot",
+      "runpod_zero_compute_snapshot"
+    ]
+  },
+  "secret_policy": {
+    "runtime_role": "NON_SUPERUSER_NO_BYPASS_RLS",
+    "r2_credential_scope": "BUCKET_ONLY",
+    "personal_worker_credentials": "OS_KEYCHAIN_DEVICE_TOKEN_ONLY",
+    "forbidden_personal_worker_credentials": [
+      "DATABASE_URL",
+      "R2_ACCESS_KEY_ID",
+      "R2_SECRET_ACCESS_KEY",
+      "GOOGLE_CLIENT_SECRET",
+      "RUNPOD_API_KEY"
+    ]
   },
   "official_sources": [
     "https://developers.cloudflare.com/workflows/get-started/guide/",

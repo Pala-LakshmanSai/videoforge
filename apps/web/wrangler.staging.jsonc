@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "videoforge-v2-06-staging",
+  "account_id": "__V2_06_CLOUDFLARE_ACCOUNT_ID__",
   "compatibility_date": "2026-08-16",
   "compatibility_flags": ["nodejs_compat"],
   "main": "./worker/production-index.ts",
@@ -31,9 +32,11 @@
     },
   ],
   "vars": {
+    "VIDEOFORGE_COMMIT": "__V2_06_DEPLOYED_COMMIT__",
     "VIDEOFORGE_ENVIRONMENT": "production",
     "VIDEOFORGE_PROVIDER_MODE": "staging",
     "VIDEOFORGE_PUBLIC_ORIGIN": "__V2_06_STAGING_HTTPS_ORIGIN__",
+    "R2_ACCOUNT_ID": "__V2_06_CLOUDFLARE_ACCOUNT_ID__",
     "VIDEOFORGE_R2_BUCKET_NAME": "videoforge-v2-06-staging-private",
     "VIDEOFORGE_R2_REGION": "auto",
     "MEDIA_WORKER_RELEASE_MANIFEST_JSON": "__V2_06_PERSONAL_WORKER_RELEASE_MANIFEST_JSON__",

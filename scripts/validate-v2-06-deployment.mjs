@@ -16,7 +16,11 @@ if (
 )
   fail("staging build is not bound to its hosted Worker configuration");
 if (wrangler.name !== "videoforge-v2-06-staging") fail("unexpected Worker name");
+if (wrangler.account_id !== "__V2_06_CLOUDFLARE_ACCOUNT_ID__")
+  fail("staging deploy must pin the approved Cloudflare account placeholder");
 if (wrangler.vars?.VIDEOFORGE_PROVIDER_MODE !== "staging") fail("Worker must be staging-only");
+if (wrangler.vars?.VIDEOFORGE_COMMIT !== "__V2_06_DEPLOYED_COMMIT__")
+  fail("staging deploy must record an immutable source commit");
 if (wrangler.r2_buckets?.[0]?.binding !== "PRIVATE_ARTIFACTS") fail("private R2 binding missing");
 if (wrangler.r2_buckets?.[0]?.bucket_name !== "videoforge-v2-06-staging-private")
   fail("R2 bucket name drifted");
@@ -34,6 +38,8 @@ if (
   "__V2_06_PERSONAL_WORKER_RELEASE_MANIFEST_JSON__"
 )
   fail("personal worker release identity placeholder drifted");
+if (wrangler.vars?.R2_ACCOUNT_ID !== "__V2_06_CLOUDFLARE_ACCOUNT_ID__")
+  fail("non-secret R2 account identity must remain an exact deployment variable");
 if (Object.keys(wrangler.vars ?? {}).some((key) => key.startsWith("GCP_")))
   fail("retired Google Cloud compute configuration remains active");
 
@@ -44,7 +50,6 @@ const expectedSecrets = [
   "GOOGLE_CLIENT_SECRET",
   "MEDIA_WORKER_TOKEN_SECRET",
   "R2_ACCESS_KEY_ID",
-  "R2_ACCOUNT_ID",
   "R2_SECRET_ACCESS_KEY",
   "WORKFLOW_CALLBACK_SECRET",
 ].sort();
@@ -57,12 +62,34 @@ if (
   JSON.stringify(["EMAIL_DELIVERY_API_KEY", "EMAIL_DELIVERY_ENDPOINT"])
 )
   fail("optional email secret pair drifted");
+if (JSON.stringify(secretAllowlist.non_secret_vars ?? []) !== JSON.stringify(["R2_ACCOUNT_ID"]))
+  fail("non-secret deployment variables drifted");
+if (
+  secretAllowlist.scopes?.R2_ACCESS_KEY_ID !==
+    "Cloudflare R2 S3 credential scoped to videoforge-v2-06-staging-private" ||
+  secretAllowlist.scopes?.R2_SECRET_ACCESS_KEY !==
+    "Cloudflare R2 S3 credential scoped to videoforge-v2-06-staging-private"
+)
+  fail("R2 credentials are not explicitly bucket-scoped");
 if ("secrets" in wrangler)
   fail("Wrangler config must not contain a nonstandard or secret-bearing secrets field");
 
 const neonRuntimeGrants = await read("deploy/v2-06/neon-runtime-grants.sql");
 if (!neonRuntimeGrants.includes('GRANT SELECT ON workspaces TO :"runtime_role";'))
   fail("hosted tenant workspace read grant is missing");
+if (
+  !neonRuntimeGrants.includes('ALTER ROLE :"runtime_role"') ||
+  !neonRuntimeGrants.includes("NOBYPASSRLS") ||
+  !neonRuntimeGrants.includes('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM :"runtime_role";') ||
+  !neonRuntimeGrants.includes('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM :"runtime_role";')
+)
+  fail("Neon runtime role is not explicitly non-owner/non-bypass and default-revoked");
+if (
+  neonRuntimeGrants.includes("global_generation_capacity") ||
+  neonRuntimeGrants.includes("provider_workload_leases") ||
+  neonRuntimeGrants.includes("workflow_instances")
+)
+  fail("superseded global/provider tables entered the personal-worker runtime grants");
 
 const activation = JSON.parse(await read("deploy/v2-06/activation.template.json"));
 if (
@@ -73,18 +100,36 @@ if (
   fail("checkpoint or GPU firewall drifted");
 if (activation.authority?.maximum_cumulative_finite_external_spend_usd !== null)
   fail("template must not invent a spend cap");
+if (
+  activation.cloudflare?.r2_storage_class !== "STANDARD" ||
+  activation.spend_truth?.finite_external_spend_usd !== null ||
+  activation.spend_truth?.cloudflare_worker_compute_usd !== 0 ||
+  activation.spend_truth?.neon_compute_usd !== 0 ||
+  activation.spend_truth?.r2_storage_and_operations_usd !== 0 ||
+  activation.spend_truth?.personal_worker_provider_compute_usd !== 0 ||
+  activation.spend_truth?.runpod_compute_usd !== 0 ||
+  activation.secret_policy?.runtime_role !== "NON_SUPERUSER_NO_BYPASS_RLS" ||
+  activation.secret_policy?.r2_credential_scope !== "BUCKET_ONLY"
+)
+  fail("zero-spend or least-privilege activation policy drifted");
 
 const r2Cors = JSON.parse(await read("deploy/v2-06/r2-cors.template.json"));
 if (
-  r2Cors.length !== 1 ||
-  JSON.stringify(r2Cors[0]?.AllowedOrigins) !== JSON.stringify(["__V2_06_EXACT_PUBLIC_ORIGIN__"]) ||
-  JSON.stringify([...(r2Cors[0]?.AllowedMethods ?? [])].sort()) !==
-    JSON.stringify(["GET", "HEAD", "PUT"]) ||
-  JSON.stringify([...(r2Cors[0]?.AllowedHeaders ?? [])].sort()) !==
+  !r2Cors ||
+  !Array.isArray(r2Cors.rules) ||
+  r2Cors.rules.length !== 1 ||
+  JSON.stringify(r2Cors.rules[0]?.allowed?.origins) !==
+    JSON.stringify(["__V2_06_EXACT_PUBLIC_ORIGIN__"]) ||
+  JSON.stringify([...(r2Cors.rules[0]?.allowed?.methods ?? [])].sort()) !==
+    JSON.stringify(["GET", "HEAD", "PUT"].sort()) ||
+  JSON.stringify([...(r2Cors.rules[0]?.allowed?.headers ?? [])].sort()) !==
     JSON.stringify(["Content-Type", "x-amz-checksum-sha256"].sort()) ||
-  !r2Cors[0]?.ExposeHeaders?.includes("ETag")
+  !r2Cors.rules[0]?.exposeHeaders?.includes("ETag") ||
+  r2Cors.rules[0]?.maxAgeSeconds !== 3600
 )
   fail("origin-exact R2 browser upload CORS contract drifted");
+if (JSON.stringify(r2Cors).includes("AllowedOrigins") || JSON.stringify(r2Cors).includes('"*"'))
+  fail("R2 CORS must use Wrangler's lowercase rules shape without wildcard access");
 
 const releaseTemplate = JSON.parse(await read("deploy/v2-06/media-worker-release.template.json"));
 if (
@@ -139,9 +184,29 @@ for (const path of [
   "deploy/v2-06/backup.sh",
   "deploy/v2-06/restore-drill.sh",
   "deploy/v2-06/rollback.md",
+  "deploy/v2-06/verify-r2-cors.sh",
+  "deploy/v2-06/verify-r2-cors.mjs",
+  "deploy/v2-06/render-staging-config.mjs",
 ]) {
   if ((await read(path)).trim().length < 100) fail(`${path} is incomplete`);
 }
+const backupScript = await read("deploy/v2-06/backup.sh");
+const restoreScript = await read("deploy/v2-06/restore-drill.sh");
+const rollbackRunbook = await read("deploy/v2-06/rollback.md");
+const configRenderer = await read("deploy/v2-06/render-staging-config.mjs");
+if (
+  !backupScript.includes("BACKUP_PASSPHRASE_FILE") ||
+  !backupScript.includes("openssl enc -aes-256-cbc -pbkdf2") ||
+  !backupScript.includes("refusing to overwrite") ||
+  !restoreScript.includes("RESTORE_DRILL_CONFIRM") ||
+  !restoreScript.includes("RESTORE_TARGET_LABEL") ||
+  !restoreScript.includes("migration head 34") ||
+  !configRenderer.includes("refusing to overwrite the tracked template") ||
+  !configRenderer.includes("__V2_06_PERSONAL_WORKER_RELEASE_MANIFEST_JSON__") ||
+  !rollbackRunbook.includes("Keep migrations 0029-0034 applied") ||
+  rollbackRunbook.includes("Keep migrations 0029-0032 applied")
+)
+  fail("backup/restore encryption guard or forward-only rollback contract drifted");
 
 const manifest = JSON.parse(await read("packages/control-plane/migrations/manifest.json"));
 for (const version of [29, 30, 31, 32, 33, 34]) {
@@ -152,9 +217,10 @@ for (const version of [29, 30, 31, 32, 33, 34]) {
   if (entry.sha256 !== actualHash) fail(`migration ${version} hash is stale`);
 }
 
+// The activation policy is allowed to name forbidden legacy credentials as a negative control;
+// transport scanning therefore covers only the executable Worker configuration and entrypoints.
 const combined = [
   JSON.stringify(wrangler),
-  JSON.stringify(activation),
   await read("apps/web/worker/production-index.ts"),
   await read("apps/web/worker/hosted-workflow.ts"),
 ].join("\n");

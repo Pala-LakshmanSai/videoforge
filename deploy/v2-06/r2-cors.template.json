@@ -1,9 +1,13 @@
-[
-  {
-    "AllowedOrigins": ["__V2_06_EXACT_PUBLIC_ORIGIN__"],
-    "AllowedMethods": ["GET", "PUT", "HEAD"],
-    "AllowedHeaders": ["Content-Type", "x-amz-checksum-sha256"],
-    "ExposeHeaders": ["Content-Length", "Content-Type", "ETag", "x-amz-checksum-sha256"],
-    "MaxAgeSeconds": 3600
-  }
-]
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": ["__V2_06_EXACT_PUBLIC_ORIGIN__"],
+        "methods": ["GET", "PUT", "HEAD"],
+        "headers": ["Content-Type", "x-amz-checksum-sha256"]
+      },
+      "exposeHeaders": ["Content-Length", "Content-Type", "ETag", "x-amz-checksum-sha256"],
+      "maxAgeSeconds": 3600
+    }
+  ]
+}

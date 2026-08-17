@@ -9,6 +9,15 @@
 
 GRANT USAGE ON SCHEMA public TO :"runtime_role";
 
+-- The application role is deliberately not a migration owner, superuser, role creator, or RLS
+-- bypass role. Revoke inherited object privileges before granting only the active hosted surface.
+ALTER ROLE :"runtime_role"
+  NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+REVOKE CREATE ON SCHEMA public FROM :"runtime_role";
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM :"runtime_role";
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM :"runtime_role";
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM :"runtime_role";
+
 GRANT SELECT, INSERT, UPDATE, DELETE ON
   hosted_auth_users,
   hosted_auth_accounts,
@@ -39,56 +48,32 @@ GRANT SELECT, INSERT, UPDATE ON
   hosted_cpu_job_attempts,
   hosted_cpu_upload_authorities,
   hosted_project_create_requests,
-  hosted_project_reviews,
   media_worker_enrollments,
   media_worker_devices,
-  media_worker_input_objects,
   media_worker_leases,
   projects,
-  project_inputs,
   project_revisions,
   assets,
-  artifact_reservations,
-  artifact_receipts,
+  artifact_reservations
+TO :"runtime_role";
+
+GRANT SELECT ON
   avatar_profiles,
   avatar_profile_versions,
-  avatar_profile_assets,
-  avatar_compatibility_assessments,
   image_styles,
-  image_style_versions,
-  image_style_references,
-  generation_requests,
-  preset_preview_requests,
-  provider_workload_leases,
-  generation_queue_audits,
-  account_queue_heads,
-  global_generation_capacity,
-  video_runtime_states,
-  video_runtime_lane_states,
-  video_runtime_accepted_units,
-  video_runtime_events,
-  transcripts,
-  transcript_words,
-  transcript_sentences,
-  transcript_phrases,
-  timeline_plans,
-  timeline_segments,
-  selected_span_audio,
-  timing_invalidations,
-  revision_timing_heads,
-  render_jobs,
-  qa_results,
-  workflow_instances,
-  workflow_events,
-  outbox,
-  cost_events
+  image_style_versions
 TO :"runtime_role";
 
 GRANT SELECT ON workspaces TO :"runtime_role";
 
 GRANT SELECT, INSERT ON
+  media_worker_input_objects,
   hosted_cpu_job_events,
-  media_worker_events
+  media_worker_events,
+  artifact_receipts
+TO :"runtime_role";
+
+GRANT SELECT, INSERT ON hosted_project_reviews
 TO :"runtime_role";
 
 GRANT DELETE ON
