@@ -4,9 +4,18 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
+  APPROVED_MIGRATIONS,
+  AUTHORITY_METADATA,
+  MAX_R2_AGGREGATE_BYTES,
+  MAX_R2_OBJECT_BYTES,
+  MAX_R2_OBJECT_COUNT,
   assertProviderConfig,
+  assertApprovedSourceLocation,
+  assertMigrationLedgerRows,
+  assertR2PlanCaps,
   canonicalHash,
   planFixture,
+  ensureR2,
   r2Request,
   verifyLocalFixture,
 } from "../../deploy/v2-06/provision-owned-render-fixture.mjs";
@@ -117,7 +126,7 @@ test("R2 requests forward the complete aws4fetch-signed Request", async () => {
 
 test("live provider config is pinned to the approved staging resources", () => {
   assertProviderConfig(
-    "postgresql://migration-owner:placeholder@ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb",
+    "postgresql://neondb_owner:placeholder@ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
     {
       accountId: "f9254d773a3426fcb469451b1f965d8c",
       bucket: "videoforge-v2-06-staging-private",
@@ -128,11 +137,96 @@ test("live provider config is pinned to the approved staging resources", () => {
   );
   assert.throws(
     () =>
-      assertProviderConfig("postgresql://migration-owner:placeholder@other.neon.tech/neondb", {
-        accountId: "f9254d773a3426fcb469451b1f965d8c",
-        bucket: "videoforge-v2-06-staging-private",
-        region: "auto",
-      }),
+      assertProviderConfig(
+        "postgresql://neondb_owner:placeholder@other.neon.tech/neondb?sslmode=require&channel_binding=require",
+        {
+          accountId: "f9254d773a3426fcb469451b1f965d8c",
+          bucket: "videoforge-v2-06-staging-private",
+          region: "auto",
+        },
+      ),
     /approved V2-06 Neon project/u,
   );
+});
+
+test("source path, migration chain, and activation caps are hard-pinned", async () => {
+  assert.doesNotThrow(() =>
+    assertApprovedSourceLocation(
+      "/Users/lakshmansai/Documents/videoforge/artifacts/local-media",
+      "attempt_render_local_004",
+    ),
+  );
+  assert.throws(
+    () => assertApprovedSourceLocation("/tmp/attacker-owned-media", "attempt_render_local_004"),
+    /exact committed V2-06 owned local-slice path/u,
+  );
+  assert.equal(APPROVED_MIGRATIONS.length, 35);
+  assertMigrationLedgerRows(APPROVED_MIGRATIONS);
+  const fixture = await verifyLocalFixture();
+  const plan = planFixture(fixture, scope, "2026-08-17T12:00:00Z");
+  assert.equal(plan.r2Budget.object_count, MAX_R2_OBJECT_COUNT);
+  assert.ok(plan.r2Budget.aggregate_bytes <= MAX_R2_AGGREGATE_BYTES);
+  assert.ok(plan.rows.every((row) => row.bytes.length <= MAX_R2_OBJECT_BYTES));
+  assert.equal(plan.authority.finite_action_spend_cap_usd, 3);
+  assert.equal(plan.authority.expected_external_spend_usd, 0);
+  assert.equal(plan.authority.gpu_transport, AUTHORITY_METADATA.gpu_transport);
+  assert.throws(() => assertR2PlanCaps(plan.rows.slice(0, -1)), /object count exceeds/u);
+  assert.throws(
+    () =>
+      assertR2PlanCaps([
+        ...plan.rows.slice(0, -1),
+        { ...plan.rows.at(-1), bytes: Buffer.alloc(MAX_R2_OBJECT_BYTES + 1) },
+      ]),
+    /per-object byte cap/u,
+  );
+});
+
+test("R2 conditional create is race-safe and exact after a concurrent winner", async () => {
+  let calls = 0;
+  const client = {
+    async sign(url, options) {
+      calls += 1;
+      return new Request(url, {
+        method: options.method,
+        headers: options.headers,
+        body: options.method === "PUT" ? options.body : undefined,
+      });
+    },
+  };
+  const row = {
+    name: "race",
+    objectKey: "tenant/b/workspace/c/project/p/revision/r/lane/input/job/j/artifact/race",
+    bytes: Buffer.from("fixture"),
+    contentType: "application/octet-stream",
+    digest: "sha256:bef57ec7f53a6d40beb640a7803b8a8f5a9a3d8f9e8f1f2b2f0f5e3f4d7e3d4f",
+  };
+  row.digest =
+    "sha256:" + (await import("node:crypto")).createHash("sha256").update(row.bytes).digest("hex");
+  let first = true;
+  let putHeaders;
+  const response = async (request) => {
+    if (request.method === "HEAD")
+      return new Response(null, {
+        status: first ? 404 : 200,
+        headers: first ? {} : { "content-length": "7", "content-type": row.contentType },
+      });
+    if (request.method === "PUT" && first) {
+      putHeaders = request.headers;
+      first = false;
+      return new Response(null, { status: 412 });
+    }
+    return new Response(row.bytes, {
+      status: 200,
+      headers: { "content-length": "7", "content-type": row.contentType },
+    });
+  };
+  const state = await ensureR2(
+    client,
+    { accountId: "a", bucket: "b", region: "auto" },
+    row,
+    response,
+  );
+  assert.equal(state, "REUSED_EXACT_RACE");
+  assert.equal(putHeaders?.get("if-none-match"), "*");
+  assert.equal(calls, 4);
 });
