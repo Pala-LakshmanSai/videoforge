@@ -45,6 +45,7 @@ export class HostedR2Signer {
     contentLength: number;
     checksumSha256: string;
     lifetimeSeconds: number;
+    downloadFilename?: string;
     now?: Date;
   }): Promise<HostedSignedArtifactPort> {
     if (!EXACT_KEY.test(input.objectKey))
@@ -61,17 +62,33 @@ export class HostedR2Signer {
     if (!/^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/u.test(input.contentType))
       throw new TypeError("R2 content type is invalid.");
     if (
+      input.downloadFilename !== undefined &&
+      (input.method !== "GET" ||
+        !/^[A-Za-z0-9][A-Za-z0-9._ -]{0,119}$/u.test(input.downloadFilename))
+    ) {
+      throw new TypeError("R2 download filename is invalid.");
+    }
+    const maximumLifetimeSeconds = input.method === "GET" ? 3_600 : 900;
+    if (
       !Number.isSafeInteger(input.lifetimeSeconds) ||
       input.lifetimeSeconds < 1 ||
-      input.lifetimeSeconds > 900
+      input.lifetimeSeconds > maximumLifetimeSeconds
     ) {
-      throw new RangeError("R2 signed port lifetime must be between 1 and 900 seconds.");
+      throw new RangeError(
+        `R2 ${input.method} port lifetime must be between 1 and ${maximumLifetimeSeconds} seconds.`,
+      );
     }
     const now = input.now ?? new Date();
     const target = new URL(
       `${this.#endpoint}/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`,
     );
     target.searchParams.set("X-Amz-Expires", String(input.lifetimeSeconds));
+    if (input.downloadFilename) {
+      target.searchParams.set(
+        "response-content-disposition",
+        `attachment; filename="${input.downloadFilename}"`,
+      );
+    }
     // Hosted CPU uploads are not browser uploads. Bind length, type, and checksum into the query
     // signature so R2 rejects any drift from the durable upload authority.
     const headers =

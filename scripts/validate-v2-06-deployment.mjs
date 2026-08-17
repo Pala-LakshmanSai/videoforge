@@ -60,6 +60,10 @@ if (
 if ("secrets" in wrangler)
   fail("Wrangler config must not contain a nonstandard or secret-bearing secrets field");
 
+const neonRuntimeGrants = await read("deploy/v2-06/neon-runtime-grants.sql");
+if (!neonRuntimeGrants.includes('GRANT SELECT ON workspaces TO :"runtime_role";'))
+  fail("hosted tenant workspace read grant is missing");
+
 const activation = JSON.parse(await read("deploy/v2-06/activation.template.json"));
 if (
   activation.checkpoint !== "V2-06" ||
@@ -95,9 +99,11 @@ const releaseWorkflow = await read(".github/workflows/media-worker-release.yml")
 if (
   !releaseWorkflow.includes("publish_release:") ||
   !releaseWorkflow.includes("inputs.signed_release") ||
-  !releaseWorkflow.includes("gh release create")
+  !releaseWorkflow.includes("gh release create") ||
+  !releaseWorkflow.includes('notarytool submit "VideoForge-Worker-0.1.0.dmg"') ||
+  !releaseWorkflow.includes('stapler staple "VideoForge-Worker-0.1.0.dmg"')
 )
-  fail("signed immutable worker publication gate is incomplete");
+  fail("signed, notarized immutable worker publication gate is incomplete");
 const hostedApp = await read("apps/web/src/server/hosted/app.ts");
 if (
   !hostedApp.includes("handleCpuOutputDelete(") ||
@@ -120,7 +126,7 @@ for (const path of [
 }
 
 const manifest = JSON.parse(await read("packages/control-plane/migrations/manifest.json"));
-for (const version of [29, 30, 31, 32]) {
+for (const version of [29, 30, 31, 32, 33]) {
   const entry = manifest.migrations.find((candidate) => candidate.version === version);
   if (!entry) fail(`migration ${version} is absent`);
   const migration = await read(`packages/control-plane/migrations/${entry.filename}`);

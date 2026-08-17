@@ -136,24 +136,39 @@ function ProjectCommandTrack({
 export function AppShell({ children }: PropsWithChildren) {
   const dockRef = useRef<HTMLElement>(null);
   const scenario = currentScenario();
-  const fixtureControlsEnabled = import.meta.env.DEV;
+  const hostedStaging = import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging";
+  const fixtureControlsEnabled = import.meta.env.DEV && !hostedStaging;
   const path = useRouterState({ select: (state) => state.location.pathname });
   const health = useQuery({
     queryKey: ["health", scenario],
     queryFn: () => api.health(scenario),
     refetchInterval: 10_000,
+    enabled: !hostedStaging,
   });
   const bootstrap = useQuery({
     queryKey: ["bootstrap", scenario],
     queryFn: () => api.bootstrap(scenario),
     refetchInterval: 10_000,
+    enabled: !hostedStaging,
+  });
+  const hostedHealth = useQuery({
+    queryKey: ["hosted-status"],
+    queryFn: async () => {
+      const response = await fetch("/api/v2/hosted/status", {
+        headers: { accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("Hosted status is unavailable.");
+      return response.json() as Promise<{ readonly commit: string }>;
+    },
+    refetchInterval: 10_000,
+    enabled: hostedStaging,
   });
   const fixturePickerProps = {
     enabled: fixtureControlsEnabled,
     scenario,
     onScenarioChange: setScenario,
   };
-  const isAccessFixture = accessFixtureScenarios.has(scenario);
+  const isAccessFixture = !hostedStaging && accessFixtureScenarios.has(scenario);
   const localMode = health.data?.mode === "local";
 
   useEffect(() => {
@@ -295,7 +310,11 @@ export function AppShell({ children }: PropsWithChildren) {
     );
   }
 
-  if (bootstrap.data?.access.state && bootstrap.data.access.state !== "AUTHORIZED") {
+  if (
+    !hostedStaging &&
+    bootstrap.data?.access.state &&
+    bootstrap.data.access.state !== "AUTHORIZED"
+  ) {
     return (
       <AccessGate
         {...fixturePickerProps}
@@ -309,7 +328,8 @@ export function AppShell({ children }: PropsWithChildren) {
   const projects = bootstrap.data?.projects ?? [];
   const activeProject =
     projects.find((project) => !terminalProjectStatuses.has(project.status)) ?? projects[0];
-  const healthDegraded = health.isError;
+  const healthDegraded = hostedStaging ? hostedHealth.isError : health.isError;
+  const routeSearch = (hostedStaging ? {} : { fixture: scenario }) as never;
   const renderNavItem = (item: (typeof nav)[number]) => {
     const Icon = item.icon;
     const active = isNavItemActive(path, item.to);
@@ -317,7 +337,7 @@ export function AppShell({ children }: PropsWithChildren) {
       <Link
         key={item.to}
         to={item.to}
-        search={{ fixture: scenario } as never}
+        search={routeSearch}
         className={`bottom-nav-item ${active ? "bottom-nav-item-active" : ""}`}
         aria-current={active ? "page" : undefined}
         aria-label={item.label}
@@ -344,19 +364,24 @@ export function AppShell({ children }: PropsWithChildren) {
 
       <header className="top-command-bar">
         <div className="top-command-bar-inner">
-          <Link
-            to="/"
-            search={{ fixture: scenario } as never}
-            className="top-brand"
-            aria-label="VideoForge queue"
-          >
+          <Link to="/" search={routeSearch} className="top-brand" aria-label="VideoForge queue">
             <span className="top-brand-mark" aria-hidden="true">
               <Clapperboard size={24} />
             </span>
             <strong>VideoForge</strong>
           </Link>
 
-          {bootstrap.isError ? (
+          {hostedStaging ? (
+            <Link to="/settings" className="project-command-track">
+              <span className="project-command-copy">
+                <span className="project-command-status project-command-status-success">
+                  Private staging
+                </span>
+                <strong>Personal media worker</strong>
+              </span>
+              <span className="project-command-action">Settings</span>
+            </Link>
+          ) : bootstrap.isError ? (
             <div className="project-command-track project-command-track-error" role="status">
               <span className="project-command-copy">
                 <span className="project-command-status project-command-status-danger">
@@ -385,15 +410,35 @@ export function AppShell({ children }: PropsWithChildren) {
               <Activity size={16} aria-hidden="true" />
               <Badge
                 tone={
-                  health.data?.status === "ok" ? "success" : health.isError ? "danger" : "warning"
+                  hostedStaging
+                    ? hostedHealth.isSuccess
+                      ? "success"
+                      : hostedHealth.isError
+                        ? "danger"
+                        : "warning"
+                    : health.data?.status === "ok"
+                      ? "success"
+                      : health.isError
+                        ? "danger"
+                        : "warning"
                 }
               >
                 API{" "}
-                {health.data?.status === "ok" ? "healthy" : health.isError ? "offline" : "checking"}
+                {hostedStaging
+                  ? hostedHealth.isSuccess
+                    ? "healthy"
+                    : hostedHealth.isError
+                      ? "offline"
+                      : "checking"
+                  : health.data?.status === "ok"
+                    ? "healthy"
+                    : health.isError
+                      ? "offline"
+                      : "checking"}
               </Badge>
             </div>
 
-            {import.meta.env.PROD ? (
+            {import.meta.env.PROD && !hostedStaging ? (
               <div className="top-health top-health-degraded" role="status">
                 <AlertTriangle size={16} aria-hidden="true" />
                 <Badge tone="warning">Hosted runtime unavailable · fixtures are not live</Badge>
@@ -458,7 +503,7 @@ export function AppShell({ children }: PropsWithChildren) {
           <Link
             to="/projects/$projectId"
             params={{ projectId: activeProject.id }}
-            search={{ fixture: scenario } as never}
+            search={routeSearch}
             className={`bottom-nav-item ${path.startsWith("/projects/") && path !== "/projects/new" ? "bottom-nav-item-active" : ""}`}
             aria-current={
               path.startsWith("/projects/") && path !== "/projects/new" ? "page" : undefined

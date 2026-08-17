@@ -184,7 +184,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Setup Authenticode verification failed" }
           Remove-Item worker-signing.pfx -Force
 
-      - name: Sign, notarize, and staple macOS app
+      - name: Sign macOS app for final disk image
         if: runner.os == 'macOS' && inputs.signed_release
         shell: bash
         env:
@@ -211,12 +211,7 @@ jobs:
           security list-keychains -d user -s worker-signing.keychain-db
           printf '%s' "$APPLE_NOTARY_PRIVATE_KEY" > notary-key.p8
           codesign --force --deep --options runtime --timestamp --sign "$APPLE_DEVELOPER_ID_APPLICATION" "dist/VideoForge Worker.app"
-          ditto -c -k --keepParent "dist/VideoForge Worker.app" worker-notary.zip
-          xcrun notarytool submit worker-notary.zip --key notary-key.p8 --key-id "$APPLE_NOTARY_KEY_ID" --issuer "$APPLE_NOTARY_ISSUER_ID" --wait
-          xcrun stapler staple "dist/VideoForge Worker.app"
           codesign --verify --deep --strict --verbose=2 "dist/VideoForge Worker.app"
-          security delete-keychain worker-signing.keychain-db
-          rm -f signing.p12 notary-key.p8
 
       - name: Build macOS disk image
         if: runner.os == 'macOS'
@@ -225,6 +220,32 @@ jobs:
           hdiutil create -fs HFS+ -volname "VideoForge Worker"
           -srcfolder "dist/VideoForge Worker.app"
           "VideoForge-Worker-0.1.0.dmg"
+
+      - name: Sign, notarize, staple, and assess final macOS disk image
+        if: runner.os == 'macOS' && inputs.signed_release
+        shell: bash
+        env:
+          APPLE_DEVELOPER_ID_APPLICATION: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+        run: |
+          codesign --force --timestamp --sign "$APPLE_DEVELOPER_ID_APPLICATION" "VideoForge-Worker-0.1.0.dmg"
+          codesign --verify --strict --verbose=2 "VideoForge-Worker-0.1.0.dmg"
+          xcrun notarytool submit "VideoForge-Worker-0.1.0.dmg" \
+            --key notary-key.p8 \
+            --key-id "$APPLE_NOTARY_KEY_ID" \
+            --issuer "$APPLE_NOTARY_ISSUER_ID" \
+            --wait
+          xcrun stapler staple "VideoForge-Worker-0.1.0.dmg"
+          xcrun stapler validate "VideoForge-Worker-0.1.0.dmg"
+          spctl --assess --type open --context context:primary-signature --verbose=2 "VideoForge-Worker-0.1.0.dmg"
+
+      - name: Remove transient macOS signing material
+        if: runner.os == 'macOS' && always()
+        shell: bash
+        run: |
+          security delete-keychain worker-signing.keychain-db 2>/dev/null || true
+          rm -f signing.p12 notary-key.p8
 
       - name: Hash release artifact
         shell: python

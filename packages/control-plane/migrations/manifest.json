@@ -192,6 +192,12 @@
       "name": "v2_06_personal_media_workers",
       "filename": "0032_v2_06_personal_media_workers.sql",
       "sha256": "sha256:baefa1ce06f8625b32b12194792dcced2374ba05da359a08a359315ab5115c17"
+    },
+    {
+      "version": 33,
+      "name": "v2_06_hosted_cpu_admission_guard",
+      "filename": "0033_v2_06_hosted_cpu_admission_guard.sql",
+      "sha256": "sha256:286783b67278a0a43e331ad83cabfbf2378569440768dcbdbd440b08f644abca"
     }
   ]
 }

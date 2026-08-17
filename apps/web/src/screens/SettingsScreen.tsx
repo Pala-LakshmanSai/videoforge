@@ -1,16 +1,86 @@
+import { createAuthClient } from "better-auth/react";
 import { useQuery } from "@tanstack/react-query";
+import { MediaWorkerSetup } from "../hosted/MediaWorkerSetup";
 import { PageHeader } from "../components/PageHeader";
-import { Badge, Disclosure, Panel } from "../components/ui";
+import { Badge, Button, Disclosure, Panel } from "../components/ui";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
 
+const hostedAuthClient = createAuthClient({
+  baseURL: window.location.origin,
+  basePath: "/api/auth",
+});
+
+interface HostedTenant {
+  readonly workspace_name: string;
+  readonly user: { readonly email: string; readonly name: string };
+}
+
+function HostedSettingsScreen() {
+  const tenant = useQuery({
+    queryKey: ["hosted-tenant"],
+    queryFn: async () => {
+      const response = await fetch("/api/v2/tenant", { headers: { accept: "application/json" } });
+      if (!response.ok) throw new Error("Hosted tenant is unavailable.");
+      return response.json() as Promise<HostedTenant>;
+    },
+  });
+
+  return (
+    <>
+      <PageHeader title="Settings" />
+      <div className="grid grid-2 settings-grid">
+        <Panel eyebrow="Private staging" heading={tenant.data?.workspace_name ?? "Your workspace"}>
+          <div className="settings-summary">
+            <Badge tone={tenant.isError ? "danger" : "success"}>
+              {tenant.isError ? "UNAVAILABLE" : "TENANT ISOLATED"}
+            </Badge>
+            <strong>{tenant.data?.user.email ?? "Checking signed-in account…"}</strong>
+          </div>
+          <Disclosure summary="Hosted boundaries">
+            <div className="detail-facts">
+              <span>
+                <small>Database</small>
+                <strong>Neon · account-scoped RLS</strong>
+              </span>
+              <span>
+                <small>Artifacts</small>
+                <strong>Private R2 · short-lived signed access</strong>
+              </span>
+              <span>
+                <small>GPU</small>
+                <strong>Disabled · fake transport only</strong>
+              </span>
+              <span>
+                <small>CPU provider cost</small>
+                <strong>$0 · your paired computer</strong>
+              </span>
+            </div>
+          </Disclosure>
+          <Button
+            variant="secondary"
+            onClick={() => void hostedAuthClient.signOut().then(() => window.location.assign("/"))}
+          >
+            Sign out
+          </Button>
+        </Panel>
+        <MediaWorkerSetup />
+      </div>
+    </>
+  );
+}
+
 export function SettingsScreen() {
   const scenario = currentScenario();
+  const hostedStaging = import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging";
   const health = useQuery({
     queryKey: ["health", scenario],
     queryFn: () => api.health(scenario),
+    enabled: !hostedStaging,
   });
   const mode = health.data?.mode;
+
+  if (hostedStaging) return <HostedSettingsScreen />;
 
   return (
     <>

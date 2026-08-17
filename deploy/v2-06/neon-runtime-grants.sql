@@ -82,6 +82,8 @@ GRANT SELECT, INSERT, UPDATE ON
   cost_events
 TO :"runtime_role";
 
+GRANT SELECT ON workspaces TO :"runtime_role";
+
 GRANT SELECT, INSERT ON
   hosted_cpu_job_events,
   media_worker_events

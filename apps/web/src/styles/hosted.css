@@ -47,16 +47,16 @@
   overflow-wrap: anywhere;
 }
 
-.hosted-stage .worker-setup {
+.settings-grid > .worker-setup {
   width: 100%;
   display: grid;
+  align-content: start;
   gap: 1rem;
-  margin-top: 1.5rem;
-  padding: 1.5rem 0 0;
-  border: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0;
-  background: transparent;
+  padding: 20px;
+  border: 1px solid var(--surface-border);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow: var(--surface-shadow);
 }
 
 .worker-setup h2,
@@ -73,7 +73,7 @@
   color: rgba(255, 255, 255, 0.78);
 }
 
-.hosted-stage .worker-downloads {
+.worker-downloads {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 0.75rem;
@@ -104,7 +104,7 @@
   font-size: 0.82rem;
 }
 
-.hosted-stage .worker-connect {
+.worker-connect {
   display: grid;
   gap: 0.65rem;
   padding: 1rem;
@@ -113,12 +113,12 @@
   background: rgba(76, 201, 240, 0.08);
 }
 
-.hosted-stage .worker-devices {
+.worker-devices {
   display: grid;
   gap: 0.65rem;
 }
 
-.hosted-stage .worker-device {
+.worker-device {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 0.8rem;
@@ -128,7 +128,7 @@
   border-radius: 0.7rem;
 }
 
-.hosted-stage .worker-device > div {
+.worker-device > div {
   display: grid;
   gap: 0.2rem;
 }
@@ -156,7 +156,7 @@
 }
 
 @media (max-width: 640px) {
-  .hosted-stage .worker-device {
+  .worker-device {
     grid-template-columns: 1fr;
   }
 }

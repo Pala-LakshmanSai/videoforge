@@ -175,7 +175,7 @@ async function createEnrollment(request: Request, config: HostedRuntimeConfigura
         schema_version: "videoforge-media-worker-enrollment-created/v1",
         enrollment_id: id,
         poll_token: pollToken,
-        approval_url: `${config.publicOrigin}/?enrollment=${id}`,
+        approval_url: `${config.publicOrigin}/settings?enrollment=${id}`,
         expires_in_seconds: 600,
       },
       201,

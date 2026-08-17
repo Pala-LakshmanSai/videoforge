@@ -3,6 +3,7 @@ import { hostedRuntimeConfiguration, type HostedRuntimeEnvironment } from "./con
 import { deriveCallbackToken, sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { handlePersonalWorkerRequest } from "./personal-worker";
+import { HostedR2Signer } from "./r2";
 import {
   bindHostedCpuInputDocument,
   canonicalJson,
@@ -24,6 +25,14 @@ function json(value: unknown, status = 200): Response {
   });
 }
 
+function sameOriginBrowserWrite(
+  request: Request,
+  config: ReturnType<typeof hostedRuntimeConfiguration>,
+): boolean {
+  const origin = request.headers.get("origin");
+  return origin !== null && origin === new URL(config.publicOrigin).origin;
+}
+
 interface OwnedArtifactRow extends Record<string, unknown> {
   readonly id: string;
   readonly object_key: string;
@@ -32,12 +41,202 @@ interface OwnedArtifactRow extends Record<string, unknown> {
   readonly checksum_sha256: string;
 }
 
+interface HostedLibraryRow extends Record<string, unknown> {
+  readonly attempt_id: string;
+  readonly project_id: string;
+  readonly title: string;
+  readonly created_at: Date | string;
+  readonly object_key: string;
+  readonly content_type: string;
+  readonly content_length: string | number;
+  readonly checksum_sha256: string;
+}
+
+interface HostedQueueRow extends Record<string, unknown> {
+  readonly id: string;
+  readonly project_id: string;
+  readonly title: string;
+  readonly kind: "ASR" | "RENDER";
+  readonly state: string;
+  readonly created_at: Date | string;
+  readonly updated_at: Date | string;
+}
+
+async function handleHostedQueue(
+  request: Request,
+  config: ReturnType<typeof hostedRuntimeConfiguration>,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const session = await hostedSession(request, config, pool, executionContext);
+    if (!session?.user?.id) return json({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
+    const scope = await pool.query(`SELECT * FROM videoforge_hosted_session_scope($1)`, [
+      session.session.token,
+    ]);
+    const accountId = scope.rows[0]?.account_id;
+    const workspaceId = scope.rows[0]?.workspace_id;
+    if (typeof accountId !== "string" || typeof workspaceId !== "string") {
+      return json({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, 403);
+    }
+    const result = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        accountId,
+      ]);
+      const attempts = await transaction.query<HostedQueueRow>(
+        `SELECT attempt.id, attempt.project_id, project.name AS title, attempt.kind,
+                attempt.state, attempt.created_at, attempt.updated_at
+           FROM hosted_cpu_job_attempts AS attempt
+           JOIN projects AS project
+             ON project.account_id = attempt.account_id
+            AND project.workspace_id = attempt.workspace_id
+            AND project.id = attempt.project_id
+          WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
+            AND attempt.retention_deleted_at IS NULL
+          ORDER BY attempt.created_at DESC, attempt.id DESC
+          LIMIT 100`,
+        [accountId, workspaceId],
+      );
+      const devices = await transaction.query<{ status: string; count: string | number }>(
+        `SELECT status, count(*) AS count
+           FROM media_worker_devices
+          WHERE account_id = $1 AND workspace_id = $2 AND status <> 'REVOKED'
+          GROUP BY status`,
+        [accountId, workspaceId],
+      );
+      return { attempts: attempts.rows, devices: devices.rows };
+    });
+    const workers = Object.fromEntries(
+      result.devices.map((row) => [String(row.status), Number(row.count)]),
+    );
+    return json({
+      schema_version: "videoforge-hosted-queue/v1",
+      worker_state:
+        (workers.ONLINE ?? 0) > 0
+          ? "ONLINE"
+          : (workers.BUSY ?? 0) > 0
+            ? "BUSY"
+            : "WAITING_FOR_YOUR_COMPUTER",
+      attempts: result.attempts.map((attempt) => ({
+        id: attempt.id,
+        project_id: attempt.project_id,
+        title: attempt.title,
+        kind: attempt.kind,
+        state: attempt.state,
+        created_at: new Date(attempt.created_at).toISOString(),
+        updated_at: new Date(attempt.updated_at).toISOString(),
+      })),
+    });
+  } finally {
+    await pool.end();
+  }
+}
+
+async function handleHostedLibrary(
+  request: Request,
+  environment: HostedRuntimeEnvironment,
+  config: ReturnType<typeof hostedRuntimeConfiguration>,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  const bucket = environment.PRIVATE_ARTIFACTS;
+  if (!bucket) return json({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const session = await hostedSession(request, config, pool, executionContext);
+    if (!session?.user?.id) return json({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
+    const scope = await pool.query(`SELECT * FROM videoforge_hosted_session_scope($1)`, [
+      session.session.token,
+    ]);
+    const accountId = scope.rows[0]?.account_id;
+    const workspaceId = scope.rows[0]?.workspace_id;
+    if (typeof accountId !== "string" || typeof workspaceId !== "string") {
+      return json({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, 403);
+    }
+    const outputs = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        accountId,
+      ]);
+      const result = await transaction.query<HostedLibraryRow>(
+        `SELECT attempt.id AS attempt_id, attempt.project_id, project.name AS title,
+                attempt.created_at, authority.object_key, authority.content_type,
+                authority.issued_content_length AS content_length,
+                authority.issued_checksum_sha256 AS checksum_sha256
+           FROM hosted_cpu_job_attempts AS attempt
+           JOIN projects AS project
+             ON project.account_id = attempt.account_id
+            AND project.workspace_id = attempt.workspace_id
+            AND project.id = attempt.project_id
+           JOIN hosted_cpu_upload_authorities AS authority
+             ON authority.account_id = attempt.account_id
+            AND authority.workspace_id = attempt.workspace_id
+            AND authority.attempt_id = attempt.id
+            AND authority.source = 'PRIMARY_RESULT_OUTPUT'
+          WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
+            AND attempt.kind = 'RENDER' AND attempt.state = 'SUCCEEDED'
+            AND attempt.retention_deleted_at IS NULL
+            AND authority.issued_at IS NOT NULL
+          ORDER BY attempt.created_at DESC, attempt.id DESC`,
+        [accountId, workspaceId],
+      );
+      return result.rows;
+    });
+    const signer = new HostedR2Signer(config.r2);
+    const signed = [];
+    for (const output of outputs) {
+      const contentLength = Number(output.content_length);
+      if (
+        output.content_type !== "video/mp4" ||
+        !Number.isSafeInteger(contentLength) ||
+        contentLength < 1 ||
+        !/^sha256:[0-9a-f]{64}$/u.test(output.checksum_sha256)
+      ) {
+        continue;
+      }
+      const object = await bucket.head(output.object_key);
+      if (
+        !object ||
+        object.size !== contentLength ||
+        object.httpMetadata?.contentType !== "video/mp4"
+      ) {
+        continue;
+      }
+      const port = await signer.sign({
+        method: "GET",
+        objectKey: output.object_key,
+        contentType: "video/mp4",
+        contentLength,
+        checksumSha256: output.checksum_sha256,
+        lifetimeSeconds: 300,
+        downloadFilename: `${output.title.replace(/[^A-Za-z0-9._ -]+/gu, "_").slice(0, 110) || "videoforge-video"}.mp4`,
+      });
+      signed.push({
+        attempt_id: output.attempt_id,
+        project_id: output.project_id,
+        title: output.title,
+        created_at: new Date(output.created_at).toISOString(),
+        content_length: contentLength,
+        checksum_sha256: output.checksum_sha256,
+        download_url: port.url,
+        download_expires_at: port.expiresAt,
+      });
+    }
+    return json({ schema_version: "videoforge-hosted-library/v1", outputs: signed });
+  } finally {
+    await pool.end();
+  }
+}
+
 async function handleCpuSubmission(
   request: Request,
   environment: HostedRuntimeEnvironment,
   config: ReturnType<typeof hostedRuntimeConfiguration>,
   executionContext: HostedExecutionContext,
 ): Promise<Response> {
+  if (!sameOriginBrowserWrite(request, config)) {
+    return json({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  }
   const length = Number(request.headers.get("content-length") ?? "0");
   if (!Number.isSafeInteger(length) || length < 1 || length > 1_048_576) {
     return json({ error: { code: "CPU_SUBMISSION_REJECTED" } }, 400);
@@ -273,37 +472,74 @@ async function handleCpuSubmission(
     const bucket = environment.PRIVATE_ARTIFACTS!;
     const jobSpecBuffer = new ArrayBuffer(prepared.jobSpecBytes.byteLength);
     new Uint8Array(jobSpecBuffer).set(prepared.jobSpecBytes);
-    await bucket.put(prepared.jobSpecKey, jobSpecBuffer, {
-      httpMetadata: { contentType: "application/json" },
-      customMetadata: { sha256: prepared.jobSpecChecksum },
-    });
-    await executor.transaction(async (transaction) => {
-      await transaction.query("SELECT set_config($1, $2, true)", [
-        "videoforge.account_id",
-        scope.account_id,
-      ]);
-      await transaction.query(
-        `UPDATE hosted_cpu_job_attempts
-            SET state = 'OUTBOXED', job_spec_content_length = $2,
-                job_spec_checksum_sha256 = $3, version = version + 1, updated_at = now()
-          WHERE id = $1 AND state = 'PLANNED'`,
-        [prepared.attemptId, prepared.jobSpecBytes.byteLength, prepared.jobSpecChecksum],
-      );
-      await transaction.query(
-        `INSERT INTO hosted_cpu_job_events (
-           id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
-         ) SELECT md5($1 || ':outboxed:1')::uuid, $2, $3, $1, 1, 'OUTBOXED', $4, now()
-         WHERE NOT EXISTS (
-           SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id = $1 AND kind = 'OUTBOXED'
-         )`,
-        [prepared.attemptId, scope.account_id, scope.workspace_id, prepared.jobSpecChecksum],
-      );
-    });
-    await startHostedCpuWorkflow(environment, {
-      attemptId: prepared.attemptId,
-      accountId: scope.account_id,
-      workspaceId: scope.workspace_id,
-    });
+    try {
+      await bucket.put(prepared.jobSpecKey, jobSpecBuffer, {
+        httpMetadata: { contentType: "application/json" },
+        customMetadata: { sha256: prepared.jobSpecChecksum },
+      });
+      await startHostedCpuWorkflow(environment, {
+        attemptId: prepared.attemptId,
+        accountId: scope.account_id,
+        workspaceId: scope.workspace_id,
+      });
+      await executor.transaction(async (transaction) => {
+        await transaction.query("SELECT set_config($1, $2, true)", [
+          "videoforge.account_id",
+          scope.account_id,
+        ]);
+        const outboxed = await transaction.query<{ id: string }>(
+          `UPDATE hosted_cpu_job_attempts
+              SET state = 'OUTBOXED', job_spec_content_length = $2,
+                  job_spec_checksum_sha256 = $3, version = version + 1, updated_at = now()
+            WHERE id = $1 AND state = 'PLANNED'
+          RETURNING id`,
+          [prepared.attemptId, prepared.jobSpecBytes.byteLength, prepared.jobSpecChecksum],
+        );
+        if (!outboxed.rows[0]) throw new Error("Hosted CPU attempt was not ready to outbox.");
+        await transaction.query(
+          `INSERT INTO hosted_cpu_job_events (
+             id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
+           ) SELECT md5($1 || ':outboxed:1')::uuid, $2, $3, $1, 1, 'OUTBOXED', $4, now()
+           WHERE NOT EXISTS (
+             SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id = $1 AND kind = 'OUTBOXED'
+           )`,
+          [prepared.attemptId, scope.account_id, scope.workspace_id, prepared.jobSpecChecksum],
+        );
+      });
+    } catch (error) {
+      await bucket.delete(prepared.jobSpecKey).catch(() => undefined);
+      const failureFacts = await sha256(`PREPARATION_FAILED:${prepared.jobSpecChecksum}`);
+      await executor.transaction(async (transaction) => {
+        await transaction.query("SELECT set_config($1, $2, true)", [
+          "videoforge.account_id",
+          scope.account_id,
+        ]);
+        const failed = await transaction.query<{
+          account_id: string;
+          workspace_id: string;
+        }>(
+          `UPDATE hosted_cpu_job_attempts
+              SET state = 'FAILED', submitted_at = COALESCE(submitted_at, now()),
+                  terminal_at = now(), retain_until = GREATEST(deadline_at, now() + interval '30 minutes'),
+                  version = version + 1, updated_at = now()
+            WHERE id = $1 AND state = 'PLANNED'
+          RETURNING account_id, workspace_id`,
+          [prepared.attemptId],
+        );
+        const row = failed.rows[0];
+        if (!row) return;
+        await transaction.query(
+          `INSERT INTO hosted_cpu_job_events (
+             id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
+           ) SELECT md5($1 || ':preparation-failed:1')::uuid, $2, $3, $1, 1, 'FAILED', $4, now()
+             WHERE NOT EXISTS (
+               SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id = $1 AND kind = 'FAILED'
+             )`,
+          [prepared.attemptId, row.account_id, row.workspace_id, failureFacts],
+        );
+      });
+      throw error;
+    }
     return json(
       {
         schema_version: "videoforge-hosted-cpu-attempt/v1",
@@ -346,15 +582,21 @@ async function handleTenantApi(
     ]);
     const row = scope.rows[0];
     if (!row) return json({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, 403);
-    await pool.query("SELECT set_config($1, $2, false)", ["videoforge.account_id", row.account_id]);
-    const workspace = await pool.query(`SELECT name FROM workspaces WHERE id = $1`, [
-      row.workspace_id,
-    ]);
+    const workspaceName = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        row.account_id,
+      ]);
+      const workspace = await transaction.query(`SELECT name FROM workspaces WHERE id = $1`, [
+        row.workspace_id,
+      ]);
+      return workspace.rows[0]?.name;
+    });
     return json({
       schema_version: "videoforge-hosted-tenant/v1",
       account_id: row.account_id,
       workspace_id: row.workspace_id,
-      workspace_name: workspace.rows[0]?.name ?? "My workspace",
+      workspace_name: workspaceName ?? "My workspace",
       user: { id: session.user.id, email: session.user.email, name: session.user.name },
       rights: "EQUAL",
     });
@@ -381,6 +623,9 @@ async function handleCpuAttemptApi(
     if (typeof accountId !== "string")
       return json({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, 403);
     if (request.method === "POST") {
+      if (!sameOriginBrowserWrite(request, config)) {
+        return json({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+      }
       const row = await createNeonExecutor(pool).transaction(async (transaction) => {
         await transaction.query("SELECT set_config($1, $2, true)", [
           "videoforge.account_id",
@@ -435,15 +680,21 @@ async function handleCpuAttemptApi(
         202,
       );
     }
-    await pool.query("SELECT set_config($1, $2, false)", ["videoforge.account_id", accountId]);
-    const result = await pool.query(
-      `SELECT id, kind, state, version, deadline_at, retain_until, result_receipt_sha256,
-              result_content_length, result_checksum_sha256
-         FROM hosted_cpu_job_attempts WHERE id = $1`,
-      [attemptId],
-    );
-    if (!result.rows[0]) return json({ error: { code: "CPU_ATTEMPT_NOT_FOUND" } }, 404);
-    return json({ schema_version: "videoforge-hosted-cpu-attempt/v1", ...result.rows[0] });
+    const attempt = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        accountId,
+      ]);
+      const result = await transaction.query(
+        `SELECT id, kind, state, version, deadline_at, retain_until, result_receipt_sha256,
+                result_content_length, result_checksum_sha256
+           FROM hosted_cpu_job_attempts WHERE id = $1`,
+        [attemptId],
+      );
+      return result.rows[0];
+    });
+    if (!attempt) return json({ error: { code: "CPU_ATTEMPT_NOT_FOUND" } }, 404);
+    return json({ schema_version: "videoforge-hosted-cpu-attempt/v1", ...attempt });
   } finally {
     await pool.end();
   }
@@ -457,6 +708,9 @@ async function handleCpuOutputDelete(
   attemptId: string,
 ): Promise<Response> {
   if (!UUID.test(attemptId)) return json({ error: { code: "CPU_ATTEMPT_NOT_FOUND" } }, 404);
+  if (!sameOriginBrowserWrite(request, config)) {
+    return json({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  }
   const bucket = environment.PRIVATE_ARTIFACTS;
   if (!bucket) return json({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
   const pool = createNeonPool(config.neon.databaseUrl);
@@ -469,27 +723,32 @@ async function handleCpuOutputDelete(
     const accountId = scope.rows[0]?.account_id;
     if (typeof accountId !== "string")
       return json({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, 403);
-    await pool.query("SELECT set_config($1, $2, false)", ["videoforge.account_id", accountId]);
-    const owned = await pool.query<{
-      state: string;
-      retention_deleted_at: string | null;
-      object_key: string | null;
-    }>(
-      `SELECT attempt.state, attempt.retention_deleted_at, authority.object_key
-         FROM hosted_cpu_job_attempts AS attempt
-         LEFT JOIN hosted_cpu_upload_authorities AS authority
-           ON authority.account_id = attempt.account_id
-          AND authority.workspace_id = attempt.workspace_id
-          AND authority.attempt_id = attempt.id
-          AND authority.issued_at IS NOT NULL
-        WHERE attempt.id = $1 AND attempt.state = 'SUCCEEDED'
-        ORDER BY authority.source`,
-      [attemptId],
-    );
-    if (owned.rows.length === 0)
-      return json({ error: { code: "CPU_ATTEMPT_OUTPUT_NOT_FOUND" } }, 404);
-    if (owned.rows[0]?.retention_deleted_at !== null) return new Response(null, { status: 204 });
-    const keys = owned.rows
+    const owned = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        accountId,
+      ]);
+      const result = await transaction.query<{
+        state: string;
+        retention_deleted_at: string | null;
+        object_key: string | null;
+      }>(
+        `SELECT attempt.state, attempt.retention_deleted_at, authority.object_key
+           FROM hosted_cpu_job_attempts AS attempt
+           LEFT JOIN hosted_cpu_upload_authorities AS authority
+             ON authority.account_id = attempt.account_id
+            AND authority.workspace_id = attempt.workspace_id
+            AND authority.attempt_id = attempt.id
+            AND authority.issued_at IS NOT NULL
+          WHERE attempt.id = $1 AND attempt.state = 'SUCCEEDED'
+          ORDER BY authority.source`,
+        [attemptId],
+      );
+      return result.rows;
+    });
+    if (owned.length === 0) return json({ error: { code: "CPU_ATTEMPT_OUTPUT_NOT_FOUND" } }, 404);
+    if (owned[0]?.retention_deleted_at !== null) return new Response(null, { status: 204 });
+    const keys = owned
       .map((row) => row.object_key)
       .filter((key): key is string => typeof key === "string")
       .sort();
@@ -593,6 +852,12 @@ export async function handleHostedRequest(
   }
   if (request.method === "GET" && url.pathname === "/api/v2/tenant") {
     return handleTenantApi(request, config, executionContext);
+  }
+  if (request.method === "GET" && url.pathname === "/api/v2/library") {
+    return handleHostedLibrary(request, environment, config, executionContext);
+  }
+  if (request.method === "GET" && url.pathname === "/api/v2/hosted/queue") {
+    return handleHostedQueue(request, config, executionContext);
   }
   if (request.method === "POST" && url.pathname === "/api/v2/cpu-attempts") {
     return handleCpuSubmission(request, environment, config, executionContext);

@@ -90,7 +90,8 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
               );
               await transaction.query(
                 `UPDATE hosted_cpu_job_attempts
-                    SET state = 'EXPIRED', terminal_at = now(), retain_until = now() + interval '30 minutes',
+                    SET state = 'EXPIRED', submitted_at = COALESCE(submitted_at, now()),
+                        terminal_at = now(), retain_until = now() + interval '30 minutes',
                         version = version + 1, updated_at = now()
                   WHERE id = $1`,
                 [params.attemptId],

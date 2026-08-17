@@ -8,7 +8,169 @@ import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
 import { videoStageLabel } from "../features/shared/status";
 
+interface HostedQueueAttempt {
+  readonly id: string;
+  readonly project_id: string;
+  readonly title: string;
+  readonly kind: "ASR" | "RENDER";
+  readonly state: string;
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
+interface HostedQueueResponse {
+  readonly schema_version: "videoforge-hosted-queue/v1";
+  readonly worker_state: "ONLINE" | "BUSY" | "WAITING_FOR_YOUR_COMPUTER";
+  readonly attempts: readonly HostedQueueAttempt[];
+}
+
+async function hostedQueue(): Promise<HostedQueueResponse> {
+  const response = await fetch("/api/v2/hosted/queue", {
+    headers: { accept: "application/json" },
+  });
+  if (!response.ok) throw new Error("Hosted queue could not be loaded.");
+  return response.json() as Promise<HostedQueueResponse>;
+}
+
+function hostedAttemptTone(state: string): "success" | "danger" | "warning" | "info" | "neutral" {
+  if (state === "SUCCEEDED") return "success";
+  if (state === "FAILED" || state === "EXPIRED") return "danger";
+  if (state === "CANCEL_REQUESTED" || state === "CANCELLED") return "warning";
+  if (state === "RUNNING" || state === "RECONCILING") return "info";
+  return "neutral";
+}
+
+function HostedQueueScreen() {
+  const queue = useQuery({
+    queryKey: ["hosted-queue"],
+    queryFn: hostedQueue,
+    refetchInterval: 5_000,
+  });
+  const cancel = useMutation({
+    mutationFn: async (attemptId: string) => {
+      const response = await fetch(`/api/v2/cpu-attempts/${attemptId}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      });
+      if (!response.ok) throw new Error("The job could not be cancelled.");
+    },
+    onSuccess: () => queue.refetch(),
+  });
+
+  if (queue.isPending) {
+    return (
+      <Panel heading="Loading your private queue">
+        <div className="empty-state" aria-busy="true">
+          <span className="spinner" aria-hidden="true" />
+          <p>Reading tenant-owned jobs and worker status…</p>
+        </div>
+      </Panel>
+    );
+  }
+  if (queue.isError || !queue.data) {
+    return (
+      <EmptyState
+        icon={<AlertTriangle />}
+        title="Queue unavailable"
+        body="No fixture or cross-account fallback was used."
+        action={
+          <Button variant="secondary" onClick={() => void queue.refetch()}>
+            Retry load
+          </Button>
+        }
+      />
+    );
+  }
+  const active = queue.data.attempts.filter((attempt) =>
+    ["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state),
+  ).length;
+  const finished = queue.data.attempts.filter((attempt) => attempt.state === "SUCCEEDED").length;
+
+  return (
+    <>
+      <PageHeader title="Queue" />
+      <div className="grid grid-4 queue-overview">
+        <Metric label="Active jobs" value={String(active)} tone={active ? "info" : "neutral"} />
+        <Metric label="Finished jobs" value={String(finished)} tone="success" />
+        <Metric label="Account limit" value="1" detail="active video" />
+        <Metric
+          label="Your worker"
+          value={queue.data.worker_state.replaceAll("_", " ")}
+          tone={queue.data.worker_state === "ONLINE" ? "success" : "warning"}
+        />
+      </div>
+      <Panel eyebrow="Tenant-private execution" heading="Your local media jobs">
+        <div className="notice" role="status">
+          Transcription and rendering run only on a computer paired to this account. If it is
+          offline, work waits without using paid provider CPU.
+        </div>
+        {queue.data.attempts.length === 0 ? (
+          <EmptyState
+            icon={<Video />}
+            title="No media jobs yet"
+            body="Connect your computer in Settings before generating a video."
+            action={
+              <Link className="button button-primary" to="/settings">
+                Open Settings
+              </Link>
+            }
+          />
+        ) : (
+          <div className="queue-list">
+            {queue.data.attempts.map((attempt) => {
+              const cancellable = ["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING"].includes(
+                attempt.state,
+              );
+              return (
+                <article className="queue-card" key={attempt.id}>
+                  <div className="queue-card__identity">
+                    <span className="project-icon">
+                      <Video size={18} />
+                    </span>
+                    <div>
+                      <strong>{attempt.title}</strong>
+                      <small>{attempt.kind === "ASR" ? "Transcription" : "Final render"}</small>
+                    </div>
+                  </div>
+                  <div className="queue-card__status">
+                    <Badge tone={hostedAttemptTone(attempt.state)}>{attempt.state}</Badge>
+                  </div>
+                  <div className="queue-card__facts">
+                    {cancellable ? (
+                      <Button
+                        variant="secondary"
+                        busy={cancel.isPending && cancel.variables === attempt.id}
+                        onClick={() => cancel.mutate(attempt.id)}
+                      >
+                        Cancel
+                      </Button>
+                    ) : null}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+        {cancel.isError ? (
+          <div className="validation validation-danger" role="alert">
+            {cancel.error.message}
+          </div>
+        ) : null}
+      </Panel>
+    </>
+  );
+}
+
 export function QueueScreen() {
+  return import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging" ? (
+    <HostedQueueScreen />
+  ) : (
+    <FixtureQueueScreen />
+  );
+}
+
+function FixtureQueueScreen() {
   const scenario = currentScenario();
   const bootstrap = useQuery({
     queryKey: ["bootstrap", scenario],

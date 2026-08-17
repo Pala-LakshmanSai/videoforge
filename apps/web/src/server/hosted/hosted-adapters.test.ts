@@ -163,6 +163,32 @@ describe("V2-06 hosted adapters", () => {
       "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqo=",
     );
     expect(port.url).not.toContain(config.r2.secretAccessKey);
+    const longInput = await new HostedR2Signer(config.r2).sign({
+      method: "GET",
+      objectKey:
+        "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/input/job/job-a/artifact/artifact-a",
+      contentType: "audio/wav",
+      contentLength: 1024,
+      checksumSha256: `sha256:${"b".repeat(64)}`,
+      lifetimeSeconds: 3600,
+      downloadFilename: "owned-render.mp4",
+      now: new Date("2026-08-16T00:00:00.000Z"),
+    });
+    expect(longInput.url).toContain("X-Amz-Expires=3600");
+    expect(new URL(longInput.url).searchParams.get("response-content-disposition")).toBe(
+      'attachment; filename="owned-render.mp4"',
+    );
+    await expect(
+      new HostedR2Signer(config.r2).sign({
+        method: "PUT",
+        objectKey:
+          "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/input/job/job-a/artifact/artifact-a",
+        contentType: "application/json",
+        contentLength: 128,
+        checksumSha256: `sha256:${"a".repeat(64)}`,
+        lifetimeSeconds: 3600,
+      }),
+    ).rejects.toThrow(/PUT port lifetime/u);
     await expect(
       new HostedR2Signer(config.r2).sign({
         method: "GET",

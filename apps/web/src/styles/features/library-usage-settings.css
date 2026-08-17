@@ -10,6 +10,13 @@
   margin-top: 16px;
 }
 
+.library-output video {
+  width: 100%;
+  max-height: 420px;
+  border-radius: 14px;
+  background: #05070d;
+}
+
 .library-details {
   margin-top: 16px;
 }

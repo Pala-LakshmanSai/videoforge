@@ -1,6 +1,5 @@
 import { createAuthClient } from "better-auth/react";
-import { useEffect, useState } from "react";
-import { MediaWorkerSetup } from "./MediaWorkerSetup";
+import { useEffect, useState, type PropsWithChildren } from "react";
 
 interface Tenant {
   readonly account_id: string;
@@ -22,7 +21,7 @@ async function tenant(): Promise<Tenant | null> {
   return response.json() as Promise<Tenant>;
 }
 
-export function HostedStagingApp() {
+export function HostedStagingApp({ children }: PropsWithChildren) {
   const [scope, setScope] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
@@ -91,29 +90,7 @@ export function HostedStagingApp() {
       </main>
     );
   if (scope) {
-    return (
-      <main className="hosted-stage">
-        <section>
-          <p>V2-06 private staging</p>
-          <h1>{scope.workspace_name}</h1>
-          <p>Signed in as {scope.user.email}</p>
-          <dl>
-            <dt>Database</dt>
-            <dd>Neon tenant scope active</dd>
-            <dt>Artifacts</dt>
-            <dd>Private R2 signed ports</dd>
-            <dt>CPU media</dt>
-            <dd>Your connected Windows or Mac · $0 provider CPU cost</dd>
-            <dt>GPU</dt>
-            <dd>Disabled · fixture transport only</dd>
-          </dl>
-          <MediaWorkerSetup />
-          <button type="button" onClick={() => void authClient.signOut().then(refresh)}>
-            Sign out
-          </button>
-        </section>
-      </main>
-    );
+    return children;
   }
   return (
     <main className="hosted-stage">

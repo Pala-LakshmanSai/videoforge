@@ -29,7 +29,13 @@ const hostedStaging = import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging
 createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      {hostedStaging ? <HostedStagingApp /> : <RouterProvider router={router} />}
+      {hostedStaging ? (
+        <HostedStagingApp>
+          <RouterProvider router={router} />
+        </HostedStagingApp>
+      ) : (
+        <RouterProvider router={router} />
+      )}
     </QueryClientProvider>
   </StrictMode>,
 );
