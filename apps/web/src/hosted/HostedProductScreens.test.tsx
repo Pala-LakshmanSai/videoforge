@@ -80,9 +80,9 @@ describe("hosted product journey", () => {
       await screen.findByText(/render is waiting for the exact project plan/u),
     ).toBeInTheDocument();
     expect(screen.getByText(/HOSTED_RENDER_PLAN_NOT_READY/u)).toBeInTheDocument();
-    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/v2/cpu-attempts"))).toBe(
-      false,
-    );
+    expect(
+      fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/v2/cpu-attempts")),
+    ).toBe(false);
     expect(screen.queryByRole("link", { name: "Review video" })).not.toBeInTheDocument();
   });
 
@@ -91,6 +91,10 @@ describe("hosted product journey", () => {
     const revisionId = "22222222-2222-4222-8222-222222222222";
     const asrId = "33333333-3333-4333-8333-333333333333";
     const renderId = "44444444-4444-4444-8444-444444444444";
+    const manifestHash = `sha256:${"c".repeat(64)}`;
+    const voiceoverHash = `sha256:${"a".repeat(64)}`;
+    const avatarHash = `sha256:${"d".repeat(64)}`;
+    const imageHash = `sha256:${"e".repeat(64)}`;
     const renderSubmission = {
       schema_version: "videoforge-hosted-cpu-submission/v1",
       idempotency_key: `project-${projectId}-render-v1`,
@@ -99,12 +103,56 @@ describe("hosted product journey", () => {
       kind: "RENDER",
       input_document: {
         schema_version: "render-job-input/v1",
-        output: { result_uri: "vf-local-run://placeholder/output.mp4" },
+        project_revision_id: revisionId,
+        attempt_id: renderId,
+        resolved_render_manifest: {
+          asset_id: "manifest-001",
+          sha256: manifestHash,
+          artifact_uri: `vf-local://objects/sha256/cc/${"c".repeat(64)}.json`,
+        },
+        assets: [
+          {
+            asset_id: "voiceover-001",
+            sha256: voiceoverHash,
+            artifact_uri: `vf-local://objects/sha256/aa/${"a".repeat(64)}.wav`,
+            kind: "VOICEOVER",
+          },
+          {
+            asset_id: "avatar-001",
+            sha256: avatarHash,
+            artifact_uri: `vf-local://objects/sha256/dd/${"d".repeat(64)}.mp4`,
+            kind: "AVATAR_CLIP",
+          },
+          {
+            asset_id: "image-001",
+            sha256: imageHash,
+            artifact_uri: `vf-local://objects/sha256/ee/${"e".repeat(64)}.png`,
+            kind: "IMAGE",
+          },
+        ],
+        output: {
+          result_uri: "vf-local-run://placeholder/attempt/output.mp4",
+          filename: "fixture.mp4",
+        },
+        tools: { ffmpeg_version: "8.1.2", ffprobe_version: "8.1.2" },
+        cancel_token: "fixture-render-cancel-token-0000000000000001",
       },
       objects: [
         {
-          artifact_receipt_id: "55555555-5555-4555-8555-555555555555",
-          uri: `vf-local://objects/sha256/cc/${"c".repeat(64)}.mp4`,
+          artifact_receipt_id: "66666666-6666-4666-8666-666666666666",
+          uri: `vf-local://objects/sha256/cc/${"c".repeat(64)}.json`,
+        },
+        {
+          artifact_receipt_id: "77777777-7777-4777-8777-777777777777",
+          uri: `vf-local://objects/sha256/aa/${"a".repeat(64)}.wav`,
+        },
+        {
+          artifact_receipt_id: "88888888-8888-4888-8888-888888888888",
+          uri: `vf-local://objects/sha256/dd/${"d".repeat(64)}.mp4`,
+        },
+        {
+          artifact_receipt_id: "99999999-9999-4999-8999-999999999999",
+          uri: `vf-local://objects/sha256/ee/${"e".repeat(64)}.png`,
         },
       ],
     };
@@ -170,9 +218,7 @@ describe("hosted product journey", () => {
     renderHosted(<HostedProjectScreen projectId={projectId} />);
 
     expect(await screen.findByText("Render final video")).toBeInTheDocument();
-    expect(
-      fetchMock.mock.calls.some(([input]) => String(input).endsWith("/render")),
-    ).toBe(true);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/render"))).toBe(true);
     expect(
       fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/v2/cpu-attempts")),
     ).toBe(true);

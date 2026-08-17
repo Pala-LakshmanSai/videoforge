@@ -1,5 +1,7 @@
+import { validateContract } from "@videoforge/contracts";
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
-const LOCAL_OBJECT = /^vf-local:\/\/objects\/sha256\/[0-9a-f]{2}\/[0-9a-f]{64}\.[a-z0-9]{1,10}$/u;
+const LOCAL_OBJECT = /^vf-local:\/\/objects\/sha256\/[0-9a-f]{2}\/([0-9a-f]{64})\.[a-z0-9]{1,10}$/u;
 
 export interface HostedCpuSubmission {
   readonly idempotencyKey: string;
@@ -94,6 +96,23 @@ export function exactHostedCpuSubmission(value: unknown): HostedCpuSubmission | 
     uris.add(object.uri);
     objects.push({ receiptId: object.artifact_receipt_id, uri: object.uri });
   }
+  if (record.kind === "RENDER") {
+    const renderInput = validateContract("renderJobInput", record.input_document);
+    if (!renderInput.success) return null;
+    if (renderInput.data.project_revision_id !== record.project_revision_id) return null;
+
+    const requiredObjects = [renderInput.data.resolved_render_manifest, ...renderInput.data.assets];
+    if (new Set(requiredObjects.map((object) => object.artifact_uri)).size !== objects.length) {
+      return null;
+    }
+    const suppliedObjects = new Map(objects.map((object) => [object.uri, object]));
+    for (const object of requiredObjects) {
+      const supplied = suppliedObjects.get(object.artifact_uri);
+      if (!supplied) return null;
+      const match = LOCAL_OBJECT.exec(object.artifact_uri);
+      if (!match || object.sha256 !== `sha256:${match[1]}`) return null;
+    }
+  }
   return Object.freeze({
     idempotencyKey: record.idempotency_key,
     projectId: record.project_id,
@@ -128,6 +147,12 @@ export function bindHostedCpuInputDocument(
       ? `vf-local-run://${projectRevisionId}/${attemptId}/asr-result.json`
       : `vf-local-run://${projectRevisionId}/${attemptId}/videoforge-output.mp4`;
   if (kind === "RENDER") outputRecord.filename = "videoforge-output.mp4";
+  if (kind === "RENDER") {
+    const validated = validateContract("renderJobInput", bound);
+    if (!validated.success) {
+      throw new TypeError("Hosted CPU input document does not match its exact job contract.");
+    }
+  }
   return bound;
 }
 
