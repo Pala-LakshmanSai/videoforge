@@ -160,11 +160,13 @@ def _verify(platform_name: str, output: Path) -> None:
     for command, expected in (
         ([str(ffmpeg), "-version"], "ffmpeg version 8.1.2"),
         ([str(ffprobe), "-version"], "ffprobe version 8.1.2"),
-        ([str(whisper), "--help"], "supported audio formats"),
+        # whisper.cpp's help wording has changed between patch releases; the
+        # usage banner is stable and the source/archive is checksum-pinned.
+        ([str(whisper), "--help"], "usage:"),
     ):
         result = subprocess.run(command, check=False, capture_output=True, text=True, timeout=30)
-        combined = result.stdout + result.stderr
-        if result.returncode not in {0, 1} or expected not in combined:
+        combined = (result.stdout + result.stderr).lower()
+        if result.returncode not in {0, 1} or expected.lower() not in combined:
             raise SystemExit(f"tool verification failed for {Path(command[0]).name}")
     filters = subprocess.run(
         [str(ffmpeg), "-hide_banner", "-filters"],

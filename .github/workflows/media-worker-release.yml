@@ -119,13 +119,18 @@ jobs:
 
       - name: Build pinned worker configuration
         shell: bash
-        run: >-
-          python apps/media-worker-desktop/build_release_config.py
-          --origin "${{ inputs.control_plane_origin }}"
-          --execution-bundle-sha256 "${{ inputs.execution_bundle_sha256 }}"
-          --whisper-model-sha256 "${{ inputs.whisper_model_sha256 }}"
-          --tools-root resources/bin
-          --output build/media-worker-release-config.json
+        env:
+          CONTROL_PLANE_ORIGIN: ${{ inputs.control_plane_origin }}
+          EXECUTION_BUNDLE_SHA256: ${{ inputs.execution_bundle_sha256 }}
+          WHISPER_MODEL_SHA256: ${{ inputs.whisper_model_sha256 }}
+        run: |
+          set -euo pipefail
+          python apps/media-worker-desktop/build_release_config.py \
+            --origin "$CONTROL_PLANE_ORIGIN" \
+            --execution-bundle-sha256 "$EXECUTION_BUNDLE_SHA256" \
+            --whisper-model-sha256 "$WHISPER_MODEL_SHA256" \
+            --tools-root resources/bin \
+            --output build/media-worker-release-config.json
 
       - name: Install bounded Python build dependencies
         shell: bash
@@ -229,6 +234,8 @@ jobs:
       - name: Verify macOS disk image and installed app seal
         if: runner.os == 'macOS'
         shell: bash
+        env:
+          SIGNED_RELEASE: ${{ inputs.signed_release }}
         run: |
           set -euo pipefail
           mount_dir="$(mktemp -d "$RUNNER_TEMP/videoforge-worker-dmg.XXXXXX")"
@@ -240,7 +247,7 @@ jobs:
           hdiutil verify "VideoForge-Worker-0.1.0.dmg"
           hdiutil attach -nobrowse -readonly -mountpoint "$mount_dir" "VideoForge-Worker-0.1.0.dmg" >/dev/null
           codesign --verify --deep --strict --verbose=2 "$mount_dir/VideoForge Worker.app"
-          if [ "${{ inputs.signed_release }}" != "true" ]; then
+          if [ "$SIGNED_RELEASE" != "true" ]; then
             codesign -dv --verbose=4 "$mount_dir/VideoForge Worker.app" 2>&1 | grep -q 'Signature=adhoc'
           fi
 
@@ -272,24 +279,28 @@ jobs:
 
       - name: Hash release artifact
         shell: python
+        env:
+          SIGNED_RELEASE: ${{ inputs.signed_release }}
         run: |
           import hashlib
           import json
+          import os
           import platform
           from pathlib import Path
           artifact = next(iter(Path(".").glob("VideoForge-Worker-*.dmg")), None)
           if artifact is None:
               artifact = next(iter(Path("apps/media-worker-desktop/Output").glob("VideoForge-Worker-*-Setup.exe")))
+          signed_release = os.environ["SIGNED_RELEASE"].lower() == "true"
           value = {
               "filename": artifact.name,
               "sha256": f"sha256:{hashlib.sha256(artifact.read_bytes()).hexdigest()}",
               "size_bytes": artifact.stat().st_size,
               "platform": platform.system(),
-              "signed_release": ${{ inputs.signed_release && 'True' || 'False' }},
+              "signed_release": signed_release,
               "trust": (
-                  "AUTHENTICODE_SIGNED" if platform.system() == "Windows" and ${{ inputs.signed_release && 'True' || 'False' }}
+                  "AUTHENTICODE_SIGNED" if platform.system() == "Windows" and signed_release
                   else "UNSIGNED_BETA" if platform.system() == "Windows"
-                  else "DEVELOPER_ID_NOTARIZED" if ${{ inputs.signed_release && 'True' || 'False' }}
+                  else "DEVELOPER_ID_NOTARIZED" if signed_release
                   else "AD_HOC_BETA"
               ),
           }
@@ -316,8 +327,11 @@ jobs:
     steps:
       - name: Refuse mutable release identity
         shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          test "${{ inputs.release_tag }}" = "media-worker-v0.1.0"
+          set -euo pipefail
+          test "$RELEASE_TAG" = "media-worker-v0.1.0"
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -365,12 +379,21 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          REPOSITORY: ${{ github.repository }}
+          RELEASE_SHA: ${{ github.sha }}
         run: |
-          test "$(gh release view '${{ inputs.release_tag }}' --repo '${{ github.repository }}' >/dev/null 2>&1; echo $?)" = "1"
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
+              echo "release tag already exists: $RELEASE_TAG" >&2
+              exit 1
+          else
+              test "$?" = "1"
+          fi
           mapfile -t binaries < <(find release-assets -type f \( -name '*.dmg' -o -name '*-Setup.exe' \) -print)
           test "${#binaries[@]}" = "2"
-          gh release create "${{ inputs.release_tag }}" "${binaries[@]}" media-worker-release.json \
-            --repo "${{ github.repository }}" \
-            --target "${{ github.sha }}" \
+          gh release create "$RELEASE_TAG" "${binaries[@]}" media-worker-release.json \
+            --repo "$REPOSITORY" \
+            --target "$RELEASE_SHA" \
             --title "VideoForge Worker 0.1.0" \
             --notes "Immutable Windows x64 and macOS universal2 personal media workers. Exact hashes and platform trust mode are recorded in media-worker-release.json."

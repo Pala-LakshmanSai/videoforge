@@ -36,7 +36,7 @@ executable = EXE(
     name="VideoForge Worker",
     console=False,
     disable_windowed_traceback=False,
-    target_arch=os.environ.get("VIDEOFORGE_WORKER_TARGET_ARCH"),
+    target_arch=os.environ.get("VIDEOFORGE_WORKER_TARGET_ARCH") or None,
 )
 
 if os.name == "posix":
