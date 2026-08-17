@@ -1,0 +1,93 @@
+{
+  "schema_version": "videoforge.v2-06-live-deployment-proof/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-17T16:59:17Z",
+  "scope_boundary": "Non-secret deployment and grant facts captured after the approved bounded activation. No credential values are recorded. This file does not claim hosted Chrome, native-device, or full checkpoint acceptance.",
+  "repository": {
+    "branch": "codex/serverless-v2-roadmap",
+    "commit": "0650acd503241e0443a8d5d8e2aae540313bef07",
+    "config_sha256": "sha256:90dac992fc3d6f13b0d7a4d0be49e95fdc38103698db10f1dcb6356048d1d77e"
+  },
+  "cloudflare": {
+    "account_id": "f9254d773a3426fcb469451b1f965d8c",
+    "worker": "videoforge-v2-06-staging",
+    "deployment_version_id": "51746943-aa3d-41a3-b60f-3ce6ce70b6a4",
+    "workflow": "videoforge-v2-06-staging-video",
+    "workflow_class": "HostedVideoWorkflow",
+    "r2_bucket": "videoforge-v2-06-staging-private",
+    "origin": "https://videoforge-v2-06-staging.lakshmansai121.workers.dev",
+    "deployment_from_recorded_commit": true,
+    "status_endpoint": {
+      "path": "/api/v2/hosted/status",
+      "http_status": 200,
+      "commit": "0650acd503241e0443a8d5d8e2aae540313bef07",
+      "environment": "staging",
+      "gpu_transport": "DISABLED_FAKE_ONLY",
+      "database": "NEON_POSTGRES_REQUIRED",
+      "artifact_plane": "PRIVATE_R2_REQUIRED",
+      "orchestration": "CLOUDFLARE_WORKFLOW_REQUIRED",
+      "cpu_jobs": "ACCOUNT_OWNED_PERSONAL_WORKER_REQUIRED",
+      "provider_cpu_spend": "$0",
+      "authentication": ["GOOGLE"]
+    },
+    "private_r2_verifier": {
+      "command": "deploy/v2-06/verify-r2-private-state.sh videoforge-v2-06-staging-private /tmp/videoforge-v2-06-staging-final2.wrangler.json",
+      "exit_code": 0,
+      "result": "Standard bucket, public dev-url disabled, no final-object expiry, multipart abort only"
+    }
+  },
+  "neon": {
+    "project_id": "ancient-morning-99567618",
+    "branch_id": "br-floral-hill-az7ib4ir",
+    "compute_id": "ep-sparkling-dew-azjhkwg6",
+    "database": "neondb",
+    "runtime_role": "videoforge_v2_06_runtime",
+    "migration_head": 35,
+    "runtime_grant_verifier_exit_code": 0,
+    "runtime_grant_result": "migration 35/35, FORCE RLS complete, exact table grants and function grants, hosted_render_plans SELECT-only"
+  },
+  "secret_allowlist": {
+    "command": "wrangler secret list --format json",
+    "exit_code": 0,
+    "names": [
+      "BETTER_AUTH_SECRET",
+      "DATABASE_URL",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "MEDIA_WORKER_TOKEN_SECRET",
+      "R2_ACCESS_KEY_ID",
+      "R2_SECRET_ACCESS_KEY",
+      "WORKFLOW_CALLBACK_SECRET"
+    ],
+    "values_recorded": false
+  },
+  "resource_and_spend_truth": {
+    "new_external_spend_usd": 0,
+    "finite_test_cap_usd": 3,
+    "finite_test_cap_remaining_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "provider_cpu_spend_usd": 0,
+    "runpod_mutations": 0,
+    "runpod_pods": 0,
+    "runpod_endpoints": 0,
+    "runpod_active_plus_flex_workers": 0,
+    "runpod_retained_volume_count": 2,
+    "runpod_retained_storage_usd_per_month": 7,
+    "runpod_storage_separate_from_v2_06": true
+  },
+  "acceptance_boundary": {
+    "hosted_chrome_acceptance_complete": false,
+    "native_windows_acceptance_complete": false,
+    "native_macos_acceptance_complete": false,
+    "two_account_isolation_observed": false,
+    "checkpoint_pass": false,
+    "unproven": [
+      "Google callback and invited-account negative paths in real Chrome",
+      "paired Windows/macOS install, autostart, offline/reconnect, cancel, stale lease, and ASR/render parity",
+      "hosted end-to-end create through review/playback/delete",
+      "live backup/restore and rollback exercise",
+      "post-acceptance exact billing observation"
+    ]
+  }
+}

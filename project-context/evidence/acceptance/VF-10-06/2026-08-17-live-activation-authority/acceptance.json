@@ -3,7 +3,7 @@
   "task_id": "VF-10-06",
   "checkpoint": "V2-06",
   "recorded_at_utc": "2026-08-17T15:53:24Z",
-  "result": "AUTHORITY_AND_PREFLIGHT_RECORDED_ACTIVATION_IN_PROGRESS",
+  "result": "LIVE_DEPLOYMENT_RECORDED_HOSTED_AND_DEVICE_ACCEPTANCE_PENDING",
   "authority": {
     "user_confirmations": [
       "APPROVE V2-06 LIVE ACTIVATION",
@@ -91,7 +91,11 @@
     "neon_project_created": true,
     "google_oauth_project_and_client_created": true,
     "neon_migration_head": 35,
-    "cloudflare_worker_deployed_from_current_activation_commit": false,
+    "cloudflare_worker_deployed_from_current_activation_commit": true,
+    "cloudflare_deployment_version_id": "51746943-aa3d-41a3-b60f-3ce6ce70b6a4",
+    "cloudflare_deployment_commit": "0650acd503241e0443a8d5d8e2aae540313bef07",
+    "cloudflare_deployment_config_sha256": "sha256:90dac992fc3d6f13b0d7a4d0be49e95fdc38103698db10f1dcb6356048d1d77e",
+    "deployment_proof": "2026-08-17-live-activation-authority/deployment-proof.json",
     "hosted_chrome_acceptance_complete": false,
     "checkpoint_pass": false
   },

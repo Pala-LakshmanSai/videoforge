@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-17T15:53:24Z"
+updated_at: "2026-08-17T16:59:17Z"
 
 phase: serverless_v2_v2_06_live_activation_in_progress
 implementation_authorized_in_current_task: true
@@ -8,7 +8,7 @@ current_milestone: hosted_staging_and_personal_media_workers
 current_task: VF-10-06
 current_wave: v2_06_personal_worker_conversion
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: live_activation_in_progress_independent_acceptance_blocked
+task_stage: live_deployment_complete_hosted_device_acceptance_pending
 application_code_changes_authorized: true
 provider_calls_authorized: true
 read_only_provider_calls_authorized: false
@@ -84,8 +84,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "d552ee21d5675afcfe515ea41aef25c676a17055"
-  last_good_commit_note: "V2-06 provider-free hosted product journey is locally composed through tenant-private create/upload/commit, personal-worker ASR submission, durable status/cancel, reviewed-output playback/download, usage truth, and explicit R2 deletion. The worker release now bundles and verifies the pinned whisper model. Canonical local verification passes; installers and live Cloudflare/Neon/R2/Better Auth/Workflow/device/backup/restore/hosted-Chrome acceptance remain unproven."
+  last_good_commit: "0650acd503241e0443a8d5d8e2aae540313bef07"
+  last_good_commit_note: "V2-06 local product journey, activation preflight, exact Neon runtime grants, and hosted staging deployment are green at this commit. Live status, private-R2 state, secret allowlist, migration head, FORCE RLS, and SELECT-only render-plan grants are recorded; hosted Chrome, native Windows/macOS, paired-device parity, durable Workflow behavior, and full checkpoint acceptance remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -169,7 +169,7 @@ roadmap_state:
   V2-03: complete_green_independently_reaudited
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
-  V2-06: live_activation_in_progress_independent_acceptance_blocked
+  V2-06: live_deployment_complete_hosted_device_acceptance_pending
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
@@ -306,7 +306,7 @@ recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
   milestone: hosted_staging_and_personal_media_workers
-  status: live_activation_in_progress_independent_acceptance_blocked
+  status: live_deployment_complete_hosted_device_acceptance_pending
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
   authorization_status: bounded_v2_06_live_activation_approved
   task_stage: bounded_mutation
@@ -595,13 +595,14 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: live_activation_in_progress_independent_acceptance_blocked
-    implementation_commit: "1882652"
+    status: live_deployment_complete_hosted_device_acceptance_pending
+    implementation_commit: "0650acd503241e0443a8d5d8e2aae540313bef07"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
     evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
     live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
     runpod_live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
     live_activation_authority_evidence: evidence/acceptance/VF-10-06/2026-08-17-live-activation-authority/acceptance.json
+    live_deployment_evidence: evidence/acceptance/VF-10-06/2026-08-17-live-activation-authority/deployment-proof.json
     commands:
       - "CI=1 TURBO_FORCE=true pnpm verify (exit 0; 28/28 tasks; web 330/330 plus 1 skipped; pipeline 120/120; Cloudflare-local 1/1; installed-Chrome fixture 44/44)"
       - "pnpm context:validate (exit 0; JSON 178; evidence refs 63; profiles 31; decisions 42; gates 19)"
@@ -620,6 +621,13 @@ verification:
       - "pnpm --filter @videoforge/web exec vitest run src/server/runtime/node-fair-admission.test.ts (exit 0; 5/5)"
       - "CI=1 TURBO_FORCE=true pnpm verify after hosted product journey completion (exit 0; all package/worker suites; Cloudflare-local 1/1; installed-Chrome fixture 44/44)"
       - "pnpm context:validate after hosted product journey record (exit 0; JSON 183; evidence refs 67; profiles 31; decisions 42; gates 19)"
+      - "pnpm --filter @videoforge/web build:staging (exit 0; current activation commit 0650acd503241e0443a8d5d8e2aae540313bef07)"
+      - "wrangler deploy with rendered V2-06 staging config (exit 0; version 51746943-aa3d-41a3-b60f-3ce6ce70b6a4)"
+      - "GET /api/v2/hosted/status on the deployed origin (HTTP 200; commit 0650acd503241e0443a8d5d8e2aae540313bef07; GPU transport DISABLED_FAKE_ONLY; provider CPU spend $0)"
+      - "wrangler workflows list (exit 0; videoforge-v2-06-staging-video / HostedVideoWorkflow)"
+      - "wrangler secret list --format json (exit 0; exact 8-name allowlist; values not recorded)"
+      - "deploy/v2-06/verify-r2-private-state.sh ... (exit 0; private Standard bucket, public dev URL disabled, no final-object expiry, multipart abort only)"
+      - "live Neon runtime grant verifier (exit 0; migration 35/35, FORCE RLS complete, exact table/function grants, hosted_render_plans SELECT-only)"
     delivered:
       - "Migration 0032 adds account/workspace-bound worker enrollments, devices, exact input objects, one active lease per attempt/device, append-only events, row-level security, and stale-lease fencing while preserving historical Cloud Run rows for rollback."
       - "The hosted API uses PKCE enrollment, one explicit authenticated approval, OS-keychain-scoped device tokens, heartbeat/update gating, exact same-account claims, fresh R2 GET/PUT ports, streaming output verification, cancellation, revocation, and late-result rejection."
@@ -638,14 +646,14 @@ verification:
     remaining_gates:
       - "The user explicitly selected the ImageForge beta precedent: Windows unsigned beta and macOS ad-hoc sealed/non-notarized beta. Authenticode and Developer ID/notarization are optional future upgrades, not checkpoint blockers; warning-free behavior is not promised on every OS/device."
       - "Real installed Windows and macOS proof must cover pairing, tenant isolation, autostart/reboot, sleep, offline/reconnect, cancellation, stale lease/result, streamed R2, tool parity, update/remove, and recovery."
-      - "Hosted Worker/Workflow, Better Auth, two-account isolation, owned ASR/render, recovery, deletion, rollback, and real Chrome remain unproven. Neon migration head 35, forced RLS/read-only render-plan runtime grants, R2 credential rotation, Neon owner rotation, Google OAuth secret rotation, and the prior backup/restore drill are live-proven."
+      - "The current Worker/Workflow deployment, status contract, private-R2 state, exact secret allowlist, Neon migration head 35, forced RLS/read-only render-plan runtime grants, R2 credential rotation, Neon owner rotation, Google OAuth secret rotation, and the prior backup/restore drill are live-proven. Durable Workflow execution/recovery, Better Auth callback/negative paths, two-account isolation, owned ASR/render, explicit deletion, rollback exercise, and real Chrome remain unproven."
       - "The user-selected email provider is NONE, so hosted auth is Google-only and email/password stays disabled. Dedicated Google project videoforge-v2-06-staging-0817 and its exact redirect/client exist; live two-user callback acceptance remains pending."
       - "The user has Windows x64 and Mac test devices. Apple Developer Program membership is absent and no longer required for the selected ImageForge-style beta release; native clean-download/install evidence must record any actual warning or bypass behavior."
       - "The exact combined V2-06 activation was approved with a USD 3 finite test cap and USD 2/month R2 ceiling; spend and recurring truth must be rechecked after acceptance."
     resource_truth:
-      external_mutations: bounded_v2_06_activation_in_progress
+      external_mutations: bounded_v2_06_deployment_complete_acceptance_pending
       external_mutation_scope: "Three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence."
-      deployments: 0
+      deployments: 1
       installer_builds: 1
       installer_publications: 1
       email_deliveries: 0
@@ -658,19 +666,25 @@ verification:
       runpod_workers_started: 0
       live_runpod_inventory_refreshed: true
       cloudflare:
-        checked_at: "2026-08-17T09:22:02Z"
+        checked_at: "2026-08-17T16:59:17Z"
         account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
         workers_plan: FREE
         payment_method_on_file: true
         workers_after_confirmed_cleanup: 1
-        workflows: 0
+        workflows: 1
+        worker_name: videoforge-v2-06-staging
+        worker_deployment_version_id: 51746943-aa3d-41a3-b60f-3ce6ce70b6a4
+        worker_deployment_commit: 0650acd503241e0443a8d5d8e2aae540313bef07
+        worker_deployment_config_sha256: sha256:90dac992fc3d6f13b0d7a4d0be49e95fdc38103698db10f1dcb6356048d1d77e
+        workflow_name: videoforge-v2-06-staging-video
+        workflow_class: HostedVideoWorkflow
         r2_subscription_active: true
         r2_due_now_usd: 0
         r2_due_monthly_base_usd: 0
         r2_standard_free_storage_gb_month: 10
         r2_standard_overage_usd_per_gb_month: 0.015
       neon:
-        checked_at: "2026-08-17T09:22:02Z"
+        checked_at: "2026-08-17T16:59:17Z"
         organization_id_sha256: "sha256:1a80a1978aaf55071ebade555193753126029390191658a7f700bbd06ea07044"
         plan: FREE
         recurring_usd_per_month: 0
@@ -678,6 +692,9 @@ verification:
         videoforge_project_id: ancient-morning-99567618
         videoforge_project_region: AWS_AP_SOUTHEAST_1_SINGAPORE
         videoforge_migration_head: 35
+        runtime_role: videoforge_v2_06_runtime
+        runtime_grants_verified: true
+        runtime_force_rls_verified: true
         existing_project_name: project01
         existing_project_id_sha256: "sha256:b2478263abd2d0e2f015734a9de2512c8b13044ad179fcee940ab82f402b619a"
         existing_project_region: AWS_US_EAST_2_OHIO
