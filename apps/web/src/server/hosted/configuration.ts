@@ -9,7 +9,11 @@ export interface HostedWorkflowBinding {
 
 export interface HostedR2BucketBinding {
   head(key: string): Promise<unknown | null>;
-  get(key: string): Promise<{ readonly size: number; arrayBuffer(): Promise<ArrayBuffer> } | null>;
+  get(key: string): Promise<{
+    readonly size: number;
+    readonly httpMetadata?: { readonly contentType?: string };
+    arrayBuffer(): Promise<ArrayBuffer>;
+  } | null>;
   put(
     key: string,
     value: ReadableStream | ArrayBuffer | string,

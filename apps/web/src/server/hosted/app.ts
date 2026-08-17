@@ -8,6 +8,13 @@ const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const EXECUTION =
   /^projects\/[a-z][a-z0-9-]{4,62}\/locations\/[a-z0-9-]+\/jobs\/[a-z][a-z0-9-]{0,62}\/executions\/[A-Za-z0-9._-]+$/u;
 
+export function hasExactResultObjectMetadata(
+  object: { readonly size: number; readonly httpMetadata?: { readonly contentType?: string } },
+  expectedLength: number,
+): boolean {
+  return object.size === expectedLength && object.httpMetadata?.contentType === "application/json";
+}
+
 function json(value: unknown, status = 200): Response {
   return Response.json(value, {
     status,
@@ -113,6 +120,9 @@ async function handleCpuCallback(
       }
       const object = await bucket.get(callback.resultObjectKey);
       if (!object) return json({ error: { code: "CALLBACK_REJECTED" } }, 404);
+      if (!hasExactResultObjectMetadata(object, callback.resultContentLength)) {
+        return json({ error: { code: "CALLBACK_REJECTED" } }, 404);
+      }
       const bytes = await object.arrayBuffer();
       if (bytes.byteLength !== callback.resultContentLength)
         return json({ error: { code: "CALLBACK_REJECTED" } }, 404);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { CloudRunJobsClient, executionNamesForAttempt } from "./cloud-run";
+import { hasExactResultObjectMetadata } from "./app";
 import {
   HostedConfigurationError,
   hostedRuntimeConfiguration,
@@ -147,5 +148,27 @@ describe("V2-06 hosted adapters", () => {
   it("rejects malformed Cloud Run service identities before any request", () => {
     const config = hostedRuntimeConfiguration(environment());
     expect(() => new CloudRunJobsClient(config.cloudRun)).toThrow(/valid JSON/u);
+  });
+
+  it("accepts only exact JSON result-object metadata before hashing bytes", () => {
+    expect(
+      hasExactResultObjectMetadata(
+        { size: 128, httpMetadata: { contentType: "application/json" } },
+        128,
+      ),
+    ).toBe(true);
+    expect(
+      hasExactResultObjectMetadata(
+        { size: 127, httpMetadata: { contentType: "application/json" } },
+        128,
+      ),
+    ).toBe(false);
+    expect(hasExactResultObjectMetadata({ size: 128 }, 128)).toBe(false);
+    expect(
+      hasExactResultObjectMetadata(
+        { size: 128, httpMetadata: { contentType: "text/plain" } },
+        128,
+      ),
+    ).toBe(false);
   });
 });
