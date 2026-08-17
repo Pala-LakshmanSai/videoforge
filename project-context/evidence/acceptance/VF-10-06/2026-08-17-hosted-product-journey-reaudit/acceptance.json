@@ -1,0 +1,144 @@
+{
+  "schema_version": "videoforge.v2-06-hosted-product-journey-reaudit/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "result": "FAIL_FULL_CHECKPOINT_LOCAL_PRODUCT_JOURNEY_PASS",
+  "audit_independence": "SAME_CHAT_REPAIR_EVIDENCE_NOT_INDEPENDENT",
+  "predecessor_commit": "c446cd035e5f6d980260cad3f48cf0ac74b29985",
+  "implementation_commit": "d552ee21d5675afcfe515ea41aef25c676a17055",
+  "recorded_at_utc": "2026-08-17T12:31:35Z",
+  "scope_boundary": "Repository and supplied immutable evidence only. No credential access, live provider call, mutation, deployment, release publication, model download, paid request, or spend occurred in this repair and re-audit.",
+  "implemented": [
+    "The authenticated hosted router composes tenant-private Create, Project, Review, Library, Usage, Queue, Settings, and personal-worker setup screens.",
+    "Hosted Create hashes the selected voiceover in the browser, obtains checksum-bound private-R2 upload authority, commits the exact object, locks the revision, and submits personal-worker ASR.",
+    "Migration 0034 makes create requests exact-idempotent and rejects READY assets without the exact committed reservation, receipt, verified asset, and locked-revision chain.",
+    "Review approval is append-only and accepts only the retained primary output of the exact successful tenant-owned render attempt.",
+    "The personal-worker release identity bundles and verifies ffmpeg, ffprobe, whisper-cli, and the pinned ggml-base.en model; first-run downloads and user model configuration are not permitted.",
+    "Exact-origin R2 browser CORS exposes only the headers required for checksum-bound GET, PUT, and HEAD operations.",
+    "Package tests execute serially to prevent PGlite disk amplification while retaining the canonical verification graph."
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [
+      {
+        "id": "V2_06_NATIVE_RELEASE_AND_DEVICE_ACCEPTANCE_UNPROVEN",
+        "references": [
+          ".github/workflows/media-worker-release.yml",
+          "apps/media-worker-desktop/README.md",
+          "deploy/v2-06/media-worker-release.template.json"
+        ],
+        "detail": "No immutable Windows x64 or macOS universal2 installer was built or published, and no clean-download install, launch, autostart, update, removal, pairing, offline/reconnect, cancel, stale-lease, ASR, render, or streaming-R2 parity was executed on the target devices."
+      },
+      {
+        "id": "V2_06_LIVE_HOSTED_ACCEPTANCE_UNPROVEN",
+        "references": [
+          "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md",
+          "project-context/tasks/VF-10-06.md",
+          "deploy/v2-06/README.md"
+        ],
+        "detail": "No live Cloudflare Worker/Workflow, Better Auth, Neon, private R2, two-invited-account isolation, least-privilege secret, recovery, cancel, backup/restore, rollback, exact rate/recurring-charge, or real hosted-Chrome proof exists. Local fixtures cannot prove deployment."
+      }
+    ],
+    "P2": [
+      {
+        "id": "V2_06_ACTIVATION_FIXTURES_REQUIRED",
+        "references": [
+          "apps/web/src/server/hosted/product.ts",
+          "project-context/tasks/VF-10-06.md"
+        ],
+        "detail": "V2-06 activation must seed exact tenant-owned ready avatar/style and pre-composed render fixtures to prove CPU ASR/render. GPU-driven preset creation and full generated-video completion remain V2-07/V2-08 work."
+      },
+      {
+        "id": "V2_06_REAUDIT_NOT_INDEPENDENT",
+        "references": ["project-context/tasks/VF-10-06.md"],
+        "detail": "This repair and re-audit occurred in the same task and cannot satisfy the independent audit gate."
+      }
+    ]
+  },
+  "validation": {
+    "focused_hosted_product": {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/hosted/HostedProductScreens.test.tsx src/server/hosted/hosted-adapters.test.ts",
+      "exit_code": 0,
+      "tests": "11/11"
+    },
+    "database_contract": {
+      "command": "node --test packages/control-plane/tests/v2-06-hosted-auth.test.mjs",
+      "exit_code": 0,
+      "tests": "5/5"
+    },
+    "runtime_regression": {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/server/runtime/node-fair-admission.test.ts",
+      "exit_code": 0,
+      "tests": "5/5"
+    },
+    "worker": {
+      "command": "pnpm test:workers",
+      "exit_code": 0,
+      "suites": ["51/51", "18/18", "4/4", "17/17", "31/31", "10/10"]
+    },
+    "deployment_contract": {
+      "command": "pnpm validate:v2-06-deployment",
+      "exit_code": 0
+    },
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "cloudflare_parity": "1/1",
+      "installed_chrome_fixture": "44/44",
+      "caveat": "All canonical evidence is provider-free/local. The installed-Chrome cases use local fixtures and do not prove the hosted deployment."
+    },
+    "verification_graph": {
+      "command": "pnpm verify:graph",
+      "exit_code": 0,
+      "result": "28 unique tasks; package tests serialized to bound PGlite disk use"
+    },
+    "diff": {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  },
+  "unproven_live_claims": [
+    "Cloudflare Worker and Workflow deployment and durable wake/recovery",
+    "Better Auth Google sign-in and invited-account boundary",
+    "Neon non-superuser RLS, contention, least-privilege grants, backup, and restore",
+    "Private R2 tenant isolation, exact CORS, streaming integrity, explicit deletion, and storage billing",
+    "Native Windows and macOS worker lifecycle, ASR/render parity, recovery, cancel, and stale-result fencing",
+    "Hosted real-Chrome create-to-review/playback/download/delete journey",
+    "Live rollback and scale-to-zero/zero-worker truth"
+  ],
+  "current_state_and_spend_truth": {
+    "provider_calls_in_this_repair": 0,
+    "credential_access_in_this_repair": 0,
+    "external_mutations_in_this_repair": 0,
+    "deployments_in_this_repair": 0,
+    "installer_builds": 0,
+    "installer_publications": 0,
+    "model_downloads": 0,
+    "new_external_spend_usd": 0,
+    "authorized_current_external_spend_usd": 0,
+    "future_test_cap_usd": 3,
+    "future_r2_recurring_ceiling_usd_per_month": 2,
+    "gpu_transport": "FAKE_DISABLED",
+    "runpod_pods": 0,
+    "runpod_endpoints": 0,
+    "runpod_workers": 0,
+    "runpod_compute_usd": 0,
+    "runpod_retained_volumes": 2,
+    "ongoing_runpod_retained_volume_usd_per_month": 7,
+    "cloudflare_active_worker_projects_at_last_inventory": 0,
+    "cloudflare_r2_subscription_at_last_inventory": "INACTIVE",
+    "neon_videoforge_project_at_last_inventory": 0
+  },
+  "rollback_state": {
+    "live_rollback_required": false,
+    "reason": "No live release or provider mutation occurred.",
+    "local_code_rollback": "Revert d552ee21d5675afcfe515ea41aef25c676a17055 or return to c446cd035e5f6d980260cad3f48cf0ac74b29985.",
+    "release_rollback": "NOT_APPLICABLE_NO_RELEASE_PUBLISHED"
+  },
+  "successor_safety": {
+    "v2_07": "BLOCKED_ON_ACCEPTED_V2_06",
+    "safe_to_begin_v2_07": false,
+    "runpod_activation_authorized": false,
+    "gpu_workers_authorized": false
+  }
+}
