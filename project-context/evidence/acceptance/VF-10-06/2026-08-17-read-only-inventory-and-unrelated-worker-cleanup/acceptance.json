@@ -1,0 +1,141 @@
+{
+  "schema_version": "videoforge.v2-06-live-inventory-and-cleanup/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-17T09:22:02Z",
+  "result": "LIVE_INVENTORY_PARTIAL_CLOUDFLARE_NEON_PASS_GOOGLE_RUNPOD_BLOCKED",
+  "evidence_basis": "Authenticated read-only dashboard observations plus an exact user-confirmed Cloudflare cleanup. This record is not a provider-signed export and does not prove deployment.",
+  "authority": {
+    "read_only_inventory": ["Cloudflare", "Neon", "Google Cloud", "RunPod"],
+    "cleanup_authority": "User first authorized deletion only if the Workers were not ImageForge, then confirmed DELETE ALL THREE after exact targets and consequences were shown.",
+    "cleanup_targets": [
+      "collabio-cloudflare-worker",
+      "my-first-worker",
+      "young-breeze-d587"
+    ],
+    "other_mutation_authorized": false,
+    "spend_authorized_now_usd": 0
+  },
+  "cloudflare": {
+    "account_id_sha256": "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8",
+    "workers_plan": "FREE_ACTIVE",
+    "payment_method_on_file": false,
+    "pre_cleanup_workers": [
+      {
+        "name": "collabio-cloudflare-worker",
+        "age": "about 1 year",
+        "bindings": 0,
+        "custom_domains": 0,
+        "routes": 0,
+        "imageforge_source_match": false
+      },
+      {
+        "name": "my-first-worker",
+        "age": "about 1 year",
+        "bindings": 0,
+        "custom_domains": 0,
+        "routes": 0,
+        "imageforge_source_match": false
+      },
+      {
+        "name": "young-breeze-d587",
+        "age": "about 1 year",
+        "bindings": 0,
+        "custom_domains": 0,
+        "routes": 0,
+        "recent_requests_displayed": 6,
+        "imageforge_source_match": false
+      }
+    ],
+    "cleanup": {
+      "deleted_workers": 3,
+      "post_cleanup_inventory": "NO_PROJECTS_FOUND",
+      "recoverable": false,
+      "deleted_scope": "Worker deployments, configuration, and workers.dev URLs for the three exact targets only"
+    },
+    "workflows": 0,
+    "r2": {
+      "subscription_active": false,
+      "buckets": 0,
+      "due_now_usd": 0,
+      "monthly_base_usd": 0,
+      "free_standard_storage_gb_month": 10,
+      "standard_storage_overage_usd_per_gb_month": 0.015,
+      "free_class_a_operations_month": 1000000,
+      "free_class_b_operations_month": 10000000,
+      "activation_status": "REQUIRES_EXPLICIT_SUBSCRIPTION_TRANSACTION_AND_PAYMENT_METHOD_SETUP"
+    }
+  },
+  "neon": {
+    "organization_id_sha256": "sha256:1a80a1978aaf55071ebade555193753126029390191658a7f700bbd06ea07044",
+    "plan": "FREE",
+    "recurring_usd_per_month": 0,
+    "free_limits_per_project": {
+      "storage_gb": 0.5,
+      "compute_hours": 100,
+      "autoscale_cu_max": 2,
+      "branches": 10,
+      "scales_to_zero": true
+    },
+    "existing_project": {
+      "name": "project01",
+      "project_id_sha256": "sha256:b2478263abd2d0e2f015734a9de2512c8b13044ad179fcee940ab82f402b619a",
+      "region": "AWS US East 2 (Ohio)",
+      "postgres_version": 17,
+      "branches": 5,
+      "storage_mb_displayed": 77.12,
+      "compute_state": "IDLE",
+      "last_active": "about 2 years ago",
+      "approved_for_videoforge_reuse": false
+    },
+    "recommended_new_project": {
+      "name": "videoforge-v2-06-staging",
+      "region": "AWS Asia Pacific 1 (Singapore)",
+      "postgres_version": 17,
+      "neon_auth": false,
+      "status": "PROPOSED_NOT_CREATED"
+    }
+  },
+  "google_cloud": {
+    "candidate_project": "gen-lang-client-0893746131",
+    "candidate_access": "DENIED",
+    "missing_permission": "resourcemanager.projects.get",
+    "accessible_project_count": 6,
+    "dedicated_videoforge_project": false,
+    "recommended_action": "Create a separate VideoForge OAuth-only project rather than reuse Gemini, QuickCut, bulk-image, or demo projects. Not authorized or performed."
+  },
+  "runpod": {
+    "dashboard_session": "SIGNED_OUT",
+    "live_inventory_refreshed": false,
+    "current_zero_worker_claim": "UNPROVEN",
+    "mutations": 0,
+    "spend_usd": 0
+  },
+  "release_inputs": {
+    "apple_developer_program_membership": false,
+    "apple_developer_id_and_notarization": "BLOCKED",
+    "apple_program_official_annual_fee_usd": 99,
+    "windows_x86_64_test_device_available": true,
+    "macos_test_device_available": true,
+    "windows_code_signing_identity": "UNCONFIRMED",
+    "zero_cost_windows_signing_research": "SignPath Foundation is free only for eligible released OSI-licensed projects without proprietary components; VideoForge currently has no repository LICENSE file, so eligibility is unproven."
+  },
+  "spend_truth": {
+    "cloudflare_cleanup_cost_usd": 0,
+    "provider_read_only_inventory_cost_usd": 0,
+    "r2_subscription_created": false,
+    "neon_project_created": false,
+    "google_project_created": false,
+    "deployment_created": false,
+    "total_external_spend_usd": 0
+  },
+  "remaining_live_gates": [
+    "explicit authority for a dedicated Neon project, R2 subscription/bucket, Cloudflare Worker/Workflow deployment, and dedicated Google OAuth project",
+    "user-entered payment method if Cloudflare requires one to activate R2; no payment method is currently on file",
+    "RunPod sign-in and current zero-worker/retained-volume inventory",
+    "Apple Developer Program membership for notarized macOS distribution or an explicit acceptance downgrade to warning-bearing unsigned testing",
+    "Windows production code-signing identity or a separately approved eligible open-source signing path",
+    "real Windows and macOS device acceptance"
+  ],
+  "v2_07_safe": false
+}

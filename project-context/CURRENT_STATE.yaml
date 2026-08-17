@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-17T09:05:16Z"
+updated_at: "2026-08-17T09:22:02Z"
 
 phase: serverless_v2_v2_06_personal_worker_conversion_verification_in_progress
 implementation_authorized_in_current_task: true
@@ -537,6 +537,7 @@ verification:
     implementation_commit: "db0d45edb1fa1696219e9aca5e4e66f60acc161f"
     predecessor_commit: "9fe8c76d420f2b81bdedac813d6681656462afd7"
     evidence: evidence/acceptance/VF-10-06/2026-08-17-personal-worker-conversion-reaudit/acceptance.json
+    live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
     commands:
       - "CI=1 TURBO_FORCE=true pnpm verify (exit 0; 28/28 tasks; web 330/330 plus 1 skipped; pipeline 120/120; Cloudflare-local 1/1; installed-Chrome fixture 44/44)"
       - "pnpm context:validate (exit 0; JSON 178; evidence refs 63; profiles 31; decisions 42; gates 19)"
@@ -545,6 +546,7 @@ verification:
       - "pnpm python:lint (exit 0)"
       - "pnpm format:check (exit 0)"
       - "git diff --check (exit 0)"
+      - "pnpm context:validate after live inventory record (exit 0; JSON 179; evidence refs 64; profiles 31; decisions 42; gates 19)"
     delivered:
       - "Migration 0032 adds account/workspace-bound worker enrollments, devices, exact input objects, one active lease per attempt/device, append-only events, row-level security, and stale-lease fencing while preserving historical Cloud Run rows for rollback."
       - "The hosted API uses PKCE enrollment, one explicit authenticated approval, OS-keychain-scoped device tokens, heartbeat/update gating, exact same-account claims, fresh R2 GET/PUT ports, streaming output verification, cancellation, revocation, and late-result rejection."
@@ -561,11 +563,13 @@ verification:
       - "Production-grade Windows code signing and macOS Developer ID signing/notarization require external identities and protected release credentials; unsigned packages do not satisfy the promised simple installer UX."
       - "The immutable release workflow and manifest contract exist locally, but exact published URLs, byte sizes, SHA-256 hashes, signing identities, protocol minimum, and execution-bundle hash remain unproven until one signed release is built and published."
       - "Real installed Windows and macOS proof must cover pairing, tenant isolation, autostart/reboot, sleep, offline/reconnect, cancellation, stale lease/result, streamed R2, tool parity, update/remove, and recovery."
-      - "Hosted Better Auth/Neon/R2/Cloudflare, non-superuser RLS, backup/restore, rollback, two-account isolation, real Chrome, exact live rates/charges, and current RunPod zero-worker truth remain unproven; the signed-in dashboard browser was unavailable to automation during this handoff."
-      - "The user-selected email provider is NONE, so initial hosted auth is Google-only. Google Cloud Run is no longer needed; Google OAuth still needs an approved client/origin configuration."
+      - "Hosted Better Auth/Neon/R2/Cloudflare, non-superuser RLS, backup/restore, rollback, two-account isolation, and real Chrome remain unproven. Cloudflare and Neon inventory is refreshed; RunPod is signed out and current zero-worker truth remains unproven."
+      - "The user-selected email provider is NONE, so initial hosted auth is Google-only. Google Cloud Run is no longer needed. The signed-in Google account lacks resourcemanager.projects.get on candidate gen-lang-client-0893746131, and no dedicated VideoForge OAuth project exists."
+      - "The user has Windows x64 and Mac test devices but no Apple Developer Program membership. A warning-free notarized Mac release requires the USD 99 annual membership; unsigned testing cannot satisfy signed-release acceptance."
       - "The user supplied a USD 3 maximum future V2-06 test cap, but it is not operation authority until one exact combined mutation/publication proposal is issued and approved."
     resource_truth:
-      external_mutations: 0
+      external_mutations: 3
+      external_mutation_scope: "User-confirmed permanent deletion of exactly three unrelated one-year-old Cloudflare Workers: collabio-cloudflare-worker, my-first-worker, and young-breeze-d587."
       deployments: 0
       installer_builds: 0
       installer_publications: 0
@@ -577,3 +581,39 @@ verification:
       runpod_calls: 0
       runpod_workers_started: 0
       live_runpod_inventory_refreshed: false
+      cloudflare:
+        checked_at: "2026-08-17T09:22:02Z"
+        account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
+        workers_plan: FREE
+        payment_method_on_file: false
+        workers_after_confirmed_cleanup: 0
+        workflows: 0
+        r2_subscription_active: false
+        r2_due_now_usd: 0
+        r2_due_monthly_base_usd: 0
+        r2_standard_free_storage_gb_month: 10
+        r2_standard_overage_usd_per_gb_month: 0.015
+      neon:
+        checked_at: "2026-08-17T09:22:02Z"
+        organization_id_sha256: "sha256:1a80a1978aaf55071ebade555193753126029390191658a7f700bbd06ea07044"
+        plan: FREE
+        recurring_usd_per_month: 0
+        projects: 1
+        existing_project_name: project01
+        existing_project_id_sha256: "sha256:b2478263abd2d0e2f015734a9de2512c8b13044ad179fcee940ab82f402b619a"
+        existing_project_region: AWS_US_EAST_2_OHIO
+        existing_project_postgres_version: 17
+        existing_project_branches: 5
+        existing_project_state: DORMANT_UNRELATED_NOT_APPROVED_FOR_REUSE
+        free_project_storage_gb: 0.5
+        free_project_compute_hours: 100
+      google_cloud:
+        checked_at: "2026-08-17T09:22:02Z"
+        candidate_project: gen-lang-client-0893746131
+        candidate_access: DENIED_MISSING_RESOURCEMANAGER_PROJECTS_GET
+        accessible_projects: 6
+        dedicated_videoforge_project: false
+      release_inputs:
+        apple_developer_program_membership: false
+        windows_x86_64_test_device_available: true
+        macos_test_device_available: true
