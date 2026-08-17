@@ -686,6 +686,7 @@ async function ensurePresetRows(client, scope, assets, seedAt) {
   const avatar = await client.query(
     `SELECT profile.account_id::text AS account_id, profile.workspace_id::text AS workspace_id,
             profile.name, profile.status, profile.active_version_id::text AS active_version_id,
+            profile.thumbnail_asset_id::text AS thumbnail_asset_id,
             version.state, version.profile_hash, version.profile_payload,
             version.ready_at, version.original_asset_id::text AS original_asset_id,
             version.runtime_source_asset_id::text AS runtime_source_asset_id,
@@ -703,6 +704,7 @@ async function ensurePresetRows(client, scope, assets, seedAt) {
     avatarRow.name !== plan.avatarName ||
     avatarRow.status !== "ACTIVE" ||
     avatarRow.active_version_id !== plan.avatarVersionId ||
+    avatarRow.thumbnail_asset_id !== assets.THUMBNAIL.assetId ||
     avatarRow.state !== "READY" ||
     avatarRow.profile_hash !== plan.avatarProfileHash ||
     avatarRow.original_asset_id !== assets.ORIGINAL.assetId ||
@@ -712,6 +714,26 @@ async function ensurePresetRows(client, scope, assets, seedAt) {
   )
     throw new Error("existing deterministic avatar READY rows are not an exact match");
   exactRecord(parseJsonb(avatarRow.profile_payload), plan.avatarPayload, "avatar profile payload");
+  const links = await client.query(
+    `SELECT id::text AS id, asset_id::text AS asset_id, role, binary_sha256,
+            retention_state, deleted_at
+       FROM avatar_profile_assets
+      WHERE profile_id = $1 AND version_id = $2
+      ORDER BY role`,
+    [plan.avatarProfileId, plan.avatarVersionId],
+  );
+  const expectedLinks = ROLE_ORDER.map((role) => ({
+    id: plan.avatarAssetLinkIds[role],
+    asset_id: assets[role].assetId,
+    role,
+    binary_sha256: assets[role].checksumSha256,
+    retention_state: "RETAIN",
+    deleted_at: null,
+  }));
+  if (links.rows.length !== expectedLinks.length)
+    throw new Error("avatar profile asset links are incomplete");
+  for (let index = 0; index < expectedLinks.length; index += 1)
+    exactRecord(links.rows[index], expectedLinks[index], "avatar profile asset link");
   const style = await client.query(
     `SELECT style.account_id::text AS account_id, style.workspace_id::text AS workspace_id,
             style.name, style.status, style.active_version_id::text AS active_version_id,
