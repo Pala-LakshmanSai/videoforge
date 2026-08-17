@@ -8,11 +8,12 @@ all secret values outside Git.
 ## Build, render, deploy, and verify
 
 Run from the repository root on the exact clean commit that is being activated. The renderer refuses
-to proceed until the Vite-built Worker module and client asset directory exist and are non-empty at
-their fixed staging output paths. It then replaces the source-relative paths with absolute paths and
-keeps Wrangler bundling enabled. This is required because the Vite entry is a small module that
-imports generated chunks beside it; `no_bundle: true` would upload only the entry stub. Absolute
-paths are required because the rendered file is stored in `/tmp`.
+to proceed until the supplied commit is the existing full 40-hex current `HEAD`, both the index and
+working tree are clean, and the Vite-built Worker module plus at least one non-empty regular client
+asset exist at their fixed staging output paths. It then replaces the source-relative paths with
+absolute paths and keeps Wrangler bundling enabled. This is required because the Vite entry is a
+small module that imports generated chunks beside it; `no_bundle: true` would upload only the entry
+stub. Absolute paths are required because the rendered file is stored in `/tmp`.
 
 ```sh
 set -eu

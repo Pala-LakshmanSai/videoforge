@@ -241,6 +241,13 @@ if (
   !configRenderer.includes('resolve(stagingBuildRoot, "videoforge_v2_06_staging/index.js")') ||
   !configRenderer.includes('resolve(stagingBuildRoot, "client")') ||
   !configRenderer.includes("rendered.no_bundle = false") ||
+  !configRenderer.includes("commit must be the full 40-hex Git commit SHA") ||
+  !configRenderer.includes('["cat-file", "-e", `${commit}^{commit}`]') ||
+  !configRenderer.includes('["diff", "--quiet"]') ||
+  !configRenderer.includes('["diff", "--cached", "--quiet"]') ||
+  !configRenderer.includes('["rev-parse", "HEAD"]') ||
+  !configRenderer.includes("commit must exactly equal the current HEAD") ||
+  !configRenderer.includes("no non-empty regular client asset") ||
   !configRenderer.includes("is missing; run pnpm --filter @videoforge/web build:staging first") ||
   !configRenderer.includes("rendered config must be written outside the repository") ||
   !rollbackRunbook.includes("Keep migrations 0029-0034 applied") ||
