@@ -274,8 +274,16 @@ if (
   !ownedFixtureProvisioner.includes("source_manifest_sha256") ||
   !ownedFixtureProvisioner.includes("ON CONFLICT (id) DO NOTHING") ||
   !ownedFixtureProvisioner.includes("repository_mutation_receipts") ||
-  !ownedFixtureProvisioner.includes("artifact_reservations") ||
-  !ownedFixtureProvisioner.includes("artifact_receipts") ||
+  !ownedFixtureProvisioner.includes("AVATAR_HUB_CANONICAL_PROFILE_VERSION_KEYS") ||
+  !ownedFixtureProvisioner.includes("expected_avatar_profile_keys_only") ||
+  !ownedFixtureProvisioner.includes("APPROVED_CLOUDFLARE_ACCOUNT_ID") ||
+  !ownedFixtureProvisioner.includes("APPROVED_R2_BUCKET") ||
+  !ownedFixtureProvisioner.includes("APPROVED_NEON_HOST_PATTERN") ||
+  !ownedFixtureProvisioner.includes("fetch(signed)") ||
+  ownedFixtureProvisioner.includes("V2_06_OWNED_FIXTURE_PROJECT_ID") ||
+  ownedFixtureProvisioner.includes("V2_06_OWNED_FIXTURE_REVISION_ID") ||
+  ownedFixtureProvisioner.includes("INSERT INTO artifact_reservations") ||
+  ownedFixtureProvisioner.includes("INSERT INTO artifact_receipts") ||
   /\b(?:DROP|DELETE)\s+/iu.test(ownedFixtureProvisioner) ||
   /runpod|run\.googleapis|cloudrun/iu.test(ownedFixtureProvisioner)
 )
