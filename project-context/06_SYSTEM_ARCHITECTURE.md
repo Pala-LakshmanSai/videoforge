@@ -25,7 +25,7 @@ R2 keys, provider job IDs, or callbacks cannot grant access.
 | Web + API | Cloudflare Worker, Hono `/api/*` | Same-origin UI/API, auth checks, signed transfers |
 | Durable orchestration | Cloudflare Workflows plus transactional Postgres outbox | State machine, waits, retries, reconciliation |
 | Database | Neon Postgres | Identity, tenant data, fairness/admission, attempts, costs, audit |
-| Auth | Better Auth email/password + Google OAuth + atomic invite admission | Closed access and one default workspace |
+| Auth | Better Auth Google OAuth + atomic email-bound invite admission; email/password disabled | Closed access without an email-delivery provider and one default workspace |
 | Artifacts | Private Cloudflare R2 | Tenant-prefixed immutable inputs/outputs/receipts/manifests |
 | Image prompt/style | Runware DeepSeek V4 Flash 0731; Gemini 3.5 Flash only for new style analysis | Existing pinned provider choices |
 | GPU | Two RunPod queue-based Serverless endpoints in `EU-RO-1` | Mage images; SoulX avatar spans |

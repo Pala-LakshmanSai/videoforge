@@ -143,9 +143,9 @@ All three paths are optional local evidence and are not VideoForge build depende
   transcription and FFmpeg render/probe. Their default distribution matches ImageForge: Windows
   unsigned beta and macOS ad-hoc sealed/non-notarized beta. Exact OS trust identities, bundled tool hashes, protocol
   version, installer behavior, device security, runtime, and recovery remain V2-06 gates.
-- Better Auth supplies email/password, verified-email, and Google identity primitives. VideoForge's
-  unique single-use email-bound invite, secure verifier, and atomic redemption are app-owned
-  contracts; the cited Better Auth pages do not define that policy.
+- Better Auth supplies Google and optional email/password identity primitives. VideoForge currently
+  enables Google only because the selected email provider is `NONE`; its unique single-use
+  email-bound invite, secure verifier, and atomic redemption are app-owned contracts.
 - AI-video model research remains deferred because the user chose image-only MVP.
 - Runware Gemini 3.5 Flash is the provisional one-time Image Style analyzer because it supports several images and strict JSON through the same Runware account; Gemini 3.1 Flash Lite is cheaper but not preferred before a style-fidelity A/B.
 - RunPod Serverless is the active V2 compute target. Official docs establish provider API/config

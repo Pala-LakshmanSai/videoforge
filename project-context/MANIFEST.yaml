@@ -218,7 +218,7 @@ hard_rules:
   - private_inputs_outputs_credentials_and_model_bytes_never_enter_git
 
 approved_decisions:
-  DEC_AUTH_001: invite_only_verified_email_identity
+  DEC_AUTH_001: invite_only_google_verified_email_identity_no_email_provider
   DEC_AVATAR_004: one_native_clip_two_layouts
   DEC_AVATAR_005: tenant_private_reusable_avatar_hub
   DEC_AVATAR_010: exact_soulx_flashhead_pro_only_avatar_runtime

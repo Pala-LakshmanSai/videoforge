@@ -17,8 +17,9 @@ it is not inferred from invite-only access.
 
 ## Required happy path
 
-1. Sign up with email/password or Google plus a single-use invite bound to the same verified email;
-   later logins do not ask for it again.
+1. Sign in with Google plus a single-use invite bound to the same verified email; later Google
+   logins do not ask for it again. Email/password remains disabled while the selected email provider
+   is `NONE`.
 2. Create or choose a named reusable Avatar Profile in the account's Avatar Hub.
 3. Create a private project with title and voiceover; do not re-upload the avatar per project.
 4. Select an immutable published Image Style. Built-in `documentary_stock_v1` is preselected.

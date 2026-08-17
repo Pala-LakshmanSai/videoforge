@@ -112,8 +112,8 @@ Do not claim provider exactly-once execution or billing.
 
 Pass in isolated staging:
 
-- invite-bound Better Auth email/password and Google flows, verified-email equality, redemption
-  races/replay/expiry/revocation;
+- invite-bound Better Auth Google flow, verified-email equality, disabled email/password surface,
+  and redemption races/replay/expiry/revocation;
 - Neon migrations, repository behavior, transaction/isolation, backup/restore exercise;
 - private R2 storage gate and production-like lifecycle;
 - Cloudflare Worker/Workflow durable orchestration, restart/resume, secret binding, and alarm/error

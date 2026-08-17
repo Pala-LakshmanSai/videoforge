@@ -334,31 +334,24 @@ calls.
 
 ## V2-06 — Hosted staging foundation and personal media workers
 
-**Outcome:** a private staging application runs with production auth, tenant database/storage,
-durable orchestration, and account-owned Windows/macOS workers for word transcription and FFmpeg
-rendering. The hosted control plane is independent of the operator's Mac; each account's CPU stages
-intentionally wait for that account's paired computer.
+**Outcome:** staging uses invite-only Google Better Auth, Neon, R2, Workflows, and account-owned
+Windows/macOS workers that run ASR/render on the paired computer.
 
-- Deploy the existing app/API to the selected Cloudflare environment, Better Auth with email and
-  Google plus atomic invite admission, Neon PostgreSQL, and private R2.
-- Apply the V2 migrations and tenant query boundary. Use environment-scoped secrets and least
-  privilege.
-- Release an immutable ImageForge-style Windows x64 unsigned beta installer and macOS ad-hoc sealed,
-  non-notarized universal DMG containing pinned whisper.cpp, FFmpeg/FFprobe, and the exact execution
-  bundle. The release manifest discloses trust mode, URL, size, SHA-256, protocol, and bundle identity;
-  optional Authenticode/Developer ID upgrades must never be falsely claimed. Installation starts the worker at
-  login; pairing is one authenticated browser confirmation with no copied code or configuration.
-- Implement tenant-bound enrollment, device credentials, heartbeat, exact one-device leases, fresh
-  signed artifact exchange, stage checkpoints, cancellation, stale-lease fencing/requeue, streamed
-  output, explicit user deletion of durable results, and control-plane/device restart recovery.
-- Keep GPU transport fake/disabled in staging until V2-07/V2-08 activation.
+- Deploy app/API, verified-email invite admission, V2 migrations, tenant query boundary,
+  least-privilege secrets, and private R2. Email/password stays disabled while
+  provider choice is `NONE`.
+- Publish immutable ImageForge-style Windows x64 unsigned beta and macOS ad-hoc universal2 DMG
+  releases bundling pinned whisper.cpp, FFmpeg/FFprobe, and execution identity. Record trust mode,
+  URL, size, SHA-256, protocol, and bundle; autostart at login and pair by one browser confirmation.
+- Implement tenant-bound enrollment/credentials, heartbeat, exact leases, fresh signed artifacts,
+  checkpoints, cancel, stale fencing/requeue, streaming, explicit result deletion, and restart recovery.
+- Keep GPU transport fake/disabled until V2-07/V2-08.
 
-**Proof:** two real invited accounts with isolated data, objects, devices, and leases; production-auth
-negative suite; clean-download Windows and macOS install/autostart/update/remove proof with exact
-beta trust metadata and observed OS warning behavior; real hosted
-ASR/render of owned fixtures; offline/reconnect/restart/replay/cancel/stale-result proof; streaming R2
-hash parity; backup/restore; exact provider and user-device cost truth; and real Chrome staging
-acceptance. Local fixtures or unverified packages cannot prove deployment/release.
+**Proof:** two invited accounts isolated across data/objects/devices/leases; auth negatives; clean
+Windows/macOS install/autostart/update/remove and observed warning behavior; owned-fixture
+ASR/render; offline/reconnect/restart/replay/cancel/stale-result recovery; R2 hash parity;
+backup/restore; exact provider/device costs; and real Chrome. Local fixtures/unverified packages do
+not prove deployment/release.
 
 **Authority:** provider-free work first; stop once before any hosting mutation or paid service use
 with one exact bounded activation proposal.
