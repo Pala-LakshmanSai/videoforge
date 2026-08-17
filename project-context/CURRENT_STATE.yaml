@@ -221,18 +221,36 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-08-15T09:56:02.932Z"
-  basis: last_authorized_read_only_inventory_and_cleanup
+  checked_at: "2026-08-17T10:05:45Z"
+  basis: authenticated_sujal_runpod_dashboard_read_only_inventory
+  evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
   current_live_refresh_permitted_now: true
-  stale_until_current_authorized_read_only_inventory_succeeds: true
+  stale_until_current_authorized_read_only_inventory_succeeds: false
   pods: 0
   private_templates: 0
   endpoints: 0
   total_serverless_workers_active_plus_flex: 0
+  clusters: 0
   network_volumes: 2
-  intended_volumes: [mage_50gb, soulx_50gb]
+  intended_volumes:
+    - name: videoforge-mage-cp06-model-volume-eu-ro-1-50gb
+      volume_id_sha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
+      size_gb: 50
+      region: EU-RO-1
+      recurring_usd_per_month: 3.5
+    - name: videoforge-soulx-flashhead-pro-vf924s-eu-ro-1-50gb
+      volume_id_sha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be"
+      size_gb: 50
+      region: EU-RO-1
+      recurring_usd_per_month: 3.5
   ongoing_retained_volume_usd_per_month_total: 7.0
-  note: "Zero workers means zero GPU compute, not zero fixed retained-volume billing."
+  displayed_current_spend_rate_usd_per_hour_rounded: 0.01
+  full_day_network_storage_charge_usd: 0.233
+  current_day_cloud_gpu_usd: 0
+  current_day_cloud_cpu_usd: 0
+  current_day_serverless_usd: 0
+  auto_pay: DISABLED
+  note: "Live dashboard inventory matches the approved retained resources. Zero workers means zero GPU compute, not zero fixed retained-volume billing; billing data may lag by one hour."
 
 blocking_gates_for_production:
   - GATE_TENANCY_001
@@ -538,6 +556,7 @@ verification:
     predecessor_commit: "9fe8c76d420f2b81bdedac813d6681656462afd7"
     evidence: evidence/acceptance/VF-10-06/2026-08-17-personal-worker-conversion-reaudit/acceptance.json
     live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
+    runpod_live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
     commands:
       - "CI=1 TURBO_FORCE=true pnpm verify (exit 0; 28/28 tasks; web 330/330 plus 1 skipped; pipeline 120/120; Cloudflare-local 1/1; installed-Chrome fixture 44/44)"
       - "pnpm context:validate (exit 0; JSON 178; evidence refs 63; profiles 31; decisions 42; gates 19)"
@@ -547,6 +566,10 @@ verification:
       - "pnpm format:check (exit 0)"
       - "git diff --check (exit 0)"
       - "pnpm context:validate after live inventory record (exit 0; JSON 179; evidence refs 64; profiles 31; decisions 42; gates 19)"
+      - "pnpm context:validate after RunPod live inventory record (exit 0; JSON 180; evidence refs 66; profiles 31; decisions 42; gates 19)"
+      - "pnpm secret:scan after RunPod live inventory record (exit 0; 1091 tracked files)"
+      - "pnpm format:check after RunPod live inventory record (exit 0)"
+      - "git diff --check after RunPod live inventory record (exit 0)"
     delivered:
       - "Migration 0032 adds account/workspace-bound worker enrollments, devices, exact input objects, one active lease per attempt/device, append-only events, row-level security, and stale-lease fencing while preserving historical Cloud Run rows for rollback."
       - "The hosted API uses PKCE enrollment, one explicit authenticated approval, OS-keychain-scoped device tokens, heartbeat/update gating, exact same-account claims, fresh R2 GET/PUT ports, streaming output verification, cancellation, revocation, and late-result rejection."
@@ -563,7 +586,7 @@ verification:
       - "Production-grade Windows code signing and macOS Developer ID signing/notarization require external identities and protected release credentials; unsigned packages do not satisfy the promised simple installer UX."
       - "The immutable release workflow and manifest contract exist locally, but exact published URLs, byte sizes, SHA-256 hashes, signing identities, protocol minimum, and execution-bundle hash remain unproven until one signed release is built and published."
       - "Real installed Windows and macOS proof must cover pairing, tenant isolation, autostart/reboot, sleep, offline/reconnect, cancellation, stale lease/result, streamed R2, tool parity, update/remove, and recovery."
-      - "Hosted Better Auth/Neon/R2/Cloudflare, non-superuser RLS, backup/restore, rollback, two-account isolation, and real Chrome remain unproven. Cloudflare and Neon inventory is refreshed; RunPod is signed out and current zero-worker truth remains unproven."
+      - "Hosted Better Auth/Neon/R2/Cloudflare, non-superuser RLS, backup/restore, rollback, two-account isolation, and real Chrome remain unproven. Cloudflare, Neon, and RunPod inventory is refreshed; RunPod has zero compute resources and exactly the two approved retained volumes at USD 7/month total."
       - "The user-selected email provider is NONE, so initial hosted auth is Google-only. Google Cloud Run is no longer needed. The signed-in Google account lacks resourcemanager.projects.get on candidate gen-lang-client-0893746131, and no dedicated VideoForge OAuth project exists."
       - "The user has Windows x64 and Mac test devices but no Apple Developer Program membership. A warning-free notarized Mac release requires the USD 99 annual membership; unsigned testing cannot satisfy signed-release acceptance."
       - "The user supplied a USD 3 maximum future V2-06 test cap, but it is not operation authority until one exact combined mutation/publication proposal is issued and approved."
@@ -578,9 +601,10 @@ verification:
       external_spend_usd: 0
       cloud_run_jobs_required_by_current_architecture: 0
       personal_worker_provider_compute_usd: 0
-      runpod_calls: 0
+      runpod_mutating_calls: 0
+      runpod_read_only_dashboard_inventory_completed: true
       runpod_workers_started: 0
-      live_runpod_inventory_refreshed: false
+      live_runpod_inventory_refreshed: true
       cloudflare:
         checked_at: "2026-08-17T09:22:02Z"
         account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
@@ -613,6 +637,32 @@ verification:
         candidate_access: DENIED_MISSING_RESOURCEMANAGER_PROJECTS_GET
         accessible_projects: 6
         dedicated_videoforge_project: false
+      runpod:
+        checked_at: "2026-08-17T10:05:45Z"
+        account_label: sujal
+        pods: 0
+        private_templates: 0
+        endpoints: 0
+        total_serverless_workers_active_plus_flex: 0
+        clusters: 0
+        network_volumes: 2
+        mage_volume_name: videoforge-mage-cp06-model-volume-eu-ro-1-50gb
+        mage_volume_id_sha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
+        mage_volume_size_gb: 50
+        mage_volume_region: EU-RO-1
+        mage_volume_usd_per_month: 3.5
+        soulx_volume_name: videoforge-soulx-flashhead-pro-vf924s-eu-ro-1-50gb
+        soulx_volume_id_sha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be"
+        soulx_volume_size_gb: 50
+        soulx_volume_region: EU-RO-1
+        soulx_volume_usd_per_month: 3.5
+        recurring_storage_usd_per_month_total: 7
+        displayed_current_spend_rate_usd_per_hour_rounded: 0.01
+        current_day_cloud_gpu_usd: 0
+        current_day_cloud_cpu_usd: 0
+        current_day_serverless_usd: 0
+        auto_pay: DISABLED
+        billing_data_lag: UP_TO_ONE_HOUR
       release_inputs:
         apple_developer_program_membership: false
         windows_x86_64_test_device_available: true

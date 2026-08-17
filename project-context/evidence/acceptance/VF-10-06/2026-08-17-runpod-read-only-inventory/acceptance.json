@@ -1,0 +1,145 @@
+{
+  "schema_version": "videoforge.v2-06-runpod-read-only-inventory/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-17T10:05:45Z",
+  "result": "PASS_LIVE_RUNPOD_ZERO_COMPUTE_TWO_EXPECTED_RETAINED_VOLUMES",
+  "evidence_basis": "Authenticated read-only observations in the signed-in Sujal RunPod dashboard through the user's existing Chrome session. This is live dashboard evidence, not a provider-signed export or API response.",
+  "authority": {
+    "mode": "READ_ONLY_INVENTORY",
+    "authorized_account": "sujal",
+    "authorized_operations": [
+      "account_identity_lookup",
+      "inventory_lookup",
+      "quota_lookup",
+      "rate_lookup",
+      "region_lookup",
+      "resource_identity_lookup",
+      "resource_absence_lookup"
+    ],
+    "resource_mutation_authorized": false,
+    "gpu_or_worker_action_authorized": false,
+    "spend_authorized_usd": 0
+  },
+  "observations": {
+    "account": {
+      "expected_label": "sujal",
+      "observed_first_name": "Sujal",
+      "identity_match": true
+    },
+    "pods": {
+      "count": 0,
+      "evidence": "Opening My Pods redirected to the new Pod deployment screen; no existing Pod row, control, or state was rendered."
+    },
+    "serverless": {
+      "endpoint_count": 0,
+      "total_workers_active_plus_flex": 0,
+      "evidence": "The Serverless page rendered only the get-started landing page and public Hub catalog, with no owned endpoint list or worker controls. Billing for 2026-08-17 displayed Serverless $0."
+    },
+    "private_templates": {
+      "count": 0,
+      "evidence": "My Templates displayed the Your templates header and no template rows."
+    },
+    "clusters": {
+      "count": 0,
+      "evidence": "Clusters displayed the generic create-cluster landing page and no owned cluster rows."
+    },
+    "network_volumes": [
+      {
+        "name": "videoforge-mage-cp06-model-volume-eu-ro-1-50gb",
+        "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "data_center": "EU-RO-1",
+        "storage_interface": "S3",
+        "displayed_recurring_usd_per_month": 3.5,
+        "matches_approved_retained_resource": true
+      },
+      {
+        "name": "videoforge-soulx-flashhead-pro-vf924s-eu-ro-1-50gb",
+        "volume_id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "data_center": "EU-RO-1",
+        "storage_interface": "S3",
+        "displayed_recurring_usd_per_month": 3.5,
+        "matches_approved_retained_resource": true
+      }
+    ],
+    "billing": {
+      "displayed_current_spend_rate_usd_per_hour_rounded": 0.01,
+      "effective_retained_storage_usd_per_month_total": 7,
+      "full_day_network_storage_charge_usd": 0.233,
+      "full_day_observed_utc": "2026-08-16",
+      "current_day_cloud_gpu_usd": 0,
+      "current_day_cloud_cpu_usd": 0,
+      "current_day_serverless_usd": 0,
+      "auto_pay": "DISABLED",
+      "billing_data_lag": "up to 1 hour",
+      "interpretation": "The rounded current burn is fully explained by the two retained 50 GB volumes. Zero compute does not mean zero recurring storage cost."
+    },
+    "audit_log": {
+      "latest_resource_lifecycle_events_displayed_at": "2026-08-15T15:25:41+05:30",
+      "latest_resource_lifecycle_summary": "The last displayed sequence ended with deletion of the temporary Pod, API key, and SoulX qualification template. No later compute-resource creation was displayed.",
+      "sensitive_values_retained": false
+    }
+  },
+  "approved_versus_actual": {
+    "approved_retained_resources": "Exactly two isolated 50 GB EU-RO-1 VideoForge model volumes at $3.50/month each.",
+    "actual_retained_resources": "Exactly the same two named volumes, sizes, regions, identity hashes, and displayed rates.",
+    "approved_compute_resources": "None for V2-06; GPU transport must remain fake and disabled.",
+    "actual_compute_resources": "Zero Pods, zero owned Serverless endpoints, zero Active plus Flex workers, zero private templates, and zero clusters in the live dashboard.",
+    "unexpected_resources": []
+  },
+  "spend_truth": {
+    "inventory_action_cost_usd": 0,
+    "new_spend_caused_usd": 0,
+    "new_recurring_charge_created": false,
+    "current_compute_spend_usd": 0,
+    "continuing_retained_storage_usd_per_month": 7,
+    "runpod_mutations": 0,
+    "pods_started": 0,
+    "workers_started": 0,
+    "endpoints_created": 0,
+    "volumes_changed": 0
+  },
+  "validation": {
+    "context": {
+      "command": "pnpm context:validate",
+      "exit_code": 0,
+      "json_files": 180,
+      "evidence_references": 66,
+      "read_profiles": 31,
+      "decisions": 42,
+      "gates": 19
+    },
+    "secret_scan": {
+      "command": "pnpm secret:scan",
+      "exit_code": 0,
+      "tracked_files": 1091
+    },
+    "format": {
+      "command": "pnpm format:check",
+      "exit_code": 0
+    },
+    "json_parse": {
+      "command": "node -e JSON.parse(readFileSync(acceptance.json))",
+      "exit_code": 0
+    },
+    "diff": {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  },
+  "limitations": [
+    "The dashboard did not provide a signed export or a numeric zero-worker row because no owned endpoint list existed; zero Serverless workers is established by the empty owned-endpoint surface plus current-day $0 Serverless billing.",
+    "Billing data may lag by up to one hour.",
+    "This inventory does not prove V2-06 hosted deployment, tenant isolation, device execution, signed installers, backup/restore, rollback, or hosted Chrome acceptance."
+  ],
+  "rollback_state": {
+    "required": false,
+    "reason": "No RunPod resource, configuration, credential, billing setting, or retained volume was changed."
+  },
+  "v2_07_safety": {
+    "safe_to_begin": false,
+    "reason": "V2-06 remains unaccepted and no V2-07 RunPod mutation, endpoint, image, GPU, worker, or spend authority exists."
+  }
+}
