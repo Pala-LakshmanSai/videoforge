@@ -875,9 +875,13 @@ async function resolvePresetRows(executor, scope) {
         AND style_version.style_id = style.id
       WHERE profile.account_id = $1 AND profile.workspace_id = $2
         AND profile.id = $3 AND avatar_version.id = $4
+        AND profile.scope_kind = 'WORKSPACE'
+        AND avatar_version.scope_kind = 'WORKSPACE'
         AND profile.status = 'ACTIVE' AND avatar_version.state = 'READY'
         AND style.account_id = $1 AND style.workspace_id = $2
         AND style.id = $5 AND style_version.id = $6
+        AND style.scope_kind = 'WORKSPACE'
+        AND style_version.scope_kind = 'WORKSPACE'
         AND style.status = 'ACTIVE' AND style_version.state = 'PUBLISHED'`,
     [
       scope.account_id,
