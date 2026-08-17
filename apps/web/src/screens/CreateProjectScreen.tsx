@@ -21,8 +21,17 @@ import { createProjectBlockers } from "../lib/create-eligibility";
 import { hasStoredDraft, hydrateDraftFromBootstrap } from "../lib/draft";
 import { validateVoiceoverFile } from "../lib/media-validation";
 import { currentScenario, withScenario } from "../lib/scenario";
+import { HostedCreateProjectScreen } from "../hosted/HostedProductScreens";
 
 export function CreateProjectScreen() {
+  return import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging" ? (
+    <HostedCreateProjectScreen />
+  ) : (
+    <FixtureCreateProjectScreen />
+  );
+}
+
+function FixtureCreateProjectScreen() {
   const scenario = currentScenario();
   const health = useQuery({
     queryKey: ["health", scenario],

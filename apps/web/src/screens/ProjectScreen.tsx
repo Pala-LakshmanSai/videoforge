@@ -22,8 +22,17 @@ import { TimelineInspectionPanel } from "../features/timeline/TimelineInspection
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
 import type { ProjectSummary } from "../lib/types";
+import { HostedProjectScreen } from "../hosted/HostedProductScreens";
 
 export function ProjectScreen({ projectId }: { projectId: string }) {
+  return import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging" ? (
+    <HostedProjectScreen projectId={projectId} />
+  ) : (
+    <FixtureProjectScreen projectId={projectId} />
+  );
+}
+
+function FixtureProjectScreen({ projectId }: { projectId: string }) {
   const scenario = currentScenario();
   const health = useQuery({
     queryKey: ["health", scenario],

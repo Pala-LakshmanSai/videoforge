@@ -47,7 +47,7 @@ def job() -> dict[str, object]:
         "cancellation_url": "https://app.example.test/api/v2/media-worker/leases/lease/heartbeat",
         "completion_url": "https://app.example.test/api/v2/media-worker/leases/lease/complete",
         "tooling": {
-            "whisper_model_uri": f"vf-local://objects/sha256/aa/{digest}.bin",
+            "whisper_model_sha256": f"sha256:{digest}",
             "whisper_version": "1.8.4",
             "ffmpeg_version": "8.1.2",
             "ffprobe_version": "8.1.2",
@@ -96,6 +96,7 @@ class PersonalWorkerContractTests(unittest.TestCase):
                         "schema_version": "videoforge-personal-worker-build/v1",
                         "control_plane_origin": "https://app.example.test",
                         "execution_bundle_sha256": f"sha256:{'b' * 64}",
+                        "whisper_model_sha256": f"sha256:{'c' * 64}",
                         "tools_root": "resources/bin",
                     }
                 ),

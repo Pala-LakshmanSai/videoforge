@@ -4,8 +4,17 @@ import { PageHeader } from "../components/PageHeader";
 import { Button, EmptyState, Metric, Panel } from "../components/ui";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
+import { HostedUsageScreen } from "../hosted/HostedProductScreens";
 
 export function UsageScreen() {
+  return import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging" ? (
+    <HostedUsageScreen />
+  ) : (
+    <FixtureUsageScreen />
+  );
+}
+
+function FixtureUsageScreen() {
   const scenario = currentScenario();
   const query = useQuery({ queryKey: ["usage", scenario], queryFn: () => api.usage(scenario) });
   if (query.isPending) {

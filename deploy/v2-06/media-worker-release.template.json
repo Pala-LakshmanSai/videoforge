@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "minimum_protocol_version": 1,
   "execution_bundle_sha256": "sha256:REPLACE_WITH_SIGNED_EXECUTION_BUNDLE_SHA256",
+  "whisper_model_sha256": "sha256:REPLACE_WITH_GGML_BASE_EN_SHA256",
   "windows": {
     "url": "https://REPLACE_WITH_IMMUTABLE_WINDOWS_SETUP_URL",
     "sha256": "sha256:REPLACE_WITH_WINDOWS_SETUP_SHA256",

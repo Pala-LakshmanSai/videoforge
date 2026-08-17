@@ -8,7 +8,7 @@ import {
   uuid,
   withMigratedDatabase,
 } from "./support/pglite.mjs";
-import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
+import { HASHES, IDS, seedLockedProjects } from "./support/fixtures.mjs";
 
 const NOW = Date.now();
 const LATER = new Date(NOW + 24 * 60 * 60 * 1_000).toISOString();
@@ -581,6 +581,165 @@ test("personal workers are tenant-bound, single-leased, and queued cancellation 
       executor.query(
         `UPDATE media_worker_devices SET display_name = 'Cross tenant' WHERE id = $1`,
         [device],
+      ),
+      "42501",
+    );
+  });
+});
+
+test("hosted project readiness and review accept only exact tenant-owned durable lineage", async () => {
+  await withMigratedDatabase(async ({ executor }) => {
+    await seedLockedProjects(executor);
+    const requestId = uuid(1_400_001);
+    const reservationId = uuid(1_400_002);
+    const receiptId = uuid(1_400_003);
+    const attemptId = uuid(1_400_004);
+    const authorityId = uuid(1_400_005);
+    const reviewId = uuid(1_400_006);
+    const inputKey =
+      `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}` +
+      `/revision/${IDS.revisionA}/lane/input/job/browser-upload/artifact/voiceover`;
+    const outputKey =
+      `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}` +
+      `/revision/${IDS.revisionA}/lane/render/job/${attemptId}/artifact/final-video`;
+    const outputChecksum = sha256("hosted-review-output");
+
+    await executor.query(`SELECT set_config('videoforge.account_id', $1, false)`, [IDS.accountA]);
+    await executor.query(
+      `INSERT INTO artifact_reservations (
+         id, account_id, workspace_id, project_id, project_revision_id, asset_id,
+         lane, job_id, artifact_id, object_key, method, content_type, content_length,
+         checksum_sha256, expires_at, max_uses, retention_class, deletion_owner_account_id
+       ) VALUES ($1,$2,$3,$4,$5,$6,'INPUT','browser-upload','voiceover',$7,'PUT',
+                 'audio/wav',128,$8,'2099-01-01T00:10:00Z',1,'PROJECT',$2)`,
+      [
+        reservationId,
+        IDS.accountA,
+        IDS.workspaceA,
+        IDS.projectA,
+        IDS.revisionA,
+        IDS.voiceoverA,
+        inputKey,
+        HASHES.voiceoverA,
+      ],
+    );
+    await executor.query(
+      `INSERT INTO hosted_project_create_requests (
+         id, account_id, workspace_id, idempotency_key, request_sha256, project_id,
+         project_revision_id, voiceover_asset_id, upload_reservation_id,
+         upload_receipt_id, state
+       ) VALUES ($1,$2,$3,'hosted-project-lineage-0001',$4,$5,$6,$7,$8,$9,'UPLOAD_PENDING')`,
+      [
+        requestId,
+        IDS.accountA,
+        IDS.workspaceA,
+        sha256("hosted-project-request"),
+        IDS.projectA,
+        IDS.revisionA,
+        IDS.voiceoverA,
+        reservationId,
+        receiptId,
+      ],
+    );
+    await expectDatabaseError(
+      executor.query(
+        `UPDATE hosted_project_create_requests SET state = 'READY', ready_at = $2 WHERE id = $1`,
+        [requestId, FIXED_TIME],
+      ),
+      "23514",
+    );
+    await executor.query(
+      `INSERT INTO artifact_receipts (
+         id, account_id, workspace_id, reservation_id, callback_id, object_key,
+         content_type, content_length, checksum_sha256, receipt_sha256, committed_at
+       ) VALUES ($1,$2,$3,$4,'browser-upload',$5,'audio/wav',128,$6,$7,$8)`,
+      [
+        receiptId,
+        IDS.accountA,
+        IDS.workspaceA,
+        reservationId,
+        inputKey,
+        HASHES.voiceoverA,
+        sha256("hosted-voiceover-receipt"),
+        FIXED_TIME,
+      ],
+    );
+    await executor.query(
+      `UPDATE artifact_reservations SET state = 'COMMITTED', used_count = 1 WHERE id = $1`,
+      [reservationId],
+    );
+    await executor.query(
+      `UPDATE hosted_project_create_requests SET state = 'READY', ready_at = $2 WHERE id = $1`,
+      [requestId, FIXED_TIME],
+    );
+
+    await executor.query(
+      `INSERT INTO hosted_cpu_job_attempts (
+         id, account_id, workspace_id, project_id, project_revision_id, kind, state,
+         request_sha256, job_spec_object_key, job_spec_content_length,
+         job_spec_checksum_sha256, result_object_key, image_digest,
+         callback_token_sha256, result_receipt_sha256, deadline_at,
+         submitted_at, terminal_at, created_at, updated_at
+       ) VALUES ($1,$2,$3,$4,$5,'RENDER','SUCCEEDED',$6,$7,128,$8,$9,$10,$11,$12,$13,$14,$14,$14,$14)`,
+      [
+        attemptId,
+        IDS.accountA,
+        IDS.workspaceA,
+        IDS.projectA,
+        IDS.revisionA,
+        sha256("hosted-render-request"),
+        outputKey.replace("final-video", "job-spec"),
+        sha256("hosted-render-job-spec"),
+        outputKey.replace("final-video", "result-document"),
+        sha256("hosted-render-image"),
+        sha256("hosted-render-callback"),
+        sha256("hosted-render-result-receipt"),
+        LATER,
+        FIXED_TIME,
+      ],
+    );
+    await executor.query(
+      `INSERT INTO hosted_cpu_upload_authorities (
+         id, account_id, workspace_id, attempt_id, source, object_key, content_type,
+         max_bytes, issued_content_length, issued_checksum_sha256, issued_at, created_at
+       ) VALUES ($1,$2,$3,$4,'PRIMARY_RESULT_OUTPUT',$5,'video/mp4',1048576,2048,$6,$7,$7)`,
+      [authorityId, IDS.accountA, IDS.workspaceA, attemptId, outputKey, outputChecksum, FIXED_TIME],
+    );
+    await expectDatabaseError(
+      executor.query(
+        `INSERT INTO hosted_project_reviews (
+           id, account_id, workspace_id, project_id, render_attempt_id,
+           output_checksum_sha256, approved_by_user_id
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [
+          reviewId,
+          IDS.accountA,
+          IDS.workspaceA,
+          IDS.projectA,
+          attemptId,
+          sha256("forged"),
+          IDS.userA,
+        ],
+      ),
+      "23514",
+    );
+    await executor.query(
+      `INSERT INTO hosted_project_reviews (
+         id, account_id, workspace_id, project_id, render_attempt_id,
+         output_checksum_sha256, approved_by_user_id
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [reviewId, IDS.accountA, IDS.workspaceA, IDS.projectA, attemptId, outputChecksum, IDS.userA],
+    );
+    await expectDatabaseError(
+      executor.query(`DELETE FROM hosted_project_reviews WHERE id = $1`, [reviewId]),
+      "55000",
+    );
+
+    await executor.query(`SELECT set_config('videoforge.account_id', $1, false)`, [IDS.accountB]);
+    await expectDatabaseError(
+      executor.query(
+        `UPDATE hosted_project_create_requests SET ready_at = ready_at WHERE id = $1`,
+        [requestId],
       ),
       "42501",
     );

@@ -10,8 +10,17 @@ import { ActionToast, NoticeBanner } from "../features/shared/FixtureFeedback";
 import { humanize } from "../features/shared/status";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
+import { HostedReviewScreen } from "../hosted/HostedProductScreens";
 
 export function ReviewScreen({ projectId }: { projectId: string }) {
+  return import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging" ? (
+    <HostedReviewScreen projectId={projectId} />
+  ) : (
+    <FixtureReviewScreen projectId={projectId} />
+  );
+}
+
+function FixtureReviewScreen({ projectId }: { projectId: string }) {
   const scenario = currentScenario();
   const health = useQuery({
     queryKey: ["health", scenario],

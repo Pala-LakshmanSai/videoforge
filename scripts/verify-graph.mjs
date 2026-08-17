@@ -67,5 +67,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Verification graph is non-duplicating: ${graph.tasks.length} unique tasks, one control-plane test task, and one build task for each of ${expectedPackages.length} packages.`,
+  `Verification graph is non-duplicating: ${graph.tasks.length} unique tasks, one control-plane test task, and one build task for each of ${expectedPackages.length} packages. Package tests execute serially to bound PGlite disk use.`,
 );

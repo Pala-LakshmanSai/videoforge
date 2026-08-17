@@ -198,6 +198,12 @@
       "name": "v2_06_hosted_cpu_admission_guard",
       "filename": "0033_v2_06_hosted_cpu_admission_guard.sql",
       "sha256": "sha256:286783b67278a0a43e331ad83cabfbf2378569440768dcbdbd440b08f644abca"
+    },
+    {
+      "version": 34,
+      "name": "v2_06_hosted_product_journey",
+      "filename": "0034_v2_06_hosted_product_journey.sql",
+      "sha256": "sha256:c6f094570e5290327f9c6a0d73e91aab0625491814ba51da080b82e9cc7224f3"
     }
   ]
 }

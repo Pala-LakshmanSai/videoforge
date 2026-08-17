@@ -11,6 +11,10 @@ on:
         description: Exact source and tool manifest identity approved for this release
         required: true
         type: string
+      whisper_model_sha256:
+        description: Exact prefixed SHA-256 of bundled ggml-base.en.bin
+        required: true
+        type: string
       windows_tool_bundle_url:
         description: Immutable URL for the preverified Windows x64 tool zip
         required: true
@@ -80,6 +84,7 @@ jobs:
         env:
           CONTROL_PLANE_ORIGIN: ${{ inputs.control_plane_origin }}
           EXECUTION_BUNDLE_SHA256: ${{ inputs.execution_bundle_sha256 }}
+          WHISPER_MODEL_SHA256: ${{ inputs.whisper_model_sha256 }}
           TOOL_URL: ${{ inputs[matrix.tool_url] }}
           TOOL_SHA256: ${{ inputs[matrix.tool_sha] }}
         run: |
@@ -95,12 +100,15 @@ jobs:
               raise SystemExit("TOOL_SHA256 must be exact lowercase hex")
           if not re.fullmatch(r"sha256:[0-9a-f]{64}", os.environ["EXECUTION_BUNDLE_SHA256"]):
               raise SystemExit("EXECUTION_BUNDLE_SHA256 must be exact prefixed lowercase hex")
+          if not re.fullmatch(r"sha256:[0-9a-f]{64}", os.environ["WHISPER_MODEL_SHA256"]):
+              raise SystemExit("WHISPER_MODEL_SHA256 must be exact prefixed lowercase hex")
 
       - name: Download and verify exact tool bundle
         shell: python
         env:
           TOOL_URL: ${{ inputs[matrix.tool_url] }}
           TOOL_SHA256: ${{ inputs[matrix.tool_sha] }}
+          WHISPER_MODEL_SHA256: ${{ inputs.whisper_model_sha256 }}
         run: |
           import hashlib
           import os
@@ -120,6 +128,16 @@ jobs:
                   if not target.is_relative_to(Path("worker-resources").resolve()):
                       raise SystemExit("tool bundle contains an unsafe path")
               bundle.extractall("worker-resources")
+          required = ["ffmpeg", "ffprobe", "whisper-cli", "ggml-base.en.bin"]
+          if os.name == "nt":
+              required[:3] = [f"{name}.exe" for name in required[:3]]
+          missing = [name for name in required if not (Path("worker-resources/bin") / name).is_file()]
+          if missing:
+              raise SystemExit(f"tool bundle is incomplete: {', '.join(missing)}")
+          model = Path("worker-resources/bin/ggml-base.en.bin")
+          expected_model = os.environ.get("WHISPER_MODEL_SHA256", "").removeprefix("sha256:")
+          if hashlib.sha256(model.read_bytes()).hexdigest() != expected_model:
+              raise SystemExit("bundled whisper model checksum mismatch")
 
       - name: Build pinned worker configuration
         shell: bash
@@ -127,6 +145,7 @@ jobs:
           python apps/media-worker-desktop/build_release_config.py
           --origin "${{ inputs.control_plane_origin }}"
           --execution-bundle-sha256 "${{ inputs.execution_bundle_sha256 }}"
+          --whisper-model-sha256 "${{ inputs.whisper_model_sha256 }}"
           --tools-root resources/bin
           --output build/media-worker-release-config.json
 
@@ -331,6 +350,7 @@ jobs:
         shell: python
         env:
           EXECUTION_BUNDLE_SHA256: ${{ inputs.execution_bundle_sha256 }}
+          WHISPER_MODEL_SHA256: ${{ inputs.whisper_model_sha256 }}
           RELEASE_TAG: ${{ inputs.release_tag }}
           REPOSITORY: ${{ github.repository }}
         run: |
@@ -357,6 +377,7 @@ jobs:
               "version": "0.1.0",
               "minimum_protocol_version": 1,
               "execution_bundle_sha256": os.environ["EXECUTION_BUNDLE_SHA256"],
+              "whisper_model_sha256": os.environ["WHISPER_MODEL_SHA256"],
               "windows": item("Windows"),
               "macos": item("Darwin"),
           }

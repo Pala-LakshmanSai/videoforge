@@ -26,7 +26,7 @@ the checksum/size manifest to the public repository Release; the workflow refuse
 existing tag or asset. Activating that generated manifest in staging is a separate reviewed hosting
 mutation.
 
-The tool bundle must contain `ffmpeg`, `ffprobe`, and `whisper-cli` under `bin/` (with `.exe` suffixes
-on Windows) and must be checksum-pinned before the workflow runs. The `ggml-base.en` model remains an
-exact tenant-private input artifact and is downloaded through a short-lived R2 GET port only when an
-ASR job is claimed; no runtime provider/model discovery occurs.
+The tool bundle must contain `ffmpeg`, `ffprobe`, `whisper-cli`, and `ggml-base.en.bin` under `bin/`
+(with `.exe` suffixes on Windows executables) and must be checksum-pinned before the workflow runs.
+The worker verifies the exact model hash at startup and again against every ASR job contract. No
+first-run model download, runtime provider discovery, or user configuration occurs.

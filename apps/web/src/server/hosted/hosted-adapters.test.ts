@@ -57,6 +57,7 @@ function environment(): HostedRuntimeEnvironment {
       version: "0.1.0",
       minimum_protocol_version: 1,
       execution_bundle_sha256: `sha256:${"a".repeat(64)}`,
+      whisper_model_sha256: `sha256:${"d".repeat(64)}`,
       windows: {
         url: "https://downloads.example.test/videoforge-worker-0.1.0.exe",
         sha256: `sha256:${"b".repeat(64)}`,
@@ -115,6 +116,7 @@ describe("V2-06 hosted adapters", () => {
     const config = hostedRuntimeConfiguration(source);
     expect(config.mediaWorkerRelease.windows.trust).toBe("UNSIGNED_BETA");
     expect(config.mediaWorkerRelease.macos.trust).toBe("AD_HOC_BETA");
+    expect(config.mediaWorkerRelease.whisperModelSha256).toBe(`sha256:${"d".repeat(64)}`);
     const serialized = JSON.stringify(config);
     expect(JSON.parse(serialized)).toEqual({
       schemaVersion: "videoforge-hosted-configuration/v1",
@@ -141,6 +143,14 @@ describe("V2-06 hosted adapters", () => {
     ).toThrow(HostedConfigurationError);
     const release = JSON.parse(source.MEDIA_WORKER_RELEASE_MANIFEST_JSON!);
     release.macos.trust = "UNSIGNED_BETA";
+    expect(() =>
+      hostedRuntimeConfiguration({
+        ...source,
+        MEDIA_WORKER_RELEASE_MANIFEST_JSON: JSON.stringify(release),
+      }),
+    ).toThrow(HostedConfigurationError);
+    release.macos.trust = "AD_HOC_BETA";
+    delete release.whisper_model_sha256;
     expect(() =>
       hostedRuntimeConfiguration({
         ...source,

@@ -75,6 +75,7 @@ export interface HostedRuntimeConfiguration {
     readonly version: string;
     readonly minimumProtocolVersion: number;
     readonly executionBundleSha256: string;
+    readonly whisperModelSha256: string;
     readonly windows: {
       readonly url: string;
       readonly sha256: string;
@@ -221,14 +222,16 @@ function mediaWorkerRelease(value: string): HostedRuntimeConfiguration["mediaWor
   const record = parsed as Record<string, unknown>;
   if (
     Object.keys(record).sort().join(",") !==
-      "execution_bundle_sha256,macos,minimum_protocol_version,schema_version,version,windows" ||
+      "execution_bundle_sha256,macos,minimum_protocol_version,schema_version,version,whisper_model_sha256,windows" ||
     record.schema_version !== "videoforge-media-worker-release/v1" ||
     typeof record.version !== "string" ||
     !/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/u.test(record.version) ||
     !Number.isSafeInteger(record.minimum_protocol_version) ||
     Number(record.minimum_protocol_version) < 1 ||
     typeof record.execution_bundle_sha256 !== "string" ||
-    !/^sha256:[0-9a-f]{64}$/u.test(record.execution_bundle_sha256)
+    !/^sha256:[0-9a-f]{64}$/u.test(record.execution_bundle_sha256) ||
+    typeof record.whisper_model_sha256 !== "string" ||
+    !/^sha256:[0-9a-f]{64}$/u.test(record.whisper_model_sha256)
   ) {
     throw new HostedConfigurationError("Media worker release manifest is malformed.", [
       "MEDIA_WORKER_RELEASE_MANIFEST_JSON",
@@ -238,6 +241,7 @@ function mediaWorkerRelease(value: string): HostedRuntimeConfiguration["mediaWor
     version: record.version,
     minimumProtocolVersion: Number(record.minimum_protocol_version),
     executionBundleSha256: record.execution_bundle_sha256,
+    whisperModelSha256: record.whisper_model_sha256,
     windows: releaseFile(record.windows, "windows"),
     macos: releaseFile(record.macos, "macos"),
   });

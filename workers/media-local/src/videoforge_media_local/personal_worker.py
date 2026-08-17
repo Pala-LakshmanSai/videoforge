@@ -20,6 +20,7 @@ from typing import Protocol
 
 from videoforge_media_local.personal_execution import (
     ToolPaths,
+    _sha256_file,
     execute_personal_job,
     parse_personal_job,
 )
@@ -107,21 +108,29 @@ def _build_configuration() -> dict[str, object]:
                 and __import__("re").fullmatch(
                     r"sha256:[0-9a-f]{64}", str(value["execution_bundle_sha256"])
                 )
+                and isinstance(value.get("whisper_model_sha256"), str)
+                and __import__("re").fullmatch(
+                    r"sha256:[0-9a-f]{64}", str(value["whisper_model_sha256"])
+                )
             ):
                 return value
     if not getattr(sys, "frozen", False):
         origin = os.environ.get("VIDEOFORGE_CONTROL_PLANE_ORIGIN")
         bundle_sha256 = os.environ.get("VIDEOFORGE_EXECUTION_BUNDLE_SHA256")
+        whisper_model_sha256 = os.environ.get("VIDEOFORGE_WHISPER_MODEL_SHA256")
         if (
             origin
             and origin.startswith("https://")
             and bundle_sha256
             and __import__("re").fullmatch(r"sha256:[0-9a-f]{64}", bundle_sha256)
+            and whisper_model_sha256
+            and __import__("re").fullmatch(r"sha256:[0-9a-f]{64}", whisper_model_sha256)
         ):
             return {
                 "schema_version": "videoforge-personal-worker-build/v1",
                 "control_plane_origin": origin.rstrip("/"),
                 "execution_bundle_sha256": bundle_sha256,
+                "whisper_model_sha256": whisper_model_sha256,
                 "tools_root": str(_bundle_root() / "resources" / "bin"),
             }
     raise RuntimeError("Personal worker build has no pinned control-plane origin")
@@ -365,9 +374,16 @@ def _tool_paths(configuration: dict[str, object]) -> ToolPaths:
         ffmpeg=root / f"ffmpeg{suffix}",
         ffprobe=root / f"ffprobe{suffix}",
         whisper=root / f"whisper-cli{suffix}",
+        whisper_model=root / "ggml-base.en.bin",
     )
-    if not all(path.is_file() for path in (tools.ffmpeg, tools.ffprobe, tools.whisper)):
+    if not all(
+        path.is_file() for path in (tools.ffmpeg, tools.ffprobe, tools.whisper, tools.whisper_model)
+    ):
         raise RuntimeError("VideoForge worker tools are incomplete; reinstall the worker")
+    expected_model_sha256 = str(configuration.get("whisper_model_sha256", ""))
+    actual_model_sha256, _ = _sha256_file(tools.whisper_model)
+    if actual_model_sha256 != expected_model_sha256:
+        raise RuntimeError("VideoForge worker model identity is invalid; reinstall the worker")
     return tools
 
 

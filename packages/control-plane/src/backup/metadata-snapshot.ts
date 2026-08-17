@@ -89,6 +89,7 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "serverless_cost_events",
   "artifact_reservations",
   "artifact_receipts",
+  "hosted_project_create_requests",
   "transcripts",
   "transcript_words",
   "transcript_sentences",
@@ -142,6 +143,7 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "media_worker_leases",
   "hosted_cpu_upload_authorities",
   "hosted_cpu_job_events",
+  "hosted_project_reviews",
   "media_worker_events",
 ] satisfies readonly RelationalTableName[]);
 

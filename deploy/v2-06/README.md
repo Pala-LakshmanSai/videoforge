@@ -10,15 +10,19 @@ Provider-free state only. Nothing in this directory authorizes deployment or res
   credentials never enter a manifest or Git.
 - `secrets.allowlist.json` is the exact set of Worker secret names. Values are applied only through
   the approved secret-store operation and never placed in Wrangler config, logs, evidence, or Git.
+- `r2-cors.template.json` is the origin-exact browser transfer policy. Activation replaces its one
+  placeholder with the deployed HTTPS origin, applies it to the private staging bucket, and proves
+  it with `wrangler r2 bucket cors list`; wildcard origins and headers are forbidden.
 - Each account-owned personal worker receives only a device credential in the OS credential store,
   a short lease for one exact attempt, and short-lived tenant-bound R2 GET/PUT ports. It never
   receives Neon, R2, Cloudflare, Google, email, RunPod, or Runware credentials and opens no inbound
   listener.
-- The immutable worker bundles pinned whisper.cpp 1.8.4 and FFmpeg/FFprobe 8.1.2. The exact
-  `ggml-base.en` object is downloaded through a short-lived private R2 port into per-attempt scratch
-  and must match its pinned SHA-256 before use. Scratch is removed after terminal completion.
+- The immutable worker bundles pinned whisper.cpp 1.8.4, FFmpeg/FFprobe 8.1.2, and the exact
+  `ggml-base.en` model. Every executable and model is checked against the release manifest before
+  the worker connects; there is no first-run model download or user configuration. Scratch is
+  removed after terminal completion.
 - Rollback deploys the previously recorded Cloudflare Worker version and prior signed desktop release
-  manifest. Schema migrations 0029-0032 are additive and retained. Successful final video objects are
+  manifest. Schema migrations 0029-0034 are additive and retained. Successful final video objects are
   not time-deleted; the user-facing Delete operation owns durable R2 deletion. Only failed/cancelled
   transient attempt objects use bounded retention. Auth/session tables rely on Neon native PITR rather
   than the portable metadata export because they contain secret-bearing values.

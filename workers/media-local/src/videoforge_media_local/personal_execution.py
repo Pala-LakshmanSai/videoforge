@@ -52,6 +52,7 @@ class ToolPaths:
     ffmpeg: Path
     ffprobe: Path
     whisper: Path
+    whisper_model: Path
 
 
 @dataclass(frozen=True)
@@ -135,7 +136,17 @@ def parse_personal_job(value: object) -> PersonalJob:
     for key in ("cancellation_url", "completion_url"):
         if not isinstance(value[key], str) or not value[key].startswith("https://"):
             raise ValueError("Personal worker control URL is invalid")
-    if not isinstance(value["tooling"], dict):
+    if (
+        not isinstance(value["tooling"], dict)
+        or set(value["tooling"])
+        != {"whisper_model_sha256", "whisper_version", "ffmpeg_version", "ffprobe_version"}
+        or not isinstance(value["tooling"].get("whisper_model_sha256"), str)
+        or not _SHA256.fullmatch(value["tooling"]["whisper_model_sha256"])
+        or any(
+            not isinstance(value["tooling"].get(key), str) or not value["tooling"][key]
+            for key in ("whisper_version", "ffmpeg_version", "ffprobe_version")
+        )
+    ):
         raise ValueError("Personal worker tooling is invalid")
     return PersonalJob(
         attempt_id=attempt_id,
@@ -394,14 +405,17 @@ def execute_personal_job(
                 str(input_path),
             ]
         )
-        model_path = _local_path(scratch, job.tooling["whisper_model_uri"])
         if job.kind == "ASR":
+            model_sha256, _ = _sha256_file(tools.whisper_model)
+            expected_model_sha256 = str(job.input_document.get("model", {}).get("sha256", ""))
+            if model_sha256 != expected_model_sha256:
+                raise ValueError("Bundled whisper model does not match the job contract")
             command.extend(
                 [
                     "--whisper",
                     str(tools.whisper),
                     "--model",
-                    str(model_path),
+                    str(tools.whisper_model),
                     "--whisper-version",
                     job.tooling["whisper_version"],
                     "--ffmpeg",

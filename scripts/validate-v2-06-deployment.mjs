@@ -74,6 +74,18 @@ if (
 if (activation.authority?.maximum_cumulative_finite_external_spend_usd !== null)
   fail("template must not invent a spend cap");
 
+const r2Cors = JSON.parse(await read("deploy/v2-06/r2-cors.template.json"));
+if (
+  r2Cors.length !== 1 ||
+  JSON.stringify(r2Cors[0]?.AllowedOrigins) !== JSON.stringify(["__V2_06_EXACT_PUBLIC_ORIGIN__"]) ||
+  JSON.stringify([...(r2Cors[0]?.AllowedMethods ?? [])].sort()) !==
+    JSON.stringify(["GET", "HEAD", "PUT"]) ||
+  JSON.stringify([...(r2Cors[0]?.AllowedHeaders ?? [])].sort()) !==
+    JSON.stringify(["Content-Type", "x-amz-checksum-sha256"].sort()) ||
+  !r2Cors[0]?.ExposeHeaders?.includes("ETag")
+)
+  fail("origin-exact R2 browser upload CORS contract drifted");
+
 const releaseTemplate = JSON.parse(await read("deploy/v2-06/media-worker-release.template.json"));
 if (
   releaseTemplate.schema_version !== "videoforge-media-worker-release/v1" ||
@@ -132,7 +144,7 @@ for (const path of [
 }
 
 const manifest = JSON.parse(await read("packages/control-plane/migrations/manifest.json"));
-for (const version of [29, 30, 31, 32, 33]) {
+for (const version of [29, 30, 31, 32, 33, 34]) {
   const entry = manifest.migrations.find((candidate) => candidate.version === version);
   if (!entry) fail(`migration ${version} is absent`);
   const migration = await read(`packages/control-plane/migrations/${entry.filename}`);

@@ -3,13 +3,9 @@ import { hostedRuntimeConfiguration, type HostedRuntimeEnvironment } from "./con
 import { deriveCallbackToken, sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { handlePersonalWorkerRequest } from "./personal-worker";
+import { handleHostedProductRequest } from "./product";
 import { HostedR2Signer } from "./r2";
-import {
-  bindHostedCpuInputDocument,
-  canonicalJson,
-  exactHostedCpuSubmission,
-  whisperModelUri,
-} from "./submission";
+import { bindHostedCpuInputDocument, canonicalJson, exactHostedCpuSubmission } from "./submission";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
@@ -173,6 +169,11 @@ async function handleHostedLibrary(
             AND authority.workspace_id = attempt.workspace_id
             AND authority.attempt_id = attempt.id
             AND authority.source = 'PRIMARY_RESULT_OUTPUT'
+           JOIN hosted_project_reviews AS review
+             ON review.account_id = attempt.account_id
+            AND review.workspace_id = attempt.workspace_id
+            AND review.project_id = attempt.project_id
+            AND review.render_attempt_id = attempt.id
           WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
             AND attempt.kind = 'RENDER' AND attempt.state = 'SUCCEEDED'
             AND attempt.retention_deleted_at IS NULL
@@ -368,10 +369,7 @@ async function handleCpuSubmission(
         ],
         result: { object_key: resultKey, max_bytes: 1_048_576 },
         tooling: {
-          whisper_model_uri:
-            submission.kind === "ASR"
-              ? whisperModelUri(inputDocument)
-              : "vf-local://objects/sha256/00/0000000000000000000000000000000000000000000000000000000000000000.bin",
+          whisper_model_sha256: config.mediaWorkerRelease.whisperModelSha256,
           whisper_version: "1.8.4",
           ffmpeg_version: "8.1.2",
           ffprobe_version: "8.1.2",
@@ -379,9 +377,10 @@ async function handleCpuSubmission(
       };
       if (
         submission.kind === "ASR" &&
-        !objects.some((object) => object.uri === jobSpec.tooling.whisper_model_uri)
+        (inputDocument.model as { sha256?: unknown } | undefined)?.sha256 !==
+          jobSpec.tooling.whisper_model_sha256
       ) {
-        throw new TypeError("Hosted ASR submission does not include the pinned model artifact.");
+        throw new TypeError("Hosted ASR submission does not match the bundled model identity.");
       }
       const jobSpecBytes = new TextEncoder().encode(canonicalJson(jobSpec));
       if (jobSpecBytes.byteLength > 1_048_576) throw new Error("CPU_JOB_SPEC_TOO_LARGE");
@@ -827,6 +826,13 @@ export async function handleHostedRequest(
     executionContext,
   );
   if (personalWorkerResponse) return personalWorkerResponse;
+  const productResponse = await handleHostedProductRequest(
+    request,
+    environment,
+    config,
+    executionContext,
+  );
+  if (productResponse) return productResponse;
   if (url.pathname.startsWith("/api/auth/")) {
     const pool = createNeonPool(config.neon.databaseUrl);
     try {
