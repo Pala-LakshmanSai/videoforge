@@ -148,7 +148,7 @@ def _prepare_macos(work: Path, output: Path, whisper_cli: Path) -> None:
     _copy(whisper_cli, output / "whisper-cli", executable=True)
     for binary in (output / "ffmpeg", output / "ffprobe", output / "whisper-cli"):
         subprocess.run(
-            ["/usr/bin/lipo", "-verify_arch", "arm64", "x86_64", str(binary)], check=True
+            ["/usr/bin/lipo", str(binary), "-verify_arch", "arm64", "x86_64"], check=True
         )
 
 
