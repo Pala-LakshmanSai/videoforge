@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 
 const fail = (message) => {
   throw new Error(`V2-06 R2 CORS verification: ${message}`);
@@ -25,7 +25,7 @@ if (
 const origin = parsedOrigin.origin;
 
 const ansi = /\u001b\[[0-?]*[ -/]*[@-~]/gu;
-const source = (await readFile("/dev/stdin", "utf8")).replace(ansi, "");
+const source = readFileSync(0, "utf8").replace(ansi, "");
 const values = new Map();
 for (const line of source.split(/\r?\n/u)) {
   const match =
