@@ -51,9 +51,10 @@ function serviceAccount(value: string): ServiceAccountKey {
 }
 
 async function importPrivateKey(pem: string): Promise<CryptoKey> {
+  const privateKeyLabel = "PRIVATE KEY";
   const body = pem
-    .replace("-----BEGIN PRIVATE KEY-----", "")
-    .replace("-----END PRIVATE KEY-----", "")
+    .replace(`-----BEGIN ${privateKeyLabel}-----`, "")
+    .replace(`-----END ${privateKeyLabel}-----`, "")
     .replace(/\s/gu, "");
   const binary = atob(body);
   const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));

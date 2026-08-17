@@ -3,7 +3,12 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from videoforge_media_local.cloud_job import parse_spec
+from videoforge_media_local.cloud_job import (
+    _local_path,
+    _sha256_bytes,
+    _validated_primary_output,
+    parse_spec,
+)
 
 
 def valid_spec() -> dict[str, object]:
@@ -79,6 +84,41 @@ class CloudJobSpecTests(unittest.TestCase):
         drifted["tooling"]["ffprobe_version"] = "8.1.1"  # type: ignore[index]
         with self.assertRaises(ValueError):
             parse_spec(drifted)
+
+    def test_primary_output_requires_exact_regular_bytes(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payload = b"owned-render-output"
+            uri = f"vf-local://objects/sha256/{_sha256_bytes(payload)[7:9]}/{_sha256_bytes(payload)[7:]}.mp4"
+            path = _local_path(root, uri)
+            path.parent.mkdir(parents=True)
+            path.write_bytes(payload)
+            result = {
+                "output": {
+                    "artifact_uri": uri,
+                    "bytes": len(payload),
+                    "sha256": _sha256_bytes(payload),
+                }
+            }
+            self.assertEqual(_validated_primary_output(root, result), payload)
+            result["output"]["bytes"] = len(payload) + 1  # type: ignore[index]
+            with self.assertRaises(ValueError):
+                _validated_primary_output(root, result)
+            path.unlink()
+            with self.assertRaises(ValueError):
+                _validated_primary_output(
+                    root,
+                    {
+                        "output": {
+                            "artifact_uri": uri,
+                            "bytes": len(payload),
+                            "sha256": _sha256_bytes(payload),
+                        }
+                    },
+                )
 
 
 if __name__ == "__main__":

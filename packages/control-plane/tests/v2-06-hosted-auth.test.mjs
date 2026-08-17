@@ -10,7 +10,9 @@ import {
 } from "./support/pglite.mjs";
 import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
 
-const LATER = "2026-08-17T00:00:00.000Z";
+const NOW = Date.now();
+const LATER = new Date(NOW + 24 * 60 * 60 * 1_000).toISOString();
+const EARLIER = new Date(NOW - 24 * 60 * 60 * 1_000).toISOString();
 
 async function seedInvite(executor, ordinal, email, expiresAt = LATER) {
   await executor.query(
@@ -55,7 +57,7 @@ test("hosted auth rejects uninvited, expired, and unverified identities before s
       "42501",
     );
 
-    await seedInvite(executor, 1, "expired@example.test", "2026-08-15T00:00:00.000Z");
+    await seedInvite(executor, 1, "expired@example.test", EARLIER);
     await expectDatabaseError(
       insertHostedUser(executor, "hosted-user-expired-000001", "expired@example.test"),
       "42501",

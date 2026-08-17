@@ -255,6 +255,30 @@ def _put(url: str, content_type: str, payload: bytes, maximum: int) -> None:
             raise ValueError("Artifact upload failed")
 
 
+def _validated_primary_output(scratch: Path, result: object) -> bytes:
+    if not isinstance(result, dict):
+        raise ValueError("Cloud job result is malformed")
+    output_document = result.get("output")
+    if not isinstance(output_document, dict) or not isinstance(
+        output_document.get("artifact_uri"), str
+    ):
+        raise ValueError("Cloud job primary result output is missing")
+    path = _local_path(scratch, output_document["artifact_uri"])
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("Cloud job primary result output is not a regular file")
+    payload = path.read_bytes()
+    declared_bytes = output_document.get("bytes")
+    declared_sha256 = output_document.get("sha256")
+    if (
+        not isinstance(declared_bytes, int)
+        or declared_bytes != len(payload)
+        or not isinstance(declared_sha256, str)
+        or declared_sha256 != _sha256_bytes(payload)
+    ):
+        raise ValueError("Cloud job primary result output facts do not match its bytes")
+    return payload
+
+
 class CancellationMonitor:
     def __init__(self, url: str | None, marker: Path) -> None:
         self._url = url
@@ -370,14 +394,12 @@ def run(spec: CloudJobSpec, callback_url: str, callback_token: str) -> int:
             for output in spec.outputs:
                 if output.source != "PRIMARY_RESULT_OUTPUT":
                     raise ValueError("Unsupported Cloud job output source")
-                output_document = result.get("output")
-                if not isinstance(output_document, dict) or not isinstance(
-                    output_document.get("artifact_uri"), str
-                ):
-                    raise ValueError("Cloud job primary result output is missing")
-                path = _local_path(scratch, output_document["artifact_uri"])
-                if path.is_file():
-                    _put(output.url, output.content_type, path.read_bytes(), output.max_bytes)
+                _put(
+                    output.url,
+                    output.content_type,
+                    _validated_primary_output(scratch, result),
+                    output.max_bytes,
+                )
             payload = _canonical(result)
             _put(spec.result_upload_url, "application/json", payload, spec.result_max_bytes)
             result_facts = {

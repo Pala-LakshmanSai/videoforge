@@ -5,9 +5,18 @@ import type { HostedRuntimeConfiguration } from "./configuration";
 const EXACT_KEY =
   /^tenant\/[A-Za-z0-9._:-]+\/workspace\/[A-Za-z0-9._:-]+\/project\/[A-Za-z0-9._:-]+\/revision\/[A-Za-z0-9._:-]+\/lane\/(?:input|mage-image|soulx-avatar|render|provenance)\/job\/[A-Za-z0-9._:-]+\/artifact\/[A-Za-z0-9._:-]+$/u;
 
+function checksumHeader(value: string): string {
+  const bytes = value
+    .slice("sha256:".length)
+    .match(/.{2}/gu)!
+    .map((hex) => Number.parseInt(hex, 16));
+  return btoa(String.fromCharCode(...bytes));
+}
+
 export interface HostedSignedArtifactPort {
   readonly method: "GET" | "PUT";
   readonly url: string;
+  readonly requiredHeaders: Readonly<Record<string, string>>;
   readonly expiresAt: string;
   readonly contentType: string;
   readonly contentLength: number;
@@ -63,7 +72,17 @@ export class HostedR2Signer {
       `${this.#endpoint}/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`,
     );
     target.searchParams.set("X-Amz-Expires", String(input.lifetimeSeconds));
-    const headers = input.method === "PUT" ? { "content-type": input.contentType } : undefined;
+    // R2/S3 query signing preserves the checksum header but deliberately excludes browser-managed
+    // content-length/content-type headers. The caller must send the returned checksum header; the
+    // durable completion path independently verifies exact length, type, and bytes before acceptance.
+    const headers =
+      input.method === "PUT"
+        ? {
+            "content-length": String(input.contentLength),
+            "content-type": input.contentType,
+            "x-amz-checksum-sha256": checksumHeader(input.checksumSha256),
+          }
+        : undefined;
     const signed = await this.#client.sign(target, {
       method: input.method,
       headers,
@@ -72,6 +91,7 @@ export class HostedR2Signer {
     return Object.freeze({
       method: input.method,
       url: signed.url,
+      requiredHeaders: Object.freeze(headers ?? {}),
       expiresAt: new Date(now.getTime() + input.lifetimeSeconds * 1_000).toISOString(),
       contentType: input.contentType,
       contentLength: input.contentLength,

@@ -125,6 +125,12 @@ describe("V2-06 hosted adapters", () => {
       "fixture-cloudflare-account-id.r2.cloudflarestorage.com",
     );
     expect(port.url).toContain("X-Amz-Expires=300");
+    expect(decodeURIComponent(port.url)).toContain(
+      "X-Amz-SignedHeaders=host;x-amz-checksum-sha256",
+    );
+    expect(port.requiredHeaders["x-amz-checksum-sha256"]).toBe(
+      "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqo=",
+    );
     expect(port.url).not.toContain(config.r2.secretAccessKey);
     await expect(
       new HostedR2Signer(config.r2).sign({
