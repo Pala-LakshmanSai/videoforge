@@ -348,7 +348,7 @@ if (
   !migrationActivation.includes("FORCE RLS") ||
   !migrationActivation.includes("hosted render plans are not read-only") ||
   !deploymentRunbook.includes("r2 bucket cors set") ||
-  !deploymentRunbook.includes('--file \"$CORS_CONFIG\" --force') ||
+  !deploymentRunbook.includes('--file "$CORS_CONFIG" --force') ||
   !deploymentRunbook.includes("secret list --format json") ||
   !rollbackRunbook.includes("Keep migrations 0029-0035 applied") ||
   rollbackRunbook.includes("Keep migrations 0029-0032 applied")
