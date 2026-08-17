@@ -10,8 +10,9 @@ all secret values outside Git.
 Run from the repository root on the exact clean commit that is being activated. The renderer refuses
 to proceed until the Vite-built Worker module and client asset directory exist and are non-empty at
 their fixed staging output paths. It then replaces the source-relative paths with absolute paths and
-sets `no_bundle: true`; this is required because the rendered file is stored in `/tmp`, while the
-Worker's generated module imports live beside the built bundle in the repository.
+keeps Wrangler bundling enabled. This is required because the Vite entry is a small module that
+imports generated chunks beside it; `no_bundle: true` would upload only the entry stub. Absolute
+paths are required because the rendered file is stored in `/tmp`.
 
 ```sh
 set -eu
@@ -30,7 +31,7 @@ node deploy/v2-06/render-staging-config.mjs \
 node -e '
   const fs = require("node:fs");
   const c = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-  if (c.no_bundle !== true || !c.main.startsWith(process.cwd() + "/apps/web/dist-staging/") ||
+  if (c.no_bundle !== false || !c.main.startsWith(process.cwd() + "/apps/web/dist-staging/") ||
       c.assets?.directory !== process.cwd() + "/apps/web/dist-staging/client") process.exit(1);
   if (!fs.statSync(c.main).isFile() || !fs.statSync(c.assets.directory).isDirectory()) process.exit(1);
 ' "$CONFIG"
@@ -106,3 +107,20 @@ videoforge-v2-06-staging-private`. Wildcard origins and headers are forbidden.
   rows and may consume Neon compute.
 - `observability.template.json` pins redaction and alert conditions. Alert destinations and any
   external notification delivery are selected and approved during activation.
+
+## Tenant-owned activation presets
+
+The hosted catalog intentionally returns only the authenticated account's own `READY` Avatar Profile
+and `PUBLISHED` Image Style versions. After each invited Google identity has completed its first
+session admission, seed its exact private activation presets with
+`seed-tenant-presets.mjs`. The utility requires a separate migration-owner URL, an explicit
+`V2_06_SEED_CONFIRM=YES`, an explicit avatar-rights confirmation, three existing tenant-owned
+`VERIFIED` avatar assets (original, runtime, thumbnail), and one fixed `V2_06_SEED_AT` timestamp.
+It refuses the hosted runtime role, missing/foreign/unverified assets, non-head-34 databases, and
+conflicting immutable rows. Re-running the same command is safe only when every deterministic row
+already matches; it never deletes rows or creates media bytes.
+
+Use `--dry-run` first. The normal command is documented in the script's `--help` output. Keep the
+database URL in the environment; it is never written to the generated catalog rows or evidence.
+This seed is a V2-06 CPU acceptance fixture only. It does not create GPU presets, RunPod work, or
+pre-composed render outputs, and it does not authorize V2-07.

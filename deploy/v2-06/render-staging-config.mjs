@@ -146,8 +146,10 @@ const rendered = replace(template);
 // The rendered file lives outside the repository. Relative main/assets paths
 // would resolve against /tmp and deploy the wrong tree (or fail after a
 // partial provider action), so point Wrangler at the Vite output explicitly.
+// Keep bundling enabled: the Vite entry is a small module that imports
+// generated chunks beside it, and no_bundle would upload only that stub.
 rendered.main = workerBundlePath;
-rendered.no_bundle = true;
+rendered.no_bundle = false;
 rendered.assets = { ...rendered.assets, directory: assetsDirectory };
 const renderedJson = `${JSON.stringify(rendered, null, 2)}\n`;
 if (/__V2_06_[A-Z0-9_]+__/u.test(renderedJson)) fail("unresolved deployment placeholder remains");
