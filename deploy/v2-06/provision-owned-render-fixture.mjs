@@ -1058,6 +1058,30 @@ async function ensureR2FailureReceipt(client, plan, intent) {
   }
 }
 
+/**
+ * Upload every exact fixture object and persist one append-only reconciliation receipt if any
+ * upload fails. The uploader is injected so this failure fence is testable without contacting R2.
+ */
+async function uploadR2RowsWithReconciliation({ client, plan, intent, upload }) {
+  const states = {};
+  try {
+    for (const row of plan.rows) states[row.name] = await upload(row);
+  } catch {
+    let failureReceipt;
+    try {
+      failureReceipt = await ensureR2FailureReceipt(client, plan, intent);
+    } catch {
+      error("R2 upload failed and its immutable failure receipt could not be persisted");
+    }
+    error(
+      "R2 upload failed; immutable failure receipt " +
+        failureReceipt.idempotencyKey +
+        " records the exact expected-object cleanup scope and no automatic delete was attempted",
+    );
+  }
+  return states;
+}
+
 async function ensureR2UploadIntent(client, plan) {
   const intent = buildR2UploadIntent(plan);
   try {
@@ -1768,22 +1792,12 @@ async function main(argv = process.argv.slice(2)) {
     plan.sourceEvidenceSha256 = fixture.evidenceHash;
     plan.r2UploadIntent = await ensureR2UploadIntent(client, plan);
     const r2 = makeR2(r2Config);
-    const r2States = {};
-    try {
-      for (const row of plan.rows) r2States[row.name] = await ensureR2(r2, r2Config, row);
-    } catch (cause) {
-      let failureReceipt;
-      try {
-        failureReceipt = await ensureR2FailureReceipt(client, plan, plan.r2UploadIntent);
-      } catch {
-        error("R2 upload failed and its immutable failure receipt could not be persisted");
-      }
-      error(
-        "R2 upload failed; immutable failure receipt " +
-          failureReceipt.idempotencyKey +
-          " records the exact expected-object cleanup scope and no automatic delete was attempted",
-      );
-    }
+    const r2States = await uploadR2RowsWithReconciliation({
+      client,
+      plan,
+      intent: plan.r2UploadIntent,
+      upload: (row) => ensureR2(r2, r2Config, row),
+    });
 
     try {
       await client.query("BEGIN");
@@ -1873,6 +1887,7 @@ export {
   buildAsrSubmission,
   ensureR2,
   ensureR2FailureReceipt,
+  uploadR2RowsWithReconciliation,
   planFixture,
   r2Request,
   validateRenderInput,

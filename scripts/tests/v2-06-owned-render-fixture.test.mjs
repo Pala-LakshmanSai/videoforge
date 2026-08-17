@@ -17,6 +17,7 @@ import {
   buildR2UploadIntent,
   canonicalHash,
   ensureR2FailureReceipt,
+  uploadR2RowsWithReconciliation,
   planFixture,
   ensureR2,
   r2Request,
@@ -271,6 +272,56 @@ test("R2 partial failure records an immutable reconcile receipt without automati
   assert.equal(recorded.resultPayload.cleanup.required, true);
   assert.equal(recorded.resultPayload.r2_objects.length, MAX_R2_OBJECT_COUNT);
   assert.ok(recorded.resultPayload.r2_objects.every((row) => row.state === "RECONCILE_REQUIRED"));
+  assert.ok(queries.some(({ sql }) => sql.includes("INSERT INTO repository_mutation_receipts")));
+  assert.ok(queries.some(({ sql }) => sql === "COMMIT"));
+});
+
+test("R2 upload orchestration fences a partial failure through the real catch path", async () => {
+  const fixture = await verifyLocalFixture();
+  const plan = planFixture(fixture, scope, "2026-08-17T12:00:00Z");
+  plan.sourceRenderInputSha256 = fixture.inputHash;
+  plan.sourceEvidenceSha256 = fixture.evidenceHash;
+  const intent = buildR2UploadIntent(plan);
+  const expected = buildR2FailureReceipt(plan, intent);
+  const queries = [];
+  const client = {
+    async query(sql, params = []) {
+      queries.push({ sql, params });
+      if (sql.startsWith("SELECT workspace_id::text AS workspace_id")) {
+        return {
+          rows: [
+            {
+              workspace_id: plan.scope.workspace_id,
+              idempotency_key: expected.idempotencyKey,
+              operation: expected.operation,
+              input_hash: expected.inputHash,
+              result_codec: "repository-result/v1",
+              result_payload: expected.resultPayload,
+              result_hash: expected.resultHash,
+              created_at: plan.seedAt,
+            },
+          ],
+        };
+      }
+      return { rows: [] };
+    },
+  };
+  let uploads = 0;
+  await assert.rejects(
+    () =>
+      uploadR2RowsWithReconciliation({
+        client,
+        plan,
+        intent,
+        upload: async () => {
+          uploads += 1;
+          if (uploads === 2) throw new Error("injected R2 failure");
+          return { state: "CREATED" };
+        },
+      }),
+    /immutable failure receipt/u,
+  );
+  assert.equal(uploads, 2);
   assert.ok(queries.some(({ sql }) => sql.includes("INSERT INTO repository_mutation_receipts")));
   assert.ok(queries.some(({ sql }) => sql === "COMMIT"));
 });
