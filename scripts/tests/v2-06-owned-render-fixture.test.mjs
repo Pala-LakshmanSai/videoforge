@@ -4,8 +4,10 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
+  assertProviderConfig,
   canonicalHash,
   planFixture,
+  r2Request,
   verifyLocalFixture,
 } from "../../deploy/v2-06/provision-owned-render-fixture.mjs";
 
@@ -78,4 +80,59 @@ test("live path remains fail-closed without all three confirmations", async () =
   assert.doesNotMatch(source, /client\.delete\s*\(/u);
   assert.doesNotMatch(source, /DROP\s+TABLE|DELETE\s+FROM/iu);
   assert.doesNotMatch(source, /RUNPOD_API_KEY\s*[:=]|run\.googleapis\.com|CloudRunJobsClient/u);
+});
+
+test("R2 requests forward the complete aws4fetch-signed Request", async () => {
+  let observed;
+  const client = {
+    async sign(url, options) {
+      return {
+        url,
+        method: options.method,
+        headers: new Headers({
+          ...options.headers,
+          authorization: "AWS4-HMAC-SHA256 signed-test",
+          "x-amz-date": "20260817T120000Z",
+        }),
+      };
+    },
+  };
+  await r2Request(
+    client,
+    "https://example.invalid/object",
+    "PUT",
+    { "x-amz-checksum-sha256": "checksum", "content-type": "application/json" },
+    Buffer.from("fixture"),
+    async (signedRequest) => {
+      observed = signedRequest;
+      return new Response(null, { status: 200 });
+    },
+  );
+  assert.equal(observed.method, "PUT");
+  assert.equal(observed.headers.get("authorization"), "AWS4-HMAC-SHA256 signed-test");
+  assert.equal(observed.headers.get("x-amz-date"), "20260817T120000Z");
+  assert.equal(observed.headers.get("x-amz-checksum-sha256"), "checksum");
+  assert.equal(observed.headers.get("content-type"), "application/json");
+});
+
+test("live provider config is pinned to the approved staging resources", () => {
+  assertProviderConfig(
+    "postgresql://migration-owner:placeholder@ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb",
+    {
+      accountId: "f9254d773a3426fcb469451b1f965d8c",
+      bucket: "videoforge-v2-06-staging-private",
+      region: "auto",
+      accessKeyId: "placeholder",
+      secretAccessKey: "placeholder",
+    },
+  );
+  assert.throws(
+    () =>
+      assertProviderConfig("postgresql://migration-owner:placeholder@other.neon.tech/neondb", {
+        accountId: "f9254d773a3426fcb469451b1f965d8c",
+        bucket: "videoforge-v2-06-staging-private",
+        region: "auto",
+      }),
+    /approved V2-06 Neon project/u,
+  );
 });

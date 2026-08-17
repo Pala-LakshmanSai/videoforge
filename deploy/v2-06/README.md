@@ -175,15 +175,22 @@ V2_06_SEED_AT=2026-08-17T12:00:00Z \
 node deploy/v2-06/provision-owned-render-fixture.mjs --dry-run
 ```
 
-The current implementation deliberately fails closed at the cross-provider live boundary until a
-separately reviewed DB/R2 compensation runbook exists. It has no delete, repair, GPU, or provider
-generation operation. Any future live extension must retain three explicit confirmations
-(`V2_06_RENDER_FIXTURE_CONFIRM`, `V2_06_RENDER_FIXTURE_R2_CONFIRM`, and
-`V2_06_RENDER_FIXTURE_DB_CONFIRM`), the Neon driver rooted at `apps/web`, aws4fetch SigV4, exact
-R2 byte verification, one Neon transaction, and an idempotent append-only mutation receipt.
-Local fixture evidence remains local proof only; it cannot prove hosted deployment.
+Live use requires the same three explicit confirmations
+(`V2_06_RENDER_FIXTURE_CONFIRM=YES`, `V2_06_RENDER_FIXTURE_R2_CONFIRM=YES`, and
+`V2_06_RENDER_FIXTURE_DB_CONFIRM=YES`), the migration-owner Neon URL, and one bucket-scoped R2 key
+through the environment. The provisioner hard-pins the approved staging resources (Cloudflare
+account `f9254d773a3426fcb469451b1f965d8c`, bucket `videoforge-v2-06-staging-private`, region
+`auto`, and the approved Neon project host), resolves only one of the two admitted identities,
+and uses the driver rooted at `apps/web`. It forwards the complete aws4fetch-signed request to
+`fetch`, uploads only missing exact tenant objects, verifies HEAD metadata and GET bytes/hash/type,
+then commits one Neon transaction at migration head 35. Existing objects and rows are accepted
+only when every immutable fact matches; no object, row, output, GPU, or provider-generated media
+is deleted or overwritten. If Neon fails after R2 verification, the exact orphan objects remain
+detectable for audit and the transaction is rolled back.
 
-The emitted preview intentionally exposes both `revisionConfigBase`/`revision_config_hash` and a
-derived `hosted_render_submission`. It is not a persistable revision payload: hashing the full
-payload would create a manifest-to-revision-hash cycle. Resolving that immutable hash domain and
-the cross-provider compensation protocol is a prerequisite for any live mutation.
+The transaction stores the base `revision_config_payload` and its hash on the locked revision;
+the rewritten manifest pins that hash, while `hosted_render_plans` stores the exact RENDER
+submission and its canonical payload SHA separately. The append-only mutation receipt also emits
+the exact ASR submission to send after the tenant completes browser sign-in. Re-running the same
+command reuses exact R2 bytes and the same deterministic rows. Local fixture evidence remains
+local proof only; it cannot prove hosted deployment or a successful worker render.

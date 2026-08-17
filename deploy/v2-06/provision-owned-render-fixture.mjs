@@ -3,12 +3,12 @@
 /*
  * V2-06 owned-render fixture provisioner.
  *
- * The default path is provider-free dry-run. This file currently plans (but never persists) the
- * tenant/project/revision/assets/reservations/receipts/audit lineage. Live mode is intentionally
- * fail-closed until the DB/R2 compensation and revision-hash contract are separately approved.
- * There is deliberately no delete, repair, GPU, or provider-generation path. A future live path
- * must load "@neondatabase/serverless" through the apps/web dependency root and use aws4fetch
- * SigV4 for R2; this safe slice opens neither provider.
+ * The default path is provider-free dry-run. Live mode is a bounded, append-only activation step:
+ * exact owned R2 objects are uploaded only when missing, verified byte-for-byte, and then one
+ * Neon transaction creates the tenant/project/revision/assets/reservations/receipts/render-plan/
+ * mutation-receipt lineage. There is deliberately no delete, repair, GPU, or provider-generation
+ * path. A database failure intentionally leaves already verified R2 objects in place for audit;
+ * no compensation delete is attempted.
  */
 
 import { createHash } from "node:crypto";
@@ -20,14 +20,20 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const requireWeb = createRequire(path.join(ROOT, "apps/web/package.json"));
-// Required future-live identifiers are kept explicit for the validator; no provider is opened here.
 const FUTURE_NEON_DRIVER = "@neondatabase/serverless";
 const FUTURE_R2_ACCOUNT_ENV = "R2_ACCOUNT_ID";
 const SOURCE_ROOT = path.join(ROOT, "artifacts/local-media");
 const SOURCE_ATTEMPT = "attempt_render_local_004";
-const BUCKET = "videoforge-v2-06-staging-private";
+const APPROVED_R2_ACCOUNT_ID = "f9254d773a3426fcb469451b1f965d8c";
+const APPROVED_R2_BUCKET = "videoforge-v2-06-staging-private";
+const APPROVED_R2_REGION = "auto";
+const APPROVED_NEON_HOST = "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech";
+const BUCKET = APPROVED_R2_BUCKET;
 const FIXTURE_ID = "local_short_slice_owned_001";
 const OPERATION = "v2-06-owned-render-fixture";
+// The persisted hosted_render_submission lives in hosted_render_plans, never in revision payload.
+const WHISPER_MODEL_SHA256 =
+  "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002";
 const ALLOWED_EMAILS = new Set(["lakshmansai121@gmail.com", "demo9gss@gmail.com"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA = /^sha256:[0-9a-f]{64}$/u;
@@ -191,7 +197,9 @@ async function verifyLocalFixture(root = SOURCE_ROOT, attempt = SOURCE_ATTEMPT) 
   if (evidence.provider_calls_authorized !== false || evidence.external_spend_usd !== 0)
     error("local evidence is not provider-off and zero-spend");
   validateRenderInput(input);
-  const inputHash = sha256(await readFile(inputFile));
+  const inputBytes = await readFile(inputFile);
+  const evidenceBytes = await readFile(evidenceFile);
+  const inputHash = sha256(inputBytes);
   if (inputHash !== evidence.documents.render_input_sha256)
     error("local render input hash is not pinned by evidence");
   const assets = [];
@@ -219,7 +227,17 @@ async function verifyLocalFixture(root = SOURCE_ROOT, attempt = SOURCE_ATTEMPT) 
   );
   if (Number(evidence.output.bytes) !== output.bytes.length)
     error("local output byte count drifted");
-  return { root, input, evidence, assets, manifest, manifestBytes, output };
+  return {
+    root,
+    input,
+    evidence,
+    assets,
+    manifest,
+    manifestBytes,
+    output,
+    inputHash,
+    evidenceHash: sha256(evidenceBytes),
+  };
 }
 
 function runCanonicalLocalPath() {
@@ -248,7 +266,7 @@ function replaceIds(value, map) {
   return value;
 }
 
-function planFixture(fixture, scope, seedAt) {
+function planFixture(fixture, scope, seedAt, preset = null) {
   requireUuid(scope.user_id, "user_id");
   requireUuid(scope.account_id, "account_id");
   requireUuid(scope.workspace_id, "workspace_id");
@@ -309,6 +327,7 @@ function planFixture(fixture, scope, seedAt) {
     title: "V2-06 Owned Render Fixture",
     voiceover_asset_id: voiceover.assetId,
     voiceover_sha256: voiceover.digest,
+    voiceover_binary_sha256: voiceover.digest,
     generation_mode: "LOWEST_COST",
     maximum_cost_micro_usd: 0,
     currency: "USD",
@@ -316,9 +335,41 @@ function planFixture(fixture, scope, seedAt) {
     execution_backend: "PERSONAL_WORKER",
     fixture_provenance: FIXTURE_ID,
   };
-  // Preview only: the hosted submission below is derived from the manifest and therefore cannot
-  // be added to this hash without creating a circular manifest -> revision-hash dependency. The
-  // fail-closed live boundary must settle this contract before any DB row or R2 object is written.
+  if (preset) {
+    for (const [value, name] of [
+      [preset.avatarProfileId, "avatar_profile_id"],
+      [preset.avatarVersionId, "avatar_profile_version_id"],
+      [preset.avatarProfileHash, "avatar_profile_hash"],
+      [preset.runtimeAssetId, "avatar_runtime_source_asset_id"],
+      [preset.runtimeAssetSha256, "avatar_runtime_source_binary_sha256"],
+      [preset.styleId, "image_style_id"],
+      [preset.styleVersionId, "image_style_version_id"],
+      [preset.styleProfileHash, "style_profile_hash"],
+    ]) {
+      if (typeof value !== "string" || value.length === 0)
+        error(name + " is absent from tenant presets");
+    }
+    Object.assign(base, {
+      avatar_profile_id: preset.avatarProfileId,
+      avatar_profile_version_id: preset.avatarVersionId,
+      avatar_profile_hash: preset.avatarProfileHash,
+      avatar_runtime_source_asset_id: preset.runtimeAssetId,
+      avatar_runtime_source_binary_sha256: preset.runtimeAssetSha256,
+      avatar_source_preparation_profile: preset.sourcePreparationProfile,
+      avatar_source_validation_profile: preset.sourceValidationProfile,
+      image_style_id: preset.styleId,
+      image_style_version_id: preset.styleVersionId,
+      style_profile_hash: preset.styleProfileHash,
+      extra_prompt_keywords: "",
+      apply_extra_prompt_keywords: false,
+      revision_config_contract_name: "videoforge-hosted-revision-config",
+      revision_config_contract_version: "v1",
+      seed: preset.seed,
+    });
+  }
+  // The hosted submission below is derived from the manifest and therefore cannot be added to
+  // this hash without creating a circular manifest -> revision_config_hash dependency. The
+  // immutable render plan is persisted separately in hosted_render_plans.
   const revisionConfigHash = canonicalHash(base);
   const idMap = new Map([[fixture.input.project_revision_id, revisionId], ...ids]);
   const rewrittenManifest = replaceIds(fixture.manifest, idMap);
@@ -355,6 +406,18 @@ function planFixture(fixture, scope, seedAt) {
       jobId +
       "/artifact/" +
       row.name;
+  for (const row of allRows) {
+    row.metadata = {
+      schema_version: "videoforge-owned-render-fixture-asset/v1",
+      fixture_id: FIXTURE_ID,
+      fixture_non_production: true,
+      role: row.name,
+      content_type: row.contentType,
+      byte_size: row.bytes.length,
+      checksum_sha256: row.digest,
+      object_key: row.objectKey,
+    };
+  }
   const renderInput = {
     schema_version: "render-job-input/v1",
     project_revision_id: revisionId,
@@ -388,7 +451,44 @@ function planFixture(fixture, scope, seedAt) {
     input_document: renderInput,
     objects: allRows.map((row) => ({ artifact_receipt_id: row.receiptId, uri: row.uri })),
   };
-  const payload = { ...base, hosted_render_submission: submission };
+  const asrSubmission = {
+    schema_version: "videoforge-hosted-cpu-submission/v1",
+    idempotency_key: OPERATION + "-" + scope.account_id.slice(0, 12) + "-asr-v1",
+    project_id: projectId,
+    project_revision_id: revisionId,
+    kind: "ASR",
+    input_document: {
+      schema_version: "asr-job-input/v1",
+      project_revision_id: revisionId,
+      attempt_id: projectId,
+      voiceover: {
+        asset_id: voiceover.assetId,
+        sha256: voiceover.digest,
+        artifact_uri: voiceover.uri,
+        media_type: voiceover.contentType,
+        duration_ms: voiceover.durationMs,
+      },
+      model: {
+        engine: "whisper.cpp",
+        name: "base.en",
+        sha256: WHISPER_MODEL_SHA256,
+        language: "en",
+      },
+      options: {
+        threads: 4,
+        processors: 1,
+        flash_attention: true,
+        greedy: true,
+        split_on_word: true,
+      },
+      output: {
+        result_uri: "vf-local-run://" + revisionId + "/" + projectId + "/asr-result.json",
+      },
+      cancel_token: projectId,
+    },
+    objects: [{ artifact_receipt_id: voiceover.receiptId, uri: voiceover.uri }],
+  };
+  const renderPlanPayloadHash = canonicalHash(submission);
   return {
     operation: OPERATION,
     fixtureId: FIXTURE_ID,
@@ -399,14 +499,18 @@ function planFixture(fixture, scope, seedAt) {
     renderAttemptId,
     jobId,
     idempotencyKey: submission.idempotency_key,
+    asrIdempotencyKey: asrSubmission.idempotency_key,
     revisionConfigHash,
     revisionConfigBase: base,
-    revisionConfigPayload: payload,
+    // This is the exact payload stored on project_revisions; it intentionally contains no plan.
+    revisionConfigPayload: base,
     rewrittenManifest,
     manifestBytes,
     manifestSha,
     renderInput,
     submission,
+    asrSubmission,
+    renderPlanPayloadHash,
     rows: allRows,
   };
 }
@@ -450,35 +554,669 @@ function r2Url(config, key) {
   );
 }
 
-async function ensureR2(client, config, row) {
+async function r2Request(client, url, method, headers = {}, body, fetchImpl = fetch) {
+  // aws4fetch returns a fully signed Request. Passing that Request through (rather than rebuilding
+  // the init object) is important: Authorization, x-amz-date, x-amz-content-sha256, and the
+  // caller's checksum/content headers must all reach Cloudflare.
+  const signed = await client.sign(url, {
+    method,
+    headers,
+    body,
+    aws: { signQuery: false, allHeaders: true },
+  });
+  if (!signed || typeof signed !== "object" || typeof signed.url !== "string")
+    error("aws4fetch did not return a signed R2 request");
+  return fetchImpl(signed);
+}
+
+async function verifyR2Object(client, config, row) {
   const url = r2Url(config, row.objectKey);
-  const existing = await client.fetch(url, { method: "GET" });
-  if (existing.ok) {
-    const bytes = Buffer.from(await existing.arrayBuffer());
-    if (sha256(bytes) !== row.digest || bytes.length !== row.bytes.length)
-      error("R2 object " + row.name + " differs from exact fixture bytes");
-    return "REUSED_EXACT";
-  }
-  if (existing.status !== 404)
-    error("R2 preflight for " + row.name + " returned HTTP " + existing.status);
-  const uploaded = await client.fetch(url, {
-    method: "PUT",
-    headers: {
+  const head = await r2Request(client, url, "HEAD");
+  if (head.status === 404) return false;
+  if (!head.ok) error("R2 preflight for " + row.name + " returned HTTP " + head.status);
+  const headType = head.headers.get("content-type")?.split(";", 1)[0];
+  if (
+    Number(head.headers.get("content-length")) !== row.bytes.length ||
+    headType !== row.contentType
+  )
+    error("R2 metadata for " + row.name + " differs from exact fixture facts");
+  const checked = await r2Request(client, url, "GET");
+  if (!checked.ok)
+    error("R2 byte verification for " + row.name + " returned HTTP " + checked.status);
+  const bytes = Buffer.from(await checked.arrayBuffer());
+  const contentType = checked.headers.get("content-type")?.split(";", 1)[0];
+  if (
+    sha256(bytes) !== row.digest ||
+    bytes.length !== row.bytes.length ||
+    contentType !== row.contentType
+  )
+    error("R2 object " + row.name + " differs from exact fixture bytes/type");
+  return true;
+}
+
+async function ensureR2(client, config, row) {
+  const exists = await verifyR2Object(client, config, row);
+  if (exists) return "REUSED_EXACT";
+  const url = r2Url(config, row.objectKey);
+  const uploaded = await r2Request(
+    client,
+    url,
+    "PUT",
+    {
       "content-type": row.contentType,
       "content-length": String(row.bytes.length),
       "x-amz-checksum-sha256": checksumHeader(row.digest),
     },
-    body: row.bytes,
-    aws: { allHeaders: true },
-  });
+    row.bytes,
+  );
   if (!uploaded.ok) error("R2 upload for " + row.name + " returned HTTP " + uploaded.status);
-  const checked = await client.fetch(url, { method: "GET" });
-  if (!checked.ok)
-    error("R2 post-upload verification for " + row.name + " returned HTTP " + checked.status);
-  const bytes = Buffer.from(await checked.arrayBuffer());
-  if (sha256(bytes) !== row.digest || bytes.length !== row.bytes.length)
-    error("R2 post-upload verification failed for " + row.name);
+  if (!(await verifyR2Object(client, config, row)))
+    error("R2 post-upload verification for " + row.name + " found no object");
   return "UPLOADED_VERIFIED";
+}
+
+function assertProviderConfig(databaseUrl, r2Config) {
+  let url;
+  try {
+    url = new URL(databaseUrl);
+  } catch {
+    error("V2_06_MIGRATION_DATABASE_URL is not a valid PostgreSQL URL");
+  }
+  if (!url || !["postgres:", "postgresql:"].includes(url.protocol))
+    error("V2_06_MIGRATION_DATABASE_URL must use postgres:// or postgresql://");
+  if (url.hostname !== APPROVED_NEON_HOST)
+    error("migration connection host is not the approved V2-06 Neon project");
+  if (decodeURIComponent(url.username).toLowerCase() === "videoforge_v2_06_runtime")
+    error("owned render fixture refuses the hosted runtime role");
+  if (
+    r2Config.accountId !== APPROVED_R2_ACCOUNT_ID ||
+    r2Config.bucket !== APPROVED_R2_BUCKET ||
+    r2Config.region !== APPROVED_R2_REGION
+  )
+    error("R2 config is not the approved V2-06 account/bucket/region");
+}
+
+async function resolveScope(executor, email) {
+  const result = await executor.query(
+    `SELECT auth.id AS hosted_auth_user_id, link.user_id::text AS user_id,
+            link.admitted_account_id::text AS account_id, link.workspace_id::text AS workspace_id,
+            auth.email, auth.email_verified, account.scope_kind AS account_scope_kind,
+            account.status AS account_status, workspace.status AS workspace_status,
+            workspace.is_default, membership.status AS membership_status,
+            membership.role AS membership_role
+       FROM hosted_auth_users AS auth
+       JOIN hosted_auth_links AS link ON link.hosted_auth_user_id = auth.id
+       JOIN accounts AS account ON account.id = link.admitted_account_id
+       JOIN workspaces AS workspace ON workspace.account_id = link.admitted_account_id
+                                  AND workspace.id = link.workspace_id
+       JOIN memberships AS membership ON membership.account_id = link.admitted_account_id
+                                    AND membership.workspace_id = link.workspace_id
+                                    AND membership.user_id = link.user_id
+      WHERE auth.email = $1`,
+    [email],
+  );
+  if (result.rows.length !== 1) error("tenant email must resolve to exactly one admitted identity");
+  const scope = result.rows[0];
+  if (
+    scope.email !== email ||
+    scope.email_verified !== true ||
+    scope.account_scope_kind !== "USER" ||
+    scope.account_status !== "ACTIVE" ||
+    scope.workspace_status !== "ACTIVE" ||
+    scope.is_default !== true ||
+    scope.membership_status !== "ACTIVE" ||
+    scope.membership_role !== "ADMIN"
+  )
+    error("tenant identity is not one verified active default workspace owner");
+  for (const name of ["user_id", "account_id", "workspace_id"]) requireUuid(scope[name], name);
+  return {
+    user_id: scope.user_id,
+    account_id: scope.account_id,
+    workspace_id: scope.workspace_id,
+    email,
+  };
+}
+
+async function resolvePresetRows(executor, scope) {
+  const avatarProfileId = uuid("videoforge:v2-06:" + scope.account_id + ":avatar:activation");
+  const avatarVersionId = uuid("videoforge:v2-06:" + scope.account_id + ":avatar:activation:v1");
+  const styleId = uuid("videoforge:v2-06:" + scope.account_id + ":style:activation");
+  const styleVersionId = uuid("videoforge:v2-06:" + scope.account_id + ":style:activation:v1");
+  const result = await executor.query(
+    `SELECT profile.id::text AS avatar_profile_id,
+            avatar_version.id::text AS avatar_version_id,
+            avatar_version.profile_hash AS avatar_profile_hash,
+            avatar_version.runtime_source_asset_id::text AS runtime_asset_id,
+            avatar_version.runtime_source_binary_sha256 AS runtime_asset_sha256,
+            avatar_version.source_preparation_profile,
+            avatar_version.source_validation_profile,
+            style.id::text AS style_id,
+            style_version.id::text AS style_version_id,
+            style_version.style_profile_hash
+       FROM avatar_profiles AS profile
+       JOIN avatar_profile_versions AS avatar_version
+         ON avatar_version.account_id = profile.account_id
+        AND avatar_version.workspace_id = profile.workspace_id
+        AND avatar_version.profile_id = profile.id
+       CROSS JOIN image_styles AS style
+       JOIN image_style_versions AS style_version
+         ON style_version.account_id = style.account_id
+        AND style_version.workspace_id = style.workspace_id
+        AND style_version.style_id = style.id
+      WHERE profile.account_id = $1 AND profile.workspace_id = $2
+        AND profile.id = $3 AND avatar_version.id = $4
+        AND profile.status = 'ACTIVE' AND avatar_version.state = 'READY'
+        AND style.account_id = $1 AND style.workspace_id = $2
+        AND style.id = $5 AND style_version.id = $6
+        AND style.status = 'ACTIVE' AND style_version.state = 'PUBLISHED'`,
+    [
+      scope.account_id,
+      scope.workspace_id,
+      avatarProfileId,
+      avatarVersionId,
+      styleId,
+      styleVersionId,
+    ],
+  );
+  if (result.rows.length !== 1)
+    error("tenant-owned READY/PUBLISHED activation presets are missing");
+  const row = result.rows[0];
+  const seed =
+    Number.parseInt(
+      createHash("sha256")
+        .update(OPERATION + ":" + scope.account_id, "utf8")
+        .digest("hex")
+        .slice(0, 8),
+      16,
+    ) % 2_147_483_647;
+  return {
+    avatarProfileId: row.avatar_profile_id,
+    avatarVersionId: row.avatar_version_id,
+    avatarProfileHash: row.avatar_profile_hash,
+    runtimeAssetId: row.runtime_asset_id,
+    runtimeAssetSha256: row.runtime_asset_sha256,
+    sourcePreparationProfile: row.source_preparation_profile,
+    sourceValidationProfile: row.source_validation_profile,
+    styleId: row.style_id,
+    styleVersionId: row.style_version_id,
+    styleProfileHash: row.style_profile_hash,
+    seed,
+  };
+}
+
+function exactJson(actual, expected, label) {
+  if (canonical(actual) !== canonical(expected)) error(label + " is not an exact idempotent match");
+}
+
+function exactTime(actual, expected, label) {
+  if (Date.parse(String(actual)) !== Date.parse(expected)) error(label + " timestamp drifted");
+}
+
+async function assertMigrationHead(client) {
+  const result = await client.query(
+    "SELECT max(version)::text AS version FROM videoforge_schema_migrations",
+  );
+  if (Number(result.rows[0]?.version) !== 35)
+    error("live render fixture requires migration head 35");
+}
+
+async function ensureProject(client, plan) {
+  await client.query(
+    `INSERT INTO projects (
+       id, account_id, workspace_id, owner_user_id, name, normalized_name,
+       status, version, created_at, updated_at
+     ) VALUES ($1,$2,$3,$4,$5,lower($5),'ACTIVE',1,$6,$6)
+     ON CONFLICT (id) DO NOTHING`,
+    [
+      plan.projectId,
+      plan.scope.account_id,
+      plan.scope.workspace_id,
+      plan.scope.user_id,
+      "V2-06 Owned Render Fixture",
+      plan.seedAt,
+    ],
+  );
+  const result = await client.query(
+    `SELECT id::text AS id, account_id::text AS account_id, workspace_id::text AS workspace_id,
+            owner_user_id::text AS owner_user_id, name, normalized_name, status, version,
+            created_at, updated_at
+       FROM projects WHERE id = $1`,
+    [plan.projectId],
+  );
+  const row = result.rows[0];
+  if (!row) error("owned render fixture project was not persisted");
+  if (
+    row.account_id !== plan.scope.account_id ||
+    row.workspace_id !== plan.scope.workspace_id ||
+    row.owner_user_id !== plan.scope.user_id ||
+    row.name !== "V2-06 Owned Render Fixture" ||
+    row.normalized_name !== "v2-06 owned render fixture" ||
+    row.status !== "ACTIVE" ||
+    Number(row.version) !== 1
+  )
+    error("existing deterministic render fixture project is not an exact tenant match");
+  exactTime(row.created_at, plan.seedAt, "render fixture project created_at");
+}
+
+async function ensureAssetRows(client, plan) {
+  for (const row of plan.rows) {
+    const canonical = row.kind === "CANONICAL_DOCUMENT";
+    await client.query(
+      `INSERT INTO assets (
+         id, account_id, workspace_id, project_id, project_revision_id, kind, state,
+         object_key, binary_sha256, canonical_contract_name, canonical_contract_version,
+         canonical_document_sha256, content_type, byte_size, width_px, height_px,
+         duration_ms, metadata, created_at, verified_at
+       ) VALUES ($1,$2,$3,$4,$5,$6,'VERIFIED',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb,$18,$18)
+       ON CONFLICT (id) DO NOTHING`,
+      [
+        row.assetId,
+        plan.scope.account_id,
+        plan.scope.workspace_id,
+        plan.projectId,
+        plan.revisionId,
+        row.kind,
+        row.objectKey,
+        canonical ? null : row.digest,
+        canonical ? "resolved-render-manifest" : null,
+        canonical ? "v1" : null,
+        canonical ? row.digest : null,
+        row.contentType,
+        row.bytes.length,
+        null,
+        null,
+        row.durationMs,
+        JSON.stringify(row.metadata),
+        plan.seedAt,
+      ],
+    );
+    const result = await client.query(
+      `SELECT id::text AS id, account_id::text AS account_id, workspace_id::text AS workspace_id,
+              project_id::text AS project_id, project_revision_id::text AS project_revision_id,
+              kind, state, object_key, binary_sha256, canonical_contract_name,
+              canonical_contract_version, canonical_document_sha256, content_type,
+              byte_size::text AS byte_size, duration_ms::text AS duration_ms, metadata, verified_at
+         FROM assets WHERE id = $1`,
+      [row.assetId],
+    );
+    const found = result.rows[0];
+    if (!found) error(row.name + " asset was not persisted");
+    if (
+      found.account_id !== plan.scope.account_id ||
+      found.workspace_id !== plan.scope.workspace_id ||
+      found.project_id !== plan.projectId ||
+      found.project_revision_id !== plan.revisionId ||
+      found.kind !== row.kind ||
+      found.state !== "VERIFIED" ||
+      found.object_key !== row.objectKey ||
+      found.content_type !== row.contentType ||
+      Number(found.byte_size) !== row.bytes.length ||
+      (canonical ? found.binary_sha256 !== null : found.binary_sha256 !== row.digest) ||
+      (canonical
+        ? found.canonical_document_sha256 !== row.digest
+        : found.canonical_document_sha256 !== null) ||
+      Number(found.duration_ms ?? 0) !== Number(row.durationMs ?? 0)
+    )
+      error(row.name + " asset is not an exact tenant-owned VERIFIED match");
+    exactJson(found.metadata, row.metadata, row.name + " asset metadata");
+    exactTime(found.verified_at, plan.seedAt, row.name + " asset verified_at");
+  }
+}
+
+async function ensureRevision(client, plan, preset) {
+  const base = plan.revisionConfigBase;
+  await client.query(
+    `INSERT INTO project_revisions (
+       id, account_id, workspace_id, project_id, revision_number, status, title,
+       voiceover_asset_id, voiceover_binary_sha256,
+       avatar_profile_id, avatar_profile_version_id, avatar_profile_hash,
+       avatar_runtime_source_asset_id, avatar_runtime_source_binary_sha256,
+       avatar_source_preparation_profile, avatar_source_validation_profile,
+       avatar_compatibility_state, avatar_compatibility_assessment_id,
+       avatar_compatibility_evidence_hash, image_style_id, image_style_version_id,
+       style_profile_hash, extra_prompt_keywords, apply_extra_prompt_keywords,
+       generation_mode, maximum_cost_micro_usd, currency, seed,
+       revision_config_contract_name, revision_config_contract_version,
+       revision_config_payload, revision_config_hash, created_by_user_id,
+       created_at, locked_at
+     ) VALUES ($1,$2,$3,$4,1,'LOCKED',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,
+               'UNTESTED',NULL,NULL,$15,$16,$17,$18,$19,'LOWEST_COST',0,'USD',$20,
+               $21,$22,$23::jsonb,$24,$25,$26,$26)
+     ON CONFLICT (id) DO NOTHING`,
+    [
+      plan.revisionId,
+      plan.scope.account_id,
+      plan.scope.workspace_id,
+      plan.projectId,
+      base.title,
+      base.voiceover_asset_id,
+      base.voiceover_binary_sha256,
+      preset.avatarProfileId,
+      preset.avatarVersionId,
+      preset.avatarProfileHash,
+      preset.runtimeAssetId,
+      preset.runtimeAssetSha256,
+      preset.sourcePreparationProfile,
+      preset.sourceValidationProfile,
+      preset.styleId,
+      preset.styleVersionId,
+      preset.styleProfileHash,
+      base.extra_prompt_keywords,
+      base.apply_extra_prompt_keywords,
+      base.seed,
+      base.revision_config_contract_name,
+      base.revision_config_contract_version,
+      JSON.stringify(base),
+      plan.revisionConfigHash,
+      plan.scope.user_id,
+      plan.seedAt,
+    ],
+  );
+  const result = await client.query(
+    `SELECT id::text AS id, account_id::text AS account_id, workspace_id::text AS workspace_id,
+            project_id::text AS project_id, revision_number, status, title,
+            voiceover_asset_id::text AS voiceover_asset_id,
+            voiceover_binary_sha256, avatar_profile_id::text AS avatar_profile_id,
+            avatar_profile_version_id::text AS avatar_profile_version_id,
+            avatar_profile_hash, avatar_runtime_source_asset_id::text AS runtime_asset_id,
+            avatar_runtime_source_binary_sha256, image_style_id::text AS image_style_id,
+            image_style_version_id::text AS image_style_version_id, style_profile_hash,
+            generation_mode, maximum_cost_micro_usd, seed, revision_config_payload,
+            revision_config_hash, created_by_user_id::text AS created_by_user_id,
+            created_at, locked_at
+       FROM project_revisions WHERE id = $1`,
+    [plan.revisionId],
+  );
+  const row = result.rows[0];
+  if (!row) error("owned render fixture revision was not persisted");
+  if (
+    row.account_id !== plan.scope.account_id ||
+    row.workspace_id !== plan.scope.workspace_id ||
+    row.project_id !== plan.projectId ||
+    Number(row.revision_number) !== 1 ||
+    row.status !== "LOCKED" ||
+    row.title !== base.title ||
+    row.voiceover_asset_id !== base.voiceover_asset_id ||
+    row.voiceover_binary_sha256 !== base.voiceover_binary_sha256 ||
+    row.avatar_profile_id !== preset.avatarProfileId ||
+    row.avatar_profile_version_id !== preset.avatarVersionId ||
+    row.avatar_profile_hash !== preset.avatarProfileHash ||
+    row.runtime_asset_id !== preset.runtimeAssetId ||
+    row.avatar_runtime_source_binary_sha256 !== preset.runtimeAssetSha256 ||
+    row.image_style_id !== preset.styleId ||
+    row.image_style_version_id !== preset.styleVersionId ||
+    row.style_profile_hash !== preset.styleProfileHash ||
+    row.generation_mode !== "LOWEST_COST" ||
+    Number(row.maximum_cost_micro_usd) !== 0 ||
+    Number(row.seed) !== Number(base.seed) ||
+    row.revision_config_hash !== plan.revisionConfigHash ||
+    row.created_by_user_id !== plan.scope.user_id
+  )
+    error("existing deterministic render fixture revision is not an exact locked match");
+  exactJson(row.revision_config_payload, base, "revision_config_payload");
+  exactTime(row.created_at, plan.seedAt, "render fixture revision created_at");
+  exactTime(row.locked_at, plan.seedAt, "render fixture revision locked_at");
+}
+
+function artifactProbe(plan, row) {
+  return {
+    schema_version: "videoforge-owned-render-fixture-receipt/v1",
+    fixture_id: FIXTURE_ID,
+    fixture_non_production: true,
+    role: row.name,
+    content_type: row.contentType,
+    content_length: row.bytes.length,
+    checksum_sha256: row.digest,
+    project_id: plan.projectId,
+    project_revision_id: plan.revisionId,
+  };
+}
+
+async function ensureArtifactRows(client, plan) {
+  const expiresAt = new Date(Date.parse(plan.seedAt) + 7 * 24 * 60 * 60 * 1000).toISOString();
+  for (const row of plan.rows) {
+    const callbackId = `${OPERATION}-${plan.scope.account_id.slice(0, 12)}-${row.name}`;
+    const probe = artifactProbe(plan, row);
+    const receiptSha = canonicalHash({
+      schema_version: "videoforge-owned-render-fixture-receipt/v1",
+      reservation_id: row.reservationId,
+      receipt_id: row.receiptId,
+      callback_id: callbackId,
+      account_id: plan.scope.account_id,
+      workspace_id: plan.scope.workspace_id,
+      project_id: plan.projectId,
+      project_revision_id: plan.revisionId,
+      object_key: row.objectKey,
+      content_type: row.contentType,
+      content_length: row.bytes.length,
+      checksum_sha256: row.digest,
+      probe,
+      committed_at: plan.seedAt,
+    });
+    await client.query(
+      `INSERT INTO artifact_reservations (
+         id, account_id, workspace_id, project_id, project_revision_id, asset_id,
+         lane, job_id, artifact_id, object_key, method, content_type, content_length,
+         checksum_sha256, expires_at, max_uses, used_count, state, retention_class,
+         retain_until, deletion_owner_account_id, created_at, updated_at
+       ) VALUES ($1,$2,$3,$4,$5,$6,'INPUT',$7,$8,$9,'PUT',$10,$11,$12,$13,1,0,'ISSUED',
+                 'PROJECT',NULL,$2,$14,$14)
+       ON CONFLICT (id) DO NOTHING`,
+      [
+        row.reservationId,
+        plan.scope.account_id,
+        plan.scope.workspace_id,
+        plan.projectId,
+        plan.revisionId,
+        row.assetId,
+        row.jobId ?? plan.jobId,
+        row.name,
+        row.objectKey,
+        row.contentType,
+        row.bytes.length,
+        row.digest,
+        expiresAt,
+        plan.seedAt,
+      ],
+    );
+    await client.query(
+      `INSERT INTO artifact_receipts (
+         id, account_id, workspace_id, reservation_id, callback_id, object_key,
+         content_type, content_length, checksum_sha256, probe, receipt_sha256, committed_at
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12)
+       ON CONFLICT (id) DO NOTHING`,
+      [
+        row.receiptId,
+        plan.scope.account_id,
+        plan.scope.workspace_id,
+        row.reservationId,
+        callbackId,
+        row.objectKey,
+        row.contentType,
+        row.bytes.length,
+        row.digest,
+        JSON.stringify(probe),
+        receiptSha,
+        plan.seedAt,
+      ],
+    );
+    await client.query(
+      `UPDATE artifact_reservations
+          SET state = 'COMMITTED', used_count = 1, updated_at = $2
+        WHERE id = $1 AND state = 'ISSUED'`,
+      [row.reservationId, plan.seedAt],
+    );
+    const result = await client.query(
+      `SELECT reservation.account_id::text AS account_id,
+              reservation.workspace_id::text AS workspace_id,
+              reservation.project_id::text AS project_id,
+              reservation.project_revision_id::text AS project_revision_id,
+              reservation.asset_id::text AS asset_id, reservation.lane,
+              reservation.job_id, reservation.artifact_id, reservation.object_key,
+              reservation.method, reservation.content_type,
+              reservation.content_length::text AS content_length,
+              reservation.checksum_sha256, reservation.state, reservation.used_count,
+              receipt.id::text AS receipt_id, receipt.callback_id,
+              receipt.receipt_sha256, receipt.probe, receipt.committed_at
+         FROM artifact_reservations AS reservation
+         JOIN artifact_receipts AS receipt
+           ON receipt.account_id = reservation.account_id
+          AND receipt.workspace_id = reservation.workspace_id
+          AND receipt.reservation_id = reservation.id
+        WHERE reservation.id = $1`,
+      [row.reservationId],
+    );
+    const found = result.rows[0];
+    if (
+      !found ||
+      found.account_id !== plan.scope.account_id ||
+      found.workspace_id !== plan.scope.workspace_id ||
+      found.project_id !== plan.projectId ||
+      found.project_revision_id !== plan.revisionId ||
+      found.asset_id !== row.assetId ||
+      found.lane !== "INPUT" ||
+      found.job_id !== plan.jobId ||
+      found.artifact_id !== row.name ||
+      found.object_key !== row.objectKey ||
+      found.method !== "PUT" ||
+      found.content_type !== row.contentType ||
+      Number(found.content_length) !== row.bytes.length ||
+      found.checksum_sha256 !== row.digest ||
+      found.state !== "COMMITTED" ||
+      Number(found.used_count) !== 1 ||
+      found.receipt_id !== row.receiptId ||
+      found.callback_id !== callbackId ||
+      found.receipt_sha256 !== receiptSha
+    )
+      error(row.name + " reservation/receipt is not an exact committed match");
+    exactJson(found.probe, probe, row.name + " artifact probe");
+    exactTime(found.committed_at, plan.seedAt, row.name + " receipt committed_at");
+  }
+}
+
+async function ensureRenderPlan(client, plan) {
+  await client.query(
+    `INSERT INTO hosted_render_plans (
+       account_id, workspace_id, project_id, project_revision_id,
+       schema_version, payload, payload_sha256, created_at, updated_at
+     ) VALUES ($1,$2,$3,$4,'videoforge-hosted-cpu-submission/v1',$5::jsonb,$6,$7,$7)
+     ON CONFLICT (account_id, workspace_id, project_id, project_revision_id) DO NOTHING`,
+    [
+      plan.scope.account_id,
+      plan.scope.workspace_id,
+      plan.projectId,
+      plan.revisionId,
+      JSON.stringify(plan.submission),
+      plan.renderPlanPayloadHash,
+      plan.seedAt,
+    ],
+  );
+  const result = await client.query(
+    `SELECT account_id::text AS account_id, workspace_id::text AS workspace_id,
+            project_id::text AS project_id, project_revision_id::text AS project_revision_id,
+            schema_version, payload, payload_sha256, created_at, updated_at
+       FROM hosted_render_plans
+      WHERE account_id = $1 AND workspace_id = $2 AND project_id = $3
+        AND project_revision_id = $4`,
+    [plan.scope.account_id, plan.scope.workspace_id, plan.projectId, plan.revisionId],
+  );
+  const row = result.rows[0];
+  if (
+    !row ||
+    row.account_id !== plan.scope.account_id ||
+    row.workspace_id !== plan.scope.workspace_id ||
+    row.project_id !== plan.projectId ||
+    row.project_revision_id !== plan.revisionId ||
+    row.schema_version !== "videoforge-hosted-cpu-submission/v1" ||
+    row.payload_sha256 !== plan.renderPlanPayloadHash
+  )
+    error("hosted render plan is not an exact immutable match");
+  exactJson(row.payload, plan.submission, "hosted render plan payload");
+  exactTime(row.created_at, plan.seedAt, "hosted render plan created_at");
+  exactTime(row.updated_at, plan.seedAt, "hosted render plan updated_at");
+}
+
+async function ensureAuditRow(client, plan) {
+  const inputPayload = {
+    schema_version: "videoforge-owned-render-fixture-provision-input/v1",
+    fixture_id: FIXTURE_ID,
+    tenant_email: plan.scope.email,
+    account_id: plan.scope.account_id,
+    workspace_id: plan.scope.workspace_id,
+    source_render_input_sha256: plan.sourceRenderInputSha256,
+    source_evidence_sha256: plan.sourceEvidenceSha256,
+    project_id: plan.projectId,
+    revision_id: plan.revisionId,
+    revision_config_hash: plan.revisionConfigHash,
+    manifest_sha256: plan.manifestSha,
+    render_plan_payload_sha256: plan.renderPlanPayloadHash,
+    seed_at: plan.seedAt,
+  };
+  const resultPayload = {
+    schema_version: "videoforge-owned-render-fixture-provision-result/v1",
+    fixture_id: FIXTURE_ID,
+    fixture_non_production: true,
+    tenant_email: plan.scope.email,
+    account_id: plan.scope.account_id,
+    workspace_id: plan.scope.workspace_id,
+    project_id: plan.projectId,
+    revision_id: plan.revisionId,
+    render_attempt_id: plan.renderAttemptId,
+    job_id: plan.jobId,
+    revision_config_hash: plan.revisionConfigHash,
+    manifest_sha256: plan.manifestSha,
+    render_plan_payload_sha256: plan.renderPlanPayloadHash,
+    r2_objects: plan.rows.map((row) => ({
+      role: row.name,
+      object_key: row.objectKey,
+      sha256: row.digest,
+      content_type: row.contentType,
+      bytes: row.bytes.length,
+      state: "VERIFIED_EXACT",
+    })),
+    asr_submission: plan.asrSubmission,
+    render_submission: plan.submission,
+    seed_at: plan.seedAt,
+  };
+  const inputHash = canonicalHash(inputPayload);
+  const resultHash = canonicalHash(resultPayload);
+  const idempotencyKey = `${OPERATION}-${plan.scope.account_id}`;
+  await client.query(
+    `INSERT INTO repository_mutation_receipts (
+       workspace_id, idempotency_key, operation, input_hash, result_codec,
+       result_payload, result_hash, created_at
+     ) VALUES ($1,$2,'v2_06_owned_render_fixture_provision',$3,'repository-result/v1',$4::jsonb,$5,$6)
+     ON CONFLICT (workspace_id, idempotency_key) DO NOTHING`,
+    [
+      plan.scope.workspace_id,
+      idempotencyKey,
+      inputHash,
+      JSON.stringify(resultPayload),
+      resultHash,
+      plan.seedAt,
+    ],
+  );
+  const result = await client.query(
+    `SELECT workspace_id::text AS workspace_id, idempotency_key, operation, input_hash,
+            result_codec, result_payload, result_hash, created_at
+       FROM repository_mutation_receipts
+      WHERE workspace_id = $1 AND idempotency_key = $2`,
+    [plan.scope.workspace_id, idempotencyKey],
+  );
+  const row = result.rows[0];
+  if (
+    !row ||
+    row.workspace_id !== plan.scope.workspace_id ||
+    row.idempotency_key !== idempotencyKey ||
+    row.operation !== "v2_06_owned_render_fixture_provision" ||
+    row.input_hash !== inputHash ||
+    row.result_codec !== "repository-result/v1" ||
+    row.result_hash !== resultHash
+  )
+    error("owned render fixture mutation receipt is not an exact idempotent match");
+  exactJson(row.result_payload, resultPayload, "owned render fixture mutation receipt payload");
+  exactTime(row.created_at, plan.seedAt, "owned render fixture mutation receipt created_at");
+  return { idempotencyKey, inputHash, resultHash, resultPayload };
 }
 
 async function main(argv = process.argv.slice(2)) {
@@ -516,8 +1254,8 @@ async function main(argv = process.argv.slice(2)) {
   );
   const live = process.env.V2_06_RENDER_FIXTURE_CONFIRM === "YES" && !args.dryRun;
   if (args.verifyLocal || live) runCanonicalLocalPath();
-  const plan = planFixture(fixture, dryScope(email), seedAt);
   if (!live) {
+    const plan = planFixture(fixture, dryScope(email), seedAt);
     console.log("V2-06 owned render fixture plan validated.");
     console.log("tenant_email=" + email);
     console.log("fixture_id=" + FIXTURE_ID);
@@ -526,15 +1264,105 @@ async function main(argv = process.argv.slice(2)) {
     console.log("r2_objects=" + plan.rows.length);
     console.log("revision_config_hash=" + plan.revisionConfigHash);
     console.log("manifest_sha256=" + plan.manifestSha);
+    console.log("asr_submission=EMITTED_IN_LIVE_AUDIT_RECEIPT");
     console.log("database_mutation=SKIPPED_DRY_RUN");
     console.log("r2_mutation=SKIPPED_DRY_RUN");
     return;
   }
   if (process.env.V2_06_RENDER_FIXTURE_R2_CONFIRM !== "YES") error("R2 confirmation is missing");
   if (process.env.V2_06_RENDER_FIXTURE_DB_CONFIRM !== "YES") error("Neon confirmation is missing");
-  /* Live DB/R2 mutation is intentionally a separate follow-up implementation after the safe
-     provider-free plan is reviewed. This guard prevents an untested cross-provider partial path. */
-  error("live mutation is fail-closed until the exact DB/R2 compensation runbook is approved");
+  const databaseUrl = process.env.V2_06_MIGRATION_DATABASE_URL;
+  const r2Config = {
+    accountId: process.env.V2_06_R2_ACCOUNT_ID,
+    bucket: process.env.V2_06_R2_BUCKET,
+    accessKeyId: process.env.V2_06_R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.V2_06_R2_SECRET_ACCESS_KEY,
+    region: process.env.V2_06_R2_REGION ?? APPROVED_R2_REGION,
+  };
+  for (const [value, name] of [
+    [databaseUrl, "V2_06_MIGRATION_DATABASE_URL"],
+    [r2Config.accountId, "V2_06_R2_ACCOUNT_ID"],
+    [r2Config.bucket, "V2_06_R2_BUCKET"],
+    [r2Config.accessKeyId, "V2_06_R2_ACCESS_KEY_ID"],
+    [r2Config.secretAccessKey, "V2_06_R2_SECRET_ACCESS_KEY"],
+  ]) {
+    if (typeof value !== "string" || value.length === 0)
+      error(name + " is required for live mutation");
+  }
+  assertProviderConfig(databaseUrl, r2Config);
+  const { Pool } = requireWeb(FUTURE_NEON_DRIVER);
+  const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+  let client;
+  try {
+    const scope = await resolveScope(pool, email);
+    const preset = await resolvePresetRows(pool, scope);
+    const plan = planFixture(fixture, scope, seedAt, preset);
+    plan.sourceRenderInputSha256 = fixture.inputHash;
+    plan.sourceEvidenceSha256 = fixture.evidenceHash;
+    const r2 = makeR2(r2Config);
+    const r2States = {};
+    for (const row of plan.rows) r2States[row.name] = await ensureR2(r2, r2Config, row);
+
+    client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      await assertMigrationHead(client);
+      const scopedAgain = await resolveScope(client, email);
+      exactJson(scopedAgain, scope, "resolved tenant scope");
+      const presetAgain = await resolvePresetRows(client, scope);
+      exactJson(presetAgain, preset, "resolved activation preset");
+      await ensureProject(client, plan);
+      await ensureAssetRows(client, plan);
+      await ensureRevision(client, plan, preset);
+      await ensureArtifactRows(client, plan);
+      await ensureRenderPlan(client, plan);
+      const audit = await ensureAuditRow(client, plan);
+      await client.query("COMMIT");
+      console.log(
+        JSON.stringify(
+          {
+            mutation: "COMMITTED",
+            tenant_email: email,
+            account_id: scope.account_id,
+            workspace_id: scope.workspace_id,
+            project_id: plan.projectId,
+            project_revision_id: plan.revisionId,
+            revision_config_hash: plan.revisionConfigHash,
+            manifest_sha256: plan.manifestSha,
+            render_plan_payload_sha256: plan.renderPlanPayloadHash,
+            r2_objects: r2States,
+            asr_submission: plan.asrSubmission,
+            render_submission: plan.submission,
+            audit,
+            spend_usd: 0,
+            gpu_transport: "DISABLED_FAKE_ONLY",
+          },
+          null,
+          2,
+        ),
+      );
+    } catch (cause) {
+      await client.query("ROLLBACK").catch(() => {});
+      error(
+        "database transaction failed; verified R2 objects were intentionally left in place for audit and no delete was attempted (" +
+          (cause instanceof Error ? cause.message : "unknown database error") +
+          ")",
+      );
+    } finally {
+      client.release();
+      client = undefined;
+    }
+  } finally {
+    await pool.end();
+  }
+}
+
+function buildAsrSubmission(fixture, scope, seedAt, preset = null) {
+  return planFixture(fixture, scope, seedAt, preset).asrSubmission;
 }
 
 export {
@@ -542,7 +1370,11 @@ export {
   canonical,
   canonicalHash,
   uuid as deterministicUuid,
+  assertProviderConfig,
+  buildAsrSubmission,
+  ensureR2,
   planFixture,
+  r2Request,
   validateRenderInput,
   verifyLocalFixture,
 };

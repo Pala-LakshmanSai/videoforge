@@ -249,6 +249,16 @@ if (
   !ownedRenderFixture.includes("createRequire") ||
   !ownedRenderFixture.includes("@neondatabase/serverless") ||
   !ownedRenderFixture.includes("aws4fetch") ||
+  !ownedRenderFixture.includes("hosted_render_plans") ||
+  !ownedRenderFixture.includes("repository_mutation_receipts") ||
+  !ownedRenderFixture.includes("APPROVED_R2_ACCOUNT_ID") ||
+  !ownedRenderFixture.includes("APPROVED_R2_BUCKET") ||
+  !ownedRenderFixture.includes("APPROVED_NEON_HOST") ||
+  !ownedRenderFixture.includes('await client.query("BEGIN")') ||
+  !ownedRenderFixture.includes("ROLLBACK") ||
+  !ownedRenderFixture.includes("verified R2 objects were intentionally left in place") ||
+  !ownedRenderFixture.includes("client.sign") ||
+  !ownedRenderFixture.includes("fetchImpl(signed)") ||
   !ownedRenderFixture.includes("database_mutation=SKIPPED_DRY_RUN") ||
   !ownedRenderFixture.includes("R2_ACCOUNT_ID") ||
   /DROP\s+TABLE|DELETE\s+FROM|client\.delete\s*\(/iu.test(ownedRenderFixture) ||
