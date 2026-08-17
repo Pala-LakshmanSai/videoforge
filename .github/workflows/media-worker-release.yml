@@ -102,20 +102,28 @@ jobs:
 
       - name: Assemble and verify exact Windows media tools
         if: runner.os == 'Windows'
-        shell: python
-        run: >-
-          python apps/media-worker-desktop/prepare_release_tools.py
-          --platform windows
-          --output worker-resources/bin
+        shell: bash
+        env:
+          WHISPER_MODEL_SHA256: ${{ inputs.whisper_model_sha256 }}
+        run: |
+          set -euo pipefail
+          python apps/media-worker-desktop/prepare_release_tools.py \
+            --platform windows \
+            --expected-model-sha256 "$WHISPER_MODEL_SHA256" \
+            --output worker-resources/bin
 
       - name: Assemble and verify exact macOS media tools
         if: runner.os == 'macOS'
-        shell: python
-        run: >-
-          python apps/media-worker-desktop/prepare_release_tools.py
-          --platform macos
-          --macos-whisper-cli whisper-build/bin/whisper-cli
-          --output worker-resources/bin
+        shell: bash
+        env:
+          WHISPER_MODEL_SHA256: ${{ inputs.whisper_model_sha256 }}
+        run: |
+          set -euo pipefail
+          python apps/media-worker-desktop/prepare_release_tools.py \
+            --platform macos \
+            --macos-whisper-cli whisper-build/bin/whisper-cli \
+            --expected-model-sha256 "$WHISPER_MODEL_SHA256" \
+            --output worker-resources/bin
 
       - name: Build pinned worker configuration
         shell: bash

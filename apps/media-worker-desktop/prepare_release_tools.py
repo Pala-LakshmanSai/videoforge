@@ -194,7 +194,11 @@ def main() -> int:
     parser.add_argument("--platform", choices=("windows", "macos"), required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--macos-whisper-cli", type=Path)
+    parser.add_argument("--expected-model-sha256", default=f"sha256:{MODEL_SHA256}")
     args = parser.parse_args()
+    expected_model_sha256 = f"sha256:{MODEL_SHA256}"
+    if args.expected_model_sha256 != expected_model_sha256:
+        raise SystemExit("requested model SHA-256 does not match the pinned release model")
     args.output.mkdir(parents=True, exist_ok=False)
     with tempfile.TemporaryDirectory(prefix="videoforge-release-tools-") as temporary:
         work = Path(temporary)
