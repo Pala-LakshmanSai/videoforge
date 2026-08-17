@@ -374,14 +374,16 @@ async function rasterizeOwnedFixture() {
   }
 }
 
-function buildAssets({ scope, files, sourceManifest }) {
+function buildAssets({ scope, files, sourceManifest, lineage = {} }) {
   const assets = {};
   for (const role of ROLE_ORDER) {
     const file = files[role];
     const assetId = deterministicUuid(`videoforge:v2-06:owned-fixture:${scope.account_id}:${role}`);
-    const objectKey =
-      `tenant/${scope.account_id}/workspace/${scope.workspace_id}/fixture/avatar/v2-06/` +
-      `${role.toLowerCase()}.${file.extension}`;
+    const objectKey = lineage.projectId
+      ? `tenant/${scope.account_id}/workspace/${scope.workspace_id}/project/${lineage.projectId}` +
+        `/revision/${lineage.revisionId}/lane/soulx-avatar/job/owned-fixture-v2-06/artifact/${role.toLowerCase()}`
+      : `tenant/${scope.account_id}/workspace/${scope.workspace_id}/fixture/avatar/v2-06/` +
+        `${role.toLowerCase()}.${file.extension}`;
     assets[role] = Object.freeze({
       role,
       assetId,
@@ -1189,6 +1191,7 @@ async function main(argv = process.argv.slice(2)) {
       scope,
       files: inputs.raster.files,
       sourceManifest: inputs.raster.manifest,
+      lineage: { projectId: inputs.projectId, revisionId: inputs.revisionId },
     });
     await ensureR2Objects(r2Config, assets);
     const facts = artifactFacts({
