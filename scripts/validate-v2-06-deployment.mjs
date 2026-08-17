@@ -88,7 +88,7 @@ if (
 )
   fail("hosted render plans must never be writable by the runtime role");
 if (
-  !neonRuntimeGrants.includes('ALTER ROLE :"runtime_role"') ||
+  !neonRuntimeGrants.includes("Neon hosted owners cannot ALTER ROLE attributes") ||
   !neonRuntimeGrants.includes("NOBYPASSRLS") ||
   !neonRuntimeGrants.includes('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM :"runtime_role";') ||
   !neonRuntimeGrants.includes('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM :"runtime_role";')
@@ -297,7 +297,7 @@ if (
   !ownedFixtureProvisioner.includes("expected_avatar_profile_keys_only") ||
   !ownedFixtureProvisioner.includes("APPROVED_CLOUDFLARE_ACCOUNT_ID") ||
   !ownedFixtureProvisioner.includes("APPROVED_R2_BUCKET") ||
-  !ownedFixtureProvisioner.includes("APPROVED_NEON_HOST_PATTERN") ||
+  !ownedFixtureProvisioner.includes("APPROVED_NEON_HOST") ||
   !ownedFixtureProvisioner.includes("fetch(signed)") ||
   ownedFixtureProvisioner.includes("V2_06_OWNED_FIXTURE_PROJECT_ID") ||
   ownedFixtureProvisioner.includes("V2_06_OWNED_FIXTURE_REVISION_ID") ||

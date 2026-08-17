@@ -36,14 +36,37 @@ test "$(stat -f '%Lp' "$ACTIVATION_RECORD" 2>/dev/null || stat -c '%a' "$ACTIVAT
 # PGSERVICEFILE contains host/dbname/user but no password; PGPASSFILE is mode 0600.  The helper
 # verifies every migration byte/hash, the exact ledger prefix, the owner identity, runtime grants,
 # and FORCE RLS.  It never accepts a DATABASE_URL argv.
-export PGSERVICEFILE=/secure/videoforge/v2-06/owner.pg_service.conf
-export PGSERVICE=videoforge_v2_06_owner
-export PGPASSFILE=/secure/videoforge/v2-06/owner.pgpass
+export V2_06_PG_SERVICEFILE=/secure/videoforge/v2-06/owner.pg_service.conf
+export V2_06_PG_SERVICE=videoforge_v2_06_owner
+export V2_06_PGPASSFILE=/secure/videoforge/v2-06/owner.pgpass
+# backup.sh and restore-drill.sh consume the conventional libpq names; keep these aliases
+# alongside the helper-specific names so neither path falls back to ambient credentials.
+export PGSERVICEFILE="$V2_06_PG_SERVICEFILE"
+export PGSERVICE="$V2_06_PG_SERVICE"
+export PGPASSFILE="$V2_06_PGPASSFILE"
 export V2_06_APPROVED_NEON_HOST=<exact-approved-neon-endpoint-host>
 export V2_06_EXPECTED_DATABASE=<exact-approved-staging-database>
 export V2_06_EXPECTED_OWNER_ROLE=<exact-migration-owner-role>
 export V2_06_RUNTIME_ROLE=<exact-non-superuser-runtime-role>
 node deploy/v2-06/apply-migrations-and-grants.mjs --apply-grants
+
+# Create and verify the encrypted backup and separately approved disposable restore drill before
+# deployment. These commands use the same protected service/passphrase files and never put a DSN
+# in argv; the drill target is disposable and is cleaned only by the recorded operation.
+BACKUP_DIR=/secure/videoforge/v2-06/backups
+BACKUP_OUTPUT="$BACKUP_DIR/videoforge-v2-06-live.dump.enc"
+mkdir -p "$BACKUP_DIR"
+BACKUP_PASSPHRASE_FILE=/secure/videoforge/v2-06/backup.passphrase \
+  deploy/v2-06/backup.sh "$BACKUP_OUTPUT"
+# For the restore drill, set the separately approved disposable service/host/passphrase values
+# before running this exact command; it never reuses the production database service.
+RESTORE_APPROVED_NEON_HOST=<exact-approved-disposable-neon-host> \
+RESTORE_EXPECTED_OWNER_ROLE=<exact-disposable-owner-role> \
+RESTORE_RUNTIME_ROLE="$V2_06_RUNTIME_ROLE" \
+RESTORE_TARGET_DATABASE=videoforge_v2_06_disposable_drill \
+RESTORE_PASSPHRASE_FILE=/secure/videoforge/v2-06/backup.passphrase \
+RESTORE_DRILL_CONFIRM=YES RESTORE_TARGET_LABEL=videoforge-v2-06-disposable-drill \
+  deploy/v2-06/restore-drill.sh "$BACKUP_OUTPUT"
 
 pnpm --filter @videoforge/web build:staging
 DEPLOYED_COMMIT=$(git rev-parse HEAD)
@@ -87,6 +110,13 @@ for file in "$SECRET_DIR"/*; do
     *) echo "unexpected secret file: $file" >&2; exit 2 ;;
   esac
 done
+# Refuse remote extras before any upload. This prevents a stale EMAIL_DELIVERY_* or unrelated
+# secret from surviving a supposedly exact activation and avoids partial cleanup after upload.
+pnpm --filter @videoforge/web exec wrangler secret list --format json --config "$CONFIG" \
+  > /secure/videoforge/v2-06/secret-list-before.json
+node deploy/v2-06/check-secret-allowlist.mjs \
+  /secure/videoforge/v2-06/secret-list-before.json
+node deploy/v2-06/validate-secret-inputs.mjs "$SECRET_DIR" "$ACTIVATION_RECORD"
 for entry in \
   DATABASE_URL:"$SECRET_DIR/DATABASE_URL" \
   BETTER_AUTH_SECRET:"$SECRET_DIR/BETTER_AUTH_SECRET" \
@@ -119,6 +149,10 @@ pnpm --filter @videoforge/web exec wrangler r2 bucket cors set \
   videoforge-v2-06-staging-private --file "$CORS_CONFIG" --force --config "$CONFIG"
 EXPECTED_ORIGIN="$STAGING_ORIGIN" WRANGLER_CONFIG="$CONFIG" \
   deploy/v2-06/verify-r2-cors.sh videoforge-v2-06-staging-private
+
+# Read-only storage safety: prove the bucket is Standard/private, has no automatic final-output
+# deletion rule, and retains only Cloudflare's incomplete-multipart abort rule.
+deploy/v2-06/verify-r2-private-state.sh videoforge-v2-06-staging-private "$CONFIG"
 
 pnpm --filter @videoforge/web exec wrangler deploy --config "$CONFIG"
 ```

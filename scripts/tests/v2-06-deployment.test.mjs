@@ -101,8 +101,10 @@ writeFileSync(
       authority: {
         mode: "APPROVED",
         maximum_cumulative_finite_external_spend_usd: 3,
+        cloudflare_r2_recurring_ceiling_usd_per_month: 2,
         approved_at: "2026-08-17T00:00:00.000Z",
         non_transferable: true,
+        email_provider: "NONE",
       },
       cloudflare: {
         account_id_sha256: `sha256:${createHash("sha256")
@@ -112,9 +114,26 @@ writeFileSync(
         workflow: "videoforge-v2-06-staging-video",
         r2_bucket: "videoforge-v2-06-staging-private",
         r2_location: "auto",
+        r2_access_key_id_sha256: `sha256:${"5".repeat(64)}`,
         domain: new URL(origin).hostname,
       },
-      personal_media_workers: { release_manifest_sha256: releaseManifestSha256 },
+      neon: {
+        host: "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech",
+        project_id: "ancient-morning-99567618",
+        branch_id: "br-floral-hill-az7ib4ir",
+        database: "neondb",
+        runtime_role: "videoforge_v2_06_runtime",
+      },
+      google: {
+        project_id: "videoforge-v2-06-staging-0817",
+        oauth_redirect_uri: `https://${new URL(origin).hostname}/api/auth/callback/google`,
+        audience: "EXTERNAL_TESTING",
+      },
+      personal_media_workers: {
+        release_manifest_sha256: releaseManifestSha256,
+        provider_compute_usd: 0,
+        final_output_retention: "UNTIL_EXPLICIT_AUTHENTICATED_USER_DELETE",
+      },
     },
     null,
     2,

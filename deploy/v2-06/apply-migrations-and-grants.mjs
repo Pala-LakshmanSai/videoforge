@@ -41,6 +41,17 @@ const EXPECTED_TABLE_PRIVILEGES = new Map([
   ["hosted_project_reviews", ["INSERT", "SELECT"]],
 ]);
 
+const EXPECTED_RUNTIME_FUNCTIONS = [
+  "videoforge_authorize_hosted_cpu_upload(uuid,text,text,text,text,bigint,text,timestamp with time zone)",
+  "videoforge_due_hosted_cpu_retention(integer)",
+  "videoforge_finish_hosted_cpu_retention(uuid,text)",
+  "videoforge_hosted_cpu_expected_primary_output(uuid,text)",
+  "videoforge_hosted_session_scope(text)",
+  "videoforge_media_worker_device_scope(text)",
+  "videoforge_media_worker_enrollment_consume(uuid,text)",
+  "videoforge_media_worker_enrollment_poll(uuid,text,timestamp with time zone)",
+].sort();
+
 const required = (name) => {
   const value = process.env[name];
   if (!value) fail(`${name} is required and must remain in the environment, never argv`);
@@ -201,7 +212,7 @@ const main = async () => {
   let ledgerText;
   try {
     ledgerText = await query(
-      "SELECT version::text, name, filename, sha256 FROM public.videoforge_schema_migrations ORDER BY version",
+      "SELECT version::text, name, filename, sha256 FROM public.videoforge_schema_migrations ORDER BY public.videoforge_schema_migrations.version",
       environment,
     );
   } catch {
@@ -267,6 +278,11 @@ const main = async () => {
       fail(
         "runtime role does not exist; create it through the approved Neon owner operation first",
       );
+    const roleFlags = roleRows.split("\t").slice(1);
+    if (roleFlags.length !== 6 || roleFlags.some((value) => value !== "false"))
+      fail(
+        "runtime role must already be NOSUPERUSER/NOCREATEDB/NOCREATEROLE/NOINHERIT/NOREPLICATION/NOBYPASSRLS before grants",
+      );
     const grantsSql = (await readFile(grantsPath, "utf8"))
       .split(/\r?\n/u)
       .filter((line) => !/^\s*\\(?:if|else|endif|quit)\b/u.test(line))
@@ -287,7 +303,7 @@ const main = async () => {
 
   const finalLedger = parseLedger(
     await query(
-      "SELECT version::text, name, filename, sha256 FROM public.videoforge_schema_migrations ORDER BY version",
+      "SELECT version::text, name, filename, sha256 FROM public.videoforge_schema_migrations ORDER BY public.videoforge_schema_migrations.version",
       environment,
     ),
   );
@@ -307,7 +323,7 @@ const main = async () => {
       environment,
     )
   ).split("\t");
-  if (role.length !== 6 || role.some((value) => value !== "f"))
+  if (role.length !== 6 || role.some((value) => value !== "false"))
     fail(
       "runtime role is not NOSUPERUSER/NOCREATEDB/NOCREATEROLE/NOINHERIT/NOREPLICATION/NOBYPASSRLS",
     );
@@ -334,18 +350,34 @@ const main = async () => {
     `SELECT has_table_privilege(${safeLiteral(runtimeRole)}, 'public.hosted_render_plans', 'SELECT')::text, has_table_privilege(${safeLiteral(runtimeRole)}, 'public.hosted_render_plans', 'INSERT')::text, has_table_privilege(${safeLiteral(runtimeRole)}, 'public.hosted_render_plans', 'UPDATE')::text, has_table_privilege(${safeLiteral(runtimeRole)}, 'public.hosted_render_plans', 'DELETE')::text`,
     environment,
   );
-  if (hostedPlanPrivileges !== "t\tf\tf\tf")
+  if (hostedPlanPrivileges !== "true\tfalse\tfalse\tfalse")
     fail("hosted render plans are not read-only for the runtime role");
   const schemaPrivileges = await query(
     `SELECT has_schema_privilege(${safeLiteral(runtimeRole)}, 'public', 'USAGE')::text, has_schema_privilege(${safeLiteral(runtimeRole)}, 'public', 'CREATE')::text`,
     environment,
   );
-  if (schemaPrivileges !== "t\tf") fail("runtime schema privileges are not USAGE-only");
+  if (schemaPrivileges !== "true\tfalse") fail("runtime schema privileges are not USAGE-only");
+  const runtimeFunctions = (
+    await query(
+      `SELECT p.oid::regprocedure::text FROM pg_proc AS p JOIN pg_namespace AS n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND has_function_privilege(${safeLiteral(runtimeRole)}, p.oid, 'EXECUTE') ORDER BY p.oid::regprocedure::text`,
+      environment,
+    )
+  )
+    .split(/\r?\n/u)
+    .filter(Boolean);
+  if (JSON.stringify(runtimeFunctions) !== JSON.stringify(EXPECTED_RUNTIME_FUNCTIONS))
+    fail("runtime function grants do not exactly match the least-privilege allowlist");
+  const publicFunctions = await query(
+    "SELECT p.oid::regprocedure::text FROM pg_proc AS p JOIN pg_namespace AS n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND has_function_privilege('public', p.oid, 'EXECUTE') ORDER BY p.oid::regprocedure::text",
+    environment,
+  );
+  if (publicFunctions)
+    fail(`PUBLIC retains EXECUTE on public-schema functions: ${publicFunctions}`);
   console.log(
-    `V2-06 Neon verified: migration ${finalLedger.length}/${migrations.length}, runtime role ${runtimeRole}, FORCE RLS complete, exact table grants, hosted_render_plans SELECT-only.`,
+    `V2-06 Neon verified: migration ${finalLedger.length}/${migrations.length}, runtime role ${runtimeRole}, FORCE RLS complete, exact table grants and function grants, hosted_render_plans SELECT-only.`,
   );
 };
 
 if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) await main();
 
-export { EXPECTED_TABLE_PRIVILEGES, parseLedger };
+export { EXPECTED_RUNTIME_FUNCTIONS, EXPECTED_TABLE_PRIVILEGES, parseLedger };

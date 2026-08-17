@@ -45,6 +45,9 @@ const DEFAULT_AVATAR_ENVELOPE_HASH =
   "sha256:fa75a60ef265e4a0704ca4ab103f30e185dd9de9ac0528eaf606fff7691ea869";
 const DEFAULT_STYLE_PROFILE_HASH =
   "sha256:e344d37b9a04604891334cdd2b60601619885a4a16acad8eb15957340a90e430";
+const APPROVED_NEON_HOST = "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech";
+const APPROVED_NEON_DATABASE = "neondb";
+const APPROVED_NEON_MIGRATION_ROLE = "neondb_owner";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -328,11 +331,18 @@ function psqlEnvironment(databaseUrl) {
   }
   if (!/^postgres(?:ql)?:$/u.test(url.protocol))
     throw new Error("V2_06_MIGRATION_DATABASE_URL must use postgres:// or postgresql://");
+  if (url.hostname !== APPROVED_NEON_HOST)
+    throw new Error("V2_06_MIGRATION_DATABASE_URL must target the approved Neon endpoint");
+  const database = decodeURIComponent(url.pathname.replace(/^\//u, ""));
+  if (database !== APPROVED_NEON_DATABASE)
+    throw new Error("V2_06_MIGRATION_DATABASE_URL must target the approved Neon database");
   const user = decodeURIComponent(url.username);
-  if (!user || user.toLowerCase() === "videoforge_v2_06_runtime")
-    throw new Error(
-      "migration seed refuses the hosted runtime role; use a separate migration owner",
-    );
+  if (user !== APPROVED_NEON_MIGRATION_ROLE)
+    throw new Error("migration seed requires the approved migration owner role");
+  if (url.searchParams.get("sslmode") !== "require")
+    throw new Error("V2_06_MIGRATION_DATABASE_URL must require TLS");
+  if (url.searchParams.get("channel_binding") !== "require")
+    throw new Error("V2_06_MIGRATION_DATABASE_URL must require channel binding");
   const env = { ...process.env, PGHOST: url.hostname, PGUSER: user };
   if (url.port) env.PGPORT = url.port;
   if (url.password) env.PGPASSWORD = decodeURIComponent(url.password);
@@ -916,6 +926,9 @@ async function main(argv = process.argv.slice(2)) {
 }
 
 export {
+  APPROVED_NEON_DATABASE,
+  APPROVED_NEON_HOST,
+  APPROVED_NEON_MIGRATION_ROLE,
   AVATAR_PAYLOAD_KEYS,
   DEFAULT_AVATAR_PAYLOAD,
   DEFAULT_STYLE_PAYLOAD,

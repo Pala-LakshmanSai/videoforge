@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   APPROVED_CLOUDFLARE_ACCOUNT_ID,
+  APPROVED_NEON_HOST,
   APPROVED_R2_BUCKET,
   APPROVED_R2_REGION,
   EXPECTED_SOURCE_SHA256,
@@ -205,13 +206,13 @@ test("wrong R2 and Neon resources fail closed before any request", () => {
   );
   assert.doesNotThrow(() =>
     assertMigrationUrl(
-      "postgresql://migration-owner:example@ep-approved1234-pooler.ap-southeast-1.aws.neon.tech/neondb",
+      `postgresql://neondb_owner:example@${APPROVED_NEON_HOST}/neondb?sslmode=require&channel_binding=require`,
     ),
   );
   assert.throws(
     () =>
       assertMigrationUrl(
-        "postgresql://migration-owner:example@ep-unrelated1234-pooler.us-east-2.aws.neon.tech/neondb",
+        "postgresql://neondb_owner:example@ep-unrelated1234-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
       ),
     /approved .*Neon endpoint/u,
   );

@@ -55,12 +55,9 @@ const APPROVED_CLOUDFLARE_ACCOUNT_ID = "f9254d773a3426fcb469451b1f965d8c";
 const APPROVED_R2_BUCKET = "videoforge-v2-06-staging-private";
 const APPROVED_R2_REGION = "auto";
 const APPROVED_NEON_PROJECT_NAME = "videoforge-v2-06-staging";
-// No VideoForge Neon project exists in the immutable current inventory. Until the
-// approved project is created, only the proposed Singapore endpoint shape is
-// accepted; unrelated projects/regions fail closed.
-const APPROVED_NEON_HOST_PATTERN =
-  /^ep-[a-z0-9-]{8,80}(?:-pooler)?(?:\.c-[a-z0-9-]+)?\.ap-southeast-1\.aws\.neon\.tech$/u;
-const APPROVED_NEON_ENDPOINT_ID_PATTERN = /^ep-[a-z0-9-]{8,80}$/u;
+const APPROVED_NEON_HOST = "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech";
+const APPROVED_NEON_DATABASE = "neondb";
+const APPROVED_NEON_MIGRATION_ROLE = "neondb_owner";
 const PINNED_FFMPEG_VERSION = "8.1.1";
 const PINNED_FFPROBE_VERSION = "8.1.1";
 const AVATAR_STORAGE_ROLE = Object.freeze({
@@ -562,17 +559,18 @@ function assertMigrationUrl(databaseUrl) {
   const url = new URL(requireText(databaseUrl, "V2_06_MIGRATION_DATABASE_URL"));
   if (!["postgres:", "postgresql:"].includes(url.protocol))
     throw new Error("V2_06_MIGRATION_DATABASE_URL must use postgres:// or postgresql://");
-  if (decodeURIComponent(url.username).toLowerCase() === "videoforge_v2_06_runtime")
-    throw new Error("owned fixture provisioner refuses the hosted runtime role");
-  const endpointId = url.hostname.match(/^(ep-[a-z0-9-]+?)(?:-pooler)?(?:\.c-[a-z0-9-]+)?\./u)?.[1];
-  if (
-    !APPROVED_NEON_HOST_PATTERN.test(url.hostname) ||
-    !endpointId ||
-    !APPROVED_NEON_ENDPOINT_ID_PATTERN.test(endpointId)
-  )
+  if (url.hostname !== APPROVED_NEON_HOST)
     throw new Error(
       `V2_06_MIGRATION_DATABASE_URL must target the approved ${APPROVED_NEON_PROJECT_NAME} Neon endpoint`,
     );
+  if (decodeURIComponent(url.pathname.replace(/^\//u, "")) !== APPROVED_NEON_DATABASE)
+    throw new Error("V2_06_MIGRATION_DATABASE_URL must target the approved Neon database");
+  if (decodeURIComponent(url.username) !== APPROVED_NEON_MIGRATION_ROLE)
+    throw new Error("owned fixture provisioner requires the approved migration owner role");
+  if (url.searchParams.get("sslmode") !== "require")
+    throw new Error("V2_06_MIGRATION_DATABASE_URL must require TLS");
+  if (url.searchParams.get("channel_binding") !== "require")
+    throw new Error("V2_06_MIGRATION_DATABASE_URL must require channel binding");
 }
 
 async function ensureAssets(client, scope, assets, seedAt) {
@@ -1225,7 +1223,9 @@ async function main(argv = process.argv.slice(2)) {
 export {
   ALLOWED_EMAILS,
   APPROVED_CLOUDFLARE_ACCOUNT_ID,
-  APPROVED_NEON_HOST_PATTERN,
+  APPROVED_NEON_DATABASE,
+  APPROVED_NEON_HOST,
+  APPROVED_NEON_MIGRATION_ROLE,
   APPROVED_R2_BUCKET,
   APPROVED_R2_REGION,
   EXPECTED_SOURCE_SHA256,

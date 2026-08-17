@@ -9,13 +9,15 @@
 
 GRANT USAGE ON SCHEMA public TO :"runtime_role";
 
--- The application role is deliberately not a migration owner, superuser, role creator, or RLS
--- bypass role. Revoke inherited object privileges before granting only the active hosted surface.
-ALTER ROLE :"runtime_role"
-  NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+-- The application role must be created beforehand as a NOSUPERUSER/NOCREATEDB/NOCREATEROLE/
+-- NOINHERIT/NOREPLICATION/NOBYPASSRLS role.  Neon hosted owners cannot ALTER ROLE attributes;
+-- apply-migrations-and-grants.mjs verifies those flags before this object-grant phase.
 REVOKE CREATE ON SCHEMA public FROM :"runtime_role";
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM :"runtime_role";
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM :"runtime_role";
+-- PostgreSQL grants EXECUTE on newly-created functions to PUBLIC by default.  Remove that
+-- ambient capability before granting the small, explicit hosted-runtime routine surface below.
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM :"runtime_role";
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON

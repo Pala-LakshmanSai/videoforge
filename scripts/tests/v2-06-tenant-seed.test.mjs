@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   DEFAULT_AVATAR_PAYLOAD,
   DEFAULT_STYLE_PAYLOAD,
+  APPROVED_NEON_HOST,
   buildPlan,
   mutationSql,
   sha256Canonical,
@@ -172,4 +173,11 @@ test("CLI refuses mutation before opening a database without both confirmations"
   });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /refusing database mutation without V2_06_SEED_CONFIRM=YES/u);
+});
+
+test("seed source pins the exact approved Neon project identity", async () => {
+  const source = await readFile("deploy/v2-06/seed-tenant-presets.mjs", "utf8");
+  assert.match(source, new RegExp(APPROVED_NEON_HOST.replaceAll(".", "\\."), "u"));
+  assert.match(source, /channel_binding.*require/u);
+  assert.match(source, /migration seed requires the approved migration owner role/u);
 });

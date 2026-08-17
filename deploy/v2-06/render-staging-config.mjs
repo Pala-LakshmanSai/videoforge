@@ -9,6 +9,15 @@ const templatePath = resolve(root, "apps/web/wrangler.staging.jsonc");
 const stagingBuildRoot = resolve(root, "apps/web/dist-staging");
 const workerBundlePath = resolve(stagingBuildRoot, "videoforge_v2_06_staging/index.js");
 const assetsDirectory = resolve(stagingBuildRoot, "client");
+const APPROVED_NEON_HOST = "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech";
+const APPROVED_NEON_PROJECT_ID = "ancient-morning-99567618";
+const APPROVED_NEON_BRANCH_ID = "br-floral-hill-az7ib4ir";
+const APPROVED_NEON_DATABASE = "neondb";
+const APPROVED_NEON_RUNTIME_ROLE = "videoforge_v2_06_runtime";
+const APPROVED_GOOGLE_PROJECT_ID = "videoforge-v2-06-staging-0817";
+const APPROVED_R2_RECURRING_CEILING_USD = 2;
+const APPROVED_FINITE_SPEND_CAP_USD = 3;
+const APPROVED_RETENTION = "UNTIL_EXPLICIT_AUTHENTICATED_USER_DELETE";
 const fail = (message) => {
   throw new Error(`V2-06 staging config renderer: ${message}`);
 };
@@ -39,6 +48,9 @@ const requireCleanHeadCommit = (commit) => {
 
   const staged = git(["diff", "--cached", "--quiet"]);
   if (staged.status !== 0) fail("index has staged changes");
+  const untracked = git(["ls-files", "--others", "--exclude-standard"]);
+  if (untracked.status !== 0) fail("unable to inspect untracked files");
+  if (untracked.stdout.trim()) fail("working tree contains untracked source files");
 };
 const requireNonEmptyClientAsset = async (directory) => {
   const pending = [directory];
@@ -78,6 +90,15 @@ const readActivationRecord = async (activationPath) => {
     Number.isNaN(Date.parse(activation.authority.approved_at))
   )
     fail("activation record must contain an approved timestamp and finite spend cap");
+  if (
+    activation.authority.maximum_cumulative_finite_external_spend_usd !==
+      APPROVED_FINITE_SPEND_CAP_USD ||
+    activation.authority.cloudflare_r2_recurring_ceiling_usd_per_month !==
+      APPROVED_R2_RECURRING_CEILING_USD ||
+    activation.authority.non_transferable !== true ||
+    activation.authority.email_provider !== "NONE"
+  )
+    fail("activation record does not match the exact approved cap, ceiling, or authority mode");
   if (!/^sha256:[0-9a-f]{64}$/u.test(activation.cloudflare?.account_id_sha256 ?? ""))
     fail("activation record must pin the Cloudflare account SHA-256");
   if (
@@ -94,6 +115,28 @@ const readActivationRecord = async (activationPath) => {
     if (typeof value !== "string" || value.length === 0 || value.includes("__V2_06_"))
       fail(`activation record must pin the exact ${field}`);
   }
+  if (
+    activation.neon?.project_id !== APPROVED_NEON_PROJECT_ID ||
+    activation.neon?.branch_id !== APPROVED_NEON_BRANCH_ID ||
+    activation.neon?.database !== APPROVED_NEON_DATABASE ||
+    activation.neon?.runtime_role !== APPROVED_NEON_RUNTIME_ROLE ||
+    activation.neon?.host !== APPROVED_NEON_HOST
+  )
+    fail(
+      "activation record must pin the exact approved Neon project, branch, host, database, and role",
+    );
+  if (
+    activation.google?.project_id !== APPROVED_GOOGLE_PROJECT_ID ||
+    activation.google?.oauth_redirect_uri !==
+      `https://${activation.cloudflare.domain}/api/auth/callback/google` ||
+    activation.google?.audience !== "EXTERNAL_TESTING"
+  )
+    fail("activation record must pin the exact approved Google OAuth project and redirect");
+  if (
+    activation.personal_media_workers?.provider_compute_usd !== 0 ||
+    activation.personal_media_workers?.final_output_retention !== APPROVED_RETENTION
+  )
+    fail("activation record must pin zero provider CPU cost and explicit-delete retention");
   return activation;
 };
 const render = async () => {

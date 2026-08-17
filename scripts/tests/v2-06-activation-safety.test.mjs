@@ -29,6 +29,7 @@ test("V2-06 live database helper verifies exact hashes, grants, and FORCE RLS", 
   assert.match(source, /relforcerowsecurity/u);
   assert.match(source, /hosted render plans are not read-only/u);
   assert.match(source, /exact table grants/u);
+  assert.match(source, /runtime role must already be NOSUPERUSER/u);
   assert.doesNotMatch(source, /process\.argv[^\n]*DATABASE_URL/u);
 });
 
@@ -36,14 +37,28 @@ test("V2-06 renderer and rollback pin approved identities and immutable evidence
   const renderer = await read("deploy/v2-06/render-staging-config.mjs");
   const rollback = await read("deploy/v2-06/rollback.md");
   const runbook = await read("deploy/v2-06/README.md");
+  const privateState = await read("deploy/v2-06/verify-r2-private-state.sh");
+  const secretAllowlist = await read("deploy/v2-06/check-secret-allowlist.mjs");
+  const secretInputs = await read("deploy/v2-06/validate-secret-inputs.mjs");
   assert.match(renderer, /activation record must be explicitly approved/u);
   assert.match(renderer, /account ID does not match the approved activation record/u);
   assert.match(renderer, /release manifest bytes do not match the approved activation record/u);
   assert.match(renderer, /origin hostname does not match the approved activation record/u);
+  assert.match(renderer, /exact approved cap, ceiling, or authority mode/u);
+  assert.match(renderer, /untracked source files/u);
+  assert.match(renderer, /exact approved Neon project/u);
   assert.match(rollback, /EXPECTED_CONFIG_SHA256/u);
   assert.match(rollback, /HostedVideoWorkflow/u);
   assert.match(rollback, /wrangler rollback.*--yes/su);
   assert.match(runbook, /r2 bucket cors set/su);
   assert.match(runbook, /--file "\$CORS_CONFIG" --force/u);
   assert.match(runbook, /secret list --format json/u);
+  assert.match(runbook, /check-secret-allowlist\.mjs/u);
+  assert.match(runbook, /validate-secret-inputs\.mjs/u);
+  assert.match(runbook, /verify-r2-private-state\.sh/u);
+  assert.match(runbook, /backup\.sh "\$BACKUP_OUTPUT"/u);
+  assert.match(privateState, /public dev-url access is not proven disabled/u);
+  assert.match(privateState, /automatic object deletion rule/u);
+  assert.match(secretAllowlist, /exact V2-06 allowlist/u);
+  assert.match(secretInputs, /approved runtime Neon identity/u);
 });
