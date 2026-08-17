@@ -1,7 +1,7 @@
 # VideoForge: start here
 
-Status: V2-05 tenant-private provider-free cutover complete and same-chat re-audited green;
-V2-06 hosted staging is ready but not started and has no active external authority
+Status: V2-06 provider-free local audit repair is green; full hosted staging acceptance is blocked,
+and no external, credential, provider-call, mutation, or spend authority is active
 Context schema: `2.0`
 Last updated: `2026-08-16`
 
@@ -229,8 +229,12 @@ contains no v1 shared-app route, manual Pod/GPU selector, inactive Echo route, r
 fallback vocabulary. Local compatibility fixtures remain explicitly gated and the production UI
 visibly says fixtures are not live.
 
-V2-06 is the next checkpoint and is not started. It may begin only under a new implementation
-request. No provider, credential, cloud mutation, GPU, worker, or spend authority is active.
+V2-06 local adapters and deployment templates exist, but the deployed two-account product proof is
+not complete. The staging surface is currently an activation/auth/status shell rather than the full
+product route graph. A separate explicit read-only audit grant is required before refreshing any
+live provider fact. Any deployment, remote mutation, email delivery, or spend requires one exact
+bounded activation proposal and approval. No provider, credential, cloud mutation, GPU, worker, or
+spend authority is active.
 All prior provider authorities are consumed and cannot be reused. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in

@@ -1,0 +1,84 @@
+{
+  "schema_version": "videoforge.v2-06-local-repair-reaudit/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "result": "PASS_LOCAL_PROVIDER_FREE_REPAIR_ONLY_FULL_HOSTED_ACCEPTANCE_BLOCKED",
+  "audit_independence": "SAME_CHAT_REPAIR_AND_REAUDIT_NOT_INDEPENDENT",
+  "implementation_commit": "72ab157205137f432852b4ee71d9f64183039e2c",
+  "recorded_at_utc": "2026-08-17T04:04:24Z",
+  "repaired_findings": [
+    "Hosted-auth expiry tests now derive valid and expired invite times from the test clock.",
+    "Cloud Run ASR/render execution rejects missing, non-regular, symlinked, byte-mismatched, and SHA-256-mismatched primary output before upload or success.",
+    "R2 upload authorization signs the declared SHA-256 checksum and exposes required length, content type, and checksum headers; durable completion verifies exact object length, type, and bytes.",
+    "The Cloud Run credential parser avoids a literal delimiter that the tracked-file secret scanner correctly treats as suspicious."
+  ],
+  "validation": {
+    "canonical": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "tasks": "28/28",
+      "control_plane": "303/303",
+      "pipeline": "120/120",
+      "web": "324/324 plus 1 skipped",
+      "installed_chrome": "44/44",
+      "cloudflare_local": "1/1",
+      "worker_suites": "6 suites pass"
+    },
+    "focused_hosted_auth": {
+      "command": "pnpm --filter @videoforge/control-plane exec node --test tests/v2-06-hosted-auth.test.mjs",
+      "exit_code": 0,
+      "tests": "3/3"
+    },
+    "focused_hosted_adapters": {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/server/hosted/hosted-adapters.test.ts",
+      "exit_code": 0,
+      "tests": "4/4"
+    },
+    "worker_tests": {
+      "command": "pnpm test:workers",
+      "exit_code": 0,
+      "suites": 6
+    },
+    "secret_scan": {
+      "command": "node scripts/secret-scan.mjs",
+      "exit_code": 0
+    }
+  },
+  "checkpoint_authority": {
+    "active_provider_authority": "NONE",
+    "credential_access_authorized": false,
+    "remote_mutation_authorized": false,
+    "paid_compute_authorized": false,
+    "maximum_external_spend_usd": 0,
+    "approved_resources": [],
+    "approved_rates": [],
+    "approved_finite_operations": []
+  },
+  "actual_resource_and_spend_truth": {
+    "provider_calls_this_repair": 0,
+    "external_mutations_this_repair": 0,
+    "deployments_this_repair": 0,
+    "paid_requests_this_repair": 0,
+    "external_spend_usd_this_repair": 0,
+    "runpod_calls_this_repair": 0,
+    "runpod_workers_started_this_repair": 0,
+    "live_inventory_refreshed": false,
+    "last_known_runpod_workers": 0,
+    "last_known_runpod_worker_truth_is_stale": true,
+    "last_known_retained_volumes": 2,
+    "last_known_recurring_retained_volume_usd_per_month": 7.0,
+    "gpu_transport": "FAKE_DISABLED"
+  },
+  "remaining_checkpoint_failures": [
+    "No immutable deployment evidence proves a Cloudflare Worker/Workflow, Neon database, private R2 bucket, Cloud Run Job, Better Auth provider, email sender, OAuth client, DNS record, secret binding, backup, restore, or rollback in a hosted environment.",
+    "The staging UI/API is an activation and auth/status shell rather than the complete existing product route graph required by V2-06.",
+    "No two-real-account hosted tenant-isolation proof, non-superuser Neon RLS proof, real-R2 proof, hosted ASR/render parity proof, durable live restart/replay/cancel/timeout proof, real-Chrome staging proof, settled cost proof, or current scale-to-zero proof exists.",
+    "Current RunPod zero-worker truth is unproven because live inventory was forbidden; only the stale 2026-08-15 record says zero workers and two retained volumes at USD 7.00/month."
+  ],
+  "rollback_state": "LOCAL_TEMPLATES_AND_RUNBOOKS_ONLY_NOT_LIVE_PROVEN",
+  "successor_safety": {
+    "v2_07": "BLOCKED_ON_V2_06",
+    "runpod_activation_authorized": false,
+    "gpu_workers_authorized": false
+  }
+}

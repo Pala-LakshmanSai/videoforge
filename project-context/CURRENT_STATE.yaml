@@ -1,42 +1,30 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-16T19:06:19Z"
+updated_at: "2026-08-17T04:04:24Z"
 
-phase: serverless_v2_v2_06_provider_free_preflight_green
-implementation_authorized_in_current_task: true
+phase: serverless_v2_v2_06_local_repair_green_hosted_acceptance_blocked
+implementation_authorized_in_current_task: false
 current_milestone: hosted_staging_and_cpu_jobs
 current_task: VF-10-06
-current_wave: v2_06_provider_free_preflight
+current_wave: v2_06_local_repair_reaudit
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: read_only_preflight
-application_code_changes_authorized: true
-provider_calls_authorized: true
-read_only_provider_calls_authorized: true
+task_stage: hosted_activation_blocked
+application_code_changes_authorized: false
+provider_calls_authorized: false
+read_only_provider_calls_authorized: false
 maximum_external_spend_usd: 0
 
 provider_authority:
-  mode: read_only
-  provider: cloudflare_neon_google_and_email
+  mode: none
+  provider: null
   cap_usd: 0
-  source: user_v2_06_implementation_request_2026_08_17
+  source: no_active_external_authority
   non_transferable: true
-  resources:
-    - cloudflare_current_authenticated_account
-    - neon_current_authenticated_organization
-    - gcp_project_gen-lang-client-0893746131
-    - configured_email_delivery_account
-  authorized_operations:
-    - account_identity_lookup
-    - quota_lookup
-    - rate_lookup
-    - region_lookup
-  allowed_operations:
-    - account_identity_lookup
-    - quota_lookup
-    - rate_lookup
-    - region_lookup
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
 
-credential_access_authorized: true
+credential_access_authorized: false
 remote_or_cloud_mutations_authorized: false
 model_downloads_authorized: false
 worker_image_publication_authorized: false
@@ -58,8 +46,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "118a545"
-  last_good_commit_note: "V2-06 provider-free hosted staging foundation: Better Auth composition, Neon migration/runtime grants, private R2 signed ports, Cloudflare durable orchestration, and pinned CPU-only Cloud Run Job adapters pass canonical local/container verification. No hosted deployment or external mutation is claimed."
+  last_good_commit: "72ab157"
+  last_good_commit_note: "V2-06 local audit repair: hosted-auth expiry tests are time-relative, Cloud Run workers fail closed unless the primary output exactly matches declared bytes/hash, and R2 uploads require the declared checksum. This is provider-free local proof only; hosted deployment and full application acceptance remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -73,9 +61,9 @@ live_development:
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
   provider_mode: fixture
-  provider_calls_authorized: true
+  provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "V2-06 only: configured Cloudflare, Neon, Google, and email identity/quota/region/rate reads at $0; no mutation, delivery, deployment, or spend."
+  provider_authority_scope: "None. A new explicit read-only grant is required even for live inventory; mutation or spend additionally requires one exact bounded proposal and approval."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -125,7 +113,7 @@ roadmap_state:
   V2-03: complete_green_independently_reaudited
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
-  V2-06: provider_free_preflight_green_awaiting_exact_activation_inputs
+  V2-06: local_repair_green_hosted_acceptance_blocked
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
@@ -235,8 +223,8 @@ blocking_gates_for_production:
 active_ownership:
   - task_id: VF-10-06
     checkpoint: V2-06
-    scope: provider_free_local_foundation_and_read_only_inventory_only
-    provider_calls_authorized: true
+    scope: completed_provider_free_local_repair_and_same_chat_reaudit_only
+    provider_calls_authorized: false
     maximum_external_spend_usd: 0
 in_progress_checkpoint: V2-06
 
@@ -244,40 +232,28 @@ recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
   milestone: hosted_staging_and_cpu_jobs
-  status: provider_free_preflight_green_awaiting_exact_activation_inputs
+  status: local_repair_green_hosted_acceptance_blocked
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
-  authorization_status: local_and_read_only_only_no_external_mutation_authority
-  task_stage: read_only_preflight
+  authorization_status: no_active_external_or_credential_authority
+  task_stage: hosted_activation_blocked
   provider_authority:
-    mode: read_only
-    provider: cloudflare_neon_google_and_email
+    mode: none
+    provider: null
     cap_usd: 0
     non_transferable: true
-    authorized_by_user_at: "2026-08-16T19:06:19Z"
+    authorized_by_user_at: null
     model_id: null
-    resources:
-      - cloudflare_current_authenticated_account
-      - neon_current_authenticated_organization
-      - gcp_project_gen-lang-client-0893746131
-      - configured_email_delivery_account
-    authorized_operations:
-      - account_identity_lookup
-      - quota_lookup
-      - rate_lookup
-      - region_lookup
-    allowed_operations:
-      - account_identity_lookup
-      - quota_lookup
-      - rate_lookup
-      - region_lookup
+    resources: []
+    authorized_operations: []
+    allowed_operations: []
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
-  goal: "Under a new implementation request, prepare hosted private staging and CPU jobs locally, then stop at the first external mutation or paid boundary for one exact combined proposal; GPU transport stays fake."
-  provider_calls_authorized: true
-  read_only_provider_calls_authorized: true
+  goal: "Obtain a separate explicit read-only audit grant for current provider facts, then prepare one exact combined activation proposal before any mutation or spend; GPU transport stays fake."
+  provider_calls_authorized: false
+  read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: true
+  credential_access_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
@@ -286,15 +262,15 @@ recommended_next_task:
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
-  application_code_changes_authorized: true
+  application_code_changes_authorized: false
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_05_complete_green_same_chat_reaudit_provider_free
-  verified_commit: "3c117f2"
-  verified_commit_note: "V2-05 active tenant-private v3 lifecycle produces a receipt-bound final MP4, passes installed-Chrome playback and fake-worker drain, and compile-isolates ordinary production from compatibility runtimes. Re-audit is same-chat, not independent."
-  predecessor_verified_commit: "3c219dd6a006dc22e6cddae3314fc79c8c2b5ea8"
-  acceptance_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
+  state: v2_06_local_repair_green_full_hosted_acceptance_blocked
+  verified_commit: "72ab157205137f432852b4ee71d9f64183039e2c"
+  verified_commit_note: "V2-06 provider-free audit repairs pass canonical local verification. The same-chat re-audit is not independent, and full hosted acceptance remains blocked by incomplete product-route composition and absent live deployment proof."
+  predecessor_verified_commit: "3c117f204844da9c984d233477933ee4c0f304dd"
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-local-repair-reaudit/acceptance.json
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
@@ -508,9 +484,9 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: provider_free_local_foundation_green_awaiting_exact_activation_inputs
-    implementation_commit: "118a5459110193487b2e0879275f549ce021f8d1"
-    evidence: evidence/acceptance/VF-10-06/2026-08-17-provider-free-preflight/acceptance.json
+    status: local_repair_green_hosted_acceptance_blocked
+    implementation_commit: "72ab157205137f432852b4ee71d9f64183039e2c"
+    evidence: evidence/acceptance/VF-10-06/2026-08-17-local-repair-reaudit/acceptance.json
     commands:
       - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 303/303; pipeline 120/120; web 324/324 plus 1 skipped; Cloudflare 1/1; installed Chrome 44/44)"
       - "Focused PostgreSQL adapter, migration, hosted-auth, callback, retention, and schema-inventory tests: PASS"
@@ -521,16 +497,18 @@ verification:
     delivered:
       - "Better Auth email/password and Google composition persists encrypted OAuth material and admits only a verified invited identity through one atomic first-session transaction."
       - "Neon uses a one-connection serverless PostgreSQL adapter, additive migration 0029, tenant-scoped CPU rows, exact callbacks, least-privilege runtime grants, and bounded backup/restore scripts."
-      - "Private R2 ports bind exact tenant keys, methods, content types, lengths, checksums, and short expiry; callback and polling both verify result bytes before durable acceptance."
+      - "Private R2 upload URLs sign the exact tenant key and declared checksum; required upload headers expose content length, content type, and checksum, while durable completion independently verifies exact length, type, and bytes before acceptance."
       - "Cloudflare Workflow persists outbox state before one Cloud Run dispatch, reconciles ambiguous acknowledgement without blind resend, polls authoritatively, and fences restart, replay, cancel, expiry, and retention."
       - "CPU-only scale-to-zero Cloud Run Job templates use maxRetries zero and the pinned whisper.cpp 1.8.4 plus FFmpeg/FFprobe 8.1.2 container."
       - "The staging Worker, hosted auth UI, secret allowlist, observability template, rollback, and activation record are fail-closed until exact approved values replace placeholders."
+      - "Hosted-auth expiry tests use clock-relative boundaries; Cloud Run workers now reject absent, non-regular, symlinked, byte-mismatched, or hash-mismatched primary output instead of reporting success."
     remaining_gates:
       - "Cloudflare and Neon sign-in is required for exact read-only account, plan, region, domain, quota, and current-rate facts."
       - "The email provider and verified sender identity/domain must be selected."
       - "The visible Google project gen-lang-client-0893746131 must be confirmed as the intended staging target."
       - "No combined external mutation proposal has been issued because those inputs are missing, and no numeric cumulative finite spend cap exists."
-      - "All live hosted proofs, billing settlement, real-Chrome staging, rollback, and zero-compute closure remain unproven until exact approval."
+      - "The staged UI/API is an activation and auth/status shell, not the complete existing product route graph required by V2-06 acceptance."
+      - "All live hosted proofs, billing settlement, real-Chrome staging, rollback, and zero-compute closure remain unproven; complete route composition plus exact activation approval are still required."
     resource_truth:
       external_mutations: 0
       deployments: 0
