@@ -16,7 +16,14 @@ def main() -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     parsed = urlsplit(args.origin)
-    if parsed.scheme != "https" or not parsed.netloc or parsed.query or parsed.fragment:
+    if (
+        parsed.scheme != "https"
+        or not parsed.netloc
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+    ):
         raise SystemExit("control-plane origin must be an absolute credential-free HTTPS URL")
     if not re.fullmatch(r"sha256:[0-9a-f]{64}", args.execution_bundle_sha256):
         raise SystemExit("execution bundle SHA-256 must be exact lowercase prefixed hex")
