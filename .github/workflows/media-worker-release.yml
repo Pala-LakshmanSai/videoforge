@@ -1,0 +1,423 @@
+name: Media worker release
+
+on:
+  workflow_dispatch:
+    inputs:
+      control_plane_origin:
+        description: Exact hosted HTTPS origin compiled into both installers
+        required: true
+        type: string
+      execution_bundle_sha256:
+        description: Exact source and tool manifest identity approved for this release
+        required: true
+        type: string
+      whisper_model_sha256:
+        description: Exact prefixed SHA-256 of bundled ggml-base.en.bin
+        required: true
+        type: string
+      signed_release:
+        description: Optional production upgrade to Authenticode and Developer ID notarization
+        required: true
+        default: false
+        type: boolean
+      publish_release:
+        description: Publish immutable beta or production artifacts with exact trust metadata
+        required: true
+        default: false
+        type: boolean
+      release_tag:
+        description: Exact new tag; 0.1.0 builds require media-worker-v0.1.0
+        required: true
+        default: media-worker-v0.1.0
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: media-worker-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - label: windows-x64
+            os: windows-2022
+          - label: macos-universal2
+            os: macos-14
+    runs-on: ${{ matrix.os }}
+    environment: media-worker-release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12.13"
+          cache: pip
+
+      - name: Validate bounded release inputs
+        shell: python
+        env:
+          CONTROL_PLANE_ORIGIN: ${{ inputs.control_plane_origin }}
+          EXECUTION_BUNDLE_SHA256: ${{ inputs.execution_bundle_sha256 }}
+          WHISPER_MODEL_SHA256: ${{ inputs.whisper_model_sha256 }}
+        run: |
+          import os
+          import re
+          from urllib.parse import urlsplit
+          for name in ("CONTROL_PLANE_ORIGIN",):
+              value = os.environ[name]
+              parsed = urlsplit(value)
+              if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
+                  raise SystemExit(f"{name} must be a credential-free HTTPS URL")
+          if not re.fullmatch(r"sha256:[0-9a-f]{64}", os.environ["EXECUTION_BUNDLE_SHA256"]):
+              raise SystemExit("EXECUTION_BUNDLE_SHA256 must be exact prefixed lowercase hex")
+          if not re.fullmatch(r"sha256:[0-9a-f]{64}", os.environ["WHISPER_MODEL_SHA256"]):
+              raise SystemExit("WHISPER_MODEL_SHA256 must be exact prefixed lowercase hex")
+
+      - name: Build pinned whisper.cpp CLI for macOS universal2
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          git init whisper-src
+          git -C whisper-src remote add origin https://github.com/ggml-org/whisper.cpp.git
+          git -C whisper-src fetch --depth 1 origin 9386f239401074690479731c1e41683fbbeac557
+          test "$(git -C whisper-src rev-parse FETCH_HEAD)" = "9386f239401074690479731c1e41683fbbeac557"
+          git -C whisper-src checkout --detach FETCH_HEAD
+          cmake -S whisper-src -B whisper-build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+            -DGGML_METAL=ON \
+            -DGGML_NATIVE=OFF \
+            -DGGML_OPENMP=OFF \
+            -DWHISPER_BUILD_TESTS=OFF \
+            -DWHISPER_BUILD_EXAMPLES=ON \
+            -DWHISPER_BUILD_SERVER=OFF
+          cmake --build whisper-build --config Release --target whisper-cli --parallel 3
+
+      - name: Assemble and verify exact Windows media tools
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          WHISPER_MODEL_SHA256: ${{ inputs.whisper_model_sha256 }}
+        run: |
+          set -euo pipefail
+          python apps/media-worker-desktop/prepare_release_tools.py \
+            --platform windows \
+            --expected-model-sha256 "$WHISPER_MODEL_SHA256" \
+            --output worker-resources/bin
+
+      - name: Assemble and verify exact macOS media tools
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          WHISPER_MODEL_SHA256: ${{ inputs.whisper_model_sha256 }}
+        run: |
+          set -euo pipefail
+          python apps/media-worker-desktop/prepare_release_tools.py \
+            --platform macos \
+            --macos-whisper-cli whisper-build/bin/whisper-cli \
+            --expected-model-sha256 "$WHISPER_MODEL_SHA256" \
+            --output worker-resources/bin
+
+      - name: Build pinned worker configuration
+        shell: bash
+        env:
+          CONTROL_PLANE_ORIGIN: ${{ inputs.control_plane_origin }}
+          EXECUTION_BUNDLE_SHA256: ${{ inputs.execution_bundle_sha256 }}
+          WHISPER_MODEL_SHA256: ${{ inputs.whisper_model_sha256 }}
+        run: |
+          set -euo pipefail
+          python apps/media-worker-desktop/build_release_config.py \
+            --origin "$CONTROL_PLANE_ORIGIN" \
+            --execution-bundle-sha256 "$EXECUTION_BUNDLE_SHA256" \
+            --whisper-model-sha256 "$WHISPER_MODEL_SHA256" \
+            --tools-root resources/bin \
+            --output build/media-worker-release-config.json
+
+      - name: Install bounded Python build dependencies
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check "pyinstaller==6.15.0"
+          python -m pip install --disable-pip-version-check -e packages/contracts
+          python -m pip install --disable-pip-version-check --no-deps -e workers/image-media
+          python -m pip install --disable-pip-version-check --no-deps -e workers/media-local
+
+      - name: Run personal worker unit tests
+        shell: bash
+        run: python -m unittest discover -s workers/media-local/tests -p "test_*.py"
+
+      - name: Freeze worker
+        shell: bash
+        env:
+          VIDEOFORGE_WORKER_RESOURCES: ${{ github.workspace }}/worker-resources/bin
+          VIDEOFORGE_WORKER_BUILD_CONFIG: ${{ github.workspace }}/build/media-worker-release-config.json
+          VIDEOFORGE_WORKER_TARGET_ARCH: ${{ runner.os == 'macOS' && 'universal2' || '' }}
+        run: pyinstaller --noconfirm apps/media-worker-desktop/videoforge-worker.spec
+
+      - name: Require universal2 for every macOS Mach-O in the app
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="dist/VideoForge Worker.app"
+          test -d "$app"
+          found=0
+          while IFS= read -r -d '' candidate; do
+            if /usr/bin/file "$candidate" | /usr/bin/grep -q 'Mach-O'; then
+              found=1
+              /usr/bin/lipo -verify_arch arm64 x86_64 "$candidate"
+            fi
+          done < <(/usr/bin/find "$app" -type f -print0)
+          test "$found" = "1"
+
+      - name: Seal macOS beta app with ImageForge-style ad-hoc signature
+        if: runner.os == 'macOS' && inputs.signed_release == false
+        shell: bash
+        run: |
+          codesign --force --deep --sign - "dist/VideoForge Worker.app"
+          codesign --verify --deep --strict --verbose=2 "dist/VideoForge Worker.app"
+          codesign -dv --verbose=4 "dist/VideoForge Worker.app" 2>&1 | grep -q 'Signature=adhoc'
+
+      - name: Require and apply Windows Authenticode signature
+        if: runner.os == 'Windows' && inputs.signed_release
+        shell: pwsh
+        env:
+          WINDOWS_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+          WINDOWS_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
+        run: |
+          if (-not $env:WINDOWS_SIGNING_PFX_BASE64 -or -not $env:WINDOWS_SIGNING_PFX_PASSWORD) { throw "Windows signing secrets are required" }
+          [IO.File]::WriteAllBytes("worker-signing.pfx", [Convert]::FromBase64String($env:WINDOWS_SIGNING_PFX_BASE64))
+          & signtool sign /fd SHA256 /td SHA256 /tr https://timestamp.digicert.com /f worker-signing.pfx /p $env:WINDOWS_SIGNING_PFX_PASSWORD "dist\VideoForge Worker.exe"
+          if ($LASTEXITCODE -ne 0) { throw "Authenticode signing failed" }
+
+      - name: Build Windows setup
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "apps\media-worker-desktop\windows-installer.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Windows setup failed" }
+
+      - name: Sign Windows setup and verify both signatures
+        if: runner.os == 'Windows' && inputs.signed_release
+        shell: pwsh
+        env:
+          WINDOWS_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
+        run: |
+          $setup = Get-ChildItem "apps\media-worker-desktop\Output\VideoForge-Worker-*-Setup.exe" | Select-Object -First 1
+          & signtool sign /fd SHA256 /td SHA256 /tr https://timestamp.digicert.com /f worker-signing.pfx /p $env:WINDOWS_SIGNING_PFX_PASSWORD $setup.FullName
+          if ($LASTEXITCODE -ne 0) { throw "Setup Authenticode signing failed" }
+          & signtool verify /pa /all /v "dist\VideoForge Worker.exe"
+          if ($LASTEXITCODE -ne 0) { throw "Worker Authenticode verification failed" }
+          & signtool verify /pa /all /v $setup.FullName
+          if ($LASTEXITCODE -ne 0) { throw "Setup Authenticode verification failed" }
+          Remove-Item worker-signing.pfx -Force
+
+      - name: Sign macOS app for final disk image
+        if: runner.os == 'macOS' && inputs.signed_release
+        shell: bash
+        env:
+          APPLE_DEVELOPER_ID_APPLICATION: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION }}
+          APPLE_SIGNING_P12_BASE64: ${{ secrets.APPLE_SIGNING_P12_BASE64 }}
+          APPLE_SIGNING_P12_PASSWORD: ${{ secrets.APPLE_SIGNING_P12_PASSWORD }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+          APPLE_NOTARY_PRIVATE_KEY: ${{ secrets.APPLE_NOTARY_PRIVATE_KEY }}
+        run: |
+          test -n "$APPLE_DEVELOPER_ID_APPLICATION"
+          test -n "$APPLE_SIGNING_P12_BASE64"
+          test -n "$APPLE_SIGNING_P12_PASSWORD"
+          test -n "$APPLE_NOTARY_KEY_ID"
+          test -n "$APPLE_NOTARY_ISSUER_ID"
+          test -n "$APPLE_NOTARY_PRIVATE_KEY"
+          SIGNING_KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+          printf '%s' "$APPLE_SIGNING_P12_BASE64" | base64 -D > signing.p12
+          security create-keychain -p "$SIGNING_KEYCHAIN_PASSWORD" worker-signing.keychain-db
+          security set-keychain-settings -lut 21600 worker-signing.keychain-db
+          security unlock-keychain -p "$SIGNING_KEYCHAIN_PASSWORD" worker-signing.keychain-db
+          security import signing.p12 -k worker-signing.keychain-db -P "$APPLE_SIGNING_P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$SIGNING_KEYCHAIN_PASSWORD" worker-signing.keychain-db
+          security list-keychains -d user -s worker-signing.keychain-db
+          printf '%s' "$APPLE_NOTARY_PRIVATE_KEY" > notary-key.p8
+          codesign --force --deep --options runtime --timestamp --sign "$APPLE_DEVELOPER_ID_APPLICATION" "dist/VideoForge Worker.app"
+          codesign --verify --deep --strict --verbose=2 "dist/VideoForge Worker.app"
+
+      - name: Build macOS disk image
+        if: runner.os == 'macOS'
+        shell: bash
+        run: >-
+          hdiutil create -fs HFS+ -volname "VideoForge Worker"
+          -srcfolder "dist/VideoForge Worker.app"
+          "VideoForge-Worker-0.1.0.dmg"
+
+      - name: Verify macOS disk image and installed app seal
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          SIGNED_RELEASE: ${{ inputs.signed_release }}
+        run: |
+          set -euo pipefail
+          mount_dir="$(mktemp -d "$RUNNER_TEMP/videoforge-worker-dmg.XXXXXX")"
+          cleanup() {
+            hdiutil detach "$mount_dir" >/dev/null 2>&1 || true
+            rmdir "$mount_dir" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          hdiutil verify "VideoForge-Worker-0.1.0.dmg"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mount_dir" "VideoForge-Worker-0.1.0.dmg" >/dev/null
+          codesign --verify --deep --strict --verbose=2 "$mount_dir/VideoForge Worker.app"
+          if [ "$SIGNED_RELEASE" != "true" ]; then
+            codesign -dv --verbose=4 "$mount_dir/VideoForge Worker.app" 2>&1 | grep -q 'Signature=adhoc'
+          fi
+
+      - name: Sign, notarize, staple, and assess final macOS disk image
+        if: runner.os == 'macOS' && inputs.signed_release
+        shell: bash
+        env:
+          APPLE_DEVELOPER_ID_APPLICATION: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+        run: |
+          codesign --force --timestamp --sign "$APPLE_DEVELOPER_ID_APPLICATION" "VideoForge-Worker-0.1.0.dmg"
+          codesign --verify --strict --verbose=2 "VideoForge-Worker-0.1.0.dmg"
+          xcrun notarytool submit "VideoForge-Worker-0.1.0.dmg" \
+            --key notary-key.p8 \
+            --key-id "$APPLE_NOTARY_KEY_ID" \
+            --issuer "$APPLE_NOTARY_ISSUER_ID" \
+            --wait
+          xcrun stapler staple "VideoForge-Worker-0.1.0.dmg"
+          xcrun stapler validate "VideoForge-Worker-0.1.0.dmg"
+          spctl --assess --type open --context context:primary-signature --verbose=2 "VideoForge-Worker-0.1.0.dmg"
+
+      - name: Remove transient macOS signing material
+        if: runner.os == 'macOS' && always()
+        shell: bash
+        run: |
+          security delete-keychain worker-signing.keychain-db 2>/dev/null || true
+          rm -f signing.p12 notary-key.p8
+
+      - name: Hash release artifact
+        shell: python
+        env:
+          SIGNED_RELEASE: ${{ inputs.signed_release }}
+        run: |
+          import hashlib
+          import json
+          import os
+          import platform
+          from pathlib import Path
+          artifact = next(iter(Path(".").glob("VideoForge-Worker-*.dmg")), None)
+          if artifact is None:
+              artifact = next(iter(Path("apps/media-worker-desktop/Output").glob("VideoForge-Worker-*-Setup.exe")))
+          signed_release = os.environ["SIGNED_RELEASE"].lower() == "true"
+          value = {
+              "filename": artifact.name,
+              "sha256": f"sha256:{hashlib.sha256(artifact.read_bytes()).hexdigest()}",
+              "size_bytes": artifact.stat().st_size,
+              "platform": platform.system(),
+              "signed_release": signed_release,
+              "trust": (
+                  "AUTHENTICODE_SIGNED" if platform.system() == "Windows" and signed_release
+                  else "UNSIGNED_BETA" if platform.system() == "Windows"
+                  else "DEVELOPER_ID_NOTARIZED" if signed_release
+                  else "AD_HOC_BETA"
+              ),
+          }
+          Path("release-facts.json").write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: videoforge-worker-${{ matrix.label }}
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            VideoForge-Worker-*.dmg
+            apps/media-worker-desktop/Output/VideoForge-Worker-*-Setup.exe
+            release-facts.json
+
+  publish:
+    name: Publish immutable worker downloads
+    if: inputs.publish_release
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: media-worker-release
+    permissions:
+      contents: write
+    steps:
+      - name: Refuse mutable release identity
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          test "$RELEASE_TAG" = "media-worker-v0.1.0"
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: videoforge-worker-*
+          path: release-assets
+
+      - name: Build exact hosted release manifest
+        shell: python
+        env:
+          EXECUTION_BUNDLE_SHA256: ${{ inputs.execution_bundle_sha256 }}
+          WHISPER_MODEL_SHA256: ${{ inputs.whisper_model_sha256 }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          import json
+          import os
+          from pathlib import Path
+          facts = [json.loads(path.read_text()) for path in Path("release-assets").rglob("release-facts.json")]
+          if len(facts) != 2:
+              raise SystemExit("exactly two platform facts are required")
+          by_platform = {item["platform"]: item for item in facts}
+          if set(by_platform) != {"Windows", "Darwin"}:
+              raise SystemExit("Windows and macOS release facts are required")
+          base = f"https://github.com/{os.environ['REPOSITORY']}/releases/download/{os.environ['RELEASE_TAG']}"
+          def item(platform):
+              value = by_platform[platform]
+              return {
+                  "url": f"{base}/{value['filename']}",
+                  "sha256": value["sha256"],
+                  "size_bytes": value["size_bytes"],
+                  "trust": value["trust"],
+              }
+          manifest = {
+              "schema_version": "videoforge-media-worker-release/v1",
+              "version": "0.1.0",
+              "minimum_protocol_version": 1,
+              "execution_bundle_sha256": os.environ["EXECUTION_BUNDLE_SHA256"],
+              "whisper_model_sha256": os.environ["WHISPER_MODEL_SHA256"],
+              "windows": item("Windows"),
+              "macos": item("Darwin"),
+          }
+          Path("media-worker-release.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+
+      - name: Publish new tag and non-replaceable release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          REPOSITORY: ${{ github.repository }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
+              echo "release tag already exists: $RELEASE_TAG" >&2
+              exit 1
+          else
+              test "$?" = "1"
+          fi
+          mapfile -t binaries < <(find release-assets -type f \( -name '*.dmg' -o -name '*-Setup.exe' \) -print)
+          test "${#binaries[@]}" = "2"
+          gh release create "$RELEASE_TAG" "${binaries[@]}" media-worker-release.json \
+            --repo "$REPOSITORY" \
+            --target "$RELEASE_SHA" \
+            --title "VideoForge Worker 0.1.0" \
+            --notes "Immutable Windows x64 and macOS universal2 personal media workers. Exact hashes and platform trust mode are recorded in media-worker-release.json."
