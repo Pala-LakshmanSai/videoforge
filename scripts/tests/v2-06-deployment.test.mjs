@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
 import { requireNonEmptyClientAsset } from "../../deploy/v2-06/render-staging-config.mjs";
+import { parseOrigin } from "../../deploy/v2-06/render-r2-cors.mjs";
 
 const verifier = "deploy/v2-06/verify-r2-cors.mjs";
 const renderer = "deploy/v2-06/render-staging-config.mjs";
@@ -37,7 +39,88 @@ test("V2-06 CORS verifier rejects wildcard origins", () => {
   assert.match(`${result.stdout}\n${result.stderr}`, /allowed origin is not exact|wildcard/u);
 });
 
+test("V2-06 CORS renderer only accepts an exact HTTPS origin", () => {
+  assert.equal(parseOrigin(origin), origin);
+  assert.throws(
+    () => parseOrigin("https://*.example.workers.dev"),
+    /credential-free HTTPS origin/u,
+  );
+  const temporaryDirectory = mkdtempSync(join(tmpdir(), "videoforge-v2-06-cors-"));
+  const corsOutput = join(temporaryDirectory, "cors.json");
+  try {
+    const result = spawnSync(
+      process.execPath,
+      ["deploy/v2-06/render-r2-cors.mjs", "--origin", origin, "--output", corsOutput],
+      { encoding: "utf8" },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const cors = JSON.parse(readFileSync(corsOutput, "utf8"));
+    assert.deepEqual(cors.rules[0].allowed.origins, [origin]);
+    assert.deepEqual(cors.rules[0].allowed.methods, ["GET", "PUT", "HEAD"]);
+    assert.equal(cors.rules[0].maxAgeSeconds, 3600);
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
 const currentHead = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+const fixtureDirectory = mkdtempSync(join(tmpdir(), "videoforge-v2-06-render-fixture-"));
+const releaseManifestFile = join(fixtureDirectory, "release.json");
+const releaseManifest = `${JSON.stringify(
+  {
+    schema_version: "videoforge-media-worker-release/v1",
+    version: "0.1.0",
+    minimum_protocol_version: 1,
+    execution_bundle_sha256: `sha256:${"1".repeat(64)}`,
+    whisper_model_sha256: `sha256:${"2".repeat(64)}`,
+    windows: {
+      url: "https://example.invalid/videoforge-worker.exe",
+      sha256: `sha256:${"3".repeat(64)}`,
+      size_bytes: 1,
+      trust: "UNSIGNED_BETA",
+    },
+    macos: {
+      url: "https://example.invalid/videoforge-worker.dmg",
+      sha256: `sha256:${"4".repeat(64)}`,
+      size_bytes: 1,
+      trust: "AD_HOC_BETA",
+    },
+  },
+  null,
+  2,
+)}\n`;
+writeFileSync(releaseManifestFile, releaseManifest, { encoding: "utf8", mode: 0o600 });
+const releaseManifestSha256 = `sha256:${createHash("sha256").update(releaseManifest).digest("hex")}`;
+const activationRecordFile = join(fixtureDirectory, "activation.json");
+writeFileSync(
+  activationRecordFile,
+  `${JSON.stringify(
+    {
+      schema_version: "videoforge-v2-06-activation/v1",
+      checkpoint: "V2-06",
+      authority: {
+        mode: "APPROVED",
+        maximum_cumulative_finite_external_spend_usd: 3,
+        approved_at: "2026-08-17T00:00:00.000Z",
+        non_transferable: true,
+      },
+      cloudflare: {
+        account_id_sha256: `sha256:${createHash("sha256")
+          .update("f9254d773a3426fcb469451b1f965d8c")
+          .digest("hex")}`,
+        worker: "videoforge-v2-06-staging",
+        workflow: "videoforge-v2-06-staging-video",
+        r2_bucket: "videoforge-v2-06-staging-private",
+        r2_location: "auto",
+        domain: new URL(origin).hostname,
+      },
+      personal_media_workers: { release_manifest_sha256: releaseManifestSha256 },
+    },
+    null,
+    2,
+  )}\n`,
+  { encoding: "utf8", mode: 0o600 },
+);
 const renderArgs = (commit) => [
   renderer,
   "--account-id",
@@ -47,10 +130,14 @@ const renderArgs = (commit) => [
   "--commit",
   commit,
   "--release-manifest-file",
-  "/tmp/videoforge-v2-06-test-release-manifest.json",
+  releaseManifestFile,
+  "--activation-record",
+  activationRecordFile,
   "--output",
   "/tmp/videoforge-v2-06-test-rendered-config.json",
 ];
+
+test.after(() => rmSync(fixtureDirectory, { recursive: true, force: true }));
 
 test("V2-06 renderer rejects a nonexistent full-length commit SHA", () => {
   const result = spawnSync(process.execPath, [renderArgs("0".repeat(40))].flat(), {

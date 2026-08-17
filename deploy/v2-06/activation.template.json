@@ -34,6 +34,7 @@
     "windows_setup": "UNSIGNED_BETA_LIKE_IMAGEFORGE",
     "macos_dmg": "AD_HOC_BETA_LIKE_IMAGEFORGE",
     "release_manifest": "deploy/v2-06/media-worker-release.template.json",
+    "release_manifest_sha256": "__V2_06_RELEASE_MANIFEST_SHA256__",
     "tool_bundle": "PINNED_SHA256_REQUIRED",
     "runtime_configuration_by_user": "NONE"
   },

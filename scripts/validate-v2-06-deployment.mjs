@@ -122,6 +122,20 @@ if (
   activation.secret_policy?.r2_credential_scope !== "BUCKET_ONLY"
 )
   fail("zero-spend or least-privilege activation policy drifted");
+if (
+  activation.personal_media_workers?.release_manifest_sha256 !== "__V2_06_RELEASE_MANIFEST_SHA256__"
+)
+  fail("activation template must require an immutable release manifest SHA-256 pin");
+for (const [label, value] of [
+  ["Worker", activation.cloudflare?.worker],
+  ["Workflow", activation.cloudflare?.workflow],
+  ["R2 bucket", activation.cloudflare?.r2_bucket],
+  ["R2 location", activation.cloudflare?.r2_location],
+  ["staging domain", activation.cloudflare?.domain],
+]) {
+  if (typeof value !== "string" || value.length === 0)
+    fail(`activation template lost its ${label} pin`);
+}
 
 const r2Cors = JSON.parse(await read("deploy/v2-06/r2-cors.template.json"));
 if (
@@ -202,6 +216,8 @@ for (const path of [
   "deploy/v2-06/rollback.md",
   "deploy/v2-06/verify-r2-cors.sh",
   "deploy/v2-06/verify-r2-cors.mjs",
+  "deploy/v2-06/render-r2-cors.mjs",
+  "deploy/v2-06/apply-migrations-and-grants.mjs",
   "deploy/v2-06/render-staging-config.mjs",
 ]) {
   if ((await read(path)).trim().length < 100) fail(`${path} is incomplete`);
@@ -209,7 +225,10 @@ for (const path of [
 const backupScript = await read("deploy/v2-06/backup.sh");
 const restoreScript = await read("deploy/v2-06/restore-drill.sh");
 const rollbackRunbook = await read("deploy/v2-06/rollback.md");
+const deploymentRunbook = await read("deploy/v2-06/README.md");
 const configRenderer = await read("deploy/v2-06/render-staging-config.mjs");
+const corsRenderer = await read("deploy/v2-06/render-r2-cors.mjs");
+const migrationActivation = await read("deploy/v2-06/apply-migrations-and-grants.mjs");
 const tenantPresetSeed = await read("deploy/v2-06/seed-tenant-presets.mjs");
 const ownedRenderFixture = await read("deploy/v2-06/provision-owned-render-fixture.mjs");
 const ownedFixtureProvisioner = await read("deploy/v2-06/provision-owned-fixture.mjs");
@@ -290,6 +309,13 @@ if (
   fail("owned synthetic fixture provisioner is not fail-closed, tenant-bound, and provider-free");
 if (
   !backupScript.includes("BACKUP_PASSPHRASE_FILE") ||
+  !backupScript.includes("PGSERVICEFILE") ||
+  !backupScript.includes("PGPASSFILE") ||
+  !backupScript.includes("DATABASE_URL and PGPASSWORD are forbidden") ||
+  !backupScript.includes("apply-migrations-and-grants.mjs --verify-only --owner-only") ||
+  !restoreScript.includes("videoforge_v2_06_disposable_drill") ||
+  !restoreScript.includes("public_relation_count") ||
+  !restoreScript.includes("apply-migrations-and-grants.mjs --verify-only --apply-grants") ||
   !backupScript.includes("openssl enc -aes-256-cbc -pbkdf2") ||
   !backupScript.includes("refusing to overwrite") ||
   !restoreScript.includes("RESTORE_DRILL_CONFIRM") ||
@@ -310,6 +336,20 @@ if (
   !configRenderer.includes("no non-empty regular client asset") ||
   !configRenderer.includes("is missing; run pnpm --filter @videoforge/web build:staging first") ||
   !configRenderer.includes("rendered config must be written outside the repository") ||
+  !configRenderer.includes("activation record must be explicitly approved") ||
+  !configRenderer.includes("account ID does not match the approved activation record") ||
+  !configRenderer.includes("release manifest bytes do not match the approved activation record") ||
+  !configRenderer.includes("origin hostname does not match the approved activation record") ||
+  !corsRenderer.includes("exact V2-06 policy") ||
+  !corsRenderer.includes("rendered CORS config must be written outside the repository") ||
+  !migrationActivation.includes("V2_06_PG_SERVICEFILE") ||
+  !migrationActivation.includes("migration ledger position") ||
+  !migrationActivation.includes("rolbypassrls") ||
+  !migrationActivation.includes("FORCE RLS") ||
+  !migrationActivation.includes("hosted render plans are not read-only") ||
+  !deploymentRunbook.includes("r2 bucket cors set") ||
+  !deploymentRunbook.includes('--file \"$CORS_CONFIG\" --force') ||
+  !deploymentRunbook.includes("secret list --format json") ||
   !rollbackRunbook.includes("Keep migrations 0029-0035 applied") ||
   rollbackRunbook.includes("Keep migrations 0029-0032 applied")
 )

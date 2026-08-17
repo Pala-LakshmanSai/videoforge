@@ -105,7 +105,7 @@ function canonicalHash(value) {
 
 function assertApprovedSourceLocation(root, attempt) {
   if (path.resolve(root) !== SOURCE_ROOT || attempt !== SOURCE_ATTEMPT)
-    error("source must be the exact committed V2-06 owned local-slice path");
+    error("source must be the exact approved pinned V2-06 owned local-slice path");
 }
 
 function assertR2PlanCaps(rows) {

@@ -12,6 +12,7 @@ const assetsDirectory = resolve(stagingBuildRoot, "client");
 const fail = (message) => {
   throw new Error(`V2-06 staging config renderer: ${message}`);
 };
+const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 const git = (args) => {
   const result = spawnSync("git", args, {
     cwd: root,
@@ -56,6 +57,45 @@ const requireNonEmptyClientAsset = async (directory) => {
     "staging assets directory has no non-empty regular client asset; run pnpm --filter @videoforge/web build:staging again",
   );
 };
+const readActivationRecord = async (activationPath) => {
+  let activation;
+  try {
+    activation = JSON.parse(await readFile(resolve(activationPath), "utf8"));
+  } catch {
+    fail("activation record is not readable JSON");
+  }
+  if (!activation || typeof activation !== "object" || Array.isArray(activation))
+    fail("activation record must be a JSON object");
+  if (activation.schema_version !== "videoforge-v2-06-activation/v1")
+    fail("activation record schema is not V2-06");
+  if (activation.checkpoint !== "V2-06") fail("activation record checkpoint is not V2-06");
+  if (activation.authority?.mode !== "APPROVED")
+    fail("activation record must be explicitly approved before rendering");
+  if (
+    !Number.isFinite(activation.authority?.maximum_cumulative_finite_external_spend_usd) ||
+    activation.authority.maximum_cumulative_finite_external_spend_usd < 0 ||
+    typeof activation.authority.approved_at !== "string" ||
+    Number.isNaN(Date.parse(activation.authority.approved_at))
+  )
+    fail("activation record must contain an approved timestamp and finite spend cap");
+  if (!/^sha256:[0-9a-f]{64}$/u.test(activation.cloudflare?.account_id_sha256 ?? ""))
+    fail("activation record must pin the Cloudflare account SHA-256");
+  if (
+    !/^sha256:[0-9a-f]{64}$/u.test(activation.personal_media_workers?.release_manifest_sha256 ?? "")
+  )
+    fail("activation record must pin the release manifest SHA-256");
+  for (const [field, value] of [
+    ["Worker", activation.cloudflare?.worker],
+    ["Workflow", activation.cloudflare?.workflow],
+    ["R2 bucket", activation.cloudflare?.r2_bucket],
+    ["R2 location", activation.cloudflare?.r2_location],
+    ["staging domain", activation.cloudflare?.domain],
+  ]) {
+    if (typeof value !== "string" || value.length === 0 || value.includes("__V2_06_"))
+      fail(`activation record must pin the exact ${field}`);
+  }
+  return activation;
+};
 const render = async () => {
   const args = new Map();
   for (let index = 2; index < process.argv.length; index += 2) {
@@ -65,12 +105,22 @@ const render = async () => {
       fail("arguments must be --name value pairs");
     args.set(key.slice(2), value);
   }
-  for (const key of ["account-id", "origin", "commit", "release-manifest-file", "output"])
+  for (const key of [
+    "account-id",
+    "origin",
+    "commit",
+    "release-manifest-file",
+    "activation-record",
+    "output",
+  ])
     if (!args.has(key)) fail(`--${key} is required`);
 
   const accountId = args.get("account-id");
   if (!/^[0-9a-f]{32}$/iu.test(accountId))
     fail("Cloudflare account ID must be 32 hexadecimal characters");
+  const activation = await readActivationRecord(args.get("activation-record"));
+  if (`sha256:${sha256(accountId)}` !== activation.cloudflare.account_id_sha256)
+    fail("account ID does not match the approved activation record");
   const commit = args.get("commit");
   requireCleanHeadCommit(commit);
   const suppliedOrigin = args.get("origin");
@@ -81,6 +131,7 @@ const render = async () => {
       parsed.protocol !== "https:" ||
       parsed.username ||
       parsed.password ||
+      parsed.hostname.includes("*") ||
       parsed.pathname !== "/" ||
       parsed.search ||
       parsed.hash
@@ -91,13 +142,22 @@ const render = async () => {
     if (error instanceof Error && error.message.startsWith("V2-06")) throw error;
     fail("origin must be an absolute HTTPS URL");
   }
+  if (new URL(origin).hostname !== activation.cloudflare.domain)
+    fail("origin hostname does not match the approved activation record");
 
   let release;
+  const releaseManifestPath = resolve(args.get("release-manifest-file"));
   try {
-    release = JSON.parse(await readFile(resolve(args.get("release-manifest-file")), "utf8"));
+    release = JSON.parse(await readFile(releaseManifestPath, "utf8"));
   } catch {
     fail("release manifest file is not readable JSON");
   }
+  const releaseManifestBytes = await readFile(releaseManifestPath);
+  if (
+    `sha256:${sha256(releaseManifestBytes)}` !==
+    activation.personal_media_workers.release_manifest_sha256
+  )
+    fail("release manifest bytes do not match the approved activation record");
   const expectedReleaseKeys = [
     "execution_bundle_sha256",
     "macos",
@@ -177,6 +237,15 @@ const render = async () => {
 
   const parseJsonc = (source) => JSON.parse(source.replace(/,\s*([}\]])/gu, "$1"));
   const template = parseJsonc(await readFile(templatePath, "utf8"));
+  if (
+    template.name !== activation.cloudflare.worker ||
+    template.r2_buckets?.[0]?.bucket_name !== activation.cloudflare.r2_bucket ||
+    template.workflows?.[0]?.name !== activation.cloudflare.workflow ||
+    template.vars?.VIDEOFORGE_R2_REGION !== activation.cloudflare.r2_location
+  )
+    fail(
+      "tracked Worker, Workflow, bucket, or R2 location does not match the approved activation record",
+    );
   const replacements = new Map([
     ["__V2_06_CLOUDFLARE_ACCOUNT_ID__", accountId],
     ["__V2_06_STAGING_HTTPS_ORIGIN__", origin],
@@ -199,6 +268,10 @@ const render = async () => {
   rendered.main = workerBundlePath;
   rendered.no_bundle = false;
   rendered.assets = { ...rendered.assets, directory: assetsDirectory };
+  rendered.vars = {
+    ...rendered.vars,
+    MEDIA_WORKER_RELEASE_MANIFEST_SHA256: `sha256:${sha256(releaseManifestBytes)}`,
+  };
   const renderedJson = `${JSON.stringify(rendered, null, 2)}\n`;
   if (/__V2_06_[A-Z0-9_]+__/u.test(renderedJson)) fail("unresolved deployment placeholder remains");
   const output = resolve(args.get("output"));
@@ -206,8 +279,8 @@ const render = async () => {
   if (output === root || output.startsWith(`${root}/`))
     fail("rendered config must be written outside the repository");
   await writeFile(output, renderedJson, { encoding: "utf8", mode: 0o600, flag: "wx" });
-  const sha256 = createHash("sha256").update(renderedJson).digest("hex");
-  console.log(`Rendered ${output} (sha256:${sha256})`);
+  const outputSha256 = createHash("sha256").update(renderedJson).digest("hex");
+  console.log(`Rendered ${output} (sha256:${outputSha256})`);
 };
 
 if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) await render();

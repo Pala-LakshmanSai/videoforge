@@ -1,9 +1,9 @@
 # V2-06 staging deployment inputs
 
-Provider-free state only. Nothing in this directory authorizes deployment or resource creation.
-The following sequence is the activation runbook after the exact V2-06 proposal, finite spend cap,
-and provider mutation approval have been recorded. It deliberately keeps the rendered config and
-all secret values outside Git.
+Templates and procedures in this directory are not deployment authority. The following sequence is
+the activation runbook after the exact V2-06 proposal, finite spend cap, and provider mutation
+approval have been recorded separately. It deliberately keeps the rendered config and all secret
+values outside Git.
 
 ## Build, render, deploy, and verify
 
@@ -18,40 +18,107 @@ stub. Absolute paths are required because the rendered file is stored in `/tmp`.
 ```sh
 set -eu
 
+# This file is an operator procedure, not an approval record.  The activation record is a
+# separately reviewed, mode-0600 JSON file with authority.mode=APPROVED, the finite cap, exact
+# Cloudflare/Neon identities, and the immutable release-manifest SHA-256.  Never use the tracked
+# activation.template.json as that record.
+ACTIVATION_RECORD=/secure/videoforge/v2-06/activation-approved.json
+CLOUDFLARE_ACCOUNT_ID=<exact-approved-32-hex-account-id>
+STAGING_ORIGIN=https://<exact-approved-worker-origin>
+RELEASE_MANIFEST=/secure/videoforge/v2-06/media-worker-release.json
+CONFIG=/tmp/videoforge-v2-06-staging.wrangler.json
+export CLOUDFLARE_ACCOUNT_ID STAGING_ORIGIN
+umask 077
+test -f "$ACTIVATION_RECORD" && test ! -L "$ACTIVATION_RECORD"
+test "$(stat -f '%Lp' "$ACTIVATION_RECORD" 2>/dev/null || stat -c '%a' "$ACTIVATION_RECORD")" = 600
+
+# Apply the committed migration chain only through the approved Neon migration-owner service.
+# PGSERVICEFILE contains host/dbname/user but no password; PGPASSFILE is mode 0600.  The helper
+# verifies every migration byte/hash, the exact ledger prefix, the owner identity, runtime grants,
+# and FORCE RLS.  It never accepts a DATABASE_URL argv.
+export PGSERVICEFILE=/secure/videoforge/v2-06/owner.pg_service.conf
+export PGSERVICE=videoforge_v2_06_owner
+export PGPASSFILE=/secure/videoforge/v2-06/owner.pgpass
+export V2_06_APPROVED_NEON_HOST=<exact-approved-neon-endpoint-host>
+export V2_06_EXPECTED_DATABASE=<exact-approved-staging-database>
+export V2_06_EXPECTED_OWNER_ROLE=<exact-migration-owner-role>
+export V2_06_RUNTIME_ROLE=<exact-non-superuser-runtime-role>
+node deploy/v2-06/apply-migrations-and-grants.mjs --apply-grants
+
 pnpm --filter @videoforge/web build:staging
 DEPLOYED_COMMIT=$(git rev-parse HEAD)
-CONFIG=/tmp/videoforge-v2-06-staging.wrangler.json
 
 node deploy/v2-06/render-staging-config.mjs \
-  --account-id <32-hex-cloudflare-account-id> \
-  --origin https://<exact-worker-origin> \
+  --account-id "$CLOUDFLARE_ACCOUNT_ID" \
+  --origin "$STAGING_ORIGIN" \
   --commit "$DEPLOYED_COMMIT" \
-  --release-manifest-file <immutable-release-manifest.json> \
+  --release-manifest-file "$RELEASE_MANIFEST" \
+  --activation-record "$ACTIVATION_RECORD" \
   --output "$CONFIG"
 
 node -e '
   const fs = require("node:fs");
   const c = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-  if (c.no_bundle !== false || !c.main.startsWith(process.cwd() + "/apps/web/dist-staging/") ||
+  if (c.no_bundle !== false || c.name !== "videoforge-v2-06-staging" ||
+      c.account_id !== process.env.CLOUDFLARE_ACCOUNT_ID ||
+      c.r2_buckets?.[0]?.bucket_name !== "videoforge-v2-06-staging-private" ||
+      c.workflows?.[0]?.name !== "videoforge-v2-06-staging-video" ||
+      c.vars?.VIDEOFORGE_PUBLIC_ORIGIN !== process.env.STAGING_ORIGIN ||
+      c.vars?.VIDEOFORGE_R2_REGION !== "auto" ||
+      !c.main.startsWith(process.cwd() + "/apps/web/dist-staging/") ||
       c.assets?.directory !== process.cwd() + "/apps/web/dist-staging/client") process.exit(1);
   if (!fs.statSync(c.main).isFile() || !fs.statSync(c.assets.directory).isDirectory()) process.exit(1);
 ' "$CONFIG"
 
-# Upload exactly the eight required secrets through Wrangler's secret store.
-# Each FILE is mode 0600 and contains one value; never put values in this config,
-# shell history, logs, or evidence.
+# Upload exactly the eight required secrets through Wrangler's secret store.  The preflight rejects
+# symlinks, empty values, wrong modes, and extra files before any provider mutation.
+SECRET_DIR=/secure/videoforge/v2-06/secrets
+mode_of() { stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1"; }
+for name in \
+  DATABASE_URL BETTER_AUTH_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET \
+  R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY WORKFLOW_CALLBACK_SECRET MEDIA_WORKER_TOKEN_SECRET; do
+  file="$SECRET_DIR/$name"
+  test -f "$file" && test ! -L "$file" && test -s "$file" && test "$(mode_of "$file")" = 600
+done
+for file in "$SECRET_DIR"/*; do
+  test -e "$file" || continue
+  case "/$(basename "$file")/" in
+    /DATABASE_URL/|/BETTER_AUTH_SECRET/|/GOOGLE_CLIENT_ID/|/GOOGLE_CLIENT_SECRET/|/R2_ACCESS_KEY_ID/|/R2_SECRET_ACCESS_KEY/|/WORKFLOW_CALLBACK_SECRET/|/MEDIA_WORKER_TOKEN_SECRET/) ;;
+    *) echo "unexpected secret file: $file" >&2; exit 2 ;;
+  esac
+done
 for entry in \
-  DATABASE_URL:/secure/videoforge/DATABASE_URL \
-  BETTER_AUTH_SECRET:/secure/videoforge/BETTER_AUTH_SECRET \
-  GOOGLE_CLIENT_ID:/secure/videoforge/GOOGLE_CLIENT_ID \
-  GOOGLE_CLIENT_SECRET:/secure/videoforge/GOOGLE_CLIENT_SECRET \
-  R2_ACCESS_KEY_ID:/secure/videoforge/R2_ACCESS_KEY_ID \
-  R2_SECRET_ACCESS_KEY:/secure/videoforge/R2_SECRET_ACCESS_KEY \
-  WORKFLOW_CALLBACK_SECRET:/secure/videoforge/WORKFLOW_CALLBACK_SECRET \
-  MEDIA_WORKER_TOKEN_SECRET:/secure/videoforge/MEDIA_WORKER_TOKEN_SECRET; do
+  DATABASE_URL:"$SECRET_DIR/DATABASE_URL" \
+  BETTER_AUTH_SECRET:"$SECRET_DIR/BETTER_AUTH_SECRET" \
+  GOOGLE_CLIENT_ID:"$SECRET_DIR/GOOGLE_CLIENT_ID" \
+  GOOGLE_CLIENT_SECRET:"$SECRET_DIR/GOOGLE_CLIENT_SECRET" \
+  R2_ACCESS_KEY_ID:"$SECRET_DIR/R2_ACCESS_KEY_ID" \
+  R2_SECRET_ACCESS_KEY:"$SECRET_DIR/R2_SECRET_ACCESS_KEY" \
+  WORKFLOW_CALLBACK_SECRET:"$SECRET_DIR/WORKFLOW_CALLBACK_SECRET" \
+  MEDIA_WORKER_TOKEN_SECRET:"$SECRET_DIR/MEDIA_WORKER_TOKEN_SECRET"; do
   name=${entry%%:*}; file=${entry#*:}
   pnpm --filter @videoforge/web exec wrangler secret put "$name" --config "$CONFIG" <"$file"
 done
+pnpm --filter @videoforge/web exec wrangler secret list --format json --config "$CONFIG" \
+  > /secure/videoforge/v2-06/secret-list.json
+node - "$SECRET_DIR" /secure/videoforge/v2-06/secret-list.json <<'NODE'
+const fs = require("node:fs");
+const expected = new Set([
+  "DATABASE_URL", "BETTER_AUTH_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
+  "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "WORKFLOW_CALLBACK_SECRET", "MEDIA_WORKER_TOKEN_SECRET",
+]);
+const actual = new Set(JSON.parse(fs.readFileSync(process.argv[3], "utf8")).map((entry) => entry.name));
+if (actual.size !== expected.size || [...expected].some((name) => !actual.has(name))) process.exit(2);
+NODE
+
+# Render and apply the exact origin-only R2 CORS policy, then verify the live list.  The --force
+# flag is intentionally visible because this is a separately approved provider mutation.
+CORS_CONFIG=/tmp/videoforge-v2-06-r2-cors.json
+node deploy/v2-06/render-r2-cors.mjs --origin "$STAGING_ORIGIN" --output "$CORS_CONFIG"
+pnpm --filter @videoforge/web exec wrangler r2 bucket cors set \
+  videoforge-v2-06-staging-private --file "$CORS_CONFIG" --force --config "$CONFIG"
+EXPECTED_ORIGIN="$STAGING_ORIGIN" WRANGLER_CONFIG="$CONFIG" \
+  deploy/v2-06/verify-r2-cors.sh videoforge-v2-06-staging-private
 
 pnpm --filter @videoforge/web exec wrangler deploy --config "$CONFIG"
 ```
@@ -101,9 +168,14 @@ videoforge-v2-06-staging-private`. Wildcard origins and headers are forbidden.
   transient attempt objects use bounded retention. Auth/session tables rely on Neon native PITR rather
   than the portable metadata export because they contain secret-bearing values.
 - `backup.sh` creates a new encrypted mode-0600 logical backup and prints only its SHA-256. It
-  requires a mode-0600 passphrase file, refuses overwrite/symlink targets, and never prints the
-  database URL. `restore-drill.sh` decrypts only to a private temporary file, restores only to an
-  explicitly labelled disposable database, verifies the migration head, and never drops or cleans
+  requires a mode-0600 `PGSERVICEFILE` (approved host/dbname/user, no password), mode-0600 `PGPASSFILE`,
+  mode-0600 passphrase, and the approved migration-owner role. It rejects `DATABASE_URL`/`PGPASSWORD`,
+  refuses an existing or symlink output (including a creation race), verifies the complete migration
+  manifest before dumping, and never places a DSN in argv. `restore-drill.sh` requires the exact
+  approved disposable service host, database `videoforge_v2_06_disposable_drill`, owner role, runtime
+  role, mode-0600 backup/passphrase/service files, and the fixed disposable label. It proves the
+  target has zero public relations before decrypting, restores only through the service profile,
+  applies/verifies every migration hash, runtime grant, and FORCE-RLS fence, and never drops or cleans
   the target. Both executions belong in the approved mutation plan because the drill creates hosted
   rows and may consume Neon compute.
 - `observability.template.json` pins redaction and alert conditions. Alert destinations and any
@@ -162,12 +234,21 @@ pre-composed render outputs, and it does not authorize V2-07.
 ## Owned render fixture plan
 
 `provision-owned-render-fixture.mjs` is the bounded, default-dry-run planner for the hosted
-owned-render acceptance fixture. It reads only the immutable provider-free
-`artifacts/local-media` owned short slice, verifies the canonical local evidence and complete
-voiceover/avatar/image/manifest/output bytes, rewrites the manifest to deterministic actual
+owned-render acceptance fixture. It reads only the exact approved provider-free
+`artifacts/local-media/runs/revision_local_owned_001/attempt_render_local_004` evidence path and
+fails closed unless the approved pinned input, evidence, manifest, output, and migration-source hashes
+match their pinned identities. It rewrites the manifest to deterministic actual
 tenant/project/revision IDs, and creates a complete `render-job-input/v1` plus exact
 `hosted_render_submission` plan. The plan uses tenant-scoped R2 object-key lineage and is limited
 to `lakshmansai121@gmail.com` and `demo9gss@gmail.com`.
+
+The live path carries the explicit V2-06 authority record (finite action cap `$3`, R2 recurring
+ceiling `$2/month`, zero expected provider spend, and GPU transport disabled) and an exact six-object,
+five-megabyte aggregate / four-megabyte per-object R2 budget. It writes a durable immutable R2
+upload-intent receipt before any object mutation, uses conditional create (`If-None-Match: *`),
+and verifies an exact HEAD/GET match after every create race. Neon is pinned to `neondb`, the
+`neondb_owner` migration role, TLS/channel binding, `public,pg_catalog`, the Google auth provider,
+and the complete hash-checked 1–35 migration ledger.
 
 ```sh
 V2_06_TENANT_EMAIL=lakshmansai121@gmail.com \
