@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: V2-06 provider-free local audit repair is green; full hosted staging acceptance is blocked,
+Status: V2-06 provider-free output-authority repair is green; full hosted staging acceptance is blocked,
 and no external, credential, provider-call, mutation, or spend authority is active
 Context schema: `2.0`
 Last updated: `2026-08-16`
@@ -230,8 +230,10 @@ fallback vocabulary. Local compatibility fixtures remain explicitly gated and th
 visibly says fixtures are not live.
 
 V2-06 local adapters and deployment templates exist, but the deployed two-account product proof is
-not complete. The staging surface is currently an activation/auth/status shell rather than the full
-product route graph. A separate explicit read-only audit grant is required before refreshing any
+not complete. Output uploads now require callback-token authorization and exact durable
+tenant/project/revision/attempt, key, type, length, and checksum facts before R2 signing. The staging
+surface is still an activation/auth/status shell rather than the full product and CPU-job submission
+route graph. A separate explicit read-only audit grant is required before refreshing any
 live provider fact. Any deployment, remote mutation, email delivery, or spend requires one exact
 bounded activation proposal and approval. No provider, credential, cloud mutation, GPU, worker, or
 spend authority is active.

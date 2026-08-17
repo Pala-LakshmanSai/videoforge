@@ -1,0 +1,132 @@
+{
+  "schema_version": "videoforge.v2-06-upload-authority-repair-reaudit/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "result": "FAIL_FULL_CHECKPOINT_LOCAL_PROVIDER_FREE_REPAIR_PASS",
+  "audit_independence": "SAME_CHAT_REPAIR_AND_REAUDIT_NOT_INDEPENDENT",
+  "implementation_commit": "dc25ef5ab12ec1beab3749caaf4c02f07775ce3d",
+  "recorded_at_utc": "2026-08-17T04:36:11Z",
+  "scope_boundary": "Repository and supplied immutable evidence only. No credentials, live provider calls, remote mutations, resource changes, or spend were authorized or performed.",
+  "repaired_findings": [
+    "Cloud Run no longer receives reusable pre-signed output PUT URLs before output bytes exist.",
+    "Migration 0030 requires an active, unexpired attempt and the exact callback token, tenant/project/revision/attempt object lineage, source, object key, content type, content length, and SHA-256 before signing.",
+    "R2 SigV4 binds content-length, content-type, and x-amz-checksum-sha256 for PUT; the worker independently rejects any returned authority mismatch.",
+    "Upload authorization is exact-idempotent and rejects changed facts or terminal/cancelled attempts."
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [
+      {
+        "id": "V2_06_HOSTED_ACCEPTANCE_UNPROVEN",
+        "references": [
+          "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:335",
+          "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:346",
+          "project-context/evidence/acceptance/VF-10-06/2026-08-17-provider-free-preflight/acceptance.json"
+        ],
+        "detail": "No supplied immutable evidence proves deployed Better Auth, non-superuser Neon RLS, private R2, Cloudflare Worker/Workflow, scale-to-zero Cloud Run ASR/render parity, two-real-account isolation, restart/replay/cancel/retention, backup/restore, cost settlement, rollback, no-Mac operation, or real Chrome staging acceptance. Local fixtures do not prove deployment."
+      },
+      {
+        "id": "V2_06_HOSTED_PRODUCT_AND_SUBMISSION_ROUTES_INCOMPLETE",
+        "references": [
+          "apps/web/src/server/hosted/app.ts:441",
+          "apps/web/src/hosted/HostedStagingApp.tsx:80",
+          "apps/web/src/server/hosted/app.ts:376"
+        ],
+        "detail": "The hosted surface still exposes auth, tenant, status, attempt read/cancel, callback, and upload authority only. Most existing product APIs return HOSTED_ROUTE_NOT_COMPOSED, and no hosted request route creates the CPU attempt, job spec, output-authority rows, and Workflow launch required for an end-to-end hosted ASR/render job."
+      },
+      {
+        "id": "V2_06_CURRENT_ZERO_WORKER_TRUTH_UNPROVEN",
+        "references": [
+          "project-context/CURRENT_STATE.yaml:515",
+          "project-context/evidence/acceptance/VF-10-06/2026-08-17-local-repair-reaudit/acceptance.json"
+        ],
+        "detail": "Live inventory was explicitly forbidden. The only supplied RunPod snapshot is stale: zero workers, two retained 50 GB volumes, and USD 7.00/month recurring total. It cannot prove current zero-worker or current billing truth."
+      }
+    ],
+    "P2": [
+      {
+        "id": "V2_06_ROLLBACK_ONLY_DECLARED",
+        "references": [
+          "deploy/v2-06/rollback.md",
+          "deploy/v2-06/backup.sh",
+          "deploy/v2-06/restore-drill.sh"
+        ],
+        "detail": "Rollback, backup, and restore are locally specified and validated but have no supplied hosted execution evidence."
+      }
+    ]
+  },
+  "validation": {
+    "focused": {
+      "command": "pnpm --filter @videoforge/control-plane build && node --test packages/control-plane/tests/v2-06-hosted-auth.test.mjs && pnpm --filter @videoforge/web exec vitest run src/server/hosted/hosted-adapters.test.ts && pnpm test:workers",
+      "exit_code": 0,
+      "control_plane_hosted": "3/3",
+      "hosted_adapters": "6/6",
+      "worker_suites": "6/6"
+    },
+    "canonical_first_attempt": {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 1,
+      "reason": "Python formatter reported cloud_job.py required formatting; no test failure."
+    },
+    "format_and_canonical": {
+      "command": "./.tools/uv-0.8.13/bin/uv run --locked --no-sync ruff format workers/media-local/src/videoforge_media_local/cloud_job.py workers/media-local/tests/test_cloud_job.py && git diff --check && CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "tasks": "28/28",
+      "control_plane": "303/303",
+      "pipeline": "120/120",
+      "web": "326/326 plus 1 skipped",
+      "cloudflare_local": "1/1",
+      "installed_chrome_fixture": "44/44",
+      "worker_suites": "6/6"
+    }
+  },
+  "checkpoint_authority": {
+    "active_provider_authority": "NONE",
+    "credential_access_authorized": false,
+    "read_only_provider_calls_authorized": false,
+    "remote_mutation_authorized": false,
+    "paid_compute_authorized": false,
+    "maximum_external_spend_usd": 0,
+    "approved_resources": [],
+    "approved_rates": [],
+    "approved_finite_operations": []
+  },
+  "current_state_and_spend_truth": {
+    "provider_calls_this_task": 0,
+    "external_mutations_this_task": 0,
+    "deployments_this_task": 0,
+    "paid_requests_this_task": 0,
+    "external_spend_usd_this_task": 0,
+    "runpod_calls_this_task": 0,
+    "runpod_workers_started_this_task": 0,
+    "live_inventory_refreshed": false,
+    "gpu_transport": "FAKE_DISABLED",
+    "last_known_runpod_workers": 0,
+    "last_known_runpod_worker_truth_is_stale": true,
+    "last_known_retained_resources": [
+      "Mage sealed EU-RO-1 volume, 50 GB",
+      "SoulX sealed EU-RO-1 volume, 50 GB"
+    ],
+    "last_known_rate_usd_per_volume_month": 3.5,
+    "last_known_recurring_retained_volume_usd_per_month": 7.0,
+    "current_actual_recurring_charge": "UNPROVEN_WITHOUT_LIVE_READ_ONLY_INVENTORY"
+  },
+  "unproven_live_claims": [
+    "Cloudflare Worker and Workflow deployment/configuration",
+    "Better Auth email and Google production behavior",
+    "Neon non-superuser RLS and tenant isolation",
+    "private R2 isolation and exact-object behavior",
+    "Cloud Run ASR/render image identity, scale-to-zero, parity, recovery, cancellation, and cost",
+    "two real invited accounts and real Chrome staging journey",
+    "backup, restore drill, retention deletion, and rollback",
+    "current provider inventory, rates, workers, and recurring charges",
+    "RunPod-disabled and zero-worker current truth"
+  ],
+  "rollback_state": "LOCAL_RUNBOOKS_AND_SCRIPTS_ONLY_NOT_LIVE_PROVEN",
+  "successor_safety": {
+    "v2_07": "BLOCKED_ON_ACCEPTED_V2_06",
+    "runpod_activation_authorized": false,
+    "gpu_workers_authorized": false,
+    "safe_to_begin_v2_07": false
+  }
+}

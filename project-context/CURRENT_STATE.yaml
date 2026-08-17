@@ -1,12 +1,12 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-17T04:04:24Z"
+updated_at: "2026-08-17T04:36:11Z"
 
-phase: serverless_v2_v2_06_local_repair_green_hosted_acceptance_blocked
+phase: serverless_v2_v2_06_upload_authority_repair_green_hosted_acceptance_blocked
 implementation_authorized_in_current_task: false
 current_milestone: hosted_staging_and_cpu_jobs
 current_task: VF-10-06
-current_wave: v2_06_local_repair_reaudit
+current_wave: v2_06_upload_authority_repair_reaudit
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 task_stage: hosted_activation_blocked
 application_code_changes_authorized: false
@@ -46,8 +46,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "f6b164a"
-  last_good_commit_note: "V2-06 local audit repair: hosted-auth expiry tests are time-relative; Cloud Run workers validate primary bytes/hash; R2 uploads require the declared checksum; hosted callback acceptance validates result length, JSON content type, and bytes. This is provider-free local proof only; hosted deployment and full application acceptance remain unproven."
+  last_good_commit: "dc25ef5"
+  last_good_commit_note: "V2-06 local upload-authority repair: migration 0030 binds callback-token, tenant/project/revision/attempt lineage, exact object key, type, length, and checksum before a short-lived R2 PUT; SigV4 binds all three upload headers and the worker verifies them. This is provider-free local proof only; hosted deployment and full application acceptance remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -223,7 +223,7 @@ blocking_gates_for_production:
 active_ownership:
   - task_id: VF-10-06
     checkpoint: V2-06
-    scope: completed_provider_free_local_repair_and_same_chat_reaudit_only
+    scope: completed_provider_free_upload_authority_repair_and_same_chat_reaudit_only
     provider_calls_authorized: false
     maximum_external_spend_usd: 0
 in_progress_checkpoint: V2-06
@@ -266,11 +266,11 @@ recommended_next_task:
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_local_repair_green_full_hosted_acceptance_blocked
-  verified_commit: "f6b164a8b10e26fb1e14a1353584c0dcc3e528b0"
-  verified_commit_note: "V2-06 provider-free audit repairs pass canonical local verification. The same-chat re-audit is not independent, and full hosted acceptance remains blocked by incomplete product-route composition and absent live deployment proof."
+  state: v2_06_upload_authority_repair_green_full_hosted_acceptance_blocked
+  verified_commit: "dc25ef5ab12ec1beab3749caaf4c02f07775ce3d"
+  verified_commit_note: "V2-06 checksum-bound output authorization passes canonical local verification. The same-chat re-audit is not independent, and full hosted acceptance remains blocked by incomplete product/job route composition and absent live deployment proof."
   predecessor_verified_commit: "3c117f204844da9c984d233477933ee4c0f304dd"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-local-repair-reaudit/acceptance.json
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-upload-authority-repair-reaudit/acceptance.json
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
@@ -484,13 +484,13 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: local_repair_green_hosted_acceptance_blocked
-    implementation_commit: "f6b164a8b10e26fb1e14a1353584c0dcc3e528b0"
-    evidence: evidence/acceptance/VF-10-06/2026-08-17-local-repair-reaudit/acceptance.json
+    status: upload_authority_repair_green_hosted_acceptance_blocked
+    implementation_commit: "dc25ef5ab12ec1beab3749caaf4c02f07775ce3d"
+    evidence: evidence/acceptance/VF-10-06/2026-08-17-upload-authority-repair-reaudit/acceptance.json
     commands:
-      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 303/303; pipeline 120/120; web 325/325 plus 1 skipped; Cloudflare 1/1; installed Chrome 44/44)"
+      - "CI=1 TURBO_FORCE=true pnpm verify: PASS (28/28 uncached tasks; control-plane 303/303; pipeline 120/120; web 326/326 plus 1 skipped; Cloudflare 1/1; installed Chrome fixture 44/44)"
       - "Focused PostgreSQL adapter, migration, hosted-auth, callback, retention, and schema-inventory tests: PASS"
-      - "Hosted Cloud Run/R2 adapter tests: PASS (5/5)"
+      - "Hosted Cloud Run/R2 adapter tests: PASS (6/6)"
       - "pnpm test:workers: PASS (6 explicit Python 3.12 suites)"
       - "Staging build, V2-05 production bundle quarantine, V2-06 deployment validation, and Wrangler dry run: PASS"
       - "Pinned linux/amd64 image build and native linux/arm64 tool/fail-closed smoke: PASS"
@@ -503,12 +503,14 @@ verification:
       - "The staging Worker, hosted auth UI, secret allowlist, observability template, rollback, and activation record are fail-closed until exact approved values replace placeholders."
       - "Hosted-auth expiry tests use clock-relative boundaries; Cloud Run workers now reject absent, non-regular, symlinked, byte-mismatched, or hash-mismatched primary output instead of reporting success."
       - "Hosted callback acceptance rejects result objects whose stored length or content type differs before hashing and accepting exact bytes."
+      - "Migration 0030 adds one exact-idempotent output authority per attempt/object and rejects callback-token, lifecycle, deadline, tenant/project/revision/attempt lineage, type, length, or checksum drift before signing."
+      - "Cloud Run workers request upload ports only after output bytes exist; R2 SigV4 now binds content length, content type, and checksum, and the worker rejects any returned-header mismatch."
     remaining_gates:
       - "Cloudflare and Neon sign-in is required for exact read-only account, plan, region, domain, quota, and current-rate facts."
       - "The email provider and verified sender identity/domain must be selected."
       - "The visible Google project gen-lang-client-0893746131 must be confirmed as the intended staging target."
       - "No combined external mutation proposal has been issued because those inputs are missing, and no numeric cumulative finite spend cap exists."
-      - "The staged UI/API is an activation and auth/status shell, not the complete existing product route graph required by V2-06 acceptance."
+      - "The staged UI/API is an activation and auth/status shell. Most existing product APIs still return HOSTED_ROUTE_NOT_COMPOSED, and no hosted route creates a CPU attempt/job spec/upload-authority set and launches its Workflow."
       - "All live hosted proofs, billing settlement, real-Chrome staging, rollback, and zero-compute closure remain unproven; complete route composition plus exact activation approval are still required."
     resource_truth:
       external_mutations: 0
