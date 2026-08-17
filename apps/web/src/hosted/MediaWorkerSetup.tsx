@@ -18,6 +18,11 @@ interface ReleaseFile {
   readonly url: string;
   readonly sha256: string;
   readonly size_bytes: number;
+  readonly trust:
+    | "UNSIGNED_BETA"
+    | "AUTHENTICODE_SIGNED"
+    | "AD_HOC_BETA"
+    | "DEVELOPER_ID_NOTARIZED";
 }
 
 interface WorkerList {
@@ -207,6 +212,8 @@ export function MediaWorkerSetup() {
             <strong>{release.label}</strong>
             <span>
               {release.extension} · v{workers?.release.version} · {fileSize(release.size_bytes)}
+              {release.trust === "AD_HOC_BETA" ? " · ImageForge-style beta" : ""}
+              {release.trust === "UNSIGNED_BETA" ? " · Beta" : ""}
               {index === 0 && suggested ? " · Recommended" : ""}
             </span>
           </a>

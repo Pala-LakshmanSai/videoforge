@@ -14,7 +14,7 @@ Each layer proves only itself:
 4. **Provider-free integration:** fake Runware/personal-worker/RunPod/R2, outbox, ambiguity, leases,
    artifact validation, fault recovery.
 5. **Runtime smoke:** exact immutable worker image boots with synthetic/local fixtures; no provider.
-6. **Hosted staging:** real auth, Neon, private R2, Cloudflare orchestration, and signed installed personal workers.
+6. **Hosted staging:** real auth, Neon, private R2, Cloudflare orchestration, and immutable installed personal workers with exact ImageForge-style beta trust metadata.
 7. **Bounded live Serverless:** exact endpoint/model/volume/GPU, owned inputs, measured spend,
    durable outputs, and zero-worker proof.
 8. **Real Chrome/E2E:** user journey through production-like services and playable final MP4.

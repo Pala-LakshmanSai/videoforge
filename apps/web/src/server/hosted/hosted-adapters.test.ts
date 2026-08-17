@@ -61,11 +61,13 @@ function environment(): HostedRuntimeEnvironment {
         url: "https://downloads.example.test/videoforge-worker-0.1.0.exe",
         sha256: `sha256:${"b".repeat(64)}`,
         size_bytes: 1024,
+        trust: "UNSIGNED_BETA",
       },
       macos: {
         url: "https://downloads.example.test/videoforge-worker-0.1.0.dmg",
         sha256: `sha256:${"c".repeat(64)}`,
         size_bytes: 2048,
+        trust: "AD_HOC_BETA",
       },
     }),
     DATABASE_URL: "postgresql://fixture:fixture@fixture.example.test/videoforge?sslmode=require",
@@ -111,6 +113,8 @@ describe("V2-06 hosted adapters", () => {
     );
     const source = environment();
     const config = hostedRuntimeConfiguration(source);
+    expect(config.mediaWorkerRelease.windows.trust).toBe("UNSIGNED_BETA");
+    expect(config.mediaWorkerRelease.macos.trust).toBe("AD_HOC_BETA");
     const serialized = JSON.stringify(config);
     expect(JSON.parse(serialized)).toEqual({
       schemaVersion: "videoforge-hosted-configuration/v1",
@@ -133,6 +137,14 @@ describe("V2-06 hosted adapters", () => {
       hostedRuntimeConfiguration({
         ...source,
         MEDIA_WORKER_TOKEN_SECRET: source.WORKFLOW_CALLBACK_SECRET,
+      }),
+    ).toThrow(HostedConfigurationError);
+    const release = JSON.parse(source.MEDIA_WORKER_RELEASE_MANIFEST_JSON!);
+    release.macos.trust = "UNSIGNED_BETA";
+    expect(() =>
+      hostedRuntimeConfiguration({
+        ...source,
+        MEDIA_WORKER_RELEASE_MANIFEST_JSON: JSON.stringify(release),
       }),
     ).toThrow(HostedConfigurationError);
   });

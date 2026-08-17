@@ -445,11 +445,13 @@ function releaseDocument(config: HostedRuntimeConfiguration) {
       url: release.windows.url,
       sha256: release.windows.sha256,
       size_bytes: release.windows.sizeBytes,
+      trust: release.windows.trust,
     },
     macos: {
       url: release.macos.url,
       sha256: release.macos.sha256,
       size_bytes: release.macos.sizeBytes,
+      trust: release.macos.trust,
     },
   };
 }

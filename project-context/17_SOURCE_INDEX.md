@@ -139,8 +139,9 @@ All three paths are optional local evidence and are not VideoForge build depende
 
 - HyperFrames is an HTML/CSS/Chrome/FFmpeg compositor whose motion-graphics/text strengths are irrelevant here; direct FFmpeg is leaner.
 - Remotion similarly does not improve avatar/image realism or voiceover relevance for this grammar.
-- Signed account-owned Windows/macOS workers are the selected production boundary for whisper.cpp
-  transcription and FFmpeg render/probe. Exact OS signing identities, bundled tool hashes, protocol
+- Account-owned Windows/macOS workers are the selected production boundary for whisper.cpp
+  transcription and FFmpeg render/probe. Their default distribution matches ImageForge: Windows
+  unsigned beta and macOS ad-hoc sealed/non-notarized beta. Exact OS trust identities, bundled tool hashes, protocol
   version, installer behavior, device security, runtime, and recovery remain V2-06 gates.
 - Better Auth supplies email/password, verified-email, and Google identity primitives. VideoForge's
   unique single-use email-bound invite, secure verifier, and atomic redemption are app-owned

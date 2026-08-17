@@ -28,12 +28,12 @@ on:
         required: true
         type: string
       signed_release:
-        description: Require platform signing and notarization
+        description: Optional production upgrade to Authenticode and Developer ID notarization
         required: true
         default: false
         type: boolean
       publish_release:
-        description: Publish the signed artifacts as immutable GitHub Release downloads
+        description: Publish immutable beta or production artifacts with exact trust metadata
         required: true
         default: false
         type: boolean
@@ -150,6 +150,14 @@ jobs:
           VIDEOFORGE_WORKER_TARGET_ARCH: ${{ runner.os == 'macOS' && 'universal2' || '' }}
         run: pyinstaller --noconfirm apps/media-worker-desktop/videoforge-worker.spec
 
+      - name: Seal macOS beta app with ImageForge-style ad-hoc signature
+        if: runner.os == 'macOS' && inputs.signed_release == false
+        shell: bash
+        run: |
+          codesign --force --deep --sign - "dist/VideoForge Worker.app"
+          codesign --verify --deep --strict --verbose=2 "dist/VideoForge Worker.app"
+          codesign -dv --verbose=4 "dist/VideoForge Worker.app" 2>&1 | grep -q 'Signature=adhoc'
+
       - name: Require and apply Windows Authenticode signature
         if: runner.os == 'Windows' && inputs.signed_release
         shell: pwsh
@@ -221,6 +229,24 @@ jobs:
           -srcfolder "dist/VideoForge Worker.app"
           "VideoForge-Worker-0.1.0.dmg"
 
+      - name: Verify macOS disk image and installed app seal
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mount_dir="$(mktemp -d "$RUNNER_TEMP/videoforge-worker-dmg.XXXXXX")"
+          cleanup() {
+            hdiutil detach "$mount_dir" >/dev/null 2>&1 || true
+            rmdir "$mount_dir" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          hdiutil verify "VideoForge-Worker-0.1.0.dmg"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mount_dir" "VideoForge-Worker-0.1.0.dmg" >/dev/null
+          codesign --verify --deep --strict --verbose=2 "$mount_dir/VideoForge Worker.app"
+          if [ "${{ inputs.signed_release }}" != "true" ]; then
+            codesign -dv --verbose=4 "$mount_dir/VideoForge Worker.app" 2>&1 | grep -q 'Signature=adhoc'
+          fi
+
       - name: Sign, notarize, staple, and assess final macOS disk image
         if: runner.os == 'macOS' && inputs.signed_release
         shell: bash
@@ -263,6 +289,12 @@ jobs:
               "size_bytes": artifact.stat().st_size,
               "platform": platform.system(),
               "signed_release": ${{ inputs.signed_release && 'True' || 'False' }},
+              "trust": (
+                  "AUTHENTICODE_SIGNED" if platform.system() == "Windows" and ${{ inputs.signed_release && 'True' || 'False' }}
+                  else "UNSIGNED_BETA" if platform.system() == "Windows"
+                  else "DEVELOPER_ID_NOTARIZED" if ${{ inputs.signed_release && 'True' || 'False' }}
+                  else "AD_HOC_BETA"
+              ),
           }
           Path("release-facts.json").write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
 
@@ -277,7 +309,7 @@ jobs:
             release-facts.json
 
   publish:
-    name: Publish immutable signed downloads
+    name: Publish immutable worker downloads
     if: inputs.publish_release
     needs: build
     runs-on: ubuntu-24.04
@@ -285,10 +317,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Refuse unsigned or mutable release identity
+      - name: Refuse mutable release identity
         shell: bash
         run: |
-          test "${{ inputs.signed_release }}" = "true"
           test "${{ inputs.release_tag }}" = "media-worker-v0.1.0"
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -307,8 +338,8 @@ jobs:
           import os
           from pathlib import Path
           facts = [json.loads(path.read_text()) for path in Path("release-assets").rglob("release-facts.json")]
-          if len(facts) != 2 or any(item.get("signed_release") is not True for item in facts):
-              raise SystemExit("exactly two signed platform facts are required")
+          if len(facts) != 2:
+              raise SystemExit("exactly two platform facts are required")
           by_platform = {item["platform"]: item for item in facts}
           if set(by_platform) != {"Windows", "Darwin"}:
               raise SystemExit("Windows and macOS release facts are required")
@@ -319,6 +350,7 @@ jobs:
                   "url": f"{base}/{value['filename']}",
                   "sha256": value["sha256"],
                   "size_bytes": value["size_bytes"],
+                  "trust": value["trust"],
               }
           manifest = {
               "schema_version": "videoforge-media-worker-release/v1",
@@ -342,4 +374,4 @@ jobs:
             --repo "${{ github.repository }}" \
             --target "${{ github.sha }}" \
             --title "VideoForge Worker 0.1.0" \
-            --notes "Signed Windows x64 and notarized macOS universal2 personal media workers."
+            --notes "Immutable Windows x64 and macOS universal2 personal media workers. Exact hashes and platform trust mode are recorded in media-worker-release.json."

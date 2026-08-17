@@ -101,7 +101,7 @@ qualified all-5090 configuration would be about `$6.32/hour`, not a mixed-fallba
 - No immutable Mage or SoulX Serverless image/endpoint is published or qualified. RTX 5090 is not an
   allowed fallback until each exact runtime passes separate compatibility and economics evidence.
 - Production Cloudflare hosting, Better Auth integration, Neon persistence, private R2, signed URLs,
-  signed personal-worker ASR/render releases, secrets, leases, and observability are not deployed end to end.
+  immutable personal-worker ASR/render releases, secrets, leases, and observability are not deployed end to end.
 - No automatic real video has completed through the hosted multi-tenant system.
 - No two-user live Serverless concurrency, fair queue, worker death, duplicate delivery, timeout,
   response-loss, cancellation, or zero-worker-after-drain proof exists.
@@ -343,8 +343,10 @@ intentionally wait for that account's paired computer.
   Google plus atomic invite admission, Neon PostgreSQL, and private R2.
 - Apply the V2 migrations and tenant query boundary. Use environment-scoped secrets and least
   privilege.
-- Release a signed Windows x64 installer and signed/notarized macOS universal DMG containing pinned
-  whisper.cpp, FFmpeg/FFprobe, and the exact execution bundle. Installation starts the worker at
+- Release an immutable ImageForge-style Windows x64 unsigned beta installer and macOS ad-hoc sealed,
+  non-notarized universal DMG containing pinned whisper.cpp, FFmpeg/FFprobe, and the exact execution
+  bundle. The release manifest discloses trust mode, URL, size, SHA-256, protocol, and bundle identity;
+  optional Authenticode/Developer ID upgrades must never be falsely claimed. Installation starts the worker at
   login; pairing is one authenticated browser confirmation with no copied code or configuration.
 - Implement tenant-bound enrollment, device credentials, heartbeat, exact one-device leases, fresh
   signed artifact exchange, stage checkpoints, cancellation, stale-lease fencing/requeue, streamed
@@ -352,10 +354,11 @@ intentionally wait for that account's paired computer.
 - Keep GPU transport fake/disabled in staging until V2-07/V2-08 activation.
 
 **Proof:** two real invited accounts with isolated data, objects, devices, and leases; production-auth
-negative suite; signed Windows and notarized macOS install/autostart/update/remove proof; real hosted
+negative suite; clean-download Windows and macOS install/autostart/update/remove proof with exact
+beta trust metadata and observed OS warning behavior; real hosted
 ASR/render of owned fixtures; offline/reconnect/restart/replay/cancel/stale-result proof; streaming R2
 hash parity; backup/restore; exact provider and user-device cost truth; and real Chrome staging
-acceptance. Local fixtures or unsigned packages cannot prove deployment/release.
+acceptance. Local fixtures or unverified packages cannot prove deployment/release.
 
 **Authority:** provider-free work first; stop once before any hosting mutation or paid service use
 with one exact bounded activation proposal.
@@ -529,8 +532,9 @@ manual GPU intervention.
 - Prove backup/restore, migration rollback/roll-forward, artifact retention/erasure, disaster
   recovery, endpoint/image rollback, personal-worker protocol/release rollback, explicit final-R2
   deletion, and immutable configuration history.
-- Prove Windows code signing and macOS Developer ID signing/notarization, immutable installer/tool
-  hashes and SBOM/provenance, protected release credentials, mandatory security updates, enrollment
+- Prove the selected ImageForge-style Windows unsigned-beta and macOS ad-hoc-beta trust modes,
+  immutable installer/tool hashes and SBOM/provenance, native clean-download installation,
+  mandatory security updates, enrollment
   replay resistance, device revocation, lease fencing, and uninstall cleanup.
 - Add global hourly/cumulative spend stops, per-project cap enforcement, provider balance/capacity
   blockers, and operator-only aggregate analytics with separate authorization.
@@ -544,7 +548,7 @@ manual GPU intervention.
 **Proof:** independent security/release audit with no P0/P1 findings, green CI and browser matrix,
 restore drill, alerts/runbooks, immutable release manifest, exact production URL/commit/images/
 endpoint configs, final cost, zero endpoint jobs, zero total workers (`Active + Flex`), two retained
-isolated volumes, signed Windows/macOS release identities, and user sign-off.
+isolated volumes, exact Windows/macOS release trust identities, and user sign-off.
 
 ## Every-checkpoint completion contract
 

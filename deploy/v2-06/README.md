@@ -3,8 +3,8 @@
 Provider-free state only. Nothing in this directory authorizes deployment or resource creation.
 
 - `media-worker-release.template.json` is the fail-closed Windows/macOS release manifest. Activation
-  replaces it only with immutable signed installer URLs, exact sizes/checksums, the execution-bundle
-  checksum, and a measured compatible protocol version.
+  replaces it only with immutable installer URLs, exact sizes/checksums, disclosed ImageForge-style
+  beta trust modes, the execution-bundle checksum, and a measured compatible protocol version.
 - `neon-runtime-grants.sql` grants the staged runtime login only the current hosted auth, active
   tenant, and CPU-orchestration surfaces. The migration identity remains separate. Raw database
   credentials never enter a manifest or Git.
@@ -14,7 +14,7 @@ Provider-free state only. Nothing in this directory authorizes deployment or res
   a short lease for one exact attempt, and short-lived tenant-bound R2 GET/PUT ports. It never
   receives Neon, R2, Cloudflare, Google, email, RunPod, or Runware credentials and opens no inbound
   listener.
-- The signed worker bundles pinned whisper.cpp 1.8.4 and FFmpeg/FFprobe 8.1.2. The exact
+- The immutable worker bundles pinned whisper.cpp 1.8.4 and FFmpeg/FFprobe 8.1.2. The exact
   `ggml-base.en` object is downloaded through a short-lived private R2 port into per-attempt scratch
   and must match its pinned SHA-256 before use. Scratch is removed after terminal completion.
 - Rollback deploys the previously recorded Cloudflare Worker version and prior signed desktop release

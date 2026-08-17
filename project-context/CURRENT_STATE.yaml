@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-17T10:58:50Z"
+updated_at: "2026-08-17T11:42:35Z"
 
 phase: serverless_v2_v2_06_hosted_activation_blocked
 implementation_authorized_in_current_task: true
@@ -104,7 +104,13 @@ v2_destination:
     offline_truth: waiting_for_your_computer
     provider_compute_cost_usd: 0
     final_output_retention: durable_until_explicit_authenticated_user_delete
-    external_release_gates: [windows_code_signing, macos_developer_id_notarization, immutable_release_publication]
+    release_distribution:
+      windows: unsigned_beta
+      macos: ad_hoc_sealed_non_notarized_beta
+      precedent: imageforge
+      required_evidence: immutable_hash_trust_metadata_and_native_clean_install
+      optional_future_upgrades: [windows_authenticode, macos_developer_id_notarization]
+    external_release_gates: [immutable_release_publication, windows_native_clean_install, macos_native_clean_install]
   runpod_region: EU-RO-1
   endpoints:
     mage:
@@ -335,7 +341,7 @@ recommended_next_task:
 verification:
   state: v2_06_hosted_router_hardening_locally_verified_full_acceptance_blocked
   verified_commit: "ee508d0e620286b4a693f5a158e4b921bac53712"
-  verified_commit_note: "Provider-free hosted-router hardening passes canonical verification. Same-chat re-audit evidence is not independent; the complete hosted generation journey, signed installers, live tenant/device parity, backup/restore, and hosted Chrome acceptance remain blocked."
+  verified_commit_note: "Provider-free hosted-router hardening passes canonical verification. Same-chat re-audit evidence is not independent; the complete hosted generation journey, immutable installer publication/native install, live tenant/device parity, backup/restore, and hosted Chrome acceptance remain blocked."
   predecessor_verified_commit: "3c117f204844da9c984d233477933ee4c0f304dd"
   acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-router-hardening-reaudit/acceptance.json
   completed_for_v2_00:
@@ -576,19 +582,19 @@ verification:
       - "Cloudflare Workflow now reconciles durable personal-worker leases and requeues expired work; active hosted code and deployment templates no longer dispatch Cloud Run."
       - "The hosted setup surface detects the likely OS as a convenience, always offers Windows and Mac downloads, shows truthful device states, and never exposes raw tenant IDs or configuration secrets."
       - "The Python desktop worker supports Windows and macOS only, starts at login, keeps the device credential in Windows Credential Manager or macOS Keychain, holds a sleep assertion only during active work, streams large outputs without loading the full MP4 in memory, kills process groups on cancel, and erases job scratch in finally."
-      - "A manual native release workflow builds Windows x64 and macOS universal2 artifacts, records exact hashes/sizes, contains fail-closed signing/notarization gates, and can publish a new non-replaceable public GitHub Release plus hosted manifest only when signed_release and publish_release are explicitly selected; no release has been built, signed, notarized, or published."
+      - "A manual native release workflow builds Windows x64 and macOS universal2 artifacts, records exact hashes/sizes/trust modes, ad-hoc seals and verifies the Mac beta app/DMG, preserves optional signing/notarization upgrades, and can publish a new non-replaceable public GitHub Release plus hosted manifest; no release has been built or published."
       - "OUTBOXED cancellation now becomes terminal CANCELLED with submitted/terminal/retention facts, fixing the migration-0029 constraint violation that the former CANCEL_REQUESTED transition caused."
       - "Successful final outputs have no automatic deletion policy. DELETE /api/v2/cpu-attempts/:id/output authenticates the owner, removes exactly the issued primary/result R2 keys, and appends durable deletion truth; the ordinary Library Delete button still waits on full hosted product-router composition."
       - "The desktop cancellation monitor is a real class method, renews the five-minute lease while work is active, kills the entire media process group on cancel, and is covered against the class-indentation regression."
       - "Cloud Run configuration, secrets, deployment templates, and production dispatch are removed from the active V2-06 path; historical adapter and evidence remain only for rollback/audit."
     remaining_gates:
       - "The hosted UI remains an auth/status/worker-setup shell. The complete ordinary product router, project/artifact journey, playback, and Library wiring for the implemented explicit Delete-to-R2 API are not yet composed in the hosted runtime."
-      - "Production-grade Windows code signing and macOS Developer ID signing/notarization require external identities and protected release credentials; unsigned packages do not satisfy the promised simple installer UX."
-      - "The immutable release workflow and manifest contract exist locally, but exact published URLs, byte sizes, SHA-256 hashes, signing identities, protocol minimum, and execution-bundle hash remain unproven until one signed release is built and published."
+      - "The user explicitly selected the ImageForge beta precedent: Windows unsigned beta and macOS ad-hoc sealed/non-notarized beta. Authenticode and Developer ID/notarization are optional future upgrades, not checkpoint blockers; warning-free behavior is not promised on every OS/device."
+      - "The immutable release workflow and manifest contract exist locally, but exact published URLs, byte sizes, SHA-256 hashes, trust identities, protocol minimum, execution-bundle hash, and clean-download native behavior remain unproven until a release is built, published, and tested."
       - "Real installed Windows and macOS proof must cover pairing, tenant isolation, autostart/reboot, sleep, offline/reconnect, cancellation, stale lease/result, streamed R2, tool parity, update/remove, and recovery."
       - "Hosted Better Auth/Neon/R2/Cloudflare, non-superuser RLS, backup/restore, rollback, two-account isolation, and real Chrome remain unproven. Cloudflare, Neon, and RunPod inventory is refreshed; RunPod has zero compute resources and exactly the two approved retained volumes at USD 7/month total."
       - "The user-selected email provider is NONE, so initial hosted auth is Google-only. Google Cloud Run is no longer needed. The signed-in Google account lacks resourcemanager.projects.get on candidate gen-lang-client-0893746131, and no dedicated VideoForge OAuth project exists."
-      - "The user has Windows x64 and Mac test devices but no Apple Developer Program membership. A warning-free notarized Mac release requires the USD 99 annual membership; unsigned testing cannot satisfy signed-release acceptance."
+      - "The user has Windows x64 and Mac test devices. Apple Developer Program membership is absent and no longer required for the selected ImageForge-style beta release; native clean-download/install evidence must record any actual warning or bypass behavior."
       - "The user supplied a USD 3 maximum future V2-06 test cap, but it is not operation authority until one exact combined mutation/publication proposal is issued and approved."
     resource_truth:
       external_mutations: 3

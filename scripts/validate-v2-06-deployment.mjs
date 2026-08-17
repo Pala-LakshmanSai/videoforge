@@ -78,6 +78,8 @@ const releaseTemplate = JSON.parse(await read("deploy/v2-06/media-worker-release
 if (
   releaseTemplate.schema_version !== "videoforge-media-worker-release/v1" ||
   releaseTemplate.minimum_protocol_version !== 1 ||
+  releaseTemplate.windows?.trust !== "UNSIGNED_BETA" ||
+  releaseTemplate.macos?.trust !== "AD_HOC_BETA" ||
   !String(releaseTemplate.windows?.url).startsWith("https://") ||
   !String(releaseTemplate.macos?.url).startsWith("https://")
 )
@@ -98,12 +100,16 @@ if (/^from \./mu.test(personalWorkerSource))
 const releaseWorkflow = await read(".github/workflows/media-worker-release.yml");
 if (
   !releaseWorkflow.includes("publish_release:") ||
-  !releaseWorkflow.includes("inputs.signed_release") ||
+  !releaseWorkflow.includes('codesign --force --deep --sign - "dist/VideoForge Worker.app"') ||
+  !releaseWorkflow.includes("grep -q 'Signature=adhoc'") ||
+  !releaseWorkflow.includes('hdiutil verify "VideoForge-Worker-0.1.0.dmg"') ||
+  !releaseWorkflow.includes('"UNSIGNED_BETA"') ||
+  !releaseWorkflow.includes('"AD_HOC_BETA"') ||
   !releaseWorkflow.includes("gh release create") ||
   !releaseWorkflow.includes('notarytool submit "VideoForge-Worker-0.1.0.dmg"') ||
   !releaseWorkflow.includes('stapler staple "VideoForge-Worker-0.1.0.dmg"')
 )
-  fail("signed, notarized immutable worker publication gate is incomplete");
+  fail("ImageForge-style beta and optional signed worker publication gates are incomplete");
 const hostedApp = await read("apps/web/src/server/hosted/app.ts");
 if (
   !hostedApp.includes("handleCpuOutputDelete(") ||

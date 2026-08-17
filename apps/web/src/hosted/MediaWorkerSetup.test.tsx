@@ -25,11 +25,13 @@ const workerList = {
       url: "https://downloads.example.test/worker.exe",
       sha256: `sha256:${"a".repeat(64)}`,
       size_bytes: 20 * 1024 * 1024,
+      trust: "UNSIGNED_BETA",
     },
     macos: {
       url: "https://downloads.example.test/worker.dmg",
       sha256: `sha256:${"b".repeat(64)}`,
       size_bytes: 24 * 1024 * 1024,
+      trust: "AD_HOC_BETA",
     },
   },
 };
@@ -58,7 +60,9 @@ describe("personal worker onboarding", () => {
     const mac = screen.getByRole("link", { name: /Download for Mac/u });
     expect(windows).toHaveAttribute("href", "https://downloads.example.test/worker.exe");
     expect(windows).toHaveTextContent("Recommended");
+    expect(windows).toHaveTextContent("Beta");
     expect(mac).toHaveAttribute("href", "https://downloads.example.test/worker.dmg");
+    expect(mac).toHaveTextContent("ImageForge-style beta");
     expect(screen.getByText("Editing PC")).toBeInTheDocument();
     expect(screen.queryByText("11111111-1111-4111-8111-111111111111")).not.toBeInTheDocument();
     expect(

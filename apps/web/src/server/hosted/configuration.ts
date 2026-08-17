@@ -75,8 +75,18 @@ export interface HostedRuntimeConfiguration {
     readonly version: string;
     readonly minimumProtocolVersion: number;
     readonly executionBundleSha256: string;
-    readonly windows: { readonly url: string; readonly sha256: string; readonly sizeBytes: number };
-    readonly macos: { readonly url: string; readonly sha256: string; readonly sizeBytes: number };
+    readonly windows: {
+      readonly url: string;
+      readonly sha256: string;
+      readonly sizeBytes: number;
+      readonly trust: "UNSIGNED_BETA" | "AUTHENTICODE_SIGNED";
+    };
+    readonly macos: {
+      readonly url: string;
+      readonly sha256: string;
+      readonly sizeBytes: number;
+      readonly trust: "AD_HOC_BETA" | "DEVELOPER_ID_NOTARIZED";
+    };
   };
   readonly email: {
     readonly endpoint: string;
@@ -145,6 +155,24 @@ function httpsOrigin(value: string, key: string): string {
   return parsed.pathname === "/" ? parsed.origin : parsed.toString().replace(/\/$/u, "");
 }
 
+function releaseFile(
+  value: unknown,
+  platform: "windows",
+): Readonly<{
+  url: string;
+  sha256: string;
+  sizeBytes: number;
+  trust: "UNSIGNED_BETA" | "AUTHENTICODE_SIGNED";
+}>;
+function releaseFile(
+  value: unknown,
+  platform: "macos",
+): Readonly<{
+  url: string;
+  sha256: string;
+  sizeBytes: number;
+  trust: "AD_HOC_BETA" | "DEVELOPER_ID_NOTARIZED";
+}>;
 function releaseFile(value: unknown, platform: "windows" | "macos") {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new HostedConfigurationError(`Media worker ${platform} release is malformed.`, [
@@ -153,12 +181,16 @@ function releaseFile(value: unknown, platform: "windows" | "macos") {
   }
   const file = value as Record<string, unknown>;
   if (
-    Object.keys(file).sort().join(",") !== "sha256,size_bytes,url" ||
+    Object.keys(file).sort().join(",") !== "sha256,size_bytes,trust,url" ||
     typeof file.url !== "string" ||
     typeof file.sha256 !== "string" ||
     !/^sha256:[0-9a-f]{64}$/u.test(file.sha256) ||
     !Number.isSafeInteger(file.size_bytes) ||
-    Number(file.size_bytes) < 1
+    Number(file.size_bytes) < 1 ||
+    (platform === "windows" &&
+      !["UNSIGNED_BETA", "AUTHENTICODE_SIGNED"].includes(String(file.trust))) ||
+    (platform === "macos" &&
+      !["AD_HOC_BETA", "DEVELOPER_ID_NOTARIZED"].includes(String(file.trust)))
   ) {
     throw new HostedConfigurationError(`Media worker ${platform} release is malformed.`, [
       "MEDIA_WORKER_RELEASE_MANIFEST_JSON",
@@ -168,6 +200,7 @@ function releaseFile(value: unknown, platform: "windows" | "macos") {
     url: httpsOrigin(file.url, `media worker ${platform} URL`),
     sha256: file.sha256,
     sizeBytes: Number(file.size_bytes),
+    trust: file.trust,
   });
 }
 

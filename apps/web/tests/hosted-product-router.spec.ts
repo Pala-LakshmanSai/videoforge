@@ -62,11 +62,13 @@ test.beforeEach(async ({ page }) => {
               url: "https://downloads.example.test/worker.exe",
               sha256: `sha256:${"a".repeat(64)}`,
               size_bytes: 20_000_000,
+              trust: "UNSIGNED_BETA",
             },
             macos: {
               url: "https://downloads.example.test/worker.dmg",
               sha256: `sha256:${"b".repeat(64)}`,
               size_bytes: 24_000_000,
+              trust: "AD_HOC_BETA",
             },
           },
         },

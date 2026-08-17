@@ -6,11 +6,13 @@
   "windows": {
     "url": "https://REPLACE_WITH_IMMUTABLE_WINDOWS_SETUP_URL",
     "sha256": "sha256:REPLACE_WITH_WINDOWS_SETUP_SHA256",
-    "size_bytes": 1
+    "size_bytes": 1,
+    "trust": "UNSIGNED_BETA"
   },
   "macos": {
     "url": "https://REPLACE_WITH_IMMUTABLE_MACOS_DMG_URL",
     "sha256": "sha256:REPLACE_WITH_MACOS_DMG_SHA256",
-    "size_bytes": 1
+    "size_bytes": 1,
+    "trust": "AD_HOC_BETA"
   }
 }
