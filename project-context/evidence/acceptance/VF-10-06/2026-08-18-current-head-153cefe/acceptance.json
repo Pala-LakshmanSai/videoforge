@@ -1,0 +1,234 @@
+{
+  "schema_version": "videoforge.v2-06-current-head-handoff/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-18T13:33:02Z",
+  "result": "FAIL_HOSTED_ACCEPTANCE_PENDING",
+  "audit_independence": "SAME_CHAT_REPAIR_HANDOFF_NOT_INDEPENDENT_AUDIT",
+  "scope_boundary": "This handoff records the current source, bounded staging deployment, provider-free verification, visible Chrome observations, and remaining V2-06 gates. It does not convert local fixtures, one-account Chrome, or a public status response into two-account hosted acceptance. No credentials were read or recorded; GPU, RunPod, Cloud Run, model-download, retained-volume, and paid-compute actions remained outside scope.",
+  "authority": {
+    "checkpoint": "V2-06",
+    "finite_external_cap_usd": 3,
+    "finite_external_cap_remaining_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "provider_cpu_spend_usd": 0,
+    "gpu_transport": "DISABLED_FAKE_ONLY",
+    "runpod_mutation_authorized": false,
+    "v2_07_authorized": false
+  },
+  "source": {
+    "branch": "codex/serverless-v2-roadmap",
+    "head": "153cefef40739c35b84ed633fc4978f8a5e9746b",
+    "pushed": true,
+    "commits_since_previous_deployed_head": [
+      "0d850bf fix(v2-06): add idempotent hosted cancellation recovery",
+      "153cefe style(v2-06): normalize hosted cancellation formatting"
+    ],
+    "working_tree": "clean",
+    "relevant_source_refs": [
+      "workers/media-local/src/videoforge_media_local/personal_execution.py:381-407,510-557",
+      "workers/media-local/src/videoforge_media_local/personal_execution.py:561-595",
+      "apps/web/src/server/hosted/personal-worker.ts:1140-1284",
+      "apps/web/src/server/hosted/app.ts:685-758,891-907",
+      "apps/web/src/hosted/HostedProductScreens.tsx:662-673"
+    ]
+  },
+  "repairs": {
+    "fixed_findings": [
+      {
+        "id": "V2-06-P1-ASR-PRIMARY-URI",
+        "status": "FIXED_SOURCE_AND_RELEASED",
+        "summary": "ASR now resolves the declared input-document result_uri as its primary output; render continues to use artifact_uri.",
+        "references": [
+          "workers/media-local/src/videoforge_media_local/personal_execution.py:381-407",
+          "workers/media-local/src/videoforge_media_local/personal_execution.py:510-516",
+          "workers/media-local/src/videoforge_media_local/cloud_job.py:463-480"
+        ]
+      },
+      {
+        "id": "V2-06-P1-CANCEL-CHECK-CONSTRAINT",
+        "status": "FIXED_SOURCE_AND_DEPLOYED",
+        "summary": "Cancellation transitions now preserve submitted_at/terminal facts required by the hosted database check constraint and clear them when recovery requeues work.",
+        "references": [
+          "apps/web/worker/hosted-workflow.ts:220-263",
+          "apps/web/src/server/hosted/personal-worker.ts:650-752",
+          "apps/web/src/server/hosted/app.ts:703-709"
+        ]
+      },
+      {
+        "id": "V2-06-P1-IDEMPOTENT-CANCEL-RECOVERY",
+        "status": "FIXED_SOURCE_AND_DEPLOYED_AND_VISIBLE",
+        "summary": "A repeat cancellation request exposes a bounded recovery action and starts a fresh UUID-scoped Workflow instance; the previously stuck live attempt visibly converged to CANCELLED after recovery.",
+        "references": [
+          "apps/web/src/server/hosted/app.ts:737-758,891-907",
+          "apps/web/src/hosted/HostedProductScreens.tsx:662-673",
+          "apps/web/src/hosted/HostedProductScreens.test.tsx"
+        ],
+        "visible_observation": "Hosted project 7314199d-143b-4e13-8450-205db92ab813 attempt 06b5beb5-9b8c-4cdc-9b40-6f07eed08c57 was stopped after completion retries; the visible Settle cancellation action completed and the project now shows CANCELLED with CPU $0.00 and GPU Disabled."
+      }
+    ],
+    "not_fixed": [
+      {
+        "id": "V2-06-P1-HOSTED-COMPLETION",
+        "status": "OPEN",
+        "summary": "The fresh hosted ASR run produced a valid local ASR result, but the worker did not receive an accepted completion response; it retried for the bounded four-minute acknowledgement window and the attempt was cancelled. The exact hosted rejection reason was not read from provider logs or credentials.",
+        "references": [
+          "workers/media-local/src/videoforge_media_local/personal_execution.py:561-595",
+          "apps/web/src/server/hosted/personal-worker.ts:1148-1213",
+          "apps/web/src/server/hosted/personal-worker.ts:1224-1284"
+        ],
+        "local_fixture_limit": "The local 19 KB ASR result and transcript prove only the worker's local execution path. They do not prove hosted Neon/R2 acceptance, hosted output metadata, or deployment parity."
+      }
+    ]
+  },
+  "deployment": {
+    "cloudflare_account_id": "f9254d773a3426fcb469451b1f965d8c",
+    "worker": "videoforge-v2-06-staging",
+    "workflow": "videoforge-v2-06-staging-video",
+    "r2_bucket": "videoforge-v2-06-staging-private",
+    "origin": "https://videoforge-v2-06-staging.lakshmansai121.workers.dev",
+    "commit": "153cefef40739c35b84ed633fc4978f8a5e9746b",
+    "version_id": "7d66d976-a16f-46f6-8888-ebbb5f24217c",
+    "rendered_config_sha256": "sha256:8f67537d912b2b8d95e00c2af12e931c11ed81b96195b9637d4c05c47de3b2af",
+    "release_manifest_sha256": "sha256:fed1186e65ca2c4aa373568e562fff67d7d1dc6d01723ddfbd9aae71ba6a0ec2",
+    "execution_bundle_sha256": "sha256:a5f5cd7f59b9c22e08599fa9076f76deffbd19647edc58f0a5a58c0b71fac3b3",
+    "status_observation": "Visible authenticated Chrome shows API healthy, CPU provider $0.00, and GPU Disabled after deployment. A direct API tab was blocked by Chrome ERR_BLOCKED_BY_CLIENT and was not used to inspect cookies, storage, or credentials.",
+    "deploy_commands": [
+      {
+        "command": "pnpm --filter @videoforge/web build:staging",
+        "exit_code": 0
+      },
+      {
+        "command": "node deploy/v2-06/render-staging-config.mjs --commit 153cefef40739c35b84ed633fc4978f8a5e9746b",
+        "exit_code": 0
+      },
+      {
+        "command": "pnpm --filter @videoforge/web exec wrangler deploy --config /private/tmp/videoforge-v2-06-staging-153cefe.wrangler.json",
+        "exit_code": 0
+      }
+    ]
+  },
+  "worker_release": {
+    "tag": "media-worker-v0.1.6",
+    "workflow_run_id": "32136295474",
+    "workflow_result": "success",
+    "windows_job": "passed",
+    "macos_job": "passed",
+    "publish_job": "passed",
+    "windows_sha256": "sha256:2bfcb8b994ad62bd003850a06a7d3282a99593f86d4ebe044eff9f3d8c407bc7",
+    "macos_sha256": "sha256:07a1b44eee856df9b4c8acec8b9efcc0b93c7e3f1894a676a878d9115af3fa05",
+    "trust": {
+      "windows": "UNSIGNED_BETA",
+      "macos": "AD_HOC_BETA"
+    },
+    "native_observation": "Visible Chrome Settings shows one current Mac v0.1.6 device ONLINE and one stale older v0.1.6 device OFFLINE. Windows clean-install, pairing, lifecycle, and parity were not performed.",
+    "stale_device_cleanup": "left_in_place; no Remove action taken"
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "CI=1 TURBO_FORCE=true pnpm verify",
+        "exit_code": 0,
+        "result": "28 unique tasks; 349 web tests passed and 1 skipped; worker suites passed; context/secret checks passed; Cloudflare parity 1/1; Chrome 44/44"
+      },
+      {
+        "command": "pnpm context:validate",
+        "exit_code": 0
+      },
+      {
+        "command": "pnpm validate:v2-06-deployment",
+        "exit_code": 0
+      },
+      {
+        "command": "pnpm contracts:check",
+        "exit_code": 0
+      },
+      {
+        "command": "pnpm test:workers",
+        "exit_code": 0,
+        "result": "140 tests across 6 suites"
+      },
+      {
+        "command": "node --test packages/control-plane/tests/v2-06-hosted-auth.test.mjs",
+        "exit_code": 0,
+        "result": "8/8"
+      },
+      {
+        "command": "git diff --check",
+        "exit_code": 0
+      }
+    ],
+    "preliminary_format_failure": "The first canonical run exited 1 only because Prettier found the cancellation expression; prettier normalization was committed as 153cefe and the rerun exited 0."
+  },
+  "approved_vs_actual_resources": {
+    "approved": [
+      "Cloudflare Worker videoforge-v2-06-staging",
+      "Cloudflare Workflow videoforge-v2-06-staging-video",
+      "Cloudflare private R2 bucket videoforge-v2-06-staging-private",
+      "dedicated Neon project ancient-morning-99567618",
+      "Google-only OAuth project videoforge-v2-06-staging-0817",
+      "immutable GitHub media-worker-v0.1.6 release",
+      "owned V2-06 fixtures only"
+    ],
+    "actual_observed": [
+      "The deployed Worker binding names and private R2/Workflow names match the approved V2-06 names.",
+      "The current deployment is Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c from exact source HEAD 153cefe.",
+      "Visible Chrome reports one current Mac v0.1.6 device ONLINE and one stale Mac v0.1.6 device OFFLINE.",
+      "No Windows device, second-account session, hosted successful ASR/render output, or hosted cross-tenant negative test was observed in this handoff."
+    ],
+    "rates": {
+      "finite_v2_06_cap_usd": 3,
+      "r2_recurring_ceiling_usd_per_month": 2,
+      "workers_free_base_usd_per_month": 0,
+      "neon_free_base_usd_per_month": 0,
+      "provider_cpu_usd": 0,
+      "runpod_retained_volumes_usd_per_month_separate": 7
+    }
+  },
+  "unproven_live_claims": [
+    "Two-account Google callback and Better Auth isolation.",
+    "Hosted non-superuser Neon FORCE RLS behavior under the runtime role.",
+    "Cross-account private R2 upload/download/delete isolation.",
+    "Successful hosted ASR and render, output checksum/metadata, playback, and explicit deletion.",
+    "Windows clean install/pairing/autostart/reboot/sleep/offline/reconnect and Windows/Mac media parity.",
+    "Workflow restart/recovery beyond the visible cancellation recovery, backup/restore drill replay, rollback exercise, and post-acceptance billing observation.",
+    "Cloud Run scale-to-zero/provider parity; Cloud Run is removed from the active V2-06 path and no provider compute was started.",
+    "RunPod zero-worker truth was supplied by prior read-only inventory evidence; no current provider refresh was made in this handoff."
+  ],
+  "spend_truth": {
+    "new_external_spend_usd": 0,
+    "finite_cap_usd": 3,
+    "finite_cap_remaining_usd": 3,
+    "r2_due_now_usd": 0,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "provider_cpu_spend_usd": 0,
+    "runpod_pods_endpoints_workers": 0,
+    "runpod_retained_volumes": 2,
+    "runpod_retained_storage_usd_per_month_separate": 7,
+    "email_deliveries": 0
+  },
+  "rollback": {
+    "current_version_id": "7d66d976-a16f-46f6-8888-ebbb5f24217c",
+    "immediate_previous_version_id": "163f0377-000d-4318-a05e-8f42d2e0806a",
+    "immediate_previous_commit": "0d850bfd6e5a413d744578e1cd45f07cba71b619",
+    "rollback_state": "available_to_previous_staging_version_untested",
+    "no_rollback_mutation_performed": true
+  },
+  "findings": {
+    "p0": [],
+    "p1": [
+      "V2-06-P1-HOSTED-COMPLETION: current hosted ASR completion did not settle SUCCEEDED; exact provider-side rejection remains unproven without the separately required read-only live audit authority.",
+      "V2-06-P1-HOSTED-IDENTITY-AND-ISOLATION: two-account Better Auth, Neon/RLS, R2, and hosted Chrome isolation remain unproven.",
+      "V2-06-P1-NATIVE-PARITY: Windows lifecycle and Windows/Mac ASR/render parity remain unproven."
+    ],
+    "p2": [
+      "V2-06-P2-OPERATIONS: backup/restore, rollback, deletion, and post-acceptance billing observations remain unexercised in this handoff.",
+      "V2-06-P2-STALE-DEVICE: one older offline v0.1.6 device remains visible; it was not removed without explicit cleanup direction.",
+      "V2-06-P2-INDEPENDENCE: this is a same-chat repair handoff, not an independent audit."
+    ]
+  },
+  "successor_safety": {
+    "v2_07_safe_to_begin": false,
+    "reason": "V2-06 remains FAIL with open hosted/device acceptance gates; GPU transport remains DISABLED_FAKE_ONLY and RunPod mutation authority remains false."
+  }
+}

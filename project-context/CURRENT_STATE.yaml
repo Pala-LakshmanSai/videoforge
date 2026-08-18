@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-18T10:42:53Z"
+updated_at: "2026-08-18T13:33:02Z"
 
 phase: serverless_v2_v2_06_live_activation_in_progress
 implementation_authorized_in_current_task: true
@@ -8,7 +8,7 @@ current_milestone: hosted_staging_and_personal_media_workers
 current_task: VF-10-06
 current_wave: v2_06_personal_worker_conversion
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: native_mac_paired_hosted_media_acceptance_pending
+task_stage: current_head_deployed_hosted_media_acceptance_pending
 application_code_changes_authorized: true
 provider_calls_authorized: true
 read_only_provider_calls_authorized: false
@@ -85,10 +85,10 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "d6f2c4470907957def24503a207fea099c26bf34"
-  current_source_head_note: "The current repository source contains the f8e07b1 personal-worker hardening plus the immutable 0.1.5 release preparation. It is provider-free verified but not yet in the deployed 0efe8fd Worker or immutable 0.1.4 desktop release; hosted media, native lifecycle, recovery, rollback, and full checkpoint acceptance remain unproven."
-  last_good_commit: "0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76"
-  last_good_commit_note: "V2-06 hosted staging is deployed from 0efe8fd with the immutable 0.1.4 Windows/macOS beta release. Focused and canonical provider-free verification are green, and the public status/asset/unauthenticated route checks match the approved staging contract. Windows pairing, device parity, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
+  current_source_head: "153cefef40739c35b84ed633fc4978f8a5e9746b"
+  current_source_head_note: "The current repository source is clean, pushed, canonically provider-free verified, and deployed to the approved V2-06 staging Worker with immutable personal-worker release 0.1.6. Hosted completion, two-account isolation, Windows lifecycle/parity, backup/restore, rollback, and independent full-checkpoint acceptance remain unproven."
+  last_good_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
+  last_good_commit_note: "V2-06 staging is deployed from exact HEAD 153cefe with Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c, rendered-config sha256:8f67537d912b2b8d95e00c2af12e931c11ed81b96195b9637d4c05c47de3b2af, and immutable worker release 0.1.6. Source and deployment checks are green; full hosted/device acceptance remains open."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -381,34 +381,38 @@ recommended_next_task:
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_native_mac_paired_full_acceptance_blocked
-  verified_commit: "d6f2c4470907957def24503a207fea099c26bf34"
-  verified_commit_note: "Provider-free verification passes at source commit d6f2c44, which contains the f8e07b1 personal-worker hardening and prepares immutable release 0.1.5. The deployed runtime remains 0efe8fd with immutable release 0.1.4 until a separately recorded release/deployment action. The signed-in Chrome Settings evidence still proves only one paired macOS worker; Windows pairing, hosted media execution/parity, tenant isolation, recovery, deletion, backup/restore, rollback, and full hosted Chrome acceptance remain blocked."
+  state: v2_06_current_head_deployed_hosted_acceptance_blocked
+  verified_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
+  verified_commit_note: "Canonical provider-free verification passes at current HEAD 153cefe. The exact HEAD is deployed as Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c with immutable personal-worker release 0.1.6. A fresh hosted ASR attempt did not settle SUCCEEDED and was cancelled through the repaired recovery path; two-account, non-superuser RLS/R2 isolation, Windows lifecycle/parity, backup/restore, rollback, and independent hosted acceptance remain blocked."
   predecessor_verified_commit: "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-personal-worker-contract-hardening-f8e07b1/acceptance.json
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
   latest_live_check:
-    recorded_at_utc: "2026-08-18T10:05:00Z"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-file-access-hint-repair-0efe8fd/acceptance.json
-    status: hosted_file_access_hint_repair_deployed_native_mac_paired_online_hosted_media_acceptance_pending
-    source_repair_commit: "0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76"
-    deployed_implementation_commit: "0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76"
+    recorded_at_utc: "2026-08-18T13:33:02Z"
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
+    status: current_head_deployed_native_mac_online_hosted_completion_pending
+    source_repair_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
+    deployed_implementation_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
     deployed_source_mismatch: false
-    release_commit: "0efe8fd"
-    deployment_version_id: "46e83784-3979-41a6-ab0c-76f84f7c459b"
-    release_manifest_sha256: "sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b"
+    release_commit: "153cefe"
+    deployment_version_id: "7d66d976-a16f-46f6-8888-ebbb5f24217c"
+    rendered_config_sha256: "sha256:8f67537d912b2b8d95e00c2af12e931c11ed81b96195b9637d4c05c47de3b2af"
+    release_manifest_sha256: "sha256:fed1186e65ca2c4aa373568e562fff67d7d1dc6d01723ddfbd9aae71ba6a0ec2"
     neon_runtime_grant_executed: true
     new_external_spend_usd: 0
     native_mac_worker_paired: true
     native_mac_worker_online: true
-    native_mac_worker_version: "0.1.4"
-    native_mac_last_seen_rendered: "8/18/2026, 2:59:35 PM"
+    native_mac_worker_version: "0.1.6"
+    native_mac_last_seen_rendered: "8/18/2026, 7:02:45 PM"
+    hosted_asr_attempt_id: "06b5beb5-9b8c-4cdc-9b40-6f07eed08c57"
+    hosted_asr_attempt_state: CANCELLED
+    hosted_asr_successful_output_proven: false
   latest_source_verification:
-    recorded_at_utc: "2026-08-18T10:42:53Z"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-personal-worker-contract-hardening-f8e07b1/acceptance.json
-    source_commit: "d6f2c4470907957def24503a207fea099c26bf34"
-    deployed_implementation_commit: "0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76"
-    deployed_source_mismatch: true
-    immutable_worker_release_source_status: release_0_1_5_prepared_pending_publication
+    recorded_at_utc: "2026-08-18T13:33:02Z"
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
+    source_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
+    deployed_implementation_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
+    deployed_source_mismatch: false
+    immutable_worker_release_source_status: release_0_1_6_published_and_installed_mac_only
     new_external_spend_usd: 0
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
@@ -623,17 +627,17 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: personal_worker_contract_hardening_source_verified_hosted_ui_deployed_native_mac_paired_hosted_media_acceptance_pending
-    implementation_commit: "d6f2c4470907957def24503a207fea099c26bf34"
-    source_head_commit: "d6f2c4470907957def24503a207fea099c26bf34"
-    hosted_ui_repair_commit: "0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76"
+    status: current_head_deployed_native_mac_online_hosted_completion_pending
+    implementation_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
+    source_head_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
+    hosted_ui_repair_commit: "0d850bfd6e5a413d744578e1cd45f07cba71b619"
     hosted_ui_repair_deployment_status: deployed
-    worker_source_repair_commit: "d6f2c4470907957def24503a207fea099c26bf34"
-    worker_contract_fix_commit: "f8e07b105da703f2bdb5e7041b11466db69be410"
-    worker_source_repair_deployment_status: pending_immutable_release_0_1_5
+    worker_source_repair_commit: "5a192d3e1bf97e146f700031896ed5835a40921a"
+    worker_contract_fix_commit: "5a192d3e1bf97e146f700031896ed5835a40921a"
+    worker_source_repair_deployment_status: release_0_1_6_published_and_installed_mac_only
     previous_worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-personal-worker-contract-hardening-f8e07b1/acceptance.json
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
     previous_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
     live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
     runpod_live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
@@ -707,6 +711,11 @@ verification:
       - "Personal worker contract hardening at f8e07b1, release preparation at d6f2c44: bundled-CA streaming, UUID/byte bounds, post-process cancellation fence, bounded result document, exact completion acknowledgement, and immutable 0.1.5 versioning; bundled uv worker tests 25/25 and pnpm python:lint passed."
       - "MediaWorkerSetup UPDATE_REQUIRED guidance at f8e07b1 plus 0.1.5 release identity at d6f2c44: focused Vitest 3/3, staging build, workflow YAML, and canonical CI=1 TURBO_FORCE=true pnpm verify all passed; source is not deployed yet."
       - "Canonical candidate verification at d6f2c44 (exit 0): 308 control-plane tests, 348 web tests plus 1 skipped, worker suites, Cloudflare parity 1/1, context/secret checks, and installed Chrome 44/44."
+      - "Canonical current-HEAD verification at 153cefe (exit 0): CI=1 TURBO_FORCE=true pnpm verify completed 28 unique tasks; 349 web tests passed and 1 skipped; worker suites, Cloudflare parity 1/1, context/secret checks, and installed Chrome 44/44 passed."
+      - "Current V2-06 staging deployment from exact application HEAD 153cefe (exit 0): Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c; rendered config sha256:8f67537d912b2b8d95e00c2af12e931c11ed81b96195b9637d4c05c47de3b2af; private R2 and Workflow bindings match the approved names."
+      - "Immutable media-worker-v0.1.6 release workflow 32136295474 (exit 0): Windows x64 and macOS universal2 build jobs plus publish passed; manifest sha256:fed1186e65ca2c4aa373568e562fff67d7d1dc6d01723ddfbd9aae71ba6a0ec2; Mac v0.1.6 is paired and online, while Windows clean-install/lifecycle proof is absent."
+      - "Fresh hosted ASR attempt 06b5beb5-9b8c-4cdc-9b40-6f07eed08c57 produced a valid local result but did not receive accepted hosted completion; visible cancellation recovery converged to CANCELLED with CPU $0.00 and GPU Disabled."
+      - "Current immutable handoff: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json records FAIL_HOSTED_ACCEPTANCE_PENDING, three repaired findings, open hosted completion/identity/native-parity findings, zero new spend, rollback availability, and V2-07 false."
     delivered:
       - "Migration 0032 adds account/workspace-bound worker enrollments, devices, exact input objects, one active lease per attempt/device, append-only events, row-level security, and stale-lease fencing while preserving historical Cloud Run rows for rollback."
       - "The hosted API uses PKCE enrollment, one explicit authenticated approval, OS-keychain-scoped device tokens, heartbeat/update gating, exact same-account claims, fresh R2 GET/PUT ports, streaming output verification, cancellation, revocation, and late-result rejection."
@@ -732,12 +741,12 @@ verification:
       - "The user-selected email provider is NONE, so hosted auth is Google-only and email/password stays disabled. Dedicated Google project videoforge-v2-06-staging-0817 and its exact redirect/client exist; live two-user callback acceptance remains pending."
       - "The user has Windows x64 and Mac test devices. Apple Developer Program membership is absent and no longer required for the selected ImageForge-style beta release; native clean-download/install evidence must record any actual warning or bypass behavior."
       - "The exact combined V2-06 activation was approved with a USD 3 finite test cap and USD 2/month R2 ceiling; spend and recurring truth must be rechecked after acceptance."
-      - "The 0efe8fd hosted file-access repair is deployed and the public chunk now gives a bounded Allow access to file URLs diagnostic. The connected authenticated Chrome session still requires the user to enable that extension permission before a checksum-bound upload can be retried; exact Neon read-back remains projects=0. Do not treat local verification, seeded catalog state, public status, or the asset check as hosted media proof."
-      - "The d6f2c44 personal-worker hardening/release candidate is source-verified but not in the deployed 0.1.4 release; publish immutable worker release 0.1.5 and redeploy only under the exact V2-06 authority before treating it as live."
+      - "The current 153cefe hosted deployment includes the bounded file-access diagnostic, cancellation invariant repair, idempotent cancellation recovery action, and released 0.1.6 worker contract. The connected authenticated Chrome session still did not produce accepted hosted ASR completion; do not treat local result bytes as hosted media proof."
+      - "The immutable media-worker-v0.1.6 release is published and installed on the Mac only. Windows clean install, pairing, lifecycle, and parity remain open; the stale offline Mac device was left in place."
     resource_truth:
-      external_mutations: bounded_v2_06_deployment_complete_acceptance_pending
+      external_mutations: bounded_v2_06_current_head_staging_deployed_acceptance_pending
       external_mutation_scope: "Three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence."
-      deployments: 12
+      deployments: 14
       installer_builds: 4
       installer_publications: 4
       email_deliveries: 0
@@ -750,18 +759,18 @@ verification:
       runpod_workers_started: 0
       live_runpod_inventory_refreshed: true
       cloudflare:
-        checked_at: "2026-08-18T10:05:00Z"
+        checked_at: "2026-08-18T13:33:02Z"
         account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
         workers_plan: FREE
         payment_method_on_file: true
         workers_after_confirmed_cleanup: 1
         workflows: 1
         worker_name: videoforge-v2-06-staging
-        worker_deployment_version_id: 46e83784-3979-41a6-ab0c-76f84f7c459b
-        worker_deployment_commit: 0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76
-        worker_deployment_config_sha256: sha256:af9c3275f1cf0ac63a998875c9d1e6413f708c8e9e81368ab63ca083377e85d3
-        media_worker_release_version: 0.1.4
-        media_worker_release_manifest_sha256: sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b
+        worker_deployment_version_id: 7d66d976-a16f-46f6-8888-ebbb5f24217c
+        worker_deployment_commit: 153cefef40739c35b84ed633fc4978f8a5e9746b
+        worker_deployment_config_sha256: sha256:8f67537d912b2b8d95e00c2af12e931c11ed81b96195b9637d4c05c47de3b2af
+        media_worker_release_version: 0.1.6
+        media_worker_release_manifest_sha256: sha256:fed1186e65ca2c4aa373568e562fff67d7d1dc6d01723ddfbd9aae71ba6a0ec2
         workflow_name: videoforge-v2-06-staging-video
         workflow_class: HostedVideoWorkflow
         r2_subscription_active: true
@@ -778,9 +787,9 @@ verification:
         avatar_version_state: READY
         style_version_state: PUBLISHED
         project_creation_blocker: CHROME_FILE_BYTES_UNREADABLE_EXTENSION_PERMISSION_PENDING
-      source_head_commit: d6f2c4470907957def24503a207fea099c26bf34
-      deployed_implementation_commit: 0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76
-      worker_source_repair_release_status: release_0_1_5_prepared_pending_publication
+      source_head_commit: 153cefef40739c35b84ed633fc4978f8a5e9746b
+      deployed_implementation_commit: 153cefef40739c35b84ed633fc4978f8a5e9746b
+      worker_source_repair_release_status: release_0_1_6_published_installed_mac_only
       neon:
         checked_at: "2026-08-17T17:36:31Z"
         organization_id_sha256: "sha256:1a80a1978aaf55071ebade555193753126029390191658a7f700bbd06ea07044"
