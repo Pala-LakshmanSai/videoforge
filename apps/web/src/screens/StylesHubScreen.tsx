@@ -10,8 +10,12 @@ import { blockerNoticeForScope, NoticeBanner } from "../features/shared/FixtureF
 import { humanize, statusTone } from "../features/shared/status";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
+import { HostedStylesHubScreen } from "../hosted/HostedProductScreens";
 
 export function StylesHubScreen() {
+  if (import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging") {
+    return <HostedStylesHubScreen />;
+  }
   const scenario = currentScenario();
   const [search, setSearch] = useState("");
   const [archiveBusy, setArchiveBusy] = useState<string | null>(null);

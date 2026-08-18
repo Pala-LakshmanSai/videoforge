@@ -1,11 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, Check, Download, FileAudio, RefreshCw, ShieldCheck, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  Download,
+  FileAudio,
+  Images,
+  RefreshCw,
+  ShieldCheck,
+  UsersRound,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "../components/PageHeader";
 import { Badge, Button, EmptyState, Metric, Panel } from "../components/ui";
 
-interface CatalogResponse {
+export interface CatalogResponse {
   readonly avatars: readonly {
     profile_id: string;
     version_id: string;
@@ -57,7 +67,7 @@ interface HostedUsageResponse {
   readonly storage_policy: string;
 }
 
-async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
+export async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
   const result = await fetch(path, {
     ...init,
     headers: { accept: "application/json", "content-type": "application/json", ...init?.headers },
@@ -290,6 +300,141 @@ export function HostedCreateProjectScreen() {
           {error}
         </div>
       ) : null}
+    </>
+  );
+}
+
+type HostedPresetHubKind = "avatars" | "styles";
+
+/**
+ * The hosted catalog is deliberately smaller than the fixture catalog: it exposes only the
+ * tenant-owned, generation-ready ids needed by the hosted project flow. Keeping the hosted hub
+ * read-only avoids accidentally routing staging users through fixture-only mutation APIs.
+ */
+function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
+  const catalog = useQuery({
+    queryKey: ["hosted-project-catalog"],
+    queryFn: () => readJson<CatalogResponse>("/api/v2/hosted/project-catalog"),
+  });
+  const isAvatar = kind === "avatars";
+  const items = catalog.data ? (isAvatar ? catalog.data.avatars : catalog.data.styles) : [];
+  const title = isAvatar ? "Avatar Hub" : "Image Styles";
+  const itemLabel = isAvatar ? "avatar" : "style";
+  const Icon = isAvatar ? UsersRound : Images;
+
+  if (catalog.isPending) {
+    return (
+      <Panel eyebrow="Private hosted staging" heading={`Loading ${title}`}>
+        <div className="empty-state" aria-busy="true">
+          <span className="spinner" aria-hidden="true" />
+          <p>Loading tenant-owned {itemLabel}s…</p>
+        </div>
+      </Panel>
+    );
+  }
+  if (catalog.isError || !catalog.data) {
+    return (
+      <EmptyState
+        icon={<AlertTriangle />}
+        title={`${title} unavailable`}
+        body="The hosted tenant catalog could not be loaded. No fixture catalog was substituted."
+        action={
+          <Button variant="secondary" onClick={() => void catalog.refetch()}>
+            Retry load
+          </Button>
+        }
+      />
+    );
+  }
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Private hosted staging"
+        title={title}
+        description={`Only ${itemLabel}s owned by this account can be used for generation.`}
+      />
+      <div className="notice" role="status">
+        <strong>Hosted catalog is read-only.</strong> Generation uses the exact tenant-owned,
+        approved version shown here; fixture-only creation routes are not available in staging.
+      </div>
+      <Panel eyebrow="Tenant-private catalog" heading={`Ready ${itemLabel}s`}>
+        {items.length === 0 ? (
+          <EmptyState
+            icon={<Icon />}
+            title={`No ready ${itemLabel}s yet`}
+            body={`This account has no tenant-owned ${itemLabel} fixture available. An activation owner must provision and approve the bounded V2-06 fixture before a project can be generated.`}
+            action={
+              <Link className="button button-secondary" to="/settings">
+                Open Settings
+              </Link>
+            }
+          />
+        ) : (
+          <div className="entity-list">
+            {items.map((item) => (
+              <article className="entity-row" key={item.version_id}>
+                <div>
+                  <strong>{item.name}</strong>
+                  <small>
+                    Tenant-owned · version {item.version_number} · {item.version_id}
+                  </small>
+                </div>
+                <Badge tone="success">{isAvatar ? "READY" : "PUBLISHED"}</Badge>
+              </article>
+            ))}
+          </div>
+        )}
+      </Panel>
+      {items.length > 0 ? (
+        <Panel eyebrow="Next step" heading="Use this catalog in a project">
+          <p>
+            Select the exact {itemLabel} version on Create Project. Personal-worker compute stays at
+            $0 provider CPU cost; GPU transport remains disabled for V2-06.
+          </p>
+          <Link className="button button-primary" to="/projects/new">
+            Create Project
+          </Link>
+        </Panel>
+      ) : null}
+    </>
+  );
+}
+
+export function HostedAvatarHubScreen() {
+  return <HostedPresetHubScreen kind="avatars" />;
+}
+
+export function HostedStylesHubScreen() {
+  return <HostedPresetHubScreen kind="styles" />;
+}
+
+export function HostedPresetCreationUnavailableScreen({ kind }: { kind: HostedPresetHubKind }) {
+  const isAvatar = kind === "avatars";
+  const title = isAvatar ? "Avatar Hub" : "Image Styles";
+  const itemLabel = isAvatar ? "avatar" : "style";
+  return (
+    <>
+      <PageHeader
+        eyebrow="Private hosted staging"
+        title={`${title} creation unavailable`}
+        description="Hosted V2-06 accepts only exact activation-owned presets."
+      />
+      <EmptyState
+        icon={isAvatar ? <UsersRound /> : <Images />}
+        title="Read-only hosted catalog"
+        body={`The ${itemLabel} creation workflow is intentionally disabled in staging. Open the hub to inspect tenant-owned versions, or return to Settings for worker status.`}
+        action={
+          <div className="cluster">
+            <Link className="button button-secondary" to={isAvatar ? "/avatars" : "/styles"}>
+              Open {title}
+            </Link>
+            <Link className="button button-secondary" to="/settings">
+              Settings
+            </Link>
+          </div>
+        }
+      />
     </>
   );
 }

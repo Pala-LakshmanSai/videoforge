@@ -8,8 +8,11 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 import {
+  HostedAvatarHubScreen,
   HostedCreateProjectScreen,
+  HostedPresetCreationUnavailableScreen,
   HostedProjectScreen,
+  HostedStylesHubScreen,
   HostedUsageScreen,
 } from "./HostedProductScreens";
 
@@ -25,6 +28,55 @@ afterEach(() => {
 });
 
 describe("hosted product journey", () => {
+  it("loads the tenant-owned avatar and style catalog without fixture API calls", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (!String(input).endsWith("/api/v2/hosted/project-catalog")) {
+        throw new Error(`Unexpected hosted request: ${String(input)}`);
+      }
+      return Response.json({
+        avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
+        styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
+        media_worker_state: "ONLINE",
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(
+      <>
+        <HostedAvatarHubScreen />
+        <HostedStylesHubScreen />
+      </>,
+    );
+
+    expect(await screen.findByText("Owner")).toBeInTheDocument();
+    expect(await screen.findByText("Documentary")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(
+      fetchMock.mock.calls.every(([input]) =>
+        String(input).endsWith("/api/v2/hosted/project-catalog"),
+      ),
+    ).toBe(true);
+  });
+
+  it("fails closed with an explicit activation message when the hosted catalog is empty", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ avatars: [], styles: [], media_worker_state: "ONLINE" })),
+    );
+    renderHosted(<HostedAvatarHubScreen />);
+
+    expect(await screen.findByText("No ready avatars yet")).toBeInTheDocument();
+    expect(screen.getByText(/activation owner must provision/u)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Settings" })).toBeInTheDocument();
+  });
+
+  it("does not expose fixture-only preset mutation screens in hosted staging", () => {
+    renderHosted(<HostedPresetCreationUnavailableScreen kind="styles" />);
+
+    expect(screen.getByText("Image Styles creation unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Read-only hosted catalog")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Image Styles" })).toBeInTheDocument();
+  });
+
   it("blocks generation until the account-owned personal worker is online", async () => {
     vi.stubGlobal(
       "fetch",

@@ -9,8 +9,12 @@ import { blockerNoticeForScope, NoticeBanner } from "../features/shared/FixtureF
 import { avatarCompatibilityLabel, humanize, statusTone } from "../features/shared/status";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
+import { HostedAvatarHubScreen } from "../hosted/HostedProductScreens";
 
 export function AvatarHubScreen() {
+  if (import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging") {
+    return <HostedAvatarHubScreen />;
+  }
   const scenario = currentScenario();
   const [search, setSearch] = useState("");
   const query = useQuery({ queryKey: ["avatars", scenario], queryFn: () => api.avatars(scenario) });
