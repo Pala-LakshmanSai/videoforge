@@ -56,6 +56,28 @@ def _sha256_file(path: Path) -> tuple[str, int]:
     return f"sha256:{digest.hexdigest()}", size
 
 
+def _is_valid_https_url(value: object) -> bool:
+    if (
+        not isinstance(value, str)
+        or not value
+        or any(character.isspace() or ord(character) < 0x20 for character in value)
+    ):
+        return False
+    try:
+        parsed = urllib.parse.urlsplit(value)
+        port = parsed.port
+    except ValueError:
+        return False
+    return (
+        parsed.scheme == "https"
+        and parsed.hostname is not None
+        and parsed.username is None
+        and parsed.password is None
+        and parsed.fragment == ""
+        and (port is None or 1 <= port <= 65535)
+    )
+
+
 @dataclass(frozen=True)
 class ToolPaths:
     ffmpeg: Path
@@ -110,8 +132,7 @@ def parse_personal_job(value: object) -> PersonalJob:
         if (
             not isinstance(item, dict)
             or set(item) != {"uri", "url", "sha256", "bytes"}
-            or not isinstance(item["url"], str)
-            or not item["url"].startswith("https://")
+            or not _is_valid_https_url(item["url"])
             or not isinstance(item["sha256"], str)
             or not _SHA256.fullmatch(item["sha256"])
             or type(item["bytes"]) is not int
@@ -127,8 +148,7 @@ def parse_personal_job(value: object) -> PersonalJob:
             or item["source"] != "PRIMARY_RESULT_OUTPUT"
             or not isinstance(item["object_key"], str)
             or not _R2_KEY.fullmatch(item["object_key"])
-            or not isinstance(item["sign_url"], str)
-            or not item["sign_url"].startswith("https://")
+            or not _is_valid_https_url(item["sign_url"])
             or type(item["max_bytes"]) is not int
             or not 0 < item["max_bytes"] <= 10 * 1024**3
         ):
@@ -139,14 +159,13 @@ def parse_personal_job(value: object) -> PersonalJob:
         or set(result) != {"object_key", "sign_url", "max_bytes"}
         or not isinstance(result["object_key"], str)
         or not _R2_KEY.fullmatch(result["object_key"])
-        or not isinstance(result["sign_url"], str)
-        or not result["sign_url"].startswith("https://")
+        or not _is_valid_https_url(result["sign_url"])
         or type(result["max_bytes"]) is not int
         or not 0 < result["max_bytes"] <= 1024 * 1024
     ):
         raise ValueError("Personal worker result authority is invalid")
     for key in ("cancellation_url", "completion_url"):
-        if not isinstance(value[key], str) or not value[key].startswith("https://"):
+        if not _is_valid_https_url(value[key]):
             raise ValueError("Personal worker control URL is invalid")
     if (
         not isinstance(value["tooling"], dict)
@@ -182,6 +201,8 @@ def _request_json(
     maximum: int = 1024 * 1024,
     timeout: float = 30,
 ) -> tuple[int, object | None]:
+    if not _is_valid_https_url(url):
+        raise ValueError("Personal worker request URL is not a valid HTTPS URL")
     request = urllib.request.Request(
         url,
         data=None if body is None else _canonical(body),
@@ -202,6 +223,8 @@ def _request_json(
 def _download(
     item: dict[str, Any], destination: Path, should_cancel: Callable[[], bool] | None = None
 ) -> None:
+    if not _is_valid_https_url(item.get("url")):
+        raise ValueError("Personal worker download URL is not a valid HTTPS URL")
     destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     digest = hashlib.sha256()
     size = 0
@@ -264,9 +287,9 @@ def _upload_port(
 
 
 def _stream_put(port: dict[str, Any], source: BinaryIO, size: int) -> None:
-    parsed = urllib.parse.urlsplit(str(port["url"]))
-    if parsed.scheme != "https" or not parsed.hostname:
+    if not _is_valid_https_url(port.get("url")):
         raise ValueError("Personal worker upload URL is not HTTPS")
+    parsed = urllib.parse.urlsplit(str(port["url"]))
     headers = {str(key): str(value) for key, value in port["requiredHeaders"].items()}
     if headers.get("content-length") != str(size):
         raise ValueError("Personal worker upload length header drifted")
@@ -395,7 +418,8 @@ class _SleepAssertion:
         elif os.name == "nt":
             import ctypes
 
-            ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001)
+            if ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001) == 0:
+                raise OSError("Windows could not prevent system sleep during media execution")
         return self
 
     def __exit__(self, *_: object) -> None:
@@ -405,7 +429,8 @@ class _SleepAssertion:
         elif os.name == "nt":
             import ctypes
 
-            ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
+            if ctypes.windll.kernel32.SetThreadExecutionState(0x80000000) == 0:
+                raise OSError("Windows could not release its media execution sleep assertion")
 
 
 def _primary_path(scratch: Path, result: object) -> Path:

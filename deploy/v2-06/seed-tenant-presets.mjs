@@ -448,8 +448,8 @@ DECLARE
   existing_count integer;
 BEGIN
   SELECT max(version) INTO migration_head FROM public.videoforge_schema_migrations;
-  IF migration_head IS DISTINCT FROM 35 THEN
-    RAISE EXCEPTION 'V2-06 preset seed requires migration head 35, found %', migration_head;
+  IF migration_head IS DISTINCT FROM 36 THEN
+    RAISE EXCEPTION 'V2-06 preset seed requires migration head 36, found %', migration_head;
   END IF;
   SELECT scope_kind, status INTO account_scope, account_status
     FROM public.accounts WHERE id = :'account_id'::uuid;

@@ -670,8 +670,8 @@ async function ensurePresetRows(client, scope, assets, seedAt) {
   });
   await client.query(
     `DO $$ BEGIN
-       IF (SELECT max(version) FROM videoforge_schema_migrations) IS DISTINCT FROM 35
-       THEN RAISE EXCEPTION 'owned fixture requires migration head 35'; END IF;
+       IF (SELECT max(version) FROM videoforge_schema_migrations) IS DISTINCT FROM 36
+       THEN RAISE EXCEPTION 'owned fixture requires migration head 36'; END IF;
      END $$`,
   );
   await client.query(

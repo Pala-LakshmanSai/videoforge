@@ -133,7 +133,7 @@ test("mutation SQL is transactional, idempotent, tenant-bound, and has no delete
   });
   assert.match(source, /BEGIN;/u);
   assert.match(source, /COMMIT;/u);
-  assert.match(source, /migration head 35/u);
+  assert.match(source, /migration head 36/u);
   assert.match(source, /SET LOCAL videoforge\.account_id/u);
   assert.match(source, /ON CONFLICT \(id\) DO NOTHING/u);
   assert.doesNotMatch(source, /\b(?:DROP|DELETE)\s+/iu);

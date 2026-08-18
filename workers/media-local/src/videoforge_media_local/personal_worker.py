@@ -121,7 +121,12 @@ def _remove_autostart() -> None:
     target = Path.home() / "Library" / "LaunchAgents" / f"{_SERVICE}.plist"
     if not target.is_file():
         return
-    _launchctl("bootout", f"gui/{os.getuid()}", str(target))
+    service = f"gui/{os.getuid()}/{_SERVICE}"
+    loaded = _launchctl("print", service)
+    if loaded.returncode == 0:
+        bootout = _launchctl("bootout", f"gui/{os.getuid()}", str(target))
+        if bootout.returncode != 0 or _launchctl("print", service).returncode == 0:
+            raise RuntimeError("VideoForge could not unload its macOS login startup agent")
     try:
         target.unlink()
     except FileNotFoundError:
@@ -594,12 +599,12 @@ def _remove_local_installation() -> int:
 
 
 def run_forever() -> int:
-    if _install_macos_if_needed():
-        return 0
     configuration = _build_configuration()
     origin = str(configuration["control_plane_origin"]).rstrip("/")
     execution_bundle_sha256 = str(configuration["execution_bundle_sha256"])
     tools = _tool_paths(configuration)
+    if _install_macos_if_needed():
+        return 0
     state_path, state = _state()
     installation_id = state["installation_id"]
     background = "--background" in sys.argv[1:]

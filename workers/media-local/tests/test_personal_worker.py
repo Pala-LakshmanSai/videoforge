@@ -8,14 +8,18 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from pathlib import Path, PurePosixPath
 from unittest.mock import Mock, patch
 
+import videoforge_media_local.personal_execution as personal_execution
 from videoforge_media_local.cloud_job import _local_path
 from videoforge_media_local.personal_execution import (
     _CancellationMonitor,
+    _SleepAssertion,
     _asr_primary_path,
     _completion_is_acknowledged,
+    _is_valid_https_url,
     _stream_put,
     parse_personal_job,
 )
@@ -28,8 +32,10 @@ from videoforge_media_local.personal_worker import (
     _launch_agent_document,
     _platform_facts,
     _remove_local_installation,
+    _remove_autostart,
     _validated_control_plane_origin,
     _open_approval_url,
+    _SERVICE,
     _USER_AGENT,
     run_forever,
 )
@@ -108,6 +114,40 @@ class PersonalWorkerContractTests(unittest.TestCase):
                 _json_request("http://app.example.test/health", "GET")
         urlopen.assert_not_called()
 
+    def test_https_job_authorities_reject_ambiguous_or_malformed_hosts(self) -> None:
+        for value in (
+            "https://user:password@app.example.test/object",
+            "https://app.example.test:invalid/object",
+            "https:///missing-host/object",
+            "https://app.example.test/object#fragment",
+            "https://app.example.test/object\nredirect",
+        ):
+            self.assertFalse(_is_valid_https_url(value), value)
+
+    def test_windows_sleep_assertion_fails_closed_when_api_cannot_assert_sleep(self) -> None:
+        kernel = Mock()
+        kernel.SetThreadExecutionState.return_value = 0
+        with (
+            patch.object(personal_execution.os, "name", "nt"),
+            patch.object(personal_execution.sys, "platform", "win32"),
+            patch("ctypes.windll", SimpleNamespace(kernel32=kernel), create=True),
+        ):
+            with self.assertRaisesRegex(OSError, "prevent system sleep"):
+                _SleepAssertion().__enter__()
+
+    def test_windows_sleep_assertion_checks_release_api(self) -> None:
+        kernel = Mock()
+        kernel.SetThreadExecutionState.side_effect = [1, 0]
+        with (
+            patch.object(personal_execution.os, "name", "nt"),
+            patch.object(personal_execution.sys, "platform", "win32"),
+            patch("ctypes.windll", SimpleNamespace(kernel32=kernel), create=True),
+        ):
+            assertion = _SleepAssertion()
+            assertion.__enter__()
+            with self.assertRaisesRegex(OSError, "release"):
+                assertion.__exit__(None, None, None)
+
     def test_platform_facts_reject_windows_arm_and_support_both_universal2_slices(self) -> None:
         with (
             patch("videoforge_media_local.personal_worker.platform.system", return_value="Windows"),
@@ -184,20 +224,25 @@ class PersonalWorkerContractTests(unittest.TestCase):
 
     def test_update_required_exits_to_release_the_old_executable(self) -> None:
         state = {"installation_id": "11111111-1111-4111-8111-111111111111"}
+        order: list[str] = []
         with (
             patch("videoforge_media_local.personal_worker.sys.argv", ["worker", "--background"]),
             patch(
                 "videoforge_media_local.personal_worker._install_macos_if_needed",
-                return_value=False,
+                side_effect=lambda: order.append("install") or False,
             ),
             patch(
                 "videoforge_media_local.personal_worker._build_configuration",
-                return_value={
+                side_effect=lambda: order.append("configuration")
+                or {
                     "control_plane_origin": "https://app.example.test",
                     "execution_bundle_sha256": "sha256:" + "c" * 64,
                 },
             ),
-            patch("videoforge_media_local.personal_worker._tool_paths", return_value=Mock()),
+            patch(
+                "videoforge_media_local.personal_worker._tool_paths",
+                side_effect=lambda _configuration: order.append("tools") or Mock(),
+            ),
             patch(
                 "videoforge_media_local.personal_worker._state", return_value=(Path("state"), state)
             ),
@@ -214,6 +259,7 @@ class PersonalWorkerContractTests(unittest.TestCase):
         ):
             credential_store.return_value.get.return_value = "b" * 64
             self.assertEqual(run_forever(), 0)
+        self.assertEqual(order[:3], ["configuration", "tools", "install"])
 
     def test_mac_autostart_repairs_a_missing_loaded_launchagent(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -248,6 +294,45 @@ class PersonalWorkerContractTests(unittest.TestCase):
                 ["/bin/launchctl", "bootstrap", "gui/501", str(target)],
             )
             self.assertEqual(plistlib.loads(target.read_bytes())["RunAtLoad"], True)
+
+    def test_mac_uninstall_verifies_launchagent_is_unloaded_before_removing_plist(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            target = home / "Library" / "LaunchAgents" / f"{_SERVICE}.plist"
+            target.parent.mkdir(parents=True)
+            target.write_bytes(_launch_agent_document())
+            with (
+                patch("videoforge_media_local.personal_worker.sys.platform", "darwin"),
+                patch.object(sys, "frozen", True, create=True),
+                patch("videoforge_media_local.personal_worker.Path.home", return_value=home),
+                patch("videoforge_media_local.personal_worker.os.getuid", return_value=501),
+                patch(
+                    "videoforge_media_local.personal_worker._launchctl",
+                    side_effect=[Mock(returncode=0), Mock(returncode=0), Mock(returncode=1)],
+                ) as launchctl,
+            ):
+                _remove_autostart()
+            self.assertFalse(target.exists())
+            self.assertEqual(launchctl.call_count, 3)
+
+    def test_mac_uninstall_keeps_plist_when_launchagent_will_not_unload(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            target = home / "Library" / "LaunchAgents" / f"{_SERVICE}.plist"
+            target.parent.mkdir(parents=True)
+            target.write_bytes(_launch_agent_document())
+            with (
+                patch("videoforge_media_local.personal_worker.sys.platform", "darwin"),
+                patch("videoforge_media_local.personal_worker.Path.home", return_value=home),
+                patch("videoforge_media_local.personal_worker.os.getuid", return_value=501),
+                patch(
+                    "videoforge_media_local.personal_worker._launchctl",
+                    side_effect=[Mock(returncode=0), Mock(returncode=1)],
+                ),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "unload"):
+                    _remove_autostart()
+            self.assertTrue(target.exists())
 
     def test_uninstall_removes_state_credential_and_local_installation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

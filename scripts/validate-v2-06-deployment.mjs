@@ -219,12 +219,33 @@ if (
   fail("ImageForge-style beta and optional signed worker publication gates are incomplete");
 const hostedApp = await read("apps/web/src/server/hosted/app.ts");
 const hostedAuth = await read("apps/web/src/server/hosted/auth.ts");
+const hostedPersonalWorker = await read("apps/web/src/server/hosted/personal-worker.ts");
+const hostedWorkflow = await read("apps/web/worker/hosted-workflow.ts");
+const hostedGoogleOnlyMigration = await read(
+  "packages/control-plane/migrations/0036_v2_06_google_only_replay_boundaries.sql",
+);
 if (
   !hostedAuth.includes("emailAndPassword: { enabled: false }") ||
   /emailAndPassword:[\s\S]{0,240}?enabled:\s*true/u.test(hostedAuth) ||
   !hostedApp.includes('authentication: ["GOOGLE"]')
 )
   fail("V2-06 hosted auth must keep email/password disabled and Google-only");
+if (
+  !hostedPersonalWorker.includes("ABANDONED_PERSONAL_WORKER_LEASE_DURING_CLAIM") ||
+  !hostedPersonalWorker.includes("RETURNING attempt.id") ||
+  !hostedPersonalWorker.includes("kind = $5 AND facts_sha256 = $4") ||
+  !hostedPersonalWorker.includes("replay_count >= 32") ||
+  !hostedPersonalWorker.includes("PERSONAL_WORKER_REPLAY_LIMIT") ||
+  !hostedWorkflow.includes("replay_count + 1") ||
+  !hostedWorkflow.includes('kind: "CANCELLED" | "EXPIRED" | "FAILED" | "REPLAYED"')
+)
+  fail("personal-worker recovery must append bounded, idempotent hosted events");
+if (
+  !hostedGoogleOnlyMigration.includes("hosted_auth_accounts_google_only_check") ||
+  !hostedGoogleOnlyMigration.includes("provider_id = 'google'") ||
+  !hostedGoogleOnlyMigration.includes("hosted identity has no supported Google auth account")
+)
+  fail("hosted Google-only identity must be enforced by the database migration");
 if (
   !hostedApp.includes("handleCpuOutputDelete(") ||
   !hostedApp.includes('request.method === "DELETE"') ||
@@ -272,7 +293,7 @@ if (
   !tenantPresetSeed.includes("V2_06_AVATAR_RIGHTS_CONFIRM=YES") ||
   !tenantPresetSeed.includes("DEFAULT_AVATAR_ENVELOPE_HASH") ||
   !tenantPresetSeed.includes("DEFAULT_STYLE_PROFILE_HASH") ||
-  !tenantPresetSeed.includes("migration head 35") ||
+  !tenantPresetSeed.includes("migration head 36") ||
   !tenantPresetSeed.includes("SET LOCAL videoforge.account_id") ||
   !tenantPresetSeed.includes("ON CONFLICT (id) DO NOTHING") ||
   !tenantPresetSeed.includes(
@@ -357,7 +378,7 @@ if (
   !backupScript.includes("refusing to overwrite") ||
   !restoreScript.includes("RESTORE_DRILL_CONFIRM") ||
   !restoreScript.includes("RESTORE_TARGET_LABEL") ||
-  !restoreScript.includes("migration head 35") ||
+  !restoreScript.includes("migration head 36") ||
   !configRenderer.includes("refusing to overwrite the tracked template") ||
   !configRenderer.includes("__V2_06_PERSONAL_WORKER_RELEASE_MANIFEST_JSON__") ||
   !configRenderer.includes('const stagingBuildRoot = resolve(root, "apps/web/dist-staging")') ||
@@ -387,13 +408,13 @@ if (
   !deploymentRunbook.includes("r2 bucket cors set") ||
   !deploymentRunbook.includes('--file "$CORS_CONFIG" --force') ||
   !deploymentRunbook.includes("secret list --format json") ||
-  !rollbackRunbook.includes("Keep migrations 0029-0035 applied") ||
+  !rollbackRunbook.includes("Keep migrations 0029-0036 applied") ||
   rollbackRunbook.includes("Keep migrations 0029-0032 applied")
 )
   fail("backup/restore encryption guard or forward-only rollback contract drifted");
 
 const manifest = JSON.parse(await read("packages/control-plane/migrations/manifest.json"));
-for (const version of [29, 30, 31, 32, 33, 34, 35]) {
+for (const version of [29, 30, 31, 32, 33, 34, 35, 36]) {
   const entry = manifest.migrations.find((candidate) => candidate.version === version);
   if (!entry) fail(`migration ${version} is absent`);
   const migration = await read(`packages/control-plane/migrations/${entry.filename}`);

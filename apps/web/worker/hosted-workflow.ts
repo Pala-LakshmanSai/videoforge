@@ -56,7 +56,7 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
               params.accountId,
             ]);
             const appendJobEvent = async (
-              kind: "CANCELLED" | "EXPIRED" | "REPLAYED",
+              kind: "CANCELLED" | "EXPIRED" | "FAILED" | "REPLAYED",
               facts: `sha256:${string}`,
             ) => {
               await transaction.query(
@@ -105,8 +105,9 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
             const loaded = await transaction.query<{
               state: string;
               deadline_at: Date | string;
+              replay_count: number;
             }>(
-              `SELECT state, deadline_at FROM hosted_cpu_job_attempts
+              `SELECT state, deadline_at, replay_count FROM hosted_cpu_job_attempts
                 WHERE id = $1 AND account_id = $2 AND workspace_id = $3
                   AND execution_backend = 'PERSONAL_WORKER'
                 FOR UPDATE`,
@@ -198,9 +199,32 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
               return "CANCELLED";
             }
             if (!active.rows[0] && attempt.state === "RUNNING") {
+              if (Number(attempt.replay_count) >= 32) {
+                await transaction.query(
+                  `UPDATE hosted_cpu_job_attempts
+                      SET state = 'FAILED', failure_code = 'PERSONAL_WORKER_REPLAY_LIMIT',
+                          submitted_at = COALESCE(submitted_at, now()), terminal_at = now(),
+                          retain_until = GREATEST(deadline_at, now() + interval '30 minutes'),
+                          version = version + 1, updated_at = now()
+                    WHERE id = $1`,
+                  [params.attemptId],
+                );
+                await appendJobEvent(
+                  "FAILED",
+                  await sha256(
+                    JSON.stringify({
+                      attempt_id: params.attemptId,
+                      reason: "PERSONAL_WORKER_REPLAY_LIMIT",
+                      schema_version: "videoforge-hosted-cpu-failed/v1",
+                    }),
+                  ),
+                );
+                return "FAILED";
+              }
               await transaction.query(
                 `UPDATE hosted_cpu_job_attempts
                     SET state = 'OUTBOXED', submitted_at = NULL, terminal_at = NULL,
+                        replay_count = replay_count + 1,
                         version = version + 1, updated_at = now()
                   WHERE id = $1`,
                 [params.attemptId],

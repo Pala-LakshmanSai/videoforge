@@ -210,6 +210,12 @@
       "name": "v2_06_hosted_render_plans",
       "filename": "0035_v2_06_hosted_render_plans.sql",
       "sha256": "sha256:b65e624a4bad7ed680bc9de4a8620c50b2ef2b1e407fde25aa3d8cd047a0ffc3"
+    },
+    {
+      "version": 36,
+      "name": "v2_06_google_only_replay_boundaries",
+      "filename": "0036_v2_06_google_only_replay_boundaries.sql",
+      "sha256": "sha256:42cd8f6f0a2d9cb1e214eb8de49cc33a05dd787571e86051dad4a01e1a08528a"
     }
   ]
 }

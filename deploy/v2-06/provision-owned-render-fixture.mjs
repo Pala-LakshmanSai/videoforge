@@ -38,7 +38,7 @@ const APPROVED_GOOGLE_PROVIDER = "google";
 const MIGRATION_ROOT = path.join(ROOT, "packages/control-plane/migrations");
 const MIGRATION_MANIFEST_PATH = path.join(MIGRATION_ROOT, "manifest.json");
 const APPROVED_MIGRATION_MANIFEST_SHA256 =
-  "sha256:bb9c850370d9badf9c3b91a6980c2fc557067740d9152c4d9791288f245b2256";
+  "sha256:26e92fcd7b6ca30f6406d0680d56f185ccc9f5cfb2be4c044a201015a612875d";
 const BUCKET = APPROVED_R2_BUCKET;
 const FIXTURE_ID = "local_short_slice_owned_001";
 const OPERATION = "v2-06-owned-render-fixture";
@@ -145,8 +145,8 @@ function readApprovedMigrationManifest() {
   } catch {
     error("committed migration manifest is invalid JSON");
   }
-  if (!manifest || !Array.isArray(manifest.migrations) || manifest.migrations.length !== 35)
-    error("V2-06 requires the complete 35-entry migration manifest");
+  if (!manifest || !Array.isArray(manifest.migrations) || manifest.migrations.length !== 36)
+    error("V2-06 requires the complete 36-entry migration manifest");
   const entries = manifest.migrations.map((entry, index) => {
     if (
       !entry ||
@@ -155,7 +155,7 @@ function readApprovedMigrationManifest() {
       typeof entry.filename !== "string" ||
       typeof entry.sha256 !== "string"
     )
-      error("migration manifest is not a contiguous 1..35 chain");
+      error("migration manifest is not a contiguous 1..36 chain");
     let sqlBytes;
     try {
       sqlBytes = readFileSync(path.join(MIGRATION_ROOT, entry.filename));
@@ -1136,7 +1136,7 @@ async function ensureR2UploadIntent(client, plan) {
 
 function assertMigrationLedgerRows(rows) {
   if (!Array.isArray(rows) || rows.length !== APPROVED_MIGRATIONS.length)
-    error("live render fixture requires the complete 35-entry migration ledger");
+    error("live render fixture requires the complete 36-entry migration ledger");
   for (const [index, expected] of APPROVED_MIGRATIONS.entries()) {
     const actual = rows[index];
     if (

@@ -77,7 +77,8 @@ function environment(): HostedRuntimeEnvironment {
         trust: "AD_HOC_BETA",
       },
     }),
-    DATABASE_URL: "postgresql://fixture:fixture@fixture.example.test/videoforge?sslmode=require",
+    DATABASE_URL:
+      "postgresql://fixture:fixture@fixture.example.test/videoforge?sslmode=require&channel_binding=require",
     BETTER_AUTH_SECRET: "fixture-better-auth-secret-00000000000000000001",
     GOOGLE_CLIENT_ID: "fixture-google-client.apps.example.test",
     GOOGLE_CLIENT_SECRET: "fixture-google-client-secret",
@@ -144,6 +145,15 @@ describe("V2-06 hosted adapters", () => {
         MEDIA_WORKER_TOKEN_SECRET: source.WORKFLOW_CALLBACK_SECRET,
       }),
     ).toThrow(HostedConfigurationError);
+    for (const databaseUrl of [
+      "postgresql://fixture:fixture@fixture.example.test/videoforge?sslmode=disable&channel_binding=require",
+      "postgresql://fixture:fixture@fixture.example.test/videoforge?sslmode=require",
+      "postgresql://fixture:fixture@fixture.example.test/videoforge?sslmode=require&channel_binding=require&channel_binding=disable",
+    ]) {
+      expect(() => hostedRuntimeConfiguration({ ...source, DATABASE_URL: databaseUrl })).toThrow(
+        HostedConfigurationError,
+      );
+    }
     const release = JSON.parse(source.MEDIA_WORKER_RELEASE_MANIFEST_JSON!);
     release.macos.trust = "UNSIGNED_BETA";
     expect(() =>

@@ -82,6 +82,27 @@ test("hosted auth rejects uninvited, expired, and unverified identities before s
   });
 });
 
+test("hosted auth database rejects credential-provider rows", async () => {
+  await withMigratedDatabase(async ({ executor }) => {
+    await seedInvite(executor, 3, "google-only@example.test");
+    await insertHostedUser(executor, "hosted-user-google-only-0001", "google-only@example.test");
+    await expectDatabaseError(
+      executor.query(
+        `INSERT INTO hosted_auth_accounts (
+           id, provider_account_id, provider_id, user_id, password, created_at, updated_at
+         ) VALUES ($1, $2, 'credential', $3, 'forbidden-password', $4, $4)`,
+        [
+          "hosted-account-credential-0001",
+          "credential-google-only-0001",
+          "hosted-user-google-only-0001",
+          FIXED_TIME,
+        ],
+      ),
+      "23514",
+    );
+  });
+});
+
 test("first verified session atomically consumes one invite and creates one private account", async () => {
   await withMigratedDatabase(async ({ executor }) => {
     const identities = [

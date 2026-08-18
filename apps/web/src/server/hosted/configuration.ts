@@ -150,6 +150,35 @@ function httpsOrigin(value: string, key: string): string {
   return parsed.pathname === "/" ? parsed.origin : parsed.toString().replace(/\/$/u, "");
 }
 
+function protectedDatabaseUrl(value: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new HostedConfigurationError(
+      "DATABASE_URL must be a valid PostgreSQL URL with TLS and channel binding.",
+      ["DATABASE_URL"],
+    );
+  }
+  const sslModes = parsed.searchParams.getAll("sslmode");
+  const channelBindings = parsed.searchParams.getAll("channel_binding");
+  if (
+    !["postgres:", "postgresql:"].includes(parsed.protocol) ||
+    !parsed.hostname ||
+    parsed.hash !== "" ||
+    sslModes.length !== 1 ||
+    sslModes[0] !== "require" ||
+    channelBindings.length !== 1 ||
+    channelBindings[0] !== "require"
+  ) {
+    throw new HostedConfigurationError(
+      "DATABASE_URL must require PostgreSQL TLS and channel binding.",
+      ["DATABASE_URL"],
+    );
+  }
+  return value;
+}
+
 function releaseFile(
   value: unknown,
   platform: "windows",
@@ -263,10 +292,7 @@ export function hostedRuntimeConfiguration(
     required(source, "VIDEOFORGE_PUBLIC_ORIGIN"),
     "VIDEOFORGE_PUBLIC_ORIGIN",
   );
-  const databaseUrl = required(source, "DATABASE_URL");
-  if (!/^postgres(?:ql)?:\/\//u.test(databaseUrl)) {
-    throw new HostedConfigurationError("DATABASE_URL must be a PostgreSQL URL.", ["DATABASE_URL"]);
-  }
+  const databaseUrl = protectedDatabaseUrl(required(source, "DATABASE_URL"));
   const secret = required(source, "BETTER_AUTH_SECRET");
   if (secret.length < 32) {
     throw new HostedConfigurationError("BETTER_AUTH_SECRET must contain at least 32 characters.", [

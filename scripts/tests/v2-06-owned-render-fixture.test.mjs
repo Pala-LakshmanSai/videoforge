@@ -164,7 +164,7 @@ test("source path, migration chain, and activation caps are hard-pinned", async 
     () => assertApprovedSourceLocation("/tmp/attacker-owned-media", "attempt_render_local_004"),
     /exact approved pinned V2-06 owned local-slice path/u,
   );
-  assert.equal(APPROVED_MIGRATIONS.length, 35);
+  assert.equal(APPROVED_MIGRATIONS.length, 36);
   assertMigrationLedgerRows(APPROVED_MIGRATIONS);
   const fixture = await verifyLocalFixture();
   const plan = planFixture(fixture, scope, "2026-08-17T12:00:00Z");

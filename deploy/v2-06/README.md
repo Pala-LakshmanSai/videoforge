@@ -200,7 +200,7 @@ videoforge-v2-06-staging-private`. Wildcard origins and headers are forbidden.
   the worker connects; there is no first-run model download or user configuration. Scratch is
   removed after terminal completion.
 - Rollback deploys the previously recorded Cloudflare Worker version and prior immutable desktop release
-  manifest. Schema migrations 0029-0035 are additive and retained. Successful final video objects are
+  manifest. Schema migrations 0029-0036 are additive and retained. Successful final video objects are
   not time-deleted; the user-facing Delete operation owns durable R2 deletion. Only failed/cancelled
   transient attempt objects use bounded retention. Auth/session tables rely on Neon native PITR rather
   than the portable metadata export because they contain secret-bearing values.
@@ -259,7 +259,7 @@ session admission, seed its exact private activation presets with
 `seed-tenant-presets.mjs`. The utility requires a separate migration-owner URL, an explicit
 `V2_06_SEED_CONFIRM=YES`, an explicit avatar-rights confirmation, three existing tenant-owned
 `VERIFIED` avatar assets (original, runtime, thumbnail), and one fixed `V2_06_SEED_AT` timestamp.
-It refuses the hosted runtime role, missing/foreign/unverified assets, non-head-35 databases, and
+It refuses the hosted runtime role, missing/foreign/unverified assets, non-head-36 databases, and
 conflicting immutable rows. Re-running the same command is safe only when every deterministic row
 already matches; it never deletes rows or creates media bytes.
 
@@ -301,7 +301,7 @@ account `f9254d773a3426fcb469451b1f965d8c`, bucket `videoforge-v2-06-staging-pri
 `auto`, and the approved Neon project host), resolves only one of the two admitted identities,
 and uses the driver rooted at `apps/web`. It forwards the complete aws4fetch-signed request to
 `fetch`, uploads only missing exact tenant objects, verifies HEAD metadata and GET bytes/hash/type,
-then commits one Neon transaction at migration head 35. Existing objects and rows are accepted
+then commits one Neon transaction at migration head 36. Existing objects and rows are accepted
 only when every immutable fact matches; no object, row, output, GPU, or provider-generated media
 is deleted or overwritten. If R2 fails partway through, an append-only failure receipt records the
 exact expected-object cleanup scope with `automatic_delete=false`; if Neon fails after R2
