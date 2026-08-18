@@ -25,8 +25,10 @@ from videoforge_media_local.personal_execution import (
     parse_personal_job,
 )
 
+from .personal_tls import https_context
+
 _SERVICE = "com.videoforge.personal-media-worker"
-_WORKER_VERSION = "0.1.1"
+_WORKER_VERSION = "0.1.2"
 _PROTOCOL_VERSION = 1
 
 
@@ -316,7 +318,7 @@ def _json_request(
         headers={**(headers or {}), **({"content-type": "application/json"} if data else {})},
     )
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with urllib.request.urlopen(request, timeout=30, context=https_context()) as response:
             raw = response.read(1024 * 1024 + 1)
             if len(raw) > 1024 * 1024:
                 raise ValueError("Personal worker response exceeded its bound")

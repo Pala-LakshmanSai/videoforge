@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import ssl
 import subprocess
 import tempfile
 import unittest
@@ -13,6 +14,7 @@ from videoforge_media_local.personal_worker import (
     _is_external_macos_bundle,
     _open_approval_url,
 )
+from videoforge_media_local.personal_tls import https_context
 
 
 def job() -> dict[str, object]:
@@ -61,6 +63,11 @@ def job() -> dict[str, object]:
 
 
 class PersonalWorkerContractTests(unittest.TestCase):
+    def test_https_context_uses_bundled_certificate_authorities(self) -> None:
+        context = https_context()
+        self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+        self.assertTrue(context.check_hostname)
+
     def test_cancellation_monitor_has_a_runnable_poll_loop(self) -> None:
         self.assertTrue(callable(getattr(_CancellationMonitor, "_run", None)))
 

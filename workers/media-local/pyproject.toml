@@ -8,6 +8,7 @@ version = "0.0.0"
 description = "Provider-free ASR/render core and zero-configuration personal media worker"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+  "certifi==2025.7.14",
   "videoforge-contracts",
   "videoforge-image-media-worker",
 ]

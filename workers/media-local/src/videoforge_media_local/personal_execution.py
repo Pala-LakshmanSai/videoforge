@@ -22,6 +22,7 @@ from typing import Any, BinaryIO
 from videoforge_image_media.local_cli import cancellation_marker
 
 from .cloud_job import _local_path
+from .personal_tls import https_context
 
 _SHA256 = __import__("re").compile(r"^sha256:[0-9a-f]{64}$")
 _R2_KEY = __import__("re").compile(
@@ -176,7 +177,7 @@ def _request_json(
         headers={**headers, **({"content-type": "application/json"} if body is not None else {})},
     )
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with urllib.request.urlopen(request, timeout=30, context=https_context()) as response:
             data = response.read(maximum + 1)
             if len(data) > maximum:
                 raise ValueError("Personal worker response exceeded its bound")
@@ -190,7 +191,10 @@ def _download(item: dict[str, Any], destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     digest = hashlib.sha256()
     size = 0
-    with urllib.request.urlopen(item["url"], timeout=60) as response, destination.open("xb") as out:
+    with (
+        urllib.request.urlopen(item["url"], timeout=60, context=https_context()) as response,
+        destination.open("xb") as out,
+    ):
         while chunk := response.read(1024 * 1024):
             size += len(chunk)
             if size > item["bytes"]:

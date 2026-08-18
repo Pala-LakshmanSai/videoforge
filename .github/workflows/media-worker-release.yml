@@ -26,9 +26,9 @@ on:
         default: false
         type: boolean
       release_tag:
-        description: Exact new tag; this repaired build requires media-worker-v0.1.1
+        description: Exact new tag; this repaired build requires media-worker-v0.1.2
         required: true
-        default: media-worker-v0.1.1
+        default: media-worker-v0.1.2
         type: string
 
 permissions:
@@ -165,6 +165,7 @@ jobs:
         shell: bash
         run: |
           python -m pip install --disable-pip-version-check "pyinstaller==6.15.0"
+          python -m pip install --disable-pip-version-check "certifi==2025.7.14"
           python -m pip install --disable-pip-version-check -e packages/contracts
           python -m pip install --disable-pip-version-check --no-deps -e workers/image-media
           python -m pip install --disable-pip-version-check --no-deps -e workers/media-local
@@ -306,7 +307,7 @@ jobs:
         run: >-
           hdiutil create -fs HFS+ -volname "VideoForge Worker"
           -srcfolder "dist/VideoForge Worker.app"
-          "VideoForge-Worker-0.1.1.dmg"
+          "VideoForge-Worker-0.1.2.dmg"
 
       - name: Verify macOS disk image and installed app seal
         if: runner.os == 'macOS'
@@ -321,8 +322,8 @@ jobs:
             rmdir "$mount_dir" 2>/dev/null || true
           }
           trap cleanup EXIT
-          hdiutil verify "VideoForge-Worker-0.1.1.dmg"
-          hdiutil attach -nobrowse -readonly -mountpoint "$mount_dir" "VideoForge-Worker-0.1.1.dmg" >/dev/null
+          hdiutil verify "VideoForge-Worker-0.1.2.dmg"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mount_dir" "VideoForge-Worker-0.1.2.dmg" >/dev/null
           codesign --verify --deep --strict --verbose=2 "$mount_dir/VideoForge Worker.app"
           if [ "$SIGNED_RELEASE" != "true" ]; then
             codesign -dv --verbose=4 "$mount_dir/VideoForge Worker.app" 2>&1 | grep -q 'Signature=adhoc'
@@ -336,16 +337,16 @@ jobs:
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
           APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
         run: |
-          codesign --force --timestamp --sign "$APPLE_DEVELOPER_ID_APPLICATION" "VideoForge-Worker-0.1.1.dmg"
-          codesign --verify --strict --verbose=2 "VideoForge-Worker-0.1.1.dmg"
-          xcrun notarytool submit "VideoForge-Worker-0.1.1.dmg" \
+          codesign --force --timestamp --sign "$APPLE_DEVELOPER_ID_APPLICATION" "VideoForge-Worker-0.1.2.dmg"
+          codesign --verify --strict --verbose=2 "VideoForge-Worker-0.1.2.dmg"
+          xcrun notarytool submit "VideoForge-Worker-0.1.2.dmg" \
             --key notary-key.p8 \
             --key-id "$APPLE_NOTARY_KEY_ID" \
             --issuer "$APPLE_NOTARY_ISSUER_ID" \
             --wait
-          xcrun stapler staple "VideoForge-Worker-0.1.1.dmg"
-          xcrun stapler validate "VideoForge-Worker-0.1.1.dmg"
-          spctl --assess --type open --context context:primary-signature --verbose=2 "VideoForge-Worker-0.1.1.dmg"
+          xcrun stapler staple "VideoForge-Worker-0.1.2.dmg"
+          xcrun stapler validate "VideoForge-Worker-0.1.2.dmg"
+          spctl --assess --type open --context context:primary-signature --verbose=2 "VideoForge-Worker-0.1.2.dmg"
 
       - name: Remove transient macOS signing material
         if: runner.os == 'macOS' && always()
@@ -408,7 +409,7 @@ jobs:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
-          test "$RELEASE_TAG" = "media-worker-v0.1.1"
+          test "$RELEASE_TAG" = "media-worker-v0.1.2"
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -443,7 +444,7 @@ jobs:
               }
           manifest = {
               "schema_version": "videoforge-media-worker-release/v1",
-              "version": "0.1.1",
+              "version": "0.1.2",
               "minimum_protocol_version": 1,
               "execution_bundle_sha256": os.environ["EXECUTION_BUNDLE_SHA256"],
               "whisper_model_sha256": os.environ["WHISPER_MODEL_SHA256"],
@@ -472,5 +473,5 @@ jobs:
           gh release create "$RELEASE_TAG" "${binaries[@]}" media-worker-release.json \
             --repo "$REPOSITORY" \
             --target "$RELEASE_SHA" \
-            --title "VideoForge Worker 0.1.1" \
+            --title "VideoForge Worker 0.1.2" \
             --notes "Immutable repaired Windows x64 and macOS universal2 personal media workers. Exact hashes and platform trust mode are recorded in media-worker-release.json."
