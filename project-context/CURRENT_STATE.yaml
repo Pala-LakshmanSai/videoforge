@@ -1,33 +1,55 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-18T16:08:59Z"
+updated_at: "2026-08-18T16:52:01Z"
 
-phase: serverless_v2_v2_06_local_repair_committed_hosted_reverification_pending
-implementation_authorized_in_current_task: true
+phase: serverless_v2_v2_06_read_only_live_audit_in_progress
+implementation_authorized_in_current_task: false
 current_milestone: hosted_staging_and_personal_media_workers
 current_task: VF-10-06
 current_wave: v2_06_personal_worker_conversion
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: local_source_repair_committed_hosted_media_acceptance_pending
-application_code_changes_authorized: true
-provider_calls_authorized: false
-read_only_provider_calls_authorized: false
+task_stage: read_only_live_audit_in_progress
+application_code_changes_authorized: false
+provider_calls_authorized: true
+read_only_provider_calls_authorized: true
 maximum_external_spend_usd: 0
 
 provider_authority:
-  mode: none
-  provider: null
+  mode: read_only
+  provider: cloudflare_neon_google_runpod_and_paired_devices
   cap_usd: 0
-  recurring_r2_ceiling_usd_per_month: null
-  source: current_source_repair_no_live_authority
+  recurring_r2_ceiling_usd_per_month: 0
+  source: explicit_user_read_only_live_audit_grant
   non_transferable: true
-  authorized_by_user_at: null
-  resources: []
-  authorized_operations: []
-  allowed_operations: []
+  authorized_by_user_at: "2026-08-18T16:52:01Z"
+  resources:
+    - cloudflare_worker_videoforge_v2_06_staging
+    - cloudflare_workflow_videoforge_v2_06_staging_video
+    - cloudflare_r2_bucket_videoforge_v2_06_staging_private
+    - neon_project_ancient_morning_99567618
+    - google_oauth_project_videoforge_v2_06_staging_0817
+    - runpod_sujal_account
+    - existing_paired_videoforge_devices
+  authorized_operations:
+    - account_identity_lookup
+    - inventory_lookup
+    - quota_lookup
+    - rate_lookup
+    - region_lookup
+    - resource_identity_lookup
+    - resource_absence_lookup
+  allowed_operations:
+    - account_identity_lookup
+    - inventory_lookup
+    - quota_lookup
+    - rate_lookup
+    - region_lookup
+    - resource_identity_lookup
+    - resource_absence_lookup
   rate_snapshot: []
 
-credential_access_authorized: false
+credential_access_authorized: true
+credential_value_read_authorized: false
 remote_or_cloud_mutations_authorized: false
 model_downloads_authorized: false
 worker_image_publication_authorized: false
@@ -67,9 +89,9 @@ live_development:
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
   provider_mode: fixture
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   authorized_spend_usd: 0
-  provider_authority_scope: "No current live-verification, credential, mutation, or spend authority is active. Prior deployment and inventory records are immutable evidence only; a separate explicit read-only audit grant is required for live verification."
+  provider_authority_scope: "A current V2-06-only read-only live-audit grant is active at a hard $0 cap for existing Cloudflare, Neon, R2, Google OAuth, RunPod, and paired-device status. Credential values, remote mutation, deployment, publication, deletion, paid requests, spend, GPU work, and V2-07 remain forbidden."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -266,7 +288,7 @@ active_ownership:
   - task_id: VF-10-06
     checkpoint: V2-06
     scope: exact_v2_06_live_activation_hardening_deployment_and_acceptance
-    provider_calls_authorized: false
+    provider_calls_authorized: true
     maximum_external_spend_usd: 0
 in_progress_checkpoint: V2-06
 
@@ -274,30 +296,52 @@ recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
   milestone: hosted_staging_and_personal_media_workers
-  status: source_repair_committed_hosted_media_acceptance_pending
+  status: read_only_live_audit_in_progress
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
-  authorization_status: no_current_live_verification_or_mutation_authority
-  task_stage: source_repair_committed_hosted_reverification_pending
+  authorization_status: read_only_live_audit_at_zero_cap_no_mutation
+  task_stage: read_only_audit
   provider_authority:
-    mode: none
-    provider: null
+    mode: read_only
+    provider: cloudflare_neon_google_runpod_and_paired_devices
     cap_usd: 0
-    recurring_r2_ceiling_usd_per_month: null
+    recurring_r2_ceiling_usd_per_month: 0
     non_transferable: true
-    authorized_by_user_at: null
+    authorized_by_user_at: "2026-08-18T16:52:01Z"
     model_id: null
-    resources: []
-    authorized_operations: []
-    allowed_operations: []
+    resources:
+      - cloudflare_worker_videoforge_v2_06_staging
+      - cloudflare_workflow_videoforge_v2_06_staging_video
+      - cloudflare_r2_bucket_videoforge_v2_06_staging_private
+      - neon_project_ancient_morning_99567618
+      - google_oauth_project_videoforge_v2_06_staging_0817
+      - runpod_sujal_account
+      - existing_paired_videoforge_devices
+    authorized_operations:
+      - account_identity_lookup
+      - inventory_lookup
+      - quota_lookup
+      - rate_lookup
+      - region_lookup
+      - resource_identity_lookup
+      - resource_absence_lookup
+    allowed_operations:
+      - account_identity_lookup
+      - inventory_lookup
+      - quota_lookup
+      - rate_lookup
+      - region_lookup
+      - resource_identity_lookup
+      - resource_absence_lookup
     rate_snapshot: []
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
   goal: "Finish V2-06 only after a separate explicit live-verification grant; preserve provider-free proof, GPU transport fake-disabled, and V2-07 blocked."
-  provider_calls_authorized: false
-  read_only_provider_calls_authorized: false
+  provider_calls_authorized: true
+  read_only_provider_calls_authorized: true
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
+  credential_access_authorized: true
+  credential_value_read_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
@@ -306,7 +350,7 @@ recommended_next_task:
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
-  application_code_changes_authorized: true
+  application_code_changes_authorized: false
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
