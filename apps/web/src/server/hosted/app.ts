@@ -542,9 +542,9 @@ async function handleCpuSubmission(
         await transaction.query(
           `INSERT INTO hosted_cpu_job_events (
              id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
-           ) SELECT md5($1 || ':outboxed:1')::uuid, $2, $3, $1, 1, 'OUTBOXED', $4, now()
+           ) SELECT md5($1::text || ':outboxed:1')::uuid, $2::uuid, $3::uuid, $1::uuid, 1, 'OUTBOXED', $4, now()
            WHERE NOT EXISTS (
-             SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id = $1 AND kind = 'OUTBOXED'
+             SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id = $1::uuid AND kind = 'OUTBOXED'
            )`,
           [prepared.attemptId, scope.account_id, scope.workspace_id, prepared.jobSpecChecksum],
         );
@@ -574,9 +574,9 @@ async function handleCpuSubmission(
         await transaction.query(
           `INSERT INTO hosted_cpu_job_events (
              id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
-           ) SELECT md5($1 || ':preparation-failed:1')::uuid, $2, $3, $1, 1, 'FAILED', $4, now()
+           ) SELECT md5($1::text || ':preparation-failed:1')::uuid, $2::uuid, $3::uuid, $1::uuid, 1, 'FAILED', $4, now()
              WHERE NOT EXISTS (
-               SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id = $1 AND kind = 'FAILED'
+               SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id = $1::uuid AND kind = 'FAILED'
              )`,
           [prepared.attemptId, row.account_id, row.workspace_id, failureFacts],
         );
@@ -697,11 +697,11 @@ async function handleCpuAttemptApi(
         await transaction.query(
           `INSERT INTO hosted_cpu_job_events (
              id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
-           ) SELECT md5($1 || ':cancel:' || (COALESCE(max(sequence), 0) + 1)::text)::uuid,
-                    $2, $3, $1, COALESCE(max(sequence), 0) + 1, $5,
+         ) SELECT md5($1::text || ':cancel:' || (COALESCE(max(sequence), 0) + 1)::text)::uuid,
+                    $2::uuid, $3::uuid, $1::uuid, COALESCE(max(sequence), 0) + 1, $5,
                     $4, now()
                FROM hosted_cpu_job_events
-              WHERE account_id = $2 AND workspace_id = $3 AND attempt_id = $1`,
+              WHERE account_id = $2::uuid AND workspace_id = $3::uuid AND attempt_id = $1::uuid`,
           [
             attemptId,
             changed.account_id,
@@ -825,10 +825,10 @@ async function handleCpuOutputDelete(
       await transaction.query(
         `INSERT INTO hosted_cpu_job_events (
            id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
-         ) SELECT md5($1 || ':explicit-delete:' || (COALESCE(max(sequence), 0) + 1)::text)::uuid,
-                  $2, $3, $1, COALESCE(max(sequence), 0) + 1, 'RETENTION_DELETED', $4, now()
+         ) SELECT md5($1::text || ':explicit-delete:' || (COALESCE(max(sequence), 0) + 1)::text)::uuid,
+                  $2::uuid, $3::uuid, $1::uuid, COALESCE(max(sequence), 0) + 1, 'RETENTION_DELETED', $4, now()
              FROM hosted_cpu_job_events
-            WHERE account_id = $2 AND workspace_id = $3 AND attempt_id = $1`,
+            WHERE account_id = $2::uuid AND workspace_id = $3::uuid AND attempt_id = $1::uuid`,
         [attemptId, row.account_id, row.workspace_id, factsSha256],
       );
     });
