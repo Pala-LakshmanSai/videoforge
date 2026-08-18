@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-18T07:27:11Z"
+updated_at: "2026-08-18T09:30:00Z"
 
 phase: serverless_v2_v2_06_live_activation_in_progress
 implementation_authorized_in_current_task: true
@@ -382,26 +382,26 @@ recommended_next_task:
 
 verification:
   state: v2_06_native_mac_paired_full_acceptance_blocked
-  verified_commit: "dbd01cd097f87ac8a55ded43f414d322badfc3e5"
-  verified_commit_note: "Current HEAD dbd01cd (documentation-only after deployed source abadf85) passes canonical verification. The deployed source uses the tenant catalog and blocks fixture-only /new routes in staging. A signed-in Chrome check proves one paired macOS worker is ONLINE with a recent heartbeat. Windows pairing, hosted media execution/parity, tenant isolation, recovery, deletion, backup/restore, rollback, and full hosted Chrome acceptance remain blocked."
-  predecessor_verified_commit: "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-preset-hub-repair-deployed-abadf85/acceptance.json
+  verified_commit: "54824614435f2233703ffcdf5900f267f9ea86de"
+  verified_commit_note: "Current HEAD 5482461 is a documentation-only descendant of deployed implementation 5a8b9e2. Canonical provider-free verification passes at 5a8b9e2; the deployed source uses the tenant catalog, blocks fixture-only /new routes in staging, and the signed-in Chrome Settings page proves one paired macOS worker is ONLINE with a fresh heartbeat. Windows pairing, hosted media execution/parity, tenant isolation, recovery, deletion, backup/restore, rollback, and full hosted Chrome acceptance remain blocked."
+  predecessor_verified_commit: "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f"
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-media-upload-repair-023d43f/acceptance.json
   latest_live_check:
-    recorded_at_utc: "2026-08-18T07:37:25Z"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-preset-hub-repair-deployed-abadf85/acceptance.json
+    recorded_at_utc: "2026-08-18T09:30:00Z"
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-media-upload-repair-023d43f/acceptance.json
     status: hosted_preset_hub_repair_deployed_native_mac_paired_online_hosted_media_acceptance_pending
-    source_repair_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
-    deployed_implementation_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
+    source_repair_commit: "5a8b9e275fa54658b214009c1d8f6c5b602244f1"
+    deployed_implementation_commit: "5a8b9e275fa54658b214009c1d8f6c5b602244f1"
     deployed_source_mismatch: false
     release_commit: "33a5dbd"
-    deployment_version_id: "e2467d77-a888-4832-9d2c-c26d9c58013e"
+    deployment_version_id: "f04017dd-0d10-4f45-a23d-2e1edc8e5529"
     release_manifest_sha256: "sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b"
     neon_runtime_grant_executed: true
     new_external_spend_usd: 0
     native_mac_worker_paired: true
     native_mac_worker_online: true
     native_mac_worker_version: "0.1.4"
-    native_mac_last_seen_rendered: "8/18/2026, 11:52:00 AM"
+    native_mac_last_seen_rendered: "8/18/2026, 2:59:35 PM"
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
