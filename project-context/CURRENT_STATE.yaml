@@ -85,8 +85,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "abadf85413ef971153422a0acb93dfa98d618bee"
-  current_source_head_note: "Hosted preset hubs now use the authenticated tenant catalog and fixture-only /new routes are explicitly blocked in staging. The repaired source is deployed at the live Worker; Windows pairing, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
+  current_source_head: "dbd01cd097f87ac8a55ded43f414d322badfc3e5"
+  current_source_head_note: "Current HEAD dbd01cd is the documentation/evidence handoff after the deployed source repair at abadf85. Hosted preset hubs use the authenticated tenant catalog and fixture-only /new routes are explicitly blocked in staging; Windows pairing, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
   last_good_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
   last_good_commit_note: "V2-06 hosted staging is deployed from abadf85 with the immutable 0.1.4 Windows/macOS beta release. The hosted preset-hub source repair, staging build, canonical verification, and one native macOS pairing/heartbeat smoke are green. Windows pairing, device parity, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
@@ -382,8 +382,8 @@ recommended_next_task:
 
 verification:
   state: v2_06_native_mac_paired_full_acceptance_blocked
-  verified_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
-  verified_commit_note: "Source HEAD abadf85 is verified, pushed, and deployed: hosted /avatars and /styles use the tenant catalog, and fixture-only /new routes are blocked in staging. A signed-in Chrome check proves one paired macOS worker is ONLINE with a recent heartbeat. Windows pairing, hosted media execution/parity, tenant isolation, recovery, deletion, backup/restore, rollback, and full hosted Chrome acceptance remain blocked."
+  verified_commit: "dbd01cd097f87ac8a55ded43f414d322badfc3e5"
+  verified_commit_note: "Current HEAD dbd01cd (documentation-only after deployed source abadf85) passes canonical verification. The deployed source uses the tenant catalog and blocks fixture-only /new routes in staging. A signed-in Chrome check proves one paired macOS worker is ONLINE with a recent heartbeat. Windows pairing, hosted media execution/parity, tenant isolation, recovery, deletion, backup/restore, rollback, and full hosted Chrome acceptance remain blocked."
   predecessor_verified_commit: "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a"
   acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-preset-hub-repair-deployed-abadf85/acceptance.json
   latest_live_check:
@@ -617,7 +617,7 @@ verification:
   in_progress_for_v2_06:
     status: native_mac_paired_hosted_media_acceptance_pending
     implementation_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
-    source_head_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
+    source_head_commit: "dbd01cd097f87ac8a55ded43f414d322badfc3e5"
     hosted_ui_repair_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
     hosted_ui_repair_deployment_status: deployed
     worker_source_repair_commit: "0184a66f0532af0b05f5e4f3b79f5289768c120b"
@@ -675,6 +675,7 @@ verification:
       - "Hosted preset-hub source repair 0087897: focused hosted tests 7/7, web lint, web typecheck, staging build, and clean canonical CI=1 TURBO_FORCE=true pnpm verify all passed; source pushed to origin while live deployment remains 0184a66."
       - "Protected V2-06 redeploy from abadf85 (exit 0; version e2467d77-a888-4832-9d2c-c26d9c58013e; rendered config sha256:fa577c2093e54617d827b43cdcc2852439d90b3b3456c26bfd6e044f25619b93)."
       - "GET /api/v2/hosted/status after abadf85 deployment (exit 0; HTTP 200; deployed commit abadf85; GPU DISABLED_FAKE_ONLY; provider CPU spend $0)."
+      - "CI=1 TURBO_FORCE=true pnpm verify after dbd01cd evidence handoff (exit 0; canonical 28 tasks; worker suites; Cloudflare parity 1/1; installed Chrome 44/44)."
     delivered:
       - "Migration 0032 adds account/workspace-bound worker enrollments, devices, exact input objects, one active lease per attempt/device, append-only events, row-level security, and stale-lease fencing while preserving historical Cloud Run rows for rollback."
       - "The hosted API uses PKCE enrollment, one explicit authenticated approval, OS-keychain-scoped device tokens, heartbeat/update gating, exact same-account claims, fresh R2 GET/PUT ports, streaming output verification, cancellation, revocation, and late-result rejection."
