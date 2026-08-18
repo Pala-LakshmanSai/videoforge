@@ -56,7 +56,7 @@ def _sha256(path: Path) -> str:
 
 
 def _download(url: str, expected_sha256: str, destination: Path) -> None:
-    request = urllib.request.Request(url, headers={"User-Agent": "VideoForge-release/0.1.4"})
+    request = urllib.request.Request(url, headers={"User-Agent": "VideoForge-release/0.1.5"})
     with urllib.request.urlopen(request, timeout=180) as source, destination.open("wb") as output:
         shutil.copyfileobj(source, output, length=1024 * 1024)
     if _sha256(destination) != expected_sha256:

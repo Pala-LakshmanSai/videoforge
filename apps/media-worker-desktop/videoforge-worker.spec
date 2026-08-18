@@ -51,7 +51,7 @@ if os.name == "posix":
         bundle_identifier="com.videoforge.personal-media-worker",
         info_plist={
             "CFBundleDisplayName": "VideoForge Worker",
-            "CFBundleShortVersionString": "0.1.4",
+            "CFBundleShortVersionString": "0.1.5",
             "LSBackgroundOnly": True,
             "LSMinimumSystemVersion": "12.0",
         },
