@@ -84,6 +84,20 @@ export async function readJson<T>(path: string, init?: RequestInit): Promise<T> 
   return payload as T;
 }
 
+async function bounded<T>(promise: Promise<T>, message: string, timeoutMs = 30_000): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (typeof timer !== "undefined") clearTimeout(timer);
+  }
+}
+
 async function sha256(file: File): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
   return `sha256:${[...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
@@ -176,58 +190,83 @@ export function HostedCreateProjectScreen() {
     mutationFn: async () => {
       if (!voiceover) throw new Error("Choose a voiceover first.");
       setError(null);
-      const checksum = await sha256(voiceover);
-      const durationMs = await audioDurationMs(voiceover);
+      const checksum = await bounded(
+        sha256(voiceover),
+        "Voiceover checksum timed out. Choose the file again and retry.",
+        15_000,
+      );
+      const durationMs = await bounded(
+        audioDurationMs(voiceover),
+        "Voiceover duration timed out. Choose a valid WAV, FLAC, MP3, or M4A file and retry.",
+        15_000,
+      );
       const contentType = voiceover.type || "audio/wav";
       if (!["audio/wav", "audio/flac", "audio/mpeg", "audio/mp4"].includes(contentType))
         throw new Error("Use WAV, FLAC, MP3, or M4A audio.");
       const idempotencyKey = `browser-project-${crypto.randomUUID()}`;
-      const created = await readJson<{
-        project_id: string;
-        state: "UPLOAD_PENDING" | "READY";
-        upload: null | {
-          url: string;
-          requiredHeaders: Readonly<Record<string, string>>;
-        };
-      }>("/api/v2/hosted/projects", {
-        method: "POST",
-        headers: { "idempotency-key": idempotencyKey },
-        body: JSON.stringify({
-          schema_version: "videoforge-hosted-project-create/v1",
-          title: title.trim(),
-          avatar_profile_version_id: avatarVersionId,
-          image_style_version_id: styleVersionId,
-          voiceover: {
-            filename: voiceover.name,
-            content_type: contentType,
-            content_length: voiceover.size,
-            checksum_sha256: checksum,
-            duration_ms: durationMs,
-          },
+      const created = await bounded(
+        readJson<{
+          project_id: string;
+          state: "UPLOAD_PENDING" | "READY";
+          upload: null | {
+            url: string;
+            requiredHeaders: Readonly<Record<string, string>>;
+          };
+        }>("/api/v2/hosted/projects", {
+          method: "POST",
+          headers: { "idempotency-key": idempotencyKey },
+          body: JSON.stringify({
+            schema_version: "videoforge-hosted-project-create/v1",
+            title: title.trim(),
+            avatar_profile_version_id: avatarVersionId,
+            image_style_version_id: styleVersionId,
+            voiceover: {
+              filename: voiceover.name,
+              content_type: contentType,
+              content_length: voiceover.size,
+              checksum_sha256: checksum,
+              duration_ms: durationMs,
+            },
+          }),
         }),
-      });
+        "Hosted project creation timed out. Retry from Create Project.",
+      );
       if (created.upload) {
         const headers = Object.fromEntries(
           Object.entries(created.upload.requiredHeaders).filter(
             ([key]) => key !== "content-length",
           ),
         );
-        const uploaded = await fetch(created.upload.url, {
-          method: "PUT",
-          headers,
-          body: voiceover,
+        const uploadController = new AbortController();
+        const uploaded = await bounded(
+          fetch(created.upload.url, {
+            signal: uploadController.signal,
+            method: "PUT",
+            headers,
+            body: voiceover,
+          }),
+          "Private voiceover upload timed out. Retry from Create Project.",
+        ).catch((error) => {
+          uploadController.abort();
+          throw error;
         });
         if (!uploaded.ok)
           throw new Error(`Private voiceover upload failed (HTTP ${uploaded.status}).`);
       }
-      const ready = await readJson<{ project_id: string; cpu_submission: unknown }>(
-        `/api/v2/hosted/projects/${created.project_id}/commit`,
-        { method: "POST", body: "{}" },
+      const ready = await bounded(
+        readJson<{ project_id: string; cpu_submission: unknown }>(
+          `/api/v2/hosted/projects/${created.project_id}/commit`,
+          { method: "POST", body: "{}" },
+        ),
+        "Hosted project commit timed out. Retry from Create Project.",
       );
-      await readJson("/api/v2/cpu-attempts", {
-        method: "POST",
-        body: JSON.stringify(ready.cpu_submission),
-      });
+      await bounded(
+        readJson("/api/v2/cpu-attempts", {
+          method: "POST",
+          body: JSON.stringify(ready.cpu_submission),
+        }),
+        "Hosted ASR submission timed out. Retry from Create Project.",
+      );
       return ready.project_id;
     },
     onSuccess: (projectId) => window.location.assign(`/projects/${projectId}`),
