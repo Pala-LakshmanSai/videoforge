@@ -14,7 +14,8 @@
       { "commit": "33a5dbd", "purpose": "identify worker HTTP requests to avoid Cloudflare 403/1010" },
       { "commit": "0184a66f0532af0b05f5e4f3b79f5289768c120b", "purpose": "clear tenant context for system-scoped pending enrollment writes" }
     ],
-    "current_head": "0184a66f0532af0b05f5e4f3b79f5289768c120b",
+    "current_head": "eba45ab",
+    "deployed_implementation_commit": "0184a66f0532af0b05f5e4f3b79f5289768c120b",
     "previous_failures_repaired": [
       "0.1.1/0.1.2 frozen-worker TLS verification failed without the bundled CA bundle.",
       "0.1.2 frozen execution failed with a relative import outside its package context.",
