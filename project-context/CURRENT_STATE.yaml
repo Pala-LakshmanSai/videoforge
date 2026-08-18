@@ -616,9 +616,9 @@ verification:
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
     status: native_mac_paired_hosted_media_acceptance_pending
-    implementation_commit: "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f"
-    source_head_commit: "6336a754d1a3de414daf767a98c118def5d2d9bd"
-    hosted_ui_repair_commit: "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f"
+    implementation_commit: "5a8b9e275fa54658b214009c1d8f6c5b602244f1"
+    source_head_commit: "5a8b9e275fa54658b214009c1d8f6c5b602244f1"
+    hosted_ui_repair_commit: "5a8b9e275fa54658b214009c1d8f6c5b602244f1"
     hosted_ui_repair_deployment_status: deployed
     worker_source_repair_commit: "0184a66f0532af0b05f5e4f3b79f5289768c120b"
     previous_worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
@@ -684,6 +684,8 @@ verification:
       - "GET /api/v2/hosted/status after exact-HEAD redeploy (exit 0; HTTP 200; deployed commit 6336a75; GPU DISABLED_FAKE_ONLY; provider CPU spend $0)."
       - "wrangler deployments list and wrangler workflows list after exact-HEAD redeploy (exit 0; current Worker version 7613d80b-cf7e-49d8-b81b-56ac2b76db32; existing videoforge-v2-06-staging-video / HostedVideoWorkflow remains listed)."
       - "Real Chrome hosted Create Project attempts after 5e0496b and 023d43f (visible bounded checksum timeout after 32 seconds; exact Neon read-back projects=0); extension file-byte access prerequisite remains unverified and was not changed."
+      - "Commit 5a8b9e2 routes WAV duration parsing through the same FileReader byte path; focused hosted tests pass 9/9, staging build passes, and protected redeploy succeeds as Worker version f04017dd-0d10-4f45-a23d-2e1edc8e5529 with config sha256:ddae6d28fb86c647e65e8e598267aa878a4c4c2038a86e4848f6aa24b96324df."
+      - "GET /api/v2/hosted/status after 5a8b9e2 deployment (exit 0; HTTP 200; deployed commit 5a8b9e2; GPU DISABLED_FAKE_ONLY; provider CPU spend $0)."
     delivered:
       - "Migration 0032 adds account/workspace-bound worker enrollments, devices, exact input objects, one active lease per attempt/device, append-only events, row-level security, and stale-lease fencing while preserving historical Cloud Run rows for rollback."
       - "The hosted API uses PKCE enrollment, one explicit authenticated approval, OS-keychain-scoped device tokens, heartbeat/update gating, exact same-account claims, fresh R2 GET/PUT ports, streaming output verification, cancellation, revocation, and late-result rejection."
@@ -708,11 +710,11 @@ verification:
       - "The user-selected email provider is NONE, so hosted auth is Google-only and email/password stays disabled. Dedicated Google project videoforge-v2-06-staging-0817 and its exact redirect/client exist; live two-user callback acceptance remains pending."
       - "The user has Windows x64 and Mac test devices. Apple Developer Program membership is absent and no longer required for the selected ImageForge-style beta release; native clean-download/install evidence must record any actual warning or bypass behavior."
       - "The exact combined V2-06 activation was approved with a USD 3 finite test cap and USD 2/month R2 ceiling; spend and recurring truth must be rechecked after acceptance."
-      - "Hosted media upload timeout repairs are deployed at 023d43f and the docs/evidence-only HEAD 6336a75 is live, but the connected real-Chrome file input still cannot yield readable bytes; do not treat local verification, seeded catalog state, or the status endpoint as hosted media proof."
+      - "Hosted media upload timeout repairs are deployed at 5a8b9e2, but the connected real-Chrome file input still cannot yield readable bytes; retry after the extension's file-URL access prerequisite is enabled. Do not treat local verification, seeded catalog state, or the status endpoint as hosted media proof."
     resource_truth:
       external_mutations: bounded_v2_06_deployment_complete_acceptance_pending
       external_mutation_scope: "Three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence."
-      deployments: 9
+      deployments: 10
       installer_builds: 4
       installer_publications: 4
       email_deliveries: 0
@@ -725,16 +727,16 @@ verification:
       runpod_workers_started: 0
       live_runpod_inventory_refreshed: true
       cloudflare:
-        checked_at: "2026-08-18T09:06:58Z"
+        checked_at: "2026-08-18T09:11:41Z"
         account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
         workers_plan: FREE
         payment_method_on_file: true
         workers_after_confirmed_cleanup: 1
         workflows: 1
         worker_name: videoforge-v2-06-staging
-        worker_deployment_version_id: 7613d80b-cf7e-49d8-b81b-56ac2b76db32
-        worker_deployment_commit: 6336a754d1a3de414daf767a98c118def5d2d9bd
-        worker_deployment_config_sha256: sha256:68e3503daf527b494208329b00cb2d94705c2197e403a4846564222864e8c141
+        worker_deployment_version_id: f04017dd-0d10-4f45-a23d-2e1edc8e5529
+        worker_deployment_commit: 5a8b9e275fa54658b214009c1d8f6c5b602244f1
+        worker_deployment_config_sha256: sha256:ddae6d28fb86c647e65e8e598267aa878a4c4c2038a86e4848f6aa24b96324df
         media_worker_release_version: 0.1.4
         media_worker_release_manifest_sha256: sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b
         workflow_name: videoforge-v2-06-staging-video

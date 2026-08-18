@@ -2,15 +2,14 @@
   "schema_version": "videoforge.v2-06-hosted-media-upload-repair/v1",
   "task_id": "VF-10-06",
   "checkpoint": "V2-06",
-  "recorded_at_utc": "2026-08-18T09:06:58Z",
+  "recorded_at_utc": "2026-08-18T09:11:41Z",
   "audit_method": "Bounded V2-06 implementation and acceptance attempt using repository HEAD, exact recorded activation authority, protected local secret inputs without recording values, approved staging deployment, visible real-Chrome UI state, and exact Neon read-back. No RunPod/GPU action, model download, or paid compute was performed.",
   "result": "FAIL_FULL_CHECKPOINT_HOSTED_ACCEPTANCE_PENDING",
   "audit_independence": "SAME_CHAT_IMPLEMENTATION_NOT_INDEPENDENT_AUDIT",
   "scope_boundary": "This record proves the provider-free repairs, exact staging deployment, owned tenant fixture activation, visible tenant-owned preset readiness, and the bounded hosted upload failure. It does not prove full hosted ASR/render, Windows acceptance, two-account live isolation, native recovery, durable Workflow recovery, explicit output deletion, live backup/restore, rollback exercise, or V2-07 readiness.",
   "implementation": {
-    "source_head": "6336a754d1a3de414daf767a98c118def5d2d9bd",
-    "implementation_source_head": "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f",
-    "repository_head_delta": "6336a75 is a docs/evidence-only descendant of the deployed implementation commit.",
+    "source_head": "5a8b9e275fa54658b214009c1d8f6c5b602244f1",
+    "implementation_source_head": "5a8b9e275fa54658b214009c1d8f6c5b602244f1",
     "commits": [
       {
         "commit": "f4145a774c75c5800cc6ff6920252baa7ed337d2",
@@ -23,6 +22,10 @@
       {
         "commit": "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f",
         "changes": "Read hosted file-input bytes through FileReader with explicit read/error/abort handling."
+      },
+      {
+        "commit": "5a8b9e275fa54658b214009c1d8f6c5b602244f1",
+        "changes": "Use the same FileReader byte path for WAV duration parsing and add a regression test."
       }
     ],
     "deployment_source_mismatch": false
@@ -32,18 +35,18 @@
     "workflow": "videoforge-v2-06-staging-video",
     "r2_bucket": "videoforge-v2-06-staging-private",
     "account_id": "f9254d773a3426fcb469451b1f965d8c",
-    "rendered_config_sha256": "sha256:68e3503daf527b494208329b00cb2d94705c2197e403a4846564222864e8c141",
-    "wrangler_deploy_exit_code": 1,
-    "worker_trigger_update": "WORKER_UPDATED_WORKFLOW_TRIGGER_UPDATE_RETURNED_CLOUDFLARE_INTERNAL_SERVER_ERROR",
-    "version_id": "7613d80b-cf7e-49d8-b81b-56ac2b76db32",
-    "deployed_observed_at_utc": "2026-08-18T09:06:58Z",
+    "rendered_config_sha256": "sha256:ddae6d28fb86c647e65e8e598267aa878a4c4c2038a86e4848f6aa24b96324df",
+    "wrangler_deploy_exit_code": 0,
+    "worker_trigger_update": "SUCCEEDED",
+    "version_id": "f04017dd-0d10-4f45-a23d-2e1edc8e5529",
+    "deployed_observed_at_utc": "2026-08-18T09:11:41Z",
     "release_manifest_sha256": "sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b"
   },
   "live_status": {
-    "command": "curl -fsS -A 'VideoForge-V2-06-023d43f-verify' -w '\\nHTTP %{http_code}\\n' https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/hosted/status",
+    "command": "curl -fsS -A 'VideoForge-V2-06-5a8b9e2-status' -w '\\nHTTP %{http_code}\\n' https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/hosted/status",
     "exit_code": 0,
     "http": 200,
-    "deployed_commit": "6336a754d1a3de414daf767a98c118def5d2d9bd",
+    "deployed_commit": "5a8b9e275fa54658b214009c1d8f6c5b602244f1",
     "environment": "staging",
     "gpu_transport": "DISABLED_FAKE_ONLY",
     "database": "NEON_POSTGRES_REQUIRED",
@@ -111,7 +114,8 @@
       }
     ],
     "durable_side_effect": "No project row was created; exact Neon read-back returned projects=0 after the attempts.",
-    "environment_prerequisite": "The connected Chrome upload flow exposes the selected path but does not yield readable file bytes. Packaged Chrome guidance identifies the extension setting Allow access to file URLs as the required local prerequisite; it was not changed by this task."
+    "environment_prerequisite": "The connected Chrome upload flow exposes the selected path but does not yield readable file bytes. Packaged Chrome guidance identifies the extension setting Allow access to file URLs as the required local prerequisite; it was not changed by this task.",
+    "latest_deployed_code_fix": "WAV duration parsing now also uses FileReader; the connected Chrome retry must be repeated after the file-URL access prerequisite is enabled."
   },
   "verification_commands": [
     {
@@ -122,7 +126,7 @@
     {
       "command": "pnpm --filter @videoforge/web exec vitest run src/hosted/HostedProductScreens.test.tsx",
       "exit_code": 0,
-      "result": "8/8 passed"
+      "result": "9/9 passed, including the FileReader WAV-duration path"
     },
     {
       "command": "pnpm --filter @videoforge/web lint && pnpm --filter @videoforge/web typecheck && pnpm --filter @videoforge/web build:staging",
@@ -162,7 +166,22 @@
     {
       "command": "curl -fsS -A 'VideoForge-V2-06-6336a75-status' -w '\\nHTTP %{http_code}\\n' https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/hosted/status",
       "exit_code": 0,
-      "result": "HTTP 200; public status reports current repository HEAD 6336a754d1a3de414daf767a98c118def5d2d9bd"
+      "result": "HTTP 200; public status reports deployed commit 6336a754d1a3de414daf767a98c118def5d2d9bd"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web build:staging && node deploy/v2-06/render-staging-config.mjs --commit 5a8b9e275fa54658b214009c1d8f6c5b602244f1 --output <protected-rendered-config>",
+      "exit_code": 0,
+      "result": "staging build and bundle vocabulary verification passed; rendered config sha256:ddae6d28fb86c647e65e8e598267aa878a4c4c2038a86e4848f6aa24b96324df"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec wrangler deploy --config <rendered-approved-v2-06-config>",
+      "exit_code": 0,
+      "result": "Worker and Workflow deployed as version f04017dd-0d10-4f45-a23d-2e1edc8e5529"
+    },
+    {
+      "command": "curl -fsS -A 'VideoForge-V2-06-5a8b9e2-status' -w '\\nHTTP %{http_code}\\n' https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/hosted/status",
+      "exit_code": 0,
+      "result": "HTTP 200; public status reports deployed commit 5a8b9e275fa54658b214009c1d8f6c5b602244f1"
     },
     {
       "command": "V2_06_DB_URL=<protected-owner-dsn> pnpm --filter @videoforge/web exec node --input-type=module -e '<exact read-only catalog and project-count queries>'",
@@ -175,7 +194,7 @@
       "id": "V2-06-P1-001",
       "priority": "P1",
       "status": "OPEN",
-      "finding": "Full V2-06 remains FAIL. Hosted Chrome project creation cannot pass the client checksum stage in the connected session because the selected file bytes are not readable; Windows pairing, second-account live isolation, hosted ASR/render parity, native offline/reconnect/cancel/stale-lease/update/reboot/sleep recovery, durable Workflow recovery, explicit output deletion, live backup/restore, rollback exercise, and billing observation also remain unproven. The exact-HEAD redeploy updated the Worker but Wrangler exited 1 on a Cloudflare internal Workflow-trigger update error; the existing Workflow remains listed and public status is HTTP 200.",
+      "finding": "Full V2-06 remains FAIL. Hosted Chrome project creation cannot pass the client checksum stage in the connected session because the selected file bytes are not readable; Windows pairing, second-account live isolation, hosted ASR/render parity, native offline/reconnect/cancel/stale-lease/update/reboot/sleep recovery, durable Workflow recovery, explicit output deletion, live backup/restore, rollback exercise, and billing observation also remain unproven.",
       "references": [
         "apps/web/src/hosted/HostedProductScreens.tsx:101-119",
         "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:350-354",
@@ -196,7 +215,7 @@
       "id": "V2-06-P2-002",
       "priority": "P2",
       "status": "OPEN",
-      "finding": "Rollback and restore remain available as documented procedures but were not live-exercised against the current 6336a75 deployment; the Workflow trigger update also returned a Cloudflare internal error during the exact-HEAD redeploy and was not retried.",
+      "finding": "Rollback and restore remain available as documented procedures but were not live-exercised against the current 5a8b9e2 deployment.",
       "references": ["deploy/v2-06/rollback.md"]
     }
   ],
@@ -217,10 +236,10 @@
     "successful_final_video_auto_delete": false
   },
   "rollback": {
-    "current_deployed_version_id": "7613d80b-cf7e-49d8-b81b-56ac2b76db32",
-    "current_deployed_commit": "6336a754d1a3de414daf767a98c118def5d2d9bd",
-    "previous_deployed_version_id": "33cbef9d-0b86-41f7-8198-5cfe2b44d020",
-    "previous_deployed_commit": "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f",
+    "current_deployed_version_id": "f04017dd-0d10-4f45-a23d-2e1edc8e5529",
+    "current_deployed_commit": "5a8b9e275fa54658b214009c1d8f6c5b602244f1",
+    "previous_deployed_version_id": "7613d80b-cf7e-49d8-b81b-56ac2b76db32",
+    "previous_deployed_commit": "6336a754d1a3de414daf767a98c118def5d2d9bd",
     "rollback_state": "available_untested",
     "schema_policy": "FORWARD_ONLY_KEEP_MIGRATIONS_0029_THROUGH_0035"
   },
