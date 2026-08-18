@@ -544,7 +544,13 @@ async function revokeDevice(
       await transaction.query(
         `UPDATE hosted_cpu_job_attempts AS attempt
             SET state = CASE WHEN attempt.state = 'CANCEL_REQUESTED' THEN 'CANCELLED' ELSE 'OUTBOXED' END,
+                submitted_at = CASE WHEN attempt.state = 'CANCEL_REQUESTED'
+                                    THEN COALESCE(attempt.submitted_at, now())
+                                    ELSE NULL END,
                 terminal_at = CASE WHEN attempt.state = 'CANCEL_REQUESTED' THEN now() ELSE NULL END,
+                retain_until = CASE WHEN attempt.state = 'CANCEL_REQUESTED'
+                                    THEN GREATEST(attempt.deadline_at, now() + interval '30 minutes')
+                                    ELSE NULL END,
                 version = version + 1, updated_at = now()
            FROM media_worker_leases AS lease
           WHERE lease.device_id = $1 AND lease.attempt_id = attempt.id
@@ -835,7 +841,8 @@ async function claim(
       );
       await transaction.query(
         `UPDATE hosted_cpu_job_attempts AS attempt
-            SET state = 'OUTBOXED', terminal_at = NULL, version = version + 1, updated_at = now()
+            SET state = 'OUTBOXED', submitted_at = NULL, terminal_at = NULL,
+                version = version + 1, updated_at = now()
           WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
             AND attempt.execution_backend = 'PERSONAL_WORKER' AND attempt.state = 'RUNNING'
             AND NOT EXISTS (

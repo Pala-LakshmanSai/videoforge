@@ -105,7 +105,8 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
             if (!active.rows[0] && attempt.state === "CANCEL_REQUESTED") {
               await transaction.query(
                 `UPDATE hosted_cpu_job_attempts
-                    SET state = 'CANCELLED', terminal_at = now(),
+                    SET state = 'CANCELLED', submitted_at = COALESCE(submitted_at, now()),
+                        terminal_at = now(),
                         retain_until = GREATEST(deadline_at, now() + interval '30 minutes'),
                         version = version + 1, updated_at = now()
                   WHERE id = $1`,
@@ -116,7 +117,7 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
             if (!active.rows[0] && attempt.state === "RUNNING") {
               await transaction.query(
                 `UPDATE hosted_cpu_job_attempts
-                    SET state = 'OUTBOXED', terminal_at = NULL,
+                    SET state = 'OUTBOXED', submitted_at = NULL, terminal_at = NULL,
                         version = version + 1, updated_at = now()
                   WHERE id = $1`,
                 [params.attemptId],
