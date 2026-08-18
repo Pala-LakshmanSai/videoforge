@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -74,6 +74,28 @@ describe("hosted product journey", () => {
     await expect(
       audioDurationMs(new File([bytes], "voiceover.wav", { type: "audio/wav" })),
     ).resolves.toBe(20_000);
+  });
+
+  it("explains the Chrome file-access prerequisite when the chooser yields no file", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
+          styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
+          media_worker_state: "ONLINE",
+        }),
+      ),
+    );
+    renderHosted(<HostedCreateProjectScreen />);
+
+    const input = await screen.findByLabelText("Final English voiceover");
+    fireEvent.change(input, { target: { files: [] } });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /Chrome could not read the selected file/u,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(/Allow access to file URLs/u);
   });
 
   it("loads the tenant-owned avatar and style catalog without fixture API calls", async () => {

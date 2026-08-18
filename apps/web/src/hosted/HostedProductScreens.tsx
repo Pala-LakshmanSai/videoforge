@@ -67,6 +67,9 @@ interface HostedUsageResponse {
   readonly storage_policy: string;
 }
 
+const FILE_ACCESS_HINT =
+  'Chrome could not read the selected file. Open chrome://extensions, choose Details for the ChatGPT browser extension, enable "Allow access to file URLs," then choose the file again.';
+
 export async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
   const result = await fetch(path, {
     ...init,
@@ -102,12 +105,21 @@ async function bounded<T>(promise: Promise<T>, message: string, timeoutMs = 30_0
 async function readFileBytes(file: File): Promise<ArrayBuffer> {
   return await new Promise<ArrayBuffer>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      if (reader.result instanceof ArrayBuffer) resolve(reader.result);
-      else reject(new Error("Voiceover bytes could not be read."));
+    const timeout: ReturnType<typeof setTimeout> = setTimeout(() => {
+      reader.abort();
+      fail();
+    }, 10_000);
+    const fail = () => {
+      if (typeof timeout !== "undefined") clearTimeout(timeout);
+      reject(new Error(FILE_ACCESS_HINT));
     };
-    reader.onerror = () => reject(new Error("Voiceover bytes could not be read."));
-    reader.onabort = () => reject(new Error("Voiceover bytes could not be read."));
+    reader.onload = () => {
+      if (typeof timeout !== "undefined") clearTimeout(timeout);
+      if (reader.result instanceof ArrayBuffer) resolve(reader.result);
+      else fail();
+    };
+    reader.onerror = fail;
+    reader.onabort = fail;
     reader.readAsArrayBuffer(file);
   });
 }
@@ -336,7 +348,11 @@ export function HostedCreateProjectScreen() {
             <input
               type="file"
               accept="audio/wav,audio/flac,audio/mpeg,audio/mp4,.wav,.flac,.mp3,.m4a"
-              onChange={(event) => setVoiceover(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                const selected = event.target.files?.[0] ?? null;
+                setVoiceover(selected);
+                setError(selected ? null : FILE_ACCESS_HINT);
+              }}
             />
           </label>
           <label className="field">
