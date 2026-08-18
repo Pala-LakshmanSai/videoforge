@@ -141,7 +141,7 @@
     {
       "command": "pnpm context:validate && pnpm validate:v2-06-deployment && pnpm secret:scan && git diff --check",
       "exit_code": 0,
-      "result": "JSON 191, evidence references 77, deployment contract, tracked-file secret scan (1136 files), and whitespace checks passed"
+      "result": "JSON 192, evidence references 79, deployment contract, tracked-file secret scan (1137 files), and whitespace checks passed"
     },
     {
       "command": "node deploy/v2-06/render-staging-config.mjs --account-id <approved-account> --origin <approved-origin> --commit 6336a754d1a3de414daf767a98c118def5d2d9bd --release-manifest-file <protected-release-manifest> --activation-record <protected-activation-record> --output <protected-rendered-config>",
