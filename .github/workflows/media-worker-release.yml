@@ -42,7 +42,9 @@ jobs:
   build:
     name: ${{ matrix.label }}
     strategy:
-      fail-fast: true
+      # Keep the platform jobs independent so a Windows-only test failure does
+      # not cancel the macOS build before its own evidence is collected.
+      fail-fast: false
       matrix:
         include:
           - label: windows-x64

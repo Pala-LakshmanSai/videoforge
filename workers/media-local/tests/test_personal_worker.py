@@ -4,7 +4,7 @@ import json
 import subprocess
 import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from unittest.mock import patch
 
 from videoforge_media_local.personal_execution import _CancellationMonitor, parse_personal_job
@@ -114,14 +114,20 @@ class PersonalWorkerContractTests(unittest.TestCase):
 
     def test_macos_install_detects_dmg_and_app_translocation_paths(self) -> None:
         self.assertTrue(
-            _is_external_macos_bundle(Path("/Volumes/VideoForge Worker/VideoForge Worker.app"))
+            _is_external_macos_bundle(
+                PurePosixPath("/Volumes/VideoForge Worker/VideoForge Worker.app")
+            )
         )
         self.assertTrue(
             _is_external_macos_bundle(
-                Path("/private/var/folders/ab/cd/T/AppTranslocation/9A1B2C3D/VideoForge Worker.app")
+                PurePosixPath(
+                    "/private/var/folders/ab/cd/T/AppTranslocation/9A1B2C3D/VideoForge Worker.app"
+                )
             )
         )
-        self.assertFalse(_is_external_macos_bundle(Path("/Applications/VideoForge Worker.app")))
+        self.assertFalse(
+            _is_external_macos_bundle(PurePosixPath("/Applications/VideoForge Worker.app"))
+        )
 
     def test_macos_pairing_uses_launch_services(self) -> None:
         with (
