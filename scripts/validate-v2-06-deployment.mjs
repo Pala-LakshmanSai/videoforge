@@ -77,6 +77,8 @@ if ("secrets" in wrangler)
   fail("Wrangler config must not contain a nonstandard or secret-bearing secrets field");
 
 const neonRuntimeGrants = await read("deploy/v2-06/neon-runtime-grants.sql");
+if (!neonRuntimeGrants.includes("GRANT EXECUTE ON FUNCTION public.videoforge_current_account_id()"))
+  fail("RLS tenant-principal function grant is missing");
 if (!neonRuntimeGrants.includes('GRANT SELECT ON workspaces TO :"runtime_role";'))
   fail("hosted tenant workspace read grant is missing");
 if (!neonRuntimeGrants.includes('GRANT SELECT ON hosted_render_plans TO :"runtime_role";'))

@@ -43,6 +43,7 @@ const EXPECTED_TABLE_PRIVILEGES = new Map([
 
 const EXPECTED_RUNTIME_FUNCTIONS = [
   "videoforge_authorize_hosted_cpu_upload(uuid,text,text,text,text,bigint,text,timestamp with time zone)",
+  "videoforge_current_account_id()",
   "videoforge_due_hosted_cpu_retention(integer)",
   "videoforge_finish_hosted_cpu_retention(uuid,text)",
   "videoforge_hosted_cpu_expected_primary_output(uuid,text)",

@@ -29,6 +29,9 @@ TO :"runtime_role";
 
 GRANT EXECUTE ON FUNCTION public.videoforge_hosted_session_scope(text)
 TO :"runtime_role";
+-- RLS policies call this stable tenant-principal helper while evaluating every tenant row.
+GRANT EXECUTE ON FUNCTION public.videoforge_current_account_id()
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_authorize_hosted_cpu_upload(
   uuid, text, text, text, text, bigint, text, timestamptz
 )

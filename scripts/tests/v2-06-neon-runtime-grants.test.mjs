@@ -7,6 +7,7 @@ const GRANTS = new URL("../../deploy/v2-06/neon-runtime-grants.sql", import.meta
 test("the hosted runtime can read immutable render plans but cannot write them", async () => {
   const source = await readFile(GRANTS, "utf8");
   assert.match(source, /GRANT SELECT ON hosted_render_plans TO :"runtime_role";/u);
+  assert.match(source, /GRANT EXECUTE ON FUNCTION public\.videoforge_current_account_id\(\)/u);
   assert.doesNotMatch(
     source,
     /GRANT\s+[^;\n]*(?:INSERT|UPDATE|DELETE)[^;\n]*\bON\s+hosted_render_plans\b/iu,
