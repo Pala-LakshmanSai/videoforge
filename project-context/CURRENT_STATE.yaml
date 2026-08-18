@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-18T10:05:00Z"
+updated_at: "2026-08-18T10:42:53Z"
 
 phase: serverless_v2_v2_06_live_activation_in_progress
 implementation_authorized_in_current_task: true
@@ -85,8 +85,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76"
-  current_source_head_note: "The current deployed implementation source is 0efe8fd. It adds a bounded Chrome FileReader timeout and an exact Allow access to file URLs diagnostic while preserving checksum-bound upload authority. Hosted preset hubs use the authenticated tenant catalog and fixture-only /new routes are explicitly blocked in staging; Windows pairing, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
+  current_source_head: "d6f2c4470907957def24503a207fea099c26bf34"
+  current_source_head_note: "The current repository source contains the f8e07b1 personal-worker hardening plus the immutable 0.1.5 release preparation. It is provider-free verified but not yet in the deployed 0efe8fd Worker or immutable 0.1.4 desktop release; hosted media, native lifecycle, recovery, rollback, and full checkpoint acceptance remain unproven."
   last_good_commit: "0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76"
   last_good_commit_note: "V2-06 hosted staging is deployed from 0efe8fd with the immutable 0.1.4 Windows/macOS beta release. Focused and canonical provider-free verification are green, and the public status/asset/unauthenticated route checks match the approved staging contract. Windows pairing, device parity, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
@@ -382,10 +382,10 @@ recommended_next_task:
 
 verification:
   state: v2_06_native_mac_paired_full_acceptance_blocked
-  verified_commit: "0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76"
-  verified_commit_note: "The verified implementation source and deployed runtime are 0efe8fd. Canonical provider-free verification passes; the deployed source uses the tenant catalog, blocks fixture-only /new routes in staging, exposes a bounded Chrome file-access diagnostic, and the public status/asset/unauthenticated checks match the approved staging contract. The signed-in Chrome Settings evidence still proves only one paired macOS worker. Windows pairing, hosted media execution/parity, tenant isolation, recovery, deletion, backup/restore, rollback, and full hosted Chrome acceptance remain blocked."
+  verified_commit: "d6f2c4470907957def24503a207fea099c26bf34"
+  verified_commit_note: "Provider-free verification passes at source commit d6f2c44, which contains the f8e07b1 personal-worker hardening and prepares immutable release 0.1.5. The deployed runtime remains 0efe8fd with immutable release 0.1.4 until a separately recorded release/deployment action. The signed-in Chrome Settings evidence still proves only one paired macOS worker; Windows pairing, hosted media execution/parity, tenant isolation, recovery, deletion, backup/restore, rollback, and full hosted Chrome acceptance remain blocked."
   predecessor_verified_commit: "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-file-access-hint-repair-0efe8fd/acceptance.json
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-personal-worker-contract-hardening-f8e07b1/acceptance.json
   latest_live_check:
     recorded_at_utc: "2026-08-18T10:05:00Z"
     evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-file-access-hint-repair-0efe8fd/acceptance.json
@@ -402,6 +402,14 @@ verification:
     native_mac_worker_online: true
     native_mac_worker_version: "0.1.4"
     native_mac_last_seen_rendered: "8/18/2026, 2:59:35 PM"
+  latest_source_verification:
+    recorded_at_utc: "2026-08-18T10:42:53Z"
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-personal-worker-contract-hardening-f8e07b1/acceptance.json
+    source_commit: "d6f2c4470907957def24503a207fea099c26bf34"
+    deployed_implementation_commit: "0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76"
+    deployed_source_mismatch: true
+    immutable_worker_release_source_status: release_0_1_5_prepared_pending_publication
+    new_external_spend_usd: 0
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
@@ -615,15 +623,17 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: hosted_file_access_hint_repair_deployed_native_mac_paired_hosted_media_acceptance_pending
-    implementation_commit: "0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76"
-    source_head_commit: "0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76"
+    status: personal_worker_contract_hardening_source_verified_hosted_ui_deployed_native_mac_paired_hosted_media_acceptance_pending
+    implementation_commit: "d6f2c4470907957def24503a207fea099c26bf34"
+    source_head_commit: "d6f2c4470907957def24503a207fea099c26bf34"
     hosted_ui_repair_commit: "0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76"
     hosted_ui_repair_deployment_status: deployed
-    worker_source_repair_commit: "0184a66f0532af0b05f5e4f3b79f5289768c120b"
+    worker_source_repair_commit: "d6f2c4470907957def24503a207fea099c26bf34"
+    worker_contract_fix_commit: "f8e07b105da703f2bdb5e7041b11466db69be410"
+    worker_source_repair_deployment_status: pending_immutable_release_0_1_5
     previous_worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-file-access-hint-repair-0efe8fd/acceptance.json
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-personal-worker-contract-hardening-f8e07b1/acceptance.json
     previous_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
     live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
     runpod_live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
@@ -694,6 +704,9 @@ verification:
       - "GET /api/v2/hosted/status after 0efe8fd deployment (exit 0; HTTP 200; deployed commit 0efe8fd; GPU DISABLED_FAKE_ONLY; provider CPU spend $0)."
       - "Served HostedProductScreens-DUQ5N-KV.js asset check (exit 0; HTTP 200; Chrome file-access diagnostic present)."
       - "Unauthenticated GETs for /api/v2/tenant, /api/v2/hosted/project-catalog, and /api/v2/hosted/queue after 0efe8fd (exit 0; all HTTP 401 AUTHENTICATION_REQUIRED; no session or mutation)."
+      - "Personal worker contract hardening at f8e07b1, release preparation at d6f2c44: bundled-CA streaming, UUID/byte bounds, post-process cancellation fence, bounded result document, exact completion acknowledgement, and immutable 0.1.5 versioning; bundled uv worker tests 25/25 and pnpm python:lint passed."
+      - "MediaWorkerSetup UPDATE_REQUIRED guidance at f8e07b1 plus 0.1.5 release identity at d6f2c44: focused Vitest 3/3, staging build, workflow YAML, and canonical CI=1 TURBO_FORCE=true pnpm verify all passed; source is not deployed yet."
+      - "Canonical candidate verification at d6f2c44 (exit 0): 308 control-plane tests, 348 web tests plus 1 skipped, worker suites, Cloudflare parity 1/1, context/secret checks, and installed Chrome 44/44."
     delivered:
       - "Migration 0032 adds account/workspace-bound worker enrollments, devices, exact input objects, one active lease per attempt/device, append-only events, row-level security, and stale-lease fencing while preserving historical Cloud Run rows for rollback."
       - "The hosted API uses PKCE enrollment, one explicit authenticated approval, OS-keychain-scoped device tokens, heartbeat/update gating, exact same-account claims, fresh R2 GET/PUT ports, streaming output verification, cancellation, revocation, and late-result rejection."
@@ -707,6 +720,7 @@ verification:
       - "The desktop cancellation monitor is a real class method, renews the five-minute lease while work is active, kills the entire media process group on cancel, and is covered against the class-indentation regression."
       - "Cloud Run configuration, secrets, deployment templates, and production dispatch are removed from the active V2-06 path; historical adapter and evidence remain only for rollback/audit."
       - "The hosted product router now composes tenant-private Create/upload/commit/personal-worker ASR, durable Project/cancel, exact Review/playback, Usage, Queue, Library/Delete, Settings, and worker setup instead of stopping at the auth/status shell."
+      - "Source commit f8e07b1 hardens personal-worker job UUID and size bounds, bundled CA verification for streamed uploads, post-process cancellation fencing, result-document limits, exact durable completion acknowledgement, and deterministic UPDATE_REQUIRED reinstall guidance; d6f2c44 prepares immutable release 0.1.5."
       - "Migration 0034 makes project creation exact-idempotent, gates READY on exact committed upload lineage, and gates append-only review approval on the exact retained primary output of a successful render attempt."
       - "The immutable worker execution identity bundles and verifies ffmpeg, ffprobe, whisper-cli, and the pinned ggml-base.en model; no first-run model download or user configuration is permitted."
       - "The active authentication decision is invite-only Google verified-email identity. Email/password and email delivery remain disabled because the user selected email provider NONE."
@@ -719,6 +733,7 @@ verification:
       - "The user has Windows x64 and Mac test devices. Apple Developer Program membership is absent and no longer required for the selected ImageForge-style beta release; native clean-download/install evidence must record any actual warning or bypass behavior."
       - "The exact combined V2-06 activation was approved with a USD 3 finite test cap and USD 2/month R2 ceiling; spend and recurring truth must be rechecked after acceptance."
       - "The 0efe8fd hosted file-access repair is deployed and the public chunk now gives a bounded Allow access to file URLs diagnostic. The connected authenticated Chrome session still requires the user to enable that extension permission before a checksum-bound upload can be retried; exact Neon read-back remains projects=0. Do not treat local verification, seeded catalog state, public status, or the asset check as hosted media proof."
+      - "The d6f2c44 personal-worker hardening/release candidate is source-verified but not in the deployed 0.1.4 release; publish immutable worker release 0.1.5 and redeploy only under the exact V2-06 authority before treating it as live."
     resource_truth:
       external_mutations: bounded_v2_06_deployment_complete_acceptance_pending
       external_mutation_scope: "Three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence."
@@ -763,6 +778,9 @@ verification:
         avatar_version_state: READY
         style_version_state: PUBLISHED
         project_creation_blocker: CHROME_FILE_BYTES_UNREADABLE_EXTENSION_PERMISSION_PENDING
+      source_head_commit: d6f2c4470907957def24503a207fea099c26bf34
+      deployed_implementation_commit: 0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76
+      worker_source_repair_release_status: release_0_1_5_prepared_pending_publication
       neon:
         checked_at: "2026-08-17T17:36:31Z"
         organization_id_sha256: "sha256:1a80a1978aaf55071ebade555193753126029390191658a7f700bbd06ea07044"

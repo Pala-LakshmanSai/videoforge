@@ -1,0 +1,119 @@
+{
+  "schema_version": "videoforge.v2-06-personal-worker-contract-hardening/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-18T10:42:53Z",
+  "audit_method": "Provider-free source repair and repository verification only. No credentials, live provider call, deployment, release publication, resource mutation, model download, RunPod action, or spend occurred for this record.",
+  "result": "SOURCE_REPAIR_VERIFIED_HOSTED_ACCEPTANCE_PENDING",
+  "audit_independence": "SAME_CHAT_IMPLEMENTATION_NOT_INDEPENDENT_AUDIT",
+  "scope_boundary": "This record proves only local personal-worker contract hardening, deterministic update-required guidance, and provider-free verification. It does not prove that the repair is in the deployed Worker or immutable desktop release, nor hosted ASR/render, two-account isolation, native lifecycle/recovery, backup/restore, rollback, billing, or V2-07 readiness.",
+  "implementation": {
+    "source_head": "d6f2c4470907957def24503a207fea099c26bf34",
+    "commit": "d6f2c44",
+    "implementation_commit": "f8e07b105da703f2bdb5e7041b11466db69be410",
+    "changes": [
+      "Require exact UUID attempt identifiers and bounded non-boolean byte limits for personal-worker job authorities.",
+      "Use the bundled CA context for streamed HTTPS artifact uploads.",
+      "Fence cancellation after media process exit and before any upload.",
+      "Bound the canonical result document and acknowledge completion only on the exact accepted terminal response.",
+      "Show a deterministic reinstall instruction for UPDATE_REQUIRED devices and cover it with a UI regression test."
+    ],
+    "deployed_implementation_commit": "0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76",
+    "deployed_worker_release": "media-worker-v0.1.4",
+    "release_candidate": "media-worker-v0.1.5",
+    "source_deployed": false
+  },
+  "verification_commands": [
+    {
+      "command": ".tools/uv-0.8.13/bin/uv run --locked --no-sync python -m unittest discover -s workers/media-local/tests -p 'test_*.py'",
+      "exit_code": 0,
+      "result": "25 worker tests passed"
+    },
+    {
+      "command": "pnpm python:lint",
+      "exit_code": 0,
+      "result": "All Python checks passed; 84 files already formatted"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/hosted/MediaWorkerSetup.test.tsx",
+      "exit_code": 0,
+      "result": "3 tests passed"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web build:staging",
+      "exit_code": 0,
+      "result": "Worker/client staging bundle built and V2-05 production vocabulary verification passed"
+    },
+    {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "result": "Canonical provider-free verification passed: 308 control-plane tests, 348 web tests plus 1 skipped, worker suites, Cloudflare parity 1/1, context and secret checks, generated route validation, and installed Chrome 44/44"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "clean"
+    },
+    {
+      "command": "ruby -e 'require \"yaml\"; YAML.load_file(\".github/workflows/media-worker-release.yml\")'",
+      "exit_code": 0,
+      "result": "0.1.5 release workflow YAML parsed successfully"
+    }
+  ],
+  "findings": [
+    {
+      "id": "V2-06-P1-001",
+      "priority": "P1",
+      "status": "OPEN",
+      "finding": "Full V2-06 remains FAIL. The new source repair is not yet in the deployed Worker or immutable desktop release. Hosted Chrome file-byte access, Windows pairing, second-account isolation, hosted ASR/render parity, native lifecycle/recovery, durable Workflow recovery, explicit deletion, live backup/restore, rollback exercise, and billing observation remain unproven.",
+      "references": [
+        "workers/media-local/src/videoforge_media_local/personal_execution.py:76-170",
+        "workers/media-local/src/videoforge_media_local/personal_execution.py:254-284",
+        "workers/media-local/src/videoforge_media_local/personal_execution.py:491-579",
+        "apps/web/src/hosted/MediaWorkerSetup.tsx:239-244",
+        "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:350-354"
+      ]
+    },
+    {
+      "id": "V2-06-P2-001",
+      "priority": "P2",
+      "status": "OPEN",
+      "finding": "Provider-free tests prove source contracts only. They do not prove hosted non-superuser Better Auth/Neon RLS, private R2 transfer/commit, native ASR/render parity, or recovery behavior.",
+      "references": [
+        "project-context/evidence/acceptance/VF-10-06/2026-08-18-hosted-file-access-hint-repair-0efe8fd/acceptance.json",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-18-native-mac-pairing-0.1.4/acceptance.json"
+      ]
+    },
+    {
+      "id": "V2-06-P2-002",
+      "priority": "P2",
+      "status": "OPEN",
+      "finding": "Rollback and restore remain documented and available but are not live-exercised by this source-only repair.",
+      "references": [
+        "deploy/v2-06/rollback.md",
+        "deploy/v2-06/restore-drill.sh"
+      ]
+    }
+  ],
+  "p0_findings": [],
+  "spend_truth": {
+    "new_external_spend_usd": 0,
+    "finite_test_cap_usd": 3,
+    "finite_test_cap_remaining_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "provider_cpu_spend_usd": 0,
+    "runpod_pods_endpoints_workers": 0,
+    "runpod_retained_volumes": 2,
+    "runpod_retained_storage_usd_per_month_separate": 7
+  },
+  "rollback": {
+    "deployed_runtime_unchanged": true,
+    "current_deployed_commit": "0efe8fd2270e0ec753bdcbf0dfffc364f65f2e76",
+      "source_repair_commit": "f8e07b105da703f2bdb5e7041b11466db69be410",
+    "rollback_state": "existing_deployed_rollback_unchanged_and_untested"
+  },
+  "successor_safety": {
+    "v2_07_safe_to_begin": false,
+    "reason": "V2-06 hosted acceptance remains open; the source repair has not changed GPU transport, RunPod state, or V2-07 authority."
+  }
+}
