@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-18T04:57:19Z"
+updated_at: "2026-08-18T06:45:14Z"
 
 phase: serverless_v2_v2_06_live_activation_in_progress
 implementation_authorized_in_current_task: true
@@ -8,7 +8,7 @@ current_milestone: hosted_staging_and_personal_media_workers
 current_task: VF-10-06
 current_wave: v2_06_personal_worker_conversion
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: live_deployment_complete_hosted_device_acceptance_pending
+task_stage: native_mac_paired_hosted_media_acceptance_pending
 application_code_changes_authorized: true
 provider_calls_authorized: true
 read_only_provider_calls_authorized: false
@@ -85,8 +85,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a"
-  last_good_commit_note: "V2-06 hosted staging is deployed from the repaired personal-worker source at 0801837 with the 0.1.1 immutable Windows/macOS beta release published from this follow-up commit. The macOS translocation/autostart crash-loop repair and cross-platform release tests are green. Native Windows/macOS pairing, device parity, durable Workflow behavior, and full checkpoint acceptance remain unproven."
+  last_good_commit: "0184a66f0532af0b05f5e4f3b79f5289768c120b"
+  last_good_commit_note: "V2-06 hosted staging is deployed from 0184a66 with the immutable 0.1.4 Windows/macOS beta release. The 0.1.4 CA/import/User-Agent/enrollment-scope repairs, release matrix, staging build, and one native macOS pairing/heartbeat smoke are green. Windows pairing, device parity, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -170,7 +170,7 @@ roadmap_state:
   V2-03: complete_green_independently_reaudited
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
-  V2-06: live_deployment_complete_hosted_device_acceptance_pending
+  V2-06: native_mac_paired_hosted_media_acceptance_pending
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
@@ -307,7 +307,7 @@ recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
   milestone: hosted_staging_and_personal_media_workers
-  status: live_deployment_complete_hosted_device_acceptance_pending
+  status: native_mac_paired_hosted_media_acceptance_pending
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
   authorization_status: bounded_v2_06_live_activation_approved
   task_stage: bounded_mutation
@@ -379,21 +379,25 @@ recommended_next_task:
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_imageforge_beta_distribution_locally_verified_full_acceptance_blocked
-  verified_commit: "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a"
-  verified_commit_note: "The repaired 0.1.1 personal-worker release is published for Windows x64 and macOS universal2, and staging serves the repaired commit. Canonical verification and release matrix tests pass; native install/pairing, the complete hosted generation journey, live tenant/device parity, backup/restore, and hosted Chrome acceptance remain blocked."
-  predecessor_verified_commit: "3c117f204844da9c984d233477933ee4c0f304dd"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-imageforge-beta-distribution-reaudit/acceptance.json
+  state: v2_06_native_mac_paired_full_acceptance_blocked
+  verified_commit: "0184a66f0532af0b05f5e4f3b79f5289768c120b"
+  verified_commit_note: "The immutable 0.1.4 Windows/macOS beta release is published, staging serves 0184a66, and a signed-in Chrome check now proves one paired macOS worker is ONLINE with a recent heartbeat. Windows pairing, hosted media execution/parity, tenant isolation, recovery, deletion, backup/restore, rollback, and full hosted Chrome acceptance remain blocked."
+  predecessor_verified_commit: "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a"
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-native-mac-pairing-0.1.4/acceptance.json
   latest_live_check:
-    recorded_at_utc: "2026-08-18T04:57:19Z"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-worker-startup-repair-release/acceptance.json
-    status: repaired_worker_release_deployed_native_pairing_pending
-    repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
-    release_commit: "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a"
-    deployment_version_id: "3c329b22-300f-4a67-89db-c15c7e24f978"
-    release_manifest_sha256: "sha256:0ebc402b803cd9e4436a2b754e603f1fae42032eccf34468df96f8c69acbd15e"
+    recorded_at_utc: "2026-08-18T06:45:14Z"
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-native-mac-pairing-0.1.4/acceptance.json
+    status: native_mac_paired_online_hosted_media_acceptance_pending
+    repair_commit: "0184a66f0532af0b05f5e4f3b79f5289768c120b"
+    release_commit: "33a5dbd"
+    deployment_version_id: "a27d92c6-3390-4ece-8d09-48def628ca74"
+    release_manifest_sha256: "sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b"
     neon_runtime_grant_executed: true
     new_external_spend_usd: 0
+    native_mac_worker_paired: true
+    native_mac_worker_online: true
+    native_mac_worker_version: "0.1.4"
+    native_mac_last_seen_rendered: "8/18/2026, 11:52:00 AM"
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
@@ -607,11 +611,13 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: live_deployment_complete_hosted_device_acceptance_pending
-    implementation_commit: "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a"
-    worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
+    status: native_mac_paired_hosted_media_acceptance_pending
+    implementation_commit: "0184a66f0532af0b05f5e4f3b79f5289768c120b"
+    worker_source_repair_commit: "0184a66f0532af0b05f5e4f3b79f5289768c120b"
+    previous_worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
-    evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-native-mac-pairing-0.1.4/acceptance.json
+    previous_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
     live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
     runpod_live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
     live_activation_authority_evidence: evidence/acceptance/VF-10-06/2026-08-17-live-activation-authority/acceptance.json
@@ -640,6 +646,13 @@ verification:
       - "wrangler deploy with rendered V2-06 staging config (exit 0; version 054910bd-00a2-4503-bc2f-1c2d0e364f59)"
       - "GitHub media-worker-v0.1.1 release workflow 32100171381 (exit 0; Windows x64, macOS universal2, and immutable publish jobs passed)"
       - "wrangler deploy with rendered V2-06 staging config for e61b18ac3f3aa252bcb262404e7ebea6ec791e3a (exit 0; version 3c329b22-300f-4a67-89db-c15c7e24f978)"
+      - "worker release workflow 32103646493 (exit 0; media-worker-v0.1.4 Windows x64/macOS universal2/publish jobs passed; manifest sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b)"
+      - "pnpm --filter @videoforge/web build:staging after 0184a66 (exit 0)"
+      - "wrangler deploy after 0184a66 (exit 0; version a27d92c6-3390-4ece-8d09-48def628ca74; config sha256:fdd42713218e34774a2768fa10b297bf2220c9fb040eda7eef815ec8ad989d16)"
+      - "POST pending worker enrollment after 0184a66 (HTTP 201; tenant-context repair exercised)"
+      - "GET /api/v2/hosted/status at current origin (HTTP 200; commit 0184a66; GPU DISABLED_FAKE_ONLY; provider CPU spend $0)"
+      - "Chrome /settings accessibility-tree inspection (exit 0; lakshmans-Mac-mini.local Mac v0.1.4 ONLINE; last seen 8/18/2026 11:52 AM)"
+      - "CI=1 TURBO_FORCE=true pnpm verify post-evidence update (exit 0; 28 tasks; control-plane 308; web 341 plus 1 skipped; worker suites; installed Chrome 44/44; generated traces cleaned after one environment-only ENOSPC run)"
       - "GET /api/v2/hosted/status after repaired deployment (HTTP 200; commit e61b18ac3f3aa252bcb262404e7ebea6ec791e3a; GPU transport DISABLED_FAKE_ONLY; provider CPU spend $0)"
       - "GET /api/v2/hosted/status on the deployed origin (HTTP 200; commit 0245c100e5e20ee1f0ebf262e046f7f3c32bbb13; GPU transport DISABLED_FAKE_ONLY; provider CPU spend $0)"
       - "wrangler workflows list (exit 0; videoforge-v2-06-staging-video / HostedVideoWorkflow)"
@@ -678,9 +691,9 @@ verification:
     resource_truth:
       external_mutations: bounded_v2_06_deployment_complete_acceptance_pending
       external_mutation_scope: "Three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence."
-      deployments: 1
-      installer_builds: 2
-      installer_publications: 2
+      deployments: 4
+      installer_builds: 4
+      installer_publications: 4
       email_deliveries: 0
       paid_requests: 0
       external_spend_usd: 0
@@ -691,18 +704,18 @@ verification:
       runpod_workers_started: 0
       live_runpod_inventory_refreshed: true
       cloudflare:
-        checked_at: "2026-08-18T04:57:19Z"
+        checked_at: "2026-08-18T06:45:14Z"
         account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
         workers_plan: FREE
         payment_method_on_file: true
         workers_after_confirmed_cleanup: 1
         workflows: 1
         worker_name: videoforge-v2-06-staging
-        worker_deployment_version_id: 3c329b22-300f-4a67-89db-c15c7e24f978
-        worker_deployment_commit: e61b18ac3f3aa252bcb262404e7ebea6ec791e3a
-        worker_deployment_config_sha256: sha256:fcfbe9d0fcc1e6da3183bd5f8e1bdd6e150862987fb96be768568b52a665e013
-        media_worker_release_version: 0.1.1
-        media_worker_release_manifest_sha256: sha256:0ebc402b803cd9e4436a2b754e603f1fae42032eccf34468df96f8c69acbd15e
+        worker_deployment_version_id: a27d92c6-3390-4ece-8d09-48def628ca74
+        worker_deployment_commit: 0184a66f0532af0b05f5e4f3b79f5289768c120b
+        worker_deployment_config_sha256: sha256:fdd42713218e34774a2768fa10b297bf2220c9fb040eda7eef815ec8ad989d16
+        media_worker_release_version: 0.1.4
+        media_worker_release_manifest_sha256: sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b
         workflow_name: videoforge-v2-06-staging-video
         workflow_class: HostedVideoWorkflow
         r2_subscription_active: true

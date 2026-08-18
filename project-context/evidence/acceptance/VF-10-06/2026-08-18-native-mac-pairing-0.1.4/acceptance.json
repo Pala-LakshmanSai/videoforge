@@ -1,0 +1,161 @@
+{
+  "schema_version": "videoforge.v2-06-native-mac-pairing-live-check/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-18T06:45:14Z",
+  "audit_method": "Fresh same-chat live Chrome accessibility-tree inspection, public staging status request, repository HEAD/working-tree check, and immutable release/deployment evidence review. No credential values were read or recorded; no new provider mutation, GPU/RunPod action, model download, or paid compute was performed during this check.",
+  "result": "FAIL_FULL_CHECKPOINT_NATIVE_MAC_PAIRED_HOSTED_ACCEPTANCE_PENDING",
+  "audit_independence": "SAME_CHAT_POST_REPAIR_LIVE_CHECK_NOT_INDEPENDENT_FULL_CHECKPOINT_ACCEPTANCE",
+  "scope_boundary": "This record proves only the bounded 0.1.4 macOS personal-worker install/pairing/heartbeat smoke and the current hosted status contract. Local fixtures, deployment metadata, and one-device proof do not establish full V2-06 acceptance.",
+  "implementation": {
+    "commits": [
+      { "commit": "916ac30", "purpose": "bundle trusted CA material for frozen worker HTTPS" },
+      { "commit": "379d3ef", "purpose": "use package-safe imports in the frozen worker" },
+      { "commit": "33a5dbd", "purpose": "identify worker HTTP requests to avoid Cloudflare 403/1010" },
+      { "commit": "0184a66f0532af0b05f5e4f3b79f5289768c120b", "purpose": "clear tenant context for system-scoped pending enrollment writes" }
+    ],
+    "current_head": "0184a66f0532af0b05f5e4f3b79f5289768c120b",
+    "previous_failures_repaired": [
+      "0.1.1/0.1.2 frozen-worker TLS verification failed without the bundled CA bundle.",
+      "0.1.2 frozen execution failed with a relative import outside its package context.",
+      "0.1.3 enrollment requests were blocked by Cloudflare 403/1010 because Python urllib used its default User-Agent.",
+      "0.1.4 enrollment initially hit a Cloudflare 1101 cross-tenant write guard because the pending system enrollment insert inherited a tenant session setting; 0184a66 clears that setting transaction-locally.",
+      "A temporary local disk-pressure/PyInstaller extraction failure was cleared by removing only generated VideoForge release artifacts; no user files or provider resources were removed."
+    ]
+  },
+  "release": {
+    "workflow_run_id": "32103646493",
+    "workflow_result": "success",
+    "tag": "media-worker-v0.1.4",
+    "manifest_sha256": "sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b",
+    "execution_bundle_sha256": "sha256:18afb3639fed50ca405e4a90b2c9a99efef235b0cb38204ebf9da9421a434952",
+    "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+    "macos": {
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.4/VideoForge-Worker-0.1.4.dmg",
+      "sha256": "sha256:ae84a5ffceaeebcd54edb2f866b2c73efefb3592782fc8f40a8453f8565ba8e6",
+      "size_bytes": 285624848,
+      "trust": "AD_HOC_BETA",
+      "native_inspection": "Mounted app is a universal x86_64/arm64 Mach-O and reports CFBundleShortVersionString 0.1.4. Stable installed path is /Users/lakshmansai/Applications/VideoForge Worker.app."
+    },
+    "windows": {
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.4/VideoForge-Worker-0.1.4-Setup.exe",
+      "sha256": "sha256:253d6164e4a7e5d12982c8485d2d098627f2a393c9e4f6e16290694d29df740b",
+      "size_bytes": 225790015,
+      "trust": "UNSIGNED_BETA"
+    }
+  },
+  "deployment": {
+    "worker": "videoforge-v2-06-staging",
+    "workflow": "videoforge-v2-06-staging-video / HostedVideoWorkflow",
+    "commit": "0184a66f0532af0b05f5e4f3b79f5289768c120b",
+    "version_id": "a27d92c6-3390-4ece-8d09-48def628ca74",
+    "rendered_config_sha256": "sha256:fdd42713218e34774a2768fa10b297bf2220c9fb040eda7eef815ec8ad989d16",
+    "status_request": {
+      "command": "curl -fsS -A 'VideoForge-Audit/2026-08-18' -w '\\nHTTP %{http_code}\\n' https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/hosted/status",
+      "exit_code": 0,
+      "http": 200,
+      "gpu_transport": "DISABLED_FAKE_ONLY",
+      "database": "NEON_POSTGRES_REQUIRED",
+      "artifact_plane": "PRIVATE_R2_REQUIRED",
+      "orchestration": "CLOUDFLARE_WORKFLOW_REQUIRED",
+      "cpu_jobs": "ACCOUNT_OWNED_PERSONAL_WORKER_REQUIRED",
+      "provider_cpu_spend": "$0",
+      "authentication": ["GOOGLE"]
+    }
+  },
+  "native_mac_live_observation": {
+    "browser_origin": "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/settings",
+    "authenticated_account": "lakshmansai121@gmail.com",
+    "pairing_action": "User-approved Connect this computer flow completed in the signed-in browser.",
+    "device_name": "lakshmans-Mac-mini.local",
+    "platform_version": "Mac · v0.1.4",
+    "state": "ONLINE",
+    "last_seen_rendered_by_settings": "8/18/2026, 11:52:00 AM",
+    "observation_time_local": "2026-08-18 11:55:33 Asia/Kolkata",
+    "settings_contract": "The page shows the device as ONLINE and states that it accepts only jobs owned by this account and receives no database, storage, Cloudflare, Google, or GPU-provider credentials.",
+    "process_observation": "Stable per-user app process was observed at /Users/lakshmansai/Applications/VideoForge Worker.app; a background worker process was also observed.",
+    "startup_transient": "The user-provided 11:51:45 screenshot showed OFFLINE/Not connected yet before the first heartbeat. A refreshed live accessibility-tree inspection at 11:55:33 showed ONLINE; the earlier screenshot is retained as startup behavior, not treated as a failure of the paired state."
+  },
+  "verification_commands": [
+    { "command": "CI=1 TURBO_FORCE=true pnpm verify", "exit_code": 0, "result": "canonical rerun passed after removing generated Playwright traces; 28 tasks, 308 control-plane tests, 341 web tests plus 1 skip, worker suites, and installed Chrome 44/44" },
+    { "command": "CI=1 TURBO_FORCE=true pnpm verify (first post-update run)", "exit_code": 1, "result": "environment-only ENOSPC while Playwright copied a trace artifact; the affected V2-05 runtime test then passed 2/2 with traces disabled after generated artifacts were removed" },
+    { "command": "pnpm context:validate", "exit_code": 0, "result": "189 JSON files and 73 evidence references validated" },
+    { "command": "pnpm validate:v2-06-deployment", "exit_code": 0, "result": "provider-free deployment contract remains fail-closed" },
+    { "command": "pnpm format:check && pnpm secret:scan && git diff --check", "exit_code": 0, "result": "format, tracked-file secret scan, and whitespace checks passed" },
+    { "command": "pnpm --filter @videoforge/web typecheck", "exit_code": 0, "result": "pass after enrollment tenant-context repair" },
+    { "command": "pnpm --filter @videoforge/web lint", "exit_code": 0, "result": "pass" },
+    { "command": "worker ruff check/format plus focused personal-worker tests", "exit_code": 0, "result": "pass; 23 tests" },
+    { "command": "pnpm --filter @videoforge/web build:staging", "exit_code": 0, "result": "pass" },
+    { "command": "GitHub media-worker-v0.1.4 release workflow 32103646493", "exit_code": 0, "result": "Windows x64, macOS universal2, and immutable publish jobs passed" },
+    { "command": "wrangler deploy", "exit_code": 0, "result": "active version a27d92c6-3390-4ece-8d09-48def628ca74" },
+    { "command": "POST pending enrollment smoke after 0184a66", "exit_code": 0, "result": "HTTP 201" },
+    { "command": "Chrome accessibility-tree inspection of /settings", "exit_code": 0, "result": "device lakshmans-Mac-mini.local is ONLINE at v0.1.4" },
+    { "command": "git status --short", "exit_code": 0, "result": "clean before this immutable evidence/state update" }
+  ],
+  "findings": [
+    {
+      "id": "V2-06-P1-001",
+      "priority": "P1",
+      "status": "OPEN",
+      "finding": "Full V2-06 remains FAIL. The live proof currently covers one authenticated Mac install/pairing/heartbeat only. Windows install/pairing, two-account isolation, hosted ASR/render parity, offline/reconnect, cancellation/process kill, stale lease/result fencing, streamed R2 upload/download, explicit output deletion, durable Workflow recovery, backup/restore, update/remove/reboot/sleep, rollback exercise, and post-acceptance billing observation remain unproven.",
+      "references": [
+        "project-context/tasks/VF-10-06.md:194-215",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-17-post-repair-live-audit/acceptance.json:9-43",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-18-native-mac-pairing-0.1.4/acceptance.json:95-105"
+      ],
+      "why_not_repaired": "These are live acceptance observations and destructive/recovery exercises; they cannot be inferred from local fixtures, a status endpoint, or one paired device."
+    },
+    {
+      "id": "V2-06-P2-001",
+      "priority": "P2",
+      "status": "OPEN",
+      "finding": "Provider-free tests, deployment metadata, and the single-device Chrome view do not prove hosted non-superuser tenancy, real R2 behavior, or full product generation.",
+      "references": [
+        "project-context/tasks/VF-10-06.md:206-215",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-17-post-repair-live-audit/acceptance.json:22-33"
+      ],
+      "why_not_repaired": "Changing the evidence label would overclaim deployment or production behavior."
+    },
+    {
+      "id": "V2-06-P2-002",
+      "priority": "P2",
+      "status": "OPEN",
+      "finding": "Rollback and restore are documented and prior backup/restore preparation is recorded, but a live rollback/restore exercise is not recorded.",
+      "references": [
+        "deploy/v2-06/rollback.md",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-17-post-repair-live-audit/acceptance.json:35-43"
+      ],
+      "why_not_repaired": "Executing either exercise mutates live state and needs a separately bounded operation."
+    }
+  ],
+  "p0_findings": [],
+  "current_state_and_spend_truth": {
+    "new_external_spend_usd": 0,
+    "finite_test_cap_usd": 3,
+    "finite_test_cap_remaining_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "provider_cpu_spend_usd": 0,
+    "cloudflare_workers_plan": "FREE",
+    "cloudflare_r2_due_now_usd": 0,
+    "neon_plan": "FREE",
+    "neon_recurring_usd_per_month": 0,
+    "runpod_pods_endpoints_workers": 0,
+    "runpod_retained_volumes": 2,
+    "runpod_retained_storage_usd_per_month_separate": 7,
+    "email_deliveries": 0,
+    "successful_final_video_auto_delete": false,
+    "local_disk_free_observed": "3.2 GiB at audit command; no user files removed"
+  },
+  "rollback": {
+    "current_version_id": "a27d92c6-3390-4ece-8d09-48def628ca74",
+    "previous_staging_version_id": "9965b980-4025-449a-98c0-3b8196cbda09",
+    "previous_staging_commit": "33a5dbd",
+    "rollback_release_available": "media-worker-v0.1.4 (source commit 33a5dbd)",
+    "rollback_state": "available_untested",
+    "schema_policy": "FORWARD_ONLY_KEEP_MIGRATIONS_0029_THROUGH_0035"
+  },
+  "successor_safety": {
+    "v2_07_safe_to_begin": false,
+    "reason": "V2-06 full acceptance remains open; GPU transport remains FAKE_DISABLED and no RunPod compute/mutation authority is granted."
+  }
+}
