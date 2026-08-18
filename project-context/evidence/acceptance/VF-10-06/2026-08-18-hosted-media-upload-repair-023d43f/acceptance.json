@@ -125,6 +125,17 @@
     "environment_prerequisite": "The connected Chrome upload flow exposes the selected path but does not yield readable file bytes. Packaged Chrome guidance identifies the extension setting Allow access to file URLs as the required local prerequisite; it was not changed by this task.",
     "latest_deployed_code_fix": "WAV duration parsing now also uses FileReader; a reconnected authenticated Chrome retry on 5a8b9e2 still timed out before checksum, so the file-URL access prerequisite remains open."
   },
+  "live_worker_check": {
+    "browser": "real Chrome extension session",
+    "route": "/settings",
+    "device_display_name": "lakshmans-Mac-mini.local",
+    "platform": "MACOS",
+    "worker_version": "0.1.4",
+    "status": "ONLINE",
+    "last_seen_rendered": "8/18/2026, 2:59:35 PM",
+    "last_seen_utc": "2026-08-18T09:29:35Z",
+    "scope": "one authenticated tenant device only; Windows, second-account isolation, and job execution remain unproven"
+  },
   "verification_commands": [
     {
       "command": "node --test scripts/tests/v2-06-owned-fixture.test.mjs scripts/tests/v2-06-tenant-seed.test.mjs",
@@ -205,6 +216,11 @@
       "command": "V2_06_DB_URL=<protected-owner-dsn> pnpm --filter @videoforge/web exec node --input-type=module -e '<read-only project/assets/preset counts>'",
       "exit_code": 0,
       "result": "projects=0, assets=3, READY avatars=1, PUBLISHED styles=1"
+    },
+    {
+      "command": "Chrome /settings accessibility-tree inspection in the authenticated staging session",
+      "exit_code": 0,
+      "result": "One tenant-owned Mac device lakshmans-Mac-mini.local, v0.1.4, ONLINE; last seen 8/18/2026 2:59:35 PM"
     }
   ],
   "findings": [
