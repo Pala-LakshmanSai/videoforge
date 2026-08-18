@@ -8,11 +8,16 @@ const fail = (message) => {
   throw new Error(`V2-06 rollback snapshot: ${message}`);
 };
 
-const deploymentsFrom = (value) => {
+const deploymentRowsFrom = (value) => {
   const rows = Array.isArray(value) ? value : value?.deployments;
   if (!Array.isArray(rows)) fail("deployment JSON must be an array or contain deployments[]");
-  return rows.flatMap((row) => [row, ...(Array.isArray(row?.versions) ? row.versions : [])]);
+  return rows;
 };
+
+const deploymentsFrom = (value) =>
+  deploymentRowsFrom(value).flatMap((row) =>
+    Array.isArray(row?.versions) && row.versions.length > 0 ? row.versions : [row],
+  );
 
 const versionId = (row) => row?.version_id ?? row?.versionId ?? row?.id ?? null;
 const isActive = (row) =>
@@ -22,13 +27,32 @@ const isActive = (row) =>
   Number(row?.percentage) === 100;
 
 const uniqueVersions = (value) => {
-  const rows = deploymentsFrom(value);
+  const deploymentRows = deploymentRowsFrom(value);
+  const latestDeployment = deploymentRows.reduce((latest, row) => {
+    if (!latest) return row;
+    const latestCreated = Date.parse(latest?.created_on ?? latest?.createdAt ?? "");
+    const rowCreated = Date.parse(row?.created_on ?? row?.createdAt ?? "");
+    if (Number.isFinite(rowCreated) && (!Number.isFinite(latestCreated) || rowCreated > latestCreated))
+      return row;
+    return latest;
+  }, null);
   const versions = new Map();
-  for (const row of rows) {
-    const id = versionId(row);
-    if (typeof id === "string" && id.length > 0) versions.set(id, row);
+  for (const deployment of deploymentRows) {
+    const rows =
+      Array.isArray(deployment?.versions) && deployment.versions.length > 0
+        ? deployment.versions
+        : [deployment];
+    for (const row of rows) {
+      const id = versionId(row);
+      if (typeof id !== "string" || id.length === 0) continue;
+      const explicitlyActive = row?.is_active === true || row?.active === true;
+      const latestTrafficActive =
+        deployment === latestDeployment &&
+        (Number(row?.traffic_percent) > 0 || Number(row?.percentage) > 0);
+      versions.set(id, { row, active: explicitlyActive || latestTrafficActive });
+    }
   }
-  return [...versions.entries()].map(([id, row]) => ({ id, row, active: isActive(row) }));
+  return [...versions.entries()].map(([id, value]) => ({ id, ...value }));
 };
 
 const readSnapshot = async (file) => uniqueVersions(JSON.parse(await readFile(file, "utf8")));
