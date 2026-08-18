@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-18T16:04:33Z"
+updated_at: "2026-08-18T16:08:59Z"
 
 phase: serverless_v2_v2_06_local_repair_committed_hosted_reverification_pending
 implementation_authorized_in_current_task: true
@@ -50,6 +50,7 @@ repository:
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
   current_source_head: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
+  current_repository_head: "886f631859262f4a0812591c1ec32a3d65467a50"
   current_source_head_note: "The current repository source is clean, committed, and provider-free verified at fcc9257. It is a local source repair and is not deployed. The last supplied immutable deployment evidence remains exact HEAD 153cefe with personal-worker release 0.1.6; hosted completion, two-account isolation, Windows lifecycle/parity, backup/restore, rollback, and independent full-checkpoint acceptance remain unproven."
   last_good_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
   last_good_commit_note: "V2-06 staging is deployed from exact HEAD 153cefe with Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c, rendered-config sha256:8f67537d912b2b8d95e00c2af12e931c11ed81b96195b9637d4c05c47de3b2af, and immutable worker release 0.1.6. Source and deployment checks are green; full hosted/device acceptance remains open."
@@ -311,7 +312,7 @@ recommended_next_task:
 verification:
   state: v2_06_source_repair_committed_hosted_reverification_pending
   verified_commit: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
-  verified_commit_note: "Canonical provider-free verification passes at source repair commit fcc9257 (executed at documentation handoff HEAD b21f676). This source is not deployed. The last supplied immutable deployment evidence is exact HEAD 153cefe as Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c with personal-worker release 0.1.6; hosted completion, two-account non-superuser RLS/R2 isolation, Windows lifecycle/parity, backup/restore, rollback, and independent hosted acceptance remain blocked."
+  verified_commit_note: "Canonical provider-free verification passes at source repair commit fcc9257 (executed before the documentation-only handoff HEAD 886f631). This source is not deployed. The last supplied immutable deployment evidence is exact HEAD 153cefe as Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c with personal-worker release 0.1.6; hosted completion, two-account non-superuser RLS/R2 isolation, Windows lifecycle/parity, backup/restore, rollback, and independent hosted acceptance remain blocked."
   predecessor_verified_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
   acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-fcc9257/acceptance.json
   latest_live_check:
@@ -335,7 +336,7 @@ verification:
     hosted_asr_attempt_state: CANCELLED
     hosted_asr_successful_output_proven: false
   latest_source_verification:
-    recorded_at_utc: "2026-08-18T16:04:33Z"
+    recorded_at_utc: "2026-08-18T16:08:59Z"
     evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-fcc9257/acceptance.json
     source_commit: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
     deployed_implementation_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
@@ -442,7 +443,7 @@ verification:
       - runtime_PostgreSQL_TLS_and_channel_binding_requirement
     commands:
       - "CI=1 TURBO_FORCE=true pnpm verify:fast (exit 0; provider-free fast gate completed through package tests and generated-route consistency)"
-      - "CI=1 TURBO_FORCE=true pnpm verify (exit 0; 28 unique tasks; Cloudflare parity 1/1; package build/lint/typecheck/tests; worker suites; context/secret checks; installed Chrome 44/44)"
+      - "CI=1 TURBO_FORCE=true pnpm verify (exit 0; 28 unique tasks; Cloudflare parity 1/1; package build/lint/typecheck/tests; worker suites; context/secret checks; installed Chrome 44/44; run before documentation-only handoff 886f631)"
       - "pnpm validate:v2-06-deployment (exit 0)"
       - "pnpm format:check and git diff --check (exit 0)"
       - "pnpm --filter @videoforge/web typecheck (exit 0)"
@@ -456,7 +457,7 @@ verification:
       - "pnpm contracts:check (exit 0; 123 canonical files)"
       - "pnpm context:validate (exit 0)"
       - "pnpm secret:scan (exit 0; 1149 tracked files)"
-    canonical_release_verification: "CI=1 TURBO_FORCE=true pnpm verify passed at documentation handoff HEAD b21f676, verifying source repair fcc9257."
+    canonical_release_verification: "CI=1 TURBO_FORCE=true pnpm verify passed before documentation-only handoff HEAD 886f631, verifying source repair fcc9257."
     evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-fcc9257/acceptance.json
     not_proven_by_this_repair:
       - hosted_two_account_Better_Auth_Neon_non_superuser_FORCE_RLS_and_private_R2_isolation

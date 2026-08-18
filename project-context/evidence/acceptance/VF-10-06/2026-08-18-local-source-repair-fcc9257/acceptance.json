@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-06-local-source-repair-handoff/v1",
   "task_id": "VF-10-06",
   "checkpoint": "V2-06",
-  "recorded_at_utc": "2026-08-18T16:04:33Z",
+  "recorded_at_utc": "2026-08-18T16:08:59Z",
   "result": "SOURCE_REPAIR_GREEN_HOSTED_REVERIFICATION_PENDING",
   "audit_independence": "SAME_CHAT_IMPLEMENTATION_HANDOFF_NOT_INDEPENDENT_AUDIT",
   "scope_boundary": "Provider-free repository repair and verification only. No credentials were read, no live provider call was made, no deployment or resource mutation occurred, and no spend occurred. Local fixtures and local Chrome cannot prove hosted deployment acceptance.",
@@ -22,6 +22,7 @@
   "source": {
     "branch": "codex/serverless-v2-roadmap",
     "head": "fcc925732fef321eb0cfa094d24fdfac05e80df3",
+    "repository_head_at_handoff": "886f631859262f4a0812591c1ec32a3d65467a50",
     "parent": "574acbbaea02242083350e850942f8b9806d58ce",
     "working_tree_at_verification": "clean",
     "commit_message": "fix(v2-06): close hosted and worker safety gaps",
