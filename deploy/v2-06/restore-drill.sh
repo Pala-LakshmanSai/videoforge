@@ -24,6 +24,11 @@ backup_input=$1
 passphrase_file=$RESTORE_PASSPHRASE_FILE
 script_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 
+if ! node "$script_dir/backup-restore-preflight.mjs" --tools-only --operation restore --quiet; then
+  echo "V2-06 backup/restore dependency/PATH preflight failed; run backup-restore-preflight.mjs --tools-only for details" >&2
+  exit 2
+fi
+
 mode_of() {
   if [ "$(uname -s)" = "Darwin" ]; then
     stat -f '%Lp' "$1"

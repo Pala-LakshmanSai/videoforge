@@ -18,6 +18,22 @@ stub. Absolute paths are required because the rendered file is stored in `/tmp`.
 ```sh
 set -eu
 
+# Provider-free local readiness. --tools-only checks PATH metadata only; it does not execute a
+# database client or contact a provider. If libpq is installed outside PATH (for example through
+# Homebrew), export its bin directory before continuing. `both` checks the union used by backup and
+# restore; the shell helpers perform their narrower operation-specific check again.
+node deploy/v2-06/backup-restore-preflight.mjs --tools-only --operation both
+
+# Optional safe bootstrap. This creates exactly three zero-byte mode-0600 placeholders and never
+# generates, reads, or prints a credential/passphrase. Populate them separately, then run the full
+# check; the full check inspects metadata and file sizes only, while backup/restore perform the
+# stricter service/passphrase syntax checks immediately before any database operation.
+PRIVATE_INPUT_DIR=/secure/videoforge/v2-06/postgres-inputs
+node deploy/v2-06/backup-restore-preflight.mjs --bootstrap --directory "$PRIVATE_INPUT_DIR"
+# Populate owner.pg_service.conf, owner.pgpass, and backup.passphrase only through the approved
+# operator secret workflow. Do not put their contents in Git, shell history, logs, or evidence.
+node deploy/v2-06/backup-restore-preflight.mjs --directory "$PRIVATE_INPUT_DIR"
+
 # This file is an operator procedure, not an approval record.  The activation record is a
 # separately reviewed, mode-0600 JSON file with authority.mode=APPROVED, the finite cap, exact
 # Cloudflare/Neon identities, and the immutable release-manifest SHA-256.  Never use the tracked
@@ -36,9 +52,9 @@ test "$(stat -f '%Lp' "$ACTIVATION_RECORD" 2>/dev/null || stat -c '%a' "$ACTIVAT
 # PGSERVICEFILE contains host/dbname/user but no password; PGPASSFILE is mode 0600.  The helper
 # verifies every migration byte/hash, the exact ledger prefix, the owner identity, runtime grants,
 # and FORCE RLS.  It never accepts a DATABASE_URL argv.
-export V2_06_PG_SERVICEFILE=/secure/videoforge/v2-06/owner.pg_service.conf
+export V2_06_PG_SERVICEFILE="$PRIVATE_INPUT_DIR/owner.pg_service.conf"
 export V2_06_PG_SERVICE=videoforge_v2_06_owner
-export V2_06_PGPASSFILE=/secure/videoforge/v2-06/owner.pgpass
+export V2_06_PGPASSFILE="$PRIVATE_INPUT_DIR/owner.pgpass"
 # backup.sh and restore-drill.sh consume the conventional libpq names; keep these aliases
 # alongside the helper-specific names so neither path falls back to ambient credentials.
 export PGSERVICEFILE="$V2_06_PG_SERVICEFILE"
@@ -56,7 +72,7 @@ node deploy/v2-06/apply-migrations-and-grants.mjs --apply-grants
 BACKUP_DIR=/secure/videoforge/v2-06/backups
 BACKUP_OUTPUT="$BACKUP_DIR/videoforge-v2-06-live.dump.enc"
 mkdir -p "$BACKUP_DIR"
-BACKUP_PASSPHRASE_FILE=/secure/videoforge/v2-06/backup.passphrase \
+BACKUP_PASSPHRASE_FILE="$PRIVATE_INPUT_DIR/backup.passphrase" \
   deploy/v2-06/backup.sh "$BACKUP_OUTPUT"
 # For the restore drill, set the separately approved disposable service/host/passphrase values
 # before running this exact command; it never reuses the production database service.
@@ -64,7 +80,7 @@ RESTORE_APPROVED_NEON_HOST=<exact-approved-disposable-neon-host> \
 RESTORE_EXPECTED_OWNER_ROLE=<exact-disposable-owner-role> \
 RESTORE_RUNTIME_ROLE="$V2_06_RUNTIME_ROLE" \
 RESTORE_TARGET_DATABASE=videoforge_v2_06_disposable_drill \
-RESTORE_PASSPHRASE_FILE=/secure/videoforge/v2-06/backup.passphrase \
+RESTORE_PASSPHRASE_FILE="$PRIVATE_INPUT_DIR/backup.passphrase" \
 RESTORE_DRILL_CONFIRM=YES RESTORE_TARGET_LABEL=videoforge-v2-06-disposable-drill \
   deploy/v2-06/restore-drill.sh "$BACKUP_OUTPUT"
 
@@ -285,7 +301,7 @@ five-megabyte aggregate / four-megabyte per-object R2 budget. It writes a durabl
 upload-intent receipt before any object mutation, uses conditional create (`If-None-Match: *`),
 and verifies an exact HEAD/GET match after every create race. Neon is pinned to `neondb`, the
 `neondb_owner` migration role, TLS/channel binding, `public,pg_catalog`, the Google auth provider,
-and the complete hash-checked 1–35 migration ledger.
+and the complete hash-checked 1–36 migration ledger.
 
 ```sh
 V2_06_TENANT_EMAIL=lakshmansai121@gmail.com \

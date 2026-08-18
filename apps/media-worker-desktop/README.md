@@ -58,6 +58,42 @@ whisper.cpp commit and exact Intel and Apple Silicon FFmpeg inputs. The worker v
 model again at startup and against every ASR job contract. No first-run model download, runtime
 provider discovery, or user configuration occurs.
 
-This checkout's source-only lifecycle repairs are not a new immutable publication. Recompute the
-execution-bundle hash and publish a new immutable release before updating hosted release metadata;
-the existing `media-worker-v0.1.6` artifact remains the separately recorded release identity.
+This checkout's source-only lifecycle repairs are not a new immutable publication. The separately
+recorded repaired artifact is `media-worker-v0.1.8`; recompute the execution-bundle hash and publish
+a new immutable release before updating hosted release metadata after any release-input change.
+
+## Bounded Windows acceptance run
+
+`windows-native-acceptance.ps1` is a Windows-only, bounded harness for the exact immutable release
+artifact. It performs no download, provider lookup, credential-value read, remote revoke, or network call
+by default. It verifies the manifest, SHA-256, byte length, unsigned-beta trust mode, Windows x64
+host, clean per-run install root, Startup shortcut, update replacement (when a previous manifest and
+installer are supplied), and Inno uninstall cleanup. It writes a redacted JSON report and removes
+the isolated install in `finally` unless `-KeepInstallation` is requested.
+
+Provider-free package/lifecycle check:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\windows-native-acceptance.ps1 `
+  -InstallerPath .\VideoForge-Worker-0.1.8-Setup.exe `
+  -ReleaseManifestPath .\media-worker-release.json
+```
+
+For the same bounded run to include the one user-controlled browser pairing and background restart,
+add `-RunHostedPairing`. The worker then uses its compiled staging origin; the harness only checks
+for the paired Credential Manager entry by installation ID and never reads the credential value:
+
+```powershell
+.\windows-native-acceptance.ps1 `
+  -InstallerPath .\VideoForge-Worker-0.1.8-Setup.exe `
+  -ReleaseManifestPath .\media-worker-release.json `
+  -RunHostedPairing
+```
+
+To include update replacement, also provide a previous immutable Windows installer and its matching
+release manifest with `-PreviousInstallerPath` and `-PreviousReleaseManifestPath`. Run this only
+under a fresh Windows user with no existing `VideoForge Worker` process, Startup shortcut, or local
+worker state. SmartScreen choice, browser approval, sleep/wake and offline/reconnect observation,
+and authenticated Settings device revocation remain user/device evidence; the script reports them
+as manual steps and does not claim them automatically.

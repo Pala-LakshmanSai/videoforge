@@ -7,12 +7,21 @@ const read = (path) => readFile(new URL(`../../${path}`, import.meta.url), "utf8
 test("V2-06 backup and restore scripts use protected PostgreSQL services, not DSN argv", async () => {
   const backup = await read("deploy/v2-06/backup.sh");
   const restore = await read("deploy/v2-06/restore-drill.sh");
+  const preflight = await read("deploy/v2-06/backup-restore-preflight.mjs");
   assert.match(backup, /PGSERVICEFILE/gu);
   assert.match(backup, /PGPASSFILE/gu);
+  assert.match(
+    backup,
+    /backup-restore-preflight\.mjs.*--tools-only.*--operation backup.*--quiet/su,
+  );
   assert.match(backup, /apply-migrations-and-grants\.mjs/u);
   assert.match(backup, /--verify-only --owner-only/u);
   assert.match(backup, /backup-envelope\.mjs/gu);
   assert.match(backup, /ln "\$envelope_backup" "\$backup_output"/u);
+  assert.match(
+    restore,
+    /backup-restore-preflight\.mjs.*--tools-only.*--operation restore.*--quiet/su,
+  );
   assert.doesNotMatch(backup, /pg_dump[^\n]*\$DATABASE_URL/u);
   assert.doesNotMatch(backup, /DATABASE_URL[^\n]*pg_dump/u);
   assert.match(restore, /videoforge_v2_06_disposable_drill/u);
@@ -21,6 +30,10 @@ test("V2-06 backup and restore scripts use protected PostgreSQL services, not DS
   assert.match(restore, /--verify-only --apply-grants/u);
   assert.doesNotMatch(restore, /pg_restore[^\n]*\$RESTORE_DATABASE_URL/u);
   assert.doesNotMatch(restore, /psql\s+"\$RESTORE_DATABASE_URL"/u);
+  assert.match(preflight, /resolveExecutable/gu);
+  assert.match(preflight, /writeFile\(file, ""/u);
+  assert.doesNotMatch(preflight, /readFile/gu);
+  assert.doesNotMatch(preflight, /spawn|execFile|fetch\(/gu);
 });
 
 test("V2-06 live database helper verifies exact hashes, grants, and FORCE RLS", async () => {
@@ -59,6 +72,8 @@ test("V2-06 renderer and rollback pin approved identities and immutable evidence
   assert.match(runbook, /check-secret-allowlist\.mjs/u);
   assert.match(runbook, /validate-secret-inputs\.mjs/u);
   assert.match(runbook, /verify-r2-private-state\.sh/u);
+  assert.match(runbook, /backup-restore-preflight\.mjs --bootstrap --directory/u);
+  assert.match(runbook, /PRIVATE_INPUT_DIR/gu);
   assert.match(runbook, /backup\.sh "\$BACKUP_OUTPUT"/u);
   assert.match(privateState, /public dev-url access is not proven disabled/u);
   assert.match(privateState, /automatic object deletion rule/u);

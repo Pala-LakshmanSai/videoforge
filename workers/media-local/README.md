@@ -26,7 +26,10 @@ plane; remote device revocation remains an authenticated Settings action.
 Cancellation, process-group termination, and the active-job sleep assertion remain owned by
 `personal_execution.py`; this wrapper slice does not alter that execution owner. Local contract
 tests cover the native boundary, but real Windows/macOS cancellation, sleep/wake, offline/reconnect,
-clean-install, and update/remove observations remain native acceptance work.
+clean-install, and update/remove observations remain native acceptance work. On Windows, run
+`apps/media-worker-desktop/windows-native-acceptance.ps1` from a clean user profile to keep those
+checks bounded and to leave a redacted JSON handoff; omit `-RunHostedPairing` for a provider-free
+package/lifecycle check and add it only when the user is ready to complete the browser confirmation.
 
 The historical `Dockerfile` remains rollback/source evidence and is not an active production target.
 The desktop release bundles checksum-pinned whisper.cpp 1.8.4 and FFmpeg/FFprobe 8.1.2 executables.
