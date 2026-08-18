@@ -354,6 +354,21 @@ def _validated_primary_output(scratch: Path, result: object) -> bytes:
     return payload
 
 
+def _validated_asr_primary_output(scratch: Path, input_document: dict[str, object]) -> bytes:
+    output_document = input_document.get("output")
+    if not isinstance(output_document, dict) or not isinstance(
+        output_document.get("result_uri"), str
+    ):
+        raise ValueError("Cloud job ASR result output is missing")
+    result_uri = output_document["result_uri"]
+    if not result_uri.startswith("vf-local-run://"):
+        raise ValueError("Cloud job ASR result output URI is invalid")
+    path = _local_path(scratch, result_uri)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("Cloud job ASR result output is not a regular file")
+    return path.read_bytes()
+
+
 class CancellationMonitor:
     def __init__(self, url: str | None, marker: Path, token: str) -> None:
         self._url = url
@@ -475,7 +490,11 @@ def run(spec: CloudJobSpec, callback_url: str, callback_token: str) -> int:
             for output in spec.outputs:
                 if output.source != "PRIMARY_RESULT_OUTPUT":
                     raise ValueError("Unsupported Cloud job output source")
-                primary_payload = _validated_primary_output(scratch, result)
+                primary_payload = (
+                    _validated_asr_primary_output(scratch, spec.input_document)
+                    if spec.kind == "ASR"
+                    else _validated_primary_output(scratch, result)
+                )
                 upload_url, upload_headers = _upload_port(
                     output.sign_url,
                     callback_token,

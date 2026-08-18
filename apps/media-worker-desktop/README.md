@@ -21,7 +21,7 @@ an unsigned beta, and the immutable manifest discloses exact hashes and trust mo
 behavior can vary, so native clean-download/install evidence remains required. Protected signing and
 notarization secrets are needed only for the optional production-trust upgrade.
 
-`publish_release=true` requires the exact new `media-worker-v0.1.5` tag and the protected release
+`publish_release=true` requires the exact new `media-worker-v0.1.6` tag and the protected release
 environment. It publishes both binaries plus
 the checksum/size manifest to the public repository Release; the workflow refuses to replace an
 existing tag or asset. Activating that generated manifest in staging is a separate reviewed hosting

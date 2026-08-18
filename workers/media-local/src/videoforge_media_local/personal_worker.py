@@ -28,7 +28,7 @@ from videoforge_media_local.personal_execution import (
 from videoforge_media_local.personal_tls import https_context
 
 _SERVICE = "com.videoforge.personal-media-worker"
-_WORKER_VERSION = "0.1.5"
+_WORKER_VERSION = "0.1.6"
 _PROTOCOL_VERSION = 1
 _USER_AGENT = f"VideoForge-Worker/{_WORKER_VERSION}"
 

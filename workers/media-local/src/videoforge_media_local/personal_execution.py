@@ -393,6 +393,20 @@ def _primary_path(scratch: Path, result: object) -> Path:
     return path
 
 
+def _asr_primary_path(scratch: Path, input_document: dict[str, Any]) -> Path:
+    output = input_document.get("output")
+    if (
+        not isinstance(output, dict)
+        or not isinstance(output.get("result_uri"), str)
+        or not output["result_uri"].startswith("vf-local-run://")
+    ):
+        raise ValueError("Personal worker ASR result output is missing")
+    path = _local_path(scratch, output["result_uri"])
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("Personal worker ASR result output is not a regular file")
+    return path
+
+
 def execute_personal_job(
     job: PersonalJob,
     device_token: str,
@@ -495,7 +509,11 @@ def execute_personal_job(
             pass
         else:
             result = json.loads(stdout)
-            primary = _primary_path(scratch, result)
+            primary = (
+                _asr_primary_path(scratch, job.input_document)
+                if job.kind == "ASR"
+                else _primary_path(scratch, result)
+            )
             for output in job.outputs:
                 checksum, size = _sha256_file(primary)
                 if size > output["max_bytes"]:

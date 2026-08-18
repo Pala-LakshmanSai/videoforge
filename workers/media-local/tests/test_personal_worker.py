@@ -9,8 +9,10 @@ import unittest
 from pathlib import Path, PurePosixPath
 from unittest.mock import Mock, patch
 
+from videoforge_media_local.cloud_job import _local_path
 from videoforge_media_local.personal_execution import (
     _CancellationMonitor,
+    _asr_primary_path,
     _completion_is_acknowledged,
     _stream_put,
     parse_personal_job,
@@ -158,6 +160,17 @@ class PersonalWorkerContractTests(unittest.TestCase):
         )
         self.assertFalse(_completion_is_acknowledged(409, {"error": {"code": "STALE"}}))
         self.assertFalse(_completion_is_acknowledged(200, {"state": "SUCCEEDED"}))
+
+    def test_asr_primary_path_uses_the_declared_result_uri(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            uri = "vf-local-run://revision-a/attempt-a/asr-result.json"
+            path = _local_path(root, uri)
+            path.parent.mkdir(parents=True)
+            path.write_bytes(b'{"schema_version":"asr-job-result/v1"}')
+            self.assertEqual(_asr_primary_path(root, {"output": {"result_uri": uri}}), path)
+            with self.assertRaisesRegex(ValueError, "result output"):
+                _asr_primary_path(root, {"output": {"result_uri": "https://example.test/out"}})
 
     def test_source_mode_requires_an_explicit_https_origin(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -10,6 +10,7 @@ from videoforge_media_local.cloud_job import (
     _local_path,
     _sha256_bytes,
     _upload_port,
+    _validated_asr_primary_output,
     _validated_primary_output,
     parse_spec,
 )
@@ -185,6 +186,26 @@ class CloudJobSpecTests(unittest.TestCase):
                             "sha256": _sha256_bytes(payload),
                         }
                     },
+                )
+
+    def test_asr_primary_output_uses_the_declared_result_uri(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            uri = "vf-local-run://revision-a/attempt-a/asr-result.json"
+            path = _local_path(root, uri)
+            path.parent.mkdir(parents=True)
+            payload = b'{"schema_version":"asr-job-result/v1"}'
+            path.write_bytes(payload)
+            self.assertEqual(
+                _validated_asr_primary_output(root, {"output": {"result_uri": uri}}),
+                payload,
+            )
+            with self.assertRaises(ValueError):
+                _validated_asr_primary_output(
+                    root, {"output": {"result_uri": "https://example.test/out"}}
                 )
 
 
