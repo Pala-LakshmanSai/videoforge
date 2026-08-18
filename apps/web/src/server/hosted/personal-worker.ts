@@ -13,6 +13,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const TOKEN = /^[0-9a-f]{64}$/u;
 const WORKER_VERSION = /^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/u;
+const PLANNED_RECONCILIATION_GRACE_MS = 2 * 60 * 1_000;
 
 export function supportedWorkerPlatform(platform: unknown, architecture: unknown): boolean {
   return (
@@ -688,7 +689,8 @@ async function reconcilePlannedAttempt(
       object.httpMetadata?.contentType === "application/json" &&
       objectChecksum === candidate.job_spec_checksum_sha256,
   );
-  const stale = Date.now() - new Date(candidate.created_at).getTime() >= 10 * 60 * 1_000;
+  const stale =
+    Date.now() - new Date(candidate.created_at).getTime() >= PLANNED_RECONCILIATION_GRACE_MS;
 
   await createNeonExecutor(pool).transaction(async (transaction) => {
     await transaction.query("SELECT set_config($1, $2, true)", [
