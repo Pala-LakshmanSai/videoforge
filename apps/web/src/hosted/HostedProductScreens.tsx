@@ -98,8 +98,22 @@ async function bounded<T>(promise: Promise<T>, message: string, timeoutMs = 30_0
   }
 }
 
+/** File.arrayBuffer() can remain pending for extension-backed file inputs in Chrome. */
+async function readFileBytes(file: File): Promise<ArrayBuffer> {
+  return await new Promise<ArrayBuffer>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (reader.result instanceof ArrayBuffer) resolve(reader.result);
+      else reject(new Error("Voiceover bytes could not be read."));
+    };
+    reader.onerror = () => reject(new Error("Voiceover bytes could not be read."));
+    reader.onabort = () => reject(new Error("Voiceover bytes could not be read."));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 async function sha256(file: File): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  const digest = await crypto.subtle.digest("SHA-256", await readFileBytes(file));
   return `sha256:${[...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
 
