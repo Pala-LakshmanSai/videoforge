@@ -32,7 +32,10 @@ const uniqueVersions = (value) => {
     if (!latest) return row;
     const latestCreated = Date.parse(latest?.created_on ?? latest?.createdAt ?? "");
     const rowCreated = Date.parse(row?.created_on ?? row?.createdAt ?? "");
-    if (Number.isFinite(rowCreated) && (!Number.isFinite(latestCreated) || rowCreated > latestCreated))
+    if (
+      Number.isFinite(rowCreated) &&
+      (!Number.isFinite(latestCreated) || rowCreated > latestCreated)
+    )
       return row;
     return latest;
   }, null);
@@ -77,8 +80,16 @@ const assertAfterRollback = (versions, priorVersionId) => {
 };
 
 const main = async () => {
-  const [phase, file, expectedActiveVersionId, priorVersionId] = process.argv.slice(2);
-  if (!phase || !file || !priorVersionId || (phase === "before" && !expectedActiveVersionId))
+  const [phase, file, ...versionIds] = process.argv.slice(2);
+  const [expectedActiveVersionId, priorVersionId] =
+    phase === "before" ? versionIds : [undefined, versionIds[0]];
+  if (
+    !phase ||
+    !file ||
+    !priorVersionId ||
+    (phase === "before" && !expectedActiveVersionId) ||
+    versionIds.length !== (phase === "before" ? 2 : 1)
+  )
     fail("usage: verify-rollback-deployment.mjs <before|after> <json> [expected-active] <prior>");
   const versions = await readSnapshot(file);
   const result =
