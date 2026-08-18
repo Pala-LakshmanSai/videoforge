@@ -659,13 +659,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               >
                 {attempt.state.replaceAll("_", " ")}
               </Badge>
-              {[
-                "OUTBOXED",
-                "SUBMITTED",
-                "RUNNING",
-                "RECONCILING",
-                "CANCEL_REQUESTED",
-              ].includes(attempt.state) ? (
+              {["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(
+                attempt.state,
+              ) ? (
                 <Button
                   variant="danger"
                   busy={cancel.isPending && cancel.variables === attempt.id}
