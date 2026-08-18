@@ -26,8 +26,22 @@ from videoforge_media_local.personal_execution import (
 )
 
 _SERVICE = "com.videoforge.personal-media-worker"
-_WORKER_VERSION = "0.1.0"
+_WORKER_VERSION = "0.1.1"
 _PROTOCOL_VERSION = 1
+
+
+def _is_external_macos_bundle(bundle: Path) -> bool:
+    """Return whether macOS launched the app from a removable/translocated path.
+
+    Gatekeeper can launch an app from an AppTranslocation directory even after the
+    user double-clicks it in a mounted DMG.  Both that path and the mounted volume
+    must be copied to a stable per-user Applications location before registering a
+    LaunchAgent; otherwise the agent points at an ephemeral path and repeatedly
+    restarts a one-file PyInstaller extraction.
+    """
+
+    value = str(bundle)
+    return value.startswith("/Volumes/") or "/AppTranslocation/" in value
 
 
 def _install_macos_if_needed() -> bool:
@@ -35,7 +49,7 @@ def _install_macos_if_needed() -> bool:
         return False
     executable = Path(sys.executable).resolve()
     bundle = next((parent for parent in executable.parents if parent.suffix == ".app"), None)
-    if bundle is None or not str(bundle).startswith("/Volumes/"):
+    if bundle is None or not _is_external_macos_bundle(bundle):
         return False
     target = Path.home() / "Applications" / bundle.name
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -312,6 +326,30 @@ def _json_request(
         return error.code, json.loads(raw) if raw else None
 
 
+def _open_approval_url(approval_url: str) -> None:
+    """Open the one-time pairing page through the host OS browser.
+
+    Python's ``webbrowser`` module can report success without dispatching a
+    background app's request through LaunchServices.  On macOS, the native
+    ``open`` command is the reliable handoff to the user's already configured
+    browser; other platforms retain the standard module behavior.
+    """
+
+    if sys.platform == "darwin":
+        try:
+            subprocess.run(
+                ["/usr/bin/open", approval_url],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return
+        except (OSError, subprocess.CalledProcessError):
+            pass
+    if not webbrowser.open(approval_url, new=2):
+        raise RuntimeError("VideoForge could not open the secure browser connection")
+
+
 def _enroll(
     origin: str, installation_id: str, execution_bundle_sha256: str, store: CredentialStore
 ) -> str:
@@ -342,8 +380,7 @@ def _enroll(
     enrollment_id = str(value["enrollment_id"])
     poll_token = str(value["poll_token"])
     approval_url = str(value["approval_url"])
-    if not webbrowser.open(approval_url, new=2):
-        raise RuntimeError("VideoForge could not open the secure browser connection")
+    _open_approval_url(approval_url)
     deadline = time.monotonic() + 600
     while time.monotonic() < deadline:
         status, token = _json_request(
@@ -390,10 +427,10 @@ def _tool_paths(configuration: dict[str, object]) -> ToolPaths:
 def run_forever() -> int:
     if _install_macos_if_needed():
         return 0
-    _ensure_autostart()
     configuration = _build_configuration()
     origin = str(configuration["control_plane_origin"]).rstrip("/")
     execution_bundle_sha256 = str(configuration["execution_bundle_sha256"])
+    tools = _tool_paths(configuration)
     state_path, state = _state()
     installation_id = state["installation_id"]
     background = "--background" in sys.argv[1:]
@@ -405,7 +442,9 @@ def run_forever() -> int:
     token = store.get(installation_id) or _enroll(
         origin, installation_id, execution_bundle_sha256, store
     )
-    tools = _tool_paths(configuration)
+    # Only install a KeepAlive LaunchAgent after build validation and pairing
+    # have succeeded.  A transient startup error must not become a crash loop.
+    _ensure_autostart()
     worker_platform, architecture = _platform_facts()
     headers = {"authorization": f"Bearer {token}"}
     backoff = 5

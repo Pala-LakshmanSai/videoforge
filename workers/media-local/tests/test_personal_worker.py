@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from videoforge_media_local.personal_execution import _CancellationMonitor, parse_personal_job
-from videoforge_media_local.personal_worker import _build_configuration
+from videoforge_media_local.personal_worker import (
+    _build_configuration,
+    _is_external_macos_bundle,
+    _open_approval_url,
+)
 
 
 def job() -> dict[str, object]:
@@ -106,6 +111,47 @@ class PersonalWorkerContractTests(unittest.TestCase):
                 value = _build_configuration()
             self.assertEqual(value["control_plane_origin"], "https://app.example.test")
             self.assertNotIn("token", json.dumps(value).lower())
+
+    def test_macos_install_detects_dmg_and_app_translocation_paths(self) -> None:
+        self.assertTrue(
+            _is_external_macos_bundle(Path("/Volumes/VideoForge Worker/VideoForge Worker.app"))
+        )
+        self.assertTrue(
+            _is_external_macos_bundle(
+                Path("/private/var/folders/ab/cd/T/AppTranslocation/9A1B2C3D/VideoForge Worker.app")
+            )
+        )
+        self.assertFalse(_is_external_macos_bundle(Path("/Applications/VideoForge Worker.app")))
+
+    def test_macos_pairing_uses_launch_services(self) -> None:
+        with (
+            patch("videoforge_media_local.personal_worker.sys.platform", "darwin"),
+            patch("videoforge_media_local.personal_worker.subprocess.run") as run,
+            patch("videoforge_media_local.personal_worker.webbrowser.open") as browser,
+        ):
+            _open_approval_url("https://app.example.test/settings?enrollment=abc")
+        run.assert_called_once_with(
+            ["/usr/bin/open", "https://app.example.test/settings?enrollment=abc"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        browser.assert_not_called()
+
+    def test_pairing_falls_back_to_webbrowser_when_launch_services_fails(self) -> None:
+        with (
+            patch("videoforge_media_local.personal_worker.sys.platform", "darwin"),
+            patch(
+                "videoforge_media_local.personal_worker.subprocess.run",
+                side_effect=OSError("open unavailable"),
+            ),
+            patch(
+                "videoforge_media_local.personal_worker.webbrowser.open",
+                return_value=True,
+            ) as browser,
+        ):
+            _open_approval_url("https://app.example.test/settings?enrollment=abc")
+        browser.assert_called_once_with("https://app.example.test/settings?enrollment=abc", new=2)
 
 
 if __name__ == "__main__":

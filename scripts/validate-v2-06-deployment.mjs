@@ -191,12 +191,12 @@ if (
   !releaseWorkflow.includes("publish_release:") ||
   !releaseWorkflow.includes('codesign --force --deep --sign - "dist/VideoForge Worker.app"') ||
   !releaseWorkflow.includes("grep -q 'Signature=adhoc'") ||
-  !releaseWorkflow.includes('hdiutil verify "VideoForge-Worker-0.1.0.dmg"') ||
+  !/hdiutil verify "VideoForge-Worker-[0-9]+\.[0-9]+\.[0-9]+\.dmg"/u.test(releaseWorkflow) ||
   !releaseWorkflow.includes('"UNSIGNED_BETA"') ||
   !releaseWorkflow.includes('"AD_HOC_BETA"') ||
   !releaseWorkflow.includes("gh release create") ||
-  !releaseWorkflow.includes('notarytool submit "VideoForge-Worker-0.1.0.dmg"') ||
-  !releaseWorkflow.includes('stapler staple "VideoForge-Worker-0.1.0.dmg"')
+  !/notarytool submit "VideoForge-Worker-[0-9]+\.[0-9]+\.[0-9]+\.dmg"/u.test(releaseWorkflow) ||
+  !/stapler staple "VideoForge-Worker-[0-9]+\.[0-9]+\.[0-9]+\.dmg"/u.test(releaseWorkflow)
 )
   fail("ImageForge-style beta and optional signed worker publication gates are incomplete");
 const hostedApp = await read("apps/web/src/server/hosted/app.ts");
