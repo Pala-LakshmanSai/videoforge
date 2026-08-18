@@ -13,6 +13,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const IDEMPOTENCY = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,159}$/u;
 const VOICEOVER_TYPES = new Set(["audio/wav", "audio/flac", "audio/mpeg", "audio/mp4"]);
+// Migration 0002 requires every revision budget to be at least $0.10. This is only the
+// persisted revision ceiling; V2-06 personal-worker execution remains provider-free at $0.
+const PERSONAL_WORKER_MINIMUM_COST_MICRO_USD = 100_000;
 
 function validFilename(value: string): boolean {
   return (
@@ -357,8 +360,8 @@ async function createProject(
            created_by_user_id
          ) VALUES (
            $1,$2,$3,1,'DRAFT',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
-           'UNTESTED',NULL,NULL,$14,$15,$16,'',false,'LOWEST_COST',0,$17,
-           'videoforge-hosted-revision-config','v1',$18::jsonb,$19,$20
+           'UNTESTED',NULL,NULL,$14,$15,$16,'',false,'LOWEST_COST',$17,$18,
+           'videoforge-hosted-revision-config','v1',$19::jsonb,$20,$21
          )`,
         [
           revisionId,
@@ -377,6 +380,7 @@ async function createProject(
           String(style.rows[0].style_id),
           String(style.rows[0].version_id),
           String(style.rows[0].style_profile_hash),
+          PERSONAL_WORKER_MINIMUM_COST_MICRO_USD,
           Math.floor(Math.random() * 2_147_483_647),
           JSON.stringify(revisionPayload),
           revisionHash,
