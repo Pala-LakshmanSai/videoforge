@@ -617,7 +617,7 @@ verification:
   in_progress_for_v2_06:
     status: native_mac_paired_hosted_media_acceptance_pending
     implementation_commit: "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f"
-    source_head_commit: "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f"
+    source_head_commit: "6336a754d1a3de414daf767a98c118def5d2d9bd"
     hosted_ui_repair_commit: "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f"
     hosted_ui_repair_deployment_status: deployed
     worker_source_repair_commit: "0184a66f0532af0b05f5e4f3b79f5289768c120b"
@@ -680,8 +680,9 @@ verification:
       - "CI=1 TURBO_FORCE=true pnpm verify at current HEAD 023d43f (exit 0; 44 Chrome tests; 345 web tests plus 1 skipped; 308 control-plane tests; Cloudflare parity 1/1; worker tests; context and secret checks)."
       - "pnpm context:validate && pnpm validate:v2-06-deployment && pnpm secret:scan && git diff --check at current HEAD (exit 0; JSON 191; evidence refs 77; 1136 tracked files secret scan)."
       - "Owned V2-06 tenant fixture provisioner (exit 0; COMMITTED; three VERIFIED R2/Neon assets; one READY avatar version; one PUBLISHED style version; no project rows)."
-      - "Protected V2-06 redeploy from 023d43f (exit 0; version 33cbef9d-0b86-41f7-8198-5cfe2b44d020; rendered config sha256:3dd5d1a254a64da4e405c08b7190c169238670e5a8d69affd0e94e04e3dcc870)."
-      - "GET /api/v2/hosted/status after 023d43f deployment (exit 0; HTTP 200; deployed commit 023d43f; GPU DISABLED_FAKE_ONLY; provider CPU spend $0)."
+      - "Exact-HEAD V2-06 redeploy from 6336a75 (Worker version 7613d80b-cf7e-49d8-b81b-56ac2b76db32; Worker/public status updated; Wrangler exit 1 because Cloudflare returned workflows.api.error.internal while updating the existing Workflow trigger; no retry performed)."
+      - "GET /api/v2/hosted/status after exact-HEAD redeploy (exit 0; HTTP 200; deployed commit 6336a75; GPU DISABLED_FAKE_ONLY; provider CPU spend $0)."
+      - "wrangler deployments list and wrangler workflows list after exact-HEAD redeploy (exit 0; current Worker version 7613d80b-cf7e-49d8-b81b-56ac2b76db32; existing videoforge-v2-06-staging-video / HostedVideoWorkflow remains listed)."
       - "Real Chrome hosted Create Project attempts after 5e0496b and 023d43f (visible bounded checksum timeout after 32 seconds; exact Neon read-back projects=0); extension file-byte access prerequisite remains unverified and was not changed."
     delivered:
       - "Migration 0032 adds account/workspace-bound worker enrollments, devices, exact input objects, one active lease per attempt/device, append-only events, row-level security, and stale-lease fencing while preserving historical Cloud Run rows for rollback."
@@ -707,11 +708,11 @@ verification:
       - "The user-selected email provider is NONE, so hosted auth is Google-only and email/password stays disabled. Dedicated Google project videoforge-v2-06-staging-0817 and its exact redirect/client exist; live two-user callback acceptance remains pending."
       - "The user has Windows x64 and Mac test devices. Apple Developer Program membership is absent and no longer required for the selected ImageForge-style beta release; native clean-download/install evidence must record any actual warning or bypass behavior."
       - "The exact combined V2-06 activation was approved with a USD 3 finite test cap and USD 2/month R2 ceiling; spend and recurring truth must be rechecked after acceptance."
-      - "Hosted media upload timeout repairs are deployed at 023d43f, but the connected real-Chrome file input still cannot yield readable bytes; do not treat local verification, seeded catalog state, or the status endpoint as hosted media proof."
+      - "Hosted media upload timeout repairs are deployed at 023d43f and the docs/evidence-only HEAD 6336a75 is live, but the connected real-Chrome file input still cannot yield readable bytes; do not treat local verification, seeded catalog state, or the status endpoint as hosted media proof."
     resource_truth:
       external_mutations: bounded_v2_06_deployment_complete_acceptance_pending
       external_mutation_scope: "Three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence."
-      deployments: 8
+      deployments: 9
       installer_builds: 4
       installer_publications: 4
       email_deliveries: 0
@@ -724,16 +725,16 @@ verification:
       runpod_workers_started: 0
       live_runpod_inventory_refreshed: true
       cloudflare:
-        checked_at: "2026-08-18T09:00:10Z"
+        checked_at: "2026-08-18T09:06:58Z"
         account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
         workers_plan: FREE
         payment_method_on_file: true
         workers_after_confirmed_cleanup: 1
         workflows: 1
         worker_name: videoforge-v2-06-staging
-        worker_deployment_version_id: 33cbef9d-0b86-41f7-8198-5cfe2b44d020
-        worker_deployment_commit: 023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f
-        worker_deployment_config_sha256: sha256:3dd5d1a254a64da4e405c08b7190c169238670e5a8d69affd0e94e04e3dcc870
+        worker_deployment_version_id: 7613d80b-cf7e-49d8-b81b-56ac2b76db32
+        worker_deployment_commit: 6336a754d1a3de414daf767a98c118def5d2d9bd
+        worker_deployment_config_sha256: sha256:68e3503daf527b494208329b00cb2d94705c2197e403a4846564222864e8c141
         media_worker_release_version: 0.1.4
         media_worker_release_manifest_sha256: sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b
         workflow_name: videoforge-v2-06-staging-video
