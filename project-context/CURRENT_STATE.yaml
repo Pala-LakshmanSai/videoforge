@@ -50,7 +50,7 @@ repository:
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
   current_source_head: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
-  current_repository_head: "886f631859262f4a0812591c1ec32a3d65467a50"
+  last_verified_repository_head: "886f631859262f4a0812591c1ec32a3d65467a50"
   current_source_head_note: "The current repository source is clean, committed, and provider-free verified at fcc9257. It is a local source repair and is not deployed. The last supplied immutable deployment evidence remains exact HEAD 153cefe with personal-worker release 0.1.6; hosted completion, two-account isolation, Windows lifecycle/parity, backup/restore, rollback, and independent full-checkpoint acceptance remain unproven."
   last_good_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
   last_good_commit_note: "V2-06 staging is deployed from exact HEAD 153cefe with Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c, rendered-config sha256:8f67537d912b2b8d95e00c2af12e931c11ed81b96195b9637d4c05c47de3b2af, and immutable worker release 0.1.6. Source and deployment checks are green; full hosted/device acceptance remains open."
