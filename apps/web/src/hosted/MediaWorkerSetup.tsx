@@ -239,7 +239,9 @@ export function MediaWorkerSetup() {
               <small>
                 {device.status === "BUSY"
                   ? "Rendering or transcribing now"
-                  : lastSeen(device.last_seen_at)}
+                  : device.status === "UPDATE_REQUIRED"
+                    ? `Update the ${device.platform === "WINDOWS" ? "Windows" : "Mac"} beta above, then open it again.`
+                    : lastSeen(device.last_seen_at)}
               </small>
             </div>
             {device.status !== "REVOKED" ? (

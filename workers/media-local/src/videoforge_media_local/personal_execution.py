@@ -25,6 +25,9 @@ from .cloud_job import _local_path
 from .personal_tls import https_context
 
 _SHA256 = __import__("re").compile(r"^sha256:[0-9a-f]{64}$")
+_UUID = __import__("re").compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+)
 _R2_KEY = __import__("re").compile(
     r"^tenant/[A-Za-z0-9._:-]+/workspace/[A-Za-z0-9._:-]+/project/"
     r"[A-Za-z0-9._:-]+/revision/[A-Za-z0-9._:-]+/lane/(?:input|render)/job/"
@@ -89,7 +92,7 @@ def parse_personal_job(value: object) -> PersonalJob:
     if value["schema_version"] != "videoforge-personal-worker-job-spec/v1":
         raise ValueError("Personal worker job version is unsupported")
     attempt_id = value["attempt_id"]
-    if not isinstance(attempt_id, str) or len(attempt_id) > 160:
+    if not isinstance(attempt_id, str) or not _UUID.fullmatch(attempt_id):
         raise ValueError("Personal worker attempt is invalid")
     if value["kind"] not in {"ASR", "RENDER"} or not isinstance(value["input_document"], dict):
         raise ValueError("Personal worker job kind or input is invalid")
@@ -106,7 +109,7 @@ def parse_personal_job(value: object) -> PersonalJob:
             or not item["url"].startswith("https://")
             or not isinstance(item["sha256"], str)
             or not _SHA256.fullmatch(item["sha256"])
-            or not isinstance(item["bytes"], int)
+            or type(item["bytes"]) is not int
             or not 0 < item["bytes"] <= 10 * 1024**3
         ):
             raise ValueError("Personal worker input authority is invalid")
@@ -121,7 +124,8 @@ def parse_personal_job(value: object) -> PersonalJob:
             or not _R2_KEY.fullmatch(item["object_key"])
             or not isinstance(item["sign_url"], str)
             or not item["sign_url"].startswith("https://")
-            or not isinstance(item["max_bytes"], int)
+            or type(item["max_bytes"]) is not int
+            or not 0 < item["max_bytes"] <= 10 * 1024**3
         ):
             raise ValueError("Personal worker output authority is invalid")
     result = value["result"]
@@ -132,6 +136,8 @@ def parse_personal_job(value: object) -> PersonalJob:
         or not _R2_KEY.fullmatch(result["object_key"])
         or not isinstance(result["sign_url"], str)
         or not result["sign_url"].startswith("https://")
+        or type(result["max_bytes"]) is not int
+        or not 0 < result["max_bytes"] <= 1024 * 1024
     ):
         raise ValueError("Personal worker result authority is invalid")
     for key in ("cancellation_url", "completion_url"):
@@ -252,7 +258,12 @@ def _stream_put(port: dict[str, Any], source: BinaryIO, size: int) -> None:
     headers = {str(key): str(value) for key, value in port["requiredHeaders"].items()}
     if headers.get("content-length") != str(size):
         raise ValueError("Personal worker upload length header drifted")
-    connection = http.client.HTTPSConnection(parsed.hostname, parsed.port or 443, timeout=180)
+    connection = http.client.HTTPSConnection(
+        parsed.hostname,
+        parsed.port or 443,
+        timeout=180,
+        context=https_context(),
+    )
     try:
         target = urllib.parse.urlunsplit(("", "", parsed.path, parsed.query, ""))
         connection.request("PUT", target, body=source, headers=headers, encode_chunked=False)
@@ -262,6 +273,15 @@ def _stream_put(port: dict[str, Any], source: BinaryIO, size: int) -> None:
             raise ValueError("Personal worker artifact upload failed")
     finally:
         connection.close()
+
+
+def _completion_is_acknowledged(status: int, value: object) -> bool:
+    return (
+        status == 200
+        and isinstance(value, dict)
+        and value.get("schema_version") == "videoforge-personal-worker-completion-accepted/v1"
+        and value.get("state") in {"SUCCEEDED", "FAILED", "CANCELLED"}
+    )
 
 
 class _CancellationMonitor:
@@ -468,10 +488,11 @@ def execute_personal_job(
                 raise
             finally:
                 monitor.close()
-        if process.returncode != 0:
-            if cancellation_marker(scratch, cancellation_token).exists():
-                status = "CANCELLED"
-                failure_code = None
+        if cancellation_marker(scratch, cancellation_token).exists():
+            status = "CANCELLED"
+            failure_code = None
+        elif process.returncode != 0:
+            pass
         else:
             result = json.loads(stdout)
             primary = _primary_path(scratch, result)
@@ -492,6 +513,8 @@ def execute_personal_job(
                 with primary.open("rb") as source:
                     _stream_put(port, source, size)
             result_bytes = _canonical(result)
+            if len(result_bytes) > job.result["max_bytes"]:
+                raise ValueError("Personal worker result document exceeded its bound")
             result_checksum = f"sha256:{hashlib.sha256(result_bytes).hexdigest()}"
             port = _upload_port(
                 job.result["sign_url"],
@@ -534,7 +557,7 @@ def execute_personal_job(
             attempt = 0
             while time.monotonic() < completion_deadline:
                 try:
-                    response_status, _response = _request_json(
+                    response_status, response = _request_json(
                         job.completion_url,
                         "POST",
                         {
@@ -543,7 +566,7 @@ def execute_personal_job(
                         },
                         completion,
                     )
-                    if response_status in {200, 409}:
+                    if _completion_is_acknowledged(response_status, response):
                         acknowledged = True
                         break
                 except (OSError, ValueError, json.JSONDecodeError):

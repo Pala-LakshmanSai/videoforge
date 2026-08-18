@@ -105,4 +105,21 @@ describe("personal worker onboarding", () => {
       ),
     );
   });
+
+  it("gives a deterministic reinstall instruction when a worker update is required", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          ...workerList,
+          devices: [{ ...workerList.devices[0], status: "UPDATE_REQUIRED" }],
+        }),
+      ),
+    );
+    render(<MediaWorkerSetup />);
+
+    expect(
+      await screen.findByText("Update the Windows beta above, then open it again."),
+    ).toBeInTheDocument();
+  });
 });

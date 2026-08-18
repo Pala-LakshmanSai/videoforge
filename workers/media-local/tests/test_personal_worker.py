@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 import ssl
 import subprocess
@@ -8,7 +9,12 @@ import unittest
 from pathlib import Path, PurePosixPath
 from unittest.mock import Mock, patch
 
-from videoforge_media_local.personal_execution import _CancellationMonitor, parse_personal_job
+from videoforge_media_local.personal_execution import (
+    _CancellationMonitor,
+    _completion_is_acknowledged,
+    _stream_put,
+    parse_personal_job,
+)
 from videoforge_media_local.personal_worker import (
     _build_configuration,
     _is_external_macos_bundle,
@@ -101,6 +107,57 @@ class PersonalWorkerContractTests(unittest.TestCase):
         insecure["completion_url"] = "http://localhost/complete"
         with self.assertRaisesRegex(ValueError, "control URL"):
             parse_personal_job(insecure)
+
+        invalid_attempt = job()
+        invalid_attempt["attempt_id"] = "attempt-without-a-uuid"
+        with self.assertRaisesRegex(ValueError, "attempt"):
+            parse_personal_job(invalid_attempt)
+
+        oversized_result = job()
+        oversized_result["result"]["max_bytes"] = 1_048_577  # type: ignore[index]
+        with self.assertRaisesRegex(ValueError, "result authority"):
+            parse_personal_job(oversized_result)
+
+    def test_stream_upload_uses_the_bundled_certificate_authority(self) -> None:
+        response = Mock(status=204)
+        response.read.return_value = b""
+        connection = Mock()
+        connection.getresponse.return_value = response
+        with (
+            patch(
+                "videoforge_media_local.personal_execution.http.client.HTTPSConnection",
+                return_value=connection,
+            ) as https_connection,
+            patch(
+                "videoforge_media_local.personal_execution.https_context",
+                return_value=object(),
+            ) as bundled_context,
+        ):
+            _stream_put(
+                {
+                    "url": "https://objects.example.test/upload?signature=redacted",
+                    "requiredHeaders": {"content-length": "7"},
+                },
+                io.BytesIO(b"payload"),
+                7,
+            )
+        https_connection.assert_called_once_with(
+            "objects.example.test", 443, timeout=180, context=bundled_context.return_value
+        )
+        connection.request.assert_called_once()
+
+    def test_completion_requires_the_exact_accepted_response(self) -> None:
+        self.assertTrue(
+            _completion_is_acknowledged(
+                200,
+                {
+                    "schema_version": "videoforge-personal-worker-completion-accepted/v1",
+                    "state": "CANCELLED",
+                },
+            )
+        )
+        self.assertFalse(_completion_is_acknowledged(409, {"error": {"code": "STALE"}}))
+        self.assertFalse(_completion_is_acknowledged(200, {"state": "SUCCEEDED"}))
 
     def test_source_mode_requires_an_explicit_https_origin(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
