@@ -161,24 +161,30 @@ async function createEnrollment(request: Request, config: HostedRuntimeConfigura
   const pollToken = randomToken();
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
-    await pool.query(
-      `INSERT INTO media_worker_enrollments (
-         id, display_name, platform, architecture, worker_version, protocol_version,
-         execution_bundle_sha256, installation_id, pkce_challenge, poll_token_sha256, state, expires_at
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'PENDING',now() + interval '10 minutes')`,
-      [
-        id,
-        enrollment.displayName,
-        enrollment.platform,
-        enrollment.architecture,
-        enrollment.workerVersion,
-        enrollment.protocolVersion,
-        enrollment.executionBundleSha256,
-        enrollment.installationId,
-        enrollment.pkceChallenge,
-        await sha256(pollToken),
-      ],
-    );
+    await createNeonExecutor(pool).transaction(async (transaction) => {
+      // Pending enrollments are system-scoped until the signed-in browser approves them.  Clear
+      // any connection-level tenant context before the insert so a reused Neon session cannot
+      // make this unauthenticated system write look like a cross-tenant mutation.
+      await transaction.query(`SELECT set_config($1, $2, true)`, ["videoforge.account_id", ""]);
+      await transaction.query(
+        `INSERT INTO media_worker_enrollments (
+           id, display_name, platform, architecture, worker_version, protocol_version,
+           execution_bundle_sha256, installation_id, pkce_challenge, poll_token_sha256, state, expires_at
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'PENDING',now() + interval '10 minutes')`,
+        [
+          id,
+          enrollment.displayName,
+          String(enrollment.platform),
+          String(enrollment.architecture),
+          enrollment.workerVersion,
+          enrollment.protocolVersion,
+          enrollment.executionBundleSha256,
+          enrollment.installationId,
+          enrollment.pkceChallenge,
+          await sha256(pollToken),
+        ],
+      );
+    });
     return json(
       {
         schema_version: "videoforge-media-worker-enrollment-created/v1",
