@@ -1,0 +1,292 @@
+{
+  "schema_version": "videoforge.v2-06-bounded-completion-handoff/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-18T17:57:22Z",
+  "result": "FAIL_REMAINING_LIVE_AND_DEVICE_GATES",
+  "audit_independence": "SAME_CHAT_COMPLETION_HANDOFF_NOT_INDEPENDENT_AUDIT",
+  "authority": {
+    "finite_external_cap_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "runpod_mode": "READ_ONLY_ZERO_MUTATION",
+    "v2_07_authorized": false
+  },
+  "source": {
+    "branch": "codex/serverless-v2-roadmap",
+    "deployed_application_commit": "8e965758247f4cf222e0446f723b007af80297a7",
+    "working_tree_before_handoff": "clean",
+    "pushed": true
+  },
+  "neon": {
+    "project_id": "ancient-morning-99567618",
+    "branch_id": "br-floral-hill-az7ib4ir",
+    "database": "neondb",
+    "region": "aws-ap-southeast-1",
+    "migration_0036": {
+      "status": "APPLIED",
+      "sha256": "sha256:42cd8f6f0a2d9cb1e214eb8de49cc33a05dd787571e86051dad4a01e1a08528a",
+      "live_checks": {
+        "migration_exact": true,
+        "runtime_role_safe": true,
+        "unprotected_tenant_tables": 0,
+        "missing_grants": 0,
+        "extra_grants": 0,
+        "missing_functions": 0,
+        "extra_functions": 0,
+        "schema_safe": true,
+        "google_constraint_valid": true
+      }
+    },
+    "backup_restore": "NOT_RUN_PROTECTED_SERVICE_PASSWORD_AND_PASSPHRASE_FILES_ABSENT",
+    "disposable_restore_database_created": false
+  },
+  "cloudflare": {
+    "worker": "videoforge-v2-06-staging",
+    "workflow": "videoforge-v2-06-staging-video",
+    "workflow_class": "HostedVideoWorkflow",
+    "r2_bucket": "videoforge-v2-06-staging-private",
+    "origin": "https://videoforge-v2-06-staging.lakshmansai121.workers.dev",
+    "active_version_id": "8e036f86-b79d-4ab6-9de4-97b9293747ec",
+    "deployed_commit": "8e965758247f4cf222e0446f723b007af80297a7",
+    "rendered_config_sha256": "sha256:f08989e00b52e8a96564abf2c62fb66d5abde8049e06abe15f019c4f7e821317",
+    "status": "HTTP_200_GPU_DISABLED_PROVIDER_CPU_0",
+    "unauthenticated_negatives": {
+      "/api/v2/tenant": 401,
+      "/api/v2/hosted/project-catalog": 401,
+      "/api/v2/hosted/queue": 401
+    },
+    "secret_names_only": [
+      "BETTER_AUTH_SECRET",
+      "DATABASE_URL",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "MEDIA_WORKER_TOKEN_SECRET",
+      "R2_ACCESS_KEY_ID",
+      "R2_SECRET_ACCESS_KEY",
+      "WORKFLOW_CALLBACK_SECRET"
+    ],
+    "r2": {
+      "storage_class": "Standard",
+      "object_count_observed": 12,
+      "bytes_observed": 29884416,
+      "public_dev_url": false,
+      "automatic_final_object_expiry": false,
+      "multipart_abort_days": 7,
+      "cors": "EXACT_STAGING_ORIGIN_VERIFIED"
+    }
+  },
+  "rollback": {
+    "wrong_origin_version": "04ae7286-fa2d-42c6-a05f-1a09a82fbe67",
+    "approved_prior_version": "7d66d976-a16f-46f6-8888-ebbb5f24217c",
+    "prior_commit": "153cefef40739c35b84ed633fc4978f8a5e9746b",
+    "rollback_result": "SUCCESS_HEALTHY_HTTP_200",
+    "restore_version": "8e036f86-b79d-4ab6-9de4-97b9293747ec",
+    "restore_result": "SUCCESS_HEALTHY_HTTP_200",
+    "migration_policy": "ADDITIVE_0029_THROUGH_0036_RETAINED"
+  },
+  "worker_release": {
+    "tag": "media-worker-v0.1.8",
+    "workflow_run_id": "32165893563",
+    "workflow_result": "success",
+    "target_commit": "0c20f7d2bb05ca48d4fbb10b7b11385b7add8819",
+    "release_manifest_sha256": "sha256:0e71bc43763a3f5f9bcccd1477e78d8d0f7f81e366a693b8ee07ca04b5f2cc0b",
+    "execution_bundle_sha256": "sha256:5433c24f6a29f9171ef172826a9162416dea565d5041b3970cc54f9abcbb5101",
+    "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+    "macos": {
+      "sha256": "sha256:f26b1f4bc1df612c304e72b6e975d73460fc81288711c51ba3cf5cdc33bb498a",
+      "size_bytes": 285620004,
+      "trust": "AD_HOC_BETA",
+      "dmg_verified": true,
+      "deep_strict_codesign_verified": true,
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ],
+      "spctl_exit": 3,
+      "spctl_result": "EXPECTED_REJECTION_FOR_NON_NOTARIZED_AD_HOC_BETA"
+    },
+    "windows": {
+      "sha256": "sha256:b2da4298fd7530f5d0a34a1db8942e44b103cf6495ba9ba2d0761a58f7395d48",
+      "size_bytes": 225807468,
+      "trust": "UNSIGNED_BETA",
+      "ci_build_and_package": "PASSED",
+      "native_execution": "NOT_RUN_WINDOWS_DEVICE_UNAVAILABLE"
+    },
+    "github_native_immutable_release_flag": false,
+    "project_immutability_control": "WORKFLOW_REFUSES_EXISTING_TAG_OR_ASSET_REPLACEMENT"
+  },
+  "mac_native": {
+    "host": "macOS 26.3 build 25D125 arm64",
+    "installed_version": "0.1.8",
+    "installed_path": "/Users/lakshmansai/Applications/VideoForge Worker.app",
+    "update_from": "0.1.6",
+    "paired_credential_reused_without_value_access": true,
+    "launch_agent": "com.videoforge.personal-media-worker",
+    "launch_agent_program_matches_installed_0_1_8": true,
+    "native_bootout_bootstrap_restart": "PASSED",
+    "final_state": "RUNNING_BACKGROUND",
+    "not_proven": [
+      "authenticated Settings ONLINE observation after 0.1.8",
+      "native uninstall and remote revoke",
+      "hosted ASR/render/cancel/delete",
+      "offline UI transition and reconnect UI"
+    ]
+  },
+  "runpod": {
+    "inventory_mode": "READ_ONLY",
+    "pods": 0,
+    "serverless_endpoints": 0,
+    "active_or_flex_workers": 0,
+    "private_templates": 0,
+    "clusters": 0,
+    "retained_volumes": 2,
+    "retained_volume_gb_each": 50,
+    "retained_storage_usd_per_month": 7,
+    "current_rate_display_usd_per_hour": 0.01,
+    "today_gpu_usd": 0,
+    "today_cpu_usd": 0,
+    "today_endpoint_usd": 0,
+    "today_serverless_usd": 0,
+    "mutation_calls": 0
+  },
+  "cloud_run": {
+    "active_v2_06_role": "NONE",
+    "reason": "DEC_PERSONAL_WORKER_001 superseded Cloud Run production execution; account-owned Windows and macOS workers are the active CPU path.",
+    "scale_to_zero_or_parity_claim": "NOT_APPLICABLE_AND_NOT_CLAIMED"
+  },
+  "commands": [
+    {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "result": "28-task canonical graph; control-plane 309; web 351 plus 1 skipped; worker suites; Cloudflare parity 1/1; installed-Chrome fixture 44/44"
+    },
+    {
+      "command": "GitHub Actions media worker release run 32165893563",
+      "exit_code": 0,
+      "result": "Windows x64, macOS universal2, and publish jobs passed"
+    },
+    {
+      "command": "wrangler rollback 7d66d976-a16f-46f6-8888-ebbb5f24217c",
+      "exit_code": 0
+    },
+    {
+      "command": "verify rollback before and after snapshots",
+      "exit_code": 0,
+      "result": "wrong-origin active version rolled back to exact prior version; prior status HTTP 200"
+    },
+    {
+      "command": "wrangler deploy final rendered config",
+      "exit_code": 0,
+      "result": "version 8e036f86-b79d-4ab6-9de4-97b9293747ec"
+    },
+    {
+      "command": "verify secret allowlist, exact R2 CORS, and private R2 state",
+      "exit_code": 0
+    },
+    {
+      "command": "hdiutil verify; codesign --verify --deep --strict; architecture inspection",
+      "exit_code": 0
+    },
+    {
+      "command": "spctl --assess --type execute installed app",
+      "exit_code": 3,
+      "result": "expected selected ad-hoc/non-notarized beta rejection"
+    },
+    {
+      "command": "native LaunchAgent bootout then bootstrap",
+      "exit_code": 0,
+      "result": "0.1.8 background worker returned RUNNING"
+    },
+    {
+      "command": "pnpm context:validate",
+      "exit_code": 0,
+      "result": "199 JSON files; 90 evidence references; 31 read profiles; 42 decisions; 19 gates"
+    },
+    {
+      "command": "pnpm validate:v2-06-deployment",
+      "exit_code": 0,
+      "result": "fail-closed personal-worker-only deployment templates consistent"
+    },
+    {
+      "command": "pnpm secret:scan",
+      "exit_code": 0,
+      "result": "tracked-file secret scan passed"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "diagnostic_nonzero_exits": [
+    {
+      "exit_code": 56,
+      "cause": "post-rollback probe used /api/hosted/status instead of /api/v2/hosted/status; the corrected route returned HTTP 200"
+    },
+    {
+      "exit_code": 1,
+      "cause": "rollback verifier after-phase CLI parser rejected its documented argument form; fixed by commit 8e96575 and covered by 3 passing tests"
+    },
+    {
+      "exit_code": 2,
+      "cause": "first private-R2 verifier invocation omitted its required config argv; corrected invocation passed"
+    },
+    {
+      "exit_code": 127,
+      "cause": "python command is absent; python3 is the installed interpreter"
+    }
+  ],
+  "findings": {
+    "p0": [],
+    "p1": [
+      {
+        "id": "V2-06-P1-RENDER-PLAN-MATERIALIZATION",
+        "status": "OPEN",
+        "detail": "The ordinary hosted browser flow commits only the voiceover and never creates hosted_render_plans. The runtime role is intentionally SELECT-only and renderHandoff returns HOSTED_RENDER_PLAN_NOT_READY without activation-owner materialization. Migration 0037 or a new privileged materializer was outside the exact migration-0036 authority."
+      },
+      {
+        "id": "V2-06-P1-LIVE-JOURNEY",
+        "status": "OPEN",
+        "detail": "Two-account hosted Google/Better Auth, R2/Neon isolation, ASR/render, recovery, cancel, explicit delete, and authenticated real-Chrome acceptance were not completed. Local fixtures are not deployment proof."
+      },
+      {
+        "id": "V2-06-P1-BACKUP-RESTORE",
+        "status": "OPEN",
+        "detail": "Fresh encrypted backup and disposable restore were not run because the required mode-0600 PostgreSQL service/password and backup-passphrase files were absent. No credential value was retrieved or exposed and no disposable database was created."
+      },
+      {
+        "id": "V2-06-P1-WINDOWS-NATIVE-PARITY",
+        "status": "OPEN",
+        "detail": "The exact Windows installer is published, hashed, and CI-built, but clean install, SmartScreen observation, pairing, autostart, sleep/reconnect, update/remove, and Mac parity require the Windows device tomorrow."
+      }
+    ],
+    "p2": [
+      {
+        "id": "V2-06-P2-MAC-LIFECYCLE",
+        "status": "PARTIAL",
+        "detail": "Mac 0.1.8 clean DMG install/update, seal, architecture, LaunchAgent, retained pairing, and restart passed; authenticated ONLINE UI, offline UI, remote revoke, and native uninstall remain unproven."
+      },
+      {
+        "id": "V2-06-P2-GITHUB-NATIVE-IMMUTABILITY",
+        "status": "OPEN",
+        "detail": "The release workflow refuses replacement of an existing tag or asset, but the repository-wide GitHub immutable-releases setting is disabled and the 0.1.8 release reports isImmutable=false. Enabling the repository-wide setting was outside the bounded release publication scope."
+      }
+    ]
+  },
+  "spend_truth": {
+    "new_v2_06_external_spend_usd": 0,
+    "finite_cap_usd": 3,
+    "finite_cap_remaining_usd": 3,
+    "r2_observed_gb": 0.0278,
+    "r2_recurring_due_usd_per_month": 0,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "neon_base_usd_per_month": 0,
+    "cloudflare_workers_base_usd_per_month": 0,
+    "provider_cpu_usd": 0,
+    "runpod_retained_storage_usd_per_month_separate": 7
+  },
+  "successor_safety": {
+    "v2_07_safe_to_begin": false,
+    "gpu_transport": "DISABLED_FAKE_ONLY",
+    "reason": "V2-06 remains FAIL on live journey, backup/restore, Windows parity, and render-plan authority. RunPod mutation remains unauthorized."
+  }
+}

@@ -106,11 +106,11 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
-  last_verified_repository_head: "886f631859262f4a0812591c1ec32a3d65467a50"
-  current_source_head_note: "The current repository source is clean, committed, and provider-free verified at fcc9257. It is a local source repair and is not deployed. The last supplied immutable deployment evidence remains exact HEAD 153cefe with personal-worker release 0.1.6; hosted completion, two-account isolation, Windows lifecycle/parity, backup/restore, rollback, and independent full-checkpoint acceptance remain unproven."
-  last_good_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
-  last_good_commit_note: "V2-06 staging is deployed from exact HEAD 153cefe with Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c, rendered-config sha256:8f67537d912b2b8d95e00c2af12e931c11ed81b96195b9637d4c05c47de3b2af, and immutable worker release 0.1.6. Source and deployment checks are green; full hosted/device acceptance remains open."
+  current_source_head: "8e965758247f4cf222e0446f723b007af80297a7"
+  last_verified_repository_head: "8e965758247f4cf222e0446f723b007af80297a7"
+  current_source_head_note: "Application commit 8e96575 is provider-free verified and deployed to the exact V2-06 Cloudflare Worker as version 8e036f86-b79d-4ab6-9de4-97b9293747ec with release 0.1.8. Migration 0036, rollback/restore, exact secret names, CORS/private-R2 state, and the Mac 0.1.8 install/restart are proven. Full V2-06 remains FAIL on live render-plan materialization, two-account hosted acceptance, fresh backup/restore, Windows native parity, and independent audit."
+  last_good_commit: "8e965758247f4cf222e0446f723b007af80297a7"
+  last_good_commit_note: "V2-06 staging is deployed from exact application commit 8e96575 with Worker version 8e036f86-b79d-4ab6-9de4-97b9293747ec, rendered-config sha256:f08989e00b52e8a96564abf2c62fb66d5abde8049e06abe15f019c4f7e821317, and worker release 0.1.8. Source/deployment/Mac update checks are green; full hosted and Windows acceptance remains open."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -194,7 +194,7 @@ roadmap_state:
   V2-03: complete_green_independently_reaudited
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
-  V2-06: source_repair_committed_hosted_media_acceptance_pending
+  V2-06: deployed_partial_completion_live_and_windows_acceptance_blocked
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
@@ -300,7 +300,7 @@ last_known_provider_resource_truth:
   current_day_cloud_cpu_usd: 0
   current_day_serverless_usd: 0
   auto_pay: DISABLED
-  note: "This is immutable historical inventory evidence only. No current live refresh is authorized. Zero workers in that snapshot means zero GPU compute at that observation, not zero fixed retained-volume billing; billing data may lag by one hour."
+  note: "Current 2026-08-18 read-only refresh shows zero Pods, endpoints, active/flex workers, private templates, and clusters. The two retained 50 GB EU-RO-1 volumes continue at USD 7/month total; billing data may lag by one hour. No RunPod mutation occurred."
 
 blocking_gates_for_production:
   - GATE_TENANCY_001
@@ -331,7 +331,7 @@ recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
   milestone: hosted_staging_and_personal_media_workers
-  status: bounded_v2_06_completion_in_progress
+  status: bounded_v2_06_completion_partial_live_gates_remaining
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
   authorization_status: bounded_v2_06_completion_approved
   task_stage: bounded_mutation
@@ -420,11 +420,11 @@ recommended_next_task:
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_source_repair_committed_hosted_reverification_pending
-  verified_commit: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
-  verified_commit_note: "Canonical provider-free verification passes at source repair commit fcc9257 (executed before the documentation-only handoff HEAD 886f631). This source is not deployed. The last supplied immutable deployment evidence is exact HEAD 153cefe as Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c with personal-worker release 0.1.6; hosted completion, two-account non-superuser RLS/R2 isolation, Windows lifecycle/parity, backup/restore, rollback, and independent hosted acceptance remain blocked."
+  state: v2_06_deployed_partial_completion_live_gates_remaining
+  verified_commit: "8e965758247f4cf222e0446f723b007af80297a7"
+  verified_commit_note: "Canonical provider-free verification passes at deployed application commit 8e96575: control-plane 309, web 351 plus one skipped, worker suites, Cloudflare-local 1/1, and installed-Chrome fixture 44/44. Live migration 0036, exact deployment, rollback/restore, release 0.1.8, and Mac update/restart are proven. Ordinary hosted render-plan materialization, two-account hosted isolation/journey, fresh backup/restore, Windows lifecycle/parity, Mac remove/offline UI, and independent acceptance remain blocked."
   predecessor_verified_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-fcc9257/acceptance.json
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-bounded-completion-8e96575/acceptance.json
   latest_live_check:
     recorded_at_utc: "2026-08-18T13:33:02Z"
     evidence: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
@@ -789,19 +789,19 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: source_repair_committed_hosted_reverification_pending
-    implementation_commit: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
-    source_head_commit: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
-    current_source_deployment_status: not_deployed
+    status: deployed_partial_completion_live_and_windows_acceptance_blocked
+    implementation_commit: "8e965758247f4cf222e0446f723b007af80297a7"
+    source_head_commit: "8e965758247f4cf222e0446f723b007af80297a7"
+    current_source_deployment_status: deployed_worker_version_8e036f86_b79d_4ab6_9de4_97b9293747ec
     previous_deployed_source_head: "153cefef40739c35b84ed633fc4978f8a5e9746b"
     hosted_ui_repair_commit: "0d850bfd6e5a413d744578e1cd45f07cba71b619"
     hosted_ui_repair_deployment_status: deployed
     worker_source_repair_commit: "5a192d3e1bf97e146f700031896ed5835a40921a"
     worker_contract_fix_commit: "5a192d3e1bf97e146f700031896ed5835a40921a"
-    worker_source_repair_deployment_status: release_0_1_6_published_and_installed_mac_only
+    worker_source_repair_deployment_status: release_0_1_8_published_ci_built_both_platforms_installed_mac_only
     previous_worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-fcc9257/acceptance.json
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-bounded-completion-8e96575/acceptance.json
     previous_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
     live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
     runpod_live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
@@ -810,6 +810,13 @@ verification:
     post_repair_audit_evidence: evidence/acceptance/VF-10-06/2026-08-17-post-repair-live-audit/acceptance.json
     worker_startup_repair_release_evidence: evidence/acceptance/VF-10-06/2026-08-18-worker-startup-repair-release/acceptance.json
     commands:
+      - "Migration 0036 live transaction and exact runtime-grant verification (exit 0; migration hash exact; schema/role safe; zero missing/extra grants/functions; all tenant tables protected)."
+      - "GitHub media-worker-v0.1.8 release workflow 32165893563 (exit 0; Windows x64, macOS universal2, and publish jobs passed; manifest sha256:0e71bc43763a3f5f9bcccd1477e78d8d0f7f81e366a693b8ee07ca04b5f2cc0b)."
+      - "Approved Cloudflare rollback to version 7d66d976-a16f-46f6-8888-ebbb5f24217c and health check (exit 0; HTTP 200; commit 153cefe), followed by restored deployment version 8e036f86-b79d-4ab6-9de4-97b9293747ec (exit 0; HTTP 200; commit 8e96575)."
+      - "Exact eight-name Worker secret allowlist, exact-origin R2 CORS, and private Standard R2 state verification (exit 0; dev URL disabled; no final-object expiry; multipart abort only)."
+      - "Unauthenticated GETs for /api/v2/tenant, /api/v2/hosted/project-catalog, and /api/v2/hosted/queue after final deployment (exit 0; all HTTP 401)."
+      - "Mac 0.1.8 DMG SHA/size, hdiutil verification, deep/strict ad-hoc seal, universal2 architecture, mounted install/update, and LaunchAgent bootout/bootstrap restart (exit 0); spctl returned expected ad-hoc/non-notarized rejection exit 3."
+      - "CI=1 TURBO_FORCE=true pnpm verify at 8e96575 (exit 0; canonical graph; control-plane 309; web 351 plus 1 skipped; worker suites; Cloudflare parity 1/1; installed-Chrome fixture 44/44)."
       - "CI=1 TURBO_FORCE=true pnpm verify (exit 0; 28/28 tasks; web 330/330 plus 1 skipped; pipeline 120/120; Cloudflare-local 1/1; installed-Chrome fixture 44/44)"
       - "pnpm context:validate (exit 0; JSON 178; evidence refs 63; profiles 31; decisions 42; gates 19)"
       - "node scripts/validate-v2-06-deployment.mjs (exit 0)"
@@ -905,15 +912,16 @@ verification:
       - "The user-selected email provider is NONE, so hosted auth is Google-only and email/password stays disabled. Dedicated Google project videoforge-v2-06-staging-0817 and its exact redirect/client exist; live two-user callback acceptance remains pending."
       - "The user has Windows x64 and Mac test devices. Apple Developer Program membership is absent and no longer required for the selected ImageForge-style beta release; native clean-download/install evidence must record any actual warning or bypass behavior."
       - "The exact combined V2-06 activation was approved with a USD 3 finite test cap and USD 2/month R2 ceiling; spend and recurring truth must be rechecked after acceptance."
-      - "The last supplied 153cefe hosted deployment includes the bounded file-access diagnostic, cancellation invariant repair, idempotent cancellation recovery action, and released 0.1.6 worker contract. The new fcc9257 source repair is not deployed; do not treat local result bytes as hosted media proof."
-      - "The immutable media-worker-v0.1.6 release is published and installed on the Mac only. Windows clean install, pairing, lifecycle, and parity remain open; the stale offline Mac device was left in place."
+      - "Application commit 8e96575 is deployed as Worker version 8e036f86-b79d-4ab6-9de4-97b9293747ec with release 0.1.8. Ordinary browser project commit still cannot materialize the activation-owner-only hosted_render_plans row, so do not treat local fixtures as hosted render proof."
+      - "Media-worker-v0.1.8 is published for both platforms and installed/restarted on the Mac. Windows clean install, pairing, lifecycle, and parity remain open; Mac authenticated ONLINE/offline/remove UI acceptance is also incomplete."
+      - "Fresh encrypted backup and disposable restore remain open because protected mode-0600 PostgreSQL service/password and passphrase inputs were not present; no credential value was retrieved and no disposable database was created."
     resource_truth:
-      external_mutations: historical_bounded_v2_06_staging_deployment_acceptance_pending
-      external_mutation_scope: "Historical immutable deployment evidence only: three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence. No mutation occurred for source repair fcc9257."
-      truth_basis: immutable_historical_evidence_not_current_source_or_live_refresh
-      deployments: 14
-      installer_builds: 4
-      installer_publications: 4
+      external_mutations: bounded_v2_06_completion_partial_acceptance
+      external_mutation_scope: "Current grant used only the exact V2-06 Worker/Workflow/private R2 bucket, Neon migration 0036, GitHub worker release publication, Cloudflare rollback/restore, and Mac installation. No RunPod, GPU, volume, unrelated resource, disposable database, backup/restore, or V2-07 mutation occurred."
+      truth_basis: current_live_refresh_plus_immutable_deployment_and_release_evidence
+      deployments: 17
+      installer_builds: 6
+      installer_publications: 6
       email_deliveries: 0
       paid_requests: 0
       external_spend_usd: 0
@@ -922,21 +930,21 @@ verification:
       runpod_mutating_calls: 0
       runpod_read_only_dashboard_inventory_completed: true
       runpod_workers_started: 0
-      live_runpod_inventory_refreshed: false
-      live_state_basis: immutable_historical_evidence_only_no_current_read_only_grant
+      live_runpod_inventory_refreshed: true
+      live_state_basis: current_live_read_only_cloudflare_neon_runpod_and_release_evidence
       cloudflare:
-        checked_at: "2026-08-18T13:33:02Z"
+        checked_at: "2026-08-18T17:57:22Z"
         account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
         workers_plan: FREE
         payment_method_on_file: true
         workers_after_confirmed_cleanup: 1
         workflows: 1
         worker_name: videoforge-v2-06-staging
-        worker_deployment_version_id: 7d66d976-a16f-46f6-8888-ebbb5f24217c
-        worker_deployment_commit: 153cefef40739c35b84ed633fc4978f8a5e9746b
-        worker_deployment_config_sha256: sha256:8f67537d912b2b8d95e00c2af12e931c11ed81b96195b9637d4c05c47de3b2af
-        media_worker_release_version: 0.1.6
-        media_worker_release_manifest_sha256: sha256:fed1186e65ca2c4aa373568e562fff67d7d1dc6d01723ddfbd9aae71ba6a0ec2
+        worker_deployment_version_id: 8e036f86-b79d-4ab6-9de4-97b9293747ec
+        worker_deployment_commit: 8e965758247f4cf222e0446f723b007af80297a7
+        worker_deployment_config_sha256: sha256:f08989e00b52e8a96564abf2c62fb66d5abde8049e06abe15f019c4f7e821317
+        media_worker_release_version: 0.1.8
+        media_worker_release_manifest_sha256: sha256:0e71bc43763a3f5f9bcccd1477e78d8d0f7f81e366a693b8ee07ca04b5f2cc0b
         workflow_name: videoforge-v2-06-staging-video
         workflow_class: HostedVideoWorkflow
         r2_subscription_active: true
@@ -953,10 +961,10 @@ verification:
         avatar_version_state: READY
         style_version_state: PUBLISHED
         project_creation_blocker: CHROME_FILE_BYTES_UNREADABLE_EXTENSION_PERMISSION_PENDING
-      source_head_commit: fcc925732fef321eb0cfa094d24fdfac05e80df3
-      deployed_implementation_commit: 153cefef40739c35b84ed633fc4978f8a5e9746b
-      source_deployment_parity: false
-      worker_source_repair_release_status: release_0_1_6_published_installed_mac_only
+      source_head_commit: 8e965758247f4cf222e0446f723b007af80297a7
+      deployed_implementation_commit: 8e965758247f4cf222e0446f723b007af80297a7
+      source_deployment_parity: true
+      worker_source_repair_release_status: release_0_1_8_published_both_platforms_installed_mac_only
       neon:
         checked_at: "2026-08-17T17:36:31Z"
         organization_id_sha256: "sha256:1a80a1978aaf55071ebade555193753126029390191658a7f700bbd06ea07044"
@@ -966,7 +974,7 @@ verification:
         videoforge_project_id: ancient-morning-99567618
         videoforge_project_region: AWS_AP_SOUTHEAST_1_SINGAPORE
         source_expected_migration_head: 36
-        last_supplied_deployed_migration_head: 35
+        last_supplied_deployed_migration_head: 36
         runtime_role: videoforge_v2_06_runtime
         runtime_grants_verified: true
         runtime_force_rls_verified: true
@@ -985,7 +993,7 @@ verification:
         oauth_audience: EXTERNAL_TESTING
         test_users: 2
       runpod:
-        checked_at: "2026-08-17T10:05:45Z"
+        checked_at: "2026-08-18T17:00:00Z"
         account_label: sujal
         pods: 0
         private_templates: 0
@@ -1007,7 +1015,9 @@ verification:
         displayed_current_spend_rate_usd_per_hour_rounded: 0.01
         current_day_cloud_gpu_usd: 0
         current_day_cloud_cpu_usd: 0
+        current_day_endpoint_usd: 0
         current_day_serverless_usd: 0
+        current_day_storage_usd_displayed: 0.165
         auto_pay: DISABLED
         billing_data_lag: UP_TO_ONE_HOUR
       release_inputs:
