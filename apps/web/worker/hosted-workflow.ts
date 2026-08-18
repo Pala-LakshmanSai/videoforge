@@ -83,6 +83,13 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
                   }),
                 );
                 await transaction.query(
+                  `SELECT id
+                     FROM media_worker_devices
+                    WHERE id = $1 AND account_id = $2 AND workspace_id = $3
+                    FOR UPDATE`,
+                  [lease.device_id, params.accountId, params.workspaceId],
+                );
+                await transaction.query(
                   `INSERT INTO media_worker_events (
                      id, account_id, workspace_id, device_id, lease_id, sequence, kind,
                      facts_sha256, occurred_at
@@ -130,7 +137,13 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
                   AND lease_expires_at > now()`,
               [params.attemptId],
             );
-            if (Date.now() >= new Date(attempt.deadline_at).getTime()) {
+            const databaseClock = await transaction.query<{ observed_at: Date | string }>(
+              `SELECT now() AS observed_at`,
+            );
+            if (
+              new Date(databaseClock.rows[0]!.observed_at).getTime() >=
+              new Date(attempt.deadline_at).getTime()
+            ) {
               const deadlineLeases = await transaction.query<{
                 id: string;
                 device_id: string;

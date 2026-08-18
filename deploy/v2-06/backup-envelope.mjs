@@ -31,11 +31,9 @@ const requirePrivateFile = async (file, label) => {
 const passphrase = async (file) => {
   await requirePrivateFile(file, "passphrase file");
   const bytes = await readFile(file);
-  if (
-    !bytes.length ||
-    bytes.subarray(0, bytes.indexOf(0x0a) === -1 ? bytes.length : bytes.indexOf(0x0a)).length === 0
-  )
-    fail("passphrase file must have a non-empty first line");
+  const text = bytes.toString("utf8");
+  if (!Buffer.from(text, "utf8").equals(bytes) || !/^[^\r\n\0]+(?:\r?\n)?$/u.test(text))
+    fail("passphrase file must contain exactly one non-empty line");
   return bytes;
 };
 
@@ -70,7 +68,7 @@ const packEnvelope = async (ciphertextFile, outputFile, passphraseFile) => {
   await requirePrivateFile(ciphertextFile, "encrypted backup");
   const key = await passphrase(passphraseFile);
   const tag = await hmacFile(ciphertextFile, key);
-  const output = createWriteStream(outputFile, { flags: "w", mode: 0o600 });
+  const output = createWriteStream(outputFile, { flags: "wx", mode: 0o600 });
   output.write(
     Buffer.concat([
       MAGIC,
@@ -80,6 +78,7 @@ const packEnvelope = async (ciphertextFile, outputFile, passphraseFile) => {
     ]),
   );
   await pipeline(createReadStream(ciphertextFile), output);
+  await requirePrivateFile(outputFile, "backup envelope");
 };
 
 const unpackEnvelope = async (inputFile, ciphertextFile, passphraseFile) => {
@@ -88,7 +87,7 @@ const unpackEnvelope = async (inputFile, ciphertextFile, passphraseFile) => {
   const actualTag = await hmacFile(inputFile, key, payloadStart);
   if (actualTag.length !== expectedTag.length || !timingSafeEqual(actualTag, expectedTag))
     fail("backup envelope integrity check failed");
-  const output = createWriteStream(ciphertextFile, { flags: "w", mode: 0o600 });
+  const output = createWriteStream(ciphertextFile, { flags: "wx", mode: 0o600 });
   await pipeline(createReadStream(inputFile, { start: payloadStart }), output);
   await requirePrivateFile(ciphertextFile, "verified encrypted backup");
 };

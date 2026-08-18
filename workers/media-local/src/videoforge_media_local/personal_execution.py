@@ -17,7 +17,7 @@ import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, Callable
 
 from videoforge_image_media.local_cli import cancellation_marker
 
@@ -33,6 +33,11 @@ _R2_KEY = __import__("re").compile(
     r"[A-Za-z0-9._:-]+/revision/[A-Za-z0-9._:-]+/lane/(?:input|render)/job/"
     r"[A-Za-z0-9._:-]+/artifact/[A-Za-z0-9._:-]+$"
 )
+_FAILURE_CODE = __import__("re").compile(r"^[A-Z][A-Z0-9_]{2,63}$")
+
+
+class _PersonalJobCancelled(Exception):
+    """The control plane fenced this attempt while the local process was active."""
 
 
 def _canonical(value: object) -> bytes:
@@ -175,6 +180,7 @@ def _request_json(
     headers: dict[str, str],
     body: object | None = None,
     maximum: int = 1024 * 1024,
+    timeout: float = 30,
 ) -> tuple[int, object | None]:
     request = urllib.request.Request(
         url,
@@ -183,7 +189,7 @@ def _request_json(
         headers={**headers, **({"content-type": "application/json"} if body is not None else {})},
     )
     try:
-        with urllib.request.urlopen(request, timeout=30, context=https_context()) as response:
+        with urllib.request.urlopen(request, timeout=timeout, context=https_context()) as response:
             data = response.read(maximum + 1)
             if len(data) > maximum:
                 raise ValueError("Personal worker response exceeded its bound")
@@ -193,15 +199,21 @@ def _request_json(
         return error.code, json.loads(data) if data else None
 
 
-def _download(item: dict[str, Any], destination: Path) -> None:
+def _download(
+    item: dict[str, Any], destination: Path, should_cancel: Callable[[], bool] | None = None
+) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     digest = hashlib.sha256()
     size = 0
+    if should_cancel is not None and should_cancel():
+        raise _PersonalJobCancelled
     with (
         urllib.request.urlopen(item["url"], timeout=60, context=https_context()) as response,
         destination.open("xb") as out,
     ):
         while chunk := response.read(1024 * 1024):
+            if should_cancel is not None and should_cancel():
+                raise _PersonalJobCancelled
             size += len(chunk)
             if size > item["bytes"]:
                 raise ValueError("Personal worker download exceeded its exact size")
@@ -275,13 +287,20 @@ def _stream_put(port: dict[str, Any], source: BinaryIO, size: int) -> None:
         connection.close()
 
 
+def _completion_acknowledged_state(status: int, value: object) -> str | None:
+    if (
+        status != 200
+        or not isinstance(value, dict)
+        or set(value) != {"schema_version", "state"}
+        or value.get("schema_version") != "videoforge-personal-worker-completion-accepted/v1"
+        or value.get("state") not in {"SUCCEEDED", "FAILED", "CANCELLED"}
+    ):
+        return None
+    return str(value["state"])
+
+
 def _completion_is_acknowledged(status: int, value: object) -> bool:
-    return (
-        status == 200
-        and isinstance(value, dict)
-        and value.get("schema_version") == "videoforge-personal-worker-completion-accepted/v1"
-        and value.get("state") in {"SUCCEEDED", "FAILED", "CANCELLED"}
-    )
+    return _completion_acknowledged_state(status, value) is not None
 
 
 class _CancellationMonitor:
@@ -291,7 +310,7 @@ class _CancellationMonitor:
         device_token: str,
         lease_token: str,
         marker: Path,
-        process: subprocess.Popen[bytes],
+        process: subprocess.Popen[bytes] | None,
     ) -> None:
         self._url = url
         self._headers = {
@@ -300,6 +319,7 @@ class _CancellationMonitor:
         }
         self._marker = marker
         self._process = process
+        self._process_lock = threading.Lock()
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
 
@@ -310,15 +330,25 @@ class _CancellationMonitor:
         self._stop.set()
         self._thread.join(timeout=5)
 
+    def attach(self, process: subprocess.Popen[bytes]) -> None:
+        with self._process_lock:
+            self._process = process
+
+    def is_cancelled(self) -> bool:
+        return self._marker.is_file()
+
     def _terminate(self) -> None:
         self._marker.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         self._marker.write_bytes(b"cancelled")
-        _terminate_process(self._process)
+        with self._process_lock:
+            process = self._process
+        if process is not None:
+            _terminate_process(process)
 
     def _run(self) -> None:
         while not self._stop.wait(10):
             try:
-                status, value = _request_json(self._url, "POST", self._headers, {})
+                status, value = _request_json(self._url, "POST", self._headers, {}, timeout=5)
                 if status == 409 or (
                     status == 200
                     and isinstance(value, dict)
@@ -407,6 +437,27 @@ def _asr_primary_path(scratch: Path, input_document: dict[str, Any]) -> Path:
     return path
 
 
+def _job_result_state(job: PersonalJob, result: object) -> tuple[str, str | None]:
+    if not isinstance(result, dict):
+        raise ValueError("Personal worker result is malformed")
+    expected_schema = "asr-job-result/v1" if job.kind == "ASR" else "render-job-result/v1"
+    if (
+        result.get("schema_version") != expected_schema
+        or result.get("attempt_id") != job.attempt_id
+    ):
+        raise ValueError("Personal worker result lineage is invalid")
+    state = result.get("status")
+    if state == "SUCCEEDED":
+        return "SUCCEEDED", None
+    if state == "CANCELLED":
+        return "CANCELLED", None
+    if state != "FAILED":
+        raise ValueError("Personal worker result status is invalid")
+    error = result.get("error")
+    code = error.get("code") if isinstance(error, dict) else None
+    return "FAILED", str(code) if isinstance(code, str) and _FAILURE_CODE.fullmatch(code) else None
+
+
 def execute_personal_job(
     job: PersonalJob,
     device_token: str,
@@ -423,12 +474,23 @@ def execute_personal_job(
         "result_content_length": None,
         "result_checksum_sha256": None,
     }
+    cancellation_token = str(job.input_document.get("cancel_token", job.attempt_id))
+    cancellation_marker_path = cancellation_marker(scratch, cancellation_token)
+    monitor = _CancellationMonitor(
+        job.cancellation_url,
+        device_token,
+        lease_token,
+        cancellation_marker_path,
+        None,
+    )
+    monitor.start()
     try:
         for item in job.objects:
-            _download(item, _local_path(scratch, item["uri"]))
+            _download(item, _local_path(scratch, item["uri"]), monitor.is_cancelled)
         input_path = scratch / "job-input.json"
         input_path.write_bytes(_canonical(job.input_document))
-        cancellation_token = str(job.input_document.get("cancel_token", job.attempt_id))
+        if monitor.is_cancelled():
+            raise _PersonalJobCancelled
         command = [sys.executable]
         if getattr(sys, "frozen", False):
             command.append("--execute-media")
@@ -486,79 +548,96 @@ def execute_personal_job(
                 start_new_session=os.name != "nt",
                 creationflags=creation_flags,
             )
-            monitor = _CancellationMonitor(
-                job.cancellation_url,
-                device_token,
-                lease_token,
-                cancellation_marker(scratch, cancellation_token),
-                process,
-            )
-            monitor.start()
+            monitor.attach(process)
             try:
                 stdout, _stderr = process.communicate(timeout=86_400)
             except subprocess.TimeoutExpired:
                 _terminate_process(process)
                 stdout, _stderr = process.communicate()
                 raise
-            finally:
-                monitor.close()
-        if cancellation_marker(scratch, cancellation_token).exists():
+        if monitor.is_cancelled():
             status = "CANCELLED"
             failure_code = None
         elif process.returncode != 0:
             pass
         else:
+            if len(stdout) > int(job.result["max_bytes"]):
+                raise ValueError("Personal worker result document exceeded its bound")
             result = json.loads(stdout)
-            primary = (
-                _asr_primary_path(scratch, job.input_document)
-                if job.kind == "ASR"
-                else _primary_path(scratch, result)
-            )
-            for output in job.outputs:
-                checksum, size = _sha256_file(primary)
-                if size > output["max_bytes"]:
-                    raise ValueError("Personal worker primary output exceeded its bound")
+            result_status, result_failure_code = _job_result_state(job, result)
+            if result_status == "CANCELLED":
+                raise _PersonalJobCancelled
+            if result_status == "FAILED":
+                status = "FAILED"
+                failure_code = result_failure_code or "MEDIA_EXECUTION_FAILED"
+            else:
+                primary = (
+                    _asr_primary_path(scratch, job.input_document)
+                    if job.kind == "ASR"
+                    else _primary_path(scratch, result)
+                )
+                for output in job.outputs:
+                    if monitor.is_cancelled():
+                        raise _PersonalJobCancelled
+                    checksum, size = _sha256_file(primary)
+                    if size > output["max_bytes"]:
+                        raise ValueError("Personal worker primary output exceeded its bound")
+                    port = _upload_port(
+                        output["sign_url"],
+                        device_token,
+                        lease_token,
+                        output["source"],
+                        output["object_key"],
+                        output["content_type"],
+                        checksum,
+                        size,
+                    )
+                    with primary.open("rb") as source:
+                        _stream_put(port, source, size)
+                    if monitor.is_cancelled():
+                        raise _PersonalJobCancelled
+                result_bytes = _canonical(result)
+                if len(result_bytes) > int(job.result["max_bytes"]):
+                    raise ValueError("Personal worker result document exceeded its bound")
+                result_checksum = f"sha256:{hashlib.sha256(result_bytes).hexdigest()}"
+                if monitor.is_cancelled():
+                    raise _PersonalJobCancelled
                 port = _upload_port(
-                    output["sign_url"],
+                    job.result["sign_url"],
                     device_token,
                     lease_token,
-                    output["source"],
-                    output["object_key"],
-                    output["content_type"],
-                    checksum,
-                    size,
+                    "RESULT_DOCUMENT",
+                    job.result["object_key"],
+                    "application/json",
+                    result_checksum,
+                    len(result_bytes),
                 )
-                with primary.open("rb") as source:
-                    _stream_put(port, source, size)
-            result_bytes = _canonical(result)
-            if len(result_bytes) > job.result["max_bytes"]:
-                raise ValueError("Personal worker result document exceeded its bound")
-            result_checksum = f"sha256:{hashlib.sha256(result_bytes).hexdigest()}"
-            port = _upload_port(
-                job.result["sign_url"],
-                device_token,
-                lease_token,
-                "RESULT_DOCUMENT",
-                job.result["object_key"],
-                "application/json",
-                result_checksum,
-                len(result_bytes),
-            )
-            with tempfile.SpooledTemporaryFile(max_size=1024 * 1024) as source:
-                source.write(result_bytes)
-                source.seek(0)
-                _stream_put(port, source, len(result_bytes))
-            status = "SUCCEEDED"
-            failure_code = None
-            result_facts = {
-                "result_object_key": job.result["object_key"],
-                "result_content_length": len(result_bytes),
-                "result_checksum_sha256": result_checksum,
-            }
+                with tempfile.SpooledTemporaryFile(max_size=1024 * 1024) as source:
+                    source.write(result_bytes)
+                    source.seek(0)
+                    _stream_put(port, source, len(result_bytes))
+                if monitor.is_cancelled():
+                    raise _PersonalJobCancelled
+                status = "SUCCEEDED"
+                failure_code = None
+                result_facts = {
+                    "result_object_key": job.result["object_key"],
+                    "result_content_length": len(result_bytes),
+                    "result_checksum_sha256": result_checksum,
+                }
+    except _PersonalJobCancelled:
+        status = "CANCELLED"
+        failure_code = None
+        result_facts = {
+            "result_object_key": None,
+            "result_content_length": None,
+            "result_checksum_sha256": None,
+        }
     except subprocess.TimeoutExpired:
         status = "FAILED"
         failure_code = "MEDIA_EXECUTION_TIMEOUT"
     finally:
+        monitor.close()
         completion = {
             "schema_version": "videoforge-personal-worker-completion/v1",
             "status": status,
@@ -566,7 +645,7 @@ def execute_personal_job(
             **result_facts,
         }
         try:
-            acknowledged = False
+            acknowledged_state: str | None = None
             completion_deadline = min(
                 time.monotonic() + 240,
                 time.monotonic()
@@ -584,15 +663,16 @@ def execute_personal_job(
                         },
                         completion,
                     )
-                    if _completion_is_acknowledged(response_status, response):
-                        acknowledged = True
+                    acknowledged_state = _completion_acknowledged_state(response_status, response)
+                    if acknowledged_state is not None:
                         break
                 except (OSError, ValueError, json.JSONDecodeError):
                     pass
                 threading.Event().wait(min(2**attempt, 30))
                 attempt += 1
-            if not acknowledged:
+            if acknowledged_state is None:
                 raise OSError("Personal worker completion could not be durably acknowledged")
+            status = acknowledged_state
         finally:
             shutil.rmtree(scratch, ignore_errors=True)
     return status

@@ -5,6 +5,14 @@ import { lstat, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { REQUIRED_SECRET_NAMES } from "./secret-policy.mjs";
 
+const APPROVED_NEON_HOST = "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech";
+const APPROVED_NEON_PROJECT_ID = "ancient-morning-99567618";
+const APPROVED_NEON_BRANCH_ID = "br-floral-hill-az7ib4ir";
+const APPROVED_NEON_DATABASE = "neondb";
+const APPROVED_NEON_RUNTIME_ROLE = "videoforge_v2_06_runtime";
+const APPROVED_GOOGLE_PROJECT_ID = "videoforge-v2-06-staging-0817";
+const APPROVED_R2_BUCKET = "videoforge-v2-06-staging-private";
+
 const [secretDir, activationPath] = process.argv.slice(2);
 if (!secretDir || !activationPath)
   throw new Error("secret directory and activation record are required");
@@ -17,6 +25,34 @@ if (
 )
   throw new Error("activation record must be a regular mode-0600 file");
 const activation = JSON.parse(await readFile(activationPath, "utf8"));
+if (
+  activation.schema_version !== "videoforge-v2-06-activation/v1" ||
+  activation.checkpoint !== "V2-06" ||
+  activation.authority?.mode !== "APPROVED" ||
+  activation.authority?.maximum_cumulative_finite_external_spend_usd !== 3 ||
+  activation.authority?.cloudflare_r2_recurring_ceiling_usd_per_month !== 2 ||
+  activation.authority?.non_transferable !== true ||
+  activation.authority?.email_provider !== "NONE" ||
+  typeof activation.authority?.approved_at !== "string" ||
+  Number.isNaN(Date.parse(activation.authority.approved_at))
+)
+  throw new Error("activation record is not the exact approved V2-06 authority");
+if (
+  activation.cloudflare?.worker !== "videoforge-v2-06-staging" ||
+  activation.cloudflare?.workflow !== "videoforge-v2-06-staging-video" ||
+  activation.cloudflare?.r2_bucket !== APPROVED_R2_BUCKET ||
+  activation.cloudflare?.r2_location !== "auto" ||
+  activation.neon?.host !== APPROVED_NEON_HOST ||
+  activation.neon?.project_id !== APPROVED_NEON_PROJECT_ID ||
+  activation.neon?.branch_id !== APPROVED_NEON_BRANCH_ID ||
+  activation.neon?.database !== APPROVED_NEON_DATABASE ||
+  activation.neon?.runtime_role !== APPROVED_NEON_RUNTIME_ROLE ||
+  activation.google?.project_id !== APPROVED_GOOGLE_PROJECT_ID ||
+  activation.google?.audience !== "EXTERNAL_TESTING" ||
+  typeof activation.google?.oauth_redirect_uri !== "string" ||
+  !activation.google.oauth_redirect_uri.startsWith("https://")
+)
+  throw new Error("activation record does not pin the exact approved V2-06 identities");
 const directoryMetadata = await lstat(secretDir);
 if (
   directoryMetadata.isSymbolicLink() ||
@@ -30,7 +66,10 @@ for (const name of expectedNames) {
   const metadata = await lstat(file);
   if (!metadata.isFile() || (metadata.mode & 0o777) !== 0o600 || metadata.size === 0)
     throw new Error(`${name} must be a non-empty regular mode-0600 file`);
-  files.set(name, await readFile(file, "utf8"));
+  const value = await readFile(file, "utf8");
+  if (!value.trim() || value.includes("\0"))
+    throw new Error(`${name} must contain a non-empty text secret`);
+  files.set(name, value);
 }
 const entries = await readdir(secretDir);
 if (entries.some((name) => !expectedNames.includes(name)))
@@ -43,6 +82,9 @@ if (
   databaseUrl.hostname !== activation.neon.host ||
   databaseUrl.pathname.slice(1) !== activation.neon.database ||
   decodeURIComponent(databaseUrl.username) !== "videoforge_v2_06_runtime" ||
+  !databaseUrl.password ||
+  databaseUrl.hash ||
+  databaseUrl.searchParams.size !== 2 ||
   databaseUrl.searchParams.get("sslmode") !== "require" ||
   databaseUrl.searchParams.get("channel_binding") !== "require"
 )

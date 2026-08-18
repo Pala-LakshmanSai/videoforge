@@ -13,9 +13,10 @@ const unique = (values, label) => {
 
 if (
   policy.schema_version !== "videoforge-v2-06-secret-allowlist/v1" ||
-  policy.worker !== "videoforge-v2-06-staging"
+  policy.worker !== "videoforge-v2-06-staging" ||
+  policy.email_provider !== "NONE"
 )
-  throw new Error("V2-06 secret policy: schema or Worker identity drifted");
+  throw new Error("V2-06 secret policy: schema, Worker, or email-provider identity drifted");
 
 const required = unique(policy.required, "required");
 const optionalTogether = unique(policy.optional_together, "optional_together");
@@ -24,6 +25,10 @@ const nonSecretVars = unique(policy.non_secret_vars, "non_secret_vars");
 const requiredSet = new Set(required);
 if (optionalTogether.length % 2 !== 0)
   throw new Error("V2-06 secret policy: optional_together must contain complete pairs");
+if (optionalTogether.length !== 0)
+  throw new Error(
+    "V2-06 secret policy: current email provider NONE cannot activate optional delivery secrets",
+  );
 if (
   optionalTogether.some((name) => requiredSet.has(name)) ||
   forbidden.some((name) => requiredSet.has(name))

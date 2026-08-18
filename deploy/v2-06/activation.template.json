@@ -5,7 +5,8 @@
     "mode": "PROPOSAL_REQUIRED",
     "maximum_cumulative_finite_external_spend_usd": null,
     "approved_at": null,
-    "non_transferable": true
+    "non_transferable": true,
+    "email_provider": "NONE"
   },
   "cloudflare": {
     "account_id_sha256": "__V2_06_CLOUDFLARE_ACCOUNT_ID_SHA256__",

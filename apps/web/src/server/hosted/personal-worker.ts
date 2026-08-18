@@ -541,7 +541,7 @@ async function revokeDevice(
         [deviceId, scope.accountId, scope.workspaceId],
       );
       if (!result.rows[0]) return false;
-      await transaction.query(
+      const affectedAttempts = await transaction.query<{ id: string; state: string }>(
         `UPDATE hosted_cpu_job_attempts AS attempt
             SET state = CASE WHEN attempt.state = 'CANCEL_REQUESTED' THEN 'CANCELLED' ELSE 'OUTBOXED' END,
                 submitted_at = CASE WHEN attempt.state = 'CANCEL_REQUESTED'
@@ -552,16 +552,63 @@ async function revokeDevice(
                                     THEN GREATEST(attempt.deadline_at, now() + interval '30 minutes')
                                     ELSE NULL END,
                 version = version + 1, updated_at = now()
-           FROM media_worker_leases AS lease
+          FROM media_worker_leases AS lease
           WHERE lease.device_id = $1 AND lease.attempt_id = attempt.id
-            AND lease.state IN ('CLAIMED', 'RUNNING', 'COMPLETING')`,
+            AND lease.state IN ('CLAIMED', 'RUNNING', 'COMPLETING')
+        RETURNING attempt.id, attempt.state`,
         [deviceId],
       );
+      for (const attempt of affectedAttempts.rows) {
+        const eventKind = attempt.state === "CANCELLED" ? "CANCELLED" : "REPLAYED";
+        const facts = await sha256(
+          JSON.stringify({
+            attempt_id: attempt.id,
+            device_id: deviceId,
+            kind: eventKind,
+            reason: "DEVICE_REVOKED",
+            schema_version: "videoforge-hosted-cpu-device-revoked/v1",
+          }),
+        );
+        await transaction.query(
+          `INSERT INTO hosted_cpu_job_events (
+           id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
+           ) SELECT md5($1::text || ':device-revoked:' || $5 || ':' || next.sequence::text)::uuid,
+                    $2::uuid, $3::uuid, $1::uuid, next.sequence, $5, $4, now()
+               FROM (
+                 SELECT COALESCE(max(sequence), 0) + 1 AS sequence
+                   FROM hosted_cpu_job_events
+                  WHERE account_id = $2::uuid AND workspace_id = $3::uuid AND attempt_id = $1::uuid
+               ) AS next
+              WHERE NOT EXISTS (
+                SELECT 1 FROM hosted_cpu_job_events
+                 WHERE account_id = $2::uuid AND workspace_id = $3::uuid
+                   AND attempt_id = $1::uuid AND kind = $5 AND facts_sha256 = $4
+              )`,
+          [attempt.id, scope.accountId, scope.workspaceId, facts, eventKind],
+        );
+      }
       await transaction.query(
         `UPDATE media_worker_leases
             SET state = 'CANCELLED', completed_at = now(), updated_at = now()
           WHERE device_id = $1 AND state IN ('CLAIMED', 'RUNNING', 'COMPLETING')`,
         [deviceId],
+      );
+      const revokeFacts = await sha256(
+        JSON.stringify({
+          device_id: deviceId,
+          reason: "USER_REVOKED_DEVICE",
+          schema_version: "videoforge-media-worker-revoked/v1",
+        }),
+      );
+      await transaction.query(
+        `INSERT INTO media_worker_events (
+           id, account_id, workspace_id, device_id, lease_id, sequence, kind,
+           facts_sha256, occurred_at
+         ) SELECT $1, $2::uuid, $3::uuid, $4::uuid, NULL, COALESCE(max(sequence), 0) + 1,
+                  'REVOKED', $5, now()
+             FROM media_worker_events
+            WHERE account_id = $2::uuid AND workspace_id = $3::uuid AND device_id = $4::uuid`,
+        [crypto.randomUUID(), scope.accountId, scope.workspaceId, deviceId, revokeFacts],
       );
       return true;
     });
@@ -832,19 +879,59 @@ async function claim(
         "videoforge.account_id",
         scope.accountId,
       ]);
-      await transaction.query(
+      const expiredLeases = await transaction.query<{
+        id: string;
+        device_id: string;
+      }>(
         `UPDATE media_worker_leases
             SET state = 'EXPIRED', completed_at = now(), updated_at = now()
           WHERE account_id = $1 AND workspace_id = $2
-            AND state IN ('CLAIMED', 'RUNNING', 'COMPLETING') AND lease_expires_at <= now()`,
+            AND state IN ('CLAIMED', 'RUNNING', 'COMPLETING') AND lease_expires_at <= now()
+          RETURNING id, device_id`,
         [scope.accountId, scope.workspaceId],
       );
+      for (const lease of expiredLeases.rows) {
+        const facts = await sha256(
+          JSON.stringify({
+            device_id: lease.device_id,
+            lease_id: lease.id,
+            reason: "LEASE_EXPIRED_DURING_CLAIM",
+            schema_version: "videoforge-personal-worker-lease-expired/v1",
+          }),
+        );
+        await transaction.query(
+          `SELECT id
+             FROM media_worker_devices
+            WHERE id = $1 AND account_id = $2 AND workspace_id = $3
+            FOR UPDATE`,
+          [lease.device_id, scope.accountId, scope.workspaceId],
+        );
+        await transaction.query(
+          `INSERT INTO media_worker_events (
+             id, account_id, workspace_id, device_id, lease_id, sequence, kind,
+             facts_sha256, occurred_at
+           ) SELECT md5($1::text || ':expired:' || next.sequence::text)::uuid,
+                    $2::uuid, $3::uuid, $4::uuid, $1::uuid, next.sequence, 'EXPIRED', $5, now()
+                 FROM (
+                   SELECT COALESCE(max(sequence), 0) + 1 AS sequence
+                     FROM media_worker_events
+                    WHERE account_id = $2::uuid AND workspace_id = $3::uuid AND device_id = $4::uuid
+                 ) AS next
+            WHERE NOT EXISTS (
+              SELECT 1 FROM media_worker_events
+               WHERE account_id = $2::uuid AND workspace_id = $3::uuid
+                 AND device_id = $4::uuid AND lease_id = $1::uuid AND kind = 'EXPIRED'
+            )`,
+          [lease.id, scope.accountId, scope.workspaceId, lease.device_id, facts],
+        );
+      }
       await transaction.query(
         `UPDATE hosted_cpu_job_attempts AS attempt
             SET state = 'OUTBOXED', submitted_at = NULL, terminal_at = NULL,
                 version = version + 1, updated_at = now()
           WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
             AND attempt.execution_backend = 'PERSONAL_WORKER' AND attempt.state = 'RUNNING'
+            AND attempt.deadline_at > now()
             AND NOT EXISTS (
               SELECT 1 FROM media_worker_leases AS lease
                WHERE lease.attempt_id = attempt.id

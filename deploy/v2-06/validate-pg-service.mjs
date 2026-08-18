@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 
 const SERVICE_NAME_PATTERN = /^[A-Za-z0-9_.-]+$/u;
-const ALLOWED_KEYS = new Set(["host", "port", "dbname", "user", "sslmode", "channel_binding"]);
+const ALLOWED_KEYS = new Set(["host", "dbname", "user", "sslmode", "channel_binding"]);
 const REQUIRED_KEYS = ["host", "dbname", "user", "sslmode", "channel_binding"];
 
 const fail = (message) => {
@@ -31,17 +31,21 @@ const parseService = async (serviceFile, serviceName) => {
   const values = new Map();
   let active = false;
   let matchingSections = 0;
+  let sectionCount = 0;
   for (const rawLine of source.split(/\r?\n/u)) {
     const line = rawLine.trim();
     if (!line || line.startsWith("#")) continue;
     if (line.startsWith("[")) {
       if (!/^\[[A-Za-z0-9_.-]+\]$/u.test(line)) fail("PGSERVICEFILE contains a malformed section");
+      sectionCount += 1;
+      if (sectionCount > 1)
+        fail("PGSERVICEFILE must contain exactly one protected service section");
       active = line === `[${serviceName}]`;
       if (active) matchingSections += 1;
       if (matchingSections > 1) fail(`PGSERVICEFILE contains duplicate [${serviceName}] sections`);
       continue;
     }
-    if (!active) continue;
+    if (!active) fail(`PGSERVICEFILE contains settings outside [${serviceName}]`);
 
     const match = /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/u.exec(line);
     if (!match) fail(`service [${serviceName}] contains a malformed setting`);

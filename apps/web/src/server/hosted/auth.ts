@@ -6,34 +6,12 @@ export interface HostedExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
 }
 
-interface HostedEmailMessage {
-  readonly kind: "VERIFY_EMAIL" | "RESET_PASSWORD";
-  readonly recipient: string;
-  readonly actionUrl: string;
-}
-
-async function deliverEmail(
-  config: NonNullable<HostedRuntimeConfiguration["email"]>,
-  message: HostedEmailMessage,
-): Promise<void> {
-  const response = await fetch(config.endpoint, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${config.apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(message),
-  });
-  if (!response.ok) throw new Error(`Email delivery returned HTTP ${response.status}.`);
-}
-
 export function createHostedAuth(input: {
   readonly config: HostedRuntimeConfiguration;
   readonly pool: HostedNeonPool;
   readonly executionContext: HostedExecutionContext;
 }) {
   const { config, executionContext, pool } = input;
-  const emailDelivery = config.email;
   return betterAuth({
     appName: "VideoForge",
     baseURL: config.publicOrigin,
@@ -41,43 +19,7 @@ export function createHostedAuth(input: {
     secret: config.auth.secret,
     database: pool,
     trustedOrigins: [config.publicOrigin],
-    emailAndPassword: emailDelivery
-      ? {
-          enabled: true,
-          requireEmailVerification: true,
-          autoSignIn: false,
-          minPasswordLength: 12,
-          maxPasswordLength: 128,
-          revokeSessionsOnPasswordReset: true,
-          resetPasswordTokenExpiresIn: 900,
-          sendResetPassword: async ({ user, url }) => {
-            executionContext.waitUntil(
-              deliverEmail(emailDelivery, {
-                kind: "RESET_PASSWORD",
-                recipient: user.email,
-                actionUrl: url,
-              }),
-            );
-          },
-        }
-      : { enabled: false },
-    emailVerification: emailDelivery
-      ? {
-          expiresIn: 900,
-          sendOnSignUp: true,
-          sendOnSignIn: true,
-          autoSignInAfterVerification: false,
-          sendVerificationEmail: async ({ user, url }) => {
-            executionContext.waitUntil(
-              deliverEmail(emailDelivery, {
-                kind: "VERIFY_EMAIL",
-                recipient: user.email,
-                actionUrl: url,
-              }),
-            );
-          },
-        }
-      : undefined,
+    emailAndPassword: { enabled: false },
     socialProviders: {
       google: {
         clientId: config.auth.googleClientId,

@@ -183,6 +183,9 @@ provider inventory must be captured separately.
   credentials never enter a manifest or Git.
 - `secrets.allowlist.json` is the exact set of Worker secret names. Values are applied only through
   the approved secret-store operation and never placed in Wrangler config, logs, evidence, or Git.
+  Current V2-06 auth is Google-only with `email_provider=NONE`: `optional_together` is empty and
+  both `EMAIL_DELIVERY_*` names are forbidden. Enabling email delivery requires a new explicit
+  auth decision and activation record; it is not an implicit optional pair in this runbook.
 - `r2-cors.template.json` is Wrangler's R2 API shape (`{ "rules": [{ "allowed": ... }] }`), not the
   AWS S3 `CORSRules` shape. Activation replaces its one origin placeholder with the deployed HTTPS
   origin, applies it to the private staging bucket, and proves the exact live policy with:

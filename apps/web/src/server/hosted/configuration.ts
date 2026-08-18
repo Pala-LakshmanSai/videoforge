@@ -49,8 +49,6 @@ export interface HostedRuntimeEnvironment {
   readonly R2_ACCOUNT_ID?: string;
   readonly R2_ACCESS_KEY_ID?: string;
   readonly R2_SECRET_ACCESS_KEY?: string;
-  readonly EMAIL_DELIVERY_ENDPOINT?: string;
-  readonly EMAIL_DELIVERY_API_KEY?: string;
   readonly WORKFLOW_CALLBACK_SECRET?: string;
   readonly MEDIA_WORKER_TOKEN_SECRET?: string;
 }
@@ -89,10 +87,6 @@ export interface HostedRuntimeConfiguration {
       readonly trust: "AD_HOC_BETA" | "DEVELOPER_ID_NOTARIZED";
     };
   };
-  readonly email: {
-    readonly endpoint: string;
-    readonly apiKey: string;
-  } | null;
   readonly workflowCallbackSecret: string;
   readonly mediaWorkerTokenSecret: string;
   toJSON(): {
@@ -269,16 +263,6 @@ export function hostedRuntimeConfiguration(
     required(source, "VIDEOFORGE_PUBLIC_ORIGIN"),
     "VIDEOFORGE_PUBLIC_ORIGIN",
   );
-  const hasEmailEndpoint =
-    typeof source.EMAIL_DELIVERY_ENDPOINT === "string" && source.EMAIL_DELIVERY_ENDPOINT.length > 0;
-  const hasEmailKey =
-    typeof source.EMAIL_DELIVERY_API_KEY === "string" && source.EMAIL_DELIVERY_API_KEY.length > 0;
-  if (hasEmailEndpoint !== hasEmailKey) {
-    throw new HostedConfigurationError(
-      "Email delivery endpoint and key must either both be configured or both be absent.",
-      ["EMAIL_DELIVERY_ENDPOINT", "EMAIL_DELIVERY_API_KEY"],
-    );
-  }
   const databaseUrl = required(source, "DATABASE_URL");
   if (!/^postgres(?:ql)?:\/\//u.test(databaseUrl)) {
     throw new HostedConfigurationError("DATABASE_URL must be a PostgreSQL URL.", ["DATABASE_URL"]);
@@ -326,13 +310,6 @@ export function hostedRuntimeConfiguration(
       secretAccessKey: required(source, "R2_SECRET_ACCESS_KEY"),
     }),
     mediaWorkerRelease: mediaWorkerRelease(required(source, "MEDIA_WORKER_RELEASE_MANIFEST_JSON")),
-    email:
-      hasEmailEndpoint && hasEmailKey
-        ? Object.freeze({
-            endpoint: httpsOrigin(source.EMAIL_DELIVERY_ENDPOINT!, "EMAIL_DELIVERY_ENDPOINT"),
-            apiKey: source.EMAIL_DELIVERY_API_KEY!,
-          })
-        : null,
     workflowCallbackSecret,
     mediaWorkerTokenSecret,
     toJSON: () => redacted,

@@ -84,8 +84,6 @@ function environment(): HostedRuntimeEnvironment {
     R2_ACCOUNT_ID: "fixture-cloudflare-account-id",
     R2_ACCESS_KEY_ID: "fixture-r2-access-key-id",
     R2_SECRET_ACCESS_KEY: "fixture-r2-secret-access-key",
-    EMAIL_DELIVERY_ENDPOINT: "https://email.example.test/v1/send",
-    EMAIL_DELIVERY_API_KEY: "fixture-email-api-key",
     WORKFLOW_CALLBACK_SECRET: "fixture-workflow-callback-secret-00000000000001",
     MEDIA_WORKER_TOKEN_SECRET: "fixture-media-worker-token-secret-000000000000002",
   };
@@ -135,7 +133,6 @@ describe("V2-06 hosted adapters", () => {
       source.BETTER_AUTH_SECRET,
       source.GOOGLE_CLIENT_SECRET,
       source.R2_SECRET_ACCESS_KEY,
-      source.EMAIL_DELIVERY_API_KEY,
       source.WORKFLOW_CALLBACK_SECRET,
       source.MEDIA_WORKER_TOKEN_SECRET,
     ]) {

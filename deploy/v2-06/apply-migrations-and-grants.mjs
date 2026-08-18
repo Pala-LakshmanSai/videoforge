@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { validateServiceFile } from "./validate-pg-service.mjs";
 
 const root = resolve(new URL("../..", import.meta.url).pathname);
 const migrationsDirectory = resolve(root, "packages/control-plane/migrations");
@@ -68,29 +69,6 @@ const mode0600 = async (path, label) => {
   }
   if (metadata.isSymbolicLink() || !metadata.isFile() || (metadata.mode & 0o777) !== 0o600)
     fail(`${label} must be a regular mode-0600 file`);
-};
-
-const parseService = async (serviceFile, serviceName) => {
-  const source = await readFile(serviceFile, "utf8");
-  const lines = source.split(/\r?\n/u);
-  let active = false;
-  const values = new Map();
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-    if (line.startsWith("[")) {
-      active = line === `[${serviceName}]`;
-      continue;
-    }
-    if (!active) continue;
-    const match = /^(host|port|dbname|user|password|sslpassword|passfile)\s*=\s*(.*)$/iu.exec(line);
-    if (match) values.set(match[1].toLowerCase(), match[2].trim());
-  }
-  if (!values.has("host") || !values.has("dbname") || !values.has("user"))
-    fail(`service [${serviceName}] must pin host, dbname, and user`);
-  if (values.has("password") || values.has("sslpassword"))
-    fail("PGSERVICEFILE must not contain a password; use a mode-0600 PGPASSFILE");
-  return values;
 };
 
 const psql = (args, environment) =>
@@ -184,19 +162,17 @@ const main = async () => {
   const serviceName = required("V2_06_PG_SERVICE");
   const passFile = required("V2_06_PGPASSFILE");
   const approvedHost = required("V2_06_APPROVED_NEON_HOST");
+  const expectedDatabase = required("V2_06_EXPECTED_DATABASE");
   const expectedOwnerRole = required("V2_06_EXPECTED_OWNER_ROLE");
   await mode0600(serviceFile, "PGSERVICEFILE");
   await mode0600(passFile, "PGPASSFILE");
-  const service = await parseService(serviceFile, serviceName);
-  if (service.get("host") !== approvedHost)
-    fail("PGSERVICEFILE host does not match the approved Neon endpoint");
-  if (
-    process.env.V2_06_EXPECTED_DATABASE &&
-    service.get("dbname") !== process.env.V2_06_EXPECTED_DATABASE
-  )
-    fail("PGSERVICEFILE dbname does not match the approved Neon database");
-  if (service.get("user") !== expectedOwnerRole)
-    fail("PGSERVICEFILE user is not the approved migration owner role");
+  await validateServiceFile(
+    serviceFile,
+    serviceName,
+    approvedHost,
+    expectedDatabase,
+    expectedOwnerRole,
+  );
   const environment = {
     ...process.env,
     PGSERVICEFILE: serviceFile,

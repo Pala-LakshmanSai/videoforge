@@ -60,10 +60,12 @@ const actualSecrets = [...(secretAllowlist.required ?? [])].sort();
 if (JSON.stringify(actualSecrets) !== JSON.stringify(expectedSecrets))
   fail("least-privilege secret allowlist drifted");
 if (
-  JSON.stringify([...(secretAllowlist.optional_together ?? [])].sort()) !==
-  JSON.stringify(["EMAIL_DELIVERY_API_KEY", "EMAIL_DELIVERY_ENDPOINT"])
+  JSON.stringify([...(secretAllowlist.optional_together ?? [])].sort()) !== JSON.stringify([]) ||
+  secretAllowlist.email_provider !== "NONE" ||
+  JSON.stringify([...(secretAllowlist.forbidden ?? [])].sort()) !==
+    JSON.stringify(["EMAIL_DELIVERY_API_KEY", "EMAIL_DELIVERY_ENDPOINT"])
 )
-  fail("optional email secret pair drifted");
+  fail("email-delivery policy must be disabled and unambiguous");
 if (JSON.stringify(secretAllowlist.non_secret_vars ?? []) !== JSON.stringify(["R2_ACCOUNT_ID"]))
   fail("non-secret deployment variables drifted");
 if (
@@ -112,6 +114,8 @@ if (
   fail("checkpoint or GPU firewall drifted");
 if (activation.authority?.maximum_cumulative_finite_external_spend_usd !== null)
   fail("template must not invent a spend cap");
+if (activation.authority?.email_provider !== "NONE")
+  fail("activation template must keep email/password delivery disabled");
 if (
   activation.cloudflare?.r2_storage_class !== "STANDARD" ||
   activation.spend_truth?.finite_external_spend_usd !== null ||
@@ -214,6 +218,13 @@ if (
 )
   fail("ImageForge-style beta and optional signed worker publication gates are incomplete");
 const hostedApp = await read("apps/web/src/server/hosted/app.ts");
+const hostedAuth = await read("apps/web/src/server/hosted/auth.ts");
+if (
+  !hostedAuth.includes("emailAndPassword: { enabled: false }") ||
+  /emailAndPassword:[\s\S]{0,240}?enabled:\s*true/u.test(hostedAuth) ||
+  !hostedApp.includes('authentication: ["GOOGLE"]')
+)
+  fail("V2-06 hosted auth must keep email/password disabled and Google-only");
 if (
   !hostedApp.includes("handleCpuOutputDelete(") ||
   !hostedApp.includes('request.method === "DELETE"') ||

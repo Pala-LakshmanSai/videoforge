@@ -948,7 +948,7 @@ export async function handleHostedRequest(
       cpu_jobs: "ACCOUNT_OWNED_PERSONAL_WORKER_REQUIRED",
       supported_worker_platforms: ["WINDOWS", "MACOS"],
       provider_cpu_spend: "$0",
-      authentication: config.email ? ["GOOGLE", "EMAIL_PASSWORD"] : ["GOOGLE"],
+      authentication: ["GOOGLE"],
     });
   }
   if (request.method === "GET" && url.pathname === "/api/v2/tenant") {
