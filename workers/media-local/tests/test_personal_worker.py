@@ -6,13 +6,15 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path, PurePosixPath
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from videoforge_media_local.personal_execution import _CancellationMonitor, parse_personal_job
 from videoforge_media_local.personal_worker import (
     _build_configuration,
     _is_external_macos_bundle,
+    _json_request,
     _open_approval_url,
+    _USER_AGENT,
 )
 from videoforge_media_local.personal_tls import https_context
 
@@ -67,6 +69,21 @@ class PersonalWorkerContractTests(unittest.TestCase):
         context = https_context()
         self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
         self.assertTrue(context.check_hostname)
+
+    def test_requests_identify_the_worker_to_cloudflare(self) -> None:
+        response = Mock(status=200)
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        response.read.return_value = b"{}"
+        with patch(
+            "videoforge_media_local.personal_worker.urllib.request.urlopen",
+            return_value=response,
+        ) as urlopen:
+            status, body = _json_request("https://app.example.test/health", "GET")
+        self.assertEqual((status, body), (200, {}))
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.get_header("User-agent"), _USER_AGENT)
+        self.assertEqual(request.get_header("Accept"), "application/json")
 
     def test_cancellation_monitor_has_a_runnable_poll_loop(self) -> None:
         self.assertTrue(callable(getattr(_CancellationMonitor, "_run", None)))

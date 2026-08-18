@@ -28,8 +28,9 @@ from videoforge_media_local.personal_execution import (
 from videoforge_media_local.personal_tls import https_context
 
 _SERVICE = "com.videoforge.personal-media-worker"
-_WORKER_VERSION = "0.1.3"
+_WORKER_VERSION = "0.1.4"
 _PROTOCOL_VERSION = 1
+_USER_AGENT = f"VideoForge-Worker/{_WORKER_VERSION}"
 
 
 def _is_external_macos_bundle(bundle: Path) -> bool:
@@ -315,7 +316,12 @@ def _json_request(
         url,
         data=data,
         method=method,
-        headers={**(headers or {}), **({"content-type": "application/json"} if data else {})},
+        headers={
+            "accept": "application/json",
+            "user-agent": _USER_AGENT,
+            **(headers or {}),
+            **({"content-type": "application/json"} if data else {}),
+        },
     )
     try:
         with urllib.request.urlopen(request, timeout=30, context=https_context()) as response:
