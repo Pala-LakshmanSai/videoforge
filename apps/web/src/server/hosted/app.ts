@@ -13,6 +13,7 @@ import {
 } from "./submission";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 
 function json(value: unknown, status = 200): Response {
   return Response.json(value, {
@@ -843,7 +844,8 @@ export async function startHostedCpuWorkflow(
   params: { readonly attemptId: string; readonly accountId: string; readonly workspaceId: string },
 ): Promise<{ readonly id: string }> {
   if (
-    ![params.attemptId, params.accountId, params.workspaceId].every((value) => UUID.test(value))
+    !UUID.test(params.attemptId) ||
+    ![params.accountId, params.workspaceId].every((value) => DATABASE_UUID.test(value))
   ) {
     throw new TypeError("Hosted workflow launch requires exact UUID lineage.");
   }

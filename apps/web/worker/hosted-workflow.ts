@@ -15,9 +15,13 @@ interface HostedWorkflowParameters {
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 
 function parameters(value: HostedWorkflowParameters): HostedWorkflowParameters {
-  if (![value.attemptId, value.accountId, value.workspaceId].every((item) => UUID.test(item))) {
+  if (
+    !UUID.test(value.attemptId) ||
+    ![value.accountId, value.workspaceId].every((item) => DATABASE_UUID.test(item))
+  ) {
     throw new TypeError("Hosted Workflow parameters must be exact UUID lineage.");
   }
   return Object.freeze({ ...value });
