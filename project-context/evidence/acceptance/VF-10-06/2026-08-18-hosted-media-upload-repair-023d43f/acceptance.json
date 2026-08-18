@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-06-hosted-media-upload-repair/v1",
   "task_id": "VF-10-06",
   "checkpoint": "V2-06",
-  "recorded_at_utc": "2026-08-18T09:11:41Z",
+  "recorded_at_utc": "2026-08-18T09:28:00Z",
   "audit_method": "Bounded V2-06 implementation and acceptance attempt using repository HEAD, exact recorded activation authority, protected local secret inputs without recording values, approved staging deployment, visible real-Chrome UI state, and exact Neon read-back. No RunPod/GPU action, model download, or paid compute was performed.",
   "result": "FAIL_FULL_CHECKPOINT_HOSTED_ACCEPTANCE_PENDING",
   "audit_independence": "SAME_CHAT_IMPLEMENTATION_NOT_INDEPENDENT_AUDIT",
@@ -111,11 +111,19 @@
         "result": "FAIL_CLIENT_CHECKSUM_TIMEOUT",
         "visible_error": "Voiceover checksum timed out. Choose the file again and retry.",
         "wait_seconds": 32
+      },
+      {
+        "deployed_commit": "5a8b9e275fa54658b214009c1d8f6c5b602244f1",
+        "result": "FAIL_CLIENT_CHECKSUM_TIMEOUT",
+        "visible_error": "Voiceover checksum timed out. Choose the file again and retry.",
+        "wait_seconds": 20,
+        "observed_at_utc": "2026-08-18T09:28:00Z",
+        "tab_reconnected": true
       }
     ],
     "durable_side_effect": "No project row was created; exact Neon read-back returned projects=0 after the attempts.",
     "environment_prerequisite": "The connected Chrome upload flow exposes the selected path but does not yield readable file bytes. Packaged Chrome guidance identifies the extension setting Allow access to file URLs as the required local prerequisite; it was not changed by this task.",
-    "latest_deployed_code_fix": "WAV duration parsing now also uses FileReader; the connected Chrome retry must be repeated after the file-URL access prerequisite is enabled."
+    "latest_deployed_code_fix": "WAV duration parsing now also uses FileReader; a reconnected authenticated Chrome retry on 5a8b9e2 still timed out before checksum, so the file-URL access prerequisite remains open."
   },
   "verification_commands": [
     {
@@ -187,6 +195,16 @@
       "command": "V2_06_DB_URL=<protected-owner-dsn> pnpm --filter @videoforge/web exec node --input-type=module -e '<exact read-only catalog and project-count queries>'",
       "exit_code": 0,
       "result": "tenant-owned catalog readback: one READY avatar, one PUBLISHED style, three VERIFIED assets, zero projects"
+    },
+    {
+      "command": "curl -fsS -A 'VideoForge-V2-06-5a8b9e2-retry-status' -w '\\nHTTP %{http_code}\\n' https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/hosted/status",
+      "exit_code": 0,
+      "result": "HTTP 200; deployed commit 5a8b9e275fa54658b214009c1d8f6c5b602244f1; GPU DISABLED_FAKE_ONLY; provider CPU spend $0"
+    },
+    {
+      "command": "V2_06_DB_URL=<protected-owner-dsn> pnpm --filter @videoforge/web exec node --input-type=module -e '<read-only project/assets/preset counts>'",
+      "exit_code": 0,
+      "result": "projects=0, assets=3, READY avatars=1, PUBLISHED styles=1"
     }
   ],
   "findings": [

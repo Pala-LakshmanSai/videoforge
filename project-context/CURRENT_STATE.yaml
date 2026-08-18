@@ -710,7 +710,7 @@ verification:
       - "The user-selected email provider is NONE, so hosted auth is Google-only and email/password stays disabled. Dedicated Google project videoforge-v2-06-staging-0817 and its exact redirect/client exist; live two-user callback acceptance remains pending."
       - "The user has Windows x64 and Mac test devices. Apple Developer Program membership is absent and no longer required for the selected ImageForge-style beta release; native clean-download/install evidence must record any actual warning or bypass behavior."
       - "The exact combined V2-06 activation was approved with a USD 3 finite test cap and USD 2/month R2 ceiling; spend and recurring truth must be rechecked after acceptance."
-      - "Hosted media upload timeout repairs are deployed at 5a8b9e2, but the connected real-Chrome file input still cannot yield readable bytes; retry after the extension's file-URL access prerequisite is enabled. Do not treat local verification, seeded catalog state, or the status endpoint as hosted media proof."
+      - "Hosted media upload timeout repairs are deployed at 5a8b9e2; a reconnected authenticated Chrome retry at 2026-08-18T09:28:00Z still timed out before checksum and the exact Neon read-back remained projects=0. The extension's file-URL access prerequisite is still unverified; do not treat local verification, seeded catalog state, or the status endpoint as hosted media proof."
     resource_truth:
       external_mutations: bounded_v2_06_deployment_complete_acceptance_pending
       external_mutation_scope: "Three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence."
@@ -727,7 +727,7 @@ verification:
       runpod_workers_started: 0
       live_runpod_inventory_refreshed: true
       cloudflare:
-        checked_at: "2026-08-18T09:11:41Z"
+        checked_at: "2026-08-18T09:28:00Z"
         account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
         workers_plan: FREE
         payment_method_on_file: true
@@ -747,7 +747,7 @@ verification:
         r2_standard_free_storage_gb_month: 10
         r2_standard_overage_usd_per_gb_month: 0.015
       hosted_fixture:
-        checked_at: "2026-08-18T09:00:10Z"
+        checked_at: "2026-08-18T09:28:00Z"
         tenant_owned_assets: 3
         tenant_owned_avatar_versions: 1
         tenant_owned_style_versions: 1
