@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-18T15:49:59Z"
+updated_at: "2026-08-18T16:04:33Z"
 
 phase: serverless_v2_v2_06_local_repair_committed_hosted_reverification_pending
 implementation_authorized_in_current_task: true
@@ -311,7 +311,7 @@ recommended_next_task:
 verification:
   state: v2_06_source_repair_committed_hosted_reverification_pending
   verified_commit: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
-  verified_commit_note: "Provider-free focused and fast verification passes at source repair commit fcc9257. The full canonical pnpm verify was not completed for this repair, and this commit is not deployed. The last supplied immutable deployment evidence is exact HEAD 153cefe as Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c with personal-worker release 0.1.6; hosted completion, two-account non-superuser RLS/R2 isolation, Windows lifecycle/parity, backup/restore, rollback, and independent hosted acceptance remain blocked."
+  verified_commit_note: "Canonical provider-free verification passes at source repair commit fcc9257 (executed at documentation handoff HEAD b21f676). This source is not deployed. The last supplied immutable deployment evidence is exact HEAD 153cefe as Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c with personal-worker release 0.1.6; hosted completion, two-account non-superuser RLS/R2 isolation, Windows lifecycle/parity, backup/restore, rollback, and independent hosted acceptance remain blocked."
   predecessor_verified_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
   acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-fcc9257/acceptance.json
   latest_live_check:
@@ -335,7 +335,7 @@ verification:
     hosted_asr_attempt_state: CANCELLED
     hosted_asr_successful_output_proven: false
   latest_source_verification:
-    recorded_at_utc: "2026-08-18T15:49:59Z"
+    recorded_at_utc: "2026-08-18T16:04:33Z"
     evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-fcc9257/acceptance.json
     source_commit: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
     deployed_implementation_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
@@ -441,7 +441,8 @@ verification:
       - strict_worker_https_sleep_assertion_macos_unload_and_validate_before_external_bundle_launch
       - runtime_PostgreSQL_TLS_and_channel_binding_requirement
     commands:
-      - "CI=1 TURBO_FORCE=true pnpm verify:fast (exit 0; provider-free fast gate completed through package tests and generated-route consistency; not canonical release verification)"
+      - "CI=1 TURBO_FORCE=true pnpm verify:fast (exit 0; provider-free fast gate completed through package tests and generated-route consistency)"
+      - "CI=1 TURBO_FORCE=true pnpm verify (exit 0; 28 unique tasks; Cloudflare parity 1/1; package build/lint/typecheck/tests; worker suites; context/secret checks; installed Chrome 44/44)"
       - "pnpm validate:v2-06-deployment (exit 0)"
       - "pnpm format:check and git diff --check (exit 0)"
       - "pnpm --filter @videoforge/web typecheck (exit 0)"
@@ -454,8 +455,8 @@ verification:
       - "uv run --locked --no-sync python -m unittest discover -s workers/media-local/tests -p 'test_*.py' (exit 0; 39/39)"
       - "pnpm contracts:check (exit 0; 123 canonical files)"
       - "pnpm context:validate (exit 0)"
-      - "pnpm secret:scan (exit 0; 1148 tracked files)"
-    canonical_release_verification: "pnpm verify was not completed for this repair; prior full run was interrupted during a slow control-plane phase after an environment disk-space failure."
+      - "pnpm secret:scan (exit 0; 1149 tracked files)"
+    canonical_release_verification: "CI=1 TURBO_FORCE=true pnpm verify passed at documentation handoff HEAD b21f676, verifying source repair fcc9257."
     evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-fcc9257/acceptance.json
     not_proven_by_this_repair:
       - hosted_two_account_Better_Auth_Neon_non_superuser_FORCE_RLS_and_private_R2_isolation

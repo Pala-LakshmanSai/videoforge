@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-06-local-source-repair-handoff/v1",
   "task_id": "VF-10-06",
   "checkpoint": "V2-06",
-  "recorded_at_utc": "2026-08-18T15:49:59Z",
+  "recorded_at_utc": "2026-08-18T16:04:33Z",
   "result": "SOURCE_REPAIR_GREEN_HOSTED_REVERIFICATION_PENDING",
   "audit_independence": "SAME_CHAT_IMPLEMENTATION_HANDOFF_NOT_INDEPENDENT_AUDIT",
   "scope_boundary": "Provider-free repository repair and verification only. No credentials were read, no live provider call was made, no deployment or resource mutation occurred, and no spend occurred. Local fixtures and local Chrome cannot prove hosted deployment acceptance.",
@@ -186,12 +186,12 @@
       {
         "command": "pnpm secret:scan",
         "exit_code": 0,
-        "result": "1148 tracked files scanned."
+        "result": "1149 tracked files scanned."
       },
       {
         "command": "CI=1 TURBO_FORCE=true pnpm verify",
-        "exit_code": null,
-        "result": "Not completed for this source repair: the prior full canonical run was interrupted during the slow control-plane fixture phase after an environment disk-space failure. No canonical release pass is claimed."
+        "exit_code": 0,
+        "result": "Canonical provider-free verification passed: 28 unique tasks, Cloudflare parity 1/1, package build/lint/typecheck/tests, worker suites, context/secret checks, and installed Chrome 44/44."
       }
     ],
     "live_verification_performed": false,
