@@ -86,7 +86,7 @@ repository:
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
   current_source_head: "dbd01cd097f87ac8a55ded43f414d322badfc3e5"
-  current_source_head_note: "The source/evidence handoff is dbd01cd; latest HEAD 079d8c8 is documentation-only after that handoff and the deployed source repair at abadf85. Hosted preset hubs use the authenticated tenant catalog and fixture-only /new routes are explicitly blocked in staging; Windows pairing, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
+  current_source_head_note: "The source/evidence handoff is dbd01cd; subsequent HEAD commits are documentation-only after that handoff and the deployed source repair at abadf85. Hosted preset hubs use the authenticated tenant catalog and fixture-only /new routes are explicitly blocked in staging; Windows pairing, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
   last_good_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
   last_good_commit_note: "V2-06 hosted staging is deployed from abadf85 with the immutable 0.1.4 Windows/macOS beta release. The hosted preset-hub source repair, staging build, canonical verification, and one native macOS pairing/heartbeat smoke are green. Windows pairing, device parity, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
