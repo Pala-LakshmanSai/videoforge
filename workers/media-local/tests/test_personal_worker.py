@@ -276,7 +276,11 @@ class PersonalWorkerContractTests(unittest.TestCase):
                 patch.object(sys, "frozen", True, create=True),
                 patch.object(sys, "executable", str(executable)),
                 patch("videoforge_media_local.personal_worker.Path.home", return_value=home),
-                patch("videoforge_media_local.personal_worker.os.getuid", return_value=501),
+                patch(
+                    "videoforge_media_local.personal_worker.os.getuid",
+                    return_value=501,
+                    create=True,
+                ),
             ):
                 target.write_bytes(_launch_agent_document())
                 with patch(
@@ -305,7 +309,11 @@ class PersonalWorkerContractTests(unittest.TestCase):
                 patch("videoforge_media_local.personal_worker.sys.platform", "darwin"),
                 patch.object(sys, "frozen", True, create=True),
                 patch("videoforge_media_local.personal_worker.Path.home", return_value=home),
-                patch("videoforge_media_local.personal_worker.os.getuid", return_value=501),
+                patch(
+                    "videoforge_media_local.personal_worker.os.getuid",
+                    return_value=501,
+                    create=True,
+                ),
                 patch(
                     "videoforge_media_local.personal_worker._launchctl",
                     side_effect=[Mock(returncode=0), Mock(returncode=0), Mock(returncode=1)],
@@ -324,7 +332,11 @@ class PersonalWorkerContractTests(unittest.TestCase):
             with (
                 patch("videoforge_media_local.personal_worker.sys.platform", "darwin"),
                 patch("videoforge_media_local.personal_worker.Path.home", return_value=home),
-                patch("videoforge_media_local.personal_worker.os.getuid", return_value=501),
+                patch(
+                    "videoforge_media_local.personal_worker.os.getuid",
+                    return_value=501,
+                    create=True,
+                ),
                 patch(
                     "videoforge_media_local.personal_worker._launchctl",
                     side_effect=[Mock(returncode=0), Mock(returncode=1)],
