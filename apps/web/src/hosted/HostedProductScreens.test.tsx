@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -163,6 +163,50 @@ describe("hosted product journey", () => {
     expect(await screen.findByText("Waiting for your computer.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create and transcribe" })).toBeDisabled();
     expect(screen.getByText(/GPU transport disabled during V2-06 staging/u)).toBeInTheDocument();
+  });
+
+  it("offers an idempotent recovery action for a cancellation left pending", async () => {
+    const attemptId = "33333333-3333-4333-8333-333333333333";
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith(`/api/v2/cpu-attempts/${attemptId}`)) {
+        expect(init).toMatchObject({ method: "POST", body: "{}" });
+        return Response.json({ id: attemptId, state: "CANCEL_REQUESTED" }, { status: 202 });
+      }
+      return Response.json({
+        project: {
+          id: "11111111-1111-4111-8111-111111111111",
+          title: "Private project",
+          created_at: "2026-08-17T10:00:00.000Z",
+          revision_id: "22222222-2222-4222-8222-222222222222",
+          revision_state: "LOCKED",
+        },
+        attempts: [
+          {
+            id: attemptId,
+            kind: "ASR" as const,
+            state: "CANCEL_REQUESTED",
+            version: 2,
+            created_at: "2026-08-17T10:00:00.000Z",
+            updated_at: "2026-08-17T10:01:00.000Z",
+            terminal_at: null,
+            output_checksum_sha256: null,
+            approved_at: null,
+            preview_url: null,
+          },
+        ],
+        gpu_transport: "DISABLED_FAKE_ONLY" as const,
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId="11111111-1111-4111-8111-111111111111" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Settle cancellation" }));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/v2/cpu-attempts/${attemptId}`,
+        expect.objectContaining({ method: "POST", body: "{}" }),
+      ),
+    );
   });
 
   it("fails closed when ASR succeeds without an exact render plan", async () => {

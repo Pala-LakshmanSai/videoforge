@@ -651,6 +651,7 @@ async function handleTenantApi(
 
 async function handleCpuAttemptApi(
   request: Request,
+  environment: HostedRuntimeEnvironment,
   config: ReturnType<typeof hostedRuntimeConfiguration>,
   executionContext: HostedExecutionContext,
   attemptId: string,
@@ -660,11 +661,13 @@ async function handleCpuAttemptApi(
   try {
     const session = await hostedSession(request, config, pool, executionContext);
     if (!session?.user?.id) return json({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
-    const scope = await pool.query(`SELECT account_id FROM videoforge_hosted_session_scope($1)`, [
-      session.session.token,
-    ]);
+    const scope = await pool.query(
+      `SELECT account_id, workspace_id FROM videoforge_hosted_session_scope($1)`,
+      [session.session.token],
+    );
     const accountId = scope.rows[0]?.account_id;
-    if (typeof accountId !== "string")
+    const workspaceId = scope.rows[0]?.workspace_id;
+    if (typeof accountId !== "string" || typeof workspaceId !== "string")
       return json({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, 403);
     if (request.method === "POST") {
       if (!sameOriginBrowserWrite(request, config)) {
@@ -675,6 +678,21 @@ async function handleCpuAttemptApi(
           "videoforge.account_id",
           accountId,
         ]);
+        const existing = await transaction.query<{ state: string }>(
+          `SELECT state
+             FROM hosted_cpu_job_attempts
+            WHERE id = $1 AND account_id = $2 AND workspace_id = $3
+            FOR UPDATE`,
+          [attemptId, accountId, workspaceId],
+        );
+        const current = existing.rows[0];
+        if (
+          !current ||
+          !["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(
+            current.state,
+          )
+        )
+          return null;
         const updated = await transaction.query<{
           id: string;
           account_id: string;
@@ -689,9 +707,10 @@ async function handleCpuAttemptApi(
                   terminal_at = CASE WHEN state = 'OUTBOXED' THEN now() ELSE terminal_at END,
                   retain_until = CASE WHEN state = 'OUTBOXED' THEN GREATEST(deadline_at, now() + interval '30 minutes') ELSE retain_until END,
                   version = version + 1, updated_at = now()
-            WHERE id = $1 AND state IN ('OUTBOXED', 'SUBMITTED', 'RUNNING', 'RECONCILING')
+            WHERE id = $1 AND account_id = $2 AND workspace_id = $3
+              AND state IN ('OUTBOXED', 'SUBMITTED', 'RUNNING', 'RECONCILING', 'CANCEL_REQUESTED')
           RETURNING id, account_id, workspace_id, state, version`,
-          [attemptId],
+          [attemptId, accountId, workspaceId],
         );
         const changed = updated.rows[0];
         if (!changed) return null;
@@ -711,15 +730,30 @@ async function handleCpuAttemptApi(
             changed.state,
           ],
         );
-        return changed;
+        return { ...changed, previousState: current.state };
       });
       if (!row) return json({ error: { code: "CPU_ATTEMPT_NOT_CANCELLABLE" } }, 409);
+      let recoveryWorkflowId: string | undefined;
+      if (row.previousState === "CANCEL_REQUESTED") {
+        try {
+          recoveryWorkflowId = (
+            await startHostedCpuRecoveryWorkflow(environment, {
+              attemptId: row.id,
+              accountId: row.account_id,
+              workspaceId: row.workspace_id,
+            })
+          ).id;
+        } catch {
+          return json({ error: { code: "HOSTED_RECOVERY_LAUNCH_FAILED" } }, 503);
+        }
+      }
       return json(
         {
           schema_version: "videoforge-hosted-cpu-attempt/v1",
           id: row.id,
           state: row.state,
           version: row.version,
+          ...(recoveryWorkflowId ? { recovery_workflow_id: recoveryWorkflowId } : {}),
         },
         202,
       );
@@ -854,6 +888,21 @@ export async function startHostedCpuWorkflow(
   return workflow.create({ id: params.attemptId, params });
 }
 
+export async function startHostedCpuRecoveryWorkflow(
+  environment: HostedRuntimeEnvironment,
+  params: { readonly attemptId: string; readonly accountId: string; readonly workspaceId: string },
+): Promise<{ readonly id: string }> {
+  if (
+    !UUID.test(params.attemptId) ||
+    ![params.accountId, params.workspaceId].every((value) => DATABASE_UUID.test(value))
+  ) {
+    throw new TypeError("Hosted recovery Workflow launch requires exact UUID lineage.");
+  }
+  const workflow = environment.VIDEO_WORKFLOW;
+  if (!workflow) throw new Error("Hosted Workflow binding is unavailable.");
+  return workflow.create({ id: `recovery-${crypto.randomUUID()}`, params });
+}
+
 export async function handleHostedRequest(
   request: Request,
   environment: HostedRuntimeEnvironment,
@@ -916,7 +965,7 @@ export async function handleHostedRequest(
   }
   const attemptMatch = /^\/api\/v2\/cpu-attempts\/([0-9a-f-]+)$/u.exec(url.pathname);
   if (attemptMatch && (request.method === "GET" || request.method === "POST")) {
-    return handleCpuAttemptApi(request, config, executionContext, attemptMatch[1]!);
+    return handleCpuAttemptApi(request, environment, config, executionContext, attemptMatch[1]!);
   }
   const outputDeleteMatch = /^\/api\/v2\/cpu-attempts\/([0-9a-f-]+)\/output$/u.exec(url.pathname);
   if (outputDeleteMatch && request.method === "DELETE") {
