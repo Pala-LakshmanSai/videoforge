@@ -641,6 +641,109 @@ interface ClaimedAttempt extends Record<string, unknown> {
   readonly deadline_at: Date | string;
 }
 
+interface PlannedAttempt extends Record<string, unknown> {
+  readonly id: string;
+  readonly job_spec_object_key: string;
+  readonly job_spec_content_length: number | string;
+  readonly job_spec_checksum_sha256: string;
+  readonly created_at: Date | string;
+}
+
+/**
+ * A browser request writes PLANNED before the job specification reaches R2. If the request loses
+ * its response after that transaction, the normal worker claim query must not guess that the
+ * object exists. Reconcile one tenant-owned residue only after an exact R2 head check; stale or
+ * malformed residue becomes a durable failure so the account admission slot cannot be wedged.
+ */
+async function reconcilePlannedAttempt(
+  environment: HostedRuntimeEnvironment,
+  pool: HostedNeonPool,
+  scope: DeviceScope,
+): Promise<void> {
+  const candidate = await createNeonExecutor(pool).transaction(async (transaction) => {
+    await transaction.query("SELECT set_config($1, $2, true)", [
+      "videoforge.account_id",
+      scope.accountId,
+    ]);
+    const result = await transaction.query<PlannedAttempt>(
+      `SELECT id, job_spec_object_key, job_spec_content_length, job_spec_checksum_sha256,
+              created_at
+         FROM hosted_cpu_job_attempts
+        WHERE account_id = $1 AND workspace_id = $2
+          AND execution_backend = 'PERSONAL_WORKER' AND state = 'PLANNED'
+          AND deadline_at > now()
+        ORDER BY created_at, id
+        LIMIT 1 FOR UPDATE SKIP LOCKED`,
+      [scope.accountId, scope.workspaceId],
+    );
+    return result.rows[0] ?? null;
+  });
+  if (!candidate) return;
+
+  const object = await environment.PRIVATE_ARTIFACTS?.head(candidate.job_spec_object_key);
+  const objectChecksum = object ? checksumFromR2(object.checksums?.sha256) : null;
+  const exactObject = Boolean(
+    object &&
+      object.size === Number(candidate.job_spec_content_length) &&
+      object.httpMetadata?.contentType === "application/json" &&
+      objectChecksum === candidate.job_spec_checksum_sha256,
+  );
+  const stale = Date.now() - new Date(candidate.created_at).getTime() >= 10 * 60 * 1_000;
+
+  await createNeonExecutor(pool).transaction(async (transaction) => {
+    await transaction.query("SELECT set_config($1, $2, true)", [
+      "videoforge.account_id",
+      scope.accountId,
+    ]);
+    if (exactObject) {
+      const outboxed = await transaction.query<{ id: string }>(
+        `UPDATE hosted_cpu_job_attempts
+            SET state = 'OUTBOXED', version = version + 1, updated_at = now()
+          WHERE id = $1 AND account_id = $2 AND workspace_id = $3 AND state = 'PLANNED'
+        RETURNING id`,
+        [candidate.id, scope.accountId, scope.workspaceId],
+      );
+      if (outboxed.rows[0]) {
+        await transaction.query(
+          `INSERT INTO hosted_cpu_job_events (
+             id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
+           ) SELECT md5($1 || ':outboxed:1')::uuid, $2, $3, $1, 1, 'OUTBOXED', $4, now()
+           WHERE NOT EXISTS (
+             SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id = $1 AND kind = 'OUTBOXED'
+           )`,
+          [candidate.id, scope.accountId, scope.workspaceId, candidate.job_spec_checksum_sha256],
+        );
+      }
+      return;
+    }
+    if (!stale) return;
+
+    const failureFacts = await sha256(
+      `PLANNED_RECONCILIATION_FAILED:${candidate.job_spec_checksum_sha256}`,
+    );
+    const failed = await transaction.query<{ id: string }>(
+      `UPDATE hosted_cpu_job_attempts
+          SET state = 'FAILED', submitted_at = COALESCE(submitted_at, now()),
+              terminal_at = now(), retain_until = GREATEST(deadline_at, now() + interval '30 minutes'),
+              version = version + 1, updated_at = now()
+        WHERE id = $1 AND account_id = $2 AND workspace_id = $3 AND state = 'PLANNED'
+      RETURNING id`,
+      [candidate.id, scope.accountId, scope.workspaceId],
+    );
+    if (failed.rows[0]) {
+      await transaction.query(
+        `INSERT INTO hosted_cpu_job_events (
+           id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
+         ) SELECT md5($1 || ':preparation-failed:1')::uuid, $2, $3, $1, 1, 'FAILED', $4, now()
+         WHERE NOT EXISTS (
+           SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id = $1 AND kind = 'FAILED'
+         )`,
+        [candidate.id, scope.accountId, scope.workspaceId, failureFacts],
+      );
+    }
+  });
+}
+
 function exactStoredTemplate(value: unknown): {
   readonly inputDocument: Record<string, unknown>;
   readonly outputs: readonly {
@@ -713,6 +816,7 @@ async function claim(
     if (scope.executionBundleSha256 !== config.mediaWorkerRelease.executionBundleSha256) {
       return json({ error: { code: "MEDIA_WORKER_UPDATE_REQUIRED" } }, 409);
     }
+    await reconcilePlannedAttempt(environment, pool, scope);
     const leaseId = crypto.randomUUID();
     const leaseToken = await deriveScopedToken(config.mediaWorkerTokenSecret, "lease", leaseId);
     const claimed = await createNeonExecutor(pool).transaction(async (transaction) => {
