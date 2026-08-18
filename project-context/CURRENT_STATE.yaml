@@ -378,8 +378,8 @@ recommended_next_task:
 
 verification:
   state: v2_06_imageforge_beta_distribution_locally_verified_full_acceptance_blocked
-  verified_commit: "65e76aa6388d75e19d8b3f200dee5ad8cdf1a569"
-  verified_commit_note: "The ImageForge-style beta distribution path passes canonical verification. Same-chat re-audit evidence is not independent; actual installer builds/publication/native install, the complete hosted generation journey, live tenant/device parity, backup/restore, and hosted Chrome acceptance remain blocked."
+  verified_commit: "08ea436c4bd2b887d214d538c87c50a04522e9f1"
+  verified_commit_note: "The ImageForge-style beta distribution path and the tenant-principal grant contract pass canonical verification. Same-chat re-audit evidence is not independent; actual installer builds/publication/native install, the complete hosted generation journey, live tenant/device parity, backup/restore, and hosted Chrome acceptance remain blocked."
   predecessor_verified_commit: "3c117f204844da9c984d233477933ee4c0f304dd"
   acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-imageforge-beta-distribution-reaudit/acceptance.json
   latest_live_check:
