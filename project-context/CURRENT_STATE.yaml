@@ -85,10 +85,10 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "dbd01cd097f87ac8a55ded43f414d322badfc3e5"
-  current_source_head_note: "The source/evidence handoff is dbd01cd; subsequent HEAD commits are documentation-only after that handoff and the deployed source repair at abadf85. Hosted preset hubs use the authenticated tenant catalog and fixture-only /new routes are explicitly blocked in staging; Windows pairing, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
-  last_good_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
-  last_good_commit_note: "V2-06 hosted staging is deployed from abadf85 with the immutable 0.1.4 Windows/macOS beta release. The hosted preset-hub source repair, staging build, canonical verification, and one native macOS pairing/heartbeat smoke are green. Windows pairing, device parity, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
+  current_source_head: "5a8b9e275fa54658b214009c1d8f6c5b602244f1"
+  current_source_head_note: "The current deployed implementation source is 5a8b9e2; subsequent HEAD commits are documentation-only evidence descendants. Hosted preset hubs use the authenticated tenant catalog and fixture-only /new routes are explicitly blocked in staging; Windows pairing, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
+  last_good_commit: "5a8b9e275fa54658b214009c1d8f6c5b602244f1"
+  last_good_commit_note: "V2-06 hosted staging is deployed from 5a8b9e2 with the immutable 0.1.4 Windows/macOS beta release. The hosted preset-hub and WAV upload/duration repairs, staging build, canonical verification, and one native macOS pairing/heartbeat smoke are green. Windows pairing, device parity, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
