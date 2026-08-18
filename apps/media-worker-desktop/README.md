@@ -27,6 +27,15 @@ the checksum/size manifest to the public repository Release; the workflow refuse
 existing tag or asset. Activating that generated manifest in staging is a separate reviewed hosting
 mutation.
 
+Compute the exact execution-bundle identity from a clean checkout before dispatching the workflow:
+
+```sh
+python apps/media-worker-desktop/compute_execution_bundle_sha256.py
+```
+
+Pass that `sha256:...` value as `execution_bundle_sha256`. Each build and the publish job recompute
+the clean-worktree source/tool manifest and fail if the supplied identity does not match.
+
 The workflow pins FFmpeg/FFprobe 8.1.2, whisper.cpp 1.8.4, and the exact `ggml-base.en` model. It
 verifies source/archive hashes, tool versions, required render filters, libx264, and the model hash
 before freezing either app. The macOS workflow also fails closed unless every Mach-O file inside

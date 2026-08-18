@@ -9,40 +9,31 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-
 MODEL_URL = (
     "https://huggingface.co/ggerganov/whisper.cpp/resolve/"
     "5359861c739e955e79d9a303bcbc70fb988958b1/ggml-base.en.bin"
 )
 MODEL_SHA256 = "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002"
 
-WINDOWS_FFMPEG_URL = (
-    "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-8.1.2-essentials_build.zip"
-)
+WINDOWS_FFMPEG_URL = "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-8.1.2-essentials_build.zip"
 WINDOWS_FFMPEG_SHA256 = "db580001caa24ac104c8cb856cd113a87b0a443f7bdf47d8c12b1d740584a2ec"
 WINDOWS_WHISPER_URL = (
     "https://github.com/ggml-org/whisper.cpp/releases/download/v1.8.4/whisper-bin-x64.zip"
 )
 WINDOWS_WHISPER_SHA256 = "74f973345cb52ef5ba3ec9e7e7af8e48cc8c71722d1528603b80588a11f82e3e"
 
-MACOS_FFMPEG_URL = (
-    "https://ffmpeg.martin-riedl.de/download/macos/arm64/"
-    "1783011502_8.1.2/ffmpeg.zip"
-)
+MACOS_FFMPEG_URL = "https://ffmpeg.martin-riedl.de/download/macos/arm64/1783011502_8.1.2/ffmpeg.zip"
 MACOS_FFMPEG_SHA256 = "ef1aa60006c7b77ce170c1608c08d8e4ba1c30c5746f2ac986ded932d0ac2c3c"
 MACOS_FFPROBE_URL = (
-    "https://ffmpeg.martin-riedl.de/download/macos/arm64/"
-    "1783011502_8.1.2/ffprobe.zip"
+    "https://ffmpeg.martin-riedl.de/download/macos/arm64/1783011502_8.1.2/ffprobe.zip"
 )
 MACOS_FFPROBE_SHA256 = "c39787f4af7a3932502d2d48db6f6feaaa836b48a73ef78c32cc3285df61dfaf"
 MACOS_INTEL_FFMPEG_URL = (
-    "https://ffmpeg.martin-riedl.de/download/macos/amd64/"
-    "1783018342_8.1.2/ffmpeg.zip"
+    "https://ffmpeg.martin-riedl.de/download/macos/amd64/1783018342_8.1.2/ffmpeg.zip"
 )
 MACOS_INTEL_FFMPEG_SHA256 = "a52ef43883f44c219766d4b3bdde4e635b35465d0b704c01c3a0566b59775df9"
 MACOS_INTEL_FFPROBE_URL = (
-    "https://ffmpeg.martin-riedl.de/download/macos/amd64/"
-    "1783018342_8.1.2/ffprobe.zip"
+    "https://ffmpeg.martin-riedl.de/download/macos/amd64/1783018342_8.1.2/ffprobe.zip"
 )
 MACOS_INTEL_FFPROBE_SHA256 = "5408ca588c8c72b0dde3afe676d0a7acf25ef97e55ae6eba5c7bede1cda42695"
 

@@ -9,7 +9,7 @@ try {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 }
-const pythonRoots = ["packages/contracts/python", "workers"];
+const pythonRoots = ["apps/media-worker-desktop", "packages/contracts/python", "workers"];
 
 for (const args of [
   ["run", "--locked", "--no-sync", "ruff", "check", ...pythonRoots],

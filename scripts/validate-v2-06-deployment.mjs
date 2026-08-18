@@ -170,6 +170,7 @@ if (
 for (const path of [
   "apps/media-worker-desktop/videoforge-worker.spec",
   "apps/media-worker-desktop/windows-installer.iss",
+  "apps/media-worker-desktop/compute_execution_bundle_sha256.py",
   "workers/media-local/src/videoforge_media_local/personal_worker.py",
   ".github/workflows/media-worker-release.yml",
 ]) {
@@ -187,8 +188,21 @@ if (
 )
   fail("Windows uninstall command must use Inno Setup doubled-quote escaping");
 const releaseWorkflow = await read(".github/workflows/media-worker-release.yml");
+const executionBundleScript = await read(
+  "apps/media-worker-desktop/compute_execution_bundle_sha256.py",
+);
+if (
+  !executionBundleScript.includes(
+    'SCHEMA_VERSION = "videoforge-personal-worker-execution-bundle/v1"',
+  ) ||
+  !executionBundleScript.includes("execution bundle identity requires a clean Git worktree") ||
+  !executionBundleScript.includes("pinned_release_inputs")
+)
+  fail("personal worker execution identity must be canonical and clean-worktree bound");
 if (
   !releaseWorkflow.includes("publish_release:") ||
+  !releaseWorkflow.includes("compute_execution_bundle_sha256.py") ||
+  !releaseWorkflow.includes('test "$computed" = "$EXECUTION_BUNDLE_SHA256"') ||
   !releaseWorkflow.includes('codesign --force --deep --sign - "dist/VideoForge Worker.app"') ||
   !releaseWorkflow.includes("grep -q 'Signature=adhoc'") ||
   !/hdiutil verify "VideoForge-Worker-[0-9]+\.[0-9]+\.[0-9]+\.dmg"/u.test(releaseWorkflow) ||
