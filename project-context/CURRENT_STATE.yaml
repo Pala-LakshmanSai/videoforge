@@ -86,7 +86,7 @@ repository:
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
   current_source_head: "dbd01cd097f87ac8a55ded43f414d322badfc3e5"
-  current_source_head_note: "Current HEAD dbd01cd is the documentation/evidence handoff after the deployed source repair at abadf85. Hosted preset hubs use the authenticated tenant catalog and fixture-only /new routes are explicitly blocked in staging; Windows pairing, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
+  current_source_head_note: "The source/evidence handoff is dbd01cd; latest HEAD 079d8c8 is documentation-only after that handoff and the deployed source repair at abadf85. Hosted preset hubs use the authenticated tenant catalog and fixture-only /new routes are explicitly blocked in staging; Windows pairing, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
   last_good_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
   last_good_commit_note: "V2-06 hosted staging is deployed from abadf85 with the immutable 0.1.4 Windows/macOS beta release. The hosted preset-hub source repair, staging build, canonical verification, and one native macOS pairing/heartbeat smoke are green. Windows pairing, device parity, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
@@ -623,7 +623,7 @@ verification:
     worker_source_repair_commit: "0184a66f0532af0b05f5e4f3b79f5289768c120b"
     previous_worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-preset-hub-repair-0087897/acceptance.json
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-preset-hub-repair-deployed-abadf85/acceptance.json
     previous_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
     live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
     runpod_live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
