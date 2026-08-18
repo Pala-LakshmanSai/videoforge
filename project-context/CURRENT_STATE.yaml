@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-17T17:36:31Z"
+updated_at: "2026-08-18T03:37:29Z"
 
 phase: serverless_v2_v2_06_live_activation_in_progress
 implementation_authorized_in_current_task: true
@@ -84,8 +84,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "0245c100e5e20ee1f0ebf262e046f7f3c32bbb13"
-  last_good_commit_note: "V2-06 local product journey, activation preflight, exact Neon runtime grants, R2 failure reconciliation orchestration, and hosted staging deployment are green at this implementation commit. Live status, private-R2 state, secret allowlist, migration head, FORCE RLS, and SELECT-only render-plan grants are recorded; hosted Chrome, native Windows/macOS, paired-device parity, durable Workflow behavior, and full checkpoint acceptance remain unproven."
+  last_good_commit: "08ea436c4bd2b887d214d538c87c50a04522e9f1"
+  last_good_commit_note: "V2-06 local product journey, activation preflight, exact Neon runtime grants including videoforge_current_account_id(), R2 failure reconciliation orchestration, and hosted staging deployment are green at this implementation commit. The grant was executed in Neon after the runtime role caused a tenant bootstrap 1101; authenticated staging Queue/Settings now load for lakshmansai121@gmail.com. Native Windows/macOS pairing, device parity, durable Workflow behavior, and full checkpoint acceptance remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -382,6 +382,13 @@ verification:
   verified_commit_note: "The ImageForge-style beta distribution path passes canonical verification. Same-chat re-audit evidence is not independent; actual installer builds/publication/native install, the complete hosted generation journey, live tenant/device parity, backup/restore, and hosted Chrome acceptance remain blocked."
   predecessor_verified_commit: "3c117f204844da9c984d233477933ee4c0f304dd"
   acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-imageforge-beta-distribution-reaudit/acceptance.json
+  latest_live_check:
+    recorded_at_utc: "2026-08-18T03:37:29Z"
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-post-grant-live-check/acceptance.json
+    status: hosted_tenant_bootstrap_restored_personal_worker_acceptance_pending
+    repair_commit: "08ea436c4bd2b887d214d538c87c50a04522e9f1"
+    neon_runtime_grant_executed: true
+    new_external_spend_usd: 0
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."

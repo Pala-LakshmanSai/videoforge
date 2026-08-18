@@ -1,0 +1,98 @@
+{
+  "schema_version": "videoforge.v2-06-post-grant-live-check/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-18T03:37:29Z",
+  "audit_method": "Post-grant live check using the signed-in staging browser plus repository verification. The Neon permission grant was explicitly confirmed by the user and executed in the Neon SQL editor. No credentials or tokens were recorded; no GPU, RunPod, resource allocation, or paid compute action occurred.",
+  "result": "FAIL_FULL_CHECKPOINT_ACCEPTANCE_PENDING_PERSONAL_WORKER_AND_LIVE_RECOVERY_PROOF",
+  "grant_fix": {
+    "defect": "The runtime role lacked EXECUTE on videoforge_current_account_id(), which is called by tenant RLS policies. Google sign-in had created the auth/session rows, but /api/v2/tenant failed with a Cloudflare 1101 permission-denied exception.",
+    "sql_executed": "GRANT EXECUTE ON FUNCTION public.videoforge_current_account_id() TO videoforge_v2_06_runtime;",
+    "result": "Neon SQL editor reported Statement executed successfully.",
+    "repository_contract": [
+      "deploy/v2-06/neon-runtime-grants.sql:32-34",
+      "deploy/v2-06/apply-migrations-and-grants.mjs:44-53",
+      "scripts/validate-v2-06-deployment.mjs:79-81",
+      "scripts/tests/v2-06-neon-runtime-grants.test.mjs:7-15"
+    ],
+    "repair_commit": "08ea436"
+  },
+  "live_browser_observation": {
+    "origin": "https://videoforge-v2-06-staging.lakshmansai121.workers.dev",
+    "account": "lakshmansai121@gmail.com",
+    "queue": "API healthy; authenticated Queue loaded; worker state WAITING FOR YOUR COMPUTER",
+    "settings": "My workspace; TENANT ISOLATED; Mac .dmg and Windows .exe links; No computer is connected yet",
+    "interpretation": "The grant restored the authenticated hosted tenant bootstrap/UI path. It does not prove a desktop install, pairing, media execution, or hosted generation completion."
+  },
+  "findings": [
+    {
+      "id": "V2-06-P1-001",
+      "priority": "P1",
+      "status": "OPEN",
+      "finding": "Full V2-06 acceptance remains open: a native personal worker is not installed or paired, so Windows/macOS lifecycle, offline/reconnect, cancellation, streamed R2 output, media parity, and hosted end-to-end generation are unproven. Durable Workflow recovery, backup/restore, explicit output deletion, and post-acceptance billing observation are also unproven.",
+      "references": [
+        "project-context/tasks/VF-10-06.md:206-215",
+        "project-context/CURRENT_STATE.yaml:5-11",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-17-post-repair-live-audit/acceptance.json:11-21"
+      ],
+      "next_user_action": "From Settings, run the downloaded Mac or Windows beta installer and click Connect this computer in the signed-in browser. The worker must be installed/launched by the user; no credentials or configuration are required."
+    },
+    {
+      "id": "V2-06-P2-001",
+      "priority": "P2",
+      "status": "OPEN",
+      "finding": "Provider-free local and installed-Chrome tests are green but cannot substitute for hosted personal-worker/device proof or a second real Google account isolation run.",
+      "references": [
+        "project-context/evidence/acceptance/VF-10-06/2026-08-17-post-repair-live-audit/acceptance.json:23-33",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-18-post-grant-live-check/acceptance.json:25-31"
+      ]
+    },
+    {
+      "id": "V2-06-P2-002",
+      "priority": "P2",
+      "status": "OPEN",
+      "finding": "Rollback and restore remain documented but not exercised against the live Worker/Neon deployment.",
+      "references": [
+        "deploy/v2-06/rollback.md",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-17-post-repair-live-audit/acceptance.json:35-43"
+      ]
+    }
+  ],
+  "p0_findings": [],
+  "verification_commands": [
+    { "command": "CI=1 TURBO_FORCE=true pnpm verify", "exit_code": 0, "result": "all canonical package, control-plane, Python, Workerd, and installed-Chrome suites green; 44/44 Chrome tests passed" },
+    { "command": "pnpm validate:v2-06-deployment", "exit_code": 0, "result": "provider-free deployment templates are fail-closed and internally consistent, including the tenant-principal grant" },
+    { "command": "node --test scripts/tests/v2-06-neon-runtime-grants.test.mjs", "exit_code": 0, "result": "1/1 passed" },
+    { "command": "node --test scripts/tests/v2-06-owned-render-fixture.test.mjs", "exit_code": 0, "result": "10/10 passed" },
+    { "command": "pnpm context:validate", "exit_code": 0, "result": "context validation passed" },
+    { "command": "pnpm format:check", "exit_code": 0, "result": "all files formatted" },
+    { "command": "pnpm secret:scan", "exit_code": 0, "result": "tracked-file secret scan passed" },
+    { "command": "git diff --check", "exit_code": 0, "result": "no whitespace errors before commit" }
+  ],
+  "current_state_and_spend_truth": {
+    "cloudflare_worker": "videoforge-v2-06-staging",
+    "cloudflare_version": "054910bd-00a2-4503-bc2f-1c2d0e364f59",
+    "neon_project_id": "ancient-morning-99567618",
+    "r2_bucket": "videoforge-v2-06-staging-private",
+    "new_external_spend_usd": 0,
+    "finite_test_cap_usd": 3,
+    "finite_test_cap_remaining_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "provider_cpu_spend_usd": 0,
+    "runpod_pods_endpoints_workers": 0,
+    "runpod_retained_volumes": 2,
+    "runpod_retained_storage_usd_per_month": 7,
+    "runpod_storage_separate_from_v2_06": true,
+    "successful_final_video_auto_delete": false
+  },
+  "rollback_state": {
+    "current_cloudflare_version": "054910bd-00a2-4503-bc2f-1c2d0e364f59",
+    "prior_version_recorded_in_authority": "f3d3ecdc-7abf-4d9b-9208-a64e1552aa5f",
+    "schema_policy": "FORWARD_ONLY_KEEP_MIGRATIONS_0029_THROUGH_0035",
+    "live_exercise": false
+  },
+  "successor_safety": {
+    "v2_07_safe_to_begin": false,
+    "reason": "V2-06 full acceptance remains open; no RunPod/GPU authority was granted."
+  }
+}
