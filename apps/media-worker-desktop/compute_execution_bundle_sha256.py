@@ -90,14 +90,10 @@ def _load_release_tools(root: Path) -> ModuleType:
 def _source_files(root: Path) -> list[dict[str, object]]:
     paths = {Path(path) for path in RELEASE_FILES}
     for source_root in WORKER_SOURCE_ROOTS:
-        directory = root / source_root
-        if not directory.is_dir():
-            raise SystemExit(f"missing execution source directory: {source_root}")
-        paths.update(
-            path.relative_to(root)
-            for path in directory.rglob("*")
-            if path.is_file() and not path.is_symlink()
-        )
+        tracked = _git(root, "ls-files", "--", source_root).splitlines()
+        if not tracked:
+            raise SystemExit(f"missing tracked execution source directory: {source_root}")
+        paths.update(Path(path) for path in tracked)
     values = []
     for relative in sorted(paths, key=lambda path: path.as_posix()):
         path = root / relative
