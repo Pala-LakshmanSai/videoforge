@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-18T15:12:05Z"
+updated_at: "2026-08-18T15:49:59Z"
 
 phase: serverless_v2_v2_06_local_repair_committed_hosted_reverification_pending
 implementation_authorized_in_current_task: true
@@ -49,8 +49,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "b615d4ce432c41efbbba185bf3f420996615af93"
-  current_source_head_note: "The current repository source is clean, committed, and canonically provider-free verified at b615d4c. It is a local source repair and is not deployed. The last supplied immutable deployment evidence remains exact HEAD 153cefe with personal-worker release 0.1.6; hosted completion, two-account isolation, Windows lifecycle/parity, backup/restore, rollback, and independent full-checkpoint acceptance remain unproven."
+  current_source_head: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
+  current_source_head_note: "The current repository source is clean, committed, and provider-free verified at fcc9257. It is a local source repair and is not deployed. The last supplied immutable deployment evidence remains exact HEAD 153cefe with personal-worker release 0.1.6; hosted completion, two-account isolation, Windows lifecycle/parity, backup/restore, rollback, and independent full-checkpoint acceptance remain unproven."
   last_good_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
   last_good_commit_note: "V2-06 staging is deployed from exact HEAD 153cefe with Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c, rendered-config sha256:8f67537d912b2b8d95e00c2af12e931c11ed81b96195b9637d4c05c47de3b2af, and immutable worker release 0.1.6. Source and deployment checks are green; full hosted/device acceptance remains open."
   working_tree_expected: clean_except_ignored_private_inputs
@@ -310,15 +310,15 @@ recommended_next_task:
 
 verification:
   state: v2_06_source_repair_committed_hosted_reverification_pending
-  verified_commit: "b615d4ce432c41efbbba185bf3f420996615af93"
-  verified_commit_note: "Canonical provider-free verification passes at source repair commit b615d4c. This commit is not deployed. The last supplied immutable deployment evidence is exact HEAD 153cefe as Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c with personal-worker release 0.1.6; hosted completion, two-account non-superuser RLS/R2 isolation, Windows lifecycle/parity, backup/restore, rollback, and independent hosted acceptance remain blocked."
+  verified_commit: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
+  verified_commit_note: "Provider-free focused and fast verification passes at source repair commit fcc9257. The full canonical pnpm verify was not completed for this repair, and this commit is not deployed. The last supplied immutable deployment evidence is exact HEAD 153cefe as Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c with personal-worker release 0.1.6; hosted completion, two-account non-superuser RLS/R2 isolation, Windows lifecycle/parity, backup/restore, rollback, and independent hosted acceptance remain blocked."
   predecessor_verified_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-b615d4c/acceptance.json
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-fcc9257/acceptance.json
   latest_live_check:
     recorded_at_utc: "2026-08-18T13:33:02Z"
     evidence: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
     status: last_supplied_deployment_evidence_not_refreshed_after_local_source_repair
-    source_repair_commit: "b615d4ce432c41efbbba185bf3f420996615af93"
+    source_repair_commit: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
     deployed_implementation_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
     deployed_source_mismatch: true
     release_commit: "153cefe"
@@ -335,9 +335,9 @@ verification:
     hosted_asr_attempt_state: CANCELLED
     hosted_asr_successful_output_proven: false
   latest_source_verification:
-    recorded_at_utc: "2026-08-18T15:12:05Z"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-b615d4c/acceptance.json
-    source_commit: "b615d4ce432c41efbbba185bf3f420996615af93"
+    recorded_at_utc: "2026-08-18T15:49:59Z"
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-fcc9257/acceptance.json
+    source_commit: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
     deployed_implementation_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
     deployed_source_mismatch: true
     immutable_worker_release_source_status: release_0_1_6_unchanged_source_repair_not_published
@@ -412,6 +412,51 @@ verification:
       - "pnpm secret:scan (exit 0; 1146 tracked files)"
       - "pnpm format:check and git diff --check (exit 0)"
     evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-b615d4c/acceptance.json
+    not_proven_by_this_repair:
+      - hosted_two_account_Better_Auth_Neon_non_superuser_FORCE_RLS_and_private_R2_isolation
+      - successful_hosted_ASR_render_playback_and_explicit_delete
+      - Windows_clean_install_pairing_update_remove_and_cross_platform_media_parity
+      - live_backup_restore_rollback_and_post_acceptance_billing_observation
+      - current_RunPod_zero_worker_and_zero_endpoint_inventory
+      - independent_audit_of_the_repaired_source_or_deployment
+  local_repair_latest_2026_08_18:
+    commit: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
+    parent: "574acbbaea02242083350e850942f8b9806d58ce"
+    scope: provider_free_source_repair_only
+    live_verification_performed: false
+    credentials_read: false
+    provider_calls: false
+    remote_mutation: false
+    spend_usd: 0
+    formal_finding_count:
+      prior_formally_resolved: 1
+      new_formally_closed: 0
+      open_total: 6
+      open_p0: 0
+      open_p1: 3
+      open_p2: 3
+    repairs:
+      - Google_only_Better_Auth_database_constraint_and_admission
+      - bounded_personal_worker_and_Workflow_replay_with_durable_terminal_failure_event
+      - strict_worker_https_sleep_assertion_macos_unload_and_validate_before_external_bundle_launch
+      - runtime_PostgreSQL_TLS_and_channel_binding_requirement
+    commands:
+      - "CI=1 TURBO_FORCE=true pnpm verify:fast (exit 0; provider-free fast gate completed through package tests and generated-route consistency; not canonical release verification)"
+      - "pnpm validate:v2-06-deployment (exit 0)"
+      - "pnpm format:check and git diff --check (exit 0)"
+      - "pnpm --filter @videoforge/web typecheck (exit 0)"
+      - "pnpm --filter @videoforge/web exec vitest run src/server/hosted/hosted-adapters.test.ts (exit 0; 13/13)"
+      - "pnpm --filter @videoforge/control-plane build (exit 0)"
+      - "pnpm --filter @videoforge/control-plane exec node --test tests/v2-06-hosted-auth.test.mjs (exit 0; 6/6)"
+      - "pnpm --filter @videoforge/control-plane exec node --test tests/migrations-smoke.test.mjs (exit 0; 6/6)"
+      - "node --test scripts/tests/v2-06-deployment.test.mjs scripts/tests/v2-06-activation-safety.test.mjs scripts/tests/v2-06-owned-render-fixture.test.mjs scripts/tests/v2-06-tenant-seed.test.mjs (exit 0; 28/28)"
+      - "VIDEOFORGE_UV=\"$PWD/.tools/uv-0.8.13/bin/uv\" pnpm python:lint (exit 0; 87 Python files)"
+      - "uv run --locked --no-sync python -m unittest discover -s workers/media-local/tests -p 'test_*.py' (exit 0; 39/39)"
+      - "pnpm contracts:check (exit 0; 123 canonical files)"
+      - "pnpm context:validate (exit 0)"
+      - "pnpm secret:scan (exit 0; 1148 tracked files)"
+    canonical_release_verification: "pnpm verify was not completed for this repair; prior full run was interrupted during a slow control-plane phase after an environment disk-space failure."
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-fcc9257/acceptance.json
     not_proven_by_this_repair:
       - hosted_two_account_Better_Auth_Neon_non_superuser_FORCE_RLS_and_private_R2_isolation
       - successful_hosted_ASR_render_playback_and_explicit_delete
@@ -633,8 +678,8 @@ verification:
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
     status: source_repair_committed_hosted_reverification_pending
-    implementation_commit: "b615d4ce432c41efbbba185bf3f420996615af93"
-    source_head_commit: "b615d4ce432c41efbbba185bf3f420996615af93"
+    implementation_commit: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
+    source_head_commit: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
     current_source_deployment_status: not_deployed
     previous_deployed_source_head: "153cefef40739c35b84ed633fc4978f8a5e9746b"
     hosted_ui_repair_commit: "0d850bfd6e5a413d744578e1cd45f07cba71b619"
@@ -644,7 +689,7 @@ verification:
     worker_source_repair_deployment_status: release_0_1_6_published_and_installed_mac_only
     previous_worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-b615d4c/acceptance.json
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-fcc9257/acceptance.json
     previous_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
     live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
     runpod_live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
@@ -748,11 +793,11 @@ verification:
       - "The user-selected email provider is NONE, so hosted auth is Google-only and email/password stays disabled. Dedicated Google project videoforge-v2-06-staging-0817 and its exact redirect/client exist; live two-user callback acceptance remains pending."
       - "The user has Windows x64 and Mac test devices. Apple Developer Program membership is absent and no longer required for the selected ImageForge-style beta release; native clean-download/install evidence must record any actual warning or bypass behavior."
       - "The exact combined V2-06 activation was approved with a USD 3 finite test cap and USD 2/month R2 ceiling; spend and recurring truth must be rechecked after acceptance."
-      - "The last supplied 153cefe hosted deployment includes the bounded file-access diagnostic, cancellation invariant repair, idempotent cancellation recovery action, and released 0.1.6 worker contract. The new b615d4c source repair is not deployed; do not treat local result bytes as hosted media proof."
+      - "The last supplied 153cefe hosted deployment includes the bounded file-access diagnostic, cancellation invariant repair, idempotent cancellation recovery action, and released 0.1.6 worker contract. The new fcc9257 source repair is not deployed; do not treat local result bytes as hosted media proof."
       - "The immutable media-worker-v0.1.6 release is published and installed on the Mac only. Windows clean install, pairing, lifecycle, and parity remain open; the stale offline Mac device was left in place."
     resource_truth:
       external_mutations: historical_bounded_v2_06_staging_deployment_acceptance_pending
-      external_mutation_scope: "Historical immutable deployment evidence only: three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence. No mutation occurred for source repair b615d4c."
+      external_mutation_scope: "Historical immutable deployment evidence only: three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence. No mutation occurred for source repair fcc9257."
       truth_basis: immutable_historical_evidence_not_current_source_or_live_refresh
       deployments: 14
       installer_builds: 4
@@ -796,7 +841,7 @@ verification:
         avatar_version_state: READY
         style_version_state: PUBLISHED
         project_creation_blocker: CHROME_FILE_BYTES_UNREADABLE_EXTENSION_PERMISSION_PENDING
-      source_head_commit: b615d4ce432c41efbbba185bf3f420996615af93
+      source_head_commit: fcc925732fef321eb0cfa094d24fdfac05e80df3
       deployed_implementation_commit: 153cefef40739c35b84ed633fc4978f8a5e9746b
       source_deployment_parity: false
       worker_source_repair_release_status: release_0_1_6_published_installed_mac_only
@@ -808,7 +853,8 @@ verification:
         videoforge_project_created: true
         videoforge_project_id: ancient-morning-99567618
         videoforge_project_region: AWS_AP_SOUTHEAST_1_SINGAPORE
-        videoforge_migration_head: 35
+        source_expected_migration_head: 36
+        last_supplied_deployed_migration_head: 35
         runtime_role: videoforge_v2_06_runtime
         runtime_grants_verified: true
         runtime_force_rls_verified: true
