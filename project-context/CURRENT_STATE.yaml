@@ -106,11 +106,11 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "8e965758247f4cf222e0446f723b007af80297a7"
-  last_verified_repository_head: "8e965758247f4cf222e0446f723b007af80297a7"
-  current_source_head_note: "Application commit 8e96575 is provider-free verified and deployed to the exact V2-06 Cloudflare Worker as version 8e036f86-b79d-4ab6-9de4-97b9293747ec with release 0.1.8. Migration 0036, rollback/restore, exact secret names, CORS/private-R2 state, and the Mac 0.1.8 install/restart are proven. Full V2-06 remains FAIL on live render-plan materialization, two-account hosted acceptance, fresh backup/restore, Windows native parity, and independent audit."
-  last_good_commit: "8e965758247f4cf222e0446f723b007af80297a7"
-  last_good_commit_note: "V2-06 staging is deployed from exact application commit 8e96575 with Worker version 8e036f86-b79d-4ab6-9de4-97b9293747ec, rendered-config sha256:f08989e00b52e8a96564abf2c62fb66d5abde8049e06abe15f019c4f7e821317, and worker release 0.1.8. Source/deployment/Mac update checks are green; full hosted and Windows acceptance remains open."
+  current_source_head: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
+  last_verified_repository_head: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
+  current_source_head_note: "Commit 2e1d1d0 adds only provider-free backup/restore preflight and a bounded Windows native acceptance harness; canonical verification is green. The application runtime remains exactly deployed from 8e96575 as Worker version 8e036f86-b79d-4ab6-9de4-97b9293747ec with release 0.1.8. Migration 0036 and Cloudflare rollback/restore are proven. All autonomous readiness work is complete; full V2-06 remains FAIL only on user-private-input, authenticated-browser, physical-Windows, repository-wide immutability-approval, and fresh-independent-audit gates."
+  last_good_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
+  last_good_commit_note: "V2-06 autonomous readiness is provider-free green at 2e1d1d0. The deployed runtime stays at 8e96575 because the newer commit changes only operator/native acceptance tooling. No migration 0037 or runtime render-plan materializer is required for the checkpoint's activation-owner owned-fixture proof."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -420,11 +420,11 @@ recommended_next_task:
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_deployed_partial_completion_live_gates_remaining
-  verified_commit: "8e965758247f4cf222e0446f723b007af80297a7"
-  verified_commit_note: "Canonical provider-free verification passes at deployed application commit 8e96575: control-plane 309, web 351 plus one skipped, worker suites, Cloudflare-local 1/1, and installed-Chrome fixture 44/44. Live migration 0036, exact deployment, rollback/restore, release 0.1.8, and Mac update/restart are proven. Ordinary hosted render-plan materialization, two-account hosted isolation/journey, fresh backup/restore, Windows lifecycle/parity, Mac remove/offline UI, and independent acceptance remain blocked."
+  state: v2_06_autonomous_readiness_complete_user_live_gates_only
+  verified_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
+  verified_commit_note: "CI=1 TURBO_FORCE=true pnpm verify passes at 2e1d1d0, including 62 script tests and installed-Chrome fixture 44/44. Owned-fixture local verification, backup/restore tool readiness, Windows handoff readiness, and Mac release/install/restart checks pass. Local proof is not hosted proof; protected inputs, authenticated Chrome, Windows hardware, GitHub-native immutability approval, and fresh independent acceptance remain."
   predecessor_verified_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-bounded-completion-8e96575/acceptance.json
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json
   latest_live_check:
     recorded_at_utc: "2026-08-18T13:33:02Z"
     evidence: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
@@ -789,9 +789,10 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: deployed_partial_completion_live_and_windows_acceptance_blocked
+    status: autonomous_readiness_complete_user_live_and_device_gates_only
     implementation_commit: "8e965758247f4cf222e0446f723b007af80297a7"
-    source_head_commit: "8e965758247f4cf222e0446f723b007af80297a7"
+    source_head_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
+    autonomous_readiness_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
     current_source_deployment_status: deployed_worker_version_8e036f86_b79d_4ab6_9de4_97b9293747ec
     previous_deployed_source_head: "153cefef40739c35b84ed633fc4978f8a5e9746b"
     hosted_ui_repair_commit: "0d850bfd6e5a413d744578e1cd45f07cba71b619"
@@ -801,7 +802,8 @@ verification:
     worker_source_repair_deployment_status: release_0_1_8_published_ci_built_both_platforms_installed_mac_only
     previous_worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-bounded-completion-8e96575/acceptance.json
+    evidence: evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json
+    previous_completion_evidence: evidence/acceptance/VF-10-06/2026-08-18-bounded-completion-8e96575/acceptance.json
     previous_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
     live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
     runpod_live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
@@ -810,6 +812,15 @@ verification:
     post_repair_audit_evidence: evidence/acceptance/VF-10-06/2026-08-17-post-repair-live-audit/acceptance.json
     worker_startup_repair_release_evidence: evidence/acceptance/VF-10-06/2026-08-18-worker-startup-repair-release/acceptance.json
     commands:
+      - "CI=1 TURBO_FORCE=true pnpm verify at autonomous-readiness commit 2e1d1d0 (exit 0; canonical graph; 62 script tests; Cloudflare-local parity; worker suites; installed-Chrome fixture 44/44)."
+      - "Focused V2-06 backup/restore, Windows harness, activation-safety, Neon-grant, and owned-render tests (exit 0; 23/23)."
+      - "Homebrew libpq PATH-aware backup/restore tools-only preflight (exit 0; pg_dump, pg_restore, and psql resolved without execution or provider access)."
+      - "Private-input bootstrap under /Users/lakshmansai/.config/videoforge/v2-06/postgres-inputs (exit 0; mode-0700 directory and exactly three empty mode-0600 placeholders; no value read/generated)."
+      - "Full private-input preflight (exit 1 expected; all three placeholders remain empty, so backup/restore failed closed before database access)."
+      - "Owned V2-06 render fixture --dry-run --verify-local (exit 0; canonical local path and six-object plan validated; zero R2/Neon mutation)."
+      - "Fresh GitHub release metadata plus 0.1.8 Mac DMG download/hash/size/hdiutil/codesign/universal2/installed-CDHash verification (exit 0; GitHub native isImmutable remains false)."
+      - "Mac LaunchAgent bootout/bootstrap recovery and credential-metadata existence check (exit 0 after asynchronous unload was observed; worker running; no credential value read)."
+      - "Fresh public hosted status GET (exit 0; HTTP 200; deployed 8e96575; GPU DISABLED_FAKE_ONLY; private R2; Workflow; personal worker; Google; provider CPU $0)."
       - "Migration 0036 live transaction and exact runtime-grant verification (exit 0; migration hash exact; schema/role safe; zero missing/extra grants/functions; all tenant tables protected)."
       - "GitHub media-worker-v0.1.8 release workflow 32165893563 (exit 0; Windows x64, macOS universal2, and publish jobs passed; manifest sha256:0e71bc43763a3f5f9bcccd1477e78d8d0f7f81e366a693b8ee07ca04b5f2cc0b)."
       - "Approved Cloudflare rollback to version 7d66d976-a16f-46f6-8888-ebbb5f24217c and health check (exit 0; HTTP 200; commit 153cefe), followed by restored deployment version 8e036f86-b79d-4ab6-9de4-97b9293747ec (exit 0; HTTP 200; commit 8e96575)."
@@ -817,77 +828,12 @@ verification:
       - "Unauthenticated GETs for /api/v2/tenant, /api/v2/hosted/project-catalog, and /api/v2/hosted/queue after final deployment (exit 0; all HTTP 401)."
       - "Mac 0.1.8 DMG SHA/size, hdiutil verification, deep/strict ad-hoc seal, universal2 architecture, mounted install/update, and LaunchAgent bootout/bootstrap restart (exit 0); spctl returned expected ad-hoc/non-notarized rejection exit 3."
       - "CI=1 TURBO_FORCE=true pnpm verify at 8e96575 (exit 0; canonical graph; control-plane 309; web 351 plus 1 skipped; worker suites; Cloudflare parity 1/1; installed-Chrome fixture 44/44)."
-      - "CI=1 TURBO_FORCE=true pnpm verify (exit 0; 28/28 tasks; web 330/330 plus 1 skipped; pipeline 120/120; Cloudflare-local 1/1; installed-Chrome fixture 44/44)"
-      - "pnpm context:validate (exit 0; JSON 178; evidence refs 63; profiles 31; decisions 42; gates 19)"
-      - "node scripts/validate-v2-06-deployment.mjs (exit 0)"
-      - "pnpm secret:scan (exit 0; 1077 tracked files)"
-      - "pnpm python:lint (exit 0)"
-      - "pnpm format:check (exit 0)"
-      - "git diff --check (exit 0)"
-      - "pnpm context:validate after live inventory record (exit 0; JSON 179; evidence refs 64; profiles 31; decisions 42; gates 19)"
-      - "pnpm context:validate after RunPod live inventory record (exit 0; JSON 180; evidence refs 66; profiles 31; decisions 42; gates 19)"
-      - "pnpm secret:scan after RunPod live inventory record (exit 0; 1091 tracked files)"
-      - "pnpm format:check after RunPod live inventory record (exit 0)"
-      - "git diff --check after RunPod live inventory record (exit 0)"
-      - "pnpm --filter @videoforge/web exec vitest run src/hosted/HostedProductScreens.test.tsx src/server/hosted/hosted-adapters.test.ts (exit 0; 11/11)"
-      - "node --test packages/control-plane/tests/v2-06-hosted-auth.test.mjs (exit 0; 5/5)"
-      - "pnpm --filter @videoforge/web exec vitest run src/server/runtime/node-fair-admission.test.ts (exit 0; 5/5)"
-      - "CI=1 TURBO_FORCE=true pnpm verify after hosted product journey completion (exit 0; all package/worker suites; Cloudflare-local 1/1; installed-Chrome fixture 44/44)"
-      - "pnpm context:validate after hosted product journey record (exit 0; JSON 183; evidence refs 67; profiles 31; decisions 42; gates 19)"
-      - "pnpm --filter @videoforge/web build:staging (exit 0; current activation commit 0245c100e5e20ee1f0ebf262e046f7f3c32bbb13)"
-      - "wrangler deploy with rendered V2-06 staging config (exit 0; version 054910bd-00a2-4503-bc2f-1c2d0e364f59)"
-      - "GitHub media-worker-v0.1.1 release workflow 32100171381 (exit 0; Windows x64, macOS universal2, and immutable publish jobs passed)"
-      - "wrangler deploy with rendered V2-06 staging config for e61b18ac3f3aa252bcb262404e7ebea6ec791e3a (exit 0; version 3c329b22-300f-4a67-89db-c15c7e24f978)"
-      - "worker release workflow 32103646493 (exit 0; media-worker-v0.1.4 Windows x64/macOS universal2/publish jobs passed; manifest sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b)"
-      - "pnpm --filter @videoforge/web build:staging after 0184a66 (exit 0)"
-      - "wrangler deploy after 0184a66 (exit 0; version a27d92c6-3390-4ece-8d09-48def628ca74; config sha256:fdd42713218e34774a2768fa10b297bf2220c9fb040eda7eef815ec8ad989d16)"
-      - "POST pending worker enrollment after 0184a66 (HTTP 201; tenant-context repair exercised)"
-      - "GET /api/v2/hosted/status at current origin (HTTP 200; commit 0184a66; GPU DISABLED_FAKE_ONLY; provider CPU spend $0)"
-      - "Chrome /settings accessibility-tree inspection (exit 0; lakshmans-Mac-mini.local Mac v0.1.4 ONLINE; last seen 8/18/2026 11:52 AM)"
-      - "CI=1 TURBO_FORCE=true pnpm verify post-evidence update (exit 0; 28 tasks; control-plane 308; web 341 plus 1 skipped; worker suites; installed Chrome 44/44; generated traces cleaned after one environment-only ENOSPC run)"
-      - "GET /api/v2/hosted/status after repaired deployment (HTTP 200; commit e61b18ac3f3aa252bcb262404e7ebea6ec791e3a; GPU transport DISABLED_FAKE_ONLY; provider CPU spend $0)"
-      - "GET /api/v2/hosted/status on the deployed origin (HTTP 200; commit 0245c100e5e20ee1f0ebf262e046f7f3c32bbb13; GPU transport DISABLED_FAKE_ONLY; provider CPU spend $0)"
-      - "wrangler workflows list (exit 0; videoforge-v2-06-staging-video / HostedVideoWorkflow)"
-      - "wrangler secret list --format json (exit 0; exact 8-name allowlist; values not recorded)"
-      - "deploy/v2-06/verify-r2-private-state.sh ... (exit 0; private Standard bucket, public dev URL disabled, no final-object expiry, multipart abort only)"
-      - "live Neon runtime grant verifier (exit 0; migration 35/35, FORCE RLS complete, exact table/function grants, hosted_render_plans SELECT-only)"
-      - "CI=1 TURBO_FORCE=true pnpm verify final post-repair run (exit 0; all package/worker suites; installed-Chrome fixture 44/44)"
-      - "node --test scripts/tests/v2-06-owned-render-fixture.test.mjs (exit 0; 10/10, including injected partial-failure orchestration and immutable R2 failure reconciliation)"
-      - "pnpm validate:v2-06-deployment final post-repair run (exit 0)"
-      - "pnpm context:validate final post-repair run (exit 0; JSON 186; evidence refs 70; profiles 31; decisions 42; gates 19; no warning)"
-      - "pnpm format:check, pnpm secret:scan, and git diff --check final post-repair run (exit 0)"
-      - "Fresh post-repair read-only audit (no P0; P1 hosted/device acceptance remains unproven; P2 handoff was committed after audit)"
-      - "Hosted preset-hub source repair 0087897: focused hosted tests 7/7, web lint, web typecheck, staging build, and clean canonical CI=1 TURBO_FORCE=true pnpm verify all passed; source pushed to origin while live deployment remains 0184a66."
-      - "Protected V2-06 redeploy from abadf85 (exit 0; version e2467d77-a888-4832-9d2c-c26d9c58013e; rendered config sha256:fa577c2093e54617d827b43cdcc2852439d90b3b3456c26bfd6e044f25619b93)."
-      - "GET /api/v2/hosted/status after abadf85 deployment (exit 0; HTTP 200; deployed commit abadf85; GPU DISABLED_FAKE_ONLY; provider CPU spend $0)."
-      - "CI=1 TURBO_FORCE=true pnpm verify after dbd01cd evidence handoff (exit 0; canonical 28 tasks; worker suites; Cloudflare parity 1/1; installed Chrome 44/44)."
-      - "V2-06 hosted WAV/seed repair commits f4145a7, 5e0496b, and 023d43f are at current HEAD 023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f; focused owned-fixture/tenant-seed tests passed 15/15."
-      - "CI=1 TURBO_FORCE=true pnpm verify at current HEAD 023d43f (exit 0; 44 Chrome tests; 345 web tests plus 1 skipped; 308 control-plane tests; Cloudflare parity 1/1; worker tests; context and secret checks)."
-      - "pnpm context:validate && pnpm validate:v2-06-deployment && pnpm secret:scan && git diff --check at current HEAD (exit 0; JSON 191; evidence refs 77; 1136 tracked files secret scan)."
-      - "Owned V2-06 tenant fixture provisioner (exit 0; COMMITTED; three VERIFIED R2/Neon assets; one READY avatar version; one PUBLISHED style version; no project rows)."
-      - "Exact-HEAD V2-06 redeploy from 6336a75 (Worker version 7613d80b-cf7e-49d8-b81b-56ac2b76db32; Worker/public status updated; Wrangler exit 1 because Cloudflare returned workflows.api.error.internal while updating the existing Workflow trigger; no retry performed)."
-      - "GET /api/v2/hosted/status after exact-HEAD redeploy (exit 0; HTTP 200; deployed commit 6336a75; GPU DISABLED_FAKE_ONLY; provider CPU spend $0)."
-      - "wrangler deployments list and wrangler workflows list after exact-HEAD redeploy (exit 0; current Worker version 7613d80b-cf7e-49d8-b81b-56ac2b76db32; existing videoforge-v2-06-staging-video / HostedVideoWorkflow remains listed)."
-      - "Real Chrome hosted Create Project attempts after 5e0496b and 023d43f (visible bounded checksum timeout after 32 seconds; exact Neon read-back projects=0); extension file-byte access prerequisite remains unverified and was not changed."
-      - "Commit 5a8b9e2 routes WAV duration parsing through the same FileReader byte path; focused hosted tests pass 9/9, staging build passes, and protected redeploy succeeds as Worker version f04017dd-0d10-4f45-a23d-2e1edc8e5529 with config sha256:ddae6d28fb86c647e65e8e598267aa878a4c4c2038a86e4848f6aa24b96324df."
-      - "GET /api/v2/hosted/status after 5a8b9e2 deployment (exit 0; HTTP 200; deployed commit 5a8b9e2; GPU DISABLED_FAKE_ONLY; provider CPU spend $0)."
-      - "Unauthenticated GETs for /api/v2/tenant, /api/v2/hosted/project-catalog, and /api/v2/hosted/queue (exit 0; all HTTP 401 AUTHENTICATION_REQUIRED; no session or mutation)."
-      - "Focused HostedProductScreens repair suite (exit 0; 10/10), web lint, web typecheck, Prettier, and git diff --check at 0efe8fd (exit 0)."
-      - "CI=1 TURBO_FORCE=true pnpm verify at 0efe8fd (exit 0; 28 unique tasks; control-plane 308; web 347 plus 1 skipped; Cloudflare parity 1/1; worker suites; installed Chrome 44/44; context and secret checks)."
-      - "pnpm --filter @videoforge/web build:staging at 0efe8fd (exit 0; staging bundle and V2-05 vocabulary verification passed)."
-      - "Exact-HEAD V2-06 redeploy from 0efe8fd (exit 0; version 46e83784-3979-41a6-ab0c-76f84f7c459b; config sha256:af9c3275f1cf0ac63a998875c9d1e6413f708c8e9e81368ab63ca083377e85d3)."
-      - "GET /api/v2/hosted/status after 0efe8fd deployment (exit 0; HTTP 200; deployed commit 0efe8fd; GPU DISABLED_FAKE_ONLY; provider CPU spend $0)."
-      - "Served HostedProductScreens-DUQ5N-KV.js asset check (exit 0; HTTP 200; Chrome file-access diagnostic present)."
-      - "Unauthenticated GETs for /api/v2/tenant, /api/v2/hosted/project-catalog, and /api/v2/hosted/queue after 0efe8fd (exit 0; all HTTP 401 AUTHENTICATION_REQUIRED; no session or mutation)."
-      - "Personal worker contract hardening at f8e07b1, release preparation at d6f2c44: bundled-CA streaming, UUID/byte bounds, post-process cancellation fence, bounded result document, exact completion acknowledgement, and immutable 0.1.5 versioning; bundled uv worker tests 25/25 and pnpm python:lint passed."
-      - "MediaWorkerSetup UPDATE_REQUIRED guidance at f8e07b1 plus 0.1.5 release identity at d6f2c44: focused Vitest 3/3, staging build, workflow YAML, and canonical CI=1 TURBO_FORCE=true pnpm verify all passed; source is not deployed yet."
-      - "Canonical candidate verification at d6f2c44 (exit 0): 308 control-plane tests, 348 web tests plus 1 skipped, worker suites, Cloudflare parity 1/1, context/secret checks, and installed Chrome 44/44."
-      - "Canonical current-HEAD verification at 153cefe (exit 0): CI=1 TURBO_FORCE=true pnpm verify completed 28 unique tasks; 349 web tests passed and 1 skipped; worker suites, Cloudflare parity 1/1, context/secret checks, and installed Chrome 44/44 passed."
-      - "Current V2-06 staging deployment from exact application HEAD 153cefe (exit 0): Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c; rendered config sha256:8f67537d912b2b8d95e00c2af12e931c11ed81b96195b9637d4c05c47de3b2af; private R2 and Workflow bindings match the approved names."
-      - "Immutable media-worker-v0.1.6 release workflow 32136295474 (exit 0): Windows x64 and macOS universal2 build jobs plus publish passed; manifest sha256:fed1186e65ca2c4aa373568e562fff67d7d1dc6d01723ddfbd9aae71ba6a0ec2; Mac v0.1.6 is paired and online, while Windows clean-install/lifecycle proof is absent."
-      - "Fresh hosted ASR attempt 06b5beb5-9b8c-4cdc-9b40-6f07eed08c57 produced a valid local result but did not receive accepted hosted completion; visible cancellation recovery converged to CANCELLED with CPU $0.00 and GPU Disabled."
-      - "Current immutable handoff: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json records FAIL_HOSTED_ACCEPTANCE_PENDING, three repaired findings, open hosted completion/identity/native-parity findings, zero new spend, rollback availability, and V2-07 false."
     delivered:
+      - "Commit 2e1d1d0 adds a provider-free backup/restore tool and protected-file preflight, integrates fail-closed checks before database operations, and provides safe zero-byte mode-0600 bootstrap without reading secrets."
+      - "The local operator machine has a complete libpq/OpenSSL toolchain and prepared private placeholders; only the user-supplied protected values remain before live backup/restore."
+      - "Commit 2e1d1d0 adds a bounded Windows x64 acceptance harness for exact 0.1.8 manifest/hash/trust, clean install, optional pairing, autostart, update, uninstall, and a redacted report."
+      - "The existing activation-owner provision-owned-render-fixture.mjs is the correct V2-06 materialization path. A runtime/browser materializer and migration 0037 were rejected as unnecessary authority widening; migration head remains 36 and hosted_render_plans remains runtime SELECT-only."
+      - "Fresh Mac checks prove the public 0.1.8 DMG and installed app share exact code identity, the binary is universal2 and deep/strict sealed, LaunchAgent restart recovers, and credential metadata persists without value access."
       - "Migration 0032 adds account/workspace-bound worker enrollments, devices, exact input objects, one active lease per attempt/device, append-only events, row-level security, and stale-lease fencing while preserving historical Cloud Run rows for rollback."
       - "The hosted API uses PKCE enrollment, one explicit authenticated approval, OS-keychain-scoped device tokens, heartbeat/update gating, exact same-account claims, fresh R2 GET/PUT ports, streaming output verification, cancellation, revocation, and late-result rejection."
       - "Cloudflare Workflow now reconciles durable personal-worker leases and requeues expired work; active hosted code and deployment templates no longer dispatch Cloud Run."
@@ -906,15 +852,13 @@ verification:
       - "The active authentication decision is invite-only Google verified-email identity. Email/password and email delivery remain disabled because the user selected email provider NONE."
       - "Hosted /avatars and /styles now use the authenticated tenant-owned project catalog, and hosted /avatars/new and /styles/new render an explicit read-only staging boundary instead of fixture mutation screens."
     remaining_gates:
-      - "The user explicitly selected the ImageForge beta precedent: Windows unsigned beta and macOS ad-hoc sealed/non-notarized beta. Authenticode and Developer ID/notarization are optional future upgrades, not checkpoint blockers; warning-free behavior is not promised on every OS/device."
-      - "Real installed Windows and macOS proof must cover pairing, tenant isolation, autostart/reboot, sleep, offline/reconnect, cancellation, stale lease/result, streamed R2, tool parity, update/remove, and recovery."
-      - "The current Worker/Workflow deployment, status contract, private-R2 state, exact secret allowlist, Neon migration head 35, forced RLS/read-only render-plan runtime grants, R2 credential rotation, Neon owner rotation, Google OAuth secret rotation, unauthenticated route rejection, and the prior backup/restore drill are live-proven. Durable Workflow execution/recovery, real-identity Better Auth callback and negative paths, two-account isolation, owned ASR/render, explicit deletion, rollback exercise, and real Chrome remain unproven."
-      - "The user-selected email provider is NONE, so hosted auth is Google-only and email/password stays disabled. Dedicated Google project videoforge-v2-06-staging-0817 and its exact redirect/client exist; live two-user callback acceptance remains pending."
-      - "The user has Windows x64 and Mac test devices. Apple Developer Program membership is absent and no longer required for the selected ImageForge-style beta release; native clean-download/install evidence must record any actual warning or bypass behavior."
-      - "The exact combined V2-06 activation was approved with a USD 3 finite test cap and USD 2/month R2 ceiling; spend and recurring truth must be rechecked after acceptance."
-      - "Application commit 8e96575 is deployed as Worker version 8e036f86-b79d-4ab6-9de4-97b9293747ec with release 0.1.8. Ordinary browser project commit still cannot materialize the activation-owner-only hosted_render_plans row, so do not treat local fixtures as hosted render proof."
-      - "Media-worker-v0.1.8 is published for both platforms and installed/restarted on the Mac. Windows clean install, pairing, lifecycle, and parity remain open; Mac authenticated ONLINE/offline/remove UI acceptance is also incomplete."
-      - "Fresh encrypted backup and disposable restore remain open because protected mode-0600 PostgreSQL service/password and passphrase inputs were not present; no credential value was retrieved and no disposable database was created."
+      - "User private input: populate the prepared mode-0600 owner.pg_service.conf, owner.pgpass, and backup.passphrase files through a protected workflow. This unlocks owned-fixture provisioning plus the approved encrypted backup and disposable restore/create/verify/delete drill; no value belongs in chat, Git, logs, or evidence."
+      - "User browser/session input: permit a fresh Chrome window or restore extension control, keep both admitted Google test sessions available, and confirm destructive remote revoke/delete actions at action time. This unlocks real Better Auth/two-tenant Neon/R2 isolation, owned ASR/render, Workflow recovery/cancel/delete/playback, and Mac ONLINE/offline/reconnect/remove observations."
+      - "User Windows device: run apps/media-worker-desktop/windows-native-acceptance.ps1 on the clean x64 profile and complete SmartScreen, one browser pairing, sleep/reconnect, reboot/autostart, update/remove, and authenticated revoke observations."
+      - "New repository-wide approval: enable GitHub native immutable releases. The workflow already refuses replacement, but the live repository setting affects all releases and currently reports isImmutable=false."
+      - "Fresh independent task: audit the completed live/device evidence after the above gates. This same-chat handoff cannot independently accept itself."
+      - "The selected Windows unsigned-beta and macOS ad-hoc/non-notarized-beta trust modes remain intentional; Authenticode and Developer ID/notarization are optional and are not checkpoint blockers."
+      - "The exact combined V2-06 cap remains USD 3 with a USD 2/month R2 ceiling. Current new external spend is USD 0; recheck spend after the user-dependent acceptance run."
     resource_truth:
       external_mutations: bounded_v2_06_completion_partial_acceptance
       external_mutation_scope: "Current grant used only the exact V2-06 Worker/Workflow/private R2 bucket, Neon migration 0036, GitHub worker release publication, Cloudflare rollback/restore, and Mac installation. No RunPod, GPU, volume, unrelated resource, disposable database, backup/restore, or V2-07 mutation occurred."
@@ -961,9 +905,10 @@ verification:
         avatar_version_state: READY
         style_version_state: PUBLISHED
         project_creation_blocker: CHROME_FILE_BYTES_UNREADABLE_EXTENSION_PERMISSION_PENDING
-      source_head_commit: 8e965758247f4cf222e0446f723b007af80297a7
+      source_head_commit: 2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934
       deployed_implementation_commit: 8e965758247f4cf222e0446f723b007af80297a7
-      source_deployment_parity: true
+      source_deployment_parity: false
+      source_deployment_parity_note: "2e1d1d0 changes only local operator/native acceptance tooling; deployed application runtime remains exactly 8e96575."
       worker_source_repair_release_status: release_0_1_8_published_both_platforms_installed_mac_only
       neon:
         checked_at: "2026-08-17T17:36:31Z"

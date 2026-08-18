@@ -1,0 +1,306 @@
+{
+  "schema_version": "videoforge.v2-06-autonomous-readiness-handoff/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-18T23:39:10Z",
+  "result": "FAIL_USER_DEPENDENT_LIVE_GATES_ONLY",
+  "audit_independence": "SAME_CHAT_COMPLETION_HANDOFF_NOT_INDEPENDENT_AUDIT",
+  "authority": {
+    "finite_external_cap_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "runpod_mode": "READ_ONLY_ZERO_MUTATION",
+    "v2_07_authorized": false,
+    "new_remote_mutation_this_record": false,
+    "new_external_spend_usd": 0
+  },
+  "source": {
+    "branch": "codex/serverless-v2-roadmap",
+    "autonomous_readiness_commit": "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934",
+    "deployed_application_commit": "8e965758247f4cf222e0446f723b007af80297a7",
+    "source_deployment_parity": false,
+    "reason": "The readiness commit adds operator and Windows acceptance tooling only; no application runtime or migration changed.",
+    "migration_head": 36,
+    "migration_0037_created_or_authorized": false
+  },
+  "autonomous_completion": {
+    "remaining_without_user_input_or_new_approval": 0,
+    "completed": [
+      "Added a fail-closed backup/restore dependency and private-input metadata preflight.",
+      "Created the exact local private input directory and three zero-byte mode-0600 placeholders without reading or generating credential values.",
+      "Resolved the Homebrew libpq PATH and proved pg_dump, pg_restore, and psql are locally ready.",
+      "Added a bounded Windows x64 clean-install, update, autostart, pairing-presence, uninstall, and redacted-report harness.",
+      "Verified the owned V2-06 ASR/render fixture through its canonical local path and dry-run plan.",
+      "Rejected an unnecessary migration-0037/runtime materializer because V2-06 requires activation-owner owned-fixture proof and the existing provisioner is the least-authority path.",
+      "Re-verified the public 0.1.8 macOS DMG SHA-256, byte size, HFS image, ad-hoc seal, universal2 binary, and installed-app code identity.",
+      "Exercised the installed Mac LaunchAgent bootout/bootstrap restart and verified credential metadata remained present without reading its value.",
+      "Rechecked the public staging status and GitHub release metadata read-only.",
+      "Ran the complete provider-free canonical verification graph."
+    ]
+  },
+  "mac_native": {
+    "release_version": "0.1.8",
+    "dmg_sha256": "sha256:f26b1f4bc1df612c304e72b6e975d73460fc81288711c51ba3cf5cdc33bb498a",
+    "dmg_size_bytes": 285620004,
+    "trust": "AD_HOC_BETA",
+    "dmg_verified": true,
+    "deep_strict_codesign_verified": true,
+    "architectures": [
+      "x86_64",
+      "arm64"
+    ],
+    "installed_cdhash_matches_release": true,
+    "spctl_exit": 3,
+    "spctl_result": "EXPECTED_REJECTION_FOR_SELECTED_AD_HOC_NON_NOTARIZED_BETA",
+    "launch_agent_restart": "PASSED",
+    "credential_metadata_present_after_restart": true,
+    "credential_value_read": false,
+    "final_state": "RUNNING_BACKGROUND"
+  },
+  "backup_restore_readiness": {
+    "toolchain_ready": true,
+    "libpq_bin": "/opt/homebrew/opt/libpq/bin",
+    "private_input_directory": "/Users/lakshmansai/.config/videoforge/v2-06/postgres-inputs",
+    "directory_mode": "0700",
+    "files": {
+      "owner.pg_service.conf": "EMPTY_MODE_0600_PLACEHOLDER",
+      "owner.pgpass": "EMPTY_MODE_0600_PLACEHOLDER",
+      "backup.passphrase": "EMPTY_MODE_0600_PLACEHOLDER"
+    },
+    "credential_values_read_or_generated": false,
+    "live_backup_restore_run": false,
+    "disposable_restore_database_created": false
+  },
+  "windows_readiness": {
+    "release_version": "0.1.8",
+    "installer_sha256": "sha256:b2da4298fd7530f5d0a34a1db8942e44b103cf6495ba9ba2d0761a58f7395d48",
+    "installer_size_bytes": 225807468,
+    "trust": "UNSIGNED_BETA",
+    "harness": "apps/media-worker-desktop/windows-native-acceptance.ps1",
+    "provider_free_by_default": true,
+    "native_execution": "USER_WINDOWS_DEVICE_REQUIRED"
+  },
+  "hosted_current_state": {
+    "origin": "https://videoforge-v2-06-staging.lakshmansai121.workers.dev",
+    "status_http": 200,
+    "deployed_commit": "8e965758247f4cf222e0446f723b007af80297a7",
+    "environment": "staging",
+    "gpu_transport": "DISABLED_FAKE_ONLY",
+    "database": "NEON_POSTGRES_REQUIRED",
+    "artifact_plane": "PRIVATE_R2_REQUIRED",
+    "orchestration": "CLOUDFLARE_WORKFLOW_REQUIRED",
+    "cpu_jobs": "ACCOUNT_OWNED_PERSONAL_WORKER_REQUIRED",
+    "provider_cpu_spend": "$0",
+    "authentication": [
+      "GOOGLE"
+    ]
+  },
+  "github_release": {
+    "tag": "media-worker-v0.1.8",
+    "target_commit": "0c20f7d2bb05ca48d4fbb10b7b11385b7add8819",
+    "release_manifest_sha256": "sha256:0e71bc43763a3f5f9bcccd1477e78d8d0f7f81e366a693b8ee07ca04b5f2cc0b",
+    "native_immutable_release_flag": false,
+    "all_observed_releases_native_immutable": false,
+    "workflow_replacement_guard_present": true
+  },
+  "runpod": {
+    "mutation_calls_this_record": 0,
+    "pods": 0,
+    "serverless_endpoints": 0,
+    "active_or_flex_workers": 0,
+    "private_templates": 0,
+    "clusters": 0,
+    "retained_volumes": 2,
+    "retained_volume_gb_each": 50,
+    "retained_storage_usd_per_month": 7,
+    "truth_basis": "2026-08-18 approved read-only live inventory; not mutated in this record"
+  },
+  "rollback": {
+    "state": "PROVEN_AND_RESTORED",
+    "approved_prior_version": "7d66d976-a16f-46f6-8888-ebbb5f24217c",
+    "prior_commit": "153cefef40739c35b84ed633fc4978f8a5e9746b",
+    "rollback_health": "HTTP_200",
+    "restored_version": "8e036f86-b79d-4ab6-9de4-97b9293747ec",
+    "restored_commit": "8e965758247f4cf222e0446f723b007af80297a7",
+    "restore_health": "HTTP_200",
+    "migration_policy": "ADDITIVE_0029_THROUGH_0036_RETAINED"
+  },
+  "commands": [
+    {
+      "command": "node --test scripts/tests/v2-06-backup-restore-preflight.test.mjs scripts/tests/v2-06-windows-native-acceptance.test.mjs scripts/tests/v2-06-activation-safety.test.mjs scripts/tests/v2-06-neon-runtime-grants.test.mjs scripts/tests/v2-06-owned-render-fixture.test.mjs",
+      "exit_code": 0,
+      "result": "23/23 passed"
+    },
+    {
+      "command": "PATH=/opt/homebrew/opt/libpq/bin:$PATH node deploy/v2-06/backup-restore-preflight.mjs --tools-only --operation both",
+      "exit_code": 0,
+      "result": "complete local backup and restore client toolchain"
+    },
+    {
+      "command": "node deploy/v2-06/backup-restore-preflight.mjs --bootstrap --directory /Users/lakshmansai/.config/videoforge/v2-06/postgres-inputs",
+      "exit_code": 0,
+      "result": "three empty mode-0600 placeholders in a mode-0700 directory"
+    },
+    {
+      "command": "PATH=/opt/homebrew/opt/libpq/bin:$PATH node deploy/v2-06/backup-restore-preflight.mjs --directory /Users/lakshmansai/.config/videoforge/v2-06/postgres-inputs",
+      "exit_code": 1,
+      "result": "expected fail-closed result: all three private files are still empty"
+    },
+    {
+      "command": "V2_06_TENANT_EMAIL=approved-identity V2_06_SEED_AT=2026-08-17T12:00:00Z node deploy/v2-06/provision-owned-render-fixture.mjs --dry-run --verify-local",
+      "exit_code": 0,
+      "result": "canonical owned render path and six-object hosted plan validated; no R2 or database mutation"
+    },
+    {
+      "command": "gh release view media-worker-v0.1.8 --repo Pala-LakshmanSai/videoforge --json tagName,isImmutable,targetCommitish,assets",
+      "exit_code": 0,
+      "result": "isImmutable=false; exact three release assets and digests present"
+    },
+    {
+      "command": "gh release download media-worker-v0.1.8; SHA/size checks; hdiutil verify/attach; codesign; architecture and installed-CDHash comparison",
+      "exit_code": 0,
+      "result": "0.1.8 release artifact and installed app match"
+    },
+    {
+      "command": "spctl --assess --type execute --verbose=4 installed app",
+      "exit_code": 3,
+      "result": "expected selected ad-hoc/non-notarized beta rejection"
+    },
+    {
+      "command": "launchctl bootout then bootstrap/kickstart com.videoforge.personal-media-worker",
+      "exit_code": 0,
+      "result": "worker returned running with a new PID; credential metadata remained present"
+    },
+    {
+      "command": "curl public /api/v2/hosted/status | jq .",
+      "exit_code": 0,
+      "result": "HTTP 200; deployed commit 8e96575; GPU disabled; private R2; Workflow; personal workers; Google; provider CPU $0"
+    },
+    {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "result": "canonical provider-free graph passed, including 62 script tests and installed-Chrome fixtures 44/44"
+    },
+    {
+      "command": "pnpm context:validate",
+      "exit_code": 0,
+      "result": "200 JSON files; 91 evidence references; 31 read profiles; 42 decisions; 19 gates; profile within budget"
+    },
+    {
+      "command": "pnpm validate:v2-06-deployment",
+      "exit_code": 0,
+      "result": "templates remain fail-closed, personal-worker-only, and internally consistent"
+    },
+    {
+      "command": "pnpm secret:scan",
+      "exit_code": 0,
+      "result": "1155 tracked files passed"
+    },
+    {
+      "command": "pnpm format:check",
+      "exit_code": 0,
+      "result": "all matched files use Prettier formatting"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "diagnostic_nonzero_exits": [
+    {
+      "exit_code": 2,
+      "cause": "An exact-file Prettier invocation included unsupported PowerShell and shell files; supported files were unchanged, and canonical format:check passed."
+    },
+    {
+      "exit_code": 1,
+      "cause": "The first immediate post-bootout check raced asynchronous LaunchAgent unloading; the service was then confirmed absent and the corrected bootstrap/restart passed."
+    },
+    {
+      "exit_code": 1,
+      "cause": "The full backup/restore preflight intentionally fails while the three protected private input placeholders are empty."
+    },
+    {
+      "exit_code": 3,
+      "cause": "spctl rejects the selected ad-hoc/non-notarized beta as documented; deep/strict code-sign verification passes."
+    }
+  ],
+  "resolved_findings": [
+    {
+      "id": "V2-06-P1-RENDER-PLAN-MATERIALIZATION",
+      "resolution": "RECLASSIFIED_AS_LIVE_FIXTURE_GATE",
+      "detail": "No runtime migration is required. V2-06 proof explicitly uses activation-owner owned fixtures; the existing provision-owned-render-fixture.mjs is dry-run validated and retains hosted_render_plans as runtime SELECT-only."
+    },
+    {
+      "id": "V2-06-AUTONOMOUS-BACKUP-READINESS",
+      "resolution": "RESOLVED",
+      "detail": "Tool discovery, protected-file bootstrap, metadata-only readiness checks, fail-closed shell integration, and tests are complete."
+    },
+    {
+      "id": "V2-06-AUTONOMOUS-WINDOWS-READINESS",
+      "resolution": "RESOLVED",
+      "detail": "The exact 0.1.8 native acceptance harness and handoff are complete; execution requires the user's Windows x64 device."
+    }
+  ],
+  "findings": {
+    "p0": [],
+    "p1": [
+      {
+        "id": "V2-06-P1-LIVE-JOURNEY",
+        "status": "USER_REQUIRED",
+        "detail": "Protected owner/R2 inputs plus controllable authenticated Chrome sessions are required to provision the two tenant-owned fixtures and prove Google/Better Auth, Neon/R2 isolation, ASR/render, Workflow recovery, cancel, explicit delete, and real-Chrome playback. Local fixtures do not prove deployment."
+      },
+      {
+        "id": "V2-06-P1-BACKUP-RESTORE",
+        "status": "USER_PRIVATE_INPUT_REQUIRED",
+        "detail": "The operator must populate the three prepared mode-0600 files. Only then can the approved encrypted backup and disposable Neon restore/create/verify/delete drill run without credential exposure."
+      },
+      {
+        "id": "V2-06-P1-WINDOWS-NATIVE-PARITY",
+        "status": "USER_WINDOWS_DEVICE_REQUIRED",
+        "detail": "The prepared harness must run on the user's clean Windows x64 profile; SmartScreen, browser pairing, sleep/reconnect, and authenticated revoke require user/device observation."
+      }
+    ],
+    "p2": [
+      {
+        "id": "V2-06-P2-MAC-LIFECYCLE",
+        "status": "USER_BROWSER_AND_REPAIR_REQUIRED",
+        "detail": "Release/install/autostart/restart proof is complete. Hosted ONLINE/offline/reconnect UI, authenticated remote revoke, and clean uninstall/re-pair need a controllable authenticated Chrome tab and user confirmation for destructive revoke/removal."
+      },
+      {
+        "id": "V2-06-P2-GITHUB-NATIVE-IMMUTABILITY",
+        "status": "NEW_REPOSITORY_WIDE_APPROVAL_REQUIRED",
+        "detail": "The workflow refuses replacement, but GitHub reports isImmutable=false. Enabling repository-wide immutable releases changes all releases and was not inferred from the narrower publication authority."
+      },
+      {
+        "id": "V2-06-P2-INDEPENDENT-AUDIT",
+        "status": "FRESH_TASK_REQUIRED",
+        "detail": "This same-chat completion handoff cannot independently accept its own work."
+      }
+    ]
+  },
+  "unproven_live_claims": [
+    "Two-account real Google/Better Auth callback and negative-path acceptance.",
+    "Hosted non-superuser Neon RLS plus private R2 isolation exercised through both accounts.",
+    "Owned-fixture ASR and render completion with exact R2 hash parity and playback.",
+    "Durable Workflow restart/replay/cancel/stale-result/explicit-delete behavior.",
+    "Fresh encrypted backup and disposable restore/create/verify/delete drill.",
+    "Windows native parity and the remaining authenticated Mac UI/remove observations.",
+    "GitHub-native release immutability.",
+    "Fresh independent acceptance."
+  ],
+  "spend_truth": {
+    "new_v2_06_external_spend_usd": 0,
+    "finite_cap_usd": 3,
+    "finite_cap_remaining_usd": 3,
+    "r2_recurring_due_usd_per_month": 0,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "neon_base_usd_per_month": 0,
+    "cloudflare_workers_base_usd_per_month": 0,
+    "provider_cpu_usd": 0,
+    "runpod_retained_storage_usd_per_month_separate": 7
+  },
+  "successor_safety": {
+    "v2_07_safe_to_begin": false,
+    "gpu_transport": "DISABLED_FAKE_ONLY",
+    "reason": "V2-06 still needs user-dependent live/device acceptance and an independent audit. RunPod mutation remains unauthorized."
+  }
+}
