@@ -1,0 +1,209 @@
+{
+  "schema_version": "videoforge.v2-06-local-source-repair-handoff/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-18T15:12:05Z",
+  "result": "SOURCE_REPAIR_GREEN_HOSTED_REVERIFICATION_PENDING",
+  "audit_independence": "SAME_CHAT_IMPLEMENTATION_HANDOFF_NOT_INDEPENDENT_AUDIT",
+  "scope_boundary": "Provider-free repository repair and verification only. No credentials were read, no live provider call was made, no deployment or resource mutation occurred, and no spend occurred. Local fixtures and local Chrome cannot prove hosted deployment acceptance.",
+  "authority": {
+    "checkpoint": "V2-06",
+    "live_verification_authorized": false,
+    "credential_access_authorized": false,
+    "remote_mutation_authorized": false,
+    "finite_external_cap_usd": null,
+    "r2_recurring_ceiling_usd_per_month": null,
+    "provider_cpu_spend_usd": 0,
+    "gpu_transport": "DISABLED_FAKE_ONLY",
+    "runpod_mutation_authorized": false,
+    "v2_07_authorized": false,
+    "prior_immutable_authority_record": "evidence/acceptance/VF-10-06/2026-08-17-live-activation-authority/acceptance.json"
+  },
+  "source": {
+    "branch": "codex/serverless-v2-roadmap",
+    "head": "b615d4ce432c41efbbba185bf3f420996615af93",
+    "parent": "0857e86d0a689ec4384b9f31af57e13c28ed6961",
+    "working_tree_at_verification": "clean",
+    "commit_message": "fix(v2-06): close provider-free recovery and activation gaps",
+    "deployed_source_commit_in_last_supplied_evidence": "153cefef40739c35b84ed633fc4978f8a5e9746b",
+    "current_source_deployed": false
+  },
+  "source_repairs": [
+    {
+      "id": "V2-06-SOURCE-GOOGLE-ONLY-AUTH",
+      "status": "FIXED_SOURCE_NOT_DEPLOYED_OR_HOSTED_PROVEN",
+      "summary": "Hosted Better Auth is now explicitly Google-only: email/password is disabled, email delivery configuration is removed, and the status/configuration policy exposes only Google.",
+      "references": [
+        "apps/web/src/server/hosted/auth.ts",
+        "apps/web/src/server/hosted/configuration.ts",
+        "apps/web/src/server/hosted/app.ts",
+        "scripts/validate-v2-06-deployment.mjs"
+      ]
+    },
+    {
+      "id": "V2-06-SOURCE-HOSTED-RECOVERY-DURABILITY",
+      "status": "FIXED_SOURCE_NOT_DEPLOYED_OR_HOSTED_PROVEN",
+      "summary": "Expired hosted leases, deadline-fenced requeues, device revocation, and Workflow expiry now append durable recovery events under database time and device-row locking; recovery cannot requeue work past its deadline.",
+      "references": [
+        "apps/web/src/server/hosted/personal-worker.ts",
+        "apps/web/worker/hosted-workflow.ts",
+        "packages/control-plane/migrations/0029_v2_06_hosted_foundation.sql",
+        "packages/control-plane/migrations/0032_v2_06_personal_media_workers.sql"
+      ]
+    },
+    {
+      "id": "V2-06-SOURCE-WORKER-RESULT-CANCEL-LINEAGE",
+      "status": "FIXED_SOURCE_NOT_PUBLISHED_OR_NATIVE_ACCEPTED",
+      "summary": "The personal worker now validates exact result status and attempt lineage, observes cancellation through download/process/upload, bounds result bytes, and acknowledges completion only after the exact durable response.",
+      "references": [
+        "workers/media-local/src/videoforge_media_local/personal_execution.py",
+        "workers/media-local/tests/test_personal_execution.py"
+      ],
+      "release_truth": "The separately recorded media-worker-v0.1.6 artifact remains unchanged; this source repair has not been rebuilt, published, or installed."
+    },
+    {
+      "id": "V2-06-SOURCE-DEPLOYMENT-OPS-FAIL-CLOSED",
+      "status": "FIXED_SOURCE_CONTRACTS_NOT_LIVE_DRILLED",
+      "summary": "Deployment and operations validation now requires protected PostgreSQL services with TLS/channel binding, rejects credential argv/passfiles, enforces exact grants and FORCE RLS checks, uses encrypted no-clobber backup envelopes, and applies an explicit secret allowlist and pinned rollback snapshot policy.",
+      "references": [
+        "deploy/v2-06/apply-migrations-and-grants.mjs",
+        "deploy/v2-06/validate-pg-service.mjs",
+        "deploy/v2-06/backup-envelope.mjs",
+        "deploy/v2-06/validate-secret-inputs.mjs",
+        "deploy/v2-06/secret-policy.mjs",
+        "deploy/v2-06/secrets.allowlist.json",
+        "scripts/validate-v2-06-deployment.mjs"
+      ],
+      "live_drill_performed": false
+    }
+  ],
+  "verification": {
+    "commands": [
+      {
+        "command": "CI=1 TURBO_FORCE=true pnpm verify",
+        "exit_code": 0,
+        "result": "Canonical provider-free verification passed: Cloudflare parity 1/1; full package graph; control-plane 308/308; provider sandbox 43/43; web 351 passed and 1 skipped; six worker suites; secret/context checks; installed Chrome 44/44."
+      },
+      {
+        "command": "pnpm validate:v2-06-deployment",
+        "exit_code": 0
+      },
+      {
+        "command": "node --test scripts/tests/v2-06-activation-safety.test.mjs scripts/tests/v2-06-deployment.test.mjs scripts/tests/v2-06-neon-runtime-grants.test.mjs",
+        "exit_code": 0,
+        "result": "12/12"
+      },
+      {
+        "command": "pnpm --filter @videoforge/web typecheck",
+        "exit_code": 0
+      },
+      {
+        "command": "VIDEOFORGE_UV=\"$PWD/.tools/uv-0.8.13/bin/uv\" pnpm python:lint",
+        "exit_code": 0
+      },
+      {
+        "command": "VIDEOFORGE_UV=\"$PWD/.tools/uv-0.8.13/bin/uv\" pnpm test:workers",
+        "exit_code": 0,
+        "result": "Six explicit Python 3.12 worker suites passed."
+      },
+      {
+        "command": "pnpm context:validate",
+        "exit_code": 0
+      },
+      {
+        "command": "pnpm contracts:check",
+        "exit_code": 0,
+        "result": "123 canonical files synchronized."
+      },
+      {
+        "command": "pnpm secret:scan",
+        "exit_code": 0,
+        "result": "1146 tracked files scanned."
+      },
+      {
+        "command": "pnpm format:check",
+        "exit_code": 0
+      },
+      {
+        "command": "git diff --check",
+        "exit_code": 0
+      }
+    ],
+    "live_verification_performed": false,
+    "fixtures_are_not_deployment_proof": true
+  },
+  "deployment_parity": {
+    "approved_resources_in_last_supplied_immutable_evidence": [
+      "Cloudflare Worker videoforge-v2-06-staging",
+      "Cloudflare Workflow videoforge-v2-06-staging-video",
+      "Cloudflare R2 bucket videoforge-v2-06-staging-private",
+      "Neon project ancient-morning-99567618",
+      "Google OAuth project videoforge-v2-06-staging-0817",
+      "immutable media-worker-v0.1.6 release"
+    ],
+    "last_supplied_actual_deployment": {
+      "source_commit": "153cefef40739c35b84ed633fc4978f8a5e9746b",
+      "worker_version_id": "7d66d976-a16f-46f6-8888-ebbb5f24217c",
+      "rendered_config_sha256": "sha256:8f67537d912b2b8d95e00c2af12e931c11ed81b96195b9637d4c05c47de3b2af",
+      "release_manifest_sha256": "sha256:fed1186e65ca2c4aa373568e562fff67d7d1dc6d01723ddfbd9aae71ba6a0ec2",
+      "status": "immutable_prior_evidence_not_refreshed"
+    },
+    "resources_accessed_or_mutated_by_this_repair": [],
+    "source_deployment_parity": "FAIL_CURRENT_SOURCE_NOT_DEPLOYED"
+  },
+  "rates_and_spend": {
+    "new_external_spend_usd": 0,
+    "current_authorized_cap_usd": null,
+    "prior_immutable_cap_recorded_usd": 3,
+    "prior_immutable_r2_ceiling_usd_per_month": 2,
+    "provider_cpu_spend_usd": 0,
+    "runpod_compute_spend_this_repair_usd": 0,
+    "runpod_retained_volume_charge_in_prior_snapshot_usd_per_month": 7,
+    "current_billing_refresh_performed": false,
+    "email_deliveries": 0
+  },
+  "formal_finding_count": {
+    "prior_formally_resolved_findings": 1,
+    "new_formal_closures_this_pass": 0,
+    "open_formal_findings": 6,
+    "open_p0": 0,
+    "open_p1": 3,
+    "open_p2": 3,
+    "reason_source_repairs_are_not_formal_closures": "This commit is not deployed and no separate hosted/device/live-verification evidence was authorized or produced."
+  },
+  "unproven_live_claims": [
+    "Two-account Better Auth/Google callback and hosted tenant isolation.",
+    "Hosted Neon non-superuser FORCE RLS and runtime least-privilege behavior.",
+    "Cross-account private R2 upload/download/delete isolation.",
+    "Successful hosted ASR/render, checksum/metadata, playback, and explicit deletion.",
+    "Windows clean install/pairing/autostart/update/remove and Windows/Mac media parity.",
+    "Durable hosted restart/recovery beyond the source contracts, backup/restore drill, rollback exercise, and post-acceptance billing.",
+    "Cloud Run scale-to-zero/provider parity; Cloud Run is not active in this V2-06 source path.",
+    "Current RunPod zero-worker/zero-endpoint truth; prior snapshot only recorded 0 workers and 2 retained 50 GB volumes.",
+    "Independent audit of this same-chat repair."
+  ],
+  "findings": {
+    "p0": [],
+    "p1_remaining": [
+      "V2-06-P1-HOSTED-COMPLETION: current hosted ASR completion did not settle SUCCEEDED; provider-side rejection remains unproven without separately authorized read-only live verification.",
+      "V2-06-P1-HOSTED-IDENTITY-AND-ISOLATION: two-account Better Auth, Neon/RLS, R2, and hosted Chrome isolation remain unproven.",
+      "V2-06-P1-NATIVE-PARITY: Windows lifecycle and Windows/Mac ASR/render parity remain unproven."
+    ],
+    "p2_remaining": [
+      "V2-06-P2-OPERATIONS: live backup/restore, rollback, deletion, and post-acceptance billing observations remain unexercised.",
+      "V2-06-P2-STALE-DEVICE: one older offline v0.1.6 device remains visible; it was not removed without explicit cleanup direction.",
+      "V2-06-P2-INDEPENDENCE: this is a same-chat repair handoff, not an independent audit."
+    ]
+  },
+  "rollback": {
+    "last_supplied_current_version_id": "7d66d976-a16f-46f6-8888-ebbb5f24217c",
+    "last_supplied_previous_version_id": "163f0377-000d-4318-a05e-8f42d2e0806a",
+    "source_repair_version_id": null,
+    "rollback_mutation_performed": false,
+    "state": "prior_deployment_rollback_available_untested_source_repair_not_deployed"
+  },
+  "successor_safety": {
+    "v2_07_safe_to_begin": false,
+    "reason": "V2-06 remains pending with six open hosted/device/operations/independence gates; GPU transport remains DISABLED_FAKE_ONLY and RunPod mutation authority remains false."
+  }
+}
