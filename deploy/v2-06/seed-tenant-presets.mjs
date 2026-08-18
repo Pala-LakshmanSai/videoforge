@@ -49,7 +49,10 @@ const APPROVED_NEON_HOST = "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.
 const APPROVED_NEON_DATABASE = "neondb";
 const APPROVED_NEON_MIGRATION_ROLE = "neondb_owner";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+// PostgreSQL uuid accepts all canonical 128-bit UUID text, including values derived from
+// md5(... )::uuid by the hosted admission trigger. Do not require RFC-4122 version/variant bits
+// for database-owned IDs.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const TIMESTAMP = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?Z$/u;
 const EMAIL = /^[^\s@]+@[^\s@]+$/u;
@@ -938,6 +941,7 @@ export {
   mutationSql,
   mutationVariables,
   parseArgs,
+  requireUuid,
   sha256Canonical,
   validateAvatarEnvelope,
   validateStylePayload,

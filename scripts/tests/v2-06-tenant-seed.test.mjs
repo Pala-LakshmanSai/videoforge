@@ -8,6 +8,7 @@ import {
   APPROVED_NEON_HOST,
   buildPlan,
   mutationSql,
+  requireUuid,
   sha256Canonical,
   validateAvatarEnvelope,
   validateStylePayload,
@@ -75,6 +76,11 @@ test("V2-06 seed payload fixtures remain strict and hashable", async () => {
     sha256Canonical(style),
     `sha256:${"e344d37b9a04604891334cdd2b60601619885a4a16acad8eb15957340a90e430"}`,
   );
+});
+
+test("tenant seed accepts canonical PostgreSQL UUIDs without RFC-4122 variant bits", () => {
+  assert.doesNotThrow(() => requireUuid("deadbeef-dead-0eef-0eef-deadbeefdead", "database id"));
+  assert.throws(() => requireUuid("not-a-uuid", "database id"), /canonical UUID/u);
 });
 
 test("seed plan derives stable tenant-private IDs and binds all three verified assets", async () => {

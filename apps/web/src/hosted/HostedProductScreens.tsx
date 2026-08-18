@@ -89,8 +89,55 @@ async function sha256(file: File): Promise<string> {
   return `sha256:${[...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
 
-async function audioDurationMs(file: File): Promise<number> {
+function readAscii(view: DataView, offset: number, length: number): string {
+  return String.fromCharCode(
+    ...Array.from({ length }, (_, index) => view.getUint8(offset + index)),
+  );
+}
+
+/** Read duration from the RIFF/WAVE container without relying on media-element events. */
+export function parseWavDurationMs(buffer: ArrayBuffer): number | null {
+  const view = new DataView(buffer);
+  if (
+    view.byteLength < 12 ||
+    readAscii(view, 0, 4) !== "RIFF" ||
+    readAscii(view, 8, 4) !== "WAVE"
+  ) {
+    return null;
+  }
+  let offset = 12;
+  let byteRate = 0;
+  let dataBytes = 0;
+  while (offset + 8 <= view.byteLength) {
+    const chunkSize = view.getUint32(offset + 4, true);
+    const chunkStart = offset + 8;
+    if (chunkStart + chunkSize > view.byteLength) return null;
+    const chunkId = readAscii(view, offset, 4);
+    if (chunkId === "fmt " && chunkSize >= 12) byteRate = view.getUint32(chunkStart + 8, true);
+    if (chunkId === "data") {
+      dataBytes = chunkSize;
+      break;
+    }
+    offset = chunkStart + chunkSize + (chunkSize % 2);
+  }
+  if (!Number.isSafeInteger(byteRate) || byteRate <= 0 || !Number.isSafeInteger(dataBytes))
+    return null;
+  return Math.round((dataBytes / byteRate) * 1_000);
+}
+
+function validateAudioDurationMs(value: number): number {
+  if (!Number.isSafeInteger(value) || value < 10_000 || value > 3_600_000)
+    throw new Error("Voiceover must be between 10 seconds and 60 minutes.");
+  return value;
+}
+
+export async function audioDurationMs(file: File): Promise<number> {
+  if (file.type === "audio/wav" || /\.wav$/iu.test(file.name)) {
+    const parsed = parseWavDurationMs(await file.arrayBuffer());
+    if (parsed !== null) return validateAudioDurationMs(parsed);
+  }
   const url = URL.createObjectURL(file);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     const audio = document.createElement("audio");
     audio.preload = "metadata";
@@ -98,12 +145,12 @@ async function audioDurationMs(file: File): Promise<number> {
     await new Promise<void>((resolve, reject) => {
       audio.onloadedmetadata = () => resolve();
       audio.onerror = () => reject(new Error("Voiceover duration could not be read."));
+      timeout = setTimeout(() => reject(new Error("Voiceover duration could not be read.")), 5_000);
     });
     const value = Math.round(audio.duration * 1_000);
-    if (!Number.isSafeInteger(value) || value < 10_000 || value > 3_600_000)
-      throw new Error("Voiceover must be between 10 seconds and 60 minutes.");
-    return value;
+    return validateAudioDurationMs(value);
   } finally {
+    if (typeof timeout !== "undefined") clearTimeout(timeout);
     URL.revokeObjectURL(url);
   }
 }

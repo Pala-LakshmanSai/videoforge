@@ -14,6 +14,7 @@ import {
   buildOrphanInventory,
   parseManifestRow,
   pngDimensions,
+  requireUuid,
   r2ObjectUrl,
   r2Request,
   stripPngMetadata,
@@ -28,6 +29,11 @@ test("owned fixture manifest is pinned to the repository-authored source", () =>
   assert.equal(row.sha256, EXPECTED_SOURCE_SHA256);
   assert.equal(row.rightsBasis, "owned_synthetic_fixture");
   assert.equal(row.purpose, "Reusable Avatar Hub thumbnail");
+});
+
+test("owned fixture accepts canonical PostgreSQL UUIDs without RFC-4122 variant bits", () => {
+  assert.doesNotThrow(() => requireUuid("deadbeef-dead-0eef-0eef-deadbeefdead", "database id"));
+  assert.throws(() => requireUuid("not-a-uuid", "database id"), /canonical UUID/u);
 });
 
 test("owned assets use canonical tenant-private Avatar Hub keys and stable orphan inventory", () => {

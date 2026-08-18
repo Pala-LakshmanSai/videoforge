@@ -66,7 +66,10 @@ const AVATAR_STORAGE_ROLE = Object.freeze({
   THUMBNAIL: "thumbnail",
 });
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+// PostgreSQL uuid accepts all canonical 128-bit UUID text, including values derived from
+// md5(... )::uuid by the hosted admission trigger. Do not require RFC-4122 version/variant bits
+// for database-owned IDs.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const TIMESTAMP = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?Z$/u;
 const MIME = /^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/u;
 const ROLE_ORDER = ["ORIGINAL", "RUNTIME", "THUMBNAIL"];
@@ -1239,6 +1242,7 @@ export {
   parseArgs,
   parseManifestRow,
   pngDimensions,
+  requireUuid,
   r2ObjectUrl,
   r2Request,
   stripPngMetadata,
