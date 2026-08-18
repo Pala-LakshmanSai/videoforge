@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import io
 import json
+import plistlib
 import ssl
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path, PurePosixPath
@@ -19,10 +21,17 @@ from videoforge_media_local.personal_execution import (
 )
 from videoforge_media_local.personal_worker import (
     _build_configuration,
+    _enroll,
+    _ensure_autostart,
     _is_external_macos_bundle,
     _json_request,
+    _launch_agent_document,
+    _platform_facts,
+    _remove_local_installation,
+    _validated_control_plane_origin,
     _open_approval_url,
     _USER_AGENT,
+    run_forever,
 )
 from videoforge_media_local.personal_tls import https_context
 
@@ -92,6 +101,176 @@ class PersonalWorkerContractTests(unittest.TestCase):
         request = urlopen.call_args.args[0]
         self.assertEqual(request.get_header("User-agent"), _USER_AGENT)
         self.assertEqual(request.get_header("Accept"), "application/json")
+
+    def test_requests_reject_non_https_urls_before_network_access(self) -> None:
+        with patch("videoforge_media_local.personal_worker.urllib.request.urlopen") as urlopen:
+            with self.assertRaisesRegex(ValueError, "HTTPS"):
+                _json_request("http://app.example.test/health", "GET")
+        urlopen.assert_not_called()
+
+    def test_platform_facts_reject_windows_arm_and_support_both_universal2_slices(self) -> None:
+        with (
+            patch("videoforge_media_local.personal_worker.platform.system", return_value="Windows"),
+            patch("videoforge_media_local.personal_worker.platform.machine", return_value="ARM64"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "Windows x64"):
+                _platform_facts()
+        for machine, expected in (("arm64", ("MACOS", "AARCH64")), ("x86_64", ("MACOS", "X86_64"))):
+            with (
+                patch(
+                    "videoforge_media_local.personal_worker.platform.system", return_value="Darwin"
+                ),
+                patch(
+                    "videoforge_media_local.personal_worker.platform.machine", return_value=machine
+                ),
+            ):
+                self.assertEqual(_platform_facts(), expected)
+
+    def test_control_plane_origin_is_credential_free_and_normalized(self) -> None:
+        self.assertEqual(
+            _validated_control_plane_origin("https://app.example.test/"),
+            "https://app.example.test",
+        )
+        for value in (
+            "http://app.example.test",
+            "https://user:password@app.example.test",
+            "https://app.example.test?token=secret",
+            "https://app.example.test#fragment",
+        ):
+            self.assertIsNone(_validated_control_plane_origin(value))
+
+    def test_pairing_requires_exact_same_origin_response_and_token(self) -> None:
+        created = {
+            "schema_version": "videoforge-media-worker-enrollment-created/v1",
+            "enrollment_id": "11111111-1111-4111-8111-111111111111",
+            "poll_token": "a" * 64,
+            "approval_url": "https://app.example.test/settings?enrollment=abc",
+            "expires_in_seconds": 600,
+        }
+        approved = {
+            "schema_version": "videoforge-media-worker-token/v1",
+            "state": "APPROVED",
+            "device_token": "b" * 64,
+        }
+        store = Mock()
+        with (
+            patch(
+                "videoforge_media_local.personal_worker._json_request",
+                side_effect=[
+                    (201, created),
+                    (
+                        202,
+                        {"schema_version": "videoforge-media-worker-token/v1", "state": "PENDING"},
+                    ),
+                    (200, approved),
+                ],
+            ),
+            patch("videoforge_media_local.personal_worker._open_approval_url") as open_url,
+            patch("videoforge_media_local.personal_worker.time.sleep"),
+        ):
+            self.assertEqual(
+                _enroll("https://app.example.test", "installation", "sha256:" + "c" * 64, store),
+                "b" * 64,
+            )
+        open_url.assert_called_once_with("https://app.example.test/settings?enrollment=abc")
+        store.set.assert_called_once_with("installation", "b" * 64)
+
+        created["approval_url"] = "https://other.example.test/settings?enrollment=abc"
+        with patch(
+            "videoforge_media_local.personal_worker._json_request", return_value=(201, created)
+        ):
+            with self.assertRaisesRegex(RuntimeError, "did not match"):
+                _enroll("https://app.example.test", "installation", "sha256:" + "c" * 64, store)
+
+    def test_update_required_exits_to_release_the_old_executable(self) -> None:
+        state = {"installation_id": "11111111-1111-4111-8111-111111111111"}
+        with (
+            patch("videoforge_media_local.personal_worker.sys.argv", ["worker", "--background"]),
+            patch(
+                "videoforge_media_local.personal_worker._install_macos_if_needed",
+                return_value=False,
+            ),
+            patch(
+                "videoforge_media_local.personal_worker._build_configuration",
+                return_value={
+                    "control_plane_origin": "https://app.example.test",
+                    "execution_bundle_sha256": "sha256:" + "c" * 64,
+                },
+            ),
+            patch("videoforge_media_local.personal_worker._tool_paths", return_value=Mock()),
+            patch(
+                "videoforge_media_local.personal_worker._state", return_value=(Path("state"), state)
+            ),
+            patch("videoforge_media_local.personal_worker._credential_store") as credential_store,
+            patch("videoforge_media_local.personal_worker._ensure_autostart"),
+            patch(
+                "videoforge_media_local.personal_worker._platform_facts",
+                return_value=("MACOS", "AARCH64"),
+            ),
+            patch(
+                "videoforge_media_local.personal_worker._json_request",
+                return_value=(200, {"status": "UPDATE_REQUIRED"}),
+            ),
+        ):
+            credential_store.return_value.get.return_value = "b" * 64
+            self.assertEqual(run_forever(), 0)
+
+    def test_mac_autostart_repairs_a_missing_loaded_launchagent(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            executable = Path(
+                "/Applications/VideoForge Worker.app/Contents/MacOS/VideoForge Worker"
+            )
+            target = (
+                home / "Library" / "LaunchAgents" / "com.videoforge.personal-media-worker.plist"
+            )
+            target.parent.mkdir(parents=True)
+            with (
+                patch("videoforge_media_local.personal_worker.sys.platform", "darwin"),
+                patch.object(sys, "frozen", True, create=True),
+                patch.object(sys, "executable", str(executable)),
+                patch("videoforge_media_local.personal_worker.Path.home", return_value=home),
+                patch("videoforge_media_local.personal_worker.os.getuid", return_value=501),
+            ):
+                target.write_bytes(_launch_agent_document())
+                with patch(
+                    "videoforge_media_local.personal_worker.subprocess.run",
+                    side_effect=[Mock(returncode=1), Mock(returncode=0)],
+                ) as run:
+                    _ensure_autostart()
+            self.assertEqual(run.call_count, 2)
+            self.assertEqual(
+                run.call_args_list[0].args[0],
+                ["/bin/launchctl", "print", "gui/501/com.videoforge.personal-media-worker"],
+            )
+            self.assertEqual(
+                run.call_args_list[1].args[0],
+                ["/bin/launchctl", "bootstrap", "gui/501", str(target)],
+            )
+            self.assertEqual(plistlib.loads(target.read_bytes())["RunAtLoad"], True)
+
+    def test_uninstall_removes_state_credential_and_local_installation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            state_path = root / "installation.json"
+            state_path.write_text(
+                json.dumps({"installation_id": "11111111-1111-4111-8111-111111111111"}),
+                encoding="utf-8",
+            )
+            store = Mock()
+            with (
+                patch("videoforge_media_local.personal_worker._data_root", return_value=root),
+                patch(
+                    "videoforge_media_local.personal_worker._credential_store", return_value=store
+                ),
+                patch(
+                    "videoforge_media_local.personal_worker._remove_autostart"
+                ) as remove_autostart,
+            ):
+                self.assertEqual(_remove_local_installation(), 0)
+            store.delete.assert_called_once_with("11111111-1111-4111-8111-111111111111")
+            remove_autostart.assert_called_once_with()
+            self.assertFalse(root.exists())
 
     def test_cancellation_monitor_has_a_runnable_poll_loop(self) -> None:
         self.assertTrue(callable(getattr(_CancellationMonitor, "_run", None)))

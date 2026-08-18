@@ -3,26 +3,32 @@
 import { createHash } from "node:crypto";
 import { lstat, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { REQUIRED_SECRET_NAMES } from "./secret-policy.mjs";
 
 const [secretDir, activationPath] = process.argv.slice(2);
 if (!secretDir || !activationPath)
   throw new Error("secret directory and activation record are required");
-const expectedNames = [
-  "DATABASE_URL",
-  "BETTER_AUTH_SECRET",
-  "GOOGLE_CLIENT_ID",
-  "GOOGLE_CLIENT_SECRET",
-  "R2_ACCESS_KEY_ID",
-  "R2_SECRET_ACCESS_KEY",
-  "WORKFLOW_CALLBACK_SECRET",
-  "MEDIA_WORKER_TOKEN_SECRET",
-];
+const expectedNames = REQUIRED_SECRET_NAMES;
+const activationMetadata = await lstat(activationPath);
+if (
+  activationMetadata.isSymbolicLink() ||
+  !activationMetadata.isFile() ||
+  (activationMetadata.mode & 0o777) !== 0o600
+)
+  throw new Error("activation record must be a regular mode-0600 file");
 const activation = JSON.parse(await readFile(activationPath, "utf8"));
+const directoryMetadata = await lstat(secretDir);
+if (
+  directoryMetadata.isSymbolicLink() ||
+  !directoryMetadata.isDirectory() ||
+  (directoryMetadata.mode & 0o077) !== 0
+)
+  throw new Error("secret directory must be a private directory");
 const files = new Map();
 for (const name of expectedNames) {
   const file = path.join(secretDir, name);
   const metadata = await lstat(file);
-  if (!metadata.isFile() || metadata.mode & 0o077 || metadata.size === 0)
+  if (!metadata.isFile() || (metadata.mode & 0o777) !== 0o600 || metadata.size === 0)
     throw new Error(`${name} must be a non-empty regular mode-0600 file`);
   files.set(name, await readFile(file, "utf8"));
 }

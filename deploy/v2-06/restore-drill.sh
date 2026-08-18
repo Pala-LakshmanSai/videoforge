@@ -22,6 +22,7 @@ fi
 
 backup_input=$1
 passphrase_file=$RESTORE_PASSPHRASE_FILE
+script_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 
 mode_of() {
   if [ "$(uname -s)" = "Darwin" ]; then
@@ -44,56 +45,12 @@ require_private_file "$backup_input" "backup input"
 require_private_file "$PGSERVICEFILE" "PGSERVICEFILE"
 require_private_file "$PGPASSFILE" "PGPASSFILE"
 require_private_file "$passphrase_file" "restore passphrase file"
-if ! printf '%s\n' "$PGSERVICE" | grep -Eq '^[A-Za-z0-9_.-]+$'; then
-  echo "PGSERVICE must be a simple approved service name" >&2
+awk 'NR == 1 { first = length($0) > 0; next } length($0) > 0 { extra = 1 } END { exit !(first && !extra) }' "$passphrase_file" || {
+  echo "restore passphrase file must contain one non-empty first line" >&2
   exit 2
-fi
-if grep -Eq '^[[:space:]]*(password|sslpassword)[[:space:]]*=' "$PGSERVICEFILE"; then
-  echo "PGSERVICEFILE must not contain a password" >&2
-  exit 2
-fi
-service_host=$(awk -v section="[$PGSERVICE]" '
-  $0 == section { active = 1; next }
-  /^[[:space:]]*\[/ { active = 0 }
-  active && /^[[:space:]]*host[[:space:]]*=/ {
-    sub(/^[[:space:]]*host[[:space:]]*=[[:space:]]*/, "")
-    gsub(/[[:space:]]+$/, "")
-    print
-    exit
-  }
-' "$PGSERVICEFILE")
-service_database=$(awk -v section="[$PGSERVICE]" '
-  $0 == section { active = 1; next }
-  /^[[:space:]]*\[/ { active = 0 }
-  active && /^[[:space:]]*dbname[[:space:]]*=/ {
-    sub(/^[[:space:]]*dbname[[:space:]]*=[[:space:]]*/, "")
-    gsub(/[[:space:]]+$/, "")
-    print
-    exit
-  }
-' "$PGSERVICEFILE")
-service_user=$(awk -v section="[$PGSERVICE]" '
-  $0 == section { active = 1; next }
-  /^[[:space:]]*\[/ { active = 0 }
-  active && /^[[:space:]]*user[[:space:]]*=/ {
-    sub(/^[[:space:]]*user[[:space:]]*=[[:space:]]*/, "")
-    gsub(/[[:space:]]+$/, "")
-    print
-    exit
-  }
-' "$PGSERVICEFILE")
-if [ "$service_host" != "$RESTORE_APPROVED_NEON_HOST" ]; then
-  echo "PGSERVICEFILE does not pin the approved disposable Neon endpoint" >&2
-  exit 2
-fi
-if [ "$service_database" != "$RESTORE_TARGET_DATABASE" ]; then
-  echo "PGSERVICEFILE dbname does not match the exact disposable target" >&2
-  exit 2
-fi
-if [ "$service_user" != "$RESTORE_EXPECTED_OWNER_ROLE" ]; then
-  echo "PGSERVICEFILE user is not the approved migration owner role" >&2
-  exit 2
-fi
+}
+node "$script_dir/validate-pg-service.mjs" "$PGSERVICEFILE" "$PGSERVICE" \
+  "$RESTORE_APPROVED_NEON_HOST" "$RESTORE_TARGET_DATABASE" "$RESTORE_EXPECTED_OWNER_ROLE" >/dev/null
 if ! command -v pg_restore >/dev/null 2>&1 || ! command -v psql >/dev/null 2>&1 || \
   ! command -v openssl >/dev/null 2>&1; then
   echo "pg_restore, psql, and openssl are required for encrypted restore drills" >&2
@@ -102,21 +59,29 @@ fi
 
 export PGSERVICEFILE PGSERVICE PGPASSFILE
 unset DATABASE_URL PGPASSWORD PGHOST PGPORT PGDATABASE PGUSER
-# Positive emptiness proof: no public relation may exist on the exact disposable target.
-public_relation_count=$(psql --no-psqlrc --tuples-only --no-align --command \
-  "SELECT count(*)::text FROM pg_class AS c JOIN pg_namespace AS n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p', 'v', 'm', 'f');")
+# Positive emptiness proof: no user schema/object may exist on the exact disposable target.
+public_relation_count=$(psql --no-psqlrc --tuples-only --no-align --set ON_ERROR_STOP=1 \
+  --dbname "service=$PGSERVICE" --command \
+  "SELECT ((SELECT count(*) FROM pg_namespace WHERE nspname NOT IN ('pg_catalog', 'information_schema', 'public') AND nspname NOT LIKE 'pg_toast%') + (SELECT count(*) FROM pg_class AS c JOIN pg_namespace AS n ON n.oid = c.relnamespace WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg_toast%') + (SELECT count(*) FROM pg_proc AS p JOIN pg_namespace AS n ON n.oid = p.pronamespace WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg_toast%') + (SELECT count(*) FROM pg_type AS t JOIN pg_namespace AS n ON n.oid = t.typnamespace WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg_toast%' AND t.typtype <> 'p'))::text;")
 if [ "$(printf '%s' "$public_relation_count" | tr -d '[:space:]')" != "0" ]; then
   echo "refusing restore: exact disposable target is not empty" >&2
   exit 2
 fi
 
 umask 077
+decrypted_ciphertext=$(mktemp "${TMPDIR:-/tmp}/videoforge-v2-06-ciphertext.XXXXXX")
 decrypted_backup=$(mktemp "${TMPDIR:-/tmp}/videoforge-v2-06-restore.XXXXXX")
-cleanup() { rm -f "$decrypted_backup"; }
+archive_list=$(mktemp "${TMPDIR:-/tmp}/videoforge-v2-06-restore-list.XXXXXX")
+cleanup() { rm -f "$decrypted_ciphertext" "$decrypted_backup" "$archive_list"; }
 trap cleanup EXIT HUP INT TERM
+node "$script_dir/backup-envelope.mjs" unpack "$backup_input" "$decrypted_ciphertext" "$passphrase_file" >/dev/null
 openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \
-  -in "$backup_input" -out "$decrypted_backup" -pass "file:$passphrase_file"
-pg_restore --list "$decrypted_backup" >/dev/null
+  -in "$decrypted_ciphertext" -out "$decrypted_backup" -pass "file:$passphrase_file"
+pg_restore --list "$decrypted_backup" >"$archive_list"
+if ! grep -Eq '[[:space:]]TABLE[[:space:]]+public[[:space:]]+videoforge_schema_migrations[[:space:]]' "$archive_list"; then
+  echo "backup archive does not contain the V2-06 migration ledger" >&2
+  exit 1
+fi
 pg_restore --exit-on-error --single-transaction --no-owner --no-privileges \
   --dbname "service=$PGSERVICE" "$decrypted_backup"
 
@@ -126,9 +91,10 @@ V2_06_PG_SERVICEFILE=$PGSERVICEFILE \
 V2_06_PG_SERVICE=$PGSERVICE \
 V2_06_PGPASSFILE=$PGPASSFILE \
 V2_06_APPROVED_NEON_HOST=$RESTORE_APPROVED_NEON_HOST \
+V2_06_EXPECTED_DATABASE=$RESTORE_TARGET_DATABASE \
 V2_06_EXPECTED_OWNER_ROLE=$RESTORE_EXPECTED_OWNER_ROLE \
 V2_06_RUNTIME_ROLE=$RESTORE_RUNTIME_ROLE \
-  node deploy/v2-06/apply-migrations-and-grants.mjs --verify-only --apply-grants
+  node "$script_dir/apply-migrations-and-grants.mjs" --verify-only --apply-grants
 # The helper's exact manifest assertion includes migration head 35; a numeric max(version) check
 # alone is intentionally not accepted as restore evidence.
 echo "restore drill verified exact disposable target, migration manifest, runtime grants, and FORCE RLS"

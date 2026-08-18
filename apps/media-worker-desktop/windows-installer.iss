@@ -9,8 +9,9 @@ DefaultDirName={localappdata}\Programs\VideoForge Worker
 DisableProgramGroupPage=yes
 OutputBaseFilename=VideoForge-Worker-{#WorkerVersion}-Setup
 PrivilegesRequired=lowest
-ArchitecturesAllowed=x64compatible
-ArchitecturesInstallIn64BitMode=x64compatible
+ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64
+CloseApplications=yes
 Compression=lzma2
 SolidCompression=yes
 UninstallDisplayIcon={app}\{#WorkerExe}
@@ -26,4 +27,5 @@ Name: "{userprograms}\VideoForge Worker"; Filename: "{app}\{#WorkerExe}"; Workin
 Filename: "{app}\{#WorkerExe}"; Description: "Connect this computer to VideoForge"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
-Filename: "{cmd}"; Parameters: "/C taskkill /IM ""{#WorkerExe}"" /F"; Flags: runhidden; RunOnceId: "StopWorker"
+Filename: "{cmd}"; Parameters: "/C taskkill /IM ""{#WorkerExe}"" /T /F"; Flags: runhidden waituntilterminated; RunOnceId: "StopWorker"
+Filename: "{app}\{#WorkerExe}"; Parameters: "--uninstall"; Flags: runhidden waituntilterminated; RunOnceId: "RemoveLocalState"; Check: FileExists(ExpandConstant('{app}\{#WorkerExe}'))

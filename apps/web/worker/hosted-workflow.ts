@@ -55,6 +55,46 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
               TENANT_PRINCIPAL_SETTING,
               params.accountId,
             ]);
+            const appendJobEvent = async (
+              kind: "CANCELLED" | "EXPIRED" | "REPLAYED",
+              facts: `sha256:${string}`,
+            ) => {
+              await transaction.query(
+                `INSERT INTO hosted_cpu_job_events (
+                   id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
+                 ) SELECT md5($1::text || ':' || $4::text || ':' || (COALESCE(max(sequence), 0) + 1)::text)::uuid,
+                          $2::uuid, $3::uuid, $1::uuid, COALESCE(max(sequence), 0) + 1, $4, $5, now()
+                    FROM hosted_cpu_job_events
+                   WHERE account_id = $2::uuid AND workspace_id = $3::uuid AND attempt_id = $1::uuid`,
+                [params.attemptId, params.accountId, params.workspaceId, kind, facts],
+              );
+            };
+            const appendWorkerExpiryEvents = async (
+              leases: readonly { readonly id: string; readonly device_id: string }[],
+            ) => {
+              for (const lease of leases) {
+                const facts = await sha256(
+                  JSON.stringify({
+                    attempt_id: params.attemptId,
+                    device_id: lease.device_id,
+                    lease_id: lease.id,
+                    reason: "LEASE_EXPIRED",
+                    schema_version: "videoforge-personal-worker-lease-expired/v1",
+                  }),
+                );
+                await transaction.query(
+                  `INSERT INTO media_worker_events (
+                     id, account_id, workspace_id, device_id, lease_id, sequence, kind,
+                     facts_sha256, occurred_at
+                   ) SELECT md5($1::text || ':expired:' || (COALESCE(max(sequence), 0) + 1)::text)::uuid,
+                            $2::uuid, $3::uuid, $4::uuid, $1::uuid,
+                            COALESCE(max(sequence), 0) + 1, 'EXPIRED', $5, now()
+                      FROM media_worker_events
+                     WHERE account_id = $2::uuid AND workspace_id = $3::uuid AND device_id = $4::uuid`,
+                  [lease.id, params.accountId, params.workspaceId, lease.device_id, facts],
+                );
+              }
+            };
             const loaded = await transaction.query<{
               state: string;
               deadline_at: Date | string;
@@ -72,13 +112,18 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
               return attempt.state;
             }
 
-            await transaction.query(
+            const expiredLeases = await transaction.query<{
+              id: string;
+              device_id: string;
+            }>(
               `UPDATE media_worker_leases
                   SET state = 'EXPIRED', completed_at = now(), updated_at = now()
                 WHERE attempt_id = $1 AND state IN ('CLAIMED', 'RUNNING', 'COMPLETING')
-                  AND lease_expires_at <= now()`,
+                  AND lease_expires_at <= now()
+                RETURNING id, device_id`,
               [params.attemptId],
             );
+            await appendWorkerExpiryEvents(expiredLeases.rows);
             const active = await transaction.query(
               `SELECT 1 FROM media_worker_leases
                 WHERE attempt_id = $1 AND state IN ('CLAIMED', 'RUNNING', 'COMPLETING')
@@ -86,12 +131,17 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
               [params.attemptId],
             );
             if (Date.now() >= new Date(attempt.deadline_at).getTime()) {
-              await transaction.query(
+              const deadlineLeases = await transaction.query<{
+                id: string;
+                device_id: string;
+              }>(
                 `UPDATE media_worker_leases
                     SET state = 'EXPIRED', completed_at = now(), updated_at = now()
-                  WHERE attempt_id = $1 AND state IN ('CLAIMED', 'RUNNING', 'COMPLETING')`,
+                  WHERE attempt_id = $1 AND state IN ('CLAIMED', 'RUNNING', 'COMPLETING')
+                  RETURNING id, device_id`,
                 [params.attemptId],
               );
+              await appendWorkerExpiryEvents(deadlineLeases.rows);
               await transaction.query(
                 `UPDATE hosted_cpu_job_attempts
                     SET state = 'EXPIRED', submitted_at = COALESCE(submitted_at, now()),
@@ -99,6 +149,16 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
                         version = version + 1, updated_at = now()
                   WHERE id = $1`,
                 [params.attemptId],
+              );
+              await appendJobEvent(
+                "EXPIRED",
+                await sha256(
+                  JSON.stringify({
+                    attempt_id: params.attemptId,
+                    reason: "DEADLINE_REACHED",
+                    schema_version: "videoforge-hosted-cpu-expired/v1",
+                  }),
+                ),
               );
               return "EXPIRED";
             }
@@ -112,6 +172,16 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
                   WHERE id = $1`,
                 [params.attemptId],
               );
+              await appendJobEvent(
+                "CANCELLED",
+                await sha256(
+                  JSON.stringify({
+                    attempt_id: params.attemptId,
+                    reason: "CANCEL_REQUESTED_WITH_NO_ACTIVE_LEASE",
+                    schema_version: "videoforge-hosted-cpu-cancelled/v1",
+                  }),
+                ),
+              );
               return "CANCELLED";
             }
             if (!active.rows[0] && attempt.state === "RUNNING") {
@@ -121,6 +191,16 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
                         version = version + 1, updated_at = now()
                   WHERE id = $1`,
                 [params.attemptId],
+              );
+              await appendJobEvent(
+                "REPLAYED",
+                await sha256(
+                  JSON.stringify({
+                    attempt_id: params.attemptId,
+                    reason: "ABANDONED_PERSONAL_WORKER_LEASE",
+                    schema_version: "videoforge-hosted-cpu-replayed/v1",
+                  }),
+                ),
               );
               return "OUTBOXED";
             }

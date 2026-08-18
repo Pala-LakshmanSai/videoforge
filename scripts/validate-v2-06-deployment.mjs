@@ -183,7 +183,7 @@ if (/^from \./mu.test(personalWorkerSource))
   fail("frozen worker entry still depends on package-relative imports");
 const windowsInstaller = await read("apps/media-worker-desktop/windows-installer.iss");
 if (
-  !windowsInstaller.includes('Parameters: "/C taskkill /IM ""{#WorkerExe}"" /F"') ||
+  !windowsInstaller.includes('Parameters: "/C taskkill /IM ""{#WorkerExe}"" /T /F"') ||
   /Parameters:.*\\"/u.test(windowsInstaller)
 )
   fail("Windows uninstall command must use Inno Setup doubled-quote escaping");
@@ -235,6 +235,7 @@ for (const path of [
   "deploy/v2-06/render-r2-cors.mjs",
   "deploy/v2-06/apply-migrations-and-grants.mjs",
   "deploy/v2-06/render-staging-config.mjs",
+  "deploy/v2-06/verify-rollback-deployment.mjs",
 ]) {
   if ((await read(path)).trim().length < 100) fail(`${path} is incomplete`);
 }
@@ -248,6 +249,11 @@ const migrationActivation = await read("deploy/v2-06/apply-migrations-and-grants
 const tenantPresetSeed = await read("deploy/v2-06/seed-tenant-presets.mjs");
 const ownedRenderFixture = await read("deploy/v2-06/provision-owned-render-fixture.mjs");
 const ownedFixtureProvisioner = await read("deploy/v2-06/provision-owned-fixture.mjs");
+if (
+  !rollbackRunbook.includes("verify-rollback-deployment.mjs before") ||
+  !rollbackRunbook.includes("verify-rollback-deployment.mjs after")
+)
+  fail("rollback runbook must use the pinned deployment snapshot verifier");
 if (
   tenantPresetSeed.length < 1000 ||
   !tenantPresetSeed.includes("V2_06_MIGRATION_DATABASE_URL") ||
@@ -328,10 +334,14 @@ if (
   !backupScript.includes("PGSERVICEFILE") ||
   !backupScript.includes("PGPASSFILE") ||
   !backupScript.includes("DATABASE_URL and PGPASSWORD are forbidden") ||
-  !backupScript.includes("apply-migrations-and-grants.mjs --verify-only --owner-only") ||
+  !backupScript.includes("apply-migrations-and-grants.mjs") ||
+  !backupScript.includes("--verify-only --owner-only") ||
+  !backupScript.includes("backup-envelope.mjs") ||
+  !backupScript.includes('ln "$envelope_backup" "$backup_output"') ||
   !restoreScript.includes("videoforge_v2_06_disposable_drill") ||
   !restoreScript.includes("public_relation_count") ||
-  !restoreScript.includes("apply-migrations-and-grants.mjs --verify-only --apply-grants") ||
+  !restoreScript.includes("apply-migrations-and-grants.mjs") ||
+  !restoreScript.includes("--verify-only --apply-grants") ||
   !backupScript.includes("openssl enc -aes-256-cbc -pbkdf2") ||
   !backupScript.includes("refusing to overwrite") ||
   !restoreScript.includes("RESTORE_DRILL_CONFIRM") ||

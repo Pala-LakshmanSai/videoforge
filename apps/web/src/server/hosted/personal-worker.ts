@@ -1103,7 +1103,61 @@ function checksumFromR2(value: ArrayBuffer | undefined): string | null {
     .join("")}`;
 }
 
-function exactCompletion(value: unknown) {
+export type PersonalWorkerTerminalState = "SUCCEEDED" | "FAILED" | "CANCELLED";
+
+export interface PersonalWorkerCompletion {
+  readonly schema_version: "videoforge-personal-worker-completion/v1";
+  readonly status: PersonalWorkerTerminalState;
+  readonly failure_code: string | null;
+  readonly result_object_key: string | null;
+  readonly result_content_length: number | null;
+  readonly result_checksum_sha256: string | null;
+}
+
+export interface PersonalWorkerTerminalLease {
+  readonly state: PersonalWorkerTerminalState;
+  readonly failureCode: string | null;
+  readonly resultObjectKey: string | null;
+  readonly resultContentLength: number | null;
+  readonly resultChecksumSha256: string | null;
+}
+
+/**
+ * A terminal lease is the durable source of truth after a completion response was lost. A
+ * cancellation is also an authoritative fence: the first worker completion may have been
+ * normalized to CANCELLED after a concurrent cancel request, so any exact-shaped replay can be
+ * acknowledged as CANCELLED without mutating the terminal attempt again.
+ */
+export function completionMatchesTerminalLease(
+  terminal: PersonalWorkerTerminalLease,
+  completion: PersonalWorkerCompletion,
+): boolean {
+  if (terminal.state === "CANCELLED") return true;
+  if (completion.status !== terminal.state) return false;
+  if (terminal.state === "FAILED") {
+    return (
+      completion.failure_code === terminal.failureCode &&
+      completion.result_object_key === null &&
+      completion.result_content_length === null &&
+      completion.result_checksum_sha256 === null
+    );
+  }
+  return (
+    completion.failure_code === null &&
+    completion.result_object_key === terminal.resultObjectKey &&
+    completion.result_content_length === terminal.resultContentLength &&
+    completion.result_checksum_sha256 === terminal.resultChecksumSha256
+  );
+}
+
+/** media_worker_events uses the schema-approved observation name for a cancellation. */
+export function mediaWorkerTerminalEventKind(
+  state: PersonalWorkerTerminalState,
+): "SUCCEEDED" | "FAILED" | "CANCEL_OBSERVED" {
+  return state === "CANCELLED" ? "CANCEL_OBSERVED" : state;
+}
+
+function exactCompletion(value: unknown): PersonalWorkerCompletion | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
   const row = value as Record<string, unknown>;
   if (
@@ -1134,7 +1188,67 @@ function exactCompletion(value: unknown) {
       (row.status === "CANCELLED" && row.failure_code !== null))
   )
     return null;
-  return row;
+  return row as unknown as PersonalWorkerCompletion;
+}
+
+async function terminalLeaseForCompletion(
+  request: Request,
+  pool: HostedNeonPool,
+  leaseId: string,
+): Promise<
+  | (DeviceScope & {
+      readonly leaseToken: string;
+      readonly attemptId: string;
+    } & PersonalWorkerTerminalLease)
+  | null
+> {
+  const scope = await deviceScope(request, pool);
+  const leaseToken = request.headers.get("x-videoforge-lease-token");
+  if (!scope || !leaseToken || !TOKEN.test(leaseToken)) return null;
+  await pool.query("SELECT set_config($1, $2, false)", ["videoforge.account_id", scope.accountId]);
+  const result = await pool.query<{
+    attempt_id: string;
+    state: string;
+    attempt_state: string;
+    failure_code: string | null;
+    result_object_key: string | null;
+    result_content_length: number | string | null;
+    result_checksum_sha256: string | null;
+  }>(
+    `SELECT lease.attempt_id, lease.state, attempt.state AS attempt_state, lease.failure_code,
+            attempt.result_object_key, attempt.result_content_length, attempt.result_checksum_sha256
+       FROM media_worker_leases AS lease
+       JOIN hosted_cpu_job_attempts AS attempt
+         ON attempt.account_id = lease.account_id
+        AND attempt.workspace_id = lease.workspace_id
+        AND attempt.id = lease.attempt_id
+      WHERE lease.id = $1 AND lease.device_id = $2 AND lease.lease_token_sha256 = $3
+        AND lease.state IN ('SUCCEEDED', 'FAILED', 'CANCELLED')
+        AND attempt.state = lease.state
+        AND attempt.state IN ('SUCCEEDED', 'FAILED', 'CANCELLED')`,
+    [leaseId, scope.deviceId, await sha256(leaseToken)],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    ...scope,
+    leaseToken,
+    attemptId: String(row.attempt_id),
+    state: row.state as PersonalWorkerTerminalState,
+    failureCode: row.failure_code === null ? null : String(row.failure_code),
+    resultObjectKey: row.result_object_key === null ? null : String(row.result_object_key),
+    resultContentLength:
+      row.result_content_length === null ? null : Number(row.result_content_length),
+    resultChecksumSha256:
+      row.result_checksum_sha256 === null ? null : String(row.result_checksum_sha256),
+  };
+}
+
+function completionAccepted(state: PersonalWorkerTerminalState): Response {
+  return json({
+    schema_version: "videoforge-personal-worker-completion-accepted/v1",
+    state,
+  });
 }
 
 async function completeLease(
@@ -1145,8 +1259,6 @@ async function completeLease(
 ) {
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
-    const lease = await activeLease(request, pool, leaseId);
-    if (!lease) return json({ error: { code: "MEDIA_WORKER_LEASE_STALE" } }, 409);
     let raw: unknown;
     try {
       raw = await request.json();
@@ -1155,6 +1267,14 @@ async function completeLease(
     }
     const completion = exactCompletion(raw);
     if (!completion) return json({ error: { code: "MEDIA_WORKER_COMPLETION_REJECTED" } }, 400);
+    const lease = await activeLease(request, pool, leaseId);
+    if (!lease) {
+      const terminal = await terminalLeaseForCompletion(request, pool, leaseId);
+      if (!terminal || !completionMatchesTerminalLease(terminal, completion)) {
+        return json({ error: { code: "MEDIA_WORKER_LEASE_STALE" } }, 409);
+      }
+      return completionAccepted(terminal.state);
+    }
     let receipt: string | null = null;
     if (completion.status === "SUCCEEDED") {
       const callbackToken = await deriveCallbackToken(
@@ -1232,10 +1352,10 @@ async function completeLease(
       );
       const attemptState = current.rows[0]?.state;
       if (!attemptState || !["RUNNING", "CANCEL_REQUESTED"].includes(attemptState)) return null;
-      const state =
+      const state: PersonalWorkerTerminalState =
         attemptState === "CANCEL_REQUESTED" || completion.status === "CANCELLED"
           ? "CANCELLED"
-          : String(completion.status);
+          : completion.status;
       const leaseUpdated = await transaction.query(
         `UPDATE media_worker_leases
             SET state = $2, completed_at = now(), failure_code = $3, updated_at = now()
@@ -1269,6 +1389,68 @@ async function completeLease(
           receipt,
         ],
       );
+      const terminalFactsSha256 = await sha256(
+        JSON.stringify({
+          schema_version: "videoforge-personal-worker-terminal/v1",
+          attempt_id: lease.attemptId,
+          lease_id: leaseId,
+          state,
+          failure_code: state === "FAILED" ? completion.failure_code : null,
+          result_object_key: state === "SUCCEEDED" ? completion.result_object_key : null,
+          result_content_length: state === "SUCCEEDED" ? completion.result_content_length : null,
+          result_checksum_sha256: state === "SUCCEEDED" ? completion.result_checksum_sha256 : null,
+        }),
+      );
+      await transaction.query(
+        `INSERT INTO hosted_cpu_job_events (
+           id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
+         ) SELECT md5($1::text || ':personal-worker-terminal:' || $5 || ':' || next.sequence::text)::uuid,
+                  $2::uuid, $3::uuid, $1::uuid, next.sequence, $5, $4, now()
+             FROM (
+               SELECT COALESCE(max(sequence), 0) + 1 AS sequence
+                 FROM hosted_cpu_job_events
+                WHERE account_id = $2::uuid AND workspace_id = $3::uuid AND attempt_id = $1::uuid
+             ) AS next
+            WHERE NOT EXISTS (
+              SELECT 1 FROM hosted_cpu_job_events
+               WHERE account_id = $2::uuid AND workspace_id = $3::uuid
+                 AND attempt_id = $1::uuid AND kind = $5
+            )`,
+        [lease.attemptId, lease.accountId, lease.workspaceId, terminalFactsSha256, state],
+      );
+      await transaction.query(
+        `SELECT id
+           FROM media_worker_devices
+          WHERE id = $1 AND account_id = $2 AND workspace_id = $3
+          FOR UPDATE`,
+        [lease.deviceId, lease.accountId, lease.workspaceId],
+      );
+      const mediaEventKind = mediaWorkerTerminalEventKind(state);
+      await transaction.query(
+        `INSERT INTO media_worker_events (
+           id, account_id, workspace_id, device_id, lease_id, sequence, kind,
+           facts_sha256, occurred_at
+         ) SELECT md5($1::text || ':personal-worker-terminal:' || $5 || ':' || next.sequence::text)::uuid,
+                  $2::uuid, $3::uuid, $4::uuid, $1::uuid, next.sequence, $5, $6, now()
+             FROM (
+               SELECT COALESCE(max(sequence), 0) + 1 AS sequence
+                 FROM media_worker_events
+                WHERE account_id = $2::uuid AND workspace_id = $3::uuid AND device_id = $4::uuid
+             ) AS next
+            WHERE NOT EXISTS (
+              SELECT 1 FROM media_worker_events
+               WHERE account_id = $2::uuid AND workspace_id = $3::uuid
+                 AND device_id = $4::uuid AND lease_id = $1::uuid AND kind = $5
+            )`,
+        [
+          leaseId,
+          lease.accountId,
+          lease.workspaceId,
+          lease.deviceId,
+          mediaEventKind,
+          terminalFactsSha256,
+        ],
+      );
       await transaction.query(
         `UPDATE media_worker_devices
             SET status = 'ONLINE', last_seen_at = now(), updated_at = now()
@@ -1277,11 +1459,12 @@ async function completeLease(
       );
       return state;
     });
-    if (!settled) return json({ error: { code: "MEDIA_WORKER_LEASE_STALE" } }, 409);
-    return json({
-      schema_version: "videoforge-personal-worker-completion-accepted/v1",
-      state: settled,
-    });
+    if (settled) return completionAccepted(settled);
+    const terminal = await terminalLeaseForCompletion(request, pool, leaseId);
+    if (!terminal || !completionMatchesTerminalLease(terminal, completion)) {
+      return json({ error: { code: "MEDIA_WORKER_LEASE_STALE" } }, 409);
+    }
+    return completionAccepted(terminal.state);
   } finally {
     await pool.end();
   }

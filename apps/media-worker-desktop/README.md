@@ -13,6 +13,19 @@ and then uses outbound HTTPS only. Users enter no URLs, keys, paths, model setti
 configuration. On macOS the first launch copies the sealed app into the user's Applications
 folder and registers the background LaunchAgent; the DMG itself never performs a silent install.
 
+The Windows installer is x64-only and remains an explicitly unsigned beta. Its uninstaller stops
+the worker and invokes the bundled `--uninstall` path to remove the local installation record and
+OS credential; the authenticated VideoForge Settings Remove action separately revokes the remote
+device. On macOS, `--uninstall` performs the same local cleanup and removes the LaunchAgent before
+the app is deleted. A Finder/Explorer delete cannot run that cleanup, so remove the computer from
+VideoForge first when possible.
+
+When the control plane reports `UPDATE_REQUIRED`, the worker exits cleanly instead of holding the
+old executable open or retrying claims. The next beta installer can therefore replace it; the
+existing LaunchAgent/Startup entry remains the login path for the new build. Temporary network
+loss keeps the existing paired credential and retries with bounded backoff, so reconnect does not
+create a second enrollment.
+
 `media-worker-release.yml` is deliberately manual and fail-closed. It assembles tools only from
 checksum-pinned, versioned upstream inputs and needs a public hosted origin. Its default
 `signed_release=false` path matches
@@ -44,3 +57,7 @@ the app verifies as both arm64 and x86_64. Windows x64 runtime DLLs are bundled 
 whisper.cpp commit and exact Intel and Apple Silicon FFmpeg inputs. The worker verifies the
 model again at startup and against every ASR job contract. No first-run model download, runtime
 provider discovery, or user configuration occurs.
+
+This checkout's source-only lifecycle repairs are not a new immutable publication. Recompute the
+execution-bundle hash and publish a new immutable release before updating hosted release metadata;
+the existing `media-worker-v0.1.6` artifact remains the separately recorded release identity.

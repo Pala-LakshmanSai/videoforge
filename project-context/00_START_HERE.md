@@ -1,7 +1,7 @@
 # VideoForge: start here
 
 Status: V2-06 personal-media-worker conversion is locally implemented; full hosted and signed-
-installer acceptance is blocked, and no remote mutation or spend authority is active
+installer acceptance is blocked, and no fresh live-verification, remote-mutation, or spend authority is active
 Context schema: `2.0`
 Last updated: `2026-08-17`
 
@@ -238,8 +238,8 @@ not complete. Output uploads now require callback-token authorization and exact 
 tenant/project/revision/attempt, key, type, length, and checksum facts before R2 signing. The staging
 surface is still an activation/auth/status shell rather than the full product and CPU-job submission
 route graph. A separate explicit read-only audit grant is required before refreshing any
-live provider fact. Read-only Cloudflare, Neon, Google Cloud, and RunPod inventory is authorized as
-of 2026-08-17. Any deployment, remote mutation, email delivery, or spend still requires one exact
+live provider fact. The prior provider inventory is immutable historical evidence only and is not a
+current live-verification grant. Any deployment, remote mutation, email delivery, or spend still requires one exact
 bounded activation proposal and approval; the user-stated USD 3 future test cap is not operation
 authority by itself. No cloud mutation, GPU, worker, or spend authority is active.
 All prior provider authorities are consumed and cannot be reused. The ordered

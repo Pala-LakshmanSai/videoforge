@@ -1,17 +1,10 @@
 #!/usr/bin/env node
 
 import { readFile } from "node:fs/promises";
+import { FORBIDDEN_SECRET_NAMES, REQUIRED_SECRET_NAMES, SECRET_POLICY } from "./secret-policy.mjs";
 
-const expected = new Set([
-  "DATABASE_URL",
-  "BETTER_AUTH_SECRET",
-  "GOOGLE_CLIENT_ID",
-  "GOOGLE_CLIENT_SECRET",
-  "R2_ACCESS_KEY_ID",
-  "R2_SECRET_ACCESS_KEY",
-  "WORKFLOW_CALLBACK_SECRET",
-  "MEDIA_WORKER_TOKEN_SECRET",
-]);
+const expected = new Set(REQUIRED_SECRET_NAMES);
+const forbidden = new Set(FORBIDDEN_SECRET_NAMES);
 
 const input = process.argv[2];
 if (!input) throw new Error("secret list JSON path is required");
@@ -24,6 +17,12 @@ const actual = new Set(names);
 if (actual.size !== names.length) throw new Error("secret list contains duplicate names");
 if (actual.size !== expected.size || [...expected].some((name) => !actual.has(name)))
   throw new Error("remote Worker secret list is not the exact V2-06 allowlist");
-if (names.some((name) => name.startsWith("EMAIL_")))
-  throw new Error("email delivery secrets are forbidden for V2-06");
-console.log(JSON.stringify({ count: actual.size, names: [...actual].sort() }));
+if (names.some((name) => forbidden.has(name)))
+  throw new Error("remote Worker secret list contains a currently forbidden V2-06 secret");
+console.log(
+  JSON.stringify({
+    count: actual.size,
+    names: [...actual].sort(),
+    policy: SECRET_POLICY.schema_version,
+  }),
+);

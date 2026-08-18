@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
@@ -44,7 +45,7 @@ executable = EXE(
     target_arch=os.environ.get("VIDEOFORGE_WORKER_TARGET_ARCH") or None,
 )
 
-if os.name == "posix":
+if sys.platform == "darwin":
     app = BUNDLE(
         executable,
         name="VideoForge Worker.app",

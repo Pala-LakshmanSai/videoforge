@@ -14,6 +14,7 @@ guidance; it is not evidence that rollback has been exercised.
 
    ```sh
    CONFIG=/secure/videoforge/v2-06/<recorded-rendered-config>.json
+   EXPECTED_ACTIVE_VERSION_ID=<recorded-current-worker-version-id>
    PRIOR_VERSION_ID=<recorded-prior-worker-version-id>
    EXPECTED_CONFIG_SHA256=<recorded-rendered-config-sha256>
    EXPECTED_COMMIT=<recorded-prior-commit-sha>
@@ -38,33 +39,15 @@ guidance; it is not evidence that rollback has been exercised.
    NODE
    pnpm --filter @videoforge/web exec wrangler deployments list --json --config "$CONFIG" \
      > /secure/videoforge/v2-06/rollback-before.json
-   node - /secure/videoforge/v2-06/rollback-before.json "$PRIOR_VERSION_ID" <<'NODE'
-   const fs = require("node:fs");
-   const [file, priorVersion] = process.argv.slice(2);
-   const rows = JSON.parse(fs.readFileSync(file, "utf8"));
-   const deployments = Array.isArray(rows) ? rows : rows.deployments;
-   const versions = (deployments ?? []).flatMap((row) => [row, ...(row.versions ?? [])]);
-   if (!versions.some((row) =>
-       row.version_id === priorVersion || row.versionId === priorVersion || row.id === priorVersion)) {
-     throw new Error("the approved prior Worker version is not present in the before-list");
-   }
-   NODE
+   node deploy/v2-06/verify-rollback-deployment.mjs before \
+     /secure/videoforge/v2-06/rollback-before.json \
+     "$EXPECTED_ACTIVE_VERSION_ID" "$PRIOR_VERSION_ID"
    pnpm --filter @videoforge/web exec wrangler rollback "$PRIOR_VERSION_ID" --yes \
      --message "V2-06 approved rollback to recorded immutable version" --config "$CONFIG"
    pnpm --filter @videoforge/web exec wrangler deployments list --json --config "$CONFIG" \
      > /secure/videoforge/v2-06/rollback-after.json
-   node - /secure/videoforge/v2-06/rollback-after.json "$PRIOR_VERSION_ID" <<'NODE'
-   const fs = require("node:fs");
-   const [file, priorVersion] = process.argv.slice(2);
-   const rows = JSON.parse(fs.readFileSync(file, "utf8"));
-   const deployments = Array.isArray(rows) ? rows : rows.deployments;
-   const versions = (deployments ?? []).flatMap((row) => [row, ...(row.versions ?? [])]);
-   const active = versions.find((row) =>
-     row.version_id === priorVersion || row.versionId === priorVersion || row.id === priorVersion);
-   if (!active || !(active.is_active === true || active.active === true || active.traffic_percent === 100 || active.percentage === 100)) {
-     throw new Error("the approved prior Worker version is not the active rollback target");
-   }
-   NODE
+   node deploy/v2-06/verify-rollback-deployment.mjs after \
+     /secure/videoforge/v2-06/rollback-after.json "$PRIOR_VERSION_ID"
    ```
 
    The post-rollback JSON must show `PRIOR_VERSION_ID` as the active/latest deployment and the

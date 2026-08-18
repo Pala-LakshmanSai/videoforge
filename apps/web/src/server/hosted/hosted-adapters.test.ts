@@ -11,7 +11,11 @@ import {
   type HostedRuntimeEnvironment,
 } from "./configuration";
 import { HostedR2Signer } from "./r2";
-import { supportedWorkerPlatform } from "./personal-worker";
+import {
+  completionMatchesTerminalLease,
+  mediaWorkerTerminalEventKind,
+  supportedWorkerPlatform,
+} from "./personal-worker";
 import {
   bindHostedCpuInputDocument,
   canonicalJson,
@@ -258,6 +262,61 @@ describe("V2-06 hosted adapters", () => {
     expect(supportedWorkerPlatform("MACOS", "X86_64")).toBe(true);
     expect(supportedWorkerPlatform("MACOS", "AARCH64")).toBe(true);
     expect(supportedWorkerPlatform("LINUX", "X86_64")).toBe(false);
+  });
+
+  it("acknowledges only the durable terminal completion on replay", () => {
+    const succeeded = {
+      state: "SUCCEEDED" as const,
+      failureCode: null,
+      resultObjectKey: "result-a",
+      resultContentLength: 128,
+      resultChecksumSha256: `sha256:${"a".repeat(64)}`,
+    };
+    expect(
+      completionMatchesTerminalLease(succeeded, {
+        schema_version: "videoforge-personal-worker-completion/v1",
+        status: "SUCCEEDED",
+        failure_code: null,
+        result_object_key: "result-a",
+        result_content_length: 128,
+        result_checksum_sha256: `sha256:${"a".repeat(64)}`,
+      }),
+    ).toBe(true);
+    expect(
+      completionMatchesTerminalLease(succeeded, {
+        schema_version: "videoforge-personal-worker-completion/v1",
+        status: "SUCCEEDED",
+        failure_code: null,
+        result_object_key: "forged-result",
+        result_content_length: 128,
+        result_checksum_sha256: `sha256:${"a".repeat(64)}`,
+      }),
+    ).toBe(false);
+    expect(
+      completionMatchesTerminalLease(
+        {
+          ...succeeded,
+          state: "CANCELLED",
+          resultObjectKey: null,
+          resultContentLength: null,
+          resultChecksumSha256: null,
+        },
+        {
+          schema_version: "videoforge-personal-worker-completion/v1",
+          status: "SUCCEEDED",
+          failure_code: null,
+          result_object_key: "late-result",
+          result_content_length: 128,
+          result_checksum_sha256: `sha256:${"b".repeat(64)}`,
+        },
+      ),
+    ).toBe(true);
+  });
+
+  it("maps cancellation to the media-worker event kind allowed by migration 0032", () => {
+    expect(mediaWorkerTerminalEventKind("SUCCEEDED")).toBe("SUCCEEDED");
+    expect(mediaWorkerTerminalEventKind("FAILED")).toBe("FAILED");
+    expect(mediaWorkerTerminalEventKind("CANCELLED")).toBe("CANCEL_OBSERVED");
   });
 
   it("keeps the historical Cloud Run adapter fail-closed for rollback evidence", () => {
