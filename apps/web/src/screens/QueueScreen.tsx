@@ -129,7 +129,13 @@ function HostedQueueScreen() {
                       <Video size={18} />
                     </span>
                     <div>
-                      <strong>{attempt.title}</strong>
+                      <Link
+                        to="/projects/$projectId"
+                        params={{ projectId: attempt.project_id }}
+                        aria-label={`Open ${attempt.title}`}
+                      >
+                        <strong>{attempt.title}</strong>
+                      </Link>
                       <small>{attempt.kind === "ASR" ? "Transcription" : "Final render"}</small>
                     </div>
                   </div>
