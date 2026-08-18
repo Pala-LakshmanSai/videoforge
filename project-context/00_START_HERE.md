@@ -3,7 +3,7 @@
 Status: V2-06 personal-media-worker conversion is locally implemented; full hosted and signed-
 installer acceptance is blocked, and no fresh live-verification, remote-mutation, or spend authority is active
 Context schema: `2.0`
-Last updated: `2026-08-17`
+Last updated: `2026-08-18`
 
 VideoForge is an invite-only voiceover-to-video product for 5–10 people. Each admitted account has
 one default workspace. User-created projects, queues, Avatar Profiles, Image Styles, media, manifests,

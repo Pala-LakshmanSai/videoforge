@@ -1,70 +1,34 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-18T13:33:02Z"
+updated_at: "2026-08-18T14:19:43Z"
 
-phase: serverless_v2_v2_06_live_activation_in_progress
+phase: serverless_v2_v2_06_local_repair_committed_hosted_reverification_pending
 implementation_authorized_in_current_task: true
 current_milestone: hosted_staging_and_personal_media_workers
 current_task: VF-10-06
 current_wave: v2_06_personal_worker_conversion
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: current_head_deployed_hosted_media_acceptance_pending
+task_stage: local_source_repair_committed_hosted_media_acceptance_pending
 application_code_changes_authorized: true
-provider_calls_authorized: true
+provider_calls_authorized: false
 read_only_provider_calls_authorized: false
-maximum_external_spend_usd: 3
+maximum_external_spend_usd: 0
 
 provider_authority:
-  mode: paid
-  provider: cloudflare+neon+google_cloud+github
-  cap_usd: 3
-  recurring_r2_ceiling_usd_per_month: 2
-  source: user_approve_v2_06_live_activation_confirm_and_rotate_all_2026_08_17
+  mode: none
+  provider: null
+  cap_usd: 0
+  recurring_r2_ceiling_usd_per_month: null
+  source: current_source_repair_no_live_authority
   non_transferable: true
-  authorized_by_user_at: "2026-08-17"
-  resources:
-    - cloudflare_account_f9254d773a3426fcb469451b1f965d8c
-    - cloudflare_worker_videoforge_v2_06_staging
-    - cloudflare_workflow_videoforge_v2_06_staging_video
-    - cloudflare_r2_bucket_videoforge_v2_06_staging_private
-    - neon_project_ancient_morning_99567618
-    - google_project_videoforge_v2_06_staging_0817
-    - github_release_media_worker_v0_1_1
-    - github_release_media_worker_v0_1_0_rollback
-  authorized_operations:
-    - exact_v2_06_worker_workflow_and_private_r2_activation
-    - exact_v2_06_neon_migration_runtime_role_backup_and_restore_drill
-    - exact_google_only_oauth_activation_for_two_test_users
-    - immutable_personal_worker_release_and_native_acceptance
-    - exact_owned_fixture_provisioning_and_hosted_chrome_acceptance
-    - exposed_v2_06_credential_rotation_and_disposable_restore_database_cleanup
-  allowed_operations:
-    - exact_v2_06_worker_workflow_and_private_r2_activation
-    - exact_v2_06_neon_migration_runtime_role_backup_and_restore_drill
-    - exact_google_only_oauth_activation_for_two_test_users
-    - immutable_personal_worker_release_and_native_acceptance
-    - exact_owned_fixture_provisioning_and_hosted_chrome_acceptance
-    - exposed_v2_06_credential_rotation_and_disposable_restore_database_cleanup
-  rate_snapshot:
-    - resource_id: cloudflare_r2_standard_storage_overage
-      billing_unit: gb_month_above_10_gb_free
-      usd_per_unit: 0.015
-      checked_at: "2026-08-17"
-    - resource_id: cloudflare_workers_free_base
-      billing_unit: month
-      usd_per_unit: 0
-      checked_at: "2026-08-17"
-    - resource_id: neon_free_base
-      billing_unit: month
-      usd_per_unit: 0
-      checked_at: "2026-08-17"
-    - resource_id: google_oauth_project_base
-      billing_unit: month
-      usd_per_unit: 0
-      checked_at: "2026-08-17"
+  authorized_by_user_at: null
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
+  rate_snapshot: []
 
-credential_access_authorized: true
-remote_or_cloud_mutations_authorized: true
+credential_access_authorized: false
+remote_or_cloud_mutations_authorized: false
 model_downloads_authorized: false
 worker_image_publication_authorized: false
 sample_output_publication_authorized: false
@@ -85,8 +49,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "153cefef40739c35b84ed633fc4978f8a5e9746b"
-  current_source_head_note: "The current repository source is clean, pushed, canonically provider-free verified, and deployed to the approved V2-06 staging Worker with immutable personal-worker release 0.1.6. Hosted completion, two-account isolation, Windows lifecycle/parity, backup/restore, rollback, and independent full-checkpoint acceptance remain unproven."
+  current_source_head: "05aa914dd8d531b044e5b4d37aff6c2747602ba5"
+  current_source_head_note: "The current repository source is clean, committed, and canonically provider-free verified at 05aa914. It is a local source repair and is not deployed. The last supplied immutable deployment evidence remains exact HEAD 153cefe with personal-worker release 0.1.6; hosted completion, two-account isolation, Windows lifecycle/parity, backup/restore, rollback, and independent full-checkpoint acceptance remain unproven."
   last_good_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
   last_good_commit_note: "V2-06 staging is deployed from exact HEAD 153cefe with Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c, rendered-config sha256:8f67537d912b2b8d95e00c2af12e931c11ed81b96195b9637d4c05c47de3b2af, and immutable worker release 0.1.6. Source and deployment checks are green; full hosted/device acceptance remains open."
   working_tree_expected: clean_except_ignored_private_inputs
@@ -101,10 +65,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: staging
-  provider_calls_authorized: true
-  authorized_spend_usd: 3
-  provider_authority_scope: "The user approved the exact bounded V2-06 live activation, confirmed its combined mutation plan, and set a USD 3 finite test cap plus a USD 2/month R2 ceiling. RunPod remains read-only with no compute or mutation authority."
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: "No current live-verification, credential, mutation, or spend authority is active. Prior deployment and inventory records are immutable evidence only; a separate explicit read-only audit grant is required for live verification."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -172,7 +136,7 @@ roadmap_state:
   V2-03: complete_green_independently_reaudited
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
-  V2-06: native_mac_paired_hosted_media_acceptance_pending
+  V2-06: source_repair_committed_hosted_media_acceptance_pending
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
@@ -252,8 +216,8 @@ last_known_provider_resource_truth:
   checked_at: "2026-08-17T10:05:45Z"
   basis: authenticated_sujal_runpod_dashboard_read_only_inventory
   evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
-  current_live_refresh_permitted_now: true
-  stale_until_current_authorized_read_only_inventory_succeeds: false
+  current_live_refresh_permitted_now: false
+  stale_until_current_authorized_read_only_inventory_succeeds: true
   pods: 0
   private_templates: 0
   endpoints: 0
@@ -278,7 +242,7 @@ last_known_provider_resource_truth:
   current_day_cloud_cpu_usd: 0
   current_day_serverless_usd: 0
   auto_pay: DISABLED
-  note: "Live dashboard inventory matches the approved retained resources. Zero workers means zero GPU compute, not zero fixed retained-volume billing; billing data may lag by one hour."
+  note: "This is immutable historical inventory evidence only. No current live refresh is authorized. Zero workers in that snapshot means zero GPU compute at that observation, not zero fixed retained-volume billing; billing data may lag by one hour."
 
 blocking_gates_for_production:
   - GATE_TENANCY_001
@@ -301,74 +265,38 @@ active_ownership:
   - task_id: VF-10-06
     checkpoint: V2-06
     scope: exact_v2_06_live_activation_hardening_deployment_and_acceptance
-    provider_calls_authorized: true
-    maximum_external_spend_usd: 3
+    provider_calls_authorized: false
+    maximum_external_spend_usd: 0
 in_progress_checkpoint: V2-06
 
 recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
   milestone: hosted_staging_and_personal_media_workers
-  status: native_mac_paired_hosted_media_acceptance_pending
+  status: source_repair_committed_hosted_media_acceptance_pending
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
-  authorization_status: bounded_v2_06_live_activation_approved
-  task_stage: bounded_mutation
+  authorization_status: no_current_live_verification_or_mutation_authority
+  task_stage: source_repair_committed_hosted_reverification_pending
   provider_authority:
-    mode: paid
-    provider: cloudflare+neon+google_cloud+github
-    cap_usd: 3
-    recurring_r2_ceiling_usd_per_month: 2
+    mode: none
+    provider: null
+    cap_usd: 0
+    recurring_r2_ceiling_usd_per_month: null
     non_transferable: true
-    authorized_by_user_at: "2026-08-17"
+    authorized_by_user_at: null
     model_id: null
-    resources:
-      - cloudflare_account_f9254d773a3426fcb469451b1f965d8c
-      - cloudflare_worker_videoforge_v2_06_staging
-      - cloudflare_workflow_videoforge_v2_06_staging_video
-      - cloudflare_r2_bucket_videoforge_v2_06_staging_private
-      - neon_project_ancient_morning_99567618
-      - google_project_videoforge_v2_06_staging_0817
-      - github_release_media_worker_v0_1_1
-      - github_release_media_worker_v0_1_0_rollback
-    authorized_operations:
-      - exact_v2_06_worker_workflow_and_private_r2_activation
-      - exact_v2_06_neon_migration_runtime_role_backup_and_restore_drill
-      - exact_google_only_oauth_activation_for_two_test_users
-      - immutable_personal_worker_release_and_native_acceptance
-      - exact_owned_fixture_provisioning_and_hosted_chrome_acceptance
-      - exposed_v2_06_credential_rotation_and_disposable_restore_database_cleanup
-    allowed_operations:
-      - exact_v2_06_worker_workflow_and_private_r2_activation
-      - exact_v2_06_neon_migration_runtime_role_backup_and_restore_drill
-      - exact_google_only_oauth_activation_for_two_test_users
-      - immutable_personal_worker_release_and_native_acceptance
-      - exact_owned_fixture_provisioning_and_hosted_chrome_acceptance
-      - exposed_v2_06_credential_rotation_and_disposable_restore_database_cleanup
-    rate_snapshot:
-      - resource_id: cloudflare_r2_standard_storage_overage
-        billing_unit: gb_month_above_10_gb_free
-        usd_per_unit: 0.015
-        checked_at: "2026-08-17"
-      - resource_id: cloudflare_workers_free_base
-        billing_unit: month
-        usd_per_unit: 0
-        checked_at: "2026-08-17"
-      - resource_id: neon_free_base
-        billing_unit: month
-        usd_per_unit: 0
-        checked_at: "2026-08-17"
-      - resource_id: google_oauth_project_base
-        billing_unit: month
-        usd_per_unit: 0
-        checked_at: "2026-08-17"
+    resources: []
+    authorized_operations: []
+    allowed_operations: []
+    rate_snapshot: []
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
-  goal: "Finish the approved exact V2-06 hosted activation and independent acceptance within the USD 3 finite cap and USD 2/month R2 ceiling; GPU transport stays fake and disabled."
-  provider_calls_authorized: true
+  goal: "Finish V2-06 only after a separate explicit live-verification grant; preserve provider-free proof, GPU transport fake-disabled, and V2-07 blocked."
+  provider_calls_authorized: false
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 3
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
@@ -381,18 +309,18 @@ recommended_next_task:
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_current_head_deployed_hosted_acceptance_blocked
-  verified_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
-  verified_commit_note: "Canonical provider-free verification passes at current HEAD 153cefe. The exact HEAD is deployed as Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c with immutable personal-worker release 0.1.6. A fresh hosted ASR attempt did not settle SUCCEEDED and was cancelled through the repaired recovery path; two-account, non-superuser RLS/R2 isolation, Windows lifecycle/parity, backup/restore, rollback, and independent hosted acceptance remain blocked."
-  predecessor_verified_commit: "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
+  state: v2_06_source_repair_committed_hosted_reverification_pending
+  verified_commit: "05aa914dd8d531b044e5b4d37aff6c2747602ba5"
+  verified_commit_note: "Canonical provider-free verification passes at source repair commit 05aa914. This commit is not deployed. The last supplied immutable deployment evidence is exact HEAD 153cefe as Worker version 7d66d976-a16f-46f6-8888-ebbb5f24217c with personal-worker release 0.1.6; hosted completion, two-account non-superuser RLS/R2 isolation, Windows lifecycle/parity, backup/restore, rollback, and independent hosted acceptance remain blocked."
+  predecessor_verified_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-05aa914/acceptance.json
   latest_live_check:
     recorded_at_utc: "2026-08-18T13:33:02Z"
     evidence: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
-    status: current_head_deployed_native_mac_online_hosted_completion_pending
-    source_repair_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
+    status: last_supplied_deployment_evidence_not_refreshed_after_local_source_repair
+    source_repair_commit: "05aa914dd8d531b044e5b4d37aff6c2747602ba5"
     deployed_implementation_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
-    deployed_source_mismatch: false
+    deployed_source_mismatch: true
     release_commit: "153cefe"
     deployment_version_id: "7d66d976-a16f-46f6-8888-ebbb5f24217c"
     rendered_config_sha256: "sha256:8f67537d912b2b8d95e00c2af12e931c11ed81b96195b9637d4c05c47de3b2af"
@@ -407,13 +335,51 @@ verification:
     hosted_asr_attempt_state: CANCELLED
     hosted_asr_successful_output_proven: false
   latest_source_verification:
-    recorded_at_utc: "2026-08-18T13:33:02Z"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
-    source_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
+    recorded_at_utc: "2026-08-18T14:19:43Z"
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-05aa914/acceptance.json
+    source_commit: "05aa914dd8d531b044e5b4d37aff6c2747602ba5"
     deployed_implementation_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
-    deployed_source_mismatch: false
-    immutable_worker_release_source_status: release_0_1_6_published_and_installed_mac_only
+    deployed_source_mismatch: true
+    immutable_worker_release_source_status: release_0_1_6_unchanged_source_repair_not_published
     new_external_spend_usd: 0
+  local_repair_2026_08_18:
+    commit: "05aa914dd8d531b044e5b4d37aff6c2747602ba5"
+    scope: provider_free_source_repair_only
+    live_verification_performed: false
+    credentials_read: false
+    provider_calls: false
+    remote_mutation: false
+    spend_usd: 0
+    repairs:
+      - hosted_personal_worker_terminal_replay_and_append_only_event_durability
+      - Cloudflare_Workflow_expiry_cancel_and_replay_event_reconciliation
+      - native_worker_https_pkce_platform_autostart_update_and_uninstall_hardening
+      - protected_backup_restore_secret_policy_and_rollback_snapshot_contracts
+    commands:
+      - command: "CI=1 TURBO_FORCE=true pnpm verify"
+        exit_code: 0
+        result: "provider-free build, lint, typecheck, package tests, six worker suites, and 44 local Chrome tests passed; web reported 351 passed and 1 skipped"
+      - command: "pnpm context:validate"
+        exit_code: 0
+      - command: "pnpm contracts:check"
+        exit_code: 0
+        result: "123 canonical files synchronized"
+      - command: "pnpm validate:v2-06-deployment"
+        exit_code: 0
+      - command: "pnpm secret:scan"
+        exit_code: 0
+        result: "1141 tracked files scanned"
+      - command: "pnpm format:check"
+        exit_code: 0
+      - command: "git diff --check"
+        exit_code: 0
+    not_proven_by_this_repair:
+      - hosted_two_account_Better_Auth_Neon_non_superuser_FORCE_RLS_and_private_R2_isolation
+      - successful_hosted_ASR_render_playback_and_explicit_delete
+      - Windows_clean_install_pairing_update_remove_and_cross_platform_media_parity
+      - live_backup_restore_rollback_and_post_acceptance_billing_observation
+      - current_RunPod_zero_worker_and_retained_volume_inventory
+      - independent_audit_of_the_repaired_source_or_deployment
   completed_for_v2_00:
     - "Two consecutive repair-turn CI=1 TURBO_FORCE=true pnpm verify runs passed (28/28 uncached tasks each)."
     - "Independent CI=1 TURBO_FORCE=true pnpm verify passed (28/28 uncached tasks; control-plane 226/226; pipeline 120/120; web 313/313; Cloudflare 1/1; installed Chrome 42/42)."
@@ -627,9 +593,11 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: current_head_deployed_native_mac_online_hosted_completion_pending
-    implementation_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
-    source_head_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
+    status: source_repair_committed_hosted_reverification_pending
+    implementation_commit: "05aa914dd8d531b044e5b4d37aff6c2747602ba5"
+    source_head_commit: "05aa914dd8d531b044e5b4d37aff6c2747602ba5"
+    current_source_deployment_status: not_deployed
+    previous_deployed_source_head: "153cefef40739c35b84ed633fc4978f8a5e9746b"
     hosted_ui_repair_commit: "0d850bfd6e5a413d744578e1cd45f07cba71b619"
     hosted_ui_repair_deployment_status: deployed
     worker_source_repair_commit: "5a192d3e1bf97e146f700031896ed5835a40921a"
@@ -637,7 +605,7 @@ verification:
     worker_source_repair_deployment_status: release_0_1_6_published_and_installed_mac_only
     previous_worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-05aa914/acceptance.json
     previous_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
     live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
     runpod_live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
@@ -741,11 +709,12 @@ verification:
       - "The user-selected email provider is NONE, so hosted auth is Google-only and email/password stays disabled. Dedicated Google project videoforge-v2-06-staging-0817 and its exact redirect/client exist; live two-user callback acceptance remains pending."
       - "The user has Windows x64 and Mac test devices. Apple Developer Program membership is absent and no longer required for the selected ImageForge-style beta release; native clean-download/install evidence must record any actual warning or bypass behavior."
       - "The exact combined V2-06 activation was approved with a USD 3 finite test cap and USD 2/month R2 ceiling; spend and recurring truth must be rechecked after acceptance."
-      - "The current 153cefe hosted deployment includes the bounded file-access diagnostic, cancellation invariant repair, idempotent cancellation recovery action, and released 0.1.6 worker contract. The connected authenticated Chrome session still did not produce accepted hosted ASR completion; do not treat local result bytes as hosted media proof."
+      - "The last supplied 153cefe hosted deployment includes the bounded file-access diagnostic, cancellation invariant repair, idempotent cancellation recovery action, and released 0.1.6 worker contract. The new 05aa914 source repair is not deployed; do not treat local result bytes as hosted media proof."
       - "The immutable media-worker-v0.1.6 release is published and installed on the Mac only. Windows clean install, pairing, lifecycle, and parity remain open; the stale offline Mac device was left in place."
     resource_truth:
-      external_mutations: bounded_v2_06_current_head_staging_deployed_acceptance_pending
-      external_mutation_scope: "Three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence."
+      external_mutations: historical_bounded_v2_06_staging_deployment_acceptance_pending
+      external_mutation_scope: "Historical immutable deployment evidence only: three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence. No mutation occurred for source repair 05aa914."
+      truth_basis: immutable_historical_evidence_not_current_source_or_live_refresh
       deployments: 14
       installer_builds: 4
       installer_publications: 4
@@ -757,7 +726,8 @@ verification:
       runpod_mutating_calls: 0
       runpod_read_only_dashboard_inventory_completed: true
       runpod_workers_started: 0
-      live_runpod_inventory_refreshed: true
+      live_runpod_inventory_refreshed: false
+      live_state_basis: immutable_historical_evidence_only_no_current_read_only_grant
       cloudflare:
         checked_at: "2026-08-18T13:33:02Z"
         account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
@@ -787,8 +757,9 @@ verification:
         avatar_version_state: READY
         style_version_state: PUBLISHED
         project_creation_blocker: CHROME_FILE_BYTES_UNREADABLE_EXTENSION_PERMISSION_PENDING
-      source_head_commit: 153cefef40739c35b84ed633fc4978f8a5e9746b
+      source_head_commit: 05aa914dd8d531b044e5b4d37aff6c2747602ba5
       deployed_implementation_commit: 153cefef40739c35b84ed633fc4978f8a5e9746b
+      source_deployment_parity: false
       worker_source_repair_release_status: release_0_1_6_published_installed_mac_only
       neon:
         checked_at: "2026-08-17T17:36:31Z"

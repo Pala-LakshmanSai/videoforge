@@ -98,9 +98,9 @@ gates:
     blocks: hosted_production_claim
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatehosting001-hosted-controlcpu-plane"
     owner: V2-06
-    last_run: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
+    last_run: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-05aa914/acceptance.json
     last_run_at: "2026-08-18"
-    result: same_chat_repair_handoff_open_hosted_completion_two_account_isolation_windows_backup_restore_rollback_and_independent_acceptance
+    result: source_repair_green_hosted_completion_two_account_isolation_windows_backup_restore_rollback_and_independent_acceptance_open
 
   GATE_SERVERLESS_MAGE_001:
     status: open
