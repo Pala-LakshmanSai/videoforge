@@ -85,10 +85,10 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "0087897f2778f38143d9d08a335fbaf2f3801aca"
-  current_source_head_note: "Hosted preset hubs now use the authenticated tenant catalog and fixture-only /new routes are explicitly blocked in staging. The live Worker still serves 0184a66 until a protected V2-06 redeploy."
-  last_good_commit: "0184a66f0532af0b05f5e4f3b79f5289768c120b"
-  last_good_commit_note: "V2-06 hosted staging is deployed from 0184a66 with the immutable 0.1.4 Windows/macOS beta release. The 0.1.4 CA/import/User-Agent/enrollment-scope repairs, release matrix, staging build, and one native macOS pairing/heartbeat smoke are green. Windows pairing, device parity, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
+  current_source_head: "abadf85413ef971153422a0acb93dfa98d618bee"
+  current_source_head_note: "Hosted preset hubs now use the authenticated tenant catalog and fixture-only /new routes are explicitly blocked in staging. The repaired source is deployed at the live Worker; Windows pairing, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
+  last_good_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
+  last_good_commit_note: "V2-06 hosted staging is deployed from abadf85 with the immutable 0.1.4 Windows/macOS beta release. The hosted preset-hub source repair, staging build, canonical verification, and one native macOS pairing/heartbeat smoke are green. Windows pairing, device parity, hosted media behavior, durable recovery, rollback, and full checkpoint acceptance remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -382,19 +382,19 @@ recommended_next_task:
 
 verification:
   state: v2_06_native_mac_paired_full_acceptance_blocked
-  verified_commit: "0087897f2778f38143d9d08a335fbaf2f3801aca"
-  verified_commit_note: "Source HEAD 0087897 is verified and pushed: hosted /avatars and /styles use the tenant catalog, and fixture-only /new routes are blocked in staging. The live Worker still serves 0184a66, and a signed-in Chrome check proves one paired macOS worker is ONLINE with a recent heartbeat. Windows pairing, hosted media execution/parity, tenant isolation, recovery, deletion, backup/restore, rollback, and full hosted Chrome acceptance remain blocked."
+  verified_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
+  verified_commit_note: "Source HEAD abadf85 is verified, pushed, and deployed: hosted /avatars and /styles use the tenant catalog, and fixture-only /new routes are blocked in staging. A signed-in Chrome check proves one paired macOS worker is ONLINE with a recent heartbeat. Windows pairing, hosted media execution/parity, tenant isolation, recovery, deletion, backup/restore, rollback, and full hosted Chrome acceptance remain blocked."
   predecessor_verified_commit: "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-preset-hub-repair-0087897/acceptance.json
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-preset-hub-repair-deployed-abadf85/acceptance.json
   latest_live_check:
-    recorded_at_utc: "2026-08-18T07:27:11Z"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-preset-hub-repair-0087897/acceptance.json
-    status: source_repair_verified_deployment_pending_native_mac_paired_online_hosted_media_acceptance_pending
-    source_repair_commit: "0087897f2778f38143d9d08a335fbaf2f3801aca"
-    deployed_implementation_commit: "0184a66f0532af0b05f5e4f3b79f5289768c120b"
-    deployed_source_mismatch: true
+    recorded_at_utc: "2026-08-18T07:37:25Z"
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-preset-hub-repair-deployed-abadf85/acceptance.json
+    status: hosted_preset_hub_repair_deployed_native_mac_paired_online_hosted_media_acceptance_pending
+    source_repair_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
+    deployed_implementation_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
+    deployed_source_mismatch: false
     release_commit: "33a5dbd"
-    deployment_version_id: "a27d92c6-3390-4ece-8d09-48def628ca74"
+    deployment_version_id: "e2467d77-a888-4832-9d2c-c26d9c58013e"
     release_manifest_sha256: "sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b"
     neon_runtime_grant_executed: true
     new_external_spend_usd: 0
@@ -616,10 +616,10 @@ verification:
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
     status: native_mac_paired_hosted_media_acceptance_pending
-    implementation_commit: "0184a66f0532af0b05f5e4f3b79f5289768c120b"
-    source_head_commit: "0087897f2778f38143d9d08a335fbaf2f3801aca"
-    hosted_ui_repair_commit: "0087897f2778f38143d9d08a335fbaf2f3801aca"
-    hosted_ui_repair_deployment_status: pending_protected_redeploy
+    implementation_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
+    source_head_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
+    hosted_ui_repair_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
+    hosted_ui_repair_deployment_status: deployed
     worker_source_repair_commit: "0184a66f0532af0b05f5e4f3b79f5289768c120b"
     previous_worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
@@ -673,6 +673,8 @@ verification:
       - "pnpm format:check, pnpm secret:scan, and git diff --check final post-repair run (exit 0)"
       - "Fresh post-repair read-only audit (no P0; P1 hosted/device acceptance remains unproven; P2 handoff was committed after audit)"
       - "Hosted preset-hub source repair 0087897: focused hosted tests 7/7, web lint, web typecheck, staging build, and clean canonical CI=1 TURBO_FORCE=true pnpm verify all passed; source pushed to origin while live deployment remains 0184a66."
+      - "Protected V2-06 redeploy from abadf85 (exit 0; version e2467d77-a888-4832-9d2c-c26d9c58013e; rendered config sha256:fa577c2093e54617d827b43cdcc2852439d90b3b3456c26bfd6e044f25619b93)."
+      - "GET /api/v2/hosted/status after abadf85 deployment (exit 0; HTTP 200; deployed commit abadf85; GPU DISABLED_FAKE_ONLY; provider CPU spend $0)."
     delivered:
       - "Migration 0032 adds account/workspace-bound worker enrollments, devices, exact input objects, one active lease per attempt/device, append-only events, row-level security, and stale-lease fencing while preserving historical Cloud Run rows for rollback."
       - "The hosted API uses PKCE enrollment, one explicit authenticated approval, OS-keychain-scoped device tokens, heartbeat/update gating, exact same-account claims, fresh R2 GET/PUT ports, streaming output verification, cancellation, revocation, and late-result rejection."
@@ -697,11 +699,11 @@ verification:
       - "The user-selected email provider is NONE, so hosted auth is Google-only and email/password stays disabled. Dedicated Google project videoforge-v2-06-staging-0817 and its exact redirect/client exist; live two-user callback acceptance remains pending."
       - "The user has Windows x64 and Mac test devices. Apple Developer Program membership is absent and no longer required for the selected ImageForge-style beta release; native clean-download/install evidence must record any actual warning or bypass behavior."
       - "The exact combined V2-06 activation was approved with a USD 3 finite test cap and USD 2/month R2 ceiling; spend and recurring truth must be rechecked after acceptance."
-      - "The source repair commit 0087897 is not live until the protected V2-06 config is rendered and redeployed; do not treat local verification as hosted proof."
+      - "The hosted preset-hub source repair is deployed at abadf85, but deployment status alone does not prove full hosted acceptance; do not treat local verification or the status endpoint as hosted media proof."
     resource_truth:
       external_mutations: bounded_v2_06_deployment_complete_acceptance_pending
       external_mutation_scope: "Three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence."
-      deployments: 4
+      deployments: 5
       installer_builds: 4
       installer_publications: 4
       email_deliveries: 0
@@ -714,16 +716,16 @@ verification:
       runpod_workers_started: 0
       live_runpod_inventory_refreshed: true
       cloudflare:
-        checked_at: "2026-08-18T06:45:14Z"
+        checked_at: "2026-08-18T07:37:25Z"
         account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
         workers_plan: FREE
         payment_method_on_file: true
         workers_after_confirmed_cleanup: 1
         workflows: 1
         worker_name: videoforge-v2-06-staging
-        worker_deployment_version_id: a27d92c6-3390-4ece-8d09-48def628ca74
-        worker_deployment_commit: 0184a66f0532af0b05f5e4f3b79f5289768c120b
-        worker_deployment_config_sha256: sha256:fdd42713218e34774a2768fa10b297bf2220c9fb040eda7eef815ec8ad989d16
+        worker_deployment_version_id: e2467d77-a888-4832-9d2c-c26d9c58013e
+        worker_deployment_commit: abadf85413ef971153422a0acb93dfa98d618bee
+        worker_deployment_config_sha256: sha256:fa577c2093e54617d827b43cdcc2852439d90b3b3456c26bfd6e044f25619b93
         media_worker_release_version: 0.1.4
         media_worker_release_manifest_sha256: sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b
         workflow_name: videoforge-v2-06-staging-video

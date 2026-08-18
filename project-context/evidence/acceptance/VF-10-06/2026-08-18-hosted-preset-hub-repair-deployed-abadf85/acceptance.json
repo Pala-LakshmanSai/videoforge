@@ -1,0 +1,108 @@
+{
+  "schema_version": "videoforge.v2-06-hosted-preset-hub-repair-deployed/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-18T07:37:25Z",
+  "audit_method": "Same-chat post-repair deployment verification using repository HEAD, canonical provider-free verification recorded in the predecessor evidence, Wrangler deployment output, and a read-only public staging status probe. No credential values were read or recorded; no GPU/RunPod action, model download, or paid compute was performed.",
+  "result": "FAIL_FULL_CHECKPOINT_HOSTED_ACCEPTANCE_PENDING",
+  "audit_independence": "SAME_CHAT_POST_REPAIR_NOT_INDEPENDENT_FULL_CHECKPOINT_ACCEPTANCE",
+  "scope_boundary": "This record proves the hosted preset-hub source repair is deployed at the approved V2-06 staging Worker and that the public status contract reports the repaired commit. It does not prove hosted non-superuser tenancy, two-account isolation, hosted ASR/render, worker lifecycle/recovery, output deletion, backup/restore, rollback, billing, or full real-Chrome acceptance.",
+  "implementation": {
+    "source_head": "abadf85413ef971153422a0acb93dfa98d618bee",
+    "source_commit_pushed": true,
+    "repair": [
+      "Hosted /avatars and /styles now read the authenticated tenant-owned /api/v2/hosted/project-catalog instead of fixture-only /api/v1 routes.",
+      "Hosted /avatars/new and /styles/new now show an explicit read-only staging message instead of mounting fixture mutation screens."
+    ],
+    "deployed_implementation_commit": "abadf85413ef971153422a0acb93dfa98d618bee",
+    "deployment_source_mismatch": false
+  },
+  "deployment": {
+    "worker": "videoforge-v2-06-staging",
+    "workflow": "videoforge-v2-06-staging-video",
+    "r2_bucket": "videoforge-v2-06-staging-private",
+    "account_id": "f9254d773a3426fcb469451b1f965d8c",
+    "rendered_config_sha256": "sha256:fa577c2093e54617d827b43cdcc2852439d90b3b3456c26bfd6e044f25619b93",
+    "wrangler_deploy_exit_code": 0,
+    "version_id": "e2467d77-a888-4832-9d2c-c26d9c58013e",
+    "deployed_observed_at_utc": "2026-08-18T07:37:25Z",
+    "release_manifest_sha256": "sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b"
+  },
+  "live_status": {
+    "command": "curl -fsS -A 'VideoForge-Audit/2026-08-18-deployed-repair' -w '\\nHTTP %{http_code}\\n' https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/hosted/status",
+    "exit_code": 0,
+    "http": 200,
+    "deployed_commit": "abadf85413ef971153422a0acb93dfa98d618bee",
+    "environment": "staging",
+    "gpu_transport": "DISABLED_FAKE_ONLY",
+    "database": "NEON_POSTGRES_REQUIRED",
+    "artifact_plane": "PRIVATE_R2_REQUIRED",
+    "orchestration": "CLOUDFLARE_WORKFLOW_REQUIRED",
+    "cpu_jobs": "ACCOUNT_OWNED_PERSONAL_WORKER_REQUIRED",
+    "provider_cpu_spend": "$0",
+    "authentication": ["GOOGLE"]
+  },
+  "verification_commands": [
+    { "command": "CI=1 TURBO_FORCE=true pnpm verify", "exit_code": 0, "result": "canonical verification passed: 28 tasks; 49 web test files, 344 passed and 1 skipped; worker suites; Cloudflare parity 1/1; installed Chrome fixture 44/44" },
+    { "command": "pnpm context:validate && pnpm validate:v2-06-deployment && pnpm secret:scan && git diff --check", "exit_code": 0, "result": "context, deployment contract, tracked-file secret scan, and whitespace checks passed" },
+    { "command": "pnpm --filter @videoforge/web exec wrangler whoami", "exit_code": 0, "result": "authenticated Cloudflare account resolved to the approved account; no token value recorded" },
+    { "command": "pnpm --filter @videoforge/web exec wrangler deploy --config <rendered-approved-v2-06-config>", "exit_code": 0, "result": "Worker and Workflow deployed; version e2467d77-a888-4832-9d2c-c26d9c58013e" },
+    { "command": "curl -fsS -A 'VideoForge-Audit/2026-08-18-deployed-repair' -w '\\nHTTP %{http_code}\\n' https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/hosted/status", "exit_code": 0, "result": "HTTP 200; public status reports deployed commit abadf854, DISABLED_FAKE_ONLY GPU, and $0 provider CPU" }
+  ],
+  "findings": [
+    {
+      "id": "V2-06-P1-001",
+      "priority": "P1",
+      "status": "OPEN",
+      "finding": "Full V2-06 remains FAIL. Only one authenticated Mac pairing/heartbeat is live-proven. Windows pairing, two-account hosted isolation, hosted ASR/render parity, offline/reconnect, cancellation/process kill, stale lease/result fencing, streamed R2 transfer, explicit output deletion, durable Workflow recovery, backup/restore, rollback exercise, update/remove/reboot/sleep, billing observation, and real Chrome hosted acceptance remain unproven.",
+      "references": [
+        "project-context/evidence/acceptance/VF-10-06/2026-08-18-native-mac-pairing-0.1.4/acceptance.json",
+        "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:350-354"
+      ]
+    },
+    {
+      "id": "V2-06-P2-001",
+      "priority": "P2",
+      "status": "OPEN",
+      "finding": "Provider-free tests and the public status contract do not prove hosted non-superuser RLS, real private R2 object behavior, tenant-owned catalog contents, or full hosted generation.",
+      "references": [
+        "apps/web/src/hosted/HostedProductScreens.tsx:307-360",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-18-native-mac-pairing-0.1.4/acceptance.json"
+      ]
+    },
+    {
+      "id": "V2-06-P2-002",
+      "priority": "P2",
+      "status": "OPEN",
+      "finding": "Rollback and restore remain documented but not live-exercised against the now-current deployment.",
+      "references": ["deploy/v2-06/rollback.md"]
+    }
+  ],
+  "p0_findings": [],
+  "spend_truth": {
+    "new_external_spend_usd": 0,
+    "finite_test_cap_usd": 3,
+    "finite_test_cap_remaining_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "provider_cpu_spend_usd": 0,
+    "cloudflare_workers_plan": "FREE",
+    "cloudflare_r2_due_now_usd": 0,
+    "neon_plan": "FREE",
+    "runpod_pods_endpoints_workers": 0,
+    "runpod_retained_volumes": 2,
+    "runpod_retained_storage_usd_per_month_separate": 7,
+    "email_deliveries": 0,
+    "successful_final_video_auto_delete": false
+  },
+  "rollback": {
+    "current_deployed_version_id": "e2467d77-a888-4832-9d2c-c26d9c58013e",
+    "previous_deployed_version_id": "a27d92c6-3390-4ece-8d09-48def628ca74",
+    "previous_deployed_commit": "0184a66f0532af0b05f5e4f3b79f5289768c120b",
+    "rollback_state": "available_untested",
+    "schema_policy": "FORWARD_ONLY_KEEP_MIGRATIONS_0029_THROUGH_0035"
+  },
+  "successor_safety": {
+    "v2_07_safe_to_begin": false,
+    "reason": "V2-06 hosted acceptance is still open; GPU transport remains fake/disabled and no RunPod compute or mutation authority is granted."
+  }
+}
