@@ -48,14 +48,6 @@ def _sha256_bytes(value: bytes) -> str:
     return f"sha256:{hashlib.sha256(value).hexdigest()}"
 
 
-def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as source:
-        while chunk := source.read(1024 * 1024):
-            digest.update(chunk)
-    return f"sha256:{digest.hexdigest()}"
-
-
 def _git(root: Path, *args: str) -> str:
     result = subprocess.run(
         ["git", "-C", str(root), *args],
@@ -64,6 +56,19 @@ def _git(root: Path, *args: str) -> str:
         text=True,
     )
     return result.stdout.strip()
+
+
+def _git_blob(root: Path, relative: Path) -> bytes:
+    result = subprocess.run(
+        ["git", "-C", str(root), "cat-file", "blob", f"HEAD:{relative.as_posix()}"],
+        check=True,
+        capture_output=True,
+    )
+    return result.stdout
+
+
+def _sha256_repo_file(root: Path, relative: Path) -> str:
+    return _sha256_bytes(_git_blob(root, relative))
 
 
 def _assert_clean(root: Path) -> None:
@@ -98,11 +103,12 @@ def _source_files(root: Path) -> list[dict[str, object]]:
         path = root / relative
         if not path.is_file() or path.is_symlink():
             raise SystemExit(f"execution source is not a regular file: {relative}")
+        content = _git_blob(root, relative)
         values.append(
             {
                 "path": relative.as_posix(),
-                "sha256": _sha256_file(path),
-                "size_bytes": path.stat().st_size,
+                "sha256": _sha256_bytes(content),
+                "size_bytes": len(content),
             }
         )
     return values
@@ -111,7 +117,7 @@ def _source_files(root: Path) -> list[dict[str, object]]:
 def _worker_version(root: Path) -> str:
     versions = []
     for relative, pattern in VERSION_PATTERNS:
-        match = pattern.search((root / relative).read_text(encoding="utf-8"))
+        match = pattern.search(_git_blob(root, Path(relative)).decode("utf-8"))
         if match is None:
             raise SystemExit(f"worker version is missing from {relative}")
         versions.append(match.group(1))
@@ -131,12 +137,13 @@ def _tool_pins(root: Path) -> dict[str, str]:
 
 def build_manifest(root: Path) -> dict[str, object]:
     _assert_clean(root)
-    workflow = root / ".github/workflows/media-worker-release.yml"
     return {
         "schema_version": SCHEMA_VERSION,
         "worker_version": _worker_version(root),
         "git_commit": _git(root, "rev-parse", "HEAD"),
-        "release_workflow_sha256": _sha256_file(workflow),
+        "release_workflow_sha256": _sha256_repo_file(
+            root, Path(".github/workflows/media-worker-release.yml")
+        ),
         "pinned_release_inputs": _tool_pins(root),
         "source_files": _source_files(root),
     }
