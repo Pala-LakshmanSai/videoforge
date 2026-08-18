@@ -707,9 +707,9 @@ async function reconcilePlannedAttempt(
         await transaction.query(
           `INSERT INTO hosted_cpu_job_events (
              id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
-           ) SELECT md5($1 || ':outboxed:1')::uuid, $2, $3, $1, 1, 'OUTBOXED', $4, now()
+           ) SELECT md5($1::text || ':outboxed:1')::uuid, $2::uuid, $3::uuid, $1::uuid, 1, 'OUTBOXED', $4, now()
            WHERE NOT EXISTS (
-             SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id = $1 AND kind = 'OUTBOXED'
+             SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id = $1::uuid AND kind = 'OUTBOXED'
            )`,
           [candidate.id, scope.accountId, scope.workspaceId, candidate.job_spec_checksum_sha256],
         );
@@ -734,9 +734,9 @@ async function reconcilePlannedAttempt(
       await transaction.query(
         `INSERT INTO hosted_cpu_job_events (
            id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
-         ) SELECT md5($1 || ':preparation-failed:1')::uuid, $2, $3, $1, 1, 'FAILED', $4, now()
+         ) SELECT md5($1::text || ':preparation-failed:1')::uuid, $2::uuid, $3::uuid, $1::uuid, 1, 'FAILED', $4, now()
          WHERE NOT EXISTS (
-           SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id = $1 AND kind = 'FAILED'
+           SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id = $1::uuid AND kind = 'FAILED'
          )`,
         [candidate.id, scope.accountId, scope.workspaceId, failureFacts],
       );
