@@ -161,7 +161,7 @@ function validateAudioDurationMs(value: number): number {
 
 export async function audioDurationMs(file: File): Promise<number> {
   if (file.type === "audio/wav" || /\.wav$/iu.test(file.name)) {
-    const parsed = parseWavDurationMs(await file.arrayBuffer());
+    const parsed = parseWavDurationMs(await readFileBytes(file));
     if (parsed !== null) return validateAudioDurationMs(parsed);
   }
   const url = URL.createObjectURL(file);

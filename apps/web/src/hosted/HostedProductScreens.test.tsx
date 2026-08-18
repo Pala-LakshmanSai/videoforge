@@ -14,6 +14,7 @@ import {
   HostedProjectScreen,
   HostedStylesHubScreen,
   HostedUsageScreen,
+  audioDurationMs,
   parseWavDurationMs,
 } from "./HostedProductScreens";
 
@@ -51,6 +52,28 @@ describe("hosted product journey", () => {
     view.setUint32(40, 640_000, true);
 
     expect(parseWavDurationMs(bytes)).toBe(20_000);
+  });
+
+  it("reads uploaded WAV bytes through the browser FileReader path", async () => {
+    const bytes = new ArrayBuffer(44 + 640_000);
+    const view = new DataView(bytes);
+    const write = (offset: number, value: string) =>
+      [...value].forEach((character, index) =>
+        view.setUint8(offset + index, character.charCodeAt(0)),
+      );
+    write(0, "RIFF");
+    view.setUint32(4, bytes.byteLength - 8, true);
+    write(8, "WAVE");
+    write(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint32(24, 16_000, true);
+    view.setUint32(28, 32_000, true);
+    write(36, "data");
+    view.setUint32(40, 640_000, true);
+
+    await expect(
+      audioDurationMs(new File([bytes], "voiceover.wav", { type: "audio/wav" })),
+    ).resolves.toBe(20_000);
   });
 
   it("loads the tenant-owned avatar and style catalog without fixture API calls", async () => {
