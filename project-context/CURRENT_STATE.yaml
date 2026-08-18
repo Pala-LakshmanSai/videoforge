@@ -616,14 +616,14 @@ verification:
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
     status: native_mac_paired_hosted_media_acceptance_pending
-    implementation_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
-    source_head_commit: "dbd01cd097f87ac8a55ded43f414d322badfc3e5"
-    hosted_ui_repair_commit: "abadf85413ef971153422a0acb93dfa98d618bee"
+    implementation_commit: "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f"
+    source_head_commit: "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f"
+    hosted_ui_repair_commit: "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f"
     hosted_ui_repair_deployment_status: deployed
     worker_source_repair_commit: "0184a66f0532af0b05f5e4f3b79f5289768c120b"
     previous_worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-preset-hub-repair-deployed-abadf85/acceptance.json
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-hosted-media-upload-repair-023d43f/acceptance.json
     previous_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
     live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
     runpod_live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
@@ -676,6 +676,13 @@ verification:
       - "Protected V2-06 redeploy from abadf85 (exit 0; version e2467d77-a888-4832-9d2c-c26d9c58013e; rendered config sha256:fa577c2093e54617d827b43cdcc2852439d90b3b3456c26bfd6e044f25619b93)."
       - "GET /api/v2/hosted/status after abadf85 deployment (exit 0; HTTP 200; deployed commit abadf85; GPU DISABLED_FAKE_ONLY; provider CPU spend $0)."
       - "CI=1 TURBO_FORCE=true pnpm verify after dbd01cd evidence handoff (exit 0; canonical 28 tasks; worker suites; Cloudflare parity 1/1; installed Chrome 44/44)."
+      - "V2-06 hosted WAV/seed repair commits f4145a7, 5e0496b, and 023d43f are at current HEAD 023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f; focused owned-fixture/tenant-seed tests passed 15/15."
+      - "CI=1 TURBO_FORCE=true pnpm verify at current HEAD 023d43f (exit 0; 44 Chrome tests; 345 web tests plus 1 skipped; 308 control-plane tests; Cloudflare parity 1/1; worker tests; context and secret checks)."
+      - "pnpm context:validate && pnpm validate:v2-06-deployment && pnpm secret:scan && git diff --check at current HEAD (exit 0; JSON 191; evidence refs 77; 1136 tracked files secret scan)."
+      - "Owned V2-06 tenant fixture provisioner (exit 0; COMMITTED; three VERIFIED R2/Neon assets; one READY avatar version; one PUBLISHED style version; no project rows)."
+      - "Protected V2-06 redeploy from 023d43f (exit 0; version 33cbef9d-0b86-41f7-8198-5cfe2b44d020; rendered config sha256:3dd5d1a254a64da4e405c08b7190c169238670e5a8d69affd0e94e04e3dcc870)."
+      - "GET /api/v2/hosted/status after 023d43f deployment (exit 0; HTTP 200; deployed commit 023d43f; GPU DISABLED_FAKE_ONLY; provider CPU spend $0)."
+      - "Real Chrome hosted Create Project attempts after 5e0496b and 023d43f (visible bounded checksum timeout after 32 seconds; exact Neon read-back projects=0); extension file-byte access prerequisite remains unverified and was not changed."
     delivered:
       - "Migration 0032 adds account/workspace-bound worker enrollments, devices, exact input objects, one active lease per attempt/device, append-only events, row-level security, and stale-lease fencing while preserving historical Cloud Run rows for rollback."
       - "The hosted API uses PKCE enrollment, one explicit authenticated approval, OS-keychain-scoped device tokens, heartbeat/update gating, exact same-account claims, fresh R2 GET/PUT ports, streaming output verification, cancellation, revocation, and late-result rejection."
@@ -700,11 +707,11 @@ verification:
       - "The user-selected email provider is NONE, so hosted auth is Google-only and email/password stays disabled. Dedicated Google project videoforge-v2-06-staging-0817 and its exact redirect/client exist; live two-user callback acceptance remains pending."
       - "The user has Windows x64 and Mac test devices. Apple Developer Program membership is absent and no longer required for the selected ImageForge-style beta release; native clean-download/install evidence must record any actual warning or bypass behavior."
       - "The exact combined V2-06 activation was approved with a USD 3 finite test cap and USD 2/month R2 ceiling; spend and recurring truth must be rechecked after acceptance."
-      - "The hosted preset-hub source repair is deployed at abadf85, but deployment status alone does not prove full hosted acceptance; do not treat local verification or the status endpoint as hosted media proof."
+      - "Hosted media upload timeout repairs are deployed at 023d43f, but the connected real-Chrome file input still cannot yield readable bytes; do not treat local verification, seeded catalog state, or the status endpoint as hosted media proof."
     resource_truth:
       external_mutations: bounded_v2_06_deployment_complete_acceptance_pending
       external_mutation_scope: "Three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence."
-      deployments: 5
+      deployments: 8
       installer_builds: 4
       installer_publications: 4
       email_deliveries: 0
@@ -717,16 +724,16 @@ verification:
       runpod_workers_started: 0
       live_runpod_inventory_refreshed: true
       cloudflare:
-        checked_at: "2026-08-18T07:37:25Z"
+        checked_at: "2026-08-18T09:00:10Z"
         account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
         workers_plan: FREE
         payment_method_on_file: true
         workers_after_confirmed_cleanup: 1
         workflows: 1
         worker_name: videoforge-v2-06-staging
-        worker_deployment_version_id: e2467d77-a888-4832-9d2c-c26d9c58013e
-        worker_deployment_commit: abadf85413ef971153422a0acb93dfa98d618bee
-        worker_deployment_config_sha256: sha256:fa577c2093e54617d827b43cdcc2852439d90b3b3456c26bfd6e044f25619b93
+        worker_deployment_version_id: 33cbef9d-0b86-41f7-8198-5cfe2b44d020
+        worker_deployment_commit: 023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f
+        worker_deployment_config_sha256: sha256:3dd5d1a254a64da4e405c08b7190c169238670e5a8d69affd0e94e04e3dcc870
         media_worker_release_version: 0.1.4
         media_worker_release_manifest_sha256: sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b
         workflow_name: videoforge-v2-06-staging-video
@@ -736,6 +743,15 @@ verification:
         r2_due_monthly_base_usd: 0
         r2_standard_free_storage_gb_month: 10
         r2_standard_overage_usd_per_gb_month: 0.015
+      hosted_fixture:
+        checked_at: "2026-08-18T09:00:10Z"
+        tenant_owned_assets: 3
+        tenant_owned_avatar_versions: 1
+        tenant_owned_style_versions: 1
+        tenant_owned_projects: 0
+        avatar_version_state: READY
+        style_version_state: PUBLISHED
+        project_creation_blocker: CHROME_FILE_BYTES_UNREADABLE_CHECKSUM_TIMEOUT
       neon:
         checked_at: "2026-08-17T17:36:31Z"
         organization_id_sha256: "sha256:1a80a1978aaf55071ebade555193753126029390191658a7f700bbd06ea07044"

@@ -1,0 +1,213 @@
+{
+  "schema_version": "videoforge.v2-06-hosted-media-upload-repair/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-18T09:00:10Z",
+  "audit_method": "Bounded V2-06 implementation and acceptance attempt using repository HEAD, exact recorded activation authority, protected local secret inputs without recording values, approved staging deployment, visible real-Chrome UI state, and exact Neon read-back. No RunPod/GPU action, model download, or paid compute was performed.",
+  "result": "FAIL_FULL_CHECKPOINT_HOSTED_ACCEPTANCE_PENDING",
+  "audit_independence": "SAME_CHAT_IMPLEMENTATION_NOT_INDEPENDENT_AUDIT",
+  "scope_boundary": "This record proves the provider-free repairs, exact staging deployment, owned tenant fixture activation, visible tenant-owned preset readiness, and the bounded hosted upload failure. It does not prove full hosted ASR/render, Windows acceptance, two-account live isolation, native recovery, durable Workflow recovery, explicit output deletion, live backup/restore, rollback exercise, or V2-07 readiness.",
+  "implementation": {
+    "source_head": "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f",
+    "commits": [
+      {
+        "commit": "f4145a774c75c5800cc6ff6920252baa7ed337d2",
+        "changes": "Accept canonical PostgreSQL UUID text in V2-06 seed utilities; add WAV-container duration parsing and bounded media metadata fallback."
+      },
+      {
+        "commit": "5e0496b2f5d35fc2719f86afff7ea76da30046f8",
+        "changes": "Bound checksum, duration, hosted create, R2 upload, commit, and personal-worker submission requests; abort a timed-out upload."
+      },
+      {
+        "commit": "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f",
+        "changes": "Read hosted file-input bytes through FileReader with explicit read/error/abort handling."
+      }
+    ],
+    "deployment_source_mismatch": false
+  },
+  "deployment": {
+    "worker": "videoforge-v2-06-staging",
+    "workflow": "videoforge-v2-06-staging-video",
+    "r2_bucket": "videoforge-v2-06-staging-private",
+    "account_id": "f9254d773a3426fcb469451b1f965d8c",
+    "rendered_config_sha256": "sha256:3dd5d1a254a64da4e405c08b7190c169238670e5a8d69affd0e94e04e3dcc870",
+    "wrangler_deploy_exit_code": 0,
+    "version_id": "33cbef9d-0b86-41f7-8198-5cfe2b44d020",
+    "deployed_observed_at_utc": "2026-08-18T09:00:10Z",
+    "release_manifest_sha256": "sha256:6b220c53214c831bb52709bd9e67d51c268ed4e90f075adba1f634cf2268bb9b"
+  },
+  "live_status": {
+    "command": "curl -fsS -A 'VideoForge-V2-06-023d43f-verify' -w '\\nHTTP %{http_code}\\n' https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/hosted/status",
+    "exit_code": 0,
+    "http": 200,
+    "deployed_commit": "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f",
+    "environment": "staging",
+    "gpu_transport": "DISABLED_FAKE_ONLY",
+    "database": "NEON_POSTGRES_REQUIRED",
+    "artifact_plane": "PRIVATE_R2_REQUIRED",
+    "orchestration": "CLOUDFLARE_WORKFLOW_REQUIRED",
+    "cpu_jobs": "ACCOUNT_OWNED_PERSONAL_WORKER_REQUIRED",
+    "provider_cpu_spend": "$0",
+    "authentication": ["GOOGLE"]
+  },
+  "owned_fixture_activation": {
+    "mutation_result": "COMMITTED",
+    "source": "apps/web/public/fixtures/avatar/amish-farm-host.svg",
+    "account_id": "38ae8aaf-09d8-bdab-7436-385eb2fcb7ac",
+    "workspace_id": "78c40d01-f7af-bae1-1922-6b458da10625",
+    "assets": [
+      {
+        "id": "5b74b939-9cff-5002-8401-1ed0d8f314a9",
+        "kind": "AVATAR_ORIGINAL",
+        "sha256": "sha256:b9d2bfe5632bd678422d72c75092a933ab0d8702e1fe527bce340510a6fdbe19",
+        "state": "VERIFIED"
+      },
+      {
+        "id": "08fba4a3-a298-52a0-bb2a-de60e04ac005",
+        "kind": "AVATAR_RUNTIME",
+        "sha256": "sha256:ba12a00e932f71d3691fa0068d8fc66dc401700c24a4152393265fa65c18d88a",
+        "state": "VERIFIED"
+      },
+      {
+        "id": "7cd92d22-21b5-5686-83e3-4b5afd78ed21",
+        "kind": "AVATAR_THUMBNAIL",
+        "sha256": "sha256:85433a0fe040f857bb824b1c46a10e293cad0f02237a3cbc1e6b14d8967e77ca",
+        "state": "VERIFIED"
+      }
+    ],
+    "avatar_version_id": "99b57e93-f2e9-4bb4-88ab-ebe8597af4ee",
+    "avatar_state": "READY",
+    "style_version_id": "19695e72-5fe8-4e78-8d8a-30e5281b41b4",
+    "style_state": "PUBLISHED",
+    "r2_objects": 3,
+    "orphan_inventory": "DB_BOUND_EXACT_OBJECT",
+    "database_readback": {
+      "projects": 0,
+      "assets": 3,
+      "avatar_versions": 1,
+      "style_versions": 1
+    }
+  },
+  "hosted_chrome_attempt": {
+    "browser": "real Chrome extension session",
+    "visible_routes": ["/avatars", "/styles", "/projects/new"],
+    "visible_readiness": "READY avatar and PUBLISHED style were selectable in the tenant-owned Create Project form.",
+    "fixture": "repository-owned 37.154438-second WAV",
+    "attempts": [
+      {
+        "deployed_commit": "5e0496b2f5d35fc2719f86afff7ea76da30046f8",
+        "result": "FAIL_CLIENT_CHECKSUM_TIMEOUT",
+        "visible_error": "Voiceover checksum timed out. Choose the file again and retry.",
+        "wait_seconds": 32
+      },
+      {
+        "deployed_commit": "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f",
+        "result": "FAIL_CLIENT_CHECKSUM_TIMEOUT",
+        "visible_error": "Voiceover checksum timed out. Choose the file again and retry.",
+        "wait_seconds": 32
+      }
+    ],
+    "durable_side_effect": "No project row was created; exact Neon read-back returned projects=0 after the attempts.",
+    "environment_prerequisite": "The connected Chrome upload flow exposes the selected path but does not yield readable file bytes. Packaged Chrome guidance identifies the extension setting Allow access to file URLs as the required local prerequisite; it was not changed by this task."
+  },
+  "verification_commands": [
+    {
+      "command": "node --test scripts/tests/v2-06-owned-fixture.test.mjs scripts/tests/v2-06-tenant-seed.test.mjs",
+      "exit_code": 0,
+      "result": "15/15 passed"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/hosted/HostedProductScreens.test.tsx",
+      "exit_code": 0,
+      "result": "8/8 passed"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web lint && pnpm --filter @videoforge/web typecheck && pnpm --filter @videoforge/web build:staging",
+      "exit_code": 0,
+      "result": "lint, web/worker typecheck, staging build, and bundle vocabulary verification passed"
+    },
+    {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "result": "canonical provider-free verification passed: 44 Chrome tests, 345 web tests plus 1 skipped, 308 control-plane tests, Cloudflare parity 1/1, worker tests, context validation, and secret scan"
+    },
+    {
+      "command": "pnpm context:validate && pnpm validate:v2-06-deployment && pnpm secret:scan && git diff --check",
+      "exit_code": 0,
+      "result": "JSON 191, evidence references 77, deployment contract, tracked-file secret scan (1136 files), and whitespace checks passed"
+    },
+    {
+      "command": "node deploy/v2-06/render-staging-config.mjs --account-id <approved-account> --origin <approved-origin> --commit 023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f --release-manifest-file <protected-release-manifest> --activation-record <protected-activation-record> --output <protected-rendered-config>",
+      "exit_code": 0,
+      "result": "rendered config sha256:3dd5d1a254a64da4e405c08b7190c169238670e5a8d69affd0e94e04e3dcc870"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec wrangler deploy --config <rendered-approved-v2-06-config>",
+      "exit_code": 0,
+      "result": "Worker and Workflow deployed as version 33cbef9d-0b86-41f7-8198-5cfe2b44d020"
+    },
+    {
+      "command": "V2_06_DB_URL=<protected-owner-dsn> pnpm --filter @videoforge/web exec node --input-type=module -e '<exact read-only catalog and project-count queries>'",
+      "exit_code": 0,
+      "result": "tenant-owned catalog readback: one READY avatar, one PUBLISHED style, three VERIFIED assets, zero projects"
+    }
+  ],
+  "findings": [
+    {
+      "id": "V2-06-P1-001",
+      "priority": "P1",
+      "status": "OPEN",
+      "finding": "Full V2-06 remains FAIL. Hosted Chrome project creation cannot pass the client checksum stage in the connected session because the selected file bytes are not readable; Windows pairing, second-account live isolation, hosted ASR/render parity, native offline/reconnect/cancel/stale-lease/update/reboot/sleep recovery, durable Workflow recovery, explicit output deletion, live backup/restore, rollback exercise, and billing observation also remain unproven.",
+      "references": [
+        "apps/web/src/hosted/HostedProductScreens.tsx:101-119",
+        "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:350-354",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-18-native-mac-pairing-0.1.4/acceptance.json"
+      ]
+    },
+    {
+      "id": "V2-06-P2-001",
+      "priority": "P2",
+      "status": "OPEN",
+      "finding": "Provider-free tests, the public status contract, and the seeded catalog do not prove hosted non-superuser RLS under both identities, full private R2 transfer/commit, ASR/render output parity, or recovery behavior.",
+      "references": [
+        "apps/web/src/server/hosted/product.ts",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-18-hosted-media-upload-repair-023d43f/acceptance.json"
+      ]
+    },
+    {
+      "id": "V2-06-P2-002",
+      "priority": "P2",
+      "status": "OPEN",
+      "finding": "Rollback and restore remain available as documented procedures but were not live-exercised against the current 023d43f deployment.",
+      "references": ["deploy/v2-06/rollback.md"]
+    }
+  ],
+  "p0_findings": [],
+  "spend_truth": {
+    "new_external_spend_usd": 0,
+    "finite_test_cap_usd": 3,
+    "finite_test_cap_remaining_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "provider_cpu_spend_usd": 0,
+    "cloudflare_workers_plan": "FREE",
+    "cloudflare_r2_due_now_usd": 0,
+    "neon_plan": "FREE",
+    "runpod_pods_endpoints_workers": 0,
+    "runpod_retained_volumes": 2,
+    "runpod_retained_storage_usd_per_month_separate": 7,
+    "email_deliveries": 0,
+    "successful_final_video_auto_delete": false
+  },
+  "rollback": {
+    "current_deployed_version_id": "33cbef9d-0b86-41f7-8198-5cfe2b44d020",
+    "current_deployed_commit": "023d43f3623ab0f6e5eeeb9d68966a5bc68c0c1f",
+    "previous_deployed_version_id": "349465e2-846c-4f77-9ee2-310cb610d89c",
+    "previous_deployed_commit": "5e0496b2f5d35fc2719f86afff7ea76da30046f8",
+    "rollback_state": "available_untested",
+    "schema_policy": "FORWARD_ONLY_KEEP_MIGRATIONS_0029_THROUGH_0035"
+  },
+  "successor_safety": {
+    "v2_07_safe_to_begin": false,
+    "reason": "V2-06 hosted acceptance is still open; GPU transport remains fake/disabled, RunPod remains zero-worker and unmutated, and no V2-07 authority is granted."
+  }
+}
