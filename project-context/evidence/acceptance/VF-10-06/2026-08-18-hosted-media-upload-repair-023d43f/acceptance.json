@@ -221,6 +221,11 @@
       "command": "Chrome /settings accessibility-tree inspection in the authenticated staging session",
       "exit_code": 0,
       "result": "One tenant-owned Mac device lakshmans-Mac-mini.local, v0.1.4, ONLINE; last seen 8/18/2026 2:59:35 PM"
+    },
+    {
+      "command": "Unauthenticated curl requests to /api/v2/tenant, /api/v2/hosted/project-catalog, and /api/v2/hosted/queue",
+      "exit_code": 0,
+      "result": "All three requests returned HTTP 401 with AUTHENTICATION_REQUIRED; no session or mutation was used"
     }
   ],
   "findings": [
