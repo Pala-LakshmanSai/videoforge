@@ -1,0 +1,104 @@
+{
+  "schema_version": "videoforge.v2-06-worker-startup-repair-release/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-18T04:57:19Z",
+  "result": "FAIL_FULL_CHECKPOINT_NATIVE_ACCEPTANCE_PENDING",
+  "audit_independence": "IMPLEMENTATION_AND_DEPLOYMENT_HANDOFF_NOT_FULL_CHECKPOINT_ACCEPTANCE",
+  "scope_boundary": "Authorized V2-06 source repair, immutable GitHub release publication, and exact Cloudflare staging deployment. No GPU/RunPod/Cloud Run compute, model download, credential value recording, or spend occurred.",
+  "repair": {
+    "source_commit": "08018371aea003415e12b139f614e417b15d6fc5",
+    "follow_up_test_workflow_commit": "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a",
+    "old_failure": [
+      "The 0.1.0 macOS one-file bundle was launched from a mounted/translocated path and repeatedly restarted before pairing.",
+      "Diagnostic reports recorded Translocated execution and repeated file-backed extraction; no pairing approval URL was reached."
+    ],
+    "changes": [
+      "Detect /Volumes and AppTranslocation bundles, copy them to ~/Applications, and relaunch from the stable path.",
+      "Open the authenticated pairing URL through macOS LaunchServices before browser fallback.",
+      "Validate bundled tools before registering KeepAlive autostart, preventing an invalid startup crash loop.",
+      "Use PurePosixPath in the cross-platform path contract test and collect both matrix platform results."
+    ]
+  },
+  "validation": {
+    "worker_release_workflow": {
+      "run_id": "32100171381",
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/32100171381",
+      "result": "success",
+      "windows_x64": "passed",
+      "macos_universal2": "passed",
+      "publish_job": "passed"
+    },
+    "repository": {
+      "focused_personal_worker_tests": "21/21 passed before publication; release matrix passed the same suite on Windows and macOS",
+      "deployment_validation": "pnpm validate:v2-06-deployment exit 0",
+      "canonical_verification": "CI=1 TURBO_FORCE=true pnpm verify exit 0 at current commit e61b18ac3f3aa252bcb262404e7ebea6ec791e3a; 28/28 tasks, control-plane 308 passed, web 341 passed/1 skipped, worker suites passed, and Chrome fixture 44/44",
+      "format_and_diff": "pnpm format:check and git diff --check exit 0"
+    }
+  },
+  "release": {
+    "tag": "media-worker-v0.1.1",
+    "target_commit": "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a",
+    "manifest_url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.1/media-worker-release.json",
+    "manifest_sha256": "sha256:0ebc402b803cd9e4436a2b754e603f1fae42032eccf34468df96f8c69acbd15e",
+    "execution_bundle_sha256": "sha256:09786646ed7df58eebbc9793381fb38634b9f1a02f0e41470ac5c2561afab763",
+    "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+    "windows": {
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.1/VideoForge-Worker-0.1.1-Setup.exe",
+      "sha256": "sha256:e468e8e4e2a1e754423e13dd91d35b802dfd5ff673740c5b7fb5af2d726bbe49",
+      "size_bytes": 225636861,
+      "trust": "UNSIGNED_BETA"
+    },
+    "macos": {
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.1/VideoForge-Worker-0.1.1.dmg",
+      "sha256": "sha256:8d4aa077da8a36940a7e1e7f2132112824af920b7b3a67eb314e67842744f88a",
+      "size_bytes": 285464644,
+      "trust": "AD_HOC_BETA"
+    }
+  },
+  "deployment": {
+    "branch": "codex/serverless-v2-roadmap",
+    "commit": "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a",
+    "config_sha256": "sha256:fcfbe9d0fcc1e6da3183bd5f8e1bdd6e150862987fb96be768568b52a665e013",
+    "worker": "videoforge-v2-06-staging",
+    "version_id": "3c329b22-300f-4a67-89db-c15c7e24f978",
+    "workflow": "videoforge-v2-06-staging-video",
+    "status_check": {
+      "url": "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/hosted/status",
+      "http": 200,
+      "commit": "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a",
+      "gpu_transport": "DISABLED_FAKE_ONLY",
+      "provider_cpu_spend": "$0",
+      "database": "NEON_POSTGRES_REQUIRED",
+      "artifact_plane": "PRIVATE_R2_REQUIRED",
+      "orchestration": "CLOUDFLARE_WORKFLOW_REQUIRED",
+      "cpu_jobs": "ACCOUNT_OWNED_PERSONAL_WORKER_REQUIRED"
+    }
+  },
+  "spend_and_resources": {
+    "finite_cap_usd": 3,
+    "new_external_spend_usd": 0,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "provider_cpu_spend_usd": 0,
+    "runpod_workers_started": 0,
+    "runpod_mutating_calls": 0,
+    "retained_runpod_volume_usd_per_month_separate": 7,
+    "email_deliveries": 0
+  },
+  "unproven_live_claims": [
+    "A native clean-download/install on the user's Mac and Windows device has not been completed for 0.1.1.",
+    "Authenticated pairing approval, two-account Chrome callback, worker heartbeat/claim, ASR/render parity, offline/reconnect, cancellation, stale lease/result fencing, streamed R2, explicit deletion, backup/restore, and rollback exercise remain unproven.",
+    "Local fixtures and the HTTP 200 status response do not prove hosted production behavior or full V2-06 acceptance."
+  ],
+  "rollback": {
+    "previous_staging_version_id": "054910bd-00a2-4503-bc2f-1c2d0e364f59",
+    "previous_staging_commit": "0245c100e5e20ee1f0ebf262e046f7f3c32bbb13",
+    "previous_release_tag": "media-worker-v0.1.0",
+    "rollback_state": "available_untested"
+  },
+  "successor_safety": {
+    "v2_07": "blocked_on_v2_06",
+    "gpu_transport": "FAKE_DISABLED",
+    "runpod_authority": false
+  }
+}

@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-18T03:37:29Z"
+updated_at: "2026-08-18T04:57:19Z"
 
 phase: serverless_v2_v2_06_live_activation_in_progress
 implementation_authorized_in_current_task: true
@@ -29,7 +29,8 @@ provider_authority:
     - cloudflare_r2_bucket_videoforge_v2_06_staging_private
     - neon_project_ancient_morning_99567618
     - google_project_videoforge_v2_06_staging_0817
-    - github_release_media_worker_v0_1_0
+    - github_release_media_worker_v0_1_1
+    - github_release_media_worker_v0_1_0_rollback
   authorized_operations:
     - exact_v2_06_worker_workflow_and_private_r2_activation
     - exact_v2_06_neon_migration_runtime_role_backup_and_restore_drill
@@ -84,8 +85,8 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: null
   branch_published: false
-  last_good_commit: "08ea436c4bd2b887d214d538c87c50a04522e9f1"
-  last_good_commit_note: "V2-06 local product journey, activation preflight, exact Neon runtime grants including videoforge_current_account_id(), R2 failure reconciliation orchestration, and hosted staging deployment are green at this implementation commit. The grant was executed in Neon after the runtime role caused a tenant bootstrap 1101; authenticated staging Queue/Settings now load for lakshmansai121@gmail.com. Native Windows/macOS pairing, device parity, durable Workflow behavior, and full checkpoint acceptance remain unproven."
+  last_good_commit: "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a"
+  last_good_commit_note: "V2-06 hosted staging is deployed from the repaired personal-worker source at 0801837 with the 0.1.1 immutable Windows/macOS beta release published from this follow-up commit. The macOS translocation/autostart crash-loop repair and cross-platform release tests are green. Native Windows/macOS pairing, device parity, durable Workflow behavior, and full checkpoint acceptance remain unproven."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -325,7 +326,8 @@ recommended_next_task:
       - cloudflare_r2_bucket_videoforge_v2_06_staging_private
       - neon_project_ancient_morning_99567618
       - google_project_videoforge_v2_06_staging_0817
-      - github_release_media_worker_v0_1_0
+      - github_release_media_worker_v0_1_1
+      - github_release_media_worker_v0_1_0_rollback
     authorized_operations:
       - exact_v2_06_worker_workflow_and_private_r2_activation
       - exact_v2_06_neon_migration_runtime_role_backup_and_restore_drill
@@ -378,15 +380,18 @@ recommended_next_task:
 
 verification:
   state: v2_06_imageforge_beta_distribution_locally_verified_full_acceptance_blocked
-  verified_commit: "08ea436c4bd2b887d214d538c87c50a04522e9f1"
-  verified_commit_note: "The ImageForge-style beta distribution path and the tenant-principal grant contract pass canonical verification. Same-chat re-audit evidence is not independent; actual installer builds/publication/native install, the complete hosted generation journey, live tenant/device parity, backup/restore, and hosted Chrome acceptance remain blocked."
+  verified_commit: "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a"
+  verified_commit_note: "The repaired 0.1.1 personal-worker release is published for Windows x64 and macOS universal2, and staging serves the repaired commit. Canonical verification and release matrix tests pass; native install/pairing, the complete hosted generation journey, live tenant/device parity, backup/restore, and hosted Chrome acceptance remain blocked."
   predecessor_verified_commit: "3c117f204844da9c984d233477933ee4c0f304dd"
   acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-17-imageforge-beta-distribution-reaudit/acceptance.json
   latest_live_check:
-    recorded_at_utc: "2026-08-18T03:37:29Z"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-post-grant-live-check/acceptance.json
-    status: hosted_tenant_bootstrap_restored_personal_worker_acceptance_pending
-    repair_commit: "08ea436c4bd2b887d214d538c87c50a04522e9f1"
+    recorded_at_utc: "2026-08-18T04:57:19Z"
+    evidence: evidence/acceptance/VF-10-06/2026-08-18-worker-startup-repair-release/acceptance.json
+    status: repaired_worker_release_deployed_native_pairing_pending
+    repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
+    release_commit: "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a"
+    deployment_version_id: "3c329b22-300f-4a67-89db-c15c7e24f978"
+    release_manifest_sha256: "sha256:0ebc402b803cd9e4436a2b754e603f1fae42032eccf34468df96f8c69acbd15e"
     neon_runtime_grant_executed: true
     new_external_spend_usd: 0
   completed_for_v2_00:
@@ -603,7 +608,8 @@ verification:
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
     status: live_deployment_complete_hosted_device_acceptance_pending
-    implementation_commit: "0245c100e5e20ee1f0ebf262e046f7f3c32bbb13"
+    implementation_commit: "e61b18ac3f3aa252bcb262404e7ebea6ec791e3a"
+    worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
     evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
     live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
@@ -611,6 +617,7 @@ verification:
     live_activation_authority_evidence: evidence/acceptance/VF-10-06/2026-08-17-live-activation-authority/acceptance.json
     live_deployment_evidence: evidence/acceptance/VF-10-06/2026-08-17-live-activation-authority/deployment-proof.json
     post_repair_audit_evidence: evidence/acceptance/VF-10-06/2026-08-17-post-repair-live-audit/acceptance.json
+    worker_startup_repair_release_evidence: evidence/acceptance/VF-10-06/2026-08-18-worker-startup-repair-release/acceptance.json
     commands:
       - "CI=1 TURBO_FORCE=true pnpm verify (exit 0; 28/28 tasks; web 330/330 plus 1 skipped; pipeline 120/120; Cloudflare-local 1/1; installed-Chrome fixture 44/44)"
       - "pnpm context:validate (exit 0; JSON 178; evidence refs 63; profiles 31; decisions 42; gates 19)"
@@ -631,6 +638,9 @@ verification:
       - "pnpm context:validate after hosted product journey record (exit 0; JSON 183; evidence refs 67; profiles 31; decisions 42; gates 19)"
       - "pnpm --filter @videoforge/web build:staging (exit 0; current activation commit 0245c100e5e20ee1f0ebf262e046f7f3c32bbb13)"
       - "wrangler deploy with rendered V2-06 staging config (exit 0; version 054910bd-00a2-4503-bc2f-1c2d0e364f59)"
+      - "GitHub media-worker-v0.1.1 release workflow 32100171381 (exit 0; Windows x64, macOS universal2, and immutable publish jobs passed)"
+      - "wrangler deploy with rendered V2-06 staging config for e61b18ac3f3aa252bcb262404e7ebea6ec791e3a (exit 0; version 3c329b22-300f-4a67-89db-c15c7e24f978)"
+      - "GET /api/v2/hosted/status after repaired deployment (HTTP 200; commit e61b18ac3f3aa252bcb262404e7ebea6ec791e3a; GPU transport DISABLED_FAKE_ONLY; provider CPU spend $0)"
       - "GET /api/v2/hosted/status on the deployed origin (HTTP 200; commit 0245c100e5e20ee1f0ebf262e046f7f3c32bbb13; GPU transport DISABLED_FAKE_ONLY; provider CPU spend $0)"
       - "wrangler workflows list (exit 0; videoforge-v2-06-staging-video / HostedVideoWorkflow)"
       - "wrangler secret list --format json (exit 0; exact 8-name allowlist; values not recorded)"
@@ -648,7 +658,8 @@ verification:
       - "Cloudflare Workflow now reconciles durable personal-worker leases and requeues expired work; active hosted code and deployment templates no longer dispatch Cloud Run."
       - "The hosted setup surface detects the likely OS as a convenience, always offers Windows and Mac downloads, shows truthful device states, and never exposes raw tenant IDs or configuration secrets."
       - "The Python desktop worker supports Windows and macOS only, starts at login, keeps the device credential in Windows Credential Manager or macOS Keychain, holds a sleep assertion only during active work, streams large outputs without loading the full MP4 in memory, kills process groups on cancel, and erases job scratch in finally."
-      - "The immutable media-worker-v0.1.0 GitHub Release is published from d100acc2b7a44a1c38b134cc3d478869d7bd467c with exact Windows unsigned-beta and macOS ad-hoc-beta hashes, sizes, trust modes, protocol, execution-bundle hash, and pinned tool/model identities."
+      - "The immutable media-worker-v0.1.0 GitHub Release remains the rollback artifact, and media-worker-v0.1.1 is now published from e61b18ac3f3aa252bcb262404e7ebea6ec791e3a with exact Windows unsigned-beta and macOS ad-hoc-beta hashes, sizes, trust modes, protocol, execution-bundle hash, and pinned tool/model identities."
+      - "The 0.1.1 worker detects macOS mounted/translocated launch paths, copies to a stable per-user Applications path, uses LaunchServices for pairing, and validates tools before installing KeepAlive autostart."
       - "OUTBOXED cancellation now becomes terminal CANCELLED with submitted/terminal/retention facts, fixing the migration-0029 constraint violation that the former CANCEL_REQUESTED transition caused."
       - "Successful final outputs have no automatic deletion policy. DELETE /api/v2/cpu-attempts/:id/output authenticates the owner, removes exactly the issued primary/result R2 keys, and appends durable deletion truth; the ordinary Library Delete button still waits on full hosted product-router composition."
       - "The desktop cancellation monitor is a real class method, renews the five-minute lease while work is active, kills the entire media process group on cancel, and is covered against the class-indentation regression."
@@ -668,8 +679,8 @@ verification:
       external_mutations: bounded_v2_06_deployment_complete_acceptance_pending
       external_mutation_scope: "Three unrelated Workers were deleted; the exact V2-06 R2, Neon, Google OAuth, immutable release, credential rotations, disposable restore cleanup, and additive migration-35 actions are recorded in the activation authority evidence."
       deployments: 1
-      installer_builds: 1
-      installer_publications: 1
+      installer_builds: 2
+      installer_publications: 2
       email_deliveries: 0
       paid_requests: 0
       external_spend_usd: 0
@@ -680,16 +691,18 @@ verification:
       runpod_workers_started: 0
       live_runpod_inventory_refreshed: true
       cloudflare:
-        checked_at: "2026-08-17T17:36:31Z"
+        checked_at: "2026-08-18T04:57:19Z"
         account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
         workers_plan: FREE
         payment_method_on_file: true
         workers_after_confirmed_cleanup: 1
         workflows: 1
         worker_name: videoforge-v2-06-staging
-        worker_deployment_version_id: 054910bd-00a2-4503-bc2f-1c2d0e364f59
-        worker_deployment_commit: 0245c100e5e20ee1f0ebf262e046f7f3c32bbb13
-        worker_deployment_config_sha256: sha256:ece4752ad98c927d3d55459327617ade074fcfdf1e8542e075d68d4e4297fcc2
+        worker_deployment_version_id: 3c329b22-300f-4a67-89db-c15c7e24f978
+        worker_deployment_commit: e61b18ac3f3aa252bcb262404e7ebea6ec791e3a
+        worker_deployment_config_sha256: sha256:fcfbe9d0fcc1e6da3183bd5f8e1bdd6e150862987fb96be768568b52a665e013
+        media_worker_release_version: 0.1.1
+        media_worker_release_manifest_sha256: sha256:0ebc402b803cd9e4436a2b754e603f1fae42032eccf34468df96f8c69acbd15e
         workflow_name: videoforge-v2-06-staging-video
         workflow_class: HostedVideoWorkflow
         r2_subscription_active: true
