@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-19T21:47:22Z"
+updated_at: "2026-08-19T21:56:55Z"
 
 phase: serverless_v2_v2_07_bounded_paid_qualification_authorized
 implementation_authorized_in_current_task: true
@@ -354,7 +354,7 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-08-19T21:47:22Z"
+  checked_at: "2026-08-19T21:50:19Z"
   basis: authenticated_sujal_runpod_redacted_api_inventory_after_disposable_endpoint_cleanup
   evidence: evidence/acceptance/VF-10-07/2026-08-19-provider-activation-blocked/acceptance.json
   current_live_refresh_permitted_now: true
@@ -383,7 +383,7 @@ last_known_provider_resource_truth:
   current_day_cloud_cpu_usd: 0
   current_day_serverless_usd: 0
   auto_pay: DISABLED
-  note: "The 2026-08-19T18:31:00Z redacted REST refresh after exact endpoint/template cleanup shows zero Pods, endpoints, active Serverless workers, and private templates plus the two expected 50 GB retained volumes. The replacement image is published and local dynamic-output/health fixes are green. No /run submission, GPU batch, or output publication occurred; only disposable endpoint/template create/delete actions were used under the approved rollback surface."
+  note: "The 2026-08-19T21:50:19Z redacted REST refresh after exact endpoint/template cleanup shows zero Pods, endpoints, active Serverless workers, and private templates plus the two expected 50 GB retained volumes. The first immutable image's exact 32-item batches failed status-only because RunPod SDK 1.7.0 SLS-Core strips the reserved handler error field. Local source repair commit 1623fa1 emits bounded failure_code and the reconciler prefers it; the published digest remains unchanged, so republish requires fresh exact-image authority."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_MAGE_001

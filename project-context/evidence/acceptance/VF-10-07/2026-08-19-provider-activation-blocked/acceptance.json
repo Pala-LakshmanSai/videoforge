@@ -55,6 +55,9 @@
     "hosted_r2_generated_put_signer": "deployed_nonce_scoped_then_disabled",
     "mage_handler_uploads_measured_bytes_and_hash": true,
     "image_identity_normalization": "full_immutable_image_env_to_sha256_envelope_digest",
+    "provider_status_only_error_surface_diagnosis": "runpod_sdk_1_7_0_sls_core_strips_reserved_error_from_output",
+    "local_failure_code_repair_commit": "1623fa1",
+    "local_failure_code_repair_published": false,
     "negative_tests": [
       "wrong authority bytes/path/volume/GPU/region",
       "model-volume write and cache escape",
@@ -168,8 +171,8 @@
     "serverless_price_usd_per_hour": 1.1
   },
   "hard_blocker": {
-    "code": "V2_07_RUNPOD_MAGE_HANDLER_TERMINAL_FAILED_PROVIDER_ERROR_UNEXPOSED",
-    "detail": "Fresh read-only catalog data now reports RTX 4090/CUDA 13.0 available globally and LOW in EU-RO-1. Multiple exact CUDA-13-pinned 32-item batches reached terminal provider status COMPLETED but handler output status FAILED; the status payload exposed only the status key, the bounded stream diagnostic exposed no code, and no durable output or signed receipt was accepted. A later exact attempt reached a throttled worker before /run. The exact cu130 image/runtime fence, volume identity, and provider placement pins remain unchanged; relaxing them or accepting an unqualified host would violate Mage qualification.",
+    "code": "V2_07_REPAIRED_HANDLER_FAILURE_SURFACE_REQUIRES_NEW_IMAGE_AUTHORITY",
+    "detail": "Fresh read-only catalog data reports RTX 4090/CUDA 13.0 available globally and LOW in EU-RO-1. The prior exact batches failed because RunPod SDK 1.7.0 SLS-Core strips the handler's reserved error field, leaving status-only output. Local commit 1623fa1 adds bounded failure_code output and reconciler support, but the current immutable digest cannot change. A fresh exact-image authority is required before republishing and retrying; prior exact pins and retained volumes remain unchanged.",
     "not_attempted": [
       "accepted corrected-image /run output",
       "successful warm inference",
@@ -177,7 +180,7 @@
       "workersMax=2 concurrent-reader proof"
     ],
     "cleanup": "all disposable endpoint/template resources deleted; provider inventory is zero compute/resources and exactly two retained 50 GB EU-RO-1 volumes; signer route disabled",
-    "required_next_action": "Do not publish or dispatch again until the provider exposes a diagnosable ready RTX 4090/CUDA 13.0 EU-RO-1 worker or the immutable runtime is independently repaired and republished under fresh authority; reuse no stale endpoint/template/receipt key; do not mutate or delete either retained volume."
+    "required_next_action": "Obtain fresh authority for the new immutable image digest, then publish only that digest and rerun the bounded qualification with a fresh nonce/key; reuse no stale endpoint/template/receipt key; do not mutate or delete either retained volume."
   },
   "qualification_status": "NOT_QUALIFIED",
   "next_checkpoint": "V2-07 remains active; stop before V2-08"
