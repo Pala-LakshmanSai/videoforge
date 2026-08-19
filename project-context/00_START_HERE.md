@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: V2-06 live closure is recorded. Two fresh audits found only repository-handoff defects;
+Status: V2-06 live closure is recorded. Three fresh audits found only repository-handoff defects;
 all are reconciled and a final evidence-only re-audit is pending. V2-07 remains blocked. No live
 verification, mutation, or spend is currently authorized.
 Context schema: `2.0`
@@ -48,8 +48,8 @@ Pinned whisper.cpp transcription and FFmpeg render/probe run on an account-owned
 personal media worker. The worker installs like a normal desktop application, pairs once through the
 already-authenticated browser, starts at login, uses outbound HTTPS only, and receives no database,
 R2, RunPod, Runware, Google, or admin credential. If that account's worker is offline, its job waits
-truthfully for the computer; it never borrows another tenant's device. Hosted deployment and signed
-installer acceptance are still unproven.
+truthfully for the computer; it never borrows another tenant's device. V2-06 proved the hosted plane
+and immutable beta releases: Windows is unsigned; macOS is ad-hoc sealed and non-notarized.
 
 ## Admission, queue, and authority
 
@@ -170,10 +170,11 @@ execution and recovery compatibility; it is no longer admission or queue truth. 
 release promotes the next fair request while that compatibility executor retains its serial media
 lifecycle, so earlier fixture recovery evidence remains valid without becoming admission truth.
 
-Row level security is declared on every tenant table but is not behaviourally proven: PGlite
-connects as a superuser and bypasses it, so the local proof comes from the tenant write guard and
-the `videoforge_tenant_*` views. Hosted enforcement waits for V2-06. `GATE_TENANCY_001` and
-`GATE_STORAGE_001` therefore remain open only for their hosted/non-superuser/real-R2 proof.
+At the V2-01 handoff, row level security was declared on every tenant table but not behaviourally
+proven because PGlite connects as a superuser and bypasses it; the local proof came from the tenant
+write guard and the `videoforge_tenant_*` views. V2-06 final live closure subsequently proved the
+runtime role is non-superuser/non-`BYPASSRLS`, every tenant table uses forced RLS, and real private-R2
+tenant isolation/deletion holds. `GATE_TENANCY_001` and `GATE_STORAGE_001` are closed.
 
 V2-04 is complete, repaired, and provider-free. Its first audit at
 `698f96ffd527df0e05e570687b93d2eb594a5c08` failed five trust-boundary checks; repair commit
@@ -234,16 +235,15 @@ contains no v1 shared-app route, manual Pod/GPU selector, inactive Echo route, r
 fallback vocabulary. Local compatibility fixtures remain explicitly gated and the production UI
 visibly says fixtures are not live.
 
-V2-06 local adapters, hosted CPU submission, and deployment templates exist, but the deployed two-account product proof is
-not complete. Output uploads now require callback-token authorization and exact durable
-tenant/project/revision/attempt, key, type, length, and checksum facts before R2 signing. The staging
-surface is still an activation/auth/status shell rather than the full product and CPU-job submission
-route graph. A separate explicit read-only audit grant is required before refreshing any
-live provider fact. The prior provider inventory is immutable historical evidence only and is not a
-current live-verification grant. Any deployment, remote mutation, email delivery, or spend still requires one exact
-bounded activation proposal and approval; the user-stated USD 3 future test cap is not operation
-authority by itself. No cloud mutation, GPU, worker, or spend authority is active.
-All prior provider authorities are consumed and cannot be reused. The ordered
+V2-06 final live closure deployed executable source `e673527b7ac3dbb4db64f66a19a766cf1cf1d422`
+and proved migration `0036`; two-account auth/RLS/R2/device/lease isolation; ASR/render; Workflow
+recovery/cancel/replay fences; durable delete and inventory restoration; backup/restore; two-step
+rollback health; Chrome playback; and Windows/macOS worker `0.1.11`. New spend was USD 0 under the
+separate USD 1 cap; no recurring resource was created. RunPod stayed read-only at zero compute, with
+two existing 50 GB volumes untouched. The final evidence-only audit remains pending, so
+`GATE_HOSTING_001` is open and V2-07 blocked. Immutable provider evidence is not current authority;
+live refresh requires a new read-only grant. No provider, credential, mutation, publication, spend,
+or V2-07 authority exists. Prior authorities are consumed. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in
 the working tree.

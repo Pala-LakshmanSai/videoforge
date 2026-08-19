@@ -1,0 +1,78 @@
+{
+  "schema": "videoforge.v2-06-independent-audit/v1",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T15:26:52Z",
+  "thread_id": "01a01a99-2268-7761-ac37-9a3bba5630ed",
+  "repository_head": "be4388c973a0d11e88127e0dd46de22cd68fede2",
+  "deployed_executable_source": "e673527b7ac3dbb4db64f66a19a766cf1cf1d422",
+  "deployment_version_id": "32bfc4bf-4421-4703-9095-2afc3515fda3",
+  "scope": "Fresh repository-and-supplied-immutable-evidence-only re-audit; no credentials, live provider calls, mutations, repairs, or spend.",
+  "result": "FAIL_REPOSITORY_HANDOFF_LIVE_EVIDENCE_OTHERWISE_PASS_READY",
+  "severity_counts": {
+    "P0": 0,
+    "P1": 1,
+    "P2": 0
+  },
+  "findings": [
+    {
+      "id": "P1-STALE-NORMATIVE-STARTUP-AND-GATE-LEDGER",
+      "severity": "P1",
+      "finding": "00_START_HERE.md still said hosted deployment and installer acceptance were unproven, while 15_DECISIONS_AND_OPEN_GATES.md still marked tenancy, storage, queue, Serverless-contract, and hosting rows with pre-closure open consequences. Those statements contradicted the reconciled GATES.yaml, CURRENT_STATE.yaml, and immutable final live closure evidence.",
+      "status_after_audit": "REPOSITORY_RECONCILIATION_REQUIRED"
+    }
+  ],
+  "verified_supplied_evidence": [
+    "separate historical USD 3 authority and final-closure USD 1 authority; USD 0 actual new spend and no new recurring resource",
+    "deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 with recorded source and status parity",
+    "Better Auth Google-only admission, non-superuser non-BYPASSRLS runtime, FORCE RLS, and positive plus negative two-account tenant, device, lease, and private-R2 isolation",
+    "authenticated DELETE HTTP 204, durable RETENTION_DELETED, exact 404 read-backs, and restored 55-object 55598142-byte R2 inventory with sha256:7d67e4f45d3b58d24fbae1dd4718d4c88a0621bd3b5e2dc976f019d923ee559b",
+    "Workflow recovery, lease replay and stale-result fences, cancellation, backup and restore, immutable Mac and Windows worker lifecycle, two-step rollback and redeployment health, and real Chrome playback",
+    "RunPod zero Pods, endpoints, workers, and private templates with zero mutation; two untouched 50 GB volumes at USD 3.50 per month each and USD 7 per month total pre-existing recurring storage",
+    "least-privilege secret allowlist and personal-worker-only boundary with Cloud Run excluded from the active production runtime"
+  ],
+  "commands_and_exits": [
+    {
+      "command": "pnpm context:validate",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm validate:v2-06-deployment",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm verify:active-runtime",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm secret:scan",
+      "exit_code": 0,
+      "result": "1176 files scanned"
+    },
+    {
+      "command": "pnpm format:check",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    },
+    {
+      "command": "focused V2-06 clean-worktree tests",
+      "exit_code": 0,
+      "result": "9 passed; 7 intentionally skipped because private ignored fixtures were absent"
+    },
+    {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": null,
+      "result": "audit-worktree environment could not complete because required uv 0.8.13 was unavailable and only 228 MiB disk remained; supplied immutable closure evidence records the canonical run exit 0"
+    }
+  ],
+  "unproven_live_claims": [
+    "No live provider state was refreshed during this audit; current-live claims remain bounded to the timestamps in supplied immutable evidence.",
+    "Local and clean-worktree fixtures do not independently prove deployment."
+  ],
+  "current_state_truth": "Final live closure evidence is otherwise PASS-ready, but the normative startup and gate ledger required reconciliation before checkpoint closure.",
+  "spend_truth": "Actual new V2-06 spend USD 0 under the separately approved USD 1 final-closure cap; no new recurring resource. Two pre-existing RunPod volumes continue at USD 7 per month total.",
+  "rollback_truth": "Wrangler code rollback required an ordinary redeployment to reconverge bindings and status; final-source rollback acceptance is explicitly two-step rather than atomic.",
+  "v2_07_safety": "BLOCKED_PENDING_REPOSITORY_RECONCILIATION_AND_FRESH_INDEPENDENT_REAUDIT"
+}
