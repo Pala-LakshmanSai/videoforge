@@ -15,7 +15,7 @@ import {
 } from "./runpod-v207-qualification-harness";
 
 const IMAGE =
-  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:7d667b3abf949586afd87ff2730648cf1190866fa41d43288530243c323564a4";
+  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e";
 const MANIFEST =
   "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b";
 const VOLUME =
@@ -380,7 +380,7 @@ async function main(): Promise<void> {
       HF_HUB_OFFLINE: "1",
       TRANSFORMERS_OFFLINE: "1",
       DIFFUSERS_OFFLINE: "1",
-      VIDEOFORGE_MAGE_WORKER_IMAGE_DIGEST: IMAGE.slice(IMAGE.indexOf("@") + 1),
+      VIDEOFORGE_MAGE_WORKER_IMAGE_DIGEST: IMAGE,
       VIDEOFORGE_MAGE_MANIFEST_SHA256: MANIFEST,
       VIDEOFORGE_MAGE_VOLUME_ID_HASH: VOLUME,
       VIDEOFORGE_MAGE_WORKER_TOKEN: randomBytes(32).toString("hex"),
