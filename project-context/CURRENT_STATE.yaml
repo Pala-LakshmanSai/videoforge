@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-19T10:10:47Z"
+updated_at: "2026-08-19T10:23:17Z"
 
 phase: serverless_v2_v2_06_independent_audit_fail_p1_open_v2_07_blocked
 implementation_authorized_in_current_task: false
@@ -128,9 +128,9 @@ repository:
   branch_published: true
   current_source_head: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
   last_verified_repository_head: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
-  current_source_head_note: "Commit fd773ed pins the Windows completion handoff while the deployed application remains 1ad68ea. Mac and Windows 0.1.11 live acceptance, second-tenant hosted negative isolation, successful-output deletion, Mac revocation, and local uninstall pass. The fresh independent audit at documentation HEAD 4cf904b failed with three P1 and three P2 findings; follow-up audit evidence at documentation HEAD d905b19 confirms the stale-handoff and profile-budget P2s were corrected locally, leaving three P1 and one P2. V2-07 remains blocked."
+  current_source_head_note: "Commit fd773ed is the current source head while the deployed application remains 1ad68ea. Mac and Windows 0.1.11 live acceptance, second-tenant hosted negative isolation, successful-output deletion, Mac revocation, and local uninstall pass. The fresh independent audit and follow-up audit leave three P1 and one P2 evidence gap after safe documentation reconciliation. V2-07 remains blocked."
   last_good_commit: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
-  last_good_commit_note: "V2-06 source HEAD fd773ed has clean canonical verification and records Mac, Windows, backup/restore, and second-tenant live isolation evidence with zero new external spend; follow-up audit evidence at documentation HEAD d905b19 is FAIL on three P1 and one remaining P2 after safe documentation reconciliation, and the deployed application remains 1ad68ea."
+  last_good_commit_note: "V2-06 source HEAD fd773ed has clean canonical verification and records Mac, Windows, backup/restore, and second-tenant live isolation evidence with zero new external spend; the follow-up independent audit remains FAIL on three P1 and one remaining P2 after safe documentation reconciliation, and the deployed application remains 1ad68ea."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -146,7 +146,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "A current V2-06-only bounded completion grant authorizes the exact existing Cloudflare Worker/Workflow/private R2 bucket, Neon migration 0036 plus disposable backup/restore drill, Google-only two-user acceptance, immutable GitHub personal-worker release, owned private acceptance fixtures, and exact rollback/restore within a hard USD 3 finite cap and USD 2/month R2 ceiling. RunPod is read-only with zero GPU/worker/volume mutation; credential values, unrelated resources, cap overruns, and V2-07 remain forbidden."
+  provider_authority_scope: "No provider authority is active for the current evidence-only audit. The historical V2-06 grant covered only the exact existing Cloudflare Worker/Workflow/private R2 bucket, Neon migration 0036 plus disposable backup/restore drill, Google-only two-user acceptance, immutable GitHub personal-worker release, owned private acceptance fixtures, and exact rollback/restore within a hard USD 3 finite cap and USD 2/month R2 ceiling. RunPod was read-only with zero GPU/worker/volume mutation; credential values, unrelated resources, cap overruns, and V2-07 remained forbidden."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -758,7 +758,7 @@ verification:
   in_progress_for_v2_06:
     status: independent_audit_fail_three_p1_one_p2_remaining
     implementation_commit: "1ad68ea46b642949591c1090cecddc28d7ec428e"
-    source_head_commit: "1ad68ea46b642949591c1090cecddc28d7ec428e"
+    source_head_commit: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
     autonomous_readiness_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
     windows_acceptance_fix_commit: "34a0fbf438cb231a4fe5b927367b2ecbda0279a2"
     windows_acceptance_completion_commit: "710131374789ad888e348cff6cbf3ca969780790"
@@ -910,10 +910,10 @@ verification:
         avatar_version_state: READY
         style_version_state: PUBLISHED
         project_creation_blocker: CHROME_FILE_BYTES_UNREADABLE_EXTENSION_PERMISSION_PENDING
-      source_head_commit: 1ad68ea46b642949591c1090cecddc28d7ec428e
+      source_head_commit: fd773ed20f410b64da3ea29ff1d33a6675459afd
       deployed_implementation_commit: 1ad68ea46b642949591c1090cecddc28d7ec428e
-      source_deployment_parity: true
-      source_deployment_parity_note: "The public hosted status endpoint and Cloudflare version metadata report exact source head 1ad68ea."
+      source_deployment_parity: false
+      source_deployment_parity_note: "The current repository source head is fd773ed; supplied deployment metadata reports deployed implementation source 1ad68ea. The mismatch is preserved as an open final-deployment/rollback audit gate."
       worker_source_repair_release_status: immutable_release_0_1_11_published_both_platforms_live_proven_windows_uninstalled_after_revoke_mac_device_revoked_and_worker_uninstalled
       neon:
         checked_at: "2026-08-17T17:36:31Z"
@@ -974,3 +974,9 @@ verification:
         apple_developer_program_membership: false
         windows_x86_64_test_device_available: true
         macos_test_device_available: true
+
+audit_evidence:
+  v2_06_completion_matrix: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/acceptance.json
+  current_goal_scope: repository_and_supplied_immutable_evidence_only
+  result: FAIL_three_p1_one_p2
+  v2_07_status: blocked_not_safe_to_start

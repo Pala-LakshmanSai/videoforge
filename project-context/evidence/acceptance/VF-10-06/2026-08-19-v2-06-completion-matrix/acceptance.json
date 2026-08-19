@@ -1,0 +1,222 @@
+{
+  "schema": "videoforge.v2-06-completion-matrix/v1",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T10:23:17Z",
+  "audit_result": "FAIL",
+  "severity_counts": {
+    "P0": 0,
+    "P1": 3,
+    "P2": 1
+  },
+  "audit_scope": {
+    "repository_head_at_matrix_start": "4ca80ecc121a5895d15e27cb570ace22bddfca36",
+    "source_head": "fd773ed20f410b64da3ea29ff1d33a6675459afd",
+    "deployed_application_commit": "1ad68ea46b642949591c1090cecddc28d7ec428e",
+    "cloudflare_worker_version": "5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2",
+    "worker_release": "media-worker-v0.1.11",
+    "method": "Requirement-by-requirement repository and supplied immutable evidence reconciliation.",
+    "boundary": "No credential values, live provider calls, browser refresh, deployment, publication, resource mutation, paid request, spend, or V2-07 action. Local fixtures are not deployment proof."
+  },
+  "requirements": [
+    {
+      "id": "authority-cap-and-scope",
+      "status": "PASS_CURRENT_BOUNDARY_HISTORICAL_CAP_RECORDED",
+      "finding": "The current audit has no provider authority and a zero external-spend cap. Historical V2-06 authority is explicitly non-transferable and records the exact resources, USD 3 finite cap, USD 2/month R2 ceiling, RunPod read-only boundary, and no V2-07 authority.",
+      "references": [
+        "project-context/CURRENT_STATE.yaml:17-35",
+        "project-context/CURRENT_STATE.yaml:37-119",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-independent-audit-followup/acceptance.json:72-81"
+      ]
+    },
+    {
+      "id": "approved-versus-actual-resources-rates-recurring-charges",
+      "status": "PARTIAL_P2_POST_DELETE_INVENTORY_GAP",
+      "finding": "Approved scope and recorded rates reconcile: one Free Cloudflare Worker plus one Workflow, one private Standard R2 bucket, Neon Free project, Google test project, immutable worker release, and existing paired-device scope; Cloudflare/R2/Neon/Google base rates are zero, R2 overage is USD 0.015/GB-month above 10 GB, and the two pre-existing RunPod volumes are separate at USD 3.50/month each (USD 7/month total). The actual R2 count/size supplied is 16 objects/32.1 MB, but that inventory predates the observed output deletion, so post-delete inventory/hash read-back is not proven.",
+      "references": [
+        "project-context/CURRENT_STATE.yaml:37-100",
+        "project-context/CURRENT_STATE.yaml:881-903",
+        "project-context/CURRENT_STATE.yaml:918-975",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-live-destructive-lifecycle/acceptance.json:24-32,65-71",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-independent-audit-followup/acceptance.json:72-81"
+      ],
+      "severity": "P2"
+    },
+    {
+      "id": "better-auth-neon-r2-tenant-isolation",
+      "status": "FAIL_P1",
+      "finding": "Better Auth identity and negative cross-tenant refusal are observed, but the supplied second-account record has no positive second-tenant project/object/device/lease fixture. Hosted non-superuser RLS enforcement and real private-R2 hash parity remain unproven; the second account only observes an empty Library/devices view, unavailable foreign project, CPU_ATTEMPT_NOT_FOUND, and no foreign signed URL.",
+      "references": [
+        "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:350-354",
+        "project-context/GATES.yaml:7-47",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-live-two-account-isolation-fresh/acceptance.json:40-67",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-independent-audit-followup/acceptance.json:16-24"
+      ],
+      "severity": "P1"
+    },
+    {
+      "id": "least-privilege-secrets",
+      "status": "PASS_SUPPLIED_RECORD_NO_VALUES_READ",
+      "finding": "The supplied deployment record contains an exact eight-name Worker secret allowlist and records no values. The Neon runtime role has exact grants, FORCE RLS, and SELECT-only hosted_render_plans evidence. This is an allowlist/grant proof, not permission to inspect secret values.",
+      "references": [
+        "project-context/evidence/acceptance/VF-10-06/2026-08-17-live-activation-authority/deployment-proof.json:40-63",
+        "project-context/CURRENT_STATE.yaml:796,819",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-live-backup-restore-804f7d3/acceptance.json:24-30,42-56"
+      ]
+    },
+    {
+      "id": "hosted-cloudflare-worker-workflow-orchestration",
+      "status": "FAIL_P1_DURABLE_REPLAY_AND_FINAL_SOURCE_ROLLBACK_OPEN",
+      "finding": "The supplied resource truth records one Worker and one HostedVideoWorkflow with private R2, Google auth, personal-worker CPU execution, and GPU disabled. Primary cancellation/reconnect is live-proven, but hosted Workflow restart/resume, lease expiry/replay, stale-result rejection, and late-result fencing are not proven. Current source fd773ed is not the deployed application commit 1ad68ea, so final deployed-source rollback is also open.",
+      "references": [
+        "project-context/CURRENT_STATE.yaml:758-779",
+        "project-context/CURRENT_STATE.yaml:881-916",
+        "project-context/14_TESTING_AND_ACCEPTANCE.md:111-125",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-independent-audit-followup/acceptance.json:26-42"
+      ],
+      "severity": "P1"
+    },
+    {
+      "id": "cloud-run-scale-to-zero-asr-render-parity",
+      "status": "NOT_APPLICABLE_CLOUD_RUN_SUPERSEDED_PARTIAL_PERSONAL_WORKER_PROOF",
+      "finding": "Cloud Run is explicitly superseded by the active account-owned personal-worker decision; current architecture records zero Cloud Run jobs required. Therefore no Cloud Run scale-to-zero ASR/render parity claim is made or proven. Windows/macOS worker install/lifecycle and one-account ASR/render evidence exist, but this does not replace the missing hosted two-account/recovery proof.",
+      "references": [
+        "project-context/15_DECISIONS_AND_OPEN_GATES.md:35-39",
+        "project-context/CURRENT_STATE.yaml:823-829,864-880",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-independent-audit-followup/acceptance.json:74-81"
+      ]
+    },
+    {
+      "id": "recovery-cancel-backup-restore",
+      "status": "PARTIAL_P1",
+      "finding": "Backup and disposable-restore verification pass at migration 36/36 with exact grants/FORCE RLS and disposable database count zero. The live offline-worker cancellation also reaches terminal CANCELLED and reconnects. Hosted Workflow restart/resume, lease expiry/replay, stale-result rejection, and late-result fencing remain unproven, so the recovery requirement is not fully accepted.",
+      "references": [
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-live-backup-restore-804f7d3/acceptance.json:42-56,78-112",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-mac-live-completion-1ad68ea/acceptance.json:84-94",
+        "project-context/14_TESTING_AND_ACCEPTANCE.md:111-125",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-independent-audit-followup/acceptance.json:26-33"
+      ],
+      "severity": "P1"
+    },
+    {
+      "id": "real-chrome-proof",
+      "status": "PARTIAL",
+      "finding": "Real signed-in Chrome records primary owned ASR/render/review/cancel and second-account negative refusal. Installed-Chrome 44/44 is provider-free fixture evidence and is explicitly not hosted deployment proof. The missing positive second-tenant and hosted replay gates prevent full Chrome acceptance.",
+      "references": [
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-live-two-account-isolation-fresh/acceptance.json:23-67",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-live-backup-restore-804f7d3/acceptance.json:109-112",
+        "project-context/CURRENT_STATE.yaml:790-808"
+      ]
+    },
+    {
+      "id": "immutable-windows-macos-release-and-native-lifecycle",
+      "status": "PASS_SUPPLIED_EVIDENCE",
+      "finding": "The supplied media-worker-v0.1.11 record is marked GitHub immutable; Windows x64 unsigned-beta install/update/autostart/offline/reconnect/sleep/revoke/uninstall and macOS universal2 ad-hoc DMG/install/reconnect evidence are recorded. The selected unsigned/ad-hoc non-notarized trust modes are intentional and non-blocking.",
+      "references": [
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-windows-native-completion-34a0fbf/acceptance.json:1-63,65-129",
+        "project-context/CURRENT_STATE.yaml:791-795,823-828",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-live-destructive-lifecycle/acceptance.json:34-59"
+      ]
+    },
+    {
+      "id": "runpod-disabled-zero-worker-truth",
+      "status": "PASS_READ_ONLY_ZERO_WORKERS_SCALE_TO_ZERO_QUALIFICATION_UNPROVEN",
+      "finding": "Supplied read-only inventory records zero Pods, endpoints, active/flex workers, private templates, and clusters; zero RunPod mutations/workers started; GPU transport DISABLED_FAKE_ONLY. Two retained 50 GB EU-RO-1 volumes remain at USD 3.50/month each (USD 7/month total), separate from V2-06. Provider-side Serverless scale-to-zero qualification belongs to V2-07 and is not proven.",
+      "references": [
+        "project-context/CURRENT_STATE.yaml:111-119",
+        "project-context/CURRENT_STATE.yaml:864-880,943-975",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json:105-115",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-independent-audit-followup/acceptance.json:72-81"
+      ]
+    },
+    {
+      "id": "rollback-state",
+      "status": "FAIL_P1_FINAL_DEPLOYMENT_ROLLBACK_UNPROVEN",
+      "finding": "Rollback/restore is evidenced for prior deployed source 8e96575 and restored health HTTP 200. No supplied record exercises rollback from final deployed source 1ad68ea / Worker 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2; the current repository source is fd773ed and deployment parity is explicitly false.",
+      "references": [
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json:117-125",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-mac-live-completion-1ad68ea/acceptance.json:123-129",
+        "project-context/CURRENT_STATE.yaml:121-133,758-766,913-916",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-independent-audit-followup/acceptance.json:35-42"
+      ],
+      "severity": "P1"
+    },
+    {
+      "id": "v2-07-safety",
+      "status": "PASS_SAFETY_HOLD_UNSAFE_TO_START",
+      "finding": "The safety hold is correct: current authority is none/$0, no live provider call or mutation is allowed, GPU/RunPod mutation is forbidden, workers started are zero, GPU transport is disabled, and V2-07 action is false. This proves V2-07 has not started; it does not make V2-07 safe to start because the P1 gates remain open.",
+      "references": [
+        "project-context/CURRENT_STATE.yaml:5-35",
+        "project-context/CURRENT_STATE.yaml:351-386",
+        "project-context/CURRENT_STATE.yaml:857-880",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-independent-audit-followup/acceptance.json:72-81"
+      ]
+    }
+  ],
+  "commands_and_exits": [
+    {
+      "command": "git status --short --branch",
+      "exit_code": 0,
+      "result": "clean codex/serverless-v2-roadmap at matrix start"
+    },
+    {
+      "command": "pnpm context:validate",
+      "exit_code": 0,
+      "result": "selected profile within 15,000-word target; no warning"
+    },
+    {
+      "command": "pnpm validate:v2-06-deployment",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm verify:active-runtime",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm secret:scan",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm format:check",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    },
+    {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "result": "supplied canonical evidence; installed Chrome fixture 44/44; provider-free and not hosted proof"
+    },
+    {
+      "command": "fresh separate V2-06 evidence-only audit and follow-up audit",
+      "exit_code": 0,
+      "result": "audit records FAIL with no P0, three P1, one P2; no external action"
+    }
+  ],
+  "resource_truth": {
+    "current_audit_authority_usd": 0,
+    "historical_finite_cap_usd": 3,
+    "historical_r2_ceiling_usd_per_month": 2,
+    "new_external_spend_usd": 0,
+    "cloudflare_worker_count": 1,
+    "cloudflare_workflow_count": 1,
+    "cloudflare_worker_version": "5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2",
+    "deployed_application_commit": "1ad68ea46b642949591c1090cecddc28d7ec428e",
+    "repository_source_head": "fd773ed20f410b64da3ea29ff1d33a6675459afd",
+    "r2_plan_and_state": "Standard APAC; 16 objects/32.1 MB supplied pre-delete; due now/base USD 0; overage USD 0.015/GB-month above 10 GB free",
+    "neon_plan_and_state": "Free; ancient-morning-99567618; migration 36; runtime grants/FORCE RLS supplied verified",
+    "runpod": "0 Pods, endpoints, active/flex workers, private templates, clusters; 2 retained 50 GB EU-RO-1 volumes at USD 7/month total; current-day GPU/CPU/endpoint/Serverless supplied spend USD 0",
+    "gpu_transport": "DISABLED_FAKE_ONLY",
+    "disposable_restore_database": "deleted; final exact-name count 0"
+  },
+  "unproven_live_claims": [
+    "Positive second-tenant project/object/device/lease proof, hosted non-superuser RLS enforcement, and real private-R2 hash parity",
+    "Hosted Workflow restart/resume, lease expiry/replay, stale-result rejection, and late-result fencing",
+    "Rollback of final deployed source 1ad68ea / Worker 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2",
+    "Post-delete R2 inventory/hash read-back",
+    "Provider-side RunPod Serverless scale-to-zero qualification"
+  ],
+  "rollback_state": "Earlier 8e96575 rollback/restore is proven and restored; final 1ad68ea rollback is unproven.",
+  "conclusion": "FAIL. Repository-safe documentation reconciliation is complete, but V2-06 is not independently accepted and V2-07 is unsafe to start. Closing the remaining P1/P2 gates requires new authoritative hosted/provider evidence outside the current evidence-only boundary."
+}

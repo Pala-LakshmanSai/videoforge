@@ -1,10 +1,10 @@
 # VideoForge: start here
 
 Status: V2-06 same-chat live completion is recorded, but the fresh evidence-only independent audit is FAIL
-with three P1 findings; V2-07 remains blocked. The current audit has no live-verification, remote-mutation,
+with three P1 findings and one P2 evidence gap; V2-07 remains blocked. The current audit has no live-verification, remote-mutation,
 or spend authority.
 Context schema: `2.0`
-Last updated: `2026-08-18`
+Last updated: `2026-08-19`
 
 VideoForge is an invite-only voiceover-to-video product for 5–10 people. Each admitted account has
 one default workspace. User-created projects, queues, Avatar Profiles, Image Styles, media, manifests,
