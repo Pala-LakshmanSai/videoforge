@@ -167,7 +167,8 @@
     {"commit": "1c9b0de", "area": "canonical formatting and web lint repair after failure_code change", "result": "PASS"},
     {"command": "CI=1 TURBO_FORCE=true pnpm verify", "exit_code": 0, "result": "28 turbo tasks; Cloudflare parity 1/1; package build/lint/typecheck/tests; worker suites; context/secret checks; installed Chrome 44/44"},
     {"commit": "024547b", "area": "fresh image/cap activation authority guard and RUNPOD_INIT_TIMEOUT pin", "result": "PASS"},
-    {"command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/v207-activation-authority.test.ts src/server/providers/runpod-v207-qualification-harness.test.ts", "exit_code": 0, "result": "4 passed"}
+    {"command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/v207-activation-authority.test.ts src/server/providers/runpod-v207-qualification-harness.test.ts", "exit_code": 0, "result": "4 passed"},
+    {"command": "env -u V207_IMAGE -u V207_IMAGE_SOURCE_COMMIT -u V207_FINITE_CAP_USD pnpm --filter @videoforge/web exec tsx src/server/providers/v207-live-qualification.ts", "exit_code": 1, "result": "fails before provider access with V207_IMAGE_DIGEST_REQUIRED"}
   ],
   "provider_catalog": {
     "query_scope": "read-only RunPod catalog, RTX 4090, CUDA 13.0, secure pool",
