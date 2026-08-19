@@ -820,6 +820,7 @@ verification:
     live_two_account_isolation_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-two-account-isolation-fresh/acceptance.json
     live_destructive_lifecycle_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-destructive-lifecycle/acceptance.json
     independent_audit_evidence: evidence/acceptance/VF-10-06/2026-08-19-independent-audit-fail/acceptance.json
+    independent_audit_followup_evidence: evidence/acceptance/VF-10-06/2026-08-19-independent-audit-followup/acceptance.json
     backup_restore_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-backup-restore-804f7d3/acceptance.json
     autonomous_readiness_evidence: evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json
     previous_completion_evidence: evidence/acceptance/VF-10-06/2026-08-18-bounded-completion-8e96575/acceptance.json
@@ -848,6 +849,7 @@ verification:
       - "Action-time hosted output deletion, Mac device Remove confirmation, and supported Mac --uninstall (exit 0) plus exact local cleanup checks; Library is empty, Mac is REVOKED, LaunchAgent/app install/state/keychain are absent, and app bundle is in Trash for recovery."
       - "Fresh separate read-only V2-06 audit at documentation HEAD 4cf904b (FAIL; no P0, three P1 and three P2; no edits, credentials, live calls, mutation, or spend)."
       - "Safe context reconciliation after the audit (exit 0; active task brief/start boundary corrected and selected V2-06 profile reduced to 14,842 words within the 15,000-word target)."
+      - "Fresh follow-up audit of the reconciled current worktree (FAIL; no P0, three P1 and one P2; application source/evidence unchanged and no external action)."
       - "Homebrew libpq PATH-aware backup/restore tools-only preflight (exit 0; pg_dump, pg_restore, and psql resolved without execution or provider access)."
       - "Private-input bootstrap under /Users/lakshmansai/.config/videoforge/v2-06/postgres-inputs (exit 0; mode-0700 directory and exactly three empty mode-0600 placeholders; no value read/generated)."
       - "Full private-input preflight (exit 1 expected; all three placeholders remain empty, so backup/restore failed closed before database access)."

@@ -1,0 +1,81 @@
+{
+  "schema": "videoforge.v2-06-independent-audit-followup/v1",
+  "checkpoint": "V2-06",
+  "audit_result": "FAIL",
+  "severity_counts": {
+    "P0": 0,
+    "P1": 3,
+    "P2": 1
+  },
+  "audit_input": {
+    "source_head": "fd773ed20f410b64da3ea29ff1d33a6675459afd",
+    "documentation_parent": "80b4a2226c073e318508db2d9e4cd85564c57574",
+    "final_documentation_commit": "1d49d61",
+    "note": "The independent worker audited the uncommitted documentation reconciliation on top of 80b4a22; 1d49d61 commits exactly those documentation changes without changing application source or acceptance evidence."
+  },
+  "audit_method": "Fresh separate read-only audit worker using current repository state and supplied immutable V2-06 evidence only.",
+  "scope_boundary": "No edits by the auditor, credentials, live provider/browser calls, deployment, publication, resource mutation, paid request, spend, or V2-07 action.",
+  "findings": [
+    {
+      "id": "P1-TENANCY-R2-POSITIVE-PROOF",
+      "summary": "No positive second-tenant project/object/device/lease proof, hosted non-superuser RLS proof, or real R2 hash parity exists. The supplied second-account journey is negative-only.",
+      "references": [
+        "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:350-354",
+        "project-context/GATES.yaml:7-47",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-live-two-account-isolation-fresh/acceptance.json:40-67"
+      ]
+    },
+    {
+      "id": "P1-WORKFLOW-RECOVERY-REPLAY",
+      "summary": "Only primary cancellation/reconnect is live-proven; hosted Workflow restart/resume, lease expiry/replay, stale-result rejection, and late-result fencing remain unproven.",
+      "references": [
+        "project-context/14_TESTING_AND_ACCEPTANCE.md:111-125",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-mac-live-completion-1ad68ea/acceptance.json:84-94"
+      ]
+    },
+    {
+      "id": "P1-FINAL-ROLLBACK",
+      "summary": "Rollback was proven only for the earlier 8e96575 deployment; final deployed source 1ad68ea / Worker 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2 remains untested.",
+      "references": [
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json:117-125",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-mac-live-completion-1ad68ea/acceptance.json:123-129"
+      ]
+    },
+    {
+      "id": "P2-POST-DELETE-R2-INVENTORY",
+      "summary": "Hosted output deletion is observed, but no post-delete R2 inventory/hash read-back is supplied; the 16-object/32.1 MB inventory predates deletion.",
+      "references": [
+        "project-context/CURRENT_STATE.yaml:906-928",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-live-destructive-lifecycle/acceptance.json:24-32,65-71"
+      ]
+    }
+  ],
+  "safe_reconciliation_verified": [
+    "Active V2-06 task brief now reflects the independent FAIL and V2-07 blocked state.",
+    "Startup context explicitly sets the current goal to repository/immutable-evidence-only with no live calls, mutation, deployment, publication, credentials, or spend.",
+    "Selected V2-06 profile is 14,843 words against the 15,000-word target; pnpm context:validate exits 0 without warning.",
+    "Stale Mac-online handoff metadata is corrected; historical evidence remains immutable."
+  ],
+  "truth": {
+    "current_goal_authority_usd": 0,
+    "historical_v2_06_cap_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "new_external_spend_usd": 0,
+    "runpod_pods_endpoints_workers_templates_clusters": 0,
+    "runpod_mutating_calls": 0,
+    "runpod_workers_started": 0,
+    "runpod_retained_volumes": "two 50 GB EU-RO-1 volumes at USD 3.50/month each; USD 7/month total",
+    "gpu_transport": "DISABLED_FAKE_ONLY"
+  },
+  "commands": [
+    "pnpm context:validate (exit 0; 14,843-word selected profile, no warning)",
+    "pnpm validate:v2-06-deployment (exit 0)",
+    "pnpm secret:scan (exit 0)",
+    "pnpm format:check (exit 0)",
+    "pnpm verify:active-runtime (exit 0)",
+    "git diff --check (exit 0)",
+    "Fresh independent audit worker (FAIL; no P0, three P1, one P2; no external action)"
+  ],
+  "v2_07_safety": "UNSAFE_BLOCKED: no V2-07 authority, GPU use, RunPod mutation, deployment, publication, live call, or spend is permitted; local fixtures/Chrome 44/44 do not prove hosted completion.",
+  "conclusion": "V2-06 remains independently unaccepted. The documentation/profile gaps that were safe to close are closed; the remaining P1/P2 findings require authoritative hosted evidence outside this evidence-only boundary."
+}
