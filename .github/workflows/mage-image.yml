@@ -39,17 +39,17 @@ jobs:
           docker system prune --all --force
           df -h /
 
-      - name: Build and smoke pinned CP-06 Mage INT8 Pod worker
+      - name: Build and smoke V2-07 Mage INT8 Serverless candidate
         shell: bash
         run: |
           set -euo pipefail
           test "$RUNNER_ARCH" = "X64"
-          image="videoforge-mage-cp06:${GITHUB_SHA}"
-          docker build --file workers/image-media/Dockerfile.mage --tag "$image" workers/image-media
+          image="videoforge-mage-v2-07:${GITHUB_SHA}"
+          docker build --file workers/image-media/Dockerfile.mage --tag "$image" .
           docker run --rm --entrypoint python "$image" -c \
             'import torch; from videoforge_image_media import MAGE_MODEL_REVISION, MAGE_SOURCE_REVISION; assert MAGE_MODEL_REVISION == "d8c99241f6fa80fbd453014234af2bf337ea21e6"; assert MAGE_SOURCE_REVISION == "26d7f8556822d9d08c2d3e1878636ac3b4969af9"; print("mage-int8-comfy-import-ok")'
           docker run --rm --entrypoint python "$image" -c \
-            'import mage_api; h=mage_api.runtime.health(); assert h["phase"] == "process" and h["model"]["status"] == "loading"; print("mage-truthful-health-ok")'
+            'import mage_serverless; assert callable(mage_serverless.handler); print("mage-serverless-handler-import-ok")'
           docker run --rm --entrypoint python "$image" -m compileall -q /opt/comfyui /opt/videoforge
           image_id="$(docker image inspect --format='{{.Id}}' "$image")"
           echo "LOCAL_IMAGE=$image" >> "$GITHUB_ENV"
@@ -70,10 +70,10 @@ jobs:
         run: |
           set -euo pipefail
           owner="${GITHUB_REPOSITORY_OWNER,,}"
-          image="ghcr.io/${owner}/videoforge-mage-cp06:${GITHUB_SHA}"
+          image="ghcr.io/${owner}/videoforge-mage-v2-07:${GITHUB_SHA}"
           docker tag "$LOCAL_IMAGE" "$image"
           docker push "$image"
           immutable_image="$(docker inspect --format='{{index .RepoDigests 0}}' "$image")"
-          [[ "$immutable_image" =~ ^ghcr\.io/[a-z0-9_-]+/videoforge-mage-cp06@sha256:[a-f0-9]{64}$ ]]
+          [[ "$immutable_image" =~ ^ghcr\.io/[a-z0-9_-]+/videoforge-mage-v2-07@sha256:[a-f0-9]{64}$ ]]
           echo "immutable_image=$immutable_image" >> "$GITHUB_OUTPUT"
           echo "immutable_image=$immutable_image" >> "$GITHUB_STEP_SUMMARY"

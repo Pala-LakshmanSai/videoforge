@@ -40,6 +40,7 @@ class MageRuntime:
             "device_count": 0,
         }
         self.bootstrap_evidence: dict[str, object] | None = None
+        self.warmup_output_sha256: str | None = None
         self.comfy_process: subprocess.Popen[bytes] | None = None
         self.generation_lock = asyncio.Lock()
 
@@ -53,7 +54,7 @@ class MageRuntime:
         try:
             self.verify_runtime_identity()
             self.transition("storage")
-            model_root = Path(os.environ.get("MAGE_MODEL_ROOT", "/workspace/mage-model"))
+            model_root = Path(os.environ.get("MAGE_MODEL_ROOT", "/runpod-volume"))
             comfy_root = Path(os.environ.get("COMFY_ROOT", "/opt/comfyui"))
             self.bootstrap_evidence = await asyncio.to_thread(bootstrap, model_root, comfy_root)
             self.transition("gpu_load")
@@ -61,7 +62,7 @@ class MageRuntime:
             await asyncio.to_thread(self.start_comfyui, comfy_root)
             await self.wait_for_comfyui()
             self.transition("warmup")
-            await asyncio.to_thread(self.real_warmup, model_root)
+            self.warmup_output_sha256 = await asyncio.to_thread(self.real_warmup, model_root)
             self.gpu["ready_vram_used_bytes"] = self.device_vram_used_bytes()
             self.transition("ready")
             self.phase_timings_ms.setdefault("ready", 0)
@@ -188,7 +189,7 @@ class MageRuntime:
                 raise RuntimeError("MAGE_COMFYUI_HEALTH_INVALID")
 
     @staticmethod
-    def real_warmup(model_root: Path) -> None:
+    def real_warmup(model_root: Path) -> str:
         prompt = "A neutral studio lighting calibration chart, no text, no logo"
         negative = "text, letters, logo, watermark, malformed objects"
         job = MageInlineJob.from_value(
@@ -215,12 +216,13 @@ class MageRuntime:
         result = run_inline_job(job, model_root, base_url=COMFY_URL)
         if result["width"] != 1280 or result["height"] != 720:
             raise RuntimeError("MAGE_WARMUP_OUTPUT_INVALID")
+        return str(result["output_sha256"])
 
     async def generate(self, value: object) -> dict[str, object]:
         if not self.ready:
             raise RuntimeError("MAGE_WORKER_NOT_READY")
         job = MageInlineJob.from_value(value)
-        model_root = Path(os.environ.get("MAGE_MODEL_ROOT", "/workspace/mage-model"))
+        model_root = Path(os.environ.get("MAGE_MODEL_ROOT", "/runpod-volume"))
         async with self.generation_lock:
             import torch
 

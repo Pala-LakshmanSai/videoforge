@@ -52,6 +52,6 @@ def bootstrap(model_root: Path, comfy_root: Path) -> dict[str, object]:
 
 if __name__ == "__main__":
     bootstrap(
-        Path(os.environ.get("MAGE_MODEL_ROOT", "/workspace/mage-model")),
+        Path(os.environ.get("MAGE_MODEL_ROOT", "/runpod-volume")),
         Path(os.environ.get("COMFY_ROOT", "/opt/comfyui")),
     )

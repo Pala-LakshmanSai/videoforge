@@ -1,41 +1,85 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-19T16:01:35Z"
+updated_at: "2026-08-19T16:25:00Z"
 
-phase: serverless_v2_v2_06_complete_green_independently_audited_v2_07_ready_not_started
-implementation_authorized_in_current_task: false
+phase: serverless_v2_v2_07_bounded_paid_qualification_authorized
+implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_ready_not_started
+current_wave: v2_07_bounded_qualification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: preflight_not_started
-application_code_changes_authorized: false
-provider_calls_authorized: false
+task_stage: bounded_mutation
+application_code_changes_authorized: true
+provider_calls_authorized: true
 read_only_provider_calls_authorized: false
-maximum_external_spend_usd: 0
+maximum_external_spend_usd: 4
 
 current_goal_boundary:
-  mode: v2_06_complete_no_active_external_authority
-  live_provider_calls: false
-  remote_mutation: false
-  deployment_or_publication: false
+  mode: v2_07_bounded_paid_qualification
+  live_provider_calls: true
+  remote_mutation: true
+  deployment_or_publication: true
   credential_value_access: false
-  paid_requests_or_spend: false
-  runpod_mutation_or_gpu: false
-  v2_07_action: false
-  note: "V2-06 final live closure and fresh independent audit are PASS with zero findings. All V2-06 authority is consumed. V2-07 is ready but not started and requires a separate fresh proposal and cap; no credentials, provider calls, mutation, deployment, publication, deletion, paid request, spend, RunPod action, or V2-07 action is currently authorized."
+  paid_requests_or_spend: true
+  runpod_mutation_or_gpu: true
+  v2_07_action: exact_bounded_qualification_only
+  note: "User approved the exact V2-07 publish/create-or-update/submit/status/cancel/scale-down/retain/delete-if-failed proposal with a maximum cumulative finite spend cap of USD 4. Existing two 50 GB volumes remain retained and separate at USD 7/month; no model download/preparation, volume write/rebuild/delete, cross-mount, GPU fallback, V2-08, or successor work is authorized."
 
 provider_authority:
-  mode: none
-  provider: null
-  cap_usd: 0
+  mode: paid
+  provider: runpod
+  cap_usd: 4
   recurring_r2_ceiling_usd_per_month: 0
+  model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
   non_transferable: true
-  source: final_live_closure_authority_consumed
-  resources: []
-  authorized_operations: []
-  allowed_operations: []
-  rate_snapshot: []
+  source: explicit_user_v2_07_bounded_qualification_grant
+  authorized_by_user_at: "2026-08-19T16:25:00Z"
+  resources:
+    - runpod_account_sujal_sha256_ce23456f
+    - runpod_eu_ro_1_mage_volume_sha256_eae4e1ec
+    - runpod_eu_ro_1_soulx_volume_sha256_2a8633e1
+    - runpod_eu_ro_1_rtx_4090_flex_catalog
+    - ghcr_videoforge_mage_v2_07_immutable_image
+    - runpod_v2_07_mage_queue_endpoint
+  authorized_operations:
+    - account_identity_lookup
+    - inventory_lookup
+    - quota_lookup
+    - rate_lookup
+    - region_lookup
+    - resource_identity_lookup
+    - resource_absence_lookup
+    - image_publication
+    - endpoint_create_or_update
+    - serverless_run
+    - serverless_status
+    - serverless_cancel
+    - endpoint_scale_down
+    - endpoint_template_delete_if_failed
+  allowed_operations:
+    - account_identity_lookup
+    - inventory_lookup
+    - quota_lookup
+    - rate_lookup
+    - region_lookup
+    - resource_identity_lookup
+    - resource_absence_lookup
+    - image_publication
+    - endpoint_create_or_update
+    - serverless_run
+    - serverless_status
+    - serverless_cancel
+    - endpoint_scale_down
+    - endpoint_template_delete_if_failed
+  rate_snapshot:
+    - resource_id: runpod_serverless_4090_pro_published_rate
+      billing_unit: usd_per_second
+      usd_per_unit: 0.00031
+      checked_at: "2026-08-19"
+    - resource_id: runpod_standard_network_volume
+      billing_unit: usd_per_gb_month
+      usd_per_unit: 0.07
+      checked_at: "2026-08-19"
 
 historical_v2_06_completion_authority:
   mode: paid
@@ -116,13 +160,13 @@ historical_v2_06_final_live_closure_authority:
   actual_spend_usd: 0
   new_recurring_resources_created: 0
 
-credential_access_authorized: false
+credential_access_authorized: true
 credential_value_read_authorized: false
-remote_or_cloud_mutations_authorized: false
+remote_or_cloud_mutations_authorized: true
 model_downloads_authorized: false
-worker_image_publication_authorized: false
-sample_output_publication_authorized: false
-gpu_use_authorized: false
+worker_image_publication_authorized: true
+sample_output_publication_authorized: true
+gpu_use_authorized: true
 retained_volume_mutation_authorized: false
 
 runpod_account_scope:
@@ -161,10 +205,10 @@ live_development:
   chrome_route: null
   fixture_scenario: v2_00_roadmap_reset_audit
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "No active authority. V2-06 is complete; V2-07 requires fresh checkpoint-specific authority and cap before any external action."
+  provider_mode: staging
+  provider_calls_authorized: true
+  authorized_spend_usd: 4
+  provider_authority_scope: "Exact V2-07 Mage Serverless qualification only, under the USD 4 finite cap; retained volumes remain separate."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -353,47 +397,91 @@ blocking_gates_for_production:
   - GATE_STYLE_002
 
 active_ownership: []
-in_progress_checkpoint: null
+in_progress_checkpoint: V2-07
 
 recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: ready_not_started_requires_fresh_authority
+  status: bounded_paid_qualification_authorized
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: no_authority
-  task_stage: preflight_not_started
-  current_goal_authority: no_provider_authority
+  authorization_status: exact_bounded_paid_authority
+  task_stage: bounded_mutation
+  current_goal_authority: exact_v2_07_qualification_only
   provider_authority:
-    mode: none
-    provider: null
-    cap_usd: 0
+    mode: paid
+    provider: runpod
+    cap_usd: 4
     recurring_r2_ceiling_usd_per_month: 0
+    model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
     non_transferable: true
-    source: no_v2_07_authority_granted
-    resources: []
-    authorized_operations: []
-    allowed_operations: []
-    rate_snapshot: []
+    source: explicit_user_v2_07_bounded_qualification_grant
+    authorized_by_user_at: "2026-08-19T16:25:00Z"
+    resources:
+      - runpod_account_sujal_sha256_ce23456f
+      - runpod_eu_ro_1_mage_volume_sha256_eae4e1ec
+      - runpod_eu_ro_1_soulx_volume_sha256_2a8633e1
+      - runpod_eu_ro_1_rtx_4090_flex_catalog
+      - ghcr_videoforge_mage_v2_07_immutable_image
+      - runpod_v2_07_mage_queue_endpoint
+    authorized_operations:
+      - account_identity_lookup
+      - inventory_lookup
+      - quota_lookup
+      - rate_lookup
+      - region_lookup
+      - resource_identity_lookup
+      - resource_absence_lookup
+      - image_publication
+      - endpoint_create_or_update
+      - serverless_run
+      - serverless_status
+      - serverless_cancel
+      - endpoint_scale_down
+      - endpoint_template_delete_if_failed
+    allowed_operations:
+      - account_identity_lookup
+      - inventory_lookup
+      - quota_lookup
+      - rate_lookup
+      - region_lookup
+      - resource_identity_lookup
+      - resource_absence_lookup
+      - image_publication
+      - endpoint_create_or_update
+      - serverless_run
+      - serverless_status
+      - serverless_cancel
+      - endpoint_scale_down
+      - endpoint_template_delete_if_failed
+    rate_snapshot:
+      - resource_id: runpod_serverless_4090_pro_published_rate
+        billing_unit: usd_per_second
+        usd_per_unit: 0.00031
+        checked_at: "2026-08-19"
+      - resource_id: runpod_standard_network_volume
+        billing_unit: usd_per_gb_month
+        usd_per_unit: 0.07
+        checked_at: "2026-08-19"
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "V2-07 is safe to begin as a separate task, but remains not started until its provider-free preflight and a fresh exact external-activation proposal and cap are authorized."
-  provider_calls_authorized: false
+  goal: "Qualify only the exact Mage Serverless lane under the approved USD 4 finite cap; stop before V2-08."
+  provider_calls_authorized: true
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
+  maximum_external_spend_usd: 4
+  remote_or_cloud_mutations_authorized: true
+  credential_access_authorized: true
   credential_value_read_authorized: false
   model_downloads_authorized: false
-  worker_image_publication_authorized: false
-  sample_output_publication_authorized: false
-  gpu_use_authorized: false
+  worker_image_publication_authorized: true
+  sample_output_publication_authorized: true
+  gpu_use_authorized: true
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
-  application_code_changes_authorized: false
-  authority_note: "All V2-06 authority is consumed. Actual finite spend was $0 under the $1 cap and no recurring resource was created. V2-07 has no inherited authority; external actions require a fresh exact proposal and cap."
+  application_code_changes_authorized: true
+  authority_note: "User approved the exact V2-07 proposal at a USD 4 finite cap. Existing Mage/SoulX volumes remain retained separately; no volume mutation or V2-08 authority exists."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
 
 verification:

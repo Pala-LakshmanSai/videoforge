@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.7
 FROM python:3.11-slim-bookworm@sha256:28255a3ace7eb4c48bc1b57b90af29e1bc82b4fd6c60614a8e3dce61b87ff941
 
-LABEL org.opencontainers.image.title="VideoForge Mage Pod Worker" \
-      org.opencontainers.image.version="cp06-int8-v1" \
+LABEL org.opencontainers.image.title="VideoForge Mage Serverless Worker" \
+      org.opencontainers.image.version="v2-07-serverless-candidate" \
       ai.videoforge.lane="mage_image" \
       ai.videoforge.model="Comfy-Org/Mage-Flow" \
       ai.videoforge.model-revision="d8c99241f6fa80fbd453014234af2bf337ea21e6" \
@@ -17,10 +17,11 @@ ENV PYTHONUNBUFFERED=1 \
     HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1 \
     DIFFUSERS_OFFLINE=1 \
-    HF_HOME=/workspace/.cache/huggingface \
-    MAGE_MODEL_ROOT=/workspace/mage-model \
+    HF_HOME=/tmp/videoforge-cache/huggingface \
+    MAGE_MODEL_ROOT=/runpod-volume \
+    VIDEOFORGE_JOB_SCRATCH_ROOT=/tmp/videoforge-jobs \
     COMFY_ROOT=/opt/comfyui \
-    PYTHONPATH=/opt/videoforge/src:/opt/videoforge
+    PYTHONPATH=/opt/videoforge/src:/opt/videoforge:/opt/videoforge/common
 
 WORKDIR /opt/videoforge
 
@@ -48,19 +49,19 @@ RUN printf 'torch==2.11.0+cu130\ntorchvision==0.26.0+cu130\ntorchaudio==2.11.0+c
       --requirement /opt/comfyui/requirements.txt \
     && rm /tmp/comfy-constraints.txt
 
-COPY verify_comfyui_nodes.py ./verify_comfyui_nodes.py
+COPY workers/image-media/verify_comfyui_nodes.py ./verify_comfyui_nodes.py
 RUN python /opt/videoforge/verify_comfyui_nodes.py
 
-COPY requirements.mage.txt ./requirements.mage.txt
+COPY workers/image-media/requirements.mage.txt ./requirements.mage.txt
 RUN python -m pip install --no-cache-dir --requirement requirements.mage.txt \
     && python -m pip check
 
-COPY src ./src
-COPY mage_api.py mage_bootstrap.py mage-entrypoint.py mage_prepare_service.py mage_runtime.py mage_volume.py \
-     prepare_mage_volume.py ./
+COPY workers/common ./common
+COPY workers/image-media/src ./src
+COPY workers/image-media/mage_api.py workers/image-media/mage_bootstrap.py \
+     workers/image-media/mage-entrypoint.py workers/image-media/mage-serverless-entrypoint.py \
+     workers/image-media/mage_prepare_service.py workers/image-media/mage_runtime.py \
+     workers/image-media/mage_serverless.py workers/image-media/mage_volume.py \
+     workers/image-media/prepare_mage_volume.py ./
 
-EXPOSE 8000
-HEALTHCHECK --interval=5s --timeout=3s --start-period=300s --retries=60 \
-  CMD python -c "import json,urllib.request; r=json.load(urllib.request.urlopen('http://127.0.0.1:8000/v1/health',timeout=2)); assert r['process']['status']=='ok' and r['phase']=='ready' and r['model']['status']=='ready'" || exit 1
-
-ENTRYPOINT ["python", "/opt/videoforge/mage-entrypoint.py"]
+ENTRYPOINT ["python", "/opt/videoforge/mage-serverless-entrypoint.py"]

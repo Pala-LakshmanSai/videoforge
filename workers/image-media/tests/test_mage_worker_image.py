@@ -69,9 +69,11 @@ class MageWorkerImageTest(unittest.TestCase):
                 "mage_api.py",
                 "mage_bootstrap.py",
                 "mage_runtime.py",
+                "mage_serverless.py",
+                "mage-serverless-entrypoint.py",
             )
         )
-        self.assertNotIn("runpod.serverless", active)
+        self.assertIn("runpod.serverless.start", active)
         self.assertNotIn("hf_hub_download", active)
         self.assertIn("HF_HUB_OFFLINE=1", dockerfile)
         self.assertIn("comfy_extras.nodes_mage", node_verifier)

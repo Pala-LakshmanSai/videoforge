@@ -2,3 +2,4 @@ fastapi==0.141.1
 huggingface-hub==1.26.0
 pillow==12.3.0
 uvicorn[standard]==0.52.0
+runpod==1.7.0
