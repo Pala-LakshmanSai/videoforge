@@ -1,18 +1,18 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-19T06:43:20Z"
+updated_at: "2026-08-19T10:10:47Z"
 
 phase: serverless_v2_v2_06_independent_audit_fail_p1_open_v2_07_blocked
-implementation_authorized_in_current_task: true
+implementation_authorized_in_current_task: false
 current_milestone: hosted_staging_and_personal_media_workers
 current_task: VF-10-06
 current_wave: v2_06_personal_worker_conversion
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 task_stage: v2_06_independent_audit_fail_p1_gates_open_v2_07_blocked
-application_code_changes_authorized: true
-provider_calls_authorized: true
+application_code_changes_authorized: false
+provider_calls_authorized: false
 read_only_provider_calls_authorized: false
-maximum_external_spend_usd: 3
+maximum_external_spend_usd: 0
 
 current_goal_boundary:
   mode: repository_and_supplied_immutable_evidence_only
@@ -26,6 +26,15 @@ current_goal_boundary:
   note: "Historical V2-06 authority remains recorded below for audit provenance; it is not active for the current completion goal."
 
 provider_authority:
+  mode: none
+  cap_usd: 0
+  non_transferable: true
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
+  rate_snapshot: []
+
+historical_v2_06_completion_authority:
   mode: paid
   provider: cloudflare+neon+google_cloud+github+paired_devices
   cap_usd: 3
@@ -90,11 +99,11 @@ provider_authority:
       usd_per_unit: 0
       checked_at: "2026-08-18"
 
-credential_access_authorized: true
+credential_access_authorized: false
 credential_value_read_authorized: false
-remote_or_cloud_mutations_authorized: true
+remote_or_cloud_mutations_authorized: false
 model_downloads_authorized: false
-worker_image_publication_authorized: true
+worker_image_publication_authorized: false
 sample_output_publication_authorized: false
 gpu_use_authorized: false
 retained_volume_mutation_authorized: false
@@ -118,10 +127,11 @@ repository:
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
   current_source_head: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
-  last_verified_repository_head: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
-  current_source_head_note: "Commit fd773ed pins the Windows completion handoff while the deployed application remains 1ad68ea. Mac and Windows 0.1.11 live acceptance, second-tenant hosted negative isolation, successful-output deletion, Mac revocation, and local uninstall pass. The fresh independent audit at documentation HEAD 4cf904b failed with three P1 and three P2 findings; the stale-handoff and profile-budget P2s were corrected locally, leaving three P1 and one P2. V2-07 remains blocked."
+  current_documentation_head: "d905b197ade0c47f3be0beaa36b8ea84f3ae5e70"
+  last_verified_repository_head: "d905b197ade0c47f3be0beaa36b8ea84f3ae5e70"
+  current_source_head_note: "Commit fd773ed pins the Windows completion handoff while the deployed application remains 1ad68ea. Mac and Windows 0.1.11 live acceptance, second-tenant hosted negative isolation, successful-output deletion, Mac revocation, and local uninstall pass. The fresh independent audit at documentation HEAD 4cf904b failed with three P1 and three P2 findings; follow-up audit evidence at documentation HEAD d905b19 confirms the stale-handoff and profile-budget P2s were corrected locally, leaving three P1 and one P2. V2-07 remains blocked."
   last_good_commit: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
-  last_good_commit_note: "V2-06 source HEAD fd773ed has clean canonical verification and records Mac, Windows, backup/restore, and second-tenant live isolation evidence with zero new external spend; the independent audit at documentation HEAD 4cf904b is FAIL on three P1 and one remaining P2 after safe documentation reconciliation, and the deployed application remains 1ad68ea."
+  last_good_commit_note: "V2-06 source HEAD fd773ed has clean canonical verification and records Mac, Windows, backup/restore, and second-tenant live isolation evidence with zero new external spend; follow-up audit evidence at documentation HEAD d905b19 is FAIL on three P1 and one remaining P2 after safe documentation reconciliation, and the deployed application remains 1ad68ea."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -134,9 +144,9 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: staging
-  provider_calls_authorized: true
-  authorized_spend_usd: 3
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
   provider_authority_scope: "A current V2-06-only bounded completion grant authorizes the exact existing Cloudflare Worker/Workflow/private R2 bucket, Neon migration 0036 plus disposable backup/restore drill, Google-only two-user acceptance, immutable GitHub personal-worker release, owned private acceptance fixtures, and exact rollback/restore within a hard USD 3 finite cap and USD 2/month R2 ceiling. RunPod is read-only with zero GPU/worker/volume mutation; credential values, unrelated resources, cap overruns, and V2-07 remain forbidden."
 
 v2_destination:
@@ -334,104 +344,51 @@ active_ownership:
   - task_id: VF-10-06
     checkpoint: V2-06
     scope: exact_v2_06_live_activation_hardening_deployment_and_acceptance
-    provider_calls_authorized: true
-    maximum_external_spend_usd: 3
+    provider_calls_authorized: false
+    maximum_external_spend_usd: 0
+    note: "Current goal is evidence-only; historical completion authority remains in provider_authority and acceptance records."
 in_progress_checkpoint: V2-06
 
 recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
   milestone: hosted_staging_and_personal_media_workers
-  status: bounded_v2_06_mac_and_windows_live_complete_second_account_delete_and_audit_remaining
+  status: independent_audit_fail_three_p1_one_p2_v2_07_blocked
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
-  authorization_status: bounded_v2_06_completion_approved
-  task_stage: bounded_mutation
+  authorization_status: historical_bounded_v2_06_completion_approved_not_active_for_current_audit
+  task_stage: evidence_only_audit
+  current_goal_authority: none
   provider_authority:
-    mode: paid
-    provider: cloudflare+neon+google_cloud+github+paired_devices
-    cap_usd: 3
-    recurring_r2_ceiling_usd_per_month: 2
+    mode: none
+    cap_usd: 0
     non_transferable: true
-    authorized_by_user_at: "2026-08-18T17:03:43Z"
-    model_id: null
-    resources:
-      - cloudflare_account_f9254d773a3426fcb469451b1f965d8c
-      - cloudflare_worker_videoforge_v2_06_staging
-      - cloudflare_workflow_videoforge_v2_06_staging_video
-      - cloudflare_r2_bucket_videoforge_v2_06_staging_private
-      - neon_project_ancient_morning_99567618
-      - google_oauth_project_videoforge_v2_06_staging_0817
-      - github_immutable_personal_worker_release
-      - existing_paired_videoforge_devices
-    authorized_operations:
-      - account_identity_lookup
-      - inventory_lookup
-      - quota_lookup
-      - rate_lookup
-      - region_lookup
-      - resource_identity_lookup
-      - resource_absence_lookup
-      - exact_current_head_worker_workflow_private_r2_deployment
-      - exact_neon_migration_0036_runtime_grants_backup_and_restore_drill
-      - exact_google_only_oauth_two_test_user_acceptance
-      - immutable_personal_worker_release_publication_and_native_acceptance
-      - exact_owned_two_account_asr_render_isolation_recovery_cancel_and_delete_acceptance
-      - exact_disposable_restore_database_create_and_delete
-      - exact_cloudflare_rollback_and_current_head_restore_drill
-    allowed_operations:
-      - account_identity_lookup
-      - inventory_lookup
-      - quota_lookup
-      - rate_lookup
-      - region_lookup
-      - resource_identity_lookup
-      - resource_absence_lookup
-      - exact_current_head_worker_workflow_private_r2_deployment
-      - exact_neon_migration_0036_runtime_grants_backup_and_restore_drill
-      - exact_google_only_oauth_two_test_user_acceptance
-      - immutable_personal_worker_release_publication_and_native_acceptance
-      - exact_owned_two_account_asr_render_isolation_recovery_cancel_and_delete_acceptance
-      - exact_disposable_restore_database_create_and_delete
-      - exact_cloudflare_rollback_and_current_head_restore_drill
-    rate_snapshot:
-      - resource_id: cloudflare_r2_standard_storage_overage
-        billing_unit: gb_month_above_10_gb_free
-        usd_per_unit: 0.015
-        checked_at: "2026-08-18"
-      - resource_id: cloudflare_workers_free_base
-        billing_unit: month
-        usd_per_unit: 0
-        checked_at: "2026-08-18"
-      - resource_id: neon_free_base
-        billing_unit: month
-        usd_per_unit: 0
-        checked_at: "2026-08-18"
-      - resource_id: google_oauth_project_base
-        billing_unit: month
-        usd_per_unit: 0
-        checked_at: "2026-08-18"
+    resources: []
+    authorized_operations: []
+    allowed_operations: []
+    rate_snapshot: []
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
   goal: "V2-06 bounded completion evidence is recorded within the USD 3 finite cap and USD 2/month R2 ceiling. Mac, Windows, second-account negative isolation, successful-output deletion, and Mac destructive lifecycle are complete; the fresh independent audit remains FAIL on three P1 and one remaining P2 after safe documentation reconciliation. GPU transport stays fake and disabled and V2-07 remains blocked."
-  provider_calls_authorized: true
+  provider_calls_authorized: false
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 3
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
   credential_value_read_authorized: false
   model_downloads_authorized: false
-  worker_image_publication_authorized: true
+  worker_image_publication_authorized: false
   sample_output_publication_authorized: false
   gpu_use_authorized: false
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
-  application_code_changes_authorized: true
+  application_code_changes_authorized: false
+  authority_note: "The historical V2-06 completion grant is retained for provenance; the current evidence-only goal cannot use it."
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_mac_and_windows_live_complete_second_account_delete_and_audit_remaining
+  state: v2_06_independent_audit_fail_three_p1_one_p2_v2_07_blocked
   verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
   verified_commit_note: "Windows 0.1.11 immutable-input, pairing, offline/reconnect, reboot/autostart, physical sleep/wake, 0.1.10-to-0.1.11 update, revocation, and uninstall cleanup pass on MI_Notebook. The provider-free native harness exits 0, the earlier Mac 0.1.11 live run reached ONLINE before the later user-confirmed revoke/uninstall, cmdkey reports NONE for the exact revoked Windows installation, new spend remains $0, and no RunPod or V2-07 action occurred. This is same-chat acceptance plus a separate audit FAIL, not V2-07 authority."
   predecessor_verified_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
