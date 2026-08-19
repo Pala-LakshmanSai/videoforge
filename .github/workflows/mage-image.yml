@@ -49,7 +49,7 @@ jobs:
           docker run --rm --entrypoint python "$image" -c \
             'import torch; from videoforge_image_media import MAGE_MODEL_REVISION, MAGE_SOURCE_REVISION; assert MAGE_MODEL_REVISION == "d8c99241f6fa80fbd453014234af2bf337ea21e6"; assert MAGE_SOURCE_REVISION == "26d7f8556822d9d08c2d3e1878636ac3b4969af9"; print("mage-int8-comfy-import-ok")'
           docker run --rm --entrypoint python "$image" -c \
-            'import mage_serverless; assert callable(mage_serverless.handler); print("mage-serverless-handler-import-ok")'
+            'import videoforge_contracts; import mage_serverless; assert callable(mage_serverless.handler); print("mage-serverless-handler-import-ok")'
           docker run --rm --entrypoint python "$image" -m compileall -q /opt/comfyui /opt/videoforge
           image_id="$(docker image inspect --format='{{.Id}}' "$image")"
           echo "LOCAL_IMAGE=$image" >> "$GITHUB_ENV"

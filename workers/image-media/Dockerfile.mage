@@ -57,6 +57,7 @@ RUN python -m pip install --no-cache-dir --requirement requirements.mage.txt \
     && python -m pip check
 
 COPY workers/common ./common
+COPY packages/contracts/python/videoforge_contracts ./src/videoforge_contracts
 COPY workers/image-media/src ./src
 COPY workers/image-media/mage_api.py workers/image-media/mage_bootstrap.py \
      workers/image-media/mage-entrypoint.py workers/image-media/mage-serverless-entrypoint.py \
