@@ -191,6 +191,24 @@ class MageWorkerImageTest(unittest.TestCase):
         self.assertTrue(runtime.gpu["approved"])
         self.assertEqual(runtime.gpu["offering_id"], "NVIDIA GeForce RTX 4090")
 
+    def test_runtime_rejects_any_non_4090_offering_before_cuda_probe(self) -> None:
+        runtime = MageRuntime()
+        with patch.dict(
+            os.environ,
+            {
+                "VIDEOFORGE_MAGE_VOLUME_ID_HASH": "sha256:" + ("a" * 64),
+                "VIDEOFORGE_MAGE_WORKER_IMAGE_DIGEST": (
+                    "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:" + ("b" * 64)
+                ),
+                "RUNPOD_POD_ID": "serverless-worker-1",
+                "VIDEOFORGE_MAGE_WORKER_TOKEN": "x" * 32,
+                "VIDEOFORGE_MAGE_GPU_OFFERING_ID": "NVIDIA RTX PRO 4500 Blackwell",
+            },
+            clear=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "MAGE_GPU_OFFERING_INVALID"):
+                runtime.verify_runtime_identity()
+
     def test_serverless_runtime_requires_the_v2_07_immutable_image(self) -> None:
         environment = {
             "VIDEOFORGE_MAGE_VOLUME_ID_HASH": "sha256:" + ("a" * 64),
