@@ -408,6 +408,7 @@ export class RunPodV207QualificationHarness {
         status: latest.status,
         delay_time_ms: latest.delayTimeMs,
         execution_time_ms: latest.executionTimeMs,
+        ...(latest.error === undefined ? {} : { provider_error_present: true }),
       });
       if (TERMINAL_STATUSES.has(latest.status)) return latest;
       if (poll + 1 < maxPolls) await sleep(this.#options.pollIntervalMs ?? 15_000);
@@ -569,6 +570,7 @@ export class RunPodV207QualificationHarness {
           status: latest.status,
           delay_time_ms: latest.delayTimeMs,
           execution_time_ms: latest.executionTimeMs,
+          ...(latest.error === undefined ? {} : { provider_error_present: true }),
         });
         if (TERMINAL_STATUSES.has(latest.status)) return latest;
         if (poll + 1 < maxPolls) await sleep(this.#options.pollIntervalMs ?? 15_000);

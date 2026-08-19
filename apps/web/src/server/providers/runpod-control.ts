@@ -675,6 +675,8 @@ export interface RunPodJobResult {
   readonly idHash: string;
   readonly status: string;
   readonly output?: unknown;
+  /** Provider-level handler error; retained only in memory for bounded reconciliation. */
+  readonly error?: unknown;
   readonly progress?: unknown;
   readonly executionTimeMs: number | null;
   readonly delayTimeMs: number | null;
@@ -735,6 +737,7 @@ const jobResult = (value: JsonRecord): RunPodJobResult => {
     idHash: hashId(value.id),
     status: value.status,
     ...(Object.hasOwn(value, "output") ? { output: value.output } : {}),
+    ...(Object.hasOwn(value, "error") ? { error: value.error } : {}),
     ...(Object.hasOwn(value, "progress") ? { progress: value.progress } : {}),
     executionTimeMs: numberOrNull(value.executionTime),
     delayTimeMs: numberOrNull(value.delayTime),

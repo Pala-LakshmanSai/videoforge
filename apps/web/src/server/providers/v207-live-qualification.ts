@@ -47,6 +47,34 @@ const sortedJson = (value: unknown): string => {
   return JSON.stringify(value);
 };
 
+const SAFE_PROVIDER_CODE = /^[A-Z][A-Z0-9_.:-]{2,160}$/u;
+
+/** Extract only a bounded error code from RunPod's provider-level error field. */
+function providerErrorCode(value: unknown): string {
+  const candidates: unknown[] = [value];
+  if (typeof value === "string") {
+    try {
+      candidates.push(JSON.parse(value));
+    } catch {
+      // The provider may return a plain error string; never persist it verbatim.
+    }
+  }
+  for (const candidate of candidates) {
+    if (typeof candidate === "string") {
+      const match = candidate.match(/[A-Z][A-Z0-9_.:-]{2,160}/u)?.[0];
+      if (match && SAFE_PROVIDER_CODE.test(match)) return match;
+      continue;
+    }
+    if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
+      for (const key of ["code", "error_code", "errorCode", "error_type"]) {
+        const found = (candidate as AnyRecord)[key];
+        if (typeof found === "string" && SAFE_PROVIDER_CODE.test(found)) return found;
+      }
+    }
+  }
+  return "PROVIDER_ERROR_PRESENT";
+}
+
 const nowIso = (): string => new Date().toISOString();
 const sleep = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -265,7 +293,9 @@ async function verifyBatch(
                 ),
               ),
             ).slice(0, 240)
-          : "UNKNOWN";
+          : job.error !== undefined
+            ? providerErrorCode(job.error)
+            : "UNKNOWN";
     throw new Error(`MAGE_OUTPUT_NOT_SUCCEEDED:${String(output?.status ?? "MISSING")}:${code}`);
   }
   const receipt = output.provenance_receipt as AnyRecord;
