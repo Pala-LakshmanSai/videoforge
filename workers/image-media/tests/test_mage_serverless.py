@@ -238,6 +238,39 @@ class MageServerlessBoundaryTest(unittest.TestCase):
                         now=datetime(2026, 8, 19, tzinfo=UTC),
                     )
 
+    def test_generated_authority_requires_exact_batch_prefix_and_artifact_id(self) -> None:
+        accepted = self._accepted()
+        accepted["artifacts"]["transfer_port_reservation_ids"] = ["reservation-generated"]
+        authority = self._generated_authority()
+        authority["path"] = authority["path"] + "/nested"
+        with self.assertRaisesRegex(
+            mage_serverless.ServerlessMageError,
+            "MAGE_SERVERLESS_GENERATED_OUTPUT_PATH_MISMATCH",
+        ):
+            mage_serverless._validate_scoped_ports(
+                {"inputs": [], "outputs": []},
+                generated_output_authorities=[authority],
+                accepted=accepted,
+                attempt_id="attempt-a",
+                now=datetime(2026, 8, 19, tzinfo=UTC),
+            )
+
+        accepted["artifacts"]["output_prefix"] = accepted["artifacts"]["output_prefix"].replace(
+            "/lane/mage-image/", "/lane/render/"
+        )
+        authority["path"] = f"/{accepted['artifacts']['output_prefix']}/artifact/scene-a"
+        with self.assertRaisesRegex(
+            mage_serverless.ServerlessMageError,
+            "MAGE_SERVERLESS_OUTPUT_PREFIX_INVALID",
+        ):
+            mage_serverless._validate_scoped_ports(
+                {"inputs": [], "outputs": []},
+                generated_output_authorities=[authority],
+                accepted=accepted,
+                attempt_id="attempt-a",
+                now=datetime(2026, 8, 19, tzinfo=UTC),
+            )
+
     def test_generated_authority_duplicate_reservation_is_rejected(self) -> None:
         accepted = self._accepted()
         accepted["artifacts"]["transfer_port_reservation_ids"] = [

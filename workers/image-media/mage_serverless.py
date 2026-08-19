@@ -208,10 +208,33 @@ def _validate_generated_output_authority(
         raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_LENGTH_INVALID")
     path = authority.get("path")
     expected_prefix = f"/{output_prefix}/artifact/"
+    prefix_parts = output_prefix.split("/") if isinstance(output_prefix, str) else []
+    if (
+        len(prefix_parts) != 12
+        or prefix_parts[0] != "tenant"
+        or prefix_parts[1] != account_id
+        or prefix_parts[2] != "workspace"
+        or prefix_parts[3] != workspace_id
+        or prefix_parts[4] != "project"
+        or not _IDENTIFIER.fullmatch(prefix_parts[5])
+        or prefix_parts[6] != "revision"
+        or not _IDENTIFIER.fullmatch(prefix_parts[7])
+        or prefix_parts[8] != "lane"
+        or prefix_parts[9] != "mage-image"
+        or prefix_parts[10] != "job"
+        or prefix_parts[11] != attempt_id
+    ):
+        raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_PREFIX_INVALID")
+    artifact_id = (
+        path[len(expected_prefix) :]
+        if isinstance(path, str) and path.startswith(expected_prefix)
+        else None
+    )
     if (
         not isinstance(path, str)
         or not path.startswith(expected_prefix)
-        or f"/job/{attempt_id}/" not in path
+        or not isinstance(artifact_id, str)
+        or not _IDENTIFIER.fullmatch(artifact_id)
         or "?" in path
         or "#" in path
         or "/../" in path
