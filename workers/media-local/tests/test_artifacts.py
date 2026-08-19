@@ -39,6 +39,18 @@ class R2PortFixtureTests(unittest.TestCase):
                 / "attempt_cp03"
                 / "asr-result.json",
             )
+            run_output = resolver.resolve_run(
+                "vf-local-run://revision_cp03/attempt_cp03/render.mp4"
+            )
+            run_output.write_bytes(b"exact rendered output")
+            output_sha256 = "sha256:" + hashlib.sha256(run_output.read_bytes()).hexdigest()
+            published_uri = resolver.publish_object(run_output, output_sha256, "mp4")
+            self.assertEqual(
+                resolver.resolve_object(published_uri).read_bytes(), run_output.read_bytes()
+            )
+            self.assertEqual(
+                resolver.publish_object(run_output, output_sha256, "mp4"), published_uri
+            )
 
     def test_rejects_escape_and_symlinked_private_prefix(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

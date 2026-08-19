@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import re
+import shutil
 import stat
+import uuid
 from pathlib import Path
 
 _OBJECT_URI = re.compile(
@@ -14,6 +17,15 @@ _RUN_URI = re.compile(
     r"(?P<attempt>[A-Za-z0-9][A-Za-z0-9._:-]{0,159})/"
     r"(?P<filename>[A-Za-z0-9][A-Za-z0-9._-]{0,159})$"
 )
+_SHA256 = re.compile(r"^sha256:(?P<digest>[0-9a-f]{64})$")
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return f"sha256:{digest.hexdigest()}"
 
 
 class R2PortFixtureArtifactResolver:
@@ -114,3 +126,33 @@ class R2PortFixtureArtifactResolver:
         if candidate.exists() or candidate.is_symlink():
             return self._inside(candidate, must_exist=True)
         return candidate
+
+    def publish_object(self, source: Path, sha256: str, extension: str) -> str:
+        digest_match = _SHA256.fullmatch(sha256)
+        if digest_match is None or re.fullmatch(r"[a-z0-9]{1,10}", extension) is None:
+            raise ValueError("invalid immutable R2 fixture object facts")
+        safe_source = self._inside(source, must_exist=True)
+        if not safe_source.is_file() or _sha256(safe_source) != sha256:
+            raise ValueError("published R2 fixture bytes do not match their SHA-256")
+        digest = digest_match.group("digest")
+        safe_parent = self._ensure_directory(self.bucket, "objects", "sha256", digest[:2])
+        destination = safe_parent / f"{digest}.{extension}"
+        uri = f"vf-local://objects/sha256/{digest[:2]}/{digest}.{extension}"
+        if destination.exists():
+            if destination.is_symlink() or _sha256(destination) != sha256:
+                raise ValueError("immutable R2 fixture destination conflicts with existing bytes")
+            return uri
+        temporary = safe_parent / f".{digest}.{uuid.uuid4().hex}.tmp"
+        try:
+            with safe_source.open("rb") as reader, temporary.open("xb") as writer:
+                shutil.copyfileobj(reader, writer, length=1024 * 1024)
+                writer.flush()
+                os.fsync(writer.fileno())
+            try:
+                os.link(temporary, destination)
+            except FileExistsError:
+                if destination.is_symlink() or _sha256(destination) != sha256:
+                    raise ValueError("immutable R2 fixture publication collided") from None
+        finally:
+            temporary.unlink(missing_ok=True)
+        return uri

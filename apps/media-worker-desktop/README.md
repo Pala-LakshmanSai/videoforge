@@ -34,7 +34,7 @@ an unsigned beta, and the immutable manifest discloses exact hashes and trust mo
 behavior can vary, so native clean-download/install evidence remains required. Protected signing and
 notarization secrets are needed only for the optional production-trust upgrade.
 
-`publish_release=true` requires the exact new `media-worker-v0.1.10` tag and the protected release
+`publish_release=true` requires the exact new `media-worker-v0.1.11` tag and the protected release
 environment. It publishes both binaries plus
 the checksum/size manifest to the public repository Release; the workflow refuses to replace an
 existing tag or asset. Activating that generated manifest in staging is a separate reviewed hosting
@@ -59,7 +59,7 @@ model again at startup and against every ASR job contract. No first-run model do
 provider discovery, or user configuration occurs.
 
 This checkout's source-only lifecycle repairs are not a new immutable publication. The separately
-recorded repaired artifact is `media-worker-v0.1.10`; recompute the execution-bundle hash and publish
+recorded repaired artifact is `media-worker-v0.1.11`; recompute the execution-bundle hash and publish
 a new immutable release before updating hosted release metadata after any release-input change.
 
 ## Bounded Windows acceptance run
@@ -76,7 +76,7 @@ Provider-free package/lifecycle check:
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
 .\windows-native-acceptance.ps1 `
-  -InstallerPath .\VideoForge-Worker-0.1.10-Setup.exe `
+  -InstallerPath .\VideoForge-Worker-0.1.11-Setup.exe `
   -ReleaseManifestPath .\media-worker-release.json
 ```
 
@@ -86,7 +86,7 @@ for the paired Credential Manager entry by installation ID and never reads the c
 
 ```powershell
 .\windows-native-acceptance.ps1 `
-  -InstallerPath .\VideoForge-Worker-0.1.10-Setup.exe `
+  -InstallerPath .\VideoForge-Worker-0.1.11-Setup.exe `
   -ReleaseManifestPath .\media-worker-release.json `
   -RunHostedPairing
 ```
