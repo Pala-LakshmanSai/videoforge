@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-19T23:11:35Z",
+  "recorded_at": "2026-08-19T23:29:48Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -35,6 +35,9 @@
     "request_authority_ttl_seconds": 7200,
     "envelope_init_timeout_seconds": 800,
     "endpoint_template_init_timeout_seconds": 800,
+    "exact_retained_mage_volume_identity_guard": "ee69c95",
+    "concurrent_reader_spend_cap_guard": "ee69c95",
+    "concurrent_reader_config_hash_includes_template_and_image_lineage": true,
     "durable_per_unit_resume": "PASS: accepted-unit resume carries only unresolved items and never regenerates accepted units",
     "negative_coverage": [
       "wrong authority bytes/path/volume/GPU/region",
@@ -73,6 +76,11 @@
       "result": "PASS"
     },
     {
+      "commit": "ee69c95",
+      "area": "read-only inventory proves exact Mage volume hash/50 GB/EU-RO-1 before mutation; max-two policy and concurrent dispatch are cap-fenced with complete config lineage",
+      "result": "PASS"
+    },
+    {
       "command": "project-context/scripts/validate-context.sh && project-context/scripts/validate-schemas.sh",
       "exit_code": 0,
       "result": "PASS"
@@ -95,7 +103,12 @@
     {
       "command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/v207-activation-authority.test.ts src/server/providers/runpod-v207-qualification-harness.test.ts",
       "exit_code": 0,
-      "result": "5 passed"
+      "result": "12 passed"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/runpod-v207-qualification-harness.test.ts src/server/providers/runpod-control.test.ts",
+      "exit_code": 0,
+      "result": "28 passed"
     },
     {
       "command": "pnpm --filter @videoforge/web exec tsc --noEmit --pretty false",
@@ -110,7 +123,7 @@
     {
       "command": "CI=1 TURBO_FORCE=true pnpm verify",
       "exit_code": 0,
-      "result": "28 turbo tasks; Cloudflare parity 1/1; package build/lint/typecheck/tests; worker suites; context/secret checks; installed Chrome 44/44"
+      "result": "28 turbo tasks; Cloudflare parity 1/1; web 52 files with 373 passed and 1 skipped; six worker suites; context/secret checks; installed Chrome 44/44"
     }
   ],
   "read_only_runpod_snapshot": {
