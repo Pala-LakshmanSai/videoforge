@@ -1,0 +1,33 @@
+{
+  "schema_version": "videoforge.v2-07-activation-preflight/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "checked_at": "2026-08-19T17:20:56.760Z",
+  "authority": {
+    "source": "explicit_user_v2_07_bounded_qualification_grant",
+    "finite_cap_usd": 4,
+    "volume_mutation_permitted": false,
+    "model_download_or_preparation_permitted": false,
+    "v2_08_permitted": false
+  },
+  "runpod_inventory": {
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "running_pods": 0,
+    "active_serverless_workers": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "network_volumes": [
+      {"id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be", "size_gb": 50},
+      {"id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619", "size_gb": 50}
+    ]
+  },
+  "result": "PASS_READ_ONLY_STARTING_POINT_ONLY",
+  "not_proven": [
+    "immutable_image_publication",
+    "endpoint_configuration",
+    "gpu_qualification",
+    "output_durability",
+    "two_reader_proof",
+    "scale_to_zero_after_drain"
+  ]
+}
