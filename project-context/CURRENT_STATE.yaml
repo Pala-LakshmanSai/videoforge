@@ -8,7 +8,7 @@ current_milestone: hosted_staging_and_personal_media_workers
 current_task: VF-10-06
 current_wave: v2_06_personal_worker_conversion
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: mac_and_windows_live_complete_second_account_delete_and_independent_audit_open
+task_stage: v2_06_independent_audit_fail_p1_gates_open_v2_07_blocked
 application_code_changes_authorized: true
 provider_calls_authorized: true
 read_only_provider_calls_authorized: false
@@ -108,9 +108,9 @@ repository:
   branch_published: true
   current_source_head: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
   last_verified_repository_head: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
-  current_source_head_note: "Commit fd773ed pins the Windows completion handoff while the deployed application remains 1ad68ea. Mac and Windows 0.1.11 live acceptance, second-tenant hosted negative isolation, successful-output deletion, Mac revocation, and local uninstall now pass. A fresh independent audit remains open."
+  current_source_head_note: "Commit fd773ed pins the Windows completion handoff while the deployed application remains 1ad68ea. Mac and Windows 0.1.11 live acceptance, second-tenant hosted negative isolation, successful-output deletion, Mac revocation, and local uninstall pass. The fresh independent audit at documentation HEAD 4cf904b fails with three P1 and three P2 findings; V2-07 remains blocked."
   last_good_commit: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
-  last_good_commit_note: "V2-06 current HEAD fd773ed has clean canonical verification and records Mac, Windows, backup/restore, and second-tenant live isolation evidence with zero new external spend; the deployed application remains 1ad68ea."
+  last_good_commit_note: "V2-06 source HEAD fd773ed has clean canonical verification and records Mac, Windows, backup/restore, and second-tenant live isolation evidence with zero new external spend; the independent audit at documentation HEAD 4cf904b is FAIL, and the deployed application remains 1ad68ea."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -194,7 +194,7 @@ roadmap_state:
   V2-03: complete_green_independently_reaudited
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
-  V2-06: mac_and_windows_live_complete_second_account_delete_and_independent_audit_remaining
+  V2-06: independent_audit_fail_three_p1_three_p2_v2_07_blocked
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
@@ -401,7 +401,7 @@ recommended_next_task:
         checked_at: "2026-08-18"
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
-  goal: "Finish the approved exact V2-06 hosted completion within the USD 3 finite cap and USD 2/month R2 ceiling. Mac and Windows native acceptance are complete; finish only the second live tenant, successful-output/Mac destructive lifecycle, and fresh independent audit. GPU transport stays fake and disabled and V2-07 remains blocked."
+  goal: "V2-06 bounded completion evidence is recorded within the USD 3 finite cap and USD 2/month R2 ceiling. Mac, Windows, second-account negative isolation, successful-output deletion, and Mac destructive lifecycle are complete; the fresh independent audit remains FAIL on three P1 and three P2 findings. GPU transport stays fake and disabled and V2-07 remains blocked."
   provider_calls_authorized: true
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 3
@@ -422,7 +422,7 @@ recommended_next_task:
 verification:
   state: v2_06_mac_and_windows_live_complete_second_account_delete_and_audit_remaining
   verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
-  verified_commit_note: "Windows 0.1.11 immutable-input, pairing, offline/reconnect, reboot/autostart, physical sleep/wake, 0.1.10-to-0.1.11 update, revocation, and uninstall cleanup pass on MI_Notebook. The provider-free native harness exits 0, Mac 0.1.11 remains ONLINE, cmdkey reports NONE for the exact revoked Windows installation, new spend remains $0, and no RunPod or V2-07 action occurred. This is same-chat acceptance, not the fresh independent V2-06 audit."
+  verified_commit_note: "Windows 0.1.11 immutable-input, pairing, offline/reconnect, reboot/autostart, physical sleep/wake, 0.1.10-to-0.1.11 update, revocation, and uninstall cleanup pass on MI_Notebook. The provider-free native harness exits 0, the earlier Mac 0.1.11 live run reached ONLINE before the later user-confirmed revoke/uninstall, cmdkey reports NONE for the exact revoked Windows installation, new spend remains $0, and no RunPod or V2-07 action occurred. This is same-chat acceptance plus a separate audit FAIL, not V2-07 authority."
   predecessor_verified_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
   acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-19-windows-native-completion-34a0fbf/acceptance.json
   latest_live_check:
@@ -789,7 +789,7 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: same_chat_live_completion_independent_audit_remaining
+    status: independent_audit_fail_open_p1_findings
     implementation_commit: "1ad68ea46b642949591c1090cecddc28d7ec428e"
     source_head_commit: "1ad68ea46b642949591c1090cecddc28d7ec428e"
     autonomous_readiness_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
@@ -808,6 +808,7 @@ verification:
     windows_native_completion_evidence: evidence/acceptance/VF-10-06/2026-08-19-windows-native-completion-34a0fbf/acceptance.json
     live_two_account_isolation_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-two-account-isolation-fresh/acceptance.json
     live_destructive_lifecycle_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-destructive-lifecycle/acceptance.json
+    independent_audit_evidence: evidence/acceptance/VF-10-06/2026-08-19-independent-audit-fail/acceptance.json
     backup_restore_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-backup-restore-804f7d3/acceptance.json
     autonomous_readiness_evidence: evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json
     previous_completion_evidence: evidence/acceptance/VF-10-06/2026-08-18-bounded-completion-8e96575/acceptance.json
@@ -834,6 +835,7 @@ verification:
       - "Focused V2-06 backup/restore, Windows harness, activation-safety, Neon-grant, and owned-render tests (exit 0; 23/23)."
       - "Fresh Chrome profile live negative isolation journey (exit 0 for read-only observations; demo9gss@gmail.com tenant-scoped, empty Library/devices, foreign project unavailable, foreign attempt CPU_ATTEMPT_NOT_FOUND, no signed foreign R2 URL)."
       - "Action-time hosted output deletion, Mac device Remove confirmation, and supported Mac --uninstall (exit 0) plus exact local cleanup checks; Library is empty, Mac is REVOKED, LaunchAgent/app install/state/keychain are absent, and app bundle is in Trash for recovery."
+      - "Fresh separate read-only V2-06 audit at documentation HEAD 4cf904b (FAIL; no P0, three P1 and three P2; no edits, credentials, live calls, mutation, or spend)."
       - "Homebrew libpq PATH-aware backup/restore tools-only preflight (exit 0; pg_dump, pg_restore, and psql resolved without execution or provider access)."
       - "Private-input bootstrap under /Users/lakshmansai/.config/videoforge/v2-06/postgres-inputs (exit 0; mode-0700 directory and exactly three empty mode-0600 placeholders; no value read/generated)."
       - "Full private-input preflight (exit 1 expected; all three placeholders remain empty, so backup/restore failed closed before database access)."
@@ -883,9 +885,13 @@ verification:
       - "A separately controlled live Chrome profile for demo9gss@gmail.com now proves tenant-scoped Better Auth identity, private empty Library/device views, and non-revealing foreign project/attempt refusal against the primary tenant's exact IDs."
       - "The user explicitly confirmed the exact destructive scope; the v4 private output was deleted, the 0.1.11 Mac device was revoked, and the worker's supported uninstall exited 0 before the app bundle was moved to the user's Trash."
     remaining_gates:
-      - "Fresh independent task: audit the completed live/device evidence after the above gates. This same-chat handoff cannot independently accept itself."
+      - "P1: positive second-tenant project/object/device/lease proof, hosted non-superuser RLS enforcement, and real private-R2 hash parity remain unproven."
+      - "P1: hosted Workflow restart/resume, lease expiry/replay, stale-result rejection, and late-result fencing remain unproven."
+      - "P1: rollback of final deployed source 1ad68ea / Worker 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2 remains unproven; only the earlier 8e96575 deployment rollback/restore is evidenced."
+      - "P2: post-delete R2 inventory/hash read-back is not supplied; the 16-object/32.1 MB inventory predates deletion."
+      - "P2: context validation exits 0 but the selected profile is 15,166 words against the 15,000-word target."
       - "The selected Windows unsigned-beta and macOS ad-hoc/non-notarized-beta trust modes remain intentional; Authenticode and Developer ID/notarization are optional and are not checkpoint blockers."
-      - "The exact combined V2-06 cap remains USD 3 with a USD 2/month R2 ceiling. Current new external spend is USD 0; R2 is 32.1 MB and currently $0/month."
+      - "The exact combined V2-06 cap remains USD 3 with a USD 2/month R2 ceiling. Current new external spend is USD 0; last supplied pre-delete R2 inventory was 32.1 MB and currently $0/month."
     resource_truth:
       external_mutations: bounded_v2_06_completion_partial_acceptance
       external_mutation_scope: "Current grant used only the exact V2-06 Worker/Workflow/private R2 bucket, Neon migration 0036, GitHub worker release publication and repository immutable-release setting, Cloudflare rollback/restore, Mac installation, temporary Windows pairing/revocation/install/uninstall, and one exact disposable Neon restore database that was deleted after verification. No RunPod, GPU, volume, unrelated resource, or V2-07 mutation occurred."
@@ -939,7 +945,7 @@ verification:
       deployed_implementation_commit: 1ad68ea46b642949591c1090cecddc28d7ec428e
       source_deployment_parity: true
       source_deployment_parity_note: "The public hosted status endpoint and Cloudflare version metadata report exact source head 1ad68ea."
-      worker_source_repair_release_status: immutable_release_0_1_11_published_both_platforms_live_proven_windows_uninstalled_after_revoke_mac_remains_online
+      worker_source_repair_release_status: immutable_release_0_1_11_published_both_platforms_live_proven_windows_uninstalled_after_revoke_mac_device_revoked_and_worker_uninstalled
       neon:
         checked_at: "2026-08-17T17:36:31Z"
         organization_id_sha256: "sha256:1a80a1978aaf55071ebade555193753126029390191658a7f700bbd06ea07044"

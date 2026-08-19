@@ -1,0 +1,102 @@
+{
+  "schema": "videoforge.v2-06-independent-audit/v1",
+  "checkpoint": "V2-06",
+  "audit_result": "FAIL",
+  "audited_repository_head": "4cf904bab223b318790c5a7e2fd8c6e582b1817c",
+  "audited_source_head": "fd773ed20f410b64da3ea29ff1d33a6675459afd",
+  "deployed_application_source": "1ad68ea46b642949591c1090cecddc28d7ec428e",
+  "audit_method": "Fresh separate read-only audit worker using repository and supplied immutable deployment/device evidence only.",
+  "scope_boundary": "No edits, credentials, live provider/browser calls, resource mutation, deployment, publication, paid request, spend, or V2-07 action.",
+  "severity_counts": {
+    "P0": 0,
+    "P1": 3,
+    "P2": 3
+  },
+  "findings": [
+    {
+      "id": "P1-TENANCY-R2-POSITIVE-PROOF",
+      "severity": "P1",
+      "summary": "The fresh second-account evidence is negative-only; it does not prove positive second-tenant data/object/device/lease ownership, non-superuser hosted RLS behavior, or R2 hash parity.",
+      "references": [
+        "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:350-354",
+        "project-context/GATES.yaml:7-47",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-live-two-account-isolation-fresh/acceptance.json:40-67"
+      ]
+    },
+    {
+      "id": "P1-WORKFLOW-RECOVERY-REPLAY",
+      "severity": "P1",
+      "summary": "The primary cancellation journey passes, but hosted Workflow restart/resume, lease expiry/replay, stale-result rejection, and late-result fencing are not proven by supplied live evidence.",
+      "references": [
+        "project-context/14_TESTING_AND_ACCEPTANCE.md:111-125",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-mac-live-completion-1ad68ea/acceptance.json:84-94"
+      ]
+    },
+    {
+      "id": "P1-FINAL-ROLLBACK",
+      "severity": "P1",
+      "summary": "Rollback/restore was exercised for the earlier 8e96575 deployment, not for final deployed source 1ad68ea / Worker version 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2.",
+      "references": [
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json:117-125",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-mac-live-completion-1ad68ea/acceptance.json:123-129"
+      ]
+    },
+    {
+      "id": "P2-POST-DELETE-R2-INVENTORY",
+      "severity": "P2",
+      "summary": "Output deletion was observed in the hosted Library, but no post-delete R2 inventory/hash read-back is supplied; the recorded 16-object/32.1 MB inventory predates deletion.",
+      "references": [
+        "project-context/CURRENT_STATE.yaml:906-928",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-live-destructive-lifecycle/acceptance.json:24-32,65-71"
+      ]
+    },
+    {
+      "id": "P2-HANDOFF-STALE-MAC-STATE",
+      "severity": "P2",
+      "summary": "The audited handoff contained a stale Mac-online statement after the later confirmed revoke/uninstall; the latest destructive lifecycle evidence is authoritative for final cleanup state.",
+      "references": [
+        "project-context/CURRENT_STATE.yaml:942",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-live-destructive-lifecycle/acceptance.json:34-59"
+      ]
+    },
+    {
+      "id": "P2-CONTEXT-PROFILE-WORD-BUDGET",
+      "severity": "P2",
+      "summary": "Context validation exits 0 but warns the selected profile is 15,166 words against the 15,000-word target.",
+      "references": [
+        "project-context/MANIFEST.yaml:25"
+      ]
+    }
+  ],
+  "verified": {
+    "authority": "V2-06 only; finite cap USD 3; R2 recurring ceiling USD 2/month; no V2-07 authority.",
+    "new_external_spend_usd": 0,
+    "cloudflare": "One Free-plan Worker and one Workflow; deployed source 1ad68ea; immutable media-worker 0.1.11; private Standard APAC R2; last supplied inventory 16 objects/32.1 MB and USD 0 due now.",
+    "neon": "Free plan; migration 36/36; runtime grants and FORCE RLS verified; hosted non-superuser enforcement remains unproven.",
+    "least_privilege_secrets": "Exact allowlist verification is supplied; no credential values were read or recorded.",
+    "primary_device_and_chrome": "Primary live Mac ASR/render/review/cancel evidence, Windows native lifecycle evidence, output deletion, Mac revoke/uninstall, and real Chrome evidence are supplied.",
+    "backup_restore": "Encrypted backup and disposable restore/delete drill passed 36/36 with disposable database count 0.",
+    "cloud_run": "Cloud Run is superseded by the active personal-worker decision; no active Cloud Run scale-to-zero parity claim is proven. RunPod Serverless scale-to-zero qualification belongs to V2-07 and is not proven.",
+    "runpod": "Read-only inventory reports zero Pods, endpoints, active/flex workers, templates, and clusters; two retained 50 GB EU-RO-1 volumes remain at USD 3.50/month each, USD 7/month total; current-day compute/endpoint/Serverless spend is USD 0 with up-to-one-hour billing lag.",
+    "v2_07_safety": "GPU transport remains DISABLED_FAKE_ONLY; RunPod mutating calls and workers started are 0; V2-07 remains blocked."
+  },
+  "unproven_live_claims": [
+    "Positive second-tenant project/object/device/lease proof, hosted non-superuser RLS enforcement, and real private-R2 hash parity",
+    "Hosted Workflow restart/resume, lease expiry/replay, stale-result rejection, and late-result fencing",
+    "Rollback of final deployed source 1ad68ea / Worker 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2",
+    "Post-delete R2 inventory/hash read-back",
+    "Provider-side RunPod Serverless scale-to-zero qualification"
+  ],
+  "commands": [
+    "git diff --quiet 1ad68ea fd773ed -- apps/web packages/control-plane deploy (exit 0; no executable application diff)",
+    "git status --short (exit 0; clean)",
+    "git diff --check (exit 0)",
+    "pnpm context:validate (exit 0; profile word-budget warning)",
+    "pnpm validate:v2-06-deployment (exit 0)",
+    "pnpm verify:active-runtime (exit 0)",
+    "Focused V2-06 tests (30/30, exit 0)",
+    "Supplied canonical CI=1 TURBO_FORCE=true pnpm verify (exit 0; installed Chrome 44/44)"
+  ],
+  "rollback_state": "Earlier deployment rollback/restore is evidenced; final deployed source rollback remains unproven.",
+  "conclusion": "FAIL. No P0. V2-06 cannot be independently accepted or opened for V2-07 from repository and supplied immutable evidence alone. No repair or external action was performed by the auditor."
+}
