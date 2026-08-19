@@ -46,6 +46,11 @@
   },
   "verification": [
     {
+      "commit": "ef2a30c",
+      "area": "fresh authority requires the complete repaired source commit",
+      "result": "PASS"
+    },
+    {
       "commit": "b40af35",
       "area": "exact generated-output prefix/single-use guard and 800-second envelope timeout",
       "result": "PASS"
