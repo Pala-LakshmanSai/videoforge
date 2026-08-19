@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-19T23:29:48Z"
+updated_at: "2026-08-19T23:30:44Z"
 
 phase: serverless_v2_v2_07_repair_handoff_requires_fresh_authority
 implementation_authorized_in_current_task: true
@@ -343,7 +343,7 @@ last_known_provider_resource_truth:
   current_day_cloud_cpu_usd: 0
   current_day_serverless_usd: 0
   auto_pay: DISABLED
-  note: "The 2026-08-19T21:50:19Z redacted REST refresh after exact endpoint/template cleanup shows zero Pods, endpoints, active Serverless workers, and private templates plus the two expected 50 GB retained volumes. The first immutable image's exact 32-item batches failed status-only because RunPod SDK 1.7.0 SLS-Core strips the reserved handler error field. Local source repair commit 1623fa1 emits bounded failure_code and the reconciler prefers it; b40af35 additionally binds generated output authorities to the exact batch prefix with max_uses=1 and aligns the v3 envelope init timeout to the pinned 800 seconds; successor 4311983 closes the exact artifact-path guard; ee69c95 adds exact retained-volume identity proof and concurrent cap fencing. The published digest remains unchanged, so republish requires fresh exact-image authority for complete source 431198333a22d66ad1929244bf92662c53be5a6b."
+  note: "The latest 2026-08-19T23:30:44.600Z redacted REST refresh after exact endpoint/template cleanup shows zero Pods, endpoints, active Serverless workers, and private templates plus exactly the two expected 50 GB EU-RO-1 retained volumes. The first immutable image's exact 32-item batches failed status-only because RunPod SDK 1.7.0 SLS-Core strips the reserved handler error field. Local source repair commit 1623fa1 emits bounded failure_code and the reconciler prefers it; b40af35 additionally binds generated output authorities to the exact batch prefix with max_uses=1 and aligns the v3 envelope init timeout to the pinned 800 seconds; successor 4311983 closes the exact artifact-path guard; ee69c95 adds exact retained-volume identity proof and concurrent cap fencing. The published digest remains unchanged, so republish requires fresh exact-image authority for complete source 431198333a22d66ad1929244bf92662c53be5a6b."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_MAGE_001
