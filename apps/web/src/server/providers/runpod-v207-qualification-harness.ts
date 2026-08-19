@@ -510,6 +510,43 @@ export class RunPodV207QualificationHarness {
     return [first, second];
   }
 
+  async reconcileConcurrentReaders(
+    jobIds: readonly [string, string],
+  ): Promise<readonly [RunPodJobResult, RunPodJobResult]> {
+    this.assertCreated();
+    if (!this.#concurrentReaderConfigHash || this.#readerJobs.length < 2) {
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_POLICY_REQUIRED");
+    }
+    if (jobIds.some((jobId) => !ID.test(jobId))) {
+      throw new RunPodControlError("RUNPOD_JOB_ID_INVALID");
+    }
+    const maxPolls = this.#options.maxPolls ?? 120;
+    const sleep =
+      this.#options.sleep ??
+      ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+    const reconcile = async (client: RunPodServerlessJobClient, jobId: string) => {
+      let latest: RunPodJobResult | null = null;
+      for (let poll = 0; poll < maxPolls; poll += 1) {
+        await this.assertSpendWithinCap();
+        latest = await client.status(jobId);
+        this.mark("concurrent_reader_job_status", {
+          job_id_hash: latest.idHash,
+          status: latest.status,
+          delay_time_ms: latest.delayTimeMs,
+          execution_time_ms: latest.executionTimeMs,
+        });
+        if (TERMINAL_STATUSES.has(latest.status)) return latest;
+        if (poll + 1 < maxPolls) await sleep(this.#options.pollIntervalMs ?? 15_000);
+      }
+      throw new RunPodControlError("RUNPOD_QUALIFICATION_RECONCILIATION_TIMEOUT");
+    };
+    const results = await Promise.all([
+      reconcile(this.#readerJobs[0]!, jobIds[0]),
+      reconcile(this.#readerJobs[1]!, jobIds[1]),
+    ]);
+    return [results[0]!, results[1]!];
+  }
+
   async drain(): Promise<void> {
     this.assertCreated();
     if (this.#guard.snapshot() === "active" || this.#guard.snapshot() === "warm_idle") {
