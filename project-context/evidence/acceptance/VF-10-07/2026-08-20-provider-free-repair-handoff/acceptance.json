@@ -1,0 +1,99 @@
+{
+  "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "recorded_at": "2026-08-19T22:34:00Z",
+  "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
+  "scope": {
+    "provider_calls": false,
+    "remote_mutation": false,
+    "publication": false,
+    "gpu_use": false,
+    "spend_usd": 0,
+    "retained_volume_mutation": false,
+    "retained_volumes_unchanged": true
+  },
+  "lineage": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "volume_id_sha256": "sha256:eae4e1ece86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_mount": "/runpod-volume",
+    "region": "EU-RO-1",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "published_image_digest": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e",
+    "published_image_source_commit": "39541d57ca3c2270c7872ab49387f2484ab1a6e9",
+    "unpublished_repair_source_commit": "b40af353a3e8630bc7f4bc2776ca9879e23ad542"
+  },
+  "local_repairs": {
+    "failure_code_repair": "1623fa1",
+    "fresh_authority_guard": "024547b",
+    "exact_generated_output_prefix_and_single_use_guard": "b40af35",
+    "generated_output_prefix_binding": true,
+    "generated_output_max_uses": 1,
+    "envelope_init_timeout_seconds": 800,
+    "endpoint_template_init_timeout_seconds": 800,
+    "negative_coverage": [
+      "wrong authority bytes/path/volume/GPU/region",
+      "model-volume writes and cache escape",
+      "malformed authority and scoped ports",
+      "duplicate delivery and duplicate reservation",
+      "generated-output replay bound",
+      "cancel and timeout scratch cleanup",
+      "two-reader scope"
+    ]
+  },
+  "verification": [
+    {
+      "commit": "b40af35",
+      "area": "exact generated-output prefix/single-use guard and 800-second envelope timeout",
+      "result": "PASS"
+    },
+    {
+      "command": ".venv/bin/python -m unittest workers/image-media/tests/test_mage_serverless.py",
+      "exit_code": 0,
+      "result": "14 passed"
+    },
+    {
+      "command": "pnpm python:lint",
+      "exit_code": 0,
+      "result": "90 files formatted/checks passed"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/v207-activation-authority.test.ts src/server/providers/runpod-v207-qualification-harness.test.ts",
+      "exit_code": 0,
+      "result": "4 passed"
+    },
+    {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "result": "28 turbo tasks; Cloudflare parity 1/1; package build/lint/typecheck/tests; worker suites; context/secret checks; installed Chrome 44/44"
+    }
+  ],
+  "read_only_runpod_snapshot": {
+    "observed_at": "2026-08-19T21:50:19Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "retained_network_volumes": 2,
+    "serverless_rate_usd_per_hour": 1.1,
+    "secure_rtx4090_rate_usd_per_hour": 0.74,
+    "rtx4090_cuda13_availability": "HIGH_GLOBAL_LOW_EU_RO_1",
+    "current_window_settled_endpoint_billing_usd": 0.004730000044219196
+  },
+  "authority_boundary": {
+    "current_mode": "none",
+    "old_finite_cap_usd_closed": 4,
+    "new_finite_cap_usd": null,
+    "required_before_publication_or_gpu": [
+      "fresh exact immutable image digest",
+      "matching repaired source commit",
+      "new numeric finite cumulative spend cap",
+      "one combined exact publish/create/run/status/cancel/scale-down/retain/delete-if-failed proposal"
+    ],
+    "stop_before": "publication, endpoint mutation, /run submission, GPU allocation, or spend"
+  },
+  "qualification_status": "NOT_QUALIFIED",
+  "next_checkpoint": "V2-07 remains active; stop before V2-08"
+}
