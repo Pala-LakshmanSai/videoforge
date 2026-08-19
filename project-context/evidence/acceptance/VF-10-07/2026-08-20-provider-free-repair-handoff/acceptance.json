@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-19T23:08:53Z",
+  "recorded_at": "2026-08-19T23:09:32Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -121,7 +121,7 @@
     "current_window_settled_endpoint_billing_usd": 0.004730000044219196
   },
   "read_only_runpod_inventory_refresh": {
-    "checked_at": "2026-08-19T22:49:42.220Z",
+    "checked_at": "2026-08-19T23:09:32.324Z",
     "pods": 0,
     "endpoints": 0,
     "private_templates": 0,
