@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-19T22:48:52Z",
+  "recorded_at": "2026-08-19T22:59:40Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -29,7 +29,7 @@
     "failure_code_repair": "1623fa1",
     "fresh_authority_guard": "024547b",
     "fresh_authority_required_source_commit": "b40af353a3e8630bc7f4bc2776ca9879e23ad542",
-    "exact_generated_output_prefix_and_single_use_guard": "b40af35",
+    "exact_generated_output_prefix_and_single_use_guard": "b40af35 + 4311983",
     "generated_output_prefix_binding": true,
     "generated_output_max_uses": 1,
     "request_authority_ttl_seconds": 7200,
@@ -63,6 +63,11 @@
       "result": "PASS"
     },
     {
+      "commit": "4311983",
+      "area": "generated-output paths require the exact Mage batch prefix and one artifact identifier",
+      "result": "PASS"
+    },
+    {
       "commit": "b40af35",
       "area": "exact generated-output prefix/single-use guard and 800-second envelope timeout",
       "result": "PASS"
@@ -70,7 +75,7 @@
     {
       "command": ".venv/bin/python -m unittest workers/image-media/tests/test_mage_serverless.py",
       "exit_code": 0,
-      "result": "14 passed"
+      "result": "15 passed"
     },
     {
       "command": "pnpm python:lint",
