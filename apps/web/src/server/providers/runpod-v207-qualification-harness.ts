@@ -400,6 +400,15 @@ export class RunPodV207QualificationHarness {
     throw new RunPodControlError("RUNPOD_QUALIFICATION_RECONCILIATION_TIMEOUT");
   }
 
+  async confirmWarmIdle(): Promise<void> {
+    this.assertCreated();
+    if (this.#guard.snapshot() !== "active" && this.#guard.snapshot() !== "warm_idle") {
+      throw new RunPodControlError("RUNPOD_WARM_IDLE_NOT_ALLOWED");
+    }
+    await this.#jobs!.confirmWarmIdle();
+    this.mark("warm_idle_confirmed");
+  }
+
   async cancel(jobId: string): Promise<RunPodJobResult> {
     this.assertCreated();
     if (!ID.test(jobId)) throw new RunPodControlError("RUNPOD_JOB_ID_INVALID");
