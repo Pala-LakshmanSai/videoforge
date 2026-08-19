@@ -13,9 +13,7 @@ import {
   type RunPodV207DispatchBatchInput,
   type RunPodV207OutputAuthority,
 } from "./runpod-v207-qualification-harness";
-
-const IMAGE =
-  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e";
+import { parseV207ActivationAuthority } from "./v207-activation-authority";
 const MANIFEST = "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b";
 const VOLUME = "sha256:eae4e1ece86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 const VOLUME_ID = "c7kg89brtj";
@@ -29,7 +27,9 @@ const ROUTE =
   "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/v207/generated-output-port";
 const RESULT_PATH = "/tmp/videoforge-v207-live-result.json";
 const BILLING_START = "2026-08-20T00:00:00.000Z";
-const finiteCapUsd = 4;
+const ACTIVATION = parseV207ActivationAuthority(process.env);
+const IMAGE = ACTIVATION.image;
+const finiteCapUsd = ACTIVATION.capUsd;
 
 type AnyRecord = Record<string, any>;
 
@@ -465,6 +465,7 @@ async function main(): Promise<void> {
       VIDEOFORGE_MAGE_VOLUME_ID_HASH: VOLUME,
       VIDEOFORGE_MAGE_WORKER_TOKEN: randomBytes(32).toString("hex"),
       VIDEOFORGE_MAGE_GPU_OFFERING_ID: "NVIDIA GeForce RTX 4090",
+      RUNPOD_INIT_TIMEOUT: "800",
       VIDEOFORGE_RECEIPT_KEY_ID: receiptKeyId,
       VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX: receiptSecret.toString("hex"),
     },
