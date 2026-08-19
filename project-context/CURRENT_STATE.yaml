@@ -145,8 +145,7 @@ repository:
   branch_published: true
   current_source_head: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   current_source_head_semantics: deployed_executable_source_identity_not_documentation_head
-  latest_repository_handoff_commit: "e2720782949917c3c06e2aecb20016658bb6c387"
-  last_verified_repository_head: "e2720782949917c3c06e2aecb20016658bb6c387"
+  repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
   current_source_head_note: "Executable source e673527 is deployed as Worker 32bfc4bf-4421-4703-9095-2afc3515fda3 with source/status parity. Later commits are documentation, evidence, and bounded deployment-tooling handoffs; auditors must resolve the actual Git HEAD independently. The first final audit's repository findings are reconciled, a fresh re-audit is pending, and V2-07 is blocked."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
