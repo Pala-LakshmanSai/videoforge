@@ -35,6 +35,7 @@
     "request_authority_ttl_seconds": 7200,
     "envelope_init_timeout_seconds": 800,
     "endpoint_template_init_timeout_seconds": 800,
+    "durable_per_unit_resume": "PASS: accepted-unit resume carries only unresolved items and never regenerates accepted units",
     "negative_coverage": [
       "wrong authority bytes/path/volume/GPU/region",
       "model-volume writes and cache escape",
