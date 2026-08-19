@@ -23,7 +23,7 @@ SUPPORTED_GPU_NAMES = {
     "NVIDIA RTX PRO 4500 Blackwell": "RTX PRO 4500",
 }
 SHA256 = re.compile(r"^sha256:[a-f0-9]{64}$")
-IMAGE_DIGEST = re.compile(r"^ghcr\.io/pala-lakshmansai/videoforge-mage-cp06@sha256:[a-f0-9]{64}$")
+IMAGE_DIGEST = re.compile(r"^ghcr\.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:[a-f0-9]{64}$")
 
 
 class MageRuntime:
