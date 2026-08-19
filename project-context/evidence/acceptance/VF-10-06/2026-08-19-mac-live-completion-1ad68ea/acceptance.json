@@ -1,0 +1,247 @@
+{
+  "schema_version": "videoforge.v2-06-mac-live-completion/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T04:26:36Z",
+  "result": "FAIL_WINDOWS_SECOND_ACCOUNT_DELETE_AND_INDEPENDENT_AUDIT_REMAIN",
+  "audit_independence": "SAME_CHAT_COMPLETION_HANDOFF_NOT_INDEPENDENT_AUDIT",
+  "authority": {
+    "finite_external_cap_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "actual_new_external_spend_usd": 0,
+    "runpod_mode": "READ_ONLY_ZERO_MUTATION",
+    "v2_07_authorized": false
+  },
+  "source_and_deployment": {
+    "branch": "codex/serverless-v2-roadmap",
+    "source_head": "1ad68ea46b642949591c1090cecddc28d7ec428e",
+    "deployed_commit": "1ad68ea46b642949591c1090cecddc28d7ec428e",
+    "cloudflare_worker": "videoforge-v2-06-staging",
+    "cloudflare_version_id": "5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2",
+    "cloudflare_workflow": "videoforge-v2-06-staging-video",
+    "r2_bucket": "videoforge-v2-06-staging-private",
+    "r2_storage_class": "Standard",
+    "r2_location": "APAC",
+    "r2_object_count": 16,
+    "r2_bucket_size_display": "32.1 MB",
+    "gpu_transport": "DISABLED_FAKE_ONLY",
+    "provider_cpu_spend": "$0",
+    "migration_head": 36,
+    "runtime_role": "videoforge_v2_06_runtime",
+    "runtime_role_verification": "FORCE_RLS_EXACT_GRANTS_RENDER_PLANS_SELECT_ONLY"
+  },
+  "immutable_release": {
+    "tag": "media-worker-v0.1.11",
+    "target_commit": "2740dd13c955a6d8705ee341f7a6d4a522d50862",
+    "github_is_immutable": true,
+    "release_manifest_sha256": "sha256:b33292c0e88cc53246c0ec3a34cc43d74046840a409ee444473ab629cb06a9d9",
+    "execution_bundle_sha256": "sha256:6955561b0e64b1c02ce68a8fd8918ba9a27e952ffb82062b6abae0b46827a55c",
+    "windows_setup_sha256": "sha256:ca9aa00f40f70680488f2735cddbd77bf03cc56d1f2d1683404e048d8ed2d3ce",
+    "windows_setup_size_bytes": 225808954,
+    "windows_trust": "UNSIGNED_BETA",
+    "macos_dmg_sha256": "sha256:80d2b44f98b852cf79645efb345c221bfaa5f6f1022a5f62af560c110d948910",
+    "macos_dmg_size_bytes": 285620696,
+    "macos_trust": "AD_HOC_BETA"
+  },
+  "mac_native": {
+    "installed_version": "0.1.11",
+    "dmg_verified": true,
+    "deep_strict_codesign_verified": true,
+    "launch_agent": "com.videoforge.personal-media-worker",
+    "restart_reconnect": "PASSED",
+    "device_id": "2ac89697-741f-4aa2-9e47-97962d117b38",
+    "single_device_for_installation": true,
+    "final_state": "RUNNING_ONLINE",
+    "credential_value_read": false,
+    "rollback_copy": "/tmp/videoforge-worker-0110-rollback.V9kuQg/VideoForge Worker.app"
+  },
+  "hosted_owned_journey": {
+    "tenant_email": "lakshmansai121@gmail.com",
+    "project_id": "ff6edb5d-fbc6-4b40-818d-f16b2497d4df",
+    "project_revision_id": "fc49814c-0c33-4024-8995-eb8c629e0724",
+    "fixture_r2_bytes": 4684291,
+    "asr": {
+      "attempt_id": "e1be1ae6-b25f-4841-b68a-18ce614fc12c",
+      "state": "SUCCEEDED",
+      "result_checksum_sha256": "sha256:44b7baa4d3699e2cef95030f5734968b81edb509bfbed3e6627cef288e6bb238",
+      "result_receipt_bytes": 11712,
+      "replay_count": 0,
+      "worker_version": "0.1.11"
+    },
+    "render": {
+      "attempt_id": "f9686244-081c-4303-87b1-8048cc9b1164",
+      "state": "SUCCEEDED",
+      "result_receipt_checksum_sha256": "sha256:f415ff3f783da9ed13ef1725662e31f27fadedb4175e7c44cbbf6876dcf9b91f",
+      "result_receipt_bytes": 1321,
+      "approved_output_checksum_sha256": "sha256:b3d1a1b1d9c69053c62a6c035a9e58f756f44cf4ff511613f5da3a485bc3efac",
+      "replay_count": 0,
+      "worker_version": "0.1.11",
+      "review": "APPROVED_IN_REAL_CHROME"
+    },
+    "chrome": "REAL_SIGNED_IN_CHROME_PROJECT_PROGRESS_REVIEW_AND_PRIVATE_DOWNLOAD_LINK",
+    "local_fixture_used_as_deployment_proof": false
+  },
+  "durable_cancel": {
+    "project_id": "bf138c1a-9598-40a4-85bd-b37723e9dd90",
+    "attempt_id": "ba76866c-7246-41cf-b7ee-251eaafa1746",
+    "cancelled_from": "OUTBOXED",
+    "terminal_state": "CANCELLED",
+    "cancellation_requested_at_present": true,
+    "terminal_at_present": true,
+    "replay_count": 0,
+    "worker_was_offline": true,
+    "worker_restored_running_afterward": true,
+    "new_spend_usd": 0
+  },
+  "backup_restore": {
+    "status": "PASSED_PREVIOUSLY_IN_THIS_BOUNDED_COMPLETION",
+    "evidence": "evidence/acceptance/VF-10-06/2026-08-19-live-backup-restore-804f7d3/acceptance.json",
+    "source_migration_ledger": "36/36",
+    "encrypted_backup_present": true,
+    "disposable_restore_database_final_count": 0
+  },
+  "runpod_current_read_only": {
+    "observed_at_utc": "2026-08-19T04:24:00Z",
+    "pods": 0,
+    "serverless_endpoints": 0,
+    "active_plus_flex_workers": 0,
+    "private_templates": 0,
+    "clusters": 0,
+    "retained_volumes": 2,
+    "retained_volume_gb_each": 50,
+    "retained_region": "EU-RO-1",
+    "current_spend_rate_usd_per_hour_displayed": 0.01,
+    "effective_retained_storage_usd_per_month": 7,
+    "current_day_gpu_usd": 0,
+    "current_day_cpu_usd": 0,
+    "current_day_endpoint_usd": 0,
+    "current_day_serverless_usd": 0,
+    "current_day_storage_usd_so_far": 0.039,
+    "billing_lag": "up to one hour",
+    "mutations": 0
+  },
+  "rollback": {
+    "cloudflare_rollback_and_restore": "PASSED_PREVIOUSLY",
+    "cloudflare_evidence": "evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json",
+    "current_cloudflare_version": "5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2",
+    "current_deployed_commit": "1ad68ea46b642949591c1090cecddc28d7ec428e",
+    "mac_previous_release_preserved": true,
+    "migration_policy": "ADDITIVE_0029_THROUGH_0036_RETAINED"
+  },
+  "commands": [
+    {
+      "command": "pnpm python:lint; node scripts/test-workers.mjs; V2-06 release safety tests",
+      "exit_code": 0,
+      "result": "worker suites and release safety passed"
+    },
+    {
+      "command": "gh workflow run/view Media worker release 32214398285",
+      "exit_code": 0,
+      "result": "Windows, macOS, and immutable publish jobs succeeded"
+    },
+    {
+      "command": "gh release view/download media-worker-v0.1.11; sha256sum; hdiutil verify; codesign --verify --deep --strict",
+      "exit_code": 0,
+      "result": "immutable release and Mac artifact identities verified"
+    },
+    {
+      "command": "wrangler deploy rendered V2-06 config",
+      "exit_code": 0,
+      "result": "version 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2 deployed at source head"
+    },
+    {
+      "command": "node deploy/v2-06/apply-migrations-and-grants.mjs --verify-only --apply-grants",
+      "exit_code": 0,
+      "result": "migration 36/36, FORCE RLS, exact least-privilege grants, render plans SELECT-only"
+    },
+    {
+      "command": "V2-06 v4 owned render fixture live provision",
+      "exit_code": 0,
+      "result": "six exact private R2 objects and one immutable Neon plan committed within 5 MB cap"
+    },
+    {
+      "command": "real Chrome Start transcription, refresh, Review video, Approve final",
+      "exit_code": 0,
+      "result": "ASR and render succeeded on Mac 0.1.11; final private MP4 approved"
+    },
+    {
+      "command": "real Chrome v5 Start transcription then Cancel while worker booted out",
+      "exit_code": 0,
+      "result": "OUTBOXED attempt durably became CANCELLED; worker was restored running"
+    },
+    {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "result": "canonical graph passed; installed Chrome 44/44"
+    },
+    {
+      "command": "wrangler r2 bucket info videoforge-v2-06-staging-private",
+      "exit_code": 0,
+      "result": "16 objects, 32.1 MB, Standard, APAC"
+    },
+    {
+      "command": "authenticated RunPod Pods, Serverless, Storage, Clusters, Templates, Billing read-only browser observations",
+      "exit_code": 0,
+      "result": "zero compute resources/workers, two retained 50 GB EU-RO-1 volumes, storage-only billing"
+    }
+  ],
+  "diagnostic_nonzero_exits": [
+    {
+      "exit_code": 1,
+      "cause": "The v3 retry fixture uploaded exact private objects but its Neon transaction hit the existing normalized project-name uniqueness fence. No row was committed and objects were intentionally retained for audit; v4 used a new append-only project identity and passed."
+    },
+    {
+      "exit_code": 1,
+      "cause": "An initial verification invocation omitted the required --apply-grants verifier mode; the corrected read-only verification passed."
+    },
+    {
+      "exit_code": 1,
+      "cause": "Two diagnostic SQL queries used one nonexistent table name and one unsupported max(boolean); corrected scoped queries passed and did not mutate data."
+    }
+  ],
+  "findings": {
+    "p0": [],
+    "p1": [
+      {
+        "id": "V2-06-P1-WINDOWS-NATIVE-PARITY",
+        "status": "USER_WINDOWS_TASK_RUNNING",
+        "detail": "The immutable 0.1.11 Windows installer is ready; native install/update/autostart/pairing/reconnect/uninstall evidence must come from the user's Windows x64 task."
+      },
+      {
+        "id": "V2-06-P1-LIVE-TWO-ACCOUNT-ISOLATION",
+        "status": "SECOND_GOOGLE_SESSION_REQUIRED",
+        "detail": "One owned Google tenant passed live ASR/render/cancel. A controllable signed-in session for the second admitted Google identity is still required for live negative cross-tenant proof; local two-account fixtures are not deployment proof."
+      },
+      {
+        "id": "V2-06-P1-EXPLICIT-DELETE-UNINSTALL",
+        "status": "ACTION_TIME_USER_CONFIRMATION_REQUIRED",
+        "detail": "The successful private output and paired Mac device remain intact. Destructive output deletion, device revoke, and uninstall were not inferred from broad authority and require exact action-time user confirmation."
+      },
+      {
+        "id": "V2-06-P1-INDEPENDENT-AUDIT",
+        "status": "FRESH_TASK_REQUIRED",
+        "detail": "This completion handoff cannot independently audit its own repairs."
+      }
+    ],
+    "p2": [
+      {
+        "id": "V2-06-P2-ORPHAN-FIXTURE-OBJECTS",
+        "status": "RETAINED_AUDIT_SCOPE",
+        "detail": "Append-only failed/retried fixture inputs remain in the private bucket. Current total bucket truth is 16 objects and 32.1 MB; no automatic delete was attempted."
+      }
+    ]
+  },
+  "current_state": "MAC_LIVE_COMPLETE_WINDOWS_SECOND_ACCOUNT_DELETE_AND_INDEPENDENT_AUDIT_OPEN",
+  "spend_truth": {
+    "v2_06_new_external_spend_usd": 0,
+    "finite_cap_remaining_usd": 3,
+    "r2_current_size": "32.1 MB",
+    "r2_current_charge_usd_per_month": 0,
+    "runpod_continuing_storage_usd_per_month": 7,
+    "runpod_new_compute_spend_usd": 0
+  },
+  "v2_07_safety": {
+    "safe_to_begin": false,
+    "reason": "V2-06 is not independently accepted and Windows plus two-account/delete gates remain open. No V2-07 authority exists."
+  }
+}

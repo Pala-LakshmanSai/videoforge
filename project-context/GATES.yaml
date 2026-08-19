@@ -1,5 +1,5 @@
 schema_version: "2.0"
-updated_at: "2026-08-16"
+updated_at: "2026-08-19"
 evidence_root: "evidence/gates"
 
 # This registry contains only active V2 gates and accepted foundations still used by V2.
@@ -98,9 +98,9 @@ gates:
     blocks: hosted_production_claim
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatehosting001-hosted-controlcpu-plane"
     owner: V2-06
-    last_run: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-05aa914/acceptance.json
-    last_run_at: "2026-08-18"
-    result: source_repair_green_hosted_completion_two_account_isolation_windows_backup_restore_rollback_and_independent_acceptance_open
+    last_run: evidence/acceptance/VF-10-06/2026-08-19-mac-live-completion-1ad68ea/acceptance.json
+    last_run_at: "2026-08-19"
+    result: mac_live_asr_render_cancel_backup_restore_rollback_and_immutable_release_green_windows_second_account_delete_and_independent_acceptance_open
 
   GATE_SERVERLESS_MAGE_001:
     status: open
