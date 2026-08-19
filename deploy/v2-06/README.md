@@ -215,8 +215,10 @@ videoforge-v2-06-staging-private`. Wildcard origins and headers are forbidden.
   `ggml-base.en` model. Every executable and model is checked against the release manifest before
   the worker connects; there is no first-run model download or user configuration. Scratch is
   removed after terminal completion.
-- Rollback deploys the previously recorded Cloudflare Worker version and prior immutable desktop release
-  manifest. Schema migrations 0029-0036 are additive and retained. Successful final video objects are
+- Rollback first selects the previously recorded Cloudflare Worker code version, then performs an
+  ordinary deployment of the intended restored source/config so code and deployment metadata converge;
+  rollback selection alone is not claimed atomic. The prior immutable desktop release manifest remains
+  available. Schema migrations 0029-0036 are additive and retained. Successful final video objects are
   not time-deleted; the user-facing Delete operation owns durable R2 deletion. Only failed/cancelled
   transient attempt objects use bounded retention. Auth/session tables rely on Neon native PITR rather
   than the portable metadata export because they contain secret-bearing values.

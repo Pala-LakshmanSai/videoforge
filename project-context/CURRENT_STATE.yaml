@@ -130,7 +130,7 @@ runpod_account_scope:
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_future_inventory_or_mutation
-  current_authority: read_only_inventory_only
+  current_authority: none_historical_snapshot_only
   mutation_authorized: false
   gpu_use_authorized: false
   spend_authorized_usd: 0
@@ -144,8 +144,10 @@ repository:
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
   current_source_head: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
-  last_verified_repository_head: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
-  current_source_head_note: "Current repaired HEAD e673527 is deployed as Worker 32bfc4bf-4421-4703-9095-2afc3515fda3 with source/status parity. Same-task live closure is complete; only the fresh independent repository/evidence audit remains, and V2-07 is blocked."
+  current_source_head_semantics: deployed_executable_source_identity_not_documentation_head
+  latest_repository_handoff_commit: "ec5f92844d4121e7a593c099081e5ff6359497b1"
+  last_verified_repository_head: "ec5f92844d4121e7a593c099081e5ff6359497b1"
+  current_source_head_note: "Executable source e673527 is deployed as Worker 32bfc4bf-4421-4703-9095-2afc3515fda3 with source/status parity. Later commits are documentation, evidence, and bounded deployment-tooling handoffs; auditors must resolve the actual Git HEAD independently. The first final audit's repository findings are reconciled, a fresh re-audit is pending, and V2-07 is blocked."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit

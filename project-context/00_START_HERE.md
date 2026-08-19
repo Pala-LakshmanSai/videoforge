@@ -1,8 +1,8 @@
 # VideoForge: start here
 
-Status: V2-06 same-chat live completion is recorded, but the fresh evidence-only independent audit is FAIL
-with three P1 findings and one P2 evidence gap; V2-07 remains blocked. The current audit has no live-verification, remote-mutation,
-or spend authority.
+Status: V2-06 live closure is recorded. The first fresh audit found one stale-state P1 and one
+cap-provenance P2; both repository records are reconciled and a fresh evidence-only re-audit is
+pending. V2-07 remains blocked. No live verification, mutation, or spend is currently authorized.
 Context schema: `2.0`
 Last updated: `2026-08-19`
 
