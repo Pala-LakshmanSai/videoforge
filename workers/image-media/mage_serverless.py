@@ -6,6 +6,7 @@ import asyncio
 import base64
 import hashlib
 import os
+import re
 import time
 from contextlib import contextmanager
 from collections.abc import Iterator
@@ -31,6 +32,26 @@ _runtime: MageRuntime | None = None
 _startup_lock = asyncio.Lock()
 _delivery_lock = asyncio.Lock()
 _claimed_deliveries: set[str] = set()
+
+_GENERATED_OUTPUT_SCHEMA = "artifact-generated-output-authority/v1"
+_GENERATED_OUTPUT_KEYS = frozenset(
+    {
+        "schema_version",
+        "reservation_id",
+        "account_id",
+        "workspace_id",
+        "method",
+        "path",
+        "content_type",
+        "max_content_length",
+        "expires_at",
+        "max_uses",
+        "capability_handle",
+    }
+)
+_IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$")
+_CONTENT_TYPE = re.compile(r"^[a-z0-9][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*$")
+_CAPABILITY = re.compile(r"^[A-Za-z0-9._:-]{32,512}$")
 
 
 def _endpoint_id_hash() -> str:
@@ -81,6 +102,38 @@ def _put_output(port: dict[str, Any], url: str, body: bytes) -> int:
     return round(time.monotonic() * 1000)
 
 
+def _put_generated_output(authority: dict[str, Any], url: str, body: bytes) -> tuple[int, str]:
+    """Upload bytes through a bounded generated-output authority.
+
+    Unlike an exact v3 PUT port, this authority intentionally does not pretend to know the
+    output length/hash before inference.  The worker measures both facts here, enforces the
+    authority's byte ceiling, and returns the measured hash for the signed receipt.  The
+    control plane still performs the exact v3 finalize/commit step against this reservation.
+    """
+    _validate_output_url(url)
+    if len(body) < 1 or len(body) > authority["max_content_length"]:
+        raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_LENGTH_INVALID")
+    checksum = f"sha256:{hashlib.sha256(body).hexdigest()}"
+    request = Request(
+        url,
+        data=body,
+        method="PUT",
+        headers={
+            "content-type": authority["content_type"],
+            "content-length": str(len(body)),
+        },
+    )
+    try:
+        with urlopen(request, timeout=60) as response:
+            if response.status not in {200, 201, 204}:
+                raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_UPLOAD_FAILED")
+    except ServerlessMageError:
+        raise
+    except Exception as error:
+        raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_UPLOAD_FAILED") from error
+    return round(time.monotonic() * 1000), checksum
+
+
 def _validate_output_url(url: object) -> None:
     """Reject non-HTTPS or malformed presigned destinations before model startup."""
     if not isinstance(url, str) or len(url) > 8_192:
@@ -107,13 +160,78 @@ def _required(value: Any, key: str) -> dict[str, Any]:
     return value[key]
 
 
+def _validate_generated_output_authority(
+    authority: dict[str, Any], *, account_id: str, workspace_id: str, attempt_id: str, now: datetime
+) -> None:
+    """Validate the additive generated-output capability before model startup.
+
+    This deliberately does not accept a v3 port with omitted/placeholder bytes.  The v3
+    contract remains exact; this separate authority only grants one bounded tenant/path slot
+    until the producer supplies the actual bytes for finalization.
+    """
+    if set(authority) != _GENERATED_OUTPUT_KEYS:
+        raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_AUTHORITY_INVALID")
+    if authority.get("schema_version") != _GENERATED_OUTPUT_SCHEMA:
+        raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_SCHEMA_INVALID")
+    if authority.get("account_id") != account_id or authority.get("workspace_id") != workspace_id:
+        raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_SCOPE_MISMATCH")
+    if authority.get("method") != "PUT":
+        raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_METHOD_INVALID")
+    reservation_id = authority.get("reservation_id")
+    if not isinstance(reservation_id, str) or not _IDENTIFIER.fullmatch(reservation_id):
+        raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_RESERVATION_INVALID")
+    content_type = authority.get("content_type")
+    if not isinstance(content_type, str) or not _CONTENT_TYPE.fullmatch(content_type):
+        raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_CONTENT_TYPE_INVALID")
+    maximum = authority.get("max_content_length")
+    if (
+        not isinstance(maximum, int)
+        or isinstance(maximum, bool)
+        or maximum < 1
+        or maximum > 10_737_418_240
+    ):
+        raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_LENGTH_INVALID")
+    path = authority.get("path")
+    expected_prefix = f"/tenant/{account_id}/workspace/{workspace_id}/"
+    if (
+        not isinstance(path, str)
+        or not path.startswith(expected_prefix)
+        or f"/job/{attempt_id}/" not in path
+        or "?" in path
+        or "#" in path
+        or "/../" in path
+        or path.endswith("/")
+    ):
+        raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_PATH_MISMATCH")
+    expires_at = authority.get("expires_at")
+    if not isinstance(expires_at, str) or not expires_at.endswith("Z"):
+        raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_EXPIRY_INVALID")
+    try:
+        parsed_expiry = datetime.fromisoformat(expires_at[:-1] + "+00:00")
+    except ValueError as error:
+        raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_EXPIRY_INVALID") from error
+    if parsed_expiry.tzinfo is None or now.astimezone(UTC) >= parsed_expiry.astimezone(UTC):
+        raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_EXPIRED")
+    max_uses = authority.get("max_uses")
+    if not isinstance(max_uses, int) or isinstance(max_uses, bool) or not 1 <= max_uses <= 3:
+        raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_REPLAY_BOUND_INVALID")
+    capability = authority.get("capability_handle")
+    if not isinstance(capability, str) or not _CAPABILITY.fullmatch(capability):
+        raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_CAPABILITY_INVALID")
+
+
 def _validate_scoped_ports(
     ports: dict[str, Any],
     *,
+    generated_output_authorities: object,
     accepted: dict[str, Any],
     attempt_id: str,
     now: datetime,
-) -> tuple[tuple[dict[str, Any], ...], tuple[dict[str, Any], ...]]:
+) -> tuple[
+    tuple[dict[str, Any], ...],
+    tuple[dict[str, Any], ...],
+    tuple[dict[str, Any], ...],
+]:
     """Validate every port before acquiring a worker or touching the model volume."""
     raw_inputs = ports.get("inputs")
     raw_outputs = ports.get("outputs")
@@ -121,14 +239,29 @@ def _validate_scoped_ports(
         raise ServerlessMageError("MAGE_SERVERLESS_PORT_SHAPE_INVALID")
     if any(not isinstance(port, dict) for port in (*raw_inputs, *raw_outputs)):
         raise ServerlessMageError("MAGE_SERVERLESS_PORT_SHAPE_INVALID")
+    if not isinstance(generated_output_authorities, list) or any(
+        not isinstance(authority, dict) for authority in generated_output_authorities
+    ):
+        raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_AUTHORITY_SHAPE_INVALID")
     input_ports = tuple(raw_inputs)
     output_ports = tuple(raw_outputs)
-    if len(output_ports) == 0:
+    generated_authorities = tuple(generated_output_authorities)
+    if len(output_ports) == 0 and len(generated_authorities) == 0:
         raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_PORT_COUNT_INVALID")
     expected_ids = tuple(accepted["artifacts"]["transfer_port_reservation_ids"])
-    actual_ids = tuple(port.get("reservation_id") for port in output_ports)
+    actual_ids = tuple(port.get("reservation_id") for port in output_ports) + tuple(
+        authority.get("reservation_id") for authority in generated_authorities
+    )
     if actual_ids != expected_ids:
         raise ServerlessMageError("MAGE_SERVERLESS_PORT_AUTHORITY_MISMATCH")
+    seen_ids: set[str] = set()
+    for reservation_id in actual_ids:
+        if isinstance(reservation_id, str):
+            if reservation_id in seen_ids:
+                raise ServerlessMageError("MAGE_SERVERLESS_PORT_REPLAYED")
+            seen_ids.add(reservation_id)
+    if output_ports and generated_authorities:
+        raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_AUTHORITY_MODE_MISMATCH")
     account_id = accepted["tenant"]["account_id"]
     workspace_id = accepted["tenant"]["workspace_id"]
     for port in input_ports:
@@ -149,7 +282,15 @@ def _validate_scoped_ports(
             method="PUT",
             now=now,
         )
-    return input_ports, output_ports
+    for authority in generated_authorities:
+        _validate_generated_output_authority(
+            authority,
+            account_id=account_id,
+            workspace_id=workspace_id,
+            attempt_id=attempt_id,
+            now=now,
+        )
+    return input_ports, output_ports, generated_authorities
 
 
 async def _claim_delivery(attempt_id: str) -> None:
@@ -234,19 +375,28 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
         envelope = _required(payload, "envelope")
         batch = _required(payload, "batch")
         ports = _required(payload, "ports")
-        accepted = validate_envelope(envelope, now=datetime.now(UTC), **_authority_expectations(envelope))
+        accepted = validate_envelope(
+            envelope, now=datetime.now(UTC), **_authority_expectations(envelope)
+        )
         mage_job = MageJob.from_value(batch)
-        if accepted["work"]["lane"] != "mage_image" or accepted["work"]["attempt_id"] != mage_job.attempt_id:
+        if (
+            accepted["work"]["lane"] != "mage_image"
+            or accepted["work"]["attempt_id"] != mage_job.attempt_id
+        ):
             raise ServerlessMageError("MAGE_SERVERLESS_ATTEMPT_MISMATCH")
         if accepted["work"]["item_count"] != len(mage_job.items):
             raise ServerlessMageError("MAGE_SERVERLESS_ITEM_COUNT_MISMATCH")
-        input_ports, output_ports = _validate_scoped_ports(
+        input_ports, output_ports, generated_output_authorities = _validate_scoped_ports(
             ports,
+            generated_output_authorities=payload.get("generated_output_authorities", []),
             accepted=accepted,
             attempt_id=mage_job.attempt_id,
             now=datetime.now(UTC),
         )
-        if len(output_ports) != len(mage_job.items):
+        output_targets: tuple[dict[str, Any], ...] = (
+            generated_output_authorities if generated_output_authorities else output_ports
+        )
+        if len(output_targets) != len(mage_job.items):
             raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_PORT_COUNT_INVALID")
         output_urls = payload.get("output_put_urls")
         if not isinstance(output_urls, list) or len(output_urls) != len(mage_job.items):
@@ -271,18 +421,52 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
             now=started,
         ) as worker_io:
             # RunPod cancellation interrupts this coroutine; context cleanup removes all scratch.
+            worker_io.scratch.safe_path("outputs", directory=True)
             for index, item in enumerate(mage_job.items):
                 generated = await runtime.generate(_inline_item(mage_job, index).__dict__)
                 output = base64.b64decode(generated.pop("output_base64"), validate=True)
                 output_path = worker_io.scratch.safe_path(f"outputs/{item.scene_id}.png")
                 output_path.write_bytes(output)
-                if hashlib.sha256(output).hexdigest() != generated["output_sha256"].removeprefix("sha256:"):
+                if hashlib.sha256(output).hexdigest() != generated["output_sha256"].removeprefix(
+                    "sha256:"
+                ):
                     raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_HASH_INVALID")
                 upload_started_ms = round(time.monotonic() * 1000)
-                _put_output(output_ports[index], output_urls[index], output)
-                object_key = str(output_ports[index]["path"]).removeprefix("/")
-                receipt_items.append({"item_id": item.scene_id, "state": "SUCCEEDED", "output_object_key": object_key, "output_sha256": generated["output_sha256"], "output_bytes": len(output), "probe": {"width": generated["width"], "height": generated["height"], "format": "png", "source": "WORKER_PNG_PROBE"}})
-                results.append({**generated, "output_port_reservation_id": output_ports[index]["reservation_id"]})
+                if generated_output_authorities:
+                    _, measured_checksum = _put_generated_output(
+                        generated_output_authorities[index], output_urls[index], output
+                    )
+                    if measured_checksum != generated["output_sha256"]:
+                        raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_HASH_INVALID")
+                else:
+                    _put_output(output_ports[index], output_urls[index], output)
+                    measured_checksum = generated["output_sha256"]
+                output_target = output_targets[index]
+                object_key = str(output_target["path"]).removeprefix("/")
+                receipt_items.append(
+                    {
+                        "item_id": item.scene_id,
+                        "state": "SUCCEEDED",
+                        "output_object_key": object_key,
+                        "output_sha256": generated["output_sha256"],
+                        "output_bytes": len(output),
+                        "probe": {
+                            "width": generated["width"],
+                            "height": generated["height"],
+                            "format": "png",
+                            "source": "WORKER_PNG_PROBE",
+                        },
+                    }
+                )
+                results.append(
+                    {
+                        **generated,
+                        "output_port_reservation_id": output_target["reservation_id"],
+                        "output_object_key": object_key,
+                        "output_sha256": measured_checksum,
+                        "output_bytes": len(output),
+                    }
+                )
             # The second full verification is deliberately after every upload and before receipt.
             post_manifest = await asyncio.to_thread(
                 verify_model_root,
@@ -299,18 +483,71 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 "attempt_id": mage_job.attempt_id,
                 "provider_job_id": str(job.get("id", "unknown")),
                 "worker_id": os.environ.get("RUNPOD_POD_ID", "serverless"),
-                "tenant": accepted["tenant"], "lane": "mage_image",
-                "deployment": {"deployment_id": accepted["runtime"]["deployment_id"], "endpoint_id_sha256": _endpoint_id_hash(), "container_digest": accepted["runtime"]["container_digest"], "intended_region": "EU-RO-1", "intended_volume_id_sha256": accepted["runtime"]["volume_id_sha256"], "model_manifest_sha256": accepted["runtime"]["model_manifest_sha256"]},
-                "runtime_probe": {"gpu_name": runtime.gpu.get("name"), "gpu_count": 1, "gpu_uuid_sha256": None, "driver_version": os.environ.get("VIDEOFORGE_MAGE_DRIVER_VERSION", "UNKNOWN"), "cuda_version": runtime.gpu.get("cuda_version"), "probe_source": "WORKER_RUNTIME_SELF_REPORT"},
-                "volume_verification": {"manifest_sha256_before": accepted["runtime"]["model_manifest_sha256"], "manifest_sha256_after": accepted["runtime"]["model_manifest_sha256"], "mutation_detected": False, "cross_mount_detected": False},
-                "model_ready_evidence": {"state": "MODEL_READY", "warmup_completed": True, "warmup_output_sha256": runtime.warmup_output_sha256 or _sha_environment("VIDEOFORGE_MAGE_WARMUP_OUTPUT_SHA256")},
-                "timings": {"allocation_ms": 0, "container_ready_ms": 0, "volume_verified_ms": runtime.bootstrap_evidence.get("duration_ms", 0) if runtime.bootstrap_evidence else 0, "model_load_ms": runtime.phase_timings_ms.get("gpu_load", 0), "warmup_ms": runtime.phase_timings_ms.get("warmup", 0), "first_inference_ms": results[0]["generation_duration_ms"], "upload_ms": max(0, round(time.monotonic() * 1000) - upload_started_ms), "total_ms": round((time.monotonic() - started_monotonic) * 1000)},
-                "items": receipt_items, "scratch_cleanup": {"terminal_reason": "SUCCESS", "removed": True, "scratch_on_model_volume": False}, "receipt_nonce": 1, "issued_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                "tenant": accepted["tenant"],
+                "lane": "mage_image",
+                "deployment": {
+                    "deployment_id": accepted["runtime"]["deployment_id"],
+                    "endpoint_id_sha256": _endpoint_id_hash(),
+                    "container_digest": accepted["runtime"]["container_digest"],
+                    "intended_region": "EU-RO-1",
+                    "intended_volume_id_sha256": accepted["runtime"]["volume_id_sha256"],
+                    "model_manifest_sha256": accepted["runtime"]["model_manifest_sha256"],
+                },
+                "runtime_probe": {
+                    "gpu_name": runtime.gpu.get("name"),
+                    "gpu_count": 1,
+                    "gpu_uuid_sha256": None,
+                    "driver_version": os.environ.get("VIDEOFORGE_MAGE_DRIVER_VERSION", "UNKNOWN"),
+                    "cuda_version": runtime.gpu.get("cuda_version"),
+                    "probe_source": "WORKER_RUNTIME_SELF_REPORT",
+                },
+                "volume_verification": {
+                    "manifest_sha256_before": accepted["runtime"]["model_manifest_sha256"],
+                    "manifest_sha256_after": accepted["runtime"]["model_manifest_sha256"],
+                    "mutation_detected": False,
+                    "cross_mount_detected": False,
+                },
+                "model_ready_evidence": {
+                    "state": "MODEL_READY",
+                    "warmup_completed": True,
+                    "warmup_output_sha256": runtime.warmup_output_sha256
+                    or _sha_environment("VIDEOFORGE_MAGE_WARMUP_OUTPUT_SHA256"),
+                },
+                "timings": {
+                    "allocation_ms": 0,
+                    "container_ready_ms": 0,
+                    "volume_verified_ms": runtime.bootstrap_evidence.get("duration_ms", 0)
+                    if runtime.bootstrap_evidence
+                    else 0,
+                    "model_load_ms": runtime.phase_timings_ms.get("gpu_load", 0),
+                    "warmup_ms": runtime.phase_timings_ms.get("warmup", 0),
+                    "first_inference_ms": results[0]["generation_duration_ms"],
+                    "upload_ms": max(0, round(time.monotonic() * 1000) - upload_started_ms),
+                    "total_ms": round((time.monotonic() - started_monotonic) * 1000),
+                },
+                "items": receipt_items,
+                "scratch_cleanup": {
+                    "terminal_reason": "SUCCESS",
+                    "removed": True,
+                    "scratch_on_model_volume": False,
+                },
+                "receipt_nonce": 1,
+                "issued_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             }
             # Signing key is injected only at endpoint publication; this fails closed locally otherwise.
-            receipt, _ = sign_receipt(receipt_body, key_id=os.environ["VIDEOFORGE_RECEIPT_KEY_ID"], secret=bytes.fromhex(os.environ["VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX"]))
+            receipt, _ = sign_receipt(
+                receipt_body,
+                key_id=os.environ["VIDEOFORGE_RECEIPT_KEY_ID"],
+                secret=bytes.fromhex(os.environ["VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX"]),
+            )
         return {"status": "SUCCEEDED", "items": results, "provenance_receipt": receipt}
     except TimeoutError:
         return {"status": "FAILED", "error": {"code": "MAGE_SERVERLESS_TIMEOUT"}}
-    except (EnvelopeRejection, ScratchIsolationError, ServerlessMageError, ValueError, KeyError) as error:
+    except (
+        EnvelopeRejection,
+        ScratchIsolationError,
+        ServerlessMageError,
+        ValueError,
+        KeyError,
+    ) as error:
         return {"status": "FAILED", "error": {"code": str(error)[:120]}}
