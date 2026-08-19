@@ -1,0 +1,80 @@
+{
+  "schema_version": "videoforge.v2-06-live-two-account-isolation/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T08:06:37Z",
+  "result": "PASS_SECOND_ACCOUNT_NEGATIVE_ISOLATION_DELETE_AND_AUDIT_REMAIN",
+  "audit_independence": "SAME_CHAT_COMPLETION_EVIDENCE_NOT_INDEPENDENT_AUDIT",
+  "source": {
+    "branch": "codex/serverless-v2-roadmap",
+    "current_head": "fd773ed20f410b64da3ea29ff1d33a6675459afd",
+    "deployed_application_commit": "1ad68ea46b642949591c1090cecddc28d7ec428e",
+    "cloudflare_worker_version": "5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2",
+    "release": "media-worker-v0.1.11"
+  },
+  "authority": {
+    "finite_cap_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "new_external_spend_usd": 0,
+    "runpod_mode": "READ_ONLY_ZERO_MUTATION",
+    "v2_07_authorized": false,
+    "credential_values_read": false
+  },
+  "identities": {
+    "primary": "lakshmansai121@gmail.com",
+    "second_admitted": "demo9gss@gmail.com"
+  },
+  "primary_observation": {
+    "settings_identity": "lakshmansai121@gmail.com",
+    "settings_tenant_isolated": true,
+    "mac_device": "lakshmans-Mac-mini.local",
+    "mac_device_state": "ONLINE",
+    "mac_worker_version": "0.1.11",
+    "owned_output": {
+      "title": "V2-06 Owned Render Fixture v4",
+      "state": "READY",
+      "project_id": "ff6edb5d-fbc6-4b40-818d-f16b2497d4df",
+      "render_attempt_id": "f9686244-081c-4303-87b1-8048cc9b1164"
+    }
+  },
+  "second_account_observation": {
+    "settings_identity": "demo9gss@gmail.com",
+    "settings_tenant_isolated": true,
+    "library_outputs": 0,
+    "media_worker_devices": 0,
+    "foreign_project_get": {
+      "project_id": "ff6edb5d-fbc6-4b40-818d-f16b2497d4df",
+      "ui_heading": "Project unavailable",
+      "ui_detail": "No fixture status was substituted."
+    },
+    "foreign_attempt_get": {
+      "attempt_id": "f9686244-081c-4303-87b1-8048cc9b1164",
+      "response": {
+        "error": {
+          "code": "CPU_ATTEMPT_NOT_FOUND"
+        }
+      }
+    },
+    "cross_tenant_data_revealed": false,
+    "cross_tenant_device_revealed": false,
+    "signed_url_obtained_for_foreign_output": false
+  },
+  "proof_boundary": {
+    "live_hosted_session_used": true,
+    "local_fixture_used_as_deployment_proof": false,
+    "better_auth_identity_observed": true,
+    "neon_scope_observed_through_hosted_api": true,
+    "r2_scope_observed_through_empty_private_library_and_no_foreign_signed_url": true
+  },
+  "remaining_gates": [
+    "Action-time confirmation and execution for successful-output deletion, Mac device revocation, and Mac worker uninstall.",
+    "Fresh independent task to audit the completed live/device evidence; this same-chat evidence cannot accept itself."
+  ],
+  "resource_truth": {
+    "external_spend_usd": 0,
+    "runpod_mutations": 0,
+    "runpod_workers_started": 0,
+    "gpu_transport": "DISABLED_FAKE_ONLY",
+    "v2_07_started": false
+  }
+}

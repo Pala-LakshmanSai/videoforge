@@ -106,11 +106,11 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "1ad68ea46b642949591c1090cecddc28d7ec428e"
-  last_verified_repository_head: "1ad68ea46b642949591c1090cecddc28d7ec428e"
-  current_source_head_note: "Commit 1ad68ea remains the deployed application source. Mac and Windows 0.1.11 live acceptance now pass, including immutable inputs, pairing, offline/reconnect, Windows reboot/autostart, sleep/wake, 0.1.10-to-0.1.11 replacement, revocation, and uninstall cleanup. The second live Google tenant, successful-output/Mac destructive lifecycle, and fresh independent audit remain open."
-  last_good_commit: "1ad68ea46b642949591c1090cecddc28d7ec428e"
-  last_good_commit_note: "V2-06 Mac live ASR/render/cancel passes at 1ad68ea with zero new external spend; immutable 0.1.11 is active and the Cloudflare deployment reports the same commit."
+  current_source_head: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
+  last_verified_repository_head: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
+  current_source_head_note: "Commit fd773ed pins the Windows completion handoff while the deployed application remains 1ad68ea. Mac and Windows 0.1.11 live acceptance, second-tenant hosted negative isolation, successful-output deletion, Mac revocation, and local uninstall now pass. A fresh independent audit remains open."
+  last_good_commit: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
+  last_good_commit_note: "V2-06 current HEAD fd773ed has clean canonical verification and records Mac, Windows, backup/restore, and second-tenant live isolation evidence with zero new external spend; the deployed application remains 1ad68ea."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -789,7 +789,7 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: mac_and_windows_live_complete_second_account_delete_and_independent_audit_remaining
+    status: same_chat_live_completion_independent_audit_remaining
     implementation_commit: "1ad68ea46b642949591c1090cecddc28d7ec428e"
     source_head_commit: "1ad68ea46b642949591c1090cecddc28d7ec428e"
     autonomous_readiness_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
@@ -806,6 +806,8 @@ verification:
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
     evidence: evidence/acceptance/VF-10-06/2026-08-19-mac-live-completion-1ad68ea/acceptance.json
     windows_native_completion_evidence: evidence/acceptance/VF-10-06/2026-08-19-windows-native-completion-34a0fbf/acceptance.json
+    live_two_account_isolation_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-two-account-isolation-fresh/acceptance.json
+    live_destructive_lifecycle_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-destructive-lifecycle/acceptance.json
     backup_restore_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-backup-restore-804f7d3/acceptance.json
     autonomous_readiness_evidence: evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json
     previous_completion_evidence: evidence/acceptance/VF-10-06/2026-08-18-bounded-completion-8e96575/acceptance.json
@@ -830,6 +832,8 @@ verification:
       - "Installed-Chrome fixture rerun after clearing one owned stale port-4173 test descendant (exit 0; 44/44; local fixtures are not hosted proof)."
       - "CI=1 TURBO_FORCE=true pnpm verify at autonomous-readiness commit 2e1d1d0 (exit 0; canonical graph; 62 script tests; Cloudflare-local parity; worker suites; installed-Chrome fixture 44/44)."
       - "Focused V2-06 backup/restore, Windows harness, activation-safety, Neon-grant, and owned-render tests (exit 0; 23/23)."
+      - "Fresh Chrome profile live negative isolation journey (exit 0 for read-only observations; demo9gss@gmail.com tenant-scoped, empty Library/devices, foreign project unavailable, foreign attempt CPU_ATTEMPT_NOT_FOUND, no signed foreign R2 URL)."
+      - "Action-time hosted output deletion, Mac device Remove confirmation, and supported Mac --uninstall (exit 0) plus exact local cleanup checks; Library is empty, Mac is REVOKED, LaunchAgent/app install/state/keychain are absent, and app bundle is in Trash for recovery."
       - "Homebrew libpq PATH-aware backup/restore tools-only preflight (exit 0; pg_dump, pg_restore, and psql resolved without execution or provider access)."
       - "Private-input bootstrap under /Users/lakshmansai/.config/videoforge/v2-06/postgres-inputs (exit 0; mode-0700 directory and exactly three empty mode-0600 placeholders; no value read/generated)."
       - "Full private-input preflight (exit 1 expected; all three placeholders remain empty, so backup/restore failed closed before database access)."
@@ -876,9 +880,9 @@ verification:
       - "The immutable worker execution identity bundles and verifies ffmpeg, ffprobe, whisper-cli, and the pinned ggml-base.en model; no first-run model download or user configuration is permitted."
       - "The active authentication decision is invite-only Google verified-email identity. Email/password and email delivery remain disabled because the user selected email provider NONE."
       - "Hosted /avatars and /styles now use the authenticated tenant-owned project catalog, and hosted /avatars/new and /styles/new render an explicit read-only staging boundary instead of fixture mutation screens."
+      - "A separately controlled live Chrome profile for demo9gss@gmail.com now proves tenant-scoped Better Auth identity, private empty Library/device views, and non-revealing foreign project/attempt refusal against the primary tenant's exact IDs."
+      - "The user explicitly confirmed the exact destructive scope; the v4 private output was deleted, the 0.1.11 Mac device was revoked, and the worker's supported uninstall exited 0 before the app bundle was moved to the user's Trash."
     remaining_gates:
-      - "Second admitted Google identity: provide one controllable signed-in session for live negative cross-tenant Better Auth/Neon/R2/device proof. Local two-account Chrome remains fixture proof only."
-      - "Action-time user confirmation is required before deleting the successful private output, revoking the Mac device, or uninstalling the Mac worker."
       - "Fresh independent task: audit the completed live/device evidence after the above gates. This same-chat handoff cannot independently accept itself."
       - "The selected Windows unsigned-beta and macOS ad-hoc/non-notarized-beta trust modes remain intentional; Authenticode and Developer ID/notarization are optional and are not checkpoint blockers."
       - "The exact combined V2-06 cap remains USD 3 with a USD 2/month R2 ceiling. Current new external spend is USD 0; R2 is 32.1 MB and currently $0/month."

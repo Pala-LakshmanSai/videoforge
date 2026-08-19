@@ -1,0 +1,73 @@
+{
+  "schema_version": "videoforge.v2-06-live-destructive-lifecycle/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T08:25:49Z",
+  "result": "PASS_OUTPUT_DELETE_MAC_REVOKE_UNINSTALL",
+  "audit_independence": "SAME_CHAT_COMPLETION_EVIDENCE_NOT_INDEPENDENT_AUDIT",
+  "source": {
+    "branch": "codex/serverless-v2-roadmap",
+    "current_head": "fd773ed20f410b64da3ea29ff1d33a6675459afd",
+    "deployed_application_commit": "1ad68ea46b642949591c1090cecddc28d7ec428e",
+    "cloudflare_worker_version": "5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2",
+    "release": "media-worker-v0.1.11"
+  },
+  "authority": {
+    "user_confirmation": "I confirm delete v4, revoke Mac, and uninstall Mac worker.",
+    "finite_cap_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "new_external_spend_usd": 0,
+    "runpod_mode": "READ_ONLY_ZERO_MUTATION",
+    "v2_07_authorized": false,
+    "credential_values_read": false
+  },
+  "hosted_output_delete": {
+    "account": "lakshmansai121@gmail.com",
+    "title": "V2-06 Owned Render Fixture v4",
+    "project_id": "ff6edb5d-fbc6-4b40-818d-f16b2497d4df",
+    "render_attempt_id": "f9686244-081c-4303-87b1-8048cc9b1164",
+    "confirmation_dialog": "accepted_at_action_time",
+    "library_after_delete": "No finished videos",
+    "remote_delete_observed": true,
+    "signed_url_or_secret_recorded": false
+  },
+  "mac_device_revoke": {
+    "device_name": "lakshmans-Mac-mini.local",
+    "worker_version": "0.1.11",
+    "confirmation_dialog": "accepted_at_action_time",
+    "final_hosted_state": "REVOKED",
+    "remote_status_message": "Computer removed. Open its worker again to reconnect it."
+  },
+  "mac_local_uninstall": {
+    "supported_command": "/Users/lakshmansai/Applications/VideoForge Worker.app/Contents/MacOS/VideoForge Worker --uninstall",
+    "supported_command_exit": 0,
+    "app_bundle_final_path": "/Users/lakshmansai/Applications/VideoForge Worker.app",
+    "app_bundle_final_state": "ABSENT",
+    "app_bundle_recovery_location": "/Users/lakshmansai/.Trash/VideoForge Worker.app",
+    "launch_agent": "com.videoforge.personal-media-worker",
+    "launch_agent_final_state": "ABSENT",
+    "worker_process_final_count": 0,
+    "keychain_service": "com.videoforge.personal-media-worker",
+    "keychain_metadata_exit": 44,
+    "keychain_final_state": "NOT_FOUND",
+    "credential_value_read": false,
+    "checked_state_paths": [
+      "/Users/lakshmansai/Library/Application Support/VideoForge",
+      "/Users/lakshmansai/Library/Application Support/videoforge",
+      "/Users/lakshmansai/Library/Preferences/com.videoforge.personal-media-worker.plist"
+    ],
+    "checked_state_paths_final_state": "ABSENT"
+  },
+  "remaining_gates": [
+    "Fresh independent task to audit the completed live/device evidence; this same-chat evidence cannot accept itself.",
+    "The selected Windows unsigned-beta and macOS ad-hoc/non-notarized-beta trust modes remain intentional and are not V2-06 blockers."
+  ],
+  "resource_truth": {
+    "external_spend_usd": 0,
+    "r2_bucket_size_display": "32.1 MB before delete; within approved ceiling",
+    "runpod_mutations": 0,
+    "runpod_workers_started": 0,
+    "gpu_transport": "DISABLED_FAKE_ONLY",
+    "v2_07_started": false
+  }
+}
