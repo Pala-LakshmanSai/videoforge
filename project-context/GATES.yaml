@@ -93,13 +93,22 @@ gates:
       - v2_05_database_fence_rejects_ordinary_writes_to_every_superseded_global_session_and_pod_contract
 
   GATE_HOSTING_001:
-    status: open
+    status: closed
     blocks: hosted_production_claim
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatehosting001-hosted-controlcpu-plane"
     owner: V2-06
-    last_run: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
+    last_run: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
     last_run_at: "2026-08-19"
-    result: final_live_hosting_personal_worker_two_account_delete_recovery_backup_restore_rollback_and_zero_spend_green_fresh_independent_reaudit_pending
+    result: final_live_hosting_personal_worker_two_account_delete_recovery_backup_restore_rollback_and_zero_spend_green_independent_audit_pass
+    satisfied_hosted:
+      - exact_worker_workflow_neon_private_r2_and_google_auth_composition
+      - non_superuser_force_rls_positive_and_negative_two_account_isolation
+      - tenant_bound_device_lease_asr_render_and_real_chrome_playback
+      - workflow_recovery_cancel_replay_stale_and_late_result_fences
+      - authenticated_durable_delete_and_exact_r2_inventory_restoration
+      - migration_backup_restore_two_step_rollback_and_final_health
+      - immutable_windows_and_macos_worker_lifecycle
+      - zero_new_spend_no_new_recurring_resource_and_runpod_zero_compute
 
   GATE_SERVERLESS_MAGE_001:
     status: open

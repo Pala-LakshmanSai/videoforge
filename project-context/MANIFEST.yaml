@@ -1,11 +1,11 @@
 schema_version: "2.0"
 project: VideoForge
 phase_source: CURRENT_STATE.yaml
-last_updated: "2026-08-17"
+last_updated: "2026-08-19"
 source_of_truth: project-context
 
-current_selected_profile: v2_06_hosted_staging
-current_selected_brief: tasks/VF-10-06.md
+current_selected_profile: v2_07_mage_serverless
+current_selected_brief: tasks/VF-10-07.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -265,7 +265,6 @@ open_gates:
   GATE_CONCURRENCY_001: v2_multi_user_load_and_recovery
   GATE_E2E_001: real_short_hosted_project
   GATE_ECONOMICS_001: representative_serverless_speed_and_settled_cost
-  GATE_HOSTING_001: hosted_control_and_cpu_plane
   GATE_IMAGE_001: mage_full_quality_suite
   GATE_IMAGE_002: mage_terms_ambiguity
   GATE_RANGA_001: real_human_editorial_quality
@@ -276,6 +275,7 @@ open_gates:
   GATE_STYLE_002: five_style_production_adherence
 
 closed_gates:
+  GATE_HOSTING_001: hosted_control_and_personal_worker_plane_pass
   GATE_LLM_001: runware_deepseek_pass
   GATE_QUEUE_001: fair_durable_admission_pass
   GATE_SERVERLESS_CONTRACT_001: provider_free_v3_transport_pass

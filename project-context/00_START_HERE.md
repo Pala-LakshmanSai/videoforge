@@ -1,8 +1,8 @@
 # VideoForge: start here
 
-Status: V2-06 live closure is recorded. Four fresh audits found only repository-handoff defects;
-all are reconciled and a final evidence-only re-audit is pending. V2-07 remains blocked. No live
-verification, mutation, or spend is currently authorized.
+Status: V2-06 is complete and independently audited PASS. V2-07 is safe to start only as a separate
+not-yet-started checkpoint with fresh authority and cap. No live verification, mutation, or spend is
+currently authorized.
 Context schema: `2.0`
 Last updated: `2026-08-19`
 
@@ -229,8 +229,8 @@ queue views report factual owned stages and lane facts, waiting work remains ine
 requires a live tenant-private render receipt whose SHA-256, bytes, H.264/AAC probe, project,
 revision, and render manifest all agree. Installed Chrome proves two accounts, the three locked
 compositions, real 1920x1080 MP4 download/playback, cross-tenant refusal, and zero fake jobs/workers
-after drain. V2 routes cannot call the compatibility orchestrator. The emitted production worker is
-import-free and fails API traffic closed pending V2-06 hosted adapters, while its client bundle
+after drain. V2 routes cannot call the compatibility orchestrator. At the V2-05 handoff, the emitted
+production worker was import-free and failed API traffic closed pending V2-06 hosted adapters; its client bundle
 contains no v1 shared-app route, manual Pod/GPU selector, inactive Echo route, repair override, or
 fallback vocabulary. Local compatibility fixtures remain explicitly gated and the production UI
 visibly says fixtures are not live.
@@ -240,10 +240,10 @@ and proved migration `0036`; two-account auth/RLS/R2/device/lease isolation; ASR
 recovery/cancel/replay fences; durable delete and inventory restoration; backup/restore; two-step
 rollback health; Chrome playback; and Windows/macOS worker `0.1.11`. New spend was USD 0 under the
 separate USD 1 cap; no recurring resource was created. RunPod stayed read-only at zero compute, with
-two existing 50 GB volumes untouched. The final evidence-only audit remains pending, so
-`GATE_HOSTING_001` is open and V2-07 blocked. Immutable provider evidence is not current authority;
-live refresh requires a new read-only grant. No provider, credential, mutation, publication, spend,
-or V2-07 authority exists. Prior authorities are consumed. The ordered
+two existing 50 GB volumes untouched. The final evidence-only audit passed and closed
+`GATE_HOSTING_001`. Immutable provider evidence is not current authority; live refresh requires a
+new read-only grant. V2-07 is ready but not started and has no provider, credential, mutation,
+publication, or spend authority. Prior authorities are consumed. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in
 the working tree.

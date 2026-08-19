@@ -1,0 +1,39 @@
+{
+  "schema": "videoforge.v2-06-independent-audit/v1",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T16:01:35Z",
+  "thread_id": "01a01ab5-cea3-7801-ab56-de21112c6f66",
+  "audit_base_head": "99e4739ea93b2776c0d7c294a411238bb81a6916",
+  "deployed_executable_source": "e673527b7ac3dbb4db64f66a19a766cf1cf1d422",
+  "deployment_version_id": "32bfc4bf-4421-4703-9095-2afc3515fda3",
+  "scope": "Fresh repository-and-supplied-immutable-evidence-only audit; no credentials, live provider calls, mutations, repairs, or spend.",
+  "result": "PASS",
+  "severity_counts": { "P0": 0, "P1": 0, "P2": 0 },
+  "findings": [],
+  "verified_supplied_evidence": [
+    "all four prior repository-handoff findings are reconciled",
+    "historical USD 3 and final USD 1 caps are separate; actual new spend USD 0, R2 ceiling USD 2 per month, and no new recurring resource",
+    "deployed source e673527, Worker 32bfc4bf-4421-4703-9095-2afc3515fda3, migration 0036, and final HTTP 200 health",
+    "Better Auth and Neon non-superuser forced-RLS positive and negative isolation across private R2, devices, leases, and outputs",
+    "least-privilege secrets, Cloudflare Workflow recovery and cancel, personal workers, backup and restore, and immutable Windows and macOS lifecycle",
+    "DELETE HTTP 204, exact 404 read-backs, and restored 55-object 55598142-byte R2 inventory with sha256:7d67e4f45d3b58d24fbae1dd4718d4c88a0621bd3b5e2dc976f019d923ee559b",
+    "two-step rollback followed by final redeployment and health",
+    "RunPod zero Pods, endpoints, workers, private templates, and mutations; two untouched 50 GB volumes at USD 7 per month total"
+  ],
+  "commands_and_exits": [
+    { "command": "git diff --check", "exit_code": 0 },
+    { "command": "R2 read-only inventory tests", "exit_code": 0, "result": "4 passed" },
+    { "command": "supplied audit-4 focused V2-06 suite", "exit_code": 0, "result": "54 passed; 7 private-fixture-dependent cases skipped" },
+    { "command": "supplied hosted auth tests", "exit_code": 0, "result": "6 of 6 passed" },
+    { "command": "supplied hosted adapter tests", "exit_code": 0, "result": "14 of 14 passed" },
+    { "command": "supplied canonical provider-free aggregate", "exit_code": 0 },
+    { "command": "current audit-worktree pnpm validation attempt", "exit_code": 1, "result": "dependency linking stopped on ENOSPC and ENOTEMPTY before validations; no product assertion failed" }
+  ],
+  "unproven_live_claims": [
+    "No provider refresh occurred; current billing, invoice lag, Cloudflare, Neon, R2, RunPod, and browser state remain bounded to supplied immutable evidence timestamps.",
+    "Local fixtures alone do not prove deployment."
+  ],
+  "spend_truth": "Actual new V2-06 spend USD 0 under the separate USD 1 final cap; no new recurring resource. Two pre-existing RunPod volumes continue at USD 7 per month total.",
+  "rollback_truth": "Rollback acceptance is two-step: Wrangler code rollback followed by final ordinary redeployment to reconverge bindings and status; final health returned HTTP 200.",
+  "v2_07_safety": "SAFE_TO_START_AS_A_SEPARATE_NOT_YET_AUTHORIZED_CHECKPOINT_REQUIRING_FRESH_AUTHORITY_AND_CAP"
+}
