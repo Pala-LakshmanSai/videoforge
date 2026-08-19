@@ -89,6 +89,8 @@ export interface RunPodV207QualificationHarnessOptions {
   readonly endpointName: string;
   readonly imageName: string;
   readonly containerDiskInGb: number;
+  /** Endpoint environment is supplied at activation time and never persisted in evidence. */
+  readonly templateEnvironment?: Readonly<Record<string, string>>;
   readonly placement: RunPodV207Placement;
   readonly initialPolicy: RunPodEndpointPolicy;
   readonly concurrentReaderPolicy: RunPodV207ConcurrentReaderPolicy;
@@ -211,7 +213,9 @@ export class RunPodV207QualificationHarness {
       (options.pollIntervalMs !== undefined &&
         (!Number.isSafeInteger(options.pollIntervalMs) || options.pollIntervalMs < 1)) ||
       (options.maxPolls !== undefined &&
-        (!Number.isSafeInteger(options.maxPolls) || options.maxPolls < 1 || options.maxPolls > 1_000))
+        (!Number.isSafeInteger(options.maxPolls) ||
+          options.maxPolls < 1 ||
+          options.maxPolls > 1_000))
     ) {
       throw new RunPodControlError("RUNPOD_QUALIFICATION_SCOPE_INVALID");
     }
@@ -260,6 +264,7 @@ export class RunPodV207QualificationHarness {
         this.#options.templateName,
         this.#options.imageName,
         this.#options.containerDiskInGb,
+        this.#options.templateEnvironment,
       );
       this.mark("template_created", { template_id_hash: this.#template!.idHash });
       this.#endpoint = await this.#options.control.createScaleZeroEndpoint(
@@ -369,7 +374,8 @@ export class RunPodV207QualificationHarness {
     if (!ID.test(jobId)) throw new RunPodControlError("RUNPOD_JOB_ID_INVALID");
     const maxPolls = this.#options.maxPolls ?? 120;
     const sleep =
-      this.#options.sleep ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+      this.#options.sleep ??
+      ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
     let latest: RunPodJobResult | null = null;
     for (let poll = 0; poll < maxPolls; poll += 1) {
       await this.assertSpendWithinCap();
@@ -473,7 +479,10 @@ export class RunPodV207QualificationHarness {
         assertAuthority(authority, {
           attemptId: input.attemptId,
           itemCount,
-          outputPrefix: typeof artifacts?.output_prefix === "string" ? artifacts.output_prefix : authority.outputPrefix,
+          outputPrefix:
+            typeof artifacts?.output_prefix === "string"
+              ? artifacts.output_prefix
+              : authority.outputPrefix,
           reservationIds: reservationIds as readonly string[],
         });
         const request = jsonValue({
@@ -523,7 +532,10 @@ export class RunPodV207QualificationHarness {
   }
 
   /** Retains endpoint/template/volumes by default; deletes only disposable resources on failure. */
-  async cleanup(options: { readonly deleteIfFailed: boolean; readonly failed: boolean }): Promise<void> {
+  async cleanup(options: {
+    readonly deleteIfFailed: boolean;
+    readonly failed: boolean;
+  }): Promise<void> {
     if (!this.#endpoint || !this.#jobs || !this.#template) return;
     if (this.#guard.snapshot() === "active" || this.#guard.snapshot() === "warm_idle") {
       try {
@@ -581,7 +593,11 @@ export function redactRunPodEvidence(value: unknown): RecordValue {
     if (!object) return candidate;
     const output: Record<string, unknown> = {};
     for (const [key, entry] of Object.entries(object)) {
-      if (/(?:api[_-]?key|authorization|password|secret|cookie|capability|signature|token)/iu.test(key)) {
+      if (
+        /(?:api[_-]?key|authorization|password|secret|cookie|capability|signature|token)/iu.test(
+          key,
+        )
+      ) {
         output[key] = "[REDACTED]";
       } else if (/(?:^|_)(?:id|job|endpoint|template|volume|reservation)_hash$/iu.test(key)) {
         output[key] = entry;
