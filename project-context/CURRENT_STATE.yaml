@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-19T18:33:41Z"
+updated_at: "2026-08-19T20:06:40Z"
 
 phase: serverless_v2_v2_07_bounded_paid_qualification_authorized
 implementation_authorized_in_current_task: true
@@ -8,7 +8,7 @@ current_milestone: mage_serverless_qualification
 current_task: VF-10-07
 current_wave: v2_07_bounded_qualification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: blocked_before_serverless_dispatch
+task_stage: bounded_mutation
 application_code_changes_authorized: true
 provider_calls_authorized: true
 read_only_provider_calls_authorized: false
@@ -187,10 +187,10 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "f77e30e66fe4bd5d954c9cc2586f30172be5decb"
+  current_source_head: "8265e31"
   current_source_head_semantics: deployed_executable_source_identity_not_documentation_head
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "V2-07 source HEAD f77e30e includes the exact RTX 4090 runtime fence, dynamic generated-output authority contract, provider response reconciliation, and health-based drain tests. The published Serverless image was built from source a0f67e0 at digest 7d667b3a; later control-plane-only commits do not alter Dockerfile inputs. A disposable endpoint/template was created and deleted under the approved rollback surface; no /run submission, GPU batch, or output publication occurred because a real scoped R2 signer is not available in the configured local credentials."
+  current_source_head_note: "V2-07 source HEAD 8265e31 includes the exact RTX 4090 runtime fence, dynamic generated-output authority contract, hosted signer route, concurrent-reader reconciliation, image identity normalization, and bounded provider drain logic. Corrected executable image source 39541d5 was published at digest ab504371; repeated exact EU-RO-1 activations remained initializing/throttled before a bounded worker baseline, so no corrected-image /run or GPU batch was accepted. Temporary signer capability was disabled; all disposable endpoint/template resources were deleted and both retained volumes remained untouched."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -324,9 +324,9 @@ reusable_foundations:
 
 model_runtime_evidence:
   mage:
-    status: serverless_image_published_dynamic_output_contract_repaired_qualification_blocked_durable_r2_signer
+    status: serverless_image_published_dynamic_output_contract_repaired_provider_worker_activation_blocked
     exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
-    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:7d667b3abf949586afd87ff2730648cf1190866fa41d43288530243c323564a4"
+    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e"
     manifest_sha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b"
     selected_model_bytes: 13379919280
     retained_volume_id_sha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
@@ -334,7 +334,7 @@ model_runtime_evidence:
     ongoing_volume_usd_per_month: 3.5
     settled_qualification_cost_usd: 0.34927155333571136
     evidence: evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json
-    v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-19-dynamic-contract-endpoint-cleanup/acceptance.json
+    v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-19-provider-activation-blocked/acceptance.json
   soulx:
     status: pod_technical_pass_serverless_visual_crop_license_and_settlement_gates_open
     exact_source: "Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2"
@@ -404,7 +404,7 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: dynamic_contract_repaired_live_setup_cleaned_qualification_blocked_durable_r2_signer
+  status: dynamic_contract_repaired_provider_activation_blocked
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: exact_bounded_paid_authority
   task_stage: bounded_mutation
@@ -484,11 +484,11 @@ recommended_next_task:
   application_code_changes_authorized: true
   authority_note: "User approved the exact V2-07 proposal at a USD 4 finite cap. Existing Mage/SoulX volumes remain retained separately; no volume mutation or V2-08 authority exists."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: blocked_before_endpoint_mutation
-  execution_blocker: "Generated Mage output bytes are unknown until inference, but the current artifact-transfer-port/v3 PUT authority requires exact content_length and checksum_sha256 before /run. No dynamic output-port issuer/finalize contract exists, so a live batch would deterministically fail upload or require a contract-weakening workaround."
+  execution_status: blocked_before_corrected_image_dispatch
+  execution_blocker: "Dynamic output authority/finalize and scoped hosted R2 signer are repaired and locally green. The corrected immutable image ab504371 was published, but repeated exact EU-RO-1 endpoint activations remained initializing/throttled before a bounded ready/warm-idle baseline; one ready-idle probe hung before dispatch. All disposable resources were deleted; no corrected-image GPU batch or output publication occurred."
 
 verification:
-  state: v2_06_complete_green_independently_audited_v2_07_image_published_qualification_blocked
+  state: v2_06_complete_green_independently_audited_v2_07_image_published_provider_activation_blocked
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   verified_commit_note: "Deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 are accepted by the final independent audit at repository HEAD 99e4739. Positive and negative tenancy, ASR/render/Chrome, durable delete and R2 inventory, cleanup, migration 0036/FORCE RLS, recovery, backup/restore, rollback, native lifecycle, zero new spend, and RunPod zero compute are recorded."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
