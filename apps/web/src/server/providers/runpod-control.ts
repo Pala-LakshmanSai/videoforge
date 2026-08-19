@@ -283,7 +283,7 @@ export class RunPodControlClient {
           ports: [],
           readme: "VideoForge pinned primary avatar worker",
           volumeInGb: 0,
-          volumeMountPath: "/models",
+          volumeMountPath: "/runpod-volume",
         }),
       ),
     );
@@ -331,7 +331,7 @@ export class RunPodControlClient {
           name,
           ...(placement.networkVolumeId ? { networkVolumeId: placement.networkVolumeId } : {}),
           ...(placement.dataCenterIds ? { dataCenterIds: placement.dataCenterIds } : {}),
-          scalerType: "QUEUE_DELAY",
+          scalerType: "REQUEST_COUNT",
           scalerValue: 1,
           templateId,
           workersMax: policy.workersMax,

@@ -348,6 +348,7 @@ describe("RunPod scale-zero control", () => {
           isPublic: false,
           isServerless: true,
           volumeInGb: 0,
+          volumeMountPath: "/runpod-volume",
           env: { LOG_LEVEL: "INFO", RUNPOD_INIT_TIMEOUT: "800" },
         });
         return response({ id: "template_01" });
@@ -357,6 +358,8 @@ describe("RunPod scale-zero control", () => {
         workersMax: 1,
         gpuCount: 1,
         gpuTypeIds: ["NVIDIA L40S", "NVIDIA A100 80GB PCIe"],
+        scalerType: "REQUEST_COUNT",
+        scalerValue: 1,
       });
       return response({ id: "endpoint_01", workersMin: 0, workersMax: 1 });
     });
