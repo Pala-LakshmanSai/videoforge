@@ -2,7 +2,7 @@ schema_version: "2.0"
 context_schema_version: "2.0"
 updated_at: "2026-08-19T06:43:20Z"
 
-phase: serverless_v2_v2_06_mac_and_windows_live_complete_remaining_tenant_delete_and_audit
+phase: serverless_v2_v2_06_independent_audit_fail_p1_open_v2_07_blocked
 implementation_authorized_in_current_task: true
 current_milestone: hosted_staging_and_personal_media_workers
 current_task: VF-10-06
@@ -13,6 +13,17 @@ application_code_changes_authorized: true
 provider_calls_authorized: true
 read_only_provider_calls_authorized: false
 maximum_external_spend_usd: 3
+
+current_goal_boundary:
+  mode: repository_and_supplied_immutable_evidence_only
+  live_provider_calls: false
+  remote_mutation: false
+  deployment_or_publication: false
+  credential_value_access: false
+  paid_requests_or_spend: false
+  runpod_mutation_or_gpu: false
+  v2_07_action: false
+  note: "Historical V2-06 authority remains recorded below for audit provenance; it is not active for the current completion goal."
 
 provider_authority:
   mode: paid
@@ -108,9 +119,9 @@ repository:
   branch_published: true
   current_source_head: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
   last_verified_repository_head: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
-  current_source_head_note: "Commit fd773ed pins the Windows completion handoff while the deployed application remains 1ad68ea. Mac and Windows 0.1.11 live acceptance, second-tenant hosted negative isolation, successful-output deletion, Mac revocation, and local uninstall pass. The fresh independent audit at documentation HEAD 4cf904b fails with three P1 and three P2 findings; V2-07 remains blocked."
+  current_source_head_note: "Commit fd773ed pins the Windows completion handoff while the deployed application remains 1ad68ea. Mac and Windows 0.1.11 live acceptance, second-tenant hosted negative isolation, successful-output deletion, Mac revocation, and local uninstall pass. The fresh independent audit at documentation HEAD 4cf904b failed with three P1 and three P2 findings; the stale-handoff and profile-budget P2s were corrected locally, leaving three P1 and one P2. V2-07 remains blocked."
   last_good_commit: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
-  last_good_commit_note: "V2-06 source HEAD fd773ed has clean canonical verification and records Mac, Windows, backup/restore, and second-tenant live isolation evidence with zero new external spend; the independent audit at documentation HEAD 4cf904b is FAIL, and the deployed application remains 1ad68ea."
+  last_good_commit_note: "V2-06 source HEAD fd773ed has clean canonical verification and records Mac, Windows, backup/restore, and second-tenant live isolation evidence with zero new external spend; the independent audit at documentation HEAD 4cf904b is FAIL on three P1 and one remaining P2 after safe documentation reconciliation, and the deployed application remains 1ad68ea."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -194,7 +205,7 @@ roadmap_state:
   V2-03: complete_green_independently_reaudited
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
-  V2-06: independent_audit_fail_three_p1_three_p2_v2_07_blocked
+  V2-06: independent_audit_fail_three_p1_one_p2_v2_07_blocked
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
@@ -401,7 +412,7 @@ recommended_next_task:
         checked_at: "2026-08-18"
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
-  goal: "V2-06 bounded completion evidence is recorded within the USD 3 finite cap and USD 2/month R2 ceiling. Mac, Windows, second-account negative isolation, successful-output deletion, and Mac destructive lifecycle are complete; the fresh independent audit remains FAIL on three P1 and three P2 findings. GPU transport stays fake and disabled and V2-07 remains blocked."
+  goal: "V2-06 bounded completion evidence is recorded within the USD 3 finite cap and USD 2/month R2 ceiling. Mac, Windows, second-account negative isolation, successful-output deletion, and Mac destructive lifecycle are complete; the fresh independent audit remains FAIL on three P1 and one remaining P2 after safe documentation reconciliation. GPU transport stays fake and disabled and V2-07 remains blocked."
   provider_calls_authorized: true
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 3
@@ -789,7 +800,7 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: independent_audit_fail_open_p1_findings
+    status: independent_audit_fail_three_p1_one_p2_remaining
     implementation_commit: "1ad68ea46b642949591c1090cecddc28d7ec428e"
     source_head_commit: "1ad68ea46b642949591c1090cecddc28d7ec428e"
     autonomous_readiness_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
@@ -836,6 +847,7 @@ verification:
       - "Fresh Chrome profile live negative isolation journey (exit 0 for read-only observations; demo9gss@gmail.com tenant-scoped, empty Library/devices, foreign project unavailable, foreign attempt CPU_ATTEMPT_NOT_FOUND, no signed foreign R2 URL)."
       - "Action-time hosted output deletion, Mac device Remove confirmation, and supported Mac --uninstall (exit 0) plus exact local cleanup checks; Library is empty, Mac is REVOKED, LaunchAgent/app install/state/keychain are absent, and app bundle is in Trash for recovery."
       - "Fresh separate read-only V2-06 audit at documentation HEAD 4cf904b (FAIL; no P0, three P1 and three P2; no edits, credentials, live calls, mutation, or spend)."
+      - "Safe context reconciliation after the audit (exit 0; active task brief/start boundary corrected and selected V2-06 profile reduced to 14,842 words within the 15,000-word target)."
       - "Homebrew libpq PATH-aware backup/restore tools-only preflight (exit 0; pg_dump, pg_restore, and psql resolved without execution or provider access)."
       - "Private-input bootstrap under /Users/lakshmansai/.config/videoforge/v2-06/postgres-inputs (exit 0; mode-0700 directory and exactly three empty mode-0600 placeholders; no value read/generated)."
       - "Full private-input preflight (exit 1 expected; all three placeholders remain empty, so backup/restore failed closed before database access)."
@@ -889,7 +901,6 @@ verification:
       - "P1: hosted Workflow restart/resume, lease expiry/replay, stale-result rejection, and late-result fencing remain unproven."
       - "P1: rollback of final deployed source 1ad68ea / Worker 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2 remains unproven; only the earlier 8e96575 deployment rollback/restore is evidenced."
       - "P2: post-delete R2 inventory/hash read-back is not supplied; the 16-object/32.1 MB inventory predates deletion."
-      - "P2: context validation exits 0 but the selected profile is 15,166 words against the 15,000-word target."
       - "The selected Windows unsigned-beta and macOS ad-hoc/non-notarized-beta trust modes remain intentional; Authenticode and Developer ID/notarization are optional and are not checkpoint blockers."
       - "The exact combined V2-06 cap remains USD 3 with a USD 2/month R2 ceiling. Current new external spend is USD 0; last supplied pre-delete R2 inventory was 32.1 MB and currently $0/month."
     resource_truth:

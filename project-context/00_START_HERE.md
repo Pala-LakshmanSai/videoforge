@@ -1,7 +1,8 @@
 # VideoForge: start here
 
-Status: V2-06 personal-media-worker conversion is locally implemented; full hosted and signed-
-installer acceptance is blocked, and no fresh live-verification, remote-mutation, or spend authority is active
+Status: V2-06 same-chat live completion is recorded, but the fresh evidence-only independent audit is FAIL
+with three P1 findings; V2-07 remains blocked. The current audit has no live-verification, remote-mutation,
+or spend authority.
 Context schema: `2.0`
 Last updated: `2026-08-18`
 
