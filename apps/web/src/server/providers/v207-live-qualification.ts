@@ -244,7 +244,11 @@ async function verifyBatch(
   if (job.status !== "COMPLETED") throw new Error(`RUNPOD_JOB_${job.status}`);
   const output = job.output as AnyRecord;
   if (!output || output.status !== "SUCCEEDED" || !Array.isArray(output.items)) {
-    throw new Error("MAGE_OUTPUT_NOT_SUCCEEDED");
+    const code =
+      output && typeof output.error === "object" && output.error !== null
+        ? String((output.error as AnyRecord).code ?? "UNKNOWN")
+        : "UNKNOWN";
+    throw new Error(`MAGE_OUTPUT_NOT_SUCCEEDED:${String(output?.status ?? "MISSING")}:${code}`);
   }
   const receipt = output.provenance_receipt as AnyRecord;
   if (!receipt || receipt.schema_version !== "serverless-provenance-receipt/v1") {
