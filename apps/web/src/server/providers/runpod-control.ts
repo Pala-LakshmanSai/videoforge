@@ -12,6 +12,8 @@ export const V207_RUNPOD_GPU = "NVIDIA GeForce RTX 4090" as const;
 export const V207_RUNPOD_VOLUME_MOUNT = "/runpod-volume" as const;
 export const V207_RUNPOD_SCALER = "REQUEST_COUNT" as const;
 export const V207_RUNPOD_SCALER_VALUE = 1 as const;
+/** The published Mage image is CUDA 13.0; do not let provider placement fall back to CUDA 12. */
+export const V207_RUNPOD_MIN_CUDA_VERSION = "13.0" as const;
 
 type FetchPort = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 type JsonRecord = Readonly<Record<string, unknown>>;
@@ -348,6 +350,8 @@ export class RunPodControlClient {
     guard.assertDispatchAllowed();
     const request = {
       ...policy,
+      allowedCudaVersions: [V207_RUNPOD_MIN_CUDA_VERSION],
+      minCudaVersion: V207_RUNPOD_MIN_CUDA_VERSION,
       scalerType: V207_RUNPOD_SCALER,
       scalerValue: V207_RUNPOD_SCALER_VALUE,
     } as const;
@@ -442,6 +446,8 @@ export class RunPodControlClient {
       dataCenterIds: placement.dataCenterIds,
       gpuCount: 1,
       gpuTypeIds: [V207_RUNPOD_GPU],
+      allowedCudaVersions: [V207_RUNPOD_MIN_CUDA_VERSION],
+      minCudaVersion: V207_RUNPOD_MIN_CUDA_VERSION,
       networkVolumeId: placement.networkVolumeId,
       scalerType: V207_RUNPOD_SCALER,
       scalerValue: V207_RUNPOD_SCALER_VALUE,
@@ -503,11 +509,13 @@ export class RunPodControlClient {
     }
     const request = {
       computeType: "GPU",
+      allowedCudaVersions: [V207_RUNPOD_MIN_CUDA_VERSION],
       executionTimeoutMs: policy.executionTimeoutMs,
       flashboot: false,
       gpuCount: policy.gpuCount,
       gpuTypeIds,
       idleTimeout: policy.idleTimeout,
+      minCudaVersion: V207_RUNPOD_MIN_CUDA_VERSION,
       name,
       networkVolumeId: placement.networkVolumeId,
       dataCenterIds: placement.dataCenterIds,
