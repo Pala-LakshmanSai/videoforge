@@ -374,7 +374,7 @@ async function main(): Promise<void> {
     templateName: "videoforge_mage_v207_20260820",
     endpointName: "videoforge_mage_v207_20260820",
     imageName: IMAGE,
-    containerDiskInGb: 100,
+    containerDiskInGb: 120,
     templateEnvironment: {
       MAGE_MODEL_ROOT: "/runpod-volume",
       HF_HUB_OFFLINE: "1",
