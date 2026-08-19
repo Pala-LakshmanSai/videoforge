@@ -478,8 +478,7 @@ export class FakeR2ArtifactPlane {
 
   #authorizeGenerated(authority: GeneratedArtifactOutputAuthority): GeneratedReservationState {
     const state = this.#generatedReservations.get(authority.reservation_id);
-    if (state === undefined || state.revoked)
-      throw new ArtifactPortError("ARTIFACT_NOT_FOUND");
+    if (state === undefined || state.revoked) throw new ArtifactPortError("ARTIFACT_NOT_FOUND");
     const expected = createHmac("sha256", this.#secret)
       .update(
         canonical({

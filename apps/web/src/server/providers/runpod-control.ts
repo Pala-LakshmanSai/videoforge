@@ -106,7 +106,9 @@ const exactStringArray = (value: unknown, expected: readonly string[]): boolean 
   value.length === expected.length &&
   value.every((candidate, index) => candidate === expected[index]);
 
-const healthWorkerCounts = (workers: JsonRecord | null): {
+const healthWorkerCounts = (
+  workers: JsonRecord | null,
+): {
   readonly idle: number;
   readonly running: number;
   readonly initializing: number;
@@ -417,8 +419,7 @@ export class RunPodControlClient {
       (value.isPublic !== undefined && value.isPublic !== false) ||
       value.isServerless !== true ||
       (value.volumeInGb !== undefined && value.volumeInGb !== 0) ||
-      (value.volumeMountPath !== "/workspace" &&
-        value.volumeMountPath !== V207_RUNPOD_VOLUME_MOUNT)
+      (value.volumeMountPath !== "/workspace" && value.volumeMountPath !== V207_RUNPOD_VOLUME_MOUNT)
     ) {
       throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
     }

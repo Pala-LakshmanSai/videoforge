@@ -11,19 +11,6 @@ const MAX_OUTPUT_BYTES = 10_737_418_240;
 
 type Operation = "PUT" | "GET";
 
-interface V207OutputPortRequest {
-  readonly schema_version: "videoforge-v207-generated-output-port-request/v1";
-  readonly operation: Operation;
-  readonly account_id: string;
-  readonly workspace_id: string;
-  readonly object_key: string;
-  readonly content_type: string;
-  readonly max_content_length: number;
-  readonly lifetime_seconds: number;
-  readonly content_length?: number;
-  readonly checksum_sha256?: string;
-}
-
 function json(value: unknown, status = 200): Response {
   return Response.json(value, {
     status,

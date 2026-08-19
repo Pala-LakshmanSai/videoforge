@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  RunPodControlClient,
-  type RunPodV207Placement,
-} from "./runpod-control";
+import { RunPodControlClient, type RunPodV207Placement } from "./runpod-control";
 import {
   RunPodV207QualificationHarness,
   redactRunPodEvidence,
@@ -22,8 +19,7 @@ const placement: RunPodV207Placement = {
   dataCenterIds: ["EU-RO-1"],
 };
 
-const image =
-  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:" + "a".repeat(64);
+const image = "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:" + "a".repeat(64);
 const outputPrefix =
   "tenant/account_a/workspace/workspace_a/project/project_a/revision/revision_a/lane/mage-image/job/attempt_a";
 
@@ -64,31 +60,37 @@ function harnessFetch() {
     if (path === "/templates" && init?.method === undefined) return jsonResponse([]);
     if (path === "/networkvolumes") return jsonResponse([{ id: "volume_01", size: 50 }]);
     if (path === "/templates" && init?.method === "POST") {
-      return jsonResponse({
-        id: "template_01",
-        name: body.name,
-        imageName: body.imageName,
-        containerDiskInGb: body.containerDiskInGb,
-        isPublic: false,
-        isServerless: true,
-        volumeInGb: 0,
-        volumeMountPath: "/runpod-volume",
-      }, 201);
+      return jsonResponse(
+        {
+          id: "template_01",
+          name: body.name,
+          imageName: body.imageName,
+          containerDiskInGb: body.containerDiskInGb,
+          isPublic: false,
+          isServerless: true,
+          volumeInGb: 0,
+          volumeMountPath: "/runpod-volume",
+        },
+        201,
+      );
     }
     if (path === "/endpoints" && init?.method === "POST") {
-      return jsonResponse({
-        id: "endpoint_01",
-        templateId: body.templateId,
-        computeType: "GPU",
-        workersMin: 0,
-        workersMax: body.workersMax,
-        gpuCount: 1,
-        gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
-        networkVolumeId: "volume_01",
-        dataCenterIds: ["EU-RO-1"],
-        scalerType: "REQUEST_COUNT",
-        scalerValue: 1,
-      }, 201);
+      return jsonResponse(
+        {
+          id: "endpoint_01",
+          templateId: body.templateId,
+          computeType: "GPU",
+          workersMin: 0,
+          workersMax: body.workersMax,
+          gpuCount: 1,
+          gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+          networkVolumeId: "volume_01",
+          dataCenterIds: ["EU-RO-1"],
+          scalerType: "REQUEST_COUNT",
+          scalerValue: 1,
+        },
+        201,
+      );
     }
     if (path === "/endpoints/endpoint_01/update") {
       return jsonResponse({
@@ -117,7 +119,10 @@ function harnessFetch() {
       });
     }
     if (path.endsWith("/health")) {
-      return jsonResponse({ workers: { idle: 0, running: 0 }, jobs: { inQueue: 0, inProgress: 0 } });
+      return jsonResponse({
+        workers: { idle: 0, running: 0 },
+        jobs: { inQueue: 0, inProgress: 0 },
+      });
     }
     if (path.includes("/cancel/")) return jsonResponse({ id: "job_01", status: "CANCELLED" });
     throw new Error(`unexpected request ${path}`);

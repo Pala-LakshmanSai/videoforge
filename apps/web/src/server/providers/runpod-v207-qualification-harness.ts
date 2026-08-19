@@ -298,7 +298,10 @@ export class RunPodV207QualificationHarness {
         console.error("v207:harness-warm-idle");
         this.mark("provider_warm_idle_baseline");
       } catch (error) {
-        if (!(error instanceof RunPodControlError) || error.code !== "RUNPOD_WARM_IDLE_NOT_CONFIRMED") {
+        if (
+          !(error instanceof RunPodControlError) ||
+          error.code !== "RUNPOD_WARM_IDLE_NOT_CONFIRMED"
+        ) {
           throw error;
         }
         await this.#jobs!.confirmDrained(90);

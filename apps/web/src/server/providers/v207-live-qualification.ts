@@ -16,10 +16,8 @@ import {
 
 const IMAGE =
   "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e";
-const MANIFEST =
-  "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b";
-const VOLUME =
-  "sha256:eae4e1ece86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
+const MANIFEST = "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b";
+const VOLUME = "sha256:eae4e1ece86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 const VOLUME_ID = "c7kg89brtj";
 const ACCOUNT = "account-a";
 const WORKSPACE = "workspace-a";
@@ -35,7 +33,8 @@ const finiteCapUsd = 4;
 
 type AnyRecord = Record<string, any>;
 
-const hashText = (value: string): string => `sha256:${createHash("sha256").update(value).digest("hex")}`;
+const hashText = (value: string): string =>
+  `sha256:${createHash("sha256").update(value).digest("hex")}`;
 const sortedJson = (value: unknown): string => {
   if (Array.isArray(value)) return `[${value.map(sortedJson).join(",")}]`;
   if (value !== null && typeof value === "object") {
@@ -85,7 +84,7 @@ async function routePort(body: AnyRecord, nonce: string): Promise<AnyRecord> {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "connection": "close",
+        connection: "close",
         "x-videoforge-v207-authority": nonce,
       },
       body: JSON.stringify(body),
@@ -128,14 +127,18 @@ async function billingAmount(apiKey: string): Promise<number> {
     }
     amount += candidate;
   }
-  if (!Number.isFinite(amount) || amount < 0) throw new Error("RUNPOD_ENDPOINT_BILLING_TOTAL_INVALID");
+  if (!Number.isFinite(amount) || amount < 0)
+    throw new Error("RUNPOD_ENDPOINT_BILLING_TOTAL_INVALID");
   return amount;
 }
 
 async function createBatch(
   attemptId: string,
   nonce: string,
-): Promise<{ readonly input: RunPodV207DispatchBatchInput; readonly objectKeys: readonly string[] }> {
+): Promise<{
+  readonly input: RunPodV207DispatchBatchInput;
+  readonly objectKeys: readonly string[];
+}> {
   const outputPrefix =
     `tenant/${ACCOUNT}/workspace/${WORKSPACE}/project/${PROJECT}/revision/${REVISION}` +
     `/lane/mage-image/job/${attemptId}`;
@@ -295,18 +298,18 @@ async function verifyBatch(
       typeof failureCode === "string" && SAFE_PROVIDER_CODE.test(failureCode)
         ? failureCode
         : typeof errorValue === "string"
-        ? errorValue.slice(0, 160)
-        : errorValue && typeof errorValue === "object"
-          ? JSON.stringify(
-              Object.fromEntries(
-                Object.entries(errorValue as AnyRecord).filter(([, value]) =>
-                  ["string", "number", "boolean"].includes(typeof value),
+          ? errorValue.slice(0, 160)
+          : errorValue && typeof errorValue === "object"
+            ? JSON.stringify(
+                Object.fromEntries(
+                  Object.entries(errorValue as AnyRecord).filter(([, value]) =>
+                    ["string", "number", "boolean"].includes(typeof value),
+                  ),
                 ),
-              ),
-            ).slice(0, 240)
-          : job.error !== undefined
-            ? providerErrorCode(job.error)
-            : "UNKNOWN";
+              ).slice(0, 240)
+            : job.error !== undefined
+              ? providerErrorCode(job.error)
+              : "UNKNOWN";
     throw new Error(`MAGE_OUTPUT_NOT_SUCCEEDED:${String(output?.status ?? "MISSING")}:${code}`);
   }
   const receipt = output.provenance_receipt as AnyRecord;
@@ -578,7 +581,8 @@ async function main(): Promise<void> {
     try {
       await harness.cleanup({ deleteIfFailed: true, failed: true });
     } catch (cleanupError) {
-      evidence.cleanup_error = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+      evidence.cleanup_error =
+        cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
     }
     throw error;
   } finally {

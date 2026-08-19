@@ -193,11 +193,14 @@ test("generated output authority finalizes once into an exact v3 port without we
   assert.equal(port.content_type, authority.content_type);
   assert.equal(port.content_length, generatedBytes.byteLength);
   assert.equal(port.checksum_sha256, generatedHash);
-  assert.equal(plane.finalizeGeneratedUpload(authority, {
-    contentLength: generatedBytes.byteLength,
-    checksumSha256: generatedHash,
-    now: NOW,
-  }), port);
+  assert.equal(
+    plane.finalizeGeneratedUpload(authority, {
+      contentLength: generatedBytes.byteLength,
+      checksumSha256: generatedHash,
+      now: NOW,
+    }),
+    port,
+  );
   expectCode("GENERATED_OUTPUT_ALREADY_FINALIZED", () =>
     plane.finalizeGeneratedUpload(authority, {
       contentLength: generatedBytes.byteLength,
@@ -264,11 +267,14 @@ test("generated output authority remains bounded by expiry, tenant, and revocati
     retentionClass: "EPHEMERAL",
   });
   expectCode("ARTIFACT_NOT_FOUND", () =>
-    plane.finalizeGeneratedUpload({ ...revoked, account_id: scopeB.accountId }, {
-      contentLength: 1,
-      checksumSha256: `sha256:${"b".repeat(64)}`,
-      now: NOW,
-    }),
+    plane.finalizeGeneratedUpload(
+      { ...revoked, account_id: scopeB.accountId },
+      {
+        contentLength: 1,
+        checksumSha256: `sha256:${"b".repeat(64)}`,
+        now: NOW,
+      },
+    ),
   );
   plane.revoke(scopeA, revoked.reservation_id);
   expectCode("ARTIFACT_NOT_FOUND", () =>

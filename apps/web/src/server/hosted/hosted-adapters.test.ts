@@ -265,9 +265,7 @@ describe("V2-06 hosted adapters", () => {
     expect(port.method).toBe("PUT");
     expect(port.maxContentLength).toBe(4 * 1024 * 1024);
     expect(port.requiredHeaders["content-type"]).toBe("image/png");
-    expect(decodeURIComponent(port.url)).toContain(
-      "X-Amz-SignedHeaders=content-type;host",
-    );
+    expect(decodeURIComponent(port.url)).toContain("X-Amz-SignedHeaders=content-type;host");
     await expect(
       new HostedR2Signer(config.r2).signGenerated({
         objectKey: "tenant/account-a",
