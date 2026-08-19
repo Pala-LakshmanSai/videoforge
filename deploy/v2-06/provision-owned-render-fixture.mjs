@@ -56,7 +56,7 @@ const EXPECTED_SOURCE_MANIFEST_SHA256 =
 const MAX_R2_OBJECT_COUNT = 6;
 const MAX_R2_OBJECT_BYTES = 4_000_000;
 const MAX_R2_AGGREGATE_BYTES = 5_000_000;
-const FINITE_ACTION_SPEND_CAP_USD = 3;
+const FINITE_ACTION_SPEND_CAP_USD = 1;
 const R2_RECURRING_CEILING_USD_PER_MONTH = 2;
 const AUTHORITY_METADATA = Object.freeze({
   checkpoint: "V2-06",
@@ -780,43 +780,52 @@ async function ensureR2(client, config, row, fetchImpl = fetch) {
 
 async function ensureWranglerR2(row) {
   const temporaryDirectory = await mkdtemp(path.join(tmpdir(), "videoforge-v2-06-r2-"));
-  const downloaded = path.join(temporaryDirectory, "downloaded-object");
   const upload = path.join(temporaryDirectory, "upload-object");
   const objectPath = `${APPROVED_R2_BUCKET}/${row.objectKey}`;
+  const readbackOrigin = process.env.V2_06_RENDER_FIXTURE_R2_READBACK_ORIGIN;
+  if (readbackOrigin !== "http://localhost:8791")
+    error("render fixture Wrangler mode requires the exact local read-only preview");
   const run = (args) =>
     spawnSync("pnpm", ["--filter", "@videoforge/web", "exec", "wrangler", ...args], {
       cwd: ROOT,
       encoding: "utf8",
     });
   try {
-    const existing = run(["r2", "object", "get", objectPath, "--remote", "--file", downloaded]);
-    if (existing.status === 0) {
-      const bytes = await readFile(downloaded);
-      if (bytes.length !== row.bytes.length || sha256(bytes) !== row.digest)
-        error("Wrangler R2 object " + row.name + " differs from exact fixture bytes");
+    const verifyReadback = async () => {
+      const response = await fetch(
+        `${readbackOrigin}/object?key=${encodeURIComponent(row.objectKey)}`,
+        { headers: { accept: "application/json" } },
+      );
+      if (response.status === 404) return false;
+      if (!response.ok) error("read-only R2 verification failed for " + row.name);
+      const result = await response.json();
+      if (
+        result.checksum_sha256 !== row.digest ||
+        result.size_bytes !== row.bytes.length ||
+        result.content_type !== row.contentType ||
+        result.write_operations !== 0
+      )
+        error("read-only R2 object " + row.name + " differs from exact fixture bytes/type");
+      return true;
+    };
+    if (await verifyReadback()) {
       return "REUSED_EXACT";
     }
-    if (!/not found|404|does not exist/iu.test(`${existing.stdout}\n${existing.stderr}`))
-      error("Wrangler R2 preflight for " + row.name + " failed closed");
     await writeFile(upload, row.bytes, { mode: 0o600, flag: "wx" });
     const created = run([
       "r2",
       "object",
       "put",
-      objectPath,
       "--remote",
       "--file",
       upload,
       "--content-type",
       row.contentType,
       "--force",
+      objectPath,
     ]);
     if (created.status !== 0) error("Wrangler R2 upload for " + row.name + " failed");
-    const verified = run(["r2", "object", "get", objectPath, "--remote", "--file", downloaded]);
-    if (verified.status !== 0) error("Wrangler R2 verification for " + row.name + " failed");
-    const bytes = await readFile(downloaded);
-    if (bytes.length !== row.bytes.length || sha256(bytes) !== row.digest)
-      error("Wrangler R2 post-upload bytes for " + row.name + " drifted");
+    if (!(await verifyReadback())) error("Wrangler R2 verification for " + row.name + " failed");
     return "UPLOADED_VERIFIED";
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });

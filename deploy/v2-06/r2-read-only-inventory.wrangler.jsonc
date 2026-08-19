@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "videoforge-v2-06-r2-read-only-inventory-preview",
+  "main": "./r2-read-only-inventory-worker.mjs",
+  "compatibility_date": "2026-08-17",
+  "workers_dev": false,
+  "preview_urls": false,
+  "r2_buckets": [
+    {
+      "binding": "PRIVATE_ARTIFACTS",
+      "bucket_name": "videoforge-v2-06-staging-private",
+    },
+  ],
+}

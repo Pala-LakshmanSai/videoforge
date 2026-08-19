@@ -1,80 +1,41 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-19T11:27:17Z"
+updated_at: "2026-08-19T14:31:22Z"
 
-phase: serverless_v2_v2_06_live_finding_closure_in_progress_v2_07_blocked
-implementation_authorized_in_current_task: true
+phase: serverless_v2_v2_06_final_live_closure_independent_audit_pending_v2_07_blocked
+implementation_authorized_in_current_task: false
 current_milestone: hosted_staging_and_personal_media_workers
 current_task: VF-10-06
 current_wave: v2_06_personal_worker_conversion
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: v2_06_bounded_live_finding_closure_in_progress_v2_07_blocked
-application_code_changes_authorized: true
-provider_calls_authorized: true
+task_stage: independent_audit
+application_code_changes_authorized: false
+provider_calls_authorized: false
 read_only_provider_calls_authorized: false
-maximum_external_spend_usd: 3
+maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: bounded_v2_06_live_finding_closure
-  live_provider_calls: true
-  remote_mutation: true
-  deployment_or_publication: true
+  mode: repository_and_immutable_evidence_only_independent_audit
+  live_provider_calls: false
+  remote_mutation: false
+  deployment_or_publication: false
   credential_value_access: false
-  paid_requests_or_spend: true
+  paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: false
-  note: "User explicitly approved bounded V2-06 live finding closure at 2026-08-19T11:27:17Z: existing approved Cloudflare Worker/Workflow/R2 and Neon only; migration 0036 verification; positive two-account Better Auth/Neon non-superuser RLS/private-R2/device/lease proof; hosted Workflow lease-expiry/replay/stale/late-result recovery; post-delete R2 inventory/hash read-back; final-source rollback/health verification; disposable approved fixtures/database only; USD 3 finite cap and USD 2/month R2 ceiling. RunPod remains read-only with zero GPU/worker/volume mutation; V2-07 remains false; credential values remain unexposed."
+  note: "The final live closure authority is consumed. The only current task is a fresh $0 repository-and-immutable-evidence-only independent audit: no credentials, provider calls, mutation, deployment, publication, deletion, paid request, spend, repair, RunPod action, or V2-07 action."
 
 provider_authority:
-  mode: paid
-  provider: cloudflare+neon+google_cloud+paired_devices
-  cap_usd: 3
+  mode: none
+  provider: null
+  cap_usd: 0
+  recurring_r2_ceiling_usd_per_month: 0
   non_transferable: true
-  authorized_by_user_at: "2026-08-19T11:27:17Z"
-  resources:
-    - cloudflare_account_f9254d773a3426fcb469451b1f965d8c
-    - cloudflare_worker_videoforge_v2_06_staging
-    - cloudflare_workflow_videoforge_v2_06_staging_video
-    - cloudflare_r2_bucket_videoforge_v2_06_staging_private
-    - neon_project_ancient_morning_99567618
-    - google_oauth_project_videoforge_v2_06_staging_0817
-    - existing_paired_videoforge_devices
-    - one_disposable_restore_database_only
-  authorized_operations:
-    - exact_current_source_worker_workflow_private_r2_deployment
-    - migration_0036_verification_and_runtime_grants_rls_verification
-    - exact_owned_two_account_positive_tenant_r2_device_lease_acceptance
-    - hosted_workflow_lease_expiry_replay_stale_late_result_acceptance
-    - exact_post_delete_r2_inventory_and_hash_readback
-    - exact_final_source_cloudflare_rollback_and_health_verification
-    - disposable_restore_database_create_verify_and_delete
-    - read_only_resource_rate_spend_and_runpod_zero_worker_inventory
-  allowed_operations:
-    - exact_current_source_worker_workflow_private_r2_deployment
-    - migration_0036_verification_and_runtime_grants_rls_verification
-    - exact_owned_two_account_positive_tenant_r2_device_lease_acceptance
-    - hosted_workflow_lease_expiry_replay_stale_late_result_acceptance
-    - exact_post_delete_r2_inventory_and_hash_readback
-    - exact_final_source_cloudflare_rollback_and_health_verification
-    - disposable_restore_database_create_verify_and_delete
-    - read_only_resource_rate_spend_and_runpod_zero_worker_inventory
-  rate_snapshot:
-    - resource_id: cloudflare_r2_standard_storage_overage
-      billing_unit: gb_month_above_10_gb_free
-      usd_per_unit: 0.015
-      checked_at: "2026-08-18"
-    - resource_id: cloudflare_workers_free_base
-      billing_unit: month
-      usd_per_unit: 0
-      checked_at: "2026-08-18"
-    - resource_id: neon_free_base
-      billing_unit: month
-      usd_per_unit: 0
-      checked_at: "2026-08-18"
-    - resource_id: google_oauth_project_base
-      billing_unit: month
-      usd_per_unit: 0
-      checked_at: "2026-08-18"
+  source: final_live_closure_authority_consumed
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
+  rate_snapshot: []
 
 historical_v2_06_completion_authority:
   mode: paid
@@ -141,9 +102,9 @@ historical_v2_06_completion_authority:
       usd_per_unit: 0
       checked_at: "2026-08-18"
 
-credential_access_authorized: true
+credential_access_authorized: false
 credential_value_read_authorized: false
-remote_or_cloud_mutations_authorized: true
+remote_or_cloud_mutations_authorized: false
 model_downloads_authorized: false
 worker_image_publication_authorized: false
 sample_output_publication_authorized: false
@@ -168,12 +129,12 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "14135ceecf9c954216f5705f31074f33203cdc8d"
-  last_verified_repository_head: "14135ceecf9c954216f5705f31074f33203cdc8d"
-  current_source_head_note: "Commit 14135ce adds fail-closed R2 post-delete head/list read-back for explicit output deletion and scheduled retention, with focused provider-free proof. The deployed application remains 1ad68ea, so source/deployment parity remains false. The independent audit's hosted P1 gaps and live post-delete evidence gap remain open; V2-07 remains blocked."
-  last_good_commit: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
-  last_good_commit_note: "V2-06 source HEAD fd773ed has clean canonical verification and records Mac, Windows, backup/restore, and second-tenant live isolation evidence with zero new external spend; the follow-up independent audit remains FAIL on three P1 and one remaining P2 after safe documentation reconciliation, and the deployed application remains 1ad68ea."
-  working_tree_expected: clean_except_ignored_private_inputs
+  current_source_head: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
+  last_verified_repository_head: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
+  current_source_head_note: "Current repaired HEAD e673527 is deployed as Worker 32bfc4bf-4421-4703-9095-2afc3515fda3 with source/status parity. Same-task live closure is complete; only the fresh independent repository/evidence audit remains, and V2-07 is blocked."
+  last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
+  last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
+  working_tree_expected: clean_after_final_live_closure_handoff_commit
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
 live_development:
@@ -181,14 +142,14 @@ live_development:
   server_state: stopped
   dev_server_pid: null
   owner_task_id: null
-  health_checked_at: "2026-08-15T17:47:54Z"
+  health_checked_at: "2026-08-19T14:30:16Z"
   chrome_route: null
-  fixture_scenario: null
+  fixture_scenario: v2_00_roadmap_reset_audit
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: staging
-  provider_calls_authorized: true
-  authorized_spend_usd: 3
-  provider_authority_scope: "User-approved bounded V2-06 live finding closure uses only the exact existing Cloudflare Worker/Workflow/private R2 bucket, Neon migration 0036 project, Google-only two-user acceptance, existing paired devices, and one disposable restore database within a hard USD 3 finite cap and USD 2/month R2 ceiling. RunPod remains read-only with zero GPU/worker/volume mutation; credential values, unrelated resources, cap overruns, and V2-07 remain forbidden."
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: "Fresh independent audit is repository-and-immutable-evidence-only at $0; no live provider call, credential access, mutation, repair, or V2-07 action."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -256,7 +217,7 @@ roadmap_state:
   V2-03: complete_green_independently_reaudited
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
-  V2-06: independent_audit_fail_three_p1_one_p2_v2_07_blocked
+  V2-06: final_live_closure_complete_fresh_independent_audit_pending
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
@@ -333,11 +294,11 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-08-17T10:05:45Z"
-  basis: authenticated_sujal_runpod_dashboard_read_only_inventory
-  evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
+  checked_at: "2026-08-19T14:28:04.336Z"
+  basis: authenticated_sujal_runpod_redacted_read_only_api_inventory
+  evidence: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
   current_live_refresh_permitted_now: false
-  stale_until_current_authorized_read_only_inventory_succeeds: true
+  stale_until_current_authorized_read_only_inventory_succeeds: false
   pods: 0
   private_templates: 0
   endpoints: 0
@@ -362,7 +323,7 @@ last_known_provider_resource_truth:
   current_day_cloud_cpu_usd: 0
   current_day_serverless_usd: 0
   auto_pay: DISABLED
-  note: "Current 2026-08-18 read-only refresh shows zero Pods, endpoints, active/flex workers, private templates, and clusters. The two retained 50 GB EU-RO-1 volumes continue at USD 7/month total; billing data may lag by one hour. No RunPod mutation occurred."
+  note: "The 2026-08-19T14:28:04.336Z redacted API refresh shows zero Pods, endpoints, active Serverless workers, and private templates plus the two expected 50 GB retained volumes. No RunPod mutation or compute occurred; no further live refresh is authorized in the independent audit."
 
 blocking_gates_for_production:
   - GATE_TENANCY_001
@@ -384,79 +345,40 @@ blocking_gates_for_production:
 active_ownership:
   - task_id: VF-10-06
     checkpoint: V2-06
-    scope: exact_v2_06_live_activation_hardening_deployment_and_acceptance
-    provider_calls_authorized: true
-    maximum_external_spend_usd: 3
-    note: "Current goal is the user-approved bounded V2-06 live finding closure described in current_goal_boundary; RunPod remains read-only, credential values remain unexposed, and V2-07 remains forbidden."
+    scope: fresh_independent_repository_and_immutable_evidence_only_audit
+    provider_calls_authorized: false
+    maximum_external_spend_usd: 0
+    note: "Same-task live closure is complete. The fresh audit may only read repository and supplied immutable evidence; no credentials, provider calls, mutation, repair, spend, or V2-07 action."
 in_progress_checkpoint: V2-06
 
 recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
   milestone: hosted_staging_and_personal_media_workers
-  status: live_finding_closure_in_progress_v2_07_blocked
+  status: final_live_closure_complete_fresh_independent_audit_pending_v2_07_blocked
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
-  authorization_status: active_bounded_v2_06_live_finding_closure
-  task_stage: bounded_mutation
-  current_goal_authority: bounded_v2_06_live_finding_closure
+  authorization_status: repository_and_immutable_evidence_only_zero_spend
+  task_stage: independent_audit
+  current_goal_authority: no_provider_authority
   provider_authority:
-    mode: paid
-    provider: cloudflare+neon+google_cloud+paired_devices
-    cap_usd: 3
+    mode: none
+    provider: null
+    cap_usd: 0
+    recurring_r2_ceiling_usd_per_month: 0
     non_transferable: true
-    authorized_by_user_at: "2026-08-19T11:27:17Z"
-    resources:
-      - cloudflare_account_f9254d773a3426fcb469451b1f965d8c
-      - cloudflare_worker_videoforge_v2_06_staging
-      - cloudflare_workflow_videoforge_v2_06_staging_video
-      - cloudflare_r2_bucket_videoforge_v2_06_staging_private
-      - neon_project_ancient_morning_99567618
-      - google_oauth_project_videoforge_v2_06_staging_0817
-      - existing_paired_videoforge_devices
-      - one_disposable_restore_database_only
-    authorized_operations:
-      - exact_current_source_worker_workflow_private_r2_deployment
-      - migration_0036_verification_and_runtime_grants_rls_verification
-      - exact_owned_two_account_positive_tenant_r2_device_lease_acceptance
-      - hosted_workflow_lease_expiry_replay_stale_late_result_acceptance
-      - exact_post_delete_r2_inventory_and_hash_readback
-      - exact_final_source_cloudflare_rollback_and_health_verification
-      - disposable_restore_database_create_verify_and_delete
-      - read_only_resource_rate_spend_and_runpod_zero_worker_inventory
-    allowed_operations:
-      - exact_current_source_worker_workflow_private_r2_deployment
-      - migration_0036_verification_and_runtime_grants_rls_verification
-      - exact_owned_two_account_positive_tenant_r2_device_lease_acceptance
-      - hosted_workflow_lease_expiry_replay_stale_late_result_acceptance
-      - exact_post_delete_r2_inventory_and_hash_readback
-      - exact_final_source_cloudflare_rollback_and_health_verification
-      - disposable_restore_database_create_verify_and_delete
-      - read_only_resource_rate_spend_and_runpod_zero_worker_inventory
-    rate_snapshot:
-      - resource_id: cloudflare_r2_standard_storage_overage
-        billing_unit: gb_month_above_10_gb_free
-        usd_per_unit: 0.015
-        checked_at: "2026-08-18"
-      - resource_id: cloudflare_workers_free_base
-        billing_unit: month
-        usd_per_unit: 0
-        checked_at: "2026-08-18"
-      - resource_id: neon_free_base
-        billing_unit: month
-        usd_per_unit: 0
-        checked_at: "2026-08-18"
-      - resource_id: google_oauth_project_base
-        billing_unit: month
-        usd_per_unit: 0
-        checked_at: "2026-08-18"
+    source: final_live_closure_authority_consumed
+    resources: []
+    authorized_operations: []
+    allowed_operations: []
+    rate_snapshot: []
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
-  goal: "Close the V2-06 live finding matrix within the USD 3 finite cap and USD 2/month R2 ceiling using only the existing approved Worker/Workflow/R2/Neon/Google resources, exact disposable fixtures, and no RunPod or V2-07 action."
-  provider_calls_authorized: true
+  goal: "Hold at completed V2-06 live closure while a fresh repository-and-immutable-evidence-only independent audit runs; V2-07 remains blocked."
+  provider_calls_authorized: false
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 3
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
   credential_value_read_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
@@ -466,43 +388,43 @@ recommended_next_task:
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
-  application_code_changes_authorized: true
-  authority_note: "The user explicitly approved bounded live finding closure at 2026-08-19T11:27:17Z. Use only the listed existing resources and disposable restore database; do not expose credential values; do not mutate RunPod/GPU/volumes or start V2-07."
+  application_code_changes_authorized: false
+  authority_note: "The final-closure authority granted at 2026-08-19T13:28:41Z was exercised and is closed. Actual finite spend was $0 under the $1 cap; no recurring resource was created. No further provider call, credential access, mutation, deployment, publication, or V2-07 action is authorized."
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_bounded_live_finding_closure_in_progress_v2_07_blocked
-  verified_commit: "14135ceecf9c954216f5705f31074f33203cdc8d"
-  verified_commit_note: "Local R2 deletion/retention read-back repair is focused-green at the current source head: hosted adapters 14/14, hosted auth/worker database tests 6/6, script tests 70/70, web lint/typecheck, deployment validation, context validation, and secret scan pass. The canonical aggregate reached build, Cloudflare parity, formatting, lint, and typecheck but was stopped at unrelated local PGlite ENOSPC; no provider call, credential access, deployment, mutation, spend, RunPod action, or V2-07 action occurred."
+  state: v2_06_final_live_closure_complete_fresh_independent_audit_pending_v2_07_blocked
+  verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
+  verified_commit_note: "Repaired HEAD is deployed as Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3. The demo9 positive tenant/device/lease/ASR/render/Chrome journey, primary-account negative isolation, authenticated durable DELETE, exact and bucket-wide R2 read-back, full disposable cleanup, Mac revoke/uninstall, final-source rollback drill, migration 0036/FORCE RLS, and fresh RunPod zero-worker inventory are recorded. Same-task live closure passes; fresh independent acceptance and V2-07 remain blocked."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
   latest_live_check:
-    recorded_at_utc: "2026-08-18T13:33:02Z"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
-    status: last_supplied_deployment_evidence_not_refreshed_after_local_source_repair
-    source_repair_commit: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
-    deployed_implementation_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
-    deployed_source_mismatch: true
-    release_commit: "153cefe"
-    deployment_version_id: "7d66d976-a16f-46f6-8888-ebbb5f24217c"
-    rendered_config_sha256: "sha256:8f67537d912b2b8d95e00c2af12e931c11ed81b96195b9637d4c05c47de3b2af"
-    release_manifest_sha256: "sha256:fed1186e65ca2c4aa373568e562fff67d7d1dc6d01723ddfbd9aae71ba6a0ec2"
+    recorded_at_utc: "2026-08-19T14:31:22Z"
+    evidence: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
+    status: final_live_closure_pass_fresh_independent_audit_pending
+    source_repair_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
+    deployed_implementation_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
+    deployed_source_mismatch: false
+    release_commit: "e673527"
+    deployment_version_id: "32bfc4bf-4421-4703-9095-2afc3515fda3"
+    rendered_config_sha256: "sha256:085c49cad14e5e3b339f34065075f311a795c311d474c2355b6477f75c860175"
+    release_manifest_sha256: "sha256:b33292c0e88cc53246c0ec3a34cc43d74046840a409ee444473ab629cb06a9d9"
     neon_runtime_grant_executed: true
     new_external_spend_usd: 0
-    native_mac_worker_paired: true
-    native_mac_worker_online: true
-    native_mac_worker_version: "0.1.6"
-    native_mac_last_seen_rendered: "8/18/2026, 7:02:45 PM"
-    hosted_asr_attempt_id: "06b5beb5-9b8c-4cdc-9b40-6f07eed08c57"
-    hosted_asr_attempt_state: CANCELLED
-    hosted_asr_successful_output_proven: false
+    native_mac_worker_paired: false
+    native_mac_worker_online: false
+    native_mac_worker_version: "0.1.11"
+    native_mac_last_seen_rendered: "demo9 Settings proved REVOKED, then owner-side cleanup left no computer row; supported local uninstall exited 0 with no process, LaunchAgent, Keychain item, state, app, DMG, or mount"
+    hosted_asr_attempt_id: "f11e1b6d-7a6e-4aa9-8c6f-6e29e95318f7"
+    hosted_asr_attempt_state: SUCCEEDED_THEN_DISPOSABLE_CLEANUP
+    hosted_asr_successful_output_proven: true
   latest_source_verification:
-    recorded_at_utc: "2026-08-18T16:08:59Z"
-    evidence: evidence/acceptance/VF-10-06/2026-08-18-local-source-repair-fcc9257/acceptance.json
-    source_commit: "fcc925732fef321eb0cfa094d24fdfac05e80df3"
-    deployed_implementation_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
-    deployed_source_mismatch: true
-    immutable_worker_release_source_status: release_0_1_6_unchanged_source_repair_not_published
+    recorded_at_utc: "2026-08-19T14:31:22Z"
+    evidence: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
+    source_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
+    deployed_implementation_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
+    deployed_source_mismatch: false
+    immutable_worker_release_source_status: release_0_1_11_published_immutable
     new_external_spend_usd: 0
   local_repair_2026_08_18:
     commit: "05aa914dd8d531b044e5b4d37aff6c2747602ba5"
@@ -840,16 +762,16 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: local_r2_delete_guard_repaired_three_p1_one_p2_live_evidence_open
-    implementation_commit: "1ad68ea46b642949591c1090cecddc28d7ec428e"
-    source_head_commit: "14135ceecf9c954216f5705f31074f33203cdc8d"
+    status: live_closure_executed_two_p1_two_p2_open_v2_07_blocked
+    implementation_commit: "3d8d467320d2956f5d45915437434a396230e8fe"
+    source_head_commit: "3d8d467320d2956f5d45915437434a396230e8fe"
     local_source_repair_commit: "14135ceecf9c954216f5705f31074f33203cdc8d"
     local_source_repair_evidence: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
     autonomous_readiness_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
     windows_acceptance_fix_commit: "34a0fbf438cb231a4fe5b927367b2ecbda0279a2"
     windows_acceptance_completion_commit: "710131374789ad888e348cff6cbf3ca969780790"
-    current_source_deployment_status: deployed_worker_version_5ffa68ef_8a4e_4784_a3cb_d02320ce5cc2
-    previous_deployed_source_head: "153cefef40739c35b84ed633fc4978f8a5e9746b"
+    current_source_deployment_status: deployed_worker_version_83030c3f_d5b6_400c_bcb6_756a5068e573
+    previous_deployed_source_head: "1ad68ea46b642949591c1090cecddc28d7ec428e"
     hosted_ui_repair_commit: "0d850bfd6e5a413d744578e1cd45f07cba71b619"
     hosted_ui_repair_deployment_status: deployed
     worker_source_repair_commit: "5a192d3e1bf97e146f700031896ed5835a40921a"
@@ -858,6 +780,7 @@ verification:
     previous_worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
     evidence: evidence/acceptance/VF-10-06/2026-08-19-mac-live-completion-1ad68ea/acceptance.json
+    live_finding_closure_evidence: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
     windows_native_completion_evidence: evidence/acceptance/VF-10-06/2026-08-19-windows-native-completion-34a0fbf/acceptance.json
     live_two_account_isolation_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-two-account-isolation-fresh/acceptance.json
     live_destructive_lifecycle_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-destructive-lifecycle/acceptance.json
@@ -892,6 +815,7 @@ verification:
       - "Fresh separate read-only V2-06 audit at documentation HEAD 4cf904b (FAIL; no P0, three P1 and three P2; no edits, credentials, live calls, mutation, or spend)."
       - "Safe context reconciliation after the audit (exit 0; active task brief/start boundary corrected and selected V2-06 profile reduced to 14,842 words within the 15,000-word target)."
       - "Fresh follow-up audit of the reconciled current worktree (FAIL; no P0, three P1 and one P2; application source/evidence unchanged and no external action)."
+      - "Bounded live closure at current HEAD 3d8d467 (exit 0 for deployment, migration 0036, exact Workflow/device protocol fixtures, encrypted backup/disposable restore/delete, exact R2 post-delete reads, final-source rollback/restore, and cache-bypassed final health); strict two-account/non-superuser route proof remains open."
       - "Homebrew libpq PATH-aware backup/restore tools-only preflight (exit 0; pg_dump, pg_restore, and psql resolved without execution or provider access)."
       - "Private-input bootstrap under /Users/lakshmansai/.config/videoforge/v2-06/postgres-inputs (exit 0; mode-0700 directory and exactly three empty mode-0600 placeholders; no value read/generated)."
       - "Full private-input preflight (exit 1 expected; all three placeholders remain empty, so backup/restore failed closed before database access)."
@@ -904,6 +828,12 @@ verification:
       - "Approved Cloudflare rollback to version 7d66d976-a16f-46f6-8888-ebbb5f24217c and health check (exit 0; HTTP 200; commit 153cefe), followed by restored deployment version 8e036f86-b79d-4ab6-9de4-97b9293747ec (exit 0; HTTP 200; commit 8e96575)."
       - "Exact eight-name Worker secret allowlist, exact-origin R2 CORS, and private Standard R2 state verification (exit 0; dev URL disabled; no final-object expiry; multipart abort only)."
       - "Unauthenticated GETs for /api/v2/tenant, /api/v2/hosted/project-catalog, and /api/v2/hosted/queue after final deployment (exit 0; all HTTP 401)."
+      - "Final-source deployment version 83030c3f-d5b6-400c-bcb6-756a5068e573 and cache-bypassed health (exit 0; HTTP 200; source commit 3d8d467; GPU DISABLED_FAKE_ONLY)."
+      - "Live migration/grant verifier after deployment (exit 0; migration 36/36; runtime role non-superuser/non-bypass; FORCE RLS; exact grants/functions; hosted_render_plans SELECT-only)."
+      - "Hosted Workflow expiry/replay fixtures and worker stale/late/cancel fixtures (exit 0; EXPIRED, REPLAYED, MEDIA_WORKER_LEASE_STALE 409, idempotent CANCELLED, and late-success normalization)."
+      - "Exact disposable R2 object before/delete/after read-back (delete exits 0; each post-delete exact GET exits 1 with key-not-found and zero-byte output)."
+      - "Final-source rollback to 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2 and redeploy of current source (all exit 0; old and restored health HTTP 200)."
+      - "Fresh encrypted backup and disposable restore/delete at current closure (exit 0; backup sha256 596ac201c1ba6e6b133170a2b495aca7798b6b0518a78615b006a9f7ac38c5af; final disposable database count 0)."
       - "Mac 0.1.8 DMG SHA/size, hdiutil verification, deep/strict ad-hoc seal, universal2 architecture, mounted install/update, and LaunchAgent bootout/bootstrap restart (exit 0); spctl returned expected ad-hoc/non-notarized rejection exit 3."
       - "CI=1 TURBO_FORCE=true pnpm verify at 8e96575 (exit 0; canonical graph; control-plane 309; web 351 plus 1 skipped; worker suites; Cloudflare parity 1/1; installed-Chrome fixture 44/44)."
     delivered:
@@ -940,18 +870,25 @@ verification:
       - "Hosted /avatars and /styles now use the authenticated tenant-owned project catalog, and hosted /avatars/new and /styles/new render an explicit read-only staging boundary instead of fixture mutation screens."
       - "A separately controlled live Chrome profile for demo9gss@gmail.com now proves tenant-scoped Better Auth identity, private empty Library/device views, and non-revealing foreign project/attempt refusal against the primary tenant's exact IDs."
       - "The user explicitly confirmed the exact destructive scope; the v4 private output was deleted, the 0.1.11 Mac device was revoked, and the worker's supported uninstall exited 0 before the app bundle was moved to the user's Trash."
+      - "Current HEAD 3d8d467 is deployed as Worker version 83030c3f-d5b6-400c-bcb6-756a5068e573 after a verified rollback to 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2; cache-bypassed final health reports current source commit 3d8d467."
+      - "Migration 0036 and runtime grant reconciliation are live-verified at 36/36; runtime role is non-superuser and non-BYPASSRLS, all tenant tables have FORCE RLS, and hosted_render_plans is SELECT-only."
+      - "Hosted Workflow lease-expiry/replay and disposable personal-worker stale/late/cancel protocol fixtures are live-verified; exact fixture rows/devices were terminalized/revoked and active fixture leases ended at zero."
+      - "Exact disposable R2 result/final objects and recovery job-spec were deleted and exact post-delete GET/read-back returned key-not-found; the deployed authenticated DELETE route itself was not invoked."
+      - "The fresh closure backup is retained mode-0600 with SHA-256 596ac201c1ba6e6b133170a2b495aca7798b6b0518a78615b006a9f7ac38c5af; the only disposable restore database was deleted."
+      - "A fresh redacted Sujal RunPod API inventory at 2026-08-19T13:14:00.043Z proves zero Pods, endpoints, active Serverless workers, and private templates; only the two expected 50 GB retained volumes remain, and no mutation or GPU request occurred."
+      - "Fresh Cloudflare read-only metadata reports the private Standard APAC R2 bucket at 55 objects and 55.6 MB; this is current aggregate truth but not the still-required bucket-wide paginated key inventory."
+      - "A redacted read-only R2 preview probe is locally prepared and 3/3 green; it paginates only bucket.list(), hashes raw keys, reports metadata, performs zero object GET/write operations, and has not been started against Cloudflare."
     remaining_gates:
-      - "P1: positive second-tenant project/object/device/lease proof, hosted non-superuser RLS enforcement, and real private-R2 hash parity remain unproven."
-      - "P1: hosted Workflow restart/resume, lease expiry/replay, stale-result rejection, and late-result fencing remain unproven."
-      - "P1: rollback of final deployed source 1ad68ea / Worker 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2 remains unproven; only the earlier 8e96575 deployment rollback/restore is evidenced."
-      - "P2: post-delete R2 inventory/hash read-back is not supplied; the 16-object/32.1 MB inventory predates deletion."
+      - "P1: positive second-tenant project/object/device/lease proof, hosted non-superuser RLS enforcement, and real private-R2 hash parity remain unproven; current device protocol records were disposable owner-seeded fixtures and current real Settings views had no paired computer."
+      - "P1: the deployed authenticated DELETE /api/v2/cpu-attempts/:id/output route was not invoked live; direct authorized R2 deletion/read-back passed, but route ownership, durable event, and transaction ordering remain unproven."
+      - "P2: exact disposable R2 keys were absent by post-delete head/get read-back, but a bucket-wide paginated Worker-binding inventory was not captured; the 16-object/32.1 MB inventory is pre-delete."
       - "The selected Windows unsigned-beta and macOS ad-hoc/non-notarized-beta trust modes remain intentional; Authenticode and Developer ID/notarization are optional and are not checkpoint blockers."
-      - "The exact combined V2-06 cap remains USD 3 with a USD 2/month R2 ceiling. Current new external spend is USD 0; last supplied pre-delete R2 inventory was 32.1 MB and currently $0/month."
+      - "The historical combined V2-06 cap was USD 3 with a USD 2/month R2 ceiling and is consumed/non-transferable. Current read-only preflight cap and new external spend are USD 0; current R2 aggregate metadata is 55 objects/55.6 MB, but no paginated key inventory is claimed."
     resource_truth:
-      external_mutations: bounded_v2_06_completion_partial_acceptance
+      external_mutations: bounded_v2_06_live_finding_closure_partial_acceptance
       external_mutation_scope: "Current grant used only the exact V2-06 Worker/Workflow/private R2 bucket, Neon migration 0036, GitHub worker release publication and repository immutable-release setting, Cloudflare rollback/restore, Mac installation, temporary Windows pairing/revocation/install/uninstall, and one exact disposable Neon restore database that was deleted after verification. No RunPod, GPU, volume, unrelated resource, or V2-07 mutation occurred."
       truth_basis: current_live_refresh_plus_immutable_deployment_and_release_evidence
-      deployments: 20
+      deployments: 22
       installer_builds: 9
       installer_publications: 9
       email_deliveries: 0
@@ -963,18 +900,19 @@ verification:
       runpod_read_only_dashboard_inventory_completed: true
       runpod_workers_started: 0
       live_runpod_inventory_refreshed: true
+      runpod_inventory_refreshed_during_current_closure: true
       live_state_basis: current_live_read_only_cloudflare_neon_runpod_and_release_evidence
       cloudflare:
-        checked_at: "2026-08-19T04:26:36Z"
+        checked_at: "2026-08-19T13:14:00.043Z"
         account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
         workers_plan: FREE
         payment_method_on_file: true
         workers_after_confirmed_cleanup: 1
         workflows: 1
         worker_name: videoforge-v2-06-staging
-        worker_deployment_version_id: 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2
-        worker_deployment_commit: 1ad68ea46b642949591c1090cecddc28d7ec428e
-        worker_deployment_config_sha256: sha256:472ce4ae75cfa122465b75c6cb8c246754fb93aa5bd8aa04b10f6f22a93d695f
+        worker_deployment_version_id: 83030c3f-d5b6-400c-bcb6-756a5068e573
+        worker_deployment_commit: 3d8d467320d2956f5d45915437434a396230e8fe
+        worker_deployment_config_sha256: sha256:a8457199d4fb5ccee674541a7a57a7dbb39a224774f9131c85bf7009aad09d3d
         media_worker_release_version: 0.1.11
         media_worker_release_manifest_sha256: sha256:b33292c0e88cc53246c0ec3a34cc43d74046840a409ee444473ab629cb06a9d9
         media_worker_release_immutable: true
@@ -985,8 +923,10 @@ verification:
         r2_due_monthly_base_usd: 0
         r2_standard_free_storage_gb_month: 10
         r2_standard_overage_usd_per_gb_month: 0.015
-        r2_object_count: 16
-        r2_bucket_size_display: 32.1_MB
+        r2_object_count: 55
+        r2_bucket_size_display: CURRENT_AGGREGATE_55_6_MB
+        r2_post_delete_exact_readback: true
+        r2_post_delete_bucket_inventory: NOT_CAPTURED
       hosted_fixture:
         checked_at: "2026-08-18T10:05:00Z"
         tenant_owned_assets: 3
@@ -996,13 +936,13 @@ verification:
         avatar_version_state: READY
         style_version_state: PUBLISHED
         project_creation_blocker: CHROME_FILE_BYTES_UNREADABLE_EXTENSION_PERMISSION_PENDING
-      source_head_commit: fd773ed20f410b64da3ea29ff1d33a6675459afd
-      deployed_implementation_commit: 1ad68ea46b642949591c1090cecddc28d7ec428e
-      source_deployment_parity: false
-      source_deployment_parity_note: "The current repository source head is fd773ed; supplied deployment metadata reports deployed implementation source 1ad68ea. The mismatch is preserved as an open final-deployment/rollback audit gate."
-      worker_source_repair_release_status: immutable_release_0_1_11_published_both_platforms_live_proven_windows_uninstalled_after_revoke_mac_device_revoked_and_worker_uninstalled
+      source_head_commit: 3d8d467320d2956f5d45915437434a396230e8fe
+      deployed_implementation_commit: 14135ceecf9c954216f5705f31074f33203cdc8d
+      source_deployment_parity: true
+      source_deployment_parity_note: "Current repository HEAD 3d8d467 is the deployed source identity; implementation repair 14135ce is included in that build. Final source rollback and redeploy were independently verified."
+      worker_source_repair_release_status: immutable_release_0_1_11_published_both_platforms_deployed_current_head_rollback_verified
       neon:
-        checked_at: "2026-08-17T17:36:31Z"
+        checked_at: "2026-08-19T12:32:58Z"
         organization_id_sha256: "sha256:1a80a1978aaf55071ebade555193753126029390191658a7f700bbd06ea07044"
         plan: FREE
         recurring_usd_per_month: 0
@@ -1029,7 +969,9 @@ verification:
         oauth_audience: EXTERNAL_TESTING
         test_users: 2
       runpod:
-        checked_at: "2026-08-19T04:24:00Z"
+        checked_at: "2026-08-19T13:14:00.043Z"
+        inventory_basis: authenticated_redacted_read_only_api
+        billing_checked_at: "2026-08-19T04:24:00Z"
         account_label: sujal
         pods: 0
         private_templates: 0
@@ -1063,7 +1005,9 @@ verification:
 
 audit_evidence:
   v2_06_completion_matrix: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/acceptance.json
+  v2_06_live_finding_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
+  v2_06_read_only_preflight: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/read-only-preflight-3d8d467.json
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
-  current_goal_scope: repository_and_supplied_immutable_evidence_only
-  result: FAIL_three_p1_one_p2_live_evidence; local_r2_delete_guard_repaired
+  current_goal_scope: bounded_v2_06_read_only_preflight
+  result: FAIL_two_p1_one_p2_same_chat_live_evidence_open; fresh_runpod_zero_worker_inventory_closed
   v2_07_status: blocked_not_safe_to_start

@@ -295,7 +295,7 @@ tenant/project/revision IDs, and creates a complete `render-job-input/v1` plus e
 `hosted_render_submission` plan. The plan uses tenant-scoped R2 object-key lineage and is limited
 to `lakshmansai121@gmail.com` and `demo9gss@gmail.com`.
 
-The live path carries the explicit V2-06 authority record (finite action cap `$3`, R2 recurring
+The live path carries the explicit V2-06 authority record (finite action cap `$1`, R2 recurring
 ceiling `$2/month`, zero expected provider spend, and GPU transport disabled) and an exact six-object,
 five-megabyte aggregate / four-megabyte per-object R2 budget. It writes a durable immutable R2
 upload-intent receipt before any object mutation, uses conditional create (`If-None-Match: *`),

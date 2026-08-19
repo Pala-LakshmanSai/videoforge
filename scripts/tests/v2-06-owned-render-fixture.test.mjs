@@ -173,7 +173,7 @@ test("source path, migration chain, and activation caps are hard-pinned", async 
   assert.equal(plan.r2Budget.object_count, MAX_R2_OBJECT_COUNT);
   assert.ok(plan.r2Budget.aggregate_bytes <= MAX_R2_AGGREGATE_BYTES);
   assert.ok(plan.rows.every((row) => row.bytes.length <= MAX_R2_OBJECT_BYTES));
-  assert.equal(plan.authority.finite_action_spend_cap_usd, 3);
+  assert.equal(plan.authority.finite_action_spend_cap_usd, 1);
   assert.equal(plan.authority.expected_external_spend_usd, 0);
   assert.equal(plan.authority.gpu_transport, AUTHORITY_METADATA.gpu_transport);
   assert.throws(() => assertR2PlanCaps(plan.rows.slice(0, -1)), /object count exceeds/u);

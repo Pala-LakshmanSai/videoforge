@@ -26,6 +26,7 @@ import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -41,6 +42,9 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const requireFromWeb = createRequire(path.join(ROOT, "apps/web/package.json"));
+const requireFromControlPlane = createRequire(
+  path.join(ROOT, "packages/control-plane/package.json"),
+);
 const { AwsClient } = requireFromWeb("aws4fetch");
 const SOURCE_RELATIVE = "apps/web/public/fixtures/avatar/amish-farm-host.svg";
 const MANIFEST_RELATIVE = "project-context/evidence/asset_manifest.csv";
@@ -58,6 +62,7 @@ const APPROVED_NEON_PROJECT_NAME = "videoforge-v2-06-staging";
 const APPROVED_NEON_HOST = "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech";
 const APPROVED_NEON_DATABASE = "neondb";
 const APPROVED_NEON_MIGRATION_ROLE = "neondb_owner";
+const APPROVED_NEON_SSLMODE = "require";
 const PINNED_FFMPEG_VERSION = "8.1.1";
 const PINNED_FFPROBE_VERSION = "8.1.1";
 const AVATAR_STORAGE_ROLE = Object.freeze({
@@ -1051,6 +1056,63 @@ async function ensureR2Objects(config, assets, scope) {
   return buildOrphanInventory(scope, assets);
 }
 
+async function ensureWranglerR2Objects(assets, scope) {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), "videoforge-v2-06-owned-r2-"));
+  const readbackOrigin = process.env.V2_06_OWNED_FIXTURE_R2_READBACK_ORIGIN;
+  if (readbackOrigin !== "http://localhost:8791")
+    throw new Error("owned fixture Wrangler mode requires the exact local read-only preview");
+  const run = (args) =>
+    spawnSync("pnpm", ["--filter", "@videoforge/web", "exec", "wrangler", ...args], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+  try {
+    for (const role of ROLE_ORDER) {
+      const asset = assets[role];
+      const upload = path.join(temporaryDirectory, `${role.toLowerCase()}-upload`);
+      const objectPath = `${APPROVED_R2_BUCKET}/${asset.objectKey}`;
+      const verifyReadback = async () => {
+        const response = await fetch(
+          `${readbackOrigin}/object?key=${encodeURIComponent(asset.objectKey)}`,
+          { headers: { accept: "application/json" } },
+        );
+        if (response.status === 404) return false;
+        if (!response.ok) throw new Error(`read-only R2 verification failed for ${role}`);
+        const result = await response.json();
+        if (
+          result.checksum_sha256 !== asset.checksumSha256 ||
+          result.size_bytes !== asset.contentLength ||
+          result.content_type !== asset.contentType ||
+          result.write_operations !== 0
+        )
+          throw new Error(`read-only R2 object ${role} differs from exact fixture bytes/type`);
+        return true;
+      };
+      if (await verifyReadback()) {
+        continue;
+      }
+      await writeFile(upload, asset.bytes, { mode: 0o600, flag: "wx" });
+      const created = run([
+        "r2",
+        "object",
+        "put",
+        "--remote",
+        "--file",
+        upload,
+        "--content-type",
+        asset.contentType,
+        "--force",
+        objectPath,
+      ]);
+      if (created.status !== 0) throw new Error(`Wrangler R2 upload failed for ${role}`);
+      if (!(await verifyReadback())) throw new Error(`Wrangler R2 verification failed for ${role}`);
+    }
+    return buildOrphanInventory(scope, assets);
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
 function printHelp() {
   console.log(`V2-06 owned synthetic avatar fixture provisioner
 
@@ -1067,6 +1129,11 @@ Required environment for live mutation:
   V2_06_R2_BUCKET                  exact private staging bucket
   V2_06_R2_ACCESS_KEY_ID           bucket-scoped R2 key
   V2_06_R2_SECRET_ACCESS_KEY       bucket-scoped R2 secret
+
+Existing protected local credentials may be used without exposing values by setting:
+  V2_06_OWNED_FIXTURE_USE_PG_SERVICE=YES
+  V2_06_OWNED_FIXTURE_USE_WRANGLER=YES
+and the exact approved PGHOST/PGDATABASE/PGUSER/PGSSLMODE/PGPASSFILE environment.
 
 The fixture is Avatar Hub-only. It never creates project artifact reservations or receipts.
 R2/DB ordering records tenant assets and presets before R2 writes; reruns are idempotent.
@@ -1131,22 +1198,42 @@ async function main(argv = process.argv.slice(2)) {
   if (process.env.V2_06_OWNED_FIXTURE_DATABASE_CONFIRM !== "YES")
     throw new Error("refusing database mutation without V2_06_OWNED_FIXTURE_DATABASE_CONFIRM=YES");
   const databaseUrl = process.env.V2_06_MIGRATION_DATABASE_URL;
-  assertMigrationUrl(databaseUrl);
+  const useProtectedPgService = process.env.V2_06_OWNED_FIXTURE_USE_PG_SERVICE === "YES";
+  const useWranglerR2 = process.env.V2_06_OWNED_FIXTURE_USE_WRANGLER === "YES";
+  if (useProtectedPgService) {
+    if (
+      process.env.PGHOST !== APPROVED_NEON_HOST ||
+      process.env.PGDATABASE !== APPROVED_NEON_DATABASE ||
+      process.env.PGUSER !== APPROVED_NEON_MIGRATION_ROLE ||
+      process.env.PGSSLMODE !== APPROVED_NEON_SSLMODE ||
+      typeof process.env.PGPASSFILE !== "string" ||
+      process.env.PGPASSFILE.length === 0
+    )
+      throw new Error("protected PostgreSQL environment is not the approved owner service");
+  } else {
+    assertMigrationUrl(databaseUrl);
+  }
   const r2Config = {
     accountId: requireText(process.env.V2_06_R2_ACCOUNT_ID, "V2_06_R2_ACCOUNT_ID"),
     bucket: requireText(process.env.V2_06_R2_BUCKET, "V2_06_R2_BUCKET"),
-    accessKeyId: requireText(process.env.V2_06_R2_ACCESS_KEY_ID, "V2_06_R2_ACCESS_KEY_ID"),
-    secretAccessKey: requireText(
-      process.env.V2_06_R2_SECRET_ACCESS_KEY,
-      "V2_06_R2_SECRET_ACCESS_KEY",
-    ),
+    accessKeyId: useWranglerR2
+      ? undefined
+      : requireText(process.env.V2_06_R2_ACCESS_KEY_ID, "V2_06_R2_ACCESS_KEY_ID"),
+    secretAccessKey: useWranglerR2
+      ? undefined
+      : requireText(process.env.V2_06_R2_SECRET_ACCESS_KEY, "V2_06_R2_SECRET_ACCESS_KEY"),
     region: process.env.V2_06_R2_REGION ?? APPROVED_R2_REGION,
   };
   assertR2Config(r2Config);
-  const { Pool } = createRequire(path.join(ROOT, "apps/web/package.json"))(
-    "@neondatabase/serverless",
-  );
-  const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+  const { Pool } = useProtectedPgService
+    ? requireFromControlPlane("pg")
+    : createRequire(path.join(ROOT, "apps/web/package.json"))("@neondatabase/serverless");
+  const pool = new Pool({
+    ...(useProtectedPgService ? {} : { connectionString: databaseUrl }),
+    max: 1,
+    application_name: "videoforge-v2-06-owned-fixture",
+    ...(useProtectedPgService ? {} : { options: "-c search_path=public,pg_catalog" }),
+  });
   try {
     const scope = await resolveScope(pool, inputs.email);
     const assets = buildAssets({
@@ -1167,7 +1254,9 @@ async function main(argv = process.argv.slice(2)) {
     } finally {
       seedClient.release();
     }
-    const orphanInventory = await ensureR2Objects(r2Config, assets, scope);
+    const orphanInventory = useWranglerR2
+      ? await ensureWranglerR2Objects(assets, scope)
+      : await ensureR2Objects(r2Config, assets, scope);
     let audit;
     const auditClient = await pool.connect();
     try {

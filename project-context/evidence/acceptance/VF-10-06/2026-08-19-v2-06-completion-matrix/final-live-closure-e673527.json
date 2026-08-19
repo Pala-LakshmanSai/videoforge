@@ -1,0 +1,233 @@
+{
+  "schema": "videoforge.v2-06-final-live-closure/v1",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T14:31:22Z",
+  "result": "PASS_READY_FOR_FRESH_INDEPENDENT_AUDIT",
+  "repository": {
+    "branch": "codex/serverless-v2-roadmap",
+    "head": "e673527b7ac3dbb4db64f66a19a766cf1cf1d422",
+    "repair_commit": "e673527b7ac3dbb4db64f66a19a766cf1cf1d422",
+    "repair": "Authenticated output deletion now includes the immutable job-spec beside the two issued output objects before requiring an empty exact attempt prefix.",
+    "deployed_worker_version_id": "32bfc4bf-4421-4703-9095-2afc3515fda3",
+    "deployed_status_commit": "e673527b7ac3dbb4db64f66a19a766cf1cf1d422",
+    "source_deployment_parity": true
+  },
+  "authority": {
+    "expected_spend_usd": 0,
+    "hard_finite_cap_usd": 1,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "credential_values_accessed_or_recorded": false,
+    "runpod_mode": "READ_ONLY_ONLY_ZERO_GPU_WORKER_VOLUME_MUTATION",
+    "v2_07_authorized": false,
+    "exact_resources": [
+      "Cloudflare Worker videoforge-v2-06-staging",
+      "Cloudflare Workflow videoforge-v2-06-staging-video / HostedVideoWorkflow",
+      "Cloudflare R2 bucket videoforge-v2-06-staging-private / Standard",
+      "Neon ancient-morning-99567618 / production / neondb",
+      "Google OAuth videoforge-v2-06-staging-0817",
+      "immutable media worker release 0.1.11",
+      "one disposable demo9 tenant project and its exact fixture rows/objects/device"
+    ],
+    "new_recurring_resources_created": 0,
+    "new_external_spend_usd": 0
+  },
+  "release_and_mac_lifecycle": {
+    "release_version": "0.1.11",
+    "mac_dmg_size_bytes": 285620696,
+    "mac_dmg_sha256": "sha256:80d2b44f98b852cf79645efb345c221bfaa5f6f1022a5f62af560c110d948910",
+    "release_manifest_sha256": "sha256:b33292c0e88cc53246c0ec3a34cc43d74046840a409ee444473ab629cb06a9d9",
+    "execution_bundle_sha256": "sha256:6955561b0e64b1c02ce68a8fd8918ba9a27e952ffb82062b6abae0b46827a55c",
+    "paired_account": "demo9gss@gmail.com",
+    "device_id": "7a3c67f3-1626-4997-8c8b-d8a0c76a0bf5",
+    "device_positive_state": "ONLINE_0.1.11",
+    "final_hosted_state": "NO_DEVICE_ROWS",
+    "revoke_proof": "Authenticated Settings changed ONLINE to REVOKED before owner-side fixture cleanup.",
+    "uninstall_exit_code": 0,
+    "post_uninstall": {
+      "launchagent_print_exit": 113,
+      "worker_process_match_exit": 1,
+      "keychain_presence_exit": 44,
+      "launchagent_plist_absent": true,
+      "canonical_state_root_absent": true,
+      "user_app_absent": true,
+      "system_app_absent": true,
+      "downloaded_0_1_11_dmg_absent": true,
+      "mounted_videoforge_images_absent": true,
+      "recoverability_note": "The removed app bundles and downloaded 0.1.11 DMG were moved to macOS Trash."
+    }
+  },
+  "two_account_and_tenant_isolation": {
+    "primary_account": "lakshmansai121@gmail.com",
+    "secondary_account": "demo9gss@gmail.com",
+    "secondary_account_id": "1f83fb41-7c10-6513-2558-9c50f9f96680",
+    "secondary_workspace_id": "23af0455-f268-78c6-f4d0-4517ca843895",
+    "disposable_project_id": "d71b9db3-5030-4831-8014-40ad9da5c175",
+    "disposable_revision_id": "882a4db0-12ac-4074-8029-3ead96ce3104",
+    "positive_proof": "The demo9 Better Auth session owned the exact project, private fixture objects, Mac device, two completed leases, ASR result, render result, Chrome playback, approval, and Library output.",
+    "negative_proof": "A separate signed-in primary Chrome profile opened the exact demo9 project URL and received Project unavailable with no fixture substitution.",
+    "runtime_role": {
+      "name": "videoforge_v2_06_runtime",
+      "rolsuper": false,
+      "rolbypassrls": false,
+      "rolcanlogin": true,
+      "force_rls_tables_missing": 0
+    },
+    "private_r2_parity": "Every fixture upload and both worker outputs were verified by exact size and SHA-256 through the private binding; no public bucket path was used."
+  },
+  "hosted_cpu_acceptance": {
+    "asr_attempt_id": "f11e1b6d-7a6e-4aa9-8c6f-6e29e95318f7",
+    "asr_state": "SUCCEEDED",
+    "asr_result_sha256": "sha256:edd4c96fe846b29bf31a4077e654fb2db401172da505a5f2110bde3109d94e90",
+    "asr_lease_id": "b3c2c48e-924a-418f-8c28-29833a6fe396",
+    "render_attempt_id": "08aac665-621d-4fec-97a0-34f8b26a2ca5",
+    "render_state": "SUCCEEDED",
+    "render_result_sha256": "sha256:bc18473bc0533862d74335b5b6932fc7e1210ee45e4a4404d8576b63d93a650a",
+    "final_mp4_sha256": "sha256:b3d1a1b1d9c69053c62a6c035a9e58f756f44cf4ff511613f5da3a485bc3efac",
+    "render_lease_id": "8b47b540-ba8f-46f8-a5c0-5b413bc4c301",
+    "active_leases_before_cleanup": 0,
+    "chrome_proof": "Real Chrome showed both attempts SUCCEEDED, played the private 37-second output, and recorded final approval."
+  },
+  "authenticated_delete": {
+    "initial_http_status": 500,
+    "initial_cause": "The route deleted its two issued outputs but left job-spec while requiring the exact attempt prefix to be empty.",
+    "repair_test": "@videoforge/web Vitest 49 files, 352 passed, 1 skipped; exit 0",
+    "typecheck_exit": 0,
+    "final_http_status": 204,
+    "deleted_exact_attempt_objects": [
+      "job-spec",
+      "final-mp4",
+      "result-document"
+    ],
+    "post_delete_object_http_statuses": [404, 404, 404],
+    "neon_state": "SUCCEEDED_WITH_RETENTION_DELETED_AT",
+    "durable_event_sequence": 3,
+    "durable_event_kind": "RETENTION_DELETED",
+    "durable_event_facts_sha256": "sha256:98793f55a32e70db72d7eab1550dc2e2817b4e83e6a7ea8811bdd9ed1975eaab"
+  },
+  "r2_inventory_and_cleanup": {
+    "preview_name": "videoforge-v2-06-r2-read-only-inventory-preview",
+    "preview_mode": "EPHEMERAL_REMOTE_READ_ONLY",
+    "write_operations": 0,
+    "baseline_before_fixture": {
+      "object_count": 55,
+      "total_size_bytes": 55598142,
+      "inventory_sha256": "sha256:7d67e4f45d3b58d24fbae1dd4718d4c88a0621bd3b5e2dc976f019d923ee559b"
+    },
+    "final_after_fixture_cleanup": {
+      "object_count": 55,
+      "total_size_bytes": 55598142,
+      "inventory_sha256": "sha256:7d67e4f45d3b58d24fbae1dd4718d4c88a0621bd3b5e2dc976f019d923ee559b"
+    },
+    "all_disposable_object_keys_absent": true,
+    "preview_terminated": true,
+    "new_recurring_r2_resource": false
+  },
+  "neon_cleanup": {
+    "migration_0036": {
+      "name": "v2_06_google_only_replay_boundaries",
+      "filename": "0036_v2_06_google_only_replay_boundaries.sql",
+      "sha256": "sha256:42cd8f6f0a2d9cb1e214eb8de49cc33a05dd787571e86051dad4a01e1a08528a"
+    },
+    "owner_side_cleanup_scope": "Only the exact demo9 disposable project, revision, nine assets, two attempts, four output authorities, five attempt events, two leases, four device events, one revoked device/enrollment, six reservations/receipts, one render plan/review, fixture presets, and three fixture mutation receipts.",
+    "append_only_triggers_temporarily_disabled": [
+      "hosted_project_reviews_append_only",
+      "media_worker_events_append_only",
+      "hosted_cpu_job_events_append_only",
+      "hosted_render_plans_append_only",
+      "repository_mutation_receipts_append_only",
+      "project_revisions_locked_immutable",
+      "avatar_profile_versions_ready_immutable",
+      "image_style_versions_published_immutable"
+    ],
+    "trigger_restore_state": "ALL_ENABLED",
+    "final_fixture_counts": {
+      "projects": 0,
+      "revisions": 0,
+      "assets": 0,
+      "attempts": 0,
+      "devices": 0,
+      "enrollments": 0,
+      "avatar_profiles": 0,
+      "image_styles": 0,
+      "fixture_mutation_receipts": 0
+    },
+    "secondary_auth_tenant_retained": true
+  },
+  "workflow_recovery_backup_restore": {
+    "hosted_workflow_recovery": "Previously recorded current-source expiry, replay, stale-result, late-result, cancellation, and exact disposable instance termination remain immutable in live-closure-3d8d467.json.",
+    "backup_restore": "Previously recorded encrypted backup and migration-36 disposable restore verification remain immutable in live-closure-3d8d467.json; the disposable restore database was deleted.",
+    "active_disposable_workflow_or_restore_resource_remaining": false
+  },
+  "rollback": {
+    "repaired_version_before_drill": "1367991b-b119-446b-a976-23654f1f9599",
+    "rollback_target_version": "83030c3f-d5b6-400c-bcb6-756a5068e573",
+    "rollback_exit_code": 0,
+    "restore_selected_version_exit_code": 0,
+    "wrangler_binding_observation": "Rollback changed the selected code version but the status commit binding followed the previously active deployment; a final ordinary deploy was required to converge code and metadata.",
+    "final_deploy_version": "32bfc4bf-4421-4703-9095-2afc3515fda3",
+    "final_status_http": 200,
+    "final_status_commit": "e673527b7ac3dbb4db64f66a19a766cf1cf1d422",
+    "final_root_http": 200,
+    "restore_complete": true
+  },
+  "runpod": {
+    "checked_at": "2026-08-19T14:28:04.336Z",
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "pods": 0,
+    "endpoints": 0,
+    "running_pods": 0,
+    "active_serverless_workers": 0,
+    "private_templates": 0,
+    "retained_network_volumes": [
+      {"id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be", "size_gb": 50},
+      {"id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619", "size_gb": 50}
+    ],
+    "mutation_calls": 0,
+    "workers_started": 0,
+    "existing_recurring_volume_cost_usd_per_month": 7
+  },
+  "commands_and_exits": [
+    {"command": "pnpm --filter @videoforge/web test", "exit_code": 0, "result": "49 files passed; 352 tests passed; 1 skipped"},
+    {"command": "pnpm --filter @videoforge/web typecheck", "exit_code": 0},
+    {"command": "pnpm --filter @videoforge/web build:staging", "exit_code": 0},
+    {"command": "wrangler deploy repaired source", "exit_code": 0},
+    {"command": "authenticated Chrome DELETE /api/v2/cpu-attempts/08aac665-621d-4fec-97a0-34f8b26a2ca5/output", "exit_code": 0, "http_status": 204},
+    {"command": "read-only preview exact GET of job-spec/final-mp4/result-document", "exit_code": 0, "http_statuses": [404, 404, 404]},
+    {"command": "bounded R2 deletion of exact disposable fixture keys", "exit_code": 0},
+    {"command": "bounded Neon fixture cleanup transaction", "exit_code": 0},
+    {"command": "VideoForge Worker 0.1.11 --uninstall", "exit_code": 0},
+    {"command": "wrangler rollback repaired source to prior source", "exit_code": 0},
+    {"command": "wrangler rollback prior source to repaired selected version", "exit_code": 0},
+    {"command": "final wrangler deploy to converge source and bindings", "exit_code": 0},
+    {"command": "GET /api/v2/hosted/status", "exit_code": 0, "http_status": 200},
+    {"command": "runpod-live-inventory.ts with redacted jq projection", "exit_code": 0},
+    {"command": "node --test deploy/v2-06/r2-read-only-inventory-worker.test.mjs scripts/tests/v2-06-owned-render-fixture.test.mjs", "exit_code": 0, "result": "16 tests passed"},
+    {"command": "CI=1 TURBO_FORCE=true pnpm verify", "exit_code": 0, "result": "canonical provider-free build, lint, typecheck, package tests, 70 script tests, six worker suites, 1 Cloudflare parity test, and 44 installed-Chrome journeys passed; web reported 352 passed and 1 skipped"},
+    {"command": "pnpm context:validate", "exit_code": 0},
+    {"command": "pnpm contracts:check", "exit_code": 0, "result": "123 canonical files synchronized"},
+    {"command": "pnpm validate:v2-06-deployment", "exit_code": 0},
+    {"command": "pnpm secret:scan", "exit_code": 0, "result": "1167 tracked files scanned"},
+    {"command": "pnpm format:check", "exit_code": 0},
+    {"command": "git diff --check", "exit_code": 0}
+  ],
+  "spend_truth": {
+    "finite_v2_06_spend_usd": 0,
+    "finite_cap_usd": 1,
+    "cloudflare_worker_workflow_base_usd": 0,
+    "neon_base_usd": 0,
+    "google_oauth_base_usd": 0,
+    "personal_worker_provider_compute_usd": 0,
+    "r2_bytes_after_cleanup": 55598142,
+    "r2_overage_rate_usd_per_gb_month_above_free_allowance": 0.015,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "new_recurring_charge_created": 0,
+    "pre_existing_runpod_volume_usd_per_month": 7
+  },
+  "unproven_live_claims": [
+    "No live Cloud Run execution was performed in this final closure; the accepted V2-06 path is the account-owned personal worker and Cloud Run remains a source/parity boundary rather than the active tenant execution path.",
+    "Provider billing consoles can lag; this record proves exact operations and current resource inventory, not a future finalized invoice.",
+    "This completion record is same-task evidence and is not the requested independent audit."
+  ],
+  "current_state": "V2-06_LIVE_CLOSURE_COMPLETE_FRESH_INDEPENDENT_AUDIT_PENDING",
+  "v2_07_safety": "BLOCKED_UNTIL_FRESH_INDEPENDENT_AUDIT_PASSES; no V2-07 authority, RunPod mutation, GPU worker, endpoint, or volume action occurred."
+}

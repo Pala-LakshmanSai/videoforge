@@ -1,0 +1,164 @@
+{
+  "schema_version": "videoforge.v2-06-live-finding-read-only-preflight/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T13:14:00.043Z",
+  "source": {
+    "branch": "codex/serverless-v2-roadmap",
+    "head": "3d8d467320d2956f5d45915437434a396230e8fe",
+    "deployed_worker_version": "83030c3f-d5b6-400c-bcb6-756a5068e573",
+    "deployment_percentage": 100
+  },
+  "authority": {
+    "mode": "READ_ONLY_PREFLIGHT",
+    "maximum_external_spend_usd": 0,
+    "remote_mutation": false,
+    "deployment_or_publication": false,
+    "runpod_mutation_or_gpu": false,
+    "v2_07_action": false,
+    "credential_values_recorded": false
+  },
+  "result": "PASS_READ_ONLY_PREFLIGHT_ONE_P2_CLOSED_THREE_FINDINGS_REMAIN",
+  "observations": {
+    "cloudflare": {
+      "worker": "videoforge-v2-06-staging",
+      "workflow": "videoforge-v2-06-staging-video",
+      "workflow_class": "HostedVideoWorkflow",
+      "r2_bucket": "videoforge-v2-06-staging-private",
+      "r2_location": "APAC",
+      "r2_storage_class": "Standard",
+      "r2_object_count": 55,
+      "r2_bucket_size": "55.6 MB",
+      "bucket_wide_paginated_key_inventory": "NOT_CAPTURED",
+      "health_commit": "3d8d467320d2956f5d45915437434a396230e8fe",
+      "gpu_transport": "DISABLED_FAKE_ONLY",
+      "provider_cpu_spend": "$0"
+    },
+    "neon": {
+      "hosted_auth_users": 2,
+      "google_accounts": 2,
+      "linked_tenants": 2,
+      "projects_per_account": [0, 11],
+      "device_status_counts": {
+        "REVOKED": 6,
+        "active": 0
+      },
+      "runtime_role": "videoforge_v2_06_runtime",
+      "runtime_can_login": true,
+      "runtime_superuser": false,
+      "runtime_bypass_rls": false,
+      "migration_head": 36,
+      "migration_0036_sha256": "sha256:42cd8f6f0a2d9cb1e214eb8de49cc33a05dd787571e86051dad4a01e1a08528a"
+    },
+    "runpod": {
+      "schema_version": "videoforge.runpod-live-inventory/v2",
+      "checked_at": "2026-08-19T13:14:00.043Z",
+      "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+      "pods": 0,
+      "endpoints": 0,
+      "active_serverless_workers": 0,
+      "private_templates": 0,
+      "network_volumes": [
+        {
+          "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+          "size_gb": 50
+        },
+        {
+          "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+          "size_gb": 50
+        }
+      ],
+      "mutations": 0,
+      "workers_started": 0,
+      "gpu_requests": 0
+    },
+    "prepared_r2_probe": {
+      "entrypoint": "deploy/v2-06/r2-read-only-inventory-worker.mjs",
+      "config": "deploy/v2-06/r2-read-only-inventory.wrangler.jsonc",
+      "redacts_raw_keys": true,
+      "paginates_with_cursor_loop_protection": true,
+      "object_gets": 0,
+      "write_operations": 0,
+      "live_preview_started": false,
+      "local_tests_passed": 3
+    }
+  },
+  "finding_delta": {
+    "closed": [
+      {
+        "severity": "P2",
+        "id": "P2-RUNPOD-REFRESH",
+        "reason": "The repository's redacted read-only client refreshed the exact Sujal account and returned zero Pods, endpoints, active Serverless workers, and private templates, with only the two expected 50 GB retained volumes."
+      }
+    ],
+    "remaining": [
+      {
+        "severity": "P1",
+        "id": "P1-HOSTED-POSITIVE-TENANT-RLS-R2-DEVICE",
+        "reason": "The second admitted tenant still has zero projects and there are zero active paired devices, so positive second-tenant project/object/device/lease behavior cannot be proven without creating disposable hosted state."
+      },
+      {
+        "severity": "P1",
+        "id": "P1-AUTHENTICATED-DELETE-ROUTE",
+        "reason": "The deployed authenticated output-delete route still requires one disposable successful output and an authorized live DELETE invocation."
+      },
+      {
+        "severity": "P2",
+        "id": "P2-R2-BUCKET-INVENTORY",
+        "reason": "Current bucket metadata reports 55 objects and 55.6 MB, but Wrangler has no object-list command and the Cloudflare dashboard was temporarily unavailable; a bucket-wide paginated binding inventory remains absent."
+      }
+    ]
+  },
+  "commands": [
+    {
+      "command": "pnpm context:validate",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec wrangler r2 bucket list --config <protected-config>",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec wrangler r2 bucket info videoforge-v2-06-staging-private --config <protected-config>",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec wrangler deployments status --json --name videoforge-v2-06-staging --config <protected-config>",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec wrangler workflows list --per-page 100 --config <protected-config>",
+      "exit_code": 0
+    },
+    {
+      "command": "curl --fail --silent --show-error -H 'Cache-Control: no-cache' <hosted-status-url>",
+      "exit_code": 0
+    },
+    {
+      "command": "PGSERVICEFILE=<protected-service> PGPASSFILE=<protected-passfile> psql service=videoforge_v2_06_owner --no-psqlrc -v ON_ERROR_STOP=1 -Atc <read-only-counts-and-role-query>",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec tsx src/server/providers/runpod-live-inventory.ts | jq <redacted-fields>",
+      "exit_code": 0
+    },
+    {
+      "command": "node --test deploy/v2-06/r2-read-only-inventory-worker.test.mjs",
+      "exit_code": 0,
+      "result": "3 passed, 0 failed"
+    }
+  ],
+  "spend_truth": {
+    "new_external_spend_usd": 0,
+    "new_recurring_charge_created": false,
+    "runpod_compute_spend_usd": 0,
+    "runpod_workers_started": 0,
+    "r2_current_objects": 55,
+    "r2_current_size": "55.6 MB"
+  },
+  "rollback_state": {
+    "required": false,
+    "reason": "This preflight performed read-only provider calls and local evidence/state updates only."
+  },
+  "v2_07_safety": "BLOCKED_NOT_SAFE_TO_START: two P1 and one P2 V2-06 findings remain; no V2-07 or RunPod mutation authority exists."
+}

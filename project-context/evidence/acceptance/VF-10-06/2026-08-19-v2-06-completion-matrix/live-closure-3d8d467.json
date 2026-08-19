@@ -1,0 +1,226 @@
+{
+  "schema": "videoforge.v2-06-live-finding-closure/v1",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T12:32:58Z",
+  "result": "FAIL_LIVE_CLOSURE_REMAINING",
+  "severity_counts": {
+    "P0": 0,
+    "P1": 2,
+    "P2": 2
+  },
+  "authority": {
+    "finite_external_cap_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "authorized_resources": [
+      "Cloudflare account f9254d773a3426fcb469451b1f965d8c",
+      "Worker videoforge-v2-06-staging",
+      "Workflow videoforge-v2-06-staging-video / HostedVideoWorkflow",
+      "R2 videoforge-v2-06-staging-private",
+      "Neon project ancient-morning-99567618 / production branch / neondb",
+      "Google OAuth project videoforge-v2-06-staging-0817",
+      "existing paired-device scope",
+      "one disposable Neon restore database"
+    ],
+    "runpod_mode": "READ_ONLY_ZERO_GPU_WORKER_VOLUME_MUTATION",
+    "v2_07_authorized": false,
+    "credential_values_accessed": false,
+    "scope_note": "Only the exact approved resources and disposable fixtures were used. No unrelated resource, RunPod mutation, V2-07 action, credential-value output, or paid GPU request occurred."
+  },
+  "source_and_deployment": {
+    "branch": "codex/serverless-v2-roadmap",
+    "repository_head": "3d8d467320d2956f5d45915437434a396230e8fe",
+    "implementation_repair_commit": "14135ceecf9c954216f5705f31074f33203cdc8d",
+    "deployed_source_head": "3d8d467320d2956f5d45915437434a396230e8fe",
+    "source_deployment_parity": true,
+    "final_worker_version_id": "83030c3f-d5b6-400c-bcb6-756a5068e573",
+    "rollback_version_id": "5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2",
+    "rollback_version_source_commit": "1ad68ea46b642949591c1090cecddc28d7ec428e",
+    "rendered_config_sha256": "sha256:a8457199d4fb5ccee674541a7a57a7dbb39a224774f9131c85bf7009aad09d3d",
+    "media_worker_release_version": "0.1.11",
+    "media_worker_release_manifest_sha256": "sha256:b33292c0e88cc53246c0ec3a34cc43d74046840a409ee444473ab629cb06a9d9",
+    "media_worker_execution_bundle_sha256": "sha256:6955561b0e64b1c02ce68a8fd8918ba9a27e952ffb82062b6abae0b46827a55c",
+    "media_worker_whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002"
+  },
+  "completed_gates": [
+    {
+      "gate": "staging_build_and_context",
+      "command": "pnpm --filter @videoforge/web build:staging",
+      "exit_code": 0,
+      "result": "604 worker modules and 2026 client modules; production vocabulary check passed"
+    },
+    {
+      "gate": "migration_0036_and_least_privilege",
+      "command": "node deploy/v2-06/apply-migrations-and-grants.mjs --apply-grants",
+      "exit_code": 0,
+      "result": "migration 36/36; runtime videoforge_v2_06_runtime; FORCE RLS complete; exact table/function grants; hosted_render_plans SELECT-only"
+    },
+    {
+      "gate": "r2_boundary",
+      "commands": [
+        "deploy/v2-06/verify-r2-cors.sh videoforge-v2-06-staging-private",
+        "deploy/v2-06/verify-r2-private-state.sh videoforge-v2-06-staging-private rendered-config"
+      ],
+      "exit_codes": [0, 0],
+      "result": "exact origin CORS; Standard storage; dev URL disabled; no final-object expiry; multipart abort-only lifecycle"
+    },
+    {
+      "gate": "hosted_deployment_and_health",
+      "commands": [
+        "wrangler deploy --config /Users/lakshmansai/.config/videoforge/v2-06/wrangler-current-3d8d467.json",
+        "curl cache-bypassed GET /api/v2/hosted/status"
+      ],
+      "exit_codes": [0, 0],
+      "result": "final version 83030c3f-d5b6-400c-bcb6-756a5068e573; HTTP 200; source commit 3d8d467; GPU DISABLED_FAKE_ONLY; Neon, private R2, Cloudflare Workflow, personal worker, and Google auth required"
+    },
+    {
+      "gate": "hosted_personal_worker_protocol_fixture",
+      "commands": [
+        "POST /api/v2/media-worker/heartbeat",
+        "POST /api/v2/media-worker/claim",
+        "POST /api/v2/media-worker/complete with expired lease",
+        "POST /api/v2/media-worker/complete replay after cancellation"
+      ],
+      "exit_codes": [0, 0, 0, 0],
+      "result": "heartbeat ONLINE/claim_available; exact disposable claim succeeded; stale lease returned HTTP 409 MEDIA_WORKER_LEASE_STALE; cancel replay was idempotent; late success normalized to CANCELLED"
+    },
+    {
+      "gate": "hosted_workflow_recovery_fixture",
+      "commands": [
+        "wrangler workflows trigger videoforge-v2-06-staging-video expired-terminal fixture",
+        "wrangler workflows trigger videoforge-v2-06-staging-video replayable fixture",
+        "wrangler workflows instances terminate exact disposable replay instance"
+      ],
+      "exit_codes": [0, 0, 0],
+      "result": "expired fixture became terminal EXPIRED with EXPIRED event; replay fixture became OUTBOXED with replay_count 1 and REPLAYED event; exact disposable instance terminated"
+    },
+    {
+      "gate": "backup_restore",
+      "commands": [
+        "sh deploy/v2-06/backup.sh /Users/lakshmansai/.config/videoforge/v2-06/backups/videoforge-v2-06-2026-08-19-live-closure-3d8d467.dump.enc",
+        "node deploy/v2-06/apply-migrations-and-grants.mjs --verify-only --apply-grants against videoforge_v2_06_disposable_drill",
+        "DROP DATABASE videoforge_v2_06_disposable_drill and exact-name absence query"
+      ],
+      "exit_codes": [0, 0, 0],
+      "result": "encrypted backup retained mode 0600, 1,116,439 bytes, sha256 596ac201c1ba6e6b133170a2b495aca7798b6b0518a78615b006a9f7ac38c5af; disposable restore verified 36/36 and was deleted; final database count 0"
+    },
+    {
+      "gate": "post_delete_exact_r2_readback",
+      "commands": [
+        "wrangler r2 object get --remote exact disposable result-document before deletion",
+        "wrangler r2 object get --remote exact disposable final-mp4 before deletion",
+        "wrangler r2 object delete --remote --force result-document",
+        "wrangler r2 object delete --remote --force final-mp4",
+        "wrangler r2 object delete --remote --force recovery job-spec",
+        "wrangler r2 object get --remote each exact key after deletion"
+      ],
+      "exit_codes": [0, 0, 0, 0, 0, 1],
+      "result": "before bytes 88 and sha256 ca03006b03369d4b8989930e1477b24a7d8f4618837fd2d4492da24b0440249f; every post-delete exact GET failed with key-not-found and zero-byte output"
+    },
+    {
+      "gate": "final_source_rollback_and_restore",
+      "commands": [
+        "node deploy/v2-06/verify-rollback-deployment.mjs before ... 10fbece5-b95f-4d85-8ff7-5dc1335f55dd 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2",
+        "wrangler rollback 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2 --yes",
+        "node deploy/v2-06/verify-rollback-deployment.mjs after ...",
+        "wrangler deploy --config /Users/lakshmansai/.config/videoforge/v2-06/wrangler-current-3d8d467.json",
+        "curl cache-bypassed GET /api/v2/hosted/status after restore"
+      ],
+      "exit_codes": [0, 0, 0, 0, 0],
+      "result": "old version became active and health returned HTTP 200 with commit 1ad68ea; current source was redeployed as 83030c3f-d5b6-400c-bcb6-756a5068e573 and health returned HTTP 200 with commit 3d8d467"
+    },
+    {
+      "gate": "provider_free_regression_checks",
+      "commands": [
+        "pnpm context:validate",
+        "pnpm --filter @videoforge/web exec vitest run src/server/hosted/hosted-adapters.test.ts",
+        "node --test scripts/tests/v2-06-activation-safety.test.mjs scripts/tests/v2-06-deployment.test.mjs scripts/tests/v2-06-neon-runtime-grants.test.mjs",
+        "git diff --check"
+      ],
+      "exit_codes": [0, 0, 0, 0],
+      "result": "context/deployment/R2/readback/grant safety and focused hosted adapter checks passed; local fixtures remain non-hosted proof"
+    }
+  ],
+  "findings": [
+    {
+      "id": "P1-HOSTED-POSITIVE-TENANT-RLS-R2-DEVICE",
+      "summary": "Positive two-account Better Auth plus non-superuser hosted RLS/private-R2/device/lease proof is not closed.",
+      "status": "OPEN",
+      "exact_reasons": [
+        "The browser extension could not provide a controllable authenticated primary/secondary session during this closure.",
+        "The secondary account currently has no owned project to exercise positive object and private-R2 parity.",
+        "Owner-side policy/grant inspection proves declarations only; SET ROLE to videoforge_v2_06_runtime was denied and was not widened, so hosted non-superuser behavior was not proven.",
+        "The heartbeat/claim/lease records were disposable owner-seeded protocol fixtures; current real Settings views showed no paired computer, so they do not establish current real-device pairing."
+      ],
+      "references": [
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-live-two-account-isolation-fresh/acceptance.json",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json",
+        "packages/control-plane/migrations/0036_v2_06_google_only_replay_boundaries.sql:4-109",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-independent-audit-followup/acceptance.json"
+      ]
+    },
+    {
+      "id": "P1-AUTHENTICATED-DELETE-ROUTE",
+      "summary": "The authenticated DELETE /api/v2/cpu-attempts/:id/output route was not exercised live.",
+      "status": "OPEN",
+      "exact_reasons": [
+        "Direct authorized Wrangler R2 deletion and owner-side disposable-row cleanup were used because browser control was unavailable.",
+        "The exact keys were deleted and exact GET read-backs returned key-not-found, but this does not prove the authenticated route's ownership check, durable deletion event, and transaction ordering in the deployed Worker."
+      ],
+      "references": [
+        "apps/web/src/server/hosted/app.ts:837-879",
+        "apps/web/src/server/hosted/app.ts:971-989",
+        "apps/web/src/server/hosted/r2.ts:18-80"
+      ]
+    },
+    {
+      "id": "P2-R2-BUCKET-INVENTORY",
+      "summary": "Exact post-delete object read-back passed, but a bucket-wide paginated post-delete inventory was not captured.",
+      "status": "OPEN",
+      "exact_reasons": [
+        "Wrangler has no supported r2 object list command in this environment.",
+        "The read-back covered all three exact disposable keys and the application helper's list algorithm is locally tested, but no deployed Worker binding inventory was independently captured."
+      ],
+      "references": [
+        "apps/web/src/server/hosted/r2.ts:18-80",
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json"
+      ]
+    },
+    {
+      "id": "P2-RUNPOD-REFRESH",
+      "summary": "RunPod zero-worker truth is from the supplied immutable read-only snapshot, not a second refresh during this closure.",
+      "status": "OPEN_AS_CURRENT_REFRESH_LIMITATION",
+      "exact_reasons": [
+        "No RunPod mutation or compute action occurred.",
+        "The supplied snapshot records zero Pods/endpoints/workers/templates/clusters and two retained 50 GB EU-RO-1 volumes at USD 7/month total; billing display lag is up to one hour."
+      ],
+      "references": [
+        "project-context/evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json",
+        "project-context/CURRENT_STATE.yaml:1031-1058"
+      ]
+    }
+  ],
+  "resource_and_spend_truth": {
+    "new_external_spend_usd": 0,
+    "finite_cap_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "r2_overage_rate_usd_per_gb_month_above_free_allowance": 0.015,
+    "cloudflare_workers_base_usd": 0,
+    "neon_base_usd": 0,
+    "google_oauth_base_usd": 0,
+    "personal_worker_provider_compute_usd": 0,
+    "runpod_mutating_calls": 0,
+    "runpod_workers_started": 0,
+    "runpod_supplied_snapshot": "zero Pods/endpoints/workers/templates/clusters; two retained 50 GB EU-RO-1 volumes at USD 3.50/month each; USD 7/month recurring storage; current-day compute/serverless USD 0",
+    "credentials": "protected values were used only by approved local tools; no credential value was printed, recorded, or committed"
+  },
+  "rollback_state": {
+    "current_active_worker_version": "83030c3f-d5b6-400c-bcb6-756a5068e573",
+    "current_health_http": 200,
+    "current_health_source_commit": "3d8d467320d2956f5d45915437434a396230e8fe",
+    "prior_version_rollback_verified": "5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2",
+    "prior_health_http": 200,
+    "prior_health_source_commit": "1ad68ea46b642949591c1090cecddc28d7ec428e",
+    "restore_complete": true
+  },
+  "v2_07_safety": "BLOCKED_NOT_SAFE_TO_START: V2-07 was not authorized, no RunPod/GPU/volume mutation occurred, and the open hosted proof findings remain checkpoint gates."
+}
