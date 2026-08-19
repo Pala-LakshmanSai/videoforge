@@ -304,9 +304,17 @@ export class RunPodV207QualificationHarness {
         endpoint_config_sha256: this.#initialConfigHash,
       });
     } catch (error) {
-      // A failed endpoint create can leave a disposable template. Never delete the retained model
+      // A failed endpoint create can leave disposable resources. Never delete the retained model
       // volume here: it is intentionally outside this harness's mutation surface.
-      if (this.#template && !this.#endpoint) {
+      if (this.#endpoint && this.#jobs) {
+        try {
+          await this.#jobs.confirmDrained();
+          await this.#options.control.deleteEndpoint(this.#endpoint.id, this.#guard);
+        } catch {
+          this.mark("endpoint_cleanup_uncertain");
+        }
+      }
+      if (this.#template) {
         try {
           await this.#options.control.deleteTemplate(this.#template!.id);
         } catch {

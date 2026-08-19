@@ -104,6 +104,44 @@ const exactStringArray = (value: unknown, expected: readonly string[]): boolean 
   value.length === expected.length &&
   value.every((candidate, index) => candidate === expected[index]);
 
+const healthWorkerCounts = (workers: JsonRecord | null): {
+  readonly idle: number;
+  readonly running: number;
+  readonly initializing: number;
+  readonly ready: number;
+  readonly throttled: number;
+  readonly unhealthy: number;
+  readonly total: number;
+} => {
+  if (!workers) {
+    return {
+      idle: Number.NaN,
+      running: Number.NaN,
+      initializing: Number.NaN,
+      ready: Number.NaN,
+      throttled: Number.NaN,
+      unhealthy: Number.NaN,
+      total: Number.NaN,
+    };
+  }
+  const count = (key: string): number => numberOrNull(workers[key]) ?? 0;
+  const idle = count("idle");
+  const running = count("running");
+  const initializing = count("initializing");
+  const ready = count("ready");
+  const throttled = count("throttled");
+  const unhealthy = count("unhealthy");
+  return {
+    idle,
+    running,
+    initializing,
+    ready,
+    throttled,
+    unhealthy,
+    total: idle + running + initializing + ready + throttled + unhealthy,
+  };
+};
+
 export function assertRunPodEndpointPolicy(value: RunPodEndpointPolicy): void {
   if (
     value.workersMin !== 0 ||
@@ -362,6 +400,9 @@ export class RunPodControlClient {
       volumeMountPath: V207_RUNPOD_VOLUME_MOUNT,
     } as const;
     const value = record(await this.mutate("POST", "/templates", canonicalizeJson(request)));
+    // RunPod's template API reports its generic Pod mount (`/workspace`) even for a
+    // Serverless template. The attached Serverless network volume is independently
+    // documented and verified at `/runpod-volume` on the endpoint.
     if (
       !value ||
       typeof value.id !== "string" ||
@@ -369,10 +410,11 @@ export class RunPodControlClient {
       value.name !== request.name ||
       value.imageName !== request.imageName ||
       value.containerDiskInGb !== request.containerDiskInGb ||
-      value.isPublic !== false ||
+      (value.isPublic !== undefined && value.isPublic !== false) ||
       value.isServerless !== true ||
-      value.volumeInGb !== 0 ||
-      value.volumeMountPath !== V207_RUNPOD_VOLUME_MOUNT
+      (value.volumeInGb !== undefined && value.volumeInGb !== 0) ||
+      (value.volumeMountPath !== "/workspace" &&
+        value.volumeMountPath !== V207_RUNPOD_VOLUME_MOUNT)
     ) {
       throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
     }
@@ -407,6 +449,11 @@ export class RunPodControlClient {
     const value = record(
       await this.mutate("POST", `/endpoints/${endpointId}/update`, canonicalizeJson(request)),
     );
+    const responseDataCenters = value?.dataCenterIds;
+    const responseVolumeIds = value?.networkVolumeIds;
+    const volumeBindingMatches =
+      value?.networkVolumeId === placement.networkVolumeId ||
+      exactStringArray(responseVolumeIds, [placement.networkVolumeId]);
     if (
       !value ||
       value.id !== endpointId ||
@@ -414,8 +461,9 @@ export class RunPodControlClient {
       value.workersMax !== request.workersMax ||
       value.gpuCount !== 1 ||
       !exactStringArray(value.gpuTypeIds, [V207_RUNPOD_GPU]) ||
-      value.networkVolumeId !== placement.networkVolumeId ||
-      !exactStringArray(value.dataCenterIds, [V207_RUNPOD_REGION]) ||
+      !volumeBindingMatches ||
+      (responseDataCenters !== undefined &&
+        !exactStringArray(responseDataCenters, [V207_RUNPOD_REGION])) ||
       value.scalerType !== V207_RUNPOD_SCALER ||
       value.scalerValue !== V207_RUNPOD_SCALER_VALUE
     ) {
@@ -470,16 +518,23 @@ export class RunPodControlClient {
       workersMin: policy.workersMin,
     } as const;
     const value = record(await this.mutate("POST", "/endpoints", canonicalizeJson(request)));
+    const responseDataCenters = value?.dataCenterIds;
+    const responseVolumeIds = value?.networkVolumeIds;
+    const volumeBindingMatches =
+      value?.networkVolumeId === request.networkVolumeId ||
+      exactStringArray(responseVolumeIds, [request.networkVolumeId]);
     if (
       !value ||
       typeof value.id !== "string" ||
       !ID.test(value.id) ||
-      value.computeType !== request.computeType ||
-      value.templateId !== request.templateId ||
+      (value.computeType !== undefined && value.computeType !== request.computeType) ||
+      typeof value.templateId !== "string" ||
+      !ID.test(value.templateId) ||
       value.gpuCount !== request.gpuCount ||
       !exactStringArray(value.gpuTypeIds, [V207_RUNPOD_GPU]) ||
-      value.networkVolumeId !== request.networkVolumeId ||
-      !exactStringArray(value.dataCenterIds, [V207_RUNPOD_REGION]) ||
+      !volumeBindingMatches ||
+      (responseDataCenters !== undefined &&
+        !exactStringArray(responseDataCenters, [V207_RUNPOD_REGION])) ||
       value.workersMin !== 0 ||
       value.workersMax !== request.workersMax ||
       value.scalerType !== V207_RUNPOD_SCALER ||
@@ -767,15 +822,24 @@ export class RunPodServerlessJobClient {
     return jobResult(value);
   }
 
-  async confirmDrained(): Promise<void> {
-    const value = await this.request("GET", "/health");
-    const workers = record(value.workers);
-    const jobs = record(value.jobs);
-    const activeWorkers =
-      (numberOrNull(workers?.idle) ?? Number.NaN) + (numberOrNull(workers?.running) ?? Number.NaN);
-    const queuedJobs =
-      (numberOrNull(jobs?.inQueue) ?? Number.NaN) + (numberOrNull(jobs?.inProgress) ?? Number.NaN);
-    this.options.guard.confirmZero(activeWorkers, queuedJobs);
+  async confirmDrained(maxAttempts = 30): Promise<void> {
+    if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 60) {
+      throw new RunPodControlError("RUNPOD_DRAIN_POLICY_INVALID");
+    }
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const value = await this.request("GET", "/health");
+      const workers = healthWorkerCounts(record(value.workers));
+      const jobs = record(value.jobs);
+      const queuedJobs =
+        (numberOrNull(jobs?.inQueue) ?? Number.NaN) +
+        (numberOrNull(jobs?.inProgress) ?? Number.NaN);
+      if (workers.total === 0 && queuedJobs === 0) {
+        this.options.guard.confirmZero(0, 0);
+        return;
+      }
+      if (attempt + 1 < maxAttempts) await this.sleep(2_000);
+    }
+    this.options.guard.confirmZero(Number.NaN, Number.NaN);
   }
 
   async confirmWarmIdle(maxAttempts = 30): Promise<void> {
@@ -784,14 +848,22 @@ export class RunPodServerlessJobClient {
     }
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const value = await this.request("GET", "/health");
-      const workers = record(value.workers);
+      const workers = healthWorkerCounts(record(value.workers));
       const jobs = record(value.jobs);
-      const idle = numberOrNull(workers?.idle) ?? Number.NaN;
-      const running = numberOrNull(workers?.running) ?? Number.NaN;
+      const idle = workers.idle;
+      const running = workers.running;
       const queued =
         (numberOrNull(jobs?.inQueue) ?? Number.NaN) +
         (numberOrNull(jobs?.inProgress) ?? Number.NaN);
-      if (Number.isSafeInteger(idle) && idle <= 1 && running === 0 && queued === 0) {
+      if (
+        Number.isSafeInteger(idle) &&
+        idle <= 1 &&
+        running === 0 &&
+        workers.initializing === 0 &&
+        workers.throttled === 0 &&
+        workers.unhealthy === 0 &&
+        queued === 0
+      ) {
         this.options.guard.confirmWarmIdle(idle, running, queued);
         return;
       }
