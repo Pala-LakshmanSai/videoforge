@@ -116,3 +116,11 @@ test("V2-06 lease routes establish tenant scope in the same PostgreSQL statement
     /WITH tenant_scope AS MATERIALIZED \([\s\S]*?FROM hosted_cpu_upload_authorities/u,
   );
 });
+
+test("V2-06 personal-worker completion casts the result length to PostgreSQL bigint", async () => {
+  const source = await read("apps/web/src/server/hosted/personal-worker.ts");
+  assert.match(
+    source,
+    /result_content_length = CASE WHEN \$2 = 'SUCCEEDED' THEN \$4::bigint ELSE NULL END/u,
+  );
+});

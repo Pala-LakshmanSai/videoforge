@@ -1519,7 +1519,7 @@ async function completeLease(
                 retain_until = CASE WHEN $2 = 'SUCCEEDED' THEN NULL
                                     ELSE GREATEST(deadline_at, now() + interval '30 minutes') END,
                 result_object_key = CASE WHEN $2 = 'SUCCEEDED' THEN $3 ELSE result_object_key END,
-                result_content_length = CASE WHEN $2 = 'SUCCEEDED' THEN $4 ELSE NULL END,
+                result_content_length = CASE WHEN $2 = 'SUCCEEDED' THEN $4::bigint ELSE NULL END,
                 result_checksum_sha256 = CASE WHEN $2 = 'SUCCEEDED' THEN $5 ELSE NULL END,
                 result_receipt_sha256 = CASE WHEN $2 = 'SUCCEEDED' THEN $6 ELSE NULL END,
                 version = version + 1, updated_at = now()
