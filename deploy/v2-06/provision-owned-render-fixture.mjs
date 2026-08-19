@@ -44,6 +44,7 @@ const APPROVED_MIGRATION_MANIFEST_SHA256 =
 const BUCKET = APPROVED_R2_BUCKET;
 const FIXTURE_ID = "local_short_slice_owned_001";
 const OPERATION = "v2-06-owned-render-fixture-v3";
+const PROJECT_NAME = "V2-06 Owned Render Fixture v3";
 const EXPECTED_SOURCE_RENDER_INPUT_SHA256 =
   "sha256:1e63c09aa9d6bb0ba17337284a727925c2f67e76de8564b700d3a0a54a301f9e";
 const EXPECTED_SOURCE_EVIDENCE_SHA256 =
@@ -470,7 +471,7 @@ function planFixture(fixture, scope, seedAt, preset = null) {
     schema_version: "videoforge-hosted-revision-config/v1",
     project_id: projectId,
     project_revision_id: revisionId,
-    title: "V2-06 Owned Render Fixture",
+    title: PROJECT_NAME,
     voiceover_asset_id: voiceover.assetId,
     voiceover_sha256: voiceover.digest,
     voiceover_binary_sha256: voiceover.digest,
@@ -1235,7 +1236,7 @@ async function ensureProject(client, plan) {
       plan.scope.account_id,
       plan.scope.workspace_id,
       plan.scope.user_id,
-      "V2-06 Owned Render Fixture",
+      PROJECT_NAME,
       plan.seedAt,
     ],
   );
@@ -1252,8 +1253,8 @@ async function ensureProject(client, plan) {
     row.account_id !== plan.scope.account_id ||
     row.workspace_id !== plan.scope.workspace_id ||
     row.owner_user_id !== plan.scope.user_id ||
-    row.name !== "V2-06 Owned Render Fixture" ||
-    row.normalized_name !== "v2-06 owned render fixture" ||
+    row.name !== PROJECT_NAME ||
+    row.normalized_name !== PROJECT_NAME.toLowerCase() ||
     row.status !== "ACTIVE" ||
     Number(row.version) !== 1 ||
     row.archived_at !== null
