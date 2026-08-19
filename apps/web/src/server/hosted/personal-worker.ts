@@ -931,10 +931,6 @@ async function claim(
       }>(
         `UPDATE hosted_cpu_job_attempts AS attempt
             SET state = CASE WHEN replay_count >= 32 THEN 'FAILED' ELSE 'OUTBOXED' END,
-                failure_code = CASE
-                  WHEN replay_count >= 32 THEN 'PERSONAL_WORKER_REPLAY_LIMIT'
-                  ELSE NULL
-                END,
                 submitted_at = CASE
                   WHEN replay_count >= 32 THEN COALESCE(submitted_at, now())
                   ELSE NULL

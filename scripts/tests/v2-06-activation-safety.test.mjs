@@ -90,3 +90,12 @@ test("V2-06 renderer and rollback pin approved identities and immutable evidence
   assert.match(secretAllowlist, /exact V2-06 allowlist/u);
   assert.match(secretInputs, /approved runtime Neon identity/u);
 });
+
+test("V2-06 personal-worker recovery only updates columns present on hosted attempts", async () => {
+  const source = await read("apps/web/src/server/hosted/personal-worker.ts");
+  const recoveryUpdate = source.match(
+    /`UPDATE hosted_cpu_job_attempts AS attempt[\s\S]*?RETURNING attempt\.id, attempt\.state`/u,
+  );
+  assert.ok(recoveryUpdate, "personal-worker recovery update was not found");
+  assert.doesNotMatch(recoveryUpdate[0], /failure_code\s*=/u);
+});

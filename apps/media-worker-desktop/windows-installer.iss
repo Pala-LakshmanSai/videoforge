@@ -1,4 +1,4 @@
-#define WorkerVersion "0.1.8"
+#define WorkerVersion "0.1.9"
 #define WorkerExe "VideoForge Worker.exe"
 
 [Setup]
