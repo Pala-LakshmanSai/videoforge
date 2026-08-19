@@ -23,12 +23,12 @@
     "gpu": "NVIDIA GeForce RTX 4090",
     "published_image_digest": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e",
     "published_image_source_commit": "39541d57ca3c2270c7872ab49387f2484ab1a6e9",
-    "unpublished_repair_source_commit": "b40af353a3e8630bc7f4bc2776ca9879e23ad542"
+    "unpublished_repair_source_commit": "431198333a22d66ad1929244bf92662c53be5a6b"
   },
   "local_repairs": {
     "failure_code_repair": "1623fa1",
     "fresh_authority_guard": "024547b",
-    "fresh_authority_required_source_commit": "b40af353a3e8630bc7f4bc2776ca9879e23ad542",
+    "fresh_authority_required_source_commit": "431198333a22d66ad1929244bf92662c53be5a6b",
     "exact_generated_output_prefix_and_single_use_guard": "b40af35 + 4311983",
     "generated_output_prefix_binding": true,
     "generated_output_max_uses": 1,
@@ -85,7 +85,7 @@
     {
       "command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/v207-activation-authority.test.ts src/server/providers/runpod-v207-qualification-harness.test.ts",
       "exit_code": 0,
-      "result": "4 passed"
+      "result": "5 passed"
     },
     {
       "command": "pnpm --filter @videoforge/web exec tsc --noEmit --pretty false",

@@ -8,6 +8,10 @@ import {
 const image = "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:" + "a".repeat(64);
 
 describe("V2-07 activation authority", () => {
+  it("pins a complete 40-character repaired source commit", () => {
+    expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
+  });
+
   it("requires an immutable image, repaired source commit, and explicit cap", () => {
     expect(() => parseV207ActivationAuthority({})).toThrow("V207_IMAGE_DIGEST_REQUIRED");
     expect(() =>

@@ -1,6 +1,6 @@
 const IMMUTABLE_IMAGE = /^ghcr\.io\/[a-z0-9][a-z0-9./_-]+@sha256:[a-f0-9]{64}$/u;
 
-export const V207_REPAIRED_IMAGE_SOURCE_COMMIT = "b40af353a3e8630bc7f4bc2776ca9879e23ad542";
+export const V207_REPAIRED_IMAGE_SOURCE_COMMIT = "431198333a22d66ad1929244bf92662c53be5a6b";
 
 export interface V207ActivationAuthority {
   readonly image: string;
