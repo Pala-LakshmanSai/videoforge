@@ -504,7 +504,7 @@ export class RunPodControlClient {
     const request = {
       computeType: "GPU",
       executionTimeoutMs: policy.executionTimeoutMs,
-      flashboot: true,
+      flashboot: false,
       gpuCount: policy.gpuCount,
       gpuTypeIds,
       idleTimeout: policy.idleTimeout,
