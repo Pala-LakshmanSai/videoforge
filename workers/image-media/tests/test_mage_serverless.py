@@ -32,7 +32,13 @@ class MageServerlessBoundaryTest(unittest.TestCase):
                 "model_manifest_sha256": "sha256:" + "4" * 64,
                 "container_digest": "sha256:" + "3" * 64,
             },
-            "artifacts": {"transfer_port_reservation_ids": ["reservation-output"]},
+            "artifacts": {
+                "output_prefix": (
+                    "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/"
+                    f"lane/mage-image/job/{attempt_id}"
+                ),
+                "transfer_port_reservation_ids": ["reservation-output"],
+            },
         }
 
     @staticmethod
@@ -201,7 +207,7 @@ class MageServerlessBoundaryTest(unittest.TestCase):
 
     def test_generated_authority_rejects_scope_path_expiry_and_replay(self) -> None:
         accepted = self._accepted()
-        accepted["artifacts"] = {"transfer_port_reservation_ids": ["reservation-generated"]}
+        accepted["artifacts"]["transfer_port_reservation_ids"] = ["reservation-generated"]
         cases = (
             ("account_id", "account-foreign", "MAGE_SERVERLESS_GENERATED_OUTPUT_SCOPE_MISMATCH"),
             (
@@ -209,8 +215,15 @@ class MageServerlessBoundaryTest(unittest.TestCase):
                 "/tenant/account-a/workspace/workspace-a/job/foreign/artifact/scene-a",
                 "MAGE_SERVERLESS_GENERATED_OUTPUT_PATH_MISMATCH",
             ),
+            (
+                "path",
+                "/tenant/account-a/workspace/workspace-a/project/project-foreign/revision/revision-a/"
+                "lane/mage-image/job/attempt-a/artifact/scene-a",
+                "MAGE_SERVERLESS_GENERATED_OUTPUT_PATH_MISMATCH",
+            ),
             ("expires_at", "2020-01-01T00:00:00Z", "MAGE_SERVERLESS_GENERATED_OUTPUT_EXPIRED"),
             ("max_uses", 0, "MAGE_SERVERLESS_GENERATED_OUTPUT_REPLAY_BOUND_INVALID"),
+            ("max_uses", 2, "MAGE_SERVERLESS_GENERATED_OUTPUT_REPLAY_BOUND_INVALID"),
         )
         for field, value, expected_code in cases:
             with self.subTest(field=field):
@@ -227,9 +240,10 @@ class MageServerlessBoundaryTest(unittest.TestCase):
 
     def test_generated_authority_duplicate_reservation_is_rejected(self) -> None:
         accepted = self._accepted()
-        accepted["artifacts"] = {
-            "transfer_port_reservation_ids": ["reservation-generated", "reservation-generated"]
-        }
+        accepted["artifacts"]["transfer_port_reservation_ids"] = [
+            "reservation-generated",
+            "reservation-generated",
+        ]
         authority = self._generated_authority()
         with self.assertRaisesRegex(
             mage_serverless.ServerlessMageError, "MAGE_SERVERLESS_PORT_REPLAYED"
@@ -262,7 +276,7 @@ class MageServerlessBoundaryTest(unittest.TestCase):
         body = b"png"
         checksum = "sha256:" + hashlib.sha256(body).hexdigest()
         accepted = self._accepted()
-        accepted["artifacts"] = {"transfer_port_reservation_ids": ["reservation-generated"]}
+        accepted["artifacts"]["transfer_port_reservation_ids"] = ["reservation-generated"]
         authority = self._generated_authority()
         job = self._job(
             ports={"inputs": [], "outputs": []},

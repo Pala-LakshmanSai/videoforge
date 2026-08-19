@@ -240,7 +240,7 @@ async function createBatch(
       max_input_bytes: 268_435_456,
       max_output_bytes: 2_147_483_648,
       execution_timeout_seconds: 2_400,
-      init_timeout_seconds: 900,
+      init_timeout_seconds: 800,
     },
     policy: {
       model_download_permitted: false,

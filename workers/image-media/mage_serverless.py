@@ -170,7 +170,13 @@ def _required(value: Any, key: str) -> dict[str, Any]:
 
 
 def _validate_generated_output_authority(
-    authority: dict[str, Any], *, account_id: str, workspace_id: str, attempt_id: str, now: datetime
+    authority: dict[str, Any],
+    *,
+    account_id: str,
+    workspace_id: str,
+    attempt_id: str,
+    output_prefix: str,
+    now: datetime,
 ) -> None:
     """Validate the additive generated-output capability before model startup.
 
@@ -201,7 +207,7 @@ def _validate_generated_output_authority(
     ):
         raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_LENGTH_INVALID")
     path = authority.get("path")
-    expected_prefix = f"/tenant/{account_id}/workspace/{workspace_id}/"
+    expected_prefix = f"/{output_prefix}/artifact/"
     if (
         not isinstance(path, str)
         or not path.startswith(expected_prefix)
@@ -222,7 +228,7 @@ def _validate_generated_output_authority(
     if parsed_expiry.tzinfo is None or now.astimezone(UTC) >= parsed_expiry.astimezone(UTC):
         raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_EXPIRED")
     max_uses = authority.get("max_uses")
-    if not isinstance(max_uses, int) or isinstance(max_uses, bool) or not 1 <= max_uses <= 3:
+    if not isinstance(max_uses, int) or isinstance(max_uses, bool) or max_uses != 1:
         raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_REPLAY_BOUND_INVALID")
     capability = authority.get("capability_handle")
     if not isinstance(capability, str) or not _CAPABILITY.fullmatch(capability):
@@ -273,6 +279,7 @@ def _validate_scoped_ports(
         raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_AUTHORITY_MODE_MISMATCH")
     account_id = accepted["tenant"]["account_id"]
     workspace_id = accepted["tenant"]["workspace_id"]
+    output_prefix = accepted["artifacts"]["output_prefix"]
     for port in input_ports:
         validate_scoped_port(
             port,
@@ -297,6 +304,7 @@ def _validate_scoped_ports(
             account_id=account_id,
             workspace_id=workspace_id,
             attempt_id=attempt_id,
+            output_prefix=output_prefix,
             now=now,
         )
     return input_ports, output_ports, generated_authorities
