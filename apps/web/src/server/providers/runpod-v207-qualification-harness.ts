@@ -281,7 +281,7 @@ export class RunPodV207QualificationHarness {
         fetch: this.#options.fetch,
         baseUrl: this.#options.baseUrl,
       });
-      await this.#jobs!.confirmDrained();
+      await this.#jobs!.confirmDrained(90);
       this.#initialConfigHash = hashRunPodV207EndpointConfiguration(
         jsonValue({
           region: "EU-RO-1",

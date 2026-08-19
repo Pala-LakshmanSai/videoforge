@@ -823,7 +823,7 @@ export class RunPodServerlessJobClient {
   }
 
   async confirmDrained(maxAttempts = 30): Promise<void> {
-    if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 60) {
+    if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 180) {
       throw new RunPodControlError("RUNPOD_DRAIN_POLICY_INVALID");
     }
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
