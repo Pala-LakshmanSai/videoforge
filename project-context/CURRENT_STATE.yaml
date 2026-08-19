@@ -354,7 +354,7 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-08-19T17:47:31Z"
+  checked_at: "2026-08-19T17:52:00Z"
   basis: authenticated_sujal_runpod_redacted_read_only_api_inventory
   evidence: evidence/acceptance/VF-10-07/2026-08-19-image-publication-and-port-blocker/acceptance.json
   current_live_refresh_permitted_now: true
@@ -383,7 +383,7 @@ last_known_provider_resource_truth:
   current_day_cloud_cpu_usd: 0
   current_day_serverless_usd: 0
   auto_pay: DISABLED
-  note: "The 2026-08-19T17:47:31Z redacted REST refresh on the configured VideoForge credential shows zero Pods, endpoints, active Serverless workers, and private templates plus the two expected 50 GB retained volumes. Image publication is complete; no endpoint/template mutation, GPU allocation, output publication, or compute occurred."
+  note: "The 2026-08-19T17:52:00Z redacted REST refresh on the configured VideoForge credential shows zero Pods, endpoints, active Serverless workers, and private templates plus the two expected 50 GB retained volumes. Image publication is complete; no endpoint/template mutation, GPU allocation, output publication, or compute occurred."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_MAGE_001

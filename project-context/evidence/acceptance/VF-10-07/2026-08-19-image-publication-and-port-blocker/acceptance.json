@@ -38,7 +38,7 @@
     "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:650401b2c32a842c00219b85868fdefe4d10dc74e7ef3d5bb1474aeff671d5e2"
   },
   "runpod_inventory": {
-    "checked_at": "2026-08-19T17:47:31Z",
+    "checked_at": "2026-08-19T17:52:00Z",
     "pods": 0,
     "endpoints": 0,
     "private_templates": 0,
