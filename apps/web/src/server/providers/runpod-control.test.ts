@@ -5,6 +5,7 @@ import {
   RunPodDrainGuard,
   RunPodServerlessJobClient,
   assertRunPodEndpointPolicy,
+  assertRunPodV207ConcurrentReaderPolicy,
 } from "./runpod-control";
 
 const key = "runpod-test-key-at-least-twenty-characters";
@@ -298,7 +299,15 @@ describe("RunPod scale-zero control", () => {
     const guard = new RunPodDrainGuard();
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       if (init?.method === "DELETE") return new Response(null, { status: 204 });
-      return response({ id: "endpoint_01", workersMin: 0, workersMax: 1 });
+      return response({
+        id: "endpoint_01",
+        workersMin: 0,
+        workersMax: 1,
+        gpuCount: 1,
+        gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+        scalerType: "REQUEST_COUNT",
+        scalerValue: 1,
+      });
     });
     const client = new RunPodControlClient({
       apiKey: key,
@@ -351,17 +360,41 @@ describe("RunPod scale-zero control", () => {
           volumeMountPath: "/runpod-volume",
           env: { LOG_LEVEL: "INFO", RUNPOD_INIT_TIMEOUT: "800" },
         });
-        return response({ id: "template_01" });
+        return response({
+          id: "template_01",
+          name: body.name,
+          imageName: body.imageName,
+          containerDiskInGb: body.containerDiskInGb,
+          isPublic: false,
+          isServerless: true,
+          volumeInGb: 0,
+          volumeMountPath: "/runpod-volume",
+        });
       }
       expect(body).toMatchObject({
+        computeType: "GPU",
         workersMin: 0,
         workersMax: 1,
         gpuCount: 1,
-        gpuTypeIds: ["NVIDIA L40S", "NVIDIA A100 80GB PCIe"],
+        gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+        networkVolumeId: "volume_01",
+        dataCenterIds: ["EU-RO-1"],
         scalerType: "REQUEST_COUNT",
         scalerValue: 1,
       });
-      return response({ id: "endpoint_01", workersMin: 0, workersMax: 1 });
+      return response({
+        id: "endpoint_01",
+        templateId: body.templateId,
+        computeType: "GPU",
+        workersMin: 0,
+        workersMax: 1,
+        gpuCount: 1,
+        gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+        networkVolumeId: "volume_01",
+        dataCenterIds: ["EU-RO-1"],
+        scalerType: "REQUEST_COUNT",
+        scalerValue: 1,
+      });
     });
     const client = new RunPodControlClient({
       apiKey: key,
@@ -376,7 +409,7 @@ describe("RunPod scale-zero control", () => {
     const endpoint = await client.createScaleZeroEndpoint(
       "vf_avatar_cd226f4",
       template.id,
-      ["NVIDIA L40S", "NVIDIA A100 80GB PCIe"],
+      ["NVIDIA GeForce RTX 4090"],
       {
         workersMin: 0,
         workersMax: 1,
@@ -384,9 +417,133 @@ describe("RunPod scale-zero control", () => {
         idleTimeout: 5,
         executionTimeoutMs: 1_800_000,
       },
+      { networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] },
     );
     expect(template.idHash).toMatch(/^sha256:/u);
     expect(endpoint.idHash).toMatch(/^sha256:/u);
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects any non-Mage GPU or non-EU-RO-1 placement before mutation", async () => {
+    const fetch = vi.fn(async () => response({ id: "unexpected" }));
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    const policy = {
+      workersMin: 0 as const,
+      workersMax: 1 as const,
+      gpuCount: 1 as const,
+      idleTimeout: 5,
+      executionTimeoutMs: 600_000,
+    };
+    await expect(
+      client.createScaleZeroEndpoint("endpoint_01", "template_01", ["NVIDIA L40S"], policy, {
+        networkVolumeId: "volume_01",
+        dataCenterIds: ["EU-RO-1"],
+      }),
+    ).rejects.toThrow("RUNPOD_ENDPOINT_INPUT_INVALID");
+    await expect(
+      client.createScaleZeroEndpoint(
+        "endpoint_01",
+        "template_01",
+        ["NVIDIA GeForce RTX 4090"],
+        policy,
+        { networkVolumeId: "volume_01", dataCenterIds: ["US-KS-2"] },
+      ),
+    ).rejects.toThrow("RUNPOD_ENDPOINT_PLACEMENT_INVALID");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when template or endpoint identity is missing from mutation response", async () => {
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      return path.endsWith("/templates")
+        ? response({ id: "template_01" })
+        : response({ id: "endpoint_01", workersMin: 0, workersMax: 1 });
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.createServerlessTemplate(
+        "vf_v207",
+        "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:" + "a".repeat(64),
+        100,
+      ),
+    ).rejects.toThrow("RUNPOD_RESPONSE_INVALID");
+  });
+
+  it("allows only the separately bounded max-two concurrent-reader proof", () => {
+    expect(() =>
+      assertRunPodV207ConcurrentReaderPolicy({
+        workersMin: 0,
+        workersMax: 2,
+        gpuCount: 1,
+        idleTimeout: 5,
+        executionTimeoutMs: 600_000,
+      }),
+    ).not.toThrow();
+    expect(() =>
+      assertRunPodV207ConcurrentReaderPolicy({
+        workersMin: 0,
+        workersMax: 1,
+        gpuCount: 1,
+        idleTimeout: 5,
+        executionTimeoutMs: 600_000,
+      } as never),
+    ).toThrow("RUNPOD_CONCURRENT_READER_POLICY_INVALID");
+  });
+
+  it("updates the endpoint with the exact max-two proof identity", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      expect(new URL(String(input)).pathname).toBe("/endpoints/endpoint_01/update");
+      const body = JSON.parse(String(init?.body));
+      expect(body).toMatchObject({
+        workersMin: 0,
+        workersMax: 2,
+        gpuCount: 1,
+        gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+        networkVolumeId: "volume_01",
+        dataCenterIds: ["EU-RO-1"],
+        scalerType: "REQUEST_COUNT",
+        scalerValue: 1,
+      });
+      return response({
+        id: "endpoint_01",
+        workersMin: 0,
+        workersMax: 2,
+        gpuCount: 1,
+        gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+        networkVolumeId: "volume_01",
+        dataCenterIds: ["EU-RO-1"],
+        scalerType: "REQUEST_COUNT",
+        scalerValue: 1,
+      });
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.enforceV207EndpointPolicy(
+        "endpoint_01",
+        {
+          workersMin: 0,
+          workersMax: 2,
+          gpuCount: 1,
+          idleTimeout: 5,
+          executionTimeoutMs: 600_000,
+        },
+        { networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] },
+        guard,
+      ),
+    ).resolves.toBeUndefined();
   });
 });

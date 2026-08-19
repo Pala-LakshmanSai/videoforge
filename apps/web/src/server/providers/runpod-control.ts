@@ -4,6 +4,14 @@ import { canonicalizeJson, type JsonValue } from "@videoforge/contracts";
 
 const DEFAULT_BASE_URL = "https://rest.runpod.io/v1";
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,190}$/u;
+const IMMUTABLE_IMAGE = /^[a-z0-9][a-z0-9./_-]{0,190}@sha256:[a-f0-9]{64}$/u;
+
+/** V2-07 is deliberately pinned to one immutable placement and accelerator. */
+export const V207_RUNPOD_REGION = "EU-RO-1" as const;
+export const V207_RUNPOD_GPU = "NVIDIA GeForce RTX 4090" as const;
+export const V207_RUNPOD_VOLUME_MOUNT = "/runpod-volume" as const;
+export const V207_RUNPOD_SCALER = "REQUEST_COUNT" as const;
+export const V207_RUNPOD_SCALER_VALUE = 1 as const;
 
 type FetchPort = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 type JsonRecord = Readonly<Record<string, unknown>>;
@@ -14,6 +22,24 @@ export interface RunPodEndpointPolicy {
   readonly gpuCount: 1;
   readonly idleTimeout: number;
   readonly executionTimeoutMs: number;
+}
+
+/**
+ * The temporary two-reader proof is the sole permitted exception to max=1.
+ * Keeping this separate from RunPodEndpointPolicy prevents accidental use in
+ * the initial endpoint configuration.
+ */
+export interface RunPodV207ConcurrentReaderPolicy {
+  readonly workersMin: 0;
+  readonly workersMax: 2;
+  readonly gpuCount: 1;
+  readonly idleTimeout: number;
+  readonly executionTimeoutMs: number;
+}
+
+export interface RunPodV207Placement {
+  readonly networkVolumeId: string;
+  readonly dataCenterIds: readonly [typeof V207_RUNPOD_REGION];
 }
 
 export interface RunPodInventory {
@@ -65,6 +91,11 @@ const numberOrNull = (value: unknown): number | null => {
 const hashId = (value: string): string =>
   `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
 
+const exactStringArray = (value: unknown, expected: readonly string[]): boolean =>
+  Array.isArray(value) &&
+  value.length === expected.length &&
+  value.every((candidate, index) => candidate === expected[index]);
+
 export function assertRunPodEndpointPolicy(value: RunPodEndpointPolicy): void {
   if (
     value.workersMin !== 0 ||
@@ -80,6 +111,33 @@ export function assertRunPodEndpointPolicy(value: RunPodEndpointPolicy): void {
     throw new RunPodControlError("RUNPOD_SCALE_ZERO_POLICY_INVALID");
   }
 }
+
+export function assertRunPodV207ConcurrentReaderPolicy(
+  value: RunPodV207ConcurrentReaderPolicy,
+): void {
+  if (
+    value.workersMin !== 0 ||
+    value.workersMax !== 2 ||
+    value.gpuCount !== 1 ||
+    !Number.isSafeInteger(value.idleTimeout) ||
+    value.idleTimeout < 1 ||
+    value.idleTimeout > 60 ||
+    !Number.isSafeInteger(value.executionTimeoutMs) ||
+    value.executionTimeoutMs < 1_000 ||
+    value.executionTimeoutMs > 3_600_000
+  ) {
+    throw new RunPodControlError("RUNPOD_CONCURRENT_READER_POLICY_INVALID");
+  }
+}
+
+const assertV207Placement = (placement: RunPodV207Placement): void => {
+  if (
+    !ID.test(placement.networkVolumeId) ||
+    !exactStringArray(placement.dataCenterIds, [V207_RUNPOD_REGION])
+  ) {
+    throw new RunPodControlError("RUNPOD_ENDPOINT_PLACEMENT_INVALID");
+  }
+};
 
 export class RunPodDrainGuard {
   private state: "unknown" | "active" | "warm_idle" | "draining" | "queue_empty" | "zero" =
@@ -242,10 +300,24 @@ export class RunPodControlClient {
     if (!ID.test(endpointId)) throw new RunPodControlError("RUNPOD_ENDPOINT_ID_INVALID");
     assertRunPodEndpointPolicy(policy);
     guard.assertDispatchAllowed();
+    const request = {
+      ...policy,
+      scalerType: V207_RUNPOD_SCALER,
+      scalerValue: V207_RUNPOD_SCALER_VALUE,
+    } as const;
     const value = record(
-      await this.mutate("POST", `/endpoints/${endpointId}/update`, canonicalizeJson(policy)),
+      await this.mutate("POST", `/endpoints/${endpointId}/update`, canonicalizeJson(request)),
     );
-    if (!value || value.id !== endpointId || value.workersMin !== 0 || value.workersMax !== 1) {
+    if (
+      !value ||
+      value.id !== endpointId ||
+      value.workersMin !== 0 ||
+      value.workersMax !== 1 ||
+      value.gpuCount !== 1 ||
+      !exactStringArray(value.gpuTypeIds, [V207_RUNPOD_GPU]) ||
+      value.scalerType !== V207_RUNPOD_SCALER ||
+      value.scalerValue !== V207_RUNPOD_SCALER_VALUE
+    ) {
       throw new RunPodControlError("RUNPOD_SCALE_ZERO_UNCONFIRMED");
     }
   }
@@ -256,7 +328,7 @@ export class RunPodControlClient {
     containerDiskInGb: number,
     environment: Readonly<Record<string, string>> = {},
   ): Promise<RunPodResourceIdentity> {
-    if (!ID.test(name) || !/^[a-z0-9./:_-]+@[a-z0-9:+._-]+$/u.test(imageName)) {
+    if (!ID.test(name) || !IMMUTABLE_IMAGE.test(imageName)) {
       throw new RunPodControlError("RUNPOD_TEMPLATE_INPUT_INVALID");
     }
     if (
@@ -266,31 +338,81 @@ export class RunPodControlClient {
     ) {
       throw new RunPodControlError("RUNPOD_TEMPLATE_DISK_INVALID");
     }
-    const value = record(
-      await this.mutate(
-        "POST",
-        "/templates",
-        canonicalizeJson({
-          category: "NVIDIA",
-          containerDiskInGb,
-          dockerEntrypoint: [],
-          dockerStartCmd: [],
-          env: { LOG_LEVEL: "INFO", RUNPOD_INIT_TIMEOUT: "800", ...environment },
-          imageName,
-          isPublic: false,
-          isServerless: true,
-          name,
-          ports: [],
-          readme: "VideoForge pinned primary avatar worker",
-          volumeInGb: 0,
-          volumeMountPath: "/runpod-volume",
-        }),
-      ),
-    );
-    if (!value || typeof value.id !== "string" || !ID.test(value.id)) {
+    const request = {
+      category: "NVIDIA",
+      containerDiskInGb,
+      dockerEntrypoint: [],
+      dockerStartCmd: [],
+      env: { LOG_LEVEL: "INFO", RUNPOD_INIT_TIMEOUT: "800", ...environment },
+      imageName,
+      isPublic: false,
+      isServerless: true,
+      name,
+      ports: [],
+      readme: "VideoForge pinned primary avatar worker",
+      volumeInGb: 0,
+      volumeMountPath: V207_RUNPOD_VOLUME_MOUNT,
+    } as const;
+    const value = record(await this.mutate("POST", "/templates", canonicalizeJson(request)));
+    if (
+      !value ||
+      typeof value.id !== "string" ||
+      !ID.test(value.id) ||
+      value.name !== request.name ||
+      value.imageName !== request.imageName ||
+      value.containerDiskInGb !== request.containerDiskInGb ||
+      value.isPublic !== false ||
+      value.isServerless !== true ||
+      value.volumeInGb !== 0 ||
+      value.volumeMountPath !== V207_RUNPOD_VOLUME_MOUNT
+    ) {
       throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
     }
     return Object.freeze({ id: value.id, idHash: hashId(value.id) });
+  }
+
+  /**
+   * Update the V2-07 endpoint for the bounded two-reader proof.  This is
+   * intentionally separate from enforceEndpointPolicy: max=2 must never be
+   * accepted by the initial max=1 path.
+   */
+  async enforceV207EndpointPolicy(
+    endpointId: string,
+    policy: RunPodEndpointPolicy | RunPodV207ConcurrentReaderPolicy,
+    placement: RunPodV207Placement,
+    guard: RunPodDrainGuard,
+  ): Promise<void> {
+    if (!ID.test(endpointId)) throw new RunPodControlError("RUNPOD_ENDPOINT_ID_INVALID");
+    if (policy.workersMax === 1) assertRunPodEndpointPolicy(policy);
+    else assertRunPodV207ConcurrentReaderPolicy(policy);
+    assertV207Placement(placement);
+    guard.assertDispatchAllowed();
+    const request = {
+      ...policy,
+      dataCenterIds: placement.dataCenterIds,
+      gpuCount: 1,
+      gpuTypeIds: [V207_RUNPOD_GPU],
+      networkVolumeId: placement.networkVolumeId,
+      scalerType: V207_RUNPOD_SCALER,
+      scalerValue: V207_RUNPOD_SCALER_VALUE,
+    } as const;
+    const value = record(
+      await this.mutate("POST", `/endpoints/${endpointId}/update`, canonicalizeJson(request)),
+    );
+    if (
+      !value ||
+      value.id !== endpointId ||
+      value.workersMin !== 0 ||
+      value.workersMax !== request.workersMax ||
+      value.gpuCount !== 1 ||
+      !exactStringArray(value.gpuTypeIds, [V207_RUNPOD_GPU]) ||
+      value.networkVolumeId !== placement.networkVolumeId ||
+      !exactStringArray(value.dataCenterIds, [V207_RUNPOD_REGION]) ||
+      value.scalerType !== V207_RUNPOD_SCALER ||
+      value.scalerValue !== V207_RUNPOD_SCALER_VALUE
+    ) {
+      throw new RunPodControlError("RUNPOD_SCALE_ZERO_UNCONFIRMED");
+    }
   }
 
   async createScaleZeroEndpoint(
@@ -304,47 +426,56 @@ export class RunPodControlClient {
     } = {},
   ): Promise<RunPodResourceIdentity> {
     assertRunPodEndpointPolicy(policy);
-    if (!ID.test(name) || !ID.test(templateId) || gpuTypeIds.length < 1 || gpuTypeIds.length > 2) {
+    if (
+      !ID.test(name) ||
+      !ID.test(templateId) ||
+      gpuTypeIds.length !== 1 ||
+      gpuTypeIds[0] !== V207_RUNPOD_GPU
+    ) {
       throw new RunPodControlError("RUNPOD_ENDPOINT_INPUT_INVALID");
     }
     if (gpuTypeIds.some((gpu) => typeof gpu !== "string" || gpu.length > 100)) {
       throw new RunPodControlError("RUNPOD_ENDPOINT_INPUT_INVALID");
     }
     if (
-      (placement.networkVolumeId !== undefined && !ID.test(placement.networkVolumeId)) ||
-      (placement.dataCenterIds !== undefined &&
-        (placement.dataCenterIds.length !== 1 || !ID.test(placement.dataCenterIds[0] ?? "")))
+      placement.networkVolumeId === undefined ||
+      placement.dataCenterIds === undefined ||
+      !ID.test(placement.networkVolumeId) ||
+      !exactStringArray(placement.dataCenterIds, [V207_RUNPOD_REGION])
     ) {
       throw new RunPodControlError("RUNPOD_ENDPOINT_PLACEMENT_INVALID");
     }
-    const value = record(
-      await this.mutate(
-        "POST",
-        "/endpoints",
-        canonicalizeJson({
-          computeType: "GPU",
-          executionTimeoutMs: policy.executionTimeoutMs,
-          flashboot: true,
-          gpuCount: policy.gpuCount,
-          gpuTypeIds,
-          idleTimeout: policy.idleTimeout,
-          name,
-          ...(placement.networkVolumeId ? { networkVolumeId: placement.networkVolumeId } : {}),
-          ...(placement.dataCenterIds ? { dataCenterIds: placement.dataCenterIds } : {}),
-          scalerType: "REQUEST_COUNT",
-          scalerValue: 1,
-          templateId,
-          workersMax: policy.workersMax,
-          workersMin: policy.workersMin,
-        }),
-      ),
-    );
+    const request = {
+      computeType: "GPU",
+      executionTimeoutMs: policy.executionTimeoutMs,
+      flashboot: true,
+      gpuCount: policy.gpuCount,
+      gpuTypeIds,
+      idleTimeout: policy.idleTimeout,
+      name,
+      networkVolumeId: placement.networkVolumeId,
+      dataCenterIds: placement.dataCenterIds,
+      scalerType: V207_RUNPOD_SCALER,
+      scalerValue: V207_RUNPOD_SCALER_VALUE,
+      templateId,
+      workersMax: policy.workersMax,
+      workersMin: policy.workersMin,
+    } as const;
+    const value = record(await this.mutate("POST", "/endpoints", canonicalizeJson(request)));
     if (
       !value ||
       typeof value.id !== "string" ||
       !ID.test(value.id) ||
+      value.computeType !== request.computeType ||
+      value.templateId !== request.templateId ||
+      value.gpuCount !== request.gpuCount ||
+      !exactStringArray(value.gpuTypeIds, [V207_RUNPOD_GPU]) ||
+      value.networkVolumeId !== request.networkVolumeId ||
+      !exactStringArray(value.dataCenterIds, [V207_RUNPOD_REGION]) ||
       value.workersMin !== 0 ||
-      value.workersMax !== 1
+      value.workersMax !== request.workersMax ||
+      value.scalerType !== V207_RUNPOD_SCALER ||
+      value.scalerValue !== V207_RUNPOD_SCALER_VALUE
     ) {
       throw new RunPodControlError("RUNPOD_SCALE_ZERO_UNCONFIRMED");
     }
