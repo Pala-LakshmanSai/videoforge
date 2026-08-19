@@ -114,7 +114,20 @@ class MageServerlessBoundaryTest(unittest.TestCase):
     def test_rejects_malformed_authority_before_runtime_startup(self) -> None:
         result = asyncio.run(mage_serverless.handler({"input": {}}))
         self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["failure_code"], "MAGE_SERVERLESS_JOB_SHAPE_INVALID")
         self.assertEqual(result["error"]["code"], "MAGE_SERVERLESS_JOB_SHAPE_INVALID")
+
+    def test_failure_code_survives_runpod_reserved_error_stripping(self) -> None:
+        """SLS-Core keeps output fields but moves/removes the reserved `error` field."""
+        result = asyncio.run(mage_serverless.handler({"input": {}}))
+        stripped = {key: value for key, value in result.items() if key != "error"}
+        self.assertEqual(
+            stripped,
+            {
+                "status": "FAILED",
+                "failure_code": "MAGE_SERVERLESS_JOB_SHAPE_INVALID",
+            },
+        )
 
     def test_malformed_authority_is_failure_before_runtime_startup(self) -> None:
         job = self._job()

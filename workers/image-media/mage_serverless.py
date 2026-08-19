@@ -52,6 +52,7 @@ _GENERATED_OUTPUT_KEYS = frozenset(
 _IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$")
 _CONTENT_TYPE = re.compile(r"^[a-z0-9][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*$")
 _CAPABILITY = re.compile(r"^[A-Za-z0-9._:-]{32,512}$")
+_FAILURE_CODE = re.compile(r"^[A-Z][A-Z0-9_.:-]{2,120}$")
 
 
 def _endpoint_id_hash() -> str:
@@ -550,7 +551,14 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
             )
         return {"status": "SUCCEEDED", "items": results, "provenance_receipt": receipt}
     except TimeoutError:
-        return {"status": "FAILED", "error": {"code": "MAGE_SERVERLESS_TIMEOUT"}}
+        # `error` is a RunPod-reserved result key.  SLS-Core moves it outside the
+        # handler output and then keeps only `output`, so retain a bounded diagnostic
+        # in a non-reserved field for status-only reconciliation.
+        return {
+            "status": "FAILED",
+            "failure_code": "MAGE_SERVERLESS_TIMEOUT",
+            "error": {"code": "MAGE_SERVERLESS_TIMEOUT"},
+        }
     except (
         EnvelopeRejection,
         ScratchIsolationError,
@@ -558,4 +566,10 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
         ValueError,
         KeyError,
     ) as error:
-        return {"status": "FAILED", "error": {"code": str(error)[:120]}}
+        candidate = str(error)[:120]
+        code = candidate if _FAILURE_CODE.fullmatch(candidate) else "MAGE_SERVERLESS_HANDLER_FAILED"
+        return {
+            "status": "FAILED",
+            "failure_code": code,
+            "error": {"code": code},
+        }

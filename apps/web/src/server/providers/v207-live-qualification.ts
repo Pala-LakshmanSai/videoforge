@@ -289,9 +289,12 @@ async function verifyBatch(
         output_keys: output && typeof output === "object" ? Object.keys(output).sort() : [],
       })}`,
     );
+    const failureCode = output?.failure_code;
     const errorValue = output?.error;
     const code =
-      typeof errorValue === "string"
+      typeof failureCode === "string" && SAFE_PROVIDER_CODE.test(failureCode)
+        ? failureCode
+        : typeof errorValue === "string"
         ? errorValue.slice(0, 160)
         : errorValue && typeof errorValue === "object"
           ? JSON.stringify(
