@@ -1,15 +1,15 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-19T10:23:17Z"
+updated_at: "2026-08-19T10:53:13Z"
 
-phase: serverless_v2_v2_06_independent_audit_fail_p1_open_v2_07_blocked
-implementation_authorized_in_current_task: false
+phase: serverless_v2_v2_06_local_repair_complete_live_audit_fail_v2_07_blocked
+implementation_authorized_in_current_task: true
 current_milestone: hosted_staging_and_personal_media_workers
 current_task: VF-10-06
 current_wave: v2_06_personal_worker_conversion
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: v2_06_independent_audit_fail_p1_gates_open_v2_07_blocked
-application_code_changes_authorized: false
+task_stage: v2_06_local_source_repair_complete_live_gates_open_v2_07_blocked
+application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
 maximum_external_spend_usd: 0
@@ -23,7 +23,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: false
-  note: "Historical V2-06 authority remains recorded below for audit provenance; it is not active for the current completion goal."
+  note: "The latest explicit repair request authorizes local repository source/test changes only. Historical V2-06 provider authority remains recorded below for audit provenance and is not active; all provider, credential, deployment, spend, RunPod, and V2-07 boundaries remain false."
 
 provider_authority:
   mode: none
@@ -126,9 +126,9 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
-  last_verified_repository_head: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
-  current_source_head_note: "Commit fd773ed is the current source head while the deployed application remains 1ad68ea. Mac and Windows 0.1.11 live acceptance, second-tenant hosted negative isolation, successful-output deletion, Mac revocation, and local uninstall pass. The fresh independent audit and follow-up audit leave three P1 and one P2 evidence gap after safe documentation reconciliation. V2-07 remains blocked."
+  current_source_head: "14135ceecf9c954216f5705f31074f33203cdc8d"
+  last_verified_repository_head: "14135ceecf9c954216f5705f31074f33203cdc8d"
+  current_source_head_note: "Commit 14135ce adds fail-closed R2 post-delete head/list read-back for explicit output deletion and scheduled retention, with focused provider-free proof. The deployed application remains 1ad68ea, so source/deployment parity remains false. The independent audit's hosted P1 gaps and live post-delete evidence gap remain open; V2-07 remains blocked."
   last_good_commit: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
   last_good_commit_note: "V2-06 source HEAD fd773ed has clean canonical verification and records Mac, Windows, backup/restore, and second-tenant live isolation evidence with zero new external spend; the follow-up independent audit remains FAIL on three P1 and one remaining P2 after safe documentation reconciliation, and the deployed application remains 1ad68ea."
   working_tree_expected: clean_except_ignored_private_inputs
@@ -352,10 +352,10 @@ recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
   milestone: hosted_staging_and_personal_media_workers
-  status: independent_audit_fail_three_p1_one_p2_v2_07_blocked
+  status: local_repair_complete_live_gates_open_v2_07_blocked
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
   authorization_status: historical_bounded_v2_06_completion_approved_not_active_for_current_audit
-  task_stage: evidence_only_audit
+  task_stage: local_source_repair_only_no_provider_action
   current_goal_authority: none
   provider_authority:
     mode: none
@@ -382,16 +382,16 @@ recommended_next_task:
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
-  application_code_changes_authorized: false
-  authority_note: "The historical V2-06 completion grant is retained for provenance; the current evidence-only goal cannot use it."
+  application_code_changes_authorized: true
+  authority_note: "The latest explicit FIX EVERYTHING request authorizes local source/test repair only. The historical V2-06 completion grant is retained for provenance but cannot be reused for provider calls, deployment, mutation, publication, credentials, spend, or V2-07."
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_independent_audit_fail_three_p1_one_p2_v2_07_blocked
-  verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
-  verified_commit_note: "Windows 0.1.11 immutable-input, pairing, offline/reconnect, reboot/autostart, physical sleep/wake, 0.1.10-to-0.1.11 update, revocation, and uninstall cleanup pass on MI_Notebook. The provider-free native harness exits 0, the earlier Mac 0.1.11 live run reached ONLINE before the later user-confirmed revoke/uninstall, cmdkey reports NONE for the exact revoked Windows installation, new spend remains $0, and no RunPod or V2-07 action occurred. This is same-chat acceptance plus a separate audit FAIL, not V2-07 authority."
-  predecessor_verified_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-19-windows-native-completion-34a0fbf/acceptance.json
+  state: v2_06_local_source_repair_complete_live_gates_open_v2_07_blocked
+  verified_commit: "14135ceecf9c954216f5705f31074f33203cdc8d"
+  verified_commit_note: "Local R2 deletion/retention read-back repair is focused-green at the current source head: hosted adapters 14/14, hosted auth/worker database tests 6/6, script tests 70/70, web lint/typecheck, deployment validation, context validation, and secret scan pass. The canonical aggregate reached build, Cloudflare parity, formatting, lint, and typecheck but was stopped at unrelated local PGlite ENOSPC; no provider call, credential access, deployment, mutation, spend, RunPod action, or V2-07 action occurred."
+  predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
   latest_live_check:
     recorded_at_utc: "2026-08-18T13:33:02Z"
     evidence: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
@@ -756,9 +756,11 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: independent_audit_fail_three_p1_one_p2_remaining
+    status: local_r2_delete_guard_repaired_three_p1_one_p2_live_evidence_open
     implementation_commit: "1ad68ea46b642949591c1090cecddc28d7ec428e"
-    source_head_commit: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
+    source_head_commit: "14135ceecf9c954216f5705f31074f33203cdc8d"
+    local_source_repair_commit: "14135ceecf9c954216f5705f31074f33203cdc8d"
+    local_source_repair_evidence: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
     autonomous_readiness_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
     windows_acceptance_fix_commit: "34a0fbf438cb231a4fe5b927367b2ecbda0279a2"
     windows_acceptance_completion_commit: "710131374789ad888e348cff6cbf3ca969780790"
@@ -977,6 +979,7 @@ verification:
 
 audit_evidence:
   v2_06_completion_matrix: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/acceptance.json
+  v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
   current_goal_scope: repository_and_supplied_immutable_evidence_only
-  result: FAIL_three_p1_one_p2
+  result: FAIL_three_p1_one_p2_live_evidence; local_r2_delete_guard_repaired
   v2_07_status: blocked_not_safe_to_start

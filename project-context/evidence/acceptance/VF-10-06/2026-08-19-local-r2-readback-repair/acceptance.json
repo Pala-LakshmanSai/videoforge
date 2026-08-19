@@ -1,0 +1,82 @@
+{
+  "schema_version": "videoforge.v2-06.local-source-repair/v1",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T10:53:13Z",
+  "source_head": "14135ceecf9c954216f5705f31074f33203cdc8d",
+  "scope_boundary": {
+    "local_source_changes_authorized": true,
+    "provider_calls": false,
+    "credential_value_access": false,
+    "deployment_or_publication": false,
+    "remote_mutation": false,
+    "paid_requests_or_spend": false,
+    "runpod_or_gpu_mutation": false,
+    "v2_07_action": false
+  },
+  "repair": {
+    "finding_id": "P2-POST-DELETE-R2-INVENTORY",
+    "status": "LOCAL_IMPLEMENTATION_HARDENED_LIVE_READBACK_STILL_REQUIRED",
+    "summary": "Explicit output deletion and scheduled retention now delete only an exact personal-worker attempt prefix, verify every expected key with R2 head, enumerate the prefix after deletion, and include the verified read-back facts in the durable event hash before the database records retention deletion.",
+    "files": [
+      "apps/web/src/server/hosted/r2.ts",
+      "apps/web/src/server/hosted/app.ts",
+      "apps/web/src/server/hosted/retention.ts",
+      "apps/web/src/server/hosted/hosted-adapters.test.ts",
+      "scripts/validate-v2-06-deployment.mjs",
+      "scripts/tests/v2-06-activation-safety.test.mjs"
+    ],
+    "commit": "14135ceecf9c954216f5705f31074f33203cdc8d"
+  },
+  "commands_and_exits": [
+    {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/server/hosted/hosted-adapters.test.ts",
+      "exit_code": 0,
+      "result": "14/14 passed, including retained-object fail-closed and empty-prefix read-back"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web typecheck",
+      "exit_code": 0,
+      "result": "web and Worker TypeScript checks passed"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web lint",
+      "exit_code": 0,
+      "result": "ESLint passed"
+    },
+    {
+      "command": "node --test packages/control-plane/tests/v2-06-hosted-auth.test.mjs",
+      "exit_code": 0,
+      "result": "6/6 hosted auth, tenant, lease, callback, and cancellation tests passed"
+    },
+    {
+      "command": "pnpm test:scripts",
+      "exit_code": 0,
+      "result": "70/70 script tests passed"
+    },
+    {
+      "command": "pnpm validate:v2-06-deployment && pnpm context:validate && pnpm secret:scan",
+      "exit_code": 0,
+      "result": "deployment templates, context pack, and tracked-file secret scan passed"
+    },
+    {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 130,
+      "result": "local aggregate was stopped after PGlite reported ENOSPC in disposable /tmp test databases; build, Cloudflare parity, formatting, lint, and typecheck stages had passed before the unrelated disk-capacity failure"
+    }
+  ],
+  "unproven_live_claims": [
+    "No hosted post-delete R2 inventory/hash read-back was performed in this evidence-only run.",
+    "Positive second-tenant hosted non-superuser RLS and real private-R2 parity remain unproven.",
+    "Hosted Workflow restart/resume, lease-expiry replay, stale-result rejection, and final-deployed-source rollback remain unproven."
+  ],
+  "spend_truth": {
+    "new_external_spend_usd": 0,
+    "provider_calls": 0,
+    "runpod_mutations": 0,
+    "gpu_workers_started": 0,
+    "historical_v2_06_cap_usd": 3,
+    "historical_r2_ceiling_usd_per_month": 2
+  },
+  "rollback_state": "not_deployed; prior immutable deployment rollback evidence unchanged",
+  "successor_safety": "V2-07 remains blocked; local tests do not authorize provider activation or successor work."
+}
