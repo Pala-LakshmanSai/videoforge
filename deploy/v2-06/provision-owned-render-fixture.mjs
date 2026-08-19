@@ -1376,8 +1376,8 @@ async function ensureRevision(client, plan, preset) {
        revision_config_payload, revision_config_hash, created_by_user_id,
        created_at, locked_at
      ) VALUES ($1,$2,$3,$4,1,'LOCKED',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,
-               'UNTESTED',NULL,NULL,$15,$16,$17,$18,$19,'LOWEST_COST',0,'USD',$20,
-               $21,$22,$23::jsonb,$24,$25,$26,$26)
+               'UNTESTED',NULL,NULL,$15,$16,$17,$18,$19,'LOWEST_COST',$20,'USD',$21,
+               $22,$23,$24::jsonb,$25,$26,$27,$27)
      ON CONFLICT (id) DO NOTHING`,
     [
       plan.revisionId,
@@ -1399,6 +1399,7 @@ async function ensureRevision(client, plan, preset) {
       preset.styleProfileHash,
       base.extra_prompt_keywords,
       base.apply_extra_prompt_keywords,
+      base.maximum_cost_micro_usd,
       base.seed,
       base.revision_config_contract_name,
       base.revision_config_contract_version,

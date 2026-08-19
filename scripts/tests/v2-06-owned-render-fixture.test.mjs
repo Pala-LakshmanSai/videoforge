@@ -334,6 +334,7 @@ test("live fixture supports protected libpq and Wrangler without new credential 
   assert.match(source, /V2_06_RENDER_FIXTURE_USE_WRANGLER/u);
   assert.match(source, /requireControlPlane\("pg"\)/u);
   assert.match(source, /"wrangler", \.\.\.args/u);
+  assert.match(source, /'LOWEST_COST',\$20,'USD',\$21/u);
   assert.doesNotMatch(
     source.match(/async function ensureWranglerR2[\s\S]*?\n\}\n/u)?.[0] ?? "",
     /object", "delete/u,
