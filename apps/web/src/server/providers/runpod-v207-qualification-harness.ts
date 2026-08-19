@@ -285,7 +285,7 @@ export class RunPodV207QualificationHarness {
         // RunPod can briefly expose a ready-idle worker at endpoint creation even with
         // workersMin=0. Capture that queue-empty baseline immediately; waiting for strict zero
         // first can let the provider recycle the worker back into throttled startup.
-        await this.#jobs!.confirmWarmIdle(30);
+        await this.#jobs!.confirmWarmIdle(300, 250);
         this.mark("provider_warm_idle_baseline");
       } catch (error) {
         if (!(error instanceof RunPodControlError) || error.code !== "RUNPOD_WARM_IDLE_NOT_CONFIRMED") {
@@ -416,7 +416,7 @@ export class RunPodV207QualificationHarness {
     if (this.#guard.snapshot() !== "active" && this.#guard.snapshot() !== "warm_idle") {
       throw new RunPodControlError("RUNPOD_WARM_IDLE_NOT_ALLOWED");
     }
-    await this.#jobs!.confirmWarmIdle();
+    await this.#jobs!.confirmWarmIdle(300, 250);
     this.mark("warm_idle_confirmed");
   }
 

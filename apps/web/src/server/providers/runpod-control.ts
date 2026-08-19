@@ -842,8 +842,15 @@ export class RunPodServerlessJobClient {
     this.options.guard.confirmZero(Number.NaN, Number.NaN);
   }
 
-  async confirmWarmIdle(maxAttempts = 30): Promise<void> {
-    if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 60) {
+  async confirmWarmIdle(maxAttempts = 30, pollIntervalMs = 2_000): Promise<void> {
+    if (
+      !Number.isSafeInteger(maxAttempts) ||
+      maxAttempts < 1 ||
+      maxAttempts > 600 ||
+      !Number.isSafeInteger(pollIntervalMs) ||
+      pollIntervalMs < 100 ||
+      pollIntervalMs > 2_000
+    ) {
       throw new RunPodControlError("RUNPOD_WARM_IDLE_POLICY_INVALID");
     }
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -867,7 +874,7 @@ export class RunPodServerlessJobClient {
         this.options.guard.confirmWarmIdle(idle, running, queued);
         return;
       }
-      if (attempt + 1 < maxAttempts) await this.sleep(2_000);
+      if (attempt + 1 < maxAttempts) await this.sleep(pollIntervalMs);
     }
     this.options.guard.confirmWarmIdle(Number.NaN, Number.NaN, Number.NaN);
   }
