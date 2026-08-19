@@ -51,7 +51,7 @@ test("V2-06 hosted plan rewrites IDs, hashes, and tenant object lineage", async 
   assert.equal(plan.revisionConfigHash, canonicalHash(plan.revisionConfigBase));
   assert.equal(plan.revisionConfigPayload.maximum_cost_micro_usd, 100_000);
   assert.equal(plan.submission.kind, "RENDER");
-  assert.match(plan.submission.idempotency_key, /^v2-06-owned-render-fixture-v3-/u);
+  assert.match(plan.submission.idempotency_key, /^v2-06-owned-render-fixture-v4-/u);
   assert.equal(plan.submission.input_document.schema_version, "render-job-input/v1");
   const prefix = "/project/" + plan.projectId + "/revision/" + plan.revisionId + "/lane/input/job/";
   assert.ok(plan.rows.every((row) => row.objectKey.includes(prefix)));
