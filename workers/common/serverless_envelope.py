@@ -47,7 +47,7 @@ class EnvelopeRejection(RuntimeError):
 
 
 def _parse_utc(value: str) -> datetime:
-    if not UTC_TIMESTAMP.match(value):
+    if not isinstance(value, str) or not UTC_TIMESTAMP.fullmatch(value):
         raise EnvelopeRejection("ENVELOPE_EXPIRY_INVALID")
     return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC)
 
@@ -72,6 +72,43 @@ def validate_envelope(
         raise EnvelopeRejection("ENVELOPE_SCHEMA_QUARANTINED")
     if declared != ENVELOPE_SCHEMA:
         raise EnvelopeRejection("ENVELOPE_SCHEMA_UNKNOWN")
+
+    # Keep exact runtime joins fail-closed even when a hostile document also violates a
+    # schema const/enum. The contract validator remains authoritative for shape, while these
+    # checks ensure a wrong image, model path, volume, region, or GPU can never fall through to
+    # model initialization under a generic/ambiguous validation path.
+    runtime = document.get("runtime")
+    if isinstance(runtime, dict):
+        if (
+            "container_digest" in runtime
+            and runtime["container_digest"] != expected_container_digest
+        ):
+            raise EnvelopeRejection("ENVELOPE_IMAGE_MISMATCH")
+        if (
+            "model_manifest_sha256" in runtime
+            and runtime["model_manifest_sha256"] != expected_model_manifest_sha256
+        ):
+            raise EnvelopeRejection("ENVELOPE_MANIFEST_MISMATCH")
+        if (
+            "volume_id_sha256" in runtime
+            and runtime["volume_id_sha256"] != expected_volume_id_sha256
+        ):
+            raise EnvelopeRejection("ENVELOPE_VOLUME_MISMATCH")
+        if "volume_mount" in runtime and runtime["volume_mount"] != MODEL_VOLUME_MOUNT:
+            raise EnvelopeRejection("ENVELOPE_VOLUME_MOUNT_INVALID")
+        if "region" in runtime and runtime["region"] != "EU-RO-1":
+            raise EnvelopeRejection("ENVELOPE_REGION_INVALID")
+        if "gpu_allowlist" in runtime:
+            gpu_allowlist = runtime["gpu_allowlist"]
+            if (
+                not isinstance(gpu_allowlist, list | tuple)
+                or tuple(gpu_allowlist) != QUALIFIED_GPUS
+            ):
+                raise EnvelopeRejection("ENVELOPE_GPU_NOT_QUALIFIED")
+
+    authority_sha256 = document.get("authority_sha256")
+    if not isinstance(authority_sha256, str) or not SHA256.fullmatch(authority_sha256):
+        raise EnvelopeRejection("ENVELOPE_AUTHORITY_HASH_INVALID")
 
     try:
         validate_contract(ENVELOPE_CONTRACT, document)
@@ -122,8 +159,6 @@ def validate_envelope(
     if len(artifacts["transfer_port_reservation_ids"]) == 0:
         raise EnvelopeRejection("ENVELOPE_PORTS_MISSING")
 
-    if not SHA256.match(document["authority_sha256"]):
-        raise EnvelopeRejection("ENVELOPE_AUTHORITY_HASH_INVALID")
     return document
 
 
@@ -142,7 +177,11 @@ def sign_receipt(
     The signature proves the VideoForge worker key produced these facts. It is never a provider
     attestation of hardware, delivery uniqueness, or billing.
     """
-    if len(secret) < 32:
+    if not isinstance(body, dict):
+        raise EnvelopeRejection("RECEIPT_BODY_INVALID")
+    if "receipt_sha256" in body or "signature" in body:
+        raise EnvelopeRejection("RECEIPT_BODY_ALREADY_SIGNED")
+    if not isinstance(secret, bytes) or len(secret) < 32:
         raise EnvelopeRejection("RECEIPT_KEY_TOO_SHORT")
     if body.get("attestation_scope") != ATTESTATION_SCOPE:
         raise EnvelopeRejection("RECEIPT_ATTESTATION_SCOPE_INVALID")
@@ -164,5 +203,8 @@ def sign_receipt(
         "receipt_sha256": receipt_sha256,
         "signature": {"algorithm": "HMAC-SHA256", "key_id": key_id, "value": value},
     }
-    validate_contract("serverlessProvenanceReceiptV1", document)
+    try:
+        validate_contract("serverlessProvenanceReceiptV1", document)
+    except ContractValidationError as error:
+        raise EnvelopeRejection("RECEIPT_SCHEMA_INVALID") from error
     return document, emitted

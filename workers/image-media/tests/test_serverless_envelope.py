@@ -94,6 +94,36 @@ class ValidateEnvelopeTest(unittest.TestCase):
                 validate_envelope(document, now=NOW, **EXPECTED)
             self.assertEqual(raised.exception.code, code)
 
+    def test_rejects_wrong_runtime_path_region_and_gpu_before_schema_acceptance(self) -> None:
+        cases = {
+            "ENVELOPE_VOLUME_MOUNT_INVALID": lambda d: d["runtime"].update(
+                {"volume_mount": "/workspace/models"}
+            ),
+            "ENVELOPE_REGION_INVALID": lambda d: d["runtime"].update({"region": "US-KS-2"}),
+            "ENVELOPE_GPU_NOT_QUALIFIED": lambda d: d["runtime"].update(
+                {"gpu_allowlist": ["NVIDIA GeForce RTX 5090"]}
+            ),
+        }
+        for code, mutate in cases.items():
+            document = envelope()
+            mutate(document)
+            with self.assertRaises(EnvelopeRejection) as raised:
+                validate_envelope(document, now=NOW, **EXPECTED)
+            self.assertEqual(raised.exception.code, code)
+
+    def test_rejects_malformed_authority_hash_before_any_runtime_action(self) -> None:
+        for authority_hash in (
+            "",
+            "sha256:" + ("a" * 63),
+            "SHA256:" + ("a" * 64),
+            "sha256:" + ("a" * 64) + "\n",
+        ):
+            document = envelope()
+            document["authority_sha256"] = authority_hash
+            with self.assertRaises(EnvelopeRejection) as raised:
+                validate_envelope(document, now=NOW, **EXPECTED)
+            self.assertEqual(raised.exception.code, "ENVELOPE_AUTHORITY_HASH_INVALID")
+
     def test_rejects_volume_writes_pod_lifecycle_and_queue_purge(self) -> None:
         writable = envelope()
         writable["runtime"]["volume_write_policy"] = "READ_WRITE"
@@ -118,7 +148,7 @@ class ValidateEnvelopeTest(unittest.TestCase):
         document["runtime"]["gpu_allowlist"] = ["NVIDIA GeForce RTX 5090"]
         with self.assertRaises(EnvelopeRejection) as raised:
             validate_envelope(document, now=NOW, **EXPECTED)
-        self.assertEqual(raised.exception.code, "ENVELOPE_SCHEMA_INVALID")
+        self.assertEqual(raised.exception.code, "ENVELOPE_GPU_NOT_QUALIFIED")
 
     def test_rejects_an_expired_envelope_before_model_load(self) -> None:
         with self.assertRaises(EnvelopeRejection) as raised:
@@ -181,6 +211,22 @@ class SignReceiptTest(unittest.TestCase):
         with self.assertRaises(EnvelopeRejection) as raised:
             sign_receipt(receipt_body(), key_id="worker-key-1", secret=b"short")
         self.assertEqual(raised.exception.code, "RECEIPT_KEY_TOO_SHORT")
+
+    def test_refuses_non_dict_or_already_signed_receipt_body(self) -> None:
+        with self.assertRaises(EnvelopeRejection) as raised:
+            sign_receipt([], key_id="worker-key-1", secret=SECRET)  # type: ignore[arg-type]
+        self.assertEqual(raised.exception.code, "RECEIPT_BODY_INVALID")
+
+        already_signed = receipt_body()
+        already_signed["receipt_sha256"] = "sha256:" + ("a" * 64)
+        with self.assertRaises(EnvelopeRejection) as raised:
+            sign_receipt(already_signed, key_id="worker-key-1", secret=SECRET)
+        self.assertEqual(raised.exception.code, "RECEIPT_BODY_ALREADY_SIGNED")
+
+    def test_converts_malformed_receipt_identity_to_fail_closed_rejection(self) -> None:
+        with self.assertRaises(EnvelopeRejection) as raised:
+            sign_receipt(receipt_body(), key_id="", secret=SECRET)
+        self.assertEqual(raised.exception.code, "RECEIPT_SCHEMA_INVALID")
 
     def test_receipt_bytes_are_stable_across_key_ordering(self) -> None:
         body = receipt_body()
