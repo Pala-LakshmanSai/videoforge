@@ -91,6 +91,14 @@ const numberOrNull = (value: unknown): number | null => {
 const hashId = (value: string): string =>
   `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
 
+/**
+ * Hash the exact provider request used to select a V2-07 endpoint.  Provider identifiers may be
+ * present while the request is sent, but qualification evidence should persist only this digest.
+ */
+export function hashRunPodV207EndpointConfiguration(value: JsonValue): string {
+  return `sha256:${createHash("sha256").update(canonicalizeJson(value), "utf8").digest("hex")}`;
+}
+
 const exactStringArray = (value: unknown, expected: readonly string[]): boolean =>
   Array.isArray(value) &&
   value.length === expected.length &&
