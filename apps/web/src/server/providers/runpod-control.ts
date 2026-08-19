@@ -672,6 +672,52 @@ export interface RunPodJobResult {
   readonly delayTimeMs: number | null;
 }
 
+export interface RunPodJobDiagnostic {
+  readonly status: string | null;
+  readonly code: string | null;
+  readonly message: string | null;
+  readonly reason: string | null;
+}
+
+const diagnosticScalar = (value: unknown): string | null =>
+  typeof value === "string" && value.trim().length > 0 ? value.trim().slice(0, 240) : null;
+
+/**
+ * Keep provider failure diagnostics deliberately narrow.  The stream endpoint can contain
+ * worker logs and environment values; only a small, non-secret status tuple is retained.
+ */
+const extractJobDiagnostic = (value: unknown): RunPodJobDiagnostic => {
+  const candidates: JsonRecord[] = [];
+  const visit = (candidate: unknown): void => {
+    if (Array.isArray(candidate)) {
+      for (const entry of candidate.slice(0, 32)) visit(entry);
+      return;
+    }
+    const object = record(candidate);
+    if (!object) return;
+    candidates.push(object);
+    for (const key of ["output", "error", "result", "data"]) {
+      if (Object.hasOwn(object, key)) visit(object[key]);
+    }
+  };
+  visit(value);
+  const pick = (keys: readonly string[]): string | null => {
+    for (const candidate of candidates) {
+      for (const key of keys) {
+        const found = diagnosticScalar(candidate[key]);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  return Object.freeze({
+    status: pick(["status", "state"]),
+    code: pick(["code", "error_code", "errorCode"]),
+    message: pick(["message", "detail"]),
+    reason: pick(["reason", "error"]),
+  });
+};
+
 const jobResult = (value: JsonRecord): RunPodJobResult => {
   if (typeof value.id !== "string" || !ID.test(value.id) || typeof value.status !== "string") {
     throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
@@ -811,6 +857,42 @@ export class RunPodServerlessJobClient {
   async status(jobId: string): Promise<RunPodJobResult> {
     if (!ID.test(jobId)) throw new RunPodControlError("RUNPOD_JOB_ID_INVALID");
     return jobResult(await this.request("GET", `/status/${jobId}`));
+  }
+
+  async diagnostic(jobId: string): Promise<RunPodJobDiagnostic> {
+    if (!ID.test(jobId)) throw new RunPodControlError("RUNPOD_JOB_ID_INVALID");
+    let response: Response;
+    try {
+      response = await this.fetch(`${this.baseUrl}/${this.options.endpointId}/stream/${jobId}`, {
+        headers: { authorization: this.options.apiKey },
+        signal: AbortSignal.timeout(Math.min(this.timeoutMs, 15_000)),
+      });
+    } catch {
+      throw new RunPodControlError("RUNPOD_READ_AMBIGUOUS");
+    }
+    if (!response.ok) {
+      throw new RunPodControlError(
+        response.status === 401 || response.status === 403
+          ? "RUNPOD_AUTH_REJECTED"
+          : "RUNPOD_READ_FAILED",
+      );
+    }
+    const text = (await response.text()).slice(0, 64 * 1024);
+    try {
+      return extractJobDiagnostic(JSON.parse(text));
+    } catch {
+      const records: unknown[] = [];
+      for (const line of text.split("\n").slice(0, 64)) {
+        const data = line.trim().replace(/^data:\s*/u, "");
+        if (!data || data === "[DONE]") continue;
+        try {
+          records.push(JSON.parse(data));
+        } catch {
+          // The provider may emit a non-JSON keepalive; it is intentionally ignored.
+        }
+      }
+      return extractJobDiagnostic(records);
+    }
   }
 
   async cancel(jobId: string): Promise<RunPodJobResult> {

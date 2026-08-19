@@ -8,6 +8,7 @@ import {
   RunPodControlClient,
   RunPodDrainGuard,
   RunPodServerlessJobClient,
+  type RunPodJobDiagnostic,
   type RunPodEndpointPolicy,
   type RunPodJobResult,
   type RunPodV207ConcurrentReaderPolicy,
@@ -409,6 +410,15 @@ export class RunPodV207QualificationHarness {
       if (poll + 1 < maxPolls) await sleep(this.#options.pollIntervalMs ?? 15_000);
     }
     throw new RunPodControlError("RUNPOD_QUALIFICATION_RECONCILIATION_TIMEOUT");
+  }
+
+  /** Capture only the provider's bounded status tuple after a terminal failure. */
+  async diagnostic(jobId: string): Promise<RunPodJobDiagnostic> {
+    this.assertCreated();
+    if (!ID.test(jobId)) throw new RunPodControlError("RUNPOD_JOB_ID_INVALID");
+    const value = await this.#jobs!.diagnostic(jobId);
+    this.mark("job_diagnostic", { job_id_hash: sha256(jobId), ...value });
+    return value;
   }
 
   async confirmWarmIdle(): Promise<void> {

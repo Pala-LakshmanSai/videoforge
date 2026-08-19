@@ -355,6 +355,31 @@ async function verifyBatch(
   };
 }
 
+async function verifyBatchWithDiagnostic(
+  harness: RunPodV207QualificationHarness,
+  job: RunPodJobResult,
+  objectKeys: readonly string[],
+  nonce: string,
+  receiptKeyId: string,
+  receiptSecret: Buffer,
+): Promise<AnyRecord> {
+  try {
+    return await verifyBatch(job, objectKeys, nonce, receiptKeyId, receiptSecret);
+  } catch (error) {
+    try {
+      const diagnostic = await harness.diagnostic(job.id);
+      console.error(`v207:provider-diagnostic=${JSON.stringify(diagnostic)}`);
+    } catch (diagnosticError) {
+      console.error(
+        `v207:provider-diagnostic-unavailable=${
+          diagnosticError instanceof Error ? diagnosticError.message : "UNKNOWN"
+        }`,
+      );
+    }
+    throw error;
+  }
+}
+
 async function main(): Promise<void> {
   const apiKey = process.env.RUNPOD_KEY;
   if (!apiKey) throw new Error("RUNPOD_KEY_MISSING");
@@ -439,7 +464,8 @@ async function main(): Promise<void> {
     console.error("v207:cold-dispatched");
     const coldResult = await harness.reconcile(coldJob.id);
     console.error("v207:cold-terminal");
-    const coldEvidence = await verifyBatch(
+    const coldEvidence = await verifyBatchWithDiagnostic(
+      harness,
       coldResult,
       cold.objectKeys,
       nonce,
@@ -456,7 +482,8 @@ async function main(): Promise<void> {
     const warmJob = await harness.dispatchBatch(warm.input);
     const warmResult = await harness.reconcile(warmJob.id);
     console.error("v207:warm-terminal");
-    const warmEvidence = await verifyBatch(
+    const warmEvidence = await verifyBatchWithDiagnostic(
+      harness,
       warmResult,
       warm.objectKeys,
       nonce,
@@ -474,14 +501,16 @@ async function main(): Promise<void> {
       readerJobs[0].id,
       readerJobs[1].id,
     ]);
-    const readerEvidenceA = await verifyBatch(
+    const readerEvidenceA = await verifyBatchWithDiagnostic(
+      harness,
       readerResults[0],
       readerA.objectKeys,
       nonce,
       receiptKeyId,
       receiptSecret,
     );
-    const readerEvidenceB = await verifyBatch(
+    const readerEvidenceB = await verifyBatchWithDiagnostic(
+      harness,
       readerResults[1],
       readerB.objectKeys,
       nonce,
