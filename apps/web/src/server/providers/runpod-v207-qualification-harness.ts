@@ -281,7 +281,18 @@ export class RunPodV207QualificationHarness {
         fetch: this.#options.fetch,
         baseUrl: this.#options.baseUrl,
       });
-      await this.#jobs!.confirmDrained(90);
+      try {
+        await this.#jobs!.confirmDrained(90);
+      } catch (error) {
+        // RunPod flashboot may prewarm one idle worker immediately after endpoint creation even
+        // with workersMin=0. Accept that bounded, queue-empty state as the cold-start baseline;
+        // the post-batch drain still has to prove independent workers=0 before retention.
+        if (!(error instanceof RunPodControlError) || error.code !== "RUNPOD_ZERO_NOT_CONFIRMED") {
+          throw error;
+        }
+        await this.#jobs!.confirmWarmIdle(60);
+        this.mark("provider_flashboot_warm_idle_baseline");
+      }
       this.#initialConfigHash = hashRunPodV207EndpointConfiguration(
         jsonValue({
           region: "EU-RO-1",
