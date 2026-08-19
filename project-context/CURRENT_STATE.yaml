@@ -237,7 +237,7 @@ roadmap_state:
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
   V2-06: complete_green_independently_audited
-  V2-07: bounded_paid_qualification_authorized_in_progress
+  V2-07: provider_free_repair_handoff_requires_fresh_exact_image_authority
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
   V2-10: blocked_on_V2-09
