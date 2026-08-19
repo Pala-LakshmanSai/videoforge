@@ -2,7 +2,7 @@
   "schema": "videoforge.v2-06-completion-matrix/v1",
   "checkpoint": "V2-06",
   "recorded_at_utc": "2026-08-19T10:23:17Z",
-  "reconciled_at_utc": "2026-08-19T10:30:59Z",
+  "reconciled_at_utc": "2026-08-19T10:33:18Z",
   "audit_result": "FAIL",
   "severity_counts": {
     "P0": 0,
@@ -160,6 +160,50 @@
         "project-context/CURRENT_STATE.yaml:857-880",
         "project-context/evidence/acceptance/VF-10-06/2026-08-19-independent-audit-followup/acceptance.json:72-81"
       ]
+    }
+  ],
+  "gate_reconciliation": [
+    {
+      "gate": "GATE_TENANCY_001",
+      "registry_status": "open",
+      "relation": "V2-06 blocker",
+      "matrix_requirement": "better-auth-neon-r2-tenant-isolation",
+      "reference": "project-context/GATES.yaml:7-26"
+    },
+    {
+      "gate": "GATE_STORAGE_001",
+      "registry_status": "open",
+      "relation": "V2-06 blocker",
+      "matrix_requirement": "better-auth-neon-r2-tenant-isolation",
+      "reference": "project-context/GATES.yaml:28-47"
+    },
+    {
+      "gate": "GATE_HOSTING_001",
+      "registry_status": "open",
+      "relation": "V2-06 acceptance gate",
+      "matrix_requirement": "hosted-cloudflare-worker-workflow-orchestration",
+      "reference": "project-context/GATES.yaml:96-103"
+    },
+    {
+      "gate": "GATE_QUEUE_001",
+      "registry_status": "open",
+      "relation": "upstream V2-03 gate; not claimed closed by this V2-06 audit",
+      "matrix_requirement": null,
+      "reference": "project-context/GATES.yaml:49-68"
+    },
+    {
+      "gate": "GATE_SERVERLESS_CONTRACT_001",
+      "registry_status": "open",
+      "relation": "upstream V2-04/provider-transport gate; outside the active personal-worker V2-06 path and not claimed closed",
+      "matrix_requirement": "runpod-disabled-zero-worker-truth",
+      "reference": "project-context/GATES.yaml:70-94"
+    },
+    {
+      "gate": "GATE_SERVERLESS_MAGE_001",
+      "registry_status": "open",
+      "relation": "V2-07 blocker; reinforces the safety hold",
+      "matrix_requirement": "v2-07-safety",
+      "reference": "project-context/GATES.yaml:105-111"
     }
   ],
   "commands_and_exits": [
