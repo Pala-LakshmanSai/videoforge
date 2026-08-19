@@ -78,6 +78,14 @@ def _sha_environment(name: str) -> str:
     return value
 
 
+def _configured_image_digest() -> str:
+    """Normalize the runtime's full immutable image reference to the envelope digest."""
+    configured = os.environ.get("VIDEOFORGE_MAGE_WORKER_IMAGE_DIGEST", "")
+    if "@sha256:" in configured:
+        return configured.rsplit("@", 1)[1]
+    return configured
+
+
 def _put_output(port: dict[str, Any], url: str, body: bytes) -> int:
     _validate_output_url(url)
     if len(body) != port["content_length"]:
@@ -339,7 +347,7 @@ def _authority_expectations(envelope: dict[str, Any]) -> dict[str, str]:
         "expected_account_id": tenant.get("account_id", ""),
         "expected_workspace_id": tenant.get("workspace_id", ""),
         "expected_deployment_id": runtime.get("deployment_id", ""),
-        "expected_container_digest": os.environ.get("VIDEOFORGE_MAGE_WORKER_IMAGE_DIGEST", ""),
+        "expected_container_digest": _configured_image_digest(),
         "expected_model_manifest_sha256": os.environ.get("VIDEOFORGE_MAGE_MANIFEST_SHA256", ""),
         "expected_volume_id_sha256": os.environ.get("VIDEOFORGE_MAGE_VOLUME_ID_HASH", ""),
     }
