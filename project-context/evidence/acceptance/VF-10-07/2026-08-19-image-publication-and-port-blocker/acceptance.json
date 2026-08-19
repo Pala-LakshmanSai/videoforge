@@ -1,0 +1,73 @@
+{
+  "schema_version": "videoforge.v2-07-image-publication-and-port-blocker/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "recorded_at": "2026-08-19T17:50:57Z",
+  "result": "BLOCKED_BEFORE_ENDPOINT_MUTATION",
+  "authority": {
+    "finite_cap_usd": 4,
+    "actual_new_spend_usd": 0,
+    "provider": "runpod",
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "approved_operations_used": ["inventory_lookup", "rate_lookup", "image_publication"],
+    "endpoint_or_template_mutation": false,
+    "gpu_allocation": false,
+    "sample_output_publication": false
+  },
+  "predecessor": {
+    "v2_06_independent_audit": "PASS_zero_p0_zero_p1_zero_p2",
+    "evidence": "project-context/evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json"
+  },
+  "mage_lineage": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "comfyui_revision": "26d7f8556822d9d08c2d3e1878636ac3b4969af9",
+    "manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "model_bytes": 13379919280,
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "region": "EU-RO-1",
+    "volume_mutation": false,
+    "cross_mount": false
+  },
+  "image_publication": {
+    "workflow": "mage-image",
+    "run_id": 32283193060,
+    "head_sha": "3784ee56999b17c5caa5e7f05d8cee00a671ef82",
+    "build_and_smoke": "PASS",
+    "published": true,
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:650401b2c32a842c00219b85868fdefe4d10dc74e7ef3d5bb1474aeff671d5e2"
+  },
+  "runpod_inventory": {
+    "checked_at": "2026-08-19T17:47:31Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "network_volumes": [
+      {"id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be", "size_gb": 50, "region": "EU-RO-1"},
+      {"id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619", "size_gb": 50, "region": "EU-RO-1"}
+    ],
+    "retained_storage_usd_per_month": 7
+  },
+  "local_verification": [
+    {"command": "pnpm test:workers", "exit_code": 0, "result": "66+40+4+17+31+10 passed"},
+    {"command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/runpod-control.test.ts", "exit_code": 0, "result": "18 passed"},
+    {"command": "pnpm --filter @videoforge/web typecheck", "exit_code": 0},
+    {"command": "pnpm context:validate", "exit_code": 0},
+    {"command": "git diff --check", "exit_code": 0}
+  ],
+  "hard_blocker": {
+    "code": "V2_07_DYNAMIC_OUTPUT_PORT_AUTHORITY_MISSING",
+    "detail": "The active artifact-transfer-port/v3 PUT authority requires exact content_length and checksum_sha256 before dispatch. Mage output bytes and hashes are produced only after inference. The current control plane has no dynamic output-port issuer/finalize route, so a real batch would fail the upload contract or require weakening the scoped-port invariant.",
+    "not_attempted": [
+      "endpoint creation or update",
+      "serverless /run",
+      "GPU allocation",
+      "sample or batch output publication",
+      "workersMax=2 concurrent-reader configuration"
+    ],
+    "required_repair": "Add and independently test a bounded generated-output capability/finalize contract that preserves tenant/path/expiry/max-use scope and records actual length/hash, then publish a replacement immutable image before any endpoint or GPU action."
+  },
+  "qualification_status": "NOT_QUALIFIED",
+  "next_checkpoint": "V2-07 remains active; stop before V2-08"
+}

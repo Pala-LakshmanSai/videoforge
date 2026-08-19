@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-19T16:25:00Z"
+updated_at: "2026-08-19T17:50:57Z"
 
 phase: serverless_v2_v2_07_bounded_paid_qualification_authorized
 implementation_authorized_in_current_task: true
@@ -187,10 +187,10 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
+  current_source_head: "252f9c778d65a0837a8ecb0f6ea44f04679fcbdf"
   current_source_head_semantics: deployed_executable_source_identity_not_documentation_head
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Executable source e673527 is deployed as Worker 32bfc4bf-4421-4703-9095-2afc3515fda3 with source/status parity. Later commits are documentation, evidence, and bounded deployment-tooling handoffs. The final independent audit passed at repository HEAD 99e4739; this final documentation handoff follows it."
+  current_source_head_note: "V2-07 source HEAD 252f9c7 includes the exact RTX 4090 runtime fence and handler tests. The published Serverless image was built from runtime source 3784ee5 at digest 650401b2; the later test-only commit does not alter Dockerfile inputs. No endpoint or GPU execution was started because the generated-output port contract is unresolved."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -324,9 +324,9 @@ reusable_foundations:
 
 model_runtime_evidence:
   mage:
-    status: pod_qualified_visual_accepted_serverless_unqualified
+    status: serverless_image_published_handler_qualification_blocked_dynamic_output_port_contract
     exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
-    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-cp06@sha256:0bd33cc8c41c7dc81964652b68e8f902e3521b931ade330c089f7999eb9c9f69"
+    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:650401b2c32a842c00219b85868fdefe4d10dc74e7ef3d5bb1474aeff671d5e2"
     manifest_sha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b"
     selected_model_bytes: 13379919280
     retained_volume_id_sha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
@@ -334,6 +334,7 @@ model_runtime_evidence:
     ongoing_volume_usd_per_month: 3.5
     settled_qualification_cost_usd: 0.34927155333571136
     evidence: evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json
+    v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-19-image-publication-and-port-blocker/acceptance.json
   soulx:
     status: pod_technical_pass_serverless_visual_crop_license_and_settlement_gates_open
     exact_source: "Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2"
@@ -353,10 +354,10 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-08-19T14:28:04.336Z"
+  checked_at: "2026-08-19T17:47:31Z"
   basis: authenticated_sujal_runpod_redacted_read_only_api_inventory
-  evidence: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
-  current_live_refresh_permitted_now: false
+  evidence: evidence/acceptance/VF-10-07/2026-08-19-image-publication-and-port-blocker/acceptance.json
+  current_live_refresh_permitted_now: true
   stale_until_current_authorized_read_only_inventory_succeeds: false
   pods: 0
   private_templates: 0
@@ -382,7 +383,7 @@ last_known_provider_resource_truth:
   current_day_cloud_cpu_usd: 0
   current_day_serverless_usd: 0
   auto_pay: DISABLED
-  note: "The 2026-08-19T14:28:04.336Z redacted API refresh shows zero Pods, endpoints, active Serverless workers, and private templates plus the two expected 50 GB retained volumes. No RunPod mutation or compute occurred; no current live refresh is authorized."
+  note: "The 2026-08-19T17:47:31Z redacted REST refresh on the configured VideoForge credential shows zero Pods, endpoints, active Serverless workers, and private templates plus the two expected 50 GB retained volumes. Image publication is complete; no endpoint/template mutation, GPU allocation, output publication, or compute occurred."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_MAGE_001
@@ -483,9 +484,11 @@ recommended_next_task:
   application_code_changes_authorized: true
   authority_note: "User approved the exact V2-07 proposal at a USD 4 finite cap. Existing Mage/SoulX volumes remain retained separately; no volume mutation or V2-08 authority exists."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
+  execution_status: blocked_before_endpoint_mutation
+  execution_blocker: "Generated Mage output bytes are unknown until inference, but the current artifact-transfer-port/v3 PUT authority requires exact content_length and checksum_sha256 before /run. No dynamic output-port issuer/finalize contract exists, so a live batch would deterministically fail upload or require a contract-weakening workaround."
 
 verification:
-  state: v2_06_complete_green_independently_audited_v2_07_bounded_paid_qualification_authorized
+  state: v2_06_complete_green_independently_audited_v2_07_image_published_qualification_blocked
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   verified_commit_note: "Deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 are accepted by the final independent audit at repository HEAD 99e4739. Positive and negative tenancy, ASR/render/Chrome, durable delete and R2 inventory, cleanup, migration 0036/FORCE RLS, recovery, backup/restore, rollback, native lifecycle, zero new spend, and RunPod zero compute are recorded."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
