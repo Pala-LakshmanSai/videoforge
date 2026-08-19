@@ -1,0 +1,157 @@
+{
+  "schema_version": "videoforge.v2-07-dynamic-contract-endpoint-cleanup/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "recorded_at": "2026-08-19T18:33:41Z",
+  "result": "NOT_QUALIFIED_BEFORE_SERVERLESS_DISPATCH",
+  "authority": {
+    "finite_cap_usd": 4,
+    "actual_new_spend_usd": 0,
+    "provider": "runpod",
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "approved_operations_used": [
+      "inventory_lookup",
+      "rate_lookup",
+      "image_publication",
+      "endpoint_create_or_update",
+      "endpoint_template_delete_if_failed"
+    ],
+    "serverless_run_submitted": false,
+    "gpu_allocation_for_job": false,
+    "sample_output_publication": false,
+    "retained_volume_mutation": false
+  },
+  "predecessor": {
+    "v2_06_independent_audit": "PASS_zero_p0_zero_p1_zero_p2",
+    "evidence": "project-context/evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json"
+  },
+  "lineage": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "comfyui_revision": "26d7f8556822d9d08c2d3e1878636ac3b4969af9",
+    "manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "model_bytes": 13379919280,
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "region": "EU-RO-1",
+    "mount": "/runpod-volume",
+    "volume_mutation": false,
+    "cross_mount": false,
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:7d667b3abf949586afd87ff2730648cf1190866fa41d43288530243c323564a4",
+    "image_publication_workflow": {
+      "workflow": "mage-image",
+      "run_id": 32285725388,
+      "source_head": "a0f67e0d1375d2347385ae0ebdc50a0db57c2a73",
+      "build_and_smoke": "PASS"
+    }
+  },
+  "repaired_contract": {
+    "dynamic_authority_schema": "artifact-generated-output-authority/v1",
+    "exact_v3_transfer_port_unchanged": true,
+    "finalization_binds_actual_length_and_sha256": true,
+    "hosted_r2_generated_put_signer": "implemented_and_fixture_tested",
+    "mage_handler_uploads_measured_bytes_and_hash": true,
+    "negative_tests": [
+      "wrong authority bytes/path/volume/GPU/region",
+      "model-volume write and cache escape",
+      "malformed authority and capability",
+      "duplicate delivery",
+      "cancel and timeout",
+      "two-reader scope",
+      "terminal scratch cleanup"
+    ]
+  },
+  "staged_endpoint_configs": {
+    "initial_max_one": {
+      "workers_min": 0,
+      "workers_max": 1,
+      "gpu": "NVIDIA GeForce RTX 4090",
+      "gpu_count": 1,
+      "region": "EU-RO-1",
+      "scaler": "REQUEST_COUNT",
+      "scaler_value": 1,
+      "idle_timeout_seconds": 5,
+      "execution_timeout_ms": 2400000,
+      "endpoint_config_sha256": "sha256:e9d0f9508347356191dfbb80e1aa5b611eaa38fe78350211662717110bb818b3"
+    },
+    "bounded_concurrent_reader_max_two": {
+      "workers_min": 0,
+      "workers_max": 2,
+      "gpu": "NVIDIA GeForce RTX 4090",
+      "gpu_count": 1,
+      "region": "EU-RO-1",
+      "scaler": "REQUEST_COUNT",
+      "scaler_value": 1,
+      "idle_timeout_seconds": 5,
+      "execution_timeout_ms": 2400000,
+      "endpoint_config_sha256": "sha256:c5e6b168b3c91cd62f2e474b2d15a16e92493f6619f000d53f2eac3425900715"
+    }
+  },
+  "disposable_live_setup": {
+    "created_with_approved_image_and_volume": true,
+    "endpoint_id_sha256": "sha256:52a536c0d690e40a0402c20e41a2dc335d3ca19f8e5b2a8326a89510c2b000ee",
+    "template_id_sha256": "sha256:44aa456c7efefa9a68a57d47cf6d340e656db716a0e4bb8168f1e2ccc446ee59",
+    "provider_response_reconciled": [
+      "template generic mount response /workspace accepted while endpoint network volume is /runpod-volume",
+      "compiled template identity accepted when provider returned an internal template id",
+      "networkVolumeIds array accepted as the exact volume binding"
+    ],
+    "health_observation": "no queued or running job; provider reported an idle/ready or throttled worker during cleanup",
+    "endpoint_delete_http_status": 204,
+    "template_delete_http_status": 204,
+    "post_cleanup_endpoints": 0,
+    "post_cleanup_private_templates": 0,
+    "post_cleanup_active_workers": 0,
+    "receipt_key_safety": "disposable template deleted; no job used its receipt key; fresh key required for any future activation"
+  },
+  "runpod_inventory_after_cleanup": {
+    "checked_at": "2026-08-19T18:31:00Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "network_volumes": [
+      {
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      }
+    ],
+    "retained_storage_usd_per_month": 7,
+    "serverless_rate_usd_per_second": 0.00031,
+    "new_compute_spend_usd": 0
+  },
+  "local_verification": [
+    {"commit": "b78f5f2", "area": "dynamic artifact authority/finalize contract", "result": "PASS"},
+    {"commit": "a46b1c5", "area": "Mage handler dynamic output upload and receipt", "result": "PASS"},
+    {"commit": "8832489", "area": "qualification harness and redacted evidence", "result": "PASS"},
+    {"commit": "a0f67e0", "area": "HostedR2Signer.signGenerated", "result": "PASS"},
+    {"commit": "4cb3023", "area": "template environment activation seam", "result": "PASS"},
+    {"commit": "f77e30e", "area": "RunPod response reconciliation and health-based drain", "result": "PASS"},
+    {"command": "pnpm test:workers", "exit_code": 0, "result": "70+40+4+17+31+10 passed"},
+    {"command": "pnpm python:lint", "exit_code": 0, "result": "90 files formatted/checks passed"},
+    {"command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/runpod-control.test.ts src/server/providers/runpod-v207-qualification-harness.test.ts", "exit_code": 0, "result": "20 passed"},
+    {"command": "pnpm --filter @videoforge/web typecheck", "exit_code": 0},
+    {"command": "pnpm context:validate", "exit_code": 0},
+    {"command": "git diff --check", "exit_code": 0}
+  ],
+  "hard_blocker": {
+    "code": "V2_07_DURABLE_R2_SIGNER_UNAVAILABLE",
+    "detail": "The generated-output authority contract is repaired, but no real Cloudflare R2 signing credentials or already-authorized signer route is available in the configured local environment. Dispatching with fixture URLs/bytes, a mock store, or a weakened scoped-port invariant would not prove durable output lineage.",
+    "not_attempted": [
+      "serverless /run",
+      "GPU batch allocation",
+      "cold or warm inference",
+      "real complete image batch",
+      "cancel/duplicate/timeout output reconciliation",
+      "workersMax=2 concurrent-reader proof"
+    ],
+    "required_next_action": "Provide or authorize one real durable R2 signer path bound to tenant/workspace/output prefix and the generated-output authority/finalize contract; then recreate the disposable endpoint with a fresh receipt key and resume only the approved V2-07 proposal."
+  },
+  "qualification_status": "NOT_QUALIFIED",
+  "next_checkpoint": "V2-07 remains active; stop before V2-08"
+}
