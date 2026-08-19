@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-19T23:09:32Z",
+  "recorded_at": "2026-08-19T23:11:35Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -70,6 +70,11 @@
     {
       "commit": "73a9b90",
       "area": "activation authority pins the complete repaired source commit and rejects short lineage",
+      "result": "PASS"
+    },
+    {
+      "command": "project-context/scripts/validate-context.sh && project-context/scripts/validate-schemas.sh",
+      "exit_code": 0,
       "result": "PASS"
     },
     {
