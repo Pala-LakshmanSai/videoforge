@@ -665,6 +665,120 @@ async function commitProject(
  * submission endpoint, which applies the same plan equality check before it
  * owns/outboxes the render attempt.
  */
+async function asrHandoff(
+  request: Request,
+  projectId: string,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const state = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<{
+        revision_id: string;
+        voiceover_asset_id: string;
+        checksum_sha256: string;
+        content_type: string;
+        duration_ms: number | string;
+        receipt_id: string;
+      }>(
+        `SELECT revision.id::text AS revision_id,
+                revision.voiceover_asset_id::text AS voiceover_asset_id,
+                receipt.checksum_sha256, receipt.content_type,
+                asset.duration_ms, receipt.id::text AS receipt_id
+           FROM projects AS project
+           JOIN project_revisions AS revision
+             ON revision.account_id = project.account_id
+            AND revision.workspace_id = project.workspace_id
+            AND revision.project_id = project.id
+            AND revision.status = 'LOCKED'
+           JOIN assets AS asset
+             ON asset.account_id = revision.account_id
+            AND asset.workspace_id = revision.workspace_id
+            AND asset.id = revision.voiceover_asset_id
+            AND asset.state = 'VERIFIED'
+            AND asset.binary_sha256 = revision.voiceover_binary_sha256
+           JOIN artifact_reservations AS reservation
+             ON reservation.account_id = revision.account_id
+            AND reservation.workspace_id = revision.workspace_id
+            AND reservation.project_id = revision.project_id
+            AND reservation.project_revision_id = revision.id
+            AND reservation.asset_id = asset.id
+            AND reservation.state = 'COMMITTED'
+           JOIN artifact_receipts AS receipt
+             ON receipt.account_id = reservation.account_id
+            AND receipt.workspace_id = reservation.workspace_id
+            AND receipt.reservation_id = reservation.id
+            AND receipt.deleted_at IS NULL
+            AND receipt.checksum_sha256 = asset.binary_sha256
+          WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
+          LIMIT 1`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
+      return result.rows[0] ?? null;
+    });
+    if (!state) return response({ error: { code: "HOSTED_ASR_HANDOFF_NOT_READY" } }, 409);
+    const extension = voiceoverExtension(state.content_type);
+    const uri = `vf-local://objects/sha256/${state.checksum_sha256.slice(7, 9)}/${state.checksum_sha256.slice(7)}.${extension}`;
+    return response(
+      {
+        schema_version: "videoforge-hosted-asr-handoff/v1",
+        project_id: projectId,
+        project_revision_id: state.revision_id,
+        cpu_submission: {
+          schema_version: "videoforge-hosted-cpu-submission/v1",
+          idempotency_key: `project-${projectId}-asr-v1`,
+          project_id: projectId,
+          project_revision_id: state.revision_id,
+          kind: "ASR",
+          input_document: {
+            schema_version: "asr-job-input/v1",
+            project_revision_id: state.revision_id,
+            attempt_id: projectId,
+            voiceover: {
+              asset_id: state.voiceover_asset_id,
+              sha256: state.checksum_sha256,
+              artifact_uri: uri,
+              media_type: state.content_type,
+              duration_ms: Number(state.duration_ms),
+            },
+            model: {
+              engine: "whisper.cpp",
+              name: "base.en",
+              sha256: config.mediaWorkerRelease.whisperModelSha256,
+              language: "en",
+            },
+            options: {
+              threads: 4,
+              processors: 1,
+              flash_attention: true,
+              greedy: true,
+              split_on_word: true,
+            },
+            output: {
+              result_uri: `vf-local-run://${state.revision_id}/${projectId}/asr-result.json`,
+            },
+            cancel_token: projectId,
+          },
+          objects: [{ artifact_receipt_id: state.receipt_id, uri }],
+        },
+      },
+      202,
+    );
+  } finally {
+    await pool.end();
+  }
+}
+
 async function renderHandoff(
   request: Request,
   projectId: string,
@@ -1041,6 +1155,9 @@ export async function handleHostedProductRequest(
   const render = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/render$/u.exec(url.pathname);
   if (request.method === "POST" && render)
     return renderHandoff(request, render[1]!, config, executionContext);
+  const asr = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/asr$/u.exec(url.pathname);
+  if (request.method === "POST" && asr)
+    return asrHandoff(request, asr[1]!, config, executionContext);
   const review = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/review$/u.exec(url.pathname);
   if (request.method === "POST" && review)
     return approveReview(request, review[1]!, config, executionContext);

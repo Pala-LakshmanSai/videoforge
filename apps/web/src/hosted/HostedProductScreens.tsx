@@ -567,6 +567,19 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     .reverse()
     .find((attempt) => attempt.kind === "RENDER");
   const renderHandoffAttempt = useRef<string | null>(null);
+  const asrHandoff = useMutation({
+    mutationFn: async () => {
+      const handoff = await readJson<{ cpu_submission: unknown }>(
+        `/api/v2/hosted/projects/${projectId}/asr`,
+        { method: "POST", body: "{}" },
+      );
+      return readJson(`/api/v2/cpu-attempts`, {
+        method: "POST",
+        body: JSON.stringify(handoff.cpu_submission),
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
+  });
   const renderHandoff = useMutation({
     mutationFn: async (asrAttemptId: string) => {
       const handoff = await readJson<{ cpu_submission: unknown }>(
@@ -675,6 +688,19 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           ))}
         </div>
       </Panel>
+      {!asr ? (
+        <div className="notice" role="status">
+          <strong>Project is ready for durable transcription.</strong>
+          {asrHandoff.isError ? <span> {asrHandoff.error.message}</span> : null}
+          <Button
+            variant="secondary"
+            busy={asrHandoff.isPending}
+            onClick={() => asrHandoff.mutate()}
+          >
+            Start transcription
+          </Button>
+        </div>
+      ) : null}
       {asr?.state === "SUCCEEDED" && !render ? (
         <div className="notice" role="status">
           <strong>
