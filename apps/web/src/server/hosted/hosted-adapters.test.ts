@@ -252,6 +252,32 @@ describe("V2-06 hosted adapters", () => {
     ).rejects.toThrow(/content length/u);
   });
 
+  it("signs generated Mage output without inventing pre-dispatch bytes", async () => {
+    const config = hostedRuntimeConfiguration(environment());
+    const port = await new HostedR2Signer(config.r2).signGenerated({
+      objectKey:
+        "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/mage-image/job/job-a/artifact/scene-a",
+      contentType: "image/png",
+      maxContentLength: 4 * 1024 * 1024,
+      lifetimeSeconds: 300,
+      now: new Date("2026-08-16T00:00:00.000Z"),
+    });
+    expect(port.method).toBe("PUT");
+    expect(port.maxContentLength).toBe(4 * 1024 * 1024);
+    expect(port.requiredHeaders["content-type"]).toBe("image/png");
+    expect(decodeURIComponent(port.url)).toContain(
+      "X-Amz-SignedHeaders=content-type;host",
+    );
+    await expect(
+      new HostedR2Signer(config.r2).signGenerated({
+        objectKey: "tenant/account-a",
+        contentType: "image/png",
+        maxContentLength: 1,
+        lifetimeSeconds: 300,
+      }),
+    ).rejects.toThrow(/exact tenant lineage/u);
+  });
+
   it("accepts exact Avatar Hub profile-version storage keys", async () => {
     const config = hostedRuntimeConfiguration(environment());
     const port = await new HostedR2Signer(config.r2).sign({

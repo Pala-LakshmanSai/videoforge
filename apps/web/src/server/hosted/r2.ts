@@ -120,6 +120,20 @@ export interface HostedSignedArtifactPort {
   readonly checksumSha256: string;
 }
 
+/**
+ * A bounded PUT URL for bytes produced after dispatch.  It intentionally omits
+ * length and checksum: those facts are measured by the worker and committed
+ * through the additive generated-output authority before an exact v3 receipt.
+ */
+export interface HostedSignedGeneratedArtifactPort {
+  readonly method: "PUT";
+  readonly url: string;
+  readonly requiredHeaders: Readonly<Record<string, string>>;
+  readonly expiresAt: string;
+  readonly contentType: string;
+  readonly maxContentLength: number;
+}
+
 export class HostedR2Signer {
   readonly #client: AwsClient;
   readonly #endpoint: string;
@@ -213,6 +227,56 @@ export class HostedR2Signer {
       contentType: input.contentType,
       contentLength: input.contentLength,
       checksumSha256: input.checksumSha256,
+    });
+  }
+
+  async signGenerated(input: {
+    objectKey: string;
+    contentType: string;
+    maxContentLength: number;
+    lifetimeSeconds: number;
+    now?: Date;
+  }): Promise<HostedSignedGeneratedArtifactPort> {
+    if (!EXACT_KEY.test(input.objectKey))
+      throw new TypeError("R2 object key is not exact tenant lineage.");
+    if (
+      !Number.isSafeInteger(input.maxContentLength) ||
+      input.maxContentLength < 1 ||
+      input.maxContentLength > 10 * 1024 ** 3
+    ) {
+      throw new RangeError("R2 generated output ceiling is outside the bounded artifact contract.");
+    }
+    if (!/^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/u.test(input.contentType))
+      throw new TypeError("R2 content type is invalid.");
+    if (
+      !Number.isSafeInteger(input.lifetimeSeconds) ||
+      input.lifetimeSeconds < 1 ||
+      input.lifetimeSeconds > 900
+    ) {
+      throw new RangeError("R2 generated PUT port lifetime must be between 1 and 900 seconds.");
+    }
+    const now = input.now ?? new Date();
+    const target = new URL(
+      `${this.#endpoint}/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`,
+    );
+    target.searchParams.set("X-Amz-Expires", String(input.lifetimeSeconds));
+    const headers = { "content-type": input.contentType };
+    const signed = await this.#client.sign(target, {
+      method: "PUT",
+      headers,
+      aws: {
+        signQuery: true,
+        allHeaders: true,
+        datetime: now.toISOString().replace(/[-:]|\.\d{3}/gu, ""),
+      },
+    });
+    return Object.freeze({
+      method: "PUT",
+      url: signed.url,
+      requiredHeaders: Object.freeze(headers),
+      expiresAt: new Date(now.getTime() + input.lifetimeSeconds * 1_000).toISOString(),
+      contentType: input.contentType,
+      maxContentLength: input.maxContentLength,
     });
   }
 }
