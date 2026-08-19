@@ -1852,7 +1852,7 @@ async function main(argv = process.argv.slice(2)) {
     ...(useProtectedPgService ? {} : { connectionString: databaseUrl }),
     max: 1,
     application_name: "videoforge-v2-06-owned-render-fixture",
-    options: "-c search_path=public,pg_catalog",
+    ...(useProtectedPgService ? {} : { options: "-c search_path=public,pg_catalog" }),
   });
   let client;
   try {
