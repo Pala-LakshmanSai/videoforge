@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Status: V2-06 live closure is recorded. Three fresh audits found only repository-handoff defects;
+Status: V2-06 live closure is recorded. Four fresh audits found only repository-handoff defects;
 all are reconciled and a final evidence-only re-audit is pending. V2-07 remains blocked. No live
 verification, mutation, or spend is currently authorized.
 Context schema: `2.0`

@@ -1,0 +1,72 @@
+{
+  "schema": "videoforge.v2-06-independent-audit/v1",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T15:46:46Z",
+  "thread_id": "01a01aa7-9766-7880-83d1-20eaff5875fc",
+  "repository_head": "11a72081f3124e9fadf537bd9b80e820a7e26ff3",
+  "deployed_executable_source": "e673527b7ac3dbb4db64f66a19a766cf1cf1d422",
+  "deployment_version_id": "32bfc4bf-4421-4703-9095-2afc3515fda3",
+  "scope": "Fresh repository-and-supplied-immutable-evidence-only re-audit; no credentials, live provider calls, mutations, repairs, or spend.",
+  "result": "FAIL_REPOSITORY_HANDOFF_LIVE_EVIDENCE_OTHERWISE_PASS_READY",
+  "severity_counts": {
+    "P0": 0,
+    "P1": 1,
+    "P2": 0
+  },
+  "findings": [
+    {
+      "id": "P1-STALE-AUTHORITATIVE-AUDIT-INDEX",
+      "severity": "P1",
+      "finding": "CURRENT_STATE latest_live_check.status still named the first audit while the lower normative audit_evidence index still pointed to audit 2 and reported two fresh audits, contradicting the top-level audit-3 pointer and detailed three-audit ledger.",
+      "status_after_audit": "REPOSITORY_RECONCILIATION_REQUIRED"
+    }
+  ],
+  "verified_supplied_evidence": [
+    "separate historical USD 3 and final-closure USD 1 caps; USD 0 actual new spend, USD 2 per month R2 ceiling, and no new recurring resource",
+    "deployed executable source e673527, Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3, and migration 0036",
+    "Better Auth, non-superuser forced RLS, private R2, device and lease isolation, positive and negative tenant proof, and real Chrome playback",
+    "DELETE HTTP 204, exact 404 read-backs, and restored 55-object 55598142-byte R2 inventory with recorded hash",
+    "Workflow recovery, backup and restore, two-step rollback, final HTTP 200 health, immutable Windows and macOS lifecycle, and zero final device rows",
+    "RunPod zero Pods, endpoints, workers, and private templates with zero mutation; two untouched 50 GB volumes at USD 7 per month total"
+  ],
+  "commands_and_exits": [
+    { "command": "git diff --check", "exit_code": 0 },
+    {
+      "command": "git diff --quiet e673527..HEAD -- apps packages workers",
+      "exit_code": 0
+    },
+    { "command": "pnpm context:validate", "exit_code": 0 },
+    { "command": "pnpm validate:v2-06-deployment", "exit_code": 0 },
+    { "command": "pnpm verify:active-runtime", "exit_code": 0 },
+    { "command": "pnpm contracts:check", "exit_code": 0 },
+    { "command": "pnpm format:check", "exit_code": 0 },
+    { "command": "pnpm secret:scan", "exit_code": 0 },
+    {
+      "command": "focused V2-06 Node suite",
+      "exit_code": 0,
+      "result": "54 passed; 7 private-fixture-dependent cases skipped"
+    },
+    {
+      "command": "hosted auth tests",
+      "exit_code": 0,
+      "result": "6 of 6 passed"
+    },
+    {
+      "command": "hosted adapter tests",
+      "exit_code": 0,
+      "result": "14 of 14 passed"
+    },
+    {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 1,
+      "result": "audit-worktree environment lacked required uv 0.8.13 and later hit ENOSPC; supplied immutable final closure records canonical exit 0"
+    }
+  ],
+  "unproven_live_claims": [
+    "No live provider state was refreshed; current claims remain bounded to immutable evidence timestamps.",
+    "Local fixtures and tests do not independently prove deployed execution."
+  ],
+  "spend_truth": "Actual new V2-06 spend USD 0 under the separate USD 1 final cap; no new recurring resource. Two pre-existing RunPod volumes continue at USD 7 per month total.",
+  "rollback_truth": "Rollback acceptance is two-step: Wrangler code rollback followed by ordinary redeployment to reconverge bindings and status.",
+  "v2_07_safety": "BLOCKED_PENDING_REPOSITORY_RECONCILIATION_AND_FRESH_INDEPENDENT_REAUDIT"
+}
