@@ -99,3 +99,20 @@ test("V2-06 personal-worker recovery only updates columns present on hosted atte
   assert.ok(recoveryUpdate, "personal-worker recovery update was not found");
   assert.doesNotMatch(recoveryUpdate[0], /failure_code\s*=/u);
 });
+
+test("V2-06 lease routes establish tenant scope in the same PostgreSQL statement", async () => {
+  const source = await read("apps/web/src/server/hosted/personal-worker.ts");
+  for (const functionName of ["activeLease", "leaseHeartbeat", "terminalLeaseForCompletion"]) {
+    assert.match(
+      source,
+      new RegExp(
+        `async function ${functionName}\\([\\s\\S]{0,3000}WITH tenant_scope AS MATERIALIZED`,
+        "u",
+      ),
+    );
+  }
+  assert.match(
+    source,
+    /WITH tenant_scope AS MATERIALIZED \([\s\S]*?FROM hosted_cpu_upload_authorities/u,
+  );
+});
