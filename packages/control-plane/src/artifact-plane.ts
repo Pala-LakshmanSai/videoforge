@@ -8,6 +8,7 @@ const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 const CONTENT_TYPE = /^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const MAX_PORT_LIFETIME_MS = 15 * 60 * 1_000;
+const MAX_ARTIFACT_BYTES = 10_737_418_240;
 
 export type ArtifactLane = "INPUT" | "MAGE_IMAGE" | "SOULX_AVATAR" | "RENDER" | "PROVENANCE";
 export type ArtifactPortMethod = "PUT" | "GET" | "DELETE";
@@ -54,6 +55,29 @@ export interface ArtifactTransferPort {
   readonly content_type: string;
   readonly content_length: number;
   readonly checksum_sha256: Sha256;
+  readonly expires_at: string;
+  readonly max_uses: number;
+  readonly capability_handle: string;
+}
+
+/**
+ * Bounded authority for an output whose bytes do not exist at dispatch time.
+ *
+ * This is deliberately not an `artifact-transfer-port/v3`: the exact v3 port
+ * remains the only authority accepted by the object transport.  A generated
+ * output authority can only be finalized once its producer has measured the
+ * bytes; finalization returns the ordinary exact v3 PUT port bound to the same
+ * tenant-owned path, expiry, and replay budget.
+ */
+export interface GeneratedArtifactOutputAuthority {
+  readonly schema_version: "artifact-generated-output-authority/v1";
+  readonly reservation_id: string;
+  readonly account_id: string;
+  readonly workspace_id: string;
+  readonly method: "PUT";
+  readonly path: string;
+  readonly content_type: string;
+  readonly max_content_length: number;
   readonly expires_at: string;
   readonly max_uses: number;
   readonly capability_handle: string;
@@ -134,6 +158,15 @@ interface ReservationState {
   revoked: boolean;
 }
 
+interface GeneratedReservationState {
+  readonly authority: GeneratedArtifactOutputAuthority;
+  readonly identity: TrustedArtifactIdentity;
+  readonly retentionClass: ArtifactRetentionClass;
+  readonly retainUntil: string | null;
+  finalizedPort: ArtifactTransferPort | null;
+  revoked: boolean;
+}
+
 export interface ReservePortOptions {
   readonly contentType: string;
   readonly contentLength: number;
@@ -145,10 +178,28 @@ export interface ReservePortOptions {
   readonly retainUntil?: string | null;
 }
 
+export interface ReserveGeneratedOutputOptions {
+  readonly contentType: string;
+  /** Hard upper bound checked before an exact port can be issued. */
+  readonly maxContentLength: number;
+  readonly now: Date;
+  readonly lifetimeMs?: number;
+  readonly maxUses?: number;
+  readonly retentionClass: ArtifactRetentionClass;
+  readonly retainUntil?: string | null;
+}
+
+export interface FinalizeGeneratedOutputOptions {
+  readonly contentLength: number;
+  readonly checksumSha256: Sha256;
+  readonly now: Date;
+}
+
 /** Provider-free exact-port adapter. It exposes no list, copy, move, or global hash API. */
 export class FakeR2ArtifactPlane {
   readonly #secret: Uint8Array;
   readonly #reservations = new Map<string, ReservationState>();
+  readonly #generatedReservations = new Map<string, GeneratedReservationState>();
   readonly #objects = new Map<string, StoredObject>();
 
   constructor(secret: Uint8Array) {
@@ -161,6 +212,86 @@ export class FakeR2ArtifactPlane {
     options: ReservePortOptions,
   ): ArtifactTransferPort {
     return this.#reserve(identity, "PUT", options);
+  }
+
+  /**
+   * Reserve a bounded generated-output slot without pretending to know the
+   * output bytes.  Only a later `finalizeGeneratedUpload` call can mint the
+   * exact v3 PUT port used by `upload`.
+   */
+  reserveGeneratedUpload(
+    identity: TrustedArtifactIdentity,
+    options: ReserveGeneratedOutputOptions,
+  ): GeneratedArtifactOutputAuthority {
+    if (!CONTENT_TYPE.test(options.contentType))
+      throw new ArtifactPortError("CONTENT_TYPE_INVALID");
+    if (
+      !Number.isSafeInteger(options.maxContentLength) ||
+      options.maxContentLength < 1 ||
+      options.maxContentLength > MAX_ARTIFACT_BYTES
+    )
+      throw new ArtifactPortError("GENERATED_OUTPUT_MAX_LENGTH_INVALID");
+    const lifetimeMs = options.lifetimeMs ?? 5 * 60 * 1_000;
+    if (!Number.isSafeInteger(lifetimeMs) || lifetimeMs < 1 || lifetimeMs > MAX_PORT_LIFETIME_MS)
+      throw new ArtifactPortError("PORT_LIFETIME_INVALID");
+    const maxUses = options.maxUses ?? 1;
+    if (!Number.isSafeInteger(maxUses) || maxUses < 1 || maxUses > 3)
+      throw new ArtifactPortError("PORT_REPLAY_BOUND_INVALID");
+    const objectKey = deriveArtifactObjectKey(identity);
+    const expiresAt = new Date(options.now.getTime() + lifetimeMs).toISOString();
+    const seed = canonical({
+      schemaVersion: "artifact-generated-output-authority/v1",
+      accountId: identity.scope.accountId,
+      workspaceId: identity.scope.workspaceId,
+      objectKey,
+      method: "PUT",
+      contentType: options.contentType,
+      maxContentLength: options.maxContentLength,
+      expiresAt,
+      maxUses,
+    });
+    const reservationId = `gen_${createHash("sha256").update(seed).digest("hex").slice(0, 40)}`;
+    if (this.#generatedReservations.has(reservationId) || this.#reservations.has(reservationId))
+      throw new ArtifactPortError("RESERVATION_EXISTS");
+    const authorityBody = {
+      schema_version: "artifact-generated-output-authority/v1" as const,
+      reservation_id: reservationId,
+      account_id: identity.scope.accountId,
+      workspace_id: identity.scope.workspaceId,
+      method: "PUT" as const,
+      path: `/${objectKey}`,
+      content_type: options.contentType,
+      max_content_length: options.maxContentLength,
+      expires_at: expiresAt,
+      max_uses: maxUses,
+    };
+    const capabilityHandle = createHmac("sha256", this.#secret)
+      .update(canonical(authorityBody))
+      .digest("hex");
+    const authority: GeneratedArtifactOutputAuthority = Object.freeze({
+      ...authorityBody,
+      capability_handle: capabilityHandle,
+    });
+    const identitySnapshot: TrustedArtifactIdentity = Object.freeze({
+      scope: Object.freeze({
+        accountId: identity.scope.accountId,
+        workspaceId: identity.scope.workspaceId,
+      }) as WorkspaceScope,
+      projectId: identity.projectId,
+      projectRevisionId: identity.projectRevisionId,
+      lane: identity.lane,
+      jobId: identity.jobId,
+      artifactId: identity.artifactId,
+    });
+    this.#generatedReservations.set(reservationId, {
+      authority,
+      identity: identitySnapshot,
+      retentionClass: options.retentionClass,
+      retainUntil: options.retainUntil ?? null,
+      finalizedPort: null,
+      revoked: false,
+    });
+    return authority;
   }
 
   reserveDownload(
@@ -259,6 +390,134 @@ export class FakeR2ArtifactPlane {
       max_uses: maxUses,
       capability_handle: capability,
     });
+  }
+
+  /**
+   * Finalize one generated-output authority into an exact v3 PUT port.
+   *
+   * The caller supplies facts observed from the generated bytes.  Those facts
+   * are still checked again by `upload`, so a forged finalize request cannot
+   * cause a mismatched object to be accepted.  Repeating the same finalize is
+   * idempotent; changing the facts or scope is rejected.
+   */
+  finalizeGeneratedUpload(
+    authority: GeneratedArtifactOutputAuthority,
+    options: FinalizeGeneratedOutputOptions,
+  ): ArtifactTransferPort {
+    const state = this.#authorizeGenerated(authority);
+    if (state.revoked) throw new ArtifactPortError("ARTIFACT_NOT_FOUND");
+    if (options.now.getTime() >= Date.parse(state.authority.expires_at))
+      throw new ArtifactPortError("PORT_EXPIRED");
+    if (
+      !Number.isSafeInteger(options.contentLength) ||
+      options.contentLength < 1 ||
+      options.contentLength > state.authority.max_content_length
+    )
+      throw new ArtifactPortError("GENERATED_OUTPUT_LENGTH_INVALID");
+    if (!SHA256.test(options.checksumSha256))
+      throw new ArtifactPortError("GENERATED_OUTPUT_CHECKSUM_INVALID");
+    if (state.finalizedPort !== null) {
+      if (
+        state.finalizedPort.content_length !== options.contentLength ||
+        state.finalizedPort.checksum_sha256 !== options.checksumSha256
+      )
+        throw new ArtifactPortError("GENERATED_OUTPUT_ALREADY_FINALIZED");
+      return state.finalizedPort;
+    }
+
+    const identity = state.identity;
+    const reservation: ArtifactReservation = Object.freeze({
+      reservationId: state.authority.reservation_id,
+      accountId: identity.scope.accountId,
+      workspaceId: identity.scope.workspaceId,
+      projectId: identity.projectId,
+      projectRevisionId: identity.projectRevisionId,
+      lane: identity.lane,
+      jobId: identity.jobId,
+      artifactId: identity.artifactId,
+      objectKey: state.authority.path.slice(1),
+      method: "PUT",
+      contentType: state.authority.content_type,
+      contentLength: options.contentLength,
+      checksumSha256: options.checksumSha256,
+      expiresAt: state.authority.expires_at,
+      maxUses: state.authority.max_uses,
+      retentionClass: state.retentionClass,
+      retainUntil: state.retainUntil,
+      deletionOwnerAccountId: identity.scope.accountId,
+    });
+    if (this.#reservations.has(reservation.reservationId))
+      throw new ArtifactPortError("RESERVATION_EXISTS");
+    const capabilityHandle = createHmac("sha256", this.#secret)
+      .update(canonical(reservation))
+      .digest("hex");
+    const port: ArtifactTransferPort = Object.freeze({
+      schema_version: "artifact-transfer-port/v3",
+      reservation_id: reservation.reservationId,
+      account_id: reservation.accountId,
+      workspace_id: reservation.workspaceId,
+      method: "PUT",
+      path: state.authority.path,
+      content_type: reservation.contentType,
+      content_length: reservation.contentLength,
+      checksum_sha256: reservation.checksumSha256,
+      expires_at: reservation.expiresAt,
+      max_uses: reservation.maxUses,
+      capability_handle: capabilityHandle,
+    });
+    this.#reservations.set(reservation.reservationId, {
+      reservation,
+      uses: 0,
+      callbacks: new Map(),
+      receipt: null,
+      revoked: false,
+    });
+    state.finalizedPort = port;
+    return port;
+  }
+
+  #authorizeGenerated(authority: GeneratedArtifactOutputAuthority): GeneratedReservationState {
+    const state = this.#generatedReservations.get(authority.reservation_id);
+    if (state === undefined || state.revoked)
+      throw new ArtifactPortError("ARTIFACT_NOT_FOUND");
+    const expected = createHmac("sha256", this.#secret)
+      .update(
+        canonical({
+          schema_version: "artifact-generated-output-authority/v1",
+          reservation_id: state.authority.reservation_id,
+          account_id: state.authority.account_id,
+          workspace_id: state.authority.workspace_id,
+          method: state.authority.method,
+          path: state.authority.path,
+          content_type: state.authority.content_type,
+          max_content_length: state.authority.max_content_length,
+          expires_at: state.authority.expires_at,
+          max_uses: state.authority.max_uses,
+        }),
+      )
+      .digest();
+    let supplied: Buffer;
+    try {
+      supplied = Buffer.from(authority.capability_handle, "hex");
+    } catch {
+      throw new ArtifactPortError("ARTIFACT_NOT_FOUND");
+    }
+    if (supplied.byteLength !== expected.byteLength || !timingSafeEqual(supplied, expected))
+      throw new ArtifactPortError("ARTIFACT_NOT_FOUND");
+    if (
+      authority.schema_version !== "artifact-generated-output-authority/v1" ||
+      authority.reservation_id !== state.authority.reservation_id ||
+      authority.account_id !== state.authority.account_id ||
+      authority.workspace_id !== state.authority.workspace_id ||
+      authority.method !== "PUT" ||
+      authority.path !== state.authority.path ||
+      authority.content_type !== state.authority.content_type ||
+      authority.max_content_length !== state.authority.max_content_length ||
+      authority.expires_at !== state.authority.expires_at ||
+      authority.max_uses !== state.authority.max_uses
+    )
+      throw new ArtifactPortError("ARTIFACT_NOT_FOUND");
+    return state;
   }
 
   #authorize(
@@ -427,6 +686,20 @@ export class FakeR2ArtifactPlane {
   }
 
   revoke(scope: WorkspaceScope, reservationId: string): void {
+    const generated = this.#generatedReservations.get(reservationId);
+    if (generated !== undefined) {
+      if (
+        generated.authority.account_id !== scope.accountId ||
+        generated.authority.workspace_id !== scope.workspaceId
+      )
+        throw new ArtifactPortError("ARTIFACT_NOT_FOUND");
+      generated.revoked = true;
+      if (generated.finalizedPort !== null) {
+        const finalized = this.#reservations.get(reservationId);
+        if (finalized !== undefined) finalized.revoked = true;
+      }
+      return;
+    }
     const state = this.#reservations.get(reservationId);
     if (
       state === undefined ||
