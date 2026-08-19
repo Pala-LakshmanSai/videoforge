@@ -171,9 +171,8 @@
     "code": "V2_07_RUNPOD_MAGE_HANDLER_TERMINAL_FAILED_PROVIDER_ERROR_UNEXPOSED",
     "detail": "Fresh read-only catalog data now reports RTX 4090/CUDA 13.0 available globally and LOW in EU-RO-1. Multiple exact CUDA-13-pinned 32-item batches reached terminal provider status COMPLETED but handler output status FAILED; the status payload exposed only the status key, the bounded stream diagnostic exposed no code, and no durable output or signed receipt was accepted. A later exact attempt reached a throttled worker before /run. The exact cu130 image/runtime fence, volume identity, and provider placement pins remain unchanged; relaxing them or accepting an unqualified host would violate Mage qualification.",
     "not_attempted": [
-      "accepted corrected-image /run submission",
-      "real cold or warm inference",
-      "complete 32-item image batch",
+      "accepted corrected-image /run output",
+      "successful warm inference",
       "cancel/duplicate/timeout output reconciliation",
       "workersMax=2 concurrent-reader proof"
     ],
