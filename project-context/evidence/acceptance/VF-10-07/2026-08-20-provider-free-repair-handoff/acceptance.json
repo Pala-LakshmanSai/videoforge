@@ -32,6 +32,7 @@
     "exact_generated_output_prefix_and_single_use_guard": "b40af35",
     "generated_output_prefix_binding": true,
     "generated_output_max_uses": 1,
+    "request_authority_ttl_seconds": 7200,
     "envelope_init_timeout_seconds": 800,
     "endpoint_template_init_timeout_seconds": 800,
     "negative_coverage": [
