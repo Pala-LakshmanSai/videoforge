@@ -127,8 +127,7 @@ repository:
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
   current_source_head: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
-  current_documentation_head: "d905b197ade0c47f3be0beaa36b8ea84f3ae5e70"
-  last_verified_repository_head: "d905b197ade0c47f3be0beaa36b8ea84f3ae5e70"
+  last_verified_repository_head: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
   current_source_head_note: "Commit fd773ed pins the Windows completion handoff while the deployed application remains 1ad68ea. Mac and Windows 0.1.11 live acceptance, second-tenant hosted negative isolation, successful-output deletion, Mac revocation, and local uninstall pass. The fresh independent audit at documentation HEAD 4cf904b failed with three P1 and three P2 findings; follow-up audit evidence at documentation HEAD d905b19 confirms the stale-handoff and profile-budget P2s were corrected locally, leaving three P1 and one P2. V2-07 remains blocked."
   last_good_commit: "fd773ed20f410b64da3ea29ff1d33a6675459afd"
   last_good_commit_note: "V2-06 source HEAD fd773ed has clean canonical verification and records Mac, Windows, backup/restore, and second-tenant live isolation evidence with zero new external spend; follow-up audit evidence at documentation HEAD d905b19 is FAIL on three P1 and one remaining P2 after safe documentation reconciliation, and the deployed application remains 1ad68ea."
