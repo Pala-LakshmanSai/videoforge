@@ -421,7 +421,7 @@ recommended_next_task:
 
 verification:
   state: v2_06_mac_and_windows_live_complete_second_account_delete_and_audit_remaining
-  verified_commit: "34a0fbf438cb231a4fe5b927367b2ecbda0279a2"
+  verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
   verified_commit_note: "Windows 0.1.11 immutable-input, pairing, offline/reconnect, reboot/autostart, physical sleep/wake, 0.1.10-to-0.1.11 update, revocation, and uninstall cleanup pass on MI_Notebook. The provider-free native harness exits 0, Mac 0.1.11 remains ONLINE, cmdkey reports NONE for the exact revoked Windows installation, new spend remains $0, and no RunPod or V2-07 action occurred. This is same-chat acceptance, not the fresh independent V2-06 audit."
   predecessor_verified_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
   acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-19-windows-native-completion-34a0fbf/acceptance.json
@@ -794,6 +794,7 @@ verification:
     source_head_commit: "1ad68ea46b642949591c1090cecddc28d7ec428e"
     autonomous_readiness_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
     windows_acceptance_fix_commit: "34a0fbf438cb231a4fe5b927367b2ecbda0279a2"
+    windows_acceptance_completion_commit: "710131374789ad888e348cff6cbf3ca969780790"
     current_source_deployment_status: deployed_worker_version_5ffa68ef_8a4e_4784_a3cb_d02320ce5cc2
     previous_deployed_source_head: "153cefef40739c35b84ed633fc4978f8a5e9746b"
     hosted_ui_repair_commit: "0d850bfd6e5a413d744578e1cd45f07cba71b619"
