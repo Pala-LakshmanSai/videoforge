@@ -33,6 +33,23 @@ _delivery_lock = asyncio.Lock()
 _claimed_deliveries: set[str] = set()
 
 
+def _endpoint_id_hash() -> str:
+    """Use the endpoint-bound hash when explicitly injected, otherwise RunPod's endpoint id."""
+    configured = os.environ.get("VIDEOFORGE_MAGE_ENDPOINT_ID_HASH", "")
+    if configured:
+        if len(configured) != 71 or not configured.startswith("sha256:"):
+            raise ServerlessMageError("MAGE_SERVERLESS_ENDPOINT_ID_HASH_INVALID")
+        try:
+            int(configured[7:], 16)
+        except ValueError as error:
+            raise ServerlessMageError("MAGE_SERVERLESS_ENDPOINT_ID_HASH_INVALID") from error
+        return configured
+    endpoint_id = os.environ.get("RUNPOD_ENDPOINT_ID", "")
+    if not endpoint_id or any(ord(character) < 33 for character in endpoint_id):
+        raise ServerlessMageError("MAGE_SERVERLESS_ENDPOINT_ID_MISSING")
+    return "sha256:" + hashlib.sha256(endpoint_id.encode("utf-8")).hexdigest()
+
+
 def _sha_environment(name: str) -> str:
     value = os.environ.get(name, "")
     if len(value) != 71 or not value.startswith("sha256:"):
@@ -283,7 +300,7 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 "provider_job_id": str(job.get("id", "unknown")),
                 "worker_id": os.environ.get("RUNPOD_POD_ID", "serverless"),
                 "tenant": accepted["tenant"], "lane": "mage_image",
-                "deployment": {"deployment_id": accepted["runtime"]["deployment_id"], "endpoint_id_sha256": _sha_environment("VIDEOFORGE_MAGE_ENDPOINT_ID_HASH"), "container_digest": accepted["runtime"]["container_digest"], "intended_region": "EU-RO-1", "intended_volume_id_sha256": accepted["runtime"]["volume_id_sha256"], "model_manifest_sha256": accepted["runtime"]["model_manifest_sha256"]},
+                "deployment": {"deployment_id": accepted["runtime"]["deployment_id"], "endpoint_id_sha256": _endpoint_id_hash(), "container_digest": accepted["runtime"]["container_digest"], "intended_region": "EU-RO-1", "intended_volume_id_sha256": accepted["runtime"]["volume_id_sha256"], "model_manifest_sha256": accepted["runtime"]["model_manifest_sha256"]},
                 "runtime_probe": {"gpu_name": runtime.gpu.get("name"), "gpu_count": 1, "gpu_uuid_sha256": None, "driver_version": os.environ.get("VIDEOFORGE_MAGE_DRIVER_VERSION", "UNKNOWN"), "cuda_version": runtime.gpu.get("cuda_version"), "probe_source": "WORKER_RUNTIME_SELF_REPORT"},
                 "volume_verification": {"manifest_sha256_before": accepted["runtime"]["model_manifest_sha256"], "manifest_sha256_after": accepted["runtime"]["model_manifest_sha256"], "mutation_detected": False, "cross_mount_detected": False},
                 "model_ready_evidence": {"state": "MODEL_READY", "warmup_completed": True, "warmup_output_sha256": runtime.warmup_output_sha256 or _sha_environment("VIDEOFORGE_MAGE_WARMUP_OUTPUT_SHA256")},

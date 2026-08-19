@@ -18,10 +18,7 @@ from videoforge_image_media import MageInlineJob, run_inline_job
 
 MIN_GPU_MEMORY_BYTES = 16_380 * 1024**2
 COMFY_URL = "http://127.0.0.1:8188"
-SUPPORTED_GPU_NAMES = {
-    "NVIDIA GeForce RTX 4090": "4090",
-    "NVIDIA RTX PRO 4500 Blackwell": "RTX PRO 4500",
-}
+QUALIFIED_GPU_NAME = "NVIDIA GeForce RTX 4090"
 SHA256 = re.compile(r"^sha256:[a-f0-9]{64}$")
 IMAGE_DIGEST = re.compile(r"^ghcr\.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:[a-f0-9]{64}$")
 
@@ -81,7 +78,7 @@ class MageRuntime:
             raise RuntimeError("MAGE_POD_IDENTITY_INVALID")
         if len(os.environ.get("VIDEOFORGE_MAGE_WORKER_TOKEN", "")) < 32:
             raise RuntimeError("MAGE_WORKER_TOKEN_INVALID")
-        if os.environ.get("VIDEOFORGE_MAGE_GPU_OFFERING_ID") not in SUPPORTED_GPU_NAMES:
+        if os.environ.get("VIDEOFORGE_MAGE_GPU_OFFERING_ID") != QUALIFIED_GPU_NAME:
             raise RuntimeError("MAGE_GPU_OFFERING_INVALID")
 
     def verify_gpu(self) -> None:
@@ -94,8 +91,7 @@ class MageRuntime:
         name = torch.cuda.get_device_name(0)
         properties = torch.cuda.get_device_properties(0)
         offering = os.environ.get("VIDEOFORGE_MAGE_GPU_OFFERING_ID")
-        expected_name = SUPPORTED_GPU_NAMES.get(str(offering))
-        if expected_name is None or expected_name.upper() not in name.upper():
+        if offering != QUALIFIED_GPU_NAME or name != QUALIFIED_GPU_NAME:
             raise RuntimeError("MAGE_GPU_OFFERING_MISMATCH")
         if "NVIDIA" not in name.upper() or properties.total_memory < MIN_GPU_MEMORY_BYTES:
             raise RuntimeError("MAGE_GPU_INCOMPATIBLE")
