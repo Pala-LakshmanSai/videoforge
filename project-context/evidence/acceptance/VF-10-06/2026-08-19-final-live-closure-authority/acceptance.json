@@ -1,0 +1,44 @@
+{
+  "schema": "videoforge.v2-06-final-live-closure-authority/v1",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T13:28:41Z",
+  "source": "explicit_user_message_in_current_task",
+  "grant_label": "APPROVE V2-06 FINAL LIVE CLOSURE",
+  "authority": {
+    "expected_external_spend_usd": 0,
+    "hard_finite_spend_cap_usd": 1,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "new_recurring_resource_authorized": false,
+    "resources": [
+      "existing Cloudflare Worker videoforge-v2-06-staging",
+      "existing Cloudflare Workflow videoforge-v2-06-staging-video",
+      "existing Cloudflare R2 bucket videoforge-v2-06-staging-private",
+      "existing Neon project ancient-morning-99567618",
+      "immutable Mac worker release 0.1.11",
+      "one disposable secondary-tenant project and its exact rows, objects, device, leases, and output",
+      "ephemeral read-only Cloudflare preview videoforge-v2-06-r2-read-only-inventory-preview"
+    ],
+    "authorized_operations": [
+      "install, pair, run, revoke, uninstall, and remove the Mac 0.1.11 worker only for demo9gss@gmail.com",
+      "create and clean one disposable secondary-tenant project and its exact Neon, R2, Workflow, device, lease, and output state",
+      "positive two-account and negative cross-tenant acceptance",
+      "authenticated DELETE of only the disposable output plus durable deletion verification",
+      "ephemeral read-only R2 inventory preview start, read, and termination",
+      "exact final-source rollback and health verification"
+    ],
+    "prohibited_operations": [
+      "credential value disclosure",
+      "unrelated resource mutation",
+      "new recurring resource creation",
+      "RunPod GPU, worker, endpoint, Pod, template, or volume mutation",
+      "V2-07 action"
+    ]
+  },
+  "completion": {
+    "authority_consumed": true,
+    "actual_external_spend_usd": 0,
+    "new_recurring_resources_created": 0,
+    "runpod_mutating_calls": 0,
+    "v2_07_actions": 0
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "schema": "videoforge.v2-06-independent-audit/v1",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T14:53:43Z",
+  "thread_id": "01a01a7d-71f2-7f13-9e6f-c0e0ed3b0378",
+  "repository_head": "8a717f0680cbe336b4349f4c198cea5eba4732e9",
+  "scope": "Fresh repository-and-supplied-immutable-evidence-only audit; no credentials, live provider calls, mutations, repairs, or spend.",
+  "result": "FAIL",
+  "severity_counts": {"P0": 0, "P1": 1, "P2": 1},
+  "findings": [
+    {
+      "id": "P1-STALE-NORMATIVE-STATE",
+      "severity": "P1",
+      "finding": "CURRENT_STATE retained stale V2-06 fields claiming no post-delete bucket inventory, old deployment identities, and an old FAIL result while the final closure evidence recorded current parity, inventory restoration, authenticated deletion, rollback, and zero workers.",
+      "status_after_audit": "REPOSITORY_RECONCILIATION_REQUIRED"
+    },
+    {
+      "id": "P2-FINAL-CAP-PROVENANCE",
+      "severity": "P2",
+      "finding": "The final closure reported a USD 1 cap while only the earlier USD 3 historical authority was separately preserved in repository evidence.",
+      "status_after_audit": "SEPARATE_EXPLICIT_USER_GRANT_RECORD_REQUIRED"
+    }
+  ],
+  "supported_live_claims": [
+    "deployed source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3",
+    "positive secondary-tenant and negative cross-tenant proof",
+    "authenticated DELETE HTTP 204 with durable RETENTION_DELETED",
+    "exact and bucket-wide R2 restoration",
+    "Workflow recovery, backup/restore, and final-source rollback/restore",
+    "zero RunPod Pods, endpoints, workers, and templates with two pre-existing 50 GB volumes at USD 7/month",
+    "USD 0 new V2-06 spend and no new recurring resource"
+  ],
+  "commands_and_exits": [
+    {"command": "git diff --check", "exit_code": 0},
+    {"command": "pnpm validate:v2-06-deployment", "exit_code": 0},
+    {"command": "pnpm verify:active-runtime", "exit_code": 0},
+    {"command": "pnpm secret:scan", "exit_code": 0, "result": "1173 files"},
+    {"command": "project-context/scripts/validate-context.sh", "exit_code": 0, "note": "detached-checkout and optional-asset warnings only"},
+    {"command": "node --test deploy/v2-06/r2-read-only-inventory-worker.test.mjs scripts/tests/v2-06-owned-render-fixture.test.mjs", "exit_code": 1, "result": "9 passed, 7 failed because the ignored private local render input is absent in the clean audit worktree; not evidence of a hosted defect"}
+  ],
+  "v2_07_safety": "BLOCKED_PENDING_REPAIR_AND_FRESH_INDEPENDENT_REAUDIT"
+}

@@ -1,8 +1,8 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-19T14:31:22Z"
+updated_at: "2026-08-19T15:02:00Z"
 
-phase: serverless_v2_v2_06_final_live_closure_independent_audit_pending_v2_07_blocked
+phase: serverless_v2_v2_06_independent_audit_findings_reconciled_fresh_reaudit_pending_v2_07_blocked
 implementation_authorized_in_current_task: false
 current_milestone: hosted_staging_and_personal_media_workers
 current_task: VF-10-06
@@ -23,7 +23,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: false
-  note: "The final live closure authority is consumed. The only current task is a fresh $0 repository-and-immutable-evidence-only independent audit: no credentials, provider calls, mutation, deployment, publication, deletion, paid request, spend, repair, RunPod action, or V2-07 action."
+  note: "The final live closure authority is consumed. One fresh independent audit found only repository-state/cap-provenance handoff defects; those records are reconciled. The only current task is a fresh $0 repository-and-immutable-evidence-only re-audit: no credentials, provider calls, mutation, deployment, publication, deletion, paid request, spend, repair, RunPod action, or V2-07 action."
 
 provider_authority:
   mode: none
@@ -101,6 +101,20 @@ historical_v2_06_completion_authority:
       billing_unit: month
       usd_per_unit: 0
       checked_at: "2026-08-18"
+
+historical_v2_06_final_live_closure_authority:
+  mode: bounded_completion
+  provider: cloudflare+neon+paired_mac_device
+  expected_spend_usd: 0
+  cap_usd: 1
+  recurring_r2_ceiling_usd_per_month: 2
+  source: explicit_user_v2_06_final_live_closure_grant
+  evidence: evidence/acceptance/VF-10-06/2026-08-19-final-live-closure-authority/acceptance.json
+  non_transferable: true
+  authorized_by_user_at: "2026-08-19T13:28:41Z"
+  consumed: true
+  actual_spend_usd: 0
+  new_recurring_resources_created: 0
 
 credential_access_authorized: false
 credential_value_read_authorized: false
@@ -217,7 +231,7 @@ roadmap_state:
   V2-03: complete_green_independently_reaudited
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
-  V2-06: final_live_closure_complete_fresh_independent_audit_pending
+  V2-06: independent_audit_findings_reconciled_fresh_reaudit_pending
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
@@ -345,20 +359,20 @@ blocking_gates_for_production:
 active_ownership:
   - task_id: VF-10-06
     checkpoint: V2-06
-    scope: fresh_independent_repository_and_immutable_evidence_only_audit
+    scope: fresh_independent_repository_and_immutable_evidence_only_reaudit
     provider_calls_authorized: false
     maximum_external_spend_usd: 0
-    note: "Same-task live closure is complete. The fresh audit may only read repository and supplied immutable evidence; no credentials, provider calls, mutation, repair, spend, or V2-07 action."
+    note: "Same-task live closure is complete and the first fresh audit's repository-only findings are reconciled. The fresh re-audit may only read repository and supplied immutable evidence; no credentials, provider calls, mutation, repair, spend, or V2-07 action."
 in_progress_checkpoint: V2-06
 
 recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
   milestone: hosted_staging_and_personal_media_workers
-  status: final_live_closure_complete_fresh_independent_audit_pending_v2_07_blocked
+  status: independent_audit_findings_reconciled_fresh_reaudit_pending_v2_07_blocked
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
   authorization_status: repository_and_immutable_evidence_only_zero_spend
-  task_stage: independent_audit
+  task_stage: independent_reaudit
   current_goal_authority: no_provider_authority
   provider_authority:
     mode: none
@@ -373,7 +387,7 @@ recommended_next_task:
     rate_snapshot: []
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
-  goal: "Hold at completed V2-06 live closure while a fresh repository-and-immutable-evidence-only independent audit runs; V2-07 remains blocked."
+  goal: "Hold at completed V2-06 live closure while a fresh repository-and-immutable-evidence-only independent re-audit checks the reconciled handoff; V2-07 remains blocked."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -393,15 +407,21 @@ recommended_next_task:
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_final_live_closure_complete_fresh_independent_audit_pending_v2_07_blocked
+  state: v2_06_independent_audit_findings_reconciled_fresh_reaudit_pending_v2_07_blocked
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
-  verified_commit_note: "Repaired HEAD is deployed as Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3. The demo9 positive tenant/device/lease/ASR/render/Chrome journey, primary-account negative isolation, authenticated durable DELETE, exact and bucket-wide R2 read-back, full disposable cleanup, Mac revoke/uninstall, final-source rollback drill, migration 0036/FORCE RLS, and fresh RunPod zero-worker inventory are recorded. Same-task live closure passes; fresh independent acceptance and V2-07 remain blocked."
+  verified_commit_note: "Repaired source e673527 is deployed as Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3. The demo9 positive tenant/device/lease/ASR/render/Chrome journey, primary-account negative isolation, authenticated durable DELETE, exact and bucket-wide R2 read-back, full disposable cleanup, Mac revoke/uninstall, final-source rollback drill, migration 0036/FORCE RLS, and fresh RunPod zero-worker inventory are recorded. The first fresh audit found one stale-state P1 and one cap-provenance P2; both repository records are reconciled and a fresh re-audit remains required before V2-07."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
   acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
+  latest_independent_audit:
+    recorded_at_utc: "2026-08-19T14:53:43Z"
+    evidence: evidence/acceptance/VF-10-06/2026-08-19-final-live-closure-independent-audit-1/acceptance.json
+    result: FAIL_zero_p0_one_p1_one_p2
+    findings_reconciled_in_repository: true
+    fresh_independent_reaudit_required: true
   latest_live_check:
     recorded_at_utc: "2026-08-19T14:31:22Z"
     evidence: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
-    status: final_live_closure_pass_fresh_independent_audit_pending
+    status: final_live_closure_pass_first_independent_audit_findings_reconciled_fresh_reaudit_pending
     source_repair_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
     deployed_implementation_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
     deployed_source_mismatch: false
@@ -762,252 +782,66 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: live_closure_executed_two_p1_two_p2_open_v2_07_blocked
-    implementation_commit: "3d8d467320d2956f5d45915437434a396230e8fe"
-    source_head_commit: "3d8d467320d2956f5d45915437434a396230e8fe"
-    local_source_repair_commit: "14135ceecf9c954216f5705f31074f33203cdc8d"
-    local_source_repair_evidence: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
-    autonomous_readiness_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
-    windows_acceptance_fix_commit: "34a0fbf438cb231a4fe5b927367b2ecbda0279a2"
-    windows_acceptance_completion_commit: "710131374789ad888e348cff6cbf3ca969780790"
-    current_source_deployment_status: deployed_worker_version_83030c3f_d5b6_400c_bcb6_756a5068e573
-    previous_deployed_source_head: "1ad68ea46b642949591c1090cecddc28d7ec428e"
-    hosted_ui_repair_commit: "0d850bfd6e5a413d744578e1cd45f07cba71b619"
-    hosted_ui_repair_deployment_status: deployed
-    worker_source_repair_commit: "5a192d3e1bf97e146f700031896ed5835a40921a"
-    worker_contract_fix_commit: "5a192d3e1bf97e146f700031896ed5835a40921a"
-    worker_source_repair_deployment_status: immutable_release_0_1_11_published_both_platforms_installed_and_live_proven_mac
-    previous_worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
-    predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
-    evidence: evidence/acceptance/VF-10-06/2026-08-19-mac-live-completion-1ad68ea/acceptance.json
-    live_finding_closure_evidence: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
-    windows_native_completion_evidence: evidence/acceptance/VF-10-06/2026-08-19-windows-native-completion-34a0fbf/acceptance.json
-    live_two_account_isolation_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-two-account-isolation-fresh/acceptance.json
-    live_destructive_lifecycle_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-destructive-lifecycle/acceptance.json
-    independent_audit_evidence: evidence/acceptance/VF-10-06/2026-08-19-independent-audit-fail/acceptance.json
-    independent_audit_followup_evidence: evidence/acceptance/VF-10-06/2026-08-19-independent-audit-followup/acceptance.json
-    backup_restore_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-backup-restore-804f7d3/acceptance.json
-    autonomous_readiness_evidence: evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json
-    previous_completion_evidence: evidence/acceptance/VF-10-06/2026-08-18-bounded-completion-8e96575/acceptance.json
-    previous_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
-    live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
-    runpod_live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-runpod-read-only-inventory/acceptance.json
-    live_activation_authority_evidence: evidence/acceptance/VF-10-06/2026-08-17-live-activation-authority/acceptance.json
-    live_deployment_evidence: evidence/acceptance/VF-10-06/2026-08-17-live-activation-authority/deployment-proof.json
-    post_repair_audit_evidence: evidence/acceptance/VF-10-06/2026-08-17-post-repair-live-audit/acceptance.json
-    worker_startup_repair_release_evidence: evidence/acceptance/VF-10-06/2026-08-18-worker-startup-repair-release/acceptance.json
-    commands:
-      - "Windows 0.1.11 live acceptance and exact 0.1.10-to-0.1.11 provider-free harness (exit 0; immutable hashes, install/update/autostart/reboot/sleep-reconnect/revoke/uninstall all passed; no RunPod or spend)."
-      - "Immutable media-worker-v0.1.11 release workflow 32214398285 (exit 0; Windows, macOS, and immutable publication passed; release isImmutable true)."
-      - "Mac 0.1.11 DMG hash/size/hdiutil/deep-strict codesign/install/LaunchAgent reconnect checks (exit 0; final worker RUNNING and ONLINE)."
-      - "Live owned v4 Chrome journey (exit 0; ASR e1be1ae6 and render f9686244 SUCCEEDED on 0.1.11; final private MP4 approved)."
-      - "Live owned v5 cancellation journey with worker offline (exit 0; OUTBOXED attempt ba76866c durably CANCELLED; worker restored running)."
-      - "Current Neon verifier (exit 0; migration 36/36, exact least-privilege grants/functions, FORCE RLS, hosted_render_plans SELECT-only)."
-      - "Current RunPod read-only browser inventory (exit 0; zero Pods/endpoints/workers/templates/clusters; two retained 50 GB EU-RO-1 volumes; storage-only current-day billing)."
-      - "CI=1 TURBO_FORCE=true pnpm verify at 1ad68ea (exit 0; canonical graph and installed Chrome 44/44)."
-      - "Approved live encrypted backup and disposable restore/delete drill at repair commit 804f7d3 (exit 0; 36/36 exact migration rows, exact runtime grants, FORCE RLS, hosted_render_plans SELECT-only, final disposable database count 0)."
-      - "Focused V2-06 activation safety and backup/restore tests at 804f7d3 (exit 0; 11/11)."
-      - "Installed-Chrome fixture rerun after clearing one owned stale port-4173 test descendant (exit 0; 44/44; local fixtures are not hosted proof)."
-      - "CI=1 TURBO_FORCE=true pnpm verify at autonomous-readiness commit 2e1d1d0 (exit 0; canonical graph; 62 script tests; Cloudflare-local parity; worker suites; installed-Chrome fixture 44/44)."
-      - "Focused V2-06 backup/restore, Windows harness, activation-safety, Neon-grant, and owned-render tests (exit 0; 23/23)."
-      - "Fresh Chrome profile live negative isolation journey (exit 0 for read-only observations; demo9gss@gmail.com tenant-scoped, empty Library/devices, foreign project unavailable, foreign attempt CPU_ATTEMPT_NOT_FOUND, no signed foreign R2 URL)."
-      - "Action-time hosted output deletion, Mac device Remove confirmation, and supported Mac --uninstall (exit 0) plus exact local cleanup checks; Library is empty, Mac is REVOKED, LaunchAgent/app install/state/keychain are absent, and app bundle is in Trash for recovery."
-      - "Fresh separate read-only V2-06 audit at documentation HEAD 4cf904b (FAIL; no P0, three P1 and three P2; no edits, credentials, live calls, mutation, or spend)."
-      - "Safe context reconciliation after the audit (exit 0; active task brief/start boundary corrected and selected V2-06 profile reduced to 14,842 words within the 15,000-word target)."
-      - "Fresh follow-up audit of the reconciled current worktree (FAIL; no P0, three P1 and one P2; application source/evidence unchanged and no external action)."
-      - "Bounded live closure at current HEAD 3d8d467 (exit 0 for deployment, migration 0036, exact Workflow/device protocol fixtures, encrypted backup/disposable restore/delete, exact R2 post-delete reads, final-source rollback/restore, and cache-bypassed final health); strict two-account/non-superuser route proof remains open."
-      - "Homebrew libpq PATH-aware backup/restore tools-only preflight (exit 0; pg_dump, pg_restore, and psql resolved without execution or provider access)."
-      - "Private-input bootstrap under /Users/lakshmansai/.config/videoforge/v2-06/postgres-inputs (exit 0; mode-0700 directory and exactly three empty mode-0600 placeholders; no value read/generated)."
-      - "Full private-input preflight (exit 1 expected; all three placeholders remain empty, so backup/restore failed closed before database access)."
-      - "Owned V2-06 render fixture --dry-run --verify-local (exit 0; canonical local path and six-object plan validated; zero R2/Neon mutation)."
-      - "Fresh GitHub release metadata plus 0.1.8 Mac DMG download/hash/size/hdiutil/codesign/universal2/installed-CDHash verification (exit 0; GitHub native isImmutable remains false)."
-      - "Mac LaunchAgent bootout/bootstrap recovery and credential-metadata existence check (exit 0 after asynchronous unload was observed; worker running; no credential value read)."
-      - "Fresh public hosted status GET (exit 0; HTTP 200; deployed 8e96575; GPU DISABLED_FAKE_ONLY; private R2; Workflow; personal worker; Google; provider CPU $0)."
-      - "Migration 0036 live transaction and exact runtime-grant verification (exit 0; migration hash exact; schema/role safe; zero missing/extra grants/functions; all tenant tables protected)."
-      - "GitHub media-worker-v0.1.8 release workflow 32165893563 (exit 0; Windows x64, macOS universal2, and publish jobs passed; manifest sha256:0e71bc43763a3f5f9bcccd1477e78d8d0f7f81e366a693b8ee07ca04b5f2cc0b)."
-      - "Approved Cloudflare rollback to version 7d66d976-a16f-46f6-8888-ebbb5f24217c and health check (exit 0; HTTP 200; commit 153cefe), followed by restored deployment version 8e036f86-b79d-4ab6-9de4-97b9293747ec (exit 0; HTTP 200; commit 8e96575)."
-      - "Exact eight-name Worker secret allowlist, exact-origin R2 CORS, and private Standard R2 state verification (exit 0; dev URL disabled; no final-object expiry; multipart abort only)."
-      - "Unauthenticated GETs for /api/v2/tenant, /api/v2/hosted/project-catalog, and /api/v2/hosted/queue after final deployment (exit 0; all HTTP 401)."
-      - "Final-source deployment version 83030c3f-d5b6-400c-bcb6-756a5068e573 and cache-bypassed health (exit 0; HTTP 200; source commit 3d8d467; GPU DISABLED_FAKE_ONLY)."
-      - "Live migration/grant verifier after deployment (exit 0; migration 36/36; runtime role non-superuser/non-bypass; FORCE RLS; exact grants/functions; hosted_render_plans SELECT-only)."
-      - "Hosted Workflow expiry/replay fixtures and worker stale/late/cancel fixtures (exit 0; EXPIRED, REPLAYED, MEDIA_WORKER_LEASE_STALE 409, idempotent CANCELLED, and late-success normalization)."
-      - "Exact disposable R2 object before/delete/after read-back (delete exits 0; each post-delete exact GET exits 1 with key-not-found and zero-byte output)."
-      - "Final-source rollback to 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2 and redeploy of current source (all exit 0; old and restored health HTTP 200)."
-      - "Fresh encrypted backup and disposable restore/delete at current closure (exit 0; backup sha256 596ac201c1ba6e6b133170a2b495aca7798b6b0518a78615b006a9f7ac38c5af; final disposable database count 0)."
-      - "Mac 0.1.8 DMG SHA/size, hdiutil verification, deep/strict ad-hoc seal, universal2 architecture, mounted install/update, and LaunchAgent bootout/bootstrap restart (exit 0); spctl returned expected ad-hoc/non-notarized rejection exit 3."
-      - "CI=1 TURBO_FORCE=true pnpm verify at 8e96575 (exit 0; canonical graph; control-plane 309; web 351 plus 1 skipped; worker suites; Cloudflare parity 1/1; installed-Chrome fixture 44/44)."
+    status: final_live_closure_complete_independent_audit_findings_reconciled_fresh_reaudit_pending_v2_07_blocked
+    deployed_implementation_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
+    handoff_commit: "8a717f0680cbe336b4349f4c198cea5eba4732e9"
+    worker_deployment_version_id: "32bfc4bf-4421-4703-9095-2afc3515fda3"
+    worker_release: "0.1.11"
+    final_live_closure_authority: evidence/acceptance/VF-10-06/2026-08-19-final-live-closure-authority/acceptance.json
+    final_live_closure_evidence: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
+    first_final_independent_audit: evidence/acceptance/VF-10-06/2026-08-19-final-live-closure-independent-audit-1/acceptance.json
+    first_final_independent_audit_result: FAIL_zero_p0_one_p1_one_p2
+    first_final_independent_audit_findings:
+      - "P1 stale normative V2-06 state contradicted the final live closure."
+      - "P2 the explicit USD 1 final-closure cap lacked a separate preserved authority record."
+    reconciliation:
+      stale_normative_state_removed: true
+      final_cap_authority_separately_preserved: true
+      historical_failed_matrices_retained_as_historical_evidence_only: true
+      fresh_independent_reaudit_required: true
     delivered:
-      - "Windows x64 0.1.11 native acceptance is complete: the admitted account paired MI_Notebook, offline/reconnect, reboot/autostart, and physical sleep/wake recovered ONLINE; every temporary Windows record is revoked and the worker, shortcuts, state roots, and exact credential are absent after uninstall."
-      - "The Windows harness now treats cmdkey's exit-0 '* NONE *' response as credential absence, preventing a false-positive cleanup failure without reading any credential value."
-      - "Immutable media-worker-v0.1.11 fixes private rendered-object publication and is installed on Mac with exact bundle identity sha256:6955561b0e64b1c02ce68a8fd8918ba9a27e952ffb82062b6abae0b46827a55c."
-      - "Cloudflare Worker/Workflow version 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2 reports source commit 1ad68ea, private R2, Google-only auth, personal workers, GPU disabled, and provider CPU $0."
-      - "Real signed-in Chrome plus Mac 0.1.11 completed tenant-owned ASR, final render, review approval, queued cancellation, and worker reconnect at $0 external spend."
-      - "Current R2 bucket truth is Standard APAC, 16 objects, 32.1 MB, within the free 10 GB allowance and the approved $2/month ceiling."
-      - "Commit 804f7d3 repairs authenticated envelope temp-path creation, pins public/pg_catalog relation resolution for disposable Neon restores, and adds a fail-closed no-secret disposable service/passfile derivation helper."
-      - "The approved production database passed an encrypted authenticated backup and exact disposable restore verification; the disposable database was deleted and the encrypted mode-0600 backup is retained with SHA-256 84cfe137a49b4b1b3cd44034f37b9cc343fead42b7f8cc3b1a82439488b22a7a."
-      - "GitHub repository-wide immutable releases were enabled in a fresh Chrome window. Existing release 0.1.8 remains isImmutable=false because it predates the setting; a new release is still required for native immutable proof."
-      - "Commit 2e1d1d0 adds a provider-free backup/restore tool and protected-file preflight, integrates fail-closed checks before database operations, and provides safe zero-byte mode-0600 bootstrap without reading secrets."
-      - "The local operator machine has a complete libpq/OpenSSL toolchain and prepared private placeholders; only the user-supplied protected values remain before live backup/restore."
-      - "Commit 2e1d1d0 adds a bounded Windows x64 acceptance harness for exact 0.1.8 manifest/hash/trust, clean install, optional pairing, autostart, update, uninstall, and a redacted report."
-      - "The existing activation-owner provision-owned-render-fixture.mjs is the correct V2-06 materialization path. A runtime/browser materializer and migration 0037 were rejected as unnecessary authority widening; migration head remains 36 and hosted_render_plans remains runtime SELECT-only."
-      - "Fresh Mac checks prove the public 0.1.8 DMG and installed app share exact code identity, the binary is universal2 and deep/strict sealed, LaunchAgent restart recovers, and credential metadata persists without value access."
-      - "Migration 0032 adds account/workspace-bound worker enrollments, devices, exact input objects, one active lease per attempt/device, append-only events, row-level security, and stale-lease fencing while preserving historical Cloud Run rows for rollback."
-      - "The hosted API uses PKCE enrollment, one explicit authenticated approval, OS-keychain-scoped device tokens, heartbeat/update gating, exact same-account claims, fresh R2 GET/PUT ports, streaming output verification, cancellation, revocation, and late-result rejection."
-      - "Cloudflare Workflow now reconciles durable personal-worker leases and requeues expired work; active hosted code and deployment templates no longer dispatch Cloud Run."
-      - "The hosted setup surface detects the likely OS as a convenience, always offers Windows and Mac downloads, shows truthful device states, and never exposes raw tenant IDs or configuration secrets."
-      - "The Python desktop worker supports Windows and macOS only, starts at login, keeps the device credential in Windows Credential Manager or macOS Keychain, holds a sleep assertion only during active work, streams large outputs without loading the full MP4 in memory, kills process groups on cancel, and erases job scratch in finally."
-      - "The immutable media-worker-v0.1.0 GitHub Release remains the rollback artifact, and media-worker-v0.1.1 is now published from e61b18ac3f3aa252bcb262404e7ebea6ec791e3a with exact Windows unsigned-beta and macOS ad-hoc-beta hashes, sizes, trust modes, protocol, execution-bundle hash, and pinned tool/model identities."
-      - "The 0.1.1 worker detects macOS mounted/translocated launch paths, copies to a stable per-user Applications path, uses LaunchServices for pairing, and validates tools before installing KeepAlive autostart."
-      - "OUTBOXED cancellation now becomes terminal CANCELLED with submitted/terminal/retention facts, fixing the migration-0029 constraint violation that the former CANCEL_REQUESTED transition caused."
-      - "Successful final outputs have no automatic deletion policy. DELETE /api/v2/cpu-attempts/:id/output authenticates the owner, removes exactly the issued primary/result R2 keys, and appends durable deletion truth; the ordinary Library Delete button still waits on full hosted product-router composition."
-      - "The desktop cancellation monitor is a real class method, renews the five-minute lease while work is active, kills the entire media process group on cancel, and is covered against the class-indentation regression."
-      - "Cloud Run configuration, secrets, deployment templates, and production dispatch are removed from the active V2-06 path; historical adapter and evidence remain only for rollback/audit."
-      - "The hosted product router now composes tenant-private Create/upload/commit/personal-worker ASR, durable Project/cancel, exact Review/playback, Usage, Queue, Library/Delete, Settings, and worker setup instead of stopping at the auth/status shell."
-      - "Source commit f8e07b1 hardens personal-worker job UUID and size bounds, bundled CA verification for streamed uploads, post-process cancellation fencing, result-document limits, exact durable completion acknowledgement, and deterministic UPDATE_REQUIRED reinstall guidance; d6f2c44 prepares immutable release 0.1.5."
-      - "Migration 0034 makes project creation exact-idempotent, gates READY on exact committed upload lineage, and gates append-only review approval on the exact retained primary output of a successful render attempt."
-      - "The immutable worker execution identity bundles and verifies ffmpeg, ffprobe, whisper-cli, and the pinned ggml-base.en model; no first-run model download or user configuration is permitted."
-      - "The active authentication decision is invite-only Google verified-email identity. Email/password and email delivery remain disabled because the user selected email provider NONE."
-      - "Hosted /avatars and /styles now use the authenticated tenant-owned project catalog, and hosted /avatars/new and /styles/new render an explicit read-only staging boundary instead of fixture mutation screens."
-      - "A separately controlled live Chrome profile for demo9gss@gmail.com now proves tenant-scoped Better Auth identity, private empty Library/device views, and non-revealing foreign project/attempt refusal against the primary tenant's exact IDs."
-      - "The user explicitly confirmed the exact destructive scope; the v4 private output was deleted, the 0.1.11 Mac device was revoked, and the worker's supported uninstall exited 0 before the app bundle was moved to the user's Trash."
-      - "Current HEAD 3d8d467 is deployed as Worker version 83030c3f-d5b6-400c-bcb6-756a5068e573 after a verified rollback to 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2; cache-bypassed final health reports current source commit 3d8d467."
-      - "Migration 0036 and runtime grant reconciliation are live-verified at 36/36; runtime role is non-superuser and non-BYPASSRLS, all tenant tables have FORCE RLS, and hosted_render_plans is SELECT-only."
-      - "Hosted Workflow lease-expiry/replay and disposable personal-worker stale/late/cancel protocol fixtures are live-verified; exact fixture rows/devices were terminalized/revoked and active fixture leases ended at zero."
-      - "Exact disposable R2 result/final objects and recovery job-spec were deleted and exact post-delete GET/read-back returned key-not-found; the deployed authenticated DELETE route itself was not invoked."
-      - "The fresh closure backup is retained mode-0600 with SHA-256 596ac201c1ba6e6b133170a2b495aca7798b6b0518a78615b006a9f7ac38c5af; the only disposable restore database was deleted."
-      - "A fresh redacted Sujal RunPod API inventory at 2026-08-19T13:14:00.043Z proves zero Pods, endpoints, active Serverless workers, and private templates; only the two expected 50 GB retained volumes remain, and no mutation or GPU request occurred."
-      - "Fresh Cloudflare read-only metadata reports the private Standard APAC R2 bucket at 55 objects and 55.6 MB; this is current aggregate truth but not the still-required bucket-wide paginated key inventory."
-      - "A redacted read-only R2 preview probe is locally prepared and 3/3 green; it paginates only bucket.list(), hashes raw keys, reports metadata, performs zero object GET/write operations, and has not been started against Cloudflare."
+      - "Immutable Mac worker 0.1.11 paired only to demo9gss@gmail.com, completed owned ASR/render and Chrome playback/approval, was revoked, uninstalled, and removed with no active device row or local installation residue."
+      - "A disposable secondary-tenant project proved positive Better Auth/Neon/R2/device/lease/output ownership; the separately signed-in primary account received a non-revealing Project unavailable response for its exact URL."
+      - "The runtime Neon role is login-capable, non-superuser, non-BYPASSRLS, with FORCE RLS on all tenant tables and SELECT-only hosted_render_plans."
+      - "Authenticated DELETE returned HTTP 204, durably appended RETENTION_DELETED, and exact job-spec, result-document, and final-MP4 read-backs returned 404."
+      - "The terminated read-only R2 preview proved the bucket returned to 55 objects, 55,598,142 bytes, inventory sha256:7d67e4f45d3b58d24fbae1dd4718d4c88a0621bd3b5e2dc976f019d923ee559b, and zero preview writes."
+      - "All exact disposable Neon rows and R2 objects were removed; eight owner-cleanup immutability triggers were restored enabled before commit."
+      - "Migration 0036, Workflow lease-expiry/replay/stale/late-result recovery, encrypted backup/disposable restore/delete, and final-source rollback/restore are recorded."
+      - "Final health returned HTTP 200 at deployed source e673527. Fresh RunPod inventory recorded zero Pods, endpoints, active workers, and private templates; two pre-existing 50 GB volumes remain untouched at USD 7/month."
+      - "Actual new V2-06 external spend was USD 0 under the separately approved USD 1 cap; no new recurring resource was created and R2 remains below the USD 2/month ceiling."
+      - "Windows 0.1.11 native acceptance remains complete with temporary devices revoked and installation/credential residue absent."
+    commands:
+      - "CI=1 TURBO_FORCE=true pnpm verify: PASS; web 352 passed and 1 skipped, script tests 70/70, six worker suites, Cloudflare parity 1/1, installed Chrome 44/44."
+      - "pnpm context:validate, pnpm contracts:check, pnpm validate:v2-06-deployment, pnpm secret:scan, pnpm format:check, and git diff --check: PASS."
+      - "The focused owned-render fixture command passed 16/16 in the operator workspace with the protected ignored local input present; in a clean independent worktree it exits 1 with 9 passed/7 failed because that private input is intentionally absent. This is not hosted proof and is not a checkpoint acceptance gate."
     remaining_gates:
-      - "P1: positive second-tenant project/object/device/lease proof, hosted non-superuser RLS enforcement, and real private-R2 hash parity remain unproven; current device protocol records were disposable owner-seeded fixtures and current real Settings views had no paired computer."
-      - "P1: the deployed authenticated DELETE /api/v2/cpu-attempts/:id/output route was not invoked live; direct authorized R2 deletion/read-back passed, but route ownership, durable event, and transaction ordering remain unproven."
-      - "P2: exact disposable R2 keys were absent by post-delete head/get read-back, but a bucket-wide paginated Worker-binding inventory was not captured; the 16-object/32.1 MB inventory is pre-delete."
-      - "The selected Windows unsigned-beta and macOS ad-hoc/non-notarized-beta trust modes remain intentional; Authenticode and Developer ID/notarization are optional and are not checkpoint blockers."
-      - "The historical combined V2-06 cap was USD 3 with a USD 2/month R2 ceiling and is consumed/non-transferable. Current read-only preflight cap and new external spend are USD 0; current R2 aggregate metadata is 55 objects/55.6 MB, but no paginated key inventory is claimed."
+      - "A fresh repository-and-immutable-evidence-only independent re-audit must return PASS before V2-07."
     resource_truth:
-      external_mutations: bounded_v2_06_live_finding_closure_partial_acceptance
-      external_mutation_scope: "Current grant used only the exact V2-06 Worker/Workflow/private R2 bucket, Neon migration 0036, GitHub worker release publication and repository immutable-release setting, Cloudflare rollback/restore, Mac installation, temporary Windows pairing/revocation/install/uninstall, and one exact disposable Neon restore database that was deleted after verification. No RunPod, GPU, volume, unrelated resource, or V2-07 mutation occurred."
-      truth_basis: current_live_refresh_plus_immutable_deployment_and_release_evidence
-      deployments: 22
-      installer_builds: 9
-      installer_publications: 9
-      email_deliveries: 0
-      paid_requests: 0
       external_spend_usd: 0
-      cloud_run_jobs_required_by_current_architecture: 0
-      personal_worker_provider_compute_usd: 0
+      final_live_closure_cap_usd: 1
+      historical_bounded_completion_cap_usd: 3
+      r2_recurring_ceiling_usd_per_month: 2
+      new_recurring_resources_created: 0
       runpod_mutating_calls: 0
-      runpod_read_only_dashboard_inventory_completed: true
       runpod_workers_started: 0
-      live_runpod_inventory_refreshed: true
-      runpod_inventory_refreshed_during_current_closure: true
-      live_state_basis: current_live_read_only_cloudflare_neon_runpod_and_release_evidence
-      cloudflare:
-        checked_at: "2026-08-19T13:14:00.043Z"
-        account_id_sha256: "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8"
-        workers_plan: FREE
-        payment_method_on_file: true
-        workers_after_confirmed_cleanup: 1
-        workflows: 1
-        worker_name: videoforge-v2-06-staging
-        worker_deployment_version_id: 83030c3f-d5b6-400c-bcb6-756a5068e573
-        worker_deployment_commit: 3d8d467320d2956f5d45915437434a396230e8fe
-        worker_deployment_config_sha256: sha256:a8457199d4fb5ccee674541a7a57a7dbb39a224774f9131c85bf7009aad09d3d
-        media_worker_release_version: 0.1.11
-        media_worker_release_manifest_sha256: sha256:b33292c0e88cc53246c0ec3a34cc43d74046840a409ee444473ab629cb06a9d9
-        media_worker_release_immutable: true
-        workflow_name: videoforge-v2-06-staging-video
-        workflow_class: HostedVideoWorkflow
-        r2_subscription_active: true
-        r2_due_now_usd: 0
-        r2_due_monthly_base_usd: 0
-        r2_standard_free_storage_gb_month: 10
-        r2_standard_overage_usd_per_gb_month: 0.015
-        r2_object_count: 55
-        r2_bucket_size_display: CURRENT_AGGREGATE_55_6_MB
-        r2_post_delete_exact_readback: true
-        r2_post_delete_bucket_inventory: NOT_CAPTURED
-      hosted_fixture:
-        checked_at: "2026-08-18T10:05:00Z"
-        tenant_owned_assets: 3
-        tenant_owned_avatar_versions: 1
-        tenant_owned_style_versions: 1
-        tenant_owned_projects: 0
-        avatar_version_state: READY
-        style_version_state: PUBLISHED
-        project_creation_blocker: CHROME_FILE_BYTES_UNREADABLE_EXTENSION_PERMISSION_PENDING
-      source_head_commit: 3d8d467320d2956f5d45915437434a396230e8fe
-      deployed_implementation_commit: 14135ceecf9c954216f5705f31074f33203cdc8d
-      source_deployment_parity: true
-      source_deployment_parity_note: "Current repository HEAD 3d8d467 is the deployed source identity; implementation repair 14135ce is included in that build. Final source rollback and redeploy were independently verified."
-      worker_source_repair_release_status: immutable_release_0_1_11_published_both_platforms_deployed_current_head_rollback_verified
-      neon:
-        checked_at: "2026-08-19T12:32:58Z"
-        organization_id_sha256: "sha256:1a80a1978aaf55071ebade555193753126029390191658a7f700bbd06ea07044"
-        plan: FREE
-        recurring_usd_per_month: 0
-        videoforge_project_created: true
-        videoforge_project_id: ancient-morning-99567618
-        videoforge_project_region: AWS_AP_SOUTHEAST_1_SINGAPORE
-        source_expected_migration_head: 36
-        last_supplied_deployed_migration_head: 36
-        runtime_role: videoforge_v2_06_runtime
-        runtime_grants_verified: true
-        runtime_force_rls_verified: true
-        existing_project_name: project01
-        existing_project_id_sha256: "sha256:b2478263abd2d0e2f015734a9de2512c8b13044ad179fcee940ab82f402b619a"
-        existing_project_region: AWS_US_EAST_2_OHIO
-        existing_project_postgres_version: 17
-        existing_project_branches: 5
-        existing_project_state: DORMANT_UNRELATED_NOT_APPROVED_FOR_REUSE
-        free_project_storage_gb: 0.5
-        free_project_compute_hours: 100
-      google_cloud:
-        checked_at: "2026-08-17T09:22:02Z"
-        dedicated_videoforge_project: true
-        project_id: videoforge-v2-06-staging-0817
-        oauth_audience: EXTERNAL_TESTING
-        test_users: 2
-      runpod:
-        checked_at: "2026-08-19T13:14:00.043Z"
-        inventory_basis: authenticated_redacted_read_only_api
-        billing_checked_at: "2026-08-19T04:24:00Z"
-        account_label: sujal
-        pods: 0
-        private_templates: 0
-        endpoints: 0
-        total_serverless_workers_active_plus_flex: 0
-        clusters: 0
-        network_volumes: 2
-        mage_volume_name: videoforge-mage-cp06-model-volume-eu-ro-1-50gb
-        mage_volume_id_sha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
-        mage_volume_size_gb: 50
-        mage_volume_region: EU-RO-1
-        mage_volume_usd_per_month: 3.5
-        soulx_volume_name: videoforge-soulx-flashhead-pro-vf924s-eu-ro-1-50gb
-        soulx_volume_id_sha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be"
-        soulx_volume_size_gb: 50
-        soulx_volume_region: EU-RO-1
-        soulx_volume_usd_per_month: 3.5
-        recurring_storage_usd_per_month_total: 7
-        displayed_current_spend_rate_usd_per_hour_rounded: 0.01
-        current_day_cloud_gpu_usd: 0
-        current_day_cloud_cpu_usd: 0
-        current_day_endpoint_usd: 0
-        current_day_serverless_usd: 0
-        current_day_storage_usd_displayed: 0.039
-        auto_pay: DISABLED
-        billing_data_lag: UP_TO_ONE_HOUR
-      release_inputs:
-        apple_developer_program_membership: false
-        windows_x86_64_test_device_available: true
-        macos_test_device_available: true
+      runpod_pods: 0
+      runpod_endpoints: 0
+      runpod_active_workers: 0
+      runpod_private_templates: 0
+      runpod_retained_network_volumes: 2
+      runpod_preexisting_volume_usd_per_month_total: 7
+      r2_object_count_after_cleanup: 55
+      r2_bytes_after_cleanup: 55598142
+      r2_inventory_sha256_after_cleanup: "sha256:7d67e4f45d3b58d24fbae1dd4718d4c88a0621bd3b5e2dc976f019d923ee559b"
 
 audit_evidence:
-  v2_06_completion_matrix: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/acceptance.json
-  v2_06_live_finding_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
-  v2_06_read_only_preflight: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/read-only-preflight-3d8d467.json
+  v2_06_final_live_closure_authority: evidence/acceptance/VF-10-06/2026-08-19-final-live-closure-authority/acceptance.json
+  v2_06_final_live_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
+  v2_06_latest_independent_audit: evidence/acceptance/VF-10-06/2026-08-19-final-live-closure-independent-audit-1/acceptance.json
+  v2_06_historical_completion_matrix: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/acceptance.json
+  v2_06_historical_live_finding_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
+  v2_06_historical_read_only_preflight: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/read-only-preflight-3d8d467.json
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
-  current_goal_scope: bounded_v2_06_read_only_preflight
-  result: FAIL_two_p1_one_p2_same_chat_live_evidence_open; fresh_runpod_zero_worker_inventory_closed
+  current_goal_scope: fresh_repository_and_immutable_evidence_only_independent_reaudit
+  result: FIRST_FRESH_AUDIT_FAIL_ZERO_P0_ONE_P1_ONE_P2_FINDINGS_RECONCILED_FRESH_REAUDIT_PENDING
   v2_07_status: blocked_not_safe_to_start
