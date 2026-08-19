@@ -1,0 +1,148 @@
+{
+  "schema_version": "videoforge.v2-06-live-backup-restore/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T02:12:32Z",
+  "result": "PASS_BACKUP_RESTORE_SUBGATE_ONLY",
+  "checkpoint_result": "FAIL_REMAINING_LIVE_DEVICE_AND_INDEPENDENT_AUDIT_GATES",
+  "audit_independence": "SAME_CHAT_COMPLETION_HANDOFF_NOT_INDEPENDENT_AUDIT",
+  "authority": {
+    "finite_external_cap_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "runpod_mode": "READ_ONLY_ZERO_MUTATION",
+    "v2_07_authorized": false,
+    "new_external_spend_usd": 0
+  },
+  "source": {
+    "branch": "codex/serverless-v2-roadmap",
+    "repair_commit": "804f7d35504852f33e696904c628ee760276dcdc",
+    "deployed_application_commit": "8e965758247f4cf222e0446f723b007af80297a7",
+    "source_deployment_parity": false,
+    "reason": "The repair changes only local backup/restore operator tooling, tests, and the grant script used by the disposable restore drill; the deployed application runtime is unchanged.",
+    "migration_head": 36
+  },
+  "protected_inputs": {
+    "directory_mode": "0700",
+    "file_mode": "0600",
+    "owner_service_present_nonempty": true,
+    "owner_passfile_present_nonempty": true,
+    "backup_passphrase_present_nonempty": true,
+    "credential_or_passphrase_value_printed_recorded_or_committed": false
+  },
+  "backup": {
+    "database": "neondb",
+    "manifest_rows_verified": 36,
+    "manifest_rows_expected": 36,
+    "encrypted_path": "/Users/lakshmansai/.config/videoforge/v2-06/backups/videoforge-v2-06-2026-08-19-fresh.dump.enc",
+    "mode": "0600",
+    "size_bytes": 1085895,
+    "sha256": "84cfe137a49b4b1b3cd44034f37b9cc343fead42b7f8cc3b1a82439488b22a7a",
+    "final_exit_code": 0
+  },
+  "restore_drill": {
+    "disposable_database": "videoforge_v2_06_disposable_drill",
+    "created": true,
+    "archive_restored": true,
+    "migration_manifest_exact": true,
+    "runtime_role": "videoforge_v2_06_runtime",
+    "runtime_role_least_privilege_verified": true,
+    "force_rls_complete": true,
+    "table_grants_exact": true,
+    "function_grants_exact": true,
+    "hosted_render_plans_select_only": true,
+    "final_restore_exit_code": 0,
+    "deleted_after_verification": true,
+    "final_database_count": 0,
+    "final_absence_check_exit_code": 0
+  },
+  "diagnostic_nonzero_exits": [
+    {
+      "operation": "first encrypted backup attempt",
+      "exit_code": 1,
+      "cause": "mktemp reserved the output path while the authenticated envelope writer correctly required exclusive creation; no final backup was produced.",
+      "repair": "Remove only the empty random reservation immediately before the O_EXCL writer."
+    },
+    {
+      "operation": "first disposable restore verification",
+      "exit_code": 1,
+      "cause": "The Neon disposable database inherited an empty search_path, so unqualified grant relations were not resolvable even though all 107 source and 107 restored public tables existed.",
+      "repair": "Pin SET search_path = public, pg_catalog before applying exact grants; recreate only the disposable database and rerun the complete drill."
+    },
+    {
+      "operation": "first canonical verification rerun",
+      "exit_code": 1,
+      "cause": "A prior local Cloudflare Playwright descendant still occupied port 4173 when the installed-Chrome gate started.",
+      "repair": "Terminate only the owned local test descendants, prove the port clear, and rerun the installed-Chrome gate independently; 44/44 passed."
+    }
+  ],
+  "commands": [
+    {
+      "command": "protected-input metadata preflight without reading values",
+      "exit_code": 0,
+      "result": "three non-empty regular mode-0600 files under a mode-0700 directory"
+    },
+    {
+      "command": "deploy/v2-06/backup.sh against the approved production database",
+      "exit_code": 0,
+      "result": "36/36 exact migration rows verified and encrypted authenticated backup produced"
+    },
+    {
+      "command": "deploy/v2-06/restore-drill.sh against videoforge_v2_06_disposable_drill",
+      "exit_code": 0,
+      "result": "exact disposable target, migration manifest, runtime grants, FORCE RLS, and SELECT-only render-plan grant verified"
+    },
+    {
+      "command": "DROP DATABASE videoforge_v2_06_disposable_drill followed by exact-name count query",
+      "exit_code": 0,
+      "result": "disposable database count 0"
+    },
+    {
+      "command": "node --test scripts/tests/v2-06-activation-safety.test.mjs scripts/tests/v2-06-backup-restore-preflight.test.mjs",
+      "exit_code": 0,
+      "result": "11/11 passed"
+    },
+    {
+      "command": "sh -n deploy/v2-06/backup.sh deploy/v2-06/restore-drill.sh",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm --filter @videoforge/web test:chrome",
+      "exit_code": 0,
+      "result": "44/44 installed-Chrome fixture tests passed; local fixtures are not hosted acceptance"
+    }
+  ],
+  "github_release": {
+    "repository_wide_immutable_release_setting_observed_enabled_in_fresh_chrome": true,
+    "existing_release_tag": "media-worker-v0.1.8",
+    "existing_release_is_immutable": false,
+    "new_post_setting_release_required_for_native_immutable_proof": true
+  },
+  "resource_and_spend_truth": {
+    "neon_plan": "FREE",
+    "disposable_database_remaining": false,
+    "new_external_spend_usd": 0,
+    "r2_recurring_change_usd_per_month": 0,
+    "runpod_mutating_calls": 0,
+    "runpod_workers_started": 0,
+    "v2_07_started": false
+  },
+  "rollback": {
+    "cloudflare_state": "PREVIOUSLY_PROVEN_AND_RESTORED",
+    "database_restore_state": "PROVEN_FROM_ENCRYPTED_BACKUP_AND_DISPOSABLE_TARGET_REMOVED",
+    "encrypted_backup_retained": true,
+    "derived_disposable_service_and_passfile": "MOVED_TO_MACOS_TRASH_RECOVERABLY"
+  },
+  "remaining_findings": {
+    "p0": [],
+    "p1": [
+      "Live two-account authenticated Better Auth/Neon/R2 isolation plus owned ASR/render, Workflow recovery/cancel/delete, and hosted Chrome playback remain unproven.",
+      "Windows native lifecycle/parity evidence is running on the user-owned Windows device and is not yet reconciled here."
+    ],
+    "p2": [
+      "Mac authenticated ONLINE/offline/reconnect/revoke/remove observations remain.",
+      "A new worker release published after enabling GitHub immutable releases is required to prove native isImmutable=true; the pre-existing 0.1.8 release remains false.",
+      "A fresh independent V2-06 audit remains required after all live and device evidence is complete."
+    ]
+  },
+  "v2_07_safety": "BLOCKED_NOT_STARTED_NOT_AUTHORIZED"
+}

@@ -106,11 +106,11 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
-  last_verified_repository_head: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
-  current_source_head_note: "Commit 2e1d1d0 adds only provider-free backup/restore preflight and a bounded Windows native acceptance harness; canonical verification is green. The application runtime remains exactly deployed from 8e96575 as Worker version 8e036f86-b79d-4ab6-9de4-97b9293747ec with release 0.1.8. Migration 0036 and Cloudflare rollback/restore are proven. All autonomous readiness work is complete; full V2-06 remains FAIL only on user-private-input, authenticated-browser, physical-Windows, repository-wide immutability-approval, and fresh-independent-audit gates."
-  last_good_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
-  last_good_commit_note: "V2-06 autonomous readiness is provider-free green at 2e1d1d0. The deployed runtime stays at 8e96575 because the newer commit changes only operator/native acceptance tooling. No migration 0037 or runtime render-plan materializer is required for the checkpoint's activation-owner owned-fixture proof."
+  current_source_head: "804f7d35504852f33e696904c628ee760276dcdc"
+  last_verified_repository_head: "804f7d35504852f33e696904c628ee760276dcdc"
+  current_source_head_note: "Commit 804f7d3 hardens the encrypted backup/restore drill after live execution. The approved Neon production database passed exact 36/36 manifest verification; an authenticated encrypted backup was restored into the exact disposable database, least-privilege grants/FORCE RLS were verified, and the disposable database was deleted. The application runtime remains deployed from 8e96575. Full V2-06 remains FAIL on authenticated hosted journeys, device lifecycle/parity, a post-setting immutable release, and fresh independent audit."
+  last_good_commit: "804f7d35504852f33e696904c628ee760276dcdc"
+  last_good_commit_note: "V2-06 encrypted backup and disposable restore are live-proven at 804f7d3 with zero new spend. The deployed runtime stays at 8e96575 because this commit changes only operator tooling, tests, and disposable-drill grant resolution."
   working_tree_expected: clean_except_ignored_private_inputs
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
@@ -194,7 +194,7 @@ roadmap_state:
   V2-03: complete_green_independently_reaudited
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
-  V2-06: deployed_partial_completion_live_and_windows_acceptance_blocked
+  V2-06: deployed_partial_completion_backup_restore_passed_live_and_device_acceptance_remaining
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
@@ -331,7 +331,7 @@ recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
   milestone: hosted_staging_and_personal_media_workers
-  status: bounded_v2_06_completion_partial_live_gates_remaining
+  status: bounded_v2_06_completion_backup_restore_passed_live_and_device_gates_remaining
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
   authorization_status: bounded_v2_06_completion_approved
   task_stage: bounded_mutation
@@ -420,11 +420,11 @@ recommended_next_task:
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_autonomous_readiness_complete_user_live_gates_only
-  verified_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
-  verified_commit_note: "CI=1 TURBO_FORCE=true pnpm verify passes at 2e1d1d0, including 62 script tests and installed-Chrome fixture 44/44. Owned-fixture local verification, backup/restore tool readiness, Windows handoff readiness, and Mac release/install/restart checks pass. Local proof is not hosted proof; protected inputs, authenticated Chrome, Windows hardware, GitHub-native immutability approval, and fresh independent acceptance remain."
+  state: v2_06_live_backup_restore_passed_live_and_device_gates_remaining
+  verified_commit: "804f7d35504852f33e696904c628ee760276dcdc"
+  verified_commit_note: "Focused backup/restore tests pass 11/11 and installed-Chrome fixtures pass 44/44 at 804f7d3. The live encrypted Neon backup/disposable restore/delete drill passes with exact 36/36 migration manifest, exact least-privilege grants, and FORCE RLS. The first canonical rerun passed all preceding gates but exited 1 when a stale owned local Playwright descendant occupied port 4173; after scoped termination the Chrome gate passed independently. Local Chrome fixtures are not hosted proof."
   predecessor_verified_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-backup-restore-804f7d3/acceptance.json
   latest_live_check:
     recorded_at_utc: "2026-08-18T13:33:02Z"
     evidence: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
@@ -789,9 +789,9 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: autonomous_readiness_complete_user_live_and_device_gates_only
+    status: live_backup_restore_passed_authenticated_live_and_device_gates_remaining
     implementation_commit: "8e965758247f4cf222e0446f723b007af80297a7"
-    source_head_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
+    source_head_commit: "804f7d35504852f33e696904c628ee760276dcdc"
     autonomous_readiness_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
     current_source_deployment_status: deployed_worker_version_8e036f86_b79d_4ab6_9de4_97b9293747ec
     previous_deployed_source_head: "153cefef40739c35b84ed633fc4978f8a5e9746b"
@@ -802,7 +802,8 @@ verification:
     worker_source_repair_deployment_status: release_0_1_8_published_ci_built_both_platforms_installed_mac_only
     previous_worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
-    evidence: evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json
+    evidence: evidence/acceptance/VF-10-06/2026-08-19-live-backup-restore-804f7d3/acceptance.json
+    autonomous_readiness_evidence: evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json
     previous_completion_evidence: evidence/acceptance/VF-10-06/2026-08-18-bounded-completion-8e96575/acceptance.json
     previous_evidence: evidence/acceptance/VF-10-06/2026-08-17-hosted-product-journey-reaudit/acceptance.json
     live_inventory_evidence: evidence/acceptance/VF-10-06/2026-08-17-read-only-inventory-and-unrelated-worker-cleanup/acceptance.json
@@ -812,6 +813,9 @@ verification:
     post_repair_audit_evidence: evidence/acceptance/VF-10-06/2026-08-17-post-repair-live-audit/acceptance.json
     worker_startup_repair_release_evidence: evidence/acceptance/VF-10-06/2026-08-18-worker-startup-repair-release/acceptance.json
     commands:
+      - "Approved live encrypted backup and disposable restore/delete drill at repair commit 804f7d3 (exit 0; 36/36 exact migration rows, exact runtime grants, FORCE RLS, hosted_render_plans SELECT-only, final disposable database count 0)."
+      - "Focused V2-06 activation safety and backup/restore tests at 804f7d3 (exit 0; 11/11)."
+      - "Installed-Chrome fixture rerun after clearing one owned stale port-4173 test descendant (exit 0; 44/44; local fixtures are not hosted proof)."
       - "CI=1 TURBO_FORCE=true pnpm verify at autonomous-readiness commit 2e1d1d0 (exit 0; canonical graph; 62 script tests; Cloudflare-local parity; worker suites; installed-Chrome fixture 44/44)."
       - "Focused V2-06 backup/restore, Windows harness, activation-safety, Neon-grant, and owned-render tests (exit 0; 23/23)."
       - "Homebrew libpq PATH-aware backup/restore tools-only preflight (exit 0; pg_dump, pg_restore, and psql resolved without execution or provider access)."
@@ -829,6 +833,9 @@ verification:
       - "Mac 0.1.8 DMG SHA/size, hdiutil verification, deep/strict ad-hoc seal, universal2 architecture, mounted install/update, and LaunchAgent bootout/bootstrap restart (exit 0); spctl returned expected ad-hoc/non-notarized rejection exit 3."
       - "CI=1 TURBO_FORCE=true pnpm verify at 8e96575 (exit 0; canonical graph; control-plane 309; web 351 plus 1 skipped; worker suites; Cloudflare parity 1/1; installed-Chrome fixture 44/44)."
     delivered:
+      - "Commit 804f7d3 repairs authenticated envelope temp-path creation, pins public/pg_catalog relation resolution for disposable Neon restores, and adds a fail-closed no-secret disposable service/passfile derivation helper."
+      - "The approved production database passed an encrypted authenticated backup and exact disposable restore verification; the disposable database was deleted and the encrypted mode-0600 backup is retained with SHA-256 84cfe137a49b4b1b3cd44034f37b9cc343fead42b7f8cc3b1a82439488b22a7a."
+      - "GitHub repository-wide immutable releases were enabled in a fresh Chrome window. Existing release 0.1.8 remains isImmutable=false because it predates the setting; a new release is still required for native immutable proof."
       - "Commit 2e1d1d0 adds a provider-free backup/restore tool and protected-file preflight, integrates fail-closed checks before database operations, and provides safe zero-byte mode-0600 bootstrap without reading secrets."
       - "The local operator machine has a complete libpq/OpenSSL toolchain and prepared private placeholders; only the user-supplied protected values remain before live backup/restore."
       - "Commit 2e1d1d0 adds a bounded Windows x64 acceptance harness for exact 0.1.8 manifest/hash/trust, clean install, optional pairing, autostart, update, uninstall, and a redacted report."
@@ -852,16 +859,15 @@ verification:
       - "The active authentication decision is invite-only Google verified-email identity. Email/password and email delivery remain disabled because the user selected email provider NONE."
       - "Hosted /avatars and /styles now use the authenticated tenant-owned project catalog, and hosted /avatars/new and /styles/new render an explicit read-only staging boundary instead of fixture mutation screens."
     remaining_gates:
-      - "User private input: populate the prepared mode-0600 owner.pg_service.conf, owner.pgpass, and backup.passphrase files through a protected workflow. This unlocks owned-fixture provisioning plus the approved encrypted backup and disposable restore/create/verify/delete drill; no value belongs in chat, Git, logs, or evidence."
       - "User browser/session input: permit a fresh Chrome window or restore extension control, keep both admitted Google test sessions available, and confirm destructive remote revoke/delete actions at action time. This unlocks real Better Auth/two-tenant Neon/R2 isolation, owned ASR/render, Workflow recovery/cancel/delete/playback, and Mac ONLINE/offline/reconnect/remove observations."
-      - "User Windows device: run apps/media-worker-desktop/windows-native-acceptance.ps1 on the clean x64 profile and complete SmartScreen, one browser pairing, sleep/reconnect, reboot/autostart, update/remove, and authenticated revoke observations."
-      - "New repository-wide approval: enable GitHub native immutable releases. The workflow already refuses replacement, but the live repository setting affects all releases and currently reports isImmutable=false."
+      - "Windows device execution is now running in a separate user-owned Windows Codex workspace. Reconcile its exact report, hashes, lifecycle, pairing, autostart, update/remove, and parity evidence when it completes."
+      - "Publish and verify one new personal-worker release after the repository-wide immutable-release setting was enabled; existing release 0.1.8 still reports isImmutable=false because it predates the setting."
       - "Fresh independent task: audit the completed live/device evidence after the above gates. This same-chat handoff cannot independently accept itself."
       - "The selected Windows unsigned-beta and macOS ad-hoc/non-notarized-beta trust modes remain intentional; Authenticode and Developer ID/notarization are optional and are not checkpoint blockers."
       - "The exact combined V2-06 cap remains USD 3 with a USD 2/month R2 ceiling. Current new external spend is USD 0; recheck spend after the user-dependent acceptance run."
     resource_truth:
       external_mutations: bounded_v2_06_completion_partial_acceptance
-      external_mutation_scope: "Current grant used only the exact V2-06 Worker/Workflow/private R2 bucket, Neon migration 0036, GitHub worker release publication, Cloudflare rollback/restore, and Mac installation. No RunPod, GPU, volume, unrelated resource, disposable database, backup/restore, or V2-07 mutation occurred."
+      external_mutation_scope: "Current grant used only the exact V2-06 Worker/Workflow/private R2 bucket, Neon migration 0036, GitHub worker release publication and repository immutable-release setting, Cloudflare rollback/restore, Mac installation, and one exact disposable Neon restore database that was deleted after verification. No RunPod, GPU, volume, unrelated resource, or V2-07 mutation occurred."
       truth_basis: current_live_refresh_plus_immutable_deployment_and_release_evidence
       deployments: 17
       installer_builds: 6
@@ -905,10 +911,10 @@ verification:
         avatar_version_state: READY
         style_version_state: PUBLISHED
         project_creation_blocker: CHROME_FILE_BYTES_UNREADABLE_EXTENSION_PERMISSION_PENDING
-      source_head_commit: 2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934
+      source_head_commit: 804f7d35504852f33e696904c628ee760276dcdc
       deployed_implementation_commit: 8e965758247f4cf222e0446f723b007af80297a7
       source_deployment_parity: false
-      source_deployment_parity_note: "2e1d1d0 changes only local operator/native acceptance tooling; deployed application runtime remains exactly 8e96575."
+      source_deployment_parity_note: "804f7d3 changes only local operator/restore tooling, tests, and disposable-drill grant resolution; deployed application runtime remains exactly 8e96575."
       worker_source_repair_release_status: release_0_1_8_published_both_platforms_installed_mac_only
       neon:
         checked_at: "2026-08-17T17:36:31Z"
