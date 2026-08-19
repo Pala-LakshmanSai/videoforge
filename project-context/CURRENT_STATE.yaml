@@ -1,85 +1,45 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-19T21:56:55Z"
+updated_at: "2026-08-19T22:07:49Z"
 
-phase: serverless_v2_v2_07_bounded_paid_qualification_authorized
+phase: serverless_v2_v2_07_repair_handoff_requires_fresh_authority
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
 current_wave: v2_07_bounded_qualification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: bounded_mutation
+task_stage: provider_free_repair_handoff
 application_code_changes_authorized: true
-provider_calls_authorized: true
+provider_calls_authorized: false
 read_only_provider_calls_authorized: false
-maximum_external_spend_usd: 4
+maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_07_bounded_paid_qualification
-  live_provider_calls: true
-  remote_mutation: true
-  deployment_or_publication: true
+  mode: v2_07_provider_free_repair_handoff
+  live_provider_calls: false
+  remote_mutation: false
+  deployment_or_publication: false
   credential_value_access: false
-  paid_requests_or_spend: true
-  runpod_mutation_or_gpu: true
-  v2_07_action: exact_bounded_qualification_only
-  note: "User approved the exact V2-07 publish/create-or-update/submit/status/cancel/scale-down/retain/delete-if-failed proposal with a maximum cumulative finite spend cap of USD 4. Existing two 50 GB volumes remain retained and separate at USD 7/month; no model download/preparation, volume write/rebuild/delete, cross-mount, GPU fallback, V2-08, or successor work is authorized."
+  paid_requests_or_spend: false
+  runpod_mutation_or_gpu: false
+  v2_07_action: provider_free_repair_only
+  note: "The prior USD 4 proposal was used only for the old immutable image and is closed after terminal handler failures and cleanup. The repaired failure_code source changes the image digest; do not reuse that cap. Fresh exact-image authority with a new numeric finite cap is required before publication, endpoint mutation, or GPU work. Existing two 50 GB volumes remain retained and separate at USD 7/month; no model download/preparation, volume write/rebuild/delete, cross-mount, GPU fallback, V2-08, or successor work is authorized."
 
 provider_authority:
-  mode: paid
-  provider: runpod
-  cap_usd: 4
+  mode: none
+  provider: null
+  cap_usd: 0
+  historical_cap_usd: 4
   recurring_r2_ceiling_usd_per_month: 0
-  model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
+  model_id: null
   non_transferable: true
-  source: explicit_user_v2_07_bounded_qualification_grant
-  authorized_by_user_at: "2026-08-19T16:25:00Z"
-  resources:
-    - runpod_account_sujal_sha256_ce23456f
-    - runpod_eu_ro_1_mage_volume_sha256_eae4e1ec
-    - runpod_eu_ro_1_soulx_volume_sha256_2a8633e1
-    - runpod_eu_ro_1_rtx_4090_flex_catalog
-    - ghcr_videoforge_mage_v2_07_immutable_image
-    - runpod_v2_07_mage_queue_endpoint
-  authorized_operations:
-    - account_identity_lookup
-    - inventory_lookup
-    - quota_lookup
-    - rate_lookup
-    - region_lookup
-    - resource_identity_lookup
-    - resource_absence_lookup
-    - image_publication
-    - endpoint_create_or_update
-    - serverless_run
-    - serverless_status
-    - serverless_cancel
-    - endpoint_scale_down
-    - endpoint_template_delete_if_failed
+  source: fresh_exact_image_authority_required
+  authorized_by_user_at: null
+  resources: []
+  authorized_operations: []
   allowed_operations:
-    - account_identity_lookup
-    - inventory_lookup
-    - quota_lookup
-    - rate_lookup
-    - region_lookup
-    - resource_identity_lookup
-    - resource_absence_lookup
-    - image_publication
-    - endpoint_create_or_update
-    - serverless_run
-    - serverless_status
-    - serverless_cancel
-    - endpoint_scale_down
-    - endpoint_template_delete_if_failed
-  rate_snapshot:
-    - resource_id: runpod_serverless_4090_pro_published_rate
-      billing_unit: usd_per_second
-      usd_per_unit: 0.00031
-      checked_at: "2026-08-19"
-    - resource_id: runpod_standard_network_volume
-      billing_unit: usd_per_gb_month
-      usd_per_unit: 0.07
-      checked_at: "2026-08-19"
+    []
+  rate_snapshot: []
 
 historical_v2_06_completion_authority:
   mode: paid
@@ -160,13 +120,13 @@ historical_v2_06_final_live_closure_authority:
   actual_spend_usd: 0
   new_recurring_resources_created: 0
 
-credential_access_authorized: true
+credential_access_authorized: false
 credential_value_read_authorized: false
-remote_or_cloud_mutations_authorized: true
+remote_or_cloud_mutations_authorized: false
 model_downloads_authorized: false
-worker_image_publication_authorized: true
-sample_output_publication_authorized: true
-gpu_use_authorized: true
+worker_image_publication_authorized: false
+sample_output_publication_authorized: false
+gpu_use_authorized: false
 retained_volume_mutation_authorized: false
 
 runpod_account_scope:
@@ -174,10 +134,10 @@ runpod_account_scope:
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_future_inventory_or_mutation
-  current_authority: exact_v2_07_bounded_paid_qualification_usd_4
-  mutation_authorized: true
-  gpu_use_authorized: true
-  spend_authorized_usd: 4
+  current_authority: none_requires_fresh_exact_image_authority
+  mutation_authorized: false
+  gpu_use_authorized: false
+  spend_authorized_usd: 0
 
 repository:
   initialized: true
@@ -190,7 +150,7 @@ repository:
   current_source_head: "39541d57ca3c2270c7872ab49387f2484ab1a6e9"
   current_source_head_semantics: deployed_executable_source_identity_not_documentation_head
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "V2-07 deployed executable source is 39541d5; current control/diagnostic source is ea80312 (documentation/evidence follow-up is 38afbe1). The executable includes the exact RTX 4090 and CUDA >=13 runtime fence, dynamic generated-output authority contract, and image identity normalization. Multiple exact corrected-image 32-item batches reached terminal output status FAILED with output keys limited to status and no accepted output or provider error; a later exact attempt reached throttled before dispatch. Fresh read-only catalog data reports RTX 4090/CUDA 13.0 globally HIGH and EU-RO-1 LOW. Temporary signer capability was disabled; all disposable endpoint/template resources were deleted and both retained volumes remained untouched."
+  current_source_head_note: "V2-07 deployed executable source is 39541d5 and remains the immutable published digest source. Current branch HEAD f63569b contains local repair commit 1623fa1, canonical formatting/lint commit 1c9b0de, and evidence follow-up; the repaired failure_code source is not published. Multiple exact corrected-image 32-item batches reached terminal output status FAILED with output keys limited to status and no accepted output or provider error; a later exact attempt reached throttled before dispatch. Fresh read-only catalog data reports RTX 4090/CUDA 13.0 globally HIGH and EU-RO-1 LOW. Temporary signer capability was disabled; all disposable endpoint/template resources were deleted and both retained volumes remained untouched. Fresh exact-image authority and a new numeric finite cap are required before any publication or GPU work."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -205,10 +165,10 @@ live_development:
   chrome_route: null
   fixture_scenario: v2_00_roadmap_reset_audit
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: staging
-  provider_calls_authorized: true
-  authorized_spend_usd: 4
-  provider_authority_scope: "Exact V2-07 Mage Serverless qualification only, under the USD 4 finite cap; retained volumes remain separate."
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: "Provider-free repaired-handler handoff only; fresh exact-image authority and a new numeric finite cap are required before any publication, endpoint mutation, or GPU work."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -406,86 +366,46 @@ recommended_next_task:
   milestone: mage_serverless_qualification
   status: dynamic_contract_repaired_handler_terminal_failure_unqualified
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: exact_bounded_paid_authority
-  task_stage: bounded_mutation
-  current_goal_authority: exact_v2_07_qualification_only
+  authorization_status: fresh_exact_image_authority_required
+  task_stage: provider_free_repair_handoff
+  current_goal_authority: fresh_exact_image_authority_required
   provider_authority:
-    mode: paid
-    provider: runpod
-    cap_usd: 4
+    mode: none
+    provider: null
+    cap_usd: 0
+    historical_cap_usd: 4
     recurring_r2_ceiling_usd_per_month: 0
-    model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
+    model_id: null
     non_transferable: true
-    source: explicit_user_v2_07_bounded_qualification_grant
-    authorized_by_user_at: "2026-08-19T16:25:00Z"
-    resources:
-      - runpod_account_sujal_sha256_ce23456f
-      - runpod_eu_ro_1_mage_volume_sha256_eae4e1ec
-      - runpod_eu_ro_1_soulx_volume_sha256_2a8633e1
-      - runpod_eu_ro_1_rtx_4090_flex_catalog
-      - ghcr_videoforge_mage_v2_07_immutable_image
-      - runpod_v2_07_mage_queue_endpoint
-    authorized_operations:
-      - account_identity_lookup
-      - inventory_lookup
-      - quota_lookup
-      - rate_lookup
-      - region_lookup
-      - resource_identity_lookup
-      - resource_absence_lookup
-      - image_publication
-      - endpoint_create_or_update
-      - serverless_run
-      - serverless_status
-      - serverless_cancel
-      - endpoint_scale_down
-      - endpoint_template_delete_if_failed
+    source: fresh_exact_image_authority_required
+    authorized_by_user_at: null
+    resources: []
+    authorized_operations: []
     allowed_operations:
-      - account_identity_lookup
-      - inventory_lookup
-      - quota_lookup
-      - rate_lookup
-      - region_lookup
-      - resource_identity_lookup
-      - resource_absence_lookup
-      - image_publication
-      - endpoint_create_or_update
-      - serverless_run
-      - serverless_status
-      - serverless_cancel
-      - endpoint_scale_down
-      - endpoint_template_delete_if_failed
-    rate_snapshot:
-      - resource_id: runpod_serverless_4090_pro_published_rate
-        billing_unit: usd_per_second
-        usd_per_unit: 0.00031
-        checked_at: "2026-08-19"
-      - resource_id: runpod_standard_network_volume
-        billing_unit: usd_per_gb_month
-        usd_per_unit: 0.07
-        checked_at: "2026-08-19"
+      []
+    rate_snapshot: []
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Qualify only the exact Mage Serverless lane under the approved USD 4 finite cap; stop before V2-08."
-  provider_calls_authorized: true
+  goal: "Complete provider-free repair handoff for the exact Mage Serverless lane; obtain fresh exact-image authority before any publication or GPU work and stop before V2-08."
+  provider_calls_authorized: false
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 4
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
   credential_value_read_authorized: false
   model_downloads_authorized: false
-  worker_image_publication_authorized: true
-  sample_output_publication_authorized: true
-  gpu_use_authorized: true
+  worker_image_publication_authorized: false
+  sample_output_publication_authorized: false
+  gpu_use_authorized: false
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
-  authority_note: "User approved the exact V2-07 proposal at a USD 4 finite cap. Existing Mage/SoulX volumes remain retained separately; no volume mutation or V2-08 authority exists."
+  authority_note: "The prior USD 4 proposal covered the old immutable image and is closed after terminal handler failures and cleanup. The repaired image digest is a scope change; fresh exact-image authority with a new numeric finite cap is required. Existing Mage/SoulX volumes remain retained separately; no volume mutation or V2-08 authority exists."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   execution_status: blocked_after_repeated_handler_terminal_failure_and_throttle
-  execution_blocker: "Dynamic output authority/finalize and scoped hosted R2 signer are repaired and locally green. Multiple exact CUDA-13-pinned 32-item batches reached terminal provider status COMPLETED but handler output status FAILED with output keys limited to status, no provider error code, no durable output, and no signed receipt; a later exact attempt reached throttled before dispatch. Fresh catalog data reports RTX 4090/CUDA 13.0 globally HIGH and EU-RO-1 LOW, but this does not qualify the runtime. All disposable resources were deleted, signer route disabled, retained volumes unchanged, cumulative observed endpoint spend stayed under the USD 4 cap, and no output was accepted."
+  execution_blocker: "Dynamic output authority/finalize and scoped hosted R2 signer are repaired and locally green. Multiple exact CUDA-13-pinned 32-item batches reached terminal provider status COMPLETED but handler output status FAILED with output keys limited to status, no provider error code, no durable output, and no signed receipt; a later exact attempt reached throttled before dispatch. Local commit 1623fa1 adds a bounded non-reserved failure_code and the live verifier prefers it, but the published digest remains unchanged. Fresh catalog data reports RTX 4090/CUDA 13.0 globally HIGH and EU-RO-1 LOW, but this does not qualify the runtime. All disposable resources were deleted, signer route disabled, retained volumes unchanged, and no output was accepted. The old USD 4 authority is closed; fresh exact-image authority with a new numeric finite cap is required."
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_image_published_handler_terminal_failure_unqualified
