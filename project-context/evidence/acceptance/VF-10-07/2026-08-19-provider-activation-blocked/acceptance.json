@@ -161,7 +161,9 @@
     {"command": "pnpm context:validate", "exit_code": 0},
     {"command": "pnpm --filter @videoforge/web typecheck", "exit_code": 0},
     {"command": "pnpm --filter @videoforge/web build:staging", "exit_code": 0},
-    {"command": "git diff --check", "exit_code": 0}
+    {"command": "git diff --check", "exit_code": 0},
+    {"commit": "1c9b0de", "area": "canonical formatting and web lint repair after failure_code change", "result": "PASS"},
+    {"command": "CI=1 TURBO_FORCE=true pnpm verify", "exit_code": 0, "result": "28 turbo tasks; Cloudflare parity 1/1; package build/lint/typecheck/tests; worker suites; context/secret checks; installed Chrome 44/44"}
   ],
   "provider_catalog": {
     "query_scope": "read-only RunPod catalog, RTX 4090, CUDA 13.0, secure pool",
