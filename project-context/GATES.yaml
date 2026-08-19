@@ -5,13 +5,13 @@ evidence_root: "evidence/gates"
 # This registry contains only active V2 gates and accepted foundations still used by V2.
 gates:
   GATE_TENANCY_001:
-    status: open
+    status: closed
     blocks: v2_02_and_all_hosted_or_provider_work
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatetenancy001-accountworkspace-privacy"
     owner: V2-01
-    last_run: evidence/acceptance/VF-10-01/2026-08-15-tenant-cutover/acceptance.json
-    last_run_at: "2026-08-15"
-    result: metadata_and_artifact_isolation_green_hosted_rls_enforcement_open
+    last_run: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
+    last_run_at: "2026-08-19"
+    result: provider_free_and_hosted_two_account_non_superuser_rls_private_object_device_lease_isolation_green
     satisfied_locally:
       - additive_account_workspace_migration_0018
       - composite_database_ownership_on_every_tenant_table
@@ -22,17 +22,19 @@ gates:
       - installed_chrome_two_account_isolation
       - tenant_derived_artifact_keys_exact_ports_and_durable_receipts
       - job_local_scratch_and_terminal_cleanup_for_both_lanes
-    still_open:
-      - declared_rls_policies_are_unproven_until_a_non_superuser_role_runs_them_in_V2_06
+    satisfied_hosted:
+      - verified_google_two_account_positive_and_negative_isolation
+      - runtime_role_non_superuser_non_bypassrls_force_rls_all_tenant_tables
+      - private_r2_device_lease_project_output_owner_scope
 
   GATE_STORAGE_001:
-    status: open
+    status: closed
     blocks: production_artifact_transfer
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatestorage001-private-r2-and-scratch"
     owner: V2-02
-    last_run: evidence/acceptance/VF-10-02/2026-08-16-private-artifacts-reaudit/acceptance.json
-    last_run_at: "2026-08-16"
-    result: provider_free_contract_independently_audited_green_real_private_r2_composition_unproven
+    last_run: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
+    last_run_at: "2026-08-19"
+    result: provider_free_contract_and_hosted_private_r2_isolation_hash_delete_inventory_and_scratch_cleanup_green
     satisfied_locally:
       - immutable_trusted_tenant_project_revision_lane_job_artifact_keys
       - exact_short_lived_method_path_type_length_checksum_ports
@@ -43,17 +45,19 @@ gates:
       - job_keyed_local_scratch_with_path_symlink_cross_mount_guards
       - cleanup_on_success_failure_cancel_timeout_signal_and_refresh
       - superseded_raw_key_route_is_explicit_fixture_only_and_fail_closed
-    still_open:
-      - real_private_r2_composition_credentials_and_hosted_behavior_belong_to_V2_06
+    satisfied_hosted:
+      - private_standard_bucket_with_no_public_media_path
+      - exact_tenant_object_hash_parity_and_authenticated_delete
+      - post_delete_bucket_inventory_restored_with_zero_preview_writes
 
   GATE_QUEUE_001:
-    status: open
+    status: closed
     blocks: serverless_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatequeue001-fair-durable-admission"
     owner: V2-03
-    last_run: evidence/acceptance/VF-10-03/2026-08-16-independent-reaudit/acceptance.json
+    last_run: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
     last_run_at: "2026-08-16"
-    result: provider_free_implementation_independently_reaudited_green_full_runtime_cutover_waits_for_v2_05
+    result: provider_free_postgresql_admission_and_active_runtime_ui_cutover_green
     satisfied_locally:
       - durable_tenant_owned_video_and_preset_preview_requests
       - database_enforced_one_active_workload_per_account_and_two_distinct_account_slots
@@ -64,17 +68,15 @@ gates:
       - waiting_rows_create_zero_provider_or_preparation_work
       - private_two_account_installed_chrome_without_compute_controls
       - v2_05_admission_gated_per_video_runtime_state_proves_two_concurrent_tenants_plus_waiters
-    still_open:
-      - v2_05_ui_cutover_of_the_queue_surfaces_to_the_new_runtime
 
   GATE_SERVERLESS_CONTRACT_001:
-    status: open
+    status: closed
     blocks: endpoint_publication_or_run
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlesscontract001-provider-free-transport"
     owner: V2-04
     last_run: evidence/acceptance/VF-10-04/2026-08-16-output-binding-result-discovery-repair/acceptance.json
     last_run_at: "2026-08-16"
-    result: provider_free_v3_contract_green_live_serverless_and_runtime_cutover_unproven
+    result: provider_free_v3_contract_green_and_v2_05_active_runtime_composed_live_lane_delivery_owned_by_v2_07_and_v2_08
     satisfied_locally:
       - additive_v3_endpoint_authority_outbox_attempt_assignment_and_receipt_contracts
       - stable_dispatch_token_and_transactional_outbox_before_fake_run
@@ -89,18 +91,15 @@ gates:
       - superseded_pod_schemas_quarantined_read_only_and_queue_purge_forbidden
       - v2_05_application_runtime_composes_admission_preparation_lane_dispatch_acceptance_and_render
       - v2_05_database_fence_rejects_ordinary_writes_to_every_superseded_global_session_and_pod_contract
-    still_open:
-      - v2_05_ui_cutover_and_installed_chrome_two_account_journeys_still_read_the_superseded_fixture_projection
-      - live_endpoint_image_volume_worker_delivery_timing_billing_and_drain_proof_wait_for_later_checkpoints
 
   GATE_HOSTING_001:
     status: open
     blocks: hosted_production_claim
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatehosting001-hosted-controlcpu-plane"
     owner: V2-06
-    last_run: evidence/acceptance/VF-10-06/2026-08-19-mac-live-completion-1ad68ea/acceptance.json
+    last_run: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
     last_run_at: "2026-08-19"
-    result: mac_live_asr_render_cancel_backup_restore_rollback_and_immutable_release_green_windows_second_account_delete_and_independent_acceptance_open
+    result: final_live_hosting_personal_worker_two_account_delete_recovery_backup_restore_rollback_and_zero_spend_green_fresh_independent_reaudit_pending
 
   GATE_SERVERLESS_MAGE_001:
     status: open

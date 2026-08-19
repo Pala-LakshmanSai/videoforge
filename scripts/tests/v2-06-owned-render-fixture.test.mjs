@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
+import { dirname, resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   APPROVED_MIGRATIONS,
@@ -25,13 +28,30 @@ import {
 } from "../../deploy/v2-06/provision-owned-render-fixture.mjs";
 
 const script = "deploy/v2-06/provision-owned-render-fixture.mjs";
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const fixtureRoot = resolve(repositoryRoot, "artifacts/local-media");
+const requiredFixtureFiles = [
+  "runs/revision_local_owned_001/attempt_render_local_004/render-input.json",
+  "runs/revision_local_owned_001/attempt_render_local_004/acceptance-evidence.json",
+];
+const missingFixtureFiles = requiredFixtureFiles.filter(
+  (relativePath) => !existsSync(resolve(fixtureRoot, relativePath)),
+);
+const fixtureSkipReason = missingFixtureFiles.length
+  ? `private ignored artifacts/local-media render fixture is absent; missing ${missingFixtureFiles.join(", ")}`
+  : false;
+const fixtureTestOptions = { skip: fixtureSkipReason };
 const scope = {
   user_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   account_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
   workspace_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
 };
 
-test("V2-06 owned fixture uses canonical local owned slice and full bytes", async () => {
+function fixture(name, fn) {
+  return test(name, fixtureTestOptions, fn);
+}
+
+fixture("V2-06 owned fixture uses canonical local owned slice and full bytes", async () => {
   const fixture = await verifyLocalFixture();
   assert.equal(fixture.evidence.provider_calls_authorized, false);
   assert.equal(fixture.evidence.external_spend_usd, 0);
@@ -40,7 +60,7 @@ test("V2-06 owned fixture uses canonical local owned slice and full bytes", asyn
   assert.ok(fixture.output.bytes.length > 0);
 });
 
-test("V2-06 hosted plan rewrites IDs, hashes, and tenant object lineage", async () => {
+fixture("V2-06 hosted plan rewrites IDs, hashes, and tenant object lineage", async () => {
   const fixture = await verifyLocalFixture();
   const plan = planFixture(fixture, scope, "2026-08-17T12:00:00Z");
   assert.match(plan.projectId, /^[0-9a-f-]{36}$/u);
@@ -72,7 +92,7 @@ test("V2-06 hosted plan rewrites IDs, hashes, and tenant object lineage", async 
   );
 });
 
-test("CLI defaults to dry-run and never prints credentials", () => {
+fixture("CLI defaults to dry-run and never prints credentials", () => {
   const result = spawnSync(process.execPath, [script, "--dry-run"], {
     encoding: "utf8",
     env: {
@@ -155,15 +175,14 @@ test("live provider config is pinned to the approved staging resources", () => {
   );
 });
 
-test("source path, migration chain, and activation caps are hard-pinned", async () => {
-  assert.doesNotThrow(() =>
-    assertApprovedSourceLocation(
-      "/Users/lakshmansai/Documents/videoforge/artifacts/local-media",
-      "attempt_render_local_004",
-    ),
-  );
+fixture("source path, migration chain, and activation caps are hard-pinned", async () => {
+  assert.doesNotThrow(() => assertApprovedSourceLocation(fixtureRoot, "attempt_render_local_004"));
   assert.throws(
-    () => assertApprovedSourceLocation("/tmp/attacker-owned-media", "attempt_render_local_004"),
+    () =>
+      assertApprovedSourceLocation(
+        resolve(fixtureRoot, "..", "attacker-owned-media"),
+        "attempt_render_local_004",
+      ),
     /exact approved pinned V2-06 owned local-slice path/u,
   );
   assert.equal(APPROVED_MIGRATIONS.length, 36);
@@ -237,96 +256,102 @@ test("R2 conditional create is race-safe and exact after a concurrent winner", a
   assert.equal(calls, 4);
 });
 
-test("R2 partial failure records an immutable reconcile receipt without automatic deletion", async () => {
-  const fixture = await verifyLocalFixture();
-  const plan = planFixture(fixture, scope, "2026-08-17T12:00:00Z");
-  plan.sourceRenderInputSha256 = fixture.inputHash;
-  plan.sourceEvidenceSha256 = fixture.evidenceHash;
-  const intent = buildR2UploadIntent(plan);
-  const expected = buildR2FailureReceipt(plan, intent);
-  const queries = [];
-  const client = {
-    async query(sql, params = []) {
-      queries.push({ sql, params });
-      if (sql.startsWith("SELECT workspace_id::text AS workspace_id")) {
-        return {
-          rows: [
-            {
-              workspace_id: plan.scope.workspace_id,
-              idempotency_key: expected.idempotencyKey,
-              operation: expected.operation,
-              input_hash: expected.inputHash,
-              result_codec: "repository-result/v1",
-              result_payload: expected.resultPayload,
-              result_hash: expected.resultHash,
-              created_at: plan.seedAt,
-            },
-          ],
-        };
-      }
-      return { rows: [] };
-    },
-  };
-  const recorded = await ensureR2FailureReceipt(client, plan, intent);
-  assert.equal(recorded.idempotencyKey, expected.idempotencyKey);
-  assert.equal(recorded.resultPayload.status, "R2_UPLOAD_FAILED");
-  assert.equal(recorded.resultPayload.cleanup.automatic_delete, false);
-  assert.equal(recorded.resultPayload.cleanup.required, true);
-  assert.equal(recorded.resultPayload.r2_objects.length, MAX_R2_OBJECT_COUNT);
-  assert.ok(recorded.resultPayload.r2_objects.every((row) => row.state === "RECONCILE_REQUIRED"));
-  assert.ok(queries.some(({ sql }) => sql.includes("INSERT INTO repository_mutation_receipts")));
-  assert.ok(queries.some(({ sql }) => sql === "COMMIT"));
-});
+fixture(
+  "R2 partial failure records an immutable reconcile receipt without automatic deletion",
+  async () => {
+    const fixture = await verifyLocalFixture();
+    const plan = planFixture(fixture, scope, "2026-08-17T12:00:00Z");
+    plan.sourceRenderInputSha256 = fixture.inputHash;
+    plan.sourceEvidenceSha256 = fixture.evidenceHash;
+    const intent = buildR2UploadIntent(plan);
+    const expected = buildR2FailureReceipt(plan, intent);
+    const queries = [];
+    const client = {
+      async query(sql, params = []) {
+        queries.push({ sql, params });
+        if (sql.startsWith("SELECT workspace_id::text AS workspace_id")) {
+          return {
+            rows: [
+              {
+                workspace_id: plan.scope.workspace_id,
+                idempotency_key: expected.idempotencyKey,
+                operation: expected.operation,
+                input_hash: expected.inputHash,
+                result_codec: "repository-result/v1",
+                result_payload: expected.resultPayload,
+                result_hash: expected.resultHash,
+                created_at: plan.seedAt,
+              },
+            ],
+          };
+        }
+        return { rows: [] };
+      },
+    };
+    const recorded = await ensureR2FailureReceipt(client, plan, intent);
+    assert.equal(recorded.idempotencyKey, expected.idempotencyKey);
+    assert.equal(recorded.resultPayload.status, "R2_UPLOAD_FAILED");
+    assert.equal(recorded.resultPayload.cleanup.automatic_delete, false);
+    assert.equal(recorded.resultPayload.cleanup.required, true);
+    assert.equal(recorded.resultPayload.r2_objects.length, MAX_R2_OBJECT_COUNT);
+    assert.ok(recorded.resultPayload.r2_objects.every((row) => row.state === "RECONCILE_REQUIRED"));
+    assert.ok(queries.some(({ sql }) => sql.includes("INSERT INTO repository_mutation_receipts")));
+    assert.ok(queries.some(({ sql }) => sql === "COMMIT"));
+  },
+);
 
-test("R2 upload orchestration fences a partial failure through the real catch path", async () => {
-  const fixture = await verifyLocalFixture();
-  const plan = planFixture(fixture, scope, "2026-08-17T12:00:00Z");
-  plan.sourceRenderInputSha256 = fixture.inputHash;
-  plan.sourceEvidenceSha256 = fixture.evidenceHash;
-  const intent = buildR2UploadIntent(plan);
-  const expected = buildR2FailureReceipt(plan, intent);
-  const queries = [];
-  const client = {
-    async query(sql, params = []) {
-      queries.push({ sql, params });
-      if (sql.startsWith("SELECT workspace_id::text AS workspace_id")) {
-        return {
-          rows: [
-            {
-              workspace_id: plan.scope.workspace_id,
-              idempotency_key: expected.idempotencyKey,
-              operation: expected.operation,
-              input_hash: expected.inputHash,
-              result_codec: "repository-result/v1",
-              result_payload: expected.resultPayload,
-              result_hash: expected.resultHash,
-              created_at: plan.seedAt,
-            },
-          ],
-        };
-      }
-      return { rows: [] };
-    },
-  };
-  let uploads = 0;
-  await assert.rejects(
-    () =>
-      uploadR2RowsWithReconciliation({
-        client,
-        plan,
-        intent,
-        upload: async () => {
-          uploads += 1;
-          if (uploads === 2) throw new Error("injected R2 failure");
-          return { state: "CREATED" };
-        },
-      }),
-    /immutable failure receipt/u,
-  );
-  assert.equal(uploads, 2);
-  assert.ok(queries.some(({ sql }) => sql.includes("INSERT INTO repository_mutation_receipts")));
-  assert.ok(queries.some(({ sql }) => sql === "COMMIT"));
-});
+fixture(
+  "R2 upload orchestration fences a partial failure through the real catch path",
+  async () => {
+    const fixture = await verifyLocalFixture();
+    const plan = planFixture(fixture, scope, "2026-08-17T12:00:00Z");
+    plan.sourceRenderInputSha256 = fixture.inputHash;
+    plan.sourceEvidenceSha256 = fixture.evidenceHash;
+    const intent = buildR2UploadIntent(plan);
+    const expected = buildR2FailureReceipt(plan, intent);
+    const queries = [];
+    const client = {
+      async query(sql, params = []) {
+        queries.push({ sql, params });
+        if (sql.startsWith("SELECT workspace_id::text AS workspace_id")) {
+          return {
+            rows: [
+              {
+                workspace_id: plan.scope.workspace_id,
+                idempotency_key: expected.idempotencyKey,
+                operation: expected.operation,
+                input_hash: expected.inputHash,
+                result_codec: "repository-result/v1",
+                result_payload: expected.resultPayload,
+                result_hash: expected.resultHash,
+                created_at: plan.seedAt,
+              },
+            ],
+          };
+        }
+        return { rows: [] };
+      },
+    };
+    let uploads = 0;
+    await assert.rejects(
+      () =>
+        uploadR2RowsWithReconciliation({
+          client,
+          plan,
+          intent,
+          upload: async () => {
+            uploads += 1;
+            if (uploads === 2) throw new Error("injected R2 failure");
+            return { state: "CREATED" };
+          },
+        }),
+      /immutable failure receipt/u,
+    );
+    assert.equal(uploads, 2);
+    assert.ok(queries.some(({ sql }) => sql.includes("INSERT INTO repository_mutation_receipts")));
+    assert.ok(queries.some(({ sql }) => sql === "COMMIT"));
+  },
+);
 
 test("live fixture supports protected libpq and Wrangler without new credential material", async () => {
   const source = await readFile(script, "utf8");
@@ -341,7 +366,7 @@ test("live fixture supports protected libpq and Wrangler without new credential 
   );
 });
 
-test("live fixture accepts canonical PostgreSQL UUIDs without RFC variant bits", async () => {
+fixture("live fixture accepts canonical PostgreSQL UUIDs without RFC variant bits", async () => {
   const fixture = await verifyLocalFixture();
   assert.doesNotThrow(() =>
     planFixture(

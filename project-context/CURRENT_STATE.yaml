@@ -145,8 +145,8 @@ repository:
   branch_published: true
   current_source_head: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   current_source_head_semantics: deployed_executable_source_identity_not_documentation_head
-  latest_repository_handoff_commit: "ec5f92844d4121e7a593c099081e5ff6359497b1"
-  last_verified_repository_head: "ec5f92844d4121e7a593c099081e5ff6359497b1"
+  latest_repository_handoff_commit: "e2720782949917c3c06e2aecb20016658bb6c387"
+  last_verified_repository_head: "e2720782949917c3c06e2aecb20016658bb6c387"
   current_source_head_note: "Executable source e673527 is deployed as Worker 32bfc4bf-4421-4703-9095-2afc3515fda3 with source/status parity. Later commits are documentation, evidence, and bounded deployment-tooling handoffs; auditors must resolve the actual Git HEAD independently. The first final audit's repository findings are reconciled, a fresh re-audit is pending, and V2-07 is blocked."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
@@ -342,10 +342,6 @@ last_known_provider_resource_truth:
   note: "The 2026-08-19T14:28:04.336Z redacted API refresh shows zero Pods, endpoints, active Serverless workers, and private templates plus the two expected 50 GB retained volumes. No RunPod mutation or compute occurred; no further live refresh is authorized in the independent audit."
 
 blocking_gates_for_production:
-  - GATE_TENANCY_001
-  - GATE_STORAGE_001
-  - GATE_QUEUE_001
-  - GATE_SERVERLESS_CONTRACT_001
   - GATE_HOSTING_001
   - GATE_SERVERLESS_MAGE_001
   - GATE_SERVERLESS_SOULX_001
@@ -411,13 +407,13 @@ recommended_next_task:
 verification:
   state: v2_06_independent_audit_findings_reconciled_fresh_reaudit_pending_v2_07_blocked
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
-  verified_commit_note: "Repaired source e673527 is deployed as Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3. The demo9 positive tenant/device/lease/ASR/render/Chrome journey, primary-account negative isolation, authenticated durable DELETE, exact and bucket-wide R2 read-back, full disposable cleanup, Mac revoke/uninstall, final-source rollback drill, migration 0036/FORCE RLS, and fresh RunPod zero-worker inventory are recorded. The first fresh audit found one stale-state P1 and one cap-provenance P2; both repository records are reconciled and a fresh re-audit remains required before V2-07."
+  verified_commit_note: "Repaired source e673527 is deployed as Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3. The demo9 positive tenant/device/lease/ASR/render/Chrome journey, primary-account negative isolation, authenticated durable DELETE, exact and bucket-wide R2 read-back, full disposable cleanup, Mac revoke/uninstall, final-source rollback drill, migration 0036/FORCE RLS, and fresh RunPod zero-worker inventory are recorded. Two fresh audits found only repository-handoff defects; all identified state, cap-provenance, task-header, gate-registry, and rollback-documentation records are reconciled. A final fresh re-audit remains required before V2-07."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
   acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
   latest_independent_audit:
-    recorded_at_utc: "2026-08-19T14:53:43Z"
-    evidence: evidence/acceptance/VF-10-06/2026-08-19-final-live-closure-independent-audit-1/acceptance.json
-    result: FAIL_zero_p0_one_p1_one_p2
+    recorded_at_utc: "2026-08-19T15:07:54Z"
+    evidence: evidence/acceptance/VF-10-06/2026-08-19-final-live-closure-independent-audit-2/acceptance.json
+    result: FAIL_zero_p0_one_p1_zero_p2_live_evidence_otherwise_pass_ready
     findings_reconciled_in_repository: true
     fresh_independent_reaudit_required: true
   latest_live_check:
@@ -796,9 +792,15 @@ verification:
     first_final_independent_audit_findings:
       - "P1 stale normative V2-06 state contradicted the final live closure."
       - "P2 the explicit USD 1 final-closure cap lacked a separate preserved authority record."
+    second_final_independent_audit: evidence/acceptance/VF-10-06/2026-08-19-final-live-closure-independent-audit-2/acceptance.json
+    second_final_independent_audit_result: FAIL_zero_p0_one_p1_zero_p2_live_evidence_otherwise_pass_ready
+    second_final_independent_audit_finding: "P1 stale task-header and gate-registry wording contradicted the reconciled final live closure."
     reconciliation:
       stale_normative_state_removed: true
       final_cap_authority_separately_preserved: true
+      stale_task_header_removed: true
+      gate_registry_reconciled: true
+      rollback_two_step_semantics_documented: true
       historical_failed_matrices_retained_as_historical_evidence_only: true
       fresh_independent_reaudit_required: true
     delivered:
@@ -815,7 +817,7 @@ verification:
     commands:
       - "CI=1 TURBO_FORCE=true pnpm verify: PASS; web 352 passed and 1 skipped, script tests 70/70, six worker suites, Cloudflare parity 1/1, installed Chrome 44/44."
       - "pnpm context:validate, pnpm contracts:check, pnpm validate:v2-06-deployment, pnpm secret:scan, pnpm format:check, and git diff --check: PASS."
-      - "The focused owned-render fixture command passed 16/16 in the operator workspace with the protected ignored local input present; in a clean independent worktree it exits 1 with 9 passed/7 failed because that private input is intentionally absent. This is not hosted proof and is not a checkpoint acceptance gate."
+      - "The focused command passes 16/16 in the operator workspace with the protected ignored fixture present. Repository-only worktrees now run the R2/tooling assertions and explicitly skip fixture-dependent cases when that private corpus is absent; neither mode is hosted proof."
     remaining_gates:
       - "A fresh repository-and-immutable-evidence-only independent re-audit must return PASS before V2-07."
     resource_truth:
@@ -839,11 +841,12 @@ verification:
 audit_evidence:
   v2_06_final_live_closure_authority: evidence/acceptance/VF-10-06/2026-08-19-final-live-closure-authority/acceptance.json
   v2_06_final_live_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
-  v2_06_latest_independent_audit: evidence/acceptance/VF-10-06/2026-08-19-final-live-closure-independent-audit-1/acceptance.json
+  v2_06_latest_independent_audit: evidence/acceptance/VF-10-06/2026-08-19-final-live-closure-independent-audit-2/acceptance.json
+  v2_06_first_final_independent_audit: evidence/acceptance/VF-10-06/2026-08-19-final-live-closure-independent-audit-1/acceptance.json
   v2_06_historical_completion_matrix: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/acceptance.json
   v2_06_historical_live_finding_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
   v2_06_historical_read_only_preflight: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/read-only-preflight-3d8d467.json
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
   current_goal_scope: fresh_repository_and_immutable_evidence_only_independent_reaudit
-  result: FIRST_FRESH_AUDIT_FAIL_ZERO_P0_ONE_P1_ONE_P2_FINDINGS_RECONCILED_FRESH_REAUDIT_PENDING
+  result: TWO_FRESH_AUDITS_FOUND_ONLY_RECONCILED_REPOSITORY_HANDOFF_DEFECTS_FINAL_REAUDIT_PENDING
   v2_07_status: blocked_not_safe_to_start

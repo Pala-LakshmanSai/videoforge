@@ -1,0 +1,35 @@
+{
+  "schema": "videoforge.v2-06-independent-audit/v1",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T15:07:54Z",
+  "thread_id": "01a01a8a-8f85-76e3-8dea-9362a9f5a4f5",
+  "repository_head": "ec5f92844d4121e7a593c099081e5ff6359497b1",
+  "scope": "Fresh repository-and-supplied-immutable-evidence-only re-audit; no credentials, live provider calls, mutations, repairs, or spend.",
+  "result": "FAIL_REPOSITORY_HANDOFF_LIVE_EVIDENCE_OTHERWISE_PASS_READY",
+  "severity_counts": {"P0": 0, "P1": 1, "P2": 0},
+  "findings": [
+    {
+      "id": "P1-STALE-TASK-AND-GATE-REGISTRY",
+      "severity": "P1",
+      "finding": "The task brief header retained an older three-P1/one-P2 result and GATES.yaml retained the pre-closure hosting result, conflicting with reconciled CURRENT_STATE and final closure evidence.",
+      "status_after_audit": "REPOSITORY_RECONCILIATION_REQUIRED"
+    }
+  ],
+  "verified_supplied_evidence": [
+    "separate historical USD 3 authority and final-closure USD 1 authority with USD 0 actual spend and no new recurring resource",
+    "hosted Worker, Workflow, R2, Neon, Better Auth, non-superuser FORCE RLS, positive secondary tenant, and negative primary isolation",
+    "authenticated DELETE HTTP 204, durable RETENTION_DELETED, exact 404 read-backs, and restored 55-object R2 inventory",
+    "Workflow recovery, stale lease, cancellation, backup/restore, and rollback/restore",
+    "zero RunPod Pods, endpoints, workers, and templates; two untouched 50 GB volumes at USD 7/month; GPU disabled"
+  ],
+  "commands_and_exits": [
+    {"command": "pnpm context:validate", "exit_code": 0},
+    {"command": "pnpm validate:v2-06-deployment", "exit_code": 0},
+    {"command": "pnpm verify:active-runtime", "exit_code": 0},
+    {"command": "pnpm secret:scan", "exit_code": 0},
+    {"command": "pnpm format:check", "exit_code": 0},
+    {"command": "git diff --check", "exit_code": 0},
+    {"command": "focused 16-test V2-06 command in clean worktree", "exit_code": 1, "result": "9 passed and 7 failed because the intentionally ignored private local render input was absent; not a hosted defect"}
+  ],
+  "v2_07_safety": "BLOCKED_PENDING_REPOSITORY_RECONCILIATION_AND_FRESH_INDEPENDENT_REAUDIT"
+}

@@ -1,8 +1,8 @@
 # VideoForge: start here
 
-Status: V2-06 live closure is recorded. The first fresh audit found one stale-state P1 and one
-cap-provenance P2; both repository records are reconciled and a fresh evidence-only re-audit is
-pending. V2-07 remains blocked. No live verification, mutation, or spend is currently authorized.
+Status: V2-06 live closure is recorded. Two fresh audits found only repository-handoff defects;
+all are reconciled and a final evidence-only re-audit is pending. V2-07 remains blocked. No live
+verification, mutation, or spend is currently authorized.
 Context schema: `2.0`
 Last updated: `2026-08-19`
 
