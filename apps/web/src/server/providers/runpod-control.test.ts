@@ -209,6 +209,36 @@ describe("RunPod scale-zero control", () => {
     expect(() => guard.assertDispatchAllowed()).not.toThrow();
   });
 
+  it("keeps provider stream diagnostics redacted to the terminal status tuple", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      expect(new URL(String(input)).pathname).toBe("/endpoint_01/stream/job_01");
+      return response({
+        status: "COMPLETED",
+        output: {
+          status: "FAILED",
+          error: { code: "MAGE_CUDA_VERSION_INCOMPATIBLE", message: "runtime rejected" },
+          secret: "must-not-escape",
+        },
+        logs: "must-not-escape",
+      });
+    });
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(client.diagnostic("job_01")).resolves.toEqual({
+      status: "COMPLETED",
+      code: "MAGE_CUDA_VERSION_INCOMPATIBLE",
+      message: "runtime rejected",
+      reason: null,
+    });
+  });
+
   it("keeps ambiguous dispatch blocked until an independent zero confirmation", async () => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);
