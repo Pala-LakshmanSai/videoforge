@@ -14,14 +14,16 @@
 
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const requireWeb = createRequire(path.join(ROOT, "apps/web/package.json"));
+const requireControlPlane = createRequire(path.join(ROOT, "packages/control-plane/package.json"));
 const FUTURE_NEON_DRIVER = "@neondatabase/serverless";
 const SOURCE_ROOT = path.join(ROOT, "artifacts/local-media");
 const SOURCE_ATTEMPT = "attempt_render_local_004";
@@ -773,6 +775,51 @@ async function ensureR2(client, config, row, fetchImpl = fetch) {
   if (!(await verifyR2Object(client, config, row, fetchImpl)))
     error("R2 post-upload verification for " + row.name + " found no object");
   return "UPLOADED_VERIFIED";
+}
+
+async function ensureWranglerR2(row) {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), "videoforge-v2-06-r2-"));
+  const downloaded = path.join(temporaryDirectory, "downloaded-object");
+  const upload = path.join(temporaryDirectory, "upload-object");
+  const objectPath = `${APPROVED_R2_BUCKET}/${row.objectKey}`;
+  const run = (args) =>
+    spawnSync("pnpm", ["--filter", "@videoforge/web", "exec", "wrangler", ...args], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+  try {
+    const existing = run(["r2", "object", "get", objectPath, "--remote", "--file", downloaded]);
+    if (existing.status === 0) {
+      const bytes = await readFile(downloaded);
+      if (bytes.length !== row.bytes.length || sha256(bytes) !== row.digest)
+        error("Wrangler R2 object " + row.name + " differs from exact fixture bytes");
+      return "REUSED_EXACT";
+    }
+    if (!/not found|404|does not exist/iu.test(`${existing.stdout}\n${existing.stderr}`))
+      error("Wrangler R2 preflight for " + row.name + " failed closed");
+    await writeFile(upload, row.bytes, { mode: 0o600, flag: "wx" });
+    const created = run([
+      "r2",
+      "object",
+      "put",
+      objectPath,
+      "--remote",
+      "--file",
+      upload,
+      "--content-type",
+      row.contentType,
+      "--force",
+    ]);
+    if (created.status !== 0) error("Wrangler R2 upload for " + row.name + " failed");
+    const verified = run(["r2", "object", "get", objectPath, "--remote", "--file", downloaded]);
+    if (verified.status !== 0) error("Wrangler R2 verification for " + row.name + " failed");
+    const bytes = await readFile(downloaded);
+    if (bytes.length !== row.bytes.length || sha256(bytes) !== row.digest)
+      error("Wrangler R2 post-upload bytes for " + row.name + " drifted");
+    return "UPLOADED_VERIFIED";
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
 }
 
 function assertProviderConfig(databaseUrl, r2Config) {
@@ -1755,6 +1802,8 @@ async function main(argv = process.argv.slice(2)) {
   }
   if (process.env.V2_06_RENDER_FIXTURE_R2_CONFIRM !== "YES") error("R2 confirmation is missing");
   if (process.env.V2_06_RENDER_FIXTURE_DB_CONFIRM !== "YES") error("Neon confirmation is missing");
+  const useProtectedPgService = process.env.V2_06_RENDER_FIXTURE_USE_PG_SERVICE === "YES";
+  const useWranglerR2 = process.env.V2_06_RENDER_FIXTURE_USE_WRANGLER === "YES";
   const databaseUrl = process.env.V2_06_MIGRATION_DATABASE_URL;
   const r2Config = {
     accountId: process.env.V2_06_R2_ACCOUNT_ID,
@@ -1764,19 +1813,43 @@ async function main(argv = process.argv.slice(2)) {
     region: process.env.V2_06_R2_REGION ?? APPROVED_R2_REGION,
   };
   for (const [value, name] of [
-    [databaseUrl, "V2_06_MIGRATION_DATABASE_URL"],
     [r2Config.accountId, "V2_06_R2_ACCOUNT_ID"],
     [r2Config.bucket, "V2_06_R2_BUCKET"],
-    [r2Config.accessKeyId, "V2_06_R2_ACCESS_KEY_ID"],
-    [r2Config.secretAccessKey, "V2_06_R2_SECRET_ACCESS_KEY"],
+    ...(!useProtectedPgService ? [[databaseUrl, "V2_06_MIGRATION_DATABASE_URL"]] : []),
+    ...(!useWranglerR2
+      ? [
+          [r2Config.accessKeyId, "V2_06_R2_ACCESS_KEY_ID"],
+          [r2Config.secretAccessKey, "V2_06_R2_SECRET_ACCESS_KEY"],
+        ]
+      : []),
   ]) {
     if (typeof value !== "string" || value.length === 0)
       error(name + " is required for live mutation");
   }
-  assertProviderConfig(databaseUrl, r2Config);
-  const { Pool } = requireWeb(FUTURE_NEON_DRIVER);
+  if (useProtectedPgService) {
+    if (
+      process.env.PGHOST !== APPROVED_NEON_HOST ||
+      process.env.PGDATABASE !== APPROVED_NEON_DATABASE ||
+      process.env.PGUSER !== APPROVED_NEON_MIGRATION_ROLE ||
+      process.env.PGSSLMODE !== APPROVED_NEON_SSLMODE ||
+      typeof process.env.PGPASSFILE !== "string" ||
+      process.env.PGPASSFILE.length === 0
+    )
+      error("protected PostgreSQL environment is not the approved owner service");
+    if (
+      r2Config.accountId !== APPROVED_R2_ACCOUNT_ID ||
+      r2Config.bucket !== APPROVED_R2_BUCKET ||
+      r2Config.region !== APPROVED_R2_REGION
+    )
+      error("R2 config is not the approved V2-06 account/bucket/region");
+  } else {
+    assertProviderConfig(databaseUrl, r2Config);
+  }
+  const { Pool } = useProtectedPgService
+    ? requireControlPlane("pg")
+    : requireWeb(FUTURE_NEON_DRIVER);
   const pool = new Pool({
-    connectionString: databaseUrl,
+    ...(useProtectedPgService ? {} : { connectionString: databaseUrl }),
     max: 1,
     application_name: "videoforge-v2-06-owned-render-fixture",
     options: "-c search_path=public,pg_catalog",
@@ -1791,12 +1864,12 @@ async function main(argv = process.argv.slice(2)) {
     plan.sourceRenderInputSha256 = fixture.inputHash;
     plan.sourceEvidenceSha256 = fixture.evidenceHash;
     plan.r2UploadIntent = await ensureR2UploadIntent(client, plan);
-    const r2 = makeR2(r2Config);
+    const r2 = useWranglerR2 ? null : makeR2(r2Config);
     const r2States = await uploadR2RowsWithReconciliation({
       client,
       plan,
       intent: plan.r2UploadIntent,
-      upload: (row) => ensureR2(r2, r2Config, row),
+      upload: (row) => (useWranglerR2 ? ensureWranglerR2(row) : ensureR2(r2, r2Config, row)),
     });
 
     try {

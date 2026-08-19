@@ -325,3 +325,15 @@ test("R2 upload orchestration fences a partial failure through the real catch pa
   assert.ok(queries.some(({ sql }) => sql.includes("INSERT INTO repository_mutation_receipts")));
   assert.ok(queries.some(({ sql }) => sql === "COMMIT"));
 });
+
+test("live fixture supports protected libpq and Wrangler without new credential material", async () => {
+  const source = await readFile(script, "utf8");
+  assert.match(source, /V2_06_RENDER_FIXTURE_USE_PG_SERVICE/u);
+  assert.match(source, /V2_06_RENDER_FIXTURE_USE_WRANGLER/u);
+  assert.match(source, /requireControlPlane\("pg"\)/u);
+  assert.match(source, /"wrangler", \.\.\.args/u);
+  assert.doesNotMatch(
+    source.match(/async function ensureWranglerR2[\s\S]*?\n\}\n/u)?.[0] ?? "",
+    /object", "delete/u,
+  );
+});
