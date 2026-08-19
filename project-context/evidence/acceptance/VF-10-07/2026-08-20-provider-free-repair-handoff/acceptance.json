@@ -110,6 +110,18 @@
     "rtx4090_cuda13_availability": "HIGH_GLOBAL_LOW_EU_RO_1",
     "current_window_settled_endpoint_billing_usd": 0.004730000044219196
   },
+  "read_only_runpod_inventory_refresh": {
+    "checked_at": "2026-08-19T22:49:42.220Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "retained_network_volumes": [
+      {"id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be", "size_gb": 50},
+      {"id_sha256": "sha256:eae4e1ece86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619", "size_gb": 50}
+    ],
+    "provider_mutation": false
+  },
   "authority_boundary": {
     "current_mode": "none",
     "old_finite_cap_usd_closed": 4,
