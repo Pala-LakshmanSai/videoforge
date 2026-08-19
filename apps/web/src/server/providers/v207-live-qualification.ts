@@ -423,9 +423,13 @@ async function main(): Promise<void> {
   let success = false;
   try {
     await harness.create();
+    console.error("v207:create-ready");
     const cold = await createBatch("v207-cold-20260820", nonce);
+    console.error("v207:cold-ports-ready");
     const coldJob = await harness.dispatchBatch(cold.input);
+    console.error("v207:cold-dispatched");
     const coldResult = await harness.reconcile(coldJob.id);
+    console.error("v207:cold-terminal");
     const coldEvidence = await verifyBatch(
       coldResult,
       cold.objectKeys,
@@ -439,8 +443,10 @@ async function main(): Promise<void> {
     evidence.duplicate_delivery_same_job = true;
     await harness.confirmWarmIdle();
     const warm = await createBatch("v207-warm-20260820", nonce);
+    console.error("v207:warm-ports-ready");
     const warmJob = await harness.dispatchBatch(warm.input);
     const warmResult = await harness.reconcile(warmJob.id);
+    console.error("v207:warm-terminal");
     const warmEvidence = await verifyBatch(
       warmResult,
       warm.objectKeys,
