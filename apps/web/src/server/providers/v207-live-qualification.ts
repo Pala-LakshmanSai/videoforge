@@ -52,19 +52,27 @@ const sleep = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 async function routePort(body: AnyRecord, nonce: string): Promise<AnyRecord> {
-  const response = await fetch(ROUTE, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-videoforge-v207-authority": nonce,
-    },
-    body: JSON.stringify(body),
-  });
-  const value = (await response.json()) as AnyRecord;
-  if (!response.ok || typeof value.url !== "string" || !/^https:\/\//u.test(value.url)) {
-    throw new Error(`V207_OUTPUT_PORT_${response.status}`);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await fetch(ROUTE, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "connection": "close",
+        "x-videoforge-v207-authority": nonce,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const value = (await response.json()) as AnyRecord;
+    if (response.ok && typeof value.url === "string" && /^https:\/\//u.test(value.url)) {
+      return value;
+    }
+    if (response.status !== 503 || attempt === 2) {
+      throw new Error(`V207_OUTPUT_PORT_${response.status}`);
+    }
+    await sleep(500 * (attempt + 1));
   }
-  return value;
+  throw new Error("V207_OUTPUT_PORT_UNREACHABLE");
 }
 
 async function billingAmount(apiKey: string): Promise<number> {
@@ -145,6 +153,7 @@ async function createBatch(
     outputPutUrls.push(signed.url);
     objectKeys.push(objectKey);
     reservationIds.push(authority.reservation_id);
+    if ((index + 1) % 8 === 0) console.error(`v207:ports-${attemptId}-${index + 1}`);
   }
   const items = Array.from({ length: 32 }, (_, index) => {
     const positivePrompt = `A documentary photograph of a red apple on a wooden table, scene ${index + 1}`;
