@@ -207,7 +207,11 @@ def _request_json(
         url,
         data=None if body is None else _canonical(body),
         method=method,
-        headers={**headers, **({"content-type": "application/json"} if body is not None else {})},
+        headers={
+            "user-agent": "VideoForge-Worker",
+            **headers,
+            **({"content-type": "application/json"} if body is not None else {}),
+        },
     )
     try:
         with urllib.request.urlopen(request, timeout=timeout, context=https_context()) as response:

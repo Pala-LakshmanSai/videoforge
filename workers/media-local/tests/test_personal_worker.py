@@ -108,6 +108,25 @@ class PersonalWorkerContractTests(unittest.TestCase):
         self.assertEqual(request.get_header("User-agent"), _USER_AGENT)
         self.assertEqual(request.get_header("Accept"), "application/json")
 
+    def test_lease_requests_identify_the_worker_to_cloudflare(self) -> None:
+        response = Mock(status=200)
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        response.read.return_value = b"{}"
+        with patch(
+            "videoforge_media_local.personal_execution.urllib.request.urlopen",
+            return_value=response,
+        ) as urlopen:
+            status, body = personal_execution._request_json(
+                "https://app.example.test/api/v2/media-worker/leases/lease/heartbeat",
+                "POST",
+                {"authorization": "Bearer redacted"},
+                {},
+            )
+        self.assertEqual((status, body), (200, {}))
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.get_header("User-agent"), "VideoForge-Worker")
+
     def test_requests_reject_non_https_urls_before_network_access(self) -> None:
         with patch("videoforge_media_local.personal_worker.urllib.request.urlopen") as urlopen:
             with self.assertRaisesRegex(ValueError, "HTTPS"):

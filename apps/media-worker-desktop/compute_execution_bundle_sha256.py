@@ -158,7 +158,7 @@ def main() -> int:
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--format", choices=("sha256", "json"), default="sha256")
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--expected-version", default="0.1.9")
+    parser.add_argument("--expected-version", default="0.1.10")
     args = parser.parse_args()
 
     root = args.root.resolve()
