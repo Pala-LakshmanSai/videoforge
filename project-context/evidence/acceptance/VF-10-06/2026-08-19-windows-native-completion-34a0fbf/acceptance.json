@@ -1,0 +1,148 @@
+{
+  "schema_version": "videoforge.v2-06-windows-native-completion/v1",
+  "checkpoint": "V2-06",
+  "result": "PASS_WINDOWS_NATIVE_COMPLETE_SAME_CHAT_NOT_INDEPENDENT",
+  "recorded_at": "2026-08-19T06:43:20Z",
+  "source": {
+    "branch": "codex/serverless-v2-roadmap",
+    "deployed_application_commit": "1ad68ea46b642949591c1090cecddc28d7ec428e",
+    "windows_harness_fix_commit": "34a0fbf438cb231a4fe5b927367b2ecbda0279a2",
+    "evidence_base_commit": "9c368665e3b0cb9786494c165d7be5e075aa7c9d",
+    "release": "media-worker-v0.1.11",
+    "release_commit": "2740dd13c955a6d8705ee341f7a6d4a522d50862",
+    "github_release_immutable": true
+  },
+  "authority": {
+    "finite_cap_usd": 3,
+    "recurring_r2_ceiling_usd_per_month": 2,
+    "new_external_spend_usd": 0,
+    "runpod_mutations": 0,
+    "runpod_compute_started": false,
+    "v2_07_started": false,
+    "credential_values_read": false
+  },
+  "immutable_inputs": {
+    "current": {
+      "version": "0.1.11",
+      "manifest_sha256": "b33292c0e88cc53246c0ec3a34cc43d74046840a409ee444473ab629cb06a9d9",
+      "installer_sha256": "sha256:ca9aa00f40f70680488f2735cddbd77bf03cc56d1f2d1683404e048d8ed2d3ce",
+      "installer_size_bytes": 225808954,
+      "authenticode_status": "NotSigned",
+      "trust": "UNSIGNED_BETA",
+      "execution_bundle_sha256": "sha256:6955561b0e64b1c02ce68a8fd8918ba9a27e952ffb82062b6abae0b46827a55c",
+      "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002"
+    },
+    "previous": {
+      "version": "0.1.10",
+      "manifest_sha256": "b53dd9f95072bbd2f89ebed273fdf37cf44b39387a541de3649eb0357f8d1026",
+      "installer_sha256": "sha256:545b1d80edd7903ba722e3b6e416a95d0412350ba1217be3a531e8bc358cb913",
+      "installer_size_bytes": 225805611,
+      "authenticode_status": "NotSigned",
+      "trust": "UNSIGNED_BETA"
+    }
+  },
+  "automated_harness": {
+    "command": "apps/media-worker-desktop/windows-native-acceptance.ps1 with immutable 0.1.10 previous and 0.1.11 current inputs, 900-second bound, provider-free mode",
+    "status": "PASS",
+    "run_id": "4eed7c9e22a64960a4339a25d08abc04",
+    "started_at": "2026-08-19T05:58:50.2715763Z",
+    "finished_at": "2026-08-19T05:59:33.4502986Z",
+    "network_mode": "none",
+    "provider_mutation_by_harness": false,
+    "previous_executable_sha256": "sha256:fc4527c7729b93e9e1141cbcc3156f863a88c829ed5d31ab1b6ed4450876617c",
+    "current_executable_sha256": "sha256:a58a792745f490093edcec37889c8ce979ea94987960dc9349c0f704484297c9",
+    "phases": {
+      "environment": "PASS",
+      "current_manifest_and_artifact": "PASS",
+      "previous_manifest_and_artifact": "PASS",
+      "fresh_user_state": "PASS",
+      "install_0_1_10": "PASS",
+      "replace_with_0_1_11": "PASS",
+      "startup_shortcut_preserved": true,
+      "uninstall_and_local_cleanup": "PASS"
+    }
+  },
+  "interactive_windows_acceptance": {
+    "host": "MI_Notebook",
+    "platform": "Windows X86_64",
+    "version": "0.1.11",
+    "smartscreen": {
+      "result": "PASS",
+      "observation": "The unsigned installer opened directly; no SmartScreen interstitial appeared on this device."
+    },
+    "pairing": {
+      "result": "PASS",
+      "admitted_identity": "lakshmansai121@gmail.com",
+      "hosted_state": "ONLINE",
+      "raw_device_or_poll_tokens_exposed": false
+    },
+    "offline_reconnect": {
+      "result": "PASS",
+      "worker_stopped_at": "2026-08-19T05:31:05Z",
+      "hosted_offline_after_stale_threshold": true,
+      "worker_restarted_at": "2026-08-19T05:32:52Z",
+      "hosted_online_recovered": true
+    },
+    "reboot_autostart": {
+      "result": "PASS",
+      "boot_time": "2026-08-19T05:37:46Z",
+      "explorer_launched_worker_at_local_time": "2026-08-19T11:13:31+05:30",
+      "startup_delay_observed": true,
+      "hosted_online_recovered": true
+    },
+    "sleep_wake": {
+      "result": "PASS",
+      "kernel_power_sleep_event_42_local_time": "2026-08-19T11:40:31+05:30",
+      "kernel_power_resume_event_107_local_time": "2026-08-19T11:40:35+05:30",
+      "same_worker_process_survived": true,
+      "hosted_online_heartbeat_local_time": "2026-08-19T11:48:44+05:30"
+    },
+    "power_policy_after_test": {
+      "ac_sleep_after_seconds": 0,
+      "dc_sleep_after_seconds": 0,
+      "meaning": "Never",
+      "no_further_sleep_performed": true
+    },
+    "revocation": {
+      "result": "PASS",
+      "temporary_windows_records": [
+        "REVOKED 2026-08-19 11:23:52 local",
+        "REVOKED Not connected yet",
+        "REVOKED 2026-08-19 11:50:52 local"
+      ],
+      "mac_0_1_11_state_after_windows_cleanup": "ONLINE",
+      "mac_device_mutated": false
+    }
+  },
+  "final_local_cleanup": {
+    "result": "PASS",
+    "uninstaller_exit_code": 0,
+    "worker_process_count": 0,
+    "install_root_absent": true,
+    "normal_data_root_absent": true,
+    "codex_redirected_data_root_absent": true,
+    "startup_shortcut_absent": true,
+    "program_shortcut_absent": true,
+    "credential_target_sha256": "sha256:bc45c9d6355e82308a73120a95e52da0b668312444b307f70fc3a1138a488a47",
+    "credential_listing": "NONE",
+    "credential_value_read": false,
+    "note": "The visible install inherited the packaged app's redirected LOCALAPPDATA. The exact revoked installation state was removed after validating its leaf path; cmdkey reported no stored credential for the exact installation target."
+  },
+  "harness_repairs": [
+    "Accept an explicitly empty expected version.",
+    "Always array-wrap existing worker-process discovery.",
+    "Remove a verified-empty isolated install root after uninstall.",
+    "Treat cmdkey's exit-0 '* NONE *' listing as credential absence."
+  ],
+  "remaining_v2_06_gates": [
+    "One controllable signed-in session for the second admitted Google identity and live negative cross-tenant proof.",
+    "Action-time confirmation and execution for successful private-output deletion and Mac revoke/uninstall lifecycle.",
+    "Fresh independent audit of the completed live and device evidence."
+  ],
+  "paid_compute_shutdown": {
+    "runpod_workers_started": 0,
+    "runpod_mutations": 0,
+    "gpu_compute_started": false,
+    "new_external_spend_usd": 0
+  }
+}

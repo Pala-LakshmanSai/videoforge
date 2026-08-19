@@ -18,6 +18,7 @@ test("Windows native acceptance harness is bounded and release-pinned", () => {
   assert.match(harness, /WScript\.Shell/u);
   assert.match(harness, /--background/u);
   assert.match(harness, /cmdkey\.exe/u);
+  assert.match(harness, /\\s\+NONE\\s\+/u);
   assert.match(harness, /credential_values_read = \$false/u);
   assert.match(harness, /finally/u);
   assert.match(harness, /Invoke-Uninstaller/u);

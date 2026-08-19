@@ -1,14 +1,14 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-19T04:26:36Z"
+updated_at: "2026-08-19T06:43:20Z"
 
-phase: serverless_v2_v2_06_mac_live_complete_windows_and_audit_open
+phase: serverless_v2_v2_06_mac_and_windows_live_complete_remaining_tenant_delete_and_audit
 implementation_authorized_in_current_task: true
 current_milestone: hosted_staging_and_personal_media_workers
 current_task: VF-10-06
 current_wave: v2_06_personal_worker_conversion
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: mac_live_complete_windows_second_account_delete_and_independent_audit_open
+task_stage: mac_and_windows_live_complete_second_account_delete_and_independent_audit_open
 application_code_changes_authorized: true
 provider_calls_authorized: true
 read_only_provider_calls_authorized: false
@@ -108,7 +108,7 @@ repository:
   branch_published: true
   current_source_head: "1ad68ea46b642949591c1090cecddc28d7ec428e"
   last_verified_repository_head: "1ad68ea46b642949591c1090cecddc28d7ec428e"
-  current_source_head_note: "Commit 1ad68ea completes the non-Windows Mac live path: immutable worker 0.1.11, deployed Worker/Workflow parity, migration 36/36 and exact grants, real-Chrome ASR/render/review, durable queued cancellation, Mac reconnect, and current RunPod zero-compute truth. Windows, the second live Google tenant, exact destructive delete/uninstall confirmation, and fresh independent audit remain open."
+  current_source_head_note: "Commit 1ad68ea remains the deployed application source. Mac and Windows 0.1.11 live acceptance now pass, including immutable inputs, pairing, offline/reconnect, Windows reboot/autostart, sleep/wake, 0.1.10-to-0.1.11 replacement, revocation, and uninstall cleanup. The second live Google tenant, successful-output/Mac destructive lifecycle, and fresh independent audit remain open."
   last_good_commit: "1ad68ea46b642949591c1090cecddc28d7ec428e"
   last_good_commit_note: "V2-06 Mac live ASR/render/cancel passes at 1ad68ea with zero new external spend; immutable 0.1.11 is active and the Cloudflare deployment reports the same commit."
   working_tree_expected: clean_except_ignored_private_inputs
@@ -194,7 +194,7 @@ roadmap_state:
   V2-03: complete_green_independently_reaudited
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
-  V2-06: mac_live_complete_windows_second_account_delete_and_independent_audit_remaining
+  V2-06: mac_and_windows_live_complete_second_account_delete_and_independent_audit_remaining
   V2-07: blocked_on_V2-06
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
@@ -331,7 +331,7 @@ recommended_next_task:
   task_id: VF-10-06
   checkpoint: V2-06
   milestone: hosted_staging_and_personal_media_workers
-  status: bounded_v2_06_completion_backup_restore_passed_live_and_device_gates_remaining
+  status: bounded_v2_06_mac_and_windows_live_complete_second_account_delete_and_audit_remaining
   dependency_status: v2_05_complete_green_same_chat_reaudit_provider_free
   authorization_status: bounded_v2_06_completion_approved
   task_stage: bounded_mutation
@@ -401,7 +401,7 @@ recommended_next_task:
         checked_at: "2026-08-18"
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
-  goal: "Finish the approved exact V2-06 hosted completion within the USD 3 finite cap and USD 2/month R2 ceiling; prepare Windows acceptance while its device is unavailable; GPU transport stays fake and disabled and V2-07 remains blocked."
+  goal: "Finish the approved exact V2-06 hosted completion within the USD 3 finite cap and USD 2/month R2 ceiling. Mac and Windows native acceptance are complete; finish only the second live tenant, successful-output/Mac destructive lifecycle, and fresh independent audit. GPU transport stays fake and disabled and V2-07 remains blocked."
   provider_calls_authorized: true
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 3
@@ -420,11 +420,11 @@ recommended_next_task:
   prerequisite_evidence: evidence/acceptance/VF-10-05/2026-08-16-repair-reaudit/acceptance.json
 
 verification:
-  state: v2_06_live_backup_restore_passed_live_and_device_gates_remaining
-  verified_commit: "804f7d35504852f33e696904c628ee760276dcdc"
-  verified_commit_note: "Focused backup/restore tests pass 11/11 and installed-Chrome fixtures pass 44/44 at 804f7d3. The live encrypted Neon backup/disposable restore/delete drill passes with exact 36/36 migration manifest, exact least-privilege grants, and FORCE RLS. The first canonical rerun passed all preceding gates but exited 1 when a stale owned local Playwright descendant occupied port 4173; after scoped termination the Chrome gate passed independently. Local Chrome fixtures are not hosted proof."
+  state: v2_06_mac_and_windows_live_complete_second_account_delete_and_audit_remaining
+  verified_commit: "34a0fbf438cb231a4fe5b927367b2ecbda0279a2"
+  verified_commit_note: "Windows 0.1.11 immutable-input, pairing, offline/reconnect, reboot/autostart, physical sleep/wake, 0.1.10-to-0.1.11 update, revocation, and uninstall cleanup pass on MI_Notebook. The provider-free native harness exits 0, Mac 0.1.11 remains ONLINE, cmdkey reports NONE for the exact revoked Windows installation, new spend remains $0, and no RunPod or V2-07 action occurred. This is same-chat acceptance, not the fresh independent V2-06 audit."
   predecessor_verified_commit: "153cefef40739c35b84ed633fc4978f8a5e9746b"
-  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-backup-restore-804f7d3/acceptance.json
+  acceptance_evidence: evidence/acceptance/VF-10-06/2026-08-19-windows-native-completion-34a0fbf/acceptance.json
   latest_live_check:
     recorded_at_utc: "2026-08-18T13:33:02Z"
     evidence: evidence/acceptance/VF-10-06/2026-08-18-current-head-153cefe/acceptance.json
@@ -789,10 +789,11 @@ verification:
   remote_mutation_used_for_v2_05: false
   paid_compute_started_for_v2_05: false
   in_progress_for_v2_06:
-    status: mac_live_complete_windows_second_account_delete_and_independent_audit_remaining
+    status: mac_and_windows_live_complete_second_account_delete_and_independent_audit_remaining
     implementation_commit: "1ad68ea46b642949591c1090cecddc28d7ec428e"
     source_head_commit: "1ad68ea46b642949591c1090cecddc28d7ec428e"
     autonomous_readiness_commit: "2e1d1d0d1bf01da35ebdfb9abd95689ee6a04934"
+    windows_acceptance_fix_commit: "34a0fbf438cb231a4fe5b927367b2ecbda0279a2"
     current_source_deployment_status: deployed_worker_version_5ffa68ef_8a4e_4784_a3cb_d02320ce5cc2
     previous_deployed_source_head: "153cefef40739c35b84ed633fc4978f8a5e9746b"
     hosted_ui_repair_commit: "0d850bfd6e5a413d744578e1cd45f07cba71b619"
@@ -803,6 +804,7 @@ verification:
     previous_worker_source_repair_commit: "08018371aea003415e12b139f614e417b15d6fc5"
     predecessor_commit: "c446cd035e5f6d980260cad3f48cf0ac74b29985"
     evidence: evidence/acceptance/VF-10-06/2026-08-19-mac-live-completion-1ad68ea/acceptance.json
+    windows_native_completion_evidence: evidence/acceptance/VF-10-06/2026-08-19-windows-native-completion-34a0fbf/acceptance.json
     backup_restore_evidence: evidence/acceptance/VF-10-06/2026-08-19-live-backup-restore-804f7d3/acceptance.json
     autonomous_readiness_evidence: evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json
     previous_completion_evidence: evidence/acceptance/VF-10-06/2026-08-18-bounded-completion-8e96575/acceptance.json
@@ -814,6 +816,7 @@ verification:
     post_repair_audit_evidence: evidence/acceptance/VF-10-06/2026-08-17-post-repair-live-audit/acceptance.json
     worker_startup_repair_release_evidence: evidence/acceptance/VF-10-06/2026-08-18-worker-startup-repair-release/acceptance.json
     commands:
+      - "Windows 0.1.11 live acceptance and exact 0.1.10-to-0.1.11 provider-free harness (exit 0; immutable hashes, install/update/autostart/reboot/sleep-reconnect/revoke/uninstall all passed; no RunPod or spend)."
       - "Immutable media-worker-v0.1.11 release workflow 32214398285 (exit 0; Windows, macOS, and immutable publication passed; release isImmutable true)."
       - "Mac 0.1.11 DMG hash/size/hdiutil/deep-strict codesign/install/LaunchAgent reconnect checks (exit 0; final worker RUNNING and ONLINE)."
       - "Live owned v4 Chrome journey (exit 0; ASR e1be1ae6 and render f9686244 SUCCEEDED on 0.1.11; final private MP4 approved)."
@@ -841,6 +844,8 @@ verification:
       - "Mac 0.1.8 DMG SHA/size, hdiutil verification, deep/strict ad-hoc seal, universal2 architecture, mounted install/update, and LaunchAgent bootout/bootstrap restart (exit 0); spctl returned expected ad-hoc/non-notarized rejection exit 3."
       - "CI=1 TURBO_FORCE=true pnpm verify at 8e96575 (exit 0; canonical graph; control-plane 309; web 351 plus 1 skipped; worker suites; Cloudflare parity 1/1; installed-Chrome fixture 44/44)."
     delivered:
+      - "Windows x64 0.1.11 native acceptance is complete: the admitted account paired MI_Notebook, offline/reconnect, reboot/autostart, and physical sleep/wake recovered ONLINE; every temporary Windows record is revoked and the worker, shortcuts, state roots, and exact credential are absent after uninstall."
+      - "The Windows harness now treats cmdkey's exit-0 '* NONE *' response as credential absence, preventing a false-positive cleanup failure without reading any credential value."
       - "Immutable media-worker-v0.1.11 fixes private rendered-object publication and is installed on Mac with exact bundle identity sha256:6955561b0e64b1c02ce68a8fd8918ba9a27e952ffb82062b6abae0b46827a55c."
       - "Cloudflare Worker/Workflow version 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2 reports source commit 1ad68ea, private R2, Google-only auth, personal workers, GPU disabled, and provider CPU $0."
       - "Real signed-in Chrome plus Mac 0.1.11 completed tenant-owned ASR, final render, review approval, queued cancellation, and worker reconnect at $0 external spend."
@@ -872,14 +877,13 @@ verification:
       - "Hosted /avatars and /styles now use the authenticated tenant-owned project catalog, and hosted /avatars/new and /styles/new render an explicit read-only staging boundary instead of fixture mutation screens."
     remaining_gates:
       - "Second admitted Google identity: provide one controllable signed-in session for live negative cross-tenant Better Auth/Neon/R2/device proof. Local two-account Chrome remains fixture proof only."
-      - "Windows device execution is running in the separate user-owned Windows Codex workspace. Reconcile its exact 0.1.11 report, hashes, lifecycle, pairing, autostart, update/remove, and parity evidence when it completes."
       - "Action-time user confirmation is required before deleting the successful private output, revoking the Mac device, or uninstalling the Mac worker."
       - "Fresh independent task: audit the completed live/device evidence after the above gates. This same-chat handoff cannot independently accept itself."
       - "The selected Windows unsigned-beta and macOS ad-hoc/non-notarized-beta trust modes remain intentional; Authenticode and Developer ID/notarization are optional and are not checkpoint blockers."
       - "The exact combined V2-06 cap remains USD 3 with a USD 2/month R2 ceiling. Current new external spend is USD 0; R2 is 32.1 MB and currently $0/month."
     resource_truth:
       external_mutations: bounded_v2_06_completion_partial_acceptance
-      external_mutation_scope: "Current grant used only the exact V2-06 Worker/Workflow/private R2 bucket, Neon migration 0036, GitHub worker release publication and repository immutable-release setting, Cloudflare rollback/restore, Mac installation, and one exact disposable Neon restore database that was deleted after verification. No RunPod, GPU, volume, unrelated resource, or V2-07 mutation occurred."
+      external_mutation_scope: "Current grant used only the exact V2-06 Worker/Workflow/private R2 bucket, Neon migration 0036, GitHub worker release publication and repository immutable-release setting, Cloudflare rollback/restore, Mac installation, temporary Windows pairing/revocation/install/uninstall, and one exact disposable Neon restore database that was deleted after verification. No RunPod, GPU, volume, unrelated resource, or V2-07 mutation occurred."
       truth_basis: current_live_refresh_plus_immutable_deployment_and_release_evidence
       deployments: 20
       installer_builds: 9
@@ -930,7 +934,7 @@ verification:
       deployed_implementation_commit: 1ad68ea46b642949591c1090cecddc28d7ec428e
       source_deployment_parity: true
       source_deployment_parity_note: "The public hosted status endpoint and Cloudflare version metadata report exact source head 1ad68ea."
-      worker_source_repair_release_status: immutable_release_0_1_11_published_both_platforms_installed_and_live_proven_mac
+      worker_source_repair_release_status: immutable_release_0_1_11_published_both_platforms_live_proven_windows_uninstalled_after_revoke_mac_remains_online
       neon:
         checked_at: "2026-08-17T17:36:31Z"
         organization_id_sha256: "sha256:1a80a1978aaf55071ebade555193753126029390191658a7f700bbd06ea07044"

@@ -490,7 +490,11 @@ function Test-WorkerCredential {
             -RedirectStandardOutput $probeOutput `
             -RedirectStandardError $probeError `
             -Hidden
-        return $exitCode -eq 0
+        if ($exitCode -ne 0) {
+            return $false
+        }
+        $listedCredential = [IO.File]::ReadAllText($probeOutput)
+        return $listedCredential -notmatch '(?m)^\s*\*\s+NONE\s+\*\s*$'
     }
     finally {
         Remove-Item -LiteralPath $probeOutput, $probeError -Force -ErrorAction SilentlyContinue
