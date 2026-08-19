@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-19T22:59:40Z",
+  "recorded_at": "2026-08-19T23:08:53Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -65,6 +65,11 @@
     {
       "commit": "4311983",
       "area": "generated-output paths require the exact Mage batch prefix and one artifact identifier",
+      "result": "PASS"
+    },
+    {
+      "commit": "73a9b90",
+      "area": "activation authority pins the complete repaired source commit and rejects short lineage",
       "result": "PASS"
     },
     {
