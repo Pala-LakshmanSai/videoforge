@@ -1,0 +1,95 @@
+{
+  "schema_version": "videoforge.v2-06-windows-native-acceptance/v1",
+  "task_id": "VF-10-06",
+  "checkpoint": "V2-06",
+  "recorded_at_utc": "2026-08-19T02:14:29Z",
+  "result": "PASS_AUTOMATED_WINDOWS_PHASES_MANUAL_DEVICE_GATES_OPEN",
+  "audit_independence": "SAME_CHAT_ACCEPTANCE_NOT_INDEPENDENT_AUDIT",
+  "source": {
+    "branch": "codex/serverless-v2-roadmap",
+    "harness_repair_commit": "7a8354ba3e6af759b52f55d2634664c4cb9cce2b",
+    "deployed_application_commit": "8e965758247f4cf222e0446f723b007af80297a7",
+    "release_version": "0.1.8"
+  },
+  "authority": {
+    "finite_external_cap_usd": 3,
+    "r2_recurring_ceiling_usd_per_month": 2,
+    "new_external_spend_usd": 0,
+    "runpod_mutating_calls": 0,
+    "gpu_workers_started": 0,
+    "v2_07_authorized": false,
+    "credential_values_read": false
+  },
+  "release_identity": {
+    "current_manifest_sha256": "sha256:0e71bc43763a3f5f9bcccd1477e78d8d0f7f81e366a693b8ee07ca04b5f2cc0b",
+    "current_installer_sha256": "sha256:b2da4298fd7530f5d0a34a1db8942e44b103cf6495ba9ba2d0761a58f7395d48",
+    "current_installer_size_bytes": 225807468,
+    "current_trust": "UNSIGNED_BETA",
+    "current_authenticode_status": "NotSigned",
+    "previous_version": "0.1.7",
+    "previous_manifest_sha256": "sha256:45f19cc99d4b3b801e88cd8e56c2730ce94f72c4d50b711c284e6a303d8d9f5b",
+    "previous_installer_sha256": "sha256:61e67df2a1abaf3bf4263bbf74b7407634113c3b655b9079af28f39e4284c17d"
+  },
+  "automated_run": {
+    "run_id": "20af3e864f9b4415ae71795f63aa7759",
+    "started_at_utc": "2026-08-19T02:12:59.0886595Z",
+    "finished_at_utc": "2026-08-19T02:14:29.1835464Z",
+    "windows": "Microsoft Windows NT 10.0.26200.0",
+    "architecture": "AMD64",
+    "powershell": "7.6.4",
+    "phases": {
+      "environment": "PASS",
+      "immutable_release_inputs": "PASS",
+      "previous_release_inputs": "PASS",
+      "fresh_user_state": "PASS",
+      "install_previous_release": "PASS",
+      "browser_pairing": "PASS",
+      "replace_with_0_1_8": "PASS",
+      "background_restart": "PASS",
+      "uninstall_and_local_cleanup": "PASS"
+    },
+    "post_cleanup": {
+      "worker_processes": 0,
+      "startup_shortcut_exists": false,
+      "local_worker_state_exists": false,
+      "install_root_exists": false,
+      "credential_exists": false
+    }
+  },
+  "repairs": [
+    "Allowed the documented empty ExpectedVersion selector for previous-release manifest validation.",
+    "Forced the clean-state process probe to remain an array under PowerShell strict mode.",
+    "Removed only the verified-empty per-run install directory after Inno Setup removed its contents."
+  ],
+  "validation": [
+    {
+      "command": "node --test scripts/tests/v2-06-windows-native-acceptance.test.mjs",
+      "exit_code": 0,
+      "result": "3/3 passed"
+    },
+    {
+      "command": "apps/media-worker-desktop/windows-native-acceptance.ps1 with 0.1.7 and 0.1.8 manifests/installers, -RunHostedPairing, and a 900-second bound",
+      "exit_code": 0,
+      "result": "9/9 automated phases passed"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "validation_limit": "The repository context:validate wrapper could not run on this Windows host because it directly spawns Bash scripts, WSL has no installed distribution, Ruby is unavailable, and packages/contracts/node_modules is absent. The new evidence JSON parsed successfully and git diff --check passed; no full context/schema validation is claimed for the handoff commit.",
+  "hosted_pairing_truth": {
+    "successful_pairing_observations": 2,
+    "reason": "One pairing completed during the cleanup-timing diagnosis run and one during the final PASS run.",
+    "local_credentials_removed_by_uninstall": true,
+    "server_side_test_device_revocation_observed": false,
+    "remote_mutation_scope": "User-confirmed V2-06 test-device enrollment only; no deployment, secret, provider configuration, RunPod, GPU, or V2-07 mutation."
+  },
+  "remaining_manual_windows_gates": [
+    "Observe and record the unsigned-beta SmartScreen path in an interactive installer launch.",
+    "Observe hosted ONLINE, sleep/offline, resume/reconnect state on Windows.",
+    "Observe reboot/login autostart on Windows.",
+    "With user confirmation at action time, revoke the test device records in authenticated Settings and observe the revoked state."
+  ],
+  "checkpoint_truth": "V2-06 remains incomplete; the automated Windows-native lifecycle is green, but manual Windows observations, other live two-account/private-input gates, repository-wide native immutable-release approval, and an independent audit remain open. V2-07 remains blocked."
+}
