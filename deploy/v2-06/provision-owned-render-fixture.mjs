@@ -43,8 +43,8 @@ const APPROVED_MIGRATION_MANIFEST_SHA256 =
   "sha256:26e92fcd7b6ca30f6406d0680d56f185ccc9f5cfb2be4c044a201015a612875d";
 const BUCKET = APPROVED_R2_BUCKET;
 const FIXTURE_ID = "local_short_slice_owned_001";
-const OPERATION = "v2-06-owned-render-fixture-v4";
-const PROJECT_NAME = "V2-06 Owned Render Fixture v4";
+const OPERATION = "v2-06-owned-render-fixture-v5";
+const PROJECT_NAME = "V2-06 Owned Render Fixture v5";
 const EXPECTED_SOURCE_RENDER_INPUT_SHA256 =
   "sha256:1e63c09aa9d6bb0ba17337284a727925c2f67e76de8564b700d3a0a54a301f9e";
 const EXPECTED_SOURCE_EVIDENCE_SHA256 =
