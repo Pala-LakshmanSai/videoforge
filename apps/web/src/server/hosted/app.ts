@@ -4,7 +4,12 @@ import { deriveCallbackToken, sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { handlePersonalWorkerRequest } from "./personal-worker";
 import { handleHostedProductRequest } from "./product";
-import { deleteHostedR2ObjectsAndVerify, hostedJobArtifactPrefix, HostedR2Signer } from "./r2";
+import {
+  deleteHostedR2ObjectsAndVerify,
+  hostedCompleteAttemptArtifactKeys,
+  hostedJobArtifactPrefix,
+  HostedR2Signer,
+} from "./r2";
 import {
   bindHostedCpuInputDocument,
   canonicalJson,
@@ -809,9 +814,11 @@ async function handleCpuOutputDelete(
       const result = await transaction.query<{
         state: string;
         retention_deleted_at: string | null;
+        job_spec_object_key: string;
         object_key: string | null;
       }>(
-        `SELECT attempt.state, attempt.retention_deleted_at, authority.object_key
+        `SELECT attempt.state, attempt.retention_deleted_at, attempt.job_spec_object_key,
+                authority.object_key
            FROM hosted_cpu_job_attempts AS attempt
            LEFT JOIN hosted_cpu_upload_authorities AS authority
              ON authority.account_id = attempt.account_id
@@ -826,12 +833,12 @@ async function handleCpuOutputDelete(
     });
     if (owned.length === 0) return json({ error: { code: "CPU_ATTEMPT_OUTPUT_NOT_FOUND" } }, 404);
     if (owned[0]?.retention_deleted_at !== null) return new Response(null, { status: 204 });
-    const keys = owned
-      .map((row) => row.object_key)
-      .filter((key): key is string => typeof key === "string")
-      .sort();
+    const keys = hostedCompleteAttemptArtifactKeys(
+      owned[0]?.job_spec_object_key,
+      owned.map((row) => row.object_key),
+    );
     const firstKey = keys[0];
-    if (keys.length !== 2 || !firstKey) {
+    if (keys.length !== 3 || !firstKey) {
       return json({ error: { code: "CPU_ATTEMPT_OUTPUT_INCOMPLETE" } }, 409);
     }
     const deletion = await deleteHostedR2ObjectsAndVerify(

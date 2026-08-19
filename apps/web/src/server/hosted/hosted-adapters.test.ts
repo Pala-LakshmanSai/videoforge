@@ -10,7 +10,12 @@ import {
   hostedRuntimeConfiguration,
   type HostedRuntimeEnvironment,
 } from "./configuration";
-import { deleteHostedR2ObjectsAndVerify, hostedJobArtifactPrefix, HostedR2Signer } from "./r2";
+import {
+  deleteHostedR2ObjectsAndVerify,
+  hostedCompleteAttemptArtifactKeys,
+  hostedJobArtifactPrefix,
+  HostedR2Signer,
+} from "./r2";
 import {
   completionMatchesTerminalLease,
   mediaWorkerTerminalEventKind,
@@ -317,6 +322,12 @@ describe("V2-06 hosted adapters", () => {
       verified: true,
     });
     expect(hostedJobArtifactPrefix(`${prefix}final-mp4`)).toBe(prefix);
+    expect(
+      hostedCompleteAttemptArtifactKeys(`${prefix}job-spec`, [
+        `${prefix}result-document`,
+        `${prefix}final-mp4`,
+      ]),
+    ).toEqual([`${prefix}final-mp4`, `${prefix}job-spec`, `${prefix}result-document`]);
   });
 
   it("keeps worker enrollment aligned with the published native platforms", () => {

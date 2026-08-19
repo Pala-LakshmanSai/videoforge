@@ -15,6 +15,15 @@ export interface HostedR2DeletionVerification {
   readonly verified: true;
 }
 
+export function hostedCompleteAttemptArtifactKeys(
+  jobSpecObjectKey: string | null | undefined,
+  outputObjectKeys: readonly (string | null)[],
+): readonly string[] {
+  return [...new Set([jobSpecObjectKey, ...outputObjectKeys])]
+    .filter((key): key is string => typeof key === "string")
+    .sort();
+}
+
 /**
  * Delete only one exact personal-worker attempt prefix and prove the prefix is empty before the
  * database is allowed to record durable retention deletion. R2 head checks catch an object that
