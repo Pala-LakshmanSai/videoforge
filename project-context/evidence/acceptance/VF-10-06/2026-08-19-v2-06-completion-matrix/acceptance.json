@@ -2,12 +2,14 @@
   "schema": "videoforge.v2-06-completion-matrix/v1",
   "checkpoint": "V2-06",
   "recorded_at_utc": "2026-08-19T10:23:17Z",
+  "reconciled_at_utc": "2026-08-19T10:30:59Z",
   "audit_result": "FAIL",
   "severity_counts": {
     "P0": 0,
     "P1": 3,
     "P2": 1
   },
+  "count_basis": "Unique finding IDs; multiple requirement rows may reference one finding.",
   "audit_scope": {
     "repository_head_at_matrix_start": "4ca80ecc121a5895d15e27cb570ace22bddfca36",
     "source_head": "fd773ed20f410b64da3ea29ff1d33a6675459afd",
@@ -31,6 +33,7 @@
     {
       "id": "approved-versus-actual-resources-rates-recurring-charges",
       "status": "PARTIAL_P2_POST_DELETE_INVENTORY_GAP",
+      "finding_id": "P2-POST-DELETE-R2-INVENTORY",
       "finding": "Approved scope and recorded rates reconcile: one Free Cloudflare Worker plus one Workflow, one private Standard R2 bucket, Neon Free project, Google test project, immutable worker release, and existing paired-device scope; Cloudflare/R2/Neon/Google base rates are zero, R2 overage is USD 0.015/GB-month above 10 GB, and the two pre-existing RunPod volumes are separate at USD 3.50/month each (USD 7/month total). The actual R2 count/size supplied is 16 objects/32.1 MB, but that inventory predates the observed output deletion, so post-delete inventory/hash read-back is not proven.",
       "references": [
         "project-context/CURRENT_STATE.yaml:37-100",
@@ -44,6 +47,7 @@
     {
       "id": "better-auth-neon-r2-tenant-isolation",
       "status": "FAIL_P1",
+      "finding_id": "P1-TENANCY-R2-POSITIVE-PROOF",
       "finding": "Better Auth identity and negative cross-tenant refusal are observed, but the supplied second-account record has no positive second-tenant project/object/device/lease fixture. Hosted non-superuser RLS enforcement and real private-R2 hash parity remain unproven; the second account only observes an empty Library/devices view, unavailable foreign project, CPU_ATTEMPT_NOT_FOUND, and no foreign signed URL.",
       "references": [
         "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md:350-354",
@@ -66,6 +70,10 @@
     {
       "id": "hosted-cloudflare-worker-workflow-orchestration",
       "status": "FAIL_P1_DURABLE_REPLAY_AND_FINAL_SOURCE_ROLLBACK_OPEN",
+      "finding_ids": [
+        "P1-WORKFLOW-RECOVERY-REPLAY",
+        "P1-FINAL-ROLLBACK"
+      ],
       "finding": "The supplied resource truth records one Worker and one HostedVideoWorkflow with private R2, Google auth, personal-worker CPU execution, and GPU disabled. Primary cancellation/reconnect is live-proven, but hosted Workflow restart/resume, lease expiry/replay, stale-result rejection, and late-result fencing are not proven. Current source fd773ed is not the deployed application commit 1ad68ea, so final deployed-source rollback is also open.",
       "references": [
         "project-context/CURRENT_STATE.yaml:758-779",
@@ -88,6 +96,7 @@
     {
       "id": "recovery-cancel-backup-restore",
       "status": "PARTIAL_P1",
+      "finding_id": "P1-WORKFLOW-RECOVERY-REPLAY",
       "finding": "Backup and disposable-restore verification pass at migration 36/36 with exact grants/FORCE RLS and disposable database count zero. The live offline-worker cancellation also reaches terminal CANCELLED and reconnects. Hosted Workflow restart/resume, lease expiry/replay, stale-result rejection, and late-result fencing remain unproven, so the recovery requirement is not fully accepted.",
       "references": [
         "project-context/evidence/acceptance/VF-10-06/2026-08-19-live-backup-restore-804f7d3/acceptance.json:42-56,78-112",
@@ -131,6 +140,7 @@
     {
       "id": "rollback-state",
       "status": "FAIL_P1_FINAL_DEPLOYMENT_ROLLBACK_UNPROVEN",
+      "finding_id": "P1-FINAL-ROLLBACK",
       "finding": "Rollback/restore is evidenced for prior deployed source 8e96575 and restored health HTTP 200. No supplied record exercises rollback from final deployed source 1ad68ea / Worker 5ffa68ef-8a4e-4784-a3cb-d02320ce5cc2; the current repository source is fd773ed and deployment parity is explicitly false.",
       "references": [
         "project-context/evidence/acceptance/VF-10-06/2026-08-19-autonomous-readiness-2e1d1d0/acceptance.json:117-125",
