@@ -121,7 +121,7 @@ describe("RunPod scale-zero control", () => {
           },
         ]);
       if (path.endsWith("/templates")) return response([{ id: "template_01" }]);
-      return response([{ id: "volume_01", size: 50 }]);
+      return response([{ id: "volume_01", size: 50, dataCenterId: "EU-RO-1" }]);
     });
     const inventory = await new RunPodControlClient({
       apiKey: key,
@@ -132,6 +132,12 @@ describe("RunPod scale-zero control", () => {
       runningPodCount: 0,
       activeServerlessWorkerCount: 0,
       privateTemplateCount: 1,
+      networkVolumes: [
+        {
+          sizeGb: 50,
+          dataCenterId: "EU-RO-1",
+        },
+      ],
       endpoints: [
         {
           workersMin: 0,

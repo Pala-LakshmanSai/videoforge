@@ -10,7 +10,10 @@ import {
   RunPodServerlessJobClient,
   type RunPodJobDiagnostic,
   V207_RUNPOD_MIN_CUDA_VERSION,
+  V207_RUNPOD_MAGE_VOLUME_SIZE_GB,
+  V207_RUNPOD_REGION,
   type RunPodEndpointPolicy,
+  type RunPodInventory,
   type RunPodJobResult,
   type RunPodV207ConcurrentReaderPolicy,
   type RunPodV207Placement,
@@ -239,6 +242,24 @@ export class RunPodV207QualificationHarness {
     return spend;
   }
 
+  private assertRetainedMageVolume(inventory: RunPodInventory): void {
+    const expectedVolumeIdHash = sha256(this.#options.placement.networkVolumeId);
+    const matches = inventory.networkVolumes.filter(
+      (volume) =>
+        volume.idHash === expectedVolumeIdHash &&
+        volume.sizeGb === V207_RUNPOD_MAGE_VOLUME_SIZE_GB &&
+        volume.dataCenterId === V207_RUNPOD_REGION,
+    );
+    if (matches.length !== 1) {
+      throw new RunPodControlError("RUNPOD_MAGE_VOLUME_IDENTITY_UNCONFIRMED");
+    }
+    this.mark("retained_mage_volume_verified", {
+      retained_volume_id_hash: expectedVolumeIdHash,
+      retained_volume_size_gb: V207_RUNPOD_MAGE_VOLUME_SIZE_GB,
+      retained_volume_region: V207_RUNPOD_REGION,
+    });
+  }
+
   private assertCreated(): void {
     if (!this.#template || !this.#endpoint || !this.#jobs) {
       throw new RunPodControlError("RUNPOD_QUALIFICATION_NOT_CREATED");
@@ -251,6 +272,7 @@ export class RunPodV207QualificationHarness {
     }
     console.error("v207:harness-inventory");
     const inventory = await this.#options.control.inventory();
+    this.assertRetainedMageVolume(inventory);
     if (
       inventory.runningPodCount !== 0 ||
       inventory.activeServerlessWorkerCount !== 0 ||
@@ -314,6 +336,8 @@ export class RunPodV207QualificationHarness {
           minCudaVersion: V207_RUNPOD_MIN_CUDA_VERSION,
           allowedCudaVersions: [V207_RUNPOD_MIN_CUDA_VERSION],
           networkVolumeIdHash: sha256(this.#options.placement.networkVolumeId),
+          networkVolumeSizeGb: V207_RUNPOD_MAGE_VOLUME_SIZE_GB,
+          networkVolumeRegion: V207_RUNPOD_REGION,
           workersMin: this.#options.initialPolicy.workersMin,
           workersMax: this.#options.initialPolicy.workersMax,
           scalerType: "REQUEST_COUNT",
@@ -462,6 +486,7 @@ export class RunPodV207QualificationHarness {
       throw new RunPodControlError("RUNPOD_INITIAL_QUALIFICATION_REQUIRED");
     }
     if (this.#guard.snapshot() === "active") await this.#jobs!.confirmWarmIdle();
+    await this.assertSpendWithinCap();
     await this.#options.control.enforceV207EndpointPolicy(
       this.#endpoint!.id,
       this.#options.concurrentReaderPolicy,
@@ -476,12 +501,16 @@ export class RunPodV207QualificationHarness {
         minCudaVersion: V207_RUNPOD_MIN_CUDA_VERSION,
         allowedCudaVersions: [V207_RUNPOD_MIN_CUDA_VERSION],
         networkVolumeIdHash: sha256(this.#options.placement.networkVolumeId),
+        networkVolumeSizeGb: V207_RUNPOD_MAGE_VOLUME_SIZE_GB,
+        networkVolumeRegion: V207_RUNPOD_REGION,
         workersMin: this.#options.concurrentReaderPolicy.workersMin,
         workersMax: this.#options.concurrentReaderPolicy.workersMax,
         scalerType: "REQUEST_COUNT",
         scalerValue: 1,
         idleTimeout: this.#options.concurrentReaderPolicy.idleTimeout,
         executionTimeoutMs: this.#options.concurrentReaderPolicy.executionTimeoutMs,
+        templateIdHash: this.#template!.idHash,
+        image: this.#options.imageName,
         endpointIdHash: this.#endpoint!.idHash,
       }),
     );
@@ -504,6 +533,10 @@ export class RunPodV207QualificationHarness {
     if (!this.#concurrentReaderConfigHash) {
       throw new RunPodControlError("RUNPOD_CONCURRENT_READER_POLICY_REQUIRED");
     }
+    // Check each reader before any /run request. A single shared check would allow the second
+    // reader to enter after a concurrent billing read crossed the approved finite cap.
+    await this.assertSpendWithinCap();
+    await this.assertSpendWithinCap();
     const clients = inputs.map(() => {
       const guard = new RunPodDrainGuard();
       guard.confirmZero(0, 0);
@@ -549,6 +582,7 @@ export class RunPodV207QualificationHarness {
         return clients[index]!.dispatch(input.requestKey, request);
       }),
     );
+    await this.assertSpendWithinCap();
     const first = results[0]!;
     const second = results[1]!;
     this.mark("two_concurrent_readers_dispatched", {
@@ -567,6 +601,8 @@ export class RunPodV207QualificationHarness {
     if (jobIds.some((jobId) => !ID.test(jobId))) {
       throw new RunPodControlError("RUNPOD_JOB_ID_INVALID");
     }
+    await this.assertSpendWithinCap();
+    await this.assertSpendWithinCap();
     const maxPolls = this.#options.maxPolls ?? 120;
     const sleep =
       this.#options.sleep ??
@@ -592,6 +628,7 @@ export class RunPodV207QualificationHarness {
       reconcile(this.#readerJobs[0]!, jobIds[0]),
       reconcile(this.#readerJobs[1]!, jobIds[1]),
     ]);
+    await this.assertSpendWithinCap();
     return [results[0]!, results[1]!];
   }
 
@@ -615,6 +652,7 @@ export class RunPodV207QualificationHarness {
   async scaleDownToInitial(): Promise<void> {
     this.assertCreated();
     await this.drain();
+    await this.assertSpendWithinCap();
     await this.#options.control.enforceV207EndpointPolicy(
       this.#endpoint!.id,
       this.#options.initialPolicy,

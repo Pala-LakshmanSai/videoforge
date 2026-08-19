@@ -10,6 +10,7 @@ const IMMUTABLE_IMAGE = /^[a-z0-9][a-z0-9./_-]{0,190}@sha256:[a-f0-9]{64}$/u;
 export const V207_RUNPOD_REGION = "EU-RO-1" as const;
 export const V207_RUNPOD_GPU = "NVIDIA GeForce RTX 4090" as const;
 export const V207_RUNPOD_VOLUME_MOUNT = "/runpod-volume" as const;
+export const V207_RUNPOD_MAGE_VOLUME_SIZE_GB = 50 as const;
 export const V207_RUNPOD_SCALER = "REQUEST_COUNT" as const;
 export const V207_RUNPOD_SCALER_VALUE = 1 as const;
 /** The published Mage image is CUDA 13.0; do not let provider placement fall back to CUDA 12. */
@@ -63,7 +64,12 @@ export interface RunPodInventory {
     readonly scaleZeroCompliant: boolean;
   }[];
   readonly privateTemplateCount: number;
-  readonly networkVolumes: readonly { readonly idHash: string; readonly sizeGb: number | null }[];
+  readonly networkVolumes: readonly {
+    readonly idHash: string;
+    readonly sizeGb: number | null;
+    /** Redacted provider placement identity; null means the read did not prove a region. */
+    readonly dataCenterId: string | null;
+  }[];
   readonly runningPodCount: number;
   readonly activeServerlessWorkerCount: number;
 }
@@ -655,7 +661,14 @@ export class RunPodControlClient {
       if (!volume || typeof volume.id !== "string" || !ID.test(volume.id)) {
         throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
       }
-      return Object.freeze({ idHash: hashId(volume.id), sizeGb: numberOrNull(volume.size) });
+      return Object.freeze({
+        idHash: hashId(volume.id),
+        sizeGb: numberOrNull(volume.size),
+        dataCenterId:
+          typeof volume.dataCenterId === "string" && volume.dataCenterId.length > 0
+            ? volume.dataCenterId
+            : null,
+      });
     });
     return Object.freeze({
       checkedAt: now.toISOString(),

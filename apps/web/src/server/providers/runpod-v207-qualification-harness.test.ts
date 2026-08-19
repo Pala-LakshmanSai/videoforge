@@ -47,7 +47,13 @@ const authority = (): RunPodV207OutputAuthority => ({
   outputPutUrls: ["https://r2.example.test/put?signature=opaque"],
 });
 
-function harnessFetch() {
+function harnessFetch(
+  volume: { readonly id: string; readonly size: number; readonly dataCenterId?: string } = {
+    id: "volume_01",
+    size: 50,
+    dataCenterId: "EU-RO-1",
+  },
+) {
   let runCount = 0;
   let statusCount = 0;
   return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
@@ -58,7 +64,7 @@ function harnessFetch() {
     if (path === "/pods") return jsonResponse([]);
     if (path === "/endpoints" && init?.method === undefined) return jsonResponse([]);
     if (path === "/templates" && init?.method === undefined) return jsonResponse([]);
-    if (path === "/networkvolumes") return jsonResponse([{ id: "volume_01", size: 50 }]);
+    if (path === "/networkvolumes") return jsonResponse([volume]);
     if (path === "/templates" && init?.method === "POST") {
       return jsonResponse(
         {
@@ -129,7 +135,10 @@ function harnessFetch() {
   });
 }
 
-function makeHarness(fetch: typeof globalThis.fetch) {
+function makeHarness(
+  fetch: typeof globalThis.fetch,
+  spendSnapshotUsd: () => Promise<number> = async () => 0,
+) {
   const control = new RunPodControlClient({
     apiKey,
     fetch,
@@ -158,7 +167,7 @@ function makeHarness(fetch: typeof globalThis.fetch) {
       executionTimeoutMs: 600_000,
     },
     finiteSpendCapUsd: 4,
-    spendSnapshotUsd: async () => 0,
+    spendSnapshotUsd,
     fetch,
     baseUrl: "http://127.0.0.1:43123",
     pollIntervalMs: 1,
@@ -168,6 +177,36 @@ function makeHarness(fetch: typeof globalThis.fetch) {
 }
 
 describe("V2-07 qualification harness", () => {
+  it.each([
+    ["wrong id", { id: "volume_other", size: 50, dataCenterId: "EU-RO-1" }],
+    ["wrong size", { id: "volume_01", size: 100, dataCenterId: "EU-RO-1" }],
+    ["wrong region", { id: "volume_01", size: 50, dataCenterId: "US-KS-2" }],
+    ["unreported region", { id: "volume_01", size: 50 }],
+  ] as const)("requires the exact retained Mage volume (%s)", async (_label, volume) => {
+    const fetch = harnessFetch(volume);
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).rejects.toThrow("RUNPOD_MAGE_VOLUME_IDENTITY_UNCONFIRMED");
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+  });
+
+  it("checks the finite cap before applying max-two reader policy", async () => {
+    const fetch = harnessFetch();
+    let spend = 0;
+    const instance = makeHarness(fetch, async () => spend);
+    await instance.create();
+    await instance.drain();
+    instance.markInitialQualificationComplete();
+    spend = 5;
+    await expect(instance.applyConcurrentReaderPolicy()).rejects.toThrow(
+      "RUNPOD_FINITE_SPEND_CAP_EXCEEDED",
+    );
+    expect(
+      fetch.mock.calls.filter(([url]) =>
+        new URL(String(url)).pathname.endsWith("/endpoints/endpoint_01/update"),
+      ),
+    ).toHaveLength(0);
+  });
+
   it("requires exact generated-output authority and records a bounded lifecycle", async () => {
     const fetch = harnessFetch();
     const instance = makeHarness(fetch);
@@ -207,6 +246,70 @@ describe("V2-07 qualification harness", () => {
     expect(evidence.concurrentReaderConfigHash).toMatch(/^sha256:/u);
     expect(evidence.measuredSpendUsd).toBe(0);
     expect(JSON.stringify(evidence)).not.toContain("opaque");
+  });
+
+  it("checks the finite cap before concurrent reader dispatch", async () => {
+    let spend = 0;
+    const fetch = harnessFetch();
+    const instance = makeHarness(fetch, async () => spend);
+    await instance.create();
+    await instance.drain();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    spend = 5;
+    const input = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    await expect(
+      instance.dispatchConcurrentReaders([
+        { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
+        { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
+      ]),
+    ).rejects.toThrow("RUNPOD_FINITE_SPEND_CAP_EXCEEDED");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(0);
+  });
+
+  it("checks the finite cap after concurrent reader dispatch", async () => {
+    const spendSnapshotUsd = vi
+      .fn<() => Promise<number>>()
+      .mockResolvedValueOnce(0) // create
+      .mockResolvedValueOnce(0) // max-two policy update
+      .mockResolvedValueOnce(0) // reader one preflight
+      .mockResolvedValueOnce(0) // reader two preflight
+      .mockResolvedValueOnce(5); // post-dispatch guard
+    const fetch = harnessFetch();
+    const instance = makeHarness(fetch, spendSnapshotUsd);
+    await instance.create();
+    await instance.drain();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    const input = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    await expect(
+      instance.dispatchConcurrentReaders([
+        { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
+        { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
+      ]),
+    ).rejects.toThrow("RUNPOD_FINITE_SPEND_CAP_EXCEEDED");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(2);
+    await instance.drain();
   });
 
   it("redacts secrets and signed URLs from evidence", () => {
