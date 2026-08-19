@@ -79,6 +79,9 @@ decrypted_backup=$(mktemp "${TMPDIR:-/tmp}/videoforge-v2-06-restore.XXXXXX")
 archive_list=$(mktemp "${TMPDIR:-/tmp}/videoforge-v2-06-restore-list.XXXXXX")
 cleanup() { rm -f "$decrypted_ciphertext" "$decrypted_backup" "$archive_list"; }
 trap cleanup EXIT HUP INT TERM
+# As in backup.sh, reserve a random path first, then remove only the empty placeholder so the
+# envelope verifier can recreate it with O_EXCL and fail closed if anything races the path.
+rm -f "$decrypted_ciphertext"
 node "$script_dir/backup-envelope.mjs" unpack "$backup_input" "$decrypted_ciphertext" "$passphrase_file" >/dev/null
 openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \
   -in "$decrypted_ciphertext" -out "$decrypted_backup" -pass "file:$passphrase_file"

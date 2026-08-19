@@ -97,6 +97,9 @@ if ! grep -Eq '[[:space:]]TABLE[[:space:]]+public[[:space:]]+videoforge_schema_m
 fi
 openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt \
   -in "$raw_backup" -out "$encrypted_backup" -pass "file:$passphrase_file"
+# mktemp reserves an unpredictable private path, while the envelope writer deliberately opens its
+# target with O_EXCL. Remove only that empty reservation immediately before the no-clobber writer.
+rm -f "$envelope_backup"
 node "$script_dir/backup-envelope.mjs" pack "$encrypted_backup" "$envelope_backup" "$passphrase_file" >/dev/null
 chmod 600 "$envelope_backup"
 # A hard link gives this exact output path no-clobber semantics, including a race after the preflight.

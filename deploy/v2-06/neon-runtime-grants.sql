@@ -7,6 +7,10 @@
 \quit
 \endif
 
+-- Disposable restore databases may inherit an empty search_path from the Neon template. Pin the
+-- exact application schema before resolving any otherwise-unqualified relation names below.
+SET search_path = public, pg_catalog;
+
 GRANT USAGE ON SCHEMA public TO :"runtime_role";
 
 -- The application role must be created beforehand as a NOSUPERUSER/NOCREATEDB/NOCREATEROLE/

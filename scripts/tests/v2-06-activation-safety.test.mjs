@@ -17,6 +17,10 @@ test("V2-06 backup and restore scripts use protected PostgreSQL services, not DS
   assert.match(backup, /apply-migrations-and-grants\.mjs/u);
   assert.match(backup, /--verify-only --owner-only/u);
   assert.match(backup, /backup-envelope\.mjs/gu);
+  assert.match(
+    backup,
+    /rm -f "\$envelope_backup"\s+node "\$script_dir\/backup-envelope\.mjs" pack/u,
+  );
   assert.match(backup, /ln "\$envelope_backup" "\$backup_output"/u);
   assert.match(
     restore,
@@ -28,6 +32,10 @@ test("V2-06 backup and restore scripts use protected PostgreSQL services, not DS
   assert.match(restore, /public_relation_count/u);
   assert.match(restore, /apply-migrations-and-grants\.mjs/u);
   assert.match(restore, /--verify-only --apply-grants/u);
+  assert.match(
+    restore,
+    /rm -f "\$decrypted_ciphertext"\s+node "\$script_dir\/backup-envelope\.mjs" unpack/u,
+  );
   assert.doesNotMatch(restore, /pg_restore[^\n]*\$RESTORE_DATABASE_URL/u);
   assert.doesNotMatch(restore, /psql\s+"\$RESTORE_DATABASE_URL"/u);
   assert.match(preflight, /resolveExecutable/gu);
@@ -38,6 +46,7 @@ test("V2-06 backup and restore scripts use protected PostgreSQL services, not DS
 
 test("V2-06 live database helper verifies exact hashes, grants, and FORCE RLS", async () => {
   const source = await read("deploy/v2-06/apply-migrations-and-grants.mjs");
+  const grants = await read("deploy/v2-06/neon-runtime-grants.sql");
   assert.match(source, /migration manifest/u);
   assert.match(source, /does not match its manifest hash/u);
   assert.match(source, /migration ledger position/u);
@@ -47,6 +56,7 @@ test("V2-06 live database helper verifies exact hashes, grants, and FORCE RLS", 
   assert.match(source, /exact table grants/u);
   assert.match(source, /runtime role must already be NOSUPERUSER/u);
   assert.doesNotMatch(source, /process\.argv[^\n]*DATABASE_URL/u);
+  assert.match(grants, /SET search_path = public, pg_catalog;/u);
 });
 
 test("V2-06 renderer and rollback pin approved identities and immutable evidence", async () => {

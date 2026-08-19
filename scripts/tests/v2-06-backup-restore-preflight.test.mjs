@@ -13,6 +13,15 @@ import {
   inspectPrivateInputs,
   inspectToolchain,
 } from "../../deploy/v2-06/backup-restore-preflight.mjs";
+import {
+  APPROVED_HOST,
+  DISPOSABLE_DATABASE,
+  OWNER_ROLE,
+  PASSFILE_NAME,
+  SERVICE_FILENAME,
+  SERVICE_NAME,
+  prepareDisposableRestoreInputs,
+} from "../../deploy/v2-06/prepare-disposable-restore-inputs.mjs";
 
 const temporaryDirectory = (prefix) => mkdtemp(path.join(tmpdir(), prefix));
 
@@ -119,4 +128,58 @@ test("preflight source does not require or expose private input contents", async
   assert.doesNotMatch(source, /spawn|execFile|fetch\(/gu);
   assert.match(source, /provider_calls: false/u);
   assert.match(source, /remote_mutation: false/u);
+});
+
+test("disposable restore input helper scopes the existing owner credential without printing it", async () => {
+  const root = await temporaryDirectory("videoforge-v2-06-restore-inputs-");
+  const source = path.join(root, "owner.pgpass");
+  const password = "fixture-only-secret";
+  try {
+    await chmod(root, 0o700);
+    await writeFile(source, `${APPROVED_HOST}:5432:neondb:${OWNER_ROLE}:${password}\n\n`, {
+      mode: 0o600,
+    });
+    await chmod(source, 0o600);
+    const result = await prepareDisposableRestoreInputs(source, root);
+    assert.equal(result.service, SERVICE_NAME);
+    assert.equal(result.database, DISPOSABLE_DATABASE);
+    assert.equal(result.credential_value_recorded, false);
+    assert.doesNotMatch(JSON.stringify(result), new RegExp(password, "u"));
+
+    const serviceFile = path.join(root, SERVICE_FILENAME);
+    const passfile = path.join(root, PASSFILE_NAME);
+    assert.equal((await lstat(serviceFile)).mode & 0o777, 0o600);
+    assert.equal((await lstat(passfile)).mode & 0o777, 0o600);
+    assert.match(await readFile(serviceFile, "utf8"), new RegExp(`\\[${SERVICE_NAME}\\]`, "u"));
+    assert.equal(
+      await readFile(passfile, "utf8"),
+      `${APPROVED_HOST}:5432:${DISPOSABLE_DATABASE}:${OWNER_ROLE}:${password}\n`,
+    );
+    await assert.rejects(
+      () => prepareDisposableRestoreInputs(source, root),
+      /already exists; refusing to overwrite/u,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("disposable restore input helper rejects a second non-empty credential line", async () => {
+  const root = await temporaryDirectory("videoforge-v2-06-restore-reject-");
+  const source = path.join(root, "owner.pgpass");
+  try {
+    await chmod(root, 0o700);
+    await writeFile(
+      source,
+      `${APPROVED_HOST}:5432:neondb:${OWNER_ROLE}:first\n${APPROVED_HOST}:5432:other:${OWNER_ROLE}:second\n`,
+      { mode: 0o600 },
+    );
+    await chmod(source, 0o600);
+    await assert.rejects(
+      () => prepareDisposableRestoreInputs(source, root),
+      /one credential line and only trailing blank lines/u,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
