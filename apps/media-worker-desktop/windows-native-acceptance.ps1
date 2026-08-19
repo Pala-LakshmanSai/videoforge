@@ -146,6 +146,7 @@ function Read-ReleaseManifest {
         [string]$Path,
 
         [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
         [string]$ExpectedVersion
     )
 
@@ -290,7 +291,7 @@ function Get-WorkerProcesses {
 }
 
 function Assert-FreshUserState {
-    $existingProcesses = Get-WorkerProcesses
+    $existingProcesses = @(Get-WorkerProcesses)
     if ($existingProcesses.Count -gt 0) {
         throw "a VideoForge Worker process is already running; use a fresh Windows user or remove it manually"
     }
@@ -542,7 +543,14 @@ function Assert-Removed {
     $dataRoot = Get-WorkerDataRoot
     $shortcut = Get-StartupShortcutPath
     if (Test-Path -LiteralPath $Root) {
-        throw "isolated install root remains after uninstall"
+        $remainingInstallItems = @(Get-ChildItem -LiteralPath $Root -Force)
+        if ($remainingInstallItems.Count -gt 0) {
+            throw "isolated install root contains files after uninstall"
+        }
+        Remove-Item -LiteralPath $Root -Force
+        if (Test-Path -LiteralPath $Root) {
+            throw "empty isolated install root remains after cleanup"
+        }
     }
     if (Test-Path -LiteralPath $shortcut) {
         throw "Windows Startup shortcut remains after uninstall"

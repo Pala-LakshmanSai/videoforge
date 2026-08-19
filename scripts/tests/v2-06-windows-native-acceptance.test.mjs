@@ -22,6 +22,10 @@ test("Windows native acceptance harness is bounded and release-pinned", () => {
   assert.match(harness, /finally/u);
   assert.match(harness, /Invoke-Uninstaller/u);
   assert.match(harness, /KeepInstallation/u);
+  assert.match(harness, /\[AllowEmptyString\(\)\]\s*\[string\]\$ExpectedVersion/u);
+  assert.match(harness, /\$existingProcesses = @\(Get-WorkerProcesses\)/u);
+  assert.match(harness, /\$remainingInstallItems = @\(Get-ChildItem -LiteralPath \$Root -Force\)/u);
+  assert.match(harness, /empty isolated install root remains after cleanup/u);
 });
 
 test("default Windows acceptance path is provider-free and has no direct network tooling", () => {
