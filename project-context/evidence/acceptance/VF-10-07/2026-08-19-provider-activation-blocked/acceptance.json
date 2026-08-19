@@ -58,6 +58,8 @@
     "provider_status_only_error_surface_diagnosis": "runpod_sdk_1_7_0_sls_core_strips_reserved_error_from_output",
     "local_failure_code_repair_commit": "1623fa1",
     "local_failure_code_repair_published": false,
+    "fresh_activation_authority_guard_commit": "024547b",
+    "fresh_activation_authority_guard": "requires_repaired_source_commit_immutable_image_digest_and_explicit_finite_cap",
     "negative_tests": [
       "wrong authority bytes/path/volume/GPU/region",
       "model-volume write and cache escape",
@@ -163,7 +165,9 @@
     {"command": "pnpm --filter @videoforge/web build:staging", "exit_code": 0},
     {"command": "git diff --check", "exit_code": 0},
     {"commit": "1c9b0de", "area": "canonical formatting and web lint repair after failure_code change", "result": "PASS"},
-    {"command": "CI=1 TURBO_FORCE=true pnpm verify", "exit_code": 0, "result": "28 turbo tasks; Cloudflare parity 1/1; package build/lint/typecheck/tests; worker suites; context/secret checks; installed Chrome 44/44"}
+    {"command": "CI=1 TURBO_FORCE=true pnpm verify", "exit_code": 0, "result": "28 turbo tasks; Cloudflare parity 1/1; package build/lint/typecheck/tests; worker suites; context/secret checks; installed Chrome 44/44"},
+    {"commit": "024547b", "area": "fresh image/cap activation authority guard and RUNPOD_INIT_TIMEOUT pin", "result": "PASS"},
+    {"command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/v207-activation-authority.test.ts src/server/providers/runpod-v207-qualification-harness.test.ts", "exit_code": 0, "result": "4 passed"}
   ],
   "provider_catalog": {
     "query_scope": "read-only RunPod catalog, RTX 4090, CUDA 13.0, secure pool",
