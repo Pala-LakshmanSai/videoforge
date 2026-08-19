@@ -2,11 +2,11 @@
   "schema_version": "videoforge.v2-07-provider-activation-blocked/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-19T20:49:45Z",
+  "recorded_at": "2026-08-20T03:00:00Z",
   "result": "NOT_QUALIFIED_PROVIDER_ACTIVATION",
   "authority": {
     "finite_cap_usd": 4,
-    "observed_new_compute_spend_usd": 0.037264297367073596,
+    "observed_new_compute_spend_usd": 0.04199429741129279,
     "provider": "runpod",
     "approved_operations_used": [
       "inventory_lookup",
@@ -18,7 +18,7 @@
       "serverless_status",
       "endpoint_template_delete_if_failed"
     ],
-    "serverless_jobs_submitted": "corrected-image cold batch submitted once and terminal FAILED with no accepted output; CUDA-13-filtered retry reached throttled with zero jobs and submitted no /run",
+    "serverless_jobs_submitted": "multiple exact corrected-image 32-item cold batches submitted; each reached terminal output status FAILED with no accepted output and no provider error field; a later CUDA-13-pinned attempt reached throttled with zero jobs and submitted no /run",
     "corrected_image_gpu_batch_submitted": true,
     "corrected_image_accepted_output": false,
     "sample_output_publication": false,
@@ -100,18 +100,20 @@
     }
   },
   "provider_activation_attempts": {
-    "corrected_image_attempts": 6,
+    "corrected_image_attempts": 10,
     "observed_states": [
       "initializing",
       "throttled_with_zero_jobs",
       "ready_idle_once_with_120gb_container_disk",
-      "completed_failed_unknown_before_output",
+      "completed_failed_status_only_before_output",
       "throttled_after_cuda13_filter",
-      "catalog_rtx4090_cuda13_unavailable"
+      "catalog_rtx4090_cuda13_available_low_eu_ro_1",
+      "repeated_completed_failed_status_only_no_provider_error",
+      "throttled_before_dispatch"
     ],
     "last_disposable_template_id_sha256": "sha256:017659040f072113cfce7ad597b5ab0277e5b1614e2ae9167fc08d7ea2aa4fe5",
     "last_disposable_endpoint_id_sha256": "sha256:d92ea1d0d2a4bac79e25ecfa063a02872b978b98efb8c1b00570ec65f200b8ff",
-    "last_attempt_failure": "CUDA-13-filtered RTX 4090 endpoint remained throttled with zero jobs; RunPod catalog reported RTX 4090 CUDA 13.0 unavailable in the queried pool",
+    "last_attempt_failure": "Exact CUDA-13-pinned endpoint reached a throttled worker before dispatch; prior exact 32-item batches reached terminal output status FAILED with output keys limited to status and no provider error code",
     "all_disposable_resources_deleted": true,
     "cleanup_inventory": {
       "pods": 0,
@@ -130,7 +132,8 @@
   },
   "cost_and_retention": {
     "serverless_rate_usd_per_second": 0.00031,
-    "settled_endpoint_billing_usd_current_window": 0.037264297367073596,
+    "settled_endpoint_billing_usd_current_window": 0.004730000044219196,
+    "settled_endpoint_billing_usd_cumulative_observed": 0.04199429741129279,
     "retained_volume_usd_per_month_each": 3.5,
     "retained_volume_usd_per_month_total": 7,
     "mage_volume_hash_unchanged": true,
@@ -150,21 +153,23 @@
     {"commit": "241a9aa", "area": "flashboot-disabled activation request", "result": "PASS"},
     {"command": "pnpm test:workers", "exit_code": 0, "result": "70+40+4+17+31+10 passed"},
     {"command": "pnpm python:lint", "exit_code": 0, "result": "90 files formatted/checks passed"},
-    {"command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/runpod-control.test.ts src/server/providers/runpod-v207-qualification-harness.test.ts", "exit_code": 0, "result": "20 passed"},
+    {"command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/runpod-control.test.ts src/server/providers/runpod-v207-qualification-harness.test.ts", "exit_code": 0, "result": "21 passed"},
+    {"command": "pnpm --filter @videoforge/web exec tsc --noEmit --pretty false", "exit_code": 0},
+    {"command": "pnpm context:validate", "exit_code": 0},
     {"command": "pnpm --filter @videoforge/web typecheck", "exit_code": 0},
     {"command": "pnpm --filter @videoforge/web build:staging", "exit_code": 0},
     {"command": "git diff --check", "exit_code": 0}
   ],
   "provider_catalog": {
     "query_scope": "read-only RunPod catalog, RTX 4090, CUDA 13.0, secure pool",
-    "rtx4090_cuda13_available": false,
-    "rtx4090_catalog_availability": "NONE",
-    "rtx4090_cuda13_available_flag": false,
+    "rtx4090_cuda13_available": true,
+    "rtx4090_catalog_availability": "HIGH_GLOBAL_LOW_EU_RO_1",
+    "rtx4090_cuda13_available_flag": true,
     "serverless_price_usd_per_hour": 1.1
   },
   "hard_blocker": {
-    "code": "V2_07_RUNPOD_RTX4090_CUDA13_UNAVAILABLE",
-    "detail": "The first corrected-image batch reached a worker but returned terminal output status FAILED with no durable output; the worker ran only about 1.2 seconds and the provider exposed no diagnostic code. The exact runtime image is CUDA 13 and its runtime fence requires CUDA >=13.0. The corrected endpoint was then pinned to min/allowed CUDA 13.0; RunPod reported a throttled worker with zero jobs, and the read-only GPU catalog reported RTX 4090 CUDA 13.0 unavailable. Relaxing the CUDA fence or accepting the earlier unqualified host would violate exact Mage runtime qualification.",
+    "code": "V2_07_RUNPOD_MAGE_HANDLER_TERMINAL_FAILED_PROVIDER_ERROR_UNEXPOSED",
+    "detail": "Fresh read-only catalog data now reports RTX 4090/CUDA 13.0 available globally and LOW in EU-RO-1. Multiple exact CUDA-13-pinned 32-item batches reached terminal provider status COMPLETED but handler output status FAILED; the status payload exposed only the status key, the bounded stream diagnostic exposed no code, and no durable output or signed receipt was accepted. A later exact attempt reached a throttled worker before /run. The exact cu130 image/runtime fence, volume identity, and provider placement pins remain unchanged; relaxing them or accepting an unqualified host would violate Mage qualification.",
     "not_attempted": [
       "accepted corrected-image /run submission",
       "real cold or warm inference",
@@ -173,7 +178,7 @@
       "workersMax=2 concurrent-reader proof"
     ],
     "cleanup": "all disposable endpoint/template resources deleted; provider inventory is zero compute/resources and exactly two retained 50 GB EU-RO-1 volumes; signer route disabled",
-    "required_next_action": "Retry only after read-only catalog/health shows an RTX 4090 CUDA 13.0 EU-RO-1 placement; reuse no stale endpoint/template/receipt key; do not mutate or delete either retained volume."
+    "required_next_action": "Do not publish or dispatch again until the provider exposes a diagnosable ready RTX 4090/CUDA 13.0 EU-RO-1 worker or the immutable runtime is independently repaired and republished under fresh authority; reuse no stale endpoint/template/receipt key; do not mutate or delete either retained volume."
   },
   "qualification_status": "NOT_QUALIFIED",
   "next_checkpoint": "V2-07 remains active; stop before V2-08"

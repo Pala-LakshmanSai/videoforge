@@ -692,6 +692,11 @@ export interface RunPodJobDiagnostic {
 const diagnosticScalar = (value: unknown): string | null =>
   typeof value === "string" && value.trim().length > 0 ? value.trim().slice(0, 240) : null;
 
+const diagnosticCodeFromText = (value: string): string | null => {
+  const match = value.match(/\b(?:MAGE|RUNPOD|SERVERLESS)_[A-Z0-9_.:-]{2,160}\b/u)?.[0];
+  return match && /^[A-Z][A-Z0-9_.:-]{2,160}$/u.test(match) ? match : null;
+};
+
 /**
  * Keep provider failure diagnostics deliberately narrow.  The stream endpoint can contain
  * worker logs and environment values; only a small, non-secret status tuple is retained.
@@ -803,6 +808,7 @@ export class RunPodServerlessJobClient {
         method,
         headers: {
           authorization: this.options.apiKey,
+          connection: "close",
           ...(body === undefined ? {} : { "content-type": "application/json" }),
         },
         body,
@@ -890,7 +896,8 @@ export class RunPodServerlessJobClient {
     }
     const text = (await response.text()).slice(0, 64 * 1024);
     try {
-      return extractJobDiagnostic(JSON.parse(text));
+      const parsed = extractJobDiagnostic(JSON.parse(text));
+      return Object.freeze({ ...parsed, code: parsed.code ?? diagnosticCodeFromText(text) });
     } catch {
       const records: unknown[] = [];
       for (const line of text.split("\n").slice(0, 64)) {
@@ -902,7 +909,8 @@ export class RunPodServerlessJobClient {
           // The provider may emit a non-JSON keepalive; it is intentionally ignored.
         }
       }
-      return extractJobDiagnostic(records);
+      const parsed = extractJobDiagnostic(records);
+      return Object.freeze({ ...parsed, code: parsed.code ?? diagnosticCodeFromText(text) });
     }
   }
 
@@ -955,6 +963,11 @@ export class RunPodServerlessJobClient {
       const queued =
         (numberOrNull(jobs?.inQueue) ?? Number.NaN) +
         (numberOrNull(jobs?.inProgress) ?? Number.NaN);
+      if (attempt === 0) {
+        console.error(
+          `v207:health-baseline=${JSON.stringify({ idle, running, initializing: workers.initializing, ready: workers.ready, throttled: workers.throttled, unhealthy: workers.unhealthy, queued })}`,
+        );
+      }
       if (
         Number.isSafeInteger(idle) &&
         idle <= 1 &&

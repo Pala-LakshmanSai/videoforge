@@ -112,6 +112,7 @@ async function billingAmount(apiKey: string): Promise<number> {
   });
   const response = await fetch(`https://rest.runpod.io/v1/billing/endpoints?${query}`, {
     headers: { authorization: `Bearer ${apiKey}` },
+    signal: AbortSignal.timeout(15_000),
   });
   if (!response.ok) throw new Error("RUNPOD_ENDPOINT_BILLING_READ_FAILED");
   const value = (await response.json()) as unknown;
@@ -281,6 +282,13 @@ async function verifyBatch(
   if (job.status !== "COMPLETED") throw new Error(`RUNPOD_JOB_${job.status}`);
   const output = job.output as AnyRecord;
   if (!output || output.status !== "SUCCEEDED" || !Array.isArray(output.items)) {
+    console.error(
+      `v207:failed-output-shape=${JSON.stringify({
+        job_keys: Object.keys(job).sort(),
+        output_type: Array.isArray(output) ? "array" : typeof output,
+        output_keys: output && typeof output === "object" ? Object.keys(output).sort() : [],
+      })}`,
+    );
     const errorValue = output?.error;
     const code =
       typeof errorValue === "string"
@@ -413,10 +421,12 @@ async function verifyBatchWithDiagnostic(
 async function main(): Promise<void> {
   const apiKey = process.env.RUNPOD_KEY;
   if (!apiKey) throw new Error("RUNPOD_KEY_MISSING");
-  const wranglerConfig = JSON.parse(
-    await readFile("dist-staging/videoforge_v2_06_staging/v207-wrangler.json", "utf8"),
-  ) as AnyRecord;
-  const nonce = String(wranglerConfig.vars?.VIDEOFORGE_V207_AUTHORITY_NONCE ?? "");
+  const wranglerConfigPath =
+    process.env.V207_WRANGLER_CONFIG ?? "dist-staging/videoforge_v2_06_staging/v207-wrangler.json";
+  const wranglerConfig = JSON.parse(await readFile(wranglerConfigPath, "utf8")) as AnyRecord;
+  const nonce = String(
+    process.env.V207_AUTHORITY_NONCE ?? wranglerConfig.vars?.VIDEOFORGE_V207_AUTHORITY_NONCE ?? "",
+  );
   if (!/^[a-f0-9]{64}$/u.test(nonce)) throw new Error("V207_NONCE_MISSING");
   const receiptKeyId = "v207-qualification-20260820";
   const receiptSecret = randomBytes(32);

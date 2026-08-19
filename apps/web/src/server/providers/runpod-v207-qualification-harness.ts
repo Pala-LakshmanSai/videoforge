@@ -249,6 +249,7 @@ export class RunPodV207QualificationHarness {
     if (this.#endpoint || this.#template) {
       throw new RunPodControlError("RUNPOD_QUALIFICATION_ALREADY_CREATED");
     }
+    console.error("v207:harness-inventory");
     const inventory = await this.#options.control.inventory();
     if (
       inventory.runningPodCount !== 0 ||
@@ -268,6 +269,7 @@ export class RunPodV207QualificationHarness {
         this.#options.containerDiskInGb,
         this.#options.templateEnvironment,
       );
+      console.error("v207:harness-template-created");
       this.mark("template_created", { template_id_hash: this.#template!.idHash });
       this.#endpoint = await this.#options.control.createScaleZeroEndpoint(
         this.#options.endpointName,
@@ -276,6 +278,7 @@ export class RunPodV207QualificationHarness {
         this.#options.initialPolicy,
         this.#options.placement,
       );
+      console.error("v207:harness-endpoint-created");
       this.#jobs = new RunPodServerlessJobClient({
         apiKey: this.#options.apiKey,
         endpointId: this.#endpoint!.id,
@@ -283,11 +286,16 @@ export class RunPodV207QualificationHarness {
         fetch: this.#options.fetch,
         baseUrl: this.#options.baseUrl,
       });
+      // Endpoint creation is the first live provider state. Mark it active before accepting
+      // the provider's ready-idle baseline; the drain guard otherwise rejects a valid baseline
+      // as an impossible transition and waits forever for zero workers.
+      this.#guard.markActive();
       try {
         // RunPod can briefly expose a ready-idle worker at endpoint creation even with
         // workersMin=0. Capture that queue-empty baseline immediately; waiting for strict zero
         // first can let the provider recycle the worker back into throttled startup.
         await this.#jobs!.confirmWarmIdle(300, 250);
+        console.error("v207:harness-warm-idle");
         this.mark("provider_warm_idle_baseline");
       } catch (error) {
         if (!(error instanceof RunPodControlError) || error.code !== "RUNPOD_WARM_IDLE_NOT_CONFIRMED") {
