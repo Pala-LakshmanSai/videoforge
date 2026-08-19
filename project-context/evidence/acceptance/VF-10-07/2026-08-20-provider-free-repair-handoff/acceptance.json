@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-19T22:34:00Z",
+  "recorded_at": "2026-08-19T22:48:52Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -47,6 +47,16 @@
     ]
   },
   "verification": [
+    {
+      "commit": "20695bb",
+      "area": "request authority is bounded to a 7200-second TTL",
+      "result": "PASS"
+    },
+    {
+      "commit": "bd22eb8",
+      "area": "durable per-unit resume excludes already accepted units",
+      "result": "PASS"
+    },
     {
       "commit": "ef2a30c",
       "area": "fresh authority requires the complete repaired source commit",
