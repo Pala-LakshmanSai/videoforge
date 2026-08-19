@@ -337,3 +337,18 @@ test("live fixture supports protected libpq and Wrangler without new credential 
     /object", "delete/u,
   );
 });
+
+test("live fixture accepts canonical PostgreSQL UUIDs without RFC variant bits", async () => {
+  const fixture = await verifyLocalFixture();
+  assert.doesNotThrow(() =>
+    planFixture(
+      fixture,
+      {
+        user_id: "14a1d166-e15e-e923-6032-1c0910dc0c9d",
+        account_id: "38ae8aaf-09d8-bdab-7436-385eb2fcb7ac",
+        workspace_id: "78c40d01-f7af-bae1-1922-6b458da10625",
+      },
+      "2026-08-19T03:42:00Z",
+    ),
+  );
+});

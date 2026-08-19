@@ -75,7 +75,7 @@ const AUTHORITY_METADATA = Object.freeze({
 const WHISPER_MODEL_SHA256 =
   "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002";
 const ALLOWED_EMAILS = new Set(["lakshmansai121@gmail.com", "demo9gss@gmail.com"]);
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const SHA = /^sha256:[0-9a-f]{64}$/u;
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 const LOCAL_URI =
