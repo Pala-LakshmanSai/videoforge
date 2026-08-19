@@ -1,9 +1,97 @@
 import { AwsClient } from "aws4fetch";
 
-import type { HostedRuntimeConfiguration } from "./configuration";
+import type { HostedR2BucketBinding, HostedRuntimeConfiguration } from "./configuration";
 
 const EXACT_KEY =
   /^(?:tenant\/[A-Za-z0-9._:-]+\/workspace\/[A-Za-z0-9._:-]+\/project\/[A-Za-z0-9._:-]+\/revision\/[A-Za-z0-9._:-]+\/lane\/(?:input|mage-image|soulx-avatar|render|provenance)\/job\/[A-Za-z0-9._:-]+\/artifact\/[A-Za-z0-9._:-]+|tenant\/[A-Za-z0-9._:-]+\/workspace\/[A-Za-z0-9._:-]+\/avatar-profile\/[A-Za-z0-9._:-]+\/version\/[A-Za-z0-9._:-]+\/(?:original|canonical|thumbnail)\/[A-Za-z0-9._:-]+)$/u;
+const HOSTED_JOB_ARTIFACT_PREFIX =
+  /^tenant\/[A-Za-z0-9._:-]+\/workspace\/[A-Za-z0-9._:-]+\/project\/[A-Za-z0-9._:-]+\/revision\/[A-Za-z0-9._:-]+\/lane\/(?:input|render)\/job\/[A-Za-z0-9._:-]+\/artifact\/$/u;
+
+export interface HostedR2DeletionVerification {
+  readonly schemaVersion: "videoforge-r2-post-delete-verification/v1";
+  readonly objectPrefix: string;
+  readonly expectedAbsentKeys: readonly string[];
+  readonly remainingKeys: readonly string[];
+  readonly verified: true;
+}
+
+/**
+ * Delete only one exact personal-worker attempt prefix and prove the prefix is empty before the
+ * database is allowed to record durable retention deletion. R2 head checks catch an object that
+ * a paginated list could miss; the final list catches unexpected keys under the same attempt.
+ */
+export async function deleteHostedR2ObjectsAndVerify(
+  bucket: HostedR2BucketBinding,
+  objectPrefix: string,
+  keys: readonly string[],
+): Promise<HostedR2DeletionVerification> {
+  if (!HOSTED_JOB_ARTIFACT_PREFIX.test(objectPrefix)) {
+    throw new TypeError("Hosted R2 deletion requires one exact personal-worker artifact prefix.");
+  }
+  const expectedAbsentKeys = [...new Set(keys)].sort();
+  if (
+    expectedAbsentKeys.some(
+      (key) =>
+        !EXACT_KEY.test(key) ||
+        !key.startsWith(objectPrefix) ||
+        key.slice(objectPrefix.length).includes("/"),
+    )
+  ) {
+    throw new TypeError("Hosted R2 deletion keys must remain inside one exact attempt prefix.");
+  }
+
+  for (let offset = 0; offset < expectedAbsentKeys.length; offset += 1_000) {
+    await bucket.delete(expectedAbsentKeys.slice(offset, offset + 1_000));
+  }
+
+  const stillPresentByHead: string[] = [];
+  for (const key of expectedAbsentKeys) {
+    if ((await bucket.head(key)) !== null) stillPresentByHead.push(key);
+  }
+
+  const listed: string[] = [];
+  let cursor: string | undefined;
+  const cursors = new Set<string>();
+  do {
+    const page = await bucket.list({ prefix: objectPrefix, cursor, limit: 1_000 });
+    listed.push(...page.objects.map((object) => object.key));
+    if (!page.truncated) {
+      cursor = undefined;
+      break;
+    }
+    if (!page.cursor || cursors.has(page.cursor)) {
+      throw new Error("Hosted R2 post-delete verification lost pagination state.");
+    }
+    cursors.add(page.cursor);
+    cursor = page.cursor;
+  } while (cursor);
+
+  const remainingKeys = [...new Set([...stillPresentByHead, ...listed])].sort();
+  if (remainingKeys.length > 0) {
+    throw new Error("Hosted R2 post-delete verification found retained objects.");
+  }
+  return {
+    schemaVersion: "videoforge-r2-post-delete-verification/v1",
+    objectPrefix,
+    expectedAbsentKeys,
+    remainingKeys,
+    verified: true,
+  };
+}
+
+export function hostedJobArtifactPrefix(objectKey: string): string {
+  if (!EXACT_KEY.test(objectKey)) {
+    throw new TypeError("Hosted R2 object key is not exact worker artifact lineage.");
+  }
+  const marker = "/artifact/";
+  const markerIndex = objectKey.indexOf(marker);
+  if (markerIndex < 0) throw new TypeError("Hosted R2 object key has no artifact prefix.");
+  const prefix = `${objectKey.slice(0, markerIndex)}${marker}`;
+  if (!HOSTED_JOB_ARTIFACT_PREFIX.test(prefix)) {
+    throw new TypeError("Hosted R2 object key is not a personal-worker artifact.");
+  }
+  return prefix;
+}
 
 function checksumHeader(value: string): string {
   const bytes = value

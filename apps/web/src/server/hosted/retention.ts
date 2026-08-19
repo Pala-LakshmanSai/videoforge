@@ -1,6 +1,7 @@
 import { hostedRuntimeConfiguration, type HostedRuntimeEnvironment } from "./configuration";
 import { sha256 } from "./crypto";
 import { createNeonPool } from "./neon";
+import { deleteHostedR2ObjectsAndVerify } from "./r2";
 
 interface DueRetentionRow extends Record<string, unknown> {
   readonly attempt_id: string;
@@ -24,18 +25,17 @@ export async function runHostedRetention(environment: HostedRuntimeEnvironment):
       do {
         const page = await bucket.list({ prefix: row.object_prefix, cursor, limit: 1_000 });
         const keys = page.objects.map((object) => object.key).sort();
-        if (keys.length > 0) {
-          await bucket.delete(keys);
-          deleted.push(...keys);
-        }
+        deleted.push(...keys);
         cursor = page.truncated ? page.cursor : undefined;
         if (page.truncated && !cursor) throw new Error("R2 retention pagination lost its cursor.");
       } while (cursor);
+      const deletion = await deleteHostedR2ObjectsAndVerify(bucket, row.object_prefix, deleted);
       const facts = await sha256(
         JSON.stringify({
           attempt_id: row.attempt_id,
           deleted_keys: deleted.sort(),
           object_prefix: row.object_prefix,
+          post_delete_verification: deletion,
           schema_version: "videoforge-retention-deletion/v1",
         }),
       );

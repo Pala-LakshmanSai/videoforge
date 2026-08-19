@@ -4,7 +4,7 @@ import { deriveCallbackToken, sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { handlePersonalWorkerRequest } from "./personal-worker";
 import { handleHostedProductRequest } from "./product";
-import { HostedR2Signer } from "./r2";
+import { deleteHostedR2ObjectsAndVerify, hostedJobArtifactPrefix, HostedR2Signer } from "./r2";
 import {
   bindHostedCpuInputDocument,
   canonicalJson,
@@ -830,12 +830,20 @@ async function handleCpuOutputDelete(
       .map((row) => row.object_key)
       .filter((key): key is string => typeof key === "string")
       .sort();
-    if (keys.length !== 2) return json({ error: { code: "CPU_ATTEMPT_OUTPUT_INCOMPLETE" } }, 409);
-    await bucket.delete(keys);
+    const firstKey = keys[0];
+    if (keys.length !== 2 || !firstKey) {
+      return json({ error: { code: "CPU_ATTEMPT_OUTPUT_INCOMPLETE" } }, 409);
+    }
+    const deletion = await deleteHostedR2ObjectsAndVerify(
+      bucket,
+      hostedJobArtifactPrefix(firstKey),
+      keys,
+    );
     const factsSha256 = await sha256(
       canonicalJson({
         attempt_id: attemptId,
         deleted_keys: keys,
+        post_delete_verification: deletion,
         reason: "EXPLICIT_USER_DELETE",
         schema_version: "videoforge-explicit-output-deletion/v1",
       }),

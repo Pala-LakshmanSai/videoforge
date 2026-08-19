@@ -124,3 +124,13 @@ test("V2-06 personal-worker completion casts the result length to PostgreSQL big
     /result_content_length = CASE WHEN \$2 = 'SUCCEEDED' THEN \$4::bigint ELSE NULL END/u,
   );
 });
+
+test("V2-06 output deletion records only after an exact R2 post-delete read-back", async () => {
+  const r2 = await read("apps/web/src/server/hosted/r2.ts");
+  const app = await read("apps/web/src/server/hosted/app.ts");
+  const retention = await read("apps/web/src/server/hosted/retention.ts");
+  assert.match(r2, /deleteHostedR2ObjectsAndVerify/u);
+  assert.match(r2, /Hosted R2 post-delete verification found retained objects/u);
+  assert.match(app, /post_delete_verification: deletion/u);
+  assert.match(retention, /deleteHostedR2ObjectsAndVerify\(bucket, row\.object_prefix, deleted\)/u);
+});

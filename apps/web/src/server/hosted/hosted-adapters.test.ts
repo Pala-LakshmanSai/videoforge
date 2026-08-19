@@ -10,7 +10,7 @@ import {
   hostedRuntimeConfiguration,
   type HostedRuntimeEnvironment,
 } from "./configuration";
-import { HostedR2Signer } from "./r2";
+import { deleteHostedR2ObjectsAndVerify, hostedJobArtifactPrefix, HostedR2Signer } from "./r2";
 import {
   completionMatchesTerminalLease,
   mediaWorkerTerminalEventKind,
@@ -261,6 +261,62 @@ describe("V2-06 hosted adapters", () => {
     });
     expect(port.method).toBe("PUT");
     expect(port.url).toContain("avatar-profile");
+  });
+
+  it("fails closed until an exact worker-artifact prefix is empty after delete", async () => {
+    const prefix =
+      "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/render/job/job-a/artifact/";
+    const objects = new Set([
+      `${prefix}final-mp4`,
+      `${prefix}result-document`,
+      `${prefix}unexpected`,
+    ]);
+    const bucket = {
+      async head(key: string) {
+        return objects.has(key) ? { size: 1 } : null;
+      },
+      async get() {
+        return null;
+      },
+      async put() {
+        return {};
+      },
+      async list(options: { prefix: string; cursor?: string; limit?: number }) {
+        expect(options.prefix).toBe(prefix);
+        return {
+          objects: [...objects]
+            .filter((key) => key.startsWith(options.prefix))
+            .map((key) => ({ key })),
+          truncated: false,
+        };
+      },
+      async delete(keys: string | readonly string[]) {
+        for (const key of typeof keys === "string" ? [keys] : keys) objects.delete(key);
+      },
+    };
+
+    await expect(
+      deleteHostedR2ObjectsAndVerify(bucket, prefix, [
+        `${prefix}final-mp4`,
+        `${prefix}result-document`,
+      ]),
+    ).rejects.toThrow(/retained objects/u);
+    expect(objects).toEqual(new Set([`${prefix}unexpected`]));
+
+    objects.delete(`${prefix}unexpected`);
+    await expect(
+      deleteHostedR2ObjectsAndVerify(bucket, prefix, [
+        `${prefix}final-mp4`,
+        `${prefix}result-document`,
+      ]),
+    ).resolves.toMatchObject({
+      schemaVersion: "videoforge-r2-post-delete-verification/v1",
+      objectPrefix: prefix,
+      expectedAbsentKeys: [`${prefix}final-mp4`, `${prefix}result-document`],
+      remainingKeys: [],
+      verified: true,
+    });
+    expect(hostedJobArtifactPrefix(`${prefix}final-mp4`)).toBe(prefix);
   });
 
   it("keeps worker enrollment aligned with the published native platforms", () => {

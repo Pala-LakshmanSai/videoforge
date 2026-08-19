@@ -224,6 +224,8 @@ const hostedWorkflow = await read("apps/web/worker/hosted-workflow.ts");
 const hostedGoogleOnlyMigration = await read(
   "packages/control-plane/migrations/0036_v2_06_google_only_replay_boundaries.sql",
 );
+const hostedR2 = await read("apps/web/src/server/hosted/r2.ts");
+const hostedRetention = await read("apps/web/src/server/hosted/retention.ts");
 if (
   !hostedAuth.includes("emailAndPassword: { enabled: false }") ||
   /emailAndPassword:[\s\S]{0,240}?enabled:\s*true/u.test(hostedAuth) ||
@@ -252,6 +254,13 @@ if (
   !hostedApp.includes('reason: "EXPLICIT_USER_DELETE"')
 )
   fail("explicit owned-output R2 deletion route is absent");
+if (
+  !hostedR2.includes("deleteHostedR2ObjectsAndVerify") ||
+  !hostedR2.includes("Hosted R2 post-delete verification found retained objects") ||
+  !hostedApp.includes("post_delete_verification: deletion") ||
+  !hostedRetention.includes("deleteHostedR2ObjectsAndVerify(bucket, row.object_prefix, deleted)")
+)
+  fail("hosted R2 deletion must verify the exact attempt prefix before durable deletion state");
 
 const observability = JSON.parse(await read("deploy/v2-06/observability.template.json"));
 if (observability.logs?.secret_values !== false || observability.logs?.signed_urls !== false)
