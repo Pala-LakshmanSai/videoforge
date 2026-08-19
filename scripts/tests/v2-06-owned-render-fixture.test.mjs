@@ -49,6 +49,7 @@ test("V2-06 hosted plan rewrites IDs, hashes, and tenant object lineage", async 
   assert.equal(plan.rewrittenManifest.project_revision_id, plan.revisionId);
   assert.equal(plan.rewrittenManifest.revision_config_hash, plan.revisionConfigHash);
   assert.equal(plan.revisionConfigHash, canonicalHash(plan.revisionConfigBase));
+  assert.equal(plan.revisionConfigPayload.maximum_cost_micro_usd, 100_000);
   assert.equal(plan.submission.kind, "RENDER");
   assert.equal(plan.submission.input_document.schema_version, "render-job-input/v1");
   const prefix = "/project/" + plan.projectId + "/revision/" + plan.revisionId + "/lane/input/job/";

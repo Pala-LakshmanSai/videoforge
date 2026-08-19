@@ -475,7 +475,7 @@ function planFixture(fixture, scope, seedAt, preset = null) {
     voiceover_sha256: voiceover.digest,
     voiceover_binary_sha256: voiceover.digest,
     generation_mode: "LOWEST_COST",
-    maximum_cost_micro_usd: 0,
+    maximum_cost_micro_usd: 100_000,
     currency: "USD",
     gpu_transport: "DISABLED_FAKE_ONLY",
     execution_backend: "PERSONAL_WORKER",
@@ -1455,7 +1455,7 @@ async function ensureRevision(client, plan, preset) {
     row.extra_prompt_keywords !== base.extra_prompt_keywords ||
     row.apply_extra_prompt_keywords !== base.apply_extra_prompt_keywords ||
     row.generation_mode !== "LOWEST_COST" ||
-    Number(row.maximum_cost_micro_usd) !== 0 ||
+    Number(row.maximum_cost_micro_usd) !== 100_000 ||
     row.currency !== "USD" ||
     Number(row.seed) !== Number(base.seed) ||
     row.revision_config_contract_name !== base.revision_config_contract_name ||
