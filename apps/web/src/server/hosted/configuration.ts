@@ -51,6 +51,7 @@ export interface HostedRuntimeEnvironment {
   readonly R2_SECRET_ACCESS_KEY?: string;
   readonly WORKFLOW_CALLBACK_SECRET?: string;
   readonly MEDIA_WORKER_TOKEN_SECRET?: string;
+  readonly VIDEOFORGE_V207_AUTHORITY_NONCE?: string;
 }
 
 export interface HostedRuntimeConfiguration {
