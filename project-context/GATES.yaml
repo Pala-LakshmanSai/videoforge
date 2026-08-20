@@ -116,7 +116,7 @@ gates:
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlessmage001-mage-endpoint"
     owner: V2-07
     last_run: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-14.json"
-    result: NOT_QUALIFIED_attempt14_stopped_before_dispatch_on_unconfirmed_flashboot_normalization_runpod_cleanup_zero_route_restoration_uncertain_authority_closed
+    result: NOT_QUALIFIED_attempt14_predispatch_stop_cleanup_zero_route_uncertain_flashboot_true_proposal_sha256_592dab944bad844b8f6312c911fb56eadabc1ecbd0b0762dfd8fdb8261d7ca8a_pending_fresh_authority
 
   GATE_SERVERLESS_SOULX_001:
     status: open
