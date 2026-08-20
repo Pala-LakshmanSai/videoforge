@@ -1,4 +1,4 @@
-import { canonicalizeJson } from "@videoforge/contracts";
+import { canonicalizeJson } from "@videoforge/contracts/canonical-json";
 
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
 import { HostedR2Signer, isExactHostedR2ObjectKey } from "./r2";
