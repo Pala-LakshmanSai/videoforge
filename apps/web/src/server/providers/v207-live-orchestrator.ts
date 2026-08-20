@@ -644,6 +644,7 @@ function commandEnvironment(
   environment: Environment,
   nonce: string,
   configPath: string,
+  preflightOnly = false,
 ): Record<string, string | undefined> {
   const child = { ...environment };
   child.V207_AUTHORITY_NONCE = nonce;
@@ -651,6 +652,8 @@ function commandEnvironment(
   child.V207_IMAGE = environment.V207_IMAGE;
   child.V207_IMAGE_SOURCE_COMMIT = environment.V207_IMAGE_SOURCE_COMMIT;
   child.V207_FINITE_CAP_USD = environment.V207_FINITE_CAP_USD;
+  if (preflightOnly) child.V207_PREFLIGHT_ONLY = "1";
+  else delete child.V207_PREFLIGHT_ONLY;
   delete child[V207_ORCHESTRATOR_SECRET_NAME];
   return child;
 }
@@ -835,6 +838,24 @@ export async function runV207LiveOrchestration(
     await record("active_route_rejected_missing_header", { status: 403 });
 
     if (abortRequested) throw new V207LiveOrchestratorError("V207_OPERATOR_ABORT");
+    const preflight = requireSuccessful(
+      "V207_LIVE_PREFLIGHT",
+      await run({
+        command: "pnpm",
+        args: [
+          "--filter",
+          "@videoforge/web",
+          "exec",
+          "tsx",
+          "src/server/providers/v207-live-qualification.ts",
+        ],
+        cwd: resolve(cwd, "apps/web"),
+        env: commandEnvironment(environment, nonce, configPath, true),
+        signal: abortController.signal,
+      }),
+    );
+    await record("live_preflight_completed", { exit_code: preflight.exitCode ?? -1 });
+
     const runner = requireSuccessful(
       "V207_LIVE_RUNNER",
       await run({

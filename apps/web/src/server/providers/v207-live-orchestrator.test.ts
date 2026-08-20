@@ -171,17 +171,29 @@ describe("V2-07 live orchestrator", () => {
     expect(evidence).toContain('"result": "SUCCEEDED"');
     expect(evidence).toContain('"event": "captured_pre_mutation_route"');
     expect(evidence).toContain('"event": "restored_route_confirmed"');
+    expect(evidence).toContain('"event": "live_preflight_completed"');
     expect(evidence).toContain('"code": "HOSTED_ROUTE_NOT_COMPOSED"');
     expect(evidence).not.toContain(NONCE);
     expect(evidence).not.toContain(RUNPOD_KEY);
     expect((await stat(files.evidencePath)).mode & 0o077).toBe(0);
 
     const liveRunner = calls.find((call) =>
-      call.args.some((argument) => argument.endsWith("v207-live-qualification.ts")),
+      call.args.some((argument) => argument.endsWith("v207-live-qualification.ts")) &&
+      call.env.V207_PREFLIGHT_ONLY !== "1",
     );
+    const preflightRunner = calls.find(
+      (call) =>
+        call.args.some((argument) => argument.endsWith("v207-live-qualification.ts")) &&
+        call.env.V207_PREFLIGHT_ONLY === "1",
+    );
+    expect(preflightRunner).toBeDefined();
     expect(liveRunner?.cwd).toBe(join(resolve(process.cwd(), "../.."), "apps/web"));
     expect(liveRunner?.env.V207_AUTHORITY_NONCE).toBe(NONCE);
     expect(liveRunner?.env.RUNPOD_KEY).toBe(RUNPOD_KEY);
+    expect(liveRunner?.env.V207_PREFLIGHT_ONLY).toBeUndefined();
+    expect(calls.indexOf(preflightRunner as V207CommandRequest)).toBeLessThan(
+      calls.indexOf(liveRunner as V207CommandRequest),
+    );
     expect(calls.some((call) => call.args.includes("build:staging"))).toBe(true);
     expect(calls.some((call) => call.args.includes("deploy"))).toBe(true);
     expect(calls.some((call) => call.args.includes("rollback"))).toBe(true);
@@ -217,7 +229,10 @@ describe("V2-07 live orchestrator", () => {
         signerSecretPresent = true;
         return result();
       }
-      if (request.args.some((argument) => argument.endsWith("v207-live-qualification.ts"))) {
+      if (
+        request.args.some((argument) => argument.endsWith("v207-live-qualification.ts")) &&
+        request.env.V207_PREFLIGHT_ONLY !== "1"
+      ) {
         liveRunnerSeen = true;
         expect(request.env.RUNPOD_KEY).toBeUndefined();
       }
