@@ -56,6 +56,8 @@ export interface V207LiveOrchestratorOptions {
   readonly nonceFactory?: () => string;
   /** Test-only dependency injection for the bounded secret-propagation poll. */
   readonly sleepImpl?: (milliseconds: number) => Promise<void>;
+  /** Test-only filesystem headroom override; production always reads statfs. */
+  readonly diskAvailableBytes?: number;
   /** Tests disable process signal registration; production leaves it enabled. */
   readonly installSignalHandlers?: boolean;
 }
@@ -739,8 +741,11 @@ export async function runV207LiveOrchestration(
     await writeEvidence(evidenceFile, evidence);
   };
 
-  const filesystem = await statfs(cwd);
-  const availableBytes = Math.floor(Number(filesystem.bavail) * Number(filesystem.bsize));
+  let availableBytes = options.diskAvailableBytes;
+  if (availableBytes === undefined) {
+    const filesystem = await statfs(cwd);
+    availableBytes = Math.floor(Number(filesystem.bavail) * Number(filesystem.bsize));
+  }
   assertV207DiskHeadroom(availableBytes);
   await record("orchestration_started", { local_disk_available_bytes: availableBytes });
   const abortController = new AbortController();

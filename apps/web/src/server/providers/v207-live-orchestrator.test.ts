@@ -169,6 +169,7 @@ describe("V2-07 live orchestrator", () => {
       cwd: resolve(process.cwd(), "../.."),
       configPath: files.configPath,
       evidencePath: files.evidencePath,
+      diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
       commandRunner,
       fetchImpl,
       nonceFactory: () => NONCE,
@@ -308,6 +309,7 @@ describe("V2-07 live orchestrator", () => {
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
         evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
         commandRunner,
         fetchImpl,
         nonceFactory: () => NONCE,
@@ -370,6 +372,7 @@ describe("V2-07 live orchestrator", () => {
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
         evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
         commandRunner,
         fetchImpl,
         nonceFactory: () => NONCE,
@@ -439,6 +442,7 @@ describe("V2-07 live orchestrator", () => {
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
         evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
         commandRunner: async (request) => {
           if (request.args.includes("secret") && request.args.includes("put"))
             signerSecretPresent = true;
@@ -463,6 +467,7 @@ describe("V2-07 live orchestrator", () => {
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
         evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
         commandRunner: async (request) => {
           calls.push(request);
           if (request.command === "git") return result(" M local-change\n");
@@ -512,6 +517,7 @@ describe("V2-07 live orchestrator", () => {
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
         evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
         commandRunner,
         fetchImpl: async () =>
           new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), { status: 404 }),
@@ -574,6 +580,7 @@ describe("V2-07 live orchestrator", () => {
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
         evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
         commandRunner,
         fetchImpl,
         nonceFactory: () => NONCE,
